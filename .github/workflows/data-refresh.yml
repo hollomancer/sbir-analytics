@@ -100,7 +100,7 @@ jobs:
             echo "  B -->|SBIR| C[Refresh SBIR Awards]" >> $GITHUB_STEP_SUMMARY
           fi
           if [ "${{ steps.determine.outputs.usaspending }}" = "true" ]; then
-            echo "  B -->|USAspending| D[Refresh USAspending DB]" >> $GITHUB_STEP_SUMMARY
+            echo "  B -->|USAspending| D[Extract Recipients]" >> $GITHUB_STEP_SUMMARY
           fi
           if [ "${{ steps.determine.outputs.uspto }}" = "true" ]; then
             echo "  B -->|USPTO| E[Refresh USPTO Patents]" >> $GITHUB_STEP_SUMMARY
@@ -167,11 +167,11 @@ jobs:
           aws s3 ls "s3://${{ env.S3_BUCKET }}/raw/awards/" --recursive --human-readable | tail -10 >> $GITHUB_STEP_SUMMARY || echo "No files found"
 
   refresh-usaspending:
-    name: Refresh USAspending Database
+    name: Refresh USAspending Recipients
     needs: determine-source
     if: needs.determine-source.outputs.usaspending == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 360  # 6 hours for 217GB download with resume capability
+    timeout-minutes: 60  # Much faster - only downloads ~1.2GB
     steps:
       - uses: actions/checkout@v6
 
@@ -180,7 +180,6 @@ jobs:
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
-          role-duration-seconds: 14400  # 4 hours (IAM role max)
 
       - name: Setup Python and UV
         uses: ./.github/actions/setup-python-uv
@@ -188,197 +187,108 @@ jobs:
           python-version: "3.11"
           install-dev-deps: "false"
 
-      - name: Install async dependencies
+      - name: Install dependencies
         run: |
-          uv pip install aiohttp aioboto3
+          uv pip install boto3 requests pandas pyarrow
 
-      - name: Check if new USAspending file available
-        id: check-new-file
+      - name: Check for new USAspending dump
+        id: check-new
         run: |
-          echo "## 🔍 USAspending File Check" >> $GITHUB_STEP_SUMMARY
+          echo "## 🔍 Checking for New USAspending Data" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
-          # Check for new file (exit code 0 = new file, 1 = not new)
-          # Capture stderr separately to avoid corrupting JSON
-          if uv run python scripts/usaspending/check_new_file.py \
-            --s3-bucket ${{ env.S3_BUCKET }} \
-            --database-type full \
-            --json > check_result.json 2>check_stderr.txt; then
-            IS_NEW="true"
-            echo "is_new=true" >> $GITHUB_OUTPUT
-            echo "### ✅ New/Updated File Detected - Will Download" >> $GITHUB_STEP_SUMMARY
-          else
-            EXIT_CODE=$?
-            IS_NEW="false"
-            echo "is_new=false" >> $GITHUB_OUTPUT
-            echo "### ℹ️ No New File - Skipping Download (exit code: $EXIT_CODE)" >> $GITHUB_STEP_SUMMARY
+          # Find latest dump URL from USAspending
+          LATEST_URL=$(uv run python -c "
+          import requests
+          from datetime import datetime, timedelta
+
+          base_url = 'https://files.usaspending.gov/database_download'
+          for days_ago in range(0, 30):
+              date = datetime.now() - timedelta(days=days_ago)
+              filename = f'usaspending-db_{date.strftime(\"%Y%m%d\")}.zip'
+              url = f'{base_url}/{filename}'
+              try:
+                  resp = requests.head(url, timeout=5)
+                  if resp.status_code == 200:
+                      print(url)
+                      break
+              except:
+                  continue
+          ")
+
+          if [ -z "$LATEST_URL" ]; then
+            echo "❌ Could not find USAspending dump" >> $GITHUB_STEP_SUMMARY
+            exit 1
           fi
+
+          # Extract date from URL
+          DUMP_DATE=$(echo "$LATEST_URL" | grep -oE '[0-9]{8}')
+          echo "latest_url=$LATEST_URL" >> $GITHUB_OUTPUT
+          echo "dump_date=$DUMP_DATE" >> $GITHUB_OUTPUT
+
+          echo "**Latest dump:** \`$LATEST_URL\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Dump date:** $DUMP_DATE" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
-          # Show any stderr output
-          if [ -s check_stderr.txt ]; then
-            echo "<details><summary>Script output</summary>" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
-            cat check_stderr.txt >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
-            echo "</details>" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-          fi
+          # Check if we already have this version
+          EXISTING=$(aws s3 ls "s3://${{ env.S3_BUCKET }}/raw/usaspending/recipient_lookup/" --recursive | grep -oE '[0-9]{4}-[0-9]{2}-[0-9]{2}' | sort -r | head -1 || echo "")
 
-          # Show check details if valid JSON
-          if [ -f check_result.json ] && jq -e . check_result.json > /dev/null 2>&1; then
-            SOURCE_URL=$(jq -r '.source_url // "N/A"' check_result.json)
-            AVAILABLE=$(jq -r '.available // false' check_result.json)
-            CONTENT_LENGTH=$(jq -r '.content_length // 0' check_result.json)
-            S3_CONTENT_LENGTH=$(jq -r '.s3_content_length // 0' check_result.json)
-            SIZE_MISMATCH=$(jq -r '.size_mismatch // false' check_result.json)
+          if [ -n "$EXISTING" ]; then
+            EXISTING_YYYYMMDD=$(echo "$EXISTING" | tr -d '-')
+            echo "**Existing version:** $EXISTING" >> $GITHUB_STEP_SUMMARY
 
-            SOURCE_SIZE_GB=$(echo "scale=2; $CONTENT_LENGTH / 1073741824" | bc 2>/dev/null || echo "0")
-            S3_SIZE_GB=$(echo "scale=2; $S3_CONTENT_LENGTH / 1073741824" | bc 2>/dev/null || echo "0")
-
-            echo "| Property | Value |" >> $GITHUB_STEP_SUMMARY
-            echo "|----------|-------|" >> $GITHUB_STEP_SUMMARY
-            echo "| Source URL | \`${SOURCE_URL}\` |" >> $GITHUB_STEP_SUMMARY
-            echo "| Source Available | ${AVAILABLE} |" >> $GITHUB_STEP_SUMMARY
-            echo "| Source Size | ${SOURCE_SIZE_GB} GB |" >> $GITHUB_STEP_SUMMARY
-            echo "| S3 Size | ${S3_SIZE_GB} GB |" >> $GITHUB_STEP_SUMMARY
-            echo "| Size Mismatch | ${SIZE_MISMATCH} |" >> $GITHUB_STEP_SUMMARY
-            echo "| Will Download | ${IS_NEW} |" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-
-            if [ "$SIZE_MISMATCH" = "true" ]; then
-              echo "⚠️ **Size mismatch detected** - S3 file appears incomplete. Will re-download." >> $GITHUB_STEP_SUMMARY
+            if [ "$EXISTING_YYYYMMDD" -ge "$DUMP_DATE" ] && [ "${{ github.event.inputs.force_refresh }}" != "true" ]; then
               echo "" >> $GITHUB_STEP_SUMMARY
+              echo "✅ Already up to date - skipping extraction" >> $GITHUB_STEP_SUMMARY
+              echo "is_new=false" >> $GITHUB_OUTPUT
+              exit 0
             fi
           fi
 
-      - name: Download and process USAspending database (parallel)
-        id: usaspending-download
-        # Download if new file available OR force_refresh is enabled
-        if: steps.check-new-file.outputs.is_new == 'true' || github.event.inputs.force_refresh == 'true'
-        timeout-minutes: 330  # 5.5 hours for full download with resume
-        run: |
-          set -e
-          echo "Starting USAspending download with resume support..."
-          echo "Timeout: 330 minutes (5.5 hours)"
-          echo ""
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "🆕 New version available - will extract" >> $GITHUB_STEP_SUMMARY
+          echo "is_new=true" >> $GITHUB_OUTPUT
 
-          # Concurrency of 3 to prevent OOM on GitHub runner
-          # Script uses consistent S3 key based on source file date for resume
-          uv run python scripts/data/download_usaspending_parallel.py \
-            --s3-bucket ${{ env.S3_BUCKET }} \
-            --database-type full \
-            --max-concurrent 3 2>&1 | tee usaspending_output.txt
+      - name: Extract recipient_lookup via streaming
+        if: steps.check-new.outputs.is_new == 'true' || github.event.inputs.force_refresh == 'true'
+        run: |
+          echo "## 📥 Extracting recipient_lookup" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Using streaming extraction - downloads only ~1.2GB instead of 217GB" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          uv run python scripts/data/stream_extract_recipient.py \
+            --url "${{ steps.check-new.outputs.latest_url }}" \
+            --s3-bucket "${{ env.S3_BUCKET }}" \
+            2>&1 | tee extract_output.txt
 
           EXIT_CODE=${PIPESTATUS[0]}
-          echo "Download script exited with code: $EXIT_CODE"
+
+          echo "<details><summary>Extraction Log</summary>" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          cat extract_output.txt >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "</details>" >> $GITHUB_STEP_SUMMARY
+
           if [ $EXIT_CODE -ne 0 ]; then
-            echo "ERROR: Download failed with exit code $EXIT_CODE"
-            exit $EXIT_CODE
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "❌ Extraction failed" >> $GITHUB_STEP_SUMMARY
+            exit 1
           fi
 
-      - name: Report USAspending status
+          # Extract record count from output
+          RECORDS=$(grep -oE 'Extracted [0-9,]+ recipients' extract_output.txt | grep -oE '[0-9,]+' || echo "unknown")
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Extracted **$RECORDS** recipient records" >> $GITHUB_STEP_SUMMARY
+
+      - name: Report status
         if: always()
         run: |
-          echo "## 💾 USAspending Database Download Report" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-
-          # Check if download was skipped or ran
-          if [ "${{ steps.usaspending-download.outcome }}" = "skipped" ]; then
-            echo "### ⏭️ Status: SKIPPED" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-
-            # Show why it was skipped
-            if [ -f check_result.json ]; then
-              echo "**Reason:** File in S3 matches source (same size and date)" >> $GITHUB_STEP_SUMMARY
-              echo "" >> $GITHUB_STEP_SUMMARY
-              echo "**Check Results:**" >> $GITHUB_STEP_SUMMARY
-              echo '```json' >> $GITHUB_STEP_SUMMARY
-              cat check_result.json >> $GITHUB_STEP_SUMMARY
-              echo '```' >> $GITHUB_STEP_SUMMARY
-            fi
-          elif [ "${{ steps.usaspending-download.outcome }}" = "success" ]; then
-            echo "### ✅ Status: SUCCESS" >> $GITHUB_STEP_SUMMARY
-          elif [ "${{ steps.usaspending-download.outcome }}" = "failure" ]; then
-            echo "### ❌ Status: FAILED" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "**Note:** Progress is saved. Re-run workflow to resume download." >> $GITHUB_STEP_SUMMARY
-          fi
-          echo "" >> $GITHUB_STEP_SUMMARY
-
-          # Show download progress if output exists
-          if [ -f usaspending_output.txt ]; then
-            echo "### 📊 Download Progress" >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
-            grep -E "File size:|Total chunks:|Already uploaded:|Remaining:|DOWNLOAD COMPLETE|INTERRUPTED|Parts completed:" usaspending_output.txt | head -20 >> $GITHUB_STEP_SUMMARY || echo "No progress info"
-            echo '```' >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-
-            # Show last few parts
-            echo "<details><summary>Last 20 parts uploaded</summary>" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
-            grep "✅ Part" usaspending_output.txt | tail -20 >> $GITHUB_STEP_SUMMARY || echo "No parts uploaded"
-            echo '```' >> $GITHUB_STEP_SUMMARY
-            echo "</details>" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-          fi
-
-          # Show current S3 files
           echo "### 📦 USAspending Files in S3" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| File | Size | Last Modified |" >> $GITHUB_STEP_SUMMARY
-          echo "|------|------|---------------|" >> $GITHUB_STEP_SUMMARY
-
-          aws s3api list-objects-v2 \
-            --bucket "${{ env.S3_BUCKET }}" \
-            --prefix "raw/usaspending/" \
-            --query 'Contents[*].[Key,Size,LastModified]' \
-            --output text | while read key size modified; do
-              if [ -n "$key" ]; then
-                size_gb=$(echo "scale=2; $size / 1073741824" | bc)
-                echo "| \`${key}\` | ${size_gb} GB | ${modified} |" >> $GITHUB_STEP_SUMMARY
-              fi
-            done
-
-          echo "" >> $GITHUB_STEP_SUMMARY
-
-          # Full output log in collapsible section
-          if [ -f usaspending_output.txt ]; then
-            echo "<details><summary>📋 Full Output Log - Click to expand</summary>" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
-            cat usaspending_output.txt >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
-            echo "</details>" >> $GITHUB_STEP_SUMMARY
-          fi
-
-      - name: Trigger recipient extraction (AWS Batch)
-        if: steps.usaspending-download.outcome == 'success'
-        id: extract-recipients
-        run: |
-          echo "## 🔄 Triggering Recipient Extraction" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-
-          # Submit AWS Batch job to extract recipient_lookup from the 217GB dump
-          JOB_RESPONSE=$(aws batch submit-job \
-            --job-name "usaspending-recipient-extract-$(date +%Y%m%d-%H%M%S)" \
-            --job-queue "sbir-analytics-analysis-job-queue" \
-            --job-definition "sbir-analytics-usaspending-extract" \
-            --region ${{ env.AWS_REGION }})
-
-          JOB_ID=$(echo "$JOB_RESPONSE" | jq -r '.jobId')
-          echo "job_id=$JOB_ID" >> $GITHUB_OUTPUT
-
-          echo "✅ Submitted Batch job: \`$JOB_ID\`" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "The extraction job will:" >> $GITHUB_STEP_SUMMARY
-          echo "1. Download the 217GB USAspending dump" >> $GITHUB_STEP_SUMMARY
-          echo "2. Extract only the recipient_lookup table (~500MB)" >> $GITHUB_STEP_SUMMARY
-          echo "3. Save as parquet to \`s3://${{ env.S3_BUCKET }}/raw/usaspending/recipient_lookup/\`" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "[Monitor job in AWS Console](https://console.aws.amazon.com/batch/home?region=${{ env.AWS_REGION }}#jobs/detail/$JOB_ID)" >> $GITHUB_STEP_SUMMARY
+          aws s3 ls "s3://${{ env.S3_BUCKET }}/raw/usaspending/recipient_lookup/" --recursive --human-readable | tail -10 >> $GITHUB_STEP_SUMMARY || echo "No files found"
 
   refresh-uspto:
     name: Refresh USPTO Patents
@@ -535,20 +445,20 @@ jobs:
             if [ "$STATUS" = "success" ]; then
               EMOJI="✅"
               SUCCESS_COUNT=$((SUCCESS_COUNT + 1))
-              RESULT="Database downloaded and uploaded"
+              RESULT="Recipients extracted via streaming"
             elif [ "$STATUS" = "failure" ]; then
               EMOJI="❌"
               FAILED_COUNT=$((FAILED_COUNT + 1))
-              RESULT="Download or upload failed"
+              RESULT="Extraction failed"
               OVERALL_SUCCESS=false
             else
               EMOJI="⏭️"
               SKIPPED_COUNT=$((SKIPPED_COUNT + 1))
               RESULT="Skipped or cancelled"
             fi
-            echo "| 💰 USAspending DB | $EMOJI $STATUS | $RESULT |" >> $GITHUB_STEP_SUMMARY
+            echo "| 💰 USAspending | $EMOJI $STATUS | $RESULT |" >> $GITHUB_STEP_SUMMARY
           else
-            echo "| 💰 USAspending DB | ⏭️ skipped | Not scheduled for this run |" >> $GITHUB_STEP_SUMMARY
+            echo "| 💰 USAspending | ⏭️ skipped | Not scheduled for this run |" >> $GITHUB_STEP_SUMMARY
           fi
 
           # USPTO
@@ -582,9 +492,9 @@ jobs:
 
           # USAspending files
           if [ "${{ needs.determine-source.outputs.usaspending }}" = "true" ] && [ "${{ needs.refresh-usaspending.result }}" = "success" ]; then
-            echo "### 💰 USAspending Database" >> $GITHUB_STEP_SUMMARY
+            echo "### 💰 USAspending Recipients" >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
-            aws s3 ls s3://${{ env.S3_BUCKET }}/raw/usaspending/database/ --recursive --human-readable --summarize | tail -20
+            aws s3 ls s3://${{ env.S3_BUCKET }}/raw/usaspending/recipient_lookup/ --recursive --human-readable --summarize | tail -20
             echo '```' >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
           fi
