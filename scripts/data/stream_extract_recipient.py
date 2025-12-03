@@ -28,11 +28,12 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 
 # Expected columns for recipient_lookup table
+# Column order verified against USAspending database dump 2025-12-02
 RECIPIENT_LOOKUP_COLUMNS = [
     "id", "recipient_hash", "legal_business_name", "duns", "address_line_1",
     "address_line_2", "business_types_codes", "city", "congressional_district",
     "country_code", "parent_duns", "parent_legal_business_name", "state",
-    "parent_uei", "zip5", "alternate_names", "source", "uei", "zip4", "update_date",
+    "zip4", "zip5", "alternate_names", "source", "update_date", "uei", "parent_uei",
 ]
 
 
