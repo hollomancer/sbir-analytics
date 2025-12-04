@@ -249,7 +249,7 @@ jobs:
 
   summary:
     name: Pipeline Summary
-    needs: [sbir-pipeline, usaspending-pipeline, uspto-pipeline, cet-pipeline]
+    needs: [sbir-pipeline, uspto-pipeline, cet-pipeline]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -260,6 +260,5 @@ jobs:
           echo "| Pipeline | Status |" >> $GITHUB_STEP_SUMMARY
           echo "|----------|--------|" >> $GITHUB_STEP_SUMMARY
           echo "| SBIR | ${{ needs.sbir-pipeline.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| USAspending | ${{ needs.usaspending-pipeline.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| USPTO | ${{ needs.uspto-pipeline.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| CET | ${{ needs.cet-pipeline.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
