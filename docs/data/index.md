@@ -51,19 +51,24 @@ This section provides comprehensive documentation for all data sources used in t
 
 **Source:** [USPTO PatentsView](https://patentsview.org/) + [USPTO Bulk Data](https://bulkdata.uspto.gov/)
 
-- **Formats:** CSV, Parquet, NDJSON, Stata (.dta)
-- **Update Cadence:** Quarterly
+- **Formats:** CSV, TSV (ZIP compressed), Stata (.dta)
+- **Update Cadence:** Monthly (automated via GitHub Actions)
 - **Purpose:** Link patents to SBIR-funded research
 - **Assets:** `raw_uspto_patents`, `raw_uspto_assignments`
 
 **Data Types:**
-- Patent grants and applications
+- Patent grants and applications (PatentsView)
 - Inventor and assignee information
-- Patent assignments and ownership transfers
-- Technology classification codes
-- AI-related patents dataset
+- Patent assignments and ownership transfers (10.5M assignments since 1970)
+- Technology classification codes (CPC)
+- AI-related patents dataset (15.4M documents, 1976-2023)
+
+**Latest Releases (verified Dec 2024):**
+- Patent Assignments: 2023 release (1.78 GB CSV)
+- AI Patents: 2023 release (764 MB CSV, updated Jan 8, 2025)
 
 **Related Documentation:**
+- [USPTO Data Refresh Process](uspto-data-refresh.md) - Automated download workflow
 - [USPTO Patent Data Dictionary](dictionaries/uspto-patent-data-dictionary.md)
 - [Patent Neo4j Schema](../schemas/patent-neo4j-schema.md)
 
@@ -91,7 +96,7 @@ This section provides comprehensive documentation for all data sources used in t
 |-------------|-----------------|------------|---------------|
 | SBIR Awards | Weekly | AWS Step Functions | [Awards Refresh](awards-refresh.md) |
 | USAspending API | Daily | Dagster sensor | [Iterative Refresh](../enrichment/usaspending-iterative-refresh.md) |
-| USPTO Patents | Quarterly | Manual/scheduled | [USPTO Data Refresh Workflow](../../.github/workflows/uspto-data-refresh.yml) |
+| USPTO Patents | Monthly | GitHub Actions | [USPTO Data Refresh](uspto-data-refresh.md) |
 | SAM.gov | On-demand | API calls | N/A |
 
 See [SBIR Weekly Checks](sbir-weekly-checks.md) for monitoring and validation procedures.

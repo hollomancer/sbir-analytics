@@ -258,44 +258,50 @@ extraction:
     normalize_entity_names: true
     detect_conveyances: true
 
-    # USPTO data download configuration (Lambda functions)
-    # Note: Some Lambda functions have default URLs built-in, others require explicit source_url.
+    # USPTO data download configuration (GitHub Actions + Python script)
+    # URLs verified: December 2024
+    # Implementation: scripts/data/download_uspto.py (runs in GitHub Actions)
     download:
       # PatentsView dataset (comprehensive patent data)
-      # Default URLs are built into the Lambda function for common tables (patent, assignee, inventor, etc.)
-      # S3 base: https://s3.amazonaws.com/data.patentsview.org/download
+      # Verified: December 2024
+      # Base URL: https://download.patentsview.org/data
+      # Available tables: patent, assignee, inventor, location, cpc, gov_interest
       patentsview:
         enabled: true
-        info_page: "https://patentsview.org/downloads/data-downloads"  # Page to find download URLs
-        api_docs: "https://patentsview.org/apis/api-endpoints"  # API documentation
-        schedule: "monthly"  # GitHub Actions cron schedule
+        info_page: "https://patentsview.org/download/data-download-tables"
+        base_url: "https://download.patentsview.org/data"
+        schedule: "monthly"  # GitHub Actions cron: 0 9 1 * * (1st of month, 9 AM UTC)
         tables: ["patent", "assignee", "inventor"]  # Which tables to download
         s3_prefix: "raw/uspto/patentsview"
-        # source_url: Optional - Lambda has defaults for common tables, override if needed
+        # All tables use .tsv.zip format with g_ prefix (e.g., g_patent.tsv.zip)
 
       # Patent Assignment Dataset (patent transfers and assignments)
-      # Default URLs are built into the Lambda function (2023 CSV/DTA releases)
-      # Default CSV: https://www.uspto.gov/sites/default/files/documents/assignment_data_2023.csv
-      # Default DTA: https://www.uspto.gov/sites/default/files/documents/assignment_data_2023.dta
+      # Verified: December 2024 - 2023 is latest release
+      # Full dataset URL: https://data.uspto.gov/ui/datasets/products/files/ECORSEXC/2023/csv.zip (1.78 GB)
+      # Includes: assignment, assignor, assignee, documentid, assignment_conveyance, documentid_admin
       assignments:
         enabled: true
         info_page: "https://www.uspto.gov/ip-policy/economic-research/research-datasets/patent-assignment-dataset"
-        legacy_page: "https://www.uspto.gov/learning-and-resources/fee-schedules/patent-assignment-data"
-        format: "csv"  # Options: csv, dta (parquet not available)
-        schedule: "monthly"  # USPTO updates monthly
+        download_url: "https://data.uspto.gov/ui/datasets/products/files/ECORSEXC/2023/csv.zip"
+        format: "csv"  # Options: csv (1.78 GB), dta (1.56 GB)
+        release_year: 2023  # Latest release as of Dec 2024
+        schedule: "monthly"  # Check for updates monthly
         s3_prefix: "raw/uspto/assignments"
-        # source_url: Optional - Lambda has defaults for csv and dta formats, override if needed
+        # Note: Individual files also available (assignment.csv.zip, assignor.csv.zip, etc.)
 
       # Artificial Intelligence Patent Dataset
-      # Default URL is built into the Lambda function (2023 CSV release)
-      # Default: https://www.uspto.gov/sites/default/files/documents/ai_model_predictions_2023.csv.zip
+      # Verified: December 2024 - 2023 is latest release (updated Jan 8, 2025)
+      # Download URL: https://data.uspto.gov/ui/datasets/products/files/ECOPATAI/2023/ai_model_predictions.csv.zip (764 MB)
+      # Note: 2023 release uses CSV format (2020 release used TSV)
       ai_patents:
         enabled: true
         info_page: "https://www.uspto.gov/ip-policy/economic-research/research-datasets/artificial-intelligence-patent-dataset"
-        developer_portal: "https://developer.uspto.gov/product/artificial-intelligence-patent-dataset-stata-dta-and-ms-excel-csv"
-        schedule: "quarterly"  # Updated less frequently
+        download_url: "https://data.uspto.gov/ui/datasets/products/files/ECOPATAI/2023/ai_model_predictions.csv.zip"
+        format: "csv"  # 2023 uses CSV (764 MB), 2020 used TSV (1.02 GB)
+        release_year: 2023  # Latest release as of Dec 2024 (updated Jan 8, 2025)
+        schedule: "quarterly"  # Updated less frequently than other datasets
         s3_prefix: "raw/uspto/ai_patents"
-        # source_url: Optional - Lambda has default (2023 CSV), override if needed for other formats/releases
+        # Contains AI predictions for 15.4M patent documents (1976-2023)
 
 validation:
   # Schema validation settings
