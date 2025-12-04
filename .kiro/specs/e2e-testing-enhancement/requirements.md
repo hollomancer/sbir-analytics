@@ -13,6 +13,7 @@ This document outlines the requirements for enhancing the end-to-end (E2E) testi
 - **Resource_Monitor**: System that tracks memory and CPU usage during test execution to ensure compatibility with MacBook Air constraints
 - **MacBook_Air**: Apple laptop computer with 8GB RAM used as the target development environment
 - **ETL_Pipeline**: Extract, Transform, Load data processing pipeline with five stages (Extract, Validate, Enrich, Transform, Load)
+- **Developer**: Software engineer working on the SBIR ETL pipeline who executes tests locally
 
 ## Requirements
 

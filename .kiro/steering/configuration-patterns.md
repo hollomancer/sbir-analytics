@@ -211,6 +211,46 @@ neo4j:
     enable_data_validation: true
 ```
 
+## PaECTER Configuration
+
+### PaECTER Embedding and Similarity Configuration
+
+```yaml
+ml:
+  paecter:
+    # Inference mode selection
+    use_local: false  # false = API mode, true = local mode
+
+    # API configuration (when use_local=false)
+    api:
+      token_env: "HF_TOKEN"  # Environment variable for HuggingFace API token
+      batch_size: 32  # Batch size for API requests
+      max_qps: 10  # Maximum queries per second (client-side throttle)
+      timeout_seconds: 60
+      max_retries: 5
+      retry_backoff_seconds: 2.0
+
+    # Local model configuration (when use_local=true)
+    local:
+      model_name: "mpi-inno-comp/paecter"  # HuggingFace model identifier
+      device: "auto"  # "auto", "cpu", or "cuda"
+      batch_size: 32
+
+    # Text processing
+    text:
+      max_length: 512  # Maximum token length (truncation)
+      award_fields: ["solicitation_title", "abstract", "award_title"]
+      patent_fields: ["title", "abstract"]
+
+    # Similarity computation
+    similarity_threshold: 0.80  # Minimum similarity score to include in results
+    top_k: 10  # Number of top matches to return per award
+
+    # Validation thresholds
+    coverage_threshold_awards: 0.95  # 95% of awards must have valid embeddings
+    coverage_threshold_patents: 0.98  # 98% of patents must have valid embeddings
+```
+
 ## CET Classification Configuration
 
 ### CET Taxonomy Configuration
@@ -315,6 +355,13 @@ export SBIR_ETL__ENRICHMENT__MIN_SUCCESS_RATE=0.88
 
 export SBIR_ETL__CET__CLASSIFICATION__MAX_FEATURES=75000
 export SBIR_ETL__CET__SCORING__HIGH_MIN=75
+
+## PaECTER configuration
+
+export SBIR_ETL__ML__PAECTER__USE_LOCAL=true
+export SBIR_ETL__ML__PAECTER__API__BATCH_SIZE=64
+export SBIR_ETL__ML__PAECTER__SIMILARITY_THRESHOLD=0.85
+export HF_TOKEN="your_huggingface_token"  # pragma: allowlist secret
 ```
 
 ### Override Model and Secret Mapping

@@ -12,18 +12,31 @@ This directory contains documentation for machine learning features in the SBIR 
 
 ## Overview
 
-The CET classification system uses machine learning to categorize SBIR/STTR awards based on their commercialization potential and economic impact. This classification helps identify successful technology transitions and economic outcomes.
+This directory contains documentation for machine learning features in the SBIR ETL project:
+
+- **CET Classification**: Categorizes SBIR/STTR awards based on commercialization potential and economic impact
+- **PaECTER Embeddings**: Generates semantic embeddings for awards and patents to compute similarity scores
 
 ## Getting Started
 
-Start with these guides to understand and use the CET classifier:
+Start with these guides to understand and use the ML features:
 
-1. **[CET Integration Guide](cet-integration.md)** - How to integrate CET classification into your workflow
-2. **[CET Classifier](cet-classifier.md)** - Core classifier documentation and usage
+1. **[PaECTER Integration Guide](paecter.md)** - Patent and award similarity using embeddings
+2. **[CET Integration Guide](cet-integration.md)** - How to integrate CET classification into your workflow
+3. **[CET Classifier](cet-classifier.md)** - Core classifier documentation and usage
 
 ## Detailed Documentation
 
-### Core Classifier
+### PaECTER Embeddings
+
+- **[PaECTER Integration Guide](paecter.md)** - Complete PaECTER documentation
+  - Dual inference modes (API and local)
+  - Configuration and setup
+  - Dagster asset integration
+  - Performance optimization
+  - Troubleshooting guide
+
+### CET Classification
 
 - **[CET Classifier](cet-classifier.md)** - Main classifier documentation
   - Model architecture and features
@@ -36,8 +49,6 @@ Start with these guides to understand and use the CET classifier:
   - Performance analysis and tuning
   - Implementation details
 
-### Training Data
-
 - **[CET Award Training Data](cet-award-training-data.md)** - Training data documentation
   - Data sources and collection methodology
   - Data labeling and annotation process
@@ -46,11 +57,26 @@ Start with these guides to understand and use the CET classifier:
 
 ## Quick Reference
 
+### Using PaECTER Embeddings
+
+Generate embeddings and compute similarity scores:
+
+```bash
+# Via Dagster UI
+# Navigate to Assets → paecter group → Materialize
+
+# Via CLI
+dagster asset materialize -m src.definitions --select "paecter*"
+
+# Run complete PaECTER job
+dagster job execute -m src.definitions -j paecter_job
+```
+
 ### Using the CET Classifier
 
 The CET classifier is integrated into the Dagster pipeline as an asset. To run classification:
 
-```python
+```bash
 # Via Dagster UI
 # Navigate to Assets → CET Classification → Materialize
 
@@ -69,12 +95,21 @@ The CET classifier categorizes awards into:
 
 ## Architecture
 
-The CET classification system integrates with:
+The ML systems integrate with the broader SBIR analytics pipeline:
 
-- **Transition Detection** (`docs/transition/`) - Identifies successful technology transitions
-- **Awards Data** - SBIR/STTR award information
-- **USPTO Patents** - Patent data for commercialization signals
-- **USAspending Data** - Federal contract and financial data
+### PaECTER Embeddings
+
+- **Input**: SBIR awards and USPTO patents
+- **Processing**: Text embedding generation (1024-dimensional vectors)
+- **Output**: Similarity scores between awards and patents
+- **Use Cases**: Technology transfer detection, patent-award matching
+
+### CET Classification
+
+- **Input**: SBIR/STTR award information
+- **Processing**: ML-based commercialization potential classification
+- **Output**: Classification labels and confidence scores
+- **Integration**: Transition Detection, USPTO Patents, USAspending Data
 
 ## Related Documentation
 
@@ -84,11 +119,22 @@ The CET classification system integrates with:
 
 ## Configuration
 
-CET classifier configuration is managed through:
+ML feature configuration is managed through:
 
-- `config/cet/` - CET configuration files
-- Environment variables for model parameters
-- Dagster configuration for pipeline integration
+- **PaECTER**: `config/base.yaml` (ml.paecter section)
+  - Inference mode (API or local)
+  - Batch sizes and rate limits
+  - Similarity thresholds
+  - Quality coverage thresholds
+
+- **CET Classifier**: `config/cet/` directory
+  - CET configuration files
+  - Model parameters
+  - Classification thresholds
+
+- **Environment Variables**: Override any configuration at runtime
+  - `SBIR_ETL__ML__PAECTER__*` for PaECTER settings
+  - `HF_TOKEN` for HuggingFace API access
 
 ---
 

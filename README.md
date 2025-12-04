@@ -59,6 +59,7 @@ For production use, see [Deployment Guide](docs/deployment/README.md) for:
 |--------|---------|---------------|
 | **Transition Detection** | Identify SBIR → federal contract transitions (≥85% precision) | [docs/transition/](docs/transition/) |
 | **CET Classification** | ML-based technology area classification | [docs/ml/](docs/ml/) |
+| **PaECTER Embeddings** | Patent-award similarity using semantic embeddings | [docs/ml/paecter.md](docs/ml/paecter.md) |
 | **Fiscal Returns** | Economic impact & ROI analysis using StateIO | [docs/fiscal/](docs/fiscal/) |
 | **Patent Analysis** | USPTO patent chains and tech transfer tracking | [docs/schemas/patent-neo4j-schema.md](docs/schemas/patent-neo4j-schema.md) |
 
