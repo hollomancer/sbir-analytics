@@ -1052,14 +1052,11 @@ jobs:
   e2e-aura:
     name: E2E Tests (Neo4j Aura)
     needs: test
-    # Only run on push to main/develop with Aura credentials
+    # Only run on push to main/develop - secrets checked at step level
     if: |
       always() &&
       needs.test.result == 'success' &&
-      github.event_name == 'push' &&
-      secrets.NEO4J_AURA_URI != '' &&
-      secrets.NEO4J_AURA_USER != '' &&
-      secrets.NEO4J_AURA_PASSWORD != ''
+      github.event_name == 'push'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
@@ -1069,9 +1066,21 @@ jobs:
       SBIR_ETL__PIPELINE__SAMPLE_SIZE: "1000"  # Aura Free limit
 
     steps:
+      - name: Check for Aura credentials
+        id: check-creds
+        run: |
+          if [ -z "${{ secrets.NEO4J_AURA_URI }}" ] || [ -z "${{ secrets.NEO4J_AURA_PASSWORD }}" ]; then
+            echo "skip=true" >> $GITHUB_OUTPUT
+            echo "⚠️ Neo4j Aura credentials not configured, skipping E2E tests"
+          else
+            echo "skip=false" >> $GITHUB_OUTPUT
+          fi
+
       - uses: actions/checkout@v6
+        if: steps.check-creds.outputs.skip != 'true'
 
       - name: Setup Python and UV
+        if: steps.check-creds.outputs.skip != 'true'
         uses: ./.github/actions/setup-python-uv
         with:
           python-version: ${{ env.PYTHON_VERSION }}
@@ -1079,6 +1088,7 @@ jobs:
           cache-venv: "true"
 
       - name: Clear Neo4j Aura database
+        if: steps.check-creds.outputs.skip != 'true'
         run: |
           echo "🧹 Clearing Neo4j Aura database before test"
           uv run python -c "
@@ -1098,6 +1108,7 @@ jobs:
           "
 
       - name: Run E2E tests with Aura
+        if: steps.check-creds.outputs.skip != 'true'
         run: |
           echo "🧪 Running E2E tests against Neo4j Aura"
           uv run pytest tests/e2e/ \
@@ -1107,7 +1118,7 @@ jobs:
             -m "not slow"
 
       - name: Verify Neo4j data loaded
-        if: success()
+        if: steps.check-creds.outputs.skip != 'true' && success()
         run: |
           echo "✅ Verifying data in Neo4j Aura"
           uv run python -c "
