@@ -71,12 +71,12 @@ def raw_uspto_ai_extract(context) -> dict[str, object]:
     if USPTOAIExtractor is None:
         msg = "USPTOAIExtractor unavailable (import failed); cannot perform extraction"
         context.log.warning(msg)
-        _ensure_dir_ai(DEFAULT_EXTRACT_CHECKS)
-        # Remove if it exists as a directory (shouldn't happen, but CI error suggests it does)
+        # Remove if it exists as a directory (from previous buggy run)
         if DEFAULT_EXTRACT_CHECKS.is_dir():
             import shutil
 
             shutil.rmtree(DEFAULT_EXTRACT_CHECKS)
+        _ensure_dir_ai(DEFAULT_EXTRACT_CHECKS)
         with DEFAULT_EXTRACT_CHECKS.open("w", encoding="utf-8") as fh:
             json.dump({"ok": False, "reason": "extractor_unavailable"}, fh, indent=2)
         return {"ok": False, "reason": "extractor_unavailable"}
@@ -272,6 +272,12 @@ def uspto_ai_deduplicate(context, raw_uspto_ai_extract) -> dict[str, object]:
     dedup_table = getattr(context, "op_config", {}).get("dedup_table", DEFAULT_AI_DEDUP_TABLE)
 
     _ensure_dir_ai(DEFAULT_DEDUP_CHECKS)
+    # Remove if it exists as a directory
+    if DEFAULT_DEDUP_CHECKS.is_dir():
+        import shutil
+
+        shutil.rmtree(DEFAULT_DEDUP_CHECKS)
+
     try:
         import duckdb
     except Exception as exc:
@@ -375,12 +381,22 @@ def raw_uspto_ai_human_sample_extraction(context, uspto_ai_deduplicate) -> str:
     try:
         # TODO: Implement sampling logic
         _ensure_dir_ai(output_path)
+        # Remove if it exists as a directory
+        if output_path.is_dir():
+            import shutil
+
+            shutil.rmtree(output_path)
         with output_path.open("w", encoding="utf-8") as fh:
             fh.write("")  # empty sentinel
         return str(output_path)
     except Exception as exc:
         context.log.warning("duckdb unavailable; cannot sample: %s", exc)
         _ensure_dir_ai(output_path)
+        # Remove if it exists as a directory
+        if output_path.is_dir():
+            import shutil
+
+            shutil.rmtree(output_path)
         with output_path.open("w", encoding="utf-8") as fh:
             fh.write("")  # empty sentinel
         return str(output_path)
