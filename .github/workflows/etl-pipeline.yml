@@ -96,6 +96,8 @@ jobs:
         shell: bash
         run: |
           echo "## 🎯 SBIR Pipeline" >> $GITHUB_STEP_SUMMARY
+          echo "**Environment:** ${{ github.event.inputs.environment || 'production' }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
 
           # Determine which job to run
           if [ "${{ github.event.inputs.job }}" = "sbir_ingestion" ]; then
@@ -109,7 +111,8 @@ jobs:
             JOB_NAME="sbir_ingestion_job"
           fi
 
-          echo "Running job: $JOB_NAME"
+          echo "**Job:** \`$JOB_NAME\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
 
           dagster job execute \
             -m src.definitions \
@@ -117,11 +120,22 @@ jobs:
             2>&1 | tee sbir_output.txt
 
           EXIT_CODE=${PIPESTATUS[0]}
+
+          # Extract key metrics from output for summary
+          echo "### 📊 Pipeline Metrics" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          grep -E "(Extracted|Validated|Loading Summary|Total rows|Successfully|Nodes Created|Relationships Created|nodes|relationships|Neo4j)" sbir_output.txt | head -30 >> $GITHUB_STEP_SUMMARY || echo "No metrics found" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
           if [ $EXIT_CODE -eq 0 ]; then
             echo "✅ SBIR pipeline completed" >> $GITHUB_STEP_SUMMARY
           else
             echo "❌ SBIR pipeline failed" >> $GITHUB_STEP_SUMMARY
-            tail -100 sbir_output.txt >> $GITHUB_STEP_SUMMARY
+            echo "### Error Details" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            tail -50 sbir_output.txt >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
             exit $EXIT_CODE
           fi
 
