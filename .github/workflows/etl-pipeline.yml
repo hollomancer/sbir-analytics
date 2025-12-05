@@ -71,24 +71,20 @@ jobs:
         shell: bash
         run: |
           echo "📥 Downloading data from S3..."
-          mkdir -p data/raw/sbir data/raw/sam_gov data/usaspending
+          mkdir -p data/raw/sbir data/raw/sam_gov
 
-          # Download latest SBIR awards
+          # Download latest SBIR awards (~350MB)
           LATEST_SBIR=$(aws s3 ls "s3://${S3_BUCKET}/raw/awards/" --recursive | sort | tail -1 | awk '{print $4}')
           if [ -n "$LATEST_SBIR" ]; then
             aws s3 cp "s3://${S3_BUCKET}/${LATEST_SBIR}" data/raw/sbir/award_data.csv
             echo "✅ Downloaded SBIR awards"
           fi
 
-          # Download SAM.gov entity data
+          # Download SAM.gov entity data (~380MB)
           aws s3 cp "s3://${S3_BUCKET}/raw/sam_gov/sam_entity_records.parquet" data/raw/sam_gov/sam_entity_records.parquet && echo "✅ Downloaded SAM.gov entities" || echo "⚠️ SAM.gov data not found"
 
-          # Download latest USAspending database (for recipient enrichment)
-          LATEST_USA=$(aws s3 ls "s3://${S3_BUCKET}/raw/usaspending/database/" --recursive | grep "\.zip$" | sort | tail -1 | awk '{print $4}')
-          if [ -n "$LATEST_USA" ]; then
-            aws s3 cp "s3://${S3_BUCKET}/${LATEST_USA}" data/usaspending/usaspending-db.zip
-            echo "✅ Downloaded USAspending database"
-          fi
+          # Note: USAspending database (217GB) not downloaded - too large for GitHub runners
+          # Use usaspending_ingestion job separately if needed
 
       - name: Run SBIR pipeline
         env:
