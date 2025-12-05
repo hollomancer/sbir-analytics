@@ -12,6 +12,14 @@ on:
           - paecter_embeddings
           - fiscal_returns_mvp
           - all
+      environment:
+        description: "Neo4j environment"
+        required: true
+        default: test
+        type: choice
+        options:
+          - production
+          - test
 
 permissions:
   contents: read
@@ -49,9 +57,9 @@ jobs:
 
       - name: Run CET pipeline
         env:
-          NEO4J_URI: ${{ secrets.NEO4J_URI }}
-          NEO4J_USER: ${{ secrets.NEO4J_USER }}
-          NEO4J_PASSWORD: ${{ secrets.NEO4J_PASSWORD }}
+          NEO4J_URI: ${{ github.event.inputs.environment == 'test' && secrets.NEO4J_AURA_TEST_URI || secrets.NEO4J_AURA_URI }}
+          NEO4J_USER: neo4j
+          NEO4J_PASSWORD: ${{ github.event.inputs.environment == 'test' && secrets.NEO4J_AURA_TEST_PASSWORD || secrets.NEO4J_AURA_PASSWORD }}
         run: |
           echo "## 🏷️ CET Classification" >> $GITHUB_STEP_SUMMARY
           dagster job execute -m src.definitions -j cet_full_pipeline_job 2>&1 | tee output.txt
@@ -87,9 +95,9 @@ jobs:
 
       - name: Run PaECTER pipeline
         env:
-          NEO4J_URI: ${{ secrets.NEO4J_URI }}
-          NEO4J_USER: ${{ secrets.NEO4J_USER }}
-          NEO4J_PASSWORD: ${{ secrets.NEO4J_PASSWORD }}
+          NEO4J_URI: ${{ github.event.inputs.environment == 'test' && secrets.NEO4J_AURA_TEST_URI || secrets.NEO4J_AURA_URI }}
+          NEO4J_USER: neo4j
+          NEO4J_PASSWORD: ${{ github.event.inputs.environment == 'test' && secrets.NEO4J_AURA_TEST_PASSWORD || secrets.NEO4J_AURA_PASSWORD }}
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           PAECTER_MODE: api  # Use API mode, not local model
         run: |
