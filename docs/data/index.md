@@ -52,7 +52,7 @@ This section provides comprehensive documentation for all data sources used in t
 **Source:** [USPTO PatentsView](https://patentsview.org/) + [USPTO Bulk Data](https://bulkdata.uspto.gov/)
 
 - **Formats:** CSV, TSV (ZIP compressed), Stata (.dta)
-- **Update Cadence:** Monthly (automated via GitHub Actions)
+- **Update Cadence:** Monthly (automated via GitHub Actions on 1st at 9 AM UTC)
 - **Purpose:** Link patents to SBIR-funded research
 - **Assets:** `raw_uspto_patents`, `raw_uspto_assignments`
 
@@ -66,6 +66,40 @@ This section provides comprehensive documentation for all data sources used in t
 **Latest Releases (verified Dec 2024):**
 - Patent Assignments: 2023 release (1.78 GB CSV)
 - AI Patents: 2023 release (764 MB CSV, updated Jan 8, 2025)
+- PatentsView: Updated quarterly
+
+**Download Process:**
+- **Script:** `scripts/data/download_uspto.py`
+- **Workflow:** `.github/workflows/data-refresh.yml`
+- **Retry Logic:** 3 attempts with exponential backoff (2, 4, 8 seconds)
+- **User-Agent:** `SBIR-Analytics/1.0 (GitHub Actions)`
+- **Verification:** SHA-256 hash computed and stored in S3 metadata
+
+**S3 Storage Structure:**
+```
+raw/uspto/
+├── patentsview/{YYYY-MM-DD}/
+│   ├── patent.zip              # ~217 MB
+│   ├── assignee.zip
+│   ├── inventor.zip
+│   └── cpc.zip
+├── assignments/{YYYY-MM-DD}/
+│   └── patent_assignments.zip  # ~1.78 GB
+└── ai_patents/{YYYY-MM-DD}/
+    └── ai_patent_dataset.zip   # ~764 MB
+```
+
+**Metadata Stored:**
+- `source_url`: Original download URL
+- `sha256`: File integrity hash
+- `downloaded_at`: ISO 8601 timestamp
+- `user_agent`: Download client identifier
+
+**Troubleshooting:**
+- **Timeout errors:** Files are large (up to 1.78 GB), timeout set to 300s
+- **404 errors:** URLs verified Dec 2024, check USPTO website for updates
+- **Network errors:** Automatic retry with exponential backoff
+- **S3 upload failures:** Check AWS credentials and bucket permissions
 
 **Related Documentation:**
 - [USPTO Data Refresh Process](uspto-data-refresh.md) - Automated download workflow
