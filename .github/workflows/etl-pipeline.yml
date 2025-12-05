@@ -232,10 +232,14 @@ jobs:
         shell: bash
         run: |
           echo "## 📜 USPTO Pipeline" >> $GITHUB_STEP_SUMMARY
+          echo "**Environment:** ${{ github.event.inputs.environment || 'production' }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
 
+          # Note: uspto_validation_job requires full Patent Assignment Dataset
+          # (assignment, assignee, assignor tables). Using AI extraction for now.
           dagster job execute \
             -m src.definitions \
-            -j uspto_validation_job \
+            -j uspto_ai_extraction_job \
             2>&1 | tee uspto_output.txt
 
           EXIT_CODE=${PIPESTATUS[0]}
@@ -243,7 +247,9 @@ jobs:
             echo "✅ USPTO pipeline completed" >> $GITHUB_STEP_SUMMARY
           else
             echo "❌ USPTO pipeline failed" >> $GITHUB_STEP_SUMMARY
-            tail -100 uspto_output.txt >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            tail -50 uspto_output.txt >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
             exit 1
           fi
 
