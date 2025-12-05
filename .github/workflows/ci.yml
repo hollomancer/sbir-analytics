@@ -1066,7 +1066,7 @@ jobs:
       NEO4J_URI: ${{ secrets.NEO4J_AURA_URI }}
       NEO4J_USER: ${{ secrets.NEO4J_AURA_USER }}
       NEO4J_PASSWORD: ${{ secrets.NEO4J_AURA_PASSWORD }}
-      SBIR_ETL__PIPELINE__SAMPLE_SIZE: ${{ env.AURA_SAMPLE_LIMIT }}
+      SBIR_ETL__PIPELINE__SAMPLE_SIZE: "1000"  # Aura Free limit
 
     steps:
       - uses: actions/checkout@v6
