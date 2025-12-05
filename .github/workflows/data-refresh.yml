@@ -178,8 +178,8 @@ jobs:
     name: Refresh USAspending Recipients
     needs: determine-source
     if: needs.determine-source.outputs.usaspending == 'true'
-    runs-on: ubuntu-latest-16-core  # Larger runner for faster network
-    timeout-minutes: 120  # Faster with better bandwidth
+    runs-on: ubuntu-latest
+    timeout-minutes: 90  # Parallel downloads should be faster
     steps:
       - uses: actions/checkout@v6
 
