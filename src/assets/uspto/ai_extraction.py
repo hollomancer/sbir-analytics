@@ -32,7 +32,6 @@ from .utils import (
     AssetIn,
     USPTOAIExtractor,
     _batch_to_dataframe,
-    _ensure_dir,
     _ensure_dir_ai,
     asset,
 )
@@ -72,7 +71,7 @@ def raw_uspto_ai_extract(context) -> dict[str, object]:
     if USPTOAIExtractor is None:
         msg = "USPTOAIExtractor unavailable (import failed); cannot perform extraction"
         context.log.warning(msg)
-        _ensure_dir(DEFAULT_EXTRACT_CHECKS)
+        _ensure_dir_ai(DEFAULT_EXTRACT_CHECKS)
         with DEFAULT_EXTRACT_CHECKS.open("w", encoding="utf-8") as fh:
             json.dump({"ok": False, "reason": "extractor_unavailable"}, fh, indent=2)
         return {"ok": False, "reason": "extractor_unavailable"}
@@ -90,7 +89,7 @@ def raw_uspto_ai_extract(context) -> dict[str, object]:
     dedupe = bool(getattr(context, "op_config", {}).get("dedupe", True))
     id_candidates = getattr(context, "op_config", {}).get("id_candidates", None)
 
-    _ensure_dir(DEFAULT_EXTRACT_CHECKS)
+    _ensure_dir_ai(DEFAULT_EXTRACT_CHECKS)
     DEFAULT_AI_PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
 
     # Connect to DuckDB
@@ -261,7 +260,7 @@ def uspto_ai_deduplicate(context, raw_uspto_ai_extract) -> dict[str, object]:
     table = getattr(context, "op_config", {}).get("table", DEFAULT_AI_TABLE)
     dedup_table = getattr(context, "op_config", {}).get("dedup_table", DEFAULT_AI_DEDUP_TABLE)
 
-    _ensure_dir(DEFAULT_DEDUP_CHECKS)
+    _ensure_dir_ai(DEFAULT_DEDUP_CHECKS)
     try:
         import duckdb
     except Exception as exc:
