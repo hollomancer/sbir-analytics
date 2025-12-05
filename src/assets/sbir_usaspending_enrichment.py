@@ -98,18 +98,12 @@ def enriched_sbir_awards(
     usaspending_matched = enriched_df["_usaspending_match_method"].notna().sum()
     context.log.info(f"USAspending enrichment: {usaspending_matched}/{len(enriched_df)} matched")
 
-    # --- SAM.gov Enrichment (fill gaps) ---
-    # Only enrich records that didn't match in USAspending
-    unmatched_mask = enriched_df["_usaspending_match_method"].isna()
-    unmatched_count = unmatched_mask.sum()
+    # --- SAM.gov Enrichment ---
+    # Build SAM.gov lookup indexes (used for both fallback and NAICS enrichment)
+    sam_by_uei = {}
+    sam_by_duns = {}
 
-    if unmatched_count > 0 and not raw_sam_gov_entities.empty:
-        context.log.info(f"Attempting SAM.gov enrichment for {unmatched_count} unmatched records")
-
-        # Build SAM.gov lookup indexes
-        sam_by_uei = {}
-        sam_by_duns = {}
-
+    if not raw_sam_gov_entities.empty:
         if "unique_entity_id" in raw_sam_gov_entities.columns:
             for idx, uei in raw_sam_gov_entities["unique_entity_id"].dropna().items():
                 if uei:
@@ -129,9 +123,16 @@ def enriched_sbir_awards(
                     if digits:
                         sam_by_duns[digits] = idx
 
-        # Initialize SAM.gov match columns
-        enriched_df["_sam_gov_match_method"] = pd.NA
-        enriched_df["_sam_gov_match_idx"] = pd.NA
+    # Initialize SAM.gov columns
+    enriched_df["_sam_gov_match_method"] = pd.NA
+    enriched_df["_sam_gov_match_idx"] = pd.NA
+
+    # --- Part 1: SAM.gov fallback for USAspending misses ---
+    unmatched_mask = enriched_df["_usaspending_match_method"].isna()
+    unmatched_count = unmatched_mask.sum()
+
+    if unmatched_count > 0 and not raw_sam_gov_entities.empty:
+        context.log.info(f"Attempting SAM.gov enrichment for {unmatched_count} unmatched records")
 
         # UEI exact match against SAM.gov
         if "UEI" in enriched_df.columns:
@@ -167,45 +168,111 @@ def enriched_sbir_awards(
                 )
                 enriched_df.loc[matched_indices, "_sam_gov_match_method"] = "sam-duns-exact"
 
-        # Merge SAM.gov data for matched records
-        sam_matched_mask = enriched_df["_sam_gov_match_idx"].notna()
-        sam_matched_count = sam_matched_mask.sum()
+    # --- Part 2: SAM.gov NAICS enrichment for USAspending-matched records ---
+    usaspending_matched_mask = enriched_df["_usaspending_match_method"].notna()
+    needs_naics_mask = usaspending_matched_mask & enriched_df["_sam_gov_match_idx"].isna()
 
-        if sam_matched_count > 0:
-            # Select key SAM.gov columns to merge
-            sam_cols = [
-                "unique_entity_id",
-                "legal_business_name",
-                "dba_name",
-                "physical_address_city",
-                "physical_address_state",
-                "cage_code",
-                "primary_naics",
-                "naics_code_string",
-            ]
-            sam_cols = [c for c in sam_cols if c in raw_sam_gov_entities.columns]
+    if needs_naics_mask.any() and not raw_sam_gov_entities.empty:
+        context.log.info(
+            f"Enriching NAICS from SAM.gov for {needs_naics_mask.sum()} USAspending-matched records"
+        )
 
-            for col in sam_cols:
-                enriched_df[f"sam_gov_{col}"] = pd.NA
-                matched_idx = enriched_df.loc[sam_matched_mask, "_sam_gov_match_idx"].astype(int)
-                enriched_df.loc[sam_matched_mask, f"sam_gov_{col}"] = raw_sam_gov_entities.loc[
-                    matched_idx, col
-                ].values
+        # UEI match for NAICS
+        if "UEI" in enriched_df.columns:
+            uei_series = (
+                enriched_df.loc[needs_naics_mask, "UEI"]
+                .fillna("")
+                .astype(str)
+                .str.strip()
+                .str.upper()
+            )
+            uei_matches = uei_series.isin(sam_by_uei.keys())
+            if uei_matches.any():
+                matched_indices = uei_series[uei_matches].index
+                enriched_df.loc[matched_indices, "_sam_gov_match_idx"] = (
+                    uei_series[uei_matches].map(sam_by_uei).values
+                )
+                # Mark as NAICS-only enrichment (not full SAM.gov fallback)
+                enriched_df.loc[matched_indices, "_sam_gov_match_method"] = "sam-naics-uei"
 
-        context.log.info(f"SAM.gov enrichment: {sam_matched_count} additional matches")
+        # DUNS match for remaining
+        still_needs_naics = needs_naics_mask & enriched_df["_sam_gov_match_idx"].isna()
+        if "Duns" in enriched_df.columns and still_needs_naics.any():
+            duns_series = (
+                enriched_df.loc[still_needs_naics, "Duns"]
+                .fillna("")
+                .astype(str)
+                .apply(lambda x: "".join(ch for ch in str(x) if ch.isdigit()))
+            )
+            duns_matches = duns_series.isin(sam_by_duns.keys())
+            if duns_matches.any():
+                matched_indices = duns_series[duns_matches].index
+                enriched_df.loc[matched_indices, "_sam_gov_match_idx"] = (
+                    duns_series[duns_matches].map(sam_by_duns).values
+                )
+                enriched_df.loc[matched_indices, "_sam_gov_match_method"] = "sam-naics-duns"
 
-        # Clean up temporary column
-        enriched_df = enriched_df.drop(columns=["_sam_gov_match_idx"], errors="ignore")
+    # --- Merge SAM.gov data for all matched records ---
+    sam_matched_mask = enriched_df["_sam_gov_match_idx"].notna()
+    sam_matched_count = sam_matched_mask.sum()
 
-    # Add combined enrichment source column
+    if sam_matched_count > 0:
+        # Select key SAM.gov columns to merge
+        sam_cols = [
+            "unique_entity_id",
+            "legal_business_name",
+            "dba_name",
+            "physical_address_city",
+            "physical_address_state",
+            "cage_code",
+            "primary_naics",
+            "naics_code_string",
+        ]
+        sam_cols = [c for c in sam_cols if c in raw_sam_gov_entities.columns]
+
+        for col in sam_cols:
+            enriched_df[f"sam_gov_{col}"] = pd.NA
+            matched_idx = enriched_df.loc[sam_matched_mask, "_sam_gov_match_idx"].astype(int)
+            enriched_df.loc[sam_matched_mask, f"sam_gov_{col}"] = raw_sam_gov_entities.loc[
+                matched_idx, col
+            ].values
+
+    # Count by type
+    sam_fallback_count = (
+        enriched_df["_sam_gov_match_method"].str.startswith("sam-uei-exact").sum()
+        + enriched_df["_sam_gov_match_method"].str.startswith("sam-duns-exact").sum()
+        if "_sam_gov_match_method" in enriched_df.columns
+        else 0
+    )
+    sam_naics_count = (
+        enriched_df["_sam_gov_match_method"].str.startswith("sam-naics").sum()
+        if "_sam_gov_match_method" in enriched_df.columns
+        else 0
+    )
+
+    context.log.info(
+        f"SAM.gov enrichment: {sam_fallback_count} fallback matches, {sam_naics_count} NAICS-only matches"
+    )
+
+    # Clean up temporary column
+    enriched_df = enriched_df.drop(columns=["_sam_gov_match_idx"], errors="ignore")
+
+    # Add combined enrichment source column (primary entity source)
     enriched_df["_enrichment_source"] = None
     enriched_df.loc[enriched_df["_usaspending_match_method"].notna(), "_enrichment_source"] = (
         "usaspending"
     )
+    # SAM.gov fallback (not NAICS-only) overrides as primary source
     if "_sam_gov_match_method" in enriched_df.columns:
-        enriched_df.loc[enriched_df["_sam_gov_match_method"].notna(), "_enrichment_source"] = (
-            "sam_gov"
+        sam_fallback_mask = enriched_df["_sam_gov_match_method"].isin(
+            ["sam-uei-exact", "sam-duns-exact"]
         )
+        enriched_df.loc[sam_fallback_mask, "_enrichment_source"] = "sam_gov"
+
+    # Add NAICS source column
+    enriched_df["_naics_source"] = None
+    if "_sam_gov_match_method" in enriched_df.columns:
+        enriched_df.loc[enriched_df["_sam_gov_match_method"].notna(), "_naics_source"] = "sam_gov"
 
     # Calculate final enrichment statistics
     total_awards = len(enriched_df)
