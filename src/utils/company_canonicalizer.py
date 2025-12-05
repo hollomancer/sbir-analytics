@@ -45,6 +45,12 @@ def canonicalize_companies_from_awards(
         uei = award.get("company_uei") or award.get("uei")
         duns = award.get("company_duns") or award.get("duns")
 
+        # Handle pandas NA values - convert to None for safe boolean checks
+        if pd.isna(uei):
+            uei = None
+        if pd.isna(duns):
+            duns = None
+
         # Create unique key for deduplication
         if uei:
             key = f"UEI:{uei}"
@@ -92,24 +98,33 @@ def canonicalize_companies_from_awards(
         original_key = row["_original_key"]
         matched_idx = row.get("_matched_company_idx")
         match_score = row.get("_match_score", 0)
+        # Handle pandas NA values
+        if pd.isna(matched_idx):
+            matched_idx = None
+        if pd.isna(match_score):
+            match_score = 0
 
         # Determine canonical ID (prefer UEI > DUNS > NAME)
-        if row["UEI"]:
-            canonical_id = f"UEI:{row['UEI']}"
-        elif row["Duns"]:
-            canonical_id = f"DUNS:{row['Duns']}"
+        row_uei = row["UEI"] if pd.notna(row["UEI"]) else None
+        row_duns = row["Duns"] if pd.notna(row["Duns"]) else None
+        if row_uei:
+            canonical_id = f"UEI:{row_uei}"
+        elif row_duns:
+            canonical_id = f"DUNS:{row_duns}"
         else:
             normalized = normalize_company_name(row["company"])
             canonical_id = f"NAME:{normalized}"
 
         # If matched to another company with high confidence, use that canonical ID
         if matched_idx is not None and match_score >= high_threshold:
-            matched_row = companies_df.iloc[matched_idx]
+            matched_row = companies_df.iloc[int(matched_idx)]
             # Use matched company's canonical ID (prefer UEI > DUNS > NAME)
-            if matched_row["UEI"]:
-                canonical_id = f"UEI:{matched_row['UEI']}"
-            elif matched_row["Duns"]:
-                canonical_id = f"DUNS:{matched_row['Duns']}"
+            matched_uei = matched_row["UEI"] if pd.notna(matched_row["UEI"]) else None
+            matched_duns = matched_row["Duns"] if pd.notna(matched_row["Duns"]) else None
+            if matched_uei:
+                canonical_id = f"UEI:{matched_uei}"
+            elif matched_duns:
+                canonical_id = f"DUNS:{matched_duns}"
             else:
                 matched_normalized = normalize_company_name(matched_row["company"])
                 canonical_id = f"NAME:{matched_normalized}"
