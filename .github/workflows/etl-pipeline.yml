@@ -213,13 +213,14 @@ jobs:
           S3_BUCKET: ${{ env.S3_BUCKET }}
         run: |
           echo "📥 Downloading USPTO data from S3..."
-          mkdir -p data/raw/uspto/assignments data/raw/uspto/patentsview
+          mkdir -p data/raw/uspto
 
-          # Download latest patent assignments
+          # Download latest patent assignments to data/raw/uspto/ (asset expects files here)
           LATEST=$(aws s3 ls "s3://${S3_BUCKET}/raw/uspto/assignments/" | sort | tail -1 | awk '{print $2}')
           if [ -n "$LATEST" ]; then
-            aws s3 cp "s3://${S3_BUCKET}/raw/uspto/assignments/${LATEST}" data/raw/uspto/assignments/ --recursive
-            echo "✅ Downloaded USPTO assignments"
+            aws s3 cp "s3://${S3_BUCKET}/raw/uspto/assignments/${LATEST}" data/raw/uspto/ --recursive
+            echo "✅ Downloaded USPTO assignments from ${LATEST}"
+            ls -la data/raw/uspto/
           fi
 
       - name: Run USPTO pipeline
