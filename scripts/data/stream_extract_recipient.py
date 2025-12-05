@@ -65,7 +65,8 @@ def process_with_duckdb(gz_path: str, output_path: str) -> int:
     """Use DuckDB to read gzipped TSV and export to parquet."""
     print("\nProcessing with DuckDB...")
 
-    col_defs = ", ".join([f"column{i} VARCHAR" for i in range(len(RECIPIENT_LOOKUP_COLUMNS))])
+    # Build column definitions: {'column0': 'VARCHAR', 'column1': 'VARCHAR', ...}
+    col_defs = ", ".join([f"'column{i}': 'VARCHAR'" for i in range(len(RECIPIENT_LOOKUP_COLUMNS))])
     col_aliases = ", ".join([f"column{i} AS {name}" for i, name in enumerate(RECIPIENT_LOOKUP_COLUMNS)])
 
     conn = duckdb.connect(":memory:")

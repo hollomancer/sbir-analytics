@@ -3,6 +3,7 @@
 import hashlib
 import json
 import struct
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta, timezone
 
 import requests
@@ -123,23 +124,50 @@ class HttpZipReader:
         self._save_files_cache(files)
         return files
 
-    def download_file(self, file_info: dict, output_path: str, chunk_size: int = 50 * 1024 * 1024) -> None:
-        """Download a file from the ZIP to disk."""
+    def download_file(self, file_info: dict, output_path: str,
+                      chunk_size: int = 50 * 1024 * 1024, parallel: int = 10) -> None:
+        """Download a file from the ZIP to disk with parallel chunks."""
         local_header = self.read_range(file_info["local_header_offset"], file_info["local_header_offset"] + 30)
         fname_len = struct.unpack("<H", local_header[26:28])[0]
         extra_len = struct.unpack("<H", local_header[28:30])[0]
         data_offset = file_info["local_header_offset"] + 30 + fname_len + extra_len
         total_size = file_info["compressed_size"]
 
-        downloaded = 0
-        with open(output_path, "wb") as f:
-            while downloaded < total_size:
-                end = min(downloaded + chunk_size, total_size)
-                chunk = self.read_range(data_offset + downloaded, data_offset + end)
-                f.write(chunk)
-                downloaded = end
-                pct = 100 * downloaded / total_size
+        # Build list of chunks
+        chunks = []
+        pos = 0
+        while pos < total_size:
+            end = min(pos + chunk_size, total_size)
+            chunks.append((pos, end))
+            pos = end
+
+        print(f"  Downloading {len(chunks)} chunks with {parallel} parallel connections...")
+
+        # Download chunks in parallel
+        chunk_data = {}
+
+        def download_chunk(chunk_idx: int, start: int, end: int) -> tuple[int, bytes]:
+            data = self.read_range(data_offset + start, data_offset + end)
+            return chunk_idx, data
+
+        completed = 0
+        with ThreadPoolExecutor(max_workers=parallel) as executor:
+            futures = {
+                executor.submit(download_chunk, i, start, end): i
+                for i, (start, end) in enumerate(chunks)
+            }
+            for future in as_completed(futures):
+                idx, data = future.result()
+                chunk_data[idx] = data
+                completed += 1
+                pct = 100 * completed / len(chunks)
+                downloaded = sum(len(chunk_data[i]) for i in chunk_data)
                 print(f"  {downloaded / (1024**3):.2f} / {total_size / (1024**3):.2f} GB ({pct:.0f}%)", flush=True)
+
+        # Write chunks in order
+        with open(output_path, "wb") as f:
+            for i in range(len(chunks)):
+                f.write(chunk_data[i])
 
     def sample_file(self, file_info: dict, sample_bytes: int = 50000) -> bytes:
         """Read first N bytes of a file for sampling."""
