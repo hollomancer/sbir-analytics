@@ -650,7 +650,7 @@ jobs:
 
           uv run dagster job execute \
             -m src.definitions \
-            -j uspto_full_pipeline_job \
+            -j uspto_validation_job \
             2>&1 | tee uspto_output.txt
 
           if [ ${PIPESTATUS[0]} -eq 0 ]; then
