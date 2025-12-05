@@ -180,8 +180,8 @@ def enriched_sbir_awards(
                 "physical_address_city",
                 "physical_address_state",
                 "cage_code",
-                "naics_code_1",
-                "naics_code_2",
+                "primary_naics",
+                "naics_code_string",
             ]
             sam_cols = [c for c in sam_cols if c in raw_sam_gov_entities.columns]
 
@@ -196,6 +196,16 @@ def enriched_sbir_awards(
 
         # Clean up temporary column
         enriched_df = enriched_df.drop(columns=["_sam_gov_match_idx"], errors="ignore")
+
+    # Add combined enrichment source column
+    enriched_df["_enrichment_source"] = None
+    enriched_df.loc[enriched_df["_usaspending_match_method"].notna(), "_enrichment_source"] = (
+        "usaspending"
+    )
+    if "_sam_gov_match_method" in enriched_df.columns:
+        enriched_df.loc[enriched_df["_sam_gov_match_method"].notna(), "_enrichment_source"] = (
+            "sam_gov"
+        )
 
     # Calculate final enrichment statistics
     total_awards = len(enriched_df)
@@ -316,7 +326,35 @@ def enriched_sbir_awards(
         if "progress" in enrichment_metrics:
             metadata.update(enrichment_metrics["progress"])
 
+    # Persist to S3 for cross-job asset sharing
+    _persist_enriched_awards_to_s3(enriched_df, context)
+
     return Output(value=enriched_df, metadata=metadata)
+
+
+def _persist_enriched_awards_to_s3(df: pd.DataFrame, context: AssetExecutionContext) -> None:
+    """Persist enriched awards to S3 for cross-job consumption."""
+    import os
+    import tempfile
+
+    bucket = os.environ.get("S3_BUCKET")
+    if not bucket:
+        context.log.info("S3_BUCKET not set, skipping S3 persistence")
+        return
+
+    try:
+        import boto3
+
+        s3 = boto3.client("s3")
+        key = "enriched/sbir_awards.parquet"
+
+        with tempfile.NamedTemporaryFile(suffix=".parquet", delete=True) as tmp:
+            df.to_parquet(tmp.name, index=False)
+            s3.upload_file(tmp.name, bucket, key)
+
+        context.log.info(f"Persisted {len(df)} enriched awards to s3://{bucket}/{key}")
+    except Exception as e:
+        context.log.warning(f"Failed to persist enriched awards to S3: {e}")
 
 
 def _should_use_chunked_processing(
