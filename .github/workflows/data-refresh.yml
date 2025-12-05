@@ -367,6 +367,38 @@ jobs:
             exit 1
           fi
 
+      - name: Extract and upload USPTO assignment tables
+        env:
+          S3_BUCKET: ${{ env.S3_BUCKET }}
+        run: |
+          echo "## 📦 Extracting USPTO Assignment Tables" >> $GITHUB_STEP_SUMMARY
+
+          DATE_STR=$(date -u +%Y-%m-%d)
+          mkdir -p /tmp/uspto_extract
+
+          # Download the ZIP from S3
+          aws s3 cp "s3://${S3_BUCKET}/raw/uspto/assignments/${DATE_STR}/patent_assignments.zip" /tmp/uspto_extract/ || {
+            echo "⚠️ No ZIP found for today, checking latest..." >> $GITHUB_STEP_SUMMARY
+            LATEST=$(aws s3 ls "s3://${S3_BUCKET}/raw/uspto/assignments/" | sort | tail -1 | awk '{print $2}')
+            aws s3 cp "s3://${S3_BUCKET}/raw/uspto/assignments/${LATEST}patent_assignments.zip" /tmp/uspto_extract/
+          }
+
+          # Extract the ZIP
+          cd /tmp/uspto_extract
+          unzip -o patent_assignments.zip
+
+          # Upload extracted CSVs to S3
+          echo "Uploading extracted tables:" >> $GITHUB_STEP_SUMMARY
+          for csv in *.csv; do
+            if [ -f "$csv" ]; then
+              aws s3 cp "$csv" "s3://${S3_BUCKET}/raw/uspto/assignments/${DATE_STR}/$csv"
+              SIZE=$(ls -lh "$csv" | awk '{print $5}')
+              echo "  - $csv ($SIZE)" >> $GITHUB_STEP_SUMMARY
+            fi
+          done
+
+          echo "✅ USPTO assignment tables extracted and uploaded" >> $GITHUB_STEP_SUMMARY
+
       - name: Check S3 uploads
         if: always()
         run: |
