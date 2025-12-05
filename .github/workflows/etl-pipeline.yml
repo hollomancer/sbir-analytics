@@ -205,6 +205,23 @@ jobs:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
+      - name: Install AWS CLI
+        run: pip install awscli && aws --version
+
+      - name: Download USPTO data from S3
+        env:
+          S3_BUCKET: ${{ env.S3_BUCKET }}
+        run: |
+          echo "📥 Downloading USPTO data from S3..."
+          mkdir -p data/raw/uspto/assignments data/raw/uspto/patentsview
+
+          # Download latest patent assignments
+          LATEST=$(aws s3 ls "s3://${S3_BUCKET}/raw/uspto/assignments/" | sort | tail -1 | awk '{print $2}')
+          if [ -n "$LATEST" ]; then
+            aws s3 cp "s3://${S3_BUCKET}/raw/uspto/assignments/${LATEST}" data/raw/uspto/assignments/ --recursive
+            echo "✅ Downloaded USPTO assignments"
+          fi
+
       - name: Run USPTO pipeline
         env:
           NEO4J_URI: ${{ github.event.inputs.environment == 'test' && secrets.NEO4J_AURA_TEST_URI || secrets.NEO4J_AURA_URI }}
