@@ -72,6 +72,11 @@ def raw_uspto_ai_extract(context) -> dict[str, object]:
         msg = "USPTOAIExtractor unavailable (import failed); cannot perform extraction"
         context.log.warning(msg)
         _ensure_dir_ai(DEFAULT_EXTRACT_CHECKS)
+        # Remove if it exists as a directory (shouldn't happen, but CI error suggests it does)
+        if DEFAULT_EXTRACT_CHECKS.is_dir():
+            import shutil
+
+            shutil.rmtree(DEFAULT_EXTRACT_CHECKS)
         with DEFAULT_EXTRACT_CHECKS.open("w", encoding="utf-8") as fh:
             json.dump({"ok": False, "reason": "extractor_unavailable"}, fh, indent=2)
         return {"ok": False, "reason": "extractor_unavailable"}
@@ -91,6 +96,12 @@ def raw_uspto_ai_extract(context) -> dict[str, object]:
 
     _ensure_dir_ai(DEFAULT_EXTRACT_CHECKS)
     DEFAULT_AI_PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
+
+    # Remove if it exists as a directory (shouldn't happen, but CI error suggests it does)
+    if DEFAULT_EXTRACT_CHECKS.is_dir():
+        import shutil
+
+        shutil.rmtree(DEFAULT_EXTRACT_CHECKS)
 
     # Connect to DuckDB
     try:
