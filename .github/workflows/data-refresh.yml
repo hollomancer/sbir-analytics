@@ -319,6 +319,11 @@ jobs:
           python-version: "3.11"
           install-dev-deps: "false"
 
+      - name: Install Playwright
+        run: |
+          uv pip install playwright
+          uv run python -m playwright install chromium
+
       - name: Download USPTO data
         id: uspto-download
         env:
@@ -327,39 +332,40 @@ jobs:
           echo "## 📥 USPTO Patent Data Download" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
-          # Install minimal dependencies
-          uv pip install boto3 requests
-
           SUCCESS=true
 
-          # PatentsView (run in parallel)
+          # PatentsView (uses direct download - still works)
           echo "### 1️⃣ PatentsView Data" >> $GITHUB_STEP_SUMMARY
           uv run python scripts/data/download_uspto.py --dataset patentsview --table patent 2>&1 | tee patentsview.log &
           PID_PV=$!
 
-          # Assignments
-          echo "### 2️⃣ Patent Assignments" >> $GITHUB_STEP_SUMMARY
-          uv run python scripts/data/download_uspto.py --dataset assignments 2>&1 | tee assignments.log &
-          PID_AS=$!
-
-          # AI Patents
-          echo "### 3️⃣ AI Patents" >> $GITHUB_STEP_SUMMARY
+          # AI Patents (uses direct download - still works)
+          echo "### 2️⃣ AI Patents" >> $GITHUB_STEP_SUMMARY
           uv run python scripts/data/download_uspto.py --dataset ai_patents 2>&1 | tee ai_patents.log &
           PID_AI=$!
 
-          # Wait for all downloads
+          # Wait for direct downloads
           wait $PID_PV || SUCCESS=false
-          wait $PID_AS || SUCCESS=false
           wait $PID_AI || SUCCESS=false
 
+          # Patent Assignments - requires browser automation due to USPTO portal changes
+          echo "### 3️⃣ Patent Assignments (Browser Download)" >> $GITHUB_STEP_SUMMARY
+          uv run python scripts/data/download_uspto_browser.py \
+            --dataset assignments \
+            --upload-s3 \
+            --s3-bucket "$S3_BUCKET" \
+            2>&1 | tee assignments.log || SUCCESS=false
+
           # Report results
-          for log in patentsview.log assignments.log ai_patents.log; do
-            echo "<details><summary>$log</summary>" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
-            cat $log >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
-            echo "</details>" >> $GITHUB_STEP_SUMMARY
+          for log in patentsview.log ai_patents.log assignments.log; do
+            if [ -f "$log" ]; then
+              echo "<details><summary>$log</summary>" >> $GITHUB_STEP_SUMMARY
+              echo "" >> $GITHUB_STEP_SUMMARY
+              echo '```' >> $GITHUB_STEP_SUMMARY
+              cat $log >> $GITHUB_STEP_SUMMARY
+              echo '```' >> $GITHUB_STEP_SUMMARY
+              echo "</details>" >> $GITHUB_STEP_SUMMARY
+            fi
           done
 
           if [ "$SUCCESS" = "false" ]; then
@@ -367,37 +373,48 @@ jobs:
             exit 1
           fi
 
-      - name: Extract and upload USPTO assignment tables
+      - name: Verify USPTO assignment files
         env:
           S3_BUCKET: ${{ env.S3_BUCKET }}
         run: |
-          echo "## 📦 Extracting USPTO Assignment Tables" >> $GITHUB_STEP_SUMMARY
+          echo "## 📦 Verifying USPTO Assignment Files" >> $GITHUB_STEP_SUMMARY
 
           DATE_STR=$(date -u +%Y-%m-%d)
-          mkdir -p /tmp/uspto_extract
 
-          # Download the ZIP from S3
-          aws s3 cp "s3://${S3_BUCKET}/raw/uspto/assignments/${DATE_STR}/patent_assignments.zip" /tmp/uspto_extract/ || {
-            echo "⚠️ No ZIP found for today, checking latest..." >> $GITHUB_STEP_SUMMARY
-            LATEST=$(aws s3 ls "s3://${S3_BUCKET}/raw/uspto/assignments/" | sort | tail -1 | awk '{print $2}')
-            aws s3 cp "s3://${S3_BUCKET}/raw/uspto/assignments/${LATEST}patent_assignments.zip" /tmp/uspto_extract/
-          }
+          # The browser download script uploads individual files directly
+          # Verify they exist and are valid ZIPs
+          echo "Checking uploaded files:" >> $GITHUB_STEP_SUMMARY
 
-          # Extract the ZIP
-          cd /tmp/uspto_extract
-          unzip -o patent_assignments.zip
+          VALID=true
+          for file in assignment assignor assignee documentid; do
+            S3_PATH="s3://${S3_BUCKET}/raw/uspto/assignments/${DATE_STR}/${file}.csv.zip"
 
-          # Upload extracted CSVs to S3
-          echo "Uploading extracted tables:" >> $GITHUB_STEP_SUMMARY
-          for csv in *.csv; do
-            if [ -f "$csv" ]; then
-              aws s3 cp "$csv" "s3://${S3_BUCKET}/raw/uspto/assignments/${DATE_STR}/$csv"
-              SIZE=$(ls -lh "$csv" | awk '{print $5}')
-              echo "  - $csv ($SIZE)" >> $GITHUB_STEP_SUMMARY
+            # Check if file exists
+            if aws s3 ls "$S3_PATH" > /dev/null 2>&1; then
+              SIZE=$(aws s3 ls "$S3_PATH" | awk '{print $3}')
+              SIZE_MB=$((SIZE / 1024 / 1024))
+
+              # Verify it's not too small (HTML pages are ~16KB)
+              if [ "$SIZE" -lt 100000 ]; then
+                echo "  ❌ $file.csv.zip: ${SIZE_MB}MB (TOO SMALL - may be HTML)" >> $GITHUB_STEP_SUMMARY
+                VALID=false
+              else
+                echo "  ✅ $file.csv.zip: ${SIZE_MB}MB" >> $GITHUB_STEP_SUMMARY
+              fi
+            else
+              echo "  ❌ $file.csv.zip: NOT FOUND" >> $GITHUB_STEP_SUMMARY
+              VALID=false
             fi
           done
 
-          echo "✅ USPTO assignment tables extracted and uploaded" >> $GITHUB_STEP_SUMMARY
+          if [ "$VALID" = "false" ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "❌ Some USPTO assignment files are missing or invalid" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ All USPTO assignment files verified" >> $GITHUB_STEP_SUMMARY
 
       - name: Check S3 uploads
         if: always()

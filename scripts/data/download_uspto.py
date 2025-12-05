@@ -40,10 +40,24 @@ PATENTSVIEW_TABLES = {
 }
 
 # USPTO Assignment Dataset
-# Verified: December 2024 - 2023 is latest release
+# NOTE: As of December 2025, USPTO Open Data Portal requires browser-based download.
+# The /ui/ URLs return HTML instead of direct file downloads.
+# Workaround: Download individual CSV files which may have different endpoints.
 # Source: https://www.uspto.gov/ip-policy/economic-research/research-datasets/patent-assignment-dataset
 # Full dataset includes: assignment, assignor, assignee, documentid, assignment_conveyance, documentid_admin
+#
+# IMPORTANT: These URLs currently return HTML pages, not ZIP files.
+# The USPTO has moved to a JavaScript-based download system.
+# Contact EconomicsData@uspto.gov for programmatic access or use manual download.
 USPTO_ASSIGNMENT_URL = "https://data.uspto.gov/ui/datasets/products/files/ECORSEXC/2023/csv.zip"
+
+# Individual file URLs (also return HTML as of Dec 2025)
+USPTO_ASSIGNMENT_FILES = {
+    "assignment": "https://data.uspto.gov/ui/datasets/products/files/ECORSEXC/2023/assignment.csv.zip",
+    "assignor": "https://data.uspto.gov/ui/datasets/products/files/ECORSEXC/2023/assignor.csv.zip",
+    "assignee": "https://data.uspto.gov/ui/datasets/products/files/ECORSEXC/2023/assignee.csv.zip",
+    "documentid": "https://data.uspto.gov/ui/datasets/products/files/ECORSEXC/2023/documentid.csv.zip",
+}
 
 # USPTO AI Patent Dataset
 # Verified: December 2024 - 2023 is latest release (updated Jan 8, 2025)
@@ -91,6 +105,7 @@ def download_and_upload(source_url: str, s3_bucket: str, s3_key: str) -> dict:
     Raises:
         requests.exceptions.RequestException: On download failure after retries
         boto3.exceptions.S3UploadFailedError: On S3 upload failure
+        ValueError: If response is HTML instead of expected binary file
     """
     print(f"📥 Downloading: {source_url}")
     print(f"   User-Agent: {USER_AGENT}")
@@ -102,6 +117,17 @@ def download_and_upload(source_url: str, s3_bucket: str, s3_key: str) -> dict:
         # Stream download with retry logic
         response = session.get(source_url, stream=True, timeout=300)
         response.raise_for_status()
+
+        # Validate content type - USPTO now returns HTML for these URLs
+        content_type = response.headers.get("content-type", "")
+        if "text/html" in content_type:
+            raise ValueError(
+                f"USPTO returned HTML instead of ZIP file. "
+                f"Content-Type: {content_type}. "
+                f"The USPTO Open Data Portal now requires browser-based download. "
+                f"Please download manually from: {source_url} "
+                f"or contact EconomicsData@uspto.gov for programmatic access."
+            )
 
         content_length = int(response.headers.get("content-length", 0))
         print(f"📊 Size: {content_length / 1024 / 1024:.1f} MB")
@@ -130,6 +156,20 @@ def download_and_upload(source_url: str, s3_bucket: str, s3_key: str) -> dict:
 
         elapsed = time.time() - start_time
         print(f"⏱️  Download completed in {elapsed:.1f}s")
+
+        # Validate that we got a ZIP file, not HTML
+        # ZIP files start with PK (0x504B), HTML starts with <!DOCTYPE or <html
+        if data[:2] != b"PK":
+            # Check if it's HTML
+            if data[:100].lower().find(b"<!doctype") >= 0 or data[:100].lower().find(b"<html") >= 0:
+                raise ValueError(
+                    f"Downloaded file is HTML, not a ZIP archive. "
+                    f"Size: {len(data)} bytes. "
+                    f"The USPTO Open Data Portal now requires browser-based download. "
+                    f"Please download manually or contact EconomicsData@uspto.gov."
+                )
+            else:
+                print(f"⚠️  Warning: File does not appear to be a ZIP (magic bytes: {data[:4].hex()})")
 
         # Upload to S3
         print(f"📤 Uploading to s3://{s3_bucket}/{s3_key}")
@@ -275,6 +315,22 @@ Examples:
         print(f"Error: {e}")
         print(f"URL: {source_url}")
         print(f"Suggestion: Check network connectivity and try again")
+        print("=" * 60)
+        sys.exit(1)
+
+    except ValueError as e:
+        print()
+        print("=" * 60)
+        print("❌ Invalid Response - USPTO Download System Changed")
+        print("=" * 60)
+        print(f"Error: {e}")
+        print(f"URL: {source_url}")
+        print()
+        print("The USPTO Open Data Portal now requires browser-based download.")
+        print("Options:")
+        print("  1. Download manually from the USPTO website")
+        print("  2. Contact EconomicsData@uspto.gov for programmatic access")
+        print("  3. Use the raw XML bulk data if available")
         print("=" * 60)
         sys.exit(1)
 
