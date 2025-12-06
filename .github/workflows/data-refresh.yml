@@ -197,7 +197,8 @@ jobs:
 
       - name: Install dependencies
         run: |
-          uv pip install boto3 requests pandas pyarrow
+          uv sync --no-dev
+          uv pip install duckdb
 
       - name: Check for new USAspending dump
         id: check-new
