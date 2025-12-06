@@ -44,8 +44,8 @@ def extract_both_files(url: str, s3_bucket: str):
     recipient_file = None
     naics_file = None
 
-    # Download and check toc.txt to find correct file numbers
-    toc_file = next((f for f in files if f["filename"] == "toc.txt"), None)
+    # Download and check toc.dat to find correct file numbers
+    toc_file = next((f for f in files if f["filename"] == "toc.dat"), None)
     if toc_file:
         print("\n📋 Reading table of contents...")
         import tempfile
