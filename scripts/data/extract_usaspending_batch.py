@@ -39,37 +39,33 @@ def extract_both_files(url: str, s3_bucket: str):
     files = reader.list_files()
     print(f"Found {len(files)} files in archive")
 
-    # Find target files by searching for recipient_lookup and naics tables
-    # File numbers change between dumps, so we search by pattern
-    recipient_file = None
+    # Find target files by size heuristic
+    # recipient_lookup is always the largest file (~50-60GB)
+    # naics is typically in the top 5 largest files (~1-5GB)
+    # File numbers change between dumps, so we use size-based detection
+    dat_files = [f for f in files if f["filename"].endswith(".dat.gz")]
+    dat_files.sort(key=lambda x: x["compressed_size"], reverse=True)
+
+    print("\n📋 Top 5 largest .dat.gz files:")
+    for i, f in enumerate(dat_files[:5]):
+        size_gb = f["compressed_size"] / (1024**3)
+        print(f"  {i+1}. {f['filename']}: {size_gb:.2f} GB")
+
+    # recipient_lookup is the largest file
+    recipient_file = dat_files[0] if dat_files else None
+
+    # naics is typically 2nd-5th largest, look for files in 1-5GB range
     naics_file = None
+    for f in dat_files[1:10]:  # Check top 10 files
+        size_gb = f["compressed_size"] / (1024**3)
+        if 0.5 < size_gb < 10:  # NAICS is typically 1-5GB
+            naics_file = f
+            break
 
-    # Download and check toc.dat to find correct file numbers
-    toc_file = next((f for f in files if f["filename"] == "toc.dat"), None)
-    if toc_file:
-        print("\n📋 Reading table of contents...")
-        import tempfile
-        with tempfile.NamedTemporaryFile(mode='w+b', delete=False) as tmp:
-            reader.download_file(toc_file, tmp.name)
-            tmp.seek(0)
-            # toc.dat is plain text PostgreSQL COPY format, not gzipped
-            toc_content = tmp.read().decode('utf-8', errors='replace')
-
-        # Parse toc.txt to find recipient_lookup and naics
-        for line in toc_content.split('\n'):
-            if 'recipient_lookup' in line.lower():
-                # Extract file number from line like "5881|recipient_lookup"
-                parts = line.split('|')
-                if len(parts) >= 2:
-                    file_num = parts[0].strip()
-                    recipient_file = next((f for f in files if f["filename"] == f"{file_num}.dat.gz"), None)
-                    print(f"  Found recipient_lookup: {file_num}.dat.gz")
-            elif 'naics' in line.lower() and 'recipient' not in line.lower():
-                parts = line.split('|')
-                if len(parts) >= 2:
-                    file_num = parts[0].strip()
-                    naics_file = next((f for f in files if f["filename"] == f"{file_num}.dat.gz"), None)
-                    print(f"  Found naics: {file_num}.dat.gz")
+    if recipient_file:
+        print(f"\n✓ Detected recipient_lookup: {recipient_file['filename']} ({recipient_file['compressed_size'] / (1024**3):.2f} GB)")
+    if naics_file:
+        print(f"✓ Detected naics: {naics_file['filename']} ({naics_file['compressed_size'] / (1024**3):.2f} GB)")
 
     if not recipient_file or not naics_file:
         print("❌ ERROR: Could not find required files (recipient_lookup, naics)")
