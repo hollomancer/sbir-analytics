@@ -179,7 +179,7 @@ jobs:
     needs: determine-source
     if: needs.determine-source.outputs.usaspending == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 360  # 6 hours for 56GB download
     steps:
       - uses: actions/checkout@v6
 
