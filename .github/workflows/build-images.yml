@@ -8,6 +8,7 @@ on:
       - 'pyproject.toml'
       - 'uv.lock'
       - 'src/**'
+      - 'scripts/**'
       - '.github/workflows/build-images.yml'
   schedule:
     # Weekly rebuild on Sunday at 2 AM UTC
