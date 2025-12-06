@@ -49,12 +49,11 @@ def extract_both_files(url: str, s3_bucket: str):
     if toc_file:
         print("\n📋 Reading table of contents...")
         import tempfile
-        import gzip
-        with tempfile.NamedTemporaryFile(mode='w+b', delete=False, suffix='.gz') as tmp:
+        with tempfile.NamedTemporaryFile(mode='w+b', delete=False) as tmp:
             reader.download_file(toc_file, tmp.name)
             tmp.seek(0)
-            with gzip.open(tmp.name, 'rt', encoding='utf-8') as gz:
-                toc_content = gz.read()
+            # toc.dat is plain text PostgreSQL COPY format, not gzipped
+            toc_content = tmp.read().decode('utf-8', errors='replace')
 
         # Parse toc.txt to find recipient_lookup and naics
         for line in toc_content.split('\n'):
