@@ -31,9 +31,38 @@ env:
   REPO: ${{ github.repository_owner }}/sbir-analytics
 
 jobs:
+  detect-changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    outputs:
+      python-deps: ${{ steps.filter.outputs.python-deps }}
+      r-deps: ${{ steps.filter.outputs.r-deps }}
+      etl-code: ${{ steps.filter.outputs.etl-code }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            python-deps:
+              - 'pyproject.toml'
+              - 'uv.lock'
+              - 'Dockerfile.python-base'
+            r-deps:
+              - 'Dockerfile.r-base'
+            etl-code:
+              - 'src/**'
+              - 'scripts/**'
+              - 'Dockerfile'
+
   python-base:
     name: Build Python Base
-    if: github.event.inputs.image == 'all' || github.event.inputs.image == 'python-base' || github.event.inputs.image == '' || github.event_name == 'schedule'
+    needs: [detect-changes]
+    if: |
+      github.event.inputs.image == 'all' ||
+      github.event.inputs.image == 'python-base' ||
+      github.event_name == 'schedule' ||
+      (github.event_name == 'push' && needs.detect-changes.outputs.python-deps == 'true')
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -68,8 +97,13 @@ jobs:
 
   r-base:
     name: Build R Base (with StateIO)
-    needs: [python-base]
-    if: always() && (github.event.inputs.image == 'all' || github.event.inputs.image == 'r-base' || github.event.inputs.image == '' || github.event_name == 'schedule')
+    needs: [detect-changes, python-base]
+    if: |
+      always() &&
+      (github.event.inputs.image == 'all' ||
+       github.event.inputs.image == 'r-base' ||
+       github.event_name == 'schedule' ||
+       (github.event_name == 'push' && (needs.detect-changes.outputs.python-deps == 'true' || needs.detect-changes.outputs.r-deps == 'true')))
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -106,8 +140,13 @@ jobs:
 
   etl:
     name: Build ETL Image
-    needs: [python-base]
-    if: always() && (github.event.inputs.image == 'all' || github.event.inputs.image == 'etl' || github.event.inputs.image == '' || github.event_name == 'schedule')
+    needs: [detect-changes, python-base]
+    if: |
+      always() &&
+      (github.event.inputs.image == 'all' ||
+       github.event.inputs.image == 'etl' ||
+       github.event_name == 'schedule' ||
+       (github.event_name == 'push' && (needs.detect-changes.outputs.python-deps == 'true' || needs.detect-changes.outputs.etl-code == 'true')))
     runs-on: ubuntu-latest
     permissions:
       contents: read
