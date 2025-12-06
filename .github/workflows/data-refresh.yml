@@ -195,9 +195,6 @@ jobs:
           python-version: "3.11"
           install-dev-deps: "false"
 
-      - name: Install dependencies
-        run: uv sync --no-dev
-
       - name: Check for new USAspending dump
         id: check-new
         run: |
@@ -205,7 +202,7 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
 
           # Find latest dump URL from USAspending
-          LATEST_URL=$(python -c "
+          LATEST_URL=$(uv run python -c "
           import requests
           from datetime import datetime, timedelta
 
@@ -272,13 +269,13 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
 
           # Run both extractions in parallel
-          python scripts/data/stream_extract_recipient.py \
+          uv run python scripts/data/stream_extract_recipient.py \
             --url "${{ steps.check-new.outputs.latest_url }}" \
             --s3-bucket "${{ env.S3_BUCKET }}" \
             2>&1 | tee recipient_output.txt &
           PID_RECIPIENT=$!
 
-          python scripts/data/stream_extract_naics.py \
+          uv run python scripts/data/stream_extract_naics.py \
             --url "${{ steps.check-new.outputs.latest_url }}" \
             --s3-bucket "${{ env.S3_BUCKET }}" \
             2>&1 | tee naics_output.txt &
