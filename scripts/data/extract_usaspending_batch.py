@@ -39,17 +39,46 @@ def extract_both_files(url: str, s3_bucket: str):
     files = reader.list_files()
     print(f"Found {len(files)} files in archive")
 
-    # Find target files
-    recipient_file = next((f for f in files if f["filename"] == "5881.dat.gz"), None)
-    naics_file = next((f for f in files if f["filename"] == "5882.dat.gz"), None)
+    # Find target files by searching for recipient_lookup and naics tables
+    # File numbers change between dumps, so we search by pattern
+    recipient_file = None
+    naics_file = None
+
+    # Download and check toc.txt to find correct file numbers
+    toc_file = next((f for f in files if f["filename"] == "toc.txt"), None)
+    if toc_file:
+        print("\n📋 Reading table of contents...")
+        import tempfile
+        with tempfile.NamedTemporaryFile(mode='w+b', delete=False) as tmp:
+            reader.download_file(toc_file, tmp.name)
+            tmp.seek(0)
+            toc_content = tmp.read().decode('utf-8')
+
+        # Parse toc.txt to find recipient_lookup and naics
+        for line in toc_content.split('\n'):
+            if 'recipient_lookup' in line.lower():
+                # Extract file number from line like "5881|recipient_lookup"
+                parts = line.split('|')
+                if len(parts) >= 2:
+                    file_num = parts[0].strip()
+                    recipient_file = next((f for f in files if f["filename"] == f"{file_num}.dat.gz"), None)
+                    print(f"  Found recipient_lookup: {file_num}.dat.gz")
+            elif 'naics' in line.lower() and 'recipient' not in line.lower():
+                parts = line.split('|')
+                if len(parts) >= 2:
+                    file_num = parts[0].strip()
+                    naics_file = next((f for f in files if f["filename"] == f"{file_num}.dat.gz"), None)
+                    print(f"  Found naics: {file_num}.dat.gz")
 
     if not recipient_file or not naics_file:
-        print("❌ ERROR: Could not find required files (5881.dat.gz, 5882.dat.gz)")
+        print("❌ ERROR: Could not find required files (recipient_lookup, naics)")
+        print(f"  recipient_file found: {recipient_file is not None}")
+        print(f"  naics_file found: {naics_file is not None}")
         sys.exit(1)
 
     print(f"\n📋 Files to extract:")
-    print(f"  recipient_lookup (5881.dat.gz): {recipient_file['compressed_size'] / (1024**3):.2f} GB compressed")
-    print(f"  NAICS (5882.dat.gz): {naics_file['compressed_size'] / (1024**3):.2f} GB compressed")
+    print(f"  recipient_lookup ({recipient_file['filename']}): {recipient_file['compressed_size'] / (1024**3):.2f} GB compressed")
+    print(f"  NAICS ({naics_file['filename']}): {naics_file['compressed_size'] / (1024**3):.2f} GB compressed")
 
     with tempfile.TemporaryDirectory() as tmpdir:
         log_disk_usage(tmpdir)
@@ -59,10 +88,10 @@ def extract_both_files(url: str, s3_bucket: str):
         print("📥 STEP 1: Extracting recipient_lookup")
         print("=" * 80)
 
-        recipient_gz = f"{tmpdir}/5881.dat.gz"
+        recipient_gz = f"{tmpdir}/{recipient_file['filename']}"
         recipient_parquet = f"{tmpdir}/recipient_lookup.parquet"
 
-        print(f"Downloading 5881.dat.gz...")
+        print(f"Downloading {recipient_file['filename']}...")
         reader.download_file(recipient_file, recipient_gz)
         print(f"✅ Download complete")
         log_disk_usage(tmpdir)
@@ -91,10 +120,10 @@ def extract_both_files(url: str, s3_bucket: str):
         print("📥 STEP 2: Extracting NAICS lookup")
         print("=" * 80)
 
-        naics_gz = f"{tmpdir}/5882.dat.gz"
+        naics_gz = f"{tmpdir}/{naics_file['filename']}"
         naics_parquet = f"{tmpdir}/naics_lookup.parquet"
 
-        print(f"Downloading 5882.dat.gz...")
+        print(f"Downloading {naics_file['filename']}...")
         reader.download_file(naics_file, naics_gz)
         print(f"✅ Download complete")
         log_disk_usage(tmpdir)
