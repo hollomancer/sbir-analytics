@@ -28,7 +28,9 @@ TRANSACTION_FPDS_FILE = "5882.dat.gz"
 
 def extract_naics_with_duckdb(gz_path: str, output_path: str) -> int:
     """Use DuckDB to extract unique (UEI, NAICS) pairs from gzipped TSV."""
+    import os
     print("\nProcessing with DuckDB...")
+    print(f"Input file size: {os.path.getsize(gz_path) / (1024**3):.2f} GB")
 
     conn = duckdb.connect(":memory:")
 
@@ -52,9 +54,13 @@ def extract_naics_with_duckdb(gz_path: str, output_path: str) -> int:
         ) TO '{output_path}' (FORMAT PARQUET, COMPRESSION SNAPPY)
     """
 
+    print("Executing DuckDB query...")
     conn.execute(query)
+    print("Query complete, counting results...")
     count = conn.execute(f"SELECT COUNT(*) FROM '{output_path}'").fetchone()[0]
     conn.close()
+
+    print(f"Output file size: {os.path.getsize(output_path) / (1024**2):.2f} MB")
 
     return count
 
@@ -102,12 +108,18 @@ def main():
     print(f"  Uncompressed: {target['uncompressed_size'] / (1024**3):.1f} GB")
 
     with tempfile.TemporaryDirectory() as tmpdir:
+        import subprocess
+        print(f"\nTemporary directory: {tmpdir}")
+        subprocess.run(["df", "-h", tmpdir], check=False)
+
         gz_path = f"{tmpdir}/{TRANSACTION_FPDS_FILE}"
         output_path = args.local_output or f"{tmpdir}/naics_lookup.parquet"
 
         # Download
         print("\nDownloading...")
         reader.download_file(target, gz_path)
+        print(f"\nDownload complete. Disk usage:")
+        subprocess.run(["df", "-h", tmpdir], check=False)
 
         # Process with DuckDB
         count = extract_naics_with_duckdb(gz_path, output_path)

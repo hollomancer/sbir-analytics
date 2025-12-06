@@ -179,7 +179,7 @@ jobs:
     needs: determine-source
     if: needs.determine-source.outputs.usaspending == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 90  # Parallel downloads should be faster
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@v6
 
@@ -269,68 +269,114 @@ jobs:
           echo "🆕 New version available - will extract" >> $GITHUB_STEP_SUMMARY
           echo "is_new=true" >> $GITHUB_OUTPUT
 
-      - name: Extract recipient_lookup and NAICS in parallel
+      - name: Extract USAspending data via AWS Batch
         if: steps.check-new.outputs.is_new == 'true' || github.event.inputs.force_refresh == 'true'
         run: |
-          echo "## 📥 Extracting USAspending Data (parallel)" >> $GITHUB_STEP_SUMMARY
+          echo "## 📥 Extracting USAspending Data (AWS Batch)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Running both extractions in parallel:" >> $GITHUB_STEP_SUMMARY
-          echo "- recipient_lookup (~1.2GB)" >> $GITHUB_STEP_SUMMARY
-          echo "- NAICS lookup from transaction_fpds (~20GB)" >> $GITHUB_STEP_SUMMARY
+          echo "Submitting job to AWS Batch for large file processing..." >> $GITHUB_STEP_SUMMARY
+          echo "- recipient_lookup from 5881.dat.gz (~1.2 GB compressed)" >> $GITHUB_STEP_SUMMARY
+          echo "- NAICS lookup from 5882.dat.gz (~57 GB compressed)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
-          # Run both extractions in parallel
-          uv run python scripts/data/stream_extract_recipient.py \
-            --url "${{ steps.check-new.outputs.latest_url }}" \
-            --s3-bucket "${{ env.S3_BUCKET }}" \
-            2>&1 | tee recipient_output.txt &
-          PID_RECIPIENT=$!
+          # Submit Batch job
+          JOB_ID=$(aws batch submit-job \
+            --job-name "usaspending-extract-$(date +%Y%m%d-%H%M%S)" \
+            --job-queue sbir-analytics-analysis-job-queue \
+            --job-definition sbir-analytics-usaspending-extract \
+            --container-overrides "{\"environment\":[{\"name\":\"USASPENDING_URL\",\"value\":\"${{ steps.check-new.outputs.latest_url }}\"}]}" \
+            --query 'jobId' \
+            --output text)
 
-          uv run python scripts/data/stream_extract_naics.py \
-            --url "${{ steps.check-new.outputs.latest_url }}" \
-            --s3-bucket "${{ env.S3_BUCKET }}" \
-            2>&1 | tee naics_output.txt &
-          PID_NAICS=$!
+          echo "**Job ID:** \`$JOB_ID\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Job URL:** https://console.aws.amazon.com/batch/home?region=${{ env.AWS_REGION }}#jobs/detail/$JOB_ID" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
 
-          # Wait for both and capture exit codes
-          RECIPIENT_OK=true
-          NAICS_OK=true
-          wait $PID_RECIPIENT || RECIPIENT_OK=false
-          wait $PID_NAICS || NAICS_OK=false
+          # Wait for job and stream progress
+          echo "Monitoring job progress..." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
 
-          # Report recipient results
-          echo "### recipient_lookup" >> $GITHUB_STEP_SUMMARY
-          echo "<details><summary>Extraction Log</summary>" >> $GITHUB_STEP_SUMMARY
+          STATUS="SUBMITTED"
+          LAST_LOG_TIME=0
+
+          while [[ "$STATUS" != "SUCCEEDED" && "$STATUS" != "FAILED" ]]; do
+            sleep 30
+
+            # Get current status
+            JOB_INFO=$(aws batch describe-jobs --jobs $JOB_ID --query 'jobs[0]' --output json)
+            STATUS=$(echo "$JOB_INFO" | jq -r '.status')
+            LOG_STREAM=$(echo "$JOB_INFO" | jq -r '.container.logStreamName // empty')
+
+            echo "Status: $STATUS"
+
+            # Stream logs if available
+            if [ -n "$LOG_STREAM" ] && [ "$LOG_STREAM" != "null" ]; then
+              # Get new log events
+              NEW_LOGS=$(aws logs get-log-events \
+                --log-group-name /aws/batch/sbir-analytics-analysis \
+                --log-stream-name "$LOG_STREAM" \
+                --start-time $LAST_LOG_TIME \
+                --query 'events[*].[timestamp,message]' \
+                --output text 2>/dev/null || echo "")
+
+              if [ -n "$NEW_LOGS" ]; then
+                echo "$NEW_LOGS" | while IFS=$'\t' read -r timestamp message; do
+                  echo "$message"
+                  LAST_LOG_TIME=$timestamp
+                done
+              fi
+            fi
+          done
+
+          # Get final logs
+          LOG_STREAM=$(aws batch describe-jobs --jobs $JOB_ID \
+            --query 'jobs[0].container.logStreamName' --output text)
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "<details><summary>📋 Full Job Logs</summary>" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
-          tail -30 recipient_output.txt >> $GITHUB_STEP_SUMMARY
+
+          if [ "$STATUS" = "SUCCEEDED" ]; then
+            echo "✅ **Extraction succeeded**" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            aws logs get-log-events \
+              --log-group-name /aws/batch/sbir-analytics-analysis \
+              --log-stream-name "$LOG_STREAM" \
+              --query 'events[*].message' \
+              --output text >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **Extraction failed**" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            aws logs get-log-events \
+              --log-group-name /aws/batch/sbir-analytics-analysis \
+              --log-stream-name "$LOG_STREAM" \
+              --query 'events[*].message' \
+              --output text >> $GITHUB_STEP_SUMMARY
+          fi
+
           echo '```' >> $GITHUB_STEP_SUMMARY
           echo "</details>" >> $GITHUB_STEP_SUMMARY
-          if [ "$RECIPIENT_OK" = "true" ]; then
-            RECORDS=$(grep -oE 'Extracted [0-9,]+ recipients' recipient_output.txt | grep -oE '[0-9,]+' || echo "unknown")
-            echo "✅ Extracted **$RECORDS** recipient records" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "❌ recipient_lookup extraction failed" >> $GITHUB_STEP_SUMMARY
-          fi
-          echo "" >> $GITHUB_STEP_SUMMARY
 
-          # Report NAICS results
-          echo "### naics_lookup" >> $GITHUB_STEP_SUMMARY
-          echo "<details><summary>Extraction Log</summary>" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          tail -30 naics_output.txt >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          echo "</details>" >> $GITHUB_STEP_SUMMARY
-          if [ "$NAICS_OK" = "true" ]; then
-            PAIRS=$(grep -oE 'Extracted [0-9,]+ unique' naics_output.txt | grep -oE '[0-9,]+' || echo "unknown")
-            echo "✅ Extracted **$PAIRS** unique (UEI, NAICS) pairs" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "❌ NAICS extraction failed" >> $GITHUB_STEP_SUMMARY
-          fi
+          # Extract metrics from logs
+          RECIPIENT_COUNT=$(aws logs get-log-events \
+            --log-group-name /aws/batch/sbir-analytics-analysis \
+            --log-stream-name "$LOG_STREAM" \
+            --query 'events[*].message' \
+            --output text | grep -oE 'Extracted [0-9,]+ recipients' | grep -oE '[0-9,]+' || echo "unknown")
 
-          # Fail if either extraction failed
-          if [ "$RECIPIENT_OK" = "false" ] || [ "$NAICS_OK" = "false" ]; then
+          NAICS_COUNT=$(aws logs get-log-events \
+            --log-group-name /aws/batch/sbir-analytics-analysis \
+            --log-stream-name "$LOG_STREAM" \
+            --query 'events[*].message' \
+            --output text | grep -oE 'Extracted [0-9,]+ unique' | grep -oE '[0-9,]+' || echo "unknown")
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📊 Results" >> $GITHUB_STEP_SUMMARY
+          echo "- **Recipients:** $RECIPIENT_COUNT" >> $GITHUB_STEP_SUMMARY
+          echo "- **NAICS pairs:** $NAICS_COUNT" >> $GITHUB_STEP_SUMMARY
+
+          if [ "$STATUS" != "SUCCEEDED" ]; then
             exit 1
           fi
 

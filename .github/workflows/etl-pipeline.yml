@@ -46,7 +46,7 @@ jobs:
   sbir-pipeline:
     name: SBIR Pipeline
     if: github.event.inputs.job == 'sbir_ingestion' || github.event.inputs.job == 'sbir_weekly_refresh' || github.event.inputs.job == 'all' || github.event_name == 'schedule'
-    runs-on: ubuntu-latest-4-cores
+    runs-on: ubuntu-latest
     timeout-minutes: 30
     container:
       image: ghcr.io/hollomancer/sbir-analytics:latest

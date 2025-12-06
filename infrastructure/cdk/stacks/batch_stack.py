@@ -352,10 +352,9 @@ class BatchStack(Stack):
                     assign_public_ip="ENABLED",
                 ),
                 command=[
-                    "python",
-                    "scripts/data/extract_recipient_lookup.py",
-                    "--s3-bucket",
-                    "sbir-etl-production-data",
+                    "bash",
+                    "-c",
+                    "cd /app && set -x && df -h && python scripts/data/extract_usaspending_batch.py --url \"${USASPENDING_URL}\" --s3-bucket sbir-etl-production-data",
                 ],
                 environment=[
                     batch.CfnJobDefinition.EnvironmentProperty(
