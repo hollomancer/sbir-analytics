@@ -207,7 +207,7 @@ jobs:
           from datetime import datetime, timedelta
 
           base_url = 'https://files.usaspending.gov/database_download'
-          for days_ago in range(0, 30):
+          for days_ago in range(0, 60):  # Extended to 60 days
               date = datetime.now() - timedelta(days=days_ago)
               filename = f'usaspending-db_{date.strftime(\"%Y%m%d\")}.zip'
               url = f'{base_url}/{filename}'
