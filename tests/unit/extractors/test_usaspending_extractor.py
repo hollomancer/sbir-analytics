@@ -261,11 +261,17 @@ class TestImportPostgresDump:
 class TestZippedDumpImport:
     """Tests for _import_zipped_dump method."""
 
+    @patch("subprocess.run")
     @patch("src.extractors.usaspending.duckdb.connect")
-    def test_import_zipped_dump_postgres_scanner_success(self, mock_connect, tmp_path):
+    def test_import_zipped_dump_postgres_scanner_success(
+        self, mock_connect, mock_subprocess, tmp_path
+    ):
         """Test zipped dump import with postgres_scanner."""
         zip_file = tmp_path / "usaspending.zip"
         zip_file.touch()
+
+        # Mock successful unzip
+        mock_subprocess.return_value = Mock(returncode=0, stdout="test.sql\n", stderr="")
 
         from tests.mocks import DuckDBMocks
 

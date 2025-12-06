@@ -9,12 +9,13 @@ Usage:
 import argparse
 import hashlib
 import os
+import sys
 from datetime import datetime, UTC
 
 import boto3
 import requests
 
-SBIR_AWARDS_URL = "https://data.www.sbir.gov/awarddatafiles/Award_All_Years.csv"
+SBIR_AWARDS_URL = "https://data.www.sbir.gov/mod_awarddatapublic/award_data.csv"
 
 
 def download_sbir_awards(s3_bucket: str) -> dict:
@@ -49,7 +50,7 @@ def download_sbir_awards(s3_bucket: str) -> dict:
 
     # Check if file has changed
     date_str = datetime.now(UTC).strftime("%Y-%m-%d")
-    s3_key = f"raw/awards/{date_str}/Award_All_Years.csv"
+    s3_key = f"raw/awards/{date_str}/award_data.csv"
 
     # Check previous version
     try:
@@ -104,12 +105,16 @@ def main():
     parser.add_argument("--s3-bucket", default=os.environ.get("S3_BUCKET", "sbir-etl-production-data"))
     args = parser.parse_args()
 
-    result = download_sbir_awards(args.s3_bucket)
+    try:
+        result = download_sbir_awards(args.s3_bucket)
 
-    if result["changed"]:
-        print(f"\n✅ New data uploaded: s3://{result['s3_bucket']}/{result['s3_key']}")
-    else:
-        print(f"\n✅ No changes - using existing: s3://{result['s3_bucket']}/{result['s3_key']}")
+        if result["changed"]:
+            print(f"\n✅ New data uploaded: s3://{result['s3_bucket']}/{result['s3_key']}")
+        else:
+            print(f"\n✅ No changes - using existing: s3://{result['s3_bucket']}/{result['s3_key']}")
+    except Exception as e:
+        print(f"\n❌ Error: {e}", file=sys.stderr)
+        sys.exit(1)
 
 
 if __name__ == "__main__":
