@@ -125,8 +125,11 @@ class HttpZipReader:
         return files
 
     def download_file(self, file_info: dict, output_path: str,
-                      chunk_size: int = 50 * 1024 * 1024, parallel: int = 10) -> None:
-        """Download a file from the ZIP to disk with parallel chunks."""
+                      chunk_size: int = 50 * 1024 * 1024, parallel: int = 10,
+                      max_retries: int = 5) -> None:
+        """Download a file from the ZIP to disk with parallel chunks and retry logic."""
+        import time
+
         local_header = self.read_range(file_info["local_header_offset"], file_info["local_header_offset"] + 30)
         fname_len = struct.unpack("<H", local_header[26:28])[0]
         extra_len = struct.unpack("<H", local_header[28:30])[0]
@@ -147,8 +150,18 @@ class HttpZipReader:
         chunk_data = {}
 
         def download_chunk(chunk_idx: int, start: int, end: int) -> tuple[int, bytes]:
-            data = self.read_range(data_offset + start, data_offset + end)
-            return chunk_idx, data
+            """Download a chunk with retry logic."""
+            for attempt in range(max_retries):
+                try:
+                    data = self.read_range(data_offset + start, data_offset + end)
+                    return chunk_idx, data
+                except Exception as e:
+                    if attempt == max_retries - 1:
+                        raise
+                    wait = 2 ** attempt  # Exponential backoff: 1, 2, 4, 8, 16 seconds
+                    print(f"  Chunk {chunk_idx} failed (attempt {attempt + 1}/{max_retries}), retrying in {wait}s: {e}")
+                    time.sleep(wait)
+            raise RuntimeError(f"Failed to download chunk {chunk_idx} after {max_retries} attempts")
 
         completed = 0
         with ThreadPoolExecutor(max_workers=parallel) as executor:
