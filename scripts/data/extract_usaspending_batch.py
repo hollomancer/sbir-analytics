@@ -89,7 +89,9 @@ def extract_both_files(url: str, s3_bucket: str):
         recipient_parquet = f"{tmpdir}/recipient_lookup.parquet"
 
         print(f"Downloading {recipient_file['filename']}...")
-        reader.download_file(recipient_file, recipient_gz)
+        # Use smaller chunks (25MB) and fewer parallel connections (5) to reduce memory pressure
+        # and improve reliability on large downloads
+        reader.download_file(recipient_file, recipient_gz, chunk_size=25*1024*1024, parallel=5)
         print(f"✅ Download complete")
         log_disk_usage(tmpdir)
 
@@ -121,7 +123,7 @@ def extract_both_files(url: str, s3_bucket: str):
         naics_parquet = f"{tmpdir}/naics_lookup.parquet"
 
         print(f"Downloading {naics_file['filename']}...")
-        reader.download_file(naics_file, naics_gz)
+        reader.download_file(naics_file, naics_gz, chunk_size=25*1024*1024, parallel=5)
         print(f"✅ Download complete")
         log_disk_usage(tmpdir)
 

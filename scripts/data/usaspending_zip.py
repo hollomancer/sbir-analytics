@@ -12,19 +12,20 @@ import requests
 class HttpZipReader:
     """Read ZIP files from HTTP using range requests with optional S3 caching."""
 
-    def __init__(self, url: str, s3_client=None, cache_bucket: str = None):
+    def __init__(self, url: str, s3_client=None, cache_bucket: str = None, timeout: int = 300):
         self.url = url
         self.session = requests.Session()
+        self.timeout = timeout  # Default 5 minute timeout per request
         self.s3 = s3_client
         self.cache_bucket = cache_bucket
 
-        head = self.session.head(url, allow_redirects=True)
+        head = self.session.head(url, allow_redirects=True, timeout=30)
         self.size = int(head.headers["Content-Length"])
         self._files_cache = None
 
     def read_range(self, start: int, end: int) -> bytes:
         headers = {"Range": f"bytes={start}-{end-1}"}
-        return self.session.get(self.url, headers=headers).content
+        return self.session.get(self.url, headers=headers, timeout=self.timeout).content
 
     def _get_cache_key(self) -> str:
         """Generate cache key from URL and size."""
