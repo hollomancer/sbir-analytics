@@ -354,7 +354,7 @@ class BatchStack(Stack):
                 command=[
                     "bash",
                     "-c",
-                    "cd /app && set -x && df -h && python scripts/data/extract_usaspending_batch.py --url \"${USASPENDING_URL}\" --s3-bucket sbir-etl-production-data",
+                    "cd /app && python scripts/usaspending/download_database.py --source-url \"${USASPENDING_URL}\" --s3-bucket sbir-etl-production-data",
                 ],
                 environment=[
                     batch.CfnJobDefinition.EnvironmentProperty(
