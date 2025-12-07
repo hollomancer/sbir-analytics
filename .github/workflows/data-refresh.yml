@@ -179,7 +179,7 @@ jobs:
     needs: determine-source
     if: needs.determine-source.outputs.usaspending == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 360  # 6 hours for 56GB download
+    timeout-minutes: 360 # 6 hours for 56GB download
     steps:
       - uses: actions/checkout@v6
 
@@ -292,7 +292,7 @@ jobs:
 
           # Register new revision with updated image
           NEW_JOB_DEF=$(echo "$JOB_DEF" | jq --arg img "$IMAGE_TAG" \
-            'del(.jobDefinitionArn, .revision, .status) | .containerProperties.image = $img')
+            'del(.jobDefinitionArn, .revision, .status, .containerOrchestrationType) | .containerProperties.image = $img')
 
           aws batch register-job-definition --cli-input-json "$NEW_JOB_DEF" > /dev/null
 
@@ -727,7 +727,14 @@ jobs:
 
   run-pipeline:
     name: Run ETL Pipeline
-    needs: [determine-source, refresh-sbir, refresh-usaspending, refresh-uspto, summary]
+    needs:
+      [
+        determine-source,
+        refresh-sbir,
+        refresh-usaspending,
+        refresh-uspto,
+        summary,
+      ]
     if: |
       always() &&
       (github.event.inputs.trigger_dagster != 'false') &&
