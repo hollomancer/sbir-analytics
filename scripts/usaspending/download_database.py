@@ -7,7 +7,7 @@ It downloads the database dump and streams it directly to S3 using multipart upl
 Features:
 - Resume capability: Automatically resumes from last checkpoint if download fails
 - HTTP Range requests: Uses Range headers to download only missing bytes
-- Checkpoint tracking: Saves progress after each chunk for reliable recovery
+- Checkpoint tracking: Saves progress after each chunk for reliable recovery (stored in S3)
 - Multipart upload: Streams directly to S3 in chunks without local storage
 
 Usage:
@@ -15,7 +15,7 @@ Usage:
     python download_database.py --source-url https://files.usaspending.gov/...
 
 On failure, simply re-run the script to resume from the checkpoint.
-Checkpoints are stored in ~/.sbir-analytics/downloads/checkpoints/
+Checkpoints are stored in S3 under .checkpoints/ prefix for persistence across container restarts.
 """
 
 import argparse
@@ -48,38 +48,36 @@ USASPENDING_DOWNLOADS = {
 }
 
 
-def get_checkpoint_file(s3_key: str, s3_bucket: str) -> Path:
-    """Get checkpoint file path for tracking download progress."""
-    checkpoint_dir = Path.home() / ".sbir-analytics" / "downloads" / "checkpoints"
-    checkpoint_dir.mkdir(parents=True, exist_ok=True)
-    # Create unique checkpoint name from bucket + key
-    checkpoint_name = f"{s3_bucket}_{s3_key.replace('/', '_')}.checkpoint"
-    return checkpoint_dir / checkpoint_name
+def get_checkpoint_s3_key(s3_key: str) -> str:
+    """Get S3 key for checkpoint file."""
+    # Store checkpoints in S3 under .checkpoints/ prefix
+    return f".checkpoints/{s3_key}.checkpoint"
 
 
-def load_checkpoint(checkpoint_file: Path) -> dict | None:
-    """Load download checkpoint if it exists."""
-    if not checkpoint_file.exists():
-        return None
-
+def load_checkpoint(s3_bucket: str, checkpoint_s3_key: str) -> dict | None:
+    """Load download checkpoint from S3 if it exists."""
     try:
-        with open(checkpoint_file) as f:
-            return json.load(f)
+        response = s3_client.get_object(Bucket=s3_bucket, Key=checkpoint_s3_key)
+        checkpoint_data = json.loads(response["Body"].read().decode("utf-8"))
+        print(f"Loaded checkpoint from s3://{s3_bucket}/{checkpoint_s3_key}")
+        return checkpoint_data
+    except s3_client.exceptions.NoSuchKey:
+        return None
     except Exception as e:
-        print(f"Warning: Failed to load checkpoint: {e}")
+        print(f"Warning: Failed to load checkpoint from S3: {e}")
         return None
 
 
 def save_checkpoint(
-    checkpoint_file: Path,
+    s3_bucket: str,
+    checkpoint_s3_key: str,
     bytes_downloaded: int,
     parts: list[dict],
     upload_id: str,
-    s3_bucket: str,
     s3_key: str,
     source_url: str,
 ) -> None:
-    """Save download checkpoint."""
+    """Save download checkpoint to S3."""
     try:
         checkpoint_data = {
             "bytes_downloaded": bytes_downloaded,
@@ -90,20 +88,23 @@ def save_checkpoint(
             "source_url": source_url,
             "timestamp": datetime.now(UTC).isoformat(),
         }
-        with open(checkpoint_file, "w") as f:
-            json.dump(checkpoint_data, f, indent=2)
+        s3_client.put_object(
+            Bucket=s3_bucket,
+            Key=checkpoint_s3_key,
+            Body=json.dumps(checkpoint_data, indent=2).encode("utf-8"),
+            ContentType="application/json",
+        )
     except Exception as e:
-        print(f"Warning: Failed to save checkpoint: {e}")
+        print(f"Warning: Failed to save checkpoint to S3: {e}")
 
 
-def clear_checkpoint(checkpoint_file: Path) -> None:
-    """Clear checkpoint file after successful completion."""
+def clear_checkpoint(s3_bucket: str, checkpoint_s3_key: str) -> None:
+    """Clear checkpoint file from S3 after successful completion."""
     try:
-        if checkpoint_file.exists():
-            checkpoint_file.unlink()
-            print(f"Cleared checkpoint file: {checkpoint_file}")
+        s3_client.delete_object(Bucket=s3_bucket, Key=checkpoint_s3_key)
+        print(f"Cleared checkpoint: s3://{s3_bucket}/{checkpoint_s3_key}")
     except Exception as e:
-        print(f"Warning: Failed to clear checkpoint: {e}")
+        print(f"Warning: Failed to clear checkpoint from S3: {e}")
 
 
 def download_and_upload(
@@ -191,8 +192,8 @@ def download_and_upload(
             pass  # File doesn't exist, continue
 
     # Check for existing checkpoint to resume download
-    checkpoint_file = get_checkpoint_file(s3_key, s3_bucket)
-    checkpoint = load_checkpoint(checkpoint_file)
+    checkpoint_s3_key = get_checkpoint_s3_key(s3_key)
+    checkpoint = load_checkpoint(s3_bucket, checkpoint_s3_key)
 
     bytes_resume_from = 0
     existing_parts = []
@@ -395,11 +396,11 @@ def download_and_upload(
 
                                 # Save checkpoint after successful chunk upload
                                 save_checkpoint(
-                                    checkpoint_file,
+                                    s3_bucket,
+                                    checkpoint_s3_key,
                                     total_size,
                                     parts,
                                     upload_id,
-                                    s3_bucket,
                                     s3_key,
                                     source_url,
                                 )
@@ -454,11 +455,11 @@ def download_and_upload(
                 if len(parts) > 0 and total_size > 0:
                     try:
                         save_checkpoint(
-                            checkpoint_file,
+                            s3_bucket,
+                            checkpoint_s3_key,
                             total_size,
                             parts,
                             upload_id,
-                            s3_bucket,
                             s3_key,
                             source_url,
                         )
@@ -481,7 +482,7 @@ def download_and_upload(
                     time.sleep(wait_time)
 
                     # Reload checkpoint to get latest state before retry
-                    updated_checkpoint = load_checkpoint(checkpoint_file)
+                    updated_checkpoint = load_checkpoint(s3_bucket, checkpoint_s3_key)
                     if updated_checkpoint:
                         bytes_resume_from = updated_checkpoint.get("bytes_downloaded", total_size)
                         existing_parts = updated_checkpoint.get("parts", parts)
@@ -544,7 +545,7 @@ def download_and_upload(
             print(f"SHA256: {file_hash}")
 
         # Clear checkpoint on successful completion
-        clear_checkpoint(checkpoint_file)
+        clear_checkpoint(s3_bucket, checkpoint_s3_key)
 
         return {
             "status": "success",
