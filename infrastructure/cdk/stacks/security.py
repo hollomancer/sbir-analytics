@@ -231,7 +231,10 @@ class SecurityStack(Stack):
             ],
         )
 
-        if not self.github_actions_role.add_to_policy(batch_register_statement):
+        # For imported roles, we must create a separate policy
+        if create_new:
+            self.github_actions_role.add_to_policy(batch_register_statement)
+        else:
             iam.Policy(
                 self,
                 "GitHubActionsBatchRegisterPolicy",
