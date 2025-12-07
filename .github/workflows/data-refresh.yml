@@ -279,16 +279,29 @@ jobs:
           echo "- NAICS lookup from 5882.dat.gz (~57 GB compressed)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
-          # Get latest image SHA to avoid Docker caching issues
+          # Register new job definition with commit SHA image to avoid caching
           IMAGE_TAG="ghcr.io/hollomancer/sbir-analytics-full:${{ github.sha }}"
           echo "**Using image:** \`$IMAGE_TAG\`" >> $GITHUB_STEP_SUMMARY
 
-          # Submit Batch job with image override
+          # Get current job definition and update image
+          JOB_DEF=$(aws batch describe-job-definitions \
+            --job-definition-name sbir-analytics-usaspending-extract \
+            --status ACTIVE \
+            --query 'jobDefinitions[0]' \
+            --output json)
+
+          # Register new revision with updated image
+          NEW_JOB_DEF=$(echo "$JOB_DEF" | jq --arg img "$IMAGE_TAG" \
+            'del(.jobDefinitionArn, .revision, .status) | .containerProperties.image = $img')
+
+          aws batch register-job-definition --cli-input-json "$NEW_JOB_DEF" > /dev/null
+
+          # Submit Batch job
           JOB_ID=$(aws batch submit-job \
             --job-name "usaspending-extract-$(date +%Y%m%d-%H%M%S)" \
             --job-queue sbir-analytics-analysis-job-queue \
             --job-definition sbir-analytics-usaspending-extract \
-            --container-overrides "{\"image\":\"$IMAGE_TAG\",\"environment\":[{\"name\":\"USASPENDING_URL\",\"value\":\"${{ steps.check-new.outputs.latest_url }}\"}]}" \
+            --container-overrides "{\"environment\":[{\"name\":\"USASPENDING_URL\",\"value\":\"${{ steps.check-new.outputs.latest_url }}\"}]}" \
             --query 'jobId' \
             --output text)
 
