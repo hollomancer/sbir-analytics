@@ -279,12 +279,16 @@ jobs:
           echo "- NAICS lookup from 5882.dat.gz (~57 GB compressed)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
-          # Submit Batch job
+          # Get latest image SHA to avoid Docker caching issues
+          IMAGE_TAG="ghcr.io/hollomancer/sbir-analytics-full:${{ github.sha }}"
+          echo "**Using image:** \`$IMAGE_TAG\`" >> $GITHUB_STEP_SUMMARY
+
+          # Submit Batch job with image override
           JOB_ID=$(aws batch submit-job \
             --job-name "usaspending-extract-$(date +%Y%m%d-%H%M%S)" \
             --job-queue sbir-analytics-analysis-job-queue \
             --job-definition sbir-analytics-usaspending-extract \
-            --container-overrides "{\"environment\":[{\"name\":\"USASPENDING_URL\",\"value\":\"${{ steps.check-new.outputs.latest_url }}\"}]}" \
+            --container-overrides "{\"image\":\"$IMAGE_TAG\",\"environment\":[{\"name\":\"USASPENDING_URL\",\"value\":\"${{ steps.check-new.outputs.latest_url }}\"}]}" \
             --query 'jobId' \
             --output text)
 
