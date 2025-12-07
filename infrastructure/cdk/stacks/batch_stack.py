@@ -378,7 +378,7 @@ class BatchStack(Stack):
                 attempts=2,
             ),
             timeout=batch.CfnJobDefinition.TimeoutProperty(
-                attempt_duration_seconds=7200,  # 2 hours max
+                attempt_duration_seconds=28800,  # 8 hours max (56GB download + processing)
             ),
         )
 
