@@ -270,8 +270,12 @@ class TestZippedDumpImport:
         zip_file = tmp_path / "usaspending.zip"
         zip_file.touch()
 
-        # Mock successful unzip
-        mock_subprocess.return_value = Mock(returncode=0, stdout="test.sql\n", stderr="")
+        # Mock successful unzip listing with .dat.gz files
+        mock_subprocess.return_value = Mock(
+            returncode=0,
+            stdout="  12345  2024-01-01 12:00   5881.dat.gz\n  67890  2024-01-01 12:00   5882.dat.gz\n",
+            stderr="",
+        )
 
         from tests.mocks import DuckDBMocks
 
