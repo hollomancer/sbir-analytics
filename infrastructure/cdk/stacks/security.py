@@ -1,11 +1,8 @@
 """Security stack: IAM roles and Secrets Manager."""
 
-from aws_cdk import (
-    CfnOutput,
-    Stack,
-    aws_iam as iam,
-    aws_secretsmanager as secretsmanager,
-)
+from aws_cdk import CfnOutput, Stack
+from aws_cdk import aws_iam as iam
+from aws_cdk import aws_secretsmanager as secretsmanager
 from constructs import Construct
 
 
@@ -178,7 +175,9 @@ class SecurityStack(Stack):
                     actions=[
                         "ecr:GetAuthorizationToken",
                     ],
-                    resources=["*"],  # GetAuthorizationToken doesn't support resource-level permissions
+                    resources=[
+                        "*"
+                    ],  # GetAuthorizationToken doesn't support resource-level permissions
                 )
             )
 
@@ -221,6 +220,23 @@ class SecurityStack(Stack):
                 self,
                 "GitHubActionsRole",
                 role_name="sbir-etl-github-actions-role",
+            )
+
+        # Ensure GitHub Actions role can register new Batch job definitions for updated images
+        batch_register_statement = iam.PolicyStatement(
+            effect=iam.Effect.ALLOW,
+            actions=["batch:RegisterJobDefinition"],
+            resources=[
+                f"arn:aws:batch:{self.region}:{self.account}:job-definition/sbir-analytics-*"
+            ],
+        )
+
+        if not self.github_actions_role.add_to_policy(batch_register_statement):
+            iam.Policy(
+                self,
+                "GitHubActionsBatchRegisterPolicy",
+                statements=[batch_register_statement],
+                roles=[self.github_actions_role],
             )
 
         # Output role ARNs

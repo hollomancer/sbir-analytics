@@ -290,11 +290,23 @@ jobs:
             --query 'jobDefinitions[0]' \
             --output json)
 
-          # Register new revision with updated image
+          # Register new revision with updated image (fall back gracefully if not permitted)
           NEW_JOB_DEF=$(echo "$JOB_DEF" | jq --arg img "$IMAGE_TAG" \
             'del(.jobDefinitionArn, .revision, .status, .containerOrchestrationType) | .containerProperties.image = $img')
 
-          aws batch register-job-definition --cli-input-json "$NEW_JOB_DEF" > /dev/null
+          REGISTER_LOG=$(mktemp)
+          if aws batch register-job-definition --cli-input-json "$NEW_JOB_DEF" >"$REGISTER_LOG" 2>&1; then
+            echo "✅ Registered new job definition revision for this run." >> $GITHUB_STEP_SUMMARY
+          else
+            if grep -q "AccessDeniedException" "$REGISTER_LOG"; then
+              echo "⚠️ Unable to register a new job definition revision (missing permission). Using the existing revision instead." >> $GITHUB_STEP_SUMMARY
+            else
+              cat "$REGISTER_LOG"
+              rm -f "$REGISTER_LOG"
+              exit 1
+            fi
+          fi
+          rm -f "$REGISTER_LOG"
 
           # Submit Batch job
           JOB_ID=$(aws batch submit-job \
