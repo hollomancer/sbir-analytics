@@ -231,14 +231,30 @@ class SecurityStack(Stack):
             ],
         )
 
+        # Allow PassRole for Batch job roles (required for RegisterJobDefinition)
+        batch_passrole_statement = iam.PolicyStatement(
+            effect=iam.Effect.ALLOW,
+            actions=["iam:PassRole"],
+            resources=[
+                f"arn:aws:iam::{self.account}:role/sbir-analytics-batch-job-task-role",
+                f"arn:aws:iam::{self.account}:role/sbir-analytics-batch-job-execution-role",
+            ],
+            conditions={
+                "StringEquals": {
+                    "iam:PassedToService": "batch.amazonaws.com"
+                }
+            },
+        )
+
         # For imported roles, we must create a separate policy
         if create_new:
             self.github_actions_role.add_to_policy(batch_register_statement)
+            self.github_actions_role.add_to_policy(batch_passrole_statement)
         else:
             iam.Policy(
                 self,
                 "GitHubActionsBatchRegisterPolicy",
-                statements=[batch_register_statement],
+                statements=[batch_register_statement, batch_passrole_statement],
                 roles=[self.github_actions_role],
             )
 
