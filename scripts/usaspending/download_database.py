@@ -253,8 +253,8 @@ def download_and_upload(
         part_number = 1
 
     # Download and upload using multipart
-    # Smaller chunk size to reduce data loss on connection failures
-    CHUNK_SIZE = 50 * 1024 * 1024  # 50 MB (reduced from 100 MB for better recovery)
+    # Small chunk size for unstable connections (GitHub Actions runners)
+    CHUNK_SIZE = 5 * 1024 * 1024  # 5 MB (reduced for GitHub Actions network stability)
 
     # Configure retry strategy for urllib3
     # Retry on connection errors, timeouts, and 5xx errors
@@ -322,23 +322,20 @@ def download_and_upload(
         # urllib3 Retry handles HTTP connection errors, but streaming errors
         # (like broken pipes during iter_content) need explicit retry
         # Increased retries for large file downloads with unstable connections
-        max_download_retries = 10
-        download_retry_delay = 15  # Initial delay in seconds
+        max_download_retries = 20  # Increased for GitHub Actions
+        download_retry_delay = 10  # Initial delay in seconds
 
         for download_attempt in range(max_download_retries):
             try:
                 # Use session with retry adapter for streaming download
                 # The urllib3 Retry adapter will handle connection errors automatically
                 # Timeout: (connect timeout, read timeout)
-                # For streaming large files, we use a very large read timeout (24 hours)
-                # since the server may be slow but we're reading in chunks.
-                # Connect timeout remains at 60s to fail fast on connection issues.
-                # Note: urllib3 retry will still handle transient connection issues
+                # Reduced read timeout to fail fast on stalls and retry sooner
                 with session.get(
                     source_url,
                     stream=True,
                     headers=headers,
-                    timeout=(60, 86400),  # (connect 60s, read 24 hours) - very long for streaming
+                    timeout=(30, 300),  # (connect 30s, read 5min) - fail fast on stalls
                 ) as response:
                     # Handle partial content response (206) when resuming
                     if response.status_code == 206:
