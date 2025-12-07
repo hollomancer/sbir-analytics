@@ -259,7 +259,7 @@ jobs:
           install-pyreadstat: "true"
 
       - name: Run validation scripts
-        run: uv run python tests/validation/test_categorization_validation.py
+        run: uv run python tests/validation/test_categorization_quick.py
 
       - name: Upload validation reports
         if: always()
