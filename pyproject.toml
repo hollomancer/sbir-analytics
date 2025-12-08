@@ -28,7 +28,7 @@ dependencies = [
     "rich>=13.7.0,<15.0.0",
     "boto3>=1.34.0,<2.0.0", # AWS SDK for S3 access
     "cloudpathlib[s3]>=0.23.0,<1.0.0", # Cloud-agnostic path handling with S3 support
-    "huggingface-hub>=0.20.0,<1.0.0", # PaECTER API client (lightweight, no torch required)
+    "huggingface-hub>=0.20.0,<2.0.0", # PaECTER API client (lightweight, no torch required)
     "pyarrow>=14.0.2,<23.0.0",
     "pyreadstat>=1.1.4,<2.0.0",  # USPTO data extraction (SPSS/SAS files)
 ]
