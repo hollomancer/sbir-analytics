@@ -232,7 +232,7 @@ platformdirs==4.5.1
     #   virtualenv
 pluggy==1.6.0
     # via pytest
-pre-commit==3.8.0
+pre-commit==4.5.0
     # via sbir-analytics
 preshed==3.0.12
     # via
