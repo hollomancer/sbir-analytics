@@ -703,6 +703,7 @@ jobs:
           S3_BUCKET: ${{ env.S3_BUCKET }}
         run: |
           echo "## 🎯 SBIR Pipeline" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
 
           uv run dagster job execute \
             -m src.definitions \
@@ -710,9 +711,17 @@ jobs:
             2>&1 | tee sbir_output.txt
 
           if [ ${PIPESTATUS[0]} -eq 0 ]; then
-            echo "✅ SBIR pipeline completed (extract → validate → Neo4j)" >> $GITHUB_STEP_SUMMARY
+            echo "✅ **SBIR pipeline completed**" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "<details><summary>📋 Pipeline Output</summary>" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            grep -E "(INFO|ERROR|Extracted|Validation|Quality check|Neo4j)" sbir_output.txt | tail -30 >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            echo "</details>" >> $GITHUB_STEP_SUMMARY
           else
-            echo "❌ SBIR pipeline failed" >> $GITHUB_STEP_SUMMARY
+            echo "❌ **SBIR pipeline failed**" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
             tail -50 sbir_output.txt >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
@@ -753,6 +762,7 @@ jobs:
         shell: bash
         run: |
           echo "## 💰 USAspending Enrichment" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
 
           uv run dagster job execute \
             -m src.definitions \
@@ -761,9 +771,17 @@ jobs:
 
           EXIT_CODE=${PIPESTATUS[0]}
           if [ $EXIT_CODE -eq 0 ]; then
-            echo "✅ USAspending enrichment completed" >> $GITHUB_STEP_SUMMARY
+            echo "✅ **USAspending enrichment completed**" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "<details><summary>📋 Enrichment Output</summary>" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            grep -E "(INFO|ERROR|Enriched|matched|success)" usaspending_output.txt | tail -30 >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            echo "</details>" >> $GITHUB_STEP_SUMMARY
           else
-            echo "❌ USAspending enrichment failed" >> $GITHUB_STEP_SUMMARY
+            echo "❌ **USAspending enrichment failed**" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
             tail -50 usaspending_output.txt >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
@@ -780,6 +798,7 @@ jobs:
           S3_BUCKET: ${{ env.S3_BUCKET }}
         run: |
           echo "## 📜 USPTO Pipeline" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
 
           uv run dagster job execute \
             -m src.definitions \
@@ -787,9 +806,17 @@ jobs:
             2>&1 | tee uspto_output.txt
 
           if [ ${PIPESTATUS[0]} -eq 0 ]; then
-            echo "✅ USPTO pipeline completed" >> $GITHUB_STEP_SUMMARY
+            echo "✅ **USPTO pipeline completed**" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "<details><summary>📋 Pipeline Output</summary>" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            grep -E "(INFO|ERROR|Loaded|patents|assignments|Neo4j)" uspto_output.txt | tail -30 >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            echo "</details>" >> $GITHUB_STEP_SUMMARY
           else
-            echo "❌ USPTO pipeline failed" >> $GITHUB_STEP_SUMMARY
+            echo "❌ **USPTO pipeline failed**" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
             tail -50 uspto_output.txt >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
