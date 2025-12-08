@@ -37,6 +37,14 @@ from .utils import (
 )
 
 
+def _get_op_config(context) -> dict[str, Any]:
+    """Return a dict-like op_config even if Dagster context is missing/None."""
+    if context is None:
+        return {}
+    config = getattr(context, "op_config", None)
+    return config or {}
+
+
 @asset(
     name="raw_uspto_ai_extract",
     description=(
@@ -81,18 +89,17 @@ def raw_uspto_ai_extract(context) -> dict[str, object]:
             json.dump({"ok": False, "reason": "extractor_unavailable"}, fh, indent=2)
         return {"ok": False, "reason": "extractor_unavailable"}
 
-    # Resolve config
-    raw_dir = Path(getattr(context, "op_config", {}).get("raw_dir", DEFAULT_AI_RAW_DIR))
-    file_globs = getattr(context, "op_config", {}).get("file_globs")
-    duckdb_path = Path(getattr(context, "op_config", {}).get("duckdb", DEFAULT_AI_DUCKDB))
-    table = getattr(context, "op_config", {}).get("table", DEFAULT_AI_TABLE)
-    checkpoint_dir = Path(
-        getattr(context, "op_config", {}).get("checkpoint_dir", DEFAULT_AI_CHECKPOINT_DIR)
-    )
-    batch_size = int(getattr(context, "op_config", {}).get("batch_size", 5000))
-    resume = bool(getattr(context, "op_config", {}).get("resume", True))
-    dedupe = bool(getattr(context, "op_config", {}).get("dedupe", True))
-    id_candidates = getattr(context, "op_config", {}).get("id_candidates", None)
+    # Resolve config defensively for contexts that omit op_config
+    op_config = _get_op_config(context)
+    raw_dir = Path(op_config.get("raw_dir", DEFAULT_AI_RAW_DIR))
+    file_globs = op_config.get("file_globs")
+    duckdb_path = Path(op_config.get("duckdb", DEFAULT_AI_DUCKDB))
+    table = op_config.get("table", DEFAULT_AI_TABLE)
+    checkpoint_dir = Path(op_config.get("checkpoint_dir", DEFAULT_AI_CHECKPOINT_DIR))
+    batch_size = int(op_config.get("batch_size", 5000))
+    resume = bool(op_config.get("resume", True))
+    dedupe = bool(op_config.get("dedupe", True))
+    id_candidates = op_config.get("id_candidates")
 
     _ensure_dir_ai(DEFAULT_EXTRACT_CHECKS)
     DEFAULT_AI_PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
@@ -267,9 +274,10 @@ def uspto_ai_deduplicate(context, raw_uspto_ai_extract) -> dict[str, object]:
       - Deduplicated DuckDB table
       - Checks JSON at data/processed/uspto_ai_deduplicate.checks.json
     """
-    duckdb_path = Path(getattr(context, "op_config", {}).get("duckdb", DEFAULT_AI_DUCKDB))
-    table = getattr(context, "op_config", {}).get("table", DEFAULT_AI_TABLE)
-    dedup_table = getattr(context, "op_config", {}).get("dedup_table", DEFAULT_AI_DEDUP_TABLE)
+    op_config = _get_op_config(context)
+    duckdb_path = Path(op_config.get("duckdb", DEFAULT_AI_DUCKDB))
+    table = op_config.get("table", DEFAULT_AI_TABLE)
+    dedup_table = op_config.get("dedup_table", DEFAULT_AI_DEDUP_TABLE)
 
     _ensure_dir_ai(DEFAULT_DEDUP_CHECKS)
     # Remove if it exists as a directory
@@ -373,10 +381,11 @@ def raw_uspto_ai_human_sample_extraction(context, uspto_ai_deduplicate) -> str:
     Output:
       - Path to written NDJSON sample
     """
-    Path(getattr(context, "op_config", {}).get("duckdb", DEFAULT_AI_DUCKDB))
-    getattr(context, "op_config", {}).get("table", DEFAULT_AI_DEDUP_TABLE)
-    int(getattr(context, "op_config", {}).get("sample_n", 200))
-    output_path = Path(getattr(context, "op_config", {}).get("output_path", DEFAULT_AI_SAMPLE_PATH))
+    op_config = _get_op_config(context)
+    Path(op_config.get("duckdb", DEFAULT_AI_DUCKDB))
+    op_config.get("table", DEFAULT_AI_DEDUP_TABLE)
+    int(op_config.get("sample_n", 200))
+    output_path = Path(op_config.get("output_path", DEFAULT_AI_SAMPLE_PATH))
 
     try:
         # TODO: Implement sampling logic
