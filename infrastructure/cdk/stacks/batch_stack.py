@@ -6,8 +6,12 @@ from aws_cdk import (
     Stack,
     aws_batch as batch,
     aws_ec2 as ec2,
+    aws_events as events,
+    aws_events_targets as targets,
     aws_iam as iam,
     aws_logs as logs,
+    aws_sns as sns,
+    aws_sns_subscriptions as subscriptions,
 )
 from constructs import Construct
 
@@ -393,3 +397,34 @@ class BatchStack(Stack):
         CfnOutput(self, "UsaspendingExtractJobDefinitionArn", value=usaspending_extract_job_definition.ref)
         CfnOutput(self, "JobTaskRoleArn", value=job_task_role.role_arn)
         CfnOutput(self, "JobExecutionRoleArn", value=job_execution_role.role_arn)
+
+        # SNS Topic for job notifications
+        notification_topic = sns.Topic(
+            self,
+            "BatchJobNotifications",
+            display_name="SBIR Analytics Batch Job Notifications",
+        )
+
+        # Subscribe email (get from context or use default)
+        notification_email = self.node.try_get_context("notification_email")
+        if notification_email:
+            notification_topic.add_subscription(
+                subscriptions.EmailSubscription(notification_email)
+            )
+
+        # EventBridge rule for job state changes
+        events.Rule(
+            self,
+            "BatchJobStateChangeRule",
+            event_pattern=events.EventPattern(
+                source=["aws.batch"],
+                detail_type=["Batch Job State Change"],
+                detail={
+                    "status": ["SUCCEEDED", "FAILED"],
+                    "jobQueue": [job_queue.attr_job_queue_arn],
+                },
+            ),
+            targets=[targets.SnsTopic(notification_topic)],
+        )
+
+        CfnOutput(self, "NotificationTopicArn", value=notification_topic.topic_arn)
