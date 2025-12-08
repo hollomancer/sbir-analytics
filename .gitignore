@@ -152,6 +152,8 @@ reports/uspto-structure/
 # IDE
 .vscode/
 .idea/
+.zed/
+.cursor/
 
 # OS
 .DS_Store
