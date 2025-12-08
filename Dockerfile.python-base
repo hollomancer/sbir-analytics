@@ -44,6 +44,7 @@ RUN pip install --upgrade pip setuptools wheel && \
     "pyyaml>=6.0.0,<7.0.0" \
     "numpy<3" \
     "pyarrow>=14.0.2,<23.0.0" \
+    "pyreadstat>=1.1.4,<2.0.0" \
     "psutil"
 
 WORKDIR /app
