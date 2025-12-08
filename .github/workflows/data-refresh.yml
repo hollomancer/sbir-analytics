@@ -713,10 +713,24 @@ jobs:
           if [ ${PIPESTATUS[0]} -eq 0 ]; then
             echo "✅ **SBIR pipeline completed**" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
-            echo "<details><summary>📋 Pipeline Output</summary>" >> $GITHUB_STEP_SUMMARY
+
+            # Extract key metrics
+            EXTRACTED=$(grep -o "Extracted [0-9]* records" sbir_output.txt | head -1 || echo "")
+            VALIDATED=$(grep -o "Validation complete" sbir_output.txt | head -1 || echo "")
+            QUALITY=$(grep -o "Quality check result: [A-Z]*" sbir_output.txt | head -1 || echo "")
+
+            if [ -n "$EXTRACTED" ] || [ -n "$VALIDATED" ] || [ -n "$QUALITY" ]; then
+              echo "**Key Metrics:**" >> $GITHUB_STEP_SUMMARY
+              [ -n "$EXTRACTED" ] && echo "- $EXTRACTED" >> $GITHUB_STEP_SUMMARY
+              [ -n "$VALIDATED" ] && echo "- $VALIDATED" >> $GITHUB_STEP_SUMMARY
+              [ -n "$QUALITY" ] && echo "- $QUALITY" >> $GITHUB_STEP_SUMMARY
+              echo "" >> $GITHUB_STEP_SUMMARY
+            fi
+
+            echo "<details><summary>📋 Full Pipeline Output</summary>" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
-            grep -E "(INFO|ERROR|Extracted|Validation|Quality check|Neo4j)" sbir_output.txt | tail -30 >> $GITHUB_STEP_SUMMARY
+            tail -100 sbir_output.txt >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
             echo "</details>" >> $GITHUB_STEP_SUMMARY
           else
@@ -773,10 +787,22 @@ jobs:
           if [ $EXIT_CODE -eq 0 ]; then
             echo "✅ **USAspending enrichment completed**" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
-            echo "<details><summary>📋 Enrichment Output</summary>" >> $GITHUB_STEP_SUMMARY
+
+            # Extract key metrics
+            ENRICHED=$(grep -o "enriched [0-9]* records" usaspending_output.txt | head -1 || echo "")
+            MATCHED=$(grep -o "[0-9]*% matched" usaspending_output.txt | head -1 || echo "")
+
+            if [ -n "$ENRICHED" ] || [ -n "$MATCHED" ]; then
+              echo "**Key Metrics:**" >> $GITHUB_STEP_SUMMARY
+              [ -n "$ENRICHED" ] && echo "- $ENRICHED" >> $GITHUB_STEP_SUMMARY
+              [ -n "$MATCHED" ] && echo "- $MATCHED" >> $GITHUB_STEP_SUMMARY
+              echo "" >> $GITHUB_STEP_SUMMARY
+            fi
+
+            echo "<details><summary>📋 Full Enrichment Output</summary>" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
-            grep -E "(INFO|ERROR|Enriched|matched|success)" usaspending_output.txt | tail -30 >> $GITHUB_STEP_SUMMARY
+            tail -100 usaspending_output.txt >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
             echo "</details>" >> $GITHUB_STEP_SUMMARY
           else
@@ -808,10 +834,22 @@ jobs:
           if [ ${PIPESTATUS[0]} -eq 0 ]; then
             echo "✅ **USPTO pipeline completed**" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
-            echo "<details><summary>📋 Pipeline Output</summary>" >> $GITHUB_STEP_SUMMARY
+
+            # Extract key metrics
+            PATENTS=$(grep -o "Loaded [0-9]* patents" uspto_output.txt | head -1 || echo "")
+            ASSIGNMENTS=$(grep -o "[0-9]* assignments" uspto_output.txt | head -1 || echo "")
+
+            if [ -n "$PATENTS" ] || [ -n "$ASSIGNMENTS" ]; then
+              echo "**Key Metrics:**" >> $GITHUB_STEP_SUMMARY
+              [ -n "$PATENTS" ] && echo "- $PATENTS" >> $GITHUB_STEP_SUMMARY
+              [ -n "$ASSIGNMENTS" ] && echo "- $ASSIGNMENTS" >> $GITHUB_STEP_SUMMARY
+              echo "" >> $GITHUB_STEP_SUMMARY
+            fi
+
+            echo "<details><summary>📋 Full Pipeline Output</summary>" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
-            grep -E "(INFO|ERROR|Loaded|patents|assignments|Neo4j)" uspto_output.txt | tail -30 >> $GITHUB_STEP_SUMMARY
+            tail -100 uspto_output.txt >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
             echo "</details>" >> $GITHUB_STEP_SUMMARY
           else
