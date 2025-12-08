@@ -279,30 +279,10 @@ jobs:
           echo "- NAICS lookup from 5882.dat.gz (~57 GB compressed)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
-          # Register new job definition with commit SHA image and correct command
-          IMAGE_TAG="ghcr.io/hollomancer/sbir-analytics-full:${{ github.sha }}"
-          echo "**Using image:** \`$IMAGE_TAG\`" >> $GITHUB_STEP_SUMMARY
-
-          # Get current job definition and update both image and command
-          JOB_DEF=$(aws batch describe-job-definitions \
-            --job-definition-name sbir-analytics-usaspending-extract \
-            --status ACTIVE \
-            --query 'jobDefinitions[0]' \
-            --output json)
-
-          # Update image and ensure correct command (download_database.py with checkpoint support)
-          NEW_JOB_DEF=$(echo "$JOB_DEF" | jq --arg img "$IMAGE_TAG" '
-            del(.jobDefinitionArn, .revision, .status, .containerOrchestrationType) |
-            .containerProperties.image = $img |
-            .containerProperties.command = [
-              "bash",
-              "-c",
-              "cd /app && python scripts/usaspending/download_database.py --source-url \"${USASPENDING_URL}\" --s3-bucket sbir-etl-production-data"
-            ]
-          ')
-
-          aws batch register-job-definition --cli-input-json "$NEW_JOB_DEF"
-          echo "✅ Registered new job definition revision with checkpoint support" >> $GITHUB_STEP_SUMMARY
+          # Use CDK-deployed job definition (no registration needed)
+          # The job definition uses :latest tag which is updated by build-images workflow
+          echo "**Job definition:** sbir-analytics-usaspending-extract (CDK-managed)" >> $GITHUB_STEP_SUMMARY
+          echo "**Command:** download_database.py with S3 checkpoint support" >> $GITHUB_STEP_SUMMARY
 
           # Submit Batch job
           JOB_ID=$(aws batch submit-job \
