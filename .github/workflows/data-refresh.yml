@@ -747,7 +747,7 @@ jobs:
         run: uv sync
 
       - name: Run SBIR pipeline
-        if: needs.refresh-sbir.result == 'success'
+        if: needs.determine-source.outputs.sbir == 'true' && needs.refresh-sbir.result == 'success'
         env:
           # Use test or production Neo4j based on environment input (default: production for scheduled runs)
           NEO4J_URI: ${{ github.event.inputs.environment == 'test' && secrets.NEO4J_AURA_TEST_URI || secrets.NEO4J_AURA_URI }}
@@ -774,7 +774,7 @@ jobs:
           fi
 
       - name: Run USAspending enrichment
-        if: needs.refresh-usaspending.result == 'success'
+        if: needs.determine-source.outputs.usaspending == 'true' && needs.refresh-usaspending.result == 'success'
         env:
           SBIR_ETL__PIPELINE__ENVIRONMENT: production
           S3_BUCKET: ${{ env.S3_BUCKET }}
@@ -799,7 +799,7 @@ jobs:
           fi
 
       - name: Run USPTO pipeline
-        if: needs.refresh-uspto.result == 'success'
+        if: needs.determine-source.outputs.uspto == 'true' && needs.refresh-uspto.result == 'success'
         env:
           NEO4J_URI: ${{ github.event.inputs.environment == 'test' && secrets.NEO4J_AURA_TEST_URI || secrets.NEO4J_AURA_URI }}
           NEO4J_USER: neo4j
