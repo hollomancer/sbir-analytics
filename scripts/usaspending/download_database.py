@@ -378,7 +378,7 @@ def download_and_upload(
                         max_chunk_retries = 5
                         for chunk_attempt in range(max_chunk_retries):
                             try:
-                                print(f"Uploading part {part_number} ({chunk_size_bytes:,} bytes)")
+                                # Upload part (logging only on retry or error)
                                 part_response = s3_client.upload_part(
                                     Bucket=s3_bucket,
                                     Key=s3_key,
@@ -434,7 +434,7 @@ def download_and_upload(
                             )
 
                         # Progress indicator for large files
-                        if total_size % (1024 * 1024 * 1024) < CHUNK_SIZE:  # Every ~1GB
+                        if total_size % (10 * 1024 * 1024 * 1024) < CHUNK_SIZE:  # Every 10GB
                             print(
                                 f"Progress: {total_size / 1024 / 1024 / 1024:.2f} GB total ({total_bytes_new / 1024 / 1024 / 1024:.2f} GB new)"
                             )
