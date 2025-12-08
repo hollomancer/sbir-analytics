@@ -268,7 +268,7 @@ pyreadline3==3.5.4 ; sys_platform == 'win32'
     # via humanfriendly
 pyreadstat==1.3.2
     # via sbir-analytics
-pytest==8.4.2
+pytest==9.0.2
     # via
     #   pytest-asyncio
     #   pytest-cov
