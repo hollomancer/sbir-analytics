@@ -227,12 +227,18 @@ def download_and_upload(
                         upload_id = existing_upload_id
                         parts = existing_parts.copy()
                         part_number = len(existing_parts) + 1
-                        print(f"Reusing existing multipart upload: {upload_id}")
-                    except s3_client.exceptions.ClientError:
+                        print(f"✅ Reusing existing multipart upload: {upload_id}")
+                    except s3_client.exceptions.ClientError as e:
                         print(
-                            f"Warning: Existing multipart upload {existing_upload_id} not found. Starting fresh."
+                            f"⚠️ Existing multipart upload {existing_upload_id} not found: {e}"
                         )
+                        print("Checkpoint is stale - clearing and starting fresh download from beginning")
+                        # Clear stale checkpoint
+                        clear_checkpoint(s3_bucket, checkpoint_s3_key)
+                        # Reset to start from beginning
                         existing_upload_id = None
+                        bytes_resume_from = 0
+                        resume_mode = False
                         parts = []
                         part_number = 1
                 else:
