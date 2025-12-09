@@ -121,23 +121,18 @@ jobs:
 
           EXIT_CODE=${PIPESTATUS[0]}
 
-          # Strip ANSI codes and extract key metrics
-          sed 's/\x1b\[[0-9;]*m//g' sbir_output.txt > sbir_clean.txt
-
-          echo "### 📊 Pipeline Summary" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          # Extract final counts and summary lines
-          grep -E "(Extracted [0-9]+ records|Validation complete|Loading Summary|Total rows processed|Successfully processed|Nodes Created|Relationships Created|Awards:|Companies:|Researchers:|RECIPIENT_OF|FOLLOWS|Quality check.*PASSED|neo4j_sbir_awards_load_check)" sbir_clean.txt | tail -20 >> $GITHUB_STEP_SUMMARY || echo "No summary metrics found" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-
           if [ $EXIT_CODE -eq 0 ]; then
-            echo "✅ SBIR pipeline completed successfully" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "❌ SBIR pipeline failed" >> $GITHUB_STEP_SUMMARY
-            echo "### Error Details" >> $GITHUB_STEP_SUMMARY
+            echo "✅ **SBIR pipeline completed**" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**Pipeline Output (last 30 lines):**" >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
-            tail -50 sbir_clean.txt >> $GITHUB_STEP_SUMMARY
+            tail -30 sbir_output.txt >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **SBIR pipeline failed**" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            tail -50 sbir_output.txt >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
             exit $EXIT_CODE
           fi
