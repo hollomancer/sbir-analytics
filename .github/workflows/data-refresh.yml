@@ -665,8 +665,14 @@ jobs:
           NEO4J_PASSWORD: ${{ github.event.inputs.environment == 'test' && secrets.NEO4J_AURA_TEST_PASSWORD || secrets.NEO4J_AURA_PASSWORD }}
           SBIR_ETL__PIPELINE__ENVIRONMENT: production
           S3_BUCKET: ${{ env.S3_BUCKET }}
+          AWS_DEFAULT_REGION: ${{ env.AWS_REGION }}
         run: |
           echo "## 🎯 SBIR Pipeline" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Debug: Check S3 access
+          echo "Checking S3 access..." >> $GITHUB_STEP_SUMMARY
+          aws s3 ls "s3://$S3_BUCKET/raw/awards/" --recursive | tail -3 >> $GITHUB_STEP_SUMMARY || echo "S3 access failed" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
           uv run dagster job execute \
