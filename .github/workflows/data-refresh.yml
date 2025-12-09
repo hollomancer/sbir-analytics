@@ -684,26 +684,10 @@ jobs:
           if [ ${PIPESTATUS[0]} -eq 0 ]; then
             echo "✅ **SBIR pipeline completed**" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
-
-            # Extract key metrics
-            EXTRACTED=$(grep -o "Extracted [0-9]* records" sbir_output.txt | head -1 || echo "")
-            VALIDATED=$(grep -o "Validation complete" sbir_output.txt | head -1 || echo "")
-            QUALITY=$(grep -o "Quality check result: [A-Z]*" sbir_output.txt | head -1 || echo "")
-
-            if [ -n "$EXTRACTED" ] || [ -n "$VALIDATED" ] || [ -n "$QUALITY" ]; then
-              echo "**Key Metrics:**" >> $GITHUB_STEP_SUMMARY
-              [ -n "$EXTRACTED" ] && echo "- $EXTRACTED" >> $GITHUB_STEP_SUMMARY
-              [ -n "$VALIDATED" ] && echo "- $VALIDATED" >> $GITHUB_STEP_SUMMARY
-              [ -n "$QUALITY" ] && echo "- $QUALITY" >> $GITHUB_STEP_SUMMARY
-              echo "" >> $GITHUB_STEP_SUMMARY
-            fi
-
-            echo "<details><summary>📋 Full Pipeline Output</summary>" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**Pipeline Output (last 30 lines):**" >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
-            tail -100 sbir_output.txt >> $GITHUB_STEP_SUMMARY
+            tail -30 sbir_output.txt >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
-            echo "</details>" >> $GITHUB_STEP_SUMMARY
           else
             echo "❌ **SBIR pipeline failed**" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
