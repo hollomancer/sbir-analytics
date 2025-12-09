@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import tempfile
 from pathlib import Path
+from typing import Any
 
 from cloudpathlib import S3Path
 from loguru import logger
@@ -148,19 +149,30 @@ def find_latest_sbir_awards(bucket: str | None = None, prefix: str = "raw/awards
 
     try:
         s3 = boto3.client("s3")
-        response = s3.list_objects_v2(Bucket=bucket, Prefix=prefix)
+        continuation_token: str | None = None
+        latest_obj: dict[str, Any] | None = None
 
-        if "Contents" not in response:
+        while True:
+            list_kwargs: dict[str, Any] = {"Bucket": bucket, "Prefix": prefix, "MaxKeys": 1000}
+            if continuation_token:
+                list_kwargs["ContinuationToken"] = continuation_token
+
+            response = s3.list_objects_v2(**list_kwargs)
+            for obj in response.get("Contents", []):
+                if not obj["Key"].endswith("award_data.csv"):
+                    continue
+                obj_dict = dict(obj)  # Cast to dict for type checker
+                if latest_obj is None or obj_dict["LastModified"] > latest_obj["LastModified"]:
+                    latest_obj = obj_dict
+
+            if not response.get("IsTruncated"):
+                break
+            continuation_token = response.get("NextContinuationToken")
+
+        if latest_obj is None:
             return None
 
-        # Find latest award_data.csv by LastModified
-        csv_files = [obj for obj in response["Contents"] if obj["Key"].endswith("award_data.csv")]
-
-        if not csv_files:
-            return None
-
-        latest = max(csv_files, key=lambda x: x["LastModified"])
-        return f"s3://{bucket}/{latest['Key']}"
+        return f"s3://{bucket}/{latest_obj['Key']}"
 
     except Exception as e:
         logger.warning(f"Failed to find latest SBIR awards in S3: {e}")
