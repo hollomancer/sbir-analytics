@@ -294,10 +294,6 @@ jobs:
           echo "⏳ Job submitted - will run in background (3-4 hours expected)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Note:** ETL pipeline will validate data availability before processing" >> $GITHUB_STEP_SUMMARY
-              --query 'events[*].message' \
-              --output text >> $GITHUB_STEP_SUMMARY
-          else
-            echo "❌ **Extraction failed**" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             aws logs get-log-events \
               --log-group-name /aws/batch/sbir-analytics-analysis \
