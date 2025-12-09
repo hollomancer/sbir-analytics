@@ -294,38 +294,6 @@ jobs:
           echo "⏳ Job submitted - will run in background (3-4 hours expected)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Note:** ETL pipeline will validate data availability before processing" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            aws logs get-log-events \
-              --log-group-name /aws/batch/sbir-analytics-analysis \
-              --log-stream-name "$LOG_STREAM" \
-              --query 'events[*].message' \
-              --output text >> $GITHUB_STEP_SUMMARY
-          fi
-
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          echo "</details>" >> $GITHUB_STEP_SUMMARY
-
-          # Extract metrics from logs
-          RECIPIENT_COUNT=$(aws logs get-log-events \
-            --log-group-name /aws/batch/sbir-analytics-analysis \
-            --log-stream-name "$LOG_STREAM" \
-            --query 'events[*].message' \
-            --output text | grep -oE 'Extracted [0-9,]+ recipients' | grep -oE '[0-9,]+' || echo "unknown")
-
-          NAICS_COUNT=$(aws logs get-log-events \
-            --log-group-name /aws/batch/sbir-analytics-analysis \
-            --log-stream-name "$LOG_STREAM" \
-            --query 'events[*].message' \
-            --output text | grep -oE 'Extracted [0-9,]+ unique' | grep -oE '[0-9,]+' || echo "unknown")
-
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### 📊 Results" >> $GITHUB_STEP_SUMMARY
-          echo "- **Recipients:** $RECIPIENT_COUNT" >> $GITHUB_STEP_SUMMARY
-          echo "- **NAICS pairs:** $NAICS_COUNT" >> $GITHUB_STEP_SUMMARY
-
-          if [ "$STATUS" != "SUCCEEDED" ]; then
-            exit 1
-          fi
 
       - name: Report status
         if: always()
