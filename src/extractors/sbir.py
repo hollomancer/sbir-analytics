@@ -50,11 +50,15 @@ class SbirDuckDBExtractor:
                 from ..utils.cloud_storage import find_latest_sbir_awards
 
                 csv_path_s3 = find_latest_sbir_awards(bucket)
+                if csv_path_s3 is None:
+                    raise FileNotFoundError(
+                        f"S3-first mode enabled but no SBIR awards found in s3://{bucket}/raw/awards/"
+                    )
 
         # Resolve path with S3-first, local fallback
         self.csv_path = resolve_data_path(
             cloud_path=csv_path_s3 or csv_path,
-            local_fallback=Path(csv_path),
+            local_fallback=Path(csv_path) if not use_s3_first else None,
             prefer_local=not use_s3_first,
         )
 
