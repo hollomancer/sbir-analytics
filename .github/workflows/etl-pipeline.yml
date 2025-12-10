@@ -163,6 +163,7 @@ jobs:
         shell: bash
         run: |
           echo "## 💰 USAspending Pipeline" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
 
           dagster job execute \
             -m src.definitions \
@@ -171,10 +172,18 @@ jobs:
 
           EXIT_CODE=${PIPESTATUS[0]}
           if [ $EXIT_CODE -eq 0 ]; then
-            echo "✅ USAspending pipeline completed" >> $GITHUB_STEP_SUMMARY
+            echo "✅ **USAspending pipeline completed**" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**Pipeline Output (last 30 lines):**" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            tail -30 usaspending_output.txt >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
           else
-            echo "❌ USAspending pipeline failed" >> $GITHUB_STEP_SUMMARY
-            tail -100 usaspending_output.txt >> $GITHUB_STEP_SUMMARY
+            echo "❌ **USAspending pipeline failed**" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            tail -50 usaspending_output.txt >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
             exit 1
           fi
 
@@ -273,6 +282,7 @@ jobs:
         shell: bash
         run: |
           echo "## 🏷️ CET Classification Pipeline" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
 
           dagster job execute \
             -m src.definitions \
@@ -281,10 +291,18 @@ jobs:
 
           EXIT_CODE=${PIPESTATUS[0]}
           if [ $EXIT_CODE -eq 0 ]; then
-            echo "✅ CET pipeline completed" >> $GITHUB_STEP_SUMMARY
+            echo "✅ **CET pipeline completed**" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**Pipeline Output (last 30 lines):**" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            tail -30 cet_output.txt >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
           else
-            echo "❌ CET pipeline failed" >> $GITHUB_STEP_SUMMARY
-            tail -100 cet_output.txt >> $GITHUB_STEP_SUMMARY
+            echo "❌ **CET pipeline failed**" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            tail -50 cet_output.txt >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
             exit 1
           fi
 
