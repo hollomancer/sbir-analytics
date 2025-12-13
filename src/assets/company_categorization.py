@@ -449,16 +449,40 @@ def neo4j_company_categorization(
         f"company categorizations to Neo4j"
     )
 
-    # Initialize Neo4j client
-    client_config = Neo4jConfig(
-        uri=neo4j_cfg.uri,
-        username=neo4j_cfg.username,
-        password=neo4j_cfg.password,
-        database=neo4j_cfg.database,
-        batch_size=neo4j_cfg.batch_size,
-    )
+    # Check if Neo4j loading is explicitly skipped
+    import os
 
-    client = Neo4jClient(client_config)
+    skip_neo4j = os.getenv("SKIP_NEO4J_LOADING", "false").lower() in ("true", "1", "yes")
+
+    if skip_neo4j:
+        context.log.warning("Neo4j loading skipped via SKIP_NEO4J_LOADING environment variable")
+        return {
+            "status": "skipped",
+            "reason": "neo4j_loading_skipped",
+            "companies_updated": 0,
+            "total_attempted": len(enriched_sbir_companies_with_categorization),
+            "success_rate": 0.0,
+            "errors": 0,
+        }
+
+    # Initialize Neo4j client
+    try:
+        client_config = Neo4jConfig(
+            uri=neo4j_cfg.uri,
+            username=neo4j_cfg.username,
+            password=neo4j_cfg.password,
+            database=neo4j_cfg.database,
+            batch_size=neo4j_cfg.batch_size,
+        )
+
+        client = Neo4jClient(client_config)
+        # Test connection
+        with client.session() as session:
+            session.run("RETURN 1")
+    except Exception as e:
+        raise RuntimeError(
+            f"Neo4j connection failed but Neo4j loading not skipped: {e}. Set SKIP_NEO4J_LOADING=true to skip."
+        )
 
     try:
         # Initialize categorization loader

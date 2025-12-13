@@ -512,9 +512,19 @@ def _serialize_metrics(metrics: LoadMetrics | None) -> dict[str, Any]:
 
 def _get_neo4j_client() -> Neo4jClient | None:
     """Create and return a Neo4j client, or None if unavailable."""
+    import os
+
+    # Check if Neo4j loading is explicitly skipped
+    skip_neo4j = os.getenv("SKIP_NEO4J_LOADING", "false").lower() in ("true", "1", "yes")
+
     if Neo4jClient is None or Neo4jConfig is None:
-        logger.warning("Neo4jClient unavailable; skipping Neo4j operations")
-        return None
+        if skip_neo4j:
+            logger.warning("Neo4jClient unavailable but skipping Neo4j operations")
+            return None
+        else:
+            raise RuntimeError(
+                "Neo4jClient unavailable but Neo4j loading not skipped. Set SKIP_NEO4J_LOADING=true to skip."
+            )
 
     try:
         config = Neo4jConfig(
@@ -527,8 +537,13 @@ def _get_neo4j_client() -> Neo4jClient | None:
         logger.info(f"Created Neo4j client for {DEFAULT_NEO4J_URI}")
         return client
     except Exception as e:
-        logger.error(f"Failed to create Neo4j client: {e}")
-        return None
+        if skip_neo4j:
+            logger.warning(f"Failed to create Neo4j client but skipping: {e}")
+            return None
+        else:
+            raise RuntimeError(
+                f"Failed to create Neo4j client but Neo4j loading not skipped: {e}. Set SKIP_NEO4J_LOADING=true to skip."
+            )
 
 
 # ============================================================================

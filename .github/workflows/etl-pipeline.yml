@@ -93,6 +93,7 @@ jobs:
           NEO4J_USER: neo4j
           NEO4J_PASSWORD: ${{ github.event.inputs.environment == 'test' && secrets.NEO4J_AURA_TEST_PASSWORD || secrets.NEO4J_AURA_PASSWORD }}
           S3_BUCKET: ${{ env.S3_BUCKET }}
+          SKIP_NEO4J_LOADING: ${{ github.event.inputs.skip_neo4j }}
         shell: bash
         run: |
           echo "## 🎯 SBIR Pipeline" >> $GITHUB_STEP_SUMMARY
@@ -230,6 +231,7 @@ jobs:
           NEO4J_USER: neo4j
           NEO4J_PASSWORD: ${{ github.event.inputs.environment == 'test' && secrets.NEO4J_AURA_TEST_PASSWORD || secrets.NEO4J_AURA_PASSWORD }}
           S3_BUCKET: ${{ env.S3_BUCKET }}
+          SKIP_NEO4J_LOADING: ${{ github.event.inputs.skip_neo4j }}
         shell: bash
         run: |
           echo "## 📜 USPTO Pipeline" >> $GITHUB_STEP_SUMMARY
@@ -279,6 +281,7 @@ jobs:
           NEO4J_USER: neo4j
           NEO4J_PASSWORD: ${{ github.event.inputs.environment == 'test' && secrets.NEO4J_AURA_TEST_PASSWORD || secrets.NEO4J_AURA_PASSWORD }}
           S3_BUCKET: ${{ env.S3_BUCKET }}
+          SKIP_NEO4J_LOADING: ${{ github.event.inputs.skip_neo4j }}
         shell: bash
         run: |
           echo "## 🏷️ CET Classification Pipeline" >> $GITHUB_STEP_SUMMARY

@@ -56,7 +56,7 @@ def loaded_cet_areas(context, cet_taxonomy) -> dict[str, Any]:
 
     client = _get_neo4j_client()
     if client is None:
-        return {"status": "skipped", "reason": "neo4j_unavailable"}
+        return {"status": "skipped", "reason": "neo4j_skipped"}
 
     # Config
     taxonomy_parquet = Path(
@@ -135,7 +135,7 @@ def loaded_award_cet_enrichment(
 
     client = _get_neo4j_client()
     if client is None:
-        return {"status": "skipped", "reason": "neo4j_unavailable"}
+        return {"status": "skipped", "reason": "neo4j_skipped"}
 
     # Config
     award_class_parquet = Path(
@@ -209,7 +209,7 @@ def loaded_company_cet_enrichment(
 
     client = _get_neo4j_client()
     if client is None:
-        return {"status": "skipped", "reason": "neo4j_unavailable"}
+        return {"status": "skipped", "reason": "neo4j_skipped"}
 
     # Config
     company_profiles_parquet = Path(
@@ -292,7 +292,7 @@ def loaded_award_cet_relationships(
 
     client = _get_neo4j_client()
     if client is None:
-        return {"status": "skipped", "reason": "neo4j_unavailable"}
+        return {"status": "skipped", "reason": "neo4j_skipped"}
 
     # Config
     award_class_parquet = Path(
@@ -367,7 +367,7 @@ def loaded_company_cet_relationships(
 
     client = _get_neo4j_client()
     if client is None:
-        return {"status": "skipped", "reason": "neo4j_unavailable"}
+        return {"status": "skipped", "reason": "neo4j_skipped"}
 
     # Config
     company_profiles_parquet = Path(

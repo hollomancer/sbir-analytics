@@ -176,6 +176,11 @@ def normalize_company_name(name: str) -> str:
 
 def _get_neo4j_client() -> Neo4jClient | None:
     """Get Neo4j client from configuration, or None if unavailable."""
+    import os
+
+    # Check if Neo4j loading is explicitly skipped
+    skip_neo4j = os.getenv("SKIP_NEO4J_LOADING", "false").lower() in ("true", "1", "yes")
+
     try:
         config = get_config()
         neo4j_config = config.neo4j
@@ -194,8 +199,13 @@ def _get_neo4j_client() -> Neo4jClient | None:
             session.run("RETURN 1")
         return client
     except Exception as e:
-        logger.warning(f"Neo4j unavailable: {e}")
-        return None
+        if skip_neo4j:
+            logger.warning(f"Neo4j unavailable but skipping: {e}")
+            return None
+        else:
+            raise RuntimeError(
+                f"Neo4j connection failed but Neo4j loading not skipped: {e}. Set SKIP_NEO4J_LOADING=true to skip."
+            )
 
 
 def detect_award_progressions(

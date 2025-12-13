@@ -208,9 +208,19 @@ def _get_neo4j_driver() -> Any:
 
 def _get_neo4j_client() -> Any:
     """Create and return a Neo4jClient, or None if unavailable."""
+    import os
+
+    # Check if Neo4j loading is explicitly skipped
+    skip_neo4j = os.getenv("SKIP_NEO4J_LOADING", "false").lower() in ("true", "1", "yes")
+
     if Neo4jClient is None or Neo4jConfig is None:
-        logger.warning("Neo4j client unavailable; skipping Neo4j operations")
-        return None
+        if skip_neo4j:
+            logger.warning("Neo4j client unavailable but skipping Neo4j operations")
+            return None
+        else:
+            raise RuntimeError(
+                "Neo4j client unavailable but Neo4j loading not skipped. Set SKIP_NEO4J_LOADING=true to skip."
+            )
 
     try:
         config = Neo4jConfig(
@@ -226,8 +236,13 @@ def _get_neo4j_client() -> Any:
         logger.info("✓ Connected to Neo4j via Neo4jClient")
         return client
     except Exception as e:
-        logger.error(f"Failed to connect to Neo4j: {e}")
-        raise
+        if skip_neo4j:
+            logger.warning(f"Failed to connect to Neo4j but skipping: {e}")
+            return None
+        else:
+            raise RuntimeError(
+                f"Failed to connect to Neo4j but Neo4j loading not skipped: {e}. Set SKIP_NEO4J_LOADING=true to skip."
+            )
 
 
 def _prepare_transition_dataframe(transitions_df: pd.DataFrame) -> pd.DataFrame:

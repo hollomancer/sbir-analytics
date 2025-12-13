@@ -370,8 +370,19 @@ DEFAULT_OUTPUT_DIR = Path(os.environ.get("SBIR_ETL__CET__NEO4J_OUTPUT_DIR", "dat
 
 def _get_neo4j_client():
     """Get Neo4j client with error handling."""
+    import os
+
+    # Check if Neo4j loading is explicitly skipped
+    skip_neo4j = os.getenv("SKIP_NEO4J_LOADING", "false").lower() in ("true", "1", "yes")
+
     if Neo4jClient is None or Neo4jConfig is None:
-        return None  # type: ignore[unreachable]
+        if skip_neo4j:
+            return None  # Gracefully skip when explicitly requested
+        else:
+            raise RuntimeError(
+                "Neo4j client unavailable but Neo4j loading not skipped. Set SKIP_NEO4J_LOADING=true to skip."
+            )
+
     try:
         config = Neo4jConfig(
             uri=DEFAULT_NEO4J_URI,
@@ -379,9 +390,18 @@ def _get_neo4j_client():
             password=DEFAULT_NEO4J_PASSWORD,
             database=DEFAULT_NEO4J_DATABASE,
         )
-        return Neo4jClient(config)
-    except Exception:
-        return None
+        client = Neo4jClient(config)
+        # Test connection
+        with client.session() as session:
+            session.run("RETURN 1")
+        return client
+    except Exception as e:
+        if skip_neo4j:
+            return None  # Gracefully skip when explicitly requested
+        else:
+            raise RuntimeError(
+                f"Neo4j connection failed but Neo4j loading not skipped: {e}. Set SKIP_NEO4J_LOADING=true to skip."
+            )
 
 
 def _read_parquet_or_ndjson(
