@@ -9,6 +9,7 @@ This directory contains reusable composite actions for GitHub workflows. These a
 Sets up Python with UV package manager and installs dependencies.
 
 **Usage:**
+
 ```yaml
 - name: Setup Python and UV
   uses: ./.github/actions/setup-python-uv
@@ -21,6 +22,7 @@ Sets up Python with UV package manager and installs dependencies.
 ```
 
 **Features:**
+
 - Installs UV package manager
 - Caches virtual environment and pytest cache
 - Optionally installs pyreadstat for Stata file support
@@ -32,6 +34,7 @@ Sets up Python with UV package manager and installs dependencies.
 Configures AWS credentials using OIDC role assumption.
 
 **Usage:**
+
 ```yaml
 - name: Configure AWS credentials
   uses: ./.github/actions/setup-aws-credentials
@@ -41,6 +44,7 @@ Configures AWS credentials using OIDC role assumption.
 ```
 
 **Features:**
+
 - Uses OIDC for secure credential management
 - No long-lived AWS keys needed
 
@@ -51,6 +55,7 @@ Configures AWS credentials using OIDC role assumption.
 Sets up Docker Buildx for multi-platform builds and caching.
 
 **Usage:**
+
 ```yaml
 - name: Set up Docker Buildx
   uses: ./.github/actions/setup-docker-buildx
@@ -59,6 +64,7 @@ Sets up Docker Buildx for multi-platform builds and caching.
 ```
 
 **Features:**
+
 - Optional QEMU setup for multi-arch builds (ARM64, etc.)
 - Enables Docker Buildx caching
 
@@ -69,6 +75,7 @@ Sets up Docker Buildx for multi-platform builds and caching.
 Starts a Neo4j Docker container and waits for it to be ready.
 
 **Usage:**
+
 ```yaml
 - name: Start Neo4j
   uses: ./.github/actions/start-neo4j
@@ -81,9 +88,11 @@ Starts a Neo4j Docker container and waits for it to be ready.
 ```
 
 **Outputs:**
+
 - `neo4j-uri`: Neo4j bolt URI (bolt://localhost:7687)
 
 **Features:**
+
 - Starts Neo4j container with specified credentials
 - Waits for Neo4j to be ready using TCP health check
 - Sets NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD environment variables
@@ -97,6 +106,7 @@ Starts a Neo4j Docker container and waits for it to be ready.
 Stops and removes a Neo4j Docker container.
 
 **Usage:**
+
 ```yaml
 - name: Stop Neo4j
   if: always()
@@ -112,6 +122,7 @@ Stops and removes a Neo4j Docker container.
 Sets up Neo4j environment variables for service containers.
 
 **Usage:**
+
 ```yaml
 - name: Setup Neo4j environment
   uses: ./.github/actions/setup-neo4j-service
@@ -123,6 +134,7 @@ Sets up Neo4j environment variables for service containers.
 ```
 
 **Outputs:**
+
 - `neo4j-uri`: Neo4j connection URI
 - `neo4j-username`: Neo4j username
 - `neo4j-password`: Neo4j password
@@ -136,6 +148,7 @@ Sets up Neo4j environment variables for service containers.
 Waits for Neo4j service container to be ready.
 
 **Usage:**
+
 ```yaml
 - name: Wait for Neo4j
   uses: ./.github/actions/wait-for-neo4j
@@ -148,6 +161,7 @@ Waits for Neo4j service container to be ready.
 ```
 
 **Features:**
+
 - Supports HTTP and TCP health checks
 - Automatic retry with configurable timeout
 - Installs netcat for TCP checks if needed
@@ -159,6 +173,7 @@ Waits for Neo4j service container to be ready.
 Prepares `.env` file from `.env.example` with optional secret injection.
 
 **Usage:**
+
 ```yaml
 - name: Prepare .env file
   uses: ./.github/actions/prepare-env-file
@@ -169,6 +184,7 @@ Prepares `.env` file from `.env.example` with optional secret injection.
 ```
 
 **Features:**
+
 - Copies from `.env.example` or creates empty file
 - Injects Neo4j credentials if provided
 - Sets `NEO4J_AUTH` automatically
@@ -181,6 +197,7 @@ Consolidated setup for test environments including Neo4j service configuration,
 environment variables, and common test settings.
 
 **Usage:**
+
 ```yaml
 - name: Setup test environment
   uses: ./.github/actions/setup-test-environment
@@ -196,6 +213,7 @@ environment variables, and common test settings.
 ```
 
 **Outputs:**
+
 - `neo4j-uri`: Neo4j connection URI
 - `neo4j-username`: Neo4j username
 - `neo4j-password`: Neo4j password

@@ -3,7 +3,7 @@
 ## Test Categories
 
 | Category | Purpose | External Services | Run Frequency |
-|----------|---------|-------------------|---------------|
+| --- | --- | --- | --- |
 | **Unit** | Single function/class isolation | None (all mocked) | Every commit |
 | **Integration** | Multiple components working together | May require Neo4j | PR merge |
 | **E2E** | Full pipeline from input to output | May require Neo4j, APIs | Nightly |
@@ -43,7 +43,7 @@ uv run pytest -m integration
 
 ## Directory Structure
 
-```
+```text
 tests/
 ├── unit/                    # Isolated component tests
 │   ├── models/             # Pydantic model tests
@@ -75,6 +75,7 @@ tests/
 ### Fixtures
 
 Common fixtures are defined in:
+
 - `tests/conftest.py` - Root-level fixtures
 - `tests/conftest_shared.py` - Shared utilities
 - `tests/fixtures/` - Test data files

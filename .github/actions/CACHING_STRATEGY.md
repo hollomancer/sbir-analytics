@@ -5,6 +5,7 @@ This document describes the caching strategy used across GitHub Actions workflow
 ## Overview
 
 Caching in GitHub Actions helps:
+
 - **Speed up CI runs** by reusing previously built artifacts
 - **Reduce costs** by avoiding redundant work
 - **Improve reliability** by using known-good cached artifacts
@@ -21,16 +22,20 @@ Caching in GitHub Actions helps:
 ### 1. Python Virtual Environment (UV)
 
 **Location**: `.venv/`
+
 **Cache Key**: `venv-{os}-{python-version}-{hash(uv.lock)}`
+
 **Action**: `.github/actions/setup-python-uv`
 
 **How it works**:
+
 - Cache key includes OS, Python version, and hash of `uv.lock`
 - Cache is restored before dependency installation
 - Cache is saved after successful installation
 - Automatically invalidates when `uv.lock` changes
 
 **Example**:
+
 ```yaml
 - name: Cache UV virtual environment
   uses: actions/cache@v4
@@ -44,10 +49,13 @@ Caching in GitHub Actions helps:
 ### 2. UV Binary
 
 **Location**: `$HOME/.cargo/bin/uv`, `$HOME/.local/bin/uv`
+
 **Cache Key**: `uv-binary-{os}-latest`
+
 **Action**: `.github/actions/setup-python-uv`
 
 **How it works**:
+
 - UV is installed via `curl` script
 - Binary location is cached to avoid re-downloading
 - Cache key is OS-specific only (UV version managed separately)
@@ -55,15 +63,19 @@ Caching in GitHub Actions helps:
 ### 3. Pytest Cache
 
 **Location**: `.pytest_cache/`
+
 **Cache Key**: `pytest-{os}-{python-version}-{hash(test-files)}`
+
 **Action**: `.github/actions/setup-python-uv` (optional)
 
 **How it works**:
+
 - Only enabled when `cache-pytest: "true"` is set
 - Cache key includes hash of test files
 - Helps pytest skip unchanged tests (with `--lf` flag)
 
 **Usage**:
+
 ```yaml
 - uses: ./.github/actions/setup-python-uv
   with:
@@ -73,10 +85,13 @@ Caching in GitHub Actions helps:
 ### 4. Pip Packages (for pyreadstat)
 
 **Location**: `~/.cache/pip/`
+
 **Cache Key**: `pip-packages-{os}-{hash(uv.lock)}`
+
 **Action**: `.github/actions/setup-python-uv`
 
 **How it works**:
+
 - Only used when `install-pyreadstat: "true"` is set
 - Caches pip packages downloaded for pyreadstat
 - Reduces download time on subsequent runs
@@ -84,15 +99,19 @@ Caching in GitHub Actions helps:
 ### 5. Docker Build Cache (Planned)
 
 **Location**: Docker BuildKit cache
+
 **Cache Key**: `docker-build-{hash(Dockerfile,deps)}`
+
 **Status**: Not yet standardized across all workflows
 
 **Future implementation**:
+
 - Use `docker buildx build --cache-from` and `--cache-to`
 - Cache Docker layer builds
 - Significantly speeds up Docker image builds
 
 **Example**:
+
 ```yaml
 - name: Build Docker image with cache
   run: |
@@ -115,6 +134,7 @@ To manually invalidate a cache:
 ### Cache Size Monitoring
 
 Monitor cache usage:
+
 - **GitHub UI**: Settings → Actions → Caches
 - **API**: `GET /repos/{owner}/{repo}/actions/cache/usage`
 

@@ -148,6 +148,7 @@ def cached_test_patents():
 - `test_transitions.py`: Nested test scenarios
 
 **Recommendations:**
+
 - Extract helper methods for common setup patterns
 - Use parameterized tests for similar scenarios
 - Consider test fixtures for complex object graphs
@@ -155,7 +156,8 @@ def cached_test_patents():
 ### 6. Improve Test Organization
 
 **Current Structure:**
-```
+
+```text
 tests/
 ├── unit/           # 49 subdirectories
 ├── integration/    # 24 files
@@ -172,11 +174,13 @@ tests/
 ### 7. Standardize Test Naming
 
 **Current Patterns:**
+
 - `test_<function>_<scenario>` (most common)
 - `test_<class>_<method>` (class-based tests)
 - `test_<feature>_<edge_case>` (integration tests)
 
 **Recommendation**: Adopt consistent convention:
+
 ```python
 # Unit tests
 def test_<function>_<scenario>_<expected_outcome>():
@@ -190,10 +194,12 @@ def test_<feature>_integration_<scenario>():
 ### 8. Add Test Categories
 
 **Current Markers:**
+
 - `fast`, `slow`, `integration`, `e2e`, `real_data`
 - `transition`, `fiscal`, `cet`, `neo4j`
 
 **Proposed Additions:**
+
 ```python
 # In conftest.py
 config.addinivalue_line("markers", "unit: Pure unit tests with no I/O")
@@ -208,6 +214,7 @@ config.addinivalue_line("markers", "performance: Performance/benchmark tests")
 
 **Areas with Lower Coverage** (based on recent coverage reports):
 
+
 1. Error handling paths in enrichment modules
 2. Edge cases in fiscal calculations
 3. Concurrent access patterns in Neo4j loaders
@@ -220,6 +227,7 @@ config.addinivalue_line("markers", "performance: Performance/benchmark tests")
 **Current State**: Most tests have docstrings, but inconsistent detail level
 
 **Proposed Standard:**
+
 ```python
 def test_enrichment_fallback_chain():
     """Test hierarchical enrichment fallback behavior.
@@ -240,11 +248,13 @@ def test_enrichment_fallback_chain():
 
 **Identified Patterns:**
 
+
 1. **Neo4j Connection Tests**: Similar patterns across multiple files
 2. **DataFrame Validation**: Repeated schema checks
 3. **Mock Setup**: Similar mock configurations
 
 **Quantified Duplication:**
+
 - ~150-200 lines of duplicate Neo4j setup code
 - ~100-150 lines of duplicate DataFrame validation
 - ~200-300 lines of duplicate mock configuration
@@ -254,18 +264,21 @@ def test_enrichment_fallback_chain():
 ## 🚀 Implementation Roadmap
 
 ### Phase 1: Quick Wins (1-2 days)
+
 1. Create `tests/mocks/` directory with shared mock factories
 2. Extend `tests/factories.py` with DataFrame builders
 3. Add new fixtures to `conftest_shared.py`
 4. Document test organization standards
 
 ### Phase 2: Structural Improvements (3-5 days)
+
 1. Split 5 largest test files (>1000 LOC)
 2. Consolidate duplicate test patterns
 3. Standardize test naming conventions
 4. Add missing test markers
 
 ### Phase 3: Quality Improvements (5-7 days)
+
 1. Add tests for coverage gaps
 2. Improve test documentation
 3. Refactor high-complexity tests
@@ -274,11 +287,13 @@ def test_enrichment_fallback_chain():
 ## 📈 Expected Benefits
 
 ### Quantitative
+
 - **Reduce test code by 10-15%** (~7,000-10,000 lines)
 - **Improve test execution time by 5-10%** through better parallelization
 - **Reduce test maintenance time by 20-30%** through standardization
 
 ### Qualitative
+
 - **Easier onboarding** for new contributors
 - **Faster debugging** with better test organization
 - **Higher confidence** in test coverage
@@ -287,21 +302,25 @@ def test_enrichment_fallback_chain():
 ## 🎓 Best Practices to Adopt
 
 ### 1. Test Independence
+
 - Each test should be runnable in isolation
 - Avoid test interdependencies
 - Use fixtures for shared setup
 
 ### 2. Test Clarity
+
 - One assertion per test (when practical)
 - Clear test names describing scenario and expectation
 - Comprehensive docstrings
 
 ### 3. Test Maintainability
+
 - DRY principle: Extract common patterns
 - Use factories and builders for test data
 - Keep tests close to the code they test
 
 ### 4. Test Performance
+
 - Use session-scoped fixtures for expensive setup
 - Mark slow tests appropriately
 - Consider parallel execution strategies
@@ -311,6 +330,7 @@ def test_enrichment_fallback_chain():
 ### Example 1: Mock Factory
 
 **Before** (repeated 50+ times):
+
 ```python
 def test_neo4j_connection():
     driver = Mock()
@@ -322,6 +342,7 @@ def test_neo4j_connection():
 ```
 
 **After**:
+
 ```python
 def test_neo4j_connection():
     driver = Neo4jMocks.driver()
@@ -332,6 +353,7 @@ def test_neo4j_connection():
 ### Example 2: DataFrame Builder
 
 **Before** (repeated 100+ times):
+
 ```python
 def test_award_processing():
     df = pd.DataFrame([
@@ -348,6 +370,7 @@ def test_award_processing():
 ```
 
 **After**:
+
 ```python
 def test_award_processing():
     df = DataFrameBuilder.awards(5).with_agency("DOD").with_phase("I").build()
@@ -357,6 +380,7 @@ def test_award_processing():
 ### Example 3: Test File Splitting
 
 **Before**: `test_detector.py` (1085 lines)
+
 ```python
 class TestTransitionDetector:
     def test_vendor_matching_exact_uei(self): ...
@@ -368,7 +392,8 @@ class TestTransitionDetector:
 ```
 
 **After**: Split into focused files
-```
+
+```text
 tests/unit/transition/detection/
 ├── test_vendor_matching.py      # 15 tests, 250 lines
 ├── test_timing_signals.py       # 12 tests, 200 lines
@@ -380,6 +405,7 @@ tests/unit/transition/detection/
 ## 🔍 Metrics to Track
 
 ### Before Refactoring
+
 - Total test files: ~200
 - Total test LOC: ~70,000
 - Average test file size: 350 LOC
@@ -388,6 +414,7 @@ tests/unit/transition/detection/
 - Test maintenance incidents: [baseline]
 
 ### After Refactoring (Target)
+
 - Total test files: ~220-230 (more focused files)
 - Total test LOC: ~60,000-63,000 (10-15% reduction)
 - Average test file size: 270-290 LOC

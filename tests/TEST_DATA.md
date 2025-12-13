@@ -14,6 +14,7 @@ Tests can use two types of SBIR data:
 ### Sample Fixtures
 
 Located in `tests/fixtures/`:
+
 - `sbir_sample.csv` - 100 representative SBIR award records
 - Includes edge cases and validation test scenarios
 - Fast to load (<1 second)
@@ -22,6 +23,7 @@ Located in `tests/fixtures/`:
 ### Real Data
 
 Located in `data/raw/sbir/`:
+
 - `award_data.csv` - Full SBIR award dataset (~381MB, millions of records)
 - `*-company_search_*.csv` - Agency-specific company data files
   - NSF, NASA, DOD (AF, Army/Navy, Other), HHS/NIH, NIH Other, Other agencies
@@ -34,6 +36,7 @@ The `tests/conftest.py` provides several fixtures for accessing SBIR data:
 
 #### `sbir_sample_csv_path`
 Returns path to the small sample fixture (100 records).
+
 ```python
 def test_my_feature(sbir_sample_csv_path):
     df = pd.read_csv(sbir_sample_csv_path)
@@ -42,6 +45,7 @@ def test_my_feature(sbir_sample_csv_path):
 
 #### `sbir_award_data_csv_path`
 Returns path to the real award data (full dataset).
+
 ```python
 @pytest.mark.real_data
 def test_with_real_data(sbir_award_data_csv_path):
@@ -51,6 +55,7 @@ def test_with_real_data(sbir_award_data_csv_path):
 
 #### `sbir_company_csv_paths`
 Returns dictionary of agency-specific company data paths.
+
 ```python
 def test_company_data(sbir_company_csv_paths):
     if 'nsf' in sbir_company_csv_paths:
@@ -129,6 +134,7 @@ Tests can use the following markers:
 ## Best Practices
 
 ### For Unit Tests
+
 - Use `@pytest.mark.fast` and sample data
 - Keep tests under 1 second
 - Mock external dependencies
@@ -141,6 +147,7 @@ def test_validator_logic(sbir_sample_csv_path):
 ```
 
 ### For Integration Tests
+
 - Default to sample data for speed
 - Use `@pytest.mark.real_data` for comprehensive testing
 - Consider data sampling for large datasets
@@ -162,6 +169,7 @@ def test_pipeline_with_real_data(sbir_csv_path):
 ```
 
 ### For E2E Tests
+
 - Use real data for production validation
 - May require longer timeouts
 - Should be run less frequently
@@ -178,11 +186,13 @@ def test_full_etl_pipeline(sbir_award_data_csv_path):
 ## Performance Considerations
 
 ### Sample Data
+
 - Load time: <1 second
 - Memory usage: <10 MB
 - Best for: unit tests, fast CI
 
-### Real Data
+### Real Data (Performance)
+
 - Load time: 10-60 seconds (full dataset)
 - Memory usage: 2-4 GB (full dataset)
 - Best for: comprehensive validation, production testing
@@ -190,20 +200,23 @@ def test_full_etl_pipeline(sbir_award_data_csv_path):
 ### Tips for Large Datasets
 
 1. **Sample rows when possible:**
-```python
-df = pd.read_csv(sbir_award_data_csv_path, nrows=1000)
-```
 
-2. **Use chunking for processing:**
-```python
-for chunk in pd.read_csv(sbir_award_data_csv_path, chunksize=10000):
-    process(chunk)
-```
+   ```python
+   df = pd.read_csv(sbir_award_data_csv_path, nrows=1000)
+   ```
 
-3. **Select specific columns:**
-```python
-df = pd.read_csv(sbir_award_data_csv_path, usecols=['Company', 'Award Amount'])
-```
+1. **Use chunking for processing:**
+
+   ```python
+   for chunk in pd.read_csv(sbir_award_data_csv_path, chunksize=10000):
+       process(chunk)
+   ```
+
+1. **Select specific columns:**
+
+   ```python
+   df = pd.read_csv(sbir_award_data_csv_path, usecols=["Company", "Award Amount"])
+   ```
 
 ## Running Tests
 
@@ -230,11 +243,13 @@ pytest -m "e2e and real_data"
 ## CI/CD Considerations
 
 ### Pull Request CI
+
 - Use sample data only for speed
 - Run fast and integration tests
 - Keep total time under 5 minutes
 
 ### Nightly/Weekly CI
+
 - Use real data for comprehensive validation
 - Run all test markers including slow and e2e
 - Can take 30+ minutes
@@ -255,15 +270,18 @@ pytest -m "e2e and real_data"
 ## Troubleshooting
 
 ### Missing data files
+
 **Solution:** Ensure the data files are available in `data/raw/sbir/`.
 
 ### Tests are too slow
+
 **Solution:**
 - Ensure you're not accidentally using real data in fast tests
 - Use `nrows` parameter to sample data
 - Check test markers are correctly applied
 
 ### Missing fixture data
+
 **Solution:**
 - For sample data: Ensure `tests/fixtures/sbir_sample.csv` exists
 - For real data: Ensure data files are available in `data/raw/sbir/`
@@ -271,12 +289,14 @@ pytest -m "e2e and real_data"
 ## Data Quality
 
 ### Sample Fixture Quality
+
 - Representative of production data structure
 - Includes edge cases for validation testing
 - Deterministic (generated with `random.seed(42)`)
 - See `tests/fixtures/README.md` for details
 
 ### Real Data Quality
+
 - Production SBIR.gov data
 - May contain inconsistencies and edge cases
 - Reflects actual data quality issues
