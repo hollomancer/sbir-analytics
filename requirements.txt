@@ -65,7 +65,7 @@ colorama==0.4.6 ; sys_platform == 'win32'
     #   tqdm
     #   uvicorn
     #   wasabi
-coloredlogs==14.0
+coloredlogs==15.0.1
     # via dagster
 confection==0.1.5
     # via
