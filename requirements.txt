@@ -408,7 +408,7 @@ typer-slim==0.20.1
     #   weasel
 types-awscrt==0.30.0
     # via botocore-stubs
-types-psutil==7.1.3.20251202
+types-psutil==7.1.3.20251211
     # via sbir-analytics
 types-pytz==2025.2.0.20251108
     # via pandas-stubs
