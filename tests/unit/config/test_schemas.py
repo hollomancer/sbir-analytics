@@ -19,6 +19,7 @@ from src.config.schemas import (
     Neo4jConfig,
     PathsConfig,
     PipelineConfig,
+    PipelineMetadata,
     SbirDuckDBConfig,
     SbirValidationConfig,
     SensitivityConfig,
@@ -728,12 +729,23 @@ class TestPipelineConfig:
     def test_default_values(self):
         """Test PipelineConfig default values."""
         config = PipelineConfig()
+        assert isinstance(config.pipeline, PipelineMetadata)
         assert config.pipeline["name"] == "sbir-analytics"
         assert config.pipeline["version"] == "0.1.0"
         assert config.pipeline["environment"] == "development"
         assert isinstance(config.paths, PathsConfig)
         assert isinstance(config.data_quality, DataQualityConfig)
         assert isinstance(config.neo4j, Neo4jConfig)
+
+    def test_pipeline_metadata_attribute_access(self):
+        """Pipeline metadata supports attribute and dict-style access."""
+        config = PipelineConfig(
+            pipeline={"name": "custom", "version": "9.9.9", "environment": "ci"}
+        )
+        assert config.pipeline.name == "custom"
+        assert config.pipeline.environment == "ci"
+        assert config.pipeline["version"] == "9.9.9"
+        assert config.pipeline.get("name") == "custom"
 
     def test_nested_config_access(self):
         """Test accessing nested configuration objects."""

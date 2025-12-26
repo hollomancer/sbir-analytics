@@ -12,7 +12,7 @@ from .data_pipeline import (
 )
 from .enrichment import EnrichmentConfig, EnrichmentRefreshConfig, EnrichmentSourceConfig
 from .fiscal import FiscalAnalysisConfig, SensitivityConfig, TaxParameterConfig
-from .pipeline import PipelineConfig
+from .pipeline import PipelineConfig, PipelineMetadata
 from .reporting import StatisticalReportingConfig
 from .runtime import (
     CLIConfig,
@@ -38,6 +38,7 @@ __all__ = [
     "Neo4jConfig",
     "PathsConfig",
     "PipelineConfig",
+    "PipelineMetadata",
     "SbirDuckDBConfig",
     "SbirValidationConfig",
     "SensitivityConfig",
