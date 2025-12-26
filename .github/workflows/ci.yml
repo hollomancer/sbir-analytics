@@ -617,7 +617,7 @@ jobs:
           install-pyreadstat: "false"
 
       - name: Cache baseline benchmark
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: reports/benchmarks/baseline.json
           key: benchmark-baseline-${{ github.ref_name }}-${{ hashFiles('scripts/performance/**/*.py') }}
@@ -998,7 +998,7 @@ jobs:
           neo4j-password: ${{ secrets.NEO4J_PASSWORD }}
 
       - name: Cache Docker layers
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: /tmp/.buildx-cache
           key: ${{ runner.os }}-buildx-${{ github.sha }}
