@@ -502,7 +502,7 @@ def neo4j_sbir_awards(
                 try:
                     award = Award.from_sbir_csv(normalized_dict)
                 except Exception as e:
-                    # Log validation error and skip this record
+                    # For date-related errors, try to create a minimal Award with just essential fields
                     error_msg = str(e).lower()
                     is_date_error = any(
                         keyword in error_msg
@@ -510,13 +510,40 @@ def neo4j_sbir_awards(
                     )
 
                     if is_date_error:
-                        if date_validation_errors < 10:  # Only log first 10 to avoid spam
-                            tracking = normalized_dict.get("agency_tracking_number", "")
-                            contract = normalized_dict.get("contract", "")
-                            company = normalized_dict.get("company_name", "")
-                            award_id_hint = f"{tracking[:20] if tracking else contract[:20] if contract else company[:30]}"
-                            logger.warning(f"Date validation failed for {award_id_hint}: {e}")
-                        date_validation_errors += 1
+                        # Try to create Award with minimal required fields, setting problematic dates to None
+                        try:
+                            minimal_data = {
+                                "award_id": normalized_dict.get("award_id", ""),
+                                "company_name": normalized_dict.get("company_name", ""),
+                                "award_amount": normalized_dict.get("award_amount", 0.0),
+                                "award_date": None,  # Set to None to avoid date parsing issues
+                                "program": normalized_dict.get("program"),
+                                "phase": normalized_dict.get("phase"),
+                                "agency": normalized_dict.get("agency"),
+                                "company_uei": normalized_dict.get("company_uei"),
+                                "company_duns": normalized_dict.get("company_duns"),
+                            }
+                            award = Award(**minimal_data)
+                            if date_validation_errors < 10:  # Only log first 10 to avoid spam
+                                tracking = normalized_dict.get("agency_tracking_number", "")
+                                contract = normalized_dict.get("contract", "")
+                                company = normalized_dict.get("company_name", "")
+                                award_id_hint = f"{tracking[:20] if tracking else contract[:20] if contract else company[:30]}"
+                                logger.warning(
+                                    f"Date validation failed for {award_id_hint}, using minimal Award: {e}"
+                                )
+                            date_validation_errors += 1
+                        except Exception as e2:
+                            # If even minimal Award creation fails, skip the record
+                            if validation_errors < 10:
+                                tracking = normalized_dict.get("agency_tracking_number", "")
+                                contract = normalized_dict.get("contract", "")
+                                company = normalized_dict.get("company_name", "")
+                                award_id_hint = f"{tracking[:20] if tracking else contract[:20] if contract else company[:30]}"
+                                logger.warning(f"Award validation failed for {award_id_hint}: {e2}")
+                            validation_errors += 1
+                            metrics.errors += 1
+                            continue
                     else:
                         if validation_errors < 10:  # Only log first 10 to avoid spam
                             tracking = normalized_dict.get("agency_tracking_number", "")
@@ -525,8 +552,8 @@ def neo4j_sbir_awards(
                             award_id_hint = f"{tracking[:20] if tracking else contract[:20] if contract else company[:30]}"
                             logger.warning(f"Award validation failed for {award_id_hint}: {e}")
                         validation_errors += 1
-                    metrics.errors += 1
-                    continue
+                        metrics.errors += 1
+                        continue
 
                 # Create FinancialTransaction node properties (unified Award/Contract model)
                 transaction_id = f"txn_award_{award.award_id}"
