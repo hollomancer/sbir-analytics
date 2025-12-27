@@ -515,7 +515,7 @@ def neo4j_sbir_awards(
                             contract = normalized_dict.get("contract", "")
                             company = normalized_dict.get("company_name", "")
                             award_id_hint = f"{tracking[:20] if tracking else contract[:20] if contract else company[:30]}"
-                            logger.debug(f"Date validation failed for {award_id_hint}: {e}")
+                            logger.warning(f"Date validation failed for {award_id_hint}: {e}")
                         date_validation_errors += 1
                     else:
                         if validation_errors < 10:  # Only log first 10 to avoid spam
@@ -523,7 +523,7 @@ def neo4j_sbir_awards(
                             contract = normalized_dict.get("contract", "")
                             company = normalized_dict.get("company_name", "")
                             award_id_hint = f"{tracking[:20] if tracking else contract[:20] if contract else company[:30]}"
-                            logger.debug(f"Award validation failed for {award_id_hint}: {e}")
+                            logger.warning(f"Award validation failed for {award_id_hint}: {e}")
                         validation_errors += 1
                     metrics.errors += 1
                     continue
