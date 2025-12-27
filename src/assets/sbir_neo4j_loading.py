@@ -517,7 +517,35 @@ def neo4j_sbir_awards(
                     metrics.errors += 1
                     continue
 
-                award = Award.from_sbir_csv(normalized_dict)
+                # Try to create Award model with validation
+                try:
+                    award = Award.from_sbir_csv(normalized_dict)
+                except Exception as e:
+                    # Log validation error and skip this record
+                    error_msg = str(e).lower()
+                    is_date_error = any(
+                        keyword in error_msg
+                        for keyword in ["date", "future", "before", "after", "time", "year"]
+                    )
+
+                    if is_date_error:
+                        if date_validation_errors < 10:  # Only log first 10 to avoid spam
+                            tracking = normalized_dict.get("agency_tracking_number", "")
+                            contract = normalized_dict.get("contract", "")
+                            company = normalized_dict.get("company_name", "")
+                            award_id_hint = f"{tracking[:20] if tracking else contract[:20] if contract else company[:30]}"
+                            logger.debug(f"Date validation failed for {award_id_hint}: {e}")
+                        date_validation_errors += 1
+                    else:
+                        if validation_errors < 10:  # Only log first 10 to avoid spam
+                            tracking = normalized_dict.get("agency_tracking_number", "")
+                            contract = normalized_dict.get("contract", "")
+                            company = normalized_dict.get("company_name", "")
+                            award_id_hint = f"{tracking[:20] if tracking else contract[:20] if contract else company[:30]}"
+                            logger.debug(f"Award validation failed for {award_id_hint}: {e}")
+                        validation_errors += 1
+                    metrics.errors += 1
+                    continue
 
                 # Create FinancialTransaction node properties (unified Award/Contract model)
                 transaction_id = f"txn_award_{award.award_id}"
