@@ -12,12 +12,16 @@ try:
     from ..sbir_ingestion import raw_sbir_awards, sbir_validation_report, validated_sbir_awards
     from ..sbir_usaspending_enrichment import enriched_sbir_awards
     from ..sbir_neo4j_loading import neo4j_sbir_awards
+    from ..usaspending_ingestion import raw_usaspending_recipients
+    from ..sam_gov_ingestion import raw_sam_gov_entities
 except Exception:  # pragma: no cover - handles optional Dagster deps
     raw_sbir_awards = None  # type: ignore
     validated_sbir_awards = None  # type: ignore
     sbir_validation_report = None  # type: ignore
     enriched_sbir_awards = None  # type: ignore
     neo4j_sbir_awards = None  # type: ignore
+    raw_usaspending_recipients = None  # type: ignore
+    raw_sam_gov_entities = None  # type: ignore
 
 from .job_registry import JobSpec, build_job_from_spec, build_placeholder_job
 
@@ -27,6 +31,8 @@ def _build_job() -> JobDefinition | UnresolvedAssetJobDefinition:
         raw_sbir_awards,
         validated_sbir_awards,
         sbir_validation_report,
+        raw_usaspending_recipients,
+        raw_sam_gov_entities,
         enriched_sbir_awards,
         neo4j_sbir_awards,
     ]
