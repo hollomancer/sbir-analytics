@@ -19,7 +19,7 @@ class Neo4jConfig(BaseModel):
     password: str
     database: str = "neo4j"
     batch_size: int = 5000  # Increased for UNWIND performance
-    auto_migrate: bool = True  # Automatically run migrations on client initialization
+    auto_migrate: bool = False  # Disable auto-migrations to avoid import warnings
 
 
 class LoadMetrics(BaseModel):
