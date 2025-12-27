@@ -156,7 +156,7 @@ docker compose exec app dagster asset materialize -m src.definitions
 ```bash
 docker compose exec app dagster job execute \
   -f src/definitions.py \
-  -j sbir_ingestion_job
+  -j sbir_weekly_refresh_job
 ```
 
 ### Access Neo4j

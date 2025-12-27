@@ -117,7 +117,7 @@ poetry run dagster dev
 
 ## Run specific jobs via CLI
 
-dagster job execute -f src/definitions.py -j sbir_ingestion_job
+dagster job execute -f src/definitions.py -j sbir_weekly_refresh_job
 dagster job execute -f src/definitions.py -j cet_full_pipeline_job
 dagster job execute -f src/definitions.py -j fiscal_returns_mvp_job
 dagster job execute -f src/definitions.py -j fiscal_returns_full_job

@@ -86,7 +86,7 @@ def test_neo4j_award_loading(neo4j_session):
 ```python
 @pytest.mark.e2e
 def test_sbir_ingestion_pipeline():
-    result = execute_job("sbir_ingestion_job")
+    result = execute_job("sbir_weekly_refresh_job")
     assert result.success
     assert result.output_for_node("validated_awards").row_count > 0
 ```

@@ -100,12 +100,8 @@ jobs:
           echo "**Environment:** ${{ github.event.inputs.environment || 'production' }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
-          # Determine which job to run
-          if [ "${{ github.event.inputs.job }}" = "sbir_ingestion" ] || [ "${{ github.event.inputs.skip_neo4j }}" = "true" ]; then
-            JOB_NAME="sbir_ingestion_job"
-          else
-            JOB_NAME="sbir_weekly_refresh_job"
-          fi
+          # Determine which job to run - use sbir_weekly_refresh_job (now includes enrichment)
+          JOB_NAME="sbir_weekly_refresh_job"
 
           echo "**Job:** \`$JOB_NAME\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY

@@ -43,14 +43,15 @@ def _discover_sensors() -> list[Any]:
     return list(assets_pkg.iter_public_sensors())
 
 
+def _get_job(job_name: str) -> Any:
+    """Get a job by name from auto-discovered jobs."""
+    return auto_jobs.get(job_name)
+
+
 auto_jobs = _discover_jobs()
 
-# Define SBIR ingestion job (core ETL)
-sbir_ingestion_job = define_asset_job(
-    name="sbir_ingestion_job",
-    selection=AssetSelection.groups("sbir_ingestion"),
-    description="Extract, validate, and prepare SBIR awards data",
-)
+# Get the consolidated SBIR job (now includes enrichment)
+sbir_weekly_refresh_job = _get_job("sbir_weekly_refresh_job")
 
 # Define a job that materializes all core assets
 core_etl_job = define_asset_job(
@@ -72,9 +73,11 @@ all_sensors = _discover_sensors()
 
 # Aggregate jobs
 job_definitions: list[Any] = [
-    sbir_ingestion_job,
     core_etl_job,
 ]
+# Add the consolidated SBIR job if available
+if sbir_weekly_refresh_job is not None:
+    job_definitions.append(sbir_weekly_refresh_job)
 # Add auto-discovered jobs (ML jobs won't be discovered due to DAGSTER_LOAD_HEAVY_ASSETS=false)
 job_definitions.extend(job for job in auto_jobs.values() if job not in job_definitions)
 

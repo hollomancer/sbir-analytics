@@ -105,7 +105,7 @@ pytest --cov=src
 
 ```bash
 poetry run dagster dev                    # Start Dagster UI
-dagster job execute -f src/definitions.py -j sbir_ingestion_job
+dagster job execute -f src/definitions.py -j sbir_weekly_refresh_job
 dagster job execute -f src/definitions.py -j fiscal_returns_mvp_job      # Fiscal ROI analysis (core)
 dagster job execute -f src/definitions.py -j fiscal_returns_full_job     # Fiscal ROI with sensitivity
 ```
