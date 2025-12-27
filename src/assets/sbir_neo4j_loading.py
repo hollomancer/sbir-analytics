@@ -498,25 +498,6 @@ def neo4j_sbir_awards(
                         else:
                             normalized_dict[normalized_key] = value
 
-                # Skip records with zero or missing award amounts (likely cancelled/placeholder awards)
-                award_amount = normalized_dict.get("award_amount")
-                if award_amount is None or (
-                    isinstance(award_amount, int | float) and award_amount <= 0
-                ):
-                    # Try to identify the award for logging
-                    tracking = normalized_dict.get("agency_tracking_number", "")
-                    contract = normalized_dict.get("contract", "")
-                    company = normalized_dict.get("company", "")
-                    award_id_hint = f"{tracking[:20] if tracking else contract[:20] if contract else company[:30]}"
-
-                    if skipped_zero_amount < 10:  # Only log first 10 to avoid spam
-                        logger.debug(
-                            f"Skipping award with zero/missing amount: {award_id_hint} (amount={award_amount})"
-                        )
-                    skipped_zero_amount += 1
-                    metrics.errors += 1
-                    continue
-
                 # Try to create Award model with validation
                 try:
                     award = Award.from_sbir_csv(normalized_dict)

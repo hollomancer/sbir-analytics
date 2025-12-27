@@ -47,7 +47,7 @@ class Award(BaseModel):
     award_id: str = Field(..., description="Unique award identifier")
     company_name: str = Field(..., description="Company receiving the award", alias="company")
     award_amount: float = Field(..., description="Award amount in USD")
-    award_date: date = Field(..., description="Date award was made")
+    award_date: date | None = Field(None, description="Date award was made")
     program: str | None = Field(None, description="SBIR or STTR program (lenient validator)")
 
     # Optional metadata fields
@@ -163,9 +163,10 @@ class Award(BaseModel):
     @field_validator("award_amount", mode="before")
     @classmethod
     def validate_award_amount(cls: Any, v) -> float:
-        """Coerce award_amount from string to float (if needed) and validate it's positive.
+        """Coerce award_amount from string to float (if needed) and validate it's non-negative.
 
         Accepts numeric strings like "1,234.56" and bare numbers.
+        Allows zero amounts for cancelled/placeholder awards.
         """
         if v is None or v == "":
             raise ValueError("Award amount must be provided and numeric")
@@ -179,8 +180,8 @@ class Award(BaseModel):
             v_float = float(v)
         except Exception:
             raise ValueError("Award amount must be a number")
-        if v_float <= 0:
-            raise ValueError("Award amount must be positive")
+        if v_float < 0:
+            raise ValueError("Award amount must be non-negative")
         return v_float
 
     @field_validator("program")
