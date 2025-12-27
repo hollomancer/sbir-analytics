@@ -356,18 +356,28 @@ class Award(BaseModel):
             return None
         return cleaned.upper()
 
-    @field_validator("company_duns")
+    @field_validator("company_duns", mode="before")
     @classmethod
-    def validate_company_duns(cls, v: str | None) -> str | None:
-        """Normalize and validate DUNS if provided.
+    def validate_company_duns(cls, v) -> str | None:
+        """Convert DUNS number from float to string and normalize.
 
         Returns 9-digit DUNS if valid, None if invalid (lenient - accept bad
         data rather than rejecting the entire record).
         """
         if v is None:
-            return v
-        if not isinstance(v, str):
-            return None  # Lenient: return None for non-string
+            return None
+
+        # Convert float to string first
+        if isinstance(v, float):
+            if v.is_integer():
+                v = str(int(v))
+            else:
+                v = str(v)
+        elif isinstance(v, int):
+            v = str(v)
+        elif not isinstance(v, str):
+            return None  # Lenient: return None for other types
+
         digits = "".join(ch for ch in v if ch.isdigit())
         if len(digits) != 9:
             # Lenient: return None instead of raising exception
