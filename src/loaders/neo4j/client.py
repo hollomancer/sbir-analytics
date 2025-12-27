@@ -451,22 +451,27 @@ class Neo4jClient:
                             if track_merge_history:
                                 from datetime import datetime
 
+                                # Flatten properties to avoid nested objects in Neo4j
+                                flattened_props = {}
+                                for k, v in node_data.items():
+                                    if k not in (
+                                        "organization_id",
+                                        "__hash",
+                                        "__merged_from",
+                                        "__merge_history",
+                                    ):
+                                        # Convert complex types to strings for Neo4j compatibility
+                                        if isinstance(v, (dict, list)):
+                                            flattened_props[f"prop_{k}"] = str(v)
+                                        else:
+                                            flattened_props[f"prop_{k}"] = v
+
                                 merge_history_entry = {
                                     "from_org_id": new_id,
                                     "from_name": node_data.get("name"),
                                     "method": "uei_match" if node_data.get("uei") else "duns_match",
                                     "merged_at": datetime.utcnow().isoformat(),
-                                    "properties": {
-                                        k: v
-                                        for k, v in node_data.items()
-                                        if k
-                                        not in (
-                                            "organization_id",
-                                            "__hash",
-                                            "__merged_from",
-                                            "__merge_history",
-                                        )
-                                    },
+                                    **flattened_props,  # Flatten into the main object
                                 }
 
                             merge_list.append(
