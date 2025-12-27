@@ -488,7 +488,7 @@ class Award(BaseModel):
 
     @field_validator("award_date")
     @classmethod
-    def validate_award_date_not_future(cls: Any, v: date) -> date:
+    def validate_award_date_not_future(cls: Any, v: date | None) -> date | None:
         """Validate that award_date is not in the future.
 
         Awards should not be dated in the future. This catches data entry errors
@@ -497,6 +497,9 @@ class Award(BaseModel):
         Note: This is now lenient - it accepts future dates with a warning logged
         rather than rejecting the record.
         """
+        if v is None:
+            return None
+
         from datetime import date as date_cls
 
         from loguru import logger
