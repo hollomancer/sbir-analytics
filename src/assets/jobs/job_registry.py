@@ -9,6 +9,7 @@ from typing import Any
 from dagster import (
     AssetsDefinition,
     AssetSelection,
+    ExecutorDefinition,
     JobDefinition,
     define_asset_job,
 )
@@ -51,6 +52,39 @@ def build_job_from_spec(spec: JobSpec) -> JobDefinition | UnresolvedAssetJobDefi
         )
 
     return define_asset_job(name=spec.name, selection=selection, description=spec.description)  # type: ignore[return-value]
+
+
+def build_job_from_spec_with_executor(
+    spec: JobSpec, executor: ExecutorDefinition
+) -> JobDefinition | UnresolvedAssetJobDefinition:
+    """Create a Dagster job from a JobSpec with a custom executor."""
+
+    if spec.assets:
+        initial_selection = AssetSelection.keys(*(asset.key for asset in spec.assets))
+        return define_asset_job(
+            name=spec.name,
+            selection=initial_selection,
+            description=spec.description,
+            executor_def=executor,
+        )
+
+    selection: Any | None = None
+    if spec.asset_keys:
+        selection = AssetSelection.keys(*spec.asset_keys)
+    elif spec.asset_groups:
+        selection = AssetSelection.groups(*spec.asset_groups)
+
+    if selection is None:
+        raise ValueError(
+            f"Job '{spec.name}' must define asset_keys, asset_groups, or assets for selection"
+        )
+
+    return define_asset_job(
+        name=spec.name,
+        selection=selection,
+        description=spec.description,
+        executor_def=executor,
+    )
 
 
 def build_placeholder_job(

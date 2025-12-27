@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dagster import JobDefinition
+from dagster import JobDefinition, in_process_executor
 from dagster._core.definitions.unresolved_asset_job_definition import (
     UnresolvedAssetJobDefinition,
 )
@@ -23,7 +23,7 @@ except Exception:  # pragma: no cover - handles optional Dagster deps
     raw_usaspending_recipients = None  # type: ignore
     raw_sam_gov_entities = None  # type: ignore
 
-from .job_registry import JobSpec, build_job_from_spec, build_placeholder_job
+from .job_registry import JobSpec, build_job_from_spec_with_executor, build_placeholder_job
 
 
 def _build_job() -> JobDefinition | UnresolvedAssetJobDefinition:
@@ -42,12 +42,14 @@ def _build_job() -> JobDefinition | UnresolvedAssetJobDefinition:
             description="Placeholder job (SBIR assets unavailable at import time).",
         )
 
-    return build_job_from_spec(
+    # Use in-process executor to avoid OOM on GitHub runners (7GB limit)
+    return build_job_from_spec_with_executor(
         JobSpec(
             name="sbir_weekly_refresh_job",
             description="Weekly SBIR data refresh: extract, validate, enrich, and load awards into Neo4j",
             assets=assets,  # type: ignore[arg-type]
-        )
+        ),
+        executor=in_process_executor,
     )
 
 
