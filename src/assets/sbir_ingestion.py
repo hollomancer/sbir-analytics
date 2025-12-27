@@ -46,13 +46,25 @@ def _apply_quality_filters(df: pd.DataFrame, context: AssetExecutionContext) -> 
     if "award_date" in df.columns:
         df["award_date"] = pd.to_datetime(df["award_date"], errors="coerce")
 
-    # 4. Only remove exact duplicates based on award_id
-    if "award_id" in df.columns:
+    # 4. Only remove exact duplicates based on award_id + phase (not just award_id)
+    # This preserves legitimate Phase I/II progressions
+    if "award_id" in df.columns and "phase" in df.columns:
+        before = len(df)
+        df = df.drop_duplicates(subset=["award_id", "phase"], keep="first")
+        after = len(df)
+        if before != after:
+            context.log.info(
+                f"Duplicate filter (award_id + phase): {before} -> {after} ({after / before:.1%})"
+            )
+    elif "award_id" in df.columns:
+        # Fallback to award_id only if phase column doesn't exist
         before = len(df)
         df = df.drop_duplicates(subset=["award_id"], keep="first")
         after = len(df)
         if before != after:
-            context.log.info(f"Duplicate filter: {before} -> {after} ({after / before:.1%})")
+            context.log.info(
+                f"Duplicate filter (award_id only): {before} -> {after} ({after / before:.1%})"
+            )
 
     final_count = len(df)
     retention_rate = final_count / original_count
