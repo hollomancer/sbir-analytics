@@ -479,7 +479,9 @@ class Neo4jClient:
                                     "new_id": new_id,
                                     "existing_id": existing_id,
                                     "props": props,
-                                    "merge_history": merge_history_entry,
+                                    "merge_history": str(merge_history_entry)
+                                    if merge_history_entry
+                                    else None,
                                 }
                             )
 
