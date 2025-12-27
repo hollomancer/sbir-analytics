@@ -46,7 +46,7 @@ class Award(BaseModel):
     # Required fields (consolidated from both models)
     award_id: str = Field(..., description="Unique award identifier")
     company_name: str = Field(..., description="Company receiving the award", alias="company")
-    award_amount: float = Field(..., description="Award amount in USD")
+    award_amount: float | None = Field(None, description="Award amount in USD")
     award_date: date | None = Field(None, description="Date award was made")
     program: str | None = Field(None, description="SBIR or STTR program (lenient validator)")
 
@@ -162,26 +162,30 @@ class Award(BaseModel):
 
     @field_validator("award_amount", mode="before")
     @classmethod
-    def validate_award_amount(cls: Any, v) -> float:
+    def validate_award_amount(cls: Any, v) -> float | None:
         """Coerce award_amount from string to float (if needed) and validate it's non-negative.
 
         Accepts numeric strings like "1,234.56" and bare numbers.
         Allows zero amounts for cancelled/placeholder awards.
+        Returns None for missing/invalid amounts (lenient handling).
         """
         if v is None or v == "":
-            raise ValueError("Award amount must be provided and numeric")
+            return None  # Allow missing award amounts
+
         # If provided as a string, try to coerce to float
         if isinstance(v, str):
             try:
                 v = float(v.replace(",", "").strip())
             except Exception:
-                raise ValueError("Award amount must be a number")
+                return None  # Return None for invalid strings instead of raising
         try:
             v_float = float(v)
         except Exception:
-            raise ValueError("Award amount must be a number")
+            return None  # Return None for invalid values instead of raising
+
         if v_float < 0:
-            raise ValueError("Award amount must be non-negative")
+            return None  # Return None for negative amounts instead of raising
+
         return v_float
 
     @field_validator("award_date", mode="before")
