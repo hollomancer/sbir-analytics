@@ -39,6 +39,7 @@ permissions:
 env:
   AWS_REGION: us-east-2
   S3_BUCKET: sbir-etl-production-data
+  SBIR_ETL_ENV: prod
   SBIR_ETL__PIPELINE__ENVIRONMENT: production
   IMAGE: ghcr.io/hollomancer/sbir-analytics:latest
 

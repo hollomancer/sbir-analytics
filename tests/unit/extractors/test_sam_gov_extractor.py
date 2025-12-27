@@ -119,7 +119,7 @@ class TestParquetLoading:
             with patch("src.extractors.sam_gov.pd.read_parquet") as mock_read_parquet:
                 # Mock S3 file found
                 mock_find_latest.return_value = (
-                    "s3://test-bucket/data/raw/sam_gov/sam_entity_records.parquet"
+                    "s3://test-bucket/raw/sam_gov/sam_entity_records.parquet"
                 )
 
                 # Mock read_parquet to return sample data

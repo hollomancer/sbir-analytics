@@ -302,14 +302,14 @@ def find_latest_recipient_lookup_parquet(
 
 def find_latest_sam_gov_parquet(
     bucket: str | None = None,
-    prefix: str = "data/raw/sam_gov/",
+    prefix: str = "raw/sam_gov/",
 ) -> str | None:
     """
     Find the latest SAM.gov parquet file in S3.
 
     Searches for files matching the pattern:
-    - Static: data/raw/sam_gov/sam_entity_records.parquet
-    - Dated: data/raw/sam_gov/sam_entity_records_YYYYMMDD.parquet
+    - Static: raw/sam_gov/sam_entity_records.parquet
+    - Dated: raw/sam_gov/sam_entity_records_YYYYMMDD.parquet
 
     Args:
         bucket: S3 bucket name (defaults to env var)

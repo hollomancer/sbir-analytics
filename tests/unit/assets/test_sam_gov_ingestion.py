@@ -105,6 +105,7 @@ class TestImportSAMGovEntitiesHelper:
             else:
                 assert result.metadata["row_count"] == 2
 
+    @patch("src.assets.sam_gov_ingestion.get_s3_bucket_from_env")
     @patch("src.assets.sam_gov_ingestion.find_latest_sam_gov_parquet")
     @patch("src.assets.sam_gov_ingestion.resolve_data_path")
     @patch("src.assets.sam_gov_ingestion.SAMGovExtractor")
@@ -115,6 +116,7 @@ class TestImportSAMGovEntitiesHelper:
         mock_extractor_class,
         mock_resolve_path,
         mock_find_latest,
+        mock_get_s3_bucket,
         mock_context,
         mock_config,
         sample_parquet_file,
@@ -123,11 +125,11 @@ class TestImportSAMGovEntitiesHelper:
         """Test importing SAM.gov entities from S3 parquet file."""
         # Setup mocks
         mock_get_config.return_value = mock_config
-        mock_config.s3 = {"bucket": "test-bucket"}
+        mock_get_s3_bucket.return_value = "test-bucket"
         mock_config.extraction.sam_gov.use_s3_first = True
 
         # Mock S3 file discovery and resolution
-        s3_url = "s3://test-bucket/data/raw/sam_gov/sam_entity_records.parquet"
+        s3_url = "s3://test-bucket/raw/sam_gov/sam_entity_records.parquet"
         mock_find_latest.return_value = s3_url
         mock_resolve_path.return_value = sample_parquet_file
 
