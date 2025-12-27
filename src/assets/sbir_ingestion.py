@@ -33,7 +33,7 @@ def _apply_quality_filters(df: pd.DataFrame, context: AssetExecutionContext) -> 
     # 1. Only filter completely empty award_id (but allow other missing fields)
     if "award_id" in df.columns:
         before = len(df)
-        df = df[df["award_id"].notna() & (df["award_id"] != "") & (df["award_id"] != "-")]
+        df = df[df["award_id"].notna() & (df["award_id"] != "") & (df["award_id"] != "-")].copy()
         after = len(df)
         if before != after:
             context.log.info(f"Empty award_id filter: {before} -> {after} ({after / before:.1%})")
