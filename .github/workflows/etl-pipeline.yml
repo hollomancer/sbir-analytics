@@ -11,8 +11,7 @@ on:
         required: true
         type: choice
         options:
-          - sbir_ingestion
-          - sbir_weekly_refresh  # includes Neo4j loading
+          - sbir_weekly_refresh  # SBIR extract, validate, enrich, load to Neo4j
           - usaspending_ingestion
           - uspto_pipeline
           - cet_pipeline
@@ -46,7 +45,7 @@ env:
 jobs:
   sbir-pipeline:
     name: SBIR Pipeline
-    if: github.event.inputs.job == 'sbir_ingestion' || github.event.inputs.job == 'sbir_weekly_refresh' || github.event.inputs.job == 'all' || github.event_name == 'schedule'
+    if: github.event.inputs.job == 'sbir_weekly_refresh' || github.event.inputs.job == 'all' || github.event_name == 'schedule'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     container:
