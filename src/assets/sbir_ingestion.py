@@ -371,7 +371,6 @@ def sbir_validation_report(
         "passed_records": quality_report.passed_records,  # type: ignore[attr-defined]
         "failed_records": quality_report.failed_records,  # type: ignore[attr-defined]
         "pass_rate": quality_report.pass_rate,  # type: ignore[attr-defined]
-        "threshold": quality_report.threshold,
         "passed": quality_report.passed,
         "issues": [
             {
