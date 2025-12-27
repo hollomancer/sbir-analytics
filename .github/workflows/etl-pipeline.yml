@@ -101,10 +101,10 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
 
           # Determine which job to run
-          if [ "${{ github.event.inputs.job }}" = "sbir_ingestion" ] || [ "${{ github.event.inputs.skip_neo4j }}" = "true" ]; then
-            JOB_NAME="sbir_ingestion_job"
-          else
+          if [ "${{ github.event.inputs.job }}" = "sbir_weekly_refresh" ]; then
             JOB_NAME="sbir_weekly_refresh_job"
+          else
+            JOB_NAME="sbir_ingestion_job"
           fi
 
           echo "**Job:** \`$JOB_NAME\`" >> $GITHUB_STEP_SUMMARY
