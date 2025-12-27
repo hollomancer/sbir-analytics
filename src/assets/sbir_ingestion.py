@@ -28,59 +28,25 @@ from ..validators.sbir_awards import validate_sbir_awards
 def _apply_quality_filters(df: pd.DataFrame, context: AssetExecutionContext) -> pd.DataFrame:
     """Apply comprehensive filtering to achieve 90%+ pass rate."""
     original_count = len(df)
-    context.log.info(f"Starting quality filtering with {original_count} records")
+    context.log.info(f"Starting minimal quality filtering with {original_count} records")
 
-    # 1. Required fields filter
-    required_fields = ["award_id", "company_name", "award_amount", "award_date", "program"]
-    for field in required_fields:
-        if field in df.columns:
-            before = len(df)
-            df = df[df[field].notna() & (df[field] != "") & (df[field] != "-")]
-            after = len(df)
-            if before != after:
-                context.log.info(
-                    f"Required field '{field}' filter: {before} -> {after} ({after / before:.1%})"
-                )
-
-    # 2. Program filter - only SBIR/STTR
-    if "program" in df.columns:
+    # 1. Only filter completely empty award_id (but allow other missing fields)
+    if "award_id" in df.columns:
         before = len(df)
-        df = df[df["program"].str.upper().isin(["SBIR", "STTR"])]
+        df = df[df["award_id"].notna() & (df["award_id"] != "") & (df["award_id"] != "-")]
         after = len(df)
         if before != after:
-            context.log.info(f"Program filter: {before} -> {after} ({after / before:.1%})")
+            context.log.info(f"Empty award_id filter: {before} -> {after} ({after / before:.1%})")
 
-    # 3. Award amount filter - positive amounts only
+    # 2. Convert award_amount to numeric (but don't filter out zeros - let Award model handle it)
     if "award_amount" in df.columns:
-        before = len(df)
         df["award_amount"] = pd.to_numeric(df["award_amount"], errors="coerce")
-        df = df[(df["award_amount"] > 0) & (df["award_amount"] <= 5_000_000)]
-        after = len(df)
-        if before != after:
-            context.log.info(f"Amount filter: {before} -> {after} ({after / before:.1%})")
 
-    # 4. Date range filter
+    # 3. Convert dates to datetime (but don't filter - let Award model handle invalid dates)
     if "award_date" in df.columns:
-        before = len(df)
         df["award_date"] = pd.to_datetime(df["award_date"], errors="coerce")
-        min_date = pd.Timestamp("1982-01-01")
-        max_date = pd.Timestamp("2030-12-31")
-        df = df[(df["award_date"] >= min_date) & (df["award_date"] <= max_date)]
-        after = len(df)
-        if before != after:
-            context.log.info(f"Date filter: {before} -> {after} ({after / before:.1%})")
 
-    # 5. Company name quality filter
-    if "company_name" in df.columns:
-        before = len(df)
-        df = df[df["company_name"].str.len() >= 3]
-        placeholders = ["TBD", "TBA", "UNKNOWN", "N/A", "NULL", "NONE", "---"]
-        df = df[~df["company_name"].str.upper().isin(placeholders)]
-        after = len(df)
-        if before != after:
-            context.log.info(f"Company name filter: {before} -> {after} ({after / before:.1%})")
-
-    # 6. Duplicate removal
+    # 4. Only remove exact duplicates based on award_id
     if "award_id" in df.columns:
         before = len(df)
         df = df.drop_duplicates(subset=["award_id"], keep="first")
@@ -91,7 +57,7 @@ def _apply_quality_filters(df: pd.DataFrame, context: AssetExecutionContext) -> 
     final_count = len(df)
     retention_rate = final_count / original_count
     context.log.info(
-        f"Quality filtering complete: {final_count} records ({retention_rate:.1%} retention)"
+        f"Minimal filtering complete: {final_count} records ({retention_rate:.1%} retention)"
     )
 
     return df
