@@ -289,12 +289,12 @@ def validated_sbir_awards(
     # Save to S3 for downstream processing (e.g., Neo4j loading in GitHub Actions)
     s3_uri = _save_to_s3(validated_df, "validated/sbir_awards.parquet", context)
 
-    # Create metadata
+    # Create metadata - convert numpy types to Python types for JSON serialization
     metadata = {
         "num_records": len(validated_df),
         "pass_rate": f"{quality_report.pass_rate:.1%}",  # type: ignore[attr-defined]
-        "passed_records": quality_report.passed_records,  # type: ignore[attr-defined]
-        "failed_records": quality_report.failed_records,  # type: ignore[attr-defined]
+        "passed_records": int(quality_report.passed_records),  # type: ignore[attr-defined]
+        "failed_records": int(quality_report.failed_records),  # type: ignore[attr-defined]
         "total_issues": len(quality_report.issues),
         "validation_status": "PASSED" if quality_report.passed else "FAILED",
         "threshold": f"{pass_rate_threshold:.1%}",
@@ -368,7 +368,7 @@ def sbir_validation_report(
     report_path.parent.mkdir(parents=True, exist_ok=True)
 
     with open(report_path, "w") as f:
-        json.dump(report_dict, f, indent=2)
+        json.dump(report_dict, f, indent=2, default=int)
 
     context.log.info(
         f"Validation report written to {report_path}",
