@@ -582,7 +582,8 @@ class Award(BaseModel):
         # Map SBIR.gov CSV field names to Award model fields
         mapped_data = {}
         field_mapping = {
-            "company": "company_name",
+            "company_name": "company_name",  # Direct mapping for normalized column
+            "company": "company_name",  # Fallback for original CSV format
             "uei": "company_uei",
             "duns": "company_duns",
             "address1": "address1",
@@ -604,6 +605,7 @@ class Award(BaseModel):
 
         # Copy fields that are the same in both formats
         for key in [
+            "award_id",  # Add award_id to direct copy fields
             "award_title",
             "abstract",
             "agency",
