@@ -152,6 +152,43 @@ def raw_sbir_awards(context: AssetExecutionContext) -> Output[pd.DataFrame]:
         "performance_peak_memory_mb": round(total_peak_memory, 2),
     }
 
+    # Normalize column names for downstream processing
+    # This ensures validation and other steps can use consistent column names
+    column_normalization_map = {
+        "Agency Tracking Number": "award_id",
+        "Company": "company_name",
+        "Award Amount": "award_amount",
+        "Proposal Award Date": "award_date",
+        "Program": "program",
+        "Award Title": "award_title",
+        "Agency": "agency",
+        "Branch": "branch",
+        "Phase": "phase",
+        "Contract": "contract",
+        "UEI": "uei",
+        "Duns": "duns",
+        "Address1": "address1",
+        "Address2": "address2",
+        "City": "city",
+        "State": "state",
+        "Zip": "zip",
+        "Abstract": "abstract",
+        "HUBZone Owned": "hubzone_owned",
+        "Woman Owned": "woman_owned",
+        "Socially and Economically Disadvantaged": "socially_and_economically_disadvantaged",
+        "Number Employees": "number_employees",
+        "PI Name": "pi_name",
+        "PI Email": "pi_email",
+        "RI Name": "ri_name",
+    }
+
+    # Apply column normalization
+    df = df.rename(columns=column_normalization_map)
+
+    # Update metadata to reflect normalized columns
+    metadata["normalized_columns"] = MetadataValue.json(list(df.columns))
+    metadata["column_normalization_applied"] = True
+
     return Output(value=df, metadata=metadata)  # type: ignore[arg-type]
 
 
