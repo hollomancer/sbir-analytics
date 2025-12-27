@@ -184,6 +184,41 @@ class Award(BaseModel):
             raise ValueError("Award amount must be non-negative")
         return v_float
 
+    @field_validator("award_date", mode="before")
+    @classmethod
+    def validate_award_date(cls, v) -> date | None:
+        """Parse award_date from string to date object, with lenient error handling."""
+        if v is None or v == "":
+            return None
+
+        if isinstance(v, date):
+            return v
+
+        if isinstance(v, str):
+            from datetime import datetime
+
+            # Try common date formats
+            date_formats = [
+                "%Y-%m-%d",  # 2025-07-24
+                "%m/%d/%Y",  # 07/24/2025
+                "%m-%d-%Y",  # 07-24-2025
+                "%Y/%m/%d",  # 2025/07/24
+                "%d/%m/%Y",  # 24/07/2025
+                "%B %d, %Y",  # July 24, 2025
+                "%b %d, %Y",  # Jul 24, 2025
+            ]
+
+            for fmt in date_formats:
+                try:
+                    return datetime.strptime(v.strip(), fmt).date()
+                except ValueError:
+                    continue
+
+            # If all formats fail, return None instead of raising error
+            return None
+
+        return None
+
     @field_validator("program")
     @classmethod
     def validate_program(cls, v: str) -> str | None:
