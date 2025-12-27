@@ -24,6 +24,7 @@ RUN pip install \
 COPY src/ /app/src/
 COPY scripts/ /app/scripts/
 COPY config/ /app/config/
+COPY migrations/ /app/migrations/
 COPY pyproject.toml /app/
 
 ENV PYTHONPATH=/app

@@ -138,7 +138,7 @@ class Neo4jConfig(BaseModel):
     transaction_timeout_seconds: int = 300
     retry_on_deadlock: bool = True
     max_deadlock_retries: int = 3
-    auto_migrate: bool = False
+    auto_migrate: bool = True
 
 
 class ExtractionConfig(BaseModel):

@@ -36,6 +36,7 @@ RUN python -m spacy download en_core_web_sm
 COPY src/ /app/src/
 COPY config/ /app/config/
 COPY scripts/ /app/scripts/
+COPY migrations/ /app/migrations/
 COPY pyproject.toml /app/
 
 ENV PYTHONPATH=/app
