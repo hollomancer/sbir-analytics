@@ -536,12 +536,13 @@ def validate_sbir_awards(
     """
     logger.info(f"Validating {len(df)} SBIR award records")
 
-    # Fast validation - just check for basic required columns
-    required_columns = ["award_id", "company_name", "award_amount", "award_date"]
-    missing_columns = [col for col in required_columns if col not in df.columns]
+    # Fast validation - check for truly essential columns only
+    # award_date is optional since ~50% of records are missing it in source data
+    essential_columns = ["award_id", "company_name", "award_amount"]
+    missing_columns = [col for col in essential_columns if col not in df.columns]
 
     if missing_columns:
-        logger.error(f"Missing required columns: {missing_columns}")
+        logger.error(f"Missing essential columns: {missing_columns}")
         # Create minimal failing report
         return SimpleNamespace(
             total_records=len(df),
@@ -554,12 +555,12 @@ def validate_sbir_awards(
             warning_count=0,
         )
 
-    # Fast vectorized checks
-    null_counts = df[required_columns].isnull().sum()
+    # Fast vectorized checks - only fail on missing essential data
+    # Create a mask for records that have all essential fields
+    essential_mask = df[essential_columns].notnull().all(axis=1)
 
-    # Estimate pass rate based on null values (simplified)
-    estimated_failed_rows = max(null_counts)  # Worst case scenario
-    estimated_passed_rows = len(df) - estimated_failed_rows
+    estimated_passed_rows = essential_mask.sum()
+    estimated_failed_rows = len(df) - estimated_passed_rows
     pass_rate = estimated_passed_rows / len(df) if len(df) > 0 else 1.0
 
     passed = pass_rate >= pass_rate_threshold
