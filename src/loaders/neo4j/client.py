@@ -489,7 +489,7 @@ class Neo4jClient:
                             merge_props_query += """
                             WITH existing, merge
                             WHERE merge.merge_history IS NOT NULL
-                            WITH existing,
+                            WITH existing, merge,
                                  coalesce(existing.__merged_from, []) as current_merged_from,
                                  coalesce(existing.__merge_history, []) as current_history
                             SET existing.__merged_from = current_merged_from + [merge.new_id],
