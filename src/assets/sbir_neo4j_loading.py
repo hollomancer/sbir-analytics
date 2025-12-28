@@ -1160,13 +1160,13 @@ def neo4j_sbir_awards(
 
         result = {
             "status": "success",
-            "awards_loaded": metrics.nodes_created.get("Award", 0),
+            "awards_loaded": len(award_nodes),
             "awards_updated": metrics.nodes_updated.get("Award", 0),
-            "companies_loaded": metrics.nodes_created.get("Company", 0),
+            "companies_loaded": len(company_nodes_map),
             "companies_updated": metrics.nodes_updated.get("Company", 0),
-            "researchers_loaded": metrics.nodes_created.get("Researcher", 0),
+            "researchers_loaded": len(researcher_nodes_map),
             "researchers_updated": metrics.nodes_updated.get("Researcher", 0),
-            "institutions_loaded": metrics.nodes_created.get("ResearchInstitution", 0),
+            "institutions_loaded": len(institution_nodes_map),
             "institutions_updated": metrics.nodes_updated.get("ResearchInstitution", 0),
             "relationships_created": sum(metrics.relationships_created.values()),
             "errors": metrics.errors,

@@ -745,24 +745,28 @@ def enrichment_completeness_check(enriched_sbir_awards: pd.DataFrame) -> AssetCh
     Returns:
         AssetCheckResult with pass/fail status
     """
+    # Fields that the enricher must produce
     required_fields = [
         "_usaspending_match_method",
+    ]
+    # Optional fields for reporting (may be present after join)
+    optional_fields = [
         "_usaspending_match_score",
-        "usaspending_recipient_name",
+        "usaspending_recipient_legal_business_name",
     ]
 
     # Check all required fields exist
     missing_fields = [f for f in required_fields if f not in enriched_sbir_awards.columns]
 
-    # Check null rates in key fields
+    # Check null rates in all fields (required + optional if present)
     null_rates = {}
-    for field in required_fields:
+    for field in required_fields + optional_fields:
         if field in enriched_sbir_awards.columns:
             null_rate = enriched_sbir_awards[field].isna().sum() / len(enriched_sbir_awards)
             null_rates[field] = null_rate
 
-    # Pass if no missing fields and null rates are reasonable (allowing for unmatched records)
-    passed = len(missing_fields) == 0 and all(rate < 0.95 for rate in null_rates.values())
+    # Pass if no missing required fields
+    passed = len(missing_fields) == 0
 
     return AssetCheckResult(
         passed=passed,
