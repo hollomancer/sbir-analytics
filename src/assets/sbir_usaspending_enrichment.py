@@ -81,9 +81,9 @@ def enriched_sbir_awards(
             enriched_df = enrich_sbir_with_usaspending(
                 sbir_df=validated_sbir_awards,
                 recipient_df=raw_usaspending_recipients,
-                sbir_company_col="Company",
-                sbir_uei_col="UEI",
-                sbir_duns_col="Duns",
+                sbir_company_col="company_name",
+                sbir_uei_col="uei",
+                sbir_duns_col="duns",
                 # USAspending recipient_lookup table column names
                 recipient_name_col="legal_business_name",
                 recipient_uei_col="uei",
@@ -135,9 +135,9 @@ def enriched_sbir_awards(
         context.log.info(f"Attempting SAM.gov enrichment for {unmatched_count} unmatched records")
 
         # UEI exact match against SAM.gov
-        if "UEI" in enriched_df.columns:
+        if "uei" in enriched_df.columns:
             uei_series = (
-                enriched_df.loc[unmatched_mask, "UEI"]
+                enriched_df.loc[unmatched_mask, "uei"]
                 .fillna("")
                 .astype(str)
                 .str.strip()
@@ -153,9 +153,9 @@ def enriched_sbir_awards(
 
         # DUNS exact match against SAM.gov (for remaining unmatched)
         still_unmatched = unmatched_mask & enriched_df["_sam_gov_match_method"].isna()
-        if "Duns" in enriched_df.columns and still_unmatched.any():
+        if "duns" in enriched_df.columns and still_unmatched.any():
             duns_series = (
-                enriched_df.loc[still_unmatched, "Duns"]
+                enriched_df.loc[still_unmatched, "duns"]
                 .fillna("")
                 .astype(str)
                 .apply(lambda x: "".join(ch for ch in str(x) if ch.isdigit()))

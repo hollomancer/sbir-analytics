@@ -200,9 +200,9 @@ class ChunkedEnricher:
                 enriched_chunk = enrich_sbir_with_usaspending(
                     sbir_df=chunk,
                     recipient_df=self.recipient_df,
-                    sbir_company_col="Company",
-                    sbir_uei_col="UEI",
-                    sbir_duns_col="Duns",
+                    sbir_company_col="company_name",
+                    sbir_uei_col="uei",
+                    sbir_duns_col="duns",
                     # USAspending recipient_lookup table column names
                     recipient_name_col="legal_business_name",
                     recipient_uei_col="uei",
