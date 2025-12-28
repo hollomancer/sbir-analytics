@@ -48,6 +48,8 @@ def enriched_sbir_awards(
     Returns:
         Enriched SBIR awards with USAspending and SAM.gov data
     """
+    import os
+
     config = get_config()
 
     context.log.info(
@@ -58,6 +60,21 @@ def enriched_sbir_awards(
             "sam_gov_entities": len(raw_sam_gov_entities),
         },
     )
+
+    # Check if enrichment should be skipped (for memory-constrained CI environments)
+    if os.getenv("SKIP_USASPENDING_ENRICHMENT", "").lower() in ("true", "1", "yes"):
+        context.log.warning("Skipping USAspending enrichment (SKIP_USASPENDING_ENRICHMENT=true)")
+        enriched_df = validated_sbir_awards.copy()
+        enriched_df["_usaspending_match_method"] = pd.NA
+        enriched_df["_sam_gov_match_method"] = pd.NA
+        return Output(
+            value=enriched_df,
+            metadata={
+                "row_count": len(enriched_df),
+                "enrichment_skipped": True,
+                "reason": "SKIP_USASPENDING_ENRICHMENT environment variable set",
+            },
+        )
 
     # Determine if chunked processing is needed
     use_chunked = _should_use_chunked_processing(

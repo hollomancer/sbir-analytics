@@ -94,6 +94,9 @@ jobs:
           NEO4J_PASSWORD: ${{ github.event.inputs.environment == 'test' && secrets.NEO4J_AURA_TEST_PASSWORD || secrets.NEO4J_AURA_PASSWORD }}
           S3_BUCKET: ${{ env.S3_BUCKET }}
           SKIP_NEO4J_LOADING: ${{ github.event.inputs.skip_neo4j }}
+          # Skip USAspending enrichment - too memory intensive for GitHub runners (7GB limit)
+          # Enrichment can be run separately via usaspending_iterative_enrichment_job
+          SKIP_USASPENDING_ENRICHMENT: "true"
         shell: bash
         run: |
           echo "## 🎯 SBIR Pipeline" >> $GITHUB_STEP_SUMMARY
