@@ -1,5 +1,6 @@
 """Dagster assets for SBIR-USAspending enrichment pipeline."""
 
+import os
 from pathlib import Path
 from typing import Any
 
@@ -20,6 +21,58 @@ from ..enrichers.chunked_enrichment import ChunkedEnricher
 from ..enrichers.usaspending import enrich_sbir_with_usaspending
 from ..utils.monitoring import performance_monitor
 from ..utils.reporting.analyzers.sbir_analyzer import SbirEnrichmentAnalyzer
+
+
+def _filter_recipients_by_sbir(
+    sbir_df: pd.DataFrame,
+    recipients_df: pd.DataFrame,
+    context: AssetExecutionContext,
+) -> pd.DataFrame:
+    """Filter recipients to only those that could match SBIR records.
+
+    This dramatically reduces memory usage by keeping only relevant recipients.
+
+    Args:
+        sbir_df: SBIR awards DataFrame with uei/duns columns
+        recipients_df: Full recipients DataFrame
+        context: Dagster context for logging
+
+    Returns:
+        Filtered recipients DataFrame
+    """
+    original_count = len(recipients_df)
+
+    # Extract unique identifiers from SBIR data
+    sbir_ueis = set()
+    sbir_duns = set()
+
+    if "uei" in sbir_df.columns:
+        sbir_ueis = set(sbir_df["uei"].dropna().astype(str).str.strip().str.upper())
+    if "duns" in sbir_df.columns:
+        sbir_duns = set(sbir_df["duns"].dropna().astype(str).str.strip())
+
+    context.log.info(f"SBIR identifiers: {len(sbir_ueis)} UEIs, {len(sbir_duns)} DUNS")
+
+    # Build filter mask
+    mask = pd.Series(False, index=recipients_df.index)
+
+    if "uei" in recipients_df.columns and sbir_ueis:
+        recipient_ueis = recipients_df["uei"].fillna("").astype(str).str.strip().str.upper()
+        mask |= recipient_ueis.isin(sbir_ueis)
+
+    if "duns" in recipients_df.columns and sbir_duns:
+        recipient_duns = recipients_df["duns"].fillna("").astype(str).str.strip()
+        mask |= recipient_duns.isin(sbir_duns)
+
+    filtered_df = recipients_df[mask].copy()
+    filtered_count = len(filtered_df)
+
+    context.log.info(
+        f"Filtered recipients: {original_count:,} -> {filtered_count:,} "
+        f"({filtered_count / original_count * 100:.1f}% retained)"
+    )
+
+    return filtered_df
 
 
 @asset(
@@ -48,8 +101,6 @@ def enriched_sbir_awards(
     Returns:
         Enriched SBIR awards with USAspending and SAM.gov data
     """
-    import os
-
     config = get_config()
 
     context.log.info(
@@ -61,25 +112,17 @@ def enriched_sbir_awards(
         },
     )
 
-    # Check if enrichment should be skipped (for memory-constrained CI environments)
-    if os.getenv("SKIP_USASPENDING_ENRICHMENT", "").lower() in ("true", "1", "yes"):
-        context.log.warning("Skipping USAspending enrichment (SKIP_USASPENDING_ENRICHMENT=true)")
-        enriched_df = validated_sbir_awards.copy()
-        enriched_df["_usaspending_match_method"] = pd.NA
-        enriched_df["_sam_gov_match_method"] = pd.NA
-        return Output(
-            value=enriched_df,
-            metadata={
-                "row_count": len(enriched_df),
-                "enrichment_skipped": True,
-                "reason": "SKIP_USASPENDING_ENRICHMENT environment variable set",
-            },
-        )
+    # Filter recipients to only those matching SBIR UEIs/DUNS (reduces memory ~90%)
+    filtered_recipients = _filter_recipients_by_sbir(
+        validated_sbir_awards, raw_usaspending_recipients, context
+    )
+    # Release original DataFrame memory
+    del raw_usaspending_recipients
 
-    # Determine if chunked processing is needed
+    # Determine if chunked processing is needed (now based on filtered recipients)
     use_chunked = _should_use_chunked_processing(
         validated_sbir_awards,
-        raw_usaspending_recipients,
+        filtered_recipients,
         config,
     )
 
@@ -87,7 +130,7 @@ def enriched_sbir_awards(
         context.log.info("Using chunked enrichment processing")
         enriched_df, enrichment_metrics = _enrich_chunked(
             validated_sbir_awards,
-            raw_usaspending_recipients,
+            filtered_recipients,
             config,
             context,
         )
@@ -97,7 +140,7 @@ def enriched_sbir_awards(
         with performance_monitor.monitor_block("enrichment_core"):
             enriched_df = enrich_sbir_with_usaspending(
                 sbir_df=validated_sbir_awards,
-                recipient_df=raw_usaspending_recipients,
+                recipient_df=filtered_recipients,
                 sbir_company_col="company_name",
                 sbir_uei_col="uei",
                 sbir_duns_col="duns",
@@ -418,7 +461,6 @@ def enriched_sbir_awards(
 
 def _persist_enriched_awards_to_s3(df: pd.DataFrame, context: AssetExecutionContext) -> None:
     """Persist enriched awards to S3 for cross-job consumption."""
-    import os
     import tempfile
 
     bucket = os.environ.get("S3_BUCKET")
