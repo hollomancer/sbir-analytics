@@ -21,6 +21,7 @@ class EnrichmentPerformanceConfig(BaseModel):
     )
     enable_memory_monitoring: bool = Field(default=True, description="Enable memory monitoring")
     enable_fuzzy_matching: bool = Field(default=True, description="Enable fuzzy matching")
+    enable_progress_tracking: bool = Field(default=True, description="Enable progress tracking")
 
 
 class EnrichmentConfig(BaseModel):
