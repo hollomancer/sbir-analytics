@@ -90,26 +90,27 @@ print(f"   Method: {result4.method}")
 assert result4.classification == "Service", "Expected Service due to CPFF override"
 print("   ✓ PASS")
 
-# Test 5: Description Inference - FFP with product keywords
-print("\n5. Testing description inference - FFP with 'prototype'")
+# Test 5: Fixed Price with Service PSC - PSC takes precedence over description
+print("\n5. Testing Fixed Price with Service PSC (PSC takes precedence)")
 contract5 = {
     "award_id": "TEST005",
-    "psc": "R425",  # Alphabetic (would be Service)
+    "psc": "R425",  # Alphabetic (Service)
     "contract_type": "FFP",
     "pricing": "FFP",
     "description": "Development of a prototype device",
     "award_amount": 180000,
 }
 result5 = classify_contract(contract5)
-print(f"   PSC: {contract5['psc']} (alphabetic - normally Service)")
+print(f"   PSC: {contract5['psc']} (alphabetic - Service)")
 print(f"   Description: '{contract5['description']}'")
 print(f"   Result: {result5.classification}")
 print(f"   Method: {result5.method}")
-assert result5.classification == "Product", "Expected Product due to 'prototype' keyword"
+assert result5.classification == "Service", "PSC takes precedence over description keywords"
 print("   ✓ PASS")
 
-# Test 6: SBIR Phase Adjustment - Phase I → R&D
-print("\n6. Testing SBIR phase adjustment - Phase I → R&D")
+# Test 6: SBIR Phase with Service PSC - PSC classification preserved
+# Note: SBIR phase is captured but R&D PSCs are treated as Service
+print("\n6. Testing SBIR Phase I with Service PSC")
 contract6 = {
     "award_id": "TEST006",
     "psc": "R425",
@@ -124,7 +125,7 @@ print(f"   PSC: {contract6['psc']}")
 print(f"   SBIR Phase: {contract6['sbir_phase']}")
 print(f"   Result: {result6.classification}")
 print(f"   Method: {result6.method}")
-assert result6.classification == "R&D", "Expected R&D for SBIR Phase I"
+assert result6.classification == "Service", "SBIR Phase I with Service PSC → Service"
 print("   ✓ PASS")
 
 # Test 7: Company Aggregation - Product-leaning
@@ -150,14 +151,19 @@ print("   ✓ PASS")
 print("\n8. Testing company aggregation - Service-leaning (>=51%)")
 contracts_service = [
     {"award_id": "C1", "classification": "Service", "award_amount": 300000, "psc": "R425"},
-    {"award_id": "C2", "classification": "R&D", "award_amount": 200000, "psc": "A123"},
+    {
+        "award_id": "C2",
+        "classification": "Service",
+        "award_amount": 200000,
+        "psc": "A123",
+    },  # R&D PSC → Service
     {"award_id": "C3", "classification": "Product", "award_amount": 100000, "psc": "1234"},
 ]
 company_result2 = aggregate_company_classification(
     contracts_service, "TEST456UEI000", "Test Company 2"
 )
 print(f"   Total Dollars: ${company_result2.total_dollars:,.0f}")
-print(f"   Service/R&D Dollars: ${company_result2.service_rd_dollars:,.0f}")
+print(f"   Service Dollars: ${company_result2.service_dollars:,.0f}")
 print(f"   Service %: {company_result2.service_pct:.1f}%")
 print(f"   Classification: {company_result2.classification}")
 print(f"   Confidence: {company_result2.confidence}")
