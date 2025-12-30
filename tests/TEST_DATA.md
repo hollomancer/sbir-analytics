@@ -35,6 +35,7 @@ The `tests/conftest.py` provides several fixtures for accessing SBIR data:
 ### Basic Fixtures
 
 #### `sbir_sample_csv_path`
+
 Returns path to the small sample fixture (100 records).
 
 ```python
@@ -44,6 +45,7 @@ def test_my_feature(sbir_sample_csv_path):
 ```
 
 #### `sbir_award_data_csv_path`
+
 Returns path to the real award data (full dataset).
 
 ```python
@@ -54,6 +56,7 @@ def test_with_real_data(sbir_award_data_csv_path):
 ```
 
 #### `sbir_company_csv_paths`
+
 Returns dictionary of agency-specific company data paths.
 
 ```python
@@ -66,6 +69,7 @@ def test_company_data(sbir_company_csv_paths):
 ### Smart Fixture (Recommended)
 
 #### `sbir_csv_path`
+
 Automatically selects sample or real data based on test markers or environment.
 
 ```python
@@ -276,6 +280,7 @@ pytest -m "e2e and real_data"
 ### Tests are too slow
 
 **Solution:**
+
 - Ensure you're not accidentally using real data in fast tests
 - Use `nrows` parameter to sample data
 - Check test markers are correctly applied
@@ -283,6 +288,7 @@ pytest -m "e2e and real_data"
 ### Missing fixture data
 
 **Solution:**
+
 - For sample data: Ensure `tests/fixtures/sbir_sample.csv` exists
 - For real data: Ensure data files are available in `data/raw/sbir/`
 

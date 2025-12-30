@@ -111,7 +111,7 @@ sbir_report = reporter.generate_module_report(
 )
 ```
 
-###Patent Analysis Reports
+### Patent Analysis Reports
 
 ```python
 
@@ -159,7 +159,7 @@ dashboard = reporter.generate_executive_dashboard(
 )
 ```
 
-###Success Story Identification
+### Success Story Identification
 
 ```python
 
@@ -181,7 +181,7 @@ for story in success_stories:
     print(f"Commercialization Path: {story.pathway_description}")
 ```
 
-###Program Effectiveness Metrics
+### Program Effectiveness Metrics
 
 ```python
 

@@ -4,7 +4,7 @@ Quick guide to choosing the right deployment approach for sbir-analytics-ml loca
 
 ## TL;DR - Quick Decision Tree
 
-```
+```text
 How often do ML jobs run?
 │
 ├─ Constantly (multiple times per hour)
@@ -27,7 +27,7 @@ How often do ML jobs run?
 
 ### Option 1: EC2 Always-On (Configured)
 
-```
+```text
 ┌──────────────────────────────────┐
 │   t3.small EC2 Instance          │
 │   Dagster Agent (always running) │
@@ -36,24 +36,28 @@ How often do ML jobs run?
 ```
 
 **Best for:**
+
 - Learning/getting started (simplest setup)
 - Frequent jobs (multiple times per day)
 - Predictable workloads
 - Need guaranteed availability
 
 **Pros:**
+
 - ✅ Simple setup (one script)
 - ✅ No cold start delay
 - ✅ Easy to debug (SSH in anytime)
 - ✅ Works with all Dagster features
 
 **Cons:**
+
 - ❌ Pay 24/7 even when idle
 - ❌ Manual scaling (need bigger instance for parallel jobs)
 - ❌ Fixed resources (can't use different sizes per job)
 
 **Costs:**
-```
+
+```text
 t3.micro:  ~$7/mo  (1GB RAM)  - Minimal, might struggle with ML
 t3.small:  ~$15/mo (2GB RAM)  - ✅ RECOMMENDED for ML agent
 t3.medium: ~$30/mo (4GB RAM)  - If running many parallel jobs
@@ -66,7 +70,7 @@ t3.large:  ~$60/mo (8GB RAM)  - If jobs are very heavy
 
 ### Option 2: AWS Batch (Alternative)
 
-```
+```text
 ┌────────────────┐     ┌──────────────────────────────┐
 │ t3.micro EC2   │────>│      AWS Batch               │
 │ Agent (~$7/mo) │     │  Containers (on-demand)      │
@@ -75,12 +79,14 @@ t3.large:  ~$60/mo (8GB RAM)  - If jobs are very heavy
 ```
 
 **Best for:**
+
 - Infrequent jobs (weekly, few per day)
 - Variable resource requirements
 - Cost optimization
 - Running many parallel jobs
 
 **Pros:**
+
 - ✅ Pay only for job execution time
 - ✅ Auto-scaling (1 job or 100 jobs, same config)
 - ✅ Spot instances = 70% savings
@@ -88,13 +94,15 @@ t3.large:  ~$60/mo (8GB RAM)  - If jobs are very heavy
 - ✅ Better for bursty workloads
 
 **Cons:**
+
 - ❌ More complex setup (IAM roles, compute env, queues)
 - ❌ Cold start ~1-2 min
 - ❌ Harder to debug (need CloudWatch logs)
 - ❌ Spot instances can be interrupted (auto-retries)
 
 **Costs:**
-```
+
+```text
 Agent (t3.micro):     ~$7/mo    (always running)
 Compute (c5.2xlarge): ~$0.34/hr (on-demand)
 Compute (Spot):       ~$0.10/hr (70% cheaper!)
@@ -171,21 +179,27 @@ Example monthly costs:
 
 ## My Recommendation
 
-### If you're just getting started:
+### If you're just getting started
+
 **Choose EC2 (already configured!)**
+
 - Run the setup script
 - Get ML jobs working
 - Monitor usage for a month
 - Migrate to Batch later if needed
 
-### If you have infrequent ML jobs (<20/week):
+### If you have infrequent ML jobs (<20/week)
+
 **Choose AWS Batch**
+
 - ~$11-15/month with Spot
 - Scales automatically
 - Only pay for what you use
 
-### If you run ML constantly:
+### If you run ML constantly
+
 **Choose EC2**
+
 - Simpler
 - No cold starts
 - Similar cost to Batch
@@ -195,16 +209,19 @@ Example monthly costs:
 ## Migration Path
 
 **Start with EC2** (already set up):
+
 1. Run `scripts/setup-ec2-agent.sh` on t3.small
 2. Monitor job frequency and duration for 1-2 weeks
 3. Calculate actual usage costs
 
 **Migrate to Batch if**:
+
 - Jobs run <4 hours/day total
 - Cost savings >$10/month worth the complexity
 - Need to run many parallel jobs
 
 **Migration is easy**:
+
 - Keep same agent EC2 instance
 - Add AWS Batch configuration
 - Update agent config to use BatchUserCodeLauncher
@@ -215,10 +232,12 @@ Example monthly costs:
 ## Current Setup (Already Configured)
 
 You currently have **EC2 configuration ready**:
+
 - ✅ `scripts/setup-ec2-agent.sh` - one-command setup
 - ✅ `docs/deployment/multi-location-setup.md` - full guide
 
 To switch to Batch later, you'll have:
+
 - ✅ `docs/deployment/aws-deployment.md` - full guide (just created)
 
 ## Decision Helper
@@ -258,6 +277,7 @@ Based on typical ML analytics workloads:
 **Start with EC2 (t3.small, ~$15/mo)**
 
 Why:
+
 - ✅ Already configured and ready to use
 - ✅ Simple setup (15 minutes)
 - ✅ Good enough for most ML workloads
@@ -265,6 +285,7 @@ Why:
 - ✅ Can always migrate to Batch later
 
 **Consider Batch if**:
+
 - Jobs are very infrequent (weekly)
 - Budget is tight (<$20/month)
 - You're comfortable with AWS complexity

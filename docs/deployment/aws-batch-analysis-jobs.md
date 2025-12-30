@@ -4,7 +4,7 @@ Heavy analysis jobs (fiscal returns) run on AWS Batch due to memory requirements
 
 ## Architecture
 
-```
+```text
 GitHub Actions (trigger)
     │
     ▼
@@ -46,6 +46,7 @@ aws batch submit-job \
 ## Infrastructure
 
 Managed via CDK in `infrastructure/cdk/stacks/batch_stack.py`:
+
 - Fargate compute environment
 - Job queue: `sbir-analytics-analysis-queue`
 - Job definition: `sbir-analytics-analysis-fiscal-returns`
@@ -53,6 +54,7 @@ Managed via CDK in `infrastructure/cdk/stacks/batch_stack.py`:
 ## Image
 
 The `sbir-analytics-full` image includes:
+
 - Python 3.11 + all ETL dependencies
 - R + StateIO for fiscal analysis
 - Built automatically via `build-images.yml`

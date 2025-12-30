@@ -9,10 +9,12 @@
 ## Test Classification
 
 ### Tier 1: Pre-Commit (< 2 minutes total)
+
 **When**: On every commit/PR
 **Goal**: Fast feedback on basic correctness
 
-#### Tests to Include:
+#### Tests to Include
+
 - **Fast unit tests** (`@pytest.mark.fast`)
   - Model validation tests
   - Configuration schema tests
@@ -26,7 +28,8 @@
 
 #### Estimated Runtime: 1-2 minutes
 
-#### Implementation:
+#### Implementation
+
 ```yaml
 # .github/workflows/ci.yml - fast-tests job
 pytest -m "fast and not integration and not e2e" -n auto --maxfail=5
@@ -35,10 +38,12 @@ pytest -m "fast and not integration and not e2e" -n auto --maxfail=5
 ---
 
 ### Tier 2: PR Validation (< 10 minutes total)
+
 **When**: On PR creation/update
 **Goal**: Comprehensive validation before merge
 
-#### Tests to Include:
+#### Tests to Include
+
 - **All Tier 1 tests**
 - **Integration tests** (conditional on changed files)
   - Neo4j integration (only if graph/loader changes)
@@ -52,7 +57,8 @@ pytest -m "fast and not integration and not e2e" -n auto --maxfail=5
 
 #### Estimated Runtime: 5-10 minutes
 
-#### Implementation:
+#### Implementation
+
 ```yaml
 # Use existing detect-changes action
 - if: steps.detect.outputs.cet == 'true'
@@ -65,10 +71,12 @@ pytest -m "fast and not integration and not e2e" -n auto --maxfail=5
 ---
 
 ### Tier 3: Nightly (< 30 minutes total)
+
 **When**: Once per day at 3 AM UTC
 **Goal**: Catch integration issues and slow tests
 
-#### Tests to Include:
+#### Tests to Include
+
 - **Slow unit tests** (`@pytest.mark.slow`)
   - Large dataset processing tests
   - Performance benchmarks
@@ -91,10 +99,12 @@ pytest -m "fast and not integration and not e2e" -n auto --maxfail=5
 ---
 
 ### Tier 4: Weekly (< 2 hours total)
+
 **When**: Sunday at 2 AM UTC
 **Goal**: Comprehensive validation and data quality checks
 
-#### Tests to Include:
+#### Tests to Include
+
 - **Full E2E test suite**
   - Complete pipeline runs
   - Real data validation (`@pytest.mark.real_data`)
@@ -113,7 +123,8 @@ pytest -m "fast and not integration and not e2e" -n auto --maxfail=5
 
 #### Estimated Runtime: 1-2 hours
 
-#### Implementation:
+#### Implementation
+
 ```yaml
 # New workflow: .github/workflows/weekly.yml
 on:
@@ -125,7 +136,7 @@ on:
 
 ## Redundant/Unnecessary Tests
 
-### Tests to Remove or Consolidate:
+### Tests to Remove or Consolidate
 
 1. **Duplicate validation tests** (tests/validation/test_categorization_validation.py - 1513 lines)
    - **Issue**: Overlaps with unit tests in tests/unit/models/
@@ -157,6 +168,7 @@ on:
 ## Recommended Changes
 
 ### 1. Update pytest markers
+
 ```toml
 # pyproject.toml
 [tool.pytest.ini_options]
@@ -171,6 +183,7 @@ markers = [
 ```
 
 ### 2. Mark tests appropriately
+
 ```python
 # Fast tests (< 1s each)
 @pytest.mark.fast
@@ -195,6 +208,7 @@ def test_full_pipeline_with_real_data():
 ```
 
 ### 3. Update CI workflow
+
 ```yaml
 # .github/workflows/ci.yml
 
@@ -217,6 +231,7 @@ weekly-tests:
 ```
 
 ### 4. Create weekly workflow
+
 ```yaml
 # .github/workflows/weekly.yml
 name: Weekly Comprehensive Tests
@@ -247,18 +262,21 @@ jobs:
 
 ## Expected Impact
 
-### Before:
+### Before
+
 - **Every commit**: ~15-20 minutes (all tests)
 - **Nightly**: ~30 minutes (duplicate of commit tests + slow tests)
 - **Weekly**: Not implemented
 
-### After:
+### After
+
 - **Every commit**: ~2 minutes (fast tests only)
 - **PR validation**: ~5-10 minutes (conditional integration tests)
 - **Nightly**: ~20-30 minutes (slow + integration tests)
 - **Weekly**: ~1-2 hours (comprehensive validation)
 
-### Benefits:
+### Benefits
+
 - **87% faster feedback** on commits (20min → 2min)
 - **Reduced CI costs** (fewer redundant test runs)
 - **Better resource utilization** (heavy tests run when needed)
@@ -269,26 +287,31 @@ jobs:
 ## Migration Plan
 
 ### Phase 1: Mark existing tests (Week 1)
+
 1. Add `@pytest.mark.fast` to unit tests < 1s
 2. Add `@pytest.mark.slow` to tests > 10s
 3. Add `@pytest.mark.weekly` to comprehensive tests
 
 ### Phase 2: Update CI workflows (Week 1)
+
 1. Modify ci.yml to run only fast tests on commit
 2. Add conditional integration tests on PR
 3. Update nightly.yml to run slow tests
 
 ### Phase 3: Create weekly workflow (Week 2)
+
 1. Create weekly.yml for comprehensive tests
 2. Move real_data tests to weekly
 3. Add performance profiling to weekly
 
 ### Phase 4: Remove redundancies (Week 2)
+
 1. Consolidate duplicate validation tests
 2. Remove overlapping integration tests
 3. Optimize test fixtures and setup
 
 ### Phase 5: Monitor and adjust (Ongoing)
+
 1. Track CI execution times
 2. Adjust test categorization as needed
 3. Add new tests to appropriate tier
@@ -297,7 +320,8 @@ jobs:
 
 ## Test Categorization Guide
 
-### Fast Tests (< 1s each):
+### Fast Tests (< 1s each)
+
 - Pure function tests
 - Model validation
 - Configuration parsing
@@ -305,21 +329,24 @@ jobs:
 - String manipulation
 - Math/calculation logic
 
-### Integration Tests (1-10s each):
+### Integration Tests (1-10s each)
+
 - Database connections
 - API calls (mocked)
 - File I/O
 - External service integration
 - Multi-component interaction
 
-### Slow Tests (> 10s each):
+### Slow Tests (> 10s each)
+
 - Large dataset processing
 - Real API calls
 - Complex graph queries
 - Performance benchmarks
 - Training ML models
 
-### Weekly Tests:
+### Weekly Tests
+
 - Full pipeline runs
 - Real data validation
 - Comprehensive E2E scenarios
@@ -342,7 +369,8 @@ Track these metrics to validate improvements:
 
 ## Appendix: Test Inventory
 
-### Large Test Files (> 700 lines):
+### Large Test Files (> 700 lines)
+
 - `tests/validation/test_categorization_validation.py` (1513) → **Move to weekly**
 - `tests/unit/transition/detection/test_detector.py` (1085) → **Split into fast/slow**
 - `tests/unit/loaders/neo4j/test_transitions.py` (1040) → **Move to nightly**
@@ -350,14 +378,16 @@ Track these metrics to validate improvements:
 - `tests/unit/assets/test_fiscal_assets.py` (997) → **Move to nightly**
 - `tests/e2e/test_fiscal_stateio_pipeline.py` (869) → **Move to weekly**
 
-### Test Markers Currently Used:
+### Test Markers Currently Used
+
 - `@pytest.mark.asyncio` (58 tests)
 - `@pytest.mark.integration` (16 tests)
 - `@pytest.mark.slow` (6 tests)
 - `@pytest.mark.real_data` (5 tests)
 - `@pytest.mark.fast` (1 test) ← **Need to add more**
 
-### Recommended Marker Distribution:
+### Recommended Marker Distribution
+
 - `@pytest.mark.fast`: ~150-200 tests (50-70% of unit tests)
 - `@pytest.mark.integration`: ~50-70 tests (current + new)
 - `@pytest.mark.slow`: ~30-50 tests (current + reclassified)

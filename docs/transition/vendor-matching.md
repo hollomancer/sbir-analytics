@@ -416,6 +416,7 @@ The vendor resolver uses a **priority cascade**: try highest-confidence methods 
 8. Else no match for this contract
 
 **Output**: For each award-contract pair, one of:
+
 - No match
 - (match_type, confidence) where match_type ∈ {UEI, CAGE, DUNS, FUZZY_PRIMARY, FUZZY_SECONDARY}
 
@@ -885,6 +886,6 @@ Solution: Add acquisition record
 - **Implementation**: `src/transition/features/vendor_resolver.py`
 - **Cross-Walk**: `src/transition/features/vendor_crosswalk.py`
 - **Tests**: `tests/unit/test_vendor_resolver.py`
-- **SAM.gov**: https://sam.gov/
-- **RapidFuzz**: https://maxbachmann.github.io/RapidFuzz/
-- **DUNS**: https://www.dnb.com/ (DUNS numbers are legacy identifiers being phased out in favor of UEI)
+- **SAM.gov**: <https://sam.gov/>
+- **RapidFuzz**: <https://maxbachmann.github.io/RapidFuzz/>
+- **DUNS**: <https://www.dnb.com/> (DUNS numbers are legacy identifiers being phased out in favor of UEI)

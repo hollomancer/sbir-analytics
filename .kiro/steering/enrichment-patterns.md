@@ -35,7 +35,7 @@ Log Enrichment Path & Confidence Score
 
 ### NAICS Code Enrichment Example
 
-### 9-Step Enrichment Workflow:
+### 9-Step Enrichment Workflow
 
 1. **Original SBIR data** (confidence: 0.95) - Use if valid
 2. **USAspending.gov API** (confidence: 0.90) - Match by UEI/contract ID
@@ -48,12 +48,13 @@ Log Enrichment Path & Confidence Score
 ### Source Tracking and Auditability
 
 **Enrichment Metadata** - Every enriched field includes:
+
 - Source of enrichment (e.g., "usaspending_api", "sam_gov_api", "fuzzy_match")
 - Confidence score (0.0-1.0)
 - Enrichment timestamp
 - Method-specific metadata (similarity scores, API response details)
 
-### Enrichment Result Structure:
+### Enrichment Result Structure
 
 ```python
 @dataclass
@@ -69,14 +70,14 @@ class EnrichmentResult:
 
 ### Rate Limiting and API Management
 
-### Rate Limiting:
+### Rate Limiting
 
 - Configurable rate limits per API source
 - Exponential backoff for transient failures
 - Batch processing where supported by APIs
 - Request throttling to stay within limits
 
-### Retry Logic:
+### Retry Logic
 
 - Transient error detection (503, timeout)
 - Exponential backoff strategy
@@ -86,12 +87,13 @@ class EnrichmentResult:
 ### Evidence-Based Enrichment
 
 **Supporting Evidence** - Each enrichment decision includes:
+
 - Match method (exact, fuzzy, proximity)
 - Similarity scores for fuzzy matches
 - API response metadata
 - Validation checks performed
 
-### Manual Review Support:
+### Manual Review Support
 
 - Low-confidence enrichments flagged for review
 - Evidence presented for manual validation

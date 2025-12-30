@@ -47,6 +47,7 @@ cdk deploy sbir-analytics-step-functions
 ### Handling Existing Resources
 
 **Storage Stack**: Defaults to importing the existing bucket `sbir-etl-production-data`:
+
 ```bash
 # Default: imports existing bucket (no context needed)
 cdk deploy sbir-analytics-storage
@@ -56,6 +57,7 @@ cdk deploy sbir-analytics-storage --context create_new_bucket="true"
 ```
 
 **Security Stack**: Defaults to importing existing IAM roles and Secrets Manager secrets:
+
 ```bash
 # Default: imports existing resources (roles and secrets)
 cdk deploy sbir-analytics-security

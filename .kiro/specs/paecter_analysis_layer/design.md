@@ -24,21 +24,21 @@ Final Outputs (Neo4j, Reports, Baselines)
 
 ### Dagster Assets (Additive)
 
-### Core PaECTER Assets:
+### Core PaECTER Assets
 
 - `paecter_embeddings_patents` → `data/processed/paecter_embeddings_patents.parquet`
 - `paecter_embeddings_awards` → `data/processed/paecter_embeddings_awards.parquet`
 - `paecter_award_patent_similarity` → `data/processed/paecter_award_patent_similarity.parquet`
 - `paecter_quality_metrics` → `data/processed/paecter_quality_metrics.json`
 
-### Bayesian MoE Assets:
+### Bayesian MoE Assets
 
 - `bayesian_classification_routing` → `data/processed/bayesian_classifications.parquet`
 - `bayesian_similarity_routing` → `data/processed/bayesian_similarities.parquet`
 - `bayesian_embedding_routing` → `data/processed/bayesian_embeddings.parquet`
 - `uncertainty_calibration_metrics` → `data/processed/uncertainty_calibration.json`
 
-### Integration Assets:
+### Integration Assets
 
 - `neo4j_bayesian_similarity_edges` (optional; off by default)
 - `paecter_performance_baselines` → `reports/benchmarks/paecter_bayesian.json`
@@ -47,7 +47,7 @@ Final Outputs (Neo4j, Reports, Baselines)
 
 The system implements experts as **LoRA (Low-Rank Adaptation) adapters** rather than separate full models, providing several key advantages:
 
-### Benefits of LoRA Experts:
+### Benefits of LoRA Experts
 
 - **Memory Efficiency**: Share base model weights, only store small adapter matrices
 - **Fast Switching**: Rapid adapter loading/unloading for dynamic expert selection
@@ -55,7 +55,7 @@ The system implements experts as **LoRA (Low-Rank Adaptation) adapters** rather 
 - **Modular Design**: Easy to add/remove domain-specific experts
 - **Cost Effective**: Minimal storage and compute overhead per expert
 
-### LoRA Expert Categories:
+### LoRA Expert Categories
 
 - **Technology Domain Experts**: Biotech_LoRA, AI_LoRA, Defense_LoRA, Energy_LoRA
 - **Document Type Experts**: Patent_LoRA, SBIR_Award_LoRA, Abstract_LoRA

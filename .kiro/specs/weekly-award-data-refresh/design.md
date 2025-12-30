@@ -36,12 +36,14 @@ Single job `refresh-awards-data` running on `ubuntu-latest` runners with the fol
    - Writes metadata JSON to `reports/awards_data_refresh/<timestamp>.json`.
 5. **Generate PR summary** – small Python helper that converts metadata JSON into Markdown table stored at `reports/awards_data_refresh/latest.md`.
 6. **Git diff guard** – shell gate:
+
    ```bash
    if git diff --quiet && [[ "${{ inputs.force_refresh }}" != "true" ]]; then
        echo "No changes detected."
        exit 0
    fi
    ```
+
 7. **Commit changes** – configure git user (`github-actions`), commit message `chore(data): refresh sbir awards <DATE>`.
 8. **Open PR** – use `peter-evans/create-pull-request@v6` with:
    - Branch `data-refresh/<DATE>`
@@ -56,6 +58,7 @@ Single job `refresh-awards-data` running on `ubuntu-latest` runners with the fol
 - **Row-count regression:** Compare new row count to previous metadata and flag >5% decreases as warnings (surface in PR body).
 - **Compression:** Keep file uncompressed in repo for compatibility but consider optionally gzipping and storing as artifact to conserve workflow storage.
 - **Metadata format:** JSON structure
+
   ```json
   {
     "refreshed_at_utc": "...",
@@ -73,7 +76,8 @@ Single job `refresh-awards-data` running on `ubuntu-latest` runners with the fol
 - Branch: `data-refresh/<YYYY-MM-DD>`
 - Commit: `chore(data): refresh sbir awards <YYYY-MM-DD>`
 - PR body template:
-  ```
+
+  ```text
   ## Summary
   - Source: <URL>
   - Downloaded: <timestamp>

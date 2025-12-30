@@ -26,12 +26,12 @@ This document contains performance benchmarks and optimization recommendations f
 
 **Status: WORKING** - Both native and incremental import methods now function correctly.
 
-### Performance Results:
+### Performance Results
 
 - **Native Import**: 287,546 records/second (0.75s for 214K records)
 - **Incremental Import**: 16,195 records/second (13.24s for 214K records, batch_size=1000)
 
-### Technical Details:
+### Technical Details
 
 - Fixed by implementing persistent connections for in-memory DuckDB databases
 - Native import uses DuckDB's optimized `read_csv_auto()` function
@@ -52,7 +52,7 @@ Validation was tested with synthetic SBIR data matching the expected schema:
 **Average Throughput**: ~16,742 records/second
 **Full Dataset Estimate**: ~32 seconds for 533K records
 
-### Validation Rules Tested:
+### Validation Rules Tested
 
 - Required field validation (Company, Title, Agency, Phase, Program)
 - Data type validation (Award Amount as float, Award Year as int)
@@ -63,7 +63,7 @@ Validation was tested with synthetic SBIR data matching the expected schema:
 
 **Status: Not Measured** - Memory profiling requires `psutil` dependency which is not available in current environment.
 
-### Estimated Memory Requirements:
+### Estimated Memory Requirements
 
 - Full dataset load: ~500MB-1GB (based on 533K records × 42 columns)
 - Validation: Minimal additional memory (in-place processing)
@@ -90,12 +90,12 @@ Added progress logging to long-running operations:
 
 ### Batch Size Optimization
 
-### Current Configuration:
+### Current Configuration
 
 - Default batch size: 10,000 records
 - Configurable via `extraction.sbir.batch_size`
 
-### Recommended Batch Sizes:
+### Recommended Batch Sizes
 
 - Memory-constrained: 5,000-10,000 records
 - Performance-optimized: 25,000-50,000 records
@@ -239,7 +239,7 @@ The SBIR-USAspending enrichment pipeline is designed to process SBIR awards data
 
 ### Benchmark Setup
 
-### Hardware Baseline (Reference System):
+### Hardware Baseline (Reference System)
 
 - CPU: 4 cores @ 2.4 GHz
 - RAM: 8 GB available
@@ -259,7 +259,7 @@ Throughput: 55 - 85 records/sec
 Match Rate: 71 - 73%
 ```
 
-### Analysis:
+### Analysis
 
 - Startup overhead dominates (data loading ~1 sec)
 - Fuzzy matching on small samples is relatively fast
@@ -275,7 +275,7 @@ Memory per Record: 0.7 - 0.9 MB
 Match Rate: 70 - 72%
 ```
 
-### Analysis:
+### Analysis
 
 - Startup overhead amortized across more records
 - Consistent throughput with larger sample
@@ -291,7 +291,7 @@ Memory per Record: 0.55 - 0.70 MB
 Match Rate: 70 - 71%
 ```
 
-### Analysis:
+### Analysis
 
 - Sweet spot for balanced performance
 - Predictable scaling behavior
@@ -306,7 +306,7 @@ Throughput: 90 - 135 records/sec
 Match Rate: 69 - 71%
 ```
 
-### Analysis:
+### Analysis
 
 - Memory becomes significant constraint
 - Throughput remains consistent (good horizontal scaling)
@@ -392,14 +392,14 @@ Optimal_Chunk_Size = 10,000 - 50,000 records
 Recommended_Chunk_Size = 25,000 records  # Good balance
 ```
 
-### Benefits of chunking:
+### Benefits of chunking
 
 - Predictable memory usage
 - Progress visibility
 - Resumability on failure
 - Better CPU cache utilization
 
-### Chunking overhead:
+### Chunking overhead
 
 - Per-chunk: ~100 ms (negligible with proper I/O)
 - Typical overhead: < 2% for 25K chunks
@@ -450,7 +450,7 @@ enrichment:
     memory_threshold_mb: 1024 # Aggressive spill threshold
 ```
 
-### Expected impact:
+### Expected impact
 
 - More frequent I/O operations
 - ~10-20% performance degradation
@@ -465,7 +465,7 @@ enrichment:
     memory_threshold_mb: 8192 # Allow more buffer
 ```
 
-### Expected impact:
+### Expected impact
 
 - ~20-30% faster processing
 - Better CPU cache utilization
@@ -569,7 +569,7 @@ sbir_enrichment_exact_matches: gauge
 sbir_enrichment_fuzzy_matches: gauge
 ```
 
-###Alert Rules
+### Alert Rules
 
 ```yaml
 - alert: EnrichmentPerformanceDegraded
@@ -621,7 +621,7 @@ Thresholds:
 
 ### Problem: Slow Performance (< 50 records/sec)
 
-### Checklist:
+### Checklist
 
 1. Check CPU usage - is it maxed out?
    - If yes: reduce chunk size, check for CPU throttling
@@ -632,7 +632,7 @@ Thresholds:
 4. Check match method distribution
    - High fuzzy match rate = expect slower performance
 
-### Solutions:
+### Solutions
 
 ```bash
 
@@ -651,13 +651,13 @@ iotop                 # Check I/O
 
 ### Problem: Out of Memory (OOM)
 
-### Checklist:
+### Checklist
 
 1. How many records in USAspending lookup?
 2. What's the chunk size?
 3. How much free RAM available?
 
-### Solutions:
+### Solutions
 
 For 3.3M USAspending records (requires ~3.5 GB):
 
@@ -688,13 +688,13 @@ usaspending_df = usaspending_df[usaspending_df['year'] >= 2019]
 
 ### Problem: Low Match Rate (< 70%)
 
-### Checklist:
+### Checklist
 
 1. Are identifiers (UEI, DUNS) populated in SBIR data?
 2. Are identifiers valid format?
 3. Has data quality changed?
 
-### Solutions:
+### Solutions
 
 ```bash
 
@@ -716,7 +716,7 @@ Common causes:
 - USAspending identifier coverage differs year-to-year
 - Fuzzy matching threshold too strict
 
-### Adjust thresholds:
+### Adjust thresholds
 
 ```yaml
 enrichment:
@@ -727,12 +727,12 @@ enrichment:
 
 ### Problem: High Memory But Good Performance
 
-### Analysis:
+### Analysis
 
 - This is often normal with large lookups
 - 3.3M USAspending records = ~3.3 GB memory
 
-### Solutions:
+### Solutions
 
 - Monitor but don't optimize unless actual issues
 - Consider running on larger instances in production
@@ -740,7 +740,7 @@ enrichment:
 
 ### Problem: Regression Detected in CI
 
-### Steps:
+### Steps
 
 1. Check what changed
 2. Run local benchmark for comparison
@@ -869,7 +869,7 @@ Low Confidence (65-75): 4-6 character differences
 No Match: > 6 character differences
 ```
 
-### Variations handled:
+### Variations handled
 
 - Case differences (automatically normalized)
 - Punctuation (& → AND, Inc. → INC, etc.)
@@ -986,18 +986,18 @@ The enrichment pipeline provides configurable performance tuning parameters to o
 **Range:** 1000 - 100000
 **Unit:** Records per chunk
 
-### Description:
+### Description
 
 Number of records to process in memory at once during enrichment. Larger chunks are faster but consume more memory.
 
-### Effect:
+### Effect
 
 - **Higher values (50000+):** Faster processing, higher throughput, more memory consumption
 - **Lower values (5000-10000):** Slower processing, lower memory usage, more I/O overhead
 - **Too high:** Risk of out-of-memory errors
 - **Too low:** Increased processing time and I/O overhead
 
-### Tuning Guide:
+### Tuning Guide
 
 For memory-constrained systems (4GB RAM):
 
@@ -1023,7 +1023,7 @@ enrichment:
     chunk_size: 100000
 ```
 
-### Impact:
+### Impact
 
 - Throughput: Roughly linear with chunk size (larger = faster)
 - Memory: Linear with chunk size
@@ -1037,17 +1037,17 @@ enrichment:
 **Default:** 2048
 **Unit:** Megabytes (MB)
 
-### Description:
+### Description
 
 Memory threshold at which the enrichment process triggers memory conservation measures (reduce chunk size, spill to disk, or fail gracefully).
 
-### Effect:
+### Effect
 
 - If memory usage > threshold: System reduces chunk size or spills to disk
 - Prevents out-of-memory errors
 - Allows predictable memory consumption
 
-### Tuning Guide:
+### Tuning Guide
 
 For memory-constrained systems (< 4GB available):
 
@@ -1073,7 +1073,7 @@ enrichment:
     memory_threshold_mb: 8192  # 8GB
 ```
 
-### Recommendation:
+### Recommendation
 
 Set to 70-80% of available system memory. For example:
 
@@ -1089,18 +1089,18 @@ Set to 70-80% of available system memory. For example:
 **Default:** 0.70
 **Unit:** Fraction (0.70 = 70%)
 
-### Description:
+### Description
 
 Quality gate threshold. If the enrichment match rate falls below this percentage, the enrichment asset fails and blocks downstream processing.
 
-### Effect:
+### Effect
 
 - Match rate < threshold: Asset check fails, stops downstream
 - Match rate >= threshold: Asset check passes, continues
 - Higher threshold = stricter quality requirement
 - Lower threshold = more lenient
 
-### Tuning Guide:
+### Tuning Guide
 
 For compliance-focused deployments (high quality required):
 
@@ -1127,6 +1127,7 @@ enrichment:
 ```
 
 **Note:** This threshold should match the quality expectations for your use case. Historical data shows:
+
 - Older SBIR awards (pre-2015): ~60-65% typical match rate
 - Recent SBIR awards (2020+): ~70-75% typical match rate
 - Average across all years: ~70%
@@ -1139,17 +1140,17 @@ enrichment:
 **Default:** 300
 **Unit:** Seconds
 
-### Description:
+### Description
 
 Maximum time allowed to process a single chunk. If processing exceeds this time, the chunk fails and triggers retry logic.
 
-### Effect:
+### Effect
 
 - Processing takes longer than timeout: Chunk fails
 - Too short: May fail legitimate slow operations
 - Too long: Allows processing to hang indefinitely
 
-### Tuning Guide:
+### Tuning Guide
 
 For fast systems with small chunks (5000 records):
 
@@ -1175,7 +1176,7 @@ enrichment:
     timeout_seconds: 600  # 10 minutes
 ```
 
-### Expected Processing Times:
+### Expected Processing Times
 
 - 5K records: 30-60 seconds
 - 25K records: 150-300 seconds (2.5-5 minutes)
@@ -1190,13 +1191,13 @@ enrichment:
 **Default:** exponential
 **Valid Values:** "fixed", "linear", "exponential"
 
-### Description:
+### Description
 
 Retry backoff strategy when a chunk fails to process.
 
-### Strategies:
+### Strategies
 
-### fixed:
+### fixed
 
 - Wait same amount between retries
 - Example: 1s, 1s, 1s
@@ -1208,7 +1209,7 @@ enrichment:
     retry_backoff: fixed
 ```
 
-### linear:
+### linear
 
 - Wait increases linearly
 - Example: 1s, 2s, 3s
@@ -1220,7 +1221,7 @@ enrichment:
     retry_backoff: linear
 ```
 
-### exponential:
+### exponential
 
 - Wait increases exponentially
 - Example: 1s, 2s, 4s, 8s, 16s
@@ -1242,18 +1243,18 @@ enrichment:
 **Range:** 0 - 100
 **Unit:** Similarity score percentage
 
-### Description:
+### Description
 
 Minimum fuzzy matching score to consider a match as "high confidence" and accept it.
 
-### Effect:
+### Effect
 
 - Score >= threshold: Match accepted (high confidence)
 - Score < threshold: Match rejected or requires additional validation
 - Higher threshold: Fewer matches but higher quality
 - Lower threshold: More matches but potentially lower quality
 
-### Tuning Guide:
+### Tuning Guide
 
 For high-quality requirements (compliance):
 
@@ -1279,7 +1280,7 @@ enrichment:
     high_confidence_threshold: 85  # More lenient
 ```
 
-### Impact on Match Rate:
+### Impact on Match Rate
 
 - Threshold 95: 60-65% match rate
 - Threshold 90: 65-72% match rate
@@ -1294,18 +1295,18 @@ enrichment:
 **Range:** 0 - 100
 **Unit:** Similarity score percentage
 
-### Description:
+### Description
 
 Minimum fuzzy matching score to report as a possible match (candidate). Scores below this are not considered matches.
 
-### Effect:
+### Effect
 
 - Score >= threshold: Reported as potential match
 - Score < threshold: Discarded
 - Higher threshold: Fewer candidates, faster processing
 - Lower threshold: More candidates, slower processing
 
-### Tuning Guide:
+### Tuning Guide
 
 For strict matching:
 
@@ -1331,7 +1332,7 @@ enrichment:
     low_confidence_threshold: 70  # More candidates
 ```
 
-### Relationship to high_confidence_threshold:
+### Relationship to high_confidence_threshold
 
 - `low_confidence_threshold` < `high_confidence_threshold` (always)
 - Typical: 75 < 90
@@ -1345,16 +1346,16 @@ enrichment:
 **Default:** true
 **Valid Values:** true, false
 
-### Description:
+### Description
 
 Enable or disable fuzzy name matching. When disabled, only exact UEI/DUNS matches are used.
 
-### Effect:
+### Effect
 
 - `true` (default): Use fuzzy matching when exact identifiers don't match
 - `false`: Skip fuzzy matching, only use exact identifier matches
 
-### Use Cases:
+### Use Cases
 
 Enable fuzzy matching (default):
 
@@ -1383,7 +1384,7 @@ enrichment:
 - Lower CPU usage
 - Use for: Speed-critical scenarios
 
-### Impact:
+### Impact
 
 - With fuzzy enabled: 70-72% typical match rate, 100-150 rec/sec
 - With fuzzy disabled: 35-40% typical match rate, 200-300 rec/sec
@@ -1396,16 +1397,16 @@ enrichment:
 **Default:** true
 **Valid Values:** true, false
 
-### Description:
+### Description
 
 Enable or disable memory usage tracking and monitoring.
 
-### Effect:
+### Effect
 
 - `true` (default): Track peak memory, avg memory delta, spill-to-disk
 - `false`: Skip memory tracking (slight performance improvement)
 
-### Use Cases:
+### Use Cases
 
 Enable (default):
 
@@ -1439,16 +1440,16 @@ enrichment:
 **Default:** true
 **Valid Values:** true, false
 
-### Description:
+### Description
 
 Enable or disable per-chunk progress reporting and tracking.
 
-### Effect:
+### Effect
 
 - `true` (default): Log progress after each chunk, save checkpoints
 - `false`: No progress logging
 
-### Use Cases:
+### Use Cases
 
 Enable (default):
 
@@ -1497,7 +1498,7 @@ enrichment:
     enable_progress_tracking: true
 ```
 
-### Expected Performance:
+### Expected Performance
 
 - Throughput: 50-70 records/sec
 - Memory peak: 1.0-1.2 GB
@@ -1522,7 +1523,7 @@ enrichment:
     enable_progress_tracking: true
 ```
 
-### Expected Performance:
+### Expected Performance
 
 - Throughput: 100-130 records/sec
 - Memory peak: 1.5-2.0 GB
@@ -1547,7 +1548,7 @@ enrichment:
     enable_progress_tracking: true
 ```
 
-### Expected Performance:
+### Expected Performance
 
 - Throughput: 150-200 records/sec
 - Memory peak: 3.0-4.0 GB
@@ -1572,7 +1573,7 @@ enrichment:
     enable_progress_tracking: true
 ```
 
-### Expected Performance:
+### Expected Performance
 
 - Throughput: 70-90 records/sec
 - Memory peak: 1.5-2.0 GB
@@ -1598,7 +1599,7 @@ enrichment:
     enable_progress_tracking: false  # No logging
 ```
 
-### Expected Performance:
+### Expected Performance
 
 - Throughput: 250-300 records/sec
 - Memory peak: 2.0-2.5 GB
@@ -1679,12 +1680,12 @@ Watch for:
 
 ### Problem: Out of Memory
 
-### Diagnosis:
+### Diagnosis
 
 - Check error: "MemoryError" or kernel OOM killer
 - Review peak memory in metrics
 
-### Solution:
+### Solution
 
 ```yaml
 enrichment:
@@ -1695,12 +1696,12 @@ enrichment:
 
 ### Problem: Too Slow
 
-### Diagnosis:
+### Diagnosis
 
 - Throughput < 50 records/sec
 - Check if system is CPU-bound
 
-### Solution:
+### Solution
 
 ```yaml
 enrichment:
@@ -1711,12 +1712,12 @@ enrichment:
 
 ### Problem: Quality Gate Failures (Low Match Rate)
 
-### Diagnosis:
+### Diagnosis
 
 - Match rate below threshold consistently
 - Check if threshold is too strict
 
-### Solution:
+### Solution
 
 ```yaml
 enrichment:
@@ -1727,12 +1728,12 @@ enrichment:
 
 ### Problem: Intermittent Timeouts
 
-### Diagnosis:
+### Diagnosis
 
 - Occasional chunks fail with timeout
 - Check system load
 
-### Solution:
+### Solution
 
 ```yaml
 enrichment:

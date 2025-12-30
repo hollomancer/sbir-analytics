@@ -940,6 +940,7 @@ bundle['validation']['signal_scores_detail']
 **Cause**: Fuzzy matching or missing identifiers
 
 **Solution**: Review `vendor_match.details.match_method`:
+
 - UEI/CAGE/DUNS: Very reliable
 - FUZZY_PRIMARY/FUZZY_SECONDARY: Requires manual verification
 - NONE: No match found

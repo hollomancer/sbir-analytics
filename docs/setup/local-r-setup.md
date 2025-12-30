@@ -7,11 +7,13 @@ This guide helps you set up R and required packages (StateIO) for local developm
 ### 1. Install R
 
 **macOS:**
+
 ```bash
 brew install r
 ```
 
 **Linux (Ubuntu/Debian):**
+
 ```bash
 sudo apt-get update
 sudo apt-get install -y r-base r-base-dev \
@@ -19,7 +21,8 @@ sudo apt-get install -y r-base r-base-dev \
 ```
 
 **Windows:**
-- Download from https://cran.r-project.org/bin/windows/base/
+
+- Download from <https://cran.r-project.org/bin/windows/base/>
 - Run installer and add to PATH
 
 ### 2. Install Python rpy2
@@ -41,6 +44,7 @@ python scripts/verify_r_setup.py
 ```
 
 You should see:
+
 ```
 ✓ ALL CHECKS PASSED - R setup is complete!
 ```
@@ -54,11 +58,13 @@ You should see:
 If the one-liner fails, install packages manually:
 
 1. **Start R console:**
+
    ```bash
    R
    ```
 
 2. **In R console, run:**
+
    ```r
    # Install remotes (needed for GitHub packages)
    install.packages("remotes")
@@ -80,11 +86,13 @@ If the one-liner fails, install packages manually:
 **Cause:** Missing system dependencies
 
 **macOS fix:**
+
 ```bash
 brew install libxml2 openssl
 ```
 
 **Linux fix:**
+
 ```bash
 sudo apt-get install -y \
     libcurl4-openssl-dev \
@@ -102,6 +110,7 @@ sudo apt-get install -y \
 **Cause:** R_HOME environment variable not set
 
 **Fix:**
+
 ```bash
 # Find R home
 R RHOME
@@ -118,6 +127,7 @@ source ~/.bashrc  # or source ~/.zshrc
 **Cause:** Default CRAN mirror is slow
 
 **Fix:** Use a faster mirror in R:
+
 ```r
 # Set CRAN mirror before installing
 options(repos = c(CRAN = "https://cloud.r-project.org/"))
@@ -155,6 +165,7 @@ python scripts/verify_r_setup.py
 ```
 
 **Expected output:**
+
 ```
 ============================================================
 R Setup Verification for SBIR Fiscal Impact Analysis
@@ -189,6 +200,7 @@ python examples/sbir_fiscal_impact_example.py
 ```
 
 **Expected behavior:**
+
 - Should run without errors
 - Should show tax and job impact calculations
 - Should NOT show "placeholder_computation" quality flags
@@ -219,6 +231,7 @@ python examples/sbir_fiscal_impact_example.py
 ```
 
 Docker includes:
+
 - ✅ R pre-installed
 - ✅ StateIO pre-installed
 - ✅ All system dependencies
@@ -229,11 +242,13 @@ Docker includes:
 ## Package Versions
 
 **Tested versions:**
+
 - R: 4.3.0+
 - rpy2: 3.5.0+
 - StateIO: Latest from GitHub
 
 **Compatibility:**
+
 - Python: 3.11+
 - Operating Systems: macOS, Linux, Windows (WSL recommended)
 
@@ -244,6 +259,7 @@ Docker includes:
 ### "Error in library(stateior): there is no package called 'stateior'"
 
 **Fix:** Package not installed. Run:
+
 ```bash
 R -e "remotes::install_github('USEPA/stateior')"
 ```
@@ -251,6 +267,7 @@ R -e "remotes::install_github('USEPA/stateior')"
 ### "Failed to load StateIO R package"
 
 **Check:**
+
 1. R is installed: `R --version`
 2. Package is installed: `R -e "library(stateior)"`
 3. rpy2 can find R: `python -c "import rpy2; print(rpy2.__version__)"`
@@ -270,6 +287,7 @@ R -e "remotes::install_github('USEPA/stateior')"
 If setup fails after following this guide:
 
 1. **Run verification script:**
+
    ```bash
    python scripts/verify_r_setup.py
    ```
@@ -282,6 +300,7 @@ If setup fails after following this guide:
    - Use Docker instead (easiest option)
 
 4. **Still stuck?** Share the output of:
+
    ```bash
    R --version
    python -c "import rpy2; print(rpy2.__version__)"
@@ -292,7 +311,7 @@ If setup fails after following this guide:
 
 ## References
 
-- **R Installation**: https://www.r-project.org/
-- **StateIO GitHub**: https://github.com/USEPA/stateior
-- **rpy2 Documentation**: https://rpy2.github.io/
+- **R Installation**: <https://www.r-project.org/>
+- **StateIO GitHub**: <https://github.com/USEPA/stateior>
+- **rpy2 Documentation**: <https://rpy2.github.io/>
 - **Docker Setup**: `Dockerfile` in project root

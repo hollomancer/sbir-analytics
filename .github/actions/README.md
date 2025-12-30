@@ -219,6 +219,7 @@ environment variables, and common test settings.
 - `neo4j-password`: Neo4j password
 
 **Features:**
+
 - Sets standardized environment variables for testing
 - Reduces duplication across workflows
 - Single source of truth for test configuration
@@ -230,6 +231,7 @@ environment variables, and common test settings.
 Detects which parts of the codebase changed using path filters.
 
 **Usage:**
+
 ```yaml
 - uses: actions/checkout@v4
 - name: Detect changes
@@ -247,6 +249,7 @@ Detects which parts of the codebase changed using path filters.
 ```
 
 **Outputs:**
+
 - All filter outputs are available via `steps.filter.outputs.<filter-name>`
 - Example: `steps.filter.outputs.code-changed`, `steps.filter.outputs.docs-only`
 
@@ -259,6 +262,7 @@ Detects which parts of the codebase changed using path filters.
 Uploads workflow artifacts with common patterns.
 
 **Usage:**
+
 ```yaml
 # Upload on success
 - name: Upload artifacts
@@ -281,6 +285,7 @@ Uploads workflow artifacts with common patterns.
 ```
 
 **Features:**
+
 - Supports multi-line path patterns
 - Configurable retention and error handling
 - Use `if: always()`, `if: success()`, or `if: failure()` for conditional uploads
@@ -311,6 +316,7 @@ Uploads workflow artifacts with common patterns.
    - `runs.steps`: The steps to execute
 
 3. Reference the action in workflows:
+
    ```yaml
    - uses: ./.github/actions/your-action-name
      with:
@@ -320,6 +326,7 @@ Uploads workflow artifacts with common patterns.
 ## Examples
 
 See the workflow files in `.github/workflows/` for examples of how these actions are used:
+
 - `ci.yml` - Uses `setup-python-uv`, `setup-docker-buildx`, `prepare-env-file`
 - `lambda-deploy.yml` - Uses `setup-aws-credentials`, `setup-docker-buildx`
 - `nightly.yml` - Uses `setup-python-uv`, `setup-neo4j-service`, `wait-for-neo4j`, `prepare-env-file`

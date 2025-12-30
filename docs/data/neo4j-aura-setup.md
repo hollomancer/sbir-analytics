@@ -9,6 +9,7 @@ The weekly SBIR awards refresh workflow can optionally load validated data into 
 **Cost:** Free tier available with generous limits (200k nodes + relationships, 50MB storage)
 
 **Benefits:**
+
 - No infrastructure management
 - Automatic backups
 - Cloud accessibility
@@ -47,6 +48,7 @@ gh secret set NEO4J_AURA_DATABASE -b "neo4j"
 ```
 
 Or manually via GitHub web interface:
+
 1. Go to your repository → Settings → Secrets and variables → Actions
 2. Click "New repository secret"
 3. Add each secret:
@@ -89,6 +91,7 @@ uv run python scripts/data/run_neo4j_sbir_load.py \
 ### Check Database Usage
 
 View your instance usage in the Neo4j Aura console:
+
 - Nodes count
 - Relationships count
 - Storage used
@@ -104,11 +107,13 @@ View your instance usage in the Neo4j Aura console:
 ### Typical SBIR Dataset Size
 
 For reference, a full SBIR dataset typically contains:
+
 - ~1.5M+ awards → May exceed free tier
 - ~200k+ companies
 - ~1.5M+ relationships
 
 **Recommendation for free tier:**
+
 - Use sample/filtered datasets
 - Monitor node counts regularly
 - Consider upgrading to Neo4j Aura Professional ($65/month) for full datasets
@@ -138,6 +143,7 @@ If you need to load the full SBIR dataset:
 ## Alternative: Self-Hosted Options
 
 See the main documentation for other low-cost options:
+
 - Fly.io (free tier, scale on-demand)
 - Railway ($5-20/month)
 - DigitalOcean Droplet ($4-6/month)
@@ -149,6 +155,7 @@ See the main documentation for other low-cost options:
 **Symptom:** Workflow fails with "connection timeout"
 
 **Solutions:**
+
 - Verify URI is correct (should start with `neo4j+s://` for Aura)
 - Check that instance is not paused (visit Aura console to wake it)
 - Confirm secrets are set correctly
@@ -158,6 +165,7 @@ See the main documentation for other low-cost options:
 **Symptom:** "Authentication failed" error
 
 **Solutions:**
+
 - Verify password is correct
 - Check username (usually `neo4j`)
 - Ensure you're using the initial password (not changed via console)
@@ -167,6 +175,7 @@ See the main documentation for other low-cost options:
 **Symptom:** Load fails or Aura console shows warning
 
 **Solutions:**
+
 - Reset database to free space: `uv run python scripts/data/reset_neo4j_sbir.py`
 - Use filtered/sample datasets
 - Upgrade to Professional tier
@@ -177,6 +186,7 @@ See the main documentation for other low-cost options:
 **Symptom:** First connection slow or timeout
 
 **Solution:**
+
 - Free tier pauses after 3 days of inactivity
 - First connection wakes it (may take 30-60 seconds)
 - Subsequent connections are instant
@@ -192,6 +202,6 @@ See the main documentation for other low-cost options:
 
 ## Support
 
-- **Neo4j Aura Docs:** https://neo4j.com/docs/aura/
-- **Community Forum:** https://community.neo4j.com/
-- **Status Page:** https://status.neo4j.io/
+- **Neo4j Aura Docs:** <https://neo4j.com/docs/aura/>
+- **Community Forum:** <https://community.neo4j.com/>
+- **Status Page:** <https://status.neo4j.io/>

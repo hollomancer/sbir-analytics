@@ -94,11 +94,13 @@ enrichment:
 ### How It Works
 
 **Option 1: As Primary Scorer**
+
 - Set `jaro_winkler_use_as_primary: true`
 - Jaro-Winkler replaces `token_set_ratio` as the fuzzy matching scorer
 - Better for datasets where prefix matching is critical
 
 **Option 2: As Secondary Signal** (future enhancement)
+
 - Set `jaro_winkler_use_as_primary: false`
 - Use Jaro-Winkler to boost scores of candidates with matching prefixes
 - Combines benefits of token-based and prefix-based matching
@@ -380,6 +382,7 @@ Potential additions for future releases:
 ## Support
 
 For questions or issues:
+
 - Open an issue on GitHub
 - See `examples/enhanced_matching_demo.py` for usage examples
 - Review unit tests in `tests/unit/utils/test_enhanced_matching.py`

@@ -651,7 +651,7 @@ def validate_entity(entity: dict) -> List[str]:
 
 ## 9. References
 
-- USPTO Assignment Data Documentation: https://www.uspto.gov/learning-and-resources/fee-schedules/patent-assignment-data
+- USPTO Assignment Data Documentation: <https://www.uspto.gov/learning-and-resources/fee-schedules/patent-assignment-data>
 - Field-level specifications: See `docs/schemas/patent-assignment-schema.md`
 - Neo4j Schema Design: See `docs/schemas/patent-neo4j-schema.md`
 - SBIR Integration: See transition detection documentation

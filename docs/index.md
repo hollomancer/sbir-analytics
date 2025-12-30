@@ -11,16 +11,17 @@ Status: active
 
 Welcome. This site is the canonical documentation for the SBIR ETL pipeline.
 
--   **Kiro specifications** (`.kiro/specs/`) are the source of truth for designs, tasks, and requirements.
--   User and developer documentation lives under `docs/` (this site).
--   Agent steering documents live in `.kiro/steering/` (architectural patterns and guidance for AI agents).
--   Historical OpenSpec content is archived in `archive/openspec/` for reference.
+- **Kiro specifications** (`.kiro/specs/`) are the source of truth for designs, tasks, and requirements.
+- User and developer documentation lives under `docs/` (this site).
+- Agent steering documents live in `.kiro/steering/` (architectural patterns and guidance for AI agents).
+- Historical OpenSpec content is archived in `archive/openspec/` for reference.
 
 ## What is this project?
 
 Cloud-native, graph-based ETL pipeline that ingests SBIR/USAspending/USPTO data and loads a Neo4j graph database.
 
 **Production Architecture**:
+
 - **Orchestration**: GitHub Actions Solo Plan, AWS Step Functions
 - **Compute**: AWS Lambda (serverless)
 - **Storage**: AWS S3 (data lake)
@@ -32,16 +33,19 @@ Cloud-native, graph-based ETL pipeline that ingests SBIR/USAspending/USPTO data 
 ## Quick links
 
 ### Getting Started
+
 - Getting started: [`README.md`](../README.md)
 - Architecture overview: [`architecture/detailed-overview.md`](architecture/detailed-overview.md)
 - Shared tech stack: [`architecture/shared-tech-stack.md`](architecture/shared-tech-stack.md)
 
 ### Deployment (Cloud-First)
+
 - **[Production deployment](deployment/README.md)** - GitHub Actions (Primary)
 - **[AWS Infrastructure](deployment/aws-deployment.md)** - Lambda + S3 + Step Functions
 - [Containerization guide](deployment/containerization.md) - Docker (Development/Failover)
 
 ### Development Guides
+
 - **Docker Setup:**
   - [Docker Development](development/docker.md) - Setup, configuration, and troubleshooting
 - [Exception Handling](development/exception-handling.md)
@@ -49,6 +53,7 @@ Cloud-native, graph-based ETL pipeline that ingests SBIR/USAspending/USPTO data 
 - [Kiro Workflow](development/kiro-workflow-guide.md)
 
 ### Reference
+
 - Statistical reporting guide: [`guides/statistical-reporting.md`](guides/statistical-reporting.md)
 - Neo4j schema reference: [`schemas/neo4j.md`](schemas/neo4j.md)
 - Data dictionaries: [`data/dictionaries/`](data/dictionaries/)

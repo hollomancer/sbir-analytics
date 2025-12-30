@@ -17,6 +17,7 @@ Migrations are versioned Python files that define schema changes (constraints, i
 ## Migration Files
 
 Migrations are located in `migrations/versions/` and follow the naming pattern:
+
 - `001_initial_schema.py` - Initial constraints and indexes
 - `002_add_organization_deduplication_indexes.py` - Indexes for deduplication
 - `003_merge_existing_duplicate_organizations.py` - One-time data cleanup
@@ -50,6 +51,7 @@ python scripts/neo4j/migrate.py upgrade --dry-run
 ```
 
 Environment variables:
+
 - `NEO4J_URI` - Neo4j connection URI (default: `bolt://localhost:7687`)
 - `NEO4J_USER` - Username (default: `neo4j`)
 - `NEO4J_PASSWORD` - Password (required)
@@ -57,6 +59,7 @@ Environment variables:
 ## Creating New Migrations
 
 1. Create a new file in `migrations/versions/`:
+
    ```python
    from migrations.base import Migration
    from neo4j import Driver
@@ -83,6 +86,7 @@ Environment variables:
 ## Migration Tracking
 
 Migrations are tracked in Neo4j using a `__MigrationTracking` node that stores:
+
 - `applied_versions`: List of applied migration versions
 - `current_version`: Latest applied version
 - `updated_at`: Last update timestamp

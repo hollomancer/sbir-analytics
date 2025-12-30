@@ -125,7 +125,7 @@ all_activity = [c for c in contracts]  # Includes deobligations
 
 ## References
 
-- USAspending Data Dictionary: https://files.usaspending.gov/docs/Data_Dictionary_Crosswalk.xlsx
+- USAspending Data Dictionary: <https://files.usaspending.gov/docs/Data_Dictionary_Crosswalk.xlsx>
 - Discussion: Task 5 - Federal Contracts Ingestion
 - Files Modified:
   - `src/models/transition_models.py` (FederalContract model)

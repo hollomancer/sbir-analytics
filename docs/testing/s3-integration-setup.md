@@ -130,7 +130,7 @@ uv run pytest tests/integration/test_s3_operations.py -v -m s3
 
 Tests will be skipped automatically:
 
-```bash
+```console
 $ make test-s3
 ⚠️  AWS credentials not available, skipping S3 integration tests
 ```
@@ -170,6 +170,7 @@ $ make test-s3
 **Cause**: IAM role doesn't have required permissions
 
 **Fix**:
+
 ```bash
 # Verify role policy
 aws iam get-role-policy \
@@ -188,6 +189,7 @@ aws iam put-role-policy \
 **Cause**: Test bucket doesn't exist or wrong region
 
 **Fix**:
+
 ```bash
 # Check bucket exists
 aws s3 ls s3://sbir-analytics-test
@@ -201,7 +203,8 @@ aws s3 mb s3://sbir-analytics-test --region us-east-2
 **Cause**: Network issues or slow S3 response
 
 **Fix**:
-- Check AWS service health: https://status.aws.amazon.com/
+
+- Check AWS service health: <https://status.aws.amazon.com/>
 - Retry the workflow
 - Increase timeout in CI (currently 5 min)
 
@@ -210,6 +213,7 @@ aws s3 mb s3://sbir-analytics-test --region us-east-2
 **Cause**: Lifecycle policy not configured
 
 **Fix**:
+
 ```bash
 # Manually delete old test files
 aws s3 rm s3://sbir-analytics-test/test/ --recursive
@@ -287,6 +291,7 @@ Always use `skipif` for optional dependencies:
 ### 4. Use Lifecycle Policies
 
 Configure S3 lifecycle to auto-delete old test files:
+
 - Prevents cost accumulation
 - Automatic cleanup of failed test runs
 - No manual intervention needed

@@ -4,7 +4,7 @@
 
 This document specifies the Neo4j graph model for USPTO patent assignments, including node types, relationship types, properties, indexes, and integration with existing SBIR ETL entities (Awards, Companies).
 
-### Design Principles:
+### Design Principles
 
 - **Immutability**: Patent data is historical and immutable (append-only)
 - **Temporal Relationships**: Preserve assignment timeline (who → when → whom)
@@ -50,13 +50,13 @@ Represents a patented invention, identified by USPTO patent numbers.
 })
 ```
 
-### Constraints:
+### Constraints
 
 - `grant_doc_num` should be UNIQUE (when present, ~70% of records)
 - `title` must be non-null
 - `appno_date` should be between 1790 and current year
 
-### Indexes:
+### Indexes
 
 ```cypher
 CREATE INDEX idx_patent_grant_doc_num
@@ -117,13 +117,13 @@ Represents a single assignment/transfer transaction. Links Patent to its partici
 })
 ```
 
-### Constraints:
+### Constraints
 
 - `rf_id` must be UNIQUE (primary key from USPTO)
 - `convey_type` must be from enum: ASSIGNMENT, LICENSE, SECURITY_INTEREST, MERGER, CORRECTION, etc.
 - `exec_date` should be between 1790 and current year
 
-### Indexes:
+### Indexes
 
 ```cypher
 CREATE INDEX idx_assignment_rf_id
@@ -180,14 +180,14 @@ Represents any party involved in patent assignments (assignees, assignors). Can 
 })
 ```
 
-### Constraints:
+### Constraints
 
 - `name` must be non-null
 - `entity_type` must be "ASSIGNEE" or "ASSIGNOR"
 - `entity_category` must be one of: COMPANY, INDIVIDUAL, UNIVERSITY, GOVERNMENT, OTHER
 - `entity_id` should be UNIQUE (composite key of normalized name + country + postcode)
 
-### Indexes:
+### Indexes
 
 ```cypher
 CREATE INDEX idx_entity_name
@@ -678,16 +678,19 @@ ORDER BY assignment_date DESC
 ### Indexes (Priority Order)
 
 **Tier 1 - Essential** (create first):
+
 - Patent.grant_doc_num (SBIR linkage)
 - PatentAssignment.rf_id (uniqueness)
 - PatentEntity.normalized_name (matching)
 
 **Tier 2 - High Value** (create second):
+
 - Patent.appno_date (timeline queries)
 - PatentAssignment.exec_date (temporal analysis)
 - PatentEntity.entity_type (filtering)
 
 **Tier 3 - Optional** (create if needed):
+
 - Patent.title (FULLTEXT for search)
 - PatentEntity.name (FULLTEXT for search)
 - PatentAssignment.convey_type (filtering)
@@ -744,8 +747,8 @@ CREATE CONSTRAINT entity_name_required
 
 ## 10. References
 
-- USPTO Patent Assignment Data: https://www.uspto.gov/learning-and-resources/fee-schedules/patent-assignment-data
-- Neo4j Documentation: https://neo4j.com/docs/
+- USPTO Patent Assignment Data: <https://www.uspto.gov/learning-and-resources/fee-schedules/patent-assignment-data>
+- Neo4j Documentation: <https://neo4j.com/docs/>
 - [Neo4j Schema Reference](neo4j.md) - Canonical schema reference
 - [Patent Field Mapping](patent-field-mapping.md) - USPTO to Neo4j field mapping
 - [Patent Assignment Schema](patent-assignment-schema.md) - Assignment relationship details

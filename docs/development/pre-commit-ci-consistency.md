@@ -12,6 +12,7 @@ This document explains how SBIR Analytics maintains consistency between local de
 ### Why Consistency Matters
 
 Developers should never encounter a situation where:
+
 - Code passes local pre-commit checks but fails in CI
 - Code fails locally but passes in CI
 - Different tools are used in different environments
@@ -20,7 +21,7 @@ This document defines the **single source of truth** for code quality tools and 
 
 ### Architecture
 
-```
+```text
 Developer's Machine                    GitHub Actions (CI)
 └─ git commit                          └─ Pull Request / Push
    └─ pre-commit hooks run            └─ .github/workflows/static-analysis.yml
@@ -55,16 +56,19 @@ All tools are configured to run on consistent scopes:
 ### Scope Rationale
 
 **Why `src/` only for MyPy and Bandit?**
+
 - Tests, scripts, examples, and migrations are not production code
 - These files often use different patterns and are lower priority
 - Focusing on `src/` ensures production code quality
 
 **Why `src/` + `tests/` for Ruff?**
+
 - Tests should follow the same code style as production code
 - Ruff is fast and catches important issues (unused imports, naming)
 - Consistent formatting improves readability
 
 **Why all files for standard hooks?**
+
 - File integrity checks apply universally
 - YAML validation, EOL/whitespace fixes are safe and important
 - Low overhead
@@ -76,6 +80,7 @@ All tools are configured to run on consistent scopes:
 ### Installation
 
 1. **Ensure pre-commit is installed:**
+
    ```bash
    pip install pre-commit
    # or via uv (already in dev dependencies)
@@ -83,12 +88,14 @@ All tools are configured to run on consistent scopes:
    ```
 
 2. **Enable hooks in this repository:**
+
    ```bash
    cd sbir-analytics
    pre-commit install
    ```
 
 3. **Verify installation:**
+
    ```bash
    pre-commit --version
    ls -la .git/hooks/pre-commit
@@ -97,6 +104,7 @@ All tools are configured to run on consistent scopes:
 ### Usage
 
 **Automatic (on every commit):**
+
 ```bash
 git commit -m "Your message"
 # Hooks run automatically
@@ -106,6 +114,7 @@ git commit -m "Your message"
 ```
 
 **Manual (check before committing):**
+
 ```bash
 # Check all changed files
 pre-commit run
@@ -119,6 +128,7 @@ pre-commit run mypy --all-files
 ```
 
 **Bypass hooks (use with caution):**
+
 ```bash
 git commit --no-verify
 # This skips hooks, but CI will still check!
@@ -128,7 +138,7 @@ git commit --no-verify
 
 When a hook fails, you'll see output like:
 
-```
+```console
 ruff (legacy alias)......................................................Failed
 - hook id: ruff
 - exit code: 1
@@ -138,6 +148,7 @@ Some rule failed
 ```
 
 **Common issues:**
+
 - **Ruff errors:** Run `ruff check src tests --fix` to auto-fix many issues
 - **MyPy errors:** Read the error message and add type hints or `# type: ignore` comments
 - **Bandit alerts:** Review and fix security issues, or add `# nosec` if false positive
@@ -150,6 +161,7 @@ Some rule failed
 ### Workflow: `.github/workflows/static-analysis.yml`
 
 This workflow runs on:
+
 - Every push to `main` or `develop`
 - Every pull request
 
@@ -194,6 +206,7 @@ This workflow runs on:
 ### When to Update Tool Versions
 
 Tool versions are pinned in:
+
 - `.pre-commit-config.yaml` (local)
 - `.github/workflows/static-analysis.yml` (CI)
 - `pyproject.toml` (tool configuration)
@@ -201,6 +214,7 @@ Tool versions are pinned in:
 **Update process:**
 
 1. **Update all three locations together:**
+
    ```bash
    # Don't update just one - keep them in sync!
    # Update in:
@@ -210,11 +224,13 @@ Tool versions are pinned in:
    ```
 
 2. **Test locally:**
+
    ```bash
    pre-commit run --all-files
    ```
 
 3. **Commit the changes:**
+
    ```bash
    git add .pre-commit-config.yaml .github/workflows/static-analysis.yml pyproject.toml
    git commit -m "chore: update pre-commit tools to [version]"
@@ -253,11 +269,13 @@ Tool versions are pinned in:
 **This should not happen.** If it does:
 
 1. Verify pre-commit version matches:
+
    ```bash
    pre-commit --version
    ```
 
 2. Update pre-commit hooks:
+
    ```bash
    pre-commit autoupdate
    pre-commit run --all-files
@@ -270,6 +288,7 @@ Tool versions are pinned in:
 ### "Ruff passes locally but fails in CI"
 
 **Check scope:**
+
 ```bash
 # Local pre-commit runs on src/ and tests/
 # CI runs on src/ and tests/
@@ -285,6 +304,7 @@ ruff format --check src tests
 ### "MyPy passes locally but fails in CI"
 
 **Check scope:**
+
 ```bash
 # Local pre-commit runs on src/ only
 # CI runs on src/ only via: mypy src
@@ -297,11 +317,13 @@ uv run python -m mypy src
 ### "Hook modified files I didn't touch"
 
 Some hooks auto-fix issues:
+
 - **end-of-file-fixer:** Adds newlines
 - **trailing-whitespace:** Removes trailing spaces
 - **Ruff**: Auto-fixes with `--fix` flag
 
 **Solution:**
+
 1. Review changes: `git diff`
 2. Re-add: `git add .`
 3. Re-commit: `git commit -m "..."`
@@ -310,6 +332,7 @@ Some hooks auto-fix issues:
 
 1. Review the suspected secret cautiously
 2. If approved, add to baseline:
+
    ```bash
    git add .secrets.baseline
    git commit -m "chore: add approved secret to detect-secrets baseline"
@@ -324,6 +347,7 @@ Some hooks auto-fix issues:
 ### Do I have to use pre-commit?
 
 No, but it's strongly recommended. Pre-commit:
+
 - Catches issues before CI
 - Saves time by fixing issues locally
 - Prevents failed PRs
@@ -338,6 +362,7 @@ If you skip it: `git commit --no-verify`, but CI will still check.
 - Individual tools are parallelized
 
 **Speed tips:**
+
 ```bash
 # Skip non-essential hooks (not recommended)
 git commit --no-verify
@@ -360,6 +385,7 @@ pre-commit run ruff
 ### Why are some files excluded from MyPy?
 
 MyPy configuration in `pyproject.toml` has:
+
 ```toml
 exclude = [
     "scripts/",
@@ -372,6 +398,7 @@ exclude = [
 **Reason:** These are not production code. Focusing on `src/` ensures critical code is type-safe while allowing flexibility in test/example code.
 
 If you need type checking for a specific file, add:
+
 ```python
 # mypy: check_untyped_defs
 ```
@@ -380,13 +407,14 @@ If you need type checking for a specific file, add:
 
 ## References
 
-- **Pre-commit documentation:** https://pre-commit.com/
-- **Ruff documentation:** https://docs.astral.sh/ruff/
-- **MyPy documentation:** https://mypy.readthedocs.io/en/stable/
-- **Bandit documentation:** https://bandit.readthedocs.io/en/latest/
-- **Detect-secrets:** https://github.com/Yelp/detect-secrets
+- **Pre-commit documentation:** <https://pre-commit.com/>
+- **Ruff documentation:** <https://docs.astral.sh/ruff/>
+- **MyPy documentation:** <https://mypy.readthedocs.io/en/stable/>
+- **Bandit documentation:** <https://bandit.readthedocs.io/en/latest/>
+- **Detect-secrets:** <https://github.com/Yelp/detect-secrets>
 
 Project files:
+
 - `.pre-commit-config.yaml` - Local hook configuration
 - `.github/workflows/static-analysis.yml` - CI configuration
 - `pyproject.toml` - Tool-specific configuration

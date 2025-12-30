@@ -7,7 +7,7 @@ This document provides reference information for EPA's StateIO (`stateior`) R pa
 ### StateIO (`stateior`)
 
 **Purpose**: State-level input-output economic modeling
-**Repository**: https://github.com/USEPA/stateior
+**Repository**: <https://github.com/USEPA/stateior>
 
 ### Installation
 
@@ -167,7 +167,7 @@ Common R package errors:
 
 ### System Requirements
 
-1. **R Runtime**: Install R (https://www.r-project.org/)
+1. **R Runtime**: Install R (<https://www.r-project.org/>)
 2. **Python rpy2**: `uv sync --extra r` or `pip install rpy2`
 3. **R Packages**: Install StateIO in R environment
 
@@ -204,7 +204,7 @@ sudo apt-get update
 sudo apt-get install r-base
 ```
 
-**Windows**: Download from https://cran.r-project.org/bin/windows/base/
+**Windows**: Download from <https://cran.r-project.org/bin/windows/base/>
 
 #### 2. Install R Packages
 
@@ -228,7 +228,7 @@ library(stateior)
 R -e "options(repos = c(CRAN = 'https://cloud.r-project.org')); install.packages('remotes'); remotes::install_github('USEPA/stateio')"
 ```
 
-###3. Install Python rpy2
+### 3. Install Python rpy2
 
 ```bash
 uv sync --extra r
@@ -238,7 +238,7 @@ uv sync --extra r
 pip install rpy2
 ```
 
-###4. Verify Installation
+### 4. Verify Installation
 
 Test R integration:
 
@@ -288,8 +288,8 @@ ro.r('options(show.error.messages = TRUE)')  # Show error messages
 
 ## References
 
-- StateIO GitHub: https://github.com/USEPA/stateior
-- rpy2 Documentation: https://rpy2.github.io/
+- StateIO GitHub: <https://github.com/USEPA/stateior>
+- rpy2 Documentation: <https://rpy2.github.io/>
 
 ## Implementation Details
 
@@ -320,5 +320,5 @@ See `docs/fiscal/stateio-api-reference.md` for detailed API documentation.
 ## References
 
 - **StateIO API Reference**: `docs/fiscal/stateio-api-reference.md`
-- StateIO GitHub: https://github.com/USEPA/stateior
-- rpy2 Documentation: https://rpy2.github.io/
+- StateIO GitHub: <https://github.com/USEPA/stateior>
+- rpy2 Documentation: <https://rpy2.github.io/>

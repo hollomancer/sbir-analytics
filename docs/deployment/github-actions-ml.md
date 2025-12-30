@@ -4,7 +4,7 @@ For infrequent ML workloads (weekly testing, on-demand training), GitHub Actions
 
 ## Architecture
 
-```
+```text
 ┌──────────────────────────────────────────────┐
 │        GitHub Actions Serverless              │
 │        Core ETL (always available)           │
@@ -60,6 +60,7 @@ Still cheaper than any infrastructure!
 ### Option 2: Weekly Schedule
 
 The workflow is configured to run automatically:
+
 - **Every Monday at 3 AM UTC**
 - Runs all ML jobs for weekly validation
 
@@ -93,6 +94,7 @@ curl -X POST \
 ### Available Jobs
 
 **1. CET Full Pipeline** (`cet_full_pipeline`)
+
 - Company Emerging Technologies classification
 - Training: scikit-learn models
 - Inference: Apply models to SBIR data
@@ -100,17 +102,20 @@ curl -X POST \
 - Duration: ~30-60 minutes
 
 **2. Fiscal Returns MVP** (`fiscal_returns_mvp`)
+
 - Economic impact analysis using R
 - ROI calculations
 - Fiscal multiplier effects
 - Duration: ~20-40 minutes
 
 **3. PaECTER Job** (`paecter_embeddings`)
+
 - Generate embeddings using sentence-transformers
 - Similarity computation for patent-award matching
 - Duration: ~40-80 minutes
 
 **4. All ML Jobs** (`all_ml_jobs`)
+
 - Runs all above jobs sequentially
 - Duration: ~90-180 minutes
 
@@ -130,6 +135,7 @@ env:
 ### AWS Credentials
 
 Jobs access S3 automatically using OIDC:
+
 - Uses `AWS_ROLE_ARN` secret (already configured)
 - No static credentials needed
 - Secure and automatic
@@ -139,6 +145,7 @@ Jobs access S3 automatically using OIDC:
 Default: 3 hours (180 minutes)
 
 To increase:
+
 ```yaml
 jobs:
   run-ml-job:
@@ -158,6 +165,7 @@ GitHub Actions max: 6 hours (360 minutes)
 ### Results
 
 Job results are uploaded as artifacts:
+
 - Available for 7 days
 - Download via Actions tab
 - Includes Dagster logs and reports
@@ -169,6 +177,7 @@ Get notified on job completion:
 **Email**: Automatic for failed jobs
 
 **Slack**: Add to workflow:
+
 ```yaml
 - name: Notify Slack
   if: always()
@@ -213,6 +222,7 @@ Get notified on job completion:
 **Symptom**: Job cancelled after 3 hours
 
 **Solution**: Either optimize job or increase timeout:
+
 ```yaml
 timeout-minutes: 360  # Max 6 hours
 ```
@@ -222,6 +232,7 @@ timeout-minutes: 360  # Max 6 hours
 **Symptom**: Job killed with OOM error
 
 **Solution**: GitHub provides 7GB RAM by default. If not enough:
+
 1. Optimize job to use less memory
 2. Use larger GitHub-hosted runner (paid): 16GB or 32GB RAM
 3. Or switch to EC2/AWS Batch for very large jobs
@@ -231,6 +242,7 @@ timeout-minutes: 360  # Max 6 hours
 **Symptom**: Unable to access S3
 
 **Solution**: Verify OIDC configuration:
+
 ```bash
 # Check role ARN is set
 gh secret list
@@ -244,6 +256,7 @@ aws sts get-caller-identity
 **Symptom**: `pip install` takes 10+ minutes
 
 **Solution**: Already using pip cache in workflow:
+
 ```yaml
 - uses: actions/setup-python@v5
   with:
@@ -304,6 +317,7 @@ For visibility in GitHub Actions, report runs:
 ## When to Migrate
 
 Consider moving to EC2/Batch when:
+
 - Jobs run >20 times per week
 - Each job takes >2 hours
 - Need <1 minute latency
@@ -320,6 +334,6 @@ Until then, GitHub Actions is perfect! 🎉
 
 ## Support
 
-- GitHub Actions Docs: https://docs.github.com/en/actions
-- Dagster CLI: https://docs.dagster.io/guides/build/jobs
+- GitHub Actions Docs: <https://docs.github.com/en/actions>
+- Dagster CLI: <https://docs.dagster.io/guides/build/jobs>
 - Workflow file: `.github/workflows/run-ml-jobs.yml`

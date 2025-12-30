@@ -18,7 +18,7 @@ Comprehensive testing strategy for SBIR ETL pipeline covering unit, integration,
 
 ## Test Pyramid
 
-```
+```text
         /\
        /E2E\         ~50 tests (scenarios)
       /------\
@@ -35,6 +35,7 @@ Comprehensive testing strategy for SBIR ETL pipeline covering unit, integration,
 **Marker**: `@pytest.mark.fast`
 
 **Focus Areas:**
+
 - Data models and validation
 - Configuration schemas
 - Pure functions (no I/O)
@@ -42,6 +43,7 @@ Comprehensive testing strategy for SBIR ETL pipeline covering unit, integration,
 - Transformers and enrichers
 
 **Example:**
+
 ```python
 @pytest.mark.fast
 def test_award_validation():
@@ -56,12 +58,14 @@ def test_award_validation():
 **Marker**: `@pytest.mark.integration`
 
 **Focus Areas:**
+
 - Neo4j database operations
 - API integrations (SAM.gov, USAspending)
 - DuckDB queries
 - File I/O operations
 
 **Example:**
+
 ```python
 @pytest.mark.integration
 def test_neo4j_award_loading(neo4j_session):
@@ -77,12 +81,14 @@ def test_neo4j_award_loading(neo4j_session):
 **Marker**: `@pytest.mark.e2e`
 
 **Focus Areas:**
+
 - Full pipeline execution
 - Multi-stage workflows
 - Data quality validation
 - Performance benchmarks
 
 **Example:**
+
 ```python
 @pytest.mark.e2e
 def test_sbir_ingestion_pipeline():
@@ -119,6 +125,7 @@ def test_sbir_ingestion_pipeline():
 **Goal**: Increase coverage to 65%
 
 **Actions:**
+
 1. Add unit tests for uncovered loaders
 2. Add integration tests for enrichers
 3. Fix flaky tests in CI
@@ -131,6 +138,7 @@ def test_sbir_ingestion_pipeline():
 **Goal**: Increase coverage to 70%
 
 **Actions:**
+
 1. Add Neo4j integration tests for all loaders
 2. Add API integration tests for enrichers
 3. Add DuckDB integration tests for extractors
@@ -143,6 +151,7 @@ def test_sbir_ingestion_pipeline():
 **Goal**: Increase coverage to 75%
 
 **Actions:**
+
 1. Add E2E tests for all major pipelines
 2. Add performance regression tests
 3. Add data quality validation tests
@@ -155,6 +164,7 @@ def test_sbir_ingestion_pipeline():
 **Goal**: Reach 80% coverage
 
 **Actions:**
+
 1. Add edge case tests for all modules
 2. Add error recovery tests
 3. Add concurrent execution tests
@@ -166,7 +176,7 @@ def test_sbir_ingestion_pipeline():
 
 ### Directory Structure
 
-```
+```text
 tests/
 ├── unit/              # Fast unit tests
 │   ├── loaders/
@@ -191,6 +201,7 @@ tests/
 **Classes**: `Test<Component>`
 
 **Examples:**
+
 ```python
 # tests/unit/loaders/test_award_loader.py
 def test_load_awards_success():
@@ -213,11 +224,13 @@ class TestAwardLoading:
 ### Fixtures
 
 **Shared fixtures** in `tests/fixtures/`:
+
 - `sample_awards.json` - Sample SBIR awards
 - `sample_patents.json` - Sample USPTO patents
 - `sample_contracts.json` - Sample USAspending contracts
 
 **Fixture functions** in `conftest.py`:
+
 ```python
 @pytest.fixture
 def sample_award():
@@ -233,6 +246,7 @@ def neo4j_session():
 ### Test Data Generation
 
 **Use factories for complex data:**
+
 ```python
 from factory import Factory, Faker
 
@@ -250,18 +264,21 @@ class AwardFactory(Factory):
 ### GitHub Actions Workflows
 
 **Fast Tests** (on every commit):
+
 ```yaml
 - name: Run fast tests
   run: pytest -m fast -n auto --maxfail=5
 ```
 
 **Full Tests** (on PR):
+
 ```yaml
 - name: Run all tests
   run: pytest -v --cov=src --cov-report=xml
 ```
 
 **E2E Tests** (nightly):
+
 ```yaml
 - name: Run E2E tests
   run: pytest -m e2e --timeout=300
@@ -270,6 +287,7 @@ class AwardFactory(Factory):
 ### Test Sharding
 
 **Parallel execution** across 4 shards:
+
 ```yaml
 strategy:
   matrix:
@@ -286,6 +304,7 @@ See [CI Sharding Setup](ci-sharding-setup.md) for details.
 ### Benchmarks
 
 **Track performance metrics:**
+
 - Enrichment throughput (records/second)
 - Neo4j loading speed (nodes/second)
 - Memory usage (peak MB)
@@ -296,6 +315,7 @@ See [CI Sharding Setup](ci-sharding-setup.md) for details.
 ### Regression Detection
 
 **Fail CI if performance degrades:**
+
 ```python
 @pytest.mark.benchmark
 def test_enrichment_performance(benchmark):
@@ -310,6 +330,7 @@ See [Performance Testing for details.
 ### Coverage Thresholds
 
 **Fail CI if coverage drops:**
+
 ```yaml
 - name: Check coverage
   run: |
@@ -319,6 +340,7 @@ See [Performance Testing for details.
 ### Test Success Rate
 
 **Require 100% pass rate:**
+
 - No flaky tests allowed
 - Fix or skip unstable tests
 - Document known issues
@@ -326,6 +348,7 @@ See [Performance Testing for details.
 ### Code Quality
 
 **Enforce standards:**
+
 - Ruff linting (no errors)
 - MyPy type checking (strict)
 - Bandit security scan (no high severity)
@@ -366,12 +389,14 @@ pytest -s tests/unit/loaders/test_award_loader.py
 ### Coverage Reports
 
 **Generate HTML report:**
+
 ```bash
 pytest --cov=src --cov-report=html
 open htmlcov/index.html
 ```
 
 **Upload to Codecov:**
+
 ```yaml
 - uses: codecov/codecov-action@v3
   with:
@@ -381,11 +406,13 @@ open htmlcov/index.html
 ### Test Reports
 
 **Generate JSON report:**
+
 ```bash
 pytest --json-report --json-report-file=test-results.json
 ```
 
 **View in CI:**
+
 - GitHub Actions → Artifacts → `test-results.json`
 
 ## Completed Improvements

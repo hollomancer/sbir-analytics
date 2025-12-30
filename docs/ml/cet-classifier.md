@@ -188,7 +188,7 @@ Two options:
   - Use `src/ml/train/patent_training.py::train_patent_classifier`
   - Optionally evaluate with `evaluate_patent_classifier` (precision/recall@k)
 
-2) Dagster asset
+1) Dagster asset
 
 - `train_cet_patent_classifier` expects:
   - `data/processed/cet_patent_training.parquet` with columns:

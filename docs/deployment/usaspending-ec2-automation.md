@@ -9,6 +9,7 @@ The USAspending full database is ~217GB, which exceeds Lambda's 15-minute timeou
 **File Detection:** The workflow automatically checks if a new file is available before downloading, using HTTP HEAD requests to compare Last-Modified dates and file sizes with existing S3 files.
 
 **Architecture:**
+
 - **GitHub Actions** workflow triggers monthly (or manually)
 - **EC2 instance** (t3.large) starts, downloads, uploads to S3, then stops
 - **AWS Systems Manager (SSM)** executes the download script remotely
@@ -47,6 +48,7 @@ echo "Instance ID: $INSTANCE_ID"
 ### 2. Create IAM Role for EC2
 
 The EC2 instance needs:
+
 - **S3 write access** to `sbir-etl-production-data` bucket
 - **SSM agent permissions** (usually included in `AmazonSSMManagedInstanceCore`)
 
@@ -72,6 +74,7 @@ The EC2 instance needs:
 ```
 
 Attach the role to the instance:
+
 ```bash
 aws ec2 associate-iam-instance-profile \
   --instance-id $INSTANCE_ID \
@@ -100,6 +103,7 @@ Add the EC2 instance ID to GitHub secrets:  # pragma: allowlist secret
 ### Scheduled Execution
 
 The workflow runs monthly on the 6th at 2 AM UTC:
+
 ```yaml
 schedule:
   - cron: "0 2 6 * *"
@@ -108,6 +112,7 @@ schedule:
 ### Manual Execution
 
 You can trigger manually with options:
+
 - **Database type:** `full` or `test`
 - **Date:** Override date (YYYYMMDD format)
 - **Source URL:** Override download URL
@@ -124,6 +129,7 @@ You can trigger manually with options:
 ### Download Script
 
 The script (`scripts/usaspending/download_database.py`):
+
 - Downloads from `https://files.usaspending.gov/database_download/`
 - Streams directly to S3 using multipart upload
 - Computes SHA256 hash for integrity
@@ -132,15 +138,18 @@ The script (`scripts/usaspending/download_database.py`):
 ## Cost Breakdown
 
 **Per Download:**
+
 - EC2 t3.large: $0.0832/hour × 2.5 hours = **$0.21**
 - S3 storage: ~$0.023/GB/month (first month)
 - Data transfer: Free (within same region)
 
 **Monthly (if run weekly):**
+
 - EC2: ~$0.84
 - S3 storage: ~$5-10 (depending on retention)
 
 **Annual:**
+
 - EC2: ~$10-12
 - S3 storage: ~$60-120 (with lifecycle policies)
 
@@ -158,6 +167,7 @@ The workflow includes automatic file detection that runs before each download:
 **Detection Script:** `scripts/usaspending/check_new_file.py`
 
 **Usage:**
+
 ```bash
 # Check if new file is available
 python scripts/usaspending/check_new_file.py \
@@ -173,17 +183,20 @@ python scripts/usaspending/check_new_file.py \
 ### Automated Monitoring Options
 
 #### Option 1: GitHub Actions Workflow (Current)
+
 - **Frequency**: Monthly schedule + manual trigger
 - **Detection**: Built into workflow (checks before download)
 - **Cost**: Free (GitHub Actions minutes)
 
 #### Option 2: Lambda Function + EventBridge
+
 - **Frequency**: Daily checks (configurable)
 - **Detection**: Lambda function checks for new files
 - **Auto-trigger**: Can automatically trigger download if new file detected
 - **Cost**: ~$0.0000167 per check (negligible)
 
 **Setup Lambda Checker:**
+
 ```bash
 # Deploy the check Lambda function
 cd infrastructure/cdk
@@ -203,7 +216,8 @@ aws events put-targets \
 ```
 
 #### Option 3: Manual Monitoring
-- Check USAspending website: https://www.usaspending.gov/data
+
+- Check USAspending website: <https://www.usaspending.gov/data>
 - Monitor their announcements or RSS feeds
 - Use the check script manually when needed
 
@@ -214,6 +228,7 @@ aws events put-targets \
 **Problem:** Workflow fails to start instance
 
 **Solution:**
+
 - Check IAM role is attached to instance
 - Verify instance is in a valid state (not terminated)
 - Check security group allows SSM (port 443)
@@ -223,6 +238,7 @@ aws events put-targets \
 **Problem:** Script upload or execution fails
 
 **Solution:**
+
 ```bash
 # Check SSM agent status on instance
 aws ssm describe-instance-information \
@@ -237,6 +253,7 @@ aws ssm list-commands --instance-id $INSTANCE_ID
 **Problem:** Download exceeds 3-hour workflow timeout
 
 **Solution:**
+
 - Increase workflow timeout in `.github/workflows/usaspending-database-download.yml`
 - Check network speed (may need larger instance type)
 - Verify source URL is accessible
@@ -246,6 +263,7 @@ aws ssm list-commands --instance-id $INSTANCE_ID
 **Problem:** Workflow skips download because file exists
 
 **Solution:**
+
 - Use `force_refresh: true` in manual workflow trigger
 - Or delete the existing file from S3 first
 
@@ -259,6 +277,7 @@ Instead of GitHub Actions, you could use a Lambda function to orchestrate EC2:
 ```
 
 This would:
+
 - Reduce GitHub Actions usage
 - Centralize automation in AWS
 - Cost: ~$0.0000167 per invocation (negligible)
@@ -268,12 +287,14 @@ This would:
 ### CloudWatch Logs
 
 SSM command output is available in CloudWatch:
+
 - Log group: `/aws/ssm/commands`
 - Filter by instance ID and command ID
 
 ### S3 Verification
 
 After download, verify the file:
+
 ```bash
 aws s3 ls s3://sbir-etl-production-data/raw/usaspending/database/ --recursive
 aws s3 head-object s3://sbir-etl-production-data/raw/usaspending/database/2025-11-20/usaspending-db_20251106.zip

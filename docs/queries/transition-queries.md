@@ -53,7 +53,7 @@ for record in result.records:
 
 **Method:** `award_to_transition_to_contract()`
 
-### Parameters:
+### Parameters
 
 - `award_id` (Optional[str]): Filter to specific award (None for all)
 - `min_score` (float): Minimum transition score (0.0-1.0), default 0.0
@@ -61,6 +61,7 @@ for record in result.records:
 - `limit` (int): Maximum results to return, default 1000
 
 **Returns:** `PathwayResult` with:
+
 - `award_id`: Unique award identifier
 - `award_name`: Award title
 - `transition_id`: Unique transition identifier
@@ -70,7 +71,7 @@ for record in result.records:
 - `contract_name`: Contract description
 - `detection_date`: When transition was detected
 
-### Example:
+### Example
 
 ```python
 
@@ -88,7 +89,7 @@ result = queries.award_to_transition_to_contract(min_score=0.60)
 print(f"Found {result.records_count} award→contract pathways")
 ```
 
-### Use Cases:
+### Use Cases
 
 - Track individual award outcomes to federal contracts
 - Validate transition detection precision for specific awards
@@ -102,13 +103,14 @@ print(f"Found {result.records_count} award→contract pathways")
 
 **Method:** `award_to_patent_to_transition_to_contract()`
 
-### Parameters:
+### Parameters
 
 - `award_id` (Optional[str]): Filter to specific award (None for all)
 - `min_patent_contribution` (float): Minimum patent contribution score, default 0.0
 - `limit` (int): Maximum results to return, default 1000
 
 **Returns:** `PathwayResult` with:
+
 - `award_id`: Source SBIR award
 - `award_name`: Award title
 - `patent_id`: Patent number
@@ -119,7 +121,7 @@ print(f"Found {result.records_count} award→contract pathways")
 - `contract_id`: Resulting federal contract
 - `contract_name`: Contract description
 
-### Example:
+### Example
 
 ```python
 
@@ -137,7 +139,7 @@ result = queries.award_to_patent_to_transition_to_contract(
 )
 ```
 
-### Use Cases:
+### Use Cases
 
 - Quantify technology transfer rate through patent-backed contracts
 - Identify most impactful patents in enabling transitions
@@ -151,13 +153,14 @@ result = queries.award_to_patent_to_transition_to_contract(
 
 **Method:** `award_to_cet_to_transition()`
 
-### Parameters:
+### Parameters
 
 - `cet_area` (Optional[str]): Specific technology area (None for all)
 - `min_score` (float): Minimum transition score, default 0.0
 - `limit` (int): Maximum results to return, default 1000
 
 **Returns:** `PathwayResult` with:
+
 - `award_id`: SBIR award
 - `award_title`: Award title
 - `transition_id`: Transition identifier
@@ -167,7 +170,7 @@ result = queries.award_to_patent_to_transition_to_contract(
 - `cet_alignment`: Score indicating CET area alignment (0-1)
 - `confidence`: Transition confidence level
 
-### Example:
+### Example
 
 ```python
 
@@ -184,7 +187,7 @@ print(f"Found {result.records_count} AI transitions")
 result = queries.award_to_cet_to_transition(min_score=0.85)
 ```
 
-### Use Cases:
+### Use Cases
 
 - Assess CET area effectiveness for driving commercialization
 - Identify which technology areas show highest transition potential
@@ -198,13 +201,14 @@ result = queries.award_to_cet_to_transition(min_score=0.85)
 
 **Method:** `company_to_transition_profile()`
 
-### Parameters:
+### Parameters
 
 - `company_id` (Optional[str]): Specific company (None for top performers)
 - `min_success_rate` (float): Minimum success rate (0-1), default 0.0
 - `limit` (int): Maximum results to return, default 100
 
 **Returns:** `PathwayResult` with:
+
 - `company_id`: Unique company identifier
 - `company_name`: Company name
 - `profile_id`: Unique profile identifier
@@ -217,7 +221,7 @@ result = queries.award_to_cet_to_transition(min_score=0.85)
 - `last_transition`: Most recent transition date
 - `avg_time_to_transition_days`: Average days from award to transition
 
-### Example:
+### Example
 
 ```python
 
@@ -236,7 +240,7 @@ profile = result.records[0]
 print(f"{profile['company_name']}: {profile['success_rate']*100}% success rate")
 ```
 
-### Use Cases:
+### Use Cases
 
 - Identify high-performing SBIR companies
 - Benchmark company transition success
@@ -250,11 +254,12 @@ print(f"{profile['company_name']}: {profile['success_rate']*100}% success rate")
 
 **Method:** `transition_rates_by_cet_area()`
 
-### Parameters:
+### Parameters
 
 - `limit` (int): Maximum CET areas to return, default 50
 
 **Returns:** `PathwayResult` with:
+
 - `cet_area`: Technology area ID
 - `cet_name`: Technology area name
 - `total_awards`: Awards in this technology area
@@ -263,7 +268,7 @@ print(f"{profile['company_name']}: {profile['success_rate']*100}% success rate")
 - `avg_transition_score`: Average transition score
 - `high_confidence_count`: High-confidence transitions
 
-### Example:
+### Example
 
 ```python
 
@@ -278,7 +283,7 @@ for record in sorted(result.records, key=lambda x: x['transition_rate'], reverse
           f"({record['transitions_detected']}/{record['total_awards']})")
 ```
 
-### Use Cases:
+### Use Cases
 
 - Identify most productive technology areas
 - Support agency decision-making on program focus
@@ -292,11 +297,12 @@ for record in sorted(result.records, key=lambda x: x['transition_rate'], reverse
 
 **Method:** `patent_backed_transition_rates_by_cet_area()`
 
-### Parameters:
+### Parameters
 
 - `limit` (int): Maximum CET areas to return, default 50
 
 **Returns:** `PathwayResult` with:
+
 - `cet_area`: Technology area ID
 - `cet_name`: Technology area name
 - `total_awards`: Awards in this technology area
@@ -304,7 +310,7 @@ for record in sorted(result.records, key=lambda x: x['transition_rate'], reverse
 - `patent_backed_rate`: Ratio of patent-backed transitions to awards (0-1)
 - `avg_transition_score`: Average score of patent-backed transitions
 
-### Example:
+### Example
 
 ```python
 
@@ -319,7 +325,7 @@ for cet_area in result.records:
           f"{cet_area['patent_backed_rate']*100:.1f}% of awards have patent-backed transitions")
 ```
 
-### Use Cases:
+### Use Cases
 
 - Assess patent importance by technology area
 - Identify areas needing stronger IP strategies
@@ -441,7 +447,7 @@ def analyze_company_performance(company_id):
 
 **Symptom:** Query returns 0 records when data should exist.
 
-### Solutions:
+### Solutions
 
 1. Verify Neo4j graph was loaded successfully via `neo4j-transition_loader` asset
 2. Check that indexes were created: Run `SHOW INDEXES` in Neo4j Browser
@@ -452,7 +458,7 @@ def analyze_company_performance(company_id):
 
 **Symptom:** Queries take >5 seconds to complete.
 
-### Solutions:
+### Solutions
 
 1. Add `min_score` filter to reduce candidate set
 2. Reduce `limit` parameter for exploratory queries
@@ -463,7 +469,7 @@ def analyze_company_performance(company_id):
 
 **Symptom:** "Connection refused" or timeout errors.
 
-### Solutions:
+### Solutions
 
 1. Verify Neo4j service is running: `docker ps | grep neo4j`
 2. Check credentials in connection string
@@ -486,13 +492,13 @@ class PathwayResult:
 
 ### TransitionPathwayQueries Class
 
-### Initialization:
+### Initialization
 
 ```python
 queries = TransitionPathwayQueries(driver: Driver)
 ```
 
-### Available Methods:
+### Available Methods
 
 - `award_to_transition_to_contract()` → PathwayResult
 - `award_to_patent_to_transition_to_contract()` → PathwayResult

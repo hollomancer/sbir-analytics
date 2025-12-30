@@ -3,6 +3,7 @@
 ## Quick Start
 
 1. **Set GitHub repository in cdk.json**:
+
    ```json
    {
      "context": {
@@ -12,17 +13,20 @@
    ```
 
 2. **Sync dependencies**:
+
    ```bash
    uv sync
    ```
 
 3. **Bootstrap CDK** (first time only):
+
    ```bash
    AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
    cdk bootstrap aws://$AWS_ACCOUNT_ID/us-east-2
    ```
 
 4. **Deploy**:
+
    ```bash
    cdk deploy --all
    ```
@@ -37,6 +41,7 @@ Set these in `cdk.json` or pass via `--context`:
 - `region`: AWS region (default: `us-east-2`)
 
 Example:
+
 ```bash
 cdk deploy --all --context github_repo=your-username/sbir-analytics
 ```
@@ -44,6 +49,7 @@ cdk deploy --all --context github_repo=your-username/sbir-analytics
 ## Before Deploying
 
 1. Create OIDC provider (if not exists):
+
    ```bash
    aws iam create-open-id-connect-provider \
      --url https://token.actions.githubusercontent.com \

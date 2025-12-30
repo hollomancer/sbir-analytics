@@ -4,7 +4,7 @@ Code documentation for the SBIR ETL pipeline.
 
 ## Module Structure
 
-```
+```text
 src/
 ├── assets/          # Dagster asset definitions
 ├── config/          # Configuration schemas and loader
@@ -21,15 +21,18 @@ src/
 ## Key Modules
 
 ### Configuration
+
 - `src.config.loader` - Configuration loading and validation
 - `src.config.schemas` - Pydantic configuration schemas
 
 ### Assets
+
 - `src.assets.sbir` - SBIR award processing assets
 - `src.assets.cet` - CET classification assets
 - `src.assets.uspto` - USPTO patent assets
 
 ### Data Processing
+
 - `src.extractors` - Data extraction from sources
 - `src.enrichers` - External data enrichment
 - `src.transformers` - Business logic transformations

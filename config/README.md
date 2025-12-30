@@ -13,6 +13,7 @@ Contains default settings that are version controlled and shared across all envi
 Environment-specific settings that override base configuration. These files contain settings that differ between development, testing, and production environments.
 
 **Available Environments:**
+
 - `development` (`dev.yaml`) - Local development with relaxed thresholds and debugging features
 - `test` (`test.yaml`) - CI/testing environment optimized for automated testing
 - `production` (`prod.yaml`) - Production deployment with strict thresholds and performance optimizations
@@ -20,6 +21,7 @@ Environment-specific settings that override base configuration. These files cont
 **Note**: `config/prod.yaml` is the comprehensive production configuration file. It includes all production settings including CET extensions, Dagster schedules, and detailed operational parameters.
 
 **Neo4j Aura Free Testing**: For Aura Free testing, use `development` environment with these environment variables:
+
 ```bash
 ENVIRONMENT=development
 NEO4J_AURA_FREE=true
@@ -172,11 +174,13 @@ Configuration is automatically validated when loaded. Invalid configuration will
 The `test-aura` environment is deprecated. Migrate to `development` with environment variables:
 
 **Old:**
+
 ```bash
 ENVIRONMENT=test-aura
 ```
 
 **New:**
+
 ```bash
 ENVIRONMENT=development
 NEO4J_AURA_FREE=true

@@ -2,6 +2,9 @@ default: true
 MD013: false  # line length
 MD033: false  # inline HTML allowed
 MD041: false  # first-line heading not required in all docs
+MD024: false  # allow duplicate headings (common in specs with "Acceptance Criteria")
+MD036: false  # allow emphasis as heading (common pattern in docs)
+MD060: false  # table column style - too strict
 
 # Exclude archive and generated files from linting
 ignoreGlobs:
@@ -10,3 +13,4 @@ ignoreGlobs:
   - "reports/**/*.md"  # Generated reports
   - "**/node_modules/**/*.md"
   - "**/.git/**/*.md"
+  - "**/.venv/**/*.md"  # Virtual environment

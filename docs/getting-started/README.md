@@ -18,17 +18,19 @@ uv run dagster dev
 ## First Steps
 
 1. **Materialize assets** - In Dagster UI, materialize `raw_sbir_awards`
-2. **View data** - Check Neo4j Browser at http://localhost:7474
+2. **View data** - Check Neo4j Browser at <http://localhost:7474>
 3. **Run tests** - `uv run pytest tests/unit/ -v`
 
 ## Environment Setup
 
 Create `.env` from template:
+
 ```bash
 cp .env.example .env
 ```
 
 Required variables:
+
 ```bash
 NEO4J_URI=bolt://localhost:7687
 NEO4J_USER=neo4j

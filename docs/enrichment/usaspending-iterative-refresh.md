@@ -214,7 +214,7 @@ Metrics are emitted to `reports/metrics/enrichment_freshness.json` after each re
 ### High Error Rate
 
 1. **Check API status**: USAspending API may be experiencing issues
-   - Status page: https://www.usaspending.gov/status
+   - Status page: <https://www.usaspending.gov/status>
 
 2. **Review rate limiting**: If hitting rate limits, reduce `max_concurrent_requests` or increase `rate_limit_per_minute` (if API allows)
 
@@ -275,7 +275,7 @@ Consider setting up alerts for:
 
 ## References
 
-- USAspending API Documentation: https://api.usaspending.gov/docs/
-- Dagster Documentation: https://docs.dagster.io
+- USAspending API Documentation: <https://api.usaspending.gov/docs/>
+- Dagster Documentation: <https://docs.dagster.io>
 - Configuration: `config/base.yaml`
 - Source Code: `src/assets/usaspending_iterative_enrichment.py`

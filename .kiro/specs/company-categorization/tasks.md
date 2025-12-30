@@ -7,6 +7,7 @@ This implementation plan tracks the remaining work for the company categorizatio
 ## Implementation Status Summary
 
 **Completed:**
+
 - ✅ Data models (`src/models/categorization.py`)
 - ✅ Contract classifier (`src/transformers/company_categorization.py`)
 - ✅ Company aggregator (`src/transformers/company_categorization.py`)
@@ -15,6 +16,7 @@ This implementation plan tracks the remaining work for the company categorizatio
 - ✅ Asset checks for quality validation
 
 **Remaining:**
+
 - Configuration schema and defaults
 - Neo4j loader implementation
 - Comprehensive testing
@@ -287,6 +289,7 @@ This implementation plan tracks the remaining work for the company categorizatio
 ### Remaining Work Summary
 
 **Priority 1 (Required for Production):**
+
 1. Configuration schema (Task 7) - Externalize hardcoded thresholds
 2. Neo4j loader (Task 8) - Enable graph database integration
 3. High-volume validation (Task 9.6) - Validate with real data
@@ -306,6 +309,7 @@ This implementation plan tracks the remaining work for the company categorizatio
 ### Key Implementation Details
 
 **Classification Logic:**
+
 - Uses 51% threshold (not 60% as originally planned) for Product/Service-leaning
 - R&D contracts are treated as Service for aggregation purposes
 - Fixed Price contracts with numeric PSC or product keywords → Product
@@ -313,12 +317,14 @@ This implementation plan tracks the remaining work for the company categorizatio
 - SBIR/STTR awards are excluded from categorization to focus on non-R&D revenue
 
 **Enrichment Strategy:**
+
 - Primary: DuckDB query by UEI/DUNS/CAGE
 - Fallback: API with fuzzy name matching via autocomplete
 - Intelligent name normalization for better matching
 - Caching to reduce API calls
 
 **Data Quality:**
+
 - Asset checks enforce <20% Uncertain classifications
 - Asset checks verify >50% High confidence classifications
 - Confidence levels based on award count (Low: <2, Medium: 2-5, High: >5)

@@ -31,8 +31,9 @@ This directory hosts the complete testing playbook for SBIR ETL. The [Testing In
 4. Keep overall coverage ≥80% (higher for loaders and enrichers).
 5. Update the index + relevant guide whenever you add new targets, markers, or workflows.
 
-For additional context, review [Quality Assurance](../guides/quality-assurance.md) and the main [project README](../../README.md).
+For additional context, review [Quality Assurance](../guides/quality-assurance.md) and the main [project README](../../README.md)
 ---
+
 Type: Guide
 Owner: docs@project
 Last-Reviewed: 2025-01-15
@@ -84,7 +85,6 @@ uv run pytest -n auto --cov=src
 - `-k "keyword"` – filter by file, function, or substring
 
 ## 2. Docker & Compose Workflows
-
 
 | Scenario | Command | Description |
 |----------|---------|-------------|

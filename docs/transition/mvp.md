@@ -107,6 +107,7 @@ The repo includes a convenience Make target that runs the assets in-process with
 - make transition-mvp-run
 
 What it does:
+
 1) Prepare a minimal contracts sample if none exists:
 
    - data/processed/contracts_sample.parquet (or .csv if parquet not available)

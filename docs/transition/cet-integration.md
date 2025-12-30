@@ -263,6 +263,7 @@ Federal contracts are not explicitly classified into CET areas. The transition d
 **Rationale**: If a contract description contains keywords and concepts from a particular CET area, we infer that the contract is working in that technology area.
 
 **Confidence**: Inference confidence depends on:
+
 - Keyword density (number of CET keywords)
 - Keyword proximity (keywords appear together vs. scattered)
 - Keyword specificity (rare keywords vs. common words)
@@ -346,15 +347,19 @@ Inferred CET: "Advanced Computing" (confidence: 0.50)
 ### Inference Limitations
 
 **False Positives**: Generic descriptions may match multiple CET areas.
+
 - Solution: Use confidence threshold; lower confidence matches require manual verification
 
 **False Negatives**: Contracts using domain-specific terminology not captured by keywords.
+
 - Solution: Expand keyword lists; consider semantic similarity in future versions
 
 **Missing Keywords**: New technologies or uncommon terminology not in keyword lists.
+
 - Solution: Periodically update keyword lists; user feedback on missed matches
 
 **Multi-CET Contracts**: Some contracts span multiple CET areas.
+
 - Solution: Return only highest-confidence match; store all candidates if needed
 
 ---
@@ -1085,6 +1090,6 @@ RETURN cet_area, patent_backed, patent_backed_transitions
 - **Tests**: `tests/unit/test_cet_signal_extractor.py`
 - **Configuration**: `config/transition/detection.yaml`
 - **Neo4j**: `CETArea` nodes and `INVOLVES_TECHNOLOGY` relationships
-- **NIST CET**: https://www.nist.gov/programs/critical-emerging-technologies
+- **NIST CET**: <https://www.nist.gov/programs/critical-emerging-technologies>
 - **Scoring Integration**: `docs/transition/scoring-guide.md`
 - **Analytics**: `src/transition/analysis/analytics.py`

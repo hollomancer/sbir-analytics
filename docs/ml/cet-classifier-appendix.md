@@ -177,7 +177,7 @@ categories:
       - deep learning
 ```
 
-###classification.yaml
+### classification.yaml
 
 ```yaml
 
@@ -205,7 +205,7 @@ scoring:
     low: {min: 0, max: 39}
 ```
 
-###enrichment.yaml
+### enrichment.yaml
 
 ```yaml
 
@@ -225,9 +225,9 @@ topic_domains:
 
 ---
 
-###Data Models (Pydantic Schemas)
+### Data Models (Pydantic Schemas)
 
-####Award (Input)
+#### Award (Input)
 
 ```python
 class Award:
@@ -241,7 +241,7 @@ class Award:
     award_date: date
 ```
 
-###ApplicabilityAssessment (Output)
+### ApplicabilityAssessment (Output)
 
 ```python
 class ApplicabilityAssessment:
@@ -254,7 +254,7 @@ class ApplicabilityAssessment:
     assessed_at: datetime
 ```
 
-####EvidenceStatement (Supporting Details)
+#### EvidenceStatement (Supporting Details)
 
 ```python
 class EvidenceStatement:
@@ -319,7 +319,7 @@ GET /applicability/exports/{export_id}
 
 ---
 
-###CLI Commands
+### CLI Commands
 
 ```bash
 
@@ -352,7 +352,7 @@ python -m sbir_cet_classifier.cli.app enrichment enrich \
 
 ---
 
-###Testing
+### Testing
 
 ```bash
 
@@ -383,7 +383,7 @@ pytest tests/ --cov=src/sbir_cet_classifier --cov-report=html
 
 ---
 
-###Integration Checklist
+### Integration Checklist
 
 - [ ] Read CET_CLASSIFIER_ANALYSIS.md (this document's companion)
 - [ ] Review source code: models/applicability.py
@@ -402,7 +402,7 @@ pytest tests/ --cov=src/sbir_cet_classifier --cov-report=html
 
 ---
 
-###Performance Optimizations
+### Performance Optimizations
 
 ### Applied in Phase O
 
@@ -656,6 +656,7 @@ scoring:
 ##### Key Implementation Details
 
 **ApplicabilityModel class** (`models/applicability.py`):
+
 - Wraps scikit-learn pipeline with optimizations
 - TF-IDF vectorizer with custom stop words
 - Feature selection via chi-squared test
@@ -664,6 +665,7 @@ scoring:
 - Returns `ApplicabilityScore` dataclass with primary + supporting CET areas
 
 **Enhanced Vectorization** (`models/enhanced_vectorization.py`):
+
 - `CETAwareTfidfVectorizer`: Boosts CET keyword importance (2.0x)
 - Boosts technical terms (1.5x)
 - `WeightedTextCombiner`: Combines multi-source text with configurable weights
@@ -810,7 +812,7 @@ class EvidenceStatement(BaseModel):
     rationale_tag: str       # Why this relates to CET
 ```
 
-####Feature Engineering Patterns
+#### Feature Engineering Patterns
 
 ### Text Vectorization
 
@@ -873,6 +875,7 @@ nih_matcher:
 ```
 
 **Topic Domain Mappings** (18 NSF SBIR codes → CET):
+
 - AI: Artificial Intelligence
 - BC: Biological/Chemical
 - BM: Biomedical
@@ -904,9 +907,10 @@ agency_focus:
   NIH: biomedical research and healthcare innovation
 ```
 
-####External API Integration
+#### External API Integration
 
 **NIH API** (Primary):
+
 - No authentication required
 - Covers ~15% of SBIR awards
 - Provides 39x text enrichment (3,117 avg characters)
@@ -914,6 +918,7 @@ agency_focus:
 - Rate limiting: Requests library with retry
 
 **SAM.gov** (Awardee matching):
+
 - Requires API key
 - Cross-references company information
 - Optional enhancement
@@ -924,7 +929,7 @@ agency_focus:
 - NSF API (authentication required)
 - Public APIs insufficient without keys
 
-####Enrichment Metrics
+#### Enrichment Metrics
 
 ```python
 class EnrichmentMetrics:
@@ -972,9 +977,10 @@ model.fit(examples)  # TF-IDF → Feature Selection → LogReg → Calibration
 score = model.score(award)  # Returns ApplicabilityScore
 ```
 
-###Evaluation Metrics
+### Evaluation Metrics
 
 **Performance Metrics** (on 997 sample awards):
+
 - Success Rate: 97.9% (210k/214k)
 - Throughput: 5,979 records/second
 - Per-record latency: 0.17ms
@@ -1000,9 +1006,10 @@ class AgreementMetrics:
     confusion_matrix: dict     # Category confusion analysis
 ```
 
-####Validation Framework
+#### Validation Framework
 
 **Test Coverage**: 232/232 tests passing
+
 - Unit tests: 130 (component-level)
 - Integration tests: 27 (end-to-end workflows)
 - Contract tests: 5 (API contract validation)
@@ -1065,7 +1072,7 @@ assessment = ApplicabilityAssessment(
 storage.write_assessment(assessment)
 ```
 
-###CLI Interface
+### CLI Interface
 
 ```bash
 
@@ -1098,7 +1105,7 @@ python -m sbir_cet_classifier.cli.app enrichment enrich \
   --fiscal-year 2025 --max-workers 4
 ```
 
-###REST API Endpoints
+### REST API Endpoints
 
 ```bash
 
@@ -1142,9 +1149,9 @@ GET /applicability/exports/{export_id}
 
 ---
 
-###8. Configuration & Customization
+### 8. Configuration & Customization
 
-####Externalized Configuration System
+#### Externalized Configuration System
 
 Three YAML files manage all non-code parameters:
 
@@ -1173,7 +1180,7 @@ Three YAML files manage all non-code parameters:
 - Phase keywords
 - Organization name suffixes
 
-####Validation
+#### Validation
 
 ```bash
 python validate_config.py
@@ -1194,7 +1201,7 @@ python validate_config.py
 
 ```
 
-###Environment Variables
+### Environment Variables
 
 ```bash
 export SBIR_RAW_DIR=data/raw
@@ -1206,9 +1213,9 @@ export SBIR_MAX_WORKERS=4
 
 ---
 
-###9. Design Patterns & Best Practices
+### 9. Design Patterns & Best Practices
 
-####Software Architecture Patterns
+#### Software Architecture Patterns
 
 ### Service Layer Pattern
 
@@ -1264,7 +1271,7 @@ class FallbackEnricher(EnrichmentStrategy):
     def enrich(self, award: Award) -> EnrichedAward: ...
 ```
 
-###Code Quality Standards
+### Code Quality Standards
 
 - **Type hints**: Comprehensive throughout
 - **Docstrings**: Module, class, and function-level documentation
@@ -1273,7 +1280,7 @@ class FallbackEnricher(EnrichmentStrategy):
 - **Code style**: ruff formatting, PEP 8 compliant
 - **Pre-commit hooks**: Automatic linting and formatting
 
-####Performance Optimizations
+#### Performance Optimizations
 
 ### Phase O Optimization Achievements
 

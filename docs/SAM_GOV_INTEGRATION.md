@@ -14,7 +14,7 @@ The SAM.gov bulk data integration provides a parquet-first, API-fallback pattern
 
 ### Components
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────┐
 │                    SAM.gov Integration                       │
 └─────────────────────────────────────────────────────────────┘
@@ -42,7 +42,7 @@ The SAM.gov bulk data integration provides a parquet-first, API-fallback pattern
 
 ### Core Implementation
 
-```
+```text
 src/
 ├── extractors/
 │   └── sam_gov.py                  # SAMGovExtractor class
@@ -61,14 +61,14 @@ src/
 
 ### Configuration
 
-```
+```text
 config/
 └── base.yaml                        # SAM.gov extraction settings
 ```
 
 ### Tests
 
-```
+```text
 tests/
 ├── unit/
 │   ├── extractors/
@@ -209,7 +209,7 @@ The SAM.gov parquet file contains 839,466 entity records with 368 columns. Key c
 
 ### S3 Path Pattern
 
-```
+```text
 s3://{bucket}/data/raw/sam_gov/sam_entity_records.parquet        # Current static file
 s3://{bucket}/data/raw/sam_gov/sam_entity_records_YYYYMMDD.parquet  # Future dated files
 ```
@@ -329,7 +329,7 @@ pytest tests/integration/test_sam_gov_integration.py -v
 
 #### 1. File Not Found
 
-```
+```text
 FileNotFoundError: SAM.gov parquet file not found
 ```
 
@@ -337,7 +337,7 @@ FileNotFoundError: SAM.gov parquet file not found
 
 #### 2. S3 Access Denied
 
-```
+```text
 botocore.exceptions.NoCredentialsError
 ```
 
@@ -345,7 +345,7 @@ botocore.exceptions.NoCredentialsError
 
 #### 3. Memory Issues
 
-```
+```text
 MemoryError: Unable to allocate array
 ```
 

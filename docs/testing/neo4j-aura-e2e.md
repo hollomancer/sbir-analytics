@@ -39,6 +39,7 @@ Add the following secrets to your GitHub repository:
 Once secrets are configured, the `e2e-aura` job will run automatically on pushes to `main` or `develop`.
 
 Check the workflow run to verify:
+
 - ✅ Database cleared before tests
 - ✅ E2E tests pass
 - ✅ Node/relationship counts within limits
@@ -64,6 +65,7 @@ The `e2e-aura` job performs the following steps:
 ## Database Cleanup
 
 The database is automatically cleared:
+
 - **Before tests** - Ensures clean state
 - **After failure** - Prevents state pollution
 
@@ -129,6 +131,7 @@ RETURN attributes.TotalStoreSize.value as size
 **Cause:** Aura instance paused or network issue
 
 **Fix:**
+
 1. Check Aura console - instance may be paused
 2. Resume instance if needed
 3. Verify URI is correct (must use `neo4j+s://` protocol)

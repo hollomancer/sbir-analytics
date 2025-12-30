@@ -20,6 +20,7 @@ uv sync
 ```
 
 The mock version uses simplified economic multipliers to demonstrate the pipeline flow. It's perfect for:
+
 - Understanding how the pipeline works
 - Testing integration with your SBIR data
 - Development and debugging without R setup
@@ -41,19 +42,20 @@ For actual fiscal impact calculations using EPA's USEEIOR and StateIO packages, 
 docker compose --profile dev build
 ```
 
-2. **Start the services**:
+1. **Start the services**:
 
 ```bash
 docker compose --profile dev up -d
 ```
 
-3. **Run the real example inside the container**:
+1. **Run the real example inside the container**:
 
 ```bash
 docker compose exec dagster-webserver python examples/sbir_fiscal_impact_example.py
 ```
 
 The Docker image includes:
+
 - R runtime
 - EPA StateIO package (`USEPA/stateior`)
 - EPA USEEIOR package (`USEPA/useeior`)
@@ -67,17 +69,19 @@ If you prefer running outside Docker, you need to install R and the required pac
 ### 1. Install R
 
 **Ubuntu/Debian:**
+
 ```bash
 sudo apt-get install r-base r-base-dev
 ```
 
 **macOS:**
+
 ```bash
 brew install r
 ```
 
 **Windows:**
-Download from https://www.r-project.org/
+Download from <https://www.r-project.org/>
 
 ### 2. Install R Packages
 
@@ -108,6 +112,7 @@ Both examples produce the following outputs:
 ### Detailed Impacts
 
 Shows economic impacts by state and BEA sector:
+
 - **award_total**: Total SBIR funding for state/sector
 - **production_impact**: Total economic output (GDP contribution)
 - **wage_impact**: Labor income generated
@@ -164,7 +169,7 @@ awards = create_sample_sbir_awards()
 awards = pd.read_csv("your_sbir_data.csv")
 ```
 
-3. **Run the calculator**:
+1. **Run the calculator**:
 
 ```python
 calculator = SBIRFiscalImpactCalculator()
@@ -194,6 +199,7 @@ remotes::install_github('USEPA/stateior')
 ### Memory Issues
 
 StateIO can use significant RAM for state models. If you encounter memory errors:
+
 - Increase Docker memory limit to 4GB+
 - Process states in smaller batches
 - Use the mock version for development

@@ -19,6 +19,7 @@ Graph-based ETL: SBIR awards → Neo4j. Dagster orchestration, DuckDB processing
 ### Architecture
 
 The codebase uses a consolidated architecture with well-structured modules:
+
 - **231 Python files** in `src/` organized by ETL stage
 - **Configuration system:** 33/33 tests passing, 88% coverage
 - **Workflows:** ci, deploy, nightly, weekly, lambda-deploy, data-refresh, build-r-base, run-ml-jobs

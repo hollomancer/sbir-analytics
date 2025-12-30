@@ -35,19 +35,22 @@ make dev          # Start Dagster UI
 ```
 
 **Next steps:**
+
 1. Materialize `raw_sbir_awards` asset in Dagster UI
-2. Explore data in Neo4j Browser (http://localhost:7474)
+2. Explore data in Neo4j Browser (<http://localhost:7474>)
 3. See [Getting Started Guide](docs/getting-started/README.md) for detailed walkthrough
 
 ### Production Deployment
 
 For production use, see [Deployment Guide](docs/deployment/README.md) for:
+
 - **GitHub Actions** (orchestrates ETL pipelines via `dagster job execute`)
 - **AWS Lambda** (serverless, for scheduled data downloads)
 
 ## Key Features
 
 ### Pipeline Architecture
+
 - **Five-stage ETL**: Extract → Validate → Enrich → Transform → Load
 - **Asset-based orchestration**: Dagster with dependency management
 - **Data quality gates**: Comprehensive validation at each stage
@@ -64,6 +67,7 @@ For production use, see [Deployment Guide](docs/deployment/README.md) for:
 | **Patent Analysis** | USPTO patent chains and tech transfer tracking | [docs/schemas/patent-neo4j-schema.md](docs/schemas/patent-neo4j-schema.md) |
 
 ### Technology Stack
+
 - **Orchestration**: Dagster 1.7+ (asset-based pipeline), GitHub Actions
 - **Database**: Neo4j 5.x (graph database for relationships)
 - **Processing**: DuckDB 1.0+ (analytical queries), Pandas 2.2+
@@ -85,7 +89,7 @@ See [Documentation Index](docs/index.md) for complete map.
 
 ## Project Structure
 
-```
+```text
 sbir-analytics/
 ├── src/                    # Source code
 │   ├── assets/            # Dagster asset definitions
@@ -139,6 +143,7 @@ See [Configuration Guide](docs/configuration.md) for details.
 ## Contributing
 
 We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for:
+
 - Development setup and workflow
 - Code quality standards (black, ruff, mypy)
 - Testing requirements (≥80% coverage)

@@ -4,7 +4,7 @@
 
 The project has undergone major consolidation to eliminate code duplication and improve maintainability. The architecture now follows a streamlined modular ETL design with clear separation of concerns:
 
-### Key Consolidation Achievements:
+### Key Consolidation Achievements
 
 - ✅ **Asset Consolidation**: USPTO assets unified into single file (`src/assets/uspto_assets.py`)
 - ✅ **Configuration Consolidation**: Hierarchical PipelineConfig with 16+ consolidated schemas

@@ -103,6 +103,7 @@ def test_large_dataset():
 ## CI Configuration
 
 Tests run in CI with:
+
 - `--dist=loadgroup` - Respects `@pytest.mark.xdist_group` for test isolation
 - `-n auto` - Parallel execution across CPU cores
 - Skips tests requiring unavailable services (Neo4j, R, external APIs)

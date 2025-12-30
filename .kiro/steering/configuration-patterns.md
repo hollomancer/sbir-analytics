@@ -4,7 +4,7 @@ This document centralizes all configuration examples and patterns used throughou
 
 ## 🎉 Consolidated Configuration System (2025-01-01)
 
-### Major consolidation completed:
+### Major consolidation completed
 
 - ✅ **Hierarchical PipelineConfig**: Single root configuration model with 16+ consolidated schemas
 - ✅ **Unified Validation**: All configuration uses Pydantic for type safety and validation

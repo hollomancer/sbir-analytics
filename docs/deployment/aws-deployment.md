@@ -13,7 +13,7 @@ AWS deployment options for SBIR ETL pipeline: serverless (Lambda + Step Function
 
 ### Serverless Architecture
 
-```
+```text
 ┌─────────────┐
 │ EventBridge │ (Weekly schedule)
 └──────┬──────┘
@@ -36,7 +36,7 @@ AWS deployment options for SBIR ETL pipeline: serverless (Lambda + Step Function
 
 ### Batch Architecture
 
-```
+```text
 ┌─────────────┐
 │ EventBridge │
 └──────┬──────┘
@@ -71,23 +71,27 @@ cdk deploy --all
 ### Components
 
 **Lambda Functions:**
+
 - `sbir-download` - Download SBIR data
 - `sbir-validate` - Validate data quality
 - `sbir-profile` - Generate data profile
 - `sbir-upload` - Upload to S3
 
 **Step Functions:**
+
 - Orchestrates Lambda execution
 - Handles retries and error handling
 - Sends notifications
 
 **EventBridge:**
+
 - Weekly schedule (Monday 9 AM UTC)
 - Manual triggers via console
 
 ### Configuration
 
 **Environment Variables:**
+
 ```bash
 S3_BUCKET=sbir-etl-production-data
 AWS_REGION=us-east-2
@@ -95,6 +99,7 @@ LOG_LEVEL=INFO
 ```
 
 **IAM Permissions:**
+
 - S3: Read/Write to data bucket
 - CloudWatch: Write logs
 - Secrets Manager: Read secrets
@@ -102,16 +107,19 @@ LOG_LEVEL=INFO
 ### Monitoring
 
 **CloudWatch Logs:**
+
 - `/aws/lambda/sbir-download`
 - `/aws/lambda/sbir-validate`
 - `/aws/lambda/sbir-profile`
 
 **CloudWatch Metrics:**
+
 - Lambda duration
 - Lambda errors
 - Step Functions execution status
 
 **Alarms:**
+
 - Lambda failures
 - Step Functions failures
 - S3 upload failures
@@ -119,11 +127,13 @@ LOG_LEVEL=INFO
 ### Cost Optimization
 
 **Lambda:**
+
 - Memory: 512 MB (adjust based on workload)
 - Timeout: 5 minutes
 - Reserved concurrency: 1 (prevent runaway costs)
 
 **S3:**
+
 - Lifecycle policy: Move to Glacier after 90 days
 - Intelligent-Tiering for frequently accessed data
 
@@ -136,6 +146,7 @@ LOG_LEVEL=INFO
 ### Setup
 
 **1. Create Compute Environment:**
+
 ```bash
 aws batch create-compute-environment \
   --compute-environment-name sbir-etl-compute \
@@ -147,6 +158,7 @@ aws batch create-compute-environment \
 ```
 
 **2. Create Job Queue:**
+
 ```bash
 aws batch create-job-queue \
   --job-queue-name sbir-etl-queue \
@@ -155,6 +167,7 @@ aws batch create-job-queue \
 ```
 
 **3. Register Job Definition:**
+
 ```bash
 aws batch register-job-definition \
   --job-definition-name sbir-etl-job \
@@ -163,6 +176,7 @@ aws batch register-job-definition \
 ```
 
 **job-definition.json:**
+
 ```json
 {
   "image": "ghcr.io/hollomancer/sbir-analytics:latest",
@@ -179,6 +193,7 @@ aws batch register-job-definition \
 ### Job Execution
 
 **Submit Job:**
+
 ```bash
 aws batch submit-job \
   --job-name sbir-ingestion-$(date +%Y%m%d) \
@@ -187,11 +202,13 @@ aws batch submit-job \
 ```
 
 **Monitor Job:**
+
 ```bash
 aws batch describe-jobs --jobs <job-id>
 ```
 
 **View Logs:**
+
 ```bash
 aws logs tail /aws/batch/job --follow
 ```
@@ -209,6 +226,7 @@ aws batch create-compute-environment \
 ```
 
 **Trade-offs:**
+
 - May be interrupted
 - Longer queue times
 - Not suitable for time-sensitive jobs
@@ -216,11 +234,13 @@ aws batch create-compute-environment \
 ### Cost Optimization
 
 **Compute:**
+
 - Use Spot instances (70-90% savings)
 - Auto-scale to zero when idle
 - Right-size instance types
 
 **Storage:**
+
 - Use EFS for shared data
 - Clean up old job logs
 
@@ -241,6 +261,7 @@ aws batch create-compute-environment \
 ### From Docker to AWS
 
 **1. Build and push image:**
+
 ```bash
 docker build -t sbir-analytics:latest .
 docker tag sbir-analytics:latest ghcr.io/hollomancer/sbir-analytics:latest
@@ -248,21 +269,25 @@ docker push ghcr.io/hollomancer/sbir-analytics:latest
 ```
 
 **2. Deploy infrastructure:**
+
 ```bash
 cd infrastructure/cdk
 cdk deploy --all
 ```
 
 **3. Migrate data to S3:**
+
 ```bash
 aws s3 sync data/ s3://sbir-etl-production-data/
 ```
 
 **4. Update environment variables:**
+
 - Set in Lambda/Batch configuration
 - Use Secrets Manager for sensitive values
 
 **5. Test deployment:**
+
 ```bash
 # Trigger Step Functions
 aws stepfunctions start-execution \
@@ -284,6 +309,7 @@ aws stepfunctions start-execution \
 **Symptoms**: Function times out after 5 minutes
 
 **Solutions:**
+
 - Increase timeout (max 15 minutes)
 - Break into smaller functions
 - Use Step Functions for long workflows
@@ -293,6 +319,7 @@ aws stepfunctions start-execution \
 **Symptoms**: Job exits with error code
 
 **Solutions:**
+
 - Check CloudWatch logs
 - Verify IAM permissions
 - Check resource limits (memory, CPU)
@@ -303,6 +330,7 @@ aws stepfunctions start-execution \
 **Symptoms**: Cannot read/write to S3
 
 **Solutions:**
+
 - Verify IAM role has S3 permissions
 - Check bucket policy
 - Verify bucket exists

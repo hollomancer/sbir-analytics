@@ -5,11 +5,13 @@ This guide explains how to test the company categorization system at different l
 ## Prerequisites
 
 1. **Install Dependencies**
+
    ```bash
    uv sync
    ```
 
 2. **Verify Installation**
+
    ```bash
    uv run python -c "from src.transformers.company_categorization import classify_contract; print('✓ Imports working')"
    ```
@@ -27,6 +29,7 @@ uv run python tests/validation/test_categorization_quick.py
 ```
 
 This tests:
+
 - ✓ Contract classification with various PSC codes
 - ✓ Contract type overrides (CPFF, T&M)
 - ✓ Description inference with product keywords
@@ -35,7 +38,8 @@ This tests:
 - ✓ Confidence level assignment
 
 **Expected Output:**
-```
+
+```console
 ================================================================================
 Company Categorization - Quick Test
 ================================================================================
@@ -131,6 +135,7 @@ uv run python
 **Option B: Using the Validation Dataset**
 
 The spec references a high-volume company dataset at:
+
 ```
 data/raw/sbir/over-100-awards-company_search_1763075384.csv
 ```
@@ -186,11 +191,12 @@ print(f"Total Contracts: {company_result.award_count}")
 **Option A: Via Dagster UI**
 
 1. Start the Dagster dev server:
+
    ```bash
    uv run dagster dev
    ```
 
-2. Open browser to http://localhost:3000
+2. Open browser to <http://localhost:3000>
 
 3. Navigate to Assets → `enriched_sbir_companies_with_categorization`
 
@@ -298,6 +304,7 @@ class TestCompanyAggregation:
 ```
 
 Run tests:
+
 ```bash
 uv run pytest tests/test_company_categorization.py -v
 ```
@@ -309,6 +316,7 @@ uv run pytest tests/test_company_categorization.py -v
 Use this checklist when validating the system:
 
 ### Contract Classification
+
 - [ ] Numeric PSC → Product (e.g., "1234")
 - [ ] Alphabetic PSC → Service (e.g., "R425")
 - [ ] PSC starting with A/B → R&D (e.g., "A123", "B456")
@@ -322,6 +330,7 @@ Use this checklist when validating the system:
 - [ ] SBIR Phase III → Standard rules apply
 
 ### Company Aggregation
+
 - [ ] ≥51% Product dollars → Product-leaning
 - [ ] ≥51% Service/R&D dollars → Service-leaning
 - [ ] Neither threshold → Mixed
@@ -332,6 +341,7 @@ Use this checklist when validating the system:
 - [ ] >5 awards → High confidence
 
 ### Asset Checks
+
 - [ ] Uncertain rate <20%
 - [ ] High confidence rate >50%
 - [ ] All required fields present
@@ -343,6 +353,7 @@ Use this checklist when validating the system:
 ## Troubleshooting
 
 ### Import Errors
+
 ```bash
 # Ensure dependencies are installed
 uv sync
@@ -352,6 +363,7 @@ export PYTHONPATH=/home/user/sbir-analytics
 ```
 
 ### USAspending Connection Issues
+
 ```bash
 # Check DuckDB database path
 uv run python -c "from src.config.loader import get_config; print(get_config().duckdb.database_path)"
@@ -361,6 +373,7 @@ uv run python -c "from src.config.loader import get_config; print(get_config().d
 ```
 
 ### Asset Failures
+
 - Check logs in Dagster UI
 - Verify `validated_sbir_awards` asset exists
 - Ensure USAspending table has been imported

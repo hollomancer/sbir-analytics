@@ -34,6 +34,7 @@ This plan details the refactoring of three large asset files (totaling 8,828 lin
 ## Goals
 
 ### Primary Goals
+
 - ✅ Reduce file sizes to < 1,000 lines per module
 - ✅ Group related assets together logically
 - ✅ Maintain all existing functionality (zero breaking changes)
@@ -41,6 +42,7 @@ This plan details the refactoring of three large asset files (totaling 8,828 lin
 - ✅ Keep test coverage at current levels
 
 ### Secondary Goals
+
 - ✅ Improve code discoverability
 - ✅ Enable parallel development on different modules
 - ✅ Simplify code reviews
@@ -74,6 +76,7 @@ We'll use a **safe, incremental approach**:
 ### Historical Structure (cet_assets.py - 3,593 lines)
 
 **Assets (19):**
+
 - Taxonomy: `raw_cet_taxonomy` (1)
 - Classifications: `enriched_cet_award_classifications`, `enriched_cet_patent_classifications` (2)
 - Training: `train_cet_patent_classifier`, `cet_award_training_dataset` (2)
@@ -83,13 +86,14 @@ We'll use a **safe, incremental approach**:
 - Loading: `loaded_cet_areas`, `loaded_award_cet_enrichment`, `loaded_company_cet_enrichment`, + 5 more (8)
 
 **Asset Checks (3):**
+
 - `cet_taxonomy_completeness_check`
 - `cet_award_classifications_quality_check`
 - `cet_company_profiles_check`
 
 ### Proposed Structure
 
-```
+```text
 src/assets/cet/
 ├── __init__.py                      # Re-exports all assets (50 lines)
 ├── taxonomy.py                      # Taxonomy loading + checks (~600 lines)
@@ -139,6 +143,7 @@ src/assets/cet/
 ```
 
 **Benefits:**
+
 - Clear separation of concerns
 - Each module < 1,000 lines
 - Easy to find specific functionality
@@ -151,6 +156,7 @@ src/assets/cet/
 ### Current Structure (uspto_assets.py - 2,992 lines)
 
 **Assets (33):**
+
 - Raw extraction: 5 raw assets (`raw_uspto_assignments`, etc.)
 - Parsing: 5 parsed assets (`parsed_uspto_assignments`, etc.)
 - Validation: 6 validated assets + 3 checks
@@ -158,11 +164,12 @@ src/assets/cet/
 - Loading: 9 loading assets + 5 checks
 
 **Asset Checks (8):**
+
 - USPTO-specific checks (rf_id, completeness, referential integrity, etc.)
 
 ### Proposed Structure
 
-```
+```text
 src/assets/uspto/
 ├── __init__.py                      # Re-exports all assets (80 lines)
 ├── extraction.py                    # Raw file extraction (~400 lines)
@@ -212,6 +219,7 @@ src/assets/uspto/
 ```
 
 **Benefits:**
+
 - Clear pipeline stages (extract → parse → validate → transform → load)
 - Each module represents one stage
 - Easy to test individual stages
@@ -224,6 +232,7 @@ src/assets/uspto/
 ### Current Structure (transition_assets.py - 2,243 lines)
 
 **Assets (18):**
+
 - Contracts: `raw_contracts`, `validated_contracts_sample` (2)
 - Vendor: `enriched_vendor_resolution` (1)
 - Scoring: `transformed_transition_scores` (1)
@@ -234,11 +243,12 @@ src/assets/uspto/
 - Evaluation: Additional assets (9)
 
 **Asset Checks (8):**
+
 - Quality checks for each stage
 
 ### Proposed Structure
 
-```
+```text
 src/assets/transition/
 ├── __init__.py                      # Re-exports all assets (50 lines)
 ├── contracts.py                     # Contract extraction (~600 lines)
@@ -287,6 +297,7 @@ src/assets/transition/
 ```
 
 **Benefits:**
+
 - Mirrors the transition detection pipeline stages
 - Clear progression from contracts → scoring → evidence → loading
 - Each module is a logical unit
@@ -299,6 +310,7 @@ src/assets/transition/
 ### Phase-by-Phase Approach
 
 #### Step 1: Create Module Structure (1 day)
+
 ```bash
 # Create directory structures
 mkdir -p src/assets/cet src/assets/uspto src/assets/transition
@@ -356,6 +368,7 @@ dagster dev  # Visit http://localhost:3000
 ```
 
 **Integration testing:**
+
 - Run small test materialization
 - Verify outputs are identical to before
 - Check asset lineage in Dagster UI
@@ -367,26 +380,31 @@ dagster dev  # Visit http://localhost:3000
 ### Week 1: CET Assets (3,593 lines → 7 modules)
 
 **Day 1: Setup + Utils**
+
 - Create `src/assets/cet/` structure
 - Move shared utilities to `utils.py`
 - Create `__init__.py` with re-exports
 
 **Day 2: Taxonomy + Classifications**
+
 - Extract `taxonomy.py` (~600 lines)
 - Extract `classifications.py` (~900 lines)
 - Test Dagster asset loading
 
 **Day 3: Training + Analytics**
+
 - Extract `training.py` (~700 lines)
 - Extract `analytics.py` (~700 lines)
 - Run integration tests
 
 **Day 4: Validation + Company**
+
 - Extract `validation.py` (~600 lines)
 - Extract `company.py` (~400 lines)
 - Test all asset checks
 
 **Day 5: Loading + Cleanup**
+
 - Extract `loading.py` (~500 lines)
 - Delete `cet_assets.py`
 - Update `src/definitions.py`
@@ -395,18 +413,22 @@ dagster dev  # Visit http://localhost:3000
 ### Week 2: USPTO Assets (2,992 lines → 6 modules)
 
 **Day 1: Setup + Utils**
+
 - Create `src/assets/uspto/` structure
 - Move shared utilities
 
 **Day 2-3: Extraction → Validation**
+
 - Extract `extraction.py`, `parsing.py`, `validation.py`
 - Test each module
 
 **Day 4: Transformation + Loading**
+
 - Extract `transformation.py`, `loading.py`
 - Integration testing
 
 **Day 5: Cleanup**
+
 - Delete `uspto_assets.py`
 - Update imports
 - Full test suite
@@ -414,16 +436,20 @@ dagster dev  # Visit http://localhost:3000
 ### Week 3: Transition Assets (2,243 lines → 8 modules)
 
 **Day 1: Setup + Utils**
+
 - Create `src/assets/transition/` structure
 - Move shared utilities
 
 **Day 2-3: Contracts → Evidence**
+
 - Extract `contracts.py`, `vendor_resolution.py`, `scoring.py`, `evidence.py`
 
 **Day 4: Detections → Loading**
+
 - Extract `detections.py`, `analytics.py`, `loading.py`
 
 **Day 5: Final Cleanup + Documentation**
+
 - Delete `transition_assets.py`
 - Update all imports
 - Document new structure
@@ -464,6 +490,7 @@ from .assets.cet import (
 ### Unit Tests
 
 **Update test imports:**
+
 ```python
 # OLD
 from src.assets.cet import raw_cet_taxonomy
@@ -475,6 +502,7 @@ from src.assets.cet import raw_cet_taxonomy
 ```
 
 **Test files to update:**
+
 - `tests/unit/test_cet_award_asset.py`
 - `tests/unit/test_cet_patent_asset.py`
 - `tests/unit/test_uspto_assets.py`
@@ -483,6 +511,7 @@ from src.assets.cet import raw_cet_taxonomy
 ### Integration Tests
 
 **Verify:**
+
 - All assets load in Dagster
 - Asset dependencies preserved
 - Asset materialization produces same results

@@ -6,7 +6,7 @@ This document provides reference information for the StateIO (`stateior`) R pack
 
 - **Package**: `stateior`
 - **Version**: Tested with v0.4.0+
-- **GitHub**: https://github.com/USEPA/stateior
+- **GitHub**: <https://github.com/USEPA/stateior>
 - **Purpose**: Generate US state Make and Use tables for building regionalized input-output models
 
 ## Key Functions for Fiscal Analysis
@@ -30,6 +30,7 @@ Build a full two-region IO table for specified state and rest of US for a given 
 - `disagg`: Optional disaggregation specs
 
 **Returns**: A list containing two-region IO tables:
+
 - Make tables (state and RoW)
 - Use tables (state and RoW)
 - Domestic Use tables
@@ -79,6 +80,7 @@ Assemble two-region make, use, domestic use, and Use tables as well as commodity
 Get state Gross Value Added (GVA) data.
 
 **Returns**: GVA components including:
+
 - Employee compensation (wages)
 - Proprietor income
 - Gross operating surplus (GOS)
@@ -124,13 +126,13 @@ Load StateIO data file from Data Commons or local data directory.
 - `ver`: Optional version string (default NULL, can be "v0.1.0")
 
 **Available files** (from Data Commons):
+
 - Use tables
 - DomesticUse tables
 - IndustryOutput tables
 - Other state IO data products
 
 **Returns**: StateIO data product (usually a list of dataframes)
-
 
 ## Workflow for Fiscal Returns Analysis
 
@@ -228,7 +230,6 @@ Common formats:
 
 ### Formatting
 
-
 ## Notes for Fiscal Returns Integration
 
 1. **State Codes**: Use 2-letter abbreviations (CA, NY, TX, etc.)
@@ -253,6 +254,7 @@ The Python adapter (`RStateIOAdapter`) uses direct StateIO matrix calculation:
 ### Value Added Ratio Extraction
 
 The adapter uses actual StateIO data:
+
 1. Fetches GVA components (wages, GOS, taxes) from StateIO for each state
 2. Converts R data structures to pandas DataFrames
 3. Calculates sector-specific ratios of each component relative to total value added

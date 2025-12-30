@@ -8,14 +8,14 @@
 
 ## TL;DR Recommendation
 
-### Use DuckDB for:
+### Use DuckDB for
 
 - ✅ Company CET aggregation (GROUP BY operations)
 - ✅ Portfolio analytics (complex multi-table joins)
 - ✅ Neo4j bulk load preparation (relationship formatting)
 - ✅ USPTO AI dataset queries (1.2GB, 15.4M records)
 
-### Don't use DuckDB for:
+### Don't use DuckDB for
 
 - ❌ ML classification pipeline (keep pandas → scikit-learn)
 - ❌ Evidence extraction (spaCy needs Python objects)
@@ -89,10 +89,9 @@ classifications_df = pd.DataFrame(classifications)
 
 ### Should we use DuckDB here?
 
-
 ### ❌ NO
 
-### Reasons:
+### Reasons
 
 1. **scikit-learn expects pandas/numpy**: TF-IDF vectorizer optimized for these formats
 2. **No performance benefit**: pandas already handles 210k awards efficiently (~5 seconds)
@@ -100,6 +99,7 @@ classifications_df = pd.DataFrame(classifications)
 4. **Evidence extraction needs Python**: spaCy operates on Python strings, not SQL results
 
 **Benchmark** (210k awards):
+
 - pandas approach: **5 seconds** (current)
 - DuckDB approach: **7 seconds** (estimated, due to conversion overhead)
 
@@ -122,10 +122,9 @@ company_cet = classifications_df.groupby(['company_id', 'primary_cet_id']).agg({
 
 ### Should we use DuckDB here?
 
-
 ### ✅ YES - Significant advantage
 
-### DuckDB Approach:
+### DuckDB Approach
 
 ```python
 import duckdb
@@ -160,7 +159,7 @@ company_cet_df = conn.execute("""
 """).df()
 ```
 
-### Advantages:
+### Advantages
 
 - ✅ **Clearer SQL syntax** for complex aggregations vs nested pandas operations
 - ✅ **Window functions**: `specialization_score` calculation easier in SQL
@@ -168,6 +167,7 @@ company_cet_df = conn.execute("""
 - ✅ **Memory efficient**: Processes larger-than-RAM datasets if needed
 
 **Benchmark** (210k awards, 50k companies):
+
 - pandas approach: **12 seconds** (estimated)
 - DuckDB approach: **4 seconds** (estimated, 3x faster)
 
@@ -191,10 +191,9 @@ portfolio = portfolio.groupby(['fiscal_year', 'agency', 'primary_cet_id']).agg({
 
 ### Should we use DuckDB here?
 
-
 ### ✅ YES - Major advantage
 
-### DuckDB Approach:
+### DuckDB Approach
 
 ```python
 portfolio_df = conn.execute("""
@@ -237,7 +236,7 @@ portfolio_df = conn.execute("""
 """).df()
 ```
 
-### Advantages:
+### Advantages
 
 - ✅ **Complex window functions**: Rankings, percentages, moving averages
 - ✅ **Readable queries**: Self-documenting SQL vs chained pandas
@@ -245,6 +244,7 @@ portfolio_df = conn.execute("""
 - ✅ **Incremental computation**: CTEs enable step-by-step analytics
 
 **Benchmark** (210k awards, 10 years, 10 agencies, 21 CET areas):
+
 - pandas approach: **25 seconds** (estimated)
 - DuckDB approach: **3 seconds** (estimated, 8x faster)
 
@@ -266,10 +266,9 @@ for chunk in iterator:
 
 ### Should we use DuckDB here?
 
-
 ### ✅ YES - Huge advantage
 
-### DuckDB Approach:
+### DuckDB Approach
 
 ```python
 
@@ -294,7 +293,7 @@ patent_ai_scores = conn.execute("""
 """).df()
 ```
 
-### Advantages:
+### Advantages
 
 - ✅ **Handles 1.2GB file**: DuckDB memory-maps large files
 - ✅ **Fast lookups**: Indexed queries vs chunked iteration
@@ -302,6 +301,7 @@ patent_ai_scores = conn.execute("""
 - ✅ **Join with patents**: Efficiently link 15.4M USPTO predictions to SBIR patents
 
 **Benchmark** (1.2GB file, 15.4M records):
+
 - pandas chunked approach: **45 seconds** (read full file)
 - DuckDB approach: **2 seconds** (indexed lookup for subset)
 
@@ -327,10 +327,9 @@ relationships = classifications_df.apply(lambda row: {
 
 ### Should we use DuckDB here?
 
-
 ### ✅ YES - Performance gain
 
-### DuckDB Approach:
+### DuckDB Approach
 
 ```python
 
@@ -370,7 +369,7 @@ relationships_df = conn.execute("""
 relationships = relationships_df.to_dict('records')
 ```
 
-### Advantages:
+### Advantages
 
 - ✅ **UNION queries**: Combine primary + supporting relationships elegantly
 - ✅ **UNNEST**: Flatten arrays (supporting CET areas) efficiently
@@ -583,14 +582,14 @@ def uspto_ai_validation_metrics(
 
 ## Recommendations
 
-### ✅ Use DuckDB For:
+### ✅ Use DuckDB For
 
 1. **Company CET Aggregation** (Stage 2)
 2. **Portfolio Analytics** (Stage 3)
 3. **USPTO AI Dataset Queries** (Stage 4)
 4. **Neo4j Bulk Load Prep** (Stage 5)
 
-### ❌ Don't Use DuckDB For:
+### ❌ Don't Use DuckDB For
 
 1. **ML Classification Pipeline** (Stage 1) - Keep pandas/sklearn
 2. **Evidence Extraction** - spaCy needs Python strings
@@ -599,14 +598,17 @@ def uspto_ai_validation_metrics(
 ### 🔄 Migration Path
 
 **Phase 1** (Initial Implementation):
+
 - Use pandas throughout for simplicity
 - Establish baseline performance
 
 **Phase 2** (Optimization):
+
 - Introduce DuckDB for company aggregation
 - Measure performance gains
 
 **Phase 3** (Full Adoption):
+
 - Extend DuckDB to portfolio analytics
 - Integrate USPTO AI dataset queries
 - Benchmark and validate improvements

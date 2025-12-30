@@ -6,7 +6,7 @@ Implement AWS Lambda functions to download USPTO patent datasets (PatentsView, P
 
 ## Architecture
 
-```
+```text
 GitHub Actions Workflow (scheduled/manual)
     ↓
 AWS Lambda Functions (3 functions)
@@ -25,12 +25,14 @@ AWS S3 (raw/uspto/{dataset}/{date}/)
 **Purpose:** Download PatentsView bulk data tables
 
 **Configuration:**
+
 - Runtime: Python 3.11
 - Memory: 1024 MB
 - Timeout: 30 minutes
 - Handler: `lambda_handler.lambda_handler`
 
 **Event Parameters:**
+
 ```json
 {
   "s3_bucket": "sbir-etl-production-data",
@@ -42,6 +44,7 @@ AWS S3 (raw/uspto/{dataset}/{date}/)
 ```
 
 **S3 Output:**
+
 - Key: `raw/uspto/patentsview/{YYYY-MM-DD}/{dataset_type}.tsv`
 - Metadata: sha256, source_url, downloaded_at, dataset_type
 
@@ -52,12 +55,14 @@ AWS S3 (raw/uspto/{dataset}/{date}/)
 **Purpose:** Download USPTO Patent Assignment Dataset
 
 **Configuration:**
+
 - Runtime: Python 3.11
 - Memory: 1024 MB
 - Timeout: 30 minutes
 - Handler: `lambda_handler.lambda_handler`
 
 **Event Parameters:**
+
 ```json
 {
   "s3_bucket": "sbir-etl-production-data",
@@ -68,6 +73,7 @@ AWS S3 (raw/uspto/{dataset}/{date}/)
 ```
 
 **S3 Output:**
+
 - Key: `raw/uspto/assignments/{YYYY-MM-DD}/patent_assignments.{ext}`
 - Metadata: sha256, source_url, downloaded_at, format
 
@@ -78,12 +84,14 @@ AWS S3 (raw/uspto/{dataset}/{date}/)
 **Purpose:** Download USPTO AI Patent Dataset
 
 **Configuration:**
+
 - Runtime: Python 3.11
 - Memory: 1024 MB
 - Timeout: 30 minutes
 - Handler: `lambda_handler.lambda_handler`
 
 **Event Parameters:**
+
 ```json
 {
   "s3_bucket": "sbir-etl-production-data",
@@ -93,6 +101,7 @@ AWS S3 (raw/uspto/{dataset}/{date}/)
 ```
 
 **S3 Output:**
+
 - Key: `raw/uspto/ai_patents/{YYYY-MM-DD}/ai_patent_dataset.{ext}`
 - Metadata: sha256, source_url, downloaded_at, dataset
 
@@ -103,6 +112,7 @@ AWS S3 (raw/uspto/{dataset}/{date}/)
 **File:** `infrastructure/cdk/stacks/lambda_stack.py`
 
 **Changes:**
+
 - Add three new functions to `layer_functions` list:
   - `download-uspto-patentsview`
   - `download-uspto-assignments`
@@ -115,6 +125,7 @@ AWS S3 (raw/uspto/{dataset}/{date}/)
 ### IAM Permissions
 
 Lambda functions require:
+
 - `s3:PutObject` on `arn:aws:s3:::sbir-etl-production-data/raw/uspto/*`
 - `s3:GetObject` (optional, for verification)
 - `logs:CreateLogStream`, `logs:PutLogEvents` for CloudWatch
@@ -126,6 +137,7 @@ Lambda functions require:
 **Location:** `.github/workflows/uspto-data-refresh.yml`
 
 **Triggers:**
+
 - Scheduled: `0 9 1 * *` (monthly on 1st at 9 AM UTC)
 - Manual: `workflow_dispatch` with inputs:
   - `dataset`: all/patentsview/assignments/ai_patents
@@ -133,6 +145,7 @@ Lambda functions require:
   - `format`: csv/dta/parquet (for assignments)
 
 **Job Steps:**
+
 1. Configure AWS credentials (OIDC)
 2. Determine which datasets to download
 3. Invoke Lambda functions via AWS CLI
@@ -140,6 +153,7 @@ Lambda functions require:
 5. Upload results as artifacts
 
 **Concurrency:**
+
 - Group: `uspto-data-refresh`
 - Cancel in progress: false (let downloads complete)
 
@@ -150,6 +164,7 @@ Lambda functions require:
 **Location:** `config/base.yaml` → `extraction.uspto.download`
 
 **Structure:**
+
 ```yaml
 extraction:
   uspto:

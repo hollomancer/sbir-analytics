@@ -5,6 +5,7 @@
 The **sbir-analytics** is a robust, cloud-native ETL (Extract, Transform, Load) pipeline for processing Small Business Innovation Research (SBIR) program data into a Neo4j graph database. It orchestrates multi-source data ingestion, complex transformations, and sophisticated analysis workflows through Dagster asset definitions.
 
 **Key Characteristics:**
+
 - **Data Sources**: SBIR.gov awards, USAspending contracts, USPTO patents, transition detection
 - **Processing**: DuckDB (extraction), Pandas/Python (transformation), Neo4j Aura (cloud graph storage)
 - **Orchestration**: GitHub Actions (primary), AWS Step Functions (scheduled workflows)
@@ -20,7 +21,7 @@ The **sbir-analytics** is a robust, cloud-native ETL (Extract, Transform, Load) 
 
 ### 1.1 Core Directory Structure
 
-```
+```text
 sbir-analytics/
 ├── src/                          # Main application code
 │   ├── assets/                   # Dagster asset definitions (pipeline nodes)
@@ -147,7 +148,6 @@ sbir-analytics/
 │   └── secret-scan.yml
 │
 └── docker-compose.yml            # Local dev/test environment
-
 ```
 
 ### 1.2 Key Files
@@ -642,6 +642,7 @@ PipelineConfig (root):
 ### 5.1 CET Classification System
 
 **21 NSTC Technology Areas:**
+
 - Artificial Intelligence & Machine Learning
 - Quantum Computing
 - Biotechnology
@@ -690,12 +691,14 @@ PipelineConfig (root):
 **6-Signal Scoring System:**
 
 Each transition is flagged with:
+
 - **Likelihood Score** (0.0-1.0 composite)
 - **Confidence Band** (HIGH ≥0.85, LIKELY 0.65-0.84, POSSIBLE <0.65)
 - **Signal Breakdown** (what drove the detection)
 - **Evidence Bundle** (supporting facts: dates, amounts, relationships)
 
 **Neo4j Relationships:**
+
 - `Award -[:TRANSITIONED_TO]-> Transition`
 - `Transition -[:RESULTED_IN]-> Contract`
 - `Transition -[:ENABLED_BY]-> Patent`
@@ -704,6 +707,7 @@ Each transition is flagged with:
 ### 5.3 Quality Tags
 
 **Data Quality Flags:**
+
 - Validation status (pass/fail)
 - Completeness score
 - Enrichment coverage
@@ -973,6 +977,7 @@ enriched_sbir_awards (with NAICS)
 ### 8.2 Key Architectural Decisions (ADRs)
 
 Located in `docs/decisions/`:
+
 - **Configuration Management**: Unified Pydantic model with env overrides
 - **Extraction Strategy**: DuckDB for SBIR CSV (10x faster than pandas)
 - **Neo4j Schema**: MERGE semantics for idempotent loading
@@ -1105,6 +1110,7 @@ The **sbir-analytics** codebase is a comprehensive, production-grade ETL system 
 5. **Orchestrates** via Dagster with observable asset dependencies and quality gates
 
 **CET classification** is fully integrated as an ML-based asset with:
+
 - Taxonomy loading from YAML configs
 - TF-IDF feature extraction with keyword boosting
 - Logistic regression classification (21 categories)

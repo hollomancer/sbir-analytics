@@ -67,6 +67,7 @@ uv run python scripts/usaspending/check_new_file.py \
 ```
 
 **Verify:**
+
 - ✅ `available: true` if file exists at source
 - ✅ `is_new: true` if file doesn't exist in S3 or is newer
 - ✅ `content_length` shows file size (~217GB for full)
@@ -105,12 +106,14 @@ uv run python scripts/usaspending/download_database.py \
 ```
 
 **Verify:**
+
 - ✅ Script downloads from source URL
 - ✅ Uploads to S3 using multipart upload
 - ✅ Computes SHA256 hash
 - ✅ File appears in S3: `s3://$S3_BUCKET/raw/usaspending/database/YYYY-MM-DD/`
 
 **Check S3:**
+
 ```bash
 aws s3 ls s3://$S3_BUCKET/raw/usaspending/database/ --recursive
 ```
@@ -139,6 +142,7 @@ print(f"Latest full dump: {latest}")
 ```
 
 **Verify:**
+
 - ✅ Returns S3 URL of latest file
 - ✅ Returns `None` if no files found
 - ✅ Handles both test and full database types
@@ -193,11 +197,13 @@ else:
 ```
 
 **Run:**
+
 ```bash
 python test_usaspending_s3_integration.py
 ```
 
 **Verify:**
+
 - ✅ Finds latest S3 file
 - ✅ Downloads to temp location
 - ✅ DuckDB can import the dump
@@ -234,6 +240,7 @@ except Exception as e:
 ```
 
 **Or use Dagster UI:**
+
 ```bash
 # Start Dagster
 dagster dev
@@ -244,6 +251,7 @@ dagster dev
 ```
 
 **Verify:**
+
 - ✅ Assets find latest S3 dump automatically
 - ✅ Assets fail with clear error if S3 dump not found
 - ✅ No silent fallbacks to local files
@@ -273,6 +281,7 @@ EOF
 ```
 
 **Or test manually via GitHub UI:**
+
 1. Go to Actions → USAspending Database Download
 2. Click "Run workflow"
 3. Select `database_type: test` (smaller file)
@@ -281,6 +290,7 @@ EOF
 ## 7. Test EC2 Automation (Full Test)
 
 ### Prerequisites
+
 - EC2 instance created and configured
 - `EC2_INSTANCE_ID` added to GitHub secrets
 - IAM role with S3 write permissions attached to EC2
@@ -288,6 +298,7 @@ EOF
 ### Test Steps
 
 1. **Verify EC2 instance is accessible:**
+
 ```bash
 INSTANCE_ID="i-xxxxx"  # Your EC2 instance ID
 
@@ -305,18 +316,19 @@ aws ssm send-command \
   --output text
 ```
 
-2. **Test file detection in workflow:**
+1. **Test file detection in workflow:**
    - Workflow should check for new files
    - Should skip download if file already exists (unless `force_refresh=true`)
 
-3. **Test download execution:**
+2. **Test download execution:**
    - Workflow should start EC2 instance
    - Upload script via SSM
    - Execute download
    - Monitor progress
    - Stop instance when complete
 
-4. **Verify S3 file:**
+3. **Verify S3 file:**
+
 ```bash
 # Check file exists
 aws s3 ls s3://$S3_BUCKET/raw/usaspending/database/ --recursive
@@ -369,6 +381,7 @@ except ExtractionError as e:
 ```
 
 **Verify:**
+
 - ✅ Uses S3 when available
 - ✅ Fails with clear error when S3 unavailable
 - ✅ No silent fallbacks
@@ -404,6 +417,7 @@ watch -n 5 "aws s3 ls s3://$S3_BUCKET/raw/usaspending/database/ --recursive --hu
 ```
 
 **Expected:**
+
 - Test database: ~30-60 minutes
 - Full database: ~2-3 hours
 - Upload speed: ~1.5 GB/min
@@ -415,6 +429,7 @@ watch -n 5 "aws s3 ls s3://$S3_BUCKET/raw/usaspending/database/ --recursive --hu
 **Problem:** `check_new_file.py` returns `available: false`
 
 **Solutions:**
+
 ```bash
 # Check if URL is accessible
 curl -I "https://files.usaspending.gov/database_download/usaspending-db_20251106.zip"
@@ -430,6 +445,7 @@ python scripts/usaspending/check_new_file.py \
 **Problem:** `find_latest_usaspending_dump()` returns `None`
 
 **Solutions:**
+
 ```bash
 # List files in S3
 aws s3 ls s3://$S3_BUCKET/raw/usaspending/database/ --recursive
@@ -443,6 +459,7 @@ aws s3 ls s3://$S3_BUCKET/raw/usaspending/database/ | grep "usaspending-db"
 **Problem:** `import_postgres_dump()` returns `False`
 
 **Solutions:**
+
 ```bash
 # Verify file is accessible
 aws s3 head-object \
@@ -458,6 +475,7 @@ aws s3 head-object \
 **Problem:** SSM command times out or fails
 
 **Solutions:**
+
 ```bash
 # Check SSM agent status
 aws ssm describe-instance-information \
@@ -488,6 +506,7 @@ aws ssm get-command-invocation \
 ## Next Steps
 
 After testing:
+
 1. Set up EC2 instance (if not done)
 2. Add `EC2_INSTANCE_ID` to GitHub secrets
 3. Schedule monthly workflow

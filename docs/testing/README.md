@@ -19,7 +19,7 @@ uv run pytest tests/e2e/
 
 ## Test Structure
 
-```
+```text
 tests/
 ├── unit/           # Component-level tests (fast, no external deps)
 ├── integration/    # Multi-component tests (may need Neo4j)
@@ -31,17 +31,20 @@ tests/
 ## Running Tests
 
 ### Unit Tests (Fast)
+
 ```bash
 uv run pytest tests/unit/ -v
 ```
 
 ### Integration Tests (Requires Neo4j)
+
 ```bash
 make neo4j-up
 uv run pytest tests/integration/ -v
 ```
 
 ### With Coverage
+
 ```bash
 uv run pytest --cov=src --cov-report=html
 open htmlcov/index.html

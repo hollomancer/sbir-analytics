@@ -24,7 +24,8 @@ The SBIR ETL pipeline uses **loguru** for structured, consistent logging across 
 
 ## Quick Reference
 
-### ✅ Use `logger` for:
+### ✅ Use `logger` for
+
 - Internal application logic and data processing
 - Debugging information for developers
 - Error tracking and monitoring
@@ -32,14 +33,16 @@ The SBIR ETL pipeline uses **loguru** for structured, consistent logging across 
 - Structured data that needs to be parsed
 - Production monitoring and alerting
 
-### ✅ Use `console.print()` for:
+### ✅ Use `console.print()` for
+
 - User-facing CLI output
 - Progress bars and status updates
 - Formatted tables and panels (Rich console)
 - Interactive prompts and responses
 - Final command results
 
-### ❌ Never use:
+### ❌ Never use
+
 - `print()` for application logic (only in CLI utilities writing to stdout)
 - `print()` in library code or Dagster assets
 - `logging` stdlib (use `loguru` instead)
@@ -51,6 +54,7 @@ The SBIR ETL pipeline uses **loguru** for structured, consistent logging across 
 ### Logger (Internal/Production)
 
 **Use `logger` when:**
+
 - Writing diagnostic information for developers
 - Tracking application state and data flow
 - Recording errors for monitoring systems
@@ -69,6 +73,7 @@ logger.error("Database connection failed", extra={"uri": db_uri, "attempt": 3})
 ### Console (User-Facing Output)
 
 **Use `context.console.print()` in CLI commands when:**
+
 - Showing results to users
 - Displaying progress and status
 - Formatting tables or panels

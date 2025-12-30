@@ -105,6 +105,7 @@ export SBIR_ETL__TRANSITION__DETECTION__CET_WEIGHT=0.15
 ## Documentation
 
 **Comprehensive Guides** (6,126 lines total):
+
 - 📖 [Detection Algorithm](detection-algorithm.md) - How the system works end-to-end
 - 📖 [Scoring Guide](scoring-guide.md) - Detailed scoring breakdown + tuning
 - 📖 [Vendor Matching](vendor-matching.md) - Vendor resolution methods + validation
@@ -114,6 +115,7 @@ export SBIR_ETL__TRANSITION__DETECTION__CET_WEIGHT=0.15
 - 📖 [Data Dictionary](../data/dictionaries/transition-fields-dictionary.md) - Field reference
 
 **Quick Reference**:
+
 - 📋 [MVP Guide](mvp.md) - Minimal viable product
 - 📋 [Configuration Guide](../../config/README.md) - YAML configuration guide
 
@@ -170,6 +172,7 @@ uv run pytest tests/unit/test_cet_signal_extractor.py -v  # 37 tests, 96% covera
 ## Key Files
 
 ### Implementation
+
 - `src/transition/detection/` - Detection pipeline (scoring, evidence, detector)
 - `src/transition/features/` - Feature extraction (vendor resolver, patent analyzer, CET)
 - `src/transition/analysis/` - Analytics (dual-perspective metrics)
@@ -178,11 +181,13 @@ uv run pytest tests/unit/test_cet_signal_extractor.py -v  # 37 tests, 96% covera
 - `src/loaders/transition_loader.py` - Neo4j loading
 
 ### Configuration
+
 - `config/transition/detection.yaml` - Scoring weights, thresholds
 - `config/transition/presets.yaml` - Preset configurations
 - `config/README.md` - Configuration guide
 
 ### Data
+
 - `data/processed/transitions.parquet` - Detected transitions
 - `data/processed/transitions_evidence.ndjson` - Evidence bundles (JSON per line)
 - `data/processed/vendor_resolution.parquet` - Award→contractor cross-walk

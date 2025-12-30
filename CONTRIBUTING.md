@@ -170,6 +170,7 @@ Then create a pull request on the repository.
 ### Logging Standards
 
 We use `loguru` for structured logging. See the [Logging Standards Guide](docs/development/logging-standards.md) for details on:
+
 - When to use `logger` vs `console.print`
 - Structured context and log levels
 - Performance considerations
@@ -201,6 +202,7 @@ except httpx.HTTPError as e:
 ```
 
 **Exception Hierarchy:**
+
 - `ExtractionError` - Data extraction failures
 - `ValidationError` / `DataQualityError` - Schema/quality validation
 - `EnrichmentError` / `APIError` / `RateLimitError` - Enrichment and API failures
@@ -211,6 +213,7 @@ except httpx.HTTPError as e:
 - `DependencyError` / `RFunctionError` - Missing dependencies
 
 **Best Practices:**
+
 1. Always use specific exceptions (not generic `ValueError`, `RuntimeError`)
 2. Provide `component` and `operation` context for debugging
 3. Include actionable details in error messages

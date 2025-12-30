@@ -12,9 +12,11 @@ This directory contains guides and documentation for developers working on the S
 ## Docker Development
 
 **Getting started with Docker:**
+
 - **[Docker Guide](docker.md)** - Complete Docker setup and usage guide
 
 **Related:**
+
 - [Containerization Guide](../deployment/containerization.md) - Advanced Docker usage
 - [Testing in Docker](../testing/index.md#2-docker--compose-workflows) - Running tests
 

@@ -9,6 +9,7 @@ Quick guide for testing the company categorization system against the high-volum
 **Description:** 200+ companies with >100 SBIR awards each (high-volume contractors)
 
 **Columns:**
+
 - `UEI`: Company UEI
 - `Company Name`: Company name
 - `SBIR Awards`: Number of SBIR awards received
@@ -25,6 +26,7 @@ uv run python tests/validation/test_categorization_validation.py --limit 10
 ```
 
 **Expected Output:**
+
 ```
 Loading validation dataset from: data/raw/sbir/over-100-awards-company_search_1763075384.csv
 Loaded 200+ companies from validation dataset
@@ -107,6 +109,7 @@ uv run python tests/validation/test_categorization_validation.py --limit 10 --ve
 ```
 
 This will:
+
 - ✓ Load validation dataset
 - ✓ Process first 10 companies
 - ✓ Retrieve USAspending contracts for each
@@ -115,6 +118,7 @@ This will:
 - ✓ Print detailed summary
 
 **Review the output** to verify:
+
 - Contract retrieval is working
 - Classifications look reasonable
 - Confidence levels are appropriate
@@ -129,6 +133,7 @@ uv run python tests/validation/test_categorization_validation.py --uei <KNOWN_UE
 ```
 
 **Manual validation checklist:**
+
 - [ ] Product companies have high % numeric PSCs (1000-9999)
 - [ ] Service companies have high % alphabetic PSCs (R, S, etc.)
 - [ ] Mixed companies have diverse PSC families (>6)
@@ -215,12 +220,14 @@ LIMIT 10;
 For the high-volume SBIR company dataset (>100 awards each), expect:
 
 **Classification:**
+
 - ~40-50% Product-leaning (companies selling physical products/systems)
 - ~30-40% Service-leaning (consulting, R&D services, studies)
 - ~10-20% Mixed (integrators, diverse portfolios)
 - ~5-10% Uncertain (insufficient USAspending data)
 
 **Confidence:**
+
 - ~60-70% High confidence (>5 USAspending contracts)
 - ~20-30% Medium confidence (2-5 contracts)
 - ~10% Low confidence (<=2 contracts)
@@ -228,18 +235,22 @@ For the high-volume SBIR company dataset (>100 awards each), expect:
 ### Red Flags to Investigate
 
 ❌ **High Uncertain rate (>20%)**:
+
 - Check USAspending database is loaded correctly
 - Verify UEI matching is working
 
 ❌ **Low confidence rate too high (>25%)**:
+
 - These are high-volume SBIR companies, most should have many USAspending contracts
 - Check database query logic
 
 ❌ **All companies same classification**:
+
 - Logic error in classifier
 - Check PSC code handling
 
 ✓ **Good signs:**
+
 - Mix of all classifications
 - Confidence correlates with award count
 - Results match manual spot-checks
@@ -251,16 +262,19 @@ For the high-volume SBIR company dataset (>100 awards each), expect:
 Here are some well-known SBIR companies you can use for manual validation:
 
 **Aerospace/Defense (expect Product-leaning):**
+
 - Physical Systems Inc.
 - Orbital ATK
 - Ball Aerospace
 
 **R&D Services (expect Service-leaning):**
+
 - Booz Allen Hamilton
 - MITRE Corporation
 - Leidos
 
 **Mixed:**
+
 - General Dynamics
 - Raytheon
 - Lockheed Martin (might be Product or Mixed)
@@ -290,6 +304,7 @@ find data -name "*over-100-awards*"
 **Cause:** USAspending database not loaded or table name mismatch
 
 **Fix:**
+
 ```bash
 # Check config
 uv run python -c "from src.config.loader import get_config; print(get_config().extraction.usaspending)"
@@ -338,6 +353,7 @@ pd.concat(chunks).to_csv('full_results.csv', index=False)
 
 3. **Adjust Thresholds (if needed)**
    - Edit `config/base.yaml`:
+
      ```yaml
      company_categorization:
        product_leaning_pct: 51.0  # Adjust threshold
@@ -345,6 +361,7 @@ pd.concat(chunks).to_csv('full_results.csv', index=False)
      ```
 
 4. **Run Full Pipeline in Dagster**
+
    ```bash
    uv run dagster dev
    # Materialize: enriched_sbir_companies_with_categorization
@@ -352,6 +369,7 @@ pd.concat(chunks).to_csv('full_results.csv', index=False)
    ```
 
 5. **Load to Neo4j for Analysis**
+
    ```bash
    # After validation looks good
    uv run python tests/validation/test_categorization_validation.py --load-neo4j
@@ -362,6 +380,7 @@ pd.concat(chunks).to_csv('full_results.csv', index=False)
 ## Success Criteria
 
 ✅ **Validation passes if:**
+
 - Classification distribution is reasonable (not all one type)
 - Confidence levels correlate with award counts
 - Spot-checks match known company types

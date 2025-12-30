@@ -152,6 +152,7 @@ paths:
 - **Absolute paths**: Can be specified for deployment environments
 
 The path resolver automatically:
+
 1. Expands environment variables (`$HOME`, `$USER`, etc.)
 2. Expands tilde `~` for home directory
 3. Converts relative paths to absolute based on project root
@@ -159,7 +160,7 @@ The path resolver automatically:
 
 ### Default Directory Structure
 
-```
+```text
 /home/user/sbir-analytics/
 ├── data/
 │   ├── raw/
@@ -274,6 +275,7 @@ if not validate_paths_on_startup(create_missing_dirs=True):
 ### Validation Behavior
 
 The validator checks:
+
 - ✅ **Directory paths exist** or can be created
 - ✅ **Parent directories exist** for file paths
 - ✅ **Paths are accessible** (read/write permissions)
@@ -363,17 +365,21 @@ volumes:
 **Symptom**: Pipeline fails to start with path validation errors
 
 **Solutions**:
+
 1. Check that data directories exist:
+
    ```bash
    mkdir -p data/usaspending data/transition data/scripts_output
    ```
 
 2. Verify environment variables are set correctly:
+
    ```bash
    echo $SBIR_ETL__PATHS__DATA_ROOT
    ```
 
 3. Check file permissions:
+
    ```bash
    chmod -R 755 data/
    ```
@@ -383,6 +389,7 @@ volumes:
 **Symptom**: Error creating output files
 
 **Solution**: Enable automatic directory creation:
+
 ```python
 validate_paths_on_startup(create_missing_dirs=True)
 ```
@@ -392,6 +399,7 @@ validate_paths_on_startup(create_missing_dirs=True)
 **Symptom**: Path resolves to directory instead of file
 
 **Solution**: Check configuration - ensure path includes filename:
+
 ```yaml
 # ❌ Wrong
 usaspending_dump_file: "data/usaspending"
@@ -405,6 +413,7 @@ usaspending_dump_file: "data/usaspending/dump.zip"
 **Symptom**: Seeing references to `/Volumes/X10 Pro/` in logs
 
 **Solution**: This indicates old code is still using hardcoded paths. Check:
+
 1. All source files have been updated to use `config.paths.resolve_path()`
 2. No scripts are using old hardcoded defaults
 3. Clear any cached Python bytecode: `find . -type d -name __pycache__ -exec rm -rf {} +`
@@ -445,6 +454,7 @@ If you're upgrading from a version with hardcoded paths:
 ### Step 1: Review Current Paths
 
 Check your current data locations:
+
 ```bash
 # Find all data files
 find . -name "*.parquet" -o -name "*.json" -o -name "*.zip" | grep -v node_modules

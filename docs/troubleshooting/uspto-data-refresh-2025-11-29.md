@@ -17,11 +17,13 @@ The USPTO data refresh workflow completed successfully but downloaded **placehol
 ### Duplicate SHA256 Hashes
 
 Both Patent Assignments and AI Patents show identical hash:
+
 ```
 7e30f3d0fb18872e5a3319a7e56e0b869cd26071e2925763789e4db3f519bae7
 ```
 
 This is **impossible** for different files and indicates:
+
 - Download failure with cached/placeholder data
 - Wrong file being downloaded (error page, redirect, etc.)
 - Hash calculation error
@@ -75,6 +77,7 @@ This will cause the Lambda to **fail loudly** instead of silently uploading bad 
 The URLs are correct but downloads are failing. Need to:
 
 **Test manually:**
+
 ```bash
 # Test from local machine
 curl -I "https://data.uspto.gov/ui/datasets/products/files/ECORSEXC/2023/csv.zip"
@@ -85,12 +88,14 @@ curl -L "https://data.uspto.gov/ui/datasets/products/files/ECORSEXC/2023/csv.zip
 ```
 
 **Check Lambda execution logs:**
+
 - Review CloudWatch logs for HTTP response codes
 - Check for redirects or error messages
 - Verify User-Agent header is accepted
 - Check for rate limiting or IP blocking
 
 **Possible solutions:**
+
 - Add retry logic with exponential backoff
 - Use different User-Agent string
 - Add authentication if required
@@ -100,6 +105,7 @@ curl -L "https://data.uspto.gov/ui/datasets/products/files/ECORSEXC/2023/csv.zip
 ### 2. Add Response Validation (High Priority)
 
 Beyond file size, validate the response:
+
 ```python
 # Check Content-Type header
 if "text/html" in content_type:
@@ -113,6 +119,7 @@ if not data.startswith(b'PK\x03\x04'):
 ### 3. Enhanced Error Reporting (Medium Priority)
 
 Capture more diagnostic information:
+
 - HTTP response headers
 - First 1KB of response body (for error messages)
 - Response status code

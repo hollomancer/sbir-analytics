@@ -821,7 +821,7 @@ scoring:
 
 ```
 
-###Phase IIB Awards
+### Phase IIB Awards
 
 - Shorter time windows (0-18 months, commercialization push)
 - High patent signal weight (typically patented)

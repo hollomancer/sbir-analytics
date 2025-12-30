@@ -20,6 +20,7 @@ Define the behavioral requirements for automatically downloading USPTO patent da
 **WHEN** the PatentsView download Lambda function is invoked **THEN** it SHALL download the requested PatentsView table (patent, assignee, inventor, etc.) from the PatentsView bulk download endpoint, compute a SHA-256 hash, and upload the data to S3 with metadata.
 
 Acceptance:
+
 - Lambda function accepts `dataset_type` or `table_name` parameter to specify which table to download
 - Downloads use HTTPS with proper User-Agent headers
 - S3 key follows pattern: `raw/uspto/patentsview/{YYYY-MM-DD}/{table_name}.tsv`
@@ -31,6 +32,7 @@ Acceptance:
 **WHEN** the Patent Assignment download Lambda function is invoked **THEN** it SHALL download the USPTO Patent Assignment Dataset in the specified format (CSV, DTA, or Parquet), compute a SHA-256 hash, and upload to S3 with metadata.
 
 Acceptance:
+
 - Lambda function accepts `format` parameter (csv, dta, parquet) with default "csv"
 - S3 key follows pattern: `raw/uspto/assignments/{YYYY-MM-DD}/patent_assignments.{ext}`
 - Content-Type header set appropriately based on format
@@ -42,6 +44,7 @@ Acceptance:
 **WHEN** the AI Patent download Lambda function is invoked **THEN** it SHALL download the USPTO AI Patent Dataset, compute a SHA-256 hash, and upload to S3 with metadata.
 
 Acceptance:
+
 - Lambda function determines file format from Content-Type header or URL extension
 - S3 key follows pattern: `raw/uspto/ai_patents/{YYYY-MM-DD}/ai_patent_dataset.{ext}`
 - Handles compressed formats (ZIP) if provided by USPTO
@@ -52,6 +55,7 @@ Acceptance:
 **WHEN** the scheduled GitHub Actions workflow executes **THEN** it SHALL invoke the appropriate Lambda functions to download all enabled USPTO datasets according to their schedule (monthly or quarterly).
 
 Acceptance:
+
 - Workflow runs monthly on the 1st at 9 AM UTC via cron: `0 9 1 * *`
 - Supports manual dispatch with inputs: dataset (all/patentsview/assignments/ai_patents), force_refresh, format
 - Workflow invokes Lambda functions via AWS SDK with proper IAM authentication
@@ -63,6 +67,7 @@ Acceptance:
 **WHEN** a Lambda function encounters a download failure **THEN** it SHALL log detailed error information, return a 500 status code with error details, and allow the workflow to handle retries.
 
 Acceptance:
+
 - Lambda functions catch exceptions and include stack traces in logs
 - Error responses include descriptive error messages
 - GitHub Actions workflow fails the job if any download fails
@@ -73,6 +78,7 @@ Acceptance:
 **WHEN** Lambda functions are deployed **THEN** they SHALL read configuration from environment variables and event parameters, with defaults from `config/base.yaml`.
 
 Acceptance:
+
 - S3 bucket name comes from `S3_BUCKET` environment variable or event parameter
 - Source URLs can be overridden via event parameters
 - Configuration in `config/base.yaml` documents default URLs and schedules

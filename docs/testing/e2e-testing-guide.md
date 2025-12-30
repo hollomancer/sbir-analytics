@@ -399,7 +399,7 @@ docker compose -f docker-compose.yml -f docker/docker-compose.e2e.yml cp e2e-orc
 docker compose -f docker-compose.yml -f docker/docker-compose.e2e.yml exec neo4j-e2e cypher-shell -u neo4j -p your-password "RETURN 1"
 ```
 
-###Memory Issues on MacBook Air
+### Memory Issues on MacBook Air
 
 ```bash
 
@@ -412,7 +412,7 @@ docker stats
 MEMORY_LIMIT_GB=6
 ```
 
-###Test Timeouts
+### Test Timeouts
 
 ```bash
 
@@ -421,7 +421,7 @@ MEMORY_LIMIT_GB=6
 E2E_TEST_TIMEOUT=900 make docker-e2e-standard
 ```
 
-###Port Conflicts
+### Port Conflicts
 
 ```bash
 

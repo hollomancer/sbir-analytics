@@ -215,7 +215,7 @@ def enrichment_success_rate_check(enriched_sbir_awards: pd.DataFrame) -> AssetCh
 
 ### Performance Monitoring Integration
 
-### Asset Execution Metadata:
+### Asset Execution Metadata
 
 - Records processed count
 - Execution duration and throughput
@@ -223,7 +223,7 @@ def enrichment_success_rate_check(enriched_sbir_awards: pd.DataFrame) -> AssetCh
 - Quality metrics and success rates
 - Error counts and issue summaries
 
-### Performance Metrics Collection:
+### Performance Metrics Collection
 
 - Execution time per enrichment source
 - Memory usage during processing

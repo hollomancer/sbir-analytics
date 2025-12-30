@@ -8,6 +8,7 @@
 ## Overview
 
 Docker Compose is the **failover option** for local development. **GitHub Actions Solo Plan** is the primary deployment method. Use Docker for:
+
 - Local development without cloud dependencies
 - CI/CD testing (mirrors production environment)
 - Emergency failover scenarios
@@ -21,6 +22,7 @@ make docker-check-prerequisites
 ```
 
 Validates:
+
 - Docker 20.10+ installed and running
 - Docker Compose V2 available
 - Ports 3000, 7474, 7687 available
@@ -33,12 +35,14 @@ cp .env.example .env
 ```
 
 **Minimal configuration** (local development):
+
 ```bash
 NEO4J_USER=neo4j
 NEO4J_PASSWORD=test  # pragma: allowlist secret
 ```
 
 **Production-like configuration**:
+
 ```bash
 NEO4J_URI=bolt://neo4j:7687
 NEO4J_USER=neo4j
@@ -63,8 +67,9 @@ make docker-verify
 ```
 
 **Services available:**
-- Dagster UI: http://localhost:3000
-- Neo4j Browser: http://localhost:7474
+
+- Dagster UI: <http://localhost:3000>
+- Neo4j Browser: <http://localhost:7474>
 - Neo4j Bolt: bolt://localhost:7687
 
 ### 4. Development Workflow
@@ -96,12 +101,14 @@ The project uses a single `docker-compose.yml` with profiles for different scena
 ### Development Profile
 
 **Features:**
+
 - Bind mounts for live code editing
 - Hot reload enabled
 - Debug logging
 - Local data volumes
 
 **Start:**
+
 ```bash
 make docker-up-dev
 # or
@@ -111,12 +118,14 @@ docker compose --profile dev up -d
 ### CI Profile
 
 **Features:**
+
 - Mirrors GitHub Actions environment
 - Runs pytest automatically
 - Ephemeral containers
 - No bind mounts
 
 **Start:**
+
 ```bash
 make docker-test
 # or
@@ -126,12 +135,14 @@ docker compose --profile ci up --abort-on-container-exit
 ### Production Profile
 
 **Features:**
+
 - Optimized image (no dev dependencies)
 - Health checks enabled
 - Resource limits configured
 - Persistent volumes
 
 **Start:**
+
 ```bash
 docker compose --profile prod up -d
 ```
@@ -319,6 +330,7 @@ make docker-build
 ### Multi-stage Caching
 
 The Dockerfile uses multi-stage builds with aggressive caching:
+
 - Builder stage: Cached until dependencies change
 - Runtime stage: Cached until code changes
 
@@ -379,22 +391,26 @@ For more troubleshooting, see [Docker Troubleshooting Guide](../development/dock
 - [GitHub Actions Deployment](README.md) - Primary deployment method
 - [Testing Guide](../testing/index.md) - Running tests in Docker
 - [Configuration Patterns](../../.kiro/steering/configuration-patterns.md) - Environment variable overrides
+
 # Docker Image Optimization Guide
 
 ## Current Optimizations
 
 ### Multi-Stage Build
+
 - **Builder stage**: Compiles wheels, installs build dependencies
 - **Runtime stage**: Only includes runtime dependencies and wheels
 - **Impact**: ~60% smaller final image
 
 ### Layer Caching
+
 - Dependencies copied before code for better cache hits
 - UV cache mounted for faster builds
 - Pip cache mounted for wheel building
 - **Impact**: 2-3x faster rebuilds
 
 ### .dockerignore Optimization
+
 - Excludes 100+ MB of unnecessary files:
   - Test data and fixtures
   - CI/CD configurations
@@ -404,6 +420,7 @@ For more troubleshooting, see [Docker Troubleshooting Guide](../development/dock
 - **Impact**: Faster context transfer, smaller image
 
 ### Conditional R Installation
+
 - R packages only installed when needed
 - Pre-built R base image option for faster builds
 - **Impact**: 40% faster builds without R
@@ -419,19 +436,24 @@ For more troubleshooting, see [Docker Troubleshooting Guide](../development/dock
 ## Build Optimization Tips
 
 ### 1. Use BuildKit
+
 ```bash
 DOCKER_BUILDKIT=1 docker build -t sbir-analytics .
 ```
 
 ### 2. Use Cache Mounts
+
 Already implemented in Dockerfile:
+
 ```dockerfile
 RUN --mount=type=cache,target=/root/.cache/uv \
     --mount=type=cache,target=/root/.cache/pip
 ```
 
 ### 3. Layer Ordering
+
 Dependencies before code for better caching:
+
 ```dockerfile
 COPY pyproject.toml uv.lock* /workspace/  # Changes rarely
 # ... build dependencies ...
@@ -439,6 +461,7 @@ COPY . /workspace/  # Changes frequently
 ```
 
 ### 4. Multi-Platform Builds
+
 ```bash
 docker buildx build --platform linux/amd64,linux/arm64 -t sbir-analytics .
 ```
@@ -446,16 +469,19 @@ docker buildx build --platform linux/amd64,linux/arm64 -t sbir-analytics .
 ## Runtime Optimizations
 
 ### 1. Non-Root User
+
 - Runs as `sbir` user (UID 1000)
 - Better security posture
 - Compatible with Kubernetes security policies
 
 ### 2. Minimal Runtime Dependencies
+
 - Only essential packages in runtime stage
 - Build tools excluded
 - Test dependencies excluded
 
 ### 3. Tini for PID 1
+
 - Proper signal handling
 - Zombie process reaping
 - Clean shutdown
@@ -463,40 +489,51 @@ docker buildx build --platform linux/amd64,linux/arm64 -t sbir-analytics .
 ## Further Optimization Opportunities
 
 ### 1. Distroless Base (Advanced)
+
 Switch to distroless for even smaller images:
+
 ```dockerfile
 FROM gcr.io/distroless/python3-debian12
 ```
+
 **Trade-off**: No shell, harder debugging
 
 ### 2. Alpine Base (Not Recommended)
+
 Alpine is smaller but has compatibility issues:
+
 - musl vs glibc differences
 - Slower Python performance
 - Wheel compatibility problems
 
 ### 3. Slim Down Python
+
 Remove unnecessary Python stdlib modules:
+
 ```dockerfile
 RUN find /usr/local/lib/python3.11 -name "test" -type d -exec rm -rf {} +
 RUN find /usr/local/lib/python3.11 -name "*.pyc" -delete
 ```
+
 **Impact**: ~50 MB saved
 
 ## Monitoring Image Size
 
 ### Check Layer Sizes
+
 ```bash
 docker history sbir-analytics:latest --human --no-trunc
 ```
 
 ### Analyze Image
+
 ```bash
 docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
   wagoodman/dive sbir-analytics:latest
 ```
 
 ### Compare Builds
+
 ```bash
 docker images sbir-analytics --format "table {{.Tag}}\t{{.Size}}\t{{.CreatedAt}}"
 ```
@@ -504,7 +541,9 @@ docker images sbir-analytics --format "table {{.Tag}}\t{{.Size}}\t{{.CreatedAt}}
 ## CI/CD Integration
 
 ### GitHub Actions Cache
+
 Already implemented in ci.yml:
+
 ```yaml
 cache-from: |
   type=registry,ref=ghcr.io/${{ github.repository }}:latest
@@ -513,7 +552,9 @@ cache-to: type=gha,mode=max,scope=ci-no-r
 ```
 
 ### Registry Cache
+
 Push to GHCR for cross-runner caching:
+
 ```yaml
 push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
 ```
@@ -532,6 +573,7 @@ push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
 ## Troubleshooting
 
 ### Large Image Size
+
 ```bash
 # Find large layers
 docker history sbir-analytics:latest --human | head -20
@@ -541,6 +583,7 @@ docker run --rm sbir-analytics:latest du -sh /app/* | sort -h
 ```
 
 ### Slow Builds
+
 ```bash
 # Check cache hits
 DOCKER_BUILDKIT=1 docker build --progress=plain -t sbir-analytics . 2>&1 | grep CACHED
@@ -550,6 +593,7 @@ docker build --cache-from ghcr.io/your-repo/sbir-analytics:latest .
 ```
 
 ### Build Failures
+
 ```bash
 # Debug specific stage
 docker build --target builder -t debug .
@@ -561,7 +605,6 @@ docker run --rm -it debug /bin/bash
 - [Docker Best Practices](https://docs.docker.com/develop/dev-best-practices/)
 - [BuildKit Documentation](https://docs.docker.com/build/buildkit/)
 - [Multi-stage Builds](https://docs.docker.com/build/building/multi-stage/)
-
 
 ---
 
@@ -591,6 +634,7 @@ FROM python:3.11-slim AS runtime
 ```
 
 **Benefits:**
+
 - Small runtime image (~800MB with R, ~400MB without)
 - Fast rebuilds (cached layers)
 - Secure (no build tools in runtime)
@@ -680,6 +724,7 @@ services:
 ```
 
 **Features:**
+
 - Live code reload
 - Bind mounts for fast iteration
 - Debug logging enabled
@@ -700,6 +745,7 @@ services:
 ```
 
 **Features:**
+
 - Runs tests automatically
 - Exits after completion
 - No bind mounts
@@ -730,6 +776,7 @@ services:
 ```
 
 **Features:**
+
 - Resource limits enforced
 - Auto-restart on failure
 - Health checks enabled
@@ -895,6 +942,7 @@ services:
 ```
 
 **Guidelines:**
+
 - Heap: 25-50% of available RAM
 - Page cache: 50-75% of available RAM
 - Total: Should not exceed 90% of available RAM
@@ -1037,6 +1085,7 @@ services:
 - [Configuration Patterns](../../.kiro/steering/configuration-patterns.md) - Configuration reference
 - [Dockerfile](../../Dockerfile) - Source Dockerfile
 - [docker-compose.yml](../../docker-compose.yml) - Source Compose file
+
 # Docker Configuration Reference
 
 This document provides reference information for Docker and containerized deployment configurations. This is **not a runtime environment** - it's a reference guide for Docker service defaults.

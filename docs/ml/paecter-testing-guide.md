@@ -16,6 +16,7 @@ PaECTER is a patent-specific embedding model from HuggingFace (`mpi-inno-comp/pa
 The PaECTER client supports two modes:
 
 **API Mode (Default - Recommended)**
+
 - Uses HuggingFace Inference API
 - No model download required (~500MB saved)
 - No local GPU/CPU compute needed
@@ -23,6 +24,7 @@ The PaECTER client supports two modes:
 - Requires HuggingFace API token (free tier available)
 
 **Local Mode (Optional)**
+
 - Downloads and runs model locally
 - Requires ~500MB disk space + ~1.5GB RAM
 - Useful for offline work or high-volume batch processing
@@ -33,12 +35,14 @@ The PaECTER client supports two modes:
 ### 1. Install Dependencies
 
 **For API Mode (Default - Recommended):**
+
 ```bash
 # Already included in base dependencies!
 # huggingface-hub is installed automatically
 ```
 
 **For Local Mode (Optional):**
+
 ```bash
 # Install local model dependencies
 uv pip install -e ".[paecter-local]"
@@ -85,6 +89,7 @@ pytest tests/integration/test_paecter_client.py -v
 ### 5. Quick Examples
 
 **API Mode (Default):**
+
 ```python
 import os
 from src.ml.paecter_client import PaECTERClient
@@ -110,6 +115,7 @@ print(f"Mode: {result.inference_mode}")  # "api"
 ```
 
 **Local Mode (Optional):**
+
 ```python
 from src.ml.paecter_client import PaECTERClient
 
@@ -128,6 +134,7 @@ print(f"Mode: {result.inference_mode}")  # "local"
 **Status:** ✅ Implemented
 
 **What's included:**
+
 - Basic PaECTER client (`src/ml/paecter_client.py`)
 - Integration tests with sample data (`tests/integration/test_paecter_client.py`)
 - Text preparation utilities for awards and patents
@@ -135,6 +142,7 @@ print(f"Mode: {result.inference_mode}")  # "local"
 - Sample award and patent data in tests
 
 **How to test:**
+
 ```bash
 # Run all PaECTER tests
 uv run pytest tests/integration/test_paecter_client.py -v
@@ -144,6 +152,7 @@ uv run pytest tests/integration/test_paecter_client.py::TestPaECTERClient::test_
 ```
 
 **Expected results:**
+
 - Model loads successfully (1024-dimensional embeddings)
 - Embeddings are unit-normalized
 - Similar content gets higher similarity scores
@@ -154,6 +163,7 @@ uv run pytest tests/integration/test_paecter_client.py::TestPaECTERClient::test_
 **Status:** ✅ Implemented
 
 **Objectives:**
+
 - Test with real SBIR award data from your database
 - Test with real USPTO patent data
 - Generate embeddings for a sample dataset
@@ -208,6 +218,7 @@ python scripts/test_paecter_real_data.py \
 **Output:**
 
 The script generates a Parquet file with:
+
 - `award_id`: Award identifier
 - `embedding`: 1024-dimensional embedding vector (as list)
 - `model_version`: Model version used
@@ -237,12 +248,14 @@ similarities = client.compute_similarity(embeddings[:10], embeddings[10:20])
 **Status:** 📋 Planned
 
 **Objectives:**
+
 - Validate embedding quality using cohesion metrics
 - Test that embeddings cluster well by CET category
 - Compare with baseline methods (TF-IDF, etc.)
 - Establish quality gates and thresholds
 
 **Key metrics:**
+
 - **Coverage:** % of records with valid embeddings (target: >95%)
 - **Cohesion:** Within-CET-group similarity vs. across-group (target: ratio > 1.3)
 - **Stability:** Embedding consistency across model versions
@@ -253,12 +266,14 @@ similarities = client.compute_similarity(embeddings[:10], embeddings[10:20])
 **Status:** 📋 Planned
 
 **Objectives:**
+
 - Create Dagster assets for embedding generation
 - Implement incremental updates
 - Add quality checks and validation gates
 - Integrate with existing CET classification
 
 **Dagster assets to create:**
+
 ```python
 # src/assets/paecter/embeddings.py
 
@@ -296,6 +311,7 @@ def paecter_embeddings_awards(
 **Status:** 📋 Planned
 
 **Objectives:**
+
 - Compute award-patent similarities at scale
 - Implement FAISS for fast approximate search
 - Load similarity edges to Neo4j
@@ -306,6 +322,7 @@ def paecter_embeddings_awards(
 **Status:** 📋 Future work
 
 **Objectives:**
+
 - Implement LoRA-based expert pool
 - Add Bayesian routing (Classification → Similarity → Embedding)
 - Implement uncertainty quantification
@@ -364,6 +381,7 @@ def test_award_patent_matching_pipeline():
 ### Mode Comparison
 
 **API Mode:**
+
 - **Setup time:** Instant (no model download)
 - **Memory:** Minimal (~100MB for client)
 - **Throughput:** Depends on API rate limits
@@ -371,6 +389,7 @@ def test_award_patent_matching_pipeline():
 - **Best for:** Development, testing, GitHub Actions deployment
 
 **Local Mode:**
+
 - **Setup time:** ~2-5 minutes (model download on first run)
 - **Model download:** ~500MB (one-time)
 - **Memory:** ~1.5GB when loaded
@@ -407,11 +426,13 @@ The model automatically caches to `~/.cache/huggingface/` (or `HF_HOME` if set).
 ### API Mode Issues
 
 **Error: huggingface_hub not found**
+
 ```bash
 pip install huggingface-hub
 ```
 
 **Error: Missing HF_TOKEN or rate limited**
+
 ```bash
 # Get a free token from https://huggingface.co/settings/tokens
 export HF_TOKEN="your_token_here"
@@ -421,6 +442,7 @@ echo "HF_TOKEN=your_token_here" >> .env
 ```
 
 **API calls timing out or failing**
+
 - Check your internet connection
 - Verify your HF_TOKEN is valid
 - Try reducing batch size (API may have limits)
@@ -429,6 +451,7 @@ echo "HF_TOKEN=your_token_here" >> .env
 ### Local Mode Issues
 
 **Error: sentence-transformers not found**
+
 ```bash
 pip install sentence-transformers torch transformers
 # Or: uv pip install -e ".[paecter-local]"
@@ -436,6 +459,7 @@ pip install sentence-transformers torch transformers
 
 **Model download fails (403 Forbidden)**
 The model is public and shouldn't require authentication. Try:
+
 ```bash
 # Clear cache and retry
 rm -rf ~/.cache/huggingface/hub/models--mpi-inno-comp--paecter
@@ -443,12 +467,14 @@ rm -rf ~/.cache/huggingface/hub/models--mpi-inno-comp--paecter
 
 **CUDA out of memory**
 Reduce batch size:
+
 ```python
 client = PaECTERClient(use_local=True)
 result = client.generate_embeddings(texts, batch_size=8)  # Reduce from 32
 ```
 
 Or force CPU usage:
+
 ```python
 client = PaECTERClient(use_local=True, device='cpu')
 ```
@@ -456,11 +482,13 @@ client = PaECTERClient(use_local=True, device='cpu')
 **Slow embedding generation (local mode)**
 
 **Expected performance:**
+
 - CPU: ~10-50 embeddings/second
 - GPU (T4): ~200-500 embeddings/second
 - GPU (A100): ~1000+ embeddings/second
 
 If performance is significantly slower:
+
 1. Check if GPU is being used (local mode only)
 2. Increase batch size: `batch_size=64`
 3. Consider switching to API mode for simpler deployment
@@ -470,6 +498,7 @@ If performance is significantly slower:
 ### Understanding Cosine Similarity
 
 PaECTER embeddings use **cosine similarity** (range: -1 to 1, typically 0 to 1 for normalized embeddings):
+
 - **0.95-1.0**: Very high similarity (likely related technologies)
 - **0.85-0.95**: High similarity (possibly related, but review carefully)
 - **0.70-0.85**: Moderate similarity (may share technical language patterns)
@@ -481,15 +510,18 @@ PaECTER embeddings use **cosine similarity** (range: -1 to 1, typically 0 to 1 f
 **High Similarity Between Unrelated Domains**
 
 You may observe unexpectedly high similarity scores (e.g., 0.85-0.90) between clearly unrelated technologies. For example:
+
 - "Deep Learning for Drug Discovery" ↔ "High-Performance Photovoltaic Device" might show ~0.87 similarity
 
 **Why this happens:**
+
 1. **Shared technical vocabulary**: Terms like "architecture", "materials", "efficiency", "stability" appear in many technical domains
 2. **General language patterns**: Both texts describe advanced technology with similar sentence structures
 3. **Model training data**: PaECTER is trained on patents, which share common technical language patterns across domains
 4. **Embedding space compression**: High-dimensional embeddings can create spurious similarities
 
 **This is expected behavior** and not necessarily a bug. The model captures semantic similarity at multiple levels, including:
+
 - Domain-specific content (what you want)
 - Technical language patterns (may create false positives)
 - Structural similarities (sentence length, complexity)
@@ -499,6 +531,7 @@ You may observe unexpectedly high similarity scores (e.g., 0.85-0.90) between cl
 **1. Use Threshold-Based Filtering**
 
 Set appropriate thresholds based on your use case:
+
 ```python
 # Conservative: only very high similarities
 high_confidence_threshold = 0.90
@@ -520,6 +553,7 @@ top_matches = [
 **2. Add Domain-Based Pre-Filtering**
 
 Before computing similarities, filter by domain keywords or CET classifications:
+
 ```python
 # Example: Only compare awards and patents in similar domains
 def domain_match(award_domain: str, patent_domain: str) -> bool:
@@ -535,6 +569,7 @@ def domain_match(award_domain: str, patent_domain: str) -> bool:
 **3. Use Multi-Stage Filtering**
 
 Combine multiple signals:
+
 ```python
 # Stage 1: High similarity threshold
 candidates = filter_by_similarity(similarities, threshold=0.85)
@@ -549,6 +584,7 @@ candidates = filter_by_keywords(candidates, min_keyword_overlap=3)
 **4. Establish Baseline Thresholds**
 
 Test with known similar and dissimilar pairs to establish domain-specific thresholds:
+
 ```python
 # Known similar pairs should have similarity > 0.90
 # Known dissimilar pairs should have similarity < 0.70
@@ -558,6 +594,7 @@ Test with known similar and dissimilar pairs to establish domain-specific thresh
 **5. Review Top-K Results**
 
 Instead of using a single threshold, consider top-k retrieval:
+
 ```python
 # Get top 5 matches for each award
 top_k = 5
@@ -581,6 +618,7 @@ python scripts/debug_paecter_similarity.py
 ```
 
 This script will:
+
 - Show the actual prepared text being embedded
 - Compute detailed similarity metrics
 - Analyze word overlap between texts
@@ -590,10 +628,12 @@ This script will:
 ### Expected Similarity Distributions
 
 Based on the PaECTER specification, you should expect:
+
 - **Negative pairs** (unrelated): Mean cosine similarity ≤ 0.30
 - **Positive pairs** (related): Mean cosine similarity ≥ 0.55
 
 If your unrelated pairs show mean similarity > 0.30, consider:
+
 - Adjusting your similarity thresholds upward
 - Adding domain-based filtering
 - Using additional signals beyond embeddings
@@ -603,11 +643,13 @@ If your unrelated pairs show mean similarity > 0.30, consider:
 The test file includes sample data for quick testing:
 
 **Sample Awards:**
+
 1. 3D printing for aerospace (Advanced Manufacturing)
 2. Deep learning for drug discovery (AI/ML)
 3. Perovskite solar cells (Renewable Energy)
 
 **Sample Patents:**
+
 1. Additive manufacturing method
 2. Neural network for molecular prediction
 3. High-performance photovoltaic device
@@ -616,7 +658,7 @@ These are intentionally matched to demonstrate similarity scoring.
 
 ## Next Steps
 
-1. **Get HuggingFace token:** Sign up at https://huggingface.co/settings/tokens (free)
+1. **Get HuggingFace token:** Sign up at <https://huggingface.co/settings/tokens> (free)
 2. **Set token:** `export HF_TOKEN="your_token_here"`
 3. **Run quick test:** `python scripts/test_paecter_quick.py`
 4. **Run integration tests:** `USE_PAECTER_API=1 pytest tests/integration/test_paecter_client.py -v`
@@ -628,9 +670,9 @@ These are intentionally matched to demonstrate similarity scoring.
 
 ## References
 
-- **Model:** https://huggingface.co/mpi-inno-comp/paecter
-- **Paper:** https://arxiv.org/pdf/2402.19411
-- **Sentence Transformers:** https://www.sbert.net/
+- **Model:** <https://huggingface.co/mpi-inno-comp/paecter>
+- **Paper:** <https://arxiv.org/pdf/2402.19411>
+- **Sentence Transformers:** <https://www.sbert.net/>
 - **PaECTER Spec:** `.kiro/specs/paecter_analysis_layer/`
 
 ## Questions?
@@ -639,23 +681,27 @@ Common questions and their answers:
 
 **Q: Which mode should I use - API or local?**
 A:
+
 - **Start with API mode** - it's simpler and works great for testing and development
 - **Switch to local mode** for high-volume batch processing or offline work
 - **Use API mode in GitHub Actions** - no model download or GPU management needed
 
 **Q: Do I need a GPU?**
 A:
+
 - **API mode:** No, everything runs on HuggingFace servers
 - **Local mode:** No, but GPU is 10-50x faster for large batches
 
 **Q: How much does the API cost?**
 A: HuggingFace offers a free tier. For high volume, you can:
+
 - Upgrade to paid tiers (check HuggingFace pricing)
 - Use HuggingFace Inference Endpoints for dedicated capacity
 - Switch to local mode with your own GPU
 
 **Q: Can I use a different model?**
 A: Yes! The `PaECTERClient` accepts any compatible model:
+
 ```python
 # API mode - any HuggingFace model with feature-extraction
 client = PaECTERClient(model_name="AI-Growth-Lab/PatentSBERTa")
@@ -672,13 +718,14 @@ A: PaECTER is fine-tuned with examiner citations and optimized for prior art sea
 
 **Q: Can I run this in GitHub Actions?**
 A: Yes! **Use API mode** (default) - it's perfect for serverless deployment:
+
 ```python
 # In your Dagster asset
 client = PaECTERClient()  # Uses API mode by default
 result = client.generate_embeddings(texts)
 ```
-Just set `HF_TOKEN` in your GitHub Actions environment variables.
 
+Just set `HF_TOKEN` in your GitHub Actions environment variables.
 
 ---
 
@@ -700,9 +747,11 @@ python scripts/test_paecter_combined_s3.py --limit-sbir 10 --limit-uspto 10
 ## 📋 What Was Created
 
 ### 1. Combined Test Script
+
 **File**: `scripts/test_paecter_combined_s3.py`
 
 Tests both SBIR and USPTO data from S3:
+
 - Loads SBIR awards from S3
 - Loads USPTO patents from S3 (PatentsView)
 - Generates PaECTER embeddings for both
@@ -710,22 +759,27 @@ Tests both SBIR and USPTO data from S3:
 - Saves results to Parquet files
 
 ### 2. Dagster Assets
+
 **Directory**: `src/assets/paecter/`
 
 Three new assets:
+
 - `paecter_embeddings_awards`: Embeddings for SBIR awards
 - `paecter_embeddings_patents`: Embeddings for USPTO patents
 - `paecter_award_patent_similarity`: Similarity scores between awards and patents
 
 ### 3. Dagster Job
+
 **File**: `src/assets/jobs/paecter_job.py`
 
 Job to materialize all PaECTER assets in one run.
 
 ### 4. Configuration
+
 **File**: `config/base.yaml`
 
 Added `ml.paecter` section with:
+
 - API/local mode settings
 - Batch size and rate limiting
 - Similarity thresholds
@@ -734,6 +788,7 @@ Added `ml.paecter` section with:
 ## 🧪 Testing Options
 
 ### Option 1: Combined Script (Recommended for Testing)
+
 ```bash
 # Basic test
 python scripts/test_paecter_combined_s3.py
@@ -746,6 +801,7 @@ python scripts/test_paecter_combined_s3.py --local
 ```
 
 ### Option 2: Dagster Assets (Recommended for Production)
+
 ```bash
 # Start Dagster UI
 uv run dagster dev
@@ -804,7 +860,6 @@ ml:
 
 For detailed troubleshooting, see the full guide.
 
-
 ---
 
 # S3 Testing
@@ -816,6 +871,7 @@ This guide provides comprehensive instructions for testing PaECTER (Patent Embed
 ## Prerequisites
 
 1. **AWS Credentials**: Configure AWS credentials with access to your S3 bucket
+
    ```bash
    export AWS_ACCESS_KEY_ID="your_access_key"  # pragma: allowlist secret
      export AWS_SECRET_ACCESS_KEY="your_secret_key"  # pragma: allowlist secret
@@ -823,17 +879,21 @@ This guide provides comprehensive instructions for testing PaECTER (Patent Embed
    ```
 
 2. **S3 Bucket Configuration**: Set the S3 bucket name
+
    ```bash
    export SBIR_ANALYTICS_S3_BUCKET="sbir-analytics-production-data"
    ```
 
 3. **HuggingFace Token** (for API mode):
+
    ```bash
    export HF_TOKEN="your_huggingface_token"
    ```
-   Get a free token from: https://huggingface.co/settings/tokens
+
+   Get a free token from: <https://huggingface.co/settings/tokens>
 
 4. **Python Environment**: Ensure dependencies are installed
+
    ```bash
    uv sync
    ```
@@ -883,6 +943,7 @@ python scripts/test_paecter_combined_s3.py \
 ### Script Output
 
 The script generates:
+
 - `paecter_embeddings_sbir.parquet`: SBIR award embeddings
 - `paecter_embeddings_uspto.parquet`: USPTO patent embeddings
 - `award_patent_similarities.parquet`: Similarity scores between awards and patents
@@ -920,6 +981,7 @@ uv run dagster asset materialize \
 ### 3. View Results
 
 Results are saved as Parquet files:
+
 - `data/processed/paecter_embeddings_awards.parquet`
 - `data/processed/paecter_embeddings_patents.parquet`
 - `data/processed/paecter_award_patent_similarity.parquet`
@@ -995,6 +1057,7 @@ ml:
 ```
 
 Or override via environment variable:
+
 ```bash
 export SBIR_ETL__ML__PAECTER__USE_LOCAL=true
 ```
@@ -1006,6 +1069,7 @@ export SBIR_ETL__ML__PAECTER__USE_LOCAL=true
 **Error**: `NoCredentialsError` or `AccessDenied`
 
 **Solution**: Verify AWS credentials are configured:
+
 ```bash
 aws s3 ls s3://sbir-analytics-production-data/
 ```
@@ -1015,13 +1079,15 @@ aws s3 ls s3://sbir-analytics-production-data/
 **Error**: `401 Unauthorized` or `Invalid token`
 
 **Solution**:
+
 1. Verify token is set: `echo $HF_TOKEN`
-2. Get a new token from https://huggingface.co/settings/tokens
+2. Get a new token from <https://huggingface.co/settings/tokens>
 3. Ensure token has read access
 
 **Error**: `429 Too Many Requests`
 
 **Solution**: Reduce batch size or max_qps in config:
+
 ```yaml
 ml:
   paecter:
@@ -1035,8 +1101,10 @@ ml:
 **Error**: `No patent data available for embedding generation`
 
 **Solution**:
+
 1. Verify S3 paths are correct
 2. Check that Lambda functions have downloaded data:
+
    ```bash
    aws s3 ls s3://sbir-analytics-production-data/raw/uspto/patentsview/
    aws s3 ls s3://sbir-analytics-production-data/raw/sbir/
@@ -1047,6 +1115,7 @@ ml:
 **Error**: `MemoryError` or process killed
 
 **Solution**:
+
 1. Reduce batch size
 2. Process fewer records (use `--limit-sbir` and `--limit-uspto`)
 3. Use API mode instead of local mode (local mode loads full model into memory)
@@ -1061,16 +1130,19 @@ ml:
 ## Expected Results
 
 ### Embedding Dimensions
+
 - All embeddings should be **1024-dimensional** vectors
 - Each embedding is a list of 1024 floats
 
 ### Similarity Scores
+
 - Range: **0.0 to 1.0** (cosine similarity)
 - Typical matches: **0.80-0.95**
 - Very similar: **>0.90**
 - Moderately similar: **0.70-0.85**
 
 ### Coverage
+
 - Awards: **≥95%** should have valid embeddings
 - Patents: **≥98%** should have valid embeddings
 

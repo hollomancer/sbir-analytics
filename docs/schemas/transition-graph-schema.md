@@ -1406,4 +1406,4 @@ MERGE (t)-[:INVOLVES_TECHNOLOGY {cet_alignment_type: cl.alignment_type}]->(cet)
 - **Implementation**: `src/loaders/transition_loader.py`
 - **Tests**: `tests/unit/test_transition_loader.py`
 - **Queries**: `src/transition/queries/transition_pathway_queries.py`
-- **Neo4j Documentation**: https://neo4j.com/docs/cypher-manual/current/introduction/
+- **Neo4j Documentation**: <https://neo4j.com/docs/cypher-manual/current/introduction/>

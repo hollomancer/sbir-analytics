@@ -37,6 +37,7 @@ This document provides a focused guide for integrating or reviewing the CET clas
 ### Stage 1: Input (enriched_sbir_awards)
 
 Parquet DataFrame with columns:
+
 - `award_id` (unique identifier)
 - `abstract` (text to classify)
 - `keywords` (comma-separated keywords)
@@ -86,7 +87,7 @@ CREATE (c)-[:SPECIALIZES_IN {score: $score, num_awards: $count}]->(cet)
 
 ### Architecture
 
-```
+```text
 Input Text (Abstract + Keywords + Title)
     ↓
 [TF-IDF Vectorizer with CET Keyword Boosting]
@@ -116,12 +117,14 @@ Output: {
 Located: `src/assets/cet/training.py`
 
 **Current approach:**
+
 1. Sample awards with manual CET labels (if available)
 2. Fit TF-IDF + LogisticRegression pipeline
 3. Persist model as pickle file
 4. Load model during classification
 
 **Enhancement opportunities:**
+
 - Active learning (sample disagreements for human review)
 - Ensemble methods (multiple models voting)
 - Fine-tuned BERT embeddings instead of TF-IDF
@@ -277,6 +280,7 @@ MATCH (c:Company)-[r:SPECIALIZES_IN]->(cet:CETArea)
 **Where**: `src/ml/models/cet_classifier.py` + `src/assets/cet/classifications.py`
 
 **Current**:
+
 ```python
 model = Pipeline([
     ('tfidf', CETAwareTfidfVectorizer(...)),
@@ -286,6 +290,7 @@ model = Pipeline([
 ```
 
 **To replace with BERT embeddings**:
+
 ```python
 from transformers import AutoTokenizer, AutoModel
 
@@ -297,6 +302,7 @@ model = BERTCETClassifier(
 ```
 
 **To integrate LLM-based classification**:
+
 ```python
 model = LLMCETClassifier(
     provider='openai',  # or 'anthropic', 'ollama'

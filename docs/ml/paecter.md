@@ -115,7 +115,7 @@ export HF_TOKEN="your_huggingface_token"
 
 ### Running via Dagster UI
 
-1. Navigate to the Dagster UI (http://localhost:3000)
+1. Navigate to the Dagster UI (<http://localhost:3000>)
 2. Go to **Assets** → **paecter** group
 3. Select the assets you want to materialize:
    - `paecter_embeddings_awards`
@@ -178,17 +178,20 @@ print(f"Similarity score: {similarities[0, 0]:.3f}")
 ### API Mode (Default)
 
 **Advantages:**
+
 - No local model download required
 - No GPU needed
 - Lower memory footprint
 - Automatic model updates
 
 **Requirements:**
+
 - HuggingFace API token (set `HF_TOKEN` environment variable)
 - Internet connectivity
 - Respects rate limits (configurable)
 
 **Configuration:**
+
 ```yaml
 ml:
   paecter:
@@ -202,17 +205,20 @@ ml:
 ### Local Mode
 
 **Advantages:**
+
 - No API rate limits
 - Works offline
 - Potentially faster for large batches
 - No API token required
 
 **Requirements:**
+
 - Install sentence-transformers: `pip install sentence-transformers`
 - ~2GB disk space for model download
 - GPU recommended but not required
 
 **Configuration:**
+
 ```yaml
 ml:
   paecter:
@@ -250,6 +256,7 @@ with performance_monitor.monitor_block("paecter_generate_award_embeddings"):
 ```
 
 Metrics tracked:
+
 - Generation time (seconds)
 - Throughput (embeddings/second)
 - Batch processing efficiency
@@ -314,11 +321,13 @@ Approximate times for 10,000 documents:
 ### Optimization Tips
 
 1. **Use caching** for repeated computations:
+
    ```python
    config = PaECTERClientConfig(use_local=False, enable_cache=True)
    ```
 
 2. **Increase batch size** for local mode with GPU:
+
    ```yaml
    ml:
      paecter:
@@ -327,6 +336,7 @@ Approximate times for 10,000 documents:
    ```
 
 3. **Adjust rate limits** for API mode:
+
    ```yaml
    ml:
      paecter:
@@ -343,6 +353,7 @@ Approximate times for 10,000 documents:
 **Symptom:** `429 Too Many Requests` errors
 
 **Solution:**
+
 ```yaml
 ml:
   paecter:
@@ -357,6 +368,7 @@ ml:
 **Symptom:** `RuntimeError: CUDA out of memory`
 
 **Solution:**
+
 ```yaml
 ml:
   paecter:
@@ -370,30 +382,33 @@ ml:
 **Symptom:** `No HuggingFace token provided` warning
 
 **Solution:**
+
 ```bash
 export HF_TOKEN="your_token_here"
 ```
 
-Get a token from: https://huggingface.co/settings/tokens
+Get a token from: <https://huggingface.co/settings/tokens>
 
 #### Low Coverage Check Failures
 
 **Symptom:** Asset check fails with low coverage percentage
 
 **Possible causes:**
+
 - Missing text fields (title, abstract)
 - Empty or null text values
 - Text preprocessing issues
 
 **Solution:**
+
 - Check input data quality
 - Verify text field names match configuration
 - Review logs for specific failures
 
 ## References
 
-- **Model Card**: https://huggingface.co/mpi-inno-comp/paecter
-- **Research Paper**: https://arxiv.org/pdf/2402.19411
+- **Model Card**: <https://huggingface.co/mpi-inno-comp/paecter>
+- **Research Paper**: <https://arxiv.org/pdf/2402.19411>
 - **Implementation**: `src/ml/paecter_client.py`
 - **Assets**: `src/assets/paecter/embeddings.py`
 - **Configuration**: `config/base.yaml` (ml.paecter section)

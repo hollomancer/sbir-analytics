@@ -13,6 +13,7 @@ uv run python scripts/test_cli.py
 ```
 
 This validates:
+
 - ✓ All CLI modules can be imported
 - ✓ CommandContext can be created with real clients
 - ✓ CLI app structure is correct
@@ -111,6 +112,7 @@ Tests for Rich UI components - **Most reliable, no service dependencies**
 Tests for `DagsterClient`, `Neo4jClient`, and `MetricsCollector`:
 
 **Mocking Strategy:**
+
 - DagsterClient: Mock `defs` and `DagsterInstance`
 - Neo4jClient: Mock `GraphDatabase.driver` and session responses
 - MetricsCollector: Mock file system and JSON loading
@@ -122,6 +124,7 @@ Tests for `DagsterClient`, `Neo4jClient`, and `MetricsCollector`:
 Tests for command logic (status, metrics, ingest, enrich):
 
 **Mocking Strategy:**
+
 - Mock `CommandContext` with all clients
 - Mock client methods to return test data
 - Verify command outputs using Typer's `CliRunner`
@@ -139,6 +142,7 @@ uv run pytest tests/integration/cli/test_cli_integration.py -v
 ```
 
 **Test Scenarios:**
+
 - CLI app help output
 - Status commands with mocked clients
 - Metrics commands with sample data
@@ -170,6 +174,7 @@ def test_asset_status(mock_instance):
 ```
 
 See `tests/unit/cli/test_integration_clients.py` for examples of mocking:
+
 - DagsterClient responses
 - Neo4jClient health checks
 - MetricsCollector data
@@ -196,7 +201,7 @@ uv run dagster dev -m src.definitions
 docker compose up neo4j
 ```
 
-2. **Run commands:**
+1. **Run commands:**
 
 ```bash
 # Test with real services
@@ -210,17 +215,20 @@ uv run sbir-cli metrics latest
 ### What's Tested
 
 **Unit Tests (`tests/unit/cli/`):**
+
 - ✅ Display components (progress tracker, metrics, status displays)
 - ✅ Integration clients with mocked services (DagsterClient, Neo4jClient, MetricsCollector)
 - ✅ Command structure and registration
 - ✅ Context creation
 
 **Integration Tests (`tests/integration/cli/`):**
+
 - ✅ End-to-end command execution with CliRunner
 - ✅ Error handling
 - ✅ Exit codes
 
 **Validation Script (`scripts/test_cli.py`):**
+
 - ✅ Module imports
 - ✅ Context creation with real clients
 - ✅ Display component instantiation
@@ -228,6 +236,7 @@ uv run sbir-cli metrics latest
 ### What Needs Service Dependencies
 
 These commands require actual services to fully test:
+
 - `status assets` - Needs Dagster running
 - `status neo4j` - Needs Neo4j connection
 - `metrics show` - Needs metrics data files

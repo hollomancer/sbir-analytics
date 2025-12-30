@@ -24,7 +24,7 @@ All assets follow a consistent naming pattern based on their pipeline stage:
 {stage_prefix}{entity_type}[_{suffix}]
 ```
 
-### Examples:
+### Examples
 
 - `raw_sbir_awards` - Raw SBIR award data
 - `validated_uspto_assignments` - Validated USPTO assignment data

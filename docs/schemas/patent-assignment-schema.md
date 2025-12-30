@@ -4,7 +4,7 @@
 
 The USPTO maintains patent assignment data across five interdependent Stata tables linked via the `rf_id` (reel/frame identifier). This document provides detailed schema documentation for each table, relationships, and integration with the SBIR ETL pipeline.
 
-### Data Volume:
+### Data Volume
 
 - `assignment.dta`: 780MB (~5-7M records) - Core assignment records
 - `documentid.dta`: 1.6GB (~5-7M records) - Patent document metadata
@@ -428,7 +428,7 @@ class PatentAssignment(BaseModel):
 
 ## 10. References & Further Reading
 
-- **USPTO Assignment Documentation**: https://www.uspto.gov/learning-and-resources/fee-schedules/patent-assignment-data
+- **USPTO Assignment Documentation**: <https://www.uspto.gov/learning-and-resources/fee-schedules/patent-assignment-data>
 - **Stata File Format**: `pyreadstat` documentation for pandas integration
 - **Data Quality Thresholds**: Target ≥95% completeness for critical fields (rf_id, dates, entity names)
 - **SBIR Linkage Rate**: Expected 50-70% of SBIR companies have documented patents

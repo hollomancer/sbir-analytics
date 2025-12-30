@@ -12,6 +12,7 @@ This document describes the automated process for downloading USPTO patent datas
 ## Overview
 
 The USPTO data refresh process downloads three key datasets:
+
 1. **PatentsView** - Comprehensive patent data (grants, assignees, inventors, etc.)
 2. **Patent Assignments** - Patent ownership transfers and assignments
 3. **AI Patents** - USPTO's AI Patent Dataset identifying AI-related patents
@@ -22,11 +23,12 @@ The USPTO data refresh process downloads three key datasets:
 
 ### 1. PatentsView Dataset
 
-**Source:** https://download.patentsview.org/data
+**Source:** <https://download.patentsview.org/data>
 
 **Last Verified:** December 2024
 
 **Available Tables:**
+
 - `patent` - Patent grants (g_patent.tsv.zip)
 - `assignee` - Patent assignees (g_assignee_disambiguated.tsv.zip)
 - `inventor` - Patent inventors (g_inventor_disambiguated.tsv.zip)
@@ -38,21 +40,22 @@ The USPTO data refresh process downloads three key datasets:
 
 **Update Frequency:** Quarterly
 
-**Documentation:** https://patentsview.org/download/data-download-tables
+**Documentation:** <https://patentsview.org/download/data-download-tables>
 
 ### 2. Patent Assignment Dataset
 
-**Source:** https://www.uspto.gov/ip-policy/economic-research/research-datasets/patent-assignment-dataset
+**Source:** <https://www.uspto.gov/ip-policy/economic-research/research-datasets/patent-assignment-dataset>
 
 **Last Verified:** December 2024
 
 **Latest Release:** 2023 (as of Dec 2024)
 
-**Download URL:** https://data.uspto.gov/ui/datasets/products/files/ECORSEXC/2023/csv.zip
+**Download URL:** <https://data.uspto.gov/ui/datasets/products/files/ECORSEXC/2023/csv.zip>
 
 **Size:** 1.78 GB (CSV format), 1.56 GB (DTA format)
 
 **Contents:**
+
 - `assignment.csv` - Assignment records (365 MB)
 - `assignor.csv` - Assignor entities (287 MB)
 - `assignee.csv` - Assignee entities (279 MB)
@@ -64,17 +67,17 @@ The USPTO data refresh process downloads three key datasets:
 
 **Update Frequency:** Monthly
 
-**Citation:** Graham, SJH, Marco, AC, Myers, AF. Patent transactions in the marketplace: Lessons from the USPTO Patent Assignment Dataset. *J Econ Manage Strat*. 2018; 27: 343–371. https://doi.org/10.1111/jems.12262
+**Citation:** Graham, SJH, Marco, AC, Myers, AF. Patent transactions in the marketplace: Lessons from the USPTO Patent Assignment Dataset. *J Econ Manage Strat*. 2018; 27: 343–371. <https://doi.org/10.1111/jems.12262>
 
 ### 3. AI Patent Dataset
 
-**Source:** https://www.uspto.gov/ip-policy/economic-research/research-datasets/artificial-intelligence-patent-dataset
+**Source:** <https://www.uspto.gov/ip-policy/economic-research/research-datasets/artificial-intelligence-patent-dataset>
 
 **Last Verified:** December 2024
 
 **Latest Release:** 2023 (updated January 8, 2025)
 
-**Download URL:** https://data.uspto.gov/ui/datasets/products/files/ECOPATAI/2023/ai_model_predictions.csv.zip
+**Download URL:** <https://data.uspto.gov/ui/datasets/products/files/ECOPATAI/2023/ai_model_predictions.csv.zip>
 
 **Size:** 764 MB (CSV format)
 
@@ -95,15 +98,18 @@ The USPTO data refresh process downloads three key datasets:
 **File:** `.github/workflows/data-refresh.yml`
 
 **Schedule:**
+
 - **Monthly:** 1st of month at 9 AM UTC (`0 9 1 * *`)
 - Runs as part of the unified data-refresh workflow
 
 **Manual Trigger:**
+
 ```bash
 gh workflow run data-refresh.yml -f source=uspto -f force_refresh=false
 ```
 
 **Workflow Steps:**
+
 1. Configure AWS credentials (OIDC)
 2. Setup Python and UV
 3. Download USPTO datasets in parallel:
@@ -119,6 +125,7 @@ gh workflow run data-refresh.yml -f source=uspto -f force_refresh=false
 **File:** `scripts/data/download_uspto.py`
 
 **Features:**
+
 - Streaming downloads with progress tracking
 - SHA-256 hash computation
 - Exponential backoff retry logic (3 attempts)
@@ -127,6 +134,7 @@ gh workflow run data-refresh.yml -f source=uspto -f force_refresh=false
 - Date-based S3 key structure
 
 **Usage:**
+
 ```bash
 # Download PatentsView patent table
 python scripts/data/download_uspto.py --dataset patentsview --table patent
@@ -148,7 +156,8 @@ python scripts/data/download_uspto.py --dataset patentsview --table assignee --s
 **Key Pattern:** `raw/uspto/{dataset}/{YYYY-MM-DD}/{filename}`
 
 **Examples:**
-```
+
+```text
 raw/uspto/patentsview/2024-12-01/patent.zip
 raw/uspto/patentsview/2024-12-01/assignee.zip
 raw/uspto/assignments/2024-12-01/patent_assignments.zip
@@ -156,6 +165,7 @@ raw/uspto/ai_patents/2024-12-01/ai_patent_dataset.zip
 ```
 
 **Metadata:**
+
 - `source_url` - Original download URL
 - `sha256` - File hash for integrity verification
 - `downloaded_at` - ISO 8601 timestamp
@@ -200,6 +210,7 @@ extraction:
 ### Retry Logic
 
 The download script implements exponential backoff retry logic:
+
 - **Max Retries:** 3 attempts
 - **Backoff Factor:** 2 (delays: 2s, 4s, 8s)
 - **Retry Status Codes:** 429, 500, 502, 503, 504
@@ -208,16 +219,19 @@ The download script implements exponential backoff retry logic:
 ### Error Types
 
 **Network Errors:**
+
 - Connection timeouts
 - DNS resolution failures
 - SSL/TLS errors
 
 **HTTP Errors:**
+
 - 404 Not Found - URL may have changed
 - 429 Too Many Requests - Rate limiting
 - 500+ Server Errors - USPTO service issues
 
 **S3 Errors:**
+
 - Permission denied - Check IAM roles
 - Bucket not found - Verify bucket name
 - Upload failures - Check network/credentials
@@ -225,18 +239,21 @@ The download script implements exponential backoff retry logic:
 ### Troubleshooting
 
 **Download Fails:**
+
 1. Verify URLs are current (check USPTO websites)
 2. Check network connectivity
 3. Review CloudWatch Logs for detailed errors
 4. Try manual download to test URL
 
 **S3 Upload Fails:**
+
 1. Verify AWS credentials are configured
 2. Check IAM role permissions
 3. Verify S3 bucket exists and is accessible
 4. Check S3 bucket policies
 
 **Workflow Fails:**
+
 1. Check GitHub Actions logs
 2. Verify AWS OIDC authentication
 3. Check environment variables (S3_BUCKET)
@@ -262,10 +279,12 @@ The download script implements exponential backoff retry logic:
 ### Alerts
 
 **GitHub Actions:**
+
 - Workflow failure notifications
 - Artifact upload for debugging
 
 **CloudWatch (if using Lambda):**
+
 - Execution duration
 - Error rates
 - Memory usage
@@ -309,6 +328,7 @@ aws s3 cp s3://sbir-etl-production-data/raw/uspto/patentsview/2024-12-01/patent.
 **File:** `tests/integration/test_uspto_download.py`
 
 **Tests:**
+
 - Script help message
 - Invalid dataset rejection
 - Invalid table rejection
@@ -316,6 +336,7 @@ aws s3 cp s3://sbir-etl-production-data/raw/uspto/patentsview/2024-12-01/patent.
 - Import dependencies
 
 **Run Tests:**
+
 ```bash
 pytest tests/integration/test_uspto_download.py -v
 ```
@@ -344,6 +365,7 @@ pytest tests/integration/test_uspto_download.py -v
 ## Contact
 
 For questions about USPTO data refresh:
-- **Email:** EconomicsData@uspto.gov (USPTO data questions)
+
+- **Email:** <EconomicsData@uspto.gov> (USPTO data questions)
 - **GitHub Issues:** Use `data-refresh` label
 - **Slack:** #data-engineering channel

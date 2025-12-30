@@ -8,7 +8,7 @@ This pipeline transforms SBIR award data into actionable fiscal and employment i
 
 ### Pipeline Flow
 
-```
+```text
 SBIR Awards (with NAICS codes)
     ↓
 [NAICS → BEA Sector Mapping]
@@ -29,6 +29,7 @@ Results: Tax Revenue + Jobs Created by Region/Industry
 ### SBIR Awards DataFrame
 
 Required columns:
+
 - **award_id**: Unique identifier for each award
 - **award_amount**: Dollar amount of award (numeric)
 - **state**: Two-letter state code (e.g., "CA", "NY")
@@ -36,6 +37,7 @@ Required columns:
 - **fiscal_year**: Award fiscal year (e.g., 2023)
 
 Optional columns:
+
 - company_name, award_title, etc. (preserved but not used in calculations)
 
 ### Example Input
@@ -160,7 +162,7 @@ For more accurate estimates, integrate with StateIO employment coefficients.
 
 Total economic output generated per dollar of SBIR investment:
 
-```
+```text
 Production Multiplier = Total Production Impact / Total Awards
 ```
 
@@ -170,7 +172,7 @@ Typical range: 1.5x - 3.0x depending on sector
 
 Tax revenue generated per dollar of SBIR investment:
 
-```
+```text
 Tax Multiplier = Total Tax Impact / Total Awards
 ```
 
@@ -180,7 +182,7 @@ Typical range: $0.10 - $0.30 per $1 invested
 
 Jobs created per million dollars of SBIR investment:
 
-```
+```text
 Jobs per $1M = (Total Jobs / Total Awards) * 1,000,000
 ```
 
@@ -198,7 +200,7 @@ python examples/sbir_fiscal_impact_example.py
 
 ### Example Output
 
-```
+```console
 IMPACT RESULTS
 state  bea_sector  award_total  production_impact  wage_impact  tax_impact  jobs_created
 CA     54          1,500,000    3,000,000         800,000      300,000     8.0
@@ -252,6 +254,7 @@ def state_summary(sbir_fiscal_impacts: pd.DataFrame) -> pd.DataFrame:
 ### Model Caching
 
 Economic models are built once and cached:
+
 - First run: ~30-60 seconds per state
 - Subsequent runs: <1 second (cache hit)
 
@@ -305,11 +308,12 @@ reliable = impacts[impacts["confidence"] > 0.7]
 
 ### R Packages Not Available
 
-```
+```console
 Error: StateIO R package not loaded
 ```
 
 **Solution**: Install R and required packages
+
 ```bash
 # Install R packages
 R -e "remotes::install_github('USEPA/stateior')"
@@ -320,7 +324,7 @@ uv sync --extra r
 
 ### NAICS Mapping Warnings
 
-```
+```console
 Warning: No BEA mapping found for NAICS 999999
 ```
 
@@ -328,23 +332,25 @@ Warning: No BEA mapping found for NAICS 999999
 
 ### Low Confidence Scores
 
-```
+```console
 Average Confidence Score: 0.40
 ```
 
 **Causes**:
+
 - StateIO data unavailable for state/year
 - Fallback to default ratios
 - R packages not installed
 
 **Solutions**:
+
 - Install R packages
 - Use more recent fiscal year (better data availability)
 - Accept lower precision or exclude low-confidence records
 
 ## References
 
-- **BEA I-O Accounts**: https://www.bea.gov/industry/input-output-accounts-data
-- **NAICS Codes**: https://www.census.gov/naics/
-- **StateIO Package**: https://github.com/USEPA/stateior
+- **BEA I-O Accounts**: <https://www.bea.gov/industry/input-output-accounts-data>
+- **NAICS Codes**: <https://www.census.gov/naics/>
+- **StateIO Package**: <https://github.com/USEPA/stateior>
 - **StateIO API Reference**: `docs/fiscal/stateio-api-reference.md`

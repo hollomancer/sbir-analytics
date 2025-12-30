@@ -26,19 +26,23 @@ When you look at SBIR awards alone, it's hard to tell whether a company is prima
 For each federal contract a company has received, the system determines whether it's a Product, Service, or R&D contract. It does this by looking at several pieces of information:
 
 **Product Service Codes (PSC)**
+
 - If the PSC starts with a number (like "1234"), it's typically a product contract
 - If the PSC starts with a letter (like "R425"), it's typically a service contract
 - If the PSC starts with "A" or "B", it's typically a research and development contract
 
 **Contract Type and Pricing**
+
 - Cost-plus contracts (CPFF) and time-and-materials (T&M) contracts are almost always services
 - Fixed-price contracts (FFP) can be either products or services, so the system looks at other clues
 
 **Contract Description**
+
 - The system scans the contract description for keywords like "prototype," "hardware," or "device" to identify product contracts
 - This helps catch cases where a fixed-price contract is actually for a product, even if the PSC suggests otherwise
 
 **SBIR Phase Adjustments**
+
 - For SBIR Phase I and Phase II awards, the system recognizes these are research and development work, regardless of other indicators
 - However, if an SBIR award has a numeric PSC (indicating a product), it keeps the Product classification
 
@@ -47,19 +51,23 @@ For each federal contract a company has received, the system determines whether 
 Once all of a company's contracts are classified, the system combines them to determine the company's overall category. Here's how:
 
 **Dollar-Weighted Calculation**
+
 - The system calculates what percentage of the company's total contract dollars come from product contracts versus service/R&D contracts
 - This means a $10 million product contract counts more than a $100,000 service contract
 
 **Classification Rules**
+
 - If 60% or more of contract dollars are from products → **Product-leaning**
 - If 60% or more of contract dollars are from services/R&D → **Service-leaning**
 - If neither reaches 60% → **Mixed**
 
 **Special Cases**
+
 - Companies with fewer than 2 contracts are marked as **Uncertain** (not enough data)
 - Companies with contracts spanning more than 6 different PSC families are automatically classified as **Mixed** (they're likely integrators or diversified firms)
 
 **Confidence Levels**
+
 - **High confidence**: Companies with 6+ contracts (enough data for reliable classification)
 - **Medium confidence**: Companies with 3-5 contracts (reasonable data, but less certain)
 - **Low confidence**: Companies with 2 or fewer contracts (very limited data)
@@ -90,18 +98,21 @@ For each company, the system produces:
 ## Example Scenarios
 
 **Example 1: Product-Leaning Company**
+
 - A company has 20 federal contracts totaling $50 million
 - $35 million (70%) comes from contracts with numeric PSC codes for hardware and equipment
 - $15 million (30%) comes from service contracts
 - **Result**: Product-leaning (High confidence)
 
 **Example 2: Service-Leaning Company**
+
 - A company has 15 federal contracts totaling $30 million
 - $25 million (83%) comes from research and development contracts (PSC codes starting with A or B)
 - $5 million (17%) comes from product contracts
 - **Result**: Service-leaning (High confidence)
 
 **Example 3: Mixed Company**
+
 - A company has 25 federal contracts totaling $40 million
 - $18 million (45%) from product contracts
 - $22 million (55%) from service contracts
@@ -109,6 +120,7 @@ For each company, the system produces:
 - **Result**: Mixed (High confidence)
 
 **Example 4: Uncertain Classification**
+
 - A company has only 1 SBIR Phase II award
 - No other federal contracts found in USAspending
 - **Result**: Uncertain (Low confidence - insufficient data)
@@ -135,16 +147,19 @@ The system includes built-in checks to ensure reliability:
 It's important to understand what this system does and doesn't do:
 
 **What it does:**
+
 - Classifies companies based on their federal contract portfolio
 - Uses official USAspending data
 - Provides confidence levels to indicate reliability
 
 **What it doesn't do:**
+
 - Classify companies based on their commercial activities (only federal contracts)
 - Guarantee 100% accuracy (some contracts are ambiguous)
 - Replace human judgment for critical decisions
 
 **Known limitations:**
+
 - Companies with very few contracts may be classified as Uncertain
 - Some contracts are genuinely ambiguous and may be misclassified
 - The system only looks at federal contracts, not commercial sales or other revenue sources

@@ -76,7 +76,7 @@ sbir-cli status assets
 sbir-cli status assets --group sbir_ingestion
 ```
 
-###`status neo4j`
+### `status neo4j`
 
 Check Neo4j connection health and display database statistics.
 
@@ -116,7 +116,7 @@ sbir-cli metrics show --group enrichment
 sbir-cli metrics show --limit 50
 ```
 
-###`metrics latest`
+### `metrics latest`
 
 Display latest aggregated pipeline metrics.
 
@@ -124,7 +124,7 @@ Display latest aggregated pipeline metrics.
 sbir-cli metrics latest
 ```
 
-###`metrics export`
+### `metrics export`
 
 Export metrics to JSON or CSV.
 
@@ -164,7 +164,7 @@ sbir-cli ingest run --groups sbir_ingestion,usaspending_ingestion
 sbir-cli ingest run --groups sbir_ingestion --force
 ```
 
-###`ingest status`
+### `ingest status`
 
 Check status of ingestion runs.
 
@@ -200,7 +200,7 @@ sbir-cli enrich run --sources usaspending --batch-size 1000
 sbir-cli enrich run --sources sam_gov --confidence 0.8
 ```
 
-###`enrich stats`
+### `enrich stats`
 
 Display enrichment statistics and success rates.
 

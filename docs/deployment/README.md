@@ -20,7 +20,7 @@ The SBIR ETL project uses GitHub Actions for orchestration with AWS infrastructu
 
 ## Architecture
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────┐
 │                    GitHub Actions                            │
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐         │

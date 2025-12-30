@@ -44,6 +44,7 @@ make docker-down
 ## Neo4j Service
 
 Local Neo4j runs on:
+
 - Bolt: `bolt://localhost:7687`
 - HTTP: `http://localhost:7474`
 

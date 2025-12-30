@@ -8,7 +8,7 @@ The Company Categorization System classifies SBIR companies as Product, Service,
 
 ### System Components
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────────────┐
 │                     Company Categorization System                    │
 └─────────────────────────────────────────────────────────────────────┘
@@ -30,7 +30,7 @@ The Company Categorization System classifies SBIR companies as Product, Service,
 
 ### Data Flow
 
-```
+```text
 SBIR Awards (validated_sbir_awards)
         │
         ▼
@@ -76,9 +76,11 @@ Output: enriched_sbir_companies_with_categorization
 **Purpose**: Classify individual federal contracts as Product, Service, or R&D
 
 **Input**:
+
 - Contract record with fields: PSC, contract_type, pricing, description, sbir_phase
 
 **Output**:
+
 - Classification: "Product", "Service", or "R&D"
 - Classification method: "psc_numeric", "psc_alphabetic", "contract_type", "description_inference", "sbir_adjustment"
 - Confidence: 0.0-1.0
@@ -168,10 +170,12 @@ def classify_contract(contract: dict) -> dict:
 **Purpose**: Aggregate contract classifications to company level
 
 **Input**:
+
 - List of classified contracts for a company
 - Company identifier (UEI)
 
 **Output**:
+
 - Company classification: "Product-leaning", "Service-leaning", "Mixed", "Uncertain"
 - Product percentage: 0.0-100.0
 - Service percentage: 0.0-100.0
@@ -276,13 +280,16 @@ def aggregate_company_classification(contracts: list[dict], company_uei: str) ->
 **Purpose**: Retrieve complete federal contract portfolio for SBIR companies
 
 **Input**:
+
 - Company identifiers: UEI, DUNS, CAGE
 - Date range (optional)
 
 **Output**:
+
 - List of contracts with required fields
 
 **Integration Points**:
+
 - Uses existing `DuckDBUSAspendingExtractor` from `src/extractors/usaspending.py`
 - Queries `transaction_normalized` table from USAspending dump
 - Filters by recipient identifiers
@@ -473,6 +480,7 @@ logger.error(f"USAspending query failed for company {uei}: {error}")
 ### Validation Dataset
 
 The system will be validated against a real-world dataset of high-volume SBIR companies:
+
 - **File**: `data/raw/sbir/over-100-awards-company_search_1763075384.csv`
 - **Companies**: 200+ companies with 100+ SBIR awards each
 - **Fields**: Company Name, UEI, DUNS, Number Awards, Address, etc.

@@ -137,6 +137,7 @@ The algorithm combines six independent signals, each with configurable weights s
 **Logic**: Commercial transitions typically occur within a defined window after research completion.
 
 **Scoring** (days between award completion and contract start):
+
 - 0-90 days: 1.0× multiplier → **+0.20**
 - 91-365 days: 0.75× multiplier → **+0.15**
 - 366-730 days: 0.50× multiplier → **+0.10**
@@ -199,6 +200,7 @@ patent_score = (has_patent × 0.05 +
 - Different CET area: 0.0
 
 **CET Areas** (10 critical emerging technologies):
+
 - AI & Machine Learning
 - Advanced Computing
 - Biotechnology & Advanced Biology
@@ -247,6 +249,7 @@ final_score = base_score + (
 **Purpose**: Categorize detections into confidence bands for downstream decision-making.
 
 **Thresholds** (configurable):
+
 - **HIGH**: score ≥ 0.85 (strong evidence, high precision)
 - **LIKELY**: 0.65 ≤ score < 0.85 (moderate evidence, balanced)
 - **POSSIBLE**: score < 0.65 (weak evidence, high recall)
@@ -310,21 +313,25 @@ final_score = base_score + (
 ### Presets
 
 **High Precision** (Conservative)
+
 - Confidence threshold: ≥0.85
 - Time window: 12 months
 - Use case: Stakeholder reporting, high-confidence findings
 
 **Balanced** (Default)
+
 - Confidence threshold: ≥0.65
 - Time window: 24 months
 - Use case: General analysis, development
 
 **Broad Discovery** (Exploratory)
+
 - Confidence threshold: ≥0.50
 - Time window: 36 months
 - Use case: Research, hypothesis generation
 
 **Research** (No threshold)
+
 - Confidence threshold: None (all detections)
 - Time window: 48 months
 - Use case: Scientific exploration
@@ -376,6 +383,7 @@ SBIR_ETL__TRANSITION__DETECTION__CET_WEIGHT=0.10
 ### Quality Gates
 
 **MVP Gates** (enforce in CI):
+
 1. Vendor match rate ≥ 60% (enough candidates resolved)
 2. Detection success rate ≥ 99% (pipeline completeness)
 3. Manual spot-check precision ≥ 80% for score ≥ 0.80

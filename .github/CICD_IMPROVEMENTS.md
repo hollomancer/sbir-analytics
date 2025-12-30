@@ -9,6 +9,7 @@ This document summarizes the CI/CD improvements made to reduce duplication, impr
 **Problem**: Secret scanning logic was embedded in 100+ lines of bash in `static-analysis.yml`, making it hard to test and maintain.
 
 **Solution**:
+
 - Created `scripts/ci/scan_secrets.py` - A Python script that handles:
   - Pre-commit hook execution
   - Detect-secrets baseline management
@@ -16,16 +17,19 @@ This document summarizes the CI/CD improvements made to reduce duplication, impr
   - Proper error handling and exit codes
 
 **Benefits**:
+
 - Testable code (can be run locally)
 - Better error messages
 - Easier to maintain and extend
 - Can be run independently of GitHub Actions
 
 **Files Changed**:
+
 - `.github/workflows/static-analysis.yml` - Now calls Python script instead of inline bash
 - `scripts/ci/scan_secrets.py` - New script (executable)
 
 **Usage**:
+
 ```bash
 # Local testing
 python3 scripts/ci/scan_secrets.py --baseline .secrets.baseline
@@ -39,6 +43,7 @@ python3 scripts/ci/scan_secrets.py --baseline .secrets.baseline
 **Problem**: Environment variables duplicated across multiple workflows with inconsistent values.
 
 **Solution**:
+
 - Created `.github/actions/setup-test-environment/action.yml`
 - Consolidates common environment variables:
   - Python version
@@ -49,11 +54,13 @@ python3 scripts/ci/scan_secrets.py --baseline .secrets.baseline
   - Health check retry counts
 
 **Benefits**:
+
 - Single source of truth for test configuration
 - Reduced duplication across workflows
 - Easier to update defaults globally
 
 **Usage**:
+
 ```yaml
 - name: Setup test environment
   uses: ./.github/actions/setup-test-environment
@@ -68,6 +75,7 @@ python3 scripts/ci/scan_secrets.py --baseline .secrets.baseline
 **Problem**: Some common development tasks lacked dedicated Makefile targets.
 
 **Solution**: Added the following targets:
+
 - `make logs-all` - Show logs from all running containers
 - `make ps` - Show running containers
 - `make clean-all` - Clean all artifacts, containers, and volumes
@@ -78,6 +86,7 @@ python3 scripts/ci/scan_secrets.py --baseline .secrets.baseline
 - `make ci-local` - Run CI checks locally (mimics GitHub Actions)
 
 **Benefits**:
+
 - Improved developer experience
 - Self-documenting commands
 - Faster onboarding
@@ -88,6 +97,7 @@ python3 scripts/ci/scan_secrets.py --baseline .secrets.baseline
 **Problem**: Actions README existed but lacked details about the new composite action.
 
 **Solution**: Updated `.github/actions/README.md` with:
+
 - Documentation for `setup-test-environment` action
 - Complete input/output specifications
 - Usage examples
@@ -97,6 +107,7 @@ python3 scripts/ci/scan_secrets.py --baseline .secrets.baseline
 **Problem**: Healthchecks were defined inconsistently with inline shell commands and varying timeout values.
 
 **Solution**:
+
 - Created dedicated healthcheck scripts in `scripts/docker/healthcheck/`:
   - `neo4j.sh` - Checks Neo4j readiness via cypher-shell, curl, or netcat
   - `dagster.sh` - Checks Dagster webserver via HTTP endpoint
@@ -106,12 +117,14 @@ python3 scripts/ci/scan_secrets.py --baseline .secrets.baseline
 - Updated `Dockerfile` to ensure scripts are executable
 
 **Benefits**:
+
 - Consistent healthcheck behavior across services
 - Easier to test and maintain
 - Better credential management via environment variables
 - Scripts can be run manually for debugging
 
 **Files Changed**:
+
 - `scripts/docker/healthcheck/neo4j.sh` (new)
 - `scripts/docker/healthcheck/dagster.sh` (new)
 - `scripts/docker/healthcheck/daemon.sh` (new)
@@ -123,6 +136,7 @@ python3 scripts/ci/scan_secrets.py --baseline .secrets.baseline
 **Problem**: Caching strategy was not documented, making it hard to understand what's cached and why.
 
 **Solution**:
+
 - Created `.github/actions/CACHING_STRATEGY.md` with comprehensive documentation
 - Documents all cached artifacts (UV venv, UV binary, pytest cache, pip packages)
 - Explains cache key strategies and restore-keys
@@ -130,6 +144,7 @@ python3 scripts/ci/scan_secrets.py --baseline .secrets.baseline
 - Includes future improvements (Docker BuildKit cache)
 
 **Files Changed**:
+
 - `.github/actions/CACHING_STRATEGY.md` (new)
 
 ### 7. Workflow Environment Variable Consolidation ✅
@@ -137,6 +152,7 @@ python3 scripts/ci/scan_secrets.py --baseline .secrets.baseline
 **Problem**: Environment variables duplicated across workflows with inconsistent values.
 
 **Solution**:
+
 - Updated `nightly.yml` to use `setup-test-environment` action
 - Updated `ci.yml` to use `setup-test-environment` action in multiple jobs:
   - `test` job - Now uses action and `wait-for-neo4j` action
@@ -146,6 +162,7 @@ python3 scripts/ci/scan_secrets.py --baseline .secrets.baseline
 - Reduces hardcoded values in job-level env blocks
 
 **Files Changed**:
+
 - `.github/workflows/nightly.yml` (modified) - Now uses `setup-test-environment` action
 - `.github/workflows/ci.yml` (modified) - Multiple jobs now use `setup-test-environment` action
 
@@ -154,6 +171,7 @@ python3 scripts/ci/scan_secrets.py --baseline .secrets.baseline
 ### 1. Adopt setup-test-environment in More Workflows
 
 **Status**: Partially complete
+
 - ✅ `nightly.yml` updated
 - ⏳ `ci.yml` has workflow-level `env` block (could optionally use action for consistency)
 - ⏳ Other workflows could benefit (lower priority as they may not need all env vars)
@@ -161,6 +179,7 @@ python3 scripts/ci/scan_secrets.py --baseline .secrets.baseline
 ### 2. Docker BuildKit Caching
 
 **Status**: Not started
+
 - Documented in CACHING_STRATEGY.md as future improvement
 - Would significantly speed up Docker builds
 - Requires updating build commands to use `--cache-from` and `--cache-to`
@@ -170,6 +189,7 @@ python3 scripts/ci/scan_secrets.py --baseline .secrets.baseline
 ### 1. Simplify Complex Job Dependencies
 
 **Status**: Needs analysis
+
 - `ci.yml` has complex conditional logic
 - Consider splitting into reusable workflows:
   - `ci-main.yml` (core tests)
@@ -179,6 +199,7 @@ python3 scripts/ci/scan_secrets.py --baseline .secrets.baseline
 ### 2. Extract Hardcoded Values to Environment Variables
 
 **Status**: Partially addressed
+
 - `setup-test-environment` action consolidates some values
 - Still need to review workflows for remaining hardcoded values:
   - Timeout values
@@ -188,6 +209,7 @@ python3 scripts/ci/scan_secrets.py --baseline .secrets.baseline
 ### 3. Create Comprehensive CI Documentation
 
 **Status**: In progress
+
 - This file is a start
 - Need to create `docs/ci/README.md` with:
   - Workflow architecture

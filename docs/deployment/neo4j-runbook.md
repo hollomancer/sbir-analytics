@@ -64,7 +64,7 @@ cp .env.example .env
 
 ```
 
-2. Start a standalone Neo4j (dev) using the override compose:
+1. Start a standalone Neo4j (dev) using the override compose:
 
 ```sbir-analytics/docker/neo4j.compose.override.yml#L1-40
 
@@ -77,7 +77,7 @@ make neo4j-up
 docker compose --env-file .env -f docker-compose.yml -f docker/neo4j.compose.override.yml --profile neo4j up --build -d
 ```
 
-3. Verify health:
+1. Verify health:
 
 ```sbir-analytics/Makefile#L160-180
 

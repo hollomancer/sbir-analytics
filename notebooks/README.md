@@ -6,18 +6,22 @@ This directory contains Jupyter notebooks for interactive analysis of SBIR data,
 
 ## Prerequisites
 
-1.  **Install ML Dependencies:**
+1. **Install ML Dependencies:**
+
     ```bash
     make install-ml
     ```
+
     This installs `ml`, `paecter-local`, and `r` dependency groups.
 
-2.  **Configure Environment:**
+2. **Configure Environment:**
+
     ```bash
     make setup-ml
     ```
-    -   Enables S3 usage (`use_s3_first=true`).
-    -   Ensures `HF_TOKEN` is present in `.env` (required for Paecter/CET models).
+
+    - Enables S3 usage (`use_s3_first=true`).
+    - Ensures `HF_TOKEN` is present in `.env` (required for Paecter/CET models).
 
 ## Running Notebooks
 
@@ -29,4 +33,4 @@ make notebook
 
 ## Available Notebooks
 
--   `getting_started.ipynb`: Introduction to loading data from S3 and initializing models.
+- `getting_started.ipynb`: Introduction to loading data from S3 and initializing models.

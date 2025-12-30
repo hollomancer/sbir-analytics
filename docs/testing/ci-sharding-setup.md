@@ -85,6 +85,7 @@ pytest: error: unrecognized arguments: --shard-id
 ```
 
 **Solution**: Install dev dependencies with extras:
+
 ```bash
 uv sync --extra dev
 ```
