@@ -650,7 +650,7 @@ jobs:
 
       - name: Trigger ETL pipeline for re-enrichment
         if: needs.determine-source.outputs.usaspending == 'true' && steps.validate-usaspending.outcome == 'success'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             // Trigger the ETL pipeline to re-run SBIR enrichment with new USAspending data
