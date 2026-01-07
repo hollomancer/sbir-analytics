@@ -220,7 +220,7 @@ packaging==25.0
     #   weasel
 pandas==2.3.3
     # via sbir-analytics
-pandas-stubs==2.3.3.251201
+pandas-stubs==2.3.3.251219
     # via sbir-analytics
 pathlib-abc==0.5.2
     # via universal-pathlib
