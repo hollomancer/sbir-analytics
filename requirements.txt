@@ -414,7 +414,7 @@ types-pytz==2025.2.0.20251108
     # via pandas-stubs
 types-pyyaml==6.0.12.20250915
     # via sbir-analytics
-types-requests==2.32.4.20250913
+types-requests==2.32.4.20260107
     # via
     #   sbir-analytics
     #   types-tqdm
