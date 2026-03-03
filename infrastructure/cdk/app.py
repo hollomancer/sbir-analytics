@@ -8,6 +8,7 @@ import aws_cdk as cdk
 from stacks.storage import StorageStack
 from stacks.security import SecurityStack
 from stacks.batch_stack import BatchStack
+from stacks.ec2_dev import Ec2DevStack
 
 app = cdk.App()
 
@@ -30,6 +31,14 @@ batch_stack = BatchStack(
     app,
     "sbir-analytics-batch",
     env=env,
+)
+
+# EC2 development instance (opt-in: cdk deploy sbir-analytics-ec2-dev)
+ec2_dev_stack = Ec2DevStack(
+    app,
+    "sbir-analytics-ec2-dev",
+    env=env,
+    s3_bucket=storage_stack.bucket,
 )
 
 app.synth()

@@ -1,28 +1,48 @@
 # Consolidated Docker Compose Configuration for SBIR ETL Pipeline
 #
-# This file provides a simplified two-profile configuration:
-# - dev: Development environment with bind mounts for live editing
-# - ci: CI/testing environment with named volumes for isolation
+# Architecture: DuckDB-first, Neo4j-optional
+#   The ETL pipeline uses DuckDB as its primary data store.  Neo4j is an
+#   opt-in graph layer activated by adding the "neo4j" profile.
+#
+# Profiles:
+#   dev      – Local development with bind mounts for live editing
+#   ec2-dev  – EC2 development (same services, tuned for remote)
+#   ci       – CI/testing with ephemeral volumes
+#   neo4j    – Opt-in: adds Neo4j + NeoDash graph services
 #
 # Usage Examples:
-#   # Development (bind mounts, live reload)
+#   # Development without Neo4j (DuckDB-only)
 #   docker compose --profile dev up --build
 #
-#   # CI Testing (ephemeral volumes, test execution)
+#   # Development with Neo4j graph layer
+#   docker compose --profile dev --profile neo4j up --build
+#
+#   # EC2 development (DuckDB-only)
+#   docker compose --profile ec2-dev up --build
+#
+#   # CI testing
 #   docker compose --profile ci up --build
+#
+#   # CI testing with Neo4j integration tests
+#   docker compose --profile ci --profile neo4j up --build
 #
 # Environment Variables (set via .env file):
 #   - COMPOSE_PROFILES: Comma-separated list of profiles to activate
 #   - ENVIRONMENT: dev|test (controls behavior)
-#   - NEO4J_USER / NEO4J_PASSWORD: Database credentials
+#   - NEO4J_USER / NEO4J_PASSWORD: Database credentials (only when neo4j profile active)
 #   - IMAGE_NAME / IMAGE_TAG: Container image configuration
+
+# =============================================================================
+# Shared Configuration Fragments
+# =============================================================================
 
 x-common-environment: &common-environment
   ENVIRONMENT: ${ENVIRONMENT:-dev}
   PYTHONPATH: /app
   PYTHONUNBUFFERED: 1
   SERVICE_STARTUP_TIMEOUT: ${SERVICE_STARTUP_TIMEOUT:-120}
-  # Neo4j connection settings
+  # DuckDB is the default data store; Neo4j vars are set but only used when
+  # the neo4j profile is active and loading.neo4j assets are materialized.
   SBIR_ETL__NEO4J__HOST: ${SBIR_ETL__NEO4J__HOST:-neo4j}
   SBIR_ETL__NEO4J__PORT: ${SBIR_ETL__NEO4J__PORT:-7687}
   NEO4J_URI: ${NEO4J_URI:-bolt://neo4j:7687}
@@ -78,16 +98,25 @@ x-resource-limits: &resource-limits
         memory: 1G
         cpus: '0.5'
 
+x-ec2-resource-limits: &ec2-resource-limits
+  deploy:
+    resources:
+      limits:
+        memory: 3G
+        cpus: '2.0'
+      reservations:
+        memory: 1G
+        cpus: '0.5'
+
 services:
   # =============================================================================
-  # Neo4j Database Service
+  # Neo4j Database Service  (opt-in via --profile neo4j)
   # =============================================================================
   neo4j:
     image: neo4j:${NEO4J_VERSION:-5.20.0}
     container_name: ${NEO4J_CONTAINER_NAME:-sbir-neo4j}
     profiles:
-      - ci
-      - dev
+      - neo4j
     environment:
       # Prefer explicit NEO4J_AUTH if set, otherwise construct from user/password
       - NEO4J_AUTH=${NEO4J_AUTH:-${NEO4J_USER:-neo4j}/${NEO4J_PASSWORD:-password}}
@@ -101,15 +130,9 @@ services:
       - "${NEO4J_HTTP_PORT:-7474}:7474"
       - "${NEO4J_BOLT_PORT:-7687}:7687"
     volumes:
-      # Use named volumes for isolation (works for both dev and CI)
-      # Dev can override via .env or use bind mounts by mounting ./data/neo4j
       - neo4j_data:/data
       - neo4j_logs:/logs
       - neo4j_import:/var/lib/neo4j/import
-      # Optional configuration overrides (if files exist)
-      # Note: Neo4j needs write access to conf directory during startup for ownership changes
-      # Use environment variables for configuration instead when possible
-      # - ./config/neo4j/neo4j.conf:/var/lib/neo4j/conf/neo4j.conf:ro
       - ./config/neo4j/certs:/certs:ro
       - ./config/neo4j/plugins:/plugins:rw
     networks:
@@ -119,7 +142,27 @@ services:
     <<: *resource-limits
 
   # =============================================================================
+  # NeoDash Visualization  (opt-in via --profile neo4j)
+  # Free, open-source Neo4j dashboard builder (replaces Aura Bloom).
+  # =============================================================================
+  neodash:
+    image: neo4jlabs/neodash:latest
+    container_name: ${NEODASH_CONTAINER_NAME:-sbir-neodash}
+    profiles:
+      - neo4j
+    ports:
+      - "${NEODASH_PORT:-5005}:5005"
+    depends_on:
+      neo4j:
+        condition: service_healthy
+    networks:
+      - sbir-network
+    restart: "no"
+
+  # =============================================================================
   # Dagster Webserver Service
+  # Runs without Neo4j by default (DuckDB-only ETL).
+  # When the neo4j profile is active, Neo4j loaders become available.
   # =============================================================================
   dagster-webserver:
     build:
@@ -131,6 +174,7 @@ services:
     profiles:
       - ci
       - dev
+      - ec2-dev
     environment:
       <<: *common-environment
       ENABLE_WATCHFILES: ${ENABLE_WATCHFILES:-0}
@@ -138,7 +182,6 @@ services:
       HEALTHCHECK_PORT: ${DAGSTER_PORT:-3000}
       HEALTHCHECK_PATH: ${DAGSTER_HEALTH_PATH:-/server_info}
     volumes:
-      # Bind mounts work for both dev (live editing) and CI (ephemeral runner filesystem)
       - ./src:/app/src:rw
       - ./config:/app/config:rw
       - ./.env:/app/.env:ro
@@ -147,9 +190,9 @@ services:
       - ./data:/app/data:rw
     ports:
       - "${DAGSTER_PORT:-3000}:3000"
-    depends_on:
-      neo4j:
-        condition: service_healthy
+    # No hard dependency on Neo4j — works standalone with DuckDB.
+    # When neo4j profile is active, the neo4j service will be on the
+    # same network and reachable at bolt://neo4j:7687.
     healthcheck: *healthcheck-dagster
     networks:
       - sbir-network
@@ -168,9 +211,9 @@ services:
     profiles:
       - ci
       - dev
+      - ec2-dev
     environment: *common-environment
     volumes:
-      # Bind mounts work for both dev (live editing) and CI (ephemeral runner filesystem)
       - ./src:/app/src:rw
       - ./config:/app/config:rw
       - ./.env:/app/.env:ro
@@ -178,8 +221,6 @@ services:
       - ./logs:/app/logs:rw
       - ./data:/app/data:rw
     depends_on:
-      neo4j:
-        condition: service_healthy
       dagster-webserver:
         condition: service_healthy
     command: ["sh", "/app/scripts/docker/entrypoint.sh", "dagster-daemon"]
@@ -201,9 +242,9 @@ services:
     profiles:
       - ci
       - dev
+      - ec2-dev
     environment: *common-environment
     volumes:
-      # Bind mounts work for both dev (live editing) and CI (ephemeral runner filesystem)
       - ./src:/app/src:rw
       - ./config:/app/config:rw
       - ./.env:/app/.env:ro
@@ -217,9 +258,6 @@ services:
       - "sh"
       - "-c"
       - "echo 'etl-runner ready; run with docker compose run etl-runner -- <cmd>' && sleep infinity"
-    depends_on:
-      neo4j:
-        condition: service_healthy
     networks:
       - sbir-network
     restart: "no"
@@ -256,9 +294,6 @@ services:
       - E2E_TEST_DATA_DIR=/app/test-data
       - E2E_ARTIFACTS_DIR=/app/artifacts
       - E2E_REPORTS_DIR=/app/reports
-    depends_on:
-      neo4j:
-        condition: service_healthy
     networks:
       - sbir-network
     <<: *resource-limits
@@ -304,11 +339,11 @@ services:
     profiles:
       - ci
       - dev
+      - ec2-dev
     environment:
       ENVIRONMENT: ${ENVIRONMENT:-dev}
       PYTHONUNBUFFERED: 1
     volumes:
-      # Bind mounts work for both dev (live editing) and CI (ephemeral runner filesystem)
       - ./src:/workspace/src:rw
       - ./config:/workspace/config:rw
       - ./.env:/workspace/.env:ro

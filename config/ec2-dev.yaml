@@ -1,0 +1,76 @@
+# EC2 Development Environment Configuration
+#
+# DuckDB-first architecture: Neo4j is NOT required.
+# All ETL processing, analytics, and querying runs against DuckDB.
+# Neo4j is available as an opt-in graph layer when the neo4j
+# compose profile is activated.
+#
+# Usage:
+#   COMPOSE_PROFILES=ec2-dev docker compose up -d
+#   # or with Neo4j:
+#   COMPOSE_PROFILES=ec2-dev,neo4j docker compose up -d
+
+pipeline:
+  environment: "ec2-dev"
+
+# EC2 instances have more resources than local dev laptops
+duckdb:
+  database_path: "data/processed/sbir.duckdb"
+  memory_limit_gb: 4  # t3.medium has 4 GB RAM
+  threads: 2           # t3.medium has 2 vCPUs
+  enable_object_cache: true
+  enable_query_profiler: true
+
+data_quality:
+  # Same as dev.yaml — lenient for iteration
+  completeness:
+    company_name: 0.90
+    award_amount: 0.85
+
+  enrichment:
+    sam_gov_success_rate: 0.75
+    usaspending_match_rate: 0.60
+
+extraction:
+  sbir:
+    csv_path: "data/raw/sbir/award_data.csv"
+    use_s3_first: true  # EC2 has instance-role S3 access
+    chunk_size: 5000
+    batch_size: 10000
+
+  sam_gov:
+    use_s3_first: true
+
+enrichment:
+  enhanced_matching:
+    enable_phonetic_matching: true
+    enable_jaro_winkler: true
+    enable_enhanced_abbreviations: true
+
+  sam_gov:
+    rate_limit_per_minute: 30
+    timeout_seconds: 60
+
+validation:
+  sample_size_for_checks: 500
+  max_error_percentage: 0.10
+
+loading:
+  neo4j:
+    # These settings are only used when the neo4j profile is active.
+    # With DuckDB-only mode, Neo4j loaders are skipped entirely.
+    batch_size: 500
+    parallel_threads: 2
+
+logging:
+  level: "DEBUG"
+  format: "json"  # JSON for CloudWatch Logs ingestion
+  file_path: "logs/sbir-analytics.log"
+  max_file_size_mb: 100
+  backup_count: 5
+
+metrics:
+  enabled: true
+  collection_interval_seconds: 10
+  persist_to_file: true
+  metrics_file_path: "logs/metrics.json"
