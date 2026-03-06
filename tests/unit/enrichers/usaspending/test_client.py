@@ -7,11 +7,7 @@ from unittest.mock import AsyncMock, Mock, patch
 import httpx
 import pytest
 
-from src.enrichers.usaspending.client import (
-    USAspendingAPIClient,
-    USAspendingAPIError,
-    USAspendingRateLimitError,
-)
+from src.enrichers.usaspending.client import USAspendingAPIClient
 from src.exceptions import APIError, ConfigurationError, RateLimitError
 from src.models.enrichment import EnrichmentFreshnessRecord
 
@@ -91,20 +87,6 @@ def freshness_record():
         metadata={"modification_number": "0"},
     )
 
-
-# ==================== Backward Compatibility Tests ====================
-
-
-class TestBackwardCompatibility:
-    """Tests for backward compatibility aliases."""
-
-    def test_usaspending_api_error_alias(self):
-        """Test USAspendingAPIError is an alias for APIError."""
-        assert USAspendingAPIError is APIError
-
-    def test_usaspending_rate_limit_error_alias(self):
-        """Test USAspendingRateLimitError is an alias for RateLimitError."""
-        assert USAspendingRateLimitError is RateLimitError
 
 
 # ==================== Initialization Tests ====================

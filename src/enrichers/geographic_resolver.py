@@ -157,9 +157,73 @@ class GeographicResolver:
         # Valid state codes set for quick lookup
         self.valid_state_codes = set(self.state_mappings.keys())
 
+        # ZIP prefix (first 3 digits) → state code mapping
+        # Based on USPS ZIP code allocation by state
+        self._zip3_to_state = self._build_zip3_to_state()
+
         logger.info(
             f"Initialized GeographicResolver with {len(self.state_mappings)} states and {len(self.state_variations)} variations"
         )
+
+    @staticmethod
+    def _build_zip3_to_state() -> dict[str, str]:
+        """Build a mapping from 3-digit ZIP prefix to state code.
+
+        Uses the USPS ZIP code allocation scheme where the first 3 digits
+        of a ZIP code determine the state/territory.
+        """
+        ranges: list[tuple[int, int, str]] = [
+            # Format: (start_prefix, end_prefix_inclusive, state_code)
+            (5, 5, "NY"), (6, 9, "PR"),  # PR/VI
+            (10, 14, "NY"), (15, 19, "PA"), (20, 20, "DC"),
+            (21, 21, "MD"), (22, 24, "VA"), (25, 26, "WV"),
+            (27, 28, "NC"), (29, 29, "SC"), (30, 31, "GA"),
+            (32, 34, "FL"), (35, 36, "AL"), (37, 38, "TN"),
+            (39, 39, "MS"), (40, 42, "KY"), (43, 45, "OH"),
+            (46, 47, "IN"), (48, 49, "MI"), (50, 52, "IA"),
+            (53, 54, "WI"), (55, 56, "MN"), (57, 57, "SD"),
+            (58, 58, "ND"), (59, 59, "MT"), (60, 62, "IL"),
+            (63, 65, "MO"), (66, 67, "KS"), (68, 69, "NE"),
+            (70, 71, "LA"), (72, 72, "AR"), (73, 74, "OK"),
+            (75, 79, "TX"), (80, 81, "CO"), (82, 83, "WY"),
+            (83, 83, "ID"), (84, 84, "UT"), (85, 86, "AZ"),
+            (87, 88, "NM"), (89, 89, "NV"),
+            (90, 96, "CA"), (97, 97, "OR"), (98, 99, "WA"),
+            (1, 2, "MA"), (3, 3, "NH"), (4, 4, "ME"),
+            (100, 119, "NY"), (120, 149, "NY"),  # extended NY
+            (150, 196, "PA"),  # extended PA
+            (200, 205, "DC"), (206, 219, "MD"),
+            (220, 246, "VA"), (247, 268, "WV"),
+            (270, 289, "NC"), (290, 299, "SC"),
+            (300, 319, "GA"), (320, 349, "FL"),
+            (350, 369, "AL"), (370, 385, "TN"),
+            (386, 397, "MS"), (400, 427, "KY"),
+            (430, 459, "OH"), (460, 479, "IN"),
+            (480, 499, "MI"), (500, 528, "IA"),
+            (530, 549, "WI"), (550, 567, "MN"),
+            (570, 577, "SD"), (580, 588, "ND"),
+            (590, 599, "MT"), (600, 629, "IL"),
+            (630, 658, "MO"), (660, 679, "KS"),
+            (680, 693, "NE"), (700, 714, "LA"),
+            (716, 729, "AR"), (730, 749, "OK"),
+            (750, 799, "TX"), (800, 816, "CO"),
+            (820, 831, "WY"), (832, 838, "ID"),
+            (840, 847, "UT"), (850, 865, "AZ"),
+            (870, 884, "NM"), (889, 898, "NV"),
+            (900, 966, "CA"), (970, 979, "OR"),
+            (980, 994, "WA"), (995, 999, "AK"),
+            (967, 968, "HI"), (6, 9, "PR"),
+            (0, 0, "NY"),  # APO/FPO
+        ]
+
+        mapping: dict[str, str] = {}
+        for start, end, state in ranges:
+            for prefix in range(start, end + 1):
+                key = f"{prefix:03d}"
+                if key not in mapping:
+                    mapping[key] = state
+
+        return mapping
 
     def normalize_state_input(self, state_input: str) -> str:
         """Normalize state input for matching.
@@ -372,7 +436,11 @@ class GeographicResolver:
         return None
 
     def resolve_from_zip_code(self, award_row: pd.Series) -> GeographicResolutionResult | None:
-        """Resolve state from ZIP code (placeholder for future implementation).
+        """Resolve state from ZIP code using 3-digit prefix mapping.
+
+        Uses the USPS ZIP code prefix allocation scheme where the first 3 digits
+        of a ZIP code identify the state. Confidence is 0.70 since ZIP prefix
+        boundaries occasionally overlap or may be outdated.
 
         Args:
             award_row: Award row data
@@ -380,9 +448,35 @@ class GeographicResolver:
         Returns:
             Geographic resolution result or None
         """
-        # Placeholder for ZIP code to state mapping
-        # This would require a ZIP code database
-        logger.debug("ZIP code to state resolution not yet implemented")
+        zip_columns = ["company_zip", "zip", "Zip", "ZIP", "company_Zip"]
+        for col in zip_columns:
+            if col in award_row.index:
+                raw_zip = award_row[col]
+                if pd.notna(raw_zip):
+                    # Extract digits only
+                    digits = "".join(ch for ch in str(raw_zip) if ch.isdigit())
+                    if len(digits) >= 3:
+                        prefix = digits[:3]
+                        state_code = self._zip3_to_state.get(prefix)
+                        if state_code and state_code in self.valid_state_codes:
+                            state_name = self.state_mappings.get(state_code)
+                            logger.debug(
+                                f"Resolved state {state_code} from ZIP prefix {prefix}"
+                            )
+                            return GeographicResolutionResult(
+                                state_code=state_code,
+                                state_name=state_name,
+                                confidence=0.70,
+                                source="zip_code",
+                                method="zip3_prefix",
+                                timestamp=datetime.now(),
+                                metadata={
+                                    "zip_column": col,
+                                    "raw_zip": str(raw_zip),
+                                    "zip_prefix": prefix,
+                                },
+                            )
+
         return None
 
     def resolve_from_enriched_data(self, award_row: pd.Series) -> GeographicResolutionResult | None:
