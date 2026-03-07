@@ -128,7 +128,7 @@ if [ -n "$NEO4J_URI" ]; then
     echo ""
 else
     echo "⚠️  Skipping Neo4j steps (NEO4J_URI not set)"
-    echo "   To enable, set: export NEO4J_URI=neo4j+s://your-instance.databases.neo4j.io"
+    echo "   To enable, set: export NEO4J_URI=bolt://localhost:7687"
     echo ""
 fi
 

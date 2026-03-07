@@ -134,7 +134,7 @@ Configuration uses YAML files with environment variable overrides:
 
 ```bash
 # Override any config using SBIR_ETL__SECTION__KEY pattern
-export SBIR_ETL__NEO4J__URI="neo4j+s://your-instance.databases.neo4j.io"
+export SBIR_ETL__NEO4J__URI="bolt://localhost:7687"
 export SBIR_ETL__ENRICHMENT__BATCH_SIZE=200
 ```
 
