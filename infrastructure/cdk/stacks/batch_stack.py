@@ -130,7 +130,7 @@ class BatchStack(Stack):
                 effect=iam.Effect.ALLOW,
                 actions=["secretsmanager:GetSecretValue"],
                 resources=[
-                    f"arn:aws:secretsmanager:{self.region}:{self.account}:secret:sbir-analytics/neo4j-aura*"
+                    f"arn:aws:secretsmanager:{self.region}:{self.account}:secret:sbir-analytics/neo4j*"
                 ],
             )
         )

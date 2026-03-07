@@ -40,7 +40,7 @@ The SBIR ETL project uses GitHub Actions for orchestration with AWS infrastructu
           │
           ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                     Neo4j Aura                               │
+│                     Neo4j (EC2)                              │
 │                   (Graph Database)                           │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -69,7 +69,7 @@ The SBIR ETL project uses GitHub Actions for orchestration with AWS infrastructu
 | [AWS Deployment](aws-deployment.md) | Lambda, Step Functions, S3 setup |
 | [AWS Batch Jobs](aws-batch-analysis-jobs.md) | Heavy ML/fiscal analysis jobs |
 | [Docker](docker.md) | Local development setup |
-| [Neo4j Runbook](neo4j-runbook.md) | Neo4j Aura operations |
+| [Neo4j Runbook](neo4j-runbook.md) | Neo4j operations |
 | [GitHub Actions ML](github-actions-ml.md) | ML job configuration |
 
 ## Required Secrets
@@ -79,7 +79,7 @@ Set these in GitHub → Settings → Secrets:
 | Secret | Description |
 |--------|-------------|
 | `AWS_ROLE_ARN` | IAM role for AWS access |
-| `NEO4J_URI` | Neo4j Aura connection URI |
+| `NEO4J_URI` | Neo4j connection URI |
 | `NEO4J_USER` | Neo4j username |
 | `NEO4J_PASSWORD` | Neo4j password |
 

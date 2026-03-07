@@ -24,15 +24,10 @@ cp .env.example .env
 
 ## Neo4j Setup
 
-### Option 1: Neo4j Aura (Recommended)
-
-1. Create free instance at [neo4j.com/aura](https://neo4j.com/product/auradb/)
-2. Copy connection URI and credentials to `.env`
-
-### Option 2: Local Docker
+Start Neo4j locally with Docker:
 
 ```bash
-make neo4j-up
+docker compose --profile dev up neo4j -d
 # Access at http://localhost:7474 (neo4j/password)
 ```
 

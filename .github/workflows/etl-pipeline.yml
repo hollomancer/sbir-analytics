@@ -89,9 +89,9 @@ jobs:
       - name: Run SBIR pipeline
         env:
           # Use test or production Neo4j based on environment input (default: production for scheduled runs)
-          NEO4J_URI: ${{ github.event.inputs.environment == 'test' && secrets.NEO4J_AURA_TEST_URI || secrets.NEO4J_AURA_URI }}
+          NEO4J_URI: ${{ github.event.inputs.environment == 'test' && secrets.NEO4J_TEST_URI || secrets.NEO4J_URI }}
           NEO4J_USER: neo4j
-          NEO4J_PASSWORD: ${{ github.event.inputs.environment == 'test' && secrets.NEO4J_AURA_TEST_PASSWORD || secrets.NEO4J_AURA_PASSWORD }}
+          NEO4J_PASSWORD: ${{ github.event.inputs.environment == 'test' && secrets.NEO4J_TEST_PASSWORD || secrets.NEO4J_PASSWORD }}
           S3_BUCKET: ${{ env.S3_BUCKET }}
           SKIP_NEO4J_LOADING: ${{ github.event.inputs.skip_neo4j }}
         shell: bash
@@ -218,9 +218,9 @@ jobs:
 
       - name: Run USPTO pipeline
         env:
-          NEO4J_URI: ${{ github.event.inputs.environment == 'test' && secrets.NEO4J_AURA_TEST_URI || secrets.NEO4J_AURA_URI }}
+          NEO4J_URI: ${{ github.event.inputs.environment == 'test' && secrets.NEO4J_TEST_URI || secrets.NEO4J_URI }}
           NEO4J_USER: neo4j
-          NEO4J_PASSWORD: ${{ github.event.inputs.environment == 'test' && secrets.NEO4J_AURA_TEST_PASSWORD || secrets.NEO4J_AURA_PASSWORD }}
+          NEO4J_PASSWORD: ${{ github.event.inputs.environment == 'test' && secrets.NEO4J_TEST_PASSWORD || secrets.NEO4J_PASSWORD }}
           S3_BUCKET: ${{ env.S3_BUCKET }}
           SKIP_NEO4J_LOADING: ${{ github.event.inputs.skip_neo4j }}
         shell: bash
@@ -268,9 +268,9 @@ jobs:
 
       - name: Run CET pipeline
         env:
-          NEO4J_URI: ${{ github.event.inputs.environment == 'test' && secrets.NEO4J_AURA_TEST_URI || secrets.NEO4J_AURA_URI }}
+          NEO4J_URI: ${{ github.event.inputs.environment == 'test' && secrets.NEO4J_TEST_URI || secrets.NEO4J_URI }}
           NEO4J_USER: neo4j
-          NEO4J_PASSWORD: ${{ github.event.inputs.environment == 'test' && secrets.NEO4J_AURA_TEST_PASSWORD || secrets.NEO4J_AURA_PASSWORD }}
+          NEO4J_PASSWORD: ${{ github.event.inputs.environment == 'test' && secrets.NEO4J_TEST_PASSWORD || secrets.NEO4J_PASSWORD }}
           S3_BUCKET: ${{ env.S3_BUCKET }}
           SKIP_NEO4J_LOADING: ${{ github.event.inputs.skip_neo4j }}
         shell: bash

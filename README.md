@@ -54,7 +54,7 @@ For production use, see [Deployment Guide](docs/deployment/README.md) for:
 - **Five-stage ETL**: Extract → Validate → Enrich → Transform → Load
 - **Asset-based orchestration**: Dagster with dependency management
 - **Data quality gates**: Comprehensive validation at each stage
-- **Cloud-first design**: AWS S3 + Neo4j Aura + GitHub Actions
+- **Cloud-first design**: AWS S3 + Neo4j (Docker) + GitHub Actions
 
 ### Specialized Analysis Systems
 

@@ -93,7 +93,7 @@ uv run pytest -n auto --cov=src
 | E2E large / performance | `make docker-e2e-large` | Large dataset benchmark suite |
 | Tear down | `make docker-down` | Stop all containers |
 
-Env vars: copy `.env.example` to `.env` and set `NEO4J_USER`, `NEO4J_PASSWORD` (or Aura credentials) before running the Make targets.
+Env vars: copy `.env.example` to `.env` and set `NEO4J_USER`, `NEO4J_PASSWORD` before running the Make targets.
 
 ## 3. CI/CD Reference
 
@@ -117,7 +117,7 @@ See [docs/performance](../performance) and [docs/guides/quality-assurance.md](..
 
 ## 5. Supporting Guides
 
-- [Neo4j Testing Environments](neo4j-testing-environments-guide.md) – switch between local Docker and Aura for graph tests.
+- [Neo4j Testing Environments](neo4j-testing-environments-guide.md) – Docker-based graph testing environments.
 - [E2E Testing Guide](e2e-testing-guide.md) – scenarios, data prep, CI integration.
 - [Test Coverage Strategy](testing-strategy.md) – coverage goals and focus areas.
 - [Categorization Testing](categorization-testing.md) / [Validation Testing](validation-testing.md) – domain-specific instructions.

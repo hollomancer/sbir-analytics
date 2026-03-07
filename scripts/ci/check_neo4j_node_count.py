@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Check Neo4j Aura Free node count before tests."""
+"""Check Neo4j node count before tests."""
 
 import os
 import sys
@@ -13,7 +13,7 @@ def main():
     password = os.environ.get("NEO4J_PASSWORD", "")
 
     if not uri or not password:
-        print("⚠️  Skipping node count check - no Aura credentials")
+        print("⚠️  Skipping node count check - no Neo4j credentials")
         sys.exit(0)
 
     try:
@@ -22,8 +22,8 @@ def main():
             result = session.run("MATCH (n) RETURN count(n) as count")
             count = result.single()["count"]
             print(f"📊 Current node count: {count:,}")
-            if count > 95000:
-                print(f"⚠️  WARNING: Node count ({count:,}) approaching Aura Free limit (100,000)")
+            if count > 1000000:
+                print(f"⚠️  WARNING: Node count ({count:,}) is very high")
                 print("   Consider cleaning up test data: MATCH (n) DETACH DELETE n")
         driver.close()
     except Exception as e:

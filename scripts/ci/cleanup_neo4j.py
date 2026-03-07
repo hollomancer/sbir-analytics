@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Clean up Neo4j Aura Free test data."""
+"""Clean up Neo4j test data."""
 
 import os
 import sys
@@ -7,13 +7,13 @@ from neo4j import GraphDatabase
 
 
 def main():
-    """Clean up test data from Neo4j Aura Free."""
+    """Clean up test data from Neo4j."""
     uri = os.environ.get("NEO4J_URI", "")
     user = os.environ.get("NEO4J_USERNAME", "neo4j")
     password = os.environ.get("NEO4J_PASSWORD", "")
 
     if not uri or not password:
-        print("⚠️  Skipping cleanup - no Aura credentials")
+        print("⚠️  Skipping cleanup - no Neo4j credentials")
         sys.exit(0)
 
     try:

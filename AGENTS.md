@@ -10,7 +10,7 @@ Graph-based ETL: SBIR awards → Neo4j. Dagster orchestration, DuckDB processing
 
 ### Stack
 
-- **Runtime:** Python 3.11+, uv for dependency management, Neo4j Aura (cloud) or Docker (optional)
+- **Runtime:** Python 3.11+, uv for dependency management, Neo4j (Docker)
 - **Data:** Dagster assets (consolidated), DuckDB, Pandas, Neo4j 5.x
 - **Config:** Hierarchical PipelineConfig + YAML (`config/base.yaml`)
 - **CI:** GitHub Actions (pytest, coverage, regression checks)

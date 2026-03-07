@@ -15,8 +15,8 @@ class SecurityStack(Stack):
         # Secret always exists - always import it  # pragma: allowlist secret
         self.neo4j_secret = secretsmanager.Secret.from_secret_name_v2(
             self,
-            "Neo4jAuraSecret",
-            secret_name="sbir-analytics/neo4j-aura",  # nosec B106  # This is a secret name/path, not a password value
+            "Neo4jSecret",
+            secret_name="sbir-analytics/neo4j",  # nosec B106  # This is a secret name/path, not a password value
         )
 
         # Default to importing existing roles (they may already exist)
@@ -46,7 +46,7 @@ class SecurityStack(Stack):
                     effect=iam.Effect.ALLOW,
                     actions=["secretsmanager:GetSecretValue"],
                     resources=[
-                        f"arn:aws:secretsmanager:{self.region}:{self.account}:secret:sbir-analytics/neo4j-aura*"
+                        f"arn:aws:secretsmanager:{self.region}:{self.account}:secret:sbir-analytics/neo4j*"
                     ],
                 )
             )

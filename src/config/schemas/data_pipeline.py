@@ -128,7 +128,6 @@ class Neo4jConfig(BaseModel):
     retries: int = Field(default=3)
     retry_delay_seconds: int = Field(default=5)
     enable_tls: bool = Field(default=False)
-    use_aura: bool = Field(default=False)
 
     # Performance / loading options
     batch_size: int = 1000

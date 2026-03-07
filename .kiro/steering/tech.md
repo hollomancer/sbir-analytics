@@ -36,7 +36,7 @@ The technology stack has been streamlined through major consolidation efforts:
 ### Infrastructure
 
 - **Docker & Docker Compose**: Containerized development and deployment (optional)
-- **Neo4j 5.x**: Graph database (Neo4j Aura cloud recommended, Docker alternative available)
+- **Neo4j 5.x**: Graph database (Docker locally/CI, EC2 in production)
 
 ## Common Commands
 
@@ -52,7 +52,7 @@ uv sync
 
 uv run dagster dev
 
-## Start local Neo4j (optional - Aura recommended)
+## Start local Neo4j
 
 make neo4j-up
 

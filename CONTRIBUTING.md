@@ -18,7 +18,7 @@ Thank you for your interest in contributing to the SBIR ETL Pipeline project! Th
 
 - Python 3.11 or 3.12
 - uv for dependency management ([install uv](https://github.com/astral-sh/uv))
-- Neo4j Aura account (Free tier available) or Docker for local Neo4j
+- Docker (for local Neo4j)
 - Git
 
 ### Initial Setup
@@ -36,10 +36,11 @@ Thank you for your interest in contributing to the SBIR ETL Pipeline project! Th
    uv sync
    ```
 
-3. **Set up Neo4j Aura (recommended):**
+3. **Start Neo4j with Docker:**
 
-   - Create a Neo4j Aura instance at [neo4j.com/product/auradb/](https://neo4j.com/product/auradb/)
-   - Copy your connection URI and credentials
+   ```bash
+   docker compose --profile dev up neo4j -d
+   ```
 
 4. **Configure environment:**
 

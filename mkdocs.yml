@@ -14,7 +14,6 @@ nav:
       - SBIR Awards: docs/data/sbir.md
       - USAspending: docs/data/usaspending.md
       - Patents: docs/data/patents.md
-      - Neo4j Aura Setup: docs/data/neo4j-aura-setup.md
   - Deployment:
       - Overview: docs/deployment/README.md
       - AWS Serverless: docs/deployment/aws-serverless-deployment-guide.md

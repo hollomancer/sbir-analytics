@@ -25,7 +25,7 @@ Cloud-native, graph-based ETL pipeline that ingests SBIR/USAspending/USPTO data 
 - **Orchestration**: GitHub Actions Solo Plan, AWS Step Functions
 - **Compute**: AWS Lambda (serverless)
 - **Storage**: AWS S3 (data lake)
-- **Database**: Neo4j Aura (cloud graph database)
+- **Database**: Neo4j (Docker locally, EC2 in production)
 - **Processing**: DuckDB/Pandas
 
 **Development**: Docker Compose + local Dagster (secondary/failover option)

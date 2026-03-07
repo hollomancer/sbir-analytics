@@ -30,7 +30,6 @@ env:
   PERFORMANCE_SAMPLE_SIZE: "500"  # Sample size for performance regression tests
   PERFORMANCE_BASELINE_CACHE_KEY: "benchmark-baseline-main"  # Cache key for performance baseline
   # Test configuration
-  AURA_SAMPLE_LIMIT: "1000"  # Sample limit for Aura Free (stays within 100K node limit)
   DOCKER_SAMPLE_LIMIT: "10000"  # Sample limit for Docker Neo4j (no limit)
   # Artifact retention
   DEFAULT_RETENTION_DAYS: "7"  # Default artifact retention in days
@@ -1049,10 +1048,10 @@ jobs:
         run: |
           set -eux
 
-  e2e-aura:
-    name: E2E Tests (Neo4j Aura)
+  e2e-docker:
+    name: E2E Tests (Docker Neo4j)
     needs: test
-    # Only run on push to main/develop - secrets checked at step level
+    # Only run on push to main/develop
     if: |
       always() &&
       needs.test.result == 'success' &&
@@ -1060,57 +1059,29 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
-      NEO4J_URI: ${{ secrets.NEO4J_AURA_URI }}
-      NEO4J_USER: ${{ secrets.NEO4J_AURA_USER }}
-      NEO4J_PASSWORD: ${{ secrets.NEO4J_AURA_PASSWORD }}
-      SBIR_ETL__PIPELINE__SAMPLE_SIZE: "1000"  # Aura Free limit
+      NEO4J_URI: bolt://localhost:7687
+      NEO4J_USERNAME: neo4j
+      NEO4J_PASSWORD: password  # pragma: allowlist secret
+      SBIR_ETL__PIPELINE__SAMPLE_SIZE: ${{ env.DOCKER_SAMPLE_LIMIT }}
 
     steps:
-      - name: Check for Aura credentials
-        id: check-creds
-        run: |
-          if [ -z "${{ secrets.NEO4J_AURA_URI }}" ] || [ -z "${{ secrets.NEO4J_AURA_PASSWORD }}" ]; then
-            echo "skip=true" >> $GITHUB_OUTPUT
-            echo "⚠️ Neo4j Aura credentials not configured, skipping E2E tests"
-          else
-            echo "skip=false" >> $GITHUB_OUTPUT
-          fi
-
       - uses: actions/checkout@v6
-        if: steps.check-creds.outputs.skip != 'true'
 
       - name: Setup Python and UV
-        if: steps.check-creds.outputs.skip != 'true'
         uses: ./.github/actions/setup-python-uv
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           install-dev-deps: "false"
           cache-venv: "true"
 
-      - name: Clear Neo4j Aura database
-        if: steps.check-creds.outputs.skip != 'true'
-        run: |
-          echo "🧹 Clearing Neo4j Aura database before test"
-          uv run python -c "
-          from neo4j import GraphDatabase
-          import os
-          driver = GraphDatabase.driver(
-              os.environ['NEO4J_URI'],
-              auth=(os.environ['NEO4J_USER'], os.environ['NEO4J_PASSWORD'])
-          )
-          with driver.session() as session:
-              # Delete all nodes and relationships
-              session.run('MATCH (n) DETACH DELETE n')
-              result = session.run('MATCH (n) RETURN count(n) as count')
-              count = result.single()['count']
-              print(f'✅ Database cleared. Node count: {count}')
-          driver.close()
-          "
+      - name: Start Neo4j container
+        uses: ./.github/actions/start-neo4j
+        with:
+          neo4j-password: password  # pragma: allowlist secret
 
-      - name: Run E2E tests with Aura
-        if: steps.check-creds.outputs.skip != 'true'
+      - name: Run E2E tests against Docker Neo4j
         run: |
-          echo "🧪 Running E2E tests against Neo4j Aura"
+          echo "🧪 Running E2E tests against Docker Neo4j"
           uv run pytest tests/e2e/ \
             -v \
             --tb=short \
@@ -1118,95 +1089,35 @@ jobs:
             -m "not slow"
 
       - name: Verify Neo4j data loaded
-        if: steps.check-creds.outputs.skip != 'true' && success()
+        if: success()
         run: |
-          echo "✅ Verifying data in Neo4j Aura"
+          echo "Verifying data in Neo4j"
           uv run python -c "
           from neo4j import GraphDatabase
           import os
           driver = GraphDatabase.driver(
               os.environ['NEO4J_URI'],
-              auth=(os.environ['NEO4J_USER'], os.environ['NEO4J_PASSWORD'])
+              auth=(os.environ['NEO4J_USERNAME'], os.environ['NEO4J_PASSWORD'])
           )
           with driver.session() as session:
-              # Count nodes and relationships
               nodes = session.run('MATCH (n) RETURN count(n) as count').single()['count']
               rels = session.run('MATCH ()-[r]->() RETURN count(r) as count').single()['count']
-              print(f'📊 Nodes: {nodes:,}')
-              print(f'📊 Relationships: {rels:,}')
-
-              # Check we're within Aura free limits
-              if nodes > 200000:
-                  print(f'⚠️  Warning: Node count ({nodes:,}) exceeds Aura free limit (200k)')
-              if rels > 400000:
-                  print(f'⚠️  Warning: Relationship count ({rels:,}) exceeds Aura free limit (400k)')
+              print(f'Nodes: {nodes:,}')
+              print(f'Relationships: {rels:,}')
           driver.close()
           "
 
-      - name: Cleanup on failure
-        if: failure()
-        run: |
-          echo "🧹 Cleaning up Neo4j Aura after failure"
-          uv run python -c "
-          from neo4j import GraphDatabase
-          import os
-          driver = GraphDatabase.driver(
-              os.environ['NEO4J_URI'],
-              auth=(os.environ['NEO4J_USER'], os.environ['NEO4J_PASSWORD'])
-          )
-          with driver.session() as session:
-              session.run('MATCH (n) DETACH DELETE n')
-              print('✅ Database cleared')
-          driver.close()
-          " || echo "⚠️  Cleanup failed, manual intervention may be needed"
-          # Use the Make helper which runs the job inside the app container via docker compose
-          make cet-pipeline-dev
-
-      - name: List produced artifacts
-        if: always()
-        run: |
-          set -eux
-          echo "Artifacts produced under data/ and reports/:"
-          find data -maxdepth 4 -type f \( -name "*.json" -o -name "*.parquet" -o -name "*.checks.json" -o -name "*.ndjson" \) -print || true
-          find reports -maxdepth 4 -type f \( -name "*.json" -o -name "*.md" -o -name "*.html" \) -print || true
-
-      - name: Upload CET artifacts
-        if: always()
-        uses: ./.github/actions/upload-artifacts
-        with:
-          name: cet-dev-e2e-artifacts
-          path: |
-            data/processed/cet_*.parquet
-            data/processed/cet_*.json
-            data/processed/*.checks.json
-            data/processed/*.ndjson
-            reports/analytics/**
-            reports/alerts/**
-            reports/benchmarks/**
-          retention-days: ${{ env.CET_ARTIFACT_RETENTION_DAYS }}
-          if-no-files-found: warn
-
-      - name: Tear down dev compose stack (always)
-        if: always()
-        run: |
-          set -eux
-          docker compose --env-file .env --profile dev down --remove-orphans || true
-          echo "Compose stack torn down"
-
       - name: Success note
         if: success()
-        run: echo "CET Dev E2E completed successfully"
+        run: echo "E2E Docker completed successfully"
 
       - name: Failure diagnostics
         if: failure()
         run: |
           echo "Job failed — gathering diagnostic information"
-          docker compose --env-file .env --profile dev ps || true
-          echo "Recent container logs (if available):"
-          for name in $(docker ps --format '{{.Names}}'); do
-            echo "==== logs: $name ===="
-            docker logs --tail 200 "$name" || true
-          done
+          docker ps || true
+          docker logs test-neo4j --tail 100 || true
+
 
   transition-mvp:
     name: Run Transition MVP (shim) and gate on validation summary
@@ -1370,7 +1281,7 @@ jobs:
 
   ci-summary:
     name: CI Summary
-    needs: [detect-changes, code-quality, verify-setup-script, test, container-build-test, performance-check, cet-tests, cet-dev-e2e, e2e-aura, transition-mvp, ml-smoke-test, test-s3-integration]
+    needs: [detect-changes, code-quality, verify-setup-script, test, container-build-test, performance-check, cet-tests, cet-dev-e2e, e2e-docker, transition-mvp, ml-smoke-test, test-s3-integration]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -1413,8 +1324,8 @@ jobs:
             echo "| 🔬 CET E2E (Docker) | ${{ needs.cet-dev-e2e.result == 'success' && '✅' || '❌' }} ${{ needs.cet-dev-e2e.result }} |" >> $GITHUB_STEP_SUMMARY
           fi
 
-          if [ "${{ needs.e2e-aura.result }}" != "skipped" ]; then
-            echo "| ☁️ E2E (Aura) | ${{ needs.e2e-aura.result == 'success' && '✅' || '❌' }} ${{ needs.e2e-aura.result }} |" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ needs.e2e-docker.result }}" != "skipped" ]; then
+            echo "| 🐳 E2E (Docker) | ${{ needs.e2e-docker.result == 'success' && '✅' || '❌' }} ${{ needs.e2e-docker.result }} |" >> $GITHUB_STEP_SUMMARY
           fi
 
           if [ "${{ needs.transition-mvp.result }}" != "skipped" ]; then
@@ -1441,7 +1352,7 @@ jobs:
           needs.test-s3-integration.result == 'failure' ||
           needs.cet-tests.result == 'failure' ||
           needs.cet-dev-e2e.result == 'failure' ||
-          needs.e2e-aura.result == 'failure' ||
+          needs.e2e-docker.result == 'failure' ||
           needs.transition-mvp.result == 'failure'
         run: |
           echo "::error::One or more CI jobs failed"

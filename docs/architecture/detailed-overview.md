@@ -7,12 +7,12 @@ The **sbir-analytics** is a robust, cloud-native ETL (Extract, Transform, Load) 
 **Key Characteristics:**
 
 - **Data Sources**: SBIR.gov awards, USAspending contracts, USPTO patents, transition detection
-- **Processing**: DuckDB (extraction), Pandas/Python (transformation), Neo4j Aura (cloud graph storage)
+- **Processing**: DuckDB (extraction), Pandas/Python (transformation), Neo4j (graph storage)
 - **Orchestration**: GitHub Actions (primary), AWS Step Functions (scheduled workflows)
 - **Compute**: AWS Lambda functions (serverless processing), GitHub Actions runners
 - **Storage**: AWS S3 (primary data lake), local filesystem (development fallback)
-- **Database**: Neo4j Aura (cloud-hosted production), Docker Neo4j (local development)
-- **Deployment**: Cloud-first (GitHub Actions + AWS + Neo4j Aura), Docker (local development)
+- **Database**: Neo4j (EC2 production), Docker Neo4j (local development)
+- **Deployment**: Cloud-first (GitHub Actions + AWS + Neo4j EC2), Docker (local development)
 - **Tech Stack**: Python 3.11/3.12, Neo4j 5.x, AWS Lambda, S3, DuckDB, Pandas, Pydantic, scikit-learn
 
 ---
@@ -726,7 +726,7 @@ Each transition is flagged with:
 | **Compute** | AWS Lambda | Serverless compute for scheduled data refresh workflows |
 | **Storage** | AWS S3 | Primary data lake for CSV files, intermediate results, artifacts |
 | **Secrets Management** | AWS Secrets Manager | Secure storage for Neo4j credentials, API keys |
-| **Database (Production)** | Neo4j Aura | Cloud-hosted graph database, free tier available |
+| **Database (Production)** | Neo4j (EC2) | Self-hosted graph database |
 | **Database (Development)** | Neo4j 5.x (Docker) | Local graph database for development and testing |
 | **Data Processing** | DuckDB + Pandas | Efficient CSV/SQL processing + transformation |
 | **Configuration** | Pydantic 2.x | Type-safe YAML loading with validation |
@@ -789,7 +789,7 @@ Each transition is flagged with:
 └─────────────────────┬───────────────────┘
                       ↓
 ┌─────────────────────────────────────────┐
-│   Neo4j Aura Loading (Batch Upsert)    │
+│   Neo4j Loading (Batch Upsert)         │
 ├─────────────────────────────────────────┤
 │ CREATE CONSTRAINT ... UNIQUE            │
 │ CREATE INDEX ...                        │
@@ -798,24 +798,24 @@ Each transition is flagged with:
 └─────────────────────┬───────────────────┘
                       ↓
 ┌─────────────────────────────────────────┐
-│   Neo4j Aura Cloud Database             │
+│   Neo4j Database                        │
 │   (Queryable Knowledge Graph)           │
 └─────────────────────────────────────────┘
 
 Local Development Alternative:
 - S3 → Local filesystem fallback (data/ directory)
-- Neo4j Aura → Docker Neo4j (docker-compose.yml)
+- Neo4j EC2 → Docker Neo4j (docker-compose.yml)
 - GitHub Actions → Local Dagster (dagster dev)
 ```
 
 ### 6.3 Neo4j Integration
 
-**Production (Neo4j Aura):**
+**Production (Neo4j EC2):**
 
 ```python
-# 1. Configure Neo4j Aura (Production)
+# 1. Configure Neo4j (Production)
 neo4j_config = Neo4jConfig(
-    uri=os.getenv("NEO4J_URI", "neo4j+s://xxxxx.databases.neo4j.io"),
+    uri=os.getenv("NEO4J_URI", "bolt://your-ec2-host:7687"),
     username=os.getenv("NEO4J_USERNAME", "neo4j"),
     password=os.getenv("NEO4J_PASSWORD"),  # Stored in AWS Secrets Manager
     database="neo4j",

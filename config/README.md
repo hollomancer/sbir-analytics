@@ -20,19 +20,6 @@ Environment-specific settings that override base configuration. These files cont
 
 **Note**: `config/prod.yaml` is the comprehensive production configuration file. It includes all production settings including CET extensions, Dagster schedules, and detailed operational parameters.
 
-**Neo4j Aura Free Testing**: For Aura Free testing, use `development` environment with these environment variables:
-
-```bash
-ENVIRONMENT=development
-NEO4J_AURA_FREE=true
-SBIR_ETL__NEO4J__MAX_NODES=95000
-SBIR_ETL__EXTRACTION__SBIR__SAMPLE_LIMIT=1000
-SBIR_ETL__NEO4J__BATCH_SIZE=500
-SBIR_ETL__NEO4J__PARALLEL_THREADS=2
-```
-
-**Deprecated**: `test-aura.yaml` is deprecated. Use `development` with environment variables instead.
-
 ### 3. Environment Variables
 
 Runtime overrides using environment variables with the pattern `SBIR_ETL__SECTION__KEY=value`. These take highest precedence and are useful for secrets and deployment-specific settings.
@@ -166,28 +153,3 @@ Configuration is automatically validated when loaded. Invalid configuration will
 2. Add default values to `base.yaml`
 3. Add environment-specific overrides to `dev.yaml`/`test.yaml`/`prod.yaml` as needed
 4. Update this documentation
-
-## Migration from Deprecated Environments
-
-### From `test-aura` to `development`
-
-The `test-aura` environment is deprecated. Migrate to `development` with environment variables:
-
-**Old:**
-
-```bash
-ENVIRONMENT=test-aura
-```
-
-**New:**
-
-```bash
-ENVIRONMENT=development
-NEO4J_AURA_FREE=true
-SBIR_ETL__NEO4J__MAX_NODES=95000
-SBIR_ETL__EXTRACTION__SBIR__SAMPLE_LIMIT=1000
-SBIR_ETL__NEO4J__BATCH_SIZE=500
-SBIR_ETL__NEO4J__PARALLEL_THREADS=2
-```
-
-See `config/test-aura.yaml` for the full migration guide.

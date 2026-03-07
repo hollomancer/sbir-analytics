@@ -62,7 +62,7 @@ These libraries are already installed and used across all modules:
 
 ### Shared Database Patterns
 
-- **Production**: Neo4j Aura (cloud-hosted, `neo4j+s://` protocol)
+- **Production**: Neo4j (EC2, `bolt://` protocol)
 - **Development**: Docker Neo4j (local, `bolt://` protocol)
 - Batch Neo4j writes (1K nodes/transaction)
 - MERGE operations for idempotent upserts
@@ -212,7 +212,7 @@ def load_config(config_name: str, config_class: type[BaseModel]) -> BaseModel:
 ## Shared infrastructure (Production - Cloud)
 
 export SBIR_ETL_ENV=prod
-export SBIR_ETL_NEO4J_URI=neo4j+s://xxxxx.databases.neo4j.io  # Neo4j Aura
+export SBIR_ETL_NEO4J_URI=bolt://your-neo4j-host:7687  # Neo4j EC2
 export SBIR_ETL_NEO4J_PASSWORD=${AWS_SECRET}  # Retrieved from AWS Secrets Manager
 export SBIR_ETL_LOG_LEVEL=INFO
 export SBIR_ETL_S3_BUCKET=sbir-analytics-data-prod

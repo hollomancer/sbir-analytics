@@ -171,7 +171,7 @@ See [SBIR Weekly Checks](sbir-weekly-checks.md) for monitoring and validation pr
 ### Production Storage
 
 - **Primary:** AWS S3 (`sbir-etl-production-data` bucket)
-- **Graph Database:** Neo4j Aura
+- **Graph Database:** Neo4j (EC2)
 - **Processing:** DuckDB (in-memory or local)
 
 **S3 Structure:**
@@ -192,10 +192,10 @@ s3://sbir-etl-production-data/
 ### Development Storage
 
 - **Local:** `data/` directory (gitignored)
-- **Graph Database:** Neo4j Docker container or Neo4j Aura free tier
+- **Graph Database:** Neo4j Docker container
 - **Processing:** DuckDB local or in-memory
 
-**Setup Guide:** [Neo4j Aura Setup](neo4j-aura-setup.md)
+**Setup:** `docker compose --profile dev up neo4j -d`
 
 ## Data Dictionaries
 
