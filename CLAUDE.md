@@ -32,7 +32,7 @@ Invoke these skills when relevant:
 
 | Skill | Use Case |
 |-------|----------|
-| `/llm-application-dev:embedding-strategies` | Patent-award similarity, PaECTER optimization |
+| `/llm-application-dev:embedding-strategies` | Patent-award similarity, SPECTER2 optimization |
 | `/llm-application-dev:vector-index-tuning` | Similarity search performance |
 | `/llm-application-dev:llm-evaluation` | CET classifier metrics and drift detection |
 

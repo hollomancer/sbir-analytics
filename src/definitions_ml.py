@@ -3,7 +3,7 @@
 This module contains only heavy ML and fiscal assets that require:
 - scikit-learn (CET training, inference, drift detection)
 - spaCy (USPTO AI extraction)
-- sentence-transformers (PaECTER embeddings)
+- sentence-transformers (SPECTER2 embeddings)
 - R packages (fiscal impact analysis)
 
 These run on GitHub Actions runners to avoid serverless timeouts.
@@ -53,7 +53,7 @@ def _get_job(name: str) -> JobDefinition | None:
 # Get CET jobs (should be available since DAGSTER_LOAD_HEAVY_ASSETS=true)
 cet_full_pipeline_job = _get_job("cet_full_pipeline_job")
 fiscal_returns_mvp_job = _get_job("fiscal_returns_mvp_job")
-paecter_job = _get_job("paecter_job")
+specter2_job = _get_job("specter2_job")
 uspto_ai_job = _get_job("uspto_ai_job")
 
 # Create schedules for ML jobs
@@ -88,7 +88,7 @@ for job in auto_jobs.values():
     # Only include jobs that are ML/fiscal related
     if any(
         keyword in job.name.lower()
-        for keyword in ["cet", "fiscal", "paecter", "uspto", "ml", "drift"]
+        for keyword in ["cet", "fiscal", "specter2", "uspto", "ml", "drift"]
     ):
         job_definitions.append(job)
 

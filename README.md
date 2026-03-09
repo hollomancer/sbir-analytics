@@ -62,7 +62,7 @@ For production use, see [Deployment Guide](docs/deployment/README.md) for:
 |--------|---------|---------------|
 | **Transition Detection** | Identify SBIR → federal contract transitions (≥85% precision) | [docs/transition/](docs/transition/) |
 | **CET Classification** | ML-based technology area classification | [docs/ml/](docs/ml/) |
-| **PaECTER Embeddings** | Patent-award similarity using semantic embeddings | [docs/ml/paecter.md](docs/ml/paecter.md) |
+| **SPECTER2 Embeddings** | Patent-award similarity using semantic embeddings | [docs/ml/paecter.md](docs/ml/paecter.md) |
 | **Fiscal Returns** | Economic impact & ROI analysis using StateIO | [docs/fiscal/](docs/fiscal/) |
 | **Patent Analysis** | USPTO patent chains and tech transfer tracking | [docs/schemas/patent-neo4j-schema.md](docs/schemas/patent-neo4j-schema.md) |
 
@@ -170,7 +170,7 @@ This project makes use of and is grateful for the following open-source tools an
 
 - **[StateIO](https://github.com/USEPA/stateior)** - State-level economic input-output modeling framework by USEPA
 - **[Bayesian Mixture-of-Experts](https://www.arxiv.org/abs/2509.23830)** - Research on calibration and uncertainty estimation by Albus Yizhuo Li
-- **[PaECTER](https://huggingface.co/mpi-inno-comp/paecter)** - Patent similarity model by Max Planck Institute
+- **[SPECTER2](https://huggingface.co/allenai/specter2)** - Scientific document similarity model by Allen Institute for AI
 - **@SquadronConsult** - Help with SAM.gov data integration
 
 ## Support

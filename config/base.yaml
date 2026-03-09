@@ -659,9 +659,9 @@ cli:
   max_concurrent_operations: 4
   cache_metrics_seconds: 60
 
-# PaECTER (Patent Embeddings) configuration
+# SPECTER2 (Scientific Paper Embeddings) configuration
 ml:
-  paecter:
+  specter2:
     # Provider selection: "huggingface" (default, uses API) or "local" (requires sentence-transformers)
     provider: "huggingface"
     use_local: false  # Set to true to use local model instead of API
@@ -677,7 +677,7 @@ ml:
 
     # Local model configuration (when use_local=true)
     local:
-      model_name: "mpi-inno-comp/paecter"  # HuggingFace model identifier
+      model_name: "allenai/specter2"  # HuggingFace model identifier
       device: "auto"  # "auto", "cpu", or "cuda"
       batch_size: 32
 

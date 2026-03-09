@@ -24,7 +24,7 @@ Fargate Compute (8GB RAM)
 |-----|--------|-------------|
 | `fiscal_returns_mvp` | 8GB | R/StateIO economic impact analysis |
 
-Note: CET and PaECTER now run on GitHub Actions (free tier).
+Note: CET and SPECTER2 now run on GitHub Actions (free tier).
 
 ## Running Jobs
 

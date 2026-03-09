@@ -18,31 +18,31 @@ class TestConfigAccessor:
         # Create mock config with nested attributes
         config = MagicMock()
         config.ml = MagicMock()
-        config.ml.paecter = MagicMock()
-        config.ml.paecter.use_local = True
-        config.ml.paecter.batch_size = 32
+        config.ml.specter2 = MagicMock()
+        config.ml.specter2.use_local = True
+        config.ml.specter2.batch_size = 32
 
-        result = ConfigAccessor.get_nested(config, "ml.paecter.use_local")
+        result = ConfigAccessor.get_nested(config, "ml.specter2.use_local")
         assert result is True
 
-        result = ConfigAccessor.get_nested(config, "ml.paecter.batch_size")
+        result = ConfigAccessor.get_nested(config, "ml.specter2.batch_size")
         assert result == 32
 
     def test_get_nested_with_dict_access(self):
         """Test get_nested with dictionary-like access."""
         config = {
             "ml": {
-                "paecter": {
+                "specter2": {
                     "use_local": False,
                     "batch_size": 64,
                 }
             }
         }
 
-        result = ConfigAccessor.get_nested(config, "ml.paecter.use_local")
+        result = ConfigAccessor.get_nested(config, "ml.specter2.use_local")
         assert result is False
 
-        result = ConfigAccessor.get_nested(config, "ml.paecter.batch_size")
+        result = ConfigAccessor.get_nested(config, "ml.specter2.batch_size")
         assert result == 64
 
     def test_get_nested_returns_default_when_not_found(self):
@@ -57,7 +57,7 @@ class TestConfigAccessor:
         config = MagicMock()
         config.ml = None
 
-        result = ConfigAccessor.get_nested(config, "ml.paecter.use_local", default=False)
+        result = ConfigAccessor.get_nested(config, "ml.specter2.use_local", default=False)
         assert result is False
 
     def test_get_nested_with_single_level(self):
@@ -78,18 +78,18 @@ class TestConfigAccessor:
     def test_get_nested_mixed_attribute_and_dict(self):
         """Test get_nested with mixed attribute and dict access."""
         config = MagicMock()
-        config.ml = {"paecter": {"use_local": True}}
+        config.ml = {"specter2": {"use_local": True}}
 
-        result = ConfigAccessor.get_nested(config, "ml.paecter.use_local")
+        result = ConfigAccessor.get_nested(config, "ml.specter2.use_local")
         assert result is True
 
     def test_get_nested_dict(self):
         """Test get_nested_dict method."""
         config = MagicMock()
         config.ml = MagicMock()
-        config.ml.paecter = {"use_local": True, "batch_size": 32}
+        config.ml.specter2 = {"use_local": True, "batch_size": 32}
 
-        result = ConfigAccessor.get_nested_dict(config, "ml.paecter")
+        result = ConfigAccessor.get_nested_dict(config, "ml.specter2")
         assert result == {"use_local": True, "batch_size": 32}
 
     def test_get_nested_dict_with_default(self):
@@ -97,7 +97,7 @@ class TestConfigAccessor:
         config = MagicMock()
         config.ml = None
 
-        result = ConfigAccessor.get_nested_dict(config, "ml.paecter", {})
+        result = ConfigAccessor.get_nested_dict(config, "ml.specter2", {})
         assert result == {}
 
     def test_get_nested_dict_pydantic_model(self):
@@ -109,9 +109,9 @@ class TestConfigAccessor:
 
         config = MagicMock()
         config.ml = MagicMock()
-        config.ml.paecter = TestModel()
+        config.ml.specter2 = TestModel()
 
-        result = ConfigAccessor.get_nested_dict(config, "ml.paecter")
+        result = ConfigAccessor.get_nested_dict(config, "ml.specter2")
         assert result == {"use_local": True}
 
     def test_get_nested_dict_legacy_dict_method(self):
@@ -123,16 +123,16 @@ class TestConfigAccessor:
 
         config = MagicMock()
         config.ml = MagicMock()
-        config.ml.paecter = LegacyObj()
+        config.ml.specter2 = LegacyObj()
 
-        result = ConfigAccessor.get_nested_dict(config, "ml.paecter")
+        result = ConfigAccessor.get_nested_dict(config, "ml.specter2")
         assert result == {"use_local": True}
 
     def test_get_nested_dict_not_dict(self):
         """Test get_nested_dict when value is not a dict."""
         config = MagicMock()
         config.ml = MagicMock()
-        config.ml.paecter = "not_a_dict"
+        config.ml.specter2 = "not_a_dict"
 
-        result = ConfigAccessor.get_nested_dict(config, "ml.paecter", {})
+        result = ConfigAccessor.get_nested_dict(config, "ml.specter2", {})
         assert result == {}

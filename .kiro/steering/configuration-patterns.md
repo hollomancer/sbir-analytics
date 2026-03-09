@@ -211,13 +211,13 @@ neo4j:
     enable_data_validation: true
 ```
 
-## PaECTER Configuration
+## SPECTER2 Configuration
 
-### PaECTER Embedding and Similarity Configuration
+### SPECTER2 Embedding and Similarity Configuration
 
 ```yaml
 ml:
-  paecter:
+  specter2:
     # Inference mode selection
     use_local: false  # false = API mode, true = local mode
 
@@ -232,7 +232,7 @@ ml:
 
     # Local model configuration (when use_local=true)
     local:
-      model_name: "mpi-inno-comp/paecter"  # HuggingFace model identifier
+      model_name: "allenai/specter2"  # HuggingFace model identifier
       device: "auto"  # "auto", "cpu", or "cuda"
       batch_size: 32
 
@@ -356,7 +356,7 @@ export SBIR_ETL__ENRICHMENT__MIN_SUCCESS_RATE=0.88
 export SBIR_ETL__CET__CLASSIFICATION__MAX_FEATURES=75000
 export SBIR_ETL__CET__SCORING__HIGH_MIN=75
 
-## PaECTER configuration
+## SPECTER2 configuration
 
 export SBIR_ETL__ML__PAECTER__USE_LOCAL=true
 export SBIR_ETL__ML__PAECTER__API__BATCH_SIZE=64

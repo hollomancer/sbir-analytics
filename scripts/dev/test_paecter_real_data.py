@@ -1,22 +1,22 @@
 #!/usr/bin/env python3
-"""Test PaECTER embeddings with real SBIR award data.
+"""Test SPECTER2 embeddings with real SBIR award data.
 
 This script loads real SBIR award data from your database/CSV and generates
-PaECTER embeddings for testing and evaluation.
+SPECTER2 embeddings for testing and evaluation.
 
 Usage:
     # API mode (default - requires HF_TOKEN environment variable)
     export HF_TOKEN="your_token_here"
-    python scripts/test_paecter_real_data.py
+    python scripts/test_specter2_real_data.py
 
     # Local mode (requires sentence-transformers)
-    python scripts/test_paecter_real_data.py --local
+    python scripts/test_specter2_real_data.py --local
 
     # Specify number of records to process
-    python scripts/test_paecter_real_data.py --limit 100
+    python scripts/test_specter2_real_data.py --limit 100
 
     # Use specific CSV file
-    python scripts/test_paecter_real_data.py --csv data/raw/sbir/awards_data.csv
+    python scripts/test_specter2_real_data.py --csv data/raw/sbir/awards_data.csv
 
 Requirements:
     # API mode (default)
@@ -45,7 +45,7 @@ from rich.table import Table
 
 from src.config.loader import get_config
 from src.extractors.sbir import SbirDuckDBExtractor
-from src.ml.paecter_client import PaECTERClient
+from src.ml.specter2_client import Specter2Client
 from src.utils.cloud_storage import build_s3_path, get_s3_bucket_from_env
 
 
@@ -157,7 +157,7 @@ def prepare_award_texts(df: pd.DataFrame) -> tuple[list[str], pd.Series]:
     Returns:
         Tuple of (prepared_texts, award_ids).
     """
-    client = PaECTERClient()
+    client = Specter2Client()
 
     # Map CSV column names to expected fields
     # Handle both original CSV column names and normalized names
@@ -230,9 +230,9 @@ def prepare_award_texts(df: pd.DataFrame) -> tuple[list[str], pd.Series]:
 
 
 def main():
-    """Run PaECTER test with real SBIR data."""
+    """Run SPECTER2 test with real SBIR data."""
     parser = argparse.ArgumentParser(
-        description="Test PaECTER embeddings with real SBIR award data"
+        description="Test SPECTER2 embeddings with real SBIR award data"
     )
     parser.add_argument(
         "--local",
@@ -266,8 +266,8 @@ def main():
     parser.add_argument(
         "--output",
         type=str,
-        default="data/processed/paecter_embeddings_awards_sample.parquet",
-        help="Output path for embeddings (default: data/processed/paecter_embeddings_awards_sample.parquet)",
+        default="data/processed/specter2_embeddings_awards_sample.parquet",
+        help="Output path for embeddings (default: data/processed/specter2_embeddings_awards_sample.parquet)",
     )
     parser.add_argument(
         "--batch-size",
@@ -278,7 +278,7 @@ def main():
 
     args = parser.parse_args()
 
-    console.print("\n[bold blue]PaECTER Real Data Test[/bold blue]", style="bold")
+    console.print("\n[bold blue]SPECTER2 Real Data Test[/bold blue]", style="bold")
     console.print("Testing patent embeddings with real SBIR award data\n")
 
     # Check mode
@@ -295,7 +295,7 @@ def main():
                 "[yellow]To use API mode:[/yellow]\n"
                 '  export HF_TOKEN="your_token_here"\n\n'
                 "[yellow]Or use local mode instead:[/yellow]\n"
-                "  python scripts/test_paecter_real_data.py --local\n"
+                "  python scripts/test_specter2_real_data.py --local\n"
             )
             return 1
         console.print("[dim]Using HuggingFace API (no model download)[/dim]\n")
@@ -342,9 +342,9 @@ def main():
         return 1
 
     # Step 3: Initialize client
-    console.print("[yellow]Step 3:[/yellow] Initializing PaECTER client...")
+    console.print("[yellow]Step 3:[/yellow] Initializing SPECTER2 client...")
     try:
-        client = PaECTERClient(use_local=use_local)
+        client = Specter2Client(use_local=use_local)
         console.print(
             f"✓ Client initialized: {client.model_name} "
             f"(dimension: {client.embedding_dim}, mode: {client.inference_mode})\n",
@@ -494,7 +494,7 @@ def main():
     console.print("   import pandas as pd")
     console.print("   import numpy as np")
     console.print(
-        "   df = pd.read_parquet('data/processed/paecter_embeddings_awards_sample.parquet')"
+        "   df = pd.read_parquet('data/processed/specter2_embeddings_awards_sample.parquet')"
     )
     console.print("   embeddings = np.array([np.array(e) for e in df['embedding']])")
     console.print("   ```")

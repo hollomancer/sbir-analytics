@@ -9,7 +9,7 @@ on:
         type: choice
         options:
           - cet_full_pipeline
-          - paecter_embeddings
+          - specter2_embeddings
           - fiscal_returns_mvp
           - all
       environment:
@@ -70,10 +70,10 @@ jobs:
             exit 1
           fi
 
-  # PaECTER runs on GitHub Actions (API mode, fits in 7GB)
-  paecter-pipeline:
-    name: PaECTER Embeddings
-    if: github.event.inputs.job_name == 'paecter_embeddings' || github.event.inputs.job_name == 'all'
+  # SPECTER2 runs on GitHub Actions (API mode, fits in 7GB)
+  specter2-pipeline:
+    name: SPECTER2 Embeddings
+    if: github.event.inputs.job_name == 'specter2_embeddings' || github.event.inputs.job_name == 'all'
     runs-on: ubuntu-latest
     timeout-minutes: 180
     container:
@@ -93,20 +93,20 @@ jobs:
       - name: Install HuggingFace dependencies
         run: pip install huggingface-hub
 
-      - name: Run PaECTER pipeline
+      - name: Run SPECTER2 pipeline
         env:
           NEO4J_URI: ${{ github.event.inputs.environment == 'test' && secrets.NEO4J_TEST_URI || secrets.NEO4J_URI }}
           NEO4J_USER: neo4j
           NEO4J_PASSWORD: ${{ github.event.inputs.environment == 'test' && secrets.NEO4J_TEST_PASSWORD || secrets.NEO4J_PASSWORD }}
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
-          PAECTER_MODE: api  # Use API mode, not local model
+          SPECTER2_MODE: api  # Use API mode, not local model
         run: |
-          echo "## 🔬 PaECTER Embeddings" >> $GITHUB_STEP_SUMMARY
-          dagster job execute -m src.definitions -j paecter_job 2>&1 | tee output.txt
+          echo "## 🔬 SPECTER2 Embeddings" >> $GITHUB_STEP_SUMMARY
+          dagster job execute -m src.definitions -j specter2_job 2>&1 | tee output.txt
           if [ ${PIPESTATUS[0]} -eq 0 ]; then
-            echo "✅ PaECTER pipeline completed" >> $GITHUB_STEP_SUMMARY
+            echo "✅ SPECTER2 pipeline completed" >> $GITHUB_STEP_SUMMARY
           else
-            echo "❌ PaECTER pipeline failed" >> $GITHUB_STEP_SUMMARY
+            echo "❌ SPECTER2 pipeline failed" >> $GITHUB_STEP_SUMMARY
             exit 1
           fi
 
@@ -160,7 +160,7 @@ jobs:
 
   summary:
     name: Summary
-    needs: [cet-pipeline, paecter-pipeline, fiscal-pipeline]
+    needs: [cet-pipeline, specter2-pipeline, fiscal-pipeline]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -171,5 +171,5 @@ jobs:
           echo "| Job | Status | Platform |" >> $GITHUB_STEP_SUMMARY
           echo "|-----|--------|----------|" >> $GITHUB_STEP_SUMMARY
           echo "| CET | ${{ needs.cet-pipeline.result || 'skipped' }} | GitHub Actions |" >> $GITHUB_STEP_SUMMARY
-          echo "| PaECTER | ${{ needs.paecter-pipeline.result || 'skipped' }} | GitHub Actions |" >> $GITHUB_STEP_SUMMARY
+          echo "| SPECTER2 | ${{ needs.specter2-pipeline.result || 'skipped' }} | GitHub Actions |" >> $GITHUB_STEP_SUMMARY
           echo "| Fiscal | ${{ needs.fiscal-pipeline.result || 'skipped' }} | AWS Batch |" >> $GITHUB_STEP_SUMMARY

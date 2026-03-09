@@ -39,8 +39,8 @@ src/
     ├── fiscal_assets.py # Fiscal returns analysis
     ├── ma_detection.py # M&A detection assets
     ├── company_categorization.py # Company categorization assets
-    ├── paecter/        # PaECTER embeddings and similarity
-    ├── jobs/           # Dagster job definitions (cet, fiscal, transition, uspto, paecter, usaspending)
+    ├── specter2/       # SPECTER2 embeddings and similarity
+    ├── jobs/           # Dagster job definitions (cet, fiscal, transition, uspto, specter2, usaspending)
     └── sensors/        # Dagster sensors (usaspending refresh)
   cli/                  # Command-line interface (commands, display, integration)
   config/schemas.py     # Hierarchical PipelineConfig (16+ consolidated schemas)
@@ -64,7 +64,7 @@ archive/openspec/       # Archived OpenSpec content (historical reference)
   lambda-deploy.yml     # Lambda function deployment
   data-refresh.yml      # SBIR/USAspending/USPTO data refresh
   build-r-base.yml      # R base image build for fiscal analysis
-  run-ml-jobs.yml       # ML job execution (PaECTER, CET)
+  run-ml-jobs.yml       # ML job execution (SPECTER2, CET)
 ```
 
 ## Workflows & Guidelines
@@ -80,7 +80,7 @@ archive/openspec/       # Archived OpenSpec content (historical reference)
 **Add tests:** Place in `tests/unit|integration|e2e/`, run via `pytest -v --cov=src`
 **Update Neo4j:** Modify `src/loaders/`, use MERGE operations, document in `docs/schemas/`
 **Run fiscal analysis:** Use `fiscal_returns_mvp_job` (core) or `fiscal_returns_full_job` (with sensitivity)
-**Run PaECTER analysis:** Use `paecter_job` for embedding generation and award-patent similarity computation
+**Run SPECTER2 analysis:** Use `specter2_job` for embedding generation and award-patent similarity computation
 **Use CLI tools:** Run `uv run python -m src.cli.main <command>` for dashboard, metrics, status, and enrichment operations
 
 ## References

@@ -12,7 +12,7 @@ This directory contains Jupyter notebooks for interactive analysis of SBIR data,
     make install-ml
     ```
 
-    This installs `ml`, `paecter-local`, and `r` dependency groups.
+    This installs `ml`, `specter2-local`, and `r` dependency groups.
 
 2. **Configure Environment:**
 

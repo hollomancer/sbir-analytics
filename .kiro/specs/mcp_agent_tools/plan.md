@@ -291,7 +291,7 @@ Expose the specialized analysis capabilities:
 |------|--------------|-------------|
 | `detect_transitions` | `src/assets/transition/` | Search for technology transition indicators |
 | `classify_cet` | `src/assets/cet/` | Classify awards by Critical & Emerging Technology area |
-| `find_similar_patents` | `src/assets/paecter/` | Find patents similar to a given award using PaECTER embeddings |
+| `find_similar_patents` | `src/assets/specter2/` | Find patents similar to a given award using SPECTER2 embeddings |
 | `analyze_fiscal_impact` | `src/assets/fiscal_assets.py` | Get economic impact estimates for awards |
 | `detect_ma_activity` | `src/assets/ma_detection.py` | Check for M&A activity affecting companies |
 

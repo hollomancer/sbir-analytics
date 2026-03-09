@@ -1,14 +1,14 @@
-"""Configuration loaders for CET taxonomy, hyperparameters, and PaECTER client."""
+"""Configuration loaders for CET taxonomy, hyperparameters, and SPECTER2 client."""
 
 from pydantic import BaseModel, Field
 
 from .taxonomy_loader import ClassificationConfig, TaxonomyConfig, TaxonomyLoader
 
 
-class PaECTERClientConfig(BaseModel):
-    """Configuration for the PaECTERClient."""
+class Specter2ClientConfig(BaseModel):
+    """Configuration for the Specter2Client."""
 
-    model_name: str = Field("mpi-inno-comp/paecter", description="HuggingFace model identifier")
+    model_name: str = Field("allenai/specter2", description="HuggingFace model identifier")
     use_local: bool = Field(
         False, description="If True, use local sentence-transformers. If False, use API."
     )
@@ -20,9 +20,14 @@ class PaECTERClientConfig(BaseModel):
     enable_cache: bool = Field(True, description="Enable in-memory caching for embeddings.")
 
 
+# Backward compatibility alias
+PaECTERClientConfig = Specter2ClientConfig
+
+
 __all__ = [
     "ClassificationConfig",
     "TaxonomyConfig",
     "TaxonomyLoader",
+    "Specter2ClientConfig",
     "PaECTERClientConfig",
 ]
