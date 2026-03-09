@@ -23,11 +23,6 @@ from ...exceptions import APIError, ConfigurationError, RateLimitError
 from ...models.enrichment import EnrichmentFreshnessRecord
 
 
-# Backward compatibility: Alias to central exception classes
-# TODO: Update all usages to use APIError/RateLimitError directly, then remove these aliases
-USAspendingAPIError = APIError
-USAspendingRateLimitError = RateLimitError
-
 
 class USAspendingAPIClient:
     """Async client for USAspending.gov API v2."""
@@ -119,8 +114,8 @@ class USAspendingAPIClient:
             JSON response as dict
 
         Raises:
-            USAspendingAPIError: If request fails
-            USAspendingRateLimitError: If rate limit exceeded
+            APIError: If request fails
+            RateLimitError: If rate limit exceeded
         """
 
         # Inner function that does the actual request (will be wrapped by retry decorator)
@@ -280,7 +275,7 @@ class USAspendingAPIClient:
                 f"/recipients/{uei}/",
             )
             return response
-        except USAspendingAPIError as e:
+        except APIError as e:
             if "404" in str(e) or "not found" in str(e).lower():
                 logger.debug(f"Recipient not found for UEI: {uei}")
                 return None
@@ -304,7 +299,7 @@ class USAspendingAPIClient:
             )
             results = response.get("results", [])
             return results[0] if results else None
-        except USAspendingAPIError as e:
+        except APIError as e:
             if "404" in str(e) or "not found" in str(e).lower():
                 logger.debug(f"Recipient not found for DUNS: {duns}")
                 return None
@@ -328,7 +323,7 @@ class USAspendingAPIClient:
             )
             results = response.get("results", [])
             return results[0] if results else None
-        except USAspendingAPIError as e:
+        except APIError as e:
             if "404" in str(e) or "not found" in str(e).lower():
                 logger.debug(f"Recipient not found for CAGE: {cage}")
                 return None
@@ -349,7 +344,7 @@ class USAspendingAPIClient:
                 f"/awards/{piid}/",
             )
             return response
-        except USAspendingAPIError as e:
+        except APIError as e:
             if "404" in str(e) or "not found" in str(e).lower():
                 logger.debug(f"Award not found for PIID: {piid}")
                 return None
@@ -375,7 +370,7 @@ class USAspendingAPIClient:
         try:
             response = await self._make_request("GET", "/search/spending_by_award/", params=params)
             return response.get("results", [])
-        except USAspendingAPIError as e:
+        except APIError as e:
             logger.warning(f"Failed to fetch transactions for UEI {uei}: {e}")
             return []
 
@@ -429,7 +424,7 @@ class USAspendingAPIClient:
         """Fetch detailed award information for PSC fallbacks."""
         try:
             return await self._make_request("GET", f"/awards/{award_id}/")
-        except USAspendingAPIError as e:
+        except APIError as e:
             if "404" in str(e) or "not found" in str(e).lower():
                 logger.debug(f"Award not found for id: {award_id}")
                 return None
@@ -509,7 +504,7 @@ class USAspendingAPIClient:
                 }
             )
 
-        except USAspendingAPIError as e:
+        except APIError as e:
             result["error"] = str(e)
             logger.error(f"USAspending enrichment failed for award {award_id}: {e}")
 

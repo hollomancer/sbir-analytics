@@ -22,8 +22,6 @@ Matching Strategy (enricher):
 
 Exported Classes:
 - USAspendingAPIClient: Async API client with rate limiting
-- USAspendingAPIError: API error (backward compatibility alias)
-- USAspendingRateLimitError: Rate limit error (backward compatibility alias)
 
 Exported Functions:
 - enrich_sbir_with_usaspending: Main enrichment function
@@ -34,7 +32,7 @@ Exported Functions:
 from __future__ import annotations
 
 # Client module
-from .client import USAspendingAPIClient, USAspendingAPIError, USAspendingRateLimitError
+from .client import USAspendingAPIClient
 
 # Enricher module
 from .enricher import enrich_sbir_with_usaspending
@@ -46,8 +44,6 @@ from .index import extract_table_sample, parse_toc_table_dat_map
 __all__ = [
     # Client
     "USAspendingAPIClient",
-    "USAspendingAPIError",
-    "USAspendingRateLimitError",
     # Enricher
     "enrich_sbir_with_usaspending",
     # Index

@@ -382,32 +382,60 @@ def raw_uspto_ai_human_sample_extraction(context, uspto_ai_deduplicate) -> str:
       - Path to written NDJSON sample
     """
     op_config = _get_op_config(context)
-    Path(op_config.get("duckdb", DEFAULT_AI_DUCKDB))
-    op_config.get("table", DEFAULT_AI_DEDUP_TABLE)
-    int(op_config.get("sample_n", 200))
+    duckdb_path = Path(op_config.get("duckdb", DEFAULT_AI_DUCKDB))
+    table = op_config.get("table", DEFAULT_AI_DEDUP_TABLE)
+    sample_n = int(op_config.get("sample_n", 200))
     output_path = Path(op_config.get("output_path", DEFAULT_AI_SAMPLE_PATH))
 
-    try:
-        # TODO: Implement sampling logic
-        _ensure_dir_ai(output_path)
-        # Remove if it exists as a directory
-        if output_path.is_dir():
-            import shutil
+    _ensure_dir_ai(output_path)
+    # Remove if output_path exists as a directory (shouldn't, but be safe)
+    if output_path.is_dir():
+        import shutil
 
-            shutil.rmtree(output_path)
+        shutil.rmtree(output_path)
+
+    try:
+        import duckdb
+    except ImportError:
+        context.log.warning("duckdb unavailable; cannot sample — writing empty sentinel")
         with output_path.open("w", encoding="utf-8") as fh:
-            fh.write("")  # empty sentinel
+            fh.write("")
+        return str(output_path)
+
+    try:
+        con = duckdb.connect(database=str(duckdb_path), read_only=True)
+        try:
+            df = con.execute(
+                f"SELECT * FROM {table} ORDER BY RANDOM() LIMIT {sample_n}"
+            ).fetchdf()
+        except Exception:
+            context.log.warning("Failed to query DuckDB table %s for sampling", table)
+            df = None
+        finally:
+            con.close()
+
+        if df is None or df.empty:
+            context.log.warning("No sample returned from DuckDB; wrote empty sentinel")
+            with output_path.open("w", encoding="utf-8") as fh:
+                fh.write("")
+            return str(output_path)
+
+        # Serialize rows to NDJSON
+        with output_path.open("w", encoding="utf-8") as fh:
+            for rec in df.to_dict(orient="records"):
+                grant = rec.get("grant_doc_num") or rec.get("grant_number") or rec.get("patent_id")
+                out = {"grant_doc_num": grant, "prediction": rec}
+                fh.write(json.dumps(out, default=str) + "\n")
+
+        context.log.info(
+            "Wrote human-eval sample",
+            extra={"output_path": str(output_path), "n": len(df)},
+        )
         return str(output_path)
     except Exception as exc:
-        context.log.warning("duckdb unavailable; cannot sample: %s", exc)
-        _ensure_dir_ai(output_path)
-        # Remove if it exists as a directory
-        if output_path.is_dir():
-            import shutil
-
-            shutil.rmtree(output_path)
+        context.log.warning("Sampling from DuckDB failed: %s", exc)
         with output_path.open("w", encoding="utf-8") as fh:
-            fh.write("")  # empty sentinel
+            fh.write("")
         return str(output_path)
 
 

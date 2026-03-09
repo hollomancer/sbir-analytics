@@ -9,6 +9,8 @@ import time
 from pathlib import Path
 from typing import Any
 
+from loguru import logger
+
 from src.exceptions import ValidationError
 from src.models.statistical_reports import PipelineMetrics, ReportArtifact, ReportFormat
 from src.utils.reporting.formats.base import BaseReportProcessor
@@ -176,31 +178,64 @@ class JsonReportProcessor(BaseReportProcessor):
             details={"object_type": str(type(obj)), "object_repr": repr(obj)[:100]},
         )
 
+    # Expected schema for pipeline metrics JSON output.
+    # Maps field name -> (required, expected_type_or_None).
+    _SCHEMA: dict[str, tuple[bool, type | None]] = {
+        "run_id": (True, str),
+        "timestamp": (True, str),
+        "total_records_processed": (True, (int, float)),
+        "status": (False, str),
+        "duration": (False, dict),
+        "performance_metrics": (False, (dict, type(None))),
+        "module_metrics": (False, (dict, type(None))),
+        "data_quality_summary": (False, (dict, type(None))),
+        "errors": (False, (list, type(None))),
+        "warnings": (False, (list, type(None))),
+    }
+
     def _validate_json_schema(self, json_data: dict[str, Any]) -> None:
-        """Validate JSON data against a schema (placeholder for future implementation).
+        """Validate JSON data against the expected pipeline metrics schema.
+
+        Checks required field presence and type correctness for all known fields.
+        Logs warnings for unexpected types rather than raising, to avoid breaking
+        backward compatibility on optional fields.
 
         Args:
             json_data: JSON data to validate
 
         Raises:
-            NotImplementedError: Schema validation not yet implemented
+            ValidationError: If required fields are missing or have wrong types
         """
-        # TODO: Implement JSON schema validation
-        # This would validate the JSON structure against a defined schema
-        # For now, just ensure basic structure exists
-        required_fields = ["run_id", "timestamp", "total_records_processed"]
-        for field in required_fields:
-            if field not in json_data:
-                raise ValidationError(
-                    f"Required field '{field}' missing from JSON data",
-                    component="utils.json_processor",
-                    operation="_validate_json_schema",
-                    details={
-                        "missing_field": field,
-                        "required_fields": required_fields,
-                        "available_fields": list(json_data.keys()),
-                    },
-                )
+        errors: list[str] = []
+
+        for field_name, (required, expected_type) in self._SCHEMA.items():
+            if field_name not in json_data:
+                if required:
+                    errors.append(f"Required field '{field_name}' missing")
+                continue
+
+            if expected_type is not None:
+                value = json_data[field_name]
+                if not isinstance(value, expected_type):
+                    msg = (
+                        f"Field '{field_name}' has type {type(value).__name__}, "
+                        f"expected {expected_type}"
+                    )
+                    if required:
+                        errors.append(msg)
+                    else:
+                        logger.warning(f"JSON schema warning: {msg}")
+
+        if errors:
+            raise ValidationError(
+                f"JSON schema validation failed: {'; '.join(errors)}",
+                component="utils.json_processor",
+                operation="_validate_json_schema",
+                details={
+                    "errors": errors,
+                    "available_fields": list(json_data.keys()),
+                },
+            )
 
     def _get_interactive_flag(self) -> bool:
         """JSON reports are not interactive."""

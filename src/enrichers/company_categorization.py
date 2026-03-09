@@ -32,11 +32,8 @@ import pandas as pd
 from loguru import logger
 
 from src.config.loader import get_config
-from src.enrichers.usaspending import (
-    USAspendingAPIClient,
-    USAspendingAPIError,
-    USAspendingRateLimitError,
-)
+from src.enrichers.usaspending import USAspendingAPIClient
+from src.exceptions import APIError, RateLimitError
 from src.extractors.usaspending import DuckDBUSAspendingExtractor
 from src.utils.async_tools import run_sync
 from src.utils.cache.api_cache import APICache
@@ -332,12 +329,12 @@ def _fuzzy_match_recipient(company_name: str) -> dict[str, Any] | None:
                 "duns": matched_duns,
             }
 
-        except USAspendingRateLimitError as e:
+        except RateLimitError as e:
             logger.warning(
                 f"Rate limit exceeded during autocomplete for '{search_name}', stopping search: {e}"
             )
             break
-        except USAspendingAPIError as e:
+        except APIError as e:
             logger.debug(f"Autocomplete error for variation '{search_name}': {e}")
             continue
 
@@ -701,12 +698,12 @@ def retrieve_company_contracts_api(
                         order="desc",
                     )
                 )
-            except USAspendingRateLimitError as e:
+            except RateLimitError as e:
                 logger.error(f"Rate limit exceeded for page {page}, stopping pagination: {e}")
                 if page == 1:
                     return pd.DataFrame()
                 break
-            except USAspendingAPIError as e:
+            except APIError as e:
                 logger.error(f"API error fetching transactions (page {page}): {e}")
                 if page == 1:
                     return pd.DataFrame()
@@ -868,7 +865,7 @@ def retrieve_company_contracts_api(
                                 order="desc",
                             )
                         )
-                    except (USAspendingRateLimitError, USAspendingAPIError) as e:
+                    except (RateLimitError, APIError) as e:
                         logger.debug(f"Name-based fallback search error on page {name_page}: {e}")
                         break
 
@@ -1062,10 +1059,10 @@ def _fetch_award_details(award_id: str) -> dict[str, Any] | None:
 
         return None
 
-    except USAspendingRateLimitError as e:
+    except RateLimitError as e:
         logger.warning(f"Rate limit exceeded fetching award details for {award_id}: {e}")
         return None
-    except USAspendingAPIError as e:
+    except APIError as e:
         logger.warning(f"API error fetching award details for {award_id}: {e}")
         return None
     except Exception as e:
@@ -1354,14 +1351,14 @@ def retrieve_sbir_awards_api(
                         order="desc",
                     )
                 )
-            except USAspendingRateLimitError as e:
+            except RateLimitError as e:
                 logger.error(
                     f"Rate limit exceeded for SBIR awards page {page}, stopping pagination: {e}"
                 )
                 if page == 1:
                     return pd.DataFrame()
                 break
-            except USAspendingAPIError as e:
+            except APIError as e:
                 logger.error(f"API error fetching SBIR awards page {page}: {e}")
                 if page == 1:
                     return pd.DataFrame()
