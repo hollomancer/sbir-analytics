@@ -98,6 +98,20 @@ class ResolveEntitiesTool(BaseTool):
         entities: list[dict[str, Any]] = []
         match_log: list[dict[str, Any]] = []
 
+        # Load gold set for calibration if provided
+        gold_set: dict[str, str] = {}
+        if gold_set_path:
+            try:
+                gold_df = pd.read_csv(gold_set_path)
+                src_col = next((c for c in ["source_name", "name"] if c in gold_df.columns), None)
+                can_col = next((c for c in ["canonical_id", "canonical"] if c in gold_df.columns), None)
+                if src_col and can_col:
+                    gold_set = dict(zip(gold_df[src_col], gold_df[can_col]))
+                    logger.info(f"Loaded {len(gold_set)} gold set linkages from {gold_set_path}")
+            except Exception as e:
+                logger.warning(f"Could not load gold set: {e}")
+                metadata.warnings.append(f"Gold set load failed: {e}")
+
         # Build canonical index from SAM.gov (authoritative UEI source)
         canonical_by_uei: dict[str, dict] = {}
         canonical_by_duns: dict[str, dict] = {}
@@ -168,16 +182,26 @@ class ResolveEntitiesTool(BaseTool):
                 matched = None
                 method = None
 
+                # Step 0: Gold set override (human-verified linkages)
+                if name in gold_set:
+                    target_id = gold_set[name]
+                    for entity in entities:
+                        if entity["canonical_id"] == target_id:
+                            matched = entity
+                            method = "gold_set"
+                            break
+
                 # Step 1: UEI exact match
-                if uei and uei in canonical_by_uei:
+                # Step 1: UEI exact match
+                if not matched and uei and uei in canonical_by_uei:
                     matched = canonical_by_uei[uei]
                     method = "uei_exact"
                 # Step 2: DUNS exact match
-                elif duns and duns in canonical_by_duns:
+                if not matched and duns and duns in canonical_by_duns:
                     matched = canonical_by_duns[duns]
                     method = "duns_exact"
                 # Step 4: Name + State deterministic
-                else:
+                if not matched:
                     norm_name = _normalize_name(name)
                     key = f"{norm_name}|{state}"
                     if key in canonical_by_name_state:

@@ -71,6 +71,21 @@ class ComputeTransitionRateTool(BaseTool):
 
         df = awards_df.copy()
 
+        # Map company names to canonical IDs using entity table for deduplication
+        if entity_table is not None and not entity_table.empty:
+            canonical_col = next(
+                (c for c in ["canonical_id"] if c in entity_table.columns), None,
+            )
+            name_col = next(
+                (c for c in ["canonical_name"] if c in entity_table.columns), None,
+            )
+            company_src = next(
+                (c for c in ["company", "company_name"] if c in df.columns), None,
+            )
+            if canonical_col and name_col and company_src:
+                name_to_id = dict(zip(entity_table[name_col], entity_table[canonical_col]))
+                df["canonical_id"] = df[company_src].map(name_to_id).fillna(df[company_src])
+
         # Identify columns
         company_col = next(
             (c for c in ["canonical_id", "company", "company_name"] if c in df.columns),

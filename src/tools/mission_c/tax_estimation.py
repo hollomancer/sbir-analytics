@@ -23,7 +23,6 @@ from __future__ import annotations
 from typing import Any
 
 import pandas as pd
-from loguru import logger
 
 from ..base import BaseTool, DataSourceRef, ToolMetadata, ToolResult
 
@@ -72,6 +71,7 @@ class TaxEstimationTool(BaseTool):
         commercialization_scores: pd.DataFrame | None = None,
         effective_tax_rates: dict[str, float] | None = None,
         discount_rate: float = 0.03,
+        assessment_year: int = 2026,
     ) -> ToolResult:
         """Estimate fiscal returns from SBIR investments (Track A + Track B).
 
@@ -82,7 +82,8 @@ class TaxEstimationTool(BaseTool):
             fpds_revenue: Per-company FPDS revenue (from Mission B, Track B)
             commercialization_scores: Observable scores for confidence weighting
             effective_tax_rates: Override IRS effective rates by sector
-            discount_rate: Discount rate for NPV calculation
+            discount_rate: Discount rate for NPV calculation (default 3%)
+            assessment_year: Reference year for NPV discounting
 
         Returns:
             ToolResult with Track A estimates, Track B observations, calibration
@@ -158,6 +159,13 @@ class TaxEstimationTool(BaseTool):
                 corporate_income_tax = corporate_surplus * corp_tax_rate
                 total_tax = individual_income_tax + payroll_tax + corporate_income_tax
 
+                # NPV discounting: discount tax receipts to present value
+                # Years from assessment reference point (latest FY in data)
+                fy_int = int(fy) if fy is not None else assessment_year
+                years_from_present = max(0, assessment_year - fy_int)
+                discount_factor = 1.0 / ((1.0 + discount_rate) ** years_from_present)
+                discounted_tax = total_tax * discount_factor
+
                 track_a_results.append({
                     "company_id": company,
                     "fiscal_year": fy,
@@ -172,6 +180,8 @@ class TaxEstimationTool(BaseTool):
                     "payroll_tax": round(payroll_tax, 2),
                     "corporate_income_tax": round(corporate_income_tax, 2),
                     "total_estimated_tax": round(total_tax, 2),
+                    "discounted_tax": round(discounted_tax, 2),
+                    "discount_factor": round(discount_factor, 6),
                     "effective_tax_rate_used": corp_tax_rate,
                 })
 
@@ -220,7 +230,8 @@ class TaxEstimationTool(BaseTool):
                     None,
                 )
                 if b_col:
-                    b_by_company = fpds_revenue.set_index(company_col_b)[b_col]
+                    # Aggregate FPDS revenue per company before comparison
+                    b_by_company = fpds_revenue.groupby(company_col_b)[b_col].sum()
                     overlap = a_by_company.index.intersection(b_by_company.index)
                     if len(overlap) > 0:
                         a_vals = a_by_company.loc[overlap]
@@ -238,11 +249,17 @@ class TaxEstimationTool(BaseTool):
         summary: dict[str, Any] = {
             "track_a": {
                 "total_estimated_tax_receipts": float(track_a_df["total_estimated_tax"].sum()) if not track_a_df.empty else 0.0,
+                "total_discounted_tax_receipts": float(track_a_df["discounted_tax"].sum()) if not track_a_df.empty and "discounted_tax" in track_a_df.columns else 0.0,
                 "total_sbir_investment": float(track_a_df["award_amount"].sum()) if not track_a_df.empty else 0.0,
                 "implied_roi": round(
                     float(track_a_df["total_estimated_tax"].sum()) /
                     float(track_a_df["award_amount"].sum()), 4
                 ) if not track_a_df.empty and track_a_df["award_amount"].sum() > 0 else None,
+                "npv_roi": round(
+                    float(track_a_df["discounted_tax"].sum()) /
+                    float(track_a_df["award_amount"].sum()), 4
+                ) if not track_a_df.empty and "discounted_tax" in track_a_df.columns and track_a_df["award_amount"].sum() > 0 else None,
+                "discount_rate": discount_rate,
                 "awards_estimated": len(track_a_df),
             },
             "track_b": track_b_summary,

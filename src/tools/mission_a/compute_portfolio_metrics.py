@@ -16,11 +16,9 @@ raw award counts by any analyst with the same public data.
 
 from __future__ import annotations
 
-from collections import Counter
 from typing import Any
 
 import pandas as pd
-from loguru import logger
 
 from ..base import BaseTool, DataSourceRef, ToolMetadata, ToolResult
 
@@ -76,10 +74,25 @@ class ComputePortfolioMetricsTool(BaseTool):
 
         df = classified_awards.copy()
 
+        # Map company names to canonical IDs using entity table for deduplication
+        if entity_table is not None and not entity_table.empty:
+            canonical_col = next(
+                (c for c in ["canonical_id"] if c in entity_table.columns), None,
+            )
+            name_col = next(
+                (c for c in ["canonical_name"] if c in entity_table.columns), None,
+            )
+            company_src = next(
+                (c for c in ["company", "company_name"] if c in df.columns), None,
+            )
+            if canonical_col and name_col and company_src:
+                name_to_id = dict(zip(entity_table[name_col], entity_table[canonical_col]))
+                df["canonical_id"] = df[company_src].map(name_to_id).fillna(df[company_src])
+
         # Identify columns
         cet_col = next((c for c in ["cet_primary", "cet_area", "cet_classification"] if c in df.columns), None)
         agency_col = next((c for c in ["agency", "awarding_agency"] if c in df.columns), None)
-        company_col = next((c for c in ["company", "company_name", "canonical_id"] if c in df.columns), None)
+        company_col = next((c for c in ["canonical_id", "company", "company_name"] if c in df.columns), None)
         state_col = next((c for c in ["state", "company_state"] if c in df.columns), None)
         fy_col = next((c for c in ["fiscal_year", "award_year", "fy"] if c in df.columns), None)
         phase_col = next((c for c in ["phase", "award_phase", "program_phase"] if c in df.columns), None)

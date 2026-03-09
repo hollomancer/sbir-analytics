@@ -3,7 +3,6 @@
 import pytest
 import pandas as pd
 
-from src.tools.base import ToolMetadata
 from src.tools.phase0.resolve_entities import ResolveEntitiesTool, _normalize_name, _generate_canonical_id
 
 
