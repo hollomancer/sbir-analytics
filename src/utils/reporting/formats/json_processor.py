@@ -9,6 +9,8 @@ import time
 from pathlib import Path
 from typing import Any
 
+from loguru import logger
+
 from src.exceptions import ValidationError
 from src.models.statistical_reports import PipelineMetrics, ReportArtifact, ReportFormat
 from src.utils.reporting.formats.base import BaseReportProcessor
@@ -222,8 +224,6 @@ class JsonReportProcessor(BaseReportProcessor):
                     if required:
                         errors.append(msg)
                     else:
-                        from loguru import logger
-
                         logger.warning(f"JSON schema warning: {msg}")
 
         if errors:

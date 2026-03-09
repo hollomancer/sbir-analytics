@@ -170,58 +170,58 @@ class GeographicResolver:
         """Build a mapping from 3-digit ZIP prefix to state code.
 
         Uses the USPS ZIP code allocation scheme where the first 3 digits
-        of a ZIP code determine the state/territory.
+        of a ZIP code determine the state/territory. Only uses proper 3-digit
+        ranges (100–999) plus special low-number prefixes (001–099).
         """
+        # All ranges use 3-digit prefixes exclusively to avoid overlap issues.
+        # Source: USPS Publication 65, National Five-Digit ZIP Code & Post Office Directory
         ranges: list[tuple[int, int, str]] = [
-            # Format: (start_prefix, end_prefix_inclusive, state_code)
-            (5, 5, "NY"), (6, 9, "PR"),  # PR/VI
-            (10, 14, "NY"), (15, 19, "PA"), (20, 20, "DC"),
-            (21, 21, "MD"), (22, 24, "VA"), (25, 26, "WV"),
-            (27, 28, "NC"), (29, 29, "SC"), (30, 31, "GA"),
-            (32, 34, "FL"), (35, 36, "AL"), (37, 38, "TN"),
-            (39, 39, "MS"), (40, 42, "KY"), (43, 45, "OH"),
-            (46, 47, "IN"), (48, 49, "MI"), (50, 52, "IA"),
-            (53, 54, "WI"), (55, 56, "MN"), (57, 57, "SD"),
-            (58, 58, "ND"), (59, 59, "MT"), (60, 62, "IL"),
-            (63, 65, "MO"), (66, 67, "KS"), (68, 69, "NE"),
-            (70, 71, "LA"), (72, 72, "AR"), (73, 74, "OK"),
-            (75, 79, "TX"), (80, 81, "CO"), (82, 83, "WY"),
-            (83, 83, "ID"), (84, 84, "UT"), (85, 86, "AZ"),
-            (87, 88, "NM"), (89, 89, "NV"),
-            (90, 96, "CA"), (97, 97, "OR"), (98, 99, "WA"),
-            (1, 2, "MA"), (3, 3, "NH"), (4, 4, "ME"),
-            (100, 119, "NY"), (120, 149, "NY"),  # extended NY
-            (150, 196, "PA"),  # extended PA
+            # New England
+            (10, 27, "MA"), (28, 29, "RI"), (30, 38, "NH"),
+            (39, 49, "ME"), (50, 54, "VT"), (60, 69, "CT"),
+            # Mid-Atlantic
+            (1, 5, "NY"), (6, 9, "PR"),
+            (100, 149, "NY"),
+            (150, 196, "PA"),
+            # DC / Maryland / Virginia / West Virginia
             (200, 205, "DC"), (206, 219, "MD"),
             (220, 246, "VA"), (247, 268, "WV"),
+            # Carolinas
             (270, 289, "NC"), (290, 299, "SC"),
+            # Southeast
             (300, 319, "GA"), (320, 349, "FL"),
             (350, 369, "AL"), (370, 385, "TN"),
-            (386, 397, "MS"), (400, 427, "KY"),
-            (430, 459, "OH"), (460, 479, "IN"),
-            (480, 499, "MI"), (500, 528, "IA"),
-            (530, 549, "WI"), (550, 567, "MN"),
-            (570, 577, "SD"), (580, 588, "ND"),
-            (590, 599, "MT"), (600, 629, "IL"),
-            (630, 658, "MO"), (660, 679, "KS"),
-            (680, 693, "NE"), (700, 714, "LA"),
-            (716, 729, "AR"), (730, 749, "OK"),
-            (750, 799, "TX"), (800, 816, "CO"),
-            (820, 831, "WY"), (832, 838, "ID"),
-            (840, 847, "UT"), (850, 865, "AZ"),
-            (870, 884, "NM"), (889, 898, "NV"),
-            (900, 966, "CA"), (970, 979, "OR"),
-            (980, 994, "WA"), (995, 999, "AK"),
-            (967, 968, "HI"), (6, 9, "PR"),
-            (0, 0, "NY"),  # APO/FPO
+            (386, 397, "MS"),
+            # Central
+            (400, 427, "KY"), (430, 459, "OH"),
+            (460, 479, "IN"), (480, 499, "MI"),
+            # Upper Midwest
+            (500, 528, "IA"), (530, 549, "WI"),
+            (550, 567, "MN"), (570, 577, "SD"),
+            (580, 588, "ND"), (590, 599, "MT"),
+            # Illinois / Missouri / Kansas / Nebraska
+            (600, 629, "IL"), (630, 658, "MO"),
+            (660, 679, "KS"), (680, 693, "NE"),
+            # South Central
+            (700, 714, "LA"), (716, 729, "AR"),
+            (730, 749, "OK"), (750, 799, "TX"),
+            # Mountain West
+            (800, 816, "CO"), (820, 831, "WY"),
+            (832, 838, "ID"), (840, 847, "UT"),
+            (850, 865, "AZ"), (870, 884, "NM"),
+            (889, 898, "NV"),
+            # Pacific
+            (900, 961, "CA"), (967, 968, "HI"),
+            (962, 966, "CA"),  # military/misc CA
+            (970, 979, "OR"), (980, 994, "WA"),
+            (995, 999, "AK"),
         ]
 
         mapping: dict[str, str] = {}
         for start, end, state in ranges:
             for prefix in range(start, end + 1):
                 key = f"{prefix:03d}"
-                if key not in mapping:
-                    mapping[key] = state
+                mapping[key] = state
 
         return mapping
 

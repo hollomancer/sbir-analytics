@@ -88,14 +88,15 @@ def evaluate_benchmarks(
     typer.echo(f"Failing commercialization benchmark: {summary.companies_failing_commercialization}")
 
     if subject_only:
-        # Filter to subject companies
+        from src.models.benchmark_models import BenchmarkTier
+
         summary.transition_results = [
             r for r in summary.transition_results
-            if r.tier.value != "not_subject"
+            if r.tier != BenchmarkTier.NOT_SUBJECT
         ]
         summary.commercialization_results = [
             r for r in summary.commercialization_results
-            if r.tier.value != "not_subject"
+            if r.tier != BenchmarkTier.NOT_SUBJECT
         ]
 
     if report:

@@ -232,12 +232,12 @@ class SensitivityResult:
 
     # How close to becoming subject
     phase1_count: int
-    phase1_to_standard_transition: int  # Awards needed to hit 20
+    phase1_to_standard_transition: int  # Awards needed to hit 21
     phase1_to_increased_transition: int  # Awards needed to hit 51
     phase2_count_for_commercialization: int
     phase2_to_standard_commercialization: int  # Awards needed to hit 16
-    phase2_to_increased_tier1: int  # Awards needed to hit 21
-    phase2_to_increased_tier2: int  # Awards needed to hit 25
+    phase2_to_increased_tier1: int  # Awards needed to hit 51
+    phase2_to_increased_tier2: int  # Awards needed to hit 101
 
     # If already subject, how close to failing
     transition_rate_margin: float | None = None

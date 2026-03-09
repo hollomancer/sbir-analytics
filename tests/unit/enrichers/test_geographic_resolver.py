@@ -689,3 +689,68 @@ class TestEdgeCases:
 
         assert quality["resolution_rate"] == 0.0
         assert quality["average_confidence"] == 0.0
+
+
+class TestZipCodeToStateResolution:
+    """Tests for resolve_from_zip_code and _build_zip3_to_state."""
+
+    def test_build_zip3_mapping_coverage(self, resolver):
+        """ZIP3 mapping should cover major state prefixes."""
+        mapping = resolver._zip3_to_state
+        # Spot-check well-known prefixes
+        assert mapping["100"] == "NY"  # New York City
+        assert mapping["900"] == "CA"  # Los Angeles
+        assert mapping["606"] == "IL"  # Chicago
+        assert mapping["770"] == "TX"  # Houston
+        assert mapping["200"] == "DC"  # Washington DC
+        assert mapping["021"] == "MA"  # Boston
+        assert mapping["331"] == "FL"  # Miami
+        assert mapping["981"] == "WA"  # Seattle
+
+    def test_build_zip3_no_id_wy_collision(self, resolver):
+        """Idaho (832-838) should not be blocked by Wyoming (820-831)."""
+        mapping = resolver._zip3_to_state
+        assert mapping["832"] == "ID"
+        assert mapping["835"] == "ID"
+        assert mapping["831"] == "WY"
+
+    def test_resolve_from_zip_code_basic(self, resolver):
+        """ZIP code resolution should return correct state."""
+        row = pd.Series({"company_zip": "10001"})
+        result = resolver.resolve_from_zip_code(row)
+        assert result is not None
+        assert result.state_code == "NY"
+        assert result.confidence == 0.70
+        assert result.method == "zip3_prefix"
+
+    def test_resolve_from_zip_code_california(self, resolver):
+        """CA ZIP should resolve correctly."""
+        row = pd.Series({"company_zip": "94105"})
+        result = resolver.resolve_from_zip_code(row)
+        assert result is not None
+        assert result.state_code == "CA"
+
+    def test_resolve_from_zip_code_none(self, resolver):
+        """Missing ZIP should return None."""
+        row = pd.Series({"company_zip": None})
+        result = resolver.resolve_from_zip_code(row)
+        assert result is None
+
+    def test_resolve_from_zip_code_invalid(self, resolver):
+        """Non-numeric ZIP should return None."""
+        row = pd.Series({"company_zip": "abc"})
+        result = resolver.resolve_from_zip_code(row)
+        assert result is None
+
+    def test_resolve_from_zip_code_short(self, resolver):
+        """ZIP with fewer than 3 digits should return None."""
+        row = pd.Series({"company_zip": "12"})
+        result = resolver.resolve_from_zip_code(row)
+        assert result is None
+
+    def test_resolve_from_zip_column_alias(self, resolver):
+        """Should find ZIP in alternate column names."""
+        row = pd.Series({"zip": "60601"})
+        result = resolver.resolve_from_zip_code(row)
+        assert result is not None
+        assert result.state_code == "IL"

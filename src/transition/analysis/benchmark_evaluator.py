@@ -6,15 +6,15 @@ and whether they pass or fail, given a target evaluation fiscal year.
 Implements the two benchmark types:
 
 1. **Phase I→II Transition Rate Benchmark**
-   - Standard: company has ≥20 Phase I awards in the 5-FY window (excl. most recent FY)
+   - Standard: company has ≥21 Phase I awards in the 5-FY window (excl. most recent FY)
      → must achieve ≥0.25 transition ratio (Phase II / Phase I)
    - Increased (experienced firms): ≥51 Phase I awards → ≥0.50 ratio
 
 2. **Commercialization Rate Benchmark**
    - Standard: company has ≥16 Phase II awards in the 10-FY window (excl. 2 most recent FYs)
      → must avg ≥$100K sales/investment per Phase II, OR ≥15% patents per Phase II
-   - Increased Tier 1: ≥21 Phase II awards (no patent path)
-   - Increased Tier 2: ≥25 Phase II awards (no patent path)
+   - Increased Tier 1: ≥51 Phase II awards → avg $250K+ (no patent path)
+   - Increased Tier 2: ≥101 Phase II awards → avg $450K+ (no patent path)
 
 Also provides sensitivity analysis identifying companies near the margins of
 these thresholds—both those approaching eligibility and those at risk of failing.
