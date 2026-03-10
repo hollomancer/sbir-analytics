@@ -16,6 +16,9 @@ Usage:
 
     # Customize FY and margins
     python scripts/data/run_benchmark_analysis.py --fy 2026 --margin-awards 5 --margin-ratio 0.05
+
+    # Include USAspending transaction data for commercialization benchmark
+    python scripts/data/run_benchmark_analysis.py --usaspending data/usaspending/contracts.parquet
 """
 
 import argparse
@@ -78,7 +81,13 @@ def download_from_s3(dest: Path, bucket: str = "sbir-etl-production-data") -> Pa
     return dest
 
 
-def run_analysis(awards_path: Path, fy: int, margin_awards: int, margin_ratio: float):
+def run_analysis(
+    awards_path: Path,
+    fy: int,
+    margin_awards: int,
+    margin_ratio: float,
+    usaspending_path: Path | None = None,
+):
     """Run benchmark evaluation and sensitivity analysis."""
     import pandas as pd
 
@@ -101,9 +110,26 @@ def run_analysis(awards_path: Path, fy: int, margin_awards: int, margin_ratio: f
             print(f"Unique companies: {df[col].nunique():,}")
             break
 
+    # Build commercialization data from USAspending if provided
+    commercialization_df = None
+    if usaspending_path:
+        from src.transition.analysis.usaspending_commercialization import (
+            build_commercialization_from_usaspending,
+        )
+
+        print(f"\nBuilding commercialization data from USAspending: {usaspending_path}")
+        commercialization_df = build_commercialization_from_usaspending(
+            usaspending_path, evaluation_fy=fy,
+        )
+        print(f"Commercialization records: {len(commercialization_df):,} companies")
+        total_obligations = commercialization_df["total_sales_and_investment"].sum()
+        print(f"Total federal obligations: ${total_obligations:,.0f}")
+
     # Full evaluation
     print(f"\n{'='*60}")
     print(f"SBIR/STTR Benchmark Evaluation — FY {fy}")
+    if commercialization_df is not None:
+        print("(with USAspending commercialization data)")
     print(f"{'='*60}")
 
     evaluator = BenchmarkEligibilityEvaluator(
@@ -111,7 +137,7 @@ def run_analysis(awards_path: Path, fy: int, margin_awards: int, margin_ratio: f
         sensitivity_margin_awards=margin_awards,
         sensitivity_margin_ratio=margin_ratio,
     )
-    summary = evaluator.evaluate(df)
+    summary = evaluator.evaluate(df, commercialization_df=commercialization_df)
 
     print(f"Determination date: {summary.determination_date}")
     print(f"Transition window (Phase I): FY {summary.transition_window.start_fy}–{summary.transition_window.end_fy}")
@@ -138,7 +164,7 @@ def run_analysis(awards_path: Path, fy: int, margin_awards: int, margin_ratio: f
     print(f"Sensitivity Analysis (margin: {margin_awards} awards, {margin_ratio:.0%} ratio)")
     print(f"{'='*60}")
 
-    at_risk = evaluator.get_companies_at_risk(df)
+    at_risk = evaluator.get_companies_at_risk(df, commercialization_df=commercialization_df)
     print(f"Companies at risk: {len(at_risk)}")
 
     for sr in at_risk:
@@ -191,6 +217,10 @@ def main():
         "--margin-ratio", type=float, default=0.05,
         help="Ratio margin for sensitivity detection (default: 0.05)"
     )
+    parser.add_argument(
+        "--usaspending", type=Path, default=None,
+        help="Path to USAspending transactions Parquet for commercialization benchmark"
+    )
     args = parser.parse_args()
 
     dest = Path("data/raw/sbir/award_data.csv")
@@ -205,7 +235,14 @@ def main():
     else:
         awards_path = download_from_sbir_gov(dest)
 
-    run_analysis(awards_path, args.fy, args.margin_awards, args.margin_ratio)
+    usaspending_path = None
+    if args.usaspending:
+        if not args.usaspending.exists():
+            print(f"USAspending file not found: {args.usaspending}", file=sys.stderr)
+            sys.exit(1)
+        usaspending_path = args.usaspending
+
+    run_analysis(awards_path, args.fy, args.margin_awards, args.margin_ratio, usaspending_path)
 
 
 if __name__ == "__main__":
