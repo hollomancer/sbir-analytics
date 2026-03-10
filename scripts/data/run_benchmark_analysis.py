@@ -19,6 +19,9 @@ Usage:
 
     # Include USAspending transaction data for commercialization benchmark
     python scripts/data/run_benchmark_analysis.py --usaspending data/usaspending/contracts.parquet
+
+    # Fetch USAspending data live from the API (no files needed)
+    python scripts/data/run_benchmark_analysis.py --usaspending-api
 """
 
 import argparse
@@ -87,6 +90,7 @@ def run_analysis(
     margin_awards: int,
     margin_ratio: float,
     usaspending_path: Path | None = None,
+    usaspending_api: bool = False,
 ):
     """Run benchmark evaluation and sensitivity analysis."""
     import pandas as pd
@@ -112,7 +116,21 @@ def run_analysis(
 
     # Build commercialization data from USAspending if provided
     commercialization_df = None
-    if usaspending_path:
+    if usaspending_api:
+        from src.transition.analysis.usaspending_commercialization import (
+            fetch_commercialization_from_api,
+        )
+
+        cache_file = output_dir / "usaspending_api_cache.json"
+        print(f"\nFetching commercialization data from USAspending API...")
+        commercialization_df = fetch_commercialization_from_api(
+            df, evaluation_fy=fy, cache_path=cache_file,
+        )
+        print(f"Commercialization records: {len(commercialization_df):,} companies")
+        if not commercialization_df.empty:
+            total_obligations = commercialization_df["total_sales_and_investment"].sum()
+            print(f"Total federal obligations: ${total_obligations:,.0f}")
+    elif usaspending_path:
         from src.transition.analysis.usaspending_commercialization import (
             build_commercialization_from_usaspending,
         )
@@ -221,6 +239,10 @@ def main():
         "--usaspending", type=Path, default=None,
         help="Path to USAspending transactions Parquet for commercialization benchmark"
     )
+    parser.add_argument(
+        "--usaspending-api", action="store_true",
+        help="Fetch commercialization data live from api.usaspending.gov"
+    )
     args = parser.parse_args()
 
     dest = Path("data/raw/sbir/award_data.csv")
@@ -242,7 +264,10 @@ def main():
             sys.exit(1)
         usaspending_path = args.usaspending
 
-    run_analysis(awards_path, args.fy, args.margin_awards, args.margin_ratio, usaspending_path)
+    run_analysis(
+        awards_path, args.fy, args.margin_awards, args.margin_ratio,
+        usaspending_path, args.usaspending_api,
+    )
 
 
 if __name__ == "__main__":
