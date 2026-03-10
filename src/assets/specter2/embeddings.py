@@ -1,8 +1,8 @@
-"""Dagster assets for PaECTER embedding generation and similarity computation.
+"""Dagster assets for SPECTER2 embedding generation and similarity computation.
 
 This module provides assets for:
-- Generating PaECTER embeddings for SBIR awards
-- Generating PaECTER embeddings for USPTO patents
+- Generating SPECTER2 embeddings for SBIR awards
+- Generating SPECTER2 embeddings for USPTO patents
 - Computing similarity scores between awards and patents
 """
 
@@ -16,24 +16,24 @@ import pandas as pd
 from dagster import AssetCheckResult, AssetCheckSeverity, MetadataValue, Output, asset, asset_check
 
 from ...config.loader import get_config
-from ...ml.config import PaECTERClientConfig
-from ...ml.paecter_client import PaECTERClient
+from ...ml.config import Specter2ClientConfig
+from ...ml.specter2_client import Specter2Client
 from ...utils.asset_column_helper import AssetColumnHelper
 from ...utils.config_accessor import ConfigAccessor
 from ...utils.monitoring import performance_monitor
 
 
 @asset(
-    description="PaECTER embeddings for SBIR awards",
-    group_name="paecter",
+    description="SPECTER2 embeddings for SBIR awards",
+    group_name="specter2",
     compute_kind="ml",
 )
-def paecter_embeddings_awards(
+def specter2_embeddings_awards(
     context,
     validated_sbir_awards: pd.DataFrame,
 ) -> Output[pd.DataFrame]:
     """
-    Generate PaECTER embeddings for SBIR awards.
+    Generate SPECTER2 embeddings for SBIR awards.
 
     Args:
         validated_sbir_awards: Validated SBIR awards DataFrame
@@ -44,13 +44,13 @@ def paecter_embeddings_awards(
     config = get_config()
 
     context.log.info(
-        "Starting PaECTER embedding generation for SBIR awards",
+        "Starting SPECTER2 embedding generation for SBIR awards",
         extra={"award_count": len(validated_sbir_awards)},
     )
 
-    # Initialize PaECTER client
-    use_local = ConfigAccessor.get_nested(config, "ml.paecter.use_local", False)
-    client = PaECTERClient(config=PaECTERClientConfig(use_local=use_local))
+    # Initialize SPECTER2 client
+    use_local = ConfigAccessor.get_nested(config, "ml.specter2.use_local", False)
+    client = Specter2Client(config=Specter2ClientConfig(use_local=use_local))
 
     # Find award ID column using helper
     award_id_col = AssetColumnHelper.find_award_id_column(validated_sbir_awards)
@@ -92,8 +92,8 @@ def paecter_embeddings_awards(
         texts.append(text)
 
     # Generate embeddings with performance monitoring
-    with performance_monitor.monitor_block("paecter_generate_award_embeddings"):
-        batch_size = ConfigAccessor.get_nested(config, "ml.paecter.batch_size", 32)
+    with performance_monitor.monitor_block("specter2_generate_award_embeddings"):
+        batch_size = ConfigAccessor.get_nested(config, "ml.specter2.batch_size", 32)
         result = client.generate_embeddings(
             texts,
             batch_size=batch_size,
@@ -112,7 +112,7 @@ def paecter_embeddings_awards(
     )
 
     context.log.info(
-        "PaECTER embeddings generated",
+        "SPECTER2 embeddings generated",
         extra={
             "award_count": len(embeddings_df),
             "model_version": result.model_version,
@@ -134,16 +134,16 @@ def paecter_embeddings_awards(
 
 
 @asset(
-    description="PaECTER embeddings for USPTO patents",
-    group_name="paecter",
+    description="SPECTER2 embeddings for USPTO patents",
+    group_name="specter2",
     compute_kind="ml",
 )
-def paecter_embeddings_patents(
+def specter2_embeddings_patents(
     context,
     transformed_patents: dict[str, Any],
 ) -> Output[pd.DataFrame]:
     """
-    Generate PaECTER embeddings for USPTO patents.
+    Generate SPECTER2 embeddings for USPTO patents.
 
     Loads patent data from transformed_patents JSONL file or S3 PatentsView data.
 
@@ -161,11 +161,11 @@ def paecter_embeddings_patents(
 
     config = get_config()
 
-    context.log.info("Starting PaECTER embedding generation for USPTO patents")
+    context.log.info("Starting SPECTER2 embedding generation for USPTO patents")
 
-    # Initialize PaECTER client
-    use_local = ConfigAccessor.get_nested(config, "ml.paecter.use_local", False)
-    client = PaECTERClient(config=PaECTERClientConfig(use_local=use_local))
+    # Initialize SPECTER2 client
+    use_local = ConfigAccessor.get_nested(config, "ml.specter2.use_local", False)
+    client = Specter2Client(config=Specter2ClientConfig(use_local=use_local))
 
     # Try to load from transformed_patents JSONL file first
     patents_df = None
@@ -196,7 +196,7 @@ def paecter_embeddings_patents(
         context.log.info(f"Loading from S3: {s3_url}")
 
         # Download and extract
-        temp_dir = Path(tempfile.gettempdir()) / "sbir-analytics-paecter"
+        temp_dir = Path(tempfile.gettempdir()) / "sbir-analytics-specter2"
         temp_dir.mkdir(parents=True, exist_ok=True)
         local_zip = temp_dir / "patentsview.zip"
 
@@ -270,8 +270,8 @@ def paecter_embeddings_patents(
         texts.append(text)
 
     # Generate embeddings with performance monitoring
-    with performance_monitor.monitor_block("paecter_generate_patent_embeddings"):
-        batch_size = ConfigAccessor.get_nested(config, "ml.paecter.batch_size", 32)
+    with performance_monitor.monitor_block("specter2_generate_patent_embeddings"):
+        batch_size = ConfigAccessor.get_nested(config, "ml.specter2.batch_size", 32)
         result = client.generate_embeddings(
             texts,
             batch_size=batch_size,
@@ -290,7 +290,7 @@ def paecter_embeddings_patents(
     )
 
     context.log.info(
-        "PaECTER embeddings generated",
+        "SPECTER2 embeddings generated",
         extra={
             "patent_count": len(embeddings_df),
             "model_version": result.model_version,
@@ -313,20 +313,20 @@ def paecter_embeddings_patents(
 
 @asset(
     description="Similarity scores between SBIR awards and USPTO patents",
-    group_name="paecter",
+    group_name="specter2",
     compute_kind="ml",
 )
-def paecter_award_patent_similarity(
+def specter2_award_patent_similarity(
     context,
-    paecter_embeddings_awards: pd.DataFrame,
-    paecter_embeddings_patents: pd.DataFrame,
+    specter2_embeddings_awards: pd.DataFrame,
+    specter2_embeddings_patents: pd.DataFrame,
 ) -> Output[pd.DataFrame]:
     """
     Compute similarity scores between SBIR awards and USPTO patents.
 
     Args:
-        paecter_embeddings_awards: Award embeddings DataFrame
-        paecter_embeddings_patents: Patent embeddings DataFrame
+        specter2_embeddings_awards: Award embeddings DataFrame
+        specter2_embeddings_patents: Patent embeddings DataFrame
 
     Returns:
         DataFrame with award_id, patent_id, and similarity_score
@@ -336,29 +336,29 @@ def paecter_award_patent_similarity(
     context.log.info(
         "Computing award-patent similarities",
         extra={
-            "award_count": len(paecter_embeddings_awards),
-            "patent_count": len(paecter_embeddings_patents),
+            "award_count": len(specter2_embeddings_awards),
+            "patent_count": len(specter2_embeddings_patents),
         },
     )
 
     # Convert embeddings to numpy arrays
-    award_embeddings = np.array([np.array(e) for e in paecter_embeddings_awards["embedding"]])
-    patent_embeddings = np.array([np.array(e) for e in paecter_embeddings_patents["embedding"]])
+    award_embeddings = np.array([np.array(e) for e in specter2_embeddings_awards["embedding"]])
+    patent_embeddings = np.array([np.array(e) for e in specter2_embeddings_patents["embedding"]])
 
     # Initialize client for similarity computation
-    use_local = ConfigAccessor.get_nested(config, "ml.paecter.use_local", False)
-    client = PaECTERClient(config=PaECTERClientConfig(use_local=use_local))
+    use_local = ConfigAccessor.get_nested(config, "ml.specter2.use_local", False)
+    client = Specter2Client(config=Specter2ClientConfig(use_local=use_local))
 
     # Compute similarities with performance monitoring
-    with performance_monitor.monitor_block("paecter_compute_similarities"):
+    with performance_monitor.monitor_block("specter2_compute_similarities"):
         similarities = client.compute_similarity(award_embeddings, patent_embeddings)
 
     # Get similarity threshold from config
-    threshold = ConfigAccessor.get_nested(config, "ml.paecter.similarity_threshold", 0.80)
+    threshold = ConfigAccessor.get_nested(config, "ml.specter2.similarity_threshold", 0.80)
 
     # Find matches above threshold
     matches = []
-    for i, award_id in enumerate(paecter_embeddings_awards["award_id"]):
+    for i, award_id in enumerate(specter2_embeddings_awards["award_id"]):
         top_indices = np.argsort(similarities[i])[::-1][:10]  # Top 10
         top_scores = similarities[i][top_indices]
 
@@ -367,7 +367,7 @@ def paecter_award_patent_similarity(
                 matches.append(
                     {
                         "award_id": award_id,
-                        "patent_id": paecter_embeddings_patents.iloc[idx]["patent_id"],
+                        "patent_id": specter2_embeddings_patents.iloc[idx]["patent_id"],
                         "similarity_score": float(score),
                     }
                 )
@@ -400,29 +400,29 @@ def paecter_award_patent_similarity(
 
 
 @asset_check(
-    asset="paecter_embeddings_awards",
-    description="Check that PaECTER embeddings coverage meets threshold",
+    asset="specter2_embeddings_awards",
+    description="Check that SPECTER2 embeddings coverage meets threshold",
 )
-def paecter_awards_coverage_check(
+def specter2_awards_coverage_check(
     context,
-    paecter_embeddings_awards: pd.DataFrame,
+    specter2_embeddings_awards: pd.DataFrame,
 ) -> AssetCheckResult:
     """Check that award embedding coverage meets quality threshold."""
     from ...utils.config_accessor import ConfigAccessor
 
     config = get_config()
-    threshold = ConfigAccessor.get_nested(config, "ml.paecter.coverage_threshold_awards", 0.95)
+    threshold = ConfigAccessor.get_nested(config, "ml.specter2.coverage_threshold_awards", 0.95)
 
     # Count valid embeddings (non-null, correct dimension)
     valid_count = 0
-    expected_dim = 1024  # PaECTER embeddings are 1024-dimensional
+    expected_dim = 768  # SPECTER2 embeddings are 768-dimensional
 
-    for embedding in paecter_embeddings_awards["embedding"]:
+    for embedding in specter2_embeddings_awards["embedding"]:
         if embedding and len(embedding) == expected_dim:
             valid_count += 1
 
     coverage = (
-        valid_count / len(paecter_embeddings_awards) if len(paecter_embeddings_awards) > 0 else 0.0
+        valid_count / len(specter2_embeddings_awards) if len(specter2_embeddings_awards) > 0 else 0.0
     )
     passed = coverage >= threshold
 
@@ -434,36 +434,36 @@ def paecter_awards_coverage_check(
             "coverage": MetadataValue.float(coverage),
             "threshold": MetadataValue.float(threshold),
             "valid_embeddings": MetadataValue.int(valid_count),
-            "total_awards": MetadataValue.int(len(paecter_embeddings_awards)),
+            "total_awards": MetadataValue.int(len(specter2_embeddings_awards)),
         },
     )
 
 
 @asset_check(
-    asset="paecter_embeddings_patents",
-    description="Check that PaECTER embeddings coverage meets threshold",
+    asset="specter2_embeddings_patents",
+    description="Check that SPECTER2 embeddings coverage meets threshold",
 )
-def paecter_patents_coverage_check(
+def specter2_patents_coverage_check(
     context,
-    paecter_embeddings_patents: pd.DataFrame,
+    specter2_embeddings_patents: pd.DataFrame,
 ) -> AssetCheckResult:
     """Check that patent embedding coverage meets quality threshold."""
     from ...utils.config_accessor import ConfigAccessor
 
     config = get_config()
-    threshold = ConfigAccessor.get_nested(config, "ml.paecter.coverage_threshold_patents", 0.98)
+    threshold = ConfigAccessor.get_nested(config, "ml.specter2.coverage_threshold_patents", 0.98)
 
     # Count valid embeddings (non-null, correct dimension)
     valid_count = 0
-    expected_dim = 1024  # PaECTER embeddings are 1024-dimensional
+    expected_dim = 768  # SPECTER2 embeddings are 768-dimensional
 
-    for embedding in paecter_embeddings_patents["embedding"]:
+    for embedding in specter2_embeddings_patents["embedding"]:
         if embedding and len(embedding) == expected_dim:
             valid_count += 1
 
     coverage = (
-        valid_count / len(paecter_embeddings_patents)
-        if len(paecter_embeddings_patents) > 0
+        valid_count / len(specter2_embeddings_patents)
+        if len(specter2_embeddings_patents) > 0
         else 0.0
     )
     passed = coverage >= threshold
@@ -476,6 +476,6 @@ def paecter_patents_coverage_check(
             "coverage": MetadataValue.float(coverage),
             "threshold": MetadataValue.float(threshold),
             "valid_embeddings": MetadataValue.int(valid_count),
-            "total_patents": MetadataValue.int(len(paecter_embeddings_patents)),
+            "total_patents": MetadataValue.int(len(specter2_embeddings_patents)),
         },
     )

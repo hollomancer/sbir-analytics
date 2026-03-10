@@ -1,7 +1,7 @@
 """
 Semantic topic clustering for cross-agency overlap detection.
 
-Uses PaECTER embeddings (or any sentence-transformer) to find cross-agency
+Uses SPECTER2 embeddings (or any sentence-transformer) to find cross-agency
 topic similarity clusters. High embedding similarity is necessary but not
 sufficient for duplication — the LLM judgment point distinguishes waste
 from healthy multi-agency investment in shared priorities.

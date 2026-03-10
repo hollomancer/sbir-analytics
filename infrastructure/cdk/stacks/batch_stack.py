@@ -274,11 +274,11 @@ class BatchStack(Stack):
             ),
         )
 
-        # Job definition for PaECTER embeddings (Fargate)
-        paecter_job_definition = batch.CfnJobDefinition(
+        # Job definition for SPECTER2 embeddings (Fargate)
+        specter2_job_definition = batch.CfnJobDefinition(
             self,
-            "PaecterJobDefinition",
-            job_definition_name="sbir-analytics-analysis-paecter-embeddings",
+            "Specter2JobDefinition",
+            job_definition_name="sbir-analytics-analysis-specter2-embeddings",
             type="container",
             platform_capabilities=["FARGATE"],
             container_properties=batch.CfnJobDefinition.ContainerPropertiesProperty(
@@ -299,7 +299,7 @@ class BatchStack(Stack):
                     "-m",
                     "src.definitions_ml",
                     "-j",
-                    "paecter_job",
+                    "specter2_job",
                 ],
                 environment=[
                     batch.CfnJobDefinition.EnvironmentProperty(
@@ -319,7 +319,7 @@ class BatchStack(Stack):
                     log_driver="awslogs",
                     options={
                         "awslogs-group": "/aws/batch/sbir-analytics-analysis",
-                        "awslogs-stream-prefix": "paecter",
+                        "awslogs-stream-prefix": "specter2",
                     },
                 ),
             ),
@@ -389,7 +389,7 @@ class BatchStack(Stack):
         CfnOutput(self, "JobQueueName", value=job_queue.job_queue_name)
         CfnOutput(self, "CETJobDefinitionArn", value=cet_job_definition.ref)
         CfnOutput(self, "FiscalJobDefinitionArn", value=fiscal_job_definition.ref)
-        CfnOutput(self, "PaecterJobDefinitionArn", value=paecter_job_definition.ref)
+        CfnOutput(self, "Specter2JobDefinitionArn", value=specter2_job_definition.ref)
         CfnOutput(self, "UsaspendingExtractJobDefinitionArn", value=usaspending_extract_job_definition.ref)
         CfnOutput(self, "JobTaskRoleArn", value=job_task_role.role_arn)
         CfnOutput(self, "JobExecutionRoleArn", value=job_execution_role.role_arn)

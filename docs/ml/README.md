@@ -15,21 +15,21 @@ This directory contains documentation for machine learning features in the SBIR 
 This directory contains documentation for machine learning features in the SBIR ETL project:
 
 - **CET Classification**: Categorizes SBIR/STTR awards based on commercialization potential and economic impact
-- **PaECTER Embeddings**: Generates semantic embeddings for awards and patents to compute similarity scores
+- **SPECTER2 Embeddings**: Generates semantic embeddings for awards and patents to compute similarity scores
 
 ## Getting Started
 
 Start with these guides to understand and use the ML features:
 
-1. **[PaECTER Integration Guide](paecter.md)** - Patent and award similarity using embeddings
+1. **[SPECTER2 Integration Guide](specter2.md)** - Patent and award similarity using embeddings
 2. **[CET Integration Guide](cet-integration.md)** - How to integrate CET classification into your workflow
 3. **[CET Classifier](cet-classifier.md)** - Core classifier documentation and usage
 
 ## Detailed Documentation
 
-### PaECTER Embeddings
+### SPECTER2 Embeddings
 
-- **[PaECTER Integration Guide](paecter.md)** - Complete PaECTER documentation
+- **[SPECTER2 Integration Guide](specter2.md)** - Complete SPECTER2 documentation
   - Dual inference modes (API and local)
   - Configuration and setup
   - Dagster asset integration
@@ -57,19 +57,19 @@ Start with these guides to understand and use the ML features:
 
 ## Quick Reference
 
-### Using PaECTER Embeddings
+### Using SPECTER2 Embeddings
 
 Generate embeddings and compute similarity scores:
 
 ```bash
 # Via Dagster UI
-# Navigate to Assets → paecter group → Materialize
+# Navigate to Assets → specter2 group → Materialize
 
 # Via CLI
-dagster asset materialize -m src.definitions --select "paecter*"
+dagster asset materialize -m src.definitions --select "specter2*"
 
-# Run complete PaECTER job
-dagster job execute -m src.definitions -j paecter_job
+# Run complete SPECTER2 job
+dagster job execute -m src.definitions -j specter2_job
 ```
 
 ### Using the CET Classifier
@@ -97,10 +97,10 @@ The CET classifier categorizes awards into:
 
 The ML systems integrate with the broader SBIR analytics pipeline:
 
-### PaECTER Embeddings
+### SPECTER2 Embeddings
 
 - **Input**: SBIR awards and USPTO patents
-- **Processing**: Text embedding generation (1024-dimensional vectors)
+- **Processing**: Text embedding generation (768-dimensional vectors)
 - **Output**: Similarity scores between awards and patents
 - **Use Cases**: Technology transfer detection, patent-award matching
 
@@ -121,7 +121,7 @@ The ML systems integrate with the broader SBIR analytics pipeline:
 
 ML feature configuration is managed through:
 
-- **PaECTER**: `config/base.yaml` (ml.paecter section)
+- **SPECTER2**: `config/base.yaml` (ml.specter2 section)
   - Inference mode (API or local)
   - Batch sizes and rate limits
   - Similarity thresholds
@@ -133,7 +133,7 @@ ML feature configuration is managed through:
   - Classification thresholds
 
 - **Environment Variables**: Override any configuration at runtime
-  - `SBIR_ETL__ML__PAECTER__*` for PaECTER settings
+  - `SBIR_ETL__ML__PAECTER__*` for SPECTER2 settings
   - `HF_TOKEN` for HuggingFace API access
 
 ---

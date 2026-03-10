@@ -1,23 +1,23 @@
 #!/usr/bin/env python3
-"""Test PaECTER embeddings with both SBIR and USPTO data from S3.
+"""Test SPECTER2 embeddings with both SBIR and USPTO data from S3.
 
 This script loads real SBIR award data and USPTO patent data from S3,
-generates PaECTER embeddings for both, and computes similarity scores.
+generates SPECTER2 embeddings for both, and computes similarity scores.
 
 Usage:
     # API mode (default - requires HF_TOKEN)
     export HF_TOKEN="your_token_here"
     export SBIR_ANALYTICS_S3_BUCKET=sbir-etl-production-data
-    python scripts/test_paecter_combined_s3.py
+    python scripts/test_specter2_combined_s3.py
 
     # Local mode
-    python scripts/test_paecter_combined_s3.py --local
+    python scripts/test_specter2_combined_s3.py --local
 
     # Process limited records
-    python scripts/test_paecter_combined_s3.py --limit-sbir 100 --limit-uspto 50
+    python scripts/test_specter2_combined_s3.py --limit-sbir 100 --limit-uspto 50
 
     # Use specific S3 paths
-    python scripts/test_paecter_combined_s3.py \
+    python scripts/test_specter2_combined_s3.py \
         --sbir-s3 s3://sbir-etl-production-data/raw/sbir/award_data.csv \
         --uspto-s3 s3://sbir-etl-production-data/raw/uspto/patentsview/2025-11-18/patent.zip
 """
@@ -53,7 +53,7 @@ from rich.table import Table
 from src.config.loader import get_config
 from src.extractors.sbir import SbirDuckDBExtractor
 from src.extractors.uspto_extractor import USPTOExtractor
-from src.ml.paecter_client import PaECTERClient
+from src.ml.specter2_client import Specter2Client
 from src.utils.cloud_storage import build_s3_path, get_s3_bucket_from_env
 
 
@@ -197,7 +197,7 @@ def load_uspto_from_s3(
         s3_url = f"s3://{bucket}/raw/uspto/patentsview/2025-11-18/patent.zip"
 
     # Download to temp location
-    temp_dir = Path(tempfile.gettempdir()) / "sbir-analytics-paecter-test"
+    temp_dir = Path(tempfile.gettempdir()) / "sbir-analytics-specter2-test"
     temp_dir.mkdir(parents=True, exist_ok=True)
     local_zip = temp_dir / "patentsview.zip"
 
@@ -244,7 +244,7 @@ def load_uspto_from_s3(
     return df
 
 
-def prepare_award_texts(df: pd.DataFrame, client: PaECTERClient) -> tuple[list[str], pd.Series]:
+def prepare_award_texts(df: pd.DataFrame, client: Specter2Client) -> tuple[list[str], pd.Series]:
     """Prepare award texts for embedding generation."""
     # Find columns
     solicitation_col = next(
@@ -300,7 +300,7 @@ def prepare_award_texts(df: pd.DataFrame, client: PaECTERClient) -> tuple[list[s
     return texts, award_ids
 
 
-def prepare_patent_texts(df: pd.DataFrame, client: PaECTERClient) -> tuple[list[str], pd.Series]:
+def prepare_patent_texts(df: pd.DataFrame, client: Specter2Client) -> tuple[list[str], pd.Series]:
     """Prepare patent texts for embedding generation."""
     # Find columns
     title_col = next((c for c in df.columns if "title" in c.lower()), None)
@@ -342,9 +342,9 @@ def prepare_patent_texts(df: pd.DataFrame, client: PaECTERClient) -> tuple[list[
 
 
 def main():
-    """Run combined PaECTER test with SBIR and USPTO data from S3."""
+    """Run combined SPECTER2 test with SBIR and USPTO data from S3."""
     parser = argparse.ArgumentParser(
-        description="Test PaECTER embeddings with SBIR and USPTO data from S3"
+        description="Test SPECTER2 embeddings with SBIR and USPTO data from S3"
     )
     parser.add_argument(
         "--local",
@@ -384,7 +384,7 @@ def main():
     parser.add_argument(
         "--output-dir",
         type=str,
-        default="data/processed/paecter",
+        default="data/processed/specter2",
         help="Output directory for embeddings and similarities",
     )
     parser.add_argument(
@@ -402,7 +402,7 @@ def main():
 
     args = parser.parse_args()
 
-    console.print("\n[bold blue]PaECTER Combined S3 Test[/bold blue]", style="bold")
+    console.print("\n[bold blue]SPECTER2 Combined S3 Test[/bold blue]", style="bold")
     console.print("Testing patent embeddings with SBIR and USPTO data from S3\n")
 
     # Check mode
@@ -462,15 +462,15 @@ def main():
         console.print(f"[bold red]Error loading USPTO data:[/bold red] {e}")
         return 1
 
-    # Step 3: Initialize PaECTER client
-    console.print("[bold yellow]Step 3:[/bold yellow] Initializing PaECTER client...")
+    # Step 3: Initialize SPECTER2 client
+    console.print("[bold yellow]Step 3:[/bold yellow] Initializing SPECTER2 client...")
     try:
-        client = PaECTERClient(use_local=use_local)
+        client = Specter2Client(use_local=use_local)
         console.print(
-            f"[green]✓[/green] PaECTER client initialized ({client.inference_mode} mode)\n"
+            f"[green]✓[/green] SPECTER2 client initialized ({client.inference_mode} mode)\n"
         )
     except Exception as e:
-        console.print(f"[bold red]Error initializing PaECTER:[/bold red] {e}")
+        console.print(f"[bold red]Error initializing SPECTER2:[/bold red] {e}")
         return 1
 
     # Step 4: Prepare texts
@@ -483,7 +483,7 @@ def main():
 
     # Step 5: Generate SBIR embeddings
     console.print("[bold yellow]Step 5:[/bold yellow] Generating SBIR award embeddings...")
-    sbir_output = output_dir / "paecter_embeddings_sbir.parquet"
+    sbir_output = output_dir / "specter2_embeddings_sbir.parquet"
     with Progress(
         SpinnerColumn(),
         TextColumn("[progress.description]{task.description}"),
@@ -514,7 +514,7 @@ def main():
 
     # Step 6: Generate USPTO embeddings
     console.print("[bold yellow]Step 6:[/bold yellow] Generating USPTO patent embeddings...")
-    uspto_output = output_dir / "paecter_embeddings_uspto.parquet"
+    uspto_output = output_dir / "specter2_embeddings_uspto.parquet"
     with Progress(
         SpinnerColumn(),
         TextColumn("[progress.description]{task.description}"),
@@ -581,7 +581,7 @@ def main():
     # Step 9: Display summary
     console.print("[bold yellow]Step 9:[/bold yellow] Summary Statistics\n")
 
-    table = Table(title="PaECTER Test Results")
+    table = Table(title="SPECTER2 Test Results")
     table.add_column("Metric", style="cyan")
     table.add_column("Value", style="green")
 

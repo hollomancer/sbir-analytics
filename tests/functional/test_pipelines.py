@@ -4,7 +4,7 @@ Tests each major pipeline function end-to-end:
 - Transition detection
 - CET classification
 - Fiscal returns analysis
-- PaECTER embeddings
+- SPECTER2 embeddings
 """
 
 import pytest
@@ -67,18 +67,18 @@ class TestFiscalPipeline:
         assert len(result.asset_materializations_for_node("fiscal_returns_core")) > 0
 
 
-class TestPaECTERPipeline:
-    """Functional tests for PaECTER embeddings pipeline."""
+class TestSPECTER2Pipeline:
+    """Functional tests for SPECTER2 embeddings pipeline."""
 
-    def test_paecter_run_produces_outputs(self, sentence_transformers_available):
-        """Test that PaECTER pipeline produces expected outputs."""
+    def test_specter2_run_produces_outputs(self, sentence_transformers_available):
+        """Test that SPECTER2 pipeline produces expected outputs."""
         from dagster import materialize
-        from src.assets.paecter.paecter_assets import paecter_embeddings
+        from src.assets.specter2.specter2_assets import specter2_embeddings
 
-        result = materialize([paecter_embeddings])
+        result = materialize([specter2_embeddings])
 
         assert result.success
-        assert len(result.asset_materializations_for_node("paecter_embeddings")) > 0
+        assert len(result.asset_materializations_for_node("specter2_embeddings")) > 0
 
 
 @pytest.mark.parametrize(
@@ -111,7 +111,7 @@ class TestPaECTERPipeline:
             },
         ),
         (
-            "paecter_embeddings",
+            "specter2_embeddings",
             ["award_id", "patent_id", "similarity_score"],
             {
                 "similarity_score": lambda df: (
@@ -169,7 +169,7 @@ class TestPipelineIntegration:
             "data/processed/transitions.parquet",
             "data/processed/cet_classifications.parquet",
             "data/processed/fiscal_returns.parquet",
-            "data/processed/paecter_embeddings.parquet",
+            "data/processed/specter2_embeddings.parquet",
         ]
 
         # Check that outputs are distinct

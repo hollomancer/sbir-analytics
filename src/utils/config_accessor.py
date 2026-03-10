@@ -20,7 +20,7 @@ class ConfigAccessor:
 
         Args:
             config: PipelineConfig instance
-            path: Dot-separated path to config value (e.g., "ml.paecter.use_local")
+            path: Dot-separated path to config value (e.g., "ml.specter2.use_local")
             default: Default value to return if path not found
 
         Returns:
@@ -28,8 +28,8 @@ class ConfigAccessor:
 
         Example:
             >>> config = get_config()
-            >>> use_local = ConfigAccessor.get_nested(config, "ml.paecter.use_local", False)
-            >>> batch_size = ConfigAccessor.get_nested(config, "ml.paecter.batch_size", 32)
+            >>> use_local = ConfigAccessor.get_nested(config, "ml.specter2.use_local", False)
+            >>> batch_size = ConfigAccessor.get_nested(config, "ml.specter2.batch_size", 32)
         """
         if not path or not path.strip():
             return default
@@ -81,7 +81,7 @@ class ConfigAccessor:
 
         Args:
             config: PipelineConfig instance
-            path: Dot-separated path to config dict (e.g., "ml.paecter")
+            path: Dot-separated path to config dict (e.g., "ml.specter2")
             default: Default dict to return if path not found
 
         Returns:
@@ -89,8 +89,8 @@ class ConfigAccessor:
 
         Example:
             >>> config = get_config()
-            >>> paecter_config = ConfigAccessor.get_nested_dict(config, "ml.paecter", {})
-            >>> use_local = paecter_config.get("use_local", False)
+            >>> specter2_config = ConfigAccessor.get_nested_dict(config, "ml.specter2", {})
+            >>> use_local = specter2_config.get("use_local", False)
         """
         result = ConfigAccessor.get_nested(config, path, default)
         if result is None:

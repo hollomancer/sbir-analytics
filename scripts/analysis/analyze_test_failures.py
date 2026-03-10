@@ -42,8 +42,8 @@ def categorize_failures(output):
                 elif "TypeError" in line:
                     if "TransitionDetector.__init__()" in line:
                         categories["transition_detector_init"].append(test_file)
-                    elif "PaECTERClient.__init__()" in line:
-                        categories["paecter_client_init"].append(test_file)
+                    elif "Specter2Client.__init__()" in line:
+                        categories["specter2_client_init"].append(test_file)
                     else:
                         categories["type_errors"].append(test_file)
                 elif "ModuleNotFoundError" in line:

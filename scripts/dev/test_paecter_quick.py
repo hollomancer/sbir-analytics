@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
-"""Quick test script for PaECTER with your SBIR data.
+"""Quick test script for SPECTER2 with your SBIR data.
 
-This script provides a simple way to test PaECTER embeddings and similarity
+This script provides a simple way to test SPECTER2 embeddings and similarity
 computation with sample SBIR awards and patents.
 
 Usage:
     # API mode (default - requires HF_TOKEN environment variable)
     export HF_TOKEN="your_token_here"
-    python scripts/test_paecter_quick.py
+    python scripts/test_specter2_quick.py
 
     # Local mode (requires sentence-transformers, downloads ~500MB model)
-    python scripts/test_paecter_quick.py --local
+    python scripts/test_specter2_quick.py --local
 
 Requirements:
     # API mode (default)
@@ -34,18 +34,18 @@ import numpy as np
 from rich.console import Console
 from rich.table import Table
 
-from src.ml.paecter_client import PaECTERClient
+from src.ml.specter2_client import Specter2Client
 
 
 console = Console()
 
 
 def main():
-    """Run quick PaECTER test."""
+    """Run quick SPECTER2 test."""
     # Check if --local flag is provided
     use_local = "--local" in sys.argv
 
-    console.print("\n[bold blue]PaECTER Quick Test[/bold blue]", style="bold")
+    console.print("\n[bold blue]SPECTER2 Quick Test[/bold blue]", style="bold")
     console.print("Testing patent embeddings with sample SBIR and patent data\n")
 
     if use_local:
@@ -60,7 +60,7 @@ def main():
                 "[yellow]To use API mode:[/yellow]\n"
                 '  export HF_TOKEN="your_token_here"\n\n'
                 "[yellow]Or use local mode instead:[/yellow]\n"
-                "  python scripts/test_paecter_quick.py --local\n"
+                "  python scripts/test_specter2_quick.py --local\n"
             )
             return 1
         console.print("[dim]Using HuggingFace API (no model download)[/dim]\n")
@@ -130,9 +130,9 @@ def main():
     ]
 
     # Step 1: Initialize client
-    console.print("[yellow]Step 1:[/yellow] Initializing PaECTER client...")
+    console.print("[yellow]Step 1:[/yellow] Initializing SPECTER2 client...")
     try:
-        client = PaECTERClient(use_local=use_local)
+        client = Specter2Client(use_local=use_local)
         console.print(
             f"✓ Client initialized: {client.model_name} "
             f"(dimension: {client.embedding_dim}, mode: {client.inference_mode})\n",
@@ -254,7 +254,7 @@ def main():
         "[yellow]Note:[/yellow] Similarity scores may be higher than expected between "
         "unrelated domains due to shared technical vocabulary and language patterns. "
         "Consider using threshold-based filtering (e.g., > 0.90 for high confidence) "
-        "or domain-based pre-filtering. See docs/ml/paecter-testing-guide.md for details.\n"
+        "or domain-based pre-filtering. See docs/ml/specter2-testing-guide.md for details.\n"
     )
 
     console.print(f"[bold]Test mode:[/bold] {client.inference_mode}")
@@ -263,17 +263,17 @@ def main():
 
     if use_local:
         console.print(
-            '2. Try API mode: [cyan]export HF_TOKEN="..." && python scripts/test_paecter_quick.py[/cyan]'
+            '2. Try API mode: [cyan]export HF_TOKEN="..." && python scripts/test_specter2_quick.py[/cyan]'
         )
     else:
         console.print(
-            "2. Try local mode: [cyan]python scripts/test_paecter_quick.py --local[/cyan]"
+            "2. Try local mode: [cyan]python scripts/test_specter2_quick.py --local[/cyan]"
         )
 
     console.print(
-        "3. Run full integration tests: [cyan]pytest tests/integration/test_paecter_client.py -v[/cyan]"
+        "3. Run full integration tests: [cyan]pytest tests/integration/test_specter2_client.py -v[/cyan]"
     )
-    console.print("4. Test with your real data (see docs/PAECTER_TESTING_GUIDE.md)")
+    console.print("4. Test with your real data (see docs/SPECTER2_TESTING_GUIDE.md)")
     console.print("5. Integrate with Dagster pipeline\n")
 
     return 0

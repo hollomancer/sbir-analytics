@@ -18,7 +18,7 @@ For infrequent ML workloads (weekly testing, on-demand training), GitHub Actions
 │        ML Jobs (manual or scheduled)         │
 │   - CET training/inference                   │
 │   - Fiscal R analysis                        │
-│   - PaECTER embeddings                       │
+│   - SPECTER2 embeddings                       │
 └──────────────────────────────────────────────┘
 ```
 
@@ -51,7 +51,7 @@ Still cheaper than any infrastructure!
 4. Choose job:
    - `cet_full_pipeline` - CET training and inference
    - `fiscal_returns_mvp` - Fiscal impact analysis
-   - `paecter_embeddings` - Generate embeddings
+   - `specter2_embeddings` - Generate embeddings
    - `all_ml_jobs` - Run everything
 
 5. Click **"Run workflow"** button
@@ -108,7 +108,7 @@ curl -X POST \
 - Fiscal multiplier effects
 - Duration: ~20-40 minutes
 
-**3. PaECTER Job** (`paecter_embeddings`)
+**3. SPECTER2 Job** (`specter2_embeddings`)
 
 - Generate embeddings using sentence-transformers
 - Similarity computation for patent-award matching
@@ -198,7 +198,7 @@ Get notified on job completion:
 |-----|----------|------------------------|------|
 | CET | 45 min | 180 | Free |
 | Fiscal | 30 min | 120 | Free |
-| PaECTER | 60 min | 240 | Free |
+| SPECTER2 | 60 min | 240 | Free |
 | **All** | 135 min | **540** | **Free ✅** |
 
 **Total**: 540 min/month (well within 2,000 free minutes)
@@ -284,7 +284,7 @@ Run multiple jobs in parallel (uses more minutes but faster):
 ```yaml
 strategy:
   matrix:
-    job: [cet_full_pipeline, fiscal_returns_mvp, paecter_embeddings]
+    job: [cet_full_pipeline, fiscal_returns_mvp, specter2_embeddings]
 
 steps:
   - name: Run job

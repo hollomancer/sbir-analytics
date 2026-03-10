@@ -1,17 +1,18 @@
-"""PaECTER client for generating patent and SBIR award embeddings.
+"""SPECTER2 client for generating patent and SBIR award embeddings.
 
-This module provides a simple interface to the PaECTER model from HuggingFace
-(mpi-inno-comp/paecter) for generating embeddings from patent and award text.
+This module provides a simple interface to the SPECTER2 model from HuggingFace
+(allenai/specter2) for generating embeddings from patent and award text.
 
 By default, this client uses the HuggingFace Inference API (no local model download
 or GPU required). You can optionally use local inference with sentence-transformers.
 
-PaECTER (Patent Embeddings using Citation-informed TransformERs) generates
-1024-dimensional dense vector embeddings optimized for patent similarity tasks.
+SPECTER2 (Scientific Paper Embeddings using Citation-informed TransformERs v2)
+generates 768-dimensional dense vector embeddings optimized for scientific document
+similarity tasks, including patents.
 
 References:
-    - Model: https://huggingface.co/mpi-inno-comp/paecter
-    - Paper: https://arxiv.org/pdf/2402.19411
+    - Model: https://huggingface.co/allenai/specter2
+    - Paper: https://arxiv.org/abs/2211.13228
 """
 
 from __future__ import annotations
@@ -42,10 +43,10 @@ class EmbeddingResult:
 
     Attributes:
         embeddings: Generated embedding vectors (N x D array)
-        model_version: Model identifier (e.g., "mpi-inno-comp/paecter")
+        model_version: Model identifier (e.g., "allenai/specter2")
         generation_timestamp: Elapsed time in seconds for generation (not epoch timestamp)
         input_count: Number of input texts processed
-        dimension: Embedding dimension (1024 for PaECTER)
+        dimension: Embedding dimension (768 for SPECTER2)
         inference_mode: "api" or "local"
     """
 
@@ -57,17 +58,17 @@ class EmbeddingResult:
     inference_mode: Literal["api", "local"]
 
 
-from src.ml.config import PaECTERClientConfig
+from src.ml.config import Specter2ClientConfig
 
 
-class PaECTERClient:
-    """Client for interacting with the PaECTER embedding model."""
+class Specter2Client:
+    """Client for interacting with the SPECTER2 embedding model."""
 
-    def __init__(self, config: PaECTERClientConfig):
-        """Initialize the PaECTER client."""
+    def __init__(self, config: Specter2ClientConfig):
+        """Initialize the SPECTER2 client."""
         self.config = config
         self.model_name = config.model_name
-        self.embedding_dim = 1024  # PaECTER embeddings are 1024-dimensional
+        self.embedding_dim = 768  # SPECTER2 embeddings are 768-dimensional
         self.cache: dict[str, np.ndarray] = {}
 
         if self.config.use_local:
@@ -93,19 +94,19 @@ class PaECTERClient:
 
         self.inference_mode = "api"
         self.client = InferenceClient(token=token)
-        logger.info(f"Initialized PaECTER client in API mode: {self.model_name}")
+        logger.info(f"Initialized SPECTER2 client in API mode: {self.model_name}")
 
     def _init_local_mode(self, device: str | None, cache_folder: str | None):
         """Initialize local mode using sentence-transformers."""
         if SentenceTransformer is None:
             raise ImportError(
                 "sentence-transformers is required for local mode. "
-                "Install with: pip install 'sbir-analytics[paecter-local]' or "
+                "Install with: pip install 'sbir-analytics[specter2-local]' or "
                 "pip install sentence-transformers"
             )
 
         self.inference_mode = "local"
-        logger.info(f"Loading PaECTER model locally: {self.model_name}")
+        logger.info(f"Loading SPECTER2 model locally: {self.model_name}")
 
         try:
             kwargs: dict[str, Any] = {}
@@ -118,11 +119,11 @@ class PaECTERClient:
             self.embedding_dim = self.model.get_sentence_embedding_dimension()  # type: ignore
 
             logger.info(
-                f"Successfully loaded local PaECTER model. "
+                f"Successfully loaded local SPECTER2 model. "
                 f"Embedding dimension: {self.embedding_dim}"
             )
         except Exception as e:
-            logger.error(f"Failed to load local PaECTER model: {e}")
+            logger.error(f"Failed to load local SPECTER2 model: {e}")
             raise RuntimeError(f"Failed to load model {self.model_name}: {e}") from e
 
     def generate_embeddings(
@@ -148,7 +149,7 @@ class PaECTERClient:
             RuntimeError: If embedding generation fails
 
         Example:
-            >>> client = PaECTERClient()
+            >>> client = Specter2Client()
             >>> texts = ["First patent abstract", "Second patent abstract"]
             >>> result = client.generate_embeddings(texts)
             >>> similarities = result.embeddings @ result.embeddings.T
@@ -299,7 +300,7 @@ class PaECTERClient:
             Similarity matrix (N x M) with cosine similarity scores
 
         Example:
-            >>> client = PaECTERClient()
+            >>> client = Specter2Client()
             >>> awards = client.generate_embeddings(["Award text 1", "Award text 2"])
             >>> patents = client.generate_embeddings(["Patent text 1", "Patent text 2"])
             >>> similarities = client.compute_similarity(awards.embeddings, patents.embeddings)
@@ -312,17 +313,17 @@ class PaECTERClient:
     def prepare_patent_text(title: str | None, abstract: str | None) -> str:
         """Prepare patent text for embedding generation.
 
-        Concatenates title and abstract as recommended by PaECTER authors.
+        Concatenates title and abstract for SPECTER2 input.
 
         Args:
             title: Patent title
             abstract: Patent abstract
 
         Returns:
-            Concatenated text suitable for PaECTER
+            Concatenated text suitable for SPECTER2
 
         Example:
-            >>> text = PaECTERClient.prepare_patent_text(
+            >>> text = Specter2Client.prepare_patent_text(
             ...     "Novel Solar Cell Design",
             ...     "This invention relates to improved solar cells..."
             ... )
@@ -349,10 +350,10 @@ class PaECTERClient:
             award_title: Award/project title (optional)
 
         Returns:
-            Concatenated text suitable for PaECTER
+            Concatenated text suitable for SPECTER2
 
         Example:
-            >>> text = PaECTERClient.prepare_award_text(
+            >>> text = Specter2Client.prepare_award_text(
             ...     "Advanced Manufacturing Technologies",
             ...     "Development of novel 3D printing methods..."
             ... )

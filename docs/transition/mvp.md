@@ -238,7 +238,7 @@ In Dagster environments, these checks can block downstream assets if thresholds 
 - Additional scoring signals:
   - Amount sanity checks (obligation vs award)
   - Patent/external signals
-- PaECTER layer integration (embeddings + similarity) for richer linking
+- SPECTER2 layer integration (embeddings + similarity) for richer linking
 - CI wiring for the validation summary to gate transitions in PRs
 - Optional FAISS index for scalable candidate generation
 - Neo4j loaders for transition relationships
