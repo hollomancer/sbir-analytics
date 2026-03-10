@@ -10,6 +10,7 @@ from aws_cdk import (
     aws_events_targets as targets,
     aws_iam as iam,
     aws_logs as logs,
+    aws_secretsmanager as secretsmanager,
     aws_sns as sns,
     aws_sns_subscriptions as subscriptions,
 )
@@ -125,15 +126,10 @@ class BatchStack(Stack):
         )
 
         # Grant Secrets Manager access for Neo4j credentials
-        job_task_role.add_to_policy(
-            iam.PolicyStatement(
-                effect=iam.Effect.ALLOW,
-                actions=["secretsmanager:GetSecretValue"],
-                resources=[
-                    f"arn:aws:secretsmanager:{self.region}:{self.account}:secret:sbir-analytics/neo4j*"
-                ],
-            )
+        neo4j_secret = secretsmanager.Secret.from_secret_name_v2(
+            self, "Neo4jSecretRef", secret_name="sbir-analytics/neo4j"
         )
+        neo4j_secret.grant_read(job_task_role)
 
         # Compute environment using Fargate (serverless)
         # Avoids EC2 instance type restrictions and quota issues

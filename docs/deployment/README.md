@@ -79,9 +79,11 @@ Set these in GitHub → Settings → Secrets:
 | Secret | Description |
 |--------|-------------|
 | `AWS_ROLE_ARN` | IAM role for AWS access |
-| `NEO4J_URI` | Neo4j connection URI |
+| `NEO4J_URI` | Production Neo4j connection URI |
 | `NEO4J_USER` | Neo4j username |
-| `NEO4J_PASSWORD` | Neo4j password |
+| `NEO4J_PASSWORD` | Production Neo4j password |
+| `NEO4J_TEST_URI` | Test Neo4j connection URI (used when `environment: test`) |
+| `NEO4J_TEST_PASSWORD` | Test Neo4j password (used when `environment: test`) |
 
 ## Local Development
 

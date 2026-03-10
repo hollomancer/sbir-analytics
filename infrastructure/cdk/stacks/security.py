@@ -41,15 +41,7 @@ class SecurityStack(Stack):
             s3_bucket.grant_read_write(self.lambda_role)
 
             # Secrets Manager permissions for Lambda
-            self.lambda_role.add_to_policy(
-                iam.PolicyStatement(
-                    effect=iam.Effect.ALLOW,
-                    actions=["secretsmanager:GetSecretValue"],
-                    resources=[
-                        f"arn:aws:secretsmanager:{self.region}:{self.account}:secret:sbir-analytics/neo4j*"
-                    ],
-                )
-            )
+            self.neo4j_secret.grant_read(self.lambda_role)
 
             # Create new Step Functions execution role
             self.step_functions_role = iam.Role(
