@@ -30,6 +30,8 @@ Typical usage::
 from __future__ import annotations
 
 import json
+import os
+import ssl
 import sys
 import time
 import urllib.error
@@ -41,6 +43,7 @@ import pandas as pd
 _API_BASE = "https://api.usaspending.gov/api/v2"
 _USER_AGENT = "SBIR-Analytics/1.0"
 _PAGE_LIMIT = 100  # max per page
+_SSL_CTX: ssl.SSLContext | None = None  # lazily initialized
 
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -281,6 +284,44 @@ def _fetch_obligations_for_uei(
     return total
 
 
+def _get_ssl_context() -> ssl.SSLContext:
+    """Build an SSL context, respecting env vars for custom CA bundles.
+
+    Checks (in order):
+    1. ``SSL_CERT_FILE`` — path to a CA bundle PEM file
+    2. ``REQUESTS_CA_BUNDLE`` — same, used by requests/pip/etc.
+    3. ``CURL_CA_BUNDLE`` — same, used by curl
+    4. ``SSL_NO_VERIFY=1`` — disables verification entirely (last resort)
+    5. Falls back to the system default context
+    """
+    global _SSL_CTX  # noqa: PLW0603
+    if _SSL_CTX is not None:
+        return _SSL_CTX
+
+    ca_file = (
+        os.environ.get("SSL_CERT_FILE")
+        or os.environ.get("REQUESTS_CA_BUNDLE")
+        or os.environ.get("CURL_CA_BUNDLE")
+    )
+
+    if os.environ.get("SSL_NO_VERIFY", "").strip() in ("1", "true", "yes"):
+        ctx = ssl.create_default_context()
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
+        print("  WARNING: SSL verification disabled (SSL_NO_VERIFY=1)", file=sys.stderr)
+        _SSL_CTX = ctx
+        return ctx
+
+    if ca_file and Path(ca_file).is_file():
+        ctx = ssl.create_default_context(cafile=ca_file)
+        print(f"  Using custom CA bundle: {ca_file}", file=sys.stderr)
+        _SSL_CTX = ctx
+        return ctx
+
+    _SSL_CTX = ssl.create_default_context()
+    return _SSL_CTX
+
+
 def _api_post(endpoint: str, payload: dict, *, retries: int = 3) -> dict:
     """POST to the USAspending API with retry logic.  Uses only stdlib."""
     url = f"{_API_BASE}{endpoint}"
@@ -289,12 +330,13 @@ def _api_post(endpoint: str, payload: dict, *, retries: int = 3) -> dict:
         "Content-Type": "application/json",
         "User-Agent": _USER_AGENT,
     }
+    ctx = _get_ssl_context()
 
     last_exc: Exception | None = None
     for attempt in range(retries):
         try:
             req = urllib.request.Request(url, data=body, headers=headers, method="POST")
-            with urllib.request.urlopen(req, timeout=30) as resp:
+            with urllib.request.urlopen(req, timeout=30, context=ctx) as resp:
                 return json.load(resp)
         except urllib.error.HTTPError as e:
             if e.code == 429:
