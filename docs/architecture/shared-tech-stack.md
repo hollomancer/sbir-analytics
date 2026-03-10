@@ -212,8 +212,8 @@ def load_config(config_name: str, config_class: type[BaseModel]) -> BaseModel:
 ## Shared infrastructure (Production - Cloud)
 
 export SBIR_ETL_ENV=prod
-export SBIR_ETL_NEO4J_URI=bolt://your-neo4j-host:7687  # Neo4j EC2
-export SBIR_ETL_NEO4J_PASSWORD=${AWS_SECRET}  # Retrieved from AWS Secrets Manager
+export NEO4J_URI=bolt://your-neo4j-host:7687  # Neo4j on cloud VM
+export NEO4J_PASSWORD=${AWS_SECRET}  # Retrieved from AWS Secrets Manager
 export SBIR_ETL_LOG_LEVEL=INFO
 export SBIR_ETL_S3_BUCKET=sbir-analytics-data-prod
 export SBIR_ETL_USE_S3=true
@@ -221,8 +221,8 @@ export SBIR_ETL_USE_S3=true
 ## Shared infrastructure (Development - Local)
 
 export SBIR_ETL_ENV=dev
-export SBIR_ETL_NEO4J_URI=bolt://localhost:7687  # Docker Neo4j
-export SBIR_ETL_NEO4J_PASSWORD=neo4j
+export NEO4J_URI=bolt://localhost:7687  # Docker Neo4j
+export NEO4J_PASSWORD=neo4j
 export SBIR_ETL_USE_S3=false  # Use local filesystem
 
 ## Module-specific overrides
