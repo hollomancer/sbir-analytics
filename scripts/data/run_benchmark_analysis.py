@@ -102,9 +102,10 @@ def run_analysis(awards_path: Path, fy: int, margin_awards: int, margin_ratio: f
             break
 
     # Full evaluation
-    print(f"\n{'='*60}")
+    divider = "=" * 60
+    print(f"\n{divider}")
     print(f"SBIR/STTR Benchmark Evaluation — FY {fy}")
-    print(f"{'='*60}")
+    print(divider)
 
     evaluator = BenchmarkEligibilityEvaluator(
         evaluation_fy=fy,
@@ -116,11 +117,12 @@ def run_analysis(awards_path: Path, fy: int, margin_awards: int, margin_ratio: f
     print(f"Determination date: {summary.determination_date}")
     print(f"Transition window (Phase I): FY {summary.transition_window.start_fy}–{summary.transition_window.end_fy}")
     print(f"Commercialization window: FY {summary.commercialization_window.start_fy}–{summary.commercialization_window.end_fy}")
-    print(f"\nCompanies evaluated:                    {summary.total_companies_evaluated:,}")
-    print(f"Subject to transition benchmark:        {summary.companies_subject_to_transition:,}")
-    print(f"Subject to commercialization benchmark:  {summary.companies_subject_to_commercialization:,}")
-    print(f"Failing transition benchmark:           {summary.companies_failing_transition:,}")
-    print(f"Failing commercialization benchmark:    {summary.companies_failing_commercialization:,}")
+    print("\nBenchmark results (failures listed first):")
+    print(f"  Failing transition benchmark:           {summary.companies_failing_transition:,}")
+    print(f"  Failing commercialization benchmark:    {summary.companies_failing_commercialization:,}")
+    print(f"  Subject to transition benchmark:        {summary.companies_subject_to_transition:,}")
+    print(f"  Subject to commercialization benchmark: {summary.companies_subject_to_commercialization:,}")
+    print(f"  Companies evaluated:                    {summary.total_companies_evaluated:,}")
 
     # Write full evaluation JSON
     eval_path = output_dir / "benchmark_evaluation.json"
@@ -134,9 +136,12 @@ def run_analysis(awards_path: Path, fy: int, margin_awards: int, margin_ratio: f
     print(f"Markdown report: {report_path}")
 
     # Sensitivity analysis
-    print(f"\n{'='*60}")
-    print(f"Sensitivity Analysis (margin: {margin_awards} awards, {margin_ratio:.0%} ratio)")
-    print(f"{'='*60}")
+    print(f"\n{divider}")
+    print("Sensitivity Analysis")
+    print(divider)
+    print("Parameters:")
+    print(f"  Awards margin: {margin_awards} awards")
+    print(f"  Ratio margin:  {margin_ratio:.2%}")
 
     at_risk = evaluator.get_companies_at_risk(df)
     print(f"Companies at risk: {len(at_risk)}")
