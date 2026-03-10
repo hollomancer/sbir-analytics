@@ -2810,7 +2810,7 @@ requires-dist = [
     { name = "notebook", marker = "extra == 'ml'", specifier = ">=7.0.0,<8.0.0" },
     { name = "numpy", specifier = "<3" },
     { name = "pandas", specifier = ">=2.2.0,<3.0.0" },
-    { name = "pandas-stubs", marker = "extra == 'dev'", specifier = ">=2.2.0,<3.0.0" },
+    { name = "pandas-stubs", marker = "extra == 'dev'", specifier = ">=2.2.0,<4.0.0" },
     { name = "pre-commit", marker = "extra == 'dev'", specifier = ">=3.5.0,<5.0.0" },
     { name = "psutil" },
     { name = "pyarrow", specifier = ">=14.0.2,<23.0.0" },
