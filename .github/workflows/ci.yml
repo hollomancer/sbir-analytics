@@ -1254,7 +1254,7 @@ jobs:
       - name: Configure AWS credentials
         continue-on-error: true
         id: aws-creds
-        uses: aws-actions/configure-aws-credentials@v5
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: ${{ secrets.AWS_TEST_ROLE_ARN }}
           aws-region: us-east-2
