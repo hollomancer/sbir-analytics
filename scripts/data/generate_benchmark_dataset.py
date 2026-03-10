@@ -39,37 +39,37 @@ random.seed(2026)
 COMPANIES = [
     # === HIGH-VOLUME: Subject to INCREASED transition benchmark (≥51 P1) ===
     # name, UEI, DUNS, state, city, p1, p2_trans, p2_comm, trans_fy, comm_fy
-    ("Raytheon Advanced Tech", "RTX001ABC123", "100000001", "MA", "Waltham",
+    ("Apex Defense Technologies", "APX001ABC123", "100000001", "MA", "Waltham",
      65, 35, 30, (2020, 2025), (2014, 2023)),
-    ("Lockheed Martin SBIR Div", "LMT002DEF456", "100000002", "MD", "Bethesda",
+    ("Pinnacle Aerospace Group", "PNG002DEF456", "100000002", "MD", "Bethesda",
      58, 30, 25, (2020, 2025), (2014, 2023)),
-    ("Northrop Grumman Labs", "NOC003GHI789", "100000003", "VA", "Falls Church",
+    ("Sentinel Research Labs", "SNT003GHI789", "100000003", "VA", "Falls Church",
      55, 15, 18, (2020, 2025), (2014, 2023)),  # FAILING increased
-    ("General Dynamics IT", "GDI004JKL012", "100000004", "VA", "Reston",
+    ("Vanguard Systems Corp", "VNG004JKL012", "100000004", "VA", "Reston",
      52, 27, 22, (2020, 2025), (2014, 2023)),
-    ("BAE Systems Tech", "BAE005MNO345", "100000005", "NH", "Nashua",
+    ("Meridian Defense Tech", "MRD005MNO345", "100000005", "NH", "Nashua",
      53, 26, 20, (2020, 2025), (2014, 2023)),  # borderline
 
     # === STANDARD TIER: Subject to standard transition benchmark (21-50 P1) ===
-    ("Draper Laboratory", "DRP006PQR678", "200000001", "MA", "Cambridge",
+    ("Horizons Research Lab", "HRL006PQR678", "200000001", "MA", "Cambridge",
      35, 12, 18, (2020, 2025), (2014, 2023)),
-    ("SAIC Research", "SAI007STU901", "200000002", "VA", "Reston",
+    ("Catalyst Analytics Group", "CAG007STU901", "200000002", "VA", "Reston",
      28, 8, 14, (2020, 2025), (2014, 2023)),
-    ("Leidos Innovation", "LEI008VWX234", "200000003", "VA", "Reston",
+    ("Axiom Innovation Corp", "AXM008VWX234", "200000003", "VA", "Reston",
      30, 3, 10, (2020, 2025), (2016, 2023)),  # FAILING standard
-    ("Battelle Memorial", "BAT009YZA567", "200000004", "OH", "Columbus",
+    ("Keystone Research Inst", "KRI009YZA567", "200000004", "OH", "Columbus",
      25, 7, 12, (2020, 2025), (2014, 2023)),
-    ("SRI International", "SRI010BCD890", "200000005", "CA", "Menlo Park",
+    ("Frontier Science Group", "FSG010BCD890", "200000005", "CA", "Menlo Park",
      22, 6, 10, (2020, 2025), (2015, 2023)),
-    ("Applied Research Assoc", "ARA011EFG123", "200000006", "NM", "Albuquerque",
+    ("Trident Applied Research", "TAR011EFG123", "200000006", "NM", "Albuquerque",
      40, 10, 16, (2020, 2025), (2014, 2023)),  # borderline pass
-    ("Booz Allen Hamilton", "BAH012HIJ456", "200000007", "VA", "McLean",
+    ("Stratagem Consulting", "STC012HIJ456", "200000007", "VA", "McLean",
      33, 9, 15, (2020, 2025), (2014, 2023)),
-    ("MITRE Corp", "MIT013KLM789", "200000008", "MA", "Bedford",
+    ("Citadel Analytics Corp", "CTC013KLM789", "200000008", "MA", "Bedford",
      45, 12, 20, (2020, 2025), (2014, 2023)),
-    ("Aerospace Corp", "AER014NOP012", "200000009", "CA", "El Segundo",
+    ("Orbital Research Corp", "ORC014NOP012", "200000009", "CA", "El Segundo",
      27, 7, 12, (2020, 2025), (2014, 2023)),
-    ("Southwest Research Inst", "SWR015QRS345", "200000010", "TX", "San Antonio",
+    ("Lone Star Research Inst", "LSR015QRS345", "200000010", "TX", "San Antonio",
      24, 6, 10, (2020, 2025), (2015, 2023)),
 
     # === APPROACHING THRESHOLD: Near 21 P1 (sensitivity zone, margin=5) ===
@@ -107,11 +107,11 @@ COMPANIES = [
      4, 0, 0, (2022, 2025), None),
 
     # === APPROACHING INCREASED THRESHOLD: Near 51 P1 ===
-    ("L3Harris SBIR Group", "L3H031MNO123", "500000001", "FL", "Melbourne",
+    ("Falcon Integrated Systems", "FIS031MNO123", "500000001", "FL", "Melbourne",
      48, 20, 22, (2020, 2025), (2014, 2023)),
-    ("Textron Systems", "TXT032PQR456", "500000002", "RI", "Providence",
+    ("Ironclad Defense Group", "IDG032PQR456", "500000002", "RI", "Providence",
      47, 18, 20, (2020, 2025), (2014, 2023)),
-    ("Elbit Systems America", "ELB033STU789", "500000003", "TX", "Fort Worth",
+    ("Atlas Systems America", "ATS033STU789", "500000003", "TX", "Fort Worth",
      49, 25, 15, (2020, 2025), (2015, 2023)),
 
     # === COMMERCIALIZATION-FOCUSED: High Phase II in comm window (FY 2014-2023) ===
