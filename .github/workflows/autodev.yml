@@ -42,6 +42,11 @@ on:
         required: false
         default: false
         type: boolean
+      ntfy_topic:
+        description: 'ntfy.sh topic for push notifications (e.g. my-sbir-autodev)'
+        required: false
+        default: ''
+        type: string
   schedule:
     # Run weeknights at 2am UTC (before nightly security scan at 3am)
     - cron: "0 2 * * 1-5"
@@ -58,6 +63,7 @@ concurrency:
 env:
   PYTHON_VERSION: "3.11"
   AUTODEV_BRANCH_PREFIX: "autodev"
+  NTFY_TOPIC: ${{ inputs.ntfy_topic || vars.AUTODEV_NTFY_TOPIC || '' }}
 
 jobs:
   discover:
@@ -268,6 +274,39 @@ jobs:
             --label "autodev" \
             --base main || echo "PR creation failed (label may not exist)"
 
+      - name: Send push notification
+        if: always() && env.NTFY_TOPIC != ''
+        run: |
+          verify_status="${{ steps.verify.outputs.status || 'skipped' }}"
+          has_changes="${{ steps.changes.outputs.has_changes || 'false' }}"
+          commit_count="${{ steps.changes.outputs.commit_count || '0' }}"
+          scope="${{ inputs.scope || 'all' }}"
+          job_status="${{ job.status }}"
+
+          if [ "$job_status" = "success" ] && [ "$has_changes" = "true" ]; then
+            title="Autodev: PR created (${commit_count} commits)"
+            body="Scope: ${scope} | Verification: ${verify_status}"
+            priority="default"
+            tags="white_check_mark,autodev"
+          elif [ "$job_status" = "success" ] && [ "$has_changes" = "false" ]; then
+            title="Autodev: No changes produced"
+            body="Scope: ${scope} | Implementation ran but produced no changes"
+            priority="low"
+            tags="information_source,autodev"
+          else
+            title="Autodev: Session failed"
+            body="Scope: ${scope} | Job status: ${job_status}"
+            priority="urgent"
+            tags="x,autodev"
+          fi
+
+          curl -sf \
+            -H "Title: ${title}" \
+            -H "Priority: ${priority}" \
+            -H "Tags: ${tags}" \
+            -d "${body}" \
+            "https://ntfy.sh/${{ env.NTFY_TOPIC }}" || echo "::warning::ntfy notification failed"
+
   report:
     name: Session Report
     needs: [discover, implement]
@@ -282,3 +321,13 @@ jobs:
           echo "- **Work items found:** ${{ needs.discover.outputs.item_count }}" >> "$GITHUB_STEP_SUMMARY"
           echo "- **Had work:** ${{ needs.discover.outputs.has_work }}" >> "$GITHUB_STEP_SUMMARY"
           echo "- **Implementation:** ${{ needs.implement.result || 'skipped' }}" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Notify if no work found
+        if: needs.discover.outputs.has_work == 'false' && env.NTFY_TOPIC != ''
+        run: |
+          curl -sf \
+            -H "Title: Autodev: Nothing to do" \
+            -H "Priority: low" \
+            -H "Tags: zzz,autodev" \
+            -d "No work items discovered. All specs complete and no quality issues found." \
+            "https://ntfy.sh/${{ env.NTFY_TOPIC }}" || echo "::warning::ntfy notification failed"
