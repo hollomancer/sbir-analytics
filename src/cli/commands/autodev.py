@@ -87,13 +87,33 @@ def run_loop(
         "-b",
         help="Max total tokens to consume (0 = unlimited)",
     ),
+    notify: list[str] = typer.Option(
+        ["bell"],
+        "--notify",
+        help="Notification channels: bell, desktop, webhook (repeatable)",
+    ),
+    ntfy_url: str = typer.Option(
+        "",
+        "--ntfy-url",
+        help="Webhook URL for push notifications (e.g. https://ntfy.sh/my-autodev)",
+    ),
 ) -> None:
     """Run the autonomous development loop."""
     from src.autodev.executor import ClaudeAPIExecutor, ClaudeCodeExecutor
+    from src.autodev.notifier import NotifyChannel, Notifier
     from src.autodev.orchestrator import LoopConfig, Orchestrator
 
     # --dry-run flag overrides executor choice
     is_dry_run = dry_run or executor == "dry-run"
+
+    # Build notifier from CLI flags
+    channels = []
+    for ch in notify:
+        try:
+            channels.append(NotifyChannel(ch))
+        except ValueError:
+            console.print(f"[yellow]Unknown notify channel '{ch}', skipping[/yellow]")
+    notifier = Notifier(channels=channels or [NotifyChannel.BELL], webhook_url=ntfy_url)
 
     project_root = project_root.resolve()
     config = LoopConfig(
@@ -106,7 +126,7 @@ def run_loop(
         max_token_budget=token_budget,
     )
 
-    orch = Orchestrator(config)
+    orch = Orchestrator(config, notifier=notifier)
 
     if is_dry_run:
         result = orch.run()

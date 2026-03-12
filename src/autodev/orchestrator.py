@@ -16,6 +16,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from .checkpoint import CheckpointAction, CheckpointHandler
+from .notifier import Notifier, notify_checkpoint, notify_loop_complete
 from .session import SessionManager, SessionState, TaskAttempt, TaskOutcome
 from .task_parser import SpecContext, SpecTask, TaskRisk, build_task_queue, discover_specs
 from .task_sources import TaskSource, WorkItem, discover_all
@@ -156,8 +157,9 @@ class Orchestrator:
     - In dry-run mode (generates prompts without executing)
     """
 
-    def __init__(self, config: LoopConfig):
+    def __init__(self, config: LoopConfig, notifier: Notifier | None = None):
         self.config = config
+        self.notifier = notifier or Notifier()
         self.session_mgr = SessionManager(config.project_root)
         self.verifier = Verifier(
             config.project_root,
@@ -248,6 +250,7 @@ class Orchestrator:
 
             if checkpoint_reason:
                 result.checkpoints_hit += 1
+                notify_checkpoint(self.notifier, checkpoint_reason.value, item.title)
                 checkpoint = self.checkpoint_handler.request_review(
                     reason=checkpoint_reason,
                     title=item.title,
@@ -301,6 +304,7 @@ class Orchestrator:
             result.stopped_reason = "All tasks processed"
 
         self.session_mgr.save_session(session)
+        notify_loop_complete(self.notifier, result.summary, result.stopped_reason)
         return result
 
     def _process_task(self, item: WorkItem, session: SessionState) -> TaskAttempt:
@@ -391,6 +395,7 @@ class Orchestrator:
 
             if checkpoint_reason:
                 result.checkpoints_hit += 1
+                notify_checkpoint(self.notifier, checkpoint_reason.value, item.title)
                 checkpoint = self.checkpoint_handler.request_review(
                     reason=checkpoint_reason,
                     title=item.title,
@@ -519,4 +524,5 @@ class Orchestrator:
             result.stopped_reason = "All tasks processed"
 
         self.session_mgr.save_session(session)
+        notify_loop_complete(self.notifier, result.summary, result.stopped_reason)
         return result
