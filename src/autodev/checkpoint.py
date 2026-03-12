@@ -195,6 +195,9 @@ class CheckpointHandler:
         if risk_level == "high":
             return CheckpointReason.HIGH_RISK_TASK
 
+        if risk_level == "medium" and not self.auto_skip_medium_risk:
+            return CheckpointReason.DESIGN_DECISION
+
         if consecutive_failures >= 3:
             return CheckpointReason.MAX_RETRIES_EXCEEDED
 

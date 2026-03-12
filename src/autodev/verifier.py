@@ -166,12 +166,13 @@ class Verifier:
         checks: list[tuple[str, list[str]]] = []
 
         if self.run_lint:
-            lint_cmd = ["uv", "run", "ruff", "check", "src/"]
+            lint_cmd = ["uv", "run", "ruff", "check", "src/", "tests/"]
             if changed_files:
                 py_files = [str(f) for f in changed_files if f.suffix == ".py"]
                 if py_files:
                     lint_cmd = ["uv", "run", "ruff", "check"] + py_files
             checks.append(("ruff-lint", lint_cmd))
+            checks.append(("ruff-format", ["uv", "run", "ruff", "format", "--check", "src/", "tests/"]))
 
         if self.run_typecheck:
             mypy_cmd = ["uv", "run", "mypy", "src/"]

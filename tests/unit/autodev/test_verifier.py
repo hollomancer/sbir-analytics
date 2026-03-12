@@ -81,3 +81,15 @@ class TestVerifier:
         checks = v._build_check_list(changed_files=[Path("src/foo.py")])
         lint_cmd = next(cmd for name, cmd in checks if name == "ruff-lint")
         assert "src/foo.py" in " ".join(str(c) for c in lint_cmd)
+
+    def test_lint_includes_tests_dir(self):
+        v = Verifier(Path("/tmp/test"))
+        checks = v._build_check_list()
+        lint_cmd = next(cmd for name, cmd in checks if name == "ruff-lint")
+        assert "tests/" in lint_cmd
+
+    def test_ruff_format_check_included(self):
+        v = Verifier(Path("/tmp/test"))
+        checks = v._build_check_list()
+        names = [name for name, _cmd in checks]
+        assert "ruff-format" in names

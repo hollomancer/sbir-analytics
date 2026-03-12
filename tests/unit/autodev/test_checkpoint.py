@@ -27,6 +27,16 @@ class TestCheckpointHandler:
         )
         assert reason == CheckpointReason.PERIODIC_REVIEW
 
+    def test_should_checkpoint_medium_risk_by_default(self):
+        handler = CheckpointHandler("test", interactive=False)
+        reason = handler.should_checkpoint("create new dagster asset", "medium")
+        assert reason == CheckpointReason.DESIGN_DECISION
+
+    def test_auto_skip_medium_risk(self):
+        handler = CheckpointHandler("test", interactive=False, auto_skip_medium_risk=True)
+        reason = handler.should_checkpoint("create new dagster asset", "medium")
+        assert reason is None
+
     def test_no_checkpoint_needed(self):
         handler = CheckpointHandler("test", interactive=False)
         reason = handler.should_checkpoint("write tests", "low")

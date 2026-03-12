@@ -141,9 +141,27 @@ class ClaudeAPIExecutor:
             return False
 
     def _apply_operation(self, op: dict, project_root: Path) -> bool:
-        """Apply a single file operation."""
+        """Apply a single file operation.
+
+        Validates that resolved paths stay within project_root to prevent
+        path traversal attacks from model output.
+        """
         action = op.get("action")
-        filepath = project_root / op.get("file", "")
+        raw_path = op.get("file", "")
+        filepath = (project_root / raw_path).resolve()
+
+        # Security: ensure resolved path is within project_root
+        try:
+            filepath.relative_to(project_root.resolve())
+        except ValueError:
+            print(f"  BLOCKED: path traversal attempt: {raw_path}")
+            return False
+
+        # Restrict writes to src/ and tests/ directories
+        rel = str(filepath.relative_to(project_root.resolve()))
+        if not (rel.startswith("src/") or rel.startswith("tests/")):
+            print(f"  BLOCKED: writes only allowed to src/ and tests/: {rel}")
+            return False
 
         if action == "create":
             filepath.parent.mkdir(parents=True, exist_ok=True)

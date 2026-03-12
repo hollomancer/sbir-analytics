@@ -75,3 +75,16 @@ class TestSessionManager:
         mgr = SessionManager(tmp_path, log_dir=tmp_path / ".autodev")
         loaded = mgr.load_session("nonexistent")
         assert loaded is None
+
+    def test_loaded_attempts_have_enum_outcome(self, tmp_path):
+        """Verify TaskOutcome is properly deserialized as enum, not string."""
+        mgr = SessionManager(tmp_path, log_dir=tmp_path / ".autodev")
+        session = mgr.create_session()
+        session.record_attempt(TaskAttempt("task1", "spec", TaskOutcome.SUCCESS))
+        session.record_attempt(TaskAttempt("task2", "spec", TaskOutcome.FAILED_VERIFICATION))
+        mgr.save_session(session)
+
+        loaded = mgr.load_session(session.session_id)
+        assert loaded.attempts[0].outcome == TaskOutcome.SUCCESS
+        assert loaded.attempts[1].outcome == TaskOutcome.FAILED_VERIFICATION
+        assert isinstance(loaded.attempts[0].outcome, TaskOutcome)

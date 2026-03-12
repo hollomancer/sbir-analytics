@@ -36,7 +36,6 @@ class LoopConfig:
     interactive: bool = True
     auto_commit: bool = True
     dry_run: bool = False
-    skip_high_risk: bool = False
     discover_tests: bool = False
 
     def __post_init__(self):
@@ -127,6 +126,11 @@ def build_implementation_prompt(item: WorkItem) -> str:
         parts.append("Implement this TODO:")
         parts.append(f"File: {item.location}")
         parts.append(f"Description: {item.description}\n")
+
+    if "human_guidance" in item.context:
+        parts.append("### Human Guidance")
+        parts.append(item.context["human_guidance"])
+        parts.append("")
 
     parts.append("### Instructions")
     parts.append("1. Read the relevant files to understand the current state")
@@ -240,7 +244,13 @@ class Orchestrator:
                         source=item.source.value,
                         outcome=TaskOutcome.SKIPPED_BY_HUMAN,
                     ))
+                    self.session_mgr.save_session(session)
                     continue
+                elif checkpoint.response == CheckpointAction.MODIFY:
+                    # Human provided guidance — attach it to the work item context
+                    if checkpoint.human_notes:
+                        item.context["human_guidance"] = checkpoint.human_notes
+                    session.reset_review_counter()
                 elif checkpoint.response == CheckpointAction.PROCEED:
                     session.reset_review_counter()
 
@@ -367,7 +377,19 @@ class Orchestrator:
                     break
                 elif checkpoint.response == CheckpointAction.SKIP:
                     result.tasks_skipped += 1
+                    session.record_attempt(TaskAttempt(
+                        task_title=item.title,
+                        source=item.source.value,
+                        outcome=TaskOutcome.SKIPPED_BY_HUMAN,
+                    ))
+                    self.session_mgr.save_session(session)
                     continue
+                elif checkpoint.response == CheckpointAction.MODIFY:
+                    if checkpoint.human_notes:
+                        item.context["human_guidance"] = checkpoint.human_notes
+                    session.reset_review_counter()
+                elif checkpoint.response == CheckpointAction.PROCEED:
+                    session.reset_review_counter()
 
             # Execute the task
             start = time.monotonic()

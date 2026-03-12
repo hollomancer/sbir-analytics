@@ -122,7 +122,12 @@ class SessionManager:
             k: v for k, v in data.items()
             if k != "attempts"
         })
-        state.attempts = [TaskAttempt(**a) for a in data.get("attempts", [])]
+        state.attempts = [
+            TaskAttempt(
+                **{**a, "outcome": TaskOutcome(a["outcome"])}
+            )
+            for a in data.get("attempts", [])
+        ]
         return state
 
     def save_session(self, state: SessionState) -> None:

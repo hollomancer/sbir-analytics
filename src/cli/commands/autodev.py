@@ -24,9 +24,6 @@ def discover_tasks(
     include_tests: bool = typer.Option(
         False, "--tests", help="Also run pytest to discover test failures (slower)"
     ),
-    show_all: bool = typer.Option(
-        False, "--all", "-a", help="Show completed tasks too"
-    ),
 ) -> None:
     """Discover and display all available work items."""
     from src.autodev.orchestrator import LoopConfig, Orchestrator
@@ -91,7 +88,7 @@ def run_loop(
     review_interval: int = typer.Option(
         10, "--review-interval", help="Tasks between mandatory human reviews"
     ),
-    model: str = typer.Option(
+    model: str | None = typer.Option(
         None, "--model", "-m", help="Model for Claude executors"
     ),
 ) -> None:
@@ -99,19 +96,22 @@ def run_loop(
     from src.autodev.executor import ClaudeAPIExecutor, ClaudeCodeExecutor
     from src.autodev.orchestrator import LoopConfig, Orchestrator
 
+    # --dry-run flag overrides executor choice
+    is_dry_run = dry_run or executor == "dry-run"
+
     project_root = project_root.resolve()
     config = LoopConfig(
         project_root=project_root,
         max_tasks=max_tasks,
         test_scope=test_scope,
-        dry_run=(executor == "dry-run"),
+        dry_run=is_dry_run,
         review_interval=review_interval,
         interactive=True,
     )
 
     orch = Orchestrator(config)
 
-    if executor == "dry-run" or dry_run:
+    if is_dry_run:
         result = orch.run()
     elif executor == "claude-code":
         exec_fn = ClaudeCodeExecutor(model=model)
