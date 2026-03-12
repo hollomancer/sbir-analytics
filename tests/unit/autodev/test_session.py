@@ -1,0 +1,77 @@
+"""Tests for session management."""
+
+from src.autodev.session import SessionManager, SessionState, TaskAttempt, TaskOutcome
+
+
+class TestSessionState:
+    def test_initial_state(self):
+        state = SessionState()
+        assert state.total_tasks_attempted == 0
+        assert state.success_rate == 0.0
+
+    def test_record_success(self):
+        state = SessionState()
+        state.record_attempt(TaskAttempt(
+            task_title="test",
+            source="test",
+            outcome=TaskOutcome.SUCCESS,
+        ))
+        assert state.total_tasks_succeeded == 1
+        assert state.consecutive_failures == 0
+        assert state.success_rate == 100.0
+
+    def test_record_failure(self):
+        state = SessionState()
+        state.record_attempt(TaskAttempt(
+            task_title="test",
+            source="test",
+            outcome=TaskOutcome.FAILED_VERIFICATION,
+        ))
+        assert state.total_tasks_failed == 1
+        assert state.consecutive_failures == 1
+
+    def test_consecutive_failures_reset_on_success(self):
+        state = SessionState()
+        state.record_attempt(TaskAttempt("t1", "s", TaskOutcome.FAILED_VERIFICATION))
+        state.record_attempt(TaskAttempt("t2", "s", TaskOutcome.FAILED_VERIFICATION))
+        assert state.consecutive_failures == 2
+        state.record_attempt(TaskAttempt("t3", "s", TaskOutcome.SUCCESS))
+        assert state.consecutive_failures == 0
+
+    def test_summary(self):
+        state = SessionState()
+        state.record_attempt(TaskAttempt("t1", "s", TaskOutcome.SUCCESS))
+        assert "1/1 succeeded" in state.summary
+
+
+class TestSessionManager:
+    def test_create_and_load_session(self, tmp_path):
+        mgr = SessionManager(tmp_path, log_dir=tmp_path / ".autodev")
+        session = mgr.create_session(branch_name="test-branch")
+
+        loaded = mgr.load_session(session.session_id)
+        assert loaded is not None
+        assert loaded.session_id == session.session_id
+        assert loaded.branch_name == "test-branch"
+
+    def test_save_with_attempts(self, tmp_path):
+        mgr = SessionManager(tmp_path, log_dir=tmp_path / ".autodev")
+        session = mgr.create_session()
+        session.record_attempt(TaskAttempt("task1", "spec", TaskOutcome.SUCCESS))
+        mgr.save_session(session)
+
+        loaded = mgr.load_session(session.session_id)
+        assert loaded.total_tasks_succeeded == 1
+
+    def test_list_sessions(self, tmp_path):
+        mgr = SessionManager(tmp_path, log_dir=tmp_path / ".autodev")
+        mgr.create_session(branch_name="branch-1")
+        mgr.create_session(branch_name="branch-2")
+
+        sessions = mgr.list_sessions()
+        assert len(sessions) == 2
+
+    def test_load_nonexistent_session(self, tmp_path):
+        mgr = SessionManager(tmp_path, log_dir=tmp_path / ".autodev")
+        loaded = mgr.load_session("nonexistent")
+        assert loaded is None
