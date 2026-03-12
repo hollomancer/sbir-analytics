@@ -24,6 +24,7 @@ class CheckpointReason(StrEnum):
     MAX_RETRIES_EXCEEDED = "max_retries_exceeded"
     SPEC_CLARIFICATION = "spec_clarification"
     PERIODIC_REVIEW = "periodic_review"
+    TOKEN_BUDGET_WARNING = "token_budget_warning"
 
 
 class CheckpointAction(StrEnum):
@@ -99,9 +100,12 @@ class CheckpointHandler:
         log_dir: Path | None = None,
         interactive: bool = True,
         auto_skip_medium_risk: bool = False,
+        token_budget_warning_pct: float = 0.75,
     ):
         self.interactive = interactive
         self.auto_skip_medium_risk = auto_skip_medium_risk
+        self.token_budget_warning_pct = token_budget_warning_pct
+        self._token_warning_fired = False
         log_path = None
         if log_dir:
             log_path = log_dir / f"checkpoints-{session_id}.json"
@@ -145,9 +149,44 @@ class CheckpointHandler:
         print(f"  {checkpoint.description}\n")
 
         if checkpoint.task_context:
-            print("  Context:")
-            for key, value in checkpoint.task_context.items():
-                print(f"    {key}: {value}")
+            # Show session progress summary first
+            session_keys = {
+                "tasks_succeeded",
+                "tasks_failed",
+                "tasks_skipped",
+                "success_rate",
+                "tokens_used",
+                "token_budget",
+                "token_pct",
+            }
+            session_ctx = {k: v for k, v in checkpoint.task_context.items() if k in session_keys}
+            task_ctx = {k: v for k, v in checkpoint.task_context.items() if k not in session_keys}
+
+            if session_ctx:
+                print("  Session Progress:")
+                if "tasks_succeeded" in session_ctx:
+                    print(
+                        f"    Tasks: {session_ctx.get('tasks_succeeded', '0')} succeeded, "
+                        f"{session_ctx.get('tasks_failed', '0')} failed, "
+                        f"{session_ctx.get('tasks_skipped', '0')} skipped"
+                    )
+                if "success_rate" in session_ctx:
+                    print(f"    Success rate: {session_ctx['success_rate']}")
+                if "tokens_used" in session_ctx:
+                    token_line = f"    Tokens: {session_ctx['tokens_used']}"
+                    if "token_budget" in session_ctx:
+                        token_line += f" / {session_ctx['token_budget']} budget"
+                    if "token_pct" in session_ctx:
+                        token_line += f" ({session_ctx['token_pct']})"
+                    print(token_line)
+                print()
+
+            if task_ctx:
+                print("  Task Context:")
+                for key, value in task_ctx.items():
+                    print(f"    {key}: {value}")
+                print()
+        else:
             print()
 
         print("  Actions:")
@@ -187,6 +226,8 @@ class CheckpointHandler:
         consecutive_failures: int = 0,
         tasks_since_review: int = 0,
         review_interval: int = 10,
+        tokens_used: int = 0,
+        token_budget: int = 0,
     ) -> CheckpointReason | None:
         """Determine if a checkpoint is needed before proceeding.
 
@@ -200,6 +241,15 @@ class CheckpointHandler:
 
         if consecutive_failures >= 3:
             return CheckpointReason.MAX_RETRIES_EXCEEDED
+
+        # Token budget warning (fires once at threshold)
+        if (
+            token_budget > 0
+            and not self._token_warning_fired
+            and tokens_used >= token_budget * self.token_budget_warning_pct
+        ):
+            self._token_warning_fired = True
+            return CheckpointReason.TOKEN_BUDGET_WARNING
 
         if tasks_since_review >= review_interval:
             return CheckpointReason.PERIODIC_REVIEW

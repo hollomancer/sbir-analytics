@@ -30,7 +30,7 @@ class LoopConfig:
     specs_root: Path | None = None
     max_tasks: int = 50
     max_consecutive_failures: int = 3
-    review_interval: int = 10
+    review_interval: int = 5
     fail_fast_verification: bool = True
     test_scope: str = "unit"
     interactive: bool = True
@@ -170,6 +170,26 @@ class Orchestrator:
             interactive=config.interactive,
         )
 
+    def _build_checkpoint_context(self, item: WorkItem, session: SessionState) -> dict[str, str]:
+        """Build enriched context dict for checkpoint prompts."""
+        ctx: dict[str, str] = {
+            "risk": item.risk.value if isinstance(item.risk, TaskRisk) else item.risk,
+            "file": item.file_path or "N/A",
+            "tasks_succeeded": str(session.total_tasks_succeeded),
+            "tasks_failed": str(session.total_tasks_failed),
+            "tasks_skipped": str(session.total_tasks_skipped),
+            "consecutive_failures": str(session.consecutive_failures),
+        }
+        if session.total_tasks_attempted > 0:
+            ctx["success_rate"] = f"{session.success_rate:.0f}%"
+        if session.total_tokens > 0:
+            ctx["tokens_used"] = f"{session.total_tokens:,}"
+        if self.config.max_token_budget > 0:
+            ctx["token_budget"] = f"{self.config.max_token_budget:,}"
+            pct = session.total_tokens / self.config.max_token_budget * 100
+            ctx["token_pct"] = f"{pct:.0f}%"
+        return ctx
+
     def discover_work(self) -> list[WorkItem]:
         """Discover all available work items from all sources."""
         items: list[WorkItem] = []
@@ -222,6 +242,8 @@ class Orchestrator:
                 consecutive_failures=session.consecutive_failures,
                 tasks_since_review=session.tasks_since_review,
                 review_interval=self.config.review_interval,
+                tokens_used=session.total_tokens,
+                token_budget=self.config.max_token_budget,
             )
 
             if checkpoint_reason:
@@ -230,12 +252,7 @@ class Orchestrator:
                     reason=checkpoint_reason,
                     title=item.title,
                     description=f"Source: {item.source.value}\n{item.description}",
-                    task_context={
-                        "risk": item.risk.value if isinstance(item.risk, TaskRisk) else item.risk,
-                        "file": item.file_path or "N/A",
-                        "tasks_completed": str(session.total_tasks_succeeded),
-                        "consecutive_failures": str(session.consecutive_failures),
-                    },
+                    task_context=self._build_checkpoint_context(item, session),
                 )
 
                 if checkpoint.response == CheckpointAction.ABORT:
@@ -368,6 +385,8 @@ class Orchestrator:
                 consecutive_failures=session.consecutive_failures,
                 tasks_since_review=session.tasks_since_review,
                 review_interval=self.config.review_interval,
+                tokens_used=session.total_tokens,
+                token_budget=self.config.max_token_budget,
             )
 
             if checkpoint_reason:
@@ -376,6 +395,7 @@ class Orchestrator:
                     reason=checkpoint_reason,
                     title=item.title,
                     description=item.description,
+                    task_context=self._build_checkpoint_context(item, session),
                 )
                 if checkpoint.response == CheckpointAction.ABORT:
                     result.stopped_reason = "Aborted by human"

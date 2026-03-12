@@ -51,6 +51,54 @@ class TestCheckpointHandler:
         )
         assert checkpoint.response == CheckpointAction.SKIP
 
+    def test_token_budget_warning_at_threshold(self):
+        handler = CheckpointHandler("test", interactive=False, token_budget_warning_pct=0.75)
+        reason = handler.should_checkpoint(
+            "write tests",
+            "low",
+            tokens_used=7500,
+            token_budget=10000,
+        )
+        assert reason == CheckpointReason.TOKEN_BUDGET_WARNING
+
+    def test_token_budget_warning_fires_once(self):
+        handler = CheckpointHandler("test", interactive=False, token_budget_warning_pct=0.75)
+        reason1 = handler.should_checkpoint(
+            "task1",
+            "low",
+            tokens_used=8000,
+            token_budget=10000,
+        )
+        assert reason1 == CheckpointReason.TOKEN_BUDGET_WARNING
+        # Second call should not fire again
+        reason2 = handler.should_checkpoint(
+            "task2",
+            "low",
+            tokens_used=9000,
+            token_budget=10000,
+        )
+        assert reason2 is None
+
+    def test_token_budget_warning_not_fired_below_threshold(self):
+        handler = CheckpointHandler("test", interactive=False, token_budget_warning_pct=0.75)
+        reason = handler.should_checkpoint(
+            "write tests",
+            "low",
+            tokens_used=5000,
+            token_budget=10000,
+        )
+        assert reason is None
+
+    def test_token_budget_warning_no_budget_set(self):
+        handler = CheckpointHandler("test", interactive=False)
+        reason = handler.should_checkpoint(
+            "write tests",
+            "low",
+            tokens_used=100000,
+            token_budget=0,
+        )
+        assert reason is None
+
     def test_checkpoint_log_persistence(self, tmp_path):
         log = CheckpointLog(
             session_id="test-123",

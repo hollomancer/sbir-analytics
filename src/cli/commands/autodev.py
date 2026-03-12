@@ -18,9 +18,7 @@ console = Console()
 
 @app.command("discover")
 def discover_tasks(
-    project_root: Path = typer.Option(
-        ".", "--root", "-r", help="Project root directory"
-    ),
+    project_root: Path = typer.Option(".", "--root", "-r", help="Project root directory"),
     include_tests: bool = typer.Option(
         False, "--tests", help="Also run pytest to discover test failures (slower)"
     ),
@@ -67,18 +65,12 @@ def discover_tasks(
 
 @app.command("run")
 def run_loop(
-    project_root: Path = typer.Option(
-        ".", "--root", "-r", help="Project root directory"
-    ),
-    max_tasks: int = typer.Option(
-        50, "--max-tasks", "-n", help="Maximum tasks to process"
-    ),
+    project_root: Path = typer.Option(".", "--root", "-r", help="Project root directory"),
+    max_tasks: int = typer.Option(50, "--max-tasks", "-n", help="Maximum tasks to process"),
     test_scope: str = typer.Option(
         "unit", "--test-scope", help="Test scope: fast, unit, smoke, integration, all"
     ),
-    dry_run: bool = typer.Option(
-        False, "--dry-run", help="Generate prompts without executing"
-    ),
+    dry_run: bool = typer.Option(False, "--dry-run", help="Generate prompts without executing"),
     executor: str = typer.Option(
         "dry-run",
         "--executor",
@@ -86,11 +78,9 @@ def run_loop(
         help="Executor: dry-run, claude-code, claude-api",
     ),
     review_interval: int = typer.Option(
-        10, "--review-interval", help="Tasks between mandatory human reviews"
+        5, "--review-interval", help="Tasks between mandatory human reviews"
     ),
-    model: str | None = typer.Option(
-        None, "--model", "-m", help="Model for Claude executors"
-    ),
+    model: str | None = typer.Option(None, "--model", "-m", help="Model for Claude executors"),
     token_budget: int = typer.Option(
         0,
         "--token-budget",
@@ -135,9 +125,7 @@ def run_loop(
 
 @app.command("sessions")
 def list_sessions(
-    project_root: Path = typer.Option(
-        ".", "--root", "-r", help="Project root directory"
-    ),
+    project_root: Path = typer.Option(".", "--root", "-r", help="Project root directory"),
 ) -> None:
     """List previous autonomous development sessions."""
     from src.autodev.session import SessionManager
@@ -175,9 +163,7 @@ def list_sessions(
 
 @app.command("specs")
 def show_specs(
-    project_root: Path = typer.Option(
-        ".", "--root", "-r", help="Project root directory"
-    ),
+    project_root: Path = typer.Option(".", "--root", "-r", help="Project root directory"),
 ) -> None:
     """Show Kiro specification status overview."""
     from src.autodev.task_parser import discover_specs
