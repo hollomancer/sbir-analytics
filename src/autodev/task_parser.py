@@ -91,13 +91,9 @@ _MEDIUM_RISK_PATTERNS = re.compile(
 
 _FILE_HINT_PATTERN = re.compile(r"`(src/[^`]+\.py)`")
 
-_TASK_LINE_PATTERN = re.compile(
-    r"^(\s*)- \[([ x])\]\s*(\d+(?:\.\d+)*)\s+(.*?)$"
-)
+_TASK_LINE_PATTERN = re.compile(r"^(\s*)- \[([ x])\]\s*(\d+(?:\.\d+)*)\s+(.*?)$")
 
-_REQUIREMENTS_PATTERN = re.compile(
-    r"_Requirements?:\s*([^_]+)_", re.IGNORECASE
-)
+_REQUIREMENTS_PATTERN = re.compile(r"_Requirements?:\s*([^_]+)_", re.IGNORECASE)
 
 
 def _assess_risk(description: str) -> TaskRisk:

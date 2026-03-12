@@ -128,9 +128,16 @@ def discover_test_failures(project_root: Path) -> list[WorkItem]:
     try:
         result = subprocess.run(
             [
-                "uv", "run", "pytest", "tests/unit/",
-                "-x", "--tb=line", "-q", "--no-header",
-                "-m", "not slow",
+                "uv",
+                "run",
+                "pytest",
+                "tests/unit/",
+                "-x",
+                "--tb=line",
+                "-q",
+                "--no-header",
+                "-m",
+                "not slow",
                 "--timeout=30",
             ],
             cwd=project_root,
@@ -140,9 +147,7 @@ def discover_test_failures(project_root: Path) -> list[WorkItem]:
         )
         if result.returncode != 0 and result.stdout:
             # Parse "FAILED tests/unit/foo.py::test_bar - ErrorMsg" lines
-            fail_pattern = re.compile(
-                r"FAILED\s+(.+?)::(\S+)\s*-?\s*(.*?)$", re.MULTILINE
-            )
+            fail_pattern = re.compile(r"FAILED\s+(.+?)::(\S+)\s*-?\s*(.*?)$", re.MULTILINE)
             for match in fail_pattern.finditer(result.stdout):
                 filepath, test_name, message = match.groups()
                 items.append(

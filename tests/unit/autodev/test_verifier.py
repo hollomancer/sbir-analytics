@@ -18,25 +18,31 @@ class TestCheckReport:
 
 class TestVerificationReport:
     def test_all_passed(self):
-        report = VerificationReport(checks=[
-            CheckReport("lint", CheckResult.PASSED),
-            CheckReport("test", CheckResult.PASSED),
-        ])
+        report = VerificationReport(
+            checks=[
+                CheckReport("lint", CheckResult.PASSED),
+                CheckReport("test", CheckResult.PASSED),
+            ]
+        )
         assert report.all_passed is True
 
     def test_one_failed(self):
-        report = VerificationReport(checks=[
-            CheckReport("lint", CheckResult.PASSED),
-            CheckReport("test", CheckResult.FAILED),
-        ])
+        report = VerificationReport(
+            checks=[
+                CheckReport("lint", CheckResult.PASSED),
+                CheckReport("test", CheckResult.FAILED),
+            ]
+        )
         assert report.all_passed is False
         assert len(report.failed_checks) == 1
 
     def test_skipped_counts_as_passed(self):
-        report = VerificationReport(checks=[
-            CheckReport("lint", CheckResult.PASSED),
-            CheckReport("mypy", CheckResult.SKIPPED),
-        ])
+        report = VerificationReport(
+            checks=[
+                CheckReport("lint", CheckResult.PASSED),
+                CheckReport("mypy", CheckResult.SKIPPED),
+            ]
+        )
         assert report.all_passed is True
 
     def test_summary(self):

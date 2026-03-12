@@ -37,6 +37,7 @@ class LoopConfig:
     auto_commit: bool = True
     dry_run: bool = False
     discover_tests: bool = False
+    max_token_budget: int = 0  # 0 = unlimited
 
     def __post_init__(self):
         if self.specs_root is None:
@@ -54,6 +55,7 @@ class LoopResult:
     tasks_skipped: int = 0
     stopped_reason: str = ""
     checkpoints_hit: int = 0
+    total_tokens_used: int = 0
 
     @property
     def summary(self) -> str:
@@ -67,6 +69,8 @@ class LoopResult:
             f"  Checkpoints: {self.checkpoints_hit}",
             f"  Stop reason: {self.stopped_reason}",
         ]
+        if self.total_tokens_used > 0:
+            lines.append(f"  Tokens used: {self.total_tokens_used:,}")
         return "\n".join(lines)
 
 
@@ -239,11 +243,13 @@ class Orchestrator:
                     break
                 elif checkpoint.response == CheckpointAction.SKIP:
                     result.tasks_skipped += 1
-                    session.record_attempt(TaskAttempt(
-                        task_title=item.title,
-                        source=item.source.value,
-                        outcome=TaskOutcome.SKIPPED_BY_HUMAN,
-                    ))
+                    session.record_attempt(
+                        TaskAttempt(
+                            task_title=item.title,
+                            source=item.source.value,
+                            outcome=TaskOutcome.SKIPPED_BY_HUMAN,
+                        )
+                    )
                     self.session_mgr.save_session(session)
                     continue
                 elif checkpoint.response == CheckpointAction.MODIFY:
@@ -270,8 +276,7 @@ class Orchestrator:
             # Check stop conditions
             if session.consecutive_failures >= self.config.max_consecutive_failures:
                 result.stopped_reason = (
-                    f"Stopped after {self.config.max_consecutive_failures} "
-                    f"consecutive failures"
+                    f"Stopped after {self.config.max_consecutive_failures} consecutive failures"
                 )
                 break
 
@@ -292,10 +297,10 @@ class Orchestrator:
         prompt = build_implementation_prompt(item)
 
         if self.config.dry_run:
-            print(f"\n{'='*60}")
+            print(f"\n{'=' * 60}")
             print(f"[DRY RUN] Task {session.total_tasks_attempted + 1}: {item.title}")
             print(f"Source: {item.source.value} | Risk: {item.risk}")
-            print(f"{'='*60}")
+            print(f"{'=' * 60}")
             print(prompt[:500])
             if len(prompt) > 500:
                 print(f"... ({len(prompt) - 500} more chars)")
@@ -377,11 +382,13 @@ class Orchestrator:
                     break
                 elif checkpoint.response == CheckpointAction.SKIP:
                     result.tasks_skipped += 1
-                    session.record_attempt(TaskAttempt(
-                        task_title=item.title,
-                        source=item.source.value,
-                        outcome=TaskOutcome.SKIPPED_BY_HUMAN,
-                    ))
+                    session.record_attempt(
+                        TaskAttempt(
+                            task_title=item.title,
+                            source=item.source.value,
+                            outcome=TaskOutcome.SKIPPED_BY_HUMAN,
+                        )
+                    )
                     self.session_mgr.save_session(session)
                     continue
                 elif checkpoint.response == CheckpointAction.MODIFY:
@@ -391,17 +398,42 @@ class Orchestrator:
                 elif checkpoint.response == CheckpointAction.PROCEED:
                     session.reset_review_counter()
 
+            # Check token budget before executing
+            if (
+                self.config.max_token_budget > 0
+                and session.total_tokens >= self.config.max_token_budget
+            ):
+                result.stopped_reason = (
+                    f"Token budget exhausted "
+                    f"({session.total_tokens:,}/{self.config.max_token_budget:,})"
+                )
+                break
+
             # Execute the task
             start = time.monotonic()
             prompt = build_implementation_prompt(item)
 
-            print(f"\n[Task {i+1}/{len(work_items)}] {item.title}")
+            print(f"\n[Task {i + 1}/{len(work_items)}] {item.title}")
+            if self.config.max_token_budget > 0:
+                remaining = self.config.max_token_budget - session.total_tokens
+                print(f"  Token budget: {remaining:,} remaining")
 
+            exec_result = None
             try:
-                success = executor_fn(prompt, self.config.project_root)
+                exec_result = executor_fn(prompt, self.config.project_root)
+                # Support both bool and ExecutionResult returns
+                if isinstance(exec_result, bool):
+                    from .executor import ExecutionResult
+
+                    exec_result = ExecutionResult(success=exec_result)
+                success = exec_result.success
             except Exception as e:
                 success = False
                 print(f"  Executor error: {e}")
+
+            # Track token usage from this execution
+            task_input_tokens = exec_result.input_tokens if exec_result else 0
+            task_output_tokens = exec_result.output_tokens if exec_result else 0
 
             if success:
                 # Verify
@@ -423,6 +455,8 @@ class Orchestrator:
                         verification_summary=report.summary,
                         commit_sha=commit_sha,
                         files_changed=self.session_mgr.git_changed_files(),
+                        input_tokens=task_input_tokens,
+                        output_tokens=task_output_tokens,
                     )
                     result.tasks_succeeded += 1
                 else:
@@ -434,6 +468,8 @@ class Orchestrator:
                         outcome=TaskOutcome.FAILED_VERIFICATION,
                         duration_seconds=duration,
                         verification_summary=report.summary,
+                        input_tokens=task_input_tokens,
+                        output_tokens=task_output_tokens,
                     )
                     result.tasks_failed += 1
             else:
@@ -445,12 +481,15 @@ class Orchestrator:
                     outcome=TaskOutcome.ERROR,
                     duration_seconds=duration,
                     error_message="Executor returned failure",
+                    input_tokens=task_input_tokens,
+                    output_tokens=task_output_tokens,
                 )
                 result.tasks_failed += 1
 
             session.record_attempt(attempt)
             self.session_mgr.save_session(session)
             result.tasks_processed += 1
+            result.total_tokens_used = session.total_tokens
 
             if session.consecutive_failures >= self.config.max_consecutive_failures:
                 result.stopped_reason = "Too many consecutive failures"

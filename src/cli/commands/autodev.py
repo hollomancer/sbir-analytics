@@ -91,6 +91,12 @@ def run_loop(
     model: str | None = typer.Option(
         None, "--model", "-m", help="Model for Claude executors"
     ),
+    token_budget: int = typer.Option(
+        0,
+        "--token-budget",
+        "-b",
+        help="Max total tokens to consume (0 = unlimited)",
+    ),
 ) -> None:
     """Run the autonomous development loop."""
     from src.autodev.executor import ClaudeAPIExecutor, ClaudeCodeExecutor
@@ -107,6 +113,7 @@ def run_loop(
         dry_run=is_dry_run,
         review_interval=review_interval,
         interactive=True,
+        max_token_budget=token_budget,
     )
 
     orch = Orchestrator(config)
@@ -149,14 +156,18 @@ def list_sessions(
     table.add_column("Branch")
     table.add_column("Attempted", justify="right")
     table.add_column("Succeeded", justify="right", style="green")
+    table.add_column("Tokens", justify="right", style="dim")
 
     for s in sessions:
+        tokens = s.get("total_tokens", "0")
+        token_display = f"{int(tokens):,}" if int(tokens) > 0 else "-"
         table.add_row(
             s["session_id"],
             s["started_at"][:19],
             s["branch"],
             s["tasks_attempted"],
             s["tasks_succeeded"],
+            token_display,
         )
 
     console.print(table)

@@ -172,7 +172,9 @@ class Verifier:
                 if py_files:
                     lint_cmd = ["uv", "run", "ruff", "check"] + py_files
             checks.append(("ruff-lint", lint_cmd))
-            checks.append(("ruff-format", ["uv", "run", "ruff", "format", "--check", "src/", "tests/"]))
+            checks.append(
+                ("ruff-format", ["uv", "run", "ruff", "format", "--check", "src/", "tests/"])
+            )
 
         if self.run_typecheck:
             mypy_cmd = ["uv", "run", "mypy", "src/"]

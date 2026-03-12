@@ -11,15 +11,33 @@ from __future__ import annotations
 import json
 import os
 import subprocess
+from dataclasses import dataclass
 from pathlib import Path
+
+
+@dataclass
+class ExecutionResult:
+    """Result of executing a task, including token usage."""
+
+    success: bool
+    input_tokens: int = 0
+    output_tokens: int = 0
+
+    @property
+    def total_tokens(self) -> int:
+        return self.input_tokens + self.output_tokens
+
+    def __bool__(self) -> bool:
+        """Allow using ExecutionResult as a boolean for backward compatibility."""
+        return self.success
 
 
 class DryRunExecutor:
     """Executor that prints prompts without implementing anything."""
 
-    def __call__(self, prompt: str, project_root: Path) -> bool:
+    def __call__(self, prompt: str, project_root: Path) -> ExecutionResult:
         print(f"  [DRY RUN] Would execute prompt ({len(prompt)} chars)")
-        return True
+        return ExecutionResult(success=True)
 
 
 class ClaudeCodeExecutor:
@@ -40,8 +58,15 @@ class ClaudeCodeExecutor:
         self.model = model
         self.timeout_seconds = timeout_seconds
 
-    def __call__(self, prompt: str, project_root: Path) -> bool:
-        cmd = ["claude", "--print", "--max-turns", str(self.max_turns)]
+    def __call__(self, prompt: str, project_root: Path) -> ExecutionResult:
+        cmd = [
+            "claude",
+            "--print",
+            "--output-format",
+            "json",
+            "--max-turns",
+            str(self.max_turns),
+        ]
 
         if self.model:
             cmd.extend(["--model", self.model])
@@ -56,20 +81,46 @@ class ClaudeCodeExecutor:
                 text=True,
                 timeout=self.timeout_seconds,
             )
+            input_tokens, output_tokens = self._parse_token_usage(result.stdout)
             if result.returncode == 0:
                 print("  Claude Code completed successfully")
-                return True
+                return ExecutionResult(
+                    success=True,
+                    input_tokens=input_tokens,
+                    output_tokens=output_tokens,
+                )
             else:
                 print(f"  Claude Code failed (exit {result.returncode})")
                 if result.stderr:
                     print(f"  stderr: {result.stderr[:500]}")
-                return False
+                return ExecutionResult(
+                    success=False,
+                    input_tokens=input_tokens,
+                    output_tokens=output_tokens,
+                )
         except subprocess.TimeoutExpired:
             print(f"  Claude Code timed out after {self.timeout_seconds}s")
-            return False
+            return ExecutionResult(success=False)
         except FileNotFoundError:
             print("  Error: `claude` CLI not found. Install Claude Code first.")
-            return False
+            return ExecutionResult(success=False)
+
+    @staticmethod
+    def _parse_token_usage(output: str) -> tuple[int, int]:
+        """Parse token usage from claude CLI JSON output.
+
+        When --output-format json is used, the response includes
+        usage stats. Returns (input_tokens, output_tokens).
+        """
+        try:
+            data = json.loads(output)
+            usage = data.get("usage", {})
+            return (
+                usage.get("input_tokens", 0),
+                usage.get("output_tokens", 0),
+            )
+        except (json.JSONDecodeError, AttributeError):
+            return 0, 0
 
 
 class ClaudeAPIExecutor:
@@ -88,17 +139,17 @@ class ClaudeAPIExecutor:
         self.model = model
         self.max_tokens = max_tokens
 
-    def __call__(self, prompt: str, project_root: Path) -> bool:
+    def __call__(self, prompt: str, project_root: Path) -> ExecutionResult:
         try:
             import anthropic
         except ImportError:
             print("  Error: anthropic package not installed. Run: uv add anthropic")
-            return False
+            return ExecutionResult(success=False)
 
         api_key = os.environ.get("ANTHROPIC_API_KEY")
         if not api_key:
             print("  Error: ANTHROPIC_API_KEY not set")
-            return False
+            return ExecutionResult(success=False)
 
         client = anthropic.Anthropic(api_key=api_key)
 
@@ -119,6 +170,10 @@ class ClaudeAPIExecutor:
                 messages=[{"role": "user", "content": prompt}],
             )
 
+            # Extract token usage from response
+            input_tokens = response.usage.input_tokens
+            output_tokens = response.usage.output_tokens
+
             # Parse and apply operations
             text = response.content[0].text
             applied = 0
@@ -134,11 +189,16 @@ class ClaudeAPIExecutor:
                     continue
 
             print(f"  Applied {applied} operations from Claude API response")
-            return applied > 0
+            print(f"  Tokens: {input_tokens:,} in / {output_tokens:,} out")
+            return ExecutionResult(
+                success=applied > 0,
+                input_tokens=input_tokens,
+                output_tokens=output_tokens,
+            )
 
         except Exception as e:
             print(f"  API error: {e}")
-            return False
+            return ExecutionResult(success=False)
 
     def _apply_operation(self, op: dict, project_root: Path) -> bool:
         """Apply a single file operation.

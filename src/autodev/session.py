@@ -39,6 +39,12 @@ class TaskAttempt:
     files_changed: list[str] = field(default_factory=list)
     error_message: str = ""
     timestamp: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
+    input_tokens: int = 0
+    output_tokens: int = 0
+
+    @property
+    def total_tokens(self) -> int:
+        return self.input_tokens + self.output_tokens
 
 
 @dataclass
@@ -56,6 +62,12 @@ class SessionState:
     total_tasks_skipped: int = 0
     consecutive_failures: int = 0
     tasks_since_review: int = 0
+    total_input_tokens: int = 0
+    total_output_tokens: int = 0
+
+    @property
+    def total_tokens(self) -> int:
+        return self.total_input_tokens + self.total_output_tokens
 
     @property
     def success_rate(self) -> float:
@@ -67,6 +79,8 @@ class SessionState:
         """Record a task attempt and update counters."""
         self.attempts.append(attempt)
         self.total_tasks_attempted += 1
+        self.total_input_tokens += attempt.input_tokens
+        self.total_output_tokens += attempt.output_tokens
 
         if attempt.outcome == TaskOutcome.SUCCESS:
             self.total_tasks_succeeded += 1
@@ -86,13 +100,19 @@ class SessionState:
 
     @property
     def summary(self) -> str:
-        return (
+        parts = [
             f"Session {self.session_id}: "
             f"{self.total_tasks_succeeded}/{self.total_tasks_attempted} succeeded "
             f"({self.success_rate:.0f}%), "
             f"{self.total_tasks_failed} failed, "
-            f"{self.total_tasks_skipped} skipped"
-        )
+            f"{self.total_tasks_skipped} skipped",
+        ]
+        if self.total_tokens > 0:
+            parts.append(
+                f"Tokens: {self.total_tokens:,} "
+                f"({self.total_input_tokens:,} in / {self.total_output_tokens:,} out)"
+            )
+        return " | ".join(parts)
 
 
 class SessionManager:
@@ -118,14 +138,9 @@ class SessionManager:
         if not path.exists():
             return None
         data = json.loads(path.read_text(encoding="utf-8"))
-        state = SessionState(**{
-            k: v for k, v in data.items()
-            if k != "attempts"
-        })
+        state = SessionState(**{k: v for k, v in data.items() if k != "attempts"})
         state.attempts = [
-            TaskAttempt(
-                **{**a, "outcome": TaskOutcome(a["outcome"])}
-            )
+            TaskAttempt(**{**a, "outcome": TaskOutcome(a["outcome"])})
             for a in data.get("attempts", [])
         ]
         return state
@@ -140,13 +155,19 @@ class SessionManager:
         for path in sorted(self.log_dir.glob("session-*.json")):
             try:
                 data = json.loads(path.read_text(encoding="utf-8"))
-                sessions.append({
-                    "session_id": data["session_id"],
-                    "started_at": data["started_at"],
-                    "branch": data.get("branch_name", ""),
-                    "tasks_attempted": str(data.get("total_tasks_attempted", 0)),
-                    "tasks_succeeded": str(data.get("total_tasks_succeeded", 0)),
-                })
+                total_tokens = data.get("total_input_tokens", 0) + data.get(
+                    "total_output_tokens", 0
+                )
+                sessions.append(
+                    {
+                        "session_id": data["session_id"],
+                        "started_at": data["started_at"],
+                        "branch": data.get("branch_name", ""),
+                        "tasks_attempted": str(data.get("total_tasks_attempted", 0)),
+                        "tasks_succeeded": str(data.get("total_tasks_succeeded", 0)),
+                        "total_tokens": str(total_tokens),
+                    }
+                )
             except (json.JSONDecodeError, KeyError):
                 continue
         return sessions
@@ -164,6 +185,8 @@ class SessionManager:
             "total_tasks_skipped": state.total_tasks_skipped,
             "consecutive_failures": state.consecutive_failures,
             "tasks_since_review": state.tasks_since_review,
+            "total_input_tokens": state.total_input_tokens,
+            "total_output_tokens": state.total_output_tokens,
             "attempts": [
                 {
                     "task_title": a.task_title,
@@ -175,6 +198,8 @@ class SessionManager:
                     "files_changed": a.files_changed,
                     "error_message": a.error_message,
                     "timestamp": a.timestamp,
+                    "input_tokens": a.input_tokens,
+                    "output_tokens": a.output_tokens,
                 }
                 for a in state.attempts
             ],

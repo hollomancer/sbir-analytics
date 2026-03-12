@@ -32,6 +32,11 @@ on:
           - fast
           - unit
           - smoke
+      token_budget:
+        description: 'Max total tokens to consume (0 = unlimited)'
+        required: false
+        default: '0'
+        type: string
       dry_run:
         description: 'Dry run (discover and plan only, no changes)'
         required: false
@@ -141,6 +146,7 @@ jobs:
           scope="${{ inputs.scope || 'all' }}"
           spec_name="${{ inputs.spec_name || '' }}"
           dry_run="${{ inputs.dry_run || 'false' }}"
+          token_budget="${{ inputs.token_budget || '0' }}"
 
           # Build the prompt based on scope
           if [ "$dry_run" = "true" ]; then
@@ -153,6 +159,11 @@ jobs:
             prompt="Run a quality sweep: fix lint errors, type errors, and code TODOs. Limit to ${max_tasks} fixes. Commit each fix separately with message prefix 'autodev:'."
           else
             prompt="Run /autodev-run ${max_tasks}. Work through pending tasks in priority order. Commit each change separately with message prefix 'autodev:'. Stop before any HIGH risk task."
+          fi
+
+          # Append token budget guidance if set
+          if [ "$token_budget" != "0" ]; then
+            prompt="${prompt} Token budget: ${token_budget} tokens. Stop processing before exceeding this limit."
           fi
 
           echo "prompt<<EOF" >> "$GITHUB_OUTPUT"

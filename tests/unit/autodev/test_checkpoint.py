@@ -66,6 +66,7 @@ class TestCheckpointHandler:
 
         assert log.log_path.exists()
         import json
+
         data = json.loads(log.log_path.read_text())
         assert data["session_id"] == "test-123"
         assert len(data["checkpoints"]) == 1
