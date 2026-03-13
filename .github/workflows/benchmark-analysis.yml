@@ -11,17 +11,17 @@ on:
         required: false
         default: "2026"
         type: string
-      margin-awards:
+      margin_awards:
         description: "Awards margin for sensitivity detection"
         required: false
         default: "5"
         type: string
-      margin-ratio:
+      margin_ratio:
         description: "Ratio margin for sensitivity detection"
         required: false
         default: "0.05"
         type: string
-      sbir-source:
+      sbir_source:
         description: "SBIR data source"
         required: false
         default: "sbir-gov"
@@ -29,7 +29,7 @@ on:
         options:
           - sbir-gov
           - s3
-      skip-usaspending:
+      skip_usaspending:
         description: "Skip USAspending API queries"
         required: false
         default: false
@@ -64,7 +64,7 @@ jobs:
           install-dev-deps: "false"
 
       - name: Configure AWS credentials
-        if: inputs.sbir-source == 's3'
+        if: inputs.sbir_source == 's3'
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
@@ -74,10 +74,10 @@ jobs:
         id: params
         run: |
           echo "fy=${{ inputs.fy || '2026' }}" >> "$GITHUB_OUTPUT"
-          echo "margin_awards=${{ inputs.margin-awards || '5' }}" >> "$GITHUB_OUTPUT"
-          echo "margin_ratio=${{ inputs.margin-ratio || '0.05' }}" >> "$GITHUB_OUTPUT"
-          echo "sbir_source=${{ inputs.sbir-source || 'sbir-gov' }}" >> "$GITHUB_OUTPUT"
-          echo "skip_usaspending=${{ inputs.skip-usaspending || 'false' }}" >> "$GITHUB_OUTPUT"
+          echo "margin_awards=${{ inputs.margin_awards || '5' }}" >> "$GITHUB_OUTPUT"
+          echo "margin_ratio=${{ inputs.margin_ratio || '0.05' }}" >> "$GITHUB_OUTPUT"
+          echo "sbir_source=${{ inputs.sbir_source || 'sbir-gov' }}" >> "$GITHUB_OUTPUT"
+          echo "skip_usaspending=${{ inputs.skip_usaspending || 'false' }}" >> "$GITHUB_OUTPUT"
         shell: bash
 
       - name: Restore USAspending API cache
@@ -120,21 +120,26 @@ jobs:
             echo "" >> "$GITHUB_STEP_SUMMARY"
 
             # Extract key metrics from JSON
-            uv run python -c "
-          import json, sys
-          with open('$EVAL') as f:
-              d = json.load(f)
-          lines = [
-              f'| Metric | Count |',
-              f'|--------|-------|',
-              f'| Companies evaluated | {d.get(\"total_companies_evaluated\", \"N/A\"):,} |',
-              f'| Subject to transition benchmark | {d.get(\"companies_subject_to_transition\", \"N/A\"):,} |',
-              f'| Failing transition benchmark | {d.get(\"companies_failing_transition\", \"N/A\"):,} |',
-              f'| Subject to commercialization benchmark | {d.get(\"companies_subject_to_commercialization\", \"N/A\"):,} |',
-              f'| Failing commercialization benchmark | {d.get(\"companies_failing_commercialization\", \"N/A\"):,} |',
-          ]
-          print('\n'.join(lines))
-          " >> "$GITHUB_STEP_SUMMARY"
+            uv run python <<'PYEOF' >> "$GITHUB_STEP_SUMMARY"
+import json
+
+def fmt(val):
+    return f"{val:,}" if isinstance(val, (int, float)) else str(val)
+
+with open("data/scripts_output/benchmark_evaluation.json") as f:
+    d = json.load(f)
+
+print("| Metric | Count |")
+print("|--------|-------|")
+for key, label in [
+    ("total_companies_evaluated", "Companies evaluated"),
+    ("companies_subject_to_transition", "Subject to transition benchmark"),
+    ("companies_failing_transition", "Failing transition benchmark"),
+    ("companies_subject_to_commercialization", "Subject to commercialization benchmark"),
+    ("companies_failing_commercialization", "Failing commercialization benchmark"),
+]:
+    print(f"| {label} | {fmt(d.get(key, 0))} |")
+PYEOF
             echo "" >> "$GITHUB_STEP_SUMMARY"
           fi
 
