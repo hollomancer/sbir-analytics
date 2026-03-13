@@ -120,7 +120,7 @@ jobs:
             echo "" >> "$GITHUB_STEP_SUMMARY"
 
             # Extract key metrics from JSON
-            uv run python <<'PYEOF' >> "$GITHUB_STEP_SUMMARY"
+            cat <<'PYEOF' > /tmp/benchmark_summary.py
 import json
 
 def fmt(val):
@@ -140,6 +140,7 @@ for key, label in [
 ]:
     print(f"| {label} | {fmt(d.get(key, 0))} |")
 PYEOF
+            uv run python /tmp/benchmark_summary.py >> "$GITHUB_STEP_SUMMARY"
             echo "" >> "$GITHUB_STEP_SUMMARY"
           fi
 
