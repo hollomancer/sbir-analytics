@@ -17,6 +17,7 @@ from pathlib import Path
 
 from .agent_prompts import agent_for_source, load_agent_instructions
 from .checkpoint import CheckpointAction, CheckpointHandler
+from .executor import ExecutionResult
 from .notifier import Notifier, notify_checkpoint, notify_loop_complete
 from .session import SessionManager, SessionState, TaskAttempt, TaskOutcome
 from .task_parser import SpecContext, SpecTask, TaskRisk, build_task_queue, discover_specs
@@ -214,7 +215,8 @@ class Orchestrator:
         items: list[WorkItem] = []
 
         # Kiro spec tasks
-        specs = discover_specs(self.config.specs_root)
+        specs_root = self.config.specs_root or self.config.project_root / ".kiro" / "specs"
+        specs = discover_specs(specs_root)
         spec_map = {s.name: s for s in specs}
         queue = build_task_queue(specs)
         for task in queue:
@@ -465,8 +467,6 @@ class Orchestrator:
                 exec_result = executor_fn(prompt, self.config.project_root)
                 # Support both bool and ExecutionResult returns
                 if isinstance(exec_result, bool):
-                    from .executor import ExecutionResult
-
                     exec_result = ExecutionResult(success=exec_result)
                 success = exec_result.success
             except Exception as e:
@@ -474,8 +474,8 @@ class Orchestrator:
                 print(f"  Executor error: {e}")
 
             # Track token usage from this execution
-            task_input_tokens = exec_result.input_tokens if exec_result else 0
-            task_output_tokens = exec_result.output_tokens if exec_result else 0
+            task_input_tokens = exec_result.input_tokens if isinstance(exec_result, ExecutionResult) else 0
+            task_output_tokens = exec_result.output_tokens if isinstance(exec_result, ExecutionResult) else 0
 
             if success:
                 # Verify

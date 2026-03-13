@@ -174,45 +174,73 @@ enrichment:
       cache_dir: "data/cache/patentsview"  # Directory for cache files
       ttl_hours: 24  # Time-to-live for cache entries (hours)
 
-  enrichment_refresh:
-    # Iterative refresh configuration for enrichment APIs
-    # Phase 1: USAspending API only. Other APIs (SAM.gov, NIH RePORTER, PatentsView, etc.) will be evaluated in Phase 2+
-    usaspending:
-      # Refresh cadence and SLA
-      cadence_days: 1  # Daily refresh
-      sla_staleness_days: 1  # Max 24 hours old before considered stale
 
-      # Batch processing configuration
-      batch_size: 100  # Awards per batch
-      max_concurrent_requests: 5  # Rate limit respect
-      rate_limit_per_minute: 120  # Conservative default based on API documentation
+enrichment_refresh:
+  # Iterative refresh configuration for enrichment APIs
+  # Phase 1: USAspending API only. Other APIs (SAM.gov, NIH RePORTER, PatentsView, etc.) will be evaluated in Phase 2+
+  usaspending:
+    # Refresh cadence and SLA
+    cadence_days: 1  # Daily refresh
+    sla_staleness_days: 1  # Max 24 hours old before considered stale
 
-      # Delta detection
-      enable_delta_detection: true  # Skip unchanged records based on payload hash
-      hash_algorithm: "sha256"  # Algorithm for payload hashing
+    # Batch processing configuration
+    batch_size: 100  # Awards per batch
+    max_concurrent_requests: 5  # Rate limit respect
+    rate_limit_per_minute: 120  # Conservative default based on API documentation
 
-      # Retry configuration
-      retry_attempts: 3
-      retry_backoff_seconds: 2
-      retry_backoff_multiplier: 2.0  # Exponential backoff multiplier
+    # Delta detection
+    enable_delta_detection: true  # Skip unchanged records based on payload hash
+    hash_algorithm: "sha256"  # Algorithm for payload hashing
 
-      # Timeout configuration
-      timeout_seconds: 30
-      connection_timeout_seconds: 10
+    # Retry configuration
+    retry_attempts: 3
+    retry_backoff_seconds: 2
+    retry_backoff_multiplier: 2.0  # Exponential backoff multiplier
 
-      # State management
-      checkpoint_interval: 50  # Save checkpoint every N records
-      state_file: "data/state/enrichment_refresh_state.json"
+    # Timeout configuration
+    timeout_seconds: 30
+    connection_timeout_seconds: 10
 
-      # Metrics
-      enable_metrics: true
-      metrics_file: "reports/metrics/enrichment_freshness.json"
+    # State management
+    checkpoint_interval: 50  # Save checkpoint every N records
+    state_file: "data/state/enrichment_refresh_state.json"
 
-      # API response caching
-      cache:
-        enabled: true  # Enable caching of API responses
-        cache_dir: "data/cache/usaspending"  # Directory for cache files
-        ttl_hours: 24  # Time-to-live for cache entries (hours)
+    # Metrics
+    enable_metrics: true
+    metrics_file: "reports/metrics/enrichment_freshness.json"
+
+    # API response caching
+    cache:
+      enabled: true  # Enable caching of API responses
+      cache_dir: "data/cache/usaspending"  # Directory for cache files
+      ttl_hours: 24  # Time-to-live for cache entries (hours)
+
+  # Phase 2+ sources -- disabled by default until legal/data-sharing reviews complete.
+  # Enable per-environment via env var, e.g.:
+  #   SBIR_ETL__ENRICHMENT_REFRESH__SEC_EDGAR__ENABLED=true
+  sec_edgar:
+    enabled: false  # Requires SEC EDGAR review
+    cadence_days: 7
+    sla_staleness_days: 14
+    rate_limit_per_minute: 10  # SEC fair-access rate limit
+    state_file: "data/state/sec_edgar_refresh_state.json"
+    metrics_file: "reports/metrics/sec_edgar_freshness.json"
+
+  opencorporates:
+    enabled: false  # Requires API key + data-sharing agreement
+    cadence_days: 30
+    sla_staleness_days: 60
+    rate_limit_per_minute: 30
+    state_file: "data/state/opencorporates_refresh_state.json"
+    metrics_file: "reports/metrics/opencorporates_freshness.json"
+
+  dla_cage:
+    enabled: false  # Requires DLA CAGE/BIS access review
+    cadence_days: 30
+    sla_staleness_days: 90
+    rate_limit_per_minute: 60
+    state_file: "data/state/dla_cage_refresh_state.json"
+    metrics_file: "reports/metrics/dla_cage_freshness.json"
 
 extraction:
   sbir:
@@ -686,6 +714,14 @@ ml:
       max_length: 512  # Maximum token length (truncation)
       award_fields: ["solicitation_title", "abstract", "award_title"]
       patent_fields: ["title", "abstract"]
+
+    # Neo4j similarity edge loading (disabled by default)
+    # When enabled, loads (Award)-[:SIMILAR_TO]->(Patent) edges into Neo4j
+    neo4j:
+      enabled: false  # Set to true to enable similarity edge loading
+      batch_size: 1000  # Batch size for Neo4j MERGE operations
+      dry_run: false  # When true, validate without committing changes
+      prune_previous: false  # Remove previous SIMILAR_TO edges before loading
 
     # Similarity computation
     similarity_threshold: 0.80  # Minimum similarity score to include in results

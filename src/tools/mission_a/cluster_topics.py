@@ -19,8 +19,6 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
-from loguru import logger
-
 from ..base import BaseTool, DataSourceRef, ToolMetadata, ToolResult
 
 
@@ -37,11 +35,13 @@ class ClusterTopicsTool(BaseTool):
     def execute(
         self,
         metadata: ToolMetadata,
+        *,
         topics_df: pd.DataFrame | None = None,
         embeddings: np.ndarray | None = None,
         similarity_threshold: float = 0.85,
         min_cluster_size: int = 2,
         cross_agency_only: bool = True,
+        **kwargs: Any,
     ) -> ToolResult:
         """Cluster topics by semantic similarity.
 
@@ -140,7 +140,7 @@ class ClusterTopicsTool(BaseTool):
             clusters.append({
                 "cluster_id": f"cluster-{cluster_id:04d}",
                 "topic_ids": cluster_topics,
-                "agencies_involved": sorted(cluster_agencies),
+                "agencies_involved": sorted(a for a in cluster_agencies if a is not None),
                 "num_agencies": len(cluster_agencies),
                 "num_topics": len(candidate),
                 "avg_similarity": round(avg_sim, 4),

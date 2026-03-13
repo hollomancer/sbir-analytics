@@ -18,8 +18,6 @@ from __future__ import annotations
 from typing import Any
 
 import pandas as pd
-from loguru import logger
-
 from ..base import BaseTool, DataSourceRef, ToolMetadata, ToolResult
 
 
@@ -36,10 +34,12 @@ class NAICSToBEACrosswalkTool(BaseTool):
     def execute(
         self,
         metadata: ToolMetadata,
+        *,
         awards_df: pd.DataFrame | None = None,
         naics_column: str = "naics_code",
         mapping_path: str | None = None,
         bea_excel_path: str | None = None,
+        **kwargs: Any,
     ) -> ToolResult:
         """Map NAICS codes on awards to BEA sectors.
 

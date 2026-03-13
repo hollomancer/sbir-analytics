@@ -23,7 +23,7 @@ import pandas as pd
 from ..base import BaseTool, DataSourceRef, ToolMetadata, ToolResult
 
 
-def _compute_hhi(shares: list[float]) -> float:
+def _compute_hhi(shares: list[float] | list[int]) -> float:
     """Compute Herfindahl-Hirschman Index from market shares.
 
     HHI = sum of squared market shares (as fractions).
@@ -51,9 +51,11 @@ class ComputePortfolioMetricsTool(BaseTool):
     def execute(
         self,
         metadata: ToolMetadata,
+        *,
         classified_awards: pd.DataFrame | None = None,
         entity_table: pd.DataFrame | None = None,
         fiscal_years: list[int] | None = None,
+        **kwargs: Any,
     ) -> ToolResult:
         """Compute portfolio metrics from CET-classified awards.
 
@@ -86,7 +88,7 @@ class ComputePortfolioMetricsTool(BaseTool):
                 (c for c in ["company", "company_name"] if c in df.columns), None,
             )
             if canonical_col and name_col and company_src:
-                name_to_id = dict(zip(entity_table[name_col], entity_table[canonical_col]))
+                name_to_id = dict(zip(entity_table[name_col], entity_table[canonical_col], strict=False))
                 df["canonical_id"] = df[company_src].map(name_to_id).fillna(df[company_src])
 
         # Identify columns
@@ -96,8 +98,6 @@ class ComputePortfolioMetricsTool(BaseTool):
         state_col = next((c for c in ["state", "company_state"] if c in df.columns), None)
         fy_col = next((c for c in ["fiscal_year", "award_year", "fy"] if c in df.columns), None)
         phase_col = next((c for c in ["phase", "award_phase", "program_phase"] if c in df.columns), None)
-        amount_col = next((c for c in ["award_amount", "amount"] if c in df.columns), None)
-
         # Apply fiscal year filter
         if fiscal_years and fy_col:
             df = df[df[fy_col].isin(fiscal_years)]
@@ -154,7 +154,7 @@ class ComputePortfolioMetricsTool(BaseTool):
             for area, group in df.groupby(cet_col):
                 # Same company, same CET, different agencies, same FY
                 overlap_count = 0
-                for (company, fy), subgroup in group.groupby([company_col, fy_col]):
+                for (_company, _fy), subgroup in group.groupby([company_col, fy_col]):
                     if subgroup[agency_col].nunique() >= 2:
                         overlap_count += 1
                 temporal_overlap[area] = overlap_count

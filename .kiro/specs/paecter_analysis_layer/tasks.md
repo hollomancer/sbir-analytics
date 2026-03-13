@@ -33,15 +33,16 @@
   - _Requirements: 2.1, 2.2_
   - _Status: Implemented in `src/assets/paecter/embeddings.py`_
 
-- [ ] 1.5 Add `ml.paecter.*` configuration block to config/base.yaml
-  - [ ] use_local: false (default to API mode)
-  - [ ] model_name: "mpi-inno-comp/paecter"
-  - [ ] batch_size: 32
-  - [ ] similarity_threshold: 0.80
-  - [ ] coverage_threshold_awards: 0.95
-  - [ ] coverage_threshold_patents: 0.98
-  - [ ] enable_cache: false
+- [x] 1.5 Add `ml.paecter.*` configuration block to config/base.yaml
+  - [x] use_local: false (default to API mode)
+  - [x] model_name: "mpi-inno-comp/paecter"
+  - [x] batch_size: 32
+  - [x] similarity_threshold: 0.80
+  - [x] coverage_threshold_awards: 0.95
+  - [x] coverage_threshold_patents: 0.98
+  - [x] enable_cache: false
   - _Requirements: 1.1, 1.2, 1.3, 1.4_
+  - _Status: Config exists in `config/base.yaml`. Validated Pydantic schema added in `src/config/schemas/ml.py` with `MLConfig` and `PaECTERConfig` models wired into `PipelineConfig`._
 
 ## Phase 2: Neo4j Integration and Quality Validation
 
@@ -53,12 +54,13 @@
   - [ ] Add dry-run mode for testing without committing changes
   - _Requirements: 4.1, 4.2, 4.3_
 
-- [ ] 2.2 Add Neo4j configuration to config/base.yaml
-  - [ ] ml.paecter.enable_neo4j_edges: false (disabled by default)
-  - [ ] ml.paecter.neo4j.batch_size: 1000
-  - [ ] ml.paecter.neo4j.dry_run: false
-  - [ ] ml.paecter.neo4j.prune_previous: false (optional cleanup of old edges)
+- [x] 2.2 Add Neo4j configuration to config/base.yaml
+  - [x] ml.paecter.neo4j.enabled: false (disabled by default)
+  - [x] ml.paecter.neo4j.batch_size: 1000
+  - [x] ml.paecter.neo4j.dry_run: false
+  - [x] ml.paecter.neo4j.prune_previous: false (optional cleanup of old edges)
   - _Requirements: 4.1, 4.2, 4.3_
+  - _Status: Config added to `config/base.yaml` under `ml.paecter.neo4j`. Schema already existed in `src/config/schemas/ml.py` as `PaECTERNeo4jConfig`._
 
 - [ ] 2.3 Implement quality metrics and performance baselines
   - [ ] Create `paecter_quality_metrics` asset for tracking embedding quality
@@ -76,12 +78,13 @@
 
 ## Phase 3: Testing and Documentation
 
-- [ ] 3.1 Unit testing for PaECTER components
-  - [ ] Test PaECTER client configuration and initialization
-  - [ ] Test text preprocessing edge cases (missing fields, empty strings)
-  - [ ] Test embedding caching behavior
-  - [ ] Test similarity computation with various input sizes
+- [x] 3.1 Unit testing for PaECTER components
+  - [x] Test PaECTER client configuration and initialization
+  - [x] Test text preprocessing edge cases (missing fields, empty strings)
+  - [x] Test embedding caching behavior
+  - [x] Test similarity computation with various input sizes
   - _Requirements: All requirements_
+  - _Status: 19 tests in `tests/unit/ml/test_paecter_client.py` covering config, text prep edge cases, caching, and similarity computation (identical, orthogonal, matrix shape)._
 
 - [ ] 3.2 Integration testing for Dagster assets
   - [ ] Test complete embedding generation pipeline (awards → patents → similarity)

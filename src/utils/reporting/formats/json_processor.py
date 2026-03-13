@@ -180,7 +180,7 @@ class JsonReportProcessor(BaseReportProcessor):
 
     # Expected schema for pipeline metrics JSON output.
     # Maps field name -> (required, expected_type_or_None).
-    _SCHEMA: dict[str, tuple[bool, type | None]] = {
+    _SCHEMA: dict[str, tuple[bool, type | tuple[type, ...] | None]] = {
         "run_id": (True, str),
         "timestamp": (True, str),
         "total_records_processed": (True, (int, float)),

@@ -121,18 +121,20 @@
     - Test layout rendering and responsive design
     - _Requirements: 4.4, 3.4_
 
-- [ ] 8. Integrate with existing configuration system
-  - [ ] 8.1 Add CLI-specific configuration schema
+- [x] 8. Integrate with existing configuration system
+  - [x] 8.1 Add CLI-specific configuration schema
     - Extend PipelineConfig with CLI settings section
     - Add theme, refresh rates, and display preferences
     - Implement validation for CLI-specific configuration
     - _Requirements: 7.1, 7.2_
+    - _Status: Implemented in `src/config/schemas/runtime.py` as `CLIConfig`. Integrated into `PipelineConfig` in `src/config/schemas/pipeline.py`. Defaults in `config/base.yaml`._
 
-  - [ ] 8.2 Support environment variable overrides
+  - [x] 8.2 Support environment variable overrides
     - Implement SBIR_ETL__ pattern support for CLI settings
     - Add configuration validation with clear error messages
     - Create configuration help and documentation
     - _Requirements: 7.2, 7.3_
+    - _Status: Implemented in `src/config/loader.py` via `_apply_env_overrides()`. Pattern `SBIR_ETL__CLI__<FIELD>=value` already supported (e.g., `SBIR_ETL__CLI__THEME=dark`)._
 
   - [ ]* 8.3 Write configuration integration tests
     - Test YAML configuration loading and validation
@@ -140,18 +142,20 @@
     - Test error handling for invalid configuration
     - _Requirements: 7.1, 7.3_
 
-- [ ] 9. Add comprehensive error handling and logging
-  - [ ] 9.1 Implement error formatting and display
+- [x] 9. Add comprehensive error handling and logging
+  - [x] 9.1 Implement error formatting and display
     - Create Rich-formatted error messages with context
     - Add suggested fixes and troubleshooting steps
     - Implement appropriate exit codes for different error types
     - _Requirements: 1.5_
+    - _Status: Implemented in `src/cli/display/errors.py` with CLIError, ConfigError, ConnectionError, DataError subclasses, exit code constants (0-4), context-aware suggestion inference, and 21 unit tests._
 
-  - [ ] 9.2 Integrate with existing logging system
+  - [x] 9.2 Integrate with existing logging system
     - Use same logging configuration as main pipeline
     - Add CLI-specific log formatting and output
     - Create debug mode for detailed troubleshooting
     - _Requirements: 7.4_
+    - _Status: CLI main.py now uses `src/utils/common/logging_config.setup_logging()` with text format. Added `--debug` flag._
 
   - [ ]* 9.3 Write error handling tests
     - Test error message formatting and clarity

@@ -89,13 +89,13 @@ class CompanyCategorizationConfig(BaseModel):
     """Configuration for company categorization system."""
 
     product_leaning_pct: float = Field(
-        default=60.0,
+        default=51.0,
         ge=0.0,
         le=100.0,
         description="Product percentage threshold for Product-leaning classification",
     )
     service_leaning_pct: float = Field(
-        default=60.0,
+        default=51.0,
         ge=0.0,
         le=100.0,
         description="Service percentage threshold for Service-leaning classification",

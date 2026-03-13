@@ -1,17 +1,17 @@
 """Main CLI application entry point for SBIR ETL Pipeline.
 
 This module provides the Typer application instance and command registration.
+Uses the same logging infrastructure as the main pipeline, with a CLI-friendly
+pretty format on stderr so Rich output on stdout remains uncluttered.
 """
 
 from __future__ import annotations
-
-import sys
 
 import typer
 from loguru import logger
 from rich.console import Console
 
-from .display.errors import handle_error
+from .display.errors import EXIT_CONFIG_ERROR, handle_error
 
 
 # Initialize Typer app
@@ -26,22 +26,39 @@ app = typer.Typer(
 console = Console()
 
 
-def setup_logging(verbose: bool = False) -> None:
-    """Configure logging for CLI.
+def setup_logging(verbose: bool = False, debug: bool = False) -> None:
+    """Configure logging for CLI using the pipeline's logging infrastructure.
+
+    Uses the same ``setup_logging`` from ``src.utils.common.logging_config`` so
+    that log format, file rotation, and context variables behave identically to
+    the main pipeline.  The CLI always uses "text" format (pretty) since Rich
+    tables and panels are the primary output channel.
 
     Args:
-        verbose: Enable debug-level logging
+        verbose: Enable debug-level logging to console.
+        debug: Alias for verbose (for ``--debug`` flag).
     """
-    # Remove default handler
-    logger.remove()
+    from src.utils.common.logging_config import setup_logging as pipeline_setup_logging
 
-    # Add console handler with appropriate level
-    log_level = "DEBUG" if verbose else "INFO"
-    logger.add(
-        sys.stderr,
-        format="<level>{level: <8}</level> | {message}",
+    log_level = "DEBUG" if (verbose or debug) else "INFO"
+
+    # Attempt to load file path from config; fall back gracefully
+    file_path: str | None = None
+    try:
+        from src.config.loader import get_config
+
+        config = get_config()
+        file_path = config.logging.file_path
+    except Exception:
+        pass  # Config may not be available yet; skip file logging
+
+    pipeline_setup_logging(
         level=log_level,
-        colorize=True,
+        format_type="text",  # CLI always uses pretty format
+        file_path=file_path,
+        include_stage=False,  # CLI commands don't set pipeline stage
+        include_run_id=False,  # CLI commands don't set run IDs
+        include_timestamps=True,
     )
 
 
@@ -49,14 +66,15 @@ def setup_logging(verbose: bool = False) -> None:
 def main(
     ctx: typer.Context,
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable verbose logging"),
+    debug: bool = typer.Option(False, "--debug", help="Enable debug-level logging"),
 ) -> None:
     """SBIR Analytics Pipeline CLI.
 
     Provides commands for pipeline operations, status monitoring, and metrics.
     """
     try:
-        # Setup logging
-        setup_logging(verbose=verbose)
+        # Setup logging using the shared pipeline infrastructure
+        setup_logging(verbose=verbose, debug=debug)
 
         # Store context in typer context for commands
         from .context import CommandContext
@@ -68,8 +86,11 @@ def main(
             console.print(app.info.help)
             raise typer.Exit(code=0)
 
+    except typer.Exit:
+        raise
     except Exception as e:
-        handle_error(e, exit_code=2)  # Config errors use exit code 2
+        logger.opt(exception=True).error(f"CLI initialization failed: {e}")
+        handle_error(e, exit_code=EXIT_CONFIG_ERROR)
         raise
 
 

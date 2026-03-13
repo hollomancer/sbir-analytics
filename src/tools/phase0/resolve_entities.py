@@ -72,6 +72,7 @@ class ResolveEntitiesTool(BaseTool):
     def execute(
         self,
         metadata: ToolMetadata,
+        *,
         sbir_companies: pd.DataFrame | None = None,
         sam_entities: pd.DataFrame | None = None,
         fpds_vendors: pd.DataFrame | None = None,
@@ -79,6 +80,7 @@ class ResolveEntitiesTool(BaseTool):
         gold_set_path: str | None = None,
         fuzzy_auto_threshold: float = 90.0,
         fuzzy_review_threshold: float = 75.0,
+        **kwargs: Any,
     ) -> ToolResult:
         """Resolve entities across multiple public data sources.
 
@@ -106,7 +108,7 @@ class ResolveEntitiesTool(BaseTool):
                 src_col = next((c for c in ["source_name", "name"] if c in gold_df.columns), None)
                 can_col = next((c for c in ["canonical_id", "canonical"] if c in gold_df.columns), None)
                 if src_col and can_col:
-                    gold_set = dict(zip(gold_df[src_col], gold_df[can_col]))
+                    gold_set = dict(zip(gold_df[src_col], gold_df[can_col], strict=False))
                     logger.info(f"Loaded {len(gold_set)} gold set linkages from {gold_set_path}")
             except Exception as e:
                 logger.warning(f"Could not load gold set: {e}")

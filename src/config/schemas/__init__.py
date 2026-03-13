@@ -12,6 +12,7 @@ from .data_pipeline import (
 )
 from .enrichment import EnrichmentConfig, EnrichmentRefreshConfig, EnrichmentSourceConfig
 from .fiscal import FiscalAnalysisConfig, SensitivityConfig, TaxParameterConfig
+from .ml import MLConfig, PaECTERConfig
 from .pipeline import PipelineConfig, PipelineMetadata
 from .reporting import StatisticalReportingConfig
 from .runtime import (
@@ -35,7 +36,9 @@ __all__ = [
     "FiscalAnalysisConfig",
     "LoggingConfig",
     "MetricsConfig",
+    "MLConfig",
     "Neo4jConfig",
+    "PaECTERConfig",
     "PathsConfig",
     "PipelineConfig",
     "PipelineMetadata",

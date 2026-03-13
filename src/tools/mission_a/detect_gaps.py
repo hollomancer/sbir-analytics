@@ -17,8 +17,6 @@ from __future__ import annotations
 from typing import Any
 
 import pandas as pd
-from loguru import logger
-
 from ..base import BaseTool, DataSourceRef, ToolMetadata, ToolResult
 
 
@@ -60,11 +58,13 @@ class DetectGapsTool(BaseTool):
     def execute(
         self,
         metadata: ToolMetadata,
+        *,
         classified_awards: pd.DataFrame | None = None,
         cet_taxonomy: list[str] | None = None,
         lookback_years: int = 5,
         min_awards_threshold: int = 10,
         current_fiscal_year: int = 2025,
+        **kwargs: Any,
     ) -> ToolResult:
         """Detect gaps in CET coverage across the SBIR portfolio.
 

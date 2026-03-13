@@ -65,6 +65,7 @@ class TaxEstimationTool(BaseTool):
     def execute(
         self,
         metadata: ToolMetadata,
+        *,
         awards_df: pd.DataFrame | None = None,
         multipliers_df: pd.DataFrame | None = None,
         fpds_revenue: pd.DataFrame | None = None,
@@ -72,6 +73,7 @@ class TaxEstimationTool(BaseTool):
         effective_tax_rates: dict[str, float] | None = None,
         discount_rate: float = 0.03,
         assessment_year: int = 2026,
+        **kwargs: Any,
     ) -> ToolResult:
         """Estimate fiscal returns from SBIR investments (Track A + Track B).
 
@@ -150,7 +152,6 @@ class TaxEstimationTool(BaseTool):
                 # Wage component (approximation: 60% of value added goes to wages)
                 wage_share = 0.60
                 wages = value_added * wage_share
-                proprietor_income = value_added * 0.15
                 corporate_surplus = value_added * 0.25
 
                 # Tax estimates

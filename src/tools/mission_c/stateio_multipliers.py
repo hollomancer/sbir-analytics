@@ -36,10 +36,12 @@ class StateIOMultipliersTool(BaseTool):
     def execute(
         self,
         metadata: ToolMetadata,
+        *,
         states: list[str] | None = None,
         bea_sectors: list[str] | None = None,
         awards_df: pd.DataFrame | None = None,
         csv_fallback_path: str | None = None,
+        **kwargs: Any,
     ) -> ToolResult:
         """Retrieve economic multipliers for state-sector combinations.
 
@@ -87,22 +89,44 @@ class StateIOMultipliersTool(BaseTool):
 
             if RPY2_AVAILABLE:
                 adapter = RStateIOAdapter()
-                for state, sector in pairs:
+                if adapter.is_available():
                     try:
-                        result = adapter.get_multiplier(state=state, sector=sector)
-                        if result is not None:
+                        # Build a unit-shock DataFrame to derive multipliers
+                        from decimal import Decimal
+
+                        unit_shock = Decimal("1000000")
+                        shocks_df = pd.DataFrame({
+                            "state": [s for s, _ in pairs],
+                            "bea_sector": [b for _, b in pairs],
+                            "fiscal_year": [2020] * len(pairs),
+                            "shock_amount": [unit_shock] * len(pairs),
+                        })
+                        impacts_df = adapter.compute_impacts(shocks_df)
+
+                        # Derive multipliers as ratio of impact to input shock
+                        for _, row in impacts_df.iterrows():
+                            shock = float(row.get("shock_amount", unit_shock))
+                            if shock == 0:
+                                continue
+                            # Note: StateIO R adapter does not return employment
+                            # impact data. Use 1.0 placeholder until true employment
+                            # multipliers are supported.
                             multipliers.append({
-                                "state": state,
-                                "bea_sector": sector,
-                                "output_multiplier": result.get("output_multiplier", 1.0),
-                                "employment_multiplier": result.get("employment_multiplier", 1.0),
-                                "value_added_multiplier": result.get("value_added_multiplier", 1.0),
+                                "state": row["state"],
+                                "bea_sector": row["bea_sector"],
+                                "output_multiplier": float(row.get("production_impact", shock)) / shock,
+                                "employment_multiplier": float(row.get("employment_impact", shock)) / shock,
+                                "value_added_multiplier": (
+                                    float(row.get("wage_impact", 0))
+                                    + float(row.get("gross_operating_surplus", 0))
+                                    + float(row.get("tax_impact", 0))
+                                ) / shock,
                                 "source": "stateio_r",
                             })
+                        if multipliers:
+                            access_method = "stateio_r_package"
                     except Exception as e:
-                        logger.debug(f"R adapter failed for {state}/{sector}: {e}")
-                if multipliers:
-                    access_method = "stateio_r_package"
+                        logger.debug(f"R adapter compute_impacts failed: {e}")
         except ImportError:
             pass
 

@@ -19,6 +19,7 @@ from .data_pipeline import (
 )
 from .enrichment import EnrichmentConfig, EnrichmentRefreshConfig
 from .fiscal import FiscalAnalysisConfig
+from .ml import MLConfig
 from .reporting import StatisticalReportingConfig
 from .runtime import (
     CLIConfig,
@@ -99,6 +100,10 @@ class PipelineConfig(BaseModel):
         default_factory=CompanyCategorizationConfig,
         description="Company categorization configuration",
     )
+    ml: MLConfig = Field(
+        default_factory=MLConfig,
+        description="Machine learning configuration (PaECTER, embeddings)",
+    )
 
     model_config = ConfigDict(
         validate_assignment=True,
@@ -117,6 +122,7 @@ __all__ = [
     "FiscalAnalysisConfig",
     "LoggingConfig",
     "MetricsConfig",
+    "MLConfig",
     "Neo4jConfig",
     "PathsConfig",
     "PipelineConfig",

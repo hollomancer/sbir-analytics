@@ -40,6 +40,7 @@ class ComputeTransitionRateTool(BaseTool):
     def execute(
         self,
         metadata: ToolMetadata,
+        *,
         awards_df: pd.DataFrame | None = None,
         entity_table: pd.DataFrame | None = None,
         assessment_year: int = 2026,
@@ -47,6 +48,7 @@ class ComputeTransitionRateTool(BaseTool):
         exclude_most_recent: int = 1,
         standard_min_rate: float = 0.25,
         increased_min_rate: float = 0.35,
+        **kwargs: Any,
     ) -> ToolResult:
         """Calculate transition rate benchmark for all qualifying companies.
 
@@ -83,7 +85,7 @@ class ComputeTransitionRateTool(BaseTool):
                 (c for c in ["company", "company_name"] if c in df.columns), None,
             )
             if canonical_col and name_col and company_src:
-                name_to_id = dict(zip(entity_table[name_col], entity_table[canonical_col]))
+                name_to_id = dict(zip(entity_table[name_col], entity_table[canonical_col], strict=False))
                 df["canonical_id"] = df[company_src].map(name_to_id).fillna(df[company_src])
 
         # Identify columns
@@ -152,7 +154,7 @@ class ComputeTransitionRateTool(BaseTool):
             # Pass/fail determination
             if threshold_tier == "below_threshold":
                 status = "not_subject"
-            elif transition_rate >= min_rate:
+            elif min_rate is not None and transition_rate >= min_rate:
                 status = "passing"
             else:
                 status = "failing"
