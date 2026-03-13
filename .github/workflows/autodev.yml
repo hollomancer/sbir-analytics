@@ -1,0 +1,378 @@
+name: Autonomous Development
+
+on:
+  workflow_dispatch:
+    inputs:
+      max_tasks:
+        description: 'Maximum tasks to process'
+        required: false
+        default: '10'
+        type: string
+      scope:
+        description: 'What to work on'
+        required: false
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - spec-tasks
+          - test-fixes
+          - quality
+      spec_name:
+        description: 'Specific spec to implement (optional, used with spec-tasks scope)'
+        required: false
+        default: ''
+        type: string
+      test_scope:
+        description: 'Test verification scope'
+        required: false
+        default: 'unit'
+        type: choice
+        options:
+          - fast
+          - unit
+          - smoke
+      token_budget:
+        description: 'Max total tokens to consume (0 = unlimited)'
+        required: false
+        default: '0'
+        type: string
+      dry_run:
+        description: 'Dry run (discover and plan only, no changes)'
+        required: false
+        default: false
+        type: boolean
+      ntfy_topic:
+        description: 'ntfy.sh topic for push notifications (e.g. my-sbir-autodev)'
+        required: false
+        default: ''
+        type: string
+  schedule:
+    # Run weeknights at 2am UTC (before nightly security scan at 3am)
+    - cron: "0 2 * * 1-5"
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+concurrency:
+  group: autodev
+  cancel-in-progress: false  # Don't cancel in-progress autodev runs
+
+env:
+  PYTHON_VERSION: "3.11"
+  AUTODEV_BRANCH_PREFIX: "autodev"
+  NTFY_TOPIC: ${{ inputs.ntfy_topic || vars.AUTODEV_NTFY_TOPIC || '' }}
+
+jobs:
+  discover:
+    name: Discover Work Items
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      has_work: ${{ steps.discover.outputs.has_work }}
+      item_count: ${{ steps.discover.outputs.item_count }}
+      summary: ${{ steps.discover.outputs.summary }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python and UV
+        uses: ./.github/actions/setup-python-uv
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          install-dev-deps: "true"
+          cache-venv: "true"
+
+      - name: Discover work items
+        id: discover
+        run: |
+          # Run discovery and capture output
+          output=$(uv run sbir-cli autodev discover --root . 2>&1) || true
+          echo "$output"
+
+          # Count items (lines with source type in the table)
+          item_count=$(echo "$output" | grep -c "kiro_spec\|test_failure\|lint_error\|type_error\|code_todo" || echo "0")
+          echo "item_count=$item_count" >> "$GITHUB_OUTPUT"
+
+          if [ "$item_count" -gt "0" ]; then
+            echo "has_work=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_work=false" >> "$GITHUB_OUTPUT"
+          fi
+
+          # Capture summary for PR body
+          echo "summary<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$output" | head -50 >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+
+      - name: Show spec status
+        run: uv run sbir-cli autodev specs --root . || true
+
+  scope-guard:
+    name: Scope Guard Review
+    needs: discover
+    if: needs.discover.outputs.has_work == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+    outputs:
+      guidance: ${{ steps.review.outputs.guidance }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Run scope-guard review
+        id: review
+        uses: anthropics/claude-code-action@v1
+        with:
+          prompt: |
+            You are the scope guard. Read .claude/agents/scope-guard.md for your full instructions.
+
+            Here are the discovered work items:
+            ```
+            ${{ needs.discover.outputs.summary }}
+            ```
+
+            Produce a short scope-guard assessment:
+            1. Flag any items that should be DEFERRED or REJECTED (with reason)
+            2. Suggest priority reordering if the current order doesn't match research plan milestones
+            3. Keep it under 200 words — this guidance is injected into the implementation prompt
+
+            Output ONLY the guidance text, no markdown fences.
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          allowed_tools: "Read,Glob,Grep"
+          timeout_minutes: 5
+
+  implement:
+    name: Autonomous Implementation
+    needs: [discover, scope-guard]
+    if: needs.discover.outputs.has_work == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Python and UV
+        uses: ./.github/actions/setup-python-uv
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          install-dev-deps: "true"
+          cache-venv: "true"
+
+      - name: Configure git
+        run: |
+          git config user.name "autodev[bot]"
+          git config user.email "autodev[bot]@users.noreply.github.com"
+
+      - name: Create autodev branch
+        id: branch
+        run: |
+          timestamp=$(date +%Y%m%d-%H%M)
+          branch="${{ env.AUTODEV_BRANCH_PREFIX }}/session-${timestamp}"
+          git checkout -b "$branch"
+          echo "branch=$branch" >> "$GITHUB_OUTPUT"
+
+      - name: Build implementation prompt
+        id: prompt
+        run: |
+          max_tasks="${{ inputs.max_tasks || '10' }}"
+          scope="${{ inputs.scope || 'all' }}"
+          spec_name="${{ inputs.spec_name || '' }}"
+          dry_run="${{ inputs.dry_run || 'false' }}"
+          token_budget="${{ inputs.token_budget || '0' }}"
+
+          # Build the prompt based on scope
+          if [ "$dry_run" = "true" ]; then
+            prompt="Run /autodev-run ${max_tasks} in dry-run mode. Show what would be done but make no changes."
+          elif [ "$scope" = "spec-tasks" ] && [ -n "$spec_name" ]; then
+            prompt="Run /spec-implement ${spec_name}. Implement up to ${max_tasks} pending tasks from this spec. Commit each change separately with message prefix 'autodev:'."
+          elif [ "$scope" = "test-fixes" ]; then
+            prompt="Run /fix-tests. Find and fix up to ${max_tasks} failing tests. Commit each fix separately with message prefix 'autodev:'."
+          elif [ "$scope" = "quality" ]; then
+            prompt="Run a quality sweep: fix lint errors, type errors, and code TODOs. Limit to ${max_tasks} fixes. Commit each fix separately with message prefix 'autodev:'."
+          else
+            prompt="Run /autodev-run ${max_tasks}. Work through pending tasks in priority order. Commit each change separately with message prefix 'autodev:'. Stop before any HIGH risk task."
+          fi
+
+          # Append token budget guidance if set
+          if [ "$token_budget" != "0" ]; then
+            prompt="${prompt} Token budget: ${token_budget} tokens. Stop processing before exceeding this limit."
+          fi
+
+          # Append scope-guard guidance if available
+          scope_guidance="${{ needs.scope-guard.outputs.guidance }}"
+          if [ -n "$scope_guidance" ]; then
+            prompt="${prompt}
+
+          ## Scope Guard Guidance
+          The scope-guard agent reviewed the discovered work items. Follow this guidance when selecting and implementing tasks:
+          ${scope_guidance}"
+          fi
+
+          echo "prompt<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$prompt" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+
+      - name: Run Claude Code
+        if: inputs.dry_run != true
+        uses: anthropics/claude-code-action@v1
+        with:
+          prompt: ${{ steps.prompt.outputs.prompt }}
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          allowed_tools: "Read,Write,Edit,Bash,Glob,Grep"
+          timeout_minutes: 45
+
+      - name: Run verification suite
+        if: inputs.dry_run != true
+        id: verify
+        run: |
+          echo "=== Ruff Lint ==="
+          uv run ruff check src/ tests/ || echo "LINT_FAILED=true" >> "$GITHUB_ENV"
+
+          echo "=== Ruff Format ==="
+          uv run ruff format --check src/ tests/ || echo "FORMAT_FAILED=true" >> "$GITHUB_ENV"
+
+          echo "=== Unit Tests ==="
+          test_scope="${{ inputs.test_scope || 'unit' }}"
+          if [ "$test_scope" = "fast" ]; then
+            uv run pytest tests/unit/ -x -q --no-header -m "fast" || echo "TESTS_FAILED=true" >> "$GITHUB_ENV"
+          elif [ "$test_scope" = "smoke" ]; then
+            uv run pytest tests/ -x -q --no-header -m "smoke" || echo "TESTS_FAILED=true" >> "$GITHUB_ENV"
+          else
+            uv run pytest tests/unit/ -x -q --no-header -m "not slow" || echo "TESTS_FAILED=true" >> "$GITHUB_ENV"
+          fi
+
+          # Report status
+          if [ "$LINT_FAILED" = "true" ] || [ "$FORMAT_FAILED" = "true" ] || [ "$TESTS_FAILED" = "true" ]; then
+            echo "status=failed" >> "$GITHUB_OUTPUT"
+          else
+            echo "status=passed" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Check for changes
+        if: inputs.dry_run != true
+        id: changes
+        run: |
+          if git diff --quiet HEAD origin/main; then
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
+          else
+            commit_count=$(git rev-list --count origin/main..HEAD)
+            echo "has_changes=true" >> "$GITHUB_OUTPUT"
+            echo "commit_count=$commit_count" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Push branch
+        if: inputs.dry_run != true && steps.changes.outputs.has_changes == 'true'
+        run: git push -u origin ${{ steps.branch.outputs.branch }}
+
+      - name: Create Pull Request
+        if: inputs.dry_run != true && steps.changes.outputs.has_changes == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          verify_status="${{ steps.verify.outputs.status }}"
+          commit_count="${{ steps.changes.outputs.commit_count }}"
+          scope="${{ inputs.scope || 'all' }}"
+          max_tasks="${{ inputs.max_tasks || '10' }}"
+
+          if [ "$verify_status" = "passed" ]; then
+            status_badge="All checks passing"
+          else
+            status_badge="Some checks failing - review needed"
+          fi
+
+          gh pr create \
+            --title "autodev: ${scope} session (${commit_count} changes)" \
+            --body "$(cat <<EOF
+          ## Autonomous Development Session
+
+          **Scope:** ${scope}
+          **Max tasks:** ${max_tasks}
+          **Verification:** ${status_badge}
+          **Commits:** ${commit_count}
+
+          ### Discovered Work Items
+          \`\`\`
+          ${{ needs.discover.outputs.summary }}
+          \`\`\`
+
+          ### What was done
+          See individual commits for details. Each commit represents one completed task.
+
+          ### Verification
+          - Ruff lint: $( [ "$LINT_FAILED" = "true" ] && echo "FAILED" || echo "passed" )
+          - Ruff format: $( [ "$FORMAT_FAILED" = "true" ] && echo "FAILED" || echo "passed" )
+          - Unit tests: $( [ "$TESTS_FAILED" = "true" ] && echo "FAILED" || echo "passed" )
+
+          ---
+          *Generated by the autodev workflow. Review before merging.*
+          EOF
+          )" \
+            --label "autodev" \
+            --base main || echo "PR creation failed (label may not exist)"
+
+      - name: Send push notification
+        if: always() && env.NTFY_TOPIC != ''
+        run: |
+          verify_status="${{ steps.verify.outputs.status || 'skipped' }}"
+          has_changes="${{ steps.changes.outputs.has_changes || 'false' }}"
+          commit_count="${{ steps.changes.outputs.commit_count || '0' }}"
+          scope="${{ inputs.scope || 'all' }}"
+          job_status="${{ job.status }}"
+
+          if [ "$job_status" = "success" ] && [ "$has_changes" = "true" ]; then
+            title="Autodev: PR created (${commit_count} commits)"
+            body="Scope: ${scope} | Verification: ${verify_status}"
+            priority="default"
+            tags="white_check_mark,autodev"
+          elif [ "$job_status" = "success" ] && [ "$has_changes" = "false" ]; then
+            title="Autodev: No changes produced"
+            body="Scope: ${scope} | Implementation ran but produced no changes"
+            priority="low"
+            tags="information_source,autodev"
+          else
+            title="Autodev: Session failed"
+            body="Scope: ${scope} | Job status: ${job_status}"
+            priority="urgent"
+            tags="x,autodev"
+          fi
+
+          curl -sf \
+            -H "Title: ${title}" \
+            -H "Priority: ${priority}" \
+            -H "Tags: ${tags}" \
+            -d "${body}" \
+            "https://ntfy.sh/${{ env.NTFY_TOPIC }}" || echo "::warning::ntfy notification failed"
+
+  report:
+    name: Session Report
+    needs: [discover, scope-guard, implement]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Summary
+        run: |
+          echo "## Autodev Session Report" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Work items found:** ${{ needs.discover.outputs.item_count }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Had work:** ${{ needs.discover.outputs.has_work }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Implementation:** ${{ needs.implement.result || 'skipped' }}" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Notify if no work found
+        if: needs.discover.outputs.has_work == 'false' && env.NTFY_TOPIC != ''
+        run: |
+          curl -sf \
+            -H "Title: Autodev: Nothing to do" \
+            -H "Priority: low" \
+            -H "Tags: zzz,autodev" \
+            -d "No work items discovered. All specs complete and no quality issues found." \
+            "https://ntfy.sh/${{ env.NTFY_TOPIC }}" || echo "::warning::ntfy notification failed"

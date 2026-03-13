@@ -40,3 +40,9 @@ dagster job execute -f src/definitions.py -j fiscal_returns_full_job
 - Implementation: Complete task breakdown with all 9 major tasks completed
 
 This specification demonstrates the full spec-driven development workflow from requirements gathering through design to complete implementation and testing.
+
+## Superseded Specifications
+
+See `superseded/README.md` for specs that were archived because they were replaced or deferred:
+- **mcp_interface** — Superseded by `mcp_agent_tools` (2026-03-12)
+- **web_search_enrichment** — Deferred, no implementation built (2026-03-12)

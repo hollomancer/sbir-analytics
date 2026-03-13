@@ -211,3 +211,6 @@ report.md
 *.assets.json
 infrastructure/**/.venv/
 results.csv
+
+# Autodev session state
+.autodev/
