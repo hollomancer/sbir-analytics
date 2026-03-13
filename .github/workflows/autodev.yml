@@ -55,6 +55,7 @@ permissions:
   contents: write
   pull-requests: write
   issues: write
+  id-token: write
 
 concurrency:
   group: autodev
@@ -143,8 +144,6 @@ jobs:
 
             Output ONLY the guidance text, no markdown fences.
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          allowed_tools: "Read,Glob,Grep"
-          timeout_minutes: 5
 
   implement:
     name: Autonomous Implementation
@@ -227,8 +226,6 @@ jobs:
         with:
           prompt: ${{ steps.prompt.outputs.prompt }}
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          allowed_tools: "Read,Write,Edit,Bash,Glob,Grep"
-          timeout_minutes: 45
 
       - name: Run verification suite
         if: inputs.dry_run != true
