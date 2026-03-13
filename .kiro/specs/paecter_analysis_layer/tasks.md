@@ -33,15 +33,16 @@
   - _Requirements: 2.1, 2.2_
   - _Status: Implemented in `src/assets/paecter/embeddings.py`_
 
-- [ ] 1.5 Add `ml.paecter.*` configuration block to config/base.yaml
-  - [ ] use_local: false (default to API mode)
-  - [ ] model_name: "mpi-inno-comp/paecter"
-  - [ ] batch_size: 32
-  - [ ] similarity_threshold: 0.80
-  - [ ] coverage_threshold_awards: 0.95
-  - [ ] coverage_threshold_patents: 0.98
-  - [ ] enable_cache: false
+- [x] 1.5 Add `ml.paecter.*` configuration block to config/base.yaml
+  - [x] use_local: false (default to API mode)
+  - [x] model_name: "mpi-inno-comp/paecter"
+  - [x] batch_size: 32
+  - [x] similarity_threshold: 0.80
+  - [x] coverage_threshold_awards: 0.95
+  - [x] coverage_threshold_patents: 0.98
+  - [x] enable_cache: false
   - _Requirements: 1.1, 1.2, 1.3, 1.4_
+  - _Status: Config exists in `config/base.yaml`. Validated Pydantic schema added in `src/config/schemas/ml.py` with `MLConfig` and `PaECTERConfig` models wired into `PipelineConfig`._
 
 ## Phase 2: Neo4j Integration and Quality Validation
 

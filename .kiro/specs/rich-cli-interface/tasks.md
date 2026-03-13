@@ -140,18 +140,20 @@
     - Test error handling for invalid configuration
     - _Requirements: 7.1, 7.3_
 
-- [ ] 9. Add comprehensive error handling and logging
-  - [ ] 9.1 Implement error formatting and display
+- [x] 9. Add comprehensive error handling and logging
+  - [x] 9.1 Implement error formatting and display
     - Create Rich-formatted error messages with context
     - Add suggested fixes and troubleshooting steps
     - Implement appropriate exit codes for different error types
     - _Requirements: 1.5_
+    - _Status: Implemented in `src/cli/display/errors.py` with CLIError, ConfigError, ConnectionError, DataError subclasses, exit code constants (0-4), context-aware suggestion inference, and 21 unit tests._
 
-  - [ ] 9.2 Integrate with existing logging system
+  - [x] 9.2 Integrate with existing logging system
     - Use same logging configuration as main pipeline
     - Add CLI-specific log formatting and output
     - Create debug mode for detailed troubleshooting
     - _Requirements: 7.4_
+    - _Status: CLI main.py now uses `src/utils/common/logging_config.setup_logging()` with text format. Added `--debug` flag._
 
   - [ ]* 9.3 Write error handling tests
     - Test error message formatting and clarity

@@ -173,21 +173,23 @@ This implementation plan tracks the remaining work for the company categorizatio
     - _Requirements: 6.1, 6.2, 6.3, 6.4, 6.5_
     - _Status: Completed as separate asset check_
 
-- [ ] 7. Add configuration schema
-  - [ ] 7.1 Create configuration model
+- [x] 7. Add configuration schema
+  - [x] 7.1 Create configuration model
     - Add `CompanyCategorization` config schema to `src/config/schemas.py`
     - Define threshold parameters (product_leaning_pct: 51, service_leaning_pct: 51, psc_family_diversity: 6)
     - Define confidence level parameters (low_max_awards: 2, medium_max_awards: 5)
     - Define processing parameters (batch_size: 100, parallel_workers: 4)
     - Define USAspending query parameters (table_name, timeout, retries)
     - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5, 6.1, 6.2, 6.3, 6.4, 6.5, 7.1, 7.2, 7.3, 7.4, 7.5_
+    - _Status: Implemented in `src/config/schemas/runtime.py` as `CompanyCategorizationConfig`. Schema defaults corrected from 60% to 51% threshold._
 
-  - [ ] 7.2 Add default configuration
+  - [x] 7.2 Add default configuration
     - Add `company_categorization` section to `config/base.yaml`
     - Set default thresholds (51% for product/service, 6 for PSC families)
     - Set default confidence levels (2 for low, 5 for medium)
     - Set default processing parameters (batch_size: 100, parallel_workers: 4)
     - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5, 6.1, 6.2, 6.3, 6.4, 6.5, 7.1, 7.2, 7.3, 7.4, 7.5_
+    - _Status: Configuration exists in `config/base.yaml` with all parameters._
 
 - [ ] 8. Implement Neo4j loader
   - [ ] 8.1 Create CompanyCategorizationLoader class
