@@ -1,0 +1,165 @@
+name: Benchmark Analysis
+
+on:
+  schedule:
+    # Run monthly on the 1st at 6 AM UTC
+    - cron: "0 6 1 * *"
+  workflow_dispatch:
+    inputs:
+      fy:
+        description: "Evaluation fiscal year"
+        required: false
+        default: "2026"
+        type: string
+      margin_awards:
+        description: "Awards margin for sensitivity detection"
+        required: false
+        default: "5"
+        type: string
+      margin_ratio:
+        description: "Ratio margin for sensitivity detection"
+        required: false
+        default: "0.05"
+        type: string
+      sbir_source:
+        description: "SBIR data source"
+        required: false
+        default: "sbir-gov"
+        type: choice
+        options:
+          - sbir-gov
+          - s3
+      skip_usaspending:
+        description: "Skip USAspending API queries"
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: benchmark-analysis
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: "3.11"
+  AWS_REGION: us-east-2
+  S3_BUCKET: sbir-etl-production-data
+
+jobs:
+  benchmark:
+    name: SBIR/STTR Benchmark Evaluation
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Setup Python and UV
+        uses: ./.github/actions/setup-python-uv
+        with:
+          install-dev-deps: "false"
+
+      - name: Configure AWS credentials
+        if: inputs.sbir_source == 's3'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Set parameters
+        id: params
+        run: |
+          echo "fy=${{ inputs.fy || '2026' }}" >> "$GITHUB_OUTPUT"
+          echo "margin_awards=${{ inputs.margin_awards || '5' }}" >> "$GITHUB_OUTPUT"
+          echo "margin_ratio=${{ inputs.margin_ratio || '0.05' }}" >> "$GITHUB_OUTPUT"
+          echo "sbir_source=${{ inputs.sbir_source || 'sbir-gov' }}" >> "$GITHUB_OUTPUT"
+          echo "skip_usaspending=${{ inputs.skip_usaspending || 'false' }}" >> "$GITHUB_OUTPUT"
+        shell: bash
+
+      - name: Restore USAspending API cache
+        uses: actions/cache@v4
+        with:
+          path: data/scripts_output/usaspending_api_cache.json
+          key: usaspending-api-cache-fy${{ steps.params.outputs.fy }}-${{ github.run_number }}
+          restore-keys: |
+            usaspending-api-cache-fy${{ steps.params.outputs.fy }}-
+
+      - name: Run benchmark analysis
+        run: |
+          SOURCE_FLAG=""
+          if [ "${{ steps.params.outputs.sbir_source }}" = "s3" ]; then
+            SOURCE_FLAG="--s3 --s3-bucket ${{ env.S3_BUCKET }}"
+          fi
+
+          USA_FLAG=""
+          if [ "${{ steps.params.outputs.skip_usaspending }}" = "false" ]; then
+            USA_FLAG="--usaspending-api"
+          fi
+
+          uv run python scripts/data/run_benchmark_analysis.py \
+            $SOURCE_FLAG \
+            $USA_FLAG \
+            --fy "${{ steps.params.outputs.fy }}" \
+            --margin-awards "${{ steps.params.outputs.margin_awards }}" \
+            --margin-ratio "${{ steps.params.outputs.margin_ratio }}"
+        shell: bash
+        timeout-minutes: 90
+
+      - name: Summary
+        if: always()
+        run: |
+          REPORT="data/scripts_output/sensitivity_report_fy${{ steps.params.outputs.fy }}.md"
+          EVAL="data/scripts_output/benchmark_evaluation.json"
+
+          if [ -f "$EVAL" ]; then
+            echo "## Benchmark Evaluation — FY ${{ steps.params.outputs.fy }}" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+
+            # Extract key metrics from JSON
+            uv run python <<'PYEOF' >> "$GITHUB_STEP_SUMMARY"
+import json
+
+def fmt(val):
+    return f"{val:,}" if isinstance(val, (int, float)) else str(val)
+
+with open("data/scripts_output/benchmark_evaluation.json") as f:
+    d = json.load(f)
+
+print("| Metric | Count |")
+print("|--------|-------|")
+for key, label in [
+    ("total_companies_evaluated", "Companies evaluated"),
+    ("companies_subject_to_transition", "Subject to transition benchmark"),
+    ("companies_failing_transition", "Failing transition benchmark"),
+    ("companies_subject_to_commercialization", "Subject to commercialization benchmark"),
+    ("companies_failing_commercialization", "Failing commercialization benchmark"),
+]:
+    print(f"| {label} | {fmt(d.get(key, 0))} |")
+PYEOF
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+          if [ -f "$REPORT" ]; then
+            echo "<details><summary>Full Sensitivity Report</summary>" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            cat "$REPORT" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "</details>" >> "$GITHUB_STEP_SUMMARY"
+          fi
+        shell: bash
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-results-fy${{ steps.params.outputs.fy }}
+          path: |
+            data/scripts_output/benchmark_evaluation.json
+            data/scripts_output/sensitivity_report_fy*.md
+            data/scripts_output/at_risk.json
+          retention-days: 30
+          if-no-files-found: warn
