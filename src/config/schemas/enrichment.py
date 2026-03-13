@@ -63,6 +63,11 @@ class EnrichmentConfig(BaseModel):
 class EnrichmentSourceConfig(BaseModel):
     """Configuration for a single enrichment source's iterative refresh settings."""
 
+    enabled: bool = Field(
+        default=True,
+        description="Feature flag to enable/disable this source. "
+        "Set to False to opt-out until legal/data-sharing reviews complete.",
+    )
     cadence_days: int = Field(default=1, ge=1, description="Number of days between refresh cycles")
     sla_staleness_days: int = Field(
         default=1, ge=1, description="Maximum age in days before considered stale"
@@ -125,7 +130,14 @@ class EnrichmentSourceConfig(BaseModel):
 
 
 class EnrichmentRefreshConfig(BaseModel):
-    """Configuration for enrichment refresh cadence and freshness tracking."""
+    """Configuration for enrichment refresh cadence and freshness tracking.
+
+    Phase 1: USAspending is the only fully implemented source.
+    Phase 2+: Other sources have configuration stubs with ``enabled=False``
+    feature flags. Environments can opt-in once legal/data-sharing reviews
+    are completed by setting the flag to ``True`` (or via env var, e.g.
+    ``SBIR_ETL__ENRICHMENT__ENRICHMENT_REFRESH__SEC_EDGAR__ENABLED=true``).
+    """
 
     usaspending: EnrichmentSourceConfig = Field(
         default_factory=EnrichmentSourceConfig, description="USAspending refresh settings"
@@ -135,6 +147,40 @@ class EnrichmentRefreshConfig(BaseModel):
     )
     patentsview: EnrichmentSourceConfig = Field(
         default_factory=EnrichmentSourceConfig, description="PatentsView refresh settings"
+    )
+    # Phase 2+ sources -- disabled by default until legal/data-sharing reviews complete
+    sec_edgar: EnrichmentSourceConfig = Field(
+        default_factory=lambda: EnrichmentSourceConfig(
+            enabled=False,
+            cadence_days=7,
+            sla_staleness_days=14,
+            rate_limit_per_minute=10,
+            state_file="data/state/sec_edgar_refresh_state.json",
+            metrics_file="reports/metrics/sec_edgar_freshness.json",
+        ),
+        description="SEC EDGAR refresh settings (Phase 2 -- requires review)",
+    )
+    opencorporates: EnrichmentSourceConfig = Field(
+        default_factory=lambda: EnrichmentSourceConfig(
+            enabled=False,
+            cadence_days=30,
+            sla_staleness_days=60,
+            rate_limit_per_minute=30,
+            state_file="data/state/opencorporates_refresh_state.json",
+            metrics_file="reports/metrics/opencorporates_freshness.json",
+        ),
+        description="OpenCorporates refresh settings (Phase 2 -- requires API key + review)",
+    )
+    dla_cage: EnrichmentSourceConfig = Field(
+        default_factory=lambda: EnrichmentSourceConfig(
+            enabled=False,
+            cadence_days=30,
+            sla_staleness_days=90,
+            rate_limit_per_minute=60,
+            state_file="data/state/dla_cage_refresh_state.json",
+            metrics_file="reports/metrics/dla_cage_freshness.json",
+        ),
+        description="DLA CAGE/BIS refresh settings (Phase 2 -- requires review)",
     )
 
 

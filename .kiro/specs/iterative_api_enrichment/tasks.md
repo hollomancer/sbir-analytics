@@ -57,4 +57,5 @@
 
 - [ ] 6.2 Prototype connector shims (schema + request/response models) for at least OpenCorporates, EDGAR, and DLA CAGE/BIS using recorded fixtures so they can plug into the iterative refresh orchestrator once credentials are available.
 
-- [ ] 6.3 Extend `config/base.yaml` with optional `enrichment_refresh` entries for each evaluated API, including feature flags so environments can opt-in once legal/data-sharing reviews are completed.
+- [x] 6.3 Extend `config/base.yaml` with optional `enrichment_refresh` entries for each evaluated API, including feature flags so environments can opt-in once legal/data-sharing reviews are completed.
+  - Notes: Added `enabled` feature flag to `EnrichmentSourceConfig` schema. Added `sec_edgar`, `opencorporates`, and `dla_cage` source configs (all disabled by default) to both `EnrichmentRefreshConfig` and `config/base.yaml`. Environments opt-in via env var (e.g., `SBIR_ETL__ENRICHMENT__ENRICHMENT_REFRESH__SEC_EDGAR__ENABLED=true`).

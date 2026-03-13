@@ -121,18 +121,20 @@
     - Test layout rendering and responsive design
     - _Requirements: 4.4, 3.4_
 
-- [ ] 8. Integrate with existing configuration system
-  - [ ] 8.1 Add CLI-specific configuration schema
+- [x] 8. Integrate with existing configuration system
+  - [x] 8.1 Add CLI-specific configuration schema
     - Extend PipelineConfig with CLI settings section
     - Add theme, refresh rates, and display preferences
     - Implement validation for CLI-specific configuration
     - _Requirements: 7.1, 7.2_
+    - _Status: Implemented in `src/config/schemas/runtime.py` as `CLIConfig`. Integrated into `PipelineConfig` in `src/config/schemas/pipeline.py`. Defaults in `config/base.yaml`._
 
-  - [ ] 8.2 Support environment variable overrides
+  - [x] 8.2 Support environment variable overrides
     - Implement SBIR_ETL__ pattern support for CLI settings
     - Add configuration validation with clear error messages
     - Create configuration help and documentation
     - _Requirements: 7.2, 7.3_
+    - _Status: Implemented in `src/config/loader.py` via `_apply_env_overrides()`. Pattern `SBIR_ETL__CLI__<FIELD>=value` already supported (e.g., `SBIR_ETL__CLI__THEME=dark`)._
 
   - [ ]* 8.3 Write configuration integration tests
     - Test YAML configuration loading and validation
