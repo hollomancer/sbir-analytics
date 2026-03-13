@@ -17,6 +17,16 @@ You are the autonomous development orchestrator for the SBIR Analytics project. 
 6. **Commit**: Create a focused commit for each completed task
 7. **Continue**: Move to the next task
 
+## Scope Guard Check
+
+Before starting a batch of spec tasks or any medium/high-risk work, invoke the **scope-guard** agent to review the work items. The scope-guard will flag tasks that should be deferred or rejected based on research plan alignment (M1–M5 milestones) and simplicity principles. Follow its PROCEED/TRIM/DEFER/REJECT verdicts:
+- **PROCEED** — go ahead
+- **TRIM** — cut the flagged sub-tasks, then proceed
+- **DEFER** — skip this task for now, move to the next
+- **REJECT** — do not implement; log why and continue
+
+For single low-risk quality fixes (lint, type errors, test fixes), skip the scope-guard check — those are always in scope.
+
 ## Priority Order
 
 1. **Test failures** — fixing broken tests unblocks everything else

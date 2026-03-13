@@ -111,9 +111,44 @@ jobs:
       - name: Show spec status
         run: uv run sbir-cli autodev specs --root . || true
 
+  scope-guard:
+    name: Scope Guard Review
+    needs: discover
+    if: needs.discover.outputs.has_work == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+    outputs:
+      guidance: ${{ steps.review.outputs.guidance }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Run scope-guard review
+        id: review
+        uses: anthropics/claude-code-action@v1
+        with:
+          prompt: |
+            You are the scope guard. Read .claude/agents/scope-guard.md for your full instructions.
+
+            Here are the discovered work items:
+            ```
+            ${{ needs.discover.outputs.summary }}
+            ```
+
+            Produce a short scope-guard assessment:
+            1. Flag any items that should be DEFERRED or REJECTED (with reason)
+            2. Suggest priority reordering if the current order doesn't match research plan milestones
+            3. Keep it under 200 words — this guidance is injected into the implementation prompt
+
+            Output ONLY the guidance text, no markdown fences.
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          allowed_tools: "Read,Glob,Grep"
+          timeout_minutes: 5
+
   implement:
     name: Autonomous Implementation
-    needs: discover
+    needs: [discover, scope-guard]
     if: needs.discover.outputs.has_work == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 60
@@ -170,6 +205,16 @@ jobs:
           # Append token budget guidance if set
           if [ "$token_budget" != "0" ]; then
             prompt="${prompt} Token budget: ${token_budget} tokens. Stop processing before exceeding this limit."
+          fi
+
+          # Append scope-guard guidance if available
+          scope_guidance="${{ needs.scope-guard.outputs.guidance }}"
+          if [ -n "$scope_guidance" ]; then
+            prompt="${prompt}
+
+          ## Scope Guard Guidance
+          The scope-guard agent reviewed the discovered work items. Follow this guidance when selecting and implementing tasks:
+          ${scope_guidance}"
           fi
 
           echo "prompt<<EOF" >> "$GITHUB_OUTPUT"
@@ -309,7 +354,7 @@ jobs:
 
   report:
     name: Session Report
-    needs: [discover, implement]
+    needs: [discover, scope-guard, implement]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5

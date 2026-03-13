@@ -15,6 +15,7 @@ import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from .agent_prompts import agent_for_source, load_agent_instructions
 from .checkpoint import CheckpointAction, CheckpointHandler
 from .notifier import Notifier, notify_checkpoint, notify_loop_complete
 from .session import SessionManager, SessionState, TaskAttempt, TaskOutcome
@@ -96,13 +97,29 @@ def _spec_task_to_work_item(task: SpecTask, spec: SpecContext) -> WorkItem:
     )
 
 
-def build_implementation_prompt(item: WorkItem) -> str:
+def build_implementation_prompt(item: WorkItem, project_root: Path | None = None) -> str:
     """Build a prompt for Claude to implement a work item.
 
     This is the prompt that would be sent to the Claude API or
     used in a Claude Code session to implement the task.
+
+    When *project_root* is provided, the appropriate agent's instructions
+    (from ``.claude/agents/``) are injected into the prompt so that the
+    orchestrator and GitHub Actions benefit from the same behavioural
+    guidance as interactive sessions.
     """
-    parts = [f"## Task: {item.title}\n"]
+    parts: list[str] = []
+
+    # Inject agent instructions when project root is available
+    if project_root is not None:
+        agent_name = agent_for_source(item.source.value)
+        instructions = load_agent_instructions(project_root, agent_name)
+        if instructions:
+            parts.append("## Agent Instructions\n")
+            parts.append(instructions)
+            parts.append("")
+
+    parts.append(f"## Task: {item.title}\n")
 
     if item.source == TaskSource.KIRO_SPEC:
         parts.append(f"This task is from the Kiro specification: {item.spec_name}")
@@ -315,7 +332,7 @@ class Orchestrator:
         """
         start = time.monotonic()
 
-        prompt = build_implementation_prompt(item)
+        prompt = build_implementation_prompt(item, project_root=self.config.project_root)
 
         if self.config.dry_run:
             print(f"\n{'=' * 60}")
@@ -436,7 +453,7 @@ class Orchestrator:
 
             # Execute the task
             start = time.monotonic()
-            prompt = build_implementation_prompt(item)
+            prompt = build_implementation_prompt(item, project_root=self.config.project_root)
 
             print(f"\n[Task {i + 1}/{len(work_items)}] {item.title}")
             if self.config.max_token_budget > 0:
