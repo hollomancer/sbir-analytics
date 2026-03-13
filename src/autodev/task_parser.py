@@ -236,9 +236,8 @@ def build_task_queue(specs: list[SpecContext]) -> list[SpecTask]:
     """Build a prioritized queue of pending tasks across all specs.
 
     Priority order:
-    1. Tasks from nearly-complete specs (finish what's started)
-    2. Low-risk tasks before high-risk (maximize autonomous progress)
-    3. Parent tasks before children (respect hierarchy)
+    1. Tasks from nearly-complete specs first (specs pre-sorted by discover_specs)
+    2. Low-risk tasks before high-risk within each spec (maximize autonomous progress)
     """
     pending: list[SpecTask] = []
 

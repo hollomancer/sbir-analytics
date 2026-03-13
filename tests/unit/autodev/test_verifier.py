@@ -15,6 +15,10 @@ class TestCheckReport:
         report = CheckReport(name="test", result=CheckResult.FAILED)
         assert report.passed is False
 
+    def test_skipped_counts_as_passed(self):
+        report = CheckReport(name="mypy", result=CheckResult.SKIPPED)
+        assert report.passed is True
+
 
 class TestVerificationReport:
     def test_all_passed(self):

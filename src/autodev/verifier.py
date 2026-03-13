@@ -36,7 +36,7 @@ class CheckReport:
 
     @property
     def passed(self) -> bool:
-        return self.result == CheckResult.PASSED
+        return self.result in (CheckResult.PASSED, CheckResult.SKIPPED)
 
 
 @dataclass
@@ -48,7 +48,7 @@ class VerificationReport:
 
     @property
     def all_passed(self) -> bool:
-        return all(c.passed or c.result == CheckResult.SKIPPED for c in self.checks)
+        return all(c.passed for c in self.checks)
 
     @property
     def failed_checks(self) -> list[CheckReport]:
