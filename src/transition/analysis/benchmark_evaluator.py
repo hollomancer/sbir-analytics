@@ -318,7 +318,7 @@ class BenchmarkEligibilityEvaluator:
         if tier == BenchmarkTier.NOT_SUBJECT:
             status = BenchmarkStatus.NOT_APPLICABLE
             consequence = ConsequenceType.NONE
-        elif ratio is not None and ratio >= required_ratio:
+        elif ratio is not None and required_ratio is not None and ratio >= required_ratio:
             status = BenchmarkStatus.PASS
             consequence = ConsequenceType.NONE
         else:
@@ -499,7 +499,7 @@ class BenchmarkEligibilityEvaluator:
         # Already subject and close to failing
         if commercialization_result.margin_from_sales_threshold is not None:
             margin = commercialization_result.margin_from_sales_threshold
-            if 0 <= margin <= self.sensitivity_margin_ratio * commercialization_result.required_avg_sales:
+            if commercialization_result.required_avg_sales is not None and 0 <= margin <= self.sensitivity_margin_ratio * commercialization_result.required_avg_sales:
                 at_risk_commercialization = True
 
         return SensitivityResult(

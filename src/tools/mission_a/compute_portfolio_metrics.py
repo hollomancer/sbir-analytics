@@ -23,7 +23,7 @@ import pandas as pd
 from ..base import BaseTool, DataSourceRef, ToolMetadata, ToolResult
 
 
-def _compute_hhi(shares: list[float]) -> float:
+def _compute_hhi(shares: list[float] | list[int]) -> float:
     """Compute Herfindahl-Hirschman Index from market shares.
 
     HHI = sum of squared market shares (as fractions).
@@ -51,9 +51,11 @@ class ComputePortfolioMetricsTool(BaseTool):
     def execute(
         self,
         metadata: ToolMetadata,
+        *,
         classified_awards: pd.DataFrame | None = None,
         entity_table: pd.DataFrame | None = None,
         fiscal_years: list[int] | None = None,
+        **kwargs: Any,
     ) -> ToolResult:
         """Compute portfolio metrics from CET-classified awards.
 

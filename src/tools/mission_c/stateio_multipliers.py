@@ -36,10 +36,12 @@ class StateIOMultipliersTool(BaseTool):
     def execute(
         self,
         metadata: ToolMetadata,
+        *,
         states: list[str] | None = None,
         bea_sectors: list[str] | None = None,
         awards_df: pd.DataFrame | None = None,
         csv_fallback_path: str | None = None,
+        **kwargs: Any,
     ) -> ToolResult:
         """Retrieve economic multipliers for state-sector combinations.
 

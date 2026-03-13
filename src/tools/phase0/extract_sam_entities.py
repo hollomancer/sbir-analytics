@@ -16,6 +16,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 import pandas as pd
 from loguru import logger
@@ -37,11 +38,13 @@ class ExtractSAMEntitiesTool(BaseTool):
     def execute(
         self,
         metadata: ToolMetadata,
+        *,
         parquet_path: str | Path | None = None,
         use_s3_first: bool | None = None,
         filter_active: bool = False,
         filter_naics: list[str] | None = None,
         filter_states: list[str] | None = None,
+        **kwargs: Any,
     ) -> ToolResult:
         """Extract SAM.gov entities with optional filtering.
 

@@ -17,6 +17,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 import pandas as pd
 from loguru import logger
@@ -41,11 +42,13 @@ class ExtractFPDSContractsTool(BaseTool):
     def execute(
         self,
         metadata: ToolMetadata,
+        *,
         dump_dir: str | Path | None = None,
         parquet_path: str | Path | None = None,
         vendor_filter_file: str | Path | None = None,
         output_path: str | Path | None = None,
         batch_size: int = 10000,
+        **kwargs: Any,
     ) -> ToolResult:
         """Extract FPDS contracts from dump files or load from Parquet.
 

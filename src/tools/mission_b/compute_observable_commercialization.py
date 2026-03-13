@@ -47,6 +47,7 @@ class ComputeObservableCommercializationTool(BaseTool):
     def execute(
         self,
         metadata: ToolMetadata,
+        *,
         awards_df: pd.DataFrame | None = None,
         fpds_contracts: pd.DataFrame | None = None,
         patent_data: pd.DataFrame | None = None,
@@ -59,6 +60,7 @@ class ComputeObservableCommercializationTool(BaseTool):
         weight_revenue: float = 0.4,
         weight_patent: float = 0.35,
         weight_survival: float = 0.25,
+        **kwargs: Any,
     ) -> ToolResult:
         """Compute three-prong observable commercialization score.
 

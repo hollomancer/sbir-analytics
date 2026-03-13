@@ -72,6 +72,7 @@ class ResolveEntitiesTool(BaseTool):
     def execute(
         self,
         metadata: ToolMetadata,
+        *,
         sbir_companies: pd.DataFrame | None = None,
         sam_entities: pd.DataFrame | None = None,
         fpds_vendors: pd.DataFrame | None = None,
@@ -79,6 +80,7 @@ class ResolveEntitiesTool(BaseTool):
         gold_set_path: str | None = None,
         fuzzy_auto_threshold: float = 90.0,
         fuzzy_review_threshold: float = 75.0,
+        **kwargs: Any,
     ) -> ToolResult:
         """Resolve entities across multiple public data sources.
 

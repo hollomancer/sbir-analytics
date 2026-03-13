@@ -36,10 +36,12 @@ class ExtractTopicsTool(BaseTool):
     def execute(
         self,
         metadata: ToolMetadata,
+        *,
         awards_df: pd.DataFrame | None = None,
         solicitation_data_path: str | None = None,
         fiscal_years: list[int] | None = None,
         agencies: list[str] | None = None,
+        **kwargs: Any,
     ) -> ToolResult:
         """Extract topics from SBIR.gov award abstracts and solicitation data.
 
