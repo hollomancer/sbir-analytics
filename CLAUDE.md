@@ -36,6 +36,7 @@ Custom agents in `.claude/agents/` for autonomous development:
 | `test-fixer` | Failing tests, improving test coverage |
 | `quality-sweep` | Lint errors, type errors, code quality cleanup |
 | `autodev-runner` | Autonomous development sessions, "start autodev" |
+| `scope-guard` | Before large implementations, reviewing specs for over-engineering, questioning necessity. Counterbalance to builder agents. |
 
 ## Skills
 
