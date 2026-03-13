@@ -4,6 +4,14 @@ Research Plan Milestone: **M2 — Patent Linkage and Spillover Pipeline**
 
 ## Background
 
+**Outcomes-layer linkages: Award → Patent + Award → Outcome Through Primes.**
+
+USAspending has no patent field. USPTO government interest statements contain
+grant/contract numbers but aren't joined back to award databases. Our USPTO
+pipeline performs this join. When SBIR tech enters a prime contractor's system
+via subcontract, FPDS can't see it — patent citation networks trace IP flow
+where procurement data cannot.
+
 NASEM treats IP output as a count variable. This spec builds the analytical layer
 on top of the existing patent-award linkage pipeline to compute marginal cost per patent,
 trace citation networks for knowledge transfer, and replicate DOE spillover methodology.

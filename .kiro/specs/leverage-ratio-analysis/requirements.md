@@ -4,6 +4,13 @@ Research Plan Milestone: **M1 — DOD Leverage Ratio Replication**
 
 ## Background
 
+**Outcomes-layer linkage: Award → Follow-on Contract.**
+
+USAspending can show that Firm X received SBIR Phase II and later won a non-SBIR
+DOD contract. But it doesn't flag the relationship. Our entity resolution + FPDS
+pipeline automates this linkage at scale, enabling the leverage ratio computation
+that NASEM performs manually on a quadrennial cycle.
+
 NASEM reports a 4:1 non-SBIR-to-SBIR funding ratio for DOD SBIR/STTR firms.
 This spec implements the analytics to reproduce, reconcile, and extend that finding.
 

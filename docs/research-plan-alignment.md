@@ -2,11 +2,30 @@
 
 Maps the [SBIR Analytics Research Plan](# "Obsidian: SBIR Analytics Research Plan — Summary") milestones to codebase components, Kiro specs, and remaining work.
 
+## What We Are Building
+
+The awards database already exists (SAM.gov, USAspending, FPDS, SBIR.gov). We are **not** duplicating it. We are building the **outcomes layer** — the connective tissue between award records and downstream effects that no existing system provides.
+
+Four linkages define the outcomes layer:
+
+| Linkage | What it connects | Why it doesn't exist today |
+|---------|-----------------|---------------------------|
+| **Award → Follow-on Contract** (M1) | SBIR Phase II → non-SBIR DOD contract | USAspending shows both but doesn't flag the relationship |
+| **Award → Patent** (M2) | SBIR award → USPTO patent | Government interest statements exist but aren't joined to award DBs |
+| **Award → Outcome Through Primes** (M2 ext) | SBIR tech → prime contractor system | FPDS doesn't track sub-tier; patent citations trace IP flow where procurement can't |
+| **Award → Firm-Level Outcomes** (M4 inputs) | Award → revenue, employment, VC, acquisitions | Not in USAspending; NASEM used surveys. We connect programmatically. |
+
+Each milestone produces an analytical output that (a) replicates or exceeds a specific NASEM claim, and (b) acts as continuous monitoring that informs future Academies work. If the pipeline cannot reproduce a NASEM finding faster and with more granularity, it is not yet ready.
+
+**Causal inference disclaimer:** This pipeline does portfolio characterization, outcomes linkage, and fiscal estimation. It does NOT do impact evaluation in the counterfactual sense.
+
 ## Milestone → Codebase Status
 
 ### M1: DOD Leverage Ratio Replication — PARTIAL
 
-**Goal:** Reproduce NASEM's 4:1 non-SBIR-to-SBIR funding ratio for DOD firms.
+**Linkage:** Award → Follow-on Contract
+
+**Goal:** Reproduce NASEM's 4:1 non-SBIR-to-SBIR funding ratio for DOD firms. USAspending can show Firm X got SBIR Phase II then later got a non-SBIR DOD contract — but it doesn't flag the relationship. Our entity resolution + FPDS pipeline automates this linkage at scale.
 
 | Component | Status | Location |
 |-----------|--------|----------|
@@ -22,7 +41,9 @@ Maps the [SBIR Analytics Research Plan](# "Obsidian: SBIR Analytics Research Pla
 
 ### M2: Patent Linkage and Spillover — PARTIAL
 
-**Goal:** Link SBIR awards to USPTO patents, compute marginal cost per patent, trace citation networks.
+**Linkage:** Award → Patent + Award → Outcome Through Primes
+
+**Goal:** Link SBIR awards to USPTO patents, compute marginal cost per patent, trace citation networks. USAspending has no patent field. USPTO government interest statements contain grant/contract numbers but aren't joined back to award databases. Our pipeline performs this join. When SBIR tech enters a prime's system via subcontract, FPDS can't see it — patent citation networks trace IP flow where procurement data cannot.
 
 | Component | Status | Location |
 |-----------|--------|----------|
@@ -39,6 +60,8 @@ Maps the [SBIR Analytics Research Plan](# "Obsidian: SBIR Analytics Research Pla
 **Gap:** Patent extraction and linking exists. Missing the analytical layer: cost metrics, citation networks, spillover tracing.
 
 ### M3: Cross-Agency Technology Taxonomy — PARTIAL
+
+**What NASEM cannot do:** Every study is siloed by committee mandate. No unified view of what the federal SBIR portfolio is buying.
 
 **Goal:** Deploy CET classifier across full SBIR.gov corpus for unified cross-agency view.
 
@@ -57,7 +80,11 @@ Maps the [SBIR Analytics Research Plan](# "Obsidian: SBIR Analytics Research Pla
 
 ### M4: Fiscal Return Estimation — EXISTS (archived spec, 100% complete)
 
-**Goal:** Connect StateIO fiscal modeling to SBIR award/outcome data for Treasury return estimates.
+**Linkage:** Award → Firm-Level Outcomes
+
+**What NASEM cannot do:** Measures proxies (revenue, patents, jobs). No study estimates returns to Treasury.
+
+**Goal:** Connect StateIO fiscal modeling to SBIR award/outcome data for Treasury return estimates. Revenue, employment, VC, acquisitions — none in USAspending. NASEM used surveys. Our pipeline connects programmatically.
 
 | Component | Status | Location |
 |-----------|--------|----------|
@@ -74,6 +101,8 @@ Maps the [SBIR Analytics Research Plan](# "Obsidian: SBIR Analytics Research Pla
 **Gap:** Substantially complete. Archived spec at 100%. May need refresh to connect M1/M2 outputs as inputs.
 
 ### M5: Continuous Monitoring Architecture — PARTIAL
+
+**What NASEM cannot do:** Quadrennial cycle. Four years between snapshots. No rolling analytics.
 
 **Goal:** Operationalize M1–M4 as rolling analytics.
 
@@ -109,10 +138,10 @@ Maps the [SBIR Analytics Research Plan](# "Obsidian: SBIR Analytics Research Pla
 
 ## Phase 0 Checklist (from Research Plan)
 
-These questions need answers before M1/M2 sprints begin:
+Audit completed 2026-03-13. Status: **ready for Phase 1**.
 
-- [ ] Graph DB state: which data sources loaded, entity types populated, linkages exist?
-- [ ] Entity resolution: UEI-based, DUNS-based, name-matching, hybrid? Match rate?
-- [ ] Classifier state: trained on what taxonomy, needs retraining or re-running?
-- [ ] FPDS data: pulled? Linked to entities? How current?
-- [ ] Infrastructure: which CDK stacks deployed vs. IaC-only?
+- [x] **Graph DB state:** Neo4j 5.x with Company, Patent, Award, CET nodes. SBIR.gov, SAM.gov, USAspending, USPTO all loaded. Entity linkages via canonical IDs. 3,500+ lines of Neo4j loader code.
+- [x] **Entity resolution:** Hybrid 6-step pipeline: UEI exact → DUNS exact → CAGE code → Name+State+NAICS deterministic → rapidfuzz (75-90 thresholds) → LLM tiebreaker. 85%+ deterministic match rate. Gold set calibration. Confidence scoring (1.0 deterministic, 0.5-0.95 fuzzy). (`src/tools/phase0/resolve_entities.py`, 376 lines)
+- [x] **Classifier state:** CET classifier trained on 21 NSTC Critical & Emerging Technology categories. TF-IDF + keyword boosting + logistic regression with probability calibration. Production-ready with ≥60% high-confidence target. Full training pipeline in `src/assets/cet/training.py`.
+- [x] **FPDS data:** Pulled via USAspending PostgreSQL dump streaming. Linked to entities via vendor crosswalk. Refresh: daily (FPDS), monthly (USAspending bulk). DuckDB analytics for 6.7M+ contracts. (`src/tools/phase0/extract_fpds_contracts.py`, `src/transition/performance/contract_analytics.py`)
+- [x] **Infrastructure:** CDK stacks defined (Storage → Security → Batch). 6+ GitHub Actions workflows active (CI, data-refresh, ML jobs, nightly security, autodev). Docker + Dagster orchestration. Deployment status to AWS uncertain — verify before M5 operationalization.
