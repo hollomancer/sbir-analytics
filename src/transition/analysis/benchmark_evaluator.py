@@ -553,7 +553,7 @@ class BenchmarkEligibilityEvaluator:
         commercialization_results: list[CommercializationRateResult] = []
         sensitivity_results: list[SensitivityResult] = []
 
-        for cid, counts in company_counts.items():
+        for _cid, counts in company_counts.items():
             tr = self._evaluate_transition_rate(counts)
             cr = self._evaluate_commercialization_rate(counts)
             sr = self._compute_sensitivity(counts, tr, cr)

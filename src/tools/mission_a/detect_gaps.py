@@ -17,8 +17,6 @@ from __future__ import annotations
 from typing import Any
 
 import pandas as pd
-from loguru import logger
-
 from ..base import BaseTool, DataSourceRef, ToolMetadata, ToolResult
 
 

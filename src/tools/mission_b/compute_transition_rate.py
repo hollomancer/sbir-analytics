@@ -83,7 +83,7 @@ class ComputeTransitionRateTool(BaseTool):
                 (c for c in ["company", "company_name"] if c in df.columns), None,
             )
             if canonical_col and name_col and company_src:
-                name_to_id = dict(zip(entity_table[name_col], entity_table[canonical_col]))
+                name_to_id = dict(zip(entity_table[name_col], entity_table[canonical_col], strict=False))
                 df["canonical_id"] = df[company_src].map(name_to_id).fillna(df[company_src])
 
         # Identify columns

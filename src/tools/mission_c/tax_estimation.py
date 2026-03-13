@@ -150,7 +150,6 @@ class TaxEstimationTool(BaseTool):
                 # Wage component (approximation: 60% of value added goes to wages)
                 wage_share = 0.60
                 wages = value_added * wage_share
-                proprietor_income = value_added * 0.15
                 corporate_surplus = value_added * 0.25
 
                 # Tax estimates

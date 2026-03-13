@@ -106,7 +106,7 @@ class ResolveEntitiesTool(BaseTool):
                 src_col = next((c for c in ["source_name", "name"] if c in gold_df.columns), None)
                 can_col = next((c for c in ["canonical_id", "canonical"] if c in gold_df.columns), None)
                 if src_col and can_col:
-                    gold_set = dict(zip(gold_df[src_col], gold_df[can_col]))
+                    gold_set = dict(zip(gold_df[src_col], gold_df[can_col], strict=False))
                     logger.info(f"Loaded {len(gold_set)} gold set linkages from {gold_set_path}")
             except Exception as e:
                 logger.warning(f"Could not load gold set: {e}")
