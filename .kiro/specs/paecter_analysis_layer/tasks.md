@@ -78,12 +78,13 @@
 
 ## Phase 3: Testing and Documentation
 
-- [ ] 3.1 Unit testing for PaECTER components
-  - [ ] Test PaECTER client configuration and initialization
-  - [ ] Test text preprocessing edge cases (missing fields, empty strings)
-  - [ ] Test embedding caching behavior
-  - [ ] Test similarity computation with various input sizes
+- [x] 3.1 Unit testing for PaECTER components
+  - [x] Test PaECTER client configuration and initialization
+  - [x] Test text preprocessing edge cases (missing fields, empty strings)
+  - [x] Test embedding caching behavior
+  - [x] Test similarity computation with various input sizes
   - _Requirements: All requirements_
+  - _Status: 19 tests in `tests/unit/ml/test_paecter_client.py` covering config, text prep edge cases, caching, and similarity computation (identical, orthogonal, matrix shape)._
 
 - [ ] 3.2 Integration testing for Dagster assets
   - [ ] Test complete embedding generation pipeline (awards → patents → similarity)
