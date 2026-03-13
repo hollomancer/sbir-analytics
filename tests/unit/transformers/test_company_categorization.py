@@ -2,12 +2,20 @@
 
 Tests contract-level classification and company-level aggregation logic
 for Product/Service/Mixed/Uncertain categorization of SBIR companies.
+Also tests USAspending retrieval functions and SBIR phase extraction.
 """
 
 from __future__ import annotations
 
+from unittest.mock import MagicMock, patch
+
+import pandas as pd
 import pytest
 
+from src.enrichers.company_categorization import (
+    _extract_sbir_phase,
+    retrieve_company_contracts,
+)
 from src.transformers.company_categorization import (
     aggregate_company_classification,
     classify_contract,
@@ -346,3 +354,94 @@ class TestAggregateOutputFields:
         assert result.classification == "Uncertain"
         assert result.confidence == "Low"
         assert result.award_count == 0
+
+
+# ---------------------------------------------------------------------------
+# SBIR phase extraction tests
+# ---------------------------------------------------------------------------
+
+
+class TestExtractSBIRPhase:
+    """Test SBIR phase extraction from award descriptions."""
+
+    def test_sbir_phase_i(self):
+        assert _extract_sbir_phase("SBIR Phase I Research") == "I"
+
+    def test_sbir_phase_ii(self):
+        assert _extract_sbir_phase("SBIR Phase II Development") == "II"
+
+    def test_sbir_phase_iii(self):
+        assert _extract_sbir_phase("SBIR Phase III Commercialization") == "III"
+
+    def test_sttr_phase_i(self):
+        assert _extract_sbir_phase("STTR Phase I Research") == "I"
+
+    def test_numeric_phase_1(self):
+        assert _extract_sbir_phase("SBIR Phase 1 research") == "I"
+
+    def test_numeric_phase_2(self):
+        assert _extract_sbir_phase("SBIR Phase 2 development") == "II"
+
+    def test_none_description(self):
+        assert _extract_sbir_phase(None) is None
+
+    def test_empty_description(self):
+        assert _extract_sbir_phase("") is None
+
+    def test_no_phase_in_description(self):
+        assert _extract_sbir_phase("Regular federal contract for services") is None
+
+    def test_phase_without_sbir_context(self):
+        # "Phase I" without SBIR/STTR/research context should not match
+        assert _extract_sbir_phase("Phase I of building construction") is None
+
+
+# ---------------------------------------------------------------------------
+# USAspending retrieval tests
+# ---------------------------------------------------------------------------
+
+
+class TestRetrieveCompanyContracts:
+    """Test USAspending contract retrieval logic."""
+
+    def test_no_identifiers_returns_empty(self):
+        """When no identifiers are provided, return empty DataFrame."""
+        mock_extractor = MagicMock()
+        result = retrieve_company_contracts(mock_extractor)
+        assert isinstance(result, pd.DataFrame)
+        assert len(result) == 0
+
+    def test_uei_query_returns_contracts(self):
+        """When UEI is provided, extractor is called and results returned."""
+        mock_extractor = MagicMock()
+        sample_data = pd.DataFrame({
+            "award_id": ["AWD001", "AWD002"],
+            "psc": ["1234", "R425"],
+            "contract_type": ["FFP", "CPFF"],
+            "pricing": ["FFP", "CPFF"],
+            "description": ["Prototype device", "Consulting services"],
+            "award_amount": [100000.0, 200000.0],
+            "recipient_uei": ["UEI123", "UEI123"],
+            "awardee_or_recipient_uei": ["UEI123", "UEI123"],
+            "recipient_duns": [None, None],
+            "cage_code": [None, None],
+            "action_date": ["2024-01-01", "2024-02-01"],
+            "fiscal_year": [2024, 2024],
+        })
+        mock_conn = MagicMock()
+        mock_conn.execute.return_value.fetchdf.return_value = sample_data
+        mock_extractor.connect.return_value = mock_conn
+        result = retrieve_company_contracts(mock_extractor, uei="UEI123")
+        assert isinstance(result, pd.DataFrame)
+        assert len(result) == 2
+        mock_extractor.connect.assert_called_once()
+
+    def test_empty_result_returns_empty_dataframe(self):
+        """When extractor returns empty results, return empty DataFrame."""
+        mock_extractor = MagicMock()
+        mock_conn = MagicMock()
+        mock_conn.execute.return_value.fetchdf.return_value = pd.DataFrame()
+        mock_extractor.connect.return_value = mock_conn
+        result = retrieve_company_contracts(mock_extractor, uei="NONEXISTENT")
+        assert isinstance(result, pd.DataFrame)
+        assert len(result) == 0
