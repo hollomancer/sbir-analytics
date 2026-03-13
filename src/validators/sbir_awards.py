@@ -536,6 +536,19 @@ def validate_sbir_awards(
     """
     logger.info(f"Validating {len(df)} SBIR award records")
 
+    # Empty DataFrame is trivially valid
+    if len(df) == 0:
+        return SimpleNamespace(
+            total_records=0,
+            passed_records=0,
+            failed_records=0,
+            pass_rate=1.0,
+            passed=True,
+            issues=[],
+            error_count=0,
+            warning_count=0,
+        )
+
     # Fast validation - check for truly essential columns only
     # award_date is optional since ~50% of records are missing it in source data
     essential_columns = ["award_id", "company_name", "award_amount"]
@@ -559,11 +572,11 @@ def validate_sbir_awards(
     # Create a mask for records that have all essential fields
     essential_mask = df[essential_columns].notnull().all(axis=1)
 
-    estimated_passed_rows = essential_mask.sum()
-    estimated_failed_rows = len(df) - estimated_passed_rows
-    pass_rate = estimated_passed_rows / len(df) if len(df) > 0 else 1.0
+    estimated_passed_rows = int(essential_mask.sum())
+    estimated_failed_rows = int(len(df) - estimated_passed_rows)
+    pass_rate = float(estimated_passed_rows / len(df)) if len(df) > 0 else 1.0
 
-    passed = pass_rate >= pass_rate_threshold
+    passed = bool(pass_rate >= pass_rate_threshold)
 
     logger.info(f"Fast validation complete: {pass_rate:.1%} estimated pass rate")
 
