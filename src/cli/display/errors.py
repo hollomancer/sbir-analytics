@@ -199,7 +199,7 @@ def handle_error(
     elif isinstance(error, CLIError):
         code = error.exit_code
     else:
-        code = 1
+        code = _infer_exit_code(error)
 
     raise typer.Exit(code=code)
 

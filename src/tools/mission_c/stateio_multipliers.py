@@ -108,11 +108,14 @@ class StateIOMultipliersTool(BaseTool):
                             shock = float(row.get("shock_amount", unit_shock))
                             if shock == 0:
                                 continue
+                            # Note: StateIO R adapter does not return employment
+                            # impact data. Use 1.0 placeholder until true employment
+                            # multipliers are supported.
                             multipliers.append({
                                 "state": row["state"],
                                 "bea_sector": row["bea_sector"],
                                 "output_multiplier": float(row.get("production_impact", shock)) / shock,
-                                "employment_multiplier": float(row.get("wage_impact", shock * 0.4)) / shock,
+                                "employment_multiplier": float(row.get("employment_impact", shock)) / shock,
                                 "value_added_multiplier": (
                                     float(row.get("wage_impact", 0))
                                     + float(row.get("gross_operating_surplus", 0))

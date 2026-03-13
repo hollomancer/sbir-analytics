@@ -3,9 +3,6 @@
 import pytest
 from rich.panel import Panel
 
-
-pytestmark = pytest.mark.fast
-
 from src.cli.display.errors import (
     CLIError,
     ConfigError,
@@ -26,6 +23,8 @@ from src.cli.display.status import (
     create_summary_panel,
     get_health_indicator,
 )
+
+pytestmark = pytest.mark.fast
 
 
 class TestErrorFormatting:
