@@ -54,12 +54,13 @@
   - [ ] Add dry-run mode for testing without committing changes
   - _Requirements: 4.1, 4.2, 4.3_
 
-- [ ] 2.2 Add Neo4j configuration to config/base.yaml
-  - [ ] ml.paecter.enable_neo4j_edges: false (disabled by default)
-  - [ ] ml.paecter.neo4j.batch_size: 1000
-  - [ ] ml.paecter.neo4j.dry_run: false
-  - [ ] ml.paecter.neo4j.prune_previous: false (optional cleanup of old edges)
+- [x] 2.2 Add Neo4j configuration to config/base.yaml
+  - [x] ml.paecter.neo4j.enabled: false (disabled by default)
+  - [x] ml.paecter.neo4j.batch_size: 1000
+  - [x] ml.paecter.neo4j.dry_run: false
+  - [x] ml.paecter.neo4j.prune_previous: false (optional cleanup of old edges)
   - _Requirements: 4.1, 4.2, 4.3_
+  - _Status: Config added to `config/base.yaml` under `ml.paecter.neo4j`. Schema already existed in `src/config/schemas/ml.py` as `PaECTERNeo4jConfig`._
 
 - [ ] 2.3 Implement quality metrics and performance baselines
   - [ ] Create `paecter_quality_metrics` asset for tracking embedding quality

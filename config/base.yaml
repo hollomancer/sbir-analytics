@@ -714,6 +714,14 @@ ml:
       award_fields: ["solicitation_title", "abstract", "award_title"]
       patent_fields: ["title", "abstract"]
 
+    # Neo4j similarity edge loading (disabled by default)
+    # When enabled, loads (Award)-[:SIMILAR_TO]->(Patent) edges into Neo4j
+    neo4j:
+      enabled: false  # Set to true to enable similarity edge loading
+      batch_size: 1000  # Batch size for Neo4j MERGE operations
+      dry_run: false  # When true, validate without committing changes
+      prune_previous: false  # Remove previous SIMILAR_TO edges before loading
+
     # Similarity computation
     similarity_threshold: 0.80  # Minimum similarity score to include in results
     top_k: 10  # Number of top matches to return per award

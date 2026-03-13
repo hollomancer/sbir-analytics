@@ -269,13 +269,13 @@ This implementation plan tracks the remaining work for the company categorizatio
     - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 8.1, 8.2, 8.3, 8.4, 8.5_
 
 - [ ] 10. Add documentation
-  - [ ]* 10.1 Create module docstrings
+  - [x]* 10.1 Create module docstrings
     - Document `company_categorization.py` module purpose and usage
     - Document `classify_contract()` function with examples
     - Document `aggregate_company_classification()` function with examples
     - Document `retrieve_company_contracts()` function with examples
     - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 2.1, 2.2, 2.3, 2.4, 2.5, 5.1, 5.2, 5.3, 5.4, 5.5_
-    - _Note: Comprehensive docstrings already exist in implementation_
+    - _Status: Comprehensive docstrings already exist in `src/transformers/company_categorization.py` and `src/enrichers/company_categorization.py`_
 
   - [ ]* 10.2 Create usage guide
     - Document how to run categorization asset in Dagster UI
