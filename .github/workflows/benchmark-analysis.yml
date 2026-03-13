@@ -120,27 +120,7 @@ jobs:
             echo "" >> "$GITHUB_STEP_SUMMARY"
 
             # Extract key metrics from JSON
-            cat <<'PYEOF' > /tmp/benchmark_summary.py
-import json
-
-def fmt(val):
-    return f"{val:,}" if isinstance(val, (int, float)) else str(val)
-
-with open("data/scripts_output/benchmark_evaluation.json") as f:
-    d = json.load(f)
-
-print("| Metric | Count |")
-print("|--------|-------|")
-for key, label in [
-    ("total_companies_evaluated", "Companies evaluated"),
-    ("companies_subject_to_transition", "Subject to transition benchmark"),
-    ("companies_failing_transition", "Failing transition benchmark"),
-    ("companies_subject_to_commercialization", "Subject to commercialization benchmark"),
-    ("companies_failing_commercialization", "Failing commercialization benchmark"),
-]:
-    print(f"| {label} | {fmt(d.get(key, 0))} |")
-PYEOF
-            uv run python /tmp/benchmark_summary.py >> "$GITHUB_STEP_SUMMARY"
+            uv run python scripts/ci/benchmark_summary.py "$EVAL" >> "$GITHUB_STEP_SUMMARY"
             echo "" >> "$GITHUB_STEP_SUMMARY"
           fi
 
