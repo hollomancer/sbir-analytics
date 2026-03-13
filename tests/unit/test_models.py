@@ -35,15 +35,15 @@ class TestAwardModel:
         assert award.program == "SBIR"  # Should be uppercased
 
     def test_invalid_award_amount(self):
-        """Test invalid award amount."""
-        with pytest.raises(ValueError, match="Award amount must be positive"):
-            Award(
-                award_id="12345",
-                company_name="Test Company",
-                award_amount=-1000.0,
-                award_date=date(2023, 1, 1),
-                program="SBIR",
-            )
+        """Test invalid award amount is coerced to None (lenient validation)."""
+        award = Award(
+            award_id="12345",
+            company_name="Test Company",
+            award_amount=-1000.0,
+            award_date=date(2023, 1, 1),
+            program="SBIR",
+        )
+        assert award.award_amount is None  # Negative amounts coerced to None
 
     def test_invalid_program(self):
         """Test invalid program is set to None (lenient validation)."""

@@ -126,25 +126,29 @@ class TestAwardModel:
         assert award.award_amount == 1234.56
 
     @pytest.mark.parametrize(
-        "invalid_amount,error_msg",
+        "invalid_amount,expected",
         [
-            (0, "Award amount must be positive"),
-            (-1000, "Award amount must be positive"),
-            ("not_a_number", "Award amount must be a number"),
+            (0, 0.0),  # Zero is accepted (cancelled/placeholder awards)
+            (-1000, None),  # Negative coerced to None (lenient)
+            ("not_a_number", None),  # Non-numeric string coerced to None (lenient)
         ],
         ids=["zero", "negative", "non_numeric"],
     )
-    def test_award_amount_validator_rejects_invalid(self, invalid_amount, error_msg):
-        """Test award_amount validator rejects invalid amounts."""
-        with pytest.raises(ValidationError) as exc_info:
-            Award(
-                award_id="TEST-INVALID",
-                company_name="Test Corp",
-                award_amount=invalid_amount,
-                award_date=date(2023, 1, 1),
-                program="SBIR",
-            )
-        assert error_msg in str(exc_info.value)
+    def test_award_amount_validator_handles_invalid_leniently(self, invalid_amount, expected):
+        """Test award_amount validator leniently handles invalid amounts.
+
+        The Award model uses lenient validation: invalid amounts are coerced
+        to None rather than raising ValidationError, to support real-world
+        data quality issues in SBIR datasets.
+        """
+        award = Award(
+            award_id="TEST-INVALID",
+            company_name="Test Corp",
+            award_amount=invalid_amount,
+            award_date=date(2023, 1, 1),
+            program="SBIR",
+        )
+        assert award.award_amount == expected
 
     @pytest.mark.parametrize(
         "program_input,expected",

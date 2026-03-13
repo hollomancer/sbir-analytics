@@ -366,6 +366,7 @@ class TestNeo4jClientBatchOperations:
     @patch.object(Neo4jClient, "session")
     def test_batch_upsert_handles_missing_key(self, mock_session_cm, neo4j_config):
         """Test batch upsert handles nodes missing key property."""
+        neo4j_config.batch_size = 1000  # Ensure large batch to avoid splitting
         mock_session = Neo4jMocks.session()
         mock_tx = Neo4jMocks.transaction()
         # Create context manager for begin_transaction

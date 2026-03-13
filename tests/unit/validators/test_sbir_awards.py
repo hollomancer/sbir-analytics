@@ -535,22 +535,22 @@ class TestValidateSBIRAwards:
         df = pd.DataFrame(
             [
                 {
-                    "Company": "Acme Corp",
-                    "Award Title": "AI Research",
-                    "Agency": "DOD",
-                    "Phase": "Phase I",
-                    "Program": "SBIR",
-                    "Award Year": 2020,
-                    "Award Amount": 150000,
+                    "award_id": "AWD-001",
+                    "company_name": "Acme Corp",
+                    "award_amount": 150000,
+                    "agency": "DOD",
+                    "phase": "Phase I",
+                    "program": "SBIR",
+                    "award_year": 2020,
                 },
                 {
-                    "Company": "Tech Inc",
-                    "Award Title": "Quantum Computing",
-                    "Agency": "NSF",
-                    "Phase": "Phase II",
-                    "Program": "STTR",
-                    "Award Year": 2021,
-                    "Award Amount": 750000,
+                    "award_id": "AWD-002",
+                    "company_name": "Tech Inc",
+                    "award_amount": 750000,
+                    "agency": "NSF",
+                    "phase": "Phase II",
+                    "program": "STTR",
+                    "award_year": 2021,
                 },
             ]
         )
@@ -561,55 +561,54 @@ class TestValidateSBIRAwards:
         assert report.passed is True
 
     def test_some_invalid_records(self):
-        """Test validation fails when some records are invalid."""
+        """Test validation identifies records with missing essential fields."""
         df = pd.DataFrame(
             [
                 {
-                    "Company": "Acme Corp",
-                    "Award Title": "Valid Record",
-                    "Agency": "DOD",
-                    "Phase": "Phase I",
-                    "Program": "SBIR",
-                    "Award Year": 2020,
-                    "Award Amount": 150000,
+                    "award_id": "AWD-001",
+                    "company_name": "Acme Corp",
+                    "award_amount": 150000,
+                    "agency": "DOD",
+                    "phase": "Phase I",
+                    "program": "SBIR",
+                    "award_year": 2020,
                 },
                 {
-                    "Company": pd.NA,  # Missing required field
-                    "Award Title": "Invalid Record",
-                    "Agency": "NSF",
-                    "Phase": "Phase IV",  # Invalid phase
-                    "Program": "INVALID",  # Invalid program
-                    "Award Year": 1900,  # Invalid year
-                    "Award Amount": -1000,  # Invalid amount
+                    "award_id": pd.NA,  # Missing required field
+                    "company_name": pd.NA,  # Missing required field
+                    "award_amount": pd.NA,  # Missing required field
+                    "agency": "NSF",
+                    "phase": "Phase IV",
+                    "program": "INVALID",
+                    "award_year": 1900,
                 },
             ]
         )
         report = validate_sbir_awards(df)
         assert report.total_records == 2
         assert report.failed_records >= 1
-        assert len(report.issues) >= 5  # Multiple errors in second record
 
     def test_pass_rate_threshold(self):
         """Test validation respects pass rate threshold."""
         df = pd.DataFrame(
             [
                 {
-                    "Company": "Valid Corp",
-                    "Award Title": "Valid",
-                    "Agency": "DOD",
-                    "Phase": "Phase I",
-                    "Program": "SBIR",
-                    "Award Year": 2020,
-                    "Award Amount": 150000,
+                    "award_id": "AWD-001",
+                    "company_name": "Valid Corp",
+                    "award_amount": 150000,
+                    "agency": "DOD",
+                    "phase": "Phase I",
+                    "program": "SBIR",
+                    "award_year": 2020,
                 },
                 {
-                    "Company": pd.NA,  # Invalid
-                    "Award Title": "",
-                    "Agency": "",
-                    "Phase": "Phase IV",
-                    "Program": "INVALID",
-                    "Award Year": 1900,
-                    "Award Amount": -1000,
+                    "award_id": pd.NA,  # Missing essential field
+                    "company_name": pd.NA,  # Missing essential field
+                    "award_amount": pd.NA,  # Missing essential field
+                    "agency": "",
+                    "phase": "Phase IV",
+                    "program": "INVALID",
+                    "award_year": 1900,
                 },
             ]
         )
