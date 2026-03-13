@@ -1,10 +1,24 @@
 """Unit tests for CLI display components."""
 
 import pytest
+from rich.panel import Panel
 
 
 pytestmark = pytest.mark.fast
 
+from src.cli.display.errors import (
+    CLIError,
+    ConfigError,
+    ConnectionError,
+    DataError,
+    EXIT_CONFIG_ERROR,
+    EXIT_CONNECTION_ERROR,
+    EXIT_DATA_ERROR,
+    EXIT_RUNTIME_ERROR,
+    format_error,
+    _infer_exit_code,
+    _infer_suggestions,
+)
 from src.cli.display.metrics import create_metrics_table, format_threshold_indicator
 from src.cli.display.progress import PipelineProgressTracker, create_progress_tracker
 from src.cli.display.status import (
@@ -12,6 +26,91 @@ from src.cli.display.status import (
     create_summary_panel,
     get_health_indicator,
 )
+
+
+class TestErrorFormatting:
+    """Tests for error formatting and display."""
+
+    def test_cli_error_stores_exit_code(self):
+        err = CLIError("test error", exit_code=2, suggestions=["try this"])
+        assert err.exit_code == 2
+        assert err.suggestions == ["try this"]
+        assert str(err) == "test error"
+
+    def test_config_error_has_config_exit_code(self):
+        err = ConfigError("bad config")
+        assert err.exit_code == EXIT_CONFIG_ERROR
+        assert len(err.suggestions) > 0
+
+    def test_connection_error_has_connection_exit_code(self):
+        err = ConnectionError("cannot connect", service="Neo4j")
+        assert err.exit_code == EXIT_CONNECTION_ERROR
+        assert any("Neo4j" in s for s in err.suggestions)
+
+    def test_data_error_has_data_exit_code(self):
+        err = DataError("file missing")
+        assert err.exit_code == EXIT_DATA_ERROR
+        assert len(err.suggestions) > 0
+
+    def test_format_error_returns_panel(self):
+        err = CLIError("something went wrong", suggestions=["restart"])
+        panel = format_error(err)
+        assert isinstance(panel, Panel)
+
+    def test_format_error_includes_type_for_subclasses(self):
+        err = ConfigError("bad yaml")
+        panel = format_error(err)
+        # Panel contains Text with error type info
+        assert isinstance(panel, Panel)
+
+    def test_format_error_generic_exception(self):
+        err = Exception("generic failure")
+        panel = format_error(err)
+        assert isinstance(panel, Panel)
+
+    def test_infer_exit_code_connection(self):
+        err = Exception("connection refused by server")
+        assert _infer_exit_code(err) == EXIT_CONNECTION_ERROR
+
+    def test_infer_exit_code_timeout(self):
+        err = Exception("request timeout after 30s")
+        assert _infer_exit_code(err) == EXIT_CONNECTION_ERROR
+
+    def test_infer_exit_code_config(self):
+        err = Exception("configuration validation failed")
+        assert _infer_exit_code(err) == EXIT_CONFIG_ERROR
+
+    def test_infer_exit_code_not_found(self):
+        err = Exception("file not found: data/awards.csv")
+        assert _infer_exit_code(err) == EXIT_DATA_ERROR
+
+    def test_infer_exit_code_generic(self):
+        err = Exception("unknown error occurred")
+        assert _infer_exit_code(err) == EXIT_RUNTIME_ERROR
+
+    def test_infer_suggestions_connection(self):
+        err = Exception("connection refused")
+        suggestions = _infer_suggestions(err)
+        assert len(suggestions) > 0
+        assert any("running" in s.lower() for s in suggestions)
+
+    def test_infer_suggestions_import(self):
+        err = Exception("cannot import module foo")
+        suggestions = _infer_suggestions(err)
+        assert len(suggestions) > 0
+
+    def test_infer_suggestions_generic_returns_empty(self):
+        err = Exception("something happened")
+        suggestions = _infer_suggestions(err)
+        assert suggestions == []
+
+    def test_cli_error_default_exit_code(self):
+        err = CLIError("test")
+        assert err.exit_code == EXIT_RUNTIME_ERROR
+
+    def test_cli_error_default_empty_suggestions(self):
+        err = CLIError("test")
+        assert err.suggestions == []
 
 
 class TestProgressTracker:
