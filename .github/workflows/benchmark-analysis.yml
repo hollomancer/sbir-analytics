@@ -118,43 +118,10 @@ jobs:
 
       - name: Summary
         if: always()
-        run: |
-          REPORT="data/scripts_output/sensitivity_report_fy${{ steps.params.outputs.fy }}.md"
-          EVAL="data/scripts_output/benchmark_evaluation.json"
-          MANIFEST="data/scripts_output/run_manifest.json"
-
-          if [ -f "$MANIFEST" ]; then
-            echo "## Run Provenance" >> "$GITHUB_STEP_SUMMARY"
-            echo '```json' >> "$GITHUB_STEP_SUMMARY"
-            cat "$MANIFEST" >> "$GITHUB_STEP_SUMMARY"
-            echo '```' >> "$GITHUB_STEP_SUMMARY"
-            echo "" >> "$GITHUB_STEP_SUMMARY"
-          fi
-
-          if [ -f "$EVAL" ]; then
-            echo "## Benchmark Evaluation — FY ${{ steps.params.outputs.fy }}" >> "$GITHUB_STEP_SUMMARY"
-            echo "" >> "$GITHUB_STEP_SUMMARY"
-            uv run python scripts/ci/benchmark_summary.py "$EVAL" >> "$GITHUB_STEP_SUMMARY"
-            echo "" >> "$GITHUB_STEP_SUMMARY"
-          fi
-
-          if [ -f "$REPORT" ]; then
-            echo "<details><summary>Full Sensitivity Report</summary>" >> "$GITHUB_STEP_SUMMARY"
-            echo "" >> "$GITHUB_STEP_SUMMARY"
-            cat "$REPORT" >> "$GITHUB_STEP_SUMMARY"
-            echo "" >> "$GITHUB_STEP_SUMMARY"
-            echo "</details>" >> "$GITHUB_STEP_SUMMARY"
-          fi
-
-          ARTIFACTS="data/scripts_output/artifact_manifest.json"
-          if [ -f "$ARTIFACTS" ]; then
-            echo "" >> "$GITHUB_STEP_SUMMARY"
-            echo "<details><summary>Artifact Manifest</summary>" >> "$GITHUB_STEP_SUMMARY"
-            echo '```json' >> "$GITHUB_STEP_SUMMARY"
-            cat "$ARTIFACTS" >> "$GITHUB_STEP_SUMMARY"
-            echo '```' >> "$GITHUB_STEP_SUMMARY"
-            echo "</details>" >> "$GITHUB_STEP_SUMMARY"
-          fi
+        env:
+          BENCHMARK_FY: ${{ steps.params.outputs.fy }}
+          BENCHMARK_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: uv run python scripts/ci/benchmark_summary.py data/scripts_output >> "$GITHUB_STEP_SUMMARY"
         shell: bash
 
       # Upload input data so every evaluation can be fully reproduced
