@@ -325,7 +325,9 @@ def _fetch_obligations_for_uei(
 ) -> float | None:
     """Query the USAspending API for total obligation amount for a single UEI.
 
-    Paginates through all results and sums ``Transaction Amount``.
+    Uses ``/search/spending_by_award/`` which returns award-level aggregates
+    instead of individual transactions — far fewer rows and less server load.
+    Paginates through all results and sums ``Award Amount``.
     Returns None on error.
     """
     total = 0.0
@@ -338,22 +340,29 @@ def _fetch_obligations_for_uei(
                 "recipient_search_text": [uei],
                 "time_period": [{"start_date": date_start, "end_date": date_end}],
             },
-            "fields": ["Transaction Amount", "Recipient UEI"],
-            "sort": "Transaction Amount",
+            "fields": [
+                "Award Amount",
+                "Recipient Name",
+                "Recipient UEI",
+                "Award ID",
+                "Start Date",
+            ],
+            "sort": "Award Amount",
             "order": "desc",
             "page": page,
             "limit": _PAGE_LIMIT,
+            "subawards": False,
         }
 
         try:
-            data = _api_post("/search/spending_by_transaction/", payload)
+            data = _api_post("/search/spending_by_award/", payload)
         except Exception as e:
             print(f"    API error for UEI {uei}: {e}", file=sys.stderr)
             return None
 
         results = data.get("results", [])
-        for txn in results:
-            amount = txn.get("Transaction Amount")
+        for award in results:
+            amount = award.get("Award Amount")
             if amount is not None:
                 try:
                     total += float(amount)
@@ -420,12 +429,13 @@ def _api_post(endpoint: str, payload: dict, *, retries: int = 3) -> dict:
     for attempt in range(retries):
         try:
             req = urllib.request.Request(url, data=body, headers=headers, method="POST")
-            with urllib.request.urlopen(req, timeout=30, context=ctx) as resp:
+            with urllib.request.urlopen(req, timeout=60, context=ctx) as resp:
                 return json.load(resp)
         except urllib.error.HTTPError as e:
-            if e.code == 429:
+            if e.code in (429, 500, 502, 503, 504):
                 wait = 2 ** (attempt + 1)
-                print(f"    Rate limited, waiting {wait}s...", file=sys.stderr)
+                label = "Rate limited" if e.code == 429 else f"Server error {e.code}"
+                print(f"    {label}, waiting {wait}s...", file=sys.stderr)
                 time.sleep(wait)
                 last_exc = e
                 continue

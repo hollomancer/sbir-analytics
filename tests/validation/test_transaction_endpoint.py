@@ -7,33 +7,35 @@ import urllib.request
 
 
 def test_transaction_endpoint(uei: str) -> None:
-    """Test the spending_by_transaction endpoint with a UEI."""
+    """Test the spending_by_award endpoint with a UEI."""
 
     print("=" * 80)
-    print("Transaction Endpoint Test (No Dependencies)")
+    print("Award Endpoint Test (No Dependencies)")
     print("=" * 80)
     print(f"\nTesting with UEI: {uei}")
     print()
 
-    # Build the API request
-    url = "https://api.usaspending.gov/api/v2/search/spending_by_transaction/"
+    # Build the API request — uses spending_by_award for award-level aggregates
+    # (lighter server load than spending_by_transaction)
+    url = "https://api.usaspending.gov/api/v2/search/spending_by_award/"
 
     payload = {
         "filters": {"award_type_codes": ["A", "B", "C", "D"], "recipient_search_text": [uei]},
         "fields": [
             "Award ID",
             "Recipient Name",
-            "Transaction Amount",
-            "Transaction Description",
-            "Action Date",
+            "Award Amount",
+            "Description",
+            "Start Date",
             "PSC",
             "Recipient UEI",
             "Award Type",
         ],
-        "sort": "Transaction Amount",
+        "sort": "Award Amount",
         "order": "desc",
         "page": 1,
         "limit": 5,  # Just get 5 for quick test
+        "subawards": False,
     }
 
     print("Request payload:")
@@ -68,12 +70,12 @@ def test_transaction_endpoint(uei: str) -> None:
         print()
 
         if not results:
-            print("❌ No transactions found for this UEI")
+            print("❌ No awards found for this UEI")
             return
 
         # Check first result structure
         first_result = results[0]
-        print("First transaction keys:")
+        print("First award keys:")
         print(f"  {list(first_result.keys())}")
         print()
 
@@ -85,13 +87,13 @@ def test_transaction_endpoint(uei: str) -> None:
         print()
 
         # Show sample transactions
-        print("Sample transactions:")
+        print("Sample awards:")
         print("-" * 80)
         for i, transaction in enumerate(results[:3], 1):
             award_id = transaction.get("Award ID", "N/A")
             psc = transaction.get("PSC", "(missing)")
-            amount = transaction.get("Transaction Amount", 0)
-            desc = transaction.get("Transaction Description", "N/A")[:60]
+            amount = transaction.get("Award Amount", 0)
+            desc = transaction.get("Description", "N/A")[:60]
 
             print(f"\n{i}. Award ID: {award_id}")
             print(f"   PSC: {psc}")
@@ -102,18 +104,18 @@ def test_transaction_endpoint(uei: str) -> None:
         print("=" * 80)
 
         if psc_coverage >= 80:
-            print("✓ SUCCESS: Transaction endpoint returns PSC codes!")
+            print("✓ SUCCESS: Award endpoint returns PSC codes!")
         elif psc_coverage > 0:
-            print(f"⚠ PARTIAL: {psc_coverage:.1f}% of transactions have PSC codes")
+            print(f"⚠ PARTIAL: {psc_coverage:.1f}% of awards have PSC codes")
         else:
-            print("❌ FAILURE: No PSC codes in transaction response")
+            print("❌ FAILURE: No PSC codes in award response")
 
         print("=" * 80)
 
         # Save full response for inspection
-        with open("/tmp/transaction_response.json", "w") as f:
+        with open("/tmp/award_response.json", "w") as f:
             json.dump(data, f, indent=2)
-        print("\n✓ Full response saved to: /tmp/transaction_response.json")
+        print("\n✓ Full response saved to: /tmp/award_response.json")
 
     except urllib.error.HTTPError as e:
         print(f"❌ HTTP Error {e.code}: {e.reason}")
