@@ -16,6 +16,7 @@ References:
 from __future__ import annotations
 
 from enum import Enum
+from typing import TypedDict
 
 
 # ---------------------------------------------------------------------------
@@ -77,16 +78,23 @@ def parse_research_code(code: str | None) -> tuple[str, int] | None:
 # Assistance Listing Numbers (ALN / CFDA) for SBIR/STTR grants
 # ---------------------------------------------------------------------------
 
+class AgencyAlnInfo(TypedDict):
+    """Typed schema for per-agency SBIR/STTR ALN metadata."""
+
+    alns: list[str]
+    exclusive: bool
+
+
 #: ALN numbers that are *exclusively* or *primarily* SBIR/STTR programs.
 #: For agencies like HHS/NIH where SBIR grants share ALNs with non-SBIR
 #: programs, we list the most common ones but note they require additional
 #: validation (e.g. cross-reference with SBIR.gov or description parsing).
-SBIR_ASSISTANCE_LISTING_NUMBERS: dict[str, dict[str, list[str] | bool]] = {
+SBIR_ASSISTANCE_LISTING_NUMBERS: dict[str, AgencyAlnInfo] = {
     "USDA": {
         "alns": ["10.212"],
         "exclusive": True,  # ALN is exclusively SBIR/STTR
     },
-    "DoD": {
+    "DOD": {
         "alns": ["12.910", "12.911"],
         "exclusive": True,
     },
@@ -278,6 +286,7 @@ def _parse_sbir_from_description(description: str) -> dict[str, object] | None:
 
 __all__ = [
     "ALL_SBIR_ALNS",
+    "AgencyAlnInfo",
     "EXCLUSIVE_SBIR_ALNS",
     "RESEARCH_CODE_DETAIL",
     "SBIR_ASSISTANCE_LISTING_NUMBERS",

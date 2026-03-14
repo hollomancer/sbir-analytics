@@ -123,7 +123,8 @@ class SbirGovClient:
         if isinstance(data, list):
             return data
         if isinstance(data, dict):
-            return data.get("results", data.get("data", []))
+            # Guard against keys present but set to None
+            return data.get("results") or data.get("data") or []
         return []
 
     def query_all_awards(
@@ -182,7 +183,7 @@ class SbirGovClient:
     ) -> dict[str, dict[str, Any]]:
         """Build a lookup index from SBIR.gov award data.
 
-        Creates indexes by contract/award number and by firm name for
+        Creates an index keyed by contract/award number for
         cross-referencing with USAspending data.
 
         Args:

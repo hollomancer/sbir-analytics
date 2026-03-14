@@ -20,13 +20,15 @@ def _table_has_column(
     table_name: str,
     column_name: str,
 ) -> bool:
-    """Check whether *table_name* has a column called *column_name*."""
+    """Check whether *table_name* has a column called *column_name*.
+
+    Uses DESCRIBE (schema-only) instead of ``get_table_info`` which runs
+    ``SELECT COUNT(*)`` and can be expensive on large tables.
+    """
     try:
-        info = extractor.get_table_info(table_name)
-        columns = info.get("columns", [])
-        return any(
-            col.get("column_name", "").lower() == column_name.lower() for col in columns
-        )
+        conn = extractor.connect()
+        cols_df = conn.execute(f"DESCRIBE {table_name}").fetchdf()
+        return column_name.lower() in cols_df["column_name"].str.lower().values
     except Exception:
         return False
 
@@ -433,22 +435,19 @@ def sbir_grant_transactions(
 
     extractor = DuckDBUSAspendingExtractor(db_path=config.duckdb.database_path)
 
-    # FABS data lives in transaction_fabs or transaction_normalized
-    # Try transaction_fabs first (has cfda_number), fall back to transaction_normalized
-    table_candidate = "transaction_normalized"
-    for candidate in ["transaction_fabs", "transaction_normalized"]:
-        success = extractor.import_postgres_dump(dump_path, candidate)
-        if success:
-            table_candidate = candidate
-            break
-    else:
+    # Import once as transaction_normalized (the dump's main transaction table).
+    # Both FPDS (contract) and FABS (grant) records live here; the cfda_number
+    # column is present only on FABS rows.
+    table_name = "transaction_normalized"
+    success = extractor.import_postgres_dump(dump_path, table_name)
+    if not success:
         raise ExtractionError(
-            "Failed to import FABS transaction table from dump.",
+            "Failed to import transaction table from dump.",
             component="assets.usaspending_database_enrichment",
             operation="sbir_grants",
         )
 
-    physical_table = extractor.resolve_physical_table_name(table_candidate)
+    physical_table = extractor.resolve_physical_table_name(table_name)
 
     # Check for the cfda_number column
     has_cfda = _table_has_column(extractor, physical_table, "cfda_number")
