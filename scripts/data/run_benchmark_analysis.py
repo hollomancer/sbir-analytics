@@ -194,41 +194,73 @@ def run_analysis(
             print(f"Unique companies: {df[col].nunique():,}")
             break
 
-    # ── Step 2: Build commercialization data from USAspending ─────────
+    # Create evaluator early so we can use it for candidate identification
+    evaluator = BenchmarkEligibilityEvaluator(
+        evaluation_fy=fy,
+        sensitivity_margin_awards=margin_awards,
+        sensitivity_margin_ratio=margin_ratio,
+    )
+
+    # ── Step 2: Identify commercialization candidates, then fetch ─────
+    # Run a lightweight pass to find companies with enough Phase II awards
+    # to be subject to the commercialization benchmark.  This lets us query
+    # USAspending only for ~50-100 companies instead of all ~17K UEIs.
     commercialization_df = None
     usaspending_source = "none"
     usaspending_company_count = 0
 
-    if usaspending_api:
-        from src.transition.analysis.usaspending_commercialization import (
-            fetch_commercialization_from_api,
-        )
+    if usaspending_api or usaspending_path:
+        candidates = evaluator.get_commercialization_candidates(df)
+        print(f"\nCommercialization benchmark candidates: {len(candidates)} companies")
+        for c in candidates[:10]:
+            print(f"  {c.company_name or c.company_id}: {c.phase2_count_commercialization} Phase II awards")
+        if len(candidates) > 10:
+            print(f"  ... and {len(candidates) - 10} more")
 
-        cache_file = output_dir / "usaspending_api_cache.json"
-        print(f"\nFetching commercialization data from USAspending API...")
-        commercialization_df = fetch_commercialization_from_api(
-            df, evaluation_fy=fy, cache_path=cache_file,
-        )
-        usaspending_source = "api.usaspending.gov"
-        usaspending_company_count = len(commercialization_df)
-        print(f"Commercialization records: {usaspending_company_count:,} companies")
-        if not commercialization_df.empty:
+        # Extract UEIs from candidates for targeted querying
+        candidate_ueis: set[str] = set()
+        for c in candidates:
+            cid = c.company_id
+            if cid.startswith("uei:"):
+                candidate_ueis.add(cid[4:])
+
+        if not candidates:
+            print("No companies subject to commercialization benchmark; skipping USAspending fetch.")
+        elif usaspending_api:
+            from src.transition.analysis.usaspending_commercialization import (
+                fetch_commercialization_from_api,
+            )
+
+            cache_file = output_dir / "usaspending_api_cache.json"
+            print(f"\nFetching commercialization data from USAspending API...")
+            uei_col = next((c for c in df.columns if c.upper() == "UEI"), None)
+            if uei_col:
+                print(f"  Querying {len(candidate_ueis)} candidate UEIs (not all {df[uei_col].nunique():,})")
+            commercialization_df = fetch_commercialization_from_api(
+                df, evaluation_fy=fy, cache_path=cache_file,
+                uei_filter=candidate_ueis if candidate_ueis else None,
+            )
+            usaspending_source = "api.usaspending.gov"
+            usaspending_company_count = len(commercialization_df)
+            print(f"Commercialization records: {usaspending_company_count:,} companies")
+            if not commercialization_df.empty:
+                total_obligations = commercialization_df["total_sales_and_investment"].sum()
+                print(f"Total federal obligations: ${total_obligations:,.0f}")
+        else:
+            from src.transition.analysis.usaspending_commercialization import (
+                build_commercialization_from_usaspending,
+            )
+
+            print(f"\nBuilding commercialization data from USAspending: {usaspending_path}")
+            commercialization_df = build_commercialization_from_usaspending(
+                usaspending_path, evaluation_fy=fy,
+                uei_filter=candidate_ueis if candidate_ueis else None,
+            )
+            usaspending_source = f"parquet:{usaspending_path}"
+            usaspending_company_count = len(commercialization_df)
+            print(f"Commercialization records: {usaspending_company_count:,} companies")
             total_obligations = commercialization_df["total_sales_and_investment"].sum()
             print(f"Total federal obligations: ${total_obligations:,.0f}")
-    elif usaspending_path:
-        from src.transition.analysis.usaspending_commercialization import (
-            build_commercialization_from_usaspending,
-        )
-
-        print(f"\nBuilding commercialization data from USAspending: {usaspending_path}")
-        commercialization_df = build_commercialization_from_usaspending(
-            usaspending_path, evaluation_fy=fy,
-        )
-        usaspending_source = f"parquet:{usaspending_path}"
-        usaspending_company_count = len(commercialization_df)
-        print(f"Commercialization records: {usaspending_company_count:,} companies")
-        total_obligations = commercialization_df["total_sales_and_investment"].sum()
-        print(f"Total federal obligations: ${total_obligations:,.0f}")
 
     # Save commercialization detail artifact
     if commercialization_df is not None and not commercialization_df.empty:
@@ -250,11 +282,6 @@ def run_analysis(
         print("(with USAspending commercialization data)")
     print(divider)
 
-    evaluator = BenchmarkEligibilityEvaluator(
-        evaluation_fy=fy,
-        sensitivity_margin_awards=margin_awards,
-        sensitivity_margin_ratio=margin_ratio,
-    )
     summary = evaluator.evaluate(df, commercialization_df=commercialization_df)
 
     print(f"Determination date: {summary.determination_date}")

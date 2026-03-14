@@ -60,6 +60,7 @@ def build_commercialization_from_usaspending(
     *,
     lookback_years: int = 10,
     exclude_recent_years: int = 2,
+    uei_filter: set[str] | None = None,
 ) -> pd.DataFrame:
     """Aggregate USAspending transactions into per-company commercialization data.
 
@@ -75,6 +76,9 @@ def build_commercialization_from_usaspending(
         Number of years in the commercialization window (default 10).
     exclude_recent_years :
         Number of most-recent FYs to exclude (default 2).
+    uei_filter :
+        Optional set of UEIs to restrict aggregation to.  Rows whose
+        vendor UEI is not in this set are dropped before aggregation.
 
     Returns
     -------
@@ -98,6 +102,13 @@ def build_commercialization_from_usaspending(
     end_fy = evaluation_fy - exclude_recent_years
     start_fy = end_fy - lookback_years + 1
     df = df[(df["_fy"] >= start_fy) & (df["_fy"] <= end_fy)]
+
+    if uei_filter is not None:
+        uei_col = _first_present(df, ["vendor_uei", "uei", "UEI"])
+        if uei_col:
+            before = len(df)
+            df = df[df[uei_col].astype(str).str.strip().isin(uei_filter)]
+            print(f"  Filtered Parquet to {len(df):,} rows (from {before:,}) for {len(uei_filter)} candidate UEIs")
 
     if df.empty:
         return _empty_commercialization_df()
@@ -135,6 +146,7 @@ def fetch_commercialization_from_api(
     rate_limit_delay: float = 0.6,
     cache_path: str | Path | None = None,
     concurrency: int = _CONCURRENCY,
+    uei_filter: set[str] | None = None,
 ) -> pd.DataFrame:
     """Fetch obligation data from the USAspending API for each SBIR company.
 
@@ -164,6 +176,11 @@ def fetch_commercialization_from_api(
         appended and written back periodically and at completion.
     concurrency :
         Number of parallel API workers (default 10).
+    uei_filter :
+        Optional set of UEIs to restrict queries to.  When provided, only
+        these UEIs are queried (intersected with UEIs found in awards_df).
+        Use with ``BenchmarkEligibilityEvaluator.get_commercialization_candidates()``
+        to avoid querying companies that won't be subject to the benchmark.
 
     Returns
     -------
@@ -178,6 +195,10 @@ def fetch_commercialization_from_api(
     date_end = f"{end_fy}-09-30"
 
     ueis = _extract_unique_ueis(awards_df)
+    if uei_filter is not None:
+        before = len(ueis)
+        ueis = [u for u in ueis if u in uei_filter]
+        print(f"  Filtered to {len(ueis)} UEIs (from {before} total, {len(uei_filter)} candidates)")
     if not ueis:
         print("  No UEIs found in awards data; cannot query API.", file=sys.stderr)
         return _empty_commercialization_df()
