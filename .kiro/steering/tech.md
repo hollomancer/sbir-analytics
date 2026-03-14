@@ -1,14 +1,5 @@
 # Technology Stack & Build System
 
-## 🎉 Consolidated Architecture (2025-01-01)
-
-The technology stack has been streamlined through major consolidation efforts:
-
-- ✅ **Single Docker Compose**: Profile-based configuration replaces multiple files
-- ✅ **Unified Configuration**: Hierarchical PipelineConfig with standardized patterns
-- ✅ **Consolidated Assets**: Single files replace multiple scattered implementations
-- ✅ **Streamlined Build**: Optimized Docker build process and dependency management
-
 ## Core Technologies
 
 ### Language & Runtime
@@ -27,8 +18,7 @@ The technology stack has been streamlined through major consolidation efforts:
 
 ### Development Tools
 
-- **Black**: Code formatting (line length 100, Python 3.11 target)
-- **Ruff**: Fast Python linter with comprehensive rule set
+- **Ruff**: Code formatting and linting (line length 100, Python 3.11 target)
 - **MyPy**: Static type checking with strict configuration
 - **Bandit**: Security vulnerability scanning
 - **Pytest**: Testing framework with coverage reporting
@@ -67,7 +57,7 @@ docker-compose --profile dev up -d neo4j
 
 ## Format code
 
-black .
+ruff format .
 
 ## Lint code
 
@@ -111,7 +101,7 @@ pytest -m "not slow"  # Skip slow tests
 
 ## Start Dagster UI
 
-poetry run dagster dev
+uv run dagster dev
 
 ## Open http://localhost:3000
 
@@ -147,7 +137,7 @@ make docker-logs SERVICE=app
 
 ## Execute commands in container
 
-make docker-exec SERVICE=app CMD="poetry run pytest"
+make docker-exec SERVICE=app CMD="uv run pytest"
 ```
 
 ### Data Pipeline Commands

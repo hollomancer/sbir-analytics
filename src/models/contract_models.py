@@ -213,7 +213,12 @@ class FederalContract(BaseModel):
     program_acronym: str | None = Field(None, description="Program acronym.")
     reason_for_modification: str | None = Field(None, description="Reason for modification.")
     recurring_data: str | None = Field(None, description="Recurring data.")
-    research: str | None = Field(None, description="Research contract.")
+    research: str | None = Field(
+        None,
+        description="FPDS SBIR/STTR indicator (Element 10Q). "
+        "Values: SR1-SR3 (SBIR Phase I-III), ST1-ST3 (STTR Phase I-III). "
+        "Null for non-SBIR/STTR contracts.",
+    )
     sea_transportation: str | None = Field(None, description="Sea transportation.")
     service_contract_act: str | None = Field(None, description="Service Contract Act.")
     small_business_competitiveness_demonstration_program: str | None = Field(
