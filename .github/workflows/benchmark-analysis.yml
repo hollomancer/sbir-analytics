@@ -29,11 +29,15 @@ on:
         options:
           - sbir-gov
           - s3
-      skip_usaspending:
-        description: "Skip USAspending API queries"
+      usaspending_source:
+        description: "USAspending data source"
         required: false
-        default: false
-        type: boolean
+        default: "api"
+        type: choice
+        options:
+          - api
+          - s3
+          - skip
 
 permissions:
   id-token: write
@@ -64,7 +68,7 @@ jobs:
           install-dev-deps: "false"
 
       - name: Configure AWS credentials
-        if: inputs.sbir_source == 's3'
+        if: inputs.sbir_source == 's3' || inputs.usaspending_source == 's3'
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
@@ -77,10 +81,11 @@ jobs:
           echo "margin_awards=${{ inputs.margin_awards || '5' }}" >> "$GITHUB_OUTPUT"
           echo "margin_ratio=${{ inputs.margin_ratio || '0.05' }}" >> "$GITHUB_OUTPUT"
           echo "sbir_source=${{ inputs.sbir_source || 'sbir-gov' }}" >> "$GITHUB_OUTPUT"
-          echo "skip_usaspending=${{ inputs.skip_usaspending || 'false' }}" >> "$GITHUB_OUTPUT"
+          echo "usaspending_source=${{ inputs.usaspending_source || 'api' }}" >> "$GITHUB_OUTPUT"
         shell: bash
 
       - name: Restore USAspending API cache
+        if: steps.params.outputs.usaspending_source == 'api'
         uses: actions/cache@v4
         with:
           path: data/scripts_output/usaspending_api_cache.json
@@ -96,9 +101,11 @@ jobs:
           fi
 
           USA_FLAG=""
-          if [ "${{ steps.params.outputs.skip_usaspending }}" = "false" ]; then
-            USA_FLAG="--usaspending-api"
-          fi
+          case "${{ steps.params.outputs.usaspending_source }}" in
+            api)  USA_FLAG="--usaspending-api" ;;
+            s3)   USA_FLAG="--usaspending-s3 --s3-bucket ${{ env.S3_BUCKET }}" ;;
+            skip) USA_FLAG="" ;;
+          esac
 
           uv run python scripts/data/run_benchmark_analysis.py \
             $SOURCE_FLAG \

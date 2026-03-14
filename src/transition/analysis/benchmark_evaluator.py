@@ -521,6 +521,31 @@ class BenchmarkEligibilityEvaluator:
 
     # ─── Public API ──────────────────────────────────────────────────
 
+    def get_commercialization_candidates(
+        self,
+        awards_df: pd.DataFrame,
+    ) -> list[CompanyAwardCounts]:
+        """Identify companies subject to the commercialization benchmark.
+
+        Runs award counting without commercialization data to find companies
+        with enough Phase II awards (≥16 standard, ≥51 tier 1, ≥101 tier 2)
+        to be subject to the commercialization benchmark.  Use this to
+        pre-filter USAspending queries before running the full evaluation.
+
+        Returns
+        -------
+        list[CompanyAwardCounts]
+            Companies whose Phase II count in the commercialization window
+            meets or exceeds the standard threshold.
+        """
+        company_counts = self._count_awards_by_company(awards_df)
+        min_p2 = self.commercialization_thresholds.standard_min_phase2
+        return [
+            counts
+            for counts in company_counts.values()
+            if counts.phase2_count_commercialization >= min_p2
+        ]
+
     def evaluate(
         self,
         awards_df: pd.DataFrame,

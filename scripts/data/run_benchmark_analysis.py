@@ -22,6 +22,9 @@ Usage:
 
     # Fetch USAspending data live from the API (no files needed)
     python scripts/data/run_benchmark_analysis.py --usaspending-api
+
+    # Pull USAspending recipient_lookup Parquet from S3 (fastest option)
+    python scripts/data/run_benchmark_analysis.py --usaspending-s3
 """
 
 import argparse
@@ -77,6 +80,42 @@ def download_from_s3(dest: Path, bucket: str = "sbir-etl-production-data") -> Pa
     latest = sorted(response["Contents"], key=lambda x: x["LastModified"])[-1]
     s3_key = latest["Key"]
     print(f"Latest: s3://{bucket}/{s3_key} ({latest['Size'] / 1024 / 1024:.1f} MB)")
+
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    s3.download_file(bucket, s3_key, str(dest))
+    print(f"Downloaded to {dest}")
+    return dest
+
+
+def download_usaspending_from_s3(
+    dest: Path,
+    bucket: str = "sbir-etl-production-data",
+    prefix: str = "raw/usaspending/recipient_lookup/",
+) -> Path:
+    """Download latest USAspending recipient_lookup Parquet from S3."""
+    import boto3
+
+    s3 = boto3.client("s3")
+    print(f"Listing USAspending files in s3://{bucket}/{prefix}...")
+
+    response = s3.list_objects_v2(Bucket=bucket, Prefix=prefix)
+    if not response.get("Contents"):
+        print(f"No USAspending files found at s3://{bucket}/{prefix}", file=sys.stderr)
+        sys.exit(1)
+
+    # Find the latest Parquet file
+    parquet_files = [
+        obj for obj in response["Contents"]
+        if obj["Key"].endswith(".parquet")
+    ]
+    if not parquet_files:
+        # Fall back to any file
+        parquet_files = response["Contents"]
+
+    latest = sorted(parquet_files, key=lambda x: x["LastModified"])[-1]
+    s3_key = latest["Key"]
+    size_mb = latest["Size"] / 1024 / 1024
+    print(f"Latest: s3://{bucket}/{s3_key} ({size_mb:.1f} MB)")
 
     dest.parent.mkdir(parents=True, exist_ok=True)
     s3.download_file(bucket, s3_key, str(dest))
@@ -155,41 +194,73 @@ def run_analysis(
             print(f"Unique companies: {df[col].nunique():,}")
             break
 
-    # ── Step 2: Build commercialization data from USAspending ─────────
+    # Create evaluator early so we can use it for candidate identification
+    evaluator = BenchmarkEligibilityEvaluator(
+        evaluation_fy=fy,
+        sensitivity_margin_awards=margin_awards,
+        sensitivity_margin_ratio=margin_ratio,
+    )
+
+    # ── Step 2: Identify commercialization candidates, then fetch ─────
+    # Run a lightweight pass to find companies with enough Phase II awards
+    # to be subject to the commercialization benchmark.  This lets us query
+    # USAspending only for ~50-100 companies instead of all ~17K UEIs.
     commercialization_df = None
     usaspending_source = "none"
     usaspending_company_count = 0
 
-    if usaspending_api:
-        from src.transition.analysis.usaspending_commercialization import (
-            fetch_commercialization_from_api,
-        )
+    if usaspending_api or usaspending_path:
+        candidates = evaluator.get_commercialization_candidates(df)
+        print(f"\nCommercialization benchmark candidates: {len(candidates)} companies")
+        for c in candidates[:10]:
+            print(f"  {c.company_name or c.company_id}: {c.phase2_count_commercialization} Phase II awards")
+        if len(candidates) > 10:
+            print(f"  ... and {len(candidates) - 10} more")
 
-        cache_file = output_dir / "usaspending_api_cache.json"
-        print(f"\nFetching commercialization data from USAspending API...")
-        commercialization_df = fetch_commercialization_from_api(
-            df, evaluation_fy=fy, cache_path=cache_file,
-        )
-        usaspending_source = "api.usaspending.gov"
-        usaspending_company_count = len(commercialization_df)
-        print(f"Commercialization records: {usaspending_company_count:,} companies")
-        if not commercialization_df.empty:
+        # Extract UEIs from candidates for targeted querying
+        candidate_ueis: set[str] = set()
+        for c in candidates:
+            cid = c.company_id
+            if cid.startswith("uei:"):
+                candidate_ueis.add(cid[4:])
+
+        if not candidates:
+            print("No companies subject to commercialization benchmark; skipping USAspending fetch.")
+        elif usaspending_api:
+            from src.transition.analysis.usaspending_commercialization import (
+                fetch_commercialization_from_api,
+            )
+
+            cache_file = output_dir / "usaspending_api_cache.json"
+            print(f"\nFetching commercialization data from USAspending API...")
+            uei_col = next((c for c in df.columns if c.upper() == "UEI"), None)
+            if uei_col:
+                print(f"  Querying {len(candidate_ueis)} candidate UEIs (not all {df[uei_col].nunique():,})")
+            commercialization_df = fetch_commercialization_from_api(
+                df, evaluation_fy=fy, cache_path=cache_file,
+                uei_filter=candidate_ueis if candidate_ueis else None,
+            )
+            usaspending_source = "api.usaspending.gov"
+            usaspending_company_count = len(commercialization_df)
+            print(f"Commercialization records: {usaspending_company_count:,} companies")
+            if not commercialization_df.empty:
+                total_obligations = commercialization_df["total_sales_and_investment"].sum()
+                print(f"Total federal obligations: ${total_obligations:,.0f}")
+        else:
+            from src.transition.analysis.usaspending_commercialization import (
+                build_commercialization_from_usaspending,
+            )
+
+            print(f"\nBuilding commercialization data from USAspending: {usaspending_path}")
+            commercialization_df = build_commercialization_from_usaspending(
+                usaspending_path, evaluation_fy=fy,
+                uei_filter=candidate_ueis if candidate_ueis else None,
+            )
+            usaspending_source = f"parquet:{usaspending_path}"
+            usaspending_company_count = len(commercialization_df)
+            print(f"Commercialization records: {usaspending_company_count:,} companies")
             total_obligations = commercialization_df["total_sales_and_investment"].sum()
             print(f"Total federal obligations: ${total_obligations:,.0f}")
-    elif usaspending_path:
-        from src.transition.analysis.usaspending_commercialization import (
-            build_commercialization_from_usaspending,
-        )
-
-        print(f"\nBuilding commercialization data from USAspending: {usaspending_path}")
-        commercialization_df = build_commercialization_from_usaspending(
-            usaspending_path, evaluation_fy=fy,
-        )
-        usaspending_source = f"parquet:{usaspending_path}"
-        usaspending_company_count = len(commercialization_df)
-        print(f"Commercialization records: {usaspending_company_count:,} companies")
-        total_obligations = commercialization_df["total_sales_and_investment"].sum()
-        print(f"Total federal obligations: ${total_obligations:,.0f}")
 
     # Save commercialization detail artifact
     if commercialization_df is not None and not commercialization_df.empty:
@@ -211,11 +282,6 @@ def run_analysis(
         print("(with USAspending commercialization data)")
     print(divider)
 
-    evaluator = BenchmarkEligibilityEvaluator(
-        evaluation_fy=fy,
-        sensitivity_margin_awards=margin_awards,
-        sensitivity_margin_ratio=margin_ratio,
-    )
     summary = evaluator.evaluate(df, commercialization_df=commercialization_df)
 
     print(f"Determination date: {summary.determination_date}")
@@ -340,6 +406,15 @@ def main():
         "--usaspending-api", action="store_true",
         help="Fetch commercialization data live from api.usaspending.gov"
     )
+    parser.add_argument(
+        "--usaspending-s3", action="store_true",
+        help="Pull USAspending recipient_lookup Parquet from S3"
+    )
+    parser.add_argument(
+        "--usaspending-s3-prefix",
+        default="raw/usaspending/recipient_lookup/",
+        help="S3 prefix for USAspending data (default: raw/usaspending/recipient_lookup/)"
+    )
     args = parser.parse_args()
 
     dest = Path("data/raw/sbir/award_data.csv")
@@ -358,7 +433,13 @@ def main():
         sbir_source = "https://data.www.sbir.gov/mod_awarddatapublic/award_data.csv"
 
     usaspending_path = None
-    if args.usaspending:
+    usaspending_api = args.usaspending_api
+    if args.usaspending_s3:
+        usa_dest = Path("data/usaspending/recipient_lookup.parquet")
+        usaspending_path = download_usaspending_from_s3(
+            usa_dest, args.s3_bucket, args.usaspending_s3_prefix,
+        )
+    elif args.usaspending:
         if not args.usaspending.exists():
             print(f"USAspending file not found: {args.usaspending}", file=sys.stderr)
             sys.exit(1)
@@ -366,7 +447,7 @@ def main():
 
     run_analysis(
         awards_path, args.fy, args.margin_awards, args.margin_ratio,
-        usaspending_path, args.usaspending_api, sbir_source,
+        usaspending_path, usaspending_api, sbir_source,
     )
 
 
