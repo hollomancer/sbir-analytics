@@ -10,10 +10,16 @@ SBIR/STTR award data across all participating agencies.  This client is used to:
 
 API Docs: https://www.sbir.gov/api
 No authentication required.  No documented rate limit (be respectful).
+
+Bulk downloads: https://www.sbir.gov/data-resources
+  - Award data with abstracts (~290 MB JSON)
+  - Award data without abstracts (~65 MB JSON)
 """
 
 from __future__ import annotations
 
+import json
+from pathlib import Path
 from typing import Any
 
 import httpx
@@ -177,28 +183,55 @@ class SbirGovClient:
     # Cross-reference helpers
     # ------------------------------------------------------------------
 
+    @staticmethod
     def build_lookup_index(
-        self,
         awards: list[dict[str, Any]],
-    ) -> dict[str, dict[str, Any]]:
-        """Build a lookup index from SBIR.gov award data.
+    ) -> "SbirGovLookupIndex":
+        """Build a multi-key lookup index from SBIR.gov award data.
 
-        Creates an index keyed by contract/award number for
+        Creates indexes keyed by contract/award number, UEI, and DUNS for
         cross-referencing with USAspending data.
 
         Args:
             awards: List of SBIR.gov award records.
 
         Returns:
-            Dict keyed by contract number (uppercased, stripped).
+            ``SbirGovLookupIndex`` supporting lookup by contract, UEI, or DUNS.
         """
-        index: dict[str, dict[str, Any]] = {}
-        for award in awards:
-            contract = award.get("contract", "")
-            if contract:
-                key = str(contract).strip().upper()
-                index[key] = award
-        return index
+        return SbirGovLookupIndex(awards)
+
+    # ------------------------------------------------------------------
+    # Bulk download support
+    # ------------------------------------------------------------------
+
+    def load_bulk_awards(self, path: Path | str) -> list[dict[str, Any]]:
+        """Load SBIR.gov awards from a bulk download JSON file.
+
+        SBIR.gov provides full award exports at https://www.sbir.gov/data-resources.
+        Download the JSON format (~65 MB without abstracts, ~290 MB with).
+
+        Args:
+            path: Path to the downloaded JSON file.
+
+        Returns:
+            List of award dicts (same schema as the API).
+        """
+        path = Path(path)
+        logger.info(f"Loading SBIR.gov bulk awards from {path}")
+
+        with open(path) as f:
+            data = json.load(f)
+
+        # File may be a list directly or wrapped in a dict
+        if isinstance(data, list):
+            awards = data
+        elif isinstance(data, dict):
+            awards = data.get("results") or data.get("data") or data.get("awards") or []
+        else:
+            awards = []
+
+        logger.info(f"Loaded {len(awards)} awards from bulk file")
+        return awards
 
     def __enter__(self):
         return self
@@ -207,4 +240,78 @@ class SbirGovClient:
         self.close()
 
 
-__all__ = ["SbirGovClient", "SBIR_GOV_API_BASE", "SBIR_PARTICIPATING_AGENCIES"]
+class SbirGovLookupIndex:
+    """Multi-key lookup index for SBIR.gov award cross-referencing.
+
+    Supports lookup by contract/award number, UEI, or DUNS — whichever
+    identifier is available on the USAspending record being validated.
+    """
+
+    def __init__(self, awards: list[dict[str, Any]]) -> None:
+        self.by_contract: dict[str, dict[str, Any]] = {}
+        self.by_uei: dict[str, dict[str, Any]] = {}
+        self.by_duns: dict[str, dict[str, Any]] = {}
+        self._size = 0
+
+        for award in awards:
+            self._size += 1
+            contract = award.get("contract", "")
+            if contract:
+                self.by_contract[str(contract).strip().upper()] = award
+            uei = award.get("uei", "")
+            if uei:
+                self.by_uei[str(uei).strip().upper()] = award
+            duns = award.get("duns", "")
+            if duns:
+                digits = "".join(ch for ch in str(duns) if ch.isdigit())
+                if digits:
+                    self.by_duns[digits] = award
+
+        logger.debug(
+            f"SbirGovLookupIndex built: {len(self.by_contract)} contracts, "
+            f"{len(self.by_uei)} UEIs, {len(self.by_duns)} DUNS from {self._size} awards"
+        )
+
+    def lookup(
+        self,
+        *,
+        contract: str | None = None,
+        uei: str | None = None,
+        duns: str | None = None,
+    ) -> dict[str, Any] | None:
+        """Look up an award by any available identifier.
+
+        Checks contract number first (most specific), then UEI, then DUNS.
+
+        Returns:
+            The matching SBIR.gov award dict, or ``None``.
+        """
+        if contract:
+            hit = self.by_contract.get(str(contract).strip().upper())
+            if hit:
+                return hit
+        if uei:
+            hit = self.by_uei.get(str(uei).strip().upper())
+            if hit:
+                return hit
+        if duns:
+            digits = "".join(ch for ch in str(duns) if ch.isdigit())
+            if digits:
+                hit = self.by_duns.get(digits)
+                if hit:
+                    return hit
+        return None
+
+    def __len__(self) -> int:
+        return self._size
+
+    def __bool__(self) -> bool:
+        return self._size > 0
+
+
+__all__ = [
+    "SbirGovClient",
+    "SbirGovLookupIndex",
+    "SBIR_GOV_API_BASE",
+    "SBIR_PARTICIPATING_AGENCIES",
+]

@@ -4,12 +4,16 @@ This module processes USAspending PostgreSQL database dumps stored in S3
 to extract and enrich SBIR award data with transaction-level details.
 """
 
+from pathlib import Path
+from typing import Any, Optional
+
 import pandas as pd
 from dagster import AssetExecutionContext, MetadataValue, Output, asset
 from loguru import logger
 
 from ..config.loader import get_config
 from ..exceptions import ExtractionError
+from ..extractors.sbir_gov_api import SbirGovClient, SbirGovLookupIndex
 from ..extractors.usaspending import DuckDBUSAspendingExtractor
 from ..models.sbir_identification import ALL_SBIR_ALNS, EXCLUSIVE_SBIR_ALNS, SBIR_RESEARCH_CODES
 from ..utils.cloud_storage import find_latest_usaspending_dump, get_s3_bucket_from_env
@@ -31,6 +35,165 @@ def _table_has_column(
         return column_name.lower() in cols_df["column_name"].str.lower().values
     except Exception:
         return False
+
+
+def _build_sbir_gov_index(
+    context: AssetExecutionContext,
+    *,
+    agencies: Optional[list[str]] = None,
+    year_range: Optional[tuple[int, int]] = None,
+) -> Optional[SbirGovLookupIndex]:
+    """Build a SBIR.gov cross-reference index, trying API first then bulk file.
+
+    Args:
+        context: Dagster context for logging.
+        agencies: Agency abbreviations to query (``None`` = all).
+        year_range: ``(start, end)`` inclusive year range.
+
+    Returns:
+        A populated ``SbirGovLookupIndex``, or ``None`` if both API and bulk fail.
+    """
+    all_awards: list[dict[str, Any]] = []
+
+    # --- Attempt 1: API ---
+    try:
+        with SbirGovClient() as client:
+            target_agencies = agencies or ["HHS", "DOE", "ED", "DOT"]
+            years = (
+                list(range(year_range[0], year_range[1] + 1))
+                if year_range
+                else [None]
+            )
+
+            for agency in target_agencies:
+                for year in years:
+                    context.log.info(
+                        f"Fetching SBIR.gov awards: agency={agency}"
+                        + (f" year={year}" if year else "")
+                    )
+                    try:
+                        awards = client.query_all_awards(
+                            agency=agency,
+                            year=year,
+                            max_results=50000,
+                        )
+                        all_awards.extend(awards)
+                    except Exception as e:
+                        context.log.warning(
+                            f"SBIR.gov API query failed for agency={agency} year={year}: {e}"
+                        )
+
+        if all_awards:
+            context.log.info(f"SBIR.gov API returned {len(all_awards)} awards total")
+            return SbirGovClient.build_lookup_index(all_awards)
+
+        context.log.warning("SBIR.gov API returned no awards — trying bulk fallback")
+    except Exception as e:
+        context.log.warning(f"SBIR.gov API unavailable ({e}) — trying bulk fallback")
+
+    # --- Attempt 2: Bulk download file from S3 or local ---
+    bulk_path = _find_sbir_gov_bulk_file()
+    if bulk_path:
+        try:
+            context.log.info(f"Loading SBIR.gov bulk file: {bulk_path}")
+            client = SbirGovClient()
+            bulk_awards = client.load_bulk_awards(bulk_path)
+            if bulk_awards:
+                context.log.info(f"Loaded {len(bulk_awards)} awards from bulk file")
+                return SbirGovClient.build_lookup_index(bulk_awards)
+        except Exception as e:
+            context.log.warning(f"Failed to load SBIR.gov bulk file: {e}")
+
+    context.log.warning("SBIR.gov cross-reference unavailable (API and bulk both failed)")
+    return None
+
+
+def _find_sbir_gov_bulk_file() -> Optional[Path]:
+    """Locate a SBIR.gov bulk awards JSON file.
+
+    Checks:
+    1. S3 path: ``raw/sbir_gov/awards.json``
+    2. Local path: ``data/raw/sbir_gov/awards.json``
+    """
+    from ..utils.cloud_storage import resolve_data_path
+
+    s3_bucket = get_s3_bucket_from_env()
+    if s3_bucket:
+        s3_path = f"s3://{s3_bucket}/raw/sbir_gov/awards.json"
+        try:
+            resolved = resolve_data_path(s3_path)
+            if resolved.exists():
+                return resolved
+        except Exception:
+            pass
+
+    local = Path("data/raw/sbir_gov/awards.json")
+    if local.exists():
+        return local
+
+    return None
+
+
+def _crossref_dataframe_with_sbir_gov(
+    df: pd.DataFrame,
+    index: SbirGovLookupIndex,
+    *,
+    award_id_col: str = "award_id",
+    uei_col: str = "recipient_uei",
+    duns_col: str = "recipient_duns",
+) -> pd.DataFrame:
+    """Cross-reference a DataFrame against a SBIR.gov lookup index.
+
+    Adds columns to the DataFrame:
+    - ``sbir_gov_confirmed``: bool — whether the record matched SBIR.gov
+    - ``sbir_gov_program``: str — SBIR or STTR (from SBIR.gov)
+    - ``sbir_gov_phase``: str — Phase number (from SBIR.gov)
+    - ``sbir_gov_topic_code``: str — Topic code (from SBIR.gov)
+    - ``sbir_gov_firm``: str — Firm name as registered on SBIR.gov
+
+    Args:
+        df: DataFrame to cross-reference.
+        index: Populated SBIR.gov lookup index.
+        award_id_col: Column containing the award/contract number.
+        uei_col: Column containing recipient UEI.
+        duns_col: Column containing recipient DUNS.
+
+    Returns:
+        The input DataFrame with cross-reference columns added.
+    """
+    confirmed = []
+    programs = []
+    phases = []
+    topics = []
+    firms = []
+
+    for _, row in df.iterrows():
+        hit = index.lookup(
+            contract=str(row.get(award_id_col, "")) if pd.notna(row.get(award_id_col)) else None,
+            uei=str(row.get(uei_col, "")) if pd.notna(row.get(uei_col)) else None,
+            duns=str(row.get(duns_col, "")) if pd.notna(row.get(duns_col)) else None,
+        )
+        if hit:
+            confirmed.append(True)
+            programs.append(hit.get("program", ""))
+            phases.append(str(hit.get("phase", "")))
+            topics.append(hit.get("topic_code", ""))
+            firms.append(hit.get("firm", ""))
+        else:
+            confirmed.append(False)
+            programs.append("")
+            phases.append("")
+            topics.append("")
+            firms.append("")
+
+    df = df.copy()
+    df["sbir_gov_confirmed"] = confirmed
+    df["sbir_gov_program"] = programs
+    df["sbir_gov_phase"] = phases
+    df["sbir_gov_topic_code"] = topics
+    df["sbir_gov_firm"] = firms
+
+    return df
 
 
 @asset(
@@ -229,6 +392,31 @@ def sbir_relevant_usaspending_transactions(
         context.log.warning("No SBIR-relevant transactions found in dump")
         return Output(value=df, metadata={"row_count": 0})  # type: ignore[arg-type]
 
+    # --- SBIR.gov cross-reference (heuristic fallback only) ---
+    # When we used the authoritative research field, every record is already
+    # confirmed SBIR/STTR.  When we fell back to heuristics, the results
+    # include false positives — cross-reference with SBIR.gov to tag which
+    # ones are real SBIR awards.
+    sbir_gov_stats: dict[str, Any] = {}
+    if not has_research_col and not df.empty:
+        context.log.info(
+            "Heuristic filter used — cross-referencing with SBIR.gov to validate"
+        )
+        sbir_gov_index = _build_sbir_gov_index(context)
+        if sbir_gov_index:
+            df = _crossref_dataframe_with_sbir_gov(df, sbir_gov_index)
+            confirmed = int(df["sbir_gov_confirmed"].sum())
+            sbir_gov_stats = {
+                "sbir_gov_index_size": len(sbir_gov_index),
+                "sbir_gov_confirmed": confirmed,
+                "sbir_gov_unconfirmed": len(df) - confirmed,
+            }
+            context.log.info(
+                f"SBIR.gov cross-reference: {confirmed}/{len(df)} confirmed"
+            )
+        else:
+            sbir_gov_stats = {"sbir_gov_status": "unavailable"}
+
     # Compute metadata
     total_obligation = (
         df["federal_action_obligation"].sum() if "federal_action_obligation" in df.columns else 0
@@ -238,7 +426,7 @@ def sbir_relevant_usaspending_transactions(
         df["awarding_agency_name"].nunique() if "awarding_agency_name" in df.columns else 0
     )
 
-    metadata = {
+    metadata: dict[str, Any] = {
         "row_count": len(df),
         "unique_recipients": unique_recipients,
         "unique_agencies": unique_agencies,
@@ -248,6 +436,7 @@ def sbir_relevant_usaspending_transactions(
         if "action_date" in df.columns
         else "N/A",
         "preview": MetadataValue.md(df.head(10).to_markdown()),
+        **sbir_gov_stats,
     }
 
     context.log.info(
@@ -504,7 +693,93 @@ def sbir_grant_transactions(
     )
     shared_count = len(df) - exclusive_count
 
-    metadata = {
+    # --- SBIR.gov cross-reference for shared-ALN grants ---
+    # Exclusive-ALN records are definitively SBIR/STTR.  Shared-ALN records
+    # (primarily HHS/NIH) need validation because the same ALN funds non-SBIR
+    # grants too.  Cross-reference ALL records — for exclusive ALNs this adds
+    # enrichment fields (topic_code, PI); for shared ALNs it confirms or denies.
+    sbir_gov_stats: dict[str, Any] = {}
+    if shared_count > 0:
+        context.log.info(
+            f"Cross-referencing {shared_count} shared-ALN grants with SBIR.gov"
+        )
+
+        # Determine which agencies have shared ALNs to limit API queries
+        shared_agencies = []
+        from ..models.sbir_identification import SBIR_ASSISTANCE_LISTING_NUMBERS
+
+        for agency, info in SBIR_ASSISTANCE_LISTING_NUMBERS.items():
+            if not info["exclusive"]:
+                shared_agencies.append(agency)
+
+        sbir_gov_index = _build_sbir_gov_index(
+            context,
+            agencies=shared_agencies or None,
+        )
+        if sbir_gov_index:
+            # Determine the best award_id column to use for matching
+            award_id_col = "award_id"
+            for candidate in ["award_id_fain", "award_id", "fain", "piid"]:
+                if candidate in df.columns:
+                    award_id_col = candidate
+                    break
+
+            uei_col = "recipient_uei"
+            for candidate in ["recipient_uei", "uei"]:
+                if candidate in df.columns:
+                    uei_col = candidate
+                    break
+
+            duns_col = "recipient_duns"
+            for candidate in ["recipient_duns", "duns"]:
+                if candidate in df.columns:
+                    duns_col = candidate
+                    break
+
+            df = _crossref_dataframe_with_sbir_gov(
+                df,
+                sbir_gov_index,
+                award_id_col=award_id_col,
+                uei_col=uei_col,
+                duns_col=duns_col,
+            )
+
+            # Upgrade shared-ALN records that are confirmed by SBIR.gov
+            if "sbir_gov_confirmed" in df.columns and "sbir_aln_confidence" in df.columns:
+                upgrade_mask = (
+                    (df["sbir_aln_confidence"] == "shared") & df["sbir_gov_confirmed"]
+                )
+                df.loc[upgrade_mask, "sbir_aln_confidence"] = "shared_confirmed"
+
+            confirmed_total = int(df["sbir_gov_confirmed"].sum()) if "sbir_gov_confirmed" in df.columns else 0
+            shared_confirmed = int(
+                (df["sbir_aln_confidence"] == "shared_confirmed").sum()
+                if "sbir_aln_confidence" in df.columns
+                else 0
+            )
+            shared_unconfirmed = shared_count - shared_confirmed
+
+            sbir_gov_stats = {
+                "sbir_gov_index_size": len(sbir_gov_index),
+                "sbir_gov_confirmed_total": confirmed_total,
+                "sbir_gov_shared_confirmed": shared_confirmed,
+                "sbir_gov_shared_unconfirmed": shared_unconfirmed,
+            }
+            context.log.info(
+                f"SBIR.gov cross-reference: {shared_confirmed}/{shared_count} shared-ALN grants confirmed, "
+                f"{confirmed_total}/{len(df)} total confirmed"
+            )
+        else:
+            sbir_gov_stats = {"sbir_gov_status": "unavailable"}
+
+    # Recount after cross-reference may have changed labels
+    exclusive_count = int(
+        (df["sbir_aln_confidence"] == "exclusive").sum()
+        if "sbir_aln_confidence" in df.columns
+        else 0
+    )
+
+    metadata: dict[str, Any] = {
         "row_count": len(df),
         "exclusive_aln_matches": exclusive_count,
         "shared_aln_matches": shared_count,
@@ -512,6 +787,7 @@ def sbir_grant_transactions(
         if "cfda_number" in df.columns
         else [],
         "preview": MetadataValue.md(df.head(10).to_markdown()),
+        **sbir_gov_stats,
     }
 
     context.log.info(

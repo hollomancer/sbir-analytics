@@ -235,11 +235,25 @@ Heuristic filter using:
 This is a *necessary* but not *sufficient* filter — it captures SBIR awards
 but also non-SBIR contracts from those agencies/NAICS codes.
 
-#### Step 4: Metadata tagging
+#### Step 4: SBIR.gov cross-reference (heuristic fallback only)
+
+When the heuristic filter is used, the asset automatically cross-references
+results against SBIR.gov to tag which records are confirmed SBIR awards:
+
+1. Builds a `SbirGovLookupIndex` via API (falls back to bulk download)
+2. Matches each record by award number, UEI, or DUNS
+3. Adds `sbir_gov_confirmed`, `sbir_gov_program`, `sbir_gov_phase`,
+   `sbir_gov_topic_code`, and `sbir_gov_firm` columns
+
+When the authoritative `research` field is used (Step 3a), this step is
+skipped — every record is already definitively SBIR/STTR.
+
+#### Step 5: Metadata tagging
 
 The Dagster asset metadata includes `sbir_filter_method` set to either
 `fpds_research_field` or `heuristic`, making the identification method
-explicit for downstream consumers.
+explicit for downstream consumers. When cross-referenced, additional metadata
+includes `sbir_gov_confirmed` and `sbir_gov_unconfirmed` counts.
 
 ### 2.3 Grant Identification (FABS Path)
 
@@ -268,40 +282,72 @@ WHERE cfda_number IN (<all 31 SBIR ALNs>)
 The query tags each matching record with its confidence tier inline,
 avoiding a post-query join.
 
-#### Step 3: Output with confidence tiers
+#### Step 3: SBIR.gov cross-reference for shared-ALN grants
+
+After the initial ALN filter, the asset automatically cross-references
+shared-ALN records against SBIR.gov:
+
+1. Identifies which agencies have shared (non-exclusive) ALNs
+   (HHS, DOE, ED, DOT)
+2. Builds a `SbirGovLookupIndex` by querying those agencies (API first,
+   bulk download fallback)
+3. Matches each record by award number, UEI, or DUNS against the index
+4. Adds `sbir_gov_confirmed`, `sbir_gov_program`, `sbir_gov_phase`,
+   `sbir_gov_topic_code`, and `sbir_gov_firm` columns
+5. Upgrades confirmed shared-ALN records: `sbir_aln_confidence` changes
+   from `shared` to `shared_confirmed`
+
+#### Step 4: Output with confidence tiers
 
 The output DataFrame includes:
 - All original FABS fields
-- `sbir_aln_confidence` column (`exclusive` or `shared`)
-- Dagster metadata: `exclusive_aln_matches`, `shared_aln_matches`, `alns_matched`
-
-Records tagged `shared` should be cross-referenced with SBIR.gov before
-being treated as confirmed SBIR awards.
+- `sbir_aln_confidence` column: `exclusive`, `shared_confirmed`, or `shared`
+- SBIR.gov enrichment columns (when cross-reference succeeds)
+- Dagster metadata: `exclusive_aln_matches`, `shared_aln_matches`,
+  `sbir_gov_shared_confirmed`, `sbir_gov_shared_unconfirmed`
 
 ### 2.4 SBIR.gov Cross-Reference
 
-**Module:** `src/extractors/sbir_gov_api.py`
+**Module:** `src/extractors/sbir_gov_api.py` (client)
+**Integration:** `src/assets/usaspending_database_enrichment.py` (`_build_sbir_gov_index`, `_crossref_dataframe_with_sbir_gov`)
 
-#### API interaction
+#### Data acquisition (two-tier fallback)
 
-```python
-client = SbirGovClient()
-awards = client.query_all_awards(agency="DOE", year=2024)
-index = client.build_lookup_index(awards)
+```
+_build_sbir_gov_index()
+  ├── Attempt 1: SBIR.gov API
+  │     SbirGovClient.query_all_awards(agency=...) for each target agency
+  │     Paginated, with tenacity retry on transport errors
+  │
+  └── Attempt 2: Bulk download file (API unavailable or returned 0 results)
+        Checks: s3://<bucket>/raw/sbir_gov/awards.json
+        Then:   data/raw/sbir_gov/awards.json
 ```
 
-The client queries `https://api.www.sbir.gov/public/api/awards` with
-agency, firm, and year filters. Results are paginated (configurable page
-size, default 100). Retries on transport errors with exponential backoff.
+Both paths produce a `SbirGovLookupIndex` — a multi-key index supporting
+lookup by contract number, UEI, or DUNS.
 
 #### Cross-reference workflow
 
-1. Query SBIR.gov for awards matching the agency and year range
-2. Build a lookup dict keyed by contract/award number (uppercased)
-3. For each `shared`-confidence grant from the FABS path, check if its
-   award number exists in the SBIR.gov index
-4. If matched: upgrade confidence to 1.0, enrich with topic code, abstract, PI
-5. If not matched: retain `shared` confidence (0.8)
+1. `_build_sbir_gov_index()` queries SBIR.gov for target agencies
+   (shared-ALN agencies for grants, all agencies for heuristic contracts)
+2. `SbirGovLookupIndex` indexes awards by contract number, UEI, and DUNS
+3. `_crossref_dataframe_with_sbir_gov()` iterates over the DataFrame and
+   looks up each record by award ID → UEI → DUNS (in priority order)
+4. Adds columns: `sbir_gov_confirmed` (bool), `sbir_gov_program`,
+   `sbir_gov_phase`, `sbir_gov_topic_code`, `sbir_gov_firm`
+5. For grants: upgrades `sbir_aln_confidence` from `shared` to `shared_confirmed`
+6. For contracts: tags heuristic results as confirmed or unconfirmed
+
+#### Where cross-reference runs
+
+| Asset | Trigger | Target records |
+|-------|---------|----------------|
+| `sbir_relevant_usaspending_transactions` | Heuristic fallback (no `research` column) | All heuristic results |
+| `sbir_grant_transactions` | Shared-ALN grants exist | Shared-ALN records (HHS, DOE, ED, DOT) |
+
+When the authoritative FPDS `research` field is available, no cross-reference
+is needed for contracts — the research code is definitive.
 
 ### 2.5 Unified Classification Function
 
@@ -345,9 +391,10 @@ the change.
 
 | Failure Mode | Behavior |
 |-------------|----------|
-| `research` column missing | Falls back to heuristic; logged as warning |
+| `research` column missing | Falls back to heuristic + SBIR.gov cross-ref; logged as warning |
 | `cfda_number` column missing | Returns empty DataFrame; metadata includes `reason` |
-| SBIR.gov API down | Graceful: shared-ALN grants retain 0.8 confidence |
+| SBIR.gov API down | Falls back to bulk download file |
+| SBIR.gov API + bulk both fail | Graceful: grants retain `shared` confidence, heuristic contracts lack confirmation; metadata: `sbir_gov_status: unavailable` |
 | DuckDB import fails | Raises `ExtractionError` with component/operation context |
 | S3 bucket not configured | Raises `ExtractionError` immediately |
 
