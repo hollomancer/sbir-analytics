@@ -22,6 +22,9 @@ Usage:
 
     # Fetch USAspending data live from the API (no files needed)
     python scripts/data/run_benchmark_analysis.py --usaspending-api
+
+    # Pull USAspending recipient_lookup Parquet from S3 (fastest option)
+    python scripts/data/run_benchmark_analysis.py --usaspending-s3
 """
 
 import argparse
@@ -77,6 +80,42 @@ def download_from_s3(dest: Path, bucket: str = "sbir-etl-production-data") -> Pa
     latest = sorted(response["Contents"], key=lambda x: x["LastModified"])[-1]
     s3_key = latest["Key"]
     print(f"Latest: s3://{bucket}/{s3_key} ({latest['Size'] / 1024 / 1024:.1f} MB)")
+
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    s3.download_file(bucket, s3_key, str(dest))
+    print(f"Downloaded to {dest}")
+    return dest
+
+
+def download_usaspending_from_s3(
+    dest: Path,
+    bucket: str = "sbir-etl-production-data",
+    prefix: str = "raw/usaspending/recipient_lookup/",
+) -> Path:
+    """Download latest USAspending recipient_lookup Parquet from S3."""
+    import boto3
+
+    s3 = boto3.client("s3")
+    print(f"Listing USAspending files in s3://{bucket}/{prefix}...")
+
+    response = s3.list_objects_v2(Bucket=bucket, Prefix=prefix)
+    if not response.get("Contents"):
+        print(f"No USAspending files found at s3://{bucket}/{prefix}", file=sys.stderr)
+        sys.exit(1)
+
+    # Find the latest Parquet file
+    parquet_files = [
+        obj for obj in response["Contents"]
+        if obj["Key"].endswith(".parquet")
+    ]
+    if not parquet_files:
+        # Fall back to any file
+        parquet_files = response["Contents"]
+
+    latest = sorted(parquet_files, key=lambda x: x["LastModified"])[-1]
+    s3_key = latest["Key"]
+    size_mb = latest["Size"] / 1024 / 1024
+    print(f"Latest: s3://{bucket}/{s3_key} ({size_mb:.1f} MB)")
 
     dest.parent.mkdir(parents=True, exist_ok=True)
     s3.download_file(bucket, s3_key, str(dest))
@@ -340,6 +379,15 @@ def main():
         "--usaspending-api", action="store_true",
         help="Fetch commercialization data live from api.usaspending.gov"
     )
+    parser.add_argument(
+        "--usaspending-s3", action="store_true",
+        help="Pull USAspending recipient_lookup Parquet from S3"
+    )
+    parser.add_argument(
+        "--usaspending-s3-prefix",
+        default="raw/usaspending/recipient_lookup/",
+        help="S3 prefix for USAspending data (default: raw/usaspending/recipient_lookup/)"
+    )
     args = parser.parse_args()
 
     dest = Path("data/raw/sbir/award_data.csv")
@@ -358,7 +406,13 @@ def main():
         sbir_source = "https://data.www.sbir.gov/mod_awarddatapublic/award_data.csv"
 
     usaspending_path = None
-    if args.usaspending:
+    usaspending_api = args.usaspending_api
+    if args.usaspending_s3:
+        usa_dest = Path("data/usaspending/recipient_lookup.parquet")
+        usaspending_path = download_usaspending_from_s3(
+            usa_dest, args.s3_bucket, args.usaspending_s3_prefix,
+        )
+    elif args.usaspending:
         if not args.usaspending.exists():
             print(f"USAspending file not found: {args.usaspending}", file=sys.stderr)
             sys.exit(1)
@@ -366,7 +420,7 @@ def main():
 
     run_analysis(
         awards_path, args.fy, args.margin_awards, args.margin_ratio,
-        usaspending_path, args.usaspending_api, sbir_source,
+        usaspending_path, usaspending_api, sbir_source,
     )
 
 
