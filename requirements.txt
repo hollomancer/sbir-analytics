@@ -210,7 +210,7 @@ numpy==2.4.3
     #   scipy
     #   spacy
     #   thinc
-packaging==25.0
+packaging==26.0
     # via
     #   dagster-shared
     #   huggingface-hub
