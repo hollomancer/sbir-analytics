@@ -52,7 +52,7 @@ jobs:
   benchmark:
     name: SBIR/STTR Benchmark Evaluation
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 180
 
     steps:
       - name: Checkout repository
@@ -114,12 +114,19 @@ jobs:
         run: |
           REPORT="data/scripts_output/sensitivity_report_fy${{ steps.params.outputs.fy }}.md"
           EVAL="data/scripts_output/benchmark_evaluation.json"
+          MANIFEST="data/scripts_output/run_manifest.json"
+
+          if [ -f "$MANIFEST" ]; then
+            echo "## Run Provenance" >> "$GITHUB_STEP_SUMMARY"
+            echo '```json' >> "$GITHUB_STEP_SUMMARY"
+            cat "$MANIFEST" >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+          fi
 
           if [ -f "$EVAL" ]; then
             echo "## Benchmark Evaluation — FY ${{ steps.params.outputs.fy }}" >> "$GITHUB_STEP_SUMMARY"
             echo "" >> "$GITHUB_STEP_SUMMARY"
-
-            # Extract key metrics from JSON
             uv run python scripts/ci/benchmark_summary.py "$EVAL" >> "$GITHUB_STEP_SUMMARY"
             echo "" >> "$GITHUB_STEP_SUMMARY"
           fi
@@ -131,14 +138,61 @@ jobs:
             echo "" >> "$GITHUB_STEP_SUMMARY"
             echo "</details>" >> "$GITHUB_STEP_SUMMARY"
           fi
+
+          ARTIFACTS="data/scripts_output/artifact_manifest.json"
+          if [ -f "$ARTIFACTS" ]; then
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "<details><summary>Artifact Manifest</summary>" >> "$GITHUB_STEP_SUMMARY"
+            echo '```json' >> "$GITHUB_STEP_SUMMARY"
+            cat "$ARTIFACTS" >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+            echo "</details>" >> "$GITHUB_STEP_SUMMARY"
+          fi
         shell: bash
 
-      - name: Upload results
+      # Upload input data so every evaluation can be fully reproduced
+      - name: Upload SBIR awards input
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbir-awards-input-fy${{ steps.params.outputs.fy }}
+          path: data/raw/sbir/
+          retention-days: 30
+          if-no-files-found: warn
+
+      # Upload USAspending intermediate data (API cache + per-company obligations)
+      - name: Upload USAspending data
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: usaspending-data-fy${{ steps.params.outputs.fy }}
+          path: |
+            data/scripts_output/usaspending_api_cache.json
+            data/scripts_output/commercialization_obligations.csv
+          retention-days: 30
+          if-no-files-found: warn
+
+      # Upload per-company evaluation detail (transition + commercialization CSVs)
+      - name: Upload per-company evaluation detail
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: evaluation-detail-fy${{ steps.params.outputs.fy }}
+          path: |
+            data/scripts_output/transition_rate_detail.csv
+            data/scripts_output/commercialization_rate_detail.csv
+          retention-days: 30
+          if-no-files-found: warn
+
+      # Upload final results, report, and provenance
+      - name: Upload benchmark results
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: benchmark-results-fy${{ steps.params.outputs.fy }}
           path: |
+            data/scripts_output/run_manifest.json
+            data/scripts_output/artifact_manifest.json
             data/scripts_output/benchmark_evaluation.json
             data/scripts_output/sensitivity_report_fy*.md
             data/scripts_output/at_risk.json

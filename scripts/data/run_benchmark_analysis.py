@@ -84,6 +84,46 @@ def download_from_s3(dest: Path, bucket: str = "sbir-etl-production-data") -> Pa
     return dest
 
 
+def _write_run_manifest(
+    output_dir: Path,
+    awards_path: Path,
+    awards_row_count: int,
+    fy: int,
+    margin_awards: int,
+    margin_ratio: float,
+    sbir_source: str,
+    usaspending_source: str,
+    usaspending_company_count: int,
+) -> Path:
+    """Write a run manifest capturing all parameters and data provenance."""
+    import hashlib
+
+    manifest = {
+        "run_timestamp": datetime.now(UTC).isoformat(),
+        "parameters": {
+            "evaluation_fy": fy,
+            "sensitivity_margin_awards": margin_awards,
+            "sensitivity_margin_ratio": margin_ratio,
+        },
+        "data_sources": {
+            "sbir_awards": {
+                "source": sbir_source,
+                "path": str(awards_path),
+                "row_count": awards_row_count,
+                "sha256": hashlib.sha256(awards_path.read_bytes()).hexdigest(),
+            },
+            "usaspending": {
+                "source": usaspending_source,
+                "companies_queried": usaspending_company_count,
+            },
+        },
+    }
+    path = output_dir / "run_manifest.json"
+    path.write_text(json.dumps(manifest, indent=2))
+    print(f"Run manifest: {path}")
+    return path
+
+
 def run_analysis(
     awards_path: Path,
     fy: int,
@@ -91,6 +131,7 @@ def run_analysis(
     margin_ratio: float,
     usaspending_path: Path | None = None,
     usaspending_api: bool = False,
+    sbir_source: str = "sbir-gov",
 ):
     """Run benchmark evaluation and sensitivity analysis."""
     import pandas as pd
@@ -100,7 +141,7 @@ def run_analysis(
     output_dir = Path("data/scripts_output")
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Load data
+    # ── Step 1: Load SBIR awards ──────────────────────────────────────
     suffix = awards_path.suffix.lower()
     if suffix == ".parquet":
         df = pd.read_parquet(awards_path)
@@ -114,8 +155,11 @@ def run_analysis(
             print(f"Unique companies: {df[col].nunique():,}")
             break
 
-    # Build commercialization data from USAspending if provided
+    # ── Step 2: Build commercialization data from USAspending ─────────
     commercialization_df = None
+    usaspending_source = "none"
+    usaspending_company_count = 0
+
     if usaspending_api:
         from src.transition.analysis.usaspending_commercialization import (
             fetch_commercialization_from_api,
@@ -126,7 +170,9 @@ def run_analysis(
         commercialization_df = fetch_commercialization_from_api(
             df, evaluation_fy=fy, cache_path=cache_file,
         )
-        print(f"Commercialization records: {len(commercialization_df):,} companies")
+        usaspending_source = "api.usaspending.gov"
+        usaspending_company_count = len(commercialization_df)
+        print(f"Commercialization records: {usaspending_company_count:,} companies")
         if not commercialization_df.empty:
             total_obligations = commercialization_df["total_sales_and_investment"].sum()
             print(f"Total federal obligations: ${total_obligations:,.0f}")
@@ -139,11 +185,25 @@ def run_analysis(
         commercialization_df = build_commercialization_from_usaspending(
             usaspending_path, evaluation_fy=fy,
         )
-        print(f"Commercialization records: {len(commercialization_df):,} companies")
+        usaspending_source = f"parquet:{usaspending_path}"
+        usaspending_company_count = len(commercialization_df)
+        print(f"Commercialization records: {usaspending_company_count:,} companies")
         total_obligations = commercialization_df["total_sales_and_investment"].sum()
         print(f"Total federal obligations: ${total_obligations:,.0f}")
 
-    # Full evaluation
+    # Save commercialization detail artifact
+    if commercialization_df is not None and not commercialization_df.empty:
+        comm_path = output_dir / "commercialization_obligations.csv"
+        commercialization_df.to_csv(comm_path, index=False)
+        print(f"Commercialization detail: {comm_path}")
+
+    # ── Step 3: Run manifest ──────────────────────────────────────────
+    _write_run_manifest(
+        output_dir, awards_path, len(df), fy, margin_awards, margin_ratio,
+        sbir_source, usaspending_source, usaspending_company_count,
+    )
+
+    # ── Step 4: Full evaluation ───────────────────────────────────────
     divider = "=" * 60
     print(f"\n{divider}")
     print(f"SBIR/STTR Benchmark Evaluation — FY {fy}")
@@ -168,18 +228,30 @@ def run_analysis(
     print(f"  Subject to commercialization benchmark: {summary.companies_subject_to_commercialization:,}")
     print(f"  Companies evaluated:                    {summary.total_companies_evaluated:,}")
 
-    # Write full evaluation JSON
+    # ── Step 5: Write per-company transition rate detail ──────────────
+    transition_rows = [r.to_dict() for r in summary.transition_results]
+    transition_csv = output_dir / "transition_rate_detail.csv"
+    pd.DataFrame(transition_rows).to_csv(transition_csv, index=False)
+    print(f"Transition rate detail: {transition_csv}")
+
+    # ── Step 6: Write per-company commercialization rate detail ───────
+    commercialization_rows = [r.to_dict() for r in summary.commercialization_results]
+    commercialization_csv = output_dir / "commercialization_rate_detail.csv"
+    pd.DataFrame(commercialization_rows).to_csv(commercialization_csv, index=False)
+    print(f"Commercialization rate detail: {commercialization_csv}")
+
+    # ── Step 7: Write full evaluation JSON ────────────────────────────
     eval_path = output_dir / "benchmark_evaluation.json"
     eval_path.write_text(json.dumps(summary.to_dict(), indent=2, default=str))
-    print(f"\nFull evaluation: {eval_path}")
+    print(f"Full evaluation: {eval_path}")
 
-    # Write markdown report
+    # ── Step 8: Write markdown report ─────────────────────────────────
     report = evaluator.generate_report(summary)
     report_path = output_dir / f"sensitivity_report_fy{fy}.md"
     report_path.write_text(report)
     print(f"Markdown report: {report_path}")
 
-    # Sensitivity analysis
+    # ── Step 9: Sensitivity analysis ──────────────────────────────────
     print(f"\n{divider}")
     print("Sensitivity Analysis")
     print(divider)
@@ -207,6 +279,26 @@ def run_analysis(
     risk_path = output_dir / "at_risk.json"
     risk_path.write_text(json.dumps([sr.to_dict() for sr in at_risk], indent=2, default=str))
     print(f"\nSensitivity results: {risk_path}")
+
+    # ── Step 10: Write artifact manifest ──────────────────────────────
+    artifacts = {
+        "run_manifest": "run_manifest.json",
+        "sbir_awards_input": str(awards_path),
+        "commercialization_obligations": "commercialization_obligations.csv"
+        if (commercialization_df is not None and not commercialization_df.empty) else None,
+        "usaspending_api_cache": "usaspending_api_cache.json"
+        if usaspending_api else None,
+        "transition_rate_detail": "transition_rate_detail.csv",
+        "commercialization_rate_detail": "commercialization_rate_detail.csv",
+        "benchmark_evaluation": "benchmark_evaluation.json",
+        "sensitivity_report": f"sensitivity_report_fy{fy}.md",
+        "at_risk": "at_risk.json",
+    }
+    # Remove None entries
+    artifacts = {k: v for k, v in artifacts.items() if v is not None}
+    artifact_manifest_path = output_dir / "artifact_manifest.json"
+    artifact_manifest_path.write_text(json.dumps(artifacts, indent=2))
+    print(f"\nArtifact manifest: {artifact_manifest_path}")
 
     print(f"\n{'='*60}")
     print("Done.")
@@ -257,10 +349,13 @@ def main():
             print(f"File not found: {args.local}", file=sys.stderr)
             sys.exit(1)
         awards_path = args.local
+        sbir_source = f"local:{args.local}"
     elif args.s3:
         awards_path = download_from_s3(dest, args.s3_bucket)
+        sbir_source = f"s3://{args.s3_bucket}"
     else:
         awards_path = download_from_sbir_gov(dest)
+        sbir_source = "https://data.www.sbir.gov/mod_awarddatapublic/award_data.csv"
 
     usaspending_path = None
     if args.usaspending:
@@ -271,7 +366,7 @@ def main():
 
     run_analysis(
         awards_path, args.fy, args.margin_awards, args.margin_ratio,
-        usaspending_path, args.usaspending_api,
+        usaspending_path, args.usaspending_api, sbir_source,
     )
 
 
