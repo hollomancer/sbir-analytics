@@ -11,7 +11,24 @@ from loguru import logger
 from ..config.loader import get_config
 from ..exceptions import ExtractionError
 from ..extractors.usaspending import DuckDBUSAspendingExtractor
+from ..models.sbir_identification import ALL_SBIR_ALNS, EXCLUSIVE_SBIR_ALNS, SBIR_RESEARCH_CODES
 from ..utils.cloud_storage import find_latest_usaspending_dump, get_s3_bucket_from_env
+
+
+def _table_has_column(
+    extractor: DuckDBUSAspendingExtractor,
+    table_name: str,
+    column_name: str,
+) -> bool:
+    """Check whether *table_name* has a column called *column_name*."""
+    try:
+        info = extractor.get_table_info(table_name)
+        columns = info.get("columns", [])
+        return any(
+            col.get("column_name", "").lower() == column_name.lower() for col in columns
+        )
+    except Exception:
+        return False
 
 
 @asset(
@@ -101,37 +118,68 @@ def sbir_relevant_usaspending_transactions(
     physical_table = extractor.resolve_physical_table_name(table_name)
     context.log.info(f"Resolved physical table: {physical_table}")
 
-    # SBIR-relevant agencies (funding SBIR/STTR programs)
-    sbir_agencies = [
-        "Department of Defense",
-        "DOD",
-        "Department of Energy",
-        "DOE",
-        "National Aeronautics and Space Administration",
-        "NASA",
-        "National Science Foundation",
-        "NSF",
-        "Department of Health and Human Services",
-        "HHS",
-        "NIH",
-        "National Institutes of Health",
-        "Department of Agriculture",
-        "USDA",
-        "Department of Commerce",
-        "DOC",
-        "NOAA",
-        "Department of Homeland Security",
-        "DHS",
-        "Department of Transportation",
-        "DOT",
-        "Environmental Protection Agency",
-        "EPA",
-        "Department of Education",
-        "ED",
-    ]
+    # Check if the FPDS 'research' column exists in this table.
+    # The 'research' field (Element 10Q) is the authoritative SBIR/STTR
+    # indicator: SR1-SR3 for SBIR, ST1-ST3 for STTR.
+    has_research_col = _table_has_column(extractor, physical_table, "research")
 
-    # Build SQL query to filter SBIR-relevant transactions
-    # This query extracts transactions that match SBIR companies or agencies
+    if has_research_col:
+        context.log.info(
+            "FPDS 'research' column detected — using authoritative SBIR/STTR filter "
+            f"(codes: {', '.join(sorted(SBIR_RESEARCH_CODES))})"
+        )
+    else:
+        context.log.warning(
+            "FPDS 'research' column not found in table — falling back to "
+            "agency + NAICS + dollar-cap heuristic filter"
+        )
+
+    # Build the WHERE clause based on available columns
+    research_codes_sql = ",".join(f"'{c}'" for c in sorted(SBIR_RESEARCH_CODES))
+
+    if has_research_col:
+        # PRIMARY: Use the authoritative FPDS research field
+        where_clause = f"""
+        WHERE research IN ({research_codes_sql})
+          AND federal_action_obligation > 0
+        """
+        select_extra = ",\n        research"
+    else:
+        # FALLBACK: Heuristic filter (agency + NAICS + dollar cap)
+        sbir_agencies = [
+            "Department of Defense", "DOD",
+            "Department of Energy", "DOE",
+            "National Aeronautics and Space Administration", "NASA",
+            "National Science Foundation", "NSF",
+            "Department of Health and Human Services", "HHS",
+            "NIH", "National Institutes of Health",
+            "Department of Agriculture", "USDA",
+            "Department of Commerce", "DOC", "NOAA",
+            "Department of Homeland Security", "DHS",
+            "Department of Transportation", "DOT",
+            "Environmental Protection Agency", "EPA",
+            "Department of Education", "ED",
+        ]
+        agencies_sql = ",".join(f"'{a}'" for a in sbir_agencies)
+
+        where_clause = f"""
+        WHERE
+            (
+                awarding_agency_name IN ({agencies_sql})
+                OR funding_agency_name IN ({agencies_sql})
+            )
+            AND (
+                naics_code LIKE '5417%'
+                OR naics_code LIKE '3254%'
+                OR naics_code LIKE '3341%'
+                OR naics_code LIKE '3364%'
+                OR naics_code LIKE '5112%'
+            )
+            AND federal_action_obligation <= 2500000
+            AND federal_action_obligation > 0
+        """
+        select_extra = ""
+
     query = f"""
     SELECT
         transaction_id,
@@ -155,27 +203,10 @@ def sbir_relevant_usaspending_transactions(
         place_of_performance_city,
         place_of_performance_state,
         place_of_performance_zip,
-        awarding_office_name
+        awarding_office_name{select_extra}
     FROM {physical_table}
-    WHERE
-        -- Filter by SBIR agencies
-        (
-            awarding_agency_name IN ({",".join(f"'{a}'" for a in sbir_agencies)})
-            OR funding_agency_name IN ({",".join(f"'{a}'" for a in sbir_agencies)})
-        )
-        -- Filter by research-related NAICS codes (54171X = R&D in sciences)
-        AND (
-            naics_code LIKE '5417%'  -- Scientific R&D
-            OR naics_code LIKE '3254%'  -- Pharmaceutical manufacturing
-            OR naics_code LIKE '3341%'  -- Computer manufacturing
-            OR naics_code LIKE '3364%'  -- Aerospace
-            OR naics_code LIKE '5112%'  -- Software publishers
-        )
-        -- Exclude very large contracts (SBIR Phase I max ~$250K, Phase II max ~$1.5M)
-        AND federal_action_obligation <= 2500000
-        -- Only awards (not negative adjustments)
-        AND federal_action_obligation > 0
-    LIMIT 1000000  -- Limit to 1M records for performance
+    {where_clause}
+    LIMIT 1000000
     """
 
     try:
@@ -210,6 +241,7 @@ def sbir_relevant_usaspending_transactions(
         "unique_recipients": unique_recipients,
         "unique_agencies": unique_agencies,
         "total_obligation": f"${total_obligation:,.2f}",
+        "sbir_filter_method": "fpds_research_field" if has_research_col else "heuristic",
         "date_range": f"{df['action_date'].min()} to {df['action_date'].max()}"
         if "action_date" in df.columns
         else "N/A",
@@ -351,5 +383,145 @@ def sbir_company_usaspending_recipients(
         "sbir_duns_count": len(duns_values),
         "match_rate": f"{len(df) / max(len(uei_values), 1) * 100:.1f}%",
     }
+
+    return Output(value=df, metadata=metadata)  # type: ignore[arg-type]
+
+
+@asset(
+    description="SBIR/STTR grants identified via Assistance Listing Numbers in FABS data",
+    group_name="usaspending_database",
+    compute_kind="duckdb",
+)
+def sbir_grant_transactions(
+    context: AssetExecutionContext,
+) -> Output[pd.DataFrame]:
+    """Extract SBIR/STTR grant awards from USAspending FABS data.
+
+    Uses Assistance Listing Numbers (ALN, formerly CFDA) to identify SBIR/STTR
+    financial assistance awards.  Two tiers of confidence:
+
+    - **Exclusive ALNs** (e.g. 12.910 DoD SBIR): award is definitively SBIR/STTR.
+    - **Shared ALNs** (e.g. 93.855 NIH NIAID): award *may* be SBIR/STTR;
+      requires cross-reference with SBIR.gov or description parsing to confirm.
+
+    Returns:
+        DataFrame with SBIR/STTR grant transactions and identification metadata.
+    """
+    config = get_config()
+
+    s3_bucket = get_s3_bucket_from_env()
+    if not s3_bucket:
+        raise ExtractionError(
+            "S3 bucket not configured.",
+            component="assets.usaspending_database_enrichment",
+            operation="sbir_grants",
+        )
+
+    dump_path = find_latest_usaspending_dump(
+        bucket=s3_bucket, database_type="test"
+    ) or find_latest_usaspending_dump(bucket=s3_bucket, database_type="full")
+
+    if not dump_path:
+        raise ExtractionError(
+            "USAspending database dump not found in S3.",
+            component="assets.usaspending_database_enrichment",
+            operation="sbir_grants",
+            details={"s3_bucket": s3_bucket},
+        )
+
+    context.log.info(f"Extracting SBIR grants from dump: {dump_path}")
+
+    extractor = DuckDBUSAspendingExtractor(db_path=config.duckdb.database_path)
+
+    # FABS data lives in transaction_fabs or transaction_normalized
+    # Try transaction_fabs first (has cfda_number), fall back to transaction_normalized
+    table_candidate = "transaction_normalized"
+    for candidate in ["transaction_fabs", "transaction_normalized"]:
+        success = extractor.import_postgres_dump(dump_path, candidate)
+        if success:
+            table_candidate = candidate
+            break
+    else:
+        raise ExtractionError(
+            "Failed to import FABS transaction table from dump.",
+            component="assets.usaspending_database_enrichment",
+            operation="sbir_grants",
+        )
+
+    physical_table = extractor.resolve_physical_table_name(table_candidate)
+
+    # Check for the cfda_number column
+    has_cfda = _table_has_column(extractor, physical_table, "cfda_number")
+    if not has_cfda:
+        context.log.warning(
+            "cfda_number column not found — cannot filter SBIR grants by ALN. "
+            "Returning empty DataFrame."
+        )
+        return Output(
+            value=pd.DataFrame(),
+            metadata={"row_count": 0, "reason": "no_cfda_column"},  # type: ignore[arg-type]
+        )
+
+    # Build SQL with all known SBIR/STTR ALNs
+    all_alns_sql = ",".join(f"'{a}'" for a in sorted(ALL_SBIR_ALNS))
+    exclusive_alns_sql = ",".join(f"'{a}'" for a in sorted(EXCLUSIVE_SBIR_ALNS))
+
+    query = f"""
+    SELECT
+        *,
+        CASE
+            WHEN cfda_number IN ({exclusive_alns_sql}) THEN 'exclusive'
+            ELSE 'shared'
+        END AS sbir_aln_confidence
+    FROM {physical_table}
+    WHERE cfda_number IN ({all_alns_sql})
+      AND federal_action_obligation > 0
+    LIMIT 500000
+    """
+
+    try:
+        context.log.info(
+            f"Querying FABS data for {len(ALL_SBIR_ALNS)} SBIR/STTR ALNs "
+            f"({len(EXCLUSIVE_SBIR_ALNS)} exclusive)"
+        )
+        df = extractor.connect().execute(query).fetchdf()
+        context.log.info(f"Found {len(df)} potential SBIR grant transactions")
+    except Exception as e:
+        logger.error(f"SBIR grant query failed: {e}")
+        raise ExtractionError(
+            "Failed to query SBIR grant transactions",
+            component="assets.usaspending_database_enrichment",
+            operation="sbir_grants",
+            details={"error": str(e)},
+        )
+
+    if df.empty:
+        return Output(value=df, metadata={"row_count": 0})  # type: ignore[arg-type]
+
+    exclusive_count = int(
+        (df["sbir_aln_confidence"] == "exclusive").sum()
+        if "sbir_aln_confidence" in df.columns
+        else 0
+    )
+    shared_count = len(df) - exclusive_count
+
+    metadata = {
+        "row_count": len(df),
+        "exclusive_aln_matches": exclusive_count,
+        "shared_aln_matches": shared_count,
+        "alns_matched": sorted(df["cfda_number"].unique().tolist())
+        if "cfda_number" in df.columns
+        else [],
+        "preview": MetadataValue.md(df.head(10).to_markdown()),
+    }
+
+    context.log.info(
+        "SBIR grant extraction complete",
+        extra={
+            "total": len(df),
+            "exclusive": exclusive_count,
+            "shared": shared_count,
+        },
+    )
 
     return Output(value=df, metadata=metadata)  # type: ignore[arg-type]
