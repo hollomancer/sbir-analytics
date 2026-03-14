@@ -146,6 +146,8 @@ def _crossref_dataframe_with_sbir_gov(
 
     Adds columns to the DataFrame:
     - ``sbir_gov_confirmed``: bool — whether the record matched SBIR.gov
+    - ``sbir_gov_match_key``: str — which identifier matched (``"contract"``,
+      ``"uei"``, ``"duns"``, or ``""`` if no match). Aids audit provenance.
     - ``sbir_gov_program``: str — SBIR or STTR (from SBIR.gov)
     - ``sbir_gov_phase``: str — Phase number (from SBIR.gov)
     - ``sbir_gov_topic_code``: str — Topic code (from SBIR.gov)
@@ -161,37 +163,54 @@ def _crossref_dataframe_with_sbir_gov(
     Returns:
         The input DataFrame with cross-reference columns added.
     """
-    confirmed = []
-    programs = []
-    phases = []
-    topics = []
-    firms = []
+    if df.empty:
+        df = df.copy()
+        for col in ["sbir_gov_confirmed", "sbir_gov_match_key", "sbir_gov_program",
+                     "sbir_gov_phase", "sbir_gov_topic_code", "sbir_gov_firm"]:
+            df[col] = pd.Series(dtype="object")
+        df["sbir_gov_confirmed"] = df["sbir_gov_confirmed"].astype(bool)
+        return df
 
-    for _, row in df.iterrows():
-        hit = index.lookup(
-            contract=str(row.get(award_id_col, "")) if pd.notna(row.get(award_id_col)) else None,
-            uei=str(row.get(uei_col, "")) if pd.notna(row.get(uei_col)) else None,
-            duns=str(row.get(duns_col, "")) if pd.notna(row.get(duns_col)) else None,
-        )
-        if hit:
-            confirmed.append(True)
-            programs.append(hit.get("program", ""))
-            phases.append(str(hit.get("phase", "")))
-            topics.append(hit.get("topic_code", ""))
-            firms.append(hit.get("firm", ""))
-        else:
-            confirmed.append(False)
-            programs.append("")
-            phases.append("")
-            topics.append("")
-            firms.append("")
+    def _lookup_row(row: pd.Series) -> tuple:
+        """Return (hit_or_none, match_key) for a single row."""
+        award_val = row.get(award_id_col)
+        uei_val = row.get(uei_col)
+        duns_val = row.get(duns_col)
+
+        contract_str = str(award_val) if pd.notna(award_val) else None
+        uei_str = str(uei_val) if pd.notna(uei_val) else None
+        duns_str = str(duns_val) if pd.notna(duns_val) else None
+
+        # Try contract first (most specific)
+        if contract_str:
+            hit = index.by_contract.get(contract_str.strip().upper())
+            if hit:
+                return hit, "contract"
+        # Then UEI
+        if uei_str:
+            hit = index.by_uei.get(uei_str.strip().upper())
+            if hit:
+                return hit, "uei"
+        # Then DUNS
+        if duns_str:
+            digits = "".join(ch for ch in duns_str if ch.isdigit())
+            if digits:
+                hit = index.by_duns.get(digits)
+                if hit:
+                    return hit, "duns"
+        return None, ""
+
+    results = df.apply(_lookup_row, axis=1, result_type="expand")
+    hits = results[0]
+    match_keys = results[1]
 
     df = df.copy()
-    df["sbir_gov_confirmed"] = confirmed
-    df["sbir_gov_program"] = programs
-    df["sbir_gov_phase"] = phases
-    df["sbir_gov_topic_code"] = topics
-    df["sbir_gov_firm"] = firms
+    df["sbir_gov_confirmed"] = hits.apply(lambda h: h is not None)
+    df["sbir_gov_match_key"] = match_keys
+    df["sbir_gov_program"] = hits.apply(lambda h: h.get("program", "") if h else "")
+    df["sbir_gov_phase"] = hits.apply(lambda h: str(h.get("phase", "")) if h else "")
+    df["sbir_gov_topic_code"] = hits.apply(lambda h: h.get("topic_code", "") if h else "")
+    df["sbir_gov_firm"] = hits.apply(lambda h: h.get("firm", "") if h else "")
 
     return df
 

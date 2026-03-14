@@ -242,8 +242,9 @@ results against SBIR.gov to tag which records are confirmed SBIR awards:
 
 1. Builds a `SbirGovLookupIndex` via API (falls back to bulk download)
 2. Matches each record by award number, UEI, or DUNS
-3. Adds `sbir_gov_confirmed`, `sbir_gov_program`, `sbir_gov_phase`,
-   `sbir_gov_topic_code`, and `sbir_gov_firm` columns
+3. Adds columns: `sbir_gov_confirmed` (bool), `sbir_gov_match_key`
+   (audit trail: `"contract"`, `"uei"`, or `"duns"`),
+   `sbir_gov_program`, `sbir_gov_phase`, `sbir_gov_topic_code`, `sbir_gov_firm`
 
 When the authoritative `research` field is used (Step 3a), this step is
 skipped — every record is already definitively SBIR/STTR.
@@ -292,8 +293,9 @@ shared-ALN records against SBIR.gov:
 2. Builds a `SbirGovLookupIndex` by querying those agencies (API first,
    bulk download fallback)
 3. Matches each record by award number, UEI, or DUNS against the index
-4. Adds `sbir_gov_confirmed`, `sbir_gov_program`, `sbir_gov_phase`,
-   `sbir_gov_topic_code`, and `sbir_gov_firm` columns
+4. Adds columns: `sbir_gov_confirmed` (bool), `sbir_gov_match_key`
+   (audit trail: `"contract"`, `"uei"`, or `"duns"`),
+   `sbir_gov_program`, `sbir_gov_phase`, `sbir_gov_topic_code`, `sbir_gov_firm`
 5. Upgrades confirmed shared-ALN records: `sbir_aln_confidence` changes
    from `shared` to `shared_confirmed`
 
@@ -334,8 +336,9 @@ lookup by contract number, UEI, or DUNS.
 2. `SbirGovLookupIndex` indexes awards by contract number, UEI, and DUNS
 3. `_crossref_dataframe_with_sbir_gov()` iterates over the DataFrame and
    looks up each record by award ID → UEI → DUNS (in priority order)
-4. Adds columns: `sbir_gov_confirmed` (bool), `sbir_gov_program`,
-   `sbir_gov_phase`, `sbir_gov_topic_code`, `sbir_gov_firm`
+4. Adds columns: `sbir_gov_confirmed` (bool), `sbir_gov_match_key`
+   (audit provenance: `"contract"`, `"uei"`, or `"duns"`),
+   `sbir_gov_program`, `sbir_gov_phase`, `sbir_gov_topic_code`, `sbir_gov_firm`
 5. For grants: upgrades `sbir_aln_confidence` from `shared` to `shared_confirmed`
 6. For contracts: tags heuristic results as confirmed or unconfirmed
 
