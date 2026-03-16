@@ -470,7 +470,7 @@ watchfiles==1.1.1
     # via uvicorn
 weasel==0.4.3
     # via spacy
-websockets==15.0.1
+websockets==16.0
     # via uvicorn
 win32-setctime==1.2.0 ; sys_platform == 'win32'
     # via loguru
