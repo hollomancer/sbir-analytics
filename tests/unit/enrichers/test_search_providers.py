@@ -216,6 +216,7 @@ class TestBaseSearchProvider:
 
         assert result == "success"
 
+    @pytest.mark.slow
     def test_backoff_retry_success_after_retries(self):
         """Test retry logic succeeds after failures."""
         provider = ConcreteProvider("test")
@@ -232,6 +233,7 @@ class TestBaseSearchProvider:
         assert result == "success"
         assert len(attempts) == 3
 
+    @pytest.mark.slow
     def test_backoff_retry_exhausted(self):
         """Test retry logic exhausts all retries."""
         provider = ConcreteProvider("test")

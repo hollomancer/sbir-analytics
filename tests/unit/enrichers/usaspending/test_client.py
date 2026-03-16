@@ -266,6 +266,7 @@ class TestHTTPRequests:
         with pytest.raises(APIError, match="HTTP 404"):
             await client._make_request("GET", "/test/")
 
+    @pytest.mark.slow
     @pytest.mark.asyncio
     async def test_make_request_timeout(self, client, mock_http_client):
         """Test timeout error handling after retries."""

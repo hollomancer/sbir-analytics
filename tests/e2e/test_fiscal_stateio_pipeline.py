@@ -221,8 +221,6 @@ class TestFiscalStateIOPipelineE2E:
         )
         assert state_coverage >= 0.90, "State coverage should be ≥90% for fiscal analysis"
 
-        return enriched
-
     def test_step2_enrich_with_sam_gov(
         self, sample_sbir_awards_fiscal, sample_usaspending_fiscal, sample_sam_gov_fiscal
     ):
@@ -250,8 +248,6 @@ class TestFiscalStateIOPipelineE2E:
         # Verify NAICS coverage (required for fiscal analysis)
         naics_coverage = enriched["sam_primary_naics"].notna().sum() / len(enriched)
         assert naics_coverage >= 0.85, "NAICS coverage should be ≥85% for fiscal analysis"
-
-        return enriched
 
     def test_step3_map_naics_to_bea(
         self,
@@ -290,8 +286,6 @@ class TestFiscalStateIOPipelineE2E:
         assert all(code == "54" for code in enriched["bea_sector_code"].dropna()), (
             "All sample NAICS codes should map to BEA sector 54"
         )
-
-        return enriched
 
     def test_step4_calculate_fiscal_years(self, sample_sbir_awards_fiscal):
         """Step 4: Test fiscal year calculation."""
@@ -394,8 +388,6 @@ class TestFiscalStateIOPipelineE2E:
         # Verify we have multiple states
         assert shock_aggregates["state"].nunique() >= 3, "Should have shocks in multiple states"
 
-        return shock_aggregates
-
     def test_step6_calculate_tax_estimates(
         self,
         sample_sbir_awards_fiscal,
@@ -493,8 +485,6 @@ class TestFiscalStateIOPipelineE2E:
             "Tax receipts should be less than total investment (without multiplier effects)"
         )
 
-        return tax_df
-
     def test_step7_calculate_roi_metrics(
         self,
         sample_sbir_awards_fiscal,
@@ -569,8 +559,6 @@ class TestFiscalStateIOPipelineE2E:
         print(f"  ROI Ratio: {roi_summary.roi_ratio:.2%}")
         print(f"  Benefit-Cost Ratio: {roi_summary.benefit_cost_ratio:.2f}")
         print(f"  Payback Period: {roi_summary.payback_period_years} years")
-
-        return roi_summary
 
     def test_complete_pipeline_integration(
         self,
