@@ -40,7 +40,7 @@ def transition_contracts_sample(transition_awards_sample: pd.DataFrame) -> pd.Da
                 transition_awards_sample.iloc[i % len(transition_awards_sample)]["UEI"]
                 for i in range(sample_size)
             ],
-            "action_date": pd.date_range("2022-06-01", periods=sample_size, freq="12H"),
+            "action_date": pd.date_range("2022-06-01", periods=sample_size, freq="12h"),
             "description": [f"Contract {i}" for i in range(sample_size)],
             "awarding_agency_name": [agencies[i % len(agencies)] for i in range(sample_size)],
             "amount": [50000 + (i * 1500) for i in range(sample_size)],
