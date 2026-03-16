@@ -509,7 +509,7 @@ jobs:
 
       - name: Build image and load into Docker daemon
         id: build
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: Dockerfile
