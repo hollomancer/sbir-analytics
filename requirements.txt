@@ -218,7 +218,7 @@ packaging==26.0
     #   spacy
     #   thinc
     #   weasel
-pandas==2.3.3
+pandas==3.0.1
     # via sbir-analytics
 pandas-stubs==3.0.0.260204
     # via sbir-analytics
