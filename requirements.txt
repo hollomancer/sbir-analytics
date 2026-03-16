@@ -248,7 +248,7 @@ psutil==7.2.2
     # via
     #   dagster
     #   sbir-analytics
-pyarrow==22.0.0
+pyarrow==23.0.1
     # via sbir-analytics
 pydantic==2.12.5
     # via
