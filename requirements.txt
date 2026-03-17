@@ -19,13 +19,13 @@ bandit==1.9.4
     # via sbir-analytics
 blis==1.3.3
     # via thinc
-boto3==1.42.63
+boto3==1.42.69
     # via
     #   cloudpathlib
     #   sbir-analytics
-boto3-stubs==1.42.63
+boto3-stubs==1.42.69
     # via sbir-analytics
-botocore==1.42.63
+botocore==1.42.69
     # via
     #   boto3
     #   s3transfer
@@ -43,7 +43,7 @@ certifi==2025.11.12
     #   requests
 cfgv==3.5.0
     # via pre-commit
-charset-normalizer==3.4.5
+charset-normalizer==3.4.6
     # via requests
 click==8.3.1
     # via
@@ -78,24 +78,24 @@ cymem==2.0.13
     #   preshed
     #   spacy
     #   thinc
-dagster==1.12.18
+dagster==1.12.19
     # via
     #   dagster-graphql
     #   dagster-webserver
     #   sbir-analytics
-dagster-graphql==1.12.18
+dagster-graphql==1.12.19
     # via dagster-webserver
-dagster-pipes==1.12.18
+dagster-pipes==1.12.19
     # via dagster
-dagster-shared==1.12.18
+dagster-shared==1.12.19
     # via dagster
-dagster-webserver==1.12.18
+dagster-webserver==1.12.19
     # via sbir-analytics
 distlib==0.4.0
     # via virtualenv
 docstring-parser==0.17.0
     # via dagster
-duckdb==1.4.4
+duckdb==1.5.0
     # via sbir-analytics
 execnet==2.1.2
     # via pytest-xdist
@@ -131,7 +131,7 @@ h11==0.16.0
     # via
     #   httpcore
     #   uvicorn
-hf-xet==1.3.2 ; platform_machine == 'aarch64' or platform_machine == 'amd64' or platform_machine == 'arm64' or platform_machine == 'x86_64'
+hf-xet==1.4.2 ; platform_machine == 'aarch64' or platform_machine == 'amd64' or platform_machine == 'arm64' or platform_machine == 'x86_64'
     # via huggingface-hub
 httpcore==1.0.9
     # via httpx
@@ -139,11 +139,11 @@ httptools==0.7.1
     # via uvicorn
 httpx==0.28.1
     # via sbir-analytics
-huggingface-hub==1.6.0
+huggingface-hub==1.7.1
     # via sbir-analytics
 humanfriendly==10.0
     # via coloredlogs
-identify==2.6.17
+identify==2.6.18
     # via pre-commit
 idna==3.11
     # via
@@ -188,11 +188,11 @@ murmurhash==1.0.15
     #   thinc
 mypy==1.19.1
     # via sbir-analytics
-mypy-boto3-s3==1.42.37
+mypy-boto3-s3==1.42.67
     # via boto3-stubs
 mypy-extensions==1.1.0
     # via mypy
-narwhals==2.17.0
+narwhals==2.18.0
     # via pyreadstat
 neo4j==6.1.0
     # via sbir-analytics
@@ -332,7 +332,7 @@ rich==14.3.3
     #   dagster
     #   sbir-analytics
     #   typer
-ruff==0.15.5
+ruff==0.15.6
     # via sbir-analytics
 s3transfer==0.16.0
     # via boto3
@@ -340,7 +340,7 @@ scikit-learn==1.8.0
     # via sbir-analytics
 scipy==1.17.1
     # via scikit-learn
-setuptools==82.0.0
+setuptools==82.0.1
     # via
     #   dagster
     #   spacy
@@ -453,7 +453,7 @@ urllib3==2.6.3
     #   botocore
     #   requests
     #   types-requests
-uvicorn==0.41.0
+uvicorn==0.42.0
     # via dagster-webserver
 uvloop==0.22.1 ; platform_python_implementation != 'PyPy' and sys_platform != 'cygwin' and sys_platform != 'win32'
     # via uvicorn
