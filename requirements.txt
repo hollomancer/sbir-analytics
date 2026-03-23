@@ -371,7 +371,7 @@ srsly==2.5.2
     #   spacy
     #   thinc
     #   weasel
-starlette==0.52.1
+starlette==1.0.0
     # via
     #   dagster-graphql
     #   dagster-webserver
