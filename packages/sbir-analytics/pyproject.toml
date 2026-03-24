@@ -20,7 +20,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-r = ["rpy2>=3.5.0,<4.0.0"]
+r = ["sbir-etl[r]"]
 paecter-local = ["sbir-ml[paecter-local]"]
 dev = ["sbir-etl[dev]"]
 
