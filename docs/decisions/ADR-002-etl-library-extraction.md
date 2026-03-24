@@ -77,17 +77,17 @@ extractor = SAMGovExtractor(config=my_config)
 
 ### 4. Standalone Models Package
 
-`packages/sbir-models/` provides a lightweight `sbir_models` package that re-exports
-Pydantic models from `sbir_etl.models`. Dependencies: only `pydantic>=2.8`. Other
-projects can use SBIR data models without pulling in the full ETL pipeline:
+`packages/sbir-models/` provides a **truly standalone** `sbir_models` package with its
+own copies of the model source files. Dependencies: only `pydantic>=2.8`. Other projects
+can use SBIR data models without pulling in the full ETL pipeline:
 
 ```python
 from sbir_models import Award, Patent, Organization, FederalContract
 ```
 
-Currently implemented as a re-export layer (requires `sbir_etl` to also be installed).
-For true standalone use, model files would need to be copied into the package and the
-`parse_date` utility vendored.
+The package vendors its own `parse_date` utility (`_date_utils.py`) and a logging shim
+(`_logging.py`) that falls back to stdlib `logging` when `loguru` is not installed.
+No `sbir_etl` installation required.
 
 ## Re-Evaluation for Use Cases
 
@@ -106,12 +106,10 @@ What works today:
 What still couples:
 - 24 runtime deps come along (dagster, duckdb, spacy, scikit-learn, etc.)
 - Extractors are SBIR-domain-specific (CSV column mappings, field names)
-- No `extras` groups for "extract-only" or "transform-only" install profiles
 
-**Recommendation**: For sharing with other government analytics projects, create
-additional optional dependency groups (e.g., `[extract]`, `[enrich]`, `[transform]`)
-to let consumers install only what they need. Consider publishing `sbir-models` to an
-internal PyPI if model sharing is the primary need.
+**Recommendation**: Use `sbir-models` for model sharing (now fully standalone).
+For ETL function reuse, the dependency analysis below identifies which deps can be
+made optional to reduce install footprint.
 
 ### Data Science Pipelines
 
@@ -137,19 +135,76 @@ of maintaining a separate library:
 3. **Config injection** — no filesystem coupling for library-style use
 4. **`sbir-models`** — lightweight model package available
 
-### When to Revisit Full Extraction
+## Runtime Dependency Analysis
 
-Extract to a separate library if:
-- A concrete external consumer appears that cannot install `sbir-analytics` at all
-- The dependency footprint (200MB+) is prohibitive for the consumer
+Audit of which `sbir_etl/` modules actually import each dependency:
+
+| Dependency | Install Size | Used By |
+|-----------|-------------|---------|
+| **dagster, dagster-webserver** | ~60 MB | `assets/`, `definitions/`, `cli/`, `autodev/` |
+| **pandas** | ~45 MB | 13 modules (pervasive) |
+| **spacy** | ~100 MB | `ml/` only |
+| **scikit-learn, joblib** | ~35 MB | `ml/`, `transition/`, `tools/` |
+| **duckdb** | ~30 MB | `extractors/`, `utils/`, `config/` |
+| **httpx, tenacity** | ~5 MB | `enrichers/`, `extractors/` |
+| **rapidfuzz, jellyfish** | ~5 MB | `enrichers/` only |
+| **boto3, cloudpathlib** | ~40 MB | `utils/`, `assets/`, `lambda/` |
+| **typer, rich** | ~10 MB | `cli/` only |
+| **huggingface-hub** | ~5 MB | `ml/` only |
+| **pyarrow, pyreadstat** | ~25 MB | `extractors/`, `utils/`, `quality/` |
+| **loguru** | ~1 MB | 14 modules (pervasive) |
+| **pyyaml** | ~1 MB | `config/`, `cli/`, `enrichers/` |
+| **pydantic** | ~5 MB | models + config (pervasive) |
+| **psutil** | ~2 MB | `transition/`, `utils/` |
+
+### Key Finding: Clean Separation Already Exists
+
+The core ETL modules (`extractors/`, `enrichers/`, `transformers/`, `models/`) have
+**zero Dagster imports**. Dagster is completely isolated to orchestration (`assets/`,
+`definitions/`) and CLI. This means library-style ETL usage is already possible without
+Dagster knowledge leaking into the extract/enrich/transform path.
+
+### Feasible Dependency Group Tiers
+
+If needed, dependencies can be split into tiers without code changes:
+
+```
+Tier 1 — Core (always required, ~55 MB):
+  pydantic, pandas, loguru, pyyaml, numpy
+
+Tier 2 — ETL (extract + enrich + transform):
+  httpx, tenacity, rapidfuzz, jellyfish, duckdb, pyarrow, pyreadstat
+
+Tier 3 — Pipeline orchestration:
+  dagster, dagster-webserver
+
+Tier 4 — Cloud storage:
+  boto3, cloudpathlib
+
+Tier 5 — ML/NLP:
+  scikit-learn, joblib, spacy, huggingface-hub
+
+Tier 6 — CLI:
+  typer, rich
+```
+
+### Verdict: Not Worth Splitting Now
+
+Making dagster optional would save ~60 MB and is technically feasible (zero ETL imports),
+but would require guarding every `assets/` and `definitions/` import path plus CLI
+commands. The benefit is marginal since:
+
+1. `sbir-models` (now standalone) covers the lightweight model-sharing use case
+2. Config DI already enables library-style ETL usage
+3. No concrete external consumer has requested a slimmer install
+4. Maintaining import guards across 50+ asset files adds ongoing cost
+
+### When to Revisit
+
+Split dependencies into extras if:
+- A concrete external consumer cannot tolerate the full ~350 MB install
 - Multiple teams need independent release cycles for ETL vs. pipeline
-
-### Remaining Work (If Extraction Needed Later)
-
-1. Create `[extract]`, `[enrich]`, `[transform]` optional dependency groups
-2. Vendor `parse_date` into `sbir-models` for truly standalone model usage
-3. Make dagster an optional dependency (move to `[pipeline]` extra)
-4. Split tests to validate each extra independently
+- A Lambda/serverless deployment needs a minimal layer
 
 ## Consequences
 
@@ -157,11 +212,13 @@ Extract to a separate library if:
 - ETL is now usable as a library without separate packaging
 - Config injection enables external consumers and improves testability
 - Neo4j optional reduces install footprint for non-graph use cases
+- `sbir-models` is truly standalone (no `sbir_etl` required)
 - No additional maintenance burden from separate packages
+- Dependency tier analysis provides a clear roadmap if splitting is needed
 
 **Negative:**
-- Full dependency set still installed even if only models are needed
-- `sbir-models` re-export approach requires `sbir_etl` to be co-installed
+- Full dependency set still installed for the main `sbir-analytics` package
+- Model files exist in two locations (`sbir_etl/models/` and `packages/sbir-models/`)
 
 **Neutral:**
 - Monorepo structure scales well until multiple independent consumers appear
