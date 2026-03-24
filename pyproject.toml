@@ -38,8 +38,10 @@ cloud = [
 ]
 # R integration for fiscal analysis (stateior via rpy2)
 r = ["rpy2>=3.5.0,<4.0.0"]
+viz = ["plotly>=5.18.0,<7.0.0"]  # Quality dashboards and HTML reports
 dev = [
     "sbir-ml",
+    "sbir-graph",
     "sbir-analytics",
     "pytest>=8.0.0,<10.0.0",
     "pytest-asyncio>=0.23.0,<2.0.0",
@@ -92,7 +94,7 @@ ignore = [
 # Treat neo4j as a known third-party library that gets its own group
 known-third-party = ["neo4j"]
 # Your project imports
-known-first-party = ["sbir_etl", "sbir_ml", "sbir_analytics"]
+known-first-party = ["sbir_etl", "sbir_ml", "sbir_graph", "sbir_analytics"]
 # Allow more flexibility in grouping
 split-on-trailing-comma = false
 force-single-line = false

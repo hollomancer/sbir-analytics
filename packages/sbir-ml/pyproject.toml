@@ -11,6 +11,14 @@ dependencies = [
     "sbir-etl",
     "scikit-learn>=1.4.0,<2.0.0",
     "joblib>=1.4.2,<2.0.0",
+    # Direct deps (also transitive via sbir-etl, but declared explicitly
+    # so sbir-ml doesn't break if sbir-etl ever drops them)
+    "loguru>=0.7.0,<1.0.0",
+    "numpy<3",
+    "pandas>=2.2.0,<4.0.0",
+    "pydantic>=2.8.0,<3.0.0",
+    "pyyaml>=6.0.0,<7.0.0",
+    "tqdm>=4.66.0,<5.0.0",
 ]
 
 [project.optional-dependencies]
