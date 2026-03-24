@@ -42,20 +42,21 @@ class FreshnessStore:
         Returns:
             DataFrame with freshness records
         """
-        if not self.parquet_path.exists():
-            return pd.DataFrame()
-
         try:
-            df = pd.read_parquet(self.parquet_path)
-            # Ensure datetime columns are properly typed
-            if "last_attempt_at" in df.columns:
-                df["last_attempt_at"] = pd.to_datetime(df["last_attempt_at"])
-            if "last_success_at" in df.columns:
-                df["last_success_at"] = pd.to_datetime(df["last_success_at"])
-            return df
+            from sbir_etl.utils.data.file_io import read_parquet_or_ndjson
+
+            df = read_parquet_or_ndjson(self.parquet_path)
+        except FileNotFoundError:
+            return pd.DataFrame()
         except Exception as e:
             logger.error(f"Failed to load freshness records: {e}")
             return pd.DataFrame()
+
+        # Ensure datetime columns are properly typed
+        for col in ["last_attempt_at", "last_success_at"]:
+            if col in df.columns and not pd.api.types.is_datetime64_any_dtype(df[col]):
+                df[col] = pd.to_datetime(df[col], errors="coerce")
+        return df
 
     def save_record(self, record: EnrichmentFreshnessRecord) -> None:
         """Save a single freshness record (append or update).
@@ -171,6 +172,13 @@ class FreshnessStore:
 
         row = df[mask].iloc[0]
         row_dict = row.to_dict()
+        # Replace NaN with None for Pydantic compatibility (NDJSON roundtrip produces NaN)
+        for k, v in row_dict.items():
+            try:
+                if pd.isna(v):
+                    row_dict[k] = None
+            except (TypeError, ValueError):
+                pass
         # Convert metadata JSON string back to dict if present
         import json
 
@@ -208,6 +216,13 @@ class FreshnessStore:
         for _, row in df_source.iterrows():
             last_success = row.get("last_success_at")
             row_dict = row.to_dict()
+            # Replace NaN with None for Pydantic compatibility (NDJSON roundtrip produces NaN)
+            for k, v in row_dict.items():
+                try:
+                    if pd.isna(v):
+                        row_dict[k] = None
+                except (TypeError, ValueError):
+                    pass
             # Convert metadata JSON string back to dict if present
             if "metadata" in row_dict and isinstance(row_dict["metadata"], str):
                 row_dict["metadata"] = (

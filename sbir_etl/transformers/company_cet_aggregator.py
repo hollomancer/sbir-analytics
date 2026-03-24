@@ -106,6 +106,12 @@ class CompanyCETAggregator:
         rows: list[tuple[str, float, str]] = []
         award_id = str(row.get("award_id") or "")
         primary = row.get("primary_cet")
+        # Guard against NaN (pandas stores None as NaN in object columns, and NaN is truthy)
+        try:
+            if pd is not None and pd.isna(primary):
+                primary = None
+        except (TypeError, ValueError):
+            pass
         primary_score = row.get("primary_score") or 0.0
         if primary:
             try:

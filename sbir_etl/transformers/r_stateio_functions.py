@@ -470,8 +470,8 @@ def calculate_technical_coefficients(
         )
 
     # Avoid division by zero
-    # Replace zero outputs with small epsilon
-    output_safe = industry_output.copy()
+    # Replace zero outputs with small epsilon (cast to float to avoid int64 dtype issues)
+    output_safe = industry_output.astype(float).copy()
     output_safe[output_safe == 0] = 1e-10
 
     # Calculate technical coefficients: A[i,j] = Use[i,j] / Output[j]

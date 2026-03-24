@@ -94,7 +94,7 @@ class CheckpointStore:
 
         # Convert datetime string columns back to datetime objects for proper Parquet storage
         for col in ["last_success_timestamp", "checkpoint_timestamp"]:
-            if col in new_row.columns and new_row[col].dtype == "object":
+            if col in new_row.columns and not pd.api.types.is_datetime64_any_dtype(new_row[col]):
                 new_row[col] = pd.to_datetime(new_row[col], errors="coerce")
 
         # Check if checkpoint exists (by partition_id + source)
@@ -161,27 +161,22 @@ class CheckpointStore:
         Returns:
             DataFrame with all checkpoints
         """
-        if not self.parquet_path.exists():
-            return pd.DataFrame()
-
         try:
-            # Read parquet with string type for datetime columns to avoid PyArrow type errors
-            # We'll convert to datetime after reading
-            df = pd.read_parquet(self.parquet_path)
-            # Convert datetime columns from ISO strings to datetime objects
-            for col in ["last_success_timestamp", "checkpoint_timestamp"]:
-                if col in df.columns:
-                    # Handle both string (ISO format) and datetime types
-                    if df[col].dtype == "object" or pd.api.types.is_string_dtype(df[col]):
-                        df[col] = pd.to_datetime(df[col], errors="coerce")
-                    elif not pd.api.types.is_datetime64_any_dtype(df[col]):
-                        df[col] = pd.to_datetime(df[col], errors="coerce")
-            # metadata is stored as JSON string, keep as string for now
-            # (will be parsed in from_dict)
-            return df
+            from sbir_etl.utils.data.file_io import read_parquet_or_ndjson
+
+            df = read_parquet_or_ndjson(self.parquet_path)
+        except FileNotFoundError:
+            return pd.DataFrame()
         except Exception as e:
             logger.error(f"Failed to load checkpoints: {e}")
             return pd.DataFrame()
+
+        # Convert datetime columns from ISO strings to datetime objects
+        for col in ["last_success_timestamp", "checkpoint_timestamp"]:
+            if col in df.columns:
+                if not pd.api.types.is_datetime64_any_dtype(df[col]):
+                    df[col] = pd.to_datetime(df[col], errors="coerce")
+        return df
 
     def save_all(self, df: pd.DataFrame) -> None:
         """Save all checkpoints.

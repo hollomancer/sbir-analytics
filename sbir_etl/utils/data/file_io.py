@@ -117,6 +117,13 @@ def save_dataframe_parquet(
                 record = {k: _to_jsonable(v) for k, v in row.items()}
                 fh.write(json.dumps(record) + "\n")
 
+        # Remove stale parquet file so read_parquet_or_ndjson finds the NDJSON
+        if path.exists():
+            try:
+                path.unlink()
+            except OSError:
+                pass
+
         logger.info(f"Saved DataFrame to NDJSON fallback: {ndjson_path}")
 
 

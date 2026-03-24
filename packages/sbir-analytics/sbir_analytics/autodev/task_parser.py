@@ -89,7 +89,7 @@ _MEDIUM_RISK_PATTERNS = re.compile(
     re.IGNORECASE,
 )
 
-_FILE_HINT_PATTERN = re.compile(r"`(src/[^`]+\.py)`")
+_FILE_HINT_PATTERN = re.compile(r"`(\S+\.py)`")
 
 _TASK_LINE_PATTERN = re.compile(r"^(\s*)- \[([ x])\]\s*(\d+(?:\.\d+)*)\s+(.*?)$")
 

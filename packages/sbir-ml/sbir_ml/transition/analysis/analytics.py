@@ -67,15 +67,17 @@ def _company_id_series(awards_df: pd.DataFrame) -> pd.Series:
     name_col = _first_col(awards_df, ["Company", "company", "vendor_name", "Vendor", "Name"])
 
     uei = (
-        awards_df[uei_col].astype(str).str.strip() if uei_col else pd.Series([""] * len(awards_df))
+        awards_df[uei_col].fillna("").astype(str).str.strip()
+        if uei_col
+        else pd.Series([""] * len(awards_df))
     )
     duns = (
-        awards_df[duns_col].astype(str).str.strip()
+        awards_df[duns_col].fillna("").astype(str).str.strip()
         if duns_col
         else pd.Series([""] * len(awards_df))
     )
     names = (
-        awards_df[name_col].astype(str).str.strip().str.lower()
+        awards_df[name_col].fillna("").astype(str).str.strip().str.lower()
         if name_col
         else pd.Series([""] * len(awards_df))
     )
