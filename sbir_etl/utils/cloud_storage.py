@@ -7,8 +7,12 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
-from cloudpathlib import S3Path
 from loguru import logger
+
+try:
+    from cloudpathlib import S3Path
+except ImportError:
+    S3Path = None  # type: ignore[assignment, misc]
 
 
 def resolve_data_path(
@@ -48,6 +52,10 @@ def resolve_data_path(
     is_s3 = cloud_str.startswith("s3://")
 
     if is_s3:
+        if S3Path is None:
+            raise ImportError(
+                "S3 support requires the 'cloud' extra: pip install sbir-analytics[cloud]"
+            )
         # Try S3 first
         try:
             s3_path = S3Path(cloud_str)

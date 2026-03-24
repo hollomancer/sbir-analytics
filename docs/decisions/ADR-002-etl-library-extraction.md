@@ -126,102 +126,108 @@ The config DI pattern means notebook/pipeline code doesn't need filesystem confi
 
 ## Updated Decision
 
-**Accept the monorepo approach with the completed refactoring.** The four preparatory
-steps have been implemented, making the codebase ready for reuse without the overhead
-of maintaining a separate library:
+**Ship as a storage-agnostic ETL library.** The package is structured so that multiple
+consumer applications can `pip install sbir-analytics` and use the ETL functions
+(extractors, enrichers, transformers) without pulling in Dagster, Neo4j, CLI tools,
+or ML dependencies. Each consumer chooses its own storage backend (Neo4j, Postgres,
+S3, etc.) by loading the ETL output (Pydantic models / DataFrames) into its own
+persistence layer.
+
+### Install Profiles
+
+```bash
+# ETL library only (extractors, enrichers, transformers, models, config)
+pip install sbir-analytics
+
+# Full pipeline with Dagster orchestration, CLI, cloud, and ML
+pip install sbir-analytics[all]
+
+# À la carte
+pip install sbir-analytics[pipeline]     # + Dagster
+pip install sbir-analytics[cli]          # + sbir-cli command
+pip install sbir-analytics[cloud]        # + S3 support (boto3, cloudpathlib)
+pip install sbir-analytics[ml]           # + scikit-learn, spacy, huggingface
+pip install sbir-analytics[neo4j]        # + Neo4j graph loader
+
+# Just the models (no ETL deps at all)
+pip install sbir-models
+```
+
+### Library Usage Pattern (Storage-Agnostic)
+
+```python
+from sbir_etl.extractors.sbir import SbirDuckDBExtractor
+from sbir_etl.enrichers.patentsview import PatentsViewClient
+from sbir_etl.config.schemas import PipelineConfig
+
+# Extract
+extractor = SbirDuckDBExtractor(config=my_config)
+awards_df = extractor.extract()
+
+# Enrich
+client = PatentsViewClient(config=my_config)
+enriched_df = client.enrich(awards_df)
+
+# Output is a DataFrame / Pydantic models — consumer decides where it goes
+save_to_postgres(enriched_df)  # App A
+upload_to_s3(enriched_df)      # App B
+load_to_neo4j(enriched_df)     # App C (uses sbir-analytics[neo4j])
+```
+
+### What the Refactoring Achieved
 
 1. **`sbir_etl/`** — properly namespaced, pip-installable
-2. **Optional neo4j** — consumers choose what they need
+2. **Optional neo4j** — consumers choose their storage backend
 3. **Config injection** — no filesystem coupling for library-style use
-4. **`sbir-models`** — lightweight model package available
+4. **`sbir-models`** — truly standalone model package (only needs pydantic)
+5. **Tiered dependencies** — core deps support ETL; dagster/cli/ml/cloud are extras
 
 ## Runtime Dependency Analysis
 
 Audit of which `sbir_etl/` modules actually import each dependency:
 
-| Dependency | Install Size | Used By |
-|-----------|-------------|---------|
-| **dagster, dagster-webserver** | ~60 MB | `assets/`, `definitions/`, `cli/`, `autodev/` |
-| **pandas** | ~45 MB | 13 modules (pervasive) |
-| **spacy** | ~100 MB | `ml/` only |
-| **scikit-learn, joblib** | ~35 MB | `ml/`, `transition/`, `tools/` |
-| **duckdb** | ~30 MB | `extractors/`, `utils/`, `config/` |
-| **httpx, tenacity** | ~5 MB | `enrichers/`, `extractors/` |
-| **rapidfuzz, jellyfish** | ~5 MB | `enrichers/` only |
-| **boto3, cloudpathlib** | ~40 MB | `utils/`, `assets/`, `lambda/` |
-| **typer, rich** | ~10 MB | `cli/` only |
-| **huggingface-hub** | ~5 MB | `ml/` only |
-| **pyarrow, pyreadstat** | ~25 MB | `extractors/`, `utils/`, `quality/` |
-| **loguru** | ~1 MB | 14 modules (pervasive) |
-| **pyyaml** | ~1 MB | `config/`, `cli/`, `enrichers/` |
-| **pydantic** | ~5 MB | models + config (pervasive) |
-| **psutil** | ~2 MB | `transition/`, `utils/` |
+| Dependency | Install Size | Used By | Extra |
+|-----------|-------------|---------|-------|
+| **pydantic** | ~5 MB | models, config (pervasive) | core |
+| **pandas** | ~45 MB | 13 modules (pervasive) | core |
+| **loguru** | ~1 MB | 14 modules (pervasive) | core |
+| **pyyaml** | ~1 MB | `config/`, `cli/`, `enrichers/` | core |
+| **numpy** | ~15 MB | `enrichers/`, `transformers/`, `utils/` | core |
+| **duckdb** | ~30 MB | `extractors/`, `utils/`, `config/` | core |
+| **pyarrow, pyreadstat** | ~25 MB | `extractors/`, `utils/`, `quality/` | core |
+| **httpx, tenacity** | ~5 MB | `enrichers/`, `extractors/` | core |
+| **rapidfuzz, jellyfish** | ~5 MB | `enrichers/` only | core |
+| **psutil** | ~2 MB | `transition/`, `utils/` | core |
+| **dagster, dagster-webserver** | ~60 MB | `assets/`, `definitions/`, `autodev/` | `[pipeline]` |
+| **typer, rich** | ~10 MB | `cli/` only | `[cli]` |
+| **boto3, cloudpathlib** | ~40 MB | `utils/`, `assets/`, `lambda/` | `[cloud]` |
+| **scikit-learn, joblib** | ~35 MB | `ml/`, `transition/`, `tools/` | `[ml]` |
+| **spacy** | ~100 MB | `ml/` only | `[ml]` |
+| **huggingface-hub** | ~5 MB | `ml/` only | `[ml]` |
 
 ### Key Finding: Clean Separation Already Exists
 
 The core ETL modules (`extractors/`, `enrichers/`, `transformers/`, `models/`) have
 **zero Dagster imports**. Dagster is completely isolated to orchestration (`assets/`,
-`definitions/`) and CLI. This means library-style ETL usage is already possible without
-Dagster knowledge leaking into the extract/enrich/transform path.
-
-### Feasible Dependency Group Tiers
-
-If needed, dependencies can be split into tiers without code changes:
-
-```
-Tier 1 — Core (always required, ~55 MB):
-  pydantic, pandas, loguru, pyyaml, numpy
-
-Tier 2 — ETL (extract + enrich + transform):
-  httpx, tenacity, rapidfuzz, jellyfish, duckdb, pyarrow, pyreadstat
-
-Tier 3 — Pipeline orchestration:
-  dagster, dagster-webserver
-
-Tier 4 — Cloud storage:
-  boto3, cloudpathlib
-
-Tier 5 — ML/NLP:
-  scikit-learn, joblib, spacy, huggingface-hub
-
-Tier 6 — CLI:
-  typer, rich
-```
-
-### Verdict: Not Worth Splitting Now
-
-Making dagster optional would save ~60 MB and is technically feasible (zero ETL imports),
-but would require guarding every `assets/` and `definitions/` import path plus CLI
-commands. The benefit is marginal since:
-
-1. `sbir-models` (now standalone) covers the lightweight model-sharing use case
-2. Config DI already enables library-style ETL usage
-3. No concrete external consumer has requested a slimmer install
-4. Maintaining import guards across 50+ asset files adds ongoing cost
-
-### When to Revisit
-
-Split dependencies into extras if:
-- A concrete external consumer cannot tolerate the full ~350 MB install
-- Multiple teams need independent release cycles for ETL vs. pipeline
-- A Lambda/serverless deployment needs a minimal layer
+`definitions/`) and CLI. The core install (~135 MB) covers the full ETL pipeline;
+the extras add ~245 MB for orchestration, ML, cloud, and CLI.
 
 ## Consequences
 
 **Positive:**
-- ETL is now usable as a library without separate packaging
-- Config injection enables external consumers and improves testability
-- Neo4j optional reduces install footprint for non-graph use cases
+- Multiple apps can use SBIR ETL without the full analytics stack
+- ETL output is storage-agnostic — consumers choose neo4j, postgres, S3, etc.
+- Core install is ~135 MB vs ~380 MB for the full pipeline
+- Config injection enables library-style use without filesystem coupling
 - `sbir-models` is truly standalone (no `sbir_etl` required)
-- No additional maintenance burden from separate packages
-- Dependency tier analysis provides a clear roadmap if splitting is needed
+- `[all]` extra preserves backwards compat for existing full installs
 
 **Negative:**
-- Full dependency set still installed for the main `sbir-analytics` package
 - Model files exist in two locations (`sbir_etl/models/` and `packages/sbir-models/`)
+- Cloud storage functions require `[cloud]` extra — callers get a clear ImportError
 
 **Neutral:**
-- Monorepo structure scales well until multiple independent consumers appear
+- Monorepo approach avoids separate package release cycles
 
 ## Links
 
