@@ -4,10 +4,10 @@ import pytest
 import numpy as np
 import pandas as pd
 
-from sbir_ml.tools.mission_a.extract_topics import ExtractTopicsTool
-from sbir_ml.tools.mission_a.cluster_topics import ClusterTopicsTool
-from sbir_ml.tools.mission_a.detect_gaps import DetectGapsTool, NSTC_CET_AREAS
-from sbir_ml.tools.mission_a.compute_portfolio_metrics import ComputePortfolioMetricsTool, _compute_hhi
+from sbir_analytics.tools.mission_a.extract_topics import ExtractTopicsTool
+from sbir_analytics.tools.mission_a.cluster_topics import ClusterTopicsTool
+from sbir_analytics.tools.mission_a.detect_gaps import DetectGapsTool, NSTC_CET_AREAS
+from sbir_analytics.tools.mission_a.compute_portfolio_metrics import ComputePortfolioMetricsTool, _compute_hhi
 
 
 # ---- extract_topics ----
