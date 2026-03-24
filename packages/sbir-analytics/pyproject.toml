@@ -22,14 +22,7 @@ dependencies = [
 [project.optional-dependencies]
 r = ["rpy2>=3.5.0,<4.0.0"]
 paecter-local = ["sbir-ml[paecter-local]"]
-dev = [
-    "sbir-etl[dev]",
-    "pytest>=8.0.0,<10.0.0",
-    "pytest-asyncio>=0.23.0,<2.0.0",
-    "pytest-xdist>=3.0.0",
-    "pytest-timeout>=2.3.0,<3.0.0",
-    "ruff>=0.5.0,<1.0.0",
-]
+dev = ["sbir-etl[dev]"]
 
 [project.scripts]
 sbir-cli = "sbir_analytics.cli.main:app"
