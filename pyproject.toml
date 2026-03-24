@@ -19,23 +19,25 @@ dependencies = [
     # Data formats (extractors)
     "duckdb>=1.0.0,<2.0.0",
     "pyarrow>=14.0.2,<24.0.0",
-    "pyreadstat>=1.1.4,<2.0.0",  # USPTO data extraction (SPSS/SAS files)
     # API clients (enrichers, extractors)
     "httpx>=0.27.0,<1.0.0",
     "tenacity>=8.2.3,<10.0.0",
     # Fuzzy matching (enrichers)
     "rapidfuzz>=3.0.0,<4.0.0",
-    "jellyfish>=1.0.0,<2.0.0",
-    # Monitoring
-    "psutil",
 ]
 
 [project.optional-dependencies]
+# USPTO SPSS/SAS file extraction
+uspto = ["pyreadstat>=1.1.4,<2.0.0"]
 # AWS S3 cloud storage (for extractors that pull from S3)
 cloud = [
     "boto3>=1.34.0,<2.0.0",
     "cloudpathlib[s3]>=0.23.0,<1.0.0",
 ]
+# Phonetic matching (enrichers — fallback to built-in if absent)
+phonetic = ["jellyfish>=1.0.0,<2.0.0"]
+# Process memory monitoring (falls back to timing-only if absent)
+monitoring = ["psutil>=5.9.0,<7.0.0"]
 # R integration for fiscal analysis (stateior via rpy2)
 r = ["rpy2>=3.5.0,<4.0.0"]
 viz = ["plotly>=5.18.0,<7.0.0"]  # Quality dashboards and HTML reports
@@ -218,6 +220,13 @@ dev = [
     "pytest-xdist>=3.8.0",
     "pytest-shard>=0.1.2",
     "pytest-json-report>=1.5.0",
+]
+notebooks = [
+    "jupyterlab>=4.0.0,<5.0.0",
+    "notebook>=7.0.0,<8.0.0",
+    "matplotlib>=3.8.0,<4.0.0",
+    "seaborn>=0.13.0,<1.0.0",
+    "ipykernel>=6.29.0,<8.0.0",
 ]
 
 [tool.hatch.build.targets.wheel]

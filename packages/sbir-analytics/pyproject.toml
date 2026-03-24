@@ -9,7 +9,7 @@ requires-python = ">=3.11,<3.12"
 
 # sbir-analytics is the full pipeline: ETL library + ML + orchestration + CLI + storage.
 dependencies = [
-    "sbir-etl[cloud]",
+    "sbir-etl[cloud,uspto,monitoring]",
     "sbir-ml[nlp]",
     "sbir-graph",
     # Dagster orchestration
