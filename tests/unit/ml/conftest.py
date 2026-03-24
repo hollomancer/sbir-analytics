@@ -10,7 +10,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from sbir_etl.ml.config.taxonomy_loader import TaxonomyLoader
+from sbir_ml.ml.config.taxonomy_loader import TaxonomyLoader
 from sbir_etl.models.cet_models import (
     CETArea,
     CETAssessment,

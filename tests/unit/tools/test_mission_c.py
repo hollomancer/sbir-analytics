@@ -3,9 +3,9 @@
 import pytest
 import pandas as pd
 
-from sbir_etl.tools.mission_c.naics_to_bea_crosswalk import NAICSToBEACrosswalkTool
-from sbir_etl.tools.mission_c.stateio_multipliers import StateIOMultipliersTool
-from sbir_etl.tools.mission_c.tax_estimation import (
+from sbir_ml.tools.mission_c.naics_to_bea_crosswalk import NAICSToBEACrosswalkTool
+from sbir_ml.tools.mission_c.stateio_multipliers import StateIOMultipliersTool
+from sbir_ml.tools.mission_c.tax_estimation import (
     TaxEstimationTool,
     DEFAULT_EFFECTIVE_TAX_RATES,
     PAYROLL_TAX_RATE,

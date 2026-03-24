@@ -8,7 +8,7 @@ from transition detection outputs (award-level, company-level, by agency).
 import pandas as pd
 import pytest
 
-from sbir_etl.transition.analysis.analytics import (
+from sbir_ml.transition.analysis.analytics import (
     RateResult,
     TransitionAnalytics,
     _company_id_series,

@@ -1,7 +1,7 @@
 import pandas as pd
 import pytest
 
-from sbir_etl.ml.models.cet_classifier import ApplicabilityModel
+from sbir_ml.ml.models.cet_classifier import ApplicabilityModel
 from sbir_etl.models.cet_models import CETArea
 
 

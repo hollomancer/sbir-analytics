@@ -9,8 +9,8 @@ import time
 from datetime import date, timedelta
 
 from sbir_etl.models.transition_models import CompetitionType, FederalContract
-from sbir_etl.transition.detection.detector import TransitionDetector
-from sbir_etl.transition.features.vendor_resolver import VendorRecord, VendorResolver
+from sbir_ml.transition.detection.detector import TransitionDetector
+from sbir_ml.transition.features.vendor_resolver import VendorRecord, VendorResolver
 
 
 def create_config():

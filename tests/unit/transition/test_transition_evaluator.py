@@ -6,7 +6,7 @@ import pytest
 
 pytestmark = pytest.mark.fast
 
-from sbir_etl.transition import ConfusionMatrix, EvaluationResult, TransitionEvaluator
+from sbir_ml.transition import ConfusionMatrix, EvaluationResult, TransitionEvaluator
 
 
 def _build_detections(rows):

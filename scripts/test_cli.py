@@ -27,7 +27,7 @@ def test_context_creation() -> bool:
     """Test CommandContext creation."""
     print("\nTesting CommandContext creation...")
     try:
-        from sbir_etl.cli.context import CommandContext
+        from sbir_analytics.cli.context import CommandContext
 
         context = CommandContext.create()
         print("✓ Context created successfully")
@@ -49,7 +49,7 @@ def test_cli_app() -> bool:
     """Test CLI app structure."""
     print("\nTesting CLI app structure...")
     try:
-        from sbir_etl.cli.main import app
+        from sbir_analytics.cli.main import app
 
         # Check app exists
         assert app is not None
@@ -70,9 +70,9 @@ def test_display_components() -> bool:
     try:
         from rich.console import Console
 
-        from sbir_etl.cli.display.metrics import create_metrics_table
-        from sbir_etl.cli.display.progress import create_progress_tracker
-        from sbir_etl.cli.display.status import get_health_indicator
+        from sbir_analytics.cli.display.metrics import create_metrics_table
+        from sbir_analytics.cli.display.progress import create_progress_tracker
+        from sbir_analytics.cli.display.status import get_health_indicator
 
         console = Console()
 

@@ -5,7 +5,7 @@ from types import SimpleNamespace
 import pandas as pd
 from dagster import build_asset_context
 
-import sbir_etl.assets.sbir_ingestion as assets_module
+import sbir_analytics.assets.sbir_ingestion as assets_module
 
 
 def _make_test_config(

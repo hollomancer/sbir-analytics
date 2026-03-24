@@ -20,16 +20,16 @@ pytestmark = pytest.mark.fast
 # Import the modules under test; skip if dependencies unavailable
 pytest.importorskip("neo4j", reason="neo4j driver missing")
 Neo4jClient = pytest.importorskip(
-    "sbir_etl.loaders.neo4j_client", reason="neo4j_client module missing"
+    "sbir_analytics.loaders.neo4j_client", reason="neo4j_client module missing"
 ).Neo4jClient
 PatentLoader = pytest.importorskip(
-    "sbir_etl.loaders.patent_loader", reason="patent_loader module missing"
+    "sbir_analytics.loaders.patent_loader", reason="patent_loader module missing"
 ).PatentLoader
 PatentLoaderConfig = pytest.importorskip(
-    "sbir_etl.loaders.patent_loader", reason="patent_loader module missing"
+    "sbir_analytics.loaders.patent_loader", reason="patent_loader module missing"
 ).PatentLoaderConfig
 LoadMetrics = pytest.importorskip(
-    "sbir_etl.loaders.neo4j_client", reason="LoadMetrics missing"
+    "sbir_analytics.loaders.neo4j_client", reason="LoadMetrics missing"
 ).LoadMetrics
 
 

@@ -13,7 +13,7 @@ pytestmark = pytest.mark.fast
 # Skip if neo4j driver isn't available, consistent with existing unit test patterns
 pytest.importorskip("neo4j", reason="neo4j driver missing")
 
-from sbir_etl.loaders.neo4j import CETLoader, CETLoaderConfig, LoadMetrics  # type: ignore
+from sbir_analytics.loaders.neo4j import CETLoader, CETLoaderConfig, LoadMetrics  # type: ignore
 
 
 def _make_mock_client_with_capture():

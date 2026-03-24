@@ -31,50 +31,16 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-# Dagster pipeline orchestration (assets, definitions, jobs, sensors)
-pipeline = [
-    "dagster>=1.7.0,<2.0.0",
-    "dagster-webserver>=1.7.0,<2.0.0",
-]
-# CLI (sbir-cli command)
-cli = [
-    "typer>=0.12.0,<1.0.0",
-    "rich>=13.7.0,<15.0.0",
-]
-# AWS S3 cloud storage
+# AWS S3 cloud storage (for extractors that pull from S3)
 cloud = [
     "boto3>=1.34.0,<2.0.0",
     "cloudpathlib[s3]>=0.23.0,<1.0.0",
 ]
-# ML/NLP (transition scoring, CET classification, topic modeling)
-ml = [
-    "scikit-learn>=1.4.0,<2.0.0",
-    "joblib>=1.4.2,<2.0.0",
-    "spacy>=3.7.0,<4.0.0",
-    "huggingface-hub>=0.20.0,<2.0.0",
-    # Notebook/viz deps for ML workflows
-    "jupyterlab>=4.0.0,<5.0.0",
-    "notebook>=7.0.0,<8.0.0",
-    "matplotlib>=3.8.0,<4.0.0",
-    "seaborn>=0.13.0,<1.0.0",
-    "ipykernel>=6.29.0,<8.0.0",
-]
-# Neo4j graph database loader
-neo4j = ["neo4j>=5.20.0,<7.0.0"]
 # R integration for fiscal analysis (stateior via rpy2)
 r = ["rpy2>=3.5.0,<4.0.0"]
-# PaECTER local model support (GPU-accelerated)
-paecter-local = [
-    "sentence-transformers>=2.7.0,<6.0.0",
-    "torch>=2.0.0,<3.0.0",
-    "transformers>=4.35.0,<6.0.0",
-]
-# Full install — everything needed to run the complete sbir-analytics pipeline
-all = [
-    "sbir-etl[pipeline,cli,cloud,ml,neo4j]",
-]
 dev = [
-    "sbir-etl[all]",
+    "sbir-ml",
+    "sbir-analytics",
     "pytest>=8.0.0,<10.0.0",
     "pytest-asyncio>=0.23.0,<2.0.0",
     "pytest-xdist>=3.0.0",
@@ -93,9 +59,6 @@ dev = [
     "boto3-stubs[s3]>=1.34.0",
     "pre-commit>=3.5.0,<5.0.0",
 ]
-
-[project.scripts]
-sbir-cli = "sbir_etl.cli.main:app"
 
 [tool.bandit]
 exclude_dirs = ["tests"]
@@ -129,7 +92,7 @@ ignore = [
 # Treat neo4j as a known third-party library that gets its own group
 known-third-party = ["neo4j"]
 # Your project imports
-known-first-party = ["sbir_etl"]
+known-first-party = ["sbir_etl", "sbir_ml", "sbir_analytics"]
 # Allow more flexibility in grouping
 split-on-trailing-comma = false
 force-single-line = false
@@ -236,12 +199,12 @@ asyncio_default_fixture_loop_scope = "function"
 # Run with: pytest -n 4 (uses 4 workers)
 
 [tool.dagster]
-python_module = "sbir_etl.definitions"
+python_module = "sbir_analytics.definitions"
 
 [tool.dg.project]
-root_module = "sbir_etl"
-defs_module = "sbir_etl.definitions"
-code_location_target_module = "sbir_etl.definitions"
+root_module = "sbir_analytics"
+defs_module = "sbir_analytics.definitions"
+code_location_target_module = "sbir_analytics.definitions"
 code_location_name = "sbir-analytics-production"
 
 [build-system]

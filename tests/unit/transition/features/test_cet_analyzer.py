@@ -8,7 +8,7 @@ Technologies) area alignment signals between SBIR awards and contracts.
 import pytest
 
 from sbir_etl.models.transition_models import CETSignal
-from sbir_etl.transition.features.cet_analyzer import (
+from sbir_ml.transition.features.cet_analyzer import (
     CET_KEYWORD_MAPPINGS,
     CETAnalysisResult,
     CETSignalExtractor,

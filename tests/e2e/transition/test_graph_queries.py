@@ -11,7 +11,7 @@ pytestmark = [pytest.mark.e2e, pytest.mark.slow]
 
 
 def _build_mock_queries():
-    from sbir_etl.transition.queries.pathway_queries import TransitionPathwayQueries
+    from sbir_ml.transition.queries.pathway_queries import TransitionPathwayQueries
 
     mock_driver = MagicMock()
     session = MagicMock()
@@ -50,7 +50,7 @@ def test_transition_rates_by_cet_area_query():
 
 def test_company_profile_queries_exposed():
     """Transition query object exposes the expected helper functions."""
-    from sbir_etl.transition.queries.pathway_queries import TransitionPathwayQueries
+    from sbir_ml.transition.queries.pathway_queries import TransitionPathwayQueries
 
     queries = TransitionPathwayQueries(MagicMock())
 

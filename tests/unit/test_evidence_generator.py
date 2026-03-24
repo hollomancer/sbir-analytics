@@ -25,7 +25,7 @@ from sbir_etl.models.transition_models import (
     TransitionSignals,
     VendorMatch,
 )
-from sbir_etl.transition.detection.evidence import EvidenceGenerator
+from sbir_ml.transition.detection.evidence import EvidenceGenerator
 
 
 @pytest.fixture

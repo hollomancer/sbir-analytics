@@ -3,7 +3,7 @@
 import pytest
 from rich.panel import Panel
 
-from sbir_etl.cli.display.errors import (
+from sbir_analytics.cli.display.errors import (
     CLIError,
     ConfigError,
     ConnectionError,
@@ -16,9 +16,9 @@ from sbir_etl.cli.display.errors import (
     _infer_exit_code,
     _infer_suggestions,
 )
-from sbir_etl.cli.display.metrics import create_metrics_table, format_threshold_indicator
-from sbir_etl.cli.display.progress import PipelineProgressTracker, create_progress_tracker
-from sbir_etl.cli.display.status import (
+from sbir_analytics.cli.display.metrics import create_metrics_table, format_threshold_indicator
+from sbir_analytics.cli.display.progress import PipelineProgressTracker, create_progress_tracker
+from sbir_analytics.cli.display.status import (
     create_asset_status_table,
     create_summary_panel,
     get_health_indicator,

@@ -26,21 +26,21 @@ pd = pytest.importorskip("pandas")
 np = pytest.importorskip("numpy")
 
 # Commented out - module is empty, but keeping imports for linting
-# from sbir_etl.ml.features.patent_features import (
+# from sbir_ml.ml.features.patent_features import (
 #     DEFAULT_KEYWORDS_MAP,
 #     PatentFeatureVector,
 #     extract_features,
 # )
-# from sbir_etl.ml.features.vectorizers import (
+# from sbir_ml.ml.features.vectorizers import (
 #     AssigneeTypeVectorizer,
 #     FeatureMatrixBuilder,
 #     IPCPresenceVectorizer,
 #     KeywordVectorizer,
 #     TokenCounterVectorizer,
 # )
-# from sbir_etl.ml.models.dummy_pipeline import DummyPipeline  # noqa: F401
-# from sbir_etl.ml.models.patent_classifier import PatentCETClassifier  # noqa: F401
-# from sbir_etl.ml.train.patent_training import (  # noqa: F401
+# from sbir_ml.ml.models.dummy_pipeline import DummyPipeline  # noqa: F401
+# from sbir_ml.ml.models.patent_classifier import PatentCETClassifier  # noqa: F401
+# from sbir_ml.ml.train.patent_training import (  # noqa: F401
 #     evaluate_patent_classifier,
 #     precision_recall_at_k,
 #     train_patent_classifier,

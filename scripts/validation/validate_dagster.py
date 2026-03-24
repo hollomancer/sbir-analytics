@@ -10,7 +10,7 @@ project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
 try:
-    from sbir_etl.definitions import defs
+    from sbir_analytics.definitions import defs
 
     print("✓ Successfully imported Dagster definitions")
 

@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from sbir_etl.loaders.neo4j.client import Neo4jClient, Neo4jConfig
+from sbir_analytics.loaders.neo4j.client import Neo4jClient, Neo4jConfig
 
 
 @pytest.fixture
@@ -22,14 +22,14 @@ def neo4j_config():
 class TestNeo4jClientMock:
     """Unit tests for Neo4jClient with mocked driver."""
 
-    @patch("sbir_etl.loaders.neo4j.client.GraphDatabase")
+    @patch("sbir_analytics.loaders.neo4j.client.GraphDatabase")
     def test_client_initialization(self, mock_gdb, neo4j_config):
         """Test client initializes without connecting."""
         client = Neo4jClient(neo4j_config)
         assert client.config == neo4j_config
         assert client._driver is None  # Lazy connection
 
-    @patch("sbir_etl.loaders.neo4j.client.GraphDatabase")
+    @patch("sbir_analytics.loaders.neo4j.client.GraphDatabase")
     def test_driver_lazy_creation(self, mock_gdb, neo4j_config):
         """Test driver is created lazily on first access."""
         mock_gdb.driver.return_value = MagicMock()
@@ -47,7 +47,7 @@ class TestNeo4jClientMock:
             auth=(neo4j_config.username, neo4j_config.password),
         )
 
-    @patch("sbir_etl.loaders.neo4j.client.GraphDatabase")
+    @patch("sbir_analytics.loaders.neo4j.client.GraphDatabase")
     def test_close_driver(self, mock_gdb, neo4j_config):
         """Test driver close."""
         mock_driver = MagicMock()
@@ -60,7 +60,7 @@ class TestNeo4jClientMock:
         mock_driver.close.assert_called_once()
         assert client._driver is None
 
-    @patch("sbir_etl.loaders.neo4j.client.GraphDatabase")
+    @patch("sbir_analytics.loaders.neo4j.client.GraphDatabase")
     def test_batch_upsert_empty_nodes_returns_empty_metrics(self, mock_gdb, neo4j_config):
         """Test batch_upsert with empty nodes returns metrics with no operations."""
         client = Neo4jClient(neo4j_config)

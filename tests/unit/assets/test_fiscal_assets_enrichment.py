@@ -8,7 +8,7 @@ from unittest.mock import patch
 import pandas as pd
 import pytest
 
-from sbir_etl.assets.fiscal_assets import (
+from sbir_analytics.assets.fiscal_assets import (
     bea_mapped_sbir_awards,
     bea_mapping_quality_check,
     fiscal_naics_coverage_check,
@@ -91,7 +91,7 @@ class TestFiscalNAICSEnrichment:
             }
         )
 
-        with patch("sbir_etl.assets.fiscal_assets.get_config", return_value=mock_config):
+        with patch("sbir_analytics.assets.fiscal_assets.get_config", return_value=mock_config):
             result = fiscal_naics_enriched_awards(mock_context, input_df)
 
         assert hasattr(result, "value")
@@ -107,7 +107,7 @@ class TestFiscalNAICSEnrichment:
             }
         )
 
-        with patch("sbir_etl.assets.fiscal_assets.get_config", return_value=mock_config):
+        with patch("sbir_analytics.assets.fiscal_assets.get_config", return_value=mock_config):
             result = fiscal_naics_enriched_awards(mock_context, input_df)
 
         df = result.value
@@ -115,14 +115,14 @@ class TestFiscalNAICSEnrichment:
 
     def test_naics_quality_check_passes(self, sample_naics_enriched_awards, mock_config):
         """Test NAICS quality check passes with good data."""
-        with patch("sbir_etl.assets.fiscal_assets.get_config", return_value=mock_config):
+        with patch("sbir_analytics.assets.fiscal_assets.get_config", return_value=mock_config):
             result = fiscal_naics_quality_check(sample_naics_enriched_awards)
 
         assert result.passed
 
     def test_naics_coverage_check_passes(self, sample_naics_enriched_awards, mock_config):
         """Test NAICS coverage check passes with good coverage."""
-        with patch("sbir_etl.assets.fiscal_assets.get_config", return_value=mock_config):
+        with patch("sbir_analytics.assets.fiscal_assets.get_config", return_value=mock_config):
             result = fiscal_naics_coverage_check(sample_naics_enriched_awards)
 
         assert result.passed
@@ -135,7 +135,7 @@ class TestBEAMapping:
         self, mock_context, mock_config, sample_naics_enriched_awards
     ):
         """Test BEA mapping returns Output type."""
-        with patch("sbir_etl.assets.fiscal_assets.get_config", return_value=mock_config):
+        with patch("sbir_analytics.assets.fiscal_assets.get_config", return_value=mock_config):
             result = bea_mapped_sbir_awards(mock_context, sample_naics_enriched_awards)
 
         assert hasattr(result, "value")
@@ -145,7 +145,7 @@ class TestBEAMapping:
         self, mock_context, mock_config, sample_naics_enriched_awards
     ):
         """Test BEA mapping adds sector code column."""
-        with patch("sbir_etl.assets.fiscal_assets.get_config", return_value=mock_config):
+        with patch("sbir_analytics.assets.fiscal_assets.get_config", return_value=mock_config):
             result = bea_mapped_sbir_awards(mock_context, sample_naics_enriched_awards)
 
         df = result.value
@@ -153,7 +153,7 @@ class TestBEAMapping:
 
     def test_bea_quality_check_passes(self, sample_bea_mapped_awards, mock_config):
         """Test BEA quality check passes with good data."""
-        with patch("sbir_etl.assets.fiscal_assets.get_config", return_value=mock_config):
+        with patch("sbir_analytics.assets.fiscal_assets.get_config", return_value=mock_config):
             result = bea_mapping_quality_check(sample_bea_mapped_awards)
 
         assert result.passed

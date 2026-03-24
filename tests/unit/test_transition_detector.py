@@ -18,8 +18,8 @@ from sbir_etl.models.transition_models import (
     FederalContract,
     Transition,
 )
-from sbir_etl.transition.detection.detector import TransitionDetector
-from sbir_etl.transition.features.vendor_resolver import VendorResolver
+from sbir_ml.transition.detection.detector import TransitionDetector
+from sbir_ml.transition.features.vendor_resolver import VendorResolver
 
 
 @pytest.fixture
@@ -83,7 +83,7 @@ def sample_config() -> dict:
 @pytest.fixture
 def vendor_resolver():
     """Create vendor resolver with sample data."""
-    from sbir_etl.transition.features.vendor_resolver import VendorRecord
+    from sbir_ml.transition.features.vendor_resolver import VendorRecord
 
     # Create sample vendor records
     sample_vendors = [

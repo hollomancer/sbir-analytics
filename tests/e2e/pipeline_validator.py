@@ -13,7 +13,7 @@ import pandas as pd
 from loguru import logger
 from neo4j import Session
 
-from sbir_etl.loaders import Neo4jClient
+from sbir_analytics.loaders import Neo4jClient
 from sbir_etl.models.quality import QualitySeverity
 
 

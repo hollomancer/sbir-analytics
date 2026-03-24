@@ -15,7 +15,7 @@ from sbir_etl.models.transition_models import (
     TimingSignal,
     TransitionSignals,
 )
-from sbir_etl.transition.detection.scoring import TransitionScorer
+from sbir_ml.transition.detection.scoring import TransitionScorer
 
 
 pytestmark = pytest.mark.fast

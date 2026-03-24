@@ -7,7 +7,7 @@ import json
 import pandas as pd
 import pytest
 
-from sbir_etl.transition.analysis.analytics import TransitionAnalytics
+from sbir_ml.transition.analysis.analytics import TransitionAnalytics
 
 
 pytestmark = [pytest.mark.e2e, pytest.mark.slow]

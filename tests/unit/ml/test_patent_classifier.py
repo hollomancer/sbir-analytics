@@ -2,8 +2,8 @@
 
 # sbir-analytics/tests/unit/ml/test_patent_classifier.py
 
-from sbir_etl.ml.models.dummy_pipeline import DummyPipeline
-from sbir_etl.ml.models.patent_classifier import PatentCETClassifier, PatentClassification
+from sbir_ml.ml.models.dummy_pipeline import DummyPipeline
+from sbir_ml.ml.models.patent_classifier import PatentCETClassifier, PatentClassification
 
 
 def make_dummy_pipelines():

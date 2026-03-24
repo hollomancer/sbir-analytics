@@ -10,7 +10,7 @@ import pytest
 from pydantic import ValidationError
 
 from sbir_etl.exceptions import FileSystemError
-from sbir_etl.ml.config.taxonomy_loader import ClassificationConfig, TaxonomyConfig, TaxonomyLoader
+from sbir_ml.ml.config.taxonomy_loader import ClassificationConfig, TaxonomyConfig, TaxonomyLoader
 
 
 pytestmark = pytest.mark.fast

@@ -12,7 +12,7 @@ pytestmark = pytest.mark.integration
 from dagster import build_asset_context
 from dagster._core.definitions import load_assets_from_modules
 
-import sbir_etl.assets.fiscal_assets as fiscal_assets
+import sbir_analytics.assets.fiscal_assets as fiscal_assets
 
 
 @pytest.fixture

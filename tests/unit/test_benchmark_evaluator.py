@@ -17,7 +17,7 @@ from sbir_etl.models.benchmark_models import (
     BenchmarkTier,
     ConsequenceType,
 )
-from sbir_etl.transition.analysis.benchmark_evaluator import BenchmarkEligibilityEvaluator
+from sbir_ml.transition.analysis.benchmark_evaluator import BenchmarkEligibilityEvaluator
 
 
 def _make_awards_df(

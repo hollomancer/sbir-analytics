@@ -8,7 +8,7 @@ import pytest
 
 pytestmark = pytest.mark.fast
 
-from sbir_etl.assets.ma_detection import company_mergers_and_acquisitions
+from sbir_analytics.assets.ma_detection import company_mergers_and_acquisitions
 
 
 @pytest.fixture

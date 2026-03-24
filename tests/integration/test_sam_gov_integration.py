@@ -12,7 +12,7 @@ from unittest.mock import MagicMock, patch
 import pandas as pd
 import pytest
 
-from sbir_etl.assets.sam_gov_ingestion import raw_sam_gov_entities
+from sbir_analytics.assets.sam_gov_ingestion import raw_sam_gov_entities
 from sbir_etl.extractors.sam_gov import SAMGovExtractor
 
 
@@ -137,17 +137,17 @@ class TestSAMGovAssetIntegration:
         from dagster import build_asset_context
 
         # Mock config
-        with patch("sbir_etl.assets.sam_gov_ingestion.get_config") as mock_config:
+        with patch("sbir_analytics.assets.sam_gov_ingestion.get_config") as mock_config:
             mock_config.return_value.extraction.sam_gov.parquet_path = str(sample_sam_gov_parquet)
             mock_config.return_value.extraction.sam_gov.use_s3_first = False
             mock_config.return_value.s3 = {}
 
             # Mock Path.exists
-            with patch("sbir_etl.assets.sam_gov_ingestion.Path") as mock_path:
+            with patch("sbir_analytics.assets.sam_gov_ingestion.Path") as mock_path:
                 mock_path.return_value.exists.return_value = True
 
                 # Mock SAMGovExtractor to return our test data
-                with patch("sbir_etl.assets.sam_gov_ingestion.SAMGovExtractor") as mock_extractor_class:
+                with patch("sbir_analytics.assets.sam_gov_ingestion.SAMGovExtractor") as mock_extractor_class:
                     mock_extractor = MagicMock()
                     test_df = pd.read_parquet(sample_sam_gov_parquet)
                     mock_extractor.load_parquet.return_value = test_df
@@ -178,13 +178,13 @@ class TestSAMGovAssetIntegration:
         from sbir_etl.exceptions import ExtractionError
 
         # Mock config with non-existent file
-        with patch("sbir_etl.assets.sam_gov_ingestion.get_config") as mock_config:
+        with patch("sbir_analytics.assets.sam_gov_ingestion.get_config") as mock_config:
             mock_config.return_value.extraction.sam_gov.parquet_path = "/nonexistent/file.parquet"
             mock_config.return_value.extraction.sam_gov.use_s3_first = False
             mock_config.return_value.s3 = {}
 
             # Mock Path.exists to return False
-            with patch("sbir_etl.assets.sam_gov_ingestion.Path") as mock_path:
+            with patch("sbir_analytics.assets.sam_gov_ingestion.Path") as mock_path:
                 mock_path.return_value.exists.return_value = False
 
                 # Execute and expect error

@@ -6,8 +6,8 @@ from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
-from sbir_etl.loaders.neo4j.client import Neo4jClient, Neo4jConfig
-from sbir_etl.loaders.neo4j.patent_cet import Neo4jPatentCETLoader
+from sbir_analytics.loaders.neo4j.client import Neo4jClient, Neo4jConfig
+from sbir_analytics.loaders.neo4j.patent_cet import Neo4jPatentCETLoader
 
 
 pytestmark = pytest.mark.fast

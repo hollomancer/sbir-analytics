@@ -7,8 +7,8 @@ from pathlib import Path
 
 import pandas as pd
 
-from sbir_etl.assets.cet import enriched_cet_patent_classifications
-from sbir_etl.ml.models.dummy_pipeline import DummyPipeline
+from sbir_analytics.assets.cet import enriched_cet_patent_classifications
+from sbir_ml.ml.models.dummy_pipeline import DummyPipeline
 
 
 def _write_configs(root: Path):

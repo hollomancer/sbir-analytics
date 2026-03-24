@@ -4,7 +4,7 @@ from datetime import date
 
 import pytest
 
-from sbir_etl.assets.sbir_neo4j_loading import detect_award_progressions
+from sbir_analytics.assets.sbir_neo4j_loading import detect_award_progressions
 from sbir_etl.models.award import Award
 
 

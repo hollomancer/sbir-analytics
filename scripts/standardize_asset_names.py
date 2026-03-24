@@ -13,7 +13,7 @@ import argparse
 import re
 from pathlib import Path
 
-from sbir_etl.assets.asset_naming_standards import ASSET_RENAMING_MAP, GROUP_RENAMING_MAP
+from sbir_analytics.assets.asset_naming_standards import ASSET_RENAMING_MAP, GROUP_RENAMING_MAP
 
 
 def find_asset_files() -> list[Path]:

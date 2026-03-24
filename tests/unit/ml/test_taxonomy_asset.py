@@ -10,8 +10,8 @@ import pytest
 pytestmark = pytest.mark.fast
 import yaml
 
-import sbir_etl.assets.cet as cet_assets
-from sbir_etl.ml.config.taxonomy_loader import TaxonomyLoader
+import sbir_analytics.assets.cet as cet_assets
+from sbir_ml.ml.config.taxonomy_loader import TaxonomyLoader
 from sbir_etl.models.cet_models import CETArea
 
 
@@ -159,11 +159,11 @@ def test_cet_taxonomy_asset_writes_parquet(tmp_path: Path, monkeypatch) -> None:
             return {"ok": True, "cet_count": len(cet_areas)}
 
     # Monkeypatch the TaxonomyLoader in the actual taxonomy module where it's used
-    monkeypatch.setattr("sbir_etl.assets.cet.taxonomy.TaxonomyLoader", FakeLoader)
+    monkeypatch.setattr("sbir_analytics.assets.cet.taxonomy.TaxonomyLoader", FakeLoader)
 
     # Redirect DEFAULT_OUTPUT_PATH to a temp location so we don't write to repo paths
     temp_output = tmp_path / "data" / "processed" / "cet_taxonomy.parquet"
-    monkeypatch.setattr("sbir_etl.assets.cet.taxonomy.DEFAULT_OUTPUT_PATH", temp_output)
+    monkeypatch.setattr("sbir_analytics.assets.cet.taxonomy.DEFAULT_OUTPUT_PATH", temp_output)
 
     # Run the asset function. The decorated asset is a normal function that returns a dagster.Output
     cet_assets.cet_taxonomy()

@@ -3,7 +3,7 @@
 import pytest
 from tests.conftest import neo4j_running as neo4j_available
 
-from sbir_etl.loaders.neo4j import Neo4jClient, Neo4jConfig
+from sbir_analytics.loaders.neo4j import Neo4jClient, Neo4jConfig
 
 pytestmark = pytest.mark.skipif(
     not neo4j_available(), reason="Neo4j not running - see INTEGRATION_TEST_ANALYSIS.md"

@@ -8,7 +8,7 @@ import pytest
 pytestmark = pytest.mark.fast
 
 from sbir_etl.models.patent import Patent
-from sbir_etl.transition.features.patent_analyzer import PatentSignalExtractor
+from sbir_ml.transition.features.patent_analyzer import PatentSignalExtractor
 
 
 @pytest.fixture

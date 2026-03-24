@@ -98,7 +98,7 @@ def test_transition_mvp_chain_shimmed(tmp_path, monkeypatch):
 
     # Import assets and shim context from the transition assets module
     _install_dagster_shim(monkeypatch)
-    from sbir_etl.assets.transition import (
+    from sbir_analytics.assets.transition import (
         AssetExecutionContext,
         enriched_vendor_resolution,
         transformed_transition_evidence,
@@ -231,7 +231,7 @@ def test_transition_mvp_golden(tmp_path, monkeypatch):
     monkeypatch.setenv("SBIR_ETL__TRANSITION__FUZZY__THRESHOLD", "0.7")
 
     _install_dagster_shim(monkeypatch)
-    from sbir_etl.assets.transition import (
+    from sbir_analytics.assets.transition import (
         AssetExecutionContext,
         enriched_vendor_resolution,
         transformed_transition_evidence,
@@ -293,7 +293,7 @@ def test_transition_mvp_analytics_shimmed(tmp_path, monkeypatch):
     monkeypatch.setenv("SBIR_ETL__TRANSITION__FUZZY__THRESHOLD", "0.7")
 
     _install_dagster_shim(monkeypatch)
-    from sbir_etl.assets.transition import (
+    from sbir_analytics.assets.transition import (
         AssetExecutionContext,
         enriched_vendor_resolution,
         transformed_transition_analytics,

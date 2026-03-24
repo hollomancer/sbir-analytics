@@ -7,8 +7,8 @@ from datetime import datetime
 import pandas as pd
 import pytest
 
-from sbir_etl.ml.models.patent_classifier import PatentCETClassifier
-from sbir_etl.ml.models.trainer import CETModelTrainer
+from sbir_ml.ml.models.patent_classifier import PatentCETClassifier
+from sbir_ml.ml.models.trainer import CETModelTrainer
 from sbir_etl.models.cet_models import CETArea, TrainingDataset, TrainingExample
 from tests.utils.fixtures import create_sample_cet_area
 
@@ -94,7 +94,7 @@ def test_patent_classifier_smoke():
 
     def factory(cet_id: str):
         keywords = ["quantum", "qubit"] if "quantum" in cet_id else ["machine learning", "neural"]
-        from sbir_etl.ml.models.dummy_pipeline import DummyPipeline
+        from sbir_ml.ml.models.dummy_pipeline import DummyPipeline
 
         return DummyPipeline(cet_id=cet_id, keywords=keywords, keyword_boost=1.0)
 

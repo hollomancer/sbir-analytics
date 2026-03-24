@@ -5,7 +5,7 @@ import pytest
 
 pytestmark = pytest.mark.fast
 
-from sbir_etl.transition.features.vendor_resolver import VendorRecord, VendorResolver
+from sbir_ml.transition.features.vendor_resolver import VendorRecord, VendorResolver
 
 
 @pytest.fixture

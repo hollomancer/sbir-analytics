@@ -4,7 +4,7 @@ Unit tests for the RuleEngine class.
 
 import pytest
 
-from sbir_etl.ml.models.rule_engine import RuleEngine
+from sbir_ml.ml.models.rule_engine import RuleEngine
 
 
 @pytest.fixture

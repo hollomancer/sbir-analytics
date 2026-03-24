@@ -7,7 +7,7 @@ Run with: docker-compose up -d neo4j
 import pytest
 from tests.conftest import neo4j_running as neo4j_available
 
-from sbir_etl.loaders.neo4j.client import LoadMetrics, Neo4jClient
+from sbir_analytics.loaders.neo4j.client import LoadMetrics, Neo4jClient
 
 pytestmark = [
     pytest.mark.integration,

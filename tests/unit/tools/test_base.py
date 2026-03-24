@@ -3,7 +3,7 @@
 import pytest
 import pandas as pd
 
-from sbir_etl.tools.base import BaseTool, DataSourceRef, ToolMetadata, ToolResult
+from sbir_ml.tools.base import BaseTool, DataSourceRef, ToolMetadata, ToolResult
 
 
 class DummyTool(BaseTool):

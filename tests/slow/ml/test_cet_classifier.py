@@ -26,7 +26,7 @@ pytestmark = [
     pytest.mark.skipif(not RUN_SLOW, reason="Slow test suite; set PYTEST_ALLOW_SLOW=1 to run"),
 ]
 
-from sbir_etl.ml.models.cet_classifier import ApplicabilityModel, CETAwareTfidfVectorizer
+from sbir_ml.ml.models.cet_classifier import ApplicabilityModel, CETAwareTfidfVectorizer
 from sbir_etl.models.cet_models import CETArea, ClassificationLevel
 
 

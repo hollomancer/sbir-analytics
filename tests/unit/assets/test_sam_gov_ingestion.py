@@ -14,7 +14,7 @@ import pandas as pd
 import pytest
 from dagster import Output
 
-from sbir_etl.assets.sam_gov_ingestion import _import_sam_gov_entities, raw_sam_gov_entities
+from sbir_analytics.assets.sam_gov_ingestion import _import_sam_gov_entities, raw_sam_gov_entities
 from tests.mocks import ContextMocks
 
 
@@ -63,8 +63,8 @@ def mock_config():
 class TestImportSAMGovEntitiesHelper:
     """Test _import_sam_gov_entities helper function."""
 
-    @patch("sbir_etl.assets.sam_gov_ingestion.SAMGovExtractor")
-    @patch("sbir_etl.assets.sam_gov_ingestion.get_config")
+    @patch("sbir_analytics.assets.sam_gov_ingestion.SAMGovExtractor")
+    @patch("sbir_analytics.assets.sam_gov_ingestion.get_config")
     def test_import_from_local_parquet(
         self,
         mock_get_config,
@@ -105,11 +105,11 @@ class TestImportSAMGovEntitiesHelper:
             else:
                 assert result.metadata["row_count"] == 2
 
-    @patch("sbir_etl.assets.sam_gov_ingestion.get_s3_bucket_from_env")
-    @patch("sbir_etl.assets.sam_gov_ingestion.find_latest_sam_gov_parquet")
-    @patch("sbir_etl.assets.sam_gov_ingestion.resolve_data_path")
-    @patch("sbir_etl.assets.sam_gov_ingestion.SAMGovExtractor")
-    @patch("sbir_etl.assets.sam_gov_ingestion.get_config")
+    @patch("sbir_analytics.assets.sam_gov_ingestion.get_s3_bucket_from_env")
+    @patch("sbir_analytics.assets.sam_gov_ingestion.find_latest_sam_gov_parquet")
+    @patch("sbir_analytics.assets.sam_gov_ingestion.resolve_data_path")
+    @patch("sbir_analytics.assets.sam_gov_ingestion.SAMGovExtractor")
+    @patch("sbir_analytics.assets.sam_gov_ingestion.get_config")
     def test_import_from_s3_parquet(
         self,
         mock_get_config,
@@ -149,7 +149,7 @@ class TestImportSAMGovEntitiesHelper:
         mock_find_latest.assert_called_once_with(bucket="test-bucket")
         mock_resolve_path.assert_called_once_with(s3_url)
 
-    @patch("sbir_etl.assets.sam_gov_ingestion.get_config")
+    @patch("sbir_analytics.assets.sam_gov_ingestion.get_config")
     def test_import_fails_when_no_file_available(self, mock_get_config, mock_context, mock_config):
         """Test that import fails when parquet file is not available."""
         # Setup mocks
@@ -171,7 +171,7 @@ class TestImportSAMGovEntitiesHelper:
 class TestRawSAMGovEntitiesAsset:
     """Test raw_sam_gov_entities Dagster asset."""
 
-    @patch("sbir_etl.assets.sam_gov_ingestion._import_sam_gov_entities")
+    @patch("sbir_analytics.assets.sam_gov_ingestion._import_sam_gov_entities")
     def test_asset_calls_helper(self, mock_import_helper, mock_context, sample_sam_gov_df):
         """Test that asset calls the helper function."""
         # Setup mock
@@ -191,8 +191,8 @@ class TestRawSAMGovEntitiesAsset:
         assert isinstance(result.value, pd.DataFrame)
         mock_import_helper.assert_called_once_with(mock_context)
 
-    @patch("sbir_etl.assets.sam_gov_ingestion.SAMGovExtractor")
-    @patch("sbir_etl.assets.sam_gov_ingestion.get_config")
+    @patch("sbir_analytics.assets.sam_gov_ingestion.SAMGovExtractor")
+    @patch("sbir_analytics.assets.sam_gov_ingestion.get_config")
     def test_asset_metadata(
         self,
         mock_get_config,

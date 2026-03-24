@@ -8,7 +8,7 @@ against ground truth using precision, recall, F1, and confusion matrices.
 import pandas as pd
 import pytest
 
-from sbir_etl.transition.evaluation.evaluator import (
+from sbir_ml.transition.evaluation.evaluator import (
     ConfusionMatrix,
     EvaluationResult,
     TransitionEvaluator,

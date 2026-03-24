@@ -6,7 +6,7 @@ from unittest.mock import Mock, mock_open, patch
 import pandas as pd
 import pytest
 
-from sbir_etl.assets.cet.classifications import (
+from sbir_analytics.assets.cet.classifications import (
     cet_award_classifications_quality_check,
     enriched_cet_award_classifications,
     enriched_cet_patent_classifications,
@@ -130,7 +130,7 @@ class TestCETAwardClassificationsQualityCheck:
         checks_path = tmp_path / "cet_award_classifications.checks.json"
         checks_path.write_text(json.dumps(sample_checks_data))
 
-        with patch("sbir_etl.assets.cet.classifications.Path") as mock_path_class:
+        with patch("sbir_analytics.assets.cet.classifications.Path") as mock_path_class:
             mock_path = Mock()
             mock_path.exists.return_value = True
             # Set up context manager for open()
@@ -141,7 +141,7 @@ class TestCETAwardClassificationsQualityCheck:
             mock_path_class.return_value = mock_path
 
             # Call the check function directly (it's decorated but still callable)
-            from sbir_etl.assets.cet.classifications import cet_award_classifications_quality_check
+            from sbir_analytics.assets.cet.classifications import cet_award_classifications_quality_check
 
             result = cet_award_classifications_quality_check(mock_context)
 
@@ -160,7 +160,7 @@ class TestCETAwardClassificationsQualityCheck:
         checks_path = tmp_path / "cet_award_classifications.checks.json"
         checks_path.write_text(json.dumps(checks_data))
 
-        with patch("sbir_etl.assets.cet.classifications.Path") as mock_path_class:
+        with patch("sbir_analytics.assets.cet.classifications.Path") as mock_path_class:
             mock_path = Mock()
             mock_path.exists.return_value = True
             # Set up context manager for open()
@@ -185,7 +185,7 @@ class TestCETAwardClassificationsQualityCheck:
         checks_path = tmp_path / "cet_award_classifications.checks.json"
         checks_path.write_text(json.dumps(checks_data))
 
-        with patch("sbir_etl.assets.cet.classifications.Path") as mock_path_class:
+        with patch("sbir_analytics.assets.cet.classifications.Path") as mock_path_class:
             mock_path = Mock()
             mock_path.exists.return_value = True
             # Set up context manager for open()
@@ -202,7 +202,7 @@ class TestCETAwardClassificationsQualityCheck:
 
     def test_quality_check_missing_checks_file(self, mock_context):
         """Test quality check fails when checks file is missing."""
-        with patch("sbir_etl.assets.cet.classifications.Path") as mock_path_class:
+        with patch("sbir_analytics.assets.cet.classifications.Path") as mock_path_class:
             mock_path = Mock()
             mock_path.exists.return_value = False
             mock_path_class.return_value = mock_path
@@ -219,7 +219,7 @@ class TestCETAwardClassificationsQualityCheck:
         checks_path = tmp_path / "cet_award_classifications.checks.json"
         checks_path.write_text("{invalid json}")
 
-        with patch("sbir_etl.assets.cet.classifications.Path") as mock_path_class:
+        with patch("sbir_analytics.assets.cet.classifications.Path") as mock_path_class:
             mock_path = Mock()
             mock_path.exists.return_value = True
             # Set up context manager for open()
@@ -245,7 +245,7 @@ class TestCETAwardClassificationsQualityCheck:
         checks_path = tmp_path / "cet_award_classifications.checks.json"
         checks_path.write_text(json.dumps(checks_data))
 
-        with patch("sbir_etl.assets.cet.classifications.Path") as mock_path_class:
+        with patch("sbir_analytics.assets.cet.classifications.Path") as mock_path_class:
             mock_path = Mock()
             mock_path.exists.return_value = True
             # Set up context manager for open()
@@ -271,7 +271,7 @@ class TestCETAwardClassificationsQualityCheck:
         checks_path = tmp_path / "cet_award_classifications.checks.json"
         checks_path.write_text(json.dumps(checks_data))
 
-        with patch("sbir_etl.assets.cet.classifications.Path") as mock_path_class:
+        with patch("sbir_analytics.assets.cet.classifications.Path") as mock_path_class:
             mock_path = Mock()
             mock_path.exists.return_value = True
             # Set up context manager for open()
@@ -296,7 +296,7 @@ class TestCETAwardClassificationsQualityCheck:
         checks_path = tmp_path / "cet_award_classifications.checks.json"
         checks_path.write_text(json.dumps(checks_data))
 
-        with patch("sbir_etl.assets.cet.classifications.Path") as mock_path_class:
+        with patch("sbir_analytics.assets.cet.classifications.Path") as mock_path_class:
             mock_path = Mock()
             mock_path.exists.return_value = True
             # Set up context manager for open()
@@ -323,7 +323,7 @@ class TestCETAwardClassificationsQualityCheck:
         checks_path = tmp_path / "cet_award_classifications.checks.json"
         checks_path.write_text(json.dumps(checks_data))
 
-        with patch("sbir_etl.assets.cet.classifications.Path") as mock_path_class:
+        with patch("sbir_analytics.assets.cet.classifications.Path") as mock_path_class:
             mock_path = Mock()
             mock_path.exists.return_value = True
             # Set up context manager for open()
@@ -346,9 +346,9 @@ class TestCETAwardClassificationsQualityCheck:
 class TestEnrichedCETAwardClassifications:
     """Tests for enriched CET award classifications asset."""
 
-    @patch("sbir_etl.assets.cet.classifications.TaxonomyLoader")
-    @patch("sbir_etl.assets.cet.classifications.Path")
-    @patch("sbir_etl.assets.cet.classifications.save_dataframe_parquet")
+    @patch("sbir_analytics.assets.cet.classifications.TaxonomyLoader")
+    @patch("sbir_analytics.assets.cet.classifications.Path")
+    @patch("sbir_analytics.assets.cet.classifications.save_dataframe_parquet")
     @patch("builtins.open", new_callable=mock_open)
     def test_award_classifications_taxonomy_load_failure(
         self, mock_file, mock_save, mock_path_class, mock_taxonomy_loader
@@ -370,9 +370,9 @@ class TestEnrichedCETAwardClassifications:
         # Should write empty output and checks JSON indicating failure
         assert mock_save.called
 
-    @patch("sbir_etl.assets.cet.classifications.TaxonomyLoader")
-    @patch("sbir_etl.assets.cet.classifications.Path")
-    @patch("sbir_etl.assets.cet.classifications.save_dataframe_parquet")
+    @patch("sbir_analytics.assets.cet.classifications.TaxonomyLoader")
+    @patch("sbir_analytics.assets.cet.classifications.Path")
+    @patch("sbir_analytics.assets.cet.classifications.save_dataframe_parquet")
     @patch("builtins.open", new_callable=mock_open)
     def test_award_classifications_no_input_data(
         self, mock_file, mock_save, mock_path_class, mock_taxonomy_loader, sample_taxonomy
@@ -397,10 +397,10 @@ class TestEnrichedCETAwardClassifications:
         # Should handle gracefully and write output
         assert mock_save.called
 
-    @patch("sbir_etl.assets.cet.classifications.TaxonomyLoader")
-    @patch("sbir_etl.assets.cet.classifications.Path")
+    @patch("sbir_analytics.assets.cet.classifications.TaxonomyLoader")
+    @patch("sbir_analytics.assets.cet.classifications.Path")
     @patch("pandas.read_parquet")
-    @patch("sbir_etl.assets.cet.classifications.save_dataframe_parquet")
+    @patch("sbir_analytics.assets.cet.classifications.save_dataframe_parquet")
     @patch("builtins.open", new_callable=mock_open)
     def test_award_classifications_model_missing(
         self,
@@ -445,9 +445,9 @@ class TestEnrichedCETAwardClassifications:
 class TestEnrichedCETPatentClassifications:
     """Tests for enriched CET patent classifications asset."""
 
-    @patch("sbir_etl.assets.cet.classifications.TaxonomyLoader")
-    @patch("sbir_etl.assets.cet.classifications.Path")
-    @patch("sbir_etl.assets.cet.classifications.save_dataframe_parquet")
+    @patch("sbir_analytics.assets.cet.classifications.TaxonomyLoader")
+    @patch("sbir_analytics.assets.cet.classifications.Path")
+    @patch("sbir_analytics.assets.cet.classifications.save_dataframe_parquet")
     @patch("builtins.open", new_callable=mock_open)
     def test_patent_classifications_taxonomy_load_failure(
         self, mock_file, mock_save, mock_path_class, mock_taxonomy_loader
@@ -472,9 +472,9 @@ class TestEnrichedCETPatentClassifications:
         # Should write empty output
         assert mock_save.called
 
-    @patch("sbir_etl.assets.cet.classifications.TaxonomyLoader")
-    @patch("sbir_etl.assets.cet.classifications.Path")
-    @patch("sbir_etl.assets.cet.classifications.save_dataframe_parquet")
+    @patch("sbir_analytics.assets.cet.classifications.TaxonomyLoader")
+    @patch("sbir_analytics.assets.cet.classifications.Path")
+    @patch("sbir_analytics.assets.cet.classifications.save_dataframe_parquet")
     @patch("builtins.open", new_callable=mock_open)
     def test_patent_classifications_no_input_data(
         self, mock_file, mock_save, mock_path_class, mock_taxonomy_loader, sample_taxonomy
@@ -515,7 +515,7 @@ class TestEdgeCases:
 
         context = build_op_context()
 
-        with patch("sbir_etl.assets.cet.classifications.Path") as mock_path_class:
+        with patch("sbir_analytics.assets.cet.classifications.Path") as mock_path_class:
             mock_path = Mock()
             mock_path.exists.return_value = True
             # Set up context manager for open()
@@ -543,7 +543,7 @@ class TestEdgeCases:
 
         context = build_op_context()
 
-        with patch("sbir_etl.assets.cet.classifications.Path") as mock_path_class:
+        with patch("sbir_analytics.assets.cet.classifications.Path") as mock_path_class:
             mock_path = Mock()
             mock_path.exists.return_value = True
             # Set up context manager for open()
@@ -558,9 +558,9 @@ class TestEdgeCases:
         assert result.passed is False
         assert "missing quality metrics" in result.description.lower()
 
-    @patch("sbir_etl.assets.cet.classifications.TaxonomyLoader")
-    @patch("sbir_etl.assets.cet.classifications.Path")
-    @patch("sbir_etl.assets.cet.classifications.save_dataframe_parquet")
+    @patch("sbir_analytics.assets.cet.classifications.TaxonomyLoader")
+    @patch("sbir_analytics.assets.cet.classifications.Path")
+    @patch("sbir_analytics.assets.cet.classifications.save_dataframe_parquet")
     @patch("builtins.open", new_callable=mock_open)
     def test_award_classifications_save_failure(
         self, mock_file, mock_save, mock_path_class, mock_taxonomy_loader
@@ -596,7 +596,7 @@ class TestEdgeCases:
 
         context = build_op_context()
 
-        with patch("sbir_etl.assets.cet.classifications.Path") as mock_path_class:
+        with patch("sbir_analytics.assets.cet.classifications.Path") as mock_path_class:
             mock_path = Mock()
             mock_path.exists.return_value = True
             mock_path.open.side_effect = PermissionError("Permission denied")
@@ -622,7 +622,7 @@ class TestEdgeCases:
         checks_path = tmp_path / "cet_award_classifications.checks.json"
         checks_path.write_text(json.dumps(sample_checks_data))
 
-        with patch("sbir_etl.assets.cet.classifications.Path") as mock_path_class:
+        with patch("sbir_analytics.assets.cet.classifications.Path") as mock_path_class:
             mock_path = Mock()
             mock_path.exists.return_value = True
             # Set up context manager for open()
@@ -653,7 +653,7 @@ class TestEdgeCases:
         checks_path = tmp_path / "cet_award_classifications.checks.json"
         checks_path.write_text(json.dumps(checks_data))
 
-        with patch("sbir_etl.assets.cet.classifications.Path") as mock_path_class:
+        with patch("sbir_analytics.assets.cet.classifications.Path") as mock_path_class:
             mock_path = Mock()
             mock_path.exists.return_value = True
             # Set up context manager for open()

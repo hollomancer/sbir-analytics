@@ -5,7 +5,7 @@ Split from test_transitions.py for better organization.
 
 import pytest
 
-from sbir_etl.loaders.neo4j.transitions import TransitionLoader
+from sbir_analytics.loaders.neo4j.transitions import TransitionLoader
 from tests.mocks import Neo4jMocks
 from tests.unit.loaders.conftest import create_mock_client_with_session
 

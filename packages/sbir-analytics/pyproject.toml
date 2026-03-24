@@ -7,16 +7,37 @@ readme = "README.md"
 license = {text = "MIT"}
 requires-python = ">=3.11,<3.12"
 
-# sbir-analytics installs sbir-etl with ALL extras — the complete pipeline.
-# Use sbir-etl directly if you only need the ETL library.
+# sbir-analytics is the full pipeline: ETL library + ML + orchestration + CLI + storage.
 dependencies = [
-    "sbir-etl[pipeline,cli,cloud,ml,neo4j]",
+    "sbir-etl[cloud]",
+    "sbir-ml[nlp]",
+    # Dagster orchestration
+    "dagster>=1.7.0,<2.0.0",
+    "dagster-webserver>=1.7.0,<2.0.0",
+    # CLI
+    "typer>=0.12.0,<1.0.0",
+    "rich>=13.7.0,<15.0.0",
+    # Neo4j graph loader
+    "neo4j>=5.20.0,<7.0.0",
 ]
 
 [project.optional-dependencies]
-r = ["sbir-etl[r]"]
-paecter-local = ["sbir-etl[paecter-local]"]
-dev = ["sbir-etl[dev]"]
+r = ["rpy2>=3.5.0,<4.0.0"]
+paecter-local = ["sbir-ml[paecter-local]"]
+dev = [
+    "sbir-etl[dev]",
+    "pytest>=8.0.0,<10.0.0",
+    "pytest-asyncio>=0.23.0,<2.0.0",
+    "pytest-xdist>=3.0.0",
+    "pytest-timeout>=2.3.0,<3.0.0",
+    "ruff>=0.5.0,<1.0.0",
+]
+
+[project.scripts]
+sbir-cli = "sbir_analytics.cli.main:app"
+
+[tool.dagster]
+python_module = "sbir_analytics.definitions"
 
 [build-system]
 requires = ["hatchling"]

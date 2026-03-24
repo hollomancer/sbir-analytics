@@ -11,7 +11,7 @@ from dagster import build_asset_context
 pytest.importorskip("pandas")
 
 transformation_assets = pytest.importorskip(
-    "sbir_etl.assets.uspto", reason="uspto assets module missing"
+    "sbir_analytics.assets.uspto", reason="uspto assets module missing"
 )
 
 

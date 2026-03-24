@@ -12,7 +12,7 @@ import pytest
 pytestmark = pytest.mark.fast
 
 from sbir_etl.models.transition_models import CompetitionType, ConfidenceLevel, FederalContract
-from sbir_etl.transition.detection.scoring import TransitionScorer
+from sbir_ml.transition.detection.scoring import TransitionScorer
 from tests.utils.config_mocks import create_mock_transition_scorer_config
 
 

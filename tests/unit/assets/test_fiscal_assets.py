@@ -6,7 +6,7 @@ import pandas as pd
 import pytest
 from dagster import AssetCheckSeverity, Output
 
-from sbir_etl.assets.fiscal_assets import (
+from sbir_analytics.assets.fiscal_assets import (
     _create_placeholder_impacts,
     bea_mapping_quality_check,
     economic_impacts,
@@ -194,9 +194,9 @@ def sample_economic_impacts():
 class TestFiscalPreparation:
     """Tests for fiscal data preparation asset."""
 
-    @patch("sbir_etl.assets.fiscal_assets.get_config")
-    @patch("sbir_etl.assets.fiscal_assets.adjust_awards_for_inflation")
-    @patch("sbir_etl.assets.fiscal_assets.performance_monitor")
+    @patch("sbir_analytics.assets.fiscal_assets.get_config")
+    @patch("sbir_analytics.assets.fiscal_assets.adjust_awards_for_inflation")
+    @patch("sbir_analytics.assets.fiscal_assets.performance_monitor")
     def test_inflation_adjusted_awards_success(
         self,
         mock_perf_monitor,
@@ -223,7 +223,7 @@ class TestFiscalPreparation:
         assert "amount_real" in result.value.columns
         assert "inflation_factor" in result.value.columns
 
-    @patch("sbir_etl.assets.fiscal_assets.get_config")
+    @patch("sbir_analytics.assets.fiscal_assets.get_config")
     def test_inflation_adjustment_quality_check_passes(self, mock_get_config, mock_config):
         """Test inflation adjustment quality check passes."""
         mock_get_config.return_value = mock_config
@@ -248,9 +248,9 @@ class TestFiscalPreparation:
 class TestTaxAndROI:
     """Tests for tax estimation and ROI calculation assets."""
 
-    @patch("sbir_etl.assets.fiscal_assets.get_config")
-    @patch("sbir_etl.assets.fiscal_assets.FiscalTaxEstimator")
-    @patch("sbir_etl.assets.fiscal_assets.performance_monitor")
+    @patch("sbir_analytics.assets.fiscal_assets.get_config")
+    @patch("sbir_analytics.assets.fiscal_assets.FiscalTaxEstimator")
+    @patch("sbir_analytics.assets.fiscal_assets.performance_monitor")
     def test_federal_tax_estimates_success(
         self,
         mock_perf_monitor,
@@ -295,9 +295,9 @@ class TestTaxAndROI:
         assert isinstance(result, Output)
         assert "total_tax_receipts" in result.value.columns
 
-    @patch("sbir_etl.assets.fiscal_assets.get_config")
-    @patch("sbir_etl.assets.fiscal_assets.FiscalROICalculator")
-    @patch("sbir_etl.assets.fiscal_assets.performance_monitor")
+    @patch("sbir_analytics.assets.fiscal_assets.get_config")
+    @patch("sbir_analytics.assets.fiscal_assets.FiscalROICalculator")
+    @patch("sbir_analytics.assets.fiscal_assets.performance_monitor")
     def test_fiscal_return_summary_success(
         self,
         mock_perf_monitor,
@@ -365,9 +365,9 @@ class TestTaxAndROI:
 class TestSensitivityUncertainty:
     """Tests for sensitivity and uncertainty analysis assets."""
 
-    @patch("sbir_etl.assets.fiscal_assets.get_config")
-    @patch("sbir_etl.assets.fiscal_assets.FiscalParameterSweep")
-    @patch("sbir_etl.assets.fiscal_assets.performance_monitor")
+    @patch("sbir_analytics.assets.fiscal_assets.get_config")
+    @patch("sbir_analytics.assets.fiscal_assets.FiscalParameterSweep")
+    @patch("sbir_analytics.assets.fiscal_assets.performance_monitor")
     def test_sensitivity_scenarios_success(
         self,
         mock_perf_monitor,
@@ -398,9 +398,9 @@ class TestSensitivityUncertainty:
         assert isinstance(result, Output)
         assert len(result.value) == 3
 
-    @patch("sbir_etl.assets.fiscal_assets.get_config")
-    @patch("sbir_etl.assets.fiscal_assets.FiscalUncertaintyQuantifier")
-    @patch("sbir_etl.assets.fiscal_assets.performance_monitor")
+    @patch("sbir_analytics.assets.fiscal_assets.get_config")
+    @patch("sbir_analytics.assets.fiscal_assets.FiscalUncertaintyQuantifier")
+    @patch("sbir_analytics.assets.fiscal_assets.performance_monitor")
     def test_uncertainty_analysis_success(
         self,
         mock_perf_monitor,
@@ -461,8 +461,8 @@ class TestSensitivityUncertainty:
 class TestReporting:
     """Tests for fiscal returns reporting asset."""
 
-    @patch("sbir_etl.assets.fiscal_assets.get_config")
-    @patch("sbir_etl.assets.fiscal_assets.performance_monitor")
+    @patch("sbir_analytics.assets.fiscal_assets.get_config")
+    @patch("sbir_analytics.assets.fiscal_assets.performance_monitor")
     def test_fiscal_returns_report_success(
         self,
         mock_perf_monitor,
@@ -513,7 +513,7 @@ class TestReporting:
 class TestEdgeCases:
     """Tests for edge cases and error handling."""
 
-    @patch("sbir_etl.assets.fiscal_assets.get_config")
+    @patch("sbir_analytics.assets.fiscal_assets.get_config")
     def test_fiscal_naics_coverage_check_empty_dataframe(self, mock_get_config, mock_config):
         """Test NAICS coverage check with empty DataFrame."""
         mock_get_config.return_value = mock_config
@@ -525,7 +525,7 @@ class TestEdgeCases:
         assert result.passed is False
         assert result.severity == AssetCheckSeverity.ERROR
 
-    @patch("sbir_etl.assets.fiscal_assets.get_config")
+    @patch("sbir_analytics.assets.fiscal_assets.get_config")
     def test_bea_mapping_quality_check_empty(self, mock_get_config, mock_config):
         """Test BEA mapping quality check with empty DataFrame."""
         mock_get_config.return_value = mock_config
@@ -536,8 +536,8 @@ class TestEdgeCases:
 
         assert result.passed is False
 
-    @patch("sbir_etl.assets.fiscal_assets.get_config")
-    @patch("sbir_etl.assets.fiscal_assets.RStateIOAdapter")
+    @patch("sbir_analytics.assets.fiscal_assets.get_config")
+    @patch("sbir_analytics.assets.fiscal_assets.RStateIOAdapter")
     def test_economic_impacts_computation_error(
         self,
         mock_adapter_class,
@@ -581,9 +581,9 @@ class TestEdgeCases:
         for col in required_cols:
             assert col in result.value.columns
 
-    @patch("sbir_etl.assets.fiscal_assets.get_config")
-    @patch("sbir_etl.assets.fiscal_assets.enrich_sbir_awards_with_fiscal_naics")
-    @patch("sbir_etl.assets.fiscal_assets.performance_monitor")
+    @patch("sbir_analytics.assets.fiscal_assets.get_config")
+    @patch("sbir_analytics.assets.fiscal_assets.enrich_sbir_awards_with_fiscal_naics")
+    @patch("sbir_analytics.assets.fiscal_assets.performance_monitor")
     def test_fiscal_naics_enriched_awards_no_usaspending_data(
         self,
         mock_perf_monitor,

@@ -29,7 +29,7 @@ import pytest
 
 # Neo4j fixtures (optional - skip if neo4j not installed)
 try:
-    from sbir_etl.loaders.neo4j.client import LoadMetrics, Neo4jClient, Neo4jConfig
+    from sbir_analytics.loaders.neo4j.client import LoadMetrics, Neo4jClient, Neo4jConfig
 except ImportError:
     LoadMetrics = None  # type: ignore[assignment, misc]
     Neo4jClient = None  # type: ignore[assignment, misc]

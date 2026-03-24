@@ -26,7 +26,7 @@ def test_ingest_dta_to_duckdb(tmp_path: Path):
 
     # Import the ingest helper from the project module; skip if it's not present
     try:
-        loader_mod = importlib.import_module("sbir_etl.ml.data.uspto_ai_loader")
+        loader_mod = importlib.import_module("sbir_ml.ml.data.uspto_ai_loader")
     except Exception:
         pytest.skip("uspto_ai_loader module not importable; skipping DTA ingest test")
 

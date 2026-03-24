@@ -10,7 +10,7 @@ import pytest
 
 pytestmark = pytest.mark.fast
 
-from sbir_etl.transition.features.cet_analyzer import (
+from sbir_ml.transition.features.cet_analyzer import (
     CETAnalysisResult,
     CETSignalExtractor,
     create_cet_extractor,

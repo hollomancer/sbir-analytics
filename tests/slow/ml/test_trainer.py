@@ -25,7 +25,7 @@ pytestmark = [
     pytest.mark.skipif(not RUN_SLOW, reason="Slow test suite; set PYTEST_ALLOW_SLOW=1 to run"),
 ]
 
-from sbir_etl.ml.models.trainer import CETModelTrainer
+from sbir_ml.ml.models.trainer import CETModelTrainer
 from sbir_etl.models.cet_models import TrainingDataset, TrainingExample
 
 
@@ -220,7 +220,7 @@ class TestModelTraining:
 
     def test_train_without_cv(self, sample_cet_areas, sample_config, sample_training_dataset):
         """Test training without cross-validation."""
-        with patch("sbir_etl.ml.models.trainer.ApplicabilityModel") as MockModel:
+        with patch("sbir_ml.ml.models.trainer.ApplicabilityModel") as MockModel:
             # Setup mock model
             mock_model_instance = MagicMock()
             mock_model_instance.train.return_value = {"loss": 0.5}
@@ -246,7 +246,7 @@ class TestModelTraining:
 
     def test_train_with_cv(self, sample_cet_areas, sample_config, sample_training_dataset):
         """Test training with cross-validation."""
-        with patch("sbir_etl.ml.models.trainer.ApplicabilityModel") as MockModel:
+        with patch("sbir_ml.ml.models.trainer.ApplicabilityModel") as MockModel:
             # Setup mock model
             mock_model_instance = MagicMock()
             mock_model_instance.train.return_value = {"loss": 0.5}

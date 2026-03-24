@@ -8,7 +8,7 @@ from unittest.mock import Mock, patch
 import pandas as pd
 import pytest
 
-from sbir_etl.assets.fiscal_assets import (
+from sbir_analytics.assets.fiscal_assets import (
     economic_impacts,
     economic_impacts_quality_check,
     economic_shocks,
@@ -111,7 +111,7 @@ class TestEconomicShocks:
         self, mock_context, mock_config, sample_bea_mapped_awards
     ):
         """Test economic shocks returns Output type."""
-        with patch("sbir_etl.assets.fiscal_assets.get_config", return_value=mock_config):
+        with patch("sbir_analytics.assets.fiscal_assets.get_config", return_value=mock_config):
             result = economic_shocks(mock_context, sample_bea_mapped_awards)
 
         assert hasattr(result, "value")
@@ -121,7 +121,7 @@ class TestEconomicShocks:
         self, mock_context, mock_config, sample_bea_mapped_awards
     ):
         """Test economic shocks aggregates by state and sector."""
-        with patch("sbir_etl.assets.fiscal_assets.get_config", return_value=mock_config):
+        with patch("sbir_analytics.assets.fiscal_assets.get_config", return_value=mock_config):
             result = economic_shocks(mock_context, sample_bea_mapped_awards)
 
         df = result.value
@@ -131,7 +131,7 @@ class TestEconomicShocks:
 
     def test_economic_shocks_quality_check_passes(self, sample_economic_shocks, mock_config):
         """Test economic shocks quality check passes with good data."""
-        with patch("sbir_etl.assets.fiscal_assets.get_config", return_value=mock_config):
+        with patch("sbir_analytics.assets.fiscal_assets.get_config", return_value=mock_config):
             result = economic_shocks_quality_check(sample_economic_shocks)
 
         assert result.passed
@@ -144,8 +144,8 @@ class TestEconomicImpacts:
         self, mock_context, mock_config, sample_economic_shocks
     ):
         """Test economic impacts returns Output type."""
-        with patch("sbir_etl.assets.fiscal_assets.get_config", return_value=mock_config):
-            with patch("sbir_etl.assets.fiscal_assets.RStateIOAdapter") as mock_adapter_class:
+        with patch("sbir_analytics.assets.fiscal_assets.get_config", return_value=mock_config):
+            with patch("sbir_analytics.assets.fiscal_assets.RStateIOAdapter") as mock_adapter_class:
                 mock_adapter = Mock()
                 mock_adapter.is_available.return_value = True
                 mock_adapter.get_model_version.return_value = "test-1.0"
@@ -170,7 +170,7 @@ class TestEconomicImpacts:
 
     def test_economic_impacts_quality_check_passes(self, sample_economic_impacts, mock_config):
         """Test economic impacts quality check passes with good data."""
-        with patch("sbir_etl.assets.fiscal_assets.get_config", return_value=mock_config):
+        with patch("sbir_analytics.assets.fiscal_assets.get_config", return_value=mock_config):
             result = economic_impacts_quality_check(sample_economic_impacts)
 
         assert result.passed
