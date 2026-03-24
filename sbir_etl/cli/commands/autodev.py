@@ -25,7 +25,7 @@ def discover_tasks(
     ),
 ) -> None:
     """Discover and display all available work items."""
-    from sbir_etl.autodev.orchestrator import DiscoveryConfig, discover_work
+    from sbir_analytics.autodev.orchestrator import DiscoveryConfig, discover_work
 
     project_root = project_root.resolve()
     config = DiscoveryConfig(project_root=project_root, discover_tests=include_tests)
@@ -65,7 +65,7 @@ def show_specs(
     project_root: Path = typer.Option(".", "--root", "-r", help="Project root directory"),
 ) -> None:
     """Show Kiro specification status overview."""
-    from sbir_etl.autodev.task_parser import discover_specs
+    from sbir_analytics.autodev.task_parser import discover_specs
 
     project_root = project_root.resolve()
     specs_root = project_root / ".kiro" / "specs"

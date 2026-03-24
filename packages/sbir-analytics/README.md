@@ -2,9 +2,9 @@
 
 Full SBIR analytics pipeline including Dagster orchestration, CLI, ML, and Neo4j.
 
-This is a convenience metapackage that installs [`sbir-etl`](../../) with all extras
-enabled. If you only need the ETL library (extractors, enrichers, transformers), install
-`sbir-etl` directly.
+Installs [`sbir-etl`](../../) with all extras plus the `sbir_analytics` Python
+package containing deployment and infrastructure modules (AWS Lambda handlers,
+developer automation) that don't belong in the reusable ETL library.
 
 ## Installation
 
@@ -29,4 +29,4 @@ pip install sbir-models
 | `sbir-etl[cloud]` | + AWS S3 storage (boto3, cloudpathlib) |
 | `sbir-etl[ml]` | + ML/NLP (scikit-learn, spacy, huggingface) |
 | `sbir-etl[neo4j]` | + Neo4j graph database loader |
-| **`sbir-analytics`** | **All of the above** |
+| **`sbir-analytics`** | **All of the above** + `sbir_analytics.lambda` + `sbir_analytics.autodev` |

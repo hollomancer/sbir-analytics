@@ -3,7 +3,7 @@
 from pathlib import Path
 
 
-from sbir_etl.autodev.task_parser import (
+from sbir_analytics.autodev.task_parser import (
     SpecContext,
     SpecTask,
     TaskRisk,
