@@ -126,28 +126,39 @@ The config DI pattern means notebook/pipeline code doesn't need filesystem confi
 
 ## Updated Decision
 
-**Ship as a storage-agnostic ETL library.** The package is structured so that multiple
-consumer applications can `pip install sbir-analytics` and use the ETL functions
-(extractors, enrichers, transformers) without pulling in Dagster, Neo4j, CLI tools,
-or ML dependencies. Each consumer chooses its own storage backend (Neo4j, Postgres,
-S3, etc.) by loading the ETL output (Pydantic models / DataFrames) into its own
-persistence layer.
+**Ship `sbir-etl` as the reusable Python library. Ship `sbir-analytics` as the full
+pipeline metapackage.** Multiple consumer applications can `pip install sbir-etl` and
+use the ETL functions (extractors, enrichers, transformers) without pulling in Dagster,
+Neo4j, CLI tools, or ML dependencies. Each consumer chooses its own storage backend
+(Neo4j, Postgres, S3, etc.) by loading the ETL output (Pydantic models / DataFrames)
+into its own persistence layer.
+
+### Package Hierarchy
+
+```
+sbir-models       Only Pydantic models (~5 MB, pydantic only)
+    ↑
+sbir-etl          ETL library (~135 MB, core deps)
+    ↑
+sbir-analytics    Full pipeline (~380 MB, metapackage = sbir-etl[all])
+```
 
 ### Install Profiles
 
 ```bash
-# ETL library only (extractors, enrichers, transformers, models, config)
+# ETL library (extractors, enrichers, transformers, models, config)
+pip install sbir-etl
+
+# Full pipeline (Dagster + CLI + S3 + ML + Neo4j)
 pip install sbir-analytics
+# equivalent to: pip install sbir-etl[pipeline,cli,cloud,ml,neo4j]
 
-# Full pipeline with Dagster orchestration, CLI, cloud, and ML
-pip install sbir-analytics[all]
-
-# À la carte
-pip install sbir-analytics[pipeline]     # + Dagster
-pip install sbir-analytics[cli]          # + sbir-cli command
-pip install sbir-analytics[cloud]        # + S3 support (boto3, cloudpathlib)
-pip install sbir-analytics[ml]           # + scikit-learn, spacy, huggingface
-pip install sbir-analytics[neo4j]        # + Neo4j graph loader
+# À la carte extras on the ETL library
+pip install sbir-etl[pipeline]     # + Dagster orchestration
+pip install sbir-etl[cli]          # + sbir-cli command
+pip install sbir-etl[cloud]        # + S3 support (boto3, cloudpathlib)
+pip install sbir-etl[ml]           # + scikit-learn, spacy, huggingface
+pip install sbir-etl[neo4j]        # + Neo4j graph loader
 
 # Just the models (no ETL deps at all)
 pip install sbir-models
@@ -176,11 +187,12 @@ load_to_neo4j(enriched_df)     # App C (uses sbir-analytics[neo4j])
 
 ### What the Refactoring Achieved
 
-1. **`sbir_etl/`** — properly namespaced, pip-installable
-2. **Optional neo4j** — consumers choose their storage backend
-3. **Config injection** — no filesystem coupling for library-style use
-4. **`sbir-models`** — truly standalone model package (only needs pydantic)
-5. **Tiered dependencies** — core deps support ETL; dagster/cli/ml/cloud are extras
+1. **`sbir-etl`** — the reusable library, pip package name matches the Python import (`sbir_etl`)
+2. **`sbir-analytics`** — metapackage for the full pipeline (`sbir-etl[all]`)
+3. **`sbir-models`** — truly standalone model package (only needs pydantic)
+4. **Optional neo4j** — consumers choose their storage backend
+5. **Config injection** — no filesystem coupling for library-style use
+6. **Tiered dependencies** — core deps support ETL; dagster/cli/ml/cloud are extras
 
 ## Runtime Dependency Analysis
 
@@ -215,19 +227,20 @@ the extras add ~245 MB for orchestration, ML, cloud, and CLI.
 ## Consequences
 
 **Positive:**
-- Multiple apps can use SBIR ETL without the full analytics stack
+- Multiple apps can `pip install sbir-etl` without the full analytics stack
+- `pip install sbir-analytics` still works for the full pipeline (backwards compat)
 - ETL output is storage-agnostic — consumers choose neo4j, postgres, S3, etc.
 - Core install is ~135 MB vs ~380 MB for the full pipeline
 - Config injection enables library-style use without filesystem coupling
 - `sbir-models` is truly standalone (no `sbir_etl` required)
-- `[all]` extra preserves backwards compat for existing full installs
 
 **Negative:**
 - Model files exist in two locations (`sbir_etl/models/` and `packages/sbir-models/`)
 - Cloud storage functions require `[cloud]` extra — callers get a clear ImportError
+- Two pip package names to maintain (`sbir-etl` and `sbir-analytics`)
 
 **Neutral:**
-- Monorepo approach avoids separate package release cycles
+- Monorepo approach avoids separate release cycles — both packages live in one repo
 
 ## Links
 

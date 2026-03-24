@@ -14,7 +14,7 @@ try:
 except ImportError as _neo4j_err:
     raise ImportError(
         "The neo4j package is required for Neo4j loaders. "
-        "Install it with: pip install sbir-analytics[neo4j]"
+        "Install it with: pip install sbir-etl[neo4j]"
     ) from _neo4j_err
 
 

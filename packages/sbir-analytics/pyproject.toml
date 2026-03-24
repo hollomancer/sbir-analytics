@@ -1,0 +1,23 @@
+[project]
+name = "sbir-analytics"
+version = "0.1.0"
+description = "Full SBIR analytics pipeline — ETL + Dagster orchestration + CLI + ML + Neo4j"
+authors = [{name = "Conrad Hollomon", email = "conrad.hollomon@pm.me"}]
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.11,<3.12"
+
+# sbir-analytics installs sbir-etl with ALL extras — the complete pipeline.
+# Use sbir-etl directly if you only need the ETL library.
+dependencies = [
+    "sbir-etl[pipeline,cli,cloud,ml,neo4j]",
+]
+
+[project.optional-dependencies]
+r = ["sbir-etl[r]"]
+paecter-local = ["sbir-etl[paecter-local]"]
+dev = ["sbir-etl[dev]"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

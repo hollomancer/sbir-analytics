@@ -54,7 +54,7 @@ def resolve_data_path(
     if is_s3:
         if S3Path is None:
             raise ImportError(
-                "S3 support requires the 'cloud' extra: pip install sbir-analytics[cloud]"
+                "S3 support requires the 'cloud' extra: pip install sbir-etl[cloud]"
             )
         # Try S3 first
         try:

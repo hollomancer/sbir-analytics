@@ -1,7 +1,7 @@
 [project]
-name = "sbir-analytics"
+name = "sbir-etl"
 version = "0.1.0"
-description = "SBIR ETL pipeline — extract, enrich, and transform SBIR/STTR awards data"
+description = "SBIR ETL library — extract, enrich, and transform SBIR/STTR awards data"
 authors = [{name = "Conrad Hollomon", email = "conrad.hollomon@pm.me"}]
 readme = "README.md"
 license = {text = "MIT"}
@@ -71,10 +71,10 @@ paecter-local = [
 ]
 # Full install — everything needed to run the complete sbir-analytics pipeline
 all = [
-    "sbir-analytics[pipeline,cli,cloud,ml,neo4j]",
+    "sbir-etl[pipeline,cli,cloud,ml,neo4j]",
 ]
 dev = [
-    "sbir-analytics[all]",
+    "sbir-etl[all]",
     "pytest>=8.0.0,<10.0.0",
     "pytest-asyncio>=0.23.0,<2.0.0",
     "pytest-xdist>=3.0.0",

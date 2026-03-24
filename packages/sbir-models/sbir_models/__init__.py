@@ -8,9 +8,9 @@ Install standalone::
 
     pip install sbir-models
 
-Or as part of the full pipeline::
+Or as part of the ETL library::
 
-    pip install sbir-analytics
+    pip install sbir-etl
 """
 
 from __future__ import annotations

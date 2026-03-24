@@ -3,7 +3,7 @@ Neo4j loaders package for SBIR graph database operations.
 
 This package requires the ``neo4j`` optional dependency.  Install it with::
 
-    pip install sbir-analytics[neo4j]
+    pip install sbir-etl[neo4j]
 
 All public symbols are lazily imported so that the rest of the ``sbir_etl``
 package can be imported without neo4j being installed.
@@ -70,7 +70,7 @@ def __getattr__(name: str) -> Any:
         except ImportError as exc:
             raise ImportError(
                 f"The neo4j package is required to use {name}. "
-                "Install it with: pip install sbir-analytics[neo4j]"
+                "Install it with: pip install sbir-etl[neo4j]"
             ) from exc
         value = getattr(mod, attr)
         globals()[name] = value

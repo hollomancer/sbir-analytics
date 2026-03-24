@@ -100,7 +100,7 @@ class PaECTERClient:
         if SentenceTransformer is None:
             raise ImportError(
                 "sentence-transformers is required for local mode. "
-                "Install with: pip install 'sbir-analytics[paecter-local]' or "
+                "Install with: pip install 'sbir-etl[paecter-local]' or "
                 "pip install sentence-transformers"
             )
 
