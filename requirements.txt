@@ -468,7 +468,7 @@ watchdog==6.0.0
     # via dagster
 watchfiles==1.1.1
     # via uvicorn
-weasel==0.4.3
+weasel==1.0.0
     # via spacy
 websockets==16.0
     # via uvicorn
