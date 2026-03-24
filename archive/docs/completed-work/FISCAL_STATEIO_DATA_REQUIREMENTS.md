@@ -179,7 +179,7 @@ fiscal_analysis:
 
 ### Step 1: Load Enriched Data
 ```python
-from src.assets.fiscal_prepared_sbir_awards import fiscal_prepared_sbir_awards
+from sbir_etl.assets.fiscal_prepared_sbir_awards import fiscal_prepared_sbir_awards
 
 # Load SBIR data enriched with USAspending + SAM.gov
 enriched_awards = fiscal_prepared_sbir_awards()
@@ -187,7 +187,7 @@ enriched_awards = fiscal_prepared_sbir_awards()
 
 ### Step 2: Map NAICS to BEA Sectors
 ```python
-from src.transformers.naics_to_bea import map_naics_to_bea
+from sbir_etl.transformers.naics_to_bea import map_naics_to_bea
 
 # Map NAICS codes to BEA sectors
 awards_with_bea = map_naics_to_bea(
@@ -199,7 +199,7 @@ awards_with_bea = map_naics_to_bea(
 
 ### Step 3: Run StateIO Model
 ```python
-from src.transformers.r_stateio_adapter import run_stateio_analysis
+from sbir_etl.transformers.r_stateio_adapter import run_stateio_analysis
 
 # Run fiscal impact analysis for each state
 fiscal_impacts = run_stateio_analysis(
@@ -213,7 +213,7 @@ fiscal_impacts = run_stateio_analysis(
 
 ### Step 4: Calculate Tax Returns
 ```python
-from src.transformers.fiscal.taxes import calculate_tax_returns
+from sbir_etl.transformers.fiscal.taxes import calculate_tax_returns
 
 # Calculate federal tax returns from economic activity
 tax_returns = calculate_tax_returns(

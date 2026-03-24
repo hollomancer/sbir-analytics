@@ -8,7 +8,7 @@ import pytest
 pytestmark = pytest.mark.fast
 
 # Import directly to avoid duckdb dependency in utils/__init__.py
-from src.utils.common.date_utils import (
+from sbir_etl.utils.common.date_utils import (
     format_date_iso,
     parse_date,
     parse_date_safe,

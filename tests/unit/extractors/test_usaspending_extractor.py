@@ -5,7 +5,7 @@ from unittest.mock import Mock, patch
 import pandas as pd
 import pytest
 
-from src.extractors.usaspending import DuckDBUSAspendingExtractor, extract_usaspending_from_config
+from sbir_etl.extractors.usaspending import DuckDBUSAspendingExtractor, extract_usaspending_from_config
 from tests.mocks import DuckDBMocks
 
 
@@ -65,7 +65,7 @@ class TestDuckDBUSAspendingExtractorInitialization:
 class TestConnectionManagement:
     """Tests for connection management."""
 
-    @patch("src.extractors.usaspending.duckdb.connect")
+    @patch("sbir_etl.extractors.usaspending.duckdb.connect")
     def test_connect_creates_connection(self, mock_connect):
         """Test connect creates new connection."""
         from tests.mocks import DuckDBMocks
@@ -80,7 +80,7 @@ class TestConnectionManagement:
         mock_connect.assert_called_once_with(":memory:")
         mock_conn.execute.assert_called_once_with("SET enable_object_cache=true")
 
-    @patch("src.extractors.usaspending.duckdb.connect")
+    @patch("sbir_etl.extractors.usaspending.duckdb.connect")
     def test_connect_reuses_existing_connection(self, mock_connect):
         """Test connect reuses existing connection."""
         from tests.mocks import DuckDBMocks
@@ -96,7 +96,7 @@ class TestConnectionManagement:
         # Should only call connect once
         assert mock_connect.call_count == 1
 
-    @patch("src.extractors.usaspending.duckdb.connect")
+    @patch("sbir_etl.extractors.usaspending.duckdb.connect")
     def test_close_connection(self, mock_connect):
         """Test close closes connection."""
         from tests.mocks import DuckDBMocks
@@ -117,7 +117,7 @@ class TestConnectionManagement:
         # Should not raise
         extractor.close()
 
-    @patch("src.extractors.usaspending.duckdb.connect")
+    @patch("sbir_etl.extractors.usaspending.duckdb.connect")
     def test_context_manager(self, mock_connect):
         """Test context manager protocol."""
         from tests.mocks import DuckDBMocks
@@ -174,7 +174,7 @@ class TestEscapeFunctions:
 class TestImportPostgresDump:
     """Tests for import_postgres_dump method."""
 
-    @patch("src.extractors.usaspending.duckdb.connect")
+    @patch("sbir_etl.extractors.usaspending.duckdb.connect")
     def test_import_nonexistent_file(self, mock_connect, tmp_path):
         """Test import raises error for nonexistent file."""
         nonexistent = tmp_path / "nonexistent.sql"
@@ -184,7 +184,7 @@ class TestImportPostgresDump:
         with pytest.raises(FileNotFoundError, match="PostgreSQL dump file not found"):
             extractor.import_postgres_dump(nonexistent)
 
-    @patch("src.extractors.usaspending.duckdb.connect")
+    @patch("sbir_etl.extractors.usaspending.duckdb.connect")
     def test_import_sql_dump(self, mock_connect, sample_dump_file):
         """Test import of plain SQL dump."""
         from tests.mocks import DuckDBMocks
@@ -200,7 +200,7 @@ class TestImportPostgresDump:
         assert result is True
         mock_import.assert_called_once()
 
-    @patch("src.extractors.usaspending.duckdb.connect")
+    @patch("sbir_etl.extractors.usaspending.duckdb.connect")
     def test_import_zipped_dump(self, mock_connect, tmp_path):
         """Test import of zipped dump."""
         zip_file = tmp_path / "usaspending.zip"
@@ -219,7 +219,7 @@ class TestImportPostgresDump:
         assert result is True
         mock_import.assert_called_once()
 
-    @patch("src.extractors.usaspending.duckdb.connect")
+    @patch("sbir_etl.extractors.usaspending.duckdb.connect")
     def test_import_gzipped_dump(self, mock_connect, tmp_path):
         """Test import of gzipped dump."""
         gz_file = tmp_path / "usaspending.gz"
@@ -238,7 +238,7 @@ class TestImportPostgresDump:
         assert result is True
         mock_import.assert_called_once()
 
-    @patch("src.extractors.usaspending.duckdb.connect")
+    @patch("sbir_etl.extractors.usaspending.duckdb.connect")
     def test_import_handles_exception(self, mock_connect, sample_dump_file):
         """Test import handles exceptions gracefully."""
         from tests.mocks import DuckDBMocks
@@ -262,7 +262,7 @@ class TestZippedDumpImport:
     """Tests for _import_zipped_dump method."""
 
     @patch("subprocess.run")
-    @patch("src.extractors.usaspending.duckdb.connect")
+    @patch("sbir_etl.extractors.usaspending.duckdb.connect")
     def test_import_zipped_dump_postgres_scanner_success(
         self, mock_connect, mock_subprocess, tmp_path
     ):
@@ -294,7 +294,7 @@ class TestZippedDumpImport:
             "CREATE OR REPLACE VIEW" in str(call) for call in mock_conn.execute.call_args_list
         )
 
-    @patch("src.extractors.usaspending.duckdb.connect")
+    @patch("sbir_etl.extractors.usaspending.duckdb.connect")
     def test_import_zipped_dump_fallback_to_copy_files(self, mock_connect, tmp_path):
         """Test zipped dump import falls back to COPY files."""
         zip_file = tmp_path / "usaspending.zip"
@@ -316,7 +316,7 @@ class TestZippedDumpImport:
         assert result is True
         mock_copy.assert_called_once()
 
-    @patch("src.extractors.usaspending.duckdb.connect")
+    @patch("sbir_etl.extractors.usaspending.duckdb.connect")
     def test_import_zipped_dump_final_fallback(self, mock_connect, tmp_path):
         """Test zipped dump import final fallback to extraction."""
         zip_file = tmp_path / "usaspending.zip"
@@ -347,7 +347,7 @@ class TestZippedDumpImport:
 class TestQueryAwards:
     """Tests for query_awards method."""
 
-    @patch("src.extractors.usaspending.duckdb.connect")
+    @patch("sbir_etl.extractors.usaspending.duckdb.connect")
     def test_query_awards_basic(self, mock_connect):
         """Test basic query_awards."""
         from tests.mocks import DuckDBMocks
@@ -365,7 +365,7 @@ class TestQueryAwards:
         assert isinstance(result, pd.DataFrame)
         assert len(result) == 3
 
-    @patch("src.extractors.usaspending.duckdb.connect")
+    @patch("sbir_etl.extractors.usaspending.duckdb.connect")
     def test_query_awards_with_filters(self, mock_connect):
         """Test query_awards with filters."""
         from tests.mocks import DuckDBMocks
@@ -385,12 +385,12 @@ class TestQueryAwards:
         executed_query = str(mock_conn.execute.call_args[0][0])
         assert "WHERE" in executed_query
 
-    @patch("src.extractors.usaspending.duckdb.connect")
+    @patch("sbir_etl.extractors.usaspending.duckdb.connect")
     def test_query_awards_with_columns(self, mock_connect):
         """Test query_awards with specific columns - columns param not implemented."""
         # columns parameter not implemented in query_awards - test removed
 
-    @patch("src.extractors.usaspending.duckdb.connect")
+    @patch("sbir_etl.extractors.usaspending.duckdb.connect")
     def test_query_awards_with_limit(self, mock_connect):
         """Test query_awards with limit."""
         from tests.mocks import DuckDBMocks
@@ -415,7 +415,7 @@ class TestQueryAwards:
 class TestGetTableInfo:
     """Tests for get_table_info method."""
 
-    @patch("src.extractors.usaspending.duckdb.connect")
+    @patch("sbir_etl.extractors.usaspending.duckdb.connect")
     def test_get_table_info_success(self, mock_connect):
         """Test get_table_info returns table information."""
         from tests.mocks import DuckDBMocks
@@ -442,7 +442,7 @@ class TestGetTableInfo:
         assert "columns" in info
         assert "row_count" in info
 
-    @patch("src.extractors.usaspending.duckdb.connect")
+    @patch("sbir_etl.extractors.usaspending.duckdb.connect")
     def test_get_table_info_table_not_found(self, mock_connect):
         """Test get_table_info handles missing table."""
         from tests.mocks import DuckDBMocks
@@ -466,7 +466,7 @@ class TestGetTableInfo:
 class TestListDumpTables:
     """Tests for list_dump_tables method."""
 
-    @patch("src.extractors.usaspending.duckdb.connect")
+    @patch("sbir_etl.extractors.usaspending.duckdb.connect")
     @patch("subprocess.run")
     def test_list_dump_tables_success(self, mock_run, mock_connect, tmp_path):
         """Test list_dump_tables lists available tables."""
@@ -498,8 +498,8 @@ class TestListDumpTables:
 class TestModuleFunctions:
     """Tests for module-level functions."""
 
-    @patch("src.extractors.usaspending.get_config")
-    @patch("src.extractors.usaspending.DuckDBUSAspendingExtractor")
+    @patch("sbir_etl.extractors.usaspending.get_config")
+    @patch("sbir_etl.extractors.usaspending.DuckDBUSAspendingExtractor")
     def test_extract_usaspending_from_config(self, mock_extractor_class, mock_get_config):
         """Test extract_usaspending_from_config function."""
         from tests.utils.config_mocks import create_mock_pipeline_config
@@ -536,7 +536,7 @@ class TestEdgeCases:
 
     def test_escape_identifier_empty_string(self):
         """Test escape_identifier with empty string."""
-        import src.extractors.usaspending as usaspending_module
+        import sbir_etl.extractors.usaspending as usaspending_module
 
         # Remove the attribute if it exists, then test fallback
         original = getattr(usaspending_module.duckdb, "escape_identifier", None)
@@ -552,7 +552,7 @@ class TestEdgeCases:
 
     def test_escape_literal_empty_string(self):
         """Test escape_literal with empty string."""
-        import src.extractors.usaspending as usaspending_module
+        import sbir_etl.extractors.usaspending as usaspending_module
 
         # Remove the attribute if it exists, then test fallback
         original = getattr(usaspending_module.duckdb, "escape_string_literal", None)
@@ -566,7 +566,7 @@ class TestEdgeCases:
             if original is not None:
                 usaspending_module.duckdb.escape_string_literal = original
 
-    @patch("src.extractors.usaspending.duckdb.connect")
+    @patch("sbir_etl.extractors.usaspending.duckdb.connect")
     def test_multiple_close_calls(self, mock_connect):
         """Test multiple close calls don't error."""
         from tests.mocks import DuckDBMocks
@@ -580,7 +580,7 @@ class TestEdgeCases:
         # Second close should not raise
         extractor.close()
 
-    @patch("src.extractors.usaspending.duckdb.connect")
+    @patch("sbir_etl.extractors.usaspending.duckdb.connect")
     def test_query_awards_empty_result(self, mock_connect):
         """Test query_awards with empty result."""
         from tests.mocks import DuckDBMocks
@@ -601,7 +601,7 @@ class TestEdgeCases:
         assert isinstance(result, pd.DataFrame)
         assert len(result) == 0
 
-    @patch("src.extractors.usaspending.duckdb.connect")
+    @patch("sbir_etl.extractors.usaspending.duckdb.connect")
     def test_import_sql_dump_execute_fails(self, mock_connect, sample_dump_file):
         """Test SQL dump import handles execution failures."""
         from tests.mocks import DuckDBMocks
@@ -618,7 +618,7 @@ class TestEdgeCases:
         # Should return False on failure
         assert result is False
 
-    @patch("src.extractors.usaspending.duckdb.connect")
+    @patch("sbir_etl.extractors.usaspending.duckdb.connect")
     def test_context_manager_with_exception(self, mock_connect):
         """Test context manager closes connection even on exception."""
         from tests.mocks import DuckDBMocks

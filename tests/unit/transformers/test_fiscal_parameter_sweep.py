@@ -6,7 +6,7 @@ import pytest
 
 pytestmark = pytest.mark.fast
 
-from src.transformers.fiscal.sensitivity import (
+from sbir_etl.transformers.fiscal.sensitivity import (
     FiscalParameterSweep,
     ParameterRange,
     ParameterScenario,

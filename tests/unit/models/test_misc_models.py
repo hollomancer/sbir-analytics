@@ -5,10 +5,10 @@ from datetime import date
 import pytest
 from pydantic import ValidationError
 
-from src.models.company import Company, CompanyMatch, RawCompany
-from src.models.ma_models import MAEvent
-from src.models.researcher import RawResearcher, Researcher
-from src.models.transitions import CompanyTransition, TransitionType
+from sbir_etl.models.company import Company, CompanyMatch, RawCompany
+from sbir_etl.models.ma_models import MAEvent
+from sbir_etl.models.researcher import RawResearcher, Researcher
+from sbir_etl.models.transitions import CompanyTransition, TransitionType
 
 
 pytestmark = pytest.mark.fast

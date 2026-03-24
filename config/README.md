@@ -85,7 +85,7 @@ Configuration is validated using Pydantic models in `src/config/schemas.py`. Thi
 ## Usage in Code
 
 ```python
-from src.config.loader import get_config
+from sbir_etl.config.loader import get_config
 
 ## Get validated configuration
 

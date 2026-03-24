@@ -55,12 +55,12 @@ except Exception:
 
 # Performance monitor/reporting utilities (import-safe)
 try:
-    from src.utils.monitoring import performance_monitor  # type: ignore
+    from sbir_etl.utils.monitoring import performance_monitor  # type: ignore
 except Exception:
     performance_monitor = None  # type: ignore
 
 try:
-    from src.utils.performance_reporting import PerformanceReporter  # type: ignore
+    from sbir_etl.utils.performance_reporting import PerformanceReporter  # type: ignore
 except Exception:
     PerformanceReporter = None  # type: ignore
 

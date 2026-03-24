@@ -5,7 +5,7 @@ import pytest
 
 pytestmark = pytest.mark.fast
 
-from src.utils.monitoring import (
+from sbir_etl.utils.monitoring import (
     MetricComparison,
     PerformanceMetrics,
     PerformanceReporter,

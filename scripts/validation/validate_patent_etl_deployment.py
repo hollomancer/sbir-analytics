@@ -156,8 +156,8 @@ class PatentETLValidator:
         try:
             import pandas as pd
 
-            from src.models.uspto_models import PatentAssignment
-            from src.transformers.patent_transformer import PatentAssignmentTransformer
+            from sbir_etl.models.uspto_models import PatentAssignment
+            from sbir_etl.transformers.patent_transformer import PatentAssignmentTransformer
         except ImportError as e:
             logger.error(f"Required dependencies not available: {e}")
             self.validation_results["stages"]["transformation"] = {
@@ -259,7 +259,7 @@ class PatentETLValidator:
             return True
 
         try:
-            from src.loaders import Neo4jClient
+            from sbir_graph.loaders import Neo4jClient
         except ImportError:
             logger.warning("Neo4j client not available - skipping connectivity check")
             self.validation_results["stages"]["neo4j_connectivity"] = {

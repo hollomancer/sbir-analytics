@@ -13,7 +13,7 @@ from typing import Any
 import pandas as pd
 from dagster import build_asset_context
 
-import src.assets.sbir_ingestion as assets_module
+import sbir_analytics.assets.sbir_ingestion as assets_module
 
 
 def parse_args() -> argparse.Namespace:

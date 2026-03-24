@@ -29,7 +29,7 @@ Successfully implemented Phase 1 Quick Wins, fixing 48 integration tests in ~1 h
 **File**: `tests/integration/cli/test_cli_integration.py`
 
 **Changes**:
-- Removed outdated `@patch("src.cli.main.CommandContext")` decorators
+- Removed outdated `@patch("sbir_etl.cli.main.CommandContext")` decorators
 - Simplified `test_main_app_help` to test actual CLI (1 passing)
 - Added skip decorators to 4 tests requiring running services
 

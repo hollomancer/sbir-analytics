@@ -7,7 +7,7 @@ import pytest
 
 pytestmark = pytest.mark.fast
 
-from src.utils.fiscal_audit_trail import FiscalAuditTrail, create_audit_trail
+from sbir_etl.utils.fiscal_audit_trail import FiscalAuditTrail, create_audit_trail
 
 
 @pytest.fixture

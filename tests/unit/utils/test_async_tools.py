@@ -8,7 +8,7 @@ import pytest
 
 pytestmark = pytest.mark.fast
 
-from src.utils.async_tools import run_sync
+from sbir_etl.utils.async_tools import run_sync
 
 
 async def simple_coro(value: int) -> int:

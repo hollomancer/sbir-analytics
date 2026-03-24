@@ -7,7 +7,7 @@ import pytest
 
 pytestmark = pytest.mark.fast
 
-from src.models import (
+from sbir_etl.models import (
     Award,
     Company,
     EnrichmentResult,

@@ -18,7 +18,7 @@ from typing import Any
 
 import pandas as pd
 
-from src.models.cet_models import CETArea, EvidenceStatement
+from sbir_etl.models.cet_models import CETArea, EvidenceStatement
 
 
 def create_sample_sbir_data(num_records: int = 3) -> pd.DataFrame:

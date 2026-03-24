@@ -16,12 +16,12 @@ import pytest
 
 pytestmark = pytest.mark.fast
 
-from src.models.quality import ChangesSummary, DataHygieneMetrics, ModuleReport
-from src.utils.reporting.analyzers.base_analyzer import AnalysisInsight, ModuleAnalyzer
-from src.utils.reporting.analyzers.cet_analyzer import CetClassificationAnalyzer
-from src.utils.reporting.analyzers.patent_analyzer import PatentAnalysisAnalyzer
-from src.utils.reporting.analyzers.sbir_analyzer import SbirEnrichmentAnalyzer
-from src.utils.reporting.analyzers.transition_analyzer import TransitionDetectionAnalyzer
+from sbir_etl.models.quality import ChangesSummary, DataHygieneMetrics, ModuleReport
+from sbir_etl.utils.reporting.analyzers.base_analyzer import AnalysisInsight, ModuleAnalyzer
+from sbir_etl.utils.reporting.analyzers.cet_analyzer import CetClassificationAnalyzer
+from sbir_etl.utils.reporting.analyzers.patent_analyzer import PatentAnalysisAnalyzer
+from sbir_etl.utils.reporting.analyzers.sbir_analyzer import SbirEnrichmentAnalyzer
+from sbir_etl.utils.reporting.analyzers.transition_analyzer import TransitionDetectionAnalyzer
 
 
 pytestmark = pytest.mark.fast

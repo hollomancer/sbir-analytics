@@ -10,8 +10,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from src.assets.usaspending_database_enrichment import _crossref_dataframe_with_sbir_gov
-from src.extractors.sbir_gov_api import SbirGovClient, SbirGovLookupIndex
+from sbir_analytics.assets.usaspending_database_enrichment import _crossref_dataframe_with_sbir_gov
+from sbir_etl.extractors.sbir_gov_api import SbirGovClient, SbirGovLookupIndex
 
 
 pytestmark = pytest.mark.fast

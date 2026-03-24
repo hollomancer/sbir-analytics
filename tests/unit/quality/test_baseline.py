@@ -15,7 +15,7 @@ import pytest
 
 pytestmark = pytest.mark.fast
 
-from src.quality.baseline import BaselineComparison, QualityBaseline, QualityBaselineManager
+from sbir_etl.quality.baseline import BaselineComparison, QualityBaseline, QualityBaselineManager
 
 
 pytestmark = pytest.mark.fast

@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from src.enrichers.usaspending.index import extract_table_sample, parse_toc_table_dat_map
+from sbir_etl.enrichers.usaspending.index import extract_table_sample, parse_toc_table_dat_map
 
 
 pytestmark = pytest.mark.fast

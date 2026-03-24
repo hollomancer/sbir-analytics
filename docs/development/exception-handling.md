@@ -117,7 +117,7 @@ except json.JSONDecodeError as e:
 ### Basic Exception Raising
 
 ```python
-from src.exceptions import ValidationError, APIError, FileSystemError
+from sbir_etl.exceptions import ValidationError, APIError, FileSystemError
 
 # Input validation
 if not award_id:
@@ -153,7 +153,7 @@ if response.status_code != 200:
 Use `wrap_exception` to convert standard Python or library exceptions:
 
 ```python
-from src.exceptions import wrap_exception, APIError, FileSystemError
+from sbir_etl.exceptions import wrap_exception, APIError, FileSystemError
 import httpx
 
 # Wrap HTTP errors
@@ -185,7 +185,7 @@ except IOError as e:
 Use specific exception classes for each ETL stage:
 
 ```python
-from src.exceptions import (
+from sbir_etl.exceptions import (
     ExtractionError,
     ValidationError,
     EnrichmentError,
@@ -321,7 +321,7 @@ def enrich_awards(awards: pd.DataFrame) -> pd.DataFrame:
 Use structured logging with exception metadata:
 
 ```python
-from src.exceptions import APIError
+from sbir_etl.exceptions import APIError
 import logging
 
 logger = logging.getLogger(__name__)
@@ -366,7 +366,7 @@ raise ValidationError(
 Use the test utilities in `tests/utils/exception_helpers.py`:
 
 ```python
-from src.exceptions import ValidationError
+from sbir_etl.exceptions import ValidationError
 from tests.utils.exception_helpers import (
     assert_exception_structure,
     assert_raises_with_context
@@ -408,7 +408,7 @@ Exceptions integrate seamlessly with Dagster's error handling:
 
 ```python
 from dagster import asset, AssetExecutionContext
-from src.exceptions import EnrichmentError
+from sbir_etl.exceptions import EnrichmentError
 
 @asset
 def enriched_awards(context: AssetExecutionContext, raw_awards):
@@ -429,7 +429,7 @@ def enriched_awards(context: AssetExecutionContext, raw_awards):
 Exceptions serialize to JSON for structured logging systems:
 
 ```python
-from src.exceptions import APIError
+from sbir_etl.exceptions import APIError
 
 try:
     call_api()

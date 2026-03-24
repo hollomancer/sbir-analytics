@@ -20,7 +20,7 @@ pytestmark = pytest.mark.fast
 
 import pytest
 
-from src.utils.metrics import MetricsCollector, PipelineMetrics
+from sbir_etl.utils.metrics import MetricsCollector, PipelineMetrics
 
 
 pytestmark = pytest.mark.fast
@@ -246,7 +246,7 @@ class TestMetricsCollector:
 
     def test_persist_metrics_not_found(self, tmp_path):
         """Test persisting non-existent metrics."""
-        from src.exceptions import ValidationError
+        from sbir_etl.exceptions import ValidationError
 
         collector = MetricsCollector(output_dir=tmp_path)
 

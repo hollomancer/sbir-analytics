@@ -33,10 +33,10 @@ if _workspace_root_str not in sys.path:
 import pandas as pd
 from loguru import logger
 
-from src.config.loader import get_config
-from src.enrichers.usaspending import enrich_sbir_with_usaspending
-from src.extractors.sbir import SbirDuckDBExtractor
-from src.utils.monitoring import performance_monitor
+from sbir_etl.config.loader import get_config
+from sbir_etl.enrichers.usaspending import enrich_sbir_with_usaspending
+from sbir_etl.extractors.sbir import SbirDuckDBExtractor
+from sbir_etl.utils.monitoring import performance_monitor
 
 
 # CLI utility functions (inline implementations)

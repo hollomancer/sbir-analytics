@@ -195,7 +195,7 @@ This shows how many nodes are in the database (will be 0 until you materialize a
 2. **Or via CLI:**
    ```bash
    docker compose --profile dev exec dagster-webserver \
-     dagster asset materialize -f src.definitions -s raw_sbir_awards
+     dagster asset materialize -f sbir_etl.definitions -s raw_sbir_awards
    ```
 
 ### Run Tests

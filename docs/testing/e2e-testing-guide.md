@@ -189,7 +189,7 @@ CI jobs are organized into three priority tiers:
   ```python
   from pathlib import Path
   import json
-  from src.utils.performance_reporting import PerformanceReporter, PerformanceMetrics
+  from sbir_etl.utils.performance_reporting import PerformanceReporter, PerformanceMetrics
 
   reporter = PerformanceReporter()
   with open("reports/benchmarks/baseline.json") as f:

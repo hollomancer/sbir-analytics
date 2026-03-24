@@ -19,7 +19,7 @@ from loguru import logger
 
 # Import config loader for default paths
 try:
-    from src.config.loader import get_config
+    from sbir_etl.config.loader import get_config
 
     _config_available = True
 except ImportError:
@@ -159,7 +159,7 @@ class USAspendingDumpProfiler:
         # Local imports to keep top-level imports stable
         import json
 
-        from src.utils.monitoring import performance_monitor
+        from sbir_etl.utils.monitoring import performance_monitor
 
         table_name = self.table_oid_map.get(table_oid, f"unknown_table_{table_oid}")
         logger.info(

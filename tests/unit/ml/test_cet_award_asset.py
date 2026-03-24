@@ -5,8 +5,8 @@ from pathlib import Path
 
 import pandas as pd
 
-from src.assets.cet import enriched_cet_award_classifications
-from src.ml.models.dummy_pipeline import DummyPipeline
+from sbir_analytics.assets.cet import enriched_cet_award_classifications
+from sbir_ml.ml.models.dummy_pipeline import DummyPipeline
 
 
 def _write_configs(root: Path):

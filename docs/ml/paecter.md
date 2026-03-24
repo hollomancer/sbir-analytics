@@ -127,20 +127,20 @@ export HF_TOKEN="your_huggingface_token"
 
 ```bash
 # Materialize all PaECTER assets
-dagster asset materialize -m src.definitions --select "paecter*"
+dagster asset materialize -m sbir_etl.definitions --select "paecter*"
 
 # Materialize specific asset
-dagster asset materialize -m src.definitions --select paecter_embeddings_awards
+dagster asset materialize -m sbir_etl.definitions --select paecter_embeddings_awards
 
 # Run the complete PaECTER job
-dagster job execute -m src.definitions -j paecter_job
+dagster job execute -m sbir_etl.definitions -j paecter_job
 ```
 
 ### Programmatic Usage
 
 ```python
-from src.ml.paecter_client import PaECTERClient
-from src.ml.config import PaECTERClientConfig
+from sbir_etl.ml.paecter_client import PaECTERClient
+from sbir_etl.ml.config import PaECTERClientConfig
 
 # Initialize client (API mode)
 client = PaECTERClient(config=PaECTERClientConfig(use_local=False))

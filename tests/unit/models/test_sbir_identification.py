@@ -2,7 +2,7 @@
 
 import pytest
 
-from src.models.sbir_identification import (
+from sbir_etl.models.sbir_identification import (
     ALL_SBIR_ALNS,
     EXCLUSIVE_SBIR_ALNS,
     RESEARCH_CODE_DETAIL,

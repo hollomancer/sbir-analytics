@@ -34,7 +34,7 @@ def test_signals_and_boosts_for_name_fuzzy(monkeypatch, tmp_path):
 
     # Import locally so env/working dir changes apply
     from dagster import build_asset_context
-    from src.assets.transition import transformed_transition_scores
+    from sbir_analytics.assets.transition import transformed_transition_scores
 
     # Contracts sample: one contract intended to match A2 by fuzzy name; include fields for all boosts
     contracts_df = pd.DataFrame(

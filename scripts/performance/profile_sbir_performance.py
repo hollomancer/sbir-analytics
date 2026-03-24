@@ -25,9 +25,9 @@ from typing import Any
 import pandas as pd
 from loguru import logger
 
-from src.config.loader import get_config
-from src.extractors.sbir import SbirDuckDBExtractor
-from src.validators.sbir_awards import validate_sbir_awards
+from sbir_etl.config.loader import get_config
+from sbir_etl.extractors.sbir import SbirDuckDBExtractor
+from sbir_etl.validators.sbir_awards import validate_sbir_awards
 
 
 def get_memory_usage() -> dict[str, float]:

@@ -5,7 +5,7 @@ import types
 import pytest
 from dagster import JobDefinition, SensorDefinition
 
-from src import assets as assets_pkg
+from sbir_etl import assets as assets_pkg
 
 
 pytestmark = pytest.mark.fast
@@ -18,12 +18,12 @@ def test_iter_asset_modules_discovers_expected_packages():
     assert modules, "Expected at least one asset module to be discovered"
 
     module_names = {module.__name__ for module in modules}
-    assert "src.assets.sbir_ingestion" in module_names
-    assert "src.assets.uspto.extraction" in module_names
-    assert "src.assets.transition.detections" in module_names
+    assert "sbir_analytics.assets.sbir_ingestion" in module_names
+    assert "sbir_analytics.assets.uspto.extraction" in module_names
+    assert "sbir_analytics.assets.transition.detections" in module_names
     # Jobs/sensors should be excluded
-    assert "src.assets.jobs.transition_job" not in module_names
-    assert all(not name.startswith("src.assets.sensors") for name in module_names)
+    assert "sbir_analytics.assets.jobs.transition_job" not in module_names
+    assert all(not name.startswith("sbir_analytics.assets.sensors") for name in module_names)
 
 
 def test_iter_job_modules_discovers_job_packages():
@@ -36,8 +36,8 @@ def test_iter_job_modules_discovers_job_packages():
     )
 
     module_names = {module.__name__ for module in modules}
-    assert "src.assets.jobs.transition_job" in module_names
-    assert "src.assets.jobs.fiscal_returns_job" in module_names
+    assert "sbir_analytics.assets.jobs.transition_job" in module_names
+    assert "sbir_analytics.assets.jobs.fiscal_returns_job" in module_names
 
 
 def test_iter_public_jobs_returns_job_definitions():

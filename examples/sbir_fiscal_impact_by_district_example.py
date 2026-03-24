@@ -28,7 +28,7 @@ from examples.sbir_fiscal_impact_example_mock import (
 )
 
 # Import district-specific components
-from src.transformers.fiscal.district_allocator import (
+from sbir_etl.transformers.fiscal.district_allocator import (
     allocate_state_impacts_to_districts,
     summarize_by_district,
     compare_districts_within_state,

@@ -5,7 +5,7 @@ import pytest
 
 pytestmark = pytest.mark.fast
 
-from src.enrichers.matching import (
+from sbir_etl.enrichers.matching import (
     ENHANCED_ABBREVIATIONS,
     MatchingConfig,
     apply_enhanced_abbreviations,

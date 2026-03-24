@@ -9,7 +9,7 @@ from pydantic import ValidationError
 
 pytestmark = pytest.mark.fast
 
-from src.models.fiscal_models import (
+from sbir_etl.models.fiscal_models import (
     EconomicShock,
     FiscalReturnSummary,
     GeographicResolution,

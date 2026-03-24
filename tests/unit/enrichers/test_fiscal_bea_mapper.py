@@ -18,7 +18,7 @@ from unittest.mock import MagicMock, patch
 import pandas as pd
 import pytest
 
-from src.enrichers.fiscal_bea_mapper import (
+from sbir_etl.enrichers.fiscal_bea_mapper import (
     BEAMappingStatistics,
     NAICSToBEAMapper,
     NAICSToBEAResult,
@@ -357,7 +357,7 @@ class TestHelperFunctions:
             }
         )
 
-        with patch("src.enrichers.fiscal_bea_mapper.NAICSToBEAMapper") as mock_mapper_class:
+        with patch("sbir_etl.enrichers.fiscal_bea_mapper.NAICSToBEAMapper") as mock_mapper_class:
             mock_instance = MagicMock()
             mock_instance.enrich_awards_with_bea_sectors.return_value = awards_df
             mock_instance.get_mapping_statistics.return_value = BEAMappingStatistics(

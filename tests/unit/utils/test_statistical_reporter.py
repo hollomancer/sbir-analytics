@@ -12,14 +12,14 @@ import pytest
 
 pytestmark = pytest.mark.fast
 
-from src.models.quality import ChangesSummary, DataHygieneMetrics, ModuleReport, StatisticalReport
-from src.models.statistical_reports import (
+from sbir_etl.models.quality import ChangesSummary, DataHygieneMetrics, ModuleReport, StatisticalReport
+from sbir_etl.models.statistical_reports import (
     ModuleMetrics,
     PerformanceMetrics,
     PipelineMetrics,
     ReportCollection,
 )
-from src.utils.statistical_reporter import StatisticalReporter
+from sbir_etl.utils.statistical_reporter import StatisticalReporter
 
 
 # ==================== Fixtures ====================
@@ -455,7 +455,7 @@ class TestFormatGeneration:
         assert md_path.suffix == ".md"
         assert "# Pipeline Statistical Report" in content
 
-    @patch("src.utils.reporting.formats.html_processor.PLOTLY_AVAILABLE", False)
+    @patch("sbir_etl.utils.reporting.formats.html_processor.PLOTLY_AVAILABLE", False)
     def test_generate_html_report_no_plotly(self, temp_output_dir, sample_statistical_report):
         """Test HTML report generation without Plotly."""
         reporter = StatisticalReporter(output_dir=temp_output_dir)
@@ -489,7 +489,7 @@ class TestFormatGeneration:
 class TestPipelineMetrics:
     """Tests for pipeline metrics collection."""
 
-    @patch("src.utils.statistical_reporter.performance_monitor")
+    @patch("sbir_etl.utils.statistical_reporter.performance_monitor")
     def test_collect_pipeline_metrics(self, mock_perf_monitor, temp_output_dir):
         """Test collection of pipeline metrics."""
         reporter = StatisticalReporter(output_dir=temp_output_dir)
@@ -519,7 +519,7 @@ class TestPipelineMetrics:
 class TestReportCollection:
     """Tests for comprehensive report collection."""
 
-    @patch("src.utils.statistical_reporter.performance_monitor")
+    @patch("sbir_etl.utils.statistical_reporter.performance_monitor")
     def test_generate_reports(self, mock_perf_monitor, temp_output_dir):
         """Test comprehensive report generation."""
         reporter = StatisticalReporter(output_dir=temp_output_dir)
@@ -540,7 +540,7 @@ class TestReportCollection:
         assert collection.run_id == "run_123"
         assert len(collection.artifacts) > 0
 
-    @patch("src.utils.statistical_reporter.performance_monitor")
+    @patch("sbir_etl.utils.statistical_reporter.performance_monitor")
     def test_generate_reports_with_ci_context(self, mock_perf_monitor, temp_output_dir):
         """Test report generation with CI context."""
         config = {"ci": {"upload_artifacts": False}}
@@ -592,7 +592,7 @@ class TestHTMLGeneration:
 class TestCIIntegration:
     """Tests for CI/CD integration."""
 
-    @patch("src.utils.statistical_reporter.Path.write_text")
+    @patch("sbir_etl.utils.statistical_reporter.Path.write_text")
     def test_handle_ci_integration(self, mock_write_text, temp_output_dir, sample_pipeline_metrics):
         """Test CI integration handling."""
         reporter = StatisticalReporter(output_dir=temp_output_dir)
@@ -655,7 +655,7 @@ class TestEdgeCases:
         """Test report generation without explicit run_id."""
         reporter = StatisticalReporter(output_dir=temp_output_dir)
 
-        with patch("src.utils.statistical_reporter.performance_monitor"):
+        with patch("sbir_etl.utils.statistical_reporter.performance_monitor"):
             collection = reporter.generate_reports({})
 
         assert collection.run_id.startswith("run_")
@@ -708,7 +708,7 @@ class TestEdgeCases:
         """Test pipeline metrics collection with no modules."""
         reporter = StatisticalReporter(output_dir=temp_output_dir)
 
-        with patch("src.utils.statistical_reporter.performance_monitor"):
+        with patch("sbir_etl.utils.statistical_reporter.performance_monitor"):
             run_context = {"run_id": "run_123"}
             pipeline_metrics = reporter._collect_pipeline_metrics("run_123", run_context)
 

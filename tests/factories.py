@@ -7,8 +7,8 @@ test data objects with sensible defaults, reducing boilerplate in tests.
 from datetime import UTC, date, datetime
 from typing import Any
 
-from src.models.award import Award, RawAward
-from src.models.cet_models import (
+from sbir_etl.models.award import Award, RawAward
+from sbir_etl.models.cet_models import (
     CETAssessment,
     CETClassification,
     ClassificationLevel,
@@ -459,7 +459,7 @@ class EconomicShockFactory:
     def create(**kwargs: Any):
         """Create an EconomicShock instance with sensible defaults."""
         from decimal import Decimal
-        from src.models.fiscal_models import EconomicShock
+        from sbir_etl.models.fiscal_models import EconomicShock
 
         defaults = {
             "state": "CA",
@@ -483,7 +483,7 @@ class FiscalReturnSummaryFactory:
     def create(**kwargs: Any):
         """Create a FiscalReturnSummary instance with sensible defaults."""
         from decimal import Decimal
-        from src.models.fiscal_models import FiscalReturnSummary
+        from sbir_etl.models.fiscal_models import FiscalReturnSummary
 
         defaults = {
             "analysis_id": "ANALYSIS-001",
@@ -509,7 +509,7 @@ class NAICSMappingFactory:
     @staticmethod
     def create(**kwargs: Any):
         """Create a NAICSMapping instance with sensible defaults."""
-        from src.models.fiscal_models import NAICSMapping
+        from sbir_etl.models.fiscal_models import NAICSMapping
 
         defaults = {
             "award_id": "AWARD-001",
@@ -531,7 +531,7 @@ class VendorMatchFactory:
     @staticmethod
     def create(**kwargs: Any):
         """Create a VendorMatch instance with sensible defaults."""
-        from src.models.contract_models import VendorMatch
+        from sbir_etl.models.contract_models import VendorMatch
 
         defaults = {
             "vendor_id": "VENDOR-001",
@@ -551,7 +551,7 @@ class ContractPartyFactory:
     @staticmethod
     def create(**kwargs: Any):
         """Create a ContractParty instance with sensible defaults."""
-        from src.models.contract_models import ContractParty
+        from sbir_etl.models.contract_models import ContractParty
 
         defaults = {
             "name": "Test Vendor Inc",
@@ -574,7 +574,7 @@ class CompanyTransitionFactory:
     @staticmethod
     def create(**kwargs: Any):
         """Create a CompanyTransition instance with sensible defaults."""
-        from src.models.transitions import CompanyTransition, TransitionType
+        from sbir_etl.models.transitions import CompanyTransition, TransitionType
 
         defaults = {
             "company_id": 123,
@@ -593,7 +593,7 @@ class PatentFactory:
     @staticmethod
     def create(**kwargs: Any):
         """Create a Patent instance with sensible defaults."""
-        from src.models.patent import Patent
+        from sbir_etl.models.patent import Patent
 
         defaults = {
             "patent_number": "US123456",
@@ -625,7 +625,7 @@ class FederalContractFactory:
     @staticmethod
     def create(**kwargs: Any):
         """Create a FederalContract instance with sensible defaults."""
-        from src.models.transition_models import CompetitionType, FederalContract
+        from sbir_etl.models.transition_models import CompetitionType, FederalContract
 
         defaults = {
             "contract_id": "C123",

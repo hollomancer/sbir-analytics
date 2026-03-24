@@ -8,9 +8,9 @@ import pytest
 
 pytestmark = pytest.mark.fast
 
-from src.cli.integration.dagster_client import DagsterClient
-from src.cli.integration.metrics_collector import MetricsCollector
-from src.cli.integration.neo4j_client import Neo4jClient
+from sbir_analytics.cli.integration.dagster_client import DagsterClient
+from sbir_analytics.cli.integration.metrics_collector import MetricsCollector
+from sbir_analytics.cli.integration.neo4j_client import Neo4jClient
 
 
 class TestDagsterClient:
@@ -83,8 +83,8 @@ class TestDagsterClient:
         # The metadata access is complex - verify basic structure
         assert status.last_run is not None
 
-    @patch("src.cli.integration.dagster_client.materialize")
-    @patch("src.cli.integration.dagster_client.AssetSelection")
+    @patch("sbir_analytics.cli.integration.dagster_client.materialize")
+    @patch("sbir_analytics.cli.integration.dagster_client.AssetSelection")
     def test_trigger_materialization(
         self, mock_selection: Mock, mock_materialize: Mock, client: DagsterClient
     ) -> None:
@@ -106,7 +106,7 @@ class TestDagsterClient:
         mock_defs.assets = []
         client._defs = mock_defs
 
-        with patch("src.cli.integration.dagster_client.AssetSelection", mock_selection_class):
+        with patch("sbir_analytics.cli.integration.dagster_client.AssetSelection", mock_selection_class):
             # Test
             result = client.trigger_materialization(asset_keys=["test_asset"])
 
@@ -142,7 +142,7 @@ class TestNeo4jClient:
         """Create Neo4jClient instance."""
         return Neo4jClient(config=mock_config, console=mock_console)
 
-    @patch("src.cli.integration.neo4j_client.GraphDatabase")
+    @patch("sbir_analytics.cli.integration.neo4j_client.GraphDatabase")
     def test_health_check_success(self, mock_graph_db: Mock, client: Neo4jClient) -> None:
         """Test successful health check."""
         # Mock driver and session
@@ -174,7 +174,7 @@ class TestNeo4jClient:
         assert health.uri == "bolt://localhost:7687"
         assert health.version == "5.0.0"
 
-    @patch("src.cli.integration.neo4j_client.GraphDatabase")
+    @patch("sbir_analytics.cli.integration.neo4j_client.GraphDatabase")
     def test_health_check_failure(self, mock_graph_db: Mock, client: Neo4jClient) -> None:
         """Test failed health check."""
         # Mock driver that raises exception
@@ -191,7 +191,7 @@ class TestNeo4jClient:
         assert health.connected is False
         assert "Connection failed" in health.error
 
-    @patch("src.cli.integration.neo4j_client.GraphDatabase")
+    @patch("sbir_analytics.cli.integration.neo4j_client.GraphDatabase")
     def test_get_statistics(self, mock_graph_db: Mock, client: Neo4jClient) -> None:
         """Test getting statistics."""
         # Mock driver and session

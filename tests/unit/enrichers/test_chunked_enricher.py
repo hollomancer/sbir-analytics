@@ -5,7 +5,7 @@ from unittest.mock import Mock, patch
 import pandas as pd
 import pytest
 
-from src.enrichers.chunked_enrichment import ChunkedEnricher
+from sbir_etl.enrichers.chunked_enrichment import ChunkedEnricher
 from tests.utils.config_mocks import create_mock_pipeline_config
 
 
@@ -64,7 +64,7 @@ def temp_checkpoint_dir(tmp_path):
 class TestChunkedEnricherInitialization:
     """Tests for ChunkedEnricher initialization."""
 
-    @patch("src.enrichers.chunked_enrichment.get_config")
+    @patch("sbir_etl.enrichers.chunked_enrichment.get_config")
     def test_initialization(
         self, mock_get_config, mock_config, sample_sbir_df, sample_recipient_df
     ):
@@ -79,7 +79,7 @@ class TestChunkedEnricherInitialization:
         assert enricher.progress is not None
         assert enricher.progress.total_records == 5
 
-    @patch("src.enrichers.chunked_enrichment.get_config")
+    @patch("sbir_etl.enrichers.chunked_enrichment.get_config")
     def test_initialization_with_checkpoint_dir(
         self, mock_get_config, mock_config, sample_sbir_df, sample_recipient_df, temp_checkpoint_dir
     ):
@@ -92,7 +92,7 @@ class TestChunkedEnricherInitialization:
 
         assert enricher.progress.checkpoint_dir == temp_checkpoint_dir
 
-    @patch("src.enrichers.chunked_enrichment.get_config")
+    @patch("sbir_etl.enrichers.chunked_enrichment.get_config")
     def test_initialization_with_config_chunk_size(
         self, mock_get_config, mock_config, sample_sbir_df, sample_recipient_df
     ):
@@ -108,7 +108,7 @@ class TestChunkedEnricherInitialization:
 class TestChunkProcessing:
     """Tests for chunk processing."""
 
-    @patch("src.enrichers.chunked_enrichment.get_config")
+    @patch("sbir_etl.enrichers.chunked_enrichment.get_config")
     def test_progress_total_chunks(
         self, mock_get_config, mock_config, sample_sbir_df, sample_recipient_df
     ):
@@ -121,7 +121,7 @@ class TestChunkProcessing:
         # 5 records / 2 chunk_size = 3 chunks
         assert enricher.progress.total_chunks == 3
 
-    @patch("src.enrichers.chunked_enrichment.get_config")
+    @patch("sbir_etl.enrichers.chunked_enrichment.get_config")
     def test_progress_single_chunk(
         self, mock_get_config, mock_config, sample_sbir_df, sample_recipient_df
     ):
@@ -166,7 +166,7 @@ class TestMemoryEstimation:
 class TestProgressMetadata:
     """Tests for progress metadata."""
 
-    @patch("src.enrichers.chunked_enrichment.get_config")
+    @patch("sbir_etl.enrichers.chunked_enrichment.get_config")
     def test_get_progress_metadata(
         self, mock_get_config, mock_config, sample_sbir_df, sample_recipient_df
     ):

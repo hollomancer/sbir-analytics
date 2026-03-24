@@ -5,7 +5,7 @@ import pytest
 
 pytestmark = pytest.mark.fast
 
-from src.ml.features.patent_features import (
+from sbir_ml.ml.features.patent_features import (
     DEFAULT_KEYWORDS_MAP,
     PatentFeatureVector,
     bag_of_keywords_features,

@@ -166,7 +166,7 @@ For unit tests, mock the integration clients:
 ```python
 from unittest.mock import Mock, patch
 
-@patch("src.cli.integration.dagster_client.DagsterInstance")
+@patch("sbir_etl.cli.integration.dagster_client.DagsterInstance")
 def test_asset_status(mock_instance):
     # Mock Dagster responses
     client = DagsterClient(config=Mock(), console=Mock())
@@ -195,7 +195,7 @@ For testing with actual Dagster and Neo4j instances:
 
 ```bash
 # Terminal 1: Start Dagster
-uv run dagster dev -m src.definitions
+uv run dagster dev -m sbir_etl.definitions
 
 # Terminal 2: Start Neo4j (if using Docker)
 docker compose up neo4j
@@ -285,7 +285,7 @@ def test_new_command():
 
 ```python
 from unittest.mock import Mock
-from src.cli.display.metrics import create_metrics_table
+from sbir_etl.cli.display.metrics import create_metrics_table
 
 def test_metrics_table():
     """Test metrics table creation."""
@@ -332,7 +332,7 @@ uv sync
 uv run python -c "import rich; print('OK')"
 
 # Verify CLI imports
-uv run python -c "from src.cli.main import app; print('OK')"
+uv run python -c "from sbir_etl.cli.main import app; print('OK')"
 ```
 
 ### Mock Issues

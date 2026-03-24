@@ -5,7 +5,7 @@ import os
 import boto3
 import pytest
 
-from src.utils.cloud_storage import build_s3_path, resolve_data_path
+from sbir_etl.utils.cloud_storage import build_s3_path, resolve_data_path
 
 
 pytestmark = [pytest.mark.integration, pytest.mark.s3, pytest.mark.requires_aws]

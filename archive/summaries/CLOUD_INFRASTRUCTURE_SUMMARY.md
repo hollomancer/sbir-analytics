@@ -119,7 +119,7 @@ s3://sbir-etl-production-data/
 locations:
   - location_name: sbir-analytics-production
     code_source:
-      python_module: src.definitions
+      python_module: sbir_etl.definitions
     build:
       python_version: "3.11"
 ```
@@ -417,7 +417,7 @@ Final State
 ### Production Deployment Stack
 ```
 Dagster Cloud Serverless
-├── Code Location: src.definitions
+├── Code Location: sbir_etl.definitions
 ├── Orchestrates: Extraction, validation, enrichment, loading
 ├── Compute: Dagster Cloud managed
 └── Monitoring: Built-in Dagster observability

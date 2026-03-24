@@ -8,7 +8,7 @@ import sys
 
 from neo4j import GraphDatabase
 
-from src.config.loader import get_config
+from sbir_etl.config.loader import get_config
 
 
 def parse_args() -> argparse.Namespace:

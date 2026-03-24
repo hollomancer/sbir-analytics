@@ -10,12 +10,12 @@ import pytest
 
 pytestmark = pytest.mark.fast
 
-from src.models.enrichment import (
+from sbir_etl.models.enrichment import (
     EnrichmentFreshnessRecord,
     EnrichmentFreshnessRecordModel,
     EnrichmentStatus,
 )
-from src.utils.enrichment_freshness import FreshnessStore, update_freshness_ledger
+from sbir_etl.utils.enrichment_freshness import FreshnessStore, update_freshness_ledger
 
 
 @pytest.fixture

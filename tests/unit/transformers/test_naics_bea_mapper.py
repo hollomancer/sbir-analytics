@@ -2,7 +2,7 @@
 
 import pytest
 
-from src.transformers.naics_bea_mapper import NAICSBEAMapper
+from sbir_etl.transformers.naics_bea_mapper import NAICSBEAMapper
 
 
 pytestmark = pytest.mark.fast

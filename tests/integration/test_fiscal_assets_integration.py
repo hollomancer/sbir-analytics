@@ -11,7 +11,7 @@ import pytest
 pytestmark = pytest.mark.integration
 from dagster import build_asset_context
 
-import src.assets.fiscal_assets as fiscal_assets
+import sbir_analytics.assets.fiscal_assets as fiscal_assets
 
 
 @pytest.fixture
@@ -85,7 +85,7 @@ def sample_impacts():
 class TestFiscalDataPreparationAssets:
     """Test fiscal data preparation assets."""
 
-    @patch("src.enrichers.geographic_resolver.resolve_award_geography")
+    @patch("sbir_etl.enrichers.geographic_resolver.resolve_award_geography")
     def test_fiscal_prepared_sbir_awards(self, mock_resolve, sample_fiscal_naics_enriched):
         """Test fiscal_prepared_sbir_awards asset."""
         # Mock geographic resolution
@@ -102,7 +102,7 @@ class TestFiscalDataPreparationAssets:
             "resolved_state" in result.value.columns or "fiscal_state_code" in result.value.columns
         )
 
-    @patch("src.assets.fiscal_assets.adjust_awards_for_inflation")
+    @patch("sbir_analytics.assets.fiscal_assets.adjust_awards_for_inflation")
     def test_inflation_adjusted_awards(self, mock_adjust, sample_fiscal_naics_enriched):
         """Test inflation_adjusted_awards asset."""
         # Mock inflation adjustment

@@ -203,7 +203,7 @@ test-s3: ## Test S3 integration (requires AWS credentials)
 lint: ## Run linting and type checking
 	@$(call info,Running linting and type checking)
 	$(call run,uv run ruff check .)
-	$(call run,uv run mypy src/)
+	$(call run,uv run mypy sbir_etl/)
 
 .PHONY: format
 format: ## Format code

@@ -5,8 +5,8 @@ from decimal import Decimal
 import pandas as pd
 import pytest
 
-from src.exceptions import ValidationError
-from src.transformers.economic_model_interface import EconomicImpactResult, EconomicModelInterface
+from sbir_etl.exceptions import ValidationError
+from sbir_etl.transformers.economic_model_interface import EconomicImpactResult, EconomicModelInterface
 
 
 pytestmark = pytest.mark.fast

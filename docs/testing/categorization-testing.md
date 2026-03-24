@@ -13,7 +13,7 @@ This guide explains how to test the company categorization system at different l
 2. **Verify Installation**
 
    ```bash
-   uv run python -c "from src.transformers.company_categorization import classify_contract; print('✓ Imports working')"
+   uv run python -c "from sbir_etl.transformers.company_categorization import classify_contract; print('✓ Imports working')"
    ```
 
 ---
@@ -67,7 +67,7 @@ uv run python
 ```
 
 ```python
->>> from src.transformers.company_categorization import classify_contract
+>>> from sbir_etl.transformers.company_categorization import classify_contract
 
 >>> # Test 1: Numeric PSC → Product
 >>> contract = {
@@ -94,7 +94,7 @@ Product (psc_numeric, confidence: 0.9)
 Service (contract_type)
 
 >>> # Test 3: Company aggregation
->>> from src.transformers.company_categorization import aggregate_company_classification
+>>> from sbir_etl.transformers.company_categorization import aggregate_company_classification
 >>> contracts = [
 ...     {"classification": "Product", "award_amount": 300000, "psc": "1234"},
 ...     {"classification": "Service", "award_amount": 100000, "psc": "R425"}
@@ -118,8 +118,8 @@ uv run python
 
 ```python
 >>> import pandas as pd
->>> from src.extractors.usaspending import DuckDBUSAspendingExtractor
->>> from src.enrichers.company_categorization import retrieve_company_contracts
+>>> from sbir_etl.extractors.usaspending import DuckDBUSAspendingExtractor
+>>> from sbir_etl.enrichers.company_categorization import retrieve_company_contracts
 
 >>> # Initialize extractor
 >>> extractor = DuckDBUSAspendingExtractor(":memory:")
@@ -144,9 +144,9 @@ To test against this dataset:
 
 ```python
 import pandas as pd
-from src.extractors.usaspending import DuckDBUSAspendingExtractor
-from src.enrichers.company_categorization import retrieve_company_contracts
-from src.transformers.company_categorization import (
+from sbir_etl.extractors.usaspending import DuckDBUSAspendingExtractor
+from sbir_etl.enrichers.company_categorization import retrieve_company_contracts
+from sbir_etl.transformers.company_categorization import (
     classify_contract,
     aggregate_company_classification
 )
@@ -210,8 +210,8 @@ print(f"Total Contracts: {company_result.award_count}")
 
 ```python
 from dagster import build_asset_context, materialize
-from src.assets.company_categorization import enriched_sbir_companies_with_categorization
-from src.assets.sbir_ingestion import validated_sbir_awards
+from sbir_etl.assets.company_categorization import enriched_sbir_companies_with_categorization
+from sbir_etl.assets.sbir_ingestion import validated_sbir_awards
 
 # Materialize the categorization asset
 result = materialize(
@@ -234,7 +234,7 @@ Create integration tests in `tests/test_company_categorization.py`:
 ```python
 import pytest
 import pandas as pd
-from src.transformers.company_categorization import (
+from sbir_etl.transformers.company_categorization import (
     classify_contract,
     aggregate_company_classification
 )
@@ -366,7 +366,7 @@ export PYTHONPATH=/home/user/sbir-analytics
 
 ```bash
 # Check DuckDB database path
-uv run python -c "from src.config.loader import get_config; print(get_config().duckdb.database_path)"
+uv run python -c "from sbir_etl.config.loader import get_config; print(get_config().duckdb.database_path)"
 
 # Verify USAspending dump is loaded
 # Check config/base.yaml: paths.usaspending_dump_file

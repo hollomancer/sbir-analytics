@@ -2,7 +2,7 @@
 
 import pytest
 
-from src.assets.asset_naming_standards import (
+from sbir_analytics.assets.asset_naming_standards import (
     ASSET_RENAMING_MAP,
     GROUP_RENAMING_MAP,
     AssetNamingStandards,

@@ -107,7 +107,7 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
 
           dagster job execute \
-            -m src.definitions \
+            -m sbir_etl.definitions \
             -j "$JOB_NAME" \
             2>&1 | tee sbir_output.txt
 
@@ -158,7 +158,7 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
 
           dagster job execute \
-            -m src.definitions \
+            -m sbir_etl.definitions \
             -j usaspending_iterative_enrichment_job \
             2>&1 | tee usaspending_output.txt
 
@@ -232,7 +232,7 @@ jobs:
           # Note: uspto_validation_job requires full Patent Assignment Dataset
           # (assignment, assignee, assignor tables). Using AI extraction for now.
           dagster job execute \
-            -m src.definitions \
+            -m sbir_etl.definitions \
             -j uspto_ai_extraction_job \
             2>&1 | tee uspto_output.txt
 
@@ -279,7 +279,7 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
 
           dagster job execute \
-            -m src.definitions \
+            -m sbir_etl.definitions \
             -j cet_full_pipeline_job \
             2>&1 | tee cet_output.txt
 

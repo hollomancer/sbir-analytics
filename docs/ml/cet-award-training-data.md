@@ -178,7 +178,7 @@ Python (CSV):
 
 ```python
 from pathlib import Path
-from src.ml.data.award_training_loader import AwardTrainingLoader
+from sbir_etl.ml.data.award_training_loader import AwardTrainingLoader
 
 loader = AwardTrainingLoader(
     taxonomy_version="NSTC-2025Q1",
@@ -204,7 +204,7 @@ Python (NDJSON):
 
 ```python
 from pathlib import Path
-from src.ml.data.award_training_loader import load_training_dataset
+from sbir_etl.ml.data.award_training_loader import load_training_dataset
 
 dataset = load_training_dataset(
     Path("data/processed/cet_award_training.ndjson"),
@@ -216,7 +216,7 @@ Persisting to NDJSON for portability:
 
 ```python
 from pathlib import Path
-from src.ml.data.award_training_loader import save_dataset_ndjson, save_dataset_metadata_json
+from sbir_etl.ml.data.award_training_loader import save_dataset_ndjson, save_dataset_metadata_json
 
 out_data = Path("data/processed/cet_award_training_clean.ndjson")
 out_meta = Path("data/processed/cet_award_training_clean.metadata.json")
@@ -233,8 +233,8 @@ To train the CET classifier using the `TrainingDataset`:
 
 ```python
 from pathlib import Path
-from src.ml.config.taxonomy_loader import TaxonomyLoader
-from src.ml.models.trainer import CETModelTrainer
+from sbir_etl.ml.config.taxonomy_loader import TaxonomyLoader
+from sbir_etl.ml.models.trainer import CETModelTrainer
 
 ## 1) Load taxonomy and classification config
 

@@ -37,8 +37,8 @@ See `.kiro/specs/statistical_reporting/tasks.md` for detailed implementation pro
 
 ```python
 from datetime import datetime, timedelta
-from src.utils.statistical_reporter import StatisticalReporter
-from src.models.quality import DataHygieneMetrics, ChangesSummary
+from sbir_etl.utils.statistical_reporter import StatisticalReporter
+from sbir_etl.models.quality import DataHygieneMetrics, ChangesSummary
 
 ## Initialize reporter
 
@@ -136,7 +136,7 @@ patent_report = reporter.generate_module_report(
 #### Generating Executive Dashboards
 
 ```python
-from src.utils.statistical_reporter import StatisticalReporter
+from sbir_etl.utils.statistical_reporter import StatisticalReporter
 
 ## Initialize reporter with executive reporting enabled
 
@@ -344,7 +344,7 @@ Reports are automatically generated in CI workflows:
 
   run: |
     python -c "
-    from src.utils.statistical_reporter import StatisticalReporter
+    from sbir_etl.utils.statistical_reporter import StatisticalReporter
     reporter = StatisticalReporter()
     # Generate reports for CI run
     "

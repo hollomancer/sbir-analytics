@@ -175,7 +175,7 @@ def run_analysis(
     """Run benchmark evaluation and sensitivity analysis."""
     import pandas as pd
 
-    from src.transition.analysis.benchmark_evaluator import BenchmarkEligibilityEvaluator
+    from sbir_ml.transition.analysis.benchmark_evaluator import BenchmarkEligibilityEvaluator
 
     output_dir = Path("data/scripts_output")
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -227,7 +227,7 @@ def run_analysis(
         if not candidates:
             print("No companies subject to commercialization benchmark; skipping USAspending fetch.")
         elif usaspending_api:
-            from src.transition.analysis.usaspending_commercialization import (
+            from sbir_ml.transition.analysis.usaspending_commercialization import (
                 fetch_commercialization_from_api,
             )
 
@@ -247,7 +247,7 @@ def run_analysis(
                 total_obligations = commercialization_df["total_sales_and_investment"].sum()
                 print(f"Total federal obligations: ${total_obligations:,.0f}")
         else:
-            from src.transition.analysis.usaspending_commercialization import (
+            from sbir_ml.transition.analysis.usaspending_commercialization import (
                 build_commercialization_from_usaspending,
             )
 

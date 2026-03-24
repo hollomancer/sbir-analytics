@@ -32,7 +32,7 @@
 
 ### 2. CLI Tests - Missing CommandContext (5 tests, 4%)
 
-**Root Cause**: Tests mock `src.cli.main.CommandContext` which doesn't exist
+**Root Cause**: Tests mock `sbir_etl.cli.main.CommandContext` which doesn't exist
 
 **Affected Tests**:
 - `test_cli_integration.py::test_main_app_help`
@@ -41,9 +41,9 @@
 - `test_cli_integration.py::test_ingest_dry_run`
 - `test_cli_integration.py::test_error_handling`
 
-**Error**: `AttributeError: <module 'src.cli.main'> does not have the attribute 'CommandContext'`
+**Error**: `AttributeError: <module 'sbir_etl.cli.main'> does not have the attribute 'CommandContext'`
 
-**Fix**: Remove `@patch("src.cli.main.CommandContext")` decorators and update tests to work with current CLI structure
+**Fix**: Remove `@patch("sbir_etl.cli.main.CommandContext")` decorators and update tests to work with current CLI structure
 
 **Estimated Effort**: 30 minutes
 
@@ -135,7 +135,7 @@ Remove outdated `CommandContext` mocks:
 
 ```python
 # Before
-@patch("src.cli.main.CommandContext")
+@patch("sbir_etl.cli.main.CommandContext")
 def test_main_app_help(self, mock_context_class: Mock, runner: CliRunner):
     ...
 

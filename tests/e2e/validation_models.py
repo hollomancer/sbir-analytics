@@ -78,7 +78,7 @@ class ValidationResult:
     @property
     def critical_issues(self) -> list[ValidationCheck]:
         """Get all critical validation issues."""
-        from src.models.quality import QualitySeverity
+        from sbir_etl.models.quality import QualitySeverity
 
         return [c for c in self.all_checks if c.severity == QualitySeverity.CRITICAL]
 

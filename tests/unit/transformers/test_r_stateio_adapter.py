@@ -14,8 +14,8 @@ pytestmark = pytest.mark.fast
 # Skip all tests if rpy2 is not available
 rpy2 = pytest.importorskip("rpy2", reason="rpy2 is required for R adapter tests")
 
-from src.exceptions import RFunctionError
-from src.transformers.r_stateio_adapter import RStateIOAdapter
+from sbir_etl.exceptions import RFunctionError
+from sbir_etl.transformers.r_stateio_adapter import RStateIOAdapter
 
 
 @pytest.fixture
@@ -58,9 +58,9 @@ def mock_config():
 class TestRStateIOAdapterInitialization:
     """Test RStateIOAdapter initialization."""
 
-    @patch("src.transformers.r_stateio_adapter.RPY2_AVAILABLE", True)
-    @patch("src.transformers.r_stateio_adapter.importr")
-    @patch("src.transformers.r_stateio_adapter.pandas2ri")
+    @patch("sbir_etl.transformers.r_stateio_adapter.RPY2_AVAILABLE", True)
+    @patch("sbir_etl.transformers.r_stateio_adapter.importr")
+    @patch("sbir_etl.transformers.r_stateio_adapter.pandas2ri")
     def test_init_success(self, mock_pandas2ri, mock_importr, mock_config):
         """Test successful initialization with R packages available."""
         mock_stateio = RMocks.stateio_package()
@@ -71,15 +71,15 @@ class TestRStateIOAdapterInitialization:
         assert adapter.cache_enabled is True
         assert adapter.model_version == "v2.1"
 
-    @patch("src.transformers.r_stateio_adapter.RPY2_AVAILABLE", False)
+    @patch("sbir_etl.transformers.r_stateio_adapter.RPY2_AVAILABLE", False)
     def test_init_no_rpy2(self, mock_config):
         """Test initialization fails when rpy2 is not available."""
         with pytest.raises(ImportError, match="rpy2 is not installed"):
             RStateIOAdapter(config=mock_config)
 
-    @patch("src.transformers.r_stateio_adapter.RPY2_AVAILABLE", True)
-    @patch("src.transformers.r_stateio_adapter.importr")
-    @patch("src.transformers.r_stateio_adapter.pandas2ri")
+    @patch("sbir_etl.transformers.r_stateio_adapter.RPY2_AVAILABLE", True)
+    @patch("sbir_etl.transformers.r_stateio_adapter.importr")
+    @patch("sbir_etl.transformers.r_stateio_adapter.pandas2ri")
     def test_init_stateio_not_available(self, mock_pandas2ri, mock_importr, mock_config):
         """Test initialization when StateIO package is not installed."""
         mock_importr.side_effect = Exception("Package not found")
@@ -87,9 +87,9 @@ class TestRStateIOAdapterInitialization:
         adapter = RStateIOAdapter(config=mock_config)
         assert adapter.stateio is None
 
-    @patch("src.transformers.r_stateio_adapter.RPY2_AVAILABLE", True)
-    @patch("src.transformers.r_stateio_adapter.importr")
-    @patch("src.transformers.r_stateio_adapter.pandas2ri")
+    @patch("sbir_etl.transformers.r_stateio_adapter.RPY2_AVAILABLE", True)
+    @patch("sbir_etl.transformers.r_stateio_adapter.importr")
+    @patch("sbir_etl.transformers.r_stateio_adapter.pandas2ri")
     def test_init_custom_cache_dir(self, mock_pandas2ri, mock_importr, mock_config, tmp_path):
         """Test initialization with custom cache directory."""
         mock_stateio = RMocks.stateio_package()
@@ -105,9 +105,9 @@ class TestRStateIOAdapterInitialization:
 class TestRStateIOAdapterCaching:
     """Test caching functionality."""
 
-    @patch("src.transformers.r_stateio_adapter.RPY2_AVAILABLE", True)
-    @patch("src.transformers.r_stateio_adapter.importr")
-    @patch("src.transformers.r_stateio_adapter.pandas2ri")
+    @patch("sbir_etl.transformers.r_stateio_adapter.RPY2_AVAILABLE", True)
+    @patch("sbir_etl.transformers.r_stateio_adapter.importr")
+    @patch("sbir_etl.transformers.r_stateio_adapter.pandas2ri")
     def test_cache_key_generation(self, mock_pandas2ri, mock_importr, mock_config, sample_shocks):
         """Test cache key generation."""
         mock_stateio = RMocks.stateio_package()
@@ -119,9 +119,9 @@ class TestRStateIOAdapterCaching:
         assert cache_key.startswith("stateio_v2.1_")
         assert len(cache_key) > 15
 
-    @patch("src.transformers.r_stateio_adapter.RPY2_AVAILABLE", True)
-    @patch("src.transformers.r_stateio_adapter.importr")
-    @patch("src.transformers.r_stateio_adapter.pandas2ri")
+    @patch("sbir_etl.transformers.r_stateio_adapter.RPY2_AVAILABLE", True)
+    @patch("sbir_etl.transformers.r_stateio_adapter.importr")
+    @patch("sbir_etl.transformers.r_stateio_adapter.pandas2ri")
     def test_cache_hit(self, mock_pandas2ri, mock_importr, mock_config, sample_shocks, tmp_path):
         """Test cache hit scenario."""
         mock_stateio = RMocks.stateio_package()
@@ -141,9 +141,9 @@ class TestRStateIOAdapterCaching:
         assert loaded is not None
         assert "wage_impact" in loaded.columns
 
-    @patch("src.transformers.r_stateio_adapter.RPY2_AVAILABLE", True)
-    @patch("src.transformers.r_stateio_adapter.importr")
-    @patch("src.transformers.r_stateio_adapter.pandas2ri")
+    @patch("sbir_etl.transformers.r_stateio_adapter.RPY2_AVAILABLE", True)
+    @patch("sbir_etl.transformers.r_stateio_adapter.importr")
+    @patch("sbir_etl.transformers.r_stateio_adapter.pandas2ri")
     def test_cache_miss(self, mock_pandas2ri, mock_importr, mock_config):
         """Test cache miss scenario."""
         mock_stateio = RMocks.stateio_package()
@@ -157,9 +157,9 @@ class TestRStateIOAdapterCaching:
 class TestRStateIOAdapterDataConversion:
     """Test pandas ↔ R data conversion."""
 
-    @patch("src.transformers.r_stateio_adapter.RPY2_AVAILABLE", True)
-    @patch("src.transformers.r_stateio_adapter.importr")
-    @patch("src.transformers.r_stateio_adapter.pandas2ri")
+    @patch("sbir_etl.transformers.r_stateio_adapter.RPY2_AVAILABLE", True)
+    @patch("sbir_etl.transformers.r_stateio_adapter.importr")
+    @patch("sbir_etl.transformers.r_stateio_adapter.pandas2ri")
     def test_convert_shocks_to_r(self, mock_pandas2ri, mock_importr, mock_config, sample_shocks):
         """Test conversion of shocks DataFrame to R format."""
         mock_stateio = RMocks.stateio_package()
@@ -174,9 +174,9 @@ class TestRStateIOAdapterDataConversion:
         assert r_shocks == mock_r_obj
         mock_pandas2ri.py2rpy.assert_called_once()
 
-    @patch("src.transformers.r_stateio_adapter.RPY2_AVAILABLE", True)
-    @patch("src.transformers.r_stateio_adapter.importr")
-    @patch("src.transformers.r_stateio_adapter.pandas2ri")
+    @patch("sbir_etl.transformers.r_stateio_adapter.RPY2_AVAILABLE", True)
+    @patch("sbir_etl.transformers.r_stateio_adapter.importr")
+    @patch("sbir_etl.transformers.r_stateio_adapter.pandas2ri")
     def test_convert_r_to_pandas(self, mock_pandas2ri, mock_importr, mock_config):
         """Test conversion of R result to pandas DataFrame."""
         mock_stateio = RMocks.stateio_package()
@@ -211,10 +211,10 @@ class TestRStateIOAdapterDataConversion:
 class TestRStateIOAdapterImpactComputation:
     """Test impact computation logic."""
 
-    @patch("src.transformers.r_stateio_adapter.RPY2_AVAILABLE", True)
-    @patch("src.transformers.r_stateio_adapter.importr")
-    @patch("src.transformers.r_stateio_adapter.pandas2ri")
-    @patch("src.utils.r_helpers.call_r_function")
+    @patch("sbir_etl.transformers.r_stateio_adapter.RPY2_AVAILABLE", True)
+    @patch("sbir_etl.transformers.r_stateio_adapter.importr")
+    @patch("sbir_etl.transformers.r_stateio_adapter.pandas2ri")
+    @patch("sbir_etl.utils.r_helpers.call_r_function")
     def test_compute_impacts_success(
         self,
         mock_call_r_function,
@@ -249,10 +249,10 @@ class TestRStateIOAdapterImpactComputation:
         assert "production_impact" in result.columns
         assert result["model_version"].iloc[0] == "v2.1"
 
-    @patch("src.transformers.r_stateio_adapter.RPY2_AVAILABLE", True)
-    @patch("src.transformers.r_stateio_adapter.importr")
-    @patch("src.transformers.r_stateio_adapter.pandas2ri")
-    @patch("src.utils.r_helpers.call_r_function")
+    @patch("sbir_etl.transformers.r_stateio_adapter.RPY2_AVAILABLE", True)
+    @patch("sbir_etl.transformers.r_stateio_adapter.importr")
+    @patch("sbir_etl.transformers.r_stateio_adapter.pandas2ri")
+    @patch("sbir_etl.utils.r_helpers.call_r_function")
     def test_compute_impacts_fallback_to_placeholder(
         self,
         mock_call_r_function,
@@ -276,9 +276,9 @@ class TestRStateIOAdapterImpactComputation:
         assert "wage_impact" in result.columns
         assert result["quality_flags"].iloc[0] == "placeholder_computation"
 
-    @patch("src.transformers.r_stateio_adapter.RPY2_AVAILABLE", True)
-    @patch("src.transformers.r_stateio_adapter.importr")
-    @patch("src.transformers.r_stateio_adapter.pandas2ri")
+    @patch("sbir_etl.transformers.r_stateio_adapter.RPY2_AVAILABLE", True)
+    @patch("sbir_etl.transformers.r_stateio_adapter.importr")
+    @patch("sbir_etl.transformers.r_stateio_adapter.pandas2ri")
     def test_compute_impacts_stateio_not_loaded(
         self, mock_pandas2ri, mock_importr, mock_config, sample_shocks
     ):
@@ -291,9 +291,9 @@ class TestRStateIOAdapterImpactComputation:
         with pytest.raises(RuntimeError, match="StateIO R package not loaded"):
             adapter._compute_impacts_r(sample_shocks)
 
-    @patch("src.transformers.r_stateio_adapter.RPY2_AVAILABLE", True)
-    @patch("src.transformers.r_stateio_adapter.importr")
-    @patch("src.transformers.r_stateio_adapter.pandas2ri")
+    @patch("sbir_etl.transformers.r_stateio_adapter.RPY2_AVAILABLE", True)
+    @patch("sbir_etl.transformers.r_stateio_adapter.importr")
+    @patch("sbir_etl.transformers.r_stateio_adapter.pandas2ri")
     def test_ensure_impact_columns(self, mock_pandas2ri, mock_importr, mock_config, sample_shocks):
         """Test _ensure_impact_columns adds missing columns."""
         mock_stateio = RMocks.stateio_package()
@@ -334,10 +334,10 @@ class TestRStateIOAdapterImpactComputation:
 class TestRStateIOAdapterIntegration:
     """Test full compute_impacts integration."""
 
-    @patch("src.transformers.r_stateio_adapter.RPY2_AVAILABLE", True)
-    @patch("src.transformers.r_stateio_adapter.importr")
-    @patch("src.transformers.r_stateio_adapter.pandas2ri")
-    @patch("src.utils.r_helpers.call_r_function")
+    @patch("sbir_etl.transformers.r_stateio_adapter.RPY2_AVAILABLE", True)
+    @patch("sbir_etl.transformers.r_stateio_adapter.importr")
+    @patch("sbir_etl.transformers.r_stateio_adapter.pandas2ri")
+    @patch("sbir_etl.utils.r_helpers.call_r_function")
     def test_compute_impacts_with_cache(
         self,
         mock_call_r_function,
@@ -366,9 +366,9 @@ class TestRStateIOAdapterIntegration:
         # R function should not be called again
         assert mock_call_r_function.call_count == 0
 
-    @patch("src.transformers.r_stateio_adapter.RPY2_AVAILABLE", True)
-    @patch("src.transformers.r_stateio_adapter.importr")
-    @patch("src.transformers.r_stateio_adapter.pandas2ri")
+    @patch("sbir_etl.transformers.r_stateio_adapter.RPY2_AVAILABLE", True)
+    @patch("sbir_etl.transformers.r_stateio_adapter.importr")
+    @patch("sbir_etl.transformers.r_stateio_adapter.pandas2ri")
     def test_validate_input(self, mock_pandas2ri, mock_importr, mock_config, sample_shocks):
         """Test input validation."""
         mock_stateio = RMocks.stateio_package()
@@ -384,9 +384,9 @@ class TestRStateIOAdapterIntegration:
         with pytest.raises(ValueError, match="Missing required columns"):
             adapter.validate_input(invalid_shocks)
 
-    @patch("src.transformers.r_stateio_adapter.RPY2_AVAILABLE", True)
-    @patch("src.transformers.r_stateio_adapter.importr")
-    @patch("src.transformers.r_stateio_adapter.pandas2ri")
+    @patch("sbir_etl.transformers.r_stateio_adapter.RPY2_AVAILABLE", True)
+    @patch("sbir_etl.transformers.r_stateio_adapter.importr")
+    @patch("sbir_etl.transformers.r_stateio_adapter.pandas2ri")
     def test_is_available(self, mock_pandas2ri, mock_importr, mock_config):
         """Test is_available check."""
         mock_stateio = RMocks.stateio_package()

@@ -11,7 +11,7 @@ from decimal import Decimal
 
 import pandas as pd
 
-from src.transformers.fiscal import (
+from sbir_etl.transformers.fiscal import (
     FiscalComponentCalculator,
     FiscalROICalculator,
     FiscalTaxEstimator,
@@ -225,7 +225,7 @@ class TestSensitivityAnalysis:
 
     def test_sensitivity_analysis_consistency(self):
         """Test that sensitivity analysis produces consistent results."""
-        from src.transformers.fiscal_parameter_sweep import FiscalParameterSweep
+        from sbir_etl.transformers.fiscal_parameter_sweep import FiscalParameterSweep
 
         sweep = FiscalParameterSweep()
 

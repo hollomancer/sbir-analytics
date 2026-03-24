@@ -3,12 +3,12 @@
 import pytest
 import pandas as pd
 
-from src.tools.mission_b.compute_transition_rate import (
+from sbir_analytics.tools.mission_b.compute_transition_rate import (
     ComputeTransitionRateTool,
     STANDARD_THRESHOLD,
     INCREASED_THRESHOLD,
 )
-from src.tools.mission_b.compute_observable_commercialization import (
+from sbir_analytics.tools.mission_b.compute_observable_commercialization import (
     ComputeObservableCommercializationTool,
     PHASE2_TRIGGER_THRESHOLD,
     PATENT_PRONG_THRESHOLD,

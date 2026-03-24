@@ -184,7 +184,7 @@ All custom exceptions must use the centralized exception hierarchy in `src/excep
 
 ```python
 # ✅ Use specific SBIR ETL exceptions
-from src.exceptions import ConfigurationError, APIError, DataQualityError
+from sbir_etl.exceptions import ConfigurationError, APIError, DataQualityError
 
 # Provide rich context
 raise ConfigurationError(
@@ -195,7 +195,7 @@ raise ConfigurationError(
 )
 
 # Wrap external exceptions
-from src.exceptions import wrap_exception
+from sbir_etl.exceptions import wrap_exception
 try:
     response = httpx.get(url)
 except httpx.HTTPError as e:

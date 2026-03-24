@@ -7,7 +7,7 @@ Tests validation logic, constraints, and business rules for CET data models.
 import pytest
 from pydantic import ValidationError
 
-from src.models.cet_models import CETArea, ClassificationLevel
+from sbir_etl.models.cet_models import CETArea, ClassificationLevel
 from tests.factories import (
     CETAssessmentFactory,
     CETClassificationFactory,

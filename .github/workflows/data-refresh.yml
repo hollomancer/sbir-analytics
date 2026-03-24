@@ -679,7 +679,7 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
 
           uv run dagster job execute \
-            -m src.definitions \
+            -m sbir_etl.definitions \
             -j uspto_validation_job \
             2>&1 | tee uspto_output.txt
 

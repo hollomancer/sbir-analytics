@@ -135,7 +135,7 @@ Transitions are scored on confidence levels:
 # Navigate to Assets → Transition Detection → Materialize
 
 # Via CLI
-dagster asset materialize -m src.definitions --select transition_profiles
+dagster asset materialize -m sbir_etl.definitions --select transition_profiles
 ```
 
 ### Querying Transitions

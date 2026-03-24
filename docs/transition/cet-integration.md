@@ -229,7 +229,7 @@ Description: "Thermal management materials for hypersonic flight"
 The CET area is extracted from SBIR award metadata:
 
 ```python
-from src.transition.features.cet_analyzer import CETSignalExtractor
+from sbir_etl.transition.features.cet_analyzer import CETSignalExtractor
 
 extractor = CETSignalExtractor()
 award_cet = extractor.extract_award_cet(award_record)
@@ -274,7 +274,7 @@ Federal contracts are not explicitly classified into CET areas. The transition d
 The inference algorithm uses precompiled regex patterns for efficiency:
 
 ```python
-from src.transition.features.cet_analyzer import CETSignalExtractor
+from sbir_etl.transition.features.cet_analyzer import CETSignalExtractor
 
 extractor = CETSignalExtractor()
 cet_area, confidence = extractor.infer_contract_cet(contract_description)
@@ -384,7 +384,7 @@ CET alignment measures whether the SBIR award and federal contract are working i
 ### Calculation Logic
 
 ```python
-from src.transition.features.cet_analyzer import CETSignalExtractor
+from sbir_etl.transition.features.cet_analyzer import CETSignalExtractor
 
 extractor = CETSignalExtractor()
 
@@ -616,8 +616,8 @@ cet_inference:
 ### Example 1: CET-Aligned Transition
 
 ```python
-from src.transition.features.cet_analyzer import CETSignalExtractor
-from src.transition.detection.scoring import TransitionScorer
+from sbir_etl.transition.features.cet_analyzer import CETSignalExtractor
+from sbir_etl.transition.detection.scoring import TransitionScorer
 
 ## Initialize
 
@@ -755,7 +755,7 @@ cet_signal = extractor.extract_signal(
 Query all transitions by CET area to see which technologies show strongest commercialization:
 
 ```python
-from src.transition.analysis.analytics import TransitionAnalytics
+from sbir_etl.transition.analysis.analytics import TransitionAnalytics
 
 analytics = TransitionAnalytics(transitions_df, awards_df)
 

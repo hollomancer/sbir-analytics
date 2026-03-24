@@ -20,11 +20,11 @@ from decimal import Decimal
 import pandas as pd
 import pytest
 
-from src.enrichers.usaspending import enrich_sbir_with_usaspending
-from src.transformers.fiscal.roi import FiscalROICalculator
-from src.transformers.fiscal.shocks import calculate_fiscal_year
-from src.transformers.fiscal.taxes import FiscalTaxEstimator
-from src.transformers.naics_to_bea import NAICSToBEAMapper
+from sbir_etl.enrichers.usaspending import enrich_sbir_with_usaspending
+from sbir_etl.transformers.fiscal.roi import FiscalROICalculator
+from sbir_etl.transformers.fiscal.shocks import calculate_fiscal_year
+from sbir_etl.transformers.fiscal.taxes import FiscalTaxEstimator
+from sbir_etl.transformers.naics_to_bea import NAICSToBEAMapper
 
 
 pytestmark = [pytest.mark.e2e, pytest.mark.weekly]

@@ -5,7 +5,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from src.transformers.patent_transformer import PatentAssignmentTransformer, PatentTransformOptions
+from sbir_etl.transformers.patent_transformer import PatentAssignmentTransformer, PatentTransformOptions
 
 
 pytestmark = pytest.mark.fast
@@ -580,9 +580,9 @@ class TestStandardizeAddress:
 class TestCalculateChainMetadata:
     """Tests for _calculate_chain_metadata method."""
 
-    @patch("src.transformers.patent_transformer.PatentAssignment")
-    @patch("src.transformers.patent_transformer.PatentAssignee")
-    @patch("src.transformers.patent_transformer.PatentAssignor")
+    @patch("sbir_etl.transformers.patent_transformer.PatentAssignment")
+    @patch("sbir_etl.transformers.patent_transformer.PatentAssignee")
+    @patch("sbir_etl.transformers.patent_transformer.PatentAssignor")
     def test_calculate_chain_metadata_temporal_span(
         self, mock_assignor, mock_assignee, mock_assignment
     ):
@@ -601,7 +601,7 @@ class TestCalculateChainMetadata:
 
         assert assignment.metadata["temporal_span_days"] == 30
 
-    @patch("src.transformers.patent_transformer.PatentAssignment")
+    @patch("sbir_etl.transformers.patent_transformer.PatentAssignment")
     def test_calculate_chain_metadata_delayed_recording(self, mock_assignment):
         """Test flagging delayed recording (>90 days)."""
         transformer = PatentAssignmentTransformer()
@@ -618,7 +618,7 @@ class TestCalculateChainMetadata:
 
         assert "delayed_recording" in assignment.metadata["chain_flags"]
 
-    @patch("src.transformers.patent_transformer.PatentAssignment")
+    @patch("sbir_etl.transformers.patent_transformer.PatentAssignment")
     def test_calculate_chain_metadata_sequence_indicator(self, mock_assignment):
         """Test detecting sequence indicators."""
         transformer = PatentAssignmentTransformer()
@@ -638,10 +638,10 @@ class TestCalculateChainMetadata:
         assert assignment.metadata["chain_sequence_indicator"]["current_part"] == 1
         assert assignment.metadata["chain_sequence_indicator"]["total_parts"] == 3
 
-    @patch("src.transformers.patent_transformer.PatentAssignment")
-    @patch("src.transformers.patent_transformer.PatentAssignee")
-    @patch("src.transformers.patent_transformer.PatentAssignor")
-    @patch("src.transformers.patent_transformer.PatentConveyance")
+    @patch("sbir_etl.transformers.patent_transformer.PatentAssignment")
+    @patch("sbir_etl.transformers.patent_transformer.PatentAssignee")
+    @patch("sbir_etl.transformers.patent_transformer.PatentAssignor")
+    @patch("sbir_etl.transformers.patent_transformer.PatentConveyance")
     def test_calculate_chain_metadata_employer_assignment(
         self, mock_conveyance, mock_assignor, mock_assignee, mock_assignment
     ):
@@ -682,7 +682,7 @@ class TestTransformChunk:
 
         assert len(results) == 0
 
-    @patch("src.transformers.patent_transformer.PatentAssignment")
+    @patch("sbir_etl.transformers.patent_transformer.PatentAssignment")
     def test_transform_chunk_multiple_rows(self, mock_assignment):
         """Test transforming multiple rows."""
         transformer = PatentAssignmentTransformer()

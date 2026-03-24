@@ -59,7 +59,7 @@ export SBIR_ETL_USE_S3=false
 The path resolver automatically handles S3 paths:
 
 ```python
-from src.config.loader import get_config
+from sbir_etl.config.loader import get_config
 
 config = get_config()
 
@@ -76,7 +76,7 @@ dump_file = config.paths.resolve_path("usaspending_dump_file")
 
 ```python
 import boto3
-from src.utils.s3 import get_s3_client, s3_file_exists, download_from_s3
+from sbir_etl.utils.s3 import get_s3_client, s3_file_exists, download_from_s3
 
 # Check if S3 file exists
 if s3_file_exists("s3://bucket/key.parquet"):
@@ -233,7 +233,7 @@ See [Docker Deployment](#docker-deployment) section for details.
 The `PathsConfig` class provides a `resolve_path()` method for resolving configured paths:
 
 ```python
-from src.config.loader import get_config
+from sbir_etl.config.loader import get_config
 
 # Load configuration
 config = get_config()
@@ -265,7 +265,7 @@ When resolving paths, the system checks in this order:
 The pipeline includes automatic path validation that runs on startup:
 
 ```python
-from src.utils.path_validator import validate_paths_on_startup
+from sbir_etl.utils.path_validator import validate_paths_on_startup
 
 # Validate paths before starting pipeline
 if not validate_paths_on_startup(create_missing_dirs=True):
@@ -302,8 +302,8 @@ validate_paths_on_startup(
 You can manually validate paths using the `PathValidator` class:
 
 ```python
-from src.config.loader import get_config
-from src.utils.path_validator import PathValidator
+from sbir_etl.config.loader import get_config
+from sbir_etl.utils.path_validator import PathValidator
 
 config = get_config()
 validator = PathValidator(config.paths)
@@ -423,7 +423,7 @@ usaspending_dump_file: "data/usaspending/dump.zip"
 Add logging to see resolved paths:
 
 ```python
-from src.config.loader import get_config
+from sbir_etl.config.loader import get_config
 from loguru import logger
 
 config = get_config()
@@ -480,7 +480,7 @@ export SBIR_ETL__PATHS__USASPENDING_DUMP_FILE=/your/actual/path/dump.zip
 Run validation to ensure paths are correct:
 
 ```python
-from src.utils.path_validator import validate_paths_on_startup
+from sbir_etl.utils.path_validator import validate_paths_on_startup
 
 validate_paths_on_startup(create_missing_dirs=True)
 ```
@@ -494,7 +494,7 @@ Any custom scripts should use configuration instead of hardcoded paths:
 output_file = Path("/Volumes/X10 Pro/data/output.parquet")
 
 # NEW
-from src.config.loader import get_config
+from sbir_etl.config.loader import get_config
 config = get_config()
 output_file = config.paths.resolve_path("transition_contracts_output")
 ```

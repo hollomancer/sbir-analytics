@@ -110,7 +110,7 @@ class TestFullDetectionPipeline:
 
     def test_full_pipeline_produces_detections(self, sample_awards, sample_contracts):
         """Test that full detection pipeline produces transition detections."""
-        from src.transition.detection.detector import TransitionDetector
+        from sbir_ml.transition.detection.detector import TransitionDetector
 
         detector = TransitionDetector()
 
@@ -132,7 +132,7 @@ class TestFullDetectionPipeline:
 
     def test_pipeline_respects_timing_window(self, sample_awards, sample_contracts):
         """Test that detection respects timing windows."""
-        from src.transition.detection.detector import TransitionDetector
+        from sbir_ml.transition.detection.detector import TransitionDetector
 
         detector = TransitionDetector()
 
@@ -184,7 +184,7 @@ class TestVendorResolution:
     @pytest.fixture
     def vendor_crosswalk(self):
         """Create a vendor cross-walk."""
-        from src.transition.features.vendor_crosswalk import CrosswalkRecord, VendorCrosswalk
+        from sbir_ml.transition.features.vendor_crosswalk import CrosswalkRecord, VendorCrosswalk
 
         crosswalk = VendorCrosswalk()
         crosswalk.add_or_merge(
@@ -272,7 +272,7 @@ class TestPatentBackedTransitions:
 
     def test_patent_backed_transition_scoring(self, sample_data):
         """Test that patent backing increases transition score."""
-        from src.transition.detection.scoring import TransitionScorer
+        from sbir_ml.transition.detection.scoring import TransitionScorer
 
         scorer = TransitionScorer()
 
@@ -332,7 +332,7 @@ class TestCETAnalytics:
 
     def test_cet_area_transition_rates(self, cet_data):
         """Test CET area transition rate calculation."""
-        from src.transition.analysis.analytics import TransitionAnalytics
+        from sbir_ml.transition.analysis.analytics import TransitionAnalytics
 
         analytics = TransitionAnalytics(score_threshold=0.60)
         cet_rates = analytics.compute_transition_rates_by_cet_area(
@@ -356,7 +356,7 @@ class TestNeo4jOperations:
 
     def test_neo4j_transition_node_creation(self):
         """Test Neo4j transition node creation."""
-        from src.loaders.transition_loader import TransitionLoader
+        from sbir_graph.loaders.transition_loader import TransitionLoader
 
         # Create mock driver
         mock_driver = MagicMock()
@@ -384,7 +384,7 @@ class TestNeo4jOperations:
 
     def test_neo4j_relationship_creation(self):
         """Test Neo4j relationship creation."""
-        from src.loaders.transition_loader import TransitionLoader
+        from sbir_graph.loaders.transition_loader import TransitionLoader
 
         mock_driver = MagicMock()
         session = MagicMock()
@@ -450,7 +450,7 @@ class TestSampleDataset:
         assert len(contracts) == 5000
 
         # Test vendor matching across 1000 awards
-        from src.transition.features.vendor_resolver import VendorResolver
+        from sbir_ml.transition.features.vendor_resolver import VendorResolver
 
         VendorResolver()
 

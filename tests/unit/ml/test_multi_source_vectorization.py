@@ -11,7 +11,7 @@ Tests:
 import numpy as np
 import pytest
 
-from src.ml.models.multi_source_vectorizer import (
+from sbir_ml.ml.models.multi_source_vectorizer import (
     MultiSourceCETVectorizer,
     create_multi_source_vectorizer,
 )

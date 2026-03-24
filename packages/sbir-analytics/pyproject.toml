@@ -1,0 +1,38 @@
+[project]
+name = "sbir-analytics"
+version = "0.1.0"
+description = "Full SBIR analytics pipeline — ETL + Dagster orchestration + CLI + ML + Neo4j"
+authors = [{name = "Conrad Hollomon", email = "conrad.hollomon@pm.me"}]
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.11,<3.12"
+
+# sbir-analytics is the full pipeline: ETL library + ML + orchestration + CLI + storage.
+dependencies = [
+    "sbir-etl[cloud,uspto,monitoring]",
+    "sbir-ml[nlp]",
+    "sbir-graph",
+    # Dagster orchestration
+    "dagster>=1.7.0,<2.0.0",
+    # CLI
+    "typer>=0.12.0,<1.0.0",
+    "rich>=13.7.0,<15.0.0",
+]
+
+[project.optional-dependencies]
+r = ["sbir-etl[r]"]
+paecter-local = ["sbir-ml[paecter-local]"]
+dev = ["sbir-etl[dev]"]
+
+[project.scripts]
+sbir-cli = "sbir_analytics.cli.main:app"
+
+[tool.dagster]
+python_module = "sbir_analytics.definitions"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["sbir_analytics"]

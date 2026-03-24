@@ -4,7 +4,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from src.loaders.neo4j.cet import CETLoader, CETLoaderConfig
+from sbir_graph.loaders.neo4j.cet import CETLoader, CETLoaderConfig
 from tests.mocks import Neo4jMocks
 
 

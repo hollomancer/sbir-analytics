@@ -66,10 +66,10 @@ Generate embeddings and compute similarity scores:
 # Navigate to Assets → paecter group → Materialize
 
 # Via CLI
-dagster asset materialize -m src.definitions --select "paecter*"
+dagster asset materialize -m sbir_etl.definitions --select "paecter*"
 
 # Run complete PaECTER job
-dagster job execute -m src.definitions -j paecter_job
+dagster job execute -m sbir_etl.definitions -j paecter_job
 ```
 
 ### Using the CET Classifier
@@ -81,7 +81,7 @@ The CET classifier is integrated into the Dagster pipeline as an asset. To run c
 # Navigate to Assets → CET Classification → Materialize
 
 # Via CLI
-dagster asset materialize -m src.definitions --select cet_classifications
+dagster asset materialize -m sbir_etl.definitions --select cet_classifications
 ```
 
 ### Classification Categories

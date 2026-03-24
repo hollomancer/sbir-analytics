@@ -3,7 +3,7 @@
 import pandas as pd
 import pytest
 
-from src.transformers.company_cet_aggregator import CompanyCETAggregator
+from sbir_etl.transformers.company_cet_aggregator import CompanyCETAggregator
 
 
 pytestmark = pytest.mark.fast

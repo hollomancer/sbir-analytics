@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from src.transition.analysis.analytics import TransitionAnalytics
+from sbir_ml.transition.analysis.analytics import TransitionAnalytics
 
 
 pytestmark = [pytest.mark.e2e, pytest.mark.slow]

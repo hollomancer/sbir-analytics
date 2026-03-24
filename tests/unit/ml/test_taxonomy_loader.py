@@ -9,8 +9,8 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from src.exceptions import FileSystemError
-from src.ml.config.taxonomy_loader import ClassificationConfig, TaxonomyConfig, TaxonomyLoader
+from sbir_etl.exceptions import FileSystemError
+from sbir_ml.ml.config.taxonomy_loader import ClassificationConfig, TaxonomyConfig, TaxonomyLoader
 
 
 pytestmark = pytest.mark.fast
@@ -166,7 +166,7 @@ class TestTaxonomyConfig:
 
     def test_valid_taxonomy_config(self, tmp_path: Path) -> None:
         """Test creating a valid taxonomy configuration."""
-        from src.models.cet_models import CETArea
+        from sbir_etl.models.cet_models import CETArea
 
         cet_areas = [
             CETArea(
@@ -190,7 +190,7 @@ class TestTaxonomyConfig:
 
     def test_duplicate_cet_ids(self) -> None:
         """Test that duplicate CET IDs are rejected."""
-        from src.models.cet_models import CETArea
+        from sbir_etl.models.cet_models import CETArea
 
         cet_areas = [
             CETArea(

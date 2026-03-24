@@ -14,7 +14,7 @@ import json
 import pandas as pd
 import pytest
 
-from src.extractors.contract_extractor import ContractExtractor
+from sbir_etl.extractors.contract_extractor import ContractExtractor
 
 
 pytestmark = pytest.mark.integration

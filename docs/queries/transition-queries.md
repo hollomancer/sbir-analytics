@@ -27,7 +27,7 @@ All queries are implemented in `src/transition/queries/pathway_queries.py` throu
 
 ```python
 from neo4j import GraphDatabase
-from src.transition.queries.pathway_queries import TransitionPathwayQueries
+from sbir_etl.transition.queries.pathway_queries import TransitionPathwayQueries
 
 ## Initialize driver
 

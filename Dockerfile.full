@@ -33,7 +33,7 @@ RUN pip install \
 RUN python -m spacy download en_core_web_sm
 
 # Copy application code
-COPY src/ /app/src/
+COPY sbir_etl/ /app/sbir_etl/
 COPY config/ /app/config/
 COPY scripts/ /app/scripts/
 COPY migrations/ /app/migrations/

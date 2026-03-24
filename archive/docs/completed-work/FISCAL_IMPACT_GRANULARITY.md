@@ -253,7 +253,7 @@ district_impacts['allocation_method'] = 'proportional'
 # examples/sbir_fiscal_impact_by_district.py
 
 # Step 1: Enrich with congressional districts
-from src.enrichers.geographic_resolver import CongressionalDistrictResolver
+from sbir_etl.enrichers.geographic_resolver import CongressionalDistrictResolver
 
 district_resolver = CongressionalDistrictResolver()
 awards_with_districts = district_resolver.resolve_districts(awards_df)
@@ -263,7 +263,7 @@ calculator = SBIRFiscalImpactCalculator()
 state_impacts = calculator.calculate_impacts_from_sbir_awards(awards_df)
 
 # Step 3: Allocate to districts
-from src.transformers.fiscal.district_allocator import allocate_to_districts
+from sbir_etl.transformers.fiscal.district_allocator import allocate_to_districts
 
 district_impacts = allocate_to_districts(
     state_impacts=state_impacts,
@@ -334,8 +334,8 @@ print(district_summary)
 
 3. **Use in your code**:
    ```python
-   from src.enrichers.congressional_district_resolver import CongressionalDistrictResolver
-   from src.transformers.sbir_fiscal_pipeline import SBIRFiscalImpactCalculator
+   from sbir_etl.enrichers.congressional_district_resolver import CongressionalDistrictResolver
+   from sbir_etl.transformers.sbir_fiscal_pipeline import SBIRFiscalImpactCalculator
 
    # Option 1: Automatic (tries multiple methods)
    calculator = SBIRFiscalImpactCalculator()
@@ -417,7 +417,7 @@ impacts.pivot_table(
 ### ✅ NOW Supported - Congressional District Analysis
 ```python
 # "What's the tax impact in Nancy Pelosi's district (CA-11)?"
-from src.transformers.sbir_fiscal_pipeline import SBIRFiscalImpactCalculator
+from sbir_etl.transformers.sbir_fiscal_pipeline import SBIRFiscalImpactCalculator
 
 calculator = SBIRFiscalImpactCalculator()
 district_impacts = calculator.calculate_district_impacts(awards_df)
@@ -432,7 +432,7 @@ ny19_jobs = district_impacts[
 print(f"NY-19 jobs created: {ny19_jobs:.1f}")
 
 # "Compare impacts across all Texas congressional districts"
-from src.transformers.fiscal.district_allocator import compare_districts_within_state
+from sbir_etl.transformers.fiscal.district_allocator import compare_districts_within_state
 
 tx_comparison = compare_districts_within_state(district_impacts, "TX")
 print(tx_comparison.head(10))

@@ -8,7 +8,7 @@ from pydantic import ValidationError
 
 pytestmark = pytest.mark.fast
 
-from src.models.contract_models import (
+from sbir_etl.models.contract_models import (
     CompetitionType,
     ContractDescription,
     ContractParty,
@@ -316,7 +316,7 @@ class TestFederalContractModel:
     def test_federal_contract_requires_identifiers(self):
         """Test FederalContract requires contract_id and vendor."""
         # Should work with minimal required fields
-        from src.models.contract_models import FederalContract
+        from sbir_etl.models.contract_models import FederalContract
 
         contract = FederalContract(
             contract_id="CONTRACT-001",
@@ -330,7 +330,7 @@ class TestFederalContractModel:
 
     def test_federal_contract_with_enums(self):
         """Test FederalContract with status and competition type."""
-        from src.models.contract_models import FederalContract
+        from sbir_etl.models.contract_models import FederalContract
 
         contract = FederalContract(
             contract_id="CONTRACT-002",
@@ -346,7 +346,7 @@ class TestFederalContractModel:
 
     def test_federal_contract_default_status(self):
         """Test FederalContract has default status of ACTIVE."""
-        from src.models.contract_models import FederalContract
+        from sbir_etl.models.contract_models import FederalContract
 
         contract = FederalContract(
             contract_id="CONTRACT-003",

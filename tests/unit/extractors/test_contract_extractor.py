@@ -13,8 +13,8 @@ from datetime import date
 
 import pytest
 
-from src.extractors.contract_extractor import ContractExtractor
-from src.models.transition_models import CompetitionType
+from sbir_etl.extractors.contract_extractor import ContractExtractor
+from sbir_etl.models.transition_models import CompetitionType
 
 
 pytestmark = pytest.mark.fast

@@ -26,8 +26,8 @@ pytest.importorskip("sklearn", reason="scikit-learn required for integration tra
 pytest.importorskip("pandas", reason="pandas required for integration training")
 
 
-from src.ml.models.cet_classifier import ApplicabilityModel  # type: ignore
-from src.models.cet_models import CETArea  # type: ignore
+from sbir_ml.ml.models.cet_classifier import ApplicabilityModel  # type: ignore
+from sbir_etl.models.cet_models import CETArea  # type: ignore
 
 
 @pytest.mark.integration

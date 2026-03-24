@@ -12,12 +12,12 @@ from __future__ import annotations
 
 import pandas as pd
 
-from src.models.benchmark_models import (
+from sbir_etl.models.benchmark_models import (
     BenchmarkStatus,
     BenchmarkTier,
     ConsequenceType,
 )
-from src.transition.analysis.benchmark_evaluator import BenchmarkEligibilityEvaluator
+from sbir_ml.transition.analysis.benchmark_evaluator import BenchmarkEligibilityEvaluator
 
 
 def _make_awards_df(

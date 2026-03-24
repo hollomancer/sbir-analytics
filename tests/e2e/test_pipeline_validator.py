@@ -8,7 +8,7 @@ from unittest.mock import Mock
 
 import pandas as pd
 
-from src.models.quality import QualitySeverity
+from sbir_etl.models.quality import QualitySeverity
 from tests.e2e.pipeline_validator import (
     PipelineValidator,
     ValidationCheck,

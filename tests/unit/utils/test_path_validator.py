@@ -10,9 +10,9 @@ import pytest
 
 pytestmark = pytest.mark.fast
 
-from src.config.schemas import PathsConfig
-from src.exceptions import FileSystemError
-from src.utils.path_validator import PathValidator, validate_paths_on_startup
+from sbir_etl.config.schemas import PathsConfig
+from sbir_etl.exceptions import FileSystemError
+from sbir_etl.utils.path_validator import PathValidator, validate_paths_on_startup
 
 
 class TestPathValidator:
@@ -145,7 +145,7 @@ class TestPathValidator:
 class TestValidatePathsOnStartup:
     """Tests for validate_paths_on_startup convenience function."""
 
-    @patch("src.config.loader.get_config")
+    @patch("sbir_etl.config.loader.get_config")
     def test_validate_paths_on_startup_success(self, mock_get_config, tmp_path):
         """Test validate_paths_on_startup returns True on success."""
         # Create mock config
@@ -169,7 +169,7 @@ class TestValidatePathsOnStartup:
 
         assert result is True
 
-    @patch("src.config.loader.get_config")
+    @patch("sbir_etl.config.loader.get_config")
     def test_validate_paths_on_startup_failure(self, mock_get_config):
         """Test validate_paths_on_startup returns False on failure."""
         # Create mock config that will fail validation

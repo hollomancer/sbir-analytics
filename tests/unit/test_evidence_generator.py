@@ -13,7 +13,7 @@ import pytest
 
 pytestmark = pytest.mark.fast
 
-from src.models.transition_models import (
+from sbir_etl.models.transition_models import (
     AgencySignal,
     CETSignal,
     CompetitionSignal,
@@ -25,7 +25,7 @@ from src.models.transition_models import (
     TransitionSignals,
     VendorMatch,
 )
-from src.transition.detection.evidence import EvidenceGenerator
+from sbir_ml.transition.detection.evidence import EvidenceGenerator
 
 
 @pytest.fixture

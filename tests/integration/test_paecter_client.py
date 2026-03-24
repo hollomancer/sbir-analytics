@@ -16,7 +16,7 @@ import os
 import numpy as np
 import pytest
 
-from src.ml.paecter_client import EmbeddingResult, PaECTERClient
+from sbir_ml.ml.paecter_client import EmbeddingResult, PaECTERClient
 
 
 # Sample SBIR award data
@@ -106,14 +106,14 @@ def paecter_client():
         # Use hf_token fixture to skip if not available
         if not os.getenv("HF_TOKEN"):
             pytest.skip("HF_TOKEN environment variable required for API mode")
-        from src.ml.config import PaECTERClientConfig
+        from sbir_ml.ml.config import PaECTERClientConfig
 
         config = PaECTERClientConfig(use_local=False)
         return PaECTERClient(config=config)
     else:
         # Local mode - requires sentence-transformers
         pytest.importorskip("sentence_transformers")
-        from src.ml.config import PaECTERClientConfig
+        from sbir_ml.ml.config import PaECTERClientConfig
 
         config = PaECTERClientConfig(use_local=True)
         return PaECTERClient(config=config)
@@ -359,7 +359,7 @@ class TestPaECTERClient:
 @pytest.mark.integration
 def test_api_mode_requires_huggingface_hub():
     """Test that API mode requires huggingface_hub."""
-    from src.ml.config import PaECTERClientConfig
+    from sbir_ml.ml.config import PaECTERClientConfig
 
     try:
         import huggingface_hub  # noqa: F401
@@ -381,7 +381,7 @@ def test_api_mode_requires_huggingface_hub():
 @pytest.mark.slow
 def test_local_mode_requires_sentence_transformers():
     """Test that local mode requires sentence-transformers."""
-    from src.ml.config import PaECTERClientConfig
+    from sbir_ml.ml.config import PaECTERClientConfig
 
     try:
         import sentence_transformers  # noqa: F401

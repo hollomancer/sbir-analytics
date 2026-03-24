@@ -21,7 +21,7 @@ pytestmark = pytest.mark.fast
 
 import pytest
 
-from src.utils.monitoring import PerformanceMonitor
+from sbir_etl.utils.monitoring import PerformanceMonitor
 
 
 pytestmark = pytest.mark.fast
@@ -43,8 +43,8 @@ class TestPerformanceMonitorInitialization:
         assert isinstance(monitor.metrics, dict)
         assert len(monitor.metrics) == 0
 
-    @patch("src.utils.monitoring.core._PSUTIL_AVAILABLE", True)
-    @patch("src.utils.monitoring.core.psutil")
+    @patch("sbir_etl.utils.monitoring.core._PSUTIL_AVAILABLE", True)
+    @patch("sbir_etl.utils.monitoring.core.psutil")
     def test_init_with_psutil(self, mock_psutil):
         """Test initialization with psutil available."""
         mock_process = Mock()
@@ -55,7 +55,7 @@ class TestPerformanceMonitorInitialization:
         assert monitor._process is not None
         mock_psutil.Process.assert_called_once()
 
-    @patch("src.utils.monitoring.core._PSUTIL_AVAILABLE", False)
+    @patch("sbir_etl.utils.monitoring.core._PSUTIL_AVAILABLE", False)
     def test_init_without_psutil(self):
         """Test initialization without psutil."""
         monitor = PerformanceMonitor()
@@ -153,8 +153,8 @@ class TestTimeFunctionDecorator:
 class TestMonitorMemoryDecorator:
     """Tests for monitor_memory decorator."""
 
-    @patch("src.utils.monitoring.core._PSUTIL_AVAILABLE", True)
-    @patch("src.utils.monitoring.core.psutil")
+    @patch("sbir_etl.utils.monitoring.core._PSUTIL_AVAILABLE", True)
+    @patch("sbir_etl.utils.monitoring.core.psutil")
     def test_monitor_memory_with_psutil(self, mock_psutil):
         """Test memory monitoring with psutil available."""
         mock_process = Mock()
@@ -178,7 +178,7 @@ class TestMonitorMemoryDecorator:
         assert "end_memory_mb" in metric
         assert "memory_delta_mb" in metric
 
-    @patch("src.utils.monitoring.core._PSUTIL_AVAILABLE", False)
+    @patch("sbir_etl.utils.monitoring.core._PSUTIL_AVAILABLE", False)
     def test_monitor_memory_without_psutil(self, monitor):
         """Test memory monitoring falls back to timing without psutil."""
 
@@ -250,8 +250,8 @@ class TestTimeBlockContextManager:
 class TestMonitorBlockContextManager:
     """Tests for monitor_block context manager."""
 
-    @patch("src.utils.monitoring.core._PSUTIL_AVAILABLE", True)
-    @patch("src.utils.monitoring.core.psutil")
+    @patch("sbir_etl.utils.monitoring.core._PSUTIL_AVAILABLE", True)
+    @patch("sbir_etl.utils.monitoring.core.psutil")
     def test_monitor_block_with_psutil(self, mock_psutil):
         """Test monitoring block with psutil."""
         mock_process = Mock()
@@ -268,7 +268,7 @@ class TestMonitorBlockContextManager:
         assert "start_memory_mb" in metric
         assert "end_memory_mb" in metric
 
-    @patch("src.utils.monitoring.core._PSUTIL_AVAILABLE", False)
+    @patch("sbir_etl.utils.monitoring.core._PSUTIL_AVAILABLE", False)
     def test_monitor_block_without_psutil(self, monitor):
         """Test monitor block falls back to timing."""
         with monitor.monitor_block("fallback_block"):

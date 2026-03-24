@@ -76,7 +76,7 @@ df = duckdb_client.execute_query_df("""
 ### DuckDB Client
 Uses existing `src/utils/duckdb_client.py`:
 ```python
-from src.utils.duckdb_client import DuckDBClient
+from sbir_etl.utils.duckdb_client import DuckDBClient
 
 client = DuckDBClient(database_path=":memory:")
 client.import_csv("data/raw/sbir/awards_data.csv", "sbir_awards")

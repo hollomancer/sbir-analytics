@@ -124,7 +124,7 @@ Test that the `find_latest_usaspending_dump()` function works:
 
 ```python
 # Test in Python REPL
-from src.utils.cloud_storage import find_latest_usaspending_dump
+from sbir_etl.utils.cloud_storage import find_latest_usaspending_dump
 
 # Find latest test database
 latest = find_latest_usaspending_dump(
@@ -153,9 +153,9 @@ Test that DuckDB can find and use the S3 file:
 
 ```python
 # Test script: test_usaspending_s3_integration.py
-from src.extractors.usaspending import DuckDBUSAspendingExtractor
-from src.utils.cloud_storage import find_latest_usaspending_dump
-from src.utils.cloud_storage import resolve_data_path
+from sbir_etl.extractors.usaspending import DuckDBUSAspendingExtractor
+from sbir_etl.utils.cloud_storage import find_latest_usaspending_dump
+from sbir_etl.utils.cloud_storage import resolve_data_path
 
 # Find latest dump
 s3_url = find_latest_usaspending_dump(
@@ -216,8 +216,8 @@ Test that assets can find and use S3 files:
 ```python
 # Test script: test_usaspending_assets.py
 from dagster import build_op_context
-from src.assets.usaspending_database_enrichment import sbir_relevant_usaspending_transactions
-from src.assets.usaspending_ingestion import raw_usaspending_recipients
+from sbir_etl.assets.usaspending_database_enrichment import sbir_relevant_usaspending_transactions
+from sbir_etl.assets.usaspending_ingestion import raw_usaspending_recipients
 
 # Test recipient ingestion asset
 context = build_op_context()
@@ -346,7 +346,7 @@ Test that assets prioritize S3 and fail appropriately:
 ```python
 # Test script: test_s3_priority.py
 import os
-from src.assets.usaspending_database_enrichment import sbir_relevant_usaspending_transactions
+from sbir_etl.assets.usaspending_database_enrichment import sbir_relevant_usaspending_transactions
 from dagster import build_op_context
 
 # Test 1: S3 bucket configured, file exists

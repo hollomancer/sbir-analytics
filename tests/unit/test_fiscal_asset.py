@@ -8,7 +8,7 @@ import pandas as pd
 import pytest
 from dagster import Output, build_asset_context
 
-from src.assets.fiscal_assets import fiscal_prepared_sbir_awards
+from sbir_analytics.assets.fiscal_assets import fiscal_prepared_sbir_awards
 
 
 pytestmark = pytest.mark.fast
@@ -38,7 +38,7 @@ def test_asset_returns_output_type(mock_config, sample_raw_awards):
     """Test fiscal_prepared_sbir_awards returns Output type."""
     context = build_asset_context()
 
-    with patch("src.assets.fiscal_assets.get_config", return_value=mock_config):
+    with patch("sbir_analytics.assets.fiscal_assets.get_config", return_value=mock_config):
         result = fiscal_prepared_sbir_awards(context, sample_raw_awards)
 
     assert isinstance(result, Output)
@@ -49,7 +49,7 @@ def test_asset_preserves_award_ids(mock_config, sample_raw_awards):
     """Test that award IDs are preserved in output."""
     context = build_asset_context()
 
-    with patch("src.assets.fiscal_assets.get_config", return_value=mock_config):
+    with patch("sbir_analytics.assets.fiscal_assets.get_config", return_value=mock_config):
         result = fiscal_prepared_sbir_awards(context, sample_raw_awards)
 
     enriched = result.value
@@ -65,7 +65,7 @@ def test_asset_handles_missing_naics(mock_config):
     )
     context = build_asset_context()
 
-    with patch("src.assets.fiscal_assets.get_config", return_value=mock_config):
+    with patch("sbir_analytics.assets.fiscal_assets.get_config", return_value=mock_config):
         result = fiscal_prepared_sbir_awards(context, raw_awards)
 
     assert isinstance(result.value, pd.DataFrame)
@@ -89,7 +89,7 @@ def test_asset_uses_fixture(tmp_path):
 
     context = build_asset_context()
 
-    with patch("src.assets.fiscal_assets.get_config") as mock_get_config:
+    with patch("sbir_analytics.assets.fiscal_assets.get_config") as mock_get_config:
         from tests.utils.config_mocks import create_mock_pipeline_config
 
         mock_config = create_mock_pipeline_config()

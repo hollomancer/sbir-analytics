@@ -14,15 +14,15 @@ import time
 
 import pytest
 
-from src.enrichers.search_providers.base import (
+from sbir_etl.enrichers.search_providers.base import (
     BaseSearchProvider,
     ProviderError,
     ProviderResponse,
     ProviderResult,
     make_mock_response,
 )
-from src.enrichers.search_providers.mock_searxng import MockSearxngProvider, make_mock_searxng
-from src.enrichers.search_providers.scoring import (
+from sbir_etl.enrichers.search_providers.mock_searxng import MockSearxngProvider, make_mock_searxng
+from sbir_etl.enrichers.search_providers.scoring import (
     FieldMatchScore,
     ResultScore,
     domain_of_url,

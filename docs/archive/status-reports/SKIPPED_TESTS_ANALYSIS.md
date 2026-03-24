@@ -436,7 +436,7 @@ def hf_token():
 
 def test_create_award_cet_relationships_builds_primary_and_supporting(neo4j_driver):
     """Test creating award-CET relationships."""
-    from src.loaders.neo4j import CETLoader, LoadMetrics
+    from sbir_etl.loaders.neo4j import CETLoader, LoadMetrics
     # Test implementation using neo4j_driver
     pass
 
@@ -654,7 +654,7 @@ def golden_transitions(tmp_path):
 @pytest.fixture
 def mock_config(tmp_path):
     """Provide mock configuration for asset tests."""
-    from src.config.schemas import PipelineConfig
+    from sbir_etl.config.schemas import PipelineConfig
 
     config = PipelineConfig(
         data_quality={"max_duplicate_rate": 0.10},

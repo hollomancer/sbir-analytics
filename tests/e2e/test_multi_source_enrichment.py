@@ -13,7 +13,7 @@ This test uses sample fixtures by default but can use real data if marked with
 import pandas as pd
 import pytest
 
-from src.enrichers.usaspending import enrich_sbir_with_usaspending
+from sbir_etl.enrichers.usaspending import enrich_sbir_with_usaspending
 
 
 pytestmark = [pytest.mark.e2e, pytest.mark.weekly]

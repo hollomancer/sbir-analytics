@@ -92,8 +92,8 @@ def test_stream_assignments_from_csv(tmp_path):
     to ensure the extractor constructs a PatentAssignment instance (not an error dict).
     """
     # Import under test
-    from src.extractors.uspto_extractor import USPTOExtractor
-    from src.models.uspto_models import PatentAssignment
+    from sbir_etl.extractors.uspto_extractor import USPTOExtractor
+    from sbir_etl.models.uspto_models import PatentAssignment
 
     # Prepare sample CSV
     csv_file = tmp_path / "sample_assignment.csv"

@@ -7,7 +7,7 @@ import json
 import pandas as pd
 import pytest
 
-from src.transition.analysis.analytics import TransitionAnalytics
+from sbir_ml.transition.analysis.analytics import TransitionAnalytics
 
 
 pytestmark = [pytest.mark.e2e, pytest.mark.slow]
@@ -19,7 +19,7 @@ def test_transition_detector_smoke(
     transition_contracts_sample: pd.DataFrame,
 ):
     """Run a light detection pass to ensure the detector executes end-to-end."""
-    from src.models.transition_models import FederalContract
+    from sbir_etl.models.transition_models import FederalContract
 
     # Convert contracts DataFrame to FederalContract objects
     contracts = [

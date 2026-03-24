@@ -7,7 +7,7 @@ import json
 import pandas as pd
 import pytest
 
-from src.enrichers.usaspending import enrich_sbir_with_usaspending
+from sbir_etl.enrichers.usaspending import enrich_sbir_with_usaspending
 from tests.assertions import assert_dataframe_has_columns
 
 

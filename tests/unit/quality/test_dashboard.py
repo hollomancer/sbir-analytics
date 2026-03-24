@@ -16,7 +16,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from src.quality.dashboard import DashboardMetrics, QualityDashboard
+from sbir_etl.quality.dashboard import DashboardMetrics, QualityDashboard
 
 pytestmark = pytest.mark.fast
 
@@ -161,7 +161,7 @@ class TestQualityDashboard:
         assert len(metrics_list) == 0
 
     @pytest.mark.skipif(not PLOTLY_AVAILABLE, reason="plotly not installed")
-    @patch("src.quality.dashboard.PLOTLY_AVAILABLE", True)
+    @patch("sbir_etl.quality.dashboard.PLOTLY_AVAILABLE", True)
     @patch("plotly.subplots.make_subplots")
     def test_generate_trend_dashboard_with_plotly(self, mock_subplots, dashboard, metrics_history):
         """Test trend dashboard generation with Plotly available."""
@@ -173,7 +173,7 @@ class TestQualityDashboard:
         assert output_file.exists()
         mock_fig.write_html.assert_called_once()
 
-    @patch("src.quality.dashboard.PLOTLY_AVAILABLE", False)
+    @patch("sbir_etl.quality.dashboard.PLOTLY_AVAILABLE", False)
     def test_generate_trend_dashboard_without_plotly(self, dashboard, metrics_history):
         """Test trend dashboard fallback without Plotly."""
         output_file = dashboard.generate_trend_dashboard(metrics_history)
@@ -191,7 +191,7 @@ class TestQualityDashboard:
         assert "empty_dashboard" in str(output_file)
 
     @pytest.mark.skipif(not PLOTLY_AVAILABLE, reason="plotly not installed")
-    @patch("src.quality.dashboard.PLOTLY_AVAILABLE", True)
+    @patch("sbir_etl.quality.dashboard.PLOTLY_AVAILABLE", True)
     @patch("plotly.subplots.make_subplots")
     def test_generate_distribution_dashboard(self, mock_subplots, dashboard, sample_metrics):
         """Test distribution dashboard generation."""
@@ -203,7 +203,7 @@ class TestQualityDashboard:
         assert output_file.exists()
         mock_fig.write_html.assert_called_once()
 
-    @patch("src.quality.dashboard.PLOTLY_AVAILABLE", False)
+    @patch("sbir_etl.quality.dashboard.PLOTLY_AVAILABLE", False)
     def test_generate_distribution_dashboard_without_plotly(self, dashboard, sample_metrics):
         """Test distribution dashboard without Plotly."""
         output_file = dashboard.generate_distribution_dashboard(sample_metrics)
@@ -214,7 +214,7 @@ class TestQualityDashboard:
         assert "metrics" in data
 
     @pytest.mark.skipif(not PLOTLY_AVAILABLE, reason="plotly not installed")
-    @patch("src.quality.dashboard.PLOTLY_AVAILABLE", True)
+    @patch("sbir_etl.quality.dashboard.PLOTLY_AVAILABLE", True)
     @patch("plotly.graph_objects.Figure")
     def test_generate_comparison_dashboard(self, mock_figure, dashboard):
         """Test comparison dashboard generation."""

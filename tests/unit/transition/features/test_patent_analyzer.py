@@ -10,8 +10,8 @@ from unittest.mock import patch
 
 import pytest
 
-from src.models.patent import Patent
-from src.transition.features.patent_analyzer import PatentSignalExtractor
+from sbir_etl.models.patent import Patent
+from sbir_ml.transition.features.patent_analyzer import PatentSignalExtractor
 
 
 pytestmark = pytest.mark.fast

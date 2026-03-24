@@ -5,7 +5,7 @@ pytestmark = pytest.mark.fast
 """Tests for RawAward -> Award parsing and coercion."""
 from datetime import date
 
-from src.models import Award, RawAward
+from sbir_etl.models import Award, RawAward
 
 
 def test_to_award_parses_iso_and_date_strings():

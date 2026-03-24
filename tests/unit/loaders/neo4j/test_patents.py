@@ -5,8 +5,8 @@ from unittest.mock import Mock
 import pytest
 from pydantic import ValidationError
 
-from src.loaders.neo4j.client import Neo4jClient
-from src.loaders.neo4j.patents import PatentLoader, PatentLoaderConfig
+from sbir_graph.loaders.neo4j.client import Neo4jClient
+from sbir_graph.loaders.neo4j.patents import PatentLoader, PatentLoaderConfig
 from tests.mocks import Neo4jMocks
 
 

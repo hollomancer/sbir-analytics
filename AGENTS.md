@@ -81,7 +81,7 @@ archive/openspec/       # Archived OpenSpec content (historical reference)
 **Update Neo4j:** Modify `src/loaders/`, use MERGE operations, document in `docs/schemas/`
 **Run fiscal analysis:** Use `fiscal_returns_mvp_job` (core) or `fiscal_returns_full_job` (with sensitivity)
 **Run PaECTER analysis:** Use `paecter_job` for embedding generation and award-patent similarity computation
-**Use CLI tools:** Run `uv run python -m src.cli.main <command>` for dashboard, metrics, status, and enrichment operations
+**Use CLI tools:** Run `uv run python -m sbir_etl.cli.main <command>` for dashboard, metrics, status, and enrichment operations
 
 ## References
 

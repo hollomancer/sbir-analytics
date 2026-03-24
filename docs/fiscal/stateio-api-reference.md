@@ -272,7 +272,7 @@ Impact results include quality flags indicating computation method:
 ### Example Usage
 
 ```python
-from src.transformers.r_stateio_adapter import RStateIOAdapter
+from sbir_etl.transformers.r_stateio_adapter import RStateIOAdapter
 import pandas as pd
 from decimal import Decimal
 

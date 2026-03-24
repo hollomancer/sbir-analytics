@@ -1232,7 +1232,7 @@ jobs:
       - name: Validate model loading
         run: |
           uv run python -c "
-          from src.ml.cet_classifier import CETClassifier
+          from sbir_etl.ml.cet_classifier import CETClassifier
           clf = CETClassifier()
           print('✅ Model loads successfully')
           "

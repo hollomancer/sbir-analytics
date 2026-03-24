@@ -8,8 +8,8 @@ from unittest.mock import Mock
 
 import pytest
 
-from src.models.transition_models import ConfidenceLevel, FederalContract, TransitionSignals
-from src.transition.detection.detector import TransitionDetector
+from sbir_etl.models.transition_models import ConfidenceLevel, FederalContract, TransitionSignals
+from sbir_ml.transition.detection.detector import TransitionDetector
 from tests.mocks import TransitionMocks
 
 pytestmark = pytest.mark.fast

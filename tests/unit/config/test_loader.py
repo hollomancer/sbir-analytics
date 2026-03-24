@@ -8,7 +8,7 @@ from unittest.mock import patch
 import pytest
 import yaml
 
-from src.config.loader import (
+from sbir_etl.config.loader import (
     _apply_env_overrides,
     _convert_env_value,
     _deep_merge_dicts,
@@ -16,8 +16,8 @@ from src.config.loader import (
     load_config_from_files,
     reload_config,
 )
-from src.config.schemas import PipelineConfig
-from src.exceptions import ConfigurationError
+from sbir_etl.config.schemas import PipelineConfig
+from sbir_etl.exceptions import ConfigurationError
 
 
 pytestmark = pytest.mark.fast

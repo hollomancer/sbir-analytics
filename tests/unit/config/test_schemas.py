@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from src.config.schemas import (
+from sbir_etl.config.schemas import (
     CLIConfig,
     DataQualityConfig,
     DuckDBConfig,

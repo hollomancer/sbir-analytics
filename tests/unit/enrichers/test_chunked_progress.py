@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 
 import pytest
 
-from src.enrichers.chunked_enrichment import ChunkProgress
+from sbir_etl.enrichers.chunked_enrichment import ChunkProgress
 
 
 pytestmark = pytest.mark.fast

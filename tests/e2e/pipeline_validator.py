@@ -13,8 +13,8 @@ import pandas as pd
 from loguru import logger
 from neo4j import Session
 
-from src.loaders import Neo4jClient
-from src.models.quality import QualitySeverity
+from sbir_graph.loaders import Neo4jClient
+from sbir_etl.models.quality import QualitySeverity
 
 
 class ValidationStage(str, Enum):

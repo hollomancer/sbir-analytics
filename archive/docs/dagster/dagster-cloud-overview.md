@@ -37,7 +37,7 @@ Optional overrides (only if you deviate from defaults):
 
 ## Code Location Defaults
 
-- **Module**: `src.definitions`
+- **Module**: `sbir_etl.definitions`
 - **Python version**: 3.11
 - **Entrypoint**: `pyproject.toml` already includes the required `[tool.dagster]` metadata for Dagster Cloud discovery.
 
@@ -50,7 +50,7 @@ Optional overrides (only if you deviate from defaults):
 5. Validate in the Dagster Cloud UI:
    - **Assets** load without errors.
    - **Jobs** appear under the code location.
-   - **Schedules / Sensors** are present (if enabled in `src.definitions`).
+   - **Schedules / Sensors** are present (if enabled in `sbir_etl.definitions`).
 
 ## Smoke Test
 

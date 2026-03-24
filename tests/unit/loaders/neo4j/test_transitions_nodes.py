@@ -8,7 +8,7 @@ from datetime import datetime
 import pandas as pd
 import pytest
 
-from src.loaders.neo4j.transitions import TransitionLoader
+from sbir_graph.loaders.neo4j.transitions import TransitionLoader
 from tests.mocks import Neo4jMocks
 from tests.unit.loaders.conftest import create_mock_client_with_session
 

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from src.definitions import defs
+from sbir_analytics.definitions import defs
 
 
 pytestmark = [pytest.mark.e2e, pytest.mark.slow]

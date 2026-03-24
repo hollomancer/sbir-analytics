@@ -9,7 +9,7 @@ from unittest.mock import patch
 import pandas as pd
 import pytest
 
-from src.enrichers.naics.core import NAICS_RE, RECIPIENT_UEI_RE, NAICSEnricher, NAICSEnricherConfig
+from sbir_etl.enrichers.naics.core import NAICS_RE, RECIPIENT_UEI_RE, NAICSEnricher, NAICSEnricherConfig
 
 
 # ==================== Fixtures ====================

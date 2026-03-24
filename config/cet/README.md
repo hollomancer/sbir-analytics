@@ -30,7 +30,7 @@ Configuration files are loaded by the `TaxonomyLoader` in `src/ml/config/taxonom
 Example:
 
 ```python
-from src.ml.config.taxonomy_loader import TaxonomyLoader
+from sbir_etl.ml.config.taxonomy_loader import TaxonomyLoader
 
 loader = TaxonomyLoader()
 taxonomy = loader.load_taxonomy()  # Loads taxonomy.yaml

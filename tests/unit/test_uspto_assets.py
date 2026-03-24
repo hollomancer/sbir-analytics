@@ -15,7 +15,7 @@ from dagster import build_asset_context
 
 # Attempt to import the asset checks under test; skip if module missing.
 uspto_validation_assets = pytest.importorskip(
-    "src.assets.uspto.validation", reason="uspto validation assets module missing"
+    "sbir_analytics.assets.uspto.validation", reason="uspto validation assets module missing"
 )
 
 uspto_rf_id_asset_check = getattr(uspto_validation_assets, "uspto_rf_id_asset_check", None)

@@ -13,7 +13,7 @@ import pytest
 
 pytestmark = pytest.mark.fast
 
-from src.exceptions import (
+from sbir_etl.exceptions import (
     APIError,
     CETClassificationError,
     ConfigurationError,

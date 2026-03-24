@@ -354,7 +354,7 @@ touch src/assets/transition/__init__.py
 
 ```bash
 # 1. Verify Python imports work
-python -c "from src.assets.cet.taxonomy import raw_cet_taxonomy"
+python -c "from sbir_etl.assets.cet.taxonomy import raw_cet_taxonomy"
 
 # 2. Verify Dagster recognizes assets
 dagster asset list | grep cet_taxonomy
@@ -493,12 +493,12 @@ from .assets.cet import (
 
 ```python
 # OLD
-from src.assets.cet import raw_cet_taxonomy
+from sbir_etl.assets.cet import raw_cet_taxonomy
 
 # NEW
-from src.assets.cet.taxonomy import raw_cet_taxonomy
+from sbir_etl.assets.cet.taxonomy import raw_cet_taxonomy
 # OR (if using __init__ re-exports)
-from src.assets.cet import raw_cet_taxonomy
+from sbir_etl.assets.cet import raw_cet_taxonomy
 ```
 
 **Test files to update:**

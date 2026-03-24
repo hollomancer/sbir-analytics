@@ -44,15 +44,15 @@ from typing import Any
 import pandas as pd
 from loguru import logger
 
-from src.config.loader import get_config
-from src.enrichers.company_categorization import (
+from sbir_etl.config.loader import get_config
+from sbir_etl.enrichers.company_categorization import (
     retrieve_company_contracts,
     retrieve_company_contracts_api,
     retrieve_sbir_awards,
     retrieve_sbir_awards_api,
 )
-from src.extractors.usaspending import DuckDBUSAspendingExtractor
-from src.transformers.company_categorization import (
+from sbir_etl.extractors.usaspending import DuckDBUSAspendingExtractor
+from sbir_etl.transformers.company_categorization import (
     aggregate_company_classification,
     classify_contract,
     is_cost_based_contract,
@@ -593,7 +593,7 @@ def categorize_companies(
             # Override classification to Product-leaning if final two years show product > R&D
             if product_commercialization and company_result.classification != "Product-leaning":
                 # Create a new CompanyClassification with Product-leaning classification
-                from src.models.categorization import CompanyClassification
+                from sbir_etl.models.categorization import CompanyClassification
 
                 company_result = CompanyClassification(
                     company_uei=company_result.company_uei,
@@ -1325,7 +1325,7 @@ def load_to_neo4j(results: pd.DataFrame) -> None:
     Args:
         results: DataFrame with categorization results
     """
-    from src.loaders.neo4j import (
+    from sbir_graph.loaders.neo4j import (
         CompanyCategorizationLoader,
         CompanyCategorizationLoaderConfig,
         Neo4jClient,

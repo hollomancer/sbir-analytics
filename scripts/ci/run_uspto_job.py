@@ -69,9 +69,9 @@ def main() -> int:
     try:
         # Import the job symbol from the project package
         # The CI container should have PYTHONPATH set such that `src` is importable.
-        from src.assets.jobs.uspto_job import uspto_validation_job  # type: ignore
+        from sbir_analytics.assets.jobs.uspto_job import uspto_validation_job  # type: ignore
     except Exception:
-        logger.error("Failed to import `uspto_validation_job` from src.assets.jobs.uspto_job")
+        logger.error("Failed to import `uspto_validation_job` from sbir_analytics.assets.jobs.uspto_job")
         logger.debug("Traceback:", exc_info=True)
         return 1
 

@@ -33,7 +33,7 @@ from typing import Any
 import pandas as pd
 from loguru import logger
 
-from src.enrichers.patentsview import (
+from sbir_etl.enrichers.patentsview import (
     PatentsViewClient,
     check_patent_reassignments,
     retrieve_company_patents,

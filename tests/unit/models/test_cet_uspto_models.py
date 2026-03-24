@@ -8,7 +8,7 @@ from pydantic import ValidationError
 
 pytestmark = pytest.mark.fast
 
-from src.models.cet_models import (
+from sbir_etl.models.cet_models import (
     CETArea,
     CETAssessment,
     CETClassification,
@@ -17,7 +17,7 @@ from src.models.cet_models import (
     EvidenceStatement,
     TrainingExample,
 )
-from src.models.uspto_models import (
+from sbir_etl.models.uspto_models import (
     ConveyanceType,
     PatentAssignee,
     PatentAssignor,

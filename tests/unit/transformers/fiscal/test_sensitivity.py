@@ -8,7 +8,7 @@ import pandas as pd
 import pytest
 
 from tests.mocks import ConfigMocks
-from src.transformers.fiscal.sensitivity import (
+from sbir_etl.transformers.fiscal.sensitivity import (
     FiscalParameterSweep,
     FiscalUncertaintyQuantifier,
     ParameterRange,
@@ -86,7 +86,7 @@ class TestParameterScenario:
 class TestFiscalParameterSweepInitialization:
     """Tests for FiscalParameterSweep initialization."""
 
-    @patch("src.transformers.fiscal.sensitivity.get_config")
+    @patch("sbir_etl.transformers.fiscal.sensitivity.get_config")
     def test_initialization_with_config(self, mock_get_config):
         """Test FiscalParameterSweep initialization with config."""
         from tests.utils.config_mocks import create_mock_pipeline_config
@@ -115,7 +115,7 @@ class TestFiscalParameterSweepInitialization:
 class TestGenerateMonteCarloScenarios:
     """Tests for generate_monte_carlo_scenarios method."""
 
-    @patch("src.transformers.fiscal.sensitivity.get_config")
+    @patch("sbir_etl.transformers.fiscal.sensitivity.get_config")
     def test_generate_monte_carlo_basic(self, mock_get_config):
         """Test Monte Carlo scenario generation."""
         mock_config = ConfigMocks.pipeline_config()
@@ -130,7 +130,7 @@ class TestGenerateMonteCarloScenarios:
         assert all(isinstance(s, ParameterScenario) for s in scenarios)
         assert all(s.metadata["method"] == "monte_carlo" for s in scenarios)
 
-    @patch("src.transformers.fiscal.sensitivity.get_config")
+    @patch("sbir_etl.transformers.fiscal.sensitivity.get_config")
     def test_generate_monte_carlo_reproducible(self, mock_get_config):
         """Test Monte Carlo scenarios are reproducible with seed."""
         mock_config = ConfigMocks.pipeline_config()
@@ -146,7 +146,7 @@ class TestGenerateMonteCarloScenarios:
         for s1, s2 in zip(scenarios1, scenarios2, strict=False):
             assert s1.parameters == s2.parameters
 
-    @patch("src.transformers.fiscal.sensitivity.get_config")
+    @patch("sbir_etl.transformers.fiscal.sensitivity.get_config")
     def test_generate_monte_carlo_different_seeds(self, mock_get_config):
         """Test Monte Carlo scenarios differ with different seeds."""
         mock_config = ConfigMocks.pipeline_config()
@@ -164,7 +164,7 @@ class TestGenerateMonteCarloScenarios:
         )
         assert differences > 0
 
-    @patch("src.transformers.fiscal.sensitivity.get_config")
+    @patch("sbir_etl.transformers.fiscal.sensitivity.get_config")
     def test_generate_monte_carlo_single_scenario(self, mock_get_config):
         """Test Monte Carlo with single scenario."""
         mock_config = ConfigMocks.pipeline_config()
@@ -181,7 +181,7 @@ class TestGenerateMonteCarloScenarios:
 class TestGenerateLatinHypercubeScenarios:
     """Tests for generate_latin_hypercube_scenarios method."""
 
-    @patch("src.transformers.fiscal.sensitivity.get_config")
+    @patch("sbir_etl.transformers.fiscal.sensitivity.get_config")
     def test_generate_lhs_basic(self, mock_get_config):
         """Test Latin Hypercube Sampling scenario generation."""
         mock_config = ConfigMocks.pipeline_config()
@@ -196,7 +196,7 @@ class TestGenerateLatinHypercubeScenarios:
         assert all(isinstance(s, ParameterScenario) for s in scenarios)
         assert all(s.metadata["method"] == "latin_hypercube" for s in scenarios)
 
-    @patch("src.transformers.fiscal.sensitivity.get_config")
+    @patch("sbir_etl.transformers.fiscal.sensitivity.get_config")
     def test_generate_lhs_reproducible(self, mock_get_config):
         """Test LHS scenarios are reproducible with seed."""
         mock_config = ConfigMocks.pipeline_config()
@@ -217,7 +217,7 @@ class TestGenerateLatinHypercubeScenarios:
 class TestGenerateGridSearchScenarios:
     """Tests for generate_grid_search_scenarios method."""
 
-    @patch("src.transformers.fiscal.sensitivity.get_config")
+    @patch("sbir_etl.transformers.fiscal.sensitivity.get_config")
     def test_generate_grid_search_basic(self, mock_get_config):
         """Test grid search scenario generation."""
         mock_config = ConfigMocks.pipeline_config()
@@ -233,7 +233,7 @@ class TestGenerateGridSearchScenarios:
         assert all(isinstance(s, ParameterScenario) for s in scenarios)
         assert all(s.metadata["method"] == "grid_search" for s in scenarios)
 
-    @patch("src.transformers.fiscal.sensitivity.get_config")
+    @patch("sbir_etl.transformers.fiscal.sensitivity.get_config")
     def test_generate_grid_search_single_point(self, mock_get_config):
         """Test grid search with single point per dimension."""
         mock_config = ConfigMocks.pipeline_config()
@@ -291,7 +291,7 @@ class TestUncertaintyResult:
 class TestComputePercentileConfidenceIntervals:
     """Tests for compute_percentile_confidence_intervals method."""
 
-    @patch("src.transformers.fiscal.sensitivity.get_config")
+    @patch("sbir_etl.transformers.fiscal.sensitivity.get_config")
     def test_compute_percentile_ci_basic(self, mock_get_config):
         """Test percentile confidence interval computation."""
         mock_config = ConfigMocks.pipeline_config()
@@ -311,7 +311,7 @@ class TestComputePercentileConfidenceIntervals:
         assert isinstance(intervals[0.90][0], Decimal)
         assert isinstance(intervals[0.90][1], Decimal)
 
-    @patch("src.transformers.fiscal.sensitivity.get_config")
+    @patch("sbir_etl.transformers.fiscal.sensitivity.get_config")
     def test_compute_percentile_ci_empty_series(self, mock_get_config):
         """Test percentile CI with empty series."""
         mock_config = ConfigMocks.pipeline_config()
@@ -328,7 +328,7 @@ class TestComputePercentileConfidenceIntervals:
         # Should return zero intervals
         assert intervals[0.90] == (Decimal("0"), Decimal("0"))
 
-    @patch("src.transformers.fiscal.sensitivity.get_config")
+    @patch("sbir_etl.transformers.fiscal.sensitivity.get_config")
     def test_compute_percentile_ci_custom_levels(self, mock_get_config):
         """Test percentile CI with custom confidence levels."""
         mock_config = ConfigMocks.pipeline_config()
@@ -349,7 +349,7 @@ class TestComputePercentileConfidenceIntervals:
 class TestComputeBootstrapConfidenceIntervals:
     """Tests for compute_bootstrap_confidence_intervals method."""
 
-    @patch("src.transformers.fiscal.sensitivity.get_config")
+    @patch("sbir_etl.transformers.fiscal.sensitivity.get_config")
     def test_compute_bootstrap_ci_basic(self, mock_get_config):
         """Test bootstrap confidence interval computation."""
         mock_config = ConfigMocks.pipeline_config()
@@ -368,7 +368,7 @@ class TestComputeBootstrapConfidenceIntervals:
         assert 0.90 in intervals
         assert isinstance(intervals[0.90][0], Decimal)
 
-    @patch("src.transformers.fiscal.sensitivity.get_config")
+    @patch("sbir_etl.transformers.fiscal.sensitivity.get_config")
     def test_compute_bootstrap_ci_reproducible(self, mock_get_config):
         """Test bootstrap CI is reproducible with seed."""
         mock_config = ConfigMocks.pipeline_config()
@@ -390,7 +390,7 @@ class TestComputeBootstrapConfidenceIntervals:
 
         assert intervals1[0.90] == intervals2[0.90]
 
-    @patch("src.transformers.fiscal.sensitivity.get_config")
+    @patch("sbir_etl.transformers.fiscal.sensitivity.get_config")
     def test_compute_bootstrap_ci_empty_series(self, mock_get_config):
         """Test bootstrap CI with empty series."""
         mock_config = ConfigMocks.pipeline_config()
@@ -410,7 +410,7 @@ class TestComputeBootstrapConfidenceIntervals:
 class TestComputeSensitivityIndices:
     """Tests for compute_sensitivity_indices method."""
 
-    @patch("src.transformers.fiscal.sensitivity.get_config")
+    @patch("sbir_etl.transformers.fiscal.sensitivity.get_config")
     def test_compute_sensitivity_indices_basic(self, mock_get_config):
         """Test sensitivity indices computation."""
         mock_config = ConfigMocks.pipeline_config()
@@ -436,7 +436,7 @@ class TestComputeSensitivityIndices:
         assert indices["tax_rate"] > 0
         assert indices["multiplier"] > 0
 
-    @patch("src.transformers.fiscal.sensitivity.get_config")
+    @patch("sbir_etl.transformers.fiscal.sensitivity.get_config")
     def test_compute_sensitivity_indices_empty_df(self, mock_get_config):
         """Test sensitivity indices with empty DataFrame."""
         mock_config = ConfigMocks.pipeline_config()
@@ -450,7 +450,7 @@ class TestComputeSensitivityIndices:
 
         assert indices == {}
 
-    @patch("src.transformers.fiscal.sensitivity.get_config")
+    @patch("sbir_etl.transformers.fiscal.sensitivity.get_config")
     def test_compute_sensitivity_indices_missing_target(self, mock_get_config):
         """Test sensitivity indices with missing target column."""
         mock_config = ConfigMocks.pipeline_config()
@@ -470,7 +470,7 @@ class TestComputeSensitivityIndices:
 
         assert indices == {}
 
-    @patch("src.transformers.fiscal.sensitivity.get_config")
+    @patch("sbir_etl.transformers.fiscal.sensitivity.get_config")
     def test_compute_sensitivity_indices_sorted(self, mock_get_config):
         """Test sensitivity indices are sorted by magnitude."""
         mock_config = ConfigMocks.pipeline_config()
@@ -498,7 +498,7 @@ class TestComputeSensitivityIndices:
 class TestQuantifyUncertainty:
     """Tests for quantify_uncertainty method."""
 
-    @patch("src.transformers.fiscal.sensitivity.get_config")
+    @patch("sbir_etl.transformers.fiscal.sensitivity.get_config")
     def test_quantify_uncertainty_basic(self, mock_get_config):
         """Test uncertainty quantification."""
         mock_config = ConfigMocks.pipeline_config()
@@ -523,7 +523,7 @@ class TestQuantifyUncertainty:
         assert result.max_estimate == Decimal("2000.0")
         assert 0.90 in result.confidence_intervals
 
-    @patch("src.transformers.fiscal.sensitivity.get_config")
+    @patch("sbir_etl.transformers.fiscal.sensitivity.get_config")
     def test_quantify_uncertainty_empty_df(self, mock_get_config):
         """Test uncertainty quantification with empty DataFrame."""
         mock_config = ConfigMocks.pipeline_config()
@@ -539,7 +539,7 @@ class TestQuantifyUncertainty:
         assert result.max_estimate == Decimal("0")
         assert "empty_dataframe" in result.quality_flags
 
-    @patch("src.transformers.fiscal.sensitivity.get_config")
+    @patch("sbir_etl.transformers.fiscal.sensitivity.get_config")
     def test_quantify_uncertainty_missing_column(self, mock_get_config):
         """Test uncertainty quantification with missing target column."""
         mock_config = ConfigMocks.pipeline_config()
@@ -554,7 +554,7 @@ class TestQuantifyUncertainty:
 
         assert "missing_target_column" in result.quality_flags
 
-    @patch("src.transformers.fiscal.sensitivity.get_config")
+    @patch("sbir_etl.transformers.fiscal.sensitivity.get_config")
     def test_quantify_uncertainty_high_cv(self, mock_get_config):
         """Test uncertainty quantification flags high coefficient of variation."""
         mock_config = ConfigMocks.pipeline_config()
@@ -579,7 +579,7 @@ class TestQuantifyUncertainty:
             or "moderate_uncertainty" in result.quality_flags
         )
 
-    @patch("src.transformers.fiscal.sensitivity.get_config")
+    @patch("sbir_etl.transformers.fiscal.sensitivity.get_config")
     def test_quantify_uncertainty_bootstrap_method(self, mock_get_config):
         """Test uncertainty quantification with bootstrap method."""
         mock_config = ConfigMocks.pipeline_config()
@@ -604,7 +604,7 @@ class TestQuantifyUncertainty:
 class TestFlagHighUncertainty:
     """Tests for flag_high_uncertainty method."""
 
-    @patch("src.transformers.fiscal.sensitivity.get_config")
+    @patch("sbir_etl.transformers.fiscal.sensitivity.get_config")
     def test_flag_high_uncertainty_true(self, mock_get_config):
         """Test flagging high uncertainty returns True."""
         mock_config = ConfigMocks.pipeline_config()
@@ -624,7 +624,7 @@ class TestFlagHighUncertainty:
 
         assert quantifier.flag_high_uncertainty(result) is True
 
-    @patch("src.transformers.fiscal.sensitivity.get_config")
+    @patch("sbir_etl.transformers.fiscal.sensitivity.get_config")
     def test_flag_high_uncertainty_false(self, mock_get_config):
         """Test flagging low uncertainty returns False."""
         mock_config = ConfigMocks.pipeline_config()
@@ -644,7 +644,7 @@ class TestFlagHighUncertainty:
 
         assert quantifier.flag_high_uncertainty(result) is False
 
-    @patch("src.transformers.fiscal.sensitivity.get_config")
+    @patch("sbir_etl.transformers.fiscal.sensitivity.get_config")
     def test_flag_high_uncertainty_estimated_cv(self, mock_get_config):
         """Test flagging based on estimated CV from range."""
         mock_config = ConfigMocks.pipeline_config()
@@ -670,7 +670,7 @@ class TestFlagHighUncertainty:
 class TestEdgeCases:
     """Tests for edge cases in sensitivity analysis."""
 
-    @patch("src.transformers.fiscal.sensitivity.get_config")
+    @patch("sbir_etl.transformers.fiscal.sensitivity.get_config")
     def test_zero_scenarios(self, mock_get_config):
         """Test handling zero scenarios requested."""
         mock_config = ConfigMocks.pipeline_config()
@@ -683,7 +683,7 @@ class TestEdgeCases:
 
         assert len(scenarios) == 0
 
-    @patch("src.transformers.fiscal.sensitivity.get_config")
+    @patch("sbir_etl.transformers.fiscal.sensitivity.get_config")
     def test_negative_values_in_estimates(self, mock_get_config):
         """Test handling negative values in estimates."""
         mock_config = ConfigMocks.pipeline_config()
@@ -705,7 +705,7 @@ class TestEdgeCases:
         assert result.min_estimate == Decimal("-500.0")
         assert result.max_estimate == Decimal("1000.0")
 
-    @patch("src.transformers.fiscal.sensitivity.get_config")
+    @patch("sbir_etl.transformers.fiscal.sensitivity.get_config")
     def test_single_value_estimates(self, mock_get_config):
         """Test handling single unique value in estimates."""
         mock_config = ConfigMocks.pipeline_config()

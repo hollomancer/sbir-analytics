@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from src.extractors.uspto_extractor import SUPPORTED_EXTENSIONS, USPTOExtractor
+from sbir_etl.extractors.uspto_extractor import SUPPORTED_EXTENSIONS, USPTOExtractor
 
 
 pytestmark = pytest.mark.fast

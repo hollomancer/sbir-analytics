@@ -1799,7 +1799,7 @@ To verify your configuration:
 
 ## Check configuration loads
 
-python -c "from src.config.loader import get_config; print(get_config().enrichment.performance)"
+python -c "from sbir_etl.config.loader import get_config; print(get_config().enrichment.performance)"
 
 ## Run with validation
 

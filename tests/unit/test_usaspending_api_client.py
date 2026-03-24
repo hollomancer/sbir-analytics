@@ -11,10 +11,10 @@ import pytest
 pytestmark = pytest.mark.fast
 from httpx import TimeoutException
 
-from src.enrichers.usaspending.client import USAspendingAPIClient
-from src.exceptions import APIError as USAspendingAPIError
-from src.exceptions import RateLimitError as USAspendingRateLimitError
-from src.models.enrichment import EnrichmentFreshnessRecord, EnrichmentStatus
+from sbir_etl.enrichers.usaspending.client import USAspendingAPIClient
+from sbir_etl.exceptions import APIError as USAspendingAPIError
+from sbir_etl.exceptions import RateLimitError as USAspendingRateLimitError
+from sbir_etl.models.enrichment import EnrichmentFreshnessRecord, EnrichmentStatus
 from tests.utils.config_mocks import create_mock_pipeline_config, create_mock_usaspending_config
 
 
@@ -27,7 +27,7 @@ def mock_config():
 @pytest.fixture
 def api_client(mock_config, tmp_path):
     """Create USAspending API client for testing."""
-    with patch("src.enrichers.usaspending.client.get_config") as mock_get_config:
+    with patch("sbir_etl.enrichers.usaspending.client.get_config") as mock_get_config:
         # Use consolidated config mock utility
         mock_cfg = create_mock_pipeline_config()
         # Set enrichment_refresh.usaspending state_file

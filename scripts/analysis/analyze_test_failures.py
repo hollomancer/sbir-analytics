@@ -33,7 +33,7 @@ def categorize_failures(output):
                 if "AttributeError" in line:
                     if "'ApplicabilityModel' object has no attribute" in line:
                         categories["CET_missing_methods"].append(test_file)
-                    elif "module 'src.enrichers' has no attribute" in line:
+                    elif "module 'sbir_etl.enrichers' has no attribute" in line:
                         categories["import_errors"].append(test_file)
                     else:
                         categories["attribute_errors"].append(test_file)

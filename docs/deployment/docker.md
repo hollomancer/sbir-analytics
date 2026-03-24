@@ -159,7 +159,7 @@ docker compose --profile prod up -d
 # 4. Click "Materialize"
 
 # Via CLI
-docker compose exec app dagster asset materialize -m src.definitions
+docker compose exec app dagster asset materialize -m sbir_etl.definitions
 ```
 
 ### Run Specific Job

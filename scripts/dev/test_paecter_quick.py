@@ -34,7 +34,7 @@ import numpy as np
 from rich.console import Console
 from rich.table import Table
 
-from src.ml.paecter_client import PaECTERClient
+from sbir_ml.ml.paecter_client import PaECTERClient
 
 
 console = Console()

@@ -283,7 +283,7 @@ uv sync
 
 ## Or run directly
 
-uv run python -m src.cli.main
+uv run python -m sbir_etl.cli.main
 ```
 
 ### Import Errors

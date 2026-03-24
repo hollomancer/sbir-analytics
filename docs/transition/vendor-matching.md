@@ -522,7 +522,7 @@ export SBIR_ETL__VENDOR_RESOLUTION__CACHE_ENABLED=true
 ### VendorResolver Class
 
 ```python
-from src.transition.features.vendor_resolver import VendorResolver
+from sbir_etl.transition.features.vendor_resolver import VendorResolver
 
 ## Initialize
 
@@ -587,7 +587,7 @@ SBIR-2020-3         CONTRACT-004   FUZZY_PRIM  0.84        [null]           [nul
 For large datasets (6.7M+ contracts), vendor resolution can be slow. Use caching:
 
 ```python
-from src.transition.performance.contract_analytics import VendorResolutionCache
+from sbir_etl.transition.performance.contract_analytics import VendorResolutionCache
 
 ## Initialize cache
 
@@ -762,7 +762,7 @@ exclusions:
 
 ## Lookup UEI via SAM.gov API
 
-from src.extractors.sam_api import SAMClient
+from sbir_etl.extractors.sam_api import SAMClient
 
 sam = SAMClient()
 for idx, contract in contracts_df.iterrows():
