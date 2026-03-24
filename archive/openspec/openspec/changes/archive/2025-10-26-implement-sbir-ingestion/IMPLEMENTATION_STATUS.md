@@ -170,7 +170,7 @@ All code follows project conventions:
 2. **Run quick extractor test**:
    ```bash
    python -c "
-   from src.extractors.sbir import SbirDuckDBExtractor
+   from sbir_etl.extractors.sbir import SbirDuckDBExtractor
    extractor = SbirDuckDBExtractor('data/raw/sbir/awards_data.csv')
    metadata = extractor.import_csv()
    print(f'Imported {metadata[\"row_count\"]:,} records')

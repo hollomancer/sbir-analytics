@@ -2,8 +2,8 @@
 """CET smoke test - validates constraints, nodes, enrichments, relationships, and assertions."""
 
 import os
-from src.loaders.neo4j_client import Neo4jClient, Neo4jConfig
-from src.loaders.cet_loader import CETLoader, CETLoaderConfig
+from sbir_etl.loaders.neo4j_client import Neo4jClient, Neo4jConfig
+from sbir_etl.loaders.cet_loader import CETLoader, CETLoaderConfig
 
 
 def main():

@@ -9,16 +9,16 @@ pytestmark = pytest.mark.fast
 
 from rich.console import Console
 
-from src.cli.context import CommandContext
+from sbir_etl.cli.context import CommandContext
 
 
 class TestCommandContext:
     """Tests for CommandContext creation and initialization."""
 
-    @patch("src.cli.context.DagsterClient")
-    @patch("src.cli.context.Neo4jClient")
-    @patch("src.cli.context.MetricsCollector")
-    @patch("src.config.loader.get_config")
+    @patch("sbir_etl.cli.context.DagsterClient")
+    @patch("sbir_etl.cli.context.Neo4jClient")
+    @patch("sbir_etl.cli.context.MetricsCollector")
+    @patch("sbir_etl.config.loader.get_config")
     def test_create_with_default_config(
         self,
         mock_get_config: Mock,

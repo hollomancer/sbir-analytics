@@ -870,16 +870,16 @@ src/
 
 ## Shared infrastructure (always available)
 
-from src.common.config import load_config
-from src.common.quality import BaseValidator, QualityReport
-from src.loaders.base_loader import BaseNeo4jLoader
-from src.models.base import BaseEntity
+from sbir_etl.common.config import load_config
+from sbir_etl.common.quality import BaseValidator, QualityReport
+from sbir_etl.loaders.base_loader import BaseNeo4jLoader
+from sbir_etl.models.base import BaseEntity
 
 ## Module-specific (only import what you need)
 
-from src.sbir.enrichment import SAMGovClient
-from src.uspto.extractors import StataExtractor
-from src.ml.models import CETClassifier  # Requires ml extras
+from sbir_etl.sbir.enrichment import SAMGovClient
+from sbir_etl.uspto.extractors import StataExtractor
+from sbir_etl.ml.models import CETClassifier  # Requires ml extras
 ```
 
 ### 7.3 Configuration Naming Conventions

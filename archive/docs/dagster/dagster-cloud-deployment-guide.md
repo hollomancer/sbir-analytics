@@ -122,7 +122,7 @@ This guide documents the migration from Docker Compose-based Dagster deployment 
 2. Configure the code location:
    - **Name**: `sbir-analytics-production`
    - **Type**: Python module
-   - **Module**: `src.definitions`
+   - **Module**: `sbir_etl.definitions`
    - **Branch**: `main` (or your preferred branch)
    - **Python Version**: 3.11
 3. Click **Create Code Location**
@@ -132,8 +132,8 @@ This guide documents the migration from Docker Compose-based Dagster deployment 
 ```toml
 [tool.dg.project]
 root_module = "src"
-defs_module = "src.definitions"
-code_location_target_module = "src.definitions"
+defs_module = "sbir_etl.definitions"
+code_location_target_module = "sbir_etl.definitions"
 code_location_name = "sbir-analytics-production"
 ```
 
@@ -305,7 +305,7 @@ Create a `dagster_cloud.yaml` file in your project root:
 locations:
   - location_name: sbir-analytics-production
     code_source:
-      python_module: src.definitions
+      python_module: sbir_etl.definitions
     build:
       python_version: "3.11"
 ```
@@ -313,7 +313,7 @@ locations:
 **Configuration Options**:
 
 - `location_name`: Name for your code location (matches `code_location_name` in `pyproject.toml`)
-- `code_source.python_module`: Module path to your Definitions object (`src.definitions`)
+- `code_source.python_module`: Module path to your Definitions object (`sbir_etl.definitions`)
 - `build.python_version`: Python version to use
 
 **Advanced Configuration**:
@@ -322,7 +322,7 @@ locations:
 locations:
   - location_name: sbir-analytics-production
     code_source:
-      python_module: src.definitions
+      python_module: sbir_etl.definitions
     build:
       python_version: "3.11"
       # Optional: specify build steps
@@ -379,7 +379,7 @@ Should show your organization and deployment info.
 dagster-cloud serverless deploy-python-executable \
   --deployment prod \
   --location-name sbir-analytics-production \
-  --module-name src.definitions
+  --module-name sbir_etl.definitions
 ```
 
 This will:
@@ -394,7 +394,7 @@ This will:
 dagster-cloud serverless deploy-python-executable \
   --deployment prod \
   --location-name sbir-analytics-production \
-  --module-name src.definitions \
+  --module-name sbir_etl.definitions \
   --organization your-org-name
 ```
 
@@ -983,8 +983,8 @@ This error occurs because Dagster Cloud (Dagster+) requires a `[tool.dg.project]
 ```toml
 [tool.dg.project]
 root_module = "src"
-defs_module = "src.definitions"
-code_location_target_module = "src.definitions"
+defs_module = "sbir_etl.definitions"
+code_location_target_module = "sbir_etl.definitions"
 code_location_name = "sbir-analytics-production"
 ```
 
@@ -995,7 +995,7 @@ This configuration has been added to the repository. If you're still seeing this
 **Issue**: Assets don't appear in Dagster Cloud UI
 
 **Solutions**:
-1. Verify module path is correct (`src.definitions`)
+1. Verify module path is correct (`sbir_etl.definitions`)
 2. Check that `Definitions` object is named `defs` in `src/definitions.py`
 3. Review deployment logs for import errors
 4. Ensure all asset modules are importable
@@ -1046,7 +1046,7 @@ This configuration has been added to the repository. If you're still seeing this
 **Solutions**:
 1.  **Docker not running**: Ensure Docker Desktop is running (`docker ps` should work)
 2.  **Missing location name**: Use `--location-name sbir-analytics-production`
-3.  **Missing module**: Use `--module-name src.definitions`
+3.  **Missing module**: Use `--module-name sbir_etl.definitions`
 4.  Verify `pyproject.toml` has `[tool.dg.project]` block
 5.  Check build logs: `dagster-cloud serverless logs --location-name sbir-analytics-production`
 
@@ -1080,12 +1080,12 @@ This configuration has been added to the repository. If you're still seeing this
    dagster-cloud serverless deploy-python-executable \
      --deployment prod \
      --location-name sbir-analytics-production \
-     --module-name src.definitions
+     --module-name sbir_etl.definitions
    ```
 
 ### Module Not Found (CLI)
 
-**Issue**: `python_module: src.definitions` not found
+**Issue**: `python_module: sbir_etl.definitions` not found
 
 **Solutions**:
 1. Verify `src/definitions.py` exists
@@ -1121,7 +1121,7 @@ This configuration has been added to the repository. If you're still seeing this
     dagster-cloud serverless deploy-python-executable \
       --deployment prod \
       --location-name sbir-analytics-production \
-      --module-name src.definitions
+      --module-name sbir_etl.definitions
     ```
 
 **Option 2: Use Docker deployment instead** (Recommended for large codebases)

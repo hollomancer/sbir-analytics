@@ -13,7 +13,7 @@ pytestmark = pytest.mark.fast
 # Loader tests require neo4j driver availability in the environment (match existing project pattern)
 pytest.importorskip("neo4j", reason="neo4j driver missing")
 
-from src.loaders.neo4j import CETLoader, LoadMetrics  # type: ignore
+from sbir_etl.loaders.neo4j import CETLoader, LoadMetrics  # type: ignore
 
 
 # -----------------------------
@@ -259,13 +259,13 @@ def test_asset_neo4j_company_cet_relationships_invokes_loader(monkeypatch, tmp_p
             pass
 
     # Patch asset internals to avoid real IO/Neo4j
-    monkeypatch.setattr("src.assets.cet.loading._get_neo4j_client", lambda: FakeLoader(None, None))
+    monkeypatch.setattr("sbir_etl.assets.cet.loading._get_neo4j_client", lambda: FakeLoader(None, None))
     monkeypatch.setattr(
-        "src.assets.cet.loading._read_parquet_or_ndjson", lambda *args, **kwargs: rows
+        "sbir_etl.assets.cet.loading._read_parquet_or_ndjson", lambda *args, **kwargs: rows
     )
-    monkeypatch.setattr("src.assets.cet.loading.CETLoader", FakeLoader)
+    monkeypatch.setattr("sbir_etl.assets.cet.loading.CETLoader", FakeLoader)
     monkeypatch.setattr(
-        "src.assets.cet.loading.CETLoaderConfig", lambda batch_size: {"batch_size": batch_size}
+        "sbir_etl.assets.cet.loading.CETLoaderConfig", lambda batch_size: {"batch_size": batch_size}
     )
 
     # Execute asset using Dagster's proper context
@@ -279,7 +279,7 @@ def test_asset_neo4j_company_cet_relationships_invokes_loader(monkeypatch, tmp_p
         }
     )
 
-    from src.assets.cet.loading import loaded_company_cet_relationships as asset_fn
+    from sbir_etl.assets.cet.loading import loaded_company_cet_relationships as asset_fn
 
     result = asset_fn(ctx, None, None, None)
 

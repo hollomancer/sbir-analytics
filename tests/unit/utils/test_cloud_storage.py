@@ -9,7 +9,7 @@ import pytest
 
 pytestmark = pytest.mark.fast
 
-from src.utils.cloud_storage import build_s3_path, get_s3_bucket_from_env, resolve_data_path
+from sbir_etl.utils.cloud_storage import build_s3_path, get_s3_bucket_from_env, resolve_data_path
 
 
 class TestResolveDataPath:
@@ -48,7 +48,7 @@ class TestResolveDataPath:
         local_file = tmp_path / "local.txt"
         local_file.write_text("local content")
 
-        with patch("src.utils.cloud_storage.S3Path") as mock_s3:
+        with patch("sbir_etl.utils.cloud_storage.S3Path") as mock_s3:
             result = resolve_data_path(
                 "s3://bucket/path.txt", local_fallback=local_file, prefer_local=True
             )
@@ -56,7 +56,7 @@ class TestResolveDataPath:
             assert result == local_file
             mock_s3.assert_not_called()
 
-    @patch("src.utils.cloud_storage.S3Path")
+    @patch("sbir_etl.utils.cloud_storage.S3Path")
     def test_resolve_s3_path_exists(self, mock_s3_path_class, tmp_path):
         """Test resolve_data_path with existing S3 path."""
         mock_s3_path = MagicMock()
@@ -64,7 +64,7 @@ class TestResolveDataPath:
         mock_s3_path.name = "test.txt"
         mock_s3_path_class.return_value = mock_s3_path
 
-        with patch("src.utils.cloud_storage._download_s3_to_temp") as mock_download:
+        with patch("sbir_etl.utils.cloud_storage._download_s3_to_temp") as mock_download:
             mock_download.return_value = tmp_path / "downloaded.txt"
 
             result = resolve_data_path("s3://bucket/path.txt")
@@ -72,7 +72,7 @@ class TestResolveDataPath:
             assert result == tmp_path / "downloaded.txt"
             mock_s3_path_class.assert_called_once_with("s3://bucket/path.txt")
 
-    @patch("src.utils.cloud_storage.S3Path")
+    @patch("sbir_etl.utils.cloud_storage.S3Path")
     def test_resolve_s3_path_fallback_to_local(self, mock_s3_path_class, tmp_path):
         """Test resolve_data_path falls back to local when S3 fails."""
         mock_s3_path = MagicMock()
@@ -86,7 +86,7 @@ class TestResolveDataPath:
 
         assert result == local_fallback
 
-    @patch("src.utils.cloud_storage.S3Path")
+    @patch("sbir_etl.utils.cloud_storage.S3Path")
     def test_resolve_s3_path_raises_when_both_fail(self, mock_s3_path_class):
         """Test resolve_data_path raises when both S3 and local fail."""
         mock_s3_path = MagicMock()
@@ -148,7 +148,7 @@ class TestBuildS3Path:
 
     def test_build_s3_path_with_env_bucket(self):
         """Test build_s3_path uses env var when bucket not provided."""
-        with patch("src.utils.cloud_storage.get_s3_bucket_from_env", return_value="env-bucket"):
+        with patch("sbir_etl.utils.cloud_storage.get_s3_bucket_from_env", return_value="env-bucket"):
             result = build_s3_path("data/raw/file.csv")
 
             assert result == "s3://env-bucket/data/raw/file.csv"
@@ -161,6 +161,6 @@ class TestBuildS3Path:
 
     def test_build_s3_path_raises_when_no_bucket(self):
         """Test build_s3_path raises when no bucket configured."""
-        with patch("src.utils.cloud_storage.get_s3_bucket_from_env", return_value=None):
+        with patch("sbir_etl.utils.cloud_storage.get_s3_bucket_from_env", return_value=None):
             with pytest.raises(ValueError, match="S3 bucket not configured"):
                 build_s3_path("data/raw/file.csv")

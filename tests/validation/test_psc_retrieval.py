@@ -17,7 +17,7 @@ sys.path.insert(0, str(Path(__file__).parent / "src"))
 
 from loguru import logger
 
-from src.enrichers.company_categorization import retrieve_company_contracts_api
+from sbir_etl.enrichers.company_categorization import retrieve_company_contracts_api
 
 
 # Configure logger for testing

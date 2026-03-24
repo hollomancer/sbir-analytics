@@ -15,8 +15,8 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
-from src.extractors.usaspending import DuckDBUSAspendingExtractor
-from src.utils.cloud_storage import find_latest_usaspending_dump, resolve_data_path
+from sbir_etl.extractors.usaspending import DuckDBUSAspendingExtractor
+from sbir_etl.utils.cloud_storage import find_latest_usaspending_dump, resolve_data_path
 
 
 def test_s3_file_discovery():

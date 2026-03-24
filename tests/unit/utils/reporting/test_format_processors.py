@@ -20,17 +20,17 @@ pytestmark = pytest.mark.fast
 
 import pytest
 
-from src.models.statistical_reports import (
+from sbir_etl.models.statistical_reports import (
     ModuleMetrics,
     PerformanceMetrics,
     PipelineMetrics,
     ReportArtifact,
     ReportFormat,
 )
-from src.utils.reporting.formats.base import BaseReportProcessor, ReportProcessorRegistry
-from src.utils.reporting.formats.html_processor import HtmlReportProcessor
-from src.utils.reporting.formats.json_processor import JsonReportProcessor
-from src.utils.reporting.formats.markdown_processor import MarkdownProcessor
+from sbir_etl.utils.reporting.formats.base import BaseReportProcessor, ReportProcessorRegistry
+from sbir_etl.utils.reporting.formats.html_processor import HtmlReportProcessor
+from sbir_etl.utils.reporting.formats.json_processor import JsonReportProcessor
+from sbir_etl.utils.reporting.formats.markdown_processor import MarkdownProcessor
 
 
 pytestmark = pytest.mark.fast
@@ -389,7 +389,7 @@ class TestJsonReportProcessor:
 
         obj = UnserializableObject()
 
-        from src.exceptions import ValidationError
+        from sbir_etl.exceptions import ValidationError
 
         with pytest.raises(ValidationError):
             processor._json_serializer(obj)
@@ -407,7 +407,7 @@ class TestJsonReportProcessor:
         """Test JSON schema validation with missing field."""
         processor = JsonReportProcessor(ReportFormat.JSON)
 
-        from src.exceptions import ValidationError
+        from sbir_etl.exceptions import ValidationError
 
         with pytest.raises(ValidationError):
             processor._validate_json_schema({"run_id": "test"})  # Missing required fields

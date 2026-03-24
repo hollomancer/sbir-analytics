@@ -62,7 +62,7 @@ jobs:
           NEO4J_PASSWORD: ${{ github.event.inputs.environment == 'test' && secrets.NEO4J_TEST_PASSWORD || secrets.NEO4J_PASSWORD }}
         run: |
           echo "## 🏷️ CET Classification" >> $GITHUB_STEP_SUMMARY
-          dagster job execute -m src.definitions -j cet_full_pipeline_job 2>&1 | tee output.txt
+          dagster job execute -m sbir_etl.definitions -j cet_full_pipeline_job 2>&1 | tee output.txt
           if [ ${PIPESTATUS[0]} -eq 0 ]; then
             echo "✅ CET pipeline completed" >> $GITHUB_STEP_SUMMARY
           else
@@ -102,7 +102,7 @@ jobs:
           PAECTER_MODE: api  # Use API mode, not local model
         run: |
           echo "## 🔬 PaECTER Embeddings" >> $GITHUB_STEP_SUMMARY
-          dagster job execute -m src.definitions -j paecter_job 2>&1 | tee output.txt
+          dagster job execute -m sbir_etl.definitions -j paecter_job 2>&1 | tee output.txt
           if [ ${PIPESTATUS[0]} -eq 0 ]; then
             echo "✅ PaECTER pipeline completed" >> $GITHUB_STEP_SUMMARY
           else

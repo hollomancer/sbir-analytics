@@ -6,7 +6,7 @@ import pytest
 
 pytestmark = pytest.mark.fast
 
-from src.utils.data.chunking import (
+from sbir_etl.utils.data.chunking import (
     ChunkIterator,
     batch_process,
     chunk_dataframe,

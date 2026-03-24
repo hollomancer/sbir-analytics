@@ -10,7 +10,7 @@ dependencies = [
     "dagster>=1.7.0,<2.0.0",
     "dagster-webserver>=1.7.0,<2.0.0",
     "pandas>=2.2.0,<4.0.0",
-    "neo4j>=5.20.0,<7.0.0",
+
     "duckdb>=1.0.0,<2.0.0",
     "pydantic>=2.8.0,<3.0.0",
     "loguru>=0.7.0,<1.0.0",
@@ -34,6 +34,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+neo4j = ["neo4j>=5.20.0,<7.0.0"]  # Neo4j graph database loader
 r = ["rpy2>=3.5.0,<4.0.0"]  # R integration for fiscal analysis (stateior via rpy2)
 paecter-local = [
     "sentence-transformers>=2.7.0,<6.0.0",  # PaECTER local model support
@@ -68,7 +69,7 @@ ml = [
 ]
 
 [project.scripts]
-sbir-cli = "src.cli.main:app"
+sbir-cli = "sbir_etl.cli.main:app"
 
 [tool.bandit]
 exclude_dirs = ["tests"]
@@ -102,7 +103,7 @@ ignore = [
 # Treat neo4j as a known third-party library that gets its own group
 known-third-party = ["neo4j"]
 # Your project imports
-known-first-party = ["src"]
+known-first-party = ["sbir_etl"]
 # Allow more flexibility in grouping
 split-on-trailing-comma = false
 force-single-line = false
@@ -209,12 +210,12 @@ asyncio_default_fixture_loop_scope = "function"
 # Run with: pytest -n 4 (uses 4 workers)
 
 [tool.dagster]
-python_module = "src.definitions"
+python_module = "sbir_etl.definitions"
 
 [tool.dg.project]
-root_module = "src"
-defs_module = "src.definitions"
-code_location_target_module = "src.definitions"
+root_module = "sbir_etl"
+defs_module = "sbir_etl.definitions"
+code_location_target_module = "sbir_etl.definitions"
 code_location_name = "sbir-analytics-production"
 
 [build-system]
@@ -229,4 +230,4 @@ dev = [
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = ["src"]
+packages = ["sbir_etl"]

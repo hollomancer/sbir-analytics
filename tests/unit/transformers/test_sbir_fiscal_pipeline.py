@@ -6,7 +6,7 @@ from unittest.mock import Mock, patch
 import pandas as pd
 import pytest
 
-from src.transformers.sbir_fiscal_pipeline import SBIRFiscalImpactCalculator
+from sbir_etl.transformers.sbir_fiscal_pipeline import SBIRFiscalImpactCalculator
 
 
 pytestmark = pytest.mark.fast

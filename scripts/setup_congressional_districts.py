@@ -241,7 +241,7 @@ def print_setup_instructions() -> None:
     print("1. Test the ZIP crosswalk resolver:")
     print('   python -c "')
     print(
-        "   from src.enrichers.congressional_district_resolver import CongressionalDistrictResolver"
+        "   from sbir_etl.enrichers.congressional_district_resolver import CongressionalDistrictResolver"
     )
     print("   resolver = CongressionalDistrictResolver(")
     print("       method='zip_crosswalk',")

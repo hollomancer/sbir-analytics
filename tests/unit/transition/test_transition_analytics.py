@@ -2,7 +2,7 @@
 
 import pandas as pd
 
-from src.transition.analysis.analytics import TransitionAnalytics
+from sbir_etl.transition.analysis.analytics import TransitionAnalytics
 
 
 def test_award_transition_rate_basic():

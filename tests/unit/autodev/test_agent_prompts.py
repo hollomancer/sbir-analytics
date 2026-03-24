@@ -5,7 +5,7 @@ from textwrap import dedent
 
 import pytest
 
-from src.autodev.agent_prompts import (
+from sbir_etl.autodev.agent_prompts import (
     QUALITY_SWEEP,
     SPEC_IMPLEMENTER,
     TEST_FIXER,

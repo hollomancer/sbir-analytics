@@ -3,7 +3,7 @@
 import pytest
 import pandas as pd
 
-from src.tools.phase0.resolve_entities import ResolveEntitiesTool, _normalize_name, _generate_canonical_id
+from sbir_etl.tools.phase0.resolve_entities import ResolveEntitiesTool, _normalize_name, _generate_canonical_id
 
 
 class TestNormalizeName:
@@ -133,7 +133,7 @@ class TestExtractSAMEntitiesTool:
     """Test SAM entities extraction with mocked extractor."""
 
     def test_import(self):
-        from src.tools.phase0.extract_sam_entities import ExtractSAMEntitiesTool
+        from sbir_etl.tools.phase0.extract_sam_entities import ExtractSAMEntitiesTool
         tool = ExtractSAMEntitiesTool()
         assert tool.name == "extract_sam_entities"
         assert tool.version == "1.0.0"
@@ -143,12 +143,12 @@ class TestExtractFPDSContractsTool:
     """Test FPDS contracts extraction."""
 
     def test_import(self):
-        from src.tools.phase0.extract_fpds_contracts import ExtractFPDSContractsTool
+        from sbir_etl.tools.phase0.extract_fpds_contracts import ExtractFPDSContractsTool
         tool = ExtractFPDSContractsTool()
         assert tool.name == "extract_fpds_contracts"
 
     def test_requires_input(self):
-        from src.tools.phase0.extract_fpds_contracts import ExtractFPDSContractsTool
+        from sbir_etl.tools.phase0.extract_fpds_contracts import ExtractFPDSContractsTool
         tool = ExtractFPDSContractsTool()
         with pytest.raises(ValueError, match="Must provide either"):
             tool.run()

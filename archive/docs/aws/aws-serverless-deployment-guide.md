@@ -417,7 +417,7 @@ Example:
 
 ```python
 from dagster import build_asset_context
-import src.assets.sbir_ingestion as assets_module
+import sbir_etl.assets.sbir_ingestion as assets_module
 
 # Configure Dagster
 config = _make_config(...)
@@ -703,7 +703,7 @@ export SBIR_ANALYTICS_S3_BUCKET=sbir-analytics-production-data
 export SBIR_ANALYTICS_S3_BUCKET=sbir-analytics-production-data
 
 # Run extraction
-uv run dagster asset materialize -m src.definitions raw_sbir_awards
+uv run dagster asset materialize -m sbir_etl.definitions raw_sbir_awards
 ```
 
 ### AWS Credentials

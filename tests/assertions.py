@@ -8,7 +8,7 @@ used throughout the test suite.
 from datetime import date
 from typing import Any
 
-from src.models.award import Award
+from sbir_etl.models.award import Award
 
 
 def assert_valid_extraction_metadata(
@@ -210,7 +210,7 @@ def assert_valid_cet_classification(
     Raises:
         AssertionError: If classification is invalid
     """
-    from src.models.cet_models import ClassificationLevel
+    from sbir_etl.models.cet_models import ClassificationLevel
 
     # Required fields
     assert hasattr(classification, "cet_id"), "Missing cet_id"

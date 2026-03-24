@@ -8,7 +8,7 @@ from pydantic import ValidationError
 
 pytestmark = pytest.mark.fast
 
-from src.validators.schemas import (
+from sbir_etl.validators.schemas import (
     CompletenessCheck,
     UniquenessCheck,
     ValidationConfig,

@@ -7,8 +7,8 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 import pytest
 
-from src.ml.config import PaECTERClientConfig
-from src.ml.paecter_client import PaECTERClient
+from sbir_etl.ml.config import PaECTERClientConfig
+from sbir_etl.ml.paecter_client import PaECTERClient
 
 
 @pytest.fixture
@@ -20,7 +20,7 @@ def paecter_config():
 
 
 @pytest.fixture
-@patch("src.ml.paecter_client.InferenceClient")
+@patch("sbir_etl.ml.paecter_client.InferenceClient")
 def paecter_client(mock_inference_client, paecter_config):
     """
     Provides a PaECTERClient instance with a mocked InferenceClient.
@@ -155,7 +155,7 @@ class TestPaECTERClientConfig:
 class TestComputeSimilarity:
     """Test cosine similarity computation."""
 
-    @patch("src.ml.paecter_client.InferenceClient")
+    @patch("sbir_etl.ml.paecter_client.InferenceClient")
     def test_identical_embeddings_max_similarity(self, mock_ic):
         """Identical normalized vectors should have similarity ~1.0."""
         config = PaECTERClientConfig(use_local=False, enable_cache=False)
@@ -166,7 +166,7 @@ class TestComputeSimilarity:
         result = client.compute_similarity(emb, emb)
         np.testing.assert_array_almost_equal(np.diag(result), [1.0, 1.0])
 
-    @patch("src.ml.paecter_client.InferenceClient")
+    @patch("sbir_etl.ml.paecter_client.InferenceClient")
     def test_orthogonal_embeddings_zero_similarity(self, mock_ic):
         """Orthogonal vectors should have similarity ~0.0."""
         config = PaECTERClientConfig(use_local=False, enable_cache=False)
@@ -177,7 +177,7 @@ class TestComputeSimilarity:
         result = client.compute_similarity(emb1, emb2)
         np.testing.assert_array_almost_equal(result, [[0.0]])
 
-    @patch("src.ml.paecter_client.InferenceClient")
+    @patch("sbir_etl.ml.paecter_client.InferenceClient")
     def test_similarity_matrix_shape(self, mock_ic):
         """Similarity matrix should have shape (N, M)."""
         config = PaECTERClientConfig(use_local=False, enable_cache=False)

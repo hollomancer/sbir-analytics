@@ -10,8 +10,8 @@ import pytest
 
 pytestmark = pytest.mark.fast
 
-from src.models.quality import QualitySeverity
-from src.validators.sbir_awards import (
+from sbir_etl.models.quality import QualitySeverity
+from sbir_etl.validators.sbir_awards import (
     EMAIL_REGEX,
     PHONE_REGEX,
     VALID_US_STATES,

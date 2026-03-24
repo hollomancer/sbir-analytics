@@ -7,7 +7,7 @@ import pytest
 
 pytestmark = pytest.mark.fast
 
-from src.utils.enrichment_metrics import EnrichmentFreshnessMetrics
+from sbir_etl.utils.enrichment_metrics import EnrichmentFreshnessMetrics
 
 
 class TestEnrichmentFreshnessMetrics:

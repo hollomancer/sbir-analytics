@@ -7,7 +7,7 @@ import pytest
 
 pytestmark = pytest.mark.fast
 
-from src.utils.config_accessor import ConfigAccessor
+from sbir_etl.utils.config_accessor import ConfigAccessor
 
 
 class TestConfigAccessor:

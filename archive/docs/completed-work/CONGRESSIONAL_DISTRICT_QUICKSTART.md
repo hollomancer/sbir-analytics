@@ -39,7 +39,7 @@ This demonstrates the full pipeline with sample data.
 
 ```python
 import pandas as pd
-from src.transformers.sbir_fiscal_pipeline import SBIRFiscalImpactCalculator
+from sbir_etl.transformers.sbir_fiscal_pipeline import SBIRFiscalImpactCalculator
 
 # Load your SBIR awards (must have addresses)
 awards = pd.read_csv("your_sbir_awards.csv")
@@ -68,7 +68,7 @@ print(district_summary)
 
 **Usage:**
 ```python
-from src.enrichers.congressional_district_resolver import CongressionalDistrictResolver
+from sbir_etl.enrichers.congressional_district_resolver import CongressionalDistrictResolver
 
 resolver = CongressionalDistrictResolver(
     method="zip_crosswalk",
@@ -138,7 +138,7 @@ print(f"  Jobs Created: {total_jobs:.1f}")
 ### Use Case 2: Compare All Districts in a State
 
 ```python
-from src.transformers.fiscal.district_allocator import compare_districts_within_state
+from sbir_etl.transformers.fiscal.district_allocator import compare_districts_within_state
 
 # Compare all Texas districts
 tx_districts = compare_districts_within_state(district_impacts, "TX")
@@ -149,7 +149,7 @@ print(tx_districts[['congressional_district', 'total_tax_impact', 'total_jobs_cr
 ### Use Case 3: Top Districts Nationwide
 
 ```python
-from src.transformers.fiscal.district_allocator import summarize_by_district
+from sbir_etl.transformers.fiscal.district_allocator import summarize_by_district
 
 # Get national district summary
 district_summary = summarize_by_district(district_impacts)

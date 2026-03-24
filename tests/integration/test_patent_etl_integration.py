@@ -19,19 +19,19 @@ pytestmark = pytest.mark.integration
 pytest.importorskip("pandas", reason="pandas missing")
 
 USPTOExtractor = pytest.importorskip(
-    "src.extractors.uspto_extractor", reason="extractor module missing"
+    "sbir_etl.extractors.uspto_extractor", reason="extractor module missing"
 ).USPTOExtractor
 
 PatentAssignmentTransformer = pytest.importorskip(
-    "src.transformers.patent_transformer", reason="transformer module missing"
+    "sbir_etl.transformers.patent_transformer", reason="transformer module missing"
 ).PatentAssignmentTransformer
 
 PatentAssignment = pytest.importorskip(
-    "src.models.uspto_models", reason="uspto_models missing"
+    "sbir_etl.models.uspto_models", reason="uspto_models missing"
 ).PatentAssignment
 
 PatentDocument = pytest.importorskip(
-    "src.models.uspto_models", reason="uspto_models missing"
+    "sbir_etl.models.uspto_models", reason="uspto_models missing"
 ).PatentDocument
 
 

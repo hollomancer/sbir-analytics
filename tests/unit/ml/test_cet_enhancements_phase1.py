@@ -9,8 +9,8 @@ Tests:
 
 import pytest
 
-from src.ml.models.cet_classifier import ApplicabilityModel
-from src.models.cet_models import CETArea
+from sbir_etl.ml.models.cet_classifier import ApplicabilityModel
+from sbir_etl.models.cet_models import CETArea
 
 
 # These tests test private methods that have been refactored/removed

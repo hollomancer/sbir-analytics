@@ -1,8 +1,8 @@
 import pandas as pd
 import pytest
 
-from src.ml.models.cet_classifier import ApplicabilityModel
-from src.models.cet_models import CETArea
+from sbir_etl.ml.models.cet_classifier import ApplicabilityModel
+from sbir_etl.models.cet_models import CETArea
 
 
 pytestmark = pytest.mark.integration

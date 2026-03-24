@@ -850,7 +850,7 @@ def log_with_context(stage: str, run_id_val: str = None):
 
 ```python
 from loguru import logger
-from src.logging_config import setup_logging, log_with_context
+from sbir_etl.logging_config import setup_logging, log_with_context
 
 ## Initialize logging
 
@@ -1395,19 +1395,19 @@ if __name__ == "__main__":
 
 ## Ingest SBIR awards
 
-python -m src.cli.app ingest --source sbir --year 2024
+python -m sbir_etl.cli.app ingest --source sbir --year 2024
 
 ## Enrich with progress bar
 
-python -m src.cli.app enrich --batch-size 100
+python -m sbir_etl.cli.app enrich --batch-size 100
 
 ## Check pipeline status
 
-python -m src.cli.app status
+python -m sbir_etl.cli.app status
 
 ## Show data quality report
 
-python -m src.cli.app quality-report --stage enrichment
+python -m sbir_etl.cli.app quality-report --stage enrichment
 ```
 
 ### Benefits:
@@ -1761,7 +1761,7 @@ class MetricsCollector:
 #### Usage in Dagster Assets
 
 ```python
-from src.evaluation.metrics import MetricsCollector
+from sbir_etl.evaluation.metrics import MetricsCollector
 
 @asset
 def enriched_sbir_awards(

@@ -225,7 +225,7 @@ For exploratory testing, you can use the sample data interactively:
 
 ```python
 import pandas as pd
-from src.enrichers.usaspending import enrich_sbir_with_usaspending
+from sbir_etl.enrichers.usaspending import enrich_sbir_with_usaspending
 
 # Load sample data
 sbir_df = pd.read_csv("tests/fixtures/sbir_sample.csv")

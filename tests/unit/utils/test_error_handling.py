@@ -7,7 +7,7 @@ import pytest
 
 pytestmark = pytest.mark.fast
 
-from src.utils.error_handling import (
+from sbir_etl.utils.error_handling import (
     handle_asset_error,
     log_and_raise,
     retry_with_backoff,
@@ -80,7 +80,7 @@ class TestHandleAssetError:
         """Test handle_asset_error logs warning when returning placeholder."""
         error = ValueError("Test error")
 
-        with patch("src.utils.error_handling.logger") as mock_logger:
+        with patch("sbir_etl.utils.error_handling.logger") as mock_logger:
             handle_asset_error(
                 error,
                 asset_name="test_asset",
@@ -220,7 +220,7 @@ class TestSafeExecute:
         def test_func():
             raise ValueError("Error")
 
-        with patch("src.utils.error_handling.logger") as mock_logger:
+        with patch("sbir_etl.utils.error_handling.logger") as mock_logger:
             safe_execute(test_func, context="test_context")
 
             mock_logger.warning.assert_called_once()

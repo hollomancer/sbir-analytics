@@ -8,7 +8,7 @@
 # Usage (example in Python):
 #   import yaml
 #   from pathlib import Path
-#   from src.ml.features.patent_features import extract_features
+#   from sbir_etl.ml.features.patent_features import extract_features
 #
 #   cfg = yaml.safe_load(Path("config/cet/patent_keywords.yaml").read_text())
 #   keywords_map = cfg.get("cet_keywords", {})

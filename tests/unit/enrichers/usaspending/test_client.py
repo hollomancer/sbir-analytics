@@ -7,9 +7,9 @@ from unittest.mock import AsyncMock, Mock, patch
 import httpx
 import pytest
 
-from src.enrichers.usaspending.client import USAspendingAPIClient
-from src.exceptions import APIError, ConfigurationError, RateLimitError
-from src.models.enrichment import EnrichmentFreshnessRecord
+from sbir_etl.enrichers.usaspending.client import USAspendingAPIClient
+from sbir_etl.exceptions import APIError, ConfigurationError, RateLimitError
+from sbir_etl.models.enrichment import EnrichmentFreshnessRecord
 
 
 # ==================== Fixtures ====================
@@ -46,7 +46,7 @@ def mock_http_client():
 @pytest.fixture
 def client(mock_config, tmp_path, mock_http_client):
     """USAspendingAPIClient instance with test config and mock HTTP client."""
-    with patch("src.enrichers.usaspending.client.get_config", return_value=mock_config):
+    with patch("sbir_etl.enrichers.usaspending.client.get_config", return_value=mock_config):
         # Override state file to use tmp_path
         test_config = mock_config.enrichment_refresh.usaspending.model_dump()
         test_config["state_file"] = str(tmp_path / "test_state.json")
@@ -95,7 +95,7 @@ def freshness_record():
 class TestUSAspendingAPIClientInitialization:
     """Tests for USAspendingAPIClient initialization."""
 
-    @patch("src.enrichers.usaspending.client.get_config")
+    @patch("sbir_etl.enrichers.usaspending.client.get_config")
     def test_initialization_from_get_config(self, mock_get_config, mock_config):
         """Test initialization loads config from get_config()."""
         mock_get_config.return_value = mock_config

@@ -6,7 +6,7 @@ from datetime import datetime
 
 import pytest
 
-from src.models.enrichment import (
+from sbir_etl.models.enrichment import (
     EnrichmentDeltaEvent,
     EnrichmentFreshnessRecord,
     EnrichmentFreshnessRecordModel,

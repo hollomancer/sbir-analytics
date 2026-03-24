@@ -17,7 +17,7 @@ import pytest
 
 pytestmark = pytest.mark.fast
 
-from src.quality.uspto_validators import (
+from sbir_etl.quality.uspto_validators import (
     USPTODataQualityValidator,
     USPTOValidationConfig,
     ValidatorResult,

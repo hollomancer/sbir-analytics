@@ -7,13 +7,13 @@ from unittest.mock import Mock, patch
 import pandas as pd
 import pytest
 
-from src.enrichers.chunked_enrichment import (
+from sbir_etl.enrichers.chunked_enrichment import (
     ChunkedEnricher,
     ChunkProgress,
     combine_enriched_chunks,
     create_dynamic_outputs_enrichment,
 )
-from src.exceptions import EnrichmentError
+from sbir_etl.exceptions import EnrichmentError
 
 
 # ==================== Fixtures ====================
@@ -199,7 +199,7 @@ class TestChunkProgress:
 class TestChunkedEnricherInitialization:
     """Tests for ChunkedEnricher initialization."""
 
-    @patch("src.enrichers.chunked_enrichment.get_config")
+    @patch("sbir_etl.enrichers.chunked_enrichment.get_config")
     def test_initialization(
         self, mock_get_config, mock_config, sample_sbir_df, sample_recipient_df
     ):
@@ -223,7 +223,7 @@ class TestChunkedEnricherInitialization:
         assert enricher.progress.total_records == 5
         assert enricher.checkpoint_dir is None
 
-    @patch("src.enrichers.chunked_enrichment.get_config")
+    @patch("sbir_etl.enrichers.chunked_enrichment.get_config")
     def test_initialization_with_checkpoint_dir(
         self, mock_get_config, mock_config, sample_sbir_df, sample_recipient_df, temp_checkpoint_dir
     ):
@@ -239,7 +239,7 @@ class TestChunkedEnricherInitialization:
         assert enricher.checkpoint_dir == temp_checkpoint_dir
         assert enricher.progress.checkpoint_dir == temp_checkpoint_dir
 
-    @patch("src.enrichers.chunked_enrichment.get_config")
+    @patch("sbir_etl.enrichers.chunked_enrichment.get_config")
     def test_initialization_progress_tracking_disabled(
         self, mock_get_config, mock_config, sample_sbir_df, sample_recipient_df, temp_checkpoint_dir
     ):
@@ -263,7 +263,7 @@ class TestChunkedEnricherInitialization:
 class TestChunkGeneration:
     """Tests for chunk generation."""
 
-    @patch("src.enrichers.chunked_enrichment.get_config")
+    @patch("sbir_etl.enrichers.chunked_enrichment.get_config")
     def test_chunk_generator_single_chunk(
         self, mock_get_config, mock_config, sample_sbir_df, sample_recipient_df
     ):
@@ -277,7 +277,7 @@ class TestChunkGeneration:
         assert len(chunks) == 1
         assert len(chunks[0]) == 5
 
-    @patch("src.enrichers.chunked_enrichment.get_config")
+    @patch("sbir_etl.enrichers.chunked_enrichment.get_config")
     def test_chunk_generator_multiple_chunks(
         self, mock_get_config, mock_config, sample_recipient_df
     ):
@@ -301,7 +301,7 @@ class TestChunkGeneration:
         assert len(chunks[1]) == 100
         assert len(chunks[2]) == 50  # Partial last chunk
 
-    @patch("src.enrichers.chunked_enrichment.get_config")
+    @patch("sbir_etl.enrichers.chunked_enrichment.get_config")
     def test_chunk_generator_exact_division(
         self, mock_get_config, mock_config, sample_recipient_df
     ):
@@ -323,7 +323,7 @@ class TestChunkGeneration:
         assert len(chunks) == 2
         assert all(len(chunk) == 100 for chunk in chunks)
 
-    @patch("src.enrichers.chunked_enrichment.get_config")
+    @patch("sbir_etl.enrichers.chunked_enrichment.get_config")
     def test_chunk_generator_empty_dataframe(self, mock_get_config, mock_config):
         """Test chunk generator with empty DataFrame."""
         empty_df = pd.DataFrame()
@@ -341,9 +341,9 @@ class TestChunkGeneration:
 class TestEnrichChunk:
     """Tests for single chunk enrichment."""
 
-    @patch("src.enrichers.chunked_enrichment.get_config")
-    @patch("src.enrichers.chunked_enrichment.enrich_sbir_with_usaspending")
-    @patch("src.enrichers.chunked_enrichment.performance_monitor")
+    @patch("sbir_etl.enrichers.chunked_enrichment.get_config")
+    @patch("sbir_etl.enrichers.chunked_enrichment.enrich_sbir_with_usaspending")
+    @patch("sbir_etl.enrichers.chunked_enrichment.performance_monitor")
     def test_enrich_chunk_success(
         self,
         mock_perf_monitor,
@@ -380,9 +380,9 @@ class TestEnrichChunk:
         assert metrics["fuzzy_matches"] == 0
         assert "duration_seconds" in metrics
 
-    @patch("src.enrichers.chunked_enrichment.get_config")
-    @patch("src.enrichers.chunked_enrichment.enrich_sbir_with_usaspending")
-    @patch("src.enrichers.chunked_enrichment.performance_monitor")
+    @patch("sbir_etl.enrichers.chunked_enrichment.get_config")
+    @patch("sbir_etl.enrichers.chunked_enrichment.enrich_sbir_with_usaspending")
+    @patch("sbir_etl.enrichers.chunked_enrichment.performance_monitor")
     def test_enrich_chunk_no_matches(
         self,
         mock_perf_monitor,
@@ -408,9 +408,9 @@ class TestEnrichChunk:
         assert metrics["exact_matches"] == 0
         assert metrics["fuzzy_matches"] == 0
 
-    @patch("src.enrichers.chunked_enrichment.get_config")
-    @patch("src.enrichers.chunked_enrichment.enrich_sbir_with_usaspending")
-    @patch("src.enrichers.chunked_enrichment.performance_monitor")
+    @patch("sbir_etl.enrichers.chunked_enrichment.get_config")
+    @patch("sbir_etl.enrichers.chunked_enrichment.enrich_sbir_with_usaspending")
+    @patch("sbir_etl.enrichers.chunked_enrichment.performance_monitor")
     def test_enrich_chunk_error(
         self,
         mock_perf_monitor,
@@ -436,7 +436,7 @@ class TestEnrichChunk:
 class TestRetryLogic:
     """Tests for retry logic."""
 
-    @patch("src.enrichers.chunked_enrichment.get_config")
+    @patch("sbir_etl.enrichers.chunked_enrichment.get_config")
     @patch("time.sleep")
     def test_enrich_with_retry_success_first_attempt(
         self, mock_sleep, mock_get_config, mock_config, sample_sbir_df, sample_recipient_df
@@ -457,7 +457,7 @@ class TestRetryLogic:
         assert result_metrics["success"] is True
         mock_sleep.assert_not_called()
 
-    @patch("src.enrichers.chunked_enrichment.get_config")
+    @patch("sbir_etl.enrichers.chunked_enrichment.get_config")
     @patch("time.sleep")
     def test_enrich_with_retry_success_second_attempt(
         self, mock_sleep, mock_get_config, mock_config, sample_sbir_df, sample_recipient_df
@@ -482,7 +482,7 @@ class TestRetryLogic:
         assert result_metrics["success"] is True
         mock_sleep.assert_called_once_with(1)  # 2^0 = 1
 
-    @patch("src.enrichers.chunked_enrichment.get_config")
+    @patch("sbir_etl.enrichers.chunked_enrichment.get_config")
     @patch("time.sleep")
     def test_enrich_with_retry_all_attempts_fail(
         self, mock_sleep, mock_get_config, mock_config, sample_sbir_df, sample_recipient_df
@@ -508,9 +508,9 @@ class TestRetryLogic:
 class TestProgressTracking:
     """Tests for progress tracking and checkpointing."""
 
-    @patch("src.enrichers.chunked_enrichment.get_config")
-    @patch("src.enrichers.chunked_enrichment.enrich_sbir_with_usaspending")
-    @patch("src.enrichers.chunked_enrichment.performance_monitor")
+    @patch("sbir_etl.enrichers.chunked_enrichment.get_config")
+    @patch("sbir_etl.enrichers.chunked_enrichment.enrich_sbir_with_usaspending")
+    @patch("sbir_etl.enrichers.chunked_enrichment.performance_monitor")
     def test_process_all_chunks_updates_progress(
         self,
         mock_perf_monitor,
@@ -539,9 +539,9 @@ class TestProgressTracking:
         assert enricher.progress.records_processed == 5
         assert chunks_processed == 3
 
-    @patch("src.enrichers.chunked_enrichment.get_config")
-    @patch("src.enrichers.chunked_enrichment.enrich_sbir_with_usaspending")
-    @patch("src.enrichers.chunked_enrichment.performance_monitor")
+    @patch("sbir_etl.enrichers.chunked_enrichment.get_config")
+    @patch("sbir_etl.enrichers.chunked_enrichment.enrich_sbir_with_usaspending")
+    @patch("sbir_etl.enrichers.chunked_enrichment.performance_monitor")
     def test_process_all_chunks_saves_checkpoints(
         self,
         mock_perf_monitor,
@@ -580,9 +580,9 @@ class TestProgressTracking:
 class TestDataFrameProcessing:
     """Tests for DataFrame processing methods."""
 
-    @patch("src.enrichers.chunked_enrichment.get_config")
-    @patch("src.enrichers.chunked_enrichment.enrich_sbir_with_usaspending")
-    @patch("src.enrichers.chunked_enrichment.performance_monitor")
+    @patch("sbir_etl.enrichers.chunked_enrichment.get_config")
+    @patch("sbir_etl.enrichers.chunked_enrichment.enrich_sbir_with_usaspending")
+    @patch("sbir_etl.enrichers.chunked_enrichment.performance_monitor")
     def test_process_to_dataframe(
         self,
         mock_perf_monitor,
@@ -615,7 +615,7 @@ class TestDataFrameProcessing:
         assert "total_duration_seconds" in metrics
         assert "records_per_second" in metrics
 
-    @patch("src.enrichers.chunked_enrichment.get_config")
+    @patch("sbir_etl.enrichers.chunked_enrichment.get_config")
     def test_process_to_dataframe_empty(self, mock_get_config, mock_config):
         """Test process_to_dataframe with empty DataFrame."""
         mock_get_config.return_value = mock_config
@@ -629,9 +629,9 @@ class TestDataFrameProcessing:
         assert metrics["total_records"] == 0
         assert metrics["overall_match_rate"] == 0
 
-    @patch("src.enrichers.chunked_enrichment.get_config")
-    @patch("src.enrichers.chunked_enrichment.enrich_sbir_with_usaspending")
-    @patch("src.enrichers.chunked_enrichment.performance_monitor")
+    @patch("sbir_etl.enrichers.chunked_enrichment.get_config")
+    @patch("sbir_etl.enrichers.chunked_enrichment.enrich_sbir_with_usaspending")
+    @patch("sbir_etl.enrichers.chunked_enrichment.performance_monitor")
     def test_process_streaming(
         self,
         mock_perf_monitor,
@@ -669,7 +669,7 @@ class TestDataFrameProcessing:
 class TestCheckpointManagement:
     """Tests for checkpoint loading and resumption."""
 
-    @patch("src.enrichers.chunked_enrichment.get_config")
+    @patch("sbir_etl.enrichers.chunked_enrichment.get_config")
     def test_load_last_checkpoint_no_directory(
         self, mock_get_config, mock_config, sample_sbir_df, sample_recipient_df
     ):
@@ -681,7 +681,7 @@ class TestCheckpointManagement:
 
         assert result is None
 
-    @patch("src.enrichers.chunked_enrichment.get_config")
+    @patch("sbir_etl.enrichers.chunked_enrichment.get_config")
     def test_load_last_checkpoint_empty_directory(
         self, mock_get_config, mock_config, sample_sbir_df, sample_recipient_df, temp_checkpoint_dir
     ):
@@ -695,7 +695,7 @@ class TestCheckpointManagement:
 
         assert result is None
 
-    @patch("src.enrichers.chunked_enrichment.get_config")
+    @patch("sbir_etl.enrichers.chunked_enrichment.get_config")
     def test_load_last_checkpoint_success(
         self, mock_get_config, mock_config, sample_sbir_df, sample_recipient_df, temp_checkpoint_dir
     ):
@@ -718,7 +718,7 @@ class TestCheckpointManagement:
         assert result["chunks_processed"] == 2
         assert result["records_processed"] == 200
 
-    @patch("src.enrichers.chunked_enrichment.get_config")
+    @patch("sbir_etl.enrichers.chunked_enrichment.get_config")
     def test_resume_from_checkpoint(
         self, mock_get_config, mock_config, sample_sbir_df, sample_recipient_df, temp_checkpoint_dir
     ):
@@ -742,7 +742,7 @@ class TestCheckpointManagement:
         assert enricher.progress.records_processed == 500
         assert enricher.progress.last_checkpoint is not None
 
-    @patch("src.enrichers.chunked_enrichment.get_config")
+    @patch("sbir_etl.enrichers.chunked_enrichment.get_config")
     def test_clear_checkpoints(
         self, mock_get_config, mock_config, sample_sbir_df, sample_recipient_df, temp_checkpoint_dir
     ):
@@ -770,7 +770,7 @@ class TestCheckpointManagement:
 class TestProgressMetadata:
     """Tests for progress metadata."""
 
-    @patch("src.enrichers.chunked_enrichment.get_config")
+    @patch("sbir_etl.enrichers.chunked_enrichment.get_config")
     def test_get_progress_metadata(
         self, mock_get_config, mock_config, sample_sbir_df, sample_recipient_df
     ):
@@ -840,9 +840,9 @@ class TestMemoryEstimation:
 class TestModuleFunctions:
     """Tests for module-level functions."""
 
-    @patch("src.enrichers.chunked_enrichment.get_config")
-    @patch("src.enrichers.chunked_enrichment.enrich_sbir_with_usaspending")
-    @patch("src.enrichers.chunked_enrichment.performance_monitor")
+    @patch("sbir_etl.enrichers.chunked_enrichment.get_config")
+    @patch("sbir_etl.enrichers.chunked_enrichment.enrich_sbir_with_usaspending")
+    @patch("sbir_etl.enrichers.chunked_enrichment.performance_monitor")
     def test_create_dynamic_outputs_enrichment(
         self,
         mock_perf_monitor,
@@ -910,9 +910,9 @@ class TestEdgeCases:
     """Tests for edge cases and error handling."""
 
     @pytest.mark.slow
-    @patch("src.enrichers.chunked_enrichment.get_config")
-    @patch("src.enrichers.chunked_enrichment.enrich_sbir_with_usaspending")
-    @patch("src.enrichers.chunked_enrichment.performance_monitor")
+    @patch("sbir_etl.enrichers.chunked_enrichment.get_config")
+    @patch("sbir_etl.enrichers.chunked_enrichment.enrich_sbir_with_usaspending")
+    @patch("sbir_etl.enrichers.chunked_enrichment.performance_monitor")
     def test_process_all_chunks_with_error(
         self,
         mock_perf_monitor,
@@ -942,7 +942,7 @@ class TestEdgeCases:
         # Should have saved error checkpoint
         assert len(enricher.progress.errors) > 0
 
-    @patch("src.enrichers.chunked_enrichment.get_config")
+    @patch("sbir_etl.enrichers.chunked_enrichment.get_config")
     def test_chunk_progress_with_checkpoint_io_error(
         self, mock_get_config, mock_config, sample_sbir_df, sample_recipient_df, tmp_path
     ):
@@ -969,7 +969,7 @@ class TestEdgeCases:
             # Restore permissions for cleanup
             checkpoint_dir.chmod(0o755)
 
-    @patch("src.enrichers.chunked_enrichment.get_config")
+    @patch("sbir_etl.enrichers.chunked_enrichment.get_config")
     def test_load_checkpoint_corrupt_json(
         self, mock_get_config, mock_config, sample_sbir_df, sample_recipient_df, temp_checkpoint_dir
     ):

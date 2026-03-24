@@ -7,7 +7,7 @@ detection for Dagster assets processing awards, patents, and companies.
 import pandas as pd
 import pytest
 
-from src.utils.asset_column_helper import AssetColumnHelper
+from sbir_etl.utils.asset_column_helper import AssetColumnHelper
 
 
 pytestmark = pytest.mark.fast

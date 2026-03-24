@@ -8,9 +8,9 @@ import pytest
 from tests.mocks import RMocks
 
 # Import the module - will handle rpy2 availability gracefully
-import src.transformers.r_stateio_functions as r_stateio
-from src.exceptions import DependencyError
-from src.utils.r_helpers import RFunctionError
+import sbir_etl.transformers.r_stateio_functions as r_stateio
+from sbir_etl.exceptions import DependencyError
+from sbir_etl.utils.r_helpers import RFunctionError
 
 
 pytestmark = pytest.mark.fast
@@ -19,15 +19,15 @@ pytestmark = pytest.mark.fast
 class TestBuildStateModel:
     """Tests for build_state_model function."""
 
-    @patch("src.transformers.r_stateio_functions.RPY2_AVAILABLE", False)
+    @patch("sbir_etl.transformers.r_stateio_functions.RPY2_AVAILABLE", False)
     def test_build_state_model_no_rpy2(self):
         """Test build_state_model raises error when rpy2 not available."""
         with pytest.raises(DependencyError, match="rpy2 is not available"):
             r_stateio.build_state_model(Mock(), "CA", 2020)
 
-    @patch("src.transformers.r_stateio_functions.RPY2_AVAILABLE", True)
-    @patch("src.transformers.r_stateio_functions.ro")
-    @patch("src.transformers.r_stateio_functions.call_r_function")
+    @patch("sbir_etl.transformers.r_stateio_functions.RPY2_AVAILABLE", True)
+    @patch("sbir_etl.transformers.r_stateio_functions.ro")
+    @patch("sbir_etl.transformers.r_stateio_functions.call_r_function")
     def test_build_state_model_default_specs(self, mock_call_r, mock_ro):
         """Test build_state_model with default specs."""
         mock_pkg = RMocks.stateio_package()
@@ -41,9 +41,9 @@ class TestBuildStateModel:
         # Check default specs were used
         assert mock_ro.ListVector.called
 
-    @patch("src.transformers.r_stateio_functions.RPY2_AVAILABLE", True)
-    @patch("src.transformers.r_stateio_functions.ro")
-    @patch("src.transformers.r_stateio_functions.call_r_function")
+    @patch("sbir_etl.transformers.r_stateio_functions.RPY2_AVAILABLE", True)
+    @patch("sbir_etl.transformers.r_stateio_functions.ro")
+    @patch("sbir_etl.transformers.r_stateio_functions.call_r_function")
     def test_build_state_model_custom_specs(self, mock_call_r, mock_ro):
         """Test build_state_model with custom specs."""
         mock_pkg = RMocks.stateio_package()
@@ -56,9 +56,9 @@ class TestBuildStateModel:
         assert result == mock_model
         mock_ro.ListVector.assert_called_with(custom_specs)
 
-    @patch("src.transformers.r_stateio_functions.RPY2_AVAILABLE", True)
-    @patch("src.transformers.r_stateio_functions.ro")
-    @patch("src.transformers.r_stateio_functions.call_r_function")
+    @patch("sbir_etl.transformers.r_stateio_functions.RPY2_AVAILABLE", True)
+    @patch("sbir_etl.transformers.r_stateio_functions.ro")
+    @patch("sbir_etl.transformers.r_stateio_functions.call_r_function")
     def test_build_state_model_handles_error(self, mock_call_r, mock_ro):
         """Test build_state_model handles R function errors."""
         mock_pkg = RMocks.stateio_package()
@@ -71,9 +71,9 @@ class TestBuildStateModel:
 class TestGetStateValueAdded:
     """Tests for get_state_value_added function."""
 
-    @patch("src.transformers.r_stateio_functions.RPY2_AVAILABLE", True)
-    @patch("src.transformers.r_stateio_functions.ro")
-    @patch("src.transformers.r_stateio_functions.call_r_function")
+    @patch("sbir_etl.transformers.r_stateio_functions.RPY2_AVAILABLE", True)
+    @patch("sbir_etl.transformers.r_stateio_functions.ro")
+    @patch("sbir_etl.transformers.r_stateio_functions.call_r_function")
     def test_get_state_value_added_all_components(self, mock_call_r, mock_ro):
         """Test getting all value added components."""
         mock_pkg = RMocks.stateio_package()
@@ -94,9 +94,9 @@ class TestGetStateValueAdded:
         assert "gva" in result
         assert mock_call_r.call_count == 4
 
-    @patch("src.transformers.r_stateio_functions.RPY2_AVAILABLE", True)
-    @patch("src.transformers.r_stateio_functions.ro")
-    @patch("src.transformers.r_stateio_functions.call_r_function")
+    @patch("sbir_etl.transformers.r_stateio_functions.RPY2_AVAILABLE", True)
+    @patch("sbir_etl.transformers.r_stateio_functions.ro")
+    @patch("sbir_etl.transformers.r_stateio_functions.call_r_function")
     def test_get_state_value_added_partial_failure(self, mock_call_r, mock_ro):
         """Test getting value added with some component failures."""
         mock_pkg = RMocks.stateio_package()
@@ -123,9 +123,9 @@ class TestGetStateValueAdded:
         assert "gos" not in result
         assert "gva" not in result
 
-    @patch("src.transformers.r_stateio_functions.RPY2_AVAILABLE", True)
-    @patch("src.transformers.r_stateio_functions.ro")
-    @patch("src.transformers.r_stateio_functions.call_r_function")
+    @patch("sbir_etl.transformers.r_stateio_functions.RPY2_AVAILABLE", True)
+    @patch("sbir_etl.transformers.r_stateio_functions.ro")
+    @patch("sbir_etl.transformers.r_stateio_functions.call_r_function")
     def test_get_state_value_added_custom_specs(self, mock_call_r, mock_ro):
         """Test get_state_value_added with custom specs."""
         mock_pkg = RMocks.stateio_package()
@@ -141,20 +141,20 @@ class TestGetStateValueAdded:
 class TestValueAddedRatioCalculation:
     """Tests for value added ratio calculation functions."""
 
-    @patch("src.transformers.r_stateio_functions.RPY2_AVAILABLE", False)
+    @patch("sbir_etl.transformers.r_stateio_functions.RPY2_AVAILABLE", False)
     def test_convert_r_gva_no_rpy2(self):
         """Test convert_r_gva_to_dataframe when rpy2 not available."""
         result = r_stateio.convert_r_gva_to_dataframe(Mock())
         assert result is None
 
-    @patch("src.transformers.r_stateio_functions.RPY2_AVAILABLE", True)
+    @patch("sbir_etl.transformers.r_stateio_functions.RPY2_AVAILABLE", True)
     def test_convert_r_gva_none_input(self):
         """Test convert_r_gva_to_dataframe with None input."""
         result = r_stateio.convert_r_gva_to_dataframe(None)
         assert result is None
 
-    @patch("src.transformers.r_stateio_functions.RPY2_AVAILABLE", True)
-    @patch("src.transformers.r_stateio_functions.ro")
+    @patch("sbir_etl.transformers.r_stateio_functions.RPY2_AVAILABLE", True)
+    @patch("sbir_etl.transformers.r_stateio_functions.ro")
     def test_convert_r_gva_to_dataframe_success(self, mock_ro, rpy2_available):
         """Test successful conversion of R GVA object to DataFrame."""
         mock_r_obj = RMocks.r_dataframe()
@@ -167,8 +167,8 @@ class TestValueAddedRatioCalculation:
             assert isinstance(result, pd.DataFrame)
             assert len(result) == 2
 
-    @patch("src.transformers.r_stateio_functions.RPY2_AVAILABLE", True)
-    @patch("src.transformers.r_stateio_functions.ro")
+    @patch("sbir_etl.transformers.r_stateio_functions.RPY2_AVAILABLE", True)
+    @patch("sbir_etl.transformers.r_stateio_functions.ro")
     def test_convert_r_gva_series_to_dataframe(self, mock_ro, rpy2_available):
         """Test conversion of R object to Series, then to DataFrame."""
         mock_r_obj = RMocks.r_dataframe()
@@ -186,7 +186,7 @@ class TestValueAddedRatioCalculation:
         assert isinstance(result, pd.DataFrame)
         assert result.empty
 
-    @patch("src.transformers.r_stateio_functions.convert_r_gva_to_dataframe")
+    @patch("sbir_etl.transformers.r_stateio_functions.convert_r_gva_to_dataframe")
     def test_calculate_value_added_ratios_success(self, mock_convert):
         """Test successful calculation of value added ratios."""
         # Mock GVA DataFrames
@@ -235,7 +235,7 @@ class TestValueAddedRatioCalculation:
         with pytest.raises(ValueError, match="Could not extract value"):
             r_stateio._extract_sector_value(df, "99")
 
-    @patch("src.transformers.r_stateio_functions.convert_r_gva_to_dataframe")
+    @patch("sbir_etl.transformers.r_stateio_functions.convert_r_gva_to_dataframe")
     def test_calculate_ratios_with_zero_total(self, mock_convert):
         """Test ratio calculation handles zero total value added gracefully."""
         # All zeros - should skip this sector
@@ -262,9 +262,9 @@ class TestValueAddedRatioCalculation:
 class TestEdgeCases:
     """Tests for edge cases in R StateIO functions."""
 
-    @patch("src.transformers.r_stateio_functions.RPY2_AVAILABLE", True)
-    @patch("src.transformers.r_stateio_functions.ro")
-    @patch("src.transformers.r_stateio_functions.call_r_function")
+    @patch("sbir_etl.transformers.r_stateio_functions.RPY2_AVAILABLE", True)
+    @patch("sbir_etl.transformers.r_stateio_functions.ro")
+    @patch("sbir_etl.transformers.r_stateio_functions.call_r_function")
     def test_empty_specs_dict(self, mock_call_r, mock_ro):
         """Test functions handle empty specs dict."""
         mock_call_r.return_value = Mock()
@@ -409,8 +409,8 @@ class TestMatrixCalculations:
         assert production["11"] == 0.0
         assert production["21"] == 0.0
 
-    @patch("src.transformers.r_stateio_functions.RPY2_AVAILABLE", True)
-    @patch("src.transformers.r_stateio_functions.ro")
+    @patch("sbir_etl.transformers.r_stateio_functions.RPY2_AVAILABLE", True)
+    @patch("sbir_etl.transformers.r_stateio_functions.ro")
     def test_extract_use_table_from_model(self, mock_ro, rpy2_available):
         """Test extracting Use table from StateIO model."""
         mock_model = RMocks.r_result()
@@ -429,8 +429,8 @@ class TestMatrixCalculations:
             assert isinstance(result, pd.DataFrame)
             assert result.shape == (2, 2)
 
-    @patch("src.transformers.r_stateio_functions.RPY2_AVAILABLE", True)
-    @patch("src.transformers.r_stateio_functions.ro")
+    @patch("sbir_etl.transformers.r_stateio_functions.RPY2_AVAILABLE", True)
+    @patch("sbir_etl.transformers.r_stateio_functions.ro")
     def test_extract_industry_output_from_model(self, mock_ro, rpy2_available):
         """Test extracting industry output from StateIO model."""
         mock_model = RMocks.r_result()

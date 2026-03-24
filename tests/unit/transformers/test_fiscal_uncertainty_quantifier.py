@@ -8,7 +8,7 @@ import pytest
 
 pytestmark = pytest.mark.fast
 
-from src.transformers.fiscal.sensitivity import FiscalUncertaintyQuantifier, UncertaintyResult
+from sbir_etl.transformers.fiscal.sensitivity import FiscalUncertaintyQuantifier, UncertaintyResult
 
 
 # sample_scenario_results_df fixture is now in tests/unit/transformers/conftest.py

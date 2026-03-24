@@ -6,7 +6,7 @@ pipeline, making it easier to verify exception structure, context, and behavior.
 
 from typing import Any
 
-from src.exceptions import SBIRETLError
+from sbir_etl.exceptions import SBIRETLError
 
 
 def assert_exception_structure(

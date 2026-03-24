@@ -12,7 +12,7 @@ pytestmark = pytest.mark.integration
 from dagster import build_asset_context
 from dagster._core.definitions import load_assets_from_modules
 
-import src.assets.fiscal_assets as fiscal_assets
+import sbir_etl.assets.fiscal_assets as fiscal_assets
 
 
 @pytest.fixture
@@ -165,12 +165,12 @@ class TestFiscalPipelineIntegration:
         # Should have fiscal groups (check if any fiscal assets exist)
         assert len(all_fiscal_assets) > 0  # At least some fiscal assets should be loaded
 
-    @patch("src.enrichers.geographic_resolver.resolve_award_geography")
-    @patch("src.enrichers.inflation_adjuster.adjust_awards_for_inflation")
-    @patch("src.enrichers.fiscal_bea_mapper.enrich_awards_with_bea_sectors")
-    @patch("src.transformers.fiscal.shocks.FiscalShockAggregator.aggregate_shocks_to_dataframe")
-    @patch("src.transformers.r_stateio_adapter.RStateIOAdapter._compute_impacts_r")
-    @patch("src.transformers.r_stateio_adapter.RStateIOAdapter.is_available")
+    @patch("sbir_etl.enrichers.geographic_resolver.resolve_award_geography")
+    @patch("sbir_etl.enrichers.inflation_adjuster.adjust_awards_for_inflation")
+    @patch("sbir_etl.enrichers.fiscal_bea_mapper.enrich_awards_with_bea_sectors")
+    @patch("sbir_etl.transformers.fiscal.shocks.FiscalShockAggregator.aggregate_shocks_to_dataframe")
+    @patch("sbir_etl.transformers.r_stateio_adapter.RStateIOAdapter._compute_impacts_r")
+    @patch("sbir_etl.transformers.r_stateio_adapter.RStateIOAdapter.is_available")
     def test_end_to_end_pipeline(
         self,
         mock_is_available,
@@ -441,7 +441,7 @@ class TestPerformanceThresholds:
         """Test component extraction completes within time limit."""
         import time
 
-        from src.transformers.fiscal import FiscalComponentCalculator
+        from sbir_etl.transformers.fiscal import FiscalComponentCalculator
 
         # Create large impacts DataFrame
         impacts_df = pd.DataFrame(

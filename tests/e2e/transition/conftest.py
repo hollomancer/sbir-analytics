@@ -51,7 +51,7 @@ def transition_contracts_sample(transition_awards_sample: pd.DataFrame) -> pd.Da
 @pytest.fixture
 def transition_detector():
     """Instantiate the TransitionDetector for smoke tests."""
-    from src.transition.detection.detector import TransitionDetector
+    from sbir_etl.transition.detection.detector import TransitionDetector
 
     # Minimal config for smoke tests
     config = {
@@ -69,7 +69,7 @@ def transition_detection_dataframe(
     transition_contracts_sample: pd.DataFrame,
 ) -> pd.DataFrame:
     """Run a lightweight detection pass to produce a detections DataFrame."""
-    from src.models.transition_models import FederalContract
+    from sbir_etl.models.transition_models import FederalContract
 
     detections: list[dict] = []
 

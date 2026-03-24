@@ -4,7 +4,7 @@ from datetime import date
 
 import pytest
 
-from src.models.award import Award, RawAward
+from sbir_etl.models.award import Award, RawAward
 
 
 pytestmark = pytest.mark.fast

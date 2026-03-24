@@ -7,7 +7,7 @@ multiple identifier spaces (UEI, CAGE, DUNS) with fuzzy name matching.
 
 import pytest
 
-from src.transition.features.vendor_resolver import (
+from sbir_etl.transition.features.vendor_resolver import (
     VendorMatch,
     VendorRecord,
     VendorResolver,

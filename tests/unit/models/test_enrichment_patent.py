@@ -8,13 +8,13 @@ from pydantic import ValidationError
 
 pytestmark = pytest.mark.fast
 
-from src.models.enrichment import (
+from sbir_etl.models.enrichment import (
     EnrichmentDeltaEvent,
     EnrichmentFreshnessRecord,
     EnrichmentFreshnessRecordModel,
     EnrichmentStatus,
 )
-from src.models.patent import Patent, PatentCitation, RawPatent
+from sbir_etl.models.patent import Patent, PatentCitation, RawPatent
 
 
 pytestmark = pytest.mark.fast

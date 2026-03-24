@@ -4,7 +4,7 @@ from datetime import date
 
 import pytest
 
-from src.models.transition_models import (
+from sbir_etl.models.transition_models import (
     AgencySignal,
     CETSignal,
     CompetitionSignal,
@@ -15,7 +15,7 @@ from src.models.transition_models import (
     TimingSignal,
     TransitionSignals,
 )
-from src.transition.detection.scoring import TransitionScorer
+from sbir_etl.transition.detection.scoring import TransitionScorer
 
 
 pytestmark = pytest.mark.fast

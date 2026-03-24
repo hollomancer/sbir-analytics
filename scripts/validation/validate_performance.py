@@ -8,9 +8,9 @@ Tests that the system meets the ≥10K detections/minute target.
 import time
 from datetime import date, timedelta
 
-from src.models.transition_models import CompetitionType, FederalContract
-from src.transition.detection.detector import TransitionDetector
-from src.transition.features.vendor_resolver import VendorRecord, VendorResolver
+from sbir_etl.models.transition_models import CompetitionType, FederalContract
+from sbir_etl.transition.detection.detector import TransitionDetector
+from sbir_etl.transition.features.vendor_resolver import VendorRecord, VendorResolver
 
 
 def create_config():

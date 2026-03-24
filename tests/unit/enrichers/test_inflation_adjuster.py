@@ -17,7 +17,7 @@ from decimal import Decimal
 import pandas as pd
 import pytest
 
-from src.enrichers.inflation_adjuster import (
+from sbir_etl.enrichers.inflation_adjuster import (
     InflationAdjuster,
     InflationAdjustmentResult,
     adjust_awards_for_inflation,
@@ -56,7 +56,7 @@ def mock_config():
 @pytest.fixture
 def adjuster(mock_config, monkeypatch) -> InflationAdjuster:
     """Create inflation adjuster instance."""
-    monkeypatch.setattr("src.enrichers.inflation_adjuster.get_config", lambda: mock_config)
+    monkeypatch.setattr("sbir_etl.enrichers.inflation_adjuster.get_config", lambda: mock_config)
     return InflationAdjuster()
 
 
@@ -376,7 +376,7 @@ class TestHelperFunctions:
         )
 
         with pytest.MonkeyPatch.context() as m:
-            m.setattr("src.enrichers.inflation_adjuster.get_config", lambda: mock_config)
+            m.setattr("sbir_etl.enrichers.inflation_adjuster.get_config", lambda: mock_config)
             adjusted_df, quality = adjust_awards_for_inflation(awards_df, 2023)
 
         assert "fiscal_adjusted_amount" in adjusted_df.columns
@@ -400,7 +400,7 @@ class TestHelperFunctions:
 
         # This would require restructuring the config, for now just test the call
         with pytest.MonkeyPatch.context() as m:
-            m.setattr("src.enrichers.inflation_adjuster.get_config", lambda: mock_config)
+            m.setattr("sbir_etl.enrichers.inflation_adjuster.get_config", lambda: mock_config)
             adjusted_df, quality = adjust_awards_for_inflation(awards_df, 2023, config_dict)
 
         assert len(adjusted_df) == 1

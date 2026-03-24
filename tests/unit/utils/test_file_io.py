@@ -10,7 +10,7 @@ import pytest
 
 pytestmark = pytest.mark.fast
 
-from src.utils.data.file_io import (
+from sbir_etl.utils.data.file_io import (
     read_parquet_or_ndjson,
     save_dataframe_parquet,
     write_json,

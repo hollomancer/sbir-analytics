@@ -16,9 +16,9 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from src.exceptions import ValidationError
-from src.ml.features.evidence_extractor import EvidenceExtractor
-from src.models.cet_models import CETArea, CETClassification, ClassificationLevel, EvidenceStatement
+from sbir_etl.exceptions import ValidationError
+from sbir_etl.ml.features.evidence_extractor import EvidenceExtractor
+from sbir_etl.models.cet_models import CETArea, CETClassification, ClassificationLevel, EvidenceStatement
 
 
 pytestmark = pytest.mark.fast
@@ -61,7 +61,7 @@ def sample_config():
 @pytest.fixture
 def extractor_no_spacy(sample_cet_areas, sample_config):
     """EvidenceExtractor without spaCy (using simple extraction)."""
-    with patch("src.ml.features.evidence_extractor.spacy") as mock_spacy:
+    with patch("sbir_etl.ml.features.evidence_extractor.spacy") as mock_spacy:
         mock_spacy.load.side_effect = Exception("spaCy not available")
         extractor = EvidenceExtractor(sample_cet_areas, sample_config)
         return extractor
@@ -70,7 +70,7 @@ def extractor_no_spacy(sample_cet_areas, sample_config):
 @pytest.fixture
 def extractor_with_spacy(sample_cet_areas, sample_config):
     """EvidenceExtractor with mocked spaCy."""
-    with patch("src.ml.features.evidence_extractor.spacy") as mock_spacy:
+    with patch("sbir_etl.ml.features.evidence_extractor.spacy") as mock_spacy:
         # Mock spaCy nlp object
         mock_nlp = MagicMock()
         mock_spacy.load.return_value = mock_nlp
@@ -103,7 +103,7 @@ class TestEvidenceExtractorInitialization:
 
     def test_initialization_with_spacy(self, sample_cet_areas, sample_config):
         """Test successful initialization with spaCy available."""
-        with patch("src.ml.features.evidence_extractor.spacy") as mock_spacy:
+        with patch("sbir_etl.ml.features.evidence_extractor.spacy") as mock_spacy:
             mock_nlp = MagicMock()
             mock_nlp.pipe_names = []
             mock_spacy.load.return_value = mock_nlp
@@ -115,7 +115,7 @@ class TestEvidenceExtractorInitialization:
 
     def test_initialization_without_spacy(self, sample_cet_areas, sample_config):
         """Test initialization falls back to simple extraction when spaCy unavailable."""
-        with patch("src.ml.features.evidence_extractor.spacy") as mock_spacy:
+        with patch("sbir_etl.ml.features.evidence_extractor.spacy") as mock_spacy:
             mock_spacy.load.side_effect = Exception("spaCy not available")
 
             extractor = EvidenceExtractor(sample_cet_areas, sample_config)
@@ -124,7 +124,7 @@ class TestEvidenceExtractorInitialization:
 
     def test_cet_keywords_mapping(self, sample_cet_areas, sample_config):
         """Test CET keywords are correctly mapped (note: IDs normalized to lowercase)."""
-        with patch("src.ml.features.evidence_extractor.spacy") as mock_spacy:
+        with patch("sbir_etl.ml.features.evidence_extractor.spacy") as mock_spacy:
             mock_spacy.load.side_effect = Exception("spaCy not available")
 
             extractor = EvidenceExtractor(sample_cet_areas, sample_config)

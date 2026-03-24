@@ -5,8 +5,8 @@ import pytest
 
 pytestmark = pytest.mark.fast
 
-from src.extractors.contract_extractor import ContractExtractor
-from src.models.transition_models import FederalContract
+from sbir_etl.extractors.contract_extractor import ContractExtractor
+from sbir_etl.models.transition_models import FederalContract
 
 
 def _build_row_with_length(length: int = 110) -> list[str]:

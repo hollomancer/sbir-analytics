@@ -7,7 +7,7 @@ import pytest
 
 pytestmark = pytest.mark.fast
 
-from src.extractors.sbir import SbirDuckDBExtractor
+from sbir_etl.extractors.sbir import SbirDuckDBExtractor
 
 
 FIXTURE_CSV = Path("tests/fixtures/sbir_sample.csv")

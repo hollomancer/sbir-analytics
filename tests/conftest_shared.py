@@ -27,8 +27,13 @@ from unittest.mock import Mock
 import pandas as pd
 import pytest
 
-# Neo4j fixtures
-from src.loaders.neo4j.client import LoadMetrics, Neo4jClient, Neo4jConfig
+# Neo4j fixtures (optional - skip if neo4j not installed)
+try:
+    from sbir_etl.loaders.neo4j.client import LoadMetrics, Neo4jClient, Neo4jConfig
+except ImportError:
+    LoadMetrics = None  # type: ignore[assignment, misc]
+    Neo4jClient = None  # type: ignore[assignment, misc]
+    Neo4jConfig = None  # type: ignore[assignment, misc]
 from tests.factories import DataFrameBuilder
 from tests.mocks import Neo4jMocks
 from tests.utils.config_mocks import create_mock_neo4j_config
@@ -297,7 +302,7 @@ def mock_vendor_resolver():
 @pytest.fixture
 def mock_scorer():
     """Mock TransitionScorer for testing."""
-    from src.models.transition_models import ConfidenceLevel, TransitionSignals
+    from sbir_etl.models.transition_models import ConfidenceLevel, TransitionSignals
 
     scorer = Mock()
     signals = TransitionSignals(
@@ -314,7 +319,7 @@ def mock_scorer():
 @pytest.fixture
 def mock_evidence_generator():
     """Mock EvidenceGenerator for testing."""
-    from src.models.transition_models import EvidenceBundle
+    from sbir_etl.models.transition_models import EvidenceBundle
 
     generator = Mock()
     bundle = EvidenceBundle(evidence_items=[], generated_at=datetime.utcnow())

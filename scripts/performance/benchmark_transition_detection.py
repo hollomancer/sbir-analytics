@@ -19,8 +19,8 @@ from typing import Any
 import pandas as pd
 from loguru import logger
 
-from src.transition.detection.detector import TransitionDetector
-from src.transition.performance.monitoring import PerformanceProfiler, profile_detection_performance
+from sbir_etl.transition.detection.detector import TransitionDetector
+from sbir_etl.transition.performance.monitoring import PerformanceProfiler, profile_detection_performance
 
 
 def build_transition_dataset(sample_size: int) -> tuple[pd.DataFrame, pd.DataFrame]:

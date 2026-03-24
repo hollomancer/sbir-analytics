@@ -9,7 +9,7 @@ from pydantic import ValidationError
 
 pytestmark = pytest.mark.fast
 
-from src.models.quality import (
+from sbir_etl.models.quality import (
     ChangesSummary,
     DataHygieneMetrics,
     InsightRecommendation,
@@ -18,7 +18,7 @@ from src.models.quality import (
     QualityReport,
     QualitySeverity,
 )
-from src.models.statistical_reports import (
+from sbir_etl.models.statistical_reports import (
     ModuleMetrics,
     PerformanceMetrics,
     PipelineMetrics,

@@ -7,8 +7,8 @@ from datetime import date, timedelta
 
 import pytest
 
-from src.models.transition_models import FederalContract
-from src.transition.detection.detector import TransitionDetector
+from sbir_etl.models.transition_models import FederalContract
+from sbir_etl.transition.detection.detector import TransitionDetector
 
 pytestmark = pytest.mark.fast
 

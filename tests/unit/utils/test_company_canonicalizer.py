@@ -6,7 +6,7 @@ import pytest
 
 pytestmark = pytest.mark.fast
 
-from src.utils.company_canonicalizer import canonicalize_companies_from_awards
+from sbir_etl.utils.company_canonicalizer import canonicalize_companies_from_awards
 
 
 def test_canonicalize_companies_simple():

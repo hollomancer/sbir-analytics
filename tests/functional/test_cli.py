@@ -3,7 +3,7 @@
 import pytest
 from typer.testing import CliRunner
 
-from src.cli.main import app
+from sbir_etl.cli.main import app
 
 
 @pytest.fixture

@@ -40,7 +40,7 @@ except Exception:  # pragma: no cover
 # CETLoader relationship tests
 # -----------------------------
 def test_create_award_cet_relationships_builds_primary_and_supporting(neo4j_available):
-    from src.loaders.neo4j import CETLoader, LoadMetrics
+    from sbir_etl.loaders.neo4j import CETLoader, LoadMetrics
 
     # Arrange: mock client with capture of relationships
     captured: dict[str, Any] = {}
@@ -112,7 +112,7 @@ def test_create_award_cet_relationships_builds_primary_and_supporting(neo4j_avai
 
 
 def test_create_award_cet_relationships_missing_award_id_skips_and_errors(neo4j_available):
-    from src.loaders.neo4j import CETLoader
+    from sbir_etl.loaders.neo4j import CETLoader
 
     mock_client = MagicMock()
     loader = CETLoader(mock_client)
@@ -190,13 +190,13 @@ def test_asset_neo4j_award_cet_relationships_invokes_loader(monkeypatch, tmp_pat
             pass
 
     # Patch asset internals in the loading module where they're used
-    monkeypatch.setattr("src.assets.cet.loading._get_neo4j_client", lambda: FakeLoader(None, None))
+    monkeypatch.setattr("sbir_etl.assets.cet.loading._get_neo4j_client", lambda: FakeLoader(None, None))
     monkeypatch.setattr(
-        "src.assets.cet.loading._read_parquet_or_ndjson", lambda *args, **kwargs: rows
+        "sbir_etl.assets.cet.loading._read_parquet_or_ndjson", lambda *args, **kwargs: rows
     )
-    monkeypatch.setattr("src.assets.cet.loading.CETLoader", FakeLoader)
+    monkeypatch.setattr("sbir_etl.assets.cet.loading.CETLoader", FakeLoader)
     monkeypatch.setattr(
-        "src.assets.cet.loading.CETLoaderConfig", lambda batch_size: {"batch_size": batch_size}
+        "sbir_etl.assets.cet.loading.CETLoaderConfig", lambda batch_size: {"batch_size": batch_size}
     )
 
     # Execute asset using Dagster's materialization with mocked dependencies
@@ -212,7 +212,7 @@ def test_asset_neo4j_award_cet_relationships_invokes_loader(monkeypatch, tmp_pat
     )
 
     # Import the asset
-    from src.assets.cet.loading import loaded_award_cet_relationships as asset_fn
+    from sbir_etl.assets.cet.loading import loaded_award_cet_relationships as asset_fn
 
     # Call with proper context and dummy asset dependencies
     result = asset_fn(ctx, None, None, None)

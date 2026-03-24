@@ -147,7 +147,7 @@ context_logger.info("Processing batch", extra={"batch": 1, "size": 100})
 For operations with a clear beginning and end:
 
 ```python
-from src.utils import log_with_context
+from sbir_etl.utils import log_with_context
 
 with log_with_context(stage="extraction", run_id="xyz789") as logger:
     logger.info("Extracting data from source")
@@ -246,7 +246,7 @@ logger.info(
 The `CommandContext` automatically sets up structured logging:
 
 ```python
-from src.cli.context import CommandContext
+from sbir_etl.cli.context import CommandContext
 
 # Context includes logger with bound context
 context = CommandContext.create()
@@ -401,8 +401,8 @@ def enriched_awards(context, raw_awards):
 ### Example 2: Error Handling with Context
 
 ```python
-from src.exceptions import EnrichmentError, APIError
-from src.utils import log_with_context
+from sbir_etl.exceptions import EnrichmentError, APIError
+from sbir_etl.utils import log_with_context
 
 def enrich_from_api(awards, api_client):
     """Enrich awards using external API."""
@@ -515,7 +515,7 @@ logging:
 ### Programmatic Configuration
 
 ```python
-from src.utils.logging_config import setup_logging
+from sbir_etl.utils.logging_config import setup_logging
 
 # Set up logging with configuration
 setup_logging(

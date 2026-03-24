@@ -307,7 +307,7 @@ find data -name "*over-100-awards*"
 
 ```bash
 # Check config
-uv run python -c "from src.config.loader import get_config; print(get_config().extraction.usaspending)"
+uv run python -c "from sbir_etl.config.loader import get_config; print(get_config().extraction.usaspending)"
 
 # Verify table exists in DuckDB
 uv run python -c "

@@ -8,7 +8,7 @@ from pydantic import ValidationError
 
 pytestmark = pytest.mark.fast
 
-from src.models.transition_models import (
+from sbir_etl.models.transition_models import (
     AgencySignal,
     CETSignal,
     CompetitionSignal,

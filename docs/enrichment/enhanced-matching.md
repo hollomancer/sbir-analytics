@@ -47,7 +47,7 @@ enrichment:
 ### Code Example
 
 ```python
-from src.enrichers.company_enricher import enrich_awards_with_companies
+from sbir_etl.enrichers.company_enricher import enrich_awards_with_companies
 
 enhanced_config = {
     "enable_phonetic_matching": True,
@@ -240,7 +240,7 @@ enrichment:
 ### Code Example
 
 ```python
-from src.utils.enhanced_matching import ResearcherMatcher
+from sbir_etl.utils.enhanced_matching import ResearcherMatcher
 
 matcher_config = {
     "enable_orcid_matching": True,

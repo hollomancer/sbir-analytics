@@ -7,8 +7,8 @@ import pytest
 
 pytestmark = pytest.mark.fast
 
-from src.cli.commands import enrich, ingest, metrics, status
-from src.cli.context import CommandContext
+from sbir_etl.cli.commands import enrich, ingest, metrics, status
+from sbir_etl.cli.context import CommandContext
 
 
 @pytest.fixture
@@ -101,7 +101,7 @@ class TestMetricsCommands:
     def test_latest_command(self, mock_context: Mock) -> None:
         """Test metrics latest command."""
         # Setup mocks
-        from src.cli.integration.metrics_collector import PipelineMetrics
+        from sbir_etl.cli.integration.metrics_collector import PipelineMetrics
 
         mock_context.metrics_collector.get_latest_metrics.return_value = PipelineMetrics(
             enrichment_success_rate=0.9,

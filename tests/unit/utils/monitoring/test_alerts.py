@@ -7,7 +7,7 @@ import pytest
 
 pytestmark = pytest.mark.fast
 
-from src.utils.monitoring.alerts import Alert, AlertCollector, AlertSeverity
+from sbir_etl.utils.monitoring.alerts import Alert, AlertCollector, AlertSeverity
 
 
 class TestAlert:

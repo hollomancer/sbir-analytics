@@ -14,7 +14,7 @@ import csv
 
 import pytest
 
-from src.utils.data.duckdb_client import DuckDBClient
+from sbir_etl.utils.data.duckdb_client import DuckDBClient
 
 
 pytestmark = pytest.mark.fast
@@ -259,7 +259,7 @@ class TestDuckDBClientCSVImport:
 
     def test_import_csv_missing_file(self, tmp_path):
         """Test CSV import with missing file."""
-        from src.exceptions import FileSystemError
+        from sbir_etl.exceptions import FileSystemError
 
         client = DuckDBClient()
         missing_file = tmp_path / "missing.csv"

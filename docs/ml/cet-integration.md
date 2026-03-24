@@ -538,7 +538,7 @@ class CustomCETClassifier:
         return evidence_snippets
 
 # Update classifications.py to use it
-from src.ml.models.custom_classifier import CustomCETClassifier
+from sbir_etl.ml.models.custom_classifier import CustomCETClassifier
 classifier = CustomCETClassifier()  # Instead of ApplicabilityModel
 ```
 
@@ -621,8 +621,8 @@ print(df.describe())
 
 # Check Neo4j CET nodes
 uv run python << 'PYTHON'
-from src.loaders.neo4j import Neo4jClient, Neo4jConfig
-from src.config.loader import get_config
+from sbir_etl.loaders.neo4j import Neo4jClient, Neo4jConfig
+from sbir_etl.config.loader import get_config
 
 config = get_config()
 client = Neo4jClient(Neo4jConfig(**config.neo4j.dict()))
@@ -634,7 +634,7 @@ with client.session() as session:
 PYTHON
 
 # Run CET pipeline
-uv run dagster job execute -m src.definitions -j cet_full_pipeline_job
+uv run dagster job execute -m sbir_etl.definitions -j cet_full_pipeline_job
 
 # View Dagster UI
 uv run dagster dev

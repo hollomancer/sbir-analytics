@@ -21,7 +21,7 @@ RUN pip install \
     "rich>=13.7.0,<15.0.0"
 
 # Copy application code
-COPY src/ /app/src/
+COPY sbir_etl/ /app/sbir_etl/
 COPY scripts/ /app/scripts/
 COPY config/ /app/config/
 COPY migrations/ /app/migrations/

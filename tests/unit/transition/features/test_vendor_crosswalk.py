@@ -13,7 +13,7 @@ from unittest.mock import patch
 
 import pytest
 
-from src.transition.features.vendor_crosswalk import (
+from sbir_etl.transition.features.vendor_crosswalk import (
     AliasRecord,
     CrosswalkRecord,
     VendorCrosswalk,
@@ -794,7 +794,7 @@ class TestPersistence:
             path = Path(tmpdir) / "crosswalk.parquet"
 
             # If pandas not available, should raise RuntimeError
-            with patch("src.transition.features.vendor_crosswalk.pd", None):
+            with patch("sbir_etl.transition.features.vendor_crosswalk.pd", None):
                 with pytest.raises(RuntimeError, match="pandas is required"):
                     cw.save_parquet(path)
 
@@ -806,7 +806,7 @@ class TestPersistence:
             db_path = str(Path(tmpdir) / "test.db")
 
             # If duckdb or pandas not available, should raise RuntimeError
-            with patch("src.transition.features.vendor_crosswalk.duckdb", None):
+            with patch("sbir_etl.transition.features.vendor_crosswalk.duckdb", None):
                 with pytest.raises(RuntimeError, match="duckdb and pandas required"):
                     cw.save_duckdb_table(db_path)
 
@@ -817,7 +817,7 @@ class TestPersistence:
         with tempfile.TemporaryDirectory() as tmpdir:
             db_path = str(Path(tmpdir) / "test.db")
 
-            with patch("src.transition.features.vendor_crosswalk.duckdb", None):
+            with patch("sbir_etl.transition.features.vendor_crosswalk.duckdb", None):
                 with pytest.raises(RuntimeError, match="duckdb and pandas required"):
                     cw.load_duckdb_table(db_path)
 

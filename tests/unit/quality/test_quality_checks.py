@@ -15,8 +15,8 @@ import pytest
 
 pytestmark = pytest.mark.fast
 
-from src.models import QualitySeverity
-from src.quality.checks import (
+from sbir_etl.models import QualitySeverity
+from sbir_etl.quality.checks import (
     check_completeness,
     check_uniqueness,
     check_value_ranges,
@@ -230,7 +230,7 @@ class TestCheckValueRanges:
 class TestValidateSbirAwards:
     """Tests for comprehensive SBIR awards validation."""
 
-    @patch("src.quality.checks.get_config")
+    @patch("sbir_etl.quality.checks.get_config")
     def test_valid_sbir_data(self, mock_config, sample_dataframe):
         """Test validation of valid SBIR data."""
         # Mock config
@@ -247,7 +247,7 @@ class TestValidateSbirAwards:
         assert report.passed is True
         assert report.total_fields >= 1
 
-    @patch("src.quality.checks.get_config")
+    @patch("sbir_etl.quality.checks.get_config")
     def test_sbir_with_completeness_issues(self, mock_config, sample_dataframe):
         """Test validation with completeness issues."""
         mock_app_config = Mock()
@@ -263,7 +263,7 @@ class TestValidateSbirAwards:
         assert len(report.issues) == 1
         assert report.issues[0].field == "company_name"
 
-    @patch("src.quality.checks.get_config")
+    @patch("sbir_etl.quality.checks.get_config")
     def test_sbir_with_uniqueness_issues(self, mock_config, dataframe_with_duplicates):
         """Test validation with uniqueness issues."""
         mock_app_config = Mock()
@@ -278,7 +278,7 @@ class TestValidateSbirAwards:
         assert len(report.issues) == 1
         assert "duplicates" in report.issues[0].message.lower()
 
-    @patch("src.quality.checks.get_config")
+    @patch("sbir_etl.quality.checks.get_config")
     def test_sbir_with_value_range_issues(self, mock_config):
         """Test validation with value range issues."""
         df = pd.DataFrame(
@@ -302,7 +302,7 @@ class TestValidateSbirAwards:
         assert len(report.issues) == 1
         assert "above maximum" in report.issues[0].message
 
-    @patch("src.quality.checks.get_config")
+    @patch("sbir_etl.quality.checks.get_config")
     def test_empty_sbir_data(self, mock_config, empty_dataframe):
         """Test validation of empty DataFrame."""
         mock_app_config = Mock()
@@ -331,7 +331,7 @@ class TestValidateSbirAwards:
         assert report.passed is True
         assert report.record_id == "sbir_awards_dataset"
 
-    @patch("src.quality.checks.get_config")
+    @patch("sbir_etl.quality.checks.get_config")
     def test_sbir_score_calculation(self, mock_config, sample_dataframe):
         """Test that scores are calculated correctly."""
         mock_app_config = Mock()

@@ -22,8 +22,8 @@ from typing import Any
 import pandas as pd
 from loguru import logger
 
-from src.models.enrichment import EnrichmentFreshnessRecord, EnrichmentStatus
-from src.utils.enrichment_freshness import FreshnessStore
+from sbir_etl.models.enrichment import EnrichmentFreshnessRecord, EnrichmentStatus
+from sbir_etl.utils.enrichment_freshness import FreshnessStore
 
 
 def compute_enrichment_hash(enriched_data: dict[str, Any]) -> str:

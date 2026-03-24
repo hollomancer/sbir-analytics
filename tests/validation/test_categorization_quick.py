@@ -4,7 +4,7 @@
 Run this to verify the basic classification logic works correctly.
 """
 
-from src.transformers.company_categorization import (
+from sbir_etl.transformers.company_categorization import (
     aggregate_company_classification,
     classify_contract,
 )

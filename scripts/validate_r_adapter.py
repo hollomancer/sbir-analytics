@@ -18,8 +18,8 @@ from loguru import logger
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.config.loader import get_config
-from src.transformers.r_stateio_adapter import RStateIOAdapter
+from sbir_etl.config.loader import get_config
+from sbir_etl.transformers.r_stateio_adapter import RStateIOAdapter
 
 
 app = typer.Typer(help="Validate R StateIO adapter installation and functionality")

@@ -11,8 +11,8 @@ import pytest
 
 pytestmark = pytest.mark.fast
 
-from src.models.transition_models import CompetitionType, ConfidenceLevel, FederalContract
-from src.transition.detection.scoring import TransitionScorer
+from sbir_etl.models.transition_models import CompetitionType, ConfidenceLevel, FederalContract
+from sbir_etl.transition.detection.scoring import TransitionScorer
 from tests.utils.config_mocks import create_mock_transition_scorer_config
 
 
@@ -296,7 +296,7 @@ class TestCompositeScoring:
 
     def test_base_score_only(self, scorer):
         """With no signals, should return only base score."""
-        from src.models.transition_models import TransitionSignals
+        from sbir_etl.models.transition_models import TransitionSignals
 
         signals = TransitionSignals()
         final_score = scorer.compute_final_score(signals)
@@ -401,7 +401,7 @@ class TestEdgeCases:
         config["base_score"] = -0.1
 
         scorer = TransitionScorer(config)
-        from src.models.transition_models import TransitionSignals
+        from sbir_etl.models.transition_models import TransitionSignals
 
         signals = TransitionSignals()
         final_score = scorer.compute_final_score(signals)

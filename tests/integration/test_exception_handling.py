@@ -10,7 +10,7 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from src.exceptions import (
+from sbir_etl.exceptions import (
     APIError,
     ConfigurationError,
     DependencyError,
@@ -32,7 +32,7 @@ class TestConfigurationErrorHandling:
 
     def test_missing_config_file_raises_configuration_error(self):
         """Test that missing config file raises ConfigurationError with context."""
-        from src.config.loader import load_config_from_files
+        from sbir_etl.config.loader import load_config_from_files
 
         with pytest.raises(ConfigurationError) as exc_info:
             load_config_from_files(
@@ -51,7 +51,7 @@ class TestConfigurationErrorHandling:
 
     def test_invalid_yaml_raises_configuration_error(self):
         """Test that invalid YAML raises ConfigurationError."""
-        from src.config.loader import load_config_from_files
+        from sbir_etl.config.loader import load_config_from_files
 
         with tempfile.TemporaryDirectory() as tmpdir:
             config_dir = Path(tmpdir)
@@ -135,7 +135,7 @@ class TestExceptionContextPreservation:
 
     def test_wrapped_exception_preserves_cause(self):
         """Test that wrap_exception preserves the original exception."""
-        from src.exceptions import wrap_exception
+        from sbir_etl.exceptions import wrap_exception
 
         original = ValueError("Original error message")
 
@@ -152,7 +152,7 @@ class TestExceptionContextPreservation:
 
     def test_exception_serialization_includes_cause(self):
         """Test that serialized exceptions include cause information."""
-        from src.exceptions import wrap_exception
+        from sbir_etl.exceptions import wrap_exception
 
         original = KeyError("missing_key")
         wrapped = wrap_exception(
@@ -172,7 +172,7 @@ class TestExceptionDetailsUsability:
     @pytest.mark.skip(reason="Module refactored - see INTEGRATION_TEST_ANALYSIS.md")
     def test_validation_error_shows_available_columns(self):
         """Test ValidationError includes list of available columns for debugging."""
-        from src.enrichers.company_enricher import enrich_companies
+        from sbir_etl.enrichers.company_enricher import enrich_companies
 
         awards_df = pd.DataFrame({"col1": [1], "col2": [2]})
         companies_df = pd.DataFrame({"Company Name": ["Test"]})

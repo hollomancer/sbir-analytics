@@ -5,7 +5,7 @@ import pytest
 
 pytestmark = pytest.mark.fast
 
-from src.config.schemas import (
+from sbir_etl.config.schemas import (
     DataQualityConfig,
     ExtractionConfig,
     SbirDuckDBConfig,

@@ -17,7 +17,7 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from src.exceptions import CETClassificationError, ValidationError
+from sbir_etl.exceptions import CETClassificationError, ValidationError
 
 
 RUN_SLOW = os.getenv("PYTEST_ALLOW_SLOW", "0").lower() in {"1", "true", "yes"}
@@ -26,8 +26,8 @@ pytestmark = [
     pytest.mark.skipif(not RUN_SLOW, reason="Slow test suite; set PYTEST_ALLOW_SLOW=1 to run"),
 ]
 
-from src.ml.models.cet_classifier import ApplicabilityModel, CETAwareTfidfVectorizer
-from src.models.cet_models import CETArea, ClassificationLevel
+from sbir_etl.ml.models.cet_classifier import ApplicabilityModel, CETAwareTfidfVectorizer
+from sbir_etl.models.cet_models import CETArea, ClassificationLevel
 
 
 @pytest.fixture

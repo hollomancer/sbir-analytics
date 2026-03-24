@@ -24,7 +24,7 @@ from loguru import logger
 repo_root = Path(__file__).parent.parent
 sys.path.insert(0, str(repo_root))
 
-from src.enrichers.usaspending import enrich_sbir_with_usaspending
+from sbir_etl.enrichers.usaspending import enrich_sbir_with_usaspending
 
 
 def create_sample_data():

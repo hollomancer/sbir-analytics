@@ -11,7 +11,7 @@ from unittest.mock import patch
 import pandas as pd
 import pytest
 
-from src.enrichers.geographic_resolver import (
+from sbir_etl.enrichers.geographic_resolver import (
     GeographicResolutionResult,
     GeographicResolver,
     resolve_award_geography,
@@ -27,7 +27,7 @@ from tests.utils.config_mocks import create_mock_pipeline_config
 @pytest.fixture
 def mock_config():
     """Mock configuration for testing using consolidated utility."""
-    from src.config.schemas.fiscal import FiscalAnalysisConfig
+    from sbir_etl.config.schemas.fiscal import FiscalAnalysisConfig
 
     config = create_mock_pipeline_config()
     # Ensure fiscal_analysis exists and is properly configured
@@ -49,7 +49,7 @@ def mock_config():
 @pytest.fixture
 def resolver(mock_config):
     """Default GeographicResolver instance."""
-    with patch("src.enrichers.geographic_resolver.get_config", return_value=mock_config):
+    with patch("sbir_etl.enrichers.geographic_resolver.get_config", return_value=mock_config):
         return GeographicResolver()
 
 
@@ -80,7 +80,7 @@ class TestGeographicResolverInitialization:
 
     def test_initialization_with_default_config(self, mock_config):
         """Test initialization loads state mappings."""
-        with patch("src.enrichers.geographic_resolver.get_config", return_value=mock_config):
+        with patch("sbir_etl.enrichers.geographic_resolver.get_config", return_value=mock_config):
             resolver = GeographicResolver()
 
             assert len(resolver.state_mappings) > 50  # 50 states + territories
@@ -582,7 +582,7 @@ class TestResolveAwardGeography:
             }
         )
 
-        with patch("src.enrichers.geographic_resolver.get_config", return_value=mock_config):
+        with patch("sbir_etl.enrichers.geographic_resolver.get_config", return_value=mock_config):
             enriched_df, quality_metrics = resolve_award_geography(df)
 
         assert "fiscal_state_code" in enriched_df.columns
@@ -594,7 +594,7 @@ class TestResolveAwardGeography:
 
     def test_resolve_award_geography_with_custom_config(self):
         """Test main function with custom config."""
-        from src.config.schemas.fiscal import FiscalAnalysisConfig
+        from sbir_etl.config.schemas.fiscal import FiscalAnalysisConfig
 
         df = pd.DataFrame({"award_id": ["AWD001"], "State": ["CA"]})
 

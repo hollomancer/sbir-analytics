@@ -18,7 +18,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 # Import the pipeline calculator
-from src.transformers.sbir_fiscal_pipeline import SBIRFiscalImpactCalculator
+from sbir_etl.transformers.sbir_fiscal_pipeline import SBIRFiscalImpactCalculator
 
 
 def create_sample_sbir_awards() -> pd.DataFrame:

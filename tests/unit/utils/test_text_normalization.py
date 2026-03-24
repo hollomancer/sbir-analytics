@@ -13,7 +13,7 @@ import pytest
 
 pytestmark = pytest.mark.fast
 
-from src.utils.text_normalization import (
+from sbir_etl.utils.text_normalization import (
     normalize_company_name,
     normalize_name,
     normalize_recipient_name,

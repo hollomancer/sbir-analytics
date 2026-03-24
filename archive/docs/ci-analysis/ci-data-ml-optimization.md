@@ -44,7 +44,7 @@ data-refresh-validation:
     - name: Dry-run data refresh
       run: |
         # Test refresh logic without downloading GB of data
-        uv run python -m src.cli.main data-refresh --dry-run --source sbir
+        uv run python -m sbir_etl.cli.main data-refresh --dry-run --source sbir
 ```
 
 #### 2. ML Changes Have No Iterative Testing

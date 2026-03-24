@@ -92,7 +92,7 @@ pytest tests/integration/test_paecter_client.py -v
 
 ```python
 import os
-from src.ml.paecter_client import PaECTERClient
+from sbir_etl.ml.paecter_client import PaECTERClient
 
 # Set token (or use environment variable)
 os.environ["HF_TOKEN"] = "your_token_here"
@@ -117,7 +117,7 @@ print(f"Mode: {result.inference_mode}")  # "api"
 **Local Mode (Optional):**
 
 ```python
-from src.ml.paecter_client import PaECTERClient
+from sbir_etl.ml.paecter_client import PaECTERClient
 
 # Initialize client in local mode
 client = PaECTERClient(use_local=True)
@@ -238,7 +238,7 @@ df = pd.read_parquet("data/processed/paecter_embeddings_awards_sample.parquet")
 embeddings = np.array([np.array(e) for e in df['embedding']])
 
 # Use with PaECTER client for similarity
-from src.ml.paecter_client import PaECTERClient
+from sbir_etl.ml.paecter_client import PaECTERClient
 client = PaECTERClient()
 similarities = client.compute_similarity(embeddings[:10], embeddings[10:20])
 ```

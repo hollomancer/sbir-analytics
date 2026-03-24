@@ -409,7 +409,7 @@ The test uses 4 sample SBIR awards:
 
 2. Test mapping directly:
    ```python
-   from src.transformers.naics_to_bea import NAICSToBEAMapper
+   from sbir_etl.transformers.naics_to_bea import NAICSToBEAMapper
    mapper = NAICSToBEAMapper()
    result = mapper.map_code("541712")  # Should return "54"
    ```

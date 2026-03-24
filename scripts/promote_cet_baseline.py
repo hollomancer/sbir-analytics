@@ -101,7 +101,7 @@ def validate_baseline_structure(obj: dict[str, Any]) -> bool:
 
 
 # Use centralized atomic write utility
-from src.utils.file_io import write_json_atomic
+from sbir_etl.utils.file_io import write_json_atomic
 
 
 def atomic_write_json(target: Path, data: dict[str, Any]) -> None:

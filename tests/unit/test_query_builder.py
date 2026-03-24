@@ -5,7 +5,7 @@ import pytest
 
 pytestmark = pytest.mark.fast
 
-from src.loaders.neo4j.query_builder import Neo4jQueryBuilder
+from sbir_etl.loaders.neo4j.query_builder import Neo4jQueryBuilder
 
 
 def test_build_batch_merge_query_simple():

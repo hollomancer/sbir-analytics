@@ -57,7 +57,7 @@ awards_df = pd.DataFrame({
 ### Basic Usage
 
 ```python
-from src.transformers.sbir_fiscal_pipeline import SBIRFiscalImpactCalculator
+from sbir_etl.transformers.sbir_fiscal_pipeline import SBIRFiscalImpactCalculator
 
 # Initialize calculator
 calculator = SBIRFiscalImpactCalculator()
@@ -138,7 +138,7 @@ See `src/transformers/naics_bea_mapper.py` for complete mapping.
 To use a custom NAICS-BEA concordance:
 
 ```python
-from src.transformers.naics_bea_mapper import NAICSBEAMapper
+from sbir_etl.transformers.naics_bea_mapper import NAICSBEAMapper
 
 mapper = NAICSBEAMapper(concordance_path="/path/to/concordance.csv")
 calculator = SBIRFiscalImpactCalculator(naics_mapper=mapper)

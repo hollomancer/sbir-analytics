@@ -8,7 +8,7 @@ import pytest
 
 pytestmark = pytest.mark.fast
 
-from src.transformers.company_cet_aggregator import CompanyCETAggregator
+from sbir_etl.transformers.company_cet_aggregator import CompanyCETAggregator
 
 
 def test_aggregate_single_company_basic():

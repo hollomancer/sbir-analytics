@@ -6,8 +6,8 @@ import pytest
 
 pytestmark = pytest.mark.fast
 
-from src.models import QualitySeverity
-from src.quality.checks import (
+from sbir_etl.models import QualitySeverity
+from sbir_etl.quality.checks import (
     check_completeness,
     check_uniqueness,
     check_value_ranges,

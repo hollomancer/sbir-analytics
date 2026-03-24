@@ -310,7 +310,7 @@ locations:
 
   - location_name: sbir-analytics-ml
     code_source:
-      module_name: src.definitions_ml
+      module_name: sbir_etl.definitions_ml
     build:
       directory: .
       registry: 123456789012.dkr.ecr.us-east-2.amazonaws.com/dagster-ml-workloads

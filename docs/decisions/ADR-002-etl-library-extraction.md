@@ -3,7 +3,7 @@
 Type: Decision
 Owner: conrad.hollomon@pm.me
 Last-Reviewed: 2026-03-24
-Status: draft
+Status: accepted
 
 ---
 
@@ -13,177 +13,161 @@ Status: draft
 
 We're evaluating whether to extract the ETL pipeline from `sbir-analytics` into a
 standalone library that other applications can consume. The motivation is reuse: other
-apps could benefit from our SBIR extraction, enrichment, and transformation capabilities
-without depending on Dagster, Neo4j, or our CLI.
+government analytics projects and data science pipelines could benefit from our SBIR
+extraction, enrichment, and transformation capabilities without depending on Dagster,
+Neo4j, or our CLI.
 
 ### Current Architecture
 
-The ETL pipeline is organized into four clean stages within `src/`:
+The ETL pipeline is organized into four clean stages within `sbir_etl/`:
 
 | Stage | Location | Lines | Purpose |
 |-------|----------|-------|---------|
-| Extract | `src/extractors/` | ~4.6K | SBIR CSV (DuckDB), USAspending DB, USPTO patents, SAM.gov, SBIR.gov API |
-| Enrich | `src/enrichers/` | ~9.3K | Fuzzy matching, company categorization, geographic resolution, patent similarity |
-| Transform | `src/transformers/` | ~3.8K | Normalization, categorization, fiscal pipeline, NAICS-BEA mapping |
-| Load | `src/loaders/neo4j/` | ~2.8K | Neo4j graph loading with idempotent MERGE |
+| Extract | `sbir_etl/extractors/` | ~4.6K | SBIR CSV (DuckDB), USAspending DB, USPTO patents, SAM.gov, SBIR.gov API |
+| Enrich | `sbir_etl/enrichers/` | ~9.3K | Fuzzy matching, company categorization, geographic resolution, patent similarity |
+| Transform | `sbir_etl/transformers/` | ~3.8K | Normalization, categorization, fiscal pipeline, NAICS-BEA mapping |
+| Load | `sbir_etl/loaders/neo4j/` | ~2.8K | Neo4j graph loading with idempotent MERGE |
 
 Supporting modules that ETL depends on:
-- `src/models/` — Pydantic data models (~20 files)
-- `src/config/` — YAML-based hierarchical config with env var overrides
-- `src/utils/` — Cloud storage, DuckDB client, caching, date parsing, async tools
-- `src/exceptions.py` — Shared exception hierarchy
+- `sbir_etl/models/` — Pydantic data models (~20 files)
+- `sbir_etl/config/` — YAML-based hierarchical config with env var overrides
+- `sbir_etl/utils/` — Cloud storage, DuckDB client, caching, date parsing, async tools
+- `sbir_etl/exceptions.py` — Shared exception hierarchy
 
-Orchestration lives in `src/assets/` (Dagster asset definitions) and `src/assets/jobs/`
-(Dagster job definitions). The CLI lives in `src/cli/`.
+Orchestration lives in `sbir_etl/assets/` (Dagster asset definitions) and
+`sbir_etl/assets/jobs/` (Dagster job definitions). The CLI lives in `sbir_etl/cli/`.
 
-## Analysis
+## Refactoring Completed
 
-### What's Decoupled (Easy to Extract)
+All four preparatory steps from the initial evaluation have been implemented:
 
-**Extractors** have the cleanest dependency profile. They import only from `models`,
-`config`, and `utils` — never from enrichers, transformers, loaders, CLI, or Dagster.
-An external app could use `SbirDuckDBExtractor` or `ContractExtractor` directly today
-with minimal wrapping.
+### 1. Package Renamed: `src/` → `sbir_etl/`
 
-**Transformers** are mostly pure functions operating on DataFrames or model objects.
-`company_categorization.py` depends only on `models.categorization`. The fiscal pipeline
-(`sbir_fiscal_pipeline.py`) is self-contained within the transformers package.
+The generic `src/` package name has been renamed to `sbir_etl/` to avoid namespace
+conflicts when installed alongside other Python projects. All imports, pyproject.toml
+references, Dockerfiles, CI workflows, and tooling configs updated.
 
-**Data models** (`src/models/`) use lazy loading and have almost no internal dependencies
-beyond `utils.common.date_utils`. They're already suitable for packaging standalone.
+### 2. Neo4j Made Optional
 
-### What's Coupled (Hard to Extract)
+`neo4j` moved from core `dependencies` to `[project.optional-dependencies.neo4j]`.
+Install with `pip install sbir-analytics[neo4j]`. The `sbir_etl.loaders.neo4j` package
+uses lazy imports — importing `sbir_etl` or `sbir_etl.models` no longer requires neo4j
+to be installed. Asset and CLI files that use neo4j guard their imports with try/except.
 
-**Enrichers** have the deepest dependency graph. `company_categorization.py` imports from
-extractors, config, exceptions, utils (cache, async), and the USAspending enricher. The
-`ChunkedEnricher` depends on `psutil` for memory monitoring and has spill-to-disk
-behavior tied to local filesystem assumptions.
+### 3. Config Dependency Injection
 
-**Neo4j loaders** are inherently tied to our graph schema (Award, Company, Patent nodes
-with specific relationship types). Another app would need the same Neo4j schema or
-wouldn't use these at all.
+Key ETL modules now accept `config=None` parameter with `get_config()` as fallback:
 
-**Configuration** uses a singleton `get_config()` pattern with `config/base.yaml`
-hardcoded as the default path. Every enricher and most extractors call `get_config()`
-directly rather than accepting config as a parameter — this is the single biggest
-coupling obstacle.
+- **Extractors**: `SAMGovExtractor(config=...)`, `extract_usaspending_from_config(config=...)`
+- **Enrichers**: `ChunkedEnricher(config=...)`, `PatentsViewClient(config=...)`,
+  `retrieve_company_contracts_api(config=...)`
+- **Transformers**: Already used the `config or get_config()` pattern
+- **Utilities**: `get_duckdb_client(config=...)`, `configure_logging_from_config(config=...)`,
+  `EnrichmentMetricsCollector(config=...)`
 
-**Dagster orchestration** (`src/assets/`, `src/definitions.py`) is tightly coupled to
-the ETL modules but is a one-way dependency: assets import ETL, ETL never imports assets.
-This means extraction doesn't require touching Dagster code.
+External consumers can now use ETL components without `config/base.yaml`:
 
-### Dependency Weight
+```python
+from sbir_etl.extractors.sam_gov import SAMGovExtractor
+from sbir_etl.config.schemas import PipelineConfig
 
-The current `pyproject.toml` has 24 runtime dependencies. A library consumer would
-inherit all of them unless we made heavy deps optional. Key heavyweight dependencies:
+my_config = PipelineConfig(extraction={"sam_gov": {"parquet_path": "..."}})
+extractor = SAMGovExtractor(config=my_config)
+```
 
-- **Required by extractors**: `duckdb`, `pandas`, `pyarrow`, `boto3`, `cloudpathlib`
-- **Required by enrichers**: `rapidfuzz`, `jellyfish`, `httpx`, `spacy`, `scikit-learn`
-- **Required by transformers**: `pydantic` (already light)
-- **Required by loaders**: `neo4j`
-- **Not needed by library**: `dagster`, `typer`, `rich`
+### 4. Standalone Models Package
 
-A minimal "extract-only" library would still pull in DuckDB, pandas, boto3, and pyarrow
-— around 200MB of dependencies.
+`packages/sbir-models/` provides a lightweight `sbir_models` package that re-exports
+Pydantic models from `sbir_etl.models`. Dependencies: only `pydantic>=2.8`. Other
+projects can use SBIR data models without pulling in the full ETL pipeline:
 
-### Who Would Consume This?
+```python
+from sbir_models import Award, Patent, Organization, FederalContract
+```
 
-This is the critical question. Potential consumers:
+Currently implemented as a re-export layer (requires `sbir_etl` to also be installed).
+For true standalone use, model files would need to be copied into the package and the
+`parse_date` utility vendored.
 
-1. **Internal analytics notebooks** — already import from `src/` directly
-2. **Separate web API** — would need models + extractors, maybe enrichers
-3. **Other government analytics projects** — would need SBIR-specific extractors
-4. **Data science pipelines** — would need models + transformers
+## Re-Evaluation for Use Cases
 
-Use case (1) doesn't need a library — it already works. Use cases (2-4) are hypothetical.
+With the refactoring complete, let's re-evaluate for the target use cases:
 
-### Maintenance Cost
+### Other Government Analytics Projects
 
-Extracting to a library means:
-- **Versioning**: Two packages to version, release, and keep compatible
-- **Testing**: Tests split across two repos, integration tests needed for compatibility
-- **Config**: Library needs its own config mechanism (can't assume `base.yaml` exists)
-- **CI/CD**: Separate publish pipeline for the library
-- **API stability**: Library consumers expect stable interfaces; internal code can change freely
+**Verdict: Feasible now, but monorepo approach recommended over separate library.**
 
-With a team of one (based on commit history), this overhead is significant relative to
-the reuse benefit.
+What works today:
+- `pip install sbir-analytics` gives a properly namespaced `sbir_etl` package
+- Extractors accept injected config — no need for our `config/base.yaml`
+- Neo4j is optional — projects not using graph databases avoid the dependency
+- Models are lightweight and well-defined via Pydantic
 
-## Decision
+What still couples:
+- 24 runtime deps come along (dagster, duckdb, spacy, scikit-learn, etc.)
+- Extractors are SBIR-domain-specific (CSV column mappings, field names)
+- No `extras` groups for "extract-only" or "transform-only" install profiles
 
-**Do not extract a separate library at this time.** The costs outweigh the benefits given:
+**Recommendation**: For sharing with other government analytics projects, create
+additional optional dependency groups (e.g., `[extract]`, `[enrich]`, `[transform]`)
+to let consumers install only what they need. Consider publishing `sbir-models` to an
+internal PyPI if model sharing is the primary need.
 
-1. No concrete external consumers exist today
-2. The configuration coupling (`get_config()` singleton) would require significant
-   refactoring to make the ETL usable outside this project
-3. Maintaining two packages with one contributor adds friction without clear payoff
-4. Internal consumers (notebooks, CLI) already import `src/` directly
+### Data Science Pipelines
 
-### Recommended Preparatory Steps Instead
+**Verdict: Ready for use.**
 
-If library extraction becomes warranted later, these low-cost changes would make it
-much easier:
+Data science pipelines can now:
+1. Install `sbir-analytics` (gets models + transformers + extractors)
+2. Import models: `from sbir_etl.models import Award, Patent`
+3. Use extractors with custom config: `SAMGovExtractor(config=my_config)`
+4. Skip Neo4j entirely (optional dep)
+5. Use transformers for fiscal analysis, categorization, etc.
 
-1. **Dependency injection for config** — Refactor extractors/enrichers to accept config
-   as a parameter instead of calling `get_config()` globally. This is the single highest-
-   leverage change. Example:
+The config DI pattern means notebook/pipeline code doesn't need filesystem config.
 
-   ```python
-   # Before (coupled)
-   class SbirDuckDBExtractor:
-       def __init__(self):
-           self.config = get_config()
+## Updated Decision
 
-   # After (injectable)
-   class SbirDuckDBExtractor:
-       def __init__(self, config: SbirConfig | None = None):
-           self.config = config or get_config()
-   ```
+**Accept the monorepo approach with the completed refactoring.** The four preparatory
+steps have been implemented, making the codebase ready for reuse without the overhead
+of maintaining a separate library:
 
-2. **Separate `sbir-models` package** — The models are already nearly standalone. Publishing
-   them as a lightweight package (~5 files, only depends on pydantic) would let other apps
-   share data structures without pulling in the full ETL.
+1. **`sbir_etl/`** — properly namespaced, pip-installable
+2. **Optional neo4j** — consumers choose what they need
+3. **Config injection** — no filesystem coupling for library-style use
+4. **`sbir-models`** — lightweight model package available
 
-3. **Make Neo4j loaders optional** — Move `neo4j` from required to optional dependencies
-   in `pyproject.toml` with a `[neo4j]` extra. This is good practice regardless of
-   library extraction.
+### When to Revisit Full Extraction
 
-4. **Namespace the package** — The current `src/` package name would conflict if installed
-   alongside other projects. Rename to `sbir_etl/` or use a namespace package
-   (`sbir.etl`).
+Extract to a separate library if:
+- A concrete external consumer appears that cannot install `sbir-analytics` at all
+- The dependency footprint (200MB+) is prohibitive for the consumer
+- Multiple teams need independent release cycles for ETL vs. pipeline
+
+### Remaining Work (If Extraction Needed Later)
+
+1. Create `[extract]`, `[enrich]`, `[transform]` optional dependency groups
+2. Vendor `parse_date` into `sbir-models` for truly standalone model usage
+3. Make dagster an optional dependency (move to `[pipeline]` extra)
+4. Split tests to validate each extra independently
 
 ## Consequences
 
 **Positive:**
-- No additional maintenance burden
-- Internal code can evolve freely without worrying about API stability
-- Preparatory steps (config injection, optional deps) improve the codebase regardless
+- ETL is now usable as a library without separate packaging
+- Config injection enables external consumers and improves testability
+- Neo4j optional reduces install footprint for non-graph use cases
+- No additional maintenance burden from separate packages
 
 **Negative:**
-- If a concrete consumer appears, extraction will take more effort than if done now
-- Other projects can't pip-install our extractors
+- Full dependency set still installed even if only models are needed
+- `sbir-models` re-export approach requires `sbir_etl` to be co-installed
 
 **Neutral:**
-- The modular directory structure is already good — no architectural debt accumulating
-
-## Alternatives Considered
-
-### Full extraction now
-Extracting all ETL into `sbir-etl` library immediately. Rejected because there are no
-concrete consumers, and the config coupling means this is weeks of work (refactoring
-`get_config()` calls across ~50 files, building a separate CI pipeline, splitting tests).
-
-### Monorepo with workspace packages
-Using a monorepo tool (e.g., `hatch` workspaces) to publish `sbir-etl` and
-`sbir-analytics` from the same repo. This reduces some maintenance cost but still
-requires solving the config coupling and adds build complexity. Worth revisiting if
-a second app materializes.
-
-### Git submodule / subtree
-Sharing ETL code via git subtree. Rejected — creates merge pain and doesn't solve
-the config coupling or dependency isolation problems.
+- Monorepo structure scales well until multiple independent consumers appear
 
 ## Links
 
-- Related files: `src/extractors/`, `src/enrichers/`, `src/transformers/`, `src/loaders/`
+- Related files: `sbir_etl/extractors/`, `sbir_etl/enrichers/`, `sbir_etl/transformers/`, `sbir_etl/loaders/`
 - Related config: `pyproject.toml`, `config/base.yaml`
+- Models package: `packages/sbir-models/`

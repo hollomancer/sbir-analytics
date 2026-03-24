@@ -123,7 +123,7 @@ class SamGovConfig(BaseModel):
 ### 1. Extractor (Parquet-based)
 
 ```python
-from src.extractors.sam_gov import SAMGovExtractor
+from sbir_etl.extractors.sam_gov import SAMGovExtractor
 
 # Initialize extractor
 extractor = SAMGovExtractor()
@@ -148,7 +148,7 @@ entity = extractor.get_entity_by_cage(df, "1ABC5")
 
 ```python
 from dagster import asset
-from src.assets.sam_gov_ingestion import raw_sam_gov_entities
+from sbir_etl.assets.sam_gov_ingestion import raw_sam_gov_entities
 
 # The asset automatically handles:
 # 1. S3-first path resolution
@@ -167,7 +167,7 @@ def enrich_with_sam_gov(raw_sam_gov_entities):
 ### 3. API Client (Fallback)
 
 ```python
-from src.enrichers.sam_gov import SAMGovAPIClient
+from sbir_etl.enrichers.sam_gov import SAMGovAPIClient
 import asyncio
 
 async def lookup_entity():
@@ -242,7 +242,7 @@ The `resolve_data_path()` utility provides:
 4. **Prefer local**: Option to prefer local even if S3 available
 
 ```python
-from src.utils.cloud_storage import resolve_data_path
+from sbir_etl.utils.cloud_storage import resolve_data_path
 
 # Resolve path with S3-first strategy
 path = resolve_data_path(

@@ -43,10 +43,10 @@ from rich.console import Console
 from rich.progress import BarColumn, Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
 from rich.table import Table
 
-from src.config.loader import get_config
-from src.extractors.sbir import SbirDuckDBExtractor
-from src.ml.paecter_client import PaECTERClient
-from src.utils.cloud_storage import build_s3_path, get_s3_bucket_from_env
+from sbir_etl.config.loader import get_config
+from sbir_etl.extractors.sbir import SbirDuckDBExtractor
+from sbir_etl.ml.paecter_client import PaECTERClient
+from sbir_etl.utils.cloud_storage import build_s3_path, get_s3_bucket_from_env
 
 
 console = Console()

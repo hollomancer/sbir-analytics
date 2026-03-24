@@ -382,7 +382,7 @@ def test_config():
     Load test configuration once per session.
     Cached to avoid repeated file I/O.
     """
-    from src.config.loader import get_config
+    from sbir_etl.config.loader import get_config
 
     return get_config()
 
@@ -607,7 +607,7 @@ def usaspending_sample(tmp_path):
 @pytest.fixture
 def mock_pipeline_config(tmp_path):
     """Provide mock configuration for asset tests."""
-    from src.config.schemas import (
+    from sbir_etl.config.schemas import (
         PipelineConfig,
         DataQualityConfig,
         EnrichmentConfig,

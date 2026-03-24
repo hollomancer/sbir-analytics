@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from src.extractors.uspto_ai_extractor import USPTOAIExtractor, _Checkpoint
+from sbir_etl.extractors.uspto_ai_extractor import USPTOAIExtractor, _Checkpoint
 
 
 # ==================== Fixtures ====================

@@ -12,11 +12,11 @@ from unittest.mock import MagicMock
 import pandas as pd
 import pytest
 
-from src.enrichers.company_categorization import (
+from sbir_etl.enrichers.company_categorization import (
     _extract_sbir_phase,
     retrieve_company_contracts,
 )
-from src.transformers.company_categorization import (
+from sbir_etl.transformers.company_categorization import (
     aggregate_company_classification,
     classify_contract,
 )

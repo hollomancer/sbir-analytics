@@ -6,7 +6,7 @@ import pytest
 
 pytestmark = pytest.mark.fast
 
-from src.utils.cache.api_cache import APICache
+from sbir_etl.utils.cache.api_cache import APICache
 
 
 @pytest.fixture

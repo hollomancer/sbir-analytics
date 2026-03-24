@@ -18,8 +18,8 @@ from pathlib import Path
 
 from loguru import logger
 
-from src.config.loader import get_config
-from src.extractors.contract_extractor import ContractExtractor
+from sbir_etl.config.loader import get_config
+from sbir_etl.extractors.contract_extractor import ContractExtractor
 
 
 def main():

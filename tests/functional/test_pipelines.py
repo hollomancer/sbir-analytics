@@ -26,7 +26,7 @@ class TestTransitionPipeline:
     def test_transition_run_produces_outputs(self, output_dir):
         """Test that transition pipeline produces expected outputs."""
         from dagster import materialize
-        from src.assets.transition import validated_contracts_sample
+        from sbir_etl.assets.transition import validated_contracts_sample
 
         # Only materialize the asset without upstream dependencies
         result = materialize([validated_contracts_sample])
@@ -41,7 +41,7 @@ class TestCETPipeline:
     def test_cet_run_produces_outputs(self):
         """Test that CET pipeline produces expected outputs."""
         from dagster import materialize
-        from src.assets.cet import enriched_cet_award_classifications
+        from sbir_etl.assets.cet import enriched_cet_award_classifications
 
         result = materialize([enriched_cet_award_classifications])
 
@@ -59,7 +59,7 @@ class TestFiscalPipeline:
     def test_fiscal_run_produces_outputs(self, rpy2_available):
         """Test that fiscal pipeline produces expected outputs."""
         from dagster import materialize
-        from src.assets.fiscal_assets import fiscal_returns_core
+        from sbir_etl.assets.fiscal_assets import fiscal_returns_core
 
         result = materialize([fiscal_returns_core])
 
@@ -73,7 +73,7 @@ class TestPaECTERPipeline:
     def test_paecter_run_produces_outputs(self, sentence_transformers_available):
         """Test that PaECTER pipeline produces expected outputs."""
         from dagster import materialize
-        from src.assets.paecter.paecter_assets import paecter_embeddings
+        from sbir_etl.assets.paecter.paecter_assets import paecter_embeddings
 
         result = materialize([paecter_embeddings])
 
@@ -152,8 +152,8 @@ class TestPipelineIntegration:
     def test_pipelines_can_run_sequentially(self):
         """Test that pipelines can run in sequence without conflicts."""
         from dagster import materialize
-        from src.assets.transition import validated_contracts_sample
-        from src.assets.cet import enriched_cet_award_classifications
+        from sbir_etl.assets.transition import validated_contracts_sample
+        from sbir_etl.assets.cet import enriched_cet_award_classifications
 
         # Run transition first
         result1 = materialize([validated_contracts_sample])

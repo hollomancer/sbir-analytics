@@ -12,7 +12,7 @@ from unittest.mock import MagicMock, patch
 import pandas as pd
 import pytest
 
-from src.extractors.sam_gov import SAMGovExtractor
+from sbir_etl.extractors.sam_gov import SAMGovExtractor
 
 
 pytestmark = pytest.mark.fast
@@ -21,7 +21,7 @@ pytestmark = pytest.mark.fast
 @pytest.fixture(autouse=True)
 def clear_config_cache():
     """Clear config cache to ensure test isolation."""
-    from src.config.loader import get_config
+    from sbir_etl.config.loader import get_config
 
     get_config.cache_clear()
     yield
@@ -65,7 +65,7 @@ def mock_config():
 @pytest.fixture
 def extractor_with_mock_config(mock_config):
     """Create extractor with mocked configuration."""
-    with patch("src.extractors.sam_gov.get_config", return_value=mock_config):
+    with patch("sbir_etl.extractors.sam_gov.get_config", return_value=mock_config):
         extractor = SAMGovExtractor()
         return extractor
 
@@ -115,8 +115,8 @@ class TestParquetLoading:
         # Mock S3 bucket configured
         extractor_with_mock_config.config.s3 = {"bucket": "test-bucket"}
 
-        with patch("src.utils.cloud_storage.find_latest_sam_gov_parquet") as mock_find_latest:
-            with patch("src.extractors.sam_gov.pd.read_parquet") as mock_read_parquet:
+        with patch("sbir_etl.utils.cloud_storage.find_latest_sam_gov_parquet") as mock_find_latest:
+            with patch("sbir_etl.extractors.sam_gov.pd.read_parquet") as mock_read_parquet:
                 # Mock S3 file found
                 mock_find_latest.return_value = (
                     "s3://test-bucket/raw/sam_gov/sam_entity_records.parquet"

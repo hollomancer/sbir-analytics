@@ -182,7 +182,7 @@ aws batch register-job-definition \
   "image": "ghcr.io/hollomancer/sbir-analytics:latest",
   "vcpus": 4,
   "memory": 8192,
-  "command": ["python", "-m", "src.cli.main", "pipeline", "run"],
+  "command": ["python", "-m", "sbir_etl.cli.main", "pipeline", "run"],
   "environment": [
     {"name": "NEO4J_URI", "value": "bolt://neo4j:7687"},
     {"name": "S3_BUCKET", "value": "sbir-etl-production-data"}

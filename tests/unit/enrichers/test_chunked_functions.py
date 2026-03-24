@@ -5,7 +5,7 @@ from unittest.mock import Mock, patch
 import pandas as pd
 import pytest
 
-from src.enrichers.chunked_enrichment import (
+from sbir_etl.enrichers.chunked_enrichment import (
     combine_enriched_chunks,
     create_dynamic_outputs_enrichment,
 )
@@ -107,9 +107,9 @@ class TestCombineEnrichedChunks:
 class TestCreateDynamicOutputsEnrichment:
     """Tests for create_dynamic_outputs_enrichment generator."""
 
-    @patch("src.enrichers.chunked_enrichment.get_config")
-    @patch("src.enrichers.chunked_enrichment.enrich_sbir_with_usaspending")
-    @patch("src.enrichers.chunked_enrichment.performance_monitor")
+    @patch("sbir_etl.enrichers.chunked_enrichment.get_config")
+    @patch("sbir_etl.enrichers.chunked_enrichment.enrich_sbir_with_usaspending")
+    @patch("sbir_etl.enrichers.chunked_enrichment.performance_monitor")
     def test_yields_chunk_tuples(
         self,
         mock_perf_monitor,
@@ -134,9 +134,9 @@ class TestCreateDynamicOutputsEnrichment:
         assert results[2][0] == 2
         assert isinstance(results[0][1], pd.DataFrame)
 
-    @patch("src.enrichers.chunked_enrichment.get_config")
-    @patch("src.enrichers.chunked_enrichment.enrich_sbir_with_usaspending")
-    @patch("src.enrichers.chunked_enrichment.performance_monitor")
+    @patch("sbir_etl.enrichers.chunked_enrichment.get_config")
+    @patch("sbir_etl.enrichers.chunked_enrichment.enrich_sbir_with_usaspending")
+    @patch("sbir_etl.enrichers.chunked_enrichment.performance_monitor")
     def test_processes_all_records(
         self,
         mock_perf_monitor,

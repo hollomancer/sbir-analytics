@@ -68,7 +68,7 @@ def normalize_name(s: str | None) -> str:
 
     Uses centralized text normalization utility with suffix normalization.
     """
-    from src.utils.text_normalization import normalize_name as normalize_name_util
+    from sbir_etl.utils.text_normalization import normalize_name as normalize_name_util
 
     return normalize_name_util(s, remove_suffixes=False)
 

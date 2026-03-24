@@ -9,13 +9,13 @@ pytestmark = pytest.mark.fast
 # Import the modules under test; if they are not available skip the tests gracefully.
 pytest.importorskip("pandas")
 PatentAssignmentTransformer = pytest.importorskip(
-    "src.transformers.patent_transformer", reason="transformer module missing"
+    "sbir_etl.transformers.patent_transformer", reason="transformer module missing"
 ).PatentAssignmentTransformer
 USPTOExtractor = pytest.importorskip(
-    "src.extractors.uspto_extractor", reason="extractor module missing"
+    "sbir_etl.extractors.uspto_extractor", reason="extractor module missing"
 ).USPTOExtractor
 # Import Pydantic model for assertions
-models_module = pytest.importorskip("src.models.uspto_models", reason="uspto models missing")
+models_module = pytest.importorskip("sbir_etl.models.uspto_models", reason="uspto models missing")
 PatentAssignment = getattr(models_module, "PatentAssignment", None)
 PatentDocument = getattr(models_module, "PatentDocument", None)
 PatentAssignee = getattr(models_module, "PatentAssignee", None)
@@ -162,7 +162,7 @@ def test_address_parsing_variants():
     """
     Validate the address parsing heuristics cover common variants.
     """
-    from src.transformers.patent_transformer import PatentAssignmentTransformer
+    from sbir_etl.transformers.patent_transformer import PatentAssignmentTransformer
 
     t = PatentAssignmentTransformer()
     # Common comma-separated

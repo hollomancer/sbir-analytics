@@ -7,19 +7,19 @@ sys.path.append(str(Path.cwd()))
 try:
     print("Checking imports...")
 
-    from src.validators.district import validate_district_resolution  # noqa: F401
+    from sbir_etl.validators.district import validate_district_resolution  # noqa: F401
 
     print("✅ Successfully imported src.validators.district.validate_district_resolution")
 
-    from src.enrichers.matching import ResearcherMatcher  # noqa: F401
+    from sbir_etl.enrichers.matching import ResearcherMatcher  # noqa: F401
 
     print("✅ Successfully imported src.enrichers.matching.ResearcherMatcher")
 
-    from src.utils.monitoring.alerts import AlertCollector  # noqa: F401
+    from sbir_etl.utils.monitoring.alerts import AlertCollector  # noqa: F401
 
     print("✅ Successfully imported src.utils.monitoring.alerts.AlertCollector")
 
-    from src.utils.statistical_reporter import StatisticalReporter  # noqa: F401
+    from sbir_etl.utils.statistical_reporter import StatisticalReporter  # noqa: F401
 
     print("✅ Successfully imported src.utils.statistical_reporter.StatisticalReporter")
 

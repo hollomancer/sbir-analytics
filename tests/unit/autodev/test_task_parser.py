@@ -3,7 +3,7 @@
 from pathlib import Path
 
 
-from src.autodev.task_parser import (
+from sbir_etl.autodev.task_parser import (
     SpecContext,
     SpecTask,
     TaskRisk,
@@ -52,10 +52,10 @@ class TestParseTasksMd:
         assert tasks[0].requirements == ["1.1", "1.2", "1.3"]
 
     def test_parse_file_hints(self):
-        content = "- [ ] 3.1 Create `src/models/foo.py` module\n"
+        content = "- [ ] 3.1 Create `sbir_etl/models/foo.py` module\n"
         tasks = parse_tasks_md("test-spec", content)
         assert len(tasks) == 1
-        assert "src/models/foo.py" in tasks[0].file_hints
+        assert "sbir_etl/models/foo.py" in tasks[0].file_hints
 
     def test_risk_assessment_high(self):
         content = "- [ ] 4.1 Add API key credential management\n"

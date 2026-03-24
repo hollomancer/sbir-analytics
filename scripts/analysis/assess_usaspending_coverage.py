@@ -17,7 +17,7 @@ from loguru import logger
 
 # Import config loader for default paths
 try:
-    from src.config.loader import get_config
+    from sbir_etl.config.loader import get_config
 
     _config_available = True
 except ImportError:

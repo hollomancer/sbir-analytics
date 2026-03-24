@@ -5,8 +5,8 @@ import json
 import pandas as pd
 import pytest
 
-from src.enrichers.company_enricher import enrich_awards_with_companies
-from src.utils.text_normalization import normalize_company_name
+from sbir_etl.enrichers.company_enricher import enrich_awards_with_companies
+from sbir_etl.utils.text_normalization import normalize_company_name
 from tests.factories import DataFrameBuilder
 
 
@@ -181,7 +181,7 @@ def test_enrich_multiple_awards_batch_behavior():
 )
 def test_build_block_key(name, prefix_len, expected):
     """Test building block key from normalized name."""
-    from src.enrichers.company_enricher import build_block_key
+    from sbir_etl.enrichers.company_enricher import build_block_key
 
     assert build_block_key(name, prefix_len=prefix_len) == expected
 
@@ -200,7 +200,7 @@ def test_build_block_key(name, prefix_len, expected):
 )
 def test_coerce_int(value, expected):
     """Test coercing various values to int."""
-    from src.enrichers.company_enricher import _coerce_int
+    from sbir_etl.enrichers.company_enricher import _coerce_int
 
     assert _coerce_int(value) == expected
 
@@ -238,7 +238,7 @@ def test_enrich_empty_companies():
 
 def test_enrich_missing_award_company_column():
     """Test error when award company column is missing."""
-    from src.exceptions import ValidationError
+    from sbir_etl.exceptions import ValidationError
 
     companies = pd.DataFrame([{"company": "Test Corp"}])
     awards = pd.DataFrame([{"award_id": 1}])
@@ -251,7 +251,7 @@ def test_enrich_missing_award_company_column():
 
 def test_enrich_missing_company_name_column():
     """Test error when company name column is missing."""
-    from src.exceptions import ValidationError
+    from sbir_etl.exceptions import ValidationError
 
     companies = pd.DataFrame([{"industry": "Tech"}])
     awards = pd.DataFrame([{"company": "Test Award"}])

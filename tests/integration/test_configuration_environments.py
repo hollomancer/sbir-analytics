@@ -12,8 +12,8 @@ import pytest
 
 pytestmark = pytest.mark.integration
 
-from src.config.loader import get_config, reload_config
-from src.config.schemas import PipelineConfig
+from sbir_etl.config.loader import get_config, reload_config
+from sbir_etl.config.schemas import PipelineConfig
 
 
 @pytest.fixture(autouse=True)

@@ -7,7 +7,7 @@ for DataFrames with varying column naming conventions.
 import pandas as pd
 import pytest
 
-from src.utils.column_finder import ColumnFinder
+from sbir_etl.utils.column_finder import ColumnFinder
 
 
 pytestmark = pytest.mark.fast

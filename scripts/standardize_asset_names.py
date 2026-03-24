@@ -13,12 +13,12 @@ import argparse
 import re
 from pathlib import Path
 
-from src.assets.asset_naming_standards import ASSET_RENAMING_MAP, GROUP_RENAMING_MAP
+from sbir_etl.assets.asset_naming_standards import ASSET_RENAMING_MAP, GROUP_RENAMING_MAP
 
 
 def find_asset_files() -> list[Path]:
     """Find all asset files in the src/assets directory."""
-    assets_dir = Path("src/assets")
+    assets_dir = Path("sbir_etl/assets")
     return [
         f
         for f in assets_dir.glob("*.py")
@@ -92,7 +92,7 @@ def update_asset_definitions(file_path: Path, dry_run: bool = False) -> list[str
 def update_job_definitions(dry_run: bool = False) -> list[str]:
     """Update job definitions to use new asset names."""
     changes = []
-    jobs_dir = Path("src/assets/jobs")
+    jobs_dir = Path("sbir_etl/assets/jobs")
 
     for job_file in jobs_dir.glob("*.py"):
         with open(job_file) as f:

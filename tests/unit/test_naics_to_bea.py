@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from src.transformers.naics_to_bea import NAICSToBEAMapper
+from sbir_etl.transformers.naics_to_bea import NAICSToBEAMapper
 
 
 pytestmark = pytest.mark.fast

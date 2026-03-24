@@ -12,13 +12,13 @@ from uuid import UUID
 
 import pytest
 
-from src.models.transition_models import (
+from sbir_etl.models.transition_models import (
     ConfidenceLevel,
     FederalContract,
     Transition,
     TransitionSignals,
 )
-from src.transition.detection.detector import TransitionDetector
+from sbir_etl.transition.detection.detector import TransitionDetector
 from tests.mocks import TransitionMocks
 
 

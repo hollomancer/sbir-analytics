@@ -23,7 +23,7 @@ try:
 except ImportError:
     pytest = None  # pytest only needed for fixtures, not factory functions
 
-from src.config.schemas import PipelineConfig
+from sbir_etl.config.schemas import PipelineConfig
 
 
 def create_mock_pipeline_config(**overrides: Any) -> PipelineConfig:
@@ -257,14 +257,14 @@ if pytest is not None:
         Usage:
             def test_my_feature(mock_get_config_patch):
                 # get_config() is now patched to return mock_pipeline_config()
-                from src.config.loader import get_config
+                from sbir_etl.config.loader import get_config
                 config = get_config()
         """
         from unittest.mock import patch
 
         mock_config = create_mock_pipeline_config()
 
-        with patch("src.config.loader.get_config", return_value=mock_config):
+        with patch("sbir_etl.config.loader.get_config", return_value=mock_config):
             yield mock_config
 
 
