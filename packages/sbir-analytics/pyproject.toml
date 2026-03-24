@@ -5,7 +5,7 @@ description = "Full SBIR analytics pipeline — ETL + Dagster orchestration + CL
 authors = [{name = "Conrad Hollomon", email = "conrad.hollomon@pm.me"}]
 readme = "README.md"
 license = {text = "MIT"}
-requires-python = ">=3.11,<3.12"
+requires-python = ">=3.11,<3.13"
 
 # sbir-analytics is the full pipeline: ETL library + ML + orchestration + CLI + storage.
 dependencies = [

@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "SBIR Graph — Neo4j graph database loaders and pathway queries"
 authors = [{name = "Conrad Hollomon", email = "conrad.hollomon@pm.me"}]
 license = {text = "MIT"}
-requires-python = ">=3.11,<3.12"
+requires-python = ">=3.11,<3.13"
 
 dependencies = [
     "neo4j>=5.20.0,<7.0.0",

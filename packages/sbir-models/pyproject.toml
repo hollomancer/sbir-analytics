@@ -5,7 +5,7 @@ description = "Pydantic data models for SBIR analytics pipelines"
 authors = [{name = "Conrad Hollomon", email = "conrad.hollomon@pm.me"}]
 readme = "README.md"
 license = {text = "MIT"}
-requires-python = ">=3.11,<3.12"
+requires-python = ">=3.11,<3.13"
 dependencies = [
     "pydantic>=2.8.0,<3.0.0",
 ]
