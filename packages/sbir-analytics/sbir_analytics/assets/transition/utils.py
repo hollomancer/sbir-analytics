@@ -164,7 +164,7 @@ def _env_bool(key: str, default: bool) -> bool:
 try:
     from neo4j import Driver  # type: ignore[attr-defined]
 
-    from sbir_analytics.loaders.neo4j import Neo4jClient, Neo4jConfig
+    from sbir_graph.loaders.neo4j import Neo4jClient, Neo4jConfig
 except Exception:
     Driver = None  # type: ignore
     Neo4jClient = None  # type: ignore

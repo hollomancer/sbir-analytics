@@ -434,7 +434,7 @@ def neo4j_company_categorization(
     Returns:
         Dictionary with load metrics and summary
     """
-    from ..loaders.neo4j import (
+    from sbir_graph.loaders.neo4j import (
         CompanyCategorizationLoader,
         CompanyCategorizationLoaderConfig,
         Neo4jClient,

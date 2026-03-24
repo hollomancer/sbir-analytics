@@ -35,7 +35,7 @@ from .utils import (
 
 # Neo4j loader imports
 try:
-    from ...loaders.neo4j.patent_loader import PatentLoader, PatentLoaderConfig
+    from sbir_graph.loaders.neo4j.patent_loader import PatentLoader, PatentLoaderConfig
 except Exception:
     PatentLoader = None
     PatentLoaderConfig = None

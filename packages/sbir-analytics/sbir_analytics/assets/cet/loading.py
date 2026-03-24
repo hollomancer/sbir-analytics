@@ -29,7 +29,7 @@ from .utils import AssetIn, _read_parquet_or_ndjson, _serialize_metrics, asset
 
 # Neo4j loader imports
 try:
-    from sbir_analytics.loaders.neo4j.cet_loader import CETLoader, CETLoaderConfig
+    from sbir_graph.loaders.neo4j.cet_loader import CETLoader, CETLoaderConfig
 except Exception:
     CETLoader = None
     CETLoaderConfig = None

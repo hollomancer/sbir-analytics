@@ -24,8 +24,8 @@ from ..config.loader import get_config
 from ..models.award import Award
 
 try:
-    from ..loaders.neo4j import LoadMetrics, Neo4jClient, Neo4jConfig
-    from ..loaders.neo4j.organizations import OrganizationLoader
+    from sbir_graph.loaders.neo4j import LoadMetrics, Neo4jClient, Neo4jConfig
+    from sbir_graph.loaders.neo4j.organizations import OrganizationLoader
 except ImportError:
     LoadMetrics = None  # type: ignore[assignment, misc]
     Neo4jClient = None  # type: ignore[assignment, misc]

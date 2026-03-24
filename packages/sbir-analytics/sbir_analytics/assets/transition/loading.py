@@ -32,7 +32,7 @@ from .utils import (
 
 # Neo4j loader imports
 try:
-    from ...loaders.neo4j import TransitionLoader, TransitionProfileLoader
+    from sbir_graph.loaders.neo4j import TransitionLoader, TransitionProfileLoader
 except Exception:
     TransitionLoader = None  # type: ignore[assignment, misc, no-redef]
     TransitionProfileLoader = None  # type: ignore[assignment, misc, no-redef]

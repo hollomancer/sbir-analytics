@@ -1325,7 +1325,7 @@ def load_to_neo4j(results: pd.DataFrame) -> None:
     Args:
         results: DataFrame with categorization results
     """
-    from sbir_analytics.loaders.neo4j import (
+    from sbir_graph.loaders.neo4j import (
         CompanyCategorizationLoader,
         CompanyCategorizationLoaderConfig,
         Neo4jClient,

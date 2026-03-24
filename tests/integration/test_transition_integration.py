@@ -356,7 +356,7 @@ class TestNeo4jOperations:
 
     def test_neo4j_transition_node_creation(self):
         """Test Neo4j transition node creation."""
-        from sbir_analytics.loaders.transition_loader import TransitionLoader
+        from sbir_graph.loaders.transition_loader import TransitionLoader
 
         # Create mock driver
         mock_driver = MagicMock()
@@ -384,7 +384,7 @@ class TestNeo4jOperations:
 
     def test_neo4j_relationship_creation(self):
         """Test Neo4j relationship creation."""
-        from sbir_analytics.loaders.transition_loader import TransitionLoader
+        from sbir_graph.loaders.transition_loader import TransitionLoader
 
         mock_driver = MagicMock()
         session = MagicMock()

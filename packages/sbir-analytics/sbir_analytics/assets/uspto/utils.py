@@ -77,19 +77,19 @@ except Exception:
 
 # Neo4j loaders
 try:  # pragma: no cover - defensive import
-    from ..loaders.neo4j import LoadMetrics, Neo4jClient, Neo4jConfig  # type: ignore
+    from sbir_graph.loaders.neo4j import LoadMetrics, Neo4jClient, Neo4jConfig  # type: ignore
 except Exception:
     Neo4jClient = None
     Neo4jConfig = None
     LoadMetrics = None
 
 try:  # pragma: no cover - defensive import
-    from ..loaders.neo4j import PatentLoader, PatentLoaderConfig
+    from sbir_graph.loaders.neo4j import PatentLoader, PatentLoaderConfig
 except Exception:
     PatentLoader = None
     PatentLoaderConfig = None
 
-# Note: Neo4jClient and Neo4jConfig are already imported above from ..loaders.neo4j
+# Note: Neo4jClient and Neo4jConfig are already imported above from sbir_graph.loaders.neo4j
 # They are used by _get_neo4j_client() function below
 
 # ============================================================================

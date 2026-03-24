@@ -40,7 +40,7 @@ except Exception:  # pragma: no cover
 # CETLoader relationship tests
 # -----------------------------
 def test_create_award_cet_relationships_builds_primary_and_supporting(neo4j_available):
-    from sbir_analytics.loaders.neo4j import CETLoader, LoadMetrics
+    from sbir_graph.loaders.neo4j import CETLoader, LoadMetrics
 
     # Arrange: mock client with capture of relationships
     captured: dict[str, Any] = {}
@@ -112,7 +112,7 @@ def test_create_award_cet_relationships_builds_primary_and_supporting(neo4j_avai
 
 
 def test_create_award_cet_relationships_missing_award_id_skips_and_errors(neo4j_available):
-    from sbir_analytics.loaders.neo4j import CETLoader
+    from sbir_graph.loaders.neo4j import CETLoader
 
     mock_client = MagicMock()
     loader = CETLoader(mock_client)

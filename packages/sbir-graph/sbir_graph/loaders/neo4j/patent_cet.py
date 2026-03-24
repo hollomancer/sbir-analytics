@@ -29,7 +29,7 @@ Relationship schema
 
 Usage example
 -------------
-from sbir_analytics.loaders.neo4j import Neo4jClient, Neo4jConfig, Neo4jPatentCETLoader
+from sbir_graph.loaders.neo4j import Neo4jClient, Neo4jConfig, Neo4jPatentCETLoader
 
 config = Neo4jConfig(
     uri="bolt://localhost:7687",

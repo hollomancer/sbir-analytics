@@ -6,7 +6,7 @@ from tests.mocks import Neo4jMocks
 import pandas as pd
 import pytest
 
-from sbir_analytics.loaders.neo4j.profiles import TransitionProfileLoader
+from sbir_graph.loaders.neo4j.profiles import TransitionProfileLoader
 
 
 pytestmark = pytest.mark.fast

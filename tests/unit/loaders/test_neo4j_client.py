@@ -20,7 +20,7 @@ import pytest
 
 from tests.mocks import Neo4jMocks
 
-from sbir_analytics.loaders.neo4j.client import LoadMetrics, Neo4jClient, Neo4jConfig
+from sbir_graph.loaders.neo4j.client import LoadMetrics, Neo4jClient, Neo4jConfig
 
 
 pytestmark = pytest.mark.fast
@@ -122,7 +122,7 @@ class TestNeo4jClientInitialization:
         assert client.config == neo4j_config
         assert client._driver is None  # Lazy initialization
 
-    @patch("sbir_analytics.loaders.neo4j.client.GraphDatabase.driver")
+    @patch("sbir_graph.loaders.neo4j.client.GraphDatabase.driver")
     def test_driver_lazy_initialization(self, mock_graph_database, neo4j_config, mock_driver):
         """Test driver is created lazily on first access."""
         neo4j_config.auto_migrate = False  # Disable auto-migration for lazy init test
@@ -139,7 +139,7 @@ class TestNeo4jClientInitialization:
             neo4j_config.uri, auth=(neo4j_config.username, neo4j_config.password)
         )
 
-    @patch("sbir_analytics.loaders.neo4j.client.GraphDatabase.driver")
+    @patch("sbir_graph.loaders.neo4j.client.GraphDatabase.driver")
     def test_driver_cached_after_first_access(self, mock_graph_database, neo4j_config, mock_driver):
         """Test driver is cached and not recreated on subsequent access."""
         mock_graph_database.return_value = mock_driver
@@ -160,7 +160,7 @@ class TestNeo4jClientInitialization:
 
         assert client._driver is None
 
-    @patch("sbir_analytics.loaders.neo4j.client.GraphDatabase.driver")
+    @patch("sbir_graph.loaders.neo4j.client.GraphDatabase.driver")
     def test_close_closes_driver(self, mock_graph_database, neo4j_config, mock_driver):
         """Test close() closes the driver and resets to None."""
         mock_graph_database.return_value = mock_driver
@@ -177,7 +177,7 @@ class TestNeo4jClientInitialization:
 class TestNeo4jClientSessionManagement:
     """Tests for Neo4j session context manager."""
 
-    @patch("sbir_analytics.loaders.neo4j.client.GraphDatabase.driver")
+    @patch("sbir_graph.loaders.neo4j.client.GraphDatabase.driver")
     def test_session_context_manager(
         self, mock_graph_database, neo4j_config, mock_driver, mock_session
     ):
@@ -194,7 +194,7 @@ class TestNeo4jClientSessionManagement:
         mock_driver.session.assert_called_once_with(database=neo4j_config.database)
         mock_session.close.assert_called_once()
 
-    @patch("sbir_analytics.loaders.neo4j.client.GraphDatabase.driver")
+    @patch("sbir_graph.loaders.neo4j.client.GraphDatabase.driver")
     def test_session_closes_on_exception(
         self, mock_graph_database, neo4j_config, mock_driver, mock_session
     ):

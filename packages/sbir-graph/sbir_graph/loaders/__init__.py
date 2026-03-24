@@ -2,7 +2,7 @@
 
 Neo4j loaders are available when the ``neo4j`` extra is installed::
 
-    pip install sbir-etl[neo4j]
+    pip install sbir-graph
 """
 
 from __future__ import annotations
