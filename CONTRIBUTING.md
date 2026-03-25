@@ -55,7 +55,7 @@ Thank you for your interest in contributing to the SBIR ETL Pipeline project! Th
    uv run pytest
    uv run ruff check .
    uv run ruff format --check .
-   uv run mypy src/
+   uv run mypy sbir_etl/
    ```
 
 ## Development Workflow
@@ -84,8 +84,8 @@ make check-all
 # Or run individually:
 uv run ruff format .
 uv run ruff check . --fix
-uv run mypy src/
-uv run pytest -v --cov=src
+uv run mypy sbir_etl/
+uv run pytest -v --cov=sbir_etl
 ```
 
 ### 4. Commit Your Changes
@@ -128,7 +128,7 @@ Then create a pull request on the repository.
 - **MyPy**: Standard type checking with gradual typing support
 
   ```bash
-  mypy src/
+  mypy sbir_etl/
   ```
 
   Requirements:
@@ -142,7 +142,7 @@ Then create a pull request on the repository.
 - **Bandit**: Security linting for Python
 
   ```bash
-  bandit -r src/
+  bandit -r sbir_etl/
   ```
 
 ### Documentation
@@ -178,7 +178,7 @@ We use `loguru` for structured logging. See the [Logging Standards Guide](docs/d
 
 ### Exception Handling
 
-All custom exceptions must use the centralized exception hierarchy in `src/exceptions.py`. This provides structured error information, retry guidance, and consistent logging.
+All custom exceptions must use the centralized exception hierarchy in `sbir_etl/exceptions.py`. This provides structured error information, retry guidance, and consistent logging.
 
 **Quick Reference:**
 
@@ -276,7 +276,7 @@ Brief description of changes
 - Every doc includes front-matter: `Type`, `Owner`, `Last-Reviewed`, `Status`.
 - Docs live in `docs/` (see `docs/index.md`). Specs and tasks live in `.kiro/specs/`.
 - Changes to architecture, data contracts, or performance must update relevant docs/specs in the same PR.
-- Neo4j schema changes must update `docs/schemas/neo4j.md` and `src/loaders/` together.
+- Neo4j schema changes must update `docs/schemas/neo4j.md` and `packages/sbir-graph/sbir_graph/loaders/` together.
 - New features requiring user documentation should include guides in `docs/guides/` (e.g., statistical reporting, containerization).
 - Configuration changes must be documented in relevant guides and configuration examples.
 
@@ -284,22 +284,28 @@ Brief description of changes
 
 ```text
 sbir-analytics/
-├── src/                    # Source code
-│   ├── assets/            # Dagster asset definitions (pipeline orchestration)
+├── sbir_etl/              # Core ETL library
 │   ├── config/            # Configuration management and schemas
 │   ├── extractors/        # Stage 1: Data extraction from various sources
 │   ├── validators/        # Stage 2: Schema validation and data quality checks
 │   ├── enrichers/         # Stage 3: External enrichment and fuzzy matching
 │   │   └── usaspending_api_client.py  # Iterative enrichment refresh (see docs/enrichment/usaspending-iterative-refresh.md)
 │   ├── transformers/      # Stage 4: Business logic and graph preparation
-│   ├── loaders/           # Stage 5: Neo4j loading and relationship creation
 │   ├── models/            # Pydantic data models and type definitions
 │   ├── utils/             # Shared utilities (logging, metrics, performance)
 │   ├── quality/           # Data quality validation modules
-│   ├── ml/                # Machine learning models (CET classification)
-│   ├── transition/        # Technology transition detection logic
-│   ├── migration/         # Migration utilities
-│   └── definitions.py     # Dagster repository definitions
+│   └── exceptions.py      # Centralized exception hierarchy
+├── packages/
+│   ├── sbir-analytics/    # Dagster orchestration
+│   │   └── sbir_analytics/
+│   │       ├── assets/    # Dagster asset definitions (pipeline orchestration)
+│   │       ├── cli/       # Command-line interface
+│   │       └── definitions.py  # Dagster repository definitions
+│   ├── sbir-graph/        # Graph database integration
+│   │   └── sbir_graph/
+│   │       └── loaders/   # Stage 5: Neo4j loading and relationship creation
+│   ├── sbir-ml/           # Machine learning (CET, transition, PaECTER)
+│   └── sbir-models/       # Shared data models
 ├── tests/                 # Test suite
 ├── config/                # Configuration files
 ├── data/                  # Data files (not in git)

@@ -91,13 +91,20 @@ See [Documentation Index](docs/index.md) for complete map.
 
 ```text
 sbir-analytics/
-├── src/                    # Source code
-│   ├── assets/            # Dagster asset definitions
+├── sbir_etl/               # Core ETL library
 │   ├── extractors/        # Data extraction (SBIR, USAspending, USPTO)
 │   ├── enrichers/         # External enrichment and fuzzy matching
 │   ├── transformers/      # Business logic and normalization
-│   ├── loaders/           # Neo4j loading and relationship creation
-│   └── ml/                # Machine learning (CET classification)
+│   ├── validators/        # Schema validation and data quality checks
+│   ├── models/            # Pydantic data models and type definitions
+│   ├── config/            # Configuration management and schemas
+│   ├── quality/           # Data quality validation modules
+│   └── utils/             # Shared utilities (logging, metrics, performance)
+├── packages/
+│   ├── sbir-analytics/    # Dagster orchestration (assets, CLI, definitions)
+│   ├── sbir-graph/        # Neo4j loading and relationship creation
+│   ├── sbir-ml/           # Machine learning (CET, transition, PaECTER)
+│   └── sbir-models/       # Shared data models
 ├── tests/                  # Unit, integration, and E2E tests
 ├── docs/                   # Documentation
 ├── config/                 # YAML configuration files
@@ -122,8 +129,8 @@ make docker-up-dev        # Start development stack
 make docker-test          # Run tests in container
 
 # Data operations
-make transition-mvp-run   # Run transition detection
-make cet-pipeline-dev     # Run CET classification
+make transition-run       # Run transition detection
+make cet-run              # Run CET classification
 ```
 
 See [Makefile](Makefile) for all available commands.
