@@ -13,10 +13,10 @@ from typing import Any
 import pandas as pd
 from dagster import AssetExecutionContext, MetadataValue, Output, asset
 
-from ..config.loader import get_config
-from ..exceptions import ExtractionError, FileSystemError
-from ..extractors.usaspending import DuckDBUSAspendingExtractor
-from ..utils.cloud_storage import (
+from sbir_etl.config.loader import get_config
+from sbir_etl.exceptions import ExtractionError, FileSystemError
+from sbir_etl.extractors.usaspending import DuckDBUSAspendingExtractor
+from sbir_etl.utils.cloud_storage import (
     find_latest_usaspending_dump,
     get_s3_bucket_from_env,
     resolve_data_path,
@@ -98,7 +98,7 @@ def _import_usaspending_table(
         context.log.warning("S3 dump unavailable, falling back to USAspending API (FALLBACK)")
         try:
             # Note: API fallback would need to be implemented to fetch recipients
-            # from ..enrichers.usaspending import USAspendingAPIClient
+            # from sbir_etl.enrichers.usaspending import USAspendingAPIClient
             # Note: API fallback would need to be implemented to fetch recipients
             # For now, we'll raise an error to indicate API fallback is needed
             context.log.error(
@@ -179,7 +179,7 @@ def raw_usaspending_recipients(context: AssetExecutionContext) -> Output[pd.Data
     Returns:
         pandas DataFrame with recipient data
     """
-    from ..utils.cloud_storage import find_latest_recipient_lookup_parquet
+    from sbir_etl.utils.cloud_storage import find_latest_recipient_lookup_parquet
 
     s3_bucket = get_s3_bucket_from_env()
     df = None

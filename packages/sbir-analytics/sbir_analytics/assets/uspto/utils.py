@@ -34,8 +34,8 @@ __all__ = [
 
 # Statistical reporting imports
 try:  # pragma: no cover - defensive import
-    from ..models.quality import ModuleReport  # type: ignore
-    from ..utils.reporting.analyzers.patent_analyzer import PatentAnalysisAnalyzer  # type: ignore
+    from sbir_etl.models.quality import ModuleReport  # type: ignore
+    from sbir_etl.utils.reporting.analyzers.patent_analyzer import PatentAnalysisAnalyzer  # type: ignore
 except Exception:
     ModuleReport = None
     PatentAnalysisAnalyzer = None
@@ -46,18 +46,18 @@ except Exception:
 
 # USPTO extractor and transformers
 try:  # pragma: no cover - defensive import
-    from ..extractors.uspto_extractor import USPTOExtractor  # type: ignore
+    from sbir_etl.extractors.uspto_extractor import USPTOExtractor  # type: ignore
 except Exception:
     USPTOExtractor = None
 
 try:  # pragma: no cover - defensive import
-    from ..extractors.uspto_ai_extractor import USPTOAIExtractor  # type: ignore
+    from sbir_etl.extractors.uspto_ai_extractor import USPTOAIExtractor  # type: ignore
 except Exception:
     USPTOAIExtractor = None
 
 # Validators
 try:  # pragma: no cover - defensive import
-    from ..quality import USPTODataQualityValidator, USPTOValidationConfig  # type: ignore
+    from sbir_etl.quality import USPTODataQualityValidator, USPTOValidationConfig  # type: ignore
 except Exception:
     validate_rf_id_uniqueness = None
     USPTODataQualityValidator = None
@@ -71,7 +71,7 @@ except Exception:
 
 # Models
 try:  # pragma: no cover - defensive import
-    from ..models.uspto_models import PatentAssignment  # type: ignore
+    from sbir_etl.models.uspto_models import PatentAssignment  # type: ignore
 except Exception:
     PatentAssignment = None
 

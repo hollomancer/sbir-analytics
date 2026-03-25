@@ -20,8 +20,8 @@ from dagster import (
 )
 from loguru import logger
 
-from ..config.loader import get_config
-from ..models.award import Award
+from sbir_etl.config.loader import get_config
+from sbir_etl.models.award import Award
 
 try:
     from sbir_graph.loaders.neo4j import LoadMetrics, Neo4jClient, Neo4jConfig
@@ -31,7 +31,7 @@ except ImportError:
     Neo4jClient = None  # type: ignore[assignment, misc]
     Neo4jConfig = None  # type: ignore[assignment, misc]
     OrganizationLoader = None  # type: ignore[assignment, misc]
-from ..utils.company_canonicalizer import canonicalize_companies_from_awards
+from sbir_etl.utils.company_canonicalizer import canonicalize_companies_from_awards
 
 
 # State name to code mapping

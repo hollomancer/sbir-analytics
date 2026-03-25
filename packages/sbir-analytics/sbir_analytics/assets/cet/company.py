@@ -227,13 +227,13 @@ def transformed_cet_company_profiles() -> Output:
 
             if not df_awards.empty and "award_id" in df_cls.columns:
                 # Try to find award ID column in enriched awards using helper
-                from ...utils.asset_column_helper import AssetColumnHelper
+                from sbir_etl.utils.asset_column_helper import AssetColumnHelper
 
                 award_id_col = AssetColumnHelper.find_award_id_column(df_awards)
 
                 if award_id_col:
                     # Try to find company identifier columns using ColumnFinder
-                    from ...utils.column_finder import ColumnFinder
+                    from sbir_etl.utils.column_finder import ColumnFinder
 
                     company_id_col = ColumnFinder.find_id_column(df_awards, "company")
                     company_name_col = ColumnFinder.find_column_by_patterns(

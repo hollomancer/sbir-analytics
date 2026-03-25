@@ -23,12 +23,12 @@ from dagster import (
 from loguru import logger
 from pydantic import Field
 
-from ..config.loader import get_config
-from ..enrichers.usaspending import USAspendingAPIClient
-from ..exceptions import ValidationError
-from ..utils.async_tools import run_sync
-from ..utils.enrichment_freshness import FreshnessStore, update_freshness_ledger
-from ..utils.enrichment_metrics import EnrichmentMetricsCollector
+from sbir_etl.config.loader import get_config
+from sbir_etl.enrichers.usaspending import USAspendingAPIClient
+from sbir_etl.exceptions import ValidationError
+from sbir_etl.utils.async_tools import run_sync
+from sbir_etl.utils.enrichment_freshness import FreshnessStore, update_freshness_ledger
+from sbir_etl.utils.enrichment_metrics import EnrichmentMetricsCollector
 
 
 class EnrichmentRefreshConfig(Config):
@@ -144,7 +144,7 @@ def stale_usaspending_awards(
         )
 
     # Filter enriched awards to stale ones
-    from ..utils.asset_column_helper import AssetColumnHelper
+    from sbir_etl.utils.asset_column_helper import AssetColumnHelper
 
     award_id_col = AssetColumnHelper.find_award_id_column(enriched_sbir_awards)
     if not award_id_col:

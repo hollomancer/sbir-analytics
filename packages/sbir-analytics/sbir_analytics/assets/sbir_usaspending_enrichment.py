@@ -16,11 +16,11 @@ from dagster import (
 )
 from loguru import logger
 
-from ..config.loader import get_config
-from ..enrichers.chunked_enrichment import ChunkedEnricher
-from ..enrichers.usaspending import enrich_sbir_with_usaspending
-from ..utils.monitoring import performance_monitor
-from ..utils.reporting.analyzers.sbir_analyzer import SbirEnrichmentAnalyzer
+from sbir_etl.config.loader import get_config
+from sbir_etl.enrichers.chunked_enrichment import ChunkedEnricher
+from sbir_etl.enrichers.usaspending import enrich_sbir_with_usaspending
+from sbir_etl.utils.monitoring import performance_monitor
+from sbir_etl.utils.reporting.analyzers.sbir_analyzer import SbirEnrichmentAnalyzer
 
 
 def _filter_recipients_by_sbir(

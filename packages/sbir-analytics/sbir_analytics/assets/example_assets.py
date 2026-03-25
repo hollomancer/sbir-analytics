@@ -13,8 +13,8 @@ import pandas as pd
 from dagster import AssetCheckResult, AssetCheckSeverity, AssetExecutionContext, asset, asset_check
 from loguru import logger
 
-from ..models.quality import QualitySeverity
-from ..quality.checks import validate_sbir_awards
+from sbir_etl.models.quality import QualitySeverity
+from sbir_etl.quality.checks import validate_sbir_awards
 
 
 @asset(

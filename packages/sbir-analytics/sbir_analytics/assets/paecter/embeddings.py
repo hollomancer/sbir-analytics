@@ -15,12 +15,12 @@ import numpy as np
 import pandas as pd
 from dagster import AssetCheckResult, AssetCheckSeverity, MetadataValue, Output, asset, asset_check
 
-from ...config.loader import get_config
+from sbir_etl.config.loader import get_config
 from sbir_ml.ml.config import PaECTERClientConfig
 from sbir_ml.ml.paecter_client import PaECTERClient
-from ...utils.asset_column_helper import AssetColumnHelper
-from ...utils.config_accessor import ConfigAccessor
-from ...utils.monitoring import performance_monitor
+from sbir_etl.utils.asset_column_helper import AssetColumnHelper
+from sbir_etl.utils.config_accessor import ConfigAccessor
+from sbir_etl.utils.monitoring import performance_monitor
 
 
 @asset(
@@ -184,8 +184,8 @@ def paecter_embeddings_patents(
     # If no JSONL data, try loading from S3 PatentsView data
     if patents_df is None or len(patents_df) == 0:
         context.log.info("No transformed patents found, loading from S3 PatentsView")
-        from ...extractors.uspto_extractor import USPTOExtractor
-        from ...utils.cloud_storage import get_s3_bucket_from_env
+        from sbir_etl.extractors.uspto_extractor import USPTOExtractor
+        from sbir_etl.utils.cloud_storage import get_s3_bucket_from_env
 
         bucket = get_s3_bucket_from_env()
         if not bucket:
@@ -408,7 +408,7 @@ def paecter_awards_coverage_check(
     paecter_embeddings_awards: pd.DataFrame,
 ) -> AssetCheckResult:
     """Check that award embedding coverage meets quality threshold."""
-    from ...utils.config_accessor import ConfigAccessor
+    from sbir_etl.utils.config_accessor import ConfigAccessor
 
     config = get_config()
     threshold = ConfigAccessor.get_nested(config, "ml.paecter.coverage_threshold_awards", 0.95)
@@ -448,7 +448,7 @@ def paecter_patents_coverage_check(
     paecter_embeddings_patents: pd.DataFrame,
 ) -> AssetCheckResult:
     """Check that patent embedding coverage meets quality threshold."""
-    from ...utils.config_accessor import ConfigAccessor
+    from sbir_etl.utils.config_accessor import ConfigAccessor
 
     config = get_config()
     threshold = ConfigAccessor.get_nested(config, "ml.paecter.coverage_threshold_patents", 0.98)
