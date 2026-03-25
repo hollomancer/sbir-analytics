@@ -67,7 +67,7 @@ colorama==0.4.6 ; sys_platform == 'win32'
     #   wasabi
 coloredlogs==15.0.1
     # via dagster
-confection==0.1.5
+confection==1.3.2
     # via
     #   thinc
     #   weasel
