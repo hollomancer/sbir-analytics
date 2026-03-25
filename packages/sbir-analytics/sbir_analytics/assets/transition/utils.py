@@ -25,8 +25,8 @@ from sbir_ml.transition.features.vendor_resolver import VendorRecord, VendorReso
 
 # Statistical reporting imports
 try:  # pragma: no cover - defensive import
-    from ..models.quality import ModuleReport  # type: ignore
-    from ..utils.reporting.analyzers.transition_analyzer import TransitionDetectionAnalyzer
+    from sbir_etl.models.quality import ModuleReport  # type: ignore
+    from sbir_etl.utils.reporting.analyzers.transition_analyzer import TransitionDetectionAnalyzer
 except Exception:
     ModuleReport = None
     TransitionDetectionAnalyzer = None

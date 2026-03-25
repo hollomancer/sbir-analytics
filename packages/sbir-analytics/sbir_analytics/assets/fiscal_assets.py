@@ -12,11 +12,11 @@ from dagster import (
 )
 from loguru import logger
 
-from ..config.loader import get_config
-from ..enrichers.fiscal_bea_mapper import NAICSToBEAMapper, enrich_awards_with_bea_sectors
-from ..enrichers.inflation_adjuster import adjust_awards_for_inflation
-from ..enrichers.naics import enrich_sbir_awards_with_fiscal_naics
-from ..transformers.fiscal import (
+from sbir_etl.config.loader import get_config
+from sbir_etl.enrichers.fiscal_bea_mapper import NAICSToBEAMapper, enrich_awards_with_bea_sectors
+from sbir_etl.enrichers.inflation_adjuster import adjust_awards_for_inflation
+from sbir_etl.enrichers.naics import enrich_sbir_awards_with_fiscal_naics
+from sbir_etl.transformers.fiscal import (
     FiscalComponentCalculator,
     FiscalParameterSweep,
     FiscalROICalculator,
@@ -24,8 +24,8 @@ from ..transformers.fiscal import (
     FiscalTaxEstimator,
     FiscalUncertaintyQuantifier,
 )
-from ..transformers.r_stateio_adapter import RStateIOAdapter
-from ..utils.monitoring import performance_monitor
+from sbir_etl.transformers.r_stateio_adapter import RStateIOAdapter
+from sbir_etl.utils.monitoring import performance_monitor
 
 
 def _to_python_type(value):
@@ -757,7 +757,7 @@ def fiscal_prepared_sbir_awards(
     )
 
     # Resolve geographic locations
-    from ..enrichers.geographic_resolver import resolve_award_geography
+    from sbir_etl.enrichers.geographic_resolver import resolve_award_geography
 
     with performance_monitor.monitor_block("geographic_resolution"):
         resolved_df, geo_quality = resolve_award_geography(

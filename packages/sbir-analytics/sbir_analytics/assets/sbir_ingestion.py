@@ -19,10 +19,10 @@ from dagster import (
 )
 from loguru import logger
 
-from ..config.loader import get_config
-from ..extractors.sbir import SbirDuckDBExtractor
-from ..utils.monitoring import performance_monitor
-from ..validators.sbir_awards import validate_sbir_awards
+from sbir_etl.config.loader import get_config
+from sbir_etl.extractors.sbir import SbirDuckDBExtractor
+from sbir_etl.utils.monitoring import performance_monitor
+from sbir_etl.validators.sbir_awards import validate_sbir_awards
 
 
 def _apply_quality_filters(df: pd.DataFrame, context: AssetExecutionContext) -> pd.DataFrame:

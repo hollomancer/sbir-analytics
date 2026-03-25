@@ -14,9 +14,9 @@ from dagster import (
     asset_check,
 )
 
-from ..config.loader import get_config
-from ..transformers.sbir_fiscal_pipeline import SBIRFiscalImpactCalculator
-from ..utils.monitoring import performance_monitor
+from sbir_etl.config.loader import get_config
+from sbir_etl.transformers.sbir_fiscal_pipeline import SBIRFiscalImpactCalculator
+from sbir_etl.utils.monitoring import performance_monitor
 
 
 @asset(

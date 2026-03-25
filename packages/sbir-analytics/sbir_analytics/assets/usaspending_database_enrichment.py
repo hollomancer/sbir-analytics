@@ -11,12 +11,12 @@ import pandas as pd
 from dagster import AssetExecutionContext, MetadataValue, Output, asset
 from loguru import logger
 
-from ..config.loader import get_config
-from ..exceptions import ExtractionError
-from ..extractors.sbir_gov_api import SbirGovClient, SbirGovLookupIndex
-from ..extractors.usaspending import DuckDBUSAspendingExtractor
-from ..models.sbir_identification import ALL_SBIR_ALNS, EXCLUSIVE_SBIR_ALNS, SBIR_RESEARCH_CODES
-from ..utils.cloud_storage import find_latest_usaspending_dump, get_s3_bucket_from_env
+from sbir_etl.config.loader import get_config
+from sbir_etl.exceptions import ExtractionError
+from sbir_etl.extractors.sbir_gov_api import SbirGovClient, SbirGovLookupIndex
+from sbir_etl.extractors.usaspending import DuckDBUSAspendingExtractor
+from sbir_etl.models.sbir_identification import ALL_SBIR_ALNS, EXCLUSIVE_SBIR_ALNS, SBIR_RESEARCH_CODES
+from sbir_etl.utils.cloud_storage import find_latest_usaspending_dump, get_s3_bucket_from_env
 
 
 def _table_has_column(
@@ -115,7 +115,7 @@ def _find_sbir_gov_bulk_file() -> Optional[Path]:
     1. S3 path: ``raw/sbir_gov/awards.json``
     2. Local path: ``data/raw/sbir_gov/awards.json``
     """
-    from ..utils.cloud_storage import resolve_data_path
+    from sbir_etl.utils.cloud_storage import resolve_data_path
 
     s3_bucket = get_s3_bucket_from_env()
     if s3_bucket:
@@ -205,12 +205,12 @@ def _crossref_dataframe_with_sbir_gov(
     match_keys = results[1]
 
     df = df.copy()
-    df["sbir_gov_confirmed"] = hits.apply(lambda h: h is not None)
+    df["sbir_gov_confirmed"] = hits.apply(lambda h: isinstance(h, dict))
     df["sbir_gov_match_key"] = match_keys
-    df["sbir_gov_program"] = hits.apply(lambda h: h.get("program", "") if h else "")
-    df["sbir_gov_phase"] = hits.apply(lambda h: str(h.get("phase", "")) if h else "")
-    df["sbir_gov_topic_code"] = hits.apply(lambda h: h.get("topic_code", "") if h else "")
-    df["sbir_gov_firm"] = hits.apply(lambda h: h.get("firm", "") if h else "")
+    df["sbir_gov_program"] = hits.apply(lambda h: h.get("program", "") if isinstance(h, dict) else "")
+    df["sbir_gov_phase"] = hits.apply(lambda h: str(h.get("phase", "")) if isinstance(h, dict) else "")
+    df["sbir_gov_topic_code"] = hits.apply(lambda h: h.get("topic_code", "") if isinstance(h, dict) else "")
+    df["sbir_gov_firm"] = hits.apply(lambda h: h.get("firm", "") if isinstance(h, dict) else "")
 
     return df
 
@@ -725,7 +725,7 @@ def sbir_grant_transactions(
 
         # Determine which agencies have shared ALNs to limit API queries
         shared_agencies = []
-        from ..models.sbir_identification import SBIR_ASSISTANCE_LISTING_NUMBERS
+        from sbir_etl.models.sbir_identification import SBIR_ASSISTANCE_LISTING_NUMBERS
 
         for agency, info in SBIR_ASSISTANCE_LISTING_NUMBERS.items():
             if not info["exclusive"]:

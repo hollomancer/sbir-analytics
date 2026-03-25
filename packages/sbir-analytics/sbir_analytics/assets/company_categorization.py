@@ -17,10 +17,10 @@ from dagster import (
     asset_check,
 )
 
-from ..config.loader import get_config
-from ..enrichers.company_categorization import retrieve_company_contracts
-from ..extractors.usaspending import DuckDBUSAspendingExtractor
-from ..transformers.company_categorization import aggregate_company_classification
+from sbir_etl.config.loader import get_config
+from sbir_etl.enrichers.company_categorization import retrieve_company_contracts
+from sbir_etl.extractors.usaspending import DuckDBUSAspendingExtractor
+from sbir_etl.transformers.company_categorization import aggregate_company_classification
 
 
 @asset(
