@@ -181,7 +181,7 @@ Structure tasks hierarchically:
 
 ### Codebase Alignment
 
-- Follow existing patterns in `src/` directory structure
+- Follow existing patterns in the multi-package directory structure
 - Use established configuration patterns in `config/`
 - Integrate with Dagster assets and jobs
 - Maintain compatibility with Docker deployment

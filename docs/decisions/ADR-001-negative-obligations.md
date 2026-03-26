@@ -128,8 +128,8 @@ all_activity = [c for c in contracts]  # Includes deobligations
 - USAspending Data Dictionary: <https://files.usaspending.gov/docs/Data_Dictionary_Crosswalk.xlsx>
 - Discussion: Task 5 - Federal Contracts Ingestion
 - Files Modified:
-  - `src/models/transition_models.py` (FederalContract model)
-  - `src/extractors/contract_extractor.py` (extraction logic)
+  - `sbir_etl/models/transition_models.py` (FederalContract model)
+  - `sbir_etl/extractors/contract_extractor.py` (extraction logic)
 
 ## Related ADRs
 

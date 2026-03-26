@@ -110,7 +110,7 @@ These fields track data provenance and processing state.
 
 ### Normalization Applied by Transformer
 
-The transformer applies the following normalizations (see `src/transformers/patent_transformer.py`):
+The transformer applies the following normalizations (see `sbir_etl/transformers/patent_transformer.py`):
 
 - **Identifiers**: Remove punctuation, convert to uppercase
 - **Names**: Collapse whitespace, normalize punctuation (commas/periods/ampersands → spaces)
@@ -210,8 +210,8 @@ Once loaded into Neo4j, these fields support the following relationship patterns
 ## References
 
 - [USPTO Patent Assignment Data - Official Documentation](https://www.uspto.gov/learning-and-resources/fee-schedules/patent-assignment-data)
-- [Pydantic Models](../../../src/models/uspto_models.py)
-- [USPTO Extractor](../../../src/extractors/uspto_extractor.py)
-- [Patent Transformer](../../../src/transformers/patent_transformer.py)
-- [Patent Loader](../../../src/loaders/neo4j/patents.py)
+- [Pydantic Models](../../../sbir_etl/models/uspto_models.py)
+- [USPTO Extractor](../../../sbir_etl/extractors/uspto_extractor.py)
+- [Patent Transformer](../../../sbir_etl/transformers/patent_transformer.py)
+- [Patent Loader](../../../packages/sbir-graph/sbir_graph/loaders/neo4j/patents.py)
 - [Neo4j Schema Documentation](../../schemas/patent-neo4j-schema.md)

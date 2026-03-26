@@ -23,7 +23,7 @@ The **sbir-analytics** is a robust, cloud-native ETL (Extract, Transform, Load) 
 
 ```text
 sbir-analytics/
-├── src/                          # Main application code
+├── packages/                     # Multi-package layout
 │   ├── assets/                   # Dagster asset definitions (pipeline nodes)
 │   │   ├── cet/                  # CET classification pipeline
 │   │   ├── transition/           # Transition detection pipeline
@@ -154,7 +154,7 @@ sbir-analytics/
 
 | File | Purpose |
 |------|---------|
-| `src/definitions.py` | Dagster repository root; loads all assets and job definitions |
+| `packages/sbir-analytics/sbir_analytics/definitions.py` | Dagster repository root; loads all assets and job definitions |
 | `pyproject.toml` | Python dependencies (uv) + Dagster entry point |
 | `config/base.yaml` | Default configuration (paths, thresholds, credentials) |
 | `Dockerfile` | Multi-stage Docker build |
@@ -901,27 +901,27 @@ ORDER BY c.cet_specialization_score DESC
 **Where CET classification can be added/enhanced:**
 
 1. **Input enrichment**
-   - `src/assets/cet/classifications.py` → Award abstract/keywords/title
+   - `packages/sbir-analytics/sbir_analytics/assets/cet/classifications.py` → Award abstract/keywords/title
    - Currently: TF-IDF classification with keyword boosting
    - Enhancement: Could integrate LLM-based classifiers, BERT embeddings, multi-modal features
 
 2. **Feature engineering**
-   - `src/ml/models/cet_classifier.py` → TF-IDF vectorization
+   - `packages/sbir-ml/sbir_ml/ml/models/cet_classifier.py` → TF-IDF vectorization
    - Current: Keyword boosting (2x multiplier for CET keywords)
    - Enhancement: Entity extraction, semantic similarity, domain-specific embeddings
 
 3. **Model training**
-   - `src/assets/cet/training.py` → scikit-learn pipeline
+   - `packages/sbir-analytics/sbir_analytics/assets/cet/training.py` → scikit-learn pipeline
    - Current: Logistic Regression with calibration
    - Enhancement: Ensemble methods, ensemble diversity, active learning
 
 4. **Validation/evaluation**
-   - `src/assets/cet/validation.py` → Human sampling, IAA (inter-annotator agreement)
+   - `packages/sbir-analytics/sbir_analytics/assets/cet/validation.py` → Human sampling, IAA (inter-annotator agreement)
    - Current: Manual sampling, drift detection
    - Enhancement: Confidence thresholds, disagreement analysis
 
 5. **Neo4j enrichment**
-   - `src/assets/cet/loading.py` → Load CET relationships
+   - `packages/sbir-analytics/sbir_analytics/assets/cet/loading.py` → Load CET relationships
    - Current: APPLICABLE_TO (Award→CET), SPECIALIZES_IN (Company→CET)
    - Enhancement: Temporal CET evolution, CET relationship networks
 
@@ -930,17 +930,17 @@ ORDER BY c.cet_specialization_score DESC
 **Where transitions flow through the system:**
 
 1. **Evidence collection**
-   - `src/assets/transition/evidence.py` → Assemble evidence bundles
+   - `packages/sbir-analytics/sbir_analytics/assets/transition/evidence.py` → Assemble evidence bundles
    - Contains: signal scores, timestamps, relationships
 
 2. **Analytics computation**
-   - `src/assets/transition/analytics.py` → Aggregate metrics
+   - `packages/sbir-analytics/sbir_analytics/assets/transition/analytics.py` → Aggregate metrics
    - Award-level vs company-level effectiveness
    - By-agency breakdown
    - CET-focused analysis
 
 3. **Neo4j loading**
-   - `src/loaders/neo4j/transitions.py` → Load Transition nodes
+   - `packages/sbir-graph/sbir_graph/loaders/neo4j/transitions.py` → Load Transition nodes
    - Relationships: TRANSITIONED_TO, RESULTED_IN, ENABLED_BY
 
 ### 7.3 Fiscal Analysis Integration Points
@@ -991,27 +991,27 @@ Located in `docs/decisions/`:
 
 ### Where to Add New CET Features
 
-1. **Model Enhancement** (`src/ml/models/cet_classifier.py`)
+1. **Model Enhancement** (`packages/sbir-ml/sbir_ml/ml/models/cet_classifier.py`)
    - Swap TF-IDF for BERT embeddings
    - Add hierarchical classification (parent → child CET areas)
    - Integrate LLM-based probability calibration
 
-2. **Feature Engineering** (`src/assets/cet/classifications.py`)
+2. **Feature Engineering** (`packages/sbir-analytics/sbir_analytics/assets/cet/classifications.py`)
    - Extract entities (organizations, technologies)
    - Compute semantic similarity to CET definitions
    - Multi-modal features (if abstracts include structured data)
 
-3. **Quality Control** (`src/assets/cet/validation.py`)
+3. **Quality Control** (`packages/sbir-analytics/sbir_analytics/assets/cet/validation.py`)
    - Drift detection (compare current vs baseline distribution)
    - Human-in-the-loop (flag low-confidence for manual review)
    - Disagreement analysis (identify model uncertainty)
 
-4. **Neo4j Relationships** (`src/loaders/neo4j/cet.py`)
+4. **Neo4j Relationships** (`packages/sbir-graph/sbir_graph/loaders/neo4j/cet.py`)
    - Add CET relationship networks (which CET areas are related)
    - Temporal evolution (track CET focus over time)
    - Strength scoring (degree of alignment per company/award)
 
-5. **Aggregation** (`src/transformers/company_cet_aggregator.py`)
+5. **Aggregation** (`sbir_etl/transformers/company_cet_aggregator.py`)
    - Company CET profiles from award classifications
    - Market positioning analysis
    - Competitive landscape by CET area
@@ -1052,25 +1052,25 @@ Located in `docs/decisions/`:
 
 ### Immediate Integration Opportunities
 
-1. **Classification Asset** (`src/assets/cet/classifications.py`)
+1. **Classification Asset** (`packages/sbir-analytics/sbir_analytics/assets/cet/classifications.py`)
    - Input: `enriched_sbir_awards` (parquet)
    - Process: Batch classify with CET classifier
    - Output: `enriched_cet_award_classifications` (parquet)
    - **Hook**: Replace scikit-learn model with new classifier at `ApplicabilityModel` instantiation
 
-2. **Training Data Generation** (`src/assets/cet/training.py`)
+2. **Training Data Generation** (`packages/sbir-analytics/sbir_analytics/assets/cet/training.py`)
    - Input: Sample of awards + manual labels
    - Process: Generate training dataset
    - Output: `cet_award_training_dataset` (parquet)
    - **Hook**: Integrate new labeling strategy or active learning
 
-3. **Model Evaluation** (`src/assets/cet/validation.py`)
+3. **Model Evaluation** (`packages/sbir-analytics/sbir_analytics/assets/cet/validation.py`)
    - Input: Classifications + human annotations
    - Process: Compute precision/recall/F1
    - Output: `validated_cet_iaa_report` (JSON)
    - **Hook**: Add new evaluation metrics or calibration analysis
 
-4. **Drift Detection** (`src/assets/cet/validation.py`)
+4. **Drift Detection** (`packages/sbir-analytics/sbir_analytics/assets/cet/validation.py`)
    - Input: Current classifications vs baseline
    - Process: Detect distribution shifts
    - Output: `validated_cet_drift_detection` (JSON)

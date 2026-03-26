@@ -12,13 +12,13 @@ This document provides a focused guide for integrating or reviewing the CET clas
 
 | File | Purpose | Key Concept |
 |------|---------|-------------|
-| `src/assets/cet/classifications.py` | Award/patent classification | Main entry point for ML classification |
-| `src/ml/models/cet_classifier.py` | TF-IDF + Logistic Regression | Current ML model implementation |
-| `src/assets/cet/taxonomy.py` | Load NSTC taxonomy | 21 CET technology areas definitions |
-| `src/assets/cet/company.py` | Company CET profiles | Aggregate classifications to company level |
-| `src/assets/cet/loading.py` | Load CET to Neo4j | Graph persistence (nodes + relationships) |
-| `src/assets/cet/validation.py` | Quality checks & drift detection | Human sampling, IAA, evaluation metrics |
-| `src/models/cet_models.py` | Pydantic data models | CETArea, CETClassification, EvidenceStatement |
+| `packages/sbir-analytics/sbir_analytics/assets/cet/classifications.py` | Award/patent classification | Main entry point for ML classification |
+| `packages/sbir-ml/sbir_ml/ml/models/cet_classifier.py` | TF-IDF + Logistic Regression | Current ML model implementation |
+| `packages/sbir-analytics/sbir_analytics/assets/cet/taxonomy.py` | Load NSTC taxonomy | 21 CET technology areas definitions |
+| `packages/sbir-analytics/sbir_analytics/assets/cet/company.py` | Company CET profiles | Aggregate classifications to company level |
+| `packages/sbir-analytics/sbir_analytics/assets/cet/loading.py` | Load CET to Neo4j | Graph persistence (nodes + relationships) |
+| `packages/sbir-analytics/sbir_analytics/assets/cet/validation.py` | Quality checks & drift detection | Human sampling, IAA, evaluation metrics |
+| `sbir_etl/models/cet_models.py` | Pydantic data models | CETArea, CETClassification, EvidenceStatement |
 | `config/cet/taxonomy.yaml` | CET definitions | Taxonomy configuration (keywords, definitions) |
 
 ### Related Transformation Pipelines
@@ -114,7 +114,7 @@ Output: {
 
 ### Model Training
 
-Located: `src/assets/cet/training.py`
+Located: `packages/sbir-analytics/sbir_analytics/assets/cet/training.py`
 
 **Current approach:**
 
@@ -136,7 +136,7 @@ Located: `src/assets/cet/training.py`
 
 ### Asset Checks
 
-**cet_award_classifications_quality_check** (`src/assets/cet/classifications.py`)
+**cet_award_classifications_quality_check** (`packages/sbir-analytics/sbir_analytics/assets/cet/classifications.py`)
 
 ```python
 # Validates against thresholds (configurable via environment)
@@ -154,7 +154,7 @@ SBIR_ETL__CET__CLASSIFICATION__EVIDENCE_COVERAGE_THRESHOLD = 0.80  # Default: 80
 
 ### Human Validation
 
-Located: `src/assets/cet/validation.py`
+Located: `packages/sbir-analytics/sbir_analytics/assets/cet/validation.py`
 
 - **Human Sampling**: Sample N awards for manual annotation
 - **Inter-Annotator Agreement (IAA)**: Compare human vs model labels
@@ -277,7 +277,7 @@ MATCH (c:Company)-[r:SPECIALIZES_IN]->(cet:CETArea)
 
 ### 1. Swap Classification Algorithm
 
-**Where**: `src/ml/models/cet_classifier.py` + `src/assets/cet/classifications.py`
+**Where**: `packages/sbir-ml/sbir_ml/ml/models/cet_classifier.py` + `packages/sbir-analytics/sbir_analytics/assets/cet/classifications.py`
 
 **Current**:
 
@@ -505,11 +505,11 @@ print(f"\nAwards with evidence: {df['evidence'].notna().sum()} ({df['evidence'].
 1. **Update taxonomy** → `config/cet/taxonomy.yaml`
    - Add new CET area with definition + keywords
 
-2. **Retrain classifier** → `src/assets/cet/training.py`
+2. **Retrain classifier** → `packages/sbir-analytics/sbir_analytics/assets/cet/training.py`
    - Provide training samples with new label
    - Retrain TF-IDF + Logistic Regression
 
-3. **Validate** → `src/assets/cet/validation.py`
+3. **Validate** → `packages/sbir-analytics/sbir_analytics/assets/cet/validation.py`
    - Human sample new classifications
    - Check precision/recall for new area
 
@@ -518,7 +518,7 @@ print(f"\nAwards with evidence: {df['evidence'].notna().sum()} ({df['evidence'].
 ### Scenario 3: Integrate Custom Classifier
 
 ```python
-# Create new module: src/ml/models/custom_classifier.py
+# Create new module: packages/sbir-ml/sbir_ml/ml/models/custom_classifier.py
 from typing import List, Dict
 
 class CustomCETClassifier:
@@ -645,10 +645,10 @@ uv run dagster dev
 
 ## References
 
-- **CET Classifier**: `src/ml/models/cet_classifier.py` (120 lines)
-- **Classifications Asset**: `src/assets/cet/classifications.py` (200+ lines)
-- **Neo4j Loading**: `src/assets/cet/loading.py` (180 lines)
-- **Validation**: `src/assets/cet/validation.py` (250+ lines)
+- **CET Classifier**: `packages/sbir-ml/sbir_ml/ml/models/cet_classifier.py` (120 lines)
+- **Classifications Asset**: `packages/sbir-analytics/sbir_analytics/assets/cet/classifications.py` (200+ lines)
+- **Neo4j Loading**: `packages/sbir-analytics/sbir_analytics/assets/cet/loading.py` (180 lines)
+- **Validation**: `packages/sbir-analytics/sbir_analytics/assets/cet/validation.py` (250+ lines)
 - **Taxonomy**: `config/cet/taxonomy.yaml`
 - **Documentation**: [`docs/ml/cet-classifier.md`](cet-classifier.md), [`docs/ml/cet-award-training-data.md`](cet-award-training-data.md)
 - **Tests**: `tests/unit/test_cet_*.py`, `tests/integration/test_cet_*.py`

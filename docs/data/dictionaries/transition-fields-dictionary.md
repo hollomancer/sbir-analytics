@@ -680,6 +680,6 @@ Represents company-level aggregated statistics.
 - **Evidence Structure**: `docs/transition/evidence-bundles.md`
 - **Neo4j Schema**: `docs/schemas/transition-graph-schema.md`
 - **Configuration**: `config/transition/detection.yaml`
-- **Data Models**: `src/models/transition_models.py`
+- **Data Models**: `sbir_etl/models/transition_models.py`
 
 </parameter>

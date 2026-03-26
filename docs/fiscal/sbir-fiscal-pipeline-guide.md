@@ -131,7 +131,7 @@ NAICS codes (6-digit industry codes) are mapped to BEA Summary-level I-O sectors
 | 54xxxx | 54 | Professional, scientific, technical services |
 | 62xxxx | 62 | Health care and social assistance |
 
-See `src/transformers/naics_bea_mapper.py` for complete mapping.
+See `sbir_etl/transformers/naics_bea_mapper.py` for complete mapping.
 
 ### Custom Concordance
 

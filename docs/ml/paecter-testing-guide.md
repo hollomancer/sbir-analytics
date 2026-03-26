@@ -135,7 +135,7 @@ print(f"Mode: {result.inference_mode}")  # "local"
 
 **What's included:**
 
-- Basic PaECTER client (`src/ml/paecter_client.py`)
+- Basic PaECTER client (`packages/sbir-ml/sbir_ml/ml/paecter_client.py`)
 - Integration tests with sample data (`tests/integration/test_paecter_client.py`)
 - Text preparation utilities for awards and patents
 - Similarity computation
@@ -275,7 +275,7 @@ similarities = client.compute_similarity(embeddings[:10], embeddings[10:20])
 **Dagster assets to create:**
 
 ```python
-# src/assets/paecter/embeddings.py
+# packages/sbir-analytics/sbir_analytics/assets/paecter/embeddings.py
 
 @asset(group_name="paecter", compute_kind="ml")
 def paecter_embeddings_awards(
@@ -760,7 +760,7 @@ Tests both SBIR and USPTO data from S3:
 
 ### 2. Dagster Assets
 
-**Directory**: `src/assets/paecter/`
+**Directory**: `packages/sbir-analytics/sbir_analytics/assets/paecter/`
 
 Three new assets:
 
@@ -770,7 +770,7 @@ Three new assets:
 
 ### 3. Dagster Job
 
-**File**: `src/assets/jobs/paecter_job.py`
+**File**: `packages/sbir-analytics/sbir_analytics/assets/jobs/paecter_job.py`
 
 Job to materialize all PaECTER assets in one run.
 

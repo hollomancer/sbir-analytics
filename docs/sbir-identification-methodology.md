@@ -177,7 +177,7 @@ USAspending DB Dump (S3)
 ### 2.2 Contract Identification (FPDS Path)
 
 **Dagster asset:** `sbir_relevant_usaspending_transactions`
-**Module:** `src/assets/usaspending_database_enrichment.py`
+**Module:** `packages/sbir-analytics/sbir_analytics/assets/usaspending_database_enrichment.py`
 
 #### Step 1: Import dump into DuckDB
 
@@ -259,7 +259,7 @@ includes `sbir_gov_confirmed` and `sbir_gov_unconfirmed` counts.
 ### 2.3 Grant Identification (FABS Path)
 
 **Dagster asset:** `sbir_grant_transactions`
-**Module:** `src/assets/usaspending_database_enrichment.py`
+**Module:** `packages/sbir-analytics/sbir_analytics/assets/usaspending_database_enrichment.py`
 
 #### Step 1: Import and schema detection
 
@@ -310,8 +310,8 @@ The output DataFrame includes:
 
 ### 2.4 SBIR.gov Cross-Reference
 
-**Module:** `src/extractors/sbir_gov_api.py` (client)
-**Integration:** `src/assets/usaspending_database_enrichment.py` (`_build_sbir_gov_index`, `_crossref_dataframe_with_sbir_gov`)
+**Module:** `sbir_etl/extractors/sbir_gov_api.py` (client)
+**Integration:** `packages/sbir-analytics/sbir_analytics/assets/usaspending_database_enrichment.py` (`_build_sbir_gov_index`, `_crossref_dataframe_with_sbir_gov`)
 
 #### Data acquisition (two-tier fallback)
 
@@ -355,7 +355,7 @@ is needed for contracts — the research code is definitive.
 ### 2.5 Unified Classification Function
 
 **Function:** `classify_sbir_award()`
-**Module:** `src/models/sbir_identification.py`
+**Module:** `sbir_etl/models/sbir_identification.py`
 
 Accepts any combination of available identifiers and returns the highest-confidence
 classification:
@@ -379,7 +379,7 @@ This is intentional: mixing tiers would complicate audit provenance.
 
 ### 2.6 Reference Data
 
-All identification constants are defined in `src/models/sbir_identification.py`:
+All identification constants are defined in `sbir_etl/models/sbir_identification.py`:
 
 - `SbirResearchCode` enum — the 6 FPDS codes
 - `SBIR_RESEARCH_CODES` frozenset — for SQL `IN` clauses

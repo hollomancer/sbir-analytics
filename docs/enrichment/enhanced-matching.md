@@ -150,7 +150,7 @@ The default dictionary includes 40+ common abbreviations:
 | engineering | eng | Function |
 | development | dev | Function |
 
-See `src/utils/enhanced_matching.py:ENHANCED_ABBREVIATIONS` for the complete list.
+See `sbir_etl/utils/enhanced_matching.py:ENHANCED_ABBREVIATIONS` for the complete list.
 
 ### Use Cases
 

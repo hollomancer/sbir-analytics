@@ -409,8 +409,8 @@ Get a token from: <https://huggingface.co/settings/tokens>
 
 - **Model Card**: <https://huggingface.co/mpi-inno-comp/paecter>
 - **Research Paper**: <https://arxiv.org/pdf/2402.19411>
-- **Implementation**: `src/ml/paecter_client.py`
-- **Assets**: `src/assets/paecter/embeddings.py`
+- **Implementation**: `packages/sbir-ml/sbir_ml/ml/paecter_client.py`
+- **Assets**: `packages/sbir-analytics/sbir_analytics/assets/paecter/embeddings.py`
 - **Configuration**: `config/base.yaml` (ml.paecter section)
 
 ## Related Documentation

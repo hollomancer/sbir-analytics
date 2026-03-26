@@ -20,8 +20,8 @@ This plan details the refactoring of three large asset files (totaling 8,828 lin
 | `transition_assets.py` | 2,243 | 18 | 8 | 28 | Mix of extraction, transformation, loading *(legacy)* |
 | **Total** | **8,828** | **70** | **19** | **108** | **Maintainability issues** |
 
-> Note: these legacy files have been replaced by packages (`src/assets/cet/`, `src/assets/uspto/`,
-> `src/assets/transition/`). The historical metrics above are preserved for context.
+> Note: these legacy files have been replaced by packages (`packages/sbir-analytics/sbir_analytics/assets/cet/`, `packages/sbir-analytics/sbir_analytics/assets/uspto/`,
+> `packages/sbir-analytics/sbir_analytics/assets/transition/`). The historical metrics above are preserved for context.
 
 ### Pain Points
 
@@ -94,7 +94,7 @@ We'll use a **safe, incremental approach**:
 ### Proposed Structure
 
 ```text
-src/assets/cet/
+packages/sbir-analytics/sbir_analytics/assets/cet/
 ├── __init__.py                      # Re-exports all assets (50 lines)
 ├── taxonomy.py                      # Taxonomy loading + checks (~600 lines)
 │   ├── raw_cet_taxonomy
@@ -170,7 +170,7 @@ src/assets/cet/
 ### Proposed Structure
 
 ```text
-src/assets/uspto/
+packages/sbir-analytics/sbir_analytics/assets/uspto/
 ├── __init__.py                      # Re-exports all assets (80 lines)
 ├── extraction.py                    # Raw file extraction (~400 lines)
 │   ├── raw_uspto_assignments
@@ -249,7 +249,7 @@ src/assets/uspto/
 ### Proposed Structure
 
 ```text
-src/assets/transition/
+packages/sbir-analytics/sbir_analytics/assets/transition/
 ├── __init__.py                      # Re-exports all assets (50 lines)
 ├── contracts.py                     # Contract extraction (~600 lines)
 │   ├── raw_contracts
@@ -313,12 +313,12 @@ src/assets/transition/
 
 ```bash
 # Create directory structures
-mkdir -p src/assets/cet src/assets/uspto src/assets/transition
+mkdir -p packages/sbir-analytics/sbir_analytics/assets/cet packages/sbir-analytics/sbir_analytics/assets/uspto packages/sbir-analytics/sbir_analytics/assets/transition
 
 # Create __init__.py files
-touch src/assets/cet/__init__.py
-touch src/assets/uspto/__init__.py
-touch src/assets/transition/__init__.py
+touch packages/sbir-analytics/sbir_analytics/assets/cet/__init__.py
+touch packages/sbir-analytics/sbir_analytics/assets/uspto/__init__.py
+touch packages/sbir-analytics/sbir_analytics/assets/transition/__init__.py
 ```
 
 #### Step 2: Extract One Module at a Time (Per File)
@@ -344,7 +344,7 @@ touch src/assets/transition/__init__.py
 
 4. **Clean up** (final step)
    - Remove old file
-   - Update imports in `src/definitions.py`
+   - Update imports in `packages/sbir-analytics/sbir_analytics/definitions.py`
    - Run full test suite
    - Verify Dagster UI shows all assets
 
@@ -381,7 +381,7 @@ dagster dev  # Visit http://localhost:3000
 
 **Day 1: Setup + Utils**
 
-- Create `src/assets/cet/` structure
+- Create `packages/sbir-analytics/sbir_analytics/assets/cet/` structure
 - Move shared utilities to `utils.py`
 - Create `__init__.py` with re-exports
 
@@ -407,14 +407,14 @@ dagster dev  # Visit http://localhost:3000
 
 - Extract `loading.py` (~500 lines)
 - Delete `cet_assets.py`
-- Update `src/definitions.py`
+- Update `packages/sbir-analytics/sbir_analytics/definitions.py`
 - Full test suite
 
 ### Week 2: USPTO Assets (2,992 lines → 6 modules)
 
 **Day 1: Setup + Utils**
 
-- Create `src/assets/uspto/` structure
+- Create `packages/sbir-analytics/sbir_analytics/assets/uspto/` structure
 - Move shared utilities
 
 **Day 2-3: Extraction → Validation**
@@ -437,7 +437,7 @@ dagster dev  # Visit http://localhost:3000
 
 **Day 1: Setup + Utils**
 
-- Create `src/assets/transition/` structure
+- Create `packages/sbir-analytics/sbir_analytics/assets/transition/` structure
 - Move shared utilities
 
 **Day 2-3: Contracts → Evidence**
@@ -462,7 +462,7 @@ dagster dev  # Visit http://localhost:3000
 ### Before Refactoring
 
 ```python
-# In src/definitions.py
+# In packages/sbir-analytics/sbir_analytics/definitions.py
 from .assets.cet import (
     raw_cet_taxonomy,
     enriched_cet_award_classifications,
@@ -473,7 +473,7 @@ from .assets.cet import (
 ### After Refactoring
 
 ```python
-# In src/definitions.py
+# In packages/sbir-analytics/sbir_analytics/definitions.py
 from .assets.cet import (
     raw_cet_taxonomy,
     enriched_cet_award_classifications,

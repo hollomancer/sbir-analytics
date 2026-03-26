@@ -455,8 +455,8 @@ For large datasets (>100K records):
 ## Related Documentation
 
 - **Specification**: `.kiro/specs/statistical_reporting/`
-- **Implementation**: `src/utils/statistical_reporter.py`
-- **Models**: `src/models/quality.py`
+- **Implementation**: `sbir_etl/utils/statistical_reporter.py`
+- **Models**: `sbir_etl/models/quality.py`
 - **Configuration**: `config/base.yaml` (statistical_reporting section)
 - **CI Integration**: `.github/workflows/ci.yml`
 - **Quality Assurance Guide**: [`quality-assurance.md`](quality-assurance.md)

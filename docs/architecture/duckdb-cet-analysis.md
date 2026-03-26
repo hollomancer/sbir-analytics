@@ -384,7 +384,7 @@ relationships = relationships_df.to_dict('records')
 
 ```python
 
-## src/assets/cet/
+## packages/sbir-analytics/sbir_analytics/assets/cet/
 
 import duckdb
 import pandas as pd

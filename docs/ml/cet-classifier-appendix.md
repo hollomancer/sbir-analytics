@@ -475,7 +475,7 @@ SBIR_MAX_WORKERS=4                       # Parallel workers
 
 - **Main Docs**: README.md, DEVELOPMENT.md, STATUS.md
 - **Configuration**: config/README.md
-- **Source Code**: /src/sbir_cet_classifier/
+- **Source Code**: /packages/sbir-ml/sbir_ml/
 - **Tests**: /tests/ (232 tests, good examples)
 - **Historical Analysis**: /docs/archive/ (20+ reports)
 
@@ -522,7 +522,7 @@ The SBIR CET Classifier is a production-ready ML-based system for classifying Sm
 
 ```text
 sbir-cet-classifier/
-├── src/sbir_cet_classifier/
+├── packages/sbir-ml/sbir_ml/
 │   ├── api/                 # FastAPI routes & REST endpoints
 │   ├── cli/                 # Typer CLI commands
 │   ├── common/              # Schemas, config, utilities
@@ -1527,16 +1527,16 @@ tenacity>=8.2.0          # Retry logic
 
 ### For Understanding Architecture
 
-- `/src/sbir_cet_classifier/models/applicability.py` - ML core
-- `/src/sbir_cet_classifier/common/schemas.py` - Data models
-- `/src/sbir_cet_classifier/features/summary.py` - Service pattern example
+- `/packages/sbir-ml/sbir_ml/ml/models/applicability.py` - ML core
+- `/packages/sbir-ml/sbir_ml/common/schemas.py` - Data models
+- `/packages/sbir-ml/sbir_ml/features/summary.py` - Service pattern example
 - `/config/taxonomy.yaml` - Domain knowledge
 
 ### For Understanding Patterns
 
-- `/src/sbir_cet_classifier/data/bootstrap.py` - Data ingestion
-- `/src/sbir_cet_classifier/features/enrichment.py` - API integration
-- `/src/sbir_cet_classifier/features/evidence.py` - NLP integration
+- `/packages/sbir-ml/sbir_ml/data/bootstrap.py` - Data ingestion
+- `/packages/sbir-ml/sbir_ml/features/enrichment.py` - API integration
+- `/packages/sbir-ml/sbir_ml/features/evidence.py` - NLP integration
 - `/tests/integration/` - End-to-end examples
 
 ### For Configuration & Deployment
