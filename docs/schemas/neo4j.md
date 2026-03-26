@@ -11,7 +11,7 @@ Status: active
 
 This is the canonical reference for the graph schema used by the SBIR ETL loader.
 
-- Loader implementation: `src/loaders/` (MERGE-based idempotent writes)
+- Loader implementation: `packages/sbir-graph/sbir_graph/loaders/` (MERGE-based idempotent writes)
 - Schema docs (detailed): `docs/schemas/` (see Detailed Schema Documentation below)
 - Changes here must be reflected in loader code and vice versa in the same PR.
 

@@ -274,7 +274,7 @@ class AwardFactory(Factory):
 
 ```yaml
 - name: Run all tests
-  run: pytest -v --cov=src --cov-report=xml
+  run: pytest -v --cov=sbir_etl --cov-report=xml
 ```
 
 **E2E Tests** (nightly):
@@ -334,7 +334,7 @@ See [Performance Testing for details.
 ```yaml
 - name: Check coverage
   run: |
-    pytest --cov=src --cov-fail-under=59
+    pytest --cov=sbir_etl --cov-fail-under=59
 ```
 
 ### Test Success Rate
@@ -391,7 +391,7 @@ pytest -s tests/unit/loaders/test_award_loader.py
 **Generate HTML report:**
 
 ```bash
-pytest --cov=src --cov-report=html
+pytest --cov=sbir_etl --cov-report=html
 open htmlcov/index.html
 ```
 

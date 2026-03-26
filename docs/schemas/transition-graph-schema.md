@@ -1403,7 +1403,7 @@ MERGE (t)-[:INVOLVES_TECHNOLOGY {cet_alignment_type: cl.alignment_type}]->(cet)
 
 ## References
 
-- **Implementation**: `src/loaders/transition_loader.py`
+- **Implementation**: `packages/sbir-graph/sbir_graph/loaders/transition_loader.py`
 - **Tests**: `tests/unit/test_transition_loader.py`
-- **Queries**: `src/transition/queries/transition_pathway_queries.py`
+- **Queries**: `packages/sbir-ml/sbir_ml/transition/queries/transition_pathway_queries.py`
 - **Neo4j Documentation**: <https://neo4j.com/docs/cypher-manual/current/introduction/>

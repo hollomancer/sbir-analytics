@@ -378,7 +378,7 @@ PatentEntity {
 
 ## 9. Mapping to Pydantic Models
 
-### Model Classes (Implementation in `src/models/uspto_models.py`)
+### Model Classes (Implementation in `sbir_etl/models/uspto_models.py`)
 
 ```python
 class PatentDocument(BaseModel):

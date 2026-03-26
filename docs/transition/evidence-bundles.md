@@ -957,7 +957,7 @@ bundle['validation']['signal_scores_detail']
 
 ## References
 
-- **Implementation**: `src/transition/detection/evidence.py`
+- **Implementation**: `packages/sbir-ml/sbir_ml/transition/detection/evidence.py`
 - **Storage**: `data/processed/transitions_evidence.ndjson`
 - **Neo4j**: `TRANSITIONED_TO.evidence_bundle`
 - **Tests**: `tests/unit/test_evidence_generator.py`

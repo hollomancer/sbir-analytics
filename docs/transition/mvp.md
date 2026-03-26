@@ -243,7 +243,7 @@ In Dagster environments, these checks can block downstream assets if thresholds 
 - Optional FAISS index for scalable candidate generation
 - Neo4j loaders for transition relationships
 
-If you want to integrate this into a Dagster job, import the transition assets and asset checks from `src/assets/transition/` and register them in your definitions. The code is import-safe and can run in constrained environments.
+If you want to integrate this into a Dagster job, import the transition assets and asset checks from `packages/sbir-analytics/sbir_analytics/assets/transition/` and register them in your definitions. The code is import-safe and can run in constrained environments.
 
 You can also execute the MVP pipeline directly through the CLI without relying on the legacy shim:
 

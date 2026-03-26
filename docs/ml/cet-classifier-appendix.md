@@ -378,7 +378,7 @@ pytest tests/contract/ -v
 
 ## With coverage
 
-pytest tests/ --cov=src/sbir_cet_classifier --cov-report=html
+pytest tests/ --cov=sbir_etl --cov-report=html
 ```
 
 ---

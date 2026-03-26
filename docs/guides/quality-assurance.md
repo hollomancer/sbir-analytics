@@ -13,24 +13,24 @@ This guide centralizes performance and data quality practices.
 
 ## Performance monitoring
 
-- Utilities: `src/utils/performance_*.py`
+- Utilities: `sbir_etl/utils/performance_*.py`
 - Baselines: `reports/benchmarks/baseline.json`
 - Thresholds: `config/base.yaml`
 
 ## Data quality
 
-- Utilities: `src/utils/quality_*.py`
+- Utilities: `sbir_etl/utils/quality_*.py`
 - Alerts: `reports/alerts/*.json`
 
 ## CI
 
-- Performance regression checks in `.github/workflows/performance-regression-check.yml`
-- Smoke tests against Neo4j in `.github/workflows/neo4j-smoke.yml`
+- CI checks in `.github/workflows/ci.yml`
+- Nightly tests in `.github/workflows/nightly.yml`
 
 Ensure PRs that change performance-sensitive paths update baselines/thresholds when appropriate.
 
 ## Related Documentation
 
 - **Statistical Reporting**: [`statistical-reporting.md`](statistical-reporting.md) - Report generation and analysis
-- **Performance Monitoring**: [`../performance/index.md` - Performance baselines and alerts
+- **Performance Monitoring**: [`../performance.md`](../performance.md) - Performance baselines and alerts
 - **Testing Documentation**: [`../testing/README.md`](../testing/README.md) - Testing guides and coverage

@@ -1086,10 +1086,10 @@ RETURN cet_area, patent_backed, patent_backed_transitions
 
 ## References
 
-- **Implementation**: `src/transition/features/cet_analyzer.py`
+- **Implementation**: `packages/sbir-ml/sbir_ml/transition/features/cet_analyzer.py`
 - **Tests**: `tests/unit/test_cet_signal_extractor.py`
 - **Configuration**: `config/transition/detection.yaml`
 - **Neo4j**: `CETArea` nodes and `INVOLVES_TECHNOLOGY` relationships
 - **NIST CET**: <https://www.nist.gov/programs/critical-emerging-technologies>
 - **Scoring Integration**: `docs/transition/scoring-guide.md`
-- **Analytics**: `src/transition/analysis/analytics.py`
+- **Analytics**: `packages/sbir-ml/sbir_ml/transition/analysis/analytics.py`

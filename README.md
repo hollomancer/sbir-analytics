@@ -2,7 +2,7 @@
 
 > Analyze $50B+ in SBIR/STTR funding data: Track technology transitions, patent outcomes, and economic impact of federal R&D investments.
 
-[![CI](https://github.com/your-org/sbir-analytics/workflows/CI/badge.svg)](https://github.com/your-org/sbir-analytics/actions)
+[![CI](https://github.com/hollomancer/sbir-analytics/workflows/CI/badge.svg)](https://github.com/hollomancer/sbir-analytics/actions)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
@@ -27,7 +27,7 @@
 Get started in 2 minutes:
 
 ```bash
-git clone https://github.com/your-org/sbir-analytics
+git clone https://github.com/hollomancer/sbir-analytics
 cd sbir-analytics
 make install      # Install dependencies with uv
 make dev          # Start Dagster UI
@@ -153,7 +153,7 @@ We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for:
 
 - Development setup and workflow
 - Code quality standards (black, ruff, mypy)
-- Testing requirements (≥80% coverage)
+- Testing requirements (≥85% coverage)
 - Pull request process
 
 ## Testing
@@ -182,6 +182,6 @@ This project makes use of and is grateful for the following open-source tools an
 
 ## Support
 
-- **Issues**: [GitHub Issues](https://github.com/your-org/sbir-analytics/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/your-org/sbir-analytics/discussions)
+- **Issues**: [GitHub Issues](https://github.com/hollomancer/sbir-analytics/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/hollomancer/sbir-analytics/discussions)
 - **Documentation**: [docs/](docs/)

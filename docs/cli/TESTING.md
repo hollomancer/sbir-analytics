@@ -60,7 +60,7 @@ uv run pytest tests/unit/cli/ -v
 uv run pytest tests/integration/cli/ -v
 
 # All CLI tests with coverage
-uv run pytest tests/unit/cli/ tests/integration/cli/ --cov=src/cli --cov-report=html
+uv run pytest tests/unit/cli/ tests/integration/cli/ --cov=sbir_etl --cov-report=html
 ```
 
 ### Run Specific Test Files
@@ -315,7 +315,7 @@ Tests should run in CI with mocked services:
 - name: Test CLI
   run: |
     uv run pytest tests/unit/cli/ tests/integration/cli/ \
-      --cov=src/cli \
+      --cov=sbir_etl \
       --cov-report=xml \
       --cov-report=term-missing
 ```

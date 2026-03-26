@@ -454,7 +454,7 @@ def cet_active_learning_candidates(
 uv run pytest tests/unit/test_cet_*.py -v
 
 # With coverage
-uv run pytest tests/unit/test_cet_*.py --cov=src/ml --cov-report=html
+uv run pytest tests/unit/test_cet_*.py --cov=sbir_etl --cov-report=html
 ```
 
 ### Integration Tests

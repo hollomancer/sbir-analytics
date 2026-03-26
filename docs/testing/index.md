@@ -28,7 +28,7 @@ This directory hosts the complete testing playbook for SBIR ETL. The [Testing In
 1. Follow pytest naming conventions (`test_<unit>_<scenario>()`).
 2. Prefer fixtures over ad-hoc setup/teardown.
 3. Mock external services for unit tests; reserve real API calls for integration/e2e.
-4. Keep overall coverage ≥80% (higher for loaders and enrichers).
+4. Keep overall coverage ≥85% (higher for loaders and enrichers).
 5. Update the index + relevant guide whenever you add new targets, markers, or workflows.
 
 For additional context, review [Quality Assurance](../guides/quality-assurance.md) and the main [project README](../../README.md)
@@ -52,7 +52,7 @@ Use `uv` (preferred) or `pip`-managed virtualenvs with Python 3.11+.
 ### Run everything with coverage
 
 ```bash
-uv run pytest -v --cov=src
+uv run pytest -v --cov=sbir_etl
 ```
 
 ### Parallel execution (faster)
@@ -65,7 +65,7 @@ uv run pytest -n auto
 uv run pytest -n 4
 
 # Parallel with coverage (slower but thorough)
-uv run pytest -n auto --cov=src
+uv run pytest -n auto --cov=sbir_etl
 ```
 
 ### Tiered execution
@@ -99,9 +99,9 @@ Env vars: copy `.env.example` to `.env` and set `NEO4J_USER`, `NEO4J_PASSWORD` b
 
 GitHub Actions workflows wire these commands:
 
-- `.github/workflows/ci.yml` – runs `uv run pytest -v --cov=src` plus lint/type checks.
-- `.github/workflows/container-ci.yml` – executes `make docker-test` for Compose validation.
-- `.github/workflows/performance-regression-check.yml` – reuses Docker images for regression metrics.
+- `.github/workflows/ci.yml` – runs `uv run pytest -v --cov=sbir_etl` plus lint/type checks.
+- `.github/workflows/nightly.yml` – nightly security scans and smoke tests.
+- `.github/workflows/weekly.yml` – weekly comprehensive test suite.
 
 Use `gh workflow run <name>` for manual triggers or inspect [Actions](https://github.com/<org>/<repo>/actions).
 
@@ -113,7 +113,7 @@ Use `gh workflow run <name>` for manual triggers or inspect [Actions](https://gi
 - Transition detection throughput: `uv run python scripts/performance/benchmark_transition_detection.py --sample-size 5000 --batch-size 250` (run inside `make docker-e2e-large` to match Dagster/Docker environments)
 - For Docker-based perf runs, use `make docker-e2e-large` and review `reports/performance/*.json`.
 
-See [docs/performance](../performance) and [docs/guides/quality-assurance.md](../guides/quality-assurance.md) for thresholds and monitoring expectations.
+See [docs/guides/quality-assurance.md](../guides/quality-assurance.md) for thresholds and monitoring expectations.
 
 ## 5. Supporting Guides
 

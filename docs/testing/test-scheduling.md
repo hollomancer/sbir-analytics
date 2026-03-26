@@ -51,9 +51,9 @@ pytest -m "fast and not integration and not e2e" -n auto --maxfail=5
   - Database integration (only if extractor changes)
 
 - **Path-based test selection**:
-  - CET tests → only if `src/ml/**` or `config/cet/**` changed
-  - Transition tests → only if `src/transition/**` changed
-  - Fiscal tests → only if `src/enrichers/fiscal/**` changed
+  - CET tests → only if `packages/sbir-ml/**` or `config/cet/**` changed
+  - Transition tests → only if `packages/sbir-ml/sbir_ml/transition/**` changed
+  - Fiscal tests → only if `sbir_etl/enrichers/fiscal/**` changed
 
 #### Estimated Runtime: 5-10 minutes
 
@@ -251,7 +251,7 @@ jobs:
       - name: Run comprehensive test suite
         run: |
           pytest -m "e2e or real_data or weekly" \
-            --cov=src \
+            --cov=sbir_etl \
             --cov-report=html \
             --cov-report=term \
             -n auto \

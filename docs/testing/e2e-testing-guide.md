@@ -183,7 +183,7 @@ CI jobs are organized into three priority tiers:
 
 ## Performance Reporting (Task 2.5)
 
-- Reporting helpers live in `src/utils/performance_reporting.py` and read/write `reports/benchmarks/*.json`.
+- Reporting helpers live in `sbir_etl/utils/performance_reporting.py` and read/write `reports/benchmarks/*.json`.
 - Create a reporter, load benchmarks, and render Markdown/HTML artifacts:
 
   ```python

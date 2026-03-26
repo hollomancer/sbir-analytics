@@ -95,7 +95,7 @@ archive/openspec/       # Archived OpenSpec content (historical reference)
 ## References
 
 - Kiro specifications: `.kiro/specs/` (see this file for workflow guidance)
-- Agent steering documents: `.kiro/steering/` (architectural patterns and guidance - see `.kiro/steering/README.md`)
+- Agent steering documents: `.kiro/steering/` (architectural patterns and guidance - see `.kiro/steering/quick-reference.md`)
 - Container guide: `docs/deployment/containerization.md`
 - Data sources overview: `docs/data/index.md`
 - Data dictionaries: `docs/data/dictionaries/`

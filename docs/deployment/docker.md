@@ -166,7 +166,7 @@ docker compose exec app dagster asset materialize -m sbir_etl.definitions
 
 ```bash
 docker compose exec app dagster job execute \
-  -f src/definitions.py \
+  -m sbir_analytics.definitions \
   -j sbir_weekly_refresh_job
 ```
 
@@ -738,7 +738,7 @@ profiles:
 
 services:
   app:
-    command: pytest -v --cov=src
+    command: pytest -v --cov=sbir_etl
     environment:
       - CI=true
       - PYTEST_TIMEOUT=300
