@@ -315,7 +315,7 @@ pyyaml==6.0.3
     #   uvicorn
 rapidfuzz==3.14.3
     # via sbir-analytics
-requests==2.32.5
+requests==2.33.0
     # via
     #   dagster
     #   dagster-graphql
