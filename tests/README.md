@@ -25,7 +25,7 @@ uv run pytest tests/functional/
 uv run pytest -n 0
 
 # With coverage
-uv run pytest --cov=src --cov-report=html
+uv run pytest --cov=sbir_etl --cov-report=html
 ```
 
 ## Test Markers

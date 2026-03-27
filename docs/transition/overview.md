@@ -60,7 +60,7 @@ After running the transition detection pipeline, you get:
 
 ```bash
 # Run full transition detection pipeline
-uv run python -m dagster job execute -f src/definitions.py -j transition_full_job
+uv run python -m dagster job execute -m sbir_analytics.definitions -j transition_full_job
 
 # Or: Run from Dagster UI
 uv run dagster dev
@@ -162,7 +162,7 @@ uv run pytest tests/integration/test_transition_integration.py -v
 uv run pytest tests/e2e/test_transition_e2e.py -v
 
 # Run with coverage
-uv run pytest tests/unit/test_transition*.py --cov=src/transition --cov-report=html
+uv run pytest tests/unit/test_transition*.py --cov=sbir_etl --cov-report=html
 
 # Run specific signal tests
 uv run pytest tests/unit/test_transition_scorer.py -v  # 32 tests, 93% coverage
@@ -173,12 +173,10 @@ uv run pytest tests/unit/test_cet_signal_extractor.py -v  # 37 tests, 96% covera
 
 ### Implementation
 
-- `src/transition/detection/` - Detection pipeline (scoring, evidence, detector)
-- `src/transition/features/` - Feature extraction (vendor resolver, patent analyzer, CET)
-- `src/transition/analysis/` - Analytics (dual-perspective metrics)
-- `src/transition/evaluation/` - Evaluation (precision/recall, confusion matrix)
-- `src/transition/queries/` - Neo4j queries (pathways, analytics)
-- `src/loaders/transition_loader.py` - Neo4j loading
+- `sbir_etl/transformers/` - Transformation logic (scoring, evidence)
+- `packages/sbir-ml/sbir_ml/transition/` - ML-based transition detection
+- `packages/sbir-analytics/sbir_analytics/assets/transition/` - Dagster asset definitions
+- `packages/sbir-graph/sbir_graph/loaders/` - Neo4j loading
 
 ### Configuration
 

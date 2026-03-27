@@ -10,31 +10,31 @@ The USAspending iterative enrichment system automatically refreshes enrichment d
 
 ### Components
 
-1. **USAspending API Client** (`src/enrichers/usaspending_api_client.py`)
+1. **USAspending API Client** (`sbir_etl/enrichers/usaspending_api_client.py`)
    - Async HTTP client with rate limiting and retry logic
    - Delta detection via payload hashing
    - State management for cursors/ETags
 
-2. **Freshness Store** (`src/utils/enrichment_freshness.py`)
+2. **Freshness Store** (`sbir_etl/utils/enrichment_freshness.py`)
    - Persists enrichment freshness records to Parquet
    - Tracks `last_attempt_at`, `last_success_at`, `payload_hash`, and `status` per award/source
    - Identifies stale records based on SLA thresholds
 
-3. **Checkpoint Store** (`src/utils/enrichment_checkpoints.py`)
+3. **Checkpoint Store** (`sbir_etl/utils/enrichment_checkpoints.py`)
    - Enables resume functionality for interrupted refresh runs
    - Tracks partition progress and last processed award ID
 
-4. **Metrics Collector** (`src/utils/enrichment_metrics.py`)
+4. **Metrics Collector** (`sbir_etl/utils/enrichment_metrics.py`)
    - Emits freshness coverage metrics
    - Tracks success rates, error rates, and SLA compliance
    - Logs to `reports/metrics/enrichment_freshness.json`
 
-5. **Dagster Assets** (`src/assets/usaspending_iterative_enrichment.py`)
+5. **Dagster Assets** (`packages/sbir-analytics/sbir_analytics/assets/usaspending_iterative_enrichment.py`)
    - `usaspending_freshness_ledger`: Tracks all freshness records
    - `stale_usaspending_awards`: Identifies awards needing refresh
    - `usaspending_refresh_batch`: Performs refresh operations
 
-6. **Dagster Sensor** (`src/assets/sensors/usaspending_refresh_sensor.py`)
+6. **Dagster Sensor** (`packages/sbir-analytics/sbir_analytics/assets/sensors/usaspending_refresh_sensor.py`)
    - Triggers refresh job after bulk enrichment completes
    - Checks for stale awards before triggering
 
@@ -278,4 +278,4 @@ Consider setting up alerts for:
 - USAspending API Documentation: <https://api.usaspending.gov/docs/>
 - Dagster Documentation: <https://docs.dagster.io>
 - Configuration: `config/base.yaml`
-- Source Code: `src/assets/usaspending_iterative_enrichment.py`
+- Source Code: `packages/sbir-analytics/sbir_analytics/assets/usaspending_iterative_enrichment.py`

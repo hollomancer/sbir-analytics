@@ -8,15 +8,14 @@ nav:
       - Shared Tech Stack: docs/architecture/shared-tech-stack.md
       - Detailed Overview: docs/architecture/detailed-overview.md
       - Asset Naming Standards: docs/architecture/asset-naming-standards.md
-      - Consolidation Guide: docs/architecture/consolidation-refactor-plan.md
+      - Asset Refactoring Plan: docs/architecture/asset-refactoring-plan.md
   - Data Sources:
       - Overview: docs/data/index.md
-      - SBIR Awards: docs/data/sbir.md
-      - USAspending: docs/data/usaspending.md
-      - Patents: docs/data/patents.md
+      - Awards Refresh: docs/data/awards-refresh.md
+      - USPTO Data Refresh: docs/data/uspto-data-refresh.md
   - Deployment:
       - Overview: docs/deployment/README.md
-      - AWS Serverless: docs/deployment/aws-serverless-deployment-guide.md
+      - AWS Deployment: docs/deployment/aws-deployment.md
       - Containerization: docs/deployment/containerization.md
   - Testing:
       - Testing Index: docs/testing/index.md
@@ -24,10 +23,10 @@ nav:
       - Neo4j Testing Environments: docs/testing/neo4j-testing-environments-guide.md
   - Machine Learning:
       - ML Overview: docs/ml/README.md
-      - CET Classification: docs/ml/cet-classification.md
+      - CET Classifier: docs/ml/cet-classifier.md
   - Transition Detection:
       - Overview: docs/transition/overview.md
-      - Detection Signals: docs/transition/detection-signals.md
+      - Detection Algorithm: docs/transition/detection-algorithm.md
   - Fiscal Analysis:
       - SBIR Fiscal Pipeline: docs/fiscal/sbir-fiscal-pipeline-guide.md
   - Development:
@@ -39,7 +38,7 @@ nav:
       - Quality Assurance: docs/guides/quality-assurance.md
       - Statistical Reporting: docs/guides/statistical-reporting.md
   - Decisions: docs/decisions/
-  - Performance: docs/performance/index.md
+  - Performance: docs/performance.md
 theme:
   name: material
   features:

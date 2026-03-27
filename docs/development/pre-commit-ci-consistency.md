@@ -44,10 +44,10 @@ All tools are configured to run on consistent scopes:
 
 | Tool | Local Scope | CI Scope | Configuration | Notes |
 |------|------------|----------|---------------|-------|
-| **Ruff** (lint) | `src/` `tests/` | `src/` `tests/` | `.pre-commit-config.yaml` + `pyproject.toml` | Code style and import ordering |
-| **Ruff** (format) | `src/` `tests/` | `src/` `tests/` | `.pre-commit-config.yaml` + `pyproject.toml` | Format check (not auto-fix in CI) |
-| **MyPy** (types) | `src/` only | `src/` only | `.pre-commit-config.yaml` + `pyproject.toml` | Excludes: `scripts/`, `tests/`, `examples/`, `migrations/` |
-| **Bandit** (security) | `src/` only | `src/` only | `.pre-commit-config.yaml` + `pyproject.toml` | Security scanning |
+| **Ruff** (lint) | `packages/` `sbir_etl/` `tests/` | `packages/` `sbir_etl/` `tests/` | `.pre-commit-config.yaml` + `pyproject.toml` | Code style and import ordering |
+| **Ruff** (format) | `packages/` `sbir_etl/` `tests/` | `packages/` `sbir_etl/` `tests/` | `.pre-commit-config.yaml` + `pyproject.toml` | Format check (not auto-fix in CI) |
+| **MyPy** (types) | `packages/` `sbir_etl/` only | `packages/` `sbir_etl/` only | `.pre-commit-config.yaml` + `pyproject.toml` | Excludes: `scripts/`, `tests/`, `examples/`, `migrations/` |
+| **Bandit** (security) | `packages/` `sbir_etl/` only | `packages/` `sbir_etl/` only | `.pre-commit-config.yaml` + `pyproject.toml` | Security scanning |
 | **Standard hooks** | All files | N/A | `.pre-commit-config.yaml` | YAML validation, EOL, trailing whitespace (local only) |
 | **Detect-secrets** | All files* | N/A | `.pre-commit-config.yaml` | Secret detection (local best practice) |
 
@@ -55,13 +55,13 @@ All tools are configured to run on consistent scopes:
 
 ### Scope Rationale
 
-**Why `src/` only for MyPy and Bandit?**
+**Why `packages/` and `sbir_etl/` only for MyPy and Bandit?**
 
 - Tests, scripts, examples, and migrations are not production code
 - These files often use different patterns and are lower priority
-- Focusing on `src/` ensures production code quality
+- Focusing on production packages ensures production code quality
 
-**Why `src/` + `tests/` for Ruff?**
+**Why production packages + `tests/` for Ruff?**
 
 - Tests should follow the same code style as production code
 - Ruff is fast and catches important issues (unused imports, naming)
@@ -144,7 +144,7 @@ ruff (legacy alias)......................................................Failed
 - exit code: 1
 
 Some rule failed
-  --> src/file.py:10:5
+  --> sbir_etl/file.py:10:5
 ```
 
 **Common issues:**
@@ -290,15 +290,15 @@ Tool versions are pinned in:
 **Check scope:**
 
 ```bash
-# Local pre-commit runs on src/ and tests/
-# CI runs on src/ and tests/
+# Local pre-commit runs on packages/ sbir_etl/ and tests/
+# CI runs on packages/ sbir_etl/ and tests/
 # Make sure you're checking the same files
 
 pre-commit run ruff --all-files  # Should match CI
 
 # Or manually
-ruff check src tests
-ruff format --check src tests
+ruff check packages sbir_etl tests
+ruff format --check packages sbir_etl tests
 ```
 
 ### "MyPy passes locally but fails in CI"
@@ -306,12 +306,12 @@ ruff format --check src tests
 **Check scope:**
 
 ```bash
-# Local pre-commit runs on src/ only
-# CI runs on src/ only via: mypy src
+# Local pre-commit runs on packages/ sbir_etl/ only
+# CI runs on packages/ sbir_etl/ only via: mypy packages sbir_etl
 
 # These should match
 pre-commit run mypy --all-files
-uv run python -m mypy src
+uv run python -m mypy packages sbir_etl
 ```
 
 ### "Hook modified files I didn't touch"
@@ -395,7 +395,7 @@ exclude = [
 ]
 ```
 
-**Reason:** These are not production code. Focusing on `src/` ensures critical code is type-safe while allowing flexibility in test/example code.
+**Reason:** These are not production code. Focusing on `packages/` and `sbir_etl/` ensures critical code is type-safe while allowing flexibility in test/example code.
 
 If you need type checking for a specific file, add:
 

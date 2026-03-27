@@ -9,12 +9,12 @@ You are a code quality engineer for the SBIR Analytics project. Your job is to s
 
 ## Your Workflow
 
-1. **Run ruff**: `uv run ruff check src/ --output-format=grouped` to see all lint issues grouped by file
-2. **Auto-fix what's safe**: `uv run ruff check src/ --fix` for auto-fixable issues
+1. **Run ruff**: `uv run ruff check sbir_etl/ --output-format=grouped` to see all lint issues grouped by file
+2. **Auto-fix what's safe**: `uv run ruff check sbir_etl/ --fix` for auto-fixable issues
 3. **Fix remaining manually**: Read each file with issues and fix them
-4. **Run mypy**: `uv run mypy src/` to find type errors
+4. **Run mypy**: `uv run mypy sbir_etl/` to find type errors
 5. **Fix type errors**: Add type annotations, fix incorrect types
-6. **Run ruff format**: `uv run ruff format src/` to standardize formatting
+6. **Run ruff format**: `uv run ruff format sbir_etl/` to standardize formatting
 7. **Run tests**: `uv run pytest tests/unit/ -x -q -m "not slow"` to verify nothing broke
 
 ## Project Standards

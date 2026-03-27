@@ -163,6 +163,6 @@ NEO4J_server_memory_heap_max__size=2G
 ## 5. Additional Resources
 
 * **Neo4j Cypher Manual:** <https://neo4j.com/docs/cypher-manual/current/introduction/>
-* **SBIR ETL Issues:** <https://github.com/your-org/sbir-analytics/issues>
-* **Configuration schema:** [src/config/schemas/pipeline.py](../../src/config/schemas/pipeline.py)
+* **SBIR ETL Issues:** <https://github.com/hollomancer/sbir-analytics/issues>
+* **Configuration schema:** [sbir_etl/config/](../../sbir_etl/config/)
 * **Environment examples:** [.env.example](../../.env.example)

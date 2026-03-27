@@ -14,18 +14,18 @@ This document describes the expected format, paths, and workflows for the CET aw
 ## Components
 
 - Loader:
-  - `src/ml/data/award_training_loader.py`
+  - `packages/sbir-ml/sbir_ml/ml/data/award_training_loader.py`
     - `AwardTrainingLoader`: CSV/NDJSON → `TrainingDataset` + `TrainingExample`
     - `load_training_dataset(path, taxonomy_version, ...)`
     - `save_dataset_ndjson(dataset, out_path)`
     - `save_dataset_metadata_json(dataset, out_path)`
 
 - Dagster asset:
-  - `src/assets/cet/`
+  - `packages/sbir-analytics/sbir_analytics/assets/cet/`
     - `cet_award_training_dataset`: loads, validates, persists training data to processed storage and emits a checks JSON
 
 - Pydantic models:
-  - `src/models/cet_models.py`
+  - `sbir_etl/models/cet_models.py`
     - `TrainingExample`, `TrainingDataset` (the canonical in-memory representation)
 
 ---

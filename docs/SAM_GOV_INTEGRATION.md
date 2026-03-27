@@ -43,11 +43,9 @@ The SAM.gov bulk data integration provides a parquet-first, API-fallback pattern
 ### Core Implementation
 
 ```text
-src/
+sbir_etl/
 ├── extractors/
 │   └── sam_gov.py                  # SAMGovExtractor class
-├── assets/
-│   └── sam_gov_ingestion.py        # Dagster asset for bulk ingestion
 ├── enrichers/
 │   └── sam_gov/
 │       ├── __init__.py
@@ -57,6 +55,10 @@ src/
 └── config/
     └── schemas/
         └── data_pipeline.py         # SamGovConfig schema
+
+packages/sbir-analytics/sbir_analytics/
+└── assets/
+    └── sam_gov_ingestion.py        # Dagster asset for bulk ingestion
 ```
 
 ### Configuration
@@ -94,7 +96,7 @@ extraction:
 
 ### Schema Definition
 
-Located in `src/config/schemas/data_pipeline.py`:
+Located in `sbir_etl/config/schemas/data_pipeline.py`:
 
 ```python
 class SamGovConfig(BaseModel):
@@ -354,8 +356,8 @@ MemoryError: Unable to allocate array
 ## References
 
 - [SAM.gov Entity Information API](https://open.gsa.gov/api/entity-api/)
-- [Cloud Storage Utilities](../src/utils/cloud_storage.py)
-- [Configuration Schema](../src/config/schemas/data_pipeline.py)
+- [Cloud Storage Utilities](../sbir_etl/utils/cloud_storage.py)
+- [Configuration Schema](../sbir_etl/config/schemas/data_pipeline.py)
 
 ## Changelog
 

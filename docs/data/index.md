@@ -218,8 +218,8 @@ For geographic analysis and funding impact assessment:
 ## Related Resources
 
 - **Configuration:** [`config/base.yaml`](../../config/base.yaml) contains all data source configurations
-- **Extractors:** [`src/extractors/`](../../src/extractors/) implements data extraction logic
-- **Enrichers:** [`src/enrichers/`](../../src/enrichers/) implements API enrichment
+- **Extractors:** [`sbir_etl/extractors/`](../../sbir_etl/extractors/) implements data extraction logic
+- **Enrichers:** [`sbir_etl/enrichers/`](../../sbir_etl/enrichers/) implements API enrichment
 - **Architecture:** [Detailed Overview](../architecture/detailed-overview.md)
 
 ## Getting Help

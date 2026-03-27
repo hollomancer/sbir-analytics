@@ -9,7 +9,7 @@ Testing strategy and commands for the SBIR ETL pipeline.
 uv run pytest
 
 # Run with coverage
-uv run pytest --cov=src --cov-report=html
+uv run pytest --cov=sbir_etl --cov-report=html
 
 # Run specific test types
 uv run pytest tests/unit/
@@ -46,7 +46,7 @@ uv run pytest tests/integration/ -v
 ### With Coverage
 
 ```bash
-uv run pytest --cov=src --cov-report=html
+uv run pytest --cov=sbir_etl --cov-report=html
 open htmlcov/index.html
 ```
 

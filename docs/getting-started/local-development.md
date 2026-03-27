@@ -49,7 +49,7 @@ uv run pytest
 
 # Code quality
 uv run ruff check .
-uv run mypy src/
+uv run mypy sbir_etl/
 
 # Format code
 uv run ruff format .

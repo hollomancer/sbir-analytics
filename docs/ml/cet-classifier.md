@@ -11,7 +11,7 @@ This document describes the lightweight CET patent classifier components, featur
 
 ## Award ApplicabilityModel (Awards)
 
-The award classifier is a multi-label text classification pipeline that predicts applicability to CET areas from award text (title, abstract, keywords). It is implemented in `src/ml/models/cet_classifier.py` as `ApplicabilityModel` and configured via `config/cet/classification.yaml`. Core architecture:
+The award classifier is a multi-label text classification pipeline that predicts applicability to CET areas from award text (title, abstract, keywords). It is implemented in `packages/sbir-ml/sbir_ml/ml/models/cet_classifier.py` as `ApplicabilityModel` and configured via `config/cet/classification.yaml`. Core architecture:
 
 - One-vs-rest binary pipeline per CET area
 - Keyword-aware TF-IDF vectorizer with boosting for CET keywords
@@ -77,14 +77,14 @@ The goals for this stack:
 ## Components
 
 - Feature extraction (pure-Python, import-safe)
-  - `src/ml/features/patent_features.py`
+  - `packages/sbir-ml/sbir_ml/ml/features/patent_features.py`
     - `normalize_title`, `tokenize`, `remove_stopwords`
     - `extract_ipc_cpc`, `guess_assignee_type`, `bag_of_keywords_features`
     - `extract_features(record) -> PatentFeatureVector` with `as_dict()`
     - Small default keyword map and stopword set for deterministic testing.
 
 - Vectorizers (convert features → numeric matrices)
-  - `src/ml/features/vectorizers.py`
+  - `packages/sbir-ml/sbir_ml/ml/features/vectorizers.py`
     - `KeywordVectorizer`: count and presence features by keyword group
     - `TokenCounterVectorizer`: token counts with/without stopwords
     - `AssigneeTypeVectorizer`: one-hot encoding of assignee type
@@ -92,19 +92,19 @@ The goals for this stack:
     - `FeatureMatrixBuilder`: combine vectorizers to produce a single 2D matrix
 
 - Classifier wrapper and extractor
-  - `src/ml/models/patent_classifier.py`
+  - `packages/sbir-ml/sbir_ml/ml/models/patent_classifier.py`
     - `PatentCETClassifier`: save/load, classify, batch classify, train
     - `PatentFeatureExtractor`: produce normalized training texts + feature vectors from DataFrame rows
 
 - Training helpers
-  - `src/ml/train/patent_training.py`
+  - `packages/sbir-ml/sbir_ml/ml/train/patent_training.py`
     - `train_patent_classifier(df, output_model_path, pipelines_factory, ...)`
     - `evaluate_patent_classifier(classifier, df_eval, ...)`
     - `precision_recall_at_k(y_true, y_pred_ranked, k=...)`
     - `train_and_evaluate(...)`: convenience wrapper
 
 - Dagster assets
-  - `src/assets/cet/`
+  - `packages/sbir-analytics/sbir_analytics/assets/cet/`
     - `train_cet_patent_classifier`: trains and persists model artifact
     - `cet_patent_classifications`: batch-infers classifications for patents
 
@@ -121,7 +121,7 @@ The goals for this stack:
 - `keyword_features`: simple counts/presence of configured keyword groups
 - `application_year` (best-effort parse)
 
-Key functions in `src/ml/features/patent_features.py`:
+Key functions in `packages/sbir-ml/sbir_ml/ml/features/patent_features.py`:
 
 - `extract_features(record, keywords_map=None) -> PatentFeatureVector`
 - `bag_of_keywords_features(title, keywords) -> dict`
@@ -133,7 +133,7 @@ This module avoids heavy NLP dependencies and only uses Python and `re`.
 
 ## Vectorizers
 
-When training real sklearn-like pipelines, you will typically need numeric feature matrices. `src/ml/features/vectorizers.py` provides a minimal set:
+When training real sklearn-like pipelines, you will typically need numeric feature matrices. `packages/sbir-ml/sbir_ml/ml/features/vectorizers.py` provides a minimal set:
 
 - `KeywordVectorizer(keywords_map)`:
   - For each group in `keywords_map`, creates `<group>__count` and `<group>__presence`.
@@ -153,7 +153,7 @@ These are designed to be import-safe and deterministic.
 
 ## Classifier
 
-`src/ml/models/patent_classifier.py`
+`packages/sbir-ml/sbir_ml/ml/models/patent_classifier.py`
 
 - `PatentCETClassifier(pipelines: Dict[cet_id, pipeline])`
   - `classify(title, assignee=None, top_k=3) -> List[PatentClassification]`
@@ -185,7 +185,7 @@ Two options:
 - Build a pipeline factory that returns a binary classifier for each CET ID. In tests, we use `DummyPipeline`, but for production you may use sklearn pipelines.
 
 - Train and persist:
-  - Use `src/ml/train/patent_training.py::train_patent_classifier`
+  - Use `packages/sbir-ml/sbir_ml/ml/train/patent_training.py::train_patent_classifier`
   - Optionally evaluate with `evaluate_patent_classifier` (precision/recall@k)
 
 1) Dagster asset
@@ -225,7 +225,7 @@ Fallback behavior:
 
 ## Evaluation
 
-`src/ml/train/patent_training.py` provides:
+`packages/sbir-ml/sbir_ml/ml/train/patent_training.py` provides:
 
 - `precision_recall_at_k(y_true, y_pred_ranked, k)`
   - Simple micro-precision/recall@k for multi-label classification.

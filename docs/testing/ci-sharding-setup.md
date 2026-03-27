@@ -30,7 +30,7 @@ steps:
   - name: Run fast tests (sharded)
     run: |
       uv run pytest -m fast \
-        --cov=src \
+        --cov=sbir_etl \
         --cov-report=xml \
         --shard-id=${{ matrix.shard }} \
         --num-shards=4 \

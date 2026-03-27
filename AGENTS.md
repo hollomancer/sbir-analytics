@@ -14,38 +14,47 @@ Graph-based ETL: SBIR awards → Neo4j. Dagster orchestration, DuckDB processing
 - **Data:** Dagster assets (consolidated), DuckDB, Pandas, Neo4j 5.x
 - **Config:** Hierarchical PipelineConfig + YAML (`config/base.yaml`)
 - **CI:** GitHub Actions (pytest, coverage, regression checks)
-- **Performance:** Consolidated monitoring (`src/utils/monitoring/`)
+- **Performance:** Consolidated monitoring (`sbir_etl/utils/`)
 
 ### Architecture
 
 The codebase uses a consolidated architecture with well-structured modules:
 
-- **231 Python files** in `src/` organized by ETL stage
+- **~317 Python files** across `sbir_etl/` and `packages/` organized by ETL stage
 - **Configuration system:** 33/33 tests passing, 88% coverage
 - **Workflows:** ci, deploy, nightly, weekly, lambda-deploy, data-refresh, build-r-base, run-ml-jobs
 
 ## Key Directories
 
 ```text
-src/
+sbir_etl/                 # Core ETL library
   extractors/           # SBIR.gov CSV, USAspending dump, USPTO patents
   enrichers/            # Fuzzy matching, chunked processing, spill-to-disk (includes fiscal enrichers)
   transformers/         # Business logic, normalization (includes fiscal transformers)
-  loaders/              # Neo4j (idempotent MERGE, relationships)
-  assets/               # Consolidated Dagster asset definitions
-    ├── uspto/          # Unified USPTO assets (transformation, loading, AI)
-    ├── cet/            # Consolidated CET classification
-    ├── transition/     # Unified transition detection
-    ├── fiscal_assets.py # Fiscal returns analysis
-    ├── ma_detection.py # M&A detection assets
-    ├── company_categorization.py # Company categorization assets
-    ├── paecter/        # PaECTER embeddings and similarity
-    ├── jobs/           # Dagster job definitions (cet, fiscal, transition, uspto, paecter, usaspending)
-    └── sensors/        # Dagster sensors (usaspending refresh)
-  cli/                  # Command-line interface (commands, display, integration)
-  config/schemas.py     # Hierarchical PipelineConfig (16+ consolidated schemas)
-  utils/monitoring/      # Consolidated monitoring and alerts
-  utils/quality_*.py     # Baselines, dashboards
+  validators/           # Schema validation and data quality checks
+  models/               # Pydantic data models and type definitions
+  config/               # Configuration management (schemas.py: 16+ consolidated schemas)
+  quality/              # Data quality validation modules
+  utils/                # Shared utilities (logging, metrics, monitoring, alerts)
+
+packages/
+  sbir-analytics/sbir_analytics/
+    assets/             # Consolidated Dagster asset definitions
+      ├── uspto/        # Unified USPTO assets (transformation, loading, AI)
+      ├── cet/          # Consolidated CET classification
+      ├── transition/   # Unified transition detection
+      ├── fiscal_assets.py # Fiscal returns analysis
+      ├── ma_detection.py # M&A detection assets
+      ├── company_categorization.py # Company categorization assets
+      ├── paecter/      # PaECTER embeddings and similarity
+      ├── jobs/         # Dagster job definitions (cet, fiscal, transition, uspto, paecter, usaspending)
+      └── sensors/      # Dagster sensors (usaspending refresh)
+    cli/                # Command-line interface (commands, display, integration)
+    definitions.py      # Dagster repository definitions
+  sbir-graph/sbir_graph/
+    loaders/            # Neo4j (idempotent MERGE, relationships)
+  sbir-ml/sbir_ml/      # ML models (CET classification, transition detection)
+  sbir-models/          # Shared data models
 
 config/base.yaml        # Thresholds, paths, performance settings
 docs/
@@ -75,18 +84,18 @@ archive/openspec/       # Archived OpenSpec content (historical reference)
 
 ## Common Patterns
 
-**Add monitoring:** Use `src.utils.monitoring` decorators and `AlertCollector` for metrics
+**Add monitoring:** Use `sbir_etl.utils` decorators and `AlertCollector` for metrics
 **Modify CI:** Edit `.github/workflows/*.yml`, upload artifacts to `reports/`
-**Add tests:** Place in `tests/unit|integration|e2e/`, run via `pytest -v --cov=src`
-**Update Neo4j:** Modify `src/loaders/`, use MERGE operations, document in `docs/schemas/`
+**Add tests:** Place in `tests/unit|integration|e2e/`, run via `pytest -v --cov=sbir_etl`
+**Update Neo4j:** Modify `packages/sbir-graph/sbir_graph/loaders/`, use MERGE operations, document in `docs/schemas/`
 **Run fiscal analysis:** Use `fiscal_returns_mvp_job` (core) or `fiscal_returns_full_job` (with sensitivity)
 **Run PaECTER analysis:** Use `paecter_job` for embedding generation and award-patent similarity computation
-**Use CLI tools:** Run `uv run python -m sbir_etl.cli.main <command>` for dashboard, metrics, status, and enrichment operations
+**Use CLI tools:** Run `uv run python -m sbir_analytics.cli.main <command>` (or `sbir-cli <command>`) for dashboard, metrics, status, and enrichment operations
 
 ## References
 
 - Kiro specifications: `.kiro/specs/` (see this file for workflow guidance)
-- Agent steering documents: `.kiro/steering/` (architectural patterns and guidance - see `.kiro/steering/README.md`)
+- Agent steering documents: `.kiro/steering/` (architectural patterns and guidance - see `.kiro/steering/quick-reference.md`)
 - Container guide: `docs/deployment/containerization.md`
 - Data sources overview: `docs/data/index.md`
 - Data dictionaries: `docs/data/dictionaries/`

@@ -65,7 +65,7 @@ ruff check . --fix
 
 ## Type checking
 
-mypy src/
+mypy sbir_etl/
 
 ## Security scan
 
@@ -86,7 +86,7 @@ pytest
 
 ## Run with coverage
 
-pytest --cov=src --cov-report=html
+pytest --cov=sbir_etl --cov-report=html
 
 ## Run specific test categories
 

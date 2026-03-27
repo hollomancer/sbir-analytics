@@ -41,9 +41,9 @@ Orchestration lives in `sbir_etl/assets/` (Dagster asset definitions) and
 
 All four preparatory steps from the initial evaluation have been implemented:
 
-### 1. Package Renamed: `src/` → `sbir_etl/`
+### 1. Package Renamed: `src/` → `sbir_etl/` and multi-package layout
 
-The generic `src/` package name has been renamed to `sbir_etl/` to avoid namespace
+The generic `src/` package has been restructured into `sbir_etl/` plus multiple packages under `packages/` to avoid namespace
 conflicts when installed alongside other Python projects. All imports, pyproject.toml
 references, Dockerfiles, CI workflows, and tooling configs updated.
 

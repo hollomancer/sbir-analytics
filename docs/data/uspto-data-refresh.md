@@ -293,17 +293,17 @@ The download script implements exponential backoff retry logic:
 
 After download, the data is processed by:
 
-1. **USPTO Extractors** (`src/extractors/uspto/`)
+1. **USPTO Extractors** (`sbir_etl/extractors/uspto/`)
    - Parse CSV/TSV files
    - Validate schema
    - Extract relevant fields
 
-2. **USPTO Transformers** (`src/transformers/uspto/`)
+2. **USPTO Transformers** (`sbir_etl/transformers/uspto/`)
    - Normalize entity names
    - Detect conveyance types
    - Build assignment chains
 
-3. **USPTO Loaders** (`src/loaders/neo4j/`)
+3. **USPTO Loaders** (`packages/sbir-graph/sbir_graph/loaders/neo4j/`)
    - Load patents to Neo4j
    - Create assignment relationships
    - Link to SBIR awards

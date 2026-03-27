@@ -125,7 +125,7 @@ These libraries need to be added for new features:
 
 ```python
 
-## src/ml/models/cet_classifier.py
+## packages/sbir-ml/sbir_ml/ml/models/cet_classifier.py
 
 try:
     from sklearn.feature_extraction.text import TfidfVectorizer
@@ -179,7 +179,7 @@ config/
 
 ```python
 
-## src/config/loader.py (used by all modules)
+## sbir_etl/config/loader.py (used by all modules)
 
 from functools import lru_cache
 from pathlib import Path
@@ -238,7 +238,7 @@ export SBIR_ETL_CET__CONFIDENCE_HIGH_MIN=75
 
 ```python
 
-## src/models/base.py (used by all modules)
+## sbir_etl/models/base.py (used by all modules)
 
 from pydantic import BaseModel, Field, ConfigDict
 from datetime import datetime
@@ -337,7 +337,7 @@ def my_asset_quality_check(my_asset: pd.DataFrame) -> AssetCheckResult:
 
 ```python
 
-## src/assets/__init__.py
+## packages/sbir-analytics/sbir_analytics/assets/__init__.py
 
 from dagster import load_assets_from_modules
 from src import assets
@@ -352,7 +352,7 @@ all_assets = load_assets_from_modules(asset_modules)
 
 ```python
 
-## src/loaders/base_loader.py (used by all modules)
+## packages/sbir-graph/sbir_graph/loaders/base_loader.py (used by all modules)
 
 from neo4j import GraphDatabase, Session
 from typing import List, Dict, Any
@@ -426,7 +426,7 @@ class CETLoader(BaseNeo4jLoader):
 
 ```python
 
-## src/quality/base_validator.py (used by all modules)
+## sbir_etl/quality/base_validator.py (used by all modules)
 
 from dataclasses import dataclass
 from typing import List, Callable
@@ -518,7 +518,7 @@ class CETClassificationValidator(BaseValidator):
 
 ```python
 
-## src/logging_config.py (used by all modules)
+## sbir_etl/logging_config.py (used by all modules)
 
 from loguru import logger
 import sys
@@ -797,28 +797,34 @@ uv sync --dev
 **Current Structure** (to be refactored):
 
 ```text
-src/
+sbir_etl/
 ├── extractors/              # Stage 1: Data extraction
 ├── validators/              # Stage 2: Schema validation
 ├── enrichers/               # Stage 3: External enrichment
 ├── transformers/            # Stage 4: Business logic
-├── loaders/                 # Stage 5: Neo4j loading
-├── assets/                  # Dagster asset definitions
 ├── config/                  # Configuration management
 ├── models/                  # Pydantic data models
-└── utils/                   # Shared utilities
+├── utils/                   # Shared utilities
+└── quality/                 # Data quality checks
+
+packages/sbir-analytics/sbir_analytics/
+├── assets/                  # Dagster asset definitions
+├── tools/                   # CLI and utility tools
+└── definitions.py           # Dagster repository root
+
+packages/sbir-graph/sbir_graph/
+└── loaders/                 # Stage 5: Neo4j loading
+
+packages/sbir-ml/sbir_ml/
+├── ml/                      # ML models and features
+└── transition/              # Transition detection
 ```
 
 ### Target Consolidated Structure
 
 ```text
-src/
+sbir_etl/
 ├── core/                    # Consolidated core functionality
-│   ├── assets/             # Unified asset definitions
-│   │   ├── base_asset.py   # Base asset class with monitoring
-│   │   ├── ingestion.py    # Consolidated ingestion assets
-│   │   ├── enrichment.py   # Consolidated enrichment assets
-│   │   └── loading.py      # Consolidated loading assets
 │   ├── config/             # Single configuration system
 │   │   ├── loader.py       # Unified configuration loader
 │   │   ├── schemas.py      # Consolidated Pydantic schemas
@@ -926,7 +932,7 @@ Currently each module has custom fuzzy matching logic. Consider:
 
 ```python
 
-## src/common/entity_resolution.py
+## sbir_etl/common/entity_resolution.py
 
 from rapidfuzz import fuzz
 from typing import List, Tuple
@@ -957,7 +963,7 @@ Consider SQLite-based caching for all modules:
 
 ```python
 
-## src/common/cache.py
+## sbir_etl/common/cache.py
 
 import sqlite3
 from functools import wraps
@@ -994,7 +1000,7 @@ Extend CET evaluation framework to all modules:
 
 ```python
 
-## src/common/evaluation.py
+## sbir_etl/common/evaluation.py
 
 class EvaluationFramework:
     """Shared evaluation across all pipelines."""

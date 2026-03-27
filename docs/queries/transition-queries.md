@@ -23,7 +23,7 @@ Company
 
 ## Query Interface
 
-All queries are implemented in `src/transition/queries/pathway_queries.py` through the `TransitionPathwayQueries` class.
+All queries are implemented in `packages/sbir-ml/sbir_ml/transition/queries/pathway_queries.py` through the `TransitionPathwayQueries` class.
 
 ```python
 from neo4j import GraphDatabase
