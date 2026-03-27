@@ -420,7 +420,7 @@ types-requests==2.32.4.20260107
     #   types-tqdm
 types-s3transfer==0.16.0
     # via boto3-stubs
-types-tqdm==4.67.3.20260205
+types-tqdm==4.67.3.20260303
     # via sbir-analytics
 typing-extensions==4.15.0
     # via
