@@ -275,6 +275,7 @@ class BenchmarkEvaluationSummary:
     determination_date: str  # e.g., "2025-06-01"
 
     transition_window: FiscalYearWindow
+    transition_phase2_window: FiscalYearWindow
     commercialization_window: FiscalYearWindow
 
     total_companies_evaluated: int
@@ -294,6 +295,10 @@ class BenchmarkEvaluationSummary:
             "transition_window": {
                 "start_fy": self.transition_window.start_fy,
                 "end_fy": self.transition_window.end_fy,
+            },
+            "transition_phase2_window": {
+                "start_fy": self.transition_phase2_window.start_fy,
+                "end_fy": self.transition_phase2_window.end_fy,
             },
             "commercialization_window": {
                 "start_fy": self.commercialization_window.start_fy,

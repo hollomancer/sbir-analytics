@@ -286,6 +286,7 @@ def run_analysis(
 
     print(f"Determination date: {summary.determination_date}")
     print(f"Transition window (Phase I): FY {summary.transition_window.start_fy}–{summary.transition_window.end_fy}")
+    print(f"Transition window (Phase II): FY {summary.transition_phase2_window.start_fy}–{summary.transition_phase2_window.end_fy}")
     print(f"Commercialization window: FY {summary.commercialization_window.start_fy}–{summary.commercialization_window.end_fy}")
     print("\nBenchmark results (failures listed first):")
     print(f"  Failing transition benchmark:           {summary.companies_failing_transition:,}")

@@ -76,6 +76,10 @@ def evaluate_benchmarks(
         f"–{summary.transition_window.end_fy}"
     )
     typer.echo(
+        f"Transition window (Phase II): FY {summary.transition_phase2_window.start_fy}"
+        f"–{summary.transition_phase2_window.end_fy}"
+    )
+    typer.echo(
         f"Commercialization window: FY {summary.commercialization_window.start_fy}"
         f"–{summary.commercialization_window.end_fy}"
     )

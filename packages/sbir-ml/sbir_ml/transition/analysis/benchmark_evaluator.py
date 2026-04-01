@@ -608,13 +608,14 @@ class BenchmarkEligibilityEvaluator:
             )
         )
 
-        # Use the Phase I window for the summary (the primary transition window)
         p1_window = self.transition_window["phase1"]
+        p2_window = self.transition_window["phase2"]
 
         return BenchmarkEvaluationSummary(
             evaluation_fy=self.evaluation_fy,
             determination_date=f"{self.evaluation_fy}-06-01",
             transition_window=p1_window,
+            transition_phase2_window=p2_window,
             commercialization_window=self.commercialization_window,
             total_companies_evaluated=len(company_counts),
             companies_subject_to_transition=sum(
@@ -708,6 +709,8 @@ class BenchmarkEligibilityEvaluator:
             "",
             f"- **Transition Rate Window (Phase I):** "
             f"FY {summary.transition_window.start_fy}–{summary.transition_window.end_fy}",
+            f"- **Transition Rate Window (Phase II):** "
+            f"FY {summary.transition_phase2_window.start_fy}–{summary.transition_phase2_window.end_fy}",
             f"- **Commercialization Rate Window:** "
             f"FY {summary.commercialization_window.start_fy}–{summary.commercialization_window.end_fy}",
             "",
