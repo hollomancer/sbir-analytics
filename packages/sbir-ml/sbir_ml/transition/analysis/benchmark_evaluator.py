@@ -724,48 +724,86 @@ class BenchmarkEligibilityEvaluator:
             "",
         ]
 
-        # Transition rate details
-        subject_tr = [
+        # Transition rate details — failures first
+        failing_tr = [
             r for r in summary.transition_results
-            if r.tier != BenchmarkTier.NOT_SUBJECT
+            if r.status == BenchmarkStatus.FAIL
         ]
-        if subject_tr:
+        passing_tr = [
+            r for r in summary.transition_results
+            if r.tier != BenchmarkTier.NOT_SUBJECT and r.status == BenchmarkStatus.PASS
+        ]
+
+        def _tr_row(r: TransitionRateResult) -> str:
+            ratio_str = f"{r.transition_ratio:.2%}" if r.transition_ratio is not None else "N/A"
+            req_str = f"{r.required_ratio:.0%}" if r.required_ratio is not None else "N/A"
+            name = r.company_name or r.company_id
+            return (
+                f"| {name} | {r.phase1_count} | {r.phase2_count} | "
+                f"{ratio_str} | {req_str} | {r.tier.value} | {r.consequence.value} |"
+            )
+
+        if failing_tr:
             lines.extend([
-                "## Companies Subject to Transition Rate Benchmark",
+                "## Failing Transition Rate Benchmark",
                 "",
-                "| Company | Phase I | Phase II | Ratio | Required | Tier | Status |",
-                "|---------|---------|----------|-------|----------|------|--------|",
+                "| Company | Phase I | Phase II | Ratio | Required | Tier | Consequence |",
+                "|---------|---------|----------|-------|----------|------|-------------|",
             ])
-            for r in subject_tr:
-                ratio_str = f"{r.transition_ratio:.2%}" if r.transition_ratio is not None else "N/A"
-                req_str = f"{r.required_ratio:.0%}" if r.required_ratio is not None else "N/A"
-                name = r.company_name or r.company_id
-                lines.append(
-                    f"| {name} | {r.phase1_count} | {r.phase2_count} | "
-                    f"{ratio_str} | {req_str} | {r.tier.value} | {r.status.value} |"
-                )
+            for r in failing_tr:
+                lines.append(_tr_row(r))
             lines.append("")
 
-        # Commercialization rate details
-        subject_cr = [
-            r for r in summary.commercialization_results
-            if r.tier != BenchmarkTier.NOT_SUBJECT
-        ]
-        if subject_cr:
+        if passing_tr:
             lines.extend([
-                "## Companies Subject to Commercialization Rate Benchmark",
+                "## Passing Transition Rate Benchmark",
                 "",
-                "| Company | Phase II | Avg Sales | Patent Rate | Tier | Status |",
-                "|---------|----------|-----------|-------------|------|--------|",
+                "| Company | Phase I | Phase II | Ratio | Required | Tier | Consequence |",
+                "|---------|---------|----------|-------|----------|------|-------------|",
             ])
-            for r in subject_cr:
-                sales_str = f"${r.avg_sales_per_phase2:,.0f}" if r.avg_sales_per_phase2 is not None else "N/A"
-                pat_str = f"{r.patent_rate:.1%}" if r.patent_rate is not None else "N/A"
-                name = r.company_name or r.company_id
-                lines.append(
-                    f"| {name} | {r.phase2_count} | "
-                    f"{sales_str} | {pat_str} | {r.tier.value} | {r.status.value} |"
-                )
+            for r in passing_tr:
+                lines.append(_tr_row(r))
+            lines.append("")
+
+        # Commercialization rate details — failures first
+        failing_cr = [
+            r for r in summary.commercialization_results
+            if r.status == BenchmarkStatus.FAIL
+        ]
+        passing_cr = [
+            r for r in summary.commercialization_results
+            if r.tier != BenchmarkTier.NOT_SUBJECT and r.status == BenchmarkStatus.PASS
+        ]
+
+        def _cr_row(r: CommercializationRateResult) -> str:
+            sales_str = f"${r.avg_sales_per_phase2:,.0f}" if r.avg_sales_per_phase2 is not None else "N/A"
+            pat_str = f"{r.patent_rate:.1%}" if r.patent_rate is not None else "N/A"
+            name = r.company_name or r.company_id
+            return (
+                f"| {name} | {r.phase2_count} | "
+                f"{sales_str} | {pat_str} | {r.tier.value} | {r.consequence.value} |"
+            )
+
+        if failing_cr:
+            lines.extend([
+                "## Failing Commercialization Rate Benchmark",
+                "",
+                "| Company | Phase II | Avg Sales | Patent Rate | Tier | Consequence |",
+                "|---------|----------|-----------|-------------|------|-------------|",
+            ])
+            for r in failing_cr:
+                lines.append(_cr_row(r))
+            lines.append("")
+
+        if passing_cr:
+            lines.extend([
+                "## Passing Commercialization Rate Benchmark",
+                "",
+                "| Company | Phase II | Avg Sales | Patent Rate | Tier | Consequence |",
+                "|---------|----------|-----------|-------------|------|-------------|",
+            ])
+            for r in passing_cr:
+                lines.append(_cr_row(r))
             lines.append("")
 
         # Sensitivity analysis
