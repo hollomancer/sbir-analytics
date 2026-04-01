@@ -725,15 +725,6 @@ class BenchmarkEligibilityEvaluator:
         ]
 
         # Transition rate details — failures first
-        failing_tr = [
-            r for r in summary.transition_results
-            if r.status == BenchmarkStatus.FAIL
-        ]
-        passing_tr = [
-            r for r in summary.transition_results
-            if r.tier != BenchmarkTier.NOT_SUBJECT and r.status == BenchmarkStatus.PASS
-        ]
-
         def _tr_row(r: TransitionRateResult) -> str:
             ratio_str = f"{r.transition_ratio:.2%}" if r.transition_ratio is not None else "N/A"
             req_str = f"{r.required_ratio:.0%}" if r.required_ratio is not None else "N/A"
@@ -743,38 +734,21 @@ class BenchmarkEligibilityEvaluator:
                 f"{ratio_str} | {req_str} | {r.tier.value} | {r.consequence.value} |"
             )
 
-        if failing_tr:
-            lines.extend([
-                "## Failing Transition Rate Benchmark",
-                "",
-                "| Company | Phase I | Phase II | Ratio | Required | Tier | Consequence |",
-                "|---------|---------|----------|-------|----------|------|-------------|",
-            ])
-            for r in failing_tr:
-                lines.append(_tr_row(r))
-            lines.append("")
-
-        if passing_tr:
-            lines.extend([
-                "## Passing Transition Rate Benchmark",
-                "",
-                "| Company | Phase I | Phase II | Ratio | Required | Tier | Consequence |",
-                "|---------|---------|----------|-------|----------|------|-------------|",
-            ])
-            for r in passing_tr:
-                lines.append(_tr_row(r))
-            lines.append("")
+        tr_header = [
+            "| Company | Phase I | Phase II | Ratio | Required | Tier | Consequence |",
+            "|---------|---------|----------|-------|----------|------|-------------|",
+        ]
+        for label, status in [("Failing", BenchmarkStatus.FAIL), ("Passing", BenchmarkStatus.PASS)]:
+            rows = [
+                r for r in summary.transition_results
+                if r.status == status and r.tier != BenchmarkTier.NOT_SUBJECT
+            ]
+            if rows:
+                lines.extend([f"## {label} Transition Rate Benchmark", ""] + tr_header)
+                lines.extend(_tr_row(r) for r in rows)
+                lines.append("")
 
         # Commercialization rate details — failures first
-        failing_cr = [
-            r for r in summary.commercialization_results
-            if r.status == BenchmarkStatus.FAIL
-        ]
-        passing_cr = [
-            r for r in summary.commercialization_results
-            if r.tier != BenchmarkTier.NOT_SUBJECT and r.status == BenchmarkStatus.PASS
-        ]
-
         def _cr_row(r: CommercializationRateResult) -> str:
             sales_str = f"${r.avg_sales_per_phase2:,.0f}" if r.avg_sales_per_phase2 is not None else "N/A"
             pat_str = f"{r.patent_rate:.1%}" if r.patent_rate is not None else "N/A"
@@ -784,27 +758,19 @@ class BenchmarkEligibilityEvaluator:
                 f"{sales_str} | {pat_str} | {r.tier.value} | {r.consequence.value} |"
             )
 
-        if failing_cr:
-            lines.extend([
-                "## Failing Commercialization Rate Benchmark",
-                "",
-                "| Company | Phase II | Avg Sales | Patent Rate | Tier | Consequence |",
-                "|---------|----------|-----------|-------------|------|-------------|",
-            ])
-            for r in failing_cr:
-                lines.append(_cr_row(r))
-            lines.append("")
-
-        if passing_cr:
-            lines.extend([
-                "## Passing Commercialization Rate Benchmark",
-                "",
-                "| Company | Phase II | Avg Sales | Patent Rate | Tier | Consequence |",
-                "|---------|----------|-----------|-------------|------|-------------|",
-            ])
-            for r in passing_cr:
-                lines.append(_cr_row(r))
-            lines.append("")
+        cr_header = [
+            "| Company | Phase II | Avg Sales | Patent Rate | Tier | Consequence |",
+            "|---------|----------|-----------|-------------|------|-------------|",
+        ]
+        for label, status in [("Failing", BenchmarkStatus.FAIL), ("Passing", BenchmarkStatus.PASS)]:
+            rows = [
+                r for r in summary.commercialization_results
+                if r.status == status and r.tier != BenchmarkTier.NOT_SUBJECT
+            ]
+            if rows:
+                lines.extend([f"## {label} Commercialization Rate Benchmark", ""] + cr_header)
+                lines.extend(_cr_row(r) for r in rows)
+                lines.append("")
 
         # Sensitivity analysis
         at_risk = [
