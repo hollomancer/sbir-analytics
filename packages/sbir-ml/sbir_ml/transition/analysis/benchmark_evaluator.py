@@ -45,6 +45,7 @@ from sbir_etl.models.benchmark_models import (
     SensitivityResult,
     TransitionRateResult,
     TransitionRateThresholds,
+    consequence_for_tier,
 )
 
 
@@ -126,51 +127,26 @@ class BenchmarkEligibilityEvaluator:
 
     # ─── Window construction ──────────────────────────────────────────
 
+    def _build_window(self, lookback_years: int, exclude_recent: int) -> FiscalYearWindow:
+        """Build an FY window: `lookback_years` span, excluding `exclude_recent` most recent FYs."""
+        end_fy = (self.evaluation_fy - 1) - exclude_recent
+        return FiscalYearWindow(
+            evaluation_fy=self.evaluation_fy,
+            start_fy=end_fy - lookback_years + 1,
+            end_fy=end_fy,
+            exclude_recent_years=exclude_recent,
+        )
+
     def _build_transition_windows(self) -> dict[str, FiscalYearWindow]:
-        """Build FY windows for Phase I count and Phase II count.
-
-        Phase I window: past 5 FYs excluding the most recently completed FY.
-        Phase II window: past 5 FYs including the most recently completed FY.
-        """
         t = self.transition_thresholds
-        most_recent_completed = self.evaluation_fy - 1
-
-        phase1_end = most_recent_completed - t.phase1_exclude_recent_years
-        phase1_start = phase1_end - t.lookback_years + 1
-
-        phase2_end = most_recent_completed - t.phase2_exclude_recent_years
-        phase2_start = phase2_end - t.lookback_years + 1
-
         return {
-            "phase1": FiscalYearWindow(
-                evaluation_fy=self.evaluation_fy,
-                start_fy=phase1_start,
-                end_fy=phase1_end,
-                exclude_recent_years=t.phase1_exclude_recent_years,
-            ),
-            "phase2": FiscalYearWindow(
-                evaluation_fy=self.evaluation_fy,
-                start_fy=phase2_start,
-                end_fy=phase2_end,
-                exclude_recent_years=t.phase2_exclude_recent_years,
-            ),
+            "phase1": self._build_window(t.lookback_years, t.phase1_exclude_recent_years),
+            "phase2": self._build_window(t.lookback_years, t.phase2_exclude_recent_years),
         }
 
     def _build_commercialization_window(self) -> FiscalYearWindow:
-        """Build FY window for commercialization benchmark.
-
-        Past 10 FYs excluding the 2 most recently completed FYs.
-        """
         c = self.commercialization_thresholds
-        most_recent_completed = self.evaluation_fy - 1
-        end_fy = most_recent_completed - c.exclude_recent_years
-        start_fy = end_fy - c.lookback_years + 1
-        return FiscalYearWindow(
-            evaluation_fy=self.evaluation_fy,
-            start_fy=start_fy,
-            end_fy=end_fy,
-            exclude_recent_years=c.exclude_recent_years,
-        )
+        return self._build_window(c.lookback_years, c.exclude_recent_years)
 
     # ─── Award counting ──────────────────────────────────────────────
 
@@ -323,10 +299,7 @@ class BenchmarkEligibilityEvaluator:
             consequence = ConsequenceType.NONE
         else:
             status = BenchmarkStatus.FAIL
-            if tier == BenchmarkTier.STANDARD:
-                consequence = ConsequenceType.PHASE1_INELIGIBLE_1YR
-            else:
-                consequence = ConsequenceType.CAPPED_20_AWARDS_PER_AGENCY
+            consequence = consequence_for_tier(tier)
 
         # Sensitivity: awards to next tier
         if p1 < t.standard_min_phase1:
@@ -413,10 +386,7 @@ class BenchmarkEligibilityEvaluator:
                 consequence = ConsequenceType.NONE
             else:
                 status = BenchmarkStatus.FAIL
-                if tier == BenchmarkTier.STANDARD:
-                    consequence = ConsequenceType.PHASE1_INELIGIBLE_1YR
-                else:
-                    consequence = ConsequenceType.CAPPED_20_AWARDS_PER_AGENCY
+                consequence = consequence_for_tier(tier)
 
         # Sensitivity: awards to next tier
         if p2 < c.standard_min_phase2:
@@ -608,13 +578,14 @@ class BenchmarkEligibilityEvaluator:
             )
         )
 
-        # Use the Phase I window for the summary (the primary transition window)
         p1_window = self.transition_window["phase1"]
+        p2_window = self.transition_window["phase2"]
 
         return BenchmarkEvaluationSummary(
             evaluation_fy=self.evaluation_fy,
             determination_date=f"{self.evaluation_fy}-06-01",
             transition_window=p1_window,
+            transition_phase2_window=p2_window,
             commercialization_window=self.commercialization_window,
             total_companies_evaluated=len(company_counts),
             companies_subject_to_transition=sum(
@@ -708,6 +679,8 @@ class BenchmarkEligibilityEvaluator:
             "",
             f"- **Transition Rate Window (Phase I):** "
             f"FY {summary.transition_window.start_fy}–{summary.transition_window.end_fy}",
+            f"- **Transition Rate Window (Phase II):** "
+            f"FY {summary.transition_phase2_window.start_fy}–{summary.transition_phase2_window.end_fy}",
             f"- **Commercialization Rate Window:** "
             f"FY {summary.commercialization_window.start_fy}–{summary.commercialization_window.end_fy}",
             "",
@@ -721,49 +694,53 @@ class BenchmarkEligibilityEvaluator:
             "",
         ]
 
-        # Transition rate details
-        subject_tr = [
-            r for r in summary.transition_results
-            if r.tier != BenchmarkTier.NOT_SUBJECT
-        ]
-        if subject_tr:
-            lines.extend([
-                "## Companies Subject to Transition Rate Benchmark",
-                "",
-                "| Company | Phase I | Phase II | Ratio | Required | Tier | Status |",
-                "|---------|---------|----------|-------|----------|------|--------|",
-            ])
-            for r in subject_tr:
-                ratio_str = f"{r.transition_ratio:.2%}" if r.transition_ratio is not None else "N/A"
-                req_str = f"{r.required_ratio:.0%}" if r.required_ratio is not None else "N/A"
-                name = r.company_name or r.company_id
-                lines.append(
-                    f"| {name} | {r.phase1_count} | {r.phase2_count} | "
-                    f"{ratio_str} | {req_str} | {r.tier.value} | {r.status.value} |"
-                )
-            lines.append("")
+        # Transition rate details — failures first
+        def _tr_row(r: TransitionRateResult) -> str:
+            ratio_str = f"{r.transition_ratio:.2%}" if r.transition_ratio is not None else "N/A"
+            req_str = f"{r.required_ratio:.0%}" if r.required_ratio is not None else "N/A"
+            name = r.company_name or r.company_id
+            return (
+                f"| {name} | {r.phase1_count} | {r.phase2_count} | "
+                f"{ratio_str} | {req_str} | {r.tier.value} | {r.consequence.value} |"
+            )
 
-        # Commercialization rate details
-        subject_cr = [
-            r for r in summary.commercialization_results
-            if r.tier != BenchmarkTier.NOT_SUBJECT
+        tr_header = [
+            "| Company | Phase I | Phase II | Ratio | Required | Tier | Consequence |",
+            "|---------|---------|----------|-------|----------|------|-------------|",
         ]
-        if subject_cr:
-            lines.extend([
-                "## Companies Subject to Commercialization Rate Benchmark",
-                "",
-                "| Company | Phase II | Avg Sales | Patent Rate | Tier | Status |",
-                "|---------|----------|-----------|-------------|------|--------|",
-            ])
-            for r in subject_cr:
-                sales_str = f"${r.avg_sales_per_phase2:,.0f}" if r.avg_sales_per_phase2 is not None else "N/A"
-                pat_str = f"{r.patent_rate:.1%}" if r.patent_rate is not None else "N/A"
-                name = r.company_name or r.company_id
-                lines.append(
-                    f"| {name} | {r.phase2_count} | "
-                    f"{sales_str} | {pat_str} | {r.tier.value} | {r.status.value} |"
-                )
-            lines.append("")
+        for label, status in [("Failing", BenchmarkStatus.FAIL), ("Passing", BenchmarkStatus.PASS)]:
+            rows = [
+                r for r in summary.transition_results
+                if r.status == status and r.tier != BenchmarkTier.NOT_SUBJECT
+            ]
+            if rows:
+                lines.extend([f"## {label} Transition Rate Benchmark", ""] + tr_header)
+                lines.extend(_tr_row(r) for r in rows)
+                lines.append("")
+
+        # Commercialization rate details — failures first
+        def _cr_row(r: CommercializationRateResult) -> str:
+            sales_str = f"${r.avg_sales_per_phase2:,.0f}" if r.avg_sales_per_phase2 is not None else "N/A"
+            pat_str = f"{r.patent_rate:.1%}" if r.patent_rate is not None else "N/A"
+            name = r.company_name or r.company_id
+            return (
+                f"| {name} | {r.phase2_count} | "
+                f"{sales_str} | {pat_str} | {r.tier.value} | {r.consequence.value} |"
+            )
+
+        cr_header = [
+            "| Company | Phase II | Avg Sales | Patent Rate | Tier | Consequence |",
+            "|---------|----------|-----------|-------------|------|-------------|",
+        ]
+        for label, status in [("Failing", BenchmarkStatus.FAIL), ("Passing", BenchmarkStatus.PASS)]:
+            rows = [
+                r for r in summary.commercialization_results
+                if r.status == status and r.tier != BenchmarkTier.NOT_SUBJECT
+            ]
+            if rows:
+                lines.extend([f"## {label} Commercialization Rate Benchmark", ""] + cr_header)
+                lines.extend(_cr_row(r) for r in rows)
+                lines.append("")
 
         # Sensitivity analysis
         at_risk = [
