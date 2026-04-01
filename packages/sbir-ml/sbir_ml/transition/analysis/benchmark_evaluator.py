@@ -45,6 +45,7 @@ from sbir_etl.models.benchmark_models import (
     SensitivityResult,
     TransitionRateResult,
     TransitionRateThresholds,
+    consequence_for_tier,
 )
 
 
@@ -126,51 +127,26 @@ class BenchmarkEligibilityEvaluator:
 
     # ─── Window construction ──────────────────────────────────────────
 
+    def _build_window(self, lookback_years: int, exclude_recent: int) -> FiscalYearWindow:
+        """Build an FY window: `lookback_years` span, excluding `exclude_recent` most recent FYs."""
+        end_fy = (self.evaluation_fy - 1) - exclude_recent
+        return FiscalYearWindow(
+            evaluation_fy=self.evaluation_fy,
+            start_fy=end_fy - lookback_years + 1,
+            end_fy=end_fy,
+            exclude_recent_years=exclude_recent,
+        )
+
     def _build_transition_windows(self) -> dict[str, FiscalYearWindow]:
-        """Build FY windows for Phase I count and Phase II count.
-
-        Phase I window: past 5 FYs excluding the most recently completed FY.
-        Phase II window: past 5 FYs including the most recently completed FY.
-        """
         t = self.transition_thresholds
-        most_recent_completed = self.evaluation_fy - 1
-
-        phase1_end = most_recent_completed - t.phase1_exclude_recent_years
-        phase1_start = phase1_end - t.lookback_years + 1
-
-        phase2_end = most_recent_completed - t.phase2_exclude_recent_years
-        phase2_start = phase2_end - t.lookback_years + 1
-
         return {
-            "phase1": FiscalYearWindow(
-                evaluation_fy=self.evaluation_fy,
-                start_fy=phase1_start,
-                end_fy=phase1_end,
-                exclude_recent_years=t.phase1_exclude_recent_years,
-            ),
-            "phase2": FiscalYearWindow(
-                evaluation_fy=self.evaluation_fy,
-                start_fy=phase2_start,
-                end_fy=phase2_end,
-                exclude_recent_years=t.phase2_exclude_recent_years,
-            ),
+            "phase1": self._build_window(t.lookback_years, t.phase1_exclude_recent_years),
+            "phase2": self._build_window(t.lookback_years, t.phase2_exclude_recent_years),
         }
 
     def _build_commercialization_window(self) -> FiscalYearWindow:
-        """Build FY window for commercialization benchmark.
-
-        Past 10 FYs excluding the 2 most recently completed FYs.
-        """
         c = self.commercialization_thresholds
-        most_recent_completed = self.evaluation_fy - 1
-        end_fy = most_recent_completed - c.exclude_recent_years
-        start_fy = end_fy - c.lookback_years + 1
-        return FiscalYearWindow(
-            evaluation_fy=self.evaluation_fy,
-            start_fy=start_fy,
-            end_fy=end_fy,
-            exclude_recent_years=c.exclude_recent_years,
-        )
+        return self._build_window(c.lookback_years, c.exclude_recent_years)
 
     # ─── Award counting ──────────────────────────────────────────────
 
@@ -323,10 +299,7 @@ class BenchmarkEligibilityEvaluator:
             consequence = ConsequenceType.NONE
         else:
             status = BenchmarkStatus.FAIL
-            if tier == BenchmarkTier.STANDARD:
-                consequence = ConsequenceType.PHASE1_INELIGIBLE_1YR
-            else:
-                consequence = ConsequenceType.CAPPED_20_AWARDS_PER_AGENCY
+            consequence = consequence_for_tier(tier)
 
         # Sensitivity: awards to next tier
         if p1 < t.standard_min_phase1:
@@ -413,10 +386,7 @@ class BenchmarkEligibilityEvaluator:
                 consequence = ConsequenceType.NONE
             else:
                 status = BenchmarkStatus.FAIL
-                if tier == BenchmarkTier.STANDARD:
-                    consequence = ConsequenceType.PHASE1_INELIGIBLE_1YR
-                else:
-                    consequence = ConsequenceType.CAPPED_20_AWARDS_PER_AGENCY
+                consequence = consequence_for_tier(tier)
 
         # Sensitivity: awards to next tier
         if p2 < c.standard_min_phase2:

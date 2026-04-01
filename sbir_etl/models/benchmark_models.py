@@ -1,4 +1,4 @@
-"""Pydantic models for SBIR/STTR benchmark eligibility evaluation.
+"""Data models for SBIR/STTR benchmark eligibility evaluation.
 
 Implements the statutory performance benchmarks established by the SBIR/STTR
 Reauthorization Act and the SBIR/STTR Extension Act of 2022 (Pub. L. 117-183):
@@ -18,16 +18,10 @@ SBA evaluates benchmarks annually on June 1.
 
 from __future__ import annotations
 
+import dataclasses
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
-
-
-class BenchmarkType(str, Enum):
-    """Type of SBIR/STTR performance benchmark."""
-
-    TRANSITION_RATE = "transition_rate"
-    COMMERCIALIZATION_RATE = "commercialization_rate"
 
 
 class BenchmarkTier(str, Enum):
@@ -55,58 +49,50 @@ class ConsequenceType(str, Enum):
     CAPPED_20_AWARDS_PER_AGENCY = "capped_20_awards_per_agency"
 
 
-# ─── Transition Rate Benchmark Constants ──────────────────────────────
-TRANSITION_LOOKBACK_YEARS = 5
-TRANSITION_PHASE1_EXCLUDE_RECENT_YEARS = 1  # Exclude most recently completed FY for Phase I count
-TRANSITION_PHASE2_EXCLUDE_RECENT_YEARS = 0  # Phase II count includes most recent FY
+def consequence_for_tier(tier: BenchmarkTier) -> ConsequenceType:
+    """Return the statutory consequence for failing a benchmark at the given tier."""
+    if tier == BenchmarkTier.STANDARD:
+        return ConsequenceType.PHASE1_INELIGIBLE_1YR
+    return ConsequenceType.CAPPED_20_AWARDS_PER_AGENCY
 
-TRANSITION_STANDARD_MIN_PHASE1 = 21
-TRANSITION_STANDARD_MIN_RATIO = 0.25
 
-TRANSITION_INCREASED_MIN_PHASE1 = 51
-TRANSITION_INCREASED_MIN_RATIO = 0.50
-
-# ─── Commercialization Rate Benchmark Constants ───────────────────────
-COMMERCIALIZATION_LOOKBACK_YEARS = 10
-COMMERCIALIZATION_EXCLUDE_RECENT_YEARS = 2  # Exclude 2 most recently completed FYs
-
-COMMERCIALIZATION_STANDARD_MIN_PHASE2 = 16
-COMMERCIALIZATION_STANDARD_MIN_AVG_SALES = 100_000.0  # $100K avg per Phase II
-COMMERCIALIZATION_STANDARD_MIN_PATENT_RATE = 0.15  # 15% patents per Phase II
-
-COMMERCIALIZATION_INCREASED_TIER1_MIN_PHASE2 = 51
-COMMERCIALIZATION_INCREASED_TIER1_MIN_AVG_SALES = 250_000.0  # $250K avg per Phase II
-COMMERCIALIZATION_INCREASED_TIER2_MIN_PHASE2 = 101
-COMMERCIALIZATION_INCREASED_TIER2_MIN_AVG_SALES = 450_000.0  # $450K avg per Phase II
-# Patents path is NOT available for increased tiers
+def _dataclass_to_dict(obj: Any) -> dict[str, Any]:
+    """Convert a dataclass to dict, serializing enums to their .value."""
+    result = {}
+    for f in dataclasses.fields(obj):
+        val = getattr(obj, f.name)
+        if isinstance(val, Enum):
+            val = val.value
+        result[f.name] = val
+    return result
 
 
 @dataclass
 class TransitionRateThresholds:
     """Thresholds for the Phase I→II transition rate benchmark."""
 
-    lookback_years: int = TRANSITION_LOOKBACK_YEARS
-    phase1_exclude_recent_years: int = TRANSITION_PHASE1_EXCLUDE_RECENT_YEARS
-    phase2_exclude_recent_years: int = TRANSITION_PHASE2_EXCLUDE_RECENT_YEARS
-    standard_min_phase1: int = TRANSITION_STANDARD_MIN_PHASE1
-    standard_min_ratio: float = TRANSITION_STANDARD_MIN_RATIO
-    increased_min_phase1: int = TRANSITION_INCREASED_MIN_PHASE1
-    increased_min_ratio: float = TRANSITION_INCREASED_MIN_RATIO
+    lookback_years: int = 5
+    phase1_exclude_recent_years: int = 1   # Exclude most recently completed FY
+    phase2_exclude_recent_years: int = 0   # Phase II count includes most recent FY
+    standard_min_phase1: int = 21
+    standard_min_ratio: float = 0.25
+    increased_min_phase1: int = 51
+    increased_min_ratio: float = 0.50
 
 
 @dataclass
 class CommercializationRateThresholds:
     """Thresholds for the commercialization rate benchmark."""
 
-    lookback_years: int = COMMERCIALIZATION_LOOKBACK_YEARS
-    exclude_recent_years: int = COMMERCIALIZATION_EXCLUDE_RECENT_YEARS
-    standard_min_phase2: int = COMMERCIALIZATION_STANDARD_MIN_PHASE2
-    standard_min_avg_sales: float = COMMERCIALIZATION_STANDARD_MIN_AVG_SALES
-    standard_min_patent_rate: float = COMMERCIALIZATION_STANDARD_MIN_PATENT_RATE
-    increased_tier1_min_phase2: int = COMMERCIALIZATION_INCREASED_TIER1_MIN_PHASE2
-    increased_tier1_min_avg_sales: float = COMMERCIALIZATION_INCREASED_TIER1_MIN_AVG_SALES
-    increased_tier2_min_phase2: int = COMMERCIALIZATION_INCREASED_TIER2_MIN_PHASE2
-    increased_tier2_min_avg_sales: float = COMMERCIALIZATION_INCREASED_TIER2_MIN_AVG_SALES
+    lookback_years: int = 10
+    exclude_recent_years: int = 2          # Exclude 2 most recently completed FYs
+    standard_min_phase2: int = 16
+    standard_min_avg_sales: float = 100_000.0
+    standard_min_patent_rate: float = 0.15  # Patents path only for standard tier
+    increased_tier1_min_phase2: int = 51
+    increased_tier1_min_avg_sales: float = 250_000.0
+    increased_tier2_min_phase2: int = 101
+    increased_tier2_min_avg_sales: float = 450_000.0
 
 
 @dataclass
@@ -167,19 +153,7 @@ class TransitionRateResult:
     margin_from_threshold: float | None = None
 
     def to_dict(self) -> dict[str, Any]:
-        return {
-            "company_id": self.company_id,
-            "company_name": self.company_name,
-            "tier": self.tier.value,
-            "status": self.status.value,
-            "consequence": self.consequence.value,
-            "phase1_count": self.phase1_count,
-            "phase2_count": self.phase2_count,
-            "transition_ratio": self.transition_ratio,
-            "required_ratio": self.required_ratio,
-            "phase1_awards_to_next_tier": self.phase1_awards_to_next_tier,
-            "margin_from_threshold": self.margin_from_threshold,
-        }
+        return _dataclass_to_dict(self)
 
 
 @dataclass
@@ -205,22 +179,7 @@ class CommercializationRateResult:
     margin_from_patent_threshold: float | None = None
 
     def to_dict(self) -> dict[str, Any]:
-        return {
-            "company_id": self.company_id,
-            "company_name": self.company_name,
-            "tier": self.tier.value,
-            "status": self.status.value,
-            "consequence": self.consequence.value,
-            "phase2_count": self.phase2_count,
-            "avg_sales_per_phase2": self.avg_sales_per_phase2,
-            "patent_rate": self.patent_rate,
-            "required_avg_sales": self.required_avg_sales,
-            "required_patent_rate": self.required_patent_rate,
-            "patents_path_available": self.patents_path_available,
-            "phase2_awards_to_next_tier": self.phase2_awards_to_next_tier,
-            "margin_from_sales_threshold": self.margin_from_sales_threshold,
-            "margin_from_patent_threshold": self.margin_from_patent_threshold,
-        }
+        return _dataclass_to_dict(self)
 
 
 @dataclass
@@ -249,22 +208,7 @@ class SensitivityResult:
     at_risk_commercialization: bool = False
 
     def to_dict(self) -> dict[str, Any]:
-        return {
-            "company_id": self.company_id,
-            "company_name": self.company_name,
-            "phase1_count": self.phase1_count,
-            "phase1_to_standard_transition": self.phase1_to_standard_transition,
-            "phase1_to_increased_transition": self.phase1_to_increased_transition,
-            "phase2_count_for_commercialization": self.phase2_count_for_commercialization,
-            "phase2_to_standard_commercialization": self.phase2_to_standard_commercialization,
-            "phase2_to_increased_tier1": self.phase2_to_increased_tier1,
-            "phase2_to_increased_tier2": self.phase2_to_increased_tier2,
-            "transition_rate_margin": self.transition_rate_margin,
-            "commercialization_sales_margin": self.commercialization_sales_margin,
-            "commercialization_patent_margin": self.commercialization_patent_margin,
-            "at_risk_transition": self.at_risk_transition,
-            "at_risk_commercialization": self.at_risk_commercialization,
-        }
+        return _dataclass_to_dict(self)
 
 
 @dataclass
@@ -289,21 +233,15 @@ class BenchmarkEvaluationSummary:
     sensitivity_results: list[SensitivityResult] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
+        def _window(w: FiscalYearWindow) -> dict[str, int]:
+            return {"start_fy": w.start_fy, "end_fy": w.end_fy}
+
         return {
             "evaluation_fy": self.evaluation_fy,
             "determination_date": self.determination_date,
-            "transition_window": {
-                "start_fy": self.transition_window.start_fy,
-                "end_fy": self.transition_window.end_fy,
-            },
-            "transition_phase2_window": {
-                "start_fy": self.transition_phase2_window.start_fy,
-                "end_fy": self.transition_phase2_window.end_fy,
-            },
-            "commercialization_window": {
-                "start_fy": self.commercialization_window.start_fy,
-                "end_fy": self.commercialization_window.end_fy,
-            },
+            "transition_window": _window(self.transition_window),
+            "transition_phase2_window": _window(self.transition_phase2_window),
+            "commercialization_window": _window(self.commercialization_window),
             "total_companies_evaluated": self.total_companies_evaluated,
             "companies_subject_to_transition": self.companies_subject_to_transition,
             "companies_subject_to_commercialization": self.companies_subject_to_commercialization,
@@ -316,10 +254,10 @@ class BenchmarkEvaluationSummary:
 
 
 __all__ = [
-    "BenchmarkType",
     "BenchmarkTier",
     "BenchmarkStatus",
     "ConsequenceType",
+    "consequence_for_tier",
     "TransitionRateThresholds",
     "CommercializationRateThresholds",
     "FiscalYearWindow",
