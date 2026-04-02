@@ -8,7 +8,7 @@ multiple identifier spaces (UEI, CAGE, DUNS) with fuzzy name matching.
 import pytest
 
 from sbir_ml.transition.features.vendor_resolver import (
-    VendorMatch,
+    ResolverMatch,
     VendorRecord,
     VendorResolver,
     build_resolver_from_iterable,
@@ -82,22 +82,22 @@ class TestVendorRecord:
         assert record.metadata == {}
 
 
-class TestVendorMatch:
-    """Tests for VendorMatch dataclass."""
+class TestResolverMatch:
+    """Tests for ResolverMatch dataclass."""
 
-    def test_vendor_match_creation(self):
-        """Test creating a VendorMatch result."""
+    def test_resolver_match_creation(self):
+        """Test creating a ResolverMatch result."""
         record = VendorRecord(uei="ABC123", cage=None, duns=None, name="Acme")
-        match = VendorMatch(record=record, method="uei", score=1.0, note="exact match")
+        match = ResolverMatch(record=record, method="uei", score=1.0, note="exact match")
 
         assert match.record == record
         assert match.method == "uei"
         assert match.score == 1.0
         assert match.note == "exact match"
 
-    def test_vendor_match_no_match(self):
-        """Test VendorMatch with no match found."""
-        match = VendorMatch(record=None, method="uei", score=0.0, note="no match")
+    def test_resolver_match_no_match(self):
+        """Test ResolverMatch with no match found."""
+        match = ResolverMatch(record=None, method="uei", score=0.0, note="no match")
 
         assert match.record is None
         assert match.score == 0.0

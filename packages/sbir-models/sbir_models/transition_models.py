@@ -177,7 +177,12 @@ class EvidenceBundle(BaseModel):
 
 
 class VendorMatch(BaseModel):
-    """Result of vendor/company resolution for a contract."""
+    """Result of vendor/company resolution for a contract.
+
+    This is the single canonical model for vendor match results, used by both
+    transition detection (``transition_models``) and contract analysis
+    (``contract_models``).
+    """
 
     vendor_id: str | None = Field(
         None, description="Canonical vendor ID (e.g., company node id or UEI)."
@@ -187,6 +192,9 @@ class VendorMatch(BaseModel):
     )
     score: float = Field(0.0, ge=0.0, le=1.0, description="Confidence score for the vendor match.")
     matched_name: str | None = Field(None, description="Matched vendor canonical name.")
+    matched_uei: str | None = Field(None, description="Matched vendor UEI.")
+    matched_cage: str | None = Field(None, description="Matched vendor CAGE code.")
+    matched_duns: str | None = Field(None, description="Matched vendor DUNS number.")
     metadata: dict[str, object] = Field(default_factory=dict)
 
 

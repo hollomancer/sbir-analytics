@@ -74,16 +74,10 @@ class TestVendorMatchModel:
         ["uei", "cage", "duns", "name_fuzzy", "address_match", "manual"],
         ids=["uei", "cage", "duns", "name_fuzzy", "address_match", "manual"],
     )
-    def test_method_validator_accepts_valid(self, method):
-        """Test method validator accepts valid methods."""
+    def test_method_accepts_common_values(self, method):
+        """Test method field accepts common match method strings."""
         match = VendorMatch(method=method)
         assert match.method == method
-
-    def test_method_validator_rejects_invalid(self):
-        """Test method validator rejects invalid methods."""
-        with pytest.raises(ValidationError) as exc_info:
-            VendorMatch(method="invalid_method")
-        assert "method must be one of" in str(exc_info.value)
 
     @pytest.mark.parametrize(
         "score,should_pass",
