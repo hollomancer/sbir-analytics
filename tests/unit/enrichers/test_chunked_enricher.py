@@ -6,7 +6,7 @@ import pandas as pd
 import pytest
 
 from sbir_etl.enrichers.chunked_enrichment import ChunkedEnricher
-from tests.utils.config_mocks import create_mock_pipeline_config
+from tests.utils.config_mocks import create_mock_enrichment_performance_config
 
 
 pytestmark = pytest.mark.fast
@@ -15,19 +15,7 @@ pytestmark = pytest.mark.fast
 @pytest.fixture
 def mock_config():
     """Mock configuration for testing."""
-    config = create_mock_pipeline_config()
-    if not hasattr(config, "enrichment"):
-        config.enrichment = Mock()
-    if not hasattr(config.enrichment, "performance"):
-        config.enrichment.performance = Mock()
-    config.enrichment.performance.chunk_size = 100
-    config.enrichment.performance.memory_threshold_mb = 512
-    config.enrichment.performance.timeout_seconds = 300
-    config.enrichment.performance.high_confidence_threshold = 0.95
-    config.enrichment.performance.low_confidence_threshold = 0.85
-    config.enrichment.performance.enable_memory_monitoring = True
-    config.enrichment.performance.enable_fuzzy_matching = True
-    return config
+    return create_mock_enrichment_performance_config()
 
 
 @pytest.fixture
