@@ -15,7 +15,6 @@ from sbir_etl.exceptions import (
     ConfigurationError,
     DependencyError,
     ValidationError,
-    is_retryable,
 )
 from tests.utils.exception_helpers import (
     assert_exception_structure,
@@ -83,7 +82,6 @@ class TestExceptionRetryability:
         )
 
         assert_retryable_exception(exc)
-        assert is_retryable(exc)
 
     def test_api_4xx_errors_not_retryable(self):
         """Test that 4xx API errors are not retryable."""
@@ -94,57 +92,21 @@ class TestExceptionRetryability:
         )
 
         assert_non_retryable_exception(exc)
-        assert not is_retryable(exc)
+        assert not exc.retryable
 
     def test_configuration_errors_not_retryable(self):
         """Test that configuration errors are not retryable."""
         exc = ConfigurationError("Missing config")
 
         assert_non_retryable_exception(exc)
-        assert not is_retryable(exc)
+        assert not exc.retryable
 
     def test_dependency_errors_not_retryable(self):
         """Test that dependency errors are not retryable."""
         exc = DependencyError("Package not installed", dependency_name="neo4j")
 
         assert_non_retryable_exception(exc)
-        assert not is_retryable(exc)
-
-
-class TestExceptionContextPreservation:
-    """Tests that exception context is preserved through the stack."""
-
-    def test_wrapped_exception_preserves_cause(self):
-        """Test that wrap_exception preserves the original exception."""
-        from sbir_etl.exceptions import wrap_exception
-
-        original = ValueError("Original error message")
-
-        wrapped = wrap_exception(
-            original,
-            ValidationError,
-            message="Wrapped message",
-            component="test",
-        )
-
-        assert wrapped.cause is original
-        assert "Original error message" in str(wrapped.cause)
-        assert wrapped.message == "Wrapped message"
-
-    def test_exception_serialization_includes_cause(self):
-        """Test that serialized exceptions include cause information."""
-        from sbir_etl.exceptions import wrap_exception
-
-        original = KeyError("missing_key")
-        wrapped = wrap_exception(
-            original,
-            ValidationError,
-            component="test",
-        )
-
-        data = wrapped.to_dict()
-        assert data["cause"] is not None
-        assert "missing_key" in data["cause"]
+        assert not exc.retryable
 
 
 class TestExceptionDetailsUsability:

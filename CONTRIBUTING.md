@@ -184,7 +184,7 @@ All custom exceptions must use the centralized exception hierarchy in `sbir_etl/
 
 ```python
 # ✅ Use specific SBIR ETL exceptions
-from sbir_etl.exceptions import ConfigurationError, APIError, DataQualityError
+from sbir_etl.exceptions import ConfigurationError, APIError
 
 # Provide rich context
 raise ConfigurationError(
@@ -194,21 +194,19 @@ raise ConfigurationError(
     details={"provided_value": "invalid"}
 )
 
-# Wrap external exceptions
-from sbir_etl.exceptions import wrap_exception
+# Wrap external exceptions with cause
 try:
     response = httpx.get(url)
 except httpx.HTTPError as e:
-    raise wrap_exception(e, APIError, api_name="usaspending")
+    raise APIError("Request failed", api_name="usaspending", cause=e)
 ```
 
 **Exception Hierarchy:**
 
 - `ExtractionError` - Data extraction failures
-- `ValidationError` / `DataQualityError` - Schema/quality validation
+- `ValidationError` - Schema/quality validation
 - `EnrichmentError` / `APIError` / `RateLimitError` - Enrichment and API failures
-- `TransformationError` - Transformation stage failures (includes domain-specific: Transition, Fiscal, CET, Patent)
-- `LoadError` / `Neo4jError` - Loading and database operations
+- `TransformationError` / `CETClassificationError` - Transformation stage failures
 - `ConfigurationError` - Configuration issues
 - `FileSystemError` - File I/O operations
 - `DependencyError` / `RFunctionError` - Missing dependencies
