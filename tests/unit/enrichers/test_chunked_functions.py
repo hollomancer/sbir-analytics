@@ -2,7 +2,6 @@
 
 from unittest.mock import patch
 
-import pandas as pd
 import pytest
 
 from sbir_etl.enrichers.chunked_enrichment import (
@@ -19,29 +18,6 @@ pytestmark = pytest.mark.fast
 def mock_config():
     """Mock configuration for testing."""
     return create_mock_enrichment_performance_config(chunk_size=2)
-
-
-@pytest.fixture
-def sample_sbir_df():
-    """Sample SBIR DataFrame."""
-    return pd.DataFrame(
-        {
-            "award_id": [f"AWD-{i}" for i in range(5)],
-            "company_name": [f"Company {i}" for i in range(5)],
-            "company_uei": [f"UEI{i:09d}" for i in range(5)],
-        }
-    )
-
-
-@pytest.fixture
-def sample_recipient_df():
-    """Sample recipient DataFrame."""
-    return pd.DataFrame(
-        {
-            "recipient_name": ["Acme Corp", "TechStart Inc"],
-            "recipient_uei": ["UEI000000001", "UEI000000002"],
-        }
-    )
 
 
 class TestCombineEnrichedChunks:

@@ -92,44 +92,6 @@ def cached_sbir_sample_df(sbir_sample_csv_path: Path):
     return pd.read_csv(sbir_sample_csv_path)
 
 
-@pytest.fixture(scope="session")
-def cached_test_companies():
-    """
-    Generate test company data once per session.
-    Reused across multiple tests to avoid regeneration overhead.
-    """
-    return [
-        {"name": "Acme Corp", "uei": "TEST001", "duns": "123456789"},
-        {"name": "TechStart Inc", "uei": "TEST002", "duns": "987654321"},
-        {"name": "Innovation Labs", "uei": "TEST003", "duns": "456789123"},
-    ]
-
-
-@pytest.fixture(scope="session")
-def cached_test_awards():
-    """
-    Generate test award data once per session.
-    Reused across multiple tests to avoid regeneration overhead.
-    """
-    from datetime import date
-
-    return [
-        {
-            "award_id": "AWARD001",
-            "company_name": "Acme Corp",
-            "award_amount": 100000,
-            "award_date": date(2023, 1, 15),
-            "phase": "Phase I",
-        },
-        {
-            "award_id": "AWARD002",
-            "company_name": "TechStart Inc",
-            "award_amount": 750000,
-            "award_date": date(2023, 6, 20),
-            "phase": "Phase II",
-        },
-    ]
-
 
 # SBIR Data Fixtures
 # ===================
