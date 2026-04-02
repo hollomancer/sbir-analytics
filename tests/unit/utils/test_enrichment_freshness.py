@@ -15,7 +15,7 @@ from sbir_etl.models.enrichment import (
     EnrichmentFreshnessRecordModel,
     EnrichmentStatus,
 )
-from sbir_etl.utils.enrichment_freshness import FreshnessStore, update_freshness_ledger
+from sbir_etl.utils.enrichment.freshness import FreshnessStore, update_freshness_ledger
 
 
 @pytest.fixture

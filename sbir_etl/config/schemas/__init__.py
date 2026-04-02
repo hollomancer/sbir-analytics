@@ -1,27 +1,32 @@
 """Modular configuration schemas for SBIR ETL."""
 
-from .data_pipeline import (
+from .data import (
+    CLIConfig,
+    CompanyCategorizationConfig,
     DataQualityConfig,
     DuckDBConfig,
     ExtractionConfig,
+    LoggingConfig,
+    MetricsConfig,
     Neo4jConfig,
+    PathsConfig,
     SbirDuckDBConfig,
     SbirValidationConfig,
     TransformationConfig,
     ValidationConfig,
 )
-from .enrichment import EnrichmentConfig, EnrichmentRefreshConfig, EnrichmentSourceConfig
-from .fiscal import FiscalAnalysisConfig, SensitivityConfig, TaxParameterConfig
-from .ml import MLConfig, PaECTERConfig
-from .pipeline import PipelineConfig, PipelineMetadata
-from .reporting import StatisticalReportingConfig
-from .runtime import (
-    CLIConfig,
-    CompanyCategorizationConfig,
-    LoggingConfig,
-    MetricsConfig,
-    PathsConfig,
+from .domain import (
+    EnrichmentConfig,
+    EnrichmentRefreshConfig,
+    EnrichmentSourceConfig,
+    FiscalAnalysisConfig,
+    MLConfig,
+    PaECTERConfig,
+    SensitivityConfig,
+    StatisticalReportingConfig,
+    TaxParameterConfig,
 )
+from .pipeline import PipelineConfig, PipelineMetadata
 
 
 __all__ = [

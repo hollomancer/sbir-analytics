@@ -1,12 +1,11 @@
 """Tests for ChunkedEnricher initialization and core functionality."""
 
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
-import pandas as pd
 import pytest
 
 from sbir_etl.enrichers.chunked_enrichment import ChunkedEnricher
-from tests.utils.config_mocks import create_mock_pipeline_config
+from tests.utils.config_mocks import create_mock_enrichment_performance_config
 
 
 pytestmark = pytest.mark.fast
@@ -15,42 +14,7 @@ pytestmark = pytest.mark.fast
 @pytest.fixture
 def mock_config():
     """Mock configuration for testing."""
-    config = create_mock_pipeline_config()
-    if not hasattr(config, "enrichment"):
-        config.enrichment = Mock()
-    if not hasattr(config.enrichment, "performance"):
-        config.enrichment.performance = Mock()
-    config.enrichment.performance.chunk_size = 100
-    config.enrichment.performance.memory_threshold_mb = 512
-    config.enrichment.performance.timeout_seconds = 300
-    config.enrichment.performance.high_confidence_threshold = 0.95
-    config.enrichment.performance.low_confidence_threshold = 0.85
-    config.enrichment.performance.enable_memory_monitoring = True
-    config.enrichment.performance.enable_fuzzy_matching = True
-    return config
-
-
-@pytest.fixture
-def sample_sbir_df():
-    """Sample SBIR DataFrame."""
-    return pd.DataFrame(
-        {
-            "award_id": [f"AWD-{i}" for i in range(5)],
-            "company_name": [f"Company {i}" for i in range(5)],
-            "company_uei": [f"UEI{i:09d}" for i in range(5)],
-        }
-    )
-
-
-@pytest.fixture
-def sample_recipient_df():
-    """Sample recipient DataFrame."""
-    return pd.DataFrame(
-        {
-            "recipient_name": ["Acme Corp", "TechStart Inc"],
-            "recipient_uei": ["UEI000000001", "UEI000000002"],
-        }
-    )
+    return create_mock_enrichment_performance_config()
 
 
 @pytest.fixture

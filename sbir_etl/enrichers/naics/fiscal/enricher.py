@@ -48,7 +48,7 @@ class FiscalNAICSEnricher:
             usaspending_df: Optional USAspending DataFrame for lookups
             api_client: Optional API client (for future API-based strategies)
         """
-        from sbir_etl.config.schemas.fiscal import FiscalAnalysisConfig
+        from sbir_etl.config.schemas.domain import FiscalAnalysisConfig
 
         config_obj = config or get_config().fiscal_analysis
         # Handle both dict and FiscalAnalysisConfig objects

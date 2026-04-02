@@ -38,7 +38,7 @@ def setup_logging(verbose: bool = False, debug: bool = False) -> None:
         verbose: Enable debug-level logging to console.
         debug: Alias for verbose (for ``--debug`` flag).
     """
-    from sbir_etl.utils.common.logging_config import setup_logging as pipeline_setup_logging
+    from sbir_etl.utils.logging_config import setup_logging as pipeline_setup_logging
 
     log_level = "DEBUG" if (verbose or debug) else "INFO"
 

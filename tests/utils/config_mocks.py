@@ -233,6 +233,46 @@ def create_mock_enrichment_refresh_config(
     return {source: config}
 
 
+def create_mock_enrichment_performance_config(
+    chunk_size: int = 100,
+    memory_threshold_mb: int = 512,
+    timeout_seconds: int = 300,
+    high_confidence_threshold: float = 0.95,
+    low_confidence_threshold: float = 0.85,
+    enable_memory_monitoring: bool = True,
+    enable_fuzzy_matching: bool = True,
+) -> "PipelineConfig":
+    """Create a mock PipelineConfig with enrichment.performance attributes set.
+
+    This consolidates the repeated pattern across chunked enrichment test files.
+
+    Args:
+        chunk_size: Number of records per chunk.
+        memory_threshold_mb: Memory threshold for monitoring.
+        timeout_seconds: Timeout for enrichment operations.
+        high_confidence_threshold: High confidence match threshold.
+        low_confidence_threshold: Low confidence match threshold.
+        enable_memory_monitoring: Whether to monitor memory usage.
+        enable_fuzzy_matching: Whether to enable fuzzy matching.
+
+    Returns:
+        PipelineConfig with enrichment.performance configured.
+    """
+    config = create_mock_pipeline_config()
+    if not hasattr(config, "enrichment"):
+        config.enrichment = MagicMock()
+    if not hasattr(config.enrichment, "performance"):
+        config.enrichment.performance = MagicMock()
+    config.enrichment.performance.chunk_size = chunk_size
+    config.enrichment.performance.memory_threshold_mb = memory_threshold_mb
+    config.enrichment.performance.timeout_seconds = timeout_seconds
+    config.enrichment.performance.high_confidence_threshold = high_confidence_threshold
+    config.enrichment.performance.low_confidence_threshold = low_confidence_threshold
+    config.enrichment.performance.enable_memory_monitoring = enable_memory_monitoring
+    config.enrichment.performance.enable_fuzzy_matching = enable_fuzzy_matching
+    return config
+
+
 if pytest is not None:
 
     @pytest.fixture

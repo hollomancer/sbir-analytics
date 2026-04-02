@@ -20,8 +20,8 @@ pytestmark = pytest.mark.integration
 
 from sbir_etl.enrichers.usaspending import USAspendingAPIClient
 from sbir_etl.models.enrichment import EnrichmentFreshnessRecord, EnrichmentStatus
-from sbir_etl.utils.enrichment_checkpoints import CheckpointStore
-from sbir_etl.utils.enrichment_freshness import FreshnessStore
+from sbir_etl.utils.enrichment.checkpoints import CheckpointStore
+from sbir_etl.utils.enrichment.freshness import FreshnessStore
 
 
 @pytest.fixture
@@ -181,7 +181,7 @@ class TestFreshnessTrackingCycle:
         assert result["delta_detected"] is True  # Hash changed
 
         # Update freshness record
-        from sbir_etl.utils.enrichment_freshness import update_freshness_ledger
+        from sbir_etl.utils.enrichment.freshness import update_freshness_ledger
 
         update_freshness_ledger(
             store=tmp_freshness_store,
@@ -240,7 +240,7 @@ class TestDeltaDetection:
         )
 
         # Save the hash
-        from sbir_etl.utils.enrichment_freshness import update_freshness_ledger
+        from sbir_etl.utils.enrichment.freshness import update_freshness_ledger
 
         update_freshness_ledger(
             store=tmp_freshness_store,
@@ -269,7 +269,7 @@ class TestResumeFlow:
 
     def test_checkpoint_save_and_load(self, tmp_checkpoint_store):
         """Test saving and loading checkpoints."""
-        from sbir_etl.utils.enrichment_checkpoints import EnrichmentCheckpoint
+        from sbir_etl.utils.enrichment.checkpoints import EnrichmentCheckpoint
 
         checkpoint = EnrichmentCheckpoint(
             partition_id="partition_001",
@@ -296,7 +296,7 @@ class TestResumeFlow:
         self, tmp_checkpoint_store, tmp_freshness_store, mock_usaspending_api_client
     ):
         """Test resuming refresh after interruption."""
-        from sbir_etl.utils.enrichment_checkpoints import EnrichmentCheckpoint
+        from sbir_etl.utils.enrichment.checkpoints import EnrichmentCheckpoint
 
         # Simulate interrupted run - checkpoint saved at AWARD-050
         checkpoint = EnrichmentCheckpoint(
@@ -351,7 +351,7 @@ class TestFullIterativeCycle:
         assert len(stale) == 2
 
         # Step 3: Refresh stale awards
-        from sbir_etl.utils.enrichment_freshness import update_freshness_ledger
+        from sbir_etl.utils.enrichment.freshness import update_freshness_ledger
 
         for stale_record in stale:
             award_row = sample_awards_df[

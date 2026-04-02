@@ -7,7 +7,7 @@ import pytest
 
 pytestmark = pytest.mark.fast
 
-from sbir_etl.utils.common.logging_config import (
+from sbir_etl.utils.logging_config import (
     LogContext,
     configure_logging_from_config,
     log_with_context,
@@ -82,8 +82,8 @@ class TestSetupLogging:
 class TestConfigureLoggingFromConfig:
     """Tests for configure_logging_from_config function."""
 
-    @patch("sbir_etl.utils.common.logging_config.get_config")
-    @patch("sbir_etl.utils.common.logging_config.setup_logging")
+    @patch("sbir_etl.utils.logging_config.get_config")
+    @patch("sbir_etl.utils.logging_config.setup_logging")
     def test_configure_logging_from_config(self, mock_setup, mock_get_config):
         """Test configure_logging_from_config calls setup_logging with config."""
         mock_config = MagicMock()

@@ -12,7 +12,7 @@ import pandas as pd
 
 from sbir_etl.config.loader import get_config
 from sbir_etl.exceptions import DependencyError, FileSystemError
-from sbir_etl.utils.common.logging_config import log_with_context
+from sbir_etl.utils.logging_config import log_with_context
 
 
 try:

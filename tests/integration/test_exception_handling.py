@@ -70,25 +70,6 @@ class TestConfigurationErrorHandling:
             assert exc.cause is not None  # Should preserve original YAML error
 
 
-class TestAPIErrorHandling:
-    """Integration tests for API error handling."""
-
-
-class TestValidationErrorHandling:
-    """Integration tests for validation error handling."""
-
-    # Tests removed - modules refactored
-    # See INTEGRATION_TEST_ANALYSIS.md for details
-    pass
-
-
-class TestDependencyErrorHandling:
-    """Integration tests for dependency error handling."""
-
-    # Tests removed - modules refactored
-    # See INTEGRATION_TEST_ANALYSIS.md for details
-    pass
-
 
 class TestExceptionRetryability:
     """Integration tests for exception retryability."""

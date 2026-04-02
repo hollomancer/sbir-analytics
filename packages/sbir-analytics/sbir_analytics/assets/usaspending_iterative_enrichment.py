@@ -27,8 +27,8 @@ from sbir_etl.config.loader import get_config
 from sbir_etl.enrichers.usaspending import USAspendingAPIClient
 from sbir_etl.exceptions import ValidationError
 from sbir_etl.utils.async_tools import run_sync
-from sbir_etl.utils.enrichment_freshness import FreshnessStore, update_freshness_ledger
-from sbir_etl.utils.enrichment_metrics import EnrichmentMetricsCollector
+from sbir_etl.utils.enrichment.freshness import FreshnessStore, update_freshness_ledger
+from sbir_etl.utils.enrichment.metrics import EnrichmentMetricsCollector
 
 
 class EnrichmentRefreshConfig(Config):

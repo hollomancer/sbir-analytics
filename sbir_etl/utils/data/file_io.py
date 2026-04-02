@@ -20,7 +20,7 @@ import pandas as pd
 from loguru import logger
 
 # Import centralized path utilities
-from sbir_etl.utils.common.path_utils import ensure_parent_dir as _ensure_parent_dir
+from sbir_etl.utils.path_utils import ensure_parent_dir as _ensure_parent_dir
 
 
 def _to_jsonable(x: Any) -> Any:
