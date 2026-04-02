@@ -70,7 +70,7 @@ class FiscalParameterSweep:
         Returns:
             Configuration value or default
         """
-        from sbir_etl.config.schemas.fiscal import SensitivityConfig
+        from sbir_etl.config.schemas.domain import SensitivityConfig
 
         if isinstance(self.sensitivity_config, SensitivityConfig):
             return getattr(self.sensitivity_config, key, default)
@@ -86,7 +86,7 @@ class FiscalParameterSweep:
             Dictionary of parameter name to ParameterRange
         """
         # Handle both dict and Pydantic model
-        from sbir_etl.config.schemas.fiscal import SensitivityConfig
+        from sbir_etl.config.schemas.domain import SensitivityConfig
 
         if isinstance(self.sensitivity_config, SensitivityConfig):
             uncertainty_params = self.sensitivity_config.uncertainty_parameters
@@ -327,7 +327,7 @@ class FiscalParameterSweep:
             DataFrame with scenario parameters
         """
         # Handle both Pydantic model and dict
-        from sbir_etl.config.schemas.fiscal import SensitivityConfig
+        from sbir_etl.config.schemas.domain import SensitivityConfig
 
         if isinstance(self.sensitivity_config, SensitivityConfig):
             sweep_config = self.sensitivity_config.parameter_sweep
@@ -447,7 +447,7 @@ class FiscalUncertaintyQuantifier:
         """
         if confidence_levels is None:
             # Handle both Pydantic model and dict
-            from sbir_etl.config.schemas.fiscal import SensitivityConfig
+            from sbir_etl.config.schemas.domain import SensitivityConfig
 
             if isinstance(self.sensitivity_config, SensitivityConfig):
                 ci_config = self.sensitivity_config.confidence_intervals
@@ -503,7 +503,7 @@ class FiscalUncertaintyQuantifier:
         """
         if confidence_levels is None:
             # Handle both Pydantic model and dict
-            from sbir_etl.config.schemas.fiscal import SensitivityConfig
+            from sbir_etl.config.schemas.domain import SensitivityConfig
 
             if isinstance(self.sensitivity_config, SensitivityConfig):
                 ci_config = self.sensitivity_config.confidence_intervals
@@ -653,7 +653,7 @@ class FiscalUncertaintyQuantifier:
 
         # Compute confidence intervals
         # Handle both Pydantic model and dict
-        from sbir_etl.config.schemas.fiscal import SensitivityConfig
+        from sbir_etl.config.schemas.domain import SensitivityConfig
 
         if isinstance(self.sensitivity_config, SensitivityConfig):
             ci_config = self.sensitivity_config.confidence_intervals

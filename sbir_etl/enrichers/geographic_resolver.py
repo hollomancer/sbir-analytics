@@ -40,7 +40,7 @@ class GeographicResolver:
         Args:
             config: Optional configuration override (dict or FiscalAnalysisConfig)
         """
-        from sbir_etl.config.schemas.fiscal import FiscalAnalysisConfig
+        from sbir_etl.config.schemas.domain import FiscalAnalysisConfig
 
         config_obj = config or get_config().fiscal_analysis
         # Handle both dict and FiscalAnalysisConfig objects

@@ -57,7 +57,7 @@ class NAICSEnricher:
 
     def load_usaspending_index(self, force: bool = False) -> None:
         cache = Path(self.config.cache_path)
-        from sbir_etl.utils.common.path_utils import ensure_parent_dir
+        from sbir_etl.utils.path_utils import ensure_parent_dir
 
         ensure_parent_dir(cache)
         if cache.exists() and not force:

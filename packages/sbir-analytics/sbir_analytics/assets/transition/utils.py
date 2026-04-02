@@ -107,7 +107,7 @@ except Exception:  # pragma: no cover
 
 
 # Import centralized file I/O utilities
-from sbir_etl.utils.common.path_utils import ensure_parent_dir as _ensure_parent_dir
+from sbir_etl.utils.path_utils import ensure_parent_dir as _ensure_parent_dir
 from sbir_etl.utils.data.file_io import save_dataframe_parquet, write_json
 
 

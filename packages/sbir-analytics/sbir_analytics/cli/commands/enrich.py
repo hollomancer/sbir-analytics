@@ -8,7 +8,7 @@ from datetime import datetime
 import typer
 from rich.table import Table
 
-from sbir_etl.utils.enrichment_freshness import EnrichmentFreshnessRecord, FreshnessStore
+from sbir_etl.utils.enrichment.freshness import EnrichmentFreshnessRecord, FreshnessStore
 
 from ..context import CommandContext
 from ..display.progress import create_progress_tracker

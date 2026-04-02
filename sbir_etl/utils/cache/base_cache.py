@@ -40,7 +40,7 @@ class BaseDataFrameCache(ABC):  # noqa: B024
         self.ttl_hours = ttl_hours
 
         if self.enabled:
-            from sbir_etl.utils.common.path_utils import ensure_dir
+            from sbir_etl.utils.path_utils import ensure_dir
 
             ensure_dir(self.cache_dir)
             logger.debug(

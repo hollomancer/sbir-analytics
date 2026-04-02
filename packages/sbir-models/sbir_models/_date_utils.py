@@ -1,7 +1,7 @@
 """Vendored date parsing utility for standalone sbir-models package.
 
 This is a self-contained copy of the parse_date function from
-sbir_etl.utils.common.date_utils, allowing sbir-models to work
+sbir_etl.utils.date_utils, allowing sbir-models to work
 without the full sbir_etl dependency tree.
 """
 

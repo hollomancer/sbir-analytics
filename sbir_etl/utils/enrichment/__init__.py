@@ -9,9 +9,9 @@ Usage:
     from sbir_etl.utils.enrichment import CheckpointStore, FreshnessStore, EnrichmentFreshnessMetrics
 """
 
-from ..enrichment_checkpoints import CheckpointStore, EnrichmentCheckpoint
-from ..enrichment_freshness import FreshnessStore
-from ..enrichment_metrics import EnrichmentFreshnessMetrics
+from .checkpoints import CheckpointStore, EnrichmentCheckpoint
+from .freshness import FreshnessStore
+from .metrics import EnrichmentFreshnessMetrics
 
 __all__ = [
     "CheckpointStore",
