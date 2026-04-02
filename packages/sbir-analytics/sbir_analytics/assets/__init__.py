@@ -28,6 +28,7 @@ HEAVY_ASSET_MODULES = {
     "sbir_analytics.assets.ml.cet_drift_detection",  # Statistical analysis
     "sbir_analytics.assets.uspto.ai_extraction",  # spaCy, NLP processing
     "sbir_analytics.assets.lightrag.ingestion",  # LLM entity extraction, expensive
+    "sbir_analytics.assets.lightrag.communities",  # Graph computation
 }
 
 
