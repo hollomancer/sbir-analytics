@@ -69,90 +69,6 @@ logger.add(
 logger.debug("Added repository root to sys.path: {}", _repo_root_str)
 
 
-# Pytest Configuration
-# ===================
-
-
-def pytest_configure(config):
-    """Register custom pytest markers."""
-    config.addinivalue_line(
-        "markers",
-        "fast: Fast unit tests that should complete in < 1 second",
-    )
-    config.addinivalue_line(
-        "markers",
-        "slow: Slow tests that may take > 1 second to complete",
-    )
-    config.addinivalue_line(
-        "markers",
-        "integration: Integration tests that require external services",
-    )
-    config.addinivalue_line(
-        "markers",
-        "e2e: End-to-end tests that test full pipeline",
-    )
-    config.addinivalue_line(
-        "markers",
-        "real_data: Tests that require real data files (may be large)",
-    )
-    config.addinivalue_line(
-        "markers",
-        "transition: Tests related to transition detection",
-    )
-    config.addinivalue_line(
-        "markers",
-        "fiscal: Tests related to fiscal analysis",
-    )
-    config.addinivalue_line(
-        "markers",
-        "cet: Tests related to CET classification",
-    )
-    config.addinivalue_line(
-        "markers",
-        "neo4j: Tests that require Neo4j database",
-    )
-    config.addinivalue_line(
-        "markers",
-        "requires_aws: Tests requiring AWS credentials",
-    )
-    config.addinivalue_line(
-        "markers",
-        "requires_neo4j: Tests requiring Neo4j driver",
-    )
-    config.addinivalue_line(
-        "markers",
-        "requires_r: Tests requiring R/rpy2",
-    )
-    config.addinivalue_line(
-        "markers",
-        "requires_hf: Tests requiring HuggingFace token",
-    )
-    config.addinivalue_line(
-        "markers",
-        "requires_ml: Tests requiring ML dependencies",
-    )
-    config.addinivalue_line(
-        "markers",
-        "s3: Tests requiring S3 access",
-    )
-    config.addinivalue_line(
-        "markers",
-        "unit: Pure unit tests with no I/O",
-    )
-    config.addinivalue_line(
-        "markers",
-        "smoke: Quick smoke tests for CI",
-    )
-    config.addinivalue_line(
-        "markers",
-        "regression: Regression tests for known bugs",
-    )
-    config.addinivalue_line(
-        "markers",
-        "performance: Performance/benchmark tests",
-    )
-
-
 @pytest.fixture(scope="session")
 def repo_root() -> Path:
     """
@@ -175,44 +91,6 @@ def cached_sbir_sample_df(sbir_sample_csv_path: Path):
 
     return pd.read_csv(sbir_sample_csv_path)
 
-
-@pytest.fixture(scope="session")
-def cached_test_companies():
-    """
-    Generate test company data once per session.
-    Reused across multiple tests to avoid regeneration overhead.
-    """
-    return [
-        {"name": "Acme Corp", "uei": "TEST001", "duns": "123456789"},
-        {"name": "TechStart Inc", "uei": "TEST002", "duns": "987654321"},
-        {"name": "Innovation Labs", "uei": "TEST003", "duns": "456789123"},
-    ]
-
-
-@pytest.fixture(scope="session")
-def cached_test_awards():
-    """
-    Generate test award data once per session.
-    Reused across multiple tests to avoid regeneration overhead.
-    """
-    from datetime import date
-
-    return [
-        {
-            "award_id": "AWARD001",
-            "company_name": "Acme Corp",
-            "award_amount": 100000,
-            "award_date": date(2023, 1, 15),
-            "phase": "Phase I",
-        },
-        {
-            "award_id": "AWARD002",
-            "company_name": "TechStart Inc",
-            "award_amount": 750000,
-            "award_date": date(2023, 6, 20),
-            "phase": "Phase II",
-        },
-    ]
 
 
 # SBIR Data Fixtures

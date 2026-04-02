@@ -174,15 +174,26 @@ module = [
 markers = [
     "fast: fast unit tests (< 1 second each) - run on every commit",
     "smoke: critical path smoke tests - run first for fast feedback",
+    "unit: pure unit tests with no I/O",
     "integration: integration tests - run on PR",
     "slow: long-running tests (>5 seconds) - run nightly",
     "e2e: end-to-end tests - run nightly/weekly",
     "real_data: tests using real data - run weekly",
     "weekly: comprehensive validation - run weekly only",
     "regression: regression prevention tests for known bugs",
+    "performance: performance/benchmark tests",
+    "transition: tests related to transition detection",
+    "fiscal: tests related to fiscal analysis",
+    "cet: tests related to CET classification",
     "neo4j: tests requiring real Neo4j connection (not mocked)",
     "requires_s3: tests requiring S3 access",
     "requires_api: tests requiring external API access",
+    "requires_aws: tests requiring AWS credentials",
+    "requires_neo4j: tests requiring Neo4j driver",
+    "requires_r: tests requiring R/rpy2",
+    "requires_hf: tests requiring HuggingFace token",
+    "requires_ml: tests requiring ML dependencies",
+    "s3: tests requiring S3 access",
 ]
 testpaths = ["tests", "sbir-analytics/tests"]
 python_files = ["test_*.py"]

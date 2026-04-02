@@ -15,14 +15,6 @@ pytestmark = pytest.mark.fast
 
 
 @pytest.fixture
-def mock_config():
-    """Create mock config for fiscal asset tests."""
-    from tests.utils.config_mocks import create_mock_pipeline_config
-
-    return create_mock_pipeline_config()
-
-
-@pytest.fixture
 def sample_raw_awards():
     """Sample raw awards DataFrame."""
     return pd.DataFrame(
