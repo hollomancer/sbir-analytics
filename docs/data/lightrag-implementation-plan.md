@@ -225,10 +225,10 @@ def prepare_award_document(award: Award) -> dict:
 
 | File | Asset | Depends On |
 |------|-------|------------|
-| `assets/lightrag/__init__.py` | Module init | -- |
-| `assets/lightrag/ingestion.py` | `lightrag_document_ingestion` | `validated_sbir_awards` |
-| `assets/lightrag/vector_index.py` | `neo4j_award_embeddings` | `paecter_embeddings_awards` |
-| `assets/lightrag/cross_reference.py` | `lightrag_entity_cross_references` | `lightrag_document_ingestion` |
+| `packages/sbir-analytics/sbir_analytics/assets/lightrag/__init__.py` | Module init | -- |
+| `packages/sbir-analytics/sbir_analytics/assets/lightrag/ingestion.py` | `lightrag_document_ingestion` | `validated_sbir_awards` |
+| `packages/sbir-analytics/sbir_analytics/assets/lightrag/vector_index.py` | `neo4j_award_embeddings` | `paecter_embeddings_awards` |
+| `packages/sbir-analytics/sbir_analytics/assets/lightrag/cross_reference.py` | `lightrag_entity_cross_references` | `lightrag_document_ingestion` |
 
 **Asset: `lightrag_document_ingestion`**
 
@@ -244,7 +244,7 @@ async def lightrag_document_ingestion(
     config = LightRAGConfig.from_yaml(get_config())
     rag = await create_lightrag_instance(config)
 
-    documents = [prepare_award_document(row) for _, row in df.iterrows()]
+    documents = [prepare_award_document(row) for _, row in validated_sbir_awards.iterrows()]
     for batch in batched(documents, batch_size=100):
         await rag.ainsert([doc["content"] for doc in batch])
 
@@ -279,7 +279,7 @@ HEAVY_ASSET_MODULES = {
 
 ### 3.1 Community Detection Asset
 
-**New file: `assets/lightrag/communities.py`**
+**New file: `packages/sbir-analytics/sbir_analytics/assets/lightrag/communities.py`**
 
 ```python
 @asset(
@@ -324,7 +324,7 @@ class LeidenTopicsTool(BaseTool):
 
 ### 3.3 CET Sub-Community Mapping
 
-**New file: `assets/lightrag/cet_subcommunities.py`**
+**New file: `packages/sbir-analytics/sbir_analytics/assets/lightrag/cet_subcommunities.py`**
 
 ```python
 @asset(
@@ -418,8 +418,8 @@ class Solicitation(BaseModel):
 
 | File | Asset | Depends On |
 |------|-------|------------|
-| `assets/lightrag/solicitations.py` | `extracted_solicitation_topics` | None (raw extraction) |
-| `assets/lightrag/solicitations.py` | `lightrag_solicitation_ingestion` | `extracted_solicitation_topics` |
+| `packages/sbir-analytics/sbir_analytics/assets/lightrag/solicitations.py` | `extracted_solicitation_topics` | None (raw extraction) |
+| `packages/sbir-analytics/sbir_analytics/assets/lightrag/solicitations.py` | `lightrag_solicitation_ingestion` | `extracted_solicitation_topics` |
 
 ```python
 @asset(
@@ -445,7 +445,7 @@ async def lightrag_solicitation_ingestion(
     config = LightRAGConfig.from_yaml(get_config())
     rag = await create_lightrag_instance(config)
 
-    documents = [prepare_solicitation_document(row) for _, row in df.iterrows()]
+    documents = [prepare_solicitation_document(row) for _, row in extracted_solicitation_topics.iterrows()]
     for batch in batched(documents, batch_size=100):
         await rag.ainsert([doc["content"] for doc in batch])
 
@@ -705,4 +705,4 @@ Following the existing pytest marker system in `pyproject.toml`:
 
 | File | Replacement | Phase |
 |------|-------------|-------|
-| `tools/mission_a/cluster_topics.py` | `tools/mission_a/leiden_topics.py` | 3 |
+| `packages/sbir-analytics/sbir_analytics/tools/mission_a/cluster_topics.py` | `packages/sbir-analytics/sbir_analytics/tools/mission_a/leiden_topics.py` | 3 |

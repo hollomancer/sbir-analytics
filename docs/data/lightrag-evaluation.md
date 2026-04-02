@@ -345,7 +345,7 @@ Award, Patent, Company, Contract, Transition, CET models provide validation, ser
 
 #### ClusterTopicsTool -- Greedy Agglomerative Clustering (REPLACE)
 
-**Current:** `tools/mission_a/cluster_topics.py` uses embedding cosine similarity with a greedy agglomerative approach and a fixed 0.85 threshold to cluster solicitation topics across agencies.
+**Current:** `packages/sbir-analytics/sbir_analytics/tools/mission_a/cluster_topics.py` uses embedding cosine similarity with a greedy agglomerative approach and a fixed 0.85 threshold to cluster solicitation topics across agencies.
 
 **LightRAG equivalent:** Global mode with Leiden community detection over LLM-extracted entity graph. This is strictly better because:
 
@@ -393,15 +393,15 @@ Award, Patent, Company, Contract, Transition, CET models provide validation, ser
 
 | Component | File(s) | Verdict | Rationale |
 |-----------|---------|---------|-----------|
-| Neo4j graph schema | `sbir-graph/loaders/neo4j/` | **Keep** | Authoritative structured data; LightRAG writes into it |
-| TransitionPathwayQueries | `sbir-graph/queries/pathway_queries.py` | **Keep** | Analytical precision queries, not retrieval |
-| Transition detection scoring | `sbir_ml/transition/detection/scoring.py` | **Keep** | Validated ML pipeline, orthogonal to RAG |
+| Neo4j graph schema | `packages/sbir-graph/sbir_graph/loaders/neo4j/` | **Keep** | Authoritative structured data; LightRAG writes into it |
+| TransitionPathwayQueries | `packages/sbir-graph/sbir_graph/queries/pathway_queries.py` | **Keep** | Analytical precision queries, not retrieval |
+| Transition detection scoring | `packages/sbir-ml/sbir_ml/transition/detection/scoring.py` | **Keep** | Validated ML pipeline, orthogonal to RAG |
 | Pydantic models | `sbir_etl/models/` | **Keep** | Data validation, orthogonal |
-| Embedding client (ModernBERT-Embed) | `sbir_ml/ml/paecter_client.py` | **Keep** | LightRAG uses these embeddings as its vector layer |
-| ClusterTopicsTool | `tools/mission_a/cluster_topics.py` | **Replace** | LightRAG global mode is strictly better |
-| Batch award-patent similarity | `assets/paecter/embeddings.py` | **Partial** | Replace for interactive queries; keep for scoring pipeline |
-| CET taxonomy (21 areas) | `sbir_ml/ml/config/taxonomy_loader.py` | **Supplement** | Add sub-topic communities within CET areas |
-| Embedding storage (DataFrames) | `assets/paecter/embeddings.py` | **Replace** | Move to Neo4j Vector Index for queryable storage |
+| Embedding client (ModernBERT-Embed) | `packages/sbir-ml/sbir_ml/ml/paecter_client.py` | **Keep** | LightRAG uses these embeddings as its vector layer |
+| ClusterTopicsTool | `packages/sbir-analytics/sbir_analytics/tools/mission_a/cluster_topics.py` | **Replace** | LightRAG global mode is strictly better |
+| Batch award-patent similarity | `packages/sbir-analytics/sbir_analytics/assets/paecter/embeddings.py` | **Partial** | Replace for interactive queries; keep for scoring pipeline |
+| CET taxonomy (21 areas) | `packages/sbir-ml/sbir_ml/ml/config/taxonomy_loader.py` | **Supplement** | Add sub-topic communities within CET areas |
+| Embedding storage (DataFrames) | `packages/sbir-analytics/sbir_analytics/assets/paecter/embeddings.py` | **Replace** | Move to Neo4j Vector Index for queryable storage |
 | No semantic search | N/A | **New** | LightRAG naive mode fills this gap |
 | No NL query interface | N/A | **New** | All LightRAG modes provide this |
 | No implicit relationships | N/A | **New** | LLM extraction from abstracts |
