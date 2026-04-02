@@ -32,8 +32,7 @@ async def create_lightrag_instance(config: LightRAGConfig):
         from lightrag.llm.base import EmbeddingFunc
     except ImportError as exc:
         raise ImportError(
-            "lightrag-hku is required for RAG features. "
-            "Install with: pip install sbir-rag"
+            "lightrag-hku is required for RAG features. Install with: pip install sbir-rag"
         ) from exc
 
     from sbir_rag.embedding_adapter import create_embedding_func

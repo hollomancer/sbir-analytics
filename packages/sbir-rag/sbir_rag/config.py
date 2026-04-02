@@ -20,7 +20,9 @@ class LightRAGConfig(BaseModel):
     enabled: bool = Field(False, description="Enable LightRAG features (opt-in)")
 
     # LightRAG workspace (namespaces Neo4j nodes)
-    workspace: str = Field("sbir", description="LightRAG workspace name for Neo4j namespace isolation")
+    workspace: str = Field(
+        "sbir", description="LightRAG workspace name for Neo4j namespace isolation"
+    )
 
     # Neo4j connection (reuses existing env vars by default)
     neo4j_uri: str = Field("bolt://localhost:7687", description="Neo4j bolt URI")
@@ -53,7 +55,9 @@ class LightRAGConfig(BaseModel):
 
     # Community detection
     community_algorithm: str = Field("leiden", description="Community detection algorithm")
-    max_community_levels: int = Field(3, ge=1, description="Max levels for hierarchical communities")
+    max_community_levels: int = Field(
+        3, ge=1, description="Max levels for hierarchical communities"
+    )
     community_resolution: float = Field(1.0, gt=0.0, description="Leiden resolution parameter")
 
     # Retrieval defaults

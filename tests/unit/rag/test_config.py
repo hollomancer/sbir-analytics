@@ -28,11 +28,14 @@ class TestLightRAGConfigDefaults:
         assert cfg.neo4j_database == "neo4j"
 
     def test_neo4j_env_var_resolution(self):
-        with patch.dict(os.environ, {
-            "NEO4J_URI": "bolt://prod:7687",
-            "NEO4J_USER": "admin",
-            "NEO4J_PASSWORD": "secret",
-        }):
+        with patch.dict(
+            os.environ,
+            {
+                "NEO4J_URI": "bolt://prod:7687",
+                "NEO4J_USER": "admin",
+                "NEO4J_PASSWORD": "secret",
+            },
+        ):
             cfg = LightRAGConfig()
             assert cfg.neo4j_uri == "bolt://prod:7687"
             assert cfg.neo4j_username == "admin"

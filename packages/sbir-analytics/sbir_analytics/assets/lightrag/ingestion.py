@@ -11,7 +11,6 @@ import time
 
 import pandas as pd
 from dagster import Output, asset
-from loguru import logger
 
 from sbir_etl.config.loader import get_config
 from sbir_rag.config import LightRAGConfig
@@ -63,9 +62,7 @@ async def lightrag_document_ingestion(
         else:
             skipped += 1
 
-    context.log.info(
-        f"Prepared {len(documents)} documents ({skipped} skipped, empty content)"
-    )
+    context.log.info(f"Prepared {len(documents)} documents ({skipped} skipped, empty content)")
 
     # Batch insert
     batch_size = 100
@@ -80,9 +77,7 @@ async def lightrag_document_ingestion(
             context.log.info(f"Ingested {ingested}/{len(documents)} documents")
 
     duration = time.time() - start
-    context.log.info(
-        f"LightRAG ingestion complete: {ingested} documents in {duration:.1f}s"
-    )
+    context.log.info(f"LightRAG ingestion complete: {ingested} documents in {duration:.1f}s")
 
     result = {
         "status": "success",

@@ -3,8 +3,7 @@
 from __future__ import annotations
 
 import asyncio
-import sys
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock
 
 import pytest
 
@@ -40,7 +39,7 @@ class TestSBIRQueryService:
         mock_rag.aquery.return_value = "hybrid result"
         service._rag = mock_rag
 
-        result = _run(service.query("test query"))
+        _run(service.query("test query"))
 
         mock_rag.aquery.assert_called_once()
         call_args = mock_rag.aquery.call_args
@@ -51,7 +50,7 @@ class TestSBIRQueryService:
         mock_rag.aquery.return_value = "naive result"
         service._rag = mock_rag
 
-        result = _run(service.query("test", mode="naive"))
+        _run(service.query("test", mode="naive"))
 
         call_args = mock_rag.aquery.call_args
         assert call_args[1]["param"]["mode"] == "naive"
@@ -132,16 +131,12 @@ class TestSBIRQueryService:
         assert results[0]["mode"] == "naive"
 
     def test_format_results_list_of_dicts(self):
-        results = SBIRQueryService._format_results(
-            [{"text": "a"}, {"text": "b"}], mode="local"
-        )
+        results = SBIRQueryService._format_results([{"text": "a"}, {"text": "b"}], mode="local")
         assert len(results) == 2
         assert results[0]["text"] == "a"
         assert results[0]["mode"] == "local"
 
     def test_format_results_list_of_strings(self):
-        results = SBIRQueryService._format_results(
-            ["result 1", "result 2"], mode="naive"
-        )
+        results = SBIRQueryService._format_results(["result 1", "result 2"], mode="naive")
         assert len(results) == 2
         assert results[0]["content"] == "result 1"

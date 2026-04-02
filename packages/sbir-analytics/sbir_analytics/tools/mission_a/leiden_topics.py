@@ -90,29 +90,47 @@ class LeidenTopicsTool(BaseTool):
             if agencies is None:
                 agencies = []
 
-            clusters.append({
-                "cluster_id": str(row.get("community_id", "")),
-                "topic_ids": row.get("award_ids", []) or [],
-                "agencies_involved": sorted(a for a in agencies if a),
-                "num_agencies": len([a for a in agencies if a]),
-                "num_topics": row.get("num_awards", 0),
-                "num_entities": row.get("num_entities", 0),
-                "avg_similarity": None,  # Not applicable — graph-based
-                "max_similarity": None,
-                "community_title": row.get("title"),
-                "community_summary": row.get("summary"),
-                "entities": row.get("entities", []),
-                "level": row.get("level"),
-                "classification": "ambiguous",  # LLM judgment point
-                "classification_reasoning": None,
-            })
+            clusters.append(
+                {
+                    "cluster_id": str(row.get("community_id", "")),
+                    "topic_ids": row.get("award_ids", []) or [],
+                    "agencies_involved": sorted(a for a in agencies if a),
+                    "num_agencies": len([a for a in agencies if a]),
+                    "num_topics": row.get("num_awards", 0),
+                    "num_entities": row.get("num_entities", 0),
+                    "avg_similarity": None,  # Not applicable — graph-based
+                    "max_similarity": None,
+                    "community_title": row.get("title"),
+                    "community_summary": row.get("summary"),
+                    "entities": row.get("entities", []),
+                    "level": row.get("level"),
+                    "classification": "ambiguous",  # LLM judgment point
+                    "classification_reasoning": None,
+                }
+            )
 
-        clusters_df = pd.DataFrame(clusters) if clusters else pd.DataFrame(columns=[
-            "cluster_id", "topic_ids", "agencies_involved", "num_agencies",
-            "num_topics", "num_entities", "avg_similarity", "max_similarity",
-            "community_title", "community_summary", "entities", "level",
-            "classification", "classification_reasoning",
-        ])
+        clusters_df = (
+            pd.DataFrame(clusters)
+            if clusters
+            else pd.DataFrame(
+                columns=[
+                    "cluster_id",
+                    "topic_ids",
+                    "agencies_involved",
+                    "num_agencies",
+                    "num_topics",
+                    "num_entities",
+                    "avg_similarity",
+                    "max_similarity",
+                    "community_title",
+                    "community_summary",
+                    "entities",
+                    "level",
+                    "classification",
+                    "classification_reasoning",
+                ]
+            )
+        )
 
         metadata.record_count = len(clusters_df)
         metadata.data_sources.append(

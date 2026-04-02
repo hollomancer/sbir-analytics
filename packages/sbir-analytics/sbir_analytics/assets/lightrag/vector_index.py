@@ -125,9 +125,7 @@ def neo4j_award_embeddings(
         client.close()
 
     duration = time.time() - start
-    context.log.info(
-        f"Award embedding write complete: {updated} updated in {duration:.1f}s"
-    )
+    context.log.info(f"Award embedding write complete: {updated} updated in {duration:.1f}s")
 
     result = {
         "status": "success" if errors == 0 else "partial",

@@ -14,7 +14,6 @@ import time
 
 import pandas as pd
 from dagster import Output, asset
-from loguru import logger
 
 from sbir_etl.config.loader import get_config
 from sbir_rag.config import LightRAGConfig
@@ -60,12 +59,13 @@ def extracted_solicitation_topics(context) -> Output[pd.DataFrame]:
 
     # Count topics with descriptions (the valuable ones)
     has_description = (
-        topics_df["description"].notna() & (topics_df["description"].str.strip() != "")
-    ).sum() if len(topics_df) > 0 else 0
+        (topics_df["description"].notna() & (topics_df["description"].str.strip() != "")).sum()
+        if len(topics_df) > 0
+        else 0
+    )
 
     context.log.info(
-        f"Extracted {len(topics_df)} solicitation topics "
-        f"({has_description} with descriptions)"
+        f"Extracted {len(topics_df)} solicitation topics ({has_description} with descriptions)"
     )
 
     return Output(
@@ -73,9 +73,7 @@ def extracted_solicitation_topics(context) -> Output[pd.DataFrame]:
         metadata={
             "topic_count": len(topics_df),
             "with_description": int(has_description),
-            "agencies": (
-                topics_df["agency"].nunique() if len(topics_df) > 0 else 0
-            ),
+            "agencies": (topics_df["agency"].nunique() if len(topics_df) > 0 else 0),
         },
     )
 
@@ -132,9 +130,7 @@ async def lightrag_solicitation_ingestion(
         else:
             skipped += 1
 
-    context.log.info(
-        f"Prepared {len(documents)} solicitation documents ({skipped} skipped)"
-    )
+    context.log.info(f"Prepared {len(documents)} solicitation documents ({skipped} skipped)")
 
     # Batch insert
     batch_size = 100
@@ -149,9 +145,7 @@ async def lightrag_solicitation_ingestion(
             context.log.info(f"Ingested {ingested}/{len(documents)} solicitations")
 
     duration = time.time() - start
-    context.log.info(
-        f"Solicitation ingestion complete: {ingested} documents in {duration:.1f}s"
-    )
+    context.log.info(f"Solicitation ingestion complete: {ingested} documents in {duration:.1f}s")
 
     result = {
         "status": "success",

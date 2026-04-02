@@ -4,14 +4,15 @@ from __future__ import annotations
 
 import sys
 from datetime import datetime
-from unittest.mock import MagicMock
 
 import pandas as pd
 import pytest
 
 # sbir_analytics may not be installed in this test environment.
 # Add the package source to sys.path if needed.
-_pkg_path = str(__import__("pathlib").Path(__file__).resolve().parents[3] / "packages" / "sbir-analytics")
+_pkg_path = str(
+    __import__("pathlib").Path(__file__).resolve().parents[3] / "packages" / "sbir-analytics"
+)
 if _pkg_path not in sys.path:
     sys.path.insert(0, _pkg_path)
 
@@ -35,41 +36,43 @@ def metadata():
 
 @pytest.fixture
 def communities_df():
-    return pd.DataFrame([
-        {
-            "community_id": "comm-001",
-            "level": 0,
-            "title": "Quantum Sensing",
-            "summary": "Quantum technologies for navigation",
-            "entities": ["quantum", "navigation", "GPS"],
-            "award_ids": ["AWD-001", "AWD-002", "AWD-003"],
-            "num_entities": 3,
-            "num_awards": 3,
-            "agencies": ["DOD", "DOE"],
-        },
-        {
-            "community_id": "comm-002",
-            "level": 0,
-            "title": "Autonomous Systems",
-            "summary": "Self-driving platforms",
-            "entities": ["autonomy", "lidar"],
-            "award_ids": ["AWD-004", "AWD-005"],
-            "num_entities": 2,
-            "num_awards": 2,
-            "agencies": ["DOD"],
-        },
-        {
-            "community_id": "comm-003",
-            "level": 1,
-            "title": "Broad AI Research",
-            "summary": "AI across agencies",
-            "entities": ["machine learning", "neural networks", "deep learning", "NLP"],
-            "award_ids": ["AWD-006", "AWD-007", "AWD-008", "AWD-009"],
-            "num_entities": 4,
-            "num_awards": 4,
-            "agencies": ["DOD", "NSF", "DOE"],
-        },
-    ])
+    return pd.DataFrame(
+        [
+            {
+                "community_id": "comm-001",
+                "level": 0,
+                "title": "Quantum Sensing",
+                "summary": "Quantum technologies for navigation",
+                "entities": ["quantum", "navigation", "GPS"],
+                "award_ids": ["AWD-001", "AWD-002", "AWD-003"],
+                "num_entities": 3,
+                "num_awards": 3,
+                "agencies": ["DOD", "DOE"],
+            },
+            {
+                "community_id": "comm-002",
+                "level": 0,
+                "title": "Autonomous Systems",
+                "summary": "Self-driving platforms",
+                "entities": ["autonomy", "lidar"],
+                "award_ids": ["AWD-004", "AWD-005"],
+                "num_entities": 2,
+                "num_awards": 2,
+                "agencies": ["DOD"],
+            },
+            {
+                "community_id": "comm-003",
+                "level": 1,
+                "title": "Broad AI Research",
+                "summary": "AI across agencies",
+                "entities": ["machine learning", "neural networks", "deep learning", "NLP"],
+                "award_ids": ["AWD-006", "AWD-007", "AWD-008", "AWD-009"],
+                "num_entities": 4,
+                "num_awards": 4,
+                "agencies": ["DOD", "NSF", "DOE"],
+            },
+        ]
+    )
 
 
 class TestLeidenTopicsTool:
@@ -105,15 +108,21 @@ class TestLeidenTopicsTool:
         clusters = result.data["clusters"]
 
         required_cols = [
-            "cluster_id", "topic_ids", "agencies_involved",
-            "num_agencies", "num_topics", "classification",
+            "cluster_id",
+            "topic_ids",
+            "agencies_involved",
+            "num_agencies",
+            "num_topics",
+            "classification",
         ]
         for col in required_cols:
             assert col in clusters.columns, f"Missing column: {col}"
 
     def test_min_cluster_size_filter(self, tool, metadata, communities_df):
         result = tool.execute(
-            metadata, communities_df=communities_df, min_cluster_size=3,
+            metadata,
+            communities_df=communities_df,
+            min_cluster_size=3,
         )
 
         clusters = result.data["clusters"]
@@ -122,7 +131,9 @@ class TestLeidenTopicsTool:
 
     def test_level_filter(self, tool, metadata, communities_df):
         result = tool.execute(
-            metadata, communities_df=communities_df, min_level=1,
+            metadata,
+            communities_df=communities_df,
+            min_level=1,
         )
 
         clusters = result.data["clusters"]
@@ -132,7 +143,9 @@ class TestLeidenTopicsTool:
 
     def test_max_level_filter(self, tool, metadata, communities_df):
         result = tool.execute(
-            metadata, communities_df=communities_df, max_level=0,
+            metadata,
+            communities_df=communities_df,
+            max_level=0,
         )
 
         clusters = result.data["clusters"]

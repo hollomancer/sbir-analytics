@@ -122,22 +122,37 @@ def lightrag_topic_communities(context) -> Output[pd.DataFrame]:
         with client.session() as session:
             result = session.run(query)
             for record in result:
-                rows.append({
-                    "community_id": record["community_id"],
-                    "level": record["level"],
-                    "title": record["title"],
-                    "summary": record["summary"],
-                    "entities": record["entities"],
-                    "award_ids": record["award_ids"],
-                    "num_entities": record["num_entities"],
-                    "num_awards": record["num_awards"],
-                    "agencies": record["agencies"],
-                })
+                rows.append(
+                    {
+                        "community_id": record["community_id"],
+                        "level": record["level"],
+                        "title": record["title"],
+                        "summary": record["summary"],
+                        "entities": record["entities"],
+                        "award_ids": record["award_ids"],
+                        "num_entities": record["num_entities"],
+                        "num_awards": record["num_awards"],
+                        "agencies": record["agencies"],
+                    }
+                )
 
-        communities_df = pd.DataFrame(rows) if rows else pd.DataFrame(columns=[
-            "community_id", "level", "title", "summary", "entities",
-            "award_ids", "num_entities", "num_awards", "agencies",
-        ])
+        communities_df = (
+            pd.DataFrame(rows)
+            if rows
+            else pd.DataFrame(
+                columns=[
+                    "community_id",
+                    "level",
+                    "title",
+                    "summary",
+                    "entities",
+                    "award_ids",
+                    "num_entities",
+                    "num_awards",
+                    "agencies",
+                ]
+            )
+        )
 
     except Exception as e:
         logger.error(f"Community extraction failed: {e}")
@@ -149,16 +164,18 @@ def lightrag_topic_communities(context) -> Output[pd.DataFrame]:
         client.close()
 
     duration = time.time() - start
-    context.log.info(
-        f"Extracted {len(communities_df)} communities in {duration:.1f}s"
-    )
+    context.log.info(f"Extracted {len(communities_df)} communities in {duration:.1f}s")
 
     return Output(
         value=communities_df,
         metadata={
             "num_communities": len(communities_df),
-            "total_entities": int(communities_df["num_entities"].sum()) if len(communities_df) > 0 else 0,
-            "total_awards_covered": int(communities_df["num_awards"].sum()) if len(communities_df) > 0 else 0,
+            "total_entities": int(communities_df["num_entities"].sum())
+            if len(communities_df) > 0
+            else 0,
+            "total_awards_covered": int(communities_df["num_awards"].sum())
+            if len(communities_df) > 0
+            else 0,
             "duration_seconds": round(duration, 2),
         },
     )

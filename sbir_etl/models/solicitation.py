@@ -25,38 +25,20 @@ class Solicitation(BaseModel):
     )
 
     # Required fields
-    topic_code: str = Field(
-        ..., description="Topic identifier (e.g., 'AF231-001')"
-    )
+    topic_code: str = Field(..., description="Topic identifier (e.g., 'AF231-001')")
     solicitation_number: str = Field(
         ..., description="Parent solicitation number (e.g., 'SBIR-2023.1')"
     )
-    title: str = Field(
-        ..., description="Topic title"
-    )
+    title: str = Field(..., description="Topic title")
 
     # Optional fields
-    description: str | None = Field(
-        None, description="Full topic description (500-3000 words)"
-    )
-    agency: str | None = Field(
-        None, description="Issuing agency (e.g., 'DOD', 'DOE')"
-    )
-    branch: str | None = Field(
-        None, description="Agency branch (e.g., 'Air Force', 'Navy')"
-    )
-    program: str | None = Field(
-        None, description="SBIR or STTR"
-    )
-    open_date: date | None = Field(
-        None, description="Solicitation open date"
-    )
-    close_date: date | None = Field(
-        None, description="Solicitation close date"
-    )
-    year: int | None = Field(
-        None, description="Solicitation year"
-    )
+    description: str | None = Field(None, description="Full topic description (500-3000 words)")
+    agency: str | None = Field(None, description="Issuing agency (e.g., 'DOD', 'DOE')")
+    branch: str | None = Field(None, description="Agency branch (e.g., 'Air Force', 'Navy')")
+    program: str | None = Field(None, description="SBIR or STTR")
+    open_date: date | None = Field(None, description="Solicitation open date")
+    close_date: date | None = Field(None, description="Solicitation close date")
+    year: int | None = Field(None, description="Solicitation year")
 
     @field_validator("program", mode="before")
     @classmethod

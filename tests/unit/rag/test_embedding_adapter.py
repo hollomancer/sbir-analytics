@@ -51,9 +51,7 @@ class TestCreateEmbeddingFunc:
 
             importlib.reload(mod)
 
-            func = asyncio.get_event_loop().run_until_complete(
-                mod.create_embedding_func(config)
-            )
+            func = asyncio.get_event_loop().run_until_complete(mod.create_embedding_func(config))
             assert callable(func)
 
     def test_returns_correct_shape(self, config):
@@ -100,5 +98,6 @@ class TestCreateEmbeddingFunc:
             loop.run_until_complete(func(["hello"]))
 
             mock_client.generate_embeddings.assert_called_once_with(
-                ["hello"], normalize=True,
+                ["hello"],
+                normalize=True,
             )

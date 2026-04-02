@@ -185,8 +185,7 @@ class SBIRQueryService:
         handler = dispatch.get(mode)
         if handler is None:
             raise ValueError(
-                f"Unknown retrieval mode: {mode!r}. "
-                f"Must be one of: {', '.join(dispatch)}"
+                f"Unknown retrieval mode: {mode!r}. Must be one of: {', '.join(dispatch)}"
             )
 
         logger.debug(f"RAG query mode={mode} top_k={top_k}: {query[:100]}")
@@ -203,8 +202,10 @@ class SBIRQueryService:
             return [{"content": result, "mode": mode}]
         if isinstance(result, list):
             return [
-                {"content": item, "mode": mode} if isinstance(item, str)
-                else {**item, "mode": mode} if isinstance(item, dict)
+                {"content": item, "mode": mode}
+                if isinstance(item, str)
+                else {**item, "mode": mode}
+                if isinstance(item, dict)
                 else {"content": str(item), "mode": mode}
                 for item in result
             ]

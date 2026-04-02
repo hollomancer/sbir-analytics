@@ -159,30 +159,40 @@ class SolicitationExtractor:
         logger.info(f"Extracted {len(all_topics)} total solicitation topics")
 
         if not all_topics:
-            return pd.DataFrame(columns=[
-                "topic_code", "solicitation_number", "title", "description",
-                "agency", "branch", "program", "open_date", "close_date", "year",
-            ])
+            return pd.DataFrame(
+                columns=[
+                    "topic_code",
+                    "solicitation_number",
+                    "title",
+                    "description",
+                    "agency",
+                    "branch",
+                    "program",
+                    "open_date",
+                    "close_date",
+                    "year",
+                ]
+            )
 
         # Normalize API response fields
         rows = []
         for topic in all_topics:
-            rows.append({
-                "topic_code": topic.get("topicCode") or topic.get("topic_code") or "",
-                "solicitation_number": (
-                    topic.get("solicitationNumber")
-                    or topic.get("solicitation_number")
-                    or ""
-                ),
-                "title": topic.get("topicTitle") or topic.get("title") or "",
-                "description": topic.get("topicDescription") or topic.get("description"),
-                "agency": topic.get("agency"),
-                "branch": topic.get("branch"),
-                "program": topic.get("program"),
-                "open_date": topic.get("openDate") or topic.get("open_date"),
-                "close_date": topic.get("closeDate") or topic.get("close_date"),
-                "year": topic.get("solicitationYear") or topic.get("year"),
-            })
+            rows.append(
+                {
+                    "topic_code": topic.get("topicCode") or topic.get("topic_code") or "",
+                    "solicitation_number": (
+                        topic.get("solicitationNumber") or topic.get("solicitation_number") or ""
+                    ),
+                    "title": topic.get("topicTitle") or topic.get("title") or "",
+                    "description": topic.get("topicDescription") or topic.get("description"),
+                    "agency": topic.get("agency"),
+                    "branch": topic.get("branch"),
+                    "program": topic.get("program"),
+                    "open_date": topic.get("openDate") or topic.get("open_date"),
+                    "close_date": topic.get("closeDate") or topic.get("close_date"),
+                    "year": topic.get("solicitationYear") or topic.get("year"),
+                }
+            )
 
         return pd.DataFrame(rows)
 

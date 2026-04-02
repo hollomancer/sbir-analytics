@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import time
 
-import pandas as pd
 from dagster import Output, asset
 from loguru import logger
 

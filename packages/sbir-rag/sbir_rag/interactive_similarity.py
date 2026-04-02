@@ -39,8 +39,6 @@ async def find_similar_awards(
     Returns:
         List of dicts with award_id, title, abstract, score, agency.
     """
-    import asyncio
-
     from sbir_rag.embedding_adapter import create_embedding_func
 
     # Generate query embedding
@@ -60,12 +58,14 @@ async def find_similar_awards(
     app_config = get_config()
     neo4j_config = app_config.neo4j
 
-    client = Neo4jClient(Neo4jConfig(
-        uri=neo4j_config.uri,
-        username=neo4j_config.username,
-        password=neo4j_config.password,
-        database=neo4j_config.database,
-    ))
+    client = Neo4jClient(
+        Neo4jConfig(
+            uri=neo4j_config.uri,
+            username=neo4j_config.username,
+            password=neo4j_config.password,
+            database=neo4j_config.database,
+        )
+    )
 
     try:
         query = """
@@ -86,15 +86,17 @@ async def find_similar_awards(
         with client.session() as session:
             records = session.run(query, k=top_k, embedding=embedding_list)
             for record in records:
-                results.append({
-                    "award_id": record["award_id"],
-                    "title": record["title"],
-                    "abstract": record["abstract"],
-                    "agency": record["agency"],
-                    "phase": record["phase"],
-                    "company": record["company"],
-                    "score": float(record["score"]),
-                })
+                results.append(
+                    {
+                        "award_id": record["award_id"],
+                        "title": record["title"],
+                        "abstract": record["abstract"],
+                        "agency": record["agency"],
+                        "phase": record["phase"],
+                        "company": record["company"],
+                        "score": float(record["score"]),
+                    }
+                )
 
         logger.info(f"Found {len(results)} similar awards for: {query_text[:80]}")
         return results

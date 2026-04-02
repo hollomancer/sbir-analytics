@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import date
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pandas as pd
 import pytest
@@ -58,7 +58,9 @@ class TestSolicitationModel:
 
     def test_program_normalization(self):
         s = Solicitation(
-            topic_code="T1", solicitation_number="S1", title="Test",
+            topic_code="T1",
+            solicitation_number="S1",
+            title="Test",
             program="sbir",
         )
         assert s.program == "SBIR"
@@ -74,7 +76,9 @@ class TestSolicitationModel:
 
     def test_date_serialization(self):
         s = Solicitation(
-            topic_code="T1", solicitation_number="S1", title="Test",
+            topic_code="T1",
+            solicitation_number="S1",
+            title="Test",
             open_date=date(2023, 1, 15),
         )
         data = s.model_dump()
@@ -158,11 +162,13 @@ class TestSolicitationExtractor:
 
     def test_deduplicate_topics(self):
         extractor = SolicitationExtractor()
-        df = pd.DataFrame([
-            {"topic_code": "T1", "solicitation_number": "S1", "title": "First"},
-            {"topic_code": "T1", "solicitation_number": "S1", "title": "Duplicate"},
-            {"topic_code": "T2", "solicitation_number": "S1", "title": "Different"},
-        ])
+        df = pd.DataFrame(
+            [
+                {"topic_code": "T1", "solicitation_number": "S1", "title": "First"},
+                {"topic_code": "T1", "solicitation_number": "S1", "title": "Duplicate"},
+                {"topic_code": "T2", "solicitation_number": "S1", "title": "Different"},
+            ]
+        )
 
         result = extractor.deduplicate_topics(df)
         assert len(result) == 2
@@ -178,14 +184,22 @@ class TestSolicitationExtractor:
         mock_client = MagicMock()
 
         responses = [
-            MagicMock(status_code=200, json=MagicMock(return_value=[
-                {"topicCode": f"T{i}", "topicTitle": f"Topic {i}"}
-                for i in range(100)
-            ])),
-            MagicMock(status_code=200, json=MagicMock(return_value=[
-                {"topicCode": f"T{i}", "topicTitle": f"Topic {i}"}
-                for i in range(100, 150)
-            ])),
+            MagicMock(
+                status_code=200,
+                json=MagicMock(
+                    return_value=[
+                        {"topicCode": f"T{i}", "topicTitle": f"Topic {i}"} for i in range(100)
+                    ]
+                ),
+            ),
+            MagicMock(
+                status_code=200,
+                json=MagicMock(
+                    return_value=[
+                        {"topicCode": f"T{i}", "topicTitle": f"Topic {i}"} for i in range(100, 150)
+                    ]
+                ),
+            ),
             MagicMock(status_code=200, json=MagicMock(return_value=[])),
         ]
         mock_client.get.side_effect = responses
