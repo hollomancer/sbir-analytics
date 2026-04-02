@@ -27,7 +27,7 @@ from tests.utils.config_mocks import create_mock_pipeline_config
 @pytest.fixture
 def mock_config():
     """Mock configuration for testing using consolidated utility."""
-    from sbir_etl.config.schemas.fiscal import FiscalAnalysisConfig
+    from sbir_etl.config.schemas.domain import FiscalAnalysisConfig
 
     config = create_mock_pipeline_config()
     # Ensure fiscal_analysis exists and is properly configured
@@ -594,7 +594,7 @@ class TestResolveAwardGeography:
 
     def test_resolve_award_geography_with_custom_config(self):
         """Test main function with custom config."""
-        from sbir_etl.config.schemas.fiscal import FiscalAnalysisConfig
+        from sbir_etl.config.schemas.domain import FiscalAnalysisConfig
 
         df = pd.DataFrame({"award_id": ["AWD001"], "State": ["CA"]})
 

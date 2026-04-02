@@ -7,26 +7,27 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from .data_pipeline import (
+from .data import (
+    CLIConfig,
+    CompanyCategorizationConfig,
     DataQualityConfig,
     DuckDBConfig,
     ExtractionConfig,
+    LoggingConfig,
+    MetricsConfig,
     Neo4jConfig,
+    PathsConfig,
     SbirDuckDBConfig,
     SbirValidationConfig,
     TransformationConfig,
     ValidationConfig,
 )
-from .enrichment import EnrichmentConfig, EnrichmentRefreshConfig
-from .fiscal import FiscalAnalysisConfig
-from .ml import MLConfig
-from .reporting import StatisticalReportingConfig
-from .runtime import (
-    CLIConfig,
-    CompanyCategorizationConfig,
-    LoggingConfig,
-    MetricsConfig,
-    PathsConfig,
+from .domain import (
+    EnrichmentConfig,
+    EnrichmentRefreshConfig,
+    FiscalAnalysisConfig,
+    MLConfig,
+    StatisticalReportingConfig,
 )
 
 
@@ -41,7 +42,6 @@ class PipelineMetadata(BaseModel, Mapping[str, Any]):
 
     def _as_mapping(self) -> dict[str, Any]:
         """Return the metadata as a plain dict (including extras)."""
-
         return self.model_dump(mode="python")
 
     def __getitem__(self, key: str) -> Any:
