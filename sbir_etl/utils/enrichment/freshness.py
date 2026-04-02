@@ -32,7 +32,7 @@ class FreshnessStore:
         if parquet_path is None:
             parquet_path = Path("data/derived/enrichment_freshness.parquet")
         self.parquet_path = Path(parquet_path)
-        from sbir_etl.utils.common.path_utils import ensure_parent_dir
+        from sbir_etl.utils.path_utils import ensure_parent_dir
 
         ensure_parent_dir(self.parquet_path)
 

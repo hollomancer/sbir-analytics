@@ -37,7 +37,6 @@ from sbir_etl.exceptions import APIError, RateLimitError
 from sbir_etl.extractors.usaspending import DuckDBUSAspendingExtractor
 from sbir_etl.utils.async_tools import run_sync
 from sbir_etl.utils.cache.api_cache import APICache
-from sbir_etl.utils.usaspending_cache import USAspendingCache
 
 
 _api_client: USAspendingAPIClient | None = None
@@ -1262,14 +1261,15 @@ def retrieve_sbir_awards_api(
     try:
         config = config or get_config()
         cache_config = config.enrichment_refresh.usaspending.cache
-        cache = USAspendingCache(
+        cache = APICache(
             cache_dir=cache_config.cache_dir,
+            default_cache_type="contracts",
             enabled=cache_config.enabled,
             ttl_hours=cache_config.ttl_hours or 24,  # type: ignore[arg-type]
         )
     except Exception as e:
         logger.debug(f"Could not initialize cache, proceeding without caching: {e}")
-        cache = USAspendingCache(enabled=False)
+        cache = APICache(cache_dir="data/cache/usaspending", default_cache_type="contracts", enabled=False)
 
     client = _get_usaspending_client()
 

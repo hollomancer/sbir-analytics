@@ -8,7 +8,7 @@ from pathlib import Path
 import pandas as pd
 import typer
 
-from sbir_etl.utils.common.path_utils import ensure_parent_dir
+from sbir_etl.utils.path_utils import ensure_parent_dir
 
 from ..context import CommandContext
 

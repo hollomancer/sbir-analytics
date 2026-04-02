@@ -95,7 +95,7 @@ def _fuzzy_score(a: str, b: str) -> float:
 
 def _iso_date(val: str | date | datetime | None) -> str | None:
     """Format date as ISO string using centralized utility."""
-    from sbir_etl.utils.common.date_utils import format_date_iso, parse_date
+    from sbir_etl.utils.date_utils import format_date_iso, parse_date
 
     if val is None:
         return None
@@ -477,7 +477,7 @@ class VendorCrosswalk:
 
     def save_jsonl(self, path: str | Path) -> None:
         path = Path(path)
-        from sbir_etl.utils.common.path_utils import ensure_parent_dir
+        from sbir_etl.utils.path_utils import ensure_parent_dir
 
         ensure_parent_dir(path)
         with open(path, "w", encoding="utf-8") as fh:

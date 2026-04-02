@@ -139,7 +139,7 @@ class RStateIOAdapter(EconomicModelInterface):
             cache_dir = Path("data/processed/fiscal_cache")
         self.cache_dir = Path(cache_dir)
         if self.cache_enabled:
-            from sbir_etl.utils.common.path_utils import ensure_dir
+            from sbir_etl.utils.path_utils import ensure_dir
 
             ensure_dir(self.cache_dir)
 

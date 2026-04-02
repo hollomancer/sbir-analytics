@@ -29,7 +29,7 @@ from pydantic import BaseModel, Field, field_validator
 
 # ---- Utilities ----
 # Use centralized date parsing utility
-from sbir_etl.utils.common.date_utils import parse_date as _parse_date
+from sbir_etl.utils.date_utils import parse_date as _parse_date
 
 
 def _normalize_identifier(val: str | None) -> str | None:
