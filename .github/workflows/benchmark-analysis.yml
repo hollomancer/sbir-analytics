@@ -86,7 +86,7 @@ jobs:
 
       - name: Restore USAspending API cache
         if: steps.params.outputs.usaspending_source == 'api'
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: data/scripts_output/usaspending_api_cache.json
           key: usaspending-api-cache-fy${{ steps.params.outputs.fy }}-${{ github.run_number }}
