@@ -76,7 +76,7 @@ class ResolverMatch:
 
     This is an internal lookup result — not the serialisable domain model.
     For the Pydantic model stored on Transition/FederalContract objects,
-    see ``sbir_models.transition_models.VendorMatch``.
+    see ``sbir_etl.models.transition_models.VendorMatch``.
 
     - record: matched canonical VendorRecord or None if no match
     - method: how the match was found ('uei', 'cage', 'duns', 'name_exact', 'name_fuzzy', etc.)

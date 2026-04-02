@@ -232,18 +232,28 @@ the extras add ~245 MB for orchestration, ML, cloud, and CLI.
 - ETL output is storage-agnostic — consumers choose neo4j, postgres, S3, etc.
 - Core install is ~135 MB vs ~380 MB for the full pipeline
 - Config injection enables library-style use without filesystem coupling
-- `sbir-models` is truly standalone (no `sbir_etl` required)
 
 **Negative:**
-- Model files exist in two locations (`sbir_etl/models/` and `packages/sbir-models/`)
 - Cloud storage functions require `[cloud]` extra — callers get a clear ImportError
 - Two pip package names to maintain (`sbir-etl` and `sbir-analytics`)
 
 **Neutral:**
 - Monorepo approach avoids separate release cycles — both packages live in one repo
 
+## Superseded: `sbir-models` standalone package (removed)
+
+The original design extracted Pydantic models into a standalone `packages/sbir-models/`
+package. This was removed because:
+
+- `sbir-models` was never wired as a dependency — `sbir_etl` continued importing from
+  its own `sbir_etl/models/`, not from `sbir_models`
+- The 13 duplicated model files diverged within days as edits hit one copy but not the other
+- No second consumer of `sbir-models` materialized
+
+All data models now live in `sbir_etl/models/`. If a standalone models package is needed
+in the future, it should be extracted with proper dependency wiring from the start.
+
 ## Links
 
 - Related files: `sbir_etl/extractors/`, `sbir_etl/enrichers/`, `sbir_etl/transformers/`, `sbir_etl/loaders/`
 - Related config: `pyproject.toml`, `config/base.yaml`
-- Models package: `packages/sbir-models/`

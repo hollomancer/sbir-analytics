@@ -304,8 +304,7 @@ sbir-analytics/
 │   ├── sbir-graph/        # Graph database integration
 │   │   └── sbir_graph/
 │   │       └── loaders/   # Stage 5: Neo4j loading and relationship creation
-│   ├── sbir-ml/           # Machine learning (CET, transition, PaECTER)
-│   └── sbir-models/       # Shared data models
+│   └── sbir-ml/           # Machine learning (CET, transition, PaECTER)
 ├── tests/                 # Test suite
 ├── config/                # Configuration files
 ├── data/                  # Data files (not in git)
