@@ -6,7 +6,9 @@
 
 ## Architecture Overview
 
-LightRAG integrates as a new package `packages/sbir-rag/` that bridges the existing Neo4j graph, PaECTER embedding pipeline, and Dagster orchestration. It does **not** replace the existing infrastructure -- it creates a *semantic overlay* on top of the structured graph and fills gaps identified in the evaluation (semantic search, NL queries, implicit relationships, thematic summarization).
+LightRAG integrates as a new package `packages/sbir-rag/` that bridges the existing Neo4j graph, ModernBERT-Embed embedding pipeline, and Dagster orchestration. It does **not** replace the existing infrastructure -- it creates a *semantic overlay* on top of the structured graph and fills gaps identified in the evaluation (semantic search, NL queries, implicit relationships, thematic summarization).
+
+> **Note on naming:** The embedding client and Dagster assets still use legacy `paecter` names in code (`PaECTERClient`, `paecter_client.py`, `assets/paecter/`), but the underlying model is **ModernBERT-Embed** (`nomic-ai/modernbert-embed-base`, 768-dim). New LightRAG code should reference the module paths as-is but avoid introducing new `paecter` names. A future rename is out of scope for this plan.
 
 ```
                     ┌──────────────────────────────────────┐
@@ -19,7 +21,7 @@ LightRAG integrates as a new package `packages/sbir-rag/` that bridges the exist
                     │          LightRAG Core                │
                     │  packages/sbir-rag/sbir_rag/          │
                     │  ├── factory.py (instance creation)   │
-                    │  ├── embedding_adapter.py (PaECTER)   │
+                    │  ├── embedding_adapter.py (ModernBERT) │
                     │  ├── document_prep.py (Award → doc)   │
                     │  └── query_service.py (retrieval)     │
                     └──────────┬───────────────────────────┘
@@ -27,16 +29,16 @@ LightRAG integrates as a new package `packages/sbir-rag/` that bridges the exist
               ┌────────────────┼────────────────┐
               │                │                │
    ┌──────────▼──────┐ ┌──────▼──────┐ ┌───────▼──────────┐
-   │  Neo4j 5.x      │ │  PaECTER    │ │  Dagster Assets   │
-   │  (existing +    │ │  Client     │ │  (new lightrag    │
-   │   LightRAG      │ │  (768-dim   │ │   asset group)    │
+   │  Neo4j 5.x      │ │  Embedding  │ │  Dagster Assets   │
+   │  (existing +    │ │  Client     │  │  (new lightrag    │
+   │   LightRAG      │ │  (768-dim   │  │   asset group)    │
    │   nodes/rels)   │ │  ModernBERT)│ │                   │
    └─────────────────┘ └─────────────┘ └───────────────────┘
 ```
 
 ### Three Integration Surfaces
 
-1. **Embedding adapter** -- wraps `PaECTERClient` so LightRAG uses ModernBERT-Embed (768-dim) instead of its default OpenAI embeddings
+1. **Embedding adapter** -- wraps the existing embedding client (`paecter_client.py:PaECTERClient`) so LightRAG uses ModernBERT-Embed (768-dim) instead of its default OpenAI embeddings
 2. **Neo4j storage backend** -- LightRAG uses the existing Neo4j instance; its internal nodes (`__entity__`, `__relationship__`, `__community__`) coexist with Award/Company/Patent/CET nodes via double-underscore prefix isolation
 3. **Dagster assets** -- new `lightrag` asset group for ingestion, community detection, vector indexing, and cross-referencing
 
@@ -81,13 +83,13 @@ class LightRAGConfig(BaseModel):
     max_community_levels: int = 3
 ```
 
-### 1.3 PaECTER Embedding Adapter
+### 1.3 Embedding Adapter
 
-Wraps `PaECTERClient.generate_embeddings()` (sync) as the async function LightRAG expects:
+Wraps the existing embedding client's `generate_embeddings()` (sync) as the async function LightRAG expects. The adapter references the legacy `PaECTERClient` class name (the underlying model is ModernBERT-Embed):
 
 ```python
 # packages/sbir-rag/sbir_rag/embedding_adapter.py
-async def create_paecter_embedding_func(config: LightRAGConfig) -> Callable:
+async def create_embedding_func(config: LightRAGConfig) -> Callable:
     client = PaECTERClient(config=PaECTERClientConfig(
         model_name=config.embedding_model,
         use_local=config.use_local_embeddings,
@@ -110,7 +112,7 @@ This ensures the existing 768-dim ModernBERT-Embed vectors are used consistently
 ```python
 # packages/sbir-rag/sbir_rag/factory.py
 async def create_lightrag_instance(config: LightRAGConfig) -> LightRAG:
-    embedding_func = await create_paecter_embedding_func(config)
+    embedding_func = await create_embedding_func(config)
 
     rag = LightRAG(
         working_dir=f"/tmp/lightrag_{config.workspace}",
@@ -193,10 +195,11 @@ lightrag:
 
 **New file: `packages/sbir-rag/sbir_rag/document_prep.py`**
 
-Converts Award records into LightRAG documents. Reuses `PaECTERClient.prepare_award_text()` text composition logic but adds structured context headers for better entity extraction:
+Converts Award records into LightRAG documents. Reuses the embedding client's `prepare_award_text()` text composition logic but adds structured context headers for better entity extraction:
 
 ```python
 def prepare_award_document(award: Award) -> dict:
+    # PaECTERClient is the legacy class name; model is ModernBERT-Embed
     text = PaECTERClient.prepare_award_text(
         solicitation_title=None,
         abstract=award.abstract,
@@ -617,7 +620,7 @@ Following the existing pytest marker system in `pyproject.toml`:
 
 | File | Tests |
 |------|-------|
-| `tests/sbir_rag/test_embedding_adapter.py` | PaECTER adapter produces 768-dim, handles batching, caching |
+| `tests/sbir_rag/test_embedding_adapter.py` | Embedding adapter produces 768-dim, handles batching, caching |
 | `tests/sbir_rag/test_document_prep.py` | Award-to-document conversion, null handling, header formatting |
 | `tests/sbir_rag/test_config.py` | LightRAGConfig validation, YAML loading, env overrides |
 | `tests/sbir_rag/test_query_service.py` | Query routing to correct LightRAG mode (mocked) |
@@ -656,7 +659,7 @@ Following the existing pytest marker system in `pyproject.toml`:
 | **LLM cost for 200K award extraction** | Start with Phase II/III subset (~15K awards). Use Claude Haiku for extraction. Cache results. Estimated: ~$50-100 for subset, ~$300-600 for full corpus. |
 | **Neo4j schema collision** | LightRAG uses `__entity__`/`__relationship__`/`__community__` labels (double-underscore prefix). No collision with existing Award/Company/Patent labels. |
 | **Transition detection regression** | Scoring pipeline (`sbir_ml/transition/detection/scoring.py`) is untouched. Its input (`paecter_embeddings_awards` DataFrame) is preserved. Neo4j vector index is an additional output path. |
-| **Async/sync boundary** | LightRAG is async-first. PaECTER adapter uses `asyncio.to_thread()` to wrap sync `generate_embeddings()`. Dagster supports `async def` assets. |
+| **Async/sync boundary** | LightRAG is async-first. Embedding adapter uses `asyncio.to_thread()` to wrap sync `generate_embeddings()`. Dagster supports `async def` assets. |
 | **LLM extraction quality** | Validate extracted entities against CET taxonomy keywords. Run precision/recall on a labeled sample before full corpus ingestion. |
 | **Entity deduplication** | LightRAG extracts "ML", "machine learning", "Machine Learning" as separate entities. Post-processing step normalizes against a controlled vocabulary derived from CET keywords. |
 

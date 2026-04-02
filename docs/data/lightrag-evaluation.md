@@ -221,7 +221,7 @@ LightRAG is worth implementing if the primary use case involves **analytical/the
 Index existing ModernBERT-Embed embeddings into a queryable store. This enables LightRAG's naive mode and provides the vector search layer that all other modes depend on.
 
 - Add Neo4j Vector Index on Award nodes (768-dim, cosine similarity)
-- Add query-time embedding endpoint using PaECTERClient
+- Add query-time embedding endpoint using the embedding client (ModernBERT-Embed)
 - Integrate as Dagster asset downstream of `paecter_embeddings_awards`
 
 ### Phase 2: LightRAG Entity Extraction on Awards (P1)
@@ -397,7 +397,7 @@ Award, Patent, Company, Contract, Transition, CET models provide validation, ser
 | TransitionPathwayQueries | `sbir-graph/queries/pathway_queries.py` | **Keep** | Analytical precision queries, not retrieval |
 | Transition detection scoring | `sbir_ml/transition/detection/scoring.py` | **Keep** | Validated ML pipeline, orthogonal to RAG |
 | Pydantic models | `sbir_etl/models/` | **Keep** | Data validation, orthogonal |
-| PaECTERClient (embeddings) | `sbir_ml/ml/paecter_client.py` | **Keep** | LightRAG uses these embeddings as its vector layer |
+| Embedding client (ModernBERT-Embed) | `sbir_ml/ml/paecter_client.py` | **Keep** | LightRAG uses these embeddings as its vector layer |
 | ClusterTopicsTool | `tools/mission_a/cluster_topics.py` | **Replace** | LightRAG global mode is strictly better |
 | Batch award-patent similarity | `assets/paecter/embeddings.py` | **Partial** | Replace for interactive queries; keep for scoring pipeline |
 | CET taxonomy (21 areas) | `sbir_ml/ml/config/taxonomy_loader.py` | **Supplement** | Add sub-topic communities within CET areas |
