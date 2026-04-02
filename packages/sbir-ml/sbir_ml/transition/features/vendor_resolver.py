@@ -45,7 +45,7 @@ try:
     from rapidfuzz import fuzz
 
     _RAPIDFUZZ_AVAILABLE = True
-except Exception:
+except ImportError:
     _RAPIDFUZZ_AVAILABLE = False
 
 
@@ -227,15 +227,11 @@ class VendorResolver:
                 # rapidfuzz.fuzz.token_sort_ratio returns 0-100
                 score = fuzz.token_sort_ratio(s1, s2) / 100.0
                 return float(score)
-            except Exception:
-                # fallback to difflib if something unexpected happens
-                pass
+            except (TypeError, ValueError) as exc:
+                logger.debug("rapidfuzz scoring failed for %r vs %r: %s; falling back to difflib", s1, s2, exc)
         # difflib fallback
-        try:
-            sm = SequenceMatcher(None, s1, s2)
-            return float(sm.ratio())
-        except Exception:
-            return 0.0
+        sm = SequenceMatcher(None, s1, s2)
+        return float(sm.ratio())
 
     def resolve_by_name(self, name: str, prefer_identifiers: bool = True) -> VendorMatch:
         """
@@ -396,8 +392,8 @@ class VendorResolver:
             nm = self._normalize_name(rec.name)
             lst = self._name_index.get(nm, [])
             self._name_index[nm] = [r for r in lst if r is not rec]
-        except Exception:
-            logger.exception("Error removing record from indices for uei=%s", uei)
+        except (KeyError, AttributeError) as exc:
+            logger.warning("Error removing record from indices for uei=%s: %s", uei, exc)
         self._cache.clear()
         return True
 

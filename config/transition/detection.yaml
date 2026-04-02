@@ -1,6 +1,44 @@
-enabled: true
-confidence_threshold: 0.8
-sources:
-  - sec
-  - news
-  - crunchbase
+# Transition detection configuration.
+#
+# This is the single source of truth for all scoring thresholds, timing windows,
+# and vendor matching parameters used by the transition detection pipeline.
+#
+# Corresponding code: packages/sbir-ml/sbir_ml/transition/__init__.py (Config)
+# Loaded by: sbir_ml.transition.load_config()
+
+# -- Vendor matching ---------------------------------------------------------
+fuzzy_threshold: 0.90          # primary fuzzy name match threshold (0.0-1.0)
+fuzzy_secondary_threshold: 0.80  # lower-confidence secondary threshold
+batch_size_contracts: 100000   # chunk size for large contract scans
+
+# -- Timing ------------------------------------------------------------------
+detection_timing_window_months: 24  # max months after award completion
+
+# -- Scoring weights ---------------------------------------------------------
+# All scoring parameters are consolidated here. The Config.to_detector_config()
+# method maps these into the nested structure expected by TransitionScorer.
+scoring:
+  base_score: 0.15             # baseline score before any signals
+  agency_same: 0.25            # bonus for same-agency contract
+  agency_cross_service: 0.125  # bonus for same-department, different agency
+  timing_0_3: 1.0              # timing multiplier: 0-3 months
+  timing_3_12: 0.75            # timing multiplier: 3-12 months
+  timing_12_24: 0.5            # timing multiplier: 12-24 months
+  competition_sole: 0.20       # bonus for sole-source contracts
+  competition_limited: 0.10    # bonus for limited-competition contracts
+  patent_has: 0.05             # bonus for having any related patent
+  patent_pre_contract: 0.03    # bonus for patent filed before contract
+  patent_topic_match: 0.02     # bonus for patent topic similarity
+  cet_alignment: 0.05          # bonus for matching CET area
+  text_similarity_weight: 0.05 # weight for text similarity (disabled by default)
+
+# -- Vendor matching strategy ------------------------------------------------
+vendor_matching:
+  prefer_identifiers: true     # prefer UEI/CAGE/DUNS over fuzzy name
+  uei_priority: 0.99
+  cage_priority: 0.95
+  duns_priority: 0.90
+
+# -- Metrics output ----------------------------------------------------------
+metrics:
+  emit_to: artifacts/metrics

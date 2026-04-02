@@ -234,7 +234,7 @@ class TransitionDetector:
         if contract.vendor_name:
             resolver_match = self.vendor_resolver.resolve_by_name(contract.vendor_name)
             if resolver_match.record and resolver_match.score >= self.vendor_config.get(
-                "fuzzy_threshold", 0.85
+                "fuzzy_threshold", 0.90
             ):
                 self.metrics["vendor_matches"] += 1
                 from sbir_etl.models.transition_models import VendorMatch

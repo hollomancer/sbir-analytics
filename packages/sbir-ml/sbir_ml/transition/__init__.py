@@ -90,8 +90,75 @@ class Config:
     extra: dict[str, Any] = dataclasses.field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
-        d = dataclasses.asdict(self)
-        return d
+        return dataclasses.asdict(self)
+
+    def to_detector_config(self) -> dict[str, Any]:
+        """Build the config dict expected by TransitionDetector and TransitionScorer.
+
+        Maps from this flat/grouped Config into the nested structure the
+        detector pipeline reads at runtime, ensuring all thresholds come from
+        one source of truth.
+        """
+        s = self.scoring
+        return {
+            "base_score": s.get("base_score", 0.15),
+            "timing_window": {
+                "min_days_after_completion": 0,
+                "max_days_after_completion": self.detection_timing_window_months * 30,
+            },
+            "vendor_matching": {
+                "require_match": self.vendor_matching.get("prefer_identifiers", True),
+                "fuzzy_threshold": self.fuzzy_threshold,
+                "fuzzy_secondary_threshold": self.fuzzy_secondary_threshold,
+            },
+            "scoring": {
+                "agency_continuity": {
+                    "enabled": True,
+                    "weight": 0.25,
+                    "same_agency_bonus": s.get("agency_same", 0.25),
+                    "cross_service_bonus": s.get("agency_cross_service", 0.125),
+                    "different_dept_bonus": 0.05,
+                },
+                "timing_proximity": {
+                    "enabled": True,
+                    "weight": 0.20,
+                    "windows": [
+                        {"range": [0, 90], "score": s.get("timing_0_3", 1.0)},
+                        {"range": [91, 365], "score": s.get("timing_3_12", 0.75)},
+                        {"range": [366, 730], "score": s.get("timing_12_24", 0.5)},
+                    ],
+                    "beyond_window_penalty": 0.0,
+                },
+                "competition_type": {
+                    "enabled": True,
+                    "weight": 0.20,
+                    "sole_source_bonus": s.get("competition_sole", 0.20),
+                    "limited_competition_bonus": s.get("competition_limited", 0.10),
+                    "full_and_open_bonus": 0.0,
+                },
+                "patent_signal": {
+                    "enabled": True,
+                    "weight": 0.15,
+                    "has_patent_bonus": s.get("patent_has", 0.05),
+                    "patent_pre_contract_bonus": s.get("patent_pre_contract", 0.03),
+                    "patent_topic_match_bonus": s.get("patent_topic_match", 0.02),
+                    "patent_similarity_threshold": 0.7,
+                },
+                "cet_alignment": {
+                    "enabled": True,
+                    "weight": 0.10,
+                    "same_cet_area_bonus": s.get("cet_alignment", 0.05),
+                },
+                "text_similarity": {
+                    "enabled": False,
+                    "weight": s.get("text_similarity_weight", 0.05),
+                },
+            },
+            "confidence_thresholds": {
+                "high": 0.85,
+                "likely": 0.65,
+            },
+        }
 
 
 def _load_yaml(path: str) -> dict[str, Any] | None:
@@ -102,13 +169,18 @@ def _load_yaml(path: str) -> dict[str, Any] | None:
     """
     try:
         import yaml
-    except Exception:
+    except ImportError:
+        logger.debug("PyYAML not installed; skipping YAML config loading")
         return None
 
     try:
         with open(path, encoding="utf-8") as fh:
             return yaml.safe_load(fh) or {}
-    except Exception:
+    except FileNotFoundError:
+        logger.debug("Transition config file not found: %s", path)
+        return None
+    except (OSError, yaml.YAMLError) as exc:
+        logger.warning("Failed to load transition config from %s: %s", path, exc)
         return None
 
 
@@ -128,9 +200,10 @@ def _apply_overrides_from_env(cfg: dict[str, Any]) -> dict[str, Any]:
         if val is not None:
             try:
                 cfg[cfg_k] = cast(val)
-            except Exception:
-                # ignore invalid environment overrides
-                pass
+            except (ValueError, TypeError) as exc:
+                logger.warning(
+                    "Invalid environment override %s=%r for %s: %s", env_k, val, cfg_k, exc
+                )
     return cfg
 
 
@@ -160,26 +233,18 @@ def load_config(path: str | None = None) -> Config:
     cfg = Config()
 
     # Top-level simple fields
-    if "fuzzy_threshold" in loaded:
-        try:
-            cfg.fuzzy_threshold = float(loaded["fuzzy_threshold"])
-        except Exception:
-            pass
-    if "fuzzy_secondary_threshold" in loaded:
-        try:
-            cfg.fuzzy_secondary_threshold = float(loaded["fuzzy_secondary_threshold"])
-        except Exception:
-            pass
-    if "batch_size_contracts" in loaded:
-        try:
-            cfg.batch_size_contracts = int(loaded["batch_size_contracts"])
-        except Exception:
-            pass
-    if "detection_timing_window_months" in loaded:
-        try:
-            cfg.detection_timing_window_months = int(loaded["detection_timing_window_months"])
-        except Exception:
-            pass
+    _scalar_fields: list[tuple[str, type, str]] = [
+        ("fuzzy_threshold", float, "fuzzy_threshold"),
+        ("fuzzy_secondary_threshold", float, "fuzzy_secondary_threshold"),
+        ("batch_size_contracts", int, "batch_size_contracts"),
+        ("detection_timing_window_months", int, "detection_timing_window_months"),
+    ]
+    for key, cast, attr in _scalar_fields:
+        if key in loaded:
+            try:
+                setattr(cfg, attr, cast(loaded[key]))
+            except (ValueError, TypeError) as exc:
+                logger.warning("Invalid config value %s=%r: %s", key, loaded[key], exc)
 
     # dict fields
     for k in ("scoring", "vendor_matching", "metrics"):
@@ -209,9 +274,8 @@ def load_config(path: str | None = None) -> Config:
 # Convenience module-level config for quick imports
 try:
     _MODULE_CONFIG = load_config()
-except Exception:
-    # Avoid failing import if config parsing fails; fall back to defaults
-    logger.debug("Failed to load transition config at import time; using defaults.")
+except (OSError, ValueError, TypeError) as _load_exc:
+    logger.warning("Failed to load transition config at import time: %s; using defaults.", _load_exc)
     _MODULE_CONFIG = Config()
 
 
