@@ -298,7 +298,7 @@ python-dotenv==1.2.2
     # via
     #   dagster
     #   uvicorn
-pytz==2025.2
+pytz==2026.1.post1
     # via
     #   dagster
     #   neo4j
