@@ -8,7 +8,7 @@ from .taxonomy_loader import ClassificationConfig, TaxonomyConfig, TaxonomyLoade
 class PaECTERClientConfig(BaseModel):
     """Configuration for the PaECTERClient."""
 
-    model_name: str = Field("mpi-inno-comp/paecter", description="HuggingFace model identifier")
+    model_name: str = Field("nomic-ai/modernbert-embed-base", description="HuggingFace model identifier")
     use_local: bool = Field(
         False, description="If True, use local sentence-transformers. If False, use API."
     )

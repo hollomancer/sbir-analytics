@@ -24,7 +24,7 @@ class PaECTERLocalConfig(BaseModel):
     """Configuration for local PaECTER model inference."""
 
     model_name: str = Field(
-        default="mpi-inno-comp/paecter", description="HuggingFace model identifier"
+        default="nomic-ai/modernbert-embed-base", description="HuggingFace model identifier"
     )
     device: str = Field(
         default="auto", description="Device for inference (auto, cpu, cuda)"

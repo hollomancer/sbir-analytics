@@ -16,13 +16,13 @@ Usage:
     >>>
     >>> # Use HuggingFace Inference API
     >>> client = HuggingFaceInferenceClient(
-    ...     model_name="mpi-inno-comp/paecter",
+    ...     model_name="nomic-ai/modernbert-embed-base",
     ...     api_token="hf_xxxxx"  # or set HUGGINGFACE_API_TOKEN env var
     ... )
     >>>
     >>> texts = ["Patent about solar cells", "Innovation in AI"]
     >>> embeddings = client.generate_embeddings(texts)
-    >>> print(embeddings.shape)  # (2, 1024)
+    >>> print(embeddings.shape)  # (2, 768)
 
 Configuration:
     Set environment variables:
@@ -76,7 +76,7 @@ class HuggingFaceInferenceClient:
         available: Whether the client is properly configured
 
     Example:
-        >>> client = HuggingFaceInferenceClient("mpi-inno-comp/paecter")
+        >>> client = HuggingFaceInferenceClient("nomic-ai/modernbert-embed-base")
         >>> embeddings = client.generate_embeddings(["Text 1", "Text 2"])
     """
 
@@ -89,7 +89,7 @@ class HuggingFaceInferenceClient:
         """Initialize HuggingFace Inference API client.
 
         Args:
-            model_name: HuggingFace model identifier (e.g., "mpi-inno-comp/paecter")
+            model_name: HuggingFace model identifier (e.g., "nomic-ai/modernbert-embed-base")
             api_token: HuggingFace API token. If None, reads from HUGGINGFACE_API_TOKEN env var.
             timeout: Request timeout in seconds (default: 30.0)
 
@@ -148,10 +148,10 @@ class HuggingFaceInferenceClient:
             RuntimeError: If API calls fail after retries
 
         Example:
-            >>> client = HuggingFaceInferenceClient("mpi-inno-comp/paecter")
+            >>> client = HuggingFaceInferenceClient("nomic-ai/modernbert-embed-base")
             >>> texts = ["Innovation in solar energy", "Deep learning for healthcare"]
             >>> embeddings = client.generate_embeddings(texts)
-            >>> print(embeddings.shape)  # (2, 1024)
+            >>> print(embeddings.shape)  # (2, 768)
             >>> # Compute similarity
             >>> similarity = embeddings @ embeddings.T
             >>> print(similarity[0, 1])  # Cosine similarity between texts
@@ -264,7 +264,7 @@ class LocalGPUClient:
         device: Device being used (cuda/cpu)
 
     Example:
-        >>> client = LocalGPUClient("mpi-inno-comp/paecter")
+        >>> client = LocalGPUClient("nomic-ai/modernbert-embed-base")
         >>> embeddings = client.generate_embeddings(["Text 1", "Text 2"])
     """
 
@@ -321,7 +321,7 @@ class LocalGPUClient:
             NumPy array of embeddings (N x D)
 
         Example:
-            >>> client = LocalGPUClient("mpi-inno-comp/paecter", device="cuda")
+            >>> client = LocalGPUClient("nomic-ai/modernbert-embed-base", device="cuda")
             >>> embeddings = client.generate_embeddings(texts, batch_size=64)
         """
         if not texts:

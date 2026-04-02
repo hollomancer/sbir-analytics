@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Test PaECTER embeddings with real SBIR award data.
+"""Test ModernBERT-Embed embeddings with real SBIR award data.
 
 This script loads real SBIR award data from your database/CSV and generates
-PaECTER embeddings for testing and evaluation.
+embeddings for testing and evaluation using ModernBERT-Embed.
 
 Usage:
     # API mode (default - requires HF_TOKEN environment variable)
@@ -278,14 +278,14 @@ def main():
 
     args = parser.parse_args()
 
-    console.print("\n[bold blue]PaECTER Real Data Test[/bold blue]", style="bold")
-    console.print("Testing patent embeddings with real SBIR award data\n")
+    console.print("\n[bold blue]ModernBERT-Embed Real Data Test[/bold blue]", style="bold")
+    console.print("Testing embeddings with real SBIR award data\n")
 
     # Check mode
     use_local = args.local
     if use_local:
         console.print("[yellow]Mode:[/yellow] Local (using sentence-transformers)")
-        console.print("[dim]Model will be downloaded (~500MB) on first run[/dim]\n")
+        console.print("[dim]Model will be downloaded on first run[/dim]\n")
     else:
         console.print("[yellow]Mode:[/yellow] API (using HuggingFace Inference API)")
         if not os.getenv("HF_TOKEN"):
@@ -342,7 +342,7 @@ def main():
         return 1
 
     # Step 3: Initialize client
-    console.print("[yellow]Step 3:[/yellow] Initializing PaECTER client...")
+    console.print("[yellow]Step 3:[/yellow] Initializing embedding client...")
     try:
         client = PaECTERClient(use_local=use_local)
         console.print(

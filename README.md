@@ -62,7 +62,7 @@ For production use, see [Deployment Guide](docs/deployment/README.md) for:
 |--------|---------|---------------|
 | **Transition Detection** | Identify SBIR → federal contract transitions (≥85% precision) | [docs/transition/](docs/transition/) |
 | **CET Classification** | ML-based technology area classification | [docs/ml/](docs/ml/) |
-| **PaECTER Embeddings** | Patent-award similarity using semantic embeddings | [docs/ml/paecter.md](docs/ml/paecter.md) |
+| **ModernBERT-Embed** | Patent-award similarity using semantic embeddings | [docs/ml/paecter.md](docs/ml/paecter.md) |
 | **Fiscal Returns** | Economic impact & ROI analysis using StateIO | [docs/fiscal/](docs/fiscal/) |
 | **Patent Analysis** | USPTO patent chains and tech transfer tracking | [docs/schemas/patent-neo4j-schema.md](docs/schemas/patent-neo4j-schema.md) |
 
@@ -103,7 +103,7 @@ sbir-analytics/
 ├── packages/
 │   ├── sbir-analytics/    # Dagster orchestration (assets, CLI, definitions)
 │   ├── sbir-graph/        # Neo4j loading and relationship creation
-│   ├── sbir-ml/           # Machine learning (CET, transition, PaECTER)
+│   ├── sbir-ml/           # Machine learning (CET, transition, embeddings)
 │   └── sbir-models/       # Shared data models
 ├── tests/                  # Unit, integration, and E2E tests
 ├── docs/                   # Documentation
@@ -177,7 +177,7 @@ This project makes use of and is grateful for the following open-source tools an
 
 - **[StateIO](https://github.com/USEPA/stateior)** - State-level economic input-output modeling framework by USEPA
 - **[Bayesian Mixture-of-Experts](https://www.arxiv.org/abs/2509.23830)** - Research on calibration and uncertainty estimation by Albus Yizhuo Li
-- **[PaECTER](https://huggingface.co/mpi-inno-comp/paecter)** - Patent similarity model by Max Planck Institute
+- **[ModernBERT-Embed](https://huggingface.co/nomic-ai/modernbert-embed-base)** - Embedding model by Nomic AI (768-dim, 8192 token context)
 - **@SquadronConsult** - Help with SAM.gov data integration
 
 ## Support

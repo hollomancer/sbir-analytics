@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Quick test script for PaECTER with your SBIR data.
+"""Quick test script for ModernBERT-Embed with your SBIR data.
 
-This script provides a simple way to test PaECTER embeddings and similarity
+This script provides a simple way to test ModernBERT-Embed embeddings and similarity
 computation with sample SBIR awards and patents.
 
 Usage:
@@ -9,7 +9,7 @@ Usage:
     export HF_TOKEN="your_token_here"
     python scripts/test_paecter_quick.py
 
-    # Local mode (requires sentence-transformers, downloads ~500MB model)
+    # Local mode (requires sentence-transformers)
     python scripts/test_paecter_quick.py --local
 
 Requirements:
@@ -45,12 +45,12 @@ def main():
     # Check if --local flag is provided
     use_local = "--local" in sys.argv
 
-    console.print("\n[bold blue]PaECTER Quick Test[/bold blue]", style="bold")
-    console.print("Testing patent embeddings with sample SBIR and patent data\n")
+    console.print("\n[bold blue]ModernBERT-Embed Quick Test[/bold blue]", style="bold")
+    console.print("Testing embeddings with sample SBIR and patent data\n")
 
     if use_local:
         console.print("[yellow]Mode:[/yellow] Local (using sentence-transformers)")
-        console.print("[dim]Model will be downloaded (~500MB) on first run[/dim]\n")
+        console.print("[dim]Model will be downloaded on first run[/dim]\n")
     else:
         console.print("[yellow]Mode:[/yellow] API (using HuggingFace Inference API)")
         if not os.getenv("HF_TOKEN"):
@@ -130,7 +130,7 @@ def main():
     ]
 
     # Step 1: Initialize client
-    console.print("[yellow]Step 1:[/yellow] Initializing PaECTER client...")
+    console.print("[yellow]Step 1:[/yellow] Initializing embedding client...")
     try:
         client = PaECTERClient(use_local=use_local)
         console.print(

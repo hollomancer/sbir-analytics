@@ -1,14 +1,14 @@
-"""Integration tests for PaECTER client.
+"""Integration tests for embedding client (ModernBERT-Embed).
 
-This module tests the PaECTER embedding generation functionality using
-sample SBIR award and patent data.
+This module tests the embedding generation functionality using
+sample SBIR award and patent data with ModernBERT-Embed.
 
 By default, tests use local mode (requires sentence-transformers).
 To test API mode, set HF_TOKEN environment variable and use use_local=False.
 
 Tests are marked as integration tests and require:
 - API mode: huggingface_hub library + HF_TOKEN env var
-- Local mode: sentence-transformers library (first run downloads ~500MB model)
+- Local mode: sentence-transformers library (first run downloads model)
 """
 
 import os
@@ -127,8 +127,8 @@ class TestPaECTERClient:
     def test_client_initialization(self, paecter_client):
         """Test that client initializes successfully."""
         assert paecter_client.inference_mode in ("api", "local")
-        assert paecter_client.embedding_dim == 1024  # PaECTER produces 1024-dim embeddings
-        assert paecter_client.model_name == "mpi-inno-comp/paecter"
+        assert paecter_client.embedding_dim == 768  # ModernBERT-Embed produces 768-dim embeddings
+        assert paecter_client.model_name == "nomic-ai/modernbert-embed-base"
 
         # Check mode-specific attributes
         if paecter_client.inference_mode == "local":
@@ -144,10 +144,10 @@ class TestPaECTERClient:
         result = paecter_client.generate_embeddings(texts)
 
         assert isinstance(result, EmbeddingResult)
-        assert result.embeddings.shape == (1, 1024)
+        assert result.embeddings.shape == (1, 768)
         assert result.input_count == 1
-        assert result.dimension == 1024
-        assert result.model_version == "mpi-inno-comp/paecter"
+        assert result.dimension == 768
+        assert result.model_version == "nomic-ai/modernbert-embed-base"
 
     def test_generate_embeddings_batch(self, paecter_client):
         """Test embedding generation for multiple texts."""
@@ -158,7 +158,7 @@ class TestPaECTERClient:
         ]
         result = paecter_client.generate_embeddings(texts, batch_size=2)
 
-        assert result.embeddings.shape == (3, 1024)
+        assert result.embeddings.shape == (3, 768)
         assert result.input_count == 3
 
     def test_embeddings_are_normalized(self, paecter_client):
@@ -241,7 +241,7 @@ class TestPaECTERClient:
 
         result = paecter_client.generate_embeddings(award_texts)
 
-        assert result.embeddings.shape == (len(SAMPLE_AWARDS), 1024)
+        assert result.embeddings.shape == (len(SAMPLE_AWARDS), 768)
         assert result.input_count == len(SAMPLE_AWARDS)
 
     def test_patent_embeddings(self, paecter_client):
@@ -256,7 +256,7 @@ class TestPaECTERClient:
 
         result = paecter_client.generate_embeddings(patent_texts)
 
-        assert result.embeddings.shape == (len(SAMPLE_PATENTS), 1024)
+        assert result.embeddings.shape == (len(SAMPLE_PATENTS), 768)
         assert result.input_count == len(SAMPLE_PATENTS)
 
     def test_award_patent_similarity(self, paecter_client):

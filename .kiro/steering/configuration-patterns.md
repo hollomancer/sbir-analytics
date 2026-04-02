@@ -232,7 +232,7 @@ ml:
 
     # Local model configuration (when use_local=true)
     local:
-      model_name: "mpi-inno-comp/paecter"  # HuggingFace model identifier
+      model_name: "nomic-ai/modernbert-embed-base"  # HuggingFace model identifier
       device: "auto"  # "auto", "cpu", or "cuda"
       batch_size: 32
 
