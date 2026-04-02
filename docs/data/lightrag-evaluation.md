@@ -295,3 +295,114 @@ Build solicitation extractor and apply LightRAG extraction.
 - The existing Neo4j + DuckDB stack meets current query needs
 
 **Recommended:** Proceed with Phase 1 (vector index) regardless -- it's low-cost and fills a clear gap. Evaluate LightRAG extraction (Phase 2+) based on user query patterns after vector search is available.
+
+---
+
+## 10. Replacement Analysis: Where LightRAG Replaces vs Complements
+
+The question of whether to **replace** existing components with LightRAG equivalents (vs layering LightRAG on top) is critical for avoiding maintenance burden from redundant systems. This section evaluates each existing component.
+
+### 10.1 Components LightRAG Should NOT Replace
+
+#### Neo4j Knowledge Graph (KEEP)
+
+The existing Neo4j schema represents **curated, validated, structured relationships** with confidence scores, detection methods, and evidence metadata:
+
+```
+(a:Award)-[r:TRANSITIONED_TO {score: 0.87, confidence: "high", detection_date: ...}]->(t:Transition)
+(t:Transition)-[:RESULTED_IN]->(c:Contract)
+(p:Patent)-[:GENERATED_FROM]->(a:Award)
+```
+
+LightRAG's entity/relationship extraction produces **inferred, unvalidated relationships** from text. These are fundamentally different in provenance and trustworthiness. The existing graph represents ground-truth data lineage (Award X was actually awarded to Company Y); LightRAG extractions represent semantic interpretation ("this abstract mentions reinforcement learning").
+
+**Verdict: Keep.** The existing Neo4j graph is authoritative structured data. LightRAG should write *into* this graph as additional node/relationship types, not replace it.
+
+#### TransitionPathwayQueries (KEEP)
+
+The 8 pathway query methods in `pathway_queries.py` are **precision-oriented analytical queries** with specific filtering (confidence levels, score thresholds, CET areas). They return structured PathwayResult objects used downstream in evaluation and reporting.
+
+LightRAG's local mode traverses graph neighborhoods but lacks:
+- Configurable confidence/score filtering
+- Specific multi-hop pattern matching (Award → Patent → Transition → Contract)
+- Structured aggregation (transition rates by CET area, patent-backed rates)
+
+**Verdict: Keep.** These are analytical workhorses, not retrieval queries. LightRAG retrieval and pathway queries serve different purposes.
+
+#### Transition Detection Scoring (KEEP)
+
+The 6-signal scoring system (agency, timing, competition, patent, amount, text similarity) in `sbir_ml/transition/detection/scoring.py` is a validated ML pipeline with >=85% precision benchmarks. LightRAG has no equivalent for this kind of structured signal composition.
+
+**Verdict: Keep.** Not a retrieval problem; LightRAG is irrelevant here.
+
+#### Pydantic Data Models (KEEP)
+
+Award, Patent, Company, Contract, Transition, CET models provide validation, serialization, and type safety throughout the ETL pipeline. LightRAG does not replace data modeling.
+
+**Verdict: Keep.** Orthogonal concern.
+
+### 10.2 Components LightRAG CAN Replace
+
+#### ClusterTopicsTool -- Greedy Agglomerative Clustering (REPLACE)
+
+**Current:** `tools/mission_a/cluster_topics.py` uses embedding cosine similarity with a greedy agglomerative approach and a fixed 0.85 threshold to cluster solicitation topics across agencies.
+
+**LightRAG equivalent:** Global mode with Leiden community detection over LLM-extracted entity graph. This is strictly better because:
+
+1. **Richer signal:** Clusters based on shared extracted entities (technologies, methods, problems) rather than raw embedding similarity, which conflates topical with lexical similarity
+2. **Hierarchical:** Leiden produces multi-resolution communities; the current tool only supports a single threshold
+3. **Explainable:** Community membership is traceable through shared entities; embedding clusters are opaque
+4. **Cross-agency by design:** Community detection naturally surfaces cross-cutting themes without the `cross_agency_only` flag hack
+
+**Migration path:** Replace `ClusterTopicsTool.execute()` internals with LightRAG global retrieval. Keep the `ToolResult` interface and `ToolMetadata` contract.
+
+**Risk:** Low. The current tool is a standalone analysis tool, not part of the core ETL pipeline.
+
+#### Batch Embedding Similarity (award-patent) (PARTIALLY REPLACE)
+
+**Current:** `paecter_award_patent_similarity` Dagster asset computes an N x M cosine similarity matrix between all award and patent embeddings, filters by threshold (0.80), and outputs a DataFrame of (award_id, patent_id, similarity_score) tuples.
+
+**LightRAG replacement potential:** LightRAG's local mode can answer "what patents relate to this award?" via entity-neighborhood traversal, which is more semantically meaningful than raw embedding cosine similarity. An award about "adaptive optics for satellite imaging" and a patent about "wavefront correction systems" might share few lexical features but share the extracted entity `adaptive_optics`.
+
+**However:** The current batch similarity is used as an input signal for transition detection (patent_topic_similarity score feeds into the 6-signal scoring). Replacing it with graph traversal would require revalidating the >=85% precision benchmark.
+
+**Verdict: Partial replacement.** Use LightRAG local mode for interactive "find related patents" queries. Keep batch similarity for the transition detection pipeline until revalidation confirms graph-based matching maintains precision.
+
+#### CET Classification Granularity (SUPPLEMENT, not replace)
+
+**Current:** 21 CET areas from the NSTC taxonomy, assigned via ML classifier with confidence scores. Coarse-grained by design (e.g., "Artificial Intelligence" covers everything from NLP to robotics).
+
+**LightRAG addition:** Leiden communities within each CET area would provide sub-topic granularity. For example, within "Artificial Intelligence":
+- Community: autonomous navigation (reinforcement learning, path planning, GPS-denied)
+- Community: NLP for intelligence analysis (entity extraction, document classification)
+- Community: predictive maintenance (anomaly detection, sensor fusion, digital twins)
+
+**Verdict: Supplement.** CET taxonomy is a government-defined standard; it cannot be replaced. LightRAG communities provide valuable sub-classification within CET areas.
+
+### 10.3 Components Where LightRAG Fills Gaps (NEW)
+
+| Gap | Current State | LightRAG Solution |
+|-----|--------------|-------------------|
+| **No semantic search** | Embeddings exist in DataFrames, no query interface | Naive mode: vector index + query-time embedding |
+| **No NL query interface** | All queries are Cypher or Python API | All 4 modes accept natural language queries |
+| **No implicit relationship discovery** | Only explicit structured relationships | LLM extraction finds "uses", "builds upon", "addresses" from text |
+| **No thematic summarization** | CET areas are static categories | Global mode generates dynamic community summaries |
+| **No cross-document reasoning** | Each award is an island (except graph links) | Entity co-occurrence across documents creates implicit connections |
+
+### 10.4 Summary: Replace, Keep, or Supplement
+
+| Component | File(s) | Verdict | Rationale |
+|-----------|---------|---------|-----------|
+| Neo4j graph schema | `sbir-graph/loaders/neo4j/` | **Keep** | Authoritative structured data; LightRAG writes into it |
+| TransitionPathwayQueries | `sbir-graph/queries/pathway_queries.py` | **Keep** | Analytical precision queries, not retrieval |
+| Transition detection scoring | `sbir_ml/transition/detection/scoring.py` | **Keep** | Validated ML pipeline, orthogonal to RAG |
+| Pydantic models | `sbir_etl/models/` | **Keep** | Data validation, orthogonal |
+| PaECTERClient (embeddings) | `sbir_ml/ml/paecter_client.py` | **Keep** | LightRAG uses these embeddings as its vector layer |
+| ClusterTopicsTool | `tools/mission_a/cluster_topics.py` | **Replace** | LightRAG global mode is strictly better |
+| Batch award-patent similarity | `assets/paecter/embeddings.py` | **Partial** | Replace for interactive queries; keep for scoring pipeline |
+| CET taxonomy (21 areas) | `sbir_ml/ml/config/taxonomy_loader.py` | **Supplement** | Add sub-topic communities within CET areas |
+| Embedding storage (DataFrames) | `assets/paecter/embeddings.py` | **Replace** | Move to Neo4j Vector Index for queryable storage |
+| No semantic search | N/A | **New** | LightRAG naive mode fills this gap |
+| No NL query interface | N/A | **New** | All LightRAG modes provide this |
+| No implicit relationships | N/A | **New** | LLM extraction from abstracts |
+| No thematic summarization | N/A | **New** | Leiden community summaries |
