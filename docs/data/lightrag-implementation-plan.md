@@ -345,9 +345,166 @@ def cet_subcommunity_mapping(context) -> Output[pd.DataFrame]:
 
 ---
 
-## Phase 4: Query Interface (Week 4-5)
+## Phase 4: Solicitation Topic Extraction & Ingestion (Week 4-5)
 
-### 4.1 Query Service
+The current pipeline has **no solicitation topic descriptions**. Award records contain only solicitation metadata (`solicitation_number`, `topic_code`, `solicitation_year`, dates) -- not the 500-3000 word topic descriptions that describe the government's research needs. This is the highest-value unrealized data source for LightRAG.
+
+### 4.1 Solicitation Data Sources
+
+SBIR.gov provides solicitation topic data through:
+
+1. **SBIR.gov API** (`https://api.www.sbir.gov/public/api/`) -- the existing `SbirGovClient` only queries the `/awards` endpoint. The API also exposes solicitation topics with full descriptions.
+2. **Bulk downloads** (`https://www.sbir.gov/data-resources`) -- solicitation data is available alongside award data.
+3. **Award records** -- topic descriptions are sometimes embedded in API award responses but not in the CSV bulk download that the current extractor uses.
+
+### 4.2 Solicitation Extractor
+
+**New file: `sbir_etl/extractors/solicitation.py`**
+
+New extractor following the pattern established by `sbir_etl/extractors/sbir_gov_api.py`:
+
+```python
+class SolicitationExtractor:
+    """Extract solicitation topic descriptions from SBIR.gov.
+
+    Pulls full topic text including:
+    - Topic title and description (500-3000 words)
+    - Agency, branch, and program
+    - Open/close dates
+    - Topic number and solicitation number
+    """
+
+    def __init__(self, client: SbirGovClient | None = None):
+        self.client = client or SbirGovClient()
+
+    def extract_topics(
+        self,
+        *,
+        agency: str | None = None,
+        year: int | None = None,
+    ) -> pd.DataFrame:
+        """Extract solicitation topics with full descriptions."""
+
+    def deduplicate_topics(self, topics_df: pd.DataFrame) -> pd.DataFrame:
+        """Deduplicate by (topic_code, solicitation_number)."""
+```
+
+### 4.3 Solicitation Model
+
+**New file: `sbir_etl/models/solicitation.py`**
+
+```python
+class Solicitation(BaseModel):
+    """SBIR/STTR solicitation topic."""
+
+    topic_code: str = Field(..., description="Topic identifier (e.g., 'AF231-001')")
+    solicitation_number: str = Field(..., description="Parent solicitation number")
+    title: str = Field(..., description="Topic title")
+    description: str | None = Field(None, description="Full topic description (500-3000 words)")
+    agency: str | None = Field(None, description="Issuing agency")
+    branch: str | None = Field(None, description="Agency branch")
+    program: str | None = Field(None, description="SBIR or STTR")
+    open_date: date | None = Field(None)
+    close_date: date | None = Field(None)
+    year: int | None = Field(None)
+```
+
+### 4.4 Solicitation Dagster Assets
+
+**New files:**
+
+| File | Asset | Depends On |
+|------|-------|------------|
+| `assets/lightrag/solicitations.py` | `extracted_solicitation_topics` | None (raw extraction) |
+| `assets/lightrag/solicitations.py` | `lightrag_solicitation_ingestion` | `extracted_solicitation_topics` |
+
+```python
+@asset(
+    description="Extract solicitation topics from SBIR.gov",
+    group_name="lightrag",
+    compute_kind="extraction",
+)
+def extracted_solicitation_topics(context) -> Output[pd.DataFrame]:
+    extractor = SolicitationExtractor()
+    topics_df = extractor.extract_topics()
+    topics_df = extractor.deduplicate_topics(topics_df)
+    return Output(topics_df, metadata={"topic_count": len(topics_df)})
+
+
+@asset(
+    description="Ingest solicitation topics into LightRAG",
+    group_name="lightrag",
+    compute_kind="llm",
+)
+async def lightrag_solicitation_ingestion(
+    context, extracted_solicitation_topics: pd.DataFrame
+) -> Output[dict]:
+    config = LightRAGConfig.from_yaml(get_config())
+    rag = await create_lightrag_instance(config)
+
+    documents = [prepare_solicitation_document(row) for _, row in df.iterrows()]
+    for batch in batched(documents, batch_size=100):
+        await rag.ainsert([doc["content"] for doc in batch])
+
+    return Output({"topics_ingested": len(documents)})
+```
+
+### 4.5 Document Preparation for Solicitations
+
+Add to `packages/sbir-rag/sbir_rag/document_prep.py`:
+
+```python
+def prepare_solicitation_document(solicitation: dict) -> dict:
+    """Convert solicitation topic to LightRAG document.
+
+    Solicitation descriptions are typically 500-3000 words of technical
+    prose -- far richer than award abstracts for entity extraction.
+    """
+    header = (
+        f"Solicitation Topic: {solicitation['topic_code']}. "
+        f"Agency: {solicitation.get('agency', 'Unknown')}. "
+        f"Program: {solicitation.get('program', 'SBIR')}. "
+    )
+    body = f"{solicitation['title']}. {solicitation.get('description', '')}"
+    return {
+        "content": header + body,
+        "metadata": {
+            "topic_code": solicitation["topic_code"],
+            "solicitation_number": solicitation.get("solicitation_number"),
+            "agency": solicitation.get("agency"),
+            "year": solicitation.get("year"),
+            "document_type": "solicitation",
+        },
+    }
+```
+
+### 4.6 Cross-Document Linking
+
+After both awards and solicitations are ingested, LightRAG's entity graph naturally connects them through shared extracted entities. An award abstract mentioning "counter-UAS detection in urban RF environments" and a solicitation topic describing "passive RF sensing for low-observable UAS in cluttered urban environments" will share Technology and Problem entities, creating implicit solicitation-to-award links that go beyond the `topic_code` join key.
+
+Additionally, a post-processing step creates explicit links:
+
+```cypher
+// Link awards to solicitation topics via topic_code
+MATCH (a:Award), (s:__entity__ {document_type: 'solicitation'})
+WHERE a.topic_code = s.source_topic_code
+MERGE (a)-[:RESPONDS_TO_TOPIC]->(s)
+```
+
+### 4.7 Estimated Volume and Cost
+
+| Metric | Estimate |
+|--------|----------|
+| Solicitation topics (all agencies, all years) | ~50,000 |
+| Average tokens per topic description | ~1,000-3,000 |
+| LLM extraction cost (Claude Haiku) | ~$150-400 |
+| Embedding cost (PaECTER, included in existing pipeline) | Negligible |
+
+---
+
+## Phase 5: Query Interface (Week 5-6)
+
+### 5.1 Query Service
 
 **New file: `packages/sbir-rag/sbir_rag/query_service.py`**
 
@@ -368,7 +525,7 @@ class SBIRQueryService:
         """Hybrid mode: local + global combined."""
 ```
 
-### 4.2 Interactive Similarity Search
+### 5.2 Interactive Similarity Search
 
 **New file: `packages/sbir-rag/sbir_rag/interactive_similarity.py`**
 
@@ -383,7 +540,7 @@ async def find_similar_awards(query_text: str, top_k: int = 10) -> list[dict]:
 
 The batch `paecter_award_patent_similarity` asset is **kept** for the transition detection scoring pipeline (must maintain >=85% precision).
 
-### 4.3 CLI Integration
+### 5.3 CLI Integration
 
 **Modify: `packages/sbir-analytics/sbir_analytics/cli/`**
 
@@ -398,9 +555,9 @@ sbir-cli rag status  # ingestion stats, community count, index health
 
 ---
 
-## Phase 5: Dagster Pipeline Integration (Week 5-6)
+## Phase 6: Dagster Pipeline Integration (Week 6-7)
 
-### 5.1 Job Definition
+### 6.1 Job Definition
 
 **New file: `packages/sbir-analytics/sbir_analytics/assets/jobs/lightrag_job.py`**
 
@@ -414,7 +571,7 @@ lightrag_ingestion_job = define_asset_job(
 )
 ```
 
-### 5.2 Asset Dependency Graph
+### 6.2 Asset Dependency Graph
 
 ```
 validated_sbir_awards
@@ -423,9 +580,18 @@ validated_sbir_awards
     │       │
     │       ├── lightrag_entity_cross_references (__entity__ → Award/Company linking)
     │       │
-    │       └── lightrag_topic_communities (Leiden detection → __community__ nodes)
+    │       └──┐
+    │          │
+    │   extracted_solicitation_topics (NEW: SBIR.gov topic extraction)
+    │       │
+    │       └── lightrag_solicitation_ingestion (LLM extraction from topic descriptions)
     │               │
-    │               └── cet_subcommunity_mapping (CETArea → __community__ linking)
+    │               └──┐
+    │                  │
+    │          lightrag_topic_communities (Leiden detection → __community__ nodes)
+    │                  │  (depends on both award + solicitation ingestion)
+    │                  │
+    │                  └── cet_subcommunity_mapping (CETArea → __community__ linking)
     │
     └── paecter_embeddings_awards (existing, unchanged)
             │
@@ -434,7 +600,7 @@ validated_sbir_awards
             └── paecter_award_patent_similarity (existing, unchanged)
 ```
 
-### 5.3 Package Dependency Updates
+### 6.3 Package Dependency Updates
 
 | File | Change |
 |------|--------|
@@ -455,6 +621,8 @@ Following the existing pytest marker system in `pyproject.toml`:
 | `tests/sbir_rag/test_document_prep.py` | Award-to-document conversion, null handling, header formatting |
 | `tests/sbir_rag/test_config.py` | LightRAGConfig validation, YAML loading, env overrides |
 | `tests/sbir_rag/test_query_service.py` | Query routing to correct LightRAG mode (mocked) |
+| `tests/sbir_rag/test_solicitation_extractor.py` | Solicitation extraction, deduplication, null descriptions |
+| `tests/sbir_rag/test_solicitation_prep.py` | Solicitation-to-document conversion, metadata mapping |
 
 ### Integration Tests (`@pytest.mark.integration`)
 
@@ -463,6 +631,7 @@ Following the existing pytest marker system in `pyproject.toml`:
 | `tests/sbir_rag/test_neo4j_vector_index.py` | Vector index creation, k-NN queries (`@pytest.mark.requires_neo4j`) |
 | `tests/sbir_rag/test_lightrag_ingestion.py` | End-to-end ingestion with mocked LLM |
 | `tests/sbir_rag/test_cross_reference.py` | Entity-to-Award linking accuracy |
+| `tests/sbir_rag/test_solicitation_ingestion.py` | Solicitation ingestion with mocked LLM, cross-document entity linking |
 
 ### Regression Tests
 
@@ -495,7 +664,7 @@ Following the existing pytest marker system in `pyproject.toml`:
 
 ## File Summary
 
-### New Files (16)
+### New Files (19)
 
 | File | Phase |
 |------|-------|
@@ -505,8 +674,8 @@ Following the existing pytest marker system in `pyproject.toml`:
 | `packages/sbir-rag/sbir_rag/embedding_adapter.py` | 1 |
 | `packages/sbir-rag/sbir_rag/factory.py` | 1 |
 | `packages/sbir-rag/sbir_rag/document_prep.py` | 2 |
-| `packages/sbir-rag/sbir_rag/query_service.py` | 4 |
-| `packages/sbir-rag/sbir_rag/interactive_similarity.py` | 4 |
+| `packages/sbir-rag/sbir_rag/query_service.py` | 5 |
+| `packages/sbir-rag/sbir_rag/interactive_similarity.py` | 5 |
 | `packages/sbir-analytics/sbir_analytics/assets/lightrag/__init__.py` | 2 |
 | `packages/sbir-analytics/sbir_analytics/assets/lightrag/ingestion.py` | 2 |
 | `packages/sbir-analytics/sbir_analytics/assets/lightrag/vector_index.py` | 2 |
@@ -514,7 +683,10 @@ Following the existing pytest marker system in `pyproject.toml`:
 | `packages/sbir-analytics/sbir_analytics/assets/lightrag/communities.py` | 3 |
 | `packages/sbir-analytics/sbir_analytics/assets/lightrag/cet_subcommunities.py` | 3 |
 | `packages/sbir-analytics/sbir_analytics/tools/mission_a/leiden_topics.py` | 3 |
-| `packages/sbir-analytics/sbir_analytics/assets/jobs/lightrag_job.py` | 5 |
+| `sbir_etl/extractors/solicitation.py` | 4 |
+| `sbir_etl/models/solicitation.py` | 4 |
+| `packages/sbir-analytics/sbir_analytics/assets/lightrag/solicitations.py` | 4 |
+| `packages/sbir-analytics/sbir_analytics/assets/jobs/lightrag_job.py` | 6 |
 | `migrations/versions/004_lightrag_schema.py` | 1 |
 
 ### Modified Files (4)
@@ -523,8 +695,8 @@ Following the existing pytest marker system in `pyproject.toml`:
 |------|--------|-------|
 | `config/base.yaml` | Add `lightrag:` config section | 1 |
 | `packages/sbir-analytics/sbir_analytics/assets/__init__.py` | Add lightrag modules to `HEAVY_ASSET_MODULES` | 2 |
-| `packages/sbir-analytics/pyproject.toml` | Add `sbir-rag` dependency | 5 |
-| `pyproject.toml` (root) | Add `sbir-rag` to dev extras | 5 |
+| `packages/sbir-analytics/pyproject.toml` | Add `sbir-rag` dependency | 6 |
+| `pyproject.toml` (root) | Add `sbir-rag` to dev extras | 6 |
 
 ### Deprecated Files (1)
 
