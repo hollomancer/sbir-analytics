@@ -1,0 +1,533 @@
+# LightRAG Implementation Plan
+
+**Date:** 2026-04-02
+**Status:** Plan Complete
+**Prerequisites:** [LightRAG Evaluation](./lightrag-evaluation.md), [RAG Data Evaluation](./rag-data-evaluation.md)
+
+## Architecture Overview
+
+LightRAG integrates as a new package `packages/sbir-rag/` that bridges the existing Neo4j graph, PaECTER embedding pipeline, and Dagster orchestration. It does **not** replace the existing infrastructure -- it creates a *semantic overlay* on top of the structured graph and fills gaps identified in the evaluation (semantic search, NL queries, implicit relationships, thematic summarization).
+
+```
+                    ┌──────────────────────────────────────┐
+                    │          Query Interface              │
+                    │  sbir-cli rag query "..."             │
+                    │  SBIRQueryService (4 modes)           │
+                    └──────────┬───────────────────────────┘
+                               │
+                    ┌──────────▼───────────────────────────┐
+                    │          LightRAG Core                │
+                    │  packages/sbir-rag/sbir_rag/          │
+                    │  ├── factory.py (instance creation)   │
+                    │  ├── embedding_adapter.py (PaECTER)   │
+                    │  ├── document_prep.py (Award → doc)   │
+                    │  └── query_service.py (retrieval)     │
+                    └──────────┬───────────────────────────┘
+                               │
+              ┌────────────────┼────────────────┐
+              │                │                │
+   ┌──────────▼──────┐ ┌──────▼──────┐ ┌───────▼──────────┐
+   │  Neo4j 5.x      │ │  PaECTER    │ │  Dagster Assets   │
+   │  (existing +    │ │  Client     │ │  (new lightrag    │
+   │   LightRAG      │ │  (768-dim   │ │   asset group)    │
+   │   nodes/rels)   │ │  ModernBERT)│ │                   │
+   └─────────────────┘ └─────────────┘ └───────────────────┘
+```
+
+### Three Integration Surfaces
+
+1. **Embedding adapter** -- wraps `PaECTERClient` so LightRAG uses ModernBERT-Embed (768-dim) instead of its default OpenAI embeddings
+2. **Neo4j storage backend** -- LightRAG uses the existing Neo4j instance; its internal nodes (`__entity__`, `__relationship__`, `__community__`) coexist with Award/Company/Patent/CET nodes via double-underscore prefix isolation
+3. **Dagster assets** -- new `lightrag` asset group for ingestion, community detection, vector indexing, and cross-referencing
+
+### Schema Isolation Strategy
+
+LightRAG's Neo4j backend creates nodes with `__entity__`, `__relationship__`, `__community__` labels (double-underscore prefixed). These do not collide with existing labels (Award, Company, Patent, CETArea, Transition, Contract, Organization). A post-ingestion Dagster asset creates cross-reference relationships linking extracted entities back to structured nodes.
+
+---
+
+## Phase 1: Foundation (Week 1-2)
+
+### 1.1 Create `packages/sbir-rag/` package
+
+**New files:**
+
+| File | Purpose |
+|------|---------|
+| `packages/sbir-rag/pyproject.toml` | Package config; deps: `lightrag-hku>=1.0.0`, `sbir-ml`, `sbir-graph`, `sbir-etl` |
+| `packages/sbir-rag/sbir_rag/__init__.py` | Package init |
+| `packages/sbir-rag/sbir_rag/config.py` | `LightRAGConfig` Pydantic model |
+| `packages/sbir-rag/sbir_rag/embedding_adapter.py` | PaECTER → LightRAG embedding function adapter |
+| `packages/sbir-rag/sbir_rag/factory.py` | LightRAG instance factory with Neo4j backend |
+
+### 1.2 LightRAGConfig
+
+Pydantic config model following the `PaECTERClientConfig` pattern in `packages/sbir-ml/sbir_ml/ml/config/__init__.py`:
+
+```python
+class LightRAGConfig(BaseModel):
+    workspace: str = "sbir"
+    neo4j_uri: str
+    neo4j_username: str = "neo4j"
+    neo4j_password: str
+    neo4j_database: str = "neo4j"
+    embedding_model: str = "nomic-ai/modernbert-embed-base"
+    embedding_dim: int = 768
+    use_local_embeddings: bool = False
+    llm_model: str = "claude-haiku-4-5-20251001"
+    chunk_size: int = 1200
+    chunk_overlap: int = 100
+    community_algorithm: str = "leiden"
+    max_community_levels: int = 3
+```
+
+### 1.3 PaECTER Embedding Adapter
+
+Wraps `PaECTERClient.generate_embeddings()` (sync) as the async function LightRAG expects:
+
+```python
+# packages/sbir-rag/sbir_rag/embedding_adapter.py
+async def create_paecter_embedding_func(config: LightRAGConfig) -> Callable:
+    client = PaECTERClient(config=PaECTERClientConfig(
+        model_name=config.embedding_model,
+        use_local=config.use_local_embeddings,
+        enable_cache=True,
+    ))
+
+    async def embed(texts: list[str]) -> np.ndarray:
+        result = await asyncio.to_thread(
+            client.generate_embeddings, texts, normalize=True
+        )
+        return result.embeddings
+
+    return embed
+```
+
+This ensures the existing 768-dim ModernBERT-Embed vectors are used consistently. LightRAG's default (OpenAI ada-002, 1536-dim) would create an incompatible parallel embedding space.
+
+### 1.4 LightRAG Instance Factory
+
+```python
+# packages/sbir-rag/sbir_rag/factory.py
+async def create_lightrag_instance(config: LightRAGConfig) -> LightRAG:
+    embedding_func = await create_paecter_embedding_func(config)
+
+    rag = LightRAG(
+        working_dir=f"/tmp/lightrag_{config.workspace}",
+        embedding_func=EmbeddingFunc(
+            embedding_dim=config.embedding_dim,
+            max_token_size=8192,  # ModernBERT context window
+            func=embedding_func,
+        ),
+        graph_storage="Neo4JStorage",
+        vector_storage="Neo4JStorage",
+        kv_storage="Neo4JStorage",
+        graph_storage_params={
+            "uri": config.neo4j_uri,
+            "user": config.neo4j_username,
+            "password": config.neo4j_password,
+            "database": config.neo4j_database,
+        },
+    )
+    return rag
+```
+
+### 1.5 Neo4j Migration
+
+**New file: `migrations/versions/004_lightrag_schema.py`**
+
+Following the pattern from `migrations/versions/001_initial_schema.py`:
+
+```python
+# Vector index for Award embeddings (replaces DataFrame storage)
+CREATE VECTOR INDEX award_embedding IF NOT EXISTS
+  FOR (a:Award) ON (a.embedding)
+  OPTIONS {indexConfig: {
+    `vector.dimensions`: 768,
+    `vector.similarity_function`: 'cosine'
+  }}
+
+# Vector index for Patent embeddings
+CREATE VECTOR INDEX patent_embedding IF NOT EXISTS
+  FOR (p:Patent) ON (p.embedding)
+  OPTIONS {indexConfig: {
+    `vector.dimensions`: 768,
+    `vector.similarity_function`: 'cosine'
+  }}
+
+# Index for LightRAG entity cross-references
+CREATE INDEX lrag_entity_source_id IF NOT EXISTS
+  FOR (e:__entity__) ON (e.source_id)
+```
+
+### 1.6 Configuration
+
+Add to `config/base.yaml`:
+
+```yaml
+lightrag:
+  enabled: false  # Opt-in
+  workspace: "sbir"
+  llm:
+    model: "claude-haiku-4-5-20251001"
+    max_tokens: 4096
+    temperature: 0.0
+  chunking:
+    chunk_size: 1200
+    chunk_overlap: 100
+  community_detection:
+    algorithm: "leiden"
+    max_levels: 3
+    resolution: 1.0
+  retrieval:
+    default_mode: "hybrid"
+    top_k: 10
+    similarity_threshold: 0.75
+```
+
+---
+
+## Phase 2: Document Ingestion Pipeline (Week 2-3)
+
+### 2.1 Document Preparation
+
+**New file: `packages/sbir-rag/sbir_rag/document_prep.py`**
+
+Converts Award records into LightRAG documents. Reuses `PaECTERClient.prepare_award_text()` text composition logic but adds structured context headers for better entity extraction:
+
+```python
+def prepare_award_document(award: Award) -> dict:
+    text = PaECTERClient.prepare_award_text(
+        solicitation_title=None,
+        abstract=award.abstract,
+        award_title=award.award_title,
+    )
+    header = f"Agency: {award.agency}. Phase: {award.phase}. "
+    if award.keywords:
+        header += f"Keywords: {award.keywords}. "
+    return {
+        "content": header + text,
+        "metadata": {
+            "award_id": award.award_id,
+            "agency": award.agency,
+            "phase": award.phase,
+            "award_year": award.award_year,
+        },
+    }
+```
+
+### 2.2 Dagster Assets
+
+**New files:**
+
+| File | Asset | Depends On |
+|------|-------|------------|
+| `assets/lightrag/__init__.py` | Module init | -- |
+| `assets/lightrag/ingestion.py` | `lightrag_document_ingestion` | `validated_sbir_awards` |
+| `assets/lightrag/vector_index.py` | `neo4j_award_embeddings` | `paecter_embeddings_awards` |
+| `assets/lightrag/cross_reference.py` | `lightrag_entity_cross_references` | `lightrag_document_ingestion` |
+
+**Asset: `lightrag_document_ingestion`**
+
+```python
+@asset(
+    description="Ingest SBIR awards into LightRAG knowledge graph",
+    group_name="lightrag",
+    compute_kind="llm",
+)
+async def lightrag_document_ingestion(
+    context, validated_sbir_awards: pd.DataFrame
+) -> Output[dict]:
+    config = LightRAGConfig.from_yaml(get_config())
+    rag = await create_lightrag_instance(config)
+
+    documents = [prepare_award_document(row) for _, row in df.iterrows()]
+    for batch in batched(documents, batch_size=100):
+        await rag.ainsert([doc["content"] for doc in batch])
+
+    return Output({"documents_ingested": len(documents)}, ...)
+```
+
+**Asset: `neo4j_award_embeddings`** (replaces DataFrame storage)
+
+Downstream consumer of `paecter_embeddings_awards` that writes embeddings into Award nodes via batch UNWIND, making them queryable via the vector index from migration 004.
+
+**Asset: `lightrag_entity_cross_references`**
+
+Post-ingestion linking of LightRAG `__entity__` nodes back to existing structured nodes (Award, Company, Organization) using UEI/name matching with the same fuzzy threshold (90% high confidence) from the enrichment pipeline.
+
+### 2.3 Register in HEAVY_ASSET_MODULES
+
+**Modify: `packages/sbir-analytics/sbir_analytics/assets/__init__.py`**
+
+Add to the `HEAVY_ASSET_MODULES` set (line 22):
+
+```python
+HEAVY_ASSET_MODULES = {
+    ...existing entries...
+    "sbir_analytics.assets.lightrag.ingestion",    # LLM extraction, expensive
+    "sbir_analytics.assets.lightrag.communities",  # Graph computation
+}
+```
+
+---
+
+## Phase 3: Community Detection & ClusterTopicsTool Replacement (Week 3-4)
+
+### 3.1 Community Detection Asset
+
+**New file: `assets/lightrag/communities.py`**
+
+```python
+@asset(
+    description="Detect topic communities using Leiden algorithm",
+    group_name="lightrag",
+    compute_kind="graph",
+    deps=["lightrag_document_ingestion"],
+)
+async def lightrag_topic_communities(context) -> Output[pd.DataFrame]:
+    # LightRAG builds communities during insertion
+    # This asset extracts and stores community metadata
+    # Queries __community__ nodes from Neo4j
+```
+
+### 3.2 LeidenTopicsTool (Replaces ClusterTopicsTool)
+
+**New file: `packages/sbir-analytics/sbir_analytics/tools/mission_a/leiden_topics.py`**
+
+Extends `BaseTool` with the same `ToolResult`/`ToolMetadata` interface as `ClusterTopicsTool`:
+
+```python
+class LeidenTopicsTool(BaseTool):
+    """Cluster topics using LightRAG Leiden communities.
+
+    Replacement for ClusterTopicsTool. Uses graph-based community
+    detection instead of greedy agglomerative embedding clustering.
+    """
+
+    name = "leiden_topics"
+    version = "2.0.0"
+
+    def execute(self, metadata: ToolMetadata, *, ...) -> ToolResult:
+        # Query LightRAG global mode for community structure
+        # Return same schema: cluster_id, topic_ids, agencies, num_topics
+```
+
+**Why this is better than ClusterTopicsTool:**
+- Clusters on shared extracted entities (technologies, methods, problems) not raw embedding similarity
+- Hierarchical multi-resolution communities vs single-threshold clustering
+- Explainable via entity co-occurrence vs opaque cosine similarity
+- Cross-agency naturally without a special `cross_agency_only` flag
+
+### 3.3 CET Sub-Community Mapping
+
+**New file: `assets/lightrag/cet_subcommunities.py`**
+
+```python
+@asset(
+    description="Map Leiden sub-communities within CET taxonomy areas",
+    group_name="lightrag",
+    deps=["lightrag_topic_communities"],
+)
+def cet_subcommunity_mapping(context) -> Output[pd.DataFrame]:
+    # For each of the 21 CETArea nodes, find LightRAG communities
+    # whose member entities overlap with awards in that CET
+    # Creates (:CETArea)-[:HAS_SUBCOMMUNITY]->(:__community__) rels
+```
+
+### 3.4 ClusterTopicsTool Deprecation Path
+
+1. Create `LeidenTopicsTool` with matching output schema
+2. Add deprecation warning to `ClusterTopicsTool.execute()`
+3. Update `mission_a/__init__.py` to default to Leiden
+4. After validation (1 sprint), remove `ClusterTopicsTool` from exports
+5. Delete file after one release cycle
+
+---
+
+## Phase 4: Query Interface (Week 4-5)
+
+### 4.1 Query Service
+
+**New file: `packages/sbir-rag/sbir_rag/query_service.py`**
+
+```python
+class SBIRQueryService:
+    """Semantic search and NL query interface over SBIR awards."""
+
+    async def semantic_search(self, query: str, top_k: int = 10) -> list[dict]:
+        """Naive mode: vector-only search."""
+
+    async def entity_neighborhood(self, query: str) -> list[dict]:
+        """Local mode: entity-centric retrieval with graph context."""
+
+    async def thematic_summary(self, query: str) -> str:
+        """Global mode: community-based thematic summarization."""
+
+    async def hybrid_query(self, query: str) -> dict:
+        """Hybrid mode: local + global combined."""
+```
+
+### 4.2 Interactive Similarity Search
+
+**New file: `packages/sbir-rag/sbir_rag/interactive_similarity.py`**
+
+Replaces the batch `paecter_award_patent_similarity` for interactive queries using Neo4j vector index k-NN:
+
+```python
+async def find_similar_awards(query_text: str, top_k: int = 10) -> list[dict]:
+    """Real-time similarity search using Neo4j vector index."""
+    # Generate query embedding via PaECTERClient
+    # CALL db.index.vector.queryNodes('award_embedding', $k, $embedding)
+```
+
+The batch `paecter_award_patent_similarity` asset is **kept** for the transition detection scoring pipeline (must maintain >=85% precision).
+
+### 4.3 CLI Integration
+
+**Modify: `packages/sbir-analytics/sbir_analytics/cli/`**
+
+Add subcommands:
+
+```
+sbir-cli rag query "what SBIR topics relate to autonomous vehicles?"
+sbir-cli rag search "quantum computing" --top-k 20
+sbir-cli rag communities --cet-area artificial_intelligence
+sbir-cli rag status  # ingestion stats, community count, index health
+```
+
+---
+
+## Phase 5: Dagster Pipeline Integration (Week 5-6)
+
+### 5.1 Job Definition
+
+**New file: `packages/sbir-analytics/sbir_analytics/assets/jobs/lightrag_job.py`**
+
+Following the pattern in `assets/jobs/paecter_job.py`:
+
+```python
+lightrag_ingestion_job = define_asset_job(
+    name="lightrag_ingestion_job",
+    selection=AssetSelection.groups("lightrag"),
+    description="Ingest SBIR awards into LightRAG and build communities",
+)
+```
+
+### 5.2 Asset Dependency Graph
+
+```
+validated_sbir_awards
+    │
+    ├── lightrag_document_ingestion (LLM extraction → Neo4j __entity__/__relationship__)
+    │       │
+    │       ├── lightrag_entity_cross_references (__entity__ → Award/Company linking)
+    │       │
+    │       └── lightrag_topic_communities (Leiden detection → __community__ nodes)
+    │               │
+    │               └── cet_subcommunity_mapping (CETArea → __community__ linking)
+    │
+    └── paecter_embeddings_awards (existing, unchanged)
+            │
+            ├── neo4j_award_embeddings (NEW: write to Neo4j vector index)
+            │
+            └── paecter_award_patent_similarity (existing, unchanged)
+```
+
+### 5.3 Package Dependency Updates
+
+| File | Change |
+|------|--------|
+| `packages/sbir-analytics/pyproject.toml` | Add `sbir-rag` to dependencies |
+| `pyproject.toml` (root) | Add `sbir-rag` to dev extras |
+
+---
+
+## Testing Strategy
+
+Following the existing pytest marker system in `pyproject.toml`:
+
+### Unit Tests
+
+| File | Tests |
+|------|-------|
+| `tests/sbir_rag/test_embedding_adapter.py` | PaECTER adapter produces 768-dim, handles batching, caching |
+| `tests/sbir_rag/test_document_prep.py` | Award-to-document conversion, null handling, header formatting |
+| `tests/sbir_rag/test_config.py` | LightRAGConfig validation, YAML loading, env overrides |
+| `tests/sbir_rag/test_query_service.py` | Query routing to correct LightRAG mode (mocked) |
+
+### Integration Tests (`@pytest.mark.integration`)
+
+| File | Tests |
+|------|-------|
+| `tests/sbir_rag/test_neo4j_vector_index.py` | Vector index creation, k-NN queries (`@pytest.mark.requires_neo4j`) |
+| `tests/sbir_rag/test_lightrag_ingestion.py` | End-to-end ingestion with mocked LLM |
+| `tests/sbir_rag/test_cross_reference.py` | Entity-to-Award linking accuracy |
+
+### Regression Tests
+
+| File | Tests |
+|------|-------|
+| `tests/sbir_rag/test_transition_precision.py` | Transition detection stays >=85% after integration (`@pytest.mark.transition`) |
+| `tests/sbir_rag/test_cluster_parity.py` | LeidenTopicsTool output compared against ClusterTopicsTool baseline |
+
+### E2E Tests (`@pytest.mark.e2e`)
+
+| File | Tests |
+|------|-------|
+| `tests/sbir_rag/test_lightrag_pipeline.py` | Full Dagster pipeline materialization |
+| `tests/sbir_rag/test_query_modes.py` | All 4 retrieval modes against ingested data |
+
+---
+
+## Risk Mitigations
+
+| Risk | Mitigation |
+|------|------------|
+| **LLM cost for 200K award extraction** | Start with Phase II/III subset (~15K awards). Use Claude Haiku for extraction. Cache results. Estimated: ~$50-100 for subset, ~$300-600 for full corpus. |
+| **Neo4j schema collision** | LightRAG uses `__entity__`/`__relationship__`/`__community__` labels (double-underscore prefix). No collision with existing Award/Company/Patent labels. |
+| **Transition detection regression** | Scoring pipeline (`sbir_ml/transition/detection/scoring.py`) is untouched. Its input (`paecter_embeddings_awards` DataFrame) is preserved. Neo4j vector index is an additional output path. |
+| **Async/sync boundary** | LightRAG is async-first. PaECTER adapter uses `asyncio.to_thread()` to wrap sync `generate_embeddings()`. Dagster supports `async def` assets. |
+| **LLM extraction quality** | Validate extracted entities against CET taxonomy keywords. Run precision/recall on a labeled sample before full corpus ingestion. |
+| **Entity deduplication** | LightRAG extracts "ML", "machine learning", "Machine Learning" as separate entities. Post-processing step normalizes against a controlled vocabulary derived from CET keywords. |
+
+---
+
+## File Summary
+
+### New Files (16)
+
+| File | Phase |
+|------|-------|
+| `packages/sbir-rag/pyproject.toml` | 1 |
+| `packages/sbir-rag/sbir_rag/__init__.py` | 1 |
+| `packages/sbir-rag/sbir_rag/config.py` | 1 |
+| `packages/sbir-rag/sbir_rag/embedding_adapter.py` | 1 |
+| `packages/sbir-rag/sbir_rag/factory.py` | 1 |
+| `packages/sbir-rag/sbir_rag/document_prep.py` | 2 |
+| `packages/sbir-rag/sbir_rag/query_service.py` | 4 |
+| `packages/sbir-rag/sbir_rag/interactive_similarity.py` | 4 |
+| `packages/sbir-analytics/sbir_analytics/assets/lightrag/__init__.py` | 2 |
+| `packages/sbir-analytics/sbir_analytics/assets/lightrag/ingestion.py` | 2 |
+| `packages/sbir-analytics/sbir_analytics/assets/lightrag/vector_index.py` | 2 |
+| `packages/sbir-analytics/sbir_analytics/assets/lightrag/cross_reference.py` | 2 |
+| `packages/sbir-analytics/sbir_analytics/assets/lightrag/communities.py` | 3 |
+| `packages/sbir-analytics/sbir_analytics/assets/lightrag/cet_subcommunities.py` | 3 |
+| `packages/sbir-analytics/sbir_analytics/tools/mission_a/leiden_topics.py` | 3 |
+| `packages/sbir-analytics/sbir_analytics/assets/jobs/lightrag_job.py` | 5 |
+| `migrations/versions/004_lightrag_schema.py` | 1 |
+
+### Modified Files (4)
+
+| File | Change | Phase |
+|------|--------|-------|
+| `config/base.yaml` | Add `lightrag:` config section | 1 |
+| `packages/sbir-analytics/sbir_analytics/assets/__init__.py` | Add lightrag modules to `HEAVY_ASSET_MODULES` | 2 |
+| `packages/sbir-analytics/pyproject.toml` | Add `sbir-rag` dependency | 5 |
+| `pyproject.toml` (root) | Add `sbir-rag` to dev extras | 5 |
+
+### Deprecated Files (1)
+
+| File | Replacement | Phase |
+|------|-------------|-------|
+| `tools/mission_a/cluster_topics.py` | `tools/mission_a/leiden_topics.py` | 3 |
