@@ -415,7 +415,7 @@ def paecter_awards_coverage_check(
 
     # Count valid embeddings (non-null, correct dimension)
     valid_count = 0
-    expected_dim = 1024  # PaECTER embeddings are 1024-dimensional
+    expected_dim = 768  # ModernBERT-Embed embeddings are 768-dimensional
 
     for embedding in paecter_embeddings_awards["embedding"]:
         if embedding and len(embedding) == expected_dim:
@@ -455,7 +455,7 @@ def paecter_patents_coverage_check(
 
     # Count valid embeddings (non-null, correct dimension)
     valid_count = 0
-    expected_dim = 1024  # PaECTER embeddings are 1024-dimensional
+    expected_dim = 768  # ModernBERT-Embed embeddings are 768-dimensional
 
     for embedding in paecter_embeddings_patents["embedding"]:
         if embedding and len(embedding) == expected_dim:

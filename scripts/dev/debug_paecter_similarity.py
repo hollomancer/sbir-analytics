@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Debug script to investigate high similarity scores in PaECTER embeddings.
+"""Debug script to investigate high similarity scores in embeddings.
 
 This script helps diagnose why certain award-patent pairs have unexpectedly
 high similarity scores by showing the actual text being embedded and computing
-detailed similarity metrics.
+detailed similarity metrics. Uses ModernBERT-Embed for embedding generation.
 """
 
 from __future__ import annotations
@@ -21,6 +21,7 @@ from rich.console import Console
 from rich.table import Table
 from rich.panel import Panel
 
+from sbir_ml.ml.config import PaECTERClientConfig
 from sbir_ml.ml.paecter_client import PaECTERClient
 
 console = Console()
@@ -28,7 +29,7 @@ console = Console()
 
 def main():
     """Debug PaECTER similarity scores."""
-    console.print("\n[bold blue]PaECTER Similarity Debugger[/bold blue]\n")
+    console.print("\n[bold blue]Embedding Similarity Debugger[/bold blue]\n")
 
     # Check for HF_TOKEN
     if not os.getenv("HF_TOKEN"):
@@ -39,9 +40,9 @@ def main():
         return 1
 
     # Initialize client
-    console.print("[yellow]Initializing PaECTER client...[/yellow]")
+    console.print("[yellow]Initializing embedding client...[/yellow]")
     try:
-        client = PaECTERClient()
+        client = PaECTERClient(config=PaECTERClientConfig())
         console.print(f"✓ Client initialized: {client.model_name}\n", style="green")
     except Exception as e:
         console.print(f"[red]✗ Error: {e}[/red]")

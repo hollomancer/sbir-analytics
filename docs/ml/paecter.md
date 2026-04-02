@@ -1,14 +1,15 @@
-# PaECTER Integration Guide
+# Embedding Model Integration Guide (ModernBERT-Embed)
 
 ## Overview
 
-PaECTER (Patent Embeddings using Citation-informed TransformERs) is a specialized embedding model developed by the Max Planck Institute for Innovation and Competition. It generates 1024-dimensional dense vector embeddings optimized for patent similarity tasks.
+ModernBERT-Embed (`nomic-ai/modernbert-embed-base`) is a general-purpose embedding model built on the ModernBERT architecture. It generates 768-dimensional dense vector embeddings with an 8192-token context window, rotary positional embeddings, and Flash Attention for efficient long-document encoding.
 
-This guide covers the integration of PaECTER into the SBIR analytics pipeline for computing semantic similarity between SBIR awards and USPTO patents.
+This guide covers the integration of ModernBERT-Embed into the SBIR analytics pipeline for computing semantic similarity between SBIR awards and USPTO patents.
 
 ## Key Features
 
 - **Dual Inference Modes**: API-based (HuggingFace) or local (sentence-transformers)
+- **Long Context**: 8192-token context window (vs 512 for many older models)
 - **Batch Processing**: Efficient processing of large datasets
 - **Caching Support**: Optional caching to reduce redundant computations
 - **Quality Gates**: Asset checks enforce embedding coverage thresholds
@@ -20,16 +21,16 @@ This guide covers the integration of PaECTER into the SBIR analytics pipeline fo
 
 ```text
 ┌─────────────────────────────────────────────────────────────┐
-│                    PaECTER Pipeline                         │
+│                 Embedding Pipeline                          │
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
 │  validated_sbir_awards ──┐                                 │
 │                          │                                  │
 │                          ├──> paecter_embeddings_awards     │
-│                          │         (1024-dim vectors)       │
+│                          │         (768-dim vectors)        │
 │                          │                                  │
 │  transformed_patents ────┼──> paecter_embeddings_patents   │
-│                          │         (1024-dim vectors)       │
+│                          │         (768-dim vectors)        │
 │                          │                                  │
 │                          └──> paecter_award_patent_similarity│
 │                                    (cosine similarity)       │
@@ -61,7 +62,7 @@ This guide covers the integration of PaECTER into the SBIR analytics pipeline fo
 
 ### Basic Configuration
 
-PaECTER configuration is located in `config/base.yaml` under the `ml.paecter` section:
+Embedding configuration is located in `config/base.yaml` under the `ml.paecter` section:
 
 ```yaml
 ml:
@@ -80,7 +81,7 @@ ml:
 
     # Local configuration (when use_local=true)
     local:
-      model_name: "mpi-inno-comp/paecter"
+      model_name: "nomic-ai/modernbert-embed-base"
       device: "auto"  # "auto", "cpu", or "cuda"
       batch_size: 32
 
@@ -126,21 +127,21 @@ export HF_TOKEN="your_huggingface_token"
 ### Running via CLI
 
 ```bash
-# Materialize all PaECTER assets
+# Materialize all embedding assets
 dagster asset materialize -m sbir_etl.definitions --select "paecter*"
 
 # Materialize specific asset
 dagster asset materialize -m sbir_etl.definitions --select paecter_embeddings_awards
 
-# Run the complete PaECTER job
+# Run the complete embedding job
 dagster job execute -m sbir_etl.definitions -j paecter_job
 ```
 
 ### Programmatic Usage
 
 ```python
-from sbir_etl.ml.paecter_client import PaECTERClient
-from sbir_etl.ml.config import PaECTERClientConfig
+from sbir_ml.ml.paecter_client import PaECTERClient
+from sbir_ml.ml.config import PaECTERClientConfig
 
 # Initialize client (API mode)
 client = PaECTERClient(config=PaECTERClientConfig(use_local=False))
@@ -214,7 +215,7 @@ ml:
 **Requirements:**
 
 - Install sentence-transformers: `pip install sentence-transformers`
-- ~2GB disk space for model download
+- ~1GB disk space for model download
 - GPU recommended but not required
 
 **Configuration:**
@@ -224,7 +225,7 @@ ml:
   paecter:
     use_local: true
     local:
-      model_name: "mpi-inno-comp/paecter"
+      model_name: "nomic-ai/modernbert-embed-base"
       device: "auto"  # or "cuda" for GPU
       batch_size: 32
 ```
@@ -236,13 +237,13 @@ ml:
 Two asset checks enforce quality thresholds:
 
 1. **`paecter_awards_coverage_check`**
-   - Validates that ≥95% of awards have valid embeddings
-   - Checks embedding dimension (1024)
+   - Validates that >=95% of awards have valid embeddings
+   - Checks embedding dimension (768)
    - Severity: ERROR if threshold not met
 
 2. **`paecter_patents_coverage_check`**
-   - Validates that ≥98% of patents have valid embeddings
-   - Checks embedding dimension (1024)
+   - Validates that >=98% of patents have valid embeddings
+   - Checks embedding dimension (768)
    - Severity: ERROR if threshold not met
 
 ### Monitoring
@@ -269,10 +270,10 @@ Metrics tracked:
 ```python
 {
     "award_id": str,           # Award identifier
-    "embedding": List[float],  # 1024-dimensional vector
-    "model_version": str,      # "mpi-inno-comp/paecter"
+    "embedding": List[float],  # 768-dimensional vector
+    "model_version": str,      # "nomic-ai/modernbert-embed-base"
     "inference_mode": str,     # "api" or "local"
-    "dimension": int           # 1024
+    "dimension": int           # 768
 }
 ```
 
@@ -281,10 +282,10 @@ Metrics tracked:
 ```python
 {
     "patent_id": str,          # Patent identifier
-    "embedding": List[float],  # 1024-dimensional vector
-    "model_version": str,      # "mpi-inno-comp/paecter"
+    "embedding": List[float],  # 768-dimensional vector
+    "model_version": str,      # "nomic-ai/modernbert-embed-base"
     "inference_mode": str,     # "api" or "local"
-    "dimension": int           # 1024
+    "dimension": int           # 768
 }
 ```
 
@@ -298,6 +299,20 @@ Metrics tracked:
 }
 ```
 
+## Migration from PaECTER
+
+This pipeline previously used PaECTER (`mpi-inno-comp/paecter`, 1024-dim). Key differences with ModernBERT-Embed:
+
+| Property | PaECTER | ModernBERT-Embed |
+|----------|---------|------------------|
+| Dimensions | 1024 | 768 |
+| Max tokens | 512 | 8192 |
+| Architecture | BERT-based | ModernBERT (RoPE, Flash Attention) |
+| Domain | Patent-specific | General-purpose |
+| Model size | ~500MB | ~400MB |
+
+**Important:** Existing embeddings generated with PaECTER are **not compatible** with ModernBERT-Embed embeddings. All embeddings must be regenerated after switching models.
+
 ## Performance Considerations
 
 ### Batch Size
@@ -308,7 +323,7 @@ Metrics tracked:
 ### Memory Usage
 
 - **API mode**: ~100MB (minimal, no model in memory)
-- **Local mode**: ~2GB (model loaded in memory)
+- **Local mode**: ~1.5GB (model loaded in memory)
 
 ### Processing Time
 
@@ -407,8 +422,8 @@ Get a token from: <https://huggingface.co/settings/tokens>
 
 ## References
 
-- **Model Card**: <https://huggingface.co/mpi-inno-comp/paecter>
-- **Research Paper**: <https://arxiv.org/pdf/2402.19411>
+- **Model Card**: <https://huggingface.co/nomic-ai/modernbert-embed-base>
+- **ModernBERT Paper**: <https://arxiv.org/abs/2412.13663>
 - **Implementation**: `packages/sbir-ml/sbir_ml/ml/paecter_client.py`
 - **Assets**: `packages/sbir-analytics/sbir_analytics/assets/paecter/embeddings.py`
 - **Configuration**: `config/base.yaml` (ml.paecter section)
@@ -422,5 +437,5 @@ Get a token from: <https://huggingface.co/settings/tokens>
 
 ---
 
-**Last Updated:** 2025-01-XX
-**Status:** Active - Phase 1 implementation complete
+**Last Updated:** 2026-04-02
+**Status:** Active - Migrated from PaECTER to ModernBERT-Embed

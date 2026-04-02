@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Test PaECTER embeddings with both SBIR and USPTO data from S3.
+"""Test ModernBERT-Embed embeddings with both SBIR and USPTO data from S3.
 
 This script loads real SBIR award data and USPTO patent data from S3,
-generates PaECTER embeddings for both, and computes similarity scores.
+generates embeddings for both, and computes similarity scores.
 
 Usage:
     # API mode (default - requires HF_TOKEN)
@@ -53,6 +53,7 @@ from rich.table import Table
 from sbir_etl.config.loader import get_config
 from sbir_etl.extractors.sbir import SbirDuckDBExtractor
 from sbir_etl.extractors.uspto_extractor import USPTOExtractor
+from sbir_ml.ml.config import PaECTERClientConfig
 from sbir_ml.ml.paecter_client import PaECTERClient
 from sbir_etl.utils.cloud_storage import build_s3_path, get_s3_bucket_from_env
 
@@ -402,8 +403,8 @@ def main():
 
     args = parser.parse_args()
 
-    console.print("\n[bold blue]PaECTER Combined S3 Test[/bold blue]", style="bold")
-    console.print("Testing patent embeddings with SBIR and USPTO data from S3\n")
+    console.print("\n[bold blue]ModernBERT-Embed Combined S3 Test[/bold blue]", style="bold")
+    console.print("Testing embeddings with SBIR and USPTO data from S3\n")
 
     # Check mode
     use_local = args.local
@@ -462,15 +463,15 @@ def main():
         console.print(f"[bold red]Error loading USPTO data:[/bold red] {e}")
         return 1
 
-    # Step 3: Initialize PaECTER client
-    console.print("[bold yellow]Step 3:[/bold yellow] Initializing PaECTER client...")
+    # Step 3: Initialize embedding client
+    console.print("[bold yellow]Step 3:[/bold yellow] Initializing embedding client...")
     try:
-        client = PaECTERClient(use_local=use_local)
+        client = PaECTERClient(config=PaECTERClientConfig(use_local=use_local))
         console.print(
-            f"[green]✓[/green] PaECTER client initialized ({client.inference_mode} mode)\n"
+            f"[green]✓[/green] Embedding client initialized ({client.inference_mode} mode)\n"
         )
     except Exception as e:
-        console.print(f"[bold red]Error initializing PaECTER:[/bold red] {e}")
+        console.print(f"[bold red]Error initializing embedding client:[/bold red] {e}")
         return 1
 
     # Step 4: Prepare texts

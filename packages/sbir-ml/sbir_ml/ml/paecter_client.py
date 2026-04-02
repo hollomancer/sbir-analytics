@@ -1,17 +1,18 @@
-"""PaECTER client for generating patent and SBIR award embeddings.
+"""Embedding client for generating patent and SBIR award embeddings.
 
-This module provides a simple interface to the PaECTER model from HuggingFace
-(mpi-inno-comp/paecter) for generating embeddings from patent and award text.
+This module provides a simple interface to ModernBERT-Embed from HuggingFace
+(nomic-ai/modernbert-embed-base) for generating embeddings from patent and award text.
 
 By default, this client uses the HuggingFace Inference API (no local model download
 or GPU required). You can optionally use local inference with sentence-transformers.
 
-PaECTER (Patent Embeddings using Citation-informed TransformERs) generates
-1024-dimensional dense vector embeddings optimized for patent similarity tasks.
+ModernBERT-Embed generates 768-dimensional dense vector embeddings using a
+modernized BERT architecture with 8192-token context, rotary positional embeddings,
+and Flash Attention for efficient long-document encoding.
 
 References:
-    - Model: https://huggingface.co/mpi-inno-comp/paecter
-    - Paper: https://arxiv.org/pdf/2402.19411
+    - Model: https://huggingface.co/nomic-ai/modernbert-embed-base
+    - ModernBERT: https://huggingface.co/answerdotai/ModernBERT-base
 """
 
 from __future__ import annotations
@@ -42,10 +43,10 @@ class EmbeddingResult:
 
     Attributes:
         embeddings: Generated embedding vectors (N x D array)
-        model_version: Model identifier (e.g., "mpi-inno-comp/paecter")
+        model_version: Model identifier (e.g., "nomic-ai/modernbert-embed-base")
         generation_timestamp: Elapsed time in seconds for generation (not epoch timestamp)
         input_count: Number of input texts processed
-        dimension: Embedding dimension (1024 for PaECTER)
+        dimension: Embedding dimension (768 for ModernBERT-Embed)
         inference_mode: "api" or "local"
     """
 
@@ -61,13 +62,13 @@ from sbir_ml.ml.config import PaECTERClientConfig
 
 
 class PaECTERClient:
-    """Client for interacting with the PaECTER embedding model."""
+    """Client for interacting with the ModernBERT-Embed embedding model."""
 
     def __init__(self, config: PaECTERClientConfig):
-        """Initialize the PaECTER client."""
+        """Initialize the embedding client."""
         self.config = config
         self.model_name = config.model_name
-        self.embedding_dim = 1024  # PaECTER embeddings are 1024-dimensional
+        self.embedding_dim = 768  # ModernBERT-Embed default; overridden by local model detection
         self.cache: dict[str, np.ndarray] = {}
 
         if self.config.use_local:
@@ -93,7 +94,7 @@ class PaECTERClient:
 
         self.inference_mode = "api"
         self.client = InferenceClient(token=token)
-        logger.info(f"Initialized PaECTER client in API mode: {self.model_name}")
+        logger.info(f"Initialized embedding client in API mode: {self.model_name}")
 
     def _init_local_mode(self, device: str | None, cache_folder: str | None):
         """Initialize local mode using sentence-transformers."""
@@ -105,7 +106,7 @@ class PaECTERClient:
             )
 
         self.inference_mode = "local"
-        logger.info(f"Loading PaECTER model locally: {self.model_name}")
+        logger.info(f"Loading embedding model locally: {self.model_name}")
 
         try:
             kwargs: dict[str, Any] = {}
@@ -118,11 +119,11 @@ class PaECTERClient:
             self.embedding_dim = self.model.get_sentence_embedding_dimension()  # type: ignore
 
             logger.info(
-                f"Successfully loaded local PaECTER model. "
+                f"Successfully loaded local embedding model. "
                 f"Embedding dimension: {self.embedding_dim}"
             )
         except Exception as e:
-            logger.error(f"Failed to load local PaECTER model: {e}")
+            logger.error(f"Failed to load local embedding model: {e}")
             raise RuntimeError(f"Failed to load model {self.model_name}: {e}") from e
 
     def generate_embeddings(
@@ -312,14 +313,14 @@ class PaECTERClient:
     def prepare_patent_text(title: str | None, abstract: str | None) -> str:
         """Prepare patent text for embedding generation.
 
-        Concatenates title and abstract as recommended by PaECTER authors.
+        Concatenates title and abstract for embedding generation.
 
         Args:
             title: Patent title
             abstract: Patent abstract
 
         Returns:
-            Concatenated text suitable for PaECTER
+            Concatenated text suitable for embedding
 
         Example:
             >>> text = PaECTERClient.prepare_patent_text(
@@ -349,7 +350,7 @@ class PaECTERClient:
             award_title: Award/project title (optional)
 
         Returns:
-            Concatenated text suitable for PaECTER
+            Concatenated text suitable for embedding
 
         Example:
             >>> text = PaECTERClient.prepare_award_text(

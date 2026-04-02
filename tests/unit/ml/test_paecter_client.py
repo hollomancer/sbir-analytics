@@ -62,7 +62,7 @@ def test_pydantic_config():
     config = PaECTERClientConfig(use_local=True, device="cpu")
     assert config.use_local is True
     assert config.device == "cpu"
-    assert config.model_name == "mpi-inno-comp/paecter"
+    assert config.model_name == "nomic-ai/modernbert-embed-base"
 
 
 def test_prepare_patent_text():
@@ -134,7 +134,7 @@ class TestPaECTERClientConfig:
     def test_default_config(self):
         config = PaECTERClientConfig()
         assert config.use_local is False
-        assert config.model_name == "mpi-inno-comp/paecter"
+        assert config.model_name == "nomic-ai/modernbert-embed-base"
         assert config.enable_cache is True  # Cache enabled by default
 
     def test_local_mode_config(self):

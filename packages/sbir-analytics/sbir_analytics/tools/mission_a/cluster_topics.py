@@ -1,10 +1,11 @@
 """
 Semantic topic clustering for cross-agency overlap detection.
 
-Uses PaECTER embeddings (or any sentence-transformer) to find cross-agency
-topic similarity clusters. High embedding similarity is necessary but not
-sufficient for duplication — the LLM judgment point distinguishes waste
-from healthy multi-agency investment in shared priorities.
+Uses ModernBERT-Embed embeddings to find cross-agency topic similarity
+clusters. When pre-computed embeddings are not provided, generates them
+on-the-fly via the HuggingFace Inference API. High embedding similarity
+is necessary but not sufficient for duplication — the LLM judgment point
+distinguishes waste from healthy multi-agency investment in shared priorities.
 
 Decision criteria for duplication vs. complementarity:
     (a) Are the operational environments different?
@@ -74,21 +75,30 @@ class ClusterTopicsTool(BaseTool):
             normalized = embeddings / norms
             sim_matrix = normalized @ normalized.T
         else:
-            # Fallback: use title-based TF-IDF similarity
+            # Fallback: generate embeddings on-the-fly with ModernBERT-Embed
             metadata.warnings.append(
-                "No embeddings provided; falling back to TF-IDF title similarity"
+                "No embeddings provided; generating via ModernBERT-Embed"
             )
             try:
-                from sklearn.feature_extraction.text import TfidfVectorizer
-                from sklearn.metrics.pairwise import cosine_similarity
+                from sbir_ml.ml.config import PaECTERClientConfig
+                from sbir_ml.ml.paecter_client import PaECTERClient
 
                 text_col = "description" if "description" in topics_df.columns else "title"
                 texts = topics_df[text_col].fillna("").tolist()
-                vectorizer = TfidfVectorizer(max_features=5000, stop_words="english")
-                tfidf = vectorizer.fit_transform(texts)
-                sim_matrix = cosine_similarity(tfidf).astype(np.float64)
-            except ImportError:
-                metadata.warnings.append("sklearn not available; cannot compute similarity")
+
+                client = PaECTERClient(config=PaECTERClientConfig(use_local=False))
+                result = client.generate_embeddings(texts)
+                fallback_embeddings = result.embeddings
+
+                # Compute cosine similarity from the generated embeddings
+                fb_norms = np.linalg.norm(fallback_embeddings, axis=1, keepdims=True)
+                fb_norms = np.where(fb_norms == 0, 1, fb_norms)
+                fb_normalized = fallback_embeddings / fb_norms
+                sim_matrix = fb_normalized @ fb_normalized.T
+            except Exception as e:
+                metadata.warnings.append(
+                    f"ModernBERT-Embed unavailable ({e}); cannot compute similarity"
+                )
                 return ToolResult(
                     data={"clusters": pd.DataFrame(), "similarity_matrix": None},
                     metadata=metadata,

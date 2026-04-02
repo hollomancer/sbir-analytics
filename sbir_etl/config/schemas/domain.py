@@ -379,10 +379,10 @@ class PaECTERApiConfig(BaseModel):
 
 
 class PaECTERLocalConfig(BaseModel):
-    """Configuration for local PaECTER model inference."""
+    """Configuration for local embedding model inference (ModernBERT-Embed)."""
 
     model_name: str = Field(
-        default="mpi-inno-comp/paecter", description="HuggingFace model identifier"
+        default="nomic-ai/modernbert-embed-base", description="HuggingFace model identifier"
     )
     device: str = Field(default="auto", description="Device for inference (auto, cpu, cuda)")
     batch_size: int = Field(default=32, ge=1, description="Batch size for local inference")

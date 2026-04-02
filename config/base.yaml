@@ -687,7 +687,7 @@ cli:
   max_concurrent_operations: 4
   cache_metrics_seconds: 60
 
-# PaECTER (Patent Embeddings) configuration
+# Embedding model configuration (ModernBERT-Embed)
 ml:
   paecter:
     # Provider selection: "huggingface" (default, uses API) or "local" (requires sentence-transformers)
@@ -705,7 +705,7 @@ ml:
 
     # Local model configuration (when use_local=true)
     local:
-      model_name: "mpi-inno-comp/paecter"  # HuggingFace model identifier
+      model_name: "nomic-ai/modernbert-embed-base"  # HuggingFace model identifier
       device: "auto"  # "auto", "cpu", or "cuda"
       batch_size: 32
 

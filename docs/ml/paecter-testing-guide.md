@@ -1,10 +1,10 @@
-# PaECTER Testing Guide
+# Embedding Model Testing Guide (ModernBERT-Embed)
 
-This guide explains how to test the PaECTER (Patent Embeddings using Citation-informed TransformERs) integration with your SBIR-Analytics data.
+This guide explains how to test the ModernBERT-Embed integration with your SBIR-Analytics data.
 
 ## Overview
 
-PaECTER is a patent-specific embedding model from HuggingFace (`mpi-inno-comp/paecter`) that generates 1024-dimensional dense vector embeddings optimized for patent similarity tasks. This implementation allows you to:
+ModernBERT-Embed is a general-purpose embedding model from HuggingFace (`nomic-ai/modernbert-embed-base`) that generates 768-dimensional dense vector embeddings with an 8192-token context window. This implementation allows you to:
 
 1. Generate semantic embeddings for SBIR awards and patents
 2. Compute similarity scores between awards and patents
@@ -110,7 +110,7 @@ award_text = client.prepare_award_text(
 
 # Generate embeddings via API (no model download!)
 result = client.generate_embeddings([award_text])
-print(f"Embedding shape: {result.embeddings.shape}")  # (1, 1024)
+print(f"Embedding shape: {result.embeddings.shape}")  # (1, 768)
 print(f"Mode: {result.inference_mode}")  # "api"
 ```
 
@@ -153,7 +153,7 @@ uv run pytest tests/integration/test_paecter_client.py::TestPaECTERClient::test_
 
 **Expected results:**
 
-- Model loads successfully (1024-dimensional embeddings)
+- Model loads successfully (768-dimensional embeddings)
 - Embeddings are unit-normalized
 - Similar content gets higher similarity scores
 - Award-patent matching shows sensible results
@@ -220,10 +220,10 @@ python scripts/test_paecter_real_data.py \
 The script generates a Parquet file with:
 
 - `award_id`: Award identifier
-- `embedding`: 1024-dimensional embedding vector (as list)
+- `embedding`: 768-dimensional embedding vector (as list)
 - `model_version`: Model version used
 - `inference_mode`: "api" or "local"
-- `dimension`: Embedding dimension (1024)
+- `dimension`: Embedding dimension (768)
 
 **Loading embeddings:**
 
@@ -357,7 +357,7 @@ Test with real model and sample data:
 def test_generate_embeddings(paecter_client):
     texts = ["Sample patent text"]
     result = paecter_client.generate_embeddings(texts)
-    assert result.embeddings.shape == (1, 1024)
+    assert result.embeddings.shape == (1, 768)
 ```
 
 ### End-to-End Tests
@@ -462,7 +462,7 @@ The model is public and shouldn't require authentication. Try:
 
 ```bash
 # Clear cache and retry
-rm -rf ~/.cache/huggingface/hub/models--mpi-inno-comp--paecter
+rm -rf ~/.cache/huggingface/hub/models--nomic-ai--modernbert-embed-base
 ```
 
 **CUDA out of memory**
@@ -670,10 +670,10 @@ These are intentionally matched to demonstrate similarity scoring.
 
 ## References
 
-- **Model:** <https://huggingface.co/mpi-inno-comp/paecter>
-- **Paper:** <https://arxiv.org/pdf/2402.19411>
+- **Model:** <https://huggingface.co/nomic-ai/modernbert-embed-base>
+- **ModernBERT Paper:** <https://arxiv.org/abs/2412.13663>
 - **Sentence Transformers:** <https://www.sbert.net/>
-- **PaECTER Spec:** `.kiro/specs/paecter_analysis_layer/`
+- **Embedding Spec:** `.kiro/specs/paecter_analysis_layer/`
 
 ## Questions?
 
@@ -1051,7 +1051,7 @@ ml:
     provider: "huggingface"
     use_local: true
     local:
-      model_name: "mpi-inno-comp/paecter"
+      model_name: "nomic-ai/modernbert-embed-base"
       device: "auto"
       batch_size: 32
 ```
@@ -1131,8 +1131,8 @@ ml:
 
 ### Embedding Dimensions
 
-- All embeddings should be **1024-dimensional** vectors
-- Each embedding is a list of 1024 floats
+- All embeddings should be **768-dimensional** vectors
+- Each embedding is a list of 768 floats
 
 ### Similarity Scores
 
@@ -1155,7 +1155,7 @@ ml:
 
 ## Additional Resources
 
-- [PaECTER Model Card](https://huggingface.co/mpi-inno-comp/paecter)
+- [ModernBERT-Embed Model Card](https://huggingface.co/nomic-ai/modernbert-embed-base)
 - [HuggingFace Inference API Docs](https://huggingface.co/docs/inference-providers/index)
 - [Dagster Asset Documentation](https://docs.dagster.io/concepts/assets)
 - [SBIR ETL Architecture](../architecture/detailed-overview.md)
