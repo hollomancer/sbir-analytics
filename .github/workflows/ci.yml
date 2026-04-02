@@ -104,36 +104,6 @@ jobs:
               - '!Makefile'
               - '!.github/**'
 
-      - name: Generate workflow visualization
-        run: |
-          echo "## 🔄 CI Workflow Execution Plan" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "```mermaid" >> $GITHUB_STEP_SUMMARY
-          echo "graph TD" >> $GITHUB_STEP_SUMMARY
-          echo "  A[Detect Changes] --> B[Code Quality]" >> $GITHUB_STEP_SUMMARY
-          echo "  A --> D[Verify Setup]" >> $GITHUB_STEP_SUMMARY
-          echo "  B --> E[Tests]" >> $GITHUB_STEP_SUMMARY
-          echo "  D --> E" >> $GITHUB_STEP_SUMMARY
-          if [ "${{ steps.detect.outputs.cet }}" = "true" ]; then
-            echo "  E --> F[CET Tests]" >> $GITHUB_STEP_SUMMARY
-          fi
-          if [ "${{ steps.detect.outputs.transition }}" = "true" ]; then
-            echo "  E --> G[Transition MVP]" >> $GITHUB_STEP_SUMMARY
-          fi
-          if [ "${{ steps.detect.outputs.performance }}" = "true" ]; then
-            echo "  A --> H[Performance Check]" >> $GITHUB_STEP_SUMMARY
-          fi
-          if [ "${{ steps.detect.outputs.docker }}" = "true" ]; then
-            echo "  A --> I[Container Build]" >> $GITHUB_STEP_SUMMARY
-          fi
-          if [ "${{ steps.detect.outputs.workflows }}" = "true" ]; then
-            echo "  A --> J[Workflow Lint]" >> $GITHUB_STEP_SUMMARY
-          fi
-          if [ "${{ steps.detect.outputs.infrastructure }}" = "true" ]; then
-            echo "  A --> K[CDK Validate]" >> $GITHUB_STEP_SUMMARY
-          fi
-          echo "```" >> $GITHUB_STEP_SUMMARY
-
   code-quality:
     name: Code Quality (Lint + Type Check)
     needs: [detect-changes]
@@ -287,7 +257,7 @@ jobs:
 
   test:
     name: Tests (${{ matrix.suite.name }})
-    needs: [detect-changes, verify-setup-script]
+    needs: [detect-changes]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     if: needs.detect-changes.outputs.docs-only != 'true'
@@ -339,6 +309,7 @@ jobs:
           NEO4J_URI: "bolt://localhost:7687"
           NEO4J_USER: ${{ env.NEO4J_USERNAME }}
           NEO4J_PASSWORD: ${{ env.NEO4J_PASSWORD }}
+          REQUIRE_NEO4J: ${{ matrix.suite.needs_neo4j && '1' || '' }}
         run: |
           uv run pytest ${{ matrix.suite.path }} ${{ matrix.suite.args }} \
             --cov=src --cov-report=xml --cov-report=term \
@@ -351,7 +322,7 @@ jobs:
           container-name: test-neo4j
 
       - name: Upload coverage
-        if: always()
+        if: ${{ !cancelled() }}
         uses: codecov/codecov-action@v6
         with:
           files: ./coverage.xml
@@ -471,7 +442,6 @@ jobs:
     # Optimized: Only required on push to main/develop, optional on PRs with docker changes
     # Skip on PRs without docker changes or docs-only to save ~20 min
     if: |
-      always() &&
       needs.detect-changes.outputs.docs-only != 'true' &&
       (github.event_name == 'push' ||
        (github.event_name == 'pull_request' && needs.detect-changes.outputs.docker == 'true') ||
@@ -485,8 +455,6 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
 
       - name: Set up Docker Buildx
         uses: ./.github/actions/setup-docker-buildx
@@ -866,8 +834,6 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
 
       - name: Setup test environment
         uses: ./.github/actions/setup-test-environment
@@ -958,16 +924,19 @@ jobs:
             data/loaded/neo4j/*.checks.json
           if-no-files-found: warn
 
-      - name: Success note
-        if: success()
-        run: echo "CET smoke test completed successfully"
+      - name: Validate model loading
+        run: |
+          uv run python -c "
+          from sbir_etl.ml.cet_classifier import CETClassifier
+          clf = CETClassifier()
+          print('Model loads successfully')
+          "
 
   cet-dev-e2e:
     name: CET Dev E2E (Docker Compose)
     needs: test
     # Only run on push to main/develop, skip on PRs
     if: |
-      always() &&
       needs.test.result == 'success' &&
       github.event_name == 'push'
     runs-on: ubuntu-latest
@@ -984,8 +953,6 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
 
       - name: Set up Docker Buildx
         uses: ./.github/actions/setup-docker-buildx
@@ -1023,17 +990,15 @@ jobs:
 
       - name: Wait for Neo4j bolt port
         run: |
-          set -eux
-          sudo apt-get update -y
-          sudo apt-get install -y --no-install-recommends netcat-openbsd
+          set -eu
           TIMEOUT=${STARTUP_TIMEOUT}
           i=0
-          until nc -z localhost 7687 || [ $i -ge $TIMEOUT ]; do
+          until (echo >/dev/tcp/localhost/7687) 2>/dev/null || [ $i -ge $TIMEOUT ]; do
             i=$((i+5))
             echo "Waiting for Neo4j on 7687..."
             sleep 5
           done
-          if ! nc -z localhost 7687; then
+          if ! (echo >/dev/tcp/localhost/7687) 2>/dev/null; then
             echo "Neo4j did not become available on bolt port 7687"
             docker compose --env-file .env --profile dev ps || true
             docker logs $(docker ps --filter "name=sbir-neo4j" --format '{{.Names}}' | head -n 1) || true
@@ -1053,7 +1018,6 @@ jobs:
     needs: test
     # Only run on push to main/develop
     if: |
-      always() &&
       needs.test.result == 'success' &&
       github.event_name == 'push'
     runs-on: ubuntu-latest
@@ -1080,6 +1044,8 @@ jobs:
           neo4j-password: password  # pragma: allowlist secret
 
       - name: Run E2E tests against Docker Neo4j
+        env:
+          REQUIRE_NEO4J: "1"
         run: |
           echo "🧪 Running E2E tests against Docker Neo4j"
           uv run pytest tests/e2e/ \
@@ -1205,38 +1171,6 @@ jobs:
           if-no-files-found: warn
           retention-days: ${{ env.DEFAULT_RETENTION_DAYS }}
 
-  ml-smoke-test:
-    name: ML Smoke Test
-    needs: [detect-changes]
-    if: |
-      needs.detect-changes.outputs.docs-only != 'true' &&
-      (needs.detect-changes.outputs.cet == 'true' || github.event_name == 'workflow_dispatch')
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Setup Python and UV
-        uses: ./.github/actions/setup-python-uv
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-          install-dev-deps: "false"
-          cache-venv: "true"
-
-      - name: Run ML smoke test
-        env:
-          SBIR_ETL__CET__SAMPLE_SIZE: 50
-        run: |
-          uv run python scripts/ci/cet_smoke_test.py
-
-      - name: Validate model loading
-        run: |
-          uv run python -c "
-          from sbir_etl.ml.cet_classifier import CETClassifier
-          clf = CETClassifier()
-          print('✅ Model loads successfully')
-          "
-
   test-s3-integration:
     name: S3 Integration Tests
     needs: [detect-changes, test]
@@ -1281,7 +1215,7 @@ jobs:
 
   ci-summary:
     name: CI Summary
-    needs: [detect-changes, code-quality, verify-setup-script, test, container-build-test, performance-check, cet-tests, cet-dev-e2e, e2e-docker, transition-mvp, ml-smoke-test, test-s3-integration]
+    needs: [detect-changes, code-quality, verify-setup-script, test, container-build-test, performance-check, cet-tests, cet-dev-e2e, e2e-docker, transition-mvp, test-s3-integration]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -1308,10 +1242,6 @@ jobs:
             echo "| ⚡ Performance Check | ${{ needs.performance-check.result == 'success' && '✅' || '❌' }} ${{ needs.performance-check.result }} |" >> $GITHUB_STEP_SUMMARY
           fi
 
-          if [ "${{ needs.ml-smoke-test.result }}" != "skipped" ]; then
-            echo "| 🤖 ML Smoke Test | ${{ needs.ml-smoke-test.result == 'success' && '✅' || '❌' }} ${{ needs.ml-smoke-test.result }} |" >> $GITHUB_STEP_SUMMARY
-          fi
-
           if [ "${{ needs.test-s3-integration.result }}" != "skipped" ]; then
             echo "| ☁️ S3 Integration | ${{ needs.test-s3-integration.result == 'success' && '✅' || '❌' }} ${{ needs.test-s3-integration.result }} |" >> $GITHUB_STEP_SUMMARY
           fi
@@ -1332,23 +1262,12 @@ jobs:
             echo "| 🔄 Transition MVP | ${{ needs.transition-mvp.result == 'success' && '✅' || '❌' }} ${{ needs.transition-mvp.result }} |" >> $GITHUB_STEP_SUMMARY
           fi
 
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Execution Flow" >> $GITHUB_STEP_SUMMARY
-          echo "```mermaid" >> $GITHUB_STEP_SUMMARY
-          echo "graph LR" >> $GITHUB_STEP_SUMMARY
-          echo "  A[Detect Changes] --> B[Code Quality]" >> $GITHUB_STEP_SUMMARY
-          echo "  A --> D[Verify Setup]" >> $GITHUB_STEP_SUMMARY
-          echo "  B --> E[Tests]" >> $GITHUB_STEP_SUMMARY
-          echo "  D --> E" >> $GITHUB_STEP_SUMMARY
-          echo "```" >> $GITHUB_STEP_SUMMARY
-
       - name: Check for failures
         if: |
           needs.code-quality.result == 'failure' ||
           needs.test.result == 'failure' ||
           needs.container-build-test.result == 'failure' ||
           needs.performance-check.result == 'failure' ||
-          needs.ml-smoke-test.result == 'failure' ||
           needs.test-s3-integration.result == 'failure' ||
           needs.cet-tests.result == 'failure' ||
           needs.cet-dev-e2e.result == 'failure' ||
