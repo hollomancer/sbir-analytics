@@ -59,7 +59,7 @@ LightRAG's Neo4j backend creates nodes with `__entity__`, `__relationship__`, `_
 | `packages/sbir-rag/pyproject.toml` | Package config; deps: `lightrag-hku>=1.0.0`, `sbir-ml`, `sbir-graph`, `sbir-etl` |
 | `packages/sbir-rag/sbir_rag/__init__.py` | Package init |
 | `packages/sbir-rag/sbir_rag/config.py` | `LightRAGConfig` Pydantic model |
-| `packages/sbir-rag/sbir_rag/embedding_adapter.py` | PaECTER → LightRAG embedding function adapter |
+| `packages/sbir-rag/sbir_rag/embedding_adapter.py` | ModernBERT-Embed → LightRAG embedding function adapter |
 | `packages/sbir-rag/sbir_rag/factory.py` | LightRAG instance factory with Neo4j backend |
 
 ### 1.2 LightRAGConfig
@@ -198,23 +198,26 @@ lightrag:
 Converts Award records into LightRAG documents. Reuses the embedding client's `prepare_award_text()` text composition logic but adds structured context headers for better entity extraction:
 
 ```python
-def prepare_award_document(award: Award) -> dict:
-    # PaECTERClient is the legacy class name; model is ModernBERT-Embed
-    text = PaECTERClient.prepare_award_text(
-        solicitation_title=None,
-        abstract=award.abstract,
-        award_title=award.award_title,
-    )
-    header = f"Agency: {award.agency}. Phase: {award.phase}. "
-    if award.keywords:
-        header += f"Keywords: {award.keywords}. "
+def prepare_award_document(row: pd.Series) -> dict:
+    """Convert a DataFrame row (from validated_sbir_awards) to a LightRAG document."""
+    parts = []
+    for field in ["award_title", "abstract"]:
+        val = row.get(field)
+        if pd.notna(val) and str(val).strip():
+            parts.append(str(val).strip())
+    text = " ".join(parts)
+
+    header = f"Agency: {row.get('agency', 'Unknown')}. Phase: {row.get('phase', '')}. "
+    keywords = row.get("keywords")
+    if pd.notna(keywords) and str(keywords).strip():
+        header += f"Keywords: {keywords}. "
     return {
         "content": header + text,
         "metadata": {
-            "award_id": award.award_id,
-            "agency": award.agency,
-            "phase": award.phase,
-            "award_year": award.award_year,
+            "award_id": str(row.get("award_id", "")),
+            "agency": row.get("agency"),
+            "phase": row.get("phase"),
+            "award_year": row.get("award_year"),
         },
     }
 ```
@@ -485,14 +488,17 @@ def prepare_solicitation_document(solicitation: dict) -> dict:
 
 After both awards and solicitations are ingested, LightRAG's entity graph naturally connects them through shared extracted entities. An award abstract mentioning "counter-UAS detection in urban RF environments" and a solicitation topic describing "passive RF sensing for low-observable UAS in cluttered urban environments" will share Technology and Problem entities, creating implicit solicitation-to-award links that go beyond the `topic_code` join key.
 
-Additionally, a post-processing step creates explicit links:
+Additionally, a post-processing Dagster asset creates explicit links between Award nodes and solicitation source documents using the existing `topic_code` + `solicitation_number` join keys:
 
 ```cypher
-// Link awards to solicitation topics via topic_code
-MATCH (a:Award), (s:__entity__ {document_type: 'solicitation'})
-WHERE a.topic_code = s.source_topic_code
-MERGE (a)-[:RESPONDS_TO_TOPIC]->(s)
+// Link awards to solicitation source chunks via topic_code
+MATCH (a:Award), (chunk:__chunk__)
+WHERE chunk.metadata_topic_code IS NOT NULL
+  AND a.topic_code = chunk.metadata_topic_code
+MERGE (a)-[:RESPONDS_TO_TOPIC]->(chunk)
 ```
+
+> **Note:** The exact property names on LightRAG's `__chunk__` and `__entity__` nodes depend on how LightRAG's Neo4j backend stores document metadata. The cross-reference asset must inspect the actual schema after initial ingestion and adjust accordingly.
 
 ### 4.7 Estimated Volume and Cost
 
@@ -501,7 +507,7 @@ MERGE (a)-[:RESPONDS_TO_TOPIC]->(s)
 | Solicitation topics (all agencies, all years) | ~50,000 |
 | Average tokens per topic description | ~1,000-3,000 |
 | LLM extraction cost (Claude Haiku) | ~$150-400 |
-| Embedding cost (PaECTER, included in existing pipeline) | Negligible |
+| Embedding cost (ModernBERT-Embed, included in existing pipeline) | Negligible |
 
 ---
 
@@ -537,7 +543,7 @@ Replaces the batch `paecter_award_patent_similarity` for interactive queries usi
 ```python
 async def find_similar_awards(query_text: str, top_k: int = 10) -> list[dict]:
     """Real-time similarity search using Neo4j vector index."""
-    # Generate query embedding via PaECTERClient
+    # Generate query embedding via embedding client (ModernBERT-Embed)
     # CALL db.index.vector.queryNodes('award_embedding', $k, $embedding)
 ```
 
@@ -667,7 +673,7 @@ Following the existing pytest marker system in `pyproject.toml`:
 
 ## File Summary
 
-### New Files (19)
+### New Files (20)
 
 | File | Phase |
 |------|-------|
