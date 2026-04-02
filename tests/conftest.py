@@ -213,6 +213,15 @@ def sbir_csv_path(
 # ===================
 
 
+@pytest.fixture(scope="session", autouse=True)
+def _neo4j_service_lifecycle():
+    """Ensure the testcontainer (if started) is stopped at session end."""
+    yield
+    from tests.neo4j_service import stop_neo4j_service
+
+    stop_neo4j_service()
+
+
 @pytest.fixture(scope="session")
 def neo4j_driver():
     """
@@ -221,18 +230,16 @@ def neo4j_driver():
 
     Tests using this fixture should be marked with @pytest.mark.neo4j
     """
-    import os
     from neo4j import GraphDatabase
 
-    uri = os.getenv("NEO4J_URI", "bolt://localhost:7687")
-    user = os.getenv("NEO4J_USER", "neo4j")
-    password = os.getenv("NEO4J_PASSWORD", "password")
+    from tests.neo4j_service import get_neo4j_service
 
-    try:
-        driver = GraphDatabase.driver(uri, auth=(user, password))
-        driver.verify_connectivity()
-    except Exception as e:
-        pytest.skip(f"Neo4j not available: {e}")
+    service = get_neo4j_service()
+    if service is None:
+        pytest.skip("Neo4j not available (no running instance, testcontainers unavailable)")
+
+    driver = GraphDatabase.driver(service.uri, auth=(service.username, service.password))
+    driver.verify_connectivity()
 
     yield driver
     driver.close()
@@ -375,16 +382,16 @@ def neo4j_running() -> bool:
     """Check if Neo4j is available and running for testing.
 
     This is a helper function (not a fixture) for use with pytest.mark.skipif.
-    """
-    try:
-        from neo4j import GraphDatabase
 
-        driver = GraphDatabase.driver("bolt://localhost:7687", auth=("neo4j", "test"))
-        driver.verify_connectivity()
-        driver.close()
-        return True
-    except Exception:
-        return False
+    Resolution order:
+    1. Connect to an existing Neo4j (env vars / localhost).
+    2. Start a disposable Neo4j via testcontainers.
+    3. If REQUIRE_NEO4J is set (CI) and neither works, raise so the suite
+       errors out instead of silently skipping.
+    """
+    from tests.neo4j_service import get_neo4j_service
+
+    return get_neo4j_service() is not None
 
 
 @pytest.fixture
