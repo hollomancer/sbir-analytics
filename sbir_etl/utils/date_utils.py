@@ -37,8 +37,8 @@ EIGHT_DIGIT_FORMAT = "%Y%m%d"  # 20230115
 # ISO date regex pattern
 ISO_DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
-# Values that should be treated as None
-NULL_VALUES = {"", "\\N", "nan", "nat", "none", "null", "NULL", "NAN", "NAT"}
+# Values that should be treated as None (all lowercase; compared via s.lower())
+NULL_VALUES = {"", "\\n", "nan", "nat", "none", "null"}
 
 
 def parse_date(
@@ -86,16 +86,16 @@ def parse_date(
     if value is None:
         return None
 
-    # Handle date/datetime objects
-    if isinstance(value, date):
-        if return_datetime:
-            return datetime.combine(value, datetime.min.time())
-        return value
-
+    # Handle date/datetime objects (check datetime first since it's a subclass of date)
     if isinstance(value, datetime):
         if return_datetime:
             return value
         return value.date()
+
+    if isinstance(value, date):
+        if return_datetime:
+            return datetime.combine(value, datetime.min.time())
+        return value
 
     # Handle pandas Timestamp and NaT
     if pd is not None:
