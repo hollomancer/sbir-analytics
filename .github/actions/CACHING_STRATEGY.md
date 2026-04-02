@@ -38,7 +38,7 @@ Caching in GitHub Actions helps:
 
 ```yaml
 - name: Cache UV virtual environment
-  uses: actions/cache@v4
+  uses: actions/cache@v5
   with:
     path: .venv
     key: venv-${{ runner.os }}-${{ inputs.python-version }}-${{ hashFiles('**/uv.lock') }}
