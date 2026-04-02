@@ -21,6 +21,7 @@ from rich.console import Console
 from rich.table import Table
 from rich.panel import Panel
 
+from sbir_ml.ml.config import PaECTERClientConfig
 from sbir_ml.ml.paecter_client import PaECTERClient
 
 console = Console()
@@ -41,7 +42,7 @@ def main():
     # Initialize client
     console.print("[yellow]Initializing embedding client...[/yellow]")
     try:
-        client = PaECTERClient()
+        client = PaECTERClient(config=PaECTERClientConfig())
         console.print(f"✓ Client initialized: {client.model_name}\n", style="green")
     except Exception as e:
         console.print(f"[red]✗ Error: {e}[/red]")

@@ -223,7 +223,7 @@ The script generates a Parquet file with:
 - `embedding`: 768-dimensional embedding vector (as list)
 - `model_version`: Model version used
 - `inference_mode`: "api" or "local"
-- `dimension`: Embedding dimension (1024)
+- `dimension`: Embedding dimension (768)
 
 **Loading embeddings:**
 

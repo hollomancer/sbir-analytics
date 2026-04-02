@@ -5,7 +5,7 @@
 
 ## Executive Summary
 
-This document evaluates SBIR award, solicitation, and USAspending data sources for Retrieval-Augmented Generation (RAG) implementation. The codebase already has a strong foundation for RAG through PaECTER embeddings (1024-dim) for award-patent similarity, DuckDB for fast analytical queries, and a Neo4j graph database for relationship traversal. The primary gap is a unified vector store and retrieval layer that combines these data sources for natural language querying.
+This document evaluates SBIR award, solicitation, and USAspending data sources for Retrieval-Augmented Generation (RAG) implementation. The codebase already has a strong foundation for RAG through ModernBERT-Embed embeddings (768-dim) for award-patent similarity, DuckDB for fast analytical queries, and a Neo4j graph database for relationship traversal. The primary gap is a unified vector store and retrieval layer that combines these data sources for natural language querying.
 
 ---
 
@@ -135,10 +135,10 @@ USAspending data is best used as **metadata enrichment** on SBIR award chunks ra
 
 ## 4. Existing Embedding Infrastructure
 
-### PaECTER Embeddings (Already Built)
+### ModernBERT-Embed Embeddings (Already Built)
 
 **Location:** `packages/sbir-analytics/sbir_analytics/assets/paecter/embeddings.py`
-**Model:** PaECTER (scientific document embeddings, 1024 dimensions)
+**Model:** ModernBERT-Embed (`nomic-ai/modernbert-embed-base`, 768 dimensions)
 **Coverage:**
 - SBIR award embeddings from `{solicitation_title} + {abstract} + {award_title}`
 - USPTO patent embeddings from `{title} + {abstract}`
@@ -152,7 +152,7 @@ USAspending data is best used as **metadata enrichment** on SBIR award chunks ra
 
 ### Strengths for RAG
 
-1. **PaECTER is purpose-built** for scientific/technical document similarity - ideal for SBIR abstracts
+1. **ModernBERT-Embed** provides strong general-purpose embeddings with 8192-token context - ideal for SBIR abstracts
 2. **Infrastructure exists** for batch embedding generation at scale
 3. **Quality gates** already enforce embedding coverage thresholds
 

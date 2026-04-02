@@ -34,6 +34,7 @@ import numpy as np
 from rich.console import Console
 from rich.table import Table
 
+from sbir_ml.ml.config import PaECTERClientConfig
 from sbir_ml.ml.paecter_client import PaECTERClient
 
 
@@ -132,7 +133,7 @@ def main():
     # Step 1: Initialize client
     console.print("[yellow]Step 1:[/yellow] Initializing embedding client...")
     try:
-        client = PaECTERClient(use_local=use_local)
+        client = PaECTERClient(config=PaECTERClientConfig(use_local=use_local))
         console.print(
             f"✓ Client initialized: {client.model_name} "
             f"(dimension: {client.embedding_dim}, mode: {client.inference_mode})\n",

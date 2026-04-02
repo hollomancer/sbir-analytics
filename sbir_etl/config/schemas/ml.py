@@ -21,7 +21,7 @@ class PaECTERApiConfig(BaseModel):
 
 
 class PaECTERLocalConfig(BaseModel):
-    """Configuration for local PaECTER model inference."""
+    """Configuration for local embedding model inference (ModernBERT-Embed)."""
 
     model_name: str = Field(
         default="nomic-ai/modernbert-embed-base", description="HuggingFace model identifier"

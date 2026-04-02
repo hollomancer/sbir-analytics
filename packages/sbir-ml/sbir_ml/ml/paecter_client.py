@@ -68,7 +68,7 @@ class PaECTERClient:
         """Initialize the embedding client."""
         self.config = config
         self.model_name = config.model_name
-        self.embedding_dim = 768  # ModernBERT-Embed embeddings are 768-dimensional
+        self.embedding_dim = 768  # ModernBERT-Embed default; overridden by local model detection
         self.cache: dict[str, np.ndarray] = {}
 
         if self.config.use_local:

@@ -45,6 +45,7 @@ from rich.table import Table
 
 from sbir_etl.config.loader import get_config
 from sbir_etl.extractors.sbir import SbirDuckDBExtractor
+from sbir_ml.ml.config import PaECTERClientConfig
 from sbir_ml.ml.paecter_client import PaECTERClient
 from sbir_etl.utils.cloud_storage import build_s3_path, get_s3_bucket_from_env
 
@@ -344,7 +345,7 @@ def main():
     # Step 3: Initialize client
     console.print("[yellow]Step 3:[/yellow] Initializing embedding client...")
     try:
-        client = PaECTERClient(use_local=use_local)
+        client = PaECTERClient(config=PaECTERClientConfig(use_local=use_local))
         console.print(
             f"✓ Client initialized: {client.model_name} "
             f"(dimension: {client.embedding_dim}, mode: {client.inference_mode})\n",
