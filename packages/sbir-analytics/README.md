@@ -26,4 +26,4 @@ pip install sbir-etl
 | `sbir-etl[cloud]` | + AWS S3 storage (boto3, cloudpathlib) |
 | `sbir-etl[ml]` | + ML/NLP (scikit-learn, spacy, huggingface) |
 | `sbir-etl[neo4j]` | + Neo4j graph database loader |
-| **`sbir-analytics`** | **All of the above** + `sbir_analytics.lambda` + `sbir_analytics.autodev` |
+| **`sbir-analytics`** | **All of the above** + `sbir_analytics.lambda` |

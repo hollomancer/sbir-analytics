@@ -210,7 +210,7 @@ Audit of which `sbir_etl/` modules actually import each dependency:
 | **httpx, tenacity** | ~5 MB | `enrichers/`, `extractors/` | core |
 | **rapidfuzz, jellyfish** | ~5 MB | `enrichers/` only | core |
 | **psutil** | ~2 MB | `transition/`, `utils/` | core |
-| **dagster, dagster-webserver** | ~60 MB | `assets/`, `definitions/`, `autodev/` | `[pipeline]` |
+| **dagster, dagster-webserver** | ~60 MB | `assets/`, `definitions/` | `[pipeline]` |
 | **typer, rich** | ~10 MB | `cli/` only | `[cli]` |
 | **boto3, cloudpathlib** | ~40 MB | `utils/`, `assets/`, `lambda/` | `[cloud]` |
 | **scikit-learn, joblib** | ~35 MB | `ml/`, `transition/`, `tools/` | `[ml]` |

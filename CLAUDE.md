@@ -6,28 +6,29 @@ See [AGENTS.md](./AGENTS.md) for project context, architecture, and development 
 
 Custom agents in `.claude/agents/`:
 
-| Agent | Trigger |
-|-------|---------|
-| `spec-implementer` | Implementing Kiro spec tasks, "work on [spec-name]" |
-| `test-fixer` | Failing tests, improving test coverage |
-| `quality-sweep` | Lint errors, type errors, code quality cleanup |
-| `autodev-runner` | Autonomous development sessions, "start autodev" |
-| `scope-guard` | Before large implementations, reviewing specs for over-engineering. Counterbalance to builder agents. |
+| Agent | When to Use | Model |
+|-------|-------------|-------|
+| `spec-implementer` | Implementing Kiro spec tasks, "work on [spec-name]" | opus |
+| `test-fixer` | Failing tests, broken coverage, test diagnostics | sonnet |
+| `quality-sweep` | Lint/type errors, code cleanup after large changes | sonnet |
+| `scope-guard` | Before large implementations — challenges scope creep and over-engineering | opus |
+
+### Agent Workflow
+
+For **spec work**, the typical flow is:
+
+1. **scope-guard** — Review the spec tasks for necessity and alignment before building
+2. **spec-implementer** — Implement the approved tasks
+3. **test-fixer** — Fix any test failures introduced
+4. **quality-sweep** — Clean up lint/type issues
+
+For **bug fixes and quality work**, skip straight to the relevant agent (test-fixer or quality-sweep).
 
 ## Skills
 
 | Skill | Use Case |
 |-------|----------|
 | `/review-spec [spec-name\|all]` | Review spec relevance against codebase |
-
-## Autonomous Development
-
-```bash
-sbir-cli autodev discover    # See all pending work items
-sbir-cli autodev specs       # View Kiro spec completion status
-```
-
-Use the `autodev-runner` agent for interactive autonomous work.
 
 ## Testing Quick Reference
 
