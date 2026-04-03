@@ -153,24 +153,30 @@ class TestLightRAGNeo4jSchema:
             session.run("DROP INDEX award_embedding_test IF EXISTS")
 
     def test_entity_cross_reference_query_pattern(self, neo4j_client):
-        """Cross-reference Cypher pattern links entities to awards via chunks."""
+        """Cross-reference Cypher links entities to awards via chunk full_doc_id."""
         with neo4j_client.session() as session:
-            # Set up test data: entity <- MENTIONS - chunk, award
+            # Set up test data matching LightRAG's actual storage:
+            # - Entity has source_id referencing chunk IDs (separated by <SEP>)
+            # - Chunk has full_doc_id set to the award_id passed during insertion
             session.run(
                 """
-                CREATE (e:__entity__ {name: 'TestEntity', entity_type: 'TECHNOLOGY'})
-                CREATE (c:__chunk__ {source_id: 'AWARD-TEST-001'})
+                CREATE (e:__entity__ {name: 'TestEntity', entity_type: 'TECHNOLOGY',
+                        source_id: 'chunk-001'})
+                CREATE (c:__chunk__ {id: 'chunk-001', full_doc_id: 'AWARD-TEST-001'})
                 CREATE (a:TestAward {award_id: 'AWARD-TEST-001', award_title: 'Test'})
-                CREATE (c)-[:MENTIONS]->(e)
                 """
             )
 
-            # Run the cross-reference query pattern
+            # Run the cross-reference query pattern (matches production code)
             result = session.run(
                 """
-                MATCH (e:__entity__)<-[:MENTIONS]-(c:__chunk__)
-                WHERE c.source_id IS NOT NULL
-                MATCH (a:TestAward {award_id: c.source_id})
+                MATCH (e:__entity__)
+                WHERE e.source_id IS NOT NULL
+                WITH e, split(e.source_id, '<SEP>') AS chunk_ids
+                UNWIND chunk_ids AS chunk_id
+                MATCH (c:__chunk__)
+                WHERE c.id = chunk_id AND c.full_doc_id IS NOT NULL
+                MATCH (a:TestAward {award_id: c.full_doc_id})
                 MERGE (e)-[:EXTRACTED_FROM]->(a)
                 RETURN count(*) AS links_created
                 """
