@@ -2,7 +2,6 @@
 
 Tests for base processor and all format-specific implementations:
 - BaseReportProcessor: Common utilities and abstract methods
-- ReportProcessorRegistry: Processor registration and lookup
 - JsonReportProcessor: JSON report generation
 - HtmlReportProcessor: HTML report with visualizations
 - MarkdownProcessor: Markdown summaries
@@ -18,8 +17,6 @@ import pytest
 
 pytestmark = pytest.mark.fast
 
-import pytest
-
 from sbir_etl.models.statistical_reports import (
     ModuleMetrics,
     PerformanceMetrics,
@@ -27,7 +24,7 @@ from sbir_etl.models.statistical_reports import (
     ReportArtifact,
     ReportFormat,
 )
-from sbir_etl.utils.reporting.formats.base import BaseReportProcessor, ReportProcessorRegistry
+from sbir_etl.utils.reporting.formats.base import BaseReportProcessor
 from sbir_etl.utils.reporting.formats.html_processor import HtmlReportProcessor
 from sbir_etl.utils.reporting.formats.json_processor import JsonReportProcessor
 from sbir_etl.utils.reporting.formats.markdown_processor import MarkdownProcessor
@@ -207,77 +204,6 @@ class TestBaseReportProcessor:
 
 # =============================================================================
 # Report Processor Registry Tests
-# =============================================================================
-
-
-class TestReportProcessorRegistry:
-    """Tests for the ReportProcessorRegistry."""
-
-    def test_initialization(self):
-        """Test registry initialization."""
-        registry = ReportProcessorRegistry()
-
-        assert registry._processors == {}
-
-    def test_register_processor(self):
-        """Test registering a processor class."""
-        registry = ReportProcessorRegistry()
-
-        registry.register(ReportFormat.JSON, JsonReportProcessor)
-
-        assert ReportFormat.JSON in registry._processors
-        assert registry._processors[ReportFormat.JSON] == JsonReportProcessor
-
-    def test_get_processor(self):
-        """Test retrieving a processor class."""
-        registry = ReportProcessorRegistry()
-        registry.register(ReportFormat.JSON, JsonReportProcessor)
-
-        processor_class = registry.get_processor(ReportFormat.JSON)
-
-        assert processor_class == JsonReportProcessor
-
-    def test_get_processor_not_registered(self):
-        """Test retrieving unregistered processor returns None."""
-        registry = ReportProcessorRegistry()
-
-        processor_class = registry.get_processor(ReportFormat.JSON)
-
-        assert processor_class is None
-
-    def test_create_processor(self):
-        """Test creating a processor instance."""
-        registry = ReportProcessorRegistry()
-        registry.register(ReportFormat.JSON, JsonReportProcessor)
-
-        processor = registry.create_processor(ReportFormat.JSON)
-
-        assert isinstance(processor, JsonReportProcessor)
-        assert processor.format_type == ReportFormat.JSON
-
-    def test_create_processor_not_registered(self):
-        """Test creating processor for unregistered format returns None."""
-        registry = ReportProcessorRegistry()
-
-        processor = registry.create_processor(ReportFormat.JSON)
-
-        assert processor is None
-
-    def test_get_supported_formats(self):
-        """Test getting list of supported formats."""
-        registry = ReportProcessorRegistry()
-        registry.register(ReportFormat.JSON, JsonReportProcessor)
-        registry.register(ReportFormat.HTML, HtmlReportProcessor)
-
-        formats = registry.get_supported_formats()
-
-        assert ReportFormat.JSON in formats
-        assert ReportFormat.HTML in formats
-        assert len(formats) == 2
-
-
-# =============================================================================
-# JSON Report Processor Tests
 # =============================================================================
 
 

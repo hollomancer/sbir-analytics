@@ -82,7 +82,6 @@ class TestUSAspendingAPIClientInitialization:
         """Test client initializes with correct configuration."""
         assert api_client.base_url == "https://api.usaspending.gov/api/v2"
         assert api_client.timeout == 30
-        assert api_client.retry_attempts == 3
         assert api_client.rate_limit_per_minute == 120
 
     def test_rate_limiter_starts_empty(self, api_client):

@@ -225,7 +225,7 @@ class TestSensitivityAnalysis:
 
     def test_sensitivity_analysis_consistency(self):
         """Test that sensitivity analysis produces consistent results."""
-        from sbir_etl.transformers.fiscal_parameter_sweep import FiscalParameterSweep
+        from sbir_etl.transformers.fiscal.sensitivity import FiscalParameterSweep
 
         sweep = FiscalParameterSweep()
 

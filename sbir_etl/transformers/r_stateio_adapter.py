@@ -19,7 +19,7 @@ from loguru import logger
 from ..config.loader import get_config
 from ..exceptions import DependencyError
 from ..utils.r_helpers import validate_r_input
-from .economic_model_interface import EconomicModelInterface
+from .economic_model_interface import validate_shocks_input
 
 
 # Try to import StateIO function wrappers (may not be available if import fails)
@@ -75,7 +75,7 @@ class RCacheEntry:
     created_at: str
 
 
-class RStateIOAdapter(EconomicModelInterface):
+class RStateIOAdapter:
     """R adapter for EPA StateIO package via rpy2.
 
     This adapter calls EPA's StateIO R package through rpy2 to compute
@@ -751,7 +751,7 @@ class RStateIOAdapter(EconomicModelInterface):
 
     def validate_input(self, shocks_df: pd.DataFrame) -> None:
         """Validate input shocks DataFrame format."""
-        super().validate_input(shocks_df)
+        validate_shocks_input(shocks_df)
 
     def is_available(self) -> bool:
         """Check if R adapter is available."""

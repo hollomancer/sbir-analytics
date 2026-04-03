@@ -158,40 +158,6 @@ class EnrichmentRefreshConfig(BaseModel):
     patentsview: EnrichmentSourceConfig = Field(
         default_factory=EnrichmentSourceConfig, description="PatentsView refresh settings"
     )
-    # Phase 2+ sources -- disabled by default until legal/data-sharing reviews complete
-    sec_edgar: EnrichmentSourceConfig = Field(
-        default_factory=lambda: EnrichmentSourceConfig(
-            enabled=False,
-            cadence_days=7,
-            sla_staleness_days=14,
-            rate_limit_per_minute=10,
-            state_file="data/state/sec_edgar_refresh_state.json",
-            metrics_file="reports/metrics/sec_edgar_freshness.json",
-        ),
-        description="SEC EDGAR refresh settings (Phase 2 -- requires review)",
-    )
-    opencorporates: EnrichmentSourceConfig = Field(
-        default_factory=lambda: EnrichmentSourceConfig(
-            enabled=False,
-            cadence_days=30,
-            sla_staleness_days=60,
-            rate_limit_per_minute=30,
-            state_file="data/state/opencorporates_refresh_state.json",
-            metrics_file="reports/metrics/opencorporates_freshness.json",
-        ),
-        description="OpenCorporates refresh settings (Phase 2 -- requires API key + review)",
-    )
-    dla_cage: EnrichmentSourceConfig = Field(
-        default_factory=lambda: EnrichmentSourceConfig(
-            enabled=False,
-            cadence_days=30,
-            sla_staleness_days=90,
-            rate_limit_per_minute=60,
-            state_file="data/state/dla_cage_refresh_state.json",
-            metrics_file="reports/metrics/dla_cage_freshness.json",
-        ),
-        description="DLA CAGE/BIS refresh settings (Phase 2 -- requires review)",
-    )
 
 
 # ---------------------------------------------------------------------------
@@ -402,16 +368,6 @@ class PaECTERTextConfig(BaseModel):
     )
 
 
-class PaECTERNeo4jConfig(BaseModel):
-    """Configuration for loading PaECTER similarity edges into Neo4j."""
-
-    enabled: bool = Field(default=False, description="Enable Neo4j similarity edge loading")
-    batch_size: int = Field(default=1000, ge=1, description="Batch size for Neo4j loading")
-    dry_run: bool = Field(default=False, description="Run without committing changes")
-    prune_previous: bool = Field(
-        default=False, description="Remove previous similarity edges before loading"
-    )
-
 
 class PaECTERConfig(BaseModel):
     """Configuration for PaECTER patent-award similarity embeddings."""
@@ -424,7 +380,6 @@ class PaECTERConfig(BaseModel):
     api: PaECTERApiConfig = Field(default_factory=PaECTERApiConfig)
     local: PaECTERLocalConfig = Field(default_factory=PaECTERLocalConfig)
     text: PaECTERTextConfig = Field(default_factory=PaECTERTextConfig)
-    neo4j: PaECTERNeo4jConfig = Field(default_factory=PaECTERNeo4jConfig)
 
     similarity_threshold: float = Field(
         default=0.80, ge=0.0, le=1.0,
@@ -574,7 +529,6 @@ __all__ = [
     "PaECTERApiConfig",
     "PaECTERConfig",
     "PaECTERLocalConfig",
-    "PaECTERNeo4jConfig",
     "PaECTERTextConfig",
     "SensitivityConfig",
     "StatisticalReportingConfig",

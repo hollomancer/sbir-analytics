@@ -6,7 +6,7 @@ import pandas as pd
 import pytest
 
 from sbir_etl.exceptions import ValidationError
-from sbir_etl.transformers.economic_model_interface import EconomicImpactResult, EconomicModelInterface
+from sbir_etl.transformers.economic_model_interface import EconomicImpactResult, validate_shocks_input
 
 
 pytestmark = pytest.mark.fast
@@ -127,12 +127,16 @@ class TestEconomicImpactResult:
         assert result.tax_impact == Decimal("0.00")
 
 
-class MockEconomicModel(EconomicModelInterface):
-    """Mock implementation of EconomicModelInterface for testing."""
+class MockEconomicModel:
+    """Mock implementation for testing economic model interface."""
 
     def __init__(self, available: bool = True, version: str = "Mock_v1.0"):
         self.available = available
         self.version = version
+
+    def validate_input(self, shocks_df: pd.DataFrame) -> None:
+        """Validate input using the shared validation function."""
+        validate_shocks_input(shocks_df)
 
     def compute_impacts(
         self,

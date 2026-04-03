@@ -28,7 +28,7 @@ def test_api_cache_initialization(cache_dir):
     cache = APICache(cache_dir=cache_dir, default_cache_type="custom")
     assert cache.cache_dir == cache_dir
     assert cache.enabled is True
-    assert cache._get_default_cache_type() == "custom"
+    assert cache.default_cache_type == "custom"
 
 
 def test_api_cache_set_get(api_cache):

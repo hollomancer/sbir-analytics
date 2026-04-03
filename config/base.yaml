@@ -215,32 +215,6 @@ enrichment_refresh:
       cache_dir: "data/cache/usaspending"  # Directory for cache files
       ttl_hours: 24  # Time-to-live for cache entries (hours)
 
-  # Phase 2+ sources -- disabled by default until legal/data-sharing reviews complete.
-  # Enable per-environment via env var, e.g.:
-  #   SBIR_ETL__ENRICHMENT_REFRESH__SEC_EDGAR__ENABLED=true
-  sec_edgar:
-    enabled: false  # Requires SEC EDGAR review
-    cadence_days: 7
-    sla_staleness_days: 14
-    rate_limit_per_minute: 10  # SEC fair-access rate limit
-    state_file: "data/state/sec_edgar_refresh_state.json"
-    metrics_file: "reports/metrics/sec_edgar_freshness.json"
-
-  opencorporates:
-    enabled: false  # Requires API key + data-sharing agreement
-    cadence_days: 30
-    sla_staleness_days: 60
-    rate_limit_per_minute: 30
-    state_file: "data/state/opencorporates_refresh_state.json"
-    metrics_file: "reports/metrics/opencorporates_freshness.json"
-
-  dla_cage:
-    enabled: false  # Requires DLA CAGE/BIS access review
-    cadence_days: 30
-    sla_staleness_days: 90
-    rate_limit_per_minute: 60
-    state_file: "data/state/dla_cage_refresh_state.json"
-    metrics_file: "reports/metrics/dla_cage_freshness.json"
 
 extraction:
   sbir:

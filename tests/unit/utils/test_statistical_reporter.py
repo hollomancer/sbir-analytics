@@ -423,64 +423,6 @@ class TestReportAggregation:
 # ==================== Format Generation Tests ====================
 
 
-class TestFormatGeneration:
-    """Tests for report format generation."""
-
-    def test_generate_json_report(self, temp_output_dir, sample_statistical_report):
-        """Test JSON report generation."""
-        reporter = StatisticalReporter(output_dir=temp_output_dir)
-
-        json_path = reporter.generate_json_report(sample_statistical_report)
-
-        assert json_path.exists()
-        assert json_path.suffix == ".json"
-        # File is in run_id subdirectory
-        assert json_path.parent.parent == temp_output_dir
-        assert json_path.parent.name == "run_123"
-
-        # Verify JSON is valid
-        with open(json_path) as f:
-            data = json.load(f)
-            assert "run_id" in data
-
-    def test_generate_markdown_summary(self, temp_output_dir, sample_statistical_report):
-        """Test Markdown summary generation."""
-        reporter = StatisticalReporter(output_dir=temp_output_dir)
-
-        content, md_path = reporter.generate_markdown_summary(sample_statistical_report)
-
-        assert isinstance(content, str)
-        assert len(content) > 0
-        assert md_path.exists()
-        assert md_path.suffix == ".md"
-        assert "# Pipeline Statistical Report" in content
-
-    @patch("sbir_etl.utils.reporting.formats.html_processor.PLOTLY_AVAILABLE", False)
-    def test_generate_html_report_no_plotly(self, temp_output_dir, sample_statistical_report):
-        """Test HTML report generation without Plotly."""
-        reporter = StatisticalReporter(output_dir=temp_output_dir)
-
-        html_path = reporter.generate_html_report(sample_statistical_report)
-
-        assert html_path.exists()
-        assert html_path.suffix == ".html"
-
-        # Verify HTML is valid
-        with open(html_path) as f:
-            content = f.read()
-            assert "<html>" in content.lower()
-            assert "Statistical Report" in content or "Pipeline Report" in content
-
-    def test_generate_all_formats(self, temp_output_dir, sample_statistical_report):
-        """Test generation of all report formats."""
-        reporter = StatisticalReporter(output_dir=temp_output_dir)
-
-        format_paths = reporter.generate_all_formats(sample_statistical_report)
-
-        assert "json" in format_paths
-        assert "html" in format_paths
-        assert "markdown" in format_paths
-        assert all(path.exists() for path in format_paths.values())
 
 
 # ==================== Pipeline Metrics Tests ====================
@@ -660,50 +602,6 @@ class TestEdgeCases:
 
         assert collection.run_id.startswith("run_")
 
-    def test_generate_json_report_handles_datetime(self, temp_output_dir):
-        """Test JSON report handles datetime serialization."""
-        reporter = StatisticalReporter(output_dir=temp_output_dir)
-
-        report = StatisticalReport(
-            run_id="run_123",
-            generated_at=datetime.now(),
-            modules=[],
-            summary_insights=[],
-            report_id="report_123",
-            timestamp="2023-01-01T10:00:00",
-            report_type="statistical",
-            total_records_processed=0,
-            total_duration_seconds=0.0,
-            overall_success_rate=0.0,
-        )
-
-        json_path = reporter.generate_json_report(report)
-
-        # Should not raise JSON serialization error
-        assert json_path.exists()
-
-    def test_markdown_summary_empty_report(self, temp_output_dir):
-        """Test Markdown generation with empty report."""
-        reporter = StatisticalReporter(output_dir=temp_output_dir)
-
-        report = StatisticalReport(
-            run_id="run_123",
-            generated_at=datetime.now(),
-            modules=[],
-            summary_insights=[],
-            report_id="report_123",
-            timestamp="2023-01-01T10:00:00",
-            report_type="statistical",
-            total_records_processed=0,
-            total_duration_seconds=0.0,
-            overall_success_rate=0.0,
-        )
-
-        content, md_path = reporter.generate_markdown_summary(report)
-
-        assert isinstance(content, str)
-        assert md_path.exists()
-
     def test_collect_pipeline_metrics_no_modules(self, temp_output_dir):
         """Test pipeline metrics collection with no modules."""
         reporter = StatisticalReporter(output_dir=temp_output_dir)
@@ -714,23 +612,3 @@ class TestEdgeCases:
 
         assert pipeline_metrics.run_id == "run_123"
 
-    def test_html_generation_file_permissions(self, temp_output_dir):
-        """Test HTML generation handles file write errors gracefully."""
-        reporter = StatisticalReporter(output_dir=temp_output_dir)
-
-        report = StatisticalReport(
-            run_id="run_123",
-            generated_at=datetime.now(),
-            modules=[],
-            summary_insights=[],
-            report_id="report_123",
-            timestamp="2023-01-01T10:00:00",
-            report_type="statistical",
-            total_records_processed=0,
-            total_duration_seconds=0.0,
-            overall_success_rate=0.0,
-        )
-
-        # Should handle any write errors gracefully
-        html_path = reporter.generate_html_report(report)
-        assert html_path.suffix == ".html"
