@@ -1,8 +1,9 @@
 """AWS Batch stack for ML job execution."""
 
+from dataclasses import dataclass
+
 from aws_cdk import (
     CfnOutput,
-    RemovalPolicy,
     Stack,
     aws_batch as batch,
     aws_ec2 as ec2,
@@ -16,12 +17,39 @@ from aws_cdk import (
 )
 from constructs import Construct
 
+from stacks.config import (
+    ANALYSIS_IMAGE,
+    BATCH_COMPUTE_ENV_NAME,
+    BATCH_JOB_EXECUTION_ROLE_NAME,
+    BATCH_JOB_QUEUE_NAME,
+    BATCH_JOB_TASK_ROLE_NAME,
+    BATCH_LOG_GROUP,
+    NEO4J_SECRET_NAME,
+    S3_BUCKET_NAME,
+)
+
+
+@dataclass
+class JobConfig:
+    """Configuration for a Batch job definition."""
+
+    id: str
+    name: str
+    command: list[str]
+    vcpus: str = "2"
+    memory_mb: str = "4096"
+    timeout_seconds: int = 21600  # 6 hours
+    log_prefix: str = ""
+    ephemeral_storage_gib: int | None = None
+    extra_env: list[dict] | None = None
+
+    @property
+    def log_stream_prefix(self) -> str:
+        return self.log_prefix or self.name.split("-")[-1]
+
 
 class BatchStack(Stack):
     """AWS Batch infrastructure for running analysis jobs on-demand."""
-
-    # GHCR image for analysis jobs
-    ANALYSIS_IMAGE = "ghcr.io/hollomancer/sbir-analytics-full:latest"
 
     def __init__(
         self,
@@ -31,34 +59,28 @@ class BatchStack(Stack):
     ) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
-        # CloudWatch Log Group for Batch job logs (import existing or create)
-        log_group = logs.LogGroup.from_log_group_name(
-            self,
-            "BatchJobLogGroup",
-            log_group_name="/aws/batch/sbir-analytics-analysis",
+        # CloudWatch Log Group for Batch job logs (import existing)
+        logs.LogGroup.from_log_group_name(
+            self, "BatchJobLogGroup", log_group_name=BATCH_LOG_GROUP,
         )
 
-        # Use default VPC (simplest approach) or allow VPC ID to be specified
+        # VPC setup
         vpc_id = self.node.try_get_context("vpc_id")
-        if vpc_id:
-            vpc = ec2.Vpc.from_lookup(self, "VPC", vpc_id=vpc_id)
-        else:
-            # Use default VPC
-            vpc = ec2.Vpc.from_lookup(self, "VPC", is_default=True)
-
-        # Security group for Batch compute environment
-        security_group = ec2.SecurityGroup(
-            self,
-            "BatchSecurityGroup",
-            vpc=vpc,
-            description="Security group for AWS Batch analysis job compute environment",
-            allow_all_outbound=True,  # Need to pull Docker images and access S3
+        vpc = (
+            ec2.Vpc.from_lookup(self, "VPC", vpc_id=vpc_id)
+            if vpc_id
+            else ec2.Vpc.from_lookup(self, "VPC", is_default=True)
         )
 
-        # IAM role for Batch service
+        security_group = ec2.SecurityGroup(
+            self, "BatchSecurityGroup", vpc=vpc,
+            description="Security group for AWS Batch analysis job compute environment",
+            allow_all_outbound=True,
+        )
+
+        # IAM roles
         batch_service_role = iam.Role(
-            self,
-            "BatchServiceRole",
+            self, "BatchServiceRole",
             assumed_by=iam.ServicePrincipal("batch.amazonaws.com"),
             managed_policies=[
                 iam.ManagedPolicy.from_aws_managed_policy_name(
@@ -67,10 +89,8 @@ class BatchStack(Stack):
             ],
         )
 
-        # IAM role for EC2 instances in Batch compute environment
         instance_role = iam.Role(
-            self,
-            "BatchInstanceRole",
+            self, "BatchInstanceRole",
             assumed_by=iam.ServicePrincipal("ec2.amazonaws.com"),
             managed_policies=[
                 iam.ManagedPolicy.from_aws_managed_policy_name(
@@ -79,19 +99,15 @@ class BatchStack(Stack):
             ],
         )
 
-        # Instance profile for EC2 instances
-        instance_profile = iam.CfnInstanceProfile(
-            self,
-            "BatchInstanceProfile",
+        iam.CfnInstanceProfile(
+            self, "BatchInstanceProfile",
             roles=[instance_role.role_name],
             instance_profile_name="sbir-analytics-batch-instance-profile",
         )
 
-        # IAM role for Batch jobs (execution role)
         job_execution_role = iam.Role(
-            self,
-            "BatchJobExecutionRole",
-            role_name="sbir-analytics-batch-job-execution-role",
+            self, "BatchJobExecutionRole",
+            role_name=BATCH_JOB_EXECUTION_ROLE_NAME,
             assumed_by=iam.ServicePrincipal("ecs-tasks.amazonaws.com"),
             managed_policies=[
                 iam.ManagedPolicy.from_aws_managed_policy_name(
@@ -100,57 +116,44 @@ class BatchStack(Stack):
             ],
         )
 
-
-        # IAM role for Batch job tasks (task role - what the job can do)
         job_task_role = iam.Role(
-            self,
-            "BatchJobTaskRole",
-            role_name="sbir-analytics-batch-job-task-role",
+            self, "BatchJobTaskRole",
+            role_name=BATCH_JOB_TASK_ROLE_NAME,
             assumed_by=iam.ServicePrincipal("ecs-tasks.amazonaws.com"),
         )
 
-        # Grant S3 access for reading input data and writing results
         job_task_role.add_to_policy(
             iam.PolicyStatement(
                 effect=iam.Effect.ALLOW,
-                actions=[
-                    "s3:GetObject",
-                    "s3:PutObject",
-                    "s3:ListBucket",
-                ],
+                actions=["s3:GetObject", "s3:PutObject", "s3:ListBucket"],
                 resources=[
-                    "arn:aws:s3:::sbir-etl-production-data",
-                    "arn:aws:s3:::sbir-etl-production-data/*",
+                    f"arn:aws:s3:::{S3_BUCKET_NAME}",
+                    f"arn:aws:s3:::{S3_BUCKET_NAME}/*",
                 ],
             )
         )
 
-        # Grant Secrets Manager access for Neo4j credentials
         neo4j_secret = secretsmanager.Secret.from_secret_name_v2(
-            self, "Neo4jSecretRef", secret_name="sbir-analytics/neo4j"
+            self, "Neo4jSecretRef", secret_name=NEO4J_SECRET_NAME,
         )
         neo4j_secret.grant_read(job_task_role)
 
-        # Compute environment using Fargate (serverless)
-        # Avoids EC2 instance type restrictions and quota issues
+        # Compute environment (Fargate)
         compute_environment = batch.CfnComputeEnvironment(
-            self,
-            "AnalysisComputeEnvironment",
+            self, "AnalysisComputeEnvironment",
             type="MANAGED",
             compute_resources=batch.CfnComputeEnvironment.ComputeResourcesProperty(
                 type="FARGATE",
-                maxv_cpus=8,  # Limit to 8 vCPUs to control costs
+                maxv_cpus=8,
                 subnets=[subnet.subnet_id for subnet in vpc.public_subnets],
                 security_group_ids=[security_group.security_group_id],
             ),
-            compute_environment_name="sbir-analytics-analysis-compute-env",
+            compute_environment_name=BATCH_COMPUTE_ENV_NAME,
         )
 
-        # Job queue
         job_queue = batch.CfnJobQueue(
-            self,
-            "AnalysisJobQueue",
-            job_queue_name="sbir-analytics-analysis-job-queue",
+            self, "AnalysisJobQueue",
+            job_queue_name=BATCH_JOB_QUEUE_NAME,
             priority=1,
             compute_environment_order=[
                 batch.CfnJobQueue.ComputeEnvironmentOrderProperty(
@@ -160,258 +163,86 @@ class BatchStack(Stack):
             ],
         )
 
-        # Job definition for CET pipeline (Fargate)
-        cet_job_definition = batch.CfnJobDefinition(
-            self,
-            "CETJobDefinition",
-            job_definition_name="sbir-analytics-analysis-cet-pipeline",
-            type="container",
-            platform_capabilities=["FARGATE"],
-            container_properties=batch.CfnJobDefinition.ContainerPropertiesProperty(
-                image=self.ANALYSIS_IMAGE,
-                resource_requirements=[
-                    batch.CfnJobDefinition.ResourceRequirementProperty(type="VCPU", value="2"),
-                    batch.CfnJobDefinition.ResourceRequirementProperty(type="MEMORY", value="4096"),
-                ],
-                job_role_arn=job_task_role.role_arn,
-                execution_role_arn=job_execution_role.role_arn,
-                network_configuration=batch.CfnJobDefinition.NetworkConfigurationProperty(
-                    assign_public_ip="ENABLED",
-                ),
-                command=[
-                    "dagster",
-                    "job",
-                    "execute",
-                    "-m",
-                    "sbir_etl.definitions_ml",
-                    "-j",
-                    "cet_full_pipeline_job",
-                ],
-                environment=[
-                    batch.CfnJobDefinition.EnvironmentProperty(
-                        name="DAGSTER_LOAD_HEAVY_ASSETS",
-                        value="true",
-                    ),
-                    batch.CfnJobDefinition.EnvironmentProperty(
-                        name="DAGSTER_HOME",
-                        value="/tmp/dagster_home",
-                    ),
-                    batch.CfnJobDefinition.EnvironmentProperty(
-                        name="AWS_DEFAULT_REGION",
-                        value=self.region,
-                    ),
-                ],
-                log_configuration=batch.CfnJobDefinition.LogConfigurationProperty(
-                    log_driver="awslogs",
-                    options={
-                        "awslogs-group": "/aws/batch/sbir-analytics-analysis",
-                        "awslogs-stream-prefix": "cet",
-                    },
-                ),
-            ),
-            retry_strategy=batch.CfnJobDefinition.RetryStrategyProperty(
-                attempts=2,  # Retry once on failure
-            ),
-            timeout=batch.CfnJobDefinition.TimeoutProperty(
-                attempt_duration_seconds=21600,  # 6 hours max
-            ),
-        )
+        # --- Job definitions ---
+        common_dagster_env = [
+            {"name": "DAGSTER_LOAD_HEAVY_ASSETS", "value": "true"},
+            {"name": "DAGSTER_HOME", "value": "/tmp/dagster_home"},
+        ]
 
-        # Job definition for Fiscal Returns (Fargate)
-        fiscal_job_definition = batch.CfnJobDefinition(
-            self,
-            "FiscalJobDefinition",
-            job_definition_name="sbir-analytics-analysis-fiscal-returns",
-            type="container",
-            platform_capabilities=["FARGATE"],
-            container_properties=batch.CfnJobDefinition.ContainerPropertiesProperty(
-                image=self.ANALYSIS_IMAGE,
-                resource_requirements=[
-                    batch.CfnJobDefinition.ResourceRequirementProperty(type="VCPU", value="4"),
-                    batch.CfnJobDefinition.ResourceRequirementProperty(type="MEMORY", value="8192"),
-                ],
-                job_role_arn=job_task_role.role_arn,
-                execution_role_arn=job_execution_role.role_arn,
-                network_configuration=batch.CfnJobDefinition.NetworkConfigurationProperty(
-                    assign_public_ip="ENABLED",
-                ),
+        jobs = [
+            JobConfig(
+                id="CETJobDefinition",
+                name="sbir-analytics-analysis-cet-pipeline",
+                command=["dagster", "job", "execute", "-m", "sbir_etl.definitions_ml", "-j", "cet_full_pipeline_job"],
+                vcpus="2", memory_mb="4096",
+                timeout_seconds=21600,  # 6 hours
+                log_prefix="cet",
+                extra_env=common_dagster_env,
+            ),
+            JobConfig(
+                id="FiscalJobDefinition",
+                name="sbir-analytics-analysis-fiscal-returns",
+                command=["dagster", "job", "execute", "-m", "sbir_etl.definitions_ml", "-j", "fiscal_returns_mvp_job"],
+                vcpus="4", memory_mb="8192",
+                timeout_seconds=14400,  # 4 hours
+                log_prefix="fiscal",
+                extra_env=common_dagster_env,
+            ),
+            JobConfig(
+                id="PaecterJobDefinition",
+                name="sbir-analytics-analysis-paecter-embeddings",
+                command=["dagster", "job", "execute", "-m", "sbir_etl.definitions_ml", "-j", "paecter_job"],
+                vcpus="2", memory_mb="4096",
+                timeout_seconds=21600,  # 6 hours
+                log_prefix="paecter",
+                extra_env=common_dagster_env,
+            ),
+            JobConfig(
+                id="UsaspendingExtractJobDefinition",
+                name="sbir-analytics-usaspending-extract",
                 command=[
-                    "dagster",
-                    "job",
-                    "execute",
-                    "-m",
-                    "sbir_etl.definitions_ml",
-                    "-j",
-                    "fiscal_returns_mvp_job",
+                    "bash", "-c",
+                    f'cd /app && python scripts/usaspending/download_database.py --source-url "${{USASPENDING_URL}}" --s3-bucket {S3_BUCKET_NAME}',
                 ],
-                environment=[
-                    batch.CfnJobDefinition.EnvironmentProperty(
-                        name="DAGSTER_LOAD_HEAVY_ASSETS",
-                        value="true",
-                    ),
-                    batch.CfnJobDefinition.EnvironmentProperty(
-                        name="DAGSTER_HOME",
-                        value="/tmp/dagster_home",
-                    ),
-                    batch.CfnJobDefinition.EnvironmentProperty(
-                        name="AWS_DEFAULT_REGION",
-                        value=self.region,
-                    ),
-                ],
-                log_configuration=batch.CfnJobDefinition.LogConfigurationProperty(
-                    log_driver="awslogs",
-                    options={
-                        "awslogs-group": "/aws/batch/sbir-analytics-analysis",
-                        "awslogs-stream-prefix": "fiscal",
-                    },
-                ),
+                vcpus="4", memory_mb="30720",
+                timeout_seconds=28800,  # 8 hours
+                log_prefix="usaspending-extract",
+                ephemeral_storage_gib=200,
             ),
-            retry_strategy=batch.CfnJobDefinition.RetryStrategyProperty(
-                attempts=2,
-            ),
-            timeout=batch.CfnJobDefinition.TimeoutProperty(
-                attempt_duration_seconds=14400,  # 4 hours max
-            ),
-        )
+        ]
 
-        # Job definition for PaECTER embeddings (Fargate)
-        paecter_job_definition = batch.CfnJobDefinition(
-            self,
-            "PaecterJobDefinition",
-            job_definition_name="sbir-analytics-analysis-paecter-embeddings",
-            type="container",
-            platform_capabilities=["FARGATE"],
-            container_properties=batch.CfnJobDefinition.ContainerPropertiesProperty(
-                image=self.ANALYSIS_IMAGE,
-                resource_requirements=[
-                    batch.CfnJobDefinition.ResourceRequirementProperty(type="VCPU", value="2"),
-                    batch.CfnJobDefinition.ResourceRequirementProperty(type="MEMORY", value="4096"),
-                ],
-                job_role_arn=job_task_role.role_arn,
-                execution_role_arn=job_execution_role.role_arn,
-                network_configuration=batch.CfnJobDefinition.NetworkConfigurationProperty(
-                    assign_public_ip="ENABLED",
-                ),
-                command=[
-                    "dagster",
-                    "job",
-                    "execute",
-                    "-m",
-                    "sbir_etl.definitions_ml",
-                    "-j",
-                    "paecter_job",
-                ],
-                environment=[
-                    batch.CfnJobDefinition.EnvironmentProperty(
-                        name="DAGSTER_LOAD_HEAVY_ASSETS",
-                        value="true",
-                    ),
-                    batch.CfnJobDefinition.EnvironmentProperty(
-                        name="DAGSTER_HOME",
-                        value="/tmp/dagster_home",
-                    ),
-                    batch.CfnJobDefinition.EnvironmentProperty(
-                        name="AWS_DEFAULT_REGION",
-                        value=self.region,
-                    ),
-                ],
-                log_configuration=batch.CfnJobDefinition.LogConfigurationProperty(
-                    log_driver="awslogs",
-                    options={
-                        "awslogs-group": "/aws/batch/sbir-analytics-analysis",
-                        "awslogs-stream-prefix": "paecter",
-                    },
-                ),
-            ),
-            retry_strategy=batch.CfnJobDefinition.RetryStrategyProperty(
-                attempts=2,
-            ),
-            timeout=batch.CfnJobDefinition.TimeoutProperty(
-                attempt_duration_seconds=21600,  # 6 hours max
-            ),
-        )
-
-        # Job definition for USAspending recipient extraction (Fargate)
-        # Extracts recipient_lookup table from 217GB dump → small parquet
-        usaspending_extract_job_definition = batch.CfnJobDefinition(
-            self,
-            "UsaspendingExtractJobDefinition",
-            job_definition_name="sbir-analytics-usaspending-extract",
-            type="container",
-            platform_capabilities=["FARGATE"],
-            container_properties=batch.CfnJobDefinition.ContainerPropertiesProperty(
-                image=self.ANALYSIS_IMAGE,
-                resource_requirements=[
-                    # Needs enough memory for 217GB ZIP download + processing
-                    batch.CfnJobDefinition.ResourceRequirementProperty(type="VCPU", value="4"),
-                    batch.CfnJobDefinition.ResourceRequirementProperty(type="MEMORY", value="30720"),  # 30GB
-                ],
-                job_role_arn=job_task_role.role_arn,
-                execution_role_arn=job_execution_role.role_arn,
-                network_configuration=batch.CfnJobDefinition.NetworkConfigurationProperty(
-                    assign_public_ip="ENABLED",
-                ),
-                command=[
-                    "bash",
-                    "-c",
-                    "cd /app && python scripts/usaspending/download_database.py --source-url \"${USASPENDING_URL}\" --s3-bucket sbir-etl-production-data",
-                ],
-                environment=[
-                    batch.CfnJobDefinition.EnvironmentProperty(
-                        name="AWS_DEFAULT_REGION",
-                        value=self.region,
-                    ),
-                ],
-                log_configuration=batch.CfnJobDefinition.LogConfigurationProperty(
-                    log_driver="awslogs",
-                    options={
-                        "awslogs-group": "/aws/batch/sbir-analytics-analysis",
-                        "awslogs-stream-prefix": "usaspending-extract",
-                    },
-                ),
-                # Fargate ephemeral storage max is 200GB
-                ephemeral_storage=batch.CfnJobDefinition.EphemeralStorageProperty(
-                    size_in_gib=200,  # Max Fargate ephemeral storage
-                ),
-            ),
-            retry_strategy=batch.CfnJobDefinition.RetryStrategyProperty(
-                attempts=2,
-            ),
-            timeout=batch.CfnJobDefinition.TimeoutProperty(
-                attempt_duration_seconds=28800,  # 8 hours max (56GB download + processing)
-            ),
-        )
+        job_definitions = {}
+        for job in jobs:
+            job_definitions[job.id] = self._create_job_definition(
+                job, job_task_role, job_execution_role,
+            )
 
         # Outputs
-        CfnOutput(self, "AnalysisImage", value=self.ANALYSIS_IMAGE)
+        CfnOutput(self, "AnalysisImage", value=ANALYSIS_IMAGE)
         CfnOutput(self, "ComputeEnvironmentArn", value=compute_environment.attr_compute_environment_arn)
         CfnOutput(self, "JobQueueArn", value=job_queue.attr_job_queue_arn)
         CfnOutput(self, "JobQueueName", value=job_queue.job_queue_name)
-        CfnOutput(self, "CETJobDefinitionArn", value=cet_job_definition.ref)
-        CfnOutput(self, "FiscalJobDefinitionArn", value=fiscal_job_definition.ref)
-        CfnOutput(self, "PaecterJobDefinitionArn", value=paecter_job_definition.ref)
-        CfnOutput(self, "UsaspendingExtractJobDefinitionArn", value=usaspending_extract_job_definition.ref)
+        CfnOutput(self, "CETJobDefinitionArn", value=job_definitions["CETJobDefinition"].ref)
+        CfnOutput(self, "FiscalJobDefinitionArn", value=job_definitions["FiscalJobDefinition"].ref)
+        CfnOutput(self, "PaecterJobDefinitionArn", value=job_definitions["PaecterJobDefinition"].ref)
+        CfnOutput(self, "UsaspendingExtractJobDefinitionArn", value=job_definitions["UsaspendingExtractJobDefinition"].ref)
         CfnOutput(self, "JobTaskRoleArn", value=job_task_role.role_arn)
         CfnOutput(self, "JobExecutionRoleArn", value=job_execution_role.role_arn)
 
-        # SNS Topic for job notifications
+        # SNS notifications for job state changes
         notification_topic = sns.Topic(
-            self,
-            "BatchJobNotifications",
+            self, "BatchJobNotifications",
             display_name="SBIR Analytics Batch Job Notifications",
         )
 
-        # Subscribe email (get from context or use default)
         notification_email = self.node.try_get_context("notification_email")
         if notification_email:
             notification_topic.add_subscription(
                 subscriptions.EmailSubscription(notification_email)
             )
 
-        # EventBridge rule for job state changes
         events.Rule(
-            self,
-            "BatchJobStateChangeRule",
+            self, "BatchJobStateChangeRule",
             event_pattern=events.EventPattern(
                 source=["aws.batch"],
                 detail_type=["Batch Job State Change"],
@@ -424,3 +255,64 @@ class BatchStack(Stack):
         )
 
         CfnOutput(self, "NotificationTopicArn", value=notification_topic.topic_arn)
+
+    def _create_job_definition(
+        self,
+        config: JobConfig,
+        job_task_role: iam.Role,
+        job_execution_role: iam.Role,
+    ) -> batch.CfnJobDefinition:
+        """Create a Fargate Batch job definition from a JobConfig."""
+        env_vars = [
+            batch.CfnJobDefinition.EnvironmentProperty(
+                name="AWS_DEFAULT_REGION", value=self.region,
+            ),
+        ]
+        for entry in config.extra_env or []:
+            env_vars.append(
+                batch.CfnJobDefinition.EnvironmentProperty(
+                    name=entry["name"], value=entry["value"],
+                )
+            )
+
+        container_props = batch.CfnJobDefinition.ContainerPropertiesProperty(
+            image=ANALYSIS_IMAGE,
+            resource_requirements=[
+                batch.CfnJobDefinition.ResourceRequirementProperty(type="VCPU", value=config.vcpus),
+                batch.CfnJobDefinition.ResourceRequirementProperty(type="MEMORY", value=config.memory_mb),
+            ],
+            job_role_arn=job_task_role.role_arn,
+            execution_role_arn=job_execution_role.role_arn,
+            network_configuration=batch.CfnJobDefinition.NetworkConfigurationProperty(
+                assign_public_ip="ENABLED",
+            ),
+            command=config.command,
+            environment=env_vars,
+            log_configuration=batch.CfnJobDefinition.LogConfigurationProperty(
+                log_driver="awslogs",
+                options={
+                    "awslogs-group": BATCH_LOG_GROUP,
+                    "awslogs-stream-prefix": config.log_stream_prefix,
+                },
+            ),
+            **(
+                {"ephemeral_storage": batch.CfnJobDefinition.EphemeralStorageProperty(
+                    size_in_gib=config.ephemeral_storage_gib,
+                )}
+                if config.ephemeral_storage_gib
+                else {}
+            ),
+        )
+
+        return batch.CfnJobDefinition(
+            self,
+            config.id,
+            job_definition_name=config.name,
+            type="container",
+            platform_capabilities=["FARGATE"],
+            container_properties=container_props,
+            retry_strategy=batch.CfnJobDefinition.RetryStrategyProperty(attempts=2),
+            timeout=batch.CfnJobDefinition.TimeoutProperty(
+                attempt_duration_seconds=config.timeout_seconds,
+            ),
+        )

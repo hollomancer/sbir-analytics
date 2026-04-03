@@ -371,25 +371,36 @@ jobs:
           echo "Submitted job: $JOB_ID" >> $GITHUB_STEP_SUMMARY
 
       - name: Wait for completion
+        env:
+          POLL_INTERVAL: 30
+          MAX_WAIT_SECONDS: 14400  # 4 hours (matches job timeout)
         run: |
           JOB_ID="${{ steps.batch.outputs.job_id }}"
-          echo "Waiting for job $JOB_ID..."
+          echo "Waiting for job $JOB_ID (timeout: ${MAX_WAIT_SECONDS}s)..."
+          ELAPSED=0
 
-          while true; do
+          while [ "$ELAPSED" -lt "$MAX_WAIT_SECONDS" ]; do
             STATUS=$(aws batch describe-jobs --jobs "$JOB_ID" --query 'jobs[0].status' --output text)
-            echo "Status: $STATUS"
+            echo "[${ELAPSED}s] Status: $STATUS"
 
-            if [ "$STATUS" = "SUCCEEDED" ]; then
-              echo "✅ Fiscal job completed" >> $GITHUB_STEP_SUMMARY
-              exit 0
-            elif [ "$STATUS" = "FAILED" ]; then
-              echo "❌ Fiscal job failed" >> $GITHUB_STEP_SUMMARY
-              aws batch describe-jobs --jobs "$JOB_ID" --query 'jobs[0].statusReason' --output text >> $GITHUB_STEP_SUMMARY
-              exit 1
-            fi
+            case "$STATUS" in
+              SUCCEEDED)
+                echo "✅ Fiscal job completed" >> $GITHUB_STEP_SUMMARY
+                exit 0
+                ;;
+              FAILED)
+                echo "❌ Fiscal job failed" >> $GITHUB_STEP_SUMMARY
+                aws batch describe-jobs --jobs "$JOB_ID" --query 'jobs[0].statusReason' --output text >> $GITHUB_STEP_SUMMARY
+                exit 1
+                ;;
+            esac
 
-            sleep 30
+            sleep "$POLL_INTERVAL"
+            ELAPSED=$((ELAPSED + POLL_INTERVAL))
           done
+
+          echo "❌ Fiscal job timed out after ${MAX_WAIT_SECONDS}s (status: $STATUS)" >> $GITHUB_STEP_SUMMARY
+          exit 1
 
   summary:
     name: Pipeline Summary
