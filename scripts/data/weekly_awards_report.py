@@ -71,6 +71,14 @@ OPENAI_MODEL = "gpt-4.1-mini"
 # Batch size for per-award descriptions (awards per API call)
 DESCRIPTION_BATCH_SIZE = 10
 
+# Caps on OpenAI API usage (override via env vars)
+MAX_COMPANIES_TO_RESEARCH = int(os.environ.get("MAX_COMPANIES_TO_RESEARCH", "50"))
+MAX_AWARDS_TO_DESCRIBE = int(os.environ.get("MAX_AWARDS_TO_DESCRIBE", "100"))
+
+# Retry configuration for OpenAI API calls
+OPENAI_MAX_RETRIES = 3
+OPENAI_RETRY_BACKOFF_BASE = 2  # seconds
+
 
 # ---------------------------------------------------------------------------
 # Data structures
@@ -259,6 +267,11 @@ def fetch_weekly_awards(days: int = 7) -> tuple[list[dict], list[str]]:
 # ---------------------------------------------------------------------------
 
 
+def _escape_md_cell(value: str) -> str:
+    """Escape a string for safe use inside a markdown table cell."""
+    return value.replace("|", "\\|").replace("\n", " ").replace("\r", "")
+
+
 def format_amount(amount_str: str) -> str:
     """Format dollar amount for display."""
     try:
@@ -316,6 +329,44 @@ def build_usaspending_url(award: dict) -> str | None:
 # ---------------------------------------------------------------------------
 
 
+def _openai_request_with_retry(
+    method: str,
+    url: str,
+    headers: dict,
+    payload: dict,
+    timeout: int = 120,
+) -> requests.Response | None:
+    """Make an OpenAI API request with retry/backoff for 429 and 5xx errors."""
+    import time
+
+    for attempt in range(OPENAI_MAX_RETRIES + 1):
+        try:
+            resp = requests.request(
+                method, url, headers=headers, json=payload, timeout=timeout
+            )
+            if resp.status_code == 429 or resp.status_code >= 500:
+                if attempt < OPENAI_MAX_RETRIES:
+                    wait = OPENAI_RETRY_BACKOFF_BASE ** (attempt + 1)
+                    print(
+                        f"OpenAI API returned {resp.status_code}, retrying in {wait}s "
+                        f"(attempt {attempt + 1}/{OPENAI_MAX_RETRIES})...",
+                        file=sys.stderr,
+                    )
+                    time.sleep(wait)
+                    continue
+            resp.raise_for_status()
+            return resp
+        except requests.exceptions.HTTPError:
+            if attempt < OPENAI_MAX_RETRIES:
+                continue
+            print(f"OpenAI API error after {OPENAI_MAX_RETRIES} retries: {resp.status_code}", file=sys.stderr)
+            return None
+        except Exception as e:
+            print(f"OpenAI API request error: {e}", file=sys.stderr)
+            return None
+    return None
+
+
 def _openai_chat(api_key: str, system: str, user: str) -> str | None:
     """Call the OpenAI chat completions API. Returns the assistant message text."""
     headers = {
@@ -330,14 +381,13 @@ def _openai_chat(api_key: str, system: str, user: str) -> str | None:
             {"role": "user", "content": user},
         ],
     }
+    resp = _openai_request_with_retry("POST", OPENAI_CHAT_URL, headers, payload)
+    if resp is None:
+        return None
     try:
-        resp = requests.post(
-            OPENAI_CHAT_URL, headers=headers, json=payload, timeout=120
-        )
-        resp.raise_for_status()
         return resp.json()["choices"][0]["message"]["content"].strip()
-    except Exception as e:
-        print(f"OpenAI Chat API error: {e}", file=sys.stderr)
+    except (KeyError, IndexError) as e:
+        print(f"OpenAI Chat API unexpected response: {e}", file=sys.stderr)
         return None
 
 
@@ -359,15 +409,10 @@ def _openai_web_search(api_key: str, query: str) -> CompanyResearch | None:
         ),
         "input": query,
     }
-    try:
-        resp = requests.post(
-            OPENAI_RESPONSES_URL, headers=headers, json=payload, timeout=60
-        )
-        resp.raise_for_status()
-        data = resp.json()
-    except Exception as e:
-        print(f"OpenAI Responses API error for web search: {e}", file=sys.stderr)
+    resp = _openai_request_with_retry("POST", OPENAI_RESPONSES_URL, headers, payload, timeout=60)
+    if resp is None:
         return None
+    data = resp.json()
 
     summary_text = ""
     source_urls: list[str] = []
@@ -406,9 +451,17 @@ def research_companies(
             }
 
     results: dict[str, CompanyResearch] = {}
-    total = len(companies)
+    # Cap the number of companies to research
+    company_items = list(companies.items())
+    if len(company_items) > MAX_COMPANIES_TO_RESEARCH:
+        print(
+            f"Capping company research at {MAX_COMPANIES_TO_RESEARCH} of {len(company_items)} companies",
+            file=sys.stderr,
+        )
+        company_items = company_items[:MAX_COMPANIES_TO_RESEARCH]
+    total = len(company_items)
 
-    for idx, (key, info) in enumerate(companies.items(), 1):
+    for idx, (key, info) in enumerate(company_items, 1):
         name = info["name"]
         state = info["state"]
         website = info["website"]
@@ -536,6 +589,15 @@ def generate_award_descriptions(
     if not awards:
         return descriptions
 
+    # Cap the number of awards to describe
+    awards_to_describe = awards
+    if len(awards) > MAX_AWARDS_TO_DESCRIBE:
+        print(
+            f"Capping award descriptions at {MAX_AWARDS_TO_DESCRIBE} of {len(awards)} awards",
+            file=sys.stderr,
+        )
+        awards_to_describe = awards[:MAX_AWARDS_TO_DESCRIBE]
+
     system = (
         "You summarize SBIR/STTR awards in plain language. "
         "For each award, write 2-3 sentences explaining what the project does "
@@ -549,8 +611,8 @@ def generate_award_descriptions(
         'to its description string. Example: {"1": "Description.", "2": "Description."}'
     )
 
-    for batch_start in range(0, len(awards), DESCRIPTION_BATCH_SIZE):
-        batch = awards[batch_start : batch_start + DESCRIPTION_BATCH_SIZE]
+    for batch_start in range(0, len(awards_to_describe), DESCRIPTION_BATCH_SIZE):
+        batch = awards_to_describe[batch_start : batch_start + DESCRIPTION_BATCH_SIZE]
         digests = []
         for i, a in enumerate(batch):
             idx = batch_start + i + 1
@@ -568,7 +630,7 @@ def generate_award_descriptions(
 
         batch_label = f"{batch_start + 1}-{batch_start + len(batch)}"
         print(
-            f"Generating descriptions for awards {batch_label} of {len(awards)}...",
+            f"Generating descriptions for awards {batch_label} of {len(awards_to_describe)}...",
             file=sys.stderr,
         )
         raw = _openai_chat(api_key, system, user)
@@ -675,7 +737,7 @@ def generate_markdown(
     lines.append("| Agency | Awards |")
     lines.append("|--------|--------|")
     for agency, count in sorted(agencies.items(), key=lambda x: -x[1]):
-        lines.append(f"| {agency} | {count} |")
+        lines.append(f"| {_escape_md_cell(agency)} | {count} |")
     lines.append("")
 
     # Breakdown by program/phase
@@ -688,7 +750,7 @@ def generate_markdown(
         key = (str(a.get("Program", "Unknown")), str(a.get("Phase", "Unknown")))
         program_phase[key] = program_phase.get(key, 0) + 1
     for (program, phase), count in sorted(program_phase.items(), key=lambda x: -x[1]):
-        lines.append(f"| {program} | {phase} | {count} |")
+        lines.append(f"| {_escape_md_cell(program)} | {_escape_md_cell(phase)} | {count} |")
     lines.append("")
 
     # Individual awards
@@ -717,7 +779,7 @@ def generate_markdown(
         # Look up company research
         cr = None
         if company_research:
-            cr = company_research.get(company.upper())
+            cr = company_research.get(company.strip().upper())
 
         # Award header
         lines.append(f"### {i + 1}. {title}")
@@ -736,22 +798,22 @@ def generate_markdown(
         lines.append("")
         lines.append("| Field | Value |")
         lines.append("|-------|-------|")
-        lines.append(f"| **Company** | {company} |")
+        lines.append(f"| **Company** | {_escape_md_cell(company)} |")
         lines.append(f"| **Award Date** | {date} |")
         lines.append(f"| **Amount** | {amount} |")
-        lines.append(f"| **Agency** | {agency} |")
-        lines.append(f"| **Program** | {program} |")
-        lines.append(f"| **Phase** | {phase} |")
+        lines.append(f"| **Agency** | {_escape_md_cell(agency)} |")
+        lines.append(f"| **Program** | {_escape_md_cell(program)} |")
+        lines.append(f"| **Phase** | {_escape_md_cell(phase)} |")
         if state:
-            lines.append(f"| **State** | {state} |")
+            lines.append(f"| **State** | {_escape_md_cell(state)} |")
         if contract:
-            lines.append(f"| **Contract** | `{contract}` |")
+            lines.append(f"| **Contract** | `{_escape_md_cell(contract)}` |")
         if pi_name:
-            lines.append(f"| **PI** | {pi_name} |")
+            lines.append(f"| **PI** | {_escape_md_cell(pi_name)} |")
         if solicitation:
-            lines.append(f"| **Solicitation** | `{solicitation}` |")
+            lines.append(f"| **Solicitation** | `{_escape_md_cell(solicitation)}` |")
         if topic_code:
-            lines.append(f"| **Topic Code** | `{topic_code}` |")
+            lines.append(f"| **Topic Code** | `{_escape_md_cell(topic_code)}` |")
         lines.append("")
         lines.append("</details>")
         lines.append("")
@@ -796,6 +858,11 @@ def main():
         action="store_true",
         help="Skip AI-generated summaries even if OPENAI_API_KEY is set",
     )
+    parser.add_argument(
+        "--no-company-research",
+        action="store_true",
+        help="Skip web-based company research (still generates synopsis and descriptions)",
+    )
     args = parser.parse_args()
 
     awards, freshness_warnings = fetch_weekly_awards(days=args.days)
@@ -807,7 +874,8 @@ def main():
     api_key = os.environ.get("OPENAI_API_KEY", "")
 
     if api_key and not args.no_ai:
-        company_info = research_companies(api_key, awards)
+        if not args.no_company_research:
+            company_info = research_companies(api_key, awards)
         synopsis = generate_weekly_synopsis(api_key, awards, args.days, company_info)
         descriptions = generate_award_descriptions(api_key, awards, company_info)
     elif not api_key and not args.no_ai:
