@@ -7,25 +7,25 @@ Supports rate limiting, retry logic, delta detection, and state management.
 
 from __future__ import annotations
 
-import asyncio
 import hashlib
 import json
-from datetime import datetime
 from pathlib import Path
 from typing import Any
 
 import httpx
 from loguru import logger
-from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
 from ...config.loader import get_config
-from ...exceptions import APIError, ConfigurationError, RateLimitError
+from ...exceptions import APIError
 from ...models.enrichment import EnrichmentFreshnessRecord
+from ..base_client import BaseAsyncAPIClient
 
 
 
-class USAspendingAPIClient:
+class USAspendingAPIClient(BaseAsyncAPIClient):
     """Async client for USAspending.gov API v2."""
+
+    api_name = "usaspending"
 
     def __init__(
         self,
@@ -39,6 +39,8 @@ class USAspendingAPIClient:
             config: Optional configuration override. If None, loads from get_config()
             http_client: Optional pre-configured HTTPX client (useful for tests)
         """
+        super().__init__()
+
         if config is None:
             cfg = get_config()
             self.config = cfg.enrichment_refresh.usaspending.model_dump()
@@ -49,14 +51,7 @@ class USAspendingAPIClient:
 
         self.base_url = self.api_config.get("base_url", "https://api.usaspending.gov/api/v2")
         self.timeout = self.config.get("timeout_seconds", 30)
-        self.retry_attempts = self.config.get("retry_attempts", 3)
-        self.retry_backoff = self.config.get("retry_backoff_seconds", 2.0)
-        self.retry_multiplier = self.config.get("retry_backoff_multiplier", 2.0)
         self.rate_limit_per_minute = self.config.get("rate_limit_per_minute", 120)
-
-        # Rate limiting state
-        self.request_times: list[datetime] = []
-        self._rate_limit_lock = asyncio.Lock()
 
         # State file path
         self.state_file = Path(
@@ -72,147 +67,6 @@ class USAspendingAPIClient:
             f"Initialized USAspendingAPIClient: base_url={self.base_url}, "
             f"rate_limit={self.rate_limit_per_minute}/min"
         )
-
-    async def aclose(self) -> None:
-        """Close the underlying HTTP client."""
-
-        await self._client.aclose()
-
-    async def _wait_for_rate_limit(self) -> None:
-        """Wait if rate limit would be exceeded."""
-
-        async with self._rate_limit_lock:
-            now = datetime.now()
-            self.request_times = [t for t in self.request_times if (now - t).total_seconds() < 60]
-
-            if len(self.request_times) >= self.rate_limit_per_minute:
-                oldest = min(self.request_times)
-                wait_seconds = 60 - (now - oldest).total_seconds() + 1
-                if wait_seconds > 0:
-                    logger.debug(f"Rate limit reached, waiting {wait_seconds:.1f} seconds")
-                    await asyncio.sleep(wait_seconds)
-
-            self.request_times.append(datetime.now())
-
-    async def _make_request(
-        self,
-        method: str,
-        endpoint: str,
-        params: dict[str, Any] | None = None,
-        *,
-        headers: dict[str, str] | None = None,
-    ) -> dict[str, Any]:
-        """Make an HTTP request to USAspending API with retry logic.
-
-        Args:
-            method: HTTP method (GET, POST)
-            endpoint: API endpoint path (relative to base_url)
-            params: Query parameters
-            headers: Additional headers
-
-        Returns:
-            JSON response as dict
-
-        Raises:
-            APIError: If request fails
-            RateLimitError: If rate limit exceeded
-        """
-
-        # Inner function that does the actual request (will be wrapped by retry decorator)
-        @retry(
-            stop=stop_after_attempt(3),
-            wait=wait_exponential(multiplier=2.0, min=2, max=30),
-            retry=retry_if_exception_type((httpx.HTTPError, httpx.TimeoutException)),
-            reraise=True,
-        )
-        async def _do_request() -> dict[str, Any]:
-            await self._wait_for_rate_limit()
-
-            url_str: str = (
-                str(self.base_url) if self.base_url else "https://api.usaspending.gov/api/v2"
-            )
-            url = f"{url_str.rstrip('/')}/{str(endpoint).lstrip('/')}"
-            default_headers = {
-                "Accept": "application/json",
-                "User-Agent": "SBIR-Analytics/0.1.0",
-            }
-            if headers:
-                default_headers.update(headers)
-
-            try:
-                if method.upper() == "GET":
-                    response = await self._client.get(url, params=params, headers=default_headers)
-                elif method.upper() == "POST":
-                    response = await self._client.post(url, json=params, headers=default_headers)
-                else:
-                    raise ConfigurationError(
-                        f"Unsupported HTTP method: {method}",
-                        component="enricher.usaspending",
-                        operation="_make_request",
-                        details={
-                            "method": method,
-                            "supported_methods": ["GET", "POST"],
-                            "endpoint": endpoint,
-                        },
-                    )
-
-                response.raise_for_status()
-
-                if response.status_code == 429:
-                    raise RateLimitError(
-                        "Rate limit exceeded",
-                        api_name="usaspending",
-                        endpoint=endpoint,
-                        details={"response_text": response.text[:200]},
-                    )
-
-                return response.json()
-
-            except httpx.HTTPStatusError as e:
-                if e.response.status_code == 429:
-                    raise RateLimitError(
-                        "Rate limit exceeded",
-                        api_name="usaspending",
-                        endpoint=endpoint,
-                        http_status=e.response.status_code,
-                        details={"response_text": e.response.text[:200]},
-                        cause=e,
-                    ) from e
-                raise APIError(
-                    f"HTTP {e.response.status_code}: {e.response.text[:200]}",
-                    api_name="usaspending",
-                    endpoint=endpoint,
-                    http_status=e.response.status_code,
-                    operation="_make_request",
-                    cause=e,
-                ) from e
-            except httpx.TimeoutException:
-                # Let TimeoutException propagate so retry decorator can catch it
-                raise
-            except httpx.RequestError as e:
-                raise APIError(
-                    f"Request error: {str(e)}",
-                    api_name="usaspending",
-                    endpoint=endpoint,
-                    operation="_make_request",
-                    retryable=True,
-                    cause=e,
-                ) from e
-
-        # Call the retry-wrapped function and wrap TimeoutException after retries exhausted
-        try:
-            return await _do_request()
-        except httpx.TimeoutException as e:
-            # After all retries exhausted, wrap TimeoutException for consistent API
-            raise APIError(
-                "Request timeout after retries",
-                api_name="usaspending",
-                endpoint=endpoint,
-                http_status=408,  # Timeout status code
-                operation="_make_request",
-                retryable=False,  # Already retried, don't retry again
-                cause=e,
-            ) from e
 
     def _compute_payload_hash(self, payload: dict[str, Any]) -> str:
         """Compute deterministic SHA256 hash of JSON payload.

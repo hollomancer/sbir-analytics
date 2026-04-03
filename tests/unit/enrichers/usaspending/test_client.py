@@ -104,9 +104,6 @@ class TestUSAspendingAPIClientInitialization:
 
         assert client.base_url == "https://api.usaspending.gov/api/v2"
         assert client.timeout == 30
-        assert client.retry_attempts == 3
-        assert client.retry_backoff == 2.0
-        assert client.retry_multiplier == 2.0
         assert client.rate_limit_per_minute == 120
         assert client.request_times == []
 
@@ -128,9 +125,6 @@ class TestUSAspendingAPIClientInitialization:
 
         assert client.base_url == "https://custom.api.url"
         assert client.timeout == 60
-        assert client.retry_attempts == 5
-        assert client.retry_backoff == 1.0
-        assert client.retry_multiplier == 1.5
         assert client.rate_limit_per_minute == 60
 
     def test_state_file_parent_created(self, tmp_path):
