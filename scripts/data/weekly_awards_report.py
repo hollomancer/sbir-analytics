@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Generate a weekly SBIR awards report in markdown.
 
-Downloads the SBIR bulk CSV from SBIR.gov and filters for awards
-whose Proposal Award Date falls within the past 7 days, then outputs a
-markdown summary with links to SBIR.gov, solicitations, and USAspending.
+Downloads the SBIR bulk CSV (from S3 if available, else direct from
+SBIR.gov) and uses DuckDB to filter for awards whose Proposal Award
+Date falls within the past 7 days, then outputs a markdown summary
+with links to SBIR.gov, solicitations, and USAspending.
 
 When OPENAI_API_KEY is set, uses the OpenAI API to:
 - Search the web for public info on each awardee company
@@ -18,18 +19,45 @@ Usage:
 """
 
 import argparse
-import csv
-import io
 import json
 import os
 import sys
+import tempfile
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, UTC
+from pathlib import Path
 from urllib.parse import quote
 
 import requests
 
 SBIR_AWARDS_URL = "https://data.www.sbir.gov/mod_awarddatapublic/award_data.csv"
+
+# Lazy imports from the sbir_etl package.  These are optional — the script
+# falls back to a standalone CSV download + Python-based filtering when the
+# full package isn't installed (e.g. lightweight CI runners).
+try:
+    from sbir_etl.extractors.sbir import SbirDuckDBExtractor
+    from sbir_etl.utils.cloud_storage import find_latest_sbir_awards, get_s3_bucket_from_env
+    from sbir_etl.utils.date_utils import parse_date as _parse_date
+
+    _HAS_SBIR_ETL = True
+except ImportError:
+    _HAS_SBIR_ETL = False
+    SbirDuckDBExtractor = None  # type: ignore[assignment, misc]
+
+    def _parse_date(value, **_kwargs):  # type: ignore[misc]
+        """Minimal fallback date parser when sbir_etl is unavailable."""
+        from datetime import date as _date
+
+        if not value or not str(value).strip():
+            return None
+        s = str(value).strip()
+        for fmt in ("%Y-%m-%d", "%m/%d/%Y", "%Y-%m-%d %H:%M:%S", "%m/%d/%y"):
+            try:
+                return datetime.strptime(s, fmt).date()
+            except ValueError:
+                continue
+        return None
 
 # URL templates for external links
 SBIR_AWARD_SEARCH_URL = "https://www.sbir.gov/sbirsearch/award/all"
@@ -58,71 +86,132 @@ class CompanyResearch:
 
 
 # ---------------------------------------------------------------------------
-# Parsing and URL helpers
+# Data loading (reuses SbirDuckDBExtractor + cloud_storage)
 # ---------------------------------------------------------------------------
 
 
-def parse_award_date(date_str: str) -> datetime | None:
-    """Parse award date from CSV, trying common formats."""
-    if not date_str or not date_str.strip():
-        return None
-    date_str = date_str.strip()
-    for fmt in ("%Y-%m-%d", "%m/%d/%Y", "%Y-%m-%d %H:%M:%S", "%m/%d/%y"):
-        try:
-            return datetime.strptime(date_str, fmt)
-        except ValueError:
-            continue
-    return None
+def _resolve_csv_path() -> Path:
+    """Resolve the SBIR CSV path: try S3 first, then download fresh.
 
+    In CI the data-refresh workflow uploads the CSV to S3 weekly, so we
+    prefer that cached copy.  Falls back to downloading directly from
+    SBIR.gov when S3 isn't configured or the file isn't found.
+    """
+    # Try S3 first (only when sbir_etl is installed)
+    if _HAS_SBIR_ETL:
+        bucket = get_s3_bucket_from_env()
+        if bucket:
+            s3_url = find_latest_sbir_awards(bucket)
+            if s3_url:
+                print(f"Using S3-cached CSV: {s3_url}", file=sys.stderr)
+                return Path(s3_url)
 
-def fetch_weekly_awards(days: int = 7) -> list[dict]:
-    """Download SBIR CSV and filter for awards in the past N days."""
-    print(f"Downloading SBIR awards from {SBIR_AWARDS_URL}...", file=sys.stderr)
-
+    # Fall back to direct download
+    print(f"S3 not available; downloading from {SBIR_AWARDS_URL}...", file=sys.stderr)
     response = requests.get(SBIR_AWARDS_URL, timeout=600)
     response.raise_for_status()
 
-    cutoff = datetime.now(UTC).replace(tzinfo=None) - timedelta(days=days)
+    tmp = Path(tempfile.gettempdir()) / "sbir_weekly_award_data.csv"
+    tmp.write_bytes(response.content)
+    print(f"Downloaded {tmp.stat().st_size / 1024 / 1024:.1f} MB", file=sys.stderr)
+    return tmp
 
-    reader = csv.DictReader(io.StringIO(response.text))
+
+def fetch_weekly_awards(days: int = 7) -> list[dict]:
+    """Load SBIR CSV and filter for awards in the past N days.
+
+    When sbir_etl is installed, uses SbirDuckDBExtractor for fast
+    columnar import and SQL-based date filtering.  Otherwise falls back
+    to csv.DictReader with Python-level filtering.
+    """
+    csv_path = _resolve_csv_path()
+    cutoff_str = (datetime.now(UTC) - timedelta(days=days)).strftime("%Y-%m-%d")
+
+    if _HAS_SBIR_ETL and SbirDuckDBExtractor is not None:
+        # Fast path: DuckDB columnar import + SQL filtering
+        extractor = SbirDuckDBExtractor(
+            csv_path=csv_path,
+            duckdb_path=":memory:",
+            use_s3_first=False,  # we already resolved the path
+        )
+        extractor.import_csv()
+
+        table = extractor._table_identifier
+        query = (
+            f"SELECT * FROM {table} "
+            f"WHERE \"Proposal Award Date\" >= '{cutoff_str}' "
+            f"ORDER BY \"Proposal Award Date\" DESC, "
+            f"TRY_CAST(\"Award Amount\" AS DOUBLE) DESC"
+        )
+
+        df = extractor.duckdb_client.execute_query_df(query)
+        print(f"Found {len(df)} awards since {cutoff_str} (DuckDB)", file=sys.stderr)
+        return df.fillna("").to_dict("records")
+
+    # Fallback: csv.DictReader + Python filtering
+    import csv
+    import io
+
+    print(f"Using csv.DictReader fallback for filtering", file=sys.stderr)
+    cutoff_dt = datetime.now(UTC).replace(tzinfo=None) - timedelta(days=days)
+
+    text = csv_path.read_text(encoding="utf-8")
+    reader = csv.DictReader(io.StringIO(text))
     awards = []
     for row in reader:
-        award_date = parse_award_date(row.get("Proposal Award Date", ""))
-        if award_date and award_date >= cutoff:
-            awards.append(row)
+        parsed = _parse_date(row.get("Proposal Award Date", ""))
+        if parsed:
+            # parse_date returns date; compare as datetime
+            row_dt = datetime(parsed.year, parsed.month, parsed.day)
+            if row_dt >= cutoff_dt:
+                awards.append(row)
 
-    # Sort by date descending, then by amount descending
     def sort_key(a):
-        dt = parse_award_date(a.get("Proposal Award Date", "")) or datetime.min
+        dt = _parse_date(a.get("Proposal Award Date", ""))
+        ts = datetime(dt.year, dt.month, dt.day).timestamp() if dt else 0
         try:
-            amount = float(a.get("Award Amount", "0").replace(",", "").replace("$", ""))
+            amount = float(str(a.get("Award Amount", "0")).replace(",", "").replace("$", ""))
         except (ValueError, AttributeError):
             amount = 0
-        return (-dt.timestamp(), -amount)
+        return (-ts, -amount)
 
     awards.sort(key=sort_key)
+    print(f"Found {len(awards)} awards since {cutoff_str} (csv fallback)", file=sys.stderr)
     return awards
+
+
+# ---------------------------------------------------------------------------
+# Formatting helpers
+# ---------------------------------------------------------------------------
 
 
 def format_amount(amount_str: str) -> str:
     """Format dollar amount for display."""
     try:
-        amount = float(amount_str.replace(",", "").replace("$", ""))
+        amount = float(str(amount_str).replace(",", "").replace("$", ""))
         if amount >= 1_000_000:
             return f"${amount / 1_000_000:.2f}M"
         if amount >= 1_000:
             return f"${amount / 1_000:.0f}K"
         return f"${amount:,.0f}"
-    except (ValueError, AttributeError):
-        return amount_str or "N/A"
+    except (ValueError, AttributeError, TypeError):
+        return str(amount_str) if amount_str else "N/A"
+
+
+def _format_date(value) -> str:
+    """Format a date value for display using the project's date parser."""
+    parsed = _parse_date(value)
+    if parsed:
+        return parsed.isoformat()
+    return str(value) if value else ""
 
 
 def build_sbir_award_url(award: dict) -> str:
     """Build a link to the SBIR.gov award search page for this award."""
-    contract = award.get("Contract", "").strip()
+    contract = str(award.get("Contract", "")).strip()
     if contract:
         return f"{SBIR_AWARD_SEARCH_URL}/{quote(contract)}"
-    company = award.get("Company", "").strip()
+    company = str(award.get("Company", "")).strip()
     if company:
         return f"{SBIR_AWARD_SEARCH_URL}/{quote(company)}"
     return SBIR_AWARD_SEARCH_URL
@@ -130,8 +219,8 @@ def build_sbir_award_url(award: dict) -> str:
 
 def build_solicitation_url(award: dict) -> str | None:
     """Build a link to the SBIR.gov solicitation/topic page."""
-    solicitation = award.get("Solicitation Number", "").strip()
-    topic_code = award.get("Topic Code", "").strip()
+    solicitation = str(award.get("Solicitation Number", "")).strip()
+    topic_code = str(award.get("Topic Code", "")).strip()
     if solicitation:
         return f"{SBIR_SOLICITATION_URL}?keyword={quote(solicitation)}"
     if topic_code:
@@ -141,7 +230,7 @@ def build_solicitation_url(award: dict) -> str | None:
 
 def build_usaspending_url(award: dict) -> str | None:
     """Build a link to USAspending.gov search for this award's contract."""
-    contract = award.get("Contract", "").strip()
+    contract = str(award.get("Contract", "")).strip()
     if not contract:
         return None
     search_term = quote(contract)
@@ -179,11 +268,7 @@ def _openai_chat(api_key: str, system: str, user: str) -> str | None:
 
 
 def _openai_web_search(api_key: str, query: str) -> CompanyResearch | None:
-    """Use the OpenAI Responses API with web_search_preview to research a company.
-
-    Returns a CompanyResearch with a text summary and source URLs extracted
-    from the response annotations.
-    """
+    """Use the OpenAI Responses API with web_search_preview to research a company."""
     headers = {
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
@@ -210,7 +295,6 @@ def _openai_web_search(api_key: str, query: str) -> CompanyResearch | None:
         print(f"OpenAI Responses API error for web search: {e}", file=sys.stderr)
         return None
 
-    # Extract text and source URLs from the response
     summary_text = ""
     source_urls: list[str] = []
 
@@ -219,7 +303,6 @@ def _openai_web_search(api_key: str, query: str) -> CompanyResearch | None:
             for content_block in output_item.get("content", []):
                 if content_block.get("type") == "output_text":
                     summary_text = content_block.get("text", "")
-                    # Extract URLs from annotations
                     for annotation in content_block.get("annotations", []):
                         url = annotation.get("url", "")
                         if url and url not in source_urls:
@@ -234,23 +317,18 @@ def _openai_web_search(api_key: str, query: str) -> CompanyResearch | None:
 def research_companies(
     api_key: str, awards: list[dict]
 ) -> dict[str, CompanyResearch]:
-    """Research each unique awardee company via web search.
-
-    Returns a dict mapping normalized company name to CompanyResearch.
-    Results are cached per company so duplicates aren't searched twice.
-    """
-    # Collect unique companies with their state and website for better search
+    """Research each unique awardee company via web search."""
     companies: dict[str, dict] = {}
     for a in awards:
-        name = a.get("Company", "").strip()
+        name = str(a.get("Company", "")).strip()
         if not name:
             continue
         key = name.upper()
         if key not in companies:
             companies[key] = {
                 "name": name,
-                "state": a.get("State", ""),
-                "website": a.get("Company Website", ""),
+                "state": str(a.get("State", "")),
+                "website": str(a.get("Company Website", "")),
             }
 
     results: dict[str, CompanyResearch] = {}
@@ -261,14 +339,6 @@ def research_companies(
         state = info["state"]
         website = info["website"]
 
-        # Build a targeted search query
-        query_parts = [f'"{name}"']
-        if state:
-            query_parts.append(state)
-        query_parts.append("SBIR company")
-        if website:
-            query_parts.append(f"site:{website}")
-
         query = (
             f"Find public information about {name}"
             + (f" based in {state}" if state else "")
@@ -278,10 +348,7 @@ def research_companies(
             + "What is their technology focus? Any notable contracts or previous SBIR awards?"
         )
 
-        print(
-            f"Researching company {idx}/{total}: {name}...",
-            file=sys.stderr,
-        )
+        print(f"Researching company {idx}/{total}: {name}...", file=sys.stderr)
         research = _openai_web_search(api_key, query)
         if research:
             results[key] = research
@@ -300,21 +367,21 @@ def _award_digest(award: dict, company_research: CompanyResearch | None = None) 
         f"State: {award.get('State', 'N/A')}",
         f"Date: {award.get('Proposal Award Date', 'N/A')}",
     ]
-    abstract = award.get("Abstract", "").strip()
+    abstract = str(award.get("Abstract", "")).strip()
     if abstract:
         if len(abstract) > 1500:
             abstract = abstract[:1500] + "..."
         parts.append(f"Abstract: {abstract}")
-    topic_code = award.get("Topic Code", "").strip()
+    topic_code = str(award.get("Topic Code", "")).strip()
     if topic_code:
         parts.append(f"Topic Code: {topic_code}")
-    solicitation = award.get("Solicitation Number", "").strip()
+    solicitation = str(award.get("Solicitation Number", "")).strip()
     if solicitation:
         parts.append(f"Solicitation: {solicitation}")
-    solicitation_year = award.get("Solicitation Year", "").strip()
+    solicitation_year = str(award.get("Solicitation Year", "")).strip()
     if solicitation_year:
         parts.append(f"Solicitation Year: {solicitation_year}")
-    contract = award.get("Contract", "").strip()
+    contract = str(award.get("Contract", "")).strip()
     if contract:
         parts.append(f"Contract: {contract}")
         parts.append(
@@ -324,15 +391,12 @@ def _award_digest(award: dict, company_research: CompanyResearch | None = None) 
     solicitation_url = build_solicitation_url(award)
     if solicitation_url:
         parts.append(f"Solicitation Reference: {solicitation_url}")
-
-    # Include company research if available
     if company_research:
         parts.append(f"Company Background (from web research): {company_research.summary}")
         if company_research.source_urls:
             parts.append(
                 "Company Sources: " + ", ".join(company_research.source_urls[:5])
             )
-
     return "\n".join(parts)
 
 
@@ -351,19 +415,18 @@ def generate_weekly_synopsis(
     for a in awards:
         try:
             total_amount += float(
-                a.get("Award Amount", "0").replace(",", "").replace("$", "")
+                str(a.get("Award Amount", "0")).replace(",", "").replace("$", "")
             )
         except (ValueError, AttributeError):
             pass
-        ag = a.get("Agency", "Unknown")
+        ag = str(a.get("Agency", "Unknown"))
         agencies[ag] = agencies.get(ag, 0) + 1
 
-    # Include up to 50 award digests for context
     digests = []
     for i, a in enumerate(awards[:50]):
         cr = None
         if company_research:
-            cr = company_research.get(a.get("Company", "").strip().upper())
+            cr = company_research.get(str(a.get("Company", "")).strip().upper())
         digests.append(f"[{i+1}] {_award_digest(a, cr)}")
     digest_block = "\n\n".join(digests)
     if len(awards) > 50:
@@ -394,14 +457,7 @@ def generate_award_descriptions(
     awards: list[dict],
     company_research: dict[str, CompanyResearch] | None = None,
 ) -> dict[int, str]:
-    """Generate a brief description for each award using batched API calls.
-
-    The LLM receives each award's abstract, solicitation context,
-    USAspending reference, and company web research so the description
-    is informed by the full award context.
-
-    Returns a dict mapping award index (0-based) to description text.
-    """
+    """Generate a brief description for each award using batched API calls."""
     descriptions: dict[int, str] = {}
     if not awards:
         return descriptions
@@ -426,7 +482,7 @@ def generate_award_descriptions(
             idx = batch_start + i + 1
             cr = None
             if company_research:
-                cr = company_research.get(a.get("Company", "").strip().upper())
+                cr = company_research.get(str(a.get("Company", "")).strip().upper())
             digests.append(f"[{idx}] {_award_digest(a, cr)}")
 
         user = (
@@ -445,7 +501,6 @@ def generate_award_descriptions(
         if not raw:
             continue
 
-        # Strip markdown code fences if present
         text = raw.strip()
         if text.startswith("```"):
             text = text.split("\n", 1)[-1]
@@ -456,7 +511,7 @@ def generate_award_descriptions(
         try:
             batch_descriptions = json.loads(text)
             for key, desc in batch_descriptions.items():
-                descriptions[int(key) - 1] = desc  # convert to 0-based
+                descriptions[int(key) - 1] = desc
         except (json.JSONDecodeError, ValueError) as e:
             print(f"Failed to parse description batch {batch_label}: {e}", file=sys.stderr)
 
@@ -506,15 +561,15 @@ def generate_markdown(
     for a in awards:
         try:
             total_amount += float(
-                a.get("Award Amount", "0").replace(",", "").replace("$", "")
+                str(a.get("Award Amount", "0")).replace(",", "").replace("$", "")
             )
         except (ValueError, AttributeError):
             pass
-        agency = a.get("Agency", "Unknown")
+        agency = str(a.get("Agency", "Unknown"))
         agencies[agency] = agencies.get(agency, 0) + 1
-        program = a.get("Program", "Unknown")
+        program = str(a.get("Program", "Unknown"))
         programs[program] = programs.get(program, 0) + 1
-        state = a.get("State", "Unknown")
+        state = str(a.get("State", ""))
         if state:
             states[state] = states.get(state, 0) + 1
 
@@ -547,7 +602,7 @@ def generate_markdown(
     lines.append("|---------|-------|--------|")
     program_phase: dict[tuple[str, str], int] = {}
     for a in awards:
-        key = (a.get("Program", "Unknown"), a.get("Phase", "Unknown"))
+        key = (str(a.get("Program", "Unknown")), str(a.get("Phase", "Unknown")))
         program_phase[key] = program_phase.get(key, 0) + 1
     for (program, phase), count in sorted(program_phase.items(), key=lambda x: -x[1]):
         lines.append(f"| {program} | {phase} | {count} |")
@@ -558,18 +613,18 @@ def generate_markdown(
     lines.append("")
 
     for i, a in enumerate(awards):
-        date = a.get("Proposal Award Date", "")
-        company = a.get("Company", "")
-        title = a.get("Award Title", "")
-        agency = a.get("Agency", "")
-        program = a.get("Program", "")
-        phase = a.get("Phase", "")
-        amount = format_amount(a.get("Award Amount", ""))
-        state = a.get("State", "")
-        contract = a.get("Contract", "").strip()
-        solicitation = a.get("Solicitation Number", "").strip()
-        topic_code = a.get("Topic Code", "").strip()
-        pi_name = a.get("PI Name", "").strip()
+        date = _format_date(a.get("Proposal Award Date", ""))
+        company = str(a.get("Company", ""))
+        title = str(a.get("Award Title", ""))
+        agency = str(a.get("Agency", ""))
+        program = str(a.get("Program", ""))
+        phase = str(a.get("Phase", ""))
+        amount = format_amount(str(a.get("Award Amount", "")))
+        state = str(a.get("State", ""))
+        contract = str(a.get("Contract", "")).strip()
+        solicitation = str(a.get("Solicitation Number", "")).strip()
+        topic_code = str(a.get("Topic Code", "")).strip()
+        pi_name = str(a.get("PI Name", "")).strip()
 
         # Build links
         sbir_url = build_sbir_award_url(a)
@@ -618,7 +673,7 @@ def generate_markdown(
         lines.append("</details>")
         lines.append("")
 
-        # Reference links — award, solicitation, USAspending, and company sources
+        # Reference links
         link_parts = [f"[SBIR.gov Award]({sbir_url})"]
         if solicitation_url:
             link_parts.append(f"[Solicitation]({solicitation_url})")
@@ -626,7 +681,6 @@ def generate_markdown(
             link_parts.append(f"[USAspending]({usaspending_url})")
         if cr and cr.source_urls:
             for url in cr.source_urls[:3]:
-                # Derive a short label from the domain
                 domain = url.split("//")[-1].split("/")[0].replace("www.", "")
                 link_parts.append(f"[{domain}]({url})")
 
@@ -670,13 +724,8 @@ def main():
     api_key = os.environ.get("OPENAI_API_KEY", "")
 
     if api_key and not args.no_ai:
-        # Step 1: Research companies via web search
         company_info = research_companies(api_key, awards)
-
-        # Step 2: Generate synopsis (with company context)
         synopsis = generate_weekly_synopsis(api_key, awards, args.days, company_info)
-
-        # Step 3: Generate per-award descriptions (with company context)
         descriptions = generate_award_descriptions(api_key, awards, company_info)
     elif not api_key and not args.no_ai:
         print(
