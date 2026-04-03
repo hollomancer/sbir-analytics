@@ -39,6 +39,7 @@ jobs:
       - name: Generate weekly awards report
         env:
           DAYS: ${{ github.event.inputs.days || '7' }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
           mkdir -p reports
           uv run python scripts/data/weekly_awards_report.py \

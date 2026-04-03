@@ -5,14 +5,21 @@ Downloads the SBIR bulk CSV from SBIR.gov and filters for awards
 whose Proposal Award Date falls within the past 7 days, then outputs a
 markdown summary with links to SBIR.gov, solicitations, and USAspending.
 
+When OPENAI_API_KEY is set, uses the OpenAI API to generate:
+- A two-paragraph synopsis of all weekly award activity (top of report)
+- A brief plain-language description for each award
+
 Usage:
     python scripts/data/weekly_awards_report.py
     python scripts/data/weekly_awards_report.py --days 14 --output report.md
+    OPENAI_API_KEY=sk-... python scripts/data/weekly_awards_report.py
 """
 
 import argparse
 import csv
 import io
+import json
+import os
 import sys
 from datetime import datetime, timedelta, UTC
 from urllib.parse import quote
@@ -25,6 +32,12 @@ SBIR_AWARDS_URL = "https://data.www.sbir.gov/mod_awarddatapublic/award_data.csv"
 SBIR_AWARD_SEARCH_URL = "https://www.sbir.gov/sbirsearch/award/all"
 SBIR_SOLICITATION_URL = "https://www.sbir.gov/sbirsearch/topic/default"
 USASPENDING_SEARCH_URL = "https://www.usaspending.gov/search"
+
+OPENAI_API_URL = "https://api.openai.com/v1/chat/completions"
+OPENAI_MODEL = "gpt-4.1-mini"
+
+# Batch size for per-award descriptions (awards per API call)
+DESCRIPTION_BATCH_SIZE = 10
 
 
 def parse_award_date(date_str: str) -> datetime | None:
@@ -83,14 +96,10 @@ def format_amount(amount_str: str) -> str:
 
 
 def build_sbir_award_url(award: dict) -> str:
-    """Build a link to the SBIR.gov award search page for this award.
-
-    Uses the contract number as a keyword search on SBIR.gov's award listing.
-    """
+    """Build a link to the SBIR.gov award search page for this award."""
     contract = award.get("Contract", "").strip()
     if contract:
         return f"{SBIR_AWARD_SEARCH_URL}/{quote(contract)}"
-    # Fall back to company name search
     company = award.get("Company", "").strip()
     if company:
         return f"{SBIR_AWARD_SEARCH_URL}/{quote(company)}"
@@ -98,14 +107,9 @@ def build_sbir_award_url(award: dict) -> str:
 
 
 def build_solicitation_url(award: dict) -> str | None:
-    """Build a link to the SBIR.gov solicitation/topic page.
-
-    Links to the SBIR.gov topic search using the solicitation number.
-    Returns None if no solicitation info is available.
-    """
+    """Build a link to the SBIR.gov solicitation/topic page."""
     solicitation = award.get("Solicitation Number", "").strip()
     topic_code = award.get("Topic Code", "").strip()
-
     if solicitation:
         return f"{SBIR_SOLICITATION_URL}?keyword={quote(solicitation)}"
     if topic_code:
@@ -114,10 +118,7 @@ def build_solicitation_url(award: dict) -> str | None:
 
 
 def build_usaspending_url(award: dict) -> str | None:
-    """Build a link to USAspending.gov search for this award's contract.
-
-    Returns None if no contract number is available.
-    """
+    """Build a link to USAspending.gov search for this award's contract."""
     contract = award.get("Contract", "").strip()
     if not contract:
         return None
@@ -125,7 +126,196 @@ def build_usaspending_url(award: dict) -> str | None:
     return f'{USASPENDING_SEARCH_URL}?form_fields={{"search_term":"{search_term}"}}'
 
 
-def generate_markdown(awards: list[dict], days: int) -> str:
+# ---------------------------------------------------------------------------
+# OpenAI integration
+# ---------------------------------------------------------------------------
+
+
+def _openai_chat(api_key: str, system: str, user: str) -> str | None:
+    """Call the OpenAI chat completions API. Returns the assistant message text."""
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+    }
+    payload = {
+        "model": OPENAI_MODEL,
+        "temperature": 0.3,
+        "messages": [
+            {"role": "system", "content": system},
+            {"role": "user", "content": user},
+        ],
+    }
+    try:
+        resp = requests.post(
+            OPENAI_API_URL, headers=headers, json=payload, timeout=120
+        )
+        resp.raise_for_status()
+        return resp.json()["choices"][0]["message"]["content"].strip()
+    except Exception as e:
+        print(f"OpenAI API error: {e}", file=sys.stderr)
+        return None
+
+
+def _award_digest(award: dict) -> str:
+    """Build a compact text digest of an award for LLM context."""
+    parts = [
+        f"Title: {award.get('Award Title', 'N/A')}",
+        f"Company: {award.get('Company', 'N/A')}",
+        f"Agency: {award.get('Agency', 'N/A')}",
+        f"Program: {award.get('Program', 'N/A')} {award.get('Phase', '')}",
+        f"Amount: {award.get('Award Amount', 'N/A')}",
+        f"State: {award.get('State', 'N/A')}",
+        f"Date: {award.get('Proposal Award Date', 'N/A')}",
+    ]
+    abstract = award.get("Abstract", "").strip()
+    if abstract:
+        if len(abstract) > 1500:
+            abstract = abstract[:1500] + "..."
+        parts.append(f"Abstract: {abstract}")
+    topic_code = award.get("Topic Code", "").strip()
+    if topic_code:
+        parts.append(f"Topic Code: {topic_code}")
+    solicitation = award.get("Solicitation Number", "").strip()
+    if solicitation:
+        parts.append(f"Solicitation: {solicitation}")
+    solicitation_year = award.get("Solicitation Year", "").strip()
+    if solicitation_year:
+        parts.append(f"Solicitation Year: {solicitation_year}")
+    contract = award.get("Contract", "").strip()
+    if contract:
+        parts.append(f"Contract: {contract}")
+        parts.append(
+            f"USAspending Record: https://www.usaspending.gov/search"
+            f'?form_fields={{"search_term":"{contract}"}}'
+        )
+    solicitation_url = build_solicitation_url(award)
+    if solicitation_url:
+        parts.append(f"Solicitation Reference: {solicitation_url}")
+    return "\n".join(parts)
+
+
+def generate_weekly_synopsis(api_key: str, awards: list[dict], days: int) -> str | None:
+    """Generate a two-paragraph synopsis of all weekly award activity."""
+    if not awards:
+        return None
+
+    total_amount = 0
+    agencies: dict[str, int] = {}
+    for a in awards:
+        try:
+            total_amount += float(
+                a.get("Award Amount", "0").replace(",", "").replace("$", "")
+            )
+        except (ValueError, AttributeError):
+            pass
+        ag = a.get("Agency", "Unknown")
+        agencies[ag] = agencies.get(ag, 0) + 1
+
+    # Include up to 50 award digests for context
+    digests = []
+    for i, a in enumerate(awards[:50]):
+        digests.append(f"[{i+1}] {_award_digest(a)}")
+    digest_block = "\n\n".join(digests)
+    if len(awards) > 50:
+        digest_block += f"\n\n... and {len(awards) - 50} additional awards."
+
+    system = (
+        "You are an analyst writing a concise executive briefing about weekly "
+        "SBIR/STTR federal small business innovation award activity. "
+        "Write in a professional, informative tone. Do not use markdown headers. "
+        "Do not use bullet points. Write exactly two paragraphs."
+    )
+    user = (
+        f"Write a two-paragraph synopsis of this week's SBIR/STTR award activity.\n\n"
+        f"Period: past {days} days\n"
+        f"Total awards: {len(awards)}\n"
+        f"Total funding: ${total_amount:,.0f}\n"
+        f"Agencies: {json.dumps(agencies)}\n\n"
+        f"Award details:\n{digest_block}"
+    )
+
+    print("Generating weekly synopsis via OpenAI...", file=sys.stderr)
+    return _openai_chat(api_key, system, user)
+
+
+def generate_award_descriptions(
+    api_key: str, awards: list[dict]
+) -> dict[int, str]:
+    """Generate a brief description for each award using batched API calls.
+
+    The LLM receives each award's abstract, solicitation context, and
+    USAspending reference so the description is informed by the full
+    award context.
+
+    Returns a dict mapping award index (0-based) to description text.
+    """
+    descriptions: dict[int, str] = {}
+    if not awards:
+        return descriptions
+
+    system = (
+        "You summarize SBIR/STTR awards in plain language. "
+        "For each award, write 2-3 sentences explaining what the project does "
+        "and why it matters. Use the abstract, solicitation context, and "
+        "associated federal spending data to inform your description. "
+        "Be specific about the technology and its intended application. "
+        "Avoid generic filler.\n\n"
+        "Respond with a JSON object mapping the award number (as a string key) "
+        'to its description string. Example: {"1": "Description.", "2": "Description."}'
+    )
+
+    for batch_start in range(0, len(awards), DESCRIPTION_BATCH_SIZE):
+        batch = awards[batch_start : batch_start + DESCRIPTION_BATCH_SIZE]
+        digests = []
+        for i, a in enumerate(batch):
+            idx = batch_start + i + 1
+            digests.append(f"[{idx}] {_award_digest(a)}")
+
+        user = (
+            "Generate a brief plain-language description for each award below. "
+            "Each description should convey the technology, its application, "
+            "and the significance of the federal investment. "
+            "Respond ONLY with a JSON object.\n\n" + "\n\n".join(digests)
+        )
+
+        batch_label = f"{batch_start + 1}-{batch_start + len(batch)}"
+        print(
+            f"Generating descriptions for awards {batch_label} of {len(awards)}...",
+            file=sys.stderr,
+        )
+        raw = _openai_chat(api_key, system, user)
+        if not raw:
+            continue
+
+        # Strip markdown code fences if present
+        text = raw.strip()
+        if text.startswith("```"):
+            text = text.split("\n", 1)[-1]
+        if text.endswith("```"):
+            text = text.rsplit("```", 1)[0]
+        text = text.strip()
+
+        try:
+            batch_descriptions = json.loads(text)
+            for key, desc in batch_descriptions.items():
+                descriptions[int(key) - 1] = desc  # convert to 0-based
+        except (json.JSONDecodeError, ValueError) as e:
+            print(f"Failed to parse description batch {batch_label}: {e}", file=sys.stderr)
+
+    return descriptions
+
+
+# ---------------------------------------------------------------------------
+# Markdown generation
+# ---------------------------------------------------------------------------
+
+
+def generate_markdown(
+    awards: list[dict],
+    days: int,
+    synopsis: str | None = None,
+    descriptions: dict[int, str] | None = None,
+) -> str:
     """Generate markdown report from filtered awards."""
     now = datetime.now(UTC)
     cutoff = now - timedelta(days=days)
@@ -143,11 +333,15 @@ def generate_markdown(awards: list[dict], days: int) -> str:
         lines.append("No new awards found for this period.")
         return "\n".join(lines)
 
+    # Weekly synopsis at the very top
+    if synopsis:
+        lines.append(synopsis)
+        lines.append("")
+
     # Summary statistics
     total_amount = 0
     agencies: dict[str, int] = {}
     programs: dict[str, int] = {}
-    phases: dict[str, int] = {}
     states: dict[str, int] = {}
 
     for a in awards:
@@ -161,8 +355,6 @@ def generate_markdown(awards: list[dict], days: int) -> str:
         agencies[agency] = agencies.get(agency, 0) + 1
         program = a.get("Program", "Unknown")
         programs[program] = programs.get(program, 0) + 1
-        phase = a.get("Phase", "Unknown")
-        phases[phase] = phases.get(phase, 0) + 1
         state = a.get("State", "Unknown")
         if state:
             states[state] = states.get(state, 0) + 1
@@ -202,11 +394,11 @@ def generate_markdown(awards: list[dict], days: int) -> str:
         lines.append(f"| {program} | {phase} | {count} |")
     lines.append("")
 
-    # Awards list with links
+    # Individual awards
     lines.append("## Awards")
     lines.append("")
 
-    for i, a in enumerate(awards, 1):
+    for i, a in enumerate(awards):
         date = a.get("Proposal Award Date", "")
         company = a.get("Company", "")
         title = a.get("Award Title", "")
@@ -225,11 +417,21 @@ def generate_markdown(awards: list[dict], days: int) -> str:
         solicitation_url = build_solicitation_url(a)
         usaspending_url = build_usaspending_url(a)
 
-        # Award header with title linked to SBIR.gov
-        lines.append(f"### {i}. [{title}]({sbir_url})")
+        # Award header
+        lines.append(f"### {i + 1}. {title}")
+        lines.append("")
+        lines.append(f"**{company}** | {agency} {program} {phase} | {amount} | {state} | {date}")
         lines.append("")
 
+        # AI-generated description
+        if descriptions and i in descriptions:
+            lines.append(descriptions[i])
+            lines.append("")
+
         # Details table
+        lines.append("<details>")
+        lines.append("<summary>Award details</summary>")
+        lines.append("")
         lines.append("| Field | Value |")
         lines.append("|-------|-------|")
         lines.append(f"| **Company** | {company} |")
@@ -248,15 +450,17 @@ def generate_markdown(awards: list[dict], days: int) -> str:
             lines.append(f"| **Solicitation** | `{solicitation}` |")
         if topic_code:
             lines.append(f"| **Topic Code** | `{topic_code}` |")
+        lines.append("")
+        lines.append("</details>")
+        lines.append("")
 
-        # Links
+        # Reference links
+        lines.append("**References:** ")
         link_parts = [f"[SBIR.gov Award]({sbir_url})"]
         if solicitation_url:
             link_parts.append(f"[Solicitation]({solicitation_url})")
         if usaspending_url:
             link_parts.append(f"[USAspending]({usaspending_url})")
-
-        lines.append("")
         lines.append(" | ".join(link_parts))
         lines.append("")
 
@@ -281,10 +485,32 @@ def main():
         default=None,
         help="Output file path (default: stdout)",
     )
+    parser.add_argument(
+        "--no-ai",
+        action="store_true",
+        help="Skip AI-generated summaries even if OPENAI_API_KEY is set",
+    )
     args = parser.parse_args()
 
     awards = fetch_weekly_awards(days=args.days)
-    report = generate_markdown(awards, days=args.days)
+
+    # Generate AI descriptions if API key is available
+    synopsis = None
+    descriptions = None
+    api_key = os.environ.get("OPENAI_API_KEY", "")
+    if api_key and not args.no_ai:
+        synopsis = generate_weekly_synopsis(api_key, awards, args.days)
+        descriptions = generate_award_descriptions(api_key, awards)
+    elif not api_key and not args.no_ai:
+        print(
+            "OPENAI_API_KEY not set - skipping AI summaries. "
+            "Set the env var or use --no-ai to silence this message.",
+            file=sys.stderr,
+        )
+
+    report = generate_markdown(
+        awards, days=args.days, synopsis=synopsis, descriptions=descriptions
+    )
 
     if args.output:
         with open(args.output, "w") as f:
