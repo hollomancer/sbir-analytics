@@ -1,10 +1,10 @@
 """SBIR Fiscal Impact Pipeline.
 
 Complete pipeline to calculate tax and job impacts from SBIR awards using
-StateIO economic models.
+BEA I-O economic models.
 
 Pipeline flow:
-    SBIR Awards (with NAICS) → Map to BEA Sectors → Aggregate → StateIO
+    SBIR Awards (with NAICS) → Map to BEA Sectors → Aggregate → BEA I-O
     → Tax & Wage Impacts → Employment Calculation → Final Results
 """
 
@@ -17,7 +17,7 @@ import pandas as pd
 from loguru import logger
 
 from .naics_bea_mapper import NAICSBEAMapper
-from .r_stateio_adapter import RStateIOAdapter
+from .bea_io_adapter import BEAIOAdapter
 
 
 if TYPE_CHECKING:
@@ -34,17 +34,17 @@ class SBIRFiscalImpactCalculator:
     def __init__(
         self,
         config: Config | None = None,
-        r_adapter: RStateIOAdapter | None = None,
+        io_adapter: BEAIOAdapter | None = None,
         naics_mapper: NAICSBEAMapper | None = None,
     ):
         """Initialize SBIR fiscal impact calculator.
 
         Args:
             config: Optional configuration object
-            r_adapter: Optional pre-configured R adapter
+            io_adapter: Optional pre-configured BEA I-O adapter
             naics_mapper: Optional NAICS-BEA mapper
         """
-        self.r_adapter = r_adapter or RStateIOAdapter(config=config)
+        self.r_adapter = io_adapter or BEAIOAdapter(config=config)
         self.naics_mapper = naics_mapper or NAICSBEAMapper()
 
     def calculate_impacts_from_sbir_awards(
@@ -102,8 +102,8 @@ class SBIRFiscalImpactCalculator:
             f"{shocks['bea_sector'].nunique()} sectors"
         )
 
-        # Step 3: Compute economic impacts using StateIO
-        logger.info("Computing economic impacts using StateIO...")
+        # Step 3: Compute economic impacts using BEA I-O tables
+        logger.info("Computing economic impacts using BEA I-O tables...")
         impacts = self.r_adapter.compute_impacts(shocks)
 
         # Step 4: Add employment impacts if requested

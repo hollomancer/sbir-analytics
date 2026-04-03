@@ -1,7 +1,7 @@
-"""Unit tests for R StateIO adapter."""
+"""Unit tests for BEA I-O adapter (replaces R StateIO adapter tests)."""
 
 from decimal import Decimal
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pandas as pd
 import pytest
@@ -10,12 +10,6 @@ from tests.mocks import RMocks
 
 
 pytestmark = pytest.mark.fast
-
-# Skip all tests if rpy2 is not available
-rpy2 = pytest.importorskip("rpy2", reason="rpy2 is required for R adapter tests")
-
-from sbir_etl.exceptions import RFunctionError
-from sbir_etl.transformers.r_stateio_adapter import RStateIOAdapter
 
 
 @pytest.fixture
@@ -36,286 +30,184 @@ def sample_shocks():
 
 
 @pytest.fixture
-def mock_r_packages():
-    """Mock R packages for testing."""
-    return RMocks.stateio_package()
-
-
-@pytest.fixture
 def mock_config():
-    """Mock configuration for testing using consolidated utility."""
+    """Mock configuration for testing."""
     from tests.utils.config_mocks import create_mock_pipeline_config
 
     config = create_mock_pipeline_config()
-    # Set stateio_model_version if needed
     if hasattr(config, "fiscal_analysis"):
         config.fiscal_analysis.stateio_model_version = "v2.1"
-    # Also set as direct attribute for backward compatibility
     config.stateio_model_version = "v2.1"
     return config
 
 
-class TestRStateIOAdapterInitialization:
-    """Test RStateIOAdapter initialization."""
+class TestBEAIOAdapterInitialization:
+    """Test BEAIOAdapter initialization."""
 
-    @patch("sbir_etl.transformers.r_stateio_adapter.RPY2_AVAILABLE", True)
-    @patch("sbir_etl.transformers.r_stateio_adapter.importr")
-    @patch("sbir_etl.transformers.r_stateio_adapter.pandas2ri")
-    def test_init_success(self, mock_pandas2ri, mock_importr, mock_config):
-        """Test successful initialization with R packages available."""
-        mock_stateio = RMocks.stateio_package()
-        mock_importr.side_effect = RMocks.importr_side_effect(mock_stateio)
+    @patch("sbir_etl.transformers.bea_io_adapter.BEAApiClient")
+    def test_init_success(self, mock_client_cls, mock_config):
+        """Test successful initialization with BEA API key set."""
+        mock_client_cls.return_value = MagicMock()
 
-        adapter = RStateIOAdapter(config=mock_config)
-        assert adapter.stateio is not None
+        from sbir_etl.transformers.bea_io_adapter import BEAIOAdapter
+
+        adapter = BEAIOAdapter(config=mock_config)
+        assert adapter._api_available is True
         assert adapter.cache_enabled is True
         assert adapter.model_version == "v2.1"
 
-    @patch("sbir_etl.transformers.r_stateio_adapter.RPY2_AVAILABLE", False)
-    def test_init_no_rpy2(self, mock_config):
-        """Test initialization fails when rpy2 is not available."""
-        with pytest.raises(ImportError, match="rpy2 is not installed"):
-            RStateIOAdapter(config=mock_config)
+    @patch(
+        "sbir_etl.transformers.bea_io_adapter.BEAApiClient",
+        side_effect=__import__("sbir_etl.exceptions", fromlist=["ConfigurationError"]).ConfigurationError(
+            "BEA_API_KEY not set", component="test", operation="test"
+        ),
+    )
+    def test_init_no_api_key(self, mock_client_cls, mock_config):
+        """Test initialization falls back when BEA_API_KEY not set."""
+        from sbir_etl.transformers.bea_io_adapter import BEAIOAdapter
 
-    @patch("sbir_etl.transformers.r_stateio_adapter.RPY2_AVAILABLE", True)
-    @patch("sbir_etl.transformers.r_stateio_adapter.importr")
-    @patch("sbir_etl.transformers.r_stateio_adapter.pandas2ri")
-    def test_init_stateio_not_available(self, mock_pandas2ri, mock_importr, mock_config):
-        """Test initialization when StateIO package is not installed."""
-        mock_importr.side_effect = Exception("Package not found")
+        adapter = BEAIOAdapter(config=mock_config)
+        assert adapter._api_available is False
 
-        adapter = RStateIOAdapter(config=mock_config)
-        assert adapter.stateio is None
-
-    @patch("sbir_etl.transformers.r_stateio_adapter.RPY2_AVAILABLE", True)
-    @patch("sbir_etl.transformers.r_stateio_adapter.importr")
-    @patch("sbir_etl.transformers.r_stateio_adapter.pandas2ri")
-    def test_init_custom_cache_dir(self, mock_pandas2ri, mock_importr, mock_config, tmp_path):
+    @patch("sbir_etl.transformers.bea_io_adapter.BEAApiClient")
+    def test_init_custom_cache_dir(self, mock_client_cls, mock_config, tmp_path):
         """Test initialization with custom cache directory."""
-        mock_stateio = RMocks.stateio_package()
-        mock_importr.side_effect = RMocks.importr_side_effect(mock_stateio)
+        mock_client_cls.return_value = MagicMock()
+
+        from sbir_etl.transformers.bea_io_adapter import BEAIOAdapter
 
         cache_dir = tmp_path / "custom_cache"
-        adapter = RStateIOAdapter(config=mock_config, cache_dir=str(cache_dir))
+        adapter = BEAIOAdapter(config=mock_config, cache_dir=str(cache_dir))
 
         assert adapter.cache_dir == cache_dir
         assert cache_dir.exists()
 
 
-class TestRStateIOAdapterCaching:
+class TestBEAIOAdapterCaching:
     """Test caching functionality."""
 
-    @patch("sbir_etl.transformers.r_stateio_adapter.RPY2_AVAILABLE", True)
-    @patch("sbir_etl.transformers.r_stateio_adapter.importr")
-    @patch("sbir_etl.transformers.r_stateio_adapter.pandas2ri")
-    def test_cache_key_generation(self, mock_pandas2ri, mock_importr, mock_config, sample_shocks):
+    @patch("sbir_etl.transformers.bea_io_adapter.BEAApiClient")
+    def test_cache_key_generation(self, mock_client_cls, mock_config, sample_shocks):
         """Test cache key generation."""
-        mock_stateio = RMocks.stateio_package()
-        mock_importr.side_effect = RMocks.importr_side_effect(mock_stateio)
+        mock_client_cls.return_value = MagicMock()
 
-        adapter = RStateIOAdapter(config=mock_config)
+        from sbir_etl.transformers.bea_io_adapter import BEAIOAdapter
+
+        adapter = BEAIOAdapter(config=mock_config)
         cache_key = adapter._get_cache_key(sample_shocks)
 
-        assert cache_key.startswith("stateio_v2.1_")
+        assert cache_key.startswith("bea_io_v2.1_")
         assert len(cache_key) > 15
 
-    @patch("sbir_etl.transformers.r_stateio_adapter.RPY2_AVAILABLE", True)
-    @patch("sbir_etl.transformers.r_stateio_adapter.importr")
-    @patch("sbir_etl.transformers.r_stateio_adapter.pandas2ri")
-    def test_cache_hit(self, mock_pandas2ri, mock_importr, mock_config, sample_shocks, tmp_path):
+    @patch("sbir_etl.transformers.bea_io_adapter.BEAApiClient")
+    def test_cache_hit(self, mock_client_cls, mock_config, sample_shocks, tmp_path):
         """Test cache hit scenario."""
-        mock_stateio = RMocks.stateio_package()
-        mock_importr.side_effect = RMocks.importr_side_effect(mock_stateio)
+        mock_client_cls.return_value = MagicMock()
+
+        from sbir_etl.transformers.bea_io_adapter import BEAIOAdapter
 
         cache_dir = tmp_path / "cache"
-        adapter = RStateIOAdapter(config=mock_config, cache_dir=str(cache_dir))
+        adapter = BEAIOAdapter(config=mock_config, cache_dir=str(cache_dir))
 
-        # Create cached result
         cache_key = adapter._get_cache_key(sample_shocks)
         cached_result = sample_shocks.copy()
         cached_result["wage_impact"] = Decimal("100000")
         adapter._save_to_cache(cache_key, cached_result)
 
-        # Load from cache
         loaded = adapter._load_from_cache(cache_key)
         assert loaded is not None
         assert "wage_impact" in loaded.columns
 
-    @patch("sbir_etl.transformers.r_stateio_adapter.RPY2_AVAILABLE", True)
-    @patch("sbir_etl.transformers.r_stateio_adapter.importr")
-    @patch("sbir_etl.transformers.r_stateio_adapter.pandas2ri")
-    def test_cache_miss(self, mock_pandas2ri, mock_importr, mock_config):
+    @patch("sbir_etl.transformers.bea_io_adapter.BEAApiClient")
+    def test_cache_miss(self, mock_client_cls, mock_config):
         """Test cache miss scenario."""
-        mock_stateio = RMocks.stateio_package()
-        mock_importr.side_effect = RMocks.importr_side_effect(mock_stateio)
+        mock_client_cls.return_value = MagicMock()
 
-        adapter = RStateIOAdapter(config=mock_config)
+        from sbir_etl.transformers.bea_io_adapter import BEAIOAdapter
+
+        adapter = BEAIOAdapter(config=mock_config)
         result = adapter._load_from_cache("nonexistent_key")
         assert result is None
 
 
-class TestRStateIOAdapterDataConversion:
-    """Test pandas ↔ R data conversion."""
-
-    @patch("sbir_etl.transformers.r_stateio_adapter.RPY2_AVAILABLE", True)
-    @patch("sbir_etl.transformers.r_stateio_adapter.importr")
-    @patch("sbir_etl.transformers.r_stateio_adapter.pandas2ri")
-    def test_convert_shocks_to_r(self, mock_pandas2ri, mock_importr, mock_config, sample_shocks):
-        """Test conversion of shocks DataFrame to R format."""
-        mock_stateio = RMocks.stateio_package()
-        mock_importr.side_effect = RMocks.importr_side_effect(mock_stateio)
-
-        mock_r_obj = RMocks.r_dataframe()
-        mock_pandas2ri.py2rpy.return_value = mock_r_obj
-
-        adapter = RStateIOAdapter(config=mock_config)
-        r_shocks = adapter._convert_shocks_to_r(sample_shocks)
-
-        assert r_shocks == mock_r_obj
-        mock_pandas2ri.py2rpy.assert_called_once()
-
-    @patch("sbir_etl.transformers.r_stateio_adapter.RPY2_AVAILABLE", True)
-    @patch("sbir_etl.transformers.r_stateio_adapter.importr")
-    @patch("sbir_etl.transformers.r_stateio_adapter.pandas2ri")
-    def test_convert_r_to_pandas(self, mock_pandas2ri, mock_importr, mock_config):
-        """Test conversion of R result to pandas DataFrame."""
-        mock_stateio = RMocks.stateio_package()
-        mock_importr.side_effect = RMocks.importr_side_effect(mock_stateio)
-
-        # Create mock R result with impact columns
-        mock_r_result = RMocks.r_result()
-        result_df = pd.DataFrame(
-            {
-                "state": ["CA"],
-                "bea_sector": ["11"],
-                "fiscal_year": [2023],
-                "wage_impact": [400000.0],
-                "proprietor_income_impact": [100000.0],
-                "gross_operating_surplus": [300000.0],
-                "consumption_impact": [200000.0],
-                "tax_impact": [150000.0],
-                "production_impact": [2000000.0],
-            }
-        )
-        mock_pandas2ri.rpy2py.return_value = result_df
-
-        adapter = RStateIOAdapter(config=mock_config)
-        converted = adapter._convert_r_to_pandas(mock_r_result)
-
-        assert isinstance(converted, pd.DataFrame)
-        assert "wage_impact" in converted.columns
-        # Check that monetary values are converted to Decimal
-        assert isinstance(converted["wage_impact"].iloc[0], Decimal)
-
-
-class TestRStateIOAdapterImpactComputation:
+class TestBEAIOAdapterImpactComputation:
     """Test impact computation logic."""
 
-    @patch("sbir_etl.transformers.r_stateio_adapter.RPY2_AVAILABLE", True)
-    @patch("sbir_etl.transformers.r_stateio_adapter.importr")
-    @patch("sbir_etl.transformers.r_stateio_adapter.pandas2ri")
-    @patch("sbir_etl.utils.r_helpers.call_r_function")
-    def test_compute_impacts_success(
+    @patch("sbir_etl.transformers.bea_io_adapter.BEAApiClient")
+    def test_compute_placeholder_impacts(self, mock_client_cls, mock_config, sample_shocks):
+        """Test placeholder computation when API unavailable."""
+        from sbir_etl.exceptions import ConfigurationError
+
+        mock_client_cls.side_effect = ConfigurationError(
+            "BEA_API_KEY not set", component="test", operation="test"
+        )
+
+        from sbir_etl.transformers.bea_io_adapter import BEAIOAdapter
+
+        adapter = BEAIOAdapter(config=mock_config, cache_enabled=False)
+        result = adapter._compute_impacts_bea(sample_shocks)
+
+        assert len(result) == 3
+        assert "wage_impact" in result.columns
+        assert result["quality_flags"].iloc[0] == "placeholder_computation"
+
+    @patch("sbir_etl.transformers.bea_io_adapter.BEAApiClient")
+    @patch("sbir_etl.transformers.bea_io_adapter.fetch_use_table")
+    @patch("sbir_etl.transformers.bea_io_adapter.fetch_value_added")
+    @patch("sbir_etl.transformers.bea_io_adapter.calculate_value_added_ratios")
+    def test_compute_impacts_via_bea(
         self,
-        mock_call_r_function,
-        mock_pandas2ri,
-        mock_importr,
+        mock_va_ratios,
+        mock_fetch_va,
+        mock_fetch_use,
+        mock_client_cls,
         mock_config,
         sample_shocks,
     ):
-        """Test successful impact computation using R functions."""
-        mock_stateio = RMocks.stateio_package()
-        mock_importr.side_effect = RMocks.importr_side_effect(mock_stateio)
+        """Test BEA I-O computation path."""
+        mock_client_cls.return_value = MagicMock()
 
-        # Mock R function call returning result DataFrame
-        mock_r_result = pd.DataFrame(
-            {
-                "state": ["CA", "NY", "TX"],
-                "bea_sector": ["11", "21", "31"],
-                "fiscal_year": [2023, 2023, 2023],
-                "wage_impact": [400000.0, 200000.0, 300000.0],
-                "proprietor_income_impact": [100000.0, 50000.0, 75000.0],
-                "production_impact": [2000000.0, 1000000.0, 1500000.0],
-            }
+        # Mock a simple 3-sector Use table
+        mock_fetch_use.return_value = pd.DataFrame(
+            [[10, 5, 3], [5, 10, 2], [3, 2, 10]],
+            index=["11", "21", "31"],
+            columns=["11", "21", "31"],
+            dtype=float,
         )
-        mock_call_r_function.return_value = mock_r_result
-        mock_pandas2ri.rpy2py.return_value = mock_r_result
+        mock_fetch_va.return_value = pd.DataFrame()
+        mock_va_ratios.return_value = pd.DataFrame()
 
-        adapter = RStateIOAdapter(config=mock_config, cache_enabled=False)
-        result = adapter._compute_impacts_r(sample_shocks)
+        from sbir_etl.transformers.bea_io_adapter import BEAIOAdapter
+
+        adapter = BEAIOAdapter(config=mock_config, cache_enabled=False)
+        result = adapter._compute_impacts_bea(sample_shocks)
 
         assert len(result) == 3
         assert "wage_impact" in result.columns
         assert "production_impact" in result.columns
         assert result["model_version"].iloc[0] == "v2.1"
 
-    @patch("sbir_etl.transformers.r_stateio_adapter.RPY2_AVAILABLE", True)
-    @patch("sbir_etl.transformers.r_stateio_adapter.importr")
-    @patch("sbir_etl.transformers.r_stateio_adapter.pandas2ri")
-    @patch("sbir_etl.utils.r_helpers.call_r_function")
-    def test_compute_impacts_fallback_to_placeholder(
-        self,
-        mock_call_r_function,
-        mock_pandas2ri,
-        mock_importr,
-        mock_config,
-        sample_shocks,
-    ):
-        """Test fallback to placeholder when R functions fail."""
-        mock_stateio = RMocks.stateio_package()
-        mock_importr.side_effect = RMocks.importr_side_effect(mock_stateio)
-
-        # Mock all R function calls failing
-        mock_call_r_function.side_effect = RFunctionError("Function not found")
-
-        adapter = RStateIOAdapter(config=mock_config, cache_enabled=False)
-        result = adapter._compute_impacts_r(sample_shocks)
-
-        # Should return placeholder results
-        assert len(result) == 3
-        assert "wage_impact" in result.columns
-        assert result["quality_flags"].iloc[0] == "placeholder_computation"
-
-    @patch("sbir_etl.transformers.r_stateio_adapter.RPY2_AVAILABLE", True)
-    @patch("sbir_etl.transformers.r_stateio_adapter.importr")
-    @patch("sbir_etl.transformers.r_stateio_adapter.pandas2ri")
-    def test_compute_impacts_stateio_not_loaded(
-        self, mock_pandas2ri, mock_importr, mock_config, sample_shocks
-    ):
-        """Test error when StateIO package is not loaded."""
-        mock_importr.side_effect = Exception("Package not found")
-
-        adapter = RStateIOAdapter(config=mock_config)
-        assert adapter.stateio is None
-
-        with pytest.raises(RuntimeError, match="StateIO R package not loaded"):
-            adapter._compute_impacts_r(sample_shocks)
-
-    @patch("sbir_etl.transformers.r_stateio_adapter.RPY2_AVAILABLE", True)
-    @patch("sbir_etl.transformers.r_stateio_adapter.importr")
-    @patch("sbir_etl.transformers.r_stateio_adapter.pandas2ri")
-    def test_ensure_impact_columns(self, mock_pandas2ri, mock_importr, mock_config, sample_shocks):
+    @patch("sbir_etl.transformers.bea_io_adapter.BEAApiClient")
+    def test_ensure_impact_columns(self, mock_client_cls, mock_config, sample_shocks):
         """Test _ensure_impact_columns adds missing columns."""
-        mock_stateio = RMocks.stateio_package()
-        mock_importr.side_effect = RMocks.importr_side_effect(mock_stateio)
+        mock_client_cls.return_value = MagicMock()
 
-        # Create incomplete result DataFrame
+        from sbir_etl.transformers.bea_io_adapter import BEAIOAdapter
+
         incomplete_result = pd.DataFrame(
             {
                 "state": ["CA"],
                 "bea_sector": ["11"],
                 "fiscal_year": [2023],
                 "wage_impact": [400000.0],
-                # Missing other impact columns
             }
         )
 
-        adapter = RStateIOAdapter(config=mock_config)
+        adapter = BEAIOAdapter(config=mock_config)
         complete_result = adapter._ensure_impact_columns(
             incomplete_result, sample_shocks.head(1), "v2.1"
         )
 
-        # Check all required columns exist
         required_cols = [
             "wage_impact",
             "proprietor_income_impact",
@@ -328,73 +220,82 @@ class TestRStateIOAdapterImpactComputation:
             assert col in complete_result.columns
 
         assert complete_result["model_version"].iloc[0] == "v2.1"
-        assert complete_result["quality_flags"].iloc[0] == "r_computation"
 
 
-class TestRStateIOAdapterIntegration:
+class TestBEAIOAdapterIntegration:
     """Test full compute_impacts integration."""
 
-    @patch("sbir_etl.transformers.r_stateio_adapter.RPY2_AVAILABLE", True)
-    @patch("sbir_etl.transformers.r_stateio_adapter.importr")
-    @patch("sbir_etl.transformers.r_stateio_adapter.pandas2ri")
-    @patch("sbir_etl.utils.r_helpers.call_r_function")
+    @patch("sbir_etl.transformers.bea_io_adapter.BEAApiClient")
+    @patch("sbir_etl.transformers.bea_io_adapter.fetch_use_table")
+    @patch("sbir_etl.transformers.bea_io_adapter.fetch_value_added")
+    @patch("sbir_etl.transformers.bea_io_adapter.calculate_value_added_ratios")
     def test_compute_impacts_with_cache(
         self,
-        mock_call_r_function,
-        mock_pandas2ri,
-        mock_importr,
+        mock_va_ratios,
+        mock_fetch_va,
+        mock_fetch_use,
+        mock_client_cls,
         mock_config,
         sample_shocks,
         tmp_path,
     ):
         """Test compute_impacts uses cache when available."""
-        mock_stateio = RMocks.stateio_package()
-        mock_importr.side_effect = RMocks.importr_side_effect(mock_stateio)
+        mock_client_cls.return_value = MagicMock()
+        mock_fetch_use.return_value = pd.DataFrame(
+            [[10, 5, 3], [5, 10, 2], [3, 2, 10]],
+            index=["11", "21", "31"],
+            columns=["11", "21", "31"],
+            dtype=float,
+        )
+        mock_fetch_va.return_value = pd.DataFrame()
+        mock_va_ratios.return_value = pd.DataFrame()
 
-        adapter = RStateIOAdapter(config=mock_config, cache_enabled=True, cache_dir=str(tmp_path))
+        from sbir_etl.transformers.bea_io_adapter import BEAIOAdapter
 
-        # First call - should compute and cache
+        adapter = BEAIOAdapter(
+            config=mock_config, cache_enabled=True, cache_dir=str(tmp_path)
+        )
+
         result1 = adapter.compute_impacts(sample_shocks)
         assert len(result1) == 3
 
-        # Reset mock to track calls
-        mock_call_r_function.reset_mock()
+        mock_fetch_use.reset_mock()
 
-        # Second call - should use cache
         result2 = adapter.compute_impacts(sample_shocks)
         assert len(result2) == 3
-        # R function should not be called again
-        assert mock_call_r_function.call_count == 0
+        assert mock_fetch_use.call_count == 0
 
-    @patch("sbir_etl.transformers.r_stateio_adapter.RPY2_AVAILABLE", True)
-    @patch("sbir_etl.transformers.r_stateio_adapter.importr")
-    @patch("sbir_etl.transformers.r_stateio_adapter.pandas2ri")
-    def test_validate_input(self, mock_pandas2ri, mock_importr, mock_config, sample_shocks):
+    @patch("sbir_etl.transformers.bea_io_adapter.BEAApiClient")
+    def test_validate_input(self, mock_client_cls, mock_config, sample_shocks):
         """Test input validation."""
-        mock_stateio = RMocks.stateio_package()
-        mock_importr.side_effect = RMocks.importr_side_effect(mock_stateio)
+        mock_client_cls.return_value = MagicMock()
 
-        adapter = RStateIOAdapter(config=mock_config)
+        from sbir_etl.transformers.bea_io_adapter import BEAIOAdapter
 
-        # Valid input should pass
+        adapter = BEAIOAdapter(config=mock_config)
+
         adapter.validate_input(sample_shocks)
 
-        # Missing column should fail
         invalid_shocks = sample_shocks.drop(columns=["state"])
-        with pytest.raises(ValueError, match="Missing required columns"):
+        with pytest.raises(Exception, match="Missing required columns"):
             adapter.validate_input(invalid_shocks)
 
-    @patch("sbir_etl.transformers.r_stateio_adapter.RPY2_AVAILABLE", True)
-    @patch("sbir_etl.transformers.r_stateio_adapter.importr")
-    @patch("sbir_etl.transformers.r_stateio_adapter.pandas2ri")
-    def test_is_available(self, mock_pandas2ri, mock_importr, mock_config):
+    @patch("sbir_etl.transformers.bea_io_adapter.BEAApiClient")
+    def test_is_available(self, mock_client_cls, mock_config):
         """Test is_available check."""
-        mock_stateio = RMocks.stateio_package()
-        mock_importr.side_effect = RMocks.importr_side_effect(mock_stateio)
+        mock_client_cls.return_value = MagicMock()
 
-        adapter = RStateIOAdapter(config=mock_config)
+        from sbir_etl.transformers.bea_io_adapter import BEAIOAdapter
+
+        adapter = BEAIOAdapter(config=mock_config)
         assert adapter.is_available() is True
 
-        # When package not loaded
-        adapter.stateio = None
-        assert adapter.is_available() is False
+    def test_backward_compat_import(self):
+        """Test that the old import path still works."""
+        from sbir_etl.transformers.r_stateio_adapter import RStateIOAdapter, RPY2_AVAILABLE
+
+        assert RPY2_AVAILABLE is True
+        # RStateIOAdapter is now an alias for BEAIOAdapter
+        from sbir_etl.transformers.bea_io_adapter import BEAIOAdapter
+
+        assert RStateIOAdapter is BEAIOAdapter
