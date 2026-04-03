@@ -40,7 +40,7 @@ jobs:
           S3_BUCKET: ${{ secrets.S3_BUCKET || '' }}
         run: |
           mkdir -p reports
-          uv run python scripts/data/weekly_awards_report.py \
+          uv run --frozen python scripts/data/weekly_awards_report.py \
             --days "$DAYS" \
             --output reports/weekly-awards.md
 
