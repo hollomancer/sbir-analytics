@@ -3,16 +3,31 @@ name: Weekly Comprehensive Tests
 on:
   schedule:
     - cron: "0 2 * * 0"   # 02:00 UTC Sunday
+    - cron: "0 12 * * 1"  # 12:00 UTC Monday (weekly awards report)
   workflow_dispatch:
     inputs:
+      workflow_target:
+        description: "What to run"
+        required: false
+        default: tests
+        type: choice
+        options:
+          - tests
+          - awards-report
+          - both
       test_level:
-        description: 'Test level'
+        description: "Test level (used when tests run)"
         required: false
         default: comprehensive
         type: choice
         options:
           - standard
           - comprehensive
+      days:
+        description: "Awards report lookback days (used when awards report runs)"
+        required: false
+        default: "7"
+        type: string
 
 permissions:
   contents: write
@@ -37,6 +52,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     continue-on-error: true
+    if: |
+      github.event.schedule == '0 2 * * 0' ||
+      (github.event_name == 'workflow_dispatch' &&
+       (github.event.inputs.workflow_target == 'tests' || github.event.inputs.workflow_target == 'both'))
     strategy:
       fail-fast: false
       matrix:
@@ -94,7 +113,7 @@ jobs:
       - name: Check test results
         id: check
         run: |
-          if [ "${{ needs.tests.result }}" != "success" ]; then
+          if [ "${{ needs.tests.result }}" = "failure" ]; then
             echo "failed=true" >> $GITHUB_OUTPUT
           else
             echo "failed=false" >> $GITHUB_OUTPUT
@@ -181,7 +200,13 @@ jobs:
     name: Comprehensive Test Suite
     runs-on: ubuntu-latest
     timeout-minutes: 120
-    if: github.event.schedule == '0 2 * * 0' || github.event.inputs.test_level == 'comprehensive'
+    if: |
+      github.event.schedule == '0 2 * * 0' ||
+      (
+        github.event_name == 'workflow_dispatch' &&
+        (github.event.inputs.workflow_target == 'tests' || github.event.inputs.workflow_target == 'both') &&
+        github.event.inputs.test_level == 'comprehensive'
+      )
     steps:
       - uses: actions/checkout@v6
 
@@ -218,7 +243,6 @@ jobs:
             -n auto \
             --timeout=300 \
             -v
-        timeout-minutes: 90
 
       - name: Upload coverage reports
         if: always()
@@ -246,7 +270,13 @@ jobs:
     name: Real Data Validation
     runs-on: ubuntu-latest
     timeout-minutes: 60
-    if: github.event.schedule == '0 2 * * 0' || github.event.inputs.test_level == 'comprehensive'
+    if: |
+      github.event.schedule == '0 2 * * 0' ||
+      (
+        github.event_name == 'workflow_dispatch' &&
+        (github.event.inputs.workflow_target == 'tests' || github.event.inputs.workflow_target == 'both') &&
+        github.event.inputs.test_level == 'comprehensive'
+      )
     steps:
       - uses: actions/checkout@v6
 
@@ -269,4 +299,60 @@ jobs:
           path: |
             validation-reports/
             *.csv
+          retention-days: 30
+
+  weekly-awards-report:
+    name: Weekly Awards Report
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    if: |
+      github.event.schedule == '0 12 * * 1' ||
+      (github.event_name == 'workflow_dispatch' &&
+       (github.event.inputs.workflow_target == 'awards-report' || github.event.inputs.workflow_target == 'both'))
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Python and UV
+        uses: ./.github/actions/setup-python-uv
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          install-dev-deps: "false"
+
+      - name: Generate weekly awards report
+        env:
+          DAYS: ${{ github.event.inputs.days || '7' }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          S3_BUCKET: ${{ secrets.S3_BUCKET || '' }}
+        run: |
+          mkdir -p reports
+          uv run --frozen python scripts/data/weekly_awards_report.py \
+            --days "$DAYS" \
+            --output reports/weekly-awards.md
+
+      - name: Post report to job summary
+        if: always()
+        run: |
+          MAX_SIZE=55000  # GitHub step summary limit is ~1 MiB; stay well under
+          if [ -f reports/weekly-awards.md ]; then
+            SIZE=$(wc -c < reports/weekly-awards.md)
+            if [ "$SIZE" -gt "$MAX_SIZE" ]; then
+              head -c "$MAX_SIZE" reports/weekly-awards.md >> $GITHUB_STEP_SUMMARY
+              echo "" >> $GITHUB_STEP_SUMMARY
+              echo "---" >> $GITHUB_STEP_SUMMARY
+              echo "*Report truncated (${SIZE} bytes). Full report available in the artifact.*" >> $GITHUB_STEP_SUMMARY
+            else
+              cat reports/weekly-awards.md >> $GITHUB_STEP_SUMMARY
+            fi
+          else
+            echo "## Weekly Awards Report" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Report generation failed. Check logs for details." >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Upload report artifact
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: weekly-awards-report-${{ github.run_id }}
+          path: reports/weekly-awards.md
           retention-days: 30

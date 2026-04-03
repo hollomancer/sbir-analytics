@@ -11,3 +11,20 @@ Implemented follow-up fixes for PR #202 consolidation:
 - Updated `definitions_ml.py` docstring to point to `.github/workflows/etl-pipeline.yml`.
 - Updated deployment docs to use ETL Pipeline workflow, correct dispatch input names, and current schedule/env examples.
 - Updated AWS Batch deployment doc to use ETL Pipeline dispatch instructions.
+
+---
+
+# Workflow Consolidation Follow-up (under 10 workflows)
+
+- [x] Review current workflows and identify remaining consolidation candidates
+- [x] Merge weekly awards report automation into `weekly.yml` with schedule-aware conditions
+- [x] Remove redundant standalone `weekly-awards-report.yml` workflow
+- [x] Validate workflow YAML parses cleanly
+
+## Review Notes
+
+Implemented additional consolidation by folding weekly awards reporting into `weekly.yml`:
+- Added dispatch controls to choose tests, report generation, or both from one workflow.
+- Added a dedicated weekly awards report job in `weekly.yml` triggered on Monday schedule or manual dispatch.
+- Updated test/repair flow conditions so report-only dispatches do not trigger false failure handling.
+- Removed the now-redundant `weekly-awards-report.yml` workflow file.
