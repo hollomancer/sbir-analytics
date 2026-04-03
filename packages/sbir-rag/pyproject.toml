@@ -8,6 +8,7 @@ requires-python = ">=3.11,<3.13"
 
 dependencies = [
     "lightrag-hku>=1.0.0",
+    "anthropic>=0.42.0",
     "sbir-etl",
     "sbir-ml",
     "sbir-graph",

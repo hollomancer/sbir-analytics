@@ -47,6 +47,7 @@ class LightRAGConfig(BaseModel):
         description="LLM model for entity/relationship extraction",
     )
     llm_max_tokens: int = Field(4096, description="Max tokens for LLM extraction responses")
+    llm_max_async: int = Field(4, ge=1, description="Max concurrent LLM requests for extraction")
     llm_temperature: float = Field(0.0, ge=0.0, le=2.0)
 
     # Document chunking
@@ -107,6 +108,7 @@ class LightRAGConfig(BaseModel):
         if llm:
             rag_cfg.setdefault("llm_model", llm.get("model"))
             rag_cfg.setdefault("llm_max_tokens", llm.get("max_tokens"))
+            rag_cfg.setdefault("llm_max_async", llm.get("max_async"))
             rag_cfg.setdefault("llm_temperature", llm.get("temperature"))
 
         # Flatten nested chunking section
