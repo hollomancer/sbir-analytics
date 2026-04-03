@@ -9,6 +9,8 @@ from aws_cdk import (
 )
 from constructs import Construct
 
+from stacks.config import S3_BUCKET_NAME
+
 
 class StorageStack(Stack):
     """S3 bucket for storing SBIR ETL data and artifacts."""
@@ -19,7 +21,7 @@ class StorageStack(Stack):
         # Default to importing existing bucket (bucket already exists)
         # Use context variable "create_new_bucket=true" to create a new bucket instead
         create_new = self.node.try_get_context("create_new_bucket") == "true"
-        bucket_name = "sbir-etl-production-data"
+        bucket_name = S3_BUCKET_NAME
 
         if create_new:
             # Create new bucket (will fail if bucket already exists)
