@@ -137,7 +137,7 @@ USAspending data is best used as **metadata enrichment** on SBIR award chunks ra
 
 ### ModernBERT-Embed Embeddings (Already Built)
 
-**Location:** `packages/sbir-analytics/sbir_analytics/assets/paecter/embeddings.py`
+**Location:** `packages/sbir-analytics/sbir_analytics/assets/paecter/embeddings.py` (legacy `paecter` naming; model is ModernBERT-Embed)
 **Model:** ModernBERT-Embed (`nomic-ai/modernbert-embed-base`, 768 dimensions)
 **Coverage:**
 - SBIR award embeddings from `{solicitation_title} + {abstract} + {award_title}`
@@ -187,7 +187,7 @@ Graph traversal provides **structured relational context** that pure vector sear
 ```
 User Query
     ↓
-Query Embedding (PaECTER)
+Query Embedding (ModernBERT-Embed)
     ↓
 ┌─────────────────────────────────┐
 │  Hybrid Retrieval Layer         │
@@ -223,7 +223,7 @@ Given the existing stack (DuckDB, Neo4j, Python, Dagster):
 1. **Award chunking:** Concatenate `Award Title + Abstract + Keywords` per award, attach structured metadata
 2. **Solicitation extraction:** New extractor to pull topic descriptions from SBIR.gov, deduplicate by topic_code
 3. **USAspending enrichment:** Add financial and classification metadata to award chunks before indexing
-4. **Embedding generation:** Extend existing PaECTER pipeline to embed solicitation topics
+4. **Embedding generation:** Extend existing embedding pipeline to embed solicitation topics
 5. **Index building:** Load embeddings + metadata into chosen vector store
 
 ### Estimated Data Characteristics
@@ -232,7 +232,7 @@ Given the existing stack (DuckDB, Neo4j, Python, Dagster):
 |--------|-------|
 | Total embeddable documents (awards) | ~200,000 |
 | Average tokens per award chunk | ~500-1500 |
-| Embedding dimension (PaECTER) | 1024 |
+| Embedding dimension (ModernBERT-Embed) | 768 |
 | Estimated index size (awards only) | ~800 MB |
 | With solicitations + patents | ~5-10 GB |
 
@@ -248,4 +248,4 @@ Given the existing stack (DuckDB, Neo4j, Python, Dagster):
 | USPTO Patents | **High** (abstracts) | Mostly - has embeddings | Index existing embeddings |
 | Neo4j Graph | N/A (structural) | Complement to vector search | Hybrid query layer |
 
-The strongest immediate ROI is indexing the existing PaECTER award embeddings into a vector store and adding metadata filtering. The highest-value new data to add is solicitation topic descriptions.
+The strongest immediate ROI is indexing the existing ModernBERT-Embed award embeddings into a vector store and adding metadata filtering. The highest-value new data to add is solicitation topic descriptions.

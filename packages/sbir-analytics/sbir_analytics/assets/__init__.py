@@ -27,6 +27,12 @@ HEAVY_ASSET_MODULES = {
     "sbir_analytics.assets.ml.cet_inference",  # Model inference
     "sbir_analytics.assets.ml.cet_drift_detection",  # Statistical analysis
     "sbir_analytics.assets.uspto.ai_extraction",  # spaCy, NLP processing
+    "sbir_analytics.assets.lightrag.ingestion",  # LLM entity extraction, expensive
+    "sbir_analytics.assets.lightrag.communities",  # Graph computation
+    "sbir_analytics.assets.lightrag.cross_reference",  # Neo4j graph linking
+    "sbir_analytics.assets.lightrag.solicitations",  # LLM entity extraction
+    "sbir_analytics.assets.lightrag.cet_subcommunities",  # Neo4j graph linking
+    "sbir_analytics.assets.lightrag.vector_index",  # Embedding writes
 }
 
 

@@ -12,6 +12,7 @@ dependencies = [
     "sbir-etl[cloud,uspto,monitoring]",
     "sbir-ml[nlp]",
     "sbir-graph",
+    "sbir-rag",
     # Dagster orchestration
     "dagster>=1.7.0,<2.0.0",
     # CLI

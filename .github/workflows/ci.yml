@@ -257,7 +257,7 @@ jobs:
 
   test:
     name: Tests (${{ matrix.suite.name }})
-    needs: [detect-changes, code-quality]
+    needs: [detect-changes]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     if: needs.detect-changes.outputs.docs-only != 'true'

@@ -687,6 +687,27 @@ cli:
   max_concurrent_operations: 4
   cache_metrics_seconds: 60
 
+# LightRAG configuration (semantic search & knowledge graph retrieval)
+# Enable via environment: SBIR_ETL__LIGHTRAG__ENABLED=true
+lightrag:
+  enabled: false  # Opt-in: requires LLM API access and Neo4j vector index support
+  workspace: "sbir"
+  llm:
+    model: "claude-haiku-4-5-20251001"
+    max_tokens: 4096
+    temperature: 0.0
+  chunking:
+    chunk_size: 1200
+    chunk_overlap: 100
+  community_detection:
+    algorithm: "leiden"
+    max_levels: 3
+    resolution: 1.0
+  retrieval:
+    default_mode: "hybrid"  # naive, local, global, hybrid
+    top_k: 10
+    similarity_threshold: 0.75
+
 # Embedding model configuration (ModernBERT-Embed)
 ml:
   paecter:

@@ -52,6 +52,8 @@ __all__: list[str] = [
     "QualitySeverity",
     "EnrichmentResult",
     "DataQualitySummary",
+    # Solicitations
+    "Solicitation",
     # Statistical Reports
     "PipelineMetrics",
     "ModuleMetrics",
@@ -96,6 +98,8 @@ _lazy_mapping: dict[str, tuple[str, str]] = {
     "QualityIssue": ("sbir_etl.models.quality", "QualityIssue"),
     "QualityReport": ("sbir_etl.models.quality", "QualityReport"),
     "QualitySeverity": ("sbir_etl.models.quality", "QualitySeverity"),
+    # Solicitation models
+    "Solicitation": ("sbir_etl.models.solicitation", "Solicitation"),
     # Statistical Report models
     "ExecutiveSummary": ("sbir_etl.models.statistical_reports", "ExecutiveSummary"),
     "ModuleMetrics": ("sbir_etl.models.statistical_reports", "ModuleMetrics"),

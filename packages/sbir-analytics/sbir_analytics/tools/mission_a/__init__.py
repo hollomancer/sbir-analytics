@@ -16,10 +16,12 @@ from .cluster_topics import ClusterTopicsTool
 from .compute_portfolio_metrics import ComputePortfolioMetricsTool
 from .detect_gaps import DetectGapsTool
 from .extract_topics import ExtractTopicsTool
+from .leiden_topics import LeidenTopicsTool
 
 __all__ = [
     "ExtractTopicsTool",
     "ClusterTopicsTool",
+    "LeidenTopicsTool",
     "DetectGapsTool",
     "ComputePortfolioMetricsTool",
 ]
