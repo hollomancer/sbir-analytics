@@ -5,9 +5,11 @@ Downloads the SBIR bulk CSV from SBIR.gov and filters for awards
 whose Proposal Award Date falls within the past 7 days, then outputs a
 markdown summary with links to SBIR.gov, solicitations, and USAspending.
 
-When OPENAI_API_KEY is set, uses the OpenAI API to generate:
-- A two-paragraph synopsis of all weekly award activity (top of report)
-- A brief plain-language description for each award
+When OPENAI_API_KEY is set, uses the OpenAI API to:
+- Search the web for public info on each awardee company
+- Generate a two-paragraph synopsis of all weekly award activity
+- Generate a brief description per award (informed by the abstract,
+  solicitation, USAspending data, and company research)
 
 Usage:
     python scripts/data/weekly_awards_report.py
@@ -21,6 +23,7 @@ import io
 import json
 import os
 import sys
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta, UTC
 from urllib.parse import quote
 
@@ -33,11 +36,30 @@ SBIR_AWARD_SEARCH_URL = "https://www.sbir.gov/sbirsearch/award/all"
 SBIR_SOLICITATION_URL = "https://www.sbir.gov/sbirsearch/topic/default"
 USASPENDING_SEARCH_URL = "https://www.usaspending.gov/search"
 
-OPENAI_API_URL = "https://api.openai.com/v1/chat/completions"
+OPENAI_CHAT_URL = "https://api.openai.com/v1/chat/completions"
+OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses"
 OPENAI_MODEL = "gpt-4.1-mini"
 
 # Batch size for per-award descriptions (awards per API call)
 DESCRIPTION_BATCH_SIZE = 10
+
+
+# ---------------------------------------------------------------------------
+# Data structures
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class CompanyResearch:
+    """Results of web research on an awardee company."""
+
+    summary: str
+    source_urls: list[str] = field(default_factory=list)
+
+
+# ---------------------------------------------------------------------------
+# Parsing and URL helpers
+# ---------------------------------------------------------------------------
 
 
 def parse_award_date(date_str: str) -> datetime | None:
@@ -147,16 +169,127 @@ def _openai_chat(api_key: str, system: str, user: str) -> str | None:
     }
     try:
         resp = requests.post(
-            OPENAI_API_URL, headers=headers, json=payload, timeout=120
+            OPENAI_CHAT_URL, headers=headers, json=payload, timeout=120
         )
         resp.raise_for_status()
         return resp.json()["choices"][0]["message"]["content"].strip()
     except Exception as e:
-        print(f"OpenAI API error: {e}", file=sys.stderr)
+        print(f"OpenAI Chat API error: {e}", file=sys.stderr)
         return None
 
 
-def _award_digest(award: dict) -> str:
+def _openai_web_search(api_key: str, query: str) -> CompanyResearch | None:
+    """Use the OpenAI Responses API with web_search_preview to research a company.
+
+    Returns a CompanyResearch with a text summary and source URLs extracted
+    from the response annotations.
+    """
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+    }
+    payload = {
+        "model": OPENAI_MODEL,
+        "tools": [{"type": "web_search_preview"}],
+        "instructions": (
+            "You are a research assistant gathering public information about "
+            "companies that receive SBIR/STTR federal awards. Provide a concise "
+            "2-3 sentence summary covering: what the company does, its size/stage, "
+            "notable products or contracts, and any previous SBIR/STTR history. "
+            "Cite your sources."
+        ),
+        "input": query,
+    }
+    try:
+        resp = requests.post(
+            OPENAI_RESPONSES_URL, headers=headers, json=payload, timeout=60
+        )
+        resp.raise_for_status()
+        data = resp.json()
+    except Exception as e:
+        print(f"OpenAI Responses API error for web search: {e}", file=sys.stderr)
+        return None
+
+    # Extract text and source URLs from the response
+    summary_text = ""
+    source_urls: list[str] = []
+
+    for output_item in data.get("output", []):
+        if output_item.get("type") == "message":
+            for content_block in output_item.get("content", []):
+                if content_block.get("type") == "output_text":
+                    summary_text = content_block.get("text", "")
+                    # Extract URLs from annotations
+                    for annotation in content_block.get("annotations", []):
+                        url = annotation.get("url", "")
+                        if url and url not in source_urls:
+                            source_urls.append(url)
+
+    if not summary_text:
+        return None
+
+    return CompanyResearch(summary=summary_text, source_urls=source_urls)
+
+
+def research_companies(
+    api_key: str, awards: list[dict]
+) -> dict[str, CompanyResearch]:
+    """Research each unique awardee company via web search.
+
+    Returns a dict mapping normalized company name to CompanyResearch.
+    Results are cached per company so duplicates aren't searched twice.
+    """
+    # Collect unique companies with their state and website for better search
+    companies: dict[str, dict] = {}
+    for a in awards:
+        name = a.get("Company", "").strip()
+        if not name:
+            continue
+        key = name.upper()
+        if key not in companies:
+            companies[key] = {
+                "name": name,
+                "state": a.get("State", ""),
+                "website": a.get("Company Website", ""),
+            }
+
+    results: dict[str, CompanyResearch] = {}
+    total = len(companies)
+
+    for idx, (key, info) in enumerate(companies.items(), 1):
+        name = info["name"]
+        state = info["state"]
+        website = info["website"]
+
+        # Build a targeted search query
+        query_parts = [f'"{name}"']
+        if state:
+            query_parts.append(state)
+        query_parts.append("SBIR company")
+        if website:
+            query_parts.append(f"site:{website}")
+
+        query = (
+            f"Find public information about {name}"
+            + (f" based in {state}" if state else "")
+            + ". They are an SBIR/STTR federal award recipient."
+            + (f" Their website is {website}." if website else "")
+            + " What does this company do? How large are they? "
+            + "What is their technology focus? Any notable contracts or previous SBIR awards?"
+        )
+
+        print(
+            f"Researching company {idx}/{total}: {name}...",
+            file=sys.stderr,
+        )
+        research = _openai_web_search(api_key, query)
+        if research:
+            results[key] = research
+
+    return results
+
+
+def _award_digest(award: dict, company_research: CompanyResearch | None = None) -> str:
     """Build a compact text digest of an award for LLM context."""
     parts = [
         f"Title: {award.get('Award Title', 'N/A')}",
@@ -191,10 +324,24 @@ def _award_digest(award: dict) -> str:
     solicitation_url = build_solicitation_url(award)
     if solicitation_url:
         parts.append(f"Solicitation Reference: {solicitation_url}")
+
+    # Include company research if available
+    if company_research:
+        parts.append(f"Company Background (from web research): {company_research.summary}")
+        if company_research.source_urls:
+            parts.append(
+                "Company Sources: " + ", ".join(company_research.source_urls[:5])
+            )
+
     return "\n".join(parts)
 
 
-def generate_weekly_synopsis(api_key: str, awards: list[dict], days: int) -> str | None:
+def generate_weekly_synopsis(
+    api_key: str,
+    awards: list[dict],
+    days: int,
+    company_research: dict[str, CompanyResearch] | None = None,
+) -> str | None:
     """Generate a two-paragraph synopsis of all weekly award activity."""
     if not awards:
         return None
@@ -214,7 +361,10 @@ def generate_weekly_synopsis(api_key: str, awards: list[dict], days: int) -> str
     # Include up to 50 award digests for context
     digests = []
     for i, a in enumerate(awards[:50]):
-        digests.append(f"[{i+1}] {_award_digest(a)}")
+        cr = None
+        if company_research:
+            cr = company_research.get(a.get("Company", "").strip().upper())
+        digests.append(f"[{i+1}] {_award_digest(a, cr)}")
     digest_block = "\n\n".join(digests)
     if len(awards) > 50:
         digest_block += f"\n\n... and {len(awards) - 50} additional awards."
@@ -223,7 +373,8 @@ def generate_weekly_synopsis(api_key: str, awards: list[dict], days: int) -> str
         "You are an analyst writing a concise executive briefing about weekly "
         "SBIR/STTR federal small business innovation award activity. "
         "Write in a professional, informative tone. Do not use markdown headers. "
-        "Do not use bullet points. Write exactly two paragraphs."
+        "Do not use bullet points. Write exactly two paragraphs. "
+        "Incorporate relevant context about the awardee companies when provided."
     )
     user = (
         f"Write a two-paragraph synopsis of this week's SBIR/STTR award activity.\n\n"
@@ -239,13 +390,15 @@ def generate_weekly_synopsis(api_key: str, awards: list[dict], days: int) -> str
 
 
 def generate_award_descriptions(
-    api_key: str, awards: list[dict]
+    api_key: str,
+    awards: list[dict],
+    company_research: dict[str, CompanyResearch] | None = None,
 ) -> dict[int, str]:
     """Generate a brief description for each award using batched API calls.
 
-    The LLM receives each award's abstract, solicitation context, and
-    USAspending reference so the description is informed by the full
-    award context.
+    The LLM receives each award's abstract, solicitation context,
+    USAspending reference, and company web research so the description
+    is informed by the full award context.
 
     Returns a dict mapping award index (0-based) to description text.
     """
@@ -256,10 +409,12 @@ def generate_award_descriptions(
     system = (
         "You summarize SBIR/STTR awards in plain language. "
         "For each award, write 2-3 sentences explaining what the project does "
-        "and why it matters. Use the abstract, solicitation context, and "
-        "associated federal spending data to inform your description. "
-        "Be specific about the technology and its intended application. "
-        "Avoid generic filler.\n\n"
+        "and why it matters. Use the abstract, solicitation context, "
+        "associated federal spending data, and company background research "
+        "to inform your description. Reference relevant company context "
+        "(e.g. their expertise, previous work, or market position) when it "
+        "adds value. Be specific about the technology and its intended "
+        "application. Avoid generic filler.\n\n"
         "Respond with a JSON object mapping the award number (as a string key) "
         'to its description string. Example: {"1": "Description.", "2": "Description."}'
     )
@@ -269,13 +424,16 @@ def generate_award_descriptions(
         digests = []
         for i, a in enumerate(batch):
             idx = batch_start + i + 1
-            digests.append(f"[{idx}] {_award_digest(a)}")
+            cr = None
+            if company_research:
+                cr = company_research.get(a.get("Company", "").strip().upper())
+            digests.append(f"[{idx}] {_award_digest(a, cr)}")
 
         user = (
             "Generate a brief plain-language description for each award below. "
             "Each description should convey the technology, its application, "
-            "and the significance of the federal investment. "
-            "Respond ONLY with a JSON object.\n\n" + "\n\n".join(digests)
+            "the significance of the federal investment, and relevant company "
+            "context. Respond ONLY with a JSON object.\n\n" + "\n\n".join(digests)
         )
 
         batch_label = f"{batch_start + 1}-{batch_start + len(batch)}"
@@ -315,6 +473,7 @@ def generate_markdown(
     days: int,
     synopsis: str | None = None,
     descriptions: dict[int, str] | None = None,
+    company_research: dict[str, CompanyResearch] | None = None,
 ) -> str:
     """Generate markdown report from filtered awards."""
     now = datetime.now(UTC)
@@ -417,6 +576,11 @@ def generate_markdown(
         solicitation_url = build_solicitation_url(a)
         usaspending_url = build_usaspending_url(a)
 
+        # Look up company research
+        cr = None
+        if company_research:
+            cr = company_research.get(company.upper())
+
         # Award header
         lines.append(f"### {i + 1}. {title}")
         lines.append("")
@@ -454,14 +618,19 @@ def generate_markdown(
         lines.append("</details>")
         lines.append("")
 
-        # Reference links
-        lines.append("**References:** ")
+        # Reference links — award, solicitation, USAspending, and company sources
         link_parts = [f"[SBIR.gov Award]({sbir_url})"]
         if solicitation_url:
             link_parts.append(f"[Solicitation]({solicitation_url})")
         if usaspending_url:
             link_parts.append(f"[USAspending]({usaspending_url})")
-        lines.append(" | ".join(link_parts))
+        if cr and cr.source_urls:
+            for url in cr.source_urls[:3]:
+                # Derive a short label from the domain
+                domain = url.split("//")[-1].split("/")[0].replace("www.", "")
+                link_parts.append(f"[{domain}]({url})")
+
+        lines.append("**References:** " + " | ".join(link_parts))
         lines.append("")
 
     lines.append(
@@ -494,13 +663,21 @@ def main():
 
     awards = fetch_weekly_awards(days=args.days)
 
-    # Generate AI descriptions if API key is available
+    # Generate AI content if API key is available
     synopsis = None
     descriptions = None
+    company_info: dict[str, CompanyResearch] | None = None
     api_key = os.environ.get("OPENAI_API_KEY", "")
+
     if api_key and not args.no_ai:
-        synopsis = generate_weekly_synopsis(api_key, awards, args.days)
-        descriptions = generate_award_descriptions(api_key, awards)
+        # Step 1: Research companies via web search
+        company_info = research_companies(api_key, awards)
+
+        # Step 2: Generate synopsis (with company context)
+        synopsis = generate_weekly_synopsis(api_key, awards, args.days, company_info)
+
+        # Step 3: Generate per-award descriptions (with company context)
+        descriptions = generate_award_descriptions(api_key, awards, company_info)
     elif not api_key and not args.no_ai:
         print(
             "OPENAI_API_KEY not set - skipping AI summaries. "
@@ -509,7 +686,11 @@ def main():
         )
 
     report = generate_markdown(
-        awards, days=args.days, synopsis=synopsis, descriptions=descriptions
+        awards,
+        days=args.days,
+        synopsis=synopsis,
+        descriptions=descriptions,
+        company_research=company_info,
     )
 
     if args.output:
