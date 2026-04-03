@@ -28,7 +28,7 @@ from datetime import datetime, timedelta, UTC
 from pathlib import Path
 from urllib.parse import quote
 
-import requests
+import httpx
 
 # Lazy imports from the sbir_etl package.  These are optional — the script
 # falls back to a standalone CSV download + Python-based filtering when the
@@ -131,8 +131,9 @@ def _resolve_csv_path() -> DataSource:
 
     # Fall back to direct download
     print(f"S3 not available; downloading from {SBIR_AWARDS_URL}...", file=sys.stderr)
-    response = requests.get(SBIR_AWARDS_URL, timeout=600)
-    response.raise_for_status()
+    with httpx.Client(timeout=600, follow_redirects=True) as client:
+        response = client.get(SBIR_AWARDS_URL)
+        response.raise_for_status()
 
     tmp = Path(tempfile.gettempdir()) / "sbir_weekly_award_data.csv"
     tmp.write_bytes(response.content)
@@ -335,15 +336,14 @@ def _openai_request_with_retry(
     headers: dict,
     payload: dict,
     timeout: int = 120,
-) -> requests.Response | None:
+) -> httpx.Response | None:
     """Make an OpenAI API request with retry/backoff for 429 and 5xx errors."""
     import time
 
     for attempt in range(OPENAI_MAX_RETRIES + 1):
         try:
-            resp = requests.request(
-                method, url, headers=headers, json=payload, timeout=timeout
-            )
+            with httpx.Client(timeout=timeout) as client:
+                resp = client.request(method, url, headers=headers, json=payload)
             if resp.status_code == 429 or resp.status_code >= 500:
                 if attempt < OPENAI_MAX_RETRIES:
                     wait = OPENAI_RETRY_BACKOFF_BASE ** (attempt + 1)
@@ -356,7 +356,7 @@ def _openai_request_with_retry(
                     continue
             resp.raise_for_status()
             return resp
-        except requests.exceptions.HTTPError:
+        except httpx.HTTPStatusError:
             if attempt < OPENAI_MAX_RETRIES:
                 continue
             print(f"OpenAI API error after {OPENAI_MAX_RETRIES} retries: {resp.status_code}", file=sys.stderr)
