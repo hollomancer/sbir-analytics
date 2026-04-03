@@ -30,8 +30,8 @@ Note: CET and PaECTER now run on GitHub Actions (free tier).
 
 ### Via GitHub Actions (recommended)
 
-1. Go to Actions → "Analysis Jobs"
-2. Select `fiscal_returns_mvp`
+1. Go to Actions → "ETL Pipeline"
+2. Select `fiscal_returns_mvp` for the `job` input
 3. Click "Run workflow"
 
 ### Via AWS CLI
