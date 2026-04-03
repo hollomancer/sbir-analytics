@@ -15,6 +15,8 @@ on:
           - usaspending_ingestion
           - uspto_pipeline
           - cet_pipeline
+          - embeddings
+          - fiscal_returns_mvp
           - all
       environment:
         description: "Neo4j environment"
@@ -300,9 +302,98 @@ jobs:
             exit 1
           fi
 
+  # Embedding generation (API mode, fits in 7GB)
+  embeddings-pipeline:
+    name: Embeddings
+    if: github.event.inputs.job == 'embeddings' || github.event.inputs.job == 'all'
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    container:
+      image: ghcr.io/hollomancer/sbir-analytics:latest
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Install HuggingFace dependencies
+        run: pip install huggingface-hub
+
+      - name: Run embeddings pipeline
+        env:
+          NEO4J_URI: ${{ github.event.inputs.environment == 'test' && secrets.NEO4J_TEST_URI || secrets.NEO4J_URI }}
+          NEO4J_USER: neo4j
+          NEO4J_PASSWORD: ${{ github.event.inputs.environment == 'test' && secrets.NEO4J_TEST_PASSWORD || secrets.NEO4J_PASSWORD }}
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          PAECTER_MODE: api  # Use API mode, not local model
+        run: |
+          echo "## 🔬 Embeddings" >> $GITHUB_STEP_SUMMARY
+          # Dagster job still registered as paecter_job (legacy name)
+          dagster job execute -m sbir_etl.definitions -j paecter_job 2>&1 | tee output.txt
+          if [ ${PIPESTATUS[0]} -eq 0 ]; then
+            echo "✅ Embeddings pipeline completed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ Embeddings pipeline failed" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+
+  # Fiscal runs on AWS Batch (needs 8GB+ RAM for R/StateIO)
+  fiscal-pipeline:
+    name: Fiscal Returns (AWS Batch)
+    if: github.event.inputs.job == 'fiscal_returns_mvp' || github.event.inputs.job == 'all'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Submit to AWS Batch
+        id: batch
+        run: |
+          echo "## 💰 Fiscal Returns (AWS Batch)" >> $GITHUB_STEP_SUMMARY
+
+          JOB_ID=$(aws batch submit-job \
+            --job-name "fiscal-returns-$(date +%Y%m%d-%H%M%S)" \
+            --job-queue "sbir-analytics-analysis-queue" \
+            --job-definition "sbir-analytics-analysis-fiscal-returns" \
+            --query 'jobId' --output text)
+
+          echo "job_id=$JOB_ID" >> $GITHUB_OUTPUT
+          echo "Submitted job: $JOB_ID" >> $GITHUB_STEP_SUMMARY
+
+      - name: Wait for completion
+        run: |
+          JOB_ID="${{ steps.batch.outputs.job_id }}"
+          echo "Waiting for job $JOB_ID..."
+
+          while true; do
+            STATUS=$(aws batch describe-jobs --jobs "$JOB_ID" --query 'jobs[0].status' --output text)
+            echo "Status: $STATUS"
+
+            if [ "$STATUS" = "SUCCEEDED" ]; then
+              echo "✅ Fiscal job completed" >> $GITHUB_STEP_SUMMARY
+              exit 0
+            elif [ "$STATUS" = "FAILED" ]; then
+              echo "❌ Fiscal job failed" >> $GITHUB_STEP_SUMMARY
+              aws batch describe-jobs --jobs "$JOB_ID" --query 'jobs[0].statusReason' --output text >> $GITHUB_STEP_SUMMARY
+              exit 1
+            fi
+
+            sleep 30
+          done
+
   summary:
     name: Pipeline Summary
-    needs: [sbir-pipeline, usaspending-pipeline, uspto-pipeline, cet-pipeline]
+    needs: [sbir-pipeline, usaspending-pipeline, uspto-pipeline, cet-pipeline, embeddings-pipeline, fiscal-pipeline]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -316,3 +407,5 @@ jobs:
           echo "| USAspending | ${{ needs.usaspending-pipeline.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| USPTO | ${{ needs.uspto-pipeline.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| CET | ${{ needs.cet-pipeline.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Embeddings | ${{ needs.embeddings-pipeline.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Fiscal | ${{ needs.fiscal-pipeline.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY

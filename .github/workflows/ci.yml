@@ -932,87 +932,6 @@ jobs:
           print('Model loads successfully')
           "
 
-  cet-dev-e2e:
-    name: CET Dev E2E (Docker Compose)
-    needs: test
-    # Only run on push to main/develop, skip on PRs
-    if: |
-      needs.test.result == 'success' &&
-      github.event_name == 'push'
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    env:
-      # Allow override via repository secrets; fall back to defaults for dev runs
-      NEO4J_URI: bolt://localhost:7687
-      NEO4J_USERNAME: ${{ secrets.NEO4J_USER || 'neo4j' }}
-      NEO4J_PASSWORD: ${{ secrets.NEO4J_PASSWORD || 'password' }}
-      IMAGE_NAME: sbir-analytics
-      IMAGE_TAG: dev-${{ github.sha }}
-      STARTUP_TIMEOUT: 120
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
-
-      - name: Set up Docker Buildx
-        uses: ./.github/actions/setup-docker-buildx
-
-      - name: Prepare .env for dev compose
-        uses: ./.github/actions/prepare-env-file
-        with:
-          neo4j-user: ${{ secrets.NEO4J_USER }}
-          neo4j-password: ${{ secrets.NEO4J_PASSWORD }}
-
-      - name: Cache Docker layers
-        uses: actions/cache@v5
-        with:
-          path: /tmp/.buildx-cache
-          key: ${{ runner.os }}-buildx-${{ github.sha }}
-          restore-keys: |
-            ${{ runner.os }}-buildx-
-
-      - name: Build runtime image
-        run: |
-          set -eux
-          docker build --target runtime \
-            --cache-from type=local,src=/tmp/.buildx-cache \
-            --cache-to type=local,dest=/tmp/.buildx-cache-new,mode=max \
-            -t "${IMAGE_NAME}:${IMAGE_TAG}" .
-
-          # Move cache to avoid growing indefinitely
-          rm -rf /tmp/.buildx-cache
-          mv /tmp/.buildx-cache-new /tmp/.buildx-cache
-
-      - name: Start development compose stack (dev profile)
-        run: |
-          set -eux
-          docker compose --env-file .env --profile dev up -d --build
-
-      - name: Wait for Neo4j bolt port
-        run: |
-          set -eu
-          TIMEOUT=${STARTUP_TIMEOUT}
-          i=0
-          until (echo >/dev/tcp/localhost/7687) 2>/dev/null || [ $i -ge $TIMEOUT ]; do
-            i=$((i+5))
-            echo "Waiting for Neo4j on 7687..."
-            sleep 5
-          done
-          if ! (echo >/dev/tcp/localhost/7687) 2>/dev/null; then
-            echo "Neo4j did not become available on bolt port 7687"
-            docker compose --env-file .env --profile dev ps || true
-            docker logs $(docker ps --filter "name=sbir-neo4j" --format '{{.Names}}' | head -n 1) || true
-            exit 1
-          fi
-          echo "Neo4j appears reachable on 7687"
-
-      - name: Run CET full pipeline via Makefile helper
-        env:
-          # Ensure composer commands inside Make target use same .env
-          DOCKER_BUILDKIT: 1
-        run: |
-          set -eux
-
   e2e-docker:
     name: E2E Tests (Docker Neo4j)
     needs: test
@@ -1215,7 +1134,7 @@ jobs:
 
   ci-summary:
     name: CI Summary
-    needs: [detect-changes, code-quality, verify-setup-script, test, container-build-test, performance-check, cet-tests, cet-dev-e2e, e2e-docker, transition-mvp, test-s3-integration]
+    needs: [detect-changes, code-quality, verify-setup-script, test, container-build-test, performance-check, cet-tests, e2e-docker, transition-mvp, test-s3-integration]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -1250,10 +1169,6 @@ jobs:
             echo "| 🤖 CET Tests | ${{ needs.cet-tests.result == 'success' && '✅' || '❌' }} ${{ needs.cet-tests.result }} |" >> $GITHUB_STEP_SUMMARY
           fi
 
-          if [ "${{ needs.cet-dev-e2e.result }}" != "skipped" ]; then
-            echo "| 🔬 CET E2E (Docker) | ${{ needs.cet-dev-e2e.result == 'success' && '✅' || '❌' }} ${{ needs.cet-dev-e2e.result }} |" >> $GITHUB_STEP_SUMMARY
-          fi
-
           if [ "${{ needs.e2e-docker.result }}" != "skipped" ]; then
             echo "| 🐳 E2E (Docker) | ${{ needs.e2e-docker.result == 'success' && '✅' || '❌' }} ${{ needs.e2e-docker.result }} |" >> $GITHUB_STEP_SUMMARY
           fi
@@ -1270,7 +1185,6 @@ jobs:
           needs.performance-check.result == 'failure' ||
           needs.test-s3-integration.result == 'failure' ||
           needs.cet-tests.result == 'failure' ||
-          needs.cet-dev-e2e.result == 'failure' ||
           needs.e2e-docker.result == 'failure' ||
           needs.transition-mvp.result == 'failure'
         run: |

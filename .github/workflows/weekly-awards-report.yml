@@ -2,8 +2,8 @@ name: Weekly SBIR Awards Report
 
 on:
   schedule:
-    # Every Monday at 10 AM UTC (after data-refresh downloads new data at 9 AM)
-    - cron: "0 10 * * 1"
+    # Every Monday at 12 PM UTC (after ETL pipeline at 10 AM processes refreshed data)
+    - cron: "0 12 * * 1"
   workflow_dispatch:
     inputs:
       days:
