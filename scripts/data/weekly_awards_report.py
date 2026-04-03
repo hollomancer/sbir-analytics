@@ -90,7 +90,17 @@ class CompanyResearch:
 # ---------------------------------------------------------------------------
 
 
-def _resolve_csv_path() -> Path:
+@dataclass
+class DataSource:
+    """Metadata about the resolved CSV data source."""
+
+    path: Path
+    origin: str  # "s3" or "download"
+    # S3 key date (e.g. "2026-04-01" from raw/awards/2026-04-01/award_data.csv)
+    s3_key_date: str | None = None
+
+
+def _resolve_csv_path() -> DataSource:
     """Resolve the SBIR CSV path: try S3 first, then download fresh.
 
     In CI the data-refresh workflow uploads the CSV to S3 weekly, so we
@@ -104,7 +114,12 @@ def _resolve_csv_path() -> Path:
             s3_url = find_latest_sbir_awards(bucket)
             if s3_url:
                 print(f"Using S3-cached CSV: {s3_url}", file=sys.stderr)
-                return Path(s3_url)
+                # Extract date from S3 key: raw/awards/YYYY-MM-DD/award_data.csv
+                import re
+
+                date_match = re.search(r"raw/awards/(\d{4}-\d{2}-\d{2})/", s3_url)
+                key_date = date_match.group(1) if date_match else None
+                return DataSource(path=Path(s3_url), origin="s3", s3_key_date=key_date)
 
     # Fall back to direct download
     print(f"S3 not available; downloading from {SBIR_AWARDS_URL}...", file=sys.stderr)
@@ -114,23 +129,65 @@ def _resolve_csv_path() -> Path:
     tmp = Path(tempfile.gettempdir()) / "sbir_weekly_award_data.csv"
     tmp.write_bytes(response.content)
     print(f"Downloaded {tmp.stat().st_size / 1024 / 1024:.1f} MB", file=sys.stderr)
-    return tmp
+    return DataSource(path=tmp, origin="download")
 
 
-def fetch_weekly_awards(days: int = 7) -> list[dict]:
+def _check_data_freshness(
+    source: DataSource,
+    max_award_date: str | None,
+    days: int,
+) -> list[str]:
+    """Verify that the bulk data is fresh enough for the reporting window.
+
+    Returns a list of warning strings (empty if everything looks good).
+    """
+    warnings: list[str] = []
+    now = datetime.now(UTC).replace(tzinfo=None)
+
+    # Check 1: S3 key date — was the data-refresh recent?
+    if source.s3_key_date:
+        key_dt = _parse_date(source.s3_key_date)
+        if key_dt:
+            key_datetime = datetime(key_dt.year, key_dt.month, key_dt.day)
+            age_days = (now - key_datetime).days
+            if age_days > days + 3:  # allow a few days of slack
+                warnings.append(
+                    f"S3 data is {age_days} days old (key date: {source.s3_key_date}). "
+                    f"The data-refresh workflow may have failed."
+                )
+
+    # Check 2: max Proposal Award Date in the data — is the data itself current?
+    if max_award_date:
+        max_dt = _parse_date(max_award_date)
+        if max_dt:
+            max_datetime = datetime(max_dt.year, max_dt.month, max_dt.day)
+            data_age = (now - max_datetime).days
+            if data_age > days + 14:
+                warnings.append(
+                    f"Most recent award in data is from {max_award_date} "
+                    f"({data_age} days ago). SBIR.gov bulk data may not have "
+                    f"been updated recently."
+                )
+
+    return warnings
+
+
+def fetch_weekly_awards(days: int = 7) -> tuple[list[dict], list[str]]:
     """Load SBIR CSV and filter for awards in the past N days.
 
     When sbir_etl is installed, uses SbirDuckDBExtractor for fast
     columnar import and SQL-based date filtering.  Otherwise falls back
     to csv.DictReader with Python-level filtering.
+
+    Returns (awards, freshness_warnings).
     """
-    csv_path = _resolve_csv_path()
+    source = _resolve_csv_path()
     cutoff_str = (datetime.now(UTC) - timedelta(days=days)).strftime("%Y-%m-%d")
 
     if _HAS_SBIR_ETL and SbirDuckDBExtractor is not None:
         # Fast path: DuckDB columnar import + SQL filtering
         extractor = SbirDuckDBExtractor(
-            csv_path=csv_path,
+            csv_path=source.path,
             duckdb_path=":memory:",
             use_s3_first=False,  # we already resolved the path
         )
@@ -146,38 +203,55 @@ def fetch_weekly_awards(days: int = 7) -> list[dict]:
 
         df = extractor.duckdb_client.execute_query_df(query)
         print(f"Found {len(df)} awards since {cutoff_str} (DuckDB)", file=sys.stderr)
-        return df.fillna("").to_dict("records")
+        awards = df.fillna("").to_dict("records")
 
-    # Fallback: csv.DictReader + Python filtering
-    import csv
-    import io
+        # Get max date across the full dataset for freshness check
+        max_date_df = extractor.duckdb_client.execute_query_df(
+            f'SELECT MAX("Proposal Award Date") AS max_date FROM {table}'
+        )
+        max_award_date = str(max_date_df.iloc[0]["max_date"]) if len(max_date_df) else None
 
-    print(f"Using csv.DictReader fallback for filtering", file=sys.stderr)
-    cutoff_dt = datetime.now(UTC).replace(tzinfo=None) - timedelta(days=days)
+    else:
+        # Fallback: csv.DictReader + Python filtering
+        import csv
+        import io
 
-    text = csv_path.read_text(encoding="utf-8")
-    reader = csv.DictReader(io.StringIO(text))
-    awards = []
-    for row in reader:
-        parsed = _parse_date(row.get("Proposal Award Date", ""))
-        if parsed:
-            # parse_date returns date; compare as datetime
-            row_dt = datetime(parsed.year, parsed.month, parsed.day)
-            if row_dt >= cutoff_dt:
-                awards.append(row)
+        print("Using csv.DictReader fallback for filtering", file=sys.stderr)
+        cutoff_dt = datetime.now(UTC).replace(tzinfo=None) - timedelta(days=days)
 
-    def sort_key(a):
-        dt = _parse_date(a.get("Proposal Award Date", ""))
-        ts = datetime(dt.year, dt.month, dt.day).timestamp() if dt else 0
-        try:
-            amount = float(str(a.get("Award Amount", "0")).replace(",", "").replace("$", ""))
-        except (ValueError, AttributeError):
-            amount = 0
-        return (-ts, -amount)
+        text = source.path.read_text(encoding="utf-8")
+        reader = csv.DictReader(io.StringIO(text))
+        awards = []
+        all_dates: list[str] = []
+        for row in reader:
+            date_val = row.get("Proposal Award Date", "")
+            if date_val:
+                all_dates.append(date_val)
+            parsed = _parse_date(date_val)
+            if parsed:
+                row_dt = datetime(parsed.year, parsed.month, parsed.day)
+                if row_dt >= cutoff_dt:
+                    awards.append(row)
 
-    awards.sort(key=sort_key)
-    print(f"Found {len(awards)} awards since {cutoff_str} (csv fallback)", file=sys.stderr)
-    return awards
+        def sort_key(a):
+            dt = _parse_date(a.get("Proposal Award Date", ""))
+            ts = datetime(dt.year, dt.month, dt.day).timestamp() if dt else 0
+            try:
+                amount = float(str(a.get("Award Amount", "0")).replace(",", "").replace("$", ""))
+            except (ValueError, AttributeError):
+                amount = 0
+            return (-ts, -amount)
+
+        awards.sort(key=sort_key)
+        max_award_date = max(all_dates) if all_dates else None
+        print(f"Found {len(awards)} awards since {cutoff_str} (csv fallback)", file=sys.stderr)
+
+    # Verify data freshness
+    freshness_warnings = _check_data_freshness(source, max_award_date, days)
+    for w in freshness_warnings:
+        print(f"WARNING: {w}", file=sys.stderr)
+
+    return awards, freshness_warnings
 
 
 # ---------------------------------------------------------------------------
@@ -529,6 +603,7 @@ def generate_markdown(
     synopsis: str | None = None,
     descriptions: dict[int, str] | None = None,
     company_research: dict[str, CompanyResearch] | None = None,
+    freshness_warnings: list[str] | None = None,
 ) -> str:
     """Generate markdown report from filtered awards."""
     now = datetime.now(UTC)
@@ -542,6 +617,14 @@ def generate_markdown(
     )
     lines.append(f"**Total new awards:** {len(awards)}")
     lines.append("")
+
+    # Data freshness warnings
+    if freshness_warnings:
+        lines.append("> **Data Freshness Warning**")
+        lines.append(">")
+        for w in freshness_warnings:
+            lines.append(f"> - {w}")
+        lines.append("")
 
     if not awards:
         lines.append("No new awards found for this period.")
@@ -715,7 +798,7 @@ def main():
     )
     args = parser.parse_args()
 
-    awards = fetch_weekly_awards(days=args.days)
+    awards, freshness_warnings = fetch_weekly_awards(days=args.days)
 
     # Generate AI content if API key is available
     synopsis = None
@@ -740,6 +823,7 @@ def main():
         synopsis=synopsis,
         descriptions=descriptions,
         company_research=company_info,
+        freshness_warnings=freshness_warnings,
     )
 
     if args.output:
