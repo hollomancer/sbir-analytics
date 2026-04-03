@@ -1,4 +1,4 @@
-"""Unit tests for base cache utilities."""
+"""Unit tests for cache utilities (backward compat for BaseDataFrameCache)."""
 
 from datetime import datetime, timedelta
 from unittest.mock import patch
@@ -9,35 +9,41 @@ import pytest
 
 pytestmark = pytest.mark.fast
 
+from sbir_etl.utils.cache.api_cache import APICache
 from sbir_etl.utils.cache.base_cache import BaseDataFrameCache
 
 
-class _SampleCache(BaseDataFrameCache):
-    """Sample implementation of BaseDataFrameCache for testing."""
+class TestBaseDataFrameCacheCompat:
+    """Tests that BaseDataFrameCache alias still works."""
 
-    def _get_default_cache_type(self) -> str:
-        return "test"
+    def test_backward_compat_alias(self):
+        """BaseDataFrameCache should be an alias for APICache."""
+        assert BaseDataFrameCache is APICache
 
 
-class TestBaseDataFrameCache:
-    """Tests for BaseDataFrameCache base class."""
+class TestAPICacheCoreFunctionality:
+    """Tests for core cache functionality (formerly tested via BaseDataFrameCache)."""
 
     @pytest.fixture
     def cache(self, tmp_path):
         """Create a test cache instance."""
-        return _SampleCache(cache_dir=tmp_path / "cache", enabled=True, ttl_hours=24)
+        return APICache(
+            cache_dir=tmp_path / "cache", enabled=True, ttl_hours=24, default_cache_type="test"
+        )
 
     @pytest.fixture
     def disabled_cache(self, tmp_path):
         """Create a disabled test cache instance."""
-        return _SampleCache(cache_dir=tmp_path / "cache", enabled=False, ttl_hours=24)
+        return APICache(
+            cache_dir=tmp_path / "cache", enabled=False, ttl_hours=24, default_cache_type="test"
+        )
 
     def test_init_creates_cache_dir(self, tmp_path):
         """Test that cache directory is created on initialization."""
         cache_dir = tmp_path / "cache"
         assert not cache_dir.exists()
 
-        _SampleCache(cache_dir=cache_dir, enabled=True)
+        APICache(cache_dir=cache_dir, enabled=True)
 
         assert cache_dir.exists()
 
@@ -126,9 +132,8 @@ class TestBaseDataFrameCache:
         cache.set(df, uei="TEST123")
 
         mock_save.assert_called_once()
-        # Check that at least one meta.json file was created
         assert len(list(cache.cache_dir.glob("*.meta.json"))) > 0
 
     def test_get_default_cache_type(self, cache):
         """Test default cache type."""
-        assert cache._get_default_cache_type() == "test"
+        assert cache.default_cache_type == "test"
