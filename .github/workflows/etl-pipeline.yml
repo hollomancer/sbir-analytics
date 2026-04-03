@@ -15,7 +15,7 @@ on:
           - usaspending_ingestion
           - uspto_pipeline
           - cet_pipeline
-          - paecter_embeddings
+          - embeddings  # ModernBERT embeddings (legacy name: paecter)
           - fiscal_returns_mvp
           - all
       environment:
@@ -302,10 +302,10 @@ jobs:
             exit 1
           fi
 
-  # PaECTER runs on GitHub Actions (API mode, fits in 7GB)
-  paecter-pipeline:
-    name: PaECTER Embeddings
-    if: github.event.inputs.job == 'paecter_embeddings' || github.event.inputs.job == 'all'
+  # ModernBERT embeddings (API mode, fits in 7GB)
+  embeddings-pipeline:
+    name: ModernBERT Embeddings
+    if: github.event.inputs.job == 'embeddings' || github.event.inputs.job == 'all'
     runs-on: ubuntu-latest
     timeout-minutes: 180
     container:
@@ -325,7 +325,7 @@ jobs:
       - name: Install HuggingFace dependencies
         run: pip install huggingface-hub
 
-      - name: Run PaECTER pipeline
+      - name: Run ModernBERT embeddings pipeline
         env:
           NEO4J_URI: ${{ github.event.inputs.environment == 'test' && secrets.NEO4J_TEST_URI || secrets.NEO4J_URI }}
           NEO4J_USER: neo4j
@@ -333,12 +333,13 @@ jobs:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           PAECTER_MODE: api  # Use API mode, not local model
         run: |
-          echo "## 🔬 PaECTER Embeddings" >> $GITHUB_STEP_SUMMARY
+          echo "## 🔬 ModernBERT Embeddings" >> $GITHUB_STEP_SUMMARY
+          # Dagster job still registered as paecter_job (legacy name)
           dagster job execute -m sbir_etl.definitions -j paecter_job 2>&1 | tee output.txt
           if [ ${PIPESTATUS[0]} -eq 0 ]; then
-            echo "✅ PaECTER pipeline completed" >> $GITHUB_STEP_SUMMARY
+            echo "✅ Embeddings pipeline completed" >> $GITHUB_STEP_SUMMARY
           else
-            echo "❌ PaECTER pipeline failed" >> $GITHUB_STEP_SUMMARY
+            echo "❌ Embeddings pipeline failed" >> $GITHUB_STEP_SUMMARY
             exit 1
           fi
 
@@ -392,7 +393,7 @@ jobs:
 
   summary:
     name: Pipeline Summary
-    needs: [sbir-pipeline, usaspending-pipeline, uspto-pipeline, cet-pipeline, paecter-pipeline, fiscal-pipeline]
+    needs: [sbir-pipeline, usaspending-pipeline, uspto-pipeline, cet-pipeline, embeddings-pipeline, fiscal-pipeline]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -406,5 +407,5 @@ jobs:
           echo "| USAspending | ${{ needs.usaspending-pipeline.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| USPTO | ${{ needs.uspto-pipeline.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| CET | ${{ needs.cet-pipeline.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| PaECTER | ${{ needs.paecter-pipeline.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Embeddings | ${{ needs.embeddings-pipeline.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Fiscal | ${{ needs.fiscal-pipeline.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
