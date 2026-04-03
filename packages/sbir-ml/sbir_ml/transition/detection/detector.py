@@ -168,11 +168,15 @@ class TransitionDetector:
     ) -> VendorMatch:
         """Convert an internal ResolverMatch to the domain VendorMatch model."""
         metadata = extra_metadata or {}
+        record = resolver_match.record
         return VendorMatch(
-            vendor_id=resolver_match.record.metadata.get("vendor_id") or vendor_id_fallback,
+            vendor_id=record.metadata.get("vendor_id") or vendor_id_fallback,
             method=method,
             score=resolver_match.score,
-            matched_name=resolver_match.record.name,
+            matched_name=record.name,
+            matched_uei=record.uei,
+            matched_cage=record.cage,
+            matched_duns=record.duns,
             metadata=metadata,
         )
 
@@ -227,7 +231,7 @@ class TransitionDetector:
             ):
                 self.metrics["vendor_matches"] += 1
                 return self._resolver_to_domain_match(
-                    resolver_match, "name_fuzzy",
+                    resolver_match, resolver_match.method,
                     resolver_match.record.metadata.get("vendor_id", "unknown"),
                     extra_metadata={
                         "input_name": contract.vendor_name,

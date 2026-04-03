@@ -180,7 +180,7 @@ class VendorResolver:
                     self._duns_index[key] = r
             nm = self._normalize_name(r.name)
             self._name_index.setdefault(nm, []).append(r)
-        logger.info("VendorResolver loaded %d vendor records", count)
+        logger.info("VendorResolver loaded {} vendor records", count)
 
     # -----------------------------
     # Exact identifier match methods
@@ -232,7 +232,7 @@ class VendorResolver:
                 score = fuzz.token_sort_ratio(s1, s2) / 100.0
                 return float(score)
             except (TypeError, ValueError) as exc:
-                logger.debug("rapidfuzz scoring failed for %r vs %r: %s; falling back to difflib", s1, s2, exc)
+                logger.debug("rapidfuzz scoring failed for {!r} vs {!r}: {}; falling back to difflib", s1, s2, exc)
         # difflib fallback
         sm = SequenceMatcher(None, s1, s2)
         return float(sm.ratio())
@@ -397,7 +397,7 @@ class VendorResolver:
             lst = self._name_index.get(nm, [])
             self._name_index[nm] = [r for r in lst if r is not rec]
         except (KeyError, AttributeError) as exc:
-            logger.warning("Error removing record from indices for uei=%s: %s", uei, exc)
+            logger.warning("Error removing record from indices for uei={}: {}", uei, exc)
         self._cache.clear()
         return True
 

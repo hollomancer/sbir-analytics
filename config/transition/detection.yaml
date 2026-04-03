@@ -1,7 +1,8 @@
 # Transition detection configuration.
 #
-# This is the single source of truth for all scoring thresholds, timing windows,
-# and vendor matching parameters used by the transition detection pipeline.
+# Source of truth for scoring thresholds, timing windows, confidence thresholds,
+# and vendor matching parameters. Code defaults in __init__.py DEFAULTS dict
+# mirror these values and serve as fallbacks when this file is absent.
 #
 # Corresponding code: packages/sbir-ml/sbir_ml/transition/__init__.py (Config)
 # Loaded by: sbir_ml.transition.load_config()
@@ -35,9 +36,12 @@ scoring:
 # -- Vendor matching strategy ------------------------------------------------
 vendor_matching:
   prefer_identifiers: true     # prefer UEI/CAGE/DUNS over fuzzy name
-  uei_priority: 0.99
-  cage_priority: 0.95
-  duns_priority: 0.90
+  require_match: true          # require vendor match for transition detection
+
+# -- Confidence thresholds ---------------------------------------------------
+confidence_thresholds:
+  high: 0.85
+  likely: 0.65
 
 # -- Metrics output ----------------------------------------------------------
 metrics:

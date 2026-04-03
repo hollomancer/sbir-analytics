@@ -58,9 +58,11 @@ DEFAULTS: dict[str, Any] = {
     },
     "vendor_matching": {
         "prefer_identifiers": True,
-        "uei_priority": 0.99,
-        "cage_priority": 0.95,
-        "duns_priority": 0.90,
+        "require_match": True,
+    },
+    "confidence_thresholds": {
+        "high": 0.85,
+        "likely": 0.65,
     },
     "metrics": {
         "emit_to": "artifacts/metrics",  # directory or metrics sink name
@@ -86,6 +88,9 @@ class Config:
     vendor_matching: dict[str, Any] = dataclasses.field(
         default_factory=lambda: dict(DEFAULTS["vendor_matching"])
     )
+    confidence_thresholds: dict[str, float] = dataclasses.field(
+        default_factory=lambda: dict(DEFAULTS["confidence_thresholds"])
+    )
     metrics: dict[str, Any] = dataclasses.field(default_factory=lambda: dict(DEFAULTS["metrics"]))
     extra: dict[str, Any] = dataclasses.field(default_factory=dict)
 
@@ -104,10 +109,13 @@ class Config:
             "base_score": s.get("base_score", 0.15),
             "timing_window": {
                 "min_days_after_completion": 0,
-                "max_days_after_completion": self.detection_timing_window_months * 30,
+                "max_days_after_completion": round(
+                    self.detection_timing_window_months * 365.25 / 12
+                ),
             },
             "vendor_matching": {
-                "require_match": self.vendor_matching.get("prefer_identifiers", True),
+                "require_match": self.vendor_matching.get("require_match", True),
+                "prefer_identifiers": self.vendor_matching.get("prefer_identifiers", True),
                 "fuzzy_threshold": self.fuzzy_threshold,
                 "fuzzy_secondary_threshold": self.fuzzy_secondary_threshold,
             },
@@ -155,8 +163,8 @@ class Config:
                 },
             },
             "confidence_thresholds": {
-                "high": 0.85,
-                "likely": 0.65,
+                "high": self.confidence_thresholds.get("high", 0.85),
+                "likely": self.confidence_thresholds.get("likely", 0.65),
             },
         }
 
@@ -177,10 +185,10 @@ def _load_yaml(path: str) -> dict[str, Any] | None:
         with open(path, encoding="utf-8") as fh:
             return yaml.safe_load(fh) or {}
     except FileNotFoundError:
-        logger.debug("Transition config file not found: %s", path)
+        logger.debug("Transition config file not found: {}", path)
         return None
     except (OSError, yaml.YAMLError) as exc:
-        logger.warning("Failed to load transition config from %s: %s", path, exc)
+        logger.warning("Failed to load transition config from {}: {}", path, exc)
         return None
 
 
@@ -202,7 +210,7 @@ def _apply_overrides_from_env(cfg: dict[str, Any]) -> dict[str, Any]:
                 cfg[cfg_k] = cast(val)
             except (ValueError, TypeError) as exc:
                 logger.warning(
-                    "Invalid environment override %s=%r for %s: %s", env_k, val, cfg_k, exc
+                    "Invalid environment override {}={!r} for {}: {}", env_k, val, cfg_k, exc
                 )
     return cfg
 
@@ -244,10 +252,10 @@ def load_config(path: str | None = None) -> Config:
             try:
                 setattr(cfg, attr, cast(loaded[key]))
             except (ValueError, TypeError) as exc:
-                logger.warning("Invalid config value %s=%r: %s", key, loaded[key], exc)
+                logger.warning("Invalid config value {}={!r}: {}", key, loaded[key], exc)
 
     # dict fields
-    for k in ("scoring", "vendor_matching", "metrics"):
+    for k in ("scoring", "vendor_matching", "confidence_thresholds", "metrics"):
         if k in loaded and isinstance(loaded[k], dict):
             getattr(cfg, k).update(loaded[k])
 
@@ -275,7 +283,7 @@ def load_config(path: str | None = None) -> Config:
 try:
     _MODULE_CONFIG = load_config()
 except (OSError, ValueError, TypeError) as _load_exc:
-    logger.warning("Failed to load transition config at import time: %s; using defaults.", _load_exc)
+    logger.warning("Failed to load transition config at import time: {}; using defaults.", _load_exc)
     _MODULE_CONFIG = Config()
 
 
