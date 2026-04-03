@@ -1,0 +1,65 @@
+name: Weekly SBIR Awards Report
+
+on:
+  schedule:
+    # Every Monday at 10 AM UTC (after data-refresh downloads new data at 9 AM)
+    - cron: "0 10 * * 1"
+  workflow_dispatch:
+    inputs:
+      days:
+        description: "Number of days to look back"
+        required: false
+        default: "7"
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: weekly-awards-report
+  cancel-in-progress: true
+
+jobs:
+  generate-report:
+    name: Generate Weekly Awards Report
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Python and UV
+        uses: ./.github/actions/setup-python-uv
+        with:
+          python-version: "3.11"
+          install-dev-deps: "false"
+
+      - name: Install report dependencies
+        run: uv pip install requests
+
+      - name: Generate weekly awards report
+        env:
+          DAYS: ${{ github.event.inputs.days || '7' }}
+        run: |
+          mkdir -p reports
+          uv run python scripts/data/weekly_awards_report.py \
+            --days "$DAYS" \
+            --output reports/weekly-awards.md
+
+      - name: Post report to job summary
+        if: always()
+        run: |
+          if [ -f reports/weekly-awards.md ]; then
+            cat reports/weekly-awards.md >> $GITHUB_STEP_SUMMARY
+          else
+            echo "## Weekly Awards Report" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Report generation failed. Check logs for details." >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Upload report artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: weekly-awards-report-${{ github.run_id }}
+          path: reports/weekly-awards.md
+          retention-days: 30
