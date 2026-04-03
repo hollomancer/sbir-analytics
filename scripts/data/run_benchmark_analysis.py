@@ -38,12 +38,14 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
+from sbir_etl.extractors.sbir_gov_api import SBIR_AWARDS_CSV_URL
+
 
 def download_from_sbir_gov(dest: Path) -> Path:
     """Download latest SBIR awards CSV from sbir.gov."""
     import requests
 
-    url = "https://data.www.sbir.gov/mod_awarddatapublic/award_data.csv"
+    url = SBIR_AWARDS_CSV_URL
     print(f"Downloading SBIR awards from: {url}")
 
     response = requests.get(url, stream=True, timeout=300)
@@ -431,7 +433,7 @@ def main():
         sbir_source = f"s3://{args.s3_bucket}"
     else:
         awards_path = download_from_sbir_gov(dest)
-        sbir_source = "https://data.www.sbir.gov/mod_awarddatapublic/award_data.csv"
+        sbir_source = SBIR_AWARDS_CSV_URL
 
     usaspending_path = None
     usaspending_api = args.usaspending_api
