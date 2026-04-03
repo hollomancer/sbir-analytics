@@ -17,7 +17,7 @@ from dagster import Output, asset
 
 from sbir_etl.config.loader import get_config
 from sbir_rag.config import LightRAGConfig
-from sbir_rag.document_prep import prepare_solicitation_document
+from sbir_rag.document_prep import classify_description, prepare_solicitation_document
 
 
 @asset(
@@ -120,17 +120,29 @@ async def lightrag_solicitation_ingestion(
 
     rag = await create_lightrag_instance(config)
 
-    # Prepare documents — only include topics with descriptions
+    # Classify and prepare documents using tiered description filtering
     documents = []
-    skipped = 0
+    tier_counts = {"stub": 0, "summary": 0, "full": 0}
+
     for _, row in extracted_solicitation_topics.iterrows():
+        tier = classify_description(
+            row,
+            min_length=config.min_description_length,
+            full_threshold=config.full_description_threshold,
+        )
+        tier_counts[tier] += 1
+
+        if tier == "stub":
+            continue  # Skip stubs — no LLM extraction value
+
         doc = prepare_solicitation_document(row)
         if doc["content"].strip():
             documents.append(doc)
-        else:
-            skipped += 1
 
-    context.log.info(f"Prepared {len(documents)} solicitation documents ({skipped} skipped)")
+    context.log.info(
+        f"Description tiers: {tier_counts['full']} full, "
+        f"{tier_counts['summary']} summary, {tier_counts['stub']} stubs skipped"
+    )
 
     # Batch insert
     batch_size = 100
@@ -150,7 +162,9 @@ async def lightrag_solicitation_ingestion(
     result = {
         "status": "success",
         "topics_ingested": ingested,
-        "topics_skipped": skipped,
+        "stubs_skipped": tier_counts["stub"],
+        "summaries_ingested": tier_counts["summary"],
+        "full_descriptions_ingested": tier_counts["full"],
         "duration_seconds": round(duration, 2),
     }
 
@@ -158,7 +172,9 @@ async def lightrag_solicitation_ingestion(
         value=result,
         metadata={
             "topics_ingested": ingested,
-            "topics_skipped": skipped,
+            "stubs_skipped": tier_counts["stub"],
+            "summaries_ingested": tier_counts["summary"],
+            "full_descriptions_ingested": tier_counts["full"],
             "duration_seconds": round(duration, 2),
         },
     )

@@ -5,7 +5,11 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-from sbir_rag.document_prep import prepare_award_document, prepare_solicitation_document
+from sbir_rag.document_prep import (
+    classify_description,
+    prepare_award_document,
+    prepare_solicitation_document,
+)
 
 
 class TestPrepareAwardDocument:
@@ -144,3 +148,73 @@ class TestPrepareSolicitationDocument:
 
         assert doc["metadata"]["solicitation_number"] is None
         assert doc["metadata"]["agency"] is None
+
+
+class TestClassifyDescription:
+    """Test tiered solicitation description classification."""
+
+    def _make_row(self, description=None) -> pd.Series:
+        return pd.Series({"description": description, "topic_code": "T001"})
+
+    def test_none_is_stub(self):
+        assert classify_description(self._make_row(None)) == "stub"
+
+    def test_nan_is_stub(self):
+        assert classify_description(self._make_row(np.nan)) == "stub"
+
+    def test_empty_string_is_stub(self):
+        assert classify_description(self._make_row("")) == "stub"
+
+    def test_whitespace_only_is_stub(self):
+        assert classify_description(self._make_row("   \n\t  ")) == "stub"
+
+    def test_short_boilerplate_is_stub(self):
+        assert classify_description(self._make_row("See attached document.")) == "stub"
+
+    def test_medium_text_is_summary(self):
+        text = "A" * 200  # Between 100 and 500
+        assert classify_description(self._make_row(text)) == "summary"
+
+    def test_long_text_is_full(self):
+        text = "A" * 600  # Above 500
+        assert classify_description(self._make_row(text)) == "full"
+
+    def test_exactly_at_min_is_summary(self):
+        text = "A" * 100
+        assert classify_description(self._make_row(text)) == "summary"
+
+    def test_exactly_at_full_threshold_is_full(self):
+        text = "A" * 500
+        assert classify_description(self._make_row(text)) == "full"
+
+    def test_just_below_min_is_stub(self):
+        text = "A" * 99
+        assert classify_description(self._make_row(text)) == "stub"
+
+    def test_custom_thresholds(self):
+        text = "A" * 50
+        assert (
+            classify_description(self._make_row(text), min_length=30, full_threshold=100)
+            == "summary"
+        )
+        assert classify_description(self._make_row(text), min_length=60) == "stub"
+
+    def test_realistic_stub(self):
+        assert classify_description(self._make_row("TBD")) == "stub"
+        assert classify_description(self._make_row("N/A")) == "stub"
+        assert classify_description(self._make_row("To be determined.")) == "stub"
+
+    def test_realistic_full_description(self):
+        desc = (
+            "The objective of this topic is to develop and demonstrate advanced "
+            "passive RF sensing capabilities for detecting, tracking, and classifying "
+            "low-observable unmanned aerial systems (UAS) operating in electromagnetically "
+            "cluttered urban environments. Current counter-UAS systems rely heavily on "
+            "active radar and electro-optical sensors that face significant challenges "
+            "in dense urban terrain due to multipath propagation, signal attenuation "
+            "from buildings, and high false alarm rates from ground clutter. "
+            "This research seeks novel approaches to exploit the RF emissions from "
+            "UAS flight controllers, telemetry links, and video downlinks as passive "
+            "detection signatures, even in the presence of dense commercial wireless traffic."
+        )
+        assert classify_description(self._make_row(desc)) == "full"

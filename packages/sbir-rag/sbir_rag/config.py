@@ -50,6 +50,20 @@ class LightRAGConfig(BaseModel):
     llm_max_async: int = Field(4, ge=1, description="Max concurrent LLM requests for extraction")
     llm_temperature: float = Field(0.0, ge=0.0, le=2.0)
 
+    # Solicitation description filtering
+    min_description_length: int = Field(
+        100,
+        ge=0,
+        description="Minimum character length for solicitation descriptions. "
+        "Descriptions shorter than this are stubs (e.g. 'See attached') and skipped.",
+    )
+    full_description_threshold: int = Field(
+        500,
+        ge=0,
+        description="Character length above which a description is considered 'full'. "
+        "Descriptions between min and this threshold are summaries (ingested but logged).",
+    )
+
     # Document chunking
     chunk_size: int = Field(1200, ge=100, description="Text chunk size for document ingestion")
     chunk_overlap: int = Field(100, ge=0, description="Overlap between chunks")
@@ -110,6 +124,16 @@ class LightRAGConfig(BaseModel):
             rag_cfg.setdefault("llm_max_tokens", llm.get("max_tokens"))
             rag_cfg.setdefault("llm_max_async", llm.get("max_async"))
             rag_cfg.setdefault("llm_temperature", llm.get("temperature"))
+
+        # Flatten nested solicitations section
+        solicitations = rag_cfg.pop("solicitations", {})
+        if solicitations:
+            rag_cfg.setdefault(
+                "min_description_length", solicitations.get("min_description_length")
+            )
+            rag_cfg.setdefault(
+                "full_description_threshold", solicitations.get("full_description_threshold")
+            )
 
         # Flatten nested chunking section
         chunking = rag_cfg.pop("chunking", {})
