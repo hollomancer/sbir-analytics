@@ -30,6 +30,10 @@ from ..exceptions import APIError
 
 SBIR_GOV_API_BASE = "https://api.www.sbir.gov/public/api"
 
+# Canonical URL for the SBIR.gov bulk awards CSV export.
+# Used by download_sbir.py, weekly_awards_report.py, awards_refresh_validation.py, etc.
+SBIR_AWARDS_CSV_URL = "https://data.www.sbir.gov/mod_awarddatapublic/award_data.csv"
+
 # Agencies that participate in SBIR/STTR
 SBIR_PARTICIPATING_AGENCIES = [
     "DOD",
@@ -313,5 +317,6 @@ __all__ = [
     "SbirGovClient",
     "SbirGovLookupIndex",
     "SBIR_GOV_API_BASE",
+    "SBIR_AWARDS_CSV_URL",
     "SBIR_PARTICIPATING_AGENCIES",
 ]

@@ -52,9 +52,15 @@ def lambda_handler(event: dict, context) -> dict:
             payload = json.loads(event["body"])
 
         force_refresh = payload.get("force_refresh", False)
+        try:
+            from sbir_etl.extractors.sbir_gov_api import SBIR_AWARDS_CSV_URL
+
+            _default_url = SBIR_AWARDS_CSV_URL
+        except ImportError:
+            _default_url = "https://data.www.sbir.gov/mod_awarddatapublic/award_data.csv"
         source_url = payload.get("source_url") or os.getenv(
             "DEFAULT_SOURCE_URL",
-            "https://data.www.sbir.gov/mod_awarddatapublic/award_data.csv",
+            _default_url,
         )
         s3_bucket = payload.get("s3_bucket") or os.getenv("S3_BUCKET")
         neo4j_secret_name = payload.get("neo4j_secret_name") or os.getenv("NEO4J_SECRET_NAME")

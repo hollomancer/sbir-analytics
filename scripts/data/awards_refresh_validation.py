@@ -14,7 +14,10 @@ from typing import Any
 from collections.abc import Iterable, Sequence
 
 
-DEFAULT_SOURCE_URL = "https://data.www.sbir.gov/mod_awarddatapublic/award_data.csv"
+try:
+    from sbir_etl.extractors.sbir_gov_api import SBIR_AWARDS_CSV_URL as DEFAULT_SOURCE_URL
+except ImportError:
+    DEFAULT_SOURCE_URL = "https://data.www.sbir.gov/mod_awarddatapublic/award_data.csv"
 
 
 def parse_args() -> argparse.Namespace:

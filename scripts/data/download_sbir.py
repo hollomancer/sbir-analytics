@@ -15,7 +15,10 @@ from datetime import datetime, UTC
 import boto3
 import requests
 
-SBIR_AWARDS_URL = "https://data.www.sbir.gov/mod_awarddatapublic/award_data.csv"
+try:
+    from sbir_etl.extractors.sbir_gov_api import SBIR_AWARDS_CSV_URL as SBIR_AWARDS_URL
+except ImportError:
+    SBIR_AWARDS_URL = "https://data.www.sbir.gov/mod_awarddatapublic/award_data.csv"
 
 
 def download_sbir_awards(s3_bucket: str) -> dict:

@@ -30,18 +30,18 @@ from urllib.parse import quote
 
 import requests
 
-SBIR_AWARDS_URL = "https://data.www.sbir.gov/mod_awarddatapublic/award_data.csv"
-
 # Lazy imports from the sbir_etl package.  These are optional — the script
 # falls back to a standalone CSV download + Python-based filtering when the
 # full package isn't installed (e.g. lightweight CI runners).
 try:
     from sbir_etl.extractors.sbir import SbirDuckDBExtractor
+    from sbir_etl.extractors.sbir_gov_api import SBIR_AWARDS_CSV_URL as SBIR_AWARDS_URL
     from sbir_etl.utils.cloud_storage import find_latest_sbir_awards, get_s3_bucket_from_env
     from sbir_etl.utils.date_utils import parse_date as _parse_date
 
     _HAS_SBIR_ETL = True
 except ImportError:
+    SBIR_AWARDS_URL = "https://data.www.sbir.gov/mod_awarddatapublic/award_data.csv"
     _HAS_SBIR_ETL = False
     SbirDuckDBExtractor = None  # type: ignore[assignment, misc]
 
