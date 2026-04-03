@@ -61,7 +61,7 @@ def _get_neo4j_client() -> Neo4jClient | None:
     description="Extract Leiden topic communities from LightRAG knowledge graph",
     group_name="lightrag",
     compute_kind="graph",
-    deps=["lightrag_document_ingestion"],
+    deps=["lightrag_document_ingestion", "lightrag_entity_cross_references"],
 )
 def lightrag_topic_communities(context) -> Output[pd.DataFrame]:
     """Query LightRAG ``__community__`` nodes and build a communities DataFrame.

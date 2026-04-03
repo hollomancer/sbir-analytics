@@ -77,19 +77,30 @@ class LightRAGConfig(BaseModel):
             self.neo4j_password = os.environ.get("NEO4J_PASSWORD", "")
         if self.neo4j_username == "neo4j":
             self.neo4j_username = os.environ.get("NEO4J_USER", self.neo4j_username)
+        if self.neo4j_database == "neo4j":
+            self.neo4j_database = os.environ.get("NEO4J_DATABASE", self.neo4j_database)
         return self
 
     @classmethod
-    def from_yaml_config(cls, config: dict[str, Any]) -> LightRAGConfig:
-        """Construct from the full parsed YAML config dict.
+    def from_yaml_config(cls, config: Any) -> LightRAGConfig:
+        """Construct from a parsed YAML config dict or PipelineConfig model.
 
         Reads from the ``lightrag`` top-level key, falling back to
         ``loading.neo4j`` for connection parameters if not specified.
 
         Args:
-            config: Parsed YAML config (e.g. from ``get_config()``).
+            config: Parsed YAML config dict or a ``PipelineConfig`` Pydantic model
+                    (as returned by ``get_config()``).
         """
-        rag_cfg = config.get("lightrag", {})
+        # Support both dict and Pydantic model (PipelineConfig) inputs
+        if hasattr(config, "model_dump"):
+            config_dict = config.model_dump()
+        elif isinstance(config, dict):
+            config_dict = config
+        else:
+            config_dict = dict(config)
+
+        rag_cfg = config_dict.get("lightrag", {})
 
         # Flatten nested LLM section
         llm = rag_cfg.pop("llm", {})

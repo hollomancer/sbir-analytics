@@ -117,13 +117,17 @@ def lightrag_entity_cross_references(context) -> Output[dict]:
         context.log.info(f"Created {entity_links} entity → Award links")
 
         # Match extracted organization entities to Company nodes by name.
-        # Uses case-insensitive containment for fuzzy matching.
+        # Uses case-insensitive exact match first, then containment with a
+        # minimum name length guard to avoid short-name cartesian explosions.
         company_match_query = """
         MATCH (e:__entity__)
         WHERE e.entity_type = 'ORGANIZATION'
+          AND size(e.name) >= 4
         MATCH (c:Company)
-        WHERE toLower(c.name) CONTAINS toLower(e.name)
-           OR toLower(e.name) CONTAINS toLower(c.name)
+        WHERE toLower(c.name) = toLower(e.name)
+           OR (size(e.name) >= 8
+               AND (toLower(c.name) CONTAINS toLower(e.name)
+                    OR toLower(e.name) CONTAINS toLower(c.name)))
         MERGE (e)-[:REFERS_TO]->(c)
         RETURN count(*) AS links_created
         """

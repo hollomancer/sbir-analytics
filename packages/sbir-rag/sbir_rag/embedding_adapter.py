@@ -11,17 +11,18 @@ into that interface using ``asyncio.to_thread``.
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Awaitable, Callable
 from typing import TYPE_CHECKING
 
 import numpy as np
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
-
     from sbir_rag.config import LightRAGConfig
 
 
-async def create_embedding_func(config: LightRAGConfig) -> Callable[..., np.ndarray]:
+async def create_embedding_func(
+    config: LightRAGConfig,
+) -> Callable[[list[str]], Awaitable[np.ndarray]]:
     """Create an async embedding function backed by ModernBERT-Embed.
 
     The returned function is compatible with ``lightrag.EmbeddingFunc``.

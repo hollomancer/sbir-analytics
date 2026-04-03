@@ -47,7 +47,7 @@ def prepare_award_document(row: pd.Series) -> dict:
     return {
         "content": header + body,
         "metadata": {
-            "award_id": str(row.get("award_id", "")),
+            "award_id": (str(row.get("award_id")) if pd.notna(row.get("award_id")) else None),
             "agency": row.get("agency") if pd.notna(row.get("agency")) else None,
             "phase": row.get("phase") if pd.notna(row.get("phase")) else None,
             "award_year": row.get("award_year") if pd.notna(row.get("award_year")) else None,
@@ -93,7 +93,7 @@ def prepare_solicitation_document(row: pd.Series) -> dict:
     return {
         "content": header + body,
         "metadata": {
-            "topic_code": str(row.get("topic_code", "")),
+            "topic_code": (str(row.get("topic_code")) if pd.notna(row.get("topic_code")) else None),
             "solicitation_number": (
                 str(row.get("solicitation_number", ""))
                 if pd.notna(row.get("solicitation_number"))

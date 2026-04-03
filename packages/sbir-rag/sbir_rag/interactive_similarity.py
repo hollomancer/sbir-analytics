@@ -53,22 +53,19 @@ async def find_similar_awards(
         logger.error("sbir_graph not installed, cannot perform similarity search")
         return []
 
-    from sbir_etl.config.loader import get_config
-
-    app_config = get_config()
-    neo4j_config = app_config.neo4j
-
+    # Use Neo4j connection parameters from the LightRAG config
     client = Neo4jClient(
         Neo4jConfig(
-            uri=neo4j_config.uri,
-            username=neo4j_config.username,
-            password=neo4j_config.password,
-            database=neo4j_config.database,
+            uri=config.neo4j_uri,
+            username=config.neo4j_username,
+            password=config.neo4j_password,
+            database=config.neo4j_database,
         )
     )
 
-    try:
-        query = """
+    def _run_query() -> list[dict[str, Any]]:
+        """Execute the blocking Neo4j query in a thread."""
+        cypher = """
         CALL db.index.vector.queryNodes('award_embedding', $k, $embedding)
         YIELD node, score
         RETURN
@@ -82,11 +79,11 @@ async def find_similar_awards(
         ORDER BY score DESC
         """
 
-        results = []
+        rows: list[dict[str, Any]] = []
         with client.session() as session:
-            records = session.run(query, k=top_k, embedding=embedding_list)
+            records = session.run(cypher, k=top_k, embedding=embedding_list)
             for record in records:
-                results.append(
+                rows.append(
                     {
                         "award_id": record["award_id"],
                         "title": record["title"],
@@ -97,6 +94,12 @@ async def find_similar_awards(
                         "score": float(record["score"]),
                     }
                 )
+        return rows
+
+    try:
+        import asyncio
+
+        results = await asyncio.to_thread(_run_query)
 
         logger.info(f"Found {len(results)} similar awards for: {query_text[:80]}")
         return results
