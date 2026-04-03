@@ -110,14 +110,13 @@ Each milestone produces an analytical output that (a) replicates or exceeds a sp
 |-----------|--------|----------|
 | Weekly data refresh | 85% spec | `.kiro/specs/weekly-award-data-refresh/` |
 | Dagster asset pipeline | Built | `packages/sbir-analytics/sbir_analytics/assets/` |
-| Autodev loop | Built | `packages/sbir-analytics/sbir_analytics/autodev/` |
 | MCP agent tools | Spec exists | `.kiro/specs/mcp_agent_tools/` |
 | **Rolling analytics API** | **Missing** | Needs: snapshot generation, quarter-over-quarter comparison |
 | **User-facing dashboard** | **Missing** | Needs: query interface for current-quarter snapshots |
 
 **Gap:** Scheduling and pipeline infrastructure exists. Missing the user-facing query/snapshot layer.
 
-## Priority Matrix for Autodev
+## Priority Matrix
 
 ### Immediate (finish what's started — highest ROI)
 1. **`company-categorization`** (77%) — Entity categorization unlocks M1 leverage ratios
@@ -144,4 +143,4 @@ Audit completed 2026-03-13. Status: **ready for Phase 1**.
 - [x] **Entity resolution:** Hybrid 6-step pipeline: UEI exact → DUNS exact → CAGE code → Name+State+NAICS deterministic → rapidfuzz (75-90 thresholds) → LLM tiebreaker. 85%+ deterministic match rate. Gold set calibration. Confidence scoring (1.0 deterministic, 0.5-0.95 fuzzy). (`packages/sbir-analytics/sbir_analytics/tools/phase0/resolve_entities.py`, 376 lines)
 - [x] **Classifier state:** CET classifier trained on 21 NSTC Critical & Emerging Technology categories. TF-IDF + keyword boosting + logistic regression with probability calibration. Production-ready with ≥60% high-confidence target. Full training pipeline in `packages/sbir-analytics/sbir_analytics/assets/cet/training.py`.
 - [x] **FPDS data:** Pulled via USAspending PostgreSQL dump streaming. Linked to entities via vendor crosswalk. Refresh: daily (FPDS), monthly (USAspending bulk). DuckDB analytics for 6.7M+ contracts. (`packages/sbir-analytics/sbir_analytics/tools/phase0/extract_fpds_contracts.py`, `packages/sbir-ml/sbir_ml/transition/performance/contract_analytics.py`)
-- [x] **Infrastructure:** CDK stacks defined (Storage → Security → Batch). 6+ GitHub Actions workflows active (CI, data-refresh, ML jobs, nightly security, autodev). Docker + Dagster orchestration. Deployment status to AWS uncertain — verify before M5 operationalization.
+- [x] **Infrastructure:** CDK stacks defined (Storage → Security → Batch). 6+ GitHub Actions workflows active (CI, data-refresh, ML jobs, nightly security). Docker + Dagster orchestration. Deployment status to AWS uncertain — verify before M5 operationalization.

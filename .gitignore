@@ -212,5 +212,3 @@ report.md
 infrastructure/**/.venv/
 results.csv
 
-# Autodev session state
-.autodev/

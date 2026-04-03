@@ -95,7 +95,7 @@ def main(
 
 
 # Register commands
-from .commands import autodev, benchmark, dashboard, enrich, ingest, metrics, status, transition
+from .commands import benchmark, dashboard, enrich, ingest, metrics, status, transition
 
 
 status.register_command(app)
@@ -105,7 +105,6 @@ enrich.register_command(app)
 dashboard.register_command(app)
 transition.register_command(app)
 benchmark.register_command(app)
-autodev.register_command(app)
 
 
 if __name__ == "__main__":
