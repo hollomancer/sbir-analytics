@@ -45,7 +45,7 @@ try:
     from rapidfuzz import fuzz
 
     _RAPIDFUZZ_AVAILABLE = True
-except Exception:
+except ImportError:
     _RAPIDFUZZ_AVAILABLE = False
 
 
@@ -70,9 +70,13 @@ class VendorRecord:
 
 
 @dataclass
-class VendorMatch:
+class ResolverMatch:
     """
-    Result of a vendor match operation.
+    Result of a vendor match operation from the in-memory resolver.
+
+    This is an internal lookup result — not the serialisable domain model.
+    For the Pydantic model stored on Transition/FederalContract objects,
+    see ``sbir_etl.models.transition_models.VendorMatch``.
 
     - record: matched canonical VendorRecord or None if no match
     - method: how the match was found ('uei', 'cage', 'duns', 'name_exact', 'name_fuzzy', etc.)
@@ -122,7 +126,7 @@ class VendorResolver:
         self._name_index: dict[str, list[VendorRecord]] = {}
 
         # Cache resolved queries for speed (simple in-memory)
-        self._cache: dict[tuple[str, str], VendorMatch] = {}
+        self._cache: dict[tuple[str, str], ResolverMatch] = {}
 
         # Load records into indices
         self._load_records(records)
@@ -176,40 +180,40 @@ class VendorResolver:
                     self._duns_index[key] = r
             nm = self._normalize_name(r.name)
             self._name_index.setdefault(nm, []).append(r)
-        logger.info("VendorResolver loaded %d vendor records", count)
+        logger.info("VendorResolver loaded {} vendor records", count)
 
     # -----------------------------
     # Exact identifier match methods
     # -----------------------------
-    def resolve_by_uei(self, uei: str) -> VendorMatch:
+    def resolve_by_uei(self, uei: str) -> ResolverMatch:
         """Resolve by UEI (exact)."""
         if not uei:
-            return VendorMatch(record=None, method="uei", score=0.0, note="no uei provided")
+            return ResolverMatch(record=None, method="uei", score=0.0, note="no uei provided")
         key = str(uei).strip().upper()
         rec = self._uei_index.get(key)
         if rec:
-            return VendorMatch(record=rec, method="uei", score=1.0)
-        return VendorMatch(record=None, method="uei", score=0.0, note="no match")
+            return ResolverMatch(record=rec, method="uei", score=1.0)
+        return ResolverMatch(record=None, method="uei", score=0.0, note="no match")
 
-    def resolve_by_cage(self, cage: str) -> VendorMatch:
+    def resolve_by_cage(self, cage: str) -> ResolverMatch:
         """Resolve by CAGE (exact)."""
         if not cage:
-            return VendorMatch(record=None, method="cage", score=0.0, note="no cage provided")
+            return ResolverMatch(record=None, method="cage", score=0.0, note="no cage provided")
         key = str(cage).strip().upper()
         rec = self._cage_index.get(key)
         if rec:
-            return VendorMatch(record=rec, method="cage", score=1.0)
-        return VendorMatch(record=None, method="cage", score=0.0, note="no match")
+            return ResolverMatch(record=rec, method="cage", score=1.0)
+        return ResolverMatch(record=None, method="cage", score=0.0, note="no match")
 
-    def resolve_by_duns(self, duns: str) -> VendorMatch:
+    def resolve_by_duns(self, duns: str) -> ResolverMatch:
         """Resolve by DUNS (exact)."""
         if not duns:
-            return VendorMatch(record=None, method="duns", score=0.0, note="no duns provided")
+            return ResolverMatch(record=None, method="duns", score=0.0, note="no duns provided")
         key = str(duns).strip()
         rec = self._duns_index.get(key)
         if rec:
-            return VendorMatch(record=rec, method="duns", score=1.0)
-        return VendorMatch(record=None, method="duns", score=0.0, note="no match")
+            return ResolverMatch(record=rec, method="duns", score=1.0)
+        return ResolverMatch(record=None, method="duns", score=0.0, note="no match")
 
     # -----------------------------
     # Name matching helpers
@@ -227,17 +231,13 @@ class VendorResolver:
                 # rapidfuzz.fuzz.token_sort_ratio returns 0-100
                 score = fuzz.token_sort_ratio(s1, s2) / 100.0
                 return float(score)
-            except Exception:
-                # fallback to difflib if something unexpected happens
-                pass
+            except (TypeError, ValueError) as exc:
+                logger.debug("rapidfuzz scoring failed for {!r} vs {!r}: {}; falling back to difflib", s1, s2, exc)
         # difflib fallback
-        try:
-            sm = SequenceMatcher(None, s1, s2)
-            return float(sm.ratio())
-        except Exception:
-            return 0.0
+        sm = SequenceMatcher(None, s1, s2)
+        return float(sm.ratio())
 
-    def resolve_by_name(self, name: str, prefer_identifiers: bool = True) -> VendorMatch:
+    def resolve_by_name(self, name: str, prefer_identifiers: bool = True) -> ResolverMatch:
         """
         Resolve vendor by name.
 
@@ -253,7 +253,7 @@ class VendorResolver:
             return self._cache[cache_key]
 
         if not name:
-            result = VendorMatch(record=None, method="name", score=0.0, note="no name provided")
+            result = ResolverMatch(record=None, method="name", score=0.0, note="no name provided")
             self._cache[cache_key] = result
             return result
 
@@ -263,7 +263,7 @@ class VendorResolver:
         if exact:
             # If multiple records exist for the same normalized name, prefer one with identifiers
             rec = self._choose_preferred_record(exact)
-            result = VendorMatch(record=rec, method="name_exact", score=1.0)
+            result = ResolverMatch(record=rec, method="name_exact", score=1.0)
             self._cache[cache_key] = result
             return result
 
@@ -279,13 +279,13 @@ class VendorResolver:
 
         # Decide if best_score is acceptable
         if best_score >= self.fuzzy_threshold:
-            result = VendorMatch(record=best_record, method="name_fuzzy", score=best_score)
+            result = ResolverMatch(record=best_record, method="name_fuzzy", score=best_score)
             self._cache[cache_key] = result
             return result
 
         # If secondary threshold met, return as lower-confidence match
         if best_score >= self.fuzzy_secondary_threshold:
-            result = VendorMatch(
+            result = ResolverMatch(
                 record=best_record,
                 method="name_fuzzy_secondary",
                 score=best_score,
@@ -294,7 +294,7 @@ class VendorResolver:
             self._cache[cache_key] = result
             return result
 
-        result = VendorMatch(record=None, method="name", score=0.0, note="no reliable match")
+        result = ResolverMatch(record=None, method="name", score=0.0, note="no reliable match")
         self._cache[cache_key] = result
         return result
 
@@ -328,7 +328,7 @@ class VendorResolver:
         duns: str | None = None,
         name: str | None = None,
         prefer_identifiers: bool = True,
-    ) -> VendorMatch:
+    ) -> ResolverMatch:
         """
         High-level resolution method combining identifier and name strategies.
 
@@ -363,7 +363,7 @@ class VendorResolver:
             if m.record:
                 return m
 
-        return VendorMatch(record=None, method="none", score=0.0, note="no match found")
+        return ResolverMatch(record=None, method="none", score=0.0, note="no match found")
 
     # -----------------------------
     # Cross-walk / CRUD helpers
@@ -396,8 +396,8 @@ class VendorResolver:
             nm = self._normalize_name(rec.name)
             lst = self._name_index.get(nm, [])
             self._name_index[nm] = [r for r in lst if r is not rec]
-        except Exception:
-            logger.exception("Error removing record from indices for uei=%s", uei)
+        except (KeyError, AttributeError) as exc:
+            logger.warning("Error removing record from indices for uei={}: {}", uei, exc)
         self._cache.clear()
         return True
 

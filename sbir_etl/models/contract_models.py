@@ -5,6 +5,8 @@ from enum import Enum
 
 from pydantic import BaseModel, Field, field_validator
 
+from sbir_etl.models.transition_models import VendorMatch  # noqa: F401 — canonical definition
+
 
 class CompetitionType(str, Enum):
     """Competition types for federal contracts."""
@@ -24,33 +26,6 @@ class ContractStatus(str, Enum):
     TERMINATED = "terminated"
     CANCELLED = "cancelled"
     PENDING = "pending"
-
-
-class VendorMatch(BaseModel):
-    """Result of vendor/company resolution for a contract."""
-
-    vendor_id: str | None = Field(
-        None, description="Canonical vendor ID (e.g., company node id or UEI)."
-    )
-    method: str = Field(
-        ..., description="How the match was determined ('uei', 'cage', 'duns', 'name_fuzzy', ...)."
-    )
-    score: float = Field(0.0, ge=0.0, le=1.0, description="Confidence score for the vendor match.")
-    matched_name: str | None = Field(None, description="Matched vendor canonical name.")
-    matched_uei: str | None = Field(None, description="Matched vendor UEI.")
-    matched_cage: str | None = Field(None, description="Matched vendor CAGE code.")
-    matched_duns: str | None = Field(None, description="Matched vendor DUNS number.")
-    metadata: dict[str, object] = Field(
-        default_factory=dict, description="Additional match metadata."
-    )
-
-    @field_validator("method")
-    @classmethod
-    def validate_method(cls, v):
-        valid_methods = ["uei", "cage", "duns", "name_fuzzy", "address_match", "manual"]
-        if v not in valid_methods:
-            raise ValueError(f"method must be one of {valid_methods}")
-        return v
 
 
 class ContractParty(BaseModel):

@@ -27,17 +27,11 @@ The SBIR ETL pipeline uses a comprehensive, structured exception hierarchy to pr
 SBIRETLError (base class - do not raise directly)
 ├── ExtractionError              # Stage 1: Data extraction failures
 ├── ValidationError              # Stage 2: Schema/quality validation failures
-│   └── DataQualityError         # Quality thresholds not met
 ├── EnrichmentError              # Stage 3: Enrichment stage failures
 │   └── APIError                 # External API failures
 │       └── RateLimitError       # Rate limits exceeded
 ├── TransformationError          # Stage 4: Transformation stage failures
-│   ├── TransitionDetectionError # Transition detection specific
-│   ├── FiscalAnalysisError      # Fiscal analysis specific
-│   ├── CETClassificationError   # CET classification specific
-│   └── PatentProcessingError    # Patent processing specific
-├── LoadError                    # Stage 5: Loading stage failures
-│   └── Neo4jError               # Neo4j database operations
+│   └── CETClassificationError   # CET classification specific
 ├── ConfigurationError           # Config loading/validation
 ├── FileSystemError              # File I/O operations
 └── DependencyError              # Missing dependencies
@@ -150,10 +144,10 @@ if response.status_code != 200:
 
 ### Wrapping External Exceptions
 
-Use `wrap_exception` to convert standard Python or library exceptions:
+Use the `cause` parameter to preserve original exception context:
 
 ```python
-from sbir_etl.exceptions import wrap_exception, APIError, FileSystemError
+from sbir_etl.exceptions import APIError, FileSystemError
 import httpx
 
 # Wrap HTTP errors
@@ -161,23 +155,25 @@ try:
     response = httpx.get(url)
     response.raise_for_status()
 except httpx.HTTPError as e:
-    raise wrap_exception(
-        e, APIError,
+    raise APIError(
+        "Request failed",
         api_name="usaspending",
         endpoint=url,
-        http_status=e.response.status_code if e.response else None
-    )
+        http_status=e.response.status_code if e.response else None,
+        cause=e,
+    ) from e
 
 # Wrap file I/O errors
 try:
     with open(file_path) as f:
         data = f.read()
 except IOError as e:
-    raise wrap_exception(
-        e, FileSystemError,
+    raise FileSystemError(
+        f"Failed to read {file_path}",
         file_path=file_path,
-        operation="read_file"
-    )
+        operation="read_file",
+        cause=e,
+    ) from e
 ```
 
 ### Stage-Specific Exceptions
@@ -190,7 +186,6 @@ from sbir_etl.exceptions import (
     ValidationError,
     EnrichmentError,
     TransformationError,
-    LoadError
 )
 
 # Stage 1: Extraction
@@ -204,12 +199,11 @@ if extraction_failed:
 
 # Stage 2: Validation
 if quality_score < threshold:
-    raise DataQualityError(
+    raise ValidationError(
         "Match rate below threshold",
-        threshold=threshold,
-        actual_value=quality_score,
         component="enrichers.usaspending",
-        operation="enrich_awards"
+        operation="enrich_awards",
+        details={"threshold": threshold, "actual_value": quality_score}
     )
 
 # Stage 3: Enrichment
@@ -222,21 +216,12 @@ if api_call_failed:
     )
 
 # Stage 4: Transformation
-if transition_detection_failed:
-    raise TransitionDetectionError(
-        "Failed to detect transitions",
+if transformation_failed:
+    raise TransformationError(
+        "Failed to transform data",
         component="transformers.transition_detector",
         operation="detect_transitions",
         details={"awards_count": len(awards)}
-    )
-
-# Stage 5: Loading
-if neo4j_write_failed:
-    raise Neo4jError(
-        "Failed to create award nodes",
-        operation="create_award_nodes",
-        query="MERGE (a:Award {award_id: $id})",
-        details={"batch_size": len(batch)}
     )
 ```
 
@@ -310,7 +295,7 @@ def enrich_awards(awards: pd.DataFrame) -> pd.DataFrame:
 
     Raises:
         APIError: If USAspending API request fails
-        DataQualityError: If match rate below threshold
+        ValidationError: If match rate below threshold
         ConfigurationError: If API credentials missing
     """
     pass
@@ -553,15 +538,11 @@ class AwardProcessor:
 |----------------|---------|---------|
 | `ExtractionError` | Data extraction failures | CSV parsing, API data fetch |
 | `ValidationError` | Input validation, schema checks | Missing fields, invalid formats |
-| `DataQualityError` | Quality thresholds not met | Low match rates, completeness |
 | `EnrichmentError` | Enrichment stage failures | API enrichment, fuzzy matching |
 | `APIError` | External API failures | HTTP errors, timeouts |
 | `RateLimitError` | Rate limits exceeded | 429 responses |
 | `TransformationError` | Transformation failures | Data transformation, calculations |
-| `TransitionDetectionError` | Transition detection | Signal extraction, scoring |
 | `CETClassificationError` | CET classification | Model training, prediction |
-| `LoadError` | Loading failures | Database writes, bulk inserts |
-| `Neo4jError` | Neo4j operations | Query failures, connection issues |
 | `ConfigurationError` | Config issues | Invalid config, missing keys |
 | `FileSystemError` | File I/O | File not found, read/write errors |
 | `DependencyError` | Missing dependencies | Import failures, missing packages |
@@ -605,12 +586,11 @@ raise FileSystemError(
 )
 
 # Quality threshold not met
-raise DataQualityError(
+raise ValidationError(
     "Quality threshold not met",
-    threshold=threshold,
-    actual_value=actual_value,
     component="component_name",
-    operation="operation_name"
+    operation="operation_name",
+    details={"threshold": threshold, "actual_value": actual_value}
 )
 ```
 

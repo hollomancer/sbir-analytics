@@ -54,7 +54,6 @@ packages/
   sbir-graph/sbir_graph/
     loaders/            # Neo4j (idempotent MERGE, relationships)
   sbir-ml/sbir_ml/      # ML models (CET classification, transition detection)
-  sbir-models/          # Shared data models
 
 config/base.yaml        # Thresholds, paths, performance settings
 docs/

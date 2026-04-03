@@ -103,8 +103,7 @@ sbir-analytics/
 ├── packages/
 │   ├── sbir-analytics/    # Dagster orchestration (assets, CLI, definitions)
 │   ├── sbir-graph/        # Neo4j loading and relationship creation
-│   ├── sbir-ml/           # Machine learning (CET, transition, embeddings)
-│   └── sbir-models/       # Shared data models
+│   └── sbir-ml/           # Machine learning (CET, transition, embeddings)
 ├── tests/                  # Unit, integration, and E2E tests
 ├── docs/                   # Documentation
 ├── config/                 # YAML configuration files

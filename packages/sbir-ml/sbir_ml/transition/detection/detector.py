@@ -28,7 +28,7 @@ from tqdm import tqdm
 from sbir_etl.models.transition_models import ConfidenceLevel, FederalContract, Transition, VendorMatch
 from sbir_ml.transition.detection.evidence import EvidenceGenerator
 from sbir_ml.transition.detection.scoring import TransitionScorer
-from sbir_ml.transition.features.vendor_resolver import VendorResolver
+from sbir_ml.transition.features.vendor_resolver import ResolverMatch, VendorResolver
 
 
 class TransitionDetector:
@@ -159,6 +159,27 @@ class TransitionDetector:
 
         return filtered
 
+    def _resolver_to_domain_match(
+        self,
+        resolver_match: ResolverMatch,
+        method: str,
+        vendor_id_fallback: str,
+        extra_metadata: dict[str, object] | None = None,
+    ) -> VendorMatch:
+        """Convert an internal ResolverMatch to the domain VendorMatch model."""
+        metadata = extra_metadata or {}
+        record = resolver_match.record
+        return VendorMatch(
+            vendor_id=record.metadata.get("vendor_id") or vendor_id_fallback,
+            method=method,
+            score=resolver_match.score,
+            matched_name=record.name,
+            matched_uei=record.uei,
+            matched_cage=record.cage,
+            matched_duns=record.duns,
+            metadata=metadata,
+        )
+
     def match_vendor(
         self,
         contract: FederalContract,
@@ -180,71 +201,39 @@ class TransitionDetector:
         Returns:
             VendorMatch (from transition_models) if successful, None otherwise
         """
-        from sbir_ml.transition.features.vendor_resolver import VendorMatch as ResolverMatch
+        # Identifier-based matching (UEI → CAGE → DUNS)
+        id_strategies: list[tuple[str | None, str, str]] = [
+            (contract.vendor_uei, "uei", contract.vendor_uei or ""),
+            (contract.vendor_cage, "cage", contract.vendor_cage or ""),
+            (contract.vendor_duns, "duns", contract.vendor_duns or ""),
+        ]
+        resolve_fn = {
+            "uei": self.vendor_resolver.resolve_by_uei,
+            "cage": self.vendor_resolver.resolve_by_cage,
+            "duns": self.vendor_resolver.resolve_by_duns,
+        }
 
-        # Try UEI first
-        if contract.vendor_uei:
-            resolver_match: ResolverMatch = self.vendor_resolver.resolve_by_uei(contract.vendor_uei)
-            if resolver_match.record:
-                self.metrics["vendor_matches"] += 1
-                from sbir_etl.models.transition_models import VendorMatch
+        for identifier, method, fallback_id in id_strategies:
+            if identifier:
+                resolver_match = resolve_fn[method](identifier)
+                if resolver_match.record:
+                    self.metrics["vendor_matches"] += 1
+                    return self._resolver_to_domain_match(
+                        resolver_match, method, fallback_id,
+                        extra_metadata={method: identifier},
+                    )
 
-                return VendorMatch(
-                    vendor_id=resolver_match.record.metadata.get("vendor_id")
-                    or contract.vendor_uei,
-                    method="uei",
-                    score=1.0,
-                    matched_name=resolver_match.record.name,
-                    metadata={"uei": contract.vendor_uei},
-                )
-
-        # Try CAGE code
-        if contract.vendor_cage:
-            resolver_match = self.vendor_resolver.resolve_by_cage(contract.vendor_cage)
-            if resolver_match.record:
-                self.metrics["vendor_matches"] += 1
-                from sbir_etl.models.transition_models import VendorMatch
-
-                return VendorMatch(
-                    vendor_id=resolver_match.record.metadata.get("vendor_id")
-                    or contract.vendor_cage,
-                    method="cage",
-                    score=1.0,
-                    matched_name=resolver_match.record.name,
-                    metadata={"cage": contract.vendor_cage},
-                )
-
-        # Try DUNS number
-        if contract.vendor_duns:
-            resolver_match = self.vendor_resolver.resolve_by_duns(contract.vendor_duns)
-            if resolver_match.record:
-                self.metrics["vendor_matches"] += 1
-                from sbir_etl.models.transition_models import VendorMatch
-
-                return VendorMatch(
-                    vendor_id=resolver_match.record.metadata.get("vendor_id")
-                    or contract.vendor_duns,
-                    method="duns",
-                    score=1.0,
-                    matched_name=resolver_match.record.name,
-                    metadata={"duns": contract.vendor_duns},
-                )
-
-        # Try fuzzy name matching
+        # Fuzzy name matching
         if contract.vendor_name:
             resolver_match = self.vendor_resolver.resolve_by_name(contract.vendor_name)
             if resolver_match.record and resolver_match.score >= self.vendor_config.get(
-                "fuzzy_threshold", 0.85
+                "fuzzy_threshold", 0.90
             ):
                 self.metrics["vendor_matches"] += 1
-                from sbir_etl.models.transition_models import VendorMatch
-
-                return VendorMatch(
-                    vendor_id=resolver_match.record.metadata.get("vendor_id", "unknown"),
-                    method="name_fuzzy",
-                    score=resolver_match.score,
-                    matched_name=resolver_match.record.name,
-                    metadata={
+                return self._resolver_to_domain_match(
+                    resolver_match, resolver_match.method,
+                    resolver_match.record.metadata.get("vendor_id", "unknown"),
+                    extra_metadata={
                         "input_name": contract.vendor_name,
                         "fuzzy_score": resolver_match.score,
                     },

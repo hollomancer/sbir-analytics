@@ -14,9 +14,6 @@ pip install sbir-analytics
 
 # ETL library only (no Dagster, CLI, ML, or Neo4j)
 pip install sbir-etl
-
-# Just the data models (only pydantic)
-pip install sbir-models
 ```
 
 ## What's Included
