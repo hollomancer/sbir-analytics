@@ -7,7 +7,7 @@ This module contains only heavy ML and fiscal assets that require:
 - R packages (fiscal impact analysis)
 
 These run on GitHub Actions runners to avoid serverless timeouts.
-See .github/workflows/run-ml-jobs.yml for execution details.
+See .github/workflows/etl-pipeline.yml (workflow_dispatch job options) for execution details.
 """
 
 import os

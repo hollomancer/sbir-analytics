@@ -1,4 +1,4 @@
-# Running ML Jobs with GitHub Actions
+# Running ETL + ML Jobs with GitHub Actions
 
 For infrequent ML workloads (weekly testing, on-demand training), GitHub Actions is the simplest and most cost-effective solution.
 
@@ -15,10 +15,10 @@ For infrequent ML workloads (weekly testing, on-demand training), GitHub Actions
 
 ┌──────────────────────────────────────────────┐
 │        GitHub Actions (on-demand)            │
-│        ML Jobs (manual or scheduled)         │
+│        ML/analysis jobs (manual or scheduled)         │
 │   - CET training/inference                   │
 │   - Fiscal R analysis                        │
-│   - PaECTER embeddings                       │
+│   - Embeddings pipeline                       │
 └──────────────────────────────────────────────┘
 ```
 
@@ -46,54 +46,50 @@ Still cheaper than any infrastructure!
 ### Option 1: Manual Trigger (Recommended for Testing)
 
 1. Go to GitHub → **Actions** tab
-2. Select **"ML Jobs On-Demand"**
+2. Select **"ETL Pipeline"**
 3. Click **"Run workflow"**
 4. Choose job:
-   - `cet_full_pipeline` - CET training and inference
+   - `cet_pipeline` - CET training and inference
    - `fiscal_returns_mvp` - Fiscal impact analysis
-   - `paecter_embeddings` - Generate embeddings
-   - `all_ml_jobs` - Run everything
+   - `embeddings` - Generate award/patent embeddings
+   - `all` - Run all ETL and analysis jobs
 
 5. Click **"Run workflow"** button
 6. Monitor progress in real-time
 
 ### Option 2: Weekly Schedule
 
-The workflow is configured to run automatically:
+ML/analysis jobs are now dispatched through the ETL workflow (`workflow_dispatch`).
 
-- **Every Monday at 3 AM UTC**
-- Runs all ML jobs for weekly validation
-
-To change schedule, edit `.github/workflows/run-ml-jobs.yml`:
+To change scheduling for recurring ETL+analysis runs, edit `.github/workflows/etl-pipeline.yml` (currently weekly Monday 10:00 UTC):
 
 ```yaml
 schedule:
-  - cron: '0 3 * * 1'  # Monday 3 AM UTC
-  # - cron: '0 0 * * 0'  # Sunday midnight UTC
-  # - cron: '0 12 * * *'  # Daily noon UTC
+  - cron: "0 10 * * 1"  # Monday 10 AM UTC
 ```
 
 ### Option 3: API/CLI Trigger
 
 ```bash
 # Using GitHub CLI
-gh workflow run run-ml-jobs.yml \
+gh workflow run etl-pipeline.yml \
   --ref main \
-  --field job_name=cet_full_pipeline
+  --field job=cet_pipeline \
+  --field environment=test
 
 # Using REST API
 curl -X POST \
   -H "Authorization: Bearer $GITHUB_TOKEN" \
   -H "Accept: application/vnd.github.v3+json" \
-  https://api.github.com/repos/hollomancer/sbir-analytics/actions/workflows/run-ml-jobs.yml/dispatches \
-  -d '{"ref":"main","inputs":{"job_name":"cet_full_pipeline"}}'
+  https://api.github.com/repos/hollomancer/sbir-analytics/actions/workflows/etl-pipeline.yml/dispatches \
+  -d '{"ref":"main","inputs":{"job":"cet_pipeline","environment":"test"}}'
 ```
 
 ## What Runs
 
 ### Available Jobs
 
-**1. CET Full Pipeline** (`cet_full_pipeline`)
+**1. CET Full Pipeline** (`cet_pipeline`)
 
 - Company Emerging Technologies classification
 - Training: scikit-learn models
@@ -108,13 +104,13 @@ curl -X POST \
 - Fiscal multiplier effects
 - Duration: ~20-40 minutes
 
-**3. PaECTER Job** (`paecter_embeddings`)
+**3. Embeddings Job** (`embeddings`)
 
 - Generate embeddings using sentence-transformers
 - Similarity computation for patent-award matching
 - Duration: ~40-80 minutes
 
-**4. All ML Jobs** (`all_ml_jobs`)
+**4. All Pipeline Jobs** (`all`)
 
 - Runs all above jobs sequentially
 - Duration: ~90-180 minutes
@@ -123,13 +119,13 @@ curl -X POST \
 
 ### Environment Variables
 
-Set in `.github/workflows/run-ml-jobs.yml`:
+Set in `.github/workflows/etl-pipeline.yml`:
 
 ```yaml
 env:
   AWS_REGION: us-east-2
-  DAGSTER_LOAD_HEAVY_ASSETS: "true"
-  DAGSTER_HOME: /tmp/dagster_home
+  S3_BUCKET: sbir-etl-production-data
+  SBIR_ETL__PIPELINE__ENVIRONMENT: production
 ```
 
 ### AWS Credentials
@@ -186,7 +182,7 @@ Get notified on job completion:
     webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
     payload: |
       {
-        "text": "ML job ${{ job.status }}: ${{ github.event.inputs.job_name }}"
+        "text": "ML job ${{ job.status }}: ${{ github.event.inputs.job }}"
       }
 ```
 
@@ -198,7 +194,7 @@ Get notified on job completion:
 |-----|----------|------------------------|------|
 | CET | 45 min | 180 | Free |
 | Fiscal | 30 min | 120 | Free |
-| PaECTER | 60 min | 240 | Free |
+| Embeddings | 60 min | 240 | Free |
 | **All** | 135 min | **540** | **Free ✅** |
 
 **Total**: 540 min/month (well within 2,000 free minutes)
@@ -284,7 +280,7 @@ Run multiple jobs in parallel (uses more minutes but faster):
 ```yaml
 strategy:
   matrix:
-    job: [cet_full_pipeline, fiscal_returns_mvp, paecter_embeddings]
+    job: [cet_pipeline, fiscal_returns_mvp, embeddings]
 
 steps:
   - name: Run job
@@ -327,8 +323,8 @@ Until then, GitHub Actions is perfect! 🎉
 
 ## Next Steps
 
-1. **Test now**: Go to Actions → Run ML Jobs On-Demand
-2. **Schedule it**: Workflow already configured for Monday 3 AM
+1. **Test now**: Go to Actions → ETL Pipeline
+2. **Schedule it**: Workflow already configured for Monday 10 AM UTC
 3. **Monitor costs**: Check Actions usage in Settings → Billing
 4. **Optimize**: If jobs take too long, reduce data samples for testing
 
@@ -336,4 +332,4 @@ Until then, GitHub Actions is perfect! 🎉
 
 - GitHub Actions Docs: <https://docs.github.com/en/actions>
 - Dagster CLI: <https://docs.dagster.io/guides/build/jobs>
-- Workflow file: `.github/workflows/run-ml-jobs.yml`
+- Workflow file: `.github/workflows/etl-pipeline.yml`
