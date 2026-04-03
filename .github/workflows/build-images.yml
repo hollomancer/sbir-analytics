@@ -11,8 +11,8 @@ on:
       - 'scripts/**'
       - '.github/workflows/build-images.yml'
   schedule:
-    # Weekly rebuild on Sunday at 2 AM UTC
-    - cron: '0 2 * * 0'
+    # Weekly rebuild on Sunday at 4 AM UTC (after weekly tests at 2 AM)
+    - cron: '0 4 * * 0'
   workflow_dispatch:
     inputs:
       image:
