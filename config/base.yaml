@@ -703,6 +703,9 @@ lightrag:
     algorithm: "leiden"
     max_levels: 3
     resolution: 1.0
+  solicitations:
+    min_description_length: 100   # Skip stubs ("See attached", "TBD", etc.)
+    full_description_threshold: 500  # Below this = summary, above = full description
   retrieval:
     default_mode: "hybrid"  # naive, local, global, hybrid
     top_k: 10

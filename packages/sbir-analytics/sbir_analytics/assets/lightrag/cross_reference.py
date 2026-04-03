@@ -97,14 +97,19 @@ def lightrag_entity_cross_references(context) -> Output[dict]:
     company_links = 0
 
     try:
-        # Link __entity__ nodes to Award nodes via shared chunk source.
-        # LightRAG stores source document info on __chunk__ nodes;
-        # entities are linked to chunks via __relationship__ edges.
-        # We link entities to Awards by traversing chunk → entity paths.
+        # Link __entity__ nodes to Award nodes via chunk document IDs.
+        # During ingestion, award_id is passed as the document ID to
+        # rag.ainsert(ids=...), which LightRAG stores as full_doc_id on
+        # __chunk__ nodes. Entities get source_id referencing chunk IDs,
+        # so we traverse: entity → (source_id) → chunk → (full_doc_id) → Award.
         entity_to_award_query = """
-        MATCH (e:__entity__)<-[:MENTIONS]-(c:__chunk__)
-        WHERE c.source_id IS NOT NULL
-        MATCH (a:Award {award_id: c.source_id})
+        MATCH (e:__entity__)
+        WHERE e.source_id IS NOT NULL
+        WITH e, split(e.source_id, '<SEP>') AS chunk_ids
+        UNWIND chunk_ids AS chunk_id
+        MATCH (c:__chunk__)
+        WHERE c.id = chunk_id AND c.full_doc_id IS NOT NULL
+        MATCH (a:Award {award_id: c.full_doc_id})
         MERGE (e)-[:EXTRACTED_FROM]->(a)
         RETURN count(*) AS links_created
         """

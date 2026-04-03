@@ -18,8 +18,11 @@ class TestLightRAGConfigDefaults:
         assert cfg.embedding_dim == 768
         assert cfg.embedding_model == "nomic-ai/modernbert-embed-base"
         assert cfg.llm_model == "claude-haiku-4-5-20251001"
+        assert cfg.llm_max_async == 4
         assert cfg.chunk_size == 1200
         assert cfg.chunk_overlap == 100
+        assert cfg.min_description_length == 100
+        assert cfg.full_description_threshold == 500
         assert cfg.community_algorithm == "leiden"
         assert cfg.max_community_levels == 3
         assert cfg.default_retrieval_mode == "hybrid"
@@ -34,12 +37,14 @@ class TestLightRAGConfigDefaults:
                 "NEO4J_URI": "bolt://prod:7687",
                 "NEO4J_USER": "admin",
                 "NEO4J_PASSWORD": "secret",
+                "NEO4J_DATABASE": "sbirdb",
             },
         ):
             cfg = LightRAGConfig()
             assert cfg.neo4j_uri == "bolt://prod:7687"
             assert cfg.neo4j_username == "admin"
             assert cfg.neo4j_password == "secret"
+            assert cfg.neo4j_database == "sbirdb"
 
     def test_explicit_values_override_env(self):
         with patch.dict(os.environ, {"NEO4J_URI": "bolt://env:7687"}):
@@ -88,7 +93,12 @@ class TestLightRAGConfigFromYAML:
                 "llm": {
                     "model": "claude-sonnet-4-6",
                     "max_tokens": 2048,
+                    "max_async": 2,
                     "temperature": 0.5,
+                },
+                "solicitations": {
+                    "min_description_length": 200,
+                    "full_description_threshold": 1000,
                 },
                 "chunking": {
                     "chunk_size": 2000,
@@ -109,7 +119,10 @@ class TestLightRAGConfigFromYAML:
         cfg = LightRAGConfig.from_yaml_config(yaml_config)
         assert cfg.llm_model == "claude-sonnet-4-6"
         assert cfg.llm_max_tokens == 2048
+        assert cfg.llm_max_async == 2
         assert cfg.llm_temperature == 0.5
+        assert cfg.min_description_length == 200
+        assert cfg.full_description_threshold == 1000
         assert cfg.chunk_size == 2000
         assert cfg.chunk_overlap == 200
         assert cfg.max_community_levels == 5
@@ -136,3 +149,21 @@ class TestLightRAGConfigFromYAML:
         assert cfg.llm_model == "gpt-4o-mini"
         # Other fields should have defaults
         assert cfg.chunk_size == 1200
+
+    def test_from_yaml_config_accepts_pydantic_model(self):
+        """from_yaml_config accepts a Pydantic model with model_dump()."""
+        from pydantic import BaseModel
+
+        class FakeConfig(BaseModel):
+            lightrag: dict = {"enabled": True, "workspace": "pydantic-test"}
+            other: str = "ignored"
+
+        cfg = LightRAGConfig.from_yaml_config(FakeConfig())
+        assert cfg.enabled is True
+        assert cfg.workspace == "pydantic-test"
+
+    def test_from_yaml_config_solicitations_defaults(self):
+        """Solicitation thresholds use defaults when not specified in YAML."""
+        cfg = LightRAGConfig.from_yaml_config({"lightrag": {"enabled": True}})
+        assert cfg.min_description_length == 100
+        assert cfg.full_description_threshold == 500
