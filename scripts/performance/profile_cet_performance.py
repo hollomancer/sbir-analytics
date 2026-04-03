@@ -60,7 +60,7 @@ except Exception:
     performance_monitor = None  # type: ignore
 
 try:
-    from sbir_etl.utils.performance_reporting import PerformanceReporter  # type: ignore
+    from sbir_etl.utils.monitoring.reporting import PerformanceReporter  # type: ignore
 except Exception:
     PerformanceReporter = None  # type: ignore
 

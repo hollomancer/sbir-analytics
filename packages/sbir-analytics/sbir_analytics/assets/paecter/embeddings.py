@@ -19,8 +19,17 @@ from sbir_etl.config.loader import get_config
 from sbir_ml.ml.config import PaECTERClientConfig
 from sbir_ml.ml.paecter_client import PaECTERClient
 from sbir_etl.utils.asset_column_helper import AssetColumnHelper
-from sbir_etl.utils.config_accessor import ConfigAccessor
 from sbir_etl.utils.monitoring import performance_monitor
+
+
+def _get_config_val(config: Any, path: str, default: Any = None) -> Any:
+    """Access nested config value via dot-separated path."""
+    current = config
+    for part in path.split("."):
+        current = getattr(current, part, None) if current is not None else None
+        if current is None:
+            return default
+    return current if current is not None else default
 
 
 @asset(
@@ -49,7 +58,7 @@ def paecter_embeddings_awards(
     )
 
     # Initialize PaECTER client
-    use_local = ConfigAccessor.get_nested(config, "ml.paecter.use_local", False)
+    use_local = _get_config_val(config, "ml.paecter.use_local", False)
     client = PaECTERClient(config=PaECTERClientConfig(use_local=use_local))
 
     # Find award ID column using helper
@@ -93,7 +102,7 @@ def paecter_embeddings_awards(
 
     # Generate embeddings with performance monitoring
     with performance_monitor.monitor_block("paecter_generate_award_embeddings"):
-        batch_size = ConfigAccessor.get_nested(config, "ml.paecter.batch_size", 32)
+        batch_size = _get_config_val(config, "ml.paecter.batch_size", 32)
         result = client.generate_embeddings(
             texts,
             batch_size=batch_size,
@@ -164,7 +173,7 @@ def paecter_embeddings_patents(
     context.log.info("Starting PaECTER embedding generation for USPTO patents")
 
     # Initialize PaECTER client
-    use_local = ConfigAccessor.get_nested(config, "ml.paecter.use_local", False)
+    use_local = _get_config_val(config, "ml.paecter.use_local", False)
     client = PaECTERClient(config=PaECTERClientConfig(use_local=use_local))
 
     # Try to load from transformed_patents JSONL file first
@@ -271,7 +280,7 @@ def paecter_embeddings_patents(
 
     # Generate embeddings with performance monitoring
     with performance_monitor.monitor_block("paecter_generate_patent_embeddings"):
-        batch_size = ConfigAccessor.get_nested(config, "ml.paecter.batch_size", 32)
+        batch_size = _get_config_val(config, "ml.paecter.batch_size", 32)
         result = client.generate_embeddings(
             texts,
             batch_size=batch_size,
@@ -346,7 +355,7 @@ def paecter_award_patent_similarity(
     patent_embeddings = np.array([np.array(e) for e in paecter_embeddings_patents["embedding"]])
 
     # Initialize client for similarity computation
-    use_local = ConfigAccessor.get_nested(config, "ml.paecter.use_local", False)
+    use_local = _get_config_val(config, "ml.paecter.use_local", False)
     client = PaECTERClient(config=PaECTERClientConfig(use_local=use_local))
 
     # Compute similarities with performance monitoring
@@ -354,7 +363,7 @@ def paecter_award_patent_similarity(
         similarities = client.compute_similarity(award_embeddings, patent_embeddings)
 
     # Get similarity threshold from config
-    threshold = ConfigAccessor.get_nested(config, "ml.paecter.similarity_threshold", 0.80)
+    threshold = _get_config_val(config, "ml.paecter.similarity_threshold", 0.80)
 
     # Find matches above threshold
     matches = []
@@ -408,10 +417,9 @@ def paecter_awards_coverage_check(
     paecter_embeddings_awards: pd.DataFrame,
 ) -> AssetCheckResult:
     """Check that award embedding coverage meets quality threshold."""
-    from sbir_etl.utils.config_accessor import ConfigAccessor
 
     config = get_config()
-    threshold = ConfigAccessor.get_nested(config, "ml.paecter.coverage_threshold_awards", 0.95)
+    threshold = _get_config_val(config, "ml.paecter.coverage_threshold_awards", 0.95)
 
     # Count valid embeddings (non-null, correct dimension)
     valid_count = 0
@@ -448,10 +456,9 @@ def paecter_patents_coverage_check(
     paecter_embeddings_patents: pd.DataFrame,
 ) -> AssetCheckResult:
     """Check that patent embedding coverage meets quality threshold."""
-    from sbir_etl.utils.config_accessor import ConfigAccessor
 
     config = get_config()
-    threshold = ConfigAccessor.get_nested(config, "ml.paecter.coverage_threshold_patents", 0.98)
+    threshold = _get_config_val(config, "ml.paecter.coverage_threshold_patents", 0.98)
 
     # Count valid embeddings (non-null, correct dimension)
     valid_count = 0

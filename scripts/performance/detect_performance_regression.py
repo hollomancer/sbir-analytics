@@ -37,7 +37,8 @@ from sbir_etl.config.loader import get_config
 from sbir_etl.enrichers.usaspending import enrich_sbir_with_usaspending
 from sbir_etl.extractors.sbir import SbirDuckDBExtractor
 from sbir_etl.utils.monitoring import performance_monitor
-from sbir_etl.utils.performance_reporting import PerformanceMetrics, PerformanceReporter
+from sbir_etl.utils.monitoring.metrics import PerformanceMetrics
+from sbir_etl.utils.monitoring.reporting import PerformanceReporter
 
 
 def load_sample_data(sample_size: int | None = None) -> tuple[pd.DataFrame, int]:

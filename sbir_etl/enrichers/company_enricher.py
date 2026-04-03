@@ -50,7 +50,7 @@ except Exception as e:  # pragma: no cover - defensive runtime behavior
     ) from e
 
 try:
-    from ..utils.enhanced_matching import jaro_winkler_similarity, phonetic_match
+    from .matching import jaro_winkler_similarity, phonetic_match
 except ImportError:  # pragma: no cover
     phonetic_match = None  # type: ignore
     jaro_winkler_similarity = None  # type: ignore
@@ -163,7 +163,7 @@ def _build_company_indexes(
     # Phonetic codes (if enabled)
     phonetic_by_code: dict[str, list[int]] = {}
     if enhanced_config and enhanced_config.get("enable_phonetic_matching", False):
-        from ..utils.enhanced_matching import get_phonetic_code
+        from .matching import get_phonetic_code
 
         algo = enhanced_config.get("phonetic_algorithm", "metaphone")
         for idx, name in df[company_name_col].items():
@@ -423,7 +423,7 @@ def enrich_awards_with_companies(
     for ai, arow in awards[unmatched_mask].iterrows():
         # Phonetic matching (if enabled)
         if enhanced_config.get("enable_phonetic_matching", False) and phonetic_by_code:
-            from ..utils.enhanced_matching import get_phonetic_code
+            from .matching import get_phonetic_code
 
             award_name = str(arow.get(award_company_col) or "")
             algo = enhanced_config.get("phonetic_algorithm", "metaphone")
