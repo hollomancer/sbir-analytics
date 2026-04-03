@@ -2,8 +2,8 @@
 """Generate a weekly SBIR awards report in markdown.
 
 Downloads the SBIR bulk CSV from SBIR.gov and filters for awards
-whose Award Date falls within the past 7 days, then outputs a
-markdown summary.
+whose Proposal Award Date falls within the past 7 days, then outputs a
+markdown summary with links to SBIR.gov, solicitations, and USAspending.
 
 Usage:
     python scripts/data/weekly_awards_report.py
@@ -15,10 +15,16 @@ import csv
 import io
 import sys
 from datetime import datetime, timedelta, UTC
+from urllib.parse import quote
 
 import requests
 
 SBIR_AWARDS_URL = "https://data.www.sbir.gov/mod_awarddatapublic/award_data.csv"
+
+# URL templates for external links
+SBIR_AWARD_SEARCH_URL = "https://www.sbir.gov/sbirsearch/award/all"
+SBIR_SOLICITATION_URL = "https://www.sbir.gov/sbirsearch/topic/default"
+USASPENDING_SEARCH_URL = "https://www.usaspending.gov/search"
 
 
 def parse_award_date(date_str: str) -> datetime | None:
@@ -46,13 +52,13 @@ def fetch_weekly_awards(days: int = 7) -> list[dict]:
     reader = csv.DictReader(io.StringIO(response.text))
     awards = []
     for row in reader:
-        award_date = parse_award_date(row.get("Award Date", ""))
+        award_date = parse_award_date(row.get("Proposal Award Date", ""))
         if award_date and award_date >= cutoff:
             awards.append(row)
 
     # Sort by date descending, then by amount descending
     def sort_key(a):
-        dt = parse_award_date(a.get("Award Date", "")) or datetime.min
+        dt = parse_award_date(a.get("Proposal Award Date", "")) or datetime.min
         try:
             amount = float(a.get("Award Amount", "0").replace(",", "").replace("$", ""))
         except (ValueError, AttributeError):
@@ -76,13 +82,56 @@ def format_amount(amount_str: str) -> str:
         return amount_str or "N/A"
 
 
+def build_sbir_award_url(award: dict) -> str:
+    """Build a link to the SBIR.gov award search page for this award.
+
+    Uses the contract number as a keyword search on SBIR.gov's award listing.
+    """
+    contract = award.get("Contract", "").strip()
+    if contract:
+        return f"{SBIR_AWARD_SEARCH_URL}/{quote(contract)}"
+    # Fall back to company name search
+    company = award.get("Company", "").strip()
+    if company:
+        return f"{SBIR_AWARD_SEARCH_URL}/{quote(company)}"
+    return SBIR_AWARD_SEARCH_URL
+
+
+def build_solicitation_url(award: dict) -> str | None:
+    """Build a link to the SBIR.gov solicitation/topic page.
+
+    Links to the SBIR.gov topic search using the solicitation number.
+    Returns None if no solicitation info is available.
+    """
+    solicitation = award.get("Solicitation Number", "").strip()
+    topic_code = award.get("Topic Code", "").strip()
+
+    if solicitation:
+        return f"{SBIR_SOLICITATION_URL}?keyword={quote(solicitation)}"
+    if topic_code:
+        return f"{SBIR_SOLICITATION_URL}?keyword={quote(topic_code)}"
+    return None
+
+
+def build_usaspending_url(award: dict) -> str | None:
+    """Build a link to USAspending.gov search for this award's contract.
+
+    Returns None if no contract number is available.
+    """
+    contract = award.get("Contract", "").strip()
+    if not contract:
+        return None
+    search_term = quote(contract)
+    return f'{USASPENDING_SEARCH_URL}?form_fields={{"search_term":"{search_term}"}}'
+
+
 def generate_markdown(awards: list[dict], days: int) -> str:
     """Generate markdown report from filtered awards."""
     now = datetime.now(UTC)
     cutoff = now - timedelta(days=days)
 
     lines = []
-    lines.append(f"# SBIR Weekly Awards Report")
+    lines.append("# SBIR Weekly Awards Report")
     lines.append("")
     lines.append(
         f"**Period:** {cutoff.strftime('%B %d, %Y')} - {now.strftime('%B %d, %Y')}"
@@ -120,8 +169,8 @@ def generate_markdown(awards: list[dict], days: int) -> str:
 
     lines.append("## Summary")
     lines.append("")
-    lines.append(f"| Metric | Value |")
-    lines.append(f"|--------|-------|")
+    lines.append("| Metric | Value |")
+    lines.append("|--------|-------|")
     lines.append(f"| Total Awards | {len(awards)} |")
     lines.append(f"| Total Funding | {format_amount(str(total_amount))} |")
     lines.append(
@@ -153,31 +202,67 @@ def generate_markdown(awards: list[dict], days: int) -> str:
         lines.append(f"| {program} | {phase} | {count} |")
     lines.append("")
 
-    # Awards table
+    # Awards list with links
     lines.append("## Awards")
     lines.append("")
-    lines.append("| Date | Company | Award Title | Agency | Program | Phase | Amount | State |")
-    lines.append("|------|---------|-------------|--------|---------|-------|--------|-------|")
 
-    for a in awards:
-        date = a.get("Award Date", "")
+    for i, a in enumerate(awards, 1):
+        date = a.get("Proposal Award Date", "")
         company = a.get("Company", "")
         title = a.get("Award Title", "")
-        # Truncate long titles for table readability
-        if len(title) > 80:
-            title = title[:77] + "..."
         agency = a.get("Agency", "")
         program = a.get("Program", "")
         phase = a.get("Phase", "")
         amount = format_amount(a.get("Award Amount", ""))
         state = a.get("State", "")
-        lines.append(
-            f"| {date} | {company} | {title} | {agency} | {program} | {phase} | {amount} | {state} |"
-        )
+        contract = a.get("Contract", "").strip()
+        solicitation = a.get("Solicitation Number", "").strip()
+        topic_code = a.get("Topic Code", "").strip()
+        pi_name = a.get("PI Name", "").strip()
 
-    lines.append("")
+        # Build links
+        sbir_url = build_sbir_award_url(a)
+        solicitation_url = build_solicitation_url(a)
+        usaspending_url = build_usaspending_url(a)
+
+        # Award header with title linked to SBIR.gov
+        lines.append(f"### {i}. [{title}]({sbir_url})")
+        lines.append("")
+
+        # Details table
+        lines.append("| Field | Value |")
+        lines.append("|-------|-------|")
+        lines.append(f"| **Company** | {company} |")
+        lines.append(f"| **Award Date** | {date} |")
+        lines.append(f"| **Amount** | {amount} |")
+        lines.append(f"| **Agency** | {agency} |")
+        lines.append(f"| **Program** | {program} |")
+        lines.append(f"| **Phase** | {phase} |")
+        if state:
+            lines.append(f"| **State** | {state} |")
+        if contract:
+            lines.append(f"| **Contract** | `{contract}` |")
+        if pi_name:
+            lines.append(f"| **PI** | {pi_name} |")
+        if solicitation:
+            lines.append(f"| **Solicitation** | `{solicitation}` |")
+        if topic_code:
+            lines.append(f"| **Topic Code** | `{topic_code}` |")
+
+        # Links
+        link_parts = [f"[SBIR.gov Award]({sbir_url})"]
+        if solicitation_url:
+            link_parts.append(f"[Solicitation]({solicitation_url})")
+        if usaspending_url:
+            link_parts.append(f"[USAspending]({usaspending_url})")
+
+        lines.append("")
+        lines.append(" | ".join(link_parts))
+        lines.append("")
+
     lines.append(
-        f"---\n*Generated on {now.strftime('%Y-%m-%d %H:%M UTC')} from [SBIR.gov](https://www.sbir.gov) bulk data.*"
+        f"---\n*Generated on {now.strftime('%Y-%m-%d %H:%M UTC')} from "
+        f"[SBIR.gov]({SBIR_AWARDS_URL}) bulk data.*"
     )
     return "\n".join(lines)
 
