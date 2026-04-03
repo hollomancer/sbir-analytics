@@ -221,10 +221,14 @@ install-ml: ## Install ML dependencies (jupyter, paecter)
 	@$(call info,Installing ML dependencies)
 	$(call run,uv sync --extra ml --extra paecter-local)
 
-.PHONY: install-r
-install-r: ## Install R dependencies for fiscal analysis (requires R installed)
-	@$(call info,Installing R dependencies)
-	$(call run,uv sync --extra r)
+.PHONY: install-fiscal
+install-fiscal: ## Verify BEA API key is set for fiscal analysis
+	@$(call info,Checking BEA API key for fiscal analysis)
+	@if [ -z "$$BEA_API_KEY" ]; then \
+		echo "⚠️  BEA_API_KEY not set. Register at https://apps.bea.gov/API/signup/"; \
+	else \
+		echo "✓ BEA_API_KEY is configured"; \
+	fi
 
 .PHONY: notebook
 notebook: install-ml ## Start Jupyter Lab for ML analysis (Cloud-Native)
@@ -494,7 +498,7 @@ cet-run: ## Run CET classification pipeline
 	@$(call success,CET classification completed)
 
 .PHONY: fiscal-run
-fiscal-run: ## Run fiscal returns analysis (R-based)
+fiscal-run: ## Run fiscal returns analysis (BEA API)
 	@$(call info,Running fiscal returns analysis)
 	$(call run,uv run dagster job execute -m src.definitions_ml -j fiscal_returns_mvp_job)
 	@$(call success,Fiscal returns analysis completed)

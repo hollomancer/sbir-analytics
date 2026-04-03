@@ -22,7 +22,7 @@ The codebase uses a consolidated architecture with well-structured modules:
 
 - **~317 Python files** across `sbir_etl/` and `packages/` organized by ETL stage
 - **Configuration system:** 33/33 tests passing, 88% coverage
-- **Workflows:** ci, deploy, nightly, weekly, lambda-deploy, data-refresh, build-r-base, run-ml-jobs
+- **Workflows:** ci, deploy, nightly, weekly, lambda-deploy, data-refresh, build-images, run-ml-jobs
 
 ## Key Directories
 
@@ -71,7 +71,7 @@ archive/openspec/       # Archived OpenSpec content (historical reference)
   weekly.yml            # Weekly comprehensive tests
   lambda-deploy.yml     # Lambda function deployment
   data-refresh.yml      # SBIR/USAspending/USPTO data refresh
-  build-r-base.yml      # R base image build for fiscal analysis
+  build-images.yml      # Container image builds (python-base, etl, full)
   run-ml-jobs.yml       # ML job execution (PaECTER, CET)
 ```
 

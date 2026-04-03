@@ -343,7 +343,7 @@ jobs:
             exit 1
           fi
 
-  # Fiscal runs on AWS Batch (needs 8GB+ RAM for R/StateIO)
+  # Fiscal runs on AWS Batch (BEA API I-O analysis)
   fiscal-pipeline:
     name: Fiscal Returns (AWS Batch)
     if: github.event.inputs.job == 'fiscal_returns_mvp' || github.event.inputs.job == 'all'
