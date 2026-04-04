@@ -3,7 +3,7 @@
 This module allocates state-level economic impacts to congressional districts
 based on proportional award distribution.
 
-Since StateIO provides state-level economic models, we allocate those impacts
+Since BEA I-O provides state-level economic models, we allocate those impacts
 to districts proportionally based on SBIR award amounts in each district.
 """
 
@@ -19,7 +19,7 @@ def allocate_state_impacts_to_districts(
 ) -> pd.DataFrame:
     """Allocate state-level economic impacts to congressional districts.
 
-    Takes state-level impacts (from StateIO) and allocates them proportionally
+    Takes state-level impacts (from BEA I-O adapter) and allocates them proportionally
     to districts based on award distribution within each state.
 
     Args:

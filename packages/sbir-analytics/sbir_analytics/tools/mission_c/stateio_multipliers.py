@@ -1,5 +1,5 @@
 """
-StateIO economic multipliers tool.
+BEA I-O economic multipliers tool.
 
 Wraps the BEAIOAdapter to provide state-by-sector economic multipliers
 for Track A fiscal estimation.
@@ -23,7 +23,7 @@ from ..base import BaseTool, DataSourceRef, ToolMetadata, ToolResult
 
 
 class StateIOMultipliersTool(BaseTool):
-    """Retrieve StateIO economic multipliers by state and BEA sector.
+    """Retrieve BEA I-O economic multipliers by state and BEA sector.
 
     Wraps the BEA I-O adapter with the standard tool interface.
     Falls back to CSV-based lookup if BEA API key is not set.
@@ -175,8 +175,8 @@ class StateIOMultipliersTool(BaseTool):
         metadata.record_count = len(multipliers_df)
         metadata.data_sources.append(
             DataSourceRef(
-                name="EPA Data Commons (StateIO)",
-                url="https://github.com/USEPA/stateior",
+                name="BEA Input-Output Tables",
+                url="https://apps.bea.gov/api/",
                 version="2012-2020",
                 record_count=len(multipliers_df),
                 access_method=access_method,
@@ -185,7 +185,7 @@ class StateIOMultipliersTool(BaseTool):
 
         if access_method in ("csv_precomputed", "default_fallback"):
             metadata.warnings.append(
-                "StateIO temporal coverage ends 2020. Post-2020 estimates "
+                "BEA I-O temporal coverage ends 2020. Post-2020 estimates "
                 "require extrapolation from most recent I-O tables."
             )
 

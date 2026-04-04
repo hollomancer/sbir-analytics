@@ -4,7 +4,7 @@ This example demonstrates the complete pipeline from SBIR awards to
 tax and job impact analysis by state and industry using mock data.
 
 This version works WITHOUT R and provides realistic demo outputs.
-For real calculations, use Docker or install R + stateio packages.
+For real calculations, set BEA_API_KEY (register at https://apps.bea.gov/API/signup/).
 
 Usage:
     python examples/sbir_fiscal_impact_example_mock.py
@@ -267,7 +267,7 @@ def main():
     print("=" * 80)
     print()
     print("NOTE: This is a demonstration using mock economic multipliers.")
-    print("      For real calculations, run in Docker with R and StateIO installed.")
+    print("      For real calculations, set BEA_API_KEY environment variable.")
     print("      See Dockerfile and docker-compose.yml for setup.")
     print()
 
@@ -284,7 +284,7 @@ def main():
     calculator = MockSBIRFiscalImpactCalculator()
     print("  ✓ Mock calculator initialized")
     print("  ✓ NAICS→BEA mapper loaded")
-    print("  ✓ Using simplified economic multipliers (not real StateIO)")
+    print("  ✓ Using simplified economic multipliers (BEA_API_KEY not set)")
     print()
 
     # Step 3: Calculate impacts

@@ -376,7 +376,7 @@ def bea_mapping_quality_check(bea_mapped_sbir_awards: pd.DataFrame) -> AssetChec
 
 
 @asset(
-    description="Economic shocks aggregated by state, BEA sector, and fiscal year for StateIO model input",
+    description="Economic shocks aggregated by state, BEA sector, and fiscal year for BEA I-O model input",
     group_name="economic_modeling",
     compute_kind="pandas",
 )
@@ -521,7 +521,7 @@ def economic_shocks_quality_check(economic_shocks: pd.DataFrame) -> AssetCheckRe
 
 
 @asset(
-    description="Economic impacts computed from shocks using StateIO model",
+    description="Economic impacts computed from shocks using BEA I-O model",
     group_name="economic_modeling",
     compute_kind="r",
 )
@@ -949,7 +949,7 @@ def inflation_adjustment_quality_check(inflation_adjusted_awards: pd.DataFrame) 
 
 
 @asset(
-    description="Economic components extracted from StateIO impacts for tax base calculation",
+    description="Economic components extracted from BEA I-O impacts for tax base calculation",
     group_name="tax_calculation",
     compute_kind="pandas",
 )
@@ -958,7 +958,7 @@ def tax_base_components(
     economic_impacts: pd.DataFrame,
 ) -> Output[pd.DataFrame]:
     """
-    Extract and validate economic components from StateIO model outputs.
+    Extract and validate economic components from BEA I-O model outputs.
 
     This asset transforms economic impacts into validated tax base components:
     wage impacts, proprietor income, gross operating surplus, and consumption.

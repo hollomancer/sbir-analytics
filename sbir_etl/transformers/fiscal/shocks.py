@@ -2,7 +2,7 @@
 Economic shock aggregator for fiscal returns analysis.
 
 This module aggregates SBIR awards into state-by-sector-by-fiscal-year economic shocks
-for StateIO model input, maintaining award-to-shock traceability for audit purposes.
+for BEA I-O model input, maintaining award-to-shock traceability for audit purposes.
 """
 
 from __future__ import annotations
@@ -82,7 +82,7 @@ class FiscalShockAggregator:
     """Aggregate SBIR awards into state-by-sector-by-fiscal-year economic shocks.
 
     This aggregator processes BEA-mapped awards and creates EconomicShock objects
-    for input to StateIO economic models. It maintains full traceability from
+    for input to BEA I-O economic models. It maintains full traceability from
     individual awards to aggregated shocks for audit purposes.
     """
 

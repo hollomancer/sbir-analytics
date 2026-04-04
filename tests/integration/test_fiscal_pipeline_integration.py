@@ -108,7 +108,7 @@ def mock_economic_shocks(mock_bea_mapped):
 
 @pytest.fixture
 def mock_economic_impacts(mock_economic_shocks):
-    """Create mock economic impacts from StateIO model."""
+    """Create mock economic impacts from BEA I-O model."""
     impacts = []
     for _, shock in mock_economic_shocks.iterrows():
         impacts.append(

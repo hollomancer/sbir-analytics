@@ -96,7 +96,7 @@ runs:
 
     - name: Install dependencies
       run: |
-        # Note: R dependencies (rpy2) are excluded by default since they require R to build
+        # Fiscal analysis uses BEA REST API (no R/rpy2 required)
         # Use install-r-deps input to include them when R is installed
         if [ "${{ inputs.install-dev-deps }}" = "true" ]; then
           uv sync --extra dev

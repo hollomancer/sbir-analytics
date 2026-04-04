@@ -202,7 +202,7 @@ class SBIRFiscalImpactCalculator:
         """Add employment (jobs created) to impacts.
 
         Uses a simplified multiplier approach. For production use, this should
-        integrate with StateIO employment data.
+        integrate with BEA employment data.
 
         Args:
             impacts: Impacts DataFrame from R adapter
@@ -344,7 +344,7 @@ class SBIRFiscalImpactCalculator:
         """Calculate fiscal impacts allocated to congressional districts.
 
         This is a two-step process:
-        1. Calculate state-level impacts using StateIO economic models
+        1. Calculate state-level impacts using BEA I-O economic models
         2. Allocate those impacts to districts proportionally
 
         Args:
@@ -367,7 +367,7 @@ class SBIRFiscalImpactCalculator:
             awards_df
         )
 
-        # Step 2: Calculate state-level impacts (using StateIO)
+        # Step 2: Calculate state-level impacts (using BEA I-O)
         state_impacts = self.calculate_impacts_from_sbir_awards(awards_df)
 
         # Step 3: Allocate state impacts to districts
