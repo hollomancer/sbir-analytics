@@ -123,7 +123,13 @@ class BEAApiClient:
 
         # Handle both single-result and multi-result formats
         if isinstance(results, list):
-            rows = results
+            # Multi-result: each element may contain a nested "Data" list
+            rows: list[dict[str, Any]] = []
+            for item in results:
+                if isinstance(item, dict) and "Data" in item:
+                    rows.extend(item["Data"])
+                else:
+                    rows.append(item)
         elif isinstance(results, dict):
             rows = results.get("Data", [])
         else:

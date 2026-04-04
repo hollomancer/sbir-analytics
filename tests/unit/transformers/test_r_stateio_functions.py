@@ -217,22 +217,25 @@ class TestEmploymentFromProduction:
     """Tests for employment-from-production calculation."""
 
     def test_with_coefficients(self):
-        """Test employment calculation with coefficients."""
-        production = pd.Series([1_000_000, 500_000], index=["11", "21"])
+        """Test employment calculation with coefficients.
+
+        Production is in millions (BEA units), coefficients are jobs per $1M.
+        """
+        production = pd.Series([1.0, 0.5], index=["11", "21"])  # $1M, $0.5M
         coefficients = pd.DataFrame({
             "sector": ["11", "21"],
             "employment": [2000, 1000],
-            "employment_coefficient": [20.0, 10.0],
+            "employment_coefficient": [20.0, 10.0],  # jobs per $1M
         })
 
         jobs = bea_io.calculate_employment_from_production(production, coefficients)
-        assert jobs["11"] == 20.0  # (1M / 1M) * 20
-        assert jobs["21"] == 5.0   # (0.5M / 1M) * 10
+        assert jobs["11"] == 20.0  # 1.0 * 20
+        assert jobs["21"] == 5.0   # 0.5 * 10
 
     def test_without_coefficients(self):
-        """Test employment calculation falls back to default."""
-        production = pd.Series([100_000], index=["11"])
+        """Test employment calculation falls back to default (~10 jobs/$1M)."""
+        production = pd.Series([1.0], index=["11"])  # $1M in BEA units
         empty_coefficients = pd.DataFrame()
 
         jobs = bea_io.calculate_employment_from_production(production, empty_coefficients)
-        assert jobs["11"] == 1.0  # 100_000 / 100_000
+        assert jobs["11"] == 10.0  # 1.0 * 10 (default fallback)

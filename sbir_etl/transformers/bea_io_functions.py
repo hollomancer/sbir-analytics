@@ -11,13 +11,11 @@ has moved from R to the BEA REST API.
 
 from __future__ import annotations
 
-from typing import Any
-
 import numpy as np
 import pandas as pd
 from loguru import logger
 
-from .bea_api_client import BEAApiClient, STATE_FIPS
+from .bea_api_client import BEAApiClient
 
 
 # ---------------------------------------------------------------------------
@@ -195,7 +193,7 @@ def calculate_value_added_ratios(
                 industry_va[industry]["taxes"] = value
             elif "proprietor" in desc:
                 industry_va[industry]["proprietor_income"] = value
-            elif "value added" in desc or "total" in desc:
+            elif "value added" in desc or "total value added" in desc:
                 industry_va[industry]["total_va"] = value
 
         # Compute ratios
@@ -238,14 +236,19 @@ def calculate_employment_coefficients(
     emp_df: pd.DataFrame,
     industry_output: pd.Series,
 ) -> pd.DataFrame:
-    """Calculate employment coefficients (jobs per $1M output) by sector.
+    """Calculate employment coefficients (jobs per $1M of output) by sector.
+
+    Both ``emp_df`` and ``industry_output`` use BEA units (output in millions
+    of dollars).  The resulting coefficient is ``employment / output_millions``,
+    i.e. **jobs per $1M of output**.
 
     Args:
         emp_df: Employment DataFrame from fetch_employment().
-        industry_output: Industry output Series.
+        industry_output: Industry output Series (in millions $, from BEA).
 
     Returns:
-        DataFrame with columns: sector, employment, employment_coefficient.
+        DataFrame with columns: sector, employment, employment_coefficient
+        (jobs per $1M output).
     """
     if emp_df.empty or industry_output.empty:
         return pd.DataFrame()
@@ -259,7 +262,9 @@ def calculate_employment_coefficients(
             if sector in industry_output.index:
                 output_val = float(industry_output[sector])
                 if output_val > 0:
-                    coeff = (emp_val / output_val) * 1_000_000
+                    # output_val is in millions $, so emp_val / output_val
+                    # gives jobs per $1M of output directly.
+                    coeff = emp_val / output_val
                     coefficients.append(
                         {
                             "sector": sector,
@@ -390,16 +395,24 @@ def calculate_employment_from_production(
 ) -> pd.Series:
     """Calculate jobs created from production impacts.
 
+    Units must be consistent: ``production_by_sector`` should be in the same
+    units as the output used to build ``employment_coefficients``.  When both
+    come from BEA tables this means **millions of dollars**.
+
+    Formula: ``jobs = production_millions × coefficient``
+    where coefficient is jobs per $1M of output.
+
     Args:
-        production_by_sector: Production impact by sector (dollars).
-        employment_coefficients: Employment coefficients by sector.
+        production_by_sector: Production impact by sector (millions $, BEA units).
+        employment_coefficients: Employment coefficients (jobs per $1M output).
 
     Returns:
         Jobs created by sector.
     """
     if employment_coefficients.empty:
         logger.debug("No employment coefficients, using default multiplier")
-        return production_by_sector / 100_000
+        # Fallback: ~10 jobs per $1M of production (production in millions)
+        return production_by_sector * 10.0
 
     try:
         jobs_by_sector = pd.Series(0.0, index=production_by_sector.index)
@@ -412,12 +425,13 @@ def calculate_employment_from_production(
 
             if not sector_coeff.empty:
                 coeff = sector_coeff["employment_coefficient"].iloc[0]
-                jobs = (production_val / 1_000_000) * coeff
+                jobs = production_val * coeff
                 jobs_by_sector[sector] = jobs
             else:
-                jobs_by_sector[sector] = production_val / 100_000
+                # Fallback: ~10 jobs per $1M
+                jobs_by_sector[sector] = production_val * 10.0
 
         return jobs_by_sector
     except Exception as e:
         logger.error(f"Failed to calculate employment: {e}")
-        return production_by_sector / 100_000
+        return production_by_sector * 10.0

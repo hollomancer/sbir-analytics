@@ -330,12 +330,15 @@ class BEAIOAdapter:
                     tax_impact = production_impact * tax_ratio
                     proprietor_impact = production_impact * proprietor_ratio
 
-                    # Employment impact (jobs created)
+                    # Employment impact (jobs created).
+                    # employment_by_sector was computed from production in
+                    # millions, using coefficients in jobs-per-$1M.
                     if sector in employment_by_sector.index:
                         employment_impact = float(employment_by_sector[sector])
                     else:
-                        # Fallback: rough estimate from production
-                        employment_impact = float(production_impact) / 100_000
+                        # Fallback: ~10 jobs per $1M of production
+                        production_millions = float(production_impact) / 1_000_000.0
+                        employment_impact = production_millions * 10.0
 
                     quality_flags = (
                         "bea_api_with_ratios"
