@@ -21,6 +21,8 @@ __all__ = [
     # Client
     "Neo4jClient",
     "Neo4jConfig",
+    "Neo4jHealthStatus",
+    "Neo4jStatistics",
     "LoadMetrics",
     # Patents (USPTO assignments)
     "PatentLoader",
@@ -51,6 +53,8 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "LoadMetrics": (".client", "LoadMetrics"),
     "Neo4jClient": (".client", "Neo4jClient"),
     "Neo4jConfig": (".client", "Neo4jConfig"),
+    "Neo4jHealthStatus": (".client", "Neo4jHealthStatus"),
+    "Neo4jStatistics": (".client", "Neo4jStatistics"),
     "OrganizationLoader": (".organizations", "OrganizationLoader"),
     "Neo4jPatentCETLoader": (".patent_cet", "Neo4jPatentCETLoader"),
     "PatentLoader": (".patents", "PatentLoader"),

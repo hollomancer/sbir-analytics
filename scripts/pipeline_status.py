@@ -42,9 +42,18 @@ def check_assets(config) -> dict:
 
 def check_neo4j(config) -> dict:
     """Check Neo4j connection health."""
-    from sbir_analytics.clients import Neo4jClient
+    from sbir_analytics.clients import Neo4jClient, Neo4jConfig
 
-    client = Neo4jClient(config)
+    import os
+
+    neo4j_cfg = config.neo4j
+    password = neo4j_cfg.password or os.getenv(neo4j_cfg.password_env_var, "neo4j")
+    client = Neo4jClient(Neo4jConfig(
+        uri=neo4j_cfg.uri,
+        username=neo4j_cfg.username,
+        password=password or "neo4j",
+        database=neo4j_cfg.database,
+    ))
     health = client.health_check()
     result = {
         "connected": health.connected,
