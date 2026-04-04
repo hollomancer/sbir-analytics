@@ -1059,7 +1059,7 @@ jobs:
       - name: Gate on analytics checks
         run: |
           set -euo pipefail
-          uv run python scripts/ci/gate_transition_analytics.py
+          uv run python scripts/ci/gate_check.py transition-analytics
 
       - name: Upload validation summary
         if: always()

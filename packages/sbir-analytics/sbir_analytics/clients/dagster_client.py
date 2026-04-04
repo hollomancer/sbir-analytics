@@ -1,4 +1,4 @@
-"""Dagster client for CLI asset operations."""
+"""Dagster client for asset operations."""
 
 from __future__ import annotations
 
@@ -10,7 +10,6 @@ from dagster import AssetKey, DagsterEventType, DagsterInstance, Definitions, ma
 from dagster._core.definitions.asset_selection import AssetSelection
 from dagster._core.event_api import EventRecordsFilter
 from loguru import logger
-from rich.console import Console
 
 from sbir_etl.config.schemas import PipelineConfig
 
@@ -37,21 +36,10 @@ class RunResult:
 
 
 class DagsterClient:
-    """Dagster client for CLI operations.
+    """Dagster client for asset status queries and materialization triggering."""
 
-    Provides asset status queries and materialization triggering
-    using Dagster's Python API.
-    """
-
-    def __init__(self, config: PipelineConfig, console: Console) -> None:
-        """Initialize Dagster client.
-
-        Args:
-            config: Pipeline configuration
-            console: Rich console for output
-        """
+    def __init__(self, config: PipelineConfig) -> None:
         self.config = config
-        self.console = console
         self._defs: Definitions | None = None
         self._instance: DagsterInstance | None = None
 
@@ -65,7 +53,6 @@ class DagsterClient:
                 self._defs = defs
             except Exception as e:
                 logger.warning(f"Failed to load Dagster definitions: {e}")
-                # Return empty definitions as fallback
                 from dagster import Definitions
 
                 self._defs = Definitions()
@@ -75,26 +62,19 @@ class DagsterClient:
     def instance(self) -> DagsterInstance:
         """Get or create Dagster instance."""
         if self._instance is None:
-            # Try to get instance from environment or use default
             try:
                 self._instance = DagsterInstance.get()
             except Exception:
-                # Fallback to ephemeral instance
                 logger.warning("Using ephemeral Dagster instance (no persistent storage)")
                 self._instance = DagsterInstance.ephemeral()
         return self._instance
 
     def list_assets(self) -> list[dict[str, Any]]:
-        """List all assets with metadata.
-
-        Returns:
-            List of asset dictionaries with key, group, description, etc.
-        """
+        """List all assets with metadata."""
         assets_info: list[Any] = []
         if self.defs.assets is None:
             return assets_info
         for asset in self.defs.assets:
-            # Handle different asset types
             if hasattr(asset, "key"):
                 asset_key = str(asset.key)
             else:
@@ -113,16 +93,8 @@ class DagsterClient:
         return assets_info
 
     def get_asset_status(self, asset_key: str) -> AssetStatus:
-        """Get status of a specific asset.
-
-        Args:
-            asset_key: Asset key string (e.g., "raw_sbir_awards")
-
-        Returns:
-            AssetStatus with current status
-        """
+        """Get status of a specific asset."""
         try:
-            # Get asset materializations from instance
             key = AssetKey.from_user_string(asset_key) if isinstance(asset_key, str) else asset_key
             materializations = self.instance.get_event_records(
                 EventRecordsFilter(
@@ -173,14 +145,6 @@ class DagsterClient:
     ) -> RunResult:
         """Trigger materialization of assets.
 
-        Args:
-            asset_keys: Optional list of asset key strings to materialize
-            asset_groups: Optional list of asset group names to materialize
-            **kwargs: Additional arguments for materialization
-
-        Returns:
-            RunResult with run information
-
         Raises:
             ValueError: If both asset_keys and asset_groups are None
         """
@@ -188,7 +152,6 @@ class DagsterClient:
             raise ValueError("Must specify either asset_keys or asset_groups")
 
         try:
-            # Build asset selection
             if asset_keys:
                 selection: Any = AssetSelection.keys(
                     *[AssetKey.from_user_string(k) for k in asset_keys]
@@ -198,7 +161,6 @@ class DagsterClient:
             else:
                 selection = AssetSelection.all()
 
-            # Materialize assets using selection directly
             if self.defs.assets:
                 result = materialize(
                     assets=list(self.defs.assets),  # type: ignore[arg-type]
@@ -224,14 +186,7 @@ class DagsterClient:
             raise
 
     def get_run_status(self, run_id: str) -> dict[str, Any]:
-        """Get status of a specific run.
-
-        Args:
-            run_id: Run ID string
-
-        Returns:
-            Dictionary with run status information
-        """
+        """Get status of a specific run."""
         try:
             run = self.instance.get_run_by_id(run_id)
             if run is None:
@@ -265,10 +220,9 @@ class DagsterClient:
 
     def list_recent_runs(self, limit: int = 10) -> list[dict[str, Any]]:
         """Return metadata for recent Dagster runs."""
-
         try:
             runs = self.instance.get_runs(limit=limit)
-        except Exception as exc:  # pragma: no cover - Dagster instance failure
+        except Exception as exc:
             logger.error(f"Failed to list Dagster runs: {exc}")
             return []
 

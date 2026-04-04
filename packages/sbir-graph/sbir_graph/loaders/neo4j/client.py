@@ -1,9 +1,10 @@
-"""Neo4j client wrapper for batch loading and transaction management."""
+"""Neo4j client wrapper for batch loading, transaction management, and monitoring."""
 
 import hashlib
 import json
 from collections.abc import Iterator
 from contextlib import contextmanager
+from dataclasses import dataclass
 from typing import Any
 
 from loguru import logger
@@ -27,6 +28,27 @@ class Neo4jConfig(BaseModel):
     database: str = "neo4j"
     batch_size: int = 5000  # Increased for UNWIND performance
     auto_migrate: bool = True  # Automatically run migrations on client initialization
+
+
+@dataclass
+class Neo4jHealthStatus:
+    """Neo4j connection health status."""
+
+    connected: bool
+    uri: str
+    version: str | None = None
+    error: str | None = None
+
+
+@dataclass
+class Neo4jStatistics:
+    """Neo4j database statistics."""
+
+    node_counts: dict[str, int]
+    relationship_counts: dict[str, int]
+    total_nodes: int
+    total_relationships: int
+    database_name: str
 
 
 class LoadMetrics(BaseModel):
@@ -765,6 +787,102 @@ class Neo4jClient:
         )
 
         return metrics
+
+    # --- Read-only monitoring methods ---
+
+    def health_check(self) -> Neo4jHealthStatus:
+        """Check Neo4j connection health."""
+        try:
+            with self.session() as session:
+                result = session.run("RETURN 1 as test")
+                record = result.single()
+
+                if record and record["test"] == 1:
+                    version_result = session.run(
+                        "CALL dbms.components() YIELD name, versions "
+                        "RETURN versions[0] as version"
+                    )
+                    version_record = version_result.single()
+                    version = version_record["version"] if version_record else None
+
+                    return Neo4jHealthStatus(
+                        connected=True,
+                        uri=self.config.uri,
+                        version=version,
+                    )
+                else:
+                    return Neo4jHealthStatus(
+                        connected=False,
+                        uri=self.config.uri,
+                        error="Query returned unexpected result",
+                    )
+
+        except Exception as e:
+            logger.debug(f"Neo4j health check failed: {e}")
+            return Neo4jHealthStatus(
+                connected=False,
+                uri=self.config.uri,
+                error=str(e),
+            )
+
+    def get_statistics(self) -> Neo4jStatistics | None:
+        """Get Neo4j database statistics (node and relationship counts)."""
+        try:
+            with self.session() as session:
+                node_query = """
+                MATCH (n)
+                RETURN labels(n)[0] as label, count(n) as count
+                ORDER BY count DESC
+                """
+                node_result = session.run(node_query)
+                node_counts = {
+                    record["label"]: record["count"]
+                    for record in node_result
+                    if record["label"]
+                }
+
+                rel_query = """
+                MATCH ()-[r]->()
+                RETURN type(r) as rel_type, count(r) as count
+                ORDER BY count DESC
+                """
+                rel_result = session.run(rel_query)
+                relationship_counts = {
+                    record["rel_type"]: record["count"] for record in rel_result
+                }
+
+                return Neo4jStatistics(
+                    node_counts=node_counts,
+                    relationship_counts=relationship_counts,
+                    total_nodes=sum(node_counts.values()),
+                    total_relationships=sum(relationship_counts.values()),
+                    database_name=self.config.database,
+                )
+
+        except Exception as e:
+            logger.warning(f"Failed to get Neo4j statistics: {e}")
+            return None
+
+    def execute_query(
+        self, query: str, parameters: dict[str, Any] | None = None
+    ) -> list[dict[str, Any]]:
+        """Execute a read-only Cypher query.
+
+        Logs a warning if the query contains write keywords.
+        """
+        write_keywords = ["CREATE", "DELETE", "SET", "REMOVE", "MERGE", "CREATE UNIQUE"]
+        query_upper = query.upper()
+        if any(keyword in query_upper for keyword in write_keywords):
+            logger.warning(f"Query contains write keywords: {query}")
+
+        try:
+            with self.session() as session:
+                result = session.run(query, parameters or {})
+                return [dict(record) for record in result]
+
+        except Exception as e:
+            logger.error(f"Query execution failed: {e}")
+            raise
 
     def __enter__(self) -> "Neo4jClient":
         """Context manager entry."""

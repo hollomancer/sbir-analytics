@@ -49,7 +49,7 @@ packages/
       ├── paecter/      # PaECTER embeddings and similarity
       ├── jobs/         # Dagster job definitions (cet, fiscal, transition, uspto, paecter, usaspending)
       └── sensors/      # Dagster sensors (usaspending refresh)
-    cli/                # Command-line interface (commands, display, integration)
+    clients/            # Service clients (Dagster, Neo4j, metrics)
     definitions.py      # Dagster repository definitions
   sbir-graph/sbir_graph/
     loaders/            # Neo4j (idempotent MERGE, relationships)
@@ -89,7 +89,7 @@ archive/openspec/       # Archived OpenSpec content (historical reference)
 **Update Neo4j:** Modify `packages/sbir-graph/sbir_graph/loaders/`, use MERGE operations, document in `docs/schemas/`
 **Run fiscal analysis:** Use `fiscal_returns_mvp_job` (core) or `fiscal_returns_full_job` (with sensitivity)
 **Run PaECTER analysis:** Use `paecter_job` for embedding generation and award-patent similarity computation
-**Use CLI tools:** Run `uv run python -m sbir_analytics.cli.main <command>` (or `sbir-cli <command>`) for dashboard, metrics, status, and enrichment operations
+**Use scripts:** Run `python scripts/pipeline_status.py`, `python scripts/pipeline_metrics.py`, `python scripts/run_benchmark.py`, or `python scripts/run_transition.py` for pipeline operations
 
 ## References
 
