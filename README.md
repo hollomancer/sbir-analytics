@@ -63,7 +63,7 @@ For production use, see [Deployment Guide](docs/deployment/README.md) for:
 | **Transition Detection** | Identify SBIR → federal contract transitions (≥85% precision) | [docs/transition/](docs/transition/) |
 | **CET Classification** | ML-based technology area classification | [docs/ml/](docs/ml/) |
 | **ModernBERT-Embed** | Patent-award similarity using semantic embeddings | [docs/ml/paecter.md](docs/ml/paecter.md) |
-| **Fiscal Returns** | Economic impact & ROI analysis using StateIO | [docs/fiscal/](docs/fiscal/) |
+| **Fiscal Returns** | Economic impact & ROI analysis using BEA I-O tables | [docs/fiscal/](docs/fiscal/) |
 | **Patent Analysis** | USPTO patent chains and tech transfer tracking | [docs/schemas/patent-neo4j-schema.md](docs/schemas/patent-neo4j-schema.md) |
 
 ### Technology Stack
@@ -174,7 +174,7 @@ This project is licensed under the [MIT License](LICENSE). Copyright (c) 2025 Co
 
 This project makes use of and is grateful for the following open-source tools and research:
 
-- **[StateIO](https://github.com/USEPA/stateior)** - State-level economic input-output modeling framework by USEPA
+- **[BEA API](https://apps.bea.gov/api/)** - Bureau of Economic Analysis Input-Output tables for fiscal impact modeling
 - **[Bayesian Mixture-of-Experts](https://www.arxiv.org/abs/2509.23830)** - Research on calibration and uncertainty estimation by Albus Yizhuo Li
 - **[ModernBERT-Embed](https://huggingface.co/nomic-ai/modernbert-embed-base)** - Embedding model by Nomic AI (768-dim, 8192 token context)
 - **@SquadronConsult** - Help with SAM.gov data integration
