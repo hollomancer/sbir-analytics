@@ -156,8 +156,6 @@ module = [
     "scipy.*",
     "spacy.*",
     "loguru.*",
-    "rich.*",
-    "typer.*",
     "rapidfuzz.*",
     "pyreadstat.*",
     "pyarrow.*",

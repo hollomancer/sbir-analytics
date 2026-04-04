@@ -1,4 +1,4 @@
-"""Neo4j client for CLI health checks and statistics."""
+"""Neo4j client for health checks and statistics."""
 
 from __future__ import annotations
 
@@ -6,7 +6,6 @@ from dataclasses import dataclass
 from typing import Any
 
 from loguru import logger
-from rich.console import Console
 
 try:
     from neo4j import GraphDatabase  # type: ignore[attr-defined]
@@ -38,21 +37,10 @@ class Neo4jStatistics:
 
 
 class Neo4jClient:
-    """Neo4j client for CLI operations.
+    """Neo4j client for health checks, statistics, and read-only queries."""
 
-    Provides health checks, statistics, and basic query capabilities
-    for the CLI interface.
-    """
-
-    def __init__(self, config: PipelineConfig, console: Console) -> None:
-        """Initialize Neo4j client.
-
-        Args:
-            config: Pipeline configuration
-            console: Rich console for output
-        """
+    def __init__(self, config: PipelineConfig) -> None:
         self.config = config
-        self.console = console
         self.neo4j_config = config.neo4j
         self._driver: Any | None = None
 
@@ -78,19 +66,13 @@ class Neo4jClient:
             self._driver = None
 
     def health_check(self) -> Neo4jHealthStatus:
-        """Check Neo4j connection health.
-
-        Returns:
-            Neo4jHealthStatus with connection status
-        """
+        """Check Neo4j connection health."""
         try:
             with self.driver.session() as session:
-                # Simple query to test connection
                 result = session.run("RETURN 1 as test")
                 record = result.single()
 
                 if record and record["test"] == 1:
-                    # Try to get version
                     version_result = session.run(
                         "CALL dbms.components() YIELD name, versions RETURN versions[0] as version"
                     )
@@ -118,14 +100,9 @@ class Neo4jClient:
             )
 
     def get_statistics(self) -> Neo4jStatistics | None:
-        """Get Neo4j database statistics.
-
-        Returns:
-            Neo4jStatistics or None if query fails
-        """
+        """Get Neo4j database statistics."""
         try:
             with self.driver.session(database=self.neo4j_config.database) as session:
-                # Get node counts by label
                 node_query = """
                 MATCH (n)
                 RETURN labels(n)[0] as label, count(n) as count
@@ -136,7 +113,6 @@ class Neo4jClient:
                     record["label"]: record["count"] for record in node_result if record["label"]
                 }
 
-                # Get relationship counts by type
                 rel_query = """
                 MATCH ()-[r]->()
                 RETURN type(r) as rel_type, count(r) as count
@@ -145,7 +121,6 @@ class Neo4jClient:
                 rel_result = session.run(rel_query)
                 relationship_counts = {record["rel_type"]: record["count"] for record in rel_result}
 
-                # Get totals
                 total_nodes = sum(node_counts.values())
                 total_relationships = sum(relationship_counts.values())
 
@@ -166,17 +141,9 @@ class Neo4jClient:
     ) -> list[dict[str, Any]]:
         """Execute a read-only Cypher query.
 
-        Args:
-            query: Cypher query string
-            parameters: Optional query parameters
-
-        Returns:
-            List of result records as dictionaries
-
         Raises:
             ValueError: If query appears to be a write operation
         """
-        # Basic validation: warn if query contains write keywords
         write_keywords = ["CREATE", "DELETE", "SET", "REMOVE", "MERGE", "CREATE UNIQUE"]
         query_upper = query.upper()
         if any(keyword in query_upper for keyword in write_keywords):

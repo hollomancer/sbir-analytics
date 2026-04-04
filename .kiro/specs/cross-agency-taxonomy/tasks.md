@@ -20,7 +20,7 @@
 - [ ] 3.1 Generate cross-agency allocation table (agencies x CET areas, with cell values)
 - [ ] 3.2 Generate heatmap data (JSON/CSV format suitable for visualization)
 - [ ] 3.3 Generate markdown summary report with key findings
-- [ ] 3.4 Add to CLI reporting commands (`sbir-cli report taxonomy`)
+- [ ] 3.4 Add reporting script (`scripts/report_taxonomy.py`)
 
 ## Phase 4: Testing
 
