@@ -56,7 +56,7 @@ class TestCETPipeline:
 class TestFiscalPipeline:
     """Functional tests for fiscal returns analysis pipeline."""
 
-    def test_fiscal_run_produces_outputs(self, rpy2_available):
+    def test_fiscal_run_produces_outputs(self):
         """Test that fiscal pipeline produces expected outputs."""
         from dagster import materialize
         from sbir_analytics.assets.fiscal_assets import fiscal_returns_core

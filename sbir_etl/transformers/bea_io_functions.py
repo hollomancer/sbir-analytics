@@ -1,12 +1,7 @@
 """BEA I-O table functions for economic impact computation.
 
-Pure-Python replacement for the former R/StateIO wrappers.  Fetches national
-Use tables and Value-Added data from the BEA API, then performs Leontief
-input-output analysis in NumPy/Pandas.
-
-The matrix math functions (technical coefficients, Leontief inverse, demand
-shocks) are unchanged from the prior implementation — only the *data source*
-has moved from R to the BEA REST API.
+Fetches national Use tables and Value-Added data from the BEA API, then
+performs Leontief input-output analysis in NumPy/Pandas.
 """
 
 from __future__ import annotations
@@ -19,7 +14,7 @@ from .bea_api_client import BEAApiClient
 
 
 # ---------------------------------------------------------------------------
-# BEA API data retrieval (replaces R StateIO calls)
+# BEA API data retrieval
 # ---------------------------------------------------------------------------
 
 
@@ -134,7 +129,7 @@ def fetch_employment(
 
 
 # ---------------------------------------------------------------------------
-# Value-added ratio computation (replaces R StateIO GVA functions)
+# Value-added ratio computation
 # ---------------------------------------------------------------------------
 
 
@@ -280,7 +275,7 @@ def calculate_employment_coefficients(
 
 
 # ---------------------------------------------------------------------------
-# Matrix math (unchanged from prior R-era implementation)
+# Matrix math (Leontief I-O)
 # ---------------------------------------------------------------------------
 
 

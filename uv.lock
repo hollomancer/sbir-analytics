@@ -3302,7 +3302,7 @@ requires-dist = [
     { name = "types-pyyaml", marker = "extra == 'dev'", specifier = ">=6.0.0,<7.0.0" },
     { name = "types-tqdm", marker = "extra == 'dev'", specifier = ">=4.66.0,<5.0.0" },
 ]
-provides-extras = ["uspto", "cloud", "phonetic", "monitoring", "r", "viz", "dev", "stack-dev"]
+provides-extras = ["uspto", "cloud", "phonetic", "monitoring", "viz", "dev", "stack-dev"]
 
 [package.metadata.requires-dev]
 notebooks = [

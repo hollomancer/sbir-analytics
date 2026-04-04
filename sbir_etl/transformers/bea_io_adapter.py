@@ -1,11 +1,7 @@
 """BEA I-O adapter for economic impact computation.
 
-Pure-Python replacement for the former RStateIOAdapter.  Fetches national
-Input-Output tables from the BEA REST API and computes Leontief-based
-economic multiplier impacts from SBIR spending shocks.
-
-Drop-in replacement: the public interface (compute_impacts, validate_input,
-is_available, get_model_version) is identical to the old RStateIOAdapter.
+Fetches national Input-Output tables from the BEA REST API and computes
+Leontief-based economic multiplier impacts from SBIR spending shocks.
 """
 
 from __future__ import annotations
@@ -465,7 +461,7 @@ class BEAIOAdapter:
         return result_df
 
     # ------------------------------------------------------------------
-    # Public interface (matches old RStateIOAdapter)
+    # Public interface
     # ------------------------------------------------------------------
 
     def compute_impacts(
@@ -504,8 +500,3 @@ class BEAIOAdapter:
 
     def is_available(self) -> bool:
         return self._api_available
-
-
-# Backward-compatible alias so existing imports keep working
-RStateIOAdapter = BEAIOAdapter
-RPY2_AVAILABLE = True  # Always "available" — no R dependency needed

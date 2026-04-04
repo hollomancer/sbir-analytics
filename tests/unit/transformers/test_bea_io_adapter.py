@@ -1,12 +1,10 @@
-"""Unit tests for BEA I-O adapter (replaces R StateIO adapter tests)."""
+"""Unit tests for BEA I-O adapter."""
 
 from decimal import Decimal
 from unittest.mock import MagicMock, patch
 
 import pandas as pd
 import pytest
-
-from tests.mocks import RMocks
 
 
 pytestmark = pytest.mark.fast
@@ -291,13 +289,3 @@ class TestBEAIOAdapterIntegration:
 
         adapter = BEAIOAdapter(config=mock_config)
         assert adapter.is_available() is True
-
-    def test_backward_compat_import(self):
-        """Test that the old import path still works."""
-        from sbir_etl.transformers.r_stateio_adapter import RStateIOAdapter, RPY2_AVAILABLE
-
-        assert RPY2_AVAILABLE is True
-        # RStateIOAdapter is now an alias for BEAIOAdapter
-        from sbir_etl.transformers.bea_io_adapter import BEAIOAdapter
-
-        assert RStateIOAdapter is BEAIOAdapter

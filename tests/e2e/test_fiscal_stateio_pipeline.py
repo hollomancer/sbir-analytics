@@ -1,4 +1,4 @@
-"""End-to-end test for complete fiscal stateio pipeline.
+"""End-to-end test for complete fiscal I-O pipeline.
 
 This test validates the entire flow from SBIR awards to economic impact
 and fiscal return calculations:

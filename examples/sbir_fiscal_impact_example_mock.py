@@ -24,8 +24,8 @@ if str(PROJECT_ROOT) not in sys.path:
 from sbir_etl.transformers.naics_bea_mapper import NAICSBEAMapper
 
 
-class MockRStateIOAdapter:
-    """Mock R adapter that provides realistic outputs without requiring R."""
+class MockBEAIOAdapter:
+    """Mock BEA I-O adapter that provides realistic outputs for examples."""
 
     def __init__(self):
         """Initialize mock adapter."""
@@ -96,11 +96,11 @@ class MockRStateIOAdapter:
 
 
 class MockSBIRFiscalImpactCalculator:
-    """Mock fiscal impact calculator that works without R."""
+    """Mock fiscal impact calculator for examples."""
 
     def __init__(self):
         """Initialize mock calculator."""
-        self.io_adapter = MockRStateIOAdapter()
+        self.io_adapter = MockBEAIOAdapter()
         self.naics_mapper = NAICSBEAMapper()
 
     def calculate_impacts_from_sbir_awards(

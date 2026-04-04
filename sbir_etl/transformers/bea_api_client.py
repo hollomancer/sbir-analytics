@@ -1,7 +1,6 @@
 """BEA (Bureau of Economic Analysis) API client for I-O table retrieval.
 
-Fetches Input-Output tables directly from the BEA REST API, replacing the
-previous R/StateIO dependency with pure Python.
+Fetches Input-Output tables directly from the BEA REST API.
 
 BEA API docs: https://apps.bea.gov/api/
 Registration: https://apps.bea.gov/API/signup/
@@ -38,7 +37,7 @@ class BEAApiClient:
     """Synchronous client for the BEA REST API.
 
     Fetches national-level Input-Output tables (Use, Make, Value Added,
-    Employment) that were previously obtained via the EPA StateIO R package.
+    Employment) from the BEA REST API.
 
     Usage:
         >>> client = BEAApiClient()  # reads BEA_API_KEY from env

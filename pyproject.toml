@@ -38,10 +38,6 @@ cloud = [
 phonetic = ["jellyfish>=1.0.0,<2.0.0"]
 # Process memory monitoring (falls back to timing-only if absent)
 monitoring = ["psutil>=5.9.0,<7.0.0"]
-# BEA API integration for fiscal analysis (replaces former R/rpy2 dependency)
-# httpx and tenacity are already in core deps; this extra is kept empty for
-# backward compatibility with install scripts that reference [r].
-r = []
 viz = ["plotly>=5.18.0,<7.0.0"]  # Quality dashboards and HTML reports
 dev = [
     "pytest>=8.0.0,<10.0.0",

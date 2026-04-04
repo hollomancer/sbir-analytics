@@ -1,11 +1,11 @@
-"""Tests for BEA I-O function wrappers (replaces R StateIO function tests)."""
+"""Tests for BEA I-O functions."""
 
 from unittest.mock import MagicMock, patch
 
 import pandas as pd
 import pytest
 
-from tests.mocks import RMocks
+from tests.mocks import BEAMocks
 
 import sbir_etl.transformers.bea_io_functions as bea_io
 
@@ -19,7 +19,7 @@ class TestFetchUsTable:
     def test_fetch_use_table_parses_api_response(self):
         """Test that fetch_use_table converts BEA API response to matrix."""
         mock_client = MagicMock()
-        mock_client.get_use_table.return_value = RMocks.mock_bea_use_table()
+        mock_client.get_use_table.return_value = BEAMocks.mock_bea_use_table()
 
         result = bea_io.fetch_use_table(mock_client, year=2020)
 
@@ -64,7 +64,7 @@ class TestValueAddedRatioCalculation:
 
     def test_calculate_value_added_ratios_success(self):
         """Test successful calculation of value-added ratios."""
-        va_df = RMocks.mock_bea_va_table()
+        va_df = BEAMocks.mock_bea_va_table()
         result = bea_io.calculate_value_added_ratios(va_df)
 
         assert isinstance(result, pd.DataFrame)
@@ -91,7 +91,7 @@ class TestEmploymentCoefficients:
 
     def test_calculate_employment_coefficients(self):
         """Test employment coefficient calculation."""
-        emp_df = RMocks.mock_bea_employment_table()
+        emp_df = BEAMocks.mock_bea_employment_table()
         industry_output = pd.Series([100.0, 200.0], index=["11", "21"])
 
         result = bea_io.calculate_employment_coefficients(emp_df, industry_output)

@@ -1,42 +1,12 @@
-"""Mock factories for BEA I-O adapter testing.
-
-Backward-compatible: still exports RMocks for any test that references it,
-but the mocks now target the BEA API client instead of R/rpy2.
-"""
+"""Mock factories for BEA I-O adapter testing."""
 
 from unittest.mock import MagicMock
 
 import pandas as pd
 
 
-class RMocks:
-    """Factory for creating mock BEA API objects (legacy name kept for compat)."""
-
-    @staticmethod
-    def stateio_package():
-        """Create a mock BEA API client.
-
-        Returns:
-            MagicMock configured as BEA API client.
-        """
-        return MagicMock()
-
-    @staticmethod
-    def importr_side_effect(stateio_mock=None):
-        """No longer needed — returns identity function for backward compat."""
-        if stateio_mock is None:
-            stateio_mock = MagicMock()
-        return lambda pkg: stateio_mock
-
-    @staticmethod
-    def r_dataframe():
-        """Create a mock result object (legacy name kept for compat)."""
-        return MagicMock()
-
-    @staticmethod
-    def r_result():
-        """Create a mock function result (legacy name kept for compat)."""
-        return MagicMock()
+class BEAMocks:
+    """Factory for creating mock BEA API objects for testing."""
 
     @staticmethod
     def mock_bea_use_table() -> pd.DataFrame:
