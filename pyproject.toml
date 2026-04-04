@@ -38,8 +38,6 @@ cloud = [
 phonetic = ["jellyfish>=1.0.0,<2.0.0"]
 # Process memory monitoring (falls back to timing-only if absent)
 monitoring = ["psutil>=5.9.0,<7.0.0"]
-# R integration for fiscal analysis (stateior via rpy2)
-r = ["rpy2>=3.5.0,<4.0.0"]
 viz = ["plotly>=5.18.0,<7.0.0"]  # Quality dashboards and HTML reports
 dev = [
     "pytest>=8.0.0,<10.0.0",
@@ -150,7 +148,6 @@ module = [
     "dagster.*",
     "neo4j.*",
     "duckdb.*",
-    "rpy2.*",
     "plotly.*",
     "sklearn.*",
     "scipy.*",
@@ -201,7 +198,7 @@ markers = [
     "requires_api: tests requiring external API access",
     "requires_aws: tests requiring AWS credentials",
     "requires_neo4j: tests requiring Neo4j driver",
-    "requires_r: tests requiring R/rpy2",
+    "requires_bea_api: tests requiring BEA API key",
     "requires_hf: tests requiring HuggingFace token",
     "requires_ml: tests requiring ML dependencies",
     "s3: tests requiring S3 access",

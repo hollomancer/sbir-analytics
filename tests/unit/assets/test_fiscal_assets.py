@@ -537,7 +537,7 @@ class TestEdgeCases:
         assert result.passed is False
 
     @patch("sbir_analytics.assets.fiscal_assets.get_config")
-    @patch("sbir_analytics.assets.fiscal_assets.RStateIOAdapter")
+    @patch("sbir_analytics.assets.fiscal_assets.BEAIOAdapter")
     def test_economic_impacts_computation_error(
         self,
         mock_adapter_class,

@@ -277,7 +277,7 @@ class FiscalAnalysisConfig(BaseModel):
     naics_crosswalk_version: str = Field(
         default="2022", description="NAICS-to-BEA crosswalk version"
     )
-    stateio_model_version: str = Field(default="v2.1", description="StateIO model version")
+    stateio_model_version: str = Field(default="v2.1", description="BEA I-O model version")
     tax_parameters: TaxParameterConfig = Field(
         default_factory=TaxParameterConfig, description="Federal tax calculation parameters"
     )

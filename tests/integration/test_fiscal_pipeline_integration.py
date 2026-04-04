@@ -108,7 +108,7 @@ def mock_economic_shocks(mock_bea_mapped):
 
 @pytest.fixture
 def mock_economic_impacts(mock_economic_shocks):
-    """Create mock economic impacts from StateIO model."""
+    """Create mock economic impacts from BEA I-O model."""
     impacts = []
     for _, shock in mock_economic_shocks.iterrows():
         impacts.append(
@@ -169,8 +169,8 @@ class TestFiscalPipelineIntegration:
     @patch("sbir_etl.enrichers.inflation_adjuster.adjust_awards_for_inflation")
     @patch("sbir_etl.enrichers.fiscal_bea_mapper.enrich_awards_with_bea_sectors")
     @patch("sbir_etl.transformers.fiscal.shocks.FiscalShockAggregator.aggregate_shocks_to_dataframe")
-    @patch("sbir_etl.transformers.r_stateio_adapter.RStateIOAdapter._compute_impacts_r")
-    @patch("sbir_etl.transformers.r_stateio_adapter.RStateIOAdapter.is_available")
+    @patch("sbir_etl.transformers.bea_io_adapter.BEAIOAdapter._compute_impacts_bea")
+    @patch("sbir_etl.transformers.bea_io_adapter.BEAIOAdapter.is_available")
     def test_end_to_end_pipeline(
         self,
         mock_is_available,
@@ -303,7 +303,7 @@ class TestFiscalPipelineIntegration:
             return pd.DataFrame(impacts_data)
 
         # Update mock to use side_effect so it generates impacts dynamically
-        # Note: The adapter now uses _compute_impacts_r internally, but we mock compute_impacts
+        # Note: The adapter now uses _compute_impacts_bea internally, but we mock compute_impacts
         # for the integration test since that's what the asset calls
         mock_compute_impacts.side_effect = compute_impacts_side_effect
 

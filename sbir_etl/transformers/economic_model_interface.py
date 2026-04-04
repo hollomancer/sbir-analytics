@@ -1,7 +1,7 @@
 """Economic model types and validation for fiscal returns analysis.
 
 Provides the EconomicImpactResult dataclass and input validation
-used by the RStateIOAdapter.
+used by the BEAIOAdapter.
 """
 
 from __future__ import annotations

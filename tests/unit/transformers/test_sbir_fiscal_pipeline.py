@@ -49,14 +49,14 @@ class TestSBIRFiscalImpactCalculator:
 
     @pytest.fixture
     def calculator(self):
-        """Create calculator with mocked R adapter."""
+        """Create calculator with mocked BEA I-O adapter."""
         mock_adapter = Mock()
-        return SBIRFiscalImpactCalculator(r_adapter=mock_adapter)
+        return SBIRFiscalImpactCalculator(io_adapter=mock_adapter)
 
-    def test_init_default(self, rpy2_available):
+    def test_init_default(self):
         """Test initialization with defaults."""
         calc = SBIRFiscalImpactCalculator()
-        assert calc.r_adapter is not None
+        assert calc.io_adapter is not None
         assert calc.naics_mapper is not None
 
     def test_validate_awards_input_success(self, calculator, sample_awards):
@@ -194,7 +194,7 @@ class TestSBIRFiscalImpactCalculator:
         mock_aggregate.return_value = mock_shocks
 
         # Mock R adapter compute_impacts
-        calculator.r_adapter.compute_impacts.return_value = sample_impacts.copy()
+        calculator.io_adapter.compute_impacts.return_value = sample_impacts.copy()
 
         # Run pipeline
         result = calculator.calculate_impacts_from_sbir_awards(sample_awards)
@@ -203,7 +203,7 @@ class TestSBIRFiscalImpactCalculator:
         mock_validate.assert_called_once()
         mock_map.assert_called_once()
         mock_aggregate.assert_called_once()
-        calculator.r_adapter.compute_impacts.assert_called_once()
+        calculator.io_adapter.compute_impacts.assert_called_once()
 
         # Verify results have all expected columns
         assert "jobs_created" in result.columns

@@ -3,7 +3,7 @@ Federal tax receipt estimation from SBIR economic impacts.
 
 The only genuinely new tool in Mission C. Combines:
 - BEA-sector-mapped awards (from naics_to_bea_crosswalk)
-- StateIO economic multipliers (from stateio_multipliers)
+- BEA I-O economic multipliers (from stateio_multipliers)
 - IRS SOI effective tax rates by sector
 
 Two-track estimation:
@@ -80,7 +80,7 @@ class TaxEstimationTool(BaseTool):
         Args:
             metadata: Pre-initialized metadata to populate
             awards_df: Awards with bea_sector, state, award_amount, fiscal_year
-            multipliers_df: StateIO multipliers (state, bea_sector, output_multiplier)
+            multipliers_df: BEA I-O multipliers (state, bea_sector, output_multiplier)
             fpds_revenue: Per-company FPDS revenue (from Mission B, Track B)
             commercialization_scores: Observable scores for confidence weighting
             effective_tax_rates: Override IRS effective rates by sector
@@ -266,10 +266,10 @@ class TaxEstimationTool(BaseTool):
             "track_b": track_b_summary,
             "calibration": calibration,
             "methodology_note": (
-                "Track A uses sector-level economic multipliers (StateIO) and IRS effective "
+                "Track A uses sector-level economic multipliers (BEA I-O) and IRS effective "
                 "tax rates. Track B uses verified FPDS contract revenue. Where both tracks "
                 "cover the same companies, the divergence measures Track A's reliability. "
-                "StateIO data ends 2020; post-2020 estimates use extrapolation."
+                "BEA I-O data ends 2020; post-2020 estimates use extrapolation."
             ),
             "limitation_disclosure": (
                 "No private-sector revenue visibility. Companies commercializing entirely "

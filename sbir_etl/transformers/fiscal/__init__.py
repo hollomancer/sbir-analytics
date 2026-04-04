@@ -6,7 +6,7 @@ economic impacts, tax receipts, and ROI metrics from SBIR program investments.
 
 Module Structure:
 - components: Economic component extraction and validation
-- shocks: Economic shock aggregation for StateIO model input
+- shocks: Economic shock aggregation for BEA I-O model input
 - taxes: Federal tax estimation from economic components
 - roi: Return on investment calculation with NPV and payback period
 - sensitivity: Parameter sweep and uncertainty quantification

@@ -84,14 +84,14 @@ Each milestone produces an analytical output that (a) replicates or exceeds a sp
 
 **What NASEM cannot do:** Measures proxies (revenue, patents, jobs). No study estimates returns to Treasury.
 
-**Goal:** Connect StateIO fiscal modeling to SBIR award/outcome data for Treasury return estimates. Revenue, employment, VC, acquisitions — none in USAspending. NASEM used surveys. Our pipeline connects programmatically.
+**Goal:** Connect BEA I-O fiscal modeling to SBIR award/outcome data for Treasury return estimates. Revenue, employment, VC, acquisitions — none in USAspending. NASEM used surveys. Our pipeline connects programmatically.
 
 | Component | Status | Location |
 |-----------|--------|----------|
 | Fiscal ROI calculator | Built | `sbir_etl/transformers/fiscal/roi.py` |
 | Tax estimation | Built | `packages/sbir-analytics/sbir_analytics/tools/mission_c/tax_estimation.py` |
-| StateIO adapter | Built | `sbir_etl/transformers/r_stateio_adapter.py`, `r_stateio_functions.py` |
-| StateIO multipliers | Built | `packages/sbir-analytics/sbir_analytics/tools/mission_c/stateio_multipliers.py` |
+| BEA I-O adapter | Built | `sbir_etl/transformers/bea_io_adapter.py`, `bea_io_functions.py` |
+| Economic multipliers | Built | `packages/sbir-analytics/sbir_analytics/tools/mission_c/stateio_multipliers.py` |
 | NAICS-BEA crosswalk | Built | `packages/sbir-analytics/sbir_analytics/tools/mission_c/naics_to_bea_crosswalk.py` |
 | Sensitivity analysis | Built | `sbir_etl/transformers/fiscal/sensitivity.py` |
 | District allocator | Built | `sbir_etl/transformers/fiscal/district_allocator.py` |

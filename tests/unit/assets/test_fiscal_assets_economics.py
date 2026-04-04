@@ -145,7 +145,7 @@ class TestEconomicImpacts:
     ):
         """Test economic impacts returns Output type."""
         with patch("sbir_analytics.assets.fiscal_assets.get_config", return_value=mock_config):
-            with patch("sbir_analytics.assets.fiscal_assets.RStateIOAdapter") as mock_adapter_class:
+            with patch("sbir_analytics.assets.fiscal_assets.BEAIOAdapter") as mock_adapter_class:
                 mock_adapter = Mock()
                 mock_adapter.is_available.return_value = True
                 mock_adapter.get_model_version.return_value = "test-1.0"
