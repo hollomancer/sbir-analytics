@@ -125,9 +125,11 @@ def main() -> None:
             print(f"{'='*60}")
             print(json.dumps(data, indent=2, default=str))
 
-    # Exit non-zero if Neo4j is down
+    # Exit non-zero if Neo4j is down or errored
     neo4j_data = output.get("neo4j", {})
-    if isinstance(neo4j_data, dict) and neo4j_data.get("connected") is False:
+    if isinstance(neo4j_data, dict) and (
+        neo4j_data.get("connected") is False or "error" in neo4j_data
+    ):
         sys.exit(1)
 
 

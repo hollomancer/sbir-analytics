@@ -32,8 +32,12 @@ def main() -> None:
     config = get_config()
     collector = MetricsCollector(config)
 
-    start_date = datetime.fromisoformat(args.start) if args.start else None
-    end_date = datetime.fromisoformat(args.end) if args.end else None
+    try:
+        start_date = datetime.fromisoformat(args.start.replace("Z", "+00:00")) if args.start else None
+        end_date = datetime.fromisoformat(args.end.replace("Z", "+00:00")) if args.end else None
+    except ValueError as e:
+        print(f"Invalid date format: {e}", file=sys.stderr)
+        sys.exit(1)
 
     if args.group:
         metrics = collector.get_metrics(
@@ -61,8 +65,11 @@ def main() -> None:
     if args.export:
         if args.export.endswith(".csv"):
             if metrics:
+                all_keys: dict[str, None] = {}
+                for m in metrics:
+                    all_keys.update(dict.fromkeys(m.keys()))
                 with open(args.export, "w", newline="", encoding="utf-8") as f:
-                    writer = csv.DictWriter(f, fieldnames=metrics[0].keys())
+                    writer = csv.DictWriter(f, fieldnames=list(all_keys), extrasaction="ignore")
                     writer.writeheader()
                     writer.writerows(metrics)
                 print(f"Exported {len(metrics)} records to {args.export}")
