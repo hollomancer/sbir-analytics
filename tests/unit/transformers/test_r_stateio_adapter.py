@@ -276,8 +276,10 @@ class TestBEAIOAdapterIntegration:
 
         adapter.validate_input(sample_shocks)
 
+        from sbir_etl.exceptions import ValidationError
+
         invalid_shocks = sample_shocks.drop(columns=["state"])
-        with pytest.raises(Exception, match="Missing required columns"):
+        with pytest.raises(ValidationError, match="Missing required columns"):
             adapter.validate_input(invalid_shocks)
 
     @patch("sbir_etl.transformers.bea_io_adapter.BEAApiClient")

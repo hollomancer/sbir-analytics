@@ -100,7 +100,7 @@ class MockSBIRFiscalImpactCalculator:
 
     def __init__(self):
         """Initialize mock calculator."""
-        self.r_adapter = MockRStateIOAdapter()
+        self.io_adapter = MockRStateIOAdapter()
         self.naics_mapper = NAICSBEAMapper()
 
     def calculate_impacts_from_sbir_awards(
@@ -141,7 +141,7 @@ class MockSBIRFiscalImpactCalculator:
         )
 
         # Compute impacts
-        impacts = self.r_adapter.compute_impacts(shocks)
+        impacts = self.io_adapter.compute_impacts(shocks)
 
         # Add employment
         if include_employment:

@@ -104,11 +104,19 @@ class StateIOMultipliersTool(BaseTool):
                         shock = float(row.get("shock_amount", unit_shock))
                         if shock == 0:
                             continue
+                        # employment_impact is jobs (not dollars), so the
+                        # multiplier is jobs per $1M of input spending.
+                        emp_impact = row.get("employment_impact")
+                        if emp_impact is not None and pd.notna(emp_impact):
+                            emp_multiplier = float(emp_impact) / (shock / 1_000_000)
+                        else:
+                            emp_multiplier = None
+
                         multipliers.append({
                             "state": row["state"],
                             "bea_sector": row["bea_sector"],
                             "output_multiplier": float(row.get("production_impact", shock)) / shock,
-                            "employment_multiplier": float(row.get("employment_impact", shock)) / shock,
+                            "employment_multiplier": emp_multiplier,
                             "value_added_multiplier": (
                                 float(row.get("wage_impact", 0))
                                 + float(row.get("gross_operating_surplus", 0))

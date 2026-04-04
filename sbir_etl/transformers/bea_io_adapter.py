@@ -24,6 +24,7 @@ from .bea_api_client import BEAApiClient
 from .bea_io_functions import (
     apply_demand_shocks,
     calculate_employment_coefficients,
+    calculate_employment_from_production,
     calculate_leontief_inverse,
     calculate_technical_coefficients,
     calculate_value_added_ratios,
@@ -95,6 +96,21 @@ class BEAIOAdapter:
         self._industry_output_cache: dict[int, pd.Series] = {}
         self._va_ratios_cache: dict[int, pd.DataFrame] = {}
         self._emp_coeff_cache: dict[int, pd.DataFrame] = {}
+
+    # ------------------------------------------------------------------
+    # Resource management
+    # ------------------------------------------------------------------
+
+    def close(self) -> None:
+        """Close the underlying HTTP client to release sockets/file descriptors."""
+        if self._client is not None and hasattr(self._client, "close"):
+            self._client.close()
+
+    def __enter__(self) -> BEAIOAdapter:
+        return self
+
+    def __exit__(self, *exc: object) -> None:
+        self.close()
 
     # ------------------------------------------------------------------
     # Cache helpers
@@ -222,7 +238,17 @@ class BEAIOAdapter:
         self, shocks_df: pd.DataFrame, model_version: str
     ) -> pd.DataFrame:
         """Core Leontief computation using BEA Use tables."""
-        year = int(shocks_df["fiscal_year"].iloc[0])
+        # Handle multi-year inputs by splitting into per-year groups
+        fiscal_years = shocks_df["fiscal_year"].dropna().unique().tolist()
+        if len(fiscal_years) > 1:
+            yearly_results = []
+            for _, year_shocks_df in shocks_df.groupby("fiscal_year", sort=False):
+                yearly_results.append(
+                    self._compute_impacts_via_bea(year_shocks_df.copy(), model_version)
+                )
+            return pd.concat(yearly_results, ignore_index=True)
+
+        year = int(fiscal_years[0])
 
         # Fetch national I-O data (cached per year)
         use_table = self._get_use_table(year)
@@ -238,6 +264,9 @@ class BEAIOAdapter:
         # Fetch VA ratios for distributing impacts
         va_ratios_df = self._get_va_ratios(year)
 
+        # Fetch employment coefficients for computing employment impacts
+        emp_coeff_df = self._get_employment_coefficients(year)
+
         # Process each state's shocks
         # NOTE: BEA national tables are used for all states; state-level
         # scaling could be added later using Regional GDP data.
@@ -248,13 +277,32 @@ class BEAIOAdapter:
             state_shocks = shocks_df[shocks_df["state"] == state].copy()
 
             try:
-                production_by_sector = apply_demand_shocks(leontief_inv, state_shocks)
+                # BEA I-O tables are in millions of dollars; incoming shock_amount
+                # values are pipeline-standard dollars.  Normalize shocks to millions
+                # before the matrix multiplication, then convert back to dollars.
+                state_shocks_millions = state_shocks.copy()
+                state_shocks_millions["shock_amount"] = (
+                    pd.to_numeric(
+                        state_shocks_millions["shock_amount"], errors="coerce"
+                    ).fillna(0.0)
+                    / 1_000_000.0
+                )
+                production_by_sector = apply_demand_shocks(
+                    leontief_inv, state_shocks_millions
+                )
+
+                # Compute employment impacts (jobs) from production vector
+                employment_by_sector = calculate_employment_from_production(
+                    production_by_sector, emp_coeff_df
+                )
 
                 for _, shock_row in state_shocks.iterrows():
                     sector = shock_row["bea_sector"]
 
                     if sector in production_by_sector.index:
-                        production_impact = Decimal(str(float(production_by_sector[sector])))
+                        production_impact = Decimal(
+                            str(float(production_by_sector[sector]) * 1_000_000.0)
+                        )
                     else:
                         logger.warning(f"Sector {sector} not in production results, using zero")
                         production_impact = Decimal("0")
@@ -282,6 +330,13 @@ class BEAIOAdapter:
                     tax_impact = production_impact * tax_ratio
                     proprietor_impact = production_impact * proprietor_ratio
 
+                    # Employment impact (jobs created)
+                    if sector in employment_by_sector.index:
+                        employment_impact = float(employment_by_sector[sector])
+                    else:
+                        # Fallback: rough estimate from production
+                        employment_impact = float(production_impact) / 100_000
+
                     quality_flags = (
                         "bea_api_with_ratios"
                         if used_actual_ratios
@@ -299,6 +354,7 @@ class BEAIOAdapter:
                             "consumption_impact": production_impact * Decimal("0.2"),
                             "tax_impact": tax_impact,
                             "production_impact": production_impact,
+                            "employment_impact": employment_impact,
                             "model_version": model_version,
                             "confidence": Decimal("0.85"),
                             "quality_flags": quality_flags,
@@ -321,6 +377,7 @@ class BEAIOAdapter:
                             "consumption_impact": Decimal("0"),
                             "tax_impact": Decimal("0"),
                             "production_impact": Decimal("0"),
+                            "employment_impact": 0.0,
                             "model_version": model_version,
                             "confidence": Decimal("0.0"),
                             "quality_flags": f"bea_api_failed:{str(e)[:50]}",
@@ -395,6 +452,9 @@ class BEAIOAdapter:
         result_df["consumption_impact"] = result_df["shock_amount"] * Decimal("0.2") * multiplier  # type: ignore[operator]
         result_df["tax_impact"] = result_df["shock_amount"] * Decimal("0.15") * multiplier  # type: ignore[operator]
         result_df["production_impact"] = result_df["shock_amount"] * multiplier
+        result_df["employment_impact"] = (
+            result_df["wage_impact"].astype(float) / 100_000
+        )
         result_df["model_version"] = model_version
         result_df["confidence"] = Decimal("0.75")
         result_df["quality_flags"] = "placeholder_computation"

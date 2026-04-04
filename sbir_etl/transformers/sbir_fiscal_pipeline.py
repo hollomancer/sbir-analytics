@@ -44,7 +44,7 @@ class SBIRFiscalImpactCalculator:
             io_adapter: Optional pre-configured BEA I-O adapter
             naics_mapper: Optional NAICS-BEA mapper
         """
-        self.r_adapter = io_adapter or BEAIOAdapter(config=config)
+        self.io_adapter = io_adapter or BEAIOAdapter(config=config)
         self.naics_mapper = naics_mapper or NAICSBEAMapper()
 
     def calculate_impacts_from_sbir_awards(
@@ -104,7 +104,7 @@ class SBIRFiscalImpactCalculator:
 
         # Step 3: Compute economic impacts using BEA I-O tables
         logger.info("Computing economic impacts using BEA I-O tables...")
-        impacts = self.r_adapter.compute_impacts(shocks)
+        impacts = self.io_adapter.compute_impacts(shocks)
 
         # Step 4: Add employment impacts if requested
         if include_employment:
