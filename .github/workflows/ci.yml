@@ -1050,16 +1050,11 @@ jobs:
           if-no-files-found: warn
           retention-days: ${{ env.DEFAULT_RETENTION_DAYS }}
 
-      - name: Gate on validation summary
+      - name: Gate on transition MVP (validation + evidence)
         id: gate
         run: |
           set -euo pipefail
-          uv run python scripts/ci/gate_check.py transition-validation
-
-      - name: Gate on evidence completeness
-        run: |
-          set -euo pipefail
-          uv run python scripts/ci/gate_check.py transition-evidence
+          uv run python scripts/transition/transition_mvp_gate.py
 
       - name: Gate on analytics checks
         run: |
