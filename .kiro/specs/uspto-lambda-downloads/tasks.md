@@ -39,7 +39,7 @@
 
 - [ ] 1. Verify and update USPTO download URLs
   - [ ] 1.1 Check PatentsView current download URLs
-    - Verify `https://download.patentsview.org/data` is current base URL
+    - Verify `https://data.uspto.gov/api/v1/datasets/products/files` is current base URL (migrated from download.patentsview.org)
     - Confirm table filenames (g_patent.tsv.zip, g_assignee_disambiguated.tsv.zip, etc.)
     - Update `PATENTSVIEW_TABLES` dict in `scripts/data/download_uspto.py` if needed
     - _Requirements: R1_

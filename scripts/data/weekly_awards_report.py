@@ -109,7 +109,8 @@ OPENAI_MAX_RETRIES = 3
 OPENAI_RETRY_BACKOFF_BASE = 2  # seconds
 
 # External API endpoints for PI diligence and solicitation lookup
-PATENTSVIEW_API_URL = "https://search.patentsview.org/api/v1/patent"
+# PatentsView migrated to USPTO Open Data Portal (data.uspto.gov) March 2026
+USPTO_ODP_PATENT_SEARCH_URL = "https://data.uspto.gov/api/v1/patent/applications/search"
 SEMANTIC_SCHOLAR_API_URL = "https://api.semanticscholar.org/graph/v1"
 USASPENDING_API_URL = "https://api.usaspending.gov/api/v2"
 SBIR_GOV_API_URL = "https://api.www.sbir.gov/public/api"
@@ -728,77 +729,81 @@ def _split_pi_name(full_name: str) -> tuple[str, str]:
 
 
 def lookup_pi_patents(pi_name: str, company_name: str | None = None) -> PIPatentRecord | None:
-    """Query PatentsView for patents where the PI is a named inventor.
+    """Query USPTO ODP for patents where the PI is a named inventor.
 
-    Uses the PatentsView API inventor_name fields. Falls back to
-    filtering assignee results if the direct inventor query returns nothing.
+    Uses the ODP patent search endpoint with Lucene-style queries.
+    Searches by inventor name, optionally scoped to company.
     """
     first, last = _split_pi_name(pi_name)
     if not last:
         return None
 
-    api_key = os.environ.get("PATENTSVIEW_API_KEY", "")
-    headers = {"Content-Type": "application/json"}
+    api_key = os.environ.get("USPTO_ODP_API_KEY", "")
+    headers: dict[str, str] = {}
     if api_key:
-        headers["X-Api-Key"] = api_key
+        headers["X-API-KEY"] = api_key
 
-    # Build query: search by inventor last name + first name
-    query: dict = {
-        "_and": [
-            {"inventor_name_last": last},
-        ]
-    }
+    # Build Lucene-style query for inventor name
+    query_parts = [f'inventorNameText:"{last}"']
     if first:
-        query["_and"].append({"inventor_name_first": first})
+        query_parts.append(f'inventorNameText:"{first}"')
+    if company_name:
+        # Escape quotes in company name
+        safe_company = company_name.replace('"', '\\"')
+        query_parts.append(f'assigneeName:"{safe_company}"')
 
-    payload = {
-        "q": query,
-        "f": [
-            "patent_number",
-            "patent_title",
-            "patent_date",
-            "assignee_organization",
-            "inventor_name_first",
-            "inventor_name_last",
-        ],
-        "o": {"page": 0, "per_page": 100},
+    params = {
+        "q": " AND ".join(query_parts),
+        "offset": 0,
+        "limit": 100,
     }
 
     try:
         with httpx.Client(timeout=30) as client:
-            resp = client.post(PATENTSVIEW_API_URL, headers=headers, json=payload)
+            resp = client.get(USPTO_ODP_PATENT_SEARCH_URL, headers=headers, params=params)
             if resp.status_code != 200:
                 print(
-                    f"PatentsView API returned {resp.status_code} for {pi_name}",
+                    f"USPTO ODP API returned {resp.status_code} for {pi_name}",
                     file=sys.stderr,
                 )
                 return None
             data = resp.json()
     except Exception as e:
-        print(f"PatentsView API error for {pi_name}: {e}", file=sys.stderr)
+        print(f"USPTO ODP API error for {pi_name}: {e}", file=sys.stderr)
         return None
 
-    patents = data.get("patents", [])
-    if not patents:
+    records = data.get("patentFileWrapperDataBag", [])
+    if not records:
         return None
 
     titles = []
     assignees: set[str] = set()
     dates: list[str] = []
 
-    for p in patents:
-        t = p.get("patent_title", "")
-        if t and t not in titles and len(titles) < 5:
-            titles.append(t)
-        org = p.get("assignee_organization", "")
-        if org:
-            assignees.add(org)
-        d = p.get("patent_date", "")
-        if d:
-            dates.append(d)
+    for record in records:
+        metadata = record.get("applicationMetaData", {}) or {}
+        title = record.get("inventionTitle") or metadata.get("inventionTitle") or ""
+        if title and title not in titles and len(titles) < 5:
+            titles.append(title)
+
+        # Extract assignee
+        record_assignees = record.get("assignees", []) or []
+        for a in record_assignees:
+            if isinstance(a, dict):
+                org = a.get("assigneeName") or a.get("orgName") or ""
+                if org:
+                    assignees.add(org)
+        if not record_assignees:
+            org = record.get("assigneeName") or metadata.get("assigneeName") or ""
+            if org:
+                assignees.add(org)
+
+        grant_date = metadata.get("grantDate") or record.get("grantDate") or ""
+        if grant_date:
+            dates.append(grant_date)
 
     return PIPatentRecord(
-        total_patents=len(patents),
+        total_patents=len(records),
         sample_titles=titles,
         assignees=sorted(assignees),
         date_range=(min(dates) if dates else None, max(dates) if dates else None),
