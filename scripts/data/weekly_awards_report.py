@@ -133,8 +133,10 @@ def _debug_response(label: str, resp: httpx.Response, body_preview_len: int = 50
 
 
 # URL templates for external links
-SBIR_AWARD_SEARCH_URL = "https://www.sbir.gov/sbirsearch/award/all"
-SBIR_SOLICITATION_URL = "https://www.sbir.gov/sbirsearch/topic/default"
+# SBIR.gov redesigned in 2025 — old /sbirsearch/ paths return 404.
+# New site uses /awards?keyword= for search-based links.
+SBIR_AWARD_SEARCH_URL = "https://www.sbir.gov/awards"
+SBIR_SOLICITATION_URL = "https://www.sbir.gov/awards"
 USASPENDING_SEARCH_URL = "https://www.usaspending.gov/search"
 
 OPENAI_CHAT_URL = "https://api.openai.com/v1/chat/completions"
@@ -1129,57 +1131,67 @@ def _usaspending_search(
     search_text: str,
     label: str,
 ) -> list[dict] | None:
-    """Execute a single USAspending spending_by_award search.
+    """Execute USAspending spending_by_award searches for a company.
 
-    Returns the results list on success, or None on error.
+    Makes separate requests for contracts and grants/other (USAspending
+    requires award_type_codes from a single group per request), then
+    merges the results.
+
+    Returns the combined results list on success, or None on error.
     """
-    filters: dict = {
-        "award_type_codes": [
-            "A", "B", "C", "D",
-            "02", "03", "04", "05", "06", "07", "08", "09", "10", "11",
-        ],
-        "recipient_search_text": [search_text],
-    }
-    payload = {
-        "filters": filters,
-        "fields": [
-            "Award ID",
-            "Recipient Name",
-            "Award Amount",
-            "Awarding Agency",
-            "Award Type",
-            "Start Date",
-            "Description",
-            "CFDA Number",
-        ],
-        "page": 1,
-        "limit": 100,
-        "sort": "Award Amount",
-        "order": "desc",
-    }
+    fields = [
+        "Award ID",
+        "Recipient Name",
+        "Award Amount",
+        "Awarding Agency",
+        "Award Type",
+        "Start Date",
+        "Description",
+        "CFDA Number",
+    ]
+    # USAspending requires award_type_codes from one group only:
+    # contracts (A-D) and assistance (02-11) must be separate requests.
+    type_groups = [
+        ("contracts", ["A", "B", "C", "D"]),
+        ("assistance", ["02", "03", "04", "05", "06", "07", "08", "09", "10", "11"]),
+    ]
 
+    all_results: list[dict] = []
     _debug(
         f"USAspending query for '{company_name}' ({label}='{search_text}'): "
         f"POST {USASPENDING_API_URL}/search/spending_by_award/"
     )
     try:
         with httpx.Client(timeout=30) as client:
-            resp = client.post(
-                f"{USASPENDING_API_URL}/search/spending_by_award/",
-                json=payload,
-            )
-            _debug_response(f"USAspending [{company_name} via {label}]", resp)
-            if resp.status_code != 200:
-                _debug(f"USAspending [{company_name}] {label} returned {resp.status_code}")
-                return None
-            data = resp.json()
+            for group_name, codes in type_groups:
+                payload = {
+                    "filters": {
+                        "award_type_codes": codes,
+                        "recipient_search_text": [search_text],
+                    },
+                    "fields": fields,
+                    "page": 1,
+                    "limit": 50,
+                    "sort": "Award Amount",
+                    "order": "desc",
+                }
+                resp = client.post(
+                    f"{USASPENDING_API_URL}/search/spending_by_award/",
+                    json=payload,
+                )
+                if resp.status_code != 200:
+                    _debug(f"USAspending [{company_name}] {label}/{group_name} returned {resp.status_code}")
+                    continue
+                data = resp.json()
+                group_results = data.get("results", [])
+                _debug(f"USAspending [{company_name} via {label}/{group_name}]: {len(group_results)} results")
+                all_results.extend(group_results)
     except Exception as e:
         _debug(f"USAspending [{company_name}] {label} error: {e}")
         return None
 
-    results = data.get("results", [])
-    _debug(f"USAspending [{company_name} via {label}]: {len(results)} results")
-    return results
+    _debug(f"USAspending [{company_name} via {label}]: {len(all_results)} total results")
+    return all_results if all_results else None
 
 
 def lookup_company_federal_awards(
@@ -1610,6 +1622,18 @@ def lookup_sam_entity(
         entity = _try_query({"legalBusinessName": company_name, "registrationStatus": "A"})
 
     if not entity:
+        # Always log — helps diagnose silent failures in CI
+        methods_tried = []
+        if uei:
+            methods_tried.append(f"UEI={uei}")
+        if cage:
+            methods_tried.append(f"CAGE={cage}")
+        methods_tried.append(f"name='{company_name}'")
+        print(
+            f"SAM.gov: no entity found for {company_name} "
+            f"(tried: {', '.join(methods_tried)})",
+            file=sys.stderr,
+        )
         return None
 
     # Extract fields — SAM.gov API nests data under various keys
@@ -2266,12 +2290,12 @@ def build_sbir_award_url(award: dict) -> str:
     """Build a link to the SBIR.gov award search page for this award."""
     contract = str(award.get("Contract", "")).strip()
     if contract:
-        url = f"{SBIR_AWARD_SEARCH_URL}/{quote(contract)}"
+        url = f"{SBIR_AWARD_SEARCH_URL}?keyword={quote(contract)}"
         _debug(f"SBIR award URL (contract='{contract}'): {url}")
         return url
     company = str(award.get("Company", "")).strip()
     if company:
-        url = f"{SBIR_AWARD_SEARCH_URL}/{quote(company)}"
+        url = f"{SBIR_AWARD_SEARCH_URL}?keyword={quote(company)}"
         _debug(f"SBIR award URL (company='{company}', no contract): {url}")
         return url
     _debug("SBIR award URL: no contract or company — using base URL")
@@ -2516,47 +2540,50 @@ def fetch_usaspending_contract_descriptions(
     )
     results: dict[str, str] = {}
 
-    # Batch contracts into groups to reduce API calls
+    # Batch contracts into groups to reduce API calls.
+    # Must make separate requests for contracts (A-D) and assistance (02+)
+    # since USAspending requires award_type_codes from one group per request.
+    type_groups = [
+        ("contracts", ["A", "B", "C", "D"]),
+        ("assistance", ["02", "03", "04", "05"]),
+    ]
     batch_size = 25
     for batch_start in range(0, len(contracts), batch_size):
         batch = contracts[batch_start : batch_start + batch_size]
-        # Wrap PIIDs in double-quotes for exact match — USAspending does
-        # fuzzy full-text search by default which often misses exact PIIDs.
+        # Wrap PIIDs in double-quotes for exact match
         quoted_batch = [f'"{c}"' for c in batch]
-        payload = {
-            "filters": {
-                "award_ids": quoted_batch,
-                # award_type_codes is required; include contracts + grants
-                # since SBIR awards can be either type
-                "award_type_codes": [
-                    "A", "B", "C", "D",
-                    "02", "03", "04", "05",
-                ],
-            },
-            "fields": ["Award ID", "Description", "Awarding Agency", "Award Type"],
-            "page": 1,
-            "limit": len(batch),
-        }
 
         batch_label = f"{batch_start + 1}-{batch_start + len(batch)}"
         _debug(
-            f"USAspending contract descriptions: POST batch "
+            f"USAspending contract descriptions: batch "
             f"{batch_label} of {len(contracts)} | award_ids={batch}"
         )
+
+        batch_results: list[dict] = []
         try:
             with httpx.Client(timeout=30) as client:
-                resp = client.post(
-                    f"{USASPENDING_API_URL}/search/spending_by_award/",
-                    json=payload,
-                )
-                if resp.status_code != 200:
-                    print(
-                        f"USAspending contract desc batch {batch_label} "
-                        f"returned {resp.status_code}: {resp.text[:300]}",
-                        file=sys.stderr,
+                for group_name, codes in type_groups:
+                    payload = {
+                        "filters": {
+                            "award_ids": quoted_batch,
+                            "award_type_codes": codes,
+                        },
+                        "fields": ["Award ID", "Description", "Awarding Agency", "Award Type"],
+                        "page": 1,
+                        "limit": len(batch),
+                    }
+                    resp = client.post(
+                        f"{USASPENDING_API_URL}/search/spending_by_award/",
+                        json=payload,
                     )
-                    continue
-                data = resp.json()
+                    if resp.status_code != 200:
+                        _debug(
+                            f"USAspending contract desc batch {batch_label}/{group_name} "
+                            f"returned {resp.status_code}"
+                        )
+                        continue
+                    data = resp.json()
+                    batch_results.extend(data.get("results", []))
         except Exception as e:
             print(
                 f"USAspending contract desc batch {batch_label} error: {e}",
@@ -2564,9 +2591,7 @@ def fetch_usaspending_contract_descriptions(
             )
             continue
 
-        batch_results = data.get("results", [])
         if not batch_results:
-            # Always log when a batch returns 0 — helps diagnose silent failures
             print(
                 f"USAspending contract desc batch {batch_label}: "
                 f"0 results for {len(batch)} award IDs "
