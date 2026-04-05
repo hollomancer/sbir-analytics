@@ -83,6 +83,11 @@ MAX_AWARDS_TO_DESCRIBE = int(os.environ.get("MAX_AWARDS_TO_DESCRIBE", "100"))
 OPENAI_MAX_RETRIES = 3
 OPENAI_RETRY_BACKOFF_BASE = 2  # seconds
 
+# External API endpoints for PI diligence
+PATENTSVIEW_API_URL = "https://search.patentsview.org/api/v1/patent"
+SEMANTIC_SCHOLAR_API_URL = "https://api.semanticscholar.org/graph/v1"
+USASPENDING_API_URL = "https://api.usaspending.gov/api/v2"
+
 
 # ---------------------------------------------------------------------------
 # Data structures
@@ -562,6 +567,343 @@ def get_pi_history(
 
 
 # ---------------------------------------------------------------------------
+# PI external data lookups (patents, publications, federal awards)
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class PIPatentRecord:
+    """Summary of a PI's patent portfolio from PatentsView."""
+
+    total_patents: int
+    sample_titles: list[str]
+    assignees: list[str]
+    date_range: tuple[str | None, str | None]
+
+
+@dataclass
+class PIPublicationRecord:
+    """Summary of a PI's publication history from Semantic Scholar."""
+
+    total_papers: int
+    h_index: int | None
+    citation_count: int
+    sample_titles: list[str]
+    affiliations: list[str]
+
+
+@dataclass
+class PIFederalAwardRecord:
+    """Summary of a PI's company's federal awards from USAspending."""
+
+    total_awards: int
+    total_funding: float
+    agencies: list[str]
+    award_types: list[str]  # e.g. contracts, grants, IDVs
+    date_range: tuple[str | None, str | None]
+
+
+def _split_pi_name(full_name: str) -> tuple[str, str]:
+    """Split a PI name into (first, last) for API queries.
+
+    SBIR data typically stores names as 'First Last' or 'Last, First'.
+    """
+    full_name = full_name.strip()
+    if "," in full_name:
+        parts = [p.strip() for p in full_name.split(",", 1)]
+        return (parts[1], parts[0]) if len(parts) == 2 else (parts[0], "")
+    parts = full_name.split()
+    if len(parts) >= 2:
+        return (parts[0], parts[-1])
+    return (full_name, "")
+
+
+def lookup_pi_patents(pi_name: str, company_name: str | None = None) -> PIPatentRecord | None:
+    """Query PatentsView for patents where the PI is a named inventor.
+
+    Uses the PatentsView API inventor_name fields. Falls back to
+    filtering assignee results if the direct inventor query returns nothing.
+    """
+    first, last = _split_pi_name(pi_name)
+    if not last:
+        return None
+
+    api_key = os.environ.get("PATENTSVIEW_API_KEY", "")
+    headers = {"Content-Type": "application/json"}
+    if api_key:
+        headers["X-Api-Key"] = api_key
+
+    # Build query: search by inventor last name + first name
+    query: dict = {
+        "_and": [
+            {"inventor_name_last": last},
+        ]
+    }
+    if first:
+        query["_and"].append({"inventor_name_first": first})
+
+    payload = {
+        "q": query,
+        "f": [
+            "patent_number",
+            "patent_title",
+            "patent_date",
+            "assignee_organization",
+            "inventor_name_first",
+            "inventor_name_last",
+        ],
+        "o": {"page": 0, "per_page": 100},
+    }
+
+    try:
+        with httpx.Client(timeout=30) as client:
+            resp = client.post(PATENTSVIEW_API_URL, headers=headers, json=payload)
+            if resp.status_code != 200:
+                print(
+                    f"PatentsView API returned {resp.status_code} for {pi_name}",
+                    file=sys.stderr,
+                )
+                return None
+            data = resp.json()
+    except Exception as e:
+        print(f"PatentsView API error for {pi_name}: {e}", file=sys.stderr)
+        return None
+
+    patents = data.get("patents", [])
+    if not patents:
+        return None
+
+    titles = []
+    assignees: set[str] = set()
+    dates: list[str] = []
+
+    for p in patents:
+        t = p.get("patent_title", "")
+        if t and t not in titles and len(titles) < 5:
+            titles.append(t)
+        org = p.get("assignee_organization", "")
+        if org:
+            assignees.add(org)
+        d = p.get("patent_date", "")
+        if d:
+            dates.append(d)
+
+    return PIPatentRecord(
+        total_patents=len(patents),
+        sample_titles=titles,
+        assignees=sorted(assignees),
+        date_range=(min(dates) if dates else None, max(dates) if dates else None),
+    )
+
+
+def lookup_pi_publications(pi_name: str) -> PIPublicationRecord | None:
+    """Query Semantic Scholar for the PI's publication history.
+
+    Uses the author search endpoint to find the PI, then fetches
+    their publication summary.
+    """
+    first, last = _split_pi_name(pi_name)
+    if not last:
+        return None
+
+    search_query = f"{first} {last}".strip()
+
+    try:
+        # Step 1: Search for the author
+        with httpx.Client(timeout=30) as client:
+            resp = client.get(
+                f"{SEMANTIC_SCHOLAR_API_URL}/author/search",
+                params={"query": search_query, "limit": 5},
+            )
+            if resp.status_code != 200:
+                print(
+                    f"Semantic Scholar search returned {resp.status_code} for {pi_name}",
+                    file=sys.stderr,
+                )
+                return None
+            search_data = resp.json()
+
+        authors = search_data.get("data", [])
+        if not authors:
+            return None
+
+        # Pick the best match (first result from Semantic Scholar's ranking)
+        author = authors[0]
+        author_id = author.get("authorId")
+        if not author_id:
+            return None
+
+        # Step 2: Get author details with papers
+        with httpx.Client(timeout=30) as client:
+            resp = client.get(
+                f"{SEMANTIC_SCHOLAR_API_URL}/author/{author_id}",
+                params={
+                    "fields": "name,hIndex,citationCount,affiliations,papers.title,papers.year",
+                },
+            )
+            if resp.status_code != 200:
+                print(
+                    f"Semantic Scholar author detail returned {resp.status_code} for {pi_name}",
+                    file=sys.stderr,
+                )
+                return None
+            author_data = resp.json()
+
+    except Exception as e:
+        print(f"Semantic Scholar API error for {pi_name}: {e}", file=sys.stderr)
+        return None
+
+    papers = author_data.get("papers", [])
+    sample_titles = [
+        p["title"] for p in papers[:5] if p.get("title")
+    ]
+    affiliations = author_data.get("affiliations", []) or []
+
+    return PIPublicationRecord(
+        total_papers=len(papers),
+        h_index=author_data.get("hIndex"),
+        citation_count=author_data.get("citationCount", 0),
+        sample_titles=sample_titles,
+        affiliations=affiliations,
+    )
+
+
+def lookup_company_federal_awards(
+    company_name: str,
+    uei: str | None = None,
+) -> PIFederalAwardRecord | None:
+    """Query USAspending for all federal awards to the PI's company.
+
+    This gives broader context than just SBIR — includes contracts,
+    grants, and other federal spending.
+    """
+    if not company_name:
+        return None
+
+    # Build filter — prefer UEI if available
+    filters: dict = {}
+    if uei:
+        filters["recipient_id"] = uei
+    else:
+        filters["recipient_search_text"] = [company_name]
+
+    payload = {
+        "filters": filters,
+        "fields": [
+            "Award ID",
+            "Recipient Name",
+            "Award Amount",
+            "Awarding Agency",
+            "Award Type",
+            "Start Date",
+        ],
+        "page": 1,
+        "limit": 100,
+        "sort": "Award Amount",
+        "order": "desc",
+    }
+
+    try:
+        with httpx.Client(timeout=30) as client:
+            resp = client.post(
+                f"{USASPENDING_API_URL}/search/spending_by_award/",
+                json=payload,
+            )
+            if resp.status_code != 200:
+                print(
+                    f"USAspending API returned {resp.status_code} for {company_name}",
+                    file=sys.stderr,
+                )
+                return None
+            data = resp.json()
+    except Exception as e:
+        print(f"USAspending API error for {company_name}: {e}", file=sys.stderr)
+        return None
+
+    results = data.get("results", [])
+    if not results:
+        return None
+
+    agencies: set[str] = set()
+    award_types: set[str] = set()
+    total_funding = 0.0
+    dates: list[str] = []
+
+    for r in results:
+        ag = r.get("Awarding Agency", "")
+        if ag:
+            agencies.add(ag)
+        at = r.get("Award Type", "")
+        if at:
+            award_types.add(at)
+        try:
+            total_funding += float(r.get("Award Amount", 0) or 0)
+        except (ValueError, TypeError):
+            pass
+        d = r.get("Start Date", "")
+        if d:
+            dates.append(d)
+
+    return PIFederalAwardRecord(
+        total_awards=len(results),
+        total_funding=total_funding,
+        agencies=sorted(agencies),
+        award_types=sorted(award_types),
+        date_range=(min(dates) if dates else None, max(dates) if dates else None),
+    )
+
+
+def lookup_pi_external_data(
+    awards: list[dict],
+) -> dict[str, dict]:
+    """Look up external data (patents, publications, federal awards) for each PI.
+
+    Returns a dict keyed by upper-cased PI name, with sub-keys:
+    - "patents": PIPatentRecord | None
+    - "publications": PIPublicationRecord | None
+    - "federal_awards": PIFederalAwardRecord | None
+    """
+    # Collect unique PIs with their company context
+    pis: dict[str, dict] = {}
+    for a in awards:
+        pi = str(a.get("PI Name", "")).strip()
+        if not pi:
+            continue
+        key = pi.upper()
+        if key not in pis:
+            pis[key] = {
+                "name": pi,
+                "company": str(a.get("Company", "")).strip(),
+                "uei": str(a.get("Company UEI", a.get("UEI", ""))).strip(),
+            }
+
+    results: dict[str, dict] = {}
+    total = len(pis)
+
+    for idx, (key, info) in enumerate(pis.items(), 1):
+        name = info["name"]
+        company = info["company"]
+        uei = info["uei"] or None
+
+        print(
+            f"Looking up external data for PI {idx}/{total}: {name}...",
+            file=sys.stderr,
+        )
+
+        patents = lookup_pi_patents(name, company)
+        publications = lookup_pi_publications(name)
+        federal_awards = lookup_company_federal_awards(company, uei)
+
+        results[key] = {
+            "patents": patents,
+            "publications": publications,
+            "federal_awards": federal_awards,
+        }
+
+    return results
+
+
+# ---------------------------------------------------------------------------
 # Formatting helpers
 # ---------------------------------------------------------------------------
 
@@ -995,6 +1337,57 @@ def _pi_history_digest(name: str, history: dict | None) -> str:
     return "\n".join(parts)
 
 
+def _pi_external_digest(external: dict | None) -> str:
+    """Format a PI's external data (patents, publications, federal awards) for LLM context."""
+    if not external:
+        return "No external data available for this PI."
+
+    parts = []
+
+    # Patents
+    patents: PIPatentRecord | None = external.get("patents")
+    if patents:
+        parts.append(f"USPTO Patents as inventor: {patents.total_patents}")
+        if patents.assignees:
+            parts.append(f"Patent assignees: {', '.join(patents.assignees)}")
+        if patents.date_range[0]:
+            parts.append(f"Patent date range: {patents.date_range[0]} to {patents.date_range[1]}")
+        if patents.sample_titles:
+            parts.append("Sample patent titles: " + "; ".join(patents.sample_titles))
+    else:
+        parts.append("USPTO Patents: No patents found for this inventor name.")
+
+    # Publications
+    pubs: PIPublicationRecord | None = external.get("publications")
+    if pubs:
+        parts.append(f"Academic publications: {pubs.total_papers}")
+        if pubs.h_index is not None:
+            parts.append(f"h-index: {pubs.h_index}")
+        parts.append(f"Total citations: {pubs.citation_count}")
+        if pubs.affiliations:
+            parts.append(f"Affiliations: {', '.join(pubs.affiliations)}")
+        if pubs.sample_titles:
+            parts.append("Sample paper titles: " + "; ".join(pubs.sample_titles))
+    else:
+        parts.append("Academic publications: No Semantic Scholar profile found.")
+
+    # Federal awards (company-level)
+    fed: PIFederalAwardRecord | None = external.get("federal_awards")
+    if fed:
+        parts.append(f"Company federal awards (USAspending): {fed.total_awards}")
+        parts.append(f"Company total federal funding: ${fed.total_funding:,.0f}")
+        if fed.agencies:
+            parts.append(f"Federal agencies: {', '.join(fed.agencies)}")
+        if fed.award_types:
+            parts.append(f"Award types: {', '.join(fed.award_types)}")
+        if fed.date_range[0]:
+            parts.append(f"Federal award date range: {fed.date_range[0]} to {fed.date_range[1]}")
+    else:
+        parts.append("Company federal awards: No USAspending records found.")
+
+    return "\n".join(parts)
+
+
 def generate_company_diligence(
     api_key: str,
     awards: list[dict],
@@ -1107,11 +1500,13 @@ def generate_pi_diligence(
     awards: list[dict],
     pi_history: dict[str, dict] | None = None,
     company_research: dict[str, CompanyResearch] | None = None,
+    pi_external_data: dict[str, dict] | None = None,
 ) -> dict[str, str]:
     """Generate a diligence paragraph for each unique Principal Investigator.
 
-    Combines the PI's SBIR history, their current award context, and any
-    available company research to assess the PI's track record.
+    Combines the PI's SBIR history, patent portfolio, academic publications,
+    company federal award context, and web research to produce a comprehensive
+    assessment.
 
     Returns a dict keyed by upper-cased PI name.
     """
@@ -1136,16 +1531,21 @@ def generate_pi_diligence(
     system = (
         "You are a due-diligence analyst evaluating Principal Investigators "
         "(PIs) who lead SBIR/STTR federal innovation projects. Write exactly "
-        "one paragraph (3-5 sentences) assessing the PI. Cover:\n"
+        "one paragraph (4-6 sentences) assessing the PI. Cover:\n"
         "1. The PI's SBIR track record — number of awards, phase progression, "
         "breadth of agencies and topics\n"
         "2. Continuity — have they stayed with one company or moved between "
         "organizations? Is their research focus consistent or scattered?\n"
-        "3. Indicators of research depth — repeat awards in the same domain "
-        "suggest expertise; awards across unrelated fields may suggest "
-        "grant-chasing\n"
-        "4. Current project context — what are they working on now and how "
-        "does it relate to their history?\n\n"
+        "3. IP and publication output — patents filed as inventor and academic "
+        "publications demonstrate research productivity and domain expertise. "
+        "Note h-index and citation count when available as indicators of "
+        "scholarly impact. If patents are assigned to different entities than "
+        "the current company, note that.\n"
+        "4. Company federal funding context — broader federal awards to the "
+        "PI's company (contracts, grants) beyond SBIR show the company's "
+        "ability to win and execute federal work\n"
+        "5. Current project context — what are they working on now and how "
+        "does it relate to their history and expertise?\n\n"
         "Be specific and analytical. Do not use bullet points or headers. "
         "Write in a professional, neutral tone. If the PI has no prior "
         "history, note that this is their first known SBIR award."
@@ -1181,6 +1581,12 @@ def generate_pi_diligence(
             f"Historical SBIR record as PI:\n{_pi_history_digest(key, hist)}"
         )
 
+        # External data: patents, publications, federal awards
+        ext = pi_external_data.get(key) if pi_external_data else None
+        context_parts.append(
+            f"External research data:\n{_pi_external_digest(ext)}"
+        )
+
         # Company web research for context
         cr = None
         if company_research:
@@ -1192,7 +1598,7 @@ def generate_pi_diligence(
 
         user = (
             "Write a one-paragraph assessment of this Principal Investigator's "
-            "SBIR/STTR track record and current project.\n\n"
+            "SBIR/STTR track record, research output, and current project.\n\n"
             + "\n\n".join(context_parts)
         )
 
@@ -1464,11 +1870,15 @@ def main():
             print("Building historical PI context...", file=sys.stderr)
             pi_history = get_pi_history(awards)
 
+            # Fetch external PI data (patents, publications, federal awards)
+            print("Looking up PI patents, publications, and federal awards...", file=sys.stderr)
+            pi_ext = lookup_pi_external_data(awards)
+
             co_diligence = generate_company_diligence(
                 api_key, awards, company_info, co_history
             )
             pi_dilig = generate_pi_diligence(
-                api_key, awards, pi_history, company_info
+                api_key, awards, pi_history, company_info, pi_ext
             )
     elif not api_key and not args.no_ai:
         print(
