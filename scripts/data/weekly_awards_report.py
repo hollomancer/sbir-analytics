@@ -452,6 +452,17 @@ def _resolve_shared_extractor(
     return source, extractor, table
 
 
+def _pluralize_col_key(col: str) -> str:
+    """Convert a column name to a pluralized dict key.
+
+    'Company' -> 'companies', 'Phase' -> 'phases', etc.
+    """
+    key = col.lower().replace(" ", "_")
+    if key.endswith("y"):
+        return key[:-1] + "ies"
+    return key + "s"
+
+
 def _build_history_from_df(
     df,
     group_col: str,
@@ -506,7 +517,7 @@ def _build_history_from_df(
         # Extra set columns (e.g. "Company" for PI history)
         if extra_set_cols:
             for col in extra_set_cols:
-                col_key = col.lower().replace(" ", "_") + "s"
+                col_key = _pluralize_col_key(col)
                 entry[col_key] = sorted(
                     {v for v in group_df[col].astype(str).str.strip() if v}
                 )
@@ -547,7 +558,7 @@ def _build_history_from_csv(
                 }
                 if extra_set_fields:
                     for ef in extra_set_fields:
-                        entry[ef.lower().replace(" ", "_") + "s"] = set()
+                        entry[_pluralize_col_key(ef)] = set()
                 history[name] = entry
 
             h = history[name]
@@ -560,7 +571,7 @@ def _build_history_from_csv(
                 for ef in extra_set_fields:
                     val = str(row.get(ef, "")).strip()
                     if val:
-                        h[ef.lower().replace(" ", "_") + "s"].add(val)
+                        h[_pluralize_col_key(ef)].add(val)
             try:
                 h["total_funding"] += float(
                     str(row.get("Award Amount", "0")).replace(",", "").replace("$", "")
