@@ -19,6 +19,7 @@ When OPENAI_API_KEY is set, uses the OpenAI API to:
 Usage:
     python scripts/data/weekly_awards_report.py
     python scripts/data/weekly_awards_report.py --days 14 --output report.md
+    python scripts/data/weekly_awards_report.py --debug
     OPENAI_API_KEY=sk-... python scripts/data/weekly_awards_report.py
 """
 
@@ -86,6 +87,31 @@ except ImportError:
             s = _re.sub(r"\b(company|co)\b", "company", s)
             s = _re.sub(r"\b(limited|ltd)\b", "ltd", s)
         return _re.sub(r"\s+", " ", s).strip()
+
+# ---------------------------------------------------------------------------
+# Debug mode — toggled by --debug CLI flag
+# ---------------------------------------------------------------------------
+
+DEBUG = False
+
+
+def _debug(msg: str) -> None:
+    """Print a debug message to stderr when DEBUG mode is active."""
+    if DEBUG:
+        print(f"[DEBUG] {msg}", file=sys.stderr)
+
+
+def _debug_response(label: str, resp: httpx.Response, body_preview_len: int = 500) -> None:
+    """Log key details of an HTTP response in debug mode."""
+    if not DEBUG:
+        return
+    body = resp.text
+    preview = body[:body_preview_len] + ("..." if len(body) > body_preview_len else "")
+    _debug(
+        f"{label} — HTTP {resp.status_code} | "
+        f"{len(body)} chars | preview: {preview}"
+    )
+
 
 # URL templates for external links
 SBIR_AWARD_SEARCH_URL = "https://www.sbir.gov/sbirsearch/award/all"
@@ -764,9 +790,11 @@ def lookup_pi_patents(pi_name: str, company_name: str | None = None) -> PIPatent
         "o": {"page": 0, "per_page": 100},
     }
 
+    _debug(f"PatentsView query for '{pi_name}': POST {PATENTSVIEW_API_URL} payload={json.dumps(payload)}")
     try:
         with httpx.Client(timeout=30) as client:
             resp = client.post(PATENTSVIEW_API_URL, headers=headers, json=payload)
+            _debug_response(f"PatentsView [{pi_name}]", resp)
             if resp.status_code != 200:
                 print(
                     f"PatentsView API returned {resp.status_code} for {pi_name}",
@@ -779,6 +807,7 @@ def lookup_pi_patents(pi_name: str, company_name: str | None = None) -> PIPatent
         return None
 
     patents = data.get("patents", [])
+    _debug(f"PatentsView [{pi_name}]: {len(patents)} patents returned")
     if not patents:
         return None
 
@@ -817,6 +846,7 @@ def lookup_pi_publications(pi_name: str) -> PIPublicationRecord | None:
 
     search_query = f"{first} {last}".strip()
 
+    _debug(f"Semantic Scholar search for '{pi_name}': query='{search_query}'")
     try:
         # Step 1: Search for the author
         with httpx.Client(timeout=30) as client:
@@ -824,6 +854,7 @@ def lookup_pi_publications(pi_name: str) -> PIPublicationRecord | None:
                 f"{SEMANTIC_SCHOLAR_API_URL}/author/search",
                 params={"query": search_query, "limit": 5},
             )
+            _debug_response(f"Semantic Scholar search [{pi_name}]", resp)
             if resp.status_code != 200:
                 print(
                     f"Semantic Scholar search returned {resp.status_code} for {pi_name}",
@@ -833,12 +864,14 @@ def lookup_pi_publications(pi_name: str) -> PIPublicationRecord | None:
             search_data = resp.json()
 
         authors = search_data.get("data", [])
+        _debug(f"Semantic Scholar [{pi_name}]: {len(authors)} author matches")
         if not authors:
             return None
 
         # Pick the best match (first result from Semantic Scholar's ranking)
         author = authors[0]
         author_id = author.get("authorId")
+        _debug(f"Semantic Scholar [{pi_name}]: selected authorId={author_id}, name={author.get('name', 'N/A')}")
         if not author_id:
             return None
 
@@ -850,6 +883,7 @@ def lookup_pi_publications(pi_name: str) -> PIPublicationRecord | None:
                     "fields": "name,hIndex,citationCount,affiliations,papers.title,papers.year",
                 },
             )
+            _debug_response(f"Semantic Scholar detail [{pi_name}]", resp)
             if resp.status_code != 200:
                 print(
                     f"Semantic Scholar author detail returned {resp.status_code} for {pi_name}",
@@ -863,6 +897,10 @@ def lookup_pi_publications(pi_name: str) -> PIPublicationRecord | None:
         return None
 
     papers = author_data.get("papers", [])
+    _debug(
+        f"Semantic Scholar [{pi_name}]: {len(papers)} papers, "
+        f"h-index={author_data.get('hIndex')}, citations={author_data.get('citationCount')}"
+    )
     sample_titles = [
         p["title"] for p in papers[:5] if p.get("title")
     ]
@@ -944,12 +982,17 @@ def lookup_company_federal_awards(
         "order": "desc",
     }
 
+    _debug(
+        f"USAspending query for '{company_name}' (uei={uei}): "
+        f"POST {USASPENDING_API_URL}/search/spending_by_award/ filters={json.dumps(filters)}"
+    )
     try:
         with httpx.Client(timeout=30) as client:
             resp = client.post(
                 f"{USASPENDING_API_URL}/search/spending_by_award/",
                 json=payload,
             )
+            _debug_response(f"USAspending [{company_name}]", resp)
             if resp.status_code != 200:
                 print(
                     f"USAspending API returned {resp.status_code} for {company_name}",
@@ -962,6 +1005,7 @@ def lookup_company_federal_awards(
         return None
 
     results = data.get("results", [])
+    _debug(f"USAspending [{company_name}]: {len(results)} award results returned")
     if not results:
         return None
 
@@ -1121,13 +1165,17 @@ def lookup_sam_entity(
     headers = {"X-Api-Key": api_key, "Accept": "application/json"}
 
     def _try_query(params: dict) -> dict | None:
+        _debug(f"SAM.gov query for '{company_name}': GET {SAM_GOV_API_URL} params={params}")
         try:
             with httpx.Client(timeout=30) as client:
                 resp = client.get(SAM_GOV_API_URL, headers=headers, params=params)
+                _debug_response(f"SAM.gov [{company_name}]", resp)
                 if resp.status_code != 200:
                     return None
                 data = resp.json()
                 results = data.get("entityData", data.get("results", []))
+                result_count = len(results) if isinstance(results, list) else (1 if results else 0)
+                _debug(f"SAM.gov [{company_name}]: {result_count} entities in response")
                 if isinstance(results, list) and results:
                     return results[0]
                 if isinstance(results, dict):
@@ -1268,23 +1316,27 @@ def lookup_pi_orcid(pi_name: str) -> ORCIDRecord | None:
         if first:
             query += f"+AND+given-names:{first}"
 
+        _debug(f"ORCID search for '{pi_name}': query='{query}'")
         with httpx.Client(timeout=30) as client:
             resp = client.get(
                 f"{ORCID_API_URL}/expanded-search/",
                 headers=headers,
                 params={"q": query, "rows": 5},
             )
+            _debug_response(f"ORCID search [{pi_name}]", resp)
             if resp.status_code != 200:
                 return None
             search_data = resp.json()
 
         results = search_data.get("expanded-result", [])
+        _debug(f"ORCID [{pi_name}]: {len(results) if results else 0} search results")
         if not results:
             return None
 
         # Pick the best match (first result)
         best = results[0]
         orcid_id = best.get("orcid-id", "")
+        _debug(f"ORCID [{pi_name}]: selected orcid-id={orcid_id}")
         if not orcid_id:
             return None
 
@@ -1294,6 +1346,7 @@ def lookup_pi_orcid(pi_name: str) -> ORCIDRecord | None:
                 f"{ORCID_API_URL}/{orcid_id}/record",
                 headers=headers,
             )
+            _debug_response(f"ORCID profile [{pi_name}]", resp)
             if resp.status_code != 200:
                 return None
             profile = resp.json()
@@ -1419,11 +1472,16 @@ def fetch_solicitation_topics(awards: list[dict]) -> dict[str, SolicitationTopic
         if year > 0:
             params["year"] = year
 
+        _debug(
+            f"SBIR.gov solicitations query: GET {SBIR_GOV_API_URL}/solicitations "
+            f"params={params} (looking for {len(codes)} topic codes)"
+        )
         try:
             with httpx.Client(timeout=30) as client:
                 resp = client.get(
                     f"{SBIR_GOV_API_URL}/solicitations", params=params
                 )
+                _debug_response(f"SBIR.gov solicitations [year={year}]", resp)
                 if resp.status_code != 200:
                     print(
                         f"SBIR.gov API returned {resp.status_code} for year={year}",
@@ -1438,6 +1496,7 @@ def fetch_solicitation_topics(awards: list[dict]) -> dict[str, SolicitationTopic
         topics = data if isinstance(data, list) else (
             data.get("results") or data.get("data") or []
         )
+        _debug(f"SBIR.gov solicitations [year={year}]: {len(topics)} topics in response")
 
         codes_set = set(codes)
         for topic in topics:
@@ -1503,10 +1562,15 @@ def build_sbir_award_url(award: dict) -> str:
     """Build a link to the SBIR.gov award search page for this award."""
     contract = str(award.get("Contract", "")).strip()
     if contract:
-        return f"{SBIR_AWARD_SEARCH_URL}/{quote(contract)}"
+        url = f"{SBIR_AWARD_SEARCH_URL}/{quote(contract)}"
+        _debug(f"SBIR award URL (contract='{contract}'): {url}")
+        return url
     company = str(award.get("Company", "")).strip()
     if company:
-        return f"{SBIR_AWARD_SEARCH_URL}/{quote(company)}"
+        url = f"{SBIR_AWARD_SEARCH_URL}/{quote(company)}"
+        _debug(f"SBIR award URL (company='{company}', no contract): {url}")
+        return url
+    _debug("SBIR award URL: no contract or company — using base URL")
     return SBIR_AWARD_SEARCH_URL
 
 
@@ -1515,9 +1579,14 @@ def build_solicitation_url(award: dict) -> str | None:
     solicitation = str(award.get("Solicitation Number", "")).strip()
     topic_code = str(award.get("Topic Code", "")).strip()
     if solicitation:
-        return f"{SBIR_SOLICITATION_URL}?keyword={quote(solicitation)}"
+        url = f"{SBIR_SOLICITATION_URL}?keyword={quote(solicitation)}"
+        _debug(f"Solicitation URL (sol='{solicitation}'): {url}")
+        return url
     if topic_code:
-        return f"{SBIR_SOLICITATION_URL}?keyword={quote(topic_code)}"
+        url = f"{SBIR_SOLICITATION_URL}?keyword={quote(topic_code)}"
+        _debug(f"Solicitation URL (topic='{topic_code}', no sol number): {url}")
+        return url
+    _debug(f"Solicitation URL: no solicitation number or topic code for '{award.get('Award Title', 'N/A')}'")
     return None
 
 
@@ -1525,9 +1594,12 @@ def build_usaspending_url(award: dict) -> str | None:
     """Build a link to USAspending.gov search for this award's contract."""
     contract = str(award.get("Contract", "")).strip()
     if not contract:
+        _debug(f"USAspending URL: no contract number for '{award.get('Award Title', 'N/A')}'")
         return None
     search_term = quote(contract)
-    return f'{USASPENDING_SEARCH_URL}?form_fields={{"search_term":"{search_term}"}}'
+    url = f'{USASPENDING_SEARCH_URL}?form_fields={{"search_term":"{search_term}"}}'
+    _debug(f"USAspending URL (contract='{contract}'): {url}")
+    return url
 
 
 # ---------------------------------------------------------------------------
@@ -1545,6 +1617,8 @@ def _openai_request_with_retry(
     """Make an OpenAI API request with retry/backoff for 429 and 5xx errors."""
     import time
 
+    model_name = payload.get("model", "unknown")
+    _debug(f"OpenAI request: {method} {url} model={model_name} timeout={timeout}")
     for attempt in range(OPENAI_MAX_RETRIES + 1):
         try:
             with httpx.Client(timeout=timeout) as client:
@@ -1580,6 +1654,10 @@ def _openai_chat(
     temperature: float = 0.3,
 ) -> str | None:
     """Call the OpenAI chat completions API. Returns the assistant message text."""
+    _debug(
+        f"OpenAI chat: model={model} temp={temperature} "
+        f"system_len={len(system)} user_len={len(user)}"
+    )
     headers = {
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
@@ -1594,16 +1672,28 @@ def _openai_chat(
     }
     resp = _openai_request_with_retry("POST", OPENAI_CHAT_URL, headers, payload)
     if resp is None:
+        _debug("OpenAI chat: no response (all retries failed)")
         return None
     try:
-        return resp.json()["choices"][0]["message"]["content"].strip()
+        data = resp.json()
+        content = data["choices"][0]["message"]["content"].strip()
+        usage = data.get("usage", {})
+        _debug(
+            f"OpenAI chat response: {len(content)} chars | "
+            f"tokens: prompt={usage.get('prompt_tokens', '?')} "
+            f"completion={usage.get('completion_tokens', '?')} "
+            f"total={usage.get('total_tokens', '?')}"
+        )
+        return content
     except (KeyError, IndexError) as e:
         print(f"OpenAI Chat API unexpected response: {e}", file=sys.stderr)
+        _debug(f"OpenAI chat raw response: {resp.text[:1000]}")
         return None
 
 
 def _openai_web_search(api_key: str, query: str) -> CompanyResearch | None:
     """Use the OpenAI Responses API with web_search_preview to research a company."""
+    _debug(f"OpenAI web search: query='{query[:200]}'")
     headers = {
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
@@ -1639,8 +1729,13 @@ def _openai_web_search(api_key: str, query: str) -> CompanyResearch | None:
                             source_urls.append(url)
 
     if not summary_text:
+        _debug("OpenAI web search: no summary text in response")
         return None
 
+    _debug(
+        f"OpenAI web search: {len(summary_text)} char summary, "
+        f"{len(source_urls)} source URLs: {source_urls[:3]}"
+    )
     return CompanyResearch(summary=summary_text, source_urls=source_urls)
 
 
@@ -2581,12 +2676,33 @@ def main():
         action="store_true",
         help="Skip company and PI diligence paragraphs",
     )
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        help="Enable verbose debug output for API calls, LLM context, and URL construction (to stderr)",
+    )
     args = parser.parse_args()
 
+    global DEBUG  # noqa: PLW0603
+    if args.debug:
+        DEBUG = True
+        print("[DEBUG] Debug mode enabled — verbose API diagnostics will appear on stderr", file=sys.stderr)
+
     awards, freshness_warnings = fetch_weekly_awards(days=args.days)
+    _debug(f"Fetched {len(awards)} raw awards (freshness_warnings={freshness_warnings})")
 
     # Clean, validate, and deduplicate
     awards, cleaning_stats = clean_and_dedup_awards(awards)
+    _debug(f"After cleaning: {len(awards)} awards | stats={cleaning_stats}")
+    if DEBUG and awards:
+        sample = awards[0]
+        _debug(f"Sample award keys: {list(sample.keys())}")
+        _debug(
+            f"Sample award: Company='{sample.get('Company')}' "
+            f"Contract='{sample.get('Contract')}' "
+            f"Solicitation='{sample.get('Solicitation Number')}' "
+            f"Topic='{sample.get('Topic Code')}'"
+        )
 
     # Generate AI content if API key is available
     synopsis = None
@@ -2659,6 +2775,49 @@ def main():
             "Set the env var or use --no-ai to silence this message.",
             file=sys.stderr,
         )
+
+    # Print debug summary of all data collection results before report generation
+    if DEBUG:
+        print("\n" + "=" * 72, file=sys.stderr)
+        print("[DEBUG] === API Data Collection Summary ===", file=sys.stderr)
+        print(f"[DEBUG] Awards loaded: {len(awards)}", file=sys.stderr)
+        print(f"[DEBUG] Freshness warnings: {len(freshness_warnings) if freshness_warnings else 0}", file=sys.stderr)
+        print(
+            f"[DEBUG] Solicitation topics fetched: "
+            f"{len(sol_topics) if sol_topics else 0}",
+            file=sys.stderr,
+        )
+        print(
+            f"[DEBUG] Company research results: "
+            f"{len(company_info) if company_info else 0}",
+            file=sys.stderr,
+        )
+        print(f"[DEBUG] Synopsis generated: {'yes' if synopsis else 'no'}", file=sys.stderr)
+        print(
+            f"[DEBUG] Award descriptions generated: "
+            f"{len(descriptions) if descriptions else 0}",
+            file=sys.stderr,
+        )
+        print(
+            f"[DEBUG] Company diligence paragraphs: "
+            f"{len(co_diligence) if co_diligence else 0}",
+            file=sys.stderr,
+        )
+        print(
+            f"[DEBUG] PI diligence paragraphs: "
+            f"{len(pi_dilig) if pi_dilig else 0}",
+            file=sys.stderr,
+        )
+        # Show which awards have all reference link components
+        missing_contracts = sum(1 for a in awards if not str(a.get("Contract", "")).strip())
+        missing_sol = sum(
+            1 for a in awards
+            if not str(a.get("Solicitation Number", "")).strip()
+            and not str(a.get("Topic Code", "")).strip()
+        )
+        print(f"[DEBUG] Awards missing Contract (no USAspending link): {missing_contracts}/{len(awards)}", file=sys.stderr)
+        print(f"[DEBUG] Awards missing Solicitation+Topic (no solicitation link): {missing_sol}/{len(awards)}", file=sys.stderr)
+        print("=" * 72 + "\n", file=sys.stderr)
 
     report = generate_markdown(
         awards,
