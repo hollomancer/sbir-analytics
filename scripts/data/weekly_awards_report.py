@@ -1610,6 +1610,11 @@ def lookup_sam_entity(
                         return results
                     return None
             except Exception as e:
+                if attempt < 2:
+                    wait = 2 ** (attempt + 1)
+                    _debug(f"SAM.gov [{company_name}]: request error ({e}), retrying in {wait}s")
+                    time.sleep(wait)
+                    continue
                 print(f"SAM.gov API error: {e}", file=sys.stderr)
                 return None
         return None
@@ -2550,6 +2555,8 @@ def fetch_usaspending_contract_descriptions(
     # Batch contracts into groups to reduce API calls.
     # Must make separate requests for contracts (A-D) and assistance (02+)
     # since USAspending requires award_type_codes from one group per request.
+    # Contracts and SBIR-relevant assistance types (grants/cooperative agreements).
+    # Codes 06+ (direct payments, insurance, etc.) are unlikely for SBIR awards.
     type_groups = [
         ("contracts", ["A", "B", "C", "D"]),
         ("assistance", ["02", "03", "04", "05"]),
@@ -3595,9 +3602,6 @@ def main():
     _pipeline_start = _time.monotonic()
     pipeline_deadline = _pipeline_start + args.timeout
 
-    def _pipeline_time_left() -> float:
-        return max(0, pipeline_deadline - _time.monotonic())
-
     def _pipeline_expired() -> bool:
         return _time.monotonic() > pipeline_deadline
 
@@ -3634,14 +3638,13 @@ def main():
     elif args.skip_sbir_api:
         print("Skipping SBIR.gov API calls (--skip-sbir-api)", file=sys.stderr)
 
-    # Fetch supplementary context used by both AI descriptions and diligence:
-    # - USAspending contract descriptions (fallback when solicitation topics unavailable)
-    # - USAspending recipient profiles (business types, parent company, award totals)
-    # - SAM.gov entity data (NAICS codes for industry context + diligence)
+    # Fetch supplementary context only when AI features are enabled —
+    # these feed into LLM prompts and diligence, so skip the network I/O
+    # when --no-ai is set or OPENAI_API_KEY is missing.
     usa_descs: dict[str, str] | None = None
     usa_recipients: dict[str, USARecipientProfile] | None = None
     sam_data: dict[str, SAMEntityRecord] | None = None
-    if awards:
+    if awards and api_key and not args.no_ai:
         usa_descs = fetch_usaspending_contract_descriptions(awards)
         usa_recipients = lookup_usaspending_recipients(awards)
         sam_data = lookup_sam_entities(awards)
