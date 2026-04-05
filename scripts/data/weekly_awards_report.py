@@ -975,9 +975,16 @@ def lookup_company_federal_awards(
         return None
 
     # Build filter — prefer UEI if available
-    filters: dict = {}
+    filters: dict = {
+        # award_type_codes is required by USAspending API.
+        # Contracts (A-D) + Grants/Other (02-11) to capture all federal work.
+        "award_type_codes": [
+            "A", "B", "C", "D",
+            "02", "03", "04", "05", "06", "07", "08", "09", "10", "11",
+        ],
+    }
     if uei:
-        filters["recipient_id"] = uei
+        filters["recipient_search_text"] = [uei]
     else:
         filters["recipient_search_text"] = [company_name]
 
@@ -2024,7 +2031,11 @@ def fetch_usaspending_contract_descriptions(
     for batch_start in range(0, len(contracts), batch_size):
         batch = contracts[batch_start : batch_start + batch_size]
         payload = {
-            "filters": {"award_ids": batch},
+            "filters": {
+                "award_ids": batch,
+                # award_type_codes is required; contracts only for SBIR awards
+                "award_type_codes": ["A", "B", "C", "D"],
+            },
             "fields": ["Award ID", "Description", "Awarding Agency", "Award Type"],
             "page": 1,
             "limit": len(batch),
