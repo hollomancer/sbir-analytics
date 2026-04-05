@@ -1750,17 +1750,29 @@ def generate_award_descriptions(
 
     system = (
         "You summarize SBIR/STTR awards in plain language. "
-        "For each award, write 2-3 sentences explaining what the project does "
-        "and why it matters. Use the abstract, the solicitation topic "
-        "description (which describes the government's research need that "
-        "this award responds to), associated federal spending data, and "
-        "company background research to inform your description. When a "
-        "solicitation topic description is provided, explain how the award "
-        "addresses the specific government need described in the "
-        "solicitation. Reference relevant company context "
-        "(e.g. their expertise, previous work, or market position) when it "
-        "adds value. Be specific about the technology and its intended "
-        "application. Avoid generic filler.\n\n"
+        "For each award, write 3-4 sentences. The first 1-2 sentences should "
+        "explain what the project does and why it matters — be specific about "
+        "the technology and its intended application.\n\n"
+        "When a solicitation topic description is provided, the final 1-2 "
+        "sentences MUST assess the alignment between the award and the "
+        "originating solicitation:\n"
+        "- Does the award's abstract directly address the technical "
+        "objectives laid out in the solicitation topic description?\n"
+        "- Is the award tightly scoped to the solicitation's stated research "
+        "need, or does it appear to address the topic tangentially or "
+        "partially?\n"
+        "- Are there aspects of the solicitation's requirements that the "
+        "award abstract does not appear to cover?\n"
+        "State the alignment clearly (e.g. 'This award directly addresses "
+        "the solicitation's need for...' or 'While the solicitation sought "
+        "X, this award focuses primarily on Y, which addresses only a "
+        "portion of the stated need.'). Do not hedge — make a specific "
+        "assessment based on the available text.\n\n"
+        "If no solicitation topic description is available, skip the "
+        "alignment assessment and focus on the technology, its application, "
+        "and company context.\n\n"
+        "Reference relevant company context (e.g. their expertise, previous "
+        "work, or market position) when it adds value. Avoid generic filler.\n\n"
         "Respond with a JSON object mapping the award number (as a string key) "
         'to its description string. Example: {"1": "Description.", "2": "Description."}'
     )
@@ -1776,11 +1788,12 @@ def generate_award_descriptions(
             digests.append(f"[{idx}] {_award_digest(a, cr, solicitation_topics)}")
 
         user = (
-            "Generate a brief plain-language description for each award below. "
-            "Each description should convey the technology, its application, "
-            "the significance of the federal investment, how it addresses the "
-            "solicitation's stated research need, and relevant company "
-            "context. Respond ONLY with a JSON object.\n\n" + "\n\n".join(digests)
+            "Generate a description for each award below. Each description "
+            "should convey the technology, its application, and — when "
+            "solicitation topic data is provided — a specific assessment of "
+            "how well the award aligns with the solicitation's stated "
+            "research need. Respond ONLY with a JSON object.\n\n"
+            + "\n\n".join(digests)
         )
 
         batch_label = f"{batch_start + 1}-{batch_start + len(batch)}"
