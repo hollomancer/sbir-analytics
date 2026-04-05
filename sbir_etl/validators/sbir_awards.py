@@ -591,21 +591,25 @@ def validate_sbir_awards(
     # Create a mask for records that have all essential fields
     essential_mask = df[essential_columns].notnull().all(axis=1)
 
-    # Build per-row issues for failing records (vectorized per-column)
+    # Build per-row issues for failing records (vectorized per-column).
+    # failing_row_indices stores raw DataFrame index values for filtering.
+    # QualityIssue.row_index is typed int|None — coerce safely so non-integer
+    # indexes (unlikely but possible) degrade to None rather than crashing.
     issues: list[QualityIssue] = []
-    failing_row_indices: set[int] = set()
+    failing_row_indices: set[Any] = set()
     for col in essential_columns:
         null_mask = df[col].isna()
         null_indices = df.index[null_mask].tolist()
         if null_indices:
             failing_row_indices.update(null_indices)
             for idx in null_indices:
+                row_idx = idx if isinstance(idx, int) else None
                 issues.append(
                     QualityIssue(
                         severity=QualitySeverity.ERROR,
                         field=col,
                         message=f"Required field '{col}' is missing",
-                        row_index=int(idx),
+                        row_index=row_idx,
                     )
                 )
 

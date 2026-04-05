@@ -32,12 +32,15 @@ def _apply_quality_filters(
 
     Returns:
         Tuple of (filtered DataFrame, audit dict). The audit dict records every
-        transformation step with counts and affected row indices so that
-        downstream consumers can trace exactly what was modified or dropped.
+        transformation step with counts and a small sample of affected indices
+        so that downstream consumers can trace what was modified or dropped
+        without excessive memory overhead.
     """
     original_count = len(df)
-    original_index = set(df.index.tolist())
     context.log.info(f"Starting quality filtering with {original_count} records")
+
+    # Max indices to store per step (keeps memory bounded for large datasets)
+    _SAMPLE_LIMIT = 50
 
     audit: dict[str, Any] = {
         "original_count": original_count,
@@ -48,13 +51,14 @@ def _apply_quality_filters(
     if "award_id" in df.columns:
         before = len(df)
         empty_mask = df["award_id"].isna() | (df["award_id"] == "") | (df["award_id"] == "-")
-        dropped_indices = df.index[empty_mask].tolist()
+        dropped_count = int(empty_mask.sum())
+        sample_indices = df.index[empty_mask].tolist()[:_SAMPLE_LIMIT]
         df = df[~empty_mask].copy()
         after = len(df)
         audit["steps"].append({
             "name": "empty_award_id",
-            "dropped_count": before - after,
-            "dropped_indices": dropped_indices,
+            "dropped_count": dropped_count,
+            "sample_indices": sample_indices,
         })
         if before != after:
             context.log.info(f"Empty award_id filter: {before} -> {after} ({after / before:.1%})")
@@ -90,13 +94,14 @@ def _apply_quality_filters(
     if "award_id" in df.columns and "phase" in df.columns:
         before = len(df)
         dup_mask = df.duplicated(subset=["award_id", "phase"], keep="first")
-        dropped_indices = df.index[dup_mask].tolist()
+        dropped_count = int(dup_mask.sum())
+        sample_indices = df.index[dup_mask].tolist()[:_SAMPLE_LIMIT]
         df = df[~dup_mask].copy()
         after = len(df)
         audit["steps"].append({
             "name": "dedup_award_id_phase",
-            "dropped_count": before - after,
-            "dropped_indices": dropped_indices,
+            "dropped_count": dropped_count,
+            "sample_indices": sample_indices,
         })
         if before != after:
             context.log.info(
@@ -105,13 +110,14 @@ def _apply_quality_filters(
     elif "award_id" in df.columns:
         before = len(df)
         dup_mask = df.duplicated(subset=["award_id"], keep="first")
-        dropped_indices = df.index[dup_mask].tolist()
+        dropped_count = int(dup_mask.sum())
+        sample_indices = df.index[dup_mask].tolist()[:_SAMPLE_LIMIT]
         df = df[~dup_mask].copy()
         after = len(df)
         audit["steps"].append({
             "name": "dedup_award_id",
-            "dropped_count": before - after,
-            "dropped_indices": dropped_indices,
+            "dropped_count": dropped_count,
+            "sample_indices": sample_indices,
         })
         if before != after:
             context.log.info(
@@ -370,11 +376,11 @@ def validated_sbir_awards(
     # Save to S3 for downstream processing (e.g., Neo4j loading in GitHub Actions)
     s3_uri = _save_to_s3(validated_df, "validated/sbir_awards.parquet", context)
 
-    # Build audit summary for metadata (strip raw indices for serialization —
+    # Build audit summary for metadata (strip sample indices for serialization —
     # keep counts and step names so Dagster UI shows a concise trail)
     audit_summary = {
         step["name"]: {
-            k: v for k, v in step.items() if k != "dropped_indices"
+            k: v for k, v in step.items() if k != "sample_indices"
         }
         for step in filter_audit.get("steps", [])
     }
