@@ -89,6 +89,8 @@ PATENTSVIEW_API_URL = "https://search.patentsview.org/api/v1/patent"
 SEMANTIC_SCHOLAR_API_URL = "https://api.semanticscholar.org/graph/v1"
 USASPENDING_API_URL = "https://api.usaspending.gov/api/v2"
 SBIR_GOV_API_URL = "https://api.www.sbir.gov/public/api"
+SAM_GOV_API_URL = "https://api.sam.gov/entity-information/v3/entities"
+ORCID_API_URL = "https://pub.orcid.org/v3.0"
 
 
 # ---------------------------------------------------------------------------
@@ -858,11 +860,12 @@ def lookup_company_federal_awards(
 def lookup_pi_external_data(
     awards: list[dict],
 ) -> dict[str, dict]:
-    """Look up external data (patents, publications, federal awards) for each PI.
+    """Look up external data (patents, publications, ORCID, federal awards) for each PI.
 
     Returns a dict keyed by upper-cased PI name, with sub-keys:
     - "patents": PIPatentRecord | None
     - "publications": PIPublicationRecord | None
+    - "orcid": ORCIDRecord | None
     - "federal_awards": PIFederalAwardRecord | None
     """
     # Collect unique PIs with their company context
@@ -894,15 +897,297 @@ def lookup_pi_external_data(
 
         patents = lookup_pi_patents(name, company)
         publications = lookup_pi_publications(name)
+        orcid = lookup_pi_orcid(name)
         federal_awards = lookup_company_federal_awards(company, uei)
 
         results[key] = {
             "patents": patents,
             "publications": publications,
+            "orcid": orcid,
             "federal_awards": federal_awards,
         }
 
     return results
+
+
+# ---------------------------------------------------------------------------
+# SAM.gov entity lookup (company diligence)
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class SAMEntityRecord:
+    """Key SAM.gov entity registration data for diligence."""
+
+    uei: str
+    legal_business_name: str
+    dba_name: str | None
+    registration_status: str | None
+    expiration_date: str | None
+    business_type: str | None
+    entity_structure: str | None
+    naics_codes: list[str]
+    cage_code: str | None
+    exclusion_status: str | None
+    state: str | None
+    congressional_district: str | None
+
+
+def lookup_sam_entity(
+    company_name: str,
+    uei: str | None = None,
+    cage: str | None = None,
+) -> SAMEntityRecord | None:
+    """Query SAM.gov Entity Information API for company registration data.
+
+    Tries UEI first (exact match), then CAGE, then name search.
+    Requires SAM_GOV_API_KEY environment variable.
+    """
+    api_key = os.environ.get("SAM_GOV_API_KEY", "")
+    if not api_key:
+        return None
+
+    headers = {"X-Api-Key": api_key, "Accept": "application/json"}
+
+    def _try_query(params: dict) -> dict | None:
+        try:
+            with httpx.Client(timeout=30) as client:
+                resp = client.get(SAM_GOV_API_URL, headers=headers, params=params)
+                if resp.status_code != 200:
+                    return None
+                data = resp.json()
+                results = data.get("entityData", data.get("results", []))
+                if isinstance(results, list) and results:
+                    return results[0]
+                if isinstance(results, dict):
+                    return results
+        except Exception as e:
+            print(f"SAM.gov API error: {e}", file=sys.stderr)
+        return None
+
+    entity = None
+
+    # Try UEI first (most reliable)
+    if uei:
+        entity = _try_query({"ueiSAM": uei})
+
+    # Try CAGE code
+    if not entity and cage:
+        entity = _try_query({"cageCode": cage})
+
+    # Fall back to name search
+    if not entity and company_name:
+        entity = _try_query({"legalBusinessName": company_name, "registrationStatus": "A"})
+
+    if not entity:
+        return None
+
+    # Extract fields — SAM.gov API nests data under various keys
+    core = entity.get("entityRegistration", entity)
+    address = entity.get("coreData", {}).get("physicalAddress", {})
+    business_types = entity.get("coreData", {}).get("businessTypes", {})
+
+    # Extract NAICS codes
+    naics_list = entity.get("coreData", {}).get("naicsCodeList", [])
+    if isinstance(naics_list, list):
+        naics_codes = [
+            str(n.get("naicsCode", "")) for n in naics_list if n.get("naicsCode")
+        ]
+    else:
+        naics_codes = []
+
+    return SAMEntityRecord(
+        uei=core.get("ueiSAM", ""),
+        legal_business_name=core.get("legalBusinessName", ""),
+        dba_name=core.get("dbaName"),
+        registration_status=core.get("registrationStatus"),
+        expiration_date=core.get("registrationExpirationDate"),
+        business_type=(
+            business_types.get("businessTypeList", [{}])[0].get("businessType")
+            if isinstance(business_types.get("businessTypeList"), list)
+            and business_types.get("businessTypeList")
+            else None
+        ),
+        entity_structure=core.get("entityStructureDesc"),
+        naics_codes=naics_codes,
+        cage_code=core.get("cageCode"),
+        exclusion_status=core.get("exclusionStatusFlag"),
+        state=address.get("stateOrProvinceCode"),
+        congressional_district=address.get("congressionalDistrict"),
+    )
+
+
+def lookup_sam_entities(
+    awards: list[dict],
+) -> dict[str, SAMEntityRecord]:
+    """Look up SAM.gov registration data for each unique company.
+
+    Returns a dict keyed by upper-cased company name.
+    """
+    api_key = os.environ.get("SAM_GOV_API_KEY", "")
+    if not api_key:
+        print(
+            "SAM_GOV_API_KEY not set — skipping SAM.gov entity lookups.",
+            file=sys.stderr,
+        )
+        return {}
+
+    companies: dict[str, dict] = {}
+    for a in awards:
+        name = str(a.get("Company", "")).strip()
+        if not name:
+            continue
+        key = name.upper()
+        if key not in companies:
+            companies[key] = {
+                "name": name,
+                "uei": str(a.get("Company UEI", a.get("UEI", ""))).strip() or None,
+                "cage": str(a.get("Company CAGE", a.get("CAGE", ""))).strip() or None,
+            }
+
+    results: dict[str, SAMEntityRecord] = {}
+    total = len(companies)
+    print(f"Looking up {total} companies on SAM.gov...", file=sys.stderr)
+
+    for idx, (key, info) in enumerate(companies.items(), 1):
+        if idx % 10 == 0 or idx == total:
+            print(f"SAM.gov lookup {idx}/{total}...", file=sys.stderr)
+        record = lookup_sam_entity(info["name"], info["uei"], info["cage"])
+        if record:
+            results[key] = record
+
+    print(f"Found {len(results)}/{total} companies on SAM.gov", file=sys.stderr)
+    return results
+
+
+# ---------------------------------------------------------------------------
+# ORCID API lookup (PI diligence)
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class ORCIDRecord:
+    """Key data from an ORCID researcher profile."""
+
+    orcid_id: str
+    given_name: str | None
+    family_name: str | None
+    affiliations: list[str]
+    works_count: int
+    sample_work_titles: list[str]
+    funding_count: int
+    keywords: list[str]
+
+
+def lookup_pi_orcid(pi_name: str) -> ORCIDRecord | None:
+    """Search the ORCID public API for a PI's researcher profile.
+
+    Uses the expanded search endpoint to find by name, then fetches
+    the full profile for works, affiliations, and funding.
+    """
+    first, last = _split_pi_name(pi_name)
+    if not last:
+        return None
+
+    headers = {"Accept": "application/json"}
+
+    try:
+        # Step 1: Search for the researcher by name
+        query = f"family-name:{last}"
+        if first:
+            query += f"+AND+given-names:{first}"
+
+        with httpx.Client(timeout=30) as client:
+            resp = client.get(
+                f"{ORCID_API_URL}/expanded-search/",
+                headers=headers,
+                params={"q": query, "rows": 5},
+            )
+            if resp.status_code != 200:
+                return None
+            search_data = resp.json()
+
+        results = search_data.get("expanded-result", [])
+        if not results:
+            return None
+
+        # Pick the best match (first result)
+        best = results[0]
+        orcid_id = best.get("orcid-id", "")
+        if not orcid_id:
+            return None
+
+        # Step 2: Fetch full profile
+        with httpx.Client(timeout=30) as client:
+            resp = client.get(
+                f"{ORCID_API_URL}/{orcid_id}/record",
+                headers=headers,
+            )
+            if resp.status_code != 200:
+                return None
+            profile = resp.json()
+
+    except Exception as e:
+        print(f"ORCID API error for {pi_name}: {e}", file=sys.stderr)
+        return None
+
+    # Extract affiliations
+    affiliations: list[str] = []
+    affiliation_groups = (
+        profile.get("activities-summary", {})
+        .get("employments", {})
+        .get("affiliation-group", [])
+    )
+    for group in affiliation_groups[:10]:
+        summaries = group.get("summaries", [])
+        for s in summaries:
+            emp = s.get("employment-summary", {})
+            org = emp.get("organization", {})
+            org_name = org.get("name", "")
+            if org_name and org_name not in affiliations:
+                affiliations.append(org_name)
+
+    # Extract works (publications)
+    works_group = (
+        profile.get("activities-summary", {})
+        .get("works", {})
+        .get("group", [])
+    )
+    works_count = len(works_group)
+    sample_titles: list[str] = []
+    for wg in works_group[:5]:
+        summaries = wg.get("work-summary", [])
+        if summaries:
+            title_obj = summaries[0].get("title", {})
+            title_val = title_obj.get("title", {}).get("value", "")
+            if title_val:
+                sample_titles.append(title_val)
+
+    # Extract funding
+    funding_group = (
+        profile.get("activities-summary", {})
+        .get("fundings", {})
+        .get("group", [])
+    )
+    funding_count = len(funding_group)
+
+    # Extract keywords
+    keywords_obj = profile.get("person", {}).get("keywords", {})
+    keyword_list = keywords_obj.get("keyword", [])
+    keywords = [
+        kw.get("content", "") for kw in keyword_list[:10] if kw.get("content")
+    ]
+
+    return ORCIDRecord(
+        orcid_id=orcid_id,
+        given_name=best.get("given-names"),
+        family_name=best.get("family-names"),
+        affiliations=affiliations,
+        works_count=works_count,
+        sample_work_titles=sample_titles,
+        funding_count=funding_count,
+        keywords=keywords,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -1477,11 +1762,28 @@ def _pi_history_digest(name: str, history: dict | None) -> str:
 
 
 def _pi_external_digest(external: dict | None) -> str:
-    """Format a PI's external data (patents, publications, federal awards) for LLM context."""
+    """Format a PI's external data (patents, publications, ORCID, federal awards) for LLM context."""
     if not external:
         return "No external data available for this PI."
 
     parts = []
+
+    # ORCID profile
+    orcid: ORCIDRecord | None = external.get("orcid")
+    if orcid:
+        parts.append(f"ORCID ID: {orcid.orcid_id}")
+        if orcid.affiliations:
+            parts.append(f"ORCID affiliations: {', '.join(orcid.affiliations)}")
+        parts.append(f"ORCID works count: {orcid.works_count}")
+        parts.append(f"ORCID funding entries: {orcid.funding_count}")
+        if orcid.keywords:
+            parts.append(f"ORCID research keywords: {', '.join(orcid.keywords)}")
+        if orcid.sample_work_titles:
+            parts.append(
+                "ORCID sample works: " + "; ".join(orcid.sample_work_titles)
+            )
+    else:
+        parts.append("ORCID: No ORCID profile found for this researcher.")
 
     # Patents
     patents: PIPatentRecord | None = external.get("patents")
@@ -1532,11 +1834,13 @@ def generate_company_diligence(
     awards: list[dict],
     company_research: dict[str, CompanyResearch] | None = None,
     company_history: dict[str, dict] | None = None,
+    sam_entities: dict[str, SAMEntityRecord] | None = None,
 ) -> dict[str, str]:
     """Generate a diligence paragraph for each unique awardee company.
 
-    Combines web research, historical SBIR data, and the current award context
-    to produce a focused due-diligence assessment per company.
+    Combines web research, historical SBIR data, SAM.gov registration data,
+    and the current award context to produce a focused due-diligence
+    assessment per company.
 
     Returns a dict keyed by upper-cased company name.
     """
@@ -1565,10 +1869,15 @@ def generate_company_diligence(
         "1. Company background and technology focus\n"
         "2. SBIR track record — award volume, phase progression (Phase I→II→III "
         "indicates commercialization progress), agency diversity\n"
-        "3. Commercialization signals — products, revenue, contracts, patents, "
+        "3. SAM.gov registration status — active registration, entity structure, "
+        "business type, NAICS codes (industry classification), and any "
+        "exclusion flags are important compliance signals. An expired or "
+        "missing SAM registration is a red flag for federal contracting.\n"
+        "4. Commercialization signals — products, revenue, contracts, patents, "
         "or partnerships that suggest ability to transition research\n"
-        "4. Risk factors — e.g. sole reliance on SBIR funding, narrow agency "
-        "base, lack of phase progression, or limited public presence\n\n"
+        "5. Risk factors — e.g. sole reliance on SBIR funding, narrow agency "
+        "base, lack of phase progression, SAM exclusions, or limited public "
+        "presence\n\n"
         "Be specific and analytical. Do not use bullet points or headers. "
         "Write in a professional, neutral tone. If information is limited, "
         "note that as a risk factor."
@@ -1616,6 +1925,40 @@ def generate_company_diligence(
         else:
             context_parts.append(
                 "Web research: No web research available for this company."
+            )
+
+        # SAM.gov registration data
+        sam = sam_entities.get(key) if sam_entities else None
+        if sam:
+            sam_parts = [
+                f"SAM.gov UEI: {sam.uei}",
+                f"Legal Business Name: {sam.legal_business_name}",
+            ]
+            if sam.dba_name:
+                sam_parts.append(f"DBA Name: {sam.dba_name}")
+            sam_parts.append(
+                f"Registration Status: {sam.registration_status or 'Unknown'}"
+            )
+            if sam.expiration_date:
+                sam_parts.append(f"Registration Expiration: {sam.expiration_date}")
+            if sam.entity_structure:
+                sam_parts.append(f"Entity Structure: {sam.entity_structure}")
+            if sam.business_type:
+                sam_parts.append(f"Business Type: {sam.business_type}")
+            if sam.naics_codes:
+                sam_parts.append(f"NAICS Codes: {', '.join(sam.naics_codes)}")
+            if sam.cage_code:
+                sam_parts.append(f"CAGE Code: {sam.cage_code}")
+            if sam.exclusion_status:
+                sam_parts.append(f"Exclusion Status: {sam.exclusion_status}")
+            context_parts.append(
+                f"SAM.gov registration data:\n" + "\n".join(sam_parts)
+            )
+        else:
+            context_parts.append(
+                "SAM.gov: No SAM.gov registration data found for this company. "
+                "This may indicate the company is not registered as a federal "
+                "contractor, or the lookup failed."
             )
 
         user = (
@@ -1677,12 +2020,15 @@ def generate_pi_diligence(
         "1. The PI's SBIR track record — number of awards, phase progression, "
         "breadth of agencies and topics\n"
         "2. Continuity — have they stayed with one company or moved between "
-        "organizations? Is their research focus consistent or scattered?\n"
-        "3. IP and publication output — patents filed as inventor and academic "
-        "publications demonstrate research productivity and domain expertise. "
-        "Note h-index and citation count when available as indicators of "
-        "scholarly impact. If patents are assigned to different entities than "
-        "the current company, note that.\n"
+        "organizations? Is their research focus consistent or scattered? "
+        "Cross-reference ORCID affiliations with SBIR company history to "
+        "verify consistency.\n"
+        "3. IP and publication output — patents filed as inventor, academic "
+        "publications, and ORCID profile data demonstrate research "
+        "productivity and domain expertise. Note h-index and citation count "
+        "when available. ORCID research keywords and funding entries help "
+        "confirm domain alignment. If patents are assigned to different "
+        "entities than the current company, note that.\n"
         "4. Company federal funding context — broader federal awards to the "
         "PI's company (contracts, grants) beyond SBIR show the company's "
         "ability to win and execute federal work\n"
@@ -2022,12 +2368,15 @@ def main():
             print("Building historical PI context...", file=sys.stderr)
             pi_history = get_pi_history(awards)
 
-            # Fetch external PI data (patents, publications, federal awards)
-            print("Looking up PI patents, publications, and federal awards...", file=sys.stderr)
+            # SAM.gov entity registration data
+            sam_data = lookup_sam_entities(awards)
+
+            # Fetch external PI data (patents, publications, ORCID, federal awards)
+            print("Looking up PI patents, publications, ORCID, and federal awards...", file=sys.stderr)
             pi_ext = lookup_pi_external_data(awards)
 
             co_diligence = generate_company_diligence(
-                api_key, awards, company_info, co_history
+                api_key, awards, company_info, co_history, sam_data
             )
             pi_dilig = generate_pi_diligence(
                 api_key, awards, pi_history, company_info, pi_ext
