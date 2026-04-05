@@ -1375,6 +1375,158 @@ def lookup_pi_external_data(
 
 
 # ---------------------------------------------------------------------------
+# USAspending recipient profile (company context)
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class USARecipientProfile:
+    """Key data from a USAspending recipient profile."""
+
+    recipient_id: str
+    name: str
+    uei: str | None
+    parent_name: str | None
+    parent_uei: str | None
+    location_state: str | None
+    location_congressional_district: str | None
+    business_types: list[str]
+    total_transaction_amount: float
+    total_transactions: int
+
+
+def lookup_usaspending_recipient(
+    company_name: str,
+    uei: str | None = None,
+) -> USARecipientProfile | None:
+    """Look up a company's USAspending recipient profile.
+
+    Two-step: POST /recipient/ to find the hash ID, then GET /recipient/{id}/
+    for the full profile. Tries UEI first, then company name.
+    """
+    if not company_name:
+        return None
+
+    # Step 1: Find the recipient hash ID
+    search_terms = []
+    if uei:
+        search_terms.append(uei)
+    search_terms.append(company_name)
+
+    recipient_id = None
+    for term in search_terms:
+        _debug(f"USAspending recipient search: keyword='{term}'")
+        try:
+            with httpx.Client(timeout=15) as client:
+                resp = client.post(
+                    f"{USASPENDING_API_URL}/recipient/",
+                    json={"keyword": term, "limit": 5},
+                )
+                if resp.status_code != 200:
+                    _debug(f"USAspending recipient search returned {resp.status_code}")
+                    continue
+                data = resp.json()
+                results = data.get("results", [])
+                if results:
+                    recipient_id = results[0].get("id")
+                    _debug(
+                        f"USAspending recipient matched '{term}' → "
+                        f"'{results[0].get('name')}' id={recipient_id}"
+                    )
+                    break
+        except Exception as e:
+            _debug(f"USAspending recipient search error for '{term}': {e}")
+            continue
+
+    if not recipient_id:
+        _debug(f"USAspending recipient: no match for '{company_name}'")
+        return None
+
+    # Step 2: Fetch the full profile
+    _debug(f"USAspending recipient profile: GET /recipient/{recipient_id}/?year=all")
+    try:
+        with httpx.Client(timeout=15) as client:
+            resp = client.get(
+                f"{USASPENDING_API_URL}/recipient/{recipient_id}/",
+                params={"year": "all"},
+            )
+            if resp.status_code != 200:
+                _debug(f"USAspending recipient profile returned {resp.status_code}")
+                return None
+            profile = resp.json()
+    except Exception as e:
+        _debug(f"USAspending recipient profile error: {e}")
+        return None
+
+    location = profile.get("location") or {}
+
+    return USARecipientProfile(
+        recipient_id=recipient_id,
+        name=profile.get("name") or company_name,
+        uei=profile.get("uei"),
+        parent_name=profile.get("parent_name"),
+        parent_uei=profile.get("parent_uei"),
+        location_state=location.get("state_code"),
+        location_congressional_district=location.get("congressional_code"),
+        business_types=profile.get("business_types") or [],
+        total_transaction_amount=float(profile.get("total_transaction_amount") or 0),
+        total_transactions=int(profile.get("total_transactions") or 0),
+    )
+
+
+def lookup_usaspending_recipients(
+    awards: list[dict],
+) -> dict[str, USARecipientProfile]:
+    """Look up USAspending recipient profiles for each unique company.
+
+    Returns a dict keyed by upper-cased company name.
+    """
+    companies: dict[str, dict] = {}
+    for a in awards:
+        name = str(a.get("Company", "")).strip()
+        if not name:
+            continue
+        key = name.upper()
+        if key not in companies:
+            companies[key] = {
+                "name": name,
+                "uei": str(a.get("Company UEI", a.get("UEI", ""))).strip() or None,
+            }
+
+    results: dict[str, USARecipientProfile] = {}
+    total = len(companies)
+    deadline = _stage_deadline(60)  # lighter budget — profile lookups are fast
+    print(f"Looking up {total} recipient profiles on USAspending...", file=sys.stderr)
+
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    def _lookup_one(item: tuple[str, dict]) -> tuple[str, USARecipientProfile | None]:
+        key, info = item
+        return key, lookup_usaspending_recipient(info["name"], info["uei"])
+
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        futures = {executor.submit(_lookup_one, item): item for item in companies.items()}
+        for future in as_completed(futures):
+            if _past_deadline(deadline):
+                print(
+                    f"USAspending recipient stage timeout — "
+                    f"completed {len(results)}/{total}, skipping remainder",
+                    file=sys.stderr,
+                )
+                executor.shutdown(wait=False, cancel_futures=True)
+                break
+            try:
+                key, profile = future.result(timeout=10)
+                if profile:
+                    results[key] = profile
+            except Exception:
+                pass
+
+    print(f"Found {len(results)}/{total} recipient profiles on USAspending", file=sys.stderr)
+    return results
+
+
+# ---------------------------------------------------------------------------
 # SAM.gov entity lookup (company diligence)
 # ---------------------------------------------------------------------------
 
@@ -2813,6 +2965,7 @@ def generate_company_diligence(
     company_history: dict[str, dict] | None = None,
     sam_entities: dict[str, SAMEntityRecord] | None = None,
     company_federal_awards: dict[str, PIFederalAwardRecord] | None = None,
+    usa_recipients: dict[str, USARecipientProfile] | None = None,
 ) -> dict[str, str]:
     """Generate a diligence paragraph for each unique awardee company.
 
@@ -2969,6 +3122,28 @@ def generate_company_diligence(
         else:
             context_parts.append(
                 "USAspending: No federal award records found for this company."
+            )
+
+        # USAspending recipient profile (business types, parent company, totals)
+        rcp = usa_recipients.get(key) if usa_recipients else None
+        if rcp:
+            rcp_parts = [
+                f"USAspending recipient name: {rcp.name}",
+            ]
+            if rcp.parent_name:
+                rcp_parts.append(f"Parent company: {rcp.parent_name}")
+            if rcp.business_types:
+                rcp_parts.append(f"Business types: {', '.join(rcp.business_types)}")
+            rcp_parts.append(
+                f"Total federal award history: {rcp.total_transactions} awards, "
+                f"${rcp.total_transaction_amount:,.0f}"
+            )
+            if rcp.location_state:
+                rcp_parts.append(f"State: {rcp.location_state}")
+            if rcp.location_congressional_district:
+                rcp_parts.append(f"Congressional district: {rcp.location_state}-{rcp.location_congressional_district}")
+            context_parts.append(
+                "USAspending recipient profile:\n" + "\n".join(rcp_parts)
             )
 
         user = (
@@ -3410,11 +3585,14 @@ def main():
 
     # Fetch supplementary context used by both AI descriptions and diligence:
     # - USAspending contract descriptions (fallback when solicitation topics unavailable)
+    # - USAspending recipient profiles (business types, parent company, award totals)
     # - SAM.gov entity data (NAICS codes for industry context + diligence)
     usa_descs: dict[str, str] | None = None
+    usa_recipients: dict[str, USARecipientProfile] | None = None
     sam_data: dict[str, SAMEntityRecord] | None = None
     if awards:
         usa_descs = fetch_usaspending_contract_descriptions(awards)
+        usa_recipients = lookup_usaspending_recipients(awards)
         sam_data = lookup_sam_entities(awards)
 
     if api_key and not args.no_ai:
@@ -3496,7 +3674,8 @@ def main():
             pi_ext = lookup_pi_external_data(awards, co_fed)
 
             co_diligence = generate_company_diligence(
-                api_key, awards, company_info, co_history, sam_data, co_fed
+                api_key, awards, company_info, co_history, sam_data, co_fed,
+                usa_recipients,
             )
             pi_dilig = generate_pi_diligence(
                 api_key, awards, pi_history, company_info, pi_ext
@@ -3532,6 +3711,11 @@ def main():
         print(
             f"[DEBUG] SAM.gov entity records: "
             f"{len(sam_data) if sam_data else 0}",
+            file=sys.stderr,
+        )
+        print(
+            f"[DEBUG] USAspending recipient profiles: "
+            f"{len(usa_recipients) if usa_recipients else 0}",
             file=sys.stderr,
         )
         print(f"[DEBUG] Synopsis generated: {'yes' if synopsis else 'no'}", file=sys.stderr)
