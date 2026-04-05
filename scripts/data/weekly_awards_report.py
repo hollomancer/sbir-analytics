@@ -43,6 +43,7 @@ try:
     from sbir_etl.utils.cloud_storage import find_latest_sbir_awards, get_s3_bucket_from_env
     from sbir_etl.utils.date_utils import parse_date as _parse_date
     from sbir_etl.utils.text_normalization import normalize_name as _normalize_name
+    from sbir_etl.validators.sbir_awards import validate_sbir_award_record as _validate_record
 
     _HAS_SBIR_ETL = True
 except ImportError:
@@ -63,6 +64,8 @@ except ImportError:
             except ValueError:
                 continue
         return None
+
+    _validate_record = None  # type: ignore[assignment]
 
     def _normalize_name(name, *, remove_suffixes=False, **_kwargs):  # type: ignore[misc]
         """Minimal fallback company name normalizer."""
@@ -301,8 +304,7 @@ def fetch_weekly_awards(days: int = 7) -> tuple[list[dict], list[str]]:
 # Data cleaning & deduplication
 # ---------------------------------------------------------------------------
 
-VALID_PHASES = {"Phase I", "Phase II", "Phase III"}
-VALID_PROGRAMS = {"SBIR", "STTR"}
+_FALLBACK_VALID_PHASES = {"Phase I", "Phase II", "Phase III"}
 
 
 def _company_key(award: dict) -> str:
@@ -320,62 +322,59 @@ def _company_key(award: dict) -> str:
 def clean_and_dedup_awards(awards: list[dict]) -> tuple[list[dict], dict]:
     """Validate, normalize, and deduplicate weekly awards.
 
-    Runs the sbir_etl validation and normalization pipeline (with graceful
-    fallback) against the raw award list:
+    Uses the existing sbir_etl validation pipeline when available:
+    - validate_sbir_award_record() for per-row validation (phase, amount,
+      required fields, format checks, date consistency, etc.)
+    - normalize_name() for company name normalization
 
-    1. **Validate** — drop records with invalid phase, non-numeric amount,
-       or missing company name.
-    2. **Normalize** — standardize company names using normalize_name() so
-       that "ACME, Inc." and "ACME INCORPORATED" map to the same entity.
-       Original names are preserved; a ``_normalized_company`` key is added.
-    3. **Deduplicate** — remove exact duplicates by Contract number (the
-       most reliable unique identifier in the SBIR CSV).
+    Falls back to basic checks when sbir_etl is not installed.
 
     Returns:
-        (cleaned_awards, stats) where stats is a dict with counts of
-        records removed at each stage.
+        (cleaned_awards, stats) where stats is a dict with counts.
     """
+    import pandas as pd
+
     stats: dict = {
         "input": len(awards),
-        "invalid_phase": 0,
-        "invalid_amount": 0,
-        "missing_company": 0,
+        "validation_errors": 0,
         "duplicates": 0,
     }
 
+    # --- Step 1: Validate using sbir_etl's validate_sbir_award_record ---
     cleaned: list[dict] = []
 
-    for a in awards:
-        # Validate company name
-        company = str(a.get("Company", "")).strip()
-        if not company:
-            stats["missing_company"] += 1
-            continue
-
-        # Validate phase
-        phase = str(a.get("Phase", "")).strip()
-        if phase and phase not in VALID_PHASES:
-            stats["invalid_phase"] += 1
-            continue
-
-        # Validate award amount (must be numeric and positive)
-        amount_raw = str(a.get("Award Amount", "")).replace(",", "").replace("$", "").strip()
-        if amount_raw:
-            try:
-                amount_val = float(amount_raw)
-                if amount_val <= 0:
-                    stats["invalid_amount"] += 1
-                    continue
-            except (ValueError, TypeError):
-                stats["invalid_amount"] += 1
+    if _validate_record is not None:
+        for i, a in enumerate(awards):
+            row = pd.Series(a)
+            issues = _validate_record(row, i)
+            # Drop rows with ERROR-severity issues
+            errors = [
+                iss for iss in issues if iss.severity.value == "error"
+            ]
+            if errors:
+                stats["validation_errors"] += 1
                 continue
+            a["_normalized_company"] = _normalize_name(
+                str(a.get("Company", "")), remove_suffixes=True
+            )
+            cleaned.append(a)
+    else:
+        # Minimal fallback when sbir_etl is not installed
+        for a in awards:
+            company = str(a.get("Company", "")).strip()
+            if not company:
+                stats["validation_errors"] += 1
+                continue
+            phase = str(a.get("Phase", "")).strip()
+            if phase and phase not in _FALLBACK_VALID_PHASES:
+                stats["validation_errors"] += 1
+                continue
+            a["_normalized_company"] = _normalize_name(
+                company, remove_suffixes=True
+            )
+            cleaned.append(a)
 
-        # Normalize company name for downstream grouping
-        a["_normalized_company"] = _normalize_name(company, remove_suffixes=True)
-
-        cleaned.append(a)
-
-    # Deduplicate by Contract number (most reliable SBIR award identifier)
+    # --- Step 2: Deduplicate by Contract number ---
     seen_contracts: set[str] = set()
     deduped: list[dict] = []
 
@@ -393,11 +392,9 @@ def clean_and_dedup_awards(awards: list[dict]) -> tuple[list[dict], dict]:
 
     if stats["total_removed"] > 0:
         print(
-            f"Data cleaning: {stats['input']} → {stats['output']} awards "
+            f"Data cleaning: {stats['input']} -> {stats['output']} awards "
             f"(removed {stats['total_removed']}: "
-            f"{stats['invalid_phase']} invalid phase, "
-            f"{stats['invalid_amount']} invalid amount, "
-            f"{stats['missing_company']} missing company, "
+            f"{stats['validation_errors']} failed validation, "
             f"{stats['duplicates']} duplicates)",
             file=sys.stderr,
         )
