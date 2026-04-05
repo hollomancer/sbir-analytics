@@ -870,13 +870,19 @@ def lookup_pi_publications(pi_name: str) -> PIPublicationRecord | None:
 
     search_query = f"{first} {last}".strip()
 
-    _debug(f"Semantic Scholar search for '{pi_name}': query='{search_query}'")
+    # Optional API key for higher rate limits (free at semanticscholar.org/product/api)
+    s2_api_key = os.environ.get("SEMANTIC_SCHOLAR_API_KEY", "")
+    headers: dict[str, str] = {}
+    if s2_api_key:
+        headers["x-api-key"] = s2_api_key
+
+    _debug(f"Semantic Scholar search for '{pi_name}': query='{search_query}' (api_key={'yes' if s2_api_key else 'no'})")
     import time
 
     try:
         # Step 1: Search for the author (with retry on 429)
         search_data = None
-        with httpx.Client(timeout=30) as client:
+        with httpx.Client(timeout=30, headers=headers) as client:
             for attempt in range(3):
                 resp = client.get(
                     f"{SEMANTIC_SCHOLAR_API_URL}/author/search",
@@ -915,7 +921,7 @@ def lookup_pi_publications(pi_name: str) -> PIPublicationRecord | None:
 
         # Step 2: Get author details with papers (with retry on 429)
         author_data = None
-        with httpx.Client(timeout=30) as client:
+        with httpx.Client(timeout=30, headers=headers) as client:
             for attempt in range(3):
                 resp = client.get(
                     f"{SEMANTIC_SCHOLAR_API_URL}/author/{author_id}",
@@ -1397,13 +1403,21 @@ def lookup_pi_orcid(pi_name: str) -> ORCIDRecord | None:
 
     headers = {"Accept": "application/json"}
 
+    # Optional ORCID access token for higher rate limits.
+    # Generate via client credentials grant with a free ORCID Public API key:
+    #   curl -d "client_id=APP-XXX&client_secret=XXX&grant_type=client_credentials&scope=/read-public" \
+    #        https://orcid.org/oauth/token
+    orcid_token = os.environ.get("ORCID_ACCESS_TOKEN", "")
+    if orcid_token:
+        headers["Authorization"] = f"Bearer {orcid_token}"
+
     try:
         # Step 1: Search for the researcher by name
         query = f"family-name:{last}"
         if first:
             query += f"+AND+given-names:{first}"
 
-        _debug(f"ORCID search for '{pi_name}': query='{query}'")
+        _debug(f"ORCID search for '{pi_name}': query='{query}' (token={'yes' if orcid_token else 'no'})")
         with httpx.Client(timeout=30) as client:
             resp = client.get(
                 f"{ORCID_API_URL}/expanded-search/",
