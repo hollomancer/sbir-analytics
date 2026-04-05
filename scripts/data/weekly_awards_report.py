@@ -124,11 +124,18 @@ def _debug_response(label: str, resp: httpx.Response, body_preview_len: int = 50
     """Log key details of an HTTP response in debug mode."""
     if not DEBUG:
         return
-    body = resp.text
-    preview = body[:body_preview_len] + ("..." if len(body) > body_preview_len else "")
+    # Use resp.content (bytes) to avoid decoding the full body into a string.
+    # Only decode the sliced prefix for the preview.
+    raw = resp.content
+    encoding = resp.encoding or "utf-8"
+    preview = raw[:body_preview_len].decode(encoding, errors="replace")
+    # Collapse newlines/control chars so the log stays on one line.
+    preview = preview.replace("\r", "").replace("\n", " ").replace("\t", " ")
+    if len(raw) > body_preview_len:
+        preview += "..."
     _debug(
         f"{label} — HTTP {resp.status_code} | "
-        f"{len(body)} chars | preview: {preview}"
+        f"{len(raw)} bytes | preview: {preview}"
     )
 
 
