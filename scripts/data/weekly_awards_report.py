@@ -871,21 +871,35 @@ def lookup_pi_publications(pi_name: str) -> PIPublicationRecord | None:
     search_query = f"{first} {last}".strip()
 
     _debug(f"Semantic Scholar search for '{pi_name}': query='{search_query}'")
+    import time
+
     try:
-        # Step 1: Search for the author
+        # Step 1: Search for the author (with retry on 429)
+        search_data = None
         with httpx.Client(timeout=30) as client:
-            resp = client.get(
-                f"{SEMANTIC_SCHOLAR_API_URL}/author/search",
-                params={"query": search_query, "limit": 5},
-            )
-            _debug_response(f"Semantic Scholar search [{pi_name}]", resp)
-            if resp.status_code != 200:
-                print(
-                    f"Semantic Scholar search returned {resp.status_code} for {pi_name}",
-                    file=sys.stderr,
+            for attempt in range(3):
+                resp = client.get(
+                    f"{SEMANTIC_SCHOLAR_API_URL}/author/search",
+                    params={"query": search_query, "limit": 5},
                 )
-                return None
-            search_data = resp.json()
+                _debug_response(f"Semantic Scholar search [{pi_name}]", resp)
+                if resp.status_code == 429:
+                    wait = 2 ** (attempt + 1)
+                    _debug(f"Semantic Scholar [{pi_name}]: rate limited, retrying in {wait}s")
+                    time.sleep(wait)
+                    continue
+                if resp.status_code != 200:
+                    print(
+                        f"Semantic Scholar search returned {resp.status_code} for {pi_name}",
+                        file=sys.stderr,
+                    )
+                    return None
+                search_data = resp.json()
+                break
+
+        if search_data is None:
+            print(f"Semantic Scholar rate limited after 3 retries for {pi_name}", file=sys.stderr)
+            return None
 
         authors = search_data.get("data", [])
         _debug(f"Semantic Scholar [{pi_name}]: {len(authors)} author matches")
@@ -899,22 +913,34 @@ def lookup_pi_publications(pi_name: str) -> PIPublicationRecord | None:
         if not author_id:
             return None
 
-        # Step 2: Get author details with papers
+        # Step 2: Get author details with papers (with retry on 429)
+        author_data = None
         with httpx.Client(timeout=30) as client:
-            resp = client.get(
-                f"{SEMANTIC_SCHOLAR_API_URL}/author/{author_id}",
-                params={
-                    "fields": "name,hIndex,citationCount,affiliations,papers.title,papers.year",
-                },
-            )
-            _debug_response(f"Semantic Scholar detail [{pi_name}]", resp)
-            if resp.status_code != 200:
-                print(
-                    f"Semantic Scholar author detail returned {resp.status_code} for {pi_name}",
-                    file=sys.stderr,
+            for attempt in range(3):
+                resp = client.get(
+                    f"{SEMANTIC_SCHOLAR_API_URL}/author/{author_id}",
+                    params={
+                        "fields": "name,hIndex,citationCount,affiliations,papers.title,papers.year",
+                    },
                 )
-                return None
-            author_data = resp.json()
+                _debug_response(f"Semantic Scholar detail [{pi_name}]", resp)
+                if resp.status_code == 429:
+                    wait = 2 ** (attempt + 1)
+                    _debug(f"Semantic Scholar detail [{pi_name}]: rate limited, retrying in {wait}s")
+                    time.sleep(wait)
+                    continue
+                if resp.status_code != 200:
+                    print(
+                        f"Semantic Scholar author detail returned {resp.status_code} for {pi_name}",
+                        file=sys.stderr,
+                    )
+                    return None
+                author_data = resp.json()
+                break
+
+        if author_data is None:
+            print(f"Semantic Scholar detail rate limited after 3 retries for {pi_name}", file=sys.stderr)
+            return None
 
     except Exception as e:
         print(f"Semantic Scholar API error for {pi_name}: {e}", file=sys.stderr)
