@@ -2368,20 +2368,28 @@ def fetch_usaspending_contract_descriptions(
     batch_size = 25
     for batch_start in range(0, len(contracts), batch_size):
         batch = contracts[batch_start : batch_start + batch_size]
+        # Wrap PIIDs in double-quotes for exact match — USAspending does
+        # fuzzy full-text search by default which often misses exact PIIDs.
+        quoted_batch = [f'"{c}"' for c in batch]
         payload = {
             "filters": {
-                "award_ids": batch,
-                # award_type_codes is required; contracts only for SBIR awards
-                "award_type_codes": ["A", "B", "C", "D"],
+                "award_ids": quoted_batch,
+                # award_type_codes is required; include contracts + grants
+                # since SBIR awards can be either type
+                "award_type_codes": [
+                    "A", "B", "C", "D",
+                    "02", "03", "04", "05",
+                ],
             },
             "fields": ["Award ID", "Description", "Awarding Agency", "Award Type"],
             "page": 1,
             "limit": len(batch),
         }
 
+        batch_label = f"{batch_start + 1}-{batch_start + len(batch)}"
         _debug(
             f"USAspending contract descriptions: POST batch "
-            f"{batch_start + 1}-{batch_start + len(batch)} of {len(contracts)}"
+            f"{batch_label} of {len(contracts)} | award_ids={batch}"
         )
         try:
             with httpx.Client(timeout=30) as client:
@@ -2390,14 +2398,31 @@ def fetch_usaspending_contract_descriptions(
                     json=payload,
                 )
                 if resp.status_code != 200:
-                    _debug(f"USAspending contract desc batch returned {resp.status_code}")
+                    print(
+                        f"USAspending contract desc batch {batch_label} "
+                        f"returned {resp.status_code}: {resp.text[:300]}",
+                        file=sys.stderr,
+                    )
                     continue
                 data = resp.json()
         except Exception as e:
-            _debug(f"USAspending contract desc batch error: {e}")
+            print(
+                f"USAspending contract desc batch {batch_label} error: {e}",
+                file=sys.stderr,
+            )
             continue
 
-        for r in data.get("results", []):
+        batch_results = data.get("results", [])
+        if not batch_results:
+            # Always log when a batch returns 0 — helps diagnose silent failures
+            print(
+                f"USAspending contract desc batch {batch_label}: "
+                f"0 results for {len(batch)} award IDs "
+                f"(sample: {batch[:3]})",
+                file=sys.stderr,
+            )
+
+        for r in batch_results:
             aid = str(r.get("Award ID", "")).strip()
             desc = str(r.get("Description", "")).strip()
             if aid and desc:
