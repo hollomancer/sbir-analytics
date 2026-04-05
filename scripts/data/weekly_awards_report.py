@@ -597,14 +597,39 @@ class PIPublicationRecord:
 
 
 @dataclass
+class FederalAwardSummary:
+    """Summary of a single federal award from USAspending."""
+
+    award_id: str
+    description: str
+    amount: float
+    agency: str
+    award_type: str
+    start_date: str
+    cfda_number: str  # Assistance Listing Number
+
+
+@dataclass
 class PIFederalAwardRecord:
-    """Summary of a PI's company's federal awards from USAspending."""
+    """Summary of a PI's company's federal awards from USAspending.
+
+    Separates SBIR/STTR awards from non-SBIR federal work. Non-SBIR
+    awards to a company with SBIR history are potential follow-on /
+    Phase III commercialization signals.
+    """
 
     total_awards: int
     total_funding: float
     agencies: list[str]
     award_types: list[str]  # e.g. contracts, grants, IDVs
     date_range: tuple[str | None, str | None]
+    # Follow-on analysis
+    sbir_award_count: int = 0
+    sbir_funding: float = 0.0
+    non_sbir_award_count: int = 0
+    non_sbir_funding: float = 0.0
+    non_sbir_agencies: list[str] = field(default_factory=list)
+    non_sbir_sample_descriptions: list[str] = field(default_factory=list)
 
 
 def _split_pi_name(full_name: str) -> tuple[str, str]:
@@ -772,14 +797,44 @@ def lookup_pi_publications(pi_name: str) -> PIPublicationRecord | None:
     )
 
 
+def _is_sbir_award_type(description: str, cfda: str) -> bool:
+    """Heuristic to identify SBIR/STTR awards in USAspending results.
+
+    Uses CFDA/ALN numbers and description keywords. Mirrors the logic in
+    sbir_etl.models.sbir_identification but without the heavy import.
+    """
+    # Known SBIR/STTR Assistance Listing Numbers (subset of the most common)
+    sbir_alns = {
+        "10.212", "12.910", "12.911", "81.049", "43.002", "43.003",
+        "47.041", "47.084", "66.511", "66.512", "97.077", "20.701",
+        "84.133",
+        # HHS/NIH common ones
+        "93.855", "93.856", "93.859", "93.837", "93.847", "93.853",
+        "93.865", "93.866", "93.867", "93.879", "93.242", "93.273",
+        "93.279", "93.395", "93.393", "93.394", "93.396", "93.399",
+    }
+    if cfda and cfda.strip() in sbir_alns:
+        return True
+    # Keyword heuristic on description
+    desc_upper = description.upper()
+    if "SBIR" in desc_upper or "STTR" in desc_upper:
+        return True
+    if "SMALL BUSINESS INNOVATION RESEARCH" in desc_upper:
+        return True
+    if "SMALL BUSINESS TECHNOLOGY TRANSFER" in desc_upper:
+        return True
+    return False
+
+
 def lookup_company_federal_awards(
     company_name: str,
     uei: str | None = None,
 ) -> PIFederalAwardRecord | None:
     """Query USAspending for all federal awards to the PI's company.
 
-    This gives broader context than just SBIR — includes contracts,
-    grants, and other federal spending.
+    Separates SBIR/STTR awards from non-SBIR federal work. Non-SBIR
+    contracts and grants to a company with SBIR history are the strongest
+    signal of successful commercialization / Phase III transition.
     """
     if not company_name:
         return None
@@ -800,6 +855,8 @@ def lookup_company_federal_awards(
             "Awarding Agency",
             "Award Type",
             "Start Date",
+            "Description",
+            "CFDA Number",
         ],
         "page": 1,
         "limit": 100,
@@ -833,6 +890,13 @@ def lookup_company_federal_awards(
     total_funding = 0.0
     dates: list[str] = []
 
+    sbir_count = 0
+    sbir_funding = 0.0
+    non_sbir_count = 0
+    non_sbir_funding = 0.0
+    non_sbir_agencies: set[str] = set()
+    non_sbir_descriptions: list[str] = []
+
     for r in results:
         ag = r.get("Awarding Agency", "")
         if ag:
@@ -841,12 +905,33 @@ def lookup_company_federal_awards(
         if at:
             award_types.add(at)
         try:
-            total_funding += float(r.get("Award Amount", 0) or 0)
+            amount = float(r.get("Award Amount", 0) or 0)
         except (ValueError, TypeError):
-            pass
+            amount = 0.0
+        total_funding += amount
         d = r.get("Start Date", "")
         if d:
             dates.append(d)
+
+        desc = str(r.get("Description", "") or "")
+        cfda = str(r.get("CFDA Number", "") or "")
+
+        if _is_sbir_award_type(desc, cfda):
+            sbir_count += 1
+            sbir_funding += amount
+        else:
+            non_sbir_count += 1
+            non_sbir_funding += amount
+            if ag:
+                non_sbir_agencies.add(ag)
+            # Keep sample descriptions of non-SBIR awards (the follow-on signals)
+            if desc and len(non_sbir_descriptions) < 5:
+                # Truncate long descriptions
+                if len(desc) > 200:
+                    desc = desc[:200] + "..."
+                non_sbir_descriptions.append(
+                    f"{desc} ({ag}, {at}, ${amount:,.0f})"
+                )
 
     return PIFederalAwardRecord(
         total_awards=len(results),
@@ -854,6 +939,12 @@ def lookup_company_federal_awards(
         agencies=sorted(agencies),
         award_types=sorted(award_types),
         date_range=(min(dates) if dates else None, max(dates) if dates else None),
+        sbir_award_count=sbir_count,
+        sbir_funding=sbir_funding,
+        non_sbir_award_count=non_sbir_count,
+        non_sbir_funding=non_sbir_funding,
+        non_sbir_agencies=sorted(non_sbir_agencies),
+        non_sbir_sample_descriptions=non_sbir_descriptions,
     )
 
 
@@ -1812,13 +1903,31 @@ def _pi_external_digest(external: dict | None) -> str:
     else:
         parts.append("Academic publications: No Semantic Scholar profile found.")
 
-    # Federal awards (company-level)
+    # Federal awards (company-level) with SBIR vs non-SBIR breakdown
     fed: PIFederalAwardRecord | None = external.get("federal_awards")
     if fed:
-        parts.append(f"Company federal awards (USAspending): {fed.total_awards}")
+        parts.append(f"Company federal awards (USAspending): {fed.total_awards} total")
         parts.append(f"Company total federal funding: ${fed.total_funding:,.0f}")
+        parts.append(
+            f"SBIR/STTR awards: {fed.sbir_award_count} "
+            f"(${fed.sbir_funding:,.0f})"
+        )
+        parts.append(
+            f"Non-SBIR federal awards (potential follow-on/Phase III): "
+            f"{fed.non_sbir_award_count} (${fed.non_sbir_funding:,.0f})"
+        )
+        if fed.non_sbir_agencies:
+            parts.append(
+                f"Non-SBIR awarding agencies: {', '.join(fed.non_sbir_agencies)}"
+            )
+        if fed.non_sbir_sample_descriptions:
+            parts.append(
+                "Sample non-SBIR award descriptions (follow-on signals):"
+            )
+            for desc in fed.non_sbir_sample_descriptions:
+                parts.append(f"  - {desc}")
         if fed.agencies:
-            parts.append(f"Federal agencies: {', '.join(fed.agencies)}")
+            parts.append(f"All federal agencies: {', '.join(fed.agencies)}")
         if fed.award_types:
             parts.append(f"Award types: {', '.join(fed.award_types)}")
         if fed.date_range[0]:
@@ -1835,12 +1944,14 @@ def generate_company_diligence(
     company_research: dict[str, CompanyResearch] | None = None,
     company_history: dict[str, dict] | None = None,
     sam_entities: dict[str, SAMEntityRecord] | None = None,
+    company_federal_awards: dict[str, PIFederalAwardRecord] | None = None,
 ) -> dict[str, str]:
     """Generate a diligence paragraph for each unique awardee company.
 
     Combines web research, historical SBIR data, SAM.gov registration data,
-    and the current award context to produce a focused due-diligence
-    assessment per company.
+    USAspending federal award data (with SBIR vs non-SBIR breakdown), and
+    the current award context to produce a focused due-diligence assessment
+    per company.
 
     Returns a dict keyed by upper-cased company name.
     """
@@ -1873,11 +1984,16 @@ def generate_company_diligence(
         "business type, NAICS codes (industry classification), and any "
         "exclusion flags are important compliance signals. An expired or "
         "missing SAM registration is a red flag for federal contracting.\n"
-        "4. Commercialization signals — products, revenue, contracts, patents, "
-        "or partnerships that suggest ability to transition research\n"
+        "4. Commercialization and follow-on signals — the strongest evidence "
+        "of SBIR success is non-SBIR federal awards (contracts, grants) to "
+        "the same company, which represent Phase III transitions where SBIR "
+        "research led to production work. Also consider products, revenue, "
+        "patents, or partnerships. A company with many SBIR awards but zero "
+        "non-SBIR federal work may be an 'SBIR mill' that hasn't "
+        "commercialized.\n"
         "5. Risk factors — e.g. sole reliance on SBIR funding, narrow agency "
-        "base, lack of phase progression, SAM exclusions, or limited public "
-        "presence\n\n"
+        "base, lack of phase progression, SAM exclusions, no follow-on "
+        "contracts, or limited public presence\n\n"
         "Be specific and analytical. Do not use bullet points or headers. "
         "Write in a professional, neutral tone. If information is limited, "
         "note that as a risk factor."
@@ -1961,6 +2077,32 @@ def generate_company_diligence(
                 "contractor, or the lookup failed."
             )
 
+        # USAspending federal awards with SBIR vs non-SBIR breakdown
+        fed = company_federal_awards.get(key) if company_federal_awards else None
+        if fed:
+            fed_parts = [
+                f"Total federal awards (USAspending): {fed.total_awards}",
+                f"Total federal funding: ${fed.total_funding:,.0f}",
+                f"SBIR/STTR awards: {fed.sbir_award_count} (${fed.sbir_funding:,.0f})",
+                f"Non-SBIR federal awards (follow-on/Phase III signals): "
+                f"{fed.non_sbir_award_count} (${fed.non_sbir_funding:,.0f})",
+            ]
+            if fed.non_sbir_agencies:
+                fed_parts.append(
+                    f"Non-SBIR awarding agencies: {', '.join(fed.non_sbir_agencies)}"
+                )
+            if fed.non_sbir_sample_descriptions:
+                fed_parts.append("Sample non-SBIR awards:")
+                for d in fed.non_sbir_sample_descriptions:
+                    fed_parts.append(f"  - {d}")
+            context_parts.append(
+                "USAspending federal award data:\n" + "\n".join(fed_parts)
+            )
+        else:
+            context_parts.append(
+                "USAspending: No federal award records found for this company."
+            )
+
         user = (
             "Write a one-paragraph due-diligence assessment for this "
             "SBIR/STTR awardee company.\n\n" + "\n\n".join(context_parts)
@@ -2029,9 +2171,15 @@ def generate_pi_diligence(
         "when available. ORCID research keywords and funding entries help "
         "confirm domain alignment. If patents are assigned to different "
         "entities than the current company, note that.\n"
-        "4. Company federal funding context — broader federal awards to the "
-        "PI's company (contracts, grants) beyond SBIR show the company's "
-        "ability to win and execute federal work\n"
+        "4. Follow-on and commercialization — non-SBIR federal awards "
+        "(contracts, grants) to the PI's company are the strongest signal "
+        "of successful SBIR commercialization. These represent Phase III "
+        "transitions where SBIR research led to production contracts or "
+        "operational deployment. Compare the non-SBIR award descriptions "
+        "to the PI's SBIR research topics — thematic alignment confirms "
+        "genuine technology transition. A company with only SBIR awards "
+        "and no follow-on federal work may indicate research that hasn't "
+        "transitioned.\n"
         "5. Current project context — what are they working on now and how "
         "does it relate to their history and expertise?\n\n"
         "Be specific and analytical. Do not use bullet points or headers. "
@@ -2371,12 +2519,31 @@ def main():
             # SAM.gov entity registration data
             sam_data = lookup_sam_entities(awards)
 
+            # USAspending federal awards per company (SBIR vs non-SBIR)
+            print("Looking up company federal awards on USAspending...", file=sys.stderr)
+            co_fed: dict[str, PIFederalAwardRecord] = {}
+            co_names: dict[str, dict] = {}
+            for a in awards:
+                name = str(a.get("Company", "")).strip()
+                if not name:
+                    continue
+                key = name.upper()
+                if key not in co_names:
+                    co_names[key] = {
+                        "name": name,
+                        "uei": str(a.get("Company UEI", a.get("UEI", ""))).strip() or None,
+                    }
+            for key, info in co_names.items():
+                result = lookup_company_federal_awards(info["name"], info["uei"])
+                if result:
+                    co_fed[key] = result
+
             # Fetch external PI data (patents, publications, ORCID, federal awards)
             print("Looking up PI patents, publications, ORCID, and federal awards...", file=sys.stderr)
             pi_ext = lookup_pi_external_data(awards)
 
             co_diligence = generate_company_diligence(
-                api_key, awards, company_info, co_history, sam_data
+                api_key, awards, company_info, co_history, sam_data, co_fed
             )
             pi_dilig = generate_pi_diligence(
                 api_key, awards, pi_history, company_info, pi_ext
