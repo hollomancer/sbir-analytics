@@ -94,6 +94,25 @@ except ImportError:
 
 DEBUG = False
 
+# Wall-clock budget per pipeline stage (seconds). Stages that exceed their
+# budget skip remaining items and return partial results. Override via env var.
+STAGE_TIMEOUT = int(os.environ.get("STAGE_TIMEOUT", "120"))
+
+# Pipeline start time — set in main()
+_pipeline_start: float = 0.0
+
+
+def _stage_deadline(budget_seconds: int | None = None) -> float:
+    """Return a monotonic deadline for the current pipeline stage."""
+    import time
+    return time.monotonic() + (budget_seconds or STAGE_TIMEOUT)
+
+
+def _past_deadline(deadline: float) -> bool:
+    """Check if we've exceeded the stage deadline."""
+    import time
+    return time.monotonic() > deadline
+
 
 def _debug(msg: str) -> None:
     """Print a debug message to stderr when DEBUG mode is active."""
@@ -1321,6 +1340,7 @@ def lookup_pi_external_data(
         }
 
     # Process PIs concurrently (capped at 4 to respect API rate limits)
+    deadline = _stage_deadline()
     with ThreadPoolExecutor(max_workers=4) as executor:
         futures = {
             executor.submit(_lookup_single_pi, key, info): (key, info)
@@ -1328,10 +1348,18 @@ def lookup_pi_external_data(
         }
         done = 0
         for future in as_completed(futures):
+            if _past_deadline(deadline):
+                print(
+                    f"PI external data stage timeout ({STAGE_TIMEOUT}s) — "
+                    f"completed {done}/{total}, skipping remainder",
+                    file=sys.stderr,
+                )
+                executor.shutdown(wait=False, cancel_futures=True)
+                break
             done += 1
             key, info = futures[future]
             try:
-                pi_key, pi_data = future.result()
+                pi_key, pi_data = future.result(timeout=10)
                 results[pi_key] = pi_data
                 print(
                     f"Completed PI external data {done}/{total}: {info['name']}",
@@ -1497,9 +1525,10 @@ def lookup_sam_entities(
 
     results: dict[str, SAMEntityRecord] = {}
     total = len(companies)
+    deadline = _stage_deadline()
     print(f"Looking up {total} companies on SAM.gov...", file=sys.stderr)
 
-    from concurrent.futures import ThreadPoolExecutor
+    from concurrent.futures import ThreadPoolExecutor, as_completed
 
     def _lookup_one(item: tuple[str, dict]) -> tuple[str, SAMEntityRecord | None]:
         key, info = item
@@ -1507,9 +1536,22 @@ def lookup_sam_entities(
 
     # Cap at 3 workers to respect SAM.gov 60 req/min rate limit
     with ThreadPoolExecutor(max_workers=3) as executor:
-        for key, record in executor.map(_lookup_one, companies.items()):
-            if record:
-                results[key] = record
+        futures = {executor.submit(_lookup_one, item): item for item in companies.items()}
+        for future in as_completed(futures):
+            if _past_deadline(deadline):
+                print(
+                    f"SAM.gov stage timeout ({STAGE_TIMEOUT}s) — "
+                    f"completed {len(results)}/{total}, skipping remainder",
+                    file=sys.stderr,
+                )
+                executor.shutdown(wait=False, cancel_futures=True)
+                break
+            try:
+                key, record = future.result(timeout=10)
+                if record:
+                    results[key] = record
+            except Exception:
+                pass
 
     print(f"Found {len(results)}/{total} companies on SAM.gov", file=sys.stderr)
     return results
@@ -3377,7 +3419,7 @@ def main():
             # reuse sam_data for diligence.
 
             # USAspending federal awards per company (SBIR vs non-SBIR)
-            from concurrent.futures import ThreadPoolExecutor
+            from concurrent.futures import ThreadPoolExecutor, as_completed
 
             print("Looking up company federal awards on USAspending...", file=sys.stderr)
             co_fed: dict[str, PIFederalAwardRecord] = {}
@@ -3397,10 +3439,27 @@ def main():
                 k, info = item
                 return k, lookup_company_federal_awards(info["name"], info["uei"])
 
+            co_fed_deadline = _stage_deadline()
             with ThreadPoolExecutor(max_workers=4) as executor:
-                for key, result in executor.map(_lookup_co_fed, co_names.items()):
-                    if result:
-                        co_fed[key] = result
+                futures = {
+                    executor.submit(_lookup_co_fed, item): item
+                    for item in co_names.items()
+                }
+                for future in as_completed(futures):
+                    if _past_deadline(co_fed_deadline):
+                        print(
+                            f"USAspending stage timeout ({STAGE_TIMEOUT}s) — "
+                            f"completed {len(co_fed)}/{len(co_names)}, skipping remainder",
+                            file=sys.stderr,
+                        )
+                        executor.shutdown(wait=False, cancel_futures=True)
+                        break
+                    try:
+                        key, result = future.result(timeout=10)
+                        if result:
+                            co_fed[key] = result
+                    except Exception:
+                        pass
             print(
                 f"Found federal awards for {len(co_fed)}/{len(co_names)} companies",
                 file=sys.stderr,
