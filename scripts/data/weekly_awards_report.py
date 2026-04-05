@@ -2573,6 +2573,8 @@ def fetch_usaspending_contract_descriptions(
             f"{batch_label} of {len(contracts)} | award_ids={batch}"
         )
 
+        import time as _t
+
         batch_results: list[dict] = []
         try:
             with httpx.Client(timeout=30) as client:
@@ -2586,17 +2588,31 @@ def fetch_usaspending_contract_descriptions(
                         "page": 1,
                         "limit": len(batch),
                     }
-                    resp = client.post(
-                        f"{USASPENDING_API_URL}/search/spending_by_award/",
-                        json=payload,
-                    )
-                    if resp.status_code != 200:
-                        _debug(
-                            f"USAspending contract desc batch {batch_label}/{group_name} "
-                            f"returned {resp.status_code}"
+                    # Retry on 429/5xx with backoff
+                    data = None
+                    for attempt in range(3):
+                        resp = client.post(
+                            f"{USASPENDING_API_URL}/search/spending_by_award/",
+                            json=payload,
                         )
+                        if resp.status_code in (429, 500, 502, 503, 504):
+                            wait = 2 ** (attempt + 1)
+                            _debug(
+                                f"USAspending contract desc batch {batch_label}/{group_name} "
+                                f"returned {resp.status_code}, retrying in {wait}s"
+                            )
+                            _t.sleep(wait)
+                            continue
+                        if resp.status_code != 200:
+                            _debug(
+                                f"USAspending contract desc batch {batch_label}/{group_name} "
+                                f"returned {resp.status_code}"
+                            )
+                            break
+                        data = resp.json()
+                        break
+                    if data is None:
                         continue
-                    data = resp.json()
                     batch_results.extend(data.get("results", []))
         except Exception as e:
             print(
