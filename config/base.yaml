@@ -161,9 +161,11 @@ enrichment:
     retry_backoff_seconds: 2
 
   patentsview_api:
-    # PatentsView API configuration (PatentSearch API)
-    base_url: "https://search.patentsview.org/api"
-    api_key_env_var: "PATENTSVIEW_API_KEY" # pragma: allowlist secret
+    # USPTO Open Data Portal (ODP) API configuration
+    # PatentsView migrated to data.uspto.gov on March 20, 2026
+    # See: https://data.uspto.gov/support/transition-guide/patentsview
+    base_url: "https://data.uspto.gov/api/v1/patent/applications"
+    api_key_env_var: "USPTO_ODP_API_KEY" # pragma: allowlist secret
     rate_limit_per_minute: 60  # Conservative default for polite-use policy
     timeout_seconds: 30
     retry_attempts: 3
@@ -265,13 +267,13 @@ extraction:
     # Implementation: scripts/data/download_uspto.py (runs in GitHub Actions)
     download:
       # PatentsView dataset (comprehensive patent data)
-      # Verified: December 2024
-      # Base URL: https://download.patentsview.org/data
+      # Updated: April 2026 - migrated to USPTO Open Data Portal (ODP)
+      # Base URL: https://data.uspto.gov/api/v1/datasets/products/files
       # Available tables: patent, assignee, inventor, location, cpc, gov_interest
       patentsview:
         enabled: true
-        info_page: "https://patentsview.org/download/data-download-tables"
-        base_url: "https://download.patentsview.org/data"
+        info_page: "https://data.uspto.gov/support/transition-guide/patentsview"
+        base_url: "https://data.uspto.gov/api/v1/datasets/products/files"
         schedule: "monthly"  # GitHub Actions cron: 0 9 1 * * (1st of month, 9 AM UTC)
         tables: ["patent", "assignee", "inventor"]  # Which tables to download
         s3_prefix: "raw/uspto/patentsview"
