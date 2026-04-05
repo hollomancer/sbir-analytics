@@ -1000,6 +1000,111 @@ def _is_sbir_award_type(description: str, cfda: str) -> bool:
     return False
 
 
+def _usaspending_autocomplete(company_name: str) -> dict[str, str] | None:
+    """Use USAspending recipient autocomplete for fuzzy company name matching.
+
+    Generates name variations (abbreviation expansion, punctuation normalization,
+    suffix removal) and tries each against the autocomplete endpoint until a match
+    with a UEI or resolved name is found.
+
+    Based on sbir_etl.enrichers.company_categorization._fuzzy_match_recipient
+    but uses synchronous httpx to avoid async dependencies.
+    """
+    import re as _re
+
+    if not company_name or not company_name.strip():
+        return None
+
+    # Generate name variations, ordered most-to-least specific
+    abbreviations = {
+        r"\bIntl\.?\b": "International",
+        r"\bInt'l\.?\b": "International",
+        r"\bInc\.?\b": "Incorporated",
+        r"\bCorp\.?\b": "Corporation",
+        r"\bLtd\.?\b": "Limited",
+        r"\bLLC\.?\b": "Limited Liability Company",
+        r"\bTech\.?\b": "Technology",
+        r"\bMfg\.?\b": "Manufacturing",
+        r"\bSvcs\.?\b": "Services",
+        r"\bDev\.?\b": "Development",
+    }
+
+    variations: list[str] = [company_name.strip()]
+
+    # Expand abbreviations
+    expanded = company_name
+    for pattern, replacement in abbreviations.items():
+        expanded = _re.sub(pattern, replacement, expanded, flags=_re.IGNORECASE)
+    if expanded != company_name:
+        variations.append(expanded.strip())
+
+    # Normalize punctuation
+    normalized = expanded.replace("/", " AND ").replace("&", " AND ")
+    normalized = _re.sub(r"\s+", " ", normalized).strip()
+    if normalized not in variations:
+        variations.append(normalized)
+
+    # Remove legal suffixes for broadest match
+    base = _re.sub(
+        r",?\s*(Inc\.?|Incorporated|LLC|Ltd\.?|Limited|Corp\.?|Corporation|Company|Co\.?)$",
+        "", normalized, flags=_re.IGNORECASE,
+    ).strip().rstrip(",").strip()
+    if base and base not in variations and len(base) >= 10:
+        variations.append(base)
+
+    # Add uppercase versions (USAspending often stores uppercase)
+    upper_vars = [v.upper() for v in variations[:2] if v.upper() != v]
+    variations = variations[:2] + upper_vars + variations[2:]
+
+    # Deduplicate preserving order
+    seen: set[str] = set()
+    unique: list[str] = []
+    for v in variations:
+        key = v.lower()
+        if key not in seen and len(v) >= 5:
+            seen.add(key)
+            unique.append(v)
+
+    _debug(f"USAspending autocomplete: {len(unique)} name variations for '{company_name}'")
+
+    best_candidate = None
+    with httpx.Client(timeout=15) as client:
+        for idx, name in enumerate(unique, 1):
+            try:
+                resp = client.post(
+                    f"{USASPENDING_API_URL}/autocomplete/recipient/",
+                    json={"search_text": name, "limit": 5},
+                )
+                if resp.status_code != 200:
+                    continue
+                results = resp.json().get("results", [])
+                if not results:
+                    continue
+
+                match = results[0]
+                matched_name = match.get("legal_business_name", "")
+                matched_uei = match.get("uei")
+
+                if matched_uei and str(matched_uei).strip().lower() not in ("", "nan", "none"):
+                    _debug(
+                        f"USAspending autocomplete matched '{company_name}' "
+                        f"(variation {idx}: '{name}') → '{matched_name}' UEI={matched_uei}"
+                    )
+                    return {"uei": matched_uei, "name": matched_name}
+
+                if matched_name and best_candidate is None:
+                    best_candidate = {"uei": matched_uei, "name": matched_name}
+            except Exception:
+                continue
+
+    if best_candidate:
+        _debug(f"USAspending autocomplete: best candidate for '{company_name}' → '{best_candidate['name']}' (no UEI)")
+        return best_candidate
+
+    _debug(f"USAspending autocomplete: no match for '{company_name}' after {len(unique)} variations")
+    return None
+
+
 def _usaspending_search(
     company_name: str,
     search_text: str,
@@ -1072,12 +1177,19 @@ def lookup_company_federal_awards(
     if not company_name:
         return None
 
-    # Cascading lookup: UEI first, then company name
+    # Cascading lookup: UEI → exact name → fuzzy autocomplete match
     results = None
     if uei:
         results = _usaspending_search(company_name, uei, "UEI")
     if not results:
         results = _usaspending_search(company_name, company_name, "name")
+    if not results:
+        # Fuzzy match: try USAspending autocomplete with name variations
+        match = _usaspending_autocomplete(company_name)
+        if match:
+            search_key = match["uei"] if match.get("uei") else match["name"]
+            label = "autocomplete-UEI" if match.get("uei") else "autocomplete-name"
+            results = _usaspending_search(company_name, search_key, label)
     if not results:
         return None
 
