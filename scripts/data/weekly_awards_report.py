@@ -71,6 +71,7 @@ USASPENDING_SEARCH_URL = "https://www.usaspending.gov/search"
 OPENAI_CHAT_URL = "https://api.openai.com/v1/chat/completions"
 OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses"
 OPENAI_MODEL = "gpt-4.1-mini"
+OPENAI_DILIGENCE_MODEL = "gpt-4.1"
 
 # Batch size for per-award descriptions (awards per API call)
 DESCRIPTION_BATCH_SIZE = 10
@@ -83,10 +84,11 @@ MAX_AWARDS_TO_DESCRIBE = int(os.environ.get("MAX_AWARDS_TO_DESCRIBE", "100"))
 OPENAI_MAX_RETRIES = 3
 OPENAI_RETRY_BACKOFF_BASE = 2  # seconds
 
-# External API endpoints for PI diligence
+# External API endpoints for PI diligence and solicitation lookup
 PATENTSVIEW_API_URL = "https://search.patentsview.org/api/v1/patent"
 SEMANTIC_SCHOLAR_API_URL = "https://api.semanticscholar.org/graph/v1"
 USASPENDING_API_URL = "https://api.usaspending.gov/api/v2"
+SBIR_GOV_API_URL = "https://api.www.sbir.gov/public/api"
 
 
 # ---------------------------------------------------------------------------
@@ -904,6 +906,113 @@ def lookup_pi_external_data(
 
 
 # ---------------------------------------------------------------------------
+# Solicitation topic lookup
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class SolicitationTopic:
+    """Solicitation topic details from SBIR.gov API."""
+
+    topic_code: str
+    solicitation_number: str
+    title: str
+    description: str | None
+    agency: str | None
+    program: str | None
+
+
+def fetch_solicitation_topics(awards: list[dict]) -> dict[str, SolicitationTopic]:
+    """Fetch solicitation topic titles and descriptions from SBIR.gov API.
+
+    Queries the SBIR.gov solicitations endpoint for each unique topic code
+    found in this week's awards. Returns a dict keyed by topic code.
+    """
+    # Collect unique topic codes
+    topic_codes: dict[str, str] = {}  # topic_code -> solicitation_number
+    for a in awards:
+        tc = str(a.get("Topic Code", "")).strip()
+        sol = str(a.get("Solicitation Number", "")).strip()
+        if tc and tc not in topic_codes:
+            topic_codes[tc] = sol
+
+    if not topic_codes:
+        return {}
+
+    results: dict[str, SolicitationTopic] = {}
+    total = len(topic_codes)
+    print(f"Fetching {total} solicitation topics from SBIR.gov...", file=sys.stderr)
+
+    # Query by solicitation year to reduce result sets.
+    # Group topic codes by their solicitation number prefix to batch queries.
+    sol_years: dict[int, list[str]] = {}
+    for tc, sol in topic_codes.items():
+        # Extract year from solicitation number (e.g. "SBIR-2023.1" -> 2023)
+        year = None
+        for part in sol.replace("-", " ").replace(".", " ").split():
+            if part.isdigit() and len(part) == 4:
+                year = int(part)
+                break
+        if year:
+            sol_years.setdefault(year, []).append(tc)
+        else:
+            sol_years.setdefault(0, []).append(tc)
+
+    for year, codes in sol_years.items():
+        params: dict[str, str | int] = {"rows": 500, "start": 0}
+        if year > 0:
+            params["year"] = year
+
+        try:
+            with httpx.Client(timeout=30) as client:
+                resp = client.get(
+                    f"{SBIR_GOV_API_URL}/solicitations", params=params
+                )
+                if resp.status_code != 200:
+                    print(
+                        f"SBIR.gov API returned {resp.status_code} for year={year}",
+                        file=sys.stderr,
+                    )
+                    continue
+                data = resp.json()
+        except Exception as e:
+            print(f"SBIR.gov API error for year={year}: {e}", file=sys.stderr)
+            continue
+
+        topics = data if isinstance(data, list) else (
+            data.get("results") or data.get("data") or []
+        )
+
+        codes_set = set(codes)
+        for topic in topics:
+            tc = topic.get("topicCode") or topic.get("topic_code") or ""
+            if tc in codes_set and tc not in results:
+                desc = topic.get("topicDescription") or topic.get("description")
+                # Truncate very long descriptions for LLM context
+                if desc and len(desc) > 3000:
+                    desc = desc[:3000] + "..."
+                results[tc] = SolicitationTopic(
+                    topic_code=tc,
+                    solicitation_number=(
+                        topic.get("solicitationNumber")
+                        or topic.get("solicitation_number")
+                        or topic_codes.get(tc, "")
+                    ),
+                    title=topic.get("topicTitle") or topic.get("title") or "",
+                    description=desc,
+                    agency=topic.get("agency"),
+                    program=topic.get("program"),
+                )
+
+    found = len(results)
+    print(
+        f"Fetched {found}/{total} solicitation topics from SBIR.gov",
+        file=sys.stderr,
+    )
+    return results
+
+
+# ---------------------------------------------------------------------------
 # Formatting helpers
 # ---------------------------------------------------------------------------
 
@@ -1007,15 +1116,21 @@ def _openai_request_with_retry(
     return None
 
 
-def _openai_chat(api_key: str, system: str, user: str) -> str | None:
+def _openai_chat(
+    api_key: str,
+    system: str,
+    user: str,
+    model: str = OPENAI_MODEL,
+    temperature: float = 0.3,
+) -> str | None:
     """Call the OpenAI chat completions API. Returns the assistant message text."""
     headers = {
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
     }
     payload = {
-        "model": OPENAI_MODEL,
-        "temperature": 0.3,
+        "model": model,
+        "temperature": temperature,
         "messages": [
             {"role": "system", "content": system},
             {"role": "user", "content": user},
@@ -1123,7 +1238,11 @@ def research_companies(
     return results
 
 
-def _award_digest(award: dict, company_research: CompanyResearch | None = None) -> str:
+def _award_digest(
+    award: dict,
+    company_research: CompanyResearch | None = None,
+    solicitation_topics: dict[str, SolicitationTopic] | None = None,
+) -> str:
     """Build a compact text digest of an award for LLM context."""
     parts = [
         f"Title: {award.get('Award Title', 'N/A')}",
@@ -1148,6 +1267,19 @@ def _award_digest(award: dict, company_research: CompanyResearch | None = None) 
     solicitation_year = str(award.get("Solicitation Year", "")).strip()
     if solicitation_year:
         parts.append(f"Solicitation Year: {solicitation_year}")
+
+    # Solicitation topic context (title + description from SBIR.gov API)
+    if solicitation_topics and topic_code:
+        topic = solicitation_topics.get(topic_code)
+        if topic:
+            if topic.title:
+                parts.append(f"Solicitation Topic Title: {topic.title}")
+            if topic.description:
+                parts.append(
+                    f"Solicitation Topic Description (government research need): "
+                    f"{topic.description}"
+                )
+
     contract = str(award.get("Contract", "")).strip()
     if contract:
         parts.append(f"Contract: {contract}")
@@ -1172,6 +1304,7 @@ def generate_weekly_synopsis(
     awards: list[dict],
     days: int,
     company_research: dict[str, CompanyResearch] | None = None,
+    solicitation_topics: dict[str, SolicitationTopic] | None = None,
 ) -> str | None:
     """Generate a two-paragraph synopsis of all weekly award activity."""
     if not awards:
@@ -1194,7 +1327,7 @@ def generate_weekly_synopsis(
         cr = None
         if company_research:
             cr = company_research.get(str(a.get("Company", "")).strip().upper())
-        digests.append(f"[{i+1}] {_award_digest(a, cr)}")
+        digests.append(f"[{i+1}] {_award_digest(a, cr, solicitation_topics)}")
     digest_block = "\n\n".join(digests)
     if len(awards) > 50:
         digest_block += f"\n\n... and {len(awards) - 50} additional awards."
@@ -1223,6 +1356,7 @@ def generate_award_descriptions(
     api_key: str,
     awards: list[dict],
     company_research: dict[str, CompanyResearch] | None = None,
+    solicitation_topics: dict[str, SolicitationTopic] | None = None,
 ) -> dict[int, str]:
     """Generate a brief description for each award using batched API calls."""
     descriptions: dict[int, str] = {}
@@ -1241,9 +1375,13 @@ def generate_award_descriptions(
     system = (
         "You summarize SBIR/STTR awards in plain language. "
         "For each award, write 2-3 sentences explaining what the project does "
-        "and why it matters. Use the abstract, solicitation context, "
-        "associated federal spending data, and company background research "
-        "to inform your description. Reference relevant company context "
+        "and why it matters. Use the abstract, the solicitation topic "
+        "description (which describes the government's research need that "
+        "this award responds to), associated federal spending data, and "
+        "company background research to inform your description. When a "
+        "solicitation topic description is provided, explain how the award "
+        "addresses the specific government need described in the "
+        "solicitation. Reference relevant company context "
         "(e.g. their expertise, previous work, or market position) when it "
         "adds value. Be specific about the technology and its intended "
         "application. Avoid generic filler.\n\n"
@@ -1259,12 +1397,13 @@ def generate_award_descriptions(
             cr = None
             if company_research:
                 cr = company_research.get(str(a.get("Company", "")).strip().upper())
-            digests.append(f"[{idx}] {_award_digest(a, cr)}")
+            digests.append(f"[{idx}] {_award_digest(a, cr, solicitation_topics)}")
 
         user = (
             "Generate a brief plain-language description for each award below. "
             "Each description should convey the technology, its application, "
-            "the significance of the federal investment, and relevant company "
+            "the significance of the federal investment, how it addresses the "
+            "solicitation's stated research need, and relevant company "
             "context. Respond ONLY with a JSON object.\n\n" + "\n\n".join(digests)
         )
 
@@ -1488,7 +1627,10 @@ def generate_company_diligence(
             f"Generating company diligence {idx}/{total}: {display_name}...",
             file=sys.stderr,
         )
-        result = _openai_chat(api_key, system, user)
+        result = _openai_chat(
+            api_key, system, user,
+            model=OPENAI_DILIGENCE_MODEL, temperature=0.4,
+        )
         if result:
             results[key] = result
 
@@ -1606,7 +1748,10 @@ def generate_pi_diligence(
             f"Generating PI diligence {idx}/{total}: {display_name}...",
             file=sys.stderr,
         )
-        result = _openai_chat(api_key, system, user)
+        result = _openai_chat(
+            api_key, system, user,
+            model=OPENAI_DILIGENCE_MODEL, temperature=0.4,
+        )
         if result:
             results[key] = result
 
@@ -1857,11 +2002,18 @@ def main():
     pi_dilig: dict[str, str] | None = None
     api_key = os.environ.get("OPENAI_API_KEY", "")
 
+    # Fetch solicitation topic context from SBIR.gov API (no API key needed)
+    sol_topics = fetch_solicitation_topics(awards) if awards else None
+
     if api_key and not args.no_ai:
         if not args.no_company_research:
             company_info = research_companies(api_key, awards)
-        synopsis = generate_weekly_synopsis(api_key, awards, args.days, company_info)
-        descriptions = generate_award_descriptions(api_key, awards, company_info)
+        synopsis = generate_weekly_synopsis(
+            api_key, awards, args.days, company_info, sol_topics
+        )
+        descriptions = generate_award_descriptions(
+            api_key, awards, company_info, sol_topics
+        )
 
         if not args.no_diligence:
             # Build historical context for diligence
