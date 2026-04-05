@@ -11,6 +11,10 @@ When OPENAI_API_KEY is set, uses the OpenAI API to:
 - Generate a two-paragraph synopsis of all weekly award activity
 - Generate a brief description per award (informed by the abstract,
   solicitation, USAspending data, and company research)
+- Generate a company diligence paragraph per awardee (informed by
+  historical SBIR data, web research, and current award context)
+- Generate a PI diligence paragraph per Principal Investigator
+  (informed by their SBIR history and company context)
 
 Usage:
     python scripts/data/weekly_awards_report.py
@@ -261,6 +265,300 @@ def fetch_weekly_awards(days: int = 7) -> tuple[list[dict], list[str]]:
         print(f"WARNING: {w}", file=sys.stderr)
 
     return awards, freshness_warnings
+
+
+# ---------------------------------------------------------------------------
+# Historical context (for diligence)
+# ---------------------------------------------------------------------------
+
+
+def get_company_history(
+    awards: list[dict],
+) -> dict[str, dict]:
+    """Extract historical SBIR award context per company from the full dataset.
+
+    Scans the complete CSV (not just the weekly window) to build a profile of
+    each company's SBIR track record: total awards, phases reached, agencies
+    served, cumulative funding, and date range.
+
+    Returns a dict keyed by upper-cased company name.
+    """
+    source = _resolve_csv_path()
+
+    if _HAS_SBIR_ETL and SbirDuckDBExtractor is not None:
+        extractor = SbirDuckDBExtractor(
+            csv_path=source.path,
+            duckdb_path=":memory:",
+            use_s3_first=False,
+        )
+        extractor.import_csv()
+        table = extractor._table_identifier
+
+        # Collect the set of companies we care about (from this week's awards)
+        company_names = {str(a.get("Company", "")).strip().upper() for a in awards}
+        company_names.discard("")
+
+        history: dict[str, dict] = {}
+        for name in company_names:
+            escaped = name.replace("'", "''")
+            query = (
+                f"SELECT \"Phase\", \"Agency\", \"Award Amount\", "
+                f"\"Proposal Award Date\", \"Award Title\", \"Program\" "
+                f"FROM {table} "
+                f"WHERE UPPER(\"Company\") = '{escaped}' "
+                f"ORDER BY \"Proposal Award Date\" DESC"
+            )
+            df = extractor.duckdb_client.execute_query_df(query)
+            if df.empty:
+                continue
+
+            phases = set()
+            agencies = set()
+            total_funding = 0.0
+            dates: list[str] = []
+            titles: list[str] = []
+            programs = set()
+
+            for _, row in df.iterrows():
+                phase = str(row.get("Phase", "")).strip()
+                if phase:
+                    phases.add(phase)
+                ag = str(row.get("Agency", "")).strip()
+                if ag:
+                    agencies.add(ag)
+                prog = str(row.get("Program", "")).strip()
+                if prog:
+                    programs.add(prog)
+                try:
+                    total_funding += float(
+                        str(row.get("Award Amount", "0"))
+                        .replace(",", "")
+                        .replace("$", "")
+                    )
+                except (ValueError, TypeError):
+                    pass
+                d = str(row.get("Proposal Award Date", "")).strip()
+                if d:
+                    dates.append(d)
+                t = str(row.get("Award Title", "")).strip()
+                if t and t not in titles:
+                    titles.append(t)
+
+            history[name] = {
+                "total_awards": len(df),
+                "phases": sorted(phases),
+                "agencies": sorted(agencies),
+                "programs": sorted(programs),
+                "total_funding": total_funding,
+                "earliest_date": min(dates) if dates else None,
+                "latest_date": max(dates) if dates else None,
+                "sample_titles": titles[:5],
+            }
+
+        return history
+
+    # Fallback: scan the CSV with Python
+    import csv
+    import io
+
+    company_names = {str(a.get("Company", "")).strip().upper() for a in awards}
+    company_names.discard("")
+    text = source.path.read_text(encoding="utf-8")
+    reader = csv.DictReader(io.StringIO(text))
+
+    history = {}
+    for row in reader:
+        name = str(row.get("Company", "")).strip().upper()
+        if name not in company_names:
+            continue
+        if name not in history:
+            history[name] = {
+                "total_awards": 0,
+                "phases": set(),
+                "agencies": set(),
+                "programs": set(),
+                "total_funding": 0.0,
+                "dates": [],
+                "sample_titles": [],
+            }
+        h = history[name]
+        h["total_awards"] += 1
+        phase = str(row.get("Phase", "")).strip()
+        if phase:
+            h["phases"].add(phase)
+        ag = str(row.get("Agency", "")).strip()
+        if ag:
+            h["agencies"].add(ag)
+        prog = str(row.get("Program", "")).strip()
+        if prog:
+            h["programs"].add(prog)
+        try:
+            h["total_funding"] += float(
+                str(row.get("Award Amount", "0")).replace(",", "").replace("$", "")
+            )
+        except (ValueError, TypeError):
+            pass
+        d = str(row.get("Proposal Award Date", "")).strip()
+        if d:
+            h["dates"].append(d)
+        t = str(row.get("Award Title", "")).strip()
+        if t and len(h["sample_titles"]) < 5 and t not in h["sample_titles"]:
+            h["sample_titles"].append(t)
+
+    # Normalize the set fields to sorted lists
+    for name, h in history.items():
+        dates = h.pop("dates", [])
+        h["phases"] = sorted(h["phases"])
+        h["agencies"] = sorted(h["agencies"])
+        h["programs"] = sorted(h["programs"])
+        h["earliest_date"] = min(dates) if dates else None
+        h["latest_date"] = max(dates) if dates else None
+
+    return history
+
+
+def get_pi_history(
+    awards: list[dict],
+) -> dict[str, dict]:
+    """Extract historical SBIR context per Principal Investigator.
+
+    Similar to get_company_history but keyed on PI name.
+    Returns a dict keyed by upper-cased PI name.
+    """
+    source = _resolve_csv_path()
+
+    pi_names = set()
+    for a in awards:
+        pi = str(a.get("PI Name", "")).strip().upper()
+        if pi:
+            pi_names.add(pi)
+
+    if not pi_names:
+        return {}
+
+    if _HAS_SBIR_ETL and SbirDuckDBExtractor is not None:
+        extractor = SbirDuckDBExtractor(
+            csv_path=source.path,
+            duckdb_path=":memory:",
+            use_s3_first=False,
+        )
+        extractor.import_csv()
+        table = extractor._table_identifier
+
+        history: dict[str, dict] = {}
+        for name in pi_names:
+            escaped = name.replace("'", "''")
+            query = (
+                f"SELECT \"Company\", \"Phase\", \"Agency\", \"Award Amount\", "
+                f"\"Proposal Award Date\", \"Award Title\", \"Program\" "
+                f"FROM {table} "
+                f"WHERE UPPER(\"PI Name\") = '{escaped}' "
+                f"ORDER BY \"Proposal Award Date\" DESC"
+            )
+            df = extractor.duckdb_client.execute_query_df(query)
+            if df.empty:
+                continue
+
+            companies = set()
+            phases = set()
+            agencies = set()
+            total_funding = 0.0
+            dates: list[str] = []
+            titles: list[str] = []
+
+            for _, row in df.iterrows():
+                co = str(row.get("Company", "")).strip()
+                if co:
+                    companies.add(co)
+                phase = str(row.get("Phase", "")).strip()
+                if phase:
+                    phases.add(phase)
+                ag = str(row.get("Agency", "")).strip()
+                if ag:
+                    agencies.add(ag)
+                try:
+                    total_funding += float(
+                        str(row.get("Award Amount", "0"))
+                        .replace(",", "")
+                        .replace("$", "")
+                    )
+                except (ValueError, TypeError):
+                    pass
+                d = str(row.get("Proposal Award Date", "")).strip()
+                if d:
+                    dates.append(d)
+                t = str(row.get("Award Title", "")).strip()
+                if t and t not in titles:
+                    titles.append(t)
+
+            history[name] = {
+                "total_awards": len(df),
+                "companies": sorted(companies),
+                "phases": sorted(phases),
+                "agencies": sorted(agencies),
+                "total_funding": total_funding,
+                "earliest_date": min(dates) if dates else None,
+                "latest_date": max(dates) if dates else None,
+                "sample_titles": titles[:5],
+            }
+
+        return history
+
+    # Fallback: CSV scan
+    import csv
+    import io
+
+    text = source.path.read_text(encoding="utf-8")
+    reader = csv.DictReader(io.StringIO(text))
+
+    history = {}
+    for row in reader:
+        name = str(row.get("PI Name", "")).strip().upper()
+        if name not in pi_names:
+            continue
+        if name not in history:
+            history[name] = {
+                "total_awards": 0,
+                "companies": set(),
+                "phases": set(),
+                "agencies": set(),
+                "total_funding": 0.0,
+                "dates": [],
+                "sample_titles": [],
+            }
+        h = history[name]
+        h["total_awards"] += 1
+        co = str(row.get("Company", "")).strip()
+        if co:
+            h["companies"].add(co)
+        phase = str(row.get("Phase", "")).strip()
+        if phase:
+            h["phases"].add(phase)
+        ag = str(row.get("Agency", "")).strip()
+        if ag:
+            h["agencies"].add(ag)
+        try:
+            h["total_funding"] += float(
+                str(row.get("Award Amount", "0")).replace(",", "").replace("$", "")
+            )
+        except (ValueError, TypeError):
+            pass
+        d = str(row.get("Proposal Award Date", "")).strip()
+        if d:
+            h["dates"].append(d)
+        t = str(row.get("Award Title", "")).strip()
+        if t and len(h["sample_titles"]) < 5 and t not in h["sample_titles"]:
+            h["sample_titles"].append(t)
+
+    for name, h in history.items():
+        dates = h.pop("dates", [])
+        h["companies"] = sorted(h["companies"])
+        h["phases"] = sorted(h["phases"])
+        h["agencies"] = sorted(h["agencies"])
+        h["earliest_date"] = min(dates) if dates else None
+        h["latest_date"] = max(dates) if dates else None
+
+    return history
 
 
 # ---------------------------------------------------------------------------
@@ -655,6 +953,261 @@ def generate_award_descriptions(
 
 
 # ---------------------------------------------------------------------------
+# Company & PI diligence
+# ---------------------------------------------------------------------------
+
+# Caps on diligence API calls (override via env vars)
+MAX_COMPANIES_TO_DILIGENCE = int(os.environ.get("MAX_COMPANIES_TO_DILIGENCE", "50"))
+MAX_PIS_TO_DILIGENCE = int(os.environ.get("MAX_PIS_TO_DILIGENCE", "50"))
+
+
+def _company_history_digest(name: str, history: dict | None) -> str:
+    """Format a company's historical SBIR record for LLM context."""
+    if not history:
+        return "No prior SBIR/STTR award history found in the dataset."
+    parts = [
+        f"Total historical SBIR/STTR awards: {history['total_awards']}",
+        f"Phases achieved: {', '.join(history['phases']) or 'N/A'}",
+        f"Agencies: {', '.join(history['agencies']) or 'N/A'}",
+        f"Programs: {', '.join(history['programs']) or 'N/A'}",
+        f"Total historical funding: ${history['total_funding']:,.0f}",
+        f"Award date range: {history.get('earliest_date', 'N/A')} to {history.get('latest_date', 'N/A')}",
+    ]
+    if history.get("sample_titles"):
+        parts.append("Sample award titles: " + "; ".join(history["sample_titles"]))
+    return "\n".join(parts)
+
+
+def _pi_history_digest(name: str, history: dict | None) -> str:
+    """Format a PI's historical SBIR record for LLM context."""
+    if not history:
+        return "No prior SBIR/STTR award history found for this PI."
+    parts = [
+        f"Total historical SBIR/STTR awards as PI: {history['total_awards']}",
+        f"Companies: {', '.join(history['companies']) or 'N/A'}",
+        f"Phases: {', '.join(history['phases']) or 'N/A'}",
+        f"Agencies: {', '.join(history['agencies']) or 'N/A'}",
+        f"Total funding as PI: ${history['total_funding']:,.0f}",
+        f"Date range: {history.get('earliest_date', 'N/A')} to {history.get('latest_date', 'N/A')}",
+    ]
+    if history.get("sample_titles"):
+        parts.append("Sample award titles: " + "; ".join(history["sample_titles"]))
+    return "\n".join(parts)
+
+
+def generate_company_diligence(
+    api_key: str,
+    awards: list[dict],
+    company_research: dict[str, CompanyResearch] | None = None,
+    company_history: dict[str, dict] | None = None,
+) -> dict[str, str]:
+    """Generate a diligence paragraph for each unique awardee company.
+
+    Combines web research, historical SBIR data, and the current award context
+    to produce a focused due-diligence assessment per company.
+
+    Returns a dict keyed by upper-cased company name.
+    """
+    # Collect unique companies
+    companies: dict[str, list[dict]] = {}
+    for a in awards:
+        name = str(a.get("Company", "")).strip()
+        if not name:
+            continue
+        key = name.upper()
+        companies.setdefault(key, []).append(a)
+
+    company_items = list(companies.items())
+    if len(company_items) > MAX_COMPANIES_TO_DILIGENCE:
+        print(
+            f"Capping company diligence at {MAX_COMPANIES_TO_DILIGENCE} "
+            f"of {len(company_items)} companies",
+            file=sys.stderr,
+        )
+        company_items = company_items[:MAX_COMPANIES_TO_DILIGENCE]
+
+    system = (
+        "You are a due-diligence analyst evaluating companies that receive "
+        "SBIR/STTR federal innovation awards. Write exactly one paragraph "
+        "(4-6 sentences) of diligence analysis for the company. Cover:\n"
+        "1. Company background and technology focus\n"
+        "2. SBIR track record — award volume, phase progression (Phase I→II→III "
+        "indicates commercialization progress), agency diversity\n"
+        "3. Commercialization signals — products, revenue, contracts, patents, "
+        "or partnerships that suggest ability to transition research\n"
+        "4. Risk factors — e.g. sole reliance on SBIR funding, narrow agency "
+        "base, lack of phase progression, or limited public presence\n\n"
+        "Be specific and analytical. Do not use bullet points or headers. "
+        "Write in a professional, neutral tone. If information is limited, "
+        "note that as a risk factor."
+    )
+
+    results: dict[str, str] = {}
+    total = len(company_items)
+
+    for idx, (key, co_awards) in enumerate(company_items, 1):
+        display_name = co_awards[0].get("Company", key)
+        state = str(co_awards[0].get("State", ""))
+
+        # Build context
+        context_parts = [f"Company: {display_name}"]
+        if state:
+            context_parts.append(f"State: {state}")
+
+        # Current week's awards
+        current_summaries = []
+        for a in co_awards:
+            current_summaries.append(
+                f"- {a.get('Award Title', 'N/A')} | {a.get('Agency', '')} "
+                f"{a.get('Program', '')} {a.get('Phase', '')} | "
+                f"{format_amount(str(a.get('Award Amount', '')))}"
+            )
+        context_parts.append(
+            f"Current week's awards ({len(co_awards)}):\n"
+            + "\n".join(current_summaries)
+        )
+
+        # Historical SBIR data
+        hist = company_history.get(key) if company_history else None
+        context_parts.append(
+            f"Historical SBIR record:\n{_company_history_digest(key, hist)}"
+        )
+
+        # Web research
+        cr = company_research.get(key) if company_research else None
+        if cr:
+            context_parts.append(f"Web research summary:\n{cr.summary}")
+            if cr.source_urls:
+                context_parts.append(
+                    "Sources: " + ", ".join(cr.source_urls[:5])
+                )
+        else:
+            context_parts.append(
+                "Web research: No web research available for this company."
+            )
+
+        user = (
+            "Write a one-paragraph due-diligence assessment for this "
+            "SBIR/STTR awardee company.\n\n" + "\n\n".join(context_parts)
+        )
+
+        print(
+            f"Generating company diligence {idx}/{total}: {display_name}...",
+            file=sys.stderr,
+        )
+        result = _openai_chat(api_key, system, user)
+        if result:
+            results[key] = result
+
+    return results
+
+
+def generate_pi_diligence(
+    api_key: str,
+    awards: list[dict],
+    pi_history: dict[str, dict] | None = None,
+    company_research: dict[str, CompanyResearch] | None = None,
+) -> dict[str, str]:
+    """Generate a diligence paragraph for each unique Principal Investigator.
+
+    Combines the PI's SBIR history, their current award context, and any
+    available company research to assess the PI's track record.
+
+    Returns a dict keyed by upper-cased PI name.
+    """
+    # Collect unique PIs
+    pis: dict[str, list[dict]] = {}
+    for a in awards:
+        pi = str(a.get("PI Name", "")).strip()
+        if not pi:
+            continue
+        key = pi.upper()
+        pis.setdefault(key, []).append(a)
+
+    pi_items = list(pis.items())
+    if len(pi_items) > MAX_PIS_TO_DILIGENCE:
+        print(
+            f"Capping PI diligence at {MAX_PIS_TO_DILIGENCE} "
+            f"of {len(pi_items)} PIs",
+            file=sys.stderr,
+        )
+        pi_items = pi_items[:MAX_PIS_TO_DILIGENCE]
+
+    system = (
+        "You are a due-diligence analyst evaluating Principal Investigators "
+        "(PIs) who lead SBIR/STTR federal innovation projects. Write exactly "
+        "one paragraph (3-5 sentences) assessing the PI. Cover:\n"
+        "1. The PI's SBIR track record — number of awards, phase progression, "
+        "breadth of agencies and topics\n"
+        "2. Continuity — have they stayed with one company or moved between "
+        "organizations? Is their research focus consistent or scattered?\n"
+        "3. Indicators of research depth — repeat awards in the same domain "
+        "suggest expertise; awards across unrelated fields may suggest "
+        "grant-chasing\n"
+        "4. Current project context — what are they working on now and how "
+        "does it relate to their history?\n\n"
+        "Be specific and analytical. Do not use bullet points or headers. "
+        "Write in a professional, neutral tone. If the PI has no prior "
+        "history, note that this is their first known SBIR award."
+    )
+
+    results: dict[str, str] = {}
+    total = len(pi_items)
+
+    for idx, (key, pi_awards) in enumerate(pi_items, 1):
+        display_name = pi_awards[0].get("PI Name", key)
+        company = str(pi_awards[0].get("Company", ""))
+
+        context_parts = [f"Principal Investigator: {display_name}"]
+        if company:
+            context_parts.append(f"Current company: {company}")
+
+        # Current week's awards
+        current_summaries = []
+        for a in pi_awards:
+            current_summaries.append(
+                f"- {a.get('Award Title', 'N/A')} | {a.get('Company', '')} | "
+                f"{a.get('Agency', '')} {a.get('Program', '')} {a.get('Phase', '')} | "
+                f"{format_amount(str(a.get('Award Amount', '')))}"
+            )
+        context_parts.append(
+            f"Current week's awards ({len(pi_awards)}):\n"
+            + "\n".join(current_summaries)
+        )
+
+        # PI historical record
+        hist = pi_history.get(key) if pi_history else None
+        context_parts.append(
+            f"Historical SBIR record as PI:\n{_pi_history_digest(key, hist)}"
+        )
+
+        # Company web research for context
+        cr = None
+        if company_research:
+            cr = company_research.get(company.strip().upper())
+        if cr:
+            context_parts.append(
+                f"Company context ({company}):\n{cr.summary}"
+            )
+
+        user = (
+            "Write a one-paragraph assessment of this Principal Investigator's "
+            "SBIR/STTR track record and current project.\n\n"
+            + "\n\n".join(context_parts)
+        )
+
+        print(
+            f"Generating PI diligence {idx}/{total}: {display_name}...",
+            file=sys.stderr,
+        )
+        result = _openai_chat(api_key, system, user)
+        if result:
+            results[key] = result
+
+    return results
+
+
+# ---------------------------------------------------------------------------
 # Markdown generation
 # ---------------------------------------------------------------------------
 
@@ -666,6 +1219,8 @@ def generate_markdown(
     descriptions: dict[int, str] | None = None,
     company_research: dict[str, CompanyResearch] | None = None,
     freshness_warnings: list[str] | None = None,
+    company_diligence: dict[str, str] | None = None,
+    pi_diligence: dict[str, str] | None = None,
 ) -> str:
     """Generate markdown report from filtered awards."""
     now = datetime.now(UTC)
@@ -792,6 +1347,22 @@ def generate_markdown(
             lines.append(descriptions[i])
             lines.append("")
 
+        # Company diligence paragraph
+        if company_diligence:
+            co_key = company.strip().upper()
+            if co_key in company_diligence:
+                lines.append(f"**Company Diligence — {company}:**")
+                lines.append(company_diligence[co_key])
+                lines.append("")
+
+        # PI diligence paragraph
+        if pi_diligence and pi_name:
+            pi_key = pi_name.strip().upper()
+            if pi_key in pi_diligence:
+                lines.append(f"**Principal Investigator — {pi_name}:**")
+                lines.append(pi_diligence[pi_key])
+                lines.append("")
+
         # Details table
         lines.append("<details>")
         lines.append("<summary>Award details</summary>")
@@ -863,6 +1434,11 @@ def main():
         action="store_true",
         help="Skip web-based company research (still generates synopsis and descriptions)",
     )
+    parser.add_argument(
+        "--no-diligence",
+        action="store_true",
+        help="Skip company and PI diligence paragraphs",
+    )
     args = parser.parse_args()
 
     awards, freshness_warnings = fetch_weekly_awards(days=args.days)
@@ -871,6 +1447,8 @@ def main():
     synopsis = None
     descriptions = None
     company_info: dict[str, CompanyResearch] | None = None
+    co_diligence: dict[str, str] | None = None
+    pi_dilig: dict[str, str] | None = None
     api_key = os.environ.get("OPENAI_API_KEY", "")
 
     if api_key and not args.no_ai:
@@ -878,6 +1456,20 @@ def main():
             company_info = research_companies(api_key, awards)
         synopsis = generate_weekly_synopsis(api_key, awards, args.days, company_info)
         descriptions = generate_award_descriptions(api_key, awards, company_info)
+
+        if not args.no_diligence:
+            # Build historical context for diligence
+            print("Building historical company context...", file=sys.stderr)
+            co_history = get_company_history(awards)
+            print("Building historical PI context...", file=sys.stderr)
+            pi_history = get_pi_history(awards)
+
+            co_diligence = generate_company_diligence(
+                api_key, awards, company_info, co_history
+            )
+            pi_dilig = generate_pi_diligence(
+                api_key, awards, pi_history, company_info
+            )
     elif not api_key and not args.no_ai:
         print(
             "OPENAI_API_KEY not set - skipping AI summaries. "
@@ -892,6 +1484,8 @@ def main():
         descriptions=descriptions,
         company_research=company_info,
         freshness_warnings=freshness_warnings,
+        company_diligence=co_diligence,
+        pi_diligence=pi_dilig,
     )
 
     if args.output:
