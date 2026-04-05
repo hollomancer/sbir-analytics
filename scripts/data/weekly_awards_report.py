@@ -2537,109 +2537,115 @@ def fetch_usaspending_contract_descriptions(
     Returns a dict keyed by contract number with the award description text.
     Used as supplementary LLM context when solicitation topic data is unavailable.
     """
-    contracts: list[str] = []
+    import re as _re
+    import time as _t
+
+    # Classify award IDs by likely type based on format:
+    # - DoD PIIDs: letter prefix + digits + dash patterns (e.g. FA2541-26-C-B005)
+    # - DOE/agency FAINs: DE-AR, DE-SC prefixes (grants)
+    # - Pure numeric: agency internal IDs (e.g. NSF "2516905") — try both types
+    piids: list[str] = []   # Likely procurement contracts
+    fains: list[str] = []   # Likely financial assistance (grants)
+    unknown: list[str] = [] # Try both
     for a in awards:
         c = str(a.get("Contract", "")).strip()
-        if c and c not in contracts:
-            contracts.append(c)
+        if not c or c in piids or c in fains or c in unknown:
+            continue
+        if _re.match(r"^DE-", c, _re.IGNORECASE):
+            fains.append(c)
+        elif _re.match(r"^[A-Z]{2}\d", c):
+            piids.append(c)  # DoD PIID pattern
+        elif c.isdigit():
+            unknown.append(c)  # Bare numeric — could be either
+        else:
+            unknown.append(c)
 
-    if not contracts:
+    all_ids = piids + fains + unknown
+    if not all_ids:
         return {}
 
+    _debug(
+        f"USAspending contract desc: {len(piids)} PIIDs, "
+        f"{len(fains)} FAINs, {len(unknown)} unknown"
+    )
     print(
-        f"Fetching {len(contracts)} contract descriptions from USAspending...",
+        f"Fetching {len(all_ids)} contract descriptions from USAspending...",
         file=sys.stderr,
     )
     results: dict[str, str] = {}
 
-    # Batch contracts into groups to reduce API calls.
-    # Must make separate requests for contracts (A-D) and assistance (02+)
-    # since USAspending requires award_type_codes from one group per request.
-    # Contracts and SBIR-relevant assistance types (grants/cooperative agreements).
-    # Codes 06+ (direct payments, insurance, etc.) are unlikely for SBIR awards.
-    type_groups = [
-        ("contracts", ["A", "B", "C", "D"]),
-        ("assistance", ["02", "03", "04", "05"]),
-    ]
-    batch_size = 25
-    for batch_start in range(0, len(contracts), batch_size):
-        batch = contracts[batch_start : batch_start + batch_size]
-        # Wrap PIIDs in double-quotes for exact match
-        quoted_batch = [f'"{c}"' for c in batch]
+    # Build targeted requests: PIIDs→contracts, FAINs→assistance, unknown→both
+    requests_to_make: list[tuple[list[str], str, list[str]]] = []
+    if piids:
+        requests_to_make.append((piids, "contracts", ["A", "B", "C", "D"]))
+    if fains:
+        requests_to_make.append((fains, "assistance", ["02", "03", "04", "05"]))
+    for uid in unknown:
+        # Try as contract first, then assistance
+        requests_to_make.append(([uid], "contracts", ["A", "B", "C", "D"]))
+        requests_to_make.append(([uid], "assistance", ["02", "03", "04", "05"]))
 
-        batch_label = f"{batch_start + 1}-{batch_start + len(batch)}"
-        _debug(
-            f"USAspending contract descriptions: batch "
-            f"{batch_label} of {len(contracts)} | award_ids={batch}"
+    try:
+        with httpx.Client(timeout=30) as client:
+            for ids, group_name, codes in requests_to_make:
+                quoted = [f'"{c}"' for c in ids]
+                payload = {
+                    "filters": {
+                        "award_ids": quoted,
+                        "award_type_codes": codes,
+                    },
+                    "fields": ["Award ID", "Description", "Awarding Agency", "Award Type"],
+                    "page": 1,
+                    "limit": len(ids),
+                }
+                _debug(
+                    f"USAspending contract desc: {group_name} "
+                    f"({len(ids)} IDs: {ids[:3]})"
+                )
+                data = None
+                for attempt in range(3):
+                    resp = client.post(
+                        f"{USASPENDING_API_URL}/search/spending_by_award/",
+                        json=payload,
+                    )
+                    if resp.status_code in (429, 500, 502, 503, 504):
+                        wait = 2 ** (attempt + 1)
+                        _debug(
+                            f"USAspending contract desc/{group_name} "
+                            f"returned {resp.status_code}, retrying in {wait}s"
+                        )
+                        _t.sleep(wait)
+                        continue
+                    if resp.status_code != 200:
+                        _debug(
+                            f"USAspending contract desc/{group_name} "
+                            f"returned {resp.status_code}"
+                        )
+                        break
+                    data = resp.json()
+                    break
+                if data is None:
+                    continue
+                for r in data.get("results", []):
+                    aid = str(r.get("Award ID", "")).strip()
+                    desc = str(r.get("Description", "")).strip()
+                    if aid and desc and aid not in results:
+                        if len(desc) > 500:
+                            desc = desc[:500] + "..."
+                        results[aid] = desc
+    except Exception as e:
+        print(f"USAspending contract desc error: {e}", file=sys.stderr)
+
+    if not results and all_ids:
+        print(
+            f"USAspending contract desc: 0 results for {len(all_ids)} award IDs "
+            f"(sample: {all_ids[:3]})",
+            file=sys.stderr,
         )
 
-        import time as _t
-
-        batch_results: list[dict] = []
-        try:
-            with httpx.Client(timeout=30) as client:
-                for group_name, codes in type_groups:
-                    payload = {
-                        "filters": {
-                            "award_ids": quoted_batch,
-                            "award_type_codes": codes,
-                        },
-                        "fields": ["Award ID", "Description", "Awarding Agency", "Award Type"],
-                        "page": 1,
-                        "limit": len(batch),
-                    }
-                    # Retry on 429/5xx with backoff
-                    data = None
-                    for attempt in range(3):
-                        resp = client.post(
-                            f"{USASPENDING_API_URL}/search/spending_by_award/",
-                            json=payload,
-                        )
-                        if resp.status_code in (429, 500, 502, 503, 504):
-                            wait = 2 ** (attempt + 1)
-                            _debug(
-                                f"USAspending contract desc batch {batch_label}/{group_name} "
-                                f"returned {resp.status_code}, retrying in {wait}s"
-                            )
-                            _t.sleep(wait)
-                            continue
-                        if resp.status_code != 200:
-                            _debug(
-                                f"USAspending contract desc batch {batch_label}/{group_name} "
-                                f"returned {resp.status_code}"
-                            )
-                            break
-                        data = resp.json()
-                        break
-                    if data is None:
-                        continue
-                    batch_results.extend(data.get("results", []))
-        except Exception as e:
-            print(
-                f"USAspending contract desc batch {batch_label} error: {e}",
-                file=sys.stderr,
-            )
-            continue
-
-        if not batch_results:
-            print(
-                f"USAspending contract desc batch {batch_label}: "
-                f"0 results for {len(batch)} award IDs "
-                f"(sample: {batch[:3]})",
-                file=sys.stderr,
-            )
-
-        for r in batch_results:
-            aid = str(r.get("Award ID", "")).strip()
-            desc = str(r.get("Description", "")).strip()
-            if aid and desc:
-                if len(desc) > 500:
-                    desc = desc[:500] + "..."
-                results[aid] = desc
-
-    _debug(f"USAspending contract descriptions: {len(results)}/{len(contracts)} found")
+    _debug(f"USAspending contract descriptions: {len(results)}/{len(all_ids)} found")
     print(
-        f"Fetched {len(results)}/{len(contracts)} contract descriptions from USAspending",
+        f"Fetched {len(results)}/{len(all_ids)} contract descriptions from USAspending",
         file=sys.stderr,
     )
     return results
