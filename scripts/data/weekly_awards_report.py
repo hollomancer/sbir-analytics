@@ -1506,6 +1506,8 @@ def fetch_solicitation_topics(awards: list[dict]) -> dict[str, SolicitationTopic
     # Query by solicitation year to reduce result sets.
     # Group topic codes by their solicitation number prefix to batch queries.
     sol_years: dict[int, list[str]] = {}
+    # Topic codes with no parseable year — query individually by keyword
+    no_year_codes: list[tuple[str, str]] = []  # (topic_code, solicitation_number)
     for tc, sol in topic_codes.items():
         # Extract year from solicitation number (e.g. "SBIR-2023.1" -> 2023)
         year = None
@@ -1516,32 +1518,94 @@ def fetch_solicitation_topics(awards: list[dict]) -> dict[str, SolicitationTopic
         if year:
             sol_years.setdefault(year, []).append(tc)
         else:
-            sol_years.setdefault(0, []).append(tc)
+            no_year_codes.append((tc, sol))
+
+    # Handle topic codes with no parseable year: query by keyword (topic code
+    # or solicitation number) instead of fetching the entire unfiltered set.
+    import time
+
+    for tc, sol in no_year_codes:
+        keyword = sol if sol else tc
+        params: dict[str, str | int] = {"rows": 25, "start": 0, "keyword": keyword}
+        _debug(f"SBIR.gov solicitations (no year): keyword='{keyword}' for topic {tc}")
+        try:
+            with httpx.Client(timeout=30) as client:
+                resp = client.get(f"{SBIR_GOV_API_URL}/solicitations", params=params)
+                if resp.status_code == 429:
+                    time.sleep(3)
+                    resp = client.get(f"{SBIR_GOV_API_URL}/solicitations", params=params)
+                _debug_response(f"SBIR.gov solicitations [keyword={keyword}]", resp)
+                if resp.status_code != 200:
+                    continue
+                data = resp.json()
+        except Exception as e:
+            _debug(f"SBIR.gov keyword query error for {keyword}: {e}")
+            continue
+
+        topics = data if isinstance(data, list) else (
+            data.get("results") or data.get("data") or []
+        )
+        for topic in topics:
+            found_tc = topic.get("topicCode") or topic.get("topic_code") or ""
+            if found_tc == tc and tc not in results:
+                desc = topic.get("topicDescription") or topic.get("description")
+                if desc and len(desc) > 3000:
+                    desc = desc[:3000] + "..."
+                results[tc] = SolicitationTopic(
+                    topic_code=tc,
+                    solicitation_number=(
+                        topic.get("solicitationNumber")
+                        or topic.get("solicitation_number")
+                        or sol
+                    ),
+                    title=topic.get("topicTitle") or topic.get("title") or "",
+                    description=desc,
+                    agency=topic.get("agency"),
+                    program=topic.get("program"),
+                )
+                break
 
     for year, codes in sol_years.items():
-        params: dict[str, str | int] = {"rows": 500, "start": 0}
-        if year > 0:
-            params["year"] = year
+        params = {"rows": 500, "start": 0, "year": year}
 
         _debug(
             f"SBIR.gov solicitations query: GET {SBIR_GOV_API_URL}/solicitations "
             f"params={params} (looking for {len(codes)} topic codes)"
         )
-        try:
-            with httpx.Client(timeout=30) as client:
-                resp = client.get(
-                    f"{SBIR_GOV_API_URL}/solicitations", params=params
-                )
-                _debug_response(f"SBIR.gov solicitations [year={year}]", resp)
-                if resp.status_code != 200:
-                    print(
-                        f"SBIR.gov API returned {resp.status_code} for year={year}",
-                        file=sys.stderr,
+
+        # Retry with backoff on 429 (rate limit) responses
+        import time
+
+        data = None
+        for attempt in range(3):
+            try:
+                with httpx.Client(timeout=30) as client:
+                    resp = client.get(
+                        f"{SBIR_GOV_API_URL}/solicitations", params=params
                     )
-                    continue
-                data = resp.json()
-        except Exception as e:
-            print(f"SBIR.gov API error for year={year}: {e}", file=sys.stderr)
+                    _debug_response(f"SBIR.gov solicitations [year={year}]", resp)
+                    if resp.status_code == 429:
+                        wait = 2 ** (attempt + 1)
+                        print(
+                            f"SBIR.gov rate limited (429) for year={year}, "
+                            f"retrying in {wait}s (attempt {attempt + 1}/3)...",
+                            file=sys.stderr,
+                        )
+                        time.sleep(wait)
+                        continue
+                    if resp.status_code != 200:
+                        print(
+                            f"SBIR.gov API returned {resp.status_code} for year={year}",
+                            file=sys.stderr,
+                        )
+                        break
+                    data = resp.json()
+                    break
+            except Exception as e:
+                print(f"SBIR.gov API error for year={year}: {e}", file=sys.stderr)
+                break
+
+        if data is None:
             continue
 
         topics = data if isinstance(data, list) else (
@@ -1588,6 +1652,8 @@ def fetch_solicitation_topics(awards: list[dict]) -> dict[str, SolicitationTopic
             f"missing topic codes...",
             file=sys.stderr,
         )
+        # Brief pause before hitting the same API — respect rate limits
+        time.sleep(2)
         for tc in missing_codes:
             try:
                 with httpx.Client(timeout=30) as client:
@@ -1596,7 +1662,17 @@ def fetch_solicitation_topics(awards: list[dict]) -> dict[str, SolicitationTopic
                         params={"keyword": tc, "rows": 5, "start": 0},
                     )
                     _debug_response(f"SBIR.gov awards fallback [{tc}]", resp)
-                    if resp.status_code != 200:
+                    if resp.status_code == 429:
+                        _debug(f"SBIR.gov awards fallback [{tc}]: rate limited, sleeping 3s")
+                        time.sleep(3)
+                        # One retry after backoff
+                        resp = client.get(
+                            f"{SBIR_GOV_API_URL}/awards",
+                            params={"keyword": tc, "rows": 5, "start": 0},
+                        )
+                        if resp.status_code != 200:
+                            continue
+                    elif resp.status_code != 200:
                         continue
                     data = resp.json()
             except Exception as e:
