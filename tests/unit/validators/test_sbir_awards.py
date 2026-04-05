@@ -204,11 +204,11 @@ class TestValidateAwardAmount:
         assert result.severity == QualitySeverity.ERROR
 
     def test_excessive_amount_warning(self):
-        """Test validation warns for amount over $10M."""
-        result = validate_award_amount(15000000, 0)
+        """Test validation warns for amount over $5M (aligned with config)."""
+        result = validate_award_amount(6000000, 0)
         assert result is not None
         assert result.severity == QualitySeverity.WARNING
-        assert "exceeds typical maximum" in result.message
+        assert "exceeds typical SBIR maximum" in result.message
 
 
 class TestValidateUEIFormat:

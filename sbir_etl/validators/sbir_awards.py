@@ -211,11 +211,12 @@ def validate_award_amount(amount: Any, row_index: int) -> QualityIssue | None:
             row_index=row_index,
         )
 
-    if amount_val > 10_000_000:
+    # Warning threshold aligned with config/base.yaml validity.award_amount_max ($5M)
+    if amount_val > 5_000_000:
         return QualityIssue(
             severity=QualitySeverity.WARNING,
             field="Award Amount",
-            message=f"Award Amount ${amount_val:,.2f} exceeds typical maximum of $10M",
+            message=f"Award Amount ${amount_val:,.2f} exceeds typical SBIR maximum of $5M",
             row_index=row_index,
         )
 

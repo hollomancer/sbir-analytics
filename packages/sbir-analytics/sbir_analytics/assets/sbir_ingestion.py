@@ -25,54 +25,114 @@ from sbir_etl.utils.monitoring import performance_monitor
 from sbir_etl.validators.sbir_awards import validate_sbir_awards
 
 
-def _apply_quality_filters(df: pd.DataFrame, context: AssetExecutionContext) -> pd.DataFrame:
-    """Apply comprehensive filtering to achieve 90%+ pass rate."""
-    original_count = len(df)
-    context.log.info(f"Starting minimal quality filtering with {original_count} records")
+def _apply_quality_filters(
+    df: pd.DataFrame, context: AssetExecutionContext
+) -> tuple[pd.DataFrame, dict[str, Any]]:
+    """Apply structural quality filters and return an audit trail.
 
-    # 1. Only filter completely empty award_id (but allow other missing fields)
+    Returns:
+        Tuple of (filtered DataFrame, audit dict). The audit dict records every
+        transformation step with counts and affected row indices so that
+        downstream consumers can trace exactly what was modified or dropped.
+    """
+    original_count = len(df)
+    original_index = set(df.index.tolist())
+    context.log.info(f"Starting quality filtering with {original_count} records")
+
+    audit: dict[str, Any] = {
+        "original_count": original_count,
+        "steps": [],
+    }
+
+    # 1. Filter empty / placeholder award_id values
     if "award_id" in df.columns:
         before = len(df)
-        df = df[df["award_id"].notna() & (df["award_id"] != "") & (df["award_id"] != "-")].copy()
+        empty_mask = df["award_id"].isna() | (df["award_id"] == "") | (df["award_id"] == "-")
+        dropped_indices = df.index[empty_mask].tolist()
+        df = df[~empty_mask].copy()
         after = len(df)
+        audit["steps"].append({
+            "name": "empty_award_id",
+            "dropped_count": before - after,
+            "dropped_indices": dropped_indices,
+        })
         if before != after:
             context.log.info(f"Empty award_id filter: {before} -> {after} ({after / before:.1%})")
 
-    # 2. Convert award_amount to numeric (but don't filter out zeros - let Award model handle it)
+    # 2. Coerce award_amount to numeric (records modified, not dropped)
+    amount_coerced_count = 0
     if "award_amount" in df.columns:
-        df["award_amount"] = pd.to_numeric(df["award_amount"], errors="coerce")
+        before_numeric = pd.to_numeric(df["award_amount"], errors="coerce")
+        # Count values that were non-numeric and got coerced to NaN
+        was_non_null = df["award_amount"].notna()
+        became_null = before_numeric.isna()
+        amount_coerced_count = int((was_non_null & became_null).sum())
+        df["award_amount"] = before_numeric
+        audit["steps"].append({
+            "name": "award_amount_coercion",
+            "coerced_to_nan_count": amount_coerced_count,
+        })
 
-    # 3. Convert dates to datetime (but don't filter - let Award model handle invalid dates)
+    # 3. Coerce award_date to datetime (records modified, not dropped)
+    date_coerced_count = 0
     if "award_date" in df.columns:
-        df["award_date"] = pd.to_datetime(df["award_date"], errors="coerce")
+        before_dates = pd.to_datetime(df["award_date"], errors="coerce")
+        was_non_null = df["award_date"].notna()
+        became_null = before_dates.isna()
+        date_coerced_count = int((was_non_null & became_null).sum())
+        df["award_date"] = before_dates
+        audit["steps"].append({
+            "name": "award_date_coercion",
+            "coerced_to_nat_count": date_coerced_count,
+        })
 
-    # 4. Only remove exact duplicates based on award_id + phase (not just award_id)
-    # This preserves legitimate Phase I/II progressions
+    # 4. Remove exact duplicates (award_id + phase or award_id only)
     if "award_id" in df.columns and "phase" in df.columns:
         before = len(df)
-        df = df.drop_duplicates(subset=["award_id", "phase"], keep="first")
+        dup_mask = df.duplicated(subset=["award_id", "phase"], keep="first")
+        dropped_indices = df.index[dup_mask].tolist()
+        df = df[~dup_mask].copy()
         after = len(df)
+        audit["steps"].append({
+            "name": "dedup_award_id_phase",
+            "dropped_count": before - after,
+            "dropped_indices": dropped_indices,
+        })
         if before != after:
             context.log.info(
                 f"Duplicate filter (award_id + phase): {before} -> {after} ({after / before:.1%})"
             )
     elif "award_id" in df.columns:
-        # Fallback to award_id only if phase column doesn't exist
         before = len(df)
-        df = df.drop_duplicates(subset=["award_id"], keep="first")
+        dup_mask = df.duplicated(subset=["award_id"], keep="first")
+        dropped_indices = df.index[dup_mask].tolist()
+        df = df[~dup_mask].copy()
         after = len(df)
+        audit["steps"].append({
+            "name": "dedup_award_id",
+            "dropped_count": before - after,
+            "dropped_indices": dropped_indices,
+        })
         if before != after:
             context.log.info(
                 f"Duplicate filter (award_id only): {before} -> {after} ({after / before:.1%})"
             )
 
     final_count = len(df)
-    retention_rate = final_count / original_count
+    total_dropped = original_count - final_count
+    retention_rate = final_count / original_count if original_count else 1.0
+
+    audit["final_count"] = final_count
+    audit["total_dropped"] = total_dropped
+    audit["retention_rate"] = retention_rate
+    audit["total_coerced_fields"] = amount_coerced_count + date_coerced_count
+
     context.log.info(
-        f"Minimal filtering complete: {final_count} records ({retention_rate:.1%} retention)"
+        f"Quality filtering complete: {final_count} records ({retention_rate:.1%} retention), "
+        f"{total_dropped} dropped, {audit['total_coerced_fields']} fields coerced"
     )
 
-    return df
+    return df, audit
 
 
 def _save_to_s3(df: pd.DataFrame, s3_key: str, context: AssetExecutionContext) -> str | None:
@@ -273,7 +333,8 @@ def validated_sbir_awards(
     )
 
     # Apply structural quality filters (empty IDs, duplicates, type coercion)
-    filtered_df = _apply_quality_filters(raw_sbir_awards, context)
+    # Returns audit trail with per-step drop counts and affected indices
+    filtered_df, filter_audit = _apply_quality_filters(raw_sbir_awards, context)
 
     # Run validation on the filtered data
     quality_report = validate_sbir_awards(
@@ -309,6 +370,23 @@ def validated_sbir_awards(
     # Save to S3 for downstream processing (e.g., Neo4j loading in GitHub Actions)
     s3_uri = _save_to_s3(validated_df, "validated/sbir_awards.parquet", context)
 
+    # Build audit summary for metadata (strip raw indices for serialization —
+    # keep counts and step names so Dagster UI shows a concise trail)
+    audit_summary = {
+        step["name"]: {
+            k: v for k, v in step.items() if k != "dropped_indices"
+        }
+        for step in filter_audit.get("steps", [])
+    }
+    audit_summary["totals"] = {
+        "original_count": filter_audit["original_count"],
+        "final_count": filter_audit["final_count"],
+        "total_dropped": filter_audit["total_dropped"],
+        "total_coerced_fields": filter_audit["total_coerced_fields"],
+        "retention_rate": f"{filter_audit['retention_rate']:.1%}",
+        "validation_failed_rows": len(failing_indices),
+    }
+
     # Create metadata - convert numpy types to Python types for JSON serialization
     metadata = {
         "num_records": len(validated_df),
@@ -318,6 +396,7 @@ def validated_sbir_awards(
         "total_issues": len(quality_report.issues),
         "validation_status": "PASSED" if quality_report.passed else "FAILED",
         "threshold": f"{pass_rate_threshold:.1%}",
+        "preprocessing_audit": MetadataValue.json(audit_summary),
     }
     if s3_uri:
         metadata["s3_uri"] = s3_uri

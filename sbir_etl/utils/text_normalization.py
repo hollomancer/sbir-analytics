@@ -13,6 +13,7 @@ Key Features:
 from __future__ import annotations
 
 import re
+import unicodedata
 
 
 def normalize_name(
@@ -52,6 +53,11 @@ def normalize_name(
         return ""
 
     s = str(name).strip().lower()
+
+    # Apply Unicode NFKD normalization and strip combining characters (accents).
+    # This turns "Café" → "cafe", "naïve" → "naive", "ñ" → "n", etc.
+    s = unicodedata.normalize("NFKD", s)
+    s = "".join(ch for ch in s if not unicodedata.combining(ch))
 
     # Replace punctuation with spaces
     s = re.sub(r"[^\w\s]", " ", s)
