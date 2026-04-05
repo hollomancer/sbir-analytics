@@ -9,7 +9,7 @@ Usage:
     python scripts/data/download_uspto.py --dataset ai_patents
 
 URLs verified: December 2024
-- PatentsView: https://download.patentsview.org/data (bulk download endpoint)
+- PatentsView: https://data.uspto.gov (migrated from download.patentsview.org, March 2026)
 - USPTO Assignments: 2023 is latest release (verified Dec 2024)
 - USPTO AI Patents: 2023 is latest release (verified Dec 2024, updated Jan 8, 2025)
 """
@@ -27,9 +27,12 @@ from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
 # PatentsView configuration
-# Verified: December 2024
-# Source: https://download.patentsview.org/data
-PATENTSVIEW_BASE_URL = "https://download.patentsview.org/data"
+# Updated: April 2026 - PatentsView migrated to USPTO Open Data Portal (ODP)
+# Migration: https://data.uspto.gov/support/transition-guide/patentsview
+# Bulk downloads now available via ODP Bulk Data API
+# Use the direct download base, not the ODP metadata API endpoint, because the
+# rest of this script constructs file URLs by appending the ZIP filename.
+PATENTSVIEW_BASE_URL = "https://data.uspto.gov/download"
 PATENTSVIEW_TABLES = {
     "patent": "g_patent.tsv.zip",
     "assignee": "g_assignee_disambiguated.tsv.zip",

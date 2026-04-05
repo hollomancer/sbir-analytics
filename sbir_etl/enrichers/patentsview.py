@@ -1,11 +1,13 @@
-"""PatentsView API enricher module.
+"""USPTO Open Data Portal (ODP) patent enricher module.
 
-This module provides functionality to query the PatentsView API (PatentSearch API)
-to retrieve patent data for companies and track patent reassignments.
+This module provides functionality to query the USPTO ODP API
+(formerly PatentsView at search.patentsview.org, migrated to data.uspto.gov
+on March 20, 2026) to retrieve patent data for companies and track patent
+reassignments.
 
 The module supports:
 - Querying patents by assignee organization name
-- Finding assignee IDs using fuzzy name matching
+- Finding assignee IDs using name matching
 - Tracking patent assignment history and reassignments
 - Rate limiting and retry logic for API calls
 
@@ -34,7 +36,7 @@ from sbir_etl.utils.cache.api_cache import APICache
 
 
 class RateLimiter:
-    """Thread-safe rate limiter for PatentsView API calls.
+    """Thread-safe rate limiter for API calls.
 
     Tracks request timestamps and enforces rate limits by waiting when necessary.
     Thread-safe for use in parallel processing scenarios.
@@ -89,10 +91,12 @@ class RateLimiter:
 
 
 class PatentsViewClient:
-    """Client for interacting with PatentsView API (PatentSearch API).
+    """Client for interacting with USPTO Open Data Portal (ODP) API.
 
     Provides methods to query patents by assignee, find assignee IDs,
-    and track patent assignment history.
+    and track patent assignment history. This client was migrated from
+    the PatentsView PatentSearch API (search.patentsview.org) to the
+    USPTO ODP API (data.uspto.gov) following the March 2026 migration.
     """
 
     def __init__(
@@ -103,10 +107,10 @@ class PatentsViewClient:
         timeout_seconds: int | None = None,
         config=None,
     ):
-        """Initialize PatentsView client.
+        """Initialize USPTO ODP client.
 
         Args:
-            api_key: PatentsView API key (if None, reads from config/env)
+            api_key: USPTO ODP API key (if None, reads from config/env)
             base_url: Base URL for API (if None, reads from config)
             rate_limit_per_minute: Rate limit (if None, reads from config)
             timeout_seconds: Request timeout (if None, reads from config)
@@ -117,17 +121,18 @@ class PatentsViewClient:
 
         # Get API key from parameter, env var, or config
         if api_key is None:
-            api_key_env_var = patentsview_config.get("api_key_env_var", "PATENTSVIEW_API_KEY")
+            api_key_env_var = patentsview_config.get("api_key_env_var", "USPTO_ODP_API_KEY")
             api_key = os.getenv(str(api_key_env_var))
             if not api_key:
                 raise ConfigurationError(
-                    f"PatentsView API key not found. Set {api_key_env_var} environment variable.",
+                    f"USPTO ODP API key not found. Set {api_key_env_var} environment variable. "
+                    f"Register at https://data.uspto.gov/apis/getting-started",
                     config_key="enrichment.patentsview_api.api_key_env_var",
                 )
 
         self.api_key = api_key
         self.base_url = base_url or patentsview_config.get(
-            "base_url", "https://search.patentsview.org/api"
+            "base_url", "https://data.uspto.gov/api/v1/patent/applications"
         )
         self.rate_limit_per_minute = rate_limit_per_minute or patentsview_config.get(
             "rate_limit_per_minute", 60
@@ -156,31 +161,34 @@ class PatentsViewClient:
         )
 
         # HTTP client with default headers
+        # ODP uses X-API-KEY header (previously X-Api-Key for PatentsView)
         timeout_float: float = (
             float(self.timeout_seconds) if self.timeout_seconds is not None else 30.0  # type: ignore[arg-type]
         )
         self.client = httpx.Client(
             timeout=timeout_float,
-            headers={"X-Api-Key": self.api_key, "Content-Type": "application/json"},
+            headers={"X-API-KEY": self.api_key, "Content-Type": "application/json"},
         )
 
         logger.debug(
-            f"PatentsView client initialized: base_url={self.base_url}, "
+            f"USPTO ODP client initialized: base_url={self.base_url}, "
             f"rate_limit={self.rate_limit_per_minute}/min, cache_enabled={cache_enabled}"
         )
 
     def _make_request(
         self,
         endpoint: str,
-        method: str = "POST",
+        method: str = "GET",
+        params: dict[str, Any] | None = None,
         json_data: dict[str, Any] | None = None,
         max_retries: int = 3,
     ) -> dict[str, Any]:
         """Make an API request with rate limiting and retry logic.
 
         Args:
-            endpoint: API endpoint path (e.g., "/v1/patent")
-            method: HTTP method (default: POST)
+            endpoint: API endpoint path (e.g., "/search")
+            method: HTTP method (default: GET)
+            params: Query parameters for GET requests
             json_data: JSON payload for POST requests
             max_retries: Maximum retry attempts
 
@@ -206,7 +214,7 @@ class PatentsViewClient:
                 if method == "POST":
                     response = self.client.post(url, json=json_data)
                 else:
-                    response = self.client.get(url)
+                    response = self.client.get(url, params=params)
 
                 # Handle rate limiting
                 if response.status_code == 429:
@@ -223,8 +231,8 @@ class PatentsViewClient:
                     time.sleep(60)
                     raise httpx.HTTPError("Rate limit exceeded")
                 raise APIError(
-                    f"PatentsView API request failed: {e.response.status_code}",
-                    api_name="patentsview",
+                    f"USPTO ODP API request failed: {e.response.status_code}",
+                    api_name="uspto_odp",
                     endpoint=endpoint,
                     http_status=e.response.status_code,
                     retryable=e.response.status_code >= 500,
@@ -235,11 +243,86 @@ class PatentsViewClient:
             return response.json()
         except httpx.HTTPError as e:
             raise APIError(
-                f"PatentsView API request failed: {str(e)}",
-                api_name="patentsview",
+                f"USPTO ODP API request failed: {str(e)}",
+                api_name="uspto_odp",
                 endpoint=endpoint,
                 retryable=True,
             ) from e
+
+    def _parse_patent_record(self, record: dict[str, Any]) -> dict[str, Any]:
+        """Parse an ODP patent record into a normalized format.
+
+        The ODP API returns patent file wrapper data with nested metadata.
+        This method extracts and flattens the relevant fields into the format
+        expected by downstream consumers.
+
+        Args:
+            record: Raw patent record from ODP API response
+
+        Returns:
+            Normalized patent dict with standard field names
+        """
+        # ODP nests some fields under applicationMetaData
+        metadata = record.get("applicationMetaData", {}) or {}
+
+        patent_number = (
+            metadata.get("patentNumber")
+            or record.get("patentNumber")
+            or record.get("applicationNumberText")
+        )
+        patent_title = (
+            record.get("inventionTitle")
+            or metadata.get("inventionTitle")
+            or ""
+        )
+        filing_date = (
+            record.get("filingDate")
+            or metadata.get("filingDate")
+        )
+        grant_date = (
+            metadata.get("grantDate")
+            or record.get("grantDate")
+        )
+
+        # Extract assignee information
+        assignees = record.get("assignees", []) or []
+        assignee_org = None
+        assignee_id = None
+        if assignees:
+            first_assignee = assignees[0] if isinstance(assignees, list) else assignees
+            if isinstance(first_assignee, dict):
+                assignee_org = first_assignee.get("assigneeName") or first_assignee.get("orgName")
+                assignee_id = first_assignee.get("assigneeEntityId")
+
+        # If assignee is at top level (varies by endpoint)
+        if not assignee_org:
+            assignee_org = record.get("assigneeName") or metadata.get("assigneeName")
+
+        # Extract inventor information
+        raw_inventors = record.get("inventors", []) or []
+        inventors = []
+        for inv in raw_inventors:
+            if isinstance(inv, dict):
+                name_parts = [
+                    inv.get("inventorFirstName", ""),
+                    inv.get("inventorLastName", ""),
+                ]
+                name = " ".join(p for p in name_parts if p).strip()
+                if name:
+                    inventors.append(name)
+            elif isinstance(inv, str):
+                inventors.append(inv)
+
+        return {
+            "patent_number": patent_number,
+            "patent_title": patent_title,
+            "patent_date": grant_date,
+            "assignee_organization": assignee_org,
+            "assignee_id": assignee_id,
+            "filing_date": filing_date,
+            "grant_date": grant_date,
+            "inventor": inventors,
+        }
 
     def query_patents_by_assignee(
         self,
@@ -250,10 +333,13 @@ class PatentsViewClient:
     ) -> list[dict[str, Any]]:
         """Query patents assigned to a company.
 
+        Uses the ODP patent search endpoint with Lucene-style query syntax
+        to find patents by assignee name.
+
         Args:
             company_name: Company name to search for
-            uei: Optional UEI identifier (not used by PatentsView, but kept for consistency)
-            duns: Optional DUNS identifier (not used by PatentsView, but kept for consistency)
+            uei: Optional UEI identifier (not used by ODP, but kept for consistency)
+            duns: Optional DUNS identifier (not used by ODP, but kept for consistency)
             max_patents: Maximum number of patents to retrieve (default: 1000)
 
         Returns:
@@ -270,46 +356,60 @@ class PatentsViewClient:
             return cached_df.to_dict(orient="records")  # type: ignore[return-value]
 
         all_patents: list[dict[str, Any]] = []
-        page = 0
-        per_page = 100  # PatentsView default page size
+        offset = 0
+        limit = 100  # ODP page size
+
+        # Escape special Lucene characters in company name for query
+        escaped_name = self._escape_lucene_query(company_name)
 
         while len(all_patents) < max_patents:
-            query = {
-                "q": {"assignee_organization": company_name},
-                "f": [
-                    "patent_number",
-                    "patent_title",
-                    "patent_date",
-                    "assignee_organization",
-                    "assignee_id",
-                    "filing_date",
-                    "grant_date",
-                    "inventor",
-                ],
-                "o": {
-                    "page": page,
-                    "per_page": per_page,
-                },
+            # ODP uses Lucene-style query syntax with GET params
+            params = {
+                "q": f'assigneeName:"{escaped_name}"',
+                "offset": offset,
+                "limit": limit,
             }
 
             try:
-                response = self._make_request("/v1/patent", json_data=query)
-                patents = response.get("patents", [])
+                response = self._make_request("/search", method="GET", params=params)
 
-                if not patents:
+                # ODP response format: patentFileWrapperDataBag array
+                records = response.get("patentFileWrapperDataBag", [])
+
+                if not records:
                     break
 
-                all_patents.extend(patents)
+                for record in records:
+                    parsed = self._parse_patent_record(record)
+                    if parsed.get("patent_number"):
+                        all_patents.append(parsed)
+
                 logger.debug(
-                    f"Retrieved {len(patents)} patents (page {page}, total: {len(all_patents)})"
+                    f"Retrieved {len(records)} patents (offset {offset}, total: {len(all_patents)})"
                 )
 
                 # Check if there are more pages
-                total_found = response.get("total_found", 0)
-                if len(all_patents) >= total_found or len(patents) < per_page:
+                total_found = response.get("totalNumFound")
+                if total_found is None:
+                    total_found = response.get("totalResults")
+
+                if total_found is not None:
+                    try:
+                        total_found = int(total_found)
+                    except (TypeError, ValueError):
+                        logger.warning(
+                            f"Unexpected patent search total count {total_found!r}; "
+                            "falling back to page-size-based pagination"
+                        )
+                        total_found = None
+
+                if len(records) < limit:
                     break
 
-                page += 1
+                if total_found is not None and len(all_patents) >= total_found:
+                    break
+
+                offset += limit
 
             except APIError as e:
                 logger.error(f"Error querying patents for {company_name}: {e}")
@@ -328,7 +428,11 @@ class PatentsViewClient:
         return patents_result
 
     def query_assignee_by_name(self, company_name: str) -> list[dict[str, Any]]:
-        """Query assignee IDs by company name (fuzzy matching).
+        """Query assignee records by company name.
+
+        The ODP API doesn't have a dedicated assignee endpoint like the old
+        PatentsView API. Instead, we search patents by assignee name and
+        extract unique assignee information from the results.
 
         Args:
             company_name: Company name to search for
@@ -338,14 +442,34 @@ class PatentsViewClient:
         """
         logger.debug(f"Querying assignees for company name: {company_name}")
 
-        query = {
-            "q": {"assignee_organization": company_name},
-            "f": ["assignee_id", "assignee_organization", "assignee_type"],
+        escaped_name = self._escape_lucene_query(company_name)
+        params = {
+            "q": f'assigneeName:"{escaped_name}"',
+            "offset": 0,
+            "limit": 25,
         }
 
         try:
-            response = self._make_request("/v1/assignee", json_data=query)
-            assignees = response.get("assignees", [])
+            response = self._make_request("/search", method="GET", params=params)
+            records = response.get("patentFileWrapperDataBag", [])
+
+            # Deduplicate assignees from patent results
+            seen_orgs: set[str] = set()
+            assignees: list[dict[str, Any]] = []
+
+            for record in records:
+                record_assignees = record.get("assignees", []) or []
+                for assignee in record_assignees:
+                    if isinstance(assignee, dict):
+                        org_name = assignee.get("assigneeName") or assignee.get("orgName")
+                        if org_name and org_name.lower() not in seen_orgs:
+                            seen_orgs.add(org_name.lower())
+                            assignees.append({
+                                "assignee_id": assignee.get("assigneeEntityId"),
+                                "assignee_organization": org_name,
+                                "assignee_type": assignee.get("assigneeTypeCategory"),
+                            })
+
             logger.debug(f"Found {len(assignees)} assignee matches for {company_name}")
             return assignees
         except APIError as e:
@@ -355,51 +479,88 @@ class PatentsViewClient:
     def query_patent_assignments(self, patent_number: str) -> list[dict[str, Any]]:
         """Query assignment history for a specific patent.
 
-        Note: PatentsView API may not have direct assignment history endpoint.
-        This method queries the patent and extracts assignee information.
-        For full assignment history, may need to use USPTO bulk data.
+        Uses the ODP assignment endpoint to retrieve assignment/reassignment
+        records for a given patent.
 
         Args:
             patent_number: Patent number to query
 
         Returns:
-            List of assignment records (may be limited by API capabilities)
+            List of assignment records
         """
         logger.debug(f"Querying assignment history for patent: {patent_number}")
 
         # Clean patent number (remove commas, spaces)
         clean_patent_number = re.sub(r"[,\s]", "", patent_number)
 
-        query = {
-            "q": {"patent_number": clean_patent_number},
-            "f": [
-                "patent_number",
-                "assignee_organization",
-                "assignee_id",
-                "assignor",
-            ],
+        # First, find the application number for this patent
+        # ODP uses application numbers for most detail endpoints
+        params = {
+            "q": f"applicationMetaData.patentNumber:{clean_patent_number}",
+            "offset": 0,
+            "limit": 1,
         }
 
         try:
-            response = self._make_request("/v1/patent", json_data=query)
-            patents = response.get("patents", [])
+            response = self._make_request("/search", method="GET", params=params)
+            records = response.get("patentFileWrapperDataBag", [])
+
+            if not records:
+                logger.debug(f"No application found for patent {patent_number}")
+                return []
+
+            app_number = records[0].get("applicationNumberText")
+            if not app_number:
+                logger.debug(f"No application number in response for patent {patent_number}")
+                # Fall back to extracting assignee from the search result
+                parsed = self._parse_patent_record(records[0])
+                if parsed.get("assignee_organization"):
+                    return [{
+                        "patent_number": clean_patent_number,
+                        "assignee": parsed["assignee_organization"],
+                        "assignee_id": parsed.get("assignee_id"),
+                        "assignor": None,
+                    }]
+                return []
+
+            # Fetch assignment data for this application
+            assignment_response = self._make_request(
+                f"/{app_number}/assignment", method="GET"
+            )
 
             assignments = []
-            for patent in patents:
-                # Extract assignee information
-                assignee_org = patent.get("assignee_organization")
-                assignee_id = patent.get("assignee_id")
-                assignor = patent.get("assignor")
+            assignment_records = assignment_response.get("patentAssignmentDataBag", [])
+            if not assignment_records:
+                # Try alternate response key
+                assignment_records = assignment_response.get("assignments", [])
 
-                if assignee_org or assignee_id:
-                    assignments.append(
-                        {
-                            "patent_number": clean_patent_number,
-                            "assignee": assignee_org,
-                            "assignee_id": assignee_id,
-                            "assignor": assignor,
-                        }
+            for assignment in assignment_records:
+                if isinstance(assignment, dict):
+                    assignee_name = (
+                        assignment.get("assigneeName")
+                        or assignment.get("assigneeEntityName")
                     )
+                    assignor_name = (
+                        assignment.get("assignorName")
+                        or assignment.get("assignorEntityName")
+                    )
+                    assignments.append({
+                        "patent_number": clean_patent_number,
+                        "assignee": assignee_name,
+                        "assignee_id": assignment.get("assigneeEntityId"),
+                        "assignor": assignor_name,
+                    })
+
+            # If no assignment endpoint data, fall back to patent record assignee
+            if not assignments:
+                parsed = self._parse_patent_record(records[0])
+                if parsed.get("assignee_organization"):
+                    assignments.append({
+                        "patent_number": clean_patent_number,
+                        "assignee": parsed["assignee_organization"],
+                        "assignee_id": parsed.get("assignee_id"),
+                        "assignor": None,
+                    })
 
             logger.debug(f"Found {len(assignments)} assignment records for patent {patent_number}")
             return assignments
@@ -407,6 +568,20 @@ class PatentsViewClient:
         except APIError as e:
             logger.error(f"Error querying assignments for patent {patent_number}: {e}")
             return []
+
+    @staticmethod
+    def _escape_lucene_query(text: str) -> str:
+        """Escape special Lucene query characters.
+
+        Args:
+            text: Raw query text
+
+        Returns:
+            Escaped text safe for Lucene queries
+        """
+        # Lucene special characters: + - && || ! ( ) { } [ ] ^ " ~ * ? : \ /
+        special_chars = r'([+\-&|!(){}\[\]^"~*?:\\/])'
+        return re.sub(special_chars, r'\\\1', text)
 
     def close(self) -> None:
         """Close the HTTP client."""
@@ -419,7 +594,7 @@ def retrieve_company_patents(
     duns: str | None = None,
     client: PatentsViewClient | None = None,
 ) -> pd.DataFrame:
-    """Retrieve patents for a company from PatentsView API.
+    """Retrieve patents for a company from USPTO ODP API.
 
     Args:
         company_name: Company name to search for

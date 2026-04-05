@@ -73,7 +73,8 @@ def create_mock_pipeline_config(**overrides: Any) -> PipelineConfig:
                 "timeout_seconds": 30,
             },
             "patentsview_api": {
-                "base_url": "https://search.patentsview.org/api",
+                "base_url": "https://data.uspto.gov/api/v1/patent/applications",
+                "api_key_env_var": "USPTO_ODP_API_KEY",
                 "rate_limit_per_minute": 60,
                 "timeout_seconds": 30,
             },
