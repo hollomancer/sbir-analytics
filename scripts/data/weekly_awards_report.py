@@ -2602,28 +2602,41 @@ def fetch_usaspending_contract_descriptions(
                     f"USAspending contract desc: {group_name} "
                     f"({len(ids)} IDs: {ids[:3]})"
                 )
+                # Try spending_by_award first, fall back to spending_by_transaction
+                # if the search endpoint is down (503).
+                endpoints = [
+                    "search/spending_by_award",
+                    "search/spending_by_transaction",
+                ]
                 data = None
-                for attempt in range(3):
-                    resp = client.post(
-                        f"{USASPENDING_API_URL}/search/spending_by_award/",
-                        json=payload,
-                    )
-                    if resp.status_code in (429, 500, 502, 503, 504):
-                        wait = 2 ** (attempt + 1)
-                        _debug(
-                            f"USAspending contract desc/{group_name} "
-                            f"returned {resp.status_code}, retrying in {wait}s"
+                for endpoint in endpoints:
+                    for attempt in range(2):
+                        resp = client.post(
+                            f"{USASPENDING_API_URL}/{endpoint}/",
+                            json=payload,
                         )
-                        _t.sleep(wait)
-                        continue
-                    if resp.status_code != 200:
-                        _debug(
-                            f"USAspending contract desc/{group_name} "
-                            f"returned {resp.status_code}"
-                        )
+                        if resp.status_code in (429, 500, 502, 503, 504):
+                            wait = 2 ** (attempt + 1)
+                            _debug(
+                                f"USAspending {endpoint}/{group_name} "
+                                f"returned {resp.status_code}, retrying in {wait}s"
+                            )
+                            _t.sleep(wait)
+                            continue
+                        if resp.status_code != 200:
+                            _debug(
+                                f"USAspending {endpoint}/{group_name} "
+                                f"returned {resp.status_code}"
+                            )
+                            break
+                        data = resp.json()
                         break
-                    data = resp.json()
-                    break
+                    if data is not None:
+                        break
+                    _debug(
+                        f"USAspending {endpoint} failed for {group_name}, "
+                        f"trying next endpoint"
+                    )
                 if data is None:
                     continue
                 for r in data.get("results", []):
