@@ -3263,6 +3263,13 @@ def main():
         action="store_true",
         help="Enable verbose debug output for API calls, LLM context, and URL construction (to stderr)",
     )
+    parser.add_argument(
+        "--skip-sbir-api",
+        action="store_true",
+        default=os.environ.get("SKIP_SBIR_API", "").lower() in ("1", "true", "yes"),
+        help="Skip SBIR.gov API calls (solicitation topics + awards fallback). "
+        "Useful when the API is down or rate-limiting. Also settable via SKIP_SBIR_API=1 env var.",
+    )
     args = parser.parse_args()
 
     global DEBUG  # noqa: PLW0603
@@ -3297,7 +3304,11 @@ def main():
     api_key = os.environ.get("OPENAI_API_KEY", "")
 
     # Fetch solicitation topic context from SBIR.gov API (no API key needed)
-    sol_topics = fetch_solicitation_topics(awards) if awards else None
+    sol_topics = None
+    if awards and not args.skip_sbir_api:
+        sol_topics = fetch_solicitation_topics(awards)
+    elif args.skip_sbir_api:
+        print("Skipping SBIR.gov API calls (--skip-sbir-api)", file=sys.stderr)
 
     # Fetch supplementary context used by both AI descriptions and diligence:
     # - USAspending contract descriptions (fallback when solicitation topics unavailable)
