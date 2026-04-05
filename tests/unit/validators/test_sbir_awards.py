@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
 
 import pandas as pd
 import pytest
@@ -156,18 +156,18 @@ class TestValidateAwardYear:
 
     @pytest.mark.parametrize(
         "year",
-        [1983, 2000, 2020, 2026],
-        ids=["lower_bound", "mid_range", "recent", "upper_bound"],
+        [1983, 2000, 2020, datetime.now().year, datetime.now().year + 1],
+        ids=["lower_bound", "mid_range", "recent", "current_year", "next_year"],
     )
     def test_valid_year_in_range(self, year):
-        """Test validation passes for years in valid range (1983-2026)."""
+        """Test validation passes for years in valid range (1983 to next year)."""
         result = validate_award_year(year, 0)
         assert result is None
 
     @pytest.mark.parametrize(
         "invalid_year",
-        [1982, 1900, 2027, 2050, pd.NA],
-        ids=["before_1983", "way_before", "after_2026", "way_after", "missing"],
+        [1982, 1900, datetime.now().year + 2, 2099, pd.NA],
+        ids=["before_1983", "way_before", "two_years_ahead", "way_after", "missing"],
     )
     def test_invalid_year_values(self, invalid_year):
         """Test validation fails for years outside valid range or missing."""

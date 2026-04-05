@@ -235,13 +235,9 @@ def raw_sbir_awards(context: AssetExecutionContext) -> Output[pd.DataFrame]:
     # Apply column normalization
     df = df.rename(columns=column_normalization_map)
 
-    # Apply comprehensive data filtering for 90%+ pass rate
-    df = _apply_quality_filters(df, context)
-
-    # Update metadata to reflect normalized columns and filtering
+    # Update metadata to reflect normalized columns
     metadata["normalized_columns"] = MetadataValue.json(list(df.columns))
     metadata["column_normalization_applied"] = True
-    metadata["quality_filtering_applied"] = True
 
     return Output(value=df, metadata=metadata)  # type: ignore[arg-type]
 
@@ -256,6 +252,10 @@ def validated_sbir_awards(
 ) -> Output[pd.DataFrame]:
     """
     Validate SBIR awards and filter to passing records.
+
+    Quality filtering (empty IDs, duplicates, type coercion) is applied here
+    rather than in raw_sbir_awards so that upstream validation reports reflect
+    true source data quality.
 
     Args:
         raw_sbir_awards: Raw SBIR awards DataFrame
@@ -272,19 +272,27 @@ def validated_sbir_awards(
         extra={"pass_rate_threshold": pass_rate_threshold},
     )
 
-    # Run validation
+    # Apply structural quality filters (empty IDs, duplicates, type coercion)
+    filtered_df = _apply_quality_filters(raw_sbir_awards, context)
+
+    # Run validation on the filtered data
     quality_report = validate_sbir_awards(
-        df=raw_sbir_awards, pass_rate_threshold=pass_rate_threshold
+        df=filtered_df, pass_rate_threshold=pass_rate_threshold
     )
 
-    # Filter to passing records (no ERROR issues)
-    error_rows = {
-        issue.row_index
-        for issue in quality_report.issues
-        if issue.severity.value == "ERROR" and issue.row_index is not None
-    }
+    # Filter to passing records using failing_row_indices (fast path) or
+    # fall back to issue-based filtering for backward compatibility
+    failing_indices = getattr(quality_report, "failing_row_indices", None)
+    if failing_indices is None:
+        # Fallback: extract from issues. QualityIssue uses use_enum_values=True,
+        # so severity is stored as a string value (e.g. "error"), not the enum.
+        failing_indices = {
+            issue.row_index
+            for issue in quality_report.issues
+            if issue.severity == "error" and issue.row_index is not None
+        }
 
-    validated_df = raw_sbir_awards[~raw_sbir_awards.index.isin(error_rows)].copy()
+    validated_df = filtered_df[~filtered_df.index.isin(failing_indices)].copy()
 
     context.log.info(
         "Validation complete",
@@ -343,7 +351,9 @@ def sbir_validation_report(
         df=raw_sbir_awards, pass_rate_threshold=pass_rate_threshold
     )
 
-    # Convert to dictionary
+    # Convert to dictionary.
+    # QualityIssue uses use_enum_values=True, so severity is stored as a string
+    # (e.g. "error") rather than the enum member — access it directly.
     report_dict = {
         "total_records": quality_report.total_records,  # type: ignore[attr-defined]
         "passed_records": quality_report.passed_records,  # type: ignore[attr-defined]
@@ -352,7 +362,7 @@ def sbir_validation_report(
         "passed": quality_report.passed,
         "issues": [
             {
-                "severity": issue.severity.value,
+                "severity": issue.severity,
                 "field": issue.field,
                 "message": issue.message,
                 "row_index": issue.row_index,
@@ -366,7 +376,7 @@ def sbir_validation_report(
     issues_by_field: dict[Any, Any] = {}
 
     for issue in quality_report.issues:
-        severity = issue.severity.value
+        severity = issue.severity
         field = issue.field
 
         issues_by_severity[severity] = issues_by_severity.get(severity, 0) + 1
