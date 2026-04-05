@@ -372,7 +372,8 @@ def clean_and_dedup_awards(awards: list[dict]) -> tuple[list[dict], dict]:
             row = pd.Series(a)
             issues = _validate_record(row, i)
             errors = [
-                iss for iss in issues if iss.severity.value == "error"
+                iss for iss in issues
+                if (iss.severity.value if hasattr(iss.severity, "value") else iss.severity) == "error"
             ]
             if errors:
                 stats["validation_errors"] += 1
