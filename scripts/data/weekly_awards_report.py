@@ -1525,7 +1525,197 @@ def fetch_solicitation_topics(awards: list[dict]) -> dict[str, SolicitationTopic
         f"Fetched {found}/{total} solicitation topics from SBIR.gov",
         file=sys.stderr,
     )
+
+    # --- Fallback: query the awards endpoint for any missing topic codes ---
+    missing_codes = [tc for tc in topic_codes if tc not in results]
+    if missing_codes:
+        _debug(
+            f"Solicitation topic fallback: {len(missing_codes)} codes not found "
+            f"via /solicitations — trying /awards endpoint: {missing_codes}"
+        )
+        print(
+            f"Falling back to SBIR.gov awards API for {len(missing_codes)} "
+            f"missing topic codes...",
+            file=sys.stderr,
+        )
+        for tc in missing_codes:
+            try:
+                with httpx.Client(timeout=30) as client:
+                    resp = client.get(
+                        f"{SBIR_GOV_API_URL}/awards",
+                        params={"keyword": tc, "rows": 5, "start": 0},
+                    )
+                    _debug_response(f"SBIR.gov awards fallback [{tc}]", resp)
+                    if resp.status_code != 200:
+                        continue
+                    data = resp.json()
+            except Exception as e:
+                _debug(f"SBIR.gov awards fallback error for {tc}: {e}")
+                continue
+
+            award_list = data if isinstance(data, list) else (
+                data.get("results") or data.get("data") or []
+            )
+            _debug(f"SBIR.gov awards fallback [{tc}]: {len(award_list)} awards returned")
+
+            # Look for a matching award that has topic description info
+            for award in award_list:
+                award_tc = (
+                    award.get("topicCode")
+                    or award.get("topic_code")
+                    or ""
+                )
+                if award_tc != tc:
+                    continue
+                title = (
+                    award.get("topicTitle")
+                    or award.get("topic_title")
+                    or award.get("awardTitle")
+                    or award.get("award_title")
+                    or ""
+                )
+                desc = (
+                    award.get("topicDescription")
+                    or award.get("topic_description")
+                    or award.get("abstract")
+                    or award.get("Abstract")
+                    or None
+                )
+                if desc and len(desc) > 3000:
+                    desc = desc[:3000] + "..."
+                if title or desc:
+                    results[tc] = SolicitationTopic(
+                        topic_code=tc,
+                        solicitation_number=topic_codes.get(tc, ""),
+                        title=title,
+                        description=desc,
+                        agency=award.get("agency"),
+                        program=award.get("program"),
+                    )
+                    _debug(
+                        f"Solicitation fallback matched [{tc}]: "
+                        f"title='{title[:80]}' desc_len={len(desc) if desc else 0}"
+                    )
+                    break
+
+        fallback_found = len(results) - found
+        print(
+            f"Fallback recovered {fallback_found}/{len(missing_codes)} "
+            f"topic descriptions from awards API",
+            file=sys.stderr,
+        )
+
     return results
+
+
+# ---------------------------------------------------------------------------
+# Reference link verification
+# ---------------------------------------------------------------------------
+
+
+def verify_reference_links(
+    awards: list[dict],
+    company_research: dict[str, CompanyResearch] | None = None,
+) -> dict[str, list[dict]]:
+    """Verify that constructed reference links return valid HTTP responses.
+
+    Performs HTTP HEAD requests on a sample of each link type to check
+    for broken URLs. Returns a summary dict with results per link type.
+
+    Only runs in --debug mode to avoid slowing down normal report generation.
+    """
+    link_checks: dict[str, list[dict]] = {
+        "sbir_award": [],
+        "solicitation": [],
+        "usaspending": [],
+        "company_research": [],
+    }
+
+    # Check a sample of up to 5 awards to avoid excessive requests
+    sample = awards[:5] if len(awards) > 5 else awards
+
+    with httpx.Client(timeout=10, follow_redirects=True) as client:
+        for a in sample:
+            title = str(a.get("Award Title", ""))[:60]
+
+            # SBIR.gov award link
+            sbir_url = build_sbir_award_url(a)
+            try:
+                resp = client.head(sbir_url)
+                link_checks["sbir_award"].append({
+                    "url": sbir_url, "status": resp.status_code, "award": title,
+                })
+            except Exception as e:
+                link_checks["sbir_award"].append({
+                    "url": sbir_url, "status": f"error: {e}", "award": title,
+                })
+
+            # Solicitation link
+            sol_url = build_solicitation_url(a)
+            if sol_url:
+                try:
+                    resp = client.head(sol_url)
+                    link_checks["solicitation"].append({
+                        "url": sol_url, "status": resp.status_code, "award": title,
+                    })
+                except Exception as e:
+                    link_checks["solicitation"].append({
+                        "url": sol_url, "status": f"error: {e}", "award": title,
+                    })
+
+            # USAspending link
+            usa_url = build_usaspending_url(a)
+            if usa_url:
+                try:
+                    resp = client.head(usa_url)
+                    link_checks["usaspending"].append({
+                        "url": usa_url, "status": resp.status_code, "award": title,
+                    })
+                except Exception as e:
+                    link_checks["usaspending"].append({
+                        "url": usa_url, "status": f"error: {e}", "award": title,
+                    })
+
+        # Check company research source URLs (sample)
+        if company_research:
+            checked_urls: set[str] = set()
+            for cr in list(company_research.values())[:3]:
+                for url in cr.source_urls[:2]:
+                    if url in checked_urls:
+                        continue
+                    checked_urls.add(url)
+                    try:
+                        resp = client.head(url)
+                        link_checks["company_research"].append({
+                            "url": url, "status": resp.status_code,
+                        })
+                    except Exception as e:
+                        link_checks["company_research"].append({
+                            "url": url, "status": f"error: {e}",
+                        })
+
+    return link_checks
+
+
+def _print_link_verification_report(link_checks: dict[str, list[dict]]) -> None:
+    """Print link verification results to stderr."""
+    print("\n[DEBUG] === Reference Link Verification ===", file=sys.stderr)
+    for link_type, checks in link_checks.items():
+        if not checks:
+            print(f"[DEBUG] {link_type}: no links to check", file=sys.stderr)
+            continue
+        ok = sum(1 for c in checks if isinstance(c["status"], int) and c["status"] < 400)
+        broken = [c for c in checks if not (isinstance(c["status"], int) and c["status"] < 400)]
+        print(
+            f"[DEBUG] {link_type}: {ok}/{len(checks)} OK",
+            file=sys.stderr,
+        )
+        for b in broken:
+            award_info = f" (award: {b['award']})" if "award" in b else ""
+            print(
+                f"[DEBUG]   BROKEN: {b['url']} -> {b['status']}{award_info}",
+                file=sys.stderr,
+            )
 
 
 # ---------------------------------------------------------------------------
@@ -1790,10 +1980,80 @@ def research_companies(
     return results
 
 
+def fetch_usaspending_contract_descriptions(
+    awards: list[dict],
+) -> dict[str, str]:
+    """Fetch contract descriptions from USAspending for awards with contract numbers.
+
+    Returns a dict keyed by contract number with the award description text.
+    Used as supplementary LLM context when solicitation topic data is unavailable.
+    """
+    contracts: list[str] = []
+    for a in awards:
+        c = str(a.get("Contract", "")).strip()
+        if c and c not in contracts:
+            contracts.append(c)
+
+    if not contracts:
+        return {}
+
+    print(
+        f"Fetching {len(contracts)} contract descriptions from USAspending...",
+        file=sys.stderr,
+    )
+    results: dict[str, str] = {}
+
+    # Batch contracts into groups to reduce API calls
+    batch_size = 25
+    for batch_start in range(0, len(contracts), batch_size):
+        batch = contracts[batch_start : batch_start + batch_size]
+        payload = {
+            "filters": {"award_ids": batch},
+            "fields": ["Award ID", "Description", "Awarding Agency", "Award Type"],
+            "page": 1,
+            "limit": len(batch),
+        }
+
+        _debug(
+            f"USAspending contract descriptions: POST batch "
+            f"{batch_start + 1}-{batch_start + len(batch)} of {len(contracts)}"
+        )
+        try:
+            with httpx.Client(timeout=30) as client:
+                resp = client.post(
+                    f"{USASPENDING_API_URL}/search/spending_by_award/",
+                    json=payload,
+                )
+                if resp.status_code != 200:
+                    _debug(f"USAspending contract desc batch returned {resp.status_code}")
+                    continue
+                data = resp.json()
+        except Exception as e:
+            _debug(f"USAspending contract desc batch error: {e}")
+            continue
+
+        for r in data.get("results", []):
+            aid = str(r.get("Award ID", "")).strip()
+            desc = str(r.get("Description", "")).strip()
+            if aid and desc:
+                if len(desc) > 500:
+                    desc = desc[:500] + "..."
+                results[aid] = desc
+
+    _debug(f"USAspending contract descriptions: {len(results)}/{len(contracts)} found")
+    print(
+        f"Fetched {len(results)}/{len(contracts)} contract descriptions from USAspending",
+        file=sys.stderr,
+    )
+    return results
+
+
 def _award_digest(
     award: dict,
     company_research: CompanyResearch | None = None,
     solicitation_topics: dict[str, SolicitationTopic] | None = None,
+    usaspending_descriptions: dict[str, str] | None = None,
+    sam_entities: dict[str, SAMEntityRecord] | None = None,
 ) -> str:
     """Build a compact text digest of an award for LLM context."""
     parts = [
@@ -1821,9 +2081,11 @@ def _award_digest(
         parts.append(f"Solicitation Year: {solicitation_year}")
 
     # Solicitation topic context (title + description from SBIR.gov API)
+    has_sol_topic = False
     if solicitation_topics and topic_code:
         topic = solicitation_topics.get(topic_code)
         if topic:
+            has_sol_topic = True
             if topic.title:
                 parts.append(f"Solicitation Topic Title: {topic.title}")
             if topic.description:
@@ -1839,6 +2101,25 @@ def _award_digest(
             f"USAspending Record: https://www.usaspending.gov/search"
             f'?form_fields={{"search_term":"{contract}"}}'
         )
+
+    # Supplementary context from USAspending and SAM.gov when solicitation
+    # topic data is unavailable — gives the LLM program/industry context.
+    if not has_sol_topic:
+        if usaspending_descriptions and contract:
+            usa_desc = usaspending_descriptions.get(contract)
+            if usa_desc:
+                parts.append(
+                    f"USAspending contract description (supplementary context): {usa_desc}"
+                )
+        company = str(award.get("Company", "")).strip()
+        if sam_entities and company:
+            sam = sam_entities.get(company.upper())
+            if sam and sam.naics_codes:
+                parts.append(
+                    f"Company NAICS codes (industry classification from SAM.gov): "
+                    f"{', '.join(sam.naics_codes)}"
+                )
+
     solicitation_url = build_solicitation_url(award)
     if solicitation_url:
         parts.append(f"Solicitation Reference: {solicitation_url}")
@@ -1857,6 +2138,8 @@ def generate_weekly_synopsis(
     days: int,
     company_research: dict[str, CompanyResearch] | None = None,
     solicitation_topics: dict[str, SolicitationTopic] | None = None,
+    usaspending_descriptions: dict[str, str] | None = None,
+    sam_entities: dict[str, SAMEntityRecord] | None = None,
 ) -> str | None:
     """Generate a two-paragraph synopsis of all weekly award activity."""
     if not awards:
@@ -1879,7 +2162,9 @@ def generate_weekly_synopsis(
         cr = None
         if company_research:
             cr = company_research.get(_company_key(a))
-        digests.append(f"[{i+1}] {_award_digest(a, cr, solicitation_topics)}")
+        digests.append(
+            f"[{i+1}] {_award_digest(a, cr, solicitation_topics, usaspending_descriptions, sam_entities)}"
+        )
     digest_block = "\n\n".join(digests)
     if len(awards) > 50:
         digest_block += f"\n\n... and {len(awards) - 50} additional awards."
@@ -1909,6 +2194,8 @@ def generate_award_descriptions(
     awards: list[dict],
     company_research: dict[str, CompanyResearch] | None = None,
     solicitation_topics: dict[str, SolicitationTopic] | None = None,
+    usaspending_descriptions: dict[str, str] | None = None,
+    sam_entities: dict[str, SAMEntityRecord] | None = None,
 ) -> dict[int, str]:
     """Generate a brief description for each award using batched API calls."""
     descriptions: dict[int, str] = {}
@@ -1961,7 +2248,9 @@ def generate_award_descriptions(
             cr = None
             if company_research:
                 cr = company_research.get(_company_key(a))
-            digests.append(f"[{idx}] {_award_digest(a, cr, solicitation_topics)}")
+            digests.append(
+                f"[{idx}] {_award_digest(a, cr, solicitation_topics, usaspending_descriptions, sam_entities)}"
+            )
 
         user = (
             "Generate a description for each award below. Each description "
@@ -2716,14 +3005,25 @@ def main():
     # Fetch solicitation topic context from SBIR.gov API (no API key needed)
     sol_topics = fetch_solicitation_topics(awards) if awards else None
 
+    # Fetch supplementary context used by both AI descriptions and diligence:
+    # - USAspending contract descriptions (fallback when solicitation topics unavailable)
+    # - SAM.gov entity data (NAICS codes for industry context + diligence)
+    usa_descs: dict[str, str] | None = None
+    sam_data: dict[str, SAMEntityRecord] | None = None
+    if awards:
+        usa_descs = fetch_usaspending_contract_descriptions(awards)
+        sam_data = lookup_sam_entities(awards)
+
     if api_key and not args.no_ai:
         if not args.no_company_research:
             company_info = research_companies(api_key, awards)
         synopsis = generate_weekly_synopsis(
-            api_key, awards, args.days, company_info, sol_topics
+            api_key, awards, args.days, company_info, sol_topics,
+            usa_descs, sam_data,
         )
         descriptions = generate_award_descriptions(
-            api_key, awards, company_info, sol_topics
+            api_key, awards, company_info, sol_topics,
+            usa_descs, sam_data,
         )
 
         if not args.no_diligence:
@@ -2738,8 +3038,8 @@ def main():
                 awards, shared_source, shared_ext, shared_table
             )
 
-            # SAM.gov entity registration data
-            sam_data = lookup_sam_entities(awards)
+            # SAM.gov entity data was already fetched above for LLM context;
+            # reuse sam_data for diligence.
 
             # USAspending federal awards per company (SBIR vs non-SBIR)
             print("Looking up company federal awards on USAspending...", file=sys.stderr)
@@ -2793,6 +3093,16 @@ def main():
             f"{len(company_info) if company_info else 0}",
             file=sys.stderr,
         )
+        print(
+            f"[DEBUG] USAspending contract descriptions: "
+            f"{len(usa_descs) if usa_descs else 0}",
+            file=sys.stderr,
+        )
+        print(
+            f"[DEBUG] SAM.gov entity records: "
+            f"{len(sam_data) if sam_data else 0}",
+            file=sys.stderr,
+        )
         print(f"[DEBUG] Synopsis generated: {'yes' if synopsis else 'no'}", file=sys.stderr)
         print(
             f"[DEBUG] Award descriptions generated: "
@@ -2818,6 +3128,10 @@ def main():
         )
         print(f"[DEBUG] Awards missing Contract (no USAspending link): {missing_contracts}/{len(awards)}", file=sys.stderr)
         print(f"[DEBUG] Awards missing Solicitation+Topic (no solicitation link): {missing_sol}/{len(awards)}", file=sys.stderr)
+        # Verify reference links with HTTP HEAD requests
+        if awards:
+            link_checks = verify_reference_links(awards, company_info)
+            _print_link_verification_report(link_checks)
         print("=" * 72 + "\n", file=sys.stderr)
 
     report = generate_markdown(
