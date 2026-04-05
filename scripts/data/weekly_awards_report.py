@@ -96,7 +96,7 @@ DEBUG = False
 
 # Wall-clock budget per pipeline stage (seconds). Stages that exceed their
 # budget skip remaining items and return partial results. Override via env var.
-STAGE_TIMEOUT = int(os.environ.get("STAGE_TIMEOUT", "120"))
+STAGE_TIMEOUT = int(os.environ.get("STAGE_TIMEOUT", "60"))
 
 # Pipeline start time — set in main()
 _pipeline_start: float = 0.0
@@ -3543,12 +3543,31 @@ def main():
         help="Skip SBIR.gov API calls (solicitation topics + awards fallback). "
         "Useful when the API is down or rate-limiting. Also settable via SKIP_SBIR_API=1 env var.",
     )
+    parser.add_argument(
+        "--timeout",
+        type=int,
+        default=int(os.environ.get("REPORT_TIMEOUT", "720")),
+        help="Hard pipeline timeout in seconds (default: 720 = 12 min). "
+        "Skips remaining enrichment when exceeded. Also settable via REPORT_TIMEOUT env var.",
+    )
     args = parser.parse_args()
 
     global DEBUG  # noqa: PLW0603
     if args.debug:
         DEBUG = True
         print("[DEBUG] Debug mode enabled — verbose API diagnostics will appear on stderr", file=sys.stderr)
+
+    import time as _time
+
+    global _pipeline_start  # noqa: PLW0603
+    _pipeline_start = _time.monotonic()
+    pipeline_deadline = _pipeline_start + args.timeout
+
+    def _pipeline_time_left() -> float:
+        return max(0, pipeline_deadline - _time.monotonic())
+
+    def _pipeline_expired() -> bool:
+        return _time.monotonic() > pipeline_deadline
 
     awards, freshness_warnings, shared_source, shared_ext, shared_table = (
         fetch_weekly_awards(days=args.days)
@@ -3596,18 +3615,24 @@ def main():
         sam_data = lookup_sam_entities(awards)
 
     if api_key and not args.no_ai:
-        if not args.no_company_research:
+        if not args.no_company_research and not _pipeline_expired():
             company_info = research_companies(api_key, awards)
-        synopsis = generate_weekly_synopsis(
-            api_key, awards, args.days, company_info, sol_topics,
-            usa_descs, sam_data,
-        )
-        descriptions = generate_award_descriptions(
-            api_key, awards, company_info, sol_topics,
-            usa_descs, sam_data,
-        )
+        if _pipeline_expired():
+            print(
+                f"Pipeline timeout ({args.timeout}s) — skipping remaining AI enrichment",
+                file=sys.stderr,
+            )
+        else:
+            synopsis = generate_weekly_synopsis(
+                api_key, awards, args.days, company_info, sol_topics,
+                usa_descs, sam_data,
+            )
+            descriptions = generate_award_descriptions(
+                api_key, awards, company_info, sol_topics,
+                usa_descs, sam_data,
+            )
 
-        if not args.no_diligence:
+        if not args.no_diligence and not _pipeline_expired():
             # Reuse the source/extractor/table from fetch_weekly_awards() to
             # avoid re-downloading and re-importing the ~376 MB CSV.
             print("Building historical context...", file=sys.stderr)
@@ -3670,16 +3695,28 @@ def main():
 
             # Fetch external PI data (patents, publications, ORCID).
             # Reuse co_fed to avoid duplicate USAspending calls per company.
-            print("Looking up PI patents, publications, and ORCID...", file=sys.stderr)
-            pi_ext = lookup_pi_external_data(awards, co_fed)
+            pi_ext: dict[str, dict] = {}
+            if not _pipeline_expired():
+                print("Looking up PI patents, publications, and ORCID...", file=sys.stderr)
+                pi_ext = lookup_pi_external_data(awards, co_fed)
 
-            co_diligence = generate_company_diligence(
-                api_key, awards, company_info, co_history, sam_data, co_fed,
-                usa_recipients,
-            )
-            pi_dilig = generate_pi_diligence(
-                api_key, awards, pi_history, company_info, pi_ext
-            )
+            if not _pipeline_expired():
+                co_diligence = generate_company_diligence(
+                    api_key, awards, company_info, co_history, sam_data, co_fed,
+                    usa_recipients,
+                )
+            if not _pipeline_expired():
+                pi_dilig = generate_pi_diligence(
+                    api_key, awards, pi_history, company_info, pi_ext
+                )
+
+            if _pipeline_expired():
+                elapsed = int(_time.monotonic() - _pipeline_start)
+                print(
+                    f"Pipeline timeout ({args.timeout}s) at {elapsed}s — "
+                    f"generating report with partial enrichment",
+                    file=sys.stderr,
+                )
     elif not api_key and not args.no_ai:
         print(
             "OPENAI_API_KEY not set - skipping AI summaries. "
