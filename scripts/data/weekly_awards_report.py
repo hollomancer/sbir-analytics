@@ -245,17 +245,24 @@ def _check_data_freshness(
     return warnings
 
 
-def fetch_weekly_awards(days: int = 7) -> tuple[list[dict], list[str]]:
+def fetch_weekly_awards(
+    days: int = 7,
+) -> tuple[list[dict], list[str], DataSource, object | None, str | None]:
     """Load SBIR CSV and filter for awards in the past N days.
 
     When sbir_etl is installed, uses SbirDuckDBExtractor for fast
     columnar import and SQL-based date filtering.  Otherwise falls back
     to csv.DictReader with Python-level filtering.
 
-    Returns (awards, freshness_warnings).
+    Returns (awards, freshness_warnings, source, extractor_or_None, table_or_None).
+    The source/extractor/table can be reused for historical queries to avoid
+    re-downloading and re-importing the ~376 MB CSV.
     """
     source = _resolve_csv_path()
     cutoff_str = (datetime.now(UTC) - timedelta(days=days)).strftime("%Y-%m-%d")
+
+    extractor = None
+    table = None
 
     if _HAS_SBIR_ETL and SbirDuckDBExtractor is not None:
         # Fast path: DuckDB columnar import + SQL filtering
@@ -324,7 +331,7 @@ def fetch_weekly_awards(days: int = 7) -> tuple[list[dict], list[str]]:
     for w in freshness_warnings:
         print(f"WARNING: {w}", file=sys.stderr)
 
-    return awards, freshness_warnings
+    return awards, freshness_warnings, source, extractor, table
 
 
 # ---------------------------------------------------------------------------
@@ -961,33 +968,22 @@ def _is_sbir_award_type(description: str, cfda: str) -> bool:
     return False
 
 
-def lookup_company_federal_awards(
+def _usaspending_search(
     company_name: str,
-    uei: str | None = None,
-) -> PIFederalAwardRecord | None:
-    """Query USAspending for all federal awards to the PI's company.
+    search_text: str,
+    label: str,
+) -> list[dict] | None:
+    """Execute a single USAspending spending_by_award search.
 
-    Separates SBIR/STTR awards from non-SBIR federal work. Non-SBIR
-    contracts and grants to a company with SBIR history are the strongest
-    signal of successful commercialization / Phase III transition.
+    Returns the results list on success, or None on error.
     """
-    if not company_name:
-        return None
-
-    # Build filter — prefer UEI if available
     filters: dict = {
-        # award_type_codes is required by USAspending API.
-        # Contracts (A-D) + Grants/Other (02-11) to capture all federal work.
         "award_type_codes": [
             "A", "B", "C", "D",
             "02", "03", "04", "05", "06", "07", "08", "09", "10", "11",
         ],
+        "recipient_search_text": [search_text],
     }
-    if uei:
-        filters["recipient_search_text"] = [uei]
-    else:
-        filters["recipient_search_text"] = [company_name]
-
     payload = {
         "filters": filters,
         "fields": [
@@ -1007,8 +1003,8 @@ def lookup_company_federal_awards(
     }
 
     _debug(
-        f"USAspending query for '{company_name}' (uei={uei}): "
-        f"POST {USASPENDING_API_URL}/search/spending_by_award/ filters={json.dumps(filters)}"
+        f"USAspending query for '{company_name}' ({label}='{search_text}'): "
+        f"POST {USASPENDING_API_URL}/search/spending_by_award/"
     )
     try:
         with httpx.Client(timeout=30) as client:
@@ -1016,20 +1012,40 @@ def lookup_company_federal_awards(
                 f"{USASPENDING_API_URL}/search/spending_by_award/",
                 json=payload,
             )
-            _debug_response(f"USAspending [{company_name}]", resp)
+            _debug_response(f"USAspending [{company_name} via {label}]", resp)
             if resp.status_code != 200:
-                print(
-                    f"USAspending API returned {resp.status_code} for {company_name}",
-                    file=sys.stderr,
-                )
+                _debug(f"USAspending [{company_name}] {label} returned {resp.status_code}")
                 return None
             data = resp.json()
     except Exception as e:
-        print(f"USAspending API error for {company_name}: {e}", file=sys.stderr)
+        _debug(f"USAspending [{company_name}] {label} error: {e}")
         return None
 
     results = data.get("results", [])
-    _debug(f"USAspending [{company_name}]: {len(results)} award results returned")
+    _debug(f"USAspending [{company_name} via {label}]: {len(results)} results")
+    return results
+
+
+def lookup_company_federal_awards(
+    company_name: str,
+    uei: str | None = None,
+) -> PIFederalAwardRecord | None:
+    """Query USAspending for all federal awards to the PI's company.
+
+    Tries UEI first (most reliable), then falls back to company name search.
+    Separates SBIR/STTR awards from non-SBIR federal work. Non-SBIR
+    contracts and grants to a company with SBIR history are the strongest
+    signal of successful commercialization / Phase III transition.
+    """
+    if not company_name:
+        return None
+
+    # Cascading lookup: UEI first, then company name
+    results = None
+    if uei:
+        results = _usaspending_search(company_name, uei, "UEI")
+    if not results:
+        results = _usaspending_search(company_name, company_name, "name")
     if not results:
         return None
 
@@ -1098,8 +1114,12 @@ def lookup_company_federal_awards(
 
 def lookup_pi_external_data(
     awards: list[dict],
+    company_federal_awards: dict[str, PIFederalAwardRecord] | None = None,
 ) -> dict[str, dict]:
     """Look up external data (patents, publications, ORCID, federal awards) for each PI.
+
+    If company_federal_awards is provided, reuses those results instead of
+    re-querying USAspending for each PI's company.
 
     Returns a dict keyed by upper-cased PI name, with sub-keys:
     - "patents": PIPatentRecord | None
@@ -1119,6 +1139,7 @@ def lookup_pi_external_data(
                 "name": pi,
                 "company": str(a.get("Company", "")).strip(),
                 "uei": str(a.get("Company UEI", a.get("UEI", ""))).strip(),
+                "company_key": _company_key(a),
             }
 
     results: dict[str, dict] = {}
@@ -1137,13 +1158,19 @@ def lookup_pi_external_data(
         patents = lookup_pi_patents(name, company)
         publications = lookup_pi_publications(name)
         orcid = lookup_pi_orcid(name)
-        federal_awards = lookup_company_federal_awards(company, uei)
+
+        # Reuse company federal awards if already fetched, else query fresh
+        fed = None
+        if company_federal_awards is not None:
+            fed = company_federal_awards.get(info["company_key"])
+        if fed is None and company_federal_awards is None:
+            fed = lookup_company_federal_awards(company, uei)
 
         results[key] = {
             "patents": patents,
             "publications": publications,
             "orcid": orcid,
-            "federal_awards": federal_awards,
+            "federal_awards": fed,
         }
 
     return results
@@ -3005,7 +3032,9 @@ def main():
         DEBUG = True
         print("[DEBUG] Debug mode enabled — verbose API diagnostics will appear on stderr", file=sys.stderr)
 
-    awards, freshness_warnings = fetch_weekly_awards(days=args.days)
+    awards, freshness_warnings, shared_source, shared_ext, shared_table = (
+        fetch_weekly_awards(days=args.days)
+    )
     _debug(f"Fetched {len(awards)} raw awards (freshness_warnings={freshness_warnings})")
 
     # Clean, validate, and deduplicate
@@ -3054,10 +3083,9 @@ def main():
         )
 
         if not args.no_diligence:
-            # Build historical context for diligence.
-            # Resolve CSV and DuckDB extractor once, share across both queries.
+            # Reuse the source/extractor/table from fetch_weekly_awards() to
+            # avoid re-downloading and re-importing the ~376 MB CSV.
             print("Building historical context...", file=sys.stderr)
-            shared_source, shared_ext, shared_table = _resolve_shared_extractor()
             co_history = get_company_history(
                 awards, shared_source, shared_ext, shared_table
             )
@@ -3087,9 +3115,10 @@ def main():
                 if result:
                     co_fed[key] = result
 
-            # Fetch external PI data (patents, publications, ORCID, federal awards)
-            print("Looking up PI patents, publications, ORCID, and federal awards...", file=sys.stderr)
-            pi_ext = lookup_pi_external_data(awards)
+            # Fetch external PI data (patents, publications, ORCID).
+            # Reuse co_fed to avoid duplicate USAspending calls per company.
+            print("Looking up PI patents, publications, and ORCID...", file=sys.stderr)
+            pi_ext = lookup_pi_external_data(awards, co_fed)
 
             co_diligence = generate_company_diligence(
                 api_key, awards, company_info, co_history, sam_data, co_fed
