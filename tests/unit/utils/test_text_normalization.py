@@ -246,10 +246,14 @@ class TestTextNormalizationEdgeCases:
     """Tests for edge cases and special scenarios."""
 
     def test_normalize_unicode_characters(self):
-        """Test handling unicode characters."""
+        """Test handling unicode characters (NFKD accent stripping)."""
         result = normalize_name("Café Corporation")
+        assert result == "cafe corporation"
 
-        assert "caf" in result
+        # Accented and special Unicode characters are normalized
+        assert normalize_name("naïve systems") == "naive systems"
+        assert normalize_name("Ñoño Ltd", remove_suffixes=True) == "nono"
+        assert normalize_name("Ströme GmbH") == "strome gmbh"
 
     def test_normalize_special_characters(self):
         """Test handling special characters."""

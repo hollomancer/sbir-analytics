@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import re
-from datetime import date
+from datetime import date, datetime
 from types import SimpleNamespace
 from typing import Any
 
@@ -152,11 +152,12 @@ def validate_award_year(year: Any, row_index: int) -> QualityIssue | None:
             row_index=row_index,
         )
 
-    if year < 1983 or year > 2026:
+    max_year = datetime.now().year + 1
+    if year < 1983 or year > max_year:
         return QualityIssue(
             severity=QualitySeverity.ERROR,
             field="Award Year",
-            message=f"Award Year {year} is out of valid range (1983-2026)",
+            message=f"Award Year {year} is out of valid range (1983-{max_year})",
             row_index=row_index,
         )
     return None
@@ -210,11 +211,12 @@ def validate_award_amount(amount: Any, row_index: int) -> QualityIssue | None:
             row_index=row_index,
         )
 
-    if amount_val > 10_000_000:
+    # Warning threshold aligned with config/base.yaml validity.award_amount_max ($5M)
+    if amount_val > 5_000_000:
         return QualityIssue(
             severity=QualitySeverity.WARNING,
             field="Award Amount",
-            message=f"Award Amount ${amount_val:,.2f} exceeds typical maximum of $10M",
+            message=f"Award Amount ${amount_val:,.2f} exceeds typical SBIR maximum of $5M",
             row_index=row_index,
         )
 
@@ -527,12 +529,17 @@ def validate_sbir_awards(
     """
     Validate a DataFrame of SBIR awards.
 
+    Uses fast vectorized checks on essential fields. Produces per-row
+    QualityIssue objects so that downstream assets can filter failing records,
+    and exposes ``failing_row_indices`` (a set of DataFrame index values) for
+    efficient bulk filtering.
+
     Args:
         df: pandas DataFrame with SBIR award data
         pass_rate_threshold: Minimum pass rate required (0.0-1.0)
 
     Returns:
-        QualityReport with validation results
+        SimpleNamespace with validation results including issues and failing_row_indices
     """
     logger.info(f"Validating {len(df)} SBIR award records")
 
@@ -545,6 +552,7 @@ def validate_sbir_awards(
             pass_rate=1.0,
             passed=True,
             issues=[],
+            failing_row_indices=set(),
             error_count=0,
             warning_count=0,
         )
@@ -556,14 +564,25 @@ def validate_sbir_awards(
 
     if missing_columns:
         logger.error(f"Missing essential columns: {missing_columns}")
-        # Create minimal failing report
+        # All rows fail when essential columns are absent
+        all_indices = set(df.index.tolist())
+        issues = [
+            QualityIssue(
+                severity=QualitySeverity.ERROR,
+                field=col,
+                message=f"Essential column '{col}' is missing from dataset",
+                row_index=None,
+            )
+            for col in missing_columns
+        ]
         return SimpleNamespace(
             total_records=len(df),
             passed_records=0,
             failed_records=len(df),
             pass_rate=0.0,
             passed=False,
-            issues=[],
+            issues=issues,
+            failing_row_indices=all_indices,
             error_count=len(df),
             warning_count=0,
         )
@@ -572,13 +591,38 @@ def validate_sbir_awards(
     # Create a mask for records that have all essential fields
     essential_mask = df[essential_columns].notnull().all(axis=1)
 
+    # Build per-row issues for failing records (vectorized per-column).
+    # failing_row_indices stores raw DataFrame index values for filtering.
+    # QualityIssue.row_index is typed int|None — coerce safely so non-integer
+    # indexes (unlikely but possible) degrade to None rather than crashing.
+    issues: list[QualityIssue] = []
+    failing_row_indices: set[Any] = set()
+    for col in essential_columns:
+        null_mask = df[col].isna()
+        null_indices = df.index[null_mask].tolist()
+        if null_indices:
+            failing_row_indices.update(null_indices)
+            for idx in null_indices:
+                row_idx = idx if isinstance(idx, int) else None
+                issues.append(
+                    QualityIssue(
+                        severity=QualitySeverity.ERROR,
+                        field=col,
+                        message=f"Required field '{col}' is missing",
+                        row_index=row_idx,
+                    )
+                )
+
     estimated_passed_rows = int(essential_mask.sum())
     estimated_failed_rows = int(len(df) - estimated_passed_rows)
     pass_rate = float(estimated_passed_rows / len(df)) if len(df) > 0 else 1.0
 
     passed = bool(pass_rate >= pass_rate_threshold)
 
-    logger.info(f"Fast validation complete: {pass_rate:.1%} estimated pass rate")
+    logger.info(
+        f"Validation complete: {pass_rate:.1%} pass rate, "
+        f"{len(issues)} issues across {len(failing_row_indices)} failing rows"
+    )
 
     # Build a lightweight SimpleNamespace report
     report = SimpleNamespace(
@@ -587,7 +631,8 @@ def validate_sbir_awards(
         failed_records=estimated_failed_rows,
         pass_rate=pass_rate,
         passed=passed,
-        issues=[],  # Empty for fast validation
+        issues=issues,
+        failing_row_indices=failing_row_indices,
         error_count=estimated_failed_rows,
         warning_count=0,
     )
