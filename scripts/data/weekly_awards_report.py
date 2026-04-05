@@ -1217,22 +1217,32 @@ def lookup_sam_entity(
 
     def _try_query(params: dict) -> dict | None:
         _debug(f"SAM.gov query for '{company_name}': GET {SAM_GOV_API_URL} params={params}")
-        try:
-            with httpx.Client(timeout=30) as client:
-                resp = client.get(SAM_GOV_API_URL, headers=headers, params=params)
-                _debug_response(f"SAM.gov [{company_name}]", resp)
-                if resp.status_code != 200:
+        import time
+
+        for attempt in range(3):
+            try:
+                with httpx.Client(timeout=30) as client:
+                    resp = client.get(SAM_GOV_API_URL, headers=headers, params=params)
+                    _debug_response(f"SAM.gov [{company_name}]", resp)
+                    if resp.status_code == 429:
+                        wait = 2 ** (attempt + 1)
+                        _debug(f"SAM.gov [{company_name}]: rate limited, retrying in {wait}s")
+                        time.sleep(wait)
+                        continue
+                    if resp.status_code != 200:
+                        return None
+                    data = resp.json()
+                    results = data.get("entityData", data.get("results", []))
+                    result_count = len(results) if isinstance(results, list) else (1 if results else 0)
+                    _debug(f"SAM.gov [{company_name}]: {result_count} entities in response")
+                    if isinstance(results, list) and results:
+                        return results[0]
+                    if isinstance(results, dict):
+                        return results
                     return None
-                data = resp.json()
-                results = data.get("entityData", data.get("results", []))
-                result_count = len(results) if isinstance(results, list) else (1 if results else 0)
-                _debug(f"SAM.gov [{company_name}]: {result_count} entities in response")
-                if isinstance(results, list) and results:
-                    return results[0]
-                if isinstance(results, dict):
-                    return results
-        except Exception as e:
-            print(f"SAM.gov API error: {e}", file=sys.stderr)
+            except Exception as e:
+                print(f"SAM.gov API error: {e}", file=sys.stderr)
+                return None
         return None
 
     entity = None
