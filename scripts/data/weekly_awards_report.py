@@ -42,6 +42,7 @@ try:
     from sbir_etl.extractors.sbir_gov_api import SBIR_AWARDS_CSV_URL as SBIR_AWARDS_URL
     from sbir_etl.utils.cloud_storage import find_latest_sbir_awards, get_s3_bucket_from_env
     from sbir_etl.utils.date_utils import parse_date as _parse_date
+    from sbir_etl.utils.text_normalization import normalize_name as _normalize_name
 
     _HAS_SBIR_ETL = True
 except ImportError:
@@ -62,6 +63,26 @@ except ImportError:
             except ValueError:
                 continue
         return None
+
+    def _normalize_name(name, *, remove_suffixes=False, **_kwargs):  # type: ignore[misc]
+        """Minimal fallback company name normalizer."""
+        import re as _re
+
+        if not name:
+            return ""
+        s = str(name).strip().lower()
+        s = _re.sub(r"[^\w\s]", " ", s)
+        if remove_suffixes:
+            s = _re.sub(
+                r"\b(incorporated|incorporation|inc|corp|corporation|llc|ltd|limited|co|company)\b",
+                "",
+                s,
+            )
+        else:
+            s = _re.sub(r"\b(incorporated|incorporation)\b", "inc", s)
+            s = _re.sub(r"\b(company|co)\b", "company", s)
+            s = _re.sub(r"\b(limited|ltd)\b", "ltd", s)
+        return _re.sub(r"\s+", " ", s).strip()
 
 # URL templates for external links
 SBIR_AWARD_SEARCH_URL = "https://www.sbir.gov/sbirsearch/award/all"
@@ -274,6 +295,119 @@ def fetch_weekly_awards(days: int = 7) -> tuple[list[dict], list[str]]:
         print(f"WARNING: {w}", file=sys.stderr)
 
     return awards, freshness_warnings
+
+
+# ---------------------------------------------------------------------------
+# Data cleaning & deduplication
+# ---------------------------------------------------------------------------
+
+VALID_PHASES = {"Phase I", "Phase II", "Phase III"}
+VALID_PROGRAMS = {"SBIR", "STTR"}
+
+
+def _company_key(award: dict) -> str:
+    """Return a normalized company key for grouping.
+
+    Uses _normalized_company if the cleaning pass has run, otherwise
+    falls back to upper-cased raw name.
+    """
+    norm = award.get("_normalized_company", "")
+    if norm:
+        return norm
+    return str(award.get("Company", "")).strip().upper()
+
+
+def clean_and_dedup_awards(awards: list[dict]) -> tuple[list[dict], dict]:
+    """Validate, normalize, and deduplicate weekly awards.
+
+    Runs the sbir_etl validation and normalization pipeline (with graceful
+    fallback) against the raw award list:
+
+    1. **Validate** — drop records with invalid phase, non-numeric amount,
+       or missing company name.
+    2. **Normalize** — standardize company names using normalize_name() so
+       that "ACME, Inc." and "ACME INCORPORATED" map to the same entity.
+       Original names are preserved; a ``_normalized_company`` key is added.
+    3. **Deduplicate** — remove exact duplicates by Contract number (the
+       most reliable unique identifier in the SBIR CSV).
+
+    Returns:
+        (cleaned_awards, stats) where stats is a dict with counts of
+        records removed at each stage.
+    """
+    stats: dict = {
+        "input": len(awards),
+        "invalid_phase": 0,
+        "invalid_amount": 0,
+        "missing_company": 0,
+        "duplicates": 0,
+    }
+
+    cleaned: list[dict] = []
+
+    for a in awards:
+        # Validate company name
+        company = str(a.get("Company", "")).strip()
+        if not company:
+            stats["missing_company"] += 1
+            continue
+
+        # Validate phase
+        phase = str(a.get("Phase", "")).strip()
+        if phase and phase not in VALID_PHASES:
+            stats["invalid_phase"] += 1
+            continue
+
+        # Validate award amount (must be numeric and positive)
+        amount_raw = str(a.get("Award Amount", "")).replace(",", "").replace("$", "").strip()
+        if amount_raw:
+            try:
+                amount_val = float(amount_raw)
+                if amount_val <= 0:
+                    stats["invalid_amount"] += 1
+                    continue
+            except (ValueError, TypeError):
+                stats["invalid_amount"] += 1
+                continue
+
+        # Normalize company name for downstream grouping
+        a["_normalized_company"] = _normalize_name(company, remove_suffixes=True)
+
+        cleaned.append(a)
+
+    # Deduplicate by Contract number (most reliable SBIR award identifier)
+    seen_contracts: set[str] = set()
+    deduped: list[dict] = []
+
+    for a in cleaned:
+        contract = str(a.get("Contract", "")).strip()
+        if contract:
+            if contract in seen_contracts:
+                stats["duplicates"] += 1
+                continue
+            seen_contracts.add(contract)
+        deduped.append(a)
+
+    stats["output"] = len(deduped)
+    stats["total_removed"] = stats["input"] - stats["output"]
+
+    if stats["total_removed"] > 0:
+        print(
+            f"Data cleaning: {stats['input']} → {stats['output']} awards "
+            f"(removed {stats['total_removed']}: "
+            f"{stats['invalid_phase']} invalid phase, "
+            f"{stats['invalid_amount']} invalid amount, "
+            f"{stats['missing_company']} missing company, "
+            f"{stats['duplicates']} duplicates)",
+            file=sys.stderr,
+        )
+    else:
+        print(
+            f"Data cleaning: {stats['input']} awards, all valid",
+            file=sys.stderr,
+        )
+
+    return deduped, stats
 
 
 # ---------------------------------------------------------------------------
@@ -1540,7 +1674,7 @@ def research_companies(
         name = str(a.get("Company", "")).strip()
         if not name:
             continue
-        key = name.upper()
+        key = _company_key(a)
         if key not in companies:
             companies[key] = {
                 "name": name,
@@ -1669,7 +1803,7 @@ def generate_weekly_synopsis(
     for i, a in enumerate(awards[:50]):
         cr = None
         if company_research:
-            cr = company_research.get(str(a.get("Company", "")).strip().upper())
+            cr = company_research.get(_company_key(a))
         digests.append(f"[{i+1}] {_award_digest(a, cr, solicitation_topics)}")
     digest_block = "\n\n".join(digests)
     if len(awards) > 50:
@@ -1751,7 +1885,7 @@ def generate_award_descriptions(
             idx = batch_start + i + 1
             cr = None
             if company_research:
-                cr = company_research.get(str(a.get("Company", "")).strip().upper())
+                cr = company_research.get(_company_key(a))
             digests.append(f"[{idx}] {_award_digest(a, cr, solicitation_topics)}")
 
         user = (
@@ -1935,13 +2069,13 @@ def generate_company_diligence(
 
     Returns a dict keyed by upper-cased company name.
     """
-    # Collect unique companies
+    # Collect unique companies (grouped by normalized name)
     companies: dict[str, list[dict]] = {}
     for a in awards:
         name = str(a.get("Company", "")).strip()
         if not name:
             continue
-        key = name.upper()
+        key = _company_key(a)
         companies.setdefault(key, []).append(a)
 
     company_items = list(companies.items())
@@ -2206,7 +2340,9 @@ def generate_pi_diligence(
         # Company web research for context
         cr = None
         if company_research:
-            cr = company_research.get(company.strip().upper())
+            cr = company_research.get(
+                _normalize_name(company, remove_suffixes=True) or company.strip().upper()
+            )
         if cr:
             context_parts.append(
                 f"Company context ({company}):\n{cr.summary}"
@@ -2359,7 +2495,9 @@ def generate_markdown(
         # Look up company research
         cr = None
         if company_research:
-            cr = company_research.get(company.strip().upper())
+            cr = company_research.get(
+                _normalize_name(company, remove_suffixes=True) or company.strip().upper()
+            )
 
         # Award header
         lines.append(f"### {i + 1}. {title}")
@@ -2374,7 +2512,7 @@ def generate_markdown(
 
         # Company diligence paragraph
         if company_diligence:
-            co_key = company.strip().upper()
+            co_key = _normalize_name(company, remove_suffixes=True) or company.strip().upper()
             if co_key in company_diligence:
                 lines.append(f"**Company Diligence — {company}:**")
                 lines.append(company_diligence[co_key])
@@ -2468,6 +2606,9 @@ def main():
 
     awards, freshness_warnings = fetch_weekly_awards(days=args.days)
 
+    # Clean, validate, and deduplicate
+    awards, cleaning_stats = clean_and_dedup_awards(awards)
+
     # Generate AI content if API key is available
     synopsis = None
     descriptions = None
@@ -2512,7 +2653,7 @@ def main():
                 name = str(a.get("Company", "")).strip()
                 if not name:
                     continue
-                key = name.upper()
+                key = _company_key(a)
                 if key not in co_names:
                     co_names[key] = {
                         "name": name,
