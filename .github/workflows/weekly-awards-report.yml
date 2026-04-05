@@ -40,6 +40,9 @@ jobs:
           USPTO_ODP_API_KEY: ${{ secrets.USPTO_ODP_API_KEY }}
           SAM_GOV_API_KEY: ${{ secrets.SAM_GOV_API_KEY }}
           S3_BUCKET: ${{ secrets.S3_BUCKET || '' }}
+          # Disable SBIR.gov API calls while the API is down/rate-limiting.
+          # Remove this once the API is stable again.
+          SKIP_SBIR_API: "1"
         run: |
           mkdir -p reports
           uv run --frozen python scripts/data/weekly_awards_report.py \

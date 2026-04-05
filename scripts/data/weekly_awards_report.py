@@ -1289,19 +1289,22 @@ def lookup_pi_external_data(
     results: dict[str, dict] = {}
     total = len(pis)
 
-    for idx, (key, info) in enumerate(pis.items(), 1):
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    def _lookup_single_pi(key: str, info: dict) -> tuple[str, dict]:
         name = info["name"]
         company = info["company"]
         uei = info["uei"] or None
 
-        print(
-            f"Looking up external data for PI {idx}/{total}: {name}...",
-            file=sys.stderr,
-        )
+        # Run the 3 independent API calls concurrently per PI
+        with ThreadPoolExecutor(max_workers=3) as inner:
+            patent_future = inner.submit(lookup_pi_patents, name, company)
+            pub_future = inner.submit(lookup_pi_publications, name)
+            orcid_future = inner.submit(lookup_pi_orcid, name)
 
-        patents = lookup_pi_patents(name, company)
-        publications = lookup_pi_publications(name)
-        orcid = lookup_pi_orcid(name)
+            patents = patent_future.result()
+            publications = pub_future.result()
+            orcid_rec = orcid_future.result()
 
         # Reuse company federal awards if already fetched, else query fresh
         fed = None
@@ -1310,12 +1313,35 @@ def lookup_pi_external_data(
         if fed is None and company_federal_awards is None:
             fed = lookup_company_federal_awards(company, uei)
 
-        results[key] = {
+        return key, {
             "patents": patents,
             "publications": publications,
-            "orcid": orcid,
+            "orcid": orcid_rec,
             "federal_awards": fed,
         }
+
+    # Process PIs concurrently (capped at 4 to respect API rate limits)
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        futures = {
+            executor.submit(_lookup_single_pi, key, info): (key, info)
+            for key, info in pis.items()
+        }
+        done = 0
+        for future in as_completed(futures):
+            done += 1
+            key, info = futures[future]
+            try:
+                pi_key, pi_data = future.result()
+                results[pi_key] = pi_data
+                print(
+                    f"Completed PI external data {done}/{total}: {info['name']}",
+                    file=sys.stderr,
+                )
+            except Exception as e:
+                print(
+                    f"PI external data error for {info['name']}: {e}",
+                    file=sys.stderr,
+                )
 
     return results
 
@@ -1473,12 +1499,17 @@ def lookup_sam_entities(
     total = len(companies)
     print(f"Looking up {total} companies on SAM.gov...", file=sys.stderr)
 
-    for idx, (key, info) in enumerate(companies.items(), 1):
-        if idx % 10 == 0 or idx == total:
-            print(f"SAM.gov lookup {idx}/{total}...", file=sys.stderr)
-        record = lookup_sam_entity(info["name"], info["uei"], info["cage"])
-        if record:
-            results[key] = record
+    from concurrent.futures import ThreadPoolExecutor
+
+    def _lookup_one(item: tuple[str, dict]) -> tuple[str, SAMEntityRecord | None]:
+        key, info = item
+        return key, lookup_sam_entity(info["name"], info["uei"], info["cage"])
+
+    # Cap at 3 workers to respect SAM.gov 60 req/min rate limit
+    with ThreadPoolExecutor(max_workers=3) as executor:
+        for key, record in executor.map(_lookup_one, companies.items()):
+            if record:
+                results[key] = record
 
     print(f"Found {len(results)}/{total} companies on SAM.gov", file=sys.stderr)
     return results
@@ -3346,6 +3377,8 @@ def main():
             # reuse sam_data for diligence.
 
             # USAspending federal awards per company (SBIR vs non-SBIR)
+            from concurrent.futures import ThreadPoolExecutor
+
             print("Looking up company federal awards on USAspending...", file=sys.stderr)
             co_fed: dict[str, PIFederalAwardRecord] = {}
             co_names: dict[str, dict] = {}
@@ -3359,10 +3392,19 @@ def main():
                         "name": name,
                         "uei": str(a.get("Company UEI", a.get("UEI", ""))).strip() or None,
                     }
-            for key, info in co_names.items():
-                result = lookup_company_federal_awards(info["name"], info["uei"])
-                if result:
-                    co_fed[key] = result
+
+            def _lookup_co_fed(item: tuple[str, dict]) -> tuple[str, PIFederalAwardRecord | None]:
+                k, info = item
+                return k, lookup_company_federal_awards(info["name"], info["uei"])
+
+            with ThreadPoolExecutor(max_workers=4) as executor:
+                for key, result in executor.map(_lookup_co_fed, co_names.items()):
+                    if result:
+                        co_fed[key] = result
+            print(
+                f"Found federal awards for {len(co_fed)}/{len(co_names)} companies",
+                file=sys.stderr,
+            )
 
             # Fetch external PI data (patents, publications, ORCID).
             # Reuse co_fed to avoid duplicate USAspending calls per company.
