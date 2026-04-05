@@ -183,7 +183,7 @@ extraction:
     download:
       patentsview:
         enabled: true
-        base_url: "https://data.uspto.gov/api/v1/datasets/products/files"
+        base_url: "https://data.uspto.gov/download"
         schedule: "monthly"
         tables: ["patent", "assignee", "inventor"]
         s3_prefix: "raw/uspto/patentsview"

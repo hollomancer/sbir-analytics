@@ -268,12 +268,12 @@ extraction:
     download:
       # PatentsView dataset (comprehensive patent data)
       # Updated: April 2026 - migrated to USPTO Open Data Portal (ODP)
-      # Base URL: https://data.uspto.gov/api/v1/datasets/products/files
+      # Direct download base URL for bulk data files
       # Available tables: patent, assignee, inventor, location, cpc, gov_interest
       patentsview:
         enabled: true
         info_page: "https://data.uspto.gov/support/transition-guide/patentsview"
-        base_url: "https://data.uspto.gov/api/v1/datasets/products/files"
+        base_url: "https://data.uspto.gov/download"
         schedule: "monthly"  # GitHub Actions cron: 0 9 1 * * (1st of month, 9 AM UTC)
         tables: ["patent", "assignee", "inventor"]  # Which tables to download
         s3_prefix: "raw/uspto/patentsview"

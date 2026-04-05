@@ -30,7 +30,9 @@ from urllib3.util.retry import Retry
 # Updated: April 2026 - PatentsView migrated to USPTO Open Data Portal (ODP)
 # Migration: https://data.uspto.gov/support/transition-guide/patentsview
 # Bulk downloads now available via ODP Bulk Data API
-PATENTSVIEW_BASE_URL = "https://data.uspto.gov/api/v1/datasets/products/files"
+# Use the direct download base, not the ODP metadata API endpoint, because the
+# rest of this script constructs file URLs by appending the ZIP filename.
+PATENTSVIEW_BASE_URL = "https://data.uspto.gov/download"
 PATENTSVIEW_TABLES = {
     "patent": "g_patent.tsv.zip",
     "assignee": "g_assignee_disambiguated.tsv.zip",

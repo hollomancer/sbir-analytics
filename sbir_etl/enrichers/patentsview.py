@@ -389,8 +389,24 @@ class PatentsViewClient:
                 )
 
                 # Check if there are more pages
-                total_found = response.get("totalNumFound", 0)
-                if len(all_patents) >= total_found or len(records) < limit:
+                total_found = response.get("totalNumFound")
+                if total_found is None:
+                    total_found = response.get("totalResults")
+
+                if total_found is not None:
+                    try:
+                        total_found = int(total_found)
+                    except (TypeError, ValueError):
+                        logger.warning(
+                            f"Unexpected patent search total count {total_found!r}; "
+                            "falling back to page-size-based pagination"
+                        )
+                        total_found = None
+
+                if len(records) < limit:
+                    break
+
+                if total_found is not None and len(all_patents) >= total_found:
                     break
 
                 offset += limit
@@ -564,7 +580,7 @@ class PatentsViewClient:
             Escaped text safe for Lucene queries
         """
         # Lucene special characters: + - && || ! ( ) { } [ ] ^ " ~ * ? : \ /
-        special_chars = r'([+\-&|!(){}\[\]^~*?:\\/])'
+        special_chars = r'([+\-&|!(){}\[\]^"~*?:\\/])'
         return re.sub(special_chars, r'\\\1', text)
 
     def close(self) -> None:
