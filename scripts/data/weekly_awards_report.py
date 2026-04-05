@@ -337,17 +337,14 @@ def clean_and_dedup_awards(awards: list[dict]) -> tuple[list[dict], dict]:
     stats: dict = {
         "input": len(awards),
         "validation_errors": 0,
-        "duplicates": 0,
     }
 
-    # --- Step 1: Validate using sbir_etl's validate_sbir_award_record ---
     cleaned: list[dict] = []
 
     if _validate_record is not None:
         for i, a in enumerate(awards):
             row = pd.Series(a)
             issues = _validate_record(row, i)
-            # Drop rows with ERROR-severity issues
             errors = [
                 iss for iss in issues if iss.severity.value == "error"
             ]
@@ -374,28 +371,13 @@ def clean_and_dedup_awards(awards: list[dict]) -> tuple[list[dict], dict]:
             )
             cleaned.append(a)
 
-    # --- Step 2: Deduplicate by Contract number ---
-    seen_contracts: set[str] = set()
-    deduped: list[dict] = []
-
-    for a in cleaned:
-        contract = str(a.get("Contract", "")).strip()
-        if contract:
-            if contract in seen_contracts:
-                stats["duplicates"] += 1
-                continue
-            seen_contracts.add(contract)
-        deduped.append(a)
-
-    stats["output"] = len(deduped)
+    stats["output"] = len(cleaned)
     stats["total_removed"] = stats["input"] - stats["output"]
 
     if stats["total_removed"] > 0:
         print(
             f"Data cleaning: {stats['input']} -> {stats['output']} awards "
-            f"(removed {stats['total_removed']}: "
-            f"{stats['validation_errors']} failed validation, "
-            f"{stats['duplicates']} duplicates)",
+            f"({stats['validation_errors']} failed validation)",
             file=sys.stderr,
         )
     else:
@@ -404,7 +386,7 @@ def clean_and_dedup_awards(awards: list[dict]) -> tuple[list[dict], dict]:
             file=sys.stderr,
         )
 
-    return deduped, stats
+    return cleaned, stats
 
 
 # ---------------------------------------------------------------------------
