@@ -151,10 +151,13 @@ def _import_usaspending_table(
         },
     )
 
-    # Stamp data source provenance on every record
+    # Stamp data source provenance on the returned DataFrame
+    # Note: _import_usaspending_table returns a sample (limit=100) per the existing
+    # query_awards call above. Provenance is stamped on whatever this function returns.
     ingested_at = datetime.now(timezone.utc)
+    source_url = str(dump_path) if dump_path else "usaspending_api"
     sample_df["data_source"] = "usaspending"
-    sample_df["data_source_url"] = str(dump_path) if dump_path else "usaspending_api"
+    sample_df["data_source_url"] = source_url
     sample_df["ingested_at"] = ingested_at
 
     metadata = {
@@ -190,6 +193,7 @@ def raw_usaspending_recipients(context: AssetExecutionContext) -> Output[pd.Data
 
     s3_bucket = get_s3_bucket_from_env()
     df = None
+    parquet_url = None
 
     # PRIORITY 1: Try parquet extract (fast, ~500MB)
     if s3_bucket:

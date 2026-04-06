@@ -1,6 +1,6 @@
 """Pydantic models for SBIR award data."""
 
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from typing import Any
 
 from pydantic import (
@@ -173,6 +173,18 @@ class Award(BaseModel):
     )
 
     # --- Validators ---
+
+    @field_validator("ingested_at", mode="before")
+    @classmethod
+    def validate_ingested_at_utc(cls, v: Any) -> datetime | None:
+        """Ensure ingested_at is timezone-aware UTC. Naive datetimes are assumed UTC."""
+        if v is None:
+            return None
+        if isinstance(v, datetime):
+            if v.tzinfo is None:
+                return v.replace(tzinfo=timezone.utc)
+            return v.astimezone(timezone.utc)
+        return v
 
     @field_validator("award_amount", mode="before")
     @classmethod
