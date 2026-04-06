@@ -220,3 +220,106 @@ def sec_edgar_enrichment_quality_check(
         result_kwargs["severity"] = AssetCheckSeverity.WARN
 
     return AssetCheckResult(**result_kwargs)
+
+
+@asset(
+    description="Load SEC EDGAR enrichment data into Neo4j Company nodes",
+    group_name="sec_edgar",
+    compute_kind="neo4j",
+)
+def neo4j_sec_edgar_enrichment(
+    context: AssetExecutionContext,
+    sec_edgar_enriched_companies: pd.DataFrame,
+) -> Output[dict]:
+    """Load SEC EDGAR enrichment into Neo4j.
+
+    Enriches existing Company nodes with SEC properties (CIK, ticker,
+    financials, M&A signals, Form D data). Only updates companies that
+    had a public match or private signal.
+
+    Args:
+        sec_edgar_enriched_companies: DataFrame with sec_* enrichment columns.
+
+    Returns:
+        Dictionary with load metrics.
+    """
+    import os
+
+    from sbir_graph.loaders.neo4j import Neo4jClient, Neo4jConfig
+    from sbir_graph.loaders.neo4j.sec_edgar import SecEdgarLoader, SecEdgarLoaderConfig
+
+    config = get_config()
+    neo4j_cfg = config.neo4j
+
+    skip_neo4j = os.getenv("SKIP_NEO4J_LOADING", "false").lower() in ("true", "1", "yes")
+    if skip_neo4j:
+        context.log.warning("Neo4j loading skipped via SKIP_NEO4J_LOADING")
+        return Output(
+            value={"status": "skipped", "companies_updated": 0},
+            metadata={"status": "skipped"},
+        )
+
+    # Check if enrichment produced any SEC data
+    sec_cols = [c for c in sec_edgar_enriched_companies.columns if c.startswith("sec_")]
+    if not sec_cols:
+        context.log.info("No SEC EDGAR columns found — enrichment was likely disabled")
+        return Output(
+            value={"status": "no_data", "companies_updated": 0},
+            metadata={"status": "no_sec_data"},
+        )
+
+    try:
+        client_config = Neo4jConfig(
+            uri=neo4j_cfg.uri,
+            username=neo4j_cfg.username,
+            password=neo4j_cfg.password,
+            database=neo4j_cfg.database,
+            batch_size=neo4j_cfg.batch_size,
+        )
+        client = Neo4jClient(client_config)
+        with client.session() as session:
+            session.run("RETURN 1")
+    except Exception as e:
+        raise RuntimeError(
+            f"Neo4j connection failed: {e}. Set SKIP_NEO4J_LOADING=true to skip."
+        ) from e
+
+    try:
+        loader_config = SecEdgarLoaderConfig(
+            batch_size=neo4j_cfg.batch_size,
+            create_indexes=neo4j_cfg.create_indexes,
+            update_existing_only=True,
+        )
+        loader = SecEdgarLoader(client, loader_config)
+
+        if loader_config.create_indexes:
+            context.log.info("Creating Neo4j indexes for SEC EDGAR properties")
+            loader.create_indexes()
+
+        records = sec_edgar_enriched_companies.to_dict(orient="records")
+        context.log.info(f"Loading SEC EDGAR data for {len(records)} records")
+
+        metrics = loader.load_sec_edgar_data(records)
+
+        updated = metrics.nodes_updated.get("Company", 0)
+        context.log.info(
+            f"SEC EDGAR Neo4j loading complete: {updated} companies updated, "
+            f"{metrics.errors} errors"
+        )
+
+        summary = {
+            "companies_updated": updated,
+            "total_attempted": len(records),
+            "errors": metrics.errors,
+        }
+
+        return Output(
+            value=summary,
+            metadata={
+                "companies_updated": updated,
+                "total_attempted": len(records),
+                "errors": metrics.errors,
+            },
+        )
+    finally:
+        client.close()
