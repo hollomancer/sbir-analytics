@@ -2642,11 +2642,13 @@ def research_companies(
         company_items = company_items[:MAX_COMPANIES_TO_RESEARCH]
     total = len(company_items)
 
-    for idx, (key, info) in enumerate(company_items, 1):
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    def _research_single(item: tuple[str, dict]) -> tuple[str, CompanyResearch | None]:
+        key, info = item
         name = info["name"]
         state = info["state"]
         website = info["website"]
-
         query = (
             f"Find public information about {name}"
             + (f" based in {state}" if state else "")
@@ -2655,11 +2657,25 @@ def research_companies(
             + " What does this company do? How large are they? "
             + "What is their technology focus? Any notable contracts or previous SBIR awards?"
         )
+        return key, _openai_web_search(api_key, query)
 
-        print(f"Researching company {idx}/{total}: {name}...", file=sys.stderr)
-        research = _openai_web_search(api_key, query)
-        if research:
-            results[key] = research
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        futures = {
+            pool.submit(_research_single, item): item
+            for item in company_items
+        }
+        done = 0
+        for future in as_completed(futures):
+            done += 1
+            key_info = futures[future]
+            name = key_info[1]["name"]
+            print(f"Researching company {done}/{total}: {name}...", file=sys.stderr)
+            try:
+                key, research = future.result()
+                if research:
+                    results[key] = research
+            except Exception as e:
+                print(f"Company research error for {name}: {e}", file=sys.stderr)
 
     return results
 
@@ -3233,7 +3249,7 @@ def generate_company_diligence(
     results: dict[str, str] = {}
     total = len(company_items)
 
-    for idx, (key, co_awards) in enumerate(company_items, 1):
+    def _build_and_generate(idx: int, key: str, co_awards: list[dict]) -> tuple[str, str | None]:
         display_name = co_awards[0].get("Company", key)
         state = str(co_awards[0].get("State", ""))
 
@@ -3391,8 +3407,22 @@ def generate_company_diligence(
             api_key, system, user,
             model=OPENAI_DILIGENCE_MODEL, temperature=0.4,
         )
-        if result:
-            results[key] = result
+        return key, result
+
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        futures = {
+            pool.submit(_build_and_generate, idx, key, co_awards): key
+            for idx, (key, co_awards) in enumerate(company_items, 1)
+        }
+        for future in as_completed(futures):
+            try:
+                key, result = future.result()
+                if result:
+                    results[key] = result
+            except Exception as e:
+                print(f"Company diligence error for {futures[future]}: {e}", file=sys.stderr)
 
     return results
 
@@ -3465,7 +3495,7 @@ def generate_pi_diligence(
     results: dict[str, str] = {}
     total = len(pi_items)
 
-    for idx, (key, pi_awards) in enumerate(pi_items, 1):
+    def _build_and_generate_pi(idx: int, key: str, pi_awards: list[dict]) -> tuple[str, str | None]:
         display_name = pi_awards[0].get("PI Name", key)
         company = str(pi_awards[0].get("Company", ""))
 
@@ -3523,8 +3553,22 @@ def generate_pi_diligence(
             api_key, system, user,
             model=OPENAI_DILIGENCE_MODEL, temperature=0.4,
         )
-        if result:
-            results[key] = result
+        return key, result
+
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        futures = {
+            pool.submit(_build_and_generate_pi, idx, key, pi_awards): key
+            for idx, (key, pi_awards) in enumerate(pi_items, 1)
+        }
+        for future in as_completed(futures):
+            try:
+                key, result = future.result()
+                if result:
+                    results[key] = result
+            except Exception as e:
+                print(f"PI diligence error for {futures[future]}: {e}", file=sys.stderr)
 
     return results
 
@@ -3960,23 +4004,48 @@ def main():
     pi_dilig: dict[str, str] | None = None
     api_key = os.environ.get("OPENAI_API_KEY", "")
 
-    # Fetch solicitation topic context from SBIR.gov API (no API key needed)
-    sol_topics = None
-    if awards and not args.skip_sbir_api:
-        sol_topics = fetch_solicitation_topics(awards)
-    elif args.skip_sbir_api:
-        print("Skipping SBIR.gov API calls (--skip-sbir-api)", file=sys.stderr)
+    from concurrent.futures import ThreadPoolExecutor, as_completed
 
-    # Fetch supplementary context only when AI features are enabled —
-    # these feed into LLM prompts and diligence, so skip the network I/O
-    # when --no-ai is set or OPENAI_API_KEY is missing.
+    # --- Stage 1: Parallel API fetches (solicitation topics + USAspending + SAM) ---
+    sol_topics = None
     usa_descs: dict[str, str] | None = None
     usa_recipients: dict[str, USARecipientProfile] | None = None
     sam_data: dict[str, SAMEntityRecord] | None = None
-    if awards and api_key and not args.no_ai:
-        usa_descs = fetch_usaspending_contract_descriptions(awards)
-        usa_recipients = lookup_usaspending_recipients(awards)
-        sam_data = lookup_sam_entities(awards)
+    if awards:
+        fetch_futures: dict[str, any] = {}
+        with ThreadPoolExecutor(max_workers=4) as fetch_pool:
+            if not args.skip_sbir_api:
+                fetch_futures["sol_topics"] = fetch_pool.submit(
+                    fetch_solicitation_topics, awards
+                )
+            elif args.skip_sbir_api:
+                print("Skipping SBIR.gov API calls (--skip-sbir-api)", file=sys.stderr)
+
+            if api_key and not args.no_ai:
+                fetch_futures["usa_descs"] = fetch_pool.submit(
+                    fetch_usaspending_contract_descriptions, awards
+                )
+                fetch_futures["usa_recipients"] = fetch_pool.submit(
+                    lookup_usaspending_recipients, awards
+                )
+                fetch_futures["sam_data"] = fetch_pool.submit(
+                    lookup_sam_entities, awards
+                )
+
+            # Collect results
+            for name, future in fetch_futures.items():
+                try:
+                    result = future.result()
+                    if name == "sol_topics":
+                        sol_topics = result
+                    elif name == "usa_descs":
+                        usa_descs = result
+                    elif name == "usa_recipients":
+                        usa_recipients = result
+                    elif name == "sam_data":
+                        sam_data = result
+                except Exception as e:
+                    print(f"Warning: {name} fetch failed: {e}", file=sys.stderr)
 
     # Local enrichments (no network I/O except congressional district Census fallback)
     inflation_data: dict[str, float] = {}
@@ -3997,6 +4066,7 @@ def main():
         congressional = resolve_congressional_districts(awards)
 
     if api_key and not args.no_ai:
+        # --- Stage 2: Company research (parallelized within) ---
         if not args.no_company_research and not _pipeline_expired():
             company_info = research_companies(api_key, awards)
         if _pipeline_expired():
@@ -4005,18 +4075,32 @@ def main():
                 file=sys.stderr,
             )
         else:
-            synopsis = generate_weekly_synopsis(
-                api_key, awards, args.days, company_info, sol_topics,
-                usa_descs, sam_data,
-            )
-            descriptions = generate_award_descriptions(
-                api_key, awards, company_info, sol_topics,
-                usa_descs, sam_data,
-            )
+            # --- Stage 3: Synopsis + descriptions in parallel ---
+            with ThreadPoolExecutor(max_workers=2) as ai_pool:
+                synopsis_future = ai_pool.submit(
+                    generate_weekly_synopsis,
+                    api_key, awards, args.days, company_info, sol_topics,
+                    usa_descs, sam_data,
+                )
+                desc_future = ai_pool.submit(
+                    generate_award_descriptions,
+                    api_key, awards, company_info, sol_topics,
+                    usa_descs, sam_data,
+                )
+                try:
+                    synopsis = synopsis_future.result()
+                except Exception as e:
+                    print(f"Warning: synopsis generation failed: {e}", file=sys.stderr)
+                try:
+                    descriptions = desc_future.result()
+                except Exception as e:
+                    print(f"Warning: description generation failed: {e}", file=sys.stderr)
 
         if not args.no_diligence and not _pipeline_expired():
             # Reuse the source/extractor/table from fetch_weekly_awards() to
             # avoid re-downloading and re-importing the ~376 MB CSV.
+            # Build history sequentially — both use the same DuckDB connection
+            # which is not thread-safe for concurrent queries.
             print("Building historical context...", file=sys.stderr)
             co_history = get_company_history(
                 awards, shared_source, shared_ext, shared_table
@@ -4028,9 +4112,7 @@ def main():
             # SAM.gov entity data was already fetched above for LLM context;
             # reuse sam_data for diligence.
 
-            # USAspending federal awards per company (SBIR vs non-SBIR)
-            from concurrent.futures import ThreadPoolExecutor, as_completed
-
+            # --- Stage 5: Company federal awards (already parallelized) ---
             print("Looking up company federal awards on USAspending...", file=sys.stderr)
             co_fed: dict[str, PIFederalAwardRecord] = {}
             co_names: dict[str, dict] = {}
@@ -4082,15 +4164,26 @@ def main():
                 print("Looking up PI patents, publications, and ORCID...", file=sys.stderr)
                 pi_ext = lookup_pi_external_data(awards, co_fed)
 
+            # --- Stage 6: Company + PI diligence in parallel ---
             if not _pipeline_expired():
-                co_diligence = generate_company_diligence(
-                    api_key, awards, company_info, co_history, sam_data, co_fed,
-                    usa_recipients, congressional, bea_sectors,
-                )
-            if not _pipeline_expired():
-                pi_dilig = generate_pi_diligence(
-                    api_key, awards, pi_history, company_info, pi_ext
-                )
+                with ThreadPoolExecutor(max_workers=2) as dilig_pool:
+                    co_dilig_future = dilig_pool.submit(
+                        generate_company_diligence,
+                        api_key, awards, company_info, co_history, sam_data, co_fed,
+                        usa_recipients, congressional, bea_sectors,
+                    )
+                    pi_dilig_future = dilig_pool.submit(
+                        generate_pi_diligence,
+                        api_key, awards, pi_history, company_info, pi_ext,
+                    )
+                    try:
+                        co_diligence = co_dilig_future.result()
+                    except Exception as e:
+                        print(f"Warning: company diligence failed: {e}", file=sys.stderr)
+                    try:
+                        pi_dilig = pi_dilig_future.result()
+                    except Exception as e:
+                        print(f"Warning: PI diligence failed: {e}", file=sys.stderr)
 
             if _pipeline_expired():
                 elapsed = int(_time.monotonic() - _pipeline_start)
