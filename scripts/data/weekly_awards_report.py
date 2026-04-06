@@ -216,6 +216,7 @@ SEMANTIC_SCHOLAR_API_URL = "https://api.semanticscholar.org/graph/v1"
 USASPENDING_API_URL = "https://api.usaspending.gov/api/v2"
 SBIR_GOV_API_URL = "https://api.www.sbir.gov/public/api"
 SAM_GOV_API_URL = "https://api.sam.gov/entity-information/v3/entities"
+FPDS_ATOM_SEARCH_URL = "https://www.fpds.gov/ezsearch/LATEST"
 ORCID_API_URL = "https://pub.orcid.org/v3.0"
 
 
@@ -2751,6 +2752,100 @@ def research_companies(
     return results
 
 
+def _fetch_fpds_descriptions(
+    contract_ids: list[str],
+) -> dict[str, str]:
+    """Fetch contract descriptions from FPDS Atom Feed (public, no API key).
+
+    Queries ``https://www.fpds.gov/ezsearch/LATEST`` for each contract ID
+    and extracts the ``<description>`` element from the Atom XML response.
+    Used as a fallback when USAspending is unavailable (503 / 422).
+
+    Only accepts contract PIIDs — assistance FAINs (e.g. DE-*) are not
+    indexed in FPDS and should be filtered out before calling this function.
+    """
+    import time as _t
+    import xml.etree.ElementTree as ET
+
+    results: dict[str, str] = {}
+    if not contract_ids:
+        return results
+
+    _debug(f"FPDS fallback: querying {len(contract_ids)} contract IDs")
+    try:
+        with httpx.Client(timeout=30) as client:
+            for cid in contract_ids:
+                if cid in results:
+                    continue
+                query = f'PIID:"{cid}" OR REF_IDV_PIID:"{cid}"'
+                for attempt in range(3):
+                    try:
+                        resp = client.get(
+                            FPDS_ATOM_SEARCH_URL,
+                            params={"q": query, "s": 0, "num": 1},
+                        )
+                        if resp.status_code in (429, 500, 502, 503, 504):
+                            wait = 2 ** (attempt + 1)
+                            _debug(
+                                f"FPDS [{cid}] returned {resp.status_code}, "
+                                f"retrying in {wait}s"
+                            )
+                            _t.sleep(wait)
+                            continue
+                        if resp.status_code != 200:
+                            _debug(f"FPDS [{cid}] returned {resp.status_code}")
+                            break
+
+                        root = ET.fromstring(resp.text)
+                        # Atom namespace
+                        ns = {"atom": "http://www.w3.org/2005/Atom"}
+                        entry = root.find("atom:entry", ns)
+                        if entry is None:
+                            _debug(f"FPDS [{cid}]: no entry in response")
+                            break
+
+                        # The Atom <content> element contains inner FPDS XML.
+                        # Use namespace-agnostic local-name matching so we
+                        # don't break if the FPDS namespace URI changes.
+                        content_el = entry.find("atom:content", ns)
+                        desc = None
+                        if content_el is not None:
+                            for local_name in [
+                                "descriptionOfContractRequirement",
+                                "description",
+                            ]:
+                                match = content_el.find(
+                                    f".//*[local-name()='{local_name}']"
+                                )
+                                if match is not None and match.text:
+                                    desc = match.text.strip()
+                                    break
+
+                        # Fallback: use Atom <title>
+                        if not desc:
+                            title_el = entry.find("atom:title", ns)
+                            if title_el is not None and title_el.text:
+                                desc = title_el.text.strip()
+
+                        if desc:
+                            if len(desc) > 500:
+                                desc = desc[:500] + "..."
+                            results[cid] = desc
+                            _debug(f"FPDS [{cid}]: found description ({len(desc)} chars)")
+                        else:
+                            _debug(f"FPDS [{cid}]: entry found but no description text")
+                        break
+                    except (httpx.HTTPError, ET.ParseError, UnicodeDecodeError) as e:
+                        wait = 2 ** (attempt + 1)
+                        _debug(f"FPDS [{cid}] error: {e}, retrying in {wait}s")
+                        _t.sleep(wait)
+    except Exception as e:
+        print(f"FPDS fallback error: {e}", file=sys.stderr)
+
+    _debug(f"FPDS fallback: {len(results)}/{len(contract_ids)} descriptions found")
+    return results
+
+
 def fetch_usaspending_contract_descriptions(
     awards: list[dict],
 ) -> dict[str, str]:
@@ -2805,6 +2900,9 @@ def fetch_usaspending_contract_descriptions(
         file=sys.stderr,
     )
     results: dict[str, str] = {}
+    # Track IDs from groups that failed at the API level (503, 422, etc.)
+    # so the FPDS fallback only fires for actual USAspending outages.
+    failed_ids: set[str] = set()
 
     try:
         with httpx.Client(timeout=30) as client:
@@ -2860,6 +2958,7 @@ def fetch_usaspending_contract_descriptions(
                         f"trying next endpoint"
                     )
                 if data is None:
+                    failed_ids.update(ids)
                     continue
                 for r in data.get("results", []):
                     aid = str(r.get("Award ID", "")).strip()
@@ -2869,18 +2968,45 @@ def fetch_usaspending_contract_descriptions(
                             desc = desc[:500] + "..."
                         results[aid] = desc
     except Exception as e:
+        # Total failure — treat all remaining IDs as failed.
+        failed_ids.update(cid for cid in all_ids if cid not in results)
         print(f"USAspending contract desc error: {e}", file=sys.stderr)
+
+    # FPDS Atom Feed fallback for contract PIIDs that failed at USAspending.
+    # FPDS only indexes procurement contracts (PIIDs), not assistance FAINs
+    # (e.g. DE-* DOE awards), so we filter to contract-type IDs only.
+    import re as _re_fallback
+    fpds_eligible = [
+        cid for cid in failed_ids
+        if cid not in results and not _re_fallback.match(r"^DE-", cid, _re_fallback.IGNORECASE)
+    ]
+    if fpds_eligible:
+        _debug(
+            f"USAspending failed for {len(failed_ids)} IDs, "
+            f"{len(fpds_eligible)} eligible for FPDS fallback"
+        )
+        print(
+            f"Falling back to FPDS for {len(fpds_eligible)} missing contract descriptions...",
+            file=sys.stderr,
+        )
+        fpds_results = _fetch_fpds_descriptions(fpds_eligible)
+        if fpds_results:
+            results.update(fpds_results)
+            print(
+                f"FPDS fallback recovered {len(fpds_results)}/{len(fpds_eligible)} descriptions",
+                file=sys.stderr,
+            )
 
     if not results and all_ids:
         print(
-            f"USAspending contract desc: 0 results for {len(all_ids)} award IDs "
-            f"(sample: {all_ids[:3]})",
+            f"Contract descriptions: 0 results for {len(all_ids)} award IDs "
+            f"from USAspending + FPDS (sample: {all_ids[:3]})",
             file=sys.stderr,
         )
 
-    _debug(f"USAspending contract descriptions: {len(results)}/{len(all_ids)} found")
+    _debug(f"Contract descriptions: {len(results)}/{len(all_ids)} found (USAspending + FPDS)")
     print(
-        f"Fetched {len(results)}/{len(all_ids)} contract descriptions from USAspending",
+        f"Fetched {len(results)}/{len(all_ids)} contract descriptions (USAspending + FPDS fallback)",
         file=sys.stderr,
     )
     return results
