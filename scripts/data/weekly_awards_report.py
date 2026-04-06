@@ -134,6 +134,13 @@ try:
 except ImportError:
     _HAS_BEA_MAPPER = False
 
+try:
+    from sbir_etl.enrichers.sync_wrappers import SyncSAMGovClient, SyncUSAspendingClient
+
+    _HAS_SYNC_CLIENTS = True
+except ImportError:
+    _HAS_SYNC_CLIENTS = False
+
 
 # ---------------------------------------------------------------------------
 # Debug mode — toggled by --debug CLI flag
@@ -1225,35 +1232,60 @@ def _usaspending_autocomplete(company_name: str) -> dict[str, str] | None:
     _debug(f"USAspending autocomplete: {len(unique)} name variations for '{company_name}'")
 
     best_candidate = None
-    with httpx.Client(timeout=15) as client:
-        for idx, name in enumerate(unique, 1):
-            try:
-                _usaspending_limiter.wait_if_needed()
-                resp = client.post(
-                    f"{USASPENDING_API_URL}/autocomplete/recipient/",
-                    json={"search_text": name, "limit": 5},
-                )
-                if resp.status_code != 200:
-                    continue
-                results = resp.json().get("results", [])
-                if not results:
-                    continue
 
-                match = results[0]
-                matched_name = match.get("legal_business_name", "")
-                matched_uei = match.get("uei")
-
-                if matched_uei and str(matched_uei).strip().lower() not in ("", "nan", "none"):
-                    _debug(
-                        f"USAspending autocomplete matched '{company_name}' "
-                        f"(variation {idx}: '{name}') → '{matched_name}' UEI={matched_uei}"
+    # Use shared sync client when available (gets rate limiting + retry from
+    # the library); fall back to raw httpx for standalone operation.
+    if _HAS_SYNC_CLIENTS:
+        usa = SyncUSAspendingClient()
+        try:
+            for idx, name in enumerate(unique, 1):
+                try:
+                    data = usa.autocomplete_recipient(name, limit=5)
+                    results = data.get("results", [])
+                    if not results:
+                        continue
+                    match = results[0]
+                    matched_name = match.get("legal_business_name", "")
+                    matched_uei = match.get("uei")
+                    if matched_uei and str(matched_uei).strip().lower() not in ("", "nan", "none"):
+                        _debug(
+                            f"USAspending autocomplete matched '{company_name}' "
+                            f"(variation {idx}: '{name}') → '{matched_name}' UEI={matched_uei}"
+                        )
+                        return {"uei": matched_uei, "name": matched_name}
+                    if matched_name and best_candidate is None:
+                        best_candidate = {"uei": matched_uei, "name": matched_name}
+                except Exception:
+                    continue
+        finally:
+            usa.close()
+    else:
+        with httpx.Client(timeout=15) as client:
+            for idx, name in enumerate(unique, 1):
+                try:
+                    _usaspending_limiter.wait_if_needed()
+                    resp = client.post(
+                        f"{USASPENDING_API_URL}/autocomplete/recipient/",
+                        json={"search_text": name, "limit": 5},
                     )
-                    return {"uei": matched_uei, "name": matched_name}
-
-                if matched_name and best_candidate is None:
-                    best_candidate = {"uei": matched_uei, "name": matched_name}
-            except Exception:
-                continue
+                    if resp.status_code != 200:
+                        continue
+                    results = resp.json().get("results", [])
+                    if not results:
+                        continue
+                    match = results[0]
+                    matched_name = match.get("legal_business_name", "")
+                    matched_uei = match.get("uei")
+                    if matched_uei and str(matched_uei).strip().lower() not in ("", "nan", "none"):
+                        _debug(
+                            f"USAspending autocomplete matched '{company_name}' "
+                            f"(variation {idx}: '{name}') → '{matched_name}' UEI={matched_uei}"
+                        )
+                        return {"uei": matched_uei, "name": matched_name}
+                    if matched_name and best_candidate is None:
+                        best_candidate = {"uei": matched_uei, "name": matched_name}
+                except Exception:
+                    continue
 
     if best_candidate:
         _debug(f"USAspending autocomplete: best candidate for '{company_name}' → '{best_candidate['name']}' (no UEI)")
@@ -1296,37 +1328,60 @@ def _usaspending_search(
     all_results: list[dict] = []
     _debug(
         f"USAspending query for '{company_name}' ({label}='{search_text}'): "
-        f"POST {USASPENDING_API_URL}/search/spending_by_award/"
+        f"POST /search/spending_by_award/"
     )
-    try:
-        with httpx.Client(timeout=30) as client:
+
+    if _HAS_SYNC_CLIENTS:
+        usa = SyncUSAspendingClient()
+        try:
             for group_name, codes in type_groups:
-                _usaspending_limiter.wait_if_needed()
-                payload = {
-                    "filters": {
-                        "award_type_codes": codes,
-                        "recipient_search_text": [search_text],
-                    },
-                    "fields": fields,
-                    "page": 1,
-                    "limit": 50,
-                    "sort": "Award Amount",
-                    "order": "desc",
-                }
-                resp = client.post(
-                    f"{USASPENDING_API_URL}/search/spending_by_award/",
-                    json=payload,
-                )
-                if resp.status_code != 200:
-                    _debug(f"USAspending [{company_name}] {label}/{group_name} returned {resp.status_code}")
+                try:
+                    data = usa.search_awards(
+                        filters={
+                            "award_type_codes": codes,
+                            "recipient_search_text": [search_text],
+                        },
+                        fields=fields,
+                        limit=50,
+                    )
+                    group_results = data.get("results", [])
+                    _debug(f"USAspending [{company_name} via {label}/{group_name}]: {len(group_results)} results")
+                    all_results.extend(group_results)
+                except Exception as e:
+                    _debug(f"USAspending [{company_name}] {label}/{group_name} error: {e}")
                     continue
-                data = resp.json()
-                group_results = data.get("results", [])
-                _debug(f"USAspending [{company_name} via {label}/{group_name}]: {len(group_results)} results")
-                all_results.extend(group_results)
-    except Exception as e:
-        _debug(f"USAspending [{company_name}] {label} error: {e}")
-        return None
+        finally:
+            usa.close()
+    else:
+        try:
+            with httpx.Client(timeout=30) as client:
+                for group_name, codes in type_groups:
+                    _usaspending_limiter.wait_if_needed()
+                    payload = {
+                        "filters": {
+                            "award_type_codes": codes,
+                            "recipient_search_text": [search_text],
+                        },
+                        "fields": fields,
+                        "page": 1,
+                        "limit": 50,
+                        "sort": "Award Amount",
+                        "order": "desc",
+                    }
+                    resp = client.post(
+                        f"{USASPENDING_API_URL}/search/spending_by_award/",
+                        json=payload,
+                    )
+                    if resp.status_code != 200:
+                        _debug(f"USAspending [{company_name}] {label}/{group_name} returned {resp.status_code}")
+                        continue
+                    data = resp.json()
+                    group_results = data.get("results", [])
+                    _debug(f"USAspending [{company_name} via {label}/{group_name}]: {len(group_results)} results")
+                    all_results.extend(group_results)
+        except Exception as e:
+            _debug(f"USAspending [{company_name}] {label} error: {e}")
+            return None
 
     _debug(f"USAspending [{company_name} via {label}]: {len(all_results)} total results")
     return all_results if all_results else None
@@ -1564,51 +1619,85 @@ def lookup_usaspending_recipient(
     search_terms.append(company_name)
 
     recipient_id = None
-    for term in search_terms:
-        _debug(f"USAspending recipient search: keyword='{term}'")
+
+    if _HAS_SYNC_CLIENTS:
+        usa = SyncUSAspendingClient()
+        try:
+            for term in search_terms:
+                _debug(f"USAspending recipient search: keyword='{term}'")
+                try:
+                    results = usa.search_recipients(term, limit=5)
+                    if results:
+                        recipient_id = results[0].get("id")
+                        _debug(
+                            f"USAspending recipient matched '{term}' → "
+                            f"'{results[0].get('name')}' id={recipient_id}"
+                        )
+                        break
+                except Exception as e:
+                    _debug(f"USAspending recipient search error for '{term}': {e}")
+                    continue
+
+            if not recipient_id:
+                _debug(f"USAspending recipient: no match for '{company_name}'")
+                return None
+
+            # Step 2: Fetch the full profile
+            _debug(f"USAspending recipient profile: GET /recipient/{recipient_id}/?year=all")
+            try:
+                profile = usa.get_recipient_profile(recipient_id)
+            except Exception as e:
+                _debug(f"USAspending recipient profile error: {e}")
+                return None
+            if not profile:
+                return None
+        finally:
+            usa.close()
+    else:
+        for term in search_terms:
+            _debug(f"USAspending recipient search: keyword='{term}'")
+            try:
+                _usaspending_limiter.wait_if_needed()
+                with httpx.Client(timeout=15) as client:
+                    resp = client.post(
+                        f"{USASPENDING_API_URL}/recipient/",
+                        json={"keyword": term, "limit": 5},
+                    )
+                    if resp.status_code != 200:
+                        _debug(f"USAspending recipient search returned {resp.status_code}")
+                        continue
+                    data = resp.json()
+                    results = data.get("results", [])
+                    if results:
+                        recipient_id = results[0].get("id")
+                        _debug(
+                            f"USAspending recipient matched '{term}' → "
+                            f"'{results[0].get('name')}' id={recipient_id}"
+                        )
+                        break
+            except Exception as e:
+                _debug(f"USAspending recipient search error for '{term}': {e}")
+                continue
+
+        if not recipient_id:
+            _debug(f"USAspending recipient: no match for '{company_name}'")
+            return None
+
+        _debug(f"USAspending recipient profile: GET /recipient/{recipient_id}/?year=all")
         try:
             _usaspending_limiter.wait_if_needed()
             with httpx.Client(timeout=15) as client:
-                resp = client.post(
-                    f"{USASPENDING_API_URL}/recipient/",
-                    json={"keyword": term, "limit": 5},
+                resp = client.get(
+                    f"{USASPENDING_API_URL}/recipient/{recipient_id}/",
+                    params={"year": "all"},
                 )
                 if resp.status_code != 200:
-                    _debug(f"USAspending recipient search returned {resp.status_code}")
-                    continue
-                data = resp.json()
-                results = data.get("results", [])
-                if results:
-                    recipient_id = results[0].get("id")
-                    _debug(
-                        f"USAspending recipient matched '{term}' → "
-                        f"'{results[0].get('name')}' id={recipient_id}"
-                    )
-                    break
+                    _debug(f"USAspending recipient profile returned {resp.status_code}")
+                    return None
+                profile = resp.json()
         except Exception as e:
-            _debug(f"USAspending recipient search error for '{term}': {e}")
-            continue
-
-    if not recipient_id:
-        _debug(f"USAspending recipient: no match for '{company_name}'")
-        return None
-
-    # Step 2: Fetch the full profile
-    _debug(f"USAspending recipient profile: GET /recipient/{recipient_id}/?year=all")
-    try:
-        _usaspending_limiter.wait_if_needed()
-        with httpx.Client(timeout=15) as client:
-            resp = client.get(
-                f"{USASPENDING_API_URL}/recipient/{recipient_id}/",
-                params={"year": "all"},
-            )
-            if resp.status_code != 200:
-                _debug(f"USAspending recipient profile returned {resp.status_code}")
-                return None
-            profile = resp.json()
-    except Exception as e:
-        _debug(f"USAspending recipient profile error: {e}")
-        return None
+            _debug(f"USAspending recipient profile error: {e}")
+            return None
 
     location = profile.get("location") or {}
 
@@ -1715,57 +1804,87 @@ def lookup_sam_entity(
     if not api_key:
         return None
 
-    headers = {"X-Api-Key": api_key, "Accept": "application/json"}
-
-    def _try_query(params: dict) -> dict | None:
-        _debug(f"SAM.gov query for '{company_name}': GET {SAM_GOV_API_URL} params={params}")
-        import time
-
-        for attempt in range(3):
-            try:
-                _sam_gov_limiter.wait_if_needed()
-                with httpx.Client(timeout=30) as client:
-                    resp = client.get(SAM_GOV_API_URL, headers=headers, params=params)
-                    _debug_response(f"SAM.gov [{company_name}]", resp)
-                    if resp.status_code == 429:
-                        wait = 2 ** (attempt + 1)
-                        _debug(f"SAM.gov [{company_name}]: rate limited, retrying in {wait}s")
-                        time.sleep(wait)
-                        continue
-                    if resp.status_code != 200:
-                        return None
-                    data = resp.json()
-                    results = data.get("entityData", data.get("results", []))
-                    result_count = len(results) if isinstance(results, list) else (1 if results else 0)
-                    _debug(f"SAM.gov [{company_name}]: {result_count} entities in response")
-                    if isinstance(results, list) and results:
-                        return results[0]
-                    if isinstance(results, dict):
-                        return results
-                    return None
-            except Exception as e:
-                if attempt < 2:
-                    wait = 2 ** (attempt + 1)
-                    _debug(f"SAM.gov [{company_name}]: request error ({e}), retrying in {wait}s")
-                    time.sleep(wait)
-                    continue
-                print(f"SAM.gov API error: {e}", file=sys.stderr)
-                return None
-        return None
-
     entity = None
 
-    # Try UEI first (most reliable)
-    if uei:
-        entity = _try_query({"ueiSAM": uei})
+    if _HAS_SYNC_CLIENTS:
+        sam = SyncSAMGovClient()
+        try:
+            # Try UEI first (most reliable)
+            if uei:
+                _debug(f"SAM.gov [{company_name}]: lookup by UEI={uei}")
+                try:
+                    entity = sam.get_entity_by_uei(uei)
+                except Exception as e:
+                    _debug(f"SAM.gov [{company_name}]: UEI lookup error: {e}")
 
-    # Try CAGE code
-    if not entity and cage:
-        entity = _try_query({"cageCode": cage})
+            # Try CAGE code
+            if not entity and cage:
+                _debug(f"SAM.gov [{company_name}]: lookup by CAGE={cage}")
+                try:
+                    entity = sam.get_entity_by_cage(cage)
+                except Exception as e:
+                    _debug(f"SAM.gov [{company_name}]: CAGE lookup error: {e}")
 
-    # Fall back to name search
-    if not entity and company_name:
-        entity = _try_query({"legalBusinessName": company_name, "registrationStatus": "A"})
+            # Fall back to name search
+            if not entity and company_name:
+                _debug(f"SAM.gov [{company_name}]: name search")
+                try:
+                    results = sam.search_entities(legal_business_name=company_name, limit=1)
+                    entity = results[0] if results else None
+                except Exception as e:
+                    _debug(f"SAM.gov [{company_name}]: name search error: {e}")
+        finally:
+            sam.close()
+    else:
+        headers = {"X-Api-Key": api_key, "Accept": "application/json"}
+
+        def _try_query(params: dict) -> dict | None:
+            _debug(f"SAM.gov query for '{company_name}': GET {SAM_GOV_API_URL} params={params}")
+            import time
+
+            for attempt in range(3):
+                try:
+                    _sam_gov_limiter.wait_if_needed()
+                    with httpx.Client(timeout=30) as client:
+                        resp = client.get(SAM_GOV_API_URL, headers=headers, params=params)
+                        _debug_response(f"SAM.gov [{company_name}]", resp)
+                        if resp.status_code == 429:
+                            wait = 2 ** (attempt + 1)
+                            _debug(f"SAM.gov [{company_name}]: rate limited, retrying in {wait}s")
+                            time.sleep(wait)
+                            continue
+                        if resp.status_code != 200:
+                            return None
+                        data = resp.json()
+                        results = data.get("entityData", data.get("results", []))
+                        result_count = len(results) if isinstance(results, list) else (1 if results else 0)
+                        _debug(f"SAM.gov [{company_name}]: {result_count} entities in response")
+                        if isinstance(results, list) and results:
+                            return results[0]
+                        if isinstance(results, dict):
+                            return results
+                        return None
+                except Exception as e:
+                    if attempt < 2:
+                        wait = 2 ** (attempt + 1)
+                        _debug(f"SAM.gov [{company_name}]: request error ({e}), retrying in {wait}s")
+                        time.sleep(wait)
+                        continue
+                    print(f"SAM.gov API error: {e}", file=sys.stderr)
+                    return None
+            return None
+
+        # Try UEI first (most reliable)
+        if uei:
+            entity = _try_query({"ueiSAM": uei})
+
+        # Try CAGE code
+        if not entity and cage:
+            entity = _try_query({"cageCode": cage})
+
+        # Fall back to name search
+        if not entity and company_name:
+            entity = _try_query({"legalBusinessName": company_name, "registrationStatus": "A"})
 
     if not entity:
         # Always log — helps diagnose silent failures in CI
