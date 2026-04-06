@@ -2151,9 +2151,9 @@ class SolicitationTopic:
 def fetch_solicitation_topics(awards: list[dict]) -> dict[str, SolicitationTopic]:
     """Fetch solicitation topic titles and descriptions from SBIR.gov API.
 
-    Uses SolicitationExtractor when available (tenacity retry, pagination).
-    Falls back to hand-rolled queries otherwise.
-    Returns a dict keyed by topic code.
+    Uses SolicitationExtractor when available (tenacity retry, pagination,
+    keyword search, awards fallback). Falls back to hand-rolled queries
+    otherwise.
     """
     # Collect unique topic codes
     topic_codes: dict[str, str] = {}  # topic_code -> solicitation_number
@@ -2170,31 +2170,53 @@ def fetch_solicitation_topics(awards: list[dict]) -> dict[str, SolicitationTopic
     total = len(topic_codes)
     print(f"Fetching {total} solicitation topics from SBIR.gov...", file=sys.stderr)
 
-    # Prefer SolicitationExtractor — handles pagination and retry internally
+    def _parse_year(sol: str) -> int | None:
+        for part in sol.replace("-", " ").replace(".", " ").split():
+            if part.isdigit() and len(part) == 4:
+                return int(part)
+        return None
+
+    def _make_topic(tc: str, sol_num: str, topic: dict) -> SolicitationTopic:
+        desc = topic.get("topicDescription") or topic.get("description")
+        if desc and len(str(desc)) > 3000:
+            desc = str(desc)[:3000] + "..."
+        return SolicitationTopic(
+            topic_code=tc,
+            solicitation_number=(
+                topic.get("solicitationNumber")
+                or topic.get("solicitation_number")
+                or sol_num
+            ),
+            title=topic.get("topicTitle") or topic.get("title") or "",
+            description=str(desc) if desc else None,
+            agency=topic.get("agency"),
+            program=topic.get("program"),
+        )
+
+    # --- Path A: SolicitationExtractor (tenacity retry + all query modes) ---
     if _HAS_SOLICITATION_EXTRACTOR:
-        _debug("Using SolicitationExtractor (tenacity retry + pagination)")
+        _debug("Using SolicitationExtractor")
         try:
             extractor = SolicitationExtractor()
             try:
-                # Extract unique years from solicitation numbers
-                years: set[int] = set()
-                for sol in topic_codes.values():
-                    for part in sol.replace("-", " ").replace(".", " ").split():
-                        if part.isdigit() and len(part) == 4:
-                            years.add(int(part))
-                            break
+                # Group topic codes by year
+                sol_years: dict[int, list[str]] = {}
+                no_year_codes: list[tuple[str, str]] = []
+                for tc, sol in topic_codes.items():
+                    year = _parse_year(sol)
+                    if year:
+                        sol_years.setdefault(year, []).append(tc)
+                    else:
+                        no_year_codes.append((tc, sol))
 
-                # Fetch topics for each year (or all if no years found)
+                # Step 1: Year-based batch queries
                 import pandas as pd
 
                 all_topics = pd.DataFrame()
-                if years:
-                    for year in years:
-                        df = extractor.extract_topics(year=year, max_results=1000)
-                        if not df.empty:
-                            all_topics = pd.concat([all_topics, df], ignore_index=True)
-                else:
-                    all_topics = extractor.extract_topics(max_results=1000)
+                for year in sol_years:
+                    df = extractor.extract_topics(year=year, max_results=1000)
+                    if not df.empty:
+                        all_topics = pd.concat([all_topics, df], ignore_index=True)
 
                 if not all_topics.empty:
                     all_topics = extractor.deduplicate_topics(all_topics)
@@ -2202,261 +2224,146 @@ def fetch_solicitation_topics(awards: list[dict]) -> dict[str, SolicitationTopic
                     for _, row in all_topics.iterrows():
                         tc = str(row.get("topic_code", "")).strip()
                         if tc in codes_set and tc not in results:
-                            desc = row.get("description")
-                            if desc and len(str(desc)) > 3000:
-                                desc = str(desc)[:3000] + "..."
+                            results[tc] = _make_topic(tc, topic_codes.get(tc, ""), row.to_dict())
+
+                # Step 2: Keyword search for no-year codes
+                for tc, sol in no_year_codes:
+                    if tc in results:
+                        continue
+                    keyword = sol if sol else tc
+                    topics = extractor.query_by_keyword(keyword)
+                    for topic in topics:
+                        found_tc = topic.get("topicCode") or topic.get("topic_code") or ""
+                        if found_tc == tc:
+                            results[tc] = _make_topic(tc, sol, topic)
+                            break
+
+                # Step 3: Awards fallback for anything still missing
+                missing = [tc for tc in topic_codes if tc not in results]
+                if missing:
+                    _debug(f"Awards fallback for {len(missing)} missing topic codes")
+                    for tc in missing:
+                        fallback = extractor.query_awards_for_topic(tc)
+                        if fallback:
                             results[tc] = SolicitationTopic(
                                 topic_code=tc,
-                                solicitation_number=str(row.get("solicitation_number", "")) or topic_codes.get(tc, ""),
-                                title=str(row.get("title", "")),
-                                description=str(desc) if desc else None,
-                                agency=str(row.get("agency", "")) or None,
-                                program=str(row.get("program", "")) or None,
+                                solicitation_number=topic_codes.get(tc, ""),
+                                title=fallback.get("title", ""),
+                                description=(
+                                    str(fallback["description"])[:3000] + "..."
+                                    if fallback.get("description") and len(str(fallback["description"])) > 3000
+                                    else fallback.get("description")
+                                ),
+                                agency=fallback.get("agency"),
+                                program=fallback.get("program"),
                             )
-                print(
-                    f"SolicitationExtractor found {len(results)}/{total} topics",
-                    file=sys.stderr,
-                )
-                if len(results) == total:
-                    return results
-                # Fall through for any missing codes
+
+                print(f"SolicitationExtractor found {len(results)}/{total} topics", file=sys.stderr)
             finally:
-                if hasattr(extractor, "close"):
-                    extractor.close()
+                extractor.close()
+            return results
         except Exception as e:
             print(f"SolicitationExtractor error: {e}, falling back to manual queries", file=sys.stderr)
 
-    # Query by solicitation year to reduce result sets.
-    # Group topic codes by their solicitation number prefix to batch queries.
-    sol_years: dict[int, list[str]] = {}
-    # Topic codes with no parseable year — query individually by keyword
-    no_year_codes: list[tuple[str, str]] = []  # (topic_code, solicitation_number)
+    # --- Path B: Inline httpx fallback (standalone mode) ---
+    sol_years_fb: dict[int, list[str]] = {}
+    no_year_codes_fb: list[tuple[str, str]] = []
     for tc, sol in topic_codes.items():
-        # Extract year from solicitation number (e.g. "SBIR-2023.1" -> 2023)
-        year = None
-        for part in sol.replace("-", " ").replace(".", " ").split():
-            if part.isdigit() and len(part) == 4:
-                year = int(part)
-                break
+        year = _parse_year(sol)
         if year:
-            sol_years.setdefault(year, []).append(tc)
+            sol_years_fb.setdefault(year, []).append(tc)
         else:
-            no_year_codes.append((tc, sol))
+            no_year_codes_fb.append((tc, sol))
 
-    # Handle topic codes with no parseable year: query by keyword (topic code
-    # or solicitation number) instead of fetching the entire unfiltered set.
     import time
 
-    for tc, sol in no_year_codes:
+    for tc, sol in no_year_codes_fb:
         keyword = sol if sol else tc
-        params: dict[str, str | int] = {"rows": 25, "start": 0, "keyword": keyword}
-        _debug(f"SBIR.gov solicitations (no year): keyword='{keyword}' for topic {tc}")
         try:
             _sbir_gov_limiter.wait_if_needed()
             with httpx.Client(timeout=30) as client:
-                resp = client.get(f"{SBIR_GOV_API_URL}/solicitations", params=params)
+                resp = client.get(f"{SBIR_GOV_API_URL}/solicitations", params={"rows": 25, "start": 0, "keyword": keyword})
                 if resp.status_code == 429:
                     time.sleep(3)
                     _sbir_gov_limiter.wait_if_needed()
-                    resp = client.get(f"{SBIR_GOV_API_URL}/solicitations", params=params)
-                _debug_response(f"SBIR.gov solicitations [keyword={keyword}]", resp)
+                    resp = client.get(f"{SBIR_GOV_API_URL}/solicitations", params={"rows": 25, "start": 0, "keyword": keyword})
                 if resp.status_code != 200:
                     continue
                 data = resp.json()
-        except Exception as e:
-            _debug(f"SBIR.gov keyword query error for {keyword}: {e}")
+        except Exception:
             continue
-
-        topics = data if isinstance(data, list) else (
-            data.get("results") or data.get("data") or []
-        )
+        topics = data if isinstance(data, list) else (data.get("results") or data.get("data") or [])
         for topic in topics:
             found_tc = topic.get("topicCode") or topic.get("topic_code") or ""
             if found_tc == tc and tc not in results:
-                desc = topic.get("topicDescription") or topic.get("description")
-                if desc and len(desc) > 3000:
-                    desc = desc[:3000] + "..."
-                results[tc] = SolicitationTopic(
-                    topic_code=tc,
-                    solicitation_number=(
-                        topic.get("solicitationNumber")
-                        or topic.get("solicitation_number")
-                        or sol
-                    ),
-                    title=topic.get("topicTitle") or topic.get("title") or "",
-                    description=desc,
-                    agency=topic.get("agency"),
-                    program=topic.get("program"),
-                )
+                results[tc] = _make_topic(tc, sol, topic)
                 break
 
-    for year, codes in sol_years.items():
-        params = {"rows": 500, "start": 0, "year": year}
-
-        _debug(
-            f"SBIR.gov solicitations query: GET {SBIR_GOV_API_URL}/solicitations "
-            f"params={params} (looking for {len(codes)} topic codes)"
-        )
-
-        # Retry with backoff on 429 (rate limit) responses
-        import time
-
+    for year, codes in sol_years_fb.items():
         data = None
         for attempt in range(3):
             try:
                 _sbir_gov_limiter.wait_if_needed()
                 with httpx.Client(timeout=30) as client:
-                    resp = client.get(
-                        f"{SBIR_GOV_API_URL}/solicitations", params=params
-                    )
-                    _debug_response(f"SBIR.gov solicitations [year={year}]", resp)
+                    resp = client.get(f"{SBIR_GOV_API_URL}/solicitations", params={"rows": 500, "start": 0, "year": year})
                     if resp.status_code == 429:
-                        wait = 2 ** (attempt + 1)
-                        print(
-                            f"SBIR.gov rate limited (429) for year={year}, "
-                            f"retrying in {wait}s (attempt {attempt + 1}/3)...",
-                            file=sys.stderr,
-                        )
-                        time.sleep(wait)
+                        time.sleep(2 ** (attempt + 1))
                         continue
                     if resp.status_code != 200:
-                        print(
-                            f"SBIR.gov API returned {resp.status_code} for year={year}",
-                            file=sys.stderr,
-                        )
                         break
                     data = resp.json()
                     break
-            except Exception as e:
-                print(f"SBIR.gov API error for year={year}: {e}", file=sys.stderr)
+            except Exception:
                 break
-
         if data is None:
             continue
-
-        topics = data if isinstance(data, list) else (
-            data.get("results") or data.get("data") or []
-        )
-        _debug(f"SBIR.gov solicitations [year={year}]: {len(topics)} topics in response")
-
+        topics = data if isinstance(data, list) else (data.get("results") or data.get("data") or [])
         codes_set = set(codes)
         for topic in topics:
             tc = topic.get("topicCode") or topic.get("topic_code") or ""
             if tc in codes_set and tc not in results:
-                desc = topic.get("topicDescription") or topic.get("description")
-                # Truncate very long descriptions for LLM context
-                if desc and len(desc) > 3000:
-                    desc = desc[:3000] + "..."
-                results[tc] = SolicitationTopic(
-                    topic_code=tc,
-                    solicitation_number=(
-                        topic.get("solicitationNumber")
-                        or topic.get("solicitation_number")
-                        or topic_codes.get(tc, "")
-                    ),
-                    title=topic.get("topicTitle") or topic.get("title") or "",
-                    description=desc,
-                    agency=topic.get("agency"),
-                    program=topic.get("program"),
-                )
+                results[tc] = _make_topic(tc, topic_codes.get(tc, ""), topic)
 
     found = len(results)
-    print(
-        f"Fetched {found}/{total} solicitation topics from SBIR.gov",
-        file=sys.stderr,
-    )
+    print(f"Fetched {found}/{total} solicitation topics from SBIR.gov", file=sys.stderr)
 
-    # --- Fallback: query the awards endpoint for any missing topic codes ---
+    # Awards fallback for missing codes
     missing_codes = [tc for tc in topic_codes if tc not in results]
     if missing_codes:
-        _debug(
-            f"Solicitation topic fallback: {len(missing_codes)} codes not found "
-            f"via /solicitations — trying /awards endpoint: {missing_codes}"
-        )
-        print(
-            f"Falling back to SBIR.gov awards API for {len(missing_codes)} "
-            f"missing topic codes...",
-            file=sys.stderr,
-        )
-        # Brief pause before hitting the same API — respect rate limits
+        print(f"Falling back to SBIR.gov awards API for {len(missing_codes)} missing topic codes...", file=sys.stderr)
         time.sleep(2)
         for tc in missing_codes:
             try:
                 _sbir_gov_limiter.wait_if_needed()
                 with httpx.Client(timeout=30) as client:
-                    resp = client.get(
-                        f"{SBIR_GOV_API_URL}/awards",
-                        params={"keyword": tc, "rows": 5, "start": 0},
-                    )
-                    _debug_response(f"SBIR.gov awards fallback [{tc}]", resp)
+                    resp = client.get(f"{SBIR_GOV_API_URL}/awards", params={"keyword": tc, "rows": 5, "start": 0})
                     if resp.status_code == 429:
-                        _debug(f"SBIR.gov awards fallback [{tc}]: rate limited, sleeping 3s")
                         time.sleep(3)
-                        # One retry after backoff
-                        resp = client.get(
-                            f"{SBIR_GOV_API_URL}/awards",
-                            params={"keyword": tc, "rows": 5, "start": 0},
-                        )
+                        resp = client.get(f"{SBIR_GOV_API_URL}/awards", params={"keyword": tc, "rows": 5, "start": 0})
                         if resp.status_code != 200:
                             continue
                     elif resp.status_code != 200:
                         continue
                     data = resp.json()
-            except Exception as e:
-                _debug(f"SBIR.gov awards fallback error for {tc}: {e}")
+            except Exception:
                 continue
-
-            award_list = data if isinstance(data, list) else (
-                data.get("results") or data.get("data") or []
-            )
-            _debug(f"SBIR.gov awards fallback [{tc}]: {len(award_list)} awards returned")
-
-            # Look for a matching award that has topic description info
+            award_list = data if isinstance(data, list) else (data.get("results") or data.get("data") or [])
             for award in award_list:
-                award_tc = (
-                    award.get("topicCode")
-                    or award.get("topic_code")
-                    or ""
-                )
+                award_tc = award.get("topicCode") or award.get("topic_code") or ""
                 if award_tc != tc:
                     continue
-                title = (
-                    award.get("topicTitle")
-                    or award.get("topic_title")
-                    or award.get("awardTitle")
-                    or award.get("award_title")
-                    or ""
-                )
-                desc = (
-                    award.get("topicDescription")
-                    or award.get("topic_description")
-                    or award.get("abstract")
-                    or award.get("Abstract")
-                    or None
-                )
+                title = award.get("topicTitle") or award.get("topic_title") or award.get("awardTitle") or award.get("award_title") or ""
+                desc = award.get("topicDescription") or award.get("topic_description") or award.get("abstract") or award.get("Abstract") or None
                 if desc and len(desc) > 3000:
                     desc = desc[:3000] + "..."
                 if title or desc:
                     results[tc] = SolicitationTopic(
-                        topic_code=tc,
-                        solicitation_number=topic_codes.get(tc, ""),
-                        title=title,
-                        description=desc,
-                        agency=award.get("agency"),
-                        program=award.get("program"),
-                    )
-                    _debug(
-                        f"Solicitation fallback matched [{tc}]: "
-                        f"title='{title[:80]}' desc_len={len(desc) if desc else 0}"
+                        topic_code=tc, solicitation_number=topic_codes.get(tc, ""),
+                        title=title, description=desc, agency=award.get("agency"), program=award.get("program"),
                     )
                     break
-
         fallback_found = len(results) - found
-        print(
-            f"Fallback recovered {fallback_found}/{len(missing_codes)} "
-            f"topic descriptions from awards API",
-            file=sys.stderr,
-        )
+        print(f"Fallback recovered {fallback_found}/{len(missing_codes)} topic descriptions from awards API", file=sys.stderr)
 
     return results
 
