@@ -11,6 +11,16 @@ on:
         required: false
         default: "7"
         type: string
+      skip_sbir_api:
+        description: "Skip SBIR.gov API calls (set to true when API is down)"
+        required: false
+        default: "true"
+        type: boolean
+      debug:
+        description: "Enable verbose debug output"
+        required: false
+        default: "false"
+        type: boolean
 
 permissions:
   contents: read
@@ -40,10 +50,16 @@ jobs:
           USPTO_ODP_API_KEY: ${{ secrets.USPTO_ODP_API_KEY }}
           SAM_GOV_API_KEY: ${{ secrets.SAM_GOV_API_KEY }}
           S3_BUCKET: ${{ secrets.S3_BUCKET || '' }}
+          SKIP_SBIR_API: ${{ github.event.inputs.skip_sbir_api || 'true' }}
         run: |
           mkdir -p reports
+          DEBUG_FLAG=""
+          if [ "${{ github.event.inputs.debug }}" = "true" ]; then
+            DEBUG_FLAG="--debug"
+          fi
           uv run --frozen python scripts/data/weekly_awards_report.py \
             --days "$DAYS" \
+            $DEBUG_FLAG \
             --output reports/weekly-awards.md
 
       - name: Post report to job summary

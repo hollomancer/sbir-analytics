@@ -19,6 +19,7 @@ When OPENAI_API_KEY is set, uses the OpenAI API to:
 Usage:
     python scripts/data/weekly_awards_report.py
     python scripts/data/weekly_awards_report.py --days 14 --output report.md
+    python scripts/data/weekly_awards_report.py --debug
     OPENAI_API_KEY=sk-... python scripts/data/weekly_awards_report.py
 """
 
@@ -87,9 +88,62 @@ except ImportError:
             s = _re.sub(r"\b(limited|ltd)\b", "ltd", s)
         return _re.sub(r"\s+", " ", s).strip()
 
+# ---------------------------------------------------------------------------
+# Debug mode — toggled by --debug CLI flag
+# ---------------------------------------------------------------------------
+
+DEBUG = False
+
+# Wall-clock budget per pipeline stage (seconds). Stages that exceed their
+# budget skip remaining items and return partial results. Override via env var.
+STAGE_TIMEOUT = int(os.environ.get("STAGE_TIMEOUT", "60"))
+
+# Pipeline start time — set in main()
+_pipeline_start: float = 0.0
+
+
+def _stage_deadline(budget_seconds: int | None = None) -> float:
+    """Return a monotonic deadline for the current pipeline stage."""
+    import time
+    return time.monotonic() + (budget_seconds or STAGE_TIMEOUT)
+
+
+def _past_deadline(deadline: float) -> bool:
+    """Check if we've exceeded the stage deadline."""
+    import time
+    return time.monotonic() > deadline
+
+
+def _debug(msg: str) -> None:
+    """Print a debug message to stderr when DEBUG mode is active."""
+    if DEBUG:
+        print(f"[DEBUG] {msg}", file=sys.stderr)
+
+
+def _debug_response(label: str, resp: httpx.Response, body_preview_len: int = 500) -> None:
+    """Log key details of an HTTP response in debug mode."""
+    if not DEBUG:
+        return
+    # Use resp.content (bytes) to avoid decoding the full body into a string.
+    # Only decode the sliced prefix for the preview.
+    raw = resp.content
+    encoding = resp.encoding or "utf-8"
+    preview = raw[:body_preview_len].decode(encoding, errors="replace")
+    # Collapse newlines/control chars so the log stays on one line.
+    preview = preview.replace("\r", "").replace("\n", " ").replace("\t", " ")
+    if len(raw) > body_preview_len:
+        preview += "..."
+    _debug(
+        f"{label} — HTTP {resp.status_code} | "
+        f"{len(raw)} bytes | preview: {preview}"
+    )
+
+
 # URL templates for external links
-SBIR_AWARD_SEARCH_URL = "https://www.sbir.gov/sbirsearch/award/all"
-SBIR_SOLICITATION_URL = "https://www.sbir.gov/sbirsearch/topic/default"
+# SBIR.gov redesigned in 2025 — old /sbirsearch/ paths return 404.
+# New site uses /awards?keyword= for search-based links.
+SBIR_AWARD_SEARCH_URL = "https://www.sbir.gov/awards"
+SBIR_SOLICITATION_URL = "https://www.sbir.gov/awards"
 USASPENDING_SEARCH_URL = "https://www.usaspending.gov/search"
 
 OPENAI_CHAT_URL = "https://api.openai.com/v1/chat/completions"
@@ -219,17 +273,24 @@ def _check_data_freshness(
     return warnings
 
 
-def fetch_weekly_awards(days: int = 7) -> tuple[list[dict], list[str]]:
+def fetch_weekly_awards(
+    days: int = 7,
+) -> tuple[list[dict], list[str], DataSource, object | None, str | None]:
     """Load SBIR CSV and filter for awards in the past N days.
 
     When sbir_etl is installed, uses SbirDuckDBExtractor for fast
     columnar import and SQL-based date filtering.  Otherwise falls back
     to csv.DictReader with Python-level filtering.
 
-    Returns (awards, freshness_warnings).
+    Returns (awards, freshness_warnings, source, extractor_or_None, table_or_None).
+    The source/extractor/table can be reused for historical queries to avoid
+    re-downloading and re-importing the ~376 MB CSV.
     """
     source = _resolve_csv_path()
     cutoff_str = (datetime.now(UTC) - timedelta(days=days)).strftime("%Y-%m-%d")
+
+    extractor = None
+    table = None
 
     if _HAS_SBIR_ETL and SbirDuckDBExtractor is not None:
         # Fast path: DuckDB columnar import + SQL filtering
@@ -298,7 +359,7 @@ def fetch_weekly_awards(days: int = 7) -> tuple[list[dict], list[str]]:
     for w in freshness_warnings:
         print(f"WARNING: {w}", file=sys.stderr)
 
-    return awards, freshness_warnings
+    return awards, freshness_warnings, source, extractor, table
 
 
 # ---------------------------------------------------------------------------
@@ -347,7 +408,8 @@ def clean_and_dedup_awards(awards: list[dict]) -> tuple[list[dict], dict]:
             row = pd.Series(a)
             issues = _validate_record(row, i)
             errors = [
-                iss for iss in issues if iss.severity.value == "error"
+                iss for iss in issues
+                if (iss.severity.value if hasattr(iss.severity, "value") else iss.severity) == "error"
             ]
             if errors:
                 stats["validation_errors"] += 1
@@ -425,6 +487,17 @@ def _resolve_shared_extractor(
     return source, extractor, table
 
 
+def _pluralize_col_key(col: str) -> str:
+    """Convert a column name to a pluralized dict key.
+
+    'Company' -> 'companies', 'Phase' -> 'phases', etc.
+    """
+    key = col.lower().replace(" ", "_")
+    if key.endswith("y"):
+        return key[:-1] + "ies"
+    return key + "s"
+
+
 def _build_history_from_df(
     df,
     group_col: str,
@@ -479,7 +552,7 @@ def _build_history_from_df(
         # Extra set columns (e.g. "Company" for PI history)
         if extra_set_cols:
             for col in extra_set_cols:
-                col_key = col.lower().replace(" ", "_") + "s"
+                col_key = _pluralize_col_key(col)
                 entry[col_key] = sorted(
                     {v for v in group_df[col].astype(str).str.strip() if v}
                 )
@@ -520,7 +593,7 @@ def _build_history_from_csv(
                 }
                 if extra_set_fields:
                     for ef in extra_set_fields:
-                        entry[ef.lower().replace(" ", "_") + "s"] = set()
+                        entry[_pluralize_col_key(ef)] = set()
                 history[name] = entry
 
             h = history[name]
@@ -533,7 +606,7 @@ def _build_history_from_csv(
                 for ef in extra_set_fields:
                     val = str(row.get(ef, "")).strip()
                     if val:
-                        h[ef.lower().replace(" ", "_") + "s"].add(val)
+                        h[_pluralize_col_key(ef)].add(val)
             try:
                 h["total_funding"] += float(
                     str(row.get("Award Amount", "0")).replace(",", "").replace("$", "")
@@ -758,9 +831,11 @@ def lookup_pi_patents(pi_name: str, company_name: str | None = None) -> PIPatent
         "limit": 100,
     }
 
+    _debug(f"USPTO ODP query for '{pi_name}': GET {USPTO_ODP_PATENT_SEARCH_URL} params={params}")
     try:
         with httpx.Client(timeout=30) as client:
             resp = client.get(USPTO_ODP_PATENT_SEARCH_URL, headers=headers, params=params)
+            _debug_response(f"USPTO ODP [{pi_name}]", resp)
             if resp.status_code != 200:
                 print(
                     f"USPTO ODP API returned {resp.status_code} for {pi_name}",
@@ -773,6 +848,7 @@ def lookup_pi_patents(pi_name: str, company_name: str | None = None) -> PIPatent
         return None
 
     records = data.get("patentFileWrapperDataBag", [])
+    _debug(f"USPTO ODP [{pi_name}]: {len(records)} patent records returned")
     if not records:
         return None
 
@@ -822,52 +898,93 @@ def lookup_pi_publications(pi_name: str) -> PIPublicationRecord | None:
 
     search_query = f"{first} {last}".strip()
 
+    # Optional API key for higher rate limits (free at semanticscholar.org/product/api)
+    s2_api_key = os.environ.get("SEMANTIC_SCHOLAR_API_KEY", "")
+    headers: dict[str, str] = {}
+    if s2_api_key:
+        headers["x-api-key"] = s2_api_key
+
+    _debug(f"Semantic Scholar search for '{pi_name}': query='{search_query}' (api_key={'yes' if s2_api_key else 'no'})")
+    import time
+
     try:
-        # Step 1: Search for the author
-        with httpx.Client(timeout=30) as client:
-            resp = client.get(
-                f"{SEMANTIC_SCHOLAR_API_URL}/author/search",
-                params={"query": search_query, "limit": 5},
-            )
-            if resp.status_code != 200:
-                print(
-                    f"Semantic Scholar search returned {resp.status_code} for {pi_name}",
-                    file=sys.stderr,
+        # Step 1: Search for the author (with retry on 429)
+        search_data = None
+        with httpx.Client(timeout=30, headers=headers) as client:
+            for attempt in range(3):
+                resp = client.get(
+                    f"{SEMANTIC_SCHOLAR_API_URL}/author/search",
+                    params={"query": search_query, "limit": 5},
                 )
-                return None
-            search_data = resp.json()
+                _debug_response(f"Semantic Scholar search [{pi_name}]", resp)
+                if resp.status_code == 429:
+                    wait = 2 ** (attempt + 1)
+                    _debug(f"Semantic Scholar [{pi_name}]: rate limited, retrying in {wait}s")
+                    time.sleep(wait)
+                    continue
+                if resp.status_code != 200:
+                    print(
+                        f"Semantic Scholar search returned {resp.status_code} for {pi_name}",
+                        file=sys.stderr,
+                    )
+                    return None
+                search_data = resp.json()
+                break
+
+        if search_data is None:
+            print(f"Semantic Scholar rate limited after 3 retries for {pi_name}", file=sys.stderr)
+            return None
 
         authors = search_data.get("data", [])
+        _debug(f"Semantic Scholar [{pi_name}]: {len(authors)} author matches")
         if not authors:
             return None
 
         # Pick the best match (first result from Semantic Scholar's ranking)
         author = authors[0]
         author_id = author.get("authorId")
+        _debug(f"Semantic Scholar [{pi_name}]: selected authorId={author_id}, name={author.get('name', 'N/A')}")
         if not author_id:
             return None
 
-        # Step 2: Get author details with papers
-        with httpx.Client(timeout=30) as client:
-            resp = client.get(
-                f"{SEMANTIC_SCHOLAR_API_URL}/author/{author_id}",
-                params={
-                    "fields": "name,hIndex,citationCount,affiliations,papers.title,papers.year",
-                },
-            )
-            if resp.status_code != 200:
-                print(
-                    f"Semantic Scholar author detail returned {resp.status_code} for {pi_name}",
-                    file=sys.stderr,
+        # Step 2: Get author details with papers (with retry on 429)
+        author_data = None
+        with httpx.Client(timeout=30, headers=headers) as client:
+            for attempt in range(3):
+                resp = client.get(
+                    f"{SEMANTIC_SCHOLAR_API_URL}/author/{author_id}",
+                    params={
+                        "fields": "name,hIndex,citationCount,affiliations,papers.title,papers.year",
+                    },
                 )
-                return None
-            author_data = resp.json()
+                _debug_response(f"Semantic Scholar detail [{pi_name}]", resp)
+                if resp.status_code == 429:
+                    wait = 2 ** (attempt + 1)
+                    _debug(f"Semantic Scholar detail [{pi_name}]: rate limited, retrying in {wait}s")
+                    time.sleep(wait)
+                    continue
+                if resp.status_code != 200:
+                    print(
+                        f"Semantic Scholar author detail returned {resp.status_code} for {pi_name}",
+                        file=sys.stderr,
+                    )
+                    return None
+                author_data = resp.json()
+                break
+
+        if author_data is None:
+            print(f"Semantic Scholar detail rate limited after 3 retries for {pi_name}", file=sys.stderr)
+            return None
 
     except Exception as e:
         print(f"Semantic Scholar API error for {pi_name}: {e}", file=sys.stderr)
         return None
 
     papers = author_data.get("papers", [])
+    _debug(
+        f"Semantic Scholar [{pi_name}]: {len(papers)} papers, "
+        f"h-index={author_data.get('hIndex')}, citations={author_data.get('citationCount')}"
+    )
     sample_titles = [
         p["title"] for p in papers[:5] if p.get("title")
     ]
@@ -911,12 +1028,186 @@ def _is_sbir_award_type(description: str, cfda: str) -> bool:
     return False
 
 
+def _usaspending_autocomplete(company_name: str) -> dict[str, str] | None:
+    """Use USAspending recipient autocomplete for fuzzy company name matching.
+
+    Generates name variations (abbreviation expansion, punctuation normalization,
+    suffix removal) and tries each against the autocomplete endpoint until a match
+    with a UEI or resolved name is found.
+
+    Based on sbir_etl.enrichers.company_categorization._fuzzy_match_recipient
+    but uses synchronous httpx to avoid async dependencies.
+    """
+    import re as _re
+
+    if not company_name or not company_name.strip():
+        return None
+
+    # Generate name variations, ordered most-to-least specific
+    abbreviations = {
+        r"\bIntl\.?\b": "International",
+        r"\bInt'l\.?\b": "International",
+        r"\bInc\.?\b": "Incorporated",
+        r"\bCorp\.?\b": "Corporation",
+        r"\bLtd\.?\b": "Limited",
+        r"\bLLC\.?\b": "Limited Liability Company",
+        r"\bTech\.?\b": "Technology",
+        r"\bMfg\.?\b": "Manufacturing",
+        r"\bSvcs\.?\b": "Services",
+        r"\bDev\.?\b": "Development",
+    }
+
+    variations: list[str] = [company_name.strip()]
+
+    # Expand abbreviations
+    expanded = company_name
+    for pattern, replacement in abbreviations.items():
+        expanded = _re.sub(pattern, replacement, expanded, flags=_re.IGNORECASE)
+    if expanded != company_name:
+        variations.append(expanded.strip())
+
+    # Normalize punctuation
+    normalized = expanded.replace("/", " AND ").replace("&", " AND ")
+    normalized = _re.sub(r"\s+", " ", normalized).strip()
+    if normalized not in variations:
+        variations.append(normalized)
+
+    # Remove legal suffixes for broadest match
+    base = _re.sub(
+        r",?\s*(Inc\.?|Incorporated|LLC|Ltd\.?|Limited|Corp\.?|Corporation|Company|Co\.?)$",
+        "", normalized, flags=_re.IGNORECASE,
+    ).strip().rstrip(",").strip()
+    if base and base not in variations and len(base) >= 10:
+        variations.append(base)
+
+    # Add uppercase versions (USAspending often stores uppercase)
+    upper_vars = [v.upper() for v in variations[:2] if v.upper() != v]
+    variations = variations[:2] + upper_vars + variations[2:]
+
+    # Deduplicate preserving order
+    seen: set[str] = set()
+    unique: list[str] = []
+    for v in variations:
+        key = v.lower()
+        if key not in seen and len(v) >= 5:
+            seen.add(key)
+            unique.append(v)
+
+    _debug(f"USAspending autocomplete: {len(unique)} name variations for '{company_name}'")
+
+    best_candidate = None
+    with httpx.Client(timeout=15) as client:
+        for idx, name in enumerate(unique, 1):
+            try:
+                resp = client.post(
+                    f"{USASPENDING_API_URL}/autocomplete/recipient/",
+                    json={"search_text": name, "limit": 5},
+                )
+                if resp.status_code != 200:
+                    continue
+                results = resp.json().get("results", [])
+                if not results:
+                    continue
+
+                match = results[0]
+                matched_name = match.get("legal_business_name", "")
+                matched_uei = match.get("uei")
+
+                if matched_uei and str(matched_uei).strip().lower() not in ("", "nan", "none"):
+                    _debug(
+                        f"USAspending autocomplete matched '{company_name}' "
+                        f"(variation {idx}: '{name}') → '{matched_name}' UEI={matched_uei}"
+                    )
+                    return {"uei": matched_uei, "name": matched_name}
+
+                if matched_name and best_candidate is None:
+                    best_candidate = {"uei": matched_uei, "name": matched_name}
+            except Exception:
+                continue
+
+    if best_candidate:
+        _debug(f"USAspending autocomplete: best candidate for '{company_name}' → '{best_candidate['name']}' (no UEI)")
+        return best_candidate
+
+    _debug(f"USAspending autocomplete: no match for '{company_name}' after {len(unique)} variations")
+    return None
+
+
+def _usaspending_search(
+    company_name: str,
+    search_text: str,
+    label: str,
+) -> list[dict] | None:
+    """Execute USAspending spending_by_award searches for a company.
+
+    Makes separate requests for contracts and grants/other (USAspending
+    requires award_type_codes from a single group per request), then
+    merges the results.
+
+    Returns the combined results list on success, or None on error.
+    """
+    fields = [
+        "Award ID",
+        "Recipient Name",
+        "Award Amount",
+        "Awarding Agency",
+        "Award Type",
+        "Start Date",
+        "Description",
+        "CFDA Number",
+    ]
+    # USAspending requires award_type_codes from one group only:
+    # contracts (A-D) and assistance (02-11) must be separate requests.
+    type_groups = [
+        ("contracts", ["A", "B", "C", "D"]),
+        ("assistance", ["02", "03", "04", "05", "06", "07", "08", "09", "10", "11"]),
+    ]
+
+    all_results: list[dict] = []
+    _debug(
+        f"USAspending query for '{company_name}' ({label}='{search_text}'): "
+        f"POST {USASPENDING_API_URL}/search/spending_by_award/"
+    )
+    try:
+        with httpx.Client(timeout=30) as client:
+            for group_name, codes in type_groups:
+                payload = {
+                    "filters": {
+                        "award_type_codes": codes,
+                        "recipient_search_text": [search_text],
+                    },
+                    "fields": fields,
+                    "page": 1,
+                    "limit": 50,
+                    "sort": "Award Amount",
+                    "order": "desc",
+                }
+                resp = client.post(
+                    f"{USASPENDING_API_URL}/search/spending_by_award/",
+                    json=payload,
+                )
+                if resp.status_code != 200:
+                    _debug(f"USAspending [{company_name}] {label}/{group_name} returned {resp.status_code}")
+                    continue
+                data = resp.json()
+                group_results = data.get("results", [])
+                _debug(f"USAspending [{company_name} via {label}/{group_name}]: {len(group_results)} results")
+                all_results.extend(group_results)
+    except Exception as e:
+        _debug(f"USAspending [{company_name}] {label} error: {e}")
+        return None
+
+    _debug(f"USAspending [{company_name} via {label}]: {len(all_results)} total results")
+    return all_results if all_results else None
+
+
 def lookup_company_federal_awards(
     company_name: str,
     uei: str | None = None,
 ) -> PIFederalAwardRecord | None:
     """Query USAspending for all federal awards to the PI's company.
 
+    Tries UEI first (most reliable), then falls back to company name search.
     Separates SBIR/STTR awards from non-SBIR federal work. Non-SBIR
     contracts and grants to a company with SBIR history are the strongest
     signal of successful commercialization / Phase III transition.
@@ -924,49 +1215,19 @@ def lookup_company_federal_awards(
     if not company_name:
         return None
 
-    # Build filter — prefer UEI if available
-    filters: dict = {}
+    # Cascading lookup: UEI → exact name → fuzzy autocomplete match
+    results = None
     if uei:
-        filters["recipient_id"] = uei
-    else:
-        filters["recipient_search_text"] = [company_name]
-
-    payload = {
-        "filters": filters,
-        "fields": [
-            "Award ID",
-            "Recipient Name",
-            "Award Amount",
-            "Awarding Agency",
-            "Award Type",
-            "Start Date",
-            "Description",
-            "CFDA Number",
-        ],
-        "page": 1,
-        "limit": 100,
-        "sort": "Award Amount",
-        "order": "desc",
-    }
-
-    try:
-        with httpx.Client(timeout=30) as client:
-            resp = client.post(
-                f"{USASPENDING_API_URL}/search/spending_by_award/",
-                json=payload,
-            )
-            if resp.status_code != 200:
-                print(
-                    f"USAspending API returned {resp.status_code} for {company_name}",
-                    file=sys.stderr,
-                )
-                return None
-            data = resp.json()
-    except Exception as e:
-        print(f"USAspending API error for {company_name}: {e}", file=sys.stderr)
-        return None
-
-    results = data.get("results", [])
+        results = _usaspending_search(company_name, uei, "UEI")
+    if not results:
+        results = _usaspending_search(company_name, company_name, "name")
+    if not results:
+        # Fuzzy match: try USAspending autocomplete with name variations
+        match = _usaspending_autocomplete(company_name)
+        if match:
+            search_key = match["uei"] if match.get("uei") else match["name"]
+            label = "autocomplete-UEI" if match.get("uei") else "autocomplete-name"
+            results = _usaspending_search(company_name, search_key, label)
     if not results:
         return None
 
@@ -1035,8 +1296,12 @@ def lookup_company_federal_awards(
 
 def lookup_pi_external_data(
     awards: list[dict],
+    company_federal_awards: dict[str, PIFederalAwardRecord] | None = None,
 ) -> dict[str, dict]:
     """Look up external data (patents, publications, ORCID, federal awards) for each PI.
+
+    If company_federal_awards is provided, reuses those results instead of
+    re-querying USAspending for each PI's company.
 
     Returns a dict keyed by upper-cased PI name, with sub-keys:
     - "patents": PIPatentRecord | None
@@ -1056,33 +1321,227 @@ def lookup_pi_external_data(
                 "name": pi,
                 "company": str(a.get("Company", "")).strip(),
                 "uei": str(a.get("Company UEI", a.get("UEI", ""))).strip(),
+                "company_key": _company_key(a),
             }
 
     results: dict[str, dict] = {}
     total = len(pis)
 
-    for idx, (key, info) in enumerate(pis.items(), 1):
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    def _lookup_single_pi(key: str, info: dict) -> tuple[str, dict]:
         name = info["name"]
         company = info["company"]
         uei = info["uei"] or None
 
-        print(
-            f"Looking up external data for PI {idx}/{total}: {name}...",
-            file=sys.stderr,
-        )
+        # Run the 3 independent API calls concurrently per PI
+        with ThreadPoolExecutor(max_workers=3) as inner:
+            patent_future = inner.submit(lookup_pi_patents, name, company)
+            pub_future = inner.submit(lookup_pi_publications, name)
+            orcid_future = inner.submit(lookup_pi_orcid, name)
 
-        patents = lookup_pi_patents(name, company)
-        publications = lookup_pi_publications(name)
-        orcid = lookup_pi_orcid(name)
-        federal_awards = lookup_company_federal_awards(company, uei)
+            patents = patent_future.result()
+            publications = pub_future.result()
+            orcid_rec = orcid_future.result()
 
-        results[key] = {
+        # Reuse company federal awards if already fetched, else query fresh
+        fed = None
+        if company_federal_awards is not None:
+            fed = company_federal_awards.get(info["company_key"])
+        if fed is None and company_federal_awards is None:
+            fed = lookup_company_federal_awards(company, uei)
+
+        return key, {
             "patents": patents,
             "publications": publications,
-            "orcid": orcid,
-            "federal_awards": federal_awards,
+            "orcid": orcid_rec,
+            "federal_awards": fed,
         }
 
+    # Process PIs concurrently (capped at 4 to respect API rate limits)
+    deadline = _stage_deadline()
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        futures = {
+            executor.submit(_lookup_single_pi, key, info): (key, info)
+            for key, info in pis.items()
+        }
+        done = 0
+        for future in as_completed(futures):
+            if _past_deadline(deadline):
+                print(
+                    f"PI external data stage timeout ({STAGE_TIMEOUT}s) — "
+                    f"completed {done}/{total}, skipping remainder",
+                    file=sys.stderr,
+                )
+                executor.shutdown(wait=False, cancel_futures=True)
+                break
+            done += 1
+            key, info = futures[future]
+            try:
+                pi_key, pi_data = future.result(timeout=10)
+                results[pi_key] = pi_data
+                print(
+                    f"Completed PI external data {done}/{total}: {info['name']}",
+                    file=sys.stderr,
+                )
+            except Exception as e:
+                print(
+                    f"PI external data error for {info['name']}: {e}",
+                    file=sys.stderr,
+                )
+
+    return results
+
+
+# ---------------------------------------------------------------------------
+# USAspending recipient profile (company context)
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class USARecipientProfile:
+    """Key data from a USAspending recipient profile."""
+
+    recipient_id: str
+    name: str
+    uei: str | None
+    parent_name: str | None
+    parent_uei: str | None
+    location_state: str | None
+    location_congressional_district: str | None
+    business_types: list[str]
+    total_transaction_amount: float
+    total_transactions: int
+
+
+def lookup_usaspending_recipient(
+    company_name: str,
+    uei: str | None = None,
+) -> USARecipientProfile | None:
+    """Look up a company's USAspending recipient profile.
+
+    Two-step: POST /recipient/ to find the hash ID, then GET /recipient/{id}/
+    for the full profile. Tries UEI first, then company name.
+    """
+    if not company_name:
+        return None
+
+    # Step 1: Find the recipient hash ID
+    search_terms = []
+    if uei:
+        search_terms.append(uei)
+    search_terms.append(company_name)
+
+    recipient_id = None
+    for term in search_terms:
+        _debug(f"USAspending recipient search: keyword='{term}'")
+        try:
+            with httpx.Client(timeout=15) as client:
+                resp = client.post(
+                    f"{USASPENDING_API_URL}/recipient/",
+                    json={"keyword": term, "limit": 5},
+                )
+                if resp.status_code != 200:
+                    _debug(f"USAspending recipient search returned {resp.status_code}")
+                    continue
+                data = resp.json()
+                results = data.get("results", [])
+                if results:
+                    recipient_id = results[0].get("id")
+                    _debug(
+                        f"USAspending recipient matched '{term}' → "
+                        f"'{results[0].get('name')}' id={recipient_id}"
+                    )
+                    break
+        except Exception as e:
+            _debug(f"USAspending recipient search error for '{term}': {e}")
+            continue
+
+    if not recipient_id:
+        _debug(f"USAspending recipient: no match for '{company_name}'")
+        return None
+
+    # Step 2: Fetch the full profile
+    _debug(f"USAspending recipient profile: GET /recipient/{recipient_id}/?year=all")
+    try:
+        with httpx.Client(timeout=15) as client:
+            resp = client.get(
+                f"{USASPENDING_API_URL}/recipient/{recipient_id}/",
+                params={"year": "all"},
+            )
+            if resp.status_code != 200:
+                _debug(f"USAspending recipient profile returned {resp.status_code}")
+                return None
+            profile = resp.json()
+    except Exception as e:
+        _debug(f"USAspending recipient profile error: {e}")
+        return None
+
+    location = profile.get("location") or {}
+
+    return USARecipientProfile(
+        recipient_id=recipient_id,
+        name=profile.get("name") or company_name,
+        uei=profile.get("uei"),
+        parent_name=profile.get("parent_name"),
+        parent_uei=profile.get("parent_uei"),
+        location_state=location.get("state_code"),
+        location_congressional_district=location.get("congressional_code"),
+        business_types=profile.get("business_types") or [],
+        total_transaction_amount=float(profile.get("total_transaction_amount") or 0),
+        total_transactions=int(profile.get("total_transactions") or 0),
+    )
+
+
+def lookup_usaspending_recipients(
+    awards: list[dict],
+) -> dict[str, USARecipientProfile]:
+    """Look up USAspending recipient profiles for each unique company.
+
+    Returns a dict keyed by upper-cased company name.
+    """
+    companies: dict[str, dict] = {}
+    for a in awards:
+        name = str(a.get("Company", "")).strip()
+        if not name:
+            continue
+        key = name.upper()
+        if key not in companies:
+            companies[key] = {
+                "name": name,
+                "uei": str(a.get("Company UEI", a.get("UEI", ""))).strip() or None,
+            }
+
+    results: dict[str, USARecipientProfile] = {}
+    total = len(companies)
+    deadline = _stage_deadline(60)  # lighter budget — profile lookups are fast
+    print(f"Looking up {total} recipient profiles on USAspending...", file=sys.stderr)
+
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    def _lookup_one(item: tuple[str, dict]) -> tuple[str, USARecipientProfile | None]:
+        key, info = item
+        return key, lookup_usaspending_recipient(info["name"], info["uei"])
+
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        futures = {executor.submit(_lookup_one, item): item for item in companies.items()}
+        for future in as_completed(futures):
+            if _past_deadline(deadline):
+                print(
+                    f"USAspending recipient stage timeout — "
+                    f"completed {len(results)}/{total}, skipping remainder",
+                    file=sys.stderr,
+                )
+                executor.shutdown(wait=False, cancel_futures=True)
+                break
+            try:
+                key, profile = future.result(timeout=10)
+                if profile:
+                    results[key] = profile
+            except Exception:
+                pass
+
+    print(f"Found {len(results)}/{total} recipient profiles on USAspending", file=sys.stderr)
     return results
 
 
@@ -1126,19 +1585,38 @@ def lookup_sam_entity(
     headers = {"X-Api-Key": api_key, "Accept": "application/json"}
 
     def _try_query(params: dict) -> dict | None:
-        try:
-            with httpx.Client(timeout=30) as client:
-                resp = client.get(SAM_GOV_API_URL, headers=headers, params=params)
-                if resp.status_code != 200:
+        _debug(f"SAM.gov query for '{company_name}': GET {SAM_GOV_API_URL} params={params}")
+        import time
+
+        for attempt in range(3):
+            try:
+                with httpx.Client(timeout=30) as client:
+                    resp = client.get(SAM_GOV_API_URL, headers=headers, params=params)
+                    _debug_response(f"SAM.gov [{company_name}]", resp)
+                    if resp.status_code == 429:
+                        wait = 2 ** (attempt + 1)
+                        _debug(f"SAM.gov [{company_name}]: rate limited, retrying in {wait}s")
+                        time.sleep(wait)
+                        continue
+                    if resp.status_code != 200:
+                        return None
+                    data = resp.json()
+                    results = data.get("entityData", data.get("results", []))
+                    result_count = len(results) if isinstance(results, list) else (1 if results else 0)
+                    _debug(f"SAM.gov [{company_name}]: {result_count} entities in response")
+                    if isinstance(results, list) and results:
+                        return results[0]
+                    if isinstance(results, dict):
+                        return results
                     return None
-                data = resp.json()
-                results = data.get("entityData", data.get("results", []))
-                if isinstance(results, list) and results:
-                    return results[0]
-                if isinstance(results, dict):
-                    return results
-        except Exception as e:
-            print(f"SAM.gov API error: {e}", file=sys.stderr)
+            except Exception as e:
+                if attempt < 2:
+                    wait = 2 ** (attempt + 1)
+                    _debug(f"SAM.gov [{company_name}]: request error ({e}), retrying in {wait}s")
+                    time.sleep(wait)
+                    continue
+                print(f"SAM.gov API error: {e}", file=sys.stderr)
+                return None
         return None
 
     entity = None
@@ -1156,6 +1634,18 @@ def lookup_sam_entity(
         entity = _try_query({"legalBusinessName": company_name, "registrationStatus": "A"})
 
     if not entity:
+        # Always log — helps diagnose silent failures in CI
+        methods_tried = []
+        if uei:
+            methods_tried.append(f"UEI={uei}")
+        if cage:
+            methods_tried.append(f"CAGE={cage}")
+        methods_tried.append(f"name='{company_name}'")
+        print(
+            f"SAM.gov: no entity found for {company_name} "
+            f"(tried: {', '.join(methods_tried)})",
+            file=sys.stderr,
+        )
         return None
 
     # Extract fields — SAM.gov API nests data under various keys
@@ -1223,14 +1713,33 @@ def lookup_sam_entities(
 
     results: dict[str, SAMEntityRecord] = {}
     total = len(companies)
+    deadline = _stage_deadline()
     print(f"Looking up {total} companies on SAM.gov...", file=sys.stderr)
 
-    for idx, (key, info) in enumerate(companies.items(), 1):
-        if idx % 10 == 0 or idx == total:
-            print(f"SAM.gov lookup {idx}/{total}...", file=sys.stderr)
-        record = lookup_sam_entity(info["name"], info["uei"], info["cage"])
-        if record:
-            results[key] = record
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    def _lookup_one(item: tuple[str, dict]) -> tuple[str, SAMEntityRecord | None]:
+        key, info = item
+        return key, lookup_sam_entity(info["name"], info["uei"], info["cage"])
+
+    # Cap at 3 workers to respect SAM.gov 60 req/min rate limit
+    with ThreadPoolExecutor(max_workers=3) as executor:
+        futures = {executor.submit(_lookup_one, item): item for item in companies.items()}
+        for future in as_completed(futures):
+            if _past_deadline(deadline):
+                print(
+                    f"SAM.gov stage timeout ({STAGE_TIMEOUT}s) — "
+                    f"completed {len(results)}/{total}, skipping remainder",
+                    file=sys.stderr,
+                )
+                executor.shutdown(wait=False, cancel_futures=True)
+                break
+            try:
+                key, record = future.result(timeout=10)
+                if record:
+                    results[key] = record
+            except Exception:
+                pass
 
     print(f"Found {len(results)}/{total} companies on SAM.gov", file=sys.stderr)
     return results
@@ -1267,29 +1776,41 @@ def lookup_pi_orcid(pi_name: str) -> ORCIDRecord | None:
 
     headers = {"Accept": "application/json"}
 
+    # Optional ORCID access token for higher rate limits.
+    # Generate via client credentials grant with a free ORCID Public API key:
+    #   curl -d "client_id=APP-XXX&client_secret=XXX&grant_type=client_credentials&scope=/read-public" \
+    #        https://orcid.org/oauth/token
+    orcid_token = os.environ.get("ORCID_ACCESS_TOKEN", "")
+    if orcid_token:
+        headers["Authorization"] = f"Bearer {orcid_token}"
+
     try:
         # Step 1: Search for the researcher by name
         query = f"family-name:{last}"
         if first:
             query += f"+AND+given-names:{first}"
 
+        _debug(f"ORCID search for '{pi_name}': query='{query}' (token={'yes' if orcid_token else 'no'})")
         with httpx.Client(timeout=30) as client:
             resp = client.get(
                 f"{ORCID_API_URL}/expanded-search/",
                 headers=headers,
                 params={"q": query, "rows": 5},
             )
+            _debug_response(f"ORCID search [{pi_name}]", resp)
             if resp.status_code != 200:
                 return None
             search_data = resp.json()
 
         results = search_data.get("expanded-result", [])
+        _debug(f"ORCID [{pi_name}]: {len(results) if results else 0} search results")
         if not results:
             return None
 
         # Pick the best match (first result)
         best = results[0]
         orcid_id = best.get("orcid-id", "")
+        _debug(f"ORCID [{pi_name}]: selected orcid-id={orcid_id}")
         if not orcid_id:
             return None
 
@@ -1299,6 +1820,7 @@ def lookup_pi_orcid(pi_name: str) -> ORCIDRecord | None:
                 f"{ORCID_API_URL}/{orcid_id}/record",
                 headers=headers,
             )
+            _debug_response(f"ORCID profile [{pi_name}]", resp)
             if resp.status_code != 200:
                 return None
             profile = resp.json()
@@ -1407,6 +1929,8 @@ def fetch_solicitation_topics(awards: list[dict]) -> dict[str, SolicitationTopic
     # Query by solicitation year to reduce result sets.
     # Group topic codes by their solicitation number prefix to batch queries.
     sol_years: dict[int, list[str]] = {}
+    # Topic codes with no parseable year — query individually by keyword
+    no_year_codes: list[tuple[str, str]] = []  # (topic_code, solicitation_number)
     for tc, sol in topic_codes.items():
         # Extract year from solicitation number (e.g. "SBIR-2023.1" -> 2023)
         year = None
@@ -1417,32 +1941,100 @@ def fetch_solicitation_topics(awards: list[dict]) -> dict[str, SolicitationTopic
         if year:
             sol_years.setdefault(year, []).append(tc)
         else:
-            sol_years.setdefault(0, []).append(tc)
+            no_year_codes.append((tc, sol))
 
-    for year, codes in sol_years.items():
-        params: dict[str, str | int] = {"rows": 500, "start": 0}
-        if year > 0:
-            params["year"] = year
+    # Handle topic codes with no parseable year: query by keyword (topic code
+    # or solicitation number) instead of fetching the entire unfiltered set.
+    import time
 
+    for tc, sol in no_year_codes:
+        keyword = sol if sol else tc
+        params: dict[str, str | int] = {"rows": 25, "start": 0, "keyword": keyword}
+        _debug(f"SBIR.gov solicitations (no year): keyword='{keyword}' for topic {tc}")
         try:
             with httpx.Client(timeout=30) as client:
-                resp = client.get(
-                    f"{SBIR_GOV_API_URL}/solicitations", params=params
-                )
+                resp = client.get(f"{SBIR_GOV_API_URL}/solicitations", params=params)
+                if resp.status_code == 429:
+                    time.sleep(3)
+                    resp = client.get(f"{SBIR_GOV_API_URL}/solicitations", params=params)
+                _debug_response(f"SBIR.gov solicitations [keyword={keyword}]", resp)
                 if resp.status_code != 200:
-                    print(
-                        f"SBIR.gov API returned {resp.status_code} for year={year}",
-                        file=sys.stderr,
-                    )
                     continue
                 data = resp.json()
         except Exception as e:
-            print(f"SBIR.gov API error for year={year}: {e}", file=sys.stderr)
+            _debug(f"SBIR.gov keyword query error for {keyword}: {e}")
             continue
 
         topics = data if isinstance(data, list) else (
             data.get("results") or data.get("data") or []
         )
+        for topic in topics:
+            found_tc = topic.get("topicCode") or topic.get("topic_code") or ""
+            if found_tc == tc and tc not in results:
+                desc = topic.get("topicDescription") or topic.get("description")
+                if desc and len(desc) > 3000:
+                    desc = desc[:3000] + "..."
+                results[tc] = SolicitationTopic(
+                    topic_code=tc,
+                    solicitation_number=(
+                        topic.get("solicitationNumber")
+                        or topic.get("solicitation_number")
+                        or sol
+                    ),
+                    title=topic.get("topicTitle") or topic.get("title") or "",
+                    description=desc,
+                    agency=topic.get("agency"),
+                    program=topic.get("program"),
+                )
+                break
+
+    for year, codes in sol_years.items():
+        params = {"rows": 500, "start": 0, "year": year}
+
+        _debug(
+            f"SBIR.gov solicitations query: GET {SBIR_GOV_API_URL}/solicitations "
+            f"params={params} (looking for {len(codes)} topic codes)"
+        )
+
+        # Retry with backoff on 429 (rate limit) responses
+        import time
+
+        data = None
+        for attempt in range(3):
+            try:
+                with httpx.Client(timeout=30) as client:
+                    resp = client.get(
+                        f"{SBIR_GOV_API_URL}/solicitations", params=params
+                    )
+                    _debug_response(f"SBIR.gov solicitations [year={year}]", resp)
+                    if resp.status_code == 429:
+                        wait = 2 ** (attempt + 1)
+                        print(
+                            f"SBIR.gov rate limited (429) for year={year}, "
+                            f"retrying in {wait}s (attempt {attempt + 1}/3)...",
+                            file=sys.stderr,
+                        )
+                        time.sleep(wait)
+                        continue
+                    if resp.status_code != 200:
+                        print(
+                            f"SBIR.gov API returned {resp.status_code} for year={year}",
+                            file=sys.stderr,
+                        )
+                        break
+                    data = resp.json()
+                    break
+            except Exception as e:
+                print(f"SBIR.gov API error for year={year}: {e}", file=sys.stderr)
+                break
+
+        if data is None:
+            continue
+
+        topics = data if isinstance(data, list) else (
+            data.get("results") or data.get("data") or []
+        )
+        _debug(f"SBIR.gov solicitations [year={year}]: {len(topics)} topics in response")
 
         codes_set = set(codes)
         for topic in topics:
@@ -1470,7 +2062,209 @@ def fetch_solicitation_topics(awards: list[dict]) -> dict[str, SolicitationTopic
         f"Fetched {found}/{total} solicitation topics from SBIR.gov",
         file=sys.stderr,
     )
+
+    # --- Fallback: query the awards endpoint for any missing topic codes ---
+    missing_codes = [tc for tc in topic_codes if tc not in results]
+    if missing_codes:
+        _debug(
+            f"Solicitation topic fallback: {len(missing_codes)} codes not found "
+            f"via /solicitations — trying /awards endpoint: {missing_codes}"
+        )
+        print(
+            f"Falling back to SBIR.gov awards API for {len(missing_codes)} "
+            f"missing topic codes...",
+            file=sys.stderr,
+        )
+        # Brief pause before hitting the same API — respect rate limits
+        time.sleep(2)
+        for tc in missing_codes:
+            try:
+                with httpx.Client(timeout=30) as client:
+                    resp = client.get(
+                        f"{SBIR_GOV_API_URL}/awards",
+                        params={"keyword": tc, "rows": 5, "start": 0},
+                    )
+                    _debug_response(f"SBIR.gov awards fallback [{tc}]", resp)
+                    if resp.status_code == 429:
+                        _debug(f"SBIR.gov awards fallback [{tc}]: rate limited, sleeping 3s")
+                        time.sleep(3)
+                        # One retry after backoff
+                        resp = client.get(
+                            f"{SBIR_GOV_API_URL}/awards",
+                            params={"keyword": tc, "rows": 5, "start": 0},
+                        )
+                        if resp.status_code != 200:
+                            continue
+                    elif resp.status_code != 200:
+                        continue
+                    data = resp.json()
+            except Exception as e:
+                _debug(f"SBIR.gov awards fallback error for {tc}: {e}")
+                continue
+
+            award_list = data if isinstance(data, list) else (
+                data.get("results") or data.get("data") or []
+            )
+            _debug(f"SBIR.gov awards fallback [{tc}]: {len(award_list)} awards returned")
+
+            # Look for a matching award that has topic description info
+            for award in award_list:
+                award_tc = (
+                    award.get("topicCode")
+                    or award.get("topic_code")
+                    or ""
+                )
+                if award_tc != tc:
+                    continue
+                title = (
+                    award.get("topicTitle")
+                    or award.get("topic_title")
+                    or award.get("awardTitle")
+                    or award.get("award_title")
+                    or ""
+                )
+                desc = (
+                    award.get("topicDescription")
+                    or award.get("topic_description")
+                    or award.get("abstract")
+                    or award.get("Abstract")
+                    or None
+                )
+                if desc and len(desc) > 3000:
+                    desc = desc[:3000] + "..."
+                if title or desc:
+                    results[tc] = SolicitationTopic(
+                        topic_code=tc,
+                        solicitation_number=topic_codes.get(tc, ""),
+                        title=title,
+                        description=desc,
+                        agency=award.get("agency"),
+                        program=award.get("program"),
+                    )
+                    _debug(
+                        f"Solicitation fallback matched [{tc}]: "
+                        f"title='{title[:80]}' desc_len={len(desc) if desc else 0}"
+                    )
+                    break
+
+        fallback_found = len(results) - found
+        print(
+            f"Fallback recovered {fallback_found}/{len(missing_codes)} "
+            f"topic descriptions from awards API",
+            file=sys.stderr,
+        )
+
     return results
+
+
+# ---------------------------------------------------------------------------
+# Reference link verification
+# ---------------------------------------------------------------------------
+
+
+def verify_reference_links(
+    awards: list[dict],
+    company_research: dict[str, CompanyResearch] | None = None,
+) -> dict[str, list[dict]]:
+    """Verify that constructed reference links return valid HTTP responses.
+
+    Performs HTTP HEAD requests on a sample of each link type to check
+    for broken URLs. Returns a summary dict with results per link type.
+
+    Only runs in --debug mode to avoid slowing down normal report generation.
+    """
+    link_checks: dict[str, list[dict]] = {
+        "sbir_award": [],
+        "solicitation": [],
+        "usaspending": [],
+        "company_research": [],
+    }
+
+    # Check a sample of up to 5 awards to avoid excessive requests
+    sample = awards[:5] if len(awards) > 5 else awards
+
+    with httpx.Client(timeout=10, follow_redirects=True) as client:
+        for a in sample:
+            title = str(a.get("Award Title", ""))[:60]
+
+            # SBIR.gov award link
+            sbir_url = build_sbir_award_url(a)
+            try:
+                resp = client.head(sbir_url)
+                link_checks["sbir_award"].append({
+                    "url": sbir_url, "status": resp.status_code, "award": title,
+                })
+            except Exception as e:
+                link_checks["sbir_award"].append({
+                    "url": sbir_url, "status": f"error: {e}", "award": title,
+                })
+
+            # Solicitation link
+            sol_url = build_solicitation_url(a)
+            if sol_url:
+                try:
+                    resp = client.head(sol_url)
+                    link_checks["solicitation"].append({
+                        "url": sol_url, "status": resp.status_code, "award": title,
+                    })
+                except Exception as e:
+                    link_checks["solicitation"].append({
+                        "url": sol_url, "status": f"error: {e}", "award": title,
+                    })
+
+            # USAspending link
+            usa_url = build_usaspending_url(a)
+            if usa_url:
+                try:
+                    resp = client.head(usa_url)
+                    link_checks["usaspending"].append({
+                        "url": usa_url, "status": resp.status_code, "award": title,
+                    })
+                except Exception as e:
+                    link_checks["usaspending"].append({
+                        "url": usa_url, "status": f"error: {e}", "award": title,
+                    })
+
+        # Check company research source URLs (sample)
+        if company_research:
+            checked_urls: set[str] = set()
+            for cr in list(company_research.values())[:3]:
+                for url in cr.source_urls[:2]:
+                    if url in checked_urls:
+                        continue
+                    checked_urls.add(url)
+                    try:
+                        resp = client.head(url)
+                        link_checks["company_research"].append({
+                            "url": url, "status": resp.status_code,
+                        })
+                    except Exception as e:
+                        link_checks["company_research"].append({
+                            "url": url, "status": f"error: {e}",
+                        })
+
+    return link_checks
+
+
+def _print_link_verification_report(link_checks: dict[str, list[dict]]) -> None:
+    """Print link verification results to stderr."""
+    print("\n[DEBUG] === Reference Link Verification ===", file=sys.stderr)
+    for link_type, checks in link_checks.items():
+        if not checks:
+            print(f"[DEBUG] {link_type}: no links to check", file=sys.stderr)
+            continue
+        ok = sum(1 for c in checks if isinstance(c["status"], int) and c["status"] < 400)
+        broken = [c for c in checks if not (isinstance(c["status"], int) and c["status"] < 400)]
+        print(
+            f"[DEBUG] {link_type}: {ok}/{len(checks)} OK",
+            file=sys.stderr,
+        )
+        for b in broken:
+            award_info = f" (award: {b['award']})" if "award" in b else ""
+            print(
+                f"[DEBUG]   BROKEN: {b['url']} -> {b['status']}{award_info}",
+                file=sys.stderr,
+            )
 
 
 # ---------------------------------------------------------------------------
@@ -1508,10 +2302,15 @@ def build_sbir_award_url(award: dict) -> str:
     """Build a link to the SBIR.gov award search page for this award."""
     contract = str(award.get("Contract", "")).strip()
     if contract:
-        return f"{SBIR_AWARD_SEARCH_URL}/{quote(contract)}"
+        url = f"{SBIR_AWARD_SEARCH_URL}?keyword={quote(contract)}"
+        _debug(f"SBIR award URL (contract='{contract}'): {url}")
+        return url
     company = str(award.get("Company", "")).strip()
     if company:
-        return f"{SBIR_AWARD_SEARCH_URL}/{quote(company)}"
+        url = f"{SBIR_AWARD_SEARCH_URL}?keyword={quote(company)}"
+        _debug(f"SBIR award URL (company='{company}', no contract): {url}")
+        return url
+    _debug("SBIR award URL: no contract or company — using base URL")
     return SBIR_AWARD_SEARCH_URL
 
 
@@ -1520,9 +2319,14 @@ def build_solicitation_url(award: dict) -> str | None:
     solicitation = str(award.get("Solicitation Number", "")).strip()
     topic_code = str(award.get("Topic Code", "")).strip()
     if solicitation:
-        return f"{SBIR_SOLICITATION_URL}?keyword={quote(solicitation)}"
+        url = f"{SBIR_SOLICITATION_URL}?keyword={quote(solicitation)}"
+        _debug(f"Solicitation URL (sol='{solicitation}'): {url}")
+        return url
     if topic_code:
-        return f"{SBIR_SOLICITATION_URL}?keyword={quote(topic_code)}"
+        url = f"{SBIR_SOLICITATION_URL}?keyword={quote(topic_code)}"
+        _debug(f"Solicitation URL (topic='{topic_code}', no sol number): {url}")
+        return url
+    _debug(f"Solicitation URL: no solicitation number or topic code for '{award.get('Award Title', 'N/A')}'")
     return None
 
 
@@ -1530,9 +2334,12 @@ def build_usaspending_url(award: dict) -> str | None:
     """Build a link to USAspending.gov search for this award's contract."""
     contract = str(award.get("Contract", "")).strip()
     if not contract:
+        _debug(f"USAspending URL: no contract number for '{award.get('Award Title', 'N/A')}'")
         return None
     search_term = quote(contract)
-    return f'{USASPENDING_SEARCH_URL}?form_fields={{"search_term":"{search_term}"}}'
+    url = f'{USASPENDING_SEARCH_URL}?form_fields={{"search_term":"{search_term}"}}'
+    _debug(f"USAspending URL (contract='{contract}'): {url}")
+    return url
 
 
 # ---------------------------------------------------------------------------
@@ -1550,6 +2357,8 @@ def _openai_request_with_retry(
     """Make an OpenAI API request with retry/backoff for 429 and 5xx errors."""
     import time
 
+    model_name = payload.get("model", "unknown")
+    _debug(f"OpenAI request: {method} {url} model={model_name} timeout={timeout}")
     for attempt in range(OPENAI_MAX_RETRIES + 1):
         try:
             with httpx.Client(timeout=timeout) as client:
@@ -1585,6 +2394,10 @@ def _openai_chat(
     temperature: float = 0.3,
 ) -> str | None:
     """Call the OpenAI chat completions API. Returns the assistant message text."""
+    _debug(
+        f"OpenAI chat: model={model} temp={temperature} "
+        f"system_len={len(system)} user_len={len(user)}"
+    )
     headers = {
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
@@ -1599,16 +2412,28 @@ def _openai_chat(
     }
     resp = _openai_request_with_retry("POST", OPENAI_CHAT_URL, headers, payload)
     if resp is None:
+        _debug("OpenAI chat: no response (all retries failed)")
         return None
     try:
-        return resp.json()["choices"][0]["message"]["content"].strip()
+        data = resp.json()
+        content = data["choices"][0]["message"]["content"].strip()
+        usage = data.get("usage", {})
+        _debug(
+            f"OpenAI chat response: {len(content)} chars | "
+            f"tokens: prompt={usage.get('prompt_tokens', '?')} "
+            f"completion={usage.get('completion_tokens', '?')} "
+            f"total={usage.get('total_tokens', '?')}"
+        )
+        return content
     except (KeyError, IndexError) as e:
         print(f"OpenAI Chat API unexpected response: {e}", file=sys.stderr)
+        _debug(f"OpenAI chat raw response: {resp.text[:1000]}")
         return None
 
 
 def _openai_web_search(api_key: str, query: str) -> CompanyResearch | None:
     """Use the OpenAI Responses API with web_search_preview to research a company."""
+    _debug(f"OpenAI web search: query='{query[:200]}'")
     headers = {
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
@@ -1644,8 +2469,13 @@ def _openai_web_search(api_key: str, query: str) -> CompanyResearch | None:
                             source_urls.append(url)
 
     if not summary_text:
+        _debug("OpenAI web search: no summary text in response")
         return None
 
+    _debug(
+        f"OpenAI web search: {len(summary_text)} char summary, "
+        f"{len(source_urls)} source URLs: {source_urls[:3]}"
+    )
     return CompanyResearch(summary=summary_text, source_urls=source_urls)
 
 
@@ -1699,10 +2529,147 @@ def research_companies(
     return results
 
 
+def fetch_usaspending_contract_descriptions(
+    awards: list[dict],
+) -> dict[str, str]:
+    """Fetch contract descriptions from USAspending for awards with contract numbers.
+
+    Returns a dict keyed by contract number with the award description text.
+    Used as supplementary LLM context when solicitation topic data is unavailable.
+    """
+    import re as _re
+    import time as _t
+
+    # Classify award IDs by likely type based on format:
+    # - DoD PIIDs: letter prefix + digits + dash patterns (e.g. FA2541-26-C-B005)
+    # - DOE/agency FAINs: DE-AR, DE-SC prefixes (grants)
+    # - Pure numeric: agency internal IDs (e.g. NSF "2516905") — try both types
+    piids: list[str] = []   # Likely procurement contracts
+    fains: list[str] = []   # Likely financial assistance (grants)
+    unknown: list[str] = [] # Try both
+    for a in awards:
+        c = str(a.get("Contract", "")).strip()
+        if not c or c in piids or c in fains or c in unknown:
+            continue
+        if _re.match(r"^DE-", c, _re.IGNORECASE):
+            fains.append(c)
+        elif _re.match(r"^[A-Z]{2}\d", c):
+            piids.append(c)  # DoD PIID pattern
+        elif c.isdigit():
+            unknown.append(c)  # Bare numeric — could be either
+        else:
+            unknown.append(c)
+
+    all_ids = piids + fains + unknown
+    if not all_ids:
+        return {}
+
+    _debug(
+        f"USAspending contract desc: {len(piids)} PIIDs, "
+        f"{len(fains)} FAINs, {len(unknown)} unknown"
+    )
+    print(
+        f"Fetching {len(all_ids)} contract descriptions from USAspending...",
+        file=sys.stderr,
+    )
+    results: dict[str, str] = {}
+
+    # Build targeted requests: PIIDs→contracts, FAINs→assistance, unknown→both
+    requests_to_make: list[tuple[list[str], str, list[str]]] = []
+    if piids:
+        requests_to_make.append((piids, "contracts", ["A", "B", "C", "D"]))
+    if fains:
+        requests_to_make.append((fains, "assistance", ["02", "03", "04", "05"]))
+    for uid in unknown:
+        # Try as contract first, then assistance
+        requests_to_make.append(([uid], "contracts", ["A", "B", "C", "D"]))
+        requests_to_make.append(([uid], "assistance", ["02", "03", "04", "05"]))
+
+    try:
+        with httpx.Client(timeout=30) as client:
+            for ids, group_name, codes in requests_to_make:
+                quoted = [f'"{c}"' for c in ids]
+                payload = {
+                    "filters": {
+                        "award_ids": quoted,
+                        "award_type_codes": codes,
+                    },
+                    "fields": ["Award ID", "Description", "Awarding Agency", "Award Type"],
+                    "page": 1,
+                    "limit": len(ids),
+                }
+                _debug(
+                    f"USAspending contract desc: {group_name} "
+                    f"({len(ids)} IDs: {ids[:3]})"
+                )
+                # Try spending_by_award first, fall back to spending_by_transaction
+                # if the search endpoint is down (503).
+                endpoints = [
+                    "search/spending_by_award",
+                    "search/spending_by_transaction",
+                ]
+                data = None
+                for endpoint in endpoints:
+                    for attempt in range(2):
+                        resp = client.post(
+                            f"{USASPENDING_API_URL}/{endpoint}/",
+                            json=payload,
+                        )
+                        if resp.status_code in (429, 500, 502, 503, 504):
+                            wait = 2 ** (attempt + 1)
+                            _debug(
+                                f"USAspending {endpoint}/{group_name} "
+                                f"returned {resp.status_code}, retrying in {wait}s"
+                            )
+                            _t.sleep(wait)
+                            continue
+                        if resp.status_code != 200:
+                            _debug(
+                                f"USAspending {endpoint}/{group_name} "
+                                f"returned {resp.status_code}"
+                            )
+                            break
+                        data = resp.json()
+                        break
+                    if data is not None:
+                        break
+                    _debug(
+                        f"USAspending {endpoint} failed for {group_name}, "
+                        f"trying next endpoint"
+                    )
+                if data is None:
+                    continue
+                for r in data.get("results", []):
+                    aid = str(r.get("Award ID", "")).strip()
+                    desc = str(r.get("Description", "")).strip()
+                    if aid and desc and aid not in results:
+                        if len(desc) > 500:
+                            desc = desc[:500] + "..."
+                        results[aid] = desc
+    except Exception as e:
+        print(f"USAspending contract desc error: {e}", file=sys.stderr)
+
+    if not results and all_ids:
+        print(
+            f"USAspending contract desc: 0 results for {len(all_ids)} award IDs "
+            f"(sample: {all_ids[:3]})",
+            file=sys.stderr,
+        )
+
+    _debug(f"USAspending contract descriptions: {len(results)}/{len(all_ids)} found")
+    print(
+        f"Fetched {len(results)}/{len(all_ids)} contract descriptions from USAspending",
+        file=sys.stderr,
+    )
+    return results
+
+
 def _award_digest(
     award: dict,
     company_research: CompanyResearch | None = None,
     solicitation_topics: dict[str, SolicitationTopic] | None = None,
+    usaspending_descriptions: dict[str, str] | None = None,
+    sam_entities: dict[str, SAMEntityRecord] | None = None,
 ) -> str:
     """Build a compact text digest of an award for LLM context."""
     parts = [
@@ -1730,9 +2697,11 @@ def _award_digest(
         parts.append(f"Solicitation Year: {solicitation_year}")
 
     # Solicitation topic context (title + description from SBIR.gov API)
+    has_sol_topic = False
     if solicitation_topics and topic_code:
         topic = solicitation_topics.get(topic_code)
         if topic:
+            has_sol_topic = True
             if topic.title:
                 parts.append(f"Solicitation Topic Title: {topic.title}")
             if topic.description:
@@ -1748,6 +2717,25 @@ def _award_digest(
             f"USAspending Record: https://www.usaspending.gov/search"
             f'?form_fields={{"search_term":"{contract}"}}'
         )
+
+    # Supplementary context from USAspending and SAM.gov when solicitation
+    # topic data is unavailable — gives the LLM program/industry context.
+    if not has_sol_topic:
+        if usaspending_descriptions and contract:
+            usa_desc = usaspending_descriptions.get(contract)
+            if usa_desc:
+                parts.append(
+                    f"USAspending contract description (supplementary context): {usa_desc}"
+                )
+        company = str(award.get("Company", "")).strip()
+        if sam_entities and company:
+            sam = sam_entities.get(company.upper())
+            if sam and sam.naics_codes:
+                parts.append(
+                    f"Company NAICS codes (industry classification from SAM.gov): "
+                    f"{', '.join(sam.naics_codes)}"
+                )
+
     solicitation_url = build_solicitation_url(award)
     if solicitation_url:
         parts.append(f"Solicitation Reference: {solicitation_url}")
@@ -1766,6 +2754,8 @@ def generate_weekly_synopsis(
     days: int,
     company_research: dict[str, CompanyResearch] | None = None,
     solicitation_topics: dict[str, SolicitationTopic] | None = None,
+    usaspending_descriptions: dict[str, str] | None = None,
+    sam_entities: dict[str, SAMEntityRecord] | None = None,
 ) -> str | None:
     """Generate a two-paragraph synopsis of all weekly award activity."""
     if not awards:
@@ -1788,7 +2778,9 @@ def generate_weekly_synopsis(
         cr = None
         if company_research:
             cr = company_research.get(_company_key(a))
-        digests.append(f"[{i+1}] {_award_digest(a, cr, solicitation_topics)}")
+        digests.append(
+            f"[{i+1}] {_award_digest(a, cr, solicitation_topics, usaspending_descriptions, sam_entities)}"
+        )
     digest_block = "\n\n".join(digests)
     if len(awards) > 50:
         digest_block += f"\n\n... and {len(awards) - 50} additional awards."
@@ -1818,6 +2810,8 @@ def generate_award_descriptions(
     awards: list[dict],
     company_research: dict[str, CompanyResearch] | None = None,
     solicitation_topics: dict[str, SolicitationTopic] | None = None,
+    usaspending_descriptions: dict[str, str] | None = None,
+    sam_entities: dict[str, SAMEntityRecord] | None = None,
 ) -> dict[int, str]:
     """Generate a brief description for each award using batched API calls."""
     descriptions: dict[int, str] = {}
@@ -1870,7 +2864,9 @@ def generate_award_descriptions(
             cr = None
             if company_research:
                 cr = company_research.get(_company_key(a))
-            digests.append(f"[{idx}] {_award_digest(a, cr, solicitation_topics)}")
+            digests.append(
+                f"[{idx}] {_award_digest(a, cr, solicitation_topics, usaspending_descriptions, sam_entities)}"
+            )
 
         user = (
             "Generate a description for each award below. Each description "
@@ -2043,6 +3039,7 @@ def generate_company_diligence(
     company_history: dict[str, dict] | None = None,
     sam_entities: dict[str, SAMEntityRecord] | None = None,
     company_federal_awards: dict[str, PIFederalAwardRecord] | None = None,
+    usa_recipients: dict[str, USARecipientProfile] | None = None,
 ) -> dict[str, str]:
     """Generate a diligence paragraph for each unique awardee company.
 
@@ -2199,6 +3196,28 @@ def generate_company_diligence(
         else:
             context_parts.append(
                 "USAspending: No federal award records found for this company."
+            )
+
+        # USAspending recipient profile (business types, parent company, totals)
+        rcp = usa_recipients.get(key) if usa_recipients else None
+        if rcp:
+            rcp_parts = [
+                f"USAspending recipient name: {rcp.name}",
+            ]
+            if rcp.parent_name:
+                rcp_parts.append(f"Parent company: {rcp.parent_name}")
+            if rcp.business_types:
+                rcp_parts.append(f"Business types: {', '.join(rcp.business_types)}")
+            rcp_parts.append(
+                f"Total federal award history: {rcp.total_transactions} awards, "
+                f"${rcp.total_transaction_amount:,.0f}"
+            )
+            if rcp.location_state:
+                rcp_parts.append(f"State: {rcp.location_state}")
+            if rcp.location_congressional_district:
+                rcp_parts.append(f"Congressional district: {rcp.location_state}-{rcp.location_congressional_district}")
+            context_parts.append(
+                "USAspending recipient profile:\n" + "\n".join(rcp_parts)
             )
 
         user = (
@@ -2586,12 +3605,58 @@ def main():
         action="store_true",
         help="Skip company and PI diligence paragraphs",
     )
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        help="Enable verbose debug output for API calls, LLM context, and URL construction (to stderr)",
+    )
+    parser.add_argument(
+        "--skip-sbir-api",
+        action="store_true",
+        default=os.environ.get("SKIP_SBIR_API", "").lower() in ("1", "true", "yes"),
+        help="Skip SBIR.gov API calls (solicitation topics + awards fallback). "
+        "Useful when the API is down or rate-limiting. Also settable via SKIP_SBIR_API=1 env var.",
+    )
+    parser.add_argument(
+        "--timeout",
+        type=int,
+        default=int(os.environ.get("REPORT_TIMEOUT", "720")),
+        help="Hard pipeline timeout in seconds (default: 720 = 12 min). "
+        "Skips remaining enrichment when exceeded. Also settable via REPORT_TIMEOUT env var.",
+    )
     args = parser.parse_args()
 
-    awards, freshness_warnings = fetch_weekly_awards(days=args.days)
+    global DEBUG  # noqa: PLW0603
+    if args.debug:
+        DEBUG = True
+        print("[DEBUG] Debug mode enabled — verbose API diagnostics will appear on stderr", file=sys.stderr)
+
+    import time as _time
+
+    global _pipeline_start  # noqa: PLW0603
+    _pipeline_start = _time.monotonic()
+    pipeline_deadline = _pipeline_start + args.timeout
+
+    def _pipeline_expired() -> bool:
+        return _time.monotonic() > pipeline_deadline
+
+    awards, freshness_warnings, shared_source, shared_ext, shared_table = (
+        fetch_weekly_awards(days=args.days)
+    )
+    _debug(f"Fetched {len(awards)} raw awards (freshness_warnings={freshness_warnings})")
 
     # Clean, validate, and deduplicate
     awards, cleaning_stats = clean_and_dedup_awards(awards)
+    _debug(f"After cleaning: {len(awards)} awards | stats={cleaning_stats}")
+    if DEBUG and awards:
+        sample = awards[0]
+        _debug(f"Sample award keys: {list(sample.keys())}")
+        _debug(
+            f"Sample award: Company='{sample.get('Company')}' "
+            f"Contract='{sample.get('Contract')}' "
+            f"Solicitation='{sample.get('Solicitation Number')}' "
+            f"Topic='{sample.get('Topic Code')}'"
+        )
 
     # Generate AI content if API key is available
     synopsis = None
@@ -2602,23 +3667,45 @@ def main():
     api_key = os.environ.get("OPENAI_API_KEY", "")
 
     # Fetch solicitation topic context from SBIR.gov API (no API key needed)
-    sol_topics = fetch_solicitation_topics(awards) if awards else None
+    sol_topics = None
+    if awards and not args.skip_sbir_api:
+        sol_topics = fetch_solicitation_topics(awards)
+    elif args.skip_sbir_api:
+        print("Skipping SBIR.gov API calls (--skip-sbir-api)", file=sys.stderr)
+
+    # Fetch supplementary context only when AI features are enabled —
+    # these feed into LLM prompts and diligence, so skip the network I/O
+    # when --no-ai is set or OPENAI_API_KEY is missing.
+    usa_descs: dict[str, str] | None = None
+    usa_recipients: dict[str, USARecipientProfile] | None = None
+    sam_data: dict[str, SAMEntityRecord] | None = None
+    if awards and api_key and not args.no_ai:
+        usa_descs = fetch_usaspending_contract_descriptions(awards)
+        usa_recipients = lookup_usaspending_recipients(awards)
+        sam_data = lookup_sam_entities(awards)
 
     if api_key and not args.no_ai:
-        if not args.no_company_research:
+        if not args.no_company_research and not _pipeline_expired():
             company_info = research_companies(api_key, awards)
-        synopsis = generate_weekly_synopsis(
-            api_key, awards, args.days, company_info, sol_topics
-        )
-        descriptions = generate_award_descriptions(
-            api_key, awards, company_info, sol_topics
-        )
+        if _pipeline_expired():
+            print(
+                f"Pipeline timeout ({args.timeout}s) — skipping remaining AI enrichment",
+                file=sys.stderr,
+            )
+        else:
+            synopsis = generate_weekly_synopsis(
+                api_key, awards, args.days, company_info, sol_topics,
+                usa_descs, sam_data,
+            )
+            descriptions = generate_award_descriptions(
+                api_key, awards, company_info, sol_topics,
+                usa_descs, sam_data,
+            )
 
-        if not args.no_diligence:
-            # Build historical context for diligence.
-            # Resolve CSV and DuckDB extractor once, share across both queries.
+        if not args.no_diligence and not _pipeline_expired():
+            # Reuse the source/extractor/table from fetch_weekly_awards() to
+            # avoid re-downloading and re-importing the ~376 MB CSV.
             print("Building historical context...", file=sys.stderr)
-            shared_source, shared_ext, shared_table = _resolve_shared_extractor()
             co_history = get_company_history(
                 awards, shared_source, shared_ext, shared_table
             )
@@ -2626,10 +3713,12 @@ def main():
                 awards, shared_source, shared_ext, shared_table
             )
 
-            # SAM.gov entity registration data
-            sam_data = lookup_sam_entities(awards)
+            # SAM.gov entity data was already fetched above for LLM context;
+            # reuse sam_data for diligence.
 
             # USAspending federal awards per company (SBIR vs non-SBIR)
+            from concurrent.futures import ThreadPoolExecutor, as_completed
+
             print("Looking up company federal awards on USAspending...", file=sys.stderr)
             co_fed: dict[str, PIFederalAwardRecord] = {}
             co_names: dict[str, dict] = {}
@@ -2643,27 +3732,129 @@ def main():
                         "name": name,
                         "uei": str(a.get("Company UEI", a.get("UEI", ""))).strip() or None,
                     }
-            for key, info in co_names.items():
-                result = lookup_company_federal_awards(info["name"], info["uei"])
-                if result:
-                    co_fed[key] = result
 
-            # Fetch external PI data (patents, publications, ORCID, federal awards)
-            print("Looking up PI patents, publications, ORCID, and federal awards...", file=sys.stderr)
-            pi_ext = lookup_pi_external_data(awards)
+            def _lookup_co_fed(item: tuple[str, dict]) -> tuple[str, PIFederalAwardRecord | None]:
+                k, info = item
+                return k, lookup_company_federal_awards(info["name"], info["uei"])
 
-            co_diligence = generate_company_diligence(
-                api_key, awards, company_info, co_history, sam_data, co_fed
+            co_fed_deadline = _stage_deadline()
+            with ThreadPoolExecutor(max_workers=4) as executor:
+                futures = {
+                    executor.submit(_lookup_co_fed, item): item
+                    for item in co_names.items()
+                }
+                for future in as_completed(futures):
+                    if _past_deadline(co_fed_deadline):
+                        print(
+                            f"USAspending stage timeout ({STAGE_TIMEOUT}s) — "
+                            f"completed {len(co_fed)}/{len(co_names)}, skipping remainder",
+                            file=sys.stderr,
+                        )
+                        executor.shutdown(wait=False, cancel_futures=True)
+                        break
+                    try:
+                        key, result = future.result(timeout=10)
+                        if result:
+                            co_fed[key] = result
+                    except Exception:
+                        pass
+            print(
+                f"Found federal awards for {len(co_fed)}/{len(co_names)} companies",
+                file=sys.stderr,
             )
-            pi_dilig = generate_pi_diligence(
-                api_key, awards, pi_history, company_info, pi_ext
-            )
+
+            # Fetch external PI data (patents, publications, ORCID).
+            # Reuse co_fed to avoid duplicate USAspending calls per company.
+            pi_ext: dict[str, dict] = {}
+            if not _pipeline_expired():
+                print("Looking up PI patents, publications, and ORCID...", file=sys.stderr)
+                pi_ext = lookup_pi_external_data(awards, co_fed)
+
+            if not _pipeline_expired():
+                co_diligence = generate_company_diligence(
+                    api_key, awards, company_info, co_history, sam_data, co_fed,
+                    usa_recipients,
+                )
+            if not _pipeline_expired():
+                pi_dilig = generate_pi_diligence(
+                    api_key, awards, pi_history, company_info, pi_ext
+                )
+
+            if _pipeline_expired():
+                elapsed = int(_time.monotonic() - _pipeline_start)
+                print(
+                    f"Pipeline timeout ({args.timeout}s) at {elapsed}s — "
+                    f"generating report with partial enrichment",
+                    file=sys.stderr,
+                )
     elif not api_key and not args.no_ai:
         print(
             "OPENAI_API_KEY not set - skipping AI summaries. "
             "Set the env var or use --no-ai to silence this message.",
             file=sys.stderr,
         )
+
+    # Print debug summary of all data collection results before report generation
+    if DEBUG:
+        print("\n" + "=" * 72, file=sys.stderr)
+        print("[DEBUG] === API Data Collection Summary ===", file=sys.stderr)
+        print(f"[DEBUG] Awards loaded: {len(awards)}", file=sys.stderr)
+        print(f"[DEBUG] Freshness warnings: {len(freshness_warnings) if freshness_warnings else 0}", file=sys.stderr)
+        print(
+            f"[DEBUG] Solicitation topics fetched: "
+            f"{len(sol_topics) if sol_topics else 0}",
+            file=sys.stderr,
+        )
+        print(
+            f"[DEBUG] Company research results: "
+            f"{len(company_info) if company_info else 0}",
+            file=sys.stderr,
+        )
+        print(
+            f"[DEBUG] USAspending contract descriptions: "
+            f"{len(usa_descs) if usa_descs else 0}",
+            file=sys.stderr,
+        )
+        print(
+            f"[DEBUG] SAM.gov entity records: "
+            f"{len(sam_data) if sam_data else 0}",
+            file=sys.stderr,
+        )
+        print(
+            f"[DEBUG] USAspending recipient profiles: "
+            f"{len(usa_recipients) if usa_recipients else 0}",
+            file=sys.stderr,
+        )
+        print(f"[DEBUG] Synopsis generated: {'yes' if synopsis else 'no'}", file=sys.stderr)
+        print(
+            f"[DEBUG] Award descriptions generated: "
+            f"{len(descriptions) if descriptions else 0}",
+            file=sys.stderr,
+        )
+        print(
+            f"[DEBUG] Company diligence paragraphs: "
+            f"{len(co_diligence) if co_diligence else 0}",
+            file=sys.stderr,
+        )
+        print(
+            f"[DEBUG] PI diligence paragraphs: "
+            f"{len(pi_dilig) if pi_dilig else 0}",
+            file=sys.stderr,
+        )
+        # Show which awards have all reference link components
+        missing_contracts = sum(1 for a in awards if not str(a.get("Contract", "")).strip())
+        missing_sol = sum(
+            1 for a in awards
+            if not str(a.get("Solicitation Number", "")).strip()
+            and not str(a.get("Topic Code", "")).strip()
+        )
+        print(f"[DEBUG] Awards missing Contract (no USAspending link): {missing_contracts}/{len(awards)}", file=sys.stderr)
+        print(f"[DEBUG] Awards missing Solicitation+Topic (no solicitation link): {missing_sol}/{len(awards)}", file=sys.stderr)
+        # Verify reference links with HTTP HEAD requests
+        if awards:
+            link_checks = verify_reference_links(awards, company_info)
+            _print_link_verification_report(link_checks)
+        print("=" * 72 + "\n", file=sys.stderr)
 
     report = generate_markdown(
         awards,
