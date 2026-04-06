@@ -1765,8 +1765,9 @@ def lookup_usaspending_recipients(
                 key, profile = future.result(timeout=10)
                 if profile:
                     results[key] = profile
-            except Exception:
-                pass
+            except Exception as e:
+                item = futures[future]
+                _debug(f"USAspending recipient lookup failed for {item[0]}: {e}")
 
     print(f"Found {len(results)}/{total} recipient profiles on USAspending", file=sys.stderr)
     return results
@@ -2003,8 +2004,9 @@ def lookup_sam_entities(
                 key, record = future.result(timeout=10)
                 if record:
                     results[key] = record
-            except Exception:
-                pass
+            except Exception as e:
+                item = futures[future]
+                _debug(f"SAM.gov entity lookup failed for {item[0]}: {e}")
 
     print(f"Found {len(results)}/{total} companies on SAM.gov", file=sys.stderr)
     return results
@@ -4271,19 +4273,22 @@ def main():
                 fetch_futures["sol_topics"] = fetch_pool.submit(
                     fetch_solicitation_topics, awards
                 )
-            elif args.skip_sbir_api:
+            else:
                 print("Skipping SBIR.gov API calls (--skip-sbir-api)", file=sys.stderr)
 
-            if api_key and not args.no_ai:
-                fetch_futures["usa_descs"] = fetch_pool.submit(
-                    fetch_usaspending_contract_descriptions, awards
-                )
-                fetch_futures["usa_recipients"] = fetch_pool.submit(
-                    lookup_usaspending_recipients, awards
-                )
-                fetch_futures["sam_data"] = fetch_pool.submit(
-                    lookup_sam_entities, awards
-                )
+            # Government data APIs (USAspending, SAM.gov) are independent of AI —
+            # always fetch when awards exist so enrichment data (BEA sectors,
+            # congressional districts, recipient profiles) is available regardless
+            # of whether AI descriptions are generated.
+            fetch_futures["usa_descs"] = fetch_pool.submit(
+                fetch_usaspending_contract_descriptions, awards
+            )
+            fetch_futures["usa_recipients"] = fetch_pool.submit(
+                lookup_usaspending_recipients, awards
+            )
+            fetch_futures["sam_data"] = fetch_pool.submit(
+                lookup_sam_entities, awards
+            )
 
             # Collect results
             for name, future in fetch_futures.items():
