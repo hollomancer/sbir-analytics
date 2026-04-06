@@ -147,7 +147,10 @@ class ORCIDClient:
         """
         query = f"family-name:{family_name}"
         if given_names:
-            query += f"+AND+given-names:{given_names}"
+            # Use literal " AND " — httpx encodes spaces in query params
+            # automatically.  The old "+AND+" was double-encoded (%2BAND%2B)
+            # which caused ORCID to return 500.
+            query += f" AND given-names:{given_names}"
 
         self._wait()
         try:

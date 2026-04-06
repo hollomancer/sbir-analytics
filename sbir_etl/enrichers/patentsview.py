@@ -381,7 +381,9 @@ class PatentsViewClient:
         escaped_name = self._escape_lucene_query(company_name)
 
         while len(all_patents) < max_patents:
-            # ODP uses Lucene-style query syntax with GET params
+            # ODP field-level Lucene queries go to the base endpoint (no
+            # /search suffix).  The /search endpoint only accepts a
+            # ``searchText`` free-text parameter and rejects ``q``.
             params = {
                 "q": f'assigneeName:"{escaped_name}"',
                 "offset": offset,
@@ -389,7 +391,7 @@ class PatentsViewClient:
             }
 
             try:
-                response = self._make_request("/search", method="GET", params=params)
+                response = self._make_request("", method="GET", params=params)
 
                 # ODP response format: patentFileWrapperDataBag array
                 records = response.get("patentFileWrapperDataBag", [])
@@ -468,7 +470,7 @@ class PatentsViewClient:
         }
 
         try:
-            response = self._make_request("/search", method="GET", params=params)
+            response = self._make_request("", method="GET", params=params)
             records = response.get("patentFileWrapperDataBag", [])
 
             # Deduplicate assignees from patent results
