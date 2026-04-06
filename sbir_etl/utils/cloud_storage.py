@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import tempfile
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -361,3 +362,135 @@ def find_latest_sam_gov_parquet(
     except Exception as e:
         logger.error(f"Error finding latest SAM.gov parquet: {e}")
         return None
+
+
+# ---------------------------------------------------------------------------
+# SBIR awards CSV source resolution and freshness checking
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class SbirAwardsSource:
+    """Metadata about a resolved SBIR awards CSV source."""
+
+    path: Path
+    origin: str  # "s3", "download", or "local"
+    s3_key_date: str | None = None
+
+
+def resolve_sbir_awards_csv(
+    download_url: str = "https://data.www.sbir.gov/mod_awarddatapublic/award_data.csv",
+    local_path: Path | None = None,
+) -> SbirAwardsSource:
+    """Resolve the SBIR awards CSV: S3 first, then download, then local.
+
+    Resolution order:
+    1. S3 bucket (if ``SBIR_ANALYTICS_S3_BUCKET`` is set and contains a CSV)
+    2. Direct HTTP download from *download_url*
+    3. *local_path* if provided and exists (e.g. a previously cached copy)
+
+    Args:
+        download_url: URL to download CSV from if S3 is unavailable.
+        local_path: Optional local path to try as last resort.
+
+    Returns:
+        :class:`SbirAwardsSource` with the resolved path and origin metadata.
+
+    Raises:
+        FileNotFoundError: If no source could be resolved.
+    """
+    import re
+
+    import httpx
+
+    # 1. Try S3
+    bucket = get_s3_bucket_from_env()
+    if bucket:
+        s3_url = find_latest_sbir_awards(bucket)
+        if s3_url:
+            logger.info(f"Using S3-cached CSV: {s3_url}")
+            date_match = re.search(r"raw/awards/(\d{4}-\d{2}-\d{2})/", s3_url)
+            key_date = date_match.group(1) if date_match else None
+            return SbirAwardsSource(path=Path(s3_url), origin="s3", s3_key_date=key_date)
+
+    # 2. Download from URL
+    logger.info(f"S3 not available; downloading from {download_url}")
+    try:
+        with httpx.Client(timeout=600, follow_redirects=True) as client:
+            response = client.get(download_url)
+            response.raise_for_status()
+
+        tmp = Path(tempfile.gettempdir()) / "sbir_weekly_award_data.csv"
+        tmp.write_bytes(response.content)
+        size_mb = tmp.stat().st_size / 1024 / 1024
+        logger.info(f"Downloaded {size_mb:.1f} MB to {tmp}")
+        return SbirAwardsSource(path=tmp, origin="download")
+    except Exception as e:
+        logger.warning(f"Download failed: {e}")
+
+    # 3. Local fallback
+    if local_path and local_path.exists():
+        logger.info(f"Using local fallback: {local_path}")
+        return SbirAwardsSource(path=local_path, origin="local")
+
+    raise FileNotFoundError(
+        f"Could not resolve SBIR awards CSV from S3, download ({download_url}), "
+        f"or local ({local_path})"
+    )
+
+
+def check_sbir_data_freshness(
+    source: SbirAwardsSource,
+    max_award_date: str | None,
+    days: int,
+    *,
+    s3_slack_days: int = 3,
+    data_slack_days: int = 14,
+) -> list[str]:
+    """Check whether SBIR bulk data is fresh enough for a reporting window.
+
+    Runs two independent checks:
+    1. **S3 key date** — was the data-refresh workflow recent?
+    2. **Max award date in data** — is the underlying SBIR.gov dataset current?
+
+    Args:
+        source: Resolved data source with optional S3 key date.
+        max_award_date: The most recent ``Proposal Award Date`` in the dataset.
+        days: The reporting window in days (e.g. 7 for weekly).
+        s3_slack_days: Allowed slack beyond *days* for S3 key date.
+        data_slack_days: Allowed slack beyond *days* for max award date.
+
+    Returns:
+        List of warning strings (empty if data is fresh).
+    """
+    from datetime import datetime, UTC
+
+    from .date_utils import parse_date
+
+    warnings: list[str] = []
+    now = datetime.now(UTC).replace(tzinfo=None)
+
+    if source.s3_key_date:
+        key_dt = parse_date(source.s3_key_date)
+        if key_dt:
+            key_datetime = datetime(key_dt.year, key_dt.month, key_dt.day)
+            age_days = (now - key_datetime).days
+            if age_days > days + s3_slack_days:
+                warnings.append(
+                    f"S3 data is {age_days} days old (key date: {source.s3_key_date}). "
+                    f"The data-refresh workflow may have failed."
+                )
+
+    if max_award_date:
+        max_dt = parse_date(max_award_date)
+        if max_dt:
+            max_datetime = datetime(max_dt.year, max_dt.month, max_dt.day)
+            data_age = (now - max_datetime).days
+            if data_age > days + data_slack_days:
+                warnings.append(
+                    f"Most recent award in data is from {max_award_date} "
+                    f"({data_age} days ago). SBIR.gov bulk data may not have "
+                    f"been updated recently."
+                )
+
+    return warnings

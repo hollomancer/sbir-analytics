@@ -293,87 +293,72 @@ class CompanyResearch:
 # ---------------------------------------------------------------------------
 
 
-@dataclass
-class DataSource:
-    """Metadata about the resolved CSV data source."""
+# Source resolution and freshness checking — prefer shared library functions,
+# fall back to inline implementations when sbir_etl is not installed.
+try:
+    from sbir_etl.utils.cloud_storage import (
+        SbirAwardsSource as DataSource,
+        check_sbir_data_freshness as _check_data_freshness_lib,
+        resolve_sbir_awards_csv as _resolve_csv_path_lib,
+    )
 
-    path: Path
-    origin: str  # "s3" or "download"
-    # S3 key date (e.g. "2026-04-01" from raw/awards/2026-04-01/award_data.csv)
-    s3_key_date: str | None = None
+    def _resolve_csv_path() -> DataSource:
+        source = _resolve_csv_path_lib(download_url=SBIR_AWARDS_URL)
+        print(f"Resolved CSV: {source.path} (origin={source.origin})", file=sys.stderr)
+        return source
 
+    def _check_data_freshness(
+        source: DataSource, max_award_date: str | None, days: int
+    ) -> list[str]:
+        return _check_data_freshness_lib(source, max_award_date, days)
 
-def _resolve_csv_path() -> DataSource:
-    """Resolve the SBIR CSV path: try S3 first, then download fresh.
+except ImportError:
+    from dataclasses import dataclass as _dataclass
 
-    In CI the data-refresh workflow uploads the CSV to S3 weekly, so we
-    prefer that cached copy.  Falls back to downloading directly from
-    SBIR.gov when S3 isn't configured or the file isn't found.
-    """
-    # Try S3 first (only when sbir_etl is installed)
-    if _HAS_SBIR_ETL:
-        bucket = get_s3_bucket_from_env()
-        if bucket:
-            s3_url = find_latest_sbir_awards(bucket)
-            if s3_url:
-                print(f"Using S3-cached CSV: {s3_url}", file=sys.stderr)
-                # Extract date from S3 key: raw/awards/YYYY-MM-DD/award_data.csv
-                import re
+    @_dataclass
+    class DataSource:  # type: ignore[no-redef]
+        """Metadata about the resolved CSV data source (fallback)."""
+        path: Path
+        origin: str
+        s3_key_date: str | None = None
 
-                date_match = re.search(r"raw/awards/(\d{4}-\d{2}-\d{2})/", s3_url)
-                key_date = date_match.group(1) if date_match else None
-                return DataSource(path=Path(s3_url), origin="s3", s3_key_date=key_date)
+    def _resolve_csv_path() -> DataSource:  # type: ignore[misc]
+        """Fallback source resolver for standalone operation."""
+        print(f"S3 not available; downloading from {SBIR_AWARDS_URL}...", file=sys.stderr)
+        with httpx.Client(timeout=600, follow_redirects=True) as client:
+            response = client.get(SBIR_AWARDS_URL)
+            response.raise_for_status()
+        tmp = Path(tempfile.gettempdir()) / "sbir_weekly_award_data.csv"
+        tmp.write_bytes(response.content)
+        print(f"Downloaded {tmp.stat().st_size / 1024 / 1024:.1f} MB", file=sys.stderr)
+        return DataSource(path=tmp, origin="download")
 
-    # Fall back to direct download
-    print(f"S3 not available; downloading from {SBIR_AWARDS_URL}...", file=sys.stderr)
-    with httpx.Client(timeout=600, follow_redirects=True) as client:
-        response = client.get(SBIR_AWARDS_URL)
-        response.raise_for_status()
-
-    tmp = Path(tempfile.gettempdir()) / "sbir_weekly_award_data.csv"
-    tmp.write_bytes(response.content)
-    print(f"Downloaded {tmp.stat().st_size / 1024 / 1024:.1f} MB", file=sys.stderr)
-    return DataSource(path=tmp, origin="download")
-
-
-def _check_data_freshness(
-    source: DataSource,
-    max_award_date: str | None,
-    days: int,
-) -> list[str]:
-    """Verify that the bulk data is fresh enough for the reporting window.
-
-    Returns a list of warning strings (empty if everything looks good).
-    """
-    warnings: list[str] = []
-    now = datetime.now(UTC).replace(tzinfo=None)
-
-    # Check 1: S3 key date — was the data-refresh recent?
-    if source.s3_key_date:
-        key_dt = _parse_date(source.s3_key_date)
-        if key_dt:
-            key_datetime = datetime(key_dt.year, key_dt.month, key_dt.day)
-            age_days = (now - key_datetime).days
-            if age_days > days + 3:  # allow a few days of slack
-                warnings.append(
-                    f"S3 data is {age_days} days old (key date: {source.s3_key_date}). "
-                    f"The data-refresh workflow may have failed."
-                )
-
-    # Check 2: max Proposal Award Date in the data — is the data itself current?
-    if max_award_date:
-        max_dt = _parse_date(max_award_date)
-        if max_dt:
-            max_datetime = datetime(max_dt.year, max_dt.month, max_dt.day)
-            data_age = (now - max_datetime).days
-            if data_age > days + 14:
-                warnings.append(
-                    f"Most recent award in data is from {max_award_date} "
-                    f"({data_age} days ago). SBIR.gov bulk data may not have "
-                    f"been updated recently."
-                )
-
-    return warnings
+    def _check_data_freshness(  # type: ignore[misc]
+        source: DataSource, max_award_date: str | None, days: int
+    ) -> list[str]:
+        """Fallback freshness checker for standalone operation."""
+        warnings: list[str] = []
+        now = datetime.now(UTC).replace(tzinfo=None)
+        if source.s3_key_date:
+            key_dt = _parse_date(source.s3_key_date)
+            if key_dt:
+                age = (now - datetime(key_dt.year, key_dt.month, key_dt.day)).days
+                if age > days + 3:
+                    warnings.append(
+                        f"S3 data is {age} days old (key date: {source.s3_key_date}). "
+                        f"The data-refresh workflow may have failed."
+                    )
+        if max_award_date:
+            max_dt = _parse_date(max_award_date)
+            if max_dt:
+                data_age = (now - datetime(max_dt.year, max_dt.month, max_dt.day)).days
+                if data_age > days + 14:
+                    warnings.append(
+                        f"Most recent award in data is from {max_award_date} "
+                        f"({data_age} days ago). SBIR.gov bulk data may not have "
+                        f"been updated recently."
+                    )
+        return warnings
 
 
 def fetch_weekly_awards(

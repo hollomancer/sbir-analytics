@@ -1,6 +1,7 @@
 """Unit tests for cloud storage utilities."""
 
 import os
+from datetime import datetime, timedelta, UTC
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -9,7 +10,13 @@ import pytest
 
 pytestmark = pytest.mark.fast
 
-from sbir_etl.utils.cloud_storage import build_s3_path, get_s3_bucket_from_env, resolve_data_path
+from sbir_etl.utils.cloud_storage import (
+    SbirAwardsSource,
+    build_s3_path,
+    check_sbir_data_freshness,
+    get_s3_bucket_from_env,
+    resolve_data_path,
+)
 
 
 class TestResolveDataPath:
@@ -164,3 +171,75 @@ class TestBuildS3Path:
         with patch("sbir_etl.utils.cloud_storage.get_s3_bucket_from_env", return_value=None):
             with pytest.raises(ValueError, match="S3 bucket not configured"):
                 build_s3_path("data/raw/file.csv")
+
+
+# ==================== Freshness Checking Tests ====================
+
+
+class TestCheckSbirDataFreshness:
+    """Tests for check_sbir_data_freshness function."""
+
+    def _recent_date(self, days_ago: int = 1) -> str:
+        return (datetime.now(UTC) - timedelta(days=days_ago)).strftime("%Y-%m-%d")
+
+    def test_fresh_data_no_warnings(self):
+        source = SbirAwardsSource(
+            path=Path("/tmp/test.csv"), origin="s3", s3_key_date=self._recent_date(2)
+        )
+        warnings = check_sbir_data_freshness(source, self._recent_date(2), days=7)
+        assert warnings == []
+
+    def test_stale_s3_key_date(self):
+        source = SbirAwardsSource(
+            path=Path("/tmp/test.csv"), origin="s3", s3_key_date=self._recent_date(30)
+        )
+        warnings = check_sbir_data_freshness(source, self._recent_date(1), days=7)
+        assert len(warnings) == 1
+        assert "S3 data is" in warnings[0]
+
+    def test_stale_max_award_date(self):
+        source = SbirAwardsSource(path=Path("/tmp/test.csv"), origin="download")
+        warnings = check_sbir_data_freshness(source, self._recent_date(30), days=7)
+        assert len(warnings) == 1
+        assert "Most recent award" in warnings[0]
+
+    def test_both_stale(self):
+        source = SbirAwardsSource(
+            path=Path("/tmp/test.csv"), origin="s3", s3_key_date=self._recent_date(30)
+        )
+        warnings = check_sbir_data_freshness(source, self._recent_date(30), days=7)
+        assert len(warnings) == 2
+
+    def test_no_s3_key_date_skips_check(self):
+        source = SbirAwardsSource(path=Path("/tmp/test.csv"), origin="download")
+        warnings = check_sbir_data_freshness(source, self._recent_date(1), days=7)
+        assert warnings == []
+
+    def test_no_max_award_date_skips_check(self):
+        source = SbirAwardsSource(
+            path=Path("/tmp/test.csv"), origin="s3", s3_key_date=self._recent_date(1)
+        )
+        warnings = check_sbir_data_freshness(source, None, days=7)
+        assert warnings == []
+
+    def test_custom_slack_days(self):
+        source = SbirAwardsSource(
+            path=Path("/tmp/test.csv"), origin="s3", s3_key_date=self._recent_date(12)
+        )
+        # Default slack is 3, so 12 days > 7+3=10 → stale
+        warnings_default = check_sbir_data_freshness(source, None, days=7)
+        assert len(warnings_default) == 1
+
+        # With slack=10, 12 days < 7+10=17 → fresh
+        warnings_custom = check_sbir_data_freshness(
+            source, None, days=7, s3_slack_days=10
+        )
+        assert warnings_custom == []
+
+    def test_edge_case_exactly_at_threshold(self):
+        # days=7, slack=3 → threshold=10; age=10 → NOT stale (> not >=)
+        source = SbirAwardsSource(
+            path=Path("/tmp/test.csv"), origin="s3", s3_key_date=self._recent_date(10)
+        )
+        warnings = check_sbir_data_freshness(source, None, days=7)
+        assert warnings == []
