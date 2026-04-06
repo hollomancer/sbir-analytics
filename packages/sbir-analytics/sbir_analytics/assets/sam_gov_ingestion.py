@@ -6,6 +6,7 @@ Data Source Priority:
 3. FAIL: If both sources fail
 """
 
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -140,6 +141,12 @@ def _import_sam_gov_entities(
             "source": "parquet",
         },
     )
+
+    # Stamp data source provenance on every record
+    ingested_at = datetime.now(timezone.utc)
+    df["data_source"] = "sam.gov"
+    df["data_source_url"] = str(parquet_path)
+    df["ingested_at"] = ingested_at
 
     # Create metadata
     metadata: dict[str, Any] = {

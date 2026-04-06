@@ -7,6 +7,7 @@ Data Source Priority:
 """
 
 import json
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -150,6 +151,12 @@ def _import_usaspending_table(
         },
     )
 
+    # Stamp data source provenance on every record
+    ingested_at = datetime.now(timezone.utc)
+    sample_df["data_source"] = "usaspending"
+    sample_df["data_source_url"] = str(dump_path) if dump_path else "usaspending_api"
+    sample_df["ingested_at"] = ingested_at
+
     metadata = {
         "table_name": table_info.get("table_name"),
         "row_count": table_info.get("row_count"),
@@ -220,6 +227,14 @@ def raw_usaspending_recipients(context: AssetExecutionContext) -> Output[pd.Data
             df[col] = None
 
     context.log.info(f"Loaded {len(df)} recipient records with columns: {list(df.columns)}")
+
+    # Stamp data source provenance (if not already stamped by _import_usaspending_table)
+    if "data_source" not in df.columns:
+        ingested_at = datetime.now(timezone.utc)
+        source_url = parquet_url if parquet_url else "usaspending_dump"
+        df["data_source"] = "usaspending"
+        df["data_source_url"] = str(source_url)
+        df["ingested_at"] = ingested_at
 
     metadata = {
         "num_records": len(df),
