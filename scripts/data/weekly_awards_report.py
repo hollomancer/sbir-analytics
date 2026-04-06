@@ -148,6 +148,30 @@ try:
 except ImportError:
     _HAS_FPDS_CLIENT = False
 
+try:
+    from sbir_etl.enrichers.semantic_scholar import (
+        PublicationRecord as _LibPublicationRecord,
+        SemanticScholarClient,
+    )
+
+    _HAS_S2_CLIENT = True
+except ImportError:
+    _HAS_S2_CLIENT = False
+
+try:
+    from sbir_etl.enrichers.orcid_client import ORCIDClient, ORCIDRecord as _LibORCIDRecord
+
+    _HAS_ORCID_CLIENT = True
+except ImportError:
+    _HAS_ORCID_CLIENT = False
+
+try:
+    from sbir_etl.enrichers.openai_client import OpenAIClient, WebSearchResult
+
+    _HAS_OPENAI_CLIENT = True
+except ImportError:
+    _HAS_OPENAI_CLIENT = False
+
 
 # ---------------------------------------------------------------------------
 # Debug mode — toggled by --debug CLI flag
@@ -293,87 +317,72 @@ class CompanyResearch:
 # ---------------------------------------------------------------------------
 
 
-@dataclass
-class DataSource:
-    """Metadata about the resolved CSV data source."""
+# Source resolution and freshness checking — prefer shared library functions,
+# fall back to inline implementations when sbir_etl is not installed.
+try:
+    from sbir_etl.utils.cloud_storage import (
+        SbirAwardsSource as DataSource,
+        check_sbir_data_freshness as _check_data_freshness_lib,
+        resolve_sbir_awards_csv as _resolve_csv_path_lib,
+    )
 
-    path: Path
-    origin: str  # "s3" or "download"
-    # S3 key date (e.g. "2026-04-01" from raw/awards/2026-04-01/award_data.csv)
-    s3_key_date: str | None = None
+    def _resolve_csv_path() -> DataSource:
+        source = _resolve_csv_path_lib(download_url=SBIR_AWARDS_URL)
+        print(f"Resolved CSV: {source.path} (origin={source.origin})", file=sys.stderr)
+        return source
 
+    def _check_data_freshness(
+        source: DataSource, max_award_date: str | None, days: int
+    ) -> list[str]:
+        return _check_data_freshness_lib(source, max_award_date, days)
 
-def _resolve_csv_path() -> DataSource:
-    """Resolve the SBIR CSV path: try S3 first, then download fresh.
+except ImportError:
+    from dataclasses import dataclass as _dataclass
 
-    In CI the data-refresh workflow uploads the CSV to S3 weekly, so we
-    prefer that cached copy.  Falls back to downloading directly from
-    SBIR.gov when S3 isn't configured or the file isn't found.
-    """
-    # Try S3 first (only when sbir_etl is installed)
-    if _HAS_SBIR_ETL:
-        bucket = get_s3_bucket_from_env()
-        if bucket:
-            s3_url = find_latest_sbir_awards(bucket)
-            if s3_url:
-                print(f"Using S3-cached CSV: {s3_url}", file=sys.stderr)
-                # Extract date from S3 key: raw/awards/YYYY-MM-DD/award_data.csv
-                import re
+    @_dataclass
+    class DataSource:  # type: ignore[no-redef]
+        """Metadata about the resolved CSV data source (fallback)."""
+        path: Path
+        origin: str
+        s3_key_date: str | None = None
 
-                date_match = re.search(r"raw/awards/(\d{4}-\d{2}-\d{2})/", s3_url)
-                key_date = date_match.group(1) if date_match else None
-                return DataSource(path=Path(s3_url), origin="s3", s3_key_date=key_date)
+    def _resolve_csv_path() -> DataSource:  # type: ignore[misc]
+        """Fallback source resolver for standalone operation."""
+        print(f"S3 not available; downloading from {SBIR_AWARDS_URL}...", file=sys.stderr)
+        with httpx.Client(timeout=600, follow_redirects=True) as client:
+            response = client.get(SBIR_AWARDS_URL)
+            response.raise_for_status()
+        tmp = Path(tempfile.gettempdir()) / "sbir_weekly_award_data.csv"
+        tmp.write_bytes(response.content)
+        print(f"Downloaded {tmp.stat().st_size / 1024 / 1024:.1f} MB", file=sys.stderr)
+        return DataSource(path=tmp, origin="download")
 
-    # Fall back to direct download
-    print(f"S3 not available; downloading from {SBIR_AWARDS_URL}...", file=sys.stderr)
-    with httpx.Client(timeout=600, follow_redirects=True) as client:
-        response = client.get(SBIR_AWARDS_URL)
-        response.raise_for_status()
-
-    tmp = Path(tempfile.gettempdir()) / "sbir_weekly_award_data.csv"
-    tmp.write_bytes(response.content)
-    print(f"Downloaded {tmp.stat().st_size / 1024 / 1024:.1f} MB", file=sys.stderr)
-    return DataSource(path=tmp, origin="download")
-
-
-def _check_data_freshness(
-    source: DataSource,
-    max_award_date: str | None,
-    days: int,
-) -> list[str]:
-    """Verify that the bulk data is fresh enough for the reporting window.
-
-    Returns a list of warning strings (empty if everything looks good).
-    """
-    warnings: list[str] = []
-    now = datetime.now(UTC).replace(tzinfo=None)
-
-    # Check 1: S3 key date — was the data-refresh recent?
-    if source.s3_key_date:
-        key_dt = _parse_date(source.s3_key_date)
-        if key_dt:
-            key_datetime = datetime(key_dt.year, key_dt.month, key_dt.day)
-            age_days = (now - key_datetime).days
-            if age_days > days + 3:  # allow a few days of slack
-                warnings.append(
-                    f"S3 data is {age_days} days old (key date: {source.s3_key_date}). "
-                    f"The data-refresh workflow may have failed."
-                )
-
-    # Check 2: max Proposal Award Date in the data — is the data itself current?
-    if max_award_date:
-        max_dt = _parse_date(max_award_date)
-        if max_dt:
-            max_datetime = datetime(max_dt.year, max_dt.month, max_dt.day)
-            data_age = (now - max_datetime).days
-            if data_age > days + 14:
-                warnings.append(
-                    f"Most recent award in data is from {max_award_date} "
-                    f"({data_age} days ago). SBIR.gov bulk data may not have "
-                    f"been updated recently."
-                )
-
-    return warnings
+    def _check_data_freshness(  # type: ignore[misc]
+        source: DataSource, max_award_date: str | None, days: int
+    ) -> list[str]:
+        """Fallback freshness checker for standalone operation."""
+        warnings: list[str] = []
+        now = datetime.now(UTC).replace(tzinfo=None)
+        if source.s3_key_date:
+            key_dt = _parse_date(source.s3_key_date)
+            if key_dt:
+                age = (now - datetime(key_dt.year, key_dt.month, key_dt.day)).days
+                if age > days + 3:
+                    warnings.append(
+                        f"S3 data is {age} days old (key date: {source.s3_key_date}). "
+                        f"The data-refresh workflow may have failed."
+                    )
+        if max_award_date:
+            max_dt = _parse_date(max_award_date)
+            if max_dt:
+                data_age = (now - datetime(max_dt.year, max_dt.month, max_dt.day)).days
+                if data_age > days + 14:
+                    warnings.append(
+                        f"Most recent award in data is from {max_award_date} "
+                        f"({data_age} days ago). SBIR.gov bulk data may not have "
+                        f"been updated recently."
+                    )
+        return warnings
 
 
 def fetch_weekly_awards(
@@ -1031,8 +1040,8 @@ def lookup_pi_patents(pi_name: str, company_name: str | None = None) -> PIPatent
 def lookup_pi_publications(pi_name: str) -> PIPublicationRecord | None:
     """Query Semantic Scholar for the PI's publication history.
 
-    Uses the author search endpoint to find the PI, then fetches
-    their publication summary.
+    Uses :class:`SemanticScholarClient` when the library is available;
+    falls back to inline httpx calls for standalone operation.
     """
     first, last = _split_pi_name(pi_name)
     if not last:
@@ -1040,17 +1049,32 @@ def lookup_pi_publications(pi_name: str) -> PIPublicationRecord | None:
 
     search_query = f"{first} {last}".strip()
 
-    # Optional API key for higher rate limits (free at semanticscholar.org/product/api)
+    if _HAS_S2_CLIENT:
+        with SemanticScholarClient(rate_limiter=_semantic_scholar_limiter) as s2:
+            try:
+                rec = s2.lookup_author(search_query)
+            except Exception as e:
+                print(f"Semantic Scholar API error for {pi_name}: {e}", file=sys.stderr)
+                return None
+        if rec is None:
+            return None
+        return PIPublicationRecord(
+            total_papers=rec.total_papers,
+            h_index=rec.h_index,
+            citation_count=rec.citation_count,
+            sample_titles=rec.sample_titles,
+            affiliations=rec.affiliations,
+        )
+
+    # Inline fallback for standalone operation
     s2_api_key = os.environ.get("SEMANTIC_SCHOLAR_API_KEY", "")
     headers: dict[str, str] = {}
     if s2_api_key:
         headers["x-api-key"] = s2_api_key
 
-    _debug(f"Semantic Scholar search for '{pi_name}': query='{search_query}' (api_key={'yes' if s2_api_key else 'no'})")
     import time
 
     try:
-        # Step 1: Search for the author (with retry on 429)
         search_data = None
         with httpx.Client(timeout=30, headers=headers) as client:
             for attempt in range(3):
@@ -1059,87 +1083,50 @@ def lookup_pi_publications(pi_name: str) -> PIPublicationRecord | None:
                     f"{SEMANTIC_SCHOLAR_API_URL}/author/search",
                     params={"query": search_query, "limit": 5},
                 )
-                _debug_response(f"Semantic Scholar search [{pi_name}]", resp)
                 if resp.status_code == 429:
-                    wait = 2 ** (attempt + 1)
-                    _debug(f"Semantic Scholar [{pi_name}]: rate limited, retrying in {wait}s")
-                    time.sleep(wait)
+                    time.sleep(2 ** (attempt + 1))
                     continue
                 if resp.status_code != 200:
-                    print(
-                        f"Semantic Scholar search returned {resp.status_code} for {pi_name}",
-                        file=sys.stderr,
-                    )
                     return None
                 search_data = resp.json()
                 break
-
         if search_data is None:
-            print(f"Semantic Scholar rate limited after 3 retries for {pi_name}", file=sys.stderr)
             return None
-
         authors = search_data.get("data", [])
-        _debug(f"Semantic Scholar [{pi_name}]: {len(authors)} author matches")
         if not authors:
             return None
-
-        # Pick the best match (first result from Semantic Scholar's ranking)
-        author = authors[0]
-        author_id = author.get("authorId")
-        _debug(f"Semantic Scholar [{pi_name}]: selected authorId={author_id}, name={author.get('name', 'N/A')}")
+        author_id = authors[0].get("authorId")
         if not author_id:
             return None
 
-        # Step 2: Get author details with papers (with retry on 429)
         author_data = None
         with httpx.Client(timeout=30, headers=headers) as client:
             for attempt in range(3):
                 _semantic_scholar_limiter.wait_if_needed()
                 resp = client.get(
                     f"{SEMANTIC_SCHOLAR_API_URL}/author/{author_id}",
-                    params={
-                        "fields": "name,hIndex,citationCount,affiliations,papers.title,papers.year",
-                    },
+                    params={"fields": "name,hIndex,citationCount,affiliations,papers.title,papers.year"},
                 )
-                _debug_response(f"Semantic Scholar detail [{pi_name}]", resp)
                 if resp.status_code == 429:
-                    wait = 2 ** (attempt + 1)
-                    _debug(f"Semantic Scholar detail [{pi_name}]: rate limited, retrying in {wait}s")
-                    time.sleep(wait)
+                    time.sleep(2 ** (attempt + 1))
                     continue
                 if resp.status_code != 200:
-                    print(
-                        f"Semantic Scholar author detail returned {resp.status_code} for {pi_name}",
-                        file=sys.stderr,
-                    )
                     return None
                 author_data = resp.json()
                 break
-
         if author_data is None:
-            print(f"Semantic Scholar detail rate limited after 3 retries for {pi_name}", file=sys.stderr)
             return None
-
     except Exception as e:
         print(f"Semantic Scholar API error for {pi_name}: {e}", file=sys.stderr)
         return None
 
     papers = author_data.get("papers", [])
-    _debug(
-        f"Semantic Scholar [{pi_name}]: {len(papers)} papers, "
-        f"h-index={author_data.get('hIndex')}, citations={author_data.get('citationCount')}"
-    )
-    sample_titles = [
-        p["title"] for p in papers[:5] if p.get("title")
-    ]
-    affiliations = author_data.get("affiliations", []) or []
-
     return PIPublicationRecord(
         total_papers=len(papers),
         h_index=author_data.get("hIndex"),
         citation_count=author_data.get("citationCount", 0),
-        sample_titles=sample_titles,
-        affiliations=affiliations,
+        sample_titles=[p["title"] for p in papers[:5] if p.get("title")],
+        affiliations=author_data.get("affiliations", []) or [],
     )
 
 
@@ -2045,30 +2032,44 @@ class ORCIDRecord:
 def lookup_pi_orcid(pi_name: str) -> ORCIDRecord | None:
     """Search the ORCID public API for a PI's researcher profile.
 
-    Uses the expanded search endpoint to find by name, then fetches
-    the full profile for works, affiliations, and funding.
+    Uses :class:`ORCIDClient` when the library is available;
+    falls back to inline httpx calls for standalone operation.
     """
     first, last = _split_pi_name(pi_name)
     if not last:
         return None
 
-    headers = {"Accept": "application/json"}
+    if _HAS_ORCID_CLIENT:
+        with ORCIDClient(rate_limiter=_orcid_limiter) as orcid:
+            try:
+                rec = orcid.lookup(pi_name)
+            except Exception as e:
+                print(f"ORCID API error for {pi_name}: {e}", file=sys.stderr)
+                return None
+        if rec is None:
+            return None
+        return ORCIDRecord(
+            orcid_id=rec.orcid_id,
+            given_name=rec.given_name,
+            family_name=rec.family_name,
+            affiliations=rec.affiliations,
+            works_count=rec.works_count,
+            sample_work_titles=rec.sample_work_titles,
+            funding_count=rec.funding_count,
+            keywords=rec.keywords,
+        )
 
-    # Optional ORCID access token for higher rate limits.
-    # Generate via client credentials grant with a free ORCID Public API key:
-    #   curl -d "client_id=APP-XXX&client_secret=XXX&grant_type=client_credentials&scope=/read-public" \
-    #        https://orcid.org/oauth/token
+    # Inline fallback for standalone operation
+    headers = {"Accept": "application/json"}
     orcid_token = os.environ.get("ORCID_ACCESS_TOKEN", "")
     if orcid_token:
         headers["Authorization"] = f"Bearer {orcid_token}"
 
     try:
-        # Step 1: Search for the researcher by name
         query = f"family-name:{last}"
         if first:
             query += f"+AND+given-names:{first}"
 
-        _debug(f"ORCID search for '{pi_name}': query='{query}' (token={'yes' if orcid_token else 'no'})")
         _orcid_limiter.wait_if_needed()
         with httpx.Client(timeout=30) as client:
             resp = client.get(
@@ -2076,94 +2077,56 @@ def lookup_pi_orcid(pi_name: str) -> ORCIDRecord | None:
                 headers=headers,
                 params={"q": query, "rows": 5},
             )
-            _debug_response(f"ORCID search [{pi_name}]", resp)
             if resp.status_code != 200:
                 return None
             search_data = resp.json()
 
         results = search_data.get("expanded-result", [])
-        _debug(f"ORCID [{pi_name}]: {len(results) if results else 0} search results")
         if not results:
             return None
-
-        # Pick the best match (first result)
         best = results[0]
         orcid_id = best.get("orcid-id", "")
-        _debug(f"ORCID [{pi_name}]: selected orcid-id={orcid_id}")
         if not orcid_id:
             return None
 
-        # Step 2: Fetch full profile
         _orcid_limiter.wait_if_needed()
         with httpx.Client(timeout=30) as client:
-            resp = client.get(
-                f"{ORCID_API_URL}/{orcid_id}/record",
-                headers=headers,
-            )
-            _debug_response(f"ORCID profile [{pi_name}]", resp)
+            resp = client.get(f"{ORCID_API_URL}/{orcid_id}/record", headers=headers)
             if resp.status_code != 200:
                 return None
             profile = resp.json()
-
     except Exception as e:
         print(f"ORCID API error for {pi_name}: {e}", file=sys.stderr)
         return None
 
-    # Extract affiliations
     affiliations: list[str] = []
-    affiliation_groups = (
-        profile.get("activities-summary", {})
-        .get("employments", {})
-        .get("affiliation-group", [])
-    )
-    for group in affiliation_groups[:10]:
-        summaries = group.get("summaries", [])
-        for s in summaries:
-            emp = s.get("employment-summary", {})
-            org = emp.get("organization", {})
-            org_name = org.get("name", "")
+    for group in (profile.get("activities-summary", {}).get("employments", {}).get("affiliation-group", []))[:10]:
+        for s in group.get("summaries", []):
+            org_name = s.get("employment-summary", {}).get("organization", {}).get("name", "")
             if org_name and org_name not in affiliations:
                 affiliations.append(org_name)
 
-    # Extract works (publications)
-    works_group = (
-        profile.get("activities-summary", {})
-        .get("works", {})
-        .get("group", [])
-    )
-    works_count = len(works_group)
-    sample_titles: list[str] = []
+    works_group = profile.get("activities-summary", {}).get("works", {}).get("group", [])
+    sample_titles = []
     for wg in works_group[:5]:
         summaries = wg.get("work-summary", [])
         if summaries:
-            title_obj = summaries[0].get("title", {})
-            title_val = title_obj.get("title", {}).get("value", "")
+            title_val = summaries[0].get("title", {}).get("title", {}).get("value", "")
             if title_val:
                 sample_titles.append(title_val)
 
-    # Extract funding
-    funding_group = (
-        profile.get("activities-summary", {})
-        .get("fundings", {})
-        .get("group", [])
-    )
-    funding_count = len(funding_group)
-
-    # Extract keywords
-    keywords_obj = profile.get("person", {}).get("keywords", {})
-    keyword_list = keywords_obj.get("keyword", [])
-    keywords = [
-        kw.get("content", "") for kw in keyword_list[:10] if kw.get("content")
-    ]
+    funding_group = profile.get("activities-summary", {}).get("fundings", {}).get("group", [])
+    keyword_list = profile.get("person", {}).get("keywords", {}).get("keyword", [])
+    keywords = [kw.get("content", "") for kw in keyword_list[:10] if kw.get("content")]
 
     return ORCIDRecord(
         orcid_id=orcid_id,
         given_name=best.get("given-names"),
         family_name=best.get("family-names"),
         affiliations=affiliations,
-        works_count=works_count,
+        works_count=len(works_group),
         sample_work_titles=sample_titles,
-        funding_count=funding_count,
+        funding_count=len(funding_group),
         keywords=keywords,
     )
 
@@ -2188,9 +2151,9 @@ class SolicitationTopic:
 def fetch_solicitation_topics(awards: list[dict]) -> dict[str, SolicitationTopic]:
     """Fetch solicitation topic titles and descriptions from SBIR.gov API.
 
-    Uses SolicitationExtractor when available (tenacity retry, pagination).
-    Falls back to hand-rolled queries otherwise.
-    Returns a dict keyed by topic code.
+    Uses SolicitationExtractor when available (tenacity retry, pagination,
+    keyword search, awards fallback). Falls back to hand-rolled queries
+    otherwise.
     """
     # Collect unique topic codes
     topic_codes: dict[str, str] = {}  # topic_code -> solicitation_number
@@ -2207,31 +2170,53 @@ def fetch_solicitation_topics(awards: list[dict]) -> dict[str, SolicitationTopic
     total = len(topic_codes)
     print(f"Fetching {total} solicitation topics from SBIR.gov...", file=sys.stderr)
 
-    # Prefer SolicitationExtractor — handles pagination and retry internally
+    def _parse_year(sol: str) -> int | None:
+        for part in sol.replace("-", " ").replace(".", " ").split():
+            if part.isdigit() and len(part) == 4:
+                return int(part)
+        return None
+
+    def _make_topic(tc: str, sol_num: str, topic: dict) -> SolicitationTopic:
+        desc = topic.get("topicDescription") or topic.get("description")
+        if desc and len(str(desc)) > 3000:
+            desc = str(desc)[:3000] + "..."
+        return SolicitationTopic(
+            topic_code=tc,
+            solicitation_number=(
+                topic.get("solicitationNumber")
+                or topic.get("solicitation_number")
+                or sol_num
+            ),
+            title=topic.get("topicTitle") or topic.get("title") or "",
+            description=str(desc) if desc else None,
+            agency=topic.get("agency"),
+            program=topic.get("program"),
+        )
+
+    # --- Path A: SolicitationExtractor (tenacity retry + all query modes) ---
     if _HAS_SOLICITATION_EXTRACTOR:
-        _debug("Using SolicitationExtractor (tenacity retry + pagination)")
+        _debug("Using SolicitationExtractor")
         try:
             extractor = SolicitationExtractor()
             try:
-                # Extract unique years from solicitation numbers
-                years: set[int] = set()
-                for sol in topic_codes.values():
-                    for part in sol.replace("-", " ").replace(".", " ").split():
-                        if part.isdigit() and len(part) == 4:
-                            years.add(int(part))
-                            break
+                # Group topic codes by year
+                sol_years: dict[int, list[str]] = {}
+                no_year_codes: list[tuple[str, str]] = []
+                for tc, sol in topic_codes.items():
+                    year = _parse_year(sol)
+                    if year:
+                        sol_years.setdefault(year, []).append(tc)
+                    else:
+                        no_year_codes.append((tc, sol))
 
-                # Fetch topics for each year (or all if no years found)
+                # Step 1: Year-based batch queries
                 import pandas as pd
 
                 all_topics = pd.DataFrame()
-                if years:
-                    for year in years:
-                        df = extractor.extract_topics(year=year, max_results=1000)
-                        if not df.empty:
-                            all_topics = pd.concat([all_topics, df], ignore_index=True)
-                else:
-                    all_topics = extractor.extract_topics(max_results=1000)
+                for year in sol_years:
+                    df = extractor.extract_topics(year=year, max_results=1000)
+                    if not df.empty:
+                        all_topics = pd.concat([all_topics, df], ignore_index=True)
 
                 if not all_topics.empty:
                     all_topics = extractor.deduplicate_topics(all_topics)
@@ -2239,261 +2224,146 @@ def fetch_solicitation_topics(awards: list[dict]) -> dict[str, SolicitationTopic
                     for _, row in all_topics.iterrows():
                         tc = str(row.get("topic_code", "")).strip()
                         if tc in codes_set and tc not in results:
-                            desc = row.get("description")
-                            if desc and len(str(desc)) > 3000:
-                                desc = str(desc)[:3000] + "..."
+                            results[tc] = _make_topic(tc, topic_codes.get(tc, ""), row.to_dict())
+
+                # Step 2: Keyword search for no-year codes
+                for tc, sol in no_year_codes:
+                    if tc in results:
+                        continue
+                    keyword = sol if sol else tc
+                    topics = extractor.query_by_keyword(keyword)
+                    for topic in topics:
+                        found_tc = topic.get("topicCode") or topic.get("topic_code") or ""
+                        if found_tc == tc:
+                            results[tc] = _make_topic(tc, sol, topic)
+                            break
+
+                # Step 3: Awards fallback for anything still missing
+                missing = [tc for tc in topic_codes if tc not in results]
+                if missing:
+                    _debug(f"Awards fallback for {len(missing)} missing topic codes")
+                    for tc in missing:
+                        fallback = extractor.query_awards_for_topic(tc)
+                        if fallback:
                             results[tc] = SolicitationTopic(
                                 topic_code=tc,
-                                solicitation_number=str(row.get("solicitation_number", "")) or topic_codes.get(tc, ""),
-                                title=str(row.get("title", "")),
-                                description=str(desc) if desc else None,
-                                agency=str(row.get("agency", "")) or None,
-                                program=str(row.get("program", "")) or None,
+                                solicitation_number=topic_codes.get(tc, ""),
+                                title=fallback.get("title", ""),
+                                description=(
+                                    str(fallback["description"])[:3000] + "..."
+                                    if fallback.get("description") and len(str(fallback["description"])) > 3000
+                                    else fallback.get("description")
+                                ),
+                                agency=fallback.get("agency"),
+                                program=fallback.get("program"),
                             )
-                print(
-                    f"SolicitationExtractor found {len(results)}/{total} topics",
-                    file=sys.stderr,
-                )
-                if len(results) == total:
-                    return results
-                # Fall through for any missing codes
+
+                print(f"SolicitationExtractor found {len(results)}/{total} topics", file=sys.stderr)
             finally:
-                if hasattr(extractor, "close"):
-                    extractor.close()
+                extractor.close()
+            return results
         except Exception as e:
             print(f"SolicitationExtractor error: {e}, falling back to manual queries", file=sys.stderr)
 
-    # Query by solicitation year to reduce result sets.
-    # Group topic codes by their solicitation number prefix to batch queries.
-    sol_years: dict[int, list[str]] = {}
-    # Topic codes with no parseable year — query individually by keyword
-    no_year_codes: list[tuple[str, str]] = []  # (topic_code, solicitation_number)
+    # --- Path B: Inline httpx fallback (standalone mode) ---
+    sol_years_fb: dict[int, list[str]] = {}
+    no_year_codes_fb: list[tuple[str, str]] = []
     for tc, sol in topic_codes.items():
-        # Extract year from solicitation number (e.g. "SBIR-2023.1" -> 2023)
-        year = None
-        for part in sol.replace("-", " ").replace(".", " ").split():
-            if part.isdigit() and len(part) == 4:
-                year = int(part)
-                break
+        year = _parse_year(sol)
         if year:
-            sol_years.setdefault(year, []).append(tc)
+            sol_years_fb.setdefault(year, []).append(tc)
         else:
-            no_year_codes.append((tc, sol))
+            no_year_codes_fb.append((tc, sol))
 
-    # Handle topic codes with no parseable year: query by keyword (topic code
-    # or solicitation number) instead of fetching the entire unfiltered set.
     import time
 
-    for tc, sol in no_year_codes:
+    for tc, sol in no_year_codes_fb:
         keyword = sol if sol else tc
-        params: dict[str, str | int] = {"rows": 25, "start": 0, "keyword": keyword}
-        _debug(f"SBIR.gov solicitations (no year): keyword='{keyword}' for topic {tc}")
         try:
             _sbir_gov_limiter.wait_if_needed()
             with httpx.Client(timeout=30) as client:
-                resp = client.get(f"{SBIR_GOV_API_URL}/solicitations", params=params)
+                resp = client.get(f"{SBIR_GOV_API_URL}/solicitations", params={"rows": 25, "start": 0, "keyword": keyword})
                 if resp.status_code == 429:
                     time.sleep(3)
                     _sbir_gov_limiter.wait_if_needed()
-                    resp = client.get(f"{SBIR_GOV_API_URL}/solicitations", params=params)
-                _debug_response(f"SBIR.gov solicitations [keyword={keyword}]", resp)
+                    resp = client.get(f"{SBIR_GOV_API_URL}/solicitations", params={"rows": 25, "start": 0, "keyword": keyword})
                 if resp.status_code != 200:
                     continue
                 data = resp.json()
-        except Exception as e:
-            _debug(f"SBIR.gov keyword query error for {keyword}: {e}")
+        except Exception:
             continue
-
-        topics = data if isinstance(data, list) else (
-            data.get("results") or data.get("data") or []
-        )
+        topics = data if isinstance(data, list) else (data.get("results") or data.get("data") or [])
         for topic in topics:
             found_tc = topic.get("topicCode") or topic.get("topic_code") or ""
             if found_tc == tc and tc not in results:
-                desc = topic.get("topicDescription") or topic.get("description")
-                if desc and len(desc) > 3000:
-                    desc = desc[:3000] + "..."
-                results[tc] = SolicitationTopic(
-                    topic_code=tc,
-                    solicitation_number=(
-                        topic.get("solicitationNumber")
-                        or topic.get("solicitation_number")
-                        or sol
-                    ),
-                    title=topic.get("topicTitle") or topic.get("title") or "",
-                    description=desc,
-                    agency=topic.get("agency"),
-                    program=topic.get("program"),
-                )
+                results[tc] = _make_topic(tc, sol, topic)
                 break
 
-    for year, codes in sol_years.items():
-        params = {"rows": 500, "start": 0, "year": year}
-
-        _debug(
-            f"SBIR.gov solicitations query: GET {SBIR_GOV_API_URL}/solicitations "
-            f"params={params} (looking for {len(codes)} topic codes)"
-        )
-
-        # Retry with backoff on 429 (rate limit) responses
-        import time
-
+    for year, codes in sol_years_fb.items():
         data = None
         for attempt in range(3):
             try:
                 _sbir_gov_limiter.wait_if_needed()
                 with httpx.Client(timeout=30) as client:
-                    resp = client.get(
-                        f"{SBIR_GOV_API_URL}/solicitations", params=params
-                    )
-                    _debug_response(f"SBIR.gov solicitations [year={year}]", resp)
+                    resp = client.get(f"{SBIR_GOV_API_URL}/solicitations", params={"rows": 500, "start": 0, "year": year})
                     if resp.status_code == 429:
-                        wait = 2 ** (attempt + 1)
-                        print(
-                            f"SBIR.gov rate limited (429) for year={year}, "
-                            f"retrying in {wait}s (attempt {attempt + 1}/3)...",
-                            file=sys.stderr,
-                        )
-                        time.sleep(wait)
+                        time.sleep(2 ** (attempt + 1))
                         continue
                     if resp.status_code != 200:
-                        print(
-                            f"SBIR.gov API returned {resp.status_code} for year={year}",
-                            file=sys.stderr,
-                        )
                         break
                     data = resp.json()
                     break
-            except Exception as e:
-                print(f"SBIR.gov API error for year={year}: {e}", file=sys.stderr)
+            except Exception:
                 break
-
         if data is None:
             continue
-
-        topics = data if isinstance(data, list) else (
-            data.get("results") or data.get("data") or []
-        )
-        _debug(f"SBIR.gov solicitations [year={year}]: {len(topics)} topics in response")
-
+        topics = data if isinstance(data, list) else (data.get("results") or data.get("data") or [])
         codes_set = set(codes)
         for topic in topics:
             tc = topic.get("topicCode") or topic.get("topic_code") or ""
             if tc in codes_set and tc not in results:
-                desc = topic.get("topicDescription") or topic.get("description")
-                # Truncate very long descriptions for LLM context
-                if desc and len(desc) > 3000:
-                    desc = desc[:3000] + "..."
-                results[tc] = SolicitationTopic(
-                    topic_code=tc,
-                    solicitation_number=(
-                        topic.get("solicitationNumber")
-                        or topic.get("solicitation_number")
-                        or topic_codes.get(tc, "")
-                    ),
-                    title=topic.get("topicTitle") or topic.get("title") or "",
-                    description=desc,
-                    agency=topic.get("agency"),
-                    program=topic.get("program"),
-                )
+                results[tc] = _make_topic(tc, topic_codes.get(tc, ""), topic)
 
     found = len(results)
-    print(
-        f"Fetched {found}/{total} solicitation topics from SBIR.gov",
-        file=sys.stderr,
-    )
+    print(f"Fetched {found}/{total} solicitation topics from SBIR.gov", file=sys.stderr)
 
-    # --- Fallback: query the awards endpoint for any missing topic codes ---
+    # Awards fallback for missing codes
     missing_codes = [tc for tc in topic_codes if tc not in results]
     if missing_codes:
-        _debug(
-            f"Solicitation topic fallback: {len(missing_codes)} codes not found "
-            f"via /solicitations — trying /awards endpoint: {missing_codes}"
-        )
-        print(
-            f"Falling back to SBIR.gov awards API for {len(missing_codes)} "
-            f"missing topic codes...",
-            file=sys.stderr,
-        )
-        # Brief pause before hitting the same API — respect rate limits
+        print(f"Falling back to SBIR.gov awards API for {len(missing_codes)} missing topic codes...", file=sys.stderr)
         time.sleep(2)
         for tc in missing_codes:
             try:
                 _sbir_gov_limiter.wait_if_needed()
                 with httpx.Client(timeout=30) as client:
-                    resp = client.get(
-                        f"{SBIR_GOV_API_URL}/awards",
-                        params={"keyword": tc, "rows": 5, "start": 0},
-                    )
-                    _debug_response(f"SBIR.gov awards fallback [{tc}]", resp)
+                    resp = client.get(f"{SBIR_GOV_API_URL}/awards", params={"keyword": tc, "rows": 5, "start": 0})
                     if resp.status_code == 429:
-                        _debug(f"SBIR.gov awards fallback [{tc}]: rate limited, sleeping 3s")
                         time.sleep(3)
-                        # One retry after backoff
-                        resp = client.get(
-                            f"{SBIR_GOV_API_URL}/awards",
-                            params={"keyword": tc, "rows": 5, "start": 0},
-                        )
+                        resp = client.get(f"{SBIR_GOV_API_URL}/awards", params={"keyword": tc, "rows": 5, "start": 0})
                         if resp.status_code != 200:
                             continue
                     elif resp.status_code != 200:
                         continue
                     data = resp.json()
-            except Exception as e:
-                _debug(f"SBIR.gov awards fallback error for {tc}: {e}")
+            except Exception:
                 continue
-
-            award_list = data if isinstance(data, list) else (
-                data.get("results") or data.get("data") or []
-            )
-            _debug(f"SBIR.gov awards fallback [{tc}]: {len(award_list)} awards returned")
-
-            # Look for a matching award that has topic description info
+            award_list = data if isinstance(data, list) else (data.get("results") or data.get("data") or [])
             for award in award_list:
-                award_tc = (
-                    award.get("topicCode")
-                    or award.get("topic_code")
-                    or ""
-                )
+                award_tc = award.get("topicCode") or award.get("topic_code") or ""
                 if award_tc != tc:
                     continue
-                title = (
-                    award.get("topicTitle")
-                    or award.get("topic_title")
-                    or award.get("awardTitle")
-                    or award.get("award_title")
-                    or ""
-                )
-                desc = (
-                    award.get("topicDescription")
-                    or award.get("topic_description")
-                    or award.get("abstract")
-                    or award.get("Abstract")
-                    or None
-                )
+                title = award.get("topicTitle") or award.get("topic_title") or award.get("awardTitle") or award.get("award_title") or ""
+                desc = award.get("topicDescription") or award.get("topic_description") or award.get("abstract") or award.get("Abstract") or None
                 if desc and len(desc) > 3000:
                     desc = desc[:3000] + "..."
                 if title or desc:
                     results[tc] = SolicitationTopic(
-                        topic_code=tc,
-                        solicitation_number=topic_codes.get(tc, ""),
-                        title=title,
-                        description=desc,
-                        agency=award.get("agency"),
-                        program=award.get("program"),
-                    )
-                    _debug(
-                        f"Solicitation fallback matched [{tc}]: "
-                        f"title='{title[:80]}' desc_len={len(desc) if desc else 0}"
+                        topic_code=tc, solicitation_number=topic_codes.get(tc, ""),
+                        title=title, description=desc, agency=award.get("agency"), program=award.get("program"),
                     )
                     break
-
         fallback_found = len(results) - found
-        print(
-            f"Fallback recovered {fallback_found}/{len(missing_codes)} "
-            f"topic descriptions from awards API",
-            file=sys.stderr,
-        )
+        print(f"Fallback recovered {fallback_found}/{len(missing_codes)} topic descriptions from awards API", file=sys.stderr)
 
     return results
 
@@ -2688,6 +2558,25 @@ def build_usaspending_url(award: dict) -> str | None:
 # ---------------------------------------------------------------------------
 
 
+# Lazy-initialized OpenAI client — created on first use when the library is
+# available.  Shares the concurrency semaphore with the fallback path.
+_openai_client_instance: object | None = None
+
+
+def _get_openai_client(api_key: str) -> object | None:
+    """Return (and cache) an OpenAIClient if the library is installed."""
+    global _openai_client_instance  # noqa: PLW0603
+    if not _HAS_OPENAI_CLIENT:
+        return None
+    if _openai_client_instance is None:
+        _openai_client_instance = OpenAIClient(
+            api_key=api_key,
+            max_concurrent=int(os.environ.get("OPENAI_MAX_CONCURRENT", "4")),
+            model=OPENAI_MODEL,
+        )
+    return _openai_client_instance
+
+
 def _openai_request_with_retry(
     method: str,
     url: str,
@@ -2695,16 +2584,9 @@ def _openai_request_with_retry(
     payload: dict,
     timeout: int = 120,
 ) -> httpx.Response | None:
-    """Make an OpenAI API request with retry/backoff for 429 and 5xx errors.
-
-    Acquires ``_openai_semaphore`` before sending a request so that total
-    concurrent OpenAI calls across all thread pools stays bounded (default 4,
-    configurable via ``OPENAI_MAX_CONCURRENT`` env var).
-    """
+    """Fallback: make an OpenAI API request with retry/backoff."""
     import time
 
-    model_name = payload.get("model", "unknown")
-    _debug(f"OpenAI request: {method} {url} model={model_name} timeout={timeout}")
     for attempt in range(OPENAI_MAX_RETRIES + 1):
         try:
             _openai_semaphore.acquire()
@@ -2716,11 +2598,6 @@ def _openai_request_with_retry(
             if resp.status_code == 429 or resp.status_code >= 500:
                 if attempt < OPENAI_MAX_RETRIES:
                     wait = OPENAI_RETRY_BACKOFF_BASE ** (attempt + 1)
-                    print(
-                        f"OpenAI API returned {resp.status_code}, retrying in {wait}s "
-                        f"(attempt {attempt + 1}/{OPENAI_MAX_RETRIES})...",
-                        file=sys.stderr,
-                    )
                     time.sleep(wait)
                     continue
             resp.raise_for_status()
@@ -2728,10 +2605,8 @@ def _openai_request_with_retry(
         except httpx.HTTPStatusError:
             if attempt < OPENAI_MAX_RETRIES:
                 continue
-            print(f"OpenAI API error after {OPENAI_MAX_RETRIES} retries: {resp.status_code}", file=sys.stderr)
             return None
-        except Exception as e:
-            print(f"OpenAI API request error: {e}", file=sys.stderr)
+        except Exception:
             return None
     return None
 
@@ -2748,10 +2623,17 @@ def _openai_chat(
         f"OpenAI chat: model={model} temp={temperature} "
         f"system_len={len(system)} user_len={len(user)}"
     )
-    headers = {
-        "Authorization": f"Bearer {api_key}",
-        "Content-Type": "application/json",
-    }
+
+    # Prefer library client (has its own retry + semaphore)
+    oai = _get_openai_client(api_key)
+    if oai is not None:
+        result = oai.chat(system, user, model=model, temperature=temperature)
+        if result:
+            _debug(f"OpenAI chat response: {len(result)} chars")
+        return result
+
+    # Inline fallback
+    headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
     payload = {
         "model": model,
         "temperature": temperature,
@@ -2762,7 +2644,6 @@ def _openai_chat(
     }
     resp = _openai_request_with_retry("POST", OPENAI_CHAT_URL, headers, payload)
     if resp is None:
-        _debug("OpenAI chat: no response (all retries failed)")
         return None
     try:
         data = resp.json()
@@ -2777,17 +2658,23 @@ def _openai_chat(
         return content
     except (KeyError, IndexError) as e:
         print(f"OpenAI Chat API unexpected response: {e}", file=sys.stderr)
-        _debug(f"OpenAI chat raw response: {resp.text[:1000]}")
         return None
 
 
 def _openai_web_search(api_key: str, query: str) -> CompanyResearch | None:
     """Use the OpenAI Responses API with web_search_preview to research a company."""
     _debug(f"OpenAI web search: query='{query[:200]}'")
-    headers = {
-        "Authorization": f"Bearer {api_key}",
-        "Content-Type": "application/json",
-    }
+
+    # Prefer library client
+    oai = _get_openai_client(api_key)
+    if oai is not None:
+        result = oai.web_search(query)
+        if result is None:
+            return None
+        return CompanyResearch(summary=result.summary, source_urls=result.source_urls)
+
+    # Inline fallback
+    headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
     payload = {
         "model": OPENAI_MODEL,
         "tools": [{"type": "web_search_preview"}],
@@ -2807,7 +2694,6 @@ def _openai_web_search(api_key: str, query: str) -> CompanyResearch | None:
 
     summary_text = ""
     source_urls: list[str] = []
-
     for output_item in data.get("output", []):
         if output_item.get("type") == "message":
             for content_block in output_item.get("content", []):
@@ -2819,13 +2705,7 @@ def _openai_web_search(api_key: str, query: str) -> CompanyResearch | None:
                             source_urls.append(url)
 
     if not summary_text:
-        _debug("OpenAI web search: no summary text in response")
         return None
-
-    _debug(
-        f"OpenAI web search: {len(summary_text)} char summary, "
-        f"{len(source_urls)} source URLs: {source_urls[:3]}"
-    )
     return CompanyResearch(summary=summary_text, source_urls=source_urls)
 
 
