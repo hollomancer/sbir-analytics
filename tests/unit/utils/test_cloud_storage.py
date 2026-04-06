@@ -7,7 +7,6 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-
 pytestmark = pytest.mark.fast
 
 from sbir_etl.utils.cloud_storage import (
@@ -180,7 +179,9 @@ class TestCheckSbirDataFreshness:
     """Tests for check_sbir_data_freshness function."""
 
     def _recent_date(self, days_ago: int = 1) -> str:
-        return (datetime.now(UTC) - timedelta(days=days_ago)).strftime("%Y-%m-%d")
+        # Use noon UTC to avoid midnight-boundary flakiness
+        ref = datetime.now(UTC).replace(hour=12, minute=0, second=0, microsecond=0)
+        return (ref - timedelta(days=days_ago)).strftime("%Y-%m-%d")
 
     def test_fresh_data_no_warnings(self):
         source = SbirAwardsSource(

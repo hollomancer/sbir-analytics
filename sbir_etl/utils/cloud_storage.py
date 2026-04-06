@@ -406,12 +406,23 @@ def resolve_sbir_awards_csv(
     # 1. Try S3
     bucket = get_s3_bucket_from_env()
     if bucket:
-        s3_url = find_latest_sbir_awards(bucket)
+        try:
+            s3_url = find_latest_sbir_awards(bucket)
+        except (ImportError, ModuleNotFoundError) as e:
+            logger.warning(
+                f"S3 lookup unavailable (missing cloud dependencies): {e}"
+            )
+            s3_url = None
         if s3_url:
             logger.info(f"Using S3-cached CSV: {s3_url}")
             date_match = re.search(r"raw/awards/(\d{4}-\d{2}-\d{2})/", s3_url)
             key_date = date_match.group(1) if date_match else None
-            return SbirAwardsSource(path=Path(s3_url), origin="s3", s3_key_date=key_date)
+            # Download S3 object to a local temp file so downstream code
+            # (DuckDB, pandas) can read it without special S3 handling.
+            local_path_resolved = resolve_data_path(s3_url)
+            return SbirAwardsSource(
+                path=local_path_resolved, origin="s3", s3_key_date=key_date
+            )
 
     # 2. Download from URL
     logger.info(f"S3 not available; downloading from {download_url}")
@@ -420,8 +431,11 @@ def resolve_sbir_awards_csv(
             response = client.get(download_url)
             response.raise_for_status()
 
-        tmp = Path(tempfile.gettempdir()) / "sbir_weekly_award_data.csv"
-        tmp.write_bytes(response.content)
+        with tempfile.NamedTemporaryFile(
+            mode="wb", suffix=".csv", prefix="sbir_awards_", delete=False,
+        ) as tmp_file:
+            tmp_file.write(response.content)
+            tmp = Path(tmp_file.name)
         size_mb = tmp.stat().st_size / 1024 / 1024
         logger.info(f"Downloaded {size_mb:.1f} MB to {tmp}")
         return SbirAwardsSource(path=tmp, origin="download")
