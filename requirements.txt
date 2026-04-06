@@ -410,7 +410,7 @@ types-awscrt==0.31.3
     # via botocore-stubs
 types-psutil==7.2.2.20260130
     # via sbir-analytics
-types-pytz==2026.1.1.20260304
+types-pytz==2026.1.1.20260402
     # via pandas-stubs
 types-pyyaml==6.0.12.20250915
     # via sbir-analytics
