@@ -3,7 +3,6 @@
 import xml.etree.ElementTree as ET
 from unittest.mock import Mock, patch
 
-import httpx
 import pytest
 
 from sbir_etl.enrichers.fpds_atom import (
@@ -12,7 +11,6 @@ from sbir_etl.enrichers.fpds_atom import (
     FPDSRecord,
     _find_local,
     _parse_entry,
-    _text,
 )
 
 pytestmark = pytest.mark.fast
@@ -218,22 +216,28 @@ class TestFPDSAtomClient:
         assert result["TEST"].endswith("...")
         assert len(result["TEST"]) == 503  # 500 + "..."
 
+    def test_context_manager(self):
+        mock_http = Mock()
+        with FPDSAtomClient(http_client=mock_http) as client:
+            assert client._client is mock_http
+        # Owned client would be closed; injected client is not
+        mock_http.close.assert_not_called()
+
+    def test_close_owns_client(self):
+        client = FPDSAtomClient()
+        assert client._owns_client is True
+        client.close()
+
     def test_rate_limiter_called(self):
         limiter = Mock()
-        client = FPDSAtomClient(rate_limiter=limiter)
-
+        mock_http = Mock()
         mock_resp = Mock()
         mock_resp.status_code = 200
         mock_resp.text = EMPTY_FEED
+        mock_http.get.return_value = mock_resp
 
-        with patch("sbir_etl.enrichers.fpds_atom.httpx.Client") as mock_client_cls:
-            mock_http = Mock()
-            mock_http.get.return_value = mock_resp
-            mock_http.__enter__ = Mock(return_value=mock_http)
-            mock_http.__exit__ = Mock(return_value=False)
-            mock_client_cls.return_value = mock_http
-
-            client.search_by_piid("TEST")
+        client = FPDSAtomClient(rate_limiter=limiter, http_client=mock_http)
+        client.search_by_piid("TEST")
 
         limiter.wait_if_needed.assert_called()
 

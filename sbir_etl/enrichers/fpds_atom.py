@@ -198,9 +198,23 @@ class FPDSAtomClient:
         self,
         rate_limiter: Any | None = None,
         timeout: int = 30,
+        http_client: httpx.Client | None = None,
     ) -> None:
         self._limiter = rate_limiter
         self._timeout = timeout
+        self._client = http_client or httpx.Client(timeout=timeout)
+        self._owns_client = http_client is None
+
+    def close(self) -> None:
+        """Close the underlying HTTP client (if owned by this instance)."""
+        if self._owns_client:
+            self._client.close()
+
+    def __enter__(self) -> "FPDSAtomClient":
+        return self
+
+    def __exit__(self, *exc: object) -> None:
+        self.close()
 
     def _wait(self) -> None:
         if self._limiter is not None:
@@ -211,8 +225,7 @@ class FPDSAtomClient:
         for attempt in range(MAX_RETRIES):
             self._wait()
             try:
-                with httpx.Client(timeout=self._timeout) as client:
-                    resp = client.get(FPDS_ATOM_URL, params=params)
+                resp = self._client.get(FPDS_ATOM_URL, params=params)
                 if resp.status_code in (429, 500, 502, 503, 504):
                     wait = RETRY_BACKOFF_BASE ** (attempt + 1)
                     logger.debug(

@@ -2912,12 +2912,12 @@ def _fetch_fpds_descriptions(
     _debug(f"FPDS: querying {len(contract_ids)} contract IDs")
 
     if _HAS_FPDS_CLIENT:
-        fpds = FPDSAtomClient(rate_limiter=_usaspending_limiter)
-        try:
-            results = fpds.get_descriptions(contract_ids)
-        except Exception as e:
-            print(f"FPDS error: {e}", file=sys.stderr)
-            results = {}
+        with FPDSAtomClient(rate_limiter=_usaspending_limiter) as fpds:
+            try:
+                results = fpds.get_descriptions(contract_ids)
+            except Exception as e:
+                print(f"FPDS error: {e}", file=sys.stderr)
+                results = {}
         _debug(f"FPDS: {len(results)}/{len(contract_ids)} descriptions found")
         return results
 
@@ -2957,9 +2957,12 @@ def _fetch_fpds_descriptions(
                         desc = None
                         if content_el is not None:
                             for local_name in ("descriptionOfContractRequirement", "description"):
-                                match = content_el.find(f".//*[local-name()='{local_name}']")
-                                if match is not None and match.text:
-                                    desc = match.text.strip()
+                                for el in content_el.iter():
+                                    tag = el.tag.split("}", 1)[-1] if "}" in el.tag else el.tag
+                                    if tag == local_name and el.text:
+                                        desc = el.text.strip()
+                                        break
+                                if desc:
                                     break
                         if not desc:
                             title_el = entry.find("atom:title", ns)
