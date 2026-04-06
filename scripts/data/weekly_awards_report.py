@@ -105,11 +105,13 @@ except ImportError:
     _HAS_SOLICITATION_EXTRACTOR = False
 
 try:
-    from sbir_etl.enrichers.patentsview import PatentsViewClient
+    from sbir_etl.enrichers.patentsview import PatentsViewClient, RateLimiter, parse_patent_record
 
     _HAS_PATENTS_CLIENT = True
 except ImportError:
     _HAS_PATENTS_CLIENT = False
+    parse_patent_record = None  # type: ignore[assignment]
+    RateLimiter = None  # type: ignore[assignment, misc]
 
 try:
     from sbir_etl.enrichers.inflation_adjuster import InflationAdjuster
@@ -215,6 +217,47 @@ USASPENDING_API_URL = "https://api.usaspending.gov/api/v2"
 SBIR_GOV_API_URL = "https://api.www.sbir.gov/public/api"
 SAM_GOV_API_URL = "https://api.sam.gov/entity-information/v3/entities"
 ORCID_API_URL = "https://pub.orcid.org/v3.0"
+
+
+# ---------------------------------------------------------------------------
+# Rate limiters — shared across threads to prevent API throttling.
+# Uses the library's thread-safe RateLimiter when available, with a minimal
+# fallback that tracks nothing (effectively unlimited) when sbir_etl isn't
+# installed.
+# ---------------------------------------------------------------------------
+
+def _make_rate_limiter(rpm: int) -> object:
+    """Create a thread-safe rate limiter (library or no-op fallback)."""
+    if RateLimiter is not None:
+        return RateLimiter(rate_limit_per_minute=rpm)
+
+    class _NoOpLimiter:
+        def wait_if_needed(self) -> None:
+            pass
+
+    return _NoOpLimiter()
+
+
+# USAspending: 120 req/min (matches library default)
+_usaspending_limiter = _make_rate_limiter(120)
+# Semantic Scholar: 100 req/min (default for unauthenticated)
+_semantic_scholar_limiter = _make_rate_limiter(100)
+# USPTO ODP: 60 req/min (conservative)
+_uspto_limiter = _make_rate_limiter(60)
+# SAM.gov: 60 req/min (matches library default)
+_sam_gov_limiter = _make_rate_limiter(60)
+# ORCID: 60 req/min (conservative)
+_orcid_limiter = _make_rate_limiter(60)
+# SBIR.gov API: 30 req/min (aggressive rate limiting observed)
+_sbir_gov_limiter = _make_rate_limiter(30)
+
+
+# Shared semaphore limiting total concurrent OpenAI API calls across all
+# thread pools (company diligence + PI diligence run concurrently, each with
+# up to 4 workers — without a cap that's 8 parallel LLM requests).
+import threading as _threading
+
+_openai_semaphore = _threading.Semaphore(int(os.environ.get("OPENAI_MAX_CONCURRENT", "4")))
 
 
 # ---------------------------------------------------------------------------
@@ -912,6 +955,7 @@ def lookup_pi_patents(pi_name: str, company_name: str | None = None) -> PIPatent
 
     _debug(f"USPTO ODP query for '{pi_name}': GET {USPTO_ODP_PATENT_SEARCH_URL} params={params}")
     try:
+        _uspto_limiter.wait_if_needed()
         with httpx.Client(timeout=30) as client:
             resp = client.get(USPTO_ODP_PATENT_SEARCH_URL, headers=headers, params=params)
             _debug_response(f"USPTO ODP [{pi_name}]", resp)
@@ -935,24 +979,29 @@ def lookup_pi_patents(pi_name: str, company_name: str | None = None) -> PIPatent
     assignees: set[str] = set()
     dates: list[str] = []
 
-    for record in records:
-        metadata = record.get("applicationMetaData", {}) or {}
-        title = record.get("inventionTitle") or metadata.get("inventionTitle") or ""
+    for raw_record in records:
+        # Use shared parser when available, inline fallback otherwise
+        if parse_patent_record is not None:
+            parsed = parse_patent_record(raw_record)
+            title = parsed.get("patent_title", "")
+            org = parsed.get("assignee_organization", "")
+            grant_date = parsed.get("grant_date", "")
+        else:
+            metadata = raw_record.get("applicationMetaData", {}) or {}
+            title = raw_record.get("inventionTitle") or metadata.get("inventionTitle") or ""
+            org = ""
+            for a in (raw_record.get("assignees", []) or []):
+                if isinstance(a, dict):
+                    org = a.get("assigneeName") or a.get("orgName") or ""
+                    break
+            if not org:
+                org = raw_record.get("assigneeName") or metadata.get("assigneeName") or ""
+            grant_date = metadata.get("grantDate") or raw_record.get("grantDate") or ""
+
         if title and title not in titles and len(titles) < 5:
             titles.append(title)
-
-        record_assignees = record.get("assignees", []) or []
-        for a in record_assignees:
-            if isinstance(a, dict):
-                org = a.get("assigneeName") or a.get("orgName") or ""
-                if org:
-                    assignees.add(org)
-        if not record_assignees:
-            org = record.get("assigneeName") or metadata.get("assigneeName") or ""
-            if org:
-                assignees.add(org)
-
-        grant_date = metadata.get("grantDate") or record.get("grantDate") or ""
+        if org:
+            assignees.add(org)
         if grant_date:
             dates.append(grant_date)
 
@@ -990,6 +1039,7 @@ def lookup_pi_publications(pi_name: str) -> PIPublicationRecord | None:
         search_data = None
         with httpx.Client(timeout=30, headers=headers) as client:
             for attempt in range(3):
+                _semantic_scholar_limiter.wait_if_needed()
                 resp = client.get(
                     f"{SEMANTIC_SCHOLAR_API_URL}/author/search",
                     params={"query": search_query, "limit": 5},
@@ -1029,6 +1079,7 @@ def lookup_pi_publications(pi_name: str) -> PIPublicationRecord | None:
         author_data = None
         with httpx.Client(timeout=30, headers=headers) as client:
             for attempt in range(3):
+                _semantic_scholar_limiter.wait_if_needed()
                 resp = client.get(
                     f"{SEMANTIC_SCHOLAR_API_URL}/author/{author_id}",
                     params={
@@ -1177,6 +1228,7 @@ def _usaspending_autocomplete(company_name: str) -> dict[str, str] | None:
     with httpx.Client(timeout=15) as client:
         for idx, name in enumerate(unique, 1):
             try:
+                _usaspending_limiter.wait_if_needed()
                 resp = client.post(
                     f"{USASPENDING_API_URL}/autocomplete/recipient/",
                     json={"search_text": name, "limit": 5},
@@ -1249,6 +1301,7 @@ def _usaspending_search(
     try:
         with httpx.Client(timeout=30) as client:
             for group_name, codes in type_groups:
+                _usaspending_limiter.wait_if_needed()
                 payload = {
                     "filters": {
                         "award_type_codes": codes,
@@ -1514,6 +1567,7 @@ def lookup_usaspending_recipient(
     for term in search_terms:
         _debug(f"USAspending recipient search: keyword='{term}'")
         try:
+            _usaspending_limiter.wait_if_needed()
             with httpx.Client(timeout=15) as client:
                 resp = client.post(
                     f"{USASPENDING_API_URL}/recipient/",
@@ -1542,6 +1596,7 @@ def lookup_usaspending_recipient(
     # Step 2: Fetch the full profile
     _debug(f"USAspending recipient profile: GET /recipient/{recipient_id}/?year=all")
     try:
+        _usaspending_limiter.wait_if_needed()
         with httpx.Client(timeout=15) as client:
             resp = client.get(
                 f"{USASPENDING_API_URL}/recipient/{recipient_id}/",
@@ -1668,6 +1723,7 @@ def lookup_sam_entity(
 
         for attempt in range(3):
             try:
+                _sam_gov_limiter.wait_if_needed()
                 with httpx.Client(timeout=30) as client:
                     resp = client.get(SAM_GOV_API_URL, headers=headers, params=params)
                     _debug_response(f"SAM.gov [{company_name}]", resp)
@@ -1869,6 +1925,7 @@ def lookup_pi_orcid(pi_name: str) -> ORCIDRecord | None:
             query += f"+AND+given-names:{first}"
 
         _debug(f"ORCID search for '{pi_name}': query='{query}' (token={'yes' if orcid_token else 'no'})")
+        _orcid_limiter.wait_if_needed()
         with httpx.Client(timeout=30) as client:
             resp = client.get(
                 f"{ORCID_API_URL}/expanded-search/",
@@ -1893,6 +1950,7 @@ def lookup_pi_orcid(pi_name: str) -> ORCIDRecord | None:
             return None
 
         # Step 2: Fetch full profile
+        _orcid_limiter.wait_if_needed()
         with httpx.Client(timeout=30) as client:
             resp = client.get(
                 f"{ORCID_API_URL}/{orcid_id}/record",
@@ -2087,10 +2145,12 @@ def fetch_solicitation_topics(awards: list[dict]) -> dict[str, SolicitationTopic
         params: dict[str, str | int] = {"rows": 25, "start": 0, "keyword": keyword}
         _debug(f"SBIR.gov solicitations (no year): keyword='{keyword}' for topic {tc}")
         try:
+            _sbir_gov_limiter.wait_if_needed()
             with httpx.Client(timeout=30) as client:
                 resp = client.get(f"{SBIR_GOV_API_URL}/solicitations", params=params)
                 if resp.status_code == 429:
                     time.sleep(3)
+                    _sbir_gov_limiter.wait_if_needed()
                     resp = client.get(f"{SBIR_GOV_API_URL}/solicitations", params=params)
                 _debug_response(f"SBIR.gov solicitations [keyword={keyword}]", resp)
                 if resp.status_code != 200:
@@ -2137,6 +2197,7 @@ def fetch_solicitation_topics(awards: list[dict]) -> dict[str, SolicitationTopic
         data = None
         for attempt in range(3):
             try:
+                _sbir_gov_limiter.wait_if_needed()
                 with httpx.Client(timeout=30) as client:
                     resp = client.get(
                         f"{SBIR_GOV_API_URL}/solicitations", params=params
@@ -2214,6 +2275,7 @@ def fetch_solicitation_topics(awards: list[dict]) -> dict[str, SolicitationTopic
         time.sleep(2)
         for tc in missing_codes:
             try:
+                _sbir_gov_limiter.wait_if_needed()
                 with httpx.Client(timeout=30) as client:
                     resp = client.get(
                         f"{SBIR_GOV_API_URL}/awards",
@@ -2489,15 +2551,24 @@ def _openai_request_with_retry(
     payload: dict,
     timeout: int = 120,
 ) -> httpx.Response | None:
-    """Make an OpenAI API request with retry/backoff for 429 and 5xx errors."""
+    """Make an OpenAI API request with retry/backoff for 429 and 5xx errors.
+
+    Acquires ``_openai_semaphore`` before sending a request so that total
+    concurrent OpenAI calls across all thread pools stays bounded (default 4,
+    configurable via ``OPENAI_MAX_CONCURRENT`` env var).
+    """
     import time
 
     model_name = payload.get("model", "unknown")
     _debug(f"OpenAI request: {method} {url} model={model_name} timeout={timeout}")
     for attempt in range(OPENAI_MAX_RETRIES + 1):
         try:
-            with httpx.Client(timeout=timeout) as client:
-                resp = client.request(method, url, headers=headers, json=payload)
+            _openai_semaphore.acquire()
+            try:
+                with httpx.Client(timeout=timeout) as client:
+                    resp = client.request(method, url, headers=headers, json=payload)
+            finally:
+                _openai_semaphore.release()
             if resp.status_code == 429 or resp.status_code >= 500:
                 if attempt < OPENAI_MAX_RETRIES:
                     wait = OPENAI_RETRY_BACKOFF_BASE ** (attempt + 1)
@@ -2642,11 +2713,13 @@ def research_companies(
         company_items = company_items[:MAX_COMPANIES_TO_RESEARCH]
     total = len(company_items)
 
-    for idx, (key, info) in enumerate(company_items, 1):
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    def _research_single(item: tuple[str, dict]) -> tuple[str, CompanyResearch | None]:
+        key, info = item
         name = info["name"]
         state = info["state"]
         website = info["website"]
-
         query = (
             f"Find public information about {name}"
             + (f" based in {state}" if state else "")
@@ -2655,11 +2728,25 @@ def research_companies(
             + " What does this company do? How large are they? "
             + "What is their technology focus? Any notable contracts or previous SBIR awards?"
         )
+        return key, _openai_web_search(api_key, query)
 
-        print(f"Researching company {idx}/{total}: {name}...", file=sys.stderr)
-        research = _openai_web_search(api_key, query)
-        if research:
-            results[key] = research
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        futures = {
+            pool.submit(_research_single, item): item
+            for item in company_items
+        }
+        done = 0
+        for future in as_completed(futures):
+            done += 1
+            key_info = futures[future]
+            name = key_info[1]["name"]
+            try:
+                key, research = future.result()
+                if research:
+                    results[key] = research
+                print(f"Completed company research {done}/{total}: {name}", file=sys.stderr)
+            except Exception as e:
+                print(f"Company research error for {name}: {e}", file=sys.stderr)
 
     return results
 
@@ -2745,6 +2832,7 @@ def fetch_usaspending_contract_descriptions(
                 data = None
                 for endpoint in endpoints:
                     for attempt in range(2):
+                        _usaspending_limiter.wait_if_needed()
                         resp = client.post(
                             f"{USASPENDING_API_URL}/{endpoint}/",
                             json=payload,
@@ -3233,7 +3321,7 @@ def generate_company_diligence(
     results: dict[str, str] = {}
     total = len(company_items)
 
-    for idx, (key, co_awards) in enumerate(company_items, 1):
+    def _build_and_generate(idx: int, key: str, co_awards: list[dict]) -> tuple[str, str | None]:
         display_name = co_awards[0].get("Company", key)
         state = str(co_awards[0].get("State", ""))
 
@@ -3391,8 +3479,22 @@ def generate_company_diligence(
             api_key, system, user,
             model=OPENAI_DILIGENCE_MODEL, temperature=0.4,
         )
-        if result:
-            results[key] = result
+        return key, result
+
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        futures = {
+            pool.submit(_build_and_generate, idx, key, co_awards): key
+            for idx, (key, co_awards) in enumerate(company_items, 1)
+        }
+        for future in as_completed(futures):
+            try:
+                key, result = future.result()
+                if result:
+                    results[key] = result
+            except Exception as e:
+                print(f"Company diligence error for {futures[future]}: {e}", file=sys.stderr)
 
     return results
 
@@ -3465,7 +3567,7 @@ def generate_pi_diligence(
     results: dict[str, str] = {}
     total = len(pi_items)
 
-    for idx, (key, pi_awards) in enumerate(pi_items, 1):
+    def _build_and_generate_pi(idx: int, key: str, pi_awards: list[dict]) -> tuple[str, str | None]:
         display_name = pi_awards[0].get("PI Name", key)
         company = str(pi_awards[0].get("Company", ""))
 
@@ -3523,8 +3625,22 @@ def generate_pi_diligence(
             api_key, system, user,
             model=OPENAI_DILIGENCE_MODEL, temperature=0.4,
         )
-        if result:
-            results[key] = result
+        return key, result
+
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        futures = {
+            pool.submit(_build_and_generate_pi, idx, key, pi_awards): key
+            for idx, (key, pi_awards) in enumerate(pi_items, 1)
+        }
+        for future in as_completed(futures):
+            try:
+                key, result = future.result()
+                if result:
+                    results[key] = result
+            except Exception as e:
+                print(f"PI diligence error for {futures[future]}: {e}", file=sys.stderr)
 
     return results
 
@@ -3960,23 +4076,48 @@ def main():
     pi_dilig: dict[str, str] | None = None
     api_key = os.environ.get("OPENAI_API_KEY", "")
 
-    # Fetch solicitation topic context from SBIR.gov API (no API key needed)
-    sol_topics = None
-    if awards and not args.skip_sbir_api:
-        sol_topics = fetch_solicitation_topics(awards)
-    elif args.skip_sbir_api:
-        print("Skipping SBIR.gov API calls (--skip-sbir-api)", file=sys.stderr)
+    from concurrent.futures import ThreadPoolExecutor, as_completed
 
-    # Fetch supplementary context only when AI features are enabled —
-    # these feed into LLM prompts and diligence, so skip the network I/O
-    # when --no-ai is set or OPENAI_API_KEY is missing.
+    # --- Stage 1: Parallel API fetches (solicitation topics + USAspending + SAM) ---
+    sol_topics = None
     usa_descs: dict[str, str] | None = None
     usa_recipients: dict[str, USARecipientProfile] | None = None
     sam_data: dict[str, SAMEntityRecord] | None = None
-    if awards and api_key and not args.no_ai:
-        usa_descs = fetch_usaspending_contract_descriptions(awards)
-        usa_recipients = lookup_usaspending_recipients(awards)
-        sam_data = lookup_sam_entities(awards)
+    if awards:
+        fetch_futures: dict = {}
+        with ThreadPoolExecutor(max_workers=4) as fetch_pool:
+            if not args.skip_sbir_api:
+                fetch_futures["sol_topics"] = fetch_pool.submit(
+                    fetch_solicitation_topics, awards
+                )
+            elif args.skip_sbir_api:
+                print("Skipping SBIR.gov API calls (--skip-sbir-api)", file=sys.stderr)
+
+            if api_key and not args.no_ai:
+                fetch_futures["usa_descs"] = fetch_pool.submit(
+                    fetch_usaspending_contract_descriptions, awards
+                )
+                fetch_futures["usa_recipients"] = fetch_pool.submit(
+                    lookup_usaspending_recipients, awards
+                )
+                fetch_futures["sam_data"] = fetch_pool.submit(
+                    lookup_sam_entities, awards
+                )
+
+            # Collect results
+            for name, future in fetch_futures.items():
+                try:
+                    result = future.result()
+                    if name == "sol_topics":
+                        sol_topics = result
+                    elif name == "usa_descs":
+                        usa_descs = result
+                    elif name == "usa_recipients":
+                        usa_recipients = result
+                    elif name == "sam_data":
+                        sam_data = result
+                except Exception as e:
+                    print(f"Warning: {name} fetch failed: {e}", file=sys.stderr)
 
     # Local enrichments (no network I/O except congressional district Census fallback)
     inflation_data: dict[str, float] = {}
@@ -3997,6 +4138,7 @@ def main():
         congressional = resolve_congressional_districts(awards)
 
     if api_key and not args.no_ai:
+        # --- Stage 2: Company research (parallelized within) ---
         if not args.no_company_research and not _pipeline_expired():
             company_info = research_companies(api_key, awards)
         if _pipeline_expired():
@@ -4005,18 +4147,32 @@ def main():
                 file=sys.stderr,
             )
         else:
-            synopsis = generate_weekly_synopsis(
-                api_key, awards, args.days, company_info, sol_topics,
-                usa_descs, sam_data,
-            )
-            descriptions = generate_award_descriptions(
-                api_key, awards, company_info, sol_topics,
-                usa_descs, sam_data,
-            )
+            # --- Stage 3: Synopsis + descriptions in parallel ---
+            with ThreadPoolExecutor(max_workers=2) as ai_pool:
+                synopsis_future = ai_pool.submit(
+                    generate_weekly_synopsis,
+                    api_key, awards, args.days, company_info, sol_topics,
+                    usa_descs, sam_data,
+                )
+                desc_future = ai_pool.submit(
+                    generate_award_descriptions,
+                    api_key, awards, company_info, sol_topics,
+                    usa_descs, sam_data,
+                )
+                try:
+                    synopsis = synopsis_future.result()
+                except Exception as e:
+                    print(f"Warning: synopsis generation failed: {e}", file=sys.stderr)
+                try:
+                    descriptions = desc_future.result()
+                except Exception as e:
+                    print(f"Warning: description generation failed: {e}", file=sys.stderr)
 
         if not args.no_diligence and not _pipeline_expired():
             # Reuse the source/extractor/table from fetch_weekly_awards() to
             # avoid re-downloading and re-importing the ~376 MB CSV.
+            # Build history sequentially — both use the same DuckDB connection
+            # which is not thread-safe for concurrent queries.
             print("Building historical context...", file=sys.stderr)
             co_history = get_company_history(
                 awards, shared_source, shared_ext, shared_table
@@ -4028,9 +4184,7 @@ def main():
             # SAM.gov entity data was already fetched above for LLM context;
             # reuse sam_data for diligence.
 
-            # USAspending federal awards per company (SBIR vs non-SBIR)
-            from concurrent.futures import ThreadPoolExecutor, as_completed
-
+            # --- Stage 5: Company federal awards (already parallelized) ---
             print("Looking up company federal awards on USAspending...", file=sys.stderr)
             co_fed: dict[str, PIFederalAwardRecord] = {}
             co_names: dict[str, dict] = {}
@@ -4082,15 +4236,26 @@ def main():
                 print("Looking up PI patents, publications, and ORCID...", file=sys.stderr)
                 pi_ext = lookup_pi_external_data(awards, co_fed)
 
+            # --- Stage 6: Company + PI diligence in parallel ---
             if not _pipeline_expired():
-                co_diligence = generate_company_diligence(
-                    api_key, awards, company_info, co_history, sam_data, co_fed,
-                    usa_recipients, congressional, bea_sectors,
-                )
-            if not _pipeline_expired():
-                pi_dilig = generate_pi_diligence(
-                    api_key, awards, pi_history, company_info, pi_ext
-                )
+                with ThreadPoolExecutor(max_workers=2) as dilig_pool:
+                    co_dilig_future = dilig_pool.submit(
+                        generate_company_diligence,
+                        api_key, awards, company_info, co_history, sam_data, co_fed,
+                        usa_recipients, congressional, bea_sectors,
+                    )
+                    pi_dilig_future = dilig_pool.submit(
+                        generate_pi_diligence,
+                        api_key, awards, pi_history, company_info, pi_ext,
+                    )
+                    try:
+                        co_diligence = co_dilig_future.result()
+                    except Exception as e:
+                        print(f"Warning: company diligence failed: {e}", file=sys.stderr)
+                    try:
+                        pi_dilig = pi_dilig_future.result()
+                    except Exception as e:
+                        print(f"Warning: PI diligence failed: {e}", file=sys.stderr)
 
             if _pipeline_expired():
                 elapsed = int(_time.monotonic() - _pipeline_start)

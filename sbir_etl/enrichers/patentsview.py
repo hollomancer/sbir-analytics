@@ -90,6 +90,86 @@ class RateLimiter:
             self.request_times.append(datetime.now())
 
 
+def parse_patent_record(record: dict[str, Any]) -> dict[str, Any]:
+    """Parse an ODP patent record into a normalized format.
+
+    The ODP API returns patent file wrapper data with nested metadata.
+    This function extracts and flattens the relevant fields into the format
+    expected by downstream consumers.
+
+    This is a module-level function so it can be reused by callers that
+    don't instantiate a full :class:`PatentsViewClient` (e.g. the weekly
+    awards report fallback path).
+
+    Args:
+        record: Raw patent record from ODP API response
+
+    Returns:
+        Normalized patent dict with standard field names
+    """
+    # ODP nests some fields under applicationMetaData
+    metadata = record.get("applicationMetaData", {}) or {}
+
+    patent_number = (
+        metadata.get("patentNumber")
+        or record.get("patentNumber")
+        or record.get("applicationNumberText")
+    )
+    patent_title = (
+        record.get("inventionTitle")
+        or metadata.get("inventionTitle")
+        or ""
+    )
+    filing_date = (
+        record.get("filingDate")
+        or metadata.get("filingDate")
+    )
+    grant_date = (
+        metadata.get("grantDate")
+        or record.get("grantDate")
+    )
+
+    # Extract assignee information
+    assignees = record.get("assignees", []) or []
+    assignee_org = None
+    assignee_id = None
+    if assignees:
+        first_assignee = assignees[0] if isinstance(assignees, list) else assignees
+        if isinstance(first_assignee, dict):
+            assignee_org = first_assignee.get("assigneeName") or first_assignee.get("orgName")
+            assignee_id = first_assignee.get("assigneeEntityId")
+
+    # If assignee is at top level (varies by endpoint)
+    if not assignee_org:
+        assignee_org = record.get("assigneeName") or metadata.get("assigneeName")
+
+    # Extract inventor information
+    raw_inventors = record.get("inventors", []) or []
+    inventors = []
+    for inv in raw_inventors:
+        if isinstance(inv, dict):
+            name_parts = [
+                inv.get("inventorFirstName", ""),
+                inv.get("inventorLastName", ""),
+            ]
+            name = " ".join(p for p in name_parts if p).strip()
+            if name:
+                inventors.append(name)
+        elif isinstance(inv, str):
+            inventors.append(inv)
+
+    return {
+        "patent_number": patent_number,
+        "patent_title": patent_title,
+        "patent_date": grant_date,
+        "assignee_organization": assignee_org,
+        "assignee_id": assignee_id,
+        "filing_date": filing_date,
+        "grant_date": grant_date,
+        "inventor": inventors,
+    }
+
+
 class PatentsViewClient:
     """Client for interacting with USPTO Open Data Portal (ODP) API.
 
@@ -252,9 +332,7 @@ class PatentsViewClient:
     def _parse_patent_record(self, record: dict[str, Any]) -> dict[str, Any]:
         """Parse an ODP patent record into a normalized format.
 
-        The ODP API returns patent file wrapper data with nested metadata.
-        This method extracts and flattens the relevant fields into the format
-        expected by downstream consumers.
+        Delegates to the module-level :func:`parse_patent_record` function.
 
         Args:
             record: Raw patent record from ODP API response
@@ -262,67 +340,7 @@ class PatentsViewClient:
         Returns:
             Normalized patent dict with standard field names
         """
-        # ODP nests some fields under applicationMetaData
-        metadata = record.get("applicationMetaData", {}) or {}
-
-        patent_number = (
-            metadata.get("patentNumber")
-            or record.get("patentNumber")
-            or record.get("applicationNumberText")
-        )
-        patent_title = (
-            record.get("inventionTitle")
-            or metadata.get("inventionTitle")
-            or ""
-        )
-        filing_date = (
-            record.get("filingDate")
-            or metadata.get("filingDate")
-        )
-        grant_date = (
-            metadata.get("grantDate")
-            or record.get("grantDate")
-        )
-
-        # Extract assignee information
-        assignees = record.get("assignees", []) or []
-        assignee_org = None
-        assignee_id = None
-        if assignees:
-            first_assignee = assignees[0] if isinstance(assignees, list) else assignees
-            if isinstance(first_assignee, dict):
-                assignee_org = first_assignee.get("assigneeName") or first_assignee.get("orgName")
-                assignee_id = first_assignee.get("assigneeEntityId")
-
-        # If assignee is at top level (varies by endpoint)
-        if not assignee_org:
-            assignee_org = record.get("assigneeName") or metadata.get("assigneeName")
-
-        # Extract inventor information
-        raw_inventors = record.get("inventors", []) or []
-        inventors = []
-        for inv in raw_inventors:
-            if isinstance(inv, dict):
-                name_parts = [
-                    inv.get("inventorFirstName", ""),
-                    inv.get("inventorLastName", ""),
-                ]
-                name = " ".join(p for p in name_parts if p).strip()
-                if name:
-                    inventors.append(name)
-            elif isinstance(inv, str):
-                inventors.append(inv)
-
-        return {
-            "patent_number": patent_number,
-            "patent_title": patent_title,
-            "patent_date": grant_date,
-            "assignee_organization": assignee_org,
-            "assignee_id": assignee_id,
-            "filing_date": filing_date,
-            "grant_date": grant_date,
-            "inventor": inventors,
-        }
+        return parse_patent_record(record)
 
     def query_patents_by_assignee(
         self,
