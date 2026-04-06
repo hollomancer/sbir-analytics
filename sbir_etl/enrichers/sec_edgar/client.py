@@ -132,6 +132,107 @@ class EdgarAPIClient(BaseAsyncAPIClient):
             logger.warning(f"EDGAR company search failed for '{company_name}': {e}")
             return []
 
+    async def search_filing_mentions(
+        self,
+        company_name: str,
+        *,
+        forms: str = "8-K",
+        limit: int = 20,
+    ) -> list[dict[str, Any]]:
+        """Search EFTS for mentions of a company name inside filing text.
+
+        Unlike search_companies which finds the *filing entity*, this searches
+        the full text of filings for any mention of the company name. This is
+        the key method for finding private SBIR companies mentioned in public
+        company filings (e.g., acquisition targets in 8-K filings).
+
+        Args:
+            company_name: Company name to search for in filing text.
+            forms: Filing types to search (comma-separated, e.g., "8-K,10-K").
+            limit: Maximum results to return.
+
+        Returns:
+            List of filing mention dicts with: filer_cik, filer_name,
+            form_type, file_date, accession_number, file_description.
+        """
+        # Quote the company name for exact phrase matching
+        params = {
+            "q": f'"{company_name}"',
+            "dateRange": "custom",
+            "startdt": "2000-01-01",
+            "enddt": "2026-12-31",
+            "forms": forms,
+        }
+        try:
+            response = await self._make_request(
+                "GET", "/search-index", params=params
+            )
+            hits = response.get("hits", {}).get("hits", [])
+            results = []
+            for hit in hits[:limit]:
+                source = hit.get("_source", {})
+                results.append({
+                    "filer_cik": str(source.get("entity_id", "")),
+                    "filer_name": source.get("entity_name", ""),
+                    "form_type": source.get("form_type", ""),
+                    "file_date": source.get("file_date", None),
+                    "accession_number": source.get("file_num", ""),
+                    "file_description": source.get("file_description", ""),
+                })
+            return results
+        except APIError as e:
+            logger.warning(
+                f"EDGAR filing mention search failed for '{company_name}': {e}"
+            )
+            return []
+
+    async def search_form_d_filings(
+        self,
+        company_name: str,
+        *,
+        limit: int = 10,
+    ) -> list[dict[str, Any]]:
+        """Search for Form D (Regulation D) filings by a company.
+
+        Private companies raising capital under Regulation D must file Form D
+        with the SEC. This identifies SBIR companies that raised venture/angel
+        capital — a strong signal for company health and growth trajectory.
+
+        Args:
+            company_name: Company name to search for.
+            limit: Maximum results to return.
+
+        Returns:
+            List of Form D filing dicts with: cik, entity_name, file_date.
+        """
+        params = {
+            "q": f'"{company_name}"',
+            "forms": "D",
+            "dateRange": "custom",
+            "startdt": "2000-01-01",
+            "enddt": "2026-12-31",
+        }
+        try:
+            response = await self._make_request(
+                "GET", "/search-index", params=params
+            )
+            hits = response.get("hits", {}).get("hits", [])
+            results = []
+            for hit in hits[:limit]:
+                source = hit.get("_source", {})
+                results.append({
+                    "cik": str(source.get("entity_id", "")),
+                    "entity_name": source.get("entity_name", ""),
+                    "file_date": source.get("file_date", None),
+                    "form_type": "D",
+                })
+            return results
+        except APIError as e:
+            logger.warning(
+                f"EDGAR Form D search failed for '{company_name}': {e}"
+            )
+            return []
+
     async def get_company_tickers(self) -> dict[str, dict[str, Any]]:
         """Fetch the full CIK-to-ticker mapping from EDGAR.
 

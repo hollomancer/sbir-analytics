@@ -116,6 +116,88 @@ class TestSearchCompanies:
         assert results == []
 
 
+class TestSearchFilingMentions:
+    @pytest.mark.asyncio
+    async def test_search_returns_mentions(self, client):
+        mock_response = {
+            "hits": {
+                "hits": [
+                    {
+                        "_source": {
+                            "entity_id": "99999",
+                            "entity_name": "Lockheed Martin",
+                            "form_type": "8-K",
+                            "file_date": "2024-06-15",
+                            "file_num": "0001-24-500",
+                            "file_description": "Acquisition of Small Co",
+                        }
+                    },
+                ]
+            }
+        }
+        client._make_request = AsyncMock(return_value=mock_response)
+
+        results = await client.search_filing_mentions("Small Co", forms="8-K")
+        assert len(results) == 1
+        assert results[0]["filer_cik"] == "99999"
+        assert results[0]["filer_name"] == "Lockheed Martin"
+
+    @pytest.mark.asyncio
+    async def test_uses_exact_phrase(self, client):
+        """Verify the company name is quoted for exact phrase matching."""
+        client._make_request = AsyncMock(return_value={"hits": {"hits": []}})
+
+        await client.search_filing_mentions("Acme Corp")
+        call_args = client._make_request.call_args
+        # _make_request(method, endpoint, params) — params is positional arg 3
+        params = call_args.args[2] if len(call_args.args) > 2 else call_args.kwargs.get("params", {})
+        assert params["q"] == '"Acme Corp"'
+
+    @pytest.mark.asyncio
+    async def test_returns_empty_on_error(self, client):
+        from sbir_etl.exceptions import APIError
+
+        client._make_request = AsyncMock(
+            side_effect=APIError("Error", api_name="sec_edgar", http_status=500)
+        )
+        results = await client.search_filing_mentions("Test")
+        assert results == []
+
+
+class TestSearchFormDFilings:
+    @pytest.mark.asyncio
+    async def test_finds_form_d(self, client):
+        mock_response = {
+            "hits": {
+                "hits": [
+                    {
+                        "_source": {
+                            "entity_id": "55555",
+                            "entity_name": "Startup Inc",
+                            "file_date": "2023-09-15",
+                        }
+                    },
+                ]
+            }
+        }
+        client._make_request = AsyncMock(return_value=mock_response)
+
+        results = await client.search_form_d_filings("Startup Inc")
+        assert len(results) == 1
+        assert results[0]["cik"] == "55555"
+        assert results[0]["form_type"] == "D"
+
+    @pytest.mark.asyncio
+    async def test_returns_empty_on_error(self, client):
+        from sbir_etl.exceptions import APIError
+
+        client._make_request = AsyncMock(
+            side_effect=APIError("Error", api_name="sec_edgar", http_status=500)
+        )
+        results = await client.search_form_d_filings("Test")
+        assert results == []
+
+
 class TestGetCompanyFacts:
     @pytest.mark.asyncio
     async def test_returns_facts(self, client, mock_http_client):

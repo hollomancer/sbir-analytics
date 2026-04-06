@@ -96,10 +96,13 @@ class EdgarMAEvent(BaseModel):
     """M&A event detected from an 8-K filing.
 
     Extracted from Item 1.01 (material agreements) and Item 2.01 (acquisitions)
-    in 8-K filings.
+    in 8-K filings. Can represent either:
+    - Outbound: the SBIR company (as a public filer) acquiring another entity
+    - Inbound: a public company's 8-K mentioning the SBIR company as a target
     """
 
-    cik: str = Field(..., description="CIK of the filing entity")
+    cik: str = Field(..., description="CIK of the filing entity (the acquirer)")
+    filer_name: str = Field(default="", description="Name of the filing entity")
     filing_date: date = Field(..., description="8-K filing date")
     accession_number: str = Field(..., description="SEC accession number")
     event_type: MAAcquisitionType = Field(
@@ -109,6 +112,28 @@ class EdgarMAEvent(BaseModel):
         default_factory=list, description="8-K items reported (e.g., ['1.01', '2.01'])"
     )
     description: str | None = Field(None, description="Extracted event description")
+    is_target: bool = Field(
+        default=False,
+        description="True if the SBIR company is the acquisition target (not the filer)",
+    )
+
+    model_config = ConfigDict(validate_assignment=True)
+
+
+class EdgarFormDFiling(BaseModel):
+    """Form D (Regulation D) filing by a private company.
+
+    Private companies raising capital under Reg D must file Form D with the SEC.
+    Presence of Form D filings indicates venture/angel capital raises — a strong
+    signal for company health, growth trajectory, and potential acquisition interest.
+    """
+
+    cik: str = Field(..., description="CIK assigned to the Form D filer")
+    entity_name: str = Field(..., description="Entity name on the Form D filing")
+    filing_date: date = Field(..., description="Date of the Form D filing")
+    match_confidence: float = Field(
+        ..., ge=0.0, le=1.0, description="Name match confidence (0-1)"
+    )
 
     model_config = ConfigDict(validate_assignment=True)
 
@@ -142,9 +167,32 @@ class CompanyEdgarProfile(BaseModel):
     latest_net_income: float | None = Field(None, description="Most recent net income (USD)")
     financials_as_of: date | None = Field(None, description="Date of latest financial data")
 
-    # M&A signals
-    ma_event_count: int = Field(default=0, description="Number of detected M&A events")
+    # M&A signals (outbound — company as filer)
+    ma_event_count: int = Field(default=0, description="Number of detected M&A events (as filer)")
     latest_ma_event_date: date | None = Field(None, description="Most recent M&A event date")
+
+    # Inbound M&A signals (company mentioned as target in other public filings)
+    inbound_ma_mention_count: int = Field(
+        default=0,
+        description="Number of times company appears in other filers' 8-K filings",
+    )
+    inbound_ma_acquirers: list[str] = Field(
+        default_factory=list,
+        description="Names of public companies that mentioned this company in 8-K filings",
+    )
+    latest_inbound_ma_date: date | None = Field(
+        None, description="Most recent date this company was mentioned in an 8-K"
+    )
+
+    # Form D signals (private capital raises)
+    has_form_d: bool = Field(
+        default=False, description="Whether the company has filed Form D (Reg D capital raise)"
+    )
+    form_d_count: int = Field(default=0, description="Number of Form D filings found")
+    form_d_cik: str | None = Field(
+        None, description="CIK from Form D filing (distinct from public trading CIK)"
+    )
+    latest_form_d_date: date | None = Field(None, description="Most recent Form D filing date")
 
     # Filing activity
     total_filings: int = Field(default=0, description="Total number of filings found")
