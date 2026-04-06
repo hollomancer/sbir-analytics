@@ -1769,7 +1769,10 @@ def lookup_usaspending_recipients(
                     results[key] = profile
             except Exception as e:
                 item = futures[future]
-                _debug(f"USAspending recipient lookup failed for {item[0]}: {e}")
+                print(
+                    f"Warning: USAspending recipient lookup failed for {item[0]}: {e}",
+                    file=sys.stderr,
+                )
 
     print(f"Found {len(results)}/{total} recipient profiles on USAspending", file=sys.stderr)
     return results
@@ -2008,7 +2011,10 @@ def lookup_sam_entities(
                     results[key] = record
             except Exception as e:
                 item = futures[future]
-                _debug(f"SAM.gov entity lookup failed for {item[0]}: {e}")
+                print(
+                    f"Warning: SAM.gov entity lookup failed for {item[0]}: {e}",
+                    file=sys.stderr,
+                )
 
     print(f"Found {len(results)}/{total} companies on SAM.gov", file=sys.stderr)
     return results

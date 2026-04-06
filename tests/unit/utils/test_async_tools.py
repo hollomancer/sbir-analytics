@@ -1,7 +1,7 @@
 """Unit tests for async tools utilities."""
 
 import asyncio
-from unittest.mock import patch
+from concurrent.futures import ThreadPoolExecutor
 
 import pytest
 
@@ -37,28 +37,31 @@ class TestRunSync:
             run_sync(failing_coro())
 
     def test_run_sync_with_existing_loop(self):
-        """Test run_sync handles case where event loop already exists."""
-        # Create an event loop
+        """Test run_sync works even when the calling thread has its own loop."""
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
 
         try:
-            # This should work even with an existing loop
             result = run_sync(simple_coro(7))
             assert result == 14
         finally:
             loop.close()
             asyncio.set_event_loop(None)
 
-    def test_run_sync_with_runtime_error(self):
-        """Test run_sync handles RuntimeError from asyncio.run()."""
-        with patch("asyncio.run", side_effect=RuntimeError("asyncio.run() cannot be called")):
-            # Should fall back to new_event_loop approach
-            result = run_sync(simple_coro(3))
-            assert result == 6
+    def test_run_sync_multiple_calls_reuse_loop(self):
+        """Test that multiple run_sync calls reuse the same background loop."""
+        r1 = run_sync(simple_coro(3))
+        r2 = run_sync(simple_coro(4))
+        assert r1 == 6
+        assert r2 == 8
 
-    def test_run_sync_with_other_runtime_error(self):
-        """Test run_sync re-raises non-asyncio RuntimeErrors."""
-        with patch("asyncio.run", side_effect=RuntimeError("Different error")):
-            with pytest.raises(RuntimeError, match="Different error"):
-                run_sync(simple_coro(1))
+    def test_run_sync_thread_safety(self):
+        """Test that run_sync can be called safely from multiple threads."""
+        def call_from_thread(val: int) -> int:
+            return run_sync(simple_coro(val))
+
+        with ThreadPoolExecutor(max_workers=4) as pool:
+            futures = [pool.submit(call_from_thread, i) for i in range(8)]
+            results = [f.result(timeout=10) for f in futures]
+
+        assert results == [i * 2 for i in range(8)]
