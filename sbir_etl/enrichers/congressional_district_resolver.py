@@ -161,7 +161,7 @@ class CongressionalDistrictResolver:
             District resolution result or None
         """
         try:
-            import requests
+            import httpx
 
             # Add delay to respect rate limits
             time.sleep(self.census_api_delay)
@@ -178,7 +178,7 @@ class CongressionalDistrictResolver:
                 "format": "json",
             }
 
-            response = requests.get(base_url, params=params, timeout=10)
+            response = httpx.get(base_url, params=params, timeout=10)
             response.raise_for_status()
             data = response.json()
 
@@ -235,7 +235,7 @@ class CongressionalDistrictResolver:
             District resolution result or None
         """
         try:
-            import requests
+            import httpx
 
             full_address = f"{address}, {city}, {state} {zip_code}"
 
@@ -247,7 +247,7 @@ class CongressionalDistrictResolver:
                 "roles": "legislatorLowerBody",
             }
 
-            response = requests.get(url, params=params, timeout=10)
+            response = httpx.get(url, params=params, timeout=10)
             response.raise_for_status()
             data = response.json()
 
