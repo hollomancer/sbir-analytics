@@ -34,6 +34,7 @@ def _download_with_retry(url: str) -> requests.Response:
     """Download with retry on transient network errors."""
     resp = requests.get(url, stream=True, timeout=300)
     if resp.status_code in (429, 500, 502, 503, 504):
+        resp.close()
         resp.raise_for_status()  # triggers retry via HTTPError
     return resp
 

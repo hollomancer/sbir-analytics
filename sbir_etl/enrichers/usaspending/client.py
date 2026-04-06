@@ -25,8 +25,8 @@ from ..base_client import BaseAsyncAPIClient
 # Award type code groups — USAspending requires separate requests for
 # contracts (procurement) vs. assistance (grants/cooperative agreements).
 # ------------------------------------------------------------------
-CONTRACT_TYPE_CODES: list[str] = ["A", "B", "C", "D"]
-ASSISTANCE_TYPE_CODES: list[str] = ["02", "03", "04", "05"]
+CONTRACT_TYPE_CODES: tuple[str, ...] = ("A", "B", "C", "D")
+ASSISTANCE_TYPE_CODES: tuple[str, ...] = ("02", "03", "04", "05")
 
 
 def classify_award_id(award_id: str) -> str:
@@ -89,12 +89,12 @@ def build_award_type_groups(
 
     groups: list[tuple[list[str], str, list[str]]] = []
     if piids:
-        groups.append((piids, "contracts", CONTRACT_TYPE_CODES))
+        groups.append((piids, "contracts", list(CONTRACT_TYPE_CODES)))
     if fains:
-        groups.append((fains, "assistance", ASSISTANCE_TYPE_CODES))
+        groups.append((fains, "assistance", list(ASSISTANCE_TYPE_CODES)))
     for uid in unknown:
-        groups.append(([uid], "contracts", CONTRACT_TYPE_CODES))
-        groups.append(([uid], "assistance", ASSISTANCE_TYPE_CODES))
+        groups.append(([uid], "contracts", list(CONTRACT_TYPE_CODES)))
+        groups.append(([uid], "assistance", list(ASSISTANCE_TYPE_CODES)))
     return groups
 
 

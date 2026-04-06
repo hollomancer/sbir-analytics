@@ -637,7 +637,7 @@ def retrieve_company_contracts_api(
 
     # Build search filters using AdvancedFilterObject
     filters: dict[str, Any] = {
-        "award_type_codes": CONTRACT_TYPE_CODES,  # Contract awards only
+        "award_type_codes": list(CONTRACT_TYPE_CODES),  # Contract awards only
     }
 
     # Add recipient search - recipient_search_text searches across name, UEI, and DUNS
@@ -828,7 +828,7 @@ def retrieve_company_contracts_api(
             )
             # Try searching by company name - use name variations for better matching
             name_filters = {
-                "award_type_codes": CONTRACT_TYPE_CODES,
+                "award_type_codes": list(CONTRACT_TYPE_CODES),
             }
 
             # Generate name variations for better matching
@@ -1315,7 +1315,7 @@ def retrieve_sbir_awards_api(
 
     # Build search filters
     filters: dict[str, Any] = {
-        "award_type_codes": CONTRACT_TYPE_CODES,
+        "award_type_codes": list(CONTRACT_TYPE_CODES),
     }
 
     recipient_search_terms = []

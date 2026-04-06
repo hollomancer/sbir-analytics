@@ -57,6 +57,7 @@ def download_from_sbir_gov(dest: Path) -> Path:
     def _get(url: str) -> requests.Response:
         resp = requests.get(url, stream=True, timeout=300)
         if resp.status_code in (429, 500, 502, 503, 504):
+            resp.close()
             resp.raise_for_status()
         return resp
 

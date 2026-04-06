@@ -105,6 +105,10 @@ class SolicitationExtractor:
 
         response = self.client.get(url, params=params)
 
+        # Raise httpx.HTTPStatusError for transient failures so tenacity retries them.
+        if response.status_code in (429, 500, 502, 503, 504):
+            response.raise_for_status()
+
         if response.status_code != 200:
             raise APIError(
                 f"SBIR.gov API returned {response.status_code}: {response.text[:200]}",
