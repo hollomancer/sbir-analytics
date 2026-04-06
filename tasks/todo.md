@@ -1,15 +1,20 @@
-# Weekly SBIR Report DRY Re-evaluation
+# Weekly SBIR Report DRY Re-evaluation — Phase 1
 
-- [x] Inventory weekly SBIR report functionality and workflow integration points
-- [x] Compare weekly report logic against SBIR ETL ingestion and reporting scripts
-- [x] Identify concrete redundancy hot spots and code-sharing opportunities
-- [x] Draft a refactor plan that preserves behavior while reducing duplication
+- [x] Create shared reporting helper utilities for script-level reporting concerns
+- [x] Refactor `run_sbir_ingestion_checks.py` to use shared helpers
+- [x] Refactor `run_neo4j_sbir_load.py` to use shared helpers
+- [x] Refactor `awards_refresh_validation.py` markdown summary assembly to shared helpers
+- [x] Run targeted validation checks and document results
 
 ## Review Notes
 
-Completed a focused architecture review of `scripts/data/weekly_awards_report.py` relative to:
-- SBIR extraction/validation assets in `packages/sbir-analytics/sbir_analytics/assets/sbir_ingestion.py`
-- SBIR refresh/validation scripts under `scripts/data/`
-- Reporting workflows in `.github/workflows/`
-
-Documented findings and a phased DRY refactor approach in `docs/data/weekly-sbir-report-dry-evaluation.md`.
+Completed Phase 1 implementation with no runtime behavior changes to pipeline semantics:
+- Added shared helpers in `sbir_etl/utils/reporting/script_helpers.py` for:
+  - Dagster metadata serialization
+  - Markdown metric-table rendering
+  - GitHub Actions output-file writing
+- Updated three SBIR scripts to consume shared helpers and remove duplicated utility logic.
+- Validation results:
+  - `python -m compileall` passed for all touched Python files.
+  - `ruff check` passed on all touched Python files.
+  - `uv run ruff check` could not complete due external dependency download/network tunnel failure in this environment.
