@@ -249,7 +249,9 @@ OPENAI_RETRY_BACKOFF_BASE = 2  # seconds
 
 # External API endpoints for PI diligence and solicitation lookup
 # PatentsView migrated to USPTO Open Data Portal (data.uspto.gov) March 2026
-USPTO_ODP_PATENT_SEARCH_URL = "https://data.uspto.gov/api/v1/patent/applications/search"
+# ODP field-level Lucene queries (q=inventorNameText:"...") go to the base
+# endpoint.  The /search sub-path only accepts free-text ``searchText``.
+USPTO_ODP_PATENT_QUERY_URL = "https://data.uspto.gov/api/v1/patent/applications"
 SEMANTIC_SCHOLAR_API_URL = "https://api.semanticscholar.org/graph/v1"
 USASPENDING_API_URL = "https://api.usaspending.gov/api/v2"
 SBIR_GOV_API_URL = "https://api.www.sbir.gov/public/api"
@@ -977,11 +979,11 @@ def lookup_pi_patents(pi_name: str, company_name: str | None = None) -> PIPatent
         "limit": 100,
     }
 
-    _debug(f"USPTO ODP query for '{pi_name}': GET {USPTO_ODP_PATENT_SEARCH_URL} params={params}")
+    _debug(f"USPTO ODP query for '{pi_name}': GET {USPTO_ODP_PATENT_QUERY_URL} params={params}")
     try:
         _uspto_limiter.wait_if_needed()
         with httpx.Client(timeout=30) as client:
-            resp = client.get(USPTO_ODP_PATENT_SEARCH_URL, headers=headers, params=params)
+            resp = client.get(USPTO_ODP_PATENT_QUERY_URL, headers=headers, params=params)
             _debug_response(f"USPTO ODP [{pi_name}]", resp)
             if resp.status_code != 200:
                 print(
@@ -2070,7 +2072,7 @@ def lookup_pi_orcid(pi_name: str) -> ORCIDRecord | None:
     try:
         query = f"family-name:{last}"
         if first:
-            query += f"+AND+given-names:{first}"
+            query += f" AND given-names:{first}"
 
         _orcid_limiter.wait_if_needed()
         with httpx.Client(timeout=30) as client:
