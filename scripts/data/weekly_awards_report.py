@@ -141,6 +141,13 @@ try:
 except ImportError:
     _HAS_SYNC_CLIENTS = False
 
+try:
+    from sbir_etl.enrichers.fpds_atom import FPDSAtomClient
+
+    _HAS_FPDS_CLIENT = True
+except ImportError:
+    _HAS_FPDS_CLIENT = False
+
 
 # ---------------------------------------------------------------------------
 # Debug mode — toggled by --debug CLI flag
@@ -2893,21 +2900,32 @@ def _fetch_fpds_descriptions(
 ) -> dict[str, str]:
     """Fetch contract descriptions from FPDS Atom Feed (public, no API key).
 
-    Queries ``https://www.fpds.gov/ezsearch/LATEST`` for each contract ID
-    and extracts the ``<description>`` element from the Atom XML response.
-    Used as a fallback when USAspending is unavailable (503 / 422).
+    Uses :class:`FPDSAtomClient` when the library is available; falls back
+    to inline httpx + XML parsing for standalone operation.
 
     Only accepts contract PIIDs — assistance FAINs (e.g. DE-*) are not
     indexed in FPDS and should be filtered out before calling this function.
     """
+    if not contract_ids:
+        return {}
+
+    _debug(f"FPDS: querying {len(contract_ids)} contract IDs")
+
+    if _HAS_FPDS_CLIENT:
+        fpds = FPDSAtomClient(rate_limiter=_usaspending_limiter)
+        try:
+            results = fpds.get_descriptions(contract_ids)
+        except Exception as e:
+            print(f"FPDS error: {e}", file=sys.stderr)
+            results = {}
+        _debug(f"FPDS: {len(results)}/{len(contract_ids)} descriptions found")
+        return results
+
+    # Inline fallback for standalone operation (no sbir_etl)
     import time as _t
     import xml.etree.ElementTree as ET
 
     results: dict[str, str] = {}
-    if not contract_ids:
-        return results
-
-    _debug(f"FPDS fallback: querying {len(contract_ids)} contract IDs")
     try:
         with httpx.Client(timeout=30) as client:
             for cid in contract_ids:
@@ -2916,69 +2934,48 @@ def _fetch_fpds_descriptions(
                 query = f'PIID:"{cid}" OR REF_IDV_PIID:"{cid}"'
                 for attempt in range(3):
                     try:
+                        _usaspending_limiter.wait_if_needed()
                         resp = client.get(
                             FPDS_ATOM_SEARCH_URL,
                             params={"q": query, "s": 0, "num": 1},
                         )
                         if resp.status_code in (429, 500, 502, 503, 504):
                             wait = 2 ** (attempt + 1)
-                            _debug(
-                                f"FPDS [{cid}] returned {resp.status_code}, "
-                                f"retrying in {wait}s"
-                            )
+                            _debug(f"FPDS [{cid}] returned {resp.status_code}, retrying in {wait}s")
                             _t.sleep(wait)
                             continue
                         if resp.status_code != 200:
-                            _debug(f"FPDS [{cid}] returned {resp.status_code}")
                             break
 
                         root = ET.fromstring(resp.text)
-                        # Atom namespace
                         ns = {"atom": "http://www.w3.org/2005/Atom"}
                         entry = root.find("atom:entry", ns)
                         if entry is None:
-                            _debug(f"FPDS [{cid}]: no entry in response")
                             break
 
-                        # The Atom <content> element contains inner FPDS XML.
-                        # Use namespace-agnostic local-name matching so we
-                        # don't break if the FPDS namespace URI changes.
                         content_el = entry.find("atom:content", ns)
                         desc = None
                         if content_el is not None:
-                            for local_name in [
-                                "descriptionOfContractRequirement",
-                                "description",
-                            ]:
-                                match = content_el.find(
-                                    f".//*[local-name()='{local_name}']"
-                                )
+                            for local_name in ("descriptionOfContractRequirement", "description"):
+                                match = content_el.find(f".//*[local-name()='{local_name}']")
                                 if match is not None and match.text:
                                     desc = match.text.strip()
                                     break
-
-                        # Fallback: use Atom <title>
                         if not desc:
                             title_el = entry.find("atom:title", ns)
                             if title_el is not None and title_el.text:
                                 desc = title_el.text.strip()
-
                         if desc:
                             if len(desc) > 500:
                                 desc = desc[:500] + "..."
                             results[cid] = desc
-                            _debug(f"FPDS [{cid}]: found description ({len(desc)} chars)")
-                        else:
-                            _debug(f"FPDS [{cid}]: entry found but no description text")
                         break
                     except (httpx.HTTPError, ET.ParseError, UnicodeDecodeError) as e:
-                        wait = 2 ** (attempt + 1)
-                        _debug(f"FPDS [{cid}] error: {e}, retrying in {wait}s")
-                        _t.sleep(wait)
+                        _t.sleep(2 ** (attempt + 1))
     except Exception as e:
         print(f"FPDS fallback error: {e}", file=sys.stderr)
 
-    _debug(f"FPDS fallback: {len(results)}/{len(contract_ids)} descriptions found")
+    _debug(f"FPDS: {len(results)}/{len(contract_ids)} descriptions found")
     return results
 
 
