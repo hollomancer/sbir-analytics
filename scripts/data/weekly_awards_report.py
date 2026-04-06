@@ -252,6 +252,14 @@ _orcid_limiter = _make_rate_limiter(60)
 _sbir_gov_limiter = _make_rate_limiter(30)
 
 
+# Shared semaphore limiting total concurrent OpenAI API calls across all
+# thread pools (company diligence + PI diligence run concurrently, each with
+# up to 4 workers — without a cap that's 8 parallel LLM requests).
+import threading as _threading
+
+_openai_semaphore = _threading.Semaphore(int(os.environ.get("OPENAI_MAX_CONCURRENT", "4")))
+
+
 # ---------------------------------------------------------------------------
 # Data structures
 # ---------------------------------------------------------------------------
@@ -2543,15 +2551,24 @@ def _openai_request_with_retry(
     payload: dict,
     timeout: int = 120,
 ) -> httpx.Response | None:
-    """Make an OpenAI API request with retry/backoff for 429 and 5xx errors."""
+    """Make an OpenAI API request with retry/backoff for 429 and 5xx errors.
+
+    Acquires ``_openai_semaphore`` before sending a request so that total
+    concurrent OpenAI calls across all thread pools stays bounded (default 4,
+    configurable via ``OPENAI_MAX_CONCURRENT`` env var).
+    """
     import time
 
     model_name = payload.get("model", "unknown")
     _debug(f"OpenAI request: {method} {url} model={model_name} timeout={timeout}")
     for attempt in range(OPENAI_MAX_RETRIES + 1):
         try:
-            with httpx.Client(timeout=timeout) as client:
-                resp = client.request(method, url, headers=headers, json=payload)
+            _openai_semaphore.acquire()
+            try:
+                with httpx.Client(timeout=timeout) as client:
+                    resp = client.request(method, url, headers=headers, json=payload)
+            finally:
+                _openai_semaphore.release()
             if resp.status_code == 429 or resp.status_code >= 500:
                 if attempt < OPENAI_MAX_RETRIES:
                     wait = OPENAI_RETRY_BACKOFF_BASE ** (attempt + 1)
@@ -2723,11 +2740,11 @@ def research_companies(
             done += 1
             key_info = futures[future]
             name = key_info[1]["name"]
-            print(f"Researching company {done}/{total}: {name}...", file=sys.stderr)
             try:
                 key, research = future.result()
                 if research:
                     results[key] = research
+                print(f"Completed company research {done}/{total}: {name}", file=sys.stderr)
             except Exception as e:
                 print(f"Company research error for {name}: {e}", file=sys.stderr)
 
@@ -4067,7 +4084,7 @@ def main():
     usa_recipients: dict[str, USARecipientProfile] | None = None
     sam_data: dict[str, SAMEntityRecord] | None = None
     if awards:
-        fetch_futures: dict[str, any] = {}
+        fetch_futures: dict = {}
         with ThreadPoolExecutor(max_workers=4) as fetch_pool:
             if not args.skip_sbir_api:
                 fetch_futures["sol_topics"] = fetch_pool.submit(
