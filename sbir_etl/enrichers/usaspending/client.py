@@ -351,6 +351,73 @@ class USAspendingAPIClient(BaseAsyncAPIClient):
             params=payload,
         )
 
+    async def search_awards(
+        self,
+        filters: dict[str, Any],
+        fields: list[str],
+        page: int = 1,
+        limit: int = 100,
+        sort: str | None = "Award Amount",
+        order: str | None = "desc",
+    ) -> dict[str, Any]:
+        """Search the spending_by_award endpoint."""
+        payload: dict[str, Any] = {
+            "filters": filters,
+            "fields": fields,
+            "page": page,
+            "limit": limit,
+        }
+        if sort:
+            payload["sort"] = sort
+        if order:
+            payload["order"] = order
+
+        return await self._make_request(
+            "POST",
+            "/search/spending_by_award/",
+            params=payload,
+        )
+
+    async def search_recipients(
+        self,
+        keyword: str,
+        limit: int = 5,
+    ) -> list[dict[str, Any]]:
+        """Search for recipients by keyword (name or UEI).
+
+        Returns the results list from POST /recipient/.
+        """
+        payload = {"keyword": keyword, "limit": limit}
+        response = await self._make_request(
+            "POST",
+            "/recipient/",
+            params=payload,
+        )
+        return response.get("results", [])
+
+    async def get_recipient_profile(
+        self,
+        recipient_id: str,
+        year: str = "all",
+    ) -> dict[str, Any] | None:
+        """Fetch a full recipient profile by hash ID.
+
+        Args:
+            recipient_id: The recipient hash from :meth:`search_recipients`.
+            year: Fiscal year or ``"all"`` for lifetime totals.
+        """
+        try:
+            return await self._make_request(
+                "GET",
+                f"/recipient/{recipient_id}/",
+                params={"year": year},
+            )
+        except APIError as e:
+            if e.details.get("http_status") == 404:
+                logger.debug(f"Recipient profile not found: {recipient_id}")
+                return None
+            raise
+
     async def fetch_award_details(self, award_id: str) -> dict[str, Any] | None:
         """Fetch detailed award information for PSC fallbacks."""
         try:

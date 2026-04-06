@@ -125,6 +125,7 @@ class SAMGovAPIClient(BaseAsyncAPIClient):
         *,
         legal_business_name: str | None = None,
         duns: str | None = None,
+        registration_status: str | None = None,
         limit: int = 10,
     ) -> list[dict[str, Any]]:
         """Search for entities by name or DUNS.
@@ -132,6 +133,7 @@ class SAMGovAPIClient(BaseAsyncAPIClient):
         Args:
             legal_business_name: Legal business name to search
             duns: DUNS number (legacy identifier)
+            registration_status: Filter by registration status (e.g. ``"A"`` for active)
             limit: Maximum number of results
 
         Returns:
@@ -142,6 +144,8 @@ class SAMGovAPIClient(BaseAsyncAPIClient):
             params["legalBusinessName"] = legal_business_name
         if duns:
             params["duns"] = duns
+        if registration_status:
+            params["registrationStatus"] = registration_status
 
         try:
             response = await self._make_request("GET", "/entities", params=params)

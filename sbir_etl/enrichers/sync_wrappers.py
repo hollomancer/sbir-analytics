@@ -74,6 +74,31 @@ class SyncUSAspendingClient:
             )
         )
 
+    def search_awards(
+        self,
+        filters: dict[str, Any],
+        fields: list[str],
+        page: int = 1,
+        limit: int = 100,
+        sort: str | None = "Award Amount",
+        order: str | None = "desc",
+    ) -> dict[str, Any]:
+        return run_sync(
+            self._client.search_awards(
+                filters, fields, page=page, limit=limit, sort=sort, order=order
+            )
+        )
+
+    def search_recipients(
+        self, keyword: str, limit: int = 5
+    ) -> list[dict[str, Any]]:
+        return run_sync(self._client.search_recipients(keyword, limit))
+
+    def get_recipient_profile(
+        self, recipient_id: str, year: str = "all"
+    ) -> dict[str, Any] | None:
+        return run_sync(self._client.get_recipient_profile(recipient_id, year))
+
     def fetch_award_details(self, award_id: str) -> dict[str, Any] | None:
         return run_sync(self._client.fetch_award_details(award_id))
 
@@ -98,10 +123,14 @@ class SyncSAMGovClient:
         *,
         legal_business_name: str | None = None,
         duns: str | None = None,
+        registration_status: str | None = None,
         limit: int = 10,
     ) -> list[dict[str, Any]]:
         return run_sync(
             self._client.search_entities(
-                legal_business_name=legal_business_name, duns=duns, limit=limit
+                legal_business_name=legal_business_name,
+                duns=duns,
+                registration_status=registration_status,
+                limit=limit,
             )
         )
