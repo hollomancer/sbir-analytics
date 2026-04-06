@@ -177,6 +177,18 @@ enrichment:
       cache_dir: "data/cache/patentsview"  # Directory for cache files
       ttl_hours: 24  # Time-to-live for cache entries (hours)
 
+  sec_edgar:
+    # SEC EDGAR API configuration for public company enrichment
+    # Fair-access policy: 10 req/s, must include contact email in User-Agent
+    base_url: "https://efts.sec.gov/LATEST"
+    facts_base_url: "https://data.sec.gov/api/xbrl"
+    filings_base_url: "https://data.sec.gov/submissions"
+    contact_email_env_var: "SEC_EDGAR_CONTACT_EMAIL"
+    rate_limit_per_minute: 600  # SEC allows 10/s = 600/min
+    timeout_seconds: 30
+    retry_attempts: 3
+    retry_backoff_seconds: 2
+
 
 enrichment_refresh:
   # Iterative refresh configuration for enrichment APIs
@@ -217,6 +229,30 @@ enrichment_refresh:
       enabled: true  # Enable caching of API responses
       cache_dir: "data/cache/usaspending"  # Directory for cache files
       ttl_hours: 24  # Time-to-live for cache entries (hours)
+
+  sec_edgar:
+    # SEC EDGAR refresh settings (opt-in, disabled by default)
+    enabled: false  # Opt-in via SBIR_ETL__ENRICHMENT_REFRESH__SEC_EDGAR__ENABLED=true
+    cadence_days: 7  # Weekly refresh (public filings don't change rapidly)
+    sla_staleness_days: 30  # 30 days before considered stale
+    batch_size: 50
+    max_concurrent_requests: 3
+    rate_limit_per_minute: 600
+    enable_delta_detection: true
+    hash_algorithm: "sha256"
+    retry_attempts: 3
+    retry_backoff_seconds: 2
+    retry_backoff_multiplier: 2.0
+    timeout_seconds: 30
+    connection_timeout_seconds: 10
+    checkpoint_interval: 25
+    state_file: "data/state/sec_edgar_refresh_state.json"
+    enable_metrics: true
+    metrics_file: "reports/metrics/sec_edgar_freshness.json"
+    cache:
+      enabled: true
+      cache_dir: "data/cache/sec_edgar"
+      ttl_hours: 168  # 7 days - filings are relatively stable
 
 
 extraction:

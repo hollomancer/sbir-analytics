@@ -67,6 +67,18 @@ class EnrichmentConfig(BaseModel):
             "retry_backoff_seconds": 2,
         }
     )
+    sec_edgar: dict[str, object] = Field(
+        default_factory=lambda: {
+            "base_url": "https://efts.sec.gov/LATEST",
+            "facts_base_url": "https://data.sec.gov/api/xbrl",
+            "filings_base_url": "https://data.sec.gov/submissions",
+            "contact_email_env_var": "SEC_EDGAR_CONTACT_EMAIL",
+            "rate_limit_per_minute": 600,
+            "timeout_seconds": 30,
+            "retry_attempts": 3,
+            "retry_backoff_seconds": 2,
+        }
+    )
     performance: EnrichmentPerformanceConfig = Field(
         default_factory=EnrichmentPerformanceConfig, description="Performance configuration"
     )
@@ -157,6 +169,17 @@ class EnrichmentRefreshConfig(BaseModel):
     )
     patentsview: EnrichmentSourceConfig = Field(
         default_factory=EnrichmentSourceConfig, description="PatentsView refresh settings"
+    )
+    sec_edgar: EnrichmentSourceConfig = Field(
+        default_factory=lambda: EnrichmentSourceConfig(
+            enabled=False,
+            cadence_days=7,
+            sla_staleness_days=30,
+            batch_size=50,
+            max_concurrent_requests=3,
+            rate_limit_per_minute=600,
+        ),
+        description="SEC EDGAR refresh settings (opt-in, disabled by default)",
     )
 
 

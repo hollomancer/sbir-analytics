@@ -52,6 +52,14 @@ __all__: list[str] = [
     "QualitySeverity",
     "EnrichmentResult",
     "DataQualitySummary",
+    # SEC EDGAR
+    "CompanyEdgarProfile",
+    "EdgarCompanyMatch",
+    "EdgarFiling",
+    "EdgarFinancials",
+    "EdgarMAEvent",
+    "FilingType",
+    "MAAcquisitionType",
     # Solicitations
     "Solicitation",
     # Statistical Reports
@@ -98,6 +106,14 @@ _lazy_mapping: dict[str, tuple[str, str]] = {
     "QualityIssue": ("sbir_etl.models.quality", "QualityIssue"),
     "QualityReport": ("sbir_etl.models.quality", "QualityReport"),
     "QualitySeverity": ("sbir_etl.models.quality", "QualitySeverity"),
+    # SEC EDGAR models
+    "CompanyEdgarProfile": ("sbir_etl.models.sec_edgar", "CompanyEdgarProfile"),
+    "EdgarCompanyMatch": ("sbir_etl.models.sec_edgar", "EdgarCompanyMatch"),
+    "EdgarFiling": ("sbir_etl.models.sec_edgar", "EdgarFiling"),
+    "EdgarFinancials": ("sbir_etl.models.sec_edgar", "EdgarFinancials"),
+    "EdgarMAEvent": ("sbir_etl.models.sec_edgar", "EdgarMAEvent"),
+    "FilingType": ("sbir_etl.models.sec_edgar", "FilingType"),
+    "MAAcquisitionType": ("sbir_etl.models.sec_edgar", "MAAcquisitionType"),
     # Solicitation models
     "Solicitation": ("sbir_etl.models.solicitation", "Solicitation"),
     # Statistical Report models
