@@ -124,12 +124,6 @@ try:
 except ImportError:
     _HAS_BEA_MAPPER = False
 
-try:
-    from rapidfuzz import fuzz as _rapidfuzz
-
-    _HAS_RAPIDFUZZ = True
-except ImportError:
-    _HAS_RAPIDFUZZ = False
 
 # ---------------------------------------------------------------------------
 # Debug mode — toggled by --debug CLI flag
@@ -859,10 +853,16 @@ def lookup_pi_patents(pi_name: str, company_name: str | None = None) -> PIPatent
         _debug(f"Using PatentsViewClient for '{pi_name}'")
         try:
             client = PatentsViewClient()
-            patents = client.query_patents_by_assignee(
-                company_name=company_name or last,
-                max_patents=100,
-            )
+            try:
+                # Query by company name to get patents, then we'll have all
+                # inventor/assignee data in the results
+                patents = client.query_patents_by_assignee(
+                    company_name=company_name or last,
+                    max_patents=100,
+                )
+            finally:
+                if hasattr(client, "close"):
+                    client.close()
             if not patents:
                 return None
 
@@ -2009,50 +2009,54 @@ def fetch_solicitation_topics(awards: list[dict]) -> dict[str, SolicitationTopic
         _debug("Using SolicitationExtractor (tenacity retry + pagination)")
         try:
             extractor = SolicitationExtractor()
-            # Extract unique years from solicitation numbers
-            years: set[int] = set()
-            for sol in topic_codes.values():
-                for part in sol.replace("-", " ").replace(".", " ").split():
-                    if part.isdigit() and len(part) == 4:
-                        years.add(int(part))
-                        break
+            try:
+                # Extract unique years from solicitation numbers
+                years: set[int] = set()
+                for sol in topic_codes.values():
+                    for part in sol.replace("-", " ").replace(".", " ").split():
+                        if part.isdigit() and len(part) == 4:
+                            years.add(int(part))
+                            break
 
-            # Fetch topics for each year (or all if no years found)
-            import pandas as pd
+                # Fetch topics for each year (or all if no years found)
+                import pandas as pd
 
-            all_topics = pd.DataFrame()
-            if years:
-                for year in years:
-                    df = extractor.extract_topics(year=year, max_results=1000)
-                    if not df.empty:
-                        all_topics = pd.concat([all_topics, df], ignore_index=True)
-            else:
-                all_topics = extractor.extract_topics(max_results=1000)
+                all_topics = pd.DataFrame()
+                if years:
+                    for year in years:
+                        df = extractor.extract_topics(year=year, max_results=1000)
+                        if not df.empty:
+                            all_topics = pd.concat([all_topics, df], ignore_index=True)
+                else:
+                    all_topics = extractor.extract_topics(max_results=1000)
 
-            if not all_topics.empty:
-                all_topics = extractor.deduplicate_topics(all_topics)
-                codes_set = set(topic_codes.keys())
-                for _, row in all_topics.iterrows():
-                    tc = str(row.get("topic_code", "")).strip()
-                    if tc in codes_set and tc not in results:
-                        desc = row.get("description")
-                        if desc and len(str(desc)) > 3000:
-                            desc = str(desc)[:3000] + "..."
-                        results[tc] = SolicitationTopic(
-                            topic_code=tc,
-                            solicitation_number=str(row.get("solicitation_number", "")) or topic_codes.get(tc, ""),
-                            title=str(row.get("title", "")),
-                            description=str(desc) if desc else None,
-                            agency=str(row.get("agency", "")) or None,
-                            program=str(row.get("program", "")) or None,
-                        )
-            print(
-                f"SolicitationExtractor found {len(results)}/{total} topics",
-                file=sys.stderr,
-            )
-            if len(results) == total:
-                return results
-            # Fall through for any missing codes
+                if not all_topics.empty:
+                    all_topics = extractor.deduplicate_topics(all_topics)
+                    codes_set = set(topic_codes.keys())
+                    for _, row in all_topics.iterrows():
+                        tc = str(row.get("topic_code", "")).strip()
+                        if tc in codes_set and tc not in results:
+                            desc = row.get("description")
+                            if desc and len(str(desc)) > 3000:
+                                desc = str(desc)[:3000] + "..."
+                            results[tc] = SolicitationTopic(
+                                topic_code=tc,
+                                solicitation_number=str(row.get("solicitation_number", "")) or topic_codes.get(tc, ""),
+                                title=str(row.get("title", "")),
+                                description=str(desc) if desc else None,
+                                agency=str(row.get("agency", "")) or None,
+                                program=str(row.get("program", "")) or None,
+                            )
+                print(
+                    f"SolicitationExtractor found {len(results)}/{total} topics",
+                    file=sys.stderr,
+                )
+                if len(results) == total:
+                    return results
+                # Fall through for any missing codes
+            finally:
+                if hasattr(extractor, "close"):
+                    extractor.close()
         except Exception as e:
             print(f"SolicitationExtractor error: {e}, falling back to manual queries", file=sys.stderr)
 
@@ -3353,12 +3357,16 @@ def generate_company_diligence(
             )
 
         # Congressional district (from ZIP code resolution)
+        # Try both _company_key and raw upper name since dicts may use either
         if congressional_districts:
-            district = congressional_districts.get(key)
+            district = congressional_districts.get(key) or congressional_districts.get(display_name.upper())
             if district:
                 context_parts.append(f"Congressional district: {district}")
 
         # BEA sector classification (from SAM.gov NAICS codes)
+        # SAM entities may be keyed by raw upper name
+        if not sam and sam_entities:
+            sam = sam_entities.get(display_name.upper())
         if bea_sectors and sam:
             sector_parts = []
             for naics in (sam.naics_codes or [])[:3]:
@@ -3527,9 +3535,13 @@ def generate_pi_diligence(
 
 
 def enrich_with_inflation(awards: list[dict], base_year: int | None = None) -> dict[str, float]:
-    """Compute inflation-adjusted total using InflationAdjuster.
+    """Compute an inflation-adjusted total using InflationAdjuster.
 
-    Returns a dict with 'adjusted_total', 'base_year', and per-award adjusted amounts.
+    Returns a dict containing:
+    - 'adjusted_total': the sum of inflation-adjusted award amounts
+    - 'base_year': the dollar year used for the adjustment
+
+    Returns an empty dict if inflation support is unavailable or fails.
     """
     if not _HAS_INFLATION:
         return {}
@@ -3646,56 +3658,6 @@ def map_naics_to_bea_sectors(naics_codes: list[str]) -> dict[str, str]:
     return results
 
 
-def fuzzy_match_companies(
-    awards: list[dict],
-    existing_results: dict[str, str] | None = None,
-) -> dict[str, dict]:
-    """Enhanced fuzzy matching for company names using rapidfuzz.
-
-    Supplements the USAspending autocomplete with phonetic and token-set matching.
-    Returns a dict keyed by upper-cased company name → best match info.
-    """
-    if not _HAS_RAPIDFUZZ:
-        return {}
-
-    # Collect companies that didn't match via autocomplete
-    unmatched: dict[str, str] = {}
-    for a in awards:
-        name = str(a.get("Company", "")).strip()
-        if not name:
-            continue
-        key = name.upper()
-        if existing_results and key in existing_results:
-            continue
-        unmatched[key] = name
-
-    if not unmatched:
-        return {}
-
-    _debug(f"Fuzzy matching {len(unmatched)} unmatched companies with rapidfuzz")
-
-    # Build a reference list from all company names in the awards
-    # (in a real integration this would match against a reference database)
-    all_names = [str(a.get("Company", "")).strip() for a in awards if a.get("Company")]
-    unique_names = list(set(all_names))
-
-    results: dict[str, dict] = {}
-    for key, name in unmatched.items():
-        # Use token_set_ratio for best fuzzy match
-        best_score = 0
-        best_match = name
-        for ref in unique_names:
-            score = _rapidfuzz.token_set_ratio(name.lower(), ref.lower())
-            if score > best_score:
-                best_score = score
-                best_match = ref
-        if best_score >= 80:
-            results[key] = {"name": best_match, "score": best_score, "method": "rapidfuzz"}
-
-    _debug(f"Fuzzy matched: {len(results)}/{len(unmatched)}")
-    return results
-
-
 # ---------------------------------------------------------------------------
 # Markdown generation
 # ---------------------------------------------------------------------------
@@ -3711,8 +3673,6 @@ def generate_markdown(
     company_diligence: dict[str, str] | None = None,
     pi_diligence: dict[str, str] | None = None,
     inflation_data: dict[str, float] | None = None,
-    congressional_districts: dict[str, str] | None = None,
-    bea_sectors: dict[str, str] | None = None,
 ) -> str:
     """Generate markdown report from filtered awards."""
     now = datetime.now(UTC)
@@ -4018,14 +3978,13 @@ def main():
         usa_recipients = lookup_usaspending_recipients(awards)
         sam_data = lookup_sam_entities(awards)
 
-    # Non-API enrichments (local computation, no network I/O)
+    # Local enrichments (no network I/O except congressional district Census fallback)
     inflation_data: dict[str, float] = {}
     congressional: dict[str, str] = {}
     bea_sectors: dict[str, str] = {}
     if awards:
         inflation_data = enrich_with_inflation(awards)
-        congressional = resolve_congressional_districts(awards)
-        # Collect all NAICS codes from SAM.gov data for BEA mapping
+        # BEA sector mapping from SAM.gov NAICS codes (local YAML lookup)
         if sam_data:
             all_naics: list[str] = []
             for sam_rec in sam_data.values():
@@ -4033,6 +3992,9 @@ def main():
                     if code and code not in all_naics:
                         all_naics.append(code)
             bea_sectors = map_naics_to_bea_sectors(all_naics)
+    # Congressional district resolution may call Census API — only when AI is enabled
+    if awards and api_key and not args.no_ai:
+        congressional = resolve_congressional_districts(awards)
 
     if api_key and not args.no_ai:
         if not args.no_company_research and not _pipeline_expired():
@@ -4216,8 +4178,6 @@ def main():
         company_diligence=co_diligence,
         pi_diligence=pi_dilig,
         inflation_data=inflation_data,
-        congressional_districts=congressional,
-        bea_sectors=bea_sectors,
     )
 
     if args.output:
