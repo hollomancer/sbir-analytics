@@ -22,6 +22,10 @@ RUN pip install \
 
 # Copy application code
 COPY sbir_etl/ /app/sbir_etl/
+COPY packages/sbir-analytics/sbir_analytics/ /app/sbir_analytics/
+COPY packages/sbir-graph/sbir_graph/ /app/sbir_graph/
+COPY packages/sbir-ml/sbir_ml/ /app/sbir_ml/
+COPY packages/sbir-rag/sbir_rag/ /app/sbir_rag/
 COPY scripts/ /app/scripts/
 COPY config/ /app/config/
 COPY migrations/ /app/migrations/
@@ -32,4 +36,4 @@ ENV PYTHONPATH=/app
 # Create directories
 RUN mkdir -p /app/data /app/logs /app/reports
 
-CMD ["dagster", "job", "list", "-m", "src.definitions"]
+CMD ["dagster", "job", "list", "-m", "sbir_analytics.definitions"]

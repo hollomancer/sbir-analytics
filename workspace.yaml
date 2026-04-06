@@ -1,2 +1,2 @@
 load_from:
-  - python_module: sbir_etl.definitions
+  - python_module: sbir_analytics.definitions

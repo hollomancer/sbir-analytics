@@ -32,6 +32,10 @@ RUN python -m spacy download en_core_web_sm
 
 # Copy application code
 COPY sbir_etl/ /app/sbir_etl/
+COPY packages/sbir-analytics/sbir_analytics/ /app/sbir_analytics/
+COPY packages/sbir-graph/sbir_graph/ /app/sbir_graph/
+COPY packages/sbir-ml/sbir_ml/ /app/sbir_ml/
+COPY packages/sbir-rag/sbir_rag/ /app/sbir_rag/
 COPY config/ /app/config/
 COPY scripts/ /app/scripts/
 COPY migrations/ /app/migrations/
@@ -43,4 +47,4 @@ WORKDIR /app
 # Create directories
 RUN mkdir -p /app/data /app/logs /app/reports /app/artifacts
 
-CMD ["dagster", "job", "list", "-m", "src.definitions"]
+CMD ["dagster", "job", "list", "-m", "sbir_analytics.definitions"]

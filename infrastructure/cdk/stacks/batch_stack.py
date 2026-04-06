@@ -173,7 +173,7 @@ class BatchStack(Stack):
             JobConfig(
                 id="CETJobDefinition",
                 name="sbir-analytics-analysis-cet-pipeline",
-                command=["dagster", "job", "execute", "-m", "sbir_etl.definitions_ml", "-j", "cet_full_pipeline_job"],
+                command=["dagster", "job", "execute", "-m", "sbir_analytics.definitions_ml", "-j", "cet_full_pipeline_job"],
                 vcpus="2", memory_mb="4096",
                 timeout_seconds=21600,  # 6 hours
                 log_prefix="cet",
@@ -182,7 +182,7 @@ class BatchStack(Stack):
             JobConfig(
                 id="FiscalJobDefinition",
                 name="sbir-analytics-analysis-fiscal-returns",
-                command=["dagster", "job", "execute", "-m", "sbir_etl.definitions_ml", "-j", "fiscal_returns_mvp_job"],
+                command=["dagster", "job", "execute", "-m", "sbir_analytics.definitions_ml", "-j", "fiscal_returns_mvp_job"],
                 vcpus="4", memory_mb="8192",
                 timeout_seconds=14400,  # 4 hours
                 log_prefix="fiscal",
@@ -191,7 +191,7 @@ class BatchStack(Stack):
             JobConfig(
                 id="PaecterJobDefinition",
                 name="sbir-analytics-analysis-paecter-embeddings",
-                command=["dagster", "job", "execute", "-m", "sbir_etl.definitions_ml", "-j", "paecter_job"],
+                command=["dagster", "job", "execute", "-m", "sbir_analytics.definitions_ml", "-j", "paecter_job"],
                 vcpus="2", memory_mb="4096",
                 timeout_seconds=21600,  # 6 hours
                 log_prefix="paecter",
