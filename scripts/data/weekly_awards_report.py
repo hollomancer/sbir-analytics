@@ -1320,11 +1320,15 @@ def _usaspending_search(
         "Description",
         "CFDA Number",
     ]
-    # USAspending requires award_type_codes from one group only:
-    # contracts (A-D) and assistance (02-11) must be separate requests.
+    # USAspending requires award_type_codes from one group only.
+    # The API enforces these groups: contracts (A-D), grants (02-05),
+    # direct_payments (06, 10), loans (07-09), other (11).
     type_groups = [
         ("contracts", ["A", "B", "C", "D"]),
-        ("assistance", ["02", "03", "04", "05", "06", "07", "08", "09", "10", "11"]),
+        ("grants", ["02", "03", "04", "05"]),
+        ("direct_payments", ["06", "10"]),
+        ("loans", ["07", "08", "09"]),
+        ("other", ["11"]),
     ]
 
     all_results: list[dict] = []
