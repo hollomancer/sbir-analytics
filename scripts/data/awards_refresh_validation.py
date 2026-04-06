@@ -13,6 +13,8 @@ from pathlib import Path
 from typing import Any
 from collections.abc import Iterable, Sequence
 
+from sbir_etl.utils.reporting import render_metric_table, write_gha_outputs
+
 
 try:
     from sbir_etl.extractors.sbir_gov_api import SBIR_AWARDS_CSV_URL as DEFAULT_SOURCE_URL
@@ -125,18 +127,19 @@ def render_summary_markdown(metadata: dict[str, Any], warnings: Iterable[str]) -
     size_mb = bytes_total / (1024 * 1024)
     schema_status = "match" if metadata["schema"]["matches_expected"] else "drift"
     lines = [
-        "# SBIR awards dataset refresh",
-        "",
-        "| Metric | Value |",
-        "| --- | --- |",
-        f"| Source URL | {metadata['source_url']} |",
-        f"| Downloaded (UTC) | {metadata['refreshed_at_utc']} |",
-        f"| SHA-256 | `{metadata['sha256']}` |",
-        f"| File size | {bytes_total:,} bytes ({size_mb:.2f} MiB) |",
-        f"| Row count | {metadata['row_count']:,} |",
-        f"| Row delta | {row_delta_str} ({row_delta_pct_str}) |",
-        f"| Column count | {metadata['column_count']} |",
-        f"| Schema status | {schema_status} |",
+        render_metric_table(
+            "SBIR awards dataset refresh",
+            [
+                ("Source URL", metadata["source_url"]),
+                ("Downloaded (UTC)", metadata["refreshed_at_utc"]),
+                ("SHA-256", f"`{metadata['sha256']}`"),
+                ("File size", f"{bytes_total:,} bytes ({size_mb:.2f} MiB)"),
+                ("Row count", f"{metadata['row_count']:,}"),
+                ("Row delta", f"{row_delta_str} ({row_delta_pct_str})"),
+                ("Column count", metadata["column_count"]),
+                ("Schema status", schema_status),
+            ],
+        ),
         "",
     ]
     warnings = list(warnings)
@@ -223,12 +226,13 @@ def main() -> int:
         args.summary_path.parent.mkdir(parents=True, exist_ok=True)
         args.summary_path.write_text(summary_markdown, encoding="utf-8")
 
-    if args.gha_output:
-        with args.gha_output.open("a", encoding="utf-8") as fp:
-            fp.write(f"metadata_path={metadata_path}\n")
-            fp.write(f"latest_metadata_path={latest_json_path}\n")
-            if args.summary_path:
-                fp.write(f"summary_path={args.summary_path}\n")
+    outputs: dict[str, Path | str] = {
+        "metadata_path": metadata_path,
+        "latest_metadata_path": latest_json_path,
+    }
+    if args.summary_path:
+        outputs["summary_path"] = args.summary_path
+    write_gha_outputs(args.gha_output, outputs)
 
     print(f"Wrote metadata to {metadata_path}")
     if args.summary_path:

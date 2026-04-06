@@ -14,6 +14,11 @@ import pandas as pd
 from dagster import build_asset_context
 
 import sbir_analytics.assets.sbir_ingestion as assets_module
+from sbir_etl.utils.reporting import (
+    render_metric_table,
+    serialize_dagster_metadata,
+    write_gha_outputs,
+)
 
 
 def parse_args() -> argparse.Namespace:
@@ -79,33 +84,22 @@ def _output_metadata(output: Any) -> dict[str, Any]:
     return getattr(output, "metadata", {}) or {}
 
 
-def _serialize_metadata(metadata: dict[str, Any]) -> dict[str, Any]:
-    """Convert Dagster metadata values to JSON-serializable plain values."""
-    result = {}
-    for key, value in metadata.items():
-        # Dagster metadata values have a 'value' attribute containing the actual data
-        if hasattr(value, "value"):
-            result[key] = value.value
-        else:
-            result[key] = value
-    return result
-
-
 def render_markdown_summary(
     raw_meta: dict[str, Any], validated_meta: dict[str, Any], report: dict[str, Any]
 ) -> str:
     lines = [
-        "# SBIR ingestion validation",
-        "",
-        "| Metric | Value |",
-        "| --- | --- |",
-        f"| Raw records | {raw_meta.get('num_records', 'N/A')} |",
-        f"| Raw columns | {raw_meta.get('num_columns', 'N/A')} |",
-        f"| Validation pass rate | {validated_meta.get('pass_rate', 'N/A')} |",
-        f"| Passed records | {validated_meta.get('passed_records', 'N/A')} |",
-        f"| Failed records | {validated_meta.get('failed_records', 'N/A')} |",
-        f"| Validation status | {validated_meta.get('validation_status', 'N/A')} |",
-        f"| Report total issues | {len(report.get('issues', []))} |",
+        render_metric_table(
+            "SBIR ingestion validation",
+            [
+                ("Raw records", raw_meta.get("num_records", "N/A")),
+                ("Raw columns", raw_meta.get("num_columns", "N/A")),
+                ("Validation pass rate", validated_meta.get("pass_rate", "N/A")),
+                ("Passed records", validated_meta.get("passed_records", "N/A")),
+                ("Failed records", validated_meta.get("failed_records", "N/A")),
+                ("Validation status", validated_meta.get("validation_status", "N/A")),
+                ("Report total issues", len(report.get("issues", []))),
+            ],
+        ),
         "",
         "## Issues by severity",
         "",
@@ -163,12 +157,16 @@ def main() -> int:
     report_json_path = args.report_json or (args.output_dir / "sbir_validation_report.json")
     summary_md_path = args.summary_md or (args.output_dir / "ingestion_summary.md")
 
+    raw_metadata_serialized = serialize_dagster_metadata(raw_metadata)
+    validated_metadata_serialized = serialize_dagster_metadata(validated_metadata)
+    report_metadata_serialized = serialize_dagster_metadata(report_metadata)
+
     with raw_meta_path.open("w", encoding="utf-8") as handle:
-        json.dump({"metadata": _serialize_metadata(raw_metadata)}, handle, indent=2)
+        json.dump({"metadata": raw_metadata_serialized}, handle, indent=2)
         handle.write("\n")
 
     with validated_meta_path.open("w", encoding="utf-8") as handle:
-        json.dump({"metadata": _serialize_metadata(validated_metadata)}, handle, indent=2)
+        json.dump({"metadata": validated_metadata_serialized}, handle, indent=2)
         handle.write("\n")
 
     # Save validated DataFrame as CSV for downstream use (e.g., Neo4j loading)
@@ -176,24 +174,27 @@ def main() -> int:
 
     with report_json_path.open("w", encoding="utf-8") as handle:
         json.dump(
-            {"report": report_dict, "metadata": _serialize_metadata(report_metadata)},
+            {"report": report_dict, "metadata": report_metadata_serialized},
             handle,
             indent=2,
         )
         handle.write("\n")
 
     summary_md = render_markdown_summary(
-        _serialize_metadata(raw_metadata), _serialize_metadata(validated_metadata), report_dict
+        raw_metadata_serialized, validated_metadata_serialized, report_dict
     )
     summary_md_path.write_text(summary_md, encoding="utf-8")
 
-    if args.gha_output:
-        with args.gha_output.open("a", encoding="utf-8") as handle:
-            handle.write(f"raw_metadata_path={raw_meta_path}\n")
-            handle.write(f"validated_metadata_path={validated_meta_path}\n")
-            handle.write(f"validated_csv_path={validated_csv_path}\n")
-            handle.write(f"validation_report_path={report_json_path}\n")
-            handle.write(f"ingestion_summary_path={summary_md_path}\n")
+    write_gha_outputs(
+        args.gha_output,
+        {
+            "raw_metadata_path": raw_meta_path,
+            "validated_metadata_path": validated_meta_path,
+            "validated_csv_path": validated_csv_path,
+            "validation_report_path": report_json_path,
+            "ingestion_summary_path": summary_md_path,
+        },
+    )
 
     # If validation failed, exit non-zero to alert workflow.
     if report_dict.get("passed") is False:

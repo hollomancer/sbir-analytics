@@ -13,6 +13,11 @@ import pandas as pd
 from dagster import build_asset_context
 
 import sbir_analytics.assets.sbir_neo4j_loading as loading_module
+from sbir_etl.utils.reporting import (
+    render_metric_table,
+    serialize_dagster_metadata,
+    write_gha_outputs,
+)
 
 
 def parse_args() -> argparse.Namespace:
@@ -52,46 +57,30 @@ def _output_metadata(output: Any) -> dict[str, Any]:
     return getattr(output, "metadata", {}) or {}
 
 
-def _serialize_metadata(metadata: dict[str, Any]) -> dict[str, Any]:
-    """Convert Dagster metadata values to JSON-serializable plain values."""
-    result = {}
-    for key, value in metadata.items():
-        # Dagster metadata values have a 'value' attribute containing the actual data
-        if hasattr(value, "value"):
-            result[key] = value.value
-        else:
-            result[key] = value
-    return result
-
-
 def render_markdown_summary(load_result: dict[str, Any]) -> str:
     """Render Neo4j load results as markdown."""
-    lines = [
-        "# Neo4j SBIR Awards Load",
-        "",
-        f"**Status:** {load_result.get('status', 'unknown')}",
-        "",
-        "| Metric | Value |",
-        "| --- | --- |",
-    ]
+    rows: list[tuple[str, Any]] = [("Status", load_result.get("status", "unknown"))]
 
     if load_result.get("status") == "success":
-        lines.append(f"| Awards loaded | {load_result.get('awards_loaded', 0)} |")
-        lines.append(f"| Awards updated | {load_result.get('awards_updated', 0)} |")
-        lines.append(f"| Companies loaded | {load_result.get('companies_loaded', 0)} |")
-        lines.append(f"| Companies updated | {load_result.get('companies_updated', 0)} |")
-        lines.append(f"| Researchers loaded | {load_result.get('researchers_loaded', 0)} |")
-        lines.append(f"| Researchers updated | {load_result.get('researchers_updated', 0)} |")
-        lines.append(f"| Institutions loaded | {load_result.get('institutions_loaded', 0)} |")
-        lines.append(f"| Institutions updated | {load_result.get('institutions_updated', 0)} |")
-        lines.append(f"| Relationships created | {load_result.get('relationships_created', 0)} |")
-        lines.append(f"| Errors | {load_result.get('errors', 0)} |")
-        lines.append(f"| Duration (seconds) | {load_result.get('duration_seconds', 0):.2f} |")
+        rows.extend(
+            [
+                ("Awards loaded", load_result.get("awards_loaded", 0)),
+                ("Awards updated", load_result.get("awards_updated", 0)),
+                ("Companies loaded", load_result.get("companies_loaded", 0)),
+                ("Companies updated", load_result.get("companies_updated", 0)),
+                ("Researchers loaded", load_result.get("researchers_loaded", 0)),
+                ("Researchers updated", load_result.get("researchers_updated", 0)),
+                ("Institutions loaded", load_result.get("institutions_loaded", 0)),
+                ("Institutions updated", load_result.get("institutions_updated", 0)),
+                ("Relationships created", load_result.get("relationships_created", 0)),
+                ("Errors", load_result.get("errors", 0)),
+                ("Duration (seconds)", f"{load_result.get('duration_seconds', 0):.2f}"),
+            ]
+        )
     else:
         reason = load_result.get("reason") or load_result.get("error", "unknown")
-        lines.append(f"| Reason | {reason} |")
-
-    return "\n".join(lines)
+        rows.append(("Reason", reason))
+    return render_metric_table("Neo4j SBIR Awards Load", rows)
 
 
 def main() -> int:
@@ -122,7 +111,9 @@ def main() -> int:
     metrics_json_path = args.output_dir / "neo4j_load_metrics.json"
     with metrics_json_path.open("w", encoding="utf-8") as f:
         json.dump(
-            {"result": load_result, "metadata": _serialize_metadata(load_metadata)}, f, indent=2
+            {"result": load_result, "metadata": serialize_dagster_metadata(load_metadata)},
+            f,
+            indent=2,
         )
         f.write("\n")
 
@@ -131,11 +122,14 @@ def main() -> int:
     summary_md = render_markdown_summary(load_result)
     summary_md_path.write_text(summary_md, encoding="utf-8")
 
-    if args.gha_output:
-        with args.gha_output.open("a", encoding="utf-8") as f:
-            f.write(f"neo4j_load_metrics_json={metrics_json_path}\n")
-            f.write(f"neo4j_load_summary_md={summary_md_path}\n")
-            f.write(f"neo4j_load_status={load_result.get('status', 'unknown')}\n")
+    write_gha_outputs(
+        args.gha_output,
+        {
+            "neo4j_load_metrics_json": metrics_json_path,
+            "neo4j_load_summary_md": summary_md_path,
+            "neo4j_load_status": load_result.get("status", "unknown"),
+        },
+    )
 
     # Run asset check
     check_result = loading_module.neo4j_sbir_awards_load_check(neo4j_sbir_awards=load_result)
