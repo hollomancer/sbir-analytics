@@ -105,11 +105,13 @@ except ImportError:
     _HAS_SOLICITATION_EXTRACTOR = False
 
 try:
-    from sbir_etl.enrichers.patentsview import PatentsViewClient
+    from sbir_etl.enrichers.patentsview import PatentsViewClient, RateLimiter, parse_patent_record
 
     _HAS_PATENTS_CLIENT = True
 except ImportError:
     _HAS_PATENTS_CLIENT = False
+    parse_patent_record = None  # type: ignore[assignment]
+    RateLimiter = None  # type: ignore[assignment, misc]
 
 try:
     from sbir_etl.enrichers.inflation_adjuster import InflationAdjuster
@@ -215,6 +217,39 @@ USASPENDING_API_URL = "https://api.usaspending.gov/api/v2"
 SBIR_GOV_API_URL = "https://api.www.sbir.gov/public/api"
 SAM_GOV_API_URL = "https://api.sam.gov/entity-information/v3/entities"
 ORCID_API_URL = "https://pub.orcid.org/v3.0"
+
+
+# ---------------------------------------------------------------------------
+# Rate limiters — shared across threads to prevent API throttling.
+# Uses the library's thread-safe RateLimiter when available, with a minimal
+# fallback that tracks nothing (effectively unlimited) when sbir_etl isn't
+# installed.
+# ---------------------------------------------------------------------------
+
+def _make_rate_limiter(rpm: int) -> object:
+    """Create a thread-safe rate limiter (library or no-op fallback)."""
+    if RateLimiter is not None:
+        return RateLimiter(rate_limit_per_minute=rpm)
+
+    class _NoOpLimiter:
+        def wait_if_needed(self) -> None:
+            pass
+
+    return _NoOpLimiter()
+
+
+# USAspending: 120 req/min (matches library default)
+_usaspending_limiter = _make_rate_limiter(120)
+# Semantic Scholar: 100 req/min (default for unauthenticated)
+_semantic_scholar_limiter = _make_rate_limiter(100)
+# USPTO ODP: 60 req/min (conservative)
+_uspto_limiter = _make_rate_limiter(60)
+# SAM.gov: 60 req/min (matches library default)
+_sam_gov_limiter = _make_rate_limiter(60)
+# ORCID: 60 req/min (conservative)
+_orcid_limiter = _make_rate_limiter(60)
+# SBIR.gov API: 30 req/min (aggressive rate limiting observed)
+_sbir_gov_limiter = _make_rate_limiter(30)
 
 
 # ---------------------------------------------------------------------------
@@ -912,6 +947,7 @@ def lookup_pi_patents(pi_name: str, company_name: str | None = None) -> PIPatent
 
     _debug(f"USPTO ODP query for '{pi_name}': GET {USPTO_ODP_PATENT_SEARCH_URL} params={params}")
     try:
+        _uspto_limiter.wait_if_needed()
         with httpx.Client(timeout=30) as client:
             resp = client.get(USPTO_ODP_PATENT_SEARCH_URL, headers=headers, params=params)
             _debug_response(f"USPTO ODP [{pi_name}]", resp)
@@ -935,24 +971,29 @@ def lookup_pi_patents(pi_name: str, company_name: str | None = None) -> PIPatent
     assignees: set[str] = set()
     dates: list[str] = []
 
-    for record in records:
-        metadata = record.get("applicationMetaData", {}) or {}
-        title = record.get("inventionTitle") or metadata.get("inventionTitle") or ""
+    for raw_record in records:
+        # Use shared parser when available, inline fallback otherwise
+        if parse_patent_record is not None:
+            parsed = parse_patent_record(raw_record)
+            title = parsed.get("patent_title", "")
+            org = parsed.get("assignee_organization", "")
+            grant_date = parsed.get("grant_date", "")
+        else:
+            metadata = raw_record.get("applicationMetaData", {}) or {}
+            title = raw_record.get("inventionTitle") or metadata.get("inventionTitle") or ""
+            org = ""
+            for a in (raw_record.get("assignees", []) or []):
+                if isinstance(a, dict):
+                    org = a.get("assigneeName") or a.get("orgName") or ""
+                    break
+            if not org:
+                org = raw_record.get("assigneeName") or metadata.get("assigneeName") or ""
+            grant_date = metadata.get("grantDate") or raw_record.get("grantDate") or ""
+
         if title and title not in titles and len(titles) < 5:
             titles.append(title)
-
-        record_assignees = record.get("assignees", []) or []
-        for a in record_assignees:
-            if isinstance(a, dict):
-                org = a.get("assigneeName") or a.get("orgName") or ""
-                if org:
-                    assignees.add(org)
-        if not record_assignees:
-            org = record.get("assigneeName") or metadata.get("assigneeName") or ""
-            if org:
-                assignees.add(org)
-
-        grant_date = metadata.get("grantDate") or record.get("grantDate") or ""
+        if org:
+            assignees.add(org)
         if grant_date:
             dates.append(grant_date)
 
@@ -990,6 +1031,7 @@ def lookup_pi_publications(pi_name: str) -> PIPublicationRecord | None:
         search_data = None
         with httpx.Client(timeout=30, headers=headers) as client:
             for attempt in range(3):
+                _semantic_scholar_limiter.wait_if_needed()
                 resp = client.get(
                     f"{SEMANTIC_SCHOLAR_API_URL}/author/search",
                     params={"query": search_query, "limit": 5},
@@ -1029,6 +1071,7 @@ def lookup_pi_publications(pi_name: str) -> PIPublicationRecord | None:
         author_data = None
         with httpx.Client(timeout=30, headers=headers) as client:
             for attempt in range(3):
+                _semantic_scholar_limiter.wait_if_needed()
                 resp = client.get(
                     f"{SEMANTIC_SCHOLAR_API_URL}/author/{author_id}",
                     params={
@@ -1177,6 +1220,7 @@ def _usaspending_autocomplete(company_name: str) -> dict[str, str] | None:
     with httpx.Client(timeout=15) as client:
         for idx, name in enumerate(unique, 1):
             try:
+                _usaspending_limiter.wait_if_needed()
                 resp = client.post(
                     f"{USASPENDING_API_URL}/autocomplete/recipient/",
                     json={"search_text": name, "limit": 5},
@@ -1249,6 +1293,7 @@ def _usaspending_search(
     try:
         with httpx.Client(timeout=30) as client:
             for group_name, codes in type_groups:
+                _usaspending_limiter.wait_if_needed()
                 payload = {
                     "filters": {
                         "award_type_codes": codes,
@@ -1514,6 +1559,7 @@ def lookup_usaspending_recipient(
     for term in search_terms:
         _debug(f"USAspending recipient search: keyword='{term}'")
         try:
+            _usaspending_limiter.wait_if_needed()
             with httpx.Client(timeout=15) as client:
                 resp = client.post(
                     f"{USASPENDING_API_URL}/recipient/",
@@ -1542,6 +1588,7 @@ def lookup_usaspending_recipient(
     # Step 2: Fetch the full profile
     _debug(f"USAspending recipient profile: GET /recipient/{recipient_id}/?year=all")
     try:
+        _usaspending_limiter.wait_if_needed()
         with httpx.Client(timeout=15) as client:
             resp = client.get(
                 f"{USASPENDING_API_URL}/recipient/{recipient_id}/",
@@ -1668,6 +1715,7 @@ def lookup_sam_entity(
 
         for attempt in range(3):
             try:
+                _sam_gov_limiter.wait_if_needed()
                 with httpx.Client(timeout=30) as client:
                     resp = client.get(SAM_GOV_API_URL, headers=headers, params=params)
                     _debug_response(f"SAM.gov [{company_name}]", resp)
@@ -1869,6 +1917,7 @@ def lookup_pi_orcid(pi_name: str) -> ORCIDRecord | None:
             query += f"+AND+given-names:{first}"
 
         _debug(f"ORCID search for '{pi_name}': query='{query}' (token={'yes' if orcid_token else 'no'})")
+        _orcid_limiter.wait_if_needed()
         with httpx.Client(timeout=30) as client:
             resp = client.get(
                 f"{ORCID_API_URL}/expanded-search/",
@@ -1893,6 +1942,7 @@ def lookup_pi_orcid(pi_name: str) -> ORCIDRecord | None:
             return None
 
         # Step 2: Fetch full profile
+        _orcid_limiter.wait_if_needed()
         with httpx.Client(timeout=30) as client:
             resp = client.get(
                 f"{ORCID_API_URL}/{orcid_id}/record",
@@ -2087,10 +2137,12 @@ def fetch_solicitation_topics(awards: list[dict]) -> dict[str, SolicitationTopic
         params: dict[str, str | int] = {"rows": 25, "start": 0, "keyword": keyword}
         _debug(f"SBIR.gov solicitations (no year): keyword='{keyword}' for topic {tc}")
         try:
+            _sbir_gov_limiter.wait_if_needed()
             with httpx.Client(timeout=30) as client:
                 resp = client.get(f"{SBIR_GOV_API_URL}/solicitations", params=params)
                 if resp.status_code == 429:
                     time.sleep(3)
+                    _sbir_gov_limiter.wait_if_needed()
                     resp = client.get(f"{SBIR_GOV_API_URL}/solicitations", params=params)
                 _debug_response(f"SBIR.gov solicitations [keyword={keyword}]", resp)
                 if resp.status_code != 200:
@@ -2137,6 +2189,7 @@ def fetch_solicitation_topics(awards: list[dict]) -> dict[str, SolicitationTopic
         data = None
         for attempt in range(3):
             try:
+                _sbir_gov_limiter.wait_if_needed()
                 with httpx.Client(timeout=30) as client:
                     resp = client.get(
                         f"{SBIR_GOV_API_URL}/solicitations", params=params
@@ -2214,6 +2267,7 @@ def fetch_solicitation_topics(awards: list[dict]) -> dict[str, SolicitationTopic
         time.sleep(2)
         for tc in missing_codes:
             try:
+                _sbir_gov_limiter.wait_if_needed()
                 with httpx.Client(timeout=30) as client:
                     resp = client.get(
                         f"{SBIR_GOV_API_URL}/awards",
@@ -2761,6 +2815,7 @@ def fetch_usaspending_contract_descriptions(
                 data = None
                 for endpoint in endpoints:
                     for attempt in range(2):
+                        _usaspending_limiter.wait_if_needed()
                         resp = client.post(
                             f"{USASPENDING_API_URL}/{endpoint}/",
                             json=payload,
