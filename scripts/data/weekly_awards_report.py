@@ -44,6 +44,7 @@ try:
     from sbir_etl.utils.cloud_storage import find_latest_sbir_awards, get_s3_bucket_from_env
     from sbir_etl.utils.date_utils import parse_date as _parse_date
     from sbir_etl.utils.text_normalization import normalize_name as _normalize_name
+    from sbir_etl.utils.text_normalization import pluralize_col_key as _pluralize_col_key
     from sbir_etl.validators.sbir_awards import validate_sbir_award_record as _validate_record
 
     _HAS_SBIR_ETL = True
@@ -67,6 +68,13 @@ except ImportError:
         return None
 
     _validate_record = None  # type: ignore[assignment]
+
+    def _pluralize_col_key(col: str) -> str:  # type: ignore[misc]
+        """Fallback pluralizer when sbir_etl is unavailable."""
+        key = col.lower().replace(" ", "_")
+        if key.endswith("y"):
+            return key[:-1] + "ies"
+        return key + "s"
 
     def _normalize_name(name, *, remove_suffixes=False, **_kwargs):  # type: ignore[misc]
         """Minimal fallback company name normalizer."""
@@ -487,15 +495,8 @@ def _resolve_shared_extractor(
     return source, extractor, table
 
 
-def _pluralize_col_key(col: str) -> str:
-    """Convert a column name to a pluralized dict key.
-
-    'Company' -> 'companies', 'Phase' -> 'phases', etc.
-    """
-    key = col.lower().replace(" ", "_")
-    if key.endswith("y"):
-        return key[:-1] + "ies"
-    return key + "s"
+# _pluralize_col_key is imported from sbir_etl.utils.text_normalization
+# (with a fallback defined in the ImportError block above).
 
 
 def _build_history_from_df(
@@ -2537,53 +2538,52 @@ def fetch_usaspending_contract_descriptions(
     Returns a dict keyed by contract number with the award description text.
     Used as supplementary LLM context when solicitation topic data is unavailable.
     """
-    import re as _re
     import time as _t
 
-    # Classify award IDs by likely type based on format:
-    # - DoD PIIDs: letter prefix + digits + dash patterns (e.g. FA2541-26-C-B005)
-    # - DOE/agency FAINs: DE-AR, DE-SC prefixes (grants)
-    # - Pure numeric: agency internal IDs (e.g. NSF "2516905") — try both types
-    piids: list[str] = []   # Likely procurement contracts
-    fains: list[str] = []   # Likely financial assistance (grants)
-    unknown: list[str] = [] # Try both
-    for a in awards:
-        c = str(a.get("Contract", "")).strip()
-        if not c or c in piids or c in fains or c in unknown:
-            continue
-        if _re.match(r"^DE-", c, _re.IGNORECASE):
-            fains.append(c)
-        elif _re.match(r"^[A-Z]{2}\d", c):
-            piids.append(c)  # DoD PIID pattern
-        elif c.isdigit():
-            unknown.append(c)  # Bare numeric — could be either
-        else:
-            unknown.append(c)
+    # Use shared award-ID classification when available, inline fallback otherwise.
+    try:
+        from sbir_etl.enrichers.usaspending.client import build_award_type_groups
+    except ImportError:
+        import re as _re
 
-    all_ids = piids + fains + unknown
-    if not all_ids:
+        def build_award_type_groups(ids):  # type: ignore[misc]
+            piids, fains, unknown = [], [], []
+            seen: set[str] = set()
+            for raw in ids:
+                s = raw.strip()
+                if not s or s in seen:
+                    continue
+                seen.add(s)
+                if _re.match(r"^DE-", s, _re.IGNORECASE):
+                    fains.append(s)
+                elif _re.match(r"^[A-Z]{2}\d", s):
+                    piids.append(s)
+                else:
+                    unknown.append(s)
+            groups = []
+            if piids:
+                groups.append((piids, "contracts", ["A", "B", "C", "D"]))
+            if fains:
+                groups.append((fains, "assistance", ["02", "03", "04", "05"]))
+            for uid in unknown:
+                groups.append(([uid], "contracts", ["A", "B", "C", "D"]))
+                groups.append(([uid], "assistance", ["02", "03", "04", "05"]))
+            return groups
+
+    raw_ids = [str(a.get("Contract", "")).strip() for a in awards]
+    raw_ids = [c for c in raw_ids if c]
+    if not raw_ids:
         return {}
 
-    _debug(
-        f"USAspending contract desc: {len(piids)} PIIDs, "
-        f"{len(fains)} FAINs, {len(unknown)} unknown"
-    )
+    requests_to_make = build_award_type_groups(raw_ids)
+    all_ids = list({aid for ids, _, _ in requests_to_make for aid in ids})
+
+    _debug(f"USAspending contract desc: {len(all_ids)} IDs in {len(requests_to_make)} groups")
     print(
         f"Fetching {len(all_ids)} contract descriptions from USAspending...",
         file=sys.stderr,
     )
     results: dict[str, str] = {}
-
-    # Build targeted requests: PIIDs→contracts, FAINs→assistance, unknown→both
-    requests_to_make: list[tuple[list[str], str, list[str]]] = []
-    if piids:
-        requests_to_make.append((piids, "contracts", ["A", "B", "C", "D"]))
-    if fains:
-        requests_to_make.append((fains, "assistance", ["02", "03", "04", "05"]))
-    for uid in unknown:
-        # Try as contract first, then assistance
-        requests_to_make.append(([uid], "contracts", ["A", "B", "C", "D"]))
-        requests_to_make.append(([uid], "assistance", ["02", "03", "04", "05"]))
 
     try:
         with httpx.Client(timeout=30) as client:

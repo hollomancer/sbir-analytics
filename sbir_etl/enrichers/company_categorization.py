@@ -33,6 +33,7 @@ from loguru import logger
 
 from sbir_etl.config.loader import get_config
 from sbir_etl.enrichers.usaspending import USAspendingAPIClient
+from sbir_etl.enrichers.usaspending.client import CONTRACT_TYPE_CODES
 from sbir_etl.exceptions import APIError, RateLimitError
 from sbir_etl.extractors.usaspending import DuckDBUSAspendingExtractor
 from sbir_etl.utils.async_tools import run_sync
@@ -636,7 +637,7 @@ def retrieve_company_contracts_api(
 
     # Build search filters using AdvancedFilterObject
     filters: dict[str, Any] = {
-        "award_type_codes": ["A", "B", "C", "D"],  # Contract awards only
+        "award_type_codes": CONTRACT_TYPE_CODES,  # Contract awards only
     }
 
     # Add recipient search - recipient_search_text searches across name, UEI, and DUNS
@@ -827,7 +828,7 @@ def retrieve_company_contracts_api(
             )
             # Try searching by company name - use name variations for better matching
             name_filters = {
-                "award_type_codes": ["A", "B", "C", "D"],
+                "award_type_codes": CONTRACT_TYPE_CODES,
             }
 
             # Generate name variations for better matching
@@ -1314,7 +1315,7 @@ def retrieve_sbir_awards_api(
 
     # Build search filters
     filters: dict[str, Any] = {
-        "award_type_codes": ["A", "B", "C", "D"],
+        "award_type_codes": CONTRACT_TYPE_CODES,
     }
 
     recipient_search_terms = []

@@ -44,11 +44,26 @@ from sbir_etl.extractors.sbir_gov_api import SBIR_AWARDS_CSV_URL
 def download_from_sbir_gov(dest: Path) -> Path:
     """Download latest SBIR awards CSV from sbir.gov."""
     import requests
+    from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
+
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=2, min=2, max=30),
+        retry=retry_if_exception_type(
+            (requests.ConnectionError, requests.Timeout, requests.exceptions.HTTPError)
+        ),
+        reraise=True,
+    )
+    def _get(url: str) -> requests.Response:
+        resp = requests.get(url, stream=True, timeout=300)
+        if resp.status_code in (429, 500, 502, 503, 504):
+            resp.raise_for_status()
+        return resp
 
     url = SBIR_AWARDS_CSV_URL
     print(f"Downloading SBIR awards from: {url}")
 
-    response = requests.get(url, stream=True, timeout=300)
+    response = _get(url)
     response.raise_for_status()
 
     size = int(response.headers.get("content-length", 0))

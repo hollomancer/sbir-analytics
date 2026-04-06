@@ -14,11 +14,28 @@ from datetime import datetime, UTC
 
 import boto3
 import requests
+from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
 try:
     from sbir_etl.extractors.sbir_gov_api import SBIR_AWARDS_CSV_URL as SBIR_AWARDS_URL
 except ImportError:
     SBIR_AWARDS_URL = "https://data.www.sbir.gov/mod_awarddatapublic/award_data.csv"
+
+
+@retry(
+    stop=stop_after_attempt(3),
+    wait=wait_exponential(multiplier=2, min=2, max=30),
+    retry=retry_if_exception_type(
+        (requests.ConnectionError, requests.Timeout, requests.exceptions.HTTPError)
+    ),
+    reraise=True,
+)
+def _download_with_retry(url: str) -> requests.Response:
+    """Download with retry on transient network errors."""
+    resp = requests.get(url, stream=True, timeout=300)
+    if resp.status_code in (429, 500, 502, 503, 504):
+        resp.raise_for_status()  # triggers retry via HTTPError
+    return resp
 
 
 def download_sbir_awards(s3_bucket: str) -> dict:
@@ -27,8 +44,8 @@ def download_sbir_awards(s3_bucket: str) -> dict:
 
     s3 = boto3.client("s3")
 
-    # Download file
-    response = requests.get(SBIR_AWARDS_URL, stream=True, timeout=300)
+    # Download file (retry on transient network / server errors)
+    response = _download_with_retry(SBIR_AWARDS_URL)
     response.raise_for_status()
 
     content_length = int(response.headers.get("content-length", 0))

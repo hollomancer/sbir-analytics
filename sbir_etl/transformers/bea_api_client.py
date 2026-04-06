@@ -77,7 +77,9 @@ class BEAApiClient:
     @retry(
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=2, min=2, max=30),
-        retry=retry_if_exception_type(httpx.HTTPStatusError),
+        retry=retry_if_exception_type(
+            (httpx.HTTPStatusError, httpx.TimeoutException, httpx.TransportError)
+        ),
         reraise=True,
     )
     def _request(self, params: dict[str, str]) -> dict[str, Any]:

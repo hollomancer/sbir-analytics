@@ -17,6 +17,7 @@ from pathlib import Path
 import pandas as pd
 import requests
 from loguru import logger
+from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
 
 # HUD ZIP-to-Congressional District crosswalk
@@ -47,9 +48,23 @@ def download_hud_crosswalk(output_dir: Path, force: bool = False) -> Path:
     logger.info("Downloading HUD ZIP-to-Congressional District crosswalk...")
     logger.info(f"Source: {HUD_DIRECT_DOWNLOAD}")
 
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=2, min=2, max=30),
+        retry=retry_if_exception_type(
+            (requests.ConnectionError, requests.Timeout, requests.exceptions.HTTPError)
+        ),
+        reraise=True,
+    )
+    def _download(url: str) -> requests.Response:
+        resp = requests.get(url, timeout=60)
+        if resp.status_code in (429, 500, 502, 503, 504):
+            resp.raise_for_status()
+        return resp
+
     try:
         # Try direct download of Excel file
-        response = requests.get(HUD_DIRECT_DOWNLOAD, timeout=60)
+        response = _download(HUD_DIRECT_DOWNLOAD)
         response.raise_for_status()
 
         # Save as Excel temporarily

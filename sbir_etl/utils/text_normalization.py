@@ -113,6 +113,26 @@ def normalize_company_name(name: str | None) -> str:
     return normalize_name(name, remove_suffixes=False)
 
 
+def pluralize_col_key(col: str) -> str:
+    """Convert a column name to a pluralized dict key.
+
+    Lowercases, replaces spaces with underscores, and applies basic English
+    pluralization (``y`` → ``ies``, otherwise append ``s``).
+
+    Examples:
+        >>> pluralize_col_key("Company")
+        'companies'
+        >>> pluralize_col_key("Phase")
+        'phases'
+        >>> pluralize_col_key("Agency")
+        'agencies'
+    """
+    key = col.lower().replace(" ", "_")
+    if key.endswith("y"):
+        return key[:-1] + "ies"
+    return key + "s"
+
+
 def normalize_recipient_name(name: str | None) -> str:
     """Normalize a recipient name (removes all suffixes).
 

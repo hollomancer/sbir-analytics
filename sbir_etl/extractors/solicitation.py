@@ -21,8 +21,11 @@ from ..exceptions import APIError
 
 try:
     import httpx
+
+    _RETRYABLE_HTTPX = (httpx.HTTPStatusError, httpx.TimeoutException, httpx.TransportError)
 except ImportError:
     httpx = None  # type: ignore[assignment]
+    _RETRYABLE_HTTPX = (Exception,)  # type: ignore[assignment]  # fallback when httpx absent
 
 SBIR_GOV_API_BASE = "https://api.www.sbir.gov/public/api"
 
@@ -69,7 +72,7 @@ class SolicitationExtractor:
     @retry(
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=2, min=2, max=30),
-        retry=retry_if_exception_type(Exception),
+        retry=retry_if_exception_type(_RETRYABLE_HTTPX),
         reraise=True,
     )
     def _query_solicitations(
