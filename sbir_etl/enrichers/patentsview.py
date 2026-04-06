@@ -377,15 +377,11 @@ class PatentsViewClient:
         offset = 0
         limit = 100  # ODP page size
 
-        # Escape special Lucene characters in company name for query
-        escaped_name = self._escape_lucene_query(company_name)
-
         while len(all_patents) < max_patents:
-            # ODP field-level Lucene queries go to the base endpoint (no
-            # /search suffix).  The /search endpoint only accepts a
-            # ``searchText`` free-text parameter and rejects ``q``.
+            # The ODP API uses ``searchText`` for free-text queries
+            # (replacing the old PatentsView Lucene ``q`` parameter).
             params = {
-                "q": f'assigneeName:"{escaped_name}"',
+                "searchText": company_name,
                 "offset": offset,
                 "limit": limit,
             }
@@ -462,9 +458,8 @@ class PatentsViewClient:
         """
         logger.debug(f"Querying assignees for company name: {company_name}")
 
-        escaped_name = self._escape_lucene_query(company_name)
         params = {
-            "q": f'assigneeName:"{escaped_name}"',
+            "searchText": company_name,
             "offset": 0,
             "limit": 25,
         }
