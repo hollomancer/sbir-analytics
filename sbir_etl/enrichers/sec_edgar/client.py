@@ -94,11 +94,14 @@ class EdgarAPIClient(BaseAsyncAPIClient):
 
         Used for endpoints that don't share the EFTS base_url (companyfacts,
         submissions, company_tickers) and therefore can't use _make_request.
+        Retry settings are read from the client config.
         """
+        retry_attempts = cast(int, self.api_config.get("retry_attempts", 3))
+        retry_backoff = cast(float, self.api_config.get("retry_backoff_seconds", 2.0))
 
         @retry(
-            stop=stop_after_attempt(3),
-            wait=wait_exponential(multiplier=2.0, min=2, max=30),
+            stop=stop_after_attempt(max(1, retry_attempts)),
+            wait=wait_exponential(multiplier=retry_backoff, min=retry_backoff, max=30),
             retry=retry_if_exception_type((httpx.HTTPError, httpx.TimeoutException)),
             reraise=True,
         )

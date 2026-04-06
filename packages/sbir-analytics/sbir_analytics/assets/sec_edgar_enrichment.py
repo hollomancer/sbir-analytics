@@ -90,10 +90,10 @@ def sec_edgar_enriched_companies(
         f"from {total_awards} awards"
     )
 
-    # Run async enrichment
-    client = EdgarAPIClient(config=dict(sec_config))
-
+    # Run async enrichment — client is created and closed inside the coroutine
+    # so cleanup happens even if asyncio.run() itself raises.
     async def _run_enrichment() -> pd.DataFrame:
+        client = EdgarAPIClient(config=dict(sec_config))
         try:
             enrichment_kwargs: dict = {
                 "client": client,
@@ -164,8 +164,8 @@ def sec_edgar_enrichment_quality_check(
 
     Checks:
     - Enrichment columns are present (if enrichment was enabled)
-    - Match rate is within expected bounds (1-30% for SBIR companies)
-    - No data corruption in enrichment merge
+    - Public match rate is not suspiciously high (>50% suggests false positives)
+    - No excessive all-null columns in enriched output
     """
     df = sec_edgar_enriched_companies
     issues = []
@@ -199,14 +199,19 @@ def sec_edgar_enrichment_quality_check(
                 f"Unexpectedly high match rate ({match_rate:.1%}) - possible false positives"
             )
 
-    # Check for null corruption in original columns
+    # Check for original columns that are all-null in the enriched output.
+    # This is a heuristic on the post-enrichment DataFrame only; without the
+    # pre-enrichment input we cannot determine whether the merge introduced
+    # these nulls.
     original_cols = [c for c in df.columns if not c.startswith("sec_")]
-    null_increase = 0
+    all_null_original_cols = 0
     for col in original_cols[:10]:  # Sample check
         if df[col].isna().all() and len(df) > 0:
-            null_increase += 1
-    if null_increase > 3:
-        issues.append(f"{null_increase} original columns became all-null after merge")
+            all_null_original_cols += 1
+    if all_null_original_cols > 3:
+        issues.append(
+            f"{all_null_original_cols} original columns are all-null in the enriched output"
+        )
 
     passed = len(issues) == 0
     result_kwargs: dict = {

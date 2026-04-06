@@ -22,9 +22,6 @@ from ...models.sec_edgar import (
 )
 from .client import EdgarAPIClient
 
-# 8-K items that indicate M&A activity
-_MA_8K_ITEMS = {"1.01", "2.01"}
-
 # XBRL concept names for financial data extraction
 _REVENUE_CONCEPTS = [
     "Revenues",
@@ -67,7 +64,8 @@ def _extract_latest_fact(
     10-K or 10-Q filing context.
 
     Returns:
-        Tuple of (value, filing_date) or (None, None) if not found.
+        Tuple of (value, period_end_date) or (None, None) if not found.
+        The date is the XBRL reporting period end date, not the SEC filing date.
     """
     tax_facts = facts.get("facts", {}).get(taxonomy, {})
     for concept in concept_names:
@@ -91,10 +89,10 @@ def _extract_latest_fact(
         annual_entries.sort(key=lambda e: e.get("end", ""), reverse=True)
         latest = annual_entries[0]
         try:
-            filing_date = date.fromisoformat(latest["end"])
+            period_end = date.fromisoformat(latest["end"])
         except (ValueError, KeyError):
-            filing_date = None
-        return float(latest["val"]), filing_date
+            period_end = None
+        return float(latest["val"]), period_end
     return None, None
 
 
@@ -114,13 +112,17 @@ def _extract_financials(
     if all(v is None for v in [revenue, net_income, total_assets, rd_expense]):
         return None
 
-    # Use the most recent date among all extracted values
+    # Use the most recent period end date among all extracted values
     dates = [d for d in [rev_date, ni_date, ta_date, tl_date, rd_date, oi_date, cash_date] if d]
     latest_date = max(dates) if dates else None
 
+    # Require a valid date to avoid creating records with sentinel fiscal_year=0
+    if latest_date is None:
+        return None
+
     return EdgarFinancials(
         cik=cik,
-        fiscal_year=latest_date.year if latest_date else 0,
+        fiscal_year=latest_date.year,
         revenue=revenue,
         net_income=net_income,
         total_assets=total_assets,

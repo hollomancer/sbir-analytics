@@ -104,20 +104,28 @@ class SecEdgarLoader(BaseNeo4jLoader):
             logger.info("SecEdgarLoader: No enrichments to load")
             return self.metrics
 
-        # Filter to only records with a CIK match (publicly traded)
-        public_records = [
-            r for r in enrichment_list
-            if r.get("sec_is_publicly_traded") or r.get("sec_cik")
-        ]
+        def _has_sec_signal(record: dict[str, Any]) -> bool:
+            """Return True when a record contains any meaningful SEC data."""
+            if record.get("sec_is_publicly_traded") or record.get("sec_cik"):
+                return True
+            if record.get("sec_has_form_d"):
+                return True
+            inbound = record.get("sec_inbound_ma_mention_count")
+            if isinstance(inbound, int | float) and inbound > 0:
+                return True
+            return False
+
+        # Keep records with any meaningful SEC signal, including private-company signals
+        sec_records = [r for r in enrichment_list if _has_sec_signal(r)]
 
         logger.info(
-            f"SecEdgarLoader: Loading SEC EDGAR data for {len(public_records)} "
-            f"publicly traded companies (of {len(enrichment_list)} total)"
+            f"SecEdgarLoader: Loading SEC EDGAR data for {len(sec_records)} "
+            f"companies with SEC signals (of {len(enrichment_list)} total)"
         )
 
         # Build enrichment tuples for base class method
         enrichment_tuples: list[tuple[str, dict[str, Any]]] = []
-        for record in public_records:
+        for record in sec_records:
             # Accept both "uei" and "company_uei" as the UEI key
             uei = record.get("company_uei") or record.get("uei")
             if not uei:
