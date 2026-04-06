@@ -13,6 +13,8 @@ from sbir_etl.enrichers.sec_edgar.enricher import (
     _extract_financials,
     _extract_latest_fact,
     _resolve_cik,
+    _search_form_d_filings,
+    _search_inbound_ma_mentions,
     enrich_company,
 )
 from sbir_etl.models.sec_edgar import MAAcquisitionType
@@ -294,6 +296,190 @@ class TestEnrichCompany:
         mock_client.get_company_facts.assert_not_called()
 
 
+class TestSearchInboundMAMentions:
+    @pytest.mark.asyncio
+    async def test_finds_inbound_acquisition(self):
+        mock_client = AsyncMock()
+        mock_client.search_filing_mentions = AsyncMock(
+            return_value=[
+                {
+                    "filer_cik": "99999",
+                    "filer_name": "LOCKHEED MARTIN CORPORATION",
+                    "form_type": "8-K",
+                    "file_date": "2024-06-15",
+                    "accession_number": "0001-24-500",
+                    "file_description": "Acquisition of Small SBIR Company",
+                },
+            ]
+        )
+
+        events = await _search_inbound_ma_mentions(
+            mock_client, "Small SBIR Company"
+        )
+        assert len(events) == 1
+        assert events[0].is_target is True
+        assert events[0].filer_name == "LOCKHEED MARTIN CORPORATION"
+        assert events[0].event_type == MAAcquisitionType.ACQUISITION
+
+    @pytest.mark.asyncio
+    async def test_filters_out_self_filings(self):
+        """If the filer name matches the searched company, it's not an inbound M&A."""
+        mock_client = AsyncMock()
+        mock_client.search_filing_mentions = AsyncMock(
+            return_value=[
+                {
+                    "filer_cik": "11111",
+                    "filer_name": "ACME CORP",  # Same company
+                    "form_type": "8-K",
+                    "file_date": "2024-03-01",
+                    "accession_number": "001",
+                    "file_description": "Something",
+                },
+            ]
+        )
+
+        events = await _search_inbound_ma_mentions(mock_client, "Acme Corp")
+        assert len(events) == 0
+
+    @pytest.mark.asyncio
+    async def test_returns_empty_on_no_results(self):
+        mock_client = AsyncMock()
+        mock_client.search_filing_mentions = AsyncMock(return_value=[])
+
+        events = await _search_inbound_ma_mentions(mock_client, "Unknown LLC")
+        assert events == []
+
+
+class TestSearchFormDFilings:
+    @pytest.mark.asyncio
+    async def test_finds_form_d(self):
+        mock_client = AsyncMock()
+        mock_client.search_form_d_filings = AsyncMock(
+            return_value=[
+                {
+                    "cik": "55555",
+                    "entity_name": "SBIR STARTUP INC",
+                    "file_date": "2023-09-15",
+                    "form_type": "D",
+                },
+            ]
+        )
+
+        filings = await _search_form_d_filings(mock_client, "SBIR Startup Inc")
+        assert len(filings) == 1
+        assert filings[0].cik == "55555"
+        assert filings[0].match_confidence >= 0.85
+
+    @pytest.mark.asyncio
+    async def test_rejects_low_confidence_match(self):
+        mock_client = AsyncMock()
+        mock_client.search_form_d_filings = AsyncMock(
+            return_value=[
+                {
+                    "cik": "55555",
+                    "entity_name": "COMPLETELY DIFFERENT NAME",
+                    "file_date": "2023-09-15",
+                    "form_type": "D",
+                },
+            ]
+        )
+
+        filings = await _search_form_d_filings(mock_client, "SBIR Startup Inc")
+        assert len(filings) == 0
+
+    @pytest.mark.asyncio
+    async def test_returns_empty_on_no_results(self):
+        mock_client = AsyncMock()
+        mock_client.search_form_d_filings = AsyncMock(return_value=[])
+
+        filings = await _search_form_d_filings(mock_client, "Unknown LLC")
+        assert filings == []
+
+
+class TestEnrichCompanyPrivateSignals:
+    @pytest.mark.asyncio
+    async def test_private_company_with_inbound_ma(self):
+        """A private company with no CIK should still get inbound M&A signals."""
+        mock_client = AsyncMock()
+        # No public match
+        mock_client.search_companies = AsyncMock(return_value=[])
+        # But found as acquisition target
+        mock_client.search_filing_mentions = AsyncMock(
+            return_value=[
+                {
+                    "filer_cik": "99999",
+                    "filer_name": "BIG DEFENSE CO",
+                    "form_type": "8-K",
+                    "file_date": "2024-06-15",
+                    "accession_number": "001",
+                    "file_description": "Acquisition",
+                },
+            ]
+        )
+        mock_client.search_form_d_filings = AsyncMock(return_value=[])
+
+        profile = await enrich_company(mock_client, "Tiny SBIR LLC")
+        assert profile.is_publicly_traded is False
+        assert profile.cik is None
+        assert profile.inbound_ma_mention_count == 1
+        assert "BIG DEFENSE CO" in profile.inbound_ma_acquirers
+
+    @pytest.mark.asyncio
+    async def test_private_company_with_form_d(self):
+        """A private company should get Form D signals."""
+        mock_client = AsyncMock()
+        mock_client.search_companies = AsyncMock(return_value=[])
+        mock_client.search_filing_mentions = AsyncMock(return_value=[])
+        mock_client.search_form_d_filings = AsyncMock(
+            return_value=[
+                {
+                    "cik": "77777",
+                    "entity_name": "VENTURE BACKED SBIR INC",
+                    "file_date": "2023-03-01",
+                    "form_type": "D",
+                },
+            ]
+        )
+
+        profile = await enrich_company(
+            mock_client, "Venture Backed SBIR Inc"
+        )
+        assert profile.is_publicly_traded is False
+        assert profile.has_form_d is True
+        assert profile.form_d_cik == "77777"
+        assert profile.form_d_count == 1
+
+    @pytest.mark.asyncio
+    async def test_public_company_also_gets_private_signals(self):
+        """A public company should still get inbound M&A and Form D signals."""
+        mock_client = AsyncMock()
+        mock_client.search_companies = AsyncMock(
+            return_value=[
+                {"cik": "12345", "entity_name": "DUAL SIGNAL CORP", "ticker": "DUAL"},
+            ]
+        )
+        mock_client.get_company_facts = AsyncMock(return_value=None)
+        mock_client.get_recent_filings = AsyncMock(return_value=[])
+        mock_client.search_filing_mentions = AsyncMock(
+            return_value=[
+                {
+                    "filer_cik": "88888",
+                    "filer_name": "ACQUIRER INC",
+                    "form_type": "8-K",
+                    "file_date": "2024-01-10",
+                    "accession_number": "002",
+                    "file_description": "Merger",
+                },
+            ]
+        )
+        mock_client.search_form_d_filings = AsyncMock(return_value=[])
+
+        profile = await enrich_company(mock_client, "Dual Signal Corp")
+        # Both public and inbound signals
+        assert profile.is_publicly_traded is True
+        assert profile.inbound_ma_mention_count == 1
+
+
 class TestModels:
     def test_company_edgar_profile_defaults(self):
         from sbir_etl.models.sec_edgar import CompanyEdgarProfile
@@ -302,6 +488,9 @@ class TestModels:
         assert profile.is_publicly_traded is False
         assert profile.match_confidence == 0.0
         assert profile.ma_event_count == 0
+        assert profile.inbound_ma_mention_count == 0
+        assert profile.has_form_d is False
+        assert profile.form_d_count == 0
 
     def test_edgar_financials_model(self):
         from sbir_etl.models.sec_edgar import EdgarFinancials
@@ -328,3 +517,28 @@ class TestModels:
             CompanyEdgarProfile(
                 company_name="Test", match_confidence=1.5
             )
+
+    def test_edgar_ma_event_target_flag(self):
+        from sbir_etl.models.sec_edgar import EdgarMAEvent
+
+        event = EdgarMAEvent(
+            cik="99999",
+            filer_name="Big Corp",
+            filing_date="2024-06-15",
+            accession_number="001",
+            is_target=True,
+        )
+        assert event.is_target is True
+        assert event.filer_name == "Big Corp"
+
+    def test_edgar_form_d_filing_model(self):
+        from sbir_etl.models.sec_edgar import EdgarFormDFiling
+
+        filing = EdgarFormDFiling(
+            cik="55555",
+            entity_name="Startup Inc",
+            filing_date="2023-09-15",
+            match_confidence=0.95,
+        )
+        assert filing.cik == "55555"
+        assert filing.match_confidence == 0.95
