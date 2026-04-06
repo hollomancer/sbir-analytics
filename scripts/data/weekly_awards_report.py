@@ -1240,6 +1240,7 @@ def _usaspending_autocomplete(company_name: str) -> dict[str, str] | None:
         try:
             for idx, name in enumerate(unique, 1):
                 try:
+                    _usaspending_limiter.wait_if_needed()
                     data = usa.autocomplete_recipient(name, limit=5)
                     results = data.get("results", [])
                     if not results:
@@ -1336,6 +1337,7 @@ def _usaspending_search(
         try:
             for group_name, codes in type_groups:
                 try:
+                    _usaspending_limiter.wait_if_needed()
                     data = usa.search_awards(
                         filters={
                             "award_type_codes": codes,
@@ -1626,6 +1628,7 @@ def lookup_usaspending_recipient(
             for term in search_terms:
                 _debug(f"USAspending recipient search: keyword='{term}'")
                 try:
+                    _usaspending_limiter.wait_if_needed()
                     results = usa.search_recipients(term, limit=5)
                     if results:
                         recipient_id = results[0].get("id")
@@ -1645,6 +1648,7 @@ def lookup_usaspending_recipient(
             # Step 2: Fetch the full profile
             _debug(f"USAspending recipient profile: GET /recipient/{recipient_id}/?year=all")
             try:
+                _usaspending_limiter.wait_if_needed()
                 profile = usa.get_recipient_profile(recipient_id)
             except Exception as e:
                 _debug(f"USAspending recipient profile error: {e}")
@@ -1813,6 +1817,7 @@ def lookup_sam_entity(
             if uei:
                 _debug(f"SAM.gov [{company_name}]: lookup by UEI={uei}")
                 try:
+                    _sam_gov_limiter.wait_if_needed()
                     entity = sam.get_entity_by_uei(uei)
                 except Exception as e:
                     _debug(f"SAM.gov [{company_name}]: UEI lookup error: {e}")
@@ -1821,6 +1826,7 @@ def lookup_sam_entity(
             if not entity and cage:
                 _debug(f"SAM.gov [{company_name}]: lookup by CAGE={cage}")
                 try:
+                    _sam_gov_limiter.wait_if_needed()
                     entity = sam.get_entity_by_cage(cage)
                 except Exception as e:
                     _debug(f"SAM.gov [{company_name}]: CAGE lookup error: {e}")
@@ -1829,7 +1835,12 @@ def lookup_sam_entity(
             if not entity and company_name:
                 _debug(f"SAM.gov [{company_name}]: name search")
                 try:
-                    results = sam.search_entities(legal_business_name=company_name, limit=1)
+                    _sam_gov_limiter.wait_if_needed()
+                    results = sam.search_entities(
+                        legal_business_name=company_name,
+                        registration_status="A",
+                        limit=1,
+                    )
                     entity = results[0] if results else None
                 except Exception as e:
                     _debug(f"SAM.gov [{company_name}]: name search error: {e}")

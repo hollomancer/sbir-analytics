@@ -822,3 +822,142 @@ class TestEdgeCases:
         finally:
             # Restore permissions for cleanup
             readonly_dir.chmod(0o755)
+
+
+# ==================== New Endpoint Method Tests ====================
+
+
+class TestSearchAwards:
+    """Tests for the search_awards() method."""
+
+    @pytest.mark.asyncio
+    async def test_search_awards_calls_correct_endpoint(self, client, mock_http_client):
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"results": [{"Award ID": "FA123"}]}
+        mock_response.raise_for_status = Mock()
+        mock_http_client.post.return_value = mock_response
+
+        result = await client.search_awards(
+            filters={"award_type_codes": ["A", "B"]},
+            fields=["Award ID", "Description"],
+            limit=10,
+        )
+
+        assert result == {"results": [{"Award ID": "FA123"}]}
+        call_args = mock_http_client.post.call_args
+        assert "/search/spending_by_award/" in str(call_args)
+
+    @pytest.mark.asyncio
+    async def test_search_awards_default_sort(self, client, mock_http_client):
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"results": []}
+        mock_response.raise_for_status = Mock()
+        mock_http_client.post.return_value = mock_response
+
+        await client.search_awards(
+            filters={"award_type_codes": ["A"]},
+            fields=["Award ID"],
+        )
+
+        call_kwargs = mock_http_client.post.call_args
+        payload = call_kwargs.kwargs.get("json") or call_kwargs[1].get("json")
+        assert payload["sort"] == "Award Amount"
+        assert payload["order"] == "desc"
+
+
+class TestSearchRecipients:
+    """Tests for the search_recipients() method."""
+
+    @pytest.mark.asyncio
+    async def test_search_recipients_returns_results_list(self, client, mock_http_client):
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "results": [
+                {"id": "abc-hash", "name": "Acme Corp"},
+                {"id": "def-hash", "name": "Acme Inc"},
+            ]
+        }
+        mock_response.raise_for_status = Mock()
+        mock_http_client.post.return_value = mock_response
+
+        results = await client.search_recipients("Acme", limit=5)
+
+        assert len(results) == 2
+        assert results[0]["id"] == "abc-hash"
+
+    @pytest.mark.asyncio
+    async def test_search_recipients_empty(self, client, mock_http_client):
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"results": []}
+        mock_response.raise_for_status = Mock()
+        mock_http_client.post.return_value = mock_response
+
+        results = await client.search_recipients("NonExistent")
+
+        assert results == []
+
+    @pytest.mark.asyncio
+    async def test_search_recipients_calls_correct_endpoint(self, client, mock_http_client):
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"results": []}
+        mock_response.raise_for_status = Mock()
+        mock_http_client.post.return_value = mock_response
+
+        await client.search_recipients("test", limit=3)
+
+        call_args = mock_http_client.post.call_args
+        assert "/recipient/" in str(call_args)
+        payload = call_args.kwargs.get("json") or call_args[1].get("json")
+        assert payload["keyword"] == "test"
+        assert payload["limit"] == 3
+
+
+class TestGetRecipientProfile:
+    """Tests for the get_recipient_profile() method."""
+
+    @pytest.mark.asyncio
+    async def test_get_recipient_profile_success(self, client, mock_http_client):
+        profile_data = {
+            "name": "Acme Corp",
+            "uei": "ABC123",
+            "total_transaction_amount": 5000000,
+        }
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = profile_data
+        mock_response.raise_for_status = Mock()
+        mock_http_client.get.return_value = mock_response
+
+        result = await client.get_recipient_profile("abc-hash")
+
+        assert result == profile_data
+        call_args = mock_http_client.get.call_args
+        assert "/recipient/abc-hash/" in str(call_args)
+
+    @pytest.mark.asyncio
+    async def test_get_recipient_profile_404_returns_none(self, client, mock_http_client):
+        mock_response = Mock()
+        mock_response.status_code = 404
+        mock_response.text = "Not found"
+        error = httpx.HTTPStatusError("404", request=Mock(), response=mock_response)
+        mock_http_client.get.side_effect = error
+
+        result = await client.get_recipient_profile("nonexistent-hash")
+
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_get_recipient_profile_500_raises(self, client, mock_http_client):
+        mock_response = Mock()
+        mock_response.status_code = 500
+        mock_response.text = "Internal Server Error"
+        error = httpx.HTTPStatusError("500", request=Mock(), response=mock_response)
+        mock_http_client.get.side_effect = error
+
+        with pytest.raises(APIError):
+            await client.get_recipient_profile("some-hash")

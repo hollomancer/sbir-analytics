@@ -123,10 +123,14 @@ class SyncSAMGovClient:
         *,
         legal_business_name: str | None = None,
         duns: str | None = None,
+        registration_status: str | None = None,
         limit: int = 10,
     ) -> list[dict[str, Any]]:
         return run_sync(
             self._client.search_entities(
-                legal_business_name=legal_business_name, duns=duns, limit=limit
+                legal_business_name=legal_business_name,
+                duns=duns,
+                registration_status=registration_status,
+                limit=limit,
             )
         )

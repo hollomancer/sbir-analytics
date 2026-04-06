@@ -413,7 +413,7 @@ class USAspendingAPIClient(BaseAsyncAPIClient):
                 params={"year": year},
             )
         except APIError as e:
-            if "404" in str(e) or "not found" in str(e).lower():
+            if e.details.get("http_status") == 404:
                 logger.debug(f"Recipient profile not found: {recipient_id}")
                 return None
             raise
