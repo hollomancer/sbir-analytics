@@ -16,6 +16,7 @@ from typing import Any, cast
 
 import httpx
 from loguru import logger
+from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
 from ...config.loader import get_config
 from ...exceptions import APIError
@@ -87,6 +88,26 @@ class EdgarAPIClient(BaseAsyncAPIClient):
         if self.contact_email:
             headers["User-Agent"] = f"SBIR-Analytics/0.1.0 ({self.contact_email})"
         return headers
+
+    async def _get_json(self, url: str) -> httpx.Response:
+        """GET a URL with rate limiting and retry logic.
+
+        Used for endpoints that don't share the EFTS base_url (companyfacts,
+        submissions, company_tickers) and therefore can't use _make_request.
+        """
+
+        @retry(
+            stop=stop_after_attempt(3),
+            wait=wait_exponential(multiplier=2.0, min=2, max=30),
+            retry=retry_if_exception_type((httpx.HTTPError, httpx.TimeoutException)),
+            reraise=True,
+        )
+        async def _do_get() -> httpx.Response:
+            await self._wait_for_rate_limit()
+            headers = self._build_headers()
+            return await self._client.get(url, headers=headers)
+
+        return await _do_get()
 
     async def search_companies(
         self,
@@ -240,12 +261,10 @@ class EdgarAPIClient(BaseAsyncAPIClient):
         This is a single static file and should be cached.
         """
         url = "https://www.sec.gov/files/company_tickers.json"
-        headers = self._build_headers()
         try:
-            response = await self._client.get(url, headers=headers)
+            response = await self._get_json(url)
             response.raise_for_status()
             data = response.json()
-            # Rekey by CIK (zero-padded to 10 digits)
             result = {}
             for entry in data.values():
                 cik = str(entry.get("cik_str", "")).zfill(10)
@@ -272,10 +291,8 @@ class EdgarAPIClient(BaseAsyncAPIClient):
         """
         cik_padded = cik.zfill(10)
         url = f"{self.facts_base_url}/companyfacts/CIK{cik_padded}.json"
-        headers = self._build_headers()
         try:
-            await self._wait_for_rate_limit()
-            response = await self._client.get(url, headers=headers)
+            response = await self._get_json(url)
             if response.status_code == 404:
                 logger.debug(f"No company facts for CIK {cik}")
                 return None
@@ -311,10 +328,8 @@ class EdgarAPIClient(BaseAsyncAPIClient):
         """
         cik_padded = cik.zfill(10)
         url = f"{self.filings_base_url}/CIK{cik_padded}.json"
-        headers = self._build_headers()
         try:
-            await self._wait_for_rate_limit()
-            response = await self._client.get(url, headers=headers)
+            response = await self._get_json(url)
             if response.status_code == 404:
                 return []
             response.raise_for_status()

@@ -498,7 +498,11 @@ async def enrich_companies_with_edgar(
     try:
         # De-duplicate by company name to minimize API calls
         unique_companies = companies_df[[company_name_col]].drop_duplicates()
-        if company_uei_col in companies_df.columns:
+        has_uei = (
+            company_uei_col in companies_df.columns
+            and company_uei_col != company_name_col
+        )
+        if has_uei:
             # Get first UEI per company for linking
             uei_lookup = (
                 companies_df[[company_name_col, company_uei_col]]

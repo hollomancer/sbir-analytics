@@ -3,9 +3,8 @@
 from __future__ import annotations
 
 from datetime import date
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock
 
-import pandas as pd
 import pytest
 
 from sbir_etl.enrichers.sec_edgar.enricher import (

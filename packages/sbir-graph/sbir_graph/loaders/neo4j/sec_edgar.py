@@ -118,7 +118,8 @@ class SecEdgarLoader(BaseNeo4jLoader):
         # Build enrichment tuples for base class method
         enrichment_tuples: list[tuple[str, dict[str, Any]]] = []
         for record in public_records:
-            uei = record.get("company_uei")
+            # Accept both "uei" and "company_uei" as the UEI key
+            uei = record.get("company_uei") or record.get("uei")
             if not uei:
                 self.metrics.errors += 1
                 continue

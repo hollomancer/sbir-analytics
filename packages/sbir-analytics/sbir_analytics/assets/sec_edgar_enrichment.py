@@ -94,16 +94,24 @@ def sec_edgar_enriched_companies(
     client = EdgarAPIClient(config=dict(sec_config))
 
     async def _run_enrichment() -> pd.DataFrame:
-        return await enrich_companies_with_edgar(
-            validated_sbir_awards,
-            client=client,
-            company_name_col=company_name_col,
-            company_uei_col=uei_col if uei_col in validated_sbir_awards.columns else company_name_col,
-            high_threshold=90,
-            low_threshold=75,
-            fetch_financials=True,
-            fetch_filings=True,
-        )
+        try:
+            enrichment_kwargs: dict = {
+                "client": client,
+                "company_name_col": company_name_col,
+                "high_threshold": 90,
+                "low_threshold": 75,
+                "fetch_financials": True,
+                "fetch_filings": True,
+            }
+            if uei_col in validated_sbir_awards.columns:
+                enrichment_kwargs["company_uei_col"] = uei_col
+
+            return await enrich_companies_with_edgar(
+                validated_sbir_awards,
+                **enrichment_kwargs,
+            )
+        finally:
+            await client.aclose()
 
     try:
         result_df = asyncio.run(_run_enrichment())
@@ -173,7 +181,16 @@ def sec_edgar_enrichment_quality_check(
 
     # Check match rate bounds
     if "sec_is_publicly_traded" in df.columns:
-        unique_companies = df.iloc[:, 0].nunique()  # First column as proxy
+        identifier_candidates = ["uei", "company_uei", "company_name"]
+        identifier_col = next(
+            (col for col in identifier_candidates if col in df.columns),
+            None,
+        )
+        if identifier_col is not None:
+            unique_companies = df[identifier_col].nunique()
+        else:
+            unique_companies = len(df)
+
         matched = int(df["sec_is_publicly_traded"].sum())
         match_rate = matched / unique_companies if unique_companies > 0 else 0.0
 
@@ -192,11 +209,14 @@ def sec_edgar_enrichment_quality_check(
         issues.append(f"{null_increase} original columns became all-null after merge")
 
     passed = len(issues) == 0
-    return AssetCheckResult(
-        passed=passed,
-        severity=AssetCheckSeverity.WARN if not passed else AssetCheckSeverity.WARN,
-        metadata={
+    result_kwargs: dict = {
+        "passed": passed,
+        "metadata": {
             "sec_columns_count": len(sec_cols),
             "issues": issues if issues else ["No issues detected"],
         },
-    )
+    }
+    if not passed:
+        result_kwargs["severity"] = AssetCheckSeverity.WARN
+
+    return AssetCheckResult(**result_kwargs)
