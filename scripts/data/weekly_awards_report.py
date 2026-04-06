@@ -965,16 +965,14 @@ def lookup_pi_patents(pi_name: str, company_name: str | None = None) -> PIPatent
     if api_key:
         headers["X-API-KEY"] = api_key
 
-    # Build Lucene-style query for inventor name
-    query_parts = [f'inventorNameText:"{last}"']
-    if first:
-        query_parts.append(f'inventorNameText:"{first}"')
+    # ODP uses ``searchText`` for free-text queries (not Lucene ``q``).
+    # Combine inventor name and company into a single search string.
+    search_terms = f"{first} {last}".strip() if first else last
     if company_name:
-        safe_company = company_name.replace('"', '\\"')
-        query_parts.append(f'assigneeName:"{safe_company}"')
+        search_terms += f" {company_name}"
 
     params = {
-        "q": " AND ".join(query_parts),
+        "searchText": search_terms,
         "offset": 0,
         "limit": 100,
     }
