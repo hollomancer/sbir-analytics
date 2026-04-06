@@ -148,6 +148,30 @@ try:
 except ImportError:
     _HAS_FPDS_CLIENT = False
 
+try:
+    from sbir_etl.enrichers.semantic_scholar import (
+        PublicationRecord as _LibPublicationRecord,
+        SemanticScholarClient,
+    )
+
+    _HAS_S2_CLIENT = True
+except ImportError:
+    _HAS_S2_CLIENT = False
+
+try:
+    from sbir_etl.enrichers.orcid_client import ORCIDClient, ORCIDRecord as _LibORCIDRecord
+
+    _HAS_ORCID_CLIENT = True
+except ImportError:
+    _HAS_ORCID_CLIENT = False
+
+try:
+    from sbir_etl.enrichers.openai_client import OpenAIClient, WebSearchResult
+
+    _HAS_OPENAI_CLIENT = True
+except ImportError:
+    _HAS_OPENAI_CLIENT = False
+
 
 # ---------------------------------------------------------------------------
 # Debug mode — toggled by --debug CLI flag
@@ -1016,8 +1040,8 @@ def lookup_pi_patents(pi_name: str, company_name: str | None = None) -> PIPatent
 def lookup_pi_publications(pi_name: str) -> PIPublicationRecord | None:
     """Query Semantic Scholar for the PI's publication history.
 
-    Uses the author search endpoint to find the PI, then fetches
-    their publication summary.
+    Uses :class:`SemanticScholarClient` when the library is available;
+    falls back to inline httpx calls for standalone operation.
     """
     first, last = _split_pi_name(pi_name)
     if not last:
@@ -1025,17 +1049,32 @@ def lookup_pi_publications(pi_name: str) -> PIPublicationRecord | None:
 
     search_query = f"{first} {last}".strip()
 
-    # Optional API key for higher rate limits (free at semanticscholar.org/product/api)
+    if _HAS_S2_CLIENT:
+        with SemanticScholarClient(rate_limiter=_semantic_scholar_limiter) as s2:
+            try:
+                rec = s2.lookup_author(search_query)
+            except Exception as e:
+                print(f"Semantic Scholar API error for {pi_name}: {e}", file=sys.stderr)
+                return None
+        if rec is None:
+            return None
+        return PIPublicationRecord(
+            total_papers=rec.total_papers,
+            h_index=rec.h_index,
+            citation_count=rec.citation_count,
+            sample_titles=rec.sample_titles,
+            affiliations=rec.affiliations,
+        )
+
+    # Inline fallback for standalone operation
     s2_api_key = os.environ.get("SEMANTIC_SCHOLAR_API_KEY", "")
     headers: dict[str, str] = {}
     if s2_api_key:
         headers["x-api-key"] = s2_api_key
 
-    _debug(f"Semantic Scholar search for '{pi_name}': query='{search_query}' (api_key={'yes' if s2_api_key else 'no'})")
     import time
 
     try:
-        # Step 1: Search for the author (with retry on 429)
         search_data = None
         with httpx.Client(timeout=30, headers=headers) as client:
             for attempt in range(3):
@@ -1044,87 +1083,50 @@ def lookup_pi_publications(pi_name: str) -> PIPublicationRecord | None:
                     f"{SEMANTIC_SCHOLAR_API_URL}/author/search",
                     params={"query": search_query, "limit": 5},
                 )
-                _debug_response(f"Semantic Scholar search [{pi_name}]", resp)
                 if resp.status_code == 429:
-                    wait = 2 ** (attempt + 1)
-                    _debug(f"Semantic Scholar [{pi_name}]: rate limited, retrying in {wait}s")
-                    time.sleep(wait)
+                    time.sleep(2 ** (attempt + 1))
                     continue
                 if resp.status_code != 200:
-                    print(
-                        f"Semantic Scholar search returned {resp.status_code} for {pi_name}",
-                        file=sys.stderr,
-                    )
                     return None
                 search_data = resp.json()
                 break
-
         if search_data is None:
-            print(f"Semantic Scholar rate limited after 3 retries for {pi_name}", file=sys.stderr)
             return None
-
         authors = search_data.get("data", [])
-        _debug(f"Semantic Scholar [{pi_name}]: {len(authors)} author matches")
         if not authors:
             return None
-
-        # Pick the best match (first result from Semantic Scholar's ranking)
-        author = authors[0]
-        author_id = author.get("authorId")
-        _debug(f"Semantic Scholar [{pi_name}]: selected authorId={author_id}, name={author.get('name', 'N/A')}")
+        author_id = authors[0].get("authorId")
         if not author_id:
             return None
 
-        # Step 2: Get author details with papers (with retry on 429)
         author_data = None
         with httpx.Client(timeout=30, headers=headers) as client:
             for attempt in range(3):
                 _semantic_scholar_limiter.wait_if_needed()
                 resp = client.get(
                     f"{SEMANTIC_SCHOLAR_API_URL}/author/{author_id}",
-                    params={
-                        "fields": "name,hIndex,citationCount,affiliations,papers.title,papers.year",
-                    },
+                    params={"fields": "name,hIndex,citationCount,affiliations,papers.title,papers.year"},
                 )
-                _debug_response(f"Semantic Scholar detail [{pi_name}]", resp)
                 if resp.status_code == 429:
-                    wait = 2 ** (attempt + 1)
-                    _debug(f"Semantic Scholar detail [{pi_name}]: rate limited, retrying in {wait}s")
-                    time.sleep(wait)
+                    time.sleep(2 ** (attempt + 1))
                     continue
                 if resp.status_code != 200:
-                    print(
-                        f"Semantic Scholar author detail returned {resp.status_code} for {pi_name}",
-                        file=sys.stderr,
-                    )
                     return None
                 author_data = resp.json()
                 break
-
         if author_data is None:
-            print(f"Semantic Scholar detail rate limited after 3 retries for {pi_name}", file=sys.stderr)
             return None
-
     except Exception as e:
         print(f"Semantic Scholar API error for {pi_name}: {e}", file=sys.stderr)
         return None
 
     papers = author_data.get("papers", [])
-    _debug(
-        f"Semantic Scholar [{pi_name}]: {len(papers)} papers, "
-        f"h-index={author_data.get('hIndex')}, citations={author_data.get('citationCount')}"
-    )
-    sample_titles = [
-        p["title"] for p in papers[:5] if p.get("title")
-    ]
-    affiliations = author_data.get("affiliations", []) or []
-
     return PIPublicationRecord(
         total_papers=len(papers),
         h_index=author_data.get("hIndex"),
         citation_count=author_data.get("citationCount", 0),
-        sample_titles=sample_titles,
-        affiliations=affiliations,
+        sample_titles=[p["title"] for p in papers[:5] if p.get("title")],
+        affiliations=author_data.get("affiliations", []) or [],
     )
 
 
@@ -2030,30 +2032,44 @@ class ORCIDRecord:
 def lookup_pi_orcid(pi_name: str) -> ORCIDRecord | None:
     """Search the ORCID public API for a PI's researcher profile.
 
-    Uses the expanded search endpoint to find by name, then fetches
-    the full profile for works, affiliations, and funding.
+    Uses :class:`ORCIDClient` when the library is available;
+    falls back to inline httpx calls for standalone operation.
     """
     first, last = _split_pi_name(pi_name)
     if not last:
         return None
 
-    headers = {"Accept": "application/json"}
+    if _HAS_ORCID_CLIENT:
+        with ORCIDClient(rate_limiter=_orcid_limiter) as orcid:
+            try:
+                rec = orcid.lookup(pi_name)
+            except Exception as e:
+                print(f"ORCID API error for {pi_name}: {e}", file=sys.stderr)
+                return None
+        if rec is None:
+            return None
+        return ORCIDRecord(
+            orcid_id=rec.orcid_id,
+            given_name=rec.given_name,
+            family_name=rec.family_name,
+            affiliations=rec.affiliations,
+            works_count=rec.works_count,
+            sample_work_titles=rec.sample_work_titles,
+            funding_count=rec.funding_count,
+            keywords=rec.keywords,
+        )
 
-    # Optional ORCID access token for higher rate limits.
-    # Generate via client credentials grant with a free ORCID Public API key:
-    #   curl -d "client_id=APP-XXX&client_secret=XXX&grant_type=client_credentials&scope=/read-public" \
-    #        https://orcid.org/oauth/token
+    # Inline fallback for standalone operation
+    headers = {"Accept": "application/json"}
     orcid_token = os.environ.get("ORCID_ACCESS_TOKEN", "")
     if orcid_token:
         headers["Authorization"] = f"Bearer {orcid_token}"
 
     try:
-        # Step 1: Search for the researcher by name
         query = f"family-name:{last}"
         if first:
             query += f"+AND+given-names:{first}"
 
-        _debug(f"ORCID search for '{pi_name}': query='{query}' (token={'yes' if orcid_token else 'no'})")
         _orcid_limiter.wait_if_needed()
         with httpx.Client(timeout=30) as client:
             resp = client.get(
@@ -2061,94 +2077,56 @@ def lookup_pi_orcid(pi_name: str) -> ORCIDRecord | None:
                 headers=headers,
                 params={"q": query, "rows": 5},
             )
-            _debug_response(f"ORCID search [{pi_name}]", resp)
             if resp.status_code != 200:
                 return None
             search_data = resp.json()
 
         results = search_data.get("expanded-result", [])
-        _debug(f"ORCID [{pi_name}]: {len(results) if results else 0} search results")
         if not results:
             return None
-
-        # Pick the best match (first result)
         best = results[0]
         orcid_id = best.get("orcid-id", "")
-        _debug(f"ORCID [{pi_name}]: selected orcid-id={orcid_id}")
         if not orcid_id:
             return None
 
-        # Step 2: Fetch full profile
         _orcid_limiter.wait_if_needed()
         with httpx.Client(timeout=30) as client:
-            resp = client.get(
-                f"{ORCID_API_URL}/{orcid_id}/record",
-                headers=headers,
-            )
-            _debug_response(f"ORCID profile [{pi_name}]", resp)
+            resp = client.get(f"{ORCID_API_URL}/{orcid_id}/record", headers=headers)
             if resp.status_code != 200:
                 return None
             profile = resp.json()
-
     except Exception as e:
         print(f"ORCID API error for {pi_name}: {e}", file=sys.stderr)
         return None
 
-    # Extract affiliations
     affiliations: list[str] = []
-    affiliation_groups = (
-        profile.get("activities-summary", {})
-        .get("employments", {})
-        .get("affiliation-group", [])
-    )
-    for group in affiliation_groups[:10]:
-        summaries = group.get("summaries", [])
-        for s in summaries:
-            emp = s.get("employment-summary", {})
-            org = emp.get("organization", {})
-            org_name = org.get("name", "")
+    for group in (profile.get("activities-summary", {}).get("employments", {}).get("affiliation-group", []))[:10]:
+        for s in group.get("summaries", []):
+            org_name = s.get("employment-summary", {}).get("organization", {}).get("name", "")
             if org_name and org_name not in affiliations:
                 affiliations.append(org_name)
 
-    # Extract works (publications)
-    works_group = (
-        profile.get("activities-summary", {})
-        .get("works", {})
-        .get("group", [])
-    )
-    works_count = len(works_group)
-    sample_titles: list[str] = []
+    works_group = profile.get("activities-summary", {}).get("works", {}).get("group", [])
+    sample_titles = []
     for wg in works_group[:5]:
         summaries = wg.get("work-summary", [])
         if summaries:
-            title_obj = summaries[0].get("title", {})
-            title_val = title_obj.get("title", {}).get("value", "")
+            title_val = summaries[0].get("title", {}).get("title", {}).get("value", "")
             if title_val:
                 sample_titles.append(title_val)
 
-    # Extract funding
-    funding_group = (
-        profile.get("activities-summary", {})
-        .get("fundings", {})
-        .get("group", [])
-    )
-    funding_count = len(funding_group)
-
-    # Extract keywords
-    keywords_obj = profile.get("person", {}).get("keywords", {})
-    keyword_list = keywords_obj.get("keyword", [])
-    keywords = [
-        kw.get("content", "") for kw in keyword_list[:10] if kw.get("content")
-    ]
+    funding_group = profile.get("activities-summary", {}).get("fundings", {}).get("group", [])
+    keyword_list = profile.get("person", {}).get("keywords", {}).get("keyword", [])
+    keywords = [kw.get("content", "") for kw in keyword_list[:10] if kw.get("content")]
 
     return ORCIDRecord(
         orcid_id=orcid_id,
         given_name=best.get("given-names"),
         family_name=best.get("family-names"),
         affiliations=affiliations,
-        works_count=works_count,
+        works_count=len(works_group),
         sample_work_titles=sample_titles,
-        funding_count=funding_count,
+        funding_count=len(funding_group),
         keywords=keywords,
     )
 
@@ -2673,6 +2651,25 @@ def build_usaspending_url(award: dict) -> str | None:
 # ---------------------------------------------------------------------------
 
 
+# Lazy-initialized OpenAI client — created on first use when the library is
+# available.  Shares the concurrency semaphore with the fallback path.
+_openai_client_instance: object | None = None
+
+
+def _get_openai_client(api_key: str) -> object | None:
+    """Return (and cache) an OpenAIClient if the library is installed."""
+    global _openai_client_instance  # noqa: PLW0603
+    if not _HAS_OPENAI_CLIENT:
+        return None
+    if _openai_client_instance is None:
+        _openai_client_instance = OpenAIClient(
+            api_key=api_key,
+            max_concurrent=int(os.environ.get("OPENAI_MAX_CONCURRENT", "4")),
+            model=OPENAI_MODEL,
+        )
+    return _openai_client_instance
+
+
 def _openai_request_with_retry(
     method: str,
     url: str,
@@ -2680,16 +2677,9 @@ def _openai_request_with_retry(
     payload: dict,
     timeout: int = 120,
 ) -> httpx.Response | None:
-    """Make an OpenAI API request with retry/backoff for 429 and 5xx errors.
-
-    Acquires ``_openai_semaphore`` before sending a request so that total
-    concurrent OpenAI calls across all thread pools stays bounded (default 4,
-    configurable via ``OPENAI_MAX_CONCURRENT`` env var).
-    """
+    """Fallback: make an OpenAI API request with retry/backoff."""
     import time
 
-    model_name = payload.get("model", "unknown")
-    _debug(f"OpenAI request: {method} {url} model={model_name} timeout={timeout}")
     for attempt in range(OPENAI_MAX_RETRIES + 1):
         try:
             _openai_semaphore.acquire()
@@ -2701,11 +2691,6 @@ def _openai_request_with_retry(
             if resp.status_code == 429 or resp.status_code >= 500:
                 if attempt < OPENAI_MAX_RETRIES:
                     wait = OPENAI_RETRY_BACKOFF_BASE ** (attempt + 1)
-                    print(
-                        f"OpenAI API returned {resp.status_code}, retrying in {wait}s "
-                        f"(attempt {attempt + 1}/{OPENAI_MAX_RETRIES})...",
-                        file=sys.stderr,
-                    )
                     time.sleep(wait)
                     continue
             resp.raise_for_status()
@@ -2713,10 +2698,8 @@ def _openai_request_with_retry(
         except httpx.HTTPStatusError:
             if attempt < OPENAI_MAX_RETRIES:
                 continue
-            print(f"OpenAI API error after {OPENAI_MAX_RETRIES} retries: {resp.status_code}", file=sys.stderr)
             return None
-        except Exception as e:
-            print(f"OpenAI API request error: {e}", file=sys.stderr)
+        except Exception:
             return None
     return None
 
@@ -2733,10 +2716,17 @@ def _openai_chat(
         f"OpenAI chat: model={model} temp={temperature} "
         f"system_len={len(system)} user_len={len(user)}"
     )
-    headers = {
-        "Authorization": f"Bearer {api_key}",
-        "Content-Type": "application/json",
-    }
+
+    # Prefer library client (has its own retry + semaphore)
+    oai = _get_openai_client(api_key)
+    if oai is not None:
+        result = oai.chat(system, user, model=model, temperature=temperature)
+        if result:
+            _debug(f"OpenAI chat response: {len(result)} chars")
+        return result
+
+    # Inline fallback
+    headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
     payload = {
         "model": model,
         "temperature": temperature,
@@ -2747,7 +2737,6 @@ def _openai_chat(
     }
     resp = _openai_request_with_retry("POST", OPENAI_CHAT_URL, headers, payload)
     if resp is None:
-        _debug("OpenAI chat: no response (all retries failed)")
         return None
     try:
         data = resp.json()
@@ -2762,17 +2751,23 @@ def _openai_chat(
         return content
     except (KeyError, IndexError) as e:
         print(f"OpenAI Chat API unexpected response: {e}", file=sys.stderr)
-        _debug(f"OpenAI chat raw response: {resp.text[:1000]}")
         return None
 
 
 def _openai_web_search(api_key: str, query: str) -> CompanyResearch | None:
     """Use the OpenAI Responses API with web_search_preview to research a company."""
     _debug(f"OpenAI web search: query='{query[:200]}'")
-    headers = {
-        "Authorization": f"Bearer {api_key}",
-        "Content-Type": "application/json",
-    }
+
+    # Prefer library client
+    oai = _get_openai_client(api_key)
+    if oai is not None:
+        result = oai.web_search(query)
+        if result is None:
+            return None
+        return CompanyResearch(summary=result.summary, source_urls=result.source_urls)
+
+    # Inline fallback
+    headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
     payload = {
         "model": OPENAI_MODEL,
         "tools": [{"type": "web_search_preview"}],
@@ -2792,7 +2787,6 @@ def _openai_web_search(api_key: str, query: str) -> CompanyResearch | None:
 
     summary_text = ""
     source_urls: list[str] = []
-
     for output_item in data.get("output", []):
         if output_item.get("type") == "message":
             for content_block in output_item.get("content", []):
@@ -2804,13 +2798,7 @@ def _openai_web_search(api_key: str, query: str) -> CompanyResearch | None:
                             source_urls.append(url)
 
     if not summary_text:
-        _debug("OpenAI web search: no summary text in response")
         return None
-
-    _debug(
-        f"OpenAI web search: {len(summary_text)} char summary, "
-        f"{len(source_urls)} source URLs: {source_urls[:3]}"
-    )
     return CompanyResearch(summary=summary_text, source_urls=source_urls)
 
 
