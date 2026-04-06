@@ -2956,6 +2956,12 @@ def fetch_usaspending_contract_descriptions(
                 )
                 data = None
                 # Try spending_by_award, then spending_by_transaction
+                # USAspending requires a 'sort' field; use the appropriate
+                # default for each endpoint.
+                _sort_for_method = {
+                    "search_awards": "Award Amount",
+                    "search_transactions": "Transaction Amount",
+                }
                 for method in ("search_awards", "search_transactions"):
                     try:
                         _usaspending_limiter.wait_if_needed()
@@ -2963,8 +2969,8 @@ def fetch_usaspending_contract_descriptions(
                             filters=filters,
                             fields=desc_fields,
                             limit=len(ids),
-                            sort=None,
-                            order=None,
+                            sort=_sort_for_method.get(method, "Award Amount"),
+                            order="desc",
                         )
                         break
                     except Exception as e:
@@ -2984,25 +2990,29 @@ def fetch_usaspending_contract_descriptions(
             with httpx.Client(timeout=30) as client:
                 for ids, group_name, codes in requests_to_make:
                     quoted = [f'"{c}"' for c in ids]
-                    payload = {
-                        "filters": {
-                            "award_ids": quoted,
-                            "award_type_codes": codes,
-                        },
-                        "fields": desc_fields,
-                        "page": 1,
-                        "limit": len(ids),
-                    }
+                    # USAspending requires 'sort'; map each endpoint to its
+                    # default sort field.
+                    endpoints = [
+                        ("search/spending_by_award", "Award Amount"),
+                        ("search/spending_by_transaction", "Transaction Amount"),
+                    ]
                     _debug(
                         f"USAspending contract desc: {group_name} "
                         f"({len(ids)} IDs: {ids[:3]})"
                     )
-                    endpoints = [
-                        "search/spending_by_award",
-                        "search/spending_by_transaction",
-                    ]
                     data = None
-                    for endpoint in endpoints:
+                    for endpoint, sort_field in endpoints:
+                        payload = {
+                            "filters": {
+                                "award_ids": quoted,
+                                "award_type_codes": codes,
+                            },
+                            "fields": desc_fields,
+                            "page": 1,
+                            "limit": len(ids),
+                            "sort": sort_field,
+                            "order": "desc",
+                        }
                         for attempt in range(2):
                             _usaspending_limiter.wait_if_needed()
                             resp = client.post(
