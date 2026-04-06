@@ -2,6 +2,7 @@
 
 import json
 import os
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -300,6 +301,14 @@ def raw_sbir_awards(context: AssetExecutionContext) -> Output[pd.DataFrame]:
 
     # Apply column normalization
     df = df.rename(columns=column_normalization_map)
+
+    # Stamp data source provenance on every record
+    # Prefer the original S3 URL over the resolved temp/cache path
+    ingested_at = datetime.now(timezone.utc)
+    source_url = sbir_config.csv_path_s3 or str(extractor.csv_path)
+    df["data_source"] = "sbir.gov"
+    df["data_source_url"] = str(source_url)
+    df["ingested_at"] = ingested_at
 
     # Update metadata to reflect normalized columns
     metadata["normalized_columns"] = MetadataValue.json(list(df.columns))

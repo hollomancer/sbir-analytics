@@ -6,6 +6,7 @@ Data Source Priority:
 3. FAIL: If both sources fail
 """
 
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -39,6 +40,7 @@ def _import_sam_gov_entities(
 
     # PRIMARY: Try S3 parquet file first
     parquet_path = None
+    s3_parquet_url = None
     s3_bucket = get_s3_bucket_from_env()
 
     if s3_bucket and sam_config.use_s3_first:
@@ -140,6 +142,13 @@ def _import_sam_gov_entities(
             "source": "parquet",
         },
     )
+
+    # Stamp data source provenance on every record
+    # Prefer the original S3 URL over the resolved temp/cache path
+    ingested_at = datetime.now(timezone.utc)
+    df["data_source"] = "sam.gov"
+    df["data_source_url"] = str(s3_parquet_url or parquet_path)
+    df["ingested_at"] = ingested_at
 
     # Create metadata
     metadata: dict[str, Any] = {
