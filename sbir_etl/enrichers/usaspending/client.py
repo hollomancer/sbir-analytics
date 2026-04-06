@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from pathlib import Path
 from typing import Any
 
@@ -19,6 +20,82 @@ from ...config.loader import get_config
 from ...exceptions import APIError
 from ...models.enrichment import EnrichmentFreshnessRecord
 from ..base_client import BaseAsyncAPIClient
+
+# ------------------------------------------------------------------
+# Award type code groups — USAspending requires separate requests for
+# contracts (procurement) vs. assistance (grants/cooperative agreements).
+# ------------------------------------------------------------------
+CONTRACT_TYPE_CODES: tuple[str, ...] = ("A", "B", "C", "D")
+ASSISTANCE_TYPE_CODES: tuple[str, ...] = ("02", "03", "04", "05")
+
+
+def classify_award_id(award_id: str) -> str:
+    """Classify an SBIR award/contract identifier as PIID, FAIN, or unknown.
+
+    Uses format heuristics derived from DoD PIIDs and DOE FAINs:
+    - DoD PIIDs: 2-letter agency prefix + digits + dash patterns (e.g. FA2541-26-C-B005)
+    - DOE/agency FAINs: DE-AR, DE-SC prefixes (grants)
+    - Pure numeric: agency internal IDs (e.g. NSF "2516905") — ambiguous
+
+    Args:
+        award_id: The contract/award identifier string.
+
+    Returns:
+        One of ``"piid"``, ``"fain"``, or ``"unknown"``.
+    """
+    s = award_id.strip()
+    if not s:
+        return "unknown"
+    if re.match(r"^DE-", s, re.IGNORECASE):
+        return "fain"
+    if re.match(r"^[A-Z]{2}\d", s):
+        return "piid"
+    return "unknown"
+
+
+def build_award_type_groups(
+    award_ids: list[str],
+) -> list[tuple[list[str], str, list[str]]]:
+    """Split award IDs into typed request groups for USAspending queries.
+
+    Contracts (PIIDs) are queried with ``CONTRACT_TYPE_CODES``, financial
+    assistance (FAINs) with ``ASSISTANCE_TYPE_CODES``, and unknown IDs are
+    tried against both.
+
+    Args:
+        award_ids: Raw award/contract identifier strings.
+
+    Returns:
+        List of ``(ids, group_name, award_type_codes)`` tuples ready for
+        USAspending API calls.
+    """
+    piids: list[str] = []
+    fains: list[str] = []
+    unknown: list[str] = []
+
+    seen: set[str] = set()
+    for raw in award_ids:
+        aid = raw.strip()
+        if not aid or aid in seen:
+            continue
+        seen.add(aid)
+        kind = classify_award_id(aid)
+        if kind == "piid":
+            piids.append(aid)
+        elif kind == "fain":
+            fains.append(aid)
+        else:
+            unknown.append(aid)
+
+    groups: list[tuple[list[str], str, list[str]]] = []
+    if piids:
+        groups.append((piids, "contracts", list(CONTRACT_TYPE_CODES)))
+    if fains:
+        groups.append((fains, "assistance", list(ASSISTANCE_TYPE_CODES)))
+    for uid in unknown:
+        groups.append(([uid], "contracts", list(CONTRACT_TYPE_CODES)))
+        groups.append(([uid], "assistance", list(ASSISTANCE_TYPE_CODES)))
+    return groups
 
 
 

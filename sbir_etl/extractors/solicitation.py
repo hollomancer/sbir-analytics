@@ -21,8 +21,11 @@ from ..exceptions import APIError
 
 try:
     import httpx
+
+    _RETRYABLE_HTTPX = (httpx.HTTPStatusError, httpx.TimeoutException, httpx.TransportError)
 except ImportError:
     httpx = None  # type: ignore[assignment]
+    _RETRYABLE_HTTPX = (Exception,)  # type: ignore[assignment]  # fallback when httpx absent
 
 SBIR_GOV_API_BASE = "https://api.www.sbir.gov/public/api"
 
@@ -69,7 +72,7 @@ class SolicitationExtractor:
     @retry(
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=2, min=2, max=30),
-        retry=retry_if_exception_type(Exception),
+        retry=retry_if_exception_type(_RETRYABLE_HTTPX),
         reraise=True,
     )
     def _query_solicitations(
@@ -101,6 +104,10 @@ class SolicitationExtractor:
         logger.debug(f"SBIR.gov solicitations request: {url} params={params}")
 
         response = self.client.get(url, params=params)
+
+        # Raise httpx.HTTPStatusError for transient failures so tenacity retries them.
+        if response.status_code in (429, 500, 502, 503, 504):
+            response.raise_for_status()
 
         if response.status_code != 200:
             raise APIError(

@@ -17,6 +17,7 @@ from sbir_etl.utils.text_normalization import (
     normalize_company_name,
     normalize_name,
     normalize_recipient_name,
+    pluralize_col_key,
 )
 
 
@@ -338,3 +339,35 @@ class TestComparisonScenarios:
         name2 = normalize_name("Beta Systems", remove_suffixes=True)
 
         assert name1 != name2
+
+
+class TestPluralizeColKey:
+    """Tests for pluralize_col_key helper."""
+
+    def test_y_ending(self):
+        """'y' ending becomes 'ies'."""
+        assert pluralize_col_key("Company") == "companies"
+        assert pluralize_col_key("Agency") == "agencies"
+
+    def test_regular_ending(self):
+        """Non-y ending appends 's'."""
+        assert pluralize_col_key("Phase") == "phases"
+        assert pluralize_col_key("Award") == "awards"
+
+    def test_spaces_replaced(self):
+        """Spaces become underscores."""
+        assert pluralize_col_key("Award Type") == "award_types"
+
+    def test_lowercased(self):
+        """Input is lowercased."""
+        assert pluralize_col_key("COMPANY") == "companies"
+        assert pluralize_col_key("Phase") == "phases"
+
+    def test_empty_string(self):
+        """Empty string appends 's'."""
+        assert pluralize_col_key("") == "s"
+
+    def test_single_char(self):
+        """Single character works."""
+        assert pluralize_col_key("x") == "xs"
+        assert pluralize_col_key("y") == "ies"
