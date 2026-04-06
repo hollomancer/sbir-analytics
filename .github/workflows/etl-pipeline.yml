@@ -43,6 +43,8 @@ env:
   SBIR_ETL_ENV: prod
   SBIR_ETL__PIPELINE__ENVIRONMENT: production
   IMAGE: ghcr.io/hollomancer/sbir-analytics:latest
+  # Module paths for monorepo packages (sbir_analytics imports from all of these)
+  PYTHONPATH: "${{ github.workspace }}:${{ github.workspace }}/packages/sbir-analytics:${{ github.workspace }}/packages/sbir-ml:${{ github.workspace }}/packages/sbir-graph:${{ github.workspace }}/packages/sbir-rag"
 
 jobs:
   sbir-pipeline:
@@ -109,7 +111,7 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
 
           dagster job execute \
-            -m sbir_etl.definitions \
+            -m sbir_analytics.definitions \
             -j "$JOB_NAME" \
             2>&1 | tee sbir_output.txt
 
@@ -160,7 +162,7 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
 
           dagster job execute \
-            -m sbir_etl.definitions \
+            -m sbir_analytics.definitions \
             -j usaspending_iterative_enrichment_job \
             2>&1 | tee usaspending_output.txt
 
@@ -234,7 +236,7 @@ jobs:
           # Note: uspto_validation_job requires full Patent Assignment Dataset
           # (assignment, assignee, assignor tables). Using AI extraction for now.
           dagster job execute \
-            -m sbir_etl.definitions \
+            -m sbir_analytics.definitions \
             -j uspto_ai_extraction_job \
             2>&1 | tee uspto_output.txt
 
@@ -281,7 +283,7 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
 
           dagster job execute \
-            -m sbir_etl.definitions \
+            -m sbir_analytics.definitions \
             -j cet_full_pipeline_job \
             2>&1 | tee cet_output.txt
 
@@ -335,7 +337,7 @@ jobs:
         run: |
           echo "## 🔬 Embeddings" >> $GITHUB_STEP_SUMMARY
           # Dagster job still registered as paecter_job (legacy name)
-          dagster job execute -m sbir_etl.definitions -j paecter_job 2>&1 | tee output.txt
+          dagster job execute -m sbir_analytics.definitions -j paecter_job 2>&1 | tee output.txt
           if [ ${PIPESTATUS[0]} -eq 0 ]; then
             echo "✅ Embeddings pipeline completed" >> $GITHUB_STEP_SUMMARY
           else
