@@ -96,6 +96,43 @@ except ImportError:
             s = _re.sub(r"\b(limited|ltd)\b", "ltd", s)
         return _re.sub(r"\s+", " ", s).strip()
 
+# Optional enricher imports — each degrades gracefully if unavailable.
+try:
+    from sbir_etl.extractors.solicitation import SolicitationExtractor
+
+    _HAS_SOLICITATION_EXTRACTOR = True
+except ImportError:
+    _HAS_SOLICITATION_EXTRACTOR = False
+
+try:
+    from sbir_etl.enrichers.patentsview import PatentsViewClient
+
+    _HAS_PATENTS_CLIENT = True
+except ImportError:
+    _HAS_PATENTS_CLIENT = False
+
+try:
+    from sbir_etl.enrichers.inflation_adjuster import InflationAdjuster
+
+    _HAS_INFLATION = True
+except ImportError:
+    _HAS_INFLATION = False
+
+try:
+    from sbir_etl.enrichers.congressional_district_resolver import CongressionalDistrictResolver
+
+    _HAS_CONGRESS_RESOLVER = True
+except ImportError:
+    _HAS_CONGRESS_RESOLVER = False
+
+try:
+    from sbir_etl.enrichers.fiscal_bea_mapper import NAICSToBEAMapper
+
+    _HAS_BEA_MAPPER = True
+except ImportError:
+    _HAS_BEA_MAPPER = False
+
+
 # ---------------------------------------------------------------------------
 # Debug mode — toggled by --debug CLI flag
 # ---------------------------------------------------------------------------
@@ -805,13 +842,55 @@ def _split_pi_name(full_name: str) -> tuple[str, str]:
 def lookup_pi_patents(pi_name: str, company_name: str | None = None) -> PIPatentRecord | None:
     """Query USPTO ODP for patents where the PI is a named inventor.
 
-    Uses the ODP patent search endpoint with Lucene-style queries.
-    Searches by inventor name, optionally scoped to company.
+    Uses PatentsViewClient when available (rate limiting, caching, retry).
+    Falls back to bare httpx calls otherwise.
     """
     first, last = _split_pi_name(pi_name)
     if not last:
         return None
 
+    # Prefer PatentsViewClient — handles rate limiting and retry via tenacity
+    if _HAS_PATENTS_CLIENT:
+        _debug(f"Using PatentsViewClient for '{pi_name}'")
+        try:
+            client = PatentsViewClient()
+            try:
+                # Query by company name to get patents, then we'll have all
+                # inventor/assignee data in the results
+                patents = client.query_patents_by_assignee(
+                    company_name=company_name or last,
+                    max_patents=100,
+                )
+            finally:
+                if hasattr(client, "close"):
+                    client.close()
+            if not patents:
+                return None
+
+            titles = []
+            assignees: set[str] = set()
+            dates: list[str] = []
+            for p in patents:
+                t = p.get("patent_title", "")
+                if t and t not in titles and len(titles) < 5:
+                    titles.append(t)
+                org = p.get("assignee_organization", "")
+                if org:
+                    assignees.add(org)
+                d = p.get("grant_date") or p.get("patent_date", "")
+                if d:
+                    dates.append(d)
+
+            return PIPatentRecord(
+                total_patents=len(patents),
+                sample_titles=titles,
+                assignees=sorted(assignees),
+                date_range=(min(dates) if dates else None, max(dates) if dates else None),
+            )
+        except Exception as e:
+            _debug(f"PatentsViewClient error for '{pi_name}': {e}, falling back")
+
+    # Fallback: bare httpx call to USPTO ODP
     api_key = os.environ.get("USPTO_ODP_API_KEY", "")
     headers: dict[str, str] = {}
     if api_key:
@@ -822,7 +901,6 @@ def lookup_pi_patents(pi_name: str, company_name: str | None = None) -> PIPatent
     if first:
         query_parts.append(f'inventorNameText:"{first}"')
     if company_name:
-        # Escape quotes in company name
         safe_company = company_name.replace('"', '\\"')
         query_parts.append(f'assigneeName:"{safe_company}"')
 
@@ -863,7 +941,6 @@ def lookup_pi_patents(pi_name: str, company_name: str | None = None) -> PIPatent
         if title and title not in titles and len(titles) < 5:
             titles.append(title)
 
-        # Extract assignee
         record_assignees = record.get("assignees", []) or []
         for a in record_assignees:
             if isinstance(a, dict):
@@ -1909,8 +1986,9 @@ class SolicitationTopic:
 def fetch_solicitation_topics(awards: list[dict]) -> dict[str, SolicitationTopic]:
     """Fetch solicitation topic titles and descriptions from SBIR.gov API.
 
-    Queries the SBIR.gov solicitations endpoint for each unique topic code
-    found in this week's awards. Returns a dict keyed by topic code.
+    Uses SolicitationExtractor when available (tenacity retry, pagination).
+    Falls back to hand-rolled queries otherwise.
+    Returns a dict keyed by topic code.
     """
     # Collect unique topic codes
     topic_codes: dict[str, str] = {}  # topic_code -> solicitation_number
@@ -1926,6 +2004,62 @@ def fetch_solicitation_topics(awards: list[dict]) -> dict[str, SolicitationTopic
     results: dict[str, SolicitationTopic] = {}
     total = len(topic_codes)
     print(f"Fetching {total} solicitation topics from SBIR.gov...", file=sys.stderr)
+
+    # Prefer SolicitationExtractor — handles pagination and retry internally
+    if _HAS_SOLICITATION_EXTRACTOR:
+        _debug("Using SolicitationExtractor (tenacity retry + pagination)")
+        try:
+            extractor = SolicitationExtractor()
+            try:
+                # Extract unique years from solicitation numbers
+                years: set[int] = set()
+                for sol in topic_codes.values():
+                    for part in sol.replace("-", " ").replace(".", " ").split():
+                        if part.isdigit() and len(part) == 4:
+                            years.add(int(part))
+                            break
+
+                # Fetch topics for each year (or all if no years found)
+                import pandas as pd
+
+                all_topics = pd.DataFrame()
+                if years:
+                    for year in years:
+                        df = extractor.extract_topics(year=year, max_results=1000)
+                        if not df.empty:
+                            all_topics = pd.concat([all_topics, df], ignore_index=True)
+                else:
+                    all_topics = extractor.extract_topics(max_results=1000)
+
+                if not all_topics.empty:
+                    all_topics = extractor.deduplicate_topics(all_topics)
+                    codes_set = set(topic_codes.keys())
+                    for _, row in all_topics.iterrows():
+                        tc = str(row.get("topic_code", "")).strip()
+                        if tc in codes_set and tc not in results:
+                            desc = row.get("description")
+                            if desc and len(str(desc)) > 3000:
+                                desc = str(desc)[:3000] + "..."
+                            results[tc] = SolicitationTopic(
+                                topic_code=tc,
+                                solicitation_number=str(row.get("solicitation_number", "")) or topic_codes.get(tc, ""),
+                                title=str(row.get("title", "")),
+                                description=str(desc) if desc else None,
+                                agency=str(row.get("agency", "")) or None,
+                                program=str(row.get("program", "")) or None,
+                            )
+                print(
+                    f"SolicitationExtractor found {len(results)}/{total} topics",
+                    file=sys.stderr,
+                )
+                if len(results) == total:
+                    return results
+                # Fall through for any missing codes
+            finally:
+                if hasattr(extractor, "close"):
+                    extractor.close()
+        except Exception as e:
+            print(f"SolicitationExtractor error: {e}, falling back to manual queries", file=sys.stderr)
 
     # Query by solicitation year to reduce result sets.
     # Group topic codes by their solicitation number prefix to batch queries.
@@ -3040,6 +3174,8 @@ def generate_company_diligence(
     sam_entities: dict[str, SAMEntityRecord] | None = None,
     company_federal_awards: dict[str, PIFederalAwardRecord] | None = None,
     usa_recipients: dict[str, USARecipientProfile] | None = None,
+    congressional_districts: dict[str, str] | None = None,
+    bea_sectors: dict[str, str] | None = None,
 ) -> dict[str, str]:
     """Generate a diligence paragraph for each unique awardee company.
 
@@ -3220,6 +3356,28 @@ def generate_company_diligence(
                 "USAspending recipient profile:\n" + "\n".join(rcp_parts)
             )
 
+        # Congressional district (from ZIP code resolution)
+        # Try both _company_key and raw upper name since dicts may use either
+        if congressional_districts:
+            district = congressional_districts.get(key) or congressional_districts.get(display_name.upper())
+            if district:
+                context_parts.append(f"Congressional district: {district}")
+
+        # BEA sector classification (from SAM.gov NAICS codes)
+        # SAM entities may be keyed by raw upper name
+        if not sam and sam_entities:
+            sam = sam_entities.get(display_name.upper())
+        if bea_sectors and sam:
+            sector_parts = []
+            for naics in (sam.naics_codes or [])[:3]:
+                sector = bea_sectors.get(naics)
+                if sector:
+                    sector_parts.append(f"NAICS {naics} → {sector}")
+            if sector_parts:
+                context_parts.append(
+                    "BEA economic sectors: " + "; ".join(sector_parts)
+                )
+
         user = (
             "Write a one-paragraph due-diligence assessment for this "
             "SBIR/STTR awardee company.\n\n" + "\n\n".join(context_parts)
@@ -3372,6 +3530,135 @@ def generate_pi_diligence(
 
 
 # ---------------------------------------------------------------------------
+# Enrichment helpers (inflation, congressional districts, BEA sectors)
+# ---------------------------------------------------------------------------
+
+
+def enrich_with_inflation(awards: list[dict], base_year: int | None = None) -> dict[str, float]:
+    """Compute an inflation-adjusted total using InflationAdjuster.
+
+    Returns a dict containing:
+    - 'adjusted_total': the sum of inflation-adjusted award amounts
+    - 'base_year': the dollar year used for the adjustment
+
+    Returns an empty dict if inflation support is unavailable or fails.
+    """
+    if not _HAS_INFLATION:
+        return {}
+
+    import pandas as pd
+
+    try:
+        adjuster = InflationAdjuster(
+            config={"base_year": base_year or 2024}
+        )
+        df = pd.DataFrame(awards)
+        # Map column names to what InflationAdjuster expects
+        if "Award Amount" in df.columns:
+            df["award_amount"] = (
+                df["Award Amount"]
+                .astype(str)
+                .str.replace(",", "")
+                .str.replace("$", "")
+            )
+            df["award_amount"] = pd.to_numeric(df["award_amount"], errors="coerce").fillna(0)
+        if "Proposal Award Date" in df.columns:
+            df["award_date"] = df["Proposal Award Date"]
+
+        enriched = adjuster.adjust_awards_dataframe(df)
+        adjusted_col = "fiscal_adjusted_amount"
+        if adjusted_col in enriched.columns:
+            adjusted_total = enriched[adjusted_col].sum()
+            base = enriched.get("fiscal_base_year", pd.Series([2024])).iloc[0]
+            _debug(f"Inflation adjustment: ${adjusted_total:,.0f} in {base} dollars")
+            return {
+                "adjusted_total": float(adjusted_total),
+                "base_year": int(base),
+            }
+    except Exception as e:
+        _debug(f"InflationAdjuster error: {e}")
+
+    return {}
+
+
+def resolve_congressional_districts(awards: list[dict]) -> dict[str, str]:
+    """Resolve congressional districts for each unique company.
+
+    Returns a dict keyed by upper-cased company name → "ST-DD" district string.
+    """
+    if not _HAS_CONGRESS_RESOLVER:
+        return {}
+
+    results: dict[str, str] = {}
+    resolver = CongressionalDistrictResolver(method="auto")
+
+    seen: dict[str, dict] = {}
+    for a in awards:
+        name = str(a.get("Company", "")).strip()
+        if not name:
+            continue
+        key = name.upper()
+        if key not in seen:
+            seen[key] = {
+                "zip": str(a.get("Zip", "")).strip()[:5],
+                "state": str(a.get("State", "")).strip(),
+                "city": str(a.get("City", "")).strip(),
+                "address": str(a.get("Address1", "")).strip(),
+            }
+
+    _debug(f"Resolving congressional districts for {len(seen)} companies")
+    for key, info in seen.items():
+        if not info["zip"]:
+            continue
+        try:
+            result = resolver.resolve_single_address(
+                address=info["address"] or None,
+                city=info["city"] or None,
+                state=info["state"] or None,
+                zip_code=info["zip"],
+            )
+            if result and result.congressional_district:
+                results[key] = result.congressional_district
+        except Exception:
+            continue
+
+    _debug(f"Congressional districts resolved: {len(results)}/{len(seen)}")
+    return results
+
+
+def map_naics_to_bea_sectors(naics_codes: list[str]) -> dict[str, str]:
+    """Map NAICS codes to BEA sector names.
+
+    Returns a dict keyed by NAICS code → BEA sector name.
+    """
+    if not _HAS_BEA_MAPPER:
+        return {}
+
+    try:
+        mapper = NAICSToBEAMapper(
+            crosswalk_path=None,  # Will use fallback YAML
+            fallback_config_path="config/fiscal/naics_bea_mappings.yaml",
+        )
+    except Exception as e:
+        _debug(f"NAICSToBEAMapper init error: {e}")
+        return {}
+
+    results: dict[str, str] = {}
+    for code in naics_codes:
+        try:
+            mappings = mapper.map_naics_to_bea(code)
+            if mappings:
+                # Take the highest-weight mapping
+                best = max(mappings, key=lambda m: m.allocation_weight)
+                results[code] = best.bea_sector_name
+        except Exception:
+            continue
+
+    _debug(f"NAICS→BEA mapped: {len(results)}/{len(naics_codes)}")
+    return results
+
+
+# ---------------------------------------------------------------------------
 # Markdown generation
 # ---------------------------------------------------------------------------
 
@@ -3385,6 +3672,7 @@ def generate_markdown(
     freshness_warnings: list[str] | None = None,
     company_diligence: dict[str, str] | None = None,
     pi_diligence: dict[str, str] | None = None,
+    inflation_data: dict[str, float] | None = None,
 ) -> str:
     """Generate markdown report from filtered awards."""
     now = datetime.now(UTC)
@@ -3448,6 +3736,12 @@ def generate_markdown(
     )
     lines.append(f"| Agencies | {len(agencies)} |")
     lines.append(f"| States | {len(states)} |")
+    if inflation_data and "adjusted_total" in inflation_data:
+        base_yr = inflation_data.get("base_year", 2024)
+        lines.append(
+            f"| Inflation-Adjusted Total ({base_yr}$) | "
+            f"{format_amount(str(inflation_data['adjusted_total']))} |"
+        )
     lines.append("")
 
     # Breakdown by agency
@@ -3684,6 +3978,24 @@ def main():
         usa_recipients = lookup_usaspending_recipients(awards)
         sam_data = lookup_sam_entities(awards)
 
+    # Local enrichments (no network I/O except congressional district Census fallback)
+    inflation_data: dict[str, float] = {}
+    congressional: dict[str, str] = {}
+    bea_sectors: dict[str, str] = {}
+    if awards:
+        inflation_data = enrich_with_inflation(awards)
+        # BEA sector mapping from SAM.gov NAICS codes (local YAML lookup)
+        if sam_data:
+            all_naics: list[str] = []
+            for sam_rec in sam_data.values():
+                for code in (sam_rec.naics_codes or []):
+                    if code and code not in all_naics:
+                        all_naics.append(code)
+            bea_sectors = map_naics_to_bea_sectors(all_naics)
+    # Congressional district resolution may call Census API — only when AI is enabled
+    if awards and api_key and not args.no_ai:
+        congressional = resolve_congressional_districts(awards)
+
     if api_key and not args.no_ai:
         if not args.no_company_research and not _pipeline_expired():
             company_info = research_companies(api_key, awards)
@@ -3773,7 +4085,7 @@ def main():
             if not _pipeline_expired():
                 co_diligence = generate_company_diligence(
                     api_key, awards, company_info, co_history, sam_data, co_fed,
-                    usa_recipients,
+                    usa_recipients, congressional, bea_sectors,
                 )
             if not _pipeline_expired():
                 pi_dilig = generate_pi_diligence(
@@ -3865,6 +4177,7 @@ def main():
         freshness_warnings=freshness_warnings,
         company_diligence=co_diligence,
         pi_diligence=pi_dilig,
+        inflation_data=inflation_data,
     )
 
     if args.output:
