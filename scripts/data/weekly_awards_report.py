@@ -141,6 +141,13 @@ try:
 except ImportError:
     _HAS_SYNC_CLIENTS = False
 
+try:
+    from sbir_etl.enrichers.fpds_atom import FPDSAtomClient
+
+    _HAS_FPDS_CLIENT = True
+except ImportError:
+    _HAS_FPDS_CLIENT = False
+
 
 # ---------------------------------------------------------------------------
 # Debug mode — toggled by --debug CLI flag
@@ -1137,24 +1144,30 @@ def lookup_pi_publications(pi_name: str) -> PIPublicationRecord | None:
 
 
 def _is_sbir_award_type(description: str, cfda: str) -> bool:
-    """Heuristic to identify SBIR/STTR awards in USAspending results.
+    """Identify SBIR/STTR awards using ALN numbers and description keywords.
 
-    Uses CFDA/ALN numbers and description keywords. Mirrors the logic in
-    sbir_etl.models.sbir_identification but without the heavy import.
+    Delegates to :func:`sbir_etl.models.sbir_identification.classify_sbir_award`
+    when the library is available; falls back to a minimal inline heuristic.
     """
-    # Known SBIR/STTR Assistance Listing Numbers (subset of the most common)
-    sbir_alns = {
+    try:
+        from sbir_etl.models.sbir_identification import classify_sbir_award
+
+        result = classify_sbir_award(cfda_number=cfda, description=description)
+        return result is not None
+    except ImportError:
+        pass
+
+    # Fallback for standalone operation
+    _sbir_alns = {
         "10.212", "12.910", "12.911", "81.049", "43.002", "43.003",
         "47.041", "47.084", "66.511", "66.512", "97.077", "20.701",
         "84.133",
-        # HHS/NIH common ones
         "93.855", "93.856", "93.859", "93.837", "93.847", "93.853",
         "93.865", "93.866", "93.867", "93.879", "93.242", "93.273",
         "93.279", "93.395", "93.393", "93.394", "93.396", "93.399",
     }
-    if cfda and cfda.strip() in sbir_alns:
+    if cfda and cfda.strip() in _sbir_alns:
         return True
-    # Keyword heuristic on description
     desc_upper = description.upper()
     if "SBIR" in desc_upper or "STTR" in desc_upper:
         return True
@@ -2887,21 +2900,32 @@ def _fetch_fpds_descriptions(
 ) -> dict[str, str]:
     """Fetch contract descriptions from FPDS Atom Feed (public, no API key).
 
-    Queries ``https://www.fpds.gov/ezsearch/LATEST`` for each contract ID
-    and extracts the ``<description>`` element from the Atom XML response.
-    Used as a fallback when USAspending is unavailable (503 / 422).
+    Uses :class:`FPDSAtomClient` when the library is available; falls back
+    to inline httpx + XML parsing for standalone operation.
 
     Only accepts contract PIIDs — assistance FAINs (e.g. DE-*) are not
     indexed in FPDS and should be filtered out before calling this function.
     """
+    if not contract_ids:
+        return {}
+
+    _debug(f"FPDS: querying {len(contract_ids)} contract IDs")
+
+    if _HAS_FPDS_CLIENT:
+        with FPDSAtomClient(rate_limiter=_usaspending_limiter) as fpds:
+            try:
+                results = fpds.get_descriptions(contract_ids)
+            except Exception as e:
+                print(f"FPDS error: {e}", file=sys.stderr)
+                results = {}
+        _debug(f"FPDS: {len(results)}/{len(contract_ids)} descriptions found")
+        return results
+
+    # Inline fallback for standalone operation (no sbir_etl)
     import time as _t
     import xml.etree.ElementTree as ET
 
     results: dict[str, str] = {}
-    if not contract_ids:
-        return results
-
-    _debug(f"FPDS fallback: querying {len(contract_ids)} contract IDs")
     try:
         with httpx.Client(timeout=30) as client:
             for cid in contract_ids:
@@ -2910,69 +2934,51 @@ def _fetch_fpds_descriptions(
                 query = f'PIID:"{cid}" OR REF_IDV_PIID:"{cid}"'
                 for attempt in range(3):
                     try:
+                        _usaspending_limiter.wait_if_needed()
                         resp = client.get(
                             FPDS_ATOM_SEARCH_URL,
                             params={"q": query, "s": 0, "num": 1},
                         )
                         if resp.status_code in (429, 500, 502, 503, 504):
                             wait = 2 ** (attempt + 1)
-                            _debug(
-                                f"FPDS [{cid}] returned {resp.status_code}, "
-                                f"retrying in {wait}s"
-                            )
+                            _debug(f"FPDS [{cid}] returned {resp.status_code}, retrying in {wait}s")
                             _t.sleep(wait)
                             continue
                         if resp.status_code != 200:
-                            _debug(f"FPDS [{cid}] returned {resp.status_code}")
                             break
 
                         root = ET.fromstring(resp.text)
-                        # Atom namespace
                         ns = {"atom": "http://www.w3.org/2005/Atom"}
                         entry = root.find("atom:entry", ns)
                         if entry is None:
-                            _debug(f"FPDS [{cid}]: no entry in response")
                             break
 
-                        # The Atom <content> element contains inner FPDS XML.
-                        # Use namespace-agnostic local-name matching so we
-                        # don't break if the FPDS namespace URI changes.
                         content_el = entry.find("atom:content", ns)
                         desc = None
                         if content_el is not None:
-                            for local_name in [
-                                "descriptionOfContractRequirement",
-                                "description",
-                            ]:
-                                match = content_el.find(
-                                    f".//*[local-name()='{local_name}']"
-                                )
-                                if match is not None and match.text:
-                                    desc = match.text.strip()
+                            for local_name in ("descriptionOfContractRequirement", "description"):
+                                for el in content_el.iter():
+                                    tag = el.tag.split("}", 1)[-1] if "}" in el.tag else el.tag
+                                    if tag == local_name and el.text:
+                                        desc = el.text.strip()
+                                        break
+                                if desc:
                                     break
-
-                        # Fallback: use Atom <title>
                         if not desc:
                             title_el = entry.find("atom:title", ns)
                             if title_el is not None and title_el.text:
                                 desc = title_el.text.strip()
-
                         if desc:
                             if len(desc) > 500:
                                 desc = desc[:500] + "..."
                             results[cid] = desc
-                            _debug(f"FPDS [{cid}]: found description ({len(desc)} chars)")
-                        else:
-                            _debug(f"FPDS [{cid}]: entry found but no description text")
                         break
                     except (httpx.HTTPError, ET.ParseError, UnicodeDecodeError) as e:
-                        wait = 2 ** (attempt + 1)
-                        _debug(f"FPDS [{cid}] error: {e}, retrying in {wait}s")
-                        _t.sleep(wait)
+                        _t.sleep(2 ** (attempt + 1))
     except Exception as e:
         print(f"FPDS fallback error: {e}", file=sys.stderr)
 
-    _debug(f"FPDS fallback: {len(results)}/{len(contract_ids)} descriptions found")
+    _debug(f"FPDS: {len(results)}/{len(contract_ids)} descriptions found")
     return results
 
 
@@ -3034,73 +3040,112 @@ def fetch_usaspending_contract_descriptions(
     # so the FPDS fallback only fires for actual USAspending outages.
     failed_ids: set[str] = set()
 
-    try:
-        with httpx.Client(timeout=30) as client:
+    desc_fields = ["Award ID", "Description", "Awarding Agency", "Award Type"]
+
+    def _extract_descriptions(data: dict) -> None:
+        """Extract descriptions from a USAspending response into results."""
+        for r in data.get("results", []):
+            aid = str(r.get("Award ID", "")).strip()
+            desc = str(r.get("Description", "")).strip()
+            if aid and desc and aid not in results:
+                if len(desc) > 500:
+                    desc = desc[:500] + "..."
+                results[aid] = desc
+
+    if _HAS_SYNC_CLIENTS:
+        usa = SyncUSAspendingClient()
+        try:
             for ids, group_name, codes in requests_to_make:
                 quoted = [f'"{c}"' for c in ids]
-                payload = {
-                    "filters": {
-                        "award_ids": quoted,
-                        "award_type_codes": codes,
-                    },
-                    "fields": ["Award ID", "Description", "Awarding Agency", "Award Type"],
-                    "page": 1,
-                    "limit": len(ids),
-                }
+                filters = {"award_ids": quoted, "award_type_codes": codes}
                 _debug(
                     f"USAspending contract desc: {group_name} "
                     f"({len(ids)} IDs: {ids[:3]})"
                 )
-                # Try spending_by_award first, fall back to spending_by_transaction
-                # if the search endpoint is down (503).
-                endpoints = [
-                    "search/spending_by_award",
-                    "search/spending_by_transaction",
-                ]
                 data = None
-                for endpoint in endpoints:
-                    for attempt in range(2):
+                # Try spending_by_award, then spending_by_transaction
+                for method in ("search_awards", "search_transactions"):
+                    try:
                         _usaspending_limiter.wait_if_needed()
-                        resp = client.post(
-                            f"{USASPENDING_API_URL}/{endpoint}/",
-                            json=payload,
+                        data = getattr(usa, method)(
+                            filters=filters,
+                            fields=desc_fields,
+                            limit=len(ids),
+                            sort=None,
+                            order=None,
                         )
-                        if resp.status_code in (429, 500, 502, 503, 504):
-                            wait = 2 ** (attempt + 1)
-                            _debug(
-                                f"USAspending {endpoint}/{group_name} "
-                                f"returned {resp.status_code}, retrying in {wait}s"
-                            )
-                            _t.sleep(wait)
-                            continue
-                        if resp.status_code != 200:
-                            _debug(
-                                f"USAspending {endpoint}/{group_name} "
-                                f"returned {resp.status_code}"
-                            )
-                            break
-                        data = resp.json()
                         break
-                    if data is not None:
-                        break
-                    _debug(
-                        f"USAspending {endpoint} failed for {group_name}, "
-                        f"trying next endpoint"
-                    )
+                    except Exception as e:
+                        _debug(f"USAspending {method}/{group_name} failed: {e}")
+                        continue
                 if data is None:
                     failed_ids.update(ids)
                     continue
-                for r in data.get("results", []):
-                    aid = str(r.get("Award ID", "")).strip()
-                    desc = str(r.get("Description", "")).strip()
-                    if aid and desc and aid not in results:
-                        if len(desc) > 500:
-                            desc = desc[:500] + "..."
-                        results[aid] = desc
-    except Exception as e:
-        # Total failure — treat all remaining IDs as failed.
-        failed_ids.update(cid for cid in all_ids if cid not in results)
-        print(f"USAspending contract desc error: {e}", file=sys.stderr)
+                _extract_descriptions(data)
+        except Exception as e:
+            failed_ids.update(cid for cid in all_ids if cid not in results)
+            print(f"USAspending contract desc error: {e}", file=sys.stderr)
+        finally:
+            usa.close()
+    else:
+        try:
+            with httpx.Client(timeout=30) as client:
+                for ids, group_name, codes in requests_to_make:
+                    quoted = [f'"{c}"' for c in ids]
+                    payload = {
+                        "filters": {
+                            "award_ids": quoted,
+                            "award_type_codes": codes,
+                        },
+                        "fields": desc_fields,
+                        "page": 1,
+                        "limit": len(ids),
+                    }
+                    _debug(
+                        f"USAspending contract desc: {group_name} "
+                        f"({len(ids)} IDs: {ids[:3]})"
+                    )
+                    endpoints = [
+                        "search/spending_by_award",
+                        "search/spending_by_transaction",
+                    ]
+                    data = None
+                    for endpoint in endpoints:
+                        for attempt in range(2):
+                            _usaspending_limiter.wait_if_needed()
+                            resp = client.post(
+                                f"{USASPENDING_API_URL}/{endpoint}/",
+                                json=payload,
+                            )
+                            if resp.status_code in (429, 500, 502, 503, 504):
+                                wait = 2 ** (attempt + 1)
+                                _debug(
+                                    f"USAspending {endpoint}/{group_name} "
+                                    f"returned {resp.status_code}, retrying in {wait}s"
+                                )
+                                _t.sleep(wait)
+                                continue
+                            if resp.status_code != 200:
+                                _debug(
+                                    f"USAspending {endpoint}/{group_name} "
+                                    f"returned {resp.status_code}"
+                                )
+                                break
+                            data = resp.json()
+                            break
+                        if data is not None:
+                            break
+                        _debug(
+                            f"USAspending {endpoint} failed for {group_name}, "
+                            f"trying next endpoint"
+                        )
+                    if data is None:
+                        failed_ids.update(ids)
+                        continue
+                    _extract_descriptions(data)
+        except Exception as e:
+            failed_ids.update(cid for cid in all_ids if cid not in results)
+            print(f"USAspending contract desc error: {e}", file=sys.stderr)
 
     # FPDS Atom Feed fallback for contract PIIDs that failed at USAspending.
     # FPDS only indexes procurement contracts (PIIDs), not assistance FAINs
