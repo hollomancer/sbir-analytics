@@ -27,150 +27,33 @@ import argparse
 import json
 import os
 import sys
-import tempfile
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, UTC
-from pathlib import Path
 from urllib.parse import quote
 
 import httpx
 
-# Lazy imports from the sbir_etl package.  These are optional — the script
-# falls back to a standalone CSV download + Python-based filtering when the
-# full package isn't installed (e.g. lightweight CI runners).
-try:
-    from sbir_etl.extractors.sbir import SbirDuckDBExtractor
-    from sbir_etl.extractors.sbir_gov_api import SBIR_AWARDS_CSV_URL as SBIR_AWARDS_URL
-    from sbir_etl.utils.cloud_storage import find_latest_sbir_awards, get_s3_bucket_from_env
-    from sbir_etl.utils.date_utils import parse_date as _parse_date
-    from sbir_etl.utils.text_normalization import normalize_name as _normalize_name
-    from sbir_etl.utils.text_normalization import pluralize_col_key as _pluralize_col_key
-    from sbir_etl.validators.sbir_awards import validate_sbir_award_record as _validate_record
+# sbir_etl is the root package — always available via `uv sync`.
+from sbir_etl.extractors.sbir import SbirDuckDBExtractor
+from sbir_etl.extractors.sbir_gov_api import SBIR_AWARDS_CSV_URL as SBIR_AWARDS_URL
+from sbir_etl.utils.date_utils import parse_date as _parse_date
+from sbir_etl.utils.text_normalization import normalize_name as _normalize_name
+from sbir_etl.utils.text_normalization import pluralize_col_key as _pluralize_col_key
+from sbir_etl.validators.sbir_awards import validate_sbir_award_record as _validate_record
 
-    _HAS_SBIR_ETL = True
-except ImportError:
-    SBIR_AWARDS_URL = "https://data.www.sbir.gov/mod_awarddatapublic/award_data.csv"
-    _HAS_SBIR_ETL = False
-    SbirDuckDBExtractor = None  # type: ignore[assignment, misc]
-
-    def _parse_date(value, **_kwargs):  # type: ignore[misc]
-        """Minimal fallback date parser when sbir_etl is unavailable."""
-        from datetime import date as _date
-
-        if not value or not str(value).strip():
-            return None
-        s = str(value).strip()
-        for fmt in ("%Y-%m-%d", "%m/%d/%Y", "%Y-%m-%d %H:%M:%S", "%m/%d/%y"):
-            try:
-                return datetime.strptime(s, fmt).date()
-            except ValueError:
-                continue
-        return None
-
-    _validate_record = None  # type: ignore[assignment]
-
-    def _pluralize_col_key(col: str) -> str:  # type: ignore[misc]
-        """Fallback pluralizer when sbir_etl is unavailable."""
-        key = col.lower().replace(" ", "_")
-        if key.endswith("y"):
-            return key[:-1] + "ies"
-        return key + "s"
-
-    def _normalize_name(name, *, remove_suffixes=False, **_kwargs):  # type: ignore[misc]
-        """Minimal fallback company name normalizer."""
-        import re as _re
-
-        if not name:
-            return ""
-        s = str(name).strip().lower()
-        s = _re.sub(r"[^\w\s]", " ", s)
-        if remove_suffixes:
-            s = _re.sub(
-                r"\b(incorporated|incorporation|inc|corp|corporation|llc|ltd|limited|co|company)\b",
-                "",
-                s,
-            )
-        else:
-            s = _re.sub(r"\b(incorporated|incorporation)\b", "inc", s)
-            s = _re.sub(r"\b(company|co)\b", "company", s)
-            s = _re.sub(r"\b(limited|ltd)\b", "ltd", s)
-        return _re.sub(r"\s+", " ", s).strip()
-
-# Optional enricher imports — each degrades gracefully if unavailable.
-try:
-    from sbir_etl.extractors.solicitation import SolicitationExtractor
-
-    _HAS_SOLICITATION_EXTRACTOR = True
-except ImportError:
-    _HAS_SOLICITATION_EXTRACTOR = False
-
-try:
-    from sbir_etl.enrichers.patentsview import PatentsViewClient, RateLimiter, parse_patent_record
-
-    _HAS_PATENTS_CLIENT = True
-except ImportError:
-    _HAS_PATENTS_CLIENT = False
-    parse_patent_record = None  # type: ignore[assignment]
-    RateLimiter = None  # type: ignore[assignment, misc]
-
-try:
-    from sbir_etl.enrichers.inflation_adjuster import InflationAdjuster
-
-    _HAS_INFLATION = True
-except ImportError:
-    _HAS_INFLATION = False
-
-try:
-    from sbir_etl.enrichers.congressional_district_resolver import CongressionalDistrictResolver
-
-    _HAS_CONGRESS_RESOLVER = True
-except ImportError:
-    _HAS_CONGRESS_RESOLVER = False
-
-try:
-    from sbir_etl.enrichers.fiscal_bea_mapper import NAICSToBEAMapper
-
-    _HAS_BEA_MAPPER = True
-except ImportError:
-    _HAS_BEA_MAPPER = False
-
-try:
-    from sbir_etl.enrichers.sync_wrappers import SyncSAMGovClient, SyncUSAspendingClient
-
-    _HAS_SYNC_CLIENTS = True
-except ImportError:
-    _HAS_SYNC_CLIENTS = False
-
-try:
-    from sbir_etl.enrichers.fpds_atom import FPDSAtomClient
-
-    _HAS_FPDS_CLIENT = True
-except ImportError:
-    _HAS_FPDS_CLIENT = False
-
-try:
-    from sbir_etl.enrichers.semantic_scholar import (
-        PublicationRecord as _LibPublicationRecord,
-        SemanticScholarClient,
-    )
-
-    _HAS_S2_CLIENT = True
-except ImportError:
-    _HAS_S2_CLIENT = False
-
-try:
-    from sbir_etl.enrichers.orcid_client import ORCIDClient, ORCIDRecord as _LibORCIDRecord
-
-    _HAS_ORCID_CLIENT = True
-except ImportError:
-    _HAS_ORCID_CLIENT = False
-
-try:
-    from sbir_etl.enrichers.openai_client import OpenAIClient, WebSearchResult
-
-    _HAS_OPENAI_CLIENT = True
-except ImportError:
-    _HAS_OPENAI_CLIENT = False
+from sbir_etl.extractors.solicitation import SolicitationExtractor
+from sbir_etl.enrichers.patentsview import PatentsViewClient, RateLimiter
+from sbir_etl.enrichers.inflation_adjuster import InflationAdjuster
+from sbir_etl.enrichers.congressional_district_resolver import CongressionalDistrictResolver
+from sbir_etl.enrichers.fiscal_bea_mapper import NAICSToBEAMapper
+from sbir_etl.enrichers.sync_wrappers import SyncSAMGovClient, SyncUSAspendingClient
+from sbir_etl.enrichers.fpds_atom import FPDSAtomClient
+from sbir_etl.enrichers.semantic_scholar import (
+    SemanticScholarClient,
+)
+from sbir_etl.enrichers.orcid_client import ORCIDClient
+from sbir_etl.enrichers.openai_client import OpenAIClient
+from sbir_etl.models.sbir_identification import classify_sbir_award
 
 
 # ---------------------------------------------------------------------------
@@ -231,8 +114,6 @@ SBIR_AWARD_SEARCH_URL = "https://www.sbir.gov/awards"
 SBIR_SOLICITATION_URL = "https://www.sbir.gov/awards"
 USASPENDING_SEARCH_URL = "https://www.usaspending.gov/search"
 
-OPENAI_CHAT_URL = "https://api.openai.com/v1/chat/completions"
-OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses"
 OPENAI_MODEL = "gpt-4.1-mini"
 OPENAI_DILIGENCE_MODEL = "gpt-4.1"
 
@@ -243,62 +124,15 @@ DESCRIPTION_BATCH_SIZE = 10
 MAX_COMPANIES_TO_RESEARCH = int(os.environ.get("MAX_COMPANIES_TO_RESEARCH", "50"))
 MAX_AWARDS_TO_DESCRIBE = int(os.environ.get("MAX_AWARDS_TO_DESCRIBE", "100"))
 
-# Retry configuration for OpenAI API calls
-OPENAI_MAX_RETRIES = 3
-OPENAI_RETRY_BACKOFF_BASE = 2  # seconds
-
-# External API endpoints for PI diligence and solicitation lookup
-# PatentsView migrated to USPTO Open Data Portal (data.uspto.gov) March 2026
-# ODP field-level Lucene queries (q=inventorNameText:"...") go to the base
-# endpoint.  The /search sub-path only accepts free-text ``searchText``.
-USPTO_ODP_PATENT_QUERY_URL = "https://data.uspto.gov/api/v1/patent/applications"
-SEMANTIC_SCHOLAR_API_URL = "https://api.semanticscholar.org/graph/v1"
-USASPENDING_API_URL = "https://api.usaspending.gov/api/v2"
-SBIR_GOV_API_URL = "https://api.www.sbir.gov/public/api"
-SAM_GOV_API_URL = "https://api.sam.gov/entity-information/v3/entities"
-FPDS_ATOM_SEARCH_URL = "https://www.fpds.gov/ezsearch/LATEST"
-ORCID_API_URL = "https://pub.orcid.org/v3.0"
-
 
 # ---------------------------------------------------------------------------
 # Rate limiters — shared across threads to prevent API throttling.
-# Uses the library's thread-safe RateLimiter when available, with a minimal
-# fallback that tracks nothing (effectively unlimited) when sbir_etl isn't
-# installed.
 # ---------------------------------------------------------------------------
 
-def _make_rate_limiter(rpm: int) -> object:
-    """Create a thread-safe rate limiter (library or no-op fallback)."""
-    if RateLimiter is not None:
-        return RateLimiter(rate_limit_per_minute=rpm)
-
-    class _NoOpLimiter:
-        def wait_if_needed(self) -> None:
-            pass
-
-    return _NoOpLimiter()
-
-
-# USAspending: 120 req/min (matches library default)
-_usaspending_limiter = _make_rate_limiter(120)
-# Semantic Scholar: 100 req/min (default for unauthenticated)
-_semantic_scholar_limiter = _make_rate_limiter(100)
-# USPTO ODP: 60 req/min (conservative)
-_uspto_limiter = _make_rate_limiter(60)
-# SAM.gov: 60 req/min (matches library default)
-_sam_gov_limiter = _make_rate_limiter(60)
-# ORCID: 60 req/min (conservative)
-_orcid_limiter = _make_rate_limiter(60)
-# SBIR.gov API: 30 req/min (aggressive rate limiting observed)
-_sbir_gov_limiter = _make_rate_limiter(30)
-
-
-# Shared semaphore limiting total concurrent OpenAI API calls across all
-# thread pools (company diligence + PI diligence run concurrently, each with
-# up to 4 workers — without a cap that's 8 parallel LLM requests).
-import threading as _threading
-
-_openai_semaphore = _threading.Semaphore(int(os.environ.get("OPENAI_MAX_CONCURRENT", "4")))
+_usaspending_limiter = RateLimiter(rate_limit_per_minute=120)
+_semantic_scholar_limiter = RateLimiter(rate_limit_per_minute=100)
+_sam_gov_limiter = RateLimiter(rate_limit_per_minute=60)
+_orcid_limiter = RateLimiter(rate_limit_per_minute=60)
 
 
 # ---------------------------------------------------------------------------
@@ -319,154 +153,65 @@ class CompanyResearch:
 # ---------------------------------------------------------------------------
 
 
-# Source resolution and freshness checking — prefer shared library functions,
-# fall back to inline implementations when sbir_etl is not installed.
-try:
-    from sbir_etl.utils.cloud_storage import (
-        SbirAwardsSource as DataSource,
-        check_sbir_data_freshness as _check_data_freshness_lib,
-        resolve_sbir_awards_csv as _resolve_csv_path_lib,
-    )
+# Source resolution and freshness checking — delegates to library functions.
+from sbir_etl.utils.cloud_storage import (
+    SbirAwardsSource as DataSource,
+    check_sbir_data_freshness as _check_data_freshness_lib,
+    resolve_sbir_awards_csv as _resolve_csv_path_lib,
+)
 
-    def _resolve_csv_path() -> DataSource:
-        source = _resolve_csv_path_lib(download_url=SBIR_AWARDS_URL)
-        print(f"Resolved CSV: {source.path} (origin={source.origin})", file=sys.stderr)
-        return source
 
-    def _check_data_freshness(
-        source: DataSource, max_award_date: str | None, days: int
-    ) -> list[str]:
-        return _check_data_freshness_lib(source, max_award_date, days)
+def _resolve_csv_path() -> DataSource:
+    source = _resolve_csv_path_lib(download_url=SBIR_AWARDS_URL)
+    print(f"Resolved CSV: {source.path} (origin={source.origin})", file=sys.stderr)
+    return source
 
-except ImportError:
-    from dataclasses import dataclass as _dataclass
 
-    @_dataclass
-    class DataSource:  # type: ignore[no-redef]
-        """Metadata about the resolved CSV data source (fallback)."""
-        path: Path
-        origin: str
-        s3_key_date: str | None = None
-
-    def _resolve_csv_path() -> DataSource:  # type: ignore[misc]
-        """Fallback source resolver for standalone operation."""
-        print(f"S3 not available; downloading from {SBIR_AWARDS_URL}...", file=sys.stderr)
-        with httpx.Client(timeout=600, follow_redirects=True) as client:
-            response = client.get(SBIR_AWARDS_URL)
-            response.raise_for_status()
-        tmp = Path(tempfile.gettempdir()) / "sbir_weekly_award_data.csv"
-        tmp.write_bytes(response.content)
-        print(f"Downloaded {tmp.stat().st_size / 1024 / 1024:.1f} MB", file=sys.stderr)
-        return DataSource(path=tmp, origin="download")
-
-    def _check_data_freshness(  # type: ignore[misc]
-        source: DataSource, max_award_date: str | None, days: int
-    ) -> list[str]:
-        """Fallback freshness checker for standalone operation."""
-        warnings: list[str] = []
-        now = datetime.now(UTC).replace(tzinfo=None)
-        if source.s3_key_date:
-            key_dt = _parse_date(source.s3_key_date)
-            if key_dt:
-                age = (now - datetime(key_dt.year, key_dt.month, key_dt.day)).days
-                if age > days + 3:
-                    warnings.append(
-                        f"S3 data is {age} days old (key date: {source.s3_key_date}). "
-                        f"The data-refresh workflow may have failed."
-                    )
-        if max_award_date:
-            max_dt = _parse_date(max_award_date)
-            if max_dt:
-                data_age = (now - datetime(max_dt.year, max_dt.month, max_dt.day)).days
-                if data_age > days + 14:
-                    warnings.append(
-                        f"Most recent award in data is from {max_award_date} "
-                        f"({data_age} days ago). SBIR.gov bulk data may not have "
-                        f"been updated recently."
-                    )
-        return warnings
+def _check_data_freshness(
+    source: DataSource, max_award_date: str | None, days: int
+) -> list[str]:
+    return _check_data_freshness_lib(source, max_award_date, days)
 
 
 def fetch_weekly_awards(
     days: int = 7,
-) -> tuple[list[dict], list[str], DataSource, object | None, str | None]:
+) -> tuple[list[dict], list[str], DataSource, SbirDuckDBExtractor, str]:
     """Load SBIR CSV and filter for awards in the past N days.
 
-    When sbir_etl is installed, uses SbirDuckDBExtractor for fast
-    columnar import and SQL-based date filtering.  Otherwise falls back
-    to csv.DictReader with Python-level filtering.
+    Uses SbirDuckDBExtractor for fast columnar import and SQL-based
+    date filtering.
 
-    Returns (awards, freshness_warnings, source, extractor_or_None, table_or_None).
+    Returns (awards, freshness_warnings, source, extractor, table).
     The source/extractor/table can be reused for historical queries to avoid
     re-downloading and re-importing the ~376 MB CSV.
     """
     source = _resolve_csv_path()
     cutoff_str = (datetime.now(UTC) - timedelta(days=days)).strftime("%Y-%m-%d")
 
-    extractor = None
-    table = None
+    extractor = SbirDuckDBExtractor(
+        csv_path=source.path,
+        duckdb_path=":memory:",
+        use_s3_first=False,  # we already resolved the path
+    )
+    extractor.import_csv()
 
-    if _HAS_SBIR_ETL and SbirDuckDBExtractor is not None:
-        # Fast path: DuckDB columnar import + SQL filtering
-        extractor = SbirDuckDBExtractor(
-            csv_path=source.path,
-            duckdb_path=":memory:",
-            use_s3_first=False,  # we already resolved the path
-        )
-        extractor.import_csv()
+    table = extractor._table_identifier
+    query = (
+        f"SELECT * FROM {table} "
+        f"WHERE \"Proposal Award Date\" >= '{cutoff_str}' "
+        f"ORDER BY \"Proposal Award Date\" DESC, "
+        f"TRY_CAST(\"Award Amount\" AS DOUBLE) DESC"
+    )
 
-        table = extractor._table_identifier
-        query = (
-            f"SELECT * FROM {table} "
-            f"WHERE \"Proposal Award Date\" >= '{cutoff_str}' "
-            f"ORDER BY \"Proposal Award Date\" DESC, "
-            f"TRY_CAST(\"Award Amount\" AS DOUBLE) DESC"
-        )
+    df = extractor.duckdb_client.execute_query_df(query)
+    print(f"Found {len(df)} awards since {cutoff_str} (DuckDB)", file=sys.stderr)
+    awards = df.fillna("").to_dict("records")
 
-        df = extractor.duckdb_client.execute_query_df(query)
-        print(f"Found {len(df)} awards since {cutoff_str} (DuckDB)", file=sys.stderr)
-        awards = df.fillna("").to_dict("records")
-
-        # Get max date across the full dataset for freshness check
-        max_date_df = extractor.duckdb_client.execute_query_df(
-            f'SELECT MAX("Proposal Award Date") AS max_date FROM {table}'
-        )
-        max_award_date = str(max_date_df.iloc[0]["max_date"]) if len(max_date_df) else None
-
-    else:
-        # Fallback: csv.DictReader + Python filtering
-        import csv
-        import io
-
-        print("Using csv.DictReader fallback for filtering", file=sys.stderr)
-        cutoff_dt = datetime.now(UTC).replace(tzinfo=None) - timedelta(days=days)
-
-        text = source.path.read_text(encoding="utf-8")
-        reader = csv.DictReader(io.StringIO(text))
-        awards = []
-        all_dates: list[str] = []
-        for row in reader:
-            date_val = row.get("Proposal Award Date", "")
-            if date_val:
-                all_dates.append(date_val)
-            parsed = _parse_date(date_val)
-            if parsed:
-                row_dt = datetime(parsed.year, parsed.month, parsed.day)
-                if row_dt >= cutoff_dt:
-                    awards.append(row)
-
-        def sort_key(a):
-            dt = _parse_date(a.get("Proposal Award Date", ""))
-            ts = datetime(dt.year, dt.month, dt.day).timestamp() if dt else 0
-            try:
-                amount = float(str(a.get("Award Amount", "0")).replace(",", "").replace("$", ""))
-            except (ValueError, AttributeError):
-                amount = 0
-            return (-ts, -amount)
-
-        awards.sort(key=sort_key)
-        max_award_date = max(all_dates) if all_dates else None
-        print(f"Found {len(awards)} awards since {cutoff_str} (csv fallback)", file=sys.stderr)
+    # Get max date across the full dataset for freshness check
+    max_date_df = extractor.duckdb_client.execute_query_df(
+        f'SELECT MAX("Proposal Award Date") AS max_date FROM {table}'
+    )
+    max_award_date = str(max_date_df.iloc[0]["max_date"]) if len(max_date_df) else None
 
     # Verify data freshness
     freshness_warnings = _check_data_freshness(source, max_award_date, days)
@@ -479,8 +224,6 @@ def fetch_weekly_awards(
 # ---------------------------------------------------------------------------
 # Data cleaning & deduplication
 # ---------------------------------------------------------------------------
-
-_FALLBACK_VALID_PHASES = {"Phase I", "Phase II", "Phase III"}
 
 
 def _company_key(award: dict) -> str:
@@ -532,21 +275,6 @@ def clean_and_dedup_awards(awards: list[dict]) -> tuple[list[dict], dict]:
                 str(a.get("Company", "")), remove_suffixes=True
             )
             cleaned.append(a)
-    else:
-        # Minimal fallback when sbir_etl is not installed
-        for a in awards:
-            company = str(a.get("Company", "")).strip()
-            if not company:
-                stats["validation_errors"] += 1
-                continue
-            phase = str(a.get("Phase", "")).strip()
-            if phase and phase not in _FALLBACK_VALID_PHASES:
-                stats["validation_errors"] += 1
-                continue
-            a["_normalized_company"] = _normalize_name(
-                company, remove_suffixes=True
-            )
-            cleaned.append(a)
 
     stats["output"] = len(cleaned)
     stats["total_removed"] = stats["input"] - stats["output"]
@@ -579,30 +307,23 @@ def _parse_date_safe(value) -> str | None:
 
 def _resolve_shared_extractor(
     source: DataSource | None = None,
-) -> tuple[DataSource, object | None, str | None]:
-    """Resolve a CSV path and optionally create a shared DuckDB extractor.
+) -> tuple[DataSource, SbirDuckDBExtractor, str]:
+    """Resolve a CSV path and create a shared DuckDB extractor.
 
-    Returns (source, extractor_or_None, table_name_or_None).
+    Returns (source, extractor, table_name).
     """
     if source is None:
         source = _resolve_csv_path()
 
-    extractor = None
-    table = None
-    if _HAS_SBIR_ETL and SbirDuckDBExtractor is not None:
-        extractor = SbirDuckDBExtractor(
-            csv_path=source.path,
-            duckdb_path=":memory:",
-            use_s3_first=False,
-        )
-        extractor.import_csv()
-        table = extractor._table_identifier
+    extractor = SbirDuckDBExtractor(
+        csv_path=source.path,
+        duckdb_path=":memory:",
+        use_s3_first=False,
+    )
+    extractor.import_csv()
+    table = extractor._table_identifier
 
     return source, extractor, table
-
-
-# _pluralize_col_key is imported from sbir_etl.utils.text_normalization
-# (with a fallback defined in the ImportError block above).
 
 
 def _build_history_from_df(
@@ -728,7 +449,7 @@ def _build_history_from_csv(
                 h["sample_titles"].append(t)
 
     # Normalize sets to sorted lists and parse dates
-    for name, h in history.items():
+    for _name, h in history.items():
         raw_dates = h.pop("dates", [])
         parsed_dates = [_parse_date_safe(d) for d in raw_dates]
         parsed_dates = [d for d in parsed_dates if d]
@@ -918,251 +639,77 @@ def lookup_pi_patents(pi_name: str, company_name: str | None = None) -> PIPatent
     if not last:
         return None
 
-    # Prefer PatentsViewClient — handles rate limiting and retry via tenacity
-    if _HAS_PATENTS_CLIENT:
-        _debug(f"Using PatentsViewClient for '{pi_name}'")
-        try:
-            client = PatentsViewClient()
-            try:
-                # Query by company name to get patents, then we'll have all
-                # inventor/assignee data in the results
-                patents = client.query_patents_by_assignee(
-                    company_name=company_name or last,
-                    max_patents=100,
-                )
-            finally:
-                if hasattr(client, "close"):
-                    client.close()
-            if not patents:
-                return None
-
-            titles = []
-            assignees: set[str] = set()
-            dates: list[str] = []
-            for p in patents:
-                t = p.get("patent_title", "")
-                if t and t not in titles and len(titles) < 5:
-                    titles.append(t)
-                org = p.get("assignee_organization", "")
-                if org:
-                    assignees.add(org)
-                d = p.get("grant_date") or p.get("patent_date", "")
-                if d:
-                    dates.append(d)
-
-            return PIPatentRecord(
-                total_patents=len(patents),
-                sample_titles=titles,
-                assignees=sorted(assignees),
-                date_range=(min(dates) if dates else None, max(dates) if dates else None),
-            )
-        except Exception as e:
-            _debug(f"PatentsViewClient error for '{pi_name}': {e}, falling back")
-
-    # Fallback: bare httpx call to USPTO ODP
-    api_key = os.environ.get("USPTO_ODP_API_KEY", "")
-    headers: dict[str, str] = {}
-    if api_key:
-        headers["X-API-KEY"] = api_key
-
-    # ODP uses ``searchText`` for free-text queries (not Lucene ``q``).
-    # Combine inventor name and company into a single search string.
-    search_terms = f"{first} {last}".strip() if first else last
-    if company_name:
-        search_terms += f" {company_name}"
-
-    params = {
-        "searchText": search_terms,
-        "offset": 0,
-        "limit": 100,
-    }
-
-    _debug(f"USPTO ODP query for '{pi_name}': GET {USPTO_ODP_PATENT_QUERY_URL} params={params}")
+    _debug(f"Using PatentsViewClient for '{pi_name}'")
     try:
-        _uspto_limiter.wait_if_needed()
-        with httpx.Client(timeout=30) as client:
-            resp = client.get(USPTO_ODP_PATENT_QUERY_URL, headers=headers, params=params)
-            _debug_response(f"USPTO ODP [{pi_name}]", resp)
-            if resp.status_code != 200:
-                print(
-                    f"USPTO ODP API returned {resp.status_code} for {pi_name}",
-                    file=sys.stderr,
-                )
-                return None
-            data = resp.json()
+        client = PatentsViewClient()
+        try:
+            patents = client.query_patents_by_assignee(
+                company_name=company_name or last,
+                max_patents=100,
+            )
+        finally:
+            if hasattr(client, "close"):
+                client.close()
+        if not patents:
+            return None
+
+        titles = []
+        assignees: set[str] = set()
+        dates: list[str] = []
+        for p in patents:
+            t = p.get("patent_title", "")
+            if t and t not in titles and len(titles) < 5:
+                titles.append(t)
+            org = p.get("assignee_organization", "")
+            if org:
+                assignees.add(org)
+            d = p.get("grant_date") or p.get("patent_date", "")
+            if d:
+                dates.append(d)
+
+        return PIPatentRecord(
+            total_patents=len(patents),
+            sample_titles=titles,
+            assignees=sorted(assignees),
+            date_range=(min(dates) if dates else None, max(dates) if dates else None),
+        )
     except Exception as e:
-        print(f"USPTO ODP API error for {pi_name}: {e}", file=sys.stderr)
+        _debug(f"PatentsViewClient error for '{pi_name}': {e}")
         return None
-
-    records = data.get("patentFileWrapperDataBag", [])
-    _debug(f"USPTO ODP [{pi_name}]: {len(records)} patent records returned")
-    if not records:
-        return None
-
-    titles = []
-    assignees: set[str] = set()
-    dates: list[str] = []
-
-    for raw_record in records:
-        # Use shared parser when available, inline fallback otherwise
-        if parse_patent_record is not None:
-            parsed = parse_patent_record(raw_record)
-            title = parsed.get("patent_title", "")
-            org = parsed.get("assignee_organization", "")
-            grant_date = parsed.get("grant_date", "")
-        else:
-            metadata = raw_record.get("applicationMetaData", {}) or {}
-            title = raw_record.get("inventionTitle") or metadata.get("inventionTitle") or ""
-            org = ""
-            for a in (raw_record.get("assignees", []) or []):
-                if isinstance(a, dict):
-                    org = a.get("assigneeName") or a.get("orgName") or ""
-                    break
-            if not org:
-                org = raw_record.get("assigneeName") or metadata.get("assigneeName") or ""
-            grant_date = metadata.get("grantDate") or raw_record.get("grantDate") or ""
-
-        if title and title not in titles and len(titles) < 5:
-            titles.append(title)
-        if org:
-            assignees.add(org)
-        if grant_date:
-            dates.append(grant_date)
-
-    return PIPatentRecord(
-        total_patents=len(records),
-        sample_titles=titles,
-        assignees=sorted(assignees),
-        date_range=(min(dates) if dates else None, max(dates) if dates else None),
-    )
 
 
 def lookup_pi_publications(pi_name: str) -> PIPublicationRecord | None:
-    """Query Semantic Scholar for the PI's publication history.
-
-    Uses :class:`SemanticScholarClient` when the library is available;
-    falls back to inline httpx calls for standalone operation.
-    """
+    """Query Semantic Scholar for the PI's publication history."""
     first, last = _split_pi_name(pi_name)
     if not last:
         return None
 
     search_query = f"{first} {last}".strip()
 
-    if _HAS_S2_CLIENT:
-        with SemanticScholarClient(rate_limiter=_semantic_scholar_limiter) as s2:
-            try:
-                rec = s2.lookup_author(search_query)
-            except Exception as e:
-                print(f"Semantic Scholar API error for {pi_name}: {e}", file=sys.stderr)
-                return None
-        if rec is None:
+    with SemanticScholarClient(rate_limiter=_semantic_scholar_limiter) as s2:
+        try:
+            rec = s2.lookup_author(search_query)
+        except Exception as e:
+            print(f"Semantic Scholar API error for {pi_name}: {e}", file=sys.stderr)
             return None
-        return PIPublicationRecord(
-            total_papers=rec.total_papers,
-            h_index=rec.h_index,
-            citation_count=rec.citation_count,
-            sample_titles=rec.sample_titles,
-            affiliations=rec.affiliations,
-        )
-
-    # Inline fallback for standalone operation
-    s2_api_key = os.environ.get("SEMANTIC_SCHOLAR_API_KEY", "")
-    headers: dict[str, str] = {}
-    if s2_api_key:
-        headers["x-api-key"] = s2_api_key
-
-    import time
-
-    try:
-        search_data = None
-        with httpx.Client(timeout=30, headers=headers) as client:
-            for attempt in range(3):
-                _semantic_scholar_limiter.wait_if_needed()
-                resp = client.get(
-                    f"{SEMANTIC_SCHOLAR_API_URL}/author/search",
-                    params={"query": search_query, "limit": 5},
-                )
-                if resp.status_code == 429:
-                    time.sleep(2 ** (attempt + 1))
-                    continue
-                if resp.status_code != 200:
-                    return None
-                search_data = resp.json()
-                break
-        if search_data is None:
-            return None
-        authors = search_data.get("data", [])
-        if not authors:
-            return None
-        author_id = authors[0].get("authorId")
-        if not author_id:
-            return None
-
-        author_data = None
-        with httpx.Client(timeout=30, headers=headers) as client:
-            for attempt in range(3):
-                _semantic_scholar_limiter.wait_if_needed()
-                resp = client.get(
-                    f"{SEMANTIC_SCHOLAR_API_URL}/author/{author_id}",
-                    params={"fields": "name,hIndex,citationCount,affiliations,papers.title,papers.year"},
-                )
-                if resp.status_code == 429:
-                    time.sleep(2 ** (attempt + 1))
-                    continue
-                if resp.status_code != 200:
-                    return None
-                author_data = resp.json()
-                break
-        if author_data is None:
-            return None
-    except Exception as e:
-        print(f"Semantic Scholar API error for {pi_name}: {e}", file=sys.stderr)
+    if rec is None:
         return None
-
-    papers = author_data.get("papers", [])
     return PIPublicationRecord(
-        total_papers=len(papers),
-        h_index=author_data.get("hIndex"),
-        citation_count=author_data.get("citationCount", 0),
-        sample_titles=[p["title"] for p in papers[:5] if p.get("title")],
-        affiliations=author_data.get("affiliations", []) or [],
+        total_papers=rec.total_papers,
+        h_index=rec.h_index,
+        citation_count=rec.citation_count,
+        sample_titles=rec.sample_titles,
+        affiliations=rec.affiliations,
     )
 
 
 def _is_sbir_award_type(description: str, cfda: str) -> bool:
     """Identify SBIR/STTR awards using ALN numbers and description keywords.
 
-    Delegates to :func:`sbir_etl.models.sbir_identification.classify_sbir_award`
-    when the library is available; falls back to a minimal inline heuristic.
+    Delegates to :func:`sbir_etl.models.sbir_identification.classify_sbir_award`.
     """
-    try:
-        from sbir_etl.models.sbir_identification import classify_sbir_award
-
-        result = classify_sbir_award(cfda_number=cfda, description=description)
-        return result is not None
-    except ImportError:
-        pass
-
-    # Fallback for standalone operation
-    _sbir_alns = {
-        "10.212", "12.910", "12.911", "81.049", "43.002", "43.003",
-        "47.041", "47.084", "66.511", "66.512", "97.077", "20.701",
-        "84.133",
-        "93.855", "93.856", "93.859", "93.837", "93.847", "93.853",
-        "93.865", "93.866", "93.867", "93.879", "93.242", "93.273",
-        "93.279", "93.395", "93.393", "93.394", "93.396", "93.399",
-    }
-    if cfda and cfda.strip() in _sbir_alns:
-        return True
-    desc_upper = description.upper()
-    if "SBIR" in desc_upper or "STTR" in desc_upper:
-        return True
-    if "SMALL BUSINESS INNOVATION RESEARCH" in desc_upper:
-        return True
-    if "SMALL BUSINESS TECHNOLOGY TRANSFER" in desc_upper:
-        return True
-    return False
+    result = classify_sbir_award(cfda_number=cfda, description=description)
+    return result is not None
 
 
 def _usaspending_autocomplete(company_name: str) -> dict[str, str] | None:
@@ -1234,60 +781,30 @@ def _usaspending_autocomplete(company_name: str) -> dict[str, str] | None:
 
     best_candidate = None
 
-    # Use shared sync client when available (gets rate limiting + retry from
-    # the library); fall back to raw httpx for standalone operation.
-    if _HAS_SYNC_CLIENTS:
-        usa = SyncUSAspendingClient()
-        try:
-            for idx, name in enumerate(unique, 1):
-                try:
-                    _usaspending_limiter.wait_if_needed()
-                    data = usa.autocomplete_recipient(name, limit=5)
-                    results = data.get("results", [])
-                    if not results:
-                        continue
-                    match = results[0]
-                    matched_name = match.get("legal_business_name", "")
-                    matched_uei = match.get("uei")
-                    if matched_uei and str(matched_uei).strip().lower() not in ("", "nan", "none"):
-                        _debug(
-                            f"USAspending autocomplete matched '{company_name}' "
-                            f"(variation {idx}: '{name}') → '{matched_name}' UEI={matched_uei}"
-                        )
-                        return {"uei": matched_uei, "name": matched_name}
-                    if matched_name and best_candidate is None:
-                        best_candidate = {"uei": matched_uei, "name": matched_name}
-                except Exception:
+    usa = SyncUSAspendingClient()
+    try:
+        for idx, name in enumerate(unique, 1):
+            try:
+                _usaspending_limiter.wait_if_needed()
+                data = usa.autocomplete_recipient(name, limit=5)
+                results = data.get("results", [])
+                if not results:
                     continue
-        finally:
-            usa.close()
-    else:
-        with httpx.Client(timeout=15) as client:
-            for idx, name in enumerate(unique, 1):
-                try:
-                    _usaspending_limiter.wait_if_needed()
-                    resp = client.post(
-                        f"{USASPENDING_API_URL}/autocomplete/recipient/",
-                        json={"search_text": name, "limit": 5},
+                match = results[0]
+                matched_name = match.get("legal_business_name", "")
+                matched_uei = match.get("uei")
+                if matched_uei and str(matched_uei).strip().lower() not in ("", "nan", "none"):
+                    _debug(
+                        f"USAspending autocomplete matched '{company_name}' "
+                        f"(variation {idx}: '{name}') → '{matched_name}' UEI={matched_uei}"
                     )
-                    if resp.status_code != 200:
-                        continue
-                    results = resp.json().get("results", [])
-                    if not results:
-                        continue
-                    match = results[0]
-                    matched_name = match.get("legal_business_name", "")
-                    matched_uei = match.get("uei")
-                    if matched_uei and str(matched_uei).strip().lower() not in ("", "nan", "none"):
-                        _debug(
-                            f"USAspending autocomplete matched '{company_name}' "
-                            f"(variation {idx}: '{name}') → '{matched_name}' UEI={matched_uei}"
-                        )
-                        return {"uei": matched_uei, "name": matched_name}
-                    if matched_name and best_candidate is None:
-                        best_candidate = {"uei": matched_uei, "name": matched_name}
-                except Exception:
-                    continue
+                    return {"uei": matched_uei, "name": matched_name}
+                if matched_name and best_candidate is None:
+                    best_candidate = {"uei": matched_uei, "name": matched_name}
+            except Exception:
+                continue
+    finally:
+        usa.close()
 
     if best_candidate:
         _debug(f"USAspending autocomplete: best candidate for '{company_name}' → '{best_candidate['name']}' (no UEI)")
@@ -1337,58 +854,27 @@ def _usaspending_search(
         f"POST /search/spending_by_award/"
     )
 
-    if _HAS_SYNC_CLIENTS:
-        usa = SyncUSAspendingClient()
-        try:
-            for group_name, codes in type_groups:
-                try:
-                    _usaspending_limiter.wait_if_needed()
-                    data = usa.search_awards(
-                        filters={
-                            "award_type_codes": codes,
-                            "recipient_search_text": [search_text],
-                        },
-                        fields=fields,
-                        limit=50,
-                    )
-                    group_results = data.get("results", [])
-                    _debug(f"USAspending [{company_name} via {label}/{group_name}]: {len(group_results)} results")
-                    all_results.extend(group_results)
-                except Exception as e:
-                    _debug(f"USAspending [{company_name}] {label}/{group_name} error: {e}")
-                    continue
-        finally:
-            usa.close()
-    else:
-        try:
-            with httpx.Client(timeout=30) as client:
-                for group_name, codes in type_groups:
-                    _usaspending_limiter.wait_if_needed()
-                    payload = {
-                        "filters": {
-                            "award_type_codes": codes,
-                            "recipient_search_text": [search_text],
-                        },
-                        "fields": fields,
-                        "page": 1,
-                        "limit": 50,
-                        "sort": "Award Amount",
-                        "order": "desc",
-                    }
-                    resp = client.post(
-                        f"{USASPENDING_API_URL}/search/spending_by_award/",
-                        json=payload,
-                    )
-                    if resp.status_code != 200:
-                        _debug(f"USAspending [{company_name}] {label}/{group_name} returned {resp.status_code}")
-                        continue
-                    data = resp.json()
-                    group_results = data.get("results", [])
-                    _debug(f"USAspending [{company_name} via {label}/{group_name}]: {len(group_results)} results")
-                    all_results.extend(group_results)
-        except Exception as e:
-            _debug(f"USAspending [{company_name}] {label} error: {e}")
-            return None
+    usa = SyncUSAspendingClient()
+    try:
+        for group_name, codes in type_groups:
+            try:
+                _usaspending_limiter.wait_if_needed()
+                data = usa.search_awards(
+                    filters={
+                        "award_type_codes": codes,
+                        "recipient_search_text": [search_text],
+                    },
+                    fields=fields,
+                    limit=50,
+                )
+                group_results = data.get("results", [])
+                _debug(f"USAspending [{company_name} via {label}/{group_name}]: {len(group_results)} results")
+                all_results.extend(group_results)
+            except Exception as e:
+                _debug(f"USAspending [{company_name}] {label}/{group_name} error: {e}")
+                continue
+    finally:
+        usa.close()
 
     _debug(f"USAspending [{company_name} via {label}]: {len(all_results)} total results")
     return all_results if all_results else None
@@ -1627,63 +1113,20 @@ def lookup_usaspending_recipient(
 
     recipient_id = None
 
-    if _HAS_SYNC_CLIENTS:
-        usa = SyncUSAspendingClient()
-        try:
-            for term in search_terms:
-                _debug(f"USAspending recipient search: keyword='{term}'")
-                try:
-                    _usaspending_limiter.wait_if_needed()
-                    results = usa.search_recipients(term, limit=5)
-                    if results:
-                        recipient_id = results[0].get("id")
-                        _debug(
-                            f"USAspending recipient matched '{term}' → "
-                            f"'{results[0].get('name')}' id={recipient_id}"
-                        )
-                        break
-                except Exception as e:
-                    _debug(f"USAspending recipient search error for '{term}': {e}")
-                    continue
-
-            if not recipient_id:
-                _debug(f"USAspending recipient: no match for '{company_name}'")
-                return None
-
-            # Step 2: Fetch the full profile
-            _debug(f"USAspending recipient profile: GET /recipient/{recipient_id}/?year=all")
-            try:
-                _usaspending_limiter.wait_if_needed()
-                profile = usa.get_recipient_profile(recipient_id)
-            except Exception as e:
-                _debug(f"USAspending recipient profile error: {e}")
-                return None
-            if not profile:
-                return None
-        finally:
-            usa.close()
-    else:
+    usa = SyncUSAspendingClient()
+    try:
         for term in search_terms:
             _debug(f"USAspending recipient search: keyword='{term}'")
             try:
                 _usaspending_limiter.wait_if_needed()
-                with httpx.Client(timeout=15) as client:
-                    resp = client.post(
-                        f"{USASPENDING_API_URL}/recipient/",
-                        json={"keyword": term, "limit": 5},
+                results = usa.search_recipients(term, limit=5)
+                if results:
+                    recipient_id = results[0].get("id")
+                    _debug(
+                        f"USAspending recipient matched '{term}' → "
+                        f"'{results[0].get('name')}' id={recipient_id}"
                     )
-                    if resp.status_code != 200:
-                        _debug(f"USAspending recipient search returned {resp.status_code}")
-                        continue
-                    data = resp.json()
-                    results = data.get("results", [])
-                    if results:
-                        recipient_id = results[0].get("id")
-                        _debug(
-                            f"USAspending recipient matched '{term}' → "
-                            f"'{results[0].get('name')}' id={recipient_id}"
-                        )
-                        break
+                    break
             except Exception as e:
                 _debug(f"USAspending recipient search error for '{term}': {e}")
                 continue
@@ -1692,21 +1135,18 @@ def lookup_usaspending_recipient(
             _debug(f"USAspending recipient: no match for '{company_name}'")
             return None
 
+        # Step 2: Fetch the full profile
         _debug(f"USAspending recipient profile: GET /recipient/{recipient_id}/?year=all")
         try:
             _usaspending_limiter.wait_if_needed()
-            with httpx.Client(timeout=15) as client:
-                resp = client.get(
-                    f"{USASPENDING_API_URL}/recipient/{recipient_id}/",
-                    params={"year": "all"},
-                )
-                if resp.status_code != 200:
-                    _debug(f"USAspending recipient profile returned {resp.status_code}")
-                    return None
-                profile = resp.json()
+            profile = usa.get_recipient_profile(recipient_id)
         except Exception as e:
             _debug(f"USAspending recipient profile error: {e}")
             return None
+        if not profile:
+            return None
+    finally:
+        usa.close()
 
     location = profile.get("location") or {}
 
@@ -1819,92 +1259,41 @@ def lookup_sam_entity(
 
     entity = None
 
-    if _HAS_SYNC_CLIENTS:
-        sam = SyncSAMGovClient()
-        try:
-            # Try UEI first (most reliable)
-            if uei:
-                _debug(f"SAM.gov [{company_name}]: lookup by UEI={uei}")
-                try:
-                    _sam_gov_limiter.wait_if_needed()
-                    entity = sam.get_entity_by_uei(uei)
-                except Exception as e:
-                    _debug(f"SAM.gov [{company_name}]: UEI lookup error: {e}")
-
-            # Try CAGE code
-            if not entity and cage:
-                _debug(f"SAM.gov [{company_name}]: lookup by CAGE={cage}")
-                try:
-                    _sam_gov_limiter.wait_if_needed()
-                    entity = sam.get_entity_by_cage(cage)
-                except Exception as e:
-                    _debug(f"SAM.gov [{company_name}]: CAGE lookup error: {e}")
-
-            # Fall back to name search
-            if not entity and company_name:
-                _debug(f"SAM.gov [{company_name}]: name search")
-                try:
-                    _sam_gov_limiter.wait_if_needed()
-                    results = sam.search_entities(
-                        legal_business_name=company_name,
-                        registration_status="A",
-                        limit=1,
-                    )
-                    entity = results[0] if results else None
-                except Exception as e:
-                    _debug(f"SAM.gov [{company_name}]: name search error: {e}")
-        finally:
-            sam.close()
-    else:
-        headers = {"X-Api-Key": api_key, "Accept": "application/json"}
-
-        def _try_query(params: dict) -> dict | None:
-            _debug(f"SAM.gov query for '{company_name}': GET {SAM_GOV_API_URL} params={params}")
-            import time
-
-            for attempt in range(3):
-                try:
-                    _sam_gov_limiter.wait_if_needed()
-                    with httpx.Client(timeout=30) as client:
-                        resp = client.get(SAM_GOV_API_URL, headers=headers, params=params)
-                        _debug_response(f"SAM.gov [{company_name}]", resp)
-                        if resp.status_code == 429:
-                            wait = 2 ** (attempt + 1)
-                            _debug(f"SAM.gov [{company_name}]: rate limited, retrying in {wait}s")
-                            time.sleep(wait)
-                            continue
-                        if resp.status_code != 200:
-                            return None
-                        data = resp.json()
-                        results = data.get("entityData", data.get("results", []))
-                        result_count = len(results) if isinstance(results, list) else (1 if results else 0)
-                        _debug(f"SAM.gov [{company_name}]: {result_count} entities in response")
-                        if isinstance(results, list) and results:
-                            return results[0]
-                        if isinstance(results, dict):
-                            return results
-                        return None
-                except Exception as e:
-                    if attempt < 2:
-                        wait = 2 ** (attempt + 1)
-                        _debug(f"SAM.gov [{company_name}]: request error ({e}), retrying in {wait}s")
-                        time.sleep(wait)
-                        continue
-                    print(f"SAM.gov API error: {e}", file=sys.stderr)
-                    return None
-            return None
-
+    sam = SyncSAMGovClient()
+    try:
         # Try UEI first (most reliable)
         if uei:
-            entity = _try_query({"ueiSAM": uei})
+            _debug(f"SAM.gov [{company_name}]: lookup by UEI={uei}")
+            try:
+                _sam_gov_limiter.wait_if_needed()
+                entity = sam.get_entity_by_uei(uei)
+            except Exception as e:
+                _debug(f"SAM.gov [{company_name}]: UEI lookup error: {e}")
 
         # Try CAGE code
         if not entity and cage:
-            entity = _try_query({"cageCode": cage})
+            _debug(f"SAM.gov [{company_name}]: lookup by CAGE={cage}")
+            try:
+                _sam_gov_limiter.wait_if_needed()
+                entity = sam.get_entity_by_cage(cage)
+            except Exception as e:
+                _debug(f"SAM.gov [{company_name}]: CAGE lookup error: {e}")
 
         # Fall back to name search
         if not entity and company_name:
-            entity = _try_query({"legalBusinessName": company_name, "registrationStatus": "A"})
+            _debug(f"SAM.gov [{company_name}]: name search")
+            try:
+                _sam_gov_limiter.wait_if_needed()
+                results = sam.search_entities(
+                    legal_business_name=company_name,
+                    registration_status="A",
+                    limit=1,
+                )
+                entity = results[0] if results else None
+            except Exception as e:
+                _debug(f"SAM.gov [{company_name}]: name search error: {e}")
+    finally:
+        sam.close()
 
     if not entity:
         # Always log — helps diagnose silent failures in CI
@@ -2051,95 +1440,23 @@ def lookup_pi_orcid(pi_name: str) -> ORCIDRecord | None:
     if not last:
         return None
 
-    if _HAS_ORCID_CLIENT:
-        with ORCIDClient(rate_limiter=_orcid_limiter) as orcid:
-            try:
-                rec = orcid.lookup(pi_name)
-            except Exception as e:
-                print(f"ORCID API error for {pi_name}: {e}", file=sys.stderr)
-                return None
-        if rec is None:
+    with ORCIDClient(rate_limiter=_orcid_limiter) as orcid:
+        try:
+            rec = orcid.lookup(pi_name)
+        except Exception as e:
+            print(f"ORCID API error for {pi_name}: {e}", file=sys.stderr)
             return None
-        return ORCIDRecord(
-            orcid_id=rec.orcid_id,
-            given_name=rec.given_name,
-            family_name=rec.family_name,
-            affiliations=rec.affiliations,
-            works_count=rec.works_count,
-            sample_work_titles=rec.sample_work_titles,
-            funding_count=rec.funding_count,
-            keywords=rec.keywords,
-        )
-
-    # Inline fallback for standalone operation
-    headers = {"Accept": "application/json"}
-    orcid_token = os.environ.get("ORCID_ACCESS_TOKEN", "")
-    if orcid_token:
-        headers["Authorization"] = f"Bearer {orcid_token}"
-
-    try:
-        query = f"family-name:{last}"
-        if first:
-            query += f" AND given-names:{first}"
-
-        _orcid_limiter.wait_if_needed()
-        with httpx.Client(timeout=30) as client:
-            resp = client.get(
-                f"{ORCID_API_URL}/expanded-search/",
-                headers=headers,
-                params={"q": query, "rows": 5},
-            )
-            if resp.status_code != 200:
-                return None
-            search_data = resp.json()
-
-        results = search_data.get("expanded-result", [])
-        if not results:
-            return None
-        best = results[0]
-        orcid_id = best.get("orcid-id", "")
-        if not orcid_id:
-            return None
-
-        _orcid_limiter.wait_if_needed()
-        with httpx.Client(timeout=30) as client:
-            resp = client.get(f"{ORCID_API_URL}/{orcid_id}/record", headers=headers)
-            if resp.status_code != 200:
-                return None
-            profile = resp.json()
-    except Exception as e:
-        print(f"ORCID API error for {pi_name}: {e}", file=sys.stderr)
+    if rec is None:
         return None
-
-    affiliations: list[str] = []
-    for group in (profile.get("activities-summary", {}).get("employments", {}).get("affiliation-group", []))[:10]:
-        for s in group.get("summaries", []):
-            org_name = s.get("employment-summary", {}).get("organization", {}).get("name", "")
-            if org_name and org_name not in affiliations:
-                affiliations.append(org_name)
-
-    works_group = profile.get("activities-summary", {}).get("works", {}).get("group", [])
-    sample_titles = []
-    for wg in works_group[:5]:
-        summaries = wg.get("work-summary", [])
-        if summaries:
-            title_val = summaries[0].get("title", {}).get("title", {}).get("value", "")
-            if title_val:
-                sample_titles.append(title_val)
-
-    funding_group = profile.get("activities-summary", {}).get("fundings", {}).get("group", [])
-    keyword_list = profile.get("person", {}).get("keywords", {}).get("keyword", [])
-    keywords = [kw.get("content", "") for kw in keyword_list[:10] if kw.get("content")]
-
     return ORCIDRecord(
-        orcid_id=orcid_id,
-        given_name=best.get("given-names"),
-        family_name=best.get("family-names"),
-        affiliations=affiliations,
-        works_count=len(works_group),
-        sample_work_titles=sample_titles,
-        funding_count=len(funding_group),
-        keywords=keywords,
+        orcid_id=rec.orcid_id,
+        given_name=rec.given_name,
+        family_name=rec.family_name,
+        affiliations=rec.affiliations,
+        works_count=rec.works_count,
+        sample_work_titles=rec.sample_work_titles,
+        funding_count=rec.funding_count,
+        keywords=rec.keywords,
     )
 
 
@@ -2205,177 +1522,71 @@ def fetch_solicitation_topics(awards: list[dict]) -> dict[str, SolicitationTopic
             program=topic.get("program"),
         )
 
-    # --- Path A: SolicitationExtractor (tenacity retry + all query modes) ---
-    if _HAS_SOLICITATION_EXTRACTOR:
-        _debug("Using SolicitationExtractor")
-        try:
-            extractor = SolicitationExtractor()
-            try:
-                # Group topic codes by year
-                sol_years: dict[int, list[str]] = {}
-                no_year_codes: list[tuple[str, str]] = []
-                for tc, sol in topic_codes.items():
-                    year = _parse_year(sol)
-                    if year:
-                        sol_years.setdefault(year, []).append(tc)
-                    else:
-                        no_year_codes.append((tc, sol))
+    _debug("Using SolicitationExtractor")
+    extractor = SolicitationExtractor()
+    try:
+        # Group topic codes by year
+        sol_years: dict[int, list[str]] = {}
+        no_year_codes: list[tuple[str, str]] = []
+        for tc, sol in topic_codes.items():
+            year = _parse_year(sol)
+            if year:
+                sol_years.setdefault(year, []).append(tc)
+            else:
+                no_year_codes.append((tc, sol))
 
-                # Step 1: Year-based batch queries
-                import pandas as pd
+        # Step 1: Year-based batch queries
+        import pandas as pd
 
-                all_topics = pd.DataFrame()
-                for year in sol_years:
-                    df = extractor.extract_topics(year=year, max_results=1000)
-                    if not df.empty:
-                        all_topics = pd.concat([all_topics, df], ignore_index=True)
+        all_topics = pd.DataFrame()
+        for year in sol_years:
+            df = extractor.extract_topics(year=year, max_results=1000)
+            if not df.empty:
+                all_topics = pd.concat([all_topics, df], ignore_index=True)
 
-                if not all_topics.empty:
-                    all_topics = extractor.deduplicate_topics(all_topics)
-                    codes_set = set(topic_codes.keys())
-                    for _, row in all_topics.iterrows():
-                        tc = str(row.get("topic_code", "")).strip()
-                        if tc in codes_set and tc not in results:
-                            results[tc] = _make_topic(tc, topic_codes.get(tc, ""), row.to_dict())
+        if not all_topics.empty:
+            all_topics = extractor.deduplicate_topics(all_topics)
+            codes_set = set(topic_codes.keys())
+            for _, row in all_topics.iterrows():
+                tc = str(row.get("topic_code", "")).strip()
+                if tc in codes_set and tc not in results:
+                    results[tc] = _make_topic(tc, topic_codes.get(tc, ""), row.to_dict())
 
-                # Step 2: Keyword search for no-year codes
-                for tc, sol in no_year_codes:
-                    if tc in results:
-                        continue
-                    keyword = sol if sol else tc
-                    topics = extractor.query_by_keyword(keyword)
-                    for topic in topics:
-                        found_tc = topic.get("topicCode") or topic.get("topic_code") or ""
-                        if found_tc == tc:
-                            results[tc] = _make_topic(tc, sol, topic)
-                            break
-
-                # Step 3: Awards fallback for anything still missing
-                missing = [tc for tc in topic_codes if tc not in results]
-                if missing:
-                    _debug(f"Awards fallback for {len(missing)} missing topic codes")
-                    for tc in missing:
-                        fallback = extractor.query_awards_for_topic(tc)
-                        if fallback:
-                            results[tc] = SolicitationTopic(
-                                topic_code=tc,
-                                solicitation_number=topic_codes.get(tc, ""),
-                                title=fallback.get("title", ""),
-                                description=(
-                                    str(fallback["description"])[:3000] + "..."
-                                    if fallback.get("description") and len(str(fallback["description"])) > 3000
-                                    else fallback.get("description")
-                                ),
-                                agency=fallback.get("agency"),
-                                program=fallback.get("program"),
-                            )
-
-                print(f"SolicitationExtractor found {len(results)}/{total} topics", file=sys.stderr)
-            finally:
-                extractor.close()
-            return results
-        except Exception as e:
-            print(f"SolicitationExtractor error: {e}, falling back to manual queries", file=sys.stderr)
-
-    # --- Path B: Inline httpx fallback (standalone mode) ---
-    sol_years_fb: dict[int, list[str]] = {}
-    no_year_codes_fb: list[tuple[str, str]] = []
-    for tc, sol in topic_codes.items():
-        year = _parse_year(sol)
-        if year:
-            sol_years_fb.setdefault(year, []).append(tc)
-        else:
-            no_year_codes_fb.append((tc, sol))
-
-    import time
-
-    for tc, sol in no_year_codes_fb:
-        keyword = sol if sol else tc
-        try:
-            _sbir_gov_limiter.wait_if_needed()
-            with httpx.Client(timeout=30) as client:
-                resp = client.get(f"{SBIR_GOV_API_URL}/solicitations", params={"rows": 25, "start": 0, "keyword": keyword})
-                if resp.status_code == 429:
-                    time.sleep(3)
-                    _sbir_gov_limiter.wait_if_needed()
-                    resp = client.get(f"{SBIR_GOV_API_URL}/solicitations", params={"rows": 25, "start": 0, "keyword": keyword})
-                if resp.status_code != 200:
-                    continue
-                data = resp.json()
-        except Exception:
-            continue
-        topics = data if isinstance(data, list) else (data.get("results") or data.get("data") or [])
-        for topic in topics:
-            found_tc = topic.get("topicCode") or topic.get("topic_code") or ""
-            if found_tc == tc and tc not in results:
-                results[tc] = _make_topic(tc, sol, topic)
-                break
-
-    for year, codes in sol_years_fb.items():
-        data = None
-        for attempt in range(3):
-            try:
-                _sbir_gov_limiter.wait_if_needed()
-                with httpx.Client(timeout=30) as client:
-                    resp = client.get(f"{SBIR_GOV_API_URL}/solicitations", params={"rows": 500, "start": 0, "year": year})
-                    if resp.status_code == 429:
-                        time.sleep(2 ** (attempt + 1))
-                        continue
-                    if resp.status_code != 200:
-                        break
-                    data = resp.json()
-                    break
-            except Exception:
-                break
-        if data is None:
-            continue
-        topics = data if isinstance(data, list) else (data.get("results") or data.get("data") or [])
-        codes_set = set(codes)
-        for topic in topics:
-            tc = topic.get("topicCode") or topic.get("topic_code") or ""
-            if tc in codes_set and tc not in results:
-                results[tc] = _make_topic(tc, topic_codes.get(tc, ""), topic)
-
-    found = len(results)
-    print(f"Fetched {found}/{total} solicitation topics from SBIR.gov", file=sys.stderr)
-
-    # Awards fallback for missing codes
-    missing_codes = [tc for tc in topic_codes if tc not in results]
-    if missing_codes:
-        print(f"Falling back to SBIR.gov awards API for {len(missing_codes)} missing topic codes...", file=sys.stderr)
-        time.sleep(2)
-        for tc in missing_codes:
-            try:
-                _sbir_gov_limiter.wait_if_needed()
-                with httpx.Client(timeout=30) as client:
-                    resp = client.get(f"{SBIR_GOV_API_URL}/awards", params={"keyword": tc, "rows": 5, "start": 0})
-                    if resp.status_code == 429:
-                        time.sleep(3)
-                        resp = client.get(f"{SBIR_GOV_API_URL}/awards", params={"keyword": tc, "rows": 5, "start": 0})
-                        if resp.status_code != 200:
-                            continue
-                    elif resp.status_code != 200:
-                        continue
-                    data = resp.json()
-            except Exception:
+        # Step 2: Keyword search for no-year codes
+        for tc, sol in no_year_codes:
+            if tc in results:
                 continue
-            award_list = data if isinstance(data, list) else (data.get("results") or data.get("data") or [])
-            for award in award_list:
-                award_tc = award.get("topicCode") or award.get("topic_code") or ""
-                if award_tc != tc:
-                    continue
-                title = award.get("topicTitle") or award.get("topic_title") or award.get("awardTitle") or award.get("award_title") or ""
-                desc = award.get("topicDescription") or award.get("topic_description") or award.get("abstract") or award.get("Abstract") or None
-                if desc and len(desc) > 3000:
-                    desc = desc[:3000] + "..."
-                if title or desc:
-                    results[tc] = SolicitationTopic(
-                        topic_code=tc, solicitation_number=topic_codes.get(tc, ""),
-                        title=title, description=desc, agency=award.get("agency"), program=award.get("program"),
-                    )
+            keyword = sol if sol else tc
+            topics = extractor.query_by_keyword(keyword)
+            for topic in topics:
+                found_tc = topic.get("topicCode") or topic.get("topic_code") or ""
+                if found_tc == tc:
+                    results[tc] = _make_topic(tc, sol, topic)
                     break
-        fallback_found = len(results) - found
-        print(f"Fallback recovered {fallback_found}/{len(missing_codes)} topic descriptions from awards API", file=sys.stderr)
+
+        # Step 3: Awards fallback for anything still missing
+        missing = [tc for tc in topic_codes if tc not in results]
+        if missing:
+            _debug(f"Awards fallback for {len(missing)} missing topic codes")
+            for tc in missing:
+                fallback = extractor.query_awards_for_topic(tc)
+                if fallback:
+                    results[tc] = SolicitationTopic(
+                        topic_code=tc,
+                        solicitation_number=topic_codes.get(tc, ""),
+                        title=fallback.get("title", ""),
+                        description=(
+                            str(fallback["description"])[:3000] + "..."
+                            if fallback.get("description") and len(str(fallback["description"])) > 3000
+                            else fallback.get("description")
+                        ),
+                        agency=fallback.get("agency"),
+                        program=fallback.get("program"),
+                    )
+
+        print(f"SolicitationExtractor found {len(results)}/{total} topics", file=sys.stderr)
+    finally:
+        extractor.close()
 
     return results
 
@@ -2575,11 +1786,9 @@ def build_usaspending_url(award: dict) -> str | None:
 _openai_client_instance: object | None = None
 
 
-def _get_openai_client(api_key: str) -> object | None:
-    """Return (and cache) an OpenAIClient if the library is installed."""
+def _get_openai_client(api_key: str) -> OpenAIClient:
+    """Return (and cache) the shared OpenAIClient instance."""
     global _openai_client_instance  # noqa: PLW0603
-    if not _HAS_OPENAI_CLIENT:
-        return None
     if _openai_client_instance is None:
         _openai_client_instance = OpenAIClient(
             api_key=api_key,
@@ -2587,40 +1796,6 @@ def _get_openai_client(api_key: str) -> object | None:
             model=OPENAI_MODEL,
         )
     return _openai_client_instance
-
-
-def _openai_request_with_retry(
-    method: str,
-    url: str,
-    headers: dict,
-    payload: dict,
-    timeout: int = 120,
-) -> httpx.Response | None:
-    """Fallback: make an OpenAI API request with retry/backoff."""
-    import time
-
-    for attempt in range(OPENAI_MAX_RETRIES + 1):
-        try:
-            _openai_semaphore.acquire()
-            try:
-                with httpx.Client(timeout=timeout) as client:
-                    resp = client.request(method, url, headers=headers, json=payload)
-            finally:
-                _openai_semaphore.release()
-            if resp.status_code == 429 or resp.status_code >= 500:
-                if attempt < OPENAI_MAX_RETRIES:
-                    wait = OPENAI_RETRY_BACKOFF_BASE ** (attempt + 1)
-                    time.sleep(wait)
-                    continue
-            resp.raise_for_status()
-            return resp
-        except httpx.HTTPStatusError:
-            if attempt < OPENAI_MAX_RETRIES:
-                continue
-            return None
-        except Exception:
-            return None
-    return None
 
 
 def _openai_chat(
@@ -2636,89 +1811,22 @@ def _openai_chat(
         f"system_len={len(system)} user_len={len(user)}"
     )
 
-    # Prefer library client (has its own retry + semaphore)
     oai = _get_openai_client(api_key)
-    if oai is not None:
-        result = oai.chat(system, user, model=model, temperature=temperature)
-        if result:
-            _debug(f"OpenAI chat response: {len(result)} chars")
-        return result
-
-    # Inline fallback
-    headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
-    payload = {
-        "model": model,
-        "temperature": temperature,
-        "messages": [
-            {"role": "system", "content": system},
-            {"role": "user", "content": user},
-        ],
-    }
-    resp = _openai_request_with_retry("POST", OPENAI_CHAT_URL, headers, payload)
-    if resp is None:
-        return None
-    try:
-        data = resp.json()
-        content = data["choices"][0]["message"]["content"].strip()
-        usage = data.get("usage", {})
-        _debug(
-            f"OpenAI chat response: {len(content)} chars | "
-            f"tokens: prompt={usage.get('prompt_tokens', '?')} "
-            f"completion={usage.get('completion_tokens', '?')} "
-            f"total={usage.get('total_tokens', '?')}"
-        )
-        return content
-    except (KeyError, IndexError) as e:
-        print(f"OpenAI Chat API unexpected response: {e}", file=sys.stderr)
-        return None
+    result = oai.chat(system, user, model=model, temperature=temperature)
+    if result:
+        _debug(f"OpenAI chat response: {len(result)} chars")
+    return result
 
 
 def _openai_web_search(api_key: str, query: str) -> CompanyResearch | None:
     """Use the OpenAI Responses API with web_search_preview to research a company."""
     _debug(f"OpenAI web search: query='{query[:200]}'")
 
-    # Prefer library client
     oai = _get_openai_client(api_key)
-    if oai is not None:
-        result = oai.web_search(query)
-        if result is None:
-            return None
-        return CompanyResearch(summary=result.summary, source_urls=result.source_urls)
-
-    # Inline fallback
-    headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
-    payload = {
-        "model": OPENAI_MODEL,
-        "tools": [{"type": "web_search_preview"}],
-        "instructions": (
-            "You are a research assistant gathering public information about "
-            "companies that receive SBIR/STTR federal awards. Provide a concise "
-            "2-3 sentence summary covering: what the company does, its size/stage, "
-            "notable products or contracts, and any previous SBIR/STTR history. "
-            "Cite your sources."
-        ),
-        "input": query,
-    }
-    resp = _openai_request_with_retry("POST", OPENAI_RESPONSES_URL, headers, payload, timeout=60)
-    if resp is None:
+    result = oai.web_search(query)
+    if result is None:
         return None
-    data = resp.json()
-
-    summary_text = ""
-    source_urls: list[str] = []
-    for output_item in data.get("output", []):
-        if output_item.get("type") == "message":
-            for content_block in output_item.get("content", []):
-                if content_block.get("type") == "output_text":
-                    summary_text = content_block.get("text", "")
-                    for annotation in content_block.get("annotations", []):
-                        url = annotation.get("url", "")
-                        if url and url not in source_urls:
-                            source_urls.append(url)
-
-    if not summary_text:
-        return None
-    return CompanyResearch(summary=summary_text, source_urls=source_urls)
+    return CompanyResearch(summary=result.summary, source_urls=result.source_urls)
 
 
 def research_companies(
@@ -2803,73 +1911,12 @@ def _fetch_fpds_descriptions(
 
     _debug(f"FPDS: querying {len(contract_ids)} contract IDs")
 
-    if _HAS_FPDS_CLIENT:
-        with FPDSAtomClient(rate_limiter=_usaspending_limiter) as fpds:
-            try:
-                results = fpds.get_descriptions(contract_ids)
-            except Exception as e:
-                print(f"FPDS error: {e}", file=sys.stderr)
-                results = {}
-        _debug(f"FPDS: {len(results)}/{len(contract_ids)} descriptions found")
-        return results
-
-    # Inline fallback for standalone operation (no sbir_etl)
-    import time as _t
-    import xml.etree.ElementTree as ET
-
-    results: dict[str, str] = {}
-    try:
-        with httpx.Client(timeout=30) as client:
-            for cid in contract_ids:
-                if cid in results:
-                    continue
-                query = f'PIID:"{cid}" OR REF_IDV_PIID:"{cid}"'
-                for attempt in range(3):
-                    try:
-                        _usaspending_limiter.wait_if_needed()
-                        resp = client.get(
-                            FPDS_ATOM_SEARCH_URL,
-                            params={"q": query, "s": 0, "num": 1},
-                        )
-                        if resp.status_code in (429, 500, 502, 503, 504):
-                            wait = 2 ** (attempt + 1)
-                            _debug(f"FPDS [{cid}] returned {resp.status_code}, retrying in {wait}s")
-                            _t.sleep(wait)
-                            continue
-                        if resp.status_code != 200:
-                            break
-
-                        root = ET.fromstring(resp.text)
-                        ns = {"atom": "http://www.w3.org/2005/Atom"}
-                        entry = root.find("atom:entry", ns)
-                        if entry is None:
-                            break
-
-                        content_el = entry.find("atom:content", ns)
-                        desc = None
-                        if content_el is not None:
-                            for local_name in ("descriptionOfContractRequirement", "description"):
-                                for el in content_el.iter():
-                                    tag = el.tag.split("}", 1)[-1] if "}" in el.tag else el.tag
-                                    if tag == local_name and el.text:
-                                        desc = el.text.strip()
-                                        break
-                                if desc:
-                                    break
-                        if not desc:
-                            title_el = entry.find("atom:title", ns)
-                            if title_el is not None and title_el.text:
-                                desc = title_el.text.strip()
-                        if desc:
-                            if len(desc) > 500:
-                                desc = desc[:500] + "..."
-                            results[cid] = desc
-                        break
-                    except (httpx.HTTPError, ET.ParseError, UnicodeDecodeError) as e:
-                        _t.sleep(2 ** (attempt + 1))
-    except Exception as e:
-        print(f"FPDS fallback error: {e}", file=sys.stderr)
-
+    with FPDSAtomClient(rate_limiter=_usaspending_limiter) as fpds:
+        try:
+            results = fpds.get_descriptions(contract_ids)
+        except Exception as e:
+            print(f"FPDS error: {e}", file=sys.stderr)
+            results = {}
     _debug(f"FPDS: {len(results)}/{len(contract_ids)} descriptions found")
     return results
 
@@ -2882,7 +1929,6 @@ def fetch_usaspending_contract_descriptions(
     Returns a dict keyed by contract number with the award description text.
     Used as supplementary LLM context when solicitation topic data is unavailable.
     """
-    import time as _t
 
     # Use shared award-ID classification when available, inline fallback otherwise.
     try:
@@ -2944,110 +1990,46 @@ def fetch_usaspending_contract_descriptions(
                     desc = desc[:500] + "..."
                 results[aid] = desc
 
-    if _HAS_SYNC_CLIENTS:
-        usa = SyncUSAspendingClient()
-        try:
-            for ids, group_name, codes in requests_to_make:
-                quoted = [f'"{c}"' for c in ids]
-                filters = {"award_ids": quoted, "award_type_codes": codes}
-                _debug(
-                    f"USAspending contract desc: {group_name} "
-                    f"({len(ids)} IDs: {ids[:3]})"
-                )
-                data = None
-                # Try spending_by_award, then spending_by_transaction
-                # USAspending requires a 'sort' field; use the appropriate
-                # default for each endpoint.
-                _sort_for_method = {
-                    "search_awards": "Award Amount",
-                    "search_transactions": "Transaction Amount",
-                }
-                for method in ("search_awards", "search_transactions"):
-                    try:
-                        _usaspending_limiter.wait_if_needed()
-                        data = getattr(usa, method)(
-                            filters=filters,
-                            fields=desc_fields,
-                            limit=len(ids),
-                            sort=_sort_for_method.get(method, "Award Amount"),
-                            order="desc",
-                        )
-                        break
-                    except Exception as e:
-                        _debug(f"USAspending {method}/{group_name} failed: {e}")
-                        continue
-                if data is None:
-                    failed_ids.update(ids)
-                    continue
-                _extract_descriptions(data)
-        except Exception as e:
-            failed_ids.update(cid for cid in all_ids if cid not in results)
-            print(f"USAspending contract desc error: {e}", file=sys.stderr)
-        finally:
-            usa.close()
-    else:
-        try:
-            with httpx.Client(timeout=30) as client:
-                for ids, group_name, codes in requests_to_make:
-                    quoted = [f'"{c}"' for c in ids]
-                    # USAspending requires 'sort'; map each endpoint to its
-                    # default sort field.
-                    endpoints = [
-                        ("search/spending_by_award", "Award Amount"),
-                        ("search/spending_by_transaction", "Transaction Amount"),
-                    ]
-                    _debug(
-                        f"USAspending contract desc: {group_name} "
-                        f"({len(ids)} IDs: {ids[:3]})"
+    usa = SyncUSAspendingClient()
+    try:
+        for ids, group_name, codes in requests_to_make:
+            quoted = [f'"{c}"' for c in ids]
+            filters = {"award_ids": quoted, "award_type_codes": codes}
+            _debug(
+                f"USAspending contract desc: {group_name} "
+                f"({len(ids)} IDs: {ids[:3]})"
+            )
+            data = None
+            # Try spending_by_award, then spending_by_transaction
+            # USAspending requires a 'sort' field; use the appropriate
+            # default for each endpoint.
+            _sort_for_method = {
+                "search_awards": "Award Amount",
+                "search_transactions": "Transaction Amount",
+            }
+            for method in ("search_awards", "search_transactions"):
+                try:
+                    _usaspending_limiter.wait_if_needed()
+                    data = getattr(usa, method)(
+                        filters=filters,
+                        fields=desc_fields,
+                        limit=len(ids),
+                        sort=_sort_for_method.get(method, "Award Amount"),
+                        order="desc",
                     )
-                    data = None
-                    for endpoint, sort_field in endpoints:
-                        payload = {
-                            "filters": {
-                                "award_ids": quoted,
-                                "award_type_codes": codes,
-                            },
-                            "fields": desc_fields,
-                            "page": 1,
-                            "limit": len(ids),
-                            "sort": sort_field,
-                            "order": "desc",
-                        }
-                        for attempt in range(2):
-                            _usaspending_limiter.wait_if_needed()
-                            resp = client.post(
-                                f"{USASPENDING_API_URL}/{endpoint}/",
-                                json=payload,
-                            )
-                            if resp.status_code in (429, 500, 502, 503, 504):
-                                wait = 2 ** (attempt + 1)
-                                _debug(
-                                    f"USAspending {endpoint}/{group_name} "
-                                    f"returned {resp.status_code}, retrying in {wait}s"
-                                )
-                                _t.sleep(wait)
-                                continue
-                            if resp.status_code != 200:
-                                _debug(
-                                    f"USAspending {endpoint}/{group_name} "
-                                    f"returned {resp.status_code}"
-                                )
-                                break
-                            data = resp.json()
-                            break
-                        if data is not None:
-                            break
-                        _debug(
-                            f"USAspending {endpoint} failed for {group_name}, "
-                            f"trying next endpoint"
-                        )
-                    if data is None:
-                        failed_ids.update(ids)
-                        continue
-                    _extract_descriptions(data)
-        except Exception as e:
-            failed_ids.update(cid for cid in all_ids if cid not in results)
-            print(f"USAspending contract desc error: {e}", file=sys.stderr)
+                    break
+                except Exception as e:
+                    _debug(f"USAspending {method}/{group_name} failed: {e}")
+                    continue
+            if data is None:
+                failed_ids.update(ids)
+                continue
+            _extract_descriptions(data)
+    except Exception as e:
+        failed_ids.update(cid for cid in all_ids if cid not in results)
+        print(f"USAspending contract desc error: {e}", file=sys.stderr)
+    finally:
+        usa.close()
 
     # FPDS Atom Feed fallback for contract PIIDs that failed at USAspending.
     # FPDS only indexes procurement contracts (PIIDs), not assistance FAINs
@@ -3590,7 +2572,7 @@ def generate_company_diligence(
             if sam.exclusion_status:
                 sam_parts.append(f"Exclusion Status: {sam.exclusion_status}")
             context_parts.append(
-                f"SAM.gov registration data:\n" + "\n".join(sam_parts)
+                "SAM.gov registration data:\n" + "\n".join(sam_parts)
             )
         else:
             context_parts.append(
@@ -3862,9 +2844,6 @@ def enrich_with_inflation(awards: list[dict], base_year: int | None = None) -> d
 
     Returns an empty dict if inflation support is unavailable or fails.
     """
-    if not _HAS_INFLATION:
-        return {}
-
     import pandas as pd
 
     try:
@@ -3905,9 +2884,6 @@ def resolve_congressional_districts(awards: list[dict]) -> dict[str, str]:
 
     Returns a dict keyed by upper-cased company name → "ST-DD" district string.
     """
-    if not _HAS_CONGRESS_RESOLVER:
-        return {}
-
     results: dict[str, str] = {}
     resolver = CongressionalDistrictResolver(method="auto")
 
@@ -3950,9 +2926,6 @@ def map_naics_to_bea_sectors(naics_codes: list[str]) -> dict[str, str]:
 
     Returns a dict keyed by NAICS code → BEA sector name.
     """
-    if not _HAS_BEA_MAPPER:
-        return {}
-
     try:
         mapper = NAICSToBEAMapper(
             crosswalk_path=None,  # Will use fallback YAML
