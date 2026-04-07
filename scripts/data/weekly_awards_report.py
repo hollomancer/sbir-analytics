@@ -38,22 +38,35 @@ from sbir_etl.extractors.sbir import SbirDuckDBExtractor
 from sbir_etl.extractors.sbir_gov_api import SBIR_AWARDS_CSV_URL as SBIR_AWARDS_URL
 from sbir_etl.utils.date_utils import parse_date as _parse_date
 from sbir_etl.utils.text_normalization import normalize_name as _normalize_name
-from sbir_etl.utils.text_normalization import pluralize_col_key as _pluralize_col_key
 from sbir_etl.validators.sbir_awards import validate_sbir_award_record as _validate_record
 
 from sbir_etl.extractors.solicitation import SolicitationExtractor
-from sbir_etl.enrichers.patentsview import PatentsViewClient, RateLimiter
+from sbir_etl.enrichers.patentsview import RateLimiter
 from sbir_etl.enrichers.inflation_adjuster import InflationAdjuster
 from sbir_etl.enrichers.congressional_district_resolver import CongressionalDistrictResolver
 from sbir_etl.enrichers.fiscal_bea_mapper import NAICSToBEAMapper
-from sbir_etl.enrichers.sync_wrappers import SyncSAMGovClient, SyncUSAspendingClient
-from sbir_etl.enrichers.fpds_atom import FPDSAtomClient
-from sbir_etl.enrichers.semantic_scholar import (
-    SemanticScholarClient,
-)
-from sbir_etl.enrichers.orcid_client import ORCIDClient
 from sbir_etl.enrichers.openai_client import OpenAIClient
-from sbir_etl.models.sbir_identification import classify_sbir_award
+from sbir_etl.enrichers.award_history import (
+    get_company_history as _lib_get_company_history,
+    get_pi_history as _lib_get_pi_history,
+)
+from sbir_etl.enrichers.pi_enrichment import (
+    PIPatentRecord,
+    PIPublicationRecord,
+    ORCIDRecord,
+    lookup_pi_patents as _lib_lookup_pi_patents,
+    lookup_pi_publications as _lib_lookup_pi_publications,
+    lookup_pi_orcid as _lib_lookup_pi_orcid,
+)
+from sbir_etl.enrichers.company_enrichment import (
+    FederalAwardSummary as PIFederalAwardRecord,
+    USARecipientProfile,
+    SAMEntityRecord,
+    lookup_company_federal_awards as _lib_lookup_company_federal_awards,
+    lookup_usaspending_recipient as _lib_lookup_usaspending_recipient,
+    lookup_sam_entity as _lib_lookup_sam_entity,
+    fetch_usaspending_contract_descriptions as _lib_fetch_usaspending_contract_descriptions,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -299,12 +312,6 @@ def clean_and_dedup_awards(awards: list[dict]) -> tuple[list[dict], dict]:
 # ---------------------------------------------------------------------------
 
 
-def _parse_date_safe(value) -> str | None:
-    """Parse a date value and return ISO format string, or None."""
-    parsed = _parse_date(value)
-    return parsed.isoformat() if parsed else None
-
-
 def _resolve_shared_extractor(
     source: DataSource | None = None,
 ) -> tuple[DataSource, SbirDuckDBExtractor, str]:
@@ -326,186 +333,16 @@ def _resolve_shared_extractor(
     return source, extractor, table
 
 
-def _build_history_from_df(
-    df,
-    group_col: str,
-    extra_set_cols: list[str] | None = None,
-) -> dict[str, dict]:
-    """Build history dicts from a DataFrame grouped by a column.
-
-    Used by both company and PI history to avoid duplicating aggregation logic.
-    """
-    df = df.fillna("")
-    history: dict[str, dict] = {}
-
-    for group_key, group_df in df.groupby(group_col, sort=False):
-        name = str(group_key).strip()
-        if not name:
-            continue
-
-        phases = {v for v in group_df["Phase"].astype(str).str.strip() if v}
-        agencies = {v for v in group_df["Agency"].astype(str).str.strip() if v}
-        programs = {v for v in group_df["Program"].astype(str).str.strip() if v}
-
-        total_funding = 0.0
-        for val in group_df["Award Amount"].astype(str):
-            try:
-                total_funding += float(val.replace(",", "").replace("$", ""))
-            except (ValueError, TypeError):
-                pass
-
-        parsed_dates = []
-        for val in group_df["Proposal Award Date"].astype(str).str.strip():
-            if val:
-                iso = _parse_date_safe(val)
-                if iso:
-                    parsed_dates.append(iso)
-
-        titles: list[str] = []
-        for t in group_df["Award Title"].astype(str).str.strip():
-            if t and t not in titles:
-                titles.append(t)
-
-        entry: dict = {
-            "total_awards": len(group_df),
-            "phases": sorted(phases),
-            "agencies": sorted(agencies),
-            "programs": sorted(programs),
-            "total_funding": total_funding,
-            "earliest_date": min(parsed_dates) if parsed_dates else None,
-            "latest_date": max(parsed_dates) if parsed_dates else None,
-            "sample_titles": titles[:5],
-        }
-
-        # Extra set columns (e.g. "Company" for PI history)
-        if extra_set_cols:
-            for col in extra_set_cols:
-                col_key = _pluralize_col_key(col)
-                entry[col_key] = sorted(
-                    {v for v in group_df[col].astype(str).str.strip() if v}
-                )
-
-        history[name] = entry
-
-    return history
-
-
-def _build_history_from_csv(
-    source: DataSource,
-    target_names: set[str],
-    key_field: str,
-    extra_set_fields: list[str] | None = None,
-) -> dict[str, dict]:
-    """Build history dicts by streaming the CSV file.
-
-    Streams the file line-by-line to avoid loading the entire CSV into memory.
-    """
-    import csv
-
-    history: dict[str, dict] = {}
-    with source.path.open(newline="", encoding="utf-8") as f:
-        reader = csv.DictReader(f)
-        for row in reader:
-            name = str(row.get(key_field, "")).strip().upper()
-            if name not in target_names:
-                continue
-            if name not in history:
-                entry: dict = {
-                    "total_awards": 0,
-                    "phases": set(),
-                    "agencies": set(),
-                    "programs": set(),
-                    "total_funding": 0.0,
-                    "dates": [],
-                    "sample_titles": [],
-                }
-                if extra_set_fields:
-                    for ef in extra_set_fields:
-                        entry[_pluralize_col_key(ef)] = set()
-                history[name] = entry
-
-            h = history[name]
-            h["total_awards"] += 1
-            for field, set_key in [("Phase", "phases"), ("Agency", "agencies"), ("Program", "programs")]:
-                val = str(row.get(field, "")).strip()
-                if val:
-                    h[set_key].add(val)
-            if extra_set_fields:
-                for ef in extra_set_fields:
-                    val = str(row.get(ef, "")).strip()
-                    if val:
-                        h[_pluralize_col_key(ef)].add(val)
-            try:
-                h["total_funding"] += float(
-                    str(row.get("Award Amount", "0")).replace(",", "").replace("$", "")
-                )
-            except (ValueError, TypeError):
-                pass
-            d = str(row.get("Proposal Award Date", "")).strip()
-            if d:
-                h["dates"].append(d)
-            t = str(row.get("Award Title", "")).strip()
-            if t and len(h["sample_titles"]) < 5 and t not in h["sample_titles"]:
-                h["sample_titles"].append(t)
-
-    # Normalize sets to sorted lists and parse dates
-    for _name, h in history.items():
-        raw_dates = h.pop("dates", [])
-        parsed_dates = [_parse_date_safe(d) for d in raw_dates]
-        parsed_dates = [d for d in parsed_dates if d]
-        h["earliest_date"] = min(parsed_dates) if parsed_dates else None
-        h["latest_date"] = max(parsed_dates) if parsed_dates else None
-        for key in ["phases", "agencies", "programs"]:
-            if isinstance(h[key], set):
-                h[key] = sorted(h[key])
-        if extra_set_fields:
-            for ef in extra_set_fields:
-                set_key = ef.lower().replace(" ", "_") + "s"
-                if isinstance(h.get(set_key), set):
-                    h[set_key] = sorted(h[set_key])
-
-    return history
-
-
 def get_company_history(
     awards: list[dict],
     source: DataSource | None = None,
     extractor: object | None = None,
     table: str | None = None,
 ) -> dict[str, dict]:
-    """Extract historical SBIR award context per company from the full dataset.
-
-    Accepts optional shared source/extractor/table to avoid redundant CSV
-    downloads and DuckDB imports when called alongside get_pi_history().
-
-    Returns a dict keyed by upper-cased company name.
-    """
-    company_names = {str(a.get("Company", "")).strip().upper() for a in awards}
-    company_names.discard("")
-    if not company_names:
-        return {}
-
+    """Extract historical SBIR award context per company from the full dataset."""
     if source is None:
         source, extractor, table = _resolve_shared_extractor()
-
-    if extractor is not None and table is not None:
-        # Build IN clause with escaped names
-        escaped = [f"'{n.replace(chr(39), chr(39)+chr(39))}'" for n in sorted(company_names)]
-        in_clause = ", ".join(escaped)
-        query = (
-            f'SELECT UPPER("Company") AS _group_key, "Phase", "Agency", '
-            f'"Award Amount", "Proposal Award Date", "Award Title", "Program" '
-            f"FROM {table} "
-            f'WHERE UPPER("Company") IN ({in_clause}) '
-            f'ORDER BY "Proposal Award Date" DESC'
-        )
-        df = extractor.duckdb_client.execute_query_df(query)
-        if df.empty:
-            return {}
-        return _build_history_from_df(df, "_group_key")
-
-    # Fallback: stream the CSV
-    return _build_history_from_csv(source, company_names, "Company")
+    return _lib_get_company_history(awards, source=source, extractor=extractor, table=table)
 
 
 def get_pi_history(
@@ -514,68 +351,10 @@ def get_pi_history(
     extractor: object | None = None,
     table: str | None = None,
 ) -> dict[str, dict]:
-    """Extract historical SBIR context per Principal Investigator.
-
-    Accepts optional shared source/extractor/table to avoid redundant CSV
-    downloads and DuckDB imports.
-
-    Returns a dict keyed by upper-cased PI name.
-    """
-    pi_names = set()
-    for a in awards:
-        pi = str(a.get("PI Name", "")).strip().upper()
-        if pi:
-            pi_names.add(pi)
-
-    if not pi_names:
-        return {}
-
+    """Extract historical SBIR context per Principal Investigator."""
     if source is None:
         source, extractor, table = _resolve_shared_extractor()
-
-    if extractor is not None and table is not None:
-        escaped = [f"'{n.replace(chr(39), chr(39)+chr(39))}'" for n in sorted(pi_names)]
-        in_clause = ", ".join(escaped)
-        query = (
-            f'SELECT UPPER("PI Name") AS _group_key, "Company", "Phase", "Agency", '
-            f'"Award Amount", "Proposal Award Date", "Award Title", "Program" '
-            f"FROM {table} "
-            f'WHERE UPPER("PI Name") IN ({in_clause}) '
-            f'ORDER BY "Proposal Award Date" DESC'
-        )
-        df = extractor.duckdb_client.execute_query_df(query)
-        if df.empty:
-            return {}
-        return _build_history_from_df(df, "_group_key", extra_set_cols=["Company"])
-
-    # Fallback: stream the CSV
-    return _build_history_from_csv(source, pi_names, "PI Name", extra_set_fields=["Company"])
-
-
-# ---------------------------------------------------------------------------
-# PI external data lookups (patents, publications, federal awards)
-# ---------------------------------------------------------------------------
-
-
-@dataclass
-class PIPatentRecord:
-    """Summary of a PI's patent portfolio from PatentsView."""
-
-    total_patents: int
-    sample_titles: list[str]
-    assignees: list[str]
-    date_range: tuple[str | None, str | None]
-
-
-@dataclass
-class PIPublicationRecord:
-    """Summary of a PI's publication history from Semantic Scholar."""
-
-    total_papers: int
-    h_index: int | None
-    citation_count: int
-    sample_titles: list[str]
-    affiliations: list[str]
+    return _lib_get_pi_history(awards, source=source, extractor=extractor, table=table)
 
 
 @dataclass
@@ -591,386 +370,9 @@ class FederalAwardSummary:
     cfda_number: str  # Assistance Listing Number
 
 
-@dataclass
-class PIFederalAwardRecord:
-    """Summary of a PI's company's federal awards from USAspending.
-
-    Separates SBIR/STTR awards from non-SBIR federal work. Non-SBIR
-    awards to a company with SBIR history are potential follow-on /
-    Phase III commercialization signals.
-    """
-
-    total_awards: int
-    total_funding: float
-    agencies: list[str]
-    award_types: list[str]  # e.g. contracts, grants, IDVs
-    date_range: tuple[str | None, str | None]
-    # Follow-on analysis
-    sbir_award_count: int = 0
-    sbir_funding: float = 0.0
-    non_sbir_award_count: int = 0
-    non_sbir_funding: float = 0.0
-    non_sbir_agencies: list[str] = field(default_factory=list)
-    non_sbir_sample_descriptions: list[str] = field(default_factory=list)
-
-
-def _split_pi_name(full_name: str) -> tuple[str, str]:
-    """Split a PI name into (first, last) for API queries.
-
-    SBIR data typically stores names as 'First Last' or 'Last, First'.
-    """
-    full_name = full_name.strip()
-    if "," in full_name:
-        parts = [p.strip() for p in full_name.split(",", 1)]
-        return (parts[1], parts[0]) if len(parts) == 2 else (parts[0], "")
-    parts = full_name.split()
-    if len(parts) >= 2:
-        return (parts[0], parts[-1])
-    return (full_name, "")
-
-
-def lookup_pi_patents(pi_name: str, company_name: str | None = None) -> PIPatentRecord | None:
-    """Query USPTO ODP for patents where the PI is a named inventor.
-
-    Uses PatentsViewClient when available (rate limiting, caching, retry).
-    Falls back to bare httpx calls otherwise.
-    """
-    first, last = _split_pi_name(pi_name)
-    if not last:
-        return None
-
-    _debug(f"Using PatentsViewClient for '{pi_name}'")
-    try:
-        client = PatentsViewClient()
-        try:
-            patents = client.query_patents_by_assignee(
-                company_name=company_name or last,
-                max_patents=100,
-            )
-        finally:
-            if hasattr(client, "close"):
-                client.close()
-        if not patents:
-            return None
-
-        titles = []
-        assignees: set[str] = set()
-        dates: list[str] = []
-        for p in patents:
-            t = p.get("patent_title", "")
-            if t and t not in titles and len(titles) < 5:
-                titles.append(t)
-            org = p.get("assignee_organization", "")
-            if org:
-                assignees.add(org)
-            d = p.get("grant_date") or p.get("patent_date", "")
-            if d:
-                dates.append(d)
-
-        return PIPatentRecord(
-            total_patents=len(patents),
-            sample_titles=titles,
-            assignees=sorted(assignees),
-            date_range=(min(dates) if dates else None, max(dates) if dates else None),
-        )
-    except Exception as e:
-        _debug(f"PatentsViewClient error for '{pi_name}': {e}")
-        return None
-
-
-def lookup_pi_publications(pi_name: str) -> PIPublicationRecord | None:
-    """Query Semantic Scholar for the PI's publication history."""
-    first, last = _split_pi_name(pi_name)
-    if not last:
-        return None
-
-    search_query = f"{first} {last}".strip()
-
-    with SemanticScholarClient(rate_limiter=_semantic_scholar_limiter) as s2:
-        try:
-            rec = s2.lookup_author(search_query)
-        except Exception as e:
-            print(f"Semantic Scholar API error for {pi_name}: {e}", file=sys.stderr)
-            return None
-    if rec is None:
-        return None
-    return PIPublicationRecord(
-        total_papers=rec.total_papers,
-        h_index=rec.h_index,
-        citation_count=rec.citation_count,
-        sample_titles=rec.sample_titles,
-        affiliations=rec.affiliations,
-    )
-
-
-def _is_sbir_award_type(description: str, cfda: str) -> bool:
-    """Identify SBIR/STTR awards using ALN numbers and description keywords.
-
-    Delegates to :func:`sbir_etl.models.sbir_identification.classify_sbir_award`.
-    """
-    result = classify_sbir_award(cfda_number=cfda, description=description)
-    return result is not None
-
-
-def _usaspending_autocomplete(company_name: str) -> dict[str, str] | None:
-    """Use USAspending recipient autocomplete for fuzzy company name matching.
-
-    Generates name variations (abbreviation expansion, punctuation normalization,
-    suffix removal) and tries each against the autocomplete endpoint until a match
-    with a UEI or resolved name is found.
-
-    Based on sbir_etl.enrichers.company_categorization._fuzzy_match_recipient
-    but uses synchronous httpx to avoid async dependencies.
-    """
-    import re as _re
-
-    if not company_name or not company_name.strip():
-        return None
-
-    # Generate name variations, ordered most-to-least specific
-    abbreviations = {
-        r"\bIntl\.?\b": "International",
-        r"\bInt'l\.?\b": "International",
-        r"\bInc\.?\b": "Incorporated",
-        r"\bCorp\.?\b": "Corporation",
-        r"\bLtd\.?\b": "Limited",
-        r"\bLLC\.?\b": "Limited Liability Company",
-        r"\bTech\.?\b": "Technology",
-        r"\bMfg\.?\b": "Manufacturing",
-        r"\bSvcs\.?\b": "Services",
-        r"\bDev\.?\b": "Development",
-    }
-
-    variations: list[str] = [company_name.strip()]
-
-    # Expand abbreviations
-    expanded = company_name
-    for pattern, replacement in abbreviations.items():
-        expanded = _re.sub(pattern, replacement, expanded, flags=_re.IGNORECASE)
-    if expanded != company_name:
-        variations.append(expanded.strip())
-
-    # Normalize punctuation
-    normalized = expanded.replace("/", " AND ").replace("&", " AND ")
-    normalized = _re.sub(r"\s+", " ", normalized).strip()
-    if normalized not in variations:
-        variations.append(normalized)
-
-    # Remove legal suffixes for broadest match
-    base = _re.sub(
-        r",?\s*(Inc\.?|Incorporated|LLC|Ltd\.?|Limited|Corp\.?|Corporation|Company|Co\.?)$",
-        "", normalized, flags=_re.IGNORECASE,
-    ).strip().rstrip(",").strip()
-    if base and base not in variations and len(base) >= 10:
-        variations.append(base)
-
-    # Add uppercase versions (USAspending often stores uppercase)
-    upper_vars = [v.upper() for v in variations[:2] if v.upper() != v]
-    variations = variations[:2] + upper_vars + variations[2:]
-
-    # Deduplicate preserving order
-    seen: set[str] = set()
-    unique: list[str] = []
-    for v in variations:
-        key = v.lower()
-        if key not in seen and len(v) >= 5:
-            seen.add(key)
-            unique.append(v)
-
-    _debug(f"USAspending autocomplete: {len(unique)} name variations for '{company_name}'")
-
-    best_candidate = None
-
-    usa = SyncUSAspendingClient()
-    try:
-        for idx, name in enumerate(unique, 1):
-            try:
-                _usaspending_limiter.wait_if_needed()
-                data = usa.autocomplete_recipient(name, limit=5)
-                results = data.get("results", [])
-                if not results:
-                    continue
-                match = results[0]
-                matched_name = match.get("legal_business_name", "")
-                matched_uei = match.get("uei")
-                if matched_uei and str(matched_uei).strip().lower() not in ("", "nan", "none"):
-                    _debug(
-                        f"USAspending autocomplete matched '{company_name}' "
-                        f"(variation {idx}: '{name}') → '{matched_name}' UEI={matched_uei}"
-                    )
-                    return {"uei": matched_uei, "name": matched_name}
-                if matched_name and best_candidate is None:
-                    best_candidate = {"uei": matched_uei, "name": matched_name}
-            except Exception:
-                continue
-    finally:
-        usa.close()
-
-    if best_candidate:
-        _debug(f"USAspending autocomplete: best candidate for '{company_name}' → '{best_candidate['name']}' (no UEI)")
-        return best_candidate
-
-    _debug(f"USAspending autocomplete: no match for '{company_name}' after {len(unique)} variations")
-    return None
-
-
-def _usaspending_search(
-    company_name: str,
-    search_text: str,
-    label: str,
-) -> list[dict] | None:
-    """Execute USAspending spending_by_award searches for a company.
-
-    Makes separate requests for contracts and grants/other (USAspending
-    requires award_type_codes from a single group per request), then
-    merges the results.
-
-    Returns the combined results list on success, or None on error.
-    """
-    fields = [
-        "Award ID",
-        "Recipient Name",
-        "Award Amount",
-        "Awarding Agency",
-        "Award Type",
-        "Start Date",
-        "Description",
-        "CFDA Number",
-    ]
-    # USAspending requires award_type_codes from one group only.
-    # The API enforces these groups: contracts (A-D), grants (02-05),
-    # direct_payments (06, 10), loans (07-09), other (11).
-    type_groups = [
-        ("contracts", ["A", "B", "C", "D"]),
-        ("grants", ["02", "03", "04", "05"]),
-        ("direct_payments", ["06", "10"]),
-        ("loans", ["07", "08", "09"]),
-        ("other", ["11"]),
-    ]
-
-    all_results: list[dict] = []
-    _debug(
-        f"USAspending query for '{company_name}' ({label}='{search_text}'): "
-        f"POST /search/spending_by_award/"
-    )
-
-    usa = SyncUSAspendingClient()
-    try:
-        for group_name, codes in type_groups:
-            try:
-                _usaspending_limiter.wait_if_needed()
-                data = usa.search_awards(
-                    filters={
-                        "award_type_codes": codes,
-                        "recipient_search_text": [search_text],
-                    },
-                    fields=fields,
-                    limit=50,
-                )
-                group_results = data.get("results", [])
-                _debug(f"USAspending [{company_name} via {label}/{group_name}]: {len(group_results)} results")
-                all_results.extend(group_results)
-            except Exception as e:
-                _debug(f"USAspending [{company_name}] {label}/{group_name} error: {e}")
-                continue
-    finally:
-        usa.close()
-
-    _debug(f"USAspending [{company_name} via {label}]: {len(all_results)} total results")
-    return all_results if all_results else None
-
-
-def lookup_company_federal_awards(
-    company_name: str,
-    uei: str | None = None,
-) -> PIFederalAwardRecord | None:
-    """Query USAspending for all federal awards to the PI's company.
-
-    Tries UEI first (most reliable), then falls back to company name search.
-    Separates SBIR/STTR awards from non-SBIR federal work. Non-SBIR
-    contracts and grants to a company with SBIR history are the strongest
-    signal of successful commercialization / Phase III transition.
-    """
-    if not company_name:
-        return None
-
-    # Cascading lookup: UEI → exact name → fuzzy autocomplete match
-    results = None
-    if uei:
-        results = _usaspending_search(company_name, uei, "UEI")
-    if not results:
-        results = _usaspending_search(company_name, company_name, "name")
-    if not results:
-        # Fuzzy match: try USAspending autocomplete with name variations
-        match = _usaspending_autocomplete(company_name)
-        if match:
-            search_key = match["uei"] if match.get("uei") else match["name"]
-            label = "autocomplete-UEI" if match.get("uei") else "autocomplete-name"
-            results = _usaspending_search(company_name, search_key, label)
-    if not results:
-        return None
-
-    agencies: set[str] = set()
-    award_types: set[str] = set()
-    total_funding = 0.0
-    dates: list[str] = []
-
-    sbir_count = 0
-    sbir_funding = 0.0
-    non_sbir_count = 0
-    non_sbir_funding = 0.0
-    non_sbir_agencies: set[str] = set()
-    non_sbir_descriptions: list[str] = []
-
-    for r in results:
-        ag = r.get("Awarding Agency", "")
-        if ag:
-            agencies.add(ag)
-        at = r.get("Award Type", "")
-        if at:
-            award_types.add(at)
-        try:
-            amount = float(r.get("Award Amount", 0) or 0)
-        except (ValueError, TypeError):
-            amount = 0.0
-        total_funding += amount
-        d = r.get("Start Date", "")
-        if d:
-            dates.append(d)
-
-        desc = str(r.get("Description", "") or "")
-        cfda = str(r.get("CFDA Number", "") or "")
-
-        if _is_sbir_award_type(desc, cfda):
-            sbir_count += 1
-            sbir_funding += amount
-        else:
-            non_sbir_count += 1
-            non_sbir_funding += amount
-            if ag:
-                non_sbir_agencies.add(ag)
-            # Keep sample descriptions of non-SBIR awards (the follow-on signals)
-            if desc and len(non_sbir_descriptions) < 5:
-                # Truncate long descriptions
-                if len(desc) > 200:
-                    desc = desc[:200] + "..."
-                non_sbir_descriptions.append(
-                    f"{desc} ({ag}, {at}, ${amount:,.0f})"
-                )
-
-    return PIFederalAwardRecord(
-        total_awards=len(results),
-        total_funding=total_funding,
-        agencies=sorted(agencies),
-        award_types=sorted(award_types),
-        date_range=(min(dates) if dates else None, max(dates) if dates else None),
-        sbir_award_count=sbir_count,
-        sbir_funding=sbir_funding,
-        non_sbir_award_count=non_sbir_count,
-        non_sbir_funding=non_sbir_funding,
-        non_sbir_agencies=sorted(non_sbir_agencies),
-        non_sbir_sample_descriptions=non_sbir_descriptions,
-    )
+# ---------------------------------------------------------------------------
+# PI external data lookups (patents, publications, federal awards)
+# ---------------------------------------------------------------------------
 
 
 def lookup_pi_external_data(
@@ -1015,9 +417,9 @@ def lookup_pi_external_data(
 
         # Run the 3 independent API calls concurrently per PI
         with ThreadPoolExecutor(max_workers=3) as inner:
-            patent_future = inner.submit(lookup_pi_patents, name, company)
-            pub_future = inner.submit(lookup_pi_publications, name)
-            orcid_future = inner.submit(lookup_pi_orcid, name)
+            patent_future = inner.submit(_lib_lookup_pi_patents, name, company)
+            pub_future = inner.submit(_lib_lookup_pi_publications, name, rate_limiter=_semantic_scholar_limiter)
+            orcid_future = inner.submit(_lib_lookup_pi_orcid, name, rate_limiter=_orcid_limiter)
 
             patents = patent_future.result()
             publications = pub_future.result()
@@ -1028,7 +430,7 @@ def lookup_pi_external_data(
         if company_federal_awards is not None:
             fed = company_federal_awards.get(info["company_key"])
         if fed is None and company_federal_awards is None:
-            fed = lookup_company_federal_awards(company, uei)
+            fed = _lib_lookup_company_federal_awards(company, uei, rate_limiter=_usaspending_limiter)
 
         return key, {
             "patents": patents,
@@ -1077,93 +479,6 @@ def lookup_pi_external_data(
 # ---------------------------------------------------------------------------
 
 
-@dataclass
-class USARecipientProfile:
-    """Key data from a USAspending recipient profile."""
-
-    recipient_id: str
-    name: str
-    uei: str | None
-    parent_name: str | None
-    parent_uei: str | None
-    location_state: str | None
-    location_congressional_district: str | None
-    business_types: list[str]
-    total_transaction_amount: float
-    total_transactions: int
-
-
-def lookup_usaspending_recipient(
-    company_name: str,
-    uei: str | None = None,
-) -> USARecipientProfile | None:
-    """Look up a company's USAspending recipient profile.
-
-    Two-step: POST /recipient/ to find the hash ID, then GET /recipient/{id}/
-    for the full profile. Tries UEI first, then company name.
-    """
-    if not company_name:
-        return None
-
-    # Step 1: Find the recipient hash ID
-    search_terms = []
-    if uei:
-        search_terms.append(uei)
-    search_terms.append(company_name)
-
-    recipient_id = None
-
-    usa = SyncUSAspendingClient()
-    try:
-        for term in search_terms:
-            _debug(f"USAspending recipient search: keyword='{term}'")
-            try:
-                _usaspending_limiter.wait_if_needed()
-                results = usa.search_recipients(term, limit=5)
-                if results:
-                    recipient_id = results[0].get("id")
-                    _debug(
-                        f"USAspending recipient matched '{term}' → "
-                        f"'{results[0].get('name')}' id={recipient_id}"
-                    )
-                    break
-            except Exception as e:
-                _debug(f"USAspending recipient search error for '{term}': {e}")
-                continue
-
-        if not recipient_id:
-            _debug(f"USAspending recipient: no match for '{company_name}'")
-            return None
-
-        # Step 2: Fetch the full profile
-        _debug(f"USAspending recipient profile: GET /recipient/{recipient_id}/?year=all")
-        try:
-            _usaspending_limiter.wait_if_needed()
-            profile = usa.get_recipient_profile(recipient_id)
-        except Exception as e:
-            _debug(f"USAspending recipient profile error: {e}")
-            return None
-        if not profile:
-            return None
-    finally:
-        usa.close()
-
-    location = profile.get("location") or {}
-
-    return USARecipientProfile(
-        recipient_id=recipient_id,
-        name=profile.get("name") or company_name,
-        uei=profile.get("uei"),
-        parent_name=profile.get("parent_name"),
-        parent_uei=profile.get("parent_uei"),
-        location_state=location.get("state_code"),
-        location_congressional_district=location.get("congressional_code"),
-        business_types=profile.get("business_types") or [],
-        total_transaction_amount=float(profile.get("total_transaction_amount") or 0),
-        total_transactions=int(profile.get("total_transactions") or 0),
-    )
-
-
 def lookup_usaspending_recipients(
     awards: list[dict],
 ) -> dict[str, USARecipientProfile]:
@@ -1192,7 +507,7 @@ def lookup_usaspending_recipients(
 
     def _lookup_one(item: tuple[str, dict]) -> tuple[str, USARecipientProfile | None]:
         key, info = item
-        return key, lookup_usaspending_recipient(info["name"], info["uei"])
+        return key, _lib_lookup_usaspending_recipient(info["name"], info["uei"], rate_limiter=_usaspending_limiter)
 
     with ThreadPoolExecutor(max_workers=4) as executor:
         futures = {executor.submit(_lookup_one, item): item for item in companies.items()}
@@ -1223,126 +538,6 @@ def lookup_usaspending_recipients(
 # ---------------------------------------------------------------------------
 # SAM.gov entity lookup (company diligence)
 # ---------------------------------------------------------------------------
-
-
-@dataclass
-class SAMEntityRecord:
-    """Key SAM.gov entity registration data for diligence."""
-
-    uei: str
-    legal_business_name: str
-    dba_name: str | None
-    registration_status: str | None
-    expiration_date: str | None
-    business_type: str | None
-    entity_structure: str | None
-    naics_codes: list[str]
-    cage_code: str | None
-    exclusion_status: str | None
-    state: str | None
-    congressional_district: str | None
-
-
-def lookup_sam_entity(
-    company_name: str,
-    uei: str | None = None,
-    cage: str | None = None,
-) -> SAMEntityRecord | None:
-    """Query SAM.gov Entity Information API for company registration data.
-
-    Tries UEI first (exact match), then CAGE, then name search.
-    Requires SAM_GOV_API_KEY environment variable.
-    """
-    api_key = os.environ.get("SAM_GOV_API_KEY", "")
-    if not api_key:
-        return None
-
-    entity = None
-
-    sam = SyncSAMGovClient()
-    try:
-        # Try UEI first (most reliable)
-        if uei:
-            _debug(f"SAM.gov [{company_name}]: lookup by UEI={uei}")
-            try:
-                _sam_gov_limiter.wait_if_needed()
-                entity = sam.get_entity_by_uei(uei)
-            except Exception as e:
-                _debug(f"SAM.gov [{company_name}]: UEI lookup error: {e}")
-
-        # Try CAGE code
-        if not entity and cage:
-            _debug(f"SAM.gov [{company_name}]: lookup by CAGE={cage}")
-            try:
-                _sam_gov_limiter.wait_if_needed()
-                entity = sam.get_entity_by_cage(cage)
-            except Exception as e:
-                _debug(f"SAM.gov [{company_name}]: CAGE lookup error: {e}")
-
-        # Fall back to name search
-        if not entity and company_name:
-            _debug(f"SAM.gov [{company_name}]: name search")
-            try:
-                _sam_gov_limiter.wait_if_needed()
-                results = sam.search_entities(
-                    legal_business_name=company_name,
-                    registration_status="A",
-                    limit=1,
-                )
-                entity = results[0] if results else None
-            except Exception as e:
-                _debug(f"SAM.gov [{company_name}]: name search error: {e}")
-    finally:
-        sam.close()
-
-    if not entity:
-        # Always log — helps diagnose silent failures in CI
-        methods_tried = []
-        if uei:
-            methods_tried.append(f"UEI={uei}")
-        if cage:
-            methods_tried.append(f"CAGE={cage}")
-        methods_tried.append(f"name='{company_name}'")
-        print(
-            f"SAM.gov: no entity found for {company_name} "
-            f"(tried: {', '.join(methods_tried)})",
-            file=sys.stderr,
-        )
-        return None
-
-    # Extract fields — SAM.gov API nests data under various keys
-    core = entity.get("entityRegistration", entity)
-    address = entity.get("coreData", {}).get("physicalAddress", {})
-    business_types = entity.get("coreData", {}).get("businessTypes", {})
-
-    # Extract NAICS codes
-    naics_list = entity.get("coreData", {}).get("naicsCodeList", [])
-    if isinstance(naics_list, list):
-        naics_codes = [
-            str(n.get("naicsCode", "")) for n in naics_list if n.get("naicsCode")
-        ]
-    else:
-        naics_codes = []
-
-    return SAMEntityRecord(
-        uei=core.get("ueiSAM", ""),
-        legal_business_name=core.get("legalBusinessName", ""),
-        dba_name=core.get("dbaName"),
-        registration_status=core.get("registrationStatus"),
-        expiration_date=core.get("registrationExpirationDate"),
-        business_type=(
-            business_types.get("businessTypeList", [{}])[0].get("businessType")
-            if isinstance(business_types.get("businessTypeList"), list)
-            and business_types.get("businessTypeList")
-            else None
-        ),
-        entity_structure=core.get("entityStructureDesc"),
-        naics_codes=naics_codes,
-        cage_code=core.get("cageCode"),
-        exclusion_status=core.get("exclusionStatusFlag"),
-        state=address.get("stateOrProvinceCode"),
-        congressional_district=address.get("congressionalDistrict"),
-    )
 
 
 def lookup_sam_entities(
@@ -1382,7 +577,7 @@ def lookup_sam_entities(
 
     def _lookup_one(item: tuple[str, dict]) -> tuple[str, SAMEntityRecord | None]:
         key, info = item
-        return key, lookup_sam_entity(info["name"], info["uei"], info["cage"])
+        return key, _lib_lookup_sam_entity(info["name"], info["uei"], info["cage"], rate_limiter=_sam_gov_limiter)
 
     # Cap at 3 workers to respect SAM.gov 60 req/min rate limit
     with ThreadPoolExecutor(max_workers=3) as executor:
@@ -1409,55 +604,6 @@ def lookup_sam_entities(
 
     print(f"Found {len(results)}/{total} companies on SAM.gov", file=sys.stderr)
     return results
-
-
-# ---------------------------------------------------------------------------
-# ORCID API lookup (PI diligence)
-# ---------------------------------------------------------------------------
-
-
-@dataclass
-class ORCIDRecord:
-    """Key data from an ORCID researcher profile."""
-
-    orcid_id: str
-    given_name: str | None
-    family_name: str | None
-    affiliations: list[str]
-    works_count: int
-    sample_work_titles: list[str]
-    funding_count: int
-    keywords: list[str]
-
-
-def lookup_pi_orcid(pi_name: str) -> ORCIDRecord | None:
-    """Search the ORCID public API for a PI's researcher profile.
-
-    Uses :class:`ORCIDClient` when the library is available;
-    falls back to inline httpx calls for standalone operation.
-    """
-    first, last = _split_pi_name(pi_name)
-    if not last:
-        return None
-
-    with ORCIDClient(rate_limiter=_orcid_limiter) as orcid:
-        try:
-            rec = orcid.lookup(pi_name)
-        except Exception as e:
-            print(f"ORCID API error for {pi_name}: {e}", file=sys.stderr)
-            return None
-    if rec is None:
-        return None
-    return ORCIDRecord(
-        orcid_id=rec.orcid_id,
-        given_name=rec.given_name,
-        family_name=rec.family_name,
-        affiliations=rec.affiliations,
-        works_count=rec.works_count,
-        sample_work_titles=rec.sample_work_titles,
-        funding_count=rec.funding_count,
-        keywords=rec.keywords,
-    )
 
 
 # ---------------------------------------------------------------------------
@@ -1895,180 +1041,16 @@ def research_companies(
     return results
 
 
-def _fetch_fpds_descriptions(
-    contract_ids: list[str],
-) -> dict[str, str]:
-    """Fetch contract descriptions from FPDS Atom Feed (public, no API key).
-
-    Uses :class:`FPDSAtomClient` when the library is available; falls back
-    to inline httpx + XML parsing for standalone operation.
-
-    Only accepts contract PIIDs — assistance FAINs (e.g. DE-*) are not
-    indexed in FPDS and should be filtered out before calling this function.
-    """
-    if not contract_ids:
-        return {}
-
-    _debug(f"FPDS: querying {len(contract_ids)} contract IDs")
-
-    with FPDSAtomClient(rate_limiter=_usaspending_limiter) as fpds:
-        try:
-            results = fpds.get_descriptions(contract_ids)
-        except Exception as e:
-            print(f"FPDS error: {e}", file=sys.stderr)
-            results = {}
-    _debug(f"FPDS: {len(results)}/{len(contract_ids)} descriptions found")
-    return results
-
-
 def fetch_usaspending_contract_descriptions(
     awards: list[dict],
 ) -> dict[str, str]:
-    """Fetch contract descriptions from USAspending for awards with contract numbers.
+    """Fetch contract descriptions from USAspending + FPDS fallback.
 
-    Returns a dict keyed by contract number with the award description text.
-    Used as supplementary LLM context when solicitation topic data is unavailable.
+    Delegates to :func:`sbir_etl.enrichers.company_enrichment.fetch_usaspending_contract_descriptions`.
     """
-
-    # Use shared award-ID classification when available, inline fallback otherwise.
-    try:
-        from sbir_etl.enrichers.usaspending.client import build_award_type_groups
-    except ImportError:
-        import re as _re
-
-        def build_award_type_groups(ids):  # type: ignore[misc]
-            piids, fains, unknown = [], [], []
-            seen: set[str] = set()
-            for raw in ids:
-                s = raw.strip()
-                if not s or s in seen:
-                    continue
-                seen.add(s)
-                if _re.match(r"^DE-", s, _re.IGNORECASE):
-                    fains.append(s)
-                elif _re.match(r"^[A-Z]{2}\d", s):
-                    piids.append(s)
-                else:
-                    unknown.append(s)
-            groups = []
-            if piids:
-                groups.append((piids, "contracts", ["A", "B", "C", "D"]))
-            if fains:
-                groups.append((fains, "assistance", ["02", "03", "04", "05"]))
-            for uid in unknown:
-                groups.append(([uid], "contracts", ["A", "B", "C", "D"]))
-                groups.append(([uid], "assistance", ["02", "03", "04", "05"]))
-            return groups
-
-    raw_ids = [str(a.get("Contract", "")).strip() for a in awards]
-    raw_ids = [c for c in raw_ids if c]
-    if not raw_ids:
-        return {}
-
-    requests_to_make = build_award_type_groups(raw_ids)
-    all_ids = list({aid for ids, _, _ in requests_to_make for aid in ids})
-
-    _debug(f"USAspending contract desc: {len(all_ids)} IDs in {len(requests_to_make)} groups")
-    print(
-        f"Fetching {len(all_ids)} contract descriptions from USAspending...",
-        file=sys.stderr,
+    return _lib_fetch_usaspending_contract_descriptions(
+        awards, rate_limiter=_usaspending_limiter,
     )
-    results: dict[str, str] = {}
-    # Track IDs from groups that failed at the API level (503, 422, etc.)
-    # so the FPDS fallback only fires for actual USAspending outages.
-    failed_ids: set[str] = set()
-
-    desc_fields = ["Award ID", "Description", "Awarding Agency", "Award Type"]
-
-    def _extract_descriptions(data: dict) -> None:
-        """Extract descriptions from a USAspending response into results."""
-        for r in data.get("results", []):
-            aid = str(r.get("Award ID", "")).strip()
-            desc = str(r.get("Description", "")).strip()
-            if aid and desc and aid not in results:
-                if len(desc) > 500:
-                    desc = desc[:500] + "..."
-                results[aid] = desc
-
-    usa = SyncUSAspendingClient()
-    try:
-        for ids, group_name, codes in requests_to_make:
-            quoted = [f'"{c}"' for c in ids]
-            filters = {"award_ids": quoted, "award_type_codes": codes}
-            _debug(
-                f"USAspending contract desc: {group_name} "
-                f"({len(ids)} IDs: {ids[:3]})"
-            )
-            data = None
-            # Try spending_by_award, then spending_by_transaction
-            # USAspending requires a 'sort' field; use the appropriate
-            # default for each endpoint.
-            _sort_for_method = {
-                "search_awards": "Award Amount",
-                "search_transactions": "Transaction Amount",
-            }
-            for method in ("search_awards", "search_transactions"):
-                try:
-                    _usaspending_limiter.wait_if_needed()
-                    data = getattr(usa, method)(
-                        filters=filters,
-                        fields=desc_fields,
-                        limit=len(ids),
-                        sort=_sort_for_method.get(method, "Award Amount"),
-                        order="desc",
-                    )
-                    break
-                except Exception as e:
-                    _debug(f"USAspending {method}/{group_name} failed: {e}")
-                    continue
-            if data is None:
-                failed_ids.update(ids)
-                continue
-            _extract_descriptions(data)
-    except Exception as e:
-        failed_ids.update(cid for cid in all_ids if cid not in results)
-        print(f"USAspending contract desc error: {e}", file=sys.stderr)
-    finally:
-        usa.close()
-
-    # FPDS Atom Feed fallback for contract PIIDs that failed at USAspending.
-    # FPDS only indexes procurement contracts (PIIDs), not assistance FAINs
-    # (e.g. DE-* DOE awards), so we filter to contract-type IDs only.
-    import re as _re_fallback
-    fpds_eligible = [
-        cid for cid in failed_ids
-        if cid not in results and not _re_fallback.match(r"^DE-", cid, _re_fallback.IGNORECASE)
-    ]
-    if fpds_eligible:
-        _debug(
-            f"USAspending failed for {len(failed_ids)} IDs, "
-            f"{len(fpds_eligible)} eligible for FPDS fallback"
-        )
-        print(
-            f"Falling back to FPDS for {len(fpds_eligible)} missing contract descriptions...",
-            file=sys.stderr,
-        )
-        fpds_results = _fetch_fpds_descriptions(fpds_eligible)
-        if fpds_results:
-            results.update(fpds_results)
-            print(
-                f"FPDS fallback recovered {len(fpds_results)}/{len(fpds_eligible)} descriptions",
-                file=sys.stderr,
-            )
-
-    if not results and all_ids:
-        print(
-            f"Contract descriptions: 0 results for {len(all_ids)} award IDs "
-            f"from USAspending + FPDS (sample: {all_ids[:3]})",
-            file=sys.stderr,
-        )
-
-    _debug(f"Contract descriptions: {len(results)}/{len(all_ids)} found (USAspending + FPDS)")
-    print(
-        f"Fetched {len(results)}/{len(all_ids)} contract descriptions (USAspending + FPDS fallback)",
-        file=sys.stderr,
-    )
-    return results
 
 
 def _award_digest(
@@ -3380,7 +2362,7 @@ def main():
 
             def _lookup_co_fed(item: tuple[str, dict]) -> tuple[str, PIFederalAwardRecord | None]:
                 k, info = item
-                return k, lookup_company_federal_awards(info["name"], info["uei"])
+                return k, _lib_lookup_company_federal_awards(info["name"], info["uei"], rate_limiter=_usaspending_limiter)
 
             co_fed_deadline = _stage_deadline()
             with ThreadPoolExecutor(max_workers=4) as executor:
