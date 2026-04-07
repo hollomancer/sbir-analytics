@@ -553,6 +553,99 @@ def lookup_sam_entity(
     )
 
 
+def lookup_sam_entity_with_fallback(
+    company_name: str,
+    uei: str | None = None,
+    cage: str | None = None,
+    *,
+    rate_limiter: RateLimiter | None = None,
+    fallback_rate_limiter: RateLimiter | None = None,
+) -> SAMEntityRecord | None:
+    """Query SAM.gov with USAspending recipient fallback.
+
+    First tries :func:`lookup_sam_entity`. If that returns ``None``, attempts
+    to build a partial :class:`SAMEntityRecord` from USAspending recipient
+    data so callers always get best-effort entity information even during
+    SAM.gov maintenance windows.
+    """
+    result = lookup_sam_entity(
+        company_name, uei=uei, cage=cage, rate_limiter=rate_limiter,
+    )
+    if result is not None:
+        return result
+
+    logger.info(
+        "No SAM.gov entity result for '{}'; falling back to USAspending recipient profile",
+        company_name,
+    )
+
+    profile = lookup_usaspending_recipient(
+        company_name, uei=uei, rate_limiter=fallback_rate_limiter,
+    )
+    if profile is None:
+        return None
+
+    return SAMEntityRecord(
+        uei=profile.uei or "",
+        legal_business_name=profile.name,
+        dba_name=None,
+        registration_status=None,
+        expiration_date=None,
+        business_type=profile.business_types[0] if profile.business_types else None,
+        entity_structure=None,
+        naics_codes=[],
+        cage_code=None,
+        exclusion_status=None,
+        state=profile.location_state,
+        congressional_district=profile.location_congressional_district,
+    )
+
+
+def lookup_usaspending_recipient_with_fallback(
+    company_name: str,
+    uei: str | None = None,
+    *,
+    rate_limiter: RateLimiter | None = None,
+    fallback_rate_limiter: RateLimiter | None = None,
+) -> USARecipientProfile | None:
+    """Query USAspending recipient with SAM.gov entity fallback.
+
+    First tries :func:`lookup_usaspending_recipient`. If that returns ``None``,
+    attempts to build a partial :class:`USARecipientProfile` from SAM.gov
+    entity data so callers always get best-effort recipient information even
+    when USAspending is unavailable.
+    """
+    result = lookup_usaspending_recipient(
+        company_name, uei=uei, rate_limiter=rate_limiter,
+    )
+    if result is not None:
+        return result
+
+    logger.info(
+        "No USAspending recipient result for '{}'; falling back to SAM.gov entity data",
+        company_name,
+    )
+
+    entity = lookup_sam_entity(
+        company_name, uei=uei, rate_limiter=fallback_rate_limiter,
+    )
+    if entity is None:
+        return None
+
+    return USARecipientProfile(
+        recipient_id="",
+        name=entity.legal_business_name,
+        uei=entity.uei,
+        parent_name=None,
+        parent_uei=None,
+        location_state=entity.state,
+        location_congressional_district=entity.congressional_district,
+        business_types=[entity.business_type] if entity.business_type else [],
+        total_transaction_amount=0.0,
+        total_transactions=0,
+    )
+
+
 # ---------------------------------------------------------------------------
 # FPDS contract descriptions
 # ---------------------------------------------------------------------------
