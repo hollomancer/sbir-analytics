@@ -927,9 +927,9 @@ def build_usaspending_url(award: dict) -> str | None:
 # ---------------------------------------------------------------------------
 
 
-# Lazy-initialized OpenAI client — created on first use when the library is
-# available.  Shares the concurrency semaphore with the fallback path.
-_openai_client_instance: object | None = None
+# Lazy-initialized OpenAI client — created on first use.  Concurrency
+# control lives inside OpenAIClient (via its internal semaphore).
+_openai_client_instance: OpenAIClient | None = None
 
 
 def _get_openai_client(api_key: str) -> OpenAIClient:
@@ -1824,7 +1824,7 @@ def enrich_with_inflation(awards: list[dict], base_year: int | None = None) -> d
     - 'adjusted_total': the sum of inflation-adjusted award amounts
     - 'base_year': the dollar year used for the adjustment
 
-    Returns an empty dict if inflation support is unavailable or fails.
+    Returns an empty dict if inflation adjustment fails or raises an exception.
     """
     import pandas as pd
 
