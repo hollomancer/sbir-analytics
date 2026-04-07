@@ -376,18 +376,19 @@ class PatentsViewClient:
         all_patents: list[dict[str, Any]] = []
         offset = 0
         limit = 100  # ODP page size
+        escaped_name = self._escape_lucene_query(company_name)
 
         while len(all_patents) < max_patents:
-            # The ODP API uses ``searchText`` for free-text queries
-            # (replacing the old PatentsView Lucene ``q`` parameter).
+            # The ODP API uses the ``q`` parameter with Lucene query syntax
+            # on the ``/search`` endpoint.
             params = {
-                "searchText": company_name,
+                "q": f"assignees.assigneeName:{escaped_name}",
                 "offset": offset,
                 "limit": limit,
             }
 
             try:
-                response = self._make_request("", method="GET", params=params)
+                response = self._make_request("/search", method="GET", params=params)
 
                 # ODP response format: patentFileWrapperDataBag array
                 records = response.get("patentFileWrapperDataBag", [])
@@ -458,14 +459,15 @@ class PatentsViewClient:
         """
         logger.debug(f"Querying assignees for company name: {company_name}")
 
+        escaped_name = self._escape_lucene_query(company_name)
         params = {
-            "searchText": company_name,
+            "q": f"assignees.assigneeName:{escaped_name}",
             "offset": 0,
             "limit": 25,
         }
 
         try:
-            response = self._make_request("", method="GET", params=params)
+            response = self._make_request("/search", method="GET", params=params)
             records = response.get("patentFileWrapperDataBag", [])
 
             # Deduplicate assignees from patent results
