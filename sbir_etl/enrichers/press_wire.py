@@ -49,7 +49,7 @@ RETRY_BACKOFF_BASE = 2  # seconds
 
 # Feed URLs — public RSS/Atom endpoints
 FEEDS: dict[str, str] = {
-    "PRNewswire": "https://www.prnewswire.com/rss/news-releases.rss",
+    "PRNewswire": "https://www.prnewswire.com/rss/news-releases-list.rss",
     "BusinessWire": "https://feed.businesswire.com/rss/home/?rss=G1QFDERJXkJeEFpRWA==",
     "GlobeNewsWire": "https://www.globenewswire.com/RSSFeed/subjectcode/01-Business%20Operations/feedTitle/GlobeNewswire%20-%20Business%20Operations",
 }

@@ -148,6 +148,9 @@ class OpenCorporatesClient:
 
         Jurisdiction codes use OpenCorporates format, e.g. ``us_va``, ``us_de``.
         """
+        if not self._token:
+            logger.debug("OpenCorporates: no API token configured, skipping search")
+            return []
         params: dict[str, Any] = {"q": name, "per_page": limit}
         if jurisdiction:
             params["jurisdiction_code"] = jurisdiction

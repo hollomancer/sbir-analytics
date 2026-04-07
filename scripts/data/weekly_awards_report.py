@@ -2635,6 +2635,20 @@ def main():
                 file=sys.stderr,
             )
 
+            # Supplement BEA mapping with NAICS codes from USAspending awards
+            if co_fed:
+                usa_naics: list[str] = []
+                for fed_rec in co_fed.values():
+                    for code in (fed_rec.naics_codes or []):
+                        if code and code not in usa_naics:
+                            usa_naics.append(code)
+                if usa_naics:
+                    extra_bea = map_naics_to_bea_sectors(usa_naics)
+                    for code, sector in extra_bea.items():
+                        if code not in bea_sectors:
+                            bea_sectors[code] = sector
+                    _debug(f"USAspending NAICS→BEA supplement: {len(extra_bea)} codes")
+
             # Fetch external PI data (patents, publications, ORCID).
             # Reuse co_fed to avoid duplicate USAspending calls per company.
             pi_ext: dict[str, dict] = {}

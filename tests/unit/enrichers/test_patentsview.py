@@ -41,7 +41,8 @@ class TestQueryPatentsByAssignee:
         assert args[0] == "/search"
         assert kwargs["method"] == "GET"
         params = kwargs["params"]
-        assert params["q"] == 'assignees.assigneeName:"Acme Corp"'
+        # ODP API uses assigneeNameText field (migrated from PatentsView assignees.assigneeName)
+        assert params["q"] == 'assigneeNameText:"Acme Corp"'
 
     def test_quotes_company_name_with_special_characters(self, client):
         """Company names with commas/periods are quoted for phrase matching."""
@@ -50,7 +51,8 @@ class TestQueryPatentsByAssignee:
         client.query_patents_by_assignee("Verinomics, Inc.")
 
         params = client._make_request.call_args[1]["params"]
-        assert params["q"] == 'assignees.assigneeName:"Verinomics, Inc."'
+        # ODP API uses assigneeNameText field (migrated from PatentsView assignees.assigneeName)
+        assert params["q"] == 'assigneeNameText:"Verinomics, Inc."'
 
     def test_pagination_params(self, client):
         """Verify offset and limit are passed through."""
@@ -77,7 +79,8 @@ class TestQueryAssigneeByName:
         assert args[0] == "/search"
         assert kwargs["method"] == "GET"
         params = kwargs["params"]
-        assert params["q"] == 'assignees.assigneeName:"Acme Corp"'
+        # ODP API uses assigneeNameText field (migrated from PatentsView assignees.assigneeName)
+        assert params["q"] == 'assigneeNameText:"Acme Corp"'
 
     def test_quotes_company_name_with_special_characters(self, client):
         """Company names with commas/periods are quoted for phrase matching."""
@@ -86,7 +89,8 @@ class TestQueryAssigneeByName:
         client.query_assignee_by_name("AERODYNE RESEARCH, INC.")
 
         params = client._make_request.call_args[1]["params"]
-        assert params["q"] == 'assignees.assigneeName:"AERODYNE RESEARCH, INC."'
+        # ODP API uses assigneeNameText field (migrated from PatentsView assignees.assigneeName)
+        assert params["q"] == 'assigneeNameText:"AERODYNE RESEARCH, INC."'
 
 
 class TestEscapeLuceneQuery:

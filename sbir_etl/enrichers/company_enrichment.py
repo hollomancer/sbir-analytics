@@ -44,6 +44,7 @@ class FederalAwardSummary:
     non_sbir_funding: float = 0.0
     non_sbir_agencies: list[str] = field(default_factory=list)
     non_sbir_sample_descriptions: list[str] = field(default_factory=list)
+    naics_codes: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -222,14 +223,15 @@ def usaspending_search(
         "Start Date",
         "Description",
         "CFDA Number",
+        "naics_code",
     ]
     # USAspending requires award_type_codes from one group only.
     type_groups = [
         ("contracts", ["A", "B", "C", "D"]),
         ("grants", ["02", "03", "04", "05"]),
-        ("direct_payments", ["06", "10"]),
-        ("loans", ["07", "08", "09"]),
-        ("other", ["11"]),
+        ("other_financial_assistance", ["06", "10"]),
+        ("loans", ["07", "08"]),
+        ("direct_payments", ["09", "11"]),
     ]
 
     all_results: list[dict] = []
@@ -318,6 +320,7 @@ def lookup_company_federal_awards(
     non_sbir_funding = 0.0
     non_sbir_agencies: set[str] = set()
     non_sbir_descriptions: list[str] = []
+    naics_codes: set[str] = set()
 
     for r in results:
         ag = r.get("Awarding Agency", "")
@@ -337,6 +340,9 @@ def lookup_company_federal_awards(
 
         desc = str(r.get("Description", "") or "")
         cfda = str(r.get("CFDA Number", "") or "")
+        naics = str(r.get("naics_code", "") or "").strip()
+        if naics:
+            naics_codes.add(naics)
 
         if _is_sbir_award_type(desc, cfda):
             sbir_count += 1
@@ -365,6 +371,7 @@ def lookup_company_federal_awards(
         non_sbir_funding=non_sbir_funding,
         non_sbir_agencies=sorted(non_sbir_agencies),
         non_sbir_sample_descriptions=non_sbir_descriptions,
+        naics_codes=sorted(naics_codes),
     )
 
 

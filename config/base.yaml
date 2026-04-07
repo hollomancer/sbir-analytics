@@ -162,9 +162,10 @@ enrichment:
 
   patentsview_api:
     # USPTO Open Data Portal (ODP) API configuration
-    # PatentsView migrated to data.uspto.gov on March 20, 2026
+    # PatentsView migrated to USPTO ODP on March 20, 2026
     # See: https://data.uspto.gov/support/transition-guide/patentsview
-    base_url: "https://data.uspto.gov/api/v1/patent/applications"
+    # API requests go to api.uspto.gov; data.uspto.gov is the web UI only
+    base_url: "https://api.uspto.gov/api/v1/patent/applications"
     api_key_env_var: "USPTO_ODP_API_KEY" # pragma: allowlist secret
     rate_limit_per_minute: 60  # Conservative default for polite-use policy
     timeout_seconds: 30
