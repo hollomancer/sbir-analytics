@@ -118,9 +118,9 @@ class OpenCorporatesClient:
             self._wait()
             try:
                 resp = self._client.get(url, params=params)
-                if resp.status_code == 429:
+                if resp.status_code == 429 or resp.status_code >= 500:
                     wait = RETRY_BACKOFF_BASE ** (attempt + 1)
-                    logger.debug(f"OpenCorporates 429, retrying in {wait}s")
+                    logger.debug(f"OpenCorporates {resp.status_code}, retrying in {wait}s")
                     time.sleep(wait)
                     continue
                 if resp.status_code == 404:

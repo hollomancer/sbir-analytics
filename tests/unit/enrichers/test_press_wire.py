@@ -5,7 +5,6 @@ from unittest.mock import Mock
 import pytest
 
 from sbir_etl.enrichers.press_wire import (
-    PressRelease,
     PressWireClient,
     _content_hash,
     _normalize,
@@ -83,7 +82,7 @@ class TestPressWireClient:
         assert len(items) == 2
         assert items[0].title == "Acme Defense Awarded $5M DoD Contract for Next-Gen Sensors"
         assert items[0].source == "PRNewswire"
-        assert "prnewswire.com" in items[0].link
+        assert items[0].link == "https://prnewswire.com/news/acme-defense-dod-contract"
 
     def test_parse_atom(self):
         client = self._mock_client()
@@ -91,7 +90,7 @@ class TestPressWireClient:
         assert len(items) == 1
         assert "Nova Quantum" in items[0].title
         assert items[0].source == "BusinessWire"
-        assert "businesswire.com" in items[0].link
+        assert items[0].link == "https://businesswire.com/news/nova-quantum-series-b"
 
     def test_poll_with_matches(self):
         client = self._mock_client()

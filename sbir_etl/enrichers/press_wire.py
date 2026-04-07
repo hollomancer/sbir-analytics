@@ -39,7 +39,6 @@ import hashlib
 import time
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
-from datetime import datetime
 from typing import Any
 
 import httpx
@@ -163,14 +162,14 @@ class PressWireClient:
     # ------------------------------------------------------------------
 
     def _fetch_feed(self, source: str, url: str) -> str | None:
-        """Fetch raw XML from a feed URL with retry."""
+        """Fetch raw XML from a feed URL with retry on 429/5xx."""
         for attempt in range(MAX_RETRIES):
             self._wait()
             try:
                 resp = self._client.get(url)
-                if resp.status_code == 429:
+                if resp.status_code == 429 or resp.status_code >= 500:
                     wait = RETRY_BACKOFF_BASE ** (attempt + 1)
-                    logger.debug(f"{source} 429, retrying in {wait}s")
+                    logger.debug(f"{source} {resp.status_code}, retrying in {wait}s")
                     time.sleep(wait)
                     continue
                 if resp.status_code != 200:

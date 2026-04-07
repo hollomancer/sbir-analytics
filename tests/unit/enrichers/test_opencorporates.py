@@ -1,10 +1,10 @@
 """Tests for OpenCorporates client."""
 
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 import pytest
 
-from sbir_etl.enrichers.opencorporates import CorporateRecord, Officer, OpenCorporatesClient
+from sbir_etl.enrichers.opencorporates import OpenCorporatesClient
 
 pytestmark = pytest.mark.fast
 
@@ -168,7 +168,8 @@ class TestOpenCorporatesClient:
         call_args = client._client.get.call_args
         assert call_args[1]["params"]["jurisdiction_code"] == "us_va"
 
-    def test_retry_on_429(self):
+    @patch("sbir_etl.enrichers.opencorporates.time.sleep")
+    def test_retry_on_429(self, mock_sleep):
         client = self._mock_client()
 
         resp_429 = Mock(status_code=429)
@@ -179,6 +180,7 @@ class TestOpenCorporatesClient:
         result = client.search_companies("Test")
         assert result == []
         assert client._client.get.call_count == 2
+        mock_sleep.assert_called_once()
 
     def test_context_manager(self):
         with OpenCorporatesClient() as client:
