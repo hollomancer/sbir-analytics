@@ -165,7 +165,7 @@ def lookup_pi_patents_with_fallback(
         return result
 
     logger.info(
-        "PatentsView unavailable for '{}', falling back to Lens.org", pi_name
+        "No PatentsView data for '{}'; falling back to Lens.org", pi_name
     )
 
     try:
@@ -293,7 +293,7 @@ def lookup_pi_publications_with_fallback(
         return result
 
     logger.info(
-        "Semantic Scholar unavailable for '{}', falling back to ORCID works",
+        "No Semantic Scholar data for '{}'; falling back to ORCID works",
         pi_name,
     )
     orcid_rec = lookup_pi_orcid(pi_name, rate_limiter=orcid_rate_limiter)
@@ -313,35 +313,14 @@ def lookup_pi_orcid_with_fallback(
     pi_name: str,
     *,
     rate_limiter: RateLimiter | None = None,
-    semantic_scholar_rate_limiter: RateLimiter | None = None,
+    semantic_scholar_rate_limiter: RateLimiter | None = None,  # noqa: ARG001
 ) -> ORCIDRecord | None:
-    """Try ORCID first, fall back to Semantic Scholar author data.
+    """Look up ORCID profile, returning None if not found.
 
-    Parameters match :func:`lookup_pi_orcid` with an additional
-    *semantic_scholar_rate_limiter* for the fallback Semantic Scholar client.
+    Accepts *semantic_scholar_rate_limiter* for API symmetry with the other
+    ``_with_fallback`` wrappers, but does **not** synthesize a fake
+    :class:`ORCIDRecord` from Semantic Scholar data — downstream code
+    treats a non-None record as a real ORCID profile and would print an
+    empty ORCID ID.
     """
-    result = lookup_pi_orcid(pi_name, rate_limiter=rate_limiter)
-    if result is not None:
-        return result
-
-    logger.info(
-        "ORCID unavailable for '{}', falling back to Semantic Scholar profile",
-        pi_name,
-    )
-    pub_rec = lookup_pi_publications(
-        pi_name, rate_limiter=semantic_scholar_rate_limiter
-    )
-    if pub_rec is None:
-        return None
-
-    first, last = _split_pi_name(pi_name)
-    return ORCIDRecord(
-        orcid_id="",
-        given_name=first or None,
-        family_name=last or None,
-        affiliations=pub_rec.affiliations,
-        works_count=pub_rec.total_papers,
-        sample_work_titles=pub_rec.sample_titles,
-        funding_count=0,
-        keywords=[],
-    )
+    return lookup_pi_orcid(pi_name, rate_limiter=rate_limiter)

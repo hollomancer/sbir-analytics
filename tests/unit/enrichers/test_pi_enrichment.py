@@ -13,8 +13,11 @@ from sbir_etl.enrichers.pi_enrichment import (
     _is_sbir_award_type,
     _split_pi_name,
     lookup_pi_orcid,
+    lookup_pi_orcid_with_fallback,
     lookup_pi_patents,
+    lookup_pi_patents_with_fallback,
     lookup_pi_publications,
+    lookup_pi_publications_with_fallback,
 )
 
 
@@ -207,4 +210,128 @@ class TestLookupPIOrcid:
 
     def test_single_name_returns_none(self):
         result = lookup_pi_orcid("Cher")
+        assert result is None
+
+
+# ---------------------------------------------------------------------------
+# lookup_pi_patents_with_fallback
+# ---------------------------------------------------------------------------
+
+MODULE = "sbir_etl.enrichers.pi_enrichment"
+
+
+class TestLookupPIPatentsWithFallback:
+    @patch(f"{MODULE}.lookup_pi_patents")
+    def test_returns_primary_when_available(self, mock_primary):
+        record = PIPatentRecord(
+            total_patents=3, sample_titles=["A"], assignees=["Acme"], date_range=("2020-01-01", "2023-01-01"),
+        )
+        mock_primary.return_value = record
+
+        result = lookup_pi_patents_with_fallback("Jane Doe", "Acme Corp")
+        assert result is record
+        mock_primary.assert_called_once()
+
+    @patch(f"{MODULE}.LensPatentClient")
+    @patch(f"{MODULE}.lookup_pi_patents", return_value=None)
+    def test_falls_back_to_lens_when_primary_returns_none(self, mock_primary, MockLens):
+        from sbir_etl.enrichers.lens_patents import LensPatentRecord
+
+        lens_ctx = MockLens.return_value.__enter__.return_value
+        lens_ctx.search_patents_by_assignee.return_value = [
+            LensPatentRecord(
+                patent_number="LENS-001", title="Smart Widget",
+                assignee="Acme Corp", filing_date="2021-03-15",
+            ),
+            LensPatentRecord(
+                patent_number="LENS-002", title="Better Widget",
+                assignee="Acme Corp", filing_date="2023-07-01",
+            ),
+        ]
+
+        result = lookup_pi_patents_with_fallback("Jane Doe", "Acme Corp")
+
+        assert result is not None
+        assert isinstance(result, PIPatentRecord)
+        assert result.total_patents == 2
+        assert "Smart Widget" in result.sample_titles
+        assert "Acme Corp" in result.assignees
+        assert result.date_range == ("2021-03-15", "2023-07-01")
+
+    @patch(f"{MODULE}.LensPatentClient")
+    @patch(f"{MODULE}.lookup_pi_patents", return_value=None)
+    def test_returns_none_when_both_fail(self, mock_primary, MockLens):
+        lens_ctx = MockLens.return_value.__enter__.return_value
+        lens_ctx.search_patents_by_assignee.return_value = []
+
+        result = lookup_pi_patents_with_fallback("Jane Doe", "Acme Corp")
+        assert result is None
+
+
+# ---------------------------------------------------------------------------
+# lookup_pi_publications_with_fallback
+# ---------------------------------------------------------------------------
+
+
+class TestLookupPIPublicationsWithFallback:
+    @patch(f"{MODULE}.lookup_pi_publications")
+    def test_returns_primary_when_available(self, mock_primary):
+        record = PIPublicationRecord(
+            total_papers=10, h_index=5, citation_count=100,
+            sample_titles=["Paper A"], affiliations=["MIT"],
+        )
+        mock_primary.return_value = record
+
+        result = lookup_pi_publications_with_fallback("Jane Doe")
+        assert result is record
+
+    @patch(f"{MODULE}.lookup_pi_orcid")
+    @patch(f"{MODULE}.lookup_pi_publications", return_value=None)
+    def test_falls_back_to_orcid_when_primary_returns_none(self, mock_primary, mock_orcid):
+        mock_orcid.return_value = ORCIDRecord(
+            orcid_id="0000-0001-2345-6789", given_name="Jane", family_name="Doe",
+            affiliations=["Stanford"], works_count=15,
+            sample_work_titles=["Study X", "Study Y"],
+            funding_count=2, keywords=["AI"],
+        )
+
+        result = lookup_pi_publications_with_fallback("Jane Doe")
+
+        assert result is not None
+        assert isinstance(result, PIPublicationRecord)
+        assert result.total_papers == 15
+        assert result.h_index is None  # ORCID doesn't provide h-index
+        assert result.citation_count == 0
+        assert result.sample_titles == ["Study X", "Study Y"]
+        assert result.affiliations == ["Stanford"]
+
+    @patch(f"{MODULE}.lookup_pi_orcid", return_value=None)
+    @patch(f"{MODULE}.lookup_pi_publications", return_value=None)
+    def test_returns_none_when_both_fail(self, mock_primary, mock_orcid):
+        result = lookup_pi_publications_with_fallback("Jane Doe")
+        assert result is None
+
+
+# ---------------------------------------------------------------------------
+# lookup_pi_orcid_with_fallback
+# ---------------------------------------------------------------------------
+
+
+class TestLookupPIOrcidWithFallback:
+    @patch(f"{MODULE}.lookup_pi_orcid")
+    def test_returns_primary_when_available(self, mock_primary):
+        record = ORCIDRecord(
+            orcid_id="0000-0001-2345-6789", given_name="Jane", family_name="Doe",
+            affiliations=["MIT"], works_count=20, sample_work_titles=["Study X"],
+            funding_count=3, keywords=["AI"],
+        )
+        mock_primary.return_value = record
+
+        result = lookup_pi_orcid_with_fallback("Jane Doe")
+        assert result is record
+
+    @patch(f"{MODULE}.lookup_pi_orcid", return_value=None)
+    def test_returns_none_when_orcid_not_found(self, mock_primary):
+        """Should NOT synthesize a fake ORCIDRecord."""
+        result = lookup_pi_orcid_with_fallback("Jane Doe")
         assert result is None

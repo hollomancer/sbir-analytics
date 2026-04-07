@@ -14,7 +14,7 @@ Usage::
     client = LensPatentClient()
     patents = client.search_patents_by_assignee("Acme Defense Systems")
     for p in patents:
-        print(p["title"], p["assignee"])
+        print(p.title, p.assignee)
     client.close()
 """
 
@@ -105,7 +105,11 @@ class LensPatentClient:
                 if resp.status_code != 200:
                     logger.debug(f"Lens.org returned {resp.status_code}")
                     return None
-                return resp.json()
+                try:
+                    return resp.json()
+                except (ValueError, Exception) as je:
+                    logger.debug(f"Lens.org JSON decode error: {je}")
+                    return None
             except httpx.HTTPError as e:
                 logger.debug(f"Lens.org request error: {e}")
                 time.sleep(RETRY_BACKOFF_BASE ** (attempt + 1))

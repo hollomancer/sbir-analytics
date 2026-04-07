@@ -54,11 +54,8 @@ from sbir_etl.enrichers.pi_enrichment import (
     PIPatentRecord,
     PIPublicationRecord,
     ORCIDRecord,
-    lookup_pi_patents as _lib_lookup_pi_patents,
     lookup_pi_patents_with_fallback as _lib_lookup_pi_patents_with_fallback,
-    lookup_pi_publications as _lib_lookup_pi_publications,
     lookup_pi_publications_with_fallback as _lib_lookup_pi_publications_with_fallback,
-    lookup_pi_orcid as _lib_lookup_pi_orcid,
     lookup_pi_orcid_with_fallback as _lib_lookup_pi_orcid_with_fallback,
 )
 from sbir_etl.enrichers.company_enrichment import (
@@ -66,9 +63,7 @@ from sbir_etl.enrichers.company_enrichment import (
     USARecipientProfile,
     SAMEntityRecord,
     lookup_company_federal_awards as _lib_lookup_company_federal_awards,
-    lookup_usaspending_recipient as _lib_lookup_usaspending_recipient,
     lookup_usaspending_recipient_with_fallback as _lib_lookup_usaspending_recipient_with_fallback,
-    lookup_sam_entity as _lib_lookup_sam_entity,
     lookup_sam_entity_with_fallback as _lib_lookup_sam_entity_with_fallback,
     fetch_usaspending_contract_descriptions as _lib_fetch_usaspending_contract_descriptions,
 )

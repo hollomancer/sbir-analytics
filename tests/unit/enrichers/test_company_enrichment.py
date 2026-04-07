@@ -14,7 +14,9 @@ from sbir_etl.enrichers.company_enrichment import (
     fetch_usaspending_contract_descriptions,
     lookup_company_federal_awards,
     lookup_sam_entity,
+    lookup_sam_entity_with_fallback,
     lookup_usaspending_recipient,
+    lookup_usaspending_recipient_with_fallback,
     usaspending_autocomplete,
     usaspending_search,
 )
@@ -390,3 +392,108 @@ class TestFetchUSAspendingContractDescriptions:
     def test_empty_awards_returns_empty_dict(self, MockClient):
         result = fetch_usaspending_contract_descriptions([])
         assert result == {}
+
+
+# ---------------------------------------------------------------------------
+# lookup_sam_entity_with_fallback
+# ---------------------------------------------------------------------------
+
+
+class TestLookupSAMEntityWithFallback:
+    @patch(f"{MODULE}.lookup_sam_entity")
+    def test_returns_primary_when_available(self, mock_primary):
+        record = SAMEntityRecord(
+            uei="ABC123DEF456", legal_business_name="Acme Inc",
+            dba_name=None, registration_status="Active",
+            expiration_date="2025-12-31", business_type="2X",
+            entity_structure="LLC", naics_codes=["541511"],
+            cage_code="1AB2C", exclusion_status="N",
+            state="VA", congressional_district="11",
+        )
+        mock_primary.return_value = record
+
+        result = lookup_sam_entity_with_fallback("Acme Inc", uei="ABC123DEF456")
+        assert result is record
+
+    @patch(f"{MODULE}.lookup_usaspending_recipient")
+    @patch(f"{MODULE}.lookup_sam_entity", return_value=None)
+    def test_falls_back_to_usaspending_when_sam_returns_none(self, mock_sam, mock_usa):
+        mock_usa.return_value = USARecipientProfile(
+            recipient_id="R123", name="Acme Inc", uei="ABC123DEF456",
+            parent_name=None, parent_uei=None,
+            location_state="VA", location_congressional_district="11",
+            business_types=["Small Business"], total_transaction_amount=1_000_000.0,
+            total_transactions=5,
+        )
+
+        result = lookup_sam_entity_with_fallback("Acme Inc", uei="ABC123DEF456")
+
+        assert result is not None
+        assert isinstance(result, SAMEntityRecord)
+        assert result.uei == "ABC123DEF456"
+        assert result.legal_business_name == "Acme Inc"
+        assert result.state == "VA"
+        assert result.congressional_district == "11"
+        assert result.business_type == "Small Business"
+        # Fields not available from USAspending
+        assert result.registration_status is None
+        assert result.naics_codes == []
+        assert result.cage_code is None
+
+    @patch(f"{MODULE}.lookup_usaspending_recipient", return_value=None)
+    @patch(f"{MODULE}.lookup_sam_entity", return_value=None)
+    def test_returns_none_when_both_fail(self, mock_sam, mock_usa):
+        result = lookup_sam_entity_with_fallback("Unknown Corp")
+        assert result is None
+
+
+# ---------------------------------------------------------------------------
+# lookup_usaspending_recipient_with_fallback
+# ---------------------------------------------------------------------------
+
+
+class TestLookupUSAspendingRecipientWithFallback:
+    @patch(f"{MODULE}.lookup_usaspending_recipient")
+    def test_returns_primary_when_available(self, mock_primary):
+        record = USARecipientProfile(
+            recipient_id="R123", name="Acme Inc", uei="ABC123DEF456",
+            parent_name=None, parent_uei=None,
+            location_state="VA", location_congressional_district="11",
+            business_types=["Small Business"], total_transaction_amount=1_000_000.0,
+            total_transactions=5,
+        )
+        mock_primary.return_value = record
+
+        result = lookup_usaspending_recipient_with_fallback("Acme Inc")
+        assert result is record
+
+    @patch(f"{MODULE}.lookup_sam_entity")
+    @patch(f"{MODULE}.lookup_usaspending_recipient", return_value=None)
+    def test_falls_back_to_sam_when_usaspending_returns_none(self, mock_usa, mock_sam):
+        mock_sam.return_value = SAMEntityRecord(
+            uei="ABC123DEF456", legal_business_name="Acme Inc",
+            dba_name=None, registration_status="Active",
+            expiration_date="2025-12-31", business_type="Small Business",
+            entity_structure="LLC", naics_codes=["541511"],
+            cage_code="1AB2C", exclusion_status="N",
+            state="VA", congressional_district="11",
+        )
+
+        result = lookup_usaspending_recipient_with_fallback("Acme Inc")
+
+        assert result is not None
+        assert isinstance(result, USARecipientProfile)
+        assert result.name == "Acme Inc"
+        assert result.uei == "ABC123DEF456"
+        assert result.location_state == "VA"
+        assert result.business_types == ["Small Business"]
+        # Fields not available from SAM.gov
+        assert result.recipient_id == ""
+        assert result.total_transaction_amount == 0.0
+        assert result.total_transactions == 0
+
+    @patch(f"{MODULE}.lookup_sam_entity", return_value=None)
+    @patch(f"{MODULE}.lookup_usaspending_recipient", return_value=None)
+    def test_returns_none_when_both_fail(self, mock_usa, mock_sam):
+        result = lookup_usaspending_recipient_with_fallback("Unknown Corp")
+        assert result is None

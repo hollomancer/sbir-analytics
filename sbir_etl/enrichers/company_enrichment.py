@@ -575,7 +575,7 @@ def lookup_sam_entity_with_fallback(
         return result
 
     logger.info(
-        "SAM.gov unavailable for '{}', falling back to USAspending recipient profile",
+        "No SAM.gov entity result for '{}'; falling back to USAspending recipient profile",
         company_name,
     )
 
@@ -622,7 +622,7 @@ def lookup_usaspending_recipient_with_fallback(
         return result
 
     logger.info(
-        "USAspending unavailable for '{}', falling back to SAM.gov entity data",
+        "No USAspending recipient result for '{}'; falling back to SAM.gov entity data",
         company_name,
     )
 
