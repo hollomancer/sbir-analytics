@@ -382,7 +382,7 @@ class PatentsViewClient:
             # The ODP API uses the ``q`` parameter with Lucene query syntax
             # on the ``/search`` endpoint.
             params = {
-                "q": f"assignees.assigneeName:{escaped_name}",
+                "q": f'assignees.assigneeName:"{escaped_name}"',
                 "offset": offset,
                 "limit": limit,
             }
@@ -461,7 +461,7 @@ class PatentsViewClient:
 
         escaped_name = self._escape_lucene_query(company_name)
         params = {
-            "q": f"assignees.assigneeName:{escaped_name}",
+            "q": f'assignees.assigneeName:"{escaped_name}"',
             "offset": 0,
             "limit": 25,
         }
