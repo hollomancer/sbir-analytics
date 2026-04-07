@@ -212,7 +212,7 @@ class PatentsViewClient:
 
         self.api_key = api_key
         self.base_url = base_url or patentsview_config.get(
-            "base_url", "https://data.uspto.gov/api/v1/patent/applications"
+            "base_url", "https://api.uspto.gov/api/v1/patent/applications"
         )
         self.rate_limit_per_minute = rate_limit_per_minute or patentsview_config.get(
             "rate_limit_per_minute", 60
@@ -247,7 +247,7 @@ class PatentsViewClient:
         )
         self.client = httpx.Client(
             timeout=timeout_float,
-            headers={"X-API-KEY": self.api_key, "Content-Type": "application/json"},
+            headers={"X-Api-Key": self.api_key, "Content-Type": "application/json"},
         )
 
         logger.debug(
@@ -382,7 +382,7 @@ class PatentsViewClient:
             # The ODP API uses the ``q`` parameter with Lucene query syntax
             # on the ``/search`` endpoint.
             params = {
-                "q": f'assignees.assigneeName:"{escaped_name}"',
+                "q": f'assigneeNameText:"{escaped_name}"',
                 "offset": offset,
                 "limit": limit,
             }
@@ -461,7 +461,7 @@ class PatentsViewClient:
 
         escaped_name = self._escape_lucene_query(company_name)
         params = {
-            "q": f'assignees.assigneeName:"{escaped_name}"',
+            "q": f'assigneeNameText:"{escaped_name}"',
             "offset": 0,
             "limit": 25,
         }
