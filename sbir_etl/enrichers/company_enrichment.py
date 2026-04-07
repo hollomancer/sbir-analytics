@@ -639,12 +639,23 @@ def fetch_usaspending_contract_descriptions(
     results: dict[str, str] = {}
     failed_ids: set[str] = set()
 
-    desc_fields = ["Award ID", "Description", "Awarding Agency", "Award Type"]
+    _method_config = {
+        "search_awards": {
+            "fields": ["Award ID", "Description", "Awarding Agency", "Award Type"],
+            "sort": "Award ID",
+            "desc_key": "Description",
+        },
+        "search_transactions": {
+            "fields": ["Award ID", "Transaction Description", "Awarding Agency", "Award Type"],
+            "sort": "Award ID",
+            "desc_key": "Transaction Description",
+        },
+    }
 
-    def _extract_descriptions(data: dict) -> None:
+    def _extract_descriptions(data: dict, desc_key: str = "Description") -> None:
         for r in data.get("results", []):
             aid = str(r.get("Award ID", "")).strip()
-            desc = str(r.get("Description", "")).strip()
+            desc = str(r.get(desc_key, "")).strip()
             if aid and desc and aid not in results:
                 if len(desc) > 500:
                     desc = desc[:500] + "..."
@@ -660,21 +671,20 @@ def fetch_usaspending_contract_descriptions(
                 group_name, len(ids), ids[:3],
             )
             data = None
-            _sort_for_method = {
-                "search_awards": "Award Amount",
-                "search_transactions": "Transaction Amount",
-            }
+            used_method = "search_awards"
             for method in ("search_awards", "search_transactions"):
+                cfg = _method_config[method]
                 try:
                     if rate_limiter:
                         rate_limiter.wait_if_needed()
                     data = getattr(usa, method)(
                         filters=filters,
-                        fields=desc_fields,
+                        fields=cfg["fields"],
                         limit=len(ids),
-                        sort=_sort_for_method.get(method, "Award Amount"),
+                        sort=cfg["sort"],
                         order="desc",
                     )
+                    used_method = method
                     break
                 except Exception as e:
                     logger.debug("USAspending {}/{} failed: {}", method, group_name, e)
@@ -682,7 +692,7 @@ def fetch_usaspending_contract_descriptions(
             if data is None:
                 failed_ids.update(ids)
                 continue
-            _extract_descriptions(data)
+            _extract_descriptions(data, _method_config[used_method]["desc_key"])
     except Exception as e:
         failed_ids.update(cid for cid in all_ids if cid not in results)
         logger.warning("USAspending contract desc error: {}", e)

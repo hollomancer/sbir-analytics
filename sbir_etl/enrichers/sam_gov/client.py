@@ -139,7 +139,7 @@ class SAMGovAPIClient(BaseAsyncAPIClient):
         Returns:
             List of entity data dicts
         """
-        params: dict[str, Any] = {"limit": limit}
+        params: dict[str, Any] = {"pageSize": limit}
         if legal_business_name:
             params["legalBusinessName"] = legal_business_name
         if duns:
