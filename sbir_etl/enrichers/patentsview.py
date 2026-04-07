@@ -321,6 +321,12 @@ class PatentsViewClient:
         try:
             response = _do_request()
             return response.json()
+        except APIError as e:
+            if e.http_status == 404:
+                # ODP returns 404 when a search query matches no records
+                logger.debug("USPTO ODP {}: 404 (no results)", endpoint)
+                return {}
+            raise
         except httpx.HTTPError as e:
             raise APIError(
                 f"USPTO ODP API request failed: {str(e)}",

@@ -294,6 +294,10 @@ def clean_and_dedup_awards(awards: list[dict]) -> tuple[list[dict], dict]:
             a["_normalized_company"] = _normalize_name(
                 str(a.get("Company", "")), remove_suffixes=True
             )
+            # Collapse multiple spaces in name fields (common when middle name is empty)
+            for name_field in ("PI Name", "Contact Name"):
+                if name_field in a:
+                    a[name_field] = " ".join(str(a[name_field]).split())
             cleaned.append(a)
 
     stats["output"] = len(cleaned)
