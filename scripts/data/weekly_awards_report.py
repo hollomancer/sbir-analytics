@@ -2119,6 +2119,7 @@ def map_naics_to_bea_sectors(naics_codes: list[str]) -> dict[str, str]:
         return {}
 
     results: dict[str, str] = {}
+    failed_codes: list[str] = []
     for code in naics_codes:
         try:
             mappings = mapper.map_naics_to_bea(code)
@@ -2126,10 +2127,18 @@ def map_naics_to_bea_sectors(naics_codes: list[str]) -> dict[str, str]:
                 # Take the highest-weight mapping
                 best = max(mappings, key=lambda m: m.allocation_weight)
                 results[code] = best.bea_sector_name
-        except Exception:
+        except Exception as e:
+            failed_codes.append(code)
+            _debug(f"NAICS→BEA mapping failed for {code}: {e}")
             continue
 
     _debug(f"NAICS→BEA mapped: {len(results)}/{len(naics_codes)}")
+    if failed_codes:
+        print(
+            f"Warning: NAICS→BEA mapping failed for {len(failed_codes)} codes: "
+            f"{failed_codes[:10]}{'...' if len(failed_codes) > 10 else ''}",
+            file=sys.stderr,
+        )
     return results
 
 
