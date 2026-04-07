@@ -646,9 +646,9 @@ def fetch_usaspending_contract_descriptions(
             "desc_key": "Description",
         },
         "search_transactions": {
-            "fields": ["Award ID", "Description", "Awarding Agency", "Award Type"],
+            "fields": ["Award ID", "Transaction Description", "Awarding Agency", "Award Type"],
             "sort": "Award ID",
-            "desc_key": "Description",
+            "desc_key": "Transaction Description",
         },
     }
 
@@ -664,8 +664,7 @@ def fetch_usaspending_contract_descriptions(
     usa = SyncUSAspendingClient()
     try:
         for ids, group_name, codes in requests_to_make:
-            quoted = [f'"{c}"' for c in ids]
-            filters = {"award_ids": quoted, "award_type_codes": codes}
+            filters = {"award_ids": list(ids), "award_type_codes": codes}
             logger.debug(
                 "USAspending contract desc: {} ({} IDs: {})",
                 group_name, len(ids), ids[:3],
@@ -683,6 +682,11 @@ def fetch_usaspending_contract_descriptions(
                         limit=len(ids),
                         sort=cfg["sort"],
                         order="desc",
+                    )
+                    num_results = len(data.get("results", []))
+                    logger.debug(
+                        "USAspending {}/{}: {} results",
+                        method, group_name, num_results,
                     )
                     used_method = method
                     break
