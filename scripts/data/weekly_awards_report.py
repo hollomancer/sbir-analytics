@@ -2108,6 +2108,7 @@ def resolve_congressional_districts(awards: list[dict]) -> dict[str, str]:
     _debug(f"Resolving congressional districts for {len(seen)} companies")
     for key, info in seen.items():
         if not info["zip"]:
+            _debug(f"Congressional district skip {key}: no ZIP code")
             continue
         try:
             result = resolver.resolve_single_address(
@@ -2118,7 +2119,15 @@ def resolve_congressional_districts(awards: list[dict]) -> dict[str, str]:
             )
             if result and result.congressional_district:
                 results[key] = result.congressional_district
-        except Exception:
+            else:
+                missing = [f for f in ("address", "city", "state", "zip") if not info.get(f)]
+                _debug(
+                    f"Congressional district miss {key}: "
+                    f"zip={info['zip']} state={info['state']} "
+                    f"missing=[{','.join(missing)}] method={result.method if result else 'none'}"
+                )
+        except Exception as e:
+            _debug(f"Congressional district error {key}: {e}")
             continue
 
     _debug(f"Congressional districts resolved: {len(results)}/{len(seen)}")

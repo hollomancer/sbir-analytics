@@ -253,6 +253,7 @@ def usaspending_search(
                     },
                     fields=fields,
                     limit=50,
+                    sort="Award ID",
                 )
                 group_results = data.get("results", [])
                 logger.debug(
