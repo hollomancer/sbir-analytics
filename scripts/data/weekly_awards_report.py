@@ -67,6 +67,11 @@ from sbir_etl.enrichers.company_enrichment import (
     lookup_sam_entity as _lib_lookup_sam_entity,
     fetch_usaspending_contract_descriptions as _lib_fetch_usaspending_contract_descriptions,
 )
+from sbir_etl.enrichers.opencorporates import (
+    CorporateRecord,
+    OpenCorporatesClient,
+)
+from sbir_etl.enrichers.press_wire import PressRelease, PressWireClient
 
 
 # ---------------------------------------------------------------------------
@@ -146,6 +151,7 @@ _usaspending_limiter = RateLimiter(rate_limit_per_minute=120)
 _semantic_scholar_limiter = RateLimiter(rate_limit_per_minute=100)
 _sam_gov_limiter = RateLimiter(rate_limit_per_minute=60)
 _orcid_limiter = RateLimiter(rate_limit_per_minute=60)
+_opencorporates_limiter = RateLimiter(rate_limit_per_minute=30)  # Free tier ~500/month
 
 
 # ---------------------------------------------------------------------------
@@ -606,6 +612,102 @@ def lookup_sam_entities(
     return results
 
 
+def lookup_opencorporates(
+    awards: list[dict],
+) -> dict[str, CorporateRecord]:
+    """Look up state corporation filings for each unique company.
+
+    Returns a dict keyed by normalized company key.
+    """
+    companies: dict[str, dict] = {}
+    for a in awards:
+        name = str(a.get("Company", "")).strip()
+        if not name:
+            continue
+        key = _company_key(a)
+        if key not in companies:
+            state = str(a.get("State", "")).strip().lower()
+            # Map state abbreviation to OpenCorporates jurisdiction code
+            jurisdiction = f"us_{state}" if len(state) == 2 else None
+            companies[key] = {"name": name, "jurisdiction": jurisdiction}
+
+    results: dict[str, CorporateRecord] = {}
+    total = len(companies)
+    deadline = _stage_deadline()
+    print(f"Looking up {total} companies on OpenCorporates...", file=sys.stderr)
+
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    def _lookup_one(item: tuple[str, dict]) -> tuple[str, CorporateRecord | None]:
+        key, info = item
+        with OpenCorporatesClient(rate_limiter=_opencorporates_limiter) as client:
+            return key, client.lookup_company(info["name"], jurisdiction=info["jurisdiction"])
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        futures = {executor.submit(_lookup_one, item): item for item in companies.items()}
+        for future in as_completed(futures):
+            if _past_deadline(deadline):
+                print(
+                    f"OpenCorporates stage timeout ({STAGE_TIMEOUT}s) — "
+                    f"completed {len(results)}/{total}, skipping remainder",
+                    file=sys.stderr,
+                )
+                executor.shutdown(wait=False, cancel_futures=True)
+                break
+            try:
+                key, record = future.result(timeout=10)
+                if record:
+                    results[key] = record
+            except Exception as e:
+                item = futures[future]
+                print(
+                    f"Warning: OpenCorporates lookup failed for {item[0]}: {e}",
+                    file=sys.stderr,
+                )
+
+    print(f"Found {len(results)}/{total} companies on OpenCorporates", file=sys.stderr)
+    return results
+
+
+def poll_press_wire(
+    awards: list[dict],
+) -> dict[str, list[PressRelease]]:
+    """Poll press wire RSS feeds for mentions of awardee companies.
+
+    Returns a dict keyed by normalized company key, with lists of
+    matching press releases per company.
+    """
+    company_names: dict[str, str] = {}  # original name -> key
+    for a in awards:
+        name = str(a.get("Company", "")).strip()
+        if not name:
+            continue
+        key = _company_key(a)
+        if name not in company_names:
+            company_names[name] = key
+
+    print(f"Polling press wire feeds for {len(company_names)} companies...", file=sys.stderr)
+
+    with PressWireClient() as client:
+        client.set_watchlist(list(company_names.keys()))
+        hits = client.poll()
+
+    # Group by company key
+    results: dict[str, list[PressRelease]] = {}
+    for hit in hits:
+        key = company_names.get(hit.matched_company)
+        if key:
+            results.setdefault(key, []).append(hit)
+
+    total_hits = sum(len(v) for v in results.values())
+    print(
+        f"Press wire: {total_hits} matching releases for "
+        f"{len(results)} companies",
+        file=sys.stderr,
+    )
+    return results
+
+
 # ---------------------------------------------------------------------------
 # Solicitation topic lookup
 # ---------------------------------------------------------------------------
@@ -1059,6 +1161,8 @@ def _award_digest(
     solicitation_topics: dict[str, SolicitationTopic] | None = None,
     usaspending_descriptions: dict[str, str] | None = None,
     sam_entities: dict[str, SAMEntityRecord] | None = None,
+    corporate_record: CorporateRecord | None = None,
+    press_releases: list[PressRelease] | None = None,
 ) -> str:
     """Build a compact text digest of an award for LLM context."""
     parts = [
@@ -1134,6 +1238,33 @@ def _award_digest(
             parts.append(
                 "Company Sources: " + ", ".join(company_research.source_urls[:5])
             )
+    if corporate_record:
+        oc_parts = []
+        if corporate_record.incorporation_date:
+            oc_parts.append(f"Incorporated: {corporate_record.incorporation_date}")
+        if corporate_record.status:
+            oc_parts.append(f"State filing status: {corporate_record.status}")
+        if corporate_record.company_type:
+            oc_parts.append(f"Entity type: {corporate_record.company_type}")
+        if corporate_record.parent_company:
+            oc_parts.append(f"Parent company: {corporate_record.parent_company}")
+        if corporate_record.officers:
+            officer_names = [o.name for o in corporate_record.officers[:3]]
+            oc_parts.append(f"Officers: {', '.join(officer_names)}")
+        if oc_parts:
+            parts.append(
+                "State corporation filing (OpenCorporates): " + " | ".join(oc_parts)
+            )
+    if press_releases:
+        pr_summaries = []
+        for pr in press_releases[:3]:
+            pr_summaries.append(
+                f"- [{pr.source}] {pr.title}"
+                + (f" ({pr.published})" if pr.published else "")
+            )
+        parts.append(
+            "Recent press releases:\n" + "\n".join(pr_summaries)
+        )
     return "\n".join(parts)
 
 
@@ -1145,6 +1276,8 @@ def generate_weekly_synopsis(
     solicitation_topics: dict[str, SolicitationTopic] | None = None,
     usaspending_descriptions: dict[str, str] | None = None,
     sam_entities: dict[str, SAMEntityRecord] | None = None,
+    corporate_records: dict[str, CorporateRecord] | None = None,
+    press_releases: dict[str, list[PressRelease]] | None = None,
 ) -> str | None:
     """Generate a two-paragraph synopsis of all weekly award activity."""
     if not awards:
@@ -1164,11 +1297,12 @@ def generate_weekly_synopsis(
 
     digests = []
     for i, a in enumerate(awards[:50]):
-        cr = None
-        if company_research:
-            cr = company_research.get(_company_key(a))
+        key = _company_key(a)
+        cr = company_research.get(key) if company_research else None
+        oc = corporate_records.get(key) if corporate_records else None
+        pr = press_releases.get(key) if press_releases else None
         digests.append(
-            f"[{i+1}] {_award_digest(a, cr, solicitation_topics, usaspending_descriptions, sam_entities)}"
+            f"[{i+1}] {_award_digest(a, cr, solicitation_topics, usaspending_descriptions, sam_entities, oc, pr)}"
         )
     digest_block = "\n\n".join(digests)
     if len(awards) > 50:
@@ -1201,6 +1335,8 @@ def generate_award_descriptions(
     solicitation_topics: dict[str, SolicitationTopic] | None = None,
     usaspending_descriptions: dict[str, str] | None = None,
     sam_entities: dict[str, SAMEntityRecord] | None = None,
+    corporate_records: dict[str, CorporateRecord] | None = None,
+    press_releases: dict[str, list[PressRelease]] | None = None,
 ) -> dict[int, str]:
     """Generate a brief description for each award using batched API calls."""
     descriptions: dict[int, str] = {}
@@ -1250,11 +1386,12 @@ def generate_award_descriptions(
         digests = []
         for i, a in enumerate(batch):
             idx = batch_start + i + 1
-            cr = None
-            if company_research:
-                cr = company_research.get(_company_key(a))
+            key = _company_key(a)
+            cr = company_research.get(key) if company_research else None
+            oc = corporate_records.get(key) if corporate_records else None
+            pr = press_releases.get(key) if press_releases else None
             digests.append(
-                f"[{idx}] {_award_digest(a, cr, solicitation_topics, usaspending_descriptions, sam_entities)}"
+                f"[{idx}] {_award_digest(a, cr, solicitation_topics, usaspending_descriptions, sam_entities, oc, pr)}"
             )
 
         user = (
@@ -1431,11 +1568,14 @@ def generate_company_diligence(
     usa_recipients: dict[str, USARecipientProfile] | None = None,
     congressional_districts: dict[str, str] | None = None,
     bea_sectors: dict[str, str] | None = None,
+    corporate_records: dict[str, CorporateRecord] | None = None,
+    press_releases: dict[str, list[PressRelease]] | None = None,
 ) -> dict[str, str]:
     """Generate a diligence paragraph for each unique awardee company.
 
     Combines web research, historical SBIR data, SAM.gov registration data,
-    USAspending federal award data (with SBIR vs non-SBIR breakdown), and
+    USAspending federal award data (with SBIR vs non-SBIR breakdown),
+    state corporation filings (OpenCorporates), press wire hits, and
     the current award context to produce a focused due-diligence assessment
     per company.
 
@@ -1477,9 +1617,18 @@ def generate_company_diligence(
         "patents, or partnerships. A company with many SBIR awards but zero "
         "non-SBIR federal work may be an 'SBIR mill' that hasn't "
         "commercialized.\n"
-        "5. Risk factors — e.g. sole reliance on SBIR funding, narrow agency "
+        "5. Corporate structure signals — if state filing data is available, "
+        "note incorporation date (firm age), whether the company is a "
+        "subsidiary of a larger entity (potential SBIR eligibility concern), "
+        "shared officers with other SBIR awardees, or dissolved/inactive "
+        "state filing status. A mismatch between SAM.gov active status and "
+        "state filing inactive/dissolved status is a red flag.\n"
+        "6. Recent news — if press releases are available, note any contract "
+        "wins, acquisitions, partnerships, or product launches that signal "
+        "commercialization progress or strategic direction.\n"
+        "7. Risk factors — e.g. sole reliance on SBIR funding, narrow agency "
         "base, lack of phase progression, SAM exclusions, no follow-on "
-        "contracts, or limited public presence\n\n"
+        "contracts, subsidiary of a large company, or limited public presence\n\n"
         "Be specific and analytical. Do not use bullet points or headers. "
         "Write in a professional, neutral tone. If information is limited, "
         "note that as a risk factor."
@@ -1632,6 +1781,58 @@ def generate_company_diligence(
                 context_parts.append(
                     "BEA economic sectors: " + "; ".join(sector_parts)
                 )
+
+        # State corporation filings (OpenCorporates)
+        oc = corporate_records.get(key) if corporate_records else None
+        if oc:
+            oc_parts = [
+                f"State filing name: {oc.company_name}",
+                f"Jurisdiction: {oc.jurisdiction}",
+            ]
+            if oc.incorporation_date:
+                oc_parts.append(f"Incorporation date: {oc.incorporation_date}")
+            if oc.status:
+                oc_parts.append(f"State filing status: {oc.status}")
+            if oc.company_type:
+                oc_parts.append(f"Entity type: {oc.company_type}")
+            if oc.dissolution_date:
+                oc_parts.append(f"Dissolution date: {oc.dissolution_date}")
+            if oc.agent_name:
+                oc_parts.append(f"Registered agent: {oc.agent_name}")
+            if oc.registered_address:
+                oc_parts.append(f"Registered address: {oc.registered_address}")
+            if oc.parent_company:
+                oc_parts.append(
+                    f"PARENT COMPANY: {oc.parent_company}"
+                    + (f" ({oc.parent_jurisdiction})" if oc.parent_jurisdiction else "")
+                )
+            if oc.officers:
+                for o in oc.officers[:5]:
+                    oc_parts.append(
+                        f"Officer: {o.name}"
+                        + (f" ({o.position})" if o.position else "")
+                        + (f" since {o.start_date}" if o.start_date else "")
+                    )
+            context_parts.append(
+                "State corporation filing (OpenCorporates):\n" + "\n".join(oc_parts)
+            )
+        else:
+            context_parts.append(
+                "State corporation filing: No OpenCorporates record found."
+            )
+
+        # Recent press releases (press wire feeds)
+        pr_list = press_releases.get(key) if press_releases else None
+        if pr_list:
+            pr_parts = []
+            for pr in pr_list[:5]:
+                pr_parts.append(
+                    f"- [{pr.source}] {pr.title}"
+                    + (f" ({pr.published})" if pr.published else "")
+                )
+            context_parts.append(
+                "Recent press releases:\n" + "\n".join(pr_parts)
+            )
 
         user = (
             "Write a one-paragraph due-diligence assessment for this "
@@ -1918,6 +2119,7 @@ def map_naics_to_bea_sectors(naics_codes: list[str]) -> dict[str, str]:
         return {}
 
     results: dict[str, str] = {}
+    failed_codes: list[str] = []
     for code in naics_codes:
         try:
             mappings = mapper.map_naics_to_bea(code)
@@ -1925,10 +2127,18 @@ def map_naics_to_bea_sectors(naics_codes: list[str]) -> dict[str, str]:
                 # Take the highest-weight mapping
                 best = max(mappings, key=lambda m: m.allocation_weight)
                 results[code] = best.bea_sector_name
-        except Exception:
+        except Exception as e:
+            failed_codes.append(code)
+            _debug(f"NAICS→BEA mapping failed for {code}: {e}")
             continue
 
     _debug(f"NAICS→BEA mapped: {len(results)}/{len(naics_codes)}")
+    if failed_codes:
+        print(
+            f"Warning: NAICS→BEA mapping failed for {len(failed_codes)} codes: "
+            f"{failed_codes[:10]}{'...' if len(failed_codes) > 10 else ''}",
+            file=sys.stderr,
+        )
     return results
 
 
@@ -2236,14 +2446,16 @@ def main():
 
     from concurrent.futures import ThreadPoolExecutor, as_completed
 
-    # --- Stage 1: Parallel API fetches (solicitation topics + USAspending + SAM) ---
+    # --- Stage 1: Parallel API fetches (solicitation topics + USAspending + SAM + OpenCorporates + press wire) ---
     sol_topics = None
     usa_descs: dict[str, str] | None = None
     usa_recipients: dict[str, USARecipientProfile] | None = None
     sam_data: dict[str, SAMEntityRecord] | None = None
+    oc_data: dict[str, CorporateRecord] | None = None
+    press_hits: dict[str, list[PressRelease]] | None = None
     if awards:
         fetch_futures: dict = {}
-        with ThreadPoolExecutor(max_workers=4) as fetch_pool:
+        with ThreadPoolExecutor(max_workers=6) as fetch_pool:
             if not args.skip_sbir_api:
                 fetch_futures["sol_topics"] = fetch_pool.submit(
                     fetch_solicitation_topics, awards
@@ -2264,6 +2476,14 @@ def main():
             fetch_futures["sam_data"] = fetch_pool.submit(
                 lookup_sam_entities, awards
             )
+            # OpenCorporates — state corporation filings (free tier, no key required)
+            fetch_futures["oc_data"] = fetch_pool.submit(
+                lookup_opencorporates, awards
+            )
+            # Press wire feeds — RSS polling (free, no key required)
+            fetch_futures["press_hits"] = fetch_pool.submit(
+                poll_press_wire, awards
+            )
 
             # Collect results
             for name, future in fetch_futures.items():
@@ -2277,6 +2497,10 @@ def main():
                         usa_recipients = result
                     elif name == "sam_data":
                         sam_data = result
+                    elif name == "oc_data":
+                        oc_data = result
+                    elif name == "press_hits":
+                        press_hits = result
                 except Exception as e:
                     print(f"Warning: {name} fetch failed: {e}", file=sys.stderr)
 
@@ -2313,12 +2537,12 @@ def main():
                 synopsis_future = ai_pool.submit(
                     generate_weekly_synopsis,
                     api_key, awards, args.days, company_info, sol_topics,
-                    usa_descs, sam_data,
+                    usa_descs, sam_data, oc_data, press_hits,
                 )
                 desc_future = ai_pool.submit(
                     generate_award_descriptions,
                     api_key, awards, company_info, sol_topics,
-                    usa_descs, sam_data,
+                    usa_descs, sam_data, oc_data, press_hits,
                 )
                 try:
                     synopsis = synopsis_future.result()
@@ -2404,6 +2628,7 @@ def main():
                         generate_company_diligence,
                         api_key, awards, company_info, co_history, sam_data, co_fed,
                         usa_recipients, congressional, bea_sectors,
+                        oc_data, press_hits,
                     )
                     pi_dilig_future = dilig_pool.submit(
                         generate_pi_diligence,
@@ -2461,6 +2686,23 @@ def main():
         print(
             f"[DEBUG] USAspending recipient profiles: "
             f"{len(usa_recipients) if usa_recipients else 0}",
+            file=sys.stderr,
+        )
+        print(
+            f"[DEBUG] OpenCorporates records: "
+            f"{len(oc_data) if oc_data else 0}",
+            file=sys.stderr,
+        )
+        oc_parents = sum(1 for r in (oc_data or {}).values() if r.parent_company)
+        if oc_parents:
+            print(
+                f"[DEBUG]   Companies with parent (subsidiary): {oc_parents}",
+                file=sys.stderr,
+            )
+        press_total = sum(len(v) for v in (press_hits or {}).values())
+        print(
+            f"[DEBUG] Press wire hits: {press_total} releases for "
+            f"{len(press_hits) if press_hits else 0} companies",
             file=sys.stderr,
         )
         print(f"[DEBUG] Synopsis generated: {'yes' if synopsis else 'no'}", file=sys.stderr)

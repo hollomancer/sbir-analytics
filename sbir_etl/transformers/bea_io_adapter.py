@@ -214,8 +214,9 @@ class BEAIOAdapter:
         """
         if not self._api_available:
             logger.warning(
-                "BEA API not available — using placeholder computation. "
-                "Set BEA_API_KEY for real I-O analysis."
+                "BEA API not available (BEA_API_KEY not set) — using placeholder computation. "
+                "Set BEA_API_KEY for real I-O analysis. "
+                "Register at https://apps.bea.gov/API/signup/"
             )
             return self._compute_placeholder_impacts(
                 shocks_df, model_version or self.model_version
@@ -225,9 +226,26 @@ class BEAIOAdapter:
         model_ver = model_version or self.model_version
 
         try:
-            return self._compute_impacts_via_bea(shocks_df, model_ver)
+            result = self._compute_impacts_via_bea(shocks_df, model_ver)
+            # Check if the result actually used real BEA data or fell back
+            if "quality_flags" in result.columns:
+                placeholder_count = result["quality_flags"].str.contains(
+                    "placeholder|failed", na=False
+                ).sum()
+                if placeholder_count > 0:
+                    logger.warning(
+                        f"BEA I-O computation: {placeholder_count}/{len(result)} "
+                        f"rows used fallback/placeholder values"
+                    )
+            return result
         except Exception as e:
-            logger.warning(f"BEA I-O computation failed: {e}. Falling back to placeholder.")
+            logger.error(
+                f"BEA I-O computation failed with {type(e).__name__}: {e}. "
+                f"Shocks: {len(shocks_df)} rows, "
+                f"sectors: {shocks_df['bea_sector'].unique().tolist()[:10]}. "
+                "Falling back to placeholder multipliers.",
+                exc_info=True,
+            )
             return self._compute_placeholder_impacts(shocks_df, model_ver)
 
     def _compute_impacts_via_bea(

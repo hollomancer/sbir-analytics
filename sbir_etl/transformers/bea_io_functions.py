@@ -30,11 +30,29 @@ def fetch_use_table(client: BEAApiClient, year: int = 2020) -> pd.DataFrame:
     """
     raw = client.get_use_table(year)
     if raw.empty:
-        logger.warning(f"BEA Use table empty for year {year}")
+        logger.warning(
+            f"BEA Use table returned empty for year {year}. "
+            f"Leontief computation will fail — check BEA_API_KEY and year availability."
+        )
         return pd.DataFrame()
 
     # BEA Use table rows: RowCode (commodity), ColCode (industry), DataValue
     df = raw.copy()
+    required_cols = {"RowCode", "ColCode", "DataValue"}
+    missing_cols = required_cols - set(df.columns)
+    if missing_cols:
+        logger.error(
+            f"BEA Use table missing required columns: {missing_cols}. "
+            f"Got columns: {list(df.columns)}. Cannot build I-O matrix."
+        )
+        return pd.DataFrame()
+
+    coerce_count = df["DataValue"].apply(lambda x: pd.to_numeric(x, errors="coerce")).isna().sum()
+    if coerce_count > 0:
+        logger.debug(
+            f"BEA Use table: {coerce_count}/{len(df)} DataValue entries "
+            f"coerced to NaN (non-numeric)"
+        )
     df["DataValue"] = pd.to_numeric(df["DataValue"], errors="coerce").fillna(0.0)
 
     # Pivot to matrix form: rows = commodities, columns = industries
@@ -46,7 +64,10 @@ def fetch_use_table(client: BEAApiClient, year: int = 2020) -> pd.DataFrame:
         fill_value=0.0,
     )
 
-    logger.debug(f"Fetched Use table ({use_matrix.shape[0]}×{use_matrix.shape[1]}) for {year}")
+    logger.info(
+        f"BEA Use table pivoted: {use_matrix.shape[0]} commodities × "
+        f"{use_matrix.shape[1]} industries for year {year}"
+    )
     return use_matrix
 
 
@@ -93,13 +114,19 @@ def fetch_value_added(
     """
     raw = client.get_value_added_table(year)
     if raw.empty:
-        logger.warning(f"BEA Value Added table empty for year {year}")
+        logger.warning(
+            f"BEA Value Added table returned empty for year {year}. "
+            f"VA ratio computation will use default ratios (0.4/0.3/0.15)."
+        )
         return pd.DataFrame()
 
     df = raw.copy()
     df["DataValue"] = pd.to_numeric(df["DataValue"], errors="coerce").fillna(0.0)
 
-    logger.debug(f"Fetched Value Added data with {len(df)} rows for {year}")
+    logger.info(
+        f"BEA Value Added: {len(df)} rows for year {year}, "
+        f"columns: {list(df.columns)}"
+    )
     return df
 
 
@@ -118,13 +145,19 @@ def fetch_employment(
     """
     raw = client.get_employment_table(year)
     if raw.empty:
-        logger.warning(f"BEA Employment table empty for year {year}")
+        logger.warning(
+            f"BEA Employment table returned empty for year {year}. "
+            f"Employment coefficients will use default ~10 jobs/$1M fallback."
+        )
         return pd.DataFrame()
 
     df = raw.copy()
     df["DataValue"] = pd.to_numeric(df["DataValue"], errors="coerce").fillna(0.0)
 
-    logger.debug(f"Fetched Employment data with {len(df)} rows for {year}")
+    logger.info(
+        f"BEA Employment: {len(df)} rows for year {year}, "
+        f"columns: {list(df.columns)}"
+    )
     return df
 
 
@@ -217,13 +250,26 @@ def calculate_value_added_ratios(
             )
 
         if ratios_data:
+            logger.info(
+                f"BEA VA ratios computed for {len(ratios_data)} sectors"
+            )
             return pd.DataFrame(ratios_data)
 
-        logger.debug("Could not calculate value-added ratios from BEA data")
+        logger.warning(
+            "Could not calculate value-added ratios from BEA data — "
+            "parsed 0 sectors with positive total VA. "
+            f"Input had {len(va_df)} rows, {len(industry_va)} industries parsed. "
+            "Default ratios (0.4/0.3/0.15) will be used."
+        )
         return pd.DataFrame()
 
     except Exception as e:
-        logger.warning(f"Failed to calculate value-added ratios: {e}")
+        logger.error(
+            f"Failed to calculate value-added ratios: {type(e).__name__}: {e}. "
+            f"Input shape: {va_df.shape}, columns: {list(va_df.columns)}. "
+            "Default ratios will be used.",
+            exc_info=True,
+        )
         return pd.DataFrame()
 
 
@@ -268,9 +314,27 @@ def calculate_employment_coefficients(
                         }
                     )
 
+        if coefficients:
+            logger.info(
+                f"Employment coefficients computed for {len(coefficients)} sectors"
+            )
+        else:
+            logger.warning(
+                "Employment coefficients: 0 sectors matched between "
+                f"employment data ({len(emp_df)} rows) and industry output "
+                f"({len(industry_output)} sectors). "
+                "Fallback of ~10 jobs/$1M will be used."
+            )
         return pd.DataFrame(coefficients)
     except Exception as e:
-        logger.warning(f"Failed to calculate employment coefficients: {e}")
+        logger.error(
+            f"Failed to calculate employment coefficients: "
+            f"{type(e).__name__}: {e}. "
+            f"emp_df shape: {emp_df.shape}, "
+            f"industry_output length: {len(industry_output)}. "
+            "Fallback of ~10 jobs/$1M will be used.",
+            exc_info=True,
+        )
         return pd.DataFrame()
 
 

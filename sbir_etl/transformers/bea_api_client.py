@@ -96,7 +96,17 @@ class BEAApiClient:
             "ResultFormat": "JSON",
             **params,
         }
+        logger.debug(
+            f"BEA API request: method={params.get('method')} "
+            f"dataset={params.get('DataSetName')} "
+            f"table={params.get('TableID', params.get('TableName', 'N/A'))} "
+            f"year={params.get('Year', 'N/A')}"
+        )
         resp = self._client.get(self.base_url, params=full_params)
+        logger.debug(
+            f"BEA API response: HTTP {resp.status_code} | "
+            f"{len(resp.content)} bytes"
+        )
         resp.raise_for_status()
         data = resp.json()
 
@@ -104,11 +114,27 @@ class BEAApiClient:
         bea_resp = data.get("BEAAPI", {}).get("Results", {})
         if "Error" in bea_resp:
             error_detail = bea_resp["Error"]
+            logger.error(
+                f"BEA API returned error: {error_detail} | "
+                f"params: {params}"
+            )
             raise APIError(
                 f"BEA API error: {error_detail}",
                 component="transformer.bea_api_client",
                 operation="_request",
                 details={"bea_error": str(error_detail), "params": params},
+            )
+
+        # Log response structure for debugging
+        if isinstance(bea_resp, dict):
+            data_rows = bea_resp.get("Data", [])
+            logger.debug(
+                f"BEA API response parsed: {len(data_rows)} data rows | "
+                f"keys: {list(bea_resp.keys())}"
+            )
+        elif isinstance(bea_resp, list):
+            logger.debug(
+                f"BEA API response parsed: {len(bea_resp)} result items (multi-result format)"
             )
 
         return data
@@ -131,16 +157,34 @@ class BEAApiClient:
                     rows.extend(item["Data"])
                 else:
                     rows.append(item)
+            logger.debug(f"BEA multi-result format: {len(results)} items → {len(rows)} rows")
         elif isinstance(results, dict):
             rows = results.get("Data", [])
+            if not rows:
+                logger.warning(
+                    f"BEA API returned dict result with no Data key. "
+                    f"Available keys: {list(results.keys())}. "
+                    f"This may indicate an unexpected response format."
+                )
         else:
             rows = []
+            logger.warning(
+                f"BEA API returned unexpected Results type: {type(results).__name__}. "
+                f"Expected dict or list."
+            )
 
         if not rows:
-            logger.warning("BEA API returned no data rows")
+            logger.warning(
+                "BEA API returned 0 data rows — downstream computations will "
+                "use placeholder/fallback values"
+            )
             return pd.DataFrame()
 
-        return pd.DataFrame(rows)
+        df = pd.DataFrame(rows)
+        logger.debug(
+            f"BEA data extracted: {len(df)} rows, columns: {list(df.columns)}"
+        )
+        return df
 
     # ------------------------------------------------------------------
     # Public table accessors
@@ -156,15 +200,38 @@ class BEAApiClient:
         Returns:
             DataFrame of table rows from the API.
         """
+        # Resolve table name for logging
+        table_name = next(
+            (name for name, tid in TABLE_IDS.items() if tid == table_id),
+            f"unknown({table_id})",
+        )
         params = {
             "method": "GetData",
             "DataSetName": "InputOutput",
             "TableID": table_id,
             "Year": str(year),
         }
-        logger.debug(f"Fetching BEA I-O table {table_id} for year {year}")
-        data = self._request(params)
-        return self._rows_to_dataframe(data)
+        logger.info(f"Fetching BEA I-O table: {table_name} (ID={table_id}) for year {year}")
+        try:
+            data = self._request(params)
+        except Exception as e:
+            logger.error(
+                f"BEA API request failed for {table_name} (ID={table_id}), "
+                f"year={year}: {type(e).__name__}: {e}"
+            )
+            raise
+        df = self._rows_to_dataframe(data)
+        if df.empty:
+            logger.warning(
+                f"BEA I-O table {table_name} (ID={table_id}) returned empty "
+                f"for year {year} — check if year is available"
+            )
+        else:
+            logger.info(
+                f"BEA I-O table {table_name}: {len(df)} rows, "
+                f"{df.columns.tolist()[:5]}{'...' if len(df.columns) > 5 else ''}"
+            )
+        return df
 
     def get_use_table(self, year: int = 2020) -> pd.DataFrame:
         """Fetch the Use table (Summary level, after redefinitions).
