@@ -646,9 +646,9 @@ def fetch_usaspending_contract_descriptions(
             "desc_key": "Description",
         },
         "search_transactions": {
-            "fields": ["Award ID", "Transaction Description", "Awarding Agency", "Award Type"],
+            "fields": ["Award ID", "Description", "Awarding Agency", "Award Type"],
             "sort": "Award ID",
-            "desc_key": "Transaction Description",
+            "desc_key": "Description",
         },
     }
 

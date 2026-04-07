@@ -87,10 +87,16 @@ class SAMGovAPIClient(BaseAsyncAPIClient):
             Entity data dict or None if not found
         """
         try:
-            # SAM.gov Entity Information API v3 endpoint
-            # Format: /entities/{uei}
-            response = await self._make_request("GET", f"/entities/{uei}")
-            return response
+            # SAM.gov Entity Information API v3: UEI is a query parameter
+            response = await self._make_request(
+                "GET", "/entities", params={"ueiSAM": uei}
+            )
+            if isinstance(response, dict) and "entityData" in response:
+                entities = response["entityData"]
+                return entities[0] if entities else None
+            if isinstance(response, list):
+                return response[0] if response else None
+            return response or None
         except APIError as e:
             if "404" in str(e) or "not found" in str(e).lower():
                 logger.debug(f"Entity not found for UEI: {uei}")
@@ -107,12 +113,15 @@ class SAMGovAPIClient(BaseAsyncAPIClient):
             Entity data dict or None if not found
         """
         try:
-            # SAM.gov Entity Information API v3 endpoint
-            # Format: /entities?cage={cage}
-            response = await self._make_request("GET", "/entities", params={"cage": cage})
-            # API may return a list, get first result
-            if isinstance(response, list) and len(response) > 0:
-                return response[0]
+            # SAM.gov Entity Information API v3: CAGE is a query parameter
+            response = await self._make_request(
+                "GET", "/entities", params={"cageCode": cage}
+            )
+            if isinstance(response, dict) and "entityData" in response:
+                entities = response["entityData"]
+                return entities[0] if entities else None
+            if isinstance(response, list):
+                return response[0] if response else None
             return response if not isinstance(response, list) else None
         except APIError as e:
             if "404" in str(e) or "not found" in str(e).lower():
@@ -139,7 +148,7 @@ class SAMGovAPIClient(BaseAsyncAPIClient):
         Returns:
             List of entity data dicts
         """
-        params: dict[str, Any] = {"pageSize": limit}
+        params: dict[str, Any] = {"size": min(limit, 10)}
         if legal_business_name:
             params["legalBusinessName"] = legal_business_name
         if duns:
