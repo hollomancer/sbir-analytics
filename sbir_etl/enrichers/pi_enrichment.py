@@ -14,6 +14,7 @@ from loguru import logger
 
 from sbir_etl.enrichers.orcid_client import ORCIDClient
 from sbir_etl.enrichers.patentsview import PatentsViewClient, RateLimiter
+from sbir_etl.enrichers.lens_patents import LensPatentClient
 from sbir_etl.enrichers.semantic_scholar import SemanticScholarClient
 from sbir_etl.models.sbir_identification import classify_sbir_award
 
@@ -147,6 +148,63 @@ def lookup_pi_patents(
         return None
 
 
+def lookup_pi_patents_with_fallback(
+    pi_name: str,
+    company_name: str | None = None,
+    *,
+    rate_limiter: RateLimiter | None = None,
+    lens_rate_limiter: RateLimiter | None = None,
+) -> PIPatentRecord | None:
+    """Try PatentsView first, fall back to Lens.org for patent lookups.
+
+    Parameters match :func:`lookup_pi_patents` with an additional
+    *lens_rate_limiter* for the fallback Lens.org client.
+    """
+    result = lookup_pi_patents(pi_name, company_name, rate_limiter=rate_limiter)
+    if result is not None:
+        return result
+
+    logger.info(
+        "PatentsView unavailable for '{}', falling back to Lens.org", pi_name
+    )
+
+    try:
+        with LensPatentClient(rate_limiter=lens_rate_limiter) as lens:
+            if company_name:
+                records = lens.search_patents_by_assignee(company_name)
+            else:
+                first, last = _split_pi_name(pi_name)
+                if not last:
+                    return None
+                records = lens.search_patents_by_inventor(f"{first} {last}".strip())
+
+        if not records:
+            return None
+
+        sample_titles = [r.title for r in records[:5] if r.title]
+
+        assignees: set[str] = set()
+        for r in records:
+            if r.assignee:
+                assignees.add(r.assignee)
+
+        filing_dates = [r.filing_date for r in records if r.filing_date]
+        date_range: tuple[str | None, str | None] = (
+            min(filing_dates) if filing_dates else None,
+            max(filing_dates) if filing_dates else None,
+        )
+
+        return PIPatentRecord(
+            total_patents=len(records),
+            sample_titles=sample_titles,
+            assignees=sorted(assignees),
+            date_range=date_range,
+        )
+    except Exception as e:
+        logger.debug("Lens.org fallback error for '{}': {}", pi_name, e)
+        return None
+
+
 def lookup_pi_publications(
     pi_name: str,
     *,
@@ -211,4 +269,79 @@ def lookup_pi_orcid(
         sample_work_titles=rec.sample_work_titles,
         funding_count=rec.funding_count,
         keywords=rec.keywords,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Cross-fallback wrappers
+# ---------------------------------------------------------------------------
+
+
+def lookup_pi_publications_with_fallback(
+    pi_name: str,
+    *,
+    rate_limiter: RateLimiter | None = None,
+    orcid_rate_limiter: RateLimiter | None = None,
+) -> PIPublicationRecord | None:
+    """Try Semantic Scholar first, fall back to ORCID works data.
+
+    Parameters match :func:`lookup_pi_publications` with an additional
+    *orcid_rate_limiter* for the fallback ORCID client.
+    """
+    result = lookup_pi_publications(pi_name, rate_limiter=rate_limiter)
+    if result is not None:
+        return result
+
+    logger.info(
+        "Semantic Scholar unavailable for '{}', falling back to ORCID works",
+        pi_name,
+    )
+    orcid_rec = lookup_pi_orcid(pi_name, rate_limiter=orcid_rate_limiter)
+    if orcid_rec is None:
+        return None
+
+    return PIPublicationRecord(
+        total_papers=orcid_rec.works_count,
+        h_index=None,
+        citation_count=0,
+        sample_titles=orcid_rec.sample_work_titles,
+        affiliations=orcid_rec.affiliations,
+    )
+
+
+def lookup_pi_orcid_with_fallback(
+    pi_name: str,
+    *,
+    rate_limiter: RateLimiter | None = None,
+    semantic_scholar_rate_limiter: RateLimiter | None = None,
+) -> ORCIDRecord | None:
+    """Try ORCID first, fall back to Semantic Scholar author data.
+
+    Parameters match :func:`lookup_pi_orcid` with an additional
+    *semantic_scholar_rate_limiter* for the fallback Semantic Scholar client.
+    """
+    result = lookup_pi_orcid(pi_name, rate_limiter=rate_limiter)
+    if result is not None:
+        return result
+
+    logger.info(
+        "ORCID unavailable for '{}', falling back to Semantic Scholar profile",
+        pi_name,
+    )
+    pub_rec = lookup_pi_publications(
+        pi_name, rate_limiter=semantic_scholar_rate_limiter
+    )
+    if pub_rec is None:
+        return None
+
+    first, last = _split_pi_name(pi_name)
+    return ORCIDRecord(
+        orcid_id="",
+        given_name=first or None,
+        family_name=last or None,
+        affiliations=pub_rec.affiliations,
+        works_count=pub_rec.total_papers,
+        sample_work_titles=pub_rec.sample_titles,
+        funding_count=0,
+        keywords=[],
     )

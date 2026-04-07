@@ -55,8 +55,11 @@ from sbir_etl.enrichers.pi_enrichment import (
     PIPublicationRecord,
     ORCIDRecord,
     lookup_pi_patents as _lib_lookup_pi_patents,
+    lookup_pi_patents_with_fallback as _lib_lookup_pi_patents_with_fallback,
     lookup_pi_publications as _lib_lookup_pi_publications,
+    lookup_pi_publications_with_fallback as _lib_lookup_pi_publications_with_fallback,
     lookup_pi_orcid as _lib_lookup_pi_orcid,
+    lookup_pi_orcid_with_fallback as _lib_lookup_pi_orcid_with_fallback,
 )
 from sbir_etl.enrichers.company_enrichment import (
     FederalAwardSummary as PIFederalAwardRecord,
@@ -64,7 +67,9 @@ from sbir_etl.enrichers.company_enrichment import (
     SAMEntityRecord,
     lookup_company_federal_awards as _lib_lookup_company_federal_awards,
     lookup_usaspending_recipient as _lib_lookup_usaspending_recipient,
+    lookup_usaspending_recipient_with_fallback as _lib_lookup_usaspending_recipient_with_fallback,
     lookup_sam_entity as _lib_lookup_sam_entity,
+    lookup_sam_entity_with_fallback as _lib_lookup_sam_entity_with_fallback,
     fetch_usaspending_contract_descriptions as _lib_fetch_usaspending_contract_descriptions,
 )
 from sbir_etl.enrichers.opencorporates import (
@@ -152,6 +157,7 @@ _semantic_scholar_limiter = RateLimiter(rate_limit_per_minute=100)
 _sam_gov_limiter = RateLimiter(rate_limit_per_minute=60)
 _orcid_limiter = RateLimiter(rate_limit_per_minute=60)
 _opencorporates_limiter = RateLimiter(rate_limit_per_minute=30)  # Free tier ~500/month
+_lens_limiter = RateLimiter(rate_limit_per_minute=50)  # Lens.org free tier
 
 
 # ---------------------------------------------------------------------------
@@ -422,10 +428,22 @@ def lookup_pi_external_data(
         uei = info["uei"] or None
 
         # Run the 3 independent API calls concurrently per PI
+        # Use _with_fallback variants for cross-API resilience
         with ThreadPoolExecutor(max_workers=3) as inner:
-            patent_future = inner.submit(_lib_lookup_pi_patents, name, company)
-            pub_future = inner.submit(_lib_lookup_pi_publications, name, rate_limiter=_semantic_scholar_limiter)
-            orcid_future = inner.submit(_lib_lookup_pi_orcid, name, rate_limiter=_orcid_limiter)
+            patent_future = inner.submit(
+                _lib_lookup_pi_patents_with_fallback, name, company,
+                lens_rate_limiter=_lens_limiter,
+            )
+            pub_future = inner.submit(
+                _lib_lookup_pi_publications_with_fallback, name,
+                rate_limiter=_semantic_scholar_limiter,
+                orcid_rate_limiter=_orcid_limiter,
+            )
+            orcid_future = inner.submit(
+                _lib_lookup_pi_orcid_with_fallback, name,
+                rate_limiter=_orcid_limiter,
+                semantic_scholar_rate_limiter=_semantic_scholar_limiter,
+            )
 
             patents = patent_future.result()
             publications = pub_future.result()
@@ -513,7 +531,11 @@ def lookup_usaspending_recipients(
 
     def _lookup_one(item: tuple[str, dict]) -> tuple[str, USARecipientProfile | None]:
         key, info = item
-        return key, _lib_lookup_usaspending_recipient(info["name"], info["uei"], rate_limiter=_usaspending_limiter)
+        return key, _lib_lookup_usaspending_recipient_with_fallback(
+            info["name"], info["uei"],
+            rate_limiter=_usaspending_limiter,
+            fallback_rate_limiter=_sam_gov_limiter,
+        )
 
     with ThreadPoolExecutor(max_workers=4) as executor:
         futures = {executor.submit(_lookup_one, item): item for item in companies.items()}
@@ -583,7 +605,11 @@ def lookup_sam_entities(
 
     def _lookup_one(item: tuple[str, dict]) -> tuple[str, SAMEntityRecord | None]:
         key, info = item
-        return key, _lib_lookup_sam_entity(info["name"], info["uei"], info["cage"], rate_limiter=_sam_gov_limiter)
+        return key, _lib_lookup_sam_entity_with_fallback(
+            info["name"], info["uei"], info["cage"],
+            rate_limiter=_sam_gov_limiter,
+            fallback_rate_limiter=_usaspending_limiter,
+        )
 
     # Cap at 3 workers to respect SAM.gov 60 req/min rate limit
     with ThreadPoolExecutor(max_workers=3) as executor:
