@@ -222,6 +222,6 @@ dagster asset group list
 
 ## Related Documents
 
-- [Pipeline Orchestration Patterns](../../.kiro/steering/pipeline-orchestration.md)
-- [Code Structure Guidelines](../../.kiro/steering/structure.md)
+- [Pipeline Orchestration Patterns](../steering/pipeline-orchestration.md)
+- [Code Structure Guidelines](../steering/structure.md)
 - [Architecture Overview](detailed-overview.md)

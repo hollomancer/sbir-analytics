@@ -9,7 +9,7 @@ MD060: false  # table column style - too strict
 # Exclude archive and generated files from linting
 ignoreGlobs:
   - "**/archive/**/*.md"
-  - "**/.kiro/specs/archive/**/*.md"
+  - "**/specs/archive/**/*.md"
   - "reports/**/*.md"  # Generated reports
   - "**/node_modules/**/*.md"
   - "**/.git/**/*.md"

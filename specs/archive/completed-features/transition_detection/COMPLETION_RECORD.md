@@ -135,7 +135,7 @@ All 10 core requirements from the specification have been fully implemented:
 ## Archive Status
 
 **Archive Date**: 2025-10-30
-**Archive Location**: `.kiro/specs/archive/completed-features/transition_detection/`
+**Archive Location**: `specs/archive/completed-features/transition_detection/`
 **Archive Reason**: Specification fully implemented and validated
 **Maintenance Status**: Complete - no further development required
 

@@ -224,7 +224,7 @@ uv run pytest tests/unit/test_cet_signal_extractor.py -v  # 37 tests, 96% covera
 - Performance metrics achieved: ≥10K detections/min, ≥85% precision, ≥70% recall
 - Complete documentation suite delivered (8 guides, 6,126 lines)
 - Neo4j graph schema implemented with full relationship modeling
-- Archived in `.kiro/specs/archive/completed-features/transition_detection/`
+- Archived in `specs/archive/completed-features/transition_detection/`
 
 ---
 

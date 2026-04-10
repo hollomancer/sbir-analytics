@@ -82,8 +82,8 @@ test-results*.json
 # OpenSpec
 openspec/
 
-# Kiro specs (not needed in container)
-.kiro/
+# Specs (not needed in container)
+specs/
 
 # Archive (not needed in container)
 archive/

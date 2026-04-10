@@ -272,7 +272,7 @@ Brief description of changes
 
 - Use Diátaxis types: Tutorials, How-to guides, Explanations, References.
 - Every doc includes front-matter: `Type`, `Owner`, `Last-Reviewed`, `Status`.
-- Docs live in `docs/` (see `docs/index.md`). Specs and tasks live in `.kiro/specs/`.
+- Docs live in `docs/` (see `docs/index.md`). Specs and tasks live in `specs/`.
 - Changes to architecture, data contracts, or performance must update relevant docs/specs in the same PR.
 - Neo4j schema changes must update `docs/schemas/neo4j.md` and `packages/sbir-graph/sbir_graph/loaders/` together.
 - New features requiring user documentation should include guides in `docs/guides/` (e.g., statistical reporting, containerization).
@@ -307,8 +307,8 @@ sbir-analytics/
 ├── config/                # Configuration files
 ├── data/                  # Data files (not in git)
 ├── docs/                  # Additional documentation
-├── .kiro/specs/           # Kiro specifications (active system)
-├── .kiro/steering/        # Agent steering documents (architectural patterns)
+├── specs/           # specifications (active system)
+├── docs/steering/        # Agent steering documents (architectural patterns)
 └── archive/openspec/      # Archived OpenSpec content (historical reference)
 ```
 

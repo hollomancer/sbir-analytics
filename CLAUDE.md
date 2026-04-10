@@ -4,7 +4,7 @@
 
 Graph-based ETL: SBIR awards → Neo4j. Dagster orchestration, DuckDB processing, Docker deployment.
 
-Architectural patterns and technical docs live in `.kiro/steering/`. Feature specs live in `.kiro/specs/`.
+Architectural patterns and technical docs live in `docs/steering/`. Feature specs live in `specs/`.
 
 ## Agents
 

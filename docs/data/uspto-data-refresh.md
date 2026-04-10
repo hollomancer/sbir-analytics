@@ -360,7 +360,7 @@ pytest tests/integration/test_uspto_download.py -v
 - [USPTO Patent Data Dictionary](dictionaries/uspto-patent-data-dictionary.md)
 - [Patent Neo4j Schema](../schemas/patent-neo4j-schema.md)
 - [Data Sources Overview](index.md)
-- [Configuration Patterns](../../.kiro/steering/configuration-patterns.md)
+- [Configuration Patterns](../steering/configuration-patterns.md)
 
 ## Contact
 

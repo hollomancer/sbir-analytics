@@ -34,6 +34,6 @@ Then extend both across all agencies.
 
 - Patent-award linkage (`src/transformers/patent_transformer.py`) — EXISTS
 - USPTO extraction pipeline — EXISTS
-- USPTO Lambda downloads (`.kiro/specs/uspto-lambda-downloads/`) — 90% complete
+- USPTO Lambda downloads (`specs/uspto-lambda-downloads/`) — 90% complete
 - Entity resolution — EXISTS
 - Leverage ratio analysis (M1) — for shared entity universe

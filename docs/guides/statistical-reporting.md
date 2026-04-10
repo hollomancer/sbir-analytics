@@ -12,7 +12,7 @@ The Statistical Reporting System provides comprehensive, multi-format reports fo
 - 🚧 **Module Analyzers**: In development for SBIR enrichment, patent analysis, CET classification, transition detection
 - 🚧 **Automated Insights**: Quality recommendations, anomaly detection, and success story identification
 
-See `.kiro/specs/statistical_reporting/tasks.md` for detailed implementation progress.
+See `specs/statistical_reporting/tasks.md` for detailed implementation progress.
 
 ## Key Concepts
 
@@ -454,7 +454,7 @@ For large datasets (>100K records):
 
 ## Related Documentation
 
-- **Specification**: `.kiro/specs/statistical_reporting/`
+- **Specification**: `specs/statistical_reporting/`
 - **Implementation**: `sbir_etl/utils/statistical_reporter.py`
 - **Models**: `sbir_etl/models/quality.py`
 - **Configuration**: `config/base.yaml` (statistical_reporting section)

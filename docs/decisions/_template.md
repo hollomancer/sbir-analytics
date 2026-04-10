@@ -27,5 +27,5 @@ Briefly list major alternatives and why they were not chosen.
 
 ## Links
 
-- Related specs: `.kiro/specs/...`
+- Related specs: `specs/...`
 - Related PRs: #<number>

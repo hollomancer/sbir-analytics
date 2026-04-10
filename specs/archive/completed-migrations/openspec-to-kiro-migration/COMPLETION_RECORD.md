@@ -56,7 +56,7 @@ This migration established Kiro as the specification system for the project, ena
 - Task-driven implementation workflow
 - Better traceability and project management
 
-All future development should use the Kiro specification system in `.kiro/specs/`.
+All future development should use the Kiro specification system in `specs/`.
 
 ---
 

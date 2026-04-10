@@ -25,5 +25,5 @@ A single visualization showing SBIR technology allocation across all 11 agencies
 
 - CET classifier (`src/transition/features/cet_analyzer.py`) — EXISTS
 - Topic extraction (`src/tools/mission_a/extract_topics.py`) — EXISTS
-- PaECTER embeddings (`.kiro/specs/paecter_analysis_layer/`) — 30% complete (enhances but not required)
+- PaECTER embeddings (`specs/paecter_analysis_layer/`) — 30% complete (enhances but not required)
 - Full SBIR.gov award corpus — needs verification of data freshness
