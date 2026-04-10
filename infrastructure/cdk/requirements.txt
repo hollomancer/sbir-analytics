@@ -1,2 +1,4 @@
+# CDK dependencies — consumed by CI (pip install) during cdk synth.
+# Not managed by uv; kept minimal and separate from the main project.
 aws-cdk-lib>=2.100.0
 constructs>=10.0.0

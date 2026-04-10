@@ -87,28 +87,68 @@ For production use, see [Deployment Guide](docs/deployment/README.md) for:
 
 See [Documentation Index](docs/index.md) for complete map.
 
+## Architecture
+
+```mermaid
+graph TD
+    subgraph Sources
+        SBIR[SBIR.gov CSV]
+        USA[USAspending Bulk]
+        USPTO[USPTO Patents]
+        BEA[BEA I-O Tables]
+    end
+
+    subgraph "sbir_etl  · Core ETL Library"
+        EXT[Extractors]
+        VAL[Validators]
+        ENR[Enrichers]
+        TRN[Transformers]
+    end
+
+    subgraph "packages/"
+        ML["sbir-ml · CET · Transition · PaECTER"]
+        AN["sbir-analytics · Dagster Assets · Jobs"]
+        GR["sbir-graph · Neo4j Loaders"]
+    end
+
+    subgraph Targets
+        NEO4J[(Neo4j)]
+        S3[(S3 / DuckDB)]
+    end
+
+    SBIR & USA & USPTO & BEA --> EXT
+    EXT --> VAL --> ENR --> TRN
+    TRN --> AN
+    ML --> AN
+    AN --> GR --> NEO4J
+    AN --> S3
+
+    style Sources fill:#e8f4f8,stroke:#5b9bd5
+    style Targets fill:#e2efda,stroke:#70ad47
+```
+
+**Data flows top-down**: sources are extracted by `sbir_etl`, orchestrated through Dagster assets in `sbir-analytics`, and loaded into Neo4j via `sbir-graph`. ML models in `sbir-ml` feed classification and scoring into the asset graph.
+
 ## Project Structure
 
 ```text
 sbir-analytics/
-├── sbir_etl/               # Core ETL library
-│   ├── extractors/        # Data extraction (SBIR, USAspending, USPTO)
-│   ├── enrichers/         # External enrichment and fuzzy matching
-│   ├── transformers/      # Business logic and normalization
-│   ├── validators/        # Schema validation and data quality checks
-│   ├── models/            # Pydantic data models and type definitions
-│   ├── config/            # Configuration management and schemas
-│   ├── quality/           # Data quality validation modules
-│   └── utils/             # Shared utilities (logging, metrics, performance)
+├── sbir_etl/               # Core ETL library (extractors, enrichers, transformers, validators)
 ├── packages/
-│   ├── sbir-analytics/    # Dagster orchestration (assets, CLI, definitions)
+│   ├── sbir-analytics/    # Dagster orchestration (assets, jobs, sensors, CLI)
 │   ├── sbir-graph/        # Neo4j loading and relationship creation
-│   └── sbir-ml/           # Machine learning (CET, transition, embeddings)
+│   ├── sbir-ml/           # ML models (CET classification, transition, PaECTER)
+│   └── sbir-rag/          # RAG system for award/patent search
 ├── tests/                  # Unit, integration, and E2E tests
-├── docs/                   # Documentation
-├── config/                 # YAML configuration files
-├── .kiro/                  # Kiro specifications
-└── infrastructure/         # AWS CDK and deployment configs
+├── config/                 # YAML configuration (base.yaml, thresholds)
+├── docs/                   # Architecture, deployment, testing, schema docs
+├── infrastructure/cdk/     # AWS CDK stacks (security, storage, batch)
+├── lambda/                 # Lambda layer dependency definitions
+├── scripts/                # Pipeline runners, benchmarks, utilities
+├── migrations/             # Database migration scripts
+├── notebooks/              # Jupyter analysis notebooks
+├── examples/               # Usage examples
+└── .kiro/                  # Kiro specifications and steering docs
 ```
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed breakdown.
