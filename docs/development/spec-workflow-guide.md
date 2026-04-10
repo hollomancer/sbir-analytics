@@ -205,9 +205,7 @@ Structure tasks hierarchically:
 ### Getting Help
 
 - Review existing specs in `specs/` for examples
-- Check archived OpenSpec content in `archive/openspec/` for historical context
 - Consult `CLAUDE.md` for AI assistant guidance
-- Reference migration mapping in `archive/openspec/migration_mapping.json`
 
 ## Examples
 
@@ -219,11 +217,4 @@ See these existing specs for reference:
 
 ## Migration from OpenSpec
 
-If you encounter references to OpenSpec:
-
-1. **Active development**: Use specs in `specs/`
-2. **Historical reference**: Check `archive/openspec/` for context
-3. **Migration mapping**: Use `archive/openspec/migration_mapping.json` for traceability
-4. **Legacy workflows**: All OpenSpec workflows have been replaced with specs
-
-The migration is complete - all new development should use specifications.
+If you encounter references to OpenSpec, use specs in `specs/` instead. The migration is complete.

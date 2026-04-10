@@ -52,15 +52,7 @@ The OpenSpec content has been **archived** following the migration to specificat
 
 ### Location
 
-The complete archived OpenSpec content is located in the `archive/openspec/` directory.
-
-### Contents
-
-The archive includes:
-
-* `openspec/` - Complete copy of the original OpenSpec directory structure.
-* `migration_mapping.json` - Detailed mapping between OpenSpec and specs.
-* `README.md` - An overview of the archive.
+Historical migration records are preserved in `specs/archive/completed-migrations/openspec-to-kiro-migration/`.
 
 ### Migration Notes
 
@@ -83,8 +75,6 @@ For active development, use the specifications in `specs/`.
 ## 3. Guidelines for Contributors
 
 * **Always use specs** (`specs/`) for any new or updated specifications.
-* **Do not modify content** within the `archive/openspec/` directory.
-* If you need to reference past decisions, consult the `archive/openspec/` content and its `migration_mapping.json` for traceability.
 * Ensure that any changes to architecture, data contracts, or requirements are reflected in the appropriate specifications.
 
 ---

@@ -307,9 +307,8 @@ sbir-analytics/
 ├── config/                # Configuration files
 ├── data/                  # Data files (not in git)
 ├── docs/                  # Additional documentation
-├── specs/           # specifications (active system)
-├── docs/steering/        # Agent steering documents (architectural patterns)
-└── archive/openspec/      # Archived OpenSpec content (historical reference)
+├── specs/                 # Feature specifications (active system)
+└── docs/steering/         # Steering documents (architectural patterns)
 ```
 
 ## Questions or Issues?

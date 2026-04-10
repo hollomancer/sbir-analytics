@@ -13,8 +13,7 @@ Welcome. This site is the canonical documentation for the SBIR ETL pipeline.
 
 - **specifications** (`specs/`) are the source of truth for designs, tasks, and requirements.
 - User and developer documentation lives under `docs/` (this site).
-- Agent steering documents live in `docs/steering/` (architectural patterns and guidance for AI agents).
-- Historical OpenSpec content is archived in `archive/openspec/` for reference.
+- Steering documents live in `docs/steering/` (architectural patterns and guidance).
 
 ## What is this project?
 
