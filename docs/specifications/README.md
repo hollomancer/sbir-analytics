@@ -22,7 +22,7 @@ This document centralizes information about the specification systems used in th
 
 ### Purpose
 
-specifications are the **active and authoritative source of truth** for all development work in the SBIR ETL project. They are used for:
+Specifications are the **active and authoritative source of truth** for all development work in the SBIR ETL project. They are used for:
 
 * **Planning**: Defining new features, capabilities, and project phases.
 * **Architecture**: Documenting design decisions, architectural patterns, and system components.
@@ -93,7 +93,7 @@ For active development, use the specifications in `specs/`.
 
 To keep specs, steering guidance, and user-facing docs aligned:
 
-1. **Start with steering patterns** – review the [Steering Documents Guide](../steering/README.md) to confirm you’re following the latest architectural patterns before editing specs or docs.
+1. **Start with steering patterns** – review the [steering documents](../steering/structure.md) to confirm you’re following the latest architectural patterns before editing specs or docs.
 2. **Update the relevant spec** – capture requirements, design decisions, and acceptance criteria in `specs/<spec-name>/`.
 3. **Link back from docs** – when a spec drives doc changes (e.g., a new deployment workflow), add a brief reference or URL in the affected doc pointing to the governing spec so readers know the source of truth.
 4. **Use this README as the bridge** – mention the spec in both directions (spec ↔ doc) so future contributors can trace updates quickly.

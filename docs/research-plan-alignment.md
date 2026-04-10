@@ -110,7 +110,7 @@ Each milestone produces an analytical output that (a) replicates or exceeds a sp
 |-----------|--------|----------|
 | Weekly data refresh | 85% spec | `specs/weekly-award-data-refresh/` |
 | Dagster asset pipeline | Built | `packages/sbir-analytics/sbir_analytics/assets/` |
-| MCP agent tools | Spec exists | `specs/mcp_agent_tools/` |
+| MCP agent tools | Missing | Needs: spec and implementation |
 | **Rolling analytics API** | **Missing** | Needs: snapshot generation, quarter-over-quarter comparison |
 | **User-facing dashboard** | **Missing** | Needs: query interface for current-quarter snapshots |
 
