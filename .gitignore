@@ -163,6 +163,10 @@ reports/uspto-structure/
 .DS_Store
 Thumbs.db
 
+# Root requirements.txt — use `uv export` on demand if needed.
+# Dependency truth is pyproject.toml + uv.lock.
+/requirements.txt
+
 # --- SBIR ETL custom ignores ---
 # Artifacts and local outputs
 artifacts/
