@@ -206,7 +206,7 @@ Structure tasks hierarchically:
 
 - Review existing specs in `.kiro/specs/` for examples
 - Check archived OpenSpec content in `archive/openspec/` for historical context
-- Consult `AGENTS.md` for AI assistant guidance
+- Consult `CLAUDE.md` for AI assistant guidance
 - Reference migration mapping in `archive/openspec/migration_mapping.json`
 
 ## Examples
