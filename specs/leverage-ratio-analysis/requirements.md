@@ -33,5 +33,5 @@ The reconciliation matters more than the match.
 
 - FPDS contract data (`src/tools/phase0/extract_fpds_contracts.py`) — EXISTS
 - Entity resolution (`src/tools/phase0/resolve_entities.py`) — EXISTS
-- Company categorization (`.kiro/specs/company-categorization/`) — 77% complete
+- Company categorization (`specs/company-categorization/`) — 77% complete
 - CET classifier (`src/transition/features/cet_analyzer.py`) — EXISTS (for tech-area stratification)

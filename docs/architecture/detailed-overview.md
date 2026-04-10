@@ -131,13 +131,11 @@ sbir-analytics/
 │   ├── transition/               # Transition detection docs
 │   └── references/               # Data dictionaries
 │
-├── .kiro/                        # Specification-driven development
-│   ├── specs/                    # Active specifications (Kiro format)
-│   │   ├── statistical_reporting/
-│   │   ├── weekly-award-data-refresh/
-│   │   ├── merger_acquisition_detection/
-│   │   └── archive/              # Completed specs
-│   └── steering/                 # Agent guidance documents
+├── specs/                        # Feature specifications
+│   ├── statistical_reporting/
+│   ├── weekly-award-data-refresh/
+│   ├── merger_acquisition_detection/
+│   └── archive/                  # Completed specs
 │
 ├── .github/workflows/            # CI/CD pipelines
 │   ├── ci.yml                    # Standard lint/test

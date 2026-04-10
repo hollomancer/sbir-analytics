@@ -21,9 +21,9 @@ graph TD
     I[openspec/specs/] --> B
     J[openspec/project.md] --> B
 
-    D --> K[.kiro/specs/requirements.md]
-    D --> L[.kiro/specs/design.md]
-    D --> M[.kiro/specs/tasks.md]
+    D --> K[specs/requirements.md]
+    D --> L[specs/design.md]
+    D --> M[specs/tasks.md]
 
     F --> N[archive/openspec/]
     G --> O[Updated Documentation]

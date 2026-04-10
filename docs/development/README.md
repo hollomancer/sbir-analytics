@@ -27,7 +27,7 @@ This directory contains guides and documentation for developers working on the S
 
 ## Workflow
 
-- [Kiro Workflow Guide](kiro-workflow-guide.md) - Using Kiro specifications
+- [Spec Workflow Guide](spec-workflow-guide.md) - Using specifications
 
 ---
 

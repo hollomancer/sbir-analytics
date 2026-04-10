@@ -142,13 +142,13 @@ sbir-analytics/
 ├── tests/                  # Unit, integration, and E2E tests
 ├── config/                 # YAML configuration (base.yaml, thresholds)
 ├── docs/                   # Architecture, deployment, testing, schema docs
+├── specs/                  # Feature specifications
 ├── infrastructure/cdk/     # AWS CDK stacks (security, storage, batch)
 ├── lambda/                 # Lambda layer dependency definitions
 ├── scripts/                # Pipeline runners, benchmarks, utilities
 ├── migrations/             # Database migration scripts
 ├── notebooks/              # Jupyter analysis notebooks
-├── examples/               # Usage examples
-└── .kiro/                  # Kiro specifications and steering docs
+└── examples/               # Usage examples
 ```
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed breakdown.

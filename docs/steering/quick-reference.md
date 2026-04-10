@@ -87,15 +87,14 @@ export SBIR_ETL__PIPELINE__CHUNK_SIZE=20000
 ### Development Setup
 
 ```bash
-poetry install
-poetry shell
+uv sync
 make neo4j-up
 ```
 
 ### Code Quality
 
 ```bash
-black .
+ruff format .
 ruff check . --fix
 mypy sbir_etl/
 pytest --cov=sbir_etl
@@ -104,7 +103,7 @@ pytest --cov=sbir_etl
 ### Pipeline Execution
 
 ```bash
-poetry run dagster dev                    # Start Dagster UI
+uv run dagster dev                        # Start Dagster UI
 dagster job execute -m sbir_analytics.definitions -j sbir_weekly_refresh_job
 dagster job execute -m sbir_analytics.definitions -j fiscal_returns_mvp_job      # Fiscal ROI analysis (core)
 dagster job execute -m sbir_analytics.definitions -j fiscal_returns_full_job     # Fiscal ROI with sensitivity

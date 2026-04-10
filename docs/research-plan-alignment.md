@@ -1,6 +1,6 @@
 # Research Plan Alignment
 
-Maps the [SBIR Analytics Research Plan](# "Obsidian: SBIR Analytics Research Plan — Summary") milestones to codebase components, Kiro specs, and remaining work.
+Maps the [SBIR Analytics Research Plan](# "Obsidian: SBIR Analytics Research Plan — Summary") milestones to codebase components, specs, and remaining work.
 
 ## What We Are Building
 
@@ -33,7 +33,7 @@ Each milestone produces an analytical output that (a) replicates or exceeds a sp
 | Entity resolution (UEI/DUNS) | Built | `packages/sbir-analytics/sbir_analytics/tools/phase0/resolve_entities.py`, `packages/sbir-ml/sbir_ml/transition/features/vendor_resolver.py` |
 | Contract analytics (DuckDB) | Built | `packages/sbir-ml/sbir_ml/transition/performance/contract_analytics.py` |
 | Vendor crosswalk | Built | `packages/sbir-ml/sbir_ml/transition/features/vendor_crosswalk.py` |
-| Company categorization | 77% spec | `.kiro/specs/company-categorization/` |
+| Company categorization | 77% spec | `specs/company-categorization/` |
 | **Leverage ratio computation** | **Missing** | Needs: ratio calculator, cohort stratification, NASEM reconciliation |
 | **Agency comparison (DOE)** | **Missing** | Needs: civilian agency extraction, cross-agency ratio |
 
@@ -51,7 +51,7 @@ Each milestone produces an analytical output that (a) replicates or exceeds a sp
 | Patent transformer | Built | `sbir_etl/transformers/patent_transformer.py` |
 | Patent-award fuzzy matching | Built | `PatentAssignmentTransformer` with rapidfuzz |
 | Patent analyzer (transition) | Built | `packages/sbir-ml/sbir_ml/transition/features/patent_analyzer.py` |
-| USPTO Lambda downloads | 90% spec | `.kiro/specs/uspto-lambda-downloads/` |
+| USPTO Lambda downloads | 90% spec | `specs/uspto-lambda-downloads/` |
 | USPTO data validators | Built | `sbir_etl/quality/uspto_validators.py` |
 | **Marginal cost per patent** | **Missing** | Needs: cost calculator linking award amounts to patent counts |
 | **Citation network/spillover** | **Missing** | Needs: citation graph builder, spillover multiplier computation |
@@ -72,7 +72,7 @@ Each milestone produces an analytical output that (a) replicates or exceeds a sp
 | Topic clustering | Built | `packages/sbir-analytics/sbir_analytics/tools/mission_a/cluster_topics.py` |
 | Portfolio metrics | Built | `packages/sbir-analytics/sbir_analytics/tools/mission_a/compute_portfolio_metrics.py` |
 | Gap detection | Built | `packages/sbir-analytics/sbir_analytics/tools/mission_a/detect_gaps.py` |
-| PaECTER embeddings | 30% spec | `.kiro/specs/paecter_analysis_layer/` |
+| PaECTER embeddings | 30% spec | `specs/paecter_analysis_layer/` |
 | **Full corpus classification** | **Missing** | Needs: batch classifier run on all SBIR.gov awards |
 | **Cross-agency visualization** | **Missing** | Needs: agency-level technology allocation output |
 
@@ -108,9 +108,9 @@ Each milestone produces an analytical output that (a) replicates or exceeds a sp
 
 | Component | Status | Location |
 |-----------|--------|----------|
-| Weekly data refresh | 85% spec | `.kiro/specs/weekly-award-data-refresh/` |
+| Weekly data refresh | 85% spec | `specs/weekly-award-data-refresh/` |
 | Dagster asset pipeline | Built | `packages/sbir-analytics/sbir_analytics/assets/` |
-| MCP agent tools | Spec exists | `.kiro/specs/mcp_agent_tools/` |
+| MCP agent tools | Missing | Needs: spec and implementation |
 | **Rolling analytics API** | **Missing** | Needs: snapshot generation, quarter-over-quarter comparison |
 | **User-facing dashboard** | **Missing** | Needs: query interface for current-quarter snapshots |
 

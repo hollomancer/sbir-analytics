@@ -1,23 +1,23 @@
-# Kiro Specification Workflow Guide
+# Specification Workflow Guide
 
-This guide explains how to use Kiro specifications for feature development in the SBIR ETL pipeline project.
+This guide explains how to use specifications for feature development in the SBIR ETL pipeline project.
 
 ## Overview
 
-Kiro is a specification-driven development system that uses structured requirements, design documents, and task lists to guide implementation. All specifications are stored in `.kiro/specs/` with a consistent structure.
+This project uses specification-driven development with structured requirements, design documents, and task lists to guide implementation. All specifications are stored in `specs/` with a consistent structure.
 
-## Kiro Spec Structure
+## Spec Structure
 
-Each Kiro specification consists of:
+Each specification consists of:
 
 ```text
-.kiro/specs/[feature-name]/
+specs/[feature-name]/
 ├── requirements.md    # EARS-formatted requirements with user stories
 ├── design.md         # Technical design and architecture (optional)
 └── tasks.md          # Implementation task list
 ```
 
-## Creating a New Kiro Spec
+## Creating a New Spec
 
 ### 1. Requirements Document (`requirements.md`)
 
@@ -118,9 +118,9 @@ Structure tasks hierarchically:
 
 ## Executing Tasks
 
-### Using Kiro in the IDE
+### Using Specs in the IDE
 
-1. Open the task file (`.kiro/specs/[feature]/tasks.md`)
+1. Open the task file (`specs/[feature]/tasks.md`)
 2. Click "Start task" next to a task item
 3. The AI assistant will implement the task based on:
    - Requirements from `requirements.md`
@@ -204,26 +204,17 @@ Structure tasks hierarchically:
 
 ### Getting Help
 
-- Review existing specs in `.kiro/specs/` for examples
-- Check archived OpenSpec content in `archive/openspec/` for historical context
-- Consult `AGENTS.md` for AI assistant guidance
-- Reference migration mapping in `archive/openspec/migration_mapping.json`
+- Review existing specs in `specs/` for examples
+- Consult `CLAUDE.md` for AI assistant guidance
 
 ## Examples
 
 See these existing specs for reference:
 
-- **Simple feature**: `.kiro/specs/iterative_api_enrichment/`
-- **Complex system**: `.kiro/specs/data_pipeline_consolidated/`
-- **Migration example**: `.kiro/specs/openspec-to-kiro-migration/`
+- **Simple feature**: `specs/iterative_api_enrichment/`
+- **Complex system**: `specs/data_pipeline_consolidated/`
+- **Migration example**: `specs/archive/completed-migrations/openspec-to-kiro-migration/`
 
 ## Migration from OpenSpec
 
-If you encounter references to OpenSpec:
-
-1. **Active development**: Use Kiro specs in `.kiro/specs/`
-2. **Historical reference**: Check `archive/openspec/` for context
-3. **Migration mapping**: Use `archive/openspec/migration_mapping.json` for traceability
-4. **Legacy workflows**: All OpenSpec workflows have been replaced with Kiro
-
-The migration is complete - all new development should use Kiro specifications.
+If you encounter references to OpenSpec, use specs in `specs/` instead. The migration is complete.

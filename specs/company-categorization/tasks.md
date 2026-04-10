@@ -374,7 +374,7 @@ The implementation is complete when:
 
 ## Related Documents
 
-- Requirements: `.kiro/specs/company-categorization/requirements.md`
-- Design: `.kiro/specs/company-categorization/design.md`
-- Pipeline Orchestration: `.kiro/steering/pipeline-orchestration.md`
-- Configuration Patterns: `.kiro/steering/configuration-patterns.md`
+- Requirements: `specs/company-categorization/requirements.md`
+- Design: `specs/company-categorization/design.md`
+- Pipeline Orchestration: `docs/steering/pipeline-orchestration.md`
+- Configuration Patterns: `docs/steering/configuration-patterns.md`

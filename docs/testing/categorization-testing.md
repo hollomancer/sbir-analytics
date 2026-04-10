@@ -389,4 +389,4 @@ uv run python -c "from sbir_etl.config.loader import get_config; print(get_confi
 5. ✓ Analyze classification distribution
 6. ✓ Spot-check 10-20 companies manually
 
-For questions or issues, see: `.kiro/specs/company-categorization/`
+For questions or issues, see: `specs/company-categorization/`

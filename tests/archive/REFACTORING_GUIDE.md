@@ -781,4 +781,4 @@ diff tests/metrics_before.txt tests/metrics_after.txt
 - See `TEST_IMPROVEMENT_ANALYSIS.md` for detailed analysis
 - See `tests/README.md` for test organization guidelines
 - See `CONTRIBUTING.md` for code quality standards
-- See `.kiro/steering/pipeline-orchestration.md` for asset check patterns
+- See `docs/steering/pipeline-orchestration.md` for asset check patterns

@@ -690,9 +690,9 @@ def company_categorization_completeness_check(
 
 ## Related Documents
 
-- Requirements: `.kiro/specs/company-categorization/requirements.md`
+- Requirements: `specs/company-categorization/requirements.md`
 - USAspending Extractor: `src/extractors/usaspending.py`
 - Award Model: `src/models/award.py`
 - Company Model: `src/models/company.py`
-- Enrichment Patterns: `.kiro/steering/enrichment-patterns.md`
-- Pipeline Orchestration: `.kiro/steering/pipeline-orchestration.md`
+- Enrichment Patterns: `docs/steering/enrichment-patterns.md`
+- Pipeline Orchestration: `docs/steering/pipeline-orchestration.md`

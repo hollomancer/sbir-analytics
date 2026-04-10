@@ -63,7 +63,7 @@ jobs:
           markdownlint-cli2 "**/*.md" \
             --config .markdownlint.yaml \
             --ignore "**/archive/**/*.md" \
-            --ignore "**/.kiro/specs/archive/**/*.md" \
+            --ignore "**/specs/archive/**/*.md" \
             --ignore "**/tests/archive/**/*.md" \
             --ignore "reports/**/*.md" \
             --ignore "**/.venv/**/*.md" \
