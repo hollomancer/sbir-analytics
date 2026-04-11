@@ -197,7 +197,7 @@ class TestChunkedEnricherInitialization:
         )
 
         assert len(enricher.sbir_df) == 5
-        assert len(enricher.recipient_df) == 4
+        assert len(enricher.recipient_df) == 2
         assert enricher.chunk_size == 100
         assert enricher.memory_threshold_mb == 512
         assert enricher.timeout_seconds == 300

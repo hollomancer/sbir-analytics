@@ -11,7 +11,8 @@ pytestmark = pytest.mark.fast
 
 class TestOpenCorporatesClient:
     def _mock_client(self) -> OpenCorporatesClient:
-        client = OpenCorporatesClient()
+        # Provide a token so search_companies doesn't short-circuit on missing token
+        client = OpenCorporatesClient(api_token="test_token")
         client._client = Mock()
         return client
 
