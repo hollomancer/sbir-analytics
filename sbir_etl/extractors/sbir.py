@@ -467,9 +467,6 @@ class SbirDuckDBExtractor:
 
         logger.info(f"Extracting records for phases: {phases}")
 
-        # Build SQL IN clause
-        ", ".join(f"'{phase}'" for phase in phases)
-
         table_identifier = self._table_identifier
         phase_literals = ", ".join(self.duckdb_client.escape_literal(p) for p in phases)
 
