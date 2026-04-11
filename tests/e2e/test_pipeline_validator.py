@@ -7,6 +7,7 @@ comprehensive validation of ETL pipeline stages.
 from unittest.mock import Mock
 
 import pandas as pd
+import pytest
 
 from sbir_etl.models.quality import QualitySeverity
 from tests.e2e.pipeline_validator import (

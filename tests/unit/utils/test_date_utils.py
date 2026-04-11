@@ -109,7 +109,7 @@ class TestParseDate:
         """Test parsing pandas NaT."""
         pd = pandas_available
         result = parse_date(pd.NaT)
-        # Function returns NaT for NaT input
+        # Function returns None for pandas missing values, including NaT
         assert pd.isna(result)
 
 
