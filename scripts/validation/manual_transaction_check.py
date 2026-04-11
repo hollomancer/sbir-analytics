@@ -1,13 +1,17 @@
 #!/usr/bin/env python3
-"""Standalone test for transaction endpoint - no dependencies required."""
+"""Manual script to test the USAspending spending_by_award endpoint.
+
+Usage:
+    python scripts/validation/manual_transaction_check.py [UEI]
+"""
 
 import json
 import urllib.error
 import urllib.request
 
 
-def test_transaction_endpoint(uei: str) -> None:
-    """Test the spending_by_award endpoint with a UEI."""
+def check_transaction_endpoint(uei: str) -> None:
+    """Check the spending_by_award endpoint with a UEI."""
 
     print("=" * 80)
     print("Award Endpoint Test (No Dependencies)")
@@ -139,4 +143,4 @@ if __name__ == "__main__":
 
     # Use command line arg or default UEI
     uei = sys.argv[1] if len(sys.argv) > 1 else "RMG1AZ1ZH8Q7"
-    test_transaction_endpoint(uei)
+    check_transaction_endpoint(uei)

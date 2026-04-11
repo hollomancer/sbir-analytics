@@ -5,23 +5,13 @@ from datetime import date
 import pytest
 
 from sbir_etl.models.award import Award, RawAward
+from tests.factories import AwardFactory
 
 
 pytestmark = pytest.mark.fast
 
 
-# Helper to create Award with defaults
-def _make_award(**overrides):
-    """Create Award with sensible defaults."""
-    defaults = {
-        "award_id": "TEST-001",
-        "company_name": "Test Corp",
-        "award_amount": 10000,
-        "award_date": date(2023, 1, 1),
-        "program": "SBIR",
-    }
-    defaults.update(overrides)
-    return Award(**defaults)
+_make_award = AwardFactory.create
 
 
 class TestAwardModel:

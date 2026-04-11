@@ -36,20 +36,20 @@ class TestSbirValidationConfig:
 
     def test_invalid_pass_rate_threshold(self):
         """Test invalid pass rate threshold."""
-        with pytest.raises(ValueError, match="must be between 0.0 and 1.0"):
+        with pytest.raises(ValueError, match="Input should be less than or equal to 1"):
             SbirValidationConfig(pass_rate_threshold=1.5)
 
-        with pytest.raises(ValueError, match="must be between 0.0 and 1.0"):
+        with pytest.raises(ValueError, match="Input should be greater than or equal to 0"):
             SbirValidationConfig(pass_rate_threshold=-0.1)
 
     def test_invalid_completeness_threshold(self):
         """Test invalid completeness threshold."""
-        with pytest.raises(ValueError, match="must be between 0.0 and 1.0"):
+        with pytest.raises(ValueError, match="Input should be less than or equal to 1"):
             SbirValidationConfig(completeness_threshold=1.2)
 
     def test_invalid_uniqueness_threshold(self):
         """Test invalid uniqueness threshold."""
-        with pytest.raises(ValueError, match="must be between 0.0 and 1.0"):
+        with pytest.raises(ValueError, match="Input should be greater than or equal to 0"):
             SbirValidationConfig(uniqueness_threshold=-0.5)
 
 

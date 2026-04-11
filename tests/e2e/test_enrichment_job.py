@@ -4,15 +4,15 @@ from __future__ import annotations
 
 import pytest
 
-from sbir_analytics.definitions import defs
+pytestmark = [pytest.mark.e2e, pytest.mark.slow, pytest.mark.requires_api]
 
 
-pytestmark = [pytest.mark.e2e, pytest.mark.slow]
-
-
-@pytest.mark.skip(reason="Requires real data files - run manually with actual data")
 def test_usaspending_enrichment_job_smoke(tmp_path, monkeypatch):
-    """Materialize the iterative enrichment job and assert it succeeds."""
+    """Materialize the iterative enrichment job and assert it succeeds.
+
+    Requires dagster, sbir_analytics, and real data files to be available.
+    """
+    defs = pytest.importorskip("sbir_analytics.definitions").defs
 
     # Run in temporary working directory to avoid polluting repo
     monkeypatch.chdir(tmp_path)

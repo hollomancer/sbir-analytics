@@ -95,8 +95,9 @@ class TestWriteGhaOutputs:
         assert "new=value\n" in content
 
     def test_none_path_is_noop(self):
-        # Should not raise
-        write_gha_outputs(None, {"key": "val"})
+        # None path should return without raising or writing anything
+        result = write_gha_outputs(None, {"key": "val"})
+        assert result is None
 
     def test_path_values_stringified(self, tmp_path):
         output_file = tmp_path / "output.txt"

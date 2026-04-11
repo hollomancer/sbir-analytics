@@ -30,12 +30,12 @@ class TestChunkedEnricherInitialization:
 
     @patch("sbir_etl.enrichers.chunked_enrichment.get_config")
     def test_initialization(
-        self, mock_get_config, mock_config, sample_sbir_df, sample_recipient_df
+        self, mock_get_config, mock_config, enricher_sbir_df, enricher_recipient_df
     ):
         """Test ChunkedEnricher initialization."""
         mock_get_config.return_value = mock_config
 
-        enricher = ChunkedEnricher(sample_sbir_df, sample_recipient_df)
+        enricher = ChunkedEnricher(enricher_sbir_df, enricher_recipient_df)
 
         assert enricher.sbir_df is not None
         assert enricher.recipient_df is not None
@@ -45,26 +45,26 @@ class TestChunkedEnricherInitialization:
 
     @patch("sbir_etl.enrichers.chunked_enrichment.get_config")
     def test_initialization_with_checkpoint_dir(
-        self, mock_get_config, mock_config, sample_sbir_df, sample_recipient_df, temp_checkpoint_dir
+        self, mock_get_config, mock_config, enricher_sbir_df, enricher_recipient_df, temp_checkpoint_dir
     ):
         """Test initialization with checkpoint directory."""
         mock_get_config.return_value = mock_config
 
         enricher = ChunkedEnricher(
-            sample_sbir_df, sample_recipient_df, checkpoint_dir=temp_checkpoint_dir
+            enricher_sbir_df, enricher_recipient_df, checkpoint_dir=temp_checkpoint_dir
         )
 
         assert enricher.progress.checkpoint_dir == temp_checkpoint_dir
 
     @patch("sbir_etl.enrichers.chunked_enrichment.get_config")
     def test_initialization_with_config_chunk_size(
-        self, mock_get_config, mock_config, sample_sbir_df, sample_recipient_df
+        self, mock_get_config, mock_config, enricher_sbir_df, enricher_recipient_df
     ):
         """Test initialization uses chunk size from config."""
         mock_get_config.return_value = mock_config
         mock_config.enrichment.performance.chunk_size = 50
 
-        enricher = ChunkedEnricher(sample_sbir_df, sample_recipient_df)
+        enricher = ChunkedEnricher(enricher_sbir_df, enricher_recipient_df)
 
         assert enricher.chunk_size == 50
 
@@ -74,26 +74,26 @@ class TestChunkProcessing:
 
     @patch("sbir_etl.enrichers.chunked_enrichment.get_config")
     def test_progress_total_chunks(
-        self, mock_get_config, mock_config, sample_sbir_df, sample_recipient_df
+        self, mock_get_config, mock_config, enricher_sbir_df, enricher_recipient_df
     ):
         """Test progress tracks total chunks correctly."""
         mock_get_config.return_value = mock_config
         mock_config.enrichment.performance.chunk_size = 2
 
-        enricher = ChunkedEnricher(sample_sbir_df, sample_recipient_df)
+        enricher = ChunkedEnricher(enricher_sbir_df, enricher_recipient_df)
 
         # 5 records / 2 chunk_size = 3 chunks
         assert enricher.progress.total_chunks == 3
 
     @patch("sbir_etl.enrichers.chunked_enrichment.get_config")
     def test_progress_single_chunk(
-        self, mock_get_config, mock_config, sample_sbir_df, sample_recipient_df
+        self, mock_get_config, mock_config, enricher_sbir_df, enricher_recipient_df
     ):
         """Test progress with single chunk."""
         mock_get_config.return_value = mock_config
         mock_config.enrichment.performance.chunk_size = 100
 
-        enricher = ChunkedEnricher(sample_sbir_df, sample_recipient_df)
+        enricher = ChunkedEnricher(enricher_sbir_df, enricher_recipient_df)
 
         assert enricher.progress.total_chunks == 1
 
@@ -132,12 +132,12 @@ class TestProgressMetadata:
 
     @patch("sbir_etl.enrichers.chunked_enrichment.get_config")
     def test_get_progress_metadata(
-        self, mock_get_config, mock_config, sample_sbir_df, sample_recipient_df
+        self, mock_get_config, mock_config, enricher_sbir_df, enricher_recipient_df
     ):
         """Test get_progress_metadata returns complete info."""
         mock_get_config.return_value = mock_config
 
-        enricher = ChunkedEnricher(sample_sbir_df, sample_recipient_df)
+        enricher = ChunkedEnricher(enricher_sbir_df, enricher_recipient_df)
         enricher.progress.records_processed = 250
         enricher.progress.chunks_processed = 2
         enricher.memory_pressure_warnings = 1

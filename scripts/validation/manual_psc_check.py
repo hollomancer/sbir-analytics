@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-"""Quick test script to verify PSC code retrieval from USAspending API.
+"""Manual script to verify PSC code retrieval from USAspending API.
 
-This script tests the fixed two-step approach:
+This is an interactive script (not a pytest test) that validates the two-step approach:
 1. Fetch awards using spending_by_award endpoint
 2. Retrieve PSC codes from individual award endpoint
 
-Run this to verify PSC codes are being successfully retrieved.
+Usage:
+    python scripts/validation/manual_psc_check.py
 """
 
 import sys

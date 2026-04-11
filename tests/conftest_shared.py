@@ -11,7 +11,7 @@ Import these in subdirectory conftest.py files as needed:
     )
 
 Fixture Categories:
-- Neo4j: neo4j_config, neo4j_client, neo4j_helper, cleanup_test_data
+- Neo4j: neo4j_config, neo4j_client, neo4j_helper
 - Mocks: mock_driver, mock_session, mock_transaction
 - Enrichment: mock_enrichment_config, sample_sbir_df, sample_recipient_df
 - Fiscal: sample_fiscal_awards_df, sample_fiscal_impacts_df, sample_tax_parameters
@@ -70,32 +70,6 @@ def neo4j_client(neo4j_config):
     yield client
     client.close()
 
-
-@pytest.fixture
-def cleanup_test_data(neo4j_client):
-    """Clean up test data before and after each test.
-
-    Note: This is NOT autouse by default. Tests that need cleanup
-    should explicitly request this fixture, or use the integration
-    conftest which provides an autouse version.
-    """
-    # Clean before test
-    try:
-        with neo4j_client.session() as session:
-            session.run("MATCH (n:TestCompany) DETACH DELETE n")
-            session.run("MATCH (n:TestAward) DETACH DELETE n")
-    except Exception:
-        pass  # Skip cleanup if Neo4j not available
-
-    yield
-
-    # Clean after test
-    try:
-        with neo4j_client.session() as session:
-            session.run("MATCH (n:TestCompany) DETACH DELETE n")
-            session.run("MATCH (n:TestAward) DETACH DELETE n")
-    except Exception:
-        pass  # Skip cleanup if Neo4j not available
 
 
 class Neo4jTestHelper:

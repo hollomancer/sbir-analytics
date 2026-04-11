@@ -618,7 +618,7 @@ class TestCLIConfig:
         """Test refresh rate validator rejects negative values."""
         with pytest.raises(ValidationError) as exc_info:
             CLIConfig(progress_refresh_rate=-0.1)
-        assert "must be positive" in str(exc_info.value)
+        assert "Input should be greater than or equal to 0" in str(exc_info.value)
 
 
 class TestFiscalAnalysisConfig:

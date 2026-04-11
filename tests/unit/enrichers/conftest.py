@@ -5,8 +5,12 @@ import pytest
 
 
 @pytest.fixture
-def sample_sbir_df():
-    """Sample SBIR DataFrame for enricher tests."""
+def enricher_sbir_df():
+    """Sample SBIR DataFrame for enricher tests.
+
+    Note: This has a different schema (award_id, company_name, company_uei)
+    than the shared sample_sbir_df fixture in conftest_shared.py.
+    """
     return pd.DataFrame(
         {
             "award_id": [f"AWD-{i}" for i in range(5)],
@@ -17,8 +21,12 @@ def sample_sbir_df():
 
 
 @pytest.fixture
-def sample_recipient_df():
-    """Sample recipient DataFrame for enricher tests."""
+def enricher_recipient_df():
+    """Sample recipient DataFrame for enricher tests.
+
+    Note: This has a different schema (recipient_name, recipient_uei)
+    than the shared sample_recipient_df fixture in conftest_shared.py.
+    """
     return pd.DataFrame(
         {
             "recipient_name": ["Acme Corp", "TechStart Inc"],
