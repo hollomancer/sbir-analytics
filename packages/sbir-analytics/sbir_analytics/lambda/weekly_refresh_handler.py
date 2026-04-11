@@ -494,21 +494,8 @@ def upload_to_s3(
     )
     logger.info("Uploaded CSV to S3")
 
-    # Upload versioned CSV (with date)
-    date_str = datetime.utcnow().strftime("%Y-%m-%d")
-    s3_client.upload_file(
-        str(csv_path),
-        s3_bucket,
-        f"data/raw/sbir/award_data_{date_str}.csv",
-        ExtraArgs={
-            "Metadata": {
-                "csv_hash": csv_hash,
-                "upload_date": datetime.utcnow().isoformat(),
-            },
-            "ContentType": "text/csv",
-        },
-    )
-    logger.info(f"Uploaded versioned CSV: award_data_{date_str}.csv")
+    # NOTE: Versioned copy (award_data_{date}.csv) removed — S3 bucket versioning
+    # already provides version history on the canonical key above.
 
     # Upload all metadata files
     for metadata_file in metadata_dir.rglob("*"):

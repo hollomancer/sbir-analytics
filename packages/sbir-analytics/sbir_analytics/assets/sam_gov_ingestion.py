@@ -85,7 +85,11 @@ def _import_sam_gov_entities(
 
         try:
             extractor = SAMGovExtractor()
-            df = extractor.load_parquet(parquet_path, use_s3_first=False)
+            df = extractor.load_parquet(
+                parquet_path,
+                use_s3_first=False,
+                columns=SAMGovExtractor.ENRICHMENT_COLUMNS,
+            )
             parquet_success = True
             context.log.info("Successfully loaded SAM.gov entities from parquet")
         except Exception as e:

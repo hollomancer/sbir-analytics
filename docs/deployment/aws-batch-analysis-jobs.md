@@ -39,7 +39,7 @@ Note: CET and PaECTER now run on GitHub Actions (free tier).
 ```bash
 aws batch submit-job \
   --job-name "fiscal-returns-$(date +%Y%m%d)" \
-  --job-queue "sbir-analytics-analysis-queue" \
+  --job-queue "sbir-analytics-analysis-job-queue" \
   --job-definition "sbir-analytics-analysis-fiscal-returns"
 ```
 
@@ -48,7 +48,7 @@ aws batch submit-job \
 Managed via CDK in `infrastructure/cdk/stacks/batch_stack.py`:
 
 - Fargate compute environment
-- Job queue: `sbir-analytics-analysis-queue`
+- Job queue: `sbir-analytics-analysis-job-queue`
 - Job definition: `sbir-analytics-analysis-fiscal-returns`
 
 ## Image
