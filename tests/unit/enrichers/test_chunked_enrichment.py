@@ -19,7 +19,7 @@ from sbir_etl.exceptions import EnrichmentError
 # ==================== Fixtures ====================
 
 pytestmark = pytest.mark.fast
-# Note: Fixtures (mock_enrichment_config, sample_sbir_df, sample_recipient_df)
+# Note: Fixtures (mock_enrichment_config, enricher_sbir_df, enricher_recipient_df)
 # are now in tests/unit/enrichers/conftest.py and automatically available
 
 from tests.utils.config_mocks import create_mock_enrichment_performance_config
@@ -186,14 +186,14 @@ class TestChunkedEnricherInitialization:
 
     @patch("sbir_etl.enrichers.chunked_enrichment.get_config")
     def test_initialization(
-        self, mock_get_config, mock_config, sample_sbir_df, sample_recipient_df
+        self, mock_get_config, mock_config, enricher_sbir_df, enricher_recipient_df
     ):
         """Test ChunkedEnricher initialization."""
         mock_get_config.return_value = mock_config
 
         enricher = ChunkedEnricher(
-            sbir_df=sample_sbir_df,
-            recipient_df=sample_recipient_df,
+            sbir_df=enricher_sbir_df,
+            recipient_df=enricher_recipient_df,
         )
 
         assert len(enricher.sbir_df) == 5
@@ -210,14 +210,14 @@ class TestChunkedEnricherInitialization:
 
     @patch("sbir_etl.enrichers.chunked_enrichment.get_config")
     def test_initialization_with_checkpoint_dir(
-        self, mock_get_config, mock_config, sample_sbir_df, sample_recipient_df, temp_checkpoint_dir
+        self, mock_get_config, mock_config, enricher_sbir_df, enricher_recipient_df, temp_checkpoint_dir
     ):
         """Test initialization with checkpoint directory."""
         mock_get_config.return_value = mock_config
 
         enricher = ChunkedEnricher(
-            sbir_df=sample_sbir_df,
-            recipient_df=sample_recipient_df,
+            sbir_df=enricher_sbir_df,
+            recipient_df=enricher_recipient_df,
             checkpoint_dir=temp_checkpoint_dir,
         )
 
@@ -226,14 +226,14 @@ class TestChunkedEnricherInitialization:
 
     @patch("sbir_etl.enrichers.chunked_enrichment.get_config")
     def test_initialization_progress_tracking_disabled(
-        self, mock_get_config, mock_config, sample_sbir_df, sample_recipient_df, temp_checkpoint_dir
+        self, mock_get_config, mock_config, enricher_sbir_df, enricher_recipient_df, temp_checkpoint_dir
     ):
         """Test initialization with progress tracking disabled."""
         mock_get_config.return_value = mock_config
 
         enricher = ChunkedEnricher(
-            sbir_df=sample_sbir_df,
-            recipient_df=sample_recipient_df,
+            sbir_df=enricher_sbir_df,
+            recipient_df=enricher_recipient_df,
             checkpoint_dir=temp_checkpoint_dir,
             enable_progress_tracking=False,
         )
@@ -250,13 +250,13 @@ class TestChunkGeneration:
 
     @patch("sbir_etl.enrichers.chunked_enrichment.get_config")
     def test_chunk_generator_single_chunk(
-        self, mock_get_config, mock_config, sample_sbir_df, sample_recipient_df
+        self, mock_get_config, mock_config, enricher_sbir_df, enricher_recipient_df
     ):
         """Test chunk generator with data smaller than chunk size."""
         mock_get_config.return_value = mock_config
         mock_config.enrichment.performance.chunk_size = 100
 
-        enricher = ChunkedEnricher(sample_sbir_df, sample_recipient_df)
+        enricher = ChunkedEnricher(enricher_sbir_df, enricher_recipient_df)
         chunks = list(enricher.chunk_generator())
 
         assert len(chunks) == 1
@@ -264,7 +264,7 @@ class TestChunkGeneration:
 
     @patch("sbir_etl.enrichers.chunked_enrichment.get_config")
     def test_chunk_generator_multiple_chunks(
-        self, mock_get_config, mock_config, sample_recipient_df
+        self, mock_get_config, mock_config, enricher_recipient_df
     ):
         """Test chunk generator with multiple chunks."""
         # Create larger DataFrame
@@ -278,7 +278,7 @@ class TestChunkGeneration:
         mock_get_config.return_value = mock_config
         mock_config.enrichment.performance.chunk_size = 100
 
-        enricher = ChunkedEnricher(large_df, sample_recipient_df)
+        enricher = ChunkedEnricher(large_df, enricher_recipient_df)
         chunks = list(enricher.chunk_generator())
 
         assert len(chunks) == 3
@@ -288,7 +288,7 @@ class TestChunkGeneration:
 
     @patch("sbir_etl.enrichers.chunked_enrichment.get_config")
     def test_chunk_generator_exact_division(
-        self, mock_get_config, mock_config, sample_recipient_df
+        self, mock_get_config, mock_config, enricher_recipient_df
     ):
         """Test chunk generator with exact division."""
         # Create DataFrame with exact multiple of chunk size
@@ -302,7 +302,7 @@ class TestChunkGeneration:
         mock_get_config.return_value = mock_config
         mock_config.enrichment.performance.chunk_size = 100
 
-        enricher = ChunkedEnricher(df, sample_recipient_df)
+        enricher = ChunkedEnricher(df, enricher_recipient_df)
         chunks = list(enricher.chunk_generator())
 
         assert len(chunks) == 2
@@ -335,8 +335,8 @@ class TestEnrichChunk:
         mock_enrich,
         mock_get_config,
         mock_config,
-        sample_sbir_df,
-        sample_recipient_df,
+        enricher_sbir_df,
+        enricher_recipient_df,
     ):
         """Test successful chunk enrichment."""
         mock_get_config.return_value = mock_config
@@ -352,8 +352,8 @@ class TestEnrichChunk:
 
         # Mock performance monitor context
 
-        enricher = ChunkedEnricher(sample_sbir_df, sample_recipient_df)
-        result_df, metrics = enricher.enrich_chunk(sample_sbir_df.iloc[:3], chunk_num=1)
+        enricher = ChunkedEnricher(enricher_sbir_df, enricher_recipient_df)
+        result_df, metrics = enricher.enrich_chunk(enricher_sbir_df.iloc[:3], chunk_num=1)
 
         assert len(result_df) == 3
         assert metrics["success"] is True
@@ -374,19 +374,19 @@ class TestEnrichChunk:
         mock_enrich,
         mock_get_config,
         mock_config,
-        sample_sbir_df,
-        sample_recipient_df,
+        enricher_sbir_df,
+        enricher_recipient_df,
     ):
         """Test chunk enrichment with no matches."""
         mock_get_config.return_value = mock_config
 
         # Mock enrichment with no matches
-        enriched_df = sample_sbir_df.copy()
+        enriched_df = enricher_sbir_df.copy()
         enriched_df["_usaspending_match_method"] = [None, None, None, None, None]
         mock_enrich.return_value = enriched_df
 
-        enricher = ChunkedEnricher(sample_sbir_df, sample_recipient_df)
-        result_df, metrics = enricher.enrich_chunk(sample_sbir_df, chunk_num=0)
+        enricher = ChunkedEnricher(enricher_sbir_df, enricher_recipient_df)
+        result_df, metrics = enricher.enrich_chunk(enricher_sbir_df, chunk_num=0)
 
         assert metrics["records_matched"] == 0
         assert metrics["match_rate"] == 0.0
@@ -402,17 +402,17 @@ class TestEnrichChunk:
         mock_enrich,
         mock_get_config,
         mock_config,
-        sample_sbir_df,
-        sample_recipient_df,
+        enricher_sbir_df,
+        enricher_recipient_df,
     ):
         """Test chunk enrichment error handling."""
         mock_get_config.return_value = mock_config
         mock_enrich.side_effect = ValueError("Enrichment failed")
 
-        enricher = ChunkedEnricher(sample_sbir_df, sample_recipient_df)
+        enricher = ChunkedEnricher(enricher_sbir_df, enricher_recipient_df)
 
         with pytest.raises(ValueError, match="Enrichment failed"):
-            enricher.enrich_chunk(sample_sbir_df, chunk_num=0)
+            enricher.enrich_chunk(enricher_sbir_df, chunk_num=0)
 
 
 # ==================== Retry Logic Tests ====================
@@ -424,20 +424,20 @@ class TestRetryLogic:
     @patch("sbir_etl.enrichers.chunked_enrichment.get_config")
     @patch("time.sleep")
     def test_enrich_with_retry_success_first_attempt(
-        self, mock_sleep, mock_get_config, mock_config, sample_sbir_df, sample_recipient_df
+        self, mock_sleep, mock_get_config, mock_config, enricher_sbir_df, enricher_recipient_df
     ):
         """Test retry succeeds on first attempt."""
         mock_get_config.return_value = mock_config
 
-        enricher = ChunkedEnricher(sample_sbir_df, sample_recipient_df)
+        enricher = ChunkedEnricher(enricher_sbir_df, enricher_recipient_df)
 
         # Mock enrich_chunk to succeed
-        enriched_df = sample_sbir_df.copy()
-        enriched_df["_usaspending_match_method"] = ["exact_uei"] * len(sample_sbir_df)
+        enriched_df = enricher_sbir_df.copy()
+        enriched_df["_usaspending_match_method"] = ["exact_uei"] * len(enricher_sbir_df)
         metrics = {"success": True, "chunk_num": 0}
 
         with patch.object(enricher, "enrich_chunk", return_value=(enriched_df, metrics)):
-            result_df, result_metrics = enricher.enrich_with_retry(sample_sbir_df, chunk_num=0)
+            result_df, result_metrics = enricher.enrich_with_retry(enricher_sbir_df, chunk_num=0)
 
         assert result_metrics["success"] is True
         mock_sleep.assert_not_called()
@@ -445,15 +445,15 @@ class TestRetryLogic:
     @patch("sbir_etl.enrichers.chunked_enrichment.get_config")
     @patch("time.sleep")
     def test_enrich_with_retry_success_second_attempt(
-        self, mock_sleep, mock_get_config, mock_config, sample_sbir_df, sample_recipient_df
+        self, mock_sleep, mock_get_config, mock_config, enricher_sbir_df, enricher_recipient_df
     ):
         """Test retry succeeds on second attempt."""
         mock_get_config.return_value = mock_config
 
-        enricher = ChunkedEnricher(sample_sbir_df, sample_recipient_df)
+        enricher = ChunkedEnricher(enricher_sbir_df, enricher_recipient_df)
 
-        enriched_df = sample_sbir_df.copy()
-        enriched_df["_usaspending_match_method"] = ["exact_uei"] * len(sample_sbir_df)
+        enriched_df = enricher_sbir_df.copy()
+        enriched_df["_usaspending_match_method"] = ["exact_uei"] * len(enricher_sbir_df)
         metrics = {"success": True, "chunk_num": 0}
 
         # Fail first, succeed second
@@ -462,7 +462,7 @@ class TestRetryLogic:
             "enrich_chunk",
             side_effect=[ValueError("Temporary error"), (enriched_df, metrics)],
         ):
-            result_df, result_metrics = enricher.enrich_with_retry(sample_sbir_df, chunk_num=0)
+            result_df, result_metrics = enricher.enrich_with_retry(enricher_sbir_df, chunk_num=0)
 
         assert result_metrics["success"] is True
         mock_sleep.assert_called_once_with(1)  # 2^0 = 1
@@ -470,16 +470,16 @@ class TestRetryLogic:
     @patch("sbir_etl.enrichers.chunked_enrichment.get_config")
     @patch("time.sleep")
     def test_enrich_with_retry_all_attempts_fail(
-        self, mock_sleep, mock_get_config, mock_config, sample_sbir_df, sample_recipient_df
+        self, mock_sleep, mock_get_config, mock_config, enricher_sbir_df, enricher_recipient_df
     ):
         """Test retry fails after max attempts."""
         mock_get_config.return_value = mock_config
 
-        enricher = ChunkedEnricher(sample_sbir_df, sample_recipient_df)
+        enricher = ChunkedEnricher(enricher_sbir_df, enricher_recipient_df)
 
         with patch.object(enricher, "enrich_chunk", side_effect=ValueError("Persistent error")):
             with pytest.raises(EnrichmentError, match="Failed to enrich chunk 0 after 3 attempts"):
-                enricher.enrich_with_retry(sample_sbir_df, chunk_num=0, max_retries=3)
+                enricher.enrich_with_retry(enricher_sbir_df, chunk_num=0, max_retries=3)
 
         # Should sleep with exponential backoff: 2^0=1, 2^1=2
         assert mock_sleep.call_count == 2
@@ -502,18 +502,18 @@ class TestProgressTracking:
         mock_enrich,
         mock_get_config,
         mock_config,
-        sample_sbir_df,
-        sample_recipient_df,
+        enricher_sbir_df,
+        enricher_recipient_df,
     ):
         """Test process_all_chunks updates progress."""
         mock_get_config.return_value = mock_config
         mock_config.enrichment.performance.chunk_size = 2
 
-        enriched_df = sample_sbir_df.copy()
-        enriched_df["_usaspending_match_method"] = ["exact_uei"] * len(sample_sbir_df)
+        enriched_df = enricher_sbir_df.copy()
+        enriched_df["_usaspending_match_method"] = ["exact_uei"] * len(enricher_sbir_df)
         mock_enrich.return_value = enriched_df
 
-        enricher = ChunkedEnricher(sample_sbir_df, sample_recipient_df)
+        enricher = ChunkedEnricher(enricher_sbir_df, enricher_recipient_df)
 
         chunks_processed = 0
         for _enriched_chunk, _metrics in enricher.process_all_chunks():
@@ -533,21 +533,21 @@ class TestProgressTracking:
         mock_enrich,
         mock_get_config,
         mock_config,
-        sample_sbir_df,
-        sample_recipient_df,
+        enricher_sbir_df,
+        enricher_recipient_df,
         temp_checkpoint_dir,
     ):
         """Test process_all_chunks saves checkpoints."""
         mock_get_config.return_value = mock_config
         mock_config.enrichment.performance.chunk_size = 2
 
-        enriched_df = sample_sbir_df.copy()
-        enriched_df["_usaspending_match_method"] = ["exact_uei"] * len(sample_sbir_df)
+        enriched_df = enricher_sbir_df.copy()
+        enriched_df["_usaspending_match_method"] = ["exact_uei"] * len(enricher_sbir_df)
         mock_enrich.return_value = enriched_df
 
         enricher = ChunkedEnricher(
-            sample_sbir_df,
-            sample_recipient_df,
+            enricher_sbir_df,
+            enricher_recipient_df,
             checkpoint_dir=temp_checkpoint_dir,
             enable_progress_tracking=True,
         )
@@ -574,8 +574,8 @@ class TestDataFrameProcessing:
         mock_enrich,
         mock_get_config,
         mock_config,
-        sample_sbir_df,
-        sample_recipient_df,
+        enricher_sbir_df,
+        enricher_recipient_df,
     ):
         """Test process_to_dataframe combines chunks."""
         mock_get_config.return_value = mock_config
@@ -590,7 +590,7 @@ class TestDataFrameProcessing:
 
         mock_enrich.side_effect = enrich_chunk
 
-        enricher = ChunkedEnricher(sample_sbir_df, sample_recipient_df)
+        enricher = ChunkedEnricher(enricher_sbir_df, enricher_recipient_df)
         combined_df, metrics = enricher.process_to_dataframe()
 
         assert len(combined_df) == 5
@@ -623,8 +623,8 @@ class TestDataFrameProcessing:
         mock_enrich,
         mock_get_config,
         mock_config,
-        sample_sbir_df,
-        sample_recipient_df,
+        enricher_sbir_df,
+        enricher_recipient_df,
     ):
         """Test process_streaming yields chunks."""
         mock_get_config.return_value = mock_config
@@ -638,7 +638,7 @@ class TestDataFrameProcessing:
 
         mock_enrich.side_effect = mock_enrich_func
 
-        enricher = ChunkedEnricher(sample_sbir_df, sample_recipient_df)
+        enricher = ChunkedEnricher(enricher_sbir_df, enricher_recipient_df)
 
         chunks = list(enricher.process_streaming())
 
@@ -656,25 +656,25 @@ class TestCheckpointManagement:
 
     @patch("sbir_etl.enrichers.chunked_enrichment.get_config")
     def test_load_last_checkpoint_no_directory(
-        self, mock_get_config, mock_config, sample_sbir_df, sample_recipient_df
+        self, mock_get_config, mock_config, enricher_sbir_df, enricher_recipient_df
     ):
         """Test load_last_checkpoint with no directory."""
         mock_get_config.return_value = mock_config
 
-        enricher = ChunkedEnricher(sample_sbir_df, sample_recipient_df)
+        enricher = ChunkedEnricher(enricher_sbir_df, enricher_recipient_df)
         result = enricher.load_last_checkpoint()
 
         assert result is None
 
     @patch("sbir_etl.enrichers.chunked_enrichment.get_config")
     def test_load_last_checkpoint_empty_directory(
-        self, mock_get_config, mock_config, sample_sbir_df, sample_recipient_df, temp_checkpoint_dir
+        self, mock_get_config, mock_config, enricher_sbir_df, enricher_recipient_df, temp_checkpoint_dir
     ):
         """Test load_last_checkpoint with empty directory."""
         mock_get_config.return_value = mock_config
 
         enricher = ChunkedEnricher(
-            sample_sbir_df, sample_recipient_df, checkpoint_dir=temp_checkpoint_dir
+            enricher_sbir_df, enricher_recipient_df, checkpoint_dir=temp_checkpoint_dir
         )
         result = enricher.load_last_checkpoint()
 
@@ -682,7 +682,7 @@ class TestCheckpointManagement:
 
     @patch("sbir_etl.enrichers.chunked_enrichment.get_config")
     def test_load_last_checkpoint_success(
-        self, mock_get_config, mock_config, sample_sbir_df, sample_recipient_df, temp_checkpoint_dir
+        self, mock_get_config, mock_config, enricher_sbir_df, enricher_recipient_df, temp_checkpoint_dir
     ):
         """Test successful checkpoint loading."""
         mock_get_config.return_value = mock_config
@@ -695,7 +695,7 @@ class TestCheckpointManagement:
         checkpoint2.write_text(json.dumps({"chunks_processed": 2, "records_processed": 200}))
 
         enricher = ChunkedEnricher(
-            sample_sbir_df, sample_recipient_df, checkpoint_dir=temp_checkpoint_dir
+            enricher_sbir_df, enricher_recipient_df, checkpoint_dir=temp_checkpoint_dir
         )
         result = enricher.load_last_checkpoint()
 
@@ -705,13 +705,13 @@ class TestCheckpointManagement:
 
     @patch("sbir_etl.enrichers.chunked_enrichment.get_config")
     def test_resume_from_checkpoint(
-        self, mock_get_config, mock_config, sample_sbir_df, sample_recipient_df, temp_checkpoint_dir
+        self, mock_get_config, mock_config, enricher_sbir_df, enricher_recipient_df, temp_checkpoint_dir
     ):
         """Test resume from checkpoint."""
         mock_get_config.return_value = mock_config
 
         enricher = ChunkedEnricher(
-            sample_sbir_df, sample_recipient_df, checkpoint_dir=temp_checkpoint_dir
+            enricher_sbir_df, enricher_recipient_df, checkpoint_dir=temp_checkpoint_dir
         )
 
         checkpoint_data = {
@@ -729,7 +729,7 @@ class TestCheckpointManagement:
 
     @patch("sbir_etl.enrichers.chunked_enrichment.get_config")
     def test_clear_checkpoints(
-        self, mock_get_config, mock_config, sample_sbir_df, sample_recipient_df, temp_checkpoint_dir
+        self, mock_get_config, mock_config, enricher_sbir_df, enricher_recipient_df, temp_checkpoint_dir
     ):
         """Test checkpoint cleanup."""
         mock_get_config.return_value = mock_config
@@ -740,7 +740,7 @@ class TestCheckpointManagement:
             checkpoint.write_text(json.dumps({"test": "data"}))
 
         enricher = ChunkedEnricher(
-            sample_sbir_df, sample_recipient_df, checkpoint_dir=temp_checkpoint_dir
+            enricher_sbir_df, enricher_recipient_df, checkpoint_dir=temp_checkpoint_dir
         )
         enricher.clear_checkpoints()
 
@@ -757,12 +757,12 @@ class TestProgressMetadata:
 
     @patch("sbir_etl.enrichers.chunked_enrichment.get_config")
     def test_get_progress_metadata(
-        self, mock_get_config, mock_config, sample_sbir_df, sample_recipient_df
+        self, mock_get_config, mock_config, enricher_sbir_df, enricher_recipient_df
     ):
         """Test get_progress_metadata returns complete info."""
         mock_get_config.return_value = mock_config
 
-        enricher = ChunkedEnricher(sample_sbir_df, sample_recipient_df)
+        enricher = ChunkedEnricher(enricher_sbir_df, enricher_recipient_df)
         enricher.progress.records_processed = 250
         enricher.progress.chunks_processed = 2
 
@@ -834,18 +834,18 @@ class TestModuleFunctions:
         mock_enrich,
         mock_get_config,
         mock_config,
-        sample_sbir_df,
-        sample_recipient_df,
+        enricher_sbir_df,
+        enricher_recipient_df,
     ):
         """Test create_dynamic_outputs_enrichment generator."""
         mock_get_config.return_value = mock_config
         mock_config.enrichment.performance.chunk_size = 2
 
-        enriched_df = sample_sbir_df.copy()
-        enriched_df["_usaspending_match_method"] = ["exact_uei"] * len(sample_sbir_df)
+        enriched_df = enricher_sbir_df.copy()
+        enriched_df["_usaspending_match_method"] = ["exact_uei"] * len(enricher_sbir_df)
         mock_enrich.return_value = enriched_df
 
-        results = list(create_dynamic_outputs_enrichment(sample_sbir_df, sample_recipient_df))
+        results = list(create_dynamic_outputs_enrichment(enricher_sbir_df, enricher_recipient_df))
 
         # Should yield (chunk_id, enriched_chunk) tuples
         assert len(results) == 3
@@ -854,12 +854,12 @@ class TestModuleFunctions:
         assert results[2][0] == 2  # Third chunk ID
         assert isinstance(results[0][1], pd.DataFrame)
 
-    def test_combine_enriched_chunks(self, sample_sbir_df):
+    def test_combine_enriched_chunks(self, enricher_sbir_df):
         """Test combine_enriched_chunks function."""
-        chunk1 = sample_sbir_df.iloc[:2].copy()
+        chunk1 = enricher_sbir_df.iloc[:2].copy()
         chunk1["_usaspending_match_method"] = ["exact_uei", "fuzzy_name"]
 
-        chunk2 = sample_sbir_df.iloc[2:].copy()
+        chunk2 = enricher_sbir_df.iloc[2:].copy()
         chunk2["_usaspending_match_method"] = ["exact_uei", None, "exact_uei"]
 
         combined_df, metrics = combine_enriched_chunks([chunk1, chunk2])
@@ -877,10 +877,10 @@ class TestModuleFunctions:
         assert len(combined_df) == 0
         assert "error" in metrics
 
-    def test_combine_enriched_chunks_single_chunk(self, sample_sbir_df):
+    def test_combine_enriched_chunks_single_chunk(self, enricher_sbir_df):
         """Test combine_enriched_chunks with single chunk."""
-        chunk = sample_sbir_df.copy()
-        chunk["_usaspending_match_method"] = ["exact_uei"] * len(sample_sbir_df)
+        chunk = enricher_sbir_df.copy()
+        chunk["_usaspending_match_method"] = ["exact_uei"] * len(enricher_sbir_df)
 
         combined_df, metrics = combine_enriched_chunks([chunk])
 
@@ -904,8 +904,8 @@ class TestEdgeCases:
         mock_enrich,
         mock_get_config,
         mock_config,
-        sample_sbir_df,
-        sample_recipient_df,
+        enricher_sbir_df,
+        enricher_recipient_df,
         temp_checkpoint_dir,
     ):
         """Test process_all_chunks handles errors."""
@@ -913,12 +913,12 @@ class TestEdgeCases:
         mock_config.enrichment.performance.chunk_size = 2
 
         # Fail on second chunk
-        enriched_df = sample_sbir_df.copy()
-        enriched_df["_usaspending_match_method"] = ["exact_uei"] * len(sample_sbir_df)
+        enriched_df = enricher_sbir_df.copy()
+        enriched_df["_usaspending_match_method"] = ["exact_uei"] * len(enricher_sbir_df)
         mock_enrich.side_effect = [enriched_df, ValueError("Chunk error"), enriched_df]
 
         enricher = ChunkedEnricher(
-            sample_sbir_df, sample_recipient_df, checkpoint_dir=temp_checkpoint_dir
+            enricher_sbir_df, enricher_recipient_df, checkpoint_dir=temp_checkpoint_dir
         )
 
         with pytest.raises(EnrichmentError):
@@ -929,7 +929,7 @@ class TestEdgeCases:
 
     @patch("sbir_etl.enrichers.chunked_enrichment.get_config")
     def test_chunk_progress_with_checkpoint_io_error(
-        self, mock_get_config, mock_config, sample_sbir_df, sample_recipient_df, tmp_path
+        self, mock_get_config, mock_config, enricher_sbir_df, enricher_recipient_df, tmp_path
     ):
         """Test checkpoint save handles IO errors gracefully."""
         mock_get_config.return_value = mock_config
@@ -956,7 +956,7 @@ class TestEdgeCases:
 
     @patch("sbir_etl.enrichers.chunked_enrichment.get_config")
     def test_load_checkpoint_corrupt_json(
-        self, mock_get_config, mock_config, sample_sbir_df, sample_recipient_df, temp_checkpoint_dir
+        self, mock_get_config, mock_config, enricher_sbir_df, enricher_recipient_df, temp_checkpoint_dir
     ):
         """Test load_last_checkpoint handles corrupt JSON."""
         mock_get_config.return_value = mock_config
@@ -966,7 +966,7 @@ class TestEdgeCases:
         corrupt_checkpoint.write_text("{invalid json")
 
         enricher = ChunkedEnricher(
-            sample_sbir_df, sample_recipient_df, checkpoint_dir=temp_checkpoint_dir
+            enricher_sbir_df, enricher_recipient_df, checkpoint_dir=temp_checkpoint_dir
         )
         result = enricher.load_last_checkpoint()
 

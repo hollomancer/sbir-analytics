@@ -17,24 +17,10 @@ from sbir_etl.models.fiscal_models import (
     NAICSMapping,
     TaxImpactEstimate,
 )
+from tests.factories import EconomicShockFactory, FiscalReturnSummaryFactory, NAICSMappingFactory
 
 
-# Helper to create EconomicShock with defaults
-def _make_shock(**overrides):
-    """Create EconomicShock with sensible defaults."""
-    defaults = {
-        "state": "CA",
-        "bea_sector": "54",
-        "fiscal_year": 2022,
-        "shock_amount": Decimal("500000"),
-        "award_ids": ["AWARD-001"],
-        "confidence": 0.9,
-        "naics_coverage_rate": 0.85,
-        "geographic_resolution_rate": 0.95,
-        "base_year": 2020,
-    }
-    defaults.update(overrides)
-    return EconomicShock(**defaults)
+_make_shock = EconomicShockFactory.create
 
 
 class TestEconomicShockModel:
@@ -193,25 +179,7 @@ class TestTaxImpactEstimateModel:
         assert isinstance(estimate.computed_at, datetime)
 
 
-# Helper to create FiscalReturnSummary with defaults
-def _make_summary(**overrides):
-    """Create FiscalReturnSummary with sensible defaults."""
-    defaults = {
-        "analysis_id": "ANALYSIS-001",
-        "base_year": 2020,
-        "methodology_version": "v2.1",
-        "total_sbir_investment": Decimal("10000000"),
-        "total_tax_receipts": Decimal("15000000"),
-        "net_fiscal_return": Decimal("5000000"),
-        "roi_ratio": 1.5,
-        "net_present_value": Decimal("4500000"),
-        "benefit_cost_ratio": 1.5,
-        "confidence_interval_low": Decimal("14000000"),
-        "confidence_interval_high": Decimal("16000000"),
-        "quality_score": 0.85,
-    }
-    defaults.update(overrides)
-    return FiscalReturnSummary(**defaults)
+_make_summary = FiscalReturnSummaryFactory.create
 
 
 class TestFiscalReturnSummaryModel:
@@ -333,21 +301,7 @@ def _make_inflation(**overrides):
     return InflationAdjustment(**defaults)
 
 
-# Helper to create NAICSMapping with defaults
-def _make_naics_mapping(**overrides):
-    """Create NAICSMapping with sensible defaults."""
-    defaults = {
-        "award_id": "AWARD-001",
-        "naics_code": "541715",
-        "bea_sector_code": "54",
-        "bea_sector_name": "Professional Services",
-        "crosswalk_version": "2022",
-        "naics_source": "usaspending",
-        "naics_confidence": 0.95,
-        "mapping_confidence": 0.90,
-    }
-    defaults.update(overrides)
-    return NAICSMapping(**defaults)
+_make_naics_mapping = NAICSMappingFactory.create
 
 
 # Helper to create GeographicResolution with defaults

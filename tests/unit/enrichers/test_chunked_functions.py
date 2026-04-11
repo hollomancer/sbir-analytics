@@ -24,12 +24,12 @@ def mock_config():
 class TestCombineEnrichedChunks:
     """Tests for combine_enriched_chunks function."""
 
-    def test_combine_multiple_chunks(self, sample_sbir_df):
+    def test_combine_multiple_chunks(self, enricher_sbir_df):
         """Test combining multiple enriched chunks."""
-        chunk1 = sample_sbir_df.iloc[:2].copy()
+        chunk1 = enricher_sbir_df.iloc[:2].copy()
         chunk1["_usaspending_match_method"] = ["exact_uei", "fuzzy_name"]
 
-        chunk2 = sample_sbir_df.iloc[2:].copy()
+        chunk2 = enricher_sbir_df.iloc[2:].copy()
         chunk2["_usaspending_match_method"] = ["exact_uei", None, "exact_uei"]
 
         combined_df, metrics = combine_enriched_chunks([chunk1, chunk2])
@@ -47,10 +47,10 @@ class TestCombineEnrichedChunks:
         assert len(combined_df) == 0
         assert "error" in metrics
 
-    def test_combine_single_chunk(self, sample_sbir_df):
+    def test_combine_single_chunk(self, enricher_sbir_df):
         """Test combining single chunk."""
-        chunk = sample_sbir_df.copy()
-        chunk["_usaspending_match_method"] = ["exact_uei"] * len(sample_sbir_df)
+        chunk = enricher_sbir_df.copy()
+        chunk["_usaspending_match_method"] = ["exact_uei"] * len(enricher_sbir_df)
 
         combined_df, metrics = combine_enriched_chunks([chunk])
 
@@ -58,10 +58,10 @@ class TestCombineEnrichedChunks:
         assert metrics["chunks_combined"] == 1
         assert metrics["match_rate"] == 1.0
 
-    def test_combine_all_unmatched(self, sample_sbir_df):
+    def test_combine_all_unmatched(self, enricher_sbir_df):
         """Test combining chunks with no matches."""
-        chunk = sample_sbir_df.copy()
-        chunk["_usaspending_match_method"] = [None] * len(sample_sbir_df)
+        chunk = enricher_sbir_df.copy()
+        chunk["_usaspending_match_method"] = [None] * len(enricher_sbir_df)
 
         combined_df, metrics = combine_enriched_chunks([chunk])
 
@@ -81,17 +81,17 @@ class TestCreateDynamicOutputsEnrichment:
         mock_enrich,
         mock_get_config,
         mock_config,
-        sample_sbir_df,
-        sample_recipient_df,
+        enricher_sbir_df,
+        enricher_recipient_df,
     ):
         """Test generator yields (chunk_id, enriched_chunk) tuples."""
         mock_get_config.return_value = mock_config
 
-        enriched_df = sample_sbir_df.copy()
-        enriched_df["_usaspending_match_method"] = ["exact_uei"] * len(sample_sbir_df)
+        enriched_df = enricher_sbir_df.copy()
+        enriched_df["_usaspending_match_method"] = ["exact_uei"] * len(enricher_sbir_df)
         mock_enrich.return_value = enriched_df
 
-        results = list(create_dynamic_outputs_enrichment(sample_sbir_df, sample_recipient_df))
+        results = list(create_dynamic_outputs_enrichment(enricher_sbir_df, enricher_recipient_df))
 
         assert len(results) == 3
         assert results[0][0] == 0
@@ -108,8 +108,8 @@ class TestCreateDynamicOutputsEnrichment:
         mock_enrich,
         mock_get_config,
         mock_config,
-        sample_sbir_df,
-        sample_recipient_df,
+        enricher_sbir_df,
+        enricher_recipient_df,
     ):
         """Test all records are processed across chunks."""
         mock_get_config.return_value = mock_config
@@ -121,9 +121,9 @@ class TestCreateDynamicOutputsEnrichment:
 
         mock_enrich.side_effect = mock_enrich_func
 
-        results = list(create_dynamic_outputs_enrichment(sample_sbir_df, sample_recipient_df))
+        results = list(create_dynamic_outputs_enrichment(enricher_sbir_df, enricher_recipient_df))
 
         # Each chunk should have records, total should match input
         total_records = sum(len(chunk) for _, chunk in results)
         # Note: chunks may overlap or be processed differently
-        assert total_records >= len(sample_sbir_df)
+        assert total_records >= len(enricher_sbir_df)
