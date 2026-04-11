@@ -140,6 +140,9 @@ def test_asset_neo4j_award_cet_relationships_invokes_loader(monkeypatch, tmp_pat
     - Invokes CETLoader.load_award_cet_relationships with those rows
     - Returns a serialized metrics dict
     """
+    # Skip if dagster or sbir_analytics are unavailable in this environment
+    pytest.importorskip("dagster")
+    pytest.importorskip("sbir_analytics")
     monkeypatch.chdir(tmp_path)
 
     # Prepare fake input rows

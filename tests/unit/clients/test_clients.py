@@ -10,6 +10,11 @@ from unittest.mock import Mock, patch
 
 import pytest
 
+# sbir_analytics.clients requires dagster and sbir_analytics to be installed.
+# Skip all tests in this module if those dependencies are not available.
+pytest.importorskip("dagster")
+pytest.importorskip("sbir_analytics")
+
 pytestmark = pytest.mark.fast
 
 
