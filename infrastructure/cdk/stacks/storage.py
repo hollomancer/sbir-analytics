@@ -50,16 +50,28 @@ class StorageStack(Stack):
                         prefix="raw/usaspending/database/",
                         enabled=True,
                         transitions=[
+                            # Skip Intelligent Tiering (monitoring overhead not
+                            # worth it for a single large ZIP accessed monthly).
+                            # Glacier Instant Retrieval: same-day restore at
+                            # ~68% lower storage cost than Standard.
                             s3.Transition(
-                                storage_class=s3.StorageClass.INTELLIGENT_TIERING,
-                                transition_after=Duration.days(7),
-                            ),
-                            s3.Transition(
-                                storage_class=s3.StorageClass.GLACIER_FLEXIBLE_RETRIEVAL,
-                                transition_after=Duration.days(90),
+                                storage_class=s3.StorageClass.GLACIER_INSTANT_RETRIEVAL,
+                                transition_after=Duration.days(30),
                             ),
                         ],
-                        expiration=Duration.days(365),  # Keep for 1 year
+                        expiration=Duration.days(365),
+                    ),
+                    s3.LifecycleRule(
+                        id="validated-data-retention",
+                        prefix="validated/",
+                        expiration=Duration.days(180),
+                        enabled=True,
+                    ),
+                    s3.LifecycleRule(
+                        id="enriched-data-retention",
+                        prefix="enriched/",
+                        expiration=Duration.days(365),
+                        enabled=True,
                     ),
                 ],
                 removal_policy=RemovalPolicy.RETAIN,  # Don't delete data on stack deletion

@@ -6,7 +6,9 @@ Data Source Priority:
 3. FAIL: If both sources fail
 """
 
-from datetime import datetime, UTC
+from __future__ import annotations
+
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 

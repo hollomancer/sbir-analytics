@@ -63,7 +63,7 @@ class SbirDuckDBExtractor:
                     )
 
         # When httpfs is enabled, pass S3 URL directly to DuckDB (skip download)
-        if enable_httpfs and csv_path_s3 and _is_s3_path(csv_path_s3):
+        if enable_httpfs and csv_path_s3 and is_s3_path(csv_path_s3):
             self.csv_path: Path | str = csv_path_s3
         else:
             # Resolve path with S3-first, local fallback (downloads to temp)
@@ -118,7 +118,7 @@ class SbirDuckDBExtractor:
             Dictionary with import metadata (record count, duration, etc.)
         """
         import time
-        from datetime import datetime
+        from datetime import UTC, datetime
 
         logger.info(f"Importing CSV to DuckDB table '{self.table_name}'")
 
@@ -127,18 +127,18 @@ class SbirDuckDBExtractor:
         if use_incremental is not None:
             incremental = bool(use_incremental)
 
-        if _is_s3_path(self.csv_path):
+        if is_s3_path(self.csv_path):
             # S3 paths are validated at read time by DuckDB httpfs
             pass
         elif not Path(self.csv_path).exists():
             raise FileNotFoundError(f"CSV file not found: {self.csv_path}")
 
         # Record extraction start timestamp (UTC)
-        extraction_start = datetime.utcnow().isoformat()
+        extraction_start = datetime.now(UTC).isoformat()
 
         # Get file size (MB) — unavailable for S3 paths read via httpfs
         file_size_mb = 0.0
-        if not _is_s3_path(self.csv_path):
+        if not is_s3_path(self.csv_path):
             file_size_mb = Path(self.csv_path).stat().st_size / (1024 * 1024)
 
         start_time = time.time()
@@ -300,7 +300,7 @@ class SbirDuckDBExtractor:
         self._imported = True
 
         # Record extraction end timestamp (UTC)
-        extraction_end = datetime.utcnow().isoformat()
+        extraction_end = datetime.now(UTC).isoformat()
 
         metadata = {
             "csv_path": str(self.csv_path),

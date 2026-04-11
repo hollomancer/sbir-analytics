@@ -138,8 +138,9 @@ class BatchStack(Stack):
         )
         neo4j_secret.grant_read(job_task_role)
 
-        # Compute environment (Fargate)
-        compute_environment = batch.CfnComputeEnvironment(
+        # Compute environments — on-demand for long-running extraction,
+        # Fargate Spot for retry-safe ML/analysis jobs (50-70% savings).
+        compute_env_on_demand = batch.CfnComputeEnvironment(
             self, "AnalysisComputeEnvironment",
             type="MANAGED",
             compute_resources=batch.CfnComputeEnvironment.ComputeResourcesProperty(
@@ -151,15 +152,32 @@ class BatchStack(Stack):
             compute_environment_name=BATCH_COMPUTE_ENV_NAME,
         )
 
+        compute_env_spot = batch.CfnComputeEnvironment(
+            self, "AnalysisComputeEnvironmentSpot",
+            type="MANAGED",
+            compute_resources=batch.CfnComputeEnvironment.ComputeResourcesProperty(
+                type="FARGATE_SPOT",
+                maxv_cpus=8,
+                subnets=[subnet.subnet_id for subnet in vpc.public_subnets],
+                security_group_ids=[security_group.security_group_id],
+            ),
+            compute_environment_name=f"{BATCH_COMPUTE_ENV_NAME}-spot",
+        )
+
+        # Job queue prefers Spot, falls back to on-demand if interrupted
         job_queue = batch.CfnJobQueue(
             self, "AnalysisJobQueue",
             job_queue_name=BATCH_JOB_QUEUE_NAME,
             priority=1,
             compute_environment_order=[
                 batch.CfnJobQueue.ComputeEnvironmentOrderProperty(
-                    compute_environment=compute_environment.attr_compute_environment_arn,
+                    compute_environment=compute_env_spot.attr_compute_environment_arn,
                     order=1,
-                )
+                ),
+                batch.CfnJobQueue.ComputeEnvironmentOrderProperty(
+                    compute_environment=compute_env_on_demand.attr_compute_environment_arn,
+                    order=2,
+                ),
             ],
         )
 
@@ -219,7 +237,8 @@ class BatchStack(Stack):
 
         # Outputs
         CfnOutput(self, "AnalysisImage", value=ANALYSIS_IMAGE)
-        CfnOutput(self, "ComputeEnvironmentArn", value=compute_environment.attr_compute_environment_arn)
+        CfnOutput(self, "ComputeEnvironmentArn", value=compute_env_on_demand.attr_compute_environment_arn)
+        CfnOutput(self, "ComputeEnvironmentSpotArn", value=compute_env_spot.attr_compute_environment_arn)
         CfnOutput(self, "JobQueueArn", value=job_queue.attr_job_queue_arn)
         CfnOutput(self, "JobQueueName", value=job_queue.job_queue_name)
         CfnOutput(self, "CETJobDefinitionArn", value=job_definitions["CETJobDefinition"].ref)

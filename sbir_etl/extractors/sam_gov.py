@@ -4,6 +4,8 @@ This module provides functionality to extract SAM.gov entity data from parquet f
 Supports both local and S3-stored parquet files with automatic path resolution.
 """
 
+from __future__ import annotations
+
 from pathlib import Path
 from typing import Any
 

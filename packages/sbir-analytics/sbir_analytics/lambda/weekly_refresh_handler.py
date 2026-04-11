@@ -7,7 +7,7 @@ import json
 import os
 import subprocess
 import tempfile
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 
 import boto3
@@ -487,7 +487,7 @@ def upload_to_s3(
         ExtraArgs={
             "Metadata": {
                 "csv_hash": csv_hash,
-                "upload_date": datetime.utcnow().isoformat(),
+                "upload_date": datetime.now(UTC).isoformat(),
             },
             "ContentType": "text/csv",
         },
