@@ -16,6 +16,11 @@ except ImportError:
     S3Path = None  # type: ignore[assignment, misc]
 
 
+def is_s3_path(path: str | Path) -> bool:
+    """Check if a path is an S3 URL."""
+    return str(path).startswith("s3://")
+
+
 def resolve_data_path(
     cloud_path: str | Path,
     local_fallback: Path | None = None,

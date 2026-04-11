@@ -6,7 +6,7 @@ Data Source Priority:
 3. FAIL: If both sources fail
 """
 
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from pathlib import Path
 from typing import Any
 
@@ -149,7 +149,7 @@ def _import_sam_gov_entities(
 
     # Stamp data source provenance on every record
     # Prefer the original S3 URL over the resolved temp/cache path
-    ingested_at = datetime.now(timezone.utc)
+    ingested_at = datetime.now(UTC)
     df["data_source"] = "sam.gov"
     df["data_source_url"] = str(s3_parquet_url or parquet_path)
     df["ingested_at"] = ingested_at

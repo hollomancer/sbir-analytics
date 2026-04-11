@@ -7,7 +7,7 @@ import os
 from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 import pandas as pd
 
@@ -25,15 +25,7 @@ except ModuleNotFoundError as exc:  # pragma: no cover - optional dependency
     _DUCKDB_IMPORT_ERROR = exc
 
 
-if TYPE_CHECKING:
-    # For type checkers we still reference pandas types
-
-    import pandas as pd
-
-
-def _is_s3_path(path: str | Path) -> bool:
-    """Check if a path is an S3 URL."""
-    return str(path).startswith("s3://")
+from sbir_etl.utils.cloud_storage import is_s3_path as _is_s3_path
 
 
 def _require_duckdb(operation: str | None = None) -> None:
@@ -441,7 +433,7 @@ class DuckDBClient:
 
     def import_csv_incremental(
         self,
-        csv_path: Path,
+        csv_path: Path | str,
         table_name: str,
         batch_size: int = 10000,
         delimiter: str = ",",
@@ -476,7 +468,7 @@ class DuckDBClient:
             )
             table_identifier = self.escape_identifier(table_name)
 
-            if not csv_path.exists():
+            if not Path(csv_path).exists():
                 raise FileSystemError(
                     f"CSV file not found: {csv_path}",
                     file_path=str(csv_path),

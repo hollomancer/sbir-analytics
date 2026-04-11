@@ -1,5 +1,7 @@
 """SBIR data extraction using DuckDB."""
 
+from __future__ import annotations
+
 import csv
 from collections.abc import Iterator
 from pathlib import Path
@@ -7,8 +9,8 @@ from pathlib import Path
 import pandas as pd
 from loguru import logger
 
-from ..utils.cloud_storage import get_s3_bucket_from_env, resolve_data_path
-from ..utils.data.duckdb_client import DuckDBClient, _is_s3_path
+from ..utils.cloud_storage import get_s3_bucket_from_env, is_s3_path, resolve_data_path
+from ..utils.data.duckdb_client import DuckDBClient
 
 
 class SbirDuckDBExtractor:
