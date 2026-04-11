@@ -112,27 +112,6 @@ class TestExceptionRetryability:
 class TestExceptionDetailsUsability:
     """Tests that exception details provide actionable information."""
 
-    @pytest.mark.skip(reason="Module refactored - see INTEGRATION_TEST_ANALYSIS.md")
-    def test_validation_error_shows_available_columns(self):
-        """Test ValidationError includes list of available columns for debugging."""
-        from sbir_etl.enrichers.company_enricher import enrich_companies
-
-        awards_df = pd.DataFrame({"col1": [1], "col2": [2]})
-        companies_df = pd.DataFrame({"Company Name": ["Test"]})
-
-        with pytest.raises(ValidationError) as exc_info:
-            enrich_companies(
-                awards_df,
-                companies_df,
-                award_company_col="missing_col",
-            )
-
-        exc = exc_info.value
-        assert "available_columns" in exc.details
-        available = exc.details["available_columns"]
-        assert "col1" in available
-        assert "col2" in available
-
     def test_dependency_error_includes_install_command(self):
         """Test DependencyError includes installation instructions."""
         exc = DependencyError(

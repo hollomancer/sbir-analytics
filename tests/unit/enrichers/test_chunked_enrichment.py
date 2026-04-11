@@ -945,7 +945,7 @@ class TestEdgeCases:
             checkpoint_dir=checkpoint_dir,
         )
 
-        # Should handle permission error gracefully
+        # Should handle permission error gracefully without raising
         try:
             progress.save_checkpoint({"test": "data"})
         except PermissionError:
@@ -953,6 +953,10 @@ class TestEdgeCases:
         finally:
             # Restore permissions for cleanup
             checkpoint_dir.chmod(0o755)
+
+        # Verify progress state is not corrupted by the failed save
+        assert progress.total_records == 1000
+        assert progress.chunk_size == 100
 
     @patch("sbir_etl.enrichers.chunked_enrichment.get_config")
     def test_load_checkpoint_corrupt_json(

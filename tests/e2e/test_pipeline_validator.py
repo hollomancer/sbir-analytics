@@ -458,13 +458,4 @@ class TestIntegration:
         assert success_rec is not None
 
 
-"""Tests for the E2E pipeline validator.
-
-This module tests the pipeline validator functionality to ensure
-comprehensive validation of ETL pipeline stages.
-"""
-
-import pytest
-
-
 pytestmark = pytest.mark.e2e
