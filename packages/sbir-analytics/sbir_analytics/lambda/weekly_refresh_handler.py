@@ -495,7 +495,10 @@ def upload_to_s3(
     logger.info("Uploaded CSV to S3")
 
     # NOTE: Versioned copy (award_data_{date}.csv) removed — S3 bucket versioning
-    # already provides version history on the canonical key above.
+    # provides version history on the canonical key above.
+    # IMPORTANT: This assumes bucket versioning is enabled. The CDK StorageStack
+    # sets versioned=True when creating a new bucket, but when importing an
+    # existing bucket, versioning must be enabled manually.
 
     # Upload all metadata files
     for metadata_file in metadata_dir.rglob("*"):

@@ -109,15 +109,15 @@ class DuckDBClient:
         """Load httpfs extension for direct S3 reads.
 
         Uses the AWS credential chain (env vars, instance profile, etc.)
-        so no explicit keys are needed.
+        so no explicit keys are needed.  INSTALL is global (once per process),
+        but LOAD and SET are per-connection.
         """
-        if self._httpfs_loaded:
-            return
         try:
-            conn.execute("INSTALL httpfs")
+            if not self._httpfs_loaded:
+                conn.execute("INSTALL httpfs")
+                self._httpfs_loaded = True
             conn.execute("LOAD httpfs")
             conn.execute(f"SET s3_region='{self.s3_region}'")
-            self._httpfs_loaded = True
         except Exception as e:
             from loguru import logger
 

@@ -97,9 +97,22 @@ def resolve_data_path(
 
 _S3_CACHE_DIR = Path(tempfile.gettempdir()) / "sbir-analytics-s3-cache"
 
+
+def _get_float_env(var_name: str, default: float) -> float:
+    """Read a float environment variable, falling back to *default* if invalid."""
+    raw = os.getenv(var_name)
+    if raw is None:
+        return default
+    try:
+        return float(raw)
+    except (TypeError, ValueError):
+        logger.warning(f"Invalid value for {var_name}={raw!r}; using default {default}")
+        return default
+
+
 # Cache limits (configurable via env vars)
-_S3_CACHE_MAX_SIZE_GB = float(os.getenv("SBIR_ETL_S3_CACHE_MAX_GB", "50"))
-_S3_CACHE_TTL_HOURS = float(os.getenv("SBIR_ETL_S3_CACHE_TTL_HOURS", "24"))
+_S3_CACHE_MAX_SIZE_GB = _get_float_env("SBIR_ETL_S3_CACHE_MAX_GB", 50.0)
+_S3_CACHE_TTL_HOURS = _get_float_env("SBIR_ETL_S3_CACHE_TTL_HOURS", 24.0)
 
 
 def _download_s3_to_temp(s3_path: S3Path) -> Path:
