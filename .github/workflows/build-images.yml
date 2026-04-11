@@ -33,6 +33,7 @@ jobs:
   detect-changes:
     name: Detect Changes
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     outputs:
       python-deps: ${{ steps.filter.outputs.python-deps }}
       etl-code: ${{ steps.filter.outputs.etl-code }}
@@ -60,6 +61,7 @@ jobs:
       github.event_name == 'schedule' ||
       (github.event_name == 'push' && needs.detect-changes.outputs.python-deps == 'true')
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
       contents: read
       packages: write
@@ -101,6 +103,7 @@ jobs:
        github.event_name == 'schedule' ||
        (github.event_name == 'push' && (needs.detect-changes.outputs.python-deps == 'true' || needs.detect-changes.outputs.etl-code == 'true')))
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
       contents: read
       packages: write
@@ -136,6 +139,7 @@ jobs:
     needs: [python-base]
     if: always() && (github.event.inputs.image == 'all' || github.event.inputs.image == 'full' || github.event.inputs.image == '' || github.event_name == 'schedule')
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     permissions:
       contents: read
       packages: write

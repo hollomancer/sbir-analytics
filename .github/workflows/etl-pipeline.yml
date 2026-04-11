@@ -409,6 +409,7 @@ jobs:
     needs: [sbir-pipeline, usaspending-pipeline, uspto-pipeline, cet-pipeline, embeddings-pipeline, fiscal-pipeline]
     if: always()
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Generate summary
         run: |
