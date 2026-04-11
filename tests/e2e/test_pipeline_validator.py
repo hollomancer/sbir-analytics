@@ -9,6 +9,9 @@ from unittest.mock import Mock
 import pandas as pd
 import pytest
 
+
+pytestmark = pytest.mark.e2e
+
 from sbir_etl.models.quality import QualitySeverity
 from tests.e2e.pipeline_validator import (
     PipelineValidator,
@@ -457,6 +460,3 @@ class TestIntegration:
         # Should have success recommendation
         success_rec = next((r for r in report.recommendations if r.category == "success"), None)
         assert success_rec is not None
-
-
-pytestmark = pytest.mark.e2e

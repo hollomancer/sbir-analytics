@@ -109,7 +109,8 @@ class TestParseDate:
         """Test parsing pandas NaT."""
         pd = pandas_available
         result = parse_date(pd.NaT)
-        # Function returns None for pandas missing values, including NaT
+        # NaT is isinstance(datetime), so it takes the datetime branch
+        # and returns NaT.date() which is NaT — not None
         assert pd.isna(result)
 
 
