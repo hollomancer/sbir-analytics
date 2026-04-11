@@ -16,6 +16,11 @@ except ImportError:
     S3Path = None  # type: ignore[assignment, misc]
 
 
+def is_s3_path(path: str | Path) -> bool:
+    """Check if a path is an S3 URL."""
+    return str(path).startswith("s3://")
+
+
 def resolve_data_path(
     cloud_path: str | Path,
     local_fallback: Path | None = None,
@@ -90,18 +95,45 @@ def resolve_data_path(
         raise FileNotFoundError(f"Local file not found: {local_path}")
 
 
+_S3_CACHE_DIR = Path(tempfile.gettempdir()) / "sbir-analytics-s3-cache"
+
+
+def _get_float_env(var_name: str, default: float) -> float:
+    """Read a float environment variable, falling back to *default* if invalid."""
+    raw = os.getenv(var_name)
+    if raw is None:
+        return default
+    try:
+        return float(raw)
+    except (TypeError, ValueError):
+        logger.warning(f"Invalid value for {var_name}={raw!r}; using default {default}")
+        return default
+
+
+# Cache limits (configurable via env vars)
+_S3_CACHE_MAX_SIZE_GB = _get_float_env("SBIR_ETL_S3_CACHE_MAX_GB", 50.0)
+_S3_CACHE_TTL_HOURS = _get_float_env("SBIR_ETL_S3_CACHE_TTL_HOURS", 24.0)
+
+
 def _download_s3_to_temp(s3_path: S3Path) -> Path:
     """Download S3 file to temporary location for local access."""
-    temp_dir = Path(tempfile.gettempdir()) / "sbir-analytics-s3-cache"
-    temp_dir.mkdir(parents=True, exist_ok=True)
+    _S3_CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
     # Use full S3 path as filename hash to avoid collisions
     import hashlib
 
     path_hash = hashlib.md5(str(s3_path).encode(), usedforsecurity=False).hexdigest()[:8]  # noqa: S324
-    local_file = temp_dir / f"{path_hash}_{s3_path.name}"
+    local_file = _S3_CACHE_DIR / f"{path_hash}_{s3_path.name}"
 
-    # Download if not cached or stale
+    # Download if not cached or stale (TTL check)
+    if local_file.exists():
+        import time
+
+        age_hours = (time.time() - local_file.stat().st_mtime) / 3600
+        if age_hours > _S3_CACHE_TTL_HOURS:
+            logger.info(f"Cache expired ({age_hours:.1f}h > {_S3_CACHE_TTL_HOURS}h): {local_file}")
+            local_file.unlink()
+
     if not local_file.exists():
         logger.info(f"Downloading {s3_path} to {local_file}")
         s3_path.download_to(local_file)
@@ -112,6 +144,54 @@ def _download_s3_to_temp(s3_path: S3Path) -> Path:
         logger.debug(f"Using cached S3 file: {local_file}")
 
     return local_file
+
+
+def cleanup_s3_cache(
+    max_size_gb: float | None = None,
+    max_age_hours: float | None = None,
+) -> int:
+    """Remove stale or excess files from the S3 download cache.
+
+    Eviction strategy: oldest files first (by modification time).
+
+    Args:
+        max_size_gb: Maximum cache size in GB. Defaults to SBIR_ETL_S3_CACHE_MAX_GB env (50).
+        max_age_hours: Remove files older than this. Defaults to SBIR_ETL_S3_CACHE_TTL_HOURS env (24).
+
+    Returns:
+        Number of files removed.
+    """
+    import time
+
+    max_size = (max_size_gb if max_size_gb is not None else _S3_CACHE_MAX_SIZE_GB) * 1024**3
+    max_age = (max_age_hours if max_age_hours is not None else _S3_CACHE_TTL_HOURS) * 3600
+    now = time.time()
+    removed = 0
+
+    if not _S3_CACHE_DIR.exists():
+        return 0
+
+    # Pass 1: remove files older than TTL
+    files = sorted(_S3_CACHE_DIR.iterdir(), key=lambda f: f.stat().st_mtime)
+    for f in files:
+        if f.is_file() and (now - f.stat().st_mtime) > max_age:
+            f.unlink()
+            removed += 1
+
+    # Pass 2: evict oldest files if total size still exceeds limit
+    files = sorted(_S3_CACHE_DIR.iterdir(), key=lambda f: f.stat().st_mtime)
+    total_size = sum(f.stat().st_size for f in files if f.is_file())
+    for f in files:
+        if total_size <= max_size:
+            break
+        if f.is_file():
+            total_size -= f.stat().st_size
+            f.unlink()
+            removed += 1
+
+    if removed:
+        logger.info(f"S3 cache cleanup: removed {removed} files")
+    return removed
 
 
 def get_s3_bucket_from_env() -> str | None:

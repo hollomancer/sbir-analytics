@@ -441,6 +441,11 @@ duckdb:
   enable_object_cache: true
   enable_query_profiler: false
 
+  # S3 direct reads via httpfs extension (skips temp downloads)
+  # Requires IAM credentials available via env vars or instance profile
+  enable_httpfs: false  # Set true or SBIR_ETL__DUCKDB__ENABLE_HTTPFS=true
+  s3_region: "us-east-2"
+
 transition:
   # Transition detection & analytics configuration
   contracts:

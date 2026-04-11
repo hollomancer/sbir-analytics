@@ -428,6 +428,75 @@ class USAspendingAPIClient(BaseAsyncAPIClient):
                 return None
             raise
 
+    async def search_awards_batch(
+        self,
+        award_ids: list[str],
+        fields: list[str] | None = None,
+        batch_size: int = 50,
+    ) -> dict[str, dict[str, Any]]:
+        """Search for multiple awards in batched API calls.
+
+        Groups award IDs by type (PIID/FAIN) using ``build_award_type_groups``
+        and queries each group in a single ``/search/spending_by_award/`` call
+        instead of N individual lookups.  Returns up to one result per award ID.
+
+        Args:
+            award_ids: List of award/contract identifiers.
+            fields: Response fields to request.  Defaults to a useful subset.
+            batch_size: Max IDs per API request (USAspending caps at ~100).
+
+        Returns:
+            Mapping of award_id -> first matching result dict.
+        """
+        if fields is None:
+            fields = [
+                "Award ID",
+                "Recipient Name",
+                "Recipient UEI",
+                "Recipient DUNS Number",
+                "Award Amount",
+                "Awarding Agency",
+                "Award Type",
+                "Start Date",
+                "End Date",
+                "Last Modified Date",
+            ]
+
+        results: dict[str, dict[str, Any]] = {}
+        groups = build_award_type_groups(award_ids)
+
+        for ids, group_name, type_codes in groups:
+            # Process in sub-batches to stay within API limits
+            for i in range(0, len(ids), batch_size):
+                chunk = ids[i : i + batch_size]
+                filters: dict[str, Any] = {
+                    "award_type_codes": type_codes,
+                    "award_id_search_text": chunk,
+                }
+                try:
+                    response = await self.search_awards(
+                        filters=filters,
+                        fields=fields,
+                        limit=len(chunk),
+                        sort="Award Amount",
+                        order="desc",
+                    )
+                    for record in response.get("results", []):
+                        aid = record.get("Award ID", "").strip()
+                        if aid and aid not in results:
+                            results[aid] = record
+                except APIError as e:
+                    logger.warning(
+                        f"Batch search failed for {group_name} group "
+                        f"({len(chunk)} ids): {e}"
+                    )
+
+        logger.info(
+            f"Batch search: {len(award_ids)} requested, "
+            f"{len(results)} found in {len(groups)} group(s)"
+        )
+        return results
+
     async def enrich_award(
         self,
         award_id: str,

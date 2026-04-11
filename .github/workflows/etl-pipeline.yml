@@ -365,7 +365,7 @@ jobs:
 
           JOB_ID=$(aws batch submit-job \
             --job-name "fiscal-returns-$(date +%Y%m%d-%H%M%S)" \
-            --job-queue "sbir-analytics-analysis-queue" \
+            --job-queue "sbir-analytics-analysis-job-queue" \
             --job-definition "sbir-analytics-analysis-fiscal-returns" \
             --query 'jobId' --output text)
 

@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import csv
+import os
 from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 import pandas as pd
 
@@ -24,10 +25,7 @@ except ModuleNotFoundError as exc:  # pragma: no cover - optional dependency
     _DUCKDB_IMPORT_ERROR = exc
 
 
-if TYPE_CHECKING:
-    # For type checkers we still reference pandas types
-
-    import pandas as pd
+from sbir_etl.utils.cloud_storage import is_s3_path as _is_s3_path
 
 
 def _require_duckdb(operation: str | None = None) -> None:
@@ -48,21 +46,32 @@ def _require_duckdb(operation: str | None = None) -> None:
 class DuckDBClient:
     """Client for DuckDB database operations."""
 
-    def __init__(self, database_path: str | None = None, read_only: bool = False):
+    def __init__(
+        self,
+        database_path: str | None = None,
+        read_only: bool = False,
+        enable_httpfs: bool = False,
+        s3_region: str | None = None,
+    ):
         """Initialize DuckDB client.
 
         Args:
             database_path: Path to database file, or None for in-memory
             read_only: Whether to open database in read-only mode
+            enable_httpfs: Load httpfs extension for direct S3 reads
+            s3_region: AWS region for S3 access (defaults to AWS_REGION env or us-east-2)
         """
         _require_duckdb(operation="initialize_duckdb_client")
 
         self.database_path = database_path or ":memory:"
         self.read_only = read_only
+        self.enable_httpfs = enable_httpfs
+        self.s3_region = s3_region or os.getenv("AWS_REGION", "us-east-2")
         self._connection: Any = None
         # For in-memory databases, maintain a persistent connection
         self._persistent_conn: Any = None
         self._identifier_cache: dict[str, str] = {}
+        self._httpfs_loaded = False
 
     @staticmethod
     def escape_identifier(identifier: str) -> str:
@@ -88,6 +97,32 @@ class DuckDBClient:
         escaped = value.replace("\\", "\\\\").replace("'", "''")
         return "'" + escaped + "'"
 
+    def _setup_connection(self, conn: Any) -> None:
+        """Apply standard settings to a DuckDB connection."""
+        conn.execute("SET enable_object_cache=true")
+        conn.execute("SET memory_limit='4GB'")
+        conn.execute("SET threads=4")
+        if self.enable_httpfs:
+            self._setup_httpfs(conn)
+
+    def _setup_httpfs(self, conn: Any) -> None:
+        """Load httpfs extension for direct S3 reads.
+
+        Uses the AWS credential chain (env vars, instance profile, etc.)
+        so no explicit keys are needed.  INSTALL is global (once per process),
+        but LOAD and SET are per-connection.
+        """
+        try:
+            if not self._httpfs_loaded:
+                conn.execute("INSTALL httpfs")
+                self._httpfs_loaded = True
+            conn.execute("LOAD httpfs")
+            conn.execute(f"SET s3_region='{self.s3_region}'")
+        except Exception as e:
+            from loguru import logger
+
+            logger.warning(f"Failed to load httpfs extension: {e}")
+
     @contextmanager
     def connection(self) -> Iterator[Any]:
         """Context manager for database connection."""
@@ -97,20 +132,14 @@ class DuckDBClient:
             # For in-memory databases, use persistent connection
             if self._persistent_conn is None:
                 self._persistent_conn = duckdb.connect(self.database_path, read_only=self.read_only)
-                # Configure connection
-                self._persistent_conn.execute("SET enable_object_cache=true")
-                self._persistent_conn.execute("SET memory_limit='4GB'")
-                self._persistent_conn.execute("SET threads=4")
+                self._setup_connection(self._persistent_conn)
             yield self._persistent_conn
         else:
             # For file-based databases, use temporary connections
             conn: Any = None
             try:
                 conn = duckdb.connect(self.database_path, read_only=self.read_only)
-                # Configure connection
-                conn.execute("SET enable_object_cache=true")
-                conn.execute("SET memory_limit='4GB'")
-                conn.execute("SET threads=4")
+                self._setup_connection(conn)
                 yield conn
             finally:
                 if conn:
@@ -166,7 +195,7 @@ class DuckDBClient:
 
     def import_csv(
         self,
-        csv_path: Path,
+        csv_path: Path | str,
         table_name: str,
         delimiter: str = ",",
         header: bool = True,
@@ -176,7 +205,7 @@ class DuckDBClient:
         """Import CSV file into DuckDB table.
 
         Args:
-            csv_path: Path to CSV file
+            csv_path: Path to CSV file (local Path or s3:// URL when httpfs is enabled)
             table_name: Name for the table
             delimiter: CSV delimiter
             header: Whether CSV has header row
@@ -188,7 +217,15 @@ class DuckDBClient:
         with log_with_context(stage="extract", run_id="csv_import") as logger:
             logger.info(f"Importing CSV {csv_path} into table {table_name}")
 
-            if not csv_path.exists():
+            if _is_s3_path(csv_path):
+                if not self.enable_httpfs:
+                    raise FileSystemError(
+                        f"S3 path given but httpfs is not enabled: {csv_path}",
+                        file_path=str(csv_path),
+                        operation="import_csv",
+                        component="utils.duckdb_client",
+                    )
+            elif not Path(csv_path).exists():
                 raise FileSystemError(
                     f"CSV file not found: {csv_path}",
                     file_path=str(csv_path),
@@ -396,7 +433,7 @@ class DuckDBClient:
 
     def import_csv_incremental(
         self,
-        csv_path: Path,
+        csv_path: Path | str,
         table_name: str,
         batch_size: int = 10000,
         delimiter: str = ",",
@@ -431,7 +468,7 @@ class DuckDBClient:
             )
             table_identifier = self.escape_identifier(table_name)
 
-            if not csv_path.exists():
+            if not Path(csv_path).exists():
                 raise FileSystemError(
                     f"CSV file not found: {csv_path}",
                     file_path=str(csv_path),
@@ -503,4 +540,8 @@ def get_duckdb_client(config=None) -> DuckDBClient:
         config: Optional PipelineConfig. If None, loads from get_config().
     """
     config = config or get_config()
-    return DuckDBClient(database_path=config.duckdb.database_path)
+    return DuckDBClient(
+        database_path=config.duckdb.database_path,
+        enable_httpfs=config.duckdb.enable_httpfs,
+        s3_region=config.duckdb.s3_region,
+    )

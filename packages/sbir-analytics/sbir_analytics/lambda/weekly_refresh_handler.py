@@ -7,7 +7,7 @@ import json
 import os
 import subprocess
 import tempfile
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 
 import boto3
@@ -487,28 +487,18 @@ def upload_to_s3(
         ExtraArgs={
             "Metadata": {
                 "csv_hash": csv_hash,
-                "upload_date": datetime.utcnow().isoformat(),
+                "upload_date": datetime.now(UTC).isoformat(),
             },
             "ContentType": "text/csv",
         },
     )
     logger.info("Uploaded CSV to S3")
 
-    # Upload versioned CSV (with date)
-    date_str = datetime.utcnow().strftime("%Y-%m-%d")
-    s3_client.upload_file(
-        str(csv_path),
-        s3_bucket,
-        f"data/raw/sbir/award_data_{date_str}.csv",
-        ExtraArgs={
-            "Metadata": {
-                "csv_hash": csv_hash,
-                "upload_date": datetime.utcnow().isoformat(),
-            },
-            "ContentType": "text/csv",
-        },
-    )
-    logger.info(f"Uploaded versioned CSV: award_data_{date_str}.csv")
+    # NOTE: Versioned copy (award_data_{date}.csv) removed — S3 bucket versioning
+    # provides version history on the canonical key above.
+    # IMPORTANT: This assumes bucket versioning is enabled. The CDK StorageStack
+    # sets versioned=True when creating a new bucket, but when importing an
+    # existing bucket, versioning must be enabled manually.
 
     # Upload all metadata files
     for metadata_file in metadata_dir.rglob("*"):
