@@ -14,8 +14,8 @@ from dataclasses import dataclass, field
 from loguru import logger
 
 from sbir_etl.enrichers.fpds_atom import FPDSAtomClient
-from sbir_etl.enrichers.patentsview import RateLimiter
 from sbir_etl.enrichers.pi_enrichment import _is_sbir_award_type
+from sbir_etl.enrichers.rate_limiting import RateLimiter
 from sbir_etl.enrichers.sync_wrappers import SyncSAMGovClient, SyncUSAspendingClient
 
 # ---------------------------------------------------------------------------

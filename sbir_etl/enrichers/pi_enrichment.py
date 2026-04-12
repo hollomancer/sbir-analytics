@@ -13,7 +13,8 @@ from dataclasses import dataclass
 from loguru import logger
 
 from sbir_etl.enrichers.orcid_client import ORCIDClient
-from sbir_etl.enrichers.patentsview import PatentsViewClient, RateLimiter
+from sbir_etl.enrichers.patentsview import PatentsViewClient
+from sbir_etl.enrichers.rate_limiting import RateLimiter
 from sbir_etl.enrichers.lens_patents import LensPatentClient
 from sbir_etl.enrichers.semantic_scholar import SemanticScholarClient
 from sbir_etl.models.sbir_identification import classify_sbir_award

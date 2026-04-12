@@ -189,8 +189,9 @@ class FPDSAtomClient:
     Thread-safe when used with a shared :class:`RateLimiter`.
 
     Args:
-        rate_limiter: Optional rate limiter (e.g. from ``patentsview.RateLimiter``).
-            If ``None``, no rate limiting is applied.
+        rate_limiter: Optional rate limiter (e.g.
+            :class:`sbir_etl.enrichers.rate_limiting.RateLimiter`). If
+            ``None``, no rate limiting is applied.
         timeout: HTTP request timeout in seconds.
     """
 

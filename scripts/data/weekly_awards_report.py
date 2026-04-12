@@ -41,7 +41,7 @@ from sbir_etl.utils.text_normalization import normalize_name as _normalize_name
 from sbir_etl.validators.sbir_awards import validate_sbir_award_record as _validate_record
 
 from sbir_etl.extractors.solicitation import SolicitationExtractor
-from sbir_etl.enrichers.patentsview import RateLimiter
+from sbir_etl.enrichers.rate_limiting import RateLimiter
 from sbir_etl.enrichers.inflation_adjuster import InflationAdjuster
 from sbir_etl.enrichers.congressional_district_resolver import CongressionalDistrictResolver
 from sbir_etl.enrichers.fiscal_bea_mapper import NAICSToBEAMapper
