@@ -11,7 +11,7 @@ requires-python = ">=3.11,<3.13"
 # Consumer apps can import sbir_etl.extractors/enrichers/transformers with just these.
 # For orchestration, CLI, ML, or specific storage backends, install extras below.
 dependencies = [
-    "pydantic>=2.8.0,<3.0.0",
+    "pydantic>=2.12.5,<3.0.0",
     "pandas>=2.2.0,<4.0.0",
     "loguru>=0.7.0,<1.0.0",
     "pyyaml>=6.0.0,<7.0.0",
