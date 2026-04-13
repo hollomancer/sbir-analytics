@@ -247,6 +247,32 @@ class TestMakeRequestSuccess:
         called_url = mock_http_client.get.call_args[0][0]
         assert called_url == "https://api.example.com/v1/things"
 
+    async def test_absolute_url_endpoint_bypasses_base_url(
+        self, client: _StubAPIClient, mock_http_client: AsyncMock
+    ) -> None:
+        """When endpoint is an absolute URL, base_url is ignored.
+
+        Used by cross-host clients like press_wire which poll multiple
+        RSS hostnames under a single client instance.
+        """
+        client.base_url = "https://api.example.com/v1"
+        mock_http_client.get.return_value = _make_mock_response(200, {})
+
+        await client._make_request("GET", "https://other.example.com/rss")
+
+        called_url = mock_http_client.get.call_args[0][0]
+        assert called_url == "https://other.example.com/rss"
+
+    async def test_absolute_http_url_also_works(
+        self, client: _StubAPIClient, mock_http_client: AsyncMock
+    ) -> None:
+        mock_http_client.get.return_value = _make_mock_response(200, {})
+
+        await client._make_request("GET", "http://legacy.example.com/feed")
+
+        called_url = mock_http_client.get.call_args[0][0]
+        assert called_url == "http://legacy.example.com/feed"
+
     async def test_custom_headers_merged_with_defaults(
         self, client: _StubAPIClient, mock_http_client: AsyncMock
     ) -> None:

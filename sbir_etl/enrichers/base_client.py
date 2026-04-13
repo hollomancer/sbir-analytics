@@ -103,7 +103,17 @@ class BaseAsyncAPIClient:
         async def _do_request() -> httpx.Response:
             await self._wait_for_rate_limit()
 
-            url = f"{str(self.base_url).rstrip('/')}/{str(endpoint).lstrip('/')}"
+            # Allow absolute URLs as endpoints for cross-host clients (e.g.
+            # press_wire, which polls multiple RSS hostnames). Otherwise
+            # build the URL from base_url + endpoint.
+            endpoint_str = str(endpoint)
+            if endpoint_str.startswith(("http://", "https://")):
+                url = endpoint_str
+            else:
+                url = (
+                    f"{str(self.base_url).rstrip('/')}/"
+                    f"{endpoint_str.lstrip('/')}"
+                )
             request_headers = self._build_headers()
             if headers:
                 request_headers.update(headers)

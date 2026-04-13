@@ -69,7 +69,8 @@ from sbir_etl.enrichers.company_enrichment import (
 )
 from sbir_etl.enrichers.opencorporates import CorporateRecord
 from sbir_etl.enrichers.sync_wrappers import SyncOpenCorporatesClient
-from sbir_etl.enrichers.press_wire import PressRelease, PressWireClient
+from sbir_etl.enrichers.press_wire import PressRelease
+from sbir_etl.enrichers.sync_wrappers import SyncPressWireClient
 
 
 # ---------------------------------------------------------------------------
@@ -711,7 +712,7 @@ def poll_press_wire(
 
     print(f"Polling press wire feeds for {len(company_names)} companies...", file=sys.stderr)
 
-    with PressWireClient() as client:
+    with SyncPressWireClient() as client:
         client.set_watchlist(list(company_names.keys()))
         hits = client.poll()
 

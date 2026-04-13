@@ -37,6 +37,7 @@ from ..utils.async_tools import run_sync
 from .fpds_atom import FPDSAtomClient, FPDSRecord
 from .opencorporates import CorporateRecord, Officer, OpenCorporatesClient
 from .orcid_client import ORCIDClient, ORCIDRecord
+from .press_wire import PressRelease, PressWireClient
 from .rate_limiting import RateLimiter
 from .sam_gov.client import SAMGovAPIClient
 from .semantic_scholar import PublicationRecord, SemanticScholarClient
@@ -354,3 +355,54 @@ class SyncOpenCorporatesClient:
         jurisdiction: str | None = None,
     ) -> CorporateRecord | None:
         return run_sync(self._client.lookup_company(name, jurisdiction))
+
+
+class SyncPressWireClient:
+    """Synchronous facade for :class:`PressWireClient`.
+
+    Exposes the watchlist / poll / reset_seen API synchronously. The
+    watchlist and dedup cache are stateful on the underlying async
+    client; the facade just routes polling calls through
+    :func:`run_sync`.
+    """
+
+    def __init__(
+        self,
+        feeds: dict[str, str] | None = None,
+        *,
+        timeout: int = 30,
+        rate_limit_per_minute: int = 30,
+        shared_limiter: RateLimiter | None = None,
+    ) -> None:
+        self._client = PressWireClient(
+            feeds=feeds,
+            timeout=timeout,
+            rate_limit_per_minute=rate_limit_per_minute,
+            shared_limiter=shared_limiter,
+        )
+
+    def close(self) -> None:
+        run_sync(self._client.aclose())
+
+    def __enter__(self) -> SyncPressWireClient:
+        return self
+
+    def __exit__(self, *exc: object) -> None:
+        self.close()
+
+    # Watchlist management is pure Python — no need to route through run_sync
+    def set_watchlist(self, company_names: list[str]) -> None:
+        self._client.set_watchlist(company_names)
+
+    def add_to_watchlist(self, company_name: str) -> None:
+        self._client.add_to_watchlist(company_name)
+
+    def reset_seen(self) -> None:
+        self._client.reset_seen()
+
+    # Polling is async on the underlying client — route through run_sync
+    def poll(self) -> list[PressRelease]:
+        return run_sync(self._client.poll())
+
+    def poll_all_unfiltered(self) -> list[PressRelease]:
+        return run_sync(self._client.poll_all_unfiltered())
