@@ -116,7 +116,7 @@ docs/
 
 ### Files and Modules
 
-- **Snake case**: `sbir_awards.py`, `company_enricher.py`
+- **Snake case**: `sbir_awards.py`, `company_fuzzy_matcher.py`
 - **Descriptive names**: Clearly indicate purpose and scope
 - **Asset files**: End with `_assets.py` for Dagster asset modules
 

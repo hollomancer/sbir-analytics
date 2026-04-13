@@ -47,7 +47,7 @@ sbir-analytics/
 │   │   └── schemas.py            # Pydantic validation schemas
 │   │
 │   ├── enrichers/                # Stage 3: External enrichment
-│   │   ├── company_enricher.py   # SAM.gov company enrichment
+│   │   ├── company_fuzzy_matcher.py # rapidfuzz-based local company matching
 │   │   ├── geographic_resolver.py # NAICS/GICS mapping
 │   │   ├── inflation_adjuster.py # Fiscal year adjustments
 │   │   ├── chunked_enrichment.py # Memory-efficient batching

@@ -47,7 +47,7 @@ enrichment:
 ### Code Example
 
 ```python
-from sbir_etl.enrichers.company_enricher import enrich_awards_with_companies
+from sbir_etl.enrichers.company_fuzzy_matcher import enrich_awards_with_companies
 
 enhanced_config = {
     "enable_phonetic_matching": True,
@@ -304,7 +304,7 @@ Run enhanced matching tests:
 
 ```bash
 pytest tests/unit/utils/test_enhanced_matching.py -v
-pytest tests/unit/enrichers/test_company_enricher_enhanced.py -v
+pytest tests/unit/enrichers/test_company_fuzzy_matcher.py -v
 ```
 
 ### Demo Script
