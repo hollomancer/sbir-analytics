@@ -35,6 +35,7 @@ from typing import Any
 
 from ..utils.async_tools import run_sync
 from .fpds_atom import FPDSAtomClient, FPDSRecord
+from .opencorporates import CorporateRecord, Officer, OpenCorporatesClient
 from .orcid_client import ORCIDClient, ORCIDRecord
 from .rate_limiting import RateLimiter
 from .sam_gov.client import SAMGovAPIClient
@@ -285,3 +286,71 @@ class SyncORCIDClient:
 
     def lookup(self, name: str) -> ORCIDRecord | None:
         return run_sync(self._client.lookup(name))
+
+
+class SyncOpenCorporatesClient:
+    """Synchronous facade for :class:`OpenCorporatesClient`.
+
+    Wraps the async OpenCorporates client with :func:`run_sync`.
+    Supports the ``shared_limiter`` parameter for sharing a global
+    rate budget across worker threads (the ``weekly_awards_report``
+    job uses a 30/min shared limiter to stay under the free-tier quota).
+    """
+
+    def __init__(
+        self,
+        *,
+        api_token: str | None = None,
+        timeout: int = 30,
+        rate_limit_per_minute: int = 30,
+        shared_limiter: RateLimiter | None = None,
+    ) -> None:
+        self._client = OpenCorporatesClient(
+            api_token=api_token,
+            timeout=timeout,
+            rate_limit_per_minute=rate_limit_per_minute,
+            shared_limiter=shared_limiter,
+        )
+
+    def close(self) -> None:
+        run_sync(self._client.aclose())
+
+    def __enter__(self) -> SyncOpenCorporatesClient:
+        return self
+
+    def __exit__(self, *exc: object) -> None:
+        self.close()
+
+    def search_companies(
+        self,
+        name: str,
+        jurisdiction: str | None = None,
+        limit: int = 5,
+    ) -> list[dict[str, Any]]:
+        return run_sync(
+            self._client.search_companies(name, jurisdiction, limit)
+        )
+
+    def get_company(
+        self, jurisdiction: str, company_number: str
+    ) -> dict[str, Any] | None:
+        return run_sync(self._client.get_company(jurisdiction, company_number))
+
+    def get_officers(
+        self, jurisdiction: str, company_number: str
+    ) -> list[Officer]:
+        return run_sync(self._client.get_officers(jurisdiction, company_number))
+
+    def get_corporate_grouping(
+        self, jurisdiction: str, company_number: str
+    ) -> tuple[str | None, str | None]:
+        return run_sync(
+            self._client.get_corporate_grouping(jurisdiction, company_number)
+        )
+
+    def lookup_company(
+        self,
+        name: str,
+        jurisdiction: str | None = None,
+    ) -> CorporateRecord | None:
+        return run_sync(self._client.lookup_company(name, jurisdiction))

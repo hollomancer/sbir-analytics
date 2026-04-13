@@ -67,10 +67,8 @@ from sbir_etl.enrichers.company_enrichment import (
     lookup_sam_entity_with_fallback as _lib_lookup_sam_entity_with_fallback,
     fetch_usaspending_contract_descriptions as _lib_fetch_usaspending_contract_descriptions,
 )
-from sbir_etl.enrichers.opencorporates import (
-    CorporateRecord,
-    OpenCorporatesClient,
-)
+from sbir_etl.enrichers.opencorporates import CorporateRecord
+from sbir_etl.enrichers.sync_wrappers import SyncOpenCorporatesClient
 from sbir_etl.enrichers.press_wire import PressRelease, PressWireClient
 
 
@@ -665,7 +663,7 @@ def lookup_opencorporates(
 
     def _lookup_one(item: tuple[str, dict]) -> tuple[str, CorporateRecord | None]:
         key, info = item
-        with OpenCorporatesClient(rate_limiter=_opencorporates_limiter) as client:
+        with SyncOpenCorporatesClient(shared_limiter=_opencorporates_limiter) as client:
             return key, client.lookup_company(info["name"], jurisdiction=info["jurisdiction"])
 
     with ThreadPoolExecutor(max_workers=2) as executor:
