@@ -35,6 +35,7 @@ from typing import Any
 
 from ..utils.async_tools import run_sync
 from .fpds_atom import FPDSAtomClient, FPDSRecord
+from .lens_patents import LensPatentClient, LensPatentRecord
 from .opencorporates import CorporateRecord, Officer, OpenCorporatesClient
 from .orcid_client import ORCIDClient, ORCIDRecord
 from .press_wire import PressRelease, PressWireClient
@@ -406,3 +407,48 @@ class SyncPressWireClient:
 
     def poll_all_unfiltered(self) -> list[PressRelease]:
         return run_sync(self._client.poll_all_unfiltered())
+
+
+class SyncLensPatentClient:
+    """Synchronous facade for :class:`LensPatentClient`.
+
+    Wraps the async Lens.org patent client with :func:`run_sync`.
+    """
+
+    def __init__(
+        self,
+        *,
+        api_token: str | None = None,
+        timeout: int = 30,
+        rate_limit_per_minute: int = 50,
+        shared_limiter: RateLimiter | None = None,
+    ) -> None:
+        self._client = LensPatentClient(
+            api_token=api_token,
+            timeout=timeout,
+            rate_limit_per_minute=rate_limit_per_minute,
+            shared_limiter=shared_limiter,
+        )
+
+    def close(self) -> None:
+        run_sync(self._client.aclose())
+
+    def __enter__(self) -> SyncLensPatentClient:
+        return self
+
+    def __exit__(self, *exc: object) -> None:
+        self.close()
+
+    def search_patents_by_assignee(
+        self, company_name: str, max_results: int = 100
+    ) -> list[LensPatentRecord]:
+        return run_sync(
+            self._client.search_patents_by_assignee(company_name, max_results)
+        )
+
+    def search_patents_by_inventor(
+        self, inventor_name: str, max_results: int = 50
+    ) -> list[LensPatentRecord]:
+        return run_sync(
+            self._client.search_patents_by_inventor(inventor_name, max_results)
+        )

@@ -14,8 +14,8 @@ from loguru import logger
 
 from sbir_etl.enrichers.patentsview import PatentsViewClient
 from sbir_etl.enrichers.rate_limiting import RateLimiter
-from sbir_etl.enrichers.lens_patents import LensPatentClient
 from sbir_etl.enrichers.sync_wrappers import (
+    SyncLensPatentClient,
     SyncORCIDClient,
     SyncSemanticScholarClient,
 )
@@ -172,7 +172,7 @@ def lookup_pi_patents_with_fallback(
     )
 
     try:
-        with LensPatentClient(rate_limiter=lens_rate_limiter) as lens:
+        with SyncLensPatentClient(shared_limiter=lens_rate_limiter) as lens:
             if company_name:
                 records = lens.search_patents_by_assignee(company_name)
             else:

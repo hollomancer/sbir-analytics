@@ -232,7 +232,7 @@ class TestLookupPIPatentsWithFallback:
         assert result is record
         mock_primary.assert_called_once()
 
-    @patch(f"{MODULE}.LensPatentClient")
+    @patch(f"{MODULE}.SyncLensPatentClient")
     @patch(f"{MODULE}.lookup_pi_patents", return_value=None)
     def test_falls_back_to_lens_when_primary_returns_none(self, mock_primary, MockLens):
         from sbir_etl.enrichers.lens_patents import LensPatentRecord
@@ -258,7 +258,7 @@ class TestLookupPIPatentsWithFallback:
         assert "Acme Corp" in result.assignees
         assert result.date_range == ("2021-03-15", "2023-07-01")
 
-    @patch(f"{MODULE}.LensPatentClient")
+    @patch(f"{MODULE}.SyncLensPatentClient")
     @patch(f"{MODULE}.lookup_pi_patents", return_value=None)
     def test_returns_none_when_both_fail(self, mock_primary, MockLens):
         lens_ctx = MockLens.return_value.__enter__.return_value
