@@ -13,10 +13,13 @@ from dataclasses import dataclass, field
 
 from loguru import logger
 
-from sbir_etl.enrichers.fpds_atom import FPDSAtomClient
 from sbir_etl.enrichers.pi_enrichment import _is_sbir_award_type
 from sbir_etl.enrichers.rate_limiting import RateLimiter
-from sbir_etl.enrichers.sync_wrappers import SyncSAMGovClient, SyncUSAspendingClient
+from sbir_etl.enrichers.sync_wrappers import (
+    SyncFPDSAtomClient,
+    SyncSAMGovClient,
+    SyncUSAspendingClient,
+)
 
 # ---------------------------------------------------------------------------
 # Dataclasses
@@ -674,7 +677,7 @@ def fetch_fpds_descriptions(
 
     logger.debug("FPDS: querying {} contract IDs", len(contract_ids))
 
-    with FPDSAtomClient(rate_limiter=rate_limiter) as fpds:
+    with SyncFPDSAtomClient(shared_limiter=rate_limiter) as fpds:
         try:
             results = fpds.get_descriptions(contract_ids)
         except Exception as e:

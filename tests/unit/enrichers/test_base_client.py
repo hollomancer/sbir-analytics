@@ -395,6 +395,86 @@ class TestMakeRequestErrors:
 # ==================== Retry semantics ====================
 
 
+class TestRequestRaw:
+    """Tests for ``_request_raw`` — the body-agnostic primitive that
+    returns the raw :class:`httpx.Response`. Used by clients that need
+    XML, text, or binary bodies. ``_make_request`` is a thin JSON
+    wrapper around this method.
+    """
+
+    async def test_returns_raw_response(
+        self, client: _StubAPIClient, mock_http_client: AsyncMock
+    ) -> None:
+        """The raw httpx.Response is returned unmodified — caller decodes."""
+        mock_resp = _make_mock_response(200, {"any": "json"})
+        mock_resp.text = "<xml>arbitrary body</xml>"
+        mock_http_client.get.return_value = mock_resp
+
+        result = await client._request_raw("GET", "/things")
+
+        assert result is mock_resp
+        # No .json() call from the base layer
+        mock_resp.json.assert_not_called()
+
+    async def test_caller_can_extract_text(
+        self, client: _StubAPIClient, mock_http_client: AsyncMock
+    ) -> None:
+        """A non-JSON client extracts ``.text`` from the response."""
+        mock_resp = _make_mock_response(200)
+        mock_resp.text = "<feed><entry/></feed>"
+        mock_http_client.get.return_value = mock_resp
+
+        response = await client._request_raw("GET", "/atom")
+
+        assert response.text == "<feed><entry/></feed>"
+
+    async def test_make_request_delegates_to_request_raw(
+        self, client: _StubAPIClient, mock_http_client: AsyncMock
+    ) -> None:
+        """``_make_request`` is a thin JSON wrapper — it must call ``.json()``."""
+        mock_resp = _make_mock_response(200, {"key": "value"})
+        mock_http_client.get.return_value = mock_resp
+
+        result = await client._make_request("GET", "/things")
+
+        assert result == {"key": "value"}
+        mock_resp.json.assert_called_once()
+
+    async def test_request_raw_raises_api_error_on_404(
+        self, client: _StubAPIClient, mock_http_client: AsyncMock
+    ) -> None:
+        """Error translation happens at the raw layer — JSON wrapper inherits it."""
+        resp = Mock()
+        resp.status_code = 404
+        resp.text = "not found"
+        mock_http_client.get.side_effect = httpx.HTTPStatusError(
+            "404", request=Mock(), response=resp
+        )
+
+        with pytest.raises(APIError):
+            await client._request_raw("GET", "/missing")
+
+    @patch("sbir_etl.enrichers.base_client.asyncio.sleep", new_callable=AsyncMock)
+    async def test_request_raw_retries_transient_failures(
+        self,
+        mock_sleep: AsyncMock,
+        client: _StubAPIClient,
+        mock_http_client: AsyncMock,
+    ) -> None:
+        """Retry behavior is on _request_raw, so XML/text clients get it too."""
+        mock_resp = _make_mock_response(200)
+        mock_resp.text = "<feed/>"
+        mock_http_client.get.side_effect = [
+            httpx.TimeoutException("first"),
+            mock_resp,
+        ]
+
+        response = await client._request_raw("GET", "/flaky")
+
+        assert response.text == "<feed/>"
+        assert mock_http_client.get.await_count == 2
+
+
 class TestRetrySemantics:
     """Tests that tenacity retries the right errors and skips the wrong ones."""
 

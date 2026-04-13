@@ -34,6 +34,7 @@ from __future__ import annotations
 from typing import Any
 
 from ..utils.async_tools import run_sync
+from .fpds_atom import FPDSAtomClient, FPDSRecord
 from .rate_limiting import RateLimiter
 from .sam_gov.client import SAMGovAPIClient
 from .semantic_scholar import PublicationRecord, SemanticScholarClient
@@ -184,3 +185,55 @@ class SyncSemanticScholarClient:
 
     def lookup_author(self, name: str) -> PublicationRecord | None:
         return run_sync(self._client.lookup_author(name))
+
+
+class SyncFPDSAtomClient:
+    """Synchronous facade for :class:`FPDSAtomClient`.
+
+    Wraps the async FPDS Atom client with :func:`run_sync` so scripts
+    and Dagster ops can call it without an event loop. Supports the
+    ``shared_limiter`` parameter for sharing a global FPDS rate budget
+    across worker threads.
+    """
+
+    def __init__(
+        self,
+        *,
+        timeout: int = 30,
+        rate_limit_per_minute: int = 60,
+        shared_limiter: RateLimiter | None = None,
+    ) -> None:
+        self._client = FPDSAtomClient(
+            timeout=timeout,
+            rate_limit_per_minute=rate_limit_per_minute,
+            shared_limiter=shared_limiter,
+        )
+
+    def close(self) -> None:
+        run_sync(self._client.aclose())
+
+    def __enter__(self) -> SyncFPDSAtomClient:
+        return self
+
+    def __exit__(self, *exc: object) -> None:
+        self.close()
+
+    def search_by_piid(self, piid: str) -> FPDSRecord | None:
+        return run_sync(self._client.search_by_piid(piid))
+
+    def search_by_vendor(
+        self,
+        name: str | None = None,
+        uei: str | None = None,
+        limit: int = 10,
+    ) -> list[FPDSRecord]:
+        return run_sync(self._client.search_by_vendor(name=name, uei=uei, limit=limit))
+
+    def get_description(self, piid: str) -> str | None:
+        return run_sync(self._client.get_description(piid))
+
+    def get_research_code(self, piid: str) -> str | None:
+        return run_sync(self._client.get_research_code(piid))
+
+    def get_descriptions(self, piids: list[str]) -> dict[str, str]:
+        return run_sync(self._client.get_descriptions(piids))

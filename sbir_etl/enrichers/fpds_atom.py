@@ -2,7 +2,7 @@
 
 The FPDS (Federal Procurement Data System) Atom Feed at
 ``https://www.fpds.gov/ezsearch/LATEST`` provides public, real-time access
-to federal contract records.  Unlike USAspending (which lags weeks/months),
+to federal contract records. Unlike USAspending (which lags weeks/months),
 FPDS updates within 3 days of contract action.
 
 Key data available via FPDS Atom:
@@ -15,22 +15,26 @@ Key data available via FPDS Atom:
 
 No API key is required — the Atom feed is fully public.
 
-Usage::
+This client inherits shared rate limiting, retry, and error
+translation from :class:`BaseAsyncAPIClient` via the body-agnostic
+:meth:`BaseAsyncAPIClient._request_raw` (FPDS returns Atom XML, not
+JSON). Synchronous callers should use
+:class:`sbir_etl.enrichers.sync_wrappers.SyncFPDSAtomClient`.
 
-    from sbir_etl.enrichers.fpds_atom import FPDSAtomClient
+Usage (sync)::
 
-    client = FPDSAtomClient()
-    record = client.search_by_piid("FA2541-26-C-B005")
-    if record:
-        print(record.description)
-        print(record.research_code)  # e.g. "SR1" for SBIR Phase I
+    from sbir_etl.enrichers.sync_wrappers import SyncFPDSAtomClient
 
-    descs = client.get_descriptions(["FA2541-26-C-B005", "FA9550-26-C-B001"])
+    with SyncFPDSAtomClient() as client:
+        record = client.search_by_piid("FA2541-26-C-B005")
+        if record:
+            print(record.description)
+            print(record.research_code)  # e.g. "SR1" for SBIR Phase I
 """
 
 from __future__ import annotations
 
-import time
+import asyncio
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
 from typing import Any
@@ -38,12 +42,16 @@ from typing import Any
 import httpx
 from loguru import logger
 
-FPDS_ATOM_URL = "https://www.fpds.gov/ezsearch/LATEST"
-ATOM_NS = {"atom": "http://www.w3.org/2005/Atom"}
+from sbir_etl.enrichers.base_client import BaseAsyncAPIClient
+from sbir_etl.enrichers.rate_limiting import RateLimiter
+from sbir_etl.exceptions import APIError
 
-# Maximum retries for transient errors (429, 5xx)
-MAX_RETRIES = 3
-RETRY_BACKOFF_BASE = 2  # seconds
+FPDS_BASE_URL = "https://www.fpds.gov/ezsearch"
+FPDS_ENDPOINT = "LATEST"
+# Full URL retained for callers/tests that reference it
+FPDS_ATOM_URL = f"{FPDS_BASE_URL}/{FPDS_ENDPOINT}"
+ATOM_NS = {"atom": "http://www.w3.org/2005/Atom"}
+DEFAULT_RATE_LIMIT_PER_MINUTE = 60
 
 
 @dataclass
@@ -182,75 +190,96 @@ def _parse_entry(entry: ET.Element, piid: str) -> FPDSRecord:
     )
 
 
-class FPDSAtomClient:
-    """Client for querying the FPDS Atom Feed.
+class FPDSAtomClient(BaseAsyncAPIClient):
+    """Async client for the FPDS Atom Feed.
 
-    Uses synchronous httpx with retry logic and rate limiting.
-    Thread-safe when used with a shared :class:`RateLimiter`.
+    Inherits retry, rate limiting, and typed error translation from
+    :class:`BaseAsyncAPIClient`. Uses the body-agnostic
+    :meth:`_request_raw` because FPDS responses are Atom XML, not JSON.
+
+    For sync callers (scripts, Dagster ops, notebooks), use
+    :class:`sbir_etl.enrichers.sync_wrappers.SyncFPDSAtomClient`
+    instead — it wraps this client with :func:`run_sync`.
 
     Args:
-        rate_limiter: Optional rate limiter (e.g.
-            :class:`sbir_etl.enrichers.rate_limiting.RateLimiter`). If
-            ``None``, no rate limiting is applied.
         timeout: HTTP request timeout in seconds.
+        rate_limit_per_minute: Requests per minute when no
+            ``shared_limiter`` is provided. Defaults to 60 — FPDS
+            doesn't publish a rate limit, so we err on the polite side.
+        shared_limiter: Optional shared synchronous :class:`RateLimiter`
+            for sharing a global rate budget across worker threads
+            (see the semantic_scholar client for the same pattern).
+            Dispatched via :func:`asyncio.to_thread` so it does not
+            block the persistent background event loop.
+        http_client: Optional pre-constructed :class:`httpx.AsyncClient`
+            (useful for testing).
     """
+
+    api_name = "fpds_atom"
 
     def __init__(
         self,
-        rate_limiter: Any | None = None,
+        *,
         timeout: int = 30,
-        http_client: httpx.Client | None = None,
+        rate_limit_per_minute: int = DEFAULT_RATE_LIMIT_PER_MINUTE,
+        shared_limiter: RateLimiter | None = None,
+        http_client: httpx.AsyncClient | None = None,
     ) -> None:
-        self._limiter = rate_limiter
-        self._timeout = timeout
-        self._client = http_client or httpx.Client(timeout=timeout)
-        self._owns_client = http_client is None
+        super().__init__()
+        self.base_url = FPDS_BASE_URL
+        self.rate_limit_per_minute = rate_limit_per_minute
+        self._shared_limiter = shared_limiter
+        self._client = http_client or httpx.AsyncClient(timeout=timeout)
 
-    def close(self) -> None:
-        """Close the underlying HTTP client (if owned by this instance)."""
-        if self._owns_client:
-            self._client.close()
+    async def _wait_for_rate_limit(self) -> None:
+        """Use the injected shared limiter if present, else the base async limiter."""
+        if self._shared_limiter is not None:
+            await asyncio.to_thread(self._shared_limiter.wait_if_needed)
+            return
+        await super()._wait_for_rate_limit()
 
-    def __enter__(self) -> "FPDSAtomClient":
-        return self
+    async def _fetch_xml(self, params: dict[str, Any]) -> str | None:
+        """Fetch the FPDS Atom XML body for a query.
 
-    def __exit__(self, *exc: object) -> None:
-        self.close()
-
-    def _wait(self) -> None:
-        if self._limiter is not None:
-            self._limiter.wait_if_needed()
-
-    def _get(self, params: dict[str, Any]) -> httpx.Response | None:
-        """Make a GET request with retry logic for transient errors."""
-        for attempt in range(MAX_RETRIES):
-            self._wait()
-            try:
-                resp = self._client.get(FPDS_ATOM_URL, params=params)
-                if resp.status_code in (429, 500, 502, 503, 504):
-                    wait = RETRY_BACKOFF_BASE ** (attempt + 1)
-                    logger.debug(
-                        f"FPDS returned {resp.status_code}, retrying in {wait}s "
-                        f"(attempt {attempt + 1}/{MAX_RETRIES})"
-                    )
-                    time.sleep(wait)
-                    continue
-                if resp.status_code != 200:
-                    logger.debug(f"FPDS returned {resp.status_code}")
-                    return None
-                return resp
-            except httpx.HTTPError as e:
-                wait = RETRY_BACKOFF_BASE ** (attempt + 1)
-                logger.debug(f"FPDS request error: {e}, retrying in {wait}s")
-                time.sleep(wait)
-        return None
-
-    def _parse_response(self, resp: httpx.Response, piid: str) -> FPDSRecord | None:
-        """Parse an FPDS Atom response into a record."""
+        Returns ``None`` on transport errors or non-2xx responses, so
+        the high-level methods can preserve their legacy "errors as
+        ``None``" contract. Callers that need error visibility should
+        catch :class:`APIError` from :meth:`_request_raw` directly.
+        """
         try:
-            root = ET.fromstring(resp.text)
+            response = await self._request_raw(
+                "GET", FPDS_ENDPOINT, params=params
+            )
+        except APIError as e:
+            logger.debug("FPDS API error: {}", e)
+            return None
+        return response.text
+
+    @staticmethod
+    def _parse_xml(xml_text: str, context: str) -> ET.Element | None:
+        """Parse an XML body, logging and returning ``None`` on parse failure."""
+        try:
+            return ET.fromstring(xml_text)
         except (ET.ParseError, UnicodeDecodeError) as e:
-            logger.debug(f"FPDS XML parse error for {piid}: {e}")
+            logger.debug("FPDS XML parse error for {}: {}", context, e)
+            return None
+
+    async def search_by_piid(self, piid: str) -> FPDSRecord | None:
+        """Search for a contract by PIID (Procurement Instrument Identifier).
+
+        Queries both ``PIID`` and ``REF_IDV_PIID`` to catch task orders
+        under indefinite-delivery contracts.
+
+        Returns:
+            Parsed :class:`FPDSRecord` or ``None`` if not found / on error.
+        """
+        query = f'PIID:"{piid}" OR REF_IDV_PIID:"{piid}"'
+        xml_text = await self._fetch_xml({"q": query, "s": 0, "num": 1})
+        if xml_text is None:
+            return None
+
+        root = self._parse_xml(xml_text, piid)
+        if root is None:
             return None
 
         entry = root.find("atom:entry", ATOM_NS)
@@ -259,34 +288,13 @@ class FPDSAtomClient:
 
         return _parse_entry(entry, piid)
 
-    def search_by_piid(self, piid: str) -> FPDSRecord | None:
-        """Search for a contract by PIID (Procurement Instrument Identifier).
-
-        Queries both ``PIID`` and ``REF_IDV_PIID`` to catch task orders
-        under indefinite-delivery contracts.
-
-        Returns:
-            Parsed :class:`FPDSRecord` or ``None`` if not found.
-        """
-        query = f'PIID:"{piid}" OR REF_IDV_PIID:"{piid}"'
-        resp = self._get({"q": query, "s": 0, "num": 1})
-        if resp is None:
-            return None
-        return self._parse_response(resp, piid)
-
-    def search_by_vendor(
-        self, name: str | None = None, uei: str | None = None, limit: int = 10
+    async def search_by_vendor(
+        self,
+        name: str | None = None,
+        uei: str | None = None,
+        limit: int = 10,
     ) -> list[FPDSRecord]:
-        """Search for contracts by vendor name or UEI.
-
-        Args:
-            name: Vendor name to search.
-            uei: Unique Entity Identifier.
-            limit: Maximum results to return.
-
-        Returns:
-            List of :class:`FPDSRecord` objects.
-        """
+        """Search for contracts by vendor name or UEI."""
         parts = []
         if uei:
             parts.append(f'VENDOR_UEI_NUMBER:"{uei}"')
@@ -296,19 +304,16 @@ class FPDSAtomClient:
             return []
 
         query = " OR ".join(parts)
-        resp = self._get({"q": query, "s": 0, "num": limit})
-        if resp is None:
+        xml_text = await self._fetch_xml({"q": query, "s": 0, "num": limit})
+        if xml_text is None:
             return []
 
-        try:
-            root = ET.fromstring(resp.text)
-        except (ET.ParseError, UnicodeDecodeError) as e:
-            logger.debug(f"FPDS XML parse error for vendor search: {e}")
+        root = self._parse_xml(xml_text, "vendor search")
+        if root is None:
             return []
 
         records = []
         for entry in root.findall("atom:entry", ATOM_NS):
-            # Extract PIID from entry for the record
             content = entry.find("atom:content", ATOM_NS)
             piid = _text(content, "PIID") if content is not None else None
             piid = piid or "unknown"
@@ -316,37 +321,27 @@ class FPDSAtomClient:
 
         return records
 
-    def get_description(self, piid: str) -> str | None:
-        """Get just the contract description for a PIID.
-
-        Convenience method — delegates to :meth:`search_by_piid`.
-        """
-        record = self.search_by_piid(piid)
+    async def get_description(self, piid: str) -> str | None:
+        """Get just the contract description for a PIID."""
+        record = await self.search_by_piid(piid)
         return record.description if record else None
 
-    def get_research_code(self, piid: str) -> str | None:
+    async def get_research_code(self, piid: str) -> str | None:
         """Get the FPDS SBIR/STTR research code for a PIID.
 
         Returns codes like ``"SR1"`` (SBIR Phase I), ``"ST2"`` (STTR Phase II),
         or ``None`` if not an SBIR/STTR contract.
         """
-        record = self.search_by_piid(piid)
+        record = await self.search_by_piid(piid)
         return record.research_code if record else None
 
-    def get_descriptions(self, piids: list[str]) -> dict[str, str]:
-        """Batch-fetch descriptions for multiple PIIDs.
-
-        Args:
-            piids: List of contract PIIDs.
-
-        Returns:
-            Dict mapping PIID to description text.
-        """
+    async def get_descriptions(self, piids: list[str]) -> dict[str, str]:
+        """Batch-fetch descriptions for multiple PIIDs."""
         results: dict[str, str] = {}
         for piid in piids:
             if piid in results:
                 continue
-            record = self.search_by_piid(piid)
+            record = await self.search_by_piid(piid)
             if record and record.description:
                 desc = record.description
                 if len(desc) > 500:
