@@ -7,7 +7,7 @@ from typing import Any
 
 import pandas as pd
 
-from ..enrichers.company_enricher import enrich_awards_with_companies
+from ..enrichers.company_fuzzy_matcher import enrich_awards_with_companies
 from ..utils.text_normalization import normalize_company_name
 
 
@@ -23,7 +23,7 @@ def canonicalize_companies_from_awards(
 
     Strategy:
     1. Extract unique companies from awards
-    2. Use company_enricher to match companies against themselves (self-enrichment)
+    2. Use company_fuzzy_matcher to match companies against themselves (self-enrichment)
     3. Create canonical mapping: original_key -> canonical_key
     4. Prefer UEI > DUNS > normalized_name for canonical ID
 

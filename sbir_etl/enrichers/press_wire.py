@@ -1,7 +1,7 @@
 """Press wire RSS/Atom feed client for SBIR awardee news monitoring.
 
 Polls RSS/Atom feeds from PR Newswire, BusinessWire, and GlobeNewsWire
-for press releases mentioning known SBIR awardee companies.  Designed
+for press releases mentioning known SBIR awardee companies. Designed
 as a leading-indicator source for commercialization events (contract
 wins, acquisitions, product launches, partnerships) that appear in
 press releases weeks/months before they surface in USAspending or FPDS.
@@ -15,37 +15,37 @@ press releases weeks/months before they surface in USAspending or FPDS.
 
 No API keys required — all feeds are public RSS/Atom.
 
-Usage::
+This client inherits shared rate limiting, retry, and error
+translation from :class:`BaseAsyncAPIClient`. Feeds live on multiple
+hostnames so the client passes absolute URLs as the endpoint
+argument, which the base client's URL-join recognizes and uses
+as-is. Synchronous callers should use
+:class:`sbir_etl.enrichers.sync_wrappers.SyncPressWireClient`.
 
-    from sbir_etl.enrichers.press_wire import PressWireClient
+Usage (sync)::
 
-    client = PressWireClient()
+    from sbir_etl.enrichers.sync_wrappers import SyncPressWireClient
 
-    # Set the universe of companies to watch for
-    client.set_watchlist(["Acme Defense Systems", "Nova Quantum Inc"])
-
-    # Poll all feeds and get matches
-    hits = client.poll()
-    for hit in hits:
-        print(f"{hit.published} | {hit.source} | {hit.title}")
-        print(f"  Matched: {hit.matched_company}")
-        print(f"  URL: {hit.link}")
-    client.close()
+    with SyncPressWireClient() as client:
+        client.set_watchlist(["Acme Defense Systems", "Nova Quantum Inc"])
+        hits = client.poll()
+        for hit in hits:
+            print(f"{hit.published} | {hit.source} | {hit.title}")
 """
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
-import time
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
-from typing import Any
 
 import httpx
 from loguru import logger
 
-MAX_RETRIES = 3
-RETRY_BACKOFF_BASE = 2  # seconds
+from sbir_etl.enrichers.base_client import BaseAsyncAPIClient
+from sbir_etl.enrichers.rate_limiting import RateLimiter
+from sbir_etl.exceptions import APIError
 
 # Feed URLs — public RSS/Atom endpoints
 FEEDS: dict[str, str] = {
@@ -60,6 +60,8 @@ NS = {
     "dc": "http://purl.org/dc/elements/1.1/",
     "content": "http://purl.org/rss/1.0/modules/content/",
 }
+
+DEFAULT_RATE_LIMIT_PER_MINUTE = 30
 
 
 @dataclass
@@ -105,40 +107,54 @@ def _normalize(name: str) -> str:
     return lower
 
 
-class PressWireClient:
-    """Client for polling press wire RSS/Atom feeds.
+class PressWireClient(BaseAsyncAPIClient):
+    """Async client for polling press wire RSS/Atom feeds.
+
+    Inherits retry, rate limiting, and typed error translation from
+    :class:`BaseAsyncAPIClient`. Passes absolute feed URLs as the
+    endpoint argument so the base client's URL-join logic uses them
+    as-is (no per-host base_url needed). For sync callers, use
+    :class:`sbir_etl.enrichers.sync_wrappers.SyncPressWireClient`.
 
     Args:
         feeds: Override the default feed URLs. Keys are source names,
-            values are feed URLs.
-        rate_limiter: Optional rate limiter with ``wait_if_needed()`` method.
+            values are absolute feed URLs.
         timeout: HTTP request timeout in seconds.
+        rate_limit_per_minute: Requests per minute when no
+            ``shared_limiter`` is provided. Defaults to 30 — RSS feeds
+            are cheap but we stay polite.
+        shared_limiter: Optional shared synchronous :class:`RateLimiter`.
+            Dispatched via :func:`asyncio.to_thread`.
+        http_client: Optional pre-constructed :class:`httpx.AsyncClient`
+            (useful for testing).
     """
+
+    api_name = "press_wire"
 
     def __init__(
         self,
         feeds: dict[str, str] | None = None,
-        rate_limiter: Any | None = None,
+        *,
         timeout: int = 30,
+        rate_limit_per_minute: int = DEFAULT_RATE_LIMIT_PER_MINUTE,
+        shared_limiter: RateLimiter | None = None,
+        http_client: httpx.AsyncClient | None = None,
     ) -> None:
+        super().__init__()
+        # base_url unused — feed URLs are absolute and passed as endpoint
+        self.base_url = ""
+        self.rate_limit_per_minute = rate_limit_per_minute
+        self._shared_limiter = shared_limiter
+        self._client = http_client or httpx.AsyncClient(timeout=timeout)
         self._feeds = feeds or dict(FEEDS)
-        self._limiter = rate_limiter
-        self._client = httpx.Client(timeout=timeout)
         self._watchlist: dict[str, str] = {}  # normalized -> original
         self._seen_hashes: set[str] = set()
 
-    def close(self) -> None:
-        self._client.close()
-
-    def __enter__(self) -> PressWireClient:
-        return self
-
-    def __exit__(self, *exc: object) -> None:
-        self.close()
-
-    def _wait(self) -> None:
-        if self._limiter is not None:
-            self._limiter.wait_if_needed()
+    async def _wait_for_rate_limit(self) -> None:
+        if self._shared_limiter is not None:
+            await asyncio.to_thread(self._shared_limiter.wait_if_needed)
+            return
+        await super()._wait_for_rate_limit()
 
     # ------------------------------------------------------------------
     # Watchlist management
@@ -161,25 +177,18 @@ class PressWireClient:
     # Feed fetching
     # ------------------------------------------------------------------
 
-    def _fetch_feed(self, source: str, url: str) -> str | None:
-        """Fetch raw XML from a feed URL with retry on 429/5xx."""
-        for attempt in range(MAX_RETRIES):
-            self._wait()
-            try:
-                resp = self._client.get(url)
-                if resp.status_code == 429 or resp.status_code >= 500:
-                    wait = RETRY_BACKOFF_BASE ** (attempt + 1)
-                    logger.debug(f"{source} {resp.status_code}, retrying in {wait}s")
-                    time.sleep(wait)
-                    continue
-                if resp.status_code != 200:
-                    logger.debug(f"{source} returned {resp.status_code}")
-                    return None
-                return resp.text
-            except httpx.HTTPError as e:
-                logger.debug(f"{source} request error: {e}")
-                time.sleep(RETRY_BACKOFF_BASE ** (attempt + 1))
-        return None
+    async def _fetch_feed(self, source: str, url: str) -> str | None:
+        """Fetch raw XML from a feed URL.
+
+        Returns ``None`` on failure so ``poll`` can continue with the
+        other feeds. Errors are logged, not raised.
+        """
+        try:
+            response = await self._request_raw("GET", url)
+        except APIError as e:
+            logger.debug("{} fetch error: {}", source, e)
+            return None
+        return response.text
 
     # ------------------------------------------------------------------
     # Parsing — handles both RSS 2.0 and Atom formats
@@ -287,7 +296,7 @@ class PressWireClient:
     # Polling
     # ------------------------------------------------------------------
 
-    def poll(self) -> list[PressRelease]:
+    async def poll(self) -> list[PressRelease]:
         """Poll all configured feeds and return matching press releases.
 
         Deduplicates across feeds using content hashing.
@@ -300,7 +309,7 @@ class PressWireClient:
         all_matches: list[PressRelease] = []
 
         for source, url in self._feeds.items():
-            xml_text = self._fetch_feed(source, url)
+            xml_text = await self._fetch_feed(source, url)
             if xml_text is None:
                 logger.warning(f"Failed to fetch {source} feed")
                 continue
@@ -324,7 +333,7 @@ class PressWireClient:
         )
         return all_matches
 
-    def poll_all_unfiltered(self) -> list[PressRelease]:
+    async def poll_all_unfiltered(self) -> list[PressRelease]:
         """Poll all feeds and return ALL items (no watchlist filtering).
 
         Useful for exploring feed content or building a full archive.
@@ -333,7 +342,7 @@ class PressWireClient:
         all_items: list[PressRelease] = []
 
         for source, url in self._feeds.items():
-            xml_text = self._fetch_feed(source, url)
+            xml_text = await self._fetch_feed(source, url)
             if xml_text is None:
                 continue
 

@@ -352,7 +352,7 @@ organization_deduplication:
   # Merge history tracking
   track_merge_history: true  # Enable merge history tracking for reversibility
 
-  # Enhanced matching (passed to company_enricher)
+  # Enhanced matching (passed to company_fuzzy_matcher)
   enhanced_matching:
     enable_phonetic_matching: true
     enable_jaro_winkler: false

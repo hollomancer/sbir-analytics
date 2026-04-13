@@ -64,15 +64,20 @@ class BaseAsyncAPIClient:
             "User-Agent": "SBIR-Analytics/0.1.0",
         }
 
-    async def _make_request(
+    async def _request_raw(
         self,
         method: str,
         endpoint: str,
         params: dict[str, Any] | None = None,
         *,
         headers: dict[str, str] | None = None,
-    ) -> dict[str, Any]:
+    ) -> httpx.Response:
         """Make an HTTP request with rate limiting and retry logic.
+
+        Returns the raw :class:`httpx.Response` so callers can decode
+        non-JSON bodies (XML, text, binary) themselves. JSON-API
+        callers should use :meth:`_make_request` instead, which is a
+        thin wrapper around this method that calls ``response.json()``.
 
         Args:
             method: HTTP method (GET, POST)
@@ -81,11 +86,12 @@ class BaseAsyncAPIClient:
             headers: Additional headers to merge with defaults
 
         Returns:
-            JSON response as dict
+            The raw :class:`httpx.Response`.
 
         Raises:
             APIError: If request fails after retries
             RateLimitError: If rate limit exceeded
+            ConfigurationError: If method is unsupported
         """
 
         @retry(
@@ -94,10 +100,20 @@ class BaseAsyncAPIClient:
             retry=retry_if_exception_type((httpx.HTTPError, httpx.TimeoutException)),
             reraise=True,
         )
-        async def _do_request() -> dict[str, Any]:
+        async def _do_request() -> httpx.Response:
             await self._wait_for_rate_limit()
 
-            url = f"{str(self.base_url).rstrip('/')}/{str(endpoint).lstrip('/')}"
+            # Allow absolute URLs as endpoints for cross-host clients (e.g.
+            # press_wire, which polls multiple RSS hostnames). Otherwise
+            # build the URL from base_url + endpoint.
+            endpoint_str = str(endpoint)
+            if endpoint_str.startswith(("http://", "https://")):
+                url = endpoint_str
+            else:
+                url = (
+                    f"{str(self.base_url).rstrip('/')}/"
+                    f"{endpoint_str.lstrip('/')}"
+                )
             request_headers = self._build_headers()
             if headers:
                 request_headers.update(headers)
@@ -123,7 +139,7 @@ class BaseAsyncAPIClient:
                         endpoint=endpoint,
                     )
 
-                return response.json()
+                return response
 
             except httpx.HTTPStatusError as e:
                 if e.response.status_code == 429:
@@ -159,3 +175,29 @@ class BaseAsyncAPIClient:
                 http_status=408,
                 retryable=False,
             ) from e
+
+    async def _make_request(
+        self,
+        method: str,
+        endpoint: str,
+        params: dict[str, Any] | None = None,
+        *,
+        headers: dict[str, str] | None = None,
+    ) -> dict[str, Any]:
+        """Make an HTTP request and return the parsed JSON body.
+
+        Thin wrapper around :meth:`_request_raw` for JSON APIs. Same
+        retry, rate-limiting, and error semantics — see that method
+        for details.
+
+        Returns:
+            JSON response as dict.
+
+        Raises:
+            APIError: If request fails after retries
+            RateLimitError: If rate limit exceeded
+        """
+        response = await self._request_raw(
+            method, endpoint, params=params, headers=headers
+        )
+        return response.json()

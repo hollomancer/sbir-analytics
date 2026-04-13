@@ -19,10 +19,7 @@ Key Functions:
 
 import os
 import re
-import threading
 import time
-from collections import deque
-from datetime import datetime, timedelta
 from typing import Any
 
 import httpx
@@ -31,63 +28,9 @@ from loguru import logger
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
 from sbir_etl.config.loader import get_config
+from sbir_etl.enrichers.rate_limiting import RateLimiter
 from sbir_etl.exceptions import APIError, ConfigurationError
 from sbir_etl.utils.cache.api_cache import APICache
-
-
-class RateLimiter:
-    """Thread-safe rate limiter for API calls.
-
-    Tracks request timestamps and enforces rate limits by waiting when necessary.
-    Thread-safe for use in parallel processing scenarios.
-    """
-
-    def __init__(self, rate_limit_per_minute: int = 60):
-        """Initialize rate limiter.
-
-        Args:
-            rate_limit_per_minute: Maximum requests allowed per minute
-        """
-        self.rate_limit_per_minute = rate_limit_per_minute
-        self.request_times: deque[datetime] = deque(maxlen=rate_limit_per_minute)
-        self._lock = threading.Lock()  # Thread-safe lock
-
-    def wait_if_needed(self) -> None:
-        """Wait if rate limit would be exceeded.
-
-        Removes requests older than 1 minute and waits if we're at the limit.
-        Thread-safe for concurrent access.
-        """
-        with self._lock:
-            now = datetime.now()
-            # Remove requests older than 1 minute
-            cutoff_time = now - timedelta(seconds=60)
-            while self.request_times and self.request_times[0] < cutoff_time:
-                self.request_times.popleft()
-
-            # If we're at the limit, wait until the oldest request is 60 seconds old
-            if len(self.request_times) >= self.rate_limit_per_minute:
-                oldest = self.request_times[0]
-                wait_seconds = 60 - (now - oldest).total_seconds() + 0.5  # Add 0.5s buffer
-                if wait_seconds > 0:
-                    logger.debug(
-                        f"Rate limit reached ({self.rate_limit_per_minute}/min), "
-                        f"waiting {wait_seconds:.1f} seconds"
-                    )
-                    # Release lock during sleep to allow other threads to check
-                    self._lock.release()
-                    try:
-                        time.sleep(wait_seconds)
-                    finally:
-                        self._lock.acquire()
-                    # Recalculate after sleep
-                    now = datetime.now()
-                    cutoff_time = now - timedelta(seconds=60)
-                    while self.request_times and self.request_times[0] < cutoff_time:
-                        self.request_times.popleft()
-
-            # Record this request
-            self.request_times.append(datetime.now())
 
 
 def parse_patent_record(record: dict[str, Any]) -> dict[str, Any]:

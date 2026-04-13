@@ -41,7 +41,7 @@ from sbir_etl.utils.text_normalization import normalize_name as _normalize_name
 from sbir_etl.validators.sbir_awards import validate_sbir_award_record as _validate_record
 
 from sbir_etl.extractors.solicitation import SolicitationExtractor
-from sbir_etl.enrichers.patentsview import RateLimiter
+from sbir_etl.enrichers.rate_limiting import RateLimiter
 from sbir_etl.enrichers.inflation_adjuster import InflationAdjuster
 from sbir_etl.enrichers.congressional_district_resolver import CongressionalDistrictResolver
 from sbir_etl.enrichers.fiscal_bea_mapper import NAICSToBEAMapper
@@ -67,11 +67,10 @@ from sbir_etl.enrichers.company_enrichment import (
     lookup_sam_entity_with_fallback as _lib_lookup_sam_entity_with_fallback,
     fetch_usaspending_contract_descriptions as _lib_fetch_usaspending_contract_descriptions,
 )
-from sbir_etl.enrichers.opencorporates import (
-    CorporateRecord,
-    OpenCorporatesClient,
-)
-from sbir_etl.enrichers.press_wire import PressRelease, PressWireClient
+from sbir_etl.enrichers.opencorporates import CorporateRecord
+from sbir_etl.enrichers.sync_wrappers import SyncOpenCorporatesClient
+from sbir_etl.enrichers.press_wire import PressRelease
+from sbir_etl.enrichers.sync_wrappers import SyncPressWireClient
 
 
 # ---------------------------------------------------------------------------
@@ -665,7 +664,7 @@ def lookup_opencorporates(
 
     def _lookup_one(item: tuple[str, dict]) -> tuple[str, CorporateRecord | None]:
         key, info = item
-        with OpenCorporatesClient(rate_limiter=_opencorporates_limiter) as client:
+        with SyncOpenCorporatesClient(shared_limiter=_opencorporates_limiter) as client:
             return key, client.lookup_company(info["name"], jurisdiction=info["jurisdiction"])
 
     with ThreadPoolExecutor(max_workers=2) as executor:
@@ -713,7 +712,7 @@ def poll_press_wire(
 
     print(f"Polling press wire feeds for {len(company_names)} companies...", file=sys.stderr)
 
-    with PressWireClient() as client:
+    with SyncPressWireClient() as client:
         client.set_watchlist(list(company_names.keys()))
         hits = client.poll()
 

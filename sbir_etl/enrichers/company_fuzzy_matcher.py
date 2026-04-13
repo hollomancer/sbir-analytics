@@ -1,6 +1,10 @@
-# sbir-analytics/src/enrichers/company_enricher.py
-"""
-Company enricher using fuzzy matching (rapidfuzz) with identifier-first strategy.
+"""Company fuzzy matcher using rapidfuzz with an identifier-first strategy.
+
+Previously named ``company_enricher.py`` — renamed because "enricher"
+is the generic term for every module in this package. This one does
+pure local fuzzy matching of SBIR awards against a company master
+list; it does not call any external APIs. For federal API lookups
+(USAspending, SAM.gov, FPDS) see ``company_enrichment.py``.
 
 Strategy summary:
 1. Attempt deterministic joins:

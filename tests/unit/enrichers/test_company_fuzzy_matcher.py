@@ -1,11 +1,11 @@
-"""Tests for company enricher."""
+"""Tests for company_fuzzy_matcher (rapidfuzz-based local matching)."""
 
 import json
 
 import pandas as pd
 import pytest
 
-from sbir_etl.enrichers.company_enricher import enrich_awards_with_companies
+from sbir_etl.enrichers.company_fuzzy_matcher import enrich_awards_with_companies
 from sbir_etl.utils.text_normalization import normalize_company_name
 from tests.factories import DataFrameBuilder
 
@@ -181,7 +181,7 @@ def test_enrich_multiple_awards_batch_behavior():
 )
 def test_build_block_key(name, prefix_len, expected):
     """Test building block key from normalized name."""
-    from sbir_etl.enrichers.company_enricher import build_block_key
+    from sbir_etl.enrichers.company_fuzzy_matcher import build_block_key
 
     assert build_block_key(name, prefix_len=prefix_len) == expected
 
@@ -200,7 +200,7 @@ def test_build_block_key(name, prefix_len, expected):
 )
 def test_coerce_int(value, expected):
     """Test coercing various values to int."""
-    from sbir_etl.enrichers.company_enricher import _coerce_int
+    from sbir_etl.enrichers.company_fuzzy_matcher import _coerce_int
 
     assert _coerce_int(value) == expected
 

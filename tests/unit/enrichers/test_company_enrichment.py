@@ -329,7 +329,7 @@ class TestLookupSAMEntity:
 
 
 class TestFetchFPDSDescriptions:
-    @patch(f"{MODULE}.FPDSAtomClient")
+    @patch(f"{MODULE}.SyncFPDSAtomClient")
     def test_success(self, MockClient):
         ctx = MockClient.return_value.__enter__.return_value
         ctx.get_descriptions.return_value = {

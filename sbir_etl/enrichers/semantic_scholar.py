@@ -2,36 +2,48 @@
 
 Queries the `Semantic Scholar Academic Graph API
 <https://api.semanticscholar.org/>`_ to find author profiles and
-retrieve publication statistics (h-index, citation count, paper titles,
-affiliations).
+retrieve publication statistics (h-index, citation count, paper
+titles, affiliations). No API key is required for basic access
+(rate limited to ~100 req/min). Set ``SEMANTIC_SCHOLAR_API_KEY``
+for higher limits.
 
-No API key is required for basic access (rate limited to ~100 req/min).
-Set ``SEMANTIC_SCHOLAR_API_KEY`` for higher limits.
+This client inherits shared rate limiting, retry, and error
+translation from :class:`BaseAsyncAPIClient`. Synchronous callers
+(scripts, notebooks, Dagster ops) should use
+:class:`sbir_etl.enrichers.sync_wrappers.SyncSemanticScholarClient`
+rather than running an event loop by hand.
 
-Usage::
-
-    from sbir_etl.enrichers.semantic_scholar import SemanticScholarClient
+Usage (async)::
 
     client = SemanticScholarClient()
-    record = client.lookup_author("Jane Smith")
-    if record:
-        print(record.h_index, record.total_papers)
-    client.close()
+    try:
+        record = await client.lookup_author("Jane Smith")
+    finally:
+        await client.aclose()
+
+Usage (sync)::
+
+    from sbir_etl.enrichers.sync_wrappers import SyncSemanticScholarClient
+
+    with SyncSemanticScholarClient() as client:
+        record = client.lookup_author("Jane Smith")
 """
 
 from __future__ import annotations
 
+import asyncio
 import os
-import time
 from dataclasses import dataclass
 from typing import Any
 
 import httpx
-from loguru import logger
+
+from sbir_etl.enrichers.base_client import BaseAsyncAPIClient
+from sbir_etl.enrichers.rate_limiting import RateLimiter
+from sbir_etl.exceptions import APIError
 
 SEMANTIC_SCHOLAR_API_URL = "https://api.semanticscholar.org/graph/v1"
-MAX_RETRIES = 3
-RETRY_BACKOFF_BASE = 2
+DEFAULT_RATE_LIMIT_PER_MINUTE = 100
 
 
 @dataclass
@@ -45,93 +57,122 @@ class PublicationRecord:
     affiliations: list[str]
 
 
-class SemanticScholarClient:
-    """Client for querying the Semantic Scholar Academic Graph API.
+class SemanticScholarClient(BaseAsyncAPIClient):
+    """Async client for the Semantic Scholar Academic Graph API.
+
+    Inherits retry, rate limiting, and typed error translation from
+    :class:`BaseAsyncAPIClient`.
 
     Args:
-        rate_limiter: Optional rate limiter instance with ``wait_if_needed()`` method.
-        api_key: Optional API key. Defaults to ``SEMANTIC_SCHOLAR_API_KEY`` env var.
+        api_key: Optional API key. Defaults to the ``SEMANTIC_SCHOLAR_API_KEY``
+            environment variable. Sent as the ``x-api-key`` header.
         timeout: HTTP request timeout in seconds.
+        rate_limit_per_minute: Requests per minute when no ``shared_limiter``
+            is provided. Defaults to 100 (Semantic Scholar free-tier rate).
+        shared_limiter: Optional shared synchronous :class:`RateLimiter`.
+            When provided, overrides the base client's per-instance async
+            limiter so that multiple client instances (e.g. across worker
+            threads in a :class:`concurrent.futures.ThreadPoolExecutor`)
+            can share a single global rate budget. The blocking
+            ``wait_if_needed`` call is dispatched via :func:`asyncio.to_thread`
+            so it does not block the shared background event loop.
+        http_client: Optional pre-constructed :class:`httpx.AsyncClient`
+            (useful for testing).
     """
+
+    api_name = "semantic_scholar"
 
     def __init__(
         self,
-        rate_limiter: Any | None = None,
+        *,
         api_key: str | None = None,
         timeout: int = 30,
+        rate_limit_per_minute: int = DEFAULT_RATE_LIMIT_PER_MINUTE,
+        shared_limiter: RateLimiter | None = None,
+        http_client: httpx.AsyncClient | None = None,
     ) -> None:
-        self._limiter = rate_limiter
-        self._timeout = timeout
-        resolved_key = api_key or os.environ.get("SEMANTIC_SCHOLAR_API_KEY", "")
-        self._headers: dict[str, str] = {}
-        if resolved_key:
-            self._headers["x-api-key"] = resolved_key
-        self._client = httpx.Client(timeout=timeout, headers=self._headers)
+        super().__init__()
+        self.base_url = SEMANTIC_SCHOLAR_API_URL
+        self.rate_limit_per_minute = rate_limit_per_minute
+        self._shared_limiter = shared_limiter
+        self._api_key = api_key or os.environ.get("SEMANTIC_SCHOLAR_API_KEY", "")
+        self._client = http_client or httpx.AsyncClient(timeout=timeout)
 
-    def close(self) -> None:
-        self._client.close()
+    def _build_headers(self) -> dict[str, str]:
+        """Extend base headers with the API key when set."""
+        headers = super()._build_headers()
+        if self._api_key:
+            headers["x-api-key"] = self._api_key
+        return headers
 
-    def __enter__(self) -> "SemanticScholarClient":
-        return self
+    async def _wait_for_rate_limit(self) -> None:
+        """Use the injected shared limiter if present, else the base async limiter.
 
-    def __exit__(self, *exc: object) -> None:
-        self.close()
+        The shared limiter is a synchronous :class:`RateLimiter` whose
+        ``wait_if_needed`` call is blocking. We dispatch it via
+        :func:`asyncio.to_thread` so it runs in a worker thread and does
+        not block the process-wide background event loop that the sync
+        facade (:func:`run_sync`) schedules coroutines onto.
+        """
+        if self._shared_limiter is not None:
+            await asyncio.to_thread(self._shared_limiter.wait_if_needed)
+            return
+        await super()._wait_for_rate_limit()
 
-    def _wait(self) -> None:
-        if self._limiter is not None:
-            self._limiter.wait_if_needed()
-
-    def _get_with_retry(self, url: str, params: dict[str, Any] | None = None) -> dict | None:
-        """GET with retry on 429/5xx."""
-        for attempt in range(MAX_RETRIES):
-            self._wait()
-            try:
-                resp = self._client.get(url, params=params)
-                if resp.status_code == 429:
-                    wait = RETRY_BACKOFF_BASE ** (attempt + 1)
-                    logger.debug(f"Semantic Scholar 429, retrying in {wait}s")
-                    time.sleep(wait)
-                    continue
-                if resp.status_code != 200:
-                    logger.debug(f"Semantic Scholar returned {resp.status_code}")
-                    return None
-                return resp.json()
-            except httpx.HTTPError as e:
-                logger.debug(f"Semantic Scholar request error: {e}")
-                time.sleep(RETRY_BACKOFF_BASE ** (attempt + 1))
-        return None
-
-    def search_author(self, name: str, limit: int = 5) -> list[dict[str, Any]]:
+    async def search_author(
+        self, name: str, limit: int = 5
+    ) -> list[dict[str, Any]]:
         """Search for authors by name.
 
-        Returns list of author dicts with ``authorId``, ``name``, etc.
+        Returns the ``data`` list from the API response (possibly empty).
+        Propagates :class:`APIError` on transport/server failures; 400
+        responses (malformed query) return an empty list.
         """
-        data = self._get_with_retry(
-            f"{SEMANTIC_SCHOLAR_API_URL}/author/search",
-            params={"query": name, "limit": limit},
-        )
-        if data is None:
-            return []
+        try:
+            data = await self._make_request(
+                "GET",
+                "author/search",
+                params={"query": name, "limit": limit},
+            )
+        except APIError as e:
+            if e.details.get("http_status") == 400:
+                return []
+            raise
         return data.get("data", [])
 
-    def get_author_details(
+    async def get_author_details(
         self, author_id: str
     ) -> dict[str, Any] | None:
-        """Fetch author details including papers, h-index, and affiliations."""
-        return self._get_with_retry(
-            f"{SEMANTIC_SCHOLAR_API_URL}/author/{author_id}",
-            params={
-                "fields": "name,hIndex,citationCount,affiliations,papers.title,papers.year",
-            },
-        )
+        """Fetch author details including papers, h-index, and affiliations.
 
-    def lookup_author(self, name: str) -> PublicationRecord | None:
+        Returns ``None`` if the author is not found (404); propagates
+        :class:`APIError` on other failures.
+        """
+        try:
+            return await self._make_request(
+                "GET",
+                f"author/{author_id}",
+                params={
+                    "fields": (
+                        "name,hIndex,citationCount,affiliations,"
+                        "papers.title,papers.year"
+                    ),
+                },
+            )
+        except APIError as e:
+            if e.details.get("http_status") == 404:
+                return None
+            raise
+
+    async def lookup_author(self, name: str) -> PublicationRecord | None:
         """Look up a researcher's publication profile by name.
 
-        Two-step: author search → author details with papers.
-        Returns ``None`` if no match found.
+        Two-step: author search → author details. Returns ``None`` when
+        no match is found. Propagates :class:`APIError` for transport or
+        server failures so callers can distinguish "no match" from
+        "lookup failed".
         """
-        authors = self.search_author(name)
+        authors = await self.search_author(name)
         if not authors:
             return None
 
@@ -139,7 +180,7 @@ class SemanticScholarClient:
         if not author_id:
             return None
 
-        details = self.get_author_details(author_id)
+        details = await self.get_author_details(author_id)
         if details is None:
             return None
 

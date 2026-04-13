@@ -4,31 +4,39 @@ Queries the `ORCID public API <https://pub.orcid.org/>`_ to find
 researcher profiles and extract affiliations, works, funding, and
 keywords.
 
-No API key is required for basic access.  Set ``ORCID_ACCESS_TOKEN``
+No API key is required for basic access. Set ``ORCID_ACCESS_TOKEN``
 for higher rate limits (generate via client credentials grant with a
 free ORCID Public API application).
 
-Usage::
+This client inherits shared rate limiting, retry, and error
+translation from :class:`BaseAsyncAPIClient`. Synchronous callers
+should use :class:`sbir_etl.enrichers.sync_wrappers.SyncORCIDClient`.
 
-    from sbir_etl.enrichers.orcid_client import ORCIDClient
+Usage (sync)::
 
-    client = ORCIDClient()
-    record = client.lookup("Jane Smith")
-    if record:
-        print(record.orcid_id, record.works_count)
-    client.close()
+    from sbir_etl.enrichers.sync_wrappers import SyncORCIDClient
+
+    with SyncORCIDClient() as client:
+        record = client.lookup("Jane Smith")
+        if record:
+            print(record.orcid_id, record.works_count)
 """
 
 from __future__ import annotations
 
+import asyncio
 import os
 from dataclasses import dataclass, field
 from typing import Any
 
 import httpx
-from loguru import logger
+
+from sbir_etl.enrichers.base_client import BaseAsyncAPIClient
+from sbir_etl.enrichers.rate_limiting import RateLimiter
+from sbir_etl.exceptions import APIError
 
 ORCID_API_URL = "https://pub.orcid.org/v3.0"
+DEFAULT_RATE_LIMIT_PER_MINUTE = 60
 
 
 @dataclass
@@ -45,7 +53,9 @@ class ORCIDRecord:
     keywords: list[str] = field(default_factory=list)
 
 
-def _parse_profile(orcid_id: str, search_result: dict, profile: dict) -> ORCIDRecord:
+def _parse_profile(
+    orcid_id: str, search_result: dict, profile: dict
+) -> ORCIDRecord:
     """Parse an ORCID profile response into an :class:`ORCIDRecord`."""
     # Affiliations
     affiliations: list[str] = []
@@ -91,7 +101,9 @@ def _parse_profile(orcid_id: str, search_result: dict, profile: dict) -> ORCIDRe
     keyword_list = (
         profile.get("person", {}).get("keywords", {}).get("keyword", [])
     )
-    keywords = [kw.get("content", "") for kw in keyword_list[:10] if kw.get("content")]
+    keywords = [
+        kw.get("content", "") for kw in keyword_list[:10] if kw.get("content")
+    ]
 
     return ORCIDRecord(
         orcid_id=orcid_id,
@@ -105,85 +117,110 @@ def _parse_profile(orcid_id: str, search_result: dict, profile: dict) -> ORCIDRe
     )
 
 
-class ORCIDClient:
-    """Client for querying the ORCID public API.
+class ORCIDClient(BaseAsyncAPIClient):
+    """Async client for the ORCID public API.
+
+    Inherits retry, rate limiting, and typed error translation from
+    :class:`BaseAsyncAPIClient`. For sync callers, use
+    :class:`sbir_etl.enrichers.sync_wrappers.SyncORCIDClient`.
 
     Args:
-        rate_limiter: Optional rate limiter instance with ``wait_if_needed()`` method.
-        access_token: Optional OAuth token. Defaults to ``ORCID_ACCESS_TOKEN`` env var.
+        access_token: Optional OAuth token. Defaults to ``ORCID_ACCESS_TOKEN``
+            environment variable. When set, sent as ``Authorization: Bearer``.
         timeout: HTTP request timeout in seconds.
+        rate_limit_per_minute: Requests per minute when no ``shared_limiter``
+            is provided. Defaults to 60.
+        shared_limiter: Optional shared synchronous :class:`RateLimiter` for
+            sharing a global budget across worker threads. Dispatched via
+            :func:`asyncio.to_thread`.
+        http_client: Optional pre-constructed :class:`httpx.AsyncClient`
+            (useful for testing).
     """
+
+    api_name = "orcid"
 
     def __init__(
         self,
-        rate_limiter: Any | None = None,
+        *,
         access_token: str | None = None,
         timeout: int = 30,
+        rate_limit_per_minute: int = DEFAULT_RATE_LIMIT_PER_MINUTE,
+        shared_limiter: RateLimiter | None = None,
+        http_client: httpx.AsyncClient | None = None,
     ) -> None:
-        self._limiter = rate_limiter
-        headers: dict[str, str] = {"Accept": "application/json"}
-        token = access_token or os.environ.get("ORCID_ACCESS_TOKEN", "")
-        if token:
-            headers["Authorization"] = f"Bearer {token}"
-        self._client = httpx.Client(timeout=timeout, headers=headers)
+        super().__init__()
+        self.base_url = ORCID_API_URL
+        self.rate_limit_per_minute = rate_limit_per_minute
+        self._shared_limiter = shared_limiter
+        self._access_token = access_token or os.environ.get(
+            "ORCID_ACCESS_TOKEN", ""
+        )
+        self._client = http_client or httpx.AsyncClient(timeout=timeout)
 
-    def close(self) -> None:
-        self._client.close()
+    def _build_headers(self) -> dict[str, str]:
+        headers = super()._build_headers()
+        if self._access_token:
+            headers["Authorization"] = f"Bearer {self._access_token}"
+        return headers
 
-    def __enter__(self) -> "ORCIDClient":
-        return self
+    async def _wait_for_rate_limit(self) -> None:
+        if self._shared_limiter is not None:
+            await asyncio.to_thread(self._shared_limiter.wait_if_needed)
+            return
+        await super()._wait_for_rate_limit()
 
-    def __exit__(self, *exc: object) -> None:
-        self.close()
-
-    def _wait(self) -> None:
-        if self._limiter is not None:
-            self._limiter.wait_if_needed()
-
-    def search(self, family_name: str, given_names: str | None = None, limit: int = 5) -> list[dict]:
+    async def search(
+        self,
+        family_name: str,
+        given_names: str | None = None,
+        limit: int = 5,
+    ) -> list[dict[str, Any]]:
         """Search for researchers by name.
 
-        Returns list of expanded search result dicts.
+        Returns the ``expanded-result`` list from the ORCID API
+        (possibly empty). Returns an empty list on 4xx client errors;
+        propagates :class:`APIError` on 5xx.
         """
         query = f"family-name:{family_name}"
         if given_names:
-            # Use literal " AND " — httpx encodes spaces in query params
-            # automatically.  The old "+AND+" was double-encoded (%2BAND%2B)
-            # which caused ORCID to return 500.
+            # Literal " AND " — httpx encodes spaces in query params
+            # automatically. The old "+AND+" was double-encoded
+            # (%2BAND%2B) which caused ORCID to return 500.
             query += f" AND given-names:{given_names}"
 
-        self._wait()
         try:
-            resp = self._client.get(
-                f"{ORCID_API_URL}/expanded-search/",
+            data = await self._make_request(
+                "GET",
+                "expanded-search/",
                 params={"q": query, "rows": limit},
             )
-            if resp.status_code != 200:
-                logger.debug(f"ORCID search returned {resp.status_code}")
+        except APIError as e:
+            status = e.details.get("http_status")
+            if status and 400 <= status < 500:
                 return []
-            return resp.json().get("expanded-result", []) or []
-        except httpx.HTTPError as e:
-            logger.debug(f"ORCID search error: {e}")
-            return []
+            raise
+        return data.get("expanded-result", []) or []
 
-    def get_profile(self, orcid_id: str) -> dict | None:
-        """Fetch a full ORCID profile by ID."""
-        self._wait()
+    async def get_profile(self, orcid_id: str) -> dict[str, Any] | None:
+        """Fetch a full ORCID profile by ID.
+
+        Returns ``None`` if not found (404); propagates :class:`APIError`
+        on other failures.
+        """
         try:
-            resp = self._client.get(f"{ORCID_API_URL}/{orcid_id}/record")
-            if resp.status_code != 200:
-                logger.debug(f"ORCID profile {orcid_id} returned {resp.status_code}")
+            return await self._make_request("GET", f"{orcid_id}/record")
+        except APIError as e:
+            if e.details.get("http_status") == 404:
                 return None
-            return resp.json()
-        except httpx.HTTPError as e:
-            logger.debug(f"ORCID profile error for {orcid_id}: {e}")
-            return None
+            raise
 
-    def lookup(self, name: str) -> ORCIDRecord | None:
+    async def lookup(self, name: str) -> ORCIDRecord | None:
         """Look up a researcher's ORCID profile by full name.
 
         Splits *name* into given/family components, searches, then
-        fetches the full profile for the best match.
+        fetches the full profile for the best match. Returns ``None``
+        when no match is found. Propagates :class:`APIError` on real
+        API failures so callers can distinguish.
         """
         parts = name.strip().split()
         if not parts:
@@ -191,7 +228,7 @@ class ORCIDClient:
         family = parts[-1]
         given = " ".join(parts[:-1]) if len(parts) > 1 else None
 
-        results = self.search(family, given)
+        results = await self.search(family, given)
         if not results:
             return None
 
@@ -200,7 +237,7 @@ class ORCIDClient:
         if not orcid_id:
             return None
 
-        profile = self.get_profile(orcid_id)
+        profile = await self.get_profile(orcid_id)
         if profile is None:
             return None
 

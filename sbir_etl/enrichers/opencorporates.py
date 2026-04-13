@@ -13,35 +13,39 @@ are not available from SAM.gov.
 - Multi-state filing visibility
 
 No API key is required for the free tier (~500 requests/month).
-Set ``OPENCORPORATES_API_TOKEN`` for higher limits.
+Set ``OPENCORPORATES_API_TOKEN`` for higher limits — the token is
+sent as the ``api_token`` query parameter per OpenCorporates docs.
 
-Usage::
+This client inherits shared rate limiting, retry, and error
+translation from :class:`BaseAsyncAPIClient`. Synchronous callers
+should use :class:`sbir_etl.enrichers.sync_wrappers.SyncOpenCorporatesClient`.
 
-    from sbir_etl.enrichers.opencorporates import OpenCorporatesClient
+Usage (sync)::
 
-    client = OpenCorporatesClient()
-    record = client.lookup_company("Acme Defense Systems", jurisdiction="us_va")
-    if record:
-        print(record.incorporation_date, record.status)
-        print(record.officers)
-        if record.parent_company:
-            print(f"Subsidiary of {record.parent_company}")
-    client.close()
+    from sbir_etl.enrichers.sync_wrappers import SyncOpenCorporatesClient
+
+    with SyncOpenCorporatesClient() as client:
+        record = client.lookup_company("Acme Defense Systems", jurisdiction="us_va")
+        if record:
+            print(record.incorporation_date, record.status)
 """
 
 from __future__ import annotations
 
+import asyncio
 import os
-import time
 from dataclasses import dataclass, field
 from typing import Any
 
 import httpx
 from loguru import logger
 
+from sbir_etl.enrichers.base_client import BaseAsyncAPIClient
+from sbir_etl.enrichers.rate_limiting import RateLimiter
+from sbir_etl.exceptions import APIError
+
 OPENCORPORATES_API_URL = "https://api.opencorporates.com/v0.4"
-MAX_RETRIES = 3
-RETRY_BACKOFF_BASE = 2  # seconds
+DEFAULT_RATE_LIMIT_PER_MINUTE = 30  # Free tier: ~500/month
 
 
 @dataclass
@@ -73,72 +77,80 @@ class CorporateRecord:
     opencorporates_url: str | None = None
 
 
-class OpenCorporatesClient:
-    """Client for querying the OpenCorporates API.
+class OpenCorporatesClient(BaseAsyncAPIClient):
+    """Async client for the OpenCorporates API.
+
+    Inherits retry, rate limiting, and typed error translation from
+    :class:`BaseAsyncAPIClient`. For sync callers, use
+    :class:`sbir_etl.enrichers.sync_wrappers.SyncOpenCorporatesClient`.
 
     Args:
-        rate_limiter: Optional rate limiter with ``wait_if_needed()`` method.
-        api_token: Optional API token. Defaults to ``OPENCORPORATES_API_TOKEN`` env var.
+        api_token: Optional API token. Defaults to
+            ``OPENCORPORATES_API_TOKEN`` environment variable. Sent as
+            the ``api_token`` query parameter (OpenCorporates convention,
+            not a bearer header).
         timeout: HTTP request timeout in seconds.
+        rate_limit_per_minute: Requests per minute when no
+            ``shared_limiter`` is provided. Defaults to 30 (the free-tier
+            quota works out to ~17/min over 30 days — we leave headroom).
+        shared_limiter: Optional shared synchronous :class:`RateLimiter`
+            for sharing a global rate budget across worker threads.
+            Dispatched via :func:`asyncio.to_thread`.
+        http_client: Optional pre-constructed :class:`httpx.AsyncClient`
+            (useful for testing).
     """
+
+    api_name = "opencorporates"
 
     def __init__(
         self,
-        rate_limiter: Any | None = None,
+        *,
         api_token: str | None = None,
         timeout: int = 30,
+        rate_limit_per_minute: int = DEFAULT_RATE_LIMIT_PER_MINUTE,
+        shared_limiter: RateLimiter | None = None,
+        http_client: httpx.AsyncClient | None = None,
     ) -> None:
-        self._limiter = rate_limiter
-        self._timeout = timeout
-        self._token = api_token or os.environ.get("OPENCORPORATES_API_TOKEN", "")
-        self._client = httpx.Client(timeout=timeout)
+        super().__init__()
+        self.base_url = OPENCORPORATES_API_URL
+        self.rate_limit_per_minute = rate_limit_per_minute
+        self._shared_limiter = shared_limiter
+        self._token = api_token or os.environ.get(
+            "OPENCORPORATES_API_TOKEN", ""
+        )
+        self._client = http_client or httpx.AsyncClient(timeout=timeout)
 
-    def close(self) -> None:
-        self._client.close()
+    async def _wait_for_rate_limit(self) -> None:
+        if self._shared_limiter is not None:
+            await asyncio.to_thread(self._shared_limiter.wait_if_needed)
+            return
+        await super()._wait_for_rate_limit()
 
-    def __enter__(self) -> OpenCorporatesClient:
-        return self
+    async def _get(
+        self, endpoint: str, params: dict[str, Any] | None = None
+    ) -> dict[str, Any] | None:
+        """GET wrapper that injects the ``api_token`` query param.
 
-    def __exit__(self, *exc: object) -> None:
-        self.close()
-
-    def _wait(self) -> None:
-        if self._limiter is not None:
-            self._limiter.wait_if_needed()
-
-    def _get_with_retry(
-        self, url: str, params: dict[str, Any] | None = None
-    ) -> dict | None:
-        """GET with retry on 429/5xx."""
-        params = dict(params or {})
+        Returns ``None`` for 404 responses (not found) and propagates
+        :class:`APIError` for other failures. Callers that care about
+        distinguishing "not found" from "failed" should use
+        :meth:`_make_request` directly.
+        """
+        merged = dict(params or {})
         if self._token:
-            params["api_token"] = self._token
-
-        for attempt in range(MAX_RETRIES):
-            self._wait()
-            try:
-                resp = self._client.get(url, params=params)
-                if resp.status_code == 429 or resp.status_code >= 500:
-                    wait = RETRY_BACKOFF_BASE ** (attempt + 1)
-                    logger.debug(f"OpenCorporates {resp.status_code}, retrying in {wait}s")
-                    time.sleep(wait)
-                    continue
-                if resp.status_code == 404:
-                    return None
-                if resp.status_code != 200:
-                    logger.debug(f"OpenCorporates returned {resp.status_code}")
-                    return None
-                return resp.json()
-            except httpx.HTTPError as e:
-                logger.debug(f"OpenCorporates request error: {e}")
-                time.sleep(RETRY_BACKOFF_BASE ** (attempt + 1))
-        return None
+            merged["api_token"] = self._token
+        try:
+            return await self._make_request("GET", endpoint, params=merged)
+        except APIError as e:
+            if e.details.get("http_status") == 404:
+                return None
+            raise
 
     # ------------------------------------------------------------------
     # Search
     # ------------------------------------------------------------------
 
-    def search_companies(
+    async def search_companies(
         self,
         name: str,
         jurisdiction: str | None = None,
@@ -147,18 +159,19 @@ class OpenCorporatesClient:
         """Search for companies by name, optionally filtered by jurisdiction.
 
         Jurisdiction codes use OpenCorporates format, e.g. ``us_va``, ``us_de``.
+        Short-circuits and returns an empty list if no API token is configured
+        (search requires a token).
         """
         if not self._token:
-            logger.debug("OpenCorporates: no API token configured, skipping search")
+            logger.debug(
+                "OpenCorporates: no API token configured, skipping search"
+            )
             return []
         params: dict[str, Any] = {"q": name, "per_page": limit}
         if jurisdiction:
             params["jurisdiction_code"] = jurisdiction
 
-        data = self._get_with_retry(
-            f"{OPENCORPORATES_API_URL}/companies/search",
-            params=params,
-        )
+        data = await self._get("companies/search", params=params)
         if data is None:
             return []
         companies = data.get("results", {}).get("companies", [])
@@ -168,27 +181,23 @@ class OpenCorporatesClient:
     # Company details
     # ------------------------------------------------------------------
 
-    def get_company(
+    async def get_company(
         self, jurisdiction: str, company_number: str
     ) -> dict[str, Any] | None:
         """Fetch full company details by jurisdiction and company number."""
-        return self._get_with_retry(
-            f"{OPENCORPORATES_API_URL}/companies/{jurisdiction}/{company_number}",
-        )
+        return await self._get(f"companies/{jurisdiction}/{company_number}")
 
-    def get_officers(
+    async def get_officers(
         self, jurisdiction: str, company_number: str
     ) -> list[Officer]:
         """Fetch officers for a company."""
-        data = self._get_with_retry(
-            f"{OPENCORPORATES_API_URL}/companies/{jurisdiction}/{company_number}/officers",
+        data = await self._get(
+            f"companies/{jurisdiction}/{company_number}/officers"
         )
         if data is None:
             return []
 
-        officers_raw = (
-            data.get("results", {}).get("officers", [])
-        )
+        officers_raw = data.get("results", {}).get("officers", [])
         officers: list[Officer] = []
         for entry in officers_raw:
             o = entry.get("officer", entry)
@@ -202,14 +211,14 @@ class OpenCorporatesClient:
             )
         return officers
 
-    def get_corporate_grouping(
+    async def get_corporate_grouping(
         self, jurisdiction: str, company_number: str
     ) -> tuple[str | None, str | None]:
         """Check if a company belongs to a corporate grouping (parent).
 
-        Returns (parent_name, parent_jurisdiction) or (None, None).
+        Returns ``(parent_name, parent_jurisdiction)`` or ``(None, None)``.
         """
-        data = self.get_company(jurisdiction, company_number)
+        data = await self.get_company(jurisdiction, company_number)
         if data is None:
             return None, None
 
@@ -225,7 +234,7 @@ class OpenCorporatesClient:
     # High-level lookup
     # ------------------------------------------------------------------
 
-    def lookup_company(
+    async def lookup_company(
         self,
         name: str,
         jurisdiction: str | None = None,
@@ -233,13 +242,15 @@ class OpenCorporatesClient:
         """Look up a company's corporate record by name.
 
         Two-step: search → detail fetch with officers and groupings.
-        Returns ``None`` if no match found.
+        Returns ``None`` if no match found. Propagates :class:`APIError`
+        on transport/server failures so callers can distinguish.
         """
-        results = self.search_companies(name, jurisdiction=jurisdiction, limit=3)
+        results = await self.search_companies(
+            name, jurisdiction=jurisdiction, limit=3
+        )
         if not results:
             return None
 
-        # Take the first result
         best = results[0]
         jur = best.get("jurisdiction_code", "")
         num = best.get("company_number", "")
@@ -257,7 +268,7 @@ class OpenCorporatesClient:
             )
 
         # Fetch full details
-        detail_data = self.get_company(jur, num)
+        detail_data = await self.get_company(jur, num)
         company = {}
         if detail_data:
             company = (
@@ -266,7 +277,7 @@ class OpenCorporatesClient:
             )
 
         # Officers
-        officers = self.get_officers(jur, num)
+        officers = await self.get_officers(jur, num)
 
         # Parent / corporate grouping
         parent_name, parent_jur = None, None
