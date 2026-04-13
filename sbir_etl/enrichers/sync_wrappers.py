@@ -35,6 +35,7 @@ from typing import Any
 
 from ..utils.async_tools import run_sync
 from .fpds_atom import FPDSAtomClient, FPDSRecord
+from .orcid_client import ORCIDClient, ORCIDRecord
 from .rate_limiting import RateLimiter
 from .sam_gov.client import SAMGovAPIClient
 from .semantic_scholar import PublicationRecord, SemanticScholarClient
@@ -237,3 +238,50 @@ class SyncFPDSAtomClient:
 
     def get_descriptions(self, piids: list[str]) -> dict[str, str]:
         return run_sync(self._client.get_descriptions(piids))
+
+
+class SyncORCIDClient:
+    """Synchronous facade for :class:`ORCIDClient`.
+
+    Wraps the async ORCID client with :func:`run_sync`. Supports the
+    ``shared_limiter`` parameter for sharing a global rate budget
+    across worker threads.
+    """
+
+    def __init__(
+        self,
+        *,
+        access_token: str | None = None,
+        timeout: int = 30,
+        rate_limit_per_minute: int = 60,
+        shared_limiter: RateLimiter | None = None,
+    ) -> None:
+        self._client = ORCIDClient(
+            access_token=access_token,
+            timeout=timeout,
+            rate_limit_per_minute=rate_limit_per_minute,
+            shared_limiter=shared_limiter,
+        )
+
+    def close(self) -> None:
+        run_sync(self._client.aclose())
+
+    def __enter__(self) -> SyncORCIDClient:
+        return self
+
+    def __exit__(self, *exc: object) -> None:
+        self.close()
+
+    def search(
+        self,
+        family_name: str,
+        given_names: str | None = None,
+        limit: int = 5,
+    ) -> list[dict[str, Any]]:
+        return run_sync(self._client.search(family_name, given_names, limit))
+
+    def get_profile(self, orcid_id: str) -> dict[str, Any] | None:
+        return run_sync(self._client.get_profile(orcid_id))
+
+    def lookup(self, name: str) -> ORCIDRecord | None:
+        return run_sync(self._client.lookup(name))

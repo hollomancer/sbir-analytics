@@ -12,11 +12,13 @@ from dataclasses import dataclass
 
 from loguru import logger
 
-from sbir_etl.enrichers.orcid_client import ORCIDClient
 from sbir_etl.enrichers.patentsview import PatentsViewClient
 from sbir_etl.enrichers.rate_limiting import RateLimiter
 from sbir_etl.enrichers.lens_patents import LensPatentClient
-from sbir_etl.enrichers.sync_wrappers import SyncSemanticScholarClient
+from sbir_etl.enrichers.sync_wrappers import (
+    SyncORCIDClient,
+    SyncSemanticScholarClient,
+)
 from sbir_etl.models.sbir_identification import classify_sbir_award
 
 # ---------------------------------------------------------------------------
@@ -248,14 +250,16 @@ def lookup_pi_orcid(
 ) -> ORCIDRecord | None:
     """Search the ORCID public API for a PI's researcher profile.
 
-    Uses :class:`ORCIDClient` when the library is available;
-    falls back to inline httpx calls for standalone operation.
+    Delegates to :class:`SyncORCIDClient` (the sync facade over the
+    async :class:`~sbir_etl.enrichers.orcid_client.ORCIDClient`). The
+    ``rate_limiter`` parameter is plumbed through as ``shared_limiter``
+    so worker threads can share a global rate budget.
     """
     first, last = _split_pi_name(pi_name)
     if not last:
         return None
 
-    with ORCIDClient(rate_limiter=rate_limiter) as orcid:
+    with SyncORCIDClient(shared_limiter=rate_limiter) as orcid:
         try:
             rec = orcid.lookup(pi_name)
         except Exception as e:

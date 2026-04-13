@@ -169,7 +169,7 @@ class TestLookupPIPublications:
 
 
 class TestLookupPIOrcid:
-    @patch("sbir_etl.enrichers.pi_enrichment.ORCIDClient")
+    @patch("sbir_etl.enrichers.pi_enrichment.SyncORCIDClient")
     def test_success_returns_record(self, MockClient):
         mock_rec = MagicMock()
         mock_rec.orcid_id = "0000-0001-2345-6789"
@@ -192,7 +192,7 @@ class TestLookupPIOrcid:
         assert result.affiliations == ["Stanford"]
         assert result.works_count == 20
 
-    @patch("sbir_etl.enrichers.pi_enrichment.ORCIDClient")
+    @patch("sbir_etl.enrichers.pi_enrichment.SyncORCIDClient")
     def test_none_result_returns_none(self, MockClient):
         ctx = MockClient.return_value.__enter__.return_value
         ctx.lookup.return_value = None
@@ -200,7 +200,7 @@ class TestLookupPIOrcid:
         result = lookup_pi_orcid("Jane Doe")
         assert result is None
 
-    @patch("sbir_etl.enrichers.pi_enrichment.ORCIDClient")
+    @patch("sbir_etl.enrichers.pi_enrichment.SyncORCIDClient")
     def test_api_error_returns_none(self, MockClient):
         ctx = MockClient.return_value.__enter__.return_value
         ctx.lookup.side_effect = RuntimeError("connection refused")
