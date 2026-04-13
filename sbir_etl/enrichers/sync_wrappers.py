@@ -1,9 +1,10 @@
 """Synchronous wrappers for async enricher API clients.
 
-Provides thin sync facades around :class:`USAspendingAPIClient` and
-:class:`SAMGovAPIClient` so that scripts and notebooks that don't run
-inside an async event loop can still leverage the shared rate-limiting,
-retry, and error-handling infrastructure.
+Provides thin sync facades around :class:`USAspendingAPIClient`,
+:class:`SAMGovAPIClient`, and :class:`SemanticScholarClient` so that
+scripts and notebooks that don't run inside an async event loop can
+still leverage the shared rate-limiting, retry, and error-handling
+infrastructure.
 
 Each method delegates to the async original via
 :func:`sbir_etl.utils.async_tools.run_sync`.
@@ -13,6 +14,7 @@ Usage::
     from sbir_etl.enrichers.sync_wrappers import (
         SyncUSAspendingClient,
         SyncSAMGovClient,
+        SyncSemanticScholarClient,
     )
 
     usa = SyncUSAspendingClient()
@@ -22,6 +24,9 @@ Usage::
     sam = SyncSAMGovClient()
     entity = sam.get_entity_by_uei("ABC123DEF456")
     sam.close()
+
+    with SyncSemanticScholarClient() as s2:
+        record = s2.lookup_author("Jane Smith")
 """
 
 from __future__ import annotations
@@ -29,7 +34,9 @@ from __future__ import annotations
 from typing import Any
 
 from ..utils.async_tools import run_sync
+from .rate_limiting import RateLimiter
 from .sam_gov.client import SAMGovAPIClient
+from .semantic_scholar import PublicationRecord, SemanticScholarClient
 from .usaspending.client import USAspendingAPIClient
 
 
@@ -134,3 +141,46 @@ class SyncSAMGovClient:
                 limit=limit,
             )
         )
+
+
+class SyncSemanticScholarClient:
+    """Synchronous facade for :class:`SemanticScholarClient`.
+
+    Exposes a blocking ``with``-statement context manager plus sync
+    versions of ``search_author``, ``get_author_details``, and
+    ``lookup_author``. Supports the ``shared_limiter`` parameter for
+    sharing a global rate budget across worker threads.
+    """
+
+    def __init__(
+        self,
+        *,
+        api_key: str | None = None,
+        timeout: int = 30,
+        rate_limit_per_minute: int = 100,
+        shared_limiter: RateLimiter | None = None,
+    ) -> None:
+        self._client = SemanticScholarClient(
+            api_key=api_key,
+            timeout=timeout,
+            rate_limit_per_minute=rate_limit_per_minute,
+            shared_limiter=shared_limiter,
+        )
+
+    def close(self) -> None:
+        run_sync(self._client.aclose())
+
+    def __enter__(self) -> SyncSemanticScholarClient:
+        return self
+
+    def __exit__(self, *exc: object) -> None:
+        self.close()
+
+    def search_author(self, name: str, limit: int = 5) -> list[dict[str, Any]]:
+        return run_sync(self._client.search_author(name, limit))
+
+    def get_author_details(self, author_id: str) -> dict[str, Any] | None:
+        return run_sync(self._client.get_author_details(author_id))
+
+    def lookup_author(self, name: str) -> PublicationRecord | None:
+        return run_sync(self._client.lookup_author(name))

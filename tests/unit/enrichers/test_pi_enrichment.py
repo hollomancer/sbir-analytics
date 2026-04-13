@@ -122,7 +122,7 @@ class TestLookupPIPatents:
 
 
 class TestLookupPIPublications:
-    @patch("sbir_etl.enrichers.pi_enrichment.SemanticScholarClient")
+    @patch("sbir_etl.enrichers.pi_enrichment.SyncSemanticScholarClient")
     def test_success_returns_record(self, MockClient):
         mock_rec = MagicMock()
         mock_rec.total_papers = 42
@@ -142,7 +142,7 @@ class TestLookupPIPublications:
         assert result.citation_count == 500
         assert result.affiliations == ["MIT"]
 
-    @patch("sbir_etl.enrichers.pi_enrichment.SemanticScholarClient")
+    @patch("sbir_etl.enrichers.pi_enrichment.SyncSemanticScholarClient")
     def test_none_result_returns_none(self, MockClient):
         ctx = MockClient.return_value.__enter__.return_value
         ctx.lookup_author.return_value = None
@@ -150,7 +150,7 @@ class TestLookupPIPublications:
         result = lookup_pi_publications("Jane Doe")
         assert result is None
 
-    @patch("sbir_etl.enrichers.pi_enrichment.SemanticScholarClient")
+    @patch("sbir_etl.enrichers.pi_enrichment.SyncSemanticScholarClient")
     def test_api_error_returns_none(self, MockClient):
         ctx = MockClient.return_value.__enter__.return_value
         ctx.lookup_author.side_effect = RuntimeError("timeout")

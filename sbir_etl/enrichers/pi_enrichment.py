@@ -16,7 +16,7 @@ from sbir_etl.enrichers.orcid_client import ORCIDClient
 from sbir_etl.enrichers.patentsview import PatentsViewClient
 from sbir_etl.enrichers.rate_limiting import RateLimiter
 from sbir_etl.enrichers.lens_patents import LensPatentClient
-from sbir_etl.enrichers.semantic_scholar import SemanticScholarClient
+from sbir_etl.enrichers.sync_wrappers import SyncSemanticScholarClient
 from sbir_etl.models.sbir_identification import classify_sbir_award
 
 # ---------------------------------------------------------------------------
@@ -213,8 +213,10 @@ def lookup_pi_publications(
 ) -> PIPublicationRecord | None:
     """Query Semantic Scholar for the PI's publication history.
 
-    Uses :class:`SemanticScholarClient` when the library is available;
-    falls back to inline httpx calls for standalone operation.
+    Delegates to :class:`SyncSemanticScholarClient` (the sync facade
+    over the async :class:`SemanticScholarClient`). The
+    ``rate_limiter`` parameter is plumbed through as ``shared_limiter``
+    so worker threads can share a global rate budget.
     """
     first, last = _split_pi_name(pi_name)
     if not last:
@@ -222,7 +224,7 @@ def lookup_pi_publications(
 
     search_query = f"{first} {last}".strip()
 
-    with SemanticScholarClient(rate_limiter=rate_limiter) as s2:
+    with SyncSemanticScholarClient(shared_limiter=rate_limiter) as s2:
         try:
             rec = s2.lookup_author(search_query)
         except Exception as e:
