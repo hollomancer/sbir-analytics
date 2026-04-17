@@ -17,6 +17,7 @@ from loguru import logger
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
 from ..exceptions import APIError, ConfigurationError, RateLimitError
+from .rate_limiting import RateLimiter
 
 
 class BaseAsyncAPIClient:
@@ -27,6 +28,12 @@ class BaseAsyncAPIClient:
         - self.rate_limit_per_minute: int
         - self._client: httpx.AsyncClient
         - self.api_name: str  (used in error messages, e.g. "usaspending")
+
+    Subclasses may pass ``shared_limiter`` to :meth:`__init__` to route
+    rate-limit waits through a shared synchronous :class:`RateLimiter`
+    (useful when multiple client instances share a global quota across
+    worker threads). The blocking ``wait_if_needed`` call is dispatched
+    via :func:`asyncio.to_thread` so it does not block the event loop.
     """
 
     base_url: str
@@ -34,16 +41,26 @@ class BaseAsyncAPIClient:
     api_name: str
     _client: httpx.AsyncClient
 
-    def __init__(self) -> None:
+    def __init__(self, *, shared_limiter: RateLimiter | None = None) -> None:
         self.request_times: list[datetime] = []
         self._rate_limit_lock = asyncio.Lock()
+        self._shared_limiter = shared_limiter
 
     async def aclose(self) -> None:
         """Close the underlying HTTP client."""
         await self._client.aclose()
 
     async def _wait_for_rate_limit(self) -> None:
-        """Wait if rate limit would be exceeded."""
+        """Wait if rate limit would be exceeded.
+
+        When a shared synchronous limiter is configured, defer to it via
+        :func:`asyncio.to_thread`. Otherwise use the per-instance async
+        sliding-window limiter.
+        """
+        if self._shared_limiter is not None:
+            await asyncio.to_thread(self._shared_limiter.wait_if_needed)
+            return
+
         async with self._rate_limit_lock:
             now = datetime.now()
             self.request_times = [t for t in self.request_times if (now - t).total_seconds() < 60]

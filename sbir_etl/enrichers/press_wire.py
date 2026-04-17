@@ -35,7 +35,6 @@ Usage (sync)::
 
 from __future__ import annotations
 
-import asyncio
 import hashlib
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
@@ -140,21 +139,14 @@ class PressWireClient(BaseAsyncAPIClient):
         shared_limiter: RateLimiter | None = None,
         http_client: httpx.AsyncClient | None = None,
     ) -> None:
-        super().__init__()
+        super().__init__(shared_limiter=shared_limiter)
         # base_url unused — feed URLs are absolute and passed as endpoint
         self.base_url = ""
         self.rate_limit_per_minute = rate_limit_per_minute
-        self._shared_limiter = shared_limiter
         self._client = http_client or httpx.AsyncClient(timeout=timeout)
         self._feeds = feeds or dict(FEEDS)
         self._watchlist: dict[str, str] = {}  # normalized -> original
         self._seen_hashes: set[str] = set()
-
-    async def _wait_for_rate_limit(self) -> None:
-        if self._shared_limiter is not None:
-            await asyncio.to_thread(self._shared_limiter.wait_if_needed)
-            return
-        await super()._wait_for_rate_limit()
 
     # ------------------------------------------------------------------
     # Watchlist management

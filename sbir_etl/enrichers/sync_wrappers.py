@@ -1,13 +1,12 @@
 """Synchronous wrappers for async enricher API clients.
 
-Provides thin sync facades around :class:`USAspendingAPIClient`,
-:class:`SAMGovAPIClient`, and :class:`SemanticScholarClient` so that
-scripts and notebooks that don't run inside an async event loop can
-still leverage the shared rate-limiting, retry, and error-handling
-infrastructure.
+Provides thin sync facades around the async API clients so that scripts
+and notebooks that don't run inside an async event loop can still leverage
+the shared rate-limiting, retry, and error-handling infrastructure.
 
 Each method delegates to the async original via
-:func:`sbir_etl.utils.async_tools.run_sync`.
+:func:`sbir_etl.utils.async_tools.run_sync`. Close/context-manager
+plumbing is provided by :class:`_SyncFacade`.
 
 Usage::
 
@@ -17,13 +16,11 @@ Usage::
         SyncSemanticScholarClient,
     )
 
-    usa = SyncUSAspendingClient()
-    recipient = usa.autocomplete_recipient("Acme Corp")
-    usa.close()
+    with SyncUSAspendingClient() as usa:
+        recipient = usa.autocomplete_recipient("Acme Corp")
 
-    sam = SyncSAMGovClient()
-    entity = sam.get_entity_by_uei("ABC123DEF456")
-    sam.close()
+    with SyncSAMGovClient() as sam:
+        entity = sam.get_entity_by_uei("ABC123DEF456")
 
     with SyncSemanticScholarClient() as s2:
         record = s2.lookup_author("Jane Smith")
@@ -45,14 +42,31 @@ from .semantic_scholar import PublicationRecord, SemanticScholarClient
 from .usaspending.client import USAspendingAPIClient
 
 
-class SyncUSAspendingClient:
+class _SyncFacade:
+    """Base class for sync facades over async API clients.
+
+    Subclasses set ``self._client`` to any object exposing an ``aclose()``
+    coroutine. This base provides sync ``close()`` and context-manager
+    plumbing so each concrete facade only defines the domain methods.
+    """
+
+    _client: Any
+
+    def close(self) -> None:
+        run_sync(self._client.aclose())
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc: object) -> None:
+        self.close()
+
+
+class SyncUSAspendingClient(_SyncFacade):
     """Synchronous facade for :class:`USAspendingAPIClient`."""
 
     def __init__(self, config: dict[str, Any] | None = None) -> None:
         self._client = USAspendingAPIClient(config=config)
-
-    def close(self) -> None:
-        run_sync(self._client.aclose())
 
     def get_recipient_by_uei(self, uei: str) -> dict[str, Any] | None:
         return run_sync(self._client.get_recipient_by_uei(uei))
@@ -115,14 +129,11 @@ class SyncUSAspendingClient:
         return run_sync(self._client.fetch_award_details(award_id))
 
 
-class SyncSAMGovClient:
+class SyncSAMGovClient(_SyncFacade):
     """Synchronous facade for :class:`SAMGovAPIClient`."""
 
     def __init__(self, config: dict[str, Any] | None = None) -> None:
         self._client = SAMGovAPIClient(config=config)
-
-    def close(self) -> None:
-        run_sync(self._client.aclose())
 
     def get_entity_by_uei(self, uei: str) -> dict[str, Any] | None:
         return run_sync(self._client.get_entity_by_uei(uei))
@@ -148,13 +159,11 @@ class SyncSAMGovClient:
         )
 
 
-class SyncSemanticScholarClient:
+class SyncSemanticScholarClient(_SyncFacade):
     """Synchronous facade for :class:`SemanticScholarClient`.
 
-    Exposes a blocking ``with``-statement context manager plus sync
-    versions of ``search_author``, ``get_author_details``, and
-    ``lookup_author``. Supports the ``shared_limiter`` parameter for
-    sharing a global rate budget across worker threads.
+    Supports ``shared_limiter`` for sharing a global rate budget across
+    worker threads.
     """
 
     def __init__(
@@ -172,15 +181,6 @@ class SyncSemanticScholarClient:
             shared_limiter=shared_limiter,
         )
 
-    def close(self) -> None:
-        run_sync(self._client.aclose())
-
-    def __enter__(self) -> SyncSemanticScholarClient:
-        return self
-
-    def __exit__(self, *exc: object) -> None:
-        self.close()
-
     def search_author(self, name: str, limit: int = 5) -> list[dict[str, Any]]:
         return run_sync(self._client.search_author(name, limit))
 
@@ -191,12 +191,10 @@ class SyncSemanticScholarClient:
         return run_sync(self._client.lookup_author(name))
 
 
-class SyncFPDSAtomClient:
+class SyncFPDSAtomClient(_SyncFacade):
     """Synchronous facade for :class:`FPDSAtomClient`.
 
-    Wraps the async FPDS Atom client with :func:`run_sync` so scripts
-    and Dagster ops can call it without an event loop. Supports the
-    ``shared_limiter`` parameter for sharing a global FPDS rate budget
+    Supports ``shared_limiter`` for sharing a global FPDS rate budget
     across worker threads.
     """
 
@@ -212,15 +210,6 @@ class SyncFPDSAtomClient:
             rate_limit_per_minute=rate_limit_per_minute,
             shared_limiter=shared_limiter,
         )
-
-    def close(self) -> None:
-        run_sync(self._client.aclose())
-
-    def __enter__(self) -> SyncFPDSAtomClient:
-        return self
-
-    def __exit__(self, *exc: object) -> None:
-        self.close()
 
     def search_by_piid(self, piid: str) -> FPDSRecord | None:
         return run_sync(self._client.search_by_piid(piid))
@@ -243,12 +232,11 @@ class SyncFPDSAtomClient:
         return run_sync(self._client.get_descriptions(piids))
 
 
-class SyncORCIDClient:
+class SyncORCIDClient(_SyncFacade):
     """Synchronous facade for :class:`ORCIDClient`.
 
-    Wraps the async ORCID client with :func:`run_sync`. Supports the
-    ``shared_limiter`` parameter for sharing a global rate budget
-    across worker threads.
+    Supports ``shared_limiter`` for sharing a global rate budget across
+    worker threads.
     """
 
     def __init__(
@@ -266,15 +254,6 @@ class SyncORCIDClient:
             shared_limiter=shared_limiter,
         )
 
-    def close(self) -> None:
-        run_sync(self._client.aclose())
-
-    def __enter__(self) -> SyncORCIDClient:
-        return self
-
-    def __exit__(self, *exc: object) -> None:
-        self.close()
-
     def search(
         self,
         family_name: str,
@@ -290,13 +269,12 @@ class SyncORCIDClient:
         return run_sync(self._client.lookup(name))
 
 
-class SyncOpenCorporatesClient:
+class SyncOpenCorporatesClient(_SyncFacade):
     """Synchronous facade for :class:`OpenCorporatesClient`.
 
-    Wraps the async OpenCorporates client with :func:`run_sync`.
-    Supports the ``shared_limiter`` parameter for sharing a global
-    rate budget across worker threads (the ``weekly_awards_report``
-    job uses a 30/min shared limiter to stay under the free-tier quota).
+    Supports ``shared_limiter`` for sharing a global rate budget across
+    worker threads (the ``weekly_awards_report`` job uses a 30/min shared
+    limiter to stay under the free-tier quota).
     """
 
     def __init__(
@@ -313,15 +291,6 @@ class SyncOpenCorporatesClient:
             rate_limit_per_minute=rate_limit_per_minute,
             shared_limiter=shared_limiter,
         )
-
-    def close(self) -> None:
-        run_sync(self._client.aclose())
-
-    def __enter__(self) -> SyncOpenCorporatesClient:
-        return self
-
-    def __exit__(self, *exc: object) -> None:
-        self.close()
 
     def search_companies(
         self,
@@ -358,7 +327,7 @@ class SyncOpenCorporatesClient:
         return run_sync(self._client.lookup_company(name, jurisdiction))
 
 
-class SyncPressWireClient:
+class SyncPressWireClient(_SyncFacade):
     """Synchronous facade for :class:`PressWireClient`.
 
     Exposes the watchlist / poll / reset_seen API synchronously. The
@@ -382,15 +351,6 @@ class SyncPressWireClient:
             shared_limiter=shared_limiter,
         )
 
-    def close(self) -> None:
-        run_sync(self._client.aclose())
-
-    def __enter__(self) -> SyncPressWireClient:
-        return self
-
-    def __exit__(self, *exc: object) -> None:
-        self.close()
-
     # Watchlist management is pure Python — no need to route through run_sync
     def set_watchlist(self, company_names: list[str]) -> None:
         self._client.set_watchlist(company_names)
@@ -409,11 +369,8 @@ class SyncPressWireClient:
         return run_sync(self._client.poll_all_unfiltered())
 
 
-class SyncLensPatentClient:
-    """Synchronous facade for :class:`LensPatentClient`.
-
-    Wraps the async Lens.org patent client with :func:`run_sync`.
-    """
+class SyncLensPatentClient(_SyncFacade):
+    """Synchronous facade for :class:`LensPatentClient`."""
 
     def __init__(
         self,
@@ -429,15 +386,6 @@ class SyncLensPatentClient:
             rate_limit_per_minute=rate_limit_per_minute,
             shared_limiter=shared_limiter,
         )
-
-    def close(self) -> None:
-        run_sync(self._client.aclose())
-
-    def __enter__(self) -> SyncLensPatentClient:
-        return self
-
-    def __exit__(self, *exc: object) -> None:
-        self.close()
 
     def search_patents_by_assignee(
         self, company_name: str, max_results: int = 100

@@ -31,7 +31,6 @@ Usage (sync)::
 
 from __future__ import annotations
 
-import asyncio
 import os
 from dataclasses import dataclass
 from typing import Any
@@ -91,10 +90,9 @@ class SemanticScholarClient(BaseAsyncAPIClient):
         shared_limiter: RateLimiter | None = None,
         http_client: httpx.AsyncClient | None = None,
     ) -> None:
-        super().__init__()
+        super().__init__(shared_limiter=shared_limiter)
         self.base_url = SEMANTIC_SCHOLAR_API_URL
         self.rate_limit_per_minute = rate_limit_per_minute
-        self._shared_limiter = shared_limiter
         self._api_key = api_key or os.environ.get("SEMANTIC_SCHOLAR_API_KEY", "")
         self._client = http_client or httpx.AsyncClient(timeout=timeout)
 
@@ -104,20 +102,6 @@ class SemanticScholarClient(BaseAsyncAPIClient):
         if self._api_key:
             headers["x-api-key"] = self._api_key
         return headers
-
-    async def _wait_for_rate_limit(self) -> None:
-        """Use the injected shared limiter if present, else the base async limiter.
-
-        The shared limiter is a synchronous :class:`RateLimiter` whose
-        ``wait_if_needed`` call is blocking. We dispatch it via
-        :func:`asyncio.to_thread` so it runs in a worker thread and does
-        not block the process-wide background event loop that the sync
-        facade (:func:`run_sync`) schedules coroutines onto.
-        """
-        if self._shared_limiter is not None:
-            await asyncio.to_thread(self._shared_limiter.wait_if_needed)
-            return
-        await super()._wait_for_rate_limit()
 
     async def search_author(
         self, name: str, limit: int = 5
