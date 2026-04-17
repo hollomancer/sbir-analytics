@@ -61,6 +61,7 @@ For production use, see [Deployment Guide](docs/deployment/README.md) for:
 | System | Purpose | Documentation |
 |--------|---------|---------------|
 | **Transition Detection** | Identify SBIR → federal contract transitions (≥85% precision) | [docs/transition/](docs/transition/) |
+| **Phase II → III Latency** | Time-to-Phase-III survival analysis with matched-pair + KM frames | [docs/phase-transition-latency.md](docs/phase-transition-latency.md) |
 | **CET Classification** | ML-based technology area classification | [docs/ml/](docs/ml/) |
 | **ModernBERT-Embed** | Patent-award similarity using semantic embeddings | [docs/ml/paecter.md](docs/ml/paecter.md) |
 | **Fiscal Returns** | Economic impact & ROI analysis using BEA I-O tables | [docs/fiscal/](docs/fiscal/) |
