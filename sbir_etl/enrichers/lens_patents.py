@@ -23,7 +23,6 @@ Usage (sync)::
 
 from __future__ import annotations
 
-import asyncio
 import os
 from dataclasses import dataclass
 from typing import Any
@@ -137,12 +136,11 @@ class LensPatentClient(BaseAsyncAPIClient):
         shared_limiter: RateLimiter | None = None,
         http_client: httpx.AsyncClient | None = None,
     ) -> None:
-        super().__init__()
+        super().__init__(shared_limiter=shared_limiter)
         # LENS_API_URL is the full endpoint — pass as absolute URL to
         # _make_request so base_url can stay empty.
         self.base_url = ""
         self.rate_limit_per_minute = rate_limit_per_minute
-        self._shared_limiter = shared_limiter
         self._token = api_token or os.environ.get("LENS_API_TOKEN", "")
         if not self._token:
             logger.debug(
@@ -156,12 +154,6 @@ class LensPatentClient(BaseAsyncAPIClient):
         if self._token:
             headers["Authorization"] = f"Bearer {self._token}"
         return headers
-
-    async def _wait_for_rate_limit(self) -> None:
-        if self._shared_limiter is not None:
-            await asyncio.to_thread(self._shared_limiter.wait_if_needed)
-            return
-        await super()._wait_for_rate_limit()
 
     async def _search(self, payload: dict[str, Any]) -> dict[str, Any] | None:
         """POST a search payload to the Lens API.

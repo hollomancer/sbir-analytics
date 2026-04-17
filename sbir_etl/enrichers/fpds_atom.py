@@ -34,7 +34,6 @@ Usage (sync)::
 
 from __future__ import annotations
 
-import asyncio
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
 from typing import Any
@@ -225,18 +224,10 @@ class FPDSAtomClient(BaseAsyncAPIClient):
         shared_limiter: RateLimiter | None = None,
         http_client: httpx.AsyncClient | None = None,
     ) -> None:
-        super().__init__()
+        super().__init__(shared_limiter=shared_limiter)
         self.base_url = FPDS_BASE_URL
         self.rate_limit_per_minute = rate_limit_per_minute
-        self._shared_limiter = shared_limiter
         self._client = http_client or httpx.AsyncClient(timeout=timeout)
-
-    async def _wait_for_rate_limit(self) -> None:
-        """Use the injected shared limiter if present, else the base async limiter."""
-        if self._shared_limiter is not None:
-            await asyncio.to_thread(self._shared_limiter.wait_if_needed)
-            return
-        await super()._wait_for_rate_limit()
 
     async def _fetch_xml(self, params: dict[str, Any]) -> str | None:
         """Fetch the FPDS Atom XML body for a query.

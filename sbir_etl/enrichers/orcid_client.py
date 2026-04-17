@@ -24,7 +24,6 @@ Usage (sync)::
 
 from __future__ import annotations
 
-import asyncio
 import os
 from dataclasses import dataclass, field
 from typing import Any
@@ -148,10 +147,9 @@ class ORCIDClient(BaseAsyncAPIClient):
         shared_limiter: RateLimiter | None = None,
         http_client: httpx.AsyncClient | None = None,
     ) -> None:
-        super().__init__()
+        super().__init__(shared_limiter=shared_limiter)
         self.base_url = ORCID_API_URL
         self.rate_limit_per_minute = rate_limit_per_minute
-        self._shared_limiter = shared_limiter
         self._access_token = access_token or os.environ.get(
             "ORCID_ACCESS_TOKEN", ""
         )
@@ -162,12 +160,6 @@ class ORCIDClient(BaseAsyncAPIClient):
         if self._access_token:
             headers["Authorization"] = f"Bearer {self._access_token}"
         return headers
-
-    async def _wait_for_rate_limit(self) -> None:
-        if self._shared_limiter is not None:
-            await asyncio.to_thread(self._shared_limiter.wait_if_needed)
-            return
-        await super()._wait_for_rate_limit()
 
     async def search(
         self,
