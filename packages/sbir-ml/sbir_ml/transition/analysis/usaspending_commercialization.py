@@ -429,7 +429,7 @@ def _api_post(endpoint: str, payload: dict, *, retries: int = 3) -> dict:
     for attempt in range(retries):
         try:
             req = urllib.request.Request(url, data=body, headers=headers, method="POST")
-            with urllib.request.urlopen(req, timeout=60, context=ctx) as resp:
+            with urllib.request.urlopen(req, timeout=60, context=ctx) as resp:  # nosec B310 - url is built from constant _API_BASE (https only)
                 return json.load(resp)
         except urllib.error.HTTPError as e:
             if e.code in (429, 500, 502, 503, 504):

@@ -54,7 +54,7 @@ async def create_lightrag_instance(config: LightRAGConfig):
     }
 
     rag = LightRAG(
-        working_dir=f"/tmp/lightrag_{config.workspace}",
+        working_dir=f"/tmp/lightrag_{config.workspace}",  # nosec B108 - LightRAG requires a stable working dir keyed by workspace
         llm_model_func=llm_model_func,
         llm_model_name=config.llm_model,
         llm_model_max_async=config.llm_max_async,

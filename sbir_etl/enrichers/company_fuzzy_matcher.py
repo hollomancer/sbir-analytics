@@ -36,13 +36,36 @@ Notes:
 from __future__ import annotations
 
 import json
-from collections.abc import Sequence
-from typing import Any
+from collections.abc import Hashable, Sequence
+from typing import Any, cast
 
 import pandas as pd
 
 from ..exceptions import ValidationError
 from ..utils.text_normalization import normalize_name
+
+
+def _set_award_match(
+    awards: pd.DataFrame,
+    row_idx: Hashable,
+    *,
+    method: str,
+    score: float | int,
+    company_idx: int | None = None,
+    candidates_json: str | None = None,
+) -> None:
+    """Update match-result columns on ``awards`` for a single iterrows key.
+
+    Centralizes the ``awards.at[...]`` assignments so the pandas-stubs
+    ``_AtIndexerFrame`` index-typing friction is suppressed in one place.
+    """
+    at = cast(Any, awards.at)
+    if company_idx is not None:
+        at[row_idx, "_matched_company_idx"] = company_idx
+    at[row_idx, "_match_score"] = score
+    at[row_idx, "_match_method"] = method
+    if candidates_json is not None:
+        at[row_idx, "_match_candidates"] = candidates_json
 
 
 try:
@@ -53,17 +76,23 @@ except Exception as e:  # pragma: no cover - defensive runtime behavior
         "rapidfuzz is required for the company enricher. Install via `pip install rapidfuzz`."
     ) from e
 
+_phonetic_match: Any
+_jaro_winkler_similarity: Any
 try:
-    from .matching import jaro_winkler_similarity, phonetic_match
+    from .matching import jaro_winkler_similarity as _jaro_winkler_similarity
+    from .matching import phonetic_match as _phonetic_match
 except ImportError:  # pragma: no cover
-    phonetic_match = None  # type: ignore
-    jaro_winkler_similarity = None  # type: ignore
+    _phonetic_match = None
+    _jaro_winkler_similarity = None
+
+phonetic_match = _phonetic_match
+jaro_winkler_similarity = _jaro_winkler_similarity
 
 
 def _coerce_int(value: object) -> int | None:
     """Best-effort conversion to int without propagating errors."""
     try:
-        return int(value)  # type: ignore[call-overload]
+        return int(cast(Any, value))
     except (TypeError, ValueError):
         return None
 
@@ -149,7 +178,7 @@ def _build_company_indexes(
         for idx, v in df[uei_col].dropna().items():
             key = str(v).strip().upper()
             if key:
-                comp_by_uei[key] = idx  # type: ignore[assignment]
+                comp_by_uei[key] = cast(int, idx)
 
     # DUNS exact mapping (digits-only)
     comp_by_duns: dict[str, int] = {}
@@ -157,12 +186,12 @@ def _build_company_indexes(
         for idx, v in df[duns_col].dropna().items():
             digits = "".join(ch for ch in str(v) if ch.isdigit())
             if digits:
-                comp_by_duns[digits] = idx  # type: ignore[assignment]
+                comp_by_duns[digits] = cast(int, idx)
 
     # Blocks dict: block_key -> list of indices
     blocks: dict[str, list[int]] = {}
     for idx, blk in block_series.items():
-        blocks.setdefault(blk, []).append(idx)  # type: ignore[arg-type]
+        blocks.setdefault(blk, []).append(cast(int, idx))
 
     # Phonetic codes (if enabled)
     phonetic_by_code: dict[str, list[int]] = {}
@@ -173,7 +202,7 @@ def _build_company_indexes(
         for idx, name in df[company_name_col].items():
             code = get_phonetic_code(str(name), algorithm=algo)
             if code:
-                phonetic_by_code.setdefault(code, []).append(idx)  # type: ignore[arg-type]
+                phonetic_by_code.setdefault(code, []).append(cast(int, idx))
 
     indexes = {
         "df": df,
@@ -365,8 +394,8 @@ def enrich_awards_with_companies(
         prefix_len=prefix_len,
         enhanced_config=enhanced_config,
     )
-    comp_df: pd.DataFrame = idx["df"]  # type: ignore[assignment]
-    comp_norm: pd.Series = idx["norm_name"]  # type: ignore[assignment]
+    comp_df: pd.DataFrame = idx["df"]
+    comp_norm: pd.Series = idx["norm_name"]
     comp_blocks = idx["blocks"]
     comp_by_uei = idx["comp_by_uei"]
     comp_by_duns = idx["comp_by_duns"]
@@ -441,9 +470,13 @@ def enrich_awards_with_companies(
                     # Use a boosted score for phonetic matches
                     phonetic_boost = enhanced_config.get("phonetic_boost", 5)
                     score = min(95 + phonetic_boost, 100)  # Cap at 100
-                    awards.at[ai, "_matched_company_idx"] = comp_idx  # type: ignore[index]
-                    awards.at[ai, "_match_score"] = score  # type: ignore[index]
-                    awards.at[ai, "_match_method"] = "phonetic-match"  # type: ignore[index]
+                    _set_award_match(
+                        awards,
+                        ai,
+                        method="phonetic-match",
+                        score=score,
+                        company_idx=comp_idx,
+                    )
                     continue
 
         # Candidate generation via blocking
@@ -538,12 +571,13 @@ def enrich_awards_with_companies(
                     # Defensive: skip malformed result entries
                     continue
 
-        # Store candidates if requested
+        # Store candidates if requested (separate from match decision below)
         if return_candidates:
-            awards.at[ai, "_match_candidates"] = json.dumps(  # type: ignore[index]
+            candidates_json = json.dumps(
                 [{"idx": r[0], "score": r[1], "name": choices[r[0]]} for r in simple_results],
                 ensure_ascii=False,
             )
+            cast(Any, awards.at)[ai, "_match_candidates"] = candidates_json
 
         # Choose best
         if not simple_results:
@@ -551,15 +585,13 @@ def enrich_awards_with_companies(
         best_idx, best_score = simple_results[0]
 
         if best_score >= high_threshold:
-            awards.at[ai, "_matched_company_idx"] = best_idx  # type: ignore[index]
-            awards.at[ai, "_match_score"] = best_score  # type: ignore[index]
-            awards.at[ai, "_match_method"] = "fuzzy-auto"  # type: ignore[index]
+            _set_award_match(
+                awards, ai, method="fuzzy-auto", score=best_score, company_idx=best_idx,
+            )
         elif best_score >= low_threshold:
-            awards.at[ai, "_match_score"] = best_score  # type: ignore[index]
-            awards.at[ai, "_match_method"] = "fuzzy-candidate"  # type: ignore[index]
+            _set_award_match(awards, ai, method="fuzzy-candidate", score=best_score)
         else:
-            awards.at[ai, "_match_score"] = best_score  # type: ignore[index]
-            awards.at[ai, "_match_method"] = "fuzzy-low"  # type: ignore[index]
+            _set_award_match(awards, ai, method="fuzzy-low", score=best_score)
 
     # Merge matched company columns into awards (flattened) using company_ prefix
     # comp_df has index equal to original companies index (via reset_index in _build_company_indexes)

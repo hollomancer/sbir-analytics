@@ -14,7 +14,7 @@ import duckdb
 import pandas as pd
 
 from ..config.loader import get_config
-from ..utils import log_with_context
+from ..utils.logging_config import log_with_context
 from ..utils.cloud_storage import resolve_data_path
 
 # USAspending recipient_lookup table schema (from Django model)
