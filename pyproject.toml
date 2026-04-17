@@ -76,7 +76,20 @@ sbir-analytics = { path = "packages/sbir-analytics", editable = true }
 
 [tool.bandit]
 exclude_dirs = ["tests"]
-skips = ["B101", "B601", "B608", "B110", "B112", "B603", "B404", "B105", "B106"]  # Skip assert checks, shell usage, SQL injection (using proper escaping), try-except-pass, try-except-continue, subprocess (safe usage), hardcoded password string (false positives for SQL quotes and secret names)
+# B101: asserts (tests only; excluded via exclude_dirs, but asserts also appear in
+#       runtime validators and are acceptable there).
+# B601: paramiko shell usage (no paramiko in use).
+# B608: SQL with f-string interpolation. DuckDB identifiers are escaped via
+#       escape_identifier/escape_literal helpers; UEI/DUNS/CAGE sites in
+#       company_categorization.py and award_history.py are tracked for
+#       parameterization (see specs/sql-identifier-hardening).
+# B110/B112: try-except-pass/continue. Narrowly used for optional-import
+#       fallbacks and best-effort cache cleanup.
+# B603/B404: subprocess usage (list-form, no shell=True).
+# B405/B314: xml.etree parsing. Inputs are external feeds (FPDS Atom, press
+#       wire); defusedxml migration tracked for future work.
+# Removed from skip list (now enforced): B105, B106 — hardcoded passwords.
+skips = ["B101", "B601", "B608", "B110", "B112", "B603", "B404", "B405", "B314"]
 
 [tool.ruff]
 line-length = 100

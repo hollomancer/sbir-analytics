@@ -36,7 +36,7 @@ class BenchmarkTier(str, Enum):
 class BenchmarkStatus(str, Enum):
     """Whether a company passes or fails a benchmark."""
 
-    PASS = "pass"
+    PASS = "pass"  # nosec B105 - enum value, not a credential
     FAIL = "fail"
     NOT_APPLICABLE = "not_applicable"
 

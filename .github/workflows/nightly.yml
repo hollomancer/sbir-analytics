@@ -40,7 +40,7 @@ jobs:
           install-dev-deps: "true"
           cache-venv: "true"
       - name: Run Bandit security scanner
-        run: uv run python -m bandit -r src -c pyproject.toml
+        run: uv run python -m bandit -r sbir_etl packages -c pyproject.toml
       - name: Run detect-secrets
         run: |
           uv pip install detect-secrets
