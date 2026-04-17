@@ -145,6 +145,20 @@ def test_prepare_phase_iii_rows_excludes_assistance_and_other_phases():
     assert df["action_date"].notna().all()
 
 
+def test_is_assistance_row_recognizes_usaspending_type_and_award_type_code():
+    """`type` is 'C'/'D' for assistance; `award_type_code` carries the numeric codes."""
+
+    from sbir_analytics.assets.phase_transition.phase_ii import _is_assistance_row
+
+    assert _is_assistance_row(pd.Series({"type": "C"}))
+    assert _is_assistance_row(pd.Series({"type": "d"}))  # case-insensitive
+    assert _is_assistance_row(pd.Series({"award_type_code": "04"}))
+    assert _is_assistance_row(pd.Series({"cfda_number": "12.345"}))
+    # Procurement rows (type A/B, no assistance markers) must NOT be flagged.
+    assert not _is_assistance_row(pd.Series({"type": "A"}))
+    assert not _is_assistance_row(pd.Series({"type": "B", "award_type_code": "C"}))
+
+
 def test_sbir_gov_reconciliation_carries_reconciled_flag():
     from sbir_analytics.assets.phase_transition.phase_ii import _prepare_sbir_gov_rows
 

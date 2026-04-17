@@ -17,7 +17,7 @@ Both assets depend on the upstream ``validated_phase_ii_awards`` and
 
 from __future__ import annotations
 
-from datetime import date, timedelta
+from datetime import date
 from pathlib import Path
 from typing import Any
 
@@ -419,7 +419,3 @@ __all__ = [
     "_build_pairs",
     "_build_survival",
 ]
-
-
-# Compat with unused import linters.
-_ = timedelta

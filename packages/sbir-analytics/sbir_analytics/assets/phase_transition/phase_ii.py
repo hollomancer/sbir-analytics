@@ -21,7 +21,6 @@ Input parquet locations (overridable via env):
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
 from typing import Any
 
@@ -104,15 +103,31 @@ def _classify_contract_phase(row: pd.Series) -> str | None:
 def _is_assistance_row(row: pd.Series) -> bool:
     """Best-effort detection of USAspending *assistance* (grants) rows.
 
-    USAspending's ``transaction_normalized`` table co-locates procurement and
-    assistance under type codes 'A'/'B'. Procurement-only fields (CAGE,
-    extent_competed) tend to be null for assistance rows. We fall back to
-    checking whether ``type`` is in the assistance code set or whether the
-    row carries a ``cfda_number`` / ``assistance_type`` marker.
+    In USAspending's ``transaction_normalized`` table, ``type`` is a
+    single-letter category — ``'A'``/``'B'`` for procurement (contracts and
+    IDVs) and ``'C'``/``'D'`` for assistance (grants and direct payments).
+    The numeric codes ``"02"``...``"11"`` live on the separate
+    ``award_type_code`` column. We accept either as evidence, and fall back
+    to the presence of an explicit assistance marker (CFDA number or
+    ``assistance_type``).
     """
 
     t = row.get("type") if "type" in row else None
-    if isinstance(t, str) and t.strip() in {"02", "03", "04", "05", "06", "07", "08", "09", "10", "11"}:
+    if isinstance(t, str) and t.strip().upper() in {"C", "D"}:
+        return True
+    award_type_code = row.get("award_type_code") if "award_type_code" in row else None
+    if isinstance(award_type_code, str) and award_type_code.strip() in {
+        "02",
+        "03",
+        "04",
+        "05",
+        "06",
+        "07",
+        "08",
+        "09",
+        "10",
+        "11",
+    }:
         return True
     if "cfda_number" in row and pd.notna(row.get("cfda_number")):
         return True

@@ -39,16 +39,16 @@ def _run(
 
     out_dir.mkdir(parents=True, exist_ok=True)
     con = duckdb.connect(":memory:")
-    con.execute(
-        f"CREATE VIEW phase_ii AS SELECT * FROM read_parquet('{phase_ii}')"
-    )
-    con.execute(
-        f"CREATE VIEW phase_iii AS SELECT * FROM read_parquet('{phase_iii}')"
-    )
-    con.execute(f"CREATE VIEW pairs AS SELECT * FROM read_parquet('{pairs}')")
-    con.execute(
-        f"CREATE VIEW survival AS SELECT * FROM read_parquet('{survival}')"
-    )
+    # DuckDB does not support prepared parameters for table-valued functions
+    # like ``read_parquet``. Instead we escape embedded single quotes in the
+    # path before interpolating so paths with quotes can't break the SQL.
+    def _lit(path: Path) -> str:
+        return "'" + str(path).replace("'", "''") + "'"
+
+    con.execute(f"CREATE VIEW phase_ii AS SELECT * FROM read_parquet({_lit(phase_ii)})")
+    con.execute(f"CREATE VIEW phase_iii AS SELECT * FROM read_parquet({_lit(phase_iii)})")
+    con.execute(f"CREATE VIEW pairs AS SELECT * FROM read_parquet({_lit(pairs)})")
+    con.execute(f"CREATE VIEW survival AS SELECT * FROM read_parquet({_lit(survival)})")
 
     # 1. Latency distribution — percentiles and month-binned histogram.
     percentiles = con.execute(

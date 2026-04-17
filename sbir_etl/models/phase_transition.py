@@ -143,9 +143,8 @@ class PhaseTransitionSurvival(BaseModel):
 __all__ = [
     "IdentifierBasis",
     "PhaseIIAward",
-    "PhaseIIISource",
+    "PhaseIISource",
     "PhaseIIIContract",
     "PhaseTransitionPair",
     "PhaseTransitionSurvival",
-    "PhaseIISource",
 ]
