@@ -99,7 +99,7 @@ jobs:
           # Use $GITHUB_WORKSPACE (resolves to the container mount path, e.g. /__w/<repo>/<repo>)
           # rather than ${{ github.workspace }} (which returns the host path and doesn't exist
           # inside the container, so the sbir_analytics import fails).
-          export PYTHONPATH="${GITHUB_WORKSPACE}:${GITHUB_WORKSPACE}/packages/sbir-analytics:${GITHUB_WORKSPACE}/packages/sbir-ml:${GITHUB_WORKSPACE}/packages/sbir-graph:${GITHUB_WORKSPACE}/packages/sbir-rag"
+          export PYTHONPATH="${GITHUB_WORKSPACE}:${GITHUB_WORKSPACE}/packages/sbir-analytics:${GITHUB_WORKSPACE}/packages/sbir-ml:${GITHUB_WORKSPACE}/packages/sbir-graph:${GITHUB_WORKSPACE}/packages/sbir-rag:/app"
 
           echo "## Phase II -> III Transition Latency" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"

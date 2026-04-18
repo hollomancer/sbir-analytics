@@ -100,8 +100,11 @@ jobs:
           SKIP_NEO4J_LOADING: ${{ github.event.inputs.skip_neo4j }}
         shell: bash
         run: |
-          # Use $GITHUB_WORKSPACE (container mount path) so sbir_analytics et al. are importable.
-          export PYTHONPATH="${GITHUB_WORKSPACE}:${GITHUB_WORKSPACE}/packages/sbir-analytics:${GITHUB_WORKSPACE}/packages/sbir-ml:${GITHUB_WORKSPACE}/packages/sbir-graph:${GITHUB_WORKSPACE}/packages/sbir-rag"
+          # Prefer checked-out code ($GITHUB_WORKSPACE) but keep /app from the
+          # Docker image as a fallback.  $GITHUB_WORKSPACE should resolve to the
+          # container mount path (/__w/<repo>/<repo>) but on some runner versions
+          # it returns the host path instead, which doesn't exist in the container.
+          export PYTHONPATH="${GITHUB_WORKSPACE}:${GITHUB_WORKSPACE}/packages/sbir-analytics:${GITHUB_WORKSPACE}/packages/sbir-ml:${GITHUB_WORKSPACE}/packages/sbir-graph:${GITHUB_WORKSPACE}/packages/sbir-rag:/app"
 
           echo "## 🎯 SBIR Pipeline" >> $GITHUB_STEP_SUMMARY
           echo "**Environment:** ${{ github.event.inputs.environment || 'production' }}" >> $GITHUB_STEP_SUMMARY
@@ -113,12 +116,16 @@ jobs:
           echo "**Job:** \`$JOB_NAME\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
+          # Disable pipefail so PIPESTATUS[0] captures dagster's exit code
+          # even when piped through tee.
+          set +o pipefail
           dagster job execute \
             -m sbir_analytics.definitions \
             -j "$JOB_NAME" \
             2>&1 | tee sbir_output.txt
 
           EXIT_CODE=${PIPESTATUS[0]}
+          set -o pipefail
 
           if [ $EXIT_CODE -eq 0 ]; then
             echo "✅ **SBIR pipeline completed**" >> $GITHUB_STEP_SUMMARY
@@ -185,17 +192,19 @@ jobs:
           S3_BUCKET: ${{ env.S3_BUCKET }}
         shell: bash
         run: |
-          export PYTHONPATH="${GITHUB_WORKSPACE}:${GITHUB_WORKSPACE}/packages/sbir-analytics:${GITHUB_WORKSPACE}/packages/sbir-ml:${GITHUB_WORKSPACE}/packages/sbir-graph:${GITHUB_WORKSPACE}/packages/sbir-rag"
+          export PYTHONPATH="${GITHUB_WORKSPACE}:${GITHUB_WORKSPACE}/packages/sbir-analytics:${GITHUB_WORKSPACE}/packages/sbir-ml:${GITHUB_WORKSPACE}/packages/sbir-graph:${GITHUB_WORKSPACE}/packages/sbir-rag:/app"
 
           echo "## 💰 USAspending Pipeline" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
+          set +o pipefail
           dagster job execute \
             -m sbir_analytics.definitions \
             -j usaspending_iterative_enrichment_job \
             2>&1 | tee usaspending_output.txt
 
           EXIT_CODE=${PIPESTATUS[0]}
+          set -o pipefail
           if [ $EXIT_CODE -eq 0 ]; then
             echo "✅ **USAspending pipeline completed**" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
@@ -258,7 +267,7 @@ jobs:
           SKIP_NEO4J_LOADING: ${{ github.event.inputs.skip_neo4j }}
         shell: bash
         run: |
-          export PYTHONPATH="${GITHUB_WORKSPACE}:${GITHUB_WORKSPACE}/packages/sbir-analytics:${GITHUB_WORKSPACE}/packages/sbir-ml:${GITHUB_WORKSPACE}/packages/sbir-graph:${GITHUB_WORKSPACE}/packages/sbir-rag"
+          export PYTHONPATH="${GITHUB_WORKSPACE}:${GITHUB_WORKSPACE}/packages/sbir-analytics:${GITHUB_WORKSPACE}/packages/sbir-ml:${GITHUB_WORKSPACE}/packages/sbir-graph:${GITHUB_WORKSPACE}/packages/sbir-rag:/app"
 
           echo "## 📜 USPTO Pipeline" >> $GITHUB_STEP_SUMMARY
           echo "**Environment:** ${{ github.event.inputs.environment || 'production' }}" >> $GITHUB_STEP_SUMMARY
@@ -266,12 +275,14 @@ jobs:
 
           # Note: uspto_validation_job requires full Patent Assignment Dataset
           # (assignment, assignee, assignor tables). Using AI extraction for now.
+          set +o pipefail
           dagster job execute \
             -m sbir_analytics.definitions \
             -j uspto_ai_extraction_job \
             2>&1 | tee uspto_output.txt
 
           EXIT_CODE=${PIPESTATUS[0]}
+          set -o pipefail
           if [ $EXIT_CODE -eq 0 ]; then
             echo "✅ USPTO pipeline completed" >> $GITHUB_STEP_SUMMARY
           else
@@ -310,17 +321,19 @@ jobs:
           SKIP_NEO4J_LOADING: ${{ github.event.inputs.skip_neo4j }}
         shell: bash
         run: |
-          export PYTHONPATH="${GITHUB_WORKSPACE}:${GITHUB_WORKSPACE}/packages/sbir-analytics:${GITHUB_WORKSPACE}/packages/sbir-ml:${GITHUB_WORKSPACE}/packages/sbir-graph:${GITHUB_WORKSPACE}/packages/sbir-rag"
+          export PYTHONPATH="${GITHUB_WORKSPACE}:${GITHUB_WORKSPACE}/packages/sbir-analytics:${GITHUB_WORKSPACE}/packages/sbir-ml:${GITHUB_WORKSPACE}/packages/sbir-graph:${GITHUB_WORKSPACE}/packages/sbir-rag:/app"
 
           echo "## 🏷️ CET Classification Pipeline" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
+          set +o pipefail
           dagster job execute \
             -m sbir_analytics.definitions \
             -j cet_full_pipeline_job \
             2>&1 | tee cet_output.txt
 
           EXIT_CODE=${PIPESTATUS[0]}
+          set -o pipefail
           if [ $EXIT_CODE -eq 0 ]; then
             echo "✅ **CET pipeline completed**" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
@@ -368,10 +381,11 @@ jobs:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           PAECTER_MODE: api  # Use API mode, not local model
         run: |
-          export PYTHONPATH="${GITHUB_WORKSPACE}:${GITHUB_WORKSPACE}/packages/sbir-analytics:${GITHUB_WORKSPACE}/packages/sbir-ml:${GITHUB_WORKSPACE}/packages/sbir-graph:${GITHUB_WORKSPACE}/packages/sbir-rag"
+          export PYTHONPATH="${GITHUB_WORKSPACE}:${GITHUB_WORKSPACE}/packages/sbir-analytics:${GITHUB_WORKSPACE}/packages/sbir-ml:${GITHUB_WORKSPACE}/packages/sbir-graph:${GITHUB_WORKSPACE}/packages/sbir-rag:/app"
 
           echo "## 🔬 Embeddings" >> $GITHUB_STEP_SUMMARY
           # Dagster job still registered as paecter_job (legacy name)
+          set +o pipefail
           dagster job execute -m sbir_analytics.definitions -j paecter_job 2>&1 | tee output.txt
           if [ ${PIPESTATUS[0]} -eq 0 ]; then
             echo "✅ Embeddings pipeline completed" >> $GITHUB_STEP_SUMMARY
