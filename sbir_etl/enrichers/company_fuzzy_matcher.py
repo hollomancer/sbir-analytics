@@ -146,8 +146,8 @@ def _build_company_indexes(
     Returns a dictionary containing these structures.
     """
     df = companies_df.copy()
-    # Ensure unique index for companies (use the original index)
-    df = df.reset_index().set_index("index")
+    # Reset to a clean integer RangeIndex so downstream idx types are always int
+    df = df.reset_index(drop=True)
 
     # Check for enhanced abbreviations config
     apply_abbrev = False

@@ -25,6 +25,14 @@ from sbir_etl.enrichers.company_categorization import (
 pytestmark = pytest.mark.integration
 
 
+@pytest.fixture(autouse=True)
+def _disable_api_cache(monkeypatch):
+    """Ensure cache never returns hits so tests are deterministic regardless of local cache state."""
+    from sbir_etl.utils.cache.api_cache import APICache
+
+    monkeypatch.setattr(APICache, "get", lambda *_a, **_k: None)
+
+
 def _coro(value):
     async def _inner():
         return value

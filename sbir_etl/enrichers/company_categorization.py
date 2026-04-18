@@ -563,9 +563,6 @@ def retrieve_company_contracts_api(
         logger.debug(f"Could not initialize cache, proceeding without caching: {e}")
         cache = APICache(cache_dir="data/cache/usaspending", enabled=False)
 
-    if client is None:
-        client = USAspendingAPIClient()
-
     # Check cache first (non-SBIR contracts)
     cached_result = cache.get(uei=uei, duns=duns, company_name=company_name, cache_type="contracts")
     if cached_result is not None:
@@ -573,6 +570,9 @@ def retrieve_company_contracts_api(
             f"Returning cached result for company (UEI={uei}, DUNS={duns}, name={company_name})"
         )
         return cached_result
+
+    if client is None:
+        client = USAspendingAPIClient()
 
     # Try autocomplete fuzzy matching if we don't have valid identifiers but have a name
     fuzzy_matched = False
@@ -1276,9 +1276,6 @@ def retrieve_sbir_awards_api(
         logger.debug(f"Could not initialize cache, proceeding without caching: {e}")
         cache = APICache(cache_dir="data/cache/usaspending", default_cache_type="contracts", enabled=False)
 
-    if client is None:
-        client = USAspendingAPIClient()
-
     # Check cache first (SBIR awards only)
     cached_result = cache.get(uei=uei, duns=duns, company_name=company_name, cache_type="sbir")
     if cached_result is not None:
@@ -1286,6 +1283,9 @@ def retrieve_sbir_awards_api(
             f"Returning cached SBIR awards result for company (UEI={uei}, DUNS={duns}, name={company_name})"
         )
         return cached_result
+
+    if client is None:
+        client = USAspendingAPIClient()
 
     # Try autocomplete fuzzy matching if we don't have valid identifiers but have a name
     fuzzy_matched = False
