@@ -1,7 +1,5 @@
 """Neo4j loading assets for SBIR awards."""
 
-from __future__ import annotations
-
 import json
 import re
 import time

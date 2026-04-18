@@ -13,7 +13,7 @@ from typing import Any
 import pandas as pd
 from loguru import logger
 
-from ..models.enrichment import (
+from ...models.enrichment import (
     EnrichmentFreshnessRecord,
     EnrichmentFreshnessRecordModel,
     EnrichmentStatus,
