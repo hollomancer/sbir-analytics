@@ -7,10 +7,13 @@ is the initial method rollout; Phase 5 hardens operability.
 
 - [ ] 1.1 Add `sbir_etl/imputation/` module skeleton with `registry.py`, `provenance.py`,
   `config.py`, `runner.py`, and `methods/__init__.py`.
-- [ ] 1.2 Extend `sbir_etl/models/award.py` with `raw_<field>` shadow fields for
-  `award_date`, `award_amount`, `company_uei`, `company_duns`, `congressional_district`,
-  `contract_end_date`, `naics_code`; add `<field>_is_imputed` booleans; add
-  `imputation: list[ImputationEntry]` field.
+- [ ] 1.2 Extend `sbir_etl/models/award.py`:
+  - **Add the base `naics_code: str | None` field** to the `Award` model — it does not
+    currently exist (verified: no `naics` occurrences in `sbir_etl/models/award.py`).
+  - Add `raw_<field>` shadow fields for `award_date`, `award_amount`, `company_uei`,
+    `company_duns`, `congressional_district`, `contract_end_date`, `naics_code`.
+  - Add `<field>_is_imputed` booleans for each of the above.
+  - Add `imputation: list[ImputationEntry]` field.
   → **verify**: Pydantic model round-trips a fixture record; raw fields serialize to
   Parquet via the existing `validated_sbir_awards` persistence path
   (`pandas.DataFrame.to_parquet`, see
@@ -84,8 +87,9 @@ is the initial method rollout; Phase 5 hardens operability.
   `(solicitation_number, topic_code)`; use phase max as imputed value when the
   agency-phase modal cluster equals the max (≥80%), otherwise as a hard upper bound on
   §4.5 fallback.
-  → **verify**: Backtest accuracy on labeled awards with known solicitation linkage
-  ≥90% MAPE for high-confidence tier; ceiling is never exceeded.
+  → **verify**: Backtest on labeled awards with known solicitation linkage achieves
+  **≤10% MAPE** (lower is better) for the high-confidence tier; ceiling is never
+  exceeded.
 - [ ] 4.5 `award_amount.agency_phase_median` — group-median imputation (only runs when
   §4.4 did not produce a value) with min group size of 10, $5M cap check.
   → **verify**: Fixture with known group medians produces expected imputed values;

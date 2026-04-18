@@ -115,7 +115,6 @@ class ImputationMethod(Protocol):
     name: str                          # e.g., "award_date.cascade"
     target_field: str                  # "award_date"
     source_fields: list[str]           # ["proposal_award_date", ...]
-    confidence: Literal["high", "medium", "low"]
     version: int
 
     def impute(
@@ -128,6 +127,12 @@ class ImputationMethod(Protocol):
 Uses `pandas.DataFrame` to match the existing pipeline
 (`packages/sbir-analytics/sbir_analytics/assets/sbir_ingestion.py:325` and downstream
 assets all use pandas with `compute_kind="pandas"`). No Polars conversion is introduced.
+
+**Confidence is per-row, not per-method.** Several methods (notably
+`award_date.cascade`) produce different confidence tiers depending on which source
+field resolved the value. The protocol therefore carries **no class-level `confidence`
+attribute**; confidence is emitted per-row on each `ImputationEntry` inside the
+`ImputationResult` returned by `impute()`.
 
 `ImputationResult` carries the imputed Series plus a parallel Series of provenance
 entries, merged into the frame by the runner.
@@ -230,13 +235,23 @@ extracted.
 
 #### 4.4 `award_amount.agency_phase_median` (fallback when no solicitation linkage)
 
-Group by `(agency, program, phase, fiscal_year)`. Impute the group median where
-`award_amount` is null **and** no solicitation-derived value is available. Guards:
+Group by `(agency, program, phase, fiscal_year)`. Compute the group median as a
+candidate imputed value where `award_amount` is null **and** no solicitation-derived
+value is available. Guards (aligned with requirements §3):
 
-- Minimum group size: 10 non-null members (else skip).
-- Imputed value must fall within $1k–$5M (existing cap).
-- `confidence: medium` across the board; `low` if group falls back to
-  `(agency, program, phase)` without fiscal year.
+- **Minimum group size:** 10 non-null members (else skip).
+- **±2σ sanity bound:** only assign the median when it falls within the observed
+  `award_amount` distribution's `mean ± 2σ` at the grouping level used for the
+  estimate. If the `(agency, program, phase, fiscal_year)` group is too sparse and the
+  method falls back to `(agency, program, phase)`, apply the same `±2σ` check to that
+  fallback group.
+- **Hard cap:** imputed value must also fall within $1k–$5M (existing cap).
+- **Flag, don't assign:** if the candidate median falls outside the `±2σ` bound or
+  outside the hard cap, emit the record to `reports/imputation/amount_flags.json` and
+  leave `award_amount` null. Downstream consumers read the flag list; no imputed value
+  is written.
+- **Confidence:** `medium` when the `(agency, program, phase, fiscal_year)` group was
+  used; `low` when fallback to `(agency, program, phase)` was required.
 
 #### 4.5 `contract_dates.solicitation_period_of_performance`
 
@@ -382,12 +397,12 @@ migration and removed once all environments are updated.
 @asset(
     deps=[validated_sbir_awards],
     group_name="imputation",
-    compute_kind="duckdb",
+    compute_kind="pandas",
 )
 def imputed_sbir_awards(
     context: AssetExecutionContext,
-    validated_sbir_awards: pl.DataFrame,
-) -> pl.DataFrame: ...
+    validated_sbir_awards: pd.DataFrame,
+) -> pd.DataFrame: ...
 ```
 
 Existing downstream assets (enrichment, Neo4j load) rewire their dependency from
