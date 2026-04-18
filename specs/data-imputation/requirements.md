@@ -6,7 +6,7 @@ The SBIR.gov bulk download is the canonical source of SBIR/STTR award records fo
 pipeline, but it is systematically incomplete and internally inconsistent:
 
 - `award_date` is missing on roughly **50% of records** while the configured completeness
-  threshold is **95%** (`sbir_etl/validators/sbir_awards.py:214`, `config/base.yaml:50-59`).
+  threshold is **95%** (`sbir_etl/validators/sbir_awards.py:561`, `config/base.yaml:50-59`).
 - Core fields (`award_amount`, `award_date`, `program`, `phase`) use **lenient validators**
   that silently coerce invalid values to `None` (`sbir_etl/models/award.py:189-332`) rather
   than rejecting records. This produces hidden nulls that look like missing-at-random data

@@ -120,10 +120,14 @@ class ImputationMethod(Protocol):
 
     def impute(
         self,
-        frame: pl.DataFrame,
+        frame: pd.DataFrame,
         lookups: ImputationLookups,
     ) -> ImputationResult: ...
 ```
+
+Uses `pandas.DataFrame` to match the existing pipeline
+(`packages/sbir-analytics/sbir_analytics/assets/sbir_ingestion.py:325` and downstream
+assets all use pandas with `compute_kind="pandas"`). No Polars conversion is introduced.
 
 `ImputationResult` carries the imputed Series plus a parallel Series of provenance
 entries, merged into the frame by the runner.
@@ -212,11 +216,19 @@ Group by `(agency, program, phase, fiscal_year)`. Impute the group median where
 #### 4.4 `geography.congressional_district`
 
 Thin wrapper over existing `congressional_district_resolver.py`. Populates the existing
-`congressional_district` + `congressional_district_confidence` fields. Tiers:
+`congressional_district` + `congressional_district_confidence` fields.
 
-- zip+4 match → high
-- zip5 match → medium
-- city/state centroid → low
+Note: `congressional_district_confidence` is a float in `sbir_etl/models/award.py:82`,
+and the resolver already writes numeric scores directly. The high/medium/low tiers in
+this spec apply **only to the `ImputationEntry.confidence` provenance field**. The
+numeric `congressional_district_confidence` remains the source of truth for that field
+and is populated by the resolver; the imputation layer maps it to a provenance tier via:
+
+| Resolver score | `ImputationEntry.confidence` tier |
+|---|---|
+| ≥ 0.90 (zip+4) | high |
+| 0.70–0.89 (zip5) | medium |
+| < 0.70 (centroid) | low |
 
 #### 4.5 `contract_dates.end_date_repair`
 
@@ -291,16 +303,29 @@ imputation:
       company_uei: 0.80
 ```
 
-Quality checks gain a `raw_` vs `effective_` split:
+Quality checks gain a raw vs effective split **within the existing
+`data_quality.completeness` structure** (see `config/base.yaml:50` and
+`DataQualityConfig`). Rather than introducing a new top-level `quality:` section, the
+existing flat map is nested:
 
 ```yaml
-quality:
-  raw_completeness:
-    award_date: 0.50        # realistic source coverage
-    # ...
-  effective_completeness:   # references imputation.quality.effective_thresholds
-    # ...
+data_quality:
+  completeness:
+    raw:
+      award_id: 1.00
+      company_name: 0.95
+      award_amount: 0.90
+      award_date: 0.50          # realistic raw coverage
+      program: 0.98
+    effective:                  # applied to post-imputation columns
+      award_date: 0.95
+      award_amount: 0.92
+      company_uei: 0.80
 ```
+
+`DataQualityConfig` gains `raw: dict[str, float]` and `effective: dict[str, float]`
+members; the legacy flat form is read as `raw` for backward compatibility during
+migration and removed once all environments are updated.
 
 ### 6. Dagster Integration
 
@@ -350,6 +375,71 @@ Existing downstream assets (enrichment, Neo4j load) rewire their dependency from
 - **Backtest gate in CI:** Fails the build if any method regresses.
 - **Precision benchmark:** `packages/sbir-ml/` evaluation tests re-run with imputation
   enabled to confirm ≥85% transition-scoring precision holds when ML opts in.
+
+## Methodology Evaluation
+
+Before selecting the methods in §4, we evaluated imputation methodology families
+against SBIR data characteristics. The conclusion: **deterministic + record-linkage +
+group-statistical methods dominate on every dimension that matters here.** Heavier
+model-based approaches are deferred unless the backtest harness surfaces a gap they
+would close.
+
+### Methodology families considered
+
+| Family | Examples | Notes on fit |
+|---|---|---|
+| Deterministic / rule-based | Cascade fallback, zip/NAICS crosswalks, hierarchical rollup | Strong fit — SBIR gaps are dominated by structural missingness with correlated proxy fields |
+| Record linkage / cross-row | Sibling-record backfill, external-source join (SAM.gov, USAspending) | Only viable approach for identifiers (UEI/DUNS); statistical methods cannot invent a correct ID |
+| Group statistical | Median/mode within `(agency, phase, program, fiscal_year)`, regression imputation, hot-deck | Good fit for `award_amount` — tight modal distributions per group; regression buys little above median |
+| Model-based (multivariate) | MICE, missForest, k-NN | Expensive, opaque, assumes MAR. Poor fit: most SBIR missingness is MNAR (older records) and has dedicated deterministic fixes |
+| ML / representation | Denoising autoencoders, GAIN, tabular transformers | Overkill for ~6 imputable fields; opaque provenance; not justified by current gaps |
+| Embedding nearest-neighbor | TF-IDF / sentence embeddings on `award_abstract` | Useful in one spot: `naics_code` when entirely missing and abstract length > 100 chars |
+| Multiple imputation | Generate N plausible values, propagate uncertainty | Only warranted for downstream statistical inference (regression coefficients) — not for point estimates, graph properties, or reporting |
+| Uncertainty-aware | Conformal prediction, bootstrap confidence | Implemented indirectly via the three-tier `ImputationEntry.confidence` field and backtest-derived tier assignments |
+
+### Why the chosen methods win
+
+1. **Missingness is predominantly MNAR, not MAR.** Older records systematically lack
+   `award_date` and `company_uei`. MICE and missForest assume MAR and would bias
+   temporal analyses. Deterministic cascades with explicit provenance are safer and
+   more auditable.
+2. **Strong proxy fields exist.** `proposal_award_date` and `contract_start_date` are
+   near-ground-truth substitutes for `award_date`; no model learns that relationship
+   better than a rule that reads it off.
+3. **Identifiers cannot be synthesized.** UEI/DUNS imputation has to come from
+   linkage — to sibling rows or external registries — full stop.
+4. **Provenance beats accuracy at the margin.** Downstream consumers
+   (`packages/sbir-ml/`) need to know which values are imputed more than they need a
+   marginally better imputation. Simpler methods produce cleaner provenance stories.
+5. **Backtest feasibility.** Deterministic and group-statistical methods backtest
+   trivially on the non-null subset. Cross-row propagation (UEI backfill) needs
+   careful holdout design to avoid leakage, and k-NN/MICE make leakage far worse.
+
+### Expected value ranking
+
+| Rank | Field | Method | Rationale |
+|---|---|---|---|
+| 1 | `award_date` | Deterministic cascade | ~50% missing; unblocks all time-series/cohort analysis |
+| 2 | `company_uei` / `company_duns` | Cross-award backfill + external lookup | Unlocks entity resolution, M&A detection, transition scoring |
+| 3 | `naics_code` | Hierarchical fallback + abstract-NN opt-in | Feeds CET classification and sector analysis |
+| 4 | `congressional_district` | Tiered zip crosswalk (reuse existing resolver) | High policy value; deterministic; confidence tiering is natural |
+| 5 | `award_amount` | Agency-phase-program-FY median | Tight modal distributions; bounded by $5M cap |
+| 6 | `contract_end_date` | Rule: start + phase-typical duration | Low standalone value; cheap repair of inverted pairs |
+
+### Explicitly not pursued in v1
+
+- **MICE / missForest across the schema.** Expensive, opaque, and worse on MNAR data
+  than the dedicated fixes above.
+- **Deep generative models (GAIN, autoencoders).** Wrong tool: SBIR fields have strong
+  structural/relational signal, not subtle multivariate patterns that justify learned
+  latent spaces.
+- **Imputing `principal_investigator`, contact fields, boolean classification flags.**
+  PII, unverifiable, or policy-sensitive. Normalize and dedupe existing values; do not
+  invent missing ones.
+
+These remain candidates for v2 **only if** the Phase 5 backtest surfaces a concrete gap
+that a model-based method would plausibly close. The decision gate is in
+`reports/imputation/backtest.json`, not in the spec.
 
 ## Open Questions
 

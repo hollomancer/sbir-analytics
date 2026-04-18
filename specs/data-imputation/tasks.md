@@ -12,7 +12,9 @@ is the initial method rollout; Phase 5 hardens operability.
   `contract_end_date`, `naics_code`; add `<field>_is_imputed` booleans; add
   `imputation: list[ImputationEntry]` field.
   → **verify**: Pydantic model round-trips a fixture record; raw fields serialize to
-  Parquet via existing DuckDB writer.
+  Parquet via the existing `validated_sbir_awards` persistence path
+  (`pandas.DataFrame.to_parquet`, see
+  `packages/sbir-analytics/sbir_analytics/assets/sbir_ingestion.py:158`).
 - [ ] 1.3 Add `ImputationEntry` model in `sbir_etl/models/enrichment.py` (or new
   `imputation.py`) with `field`, `method`, `method_version`, `confidence`,
   `source_fields`, `imputed_at`.
