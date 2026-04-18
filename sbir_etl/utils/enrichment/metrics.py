@@ -13,8 +13,8 @@ from typing import Any
 
 from loguru import logger
 
-from ...config.loader import get_config
-from .freshness import FreshnessStore
+from sbir_etl.config.loader import get_config
+from sbir_etl.utils.enrichment.freshness import FreshnessStore
 
 
 class EnrichmentFreshnessMetrics:
