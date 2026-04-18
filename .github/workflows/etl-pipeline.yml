@@ -140,8 +140,9 @@ jobs:
         # The enriched_sbir_awards asset uploads to s3://<bucket>/enriched/sbir_awards.parquet
         # but downstream consumers (phase_transition_latency_job) look for it at
         # s3://<bucket>/processed/sbir/enriched_sbir_awards.parquet. Mirror the object to the
-        # canonical key so downstream workflows can pick it up. Skip silently if the source
-        # isn't there (e.g. enrichment short-circuited without new data).
+        # canonical key so downstream workflows can pick it up. If the source isn't there,
+        # skip without failing and record a warning in the step summary
+        # (e.g. enrichment short-circuited without new data).
         env:
           S3_BUCKET: ${{ env.S3_BUCKET }}
         shell: bash
@@ -152,8 +153,10 @@ jobs:
 
           if aws s3api head-object --bucket "${S3_BUCKET}" --key "${SRC_KEY}" >/dev/null 2>&1; then
             aws s3 cp "s3://${S3_BUCKET}/${SRC_KEY}" "s3://${S3_BUCKET}/${DEST_KEY}"
+            echo "✅ Mirrored enriched awards to s3://${S3_BUCKET}/${DEST_KEY}"
             echo "✅ Mirrored enriched awards to s3://${S3_BUCKET}/${DEST_KEY}" >> "$GITHUB_STEP_SUMMARY"
           else
+            echo "⚠️ No enriched awards at s3://${S3_BUCKET}/${SRC_KEY}; skipping mirror"
             echo "⚠️ No enriched awards at s3://${S3_BUCKET}/${SRC_KEY}; skipping mirror" >> "$GITHUB_STEP_SUMMARY"
           fi
 
