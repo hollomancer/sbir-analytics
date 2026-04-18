@@ -1,7 +1,7 @@
 """
 Economic component calculator for fiscal returns analysis.
 
-This module transforms StateIO model outputs into federal tax base components,
+This module transforms BEA I-O model outputs into federal tax base components,
 validating component sums and performing reasonableness checks.
 """
 
@@ -31,7 +31,7 @@ class ComponentValidationResult:
 
 
 class FiscalComponentCalculator:
-    """Calculate and validate economic components from StateIO outputs.
+    """Calculate and validate economic components from BEA I-O outputs.
 
     This calculator extracts tax base components (wage income, proprietor income,
     gross operating surplus, consumption) from economic impact data and validates

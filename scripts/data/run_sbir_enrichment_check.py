@@ -10,7 +10,7 @@ from typing import Any
 
 import pandas as pd
 
-from sbir_etl.enrichers.company_enricher import enrich_awards_with_companies
+from sbir_etl.enrichers.company_fuzzy_matcher import enrich_awards_with_companies
 
 
 def parse_args() -> argparse.Namespace:

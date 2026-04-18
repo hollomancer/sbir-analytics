@@ -7,25 +7,102 @@ Supports rate limiting, retry logic, delta detection, and state management.
 
 from __future__ import annotations
 
-import asyncio
 import hashlib
 import json
-from datetime import datetime
+import re
 from pathlib import Path
 from typing import Any
 
 import httpx
 from loguru import logger
-from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
 from ...config.loader import get_config
-from ...exceptions import APIError, ConfigurationError, RateLimitError
+from ...exceptions import APIError
 from ...models.enrichment import EnrichmentFreshnessRecord
+from ..base_client import BaseAsyncAPIClient
+
+# ------------------------------------------------------------------
+# Award type code groups — USAspending requires separate requests for
+# contracts (procurement) vs. assistance (grants/cooperative agreements).
+# ------------------------------------------------------------------
+CONTRACT_TYPE_CODES: tuple[str, ...] = ("A", "B", "C", "D")
+ASSISTANCE_TYPE_CODES: tuple[str, ...] = ("02", "03", "04", "05")
+
+
+def classify_award_id(award_id: str) -> str:
+    """Classify an SBIR award/contract identifier as PIID, FAIN, or unknown.
+
+    Uses format heuristics derived from DoD PIIDs and DOE FAINs:
+    - DoD PIIDs: 2-letter agency prefix + digits + dash patterns (e.g. FA2541-26-C-B005)
+    - DOE/agency FAINs: DE-AR, DE-SC prefixes (grants)
+    - Pure numeric: agency internal IDs (e.g. NSF "2516905") — ambiguous
+
+    Args:
+        award_id: The contract/award identifier string.
+
+    Returns:
+        One of ``"piid"``, ``"fain"``, or ``"unknown"``.
+    """
+    s = award_id.strip()
+    if not s:
+        return "unknown"
+    if re.match(r"^DE-", s, re.IGNORECASE):
+        return "fain"
+    if re.match(r"^[A-Z]{2}\d", s):
+        return "piid"
+    return "unknown"
+
+
+def build_award_type_groups(
+    award_ids: list[str],
+) -> list[tuple[list[str], str, list[str]]]:
+    """Split award IDs into typed request groups for USAspending queries.
+
+    Contracts (PIIDs) are queried with ``CONTRACT_TYPE_CODES``, financial
+    assistance (FAINs) with ``ASSISTANCE_TYPE_CODES``, and unknown IDs are
+    tried against both.
+
+    Args:
+        award_ids: Raw award/contract identifier strings.
+
+    Returns:
+        List of ``(ids, group_name, award_type_codes)`` tuples ready for
+        USAspending API calls.
+    """
+    piids: list[str] = []
+    fains: list[str] = []
+    unknown: list[str] = []
+
+    seen: set[str] = set()
+    for raw in award_ids:
+        aid = raw.strip()
+        if not aid or aid in seen:
+            continue
+        seen.add(aid)
+        kind = classify_award_id(aid)
+        if kind == "piid":
+            piids.append(aid)
+        elif kind == "fain":
+            fains.append(aid)
+        else:
+            unknown.append(aid)
+
+    groups: list[tuple[list[str], str, list[str]]] = []
+    if piids:
+        groups.append((piids, "contracts", list(CONTRACT_TYPE_CODES)))
+    if fains:
+        groups.append((fains, "assistance", list(ASSISTANCE_TYPE_CODES)))
+    for uid in unknown:
+        groups.append(([uid], "contracts", list(CONTRACT_TYPE_CODES)))
+        groups.append(([uid], "assistance", list(ASSISTANCE_TYPE_CODES)))
+    return groups
 
 
 
-class USAspendingAPIClient:
+class USAspendingAPIClient(BaseAsyncAPIClient):
     """Async client for USAspending.gov API v2."""
+
+    api_name = "usaspending"
 
     def __init__(
         self,
@@ -39,6 +116,8 @@ class USAspendingAPIClient:
             config: Optional configuration override. If None, loads from get_config()
             http_client: Optional pre-configured HTTPX client (useful for tests)
         """
+        super().__init__()
+
         if config is None:
             cfg = get_config()
             self.config = cfg.enrichment_refresh.usaspending.model_dump()
@@ -49,14 +128,7 @@ class USAspendingAPIClient:
 
         self.base_url = self.api_config.get("base_url", "https://api.usaspending.gov/api/v2")
         self.timeout = self.config.get("timeout_seconds", 30)
-        self.retry_attempts = self.config.get("retry_attempts", 3)
-        self.retry_backoff = self.config.get("retry_backoff_seconds", 2.0)
-        self.retry_multiplier = self.config.get("retry_backoff_multiplier", 2.0)
         self.rate_limit_per_minute = self.config.get("rate_limit_per_minute", 120)
-
-        # Rate limiting state
-        self.request_times: list[datetime] = []
-        self._rate_limit_lock = asyncio.Lock()
 
         # State file path
         self.state_file = Path(
@@ -72,147 +144,6 @@ class USAspendingAPIClient:
             f"Initialized USAspendingAPIClient: base_url={self.base_url}, "
             f"rate_limit={self.rate_limit_per_minute}/min"
         )
-
-    async def aclose(self) -> None:
-        """Close the underlying HTTP client."""
-
-        await self._client.aclose()
-
-    async def _wait_for_rate_limit(self) -> None:
-        """Wait if rate limit would be exceeded."""
-
-        async with self._rate_limit_lock:
-            now = datetime.now()
-            self.request_times = [t for t in self.request_times if (now - t).total_seconds() < 60]
-
-            if len(self.request_times) >= self.rate_limit_per_minute:
-                oldest = min(self.request_times)
-                wait_seconds = 60 - (now - oldest).total_seconds() + 1
-                if wait_seconds > 0:
-                    logger.debug(f"Rate limit reached, waiting {wait_seconds:.1f} seconds")
-                    await asyncio.sleep(wait_seconds)
-
-            self.request_times.append(datetime.now())
-
-    async def _make_request(
-        self,
-        method: str,
-        endpoint: str,
-        params: dict[str, Any] | None = None,
-        *,
-        headers: dict[str, str] | None = None,
-    ) -> dict[str, Any]:
-        """Make an HTTP request to USAspending API with retry logic.
-
-        Args:
-            method: HTTP method (GET, POST)
-            endpoint: API endpoint path (relative to base_url)
-            params: Query parameters
-            headers: Additional headers
-
-        Returns:
-            JSON response as dict
-
-        Raises:
-            APIError: If request fails
-            RateLimitError: If rate limit exceeded
-        """
-
-        # Inner function that does the actual request (will be wrapped by retry decorator)
-        @retry(
-            stop=stop_after_attempt(3),
-            wait=wait_exponential(multiplier=2.0, min=2, max=30),
-            retry=retry_if_exception_type((httpx.HTTPError, httpx.TimeoutException)),
-            reraise=True,
-        )
-        async def _do_request() -> dict[str, Any]:
-            await self._wait_for_rate_limit()
-
-            url_str: str = (
-                str(self.base_url) if self.base_url else "https://api.usaspending.gov/api/v2"
-            )
-            url = f"{url_str.rstrip('/')}/{str(endpoint).lstrip('/')}"
-            default_headers = {
-                "Accept": "application/json",
-                "User-Agent": "SBIR-Analytics/0.1.0",
-            }
-            if headers:
-                default_headers.update(headers)
-
-            try:
-                if method.upper() == "GET":
-                    response = await self._client.get(url, params=params, headers=default_headers)
-                elif method.upper() == "POST":
-                    response = await self._client.post(url, json=params, headers=default_headers)
-                else:
-                    raise ConfigurationError(
-                        f"Unsupported HTTP method: {method}",
-                        component="enricher.usaspending",
-                        operation="_make_request",
-                        details={
-                            "method": method,
-                            "supported_methods": ["GET", "POST"],
-                            "endpoint": endpoint,
-                        },
-                    )
-
-                response.raise_for_status()
-
-                if response.status_code == 429:
-                    raise RateLimitError(
-                        "Rate limit exceeded",
-                        api_name="usaspending",
-                        endpoint=endpoint,
-                        details={"response_text": response.text[:200]},
-                    )
-
-                return response.json()
-
-            except httpx.HTTPStatusError as e:
-                if e.response.status_code == 429:
-                    raise RateLimitError(
-                        "Rate limit exceeded",
-                        api_name="usaspending",
-                        endpoint=endpoint,
-                        http_status=e.response.status_code,
-                        details={"response_text": e.response.text[:200]},
-                        cause=e,
-                    ) from e
-                raise APIError(
-                    f"HTTP {e.response.status_code}: {e.response.text[:200]}",
-                    api_name="usaspending",
-                    endpoint=endpoint,
-                    http_status=e.response.status_code,
-                    operation="_make_request",
-                    cause=e,
-                ) from e
-            except httpx.TimeoutException:
-                # Let TimeoutException propagate so retry decorator can catch it
-                raise
-            except httpx.RequestError as e:
-                raise APIError(
-                    f"Request error: {str(e)}",
-                    api_name="usaspending",
-                    endpoint=endpoint,
-                    operation="_make_request",
-                    retryable=True,
-                    cause=e,
-                ) from e
-
-        # Call the retry-wrapped function and wrap TimeoutException after retries exhausted
-        try:
-            return await _do_request()
-        except httpx.TimeoutException as e:
-            # After all retries exhausted, wrap TimeoutException for consistent API
-            raise APIError(
-                "Request timeout after retries",
-                api_name="usaspending",
-                endpoint=endpoint,
-                http_status=408,  # Timeout status code
-                operation="_make_request",
-                retryable=False,  # Already retried, don't retry again
-                cause=e,
-            ) from e
 
     def _compute_payload_hash(self, payload: dict[str, Any]) -> str:
         """Compute deterministic SHA256 hash of JSON payload.
@@ -420,6 +351,73 @@ class USAspendingAPIClient:
             params=payload,
         )
 
+    async def search_awards(
+        self,
+        filters: dict[str, Any],
+        fields: list[str],
+        page: int = 1,
+        limit: int = 100,
+        sort: str | None = "Award Amount",
+        order: str | None = "desc",
+    ) -> dict[str, Any]:
+        """Search the spending_by_award endpoint."""
+        payload: dict[str, Any] = {
+            "filters": filters,
+            "fields": fields,
+            "page": page,
+            "limit": limit,
+        }
+        if sort:
+            payload["sort"] = sort
+        if order:
+            payload["order"] = order
+
+        return await self._make_request(
+            "POST",
+            "/search/spending_by_award/",
+            params=payload,
+        )
+
+    async def search_recipients(
+        self,
+        keyword: str,
+        limit: int = 5,
+    ) -> list[dict[str, Any]]:
+        """Search for recipients by keyword (name or UEI).
+
+        Returns the results list from POST /recipient/.
+        """
+        payload = {"keyword": keyword, "limit": limit}
+        response = await self._make_request(
+            "POST",
+            "/recipient/",
+            params=payload,
+        )
+        return response.get("results", [])
+
+    async def get_recipient_profile(
+        self,
+        recipient_id: str,
+        year: str = "all",
+    ) -> dict[str, Any] | None:
+        """Fetch a full recipient profile by hash ID.
+
+        Args:
+            recipient_id: The recipient hash from :meth:`search_recipients`.
+            year: Fiscal year or ``"all"`` for lifetime totals.
+        """
+        try:
+            return await self._make_request(
+                "GET",
+                f"/recipient/{recipient_id}/",
+                params={"year": year},
+            )
+        except APIError as e:
+            if e.details.get("http_status") == 404:
+                logger.debug(f"Recipient profile not found: {recipient_id}")
+                return None
+            raise
+
     async def fetch_award_details(self, award_id: str) -> dict[str, Any] | None:
         """Fetch detailed award information for PSC fallbacks."""
         try:
@@ -429,6 +427,75 @@ class USAspendingAPIClient:
                 logger.debug(f"Award not found for id: {award_id}")
                 return None
             raise
+
+    async def search_awards_batch(
+        self,
+        award_ids: list[str],
+        fields: list[str] | None = None,
+        batch_size: int = 50,
+    ) -> dict[str, dict[str, Any]]:
+        """Search for multiple awards in batched API calls.
+
+        Groups award IDs by type (PIID/FAIN) using ``build_award_type_groups``
+        and queries each group in a single ``/search/spending_by_award/`` call
+        instead of N individual lookups.  Returns up to one result per award ID.
+
+        Args:
+            award_ids: List of award/contract identifiers.
+            fields: Response fields to request.  Defaults to a useful subset.
+            batch_size: Max IDs per API request (USAspending caps at ~100).
+
+        Returns:
+            Mapping of award_id -> first matching result dict.
+        """
+        if fields is None:
+            fields = [
+                "Award ID",
+                "Recipient Name",
+                "Recipient UEI",
+                "Recipient DUNS Number",
+                "Award Amount",
+                "Awarding Agency",
+                "Award Type",
+                "Start Date",
+                "End Date",
+                "Last Modified Date",
+            ]
+
+        results: dict[str, dict[str, Any]] = {}
+        groups = build_award_type_groups(award_ids)
+
+        for ids, group_name, type_codes in groups:
+            # Process in sub-batches to stay within API limits
+            for i in range(0, len(ids), batch_size):
+                chunk = ids[i : i + batch_size]
+                filters: dict[str, Any] = {
+                    "award_type_codes": type_codes,
+                    "award_id_search_text": chunk,
+                }
+                try:
+                    response = await self.search_awards(
+                        filters=filters,
+                        fields=fields,
+                        limit=len(chunk),
+                        sort="Award Amount",
+                        order="desc",
+                    )
+                    for record in response.get("results", []):
+                        aid = record.get("Award ID", "").strip()
+                        if aid and aid not in results:
+                            results[aid] = record
+                except APIError as e:
+                    logger.warning(
+                        f"Batch search failed for {group_name} group "
+                        f"({len(chunk)} ids): {e}"
+                    )
+
+        logger.info(
+            f"Batch search: {len(award_ids)} requested, "
+            f"{len(results)} found in {len(groups)} group(s)"
+        )
+        return results
 
     async def enrich_award(
         self,

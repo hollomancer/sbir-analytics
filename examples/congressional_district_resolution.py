@@ -360,7 +360,7 @@ def demonstrate_district_resolution():
     print("# Aggregate awards by district")
     print("district_awards = enriched_zip.groupby('congressional_district')['award_amount'].sum()")
     print()
-    print("# Calculate state-level impacts (using StateIO)")
+    print("# Calculate state-level impacts (using BEA I-O tables)")
     print("state_impacts = calculator.calculate_impacts_from_sbir_awards(awards_df)")
     print()
     print("# Allocate state impacts to districts proportionally")

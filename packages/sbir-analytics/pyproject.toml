@@ -1,7 +1,7 @@
 [project]
 name = "sbir-analytics"
 version = "0.1.0"
-description = "Full SBIR analytics pipeline — ETL + Dagster orchestration + CLI + ML + Neo4j"
+description = "Full SBIR analytics pipeline — ETL + Dagster orchestration + ML + Neo4j"
 authors = [{name = "Conrad Hollomon", email = "conrad.hollomon@pm.me"}]
 readme = "README.md"
 license = {text = "MIT"}
@@ -15,18 +15,12 @@ dependencies = [
     "sbir-rag",
     # Dagster orchestration
     "dagster>=1.7.0,<2.0.0",
-    # CLI
-    "typer>=0.12.0,<1.0.0",
-    "rich>=13.7.0,<15.0.0",
 ]
 
 [project.optional-dependencies]
 r = ["sbir-etl[r]"]
 paecter-local = ["sbir-ml[paecter-local]"]
 dev = ["sbir-etl[dev]"]
-
-[project.scripts]
-sbir-cli = "sbir_analytics.cli.main:app"
 
 [tool.dagster]
 python_module = "sbir_analytics.definitions"

@@ -71,7 +71,10 @@ async def lightrag_document_ingestion(
 
     for i in range(0, len(documents), batch_size):
         batch = documents[i : i + batch_size]
-        await rag.ainsert([doc["content"] for doc in batch])
+        # Pass award_id as document IDs so LightRAG stores them on __chunk__
+        # nodes (as full_doc_id), enabling cross-reference queries later.
+        batch_ids = [doc["metadata"].get("award_id") for doc in batch]
+        await rag.ainsert([doc["content"] for doc in batch], ids=batch_ids)
         ingested += len(batch)
         if ingested % 500 == 0:
             context.log.info(f"Ingested {ingested}/{len(documents)} documents")

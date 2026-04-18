@@ -77,7 +77,7 @@ echo -e "${GREEN}✓ uv is available${NC}"
 echo ""
 echo "5️⃣  Installing dependencies..."
 echo "   This may take a minute..."
-uv sync --extra dev --extra r --extra paecter-local
+uv sync --extra dev
 
 # Verify installation
 echo ""

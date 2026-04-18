@@ -4,7 +4,7 @@ This example demonstrates the complete pipeline for analyzing SBIR fiscal impact
 at the congressional district level:
 1. Load SBIR awards with full addresses
 2. Resolve congressional districts
-3. Calculate state-level economic impacts (StateIO)
+3. Calculate state-level economic impacts (BEA I-O)
 4. Allocate impacts to districts proportionally
 5. Generate district-level reports
 
@@ -204,7 +204,7 @@ def main():
     print()
 
     # Step 3: Calculate state-level impacts
-    print("Step 3: Calculating state-level economic impacts (using mock StateIO)...")
+    print("Step 3: Calculating state-level economic impacts (using mock BEA I-O)...")
     calculator = MockSBIRFiscalImpactCalculator()
     state_impacts = calculator.calculate_impacts_from_sbir_awards(awards)
     print(f"  ✓ Calculated impacts for {len(state_impacts)} state/sector combinations")
@@ -355,7 +355,7 @@ def main():
     print("Next Steps:")
     print("  1. Use real CongressionalDistrictResolver with Census API")
     print("  2. Download HUD ZIP-to-district crosswalk for offline resolution")
-    print("  3. Run with real StateIO economic models (Docker)")
+    print("  3. Run with BEA_API_KEY set for real economic models")
     print("  4. Export results to CSV/Excel for further analysis")
     print("  5. Create visualizations (maps, charts)")
 

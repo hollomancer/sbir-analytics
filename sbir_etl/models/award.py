@@ -1,6 +1,6 @@
 """Pydantic models for SBIR award data."""
 
-from datetime import date
+from datetime import date, datetime, timezone
 from typing import Any
 
 from pydantic import (
@@ -158,7 +158,33 @@ class Award(BaseModel):
     # Additional tracking / metadata
     award_year: int | None = Field(None, description="Award year as integer")
 
+    # Data source provenance
+    data_source: str | None = Field(
+        None,
+        description="Original data source system (e.g., 'sbir.gov', 'usaspending', 'sam.gov')",
+    )
+    data_source_url: str | None = Field(
+        None,
+        description="URL or path of the source file (e.g., S3 URI, local CSV path)",
+    )
+    ingested_at: datetime | None = Field(
+        None,
+        description="UTC timestamp when this record was ingested into the pipeline",
+    )
+
     # --- Validators ---
+
+    @field_validator("ingested_at", mode="before")
+    @classmethod
+    def validate_ingested_at_utc(cls, v: Any) -> datetime | None:
+        """Ensure ingested_at is timezone-aware UTC. Naive datetimes are assumed UTC."""
+        if v is None:
+            return None
+        if isinstance(v, datetime):
+            if v.tzinfo is None:
+                return v.replace(tzinfo=timezone.utc)
+            return v.astimezone(timezone.utc)
+        return v
 
     @field_validator("award_amount", mode="before")
     @classmethod
@@ -791,6 +817,11 @@ class RawAward(BaseModel):
     # Accept numeric strings for number_of_employees (e.g., "1,234") — coercion happens in to_award()
     number_of_employees: str | int | None = None
     company_website: str | None = None
+
+    # Data source provenance
+    data_source: str | None = None
+    data_source_url: str | None = None
+    ingested_at: datetime | None = None
 
     def to_award(self) -> "Award":
         """Convert this RawAward into a validated Award instance.

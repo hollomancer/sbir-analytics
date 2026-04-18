@@ -184,8 +184,9 @@ jobs:
       (needs.attempt_repair.result == 'skipped' ||
        needs.attempt_repair.outputs.changed == 'false')
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
-      - uses: actions/github-script@v8
+      - uses: actions/github-script@v9
         with:
           script: |
             await github.rest.issues.create({

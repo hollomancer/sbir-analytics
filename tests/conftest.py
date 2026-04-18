@@ -415,16 +415,6 @@ def pandas_available():
 
 
 @pytest.fixture
-def rpy2_available():
-    """Fixture that skips if R/rpy2 not available."""
-    if not _check_import("rpy2"):
-        pytest.skip("R/rpy2 not installed")
-    import rpy2
-
-    return rpy2
-
-
-@pytest.fixture
 def sentence_transformers_available():
     """Fixture that skips if sentence-transformers not available."""
     if not _check_import("sentence_transformers"):

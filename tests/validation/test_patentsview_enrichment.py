@@ -181,7 +181,7 @@ def enrich_companies(
         client = PatentsViewClient()
     except Exception as e:
         logger.error(f"Failed to initialize PatentsView client: {e}")
-        logger.error("Make sure PATENTSVIEW_API_KEY environment variable is set")
+        logger.error("Make sure USPTO_ODP_API_KEY environment variable is set")
         sys.exit(1)
 
     try:

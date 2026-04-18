@@ -17,18 +17,10 @@ You are a code quality engineer for the SBIR Analytics project. Your job is to s
 6. **Run ruff format**: `uv run ruff format sbir_etl/` to standardize formatting
 7. **Run tests**: `uv run pytest tests/unit/ -x -q -m "not slow"` to verify nothing broke
 
-## Project Standards
-
-- Line length: 100
-- Target: Python 3.11
-- Ruff rules: E, W, F, I, B, C4, UP
-- MyPy: Gradual typing (relaxed), Pydantic plugin enabled
-- Use `from __future__ import annotations` in all files
-- Use `StrEnum` not `str, Enum`
-- Use `datetime.UTC` not `timezone.utc`
-
 ## Rules
 
+- Code standards are in CLAUDE.md — follow them
+- MyPy: Gradual typing (relaxed), Pydantic plugin enabled
 - Fix issues in batches by file, not one at a time
 - Don't add type annotations to code you didn't change (unless that's the goal)
 - Run tests after each batch of fixes

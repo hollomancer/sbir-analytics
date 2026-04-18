@@ -1,4 +1,4 @@
-"""End-to-end test for complete fiscal stateio pipeline.
+"""End-to-end test for complete fiscal I-O pipeline.
 
 This test validates the entire flow from SBIR awards to economic impact
 and fiscal return calculations:
@@ -191,7 +191,7 @@ def sample_naics_to_bea_mapping(tmp_path):
 
 
 class TestFiscalStateIOPipelineE2E:
-    """End-to-end tests for complete fiscal stateio pipeline."""
+    """End-to-end tests for complete fiscal BEA I-O pipeline."""
 
     def test_step1_enrich_with_usaspending(
         self, sample_sbir_awards_fiscal, sample_usaspending_fiscal
@@ -416,13 +416,13 @@ class TestFiscalStateIOPipelineE2E:
         )
 
         # Create mock economic components (wage impacts, etc.)
-        # In real pipeline, these come from StateIO model
+        # In real pipeline, these come from BEA I-O model
         economic_components = []
         for _, row in enriched.iterrows():
             shock_amount = Decimal(str(row["Award Amount"]))
 
             # Mock multipliers (simplified)
-            # Real values would come from StateIO model
+            # Real values would come from BEA I-O model
             wage_multiplier = Decimal("0.4")  # 40% goes to wages
             proprietor_multiplier = Decimal("0.15")  # 15% to proprietor income
             corporate_multiplier = Decimal("0.10")  # 10% corporate profits
@@ -506,7 +506,7 @@ class TestFiscalStateIOPipelineE2E:
         # Simplified tax calculation
         total_investment = Decimal(str(enriched["Award Amount"].sum()))
 
-        # Mock tax receipts (in real pipeline, comes from StateIO + tax estimator)
+        # Mock tax receipts (in real pipeline, comes from BEA I-O + tax estimator)
         # Assume 25% effective return rate (simplified)
         tax_receipts_df = pd.DataFrame(
             [
@@ -569,7 +569,7 @@ class TestFiscalStateIOPipelineE2E:
     ):
         """Test complete end-to-end fiscal pipeline integration."""
         print("\n" + "=" * 80)
-        print("COMPLETE FISCAL STATEIO PIPELINE TEST")
+        print("COMPLETE FISCAL BEA I-O PIPELINE TEST")
         print("=" * 80)
 
         # Step 1: Enrich with USAspending
@@ -758,7 +758,7 @@ class TestFiscalDataQualityThresholds:
 # Documentation in docstring
 __doc__ += """
 
-## Running the Fiscal StateIO Pipeline Tests
+## Running the Fiscal BEA I-O Pipeline Tests
 
 ### Quick Test
 ```bash

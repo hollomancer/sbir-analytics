@@ -25,7 +25,6 @@ Key Functions:
 """
 
 import re
-import threading
 from typing import Any
 
 import pandas as pd
@@ -33,26 +32,14 @@ from loguru import logger
 
 from sbir_etl.config.loader import get_config
 from sbir_etl.enrichers.usaspending import USAspendingAPIClient
+from sbir_etl.enrichers.usaspending.client import CONTRACT_TYPE_CODES
 from sbir_etl.exceptions import APIError, RateLimitError
 from sbir_etl.extractors.usaspending import DuckDBUSAspendingExtractor
 from sbir_etl.utils.async_tools import run_sync
 from sbir_etl.utils.cache.api_cache import APICache
 
 
-_api_client: USAspendingAPIClient | None = None
-_api_client_lock = threading.Lock()
 PSC_DETAIL_LOOKUP_LIMIT = 50
-
-
-def _get_usaspending_client() -> USAspendingAPIClient:
-    """Get or initialize a shared USAspending API client."""
-    global _api_client
-    if _api_client is None:
-        with _api_client_lock:
-            if _api_client is None:
-                _api_client = USAspendingAPIClient()
-                logger.debug("Initialized shared USAspendingAPIClient for company categorization")
-    return _api_client
 
 
 def _is_valid_identifier(value: str | None) -> bool:
@@ -214,7 +201,9 @@ def _normalize_company_name_for_search(company_name: str) -> list[str]:
     return unique_variations
 
 
-def _fuzzy_match_recipient(company_name: str) -> dict[str, Any] | None:
+def _fuzzy_match_recipient(
+    company_name: str, client: USAspendingAPIClient
+) -> dict[str, Any] | None:
     """Use USAspending autocomplete API to find the best recipient match for a company name.
 
     Tries multiple normalized variations of the company name to improve matching success
@@ -222,6 +211,7 @@ def _fuzzy_match_recipient(company_name: str) -> dict[str, Any] | None:
 
     Args:
         company_name: Company name to search for
+        client: USAspending API client to use for lookups
 
     Returns:
         Dictionary with matched recipient info (uei, name, etc.) or None if no match
@@ -242,9 +232,6 @@ def _fuzzy_match_recipient(company_name: str) -> dict[str, Any] | None:
 
     # Track the best candidate match (in case we don't find one with UEI/DUNS)
     best_candidate = None
-
-    # Try each variation until we find a match
-    client = _get_usaspending_client()
 
     for idx, search_name in enumerate(name_variations, 1):
         try:
@@ -501,6 +488,7 @@ def retrieve_company_contracts_api(
     company_name: str | None = None,
     page_size: int = 100,  # API maximum limit is 100
     config=None,
+    client: USAspendingAPIClient | None = None,
 ) -> pd.DataFrame:
     """Retrieve all federal contracts for a company from USAspending API (excluding SBIR/STTR).
 
@@ -522,6 +510,10 @@ def retrieve_company_contracts_api(
         duns: Company DUNS number
         company_name: Company name (used as fallback when UEI/DUNS are invalid)
         page_size: Number of results per page
+        config: Optional pipeline config override.
+        client: Optional pre-initialized USAspending client. When ``None`` a
+            short-lived client is created for this call. Pass a client to reuse
+            across many calls (e.g. batch workflows).
 
     Returns:
         DataFrame with columns:
@@ -571,8 +563,6 @@ def retrieve_company_contracts_api(
         logger.debug(f"Could not initialize cache, proceeding without caching: {e}")
         cache = APICache(cache_dir="data/cache/usaspending", enabled=False)
 
-    client = _get_usaspending_client()
-
     # Check cache first (non-SBIR contracts)
     cached_result = cache.get(uei=uei, duns=duns, company_name=company_name, cache_type="contracts")
     if cached_result is not None:
@@ -581,12 +571,15 @@ def retrieve_company_contracts_api(
         )
         return cached_result
 
+    if client is None:
+        client = USAspendingAPIClient()
+
     # Try autocomplete fuzzy matching if we don't have valid identifiers but have a name
     fuzzy_matched = False
     matched_name = None
     if not (valid_uei or valid_duns) and valid_name and company_name:
         logger.info(f"Attempting fuzzy match via autocomplete for: {company_name}")
-        match_result = _fuzzy_match_recipient(company_name)
+        match_result = _fuzzy_match_recipient(company_name, client)
 
         if match_result:
             # Use the matched identifiers instead of the original name
@@ -636,7 +629,7 @@ def retrieve_company_contracts_api(
 
     # Build search filters using AdvancedFilterObject
     filters: dict[str, Any] = {
-        "award_type_codes": ["A", "B", "C", "D"],  # Contract awards only
+        "award_type_codes": list(CONTRACT_TYPE_CODES),  # Contract awards only
     }
 
     # Add recipient search - recipient_search_text searches across name, UEI, and DUNS
@@ -780,7 +773,9 @@ def retrieve_company_contracts_api(
                 if (
                     not psc_value or (isinstance(psc_value, str) and not psc_value.strip())
                 ) and psc_detail_lookups < PSC_DETAIL_LOOKUP_LIMIT:
-                    fallback_details = _fetch_award_details(processed_transaction["award_id"])
+                    fallback_details = _fetch_award_details(
+                        processed_transaction["award_id"], client
+                    )
                     if fallback_details and fallback_details.get("psc"):
                         processed_transaction["psc"] = fallback_details["psc"]
                         psc_detail_lookups += 1
@@ -827,7 +822,7 @@ def retrieve_company_contracts_api(
             )
             # Try searching by company name - use name variations for better matching
             name_filters = {
-                "award_type_codes": ["A", "B", "C", "D"],
+                "award_type_codes": list(CONTRACT_TYPE_CODES),
             }
 
             # Generate name variations for better matching
@@ -909,7 +904,7 @@ def retrieve_company_contracts_api(
                             not psc_value or (isinstance(psc_value, str) and not psc_value.strip())
                         ) and psc_detail_lookups < PSC_DETAIL_LOOKUP_LIMIT:
                             fallback_details = _fetch_award_details(
-                                processed_transaction["award_id"]
+                                processed_transaction["award_id"], client
                             )
                             if fallback_details and fallback_details.get("psc"):
                                 processed_transaction["psc"] = fallback_details["psc"]
@@ -1014,10 +1009,16 @@ def retrieve_company_contracts_api(
         return pd.DataFrame()
 
 
-def _fetch_award_details(award_id: str) -> dict[str, Any] | None:
-    """Fetch detailed award information including PSC code as a fallback."""
+def _fetch_award_details(
+    award_id: str, client: USAspendingAPIClient
+) -> dict[str, Any] | None:
+    """Fetch detailed award information including PSC code as a fallback.
+
+    Args:
+        award_id: USAspending award identifier.
+        client: USAspending API client to use for lookups.
+    """
     try:
-        client = _get_usaspending_client()
         award_data = run_sync(client.fetch_award_details(award_id))
 
         # Debug: Log the structure of the response to understand where PSC is located
@@ -1226,6 +1227,7 @@ def retrieve_sbir_awards_api(
     company_name: str | None = None,
     page_size: int = 100,  # API maximum limit is 100
     config=None,
+    client: USAspendingAPIClient | None = None,
 ) -> pd.DataFrame:
     """Retrieve ONLY SBIR/STTR awards for a company from USAspending API (for reporting).
 
@@ -1242,6 +1244,9 @@ def retrieve_sbir_awards_api(
         duns: Company DUNS number
         company_name: Company name (used as fallback when UEI/DUNS are invalid)
         page_size: Number of results per page
+        config: Optional pipeline config override.
+        client: Optional pre-initialized USAspending client. When ``None`` a
+            short-lived client is created for this call.
 
     Returns:
         DataFrame with SBIR/STTR awards only
@@ -1271,8 +1276,6 @@ def retrieve_sbir_awards_api(
         logger.debug(f"Could not initialize cache, proceeding without caching: {e}")
         cache = APICache(cache_dir="data/cache/usaspending", default_cache_type="contracts", enabled=False)
 
-    client = _get_usaspending_client()
-
     # Check cache first (SBIR awards only)
     cached_result = cache.get(uei=uei, duns=duns, company_name=company_name, cache_type="sbir")
     if cached_result is not None:
@@ -1281,11 +1284,14 @@ def retrieve_sbir_awards_api(
         )
         return cached_result
 
+    if client is None:
+        client = USAspendingAPIClient()
+
     # Try autocomplete fuzzy matching if we don't have valid identifiers but have a name
     fuzzy_matched = False
     if not (valid_uei or valid_duns) and valid_name and company_name:
         logger.debug(f"Attempting fuzzy match via autocomplete for SBIR awards: {company_name}")
-        match_result = _fuzzy_match_recipient(company_name)
+        match_result = _fuzzy_match_recipient(company_name, client)
 
         if match_result:
             matched_uei = match_result.get("uei")
@@ -1314,7 +1320,7 @@ def retrieve_sbir_awards_api(
 
     # Build search filters
     filters: dict[str, Any] = {
-        "award_type_codes": ["A", "B", "C", "D"],
+        "award_type_codes": list(CONTRACT_TYPE_CODES),
     }
 
     recipient_search_terms = []

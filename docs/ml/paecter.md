@@ -433,7 +433,7 @@ Get a token from: <https://huggingface.co/settings/tokens>
 - [CET Classification](cet-integration.md) - Technology classification system
 - [Transition Detection](../transition/) - Technology transition detection
 - [ML Documentation Index](README.md) - Machine learning overview
-- [Configuration Patterns](../../.kiro/steering/configuration-patterns.md) - Configuration guide
+- [Configuration Patterns](../steering/configuration-patterns.md) - Configuration guide
 
 ---
 

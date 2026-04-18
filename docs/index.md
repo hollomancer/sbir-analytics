@@ -11,10 +11,9 @@ Status: active
 
 Welcome. This site is the canonical documentation for the SBIR ETL pipeline.
 
-- **Kiro specifications** (`.kiro/specs/`) are the source of truth for designs, tasks, and requirements.
+- **specifications** (`specs/`) are the source of truth for designs, tasks, and requirements.
 - User and developer documentation lives under `docs/` (this site).
-- Agent steering documents live in `.kiro/steering/` (architectural patterns and guidance for AI agents).
-- Historical OpenSpec content is archived in `archive/openspec/` for reference.
+- Steering documents live in `docs/steering/` (architectural patterns and guidance).
 
 ## What is this project?
 
@@ -50,7 +49,7 @@ Cloud-native, graph-based ETL pipeline that ingests SBIR/USAspending/USPTO data 
   - [Docker Development](development/docker.md) - Setup, configuration, and troubleshooting
 - [Exception Handling](development/exception-handling.md)
 - [Logging Standards](development/logging-standards.md)
-- [Kiro Workflow](development/kiro-workflow-guide.md)
+- [Spec Workflow](development/spec-workflow-guide.md)
 
 ### Reference
 

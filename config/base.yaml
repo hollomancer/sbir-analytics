@@ -161,9 +161,12 @@ enrichment:
     retry_backoff_seconds: 2
 
   patentsview_api:
-    # PatentsView API configuration (PatentSearch API)
-    base_url: "https://search.patentsview.org/api"
-    api_key_env_var: "PATENTSVIEW_API_KEY" # pragma: allowlist secret
+    # USPTO Open Data Portal (ODP) API configuration
+    # PatentsView migrated to USPTO ODP on March 20, 2026
+    # See: https://data.uspto.gov/support/transition-guide/patentsview
+    # API requests go to api.uspto.gov; data.uspto.gov is the web UI only
+    base_url: "https://api.uspto.gov/api/v1/patent/applications"
+    api_key_env_var: "USPTO_ODP_API_KEY" # pragma: allowlist secret
     rate_limit_per_minute: 60  # Conservative default for polite-use policy
     timeout_seconds: 30
     retry_attempts: 3
@@ -215,32 +218,6 @@ enrichment_refresh:
       cache_dir: "data/cache/usaspending"  # Directory for cache files
       ttl_hours: 24  # Time-to-live for cache entries (hours)
 
-  # Phase 2+ sources -- disabled by default until legal/data-sharing reviews complete.
-  # Enable per-environment via env var, e.g.:
-  #   SBIR_ETL__ENRICHMENT_REFRESH__SEC_EDGAR__ENABLED=true
-  sec_edgar:
-    enabled: false  # Requires SEC EDGAR review
-    cadence_days: 7
-    sla_staleness_days: 14
-    rate_limit_per_minute: 10  # SEC fair-access rate limit
-    state_file: "data/state/sec_edgar_refresh_state.json"
-    metrics_file: "reports/metrics/sec_edgar_freshness.json"
-
-  opencorporates:
-    enabled: false  # Requires API key + data-sharing agreement
-    cadence_days: 30
-    sla_staleness_days: 60
-    rate_limit_per_minute: 30
-    state_file: "data/state/opencorporates_refresh_state.json"
-    metrics_file: "reports/metrics/opencorporates_freshness.json"
-
-  dla_cage:
-    enabled: false  # Requires DLA CAGE/BIS access review
-    cadence_days: 30
-    sla_staleness_days: 90
-    rate_limit_per_minute: 60
-    state_file: "data/state/dla_cage_refresh_state.json"
-    metrics_file: "reports/metrics/dla_cage_freshness.json"
 
 extraction:
   sbir:
@@ -291,13 +268,13 @@ extraction:
     # Implementation: scripts/data/download_uspto.py (runs in GitHub Actions)
     download:
       # PatentsView dataset (comprehensive patent data)
-      # Verified: December 2024
-      # Base URL: https://download.patentsview.org/data
+      # Updated: April 2026 - migrated to USPTO Open Data Portal (ODP)
+      # Direct download base URL for bulk data files
       # Available tables: patent, assignee, inventor, location, cpc, gov_interest
       patentsview:
         enabled: true
-        info_page: "https://patentsview.org/download/data-download-tables"
-        base_url: "https://download.patentsview.org/data"
+        info_page: "https://data.uspto.gov/support/transition-guide/patentsview"
+        base_url: "https://data.uspto.gov/download"
         schedule: "monthly"  # GitHub Actions cron: 0 9 1 * * (1st of month, 9 AM UTC)
         tables: ["patent", "assignee", "inventor"]  # Which tables to download
         s3_prefix: "raw/uspto/patentsview"
@@ -375,7 +352,7 @@ organization_deduplication:
   # Merge history tracking
   track_merge_history: true  # Enable merge history tracking for reversibility
 
-  # Enhanced matching (passed to company_enricher)
+  # Enhanced matching (passed to company_fuzzy_matcher)
   enhanced_matching:
     enable_phonetic_matching: true
     enable_jaro_winkler: false
@@ -463,6 +440,11 @@ duckdb:
   # Query optimization
   enable_object_cache: true
   enable_query_profiler: false
+
+  # S3 direct reads via httpfs extension (skips temp downloads)
+  # Requires IAM credentials available via env vars or instance profile
+  enable_httpfs: false  # Set true or SBIR_ETL__DUCKDB__ENABLE_HTTPFS=true
+  s3_region: "us-east-2"
 
 transition:
   # Transition detection & analytics configuration
@@ -703,6 +685,9 @@ lightrag:
     algorithm: "leiden"
     max_levels: 3
     resolution: 1.0
+  solicitations:
+    min_description_length: 100   # Skip stubs ("See attached", "TBD", etc.)
+    full_description_threshold: 500  # Below this = summary, above = full description
   retrieval:
     default_mode: "hybrid"  # naive, local, global, hybrid
     top_k: 10

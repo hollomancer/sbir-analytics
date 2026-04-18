@@ -1,6 +1,6 @@
 # Research Plan Alignment
 
-Maps the [SBIR Analytics Research Plan](# "Obsidian: SBIR Analytics Research Plan — Summary") milestones to codebase components, Kiro specs, and remaining work.
+Maps the [SBIR Analytics Research Plan](# "Obsidian: SBIR Analytics Research Plan — Summary") milestones to codebase components, specs, and remaining work.
 
 ## What We Are Building
 
@@ -33,7 +33,7 @@ Each milestone produces an analytical output that (a) replicates or exceeds a sp
 | Entity resolution (UEI/DUNS) | Built | `packages/sbir-analytics/sbir_analytics/tools/phase0/resolve_entities.py`, `packages/sbir-ml/sbir_ml/transition/features/vendor_resolver.py` |
 | Contract analytics (DuckDB) | Built | `packages/sbir-ml/sbir_ml/transition/performance/contract_analytics.py` |
 | Vendor crosswalk | Built | `packages/sbir-ml/sbir_ml/transition/features/vendor_crosswalk.py` |
-| Company categorization | 77% spec | `.kiro/specs/company-categorization/` |
+| Company categorization | 77% spec | `specs/company-categorization/` |
 | **Leverage ratio computation** | **Missing** | Needs: ratio calculator, cohort stratification, NASEM reconciliation |
 | **Agency comparison (DOE)** | **Missing** | Needs: civilian agency extraction, cross-agency ratio |
 
@@ -51,7 +51,7 @@ Each milestone produces an analytical output that (a) replicates or exceeds a sp
 | Patent transformer | Built | `sbir_etl/transformers/patent_transformer.py` |
 | Patent-award fuzzy matching | Built | `PatentAssignmentTransformer` with rapidfuzz |
 | Patent analyzer (transition) | Built | `packages/sbir-ml/sbir_ml/transition/features/patent_analyzer.py` |
-| USPTO Lambda downloads | 90% spec | `.kiro/specs/uspto-lambda-downloads/` |
+| USPTO Lambda downloads | 90% spec | `specs/uspto-lambda-downloads/` |
 | USPTO data validators | Built | `sbir_etl/quality/uspto_validators.py` |
 | **Marginal cost per patent** | **Missing** | Needs: cost calculator linking award amounts to patent counts |
 | **Citation network/spillover** | **Missing** | Needs: citation graph builder, spillover multiplier computation |
@@ -72,7 +72,7 @@ Each milestone produces an analytical output that (a) replicates or exceeds a sp
 | Topic clustering | Built | `packages/sbir-analytics/sbir_analytics/tools/mission_a/cluster_topics.py` |
 | Portfolio metrics | Built | `packages/sbir-analytics/sbir_analytics/tools/mission_a/compute_portfolio_metrics.py` |
 | Gap detection | Built | `packages/sbir-analytics/sbir_analytics/tools/mission_a/detect_gaps.py` |
-| PaECTER embeddings | 30% spec | `.kiro/specs/paecter_analysis_layer/` |
+| PaECTER embeddings | 30% spec | `specs/paecter_analysis_layer/` |
 | **Full corpus classification** | **Missing** | Needs: batch classifier run on all SBIR.gov awards |
 | **Cross-agency visualization** | **Missing** | Needs: agency-level technology allocation output |
 
@@ -84,14 +84,14 @@ Each milestone produces an analytical output that (a) replicates or exceeds a sp
 
 **What NASEM cannot do:** Measures proxies (revenue, patents, jobs). No study estimates returns to Treasury.
 
-**Goal:** Connect StateIO fiscal modeling to SBIR award/outcome data for Treasury return estimates. Revenue, employment, VC, acquisitions — none in USAspending. NASEM used surveys. Our pipeline connects programmatically.
+**Goal:** Connect BEA I-O fiscal modeling to SBIR award/outcome data for Treasury return estimates. Revenue, employment, VC, acquisitions — none in USAspending. NASEM used surveys. Our pipeline connects programmatically.
 
 | Component | Status | Location |
 |-----------|--------|----------|
 | Fiscal ROI calculator | Built | `sbir_etl/transformers/fiscal/roi.py` |
 | Tax estimation | Built | `packages/sbir-analytics/sbir_analytics/tools/mission_c/tax_estimation.py` |
-| StateIO adapter | Built | `sbir_etl/transformers/r_stateio_adapter.py`, `r_stateio_functions.py` |
-| StateIO multipliers | Built | `packages/sbir-analytics/sbir_analytics/tools/mission_c/stateio_multipliers.py` |
+| BEA I-O adapter | Built | `sbir_etl/transformers/bea_io_adapter.py`, `bea_io_functions.py` |
+| Economic multipliers | Built | `packages/sbir-analytics/sbir_analytics/tools/mission_c/stateio_multipliers.py` |
 | NAICS-BEA crosswalk | Built | `packages/sbir-analytics/sbir_analytics/tools/mission_c/naics_to_bea_crosswalk.py` |
 | Sensitivity analysis | Built | `sbir_etl/transformers/fiscal/sensitivity.py` |
 | District allocator | Built | `sbir_etl/transformers/fiscal/district_allocator.py` |
@@ -108,16 +108,15 @@ Each milestone produces an analytical output that (a) replicates or exceeds a sp
 
 | Component | Status | Location |
 |-----------|--------|----------|
-| Weekly data refresh | 85% spec | `.kiro/specs/weekly-award-data-refresh/` |
+| Weekly data refresh | 85% spec | `specs/weekly-award-data-refresh/` |
 | Dagster asset pipeline | Built | `packages/sbir-analytics/sbir_analytics/assets/` |
-| Autodev loop | Built | `packages/sbir-analytics/sbir_analytics/autodev/` |
-| MCP agent tools | Spec exists | `.kiro/specs/mcp_agent_tools/` |
+| MCP agent tools | Missing | Needs: spec and implementation |
 | **Rolling analytics API** | **Missing** | Needs: snapshot generation, quarter-over-quarter comparison |
 | **User-facing dashboard** | **Missing** | Needs: query interface for current-quarter snapshots |
 
 **Gap:** Scheduling and pipeline infrastructure exists. Missing the user-facing query/snapshot layer.
 
-## Priority Matrix for Autodev
+## Priority Matrix
 
 ### Immediate (finish what's started — highest ROI)
 1. **`company-categorization`** (77%) — Entity categorization unlocks M1 leverage ratios
@@ -144,4 +143,4 @@ Audit completed 2026-03-13. Status: **ready for Phase 1**.
 - [x] **Entity resolution:** Hybrid 6-step pipeline: UEI exact → DUNS exact → CAGE code → Name+State+NAICS deterministic → rapidfuzz (75-90 thresholds) → LLM tiebreaker. 85%+ deterministic match rate. Gold set calibration. Confidence scoring (1.0 deterministic, 0.5-0.95 fuzzy). (`packages/sbir-analytics/sbir_analytics/tools/phase0/resolve_entities.py`, 376 lines)
 - [x] **Classifier state:** CET classifier trained on 21 NSTC Critical & Emerging Technology categories. TF-IDF + keyword boosting + logistic regression with probability calibration. Production-ready with ≥60% high-confidence target. Full training pipeline in `packages/sbir-analytics/sbir_analytics/assets/cet/training.py`.
 - [x] **FPDS data:** Pulled via USAspending PostgreSQL dump streaming. Linked to entities via vendor crosswalk. Refresh: daily (FPDS), monthly (USAspending bulk). DuckDB analytics for 6.7M+ contracts. (`packages/sbir-analytics/sbir_analytics/tools/phase0/extract_fpds_contracts.py`, `packages/sbir-ml/sbir_ml/transition/performance/contract_analytics.py`)
-- [x] **Infrastructure:** CDK stacks defined (Storage → Security → Batch). 6+ GitHub Actions workflows active (CI, data-refresh, ML jobs, nightly security, autodev). Docker + Dagster orchestration. Deployment status to AWS uncertain — verify before M5 operationalization.
+- [x] **Infrastructure:** CDK stacks defined (Storage → Security → Batch). 6+ GitHub Actions workflows active (CI, data-refresh, ML jobs, nightly security). Docker + Dagster orchestration. Deployment status to AWS uncertain — verify before M5 operationalization.

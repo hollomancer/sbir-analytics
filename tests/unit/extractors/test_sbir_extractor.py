@@ -72,7 +72,9 @@ class TestSbirDuckDBExtractorInitialization:
         assert extractor.csv_path == sample_csv_file
         assert extractor.table_name == "sbir_awards"
         assert extractor._imported is False
-        mock_duckdb_class.assert_called_once_with(database_path=":memory:")
+        mock_duckdb_class.assert_called_once_with(
+            database_path=":memory:", enable_httpfs=False, s3_region=None
+        )
 
     @patch("sbir_etl.extractors.sbir.DuckDBClient")
     def test_init_with_custom_params(self, mock_duckdb_class, sample_csv_file, tmp_path):
@@ -86,7 +88,9 @@ class TestSbirDuckDBExtractorInitialization:
 
         assert extractor.csv_path == sample_csv_file
         assert extractor.table_name == "custom_table"
-        mock_duckdb_class.assert_called_once_with(database_path=db_path)
+        mock_duckdb_class.assert_called_once_with(
+            database_path=db_path, enable_httpfs=False, s3_region=None
+        )
 
     @patch("sbir_etl.extractors.sbir.DuckDBClient")
     def test_init_with_string_path(self, mock_duckdb_class, tmp_path):

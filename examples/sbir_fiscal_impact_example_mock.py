@@ -4,7 +4,7 @@ This example demonstrates the complete pipeline from SBIR awards to
 tax and job impact analysis by state and industry using mock data.
 
 This version works WITHOUT R and provides realistic demo outputs.
-For real calculations, use Docker or install R + stateio packages.
+For real calculations, set BEA_API_KEY (register at https://apps.bea.gov/API/signup/).
 
 Usage:
     python examples/sbir_fiscal_impact_example_mock.py
@@ -24,8 +24,8 @@ if str(PROJECT_ROOT) not in sys.path:
 from sbir_etl.transformers.naics_bea_mapper import NAICSBEAMapper
 
 
-class MockRStateIOAdapter:
-    """Mock R adapter that provides realistic outputs without requiring R."""
+class MockBEAIOAdapter:
+    """Mock BEA I-O adapter that provides realistic outputs for examples."""
 
     def __init__(self):
         """Initialize mock adapter."""
@@ -96,11 +96,11 @@ class MockRStateIOAdapter:
 
 
 class MockSBIRFiscalImpactCalculator:
-    """Mock fiscal impact calculator that works without R."""
+    """Mock fiscal impact calculator for examples."""
 
     def __init__(self):
         """Initialize mock calculator."""
-        self.r_adapter = MockRStateIOAdapter()
+        self.io_adapter = MockBEAIOAdapter()
         self.naics_mapper = NAICSBEAMapper()
 
     def calculate_impacts_from_sbir_awards(
@@ -141,7 +141,7 @@ class MockSBIRFiscalImpactCalculator:
         )
 
         # Compute impacts
-        impacts = self.r_adapter.compute_impacts(shocks)
+        impacts = self.io_adapter.compute_impacts(shocks)
 
         # Add employment
         if include_employment:
@@ -267,7 +267,7 @@ def main():
     print("=" * 80)
     print()
     print("NOTE: This is a demonstration using mock economic multipliers.")
-    print("      For real calculations, run in Docker with R and StateIO installed.")
+    print("      For real calculations, set BEA_API_KEY environment variable.")
     print("      See Dockerfile and docker-compose.yml for setup.")
     print()
 
@@ -284,7 +284,7 @@ def main():
     calculator = MockSBIRFiscalImpactCalculator()
     print("  ✓ Mock calculator initialized")
     print("  ✓ NAICS→BEA mapper loaded")
-    print("  ✓ Using simplified economic multipliers (not real StateIO)")
+    print("  ✓ Using simplified economic multipliers (BEA_API_KEY not set)")
     print()
 
     # Step 3: Calculate impacts

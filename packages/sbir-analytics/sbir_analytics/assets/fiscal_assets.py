@@ -24,7 +24,7 @@ from sbir_etl.transformers.fiscal import (
     FiscalTaxEstimator,
     FiscalUncertaintyQuantifier,
 )
-from sbir_etl.transformers.r_stateio_adapter import RStateIOAdapter
+from sbir_etl.transformers.bea_io_adapter import BEAIOAdapter
 from sbir_etl.utils.monitoring import performance_monitor
 
 
@@ -376,7 +376,7 @@ def bea_mapping_quality_check(bea_mapped_sbir_awards: pd.DataFrame) -> AssetChec
 
 
 @asset(
-    description="Economic shocks aggregated by state, BEA sector, and fiscal year for StateIO model input",
+    description="Economic shocks aggregated by state, BEA sector, and fiscal year for BEA I-O model input",
     group_name="economic_modeling",
     compute_kind="pandas",
 )
@@ -521,7 +521,7 @@ def economic_shocks_quality_check(economic_shocks: pd.DataFrame) -> AssetCheckRe
 
 
 @asset(
-    description="Economic impacts computed from shocks using StateIO model",
+    description="Economic impacts computed from shocks using BEA I-O model",
     group_name="economic_modeling",
     compute_kind="r",
 )
@@ -530,10 +530,10 @@ def economic_impacts(
     economic_shocks: pd.DataFrame,
 ) -> Output[pd.DataFrame]:
     """
-    Compute economic impacts from spending shocks using StateIO input-output model.
+    Compute economic impacts from spending shocks using BEA I-O tables.
 
-    This asset uses the RStateIOAdapter to call EPA's StateIO R package via rpy2
-    to compute multiplier effects and economic impact components from SBIR spending.
+    This asset uses the BEAIOAdapter to fetch national Input-Output tables
+    from the BEA API and compute multiplier effects from SBIR spending.
     """
     config = get_config()
     context.log.info(
@@ -541,21 +541,17 @@ def economic_impacts(
         extra={"num_shocks": len(economic_shocks)},
     )
 
-    # Check if R adapter is available
+    # Initialize BEA I-O adapter
     try:
-        adapter = RStateIOAdapter(config=config.fiscal_analysis)
+        adapter = BEAIOAdapter(config=config.fiscal_analysis)
         if not adapter.is_available():
             context.log.warning(
-                "R StateIO adapter not available. This may require:\n"
-                "1. Install rpy2: poetry install --extras r\n"
-                "2. Install StateIO R package in R "
-                "(set CRAN mirror first): options(repos = c(CRAN = 'https://cloud.r-project.org')); "
-                "install.packages('remotes'); remotes::install_github('USEPA/stateio')"
+                "BEA I-O adapter not available. Set BEA_API_KEY env var.\n"
+                "Register at https://apps.bea.gov/API/signup/"
             )
-            # Return placeholder DataFrame with same structure
             return _create_placeholder_impacts(economic_shocks, context)
-    except ImportError as e:
-        context.log.warning(f"R StateIO adapter not available: {e}")
+    except Exception as e:
+        context.log.warning(f"BEA I-O adapter not available: {e}")
         return _create_placeholder_impacts(economic_shocks, context)
 
     # Prepare shocks DataFrame for model input
@@ -629,7 +625,7 @@ def _create_placeholder_impacts(
     Returns:
         Output with placeholder impacts DataFrame
     """
-    context.log.warning("Creating placeholder impacts (R StateIO adapter unavailable)")
+    context.log.warning("Creating placeholder impacts (BEA I-O adapter unavailable)")
 
     placeholder_df = shocks_df.copy()
     # Add placeholder impact columns with zero values
@@ -641,12 +637,12 @@ def _create_placeholder_impacts(
     placeholder_df["production_impact"] = 0.0
     placeholder_df["model_version"] = "placeholder"
     placeholder_df["confidence"] = 0.0
-    placeholder_df["quality_flags"] = "r_adapter_unavailable"
+    placeholder_df["quality_flags"] = "bea_adapter_unavailable"
 
     metadata = {
         "num_impacts": len(placeholder_df),
         "model_version": "placeholder",
-        "warning": "R StateIO adapter unavailable - placeholder impacts generated",
+        "warning": "BEA I-O adapter unavailable - placeholder impacts generated",
     }
 
     return Output(value=placeholder_df, metadata=metadata)  # type: ignore[arg-type]
@@ -953,7 +949,7 @@ def inflation_adjustment_quality_check(inflation_adjusted_awards: pd.DataFrame) 
 
 
 @asset(
-    description="Economic components extracted from StateIO impacts for tax base calculation",
+    description="Economic components extracted from BEA I-O impacts for tax base calculation",
     group_name="tax_calculation",
     compute_kind="pandas",
 )
@@ -962,7 +958,7 @@ def tax_base_components(
     economic_impacts: pd.DataFrame,
 ) -> Output[pd.DataFrame]:
     """
-    Extract and validate economic components from StateIO model outputs.
+    Extract and validate economic components from BEA I-O model outputs.
 
     This asset transforms economic impacts into validated tax base components:
     wage impacts, proprietor income, gross operating surplus, and consumption.

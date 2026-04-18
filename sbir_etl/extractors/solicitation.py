@@ -21,8 +21,11 @@ from ..exceptions import APIError
 
 try:
     import httpx
+
+    _RETRYABLE_HTTPX = (httpx.HTTPStatusError, httpx.TimeoutException, httpx.TransportError)
 except ImportError:
     httpx = None  # type: ignore[assignment]
+    _RETRYABLE_HTTPX = (Exception,)  # type: ignore[assignment]  # fallback when httpx absent
 
 SBIR_GOV_API_BASE = "https://api.www.sbir.gov/public/api"
 
@@ -69,7 +72,7 @@ class SolicitationExtractor:
     @retry(
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=2, min=2, max=30),
-        retry=retry_if_exception_type(Exception),
+        retry=retry_if_exception_type(_RETRYABLE_HTTPX),
         reraise=True,
     )
     def _query_solicitations(
@@ -77,6 +80,7 @@ class SolicitationExtractor:
         *,
         agency: str | None = None,
         year: int | None = None,
+        keyword: str | None = None,
         start: int = 0,
         rows: int = 100,
     ) -> list[dict[str, Any]]:
@@ -85,6 +89,7 @@ class SolicitationExtractor:
         Args:
             agency: Agency abbreviation filter.
             year: Solicitation year filter.
+            keyword: Free-text keyword search (topic code or solicitation number).
             start: Pagination offset.
             rows: Results per page.
 
@@ -96,11 +101,17 @@ class SolicitationExtractor:
             params["agency"] = agency
         if year:
             params["year"] = year
+        if keyword:
+            params["keyword"] = keyword
 
         url = f"{self.base_url}/solicitations"
         logger.debug(f"SBIR.gov solicitations request: {url} params={params}")
 
         response = self.client.get(url, params=params)
+
+        # Raise httpx.HTTPStatusError for transient failures so tenacity retries them.
+        if response.status_code in (429, 500, 502, 503, 504):
+            response.raise_for_status()
 
         if response.status_code != 200:
             raise APIError(
@@ -114,6 +125,119 @@ class SolicitationExtractor:
         if isinstance(data, dict):
             return data.get("results") or data.get("data") or []
         return []
+
+    def query_by_keyword(
+        self,
+        keyword: str,
+        max_results: int = 25,
+    ) -> list[dict[str, Any]]:
+        """Search solicitations by keyword (topic code or solicitation number).
+
+        Useful for finding topics when the solicitation year is unknown.
+
+        Args:
+            keyword: Topic code, solicitation number, or free-text query.
+            max_results: Maximum results to return.
+
+        Returns:
+            List of normalized topic dicts.
+        """
+        try:
+            return self._query_solicitations(keyword=keyword, rows=max_results)
+        except Exception as e:
+            logger.debug(f"SBIR.gov keyword query failed for '{keyword}': {e}")
+            return []
+
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=2, min=2, max=30),
+        retry=retry_if_exception_type(_RETRYABLE_HTTPX),
+        reraise=True,
+    )
+    def _query_awards(
+        self,
+        keyword: str,
+        rows: int = 5,
+    ) -> list[dict[str, Any]]:
+        """Query SBIR.gov awards endpoint by keyword.
+
+        Used as fallback when a topic code isn't found via ``/solicitations``.
+        Award records often contain topic titles and abstracts that can
+        substitute for missing solicitation descriptions.
+
+        Args:
+            keyword: Topic code to search for.
+            rows: Maximum results.
+
+        Returns:
+            List of award dicts.
+        """
+        url = f"{self.base_url}/awards"
+        params: dict[str, str | int] = {"keyword": keyword, "rows": rows, "start": 0}
+        logger.debug(f"SBIR.gov awards fallback request: {url} params={params}")
+
+        response = self.client.get(url, params=params)
+        if response.status_code in (429, 500, 502, 503, 504):
+            response.raise_for_status()
+        if response.status_code != 200:
+            return []
+
+        data = response.json()
+        if isinstance(data, list):
+            return data
+        if isinstance(data, dict):
+            return data.get("results") or data.get("data") or []
+        return []
+
+    def query_awards_for_topic(
+        self,
+        topic_code: str,
+    ) -> dict[str, Any] | None:
+        """Find topic metadata via the awards endpoint as a last resort.
+
+        Searches awards by topic code and extracts topic-level metadata
+        (title, description, agency, program) from the first matching award.
+
+        Args:
+            topic_code: The topic code to search for.
+
+        Returns:
+            Normalized topic dict with ``topic_code``, ``title``,
+            ``description``, ``agency``, ``program`` keys, or ``None``.
+        """
+        try:
+            awards = self._query_awards(topic_code)
+        except Exception as e:
+            logger.debug(f"Awards fallback failed for '{topic_code}': {e}")
+            return None
+
+        for award in awards:
+            award_tc = award.get("topicCode") or award.get("topic_code") or ""
+            if award_tc != topic_code:
+                continue
+            title = (
+                award.get("topicTitle")
+                or award.get("topic_title")
+                or award.get("awardTitle")
+                or award.get("award_title")
+                or ""
+            )
+            desc = (
+                award.get("topicDescription")
+                or award.get("topic_description")
+                or award.get("abstract")
+                or award.get("Abstract")
+                or None
+            )
+            if title or desc:
+                return {
+                    "topic_code": topic_code,
+                    "title": title,
+                    "description": desc,
+                    "agency": award.get("agency"),
+                    "program": award.get("program"),
+                }
+        return None
 
     def extract_topics(
         self,

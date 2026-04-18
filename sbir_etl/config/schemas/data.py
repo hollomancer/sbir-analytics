@@ -227,6 +227,14 @@ class DuckDBConfig(BaseModel):
     threads: int = 4
     enable_object_cache: bool = True
     enable_query_profiler: bool = False
+    enable_httpfs: bool = Field(
+        default=False,
+        description="Enable httpfs extension for direct S3 reads (skips temp downloads)",
+    )
+    s3_region: str = Field(
+        default="us-east-2",
+        description="AWS region for httpfs S3 access",
+    )
 
 
 # ---------------------------------------------------------------------------

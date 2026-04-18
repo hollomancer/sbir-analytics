@@ -1,7 +1,7 @@
 """Text normalization utilities for consistent name matching across enrichers.
 
 This module provides shared text normalization functions to eliminate duplicate
-normalization logic across company_enricher, usaspending_enricher, and other modules.
+normalization logic across company_fuzzy_matcher, usaspending_enricher, and other modules.
 
 Key Features:
 - Unified name normalization with configurable suffix handling
@@ -13,6 +13,7 @@ Key Features:
 from __future__ import annotations
 
 import re
+import unicodedata
 
 
 def normalize_name(
@@ -25,7 +26,7 @@ def normalize_name(
     """Normalize a company or recipient name for fuzzy matching.
 
     This function provides unified normalization logic used across multiple enrichers:
-    - company_enricher: Uses normalize_suffixes=True (keeps standardized suffixes)
+    - company_fuzzy_matcher: Uses normalize_suffixes=True (keeps standardized suffixes)
     - usaspending_enricher: Uses remove_suffixes=True (strips all suffixes)
 
     Args:
@@ -53,6 +54,11 @@ def normalize_name(
 
     s = str(name).strip().lower()
 
+    # Apply Unicode NFKD normalization and strip combining characters (accents).
+    # This turns "Café" → "cafe", "naïve" → "naive", "ñ" → "n", etc.
+    s = unicodedata.normalize("NFKD", s)
+    s = "".join(ch for ch in s if not unicodedata.combining(ch))
+
     # Replace punctuation with spaces
     s = re.sub(r"[^\w\s]", " ", s)
 
@@ -64,7 +70,7 @@ def normalize_name(
             s,
         )
     else:
-        # Normalize suffixes to standard forms (company_enricher behavior)
+        # Normalize suffixes to standard forms (company_fuzzy_matcher behavior)
         s = re.sub(r"\b(incorporated|incorporation)\b", "inc", s)
         s = re.sub(r"\b(company|co)\b", "company", s)
         s = re.sub(r"\b(limited|ltd)\b", "ltd", s)
@@ -96,7 +102,7 @@ def normalize_company_name(name: str | None) -> str:
     """Normalize a company name (keeps standardized suffixes).
 
     This is a backward-compatible wrapper for normalize_name() with
-    remove_suffixes=False. Used by company_enricher.
+    remove_suffixes=False. Used by company_fuzzy_matcher.
 
     Args:
         name: Company name to normalize
@@ -105,6 +111,26 @@ def normalize_company_name(name: str | None) -> str:
         Normalized company name
     """
     return normalize_name(name, remove_suffixes=False)
+
+
+def pluralize_col_key(col: str) -> str:
+    """Convert a column name to a pluralized dict key.
+
+    Lowercases, replaces spaces with underscores, and applies basic English
+    pluralization (``y`` → ``ies``, otherwise append ``s``).
+
+    Examples:
+        >>> pluralize_col_key("Company")
+        'companies'
+        >>> pluralize_col_key("Phase")
+        'phases'
+        >>> pluralize_col_key("Agency")
+        'agencies'
+    """
+    key = col.lower().replace(" ", "_")
+    if key.endswith("y"):
+        return key[:-1] + "ies"
+    return key + "s"
 
 
 def normalize_recipient_name(name: str | None) -> str:

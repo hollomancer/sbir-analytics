@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import tempfile
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -13,6 +14,11 @@ try:
     from cloudpathlib import S3Path
 except ImportError:
     S3Path = None  # type: ignore[assignment, misc]
+
+
+def is_s3_path(path: str | Path) -> bool:
+    """Check if a path is an S3 URL."""
+    return str(path).startswith("s3://")
 
 
 def resolve_data_path(
@@ -89,18 +95,45 @@ def resolve_data_path(
         raise FileNotFoundError(f"Local file not found: {local_path}")
 
 
+_S3_CACHE_DIR = Path(tempfile.gettempdir()) / "sbir-analytics-s3-cache"
+
+
+def _get_float_env(var_name: str, default: float) -> float:
+    """Read a float environment variable, falling back to *default* if invalid."""
+    raw = os.getenv(var_name)
+    if raw is None:
+        return default
+    try:
+        return float(raw)
+    except (TypeError, ValueError):
+        logger.warning(f"Invalid value for {var_name}={raw!r}; using default {default}")
+        return default
+
+
+# Cache limits (configurable via env vars)
+_S3_CACHE_MAX_SIZE_GB = _get_float_env("SBIR_ETL_S3_CACHE_MAX_GB", 50.0)
+_S3_CACHE_TTL_HOURS = _get_float_env("SBIR_ETL_S3_CACHE_TTL_HOURS", 24.0)
+
+
 def _download_s3_to_temp(s3_path: S3Path) -> Path:
     """Download S3 file to temporary location for local access."""
-    temp_dir = Path(tempfile.gettempdir()) / "sbir-analytics-s3-cache"
-    temp_dir.mkdir(parents=True, exist_ok=True)
+    _S3_CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
     # Use full S3 path as filename hash to avoid collisions
     import hashlib
 
     path_hash = hashlib.md5(str(s3_path).encode(), usedforsecurity=False).hexdigest()[:8]  # noqa: S324
-    local_file = temp_dir / f"{path_hash}_{s3_path.name}"
+    local_file = _S3_CACHE_DIR / f"{path_hash}_{s3_path.name}"
 
-    # Download if not cached or stale
+    # Download if not cached or stale (TTL check)
+    if local_file.exists():
+        import time
+
+        age_hours = (time.time() - local_file.stat().st_mtime) / 3600
+        if age_hours > _S3_CACHE_TTL_HOURS:
+            logger.info(f"Cache expired ({age_hours:.1f}h > {_S3_CACHE_TTL_HOURS}h): {local_file}")
+            local_file.unlink()
+
     if not local_file.exists():
         logger.info(f"Downloading {s3_path} to {local_file}")
         s3_path.download_to(local_file)
@@ -111,6 +144,54 @@ def _download_s3_to_temp(s3_path: S3Path) -> Path:
         logger.debug(f"Using cached S3 file: {local_file}")
 
     return local_file
+
+
+def cleanup_s3_cache(
+    max_size_gb: float | None = None,
+    max_age_hours: float | None = None,
+) -> int:
+    """Remove stale or excess files from the S3 download cache.
+
+    Eviction strategy: oldest files first (by modification time).
+
+    Args:
+        max_size_gb: Maximum cache size in GB. Defaults to SBIR_ETL_S3_CACHE_MAX_GB env (50).
+        max_age_hours: Remove files older than this. Defaults to SBIR_ETL_S3_CACHE_TTL_HOURS env (24).
+
+    Returns:
+        Number of files removed.
+    """
+    import time
+
+    max_size = (max_size_gb if max_size_gb is not None else _S3_CACHE_MAX_SIZE_GB) * 1024**3
+    max_age = (max_age_hours if max_age_hours is not None else _S3_CACHE_TTL_HOURS) * 3600
+    now = time.time()
+    removed = 0
+
+    if not _S3_CACHE_DIR.exists():
+        return 0
+
+    # Pass 1: remove files older than TTL
+    files = sorted(_S3_CACHE_DIR.iterdir(), key=lambda f: f.stat().st_mtime)
+    for f in files:
+        if f.is_file() and (now - f.stat().st_mtime) > max_age:
+            f.unlink()
+            removed += 1
+
+    # Pass 2: evict oldest files if total size still exceeds limit
+    files = sorted(_S3_CACHE_DIR.iterdir(), key=lambda f: f.stat().st_mtime)
+    total_size = sum(f.stat().st_size for f in files if f.is_file())
+    for f in files:
+        if total_size <= max_size:
+            break
+        if f.is_file():
+            total_size -= f.stat().st_size
+            f.unlink()
+            removed += 1
+
+    if removed:
+        logger.info(f"S3 cache cleanup: removed {removed} files")
+    return removed
 
 
 def get_s3_bucket_from_env() -> str | None:
@@ -361,3 +442,149 @@ def find_latest_sam_gov_parquet(
     except Exception as e:
         logger.error(f"Error finding latest SAM.gov parquet: {e}")
         return None
+
+
+# ---------------------------------------------------------------------------
+# SBIR awards CSV source resolution and freshness checking
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class SbirAwardsSource:
+    """Metadata about a resolved SBIR awards CSV source."""
+
+    path: Path
+    origin: str  # "s3", "download", or "local"
+    s3_key_date: str | None = None
+
+
+def resolve_sbir_awards_csv(
+    download_url: str = "https://data.www.sbir.gov/mod_awarddatapublic/award_data.csv",
+    local_path: Path | None = None,
+) -> SbirAwardsSource:
+    """Resolve the SBIR awards CSV: S3 first, then download, then local.
+
+    Resolution order:
+    1. S3 bucket (if ``SBIR_ANALYTICS_S3_BUCKET`` is set and contains a CSV)
+    2. Direct HTTP download from *download_url*
+    3. *local_path* if provided and exists (e.g. a previously cached copy)
+
+    Args:
+        download_url: URL to download CSV from if S3 is unavailable.
+        local_path: Optional local path to try as last resort.
+
+    Returns:
+        :class:`SbirAwardsSource` with the resolved path and origin metadata.
+
+    Raises:
+        FileNotFoundError: If no source could be resolved.
+    """
+    import re
+
+    import httpx
+
+    # 1. Try S3
+    bucket = get_s3_bucket_from_env()
+    if bucket:
+        try:
+            s3_url = find_latest_sbir_awards(bucket)
+        except (ImportError, ModuleNotFoundError) as e:
+            logger.warning(
+                f"S3 lookup unavailable (missing cloud dependencies): {e}"
+            )
+            s3_url = None
+        if s3_url:
+            logger.info(f"Using S3-cached CSV: {s3_url}")
+            date_match = re.search(r"raw/awards/(\d{4}-\d{2}-\d{2})/", s3_url)
+            key_date = date_match.group(1) if date_match else None
+            # Download S3 object to a local temp file so downstream code
+            # (DuckDB, pandas) can read it without special S3 handling.
+            local_path_resolved = resolve_data_path(s3_url)
+            return SbirAwardsSource(
+                path=local_path_resolved, origin="s3", s3_key_date=key_date
+            )
+
+    # 2. Download from URL
+    logger.info(f"S3 not available; downloading from {download_url}")
+    try:
+        with httpx.Client(timeout=600, follow_redirects=True) as client:
+            response = client.get(download_url)
+            response.raise_for_status()
+
+        with tempfile.NamedTemporaryFile(
+            mode="wb", suffix=".csv", prefix="sbir_awards_", delete=False,
+        ) as tmp_file:
+            tmp_file.write(response.content)
+            tmp = Path(tmp_file.name)
+        size_mb = tmp.stat().st_size / 1024 / 1024
+        logger.info(f"Downloaded {size_mb:.1f} MB to {tmp}")
+        return SbirAwardsSource(path=tmp, origin="download")
+    except Exception as e:
+        logger.warning(f"Download failed: {e}")
+
+    # 3. Local fallback
+    if local_path and local_path.exists():
+        logger.info(f"Using local fallback: {local_path}")
+        return SbirAwardsSource(path=local_path, origin="local")
+
+    raise FileNotFoundError(
+        f"Could not resolve SBIR awards CSV from S3, download ({download_url}), "
+        f"or local ({local_path})"
+    )
+
+
+def check_sbir_data_freshness(
+    source: SbirAwardsSource,
+    max_award_date: str | None,
+    days: int,
+    *,
+    s3_slack_days: int = 3,
+    data_slack_days: int = 14,
+) -> list[str]:
+    """Check whether SBIR bulk data is fresh enough for a reporting window.
+
+    Runs two independent checks:
+    1. **S3 key date** — was the data-refresh workflow recent?
+    2. **Max award date in data** — is the underlying SBIR.gov dataset current?
+
+    Args:
+        source: Resolved data source with optional S3 key date.
+        max_award_date: The most recent ``Proposal Award Date`` in the dataset.
+        days: The reporting window in days (e.g. 7 for weekly).
+        s3_slack_days: Allowed slack beyond *days* for S3 key date.
+        data_slack_days: Allowed slack beyond *days* for max award date.
+
+    Returns:
+        List of warning strings (empty if data is fresh).
+    """
+    from datetime import datetime, UTC
+
+    from .date_utils import parse_date
+
+    warnings: list[str] = []
+    now = datetime.now(UTC).replace(tzinfo=None)
+
+    if source.s3_key_date:
+        key_dt = parse_date(source.s3_key_date)
+        if key_dt:
+            key_datetime = datetime(key_dt.year, key_dt.month, key_dt.day)
+            age_days = (now - key_datetime).days
+            if age_days > days + s3_slack_days:
+                warnings.append(
+                    f"S3 data is {age_days} days old (key date: {source.s3_key_date}). "
+                    f"The data-refresh workflow may have failed."
+                )
+
+    if max_award_date:
+        max_dt = parse_date(max_award_date)
+        if max_dt:
+            max_datetime = datetime(max_dt.year, max_dt.month, max_dt.day)
+            data_age = (now - max_datetime).days
+            if data_age > days + data_slack_days:
+                warnings.append(
+                    f"Most recent award in data is from {max_award_date} "
+                    f"({data_age} days ago). SBIR.gov bulk data may not have "
+                    f"been updated recently."
+                )
+
+    return warnings

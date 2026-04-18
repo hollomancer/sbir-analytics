@@ -13,7 +13,7 @@ All features can be enabled/disabled via YAML configuration.
 
 import pandas as pd
 
-from sbir_etl.enrichers.company_enricher import enrich_awards_with_companies
+from sbir_etl.enrichers.company_fuzzy_matcher import enrich_awards_with_companies
 from sbir_etl.utils.enhanced_matching import ResearcherMatcher
 
 

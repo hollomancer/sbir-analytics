@@ -23,9 +23,9 @@ The USPTO data refresh process downloads three key datasets:
 
 ### 1. PatentsView Dataset
 
-**Source:** <https://download.patentsview.org/data>
+**Source:** <https://data.uspto.gov/support/transition-guide/patentsview>
 
-**Last Verified:** December 2024
+**Last Verified:** April 2026 (migrated from download.patentsview.org to data.uspto.gov)
 
 **Available Tables:**
 
@@ -183,7 +183,7 @@ extraction:
     download:
       patentsview:
         enabled: true
-        base_url: "https://download.patentsview.org/data"
+        base_url: "https://data.uspto.gov/download"
         schedule: "monthly"
         tables: ["patent", "assignee", "inventor"]
         s3_prefix: "raw/uspto/patentsview"
@@ -360,7 +360,7 @@ pytest tests/integration/test_uspto_download.py -v
 - [USPTO Patent Data Dictionary](dictionaries/uspto-patent-data-dictionary.md)
 - [Patent Neo4j Schema](../schemas/patent-neo4j-schema.md)
 - [Data Sources Overview](index.md)
-- [Configuration Patterns](../../.kiro/steering/configuration-patterns.md)
+- [Configuration Patterns](../steering/configuration-patterns.md)
 
 ## Contact
 

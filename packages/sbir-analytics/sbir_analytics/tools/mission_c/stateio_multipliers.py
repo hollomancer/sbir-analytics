@@ -1,16 +1,15 @@
 """
-StateIO economic multipliers tool.
+BEA I-O economic multipliers tool.
 
-Wraps the existing RStateIOAdapter to provide state-by-sector economic
-multipliers for Track A fiscal estimation.
+Wraps the BEAIOAdapter to provide state-by-sector economic multipliers
+for Track A fiscal estimation.
 
-Data source: EPA Data Commons (StateIO pre-computed I-O tables)
-Access method: R package output / CSV
-Refresh cadence: Static (2012-2020 vintage data)
+Data source: BEA Input-Output tables (via REST API)
+Access method: BEA API / CSV fallback
+Refresh cadence: Annual (BEA publishes updated I-O tables yearly)
 
-Known limitation: StateIO temporal coverage ends 2020. Post-2020 estimates
-require extrapolation. Sectors with rapid structural change (AI, biotech)
-have higher extrapolation uncertainty.
+Known limitation: BEA national I-O tables are used for all states.
+State-level variation requires additional Regional GDP scaling.
 """
 
 from __future__ import annotations
@@ -24,10 +23,10 @@ from ..base import BaseTool, DataSourceRef, ToolMetadata, ToolResult
 
 
 class StateIOMultipliersTool(BaseTool):
-    """Retrieve StateIO economic multipliers by state and BEA sector.
+    """Retrieve BEA I-O economic multipliers by state and BEA sector.
 
-    Wraps the R StateIO adapter with the standard tool interface.
-    Falls back to CSV-based lookup if R/rpy2 is not available.
+    Wraps the BEA I-O adapter with the standard tool interface.
+    Falls back to CSV-based lookup if BEA API key is not set.
     """
 
     name = "stateio_multipliers"
@@ -80,53 +79,55 @@ class StateIOMultipliersTool(BaseTool):
 
         logger.info(f"Looking up multipliers for {len(pairs)} state-sector combinations")
 
-        # Try R adapter first, fall back to CSV
+        # Try BEA I-O adapter first, fall back to CSV
         multipliers: list[dict[str, Any]] = []
         access_method = "csv_fallback"
 
         try:
-            from sbir_etl.transformers.r_stateio_adapter import RStateIOAdapter, RPY2_AVAILABLE
+            from sbir_etl.transformers.bea_io_adapter import BEAIOAdapter
 
-            if RPY2_AVAILABLE:
-                adapter = RStateIOAdapter()
-                if adapter.is_available():
-                    try:
-                        # Build a unit-shock DataFrame to derive multipliers
-                        from decimal import Decimal
+            adapter = BEAIOAdapter()
+            if adapter.is_available():
+                try:
+                    from decimal import Decimal
 
-                        unit_shock = Decimal("1000000")
-                        shocks_df = pd.DataFrame({
-                            "state": [s for s, _ in pairs],
-                            "bea_sector": [b for _, b in pairs],
-                            "fiscal_year": [2020] * len(pairs),
-                            "shock_amount": [unit_shock] * len(pairs),
+                    unit_shock = Decimal("1000000")
+                    shocks_df = pd.DataFrame({
+                        "state": [s for s, _ in pairs],
+                        "bea_sector": [b for _, b in pairs],
+                        "fiscal_year": [2020] * len(pairs),
+                        "shock_amount": [unit_shock] * len(pairs),
+                    })
+                    impacts_df = adapter.compute_impacts(shocks_df)
+
+                    for _, row in impacts_df.iterrows():
+                        shock = float(row.get("shock_amount", unit_shock))
+                        if shock == 0:
+                            continue
+                        # employment_impact is jobs (not dollars), so the
+                        # multiplier is jobs per $1M of input spending.
+                        emp_impact = row.get("employment_impact")
+                        if emp_impact is not None and pd.notna(emp_impact):
+                            emp_multiplier = float(emp_impact) / (shock / 1_000_000)
+                        else:
+                            emp_multiplier = None
+
+                        multipliers.append({
+                            "state": row["state"],
+                            "bea_sector": row["bea_sector"],
+                            "output_multiplier": float(row.get("production_impact", shock)) / shock,
+                            "employment_multiplier": emp_multiplier,
+                            "value_added_multiplier": (
+                                float(row.get("wage_impact", 0))
+                                + float(row.get("gross_operating_surplus", 0))
+                                + float(row.get("tax_impact", 0))
+                            ) / shock,
+                            "source": "bea_api",
                         })
-                        impacts_df = adapter.compute_impacts(shocks_df)
-
-                        # Derive multipliers as ratio of impact to input shock
-                        for _, row in impacts_df.iterrows():
-                            shock = float(row.get("shock_amount", unit_shock))
-                            if shock == 0:
-                                continue
-                            # Note: StateIO R adapter does not return employment
-                            # impact data. Use 1.0 placeholder until true employment
-                            # multipliers are supported.
-                            multipliers.append({
-                                "state": row["state"],
-                                "bea_sector": row["bea_sector"],
-                                "output_multiplier": float(row.get("production_impact", shock)) / shock,
-                                "employment_multiplier": float(row.get("employment_impact", shock)) / shock,
-                                "value_added_multiplier": (
-                                    float(row.get("wage_impact", 0))
-                                    + float(row.get("gross_operating_surplus", 0))
-                                    + float(row.get("tax_impact", 0))
-                                ) / shock,
-                                "source": "stateio_r",
-                            })
-                        if multipliers:
-                            access_method = "stateio_r_package"
-                    except Exception as e:
-                        logger.debug(f"R adapter compute_impacts failed: {e}")
+                    if multipliers:
+                        access_method = "bea_api"
+                except Exception as e:
+                    logger.debug(f"BEA I-O adapter compute_impacts failed: {e}")
         except ImportError:
             pass
 
@@ -174,8 +175,8 @@ class StateIOMultipliersTool(BaseTool):
         metadata.record_count = len(multipliers_df)
         metadata.data_sources.append(
             DataSourceRef(
-                name="EPA Data Commons (StateIO)",
-                url="https://github.com/USEPA/stateior",
+                name="BEA Input-Output Tables",
+                url="https://apps.bea.gov/api/",
                 version="2012-2020",
                 record_count=len(multipliers_df),
                 access_method=access_method,
@@ -184,7 +185,7 @@ class StateIOMultipliersTool(BaseTool):
 
         if access_method in ("csv_precomputed", "default_fallback"):
             metadata.warnings.append(
-                "StateIO temporal coverage ends 2020. Post-2020 estimates "
+                "BEA I-O temporal coverage ends 2020. Post-2020 estimates "
                 "require extrapolation from most recent I-O tables."
             )
 

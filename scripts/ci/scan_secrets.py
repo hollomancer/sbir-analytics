@@ -36,7 +36,7 @@ EXCLUDE_DIRS = [
     ".venv",
     "docs",
     "archive",
-    ".kiro",
+    "specs",
     "node_modules",
     ".mypy_cache",
     ".pytest_cache",

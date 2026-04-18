@@ -47,7 +47,7 @@ sbir-analytics/
 │   │   └── schemas.py            # Pydantic validation schemas
 │   │
 │   ├── enrichers/                # Stage 3: External enrichment
-│   │   ├── company_enricher.py   # SAM.gov company enrichment
+│   │   ├── company_fuzzy_matcher.py # rapidfuzz-based local company matching
 │   │   ├── geographic_resolver.py # NAICS/GICS mapping
 │   │   ├── inflation_adjuster.py # Fiscal year adjustments
 │   │   ├── chunked_enrichment.py # Memory-efficient batching
@@ -56,7 +56,7 @@ sbir-analytics/
 │   ├── transformers/             # Stage 4: Business logic & modeling
 │   │   ├── patent_transformer.py # Patent chain processing
 │   │   ├── company_cet_aggregator.py # Company-level CET profiles
-│   │   ├── r_stateio_adapter.py  # Economic model interface
+│   │   ├── bea_io_adapter.py     # BEA I-O economic model interface
 │   │   └── fiscal/               # Fiscal impact calculations
 │   │
 │   ├── loaders/                  # Stage 5: Neo4j persistence
@@ -131,13 +131,11 @@ sbir-analytics/
 │   ├── transition/               # Transition detection docs
 │   └── references/               # Data dictionaries
 │
-├── .kiro/                        # Specification-driven development
-│   ├── specs/                    # Active specifications (Kiro format)
-│   │   ├── statistical_reporting/
-│   │   ├── weekly-award-data-refresh/
-│   │   ├── merger_acquisition_detection/
-│   │   └── archive/              # Completed specs
-│   └── steering/                 # Agent guidance documents
+├── specs/                        # Feature specifications
+│   ├── statistical_reporting/
+│   ├── weekly-award-data-refresh/
+│   ├── merger_acquisition_detection/
+│   └── archive/                  # Completed specs
 │
 ├── .github/workflows/            # CI/CD pipelines
 │   ├── ci.yml                    # Standard lint/test
@@ -203,7 +201,7 @@ sbir-analytics/
 ├─────────────┤
 │ • CET classification (ML)
 │ • Transition detection (6-signal scoring)
-│ • Fiscal impact modeling (StateIO)
+│ • Fiscal impact modeling (BEA I-O)
 │ • Company-level aggregation
 │ • Patent chain reconstruction
 └──────┬──────┘
@@ -247,7 +245,7 @@ Assets are organized by **group_name** (extraction, validation, enrichment, tran
    ├─ transition_detections (6-signal scoring)
    ├─ transition_analytics (KPI aggregation)
    ├─ patent_sbir_links (SBIR-patent mapping)
-   ├─ fiscal_economic_impacts (StateIO modeling)
+   ├─ fiscal_economic_impacts (BEA I-O modeling)
    └─ fiscal_tax_estimates (ROI calculations)
 
 5. NEO4J LOADING LAYER
@@ -493,10 +491,10 @@ shocks = aggregate_economic_shocks(
     shock_type='direct_industry_output'  # Dollar amounts by sector/region
 )
 
-# 4. Model Economic Impacts (StateIO/USEEIO via R)
+# 4. Model Economic Impacts (BEA I-O tables)
 impacts = compute_economic_impacts(
     shocks,
-    model='stateio',
+    model='bea_io',
     multiplier_type='gross_output',  # Industry multipliers
     geographic_level='state'
 )
@@ -732,7 +730,7 @@ Each transition is flagged with:
 | **Configuration** | Pydantic 2.x | Type-safe YAML loading with validation |
 | **ML Classification** | scikit-learn | TF-IDF + Logistic Regression for CET |
 | **Fuzzy Matching** | RapidFuzz 3.x | Company name matching (vendor resolution) |
-| **Economic Modeling** | StateIO (R) | Input-output impact modeling via rpy2 |
+| **Economic Modeling** | BEA API | Input-output impact modeling (Leontief) |
 | **Logging** | Loguru | Structured logging |
 | **CLI** | Typer + Rich | Interactive dashboard commands |
 | **Testing** | Pytest + Pytest-Cov | Unit/integration/E2E tests |
@@ -783,7 +781,7 @@ Each transition is flagged with:
 ├─────────────────────────────────────────┤
 │ ├─ CET Classification (scikit-learn ML) │
 │ ├─ Transition Detection (6-signal)      │
-│ ├─ Fiscal Analysis (StateIO via R)      │
+│ ├─ Fiscal Analysis (BEA I-O tables)     │
 │ ├─ Patent Chain Analysis                │
 │ └─ Company Aggregation                  │
 └─────────────────────┬───────────────────┘
@@ -950,7 +948,7 @@ ORDER BY c.cet_specialization_score DESC
 ```
 enriched_sbir_awards (with NAICS)
     ↓
-    └─→ StateIO (R models via rpy2)
+    └─→ BEA API (I-O tables via REST)
         ↓
         └─→ Input-output multipliers
             ↓
@@ -983,7 +981,7 @@ Located in `docs/decisions/`:
 - **Neo4j Schema**: MERGE semantics for idempotent loading
 - **CET Classification**: TF-IDF + scikit-learn (not LLM-based for cost/reproducibility)
 - **Transition Detection**: 6-signal composite scoring (transparency via evidence)
-- **Fiscal Analysis**: StateIO integration via R/rpy2 (economic rigor)
+- **Fiscal Analysis**: BEA I-O tables via REST API (economic rigor)
 
 ---
 

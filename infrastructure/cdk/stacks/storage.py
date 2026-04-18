@@ -9,6 +9,8 @@ from aws_cdk import (
 )
 from constructs import Construct
 
+from stacks.config import S3_BUCKET_NAME
+
 
 class StorageStack(Stack):
     """S3 bucket for storing SBIR ETL data and artifacts."""
@@ -19,7 +21,7 @@ class StorageStack(Stack):
         # Default to importing existing bucket (bucket already exists)
         # Use context variable "create_new_bucket=true" to create a new bucket instead
         create_new = self.node.try_get_context("create_new_bucket") == "true"
-        bucket_name = "sbir-etl-production-data"
+        bucket_name = S3_BUCKET_NAME
 
         if create_new:
             # Create new bucket (will fail if bucket already exists)
@@ -48,16 +50,28 @@ class StorageStack(Stack):
                         prefix="raw/usaspending/database/",
                         enabled=True,
                         transitions=[
+                            # Skip Intelligent Tiering (monitoring overhead not
+                            # worth it for a single large ZIP accessed monthly).
+                            # Glacier Instant Retrieval: same-day restore at
+                            # ~68% lower storage cost than Standard.
                             s3.Transition(
-                                storage_class=s3.StorageClass.INTELLIGENT_TIERING,
-                                transition_after=Duration.days(7),
-                            ),
-                            s3.Transition(
-                                storage_class=s3.StorageClass.GLACIER_FLEXIBLE_RETRIEVAL,
-                                transition_after=Duration.days(90),
+                                storage_class=s3.StorageClass.GLACIER_INSTANT_RETRIEVAL,
+                                transition_after=Duration.days(30),
                             ),
                         ],
-                        expiration=Duration.days(365),  # Keep for 1 year
+                        expiration=Duration.days(365),
+                    ),
+                    s3.LifecycleRule(
+                        id="validated-data-retention",
+                        prefix="validated/",
+                        expiration=Duration.days(180),
+                        enabled=True,
+                    ),
+                    s3.LifecycleRule(
+                        id="enriched-data-retention",
+                        prefix="enriched/",
+                        expiration=Duration.days(365),
+                        enabled=True,
                     ),
                 ],
                 removal_policy=RemovalPolicy.RETAIN,  # Don't delete data on stack deletion

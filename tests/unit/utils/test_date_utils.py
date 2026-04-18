@@ -32,15 +32,15 @@ class TestParseDate:
         """Test parsing datetime object."""
         dt = datetime(2023, 1, 15, 14, 30)
         result = parse_date(dt)
-        # Function returns datetime unchanged, not converted to date
-        assert result == dt
+        # Function converts datetime to date (strips time component)
+        assert result == date(2023, 1, 15)
 
     def test_parse_date_datetime_return_datetime(self):
         """Test parsing datetime with return_datetime=True."""
         dt = datetime(2023, 1, 15, 14, 30)
         result = parse_date(dt, return_datetime=True)
-        # Function strips time component, returns datetime with 00:00:00
-        assert result == datetime(2023, 1, 15, 0, 0)
+        # Function returns datetime as-is (preserves time component)
+        assert result == datetime(2023, 1, 15, 14, 30)
 
     def test_parse_date_iso_string(self):
         """Test parsing ISO format string."""
@@ -102,14 +102,15 @@ class TestParseDate:
         pd = pandas_available
         ts = pd.Timestamp("2023-01-15")
         result = parse_date(ts)
-        # Function returns Timestamp unchanged
-        assert result == ts
+        # Function converts Timestamp to date object
+        assert result == date(2023, 1, 15)
 
     def test_parse_date_pandas_na(self, pandas_available):
         """Test parsing pandas NaT."""
         pd = pandas_available
         result = parse_date(pd.NaT)
-        # Function returns NaT unchanged, not None
+        # NaT is isinstance(datetime), so it takes the datetime branch
+        # and returns NaT.date() which is NaT — not None
         assert pd.isna(result)
 
 

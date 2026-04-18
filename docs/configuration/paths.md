@@ -43,4 +43,4 @@ export SBIR_ETL__PIPELINE__CHUNK_SIZE=20000
 ## Related
 
 - [Configuration Guide](../configuration.md) - Full configuration reference
-- [Steering: Configuration Patterns](../../.kiro/steering/configuration-patterns.md)
+- [Steering: Configuration Patterns](../steering/configuration-patterns.md)

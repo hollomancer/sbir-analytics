@@ -1,6 +1,6 @@
 ## SBIR Fiscal Impact Pipeline Guide
 
-Complete guide to calculating tax revenue and job creation impacts from SBIR awards using StateIO economic models.
+Complete guide to calculating tax revenue and job creation impacts from SBIR awards using BEA Input-Output tables.
 
 ## Overview
 
@@ -15,7 +15,7 @@ SBIR Awards (with NAICS codes)
     ↓
 Aggregate by State/Sector/Year
     ↓
-[StateIO Economic Models]
+[BEA I-O Economic Models]
     ↓
 Economic Impacts (tax, wages, production)
     ↓
@@ -110,10 +110,10 @@ sector_summary = calculator.calculate_summary_by_sector(impacts)
 
 Indicates computation method and data quality:
 
-- **stateio_direct_with_ratios**: Highest quality (Direct StateIO + actual ratios)
-- **stateio_direct_default_ratios**: Medium quality (Direct StateIO + defaults)
-- **stateio_failed**: Computation failure (contains error details)
-- **placeholder_computation**: R packages unavailable (lowest quality)
+- **bea_api_with_ratios**: Highest quality (BEA I-O tables + actual VA ratios)
+- **bea_api_default_ratios**: Medium quality (BEA I-O tables + default ratios)
+- **bea_api_failed**: Computation failure (contains error details)
+- **placeholder_computation**: BEA API key not set (lowest quality)
 
 ## NAICS to BEA Mapping
 
@@ -154,7 +154,7 @@ jobs_created = wage_impact / average_wage
 
 Default average wage: $100,000 (varies by sector and state in practice)
 
-For more accurate estimates, integrate with StateIO employment coefficients.
+For more accurate estimates, integrate with BEA employment coefficients.
 
 ## Economic Multipliers
 
@@ -306,20 +306,17 @@ reliable = impacts[impacts["confidence"] > 0.7]
 
 ## Troubleshooting
 
-### R Packages Not Available
+### BEA API Key Not Set
 
 ```console
-Error: StateIO R package not loaded
+Warning: BEA_API_KEY not set. Adapter will use placeholder computation.
 ```
 
-**Solution**: Install R and required packages
+**Solution**: Register for a free BEA API key and set the environment variable
 
 ```bash
-# Install R packages
-R -e "remotes::install_github('USEPA/stateior')"
-
-# Install Python rpy2
-uv sync --extra r
+# Register at https://apps.bea.gov/API/signup/
+export BEA_API_KEY=your-api-key-here
 ```
 
 ### NAICS Mapping Warnings
@@ -338,19 +335,19 @@ Average Confidence Score: 0.40
 
 **Causes**:
 
-- StateIO data unavailable for state/year
+- BEA data unavailable for requested year
 - Fallback to default ratios
-- R packages not installed
+- BEA API key not configured
 
 **Solutions**:
 
-- Install R packages
-- Use more recent fiscal year (better data availability)
+- Set BEA_API_KEY environment variable
+- Use a year with available BEA I-O tables (2017-2022 typically available)
 - Accept lower precision or exclude low-confidence records
 
 ## References
 
 - **BEA I-O Accounts**: <https://www.bea.gov/industry/input-output-accounts-data>
+- **BEA API Registration**: <https://apps.bea.gov/API/signup/>
+- **BEA API Documentation**: <https://apps.bea.gov/api/>
 - **NAICS Codes**: <https://www.census.gov/naics/>
-- **StateIO Package**: <https://github.com/USEPA/stateior>
-- **StateIO API Reference**: `docs/fiscal/stateio-api-reference.md`

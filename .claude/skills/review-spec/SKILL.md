@@ -1,14 +1,14 @@
 ---
 name: review-spec
-description: Review a Kiro specification's current relevance and implementation status
+description: Review a specification's current relevance and implementation status
 argument-hint: "[spec-name or 'all']"
 ---
 
-Review the implementation status of Kiro specification(s) against the actual codebase.
+Review the implementation status of specification(s) against the actual codebase.
 
 ## If reviewing a specific spec ($ARGUMENTS):
 
-1. Read `.kiro/specs/$ARGUMENTS/tasks.md` to find incomplete tasks
+1. Read `specs/$ARGUMENTS/tasks.md` to find incomplete tasks
 2. For each incomplete task:
    - Check if the referenced files/modules already exist
    - Check if the described functionality is already implemented elsewhere
@@ -20,7 +20,7 @@ Review the implementation status of Kiro specification(s) against the actual cod
 
 ## If reviewing all specs:
 
-1. Read all `.kiro/specs/*/tasks.md` files
+1. Read all `specs/*/tasks.md` files
 2. For each spec, provide a summary table:
    - Spec name
    - Total / Done / Pending tasks

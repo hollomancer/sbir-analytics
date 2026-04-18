@@ -1,7 +1,7 @@
 """
 Geographic resolution service for fiscal returns analysis.
 
-This module standardizes company locations to state-level for StateIO model compatibility,
+This module standardizes company locations to state-level for BEA I-O model compatibility,
 integrating with existing company enrichment and address parsing capabilities.
 """
 

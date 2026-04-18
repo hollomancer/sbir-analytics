@@ -328,7 +328,7 @@ def paecter_embeddings_awards(
 - Implement uncertainty quantification
 - Dynamic expert pool expansion
 
-See `.kiro/specs/paecter_analysis_layer/` for detailed design.
+See `specs/paecter_analysis_layer/` for detailed design.
 
 ## Testing Patterns
 
@@ -673,7 +673,7 @@ These are intentionally matched to demonstrate similarity scoring.
 - **Model:** <https://huggingface.co/nomic-ai/modernbert-embed-base>
 - **ModernBERT Paper:** <https://arxiv.org/abs/2412.13663>
 - **Sentence Transformers:** <https://www.sbert.net/>
-- **Embedding Spec:** `.kiro/specs/paecter_analysis_layer/`
+- **Embedding Spec:** `specs/paecter_analysis_layer/`
 
 ## Questions?
 
