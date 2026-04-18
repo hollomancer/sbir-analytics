@@ -1,18 +1,46 @@
-name: Weekly Comprehensive Tests
+name: Scheduled Tests & Quality
 
 on:
   schedule:
     - cron: "0 2 * * 0"   # 02:00 UTC Sunday
+    - cron: "0 12 * * 1"  # 12:00 UTC Monday (weekly awards report)
+    - cron: "0 3 * * *"   # 03:00 UTC nightly
   workflow_dispatch:
     inputs:
+      workflow_target:
+        description: "What to run"
+        required: false
+        default: tests
+        type: choice
+        options:
+          - tests
+          - awards-report
+          - both
+          - security
+          - smoke
+          - nightly
+          - all
       test_level:
-        description: 'Test level'
+        description: "Test level (used when tests run)"
         required: false
         default: comprehensive
         type: choice
         options:
           - standard
           - comprehensive
+      days:
+        description: "Awards report lookback days (used when awards report runs)"
+        required: false
+        default: "7"
+        type: string
+      mode:
+        description: "Neo4j smoke test mode"
+        required: false
+        default: dry-run
+        type: choice
+        options:
+          - dry-run
+          - live
 
 permissions:
   contents: write
@@ -21,7 +49,7 @@ permissions:
   checks: read
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.event.schedule || github.event.inputs.workflow_target || 'default' }}-${{ github.ref }}
   cancel-in-progress: true
 
 env:
@@ -37,6 +65,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     continue-on-error: true
+    if: |
+      github.event.schedule == '0 2 * * 0' ||
+      (github.event_name == 'workflow_dispatch' &&
+       (github.event.inputs.workflow_target == 'tests' || github.event.inputs.workflow_target == 'both' || github.event.inputs.workflow_target == 'all'))
     strategy:
       fail-fast: false
       matrix:
@@ -87,14 +119,14 @@ jobs:
     needs: tests
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    if: always()
+    if: always() && needs.tests.result != 'skipped'
     outputs:
       failed: ${{ steps.check.outputs.failed }}
     steps:
       - name: Check test results
         id: check
         run: |
-          if [ "${{ needs.tests.result }}" != "success" ]; then
+          if [ "${{ needs.tests.result }}" = "failure" ]; then
             echo "failed=true" >> $GITHUB_OUTPUT
           else
             echo "failed=false" >> $GITHUB_OUTPUT
@@ -182,7 +214,13 @@ jobs:
     name: Comprehensive Test Suite
     runs-on: ubuntu-latest
     timeout-minutes: 120
-    if: github.event.schedule == '0 2 * * 0' || github.event.inputs.test_level == 'comprehensive'
+    if: |
+      github.event.schedule == '0 2 * * 0' ||
+      (
+        github.event_name == 'workflow_dispatch' &&
+        (github.event.inputs.workflow_target == 'tests' || github.event.inputs.workflow_target == 'both' || github.event.inputs.workflow_target == 'all') &&
+        github.event.inputs.test_level == 'comprehensive'
+      )
     steps:
       - uses: actions/checkout@v6
 
@@ -219,7 +257,6 @@ jobs:
             -n auto \
             --timeout=300 \
             -v
-        timeout-minutes: 90
 
       - name: Upload coverage reports
         if: always()
@@ -247,7 +284,13 @@ jobs:
     name: Real Data Validation
     runs-on: ubuntu-latest
     timeout-minutes: 60
-    if: github.event.schedule == '0 2 * * 0' || github.event.inputs.test_level == 'comprehensive'
+    if: |
+      github.event.schedule == '0 2 * * 0' ||
+      (
+        github.event_name == 'workflow_dispatch' &&
+        (github.event.inputs.workflow_target == 'tests' || github.event.inputs.workflow_target == 'both' || github.event.inputs.workflow_target == 'all') &&
+        github.event.inputs.test_level == 'comprehensive'
+      )
     steps:
       - uses: actions/checkout@v6
 
@@ -271,3 +314,226 @@ jobs:
             validation-reports/
             *.csv
           retention-days: 30
+
+  weekly-awards-report:
+    name: Weekly Awards Report
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    if: |
+      github.event.schedule == '0 12 * * 1' ||
+      (github.event_name == 'workflow_dispatch' &&
+       (github.event.inputs.workflow_target == 'awards-report' || github.event.inputs.workflow_target == 'both' || github.event.inputs.workflow_target == 'all'))
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Python and UV
+        uses: ./.github/actions/setup-python-uv
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          install-dev-deps: "false"
+          cache-venv: "false"
+
+      - name: Generate weekly awards report
+        env:
+          DAYS: ${{ github.event.inputs.days || '7' }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          S3_BUCKET: ${{ secrets.S3_BUCKET || '' }}
+        run: |
+          mkdir -p reports
+          uv run --frozen python scripts/data/weekly_awards_report.py \
+            --days "$DAYS" \
+            --output reports/weekly-awards.md
+
+      - name: Post report to job summary
+        if: always()
+        run: |
+          MAX_SIZE=55000  # GitHub step summary limit is ~1 MiB; stay well under
+          if [ -f reports/weekly-awards.md ]; then
+            SIZE=$(wc -c < reports/weekly-awards.md)
+            if [ "$SIZE" -gt "$MAX_SIZE" ]; then
+              head -c "$MAX_SIZE" reports/weekly-awards.md >> $GITHUB_STEP_SUMMARY
+              echo "" >> $GITHUB_STEP_SUMMARY
+              echo "---" >> $GITHUB_STEP_SUMMARY
+              echo "*Report truncated (${SIZE} bytes). Full report available in the artifact.*" >> $GITHUB_STEP_SUMMARY
+            else
+              cat reports/weekly-awards.md >> $GITHUB_STEP_SUMMARY
+            fi
+          else
+            echo "## Weekly Awards Report" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Report generation failed. Check logs for details." >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Upload report artifact
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: weekly-awards-report-${{ github.run_id }}
+          path: reports/weekly-awards.md
+          retention-days: 30
+
+  security-scan:
+    name: Security Scan (Bandit + Secrets)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: |
+      github.event.schedule == '0 3 * * *' ||
+      (github.event_name == 'workflow_dispatch' &&
+       (github.event.inputs.workflow_target == 'security' || github.event.inputs.workflow_target == 'nightly' || github.event.inputs.workflow_target == 'all'))
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Setup Python and UV
+        uses: ./.github/actions/setup-python-uv
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          install-dev-deps: "true"
+          cache-venv: "true"
+      - name: Run Bandit security scanner
+        run: uv run python -m bandit -r sbir_etl packages -c pyproject.toml
+      - name: Run detect-secrets
+        run: |
+          uv pip install detect-secrets
+          uv run detect-secrets scan --baseline .secrets.baseline
+
+  markdown-lint:
+    name: Markdown Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: |
+      github.event.schedule == '0 3 * * *' ||
+      (github.event_name == 'workflow_dispatch' &&
+       (github.event.inputs.workflow_target == 'security' || github.event.inputs.workflow_target == 'nightly' || github.event.inputs.workflow_target == 'all'))
+    steps:
+      - uses: actions/checkout@v6
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+      - name: Install markdownlint-cli2
+        run: npm install -g markdownlint-cli2
+      - name: Run markdownlint-cli2
+        run: |
+          markdownlint-cli2 "**/*.md" \
+            --config .markdownlint.yaml \
+            --ignore "**/archive/**/*.md" \
+            --ignore "**/specs/archive/**/*.md" \
+            --ignore "**/tests/archive/**/*.md" \
+            --ignore "reports/**/*.md" \
+            --ignore "**/.venv/**/*.md" \
+            --ignore "**/venv/**/*.md" \
+            --ignore "**/node_modules/**/*.md"
+
+  neo4j-smoke:
+    name: Neo4j Smoke Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    if: |
+      github.event.schedule == '0 3 * * *' ||
+      (github.event_name == 'workflow_dispatch' &&
+       (github.event.inputs.workflow_target == 'smoke' || github.event.inputs.workflow_target == 'nightly' || github.event.inputs.workflow_target == 'all'))
+    env:
+      MODE: ${{ github.event.inputs.mode || 'dry-run' }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up Docker Buildx
+        uses: ./.github/actions/setup-docker-buildx
+
+      - name: Prepare .env (dry-run mode)
+        uses: ./.github/actions/prepare-env-file
+        with:
+          neo4j-user: ${{ secrets.NEO4J_USER }}
+          neo4j-password: ${{ secrets.NEO4J_PASSWORD }}
+
+      - name: Build runtime image
+        run: docker build --target runtime -t sbir-analytics:smoke .
+
+      - name: Start Neo4j
+        run: docker compose --profile dev up -d neo4j
+
+      - name: Wait for Neo4j
+        uses: ./.github/actions/wait-for-neo4j
+        with:
+          method: "tcp"
+          port: "7687"
+          timeout: "60"
+
+      - name: Apply schema (dry-run)
+        run: |
+          docker run --rm --network sbir-network \
+            -e NEO4J_URI="bolt://neo4j:7687" \
+            sbir-analytics:smoke python scripts/neo4j/apply_schema.py --dry-run
+
+      - name: Cleanup
+        if: always()
+        run: docker compose --profile dev down --remove-orphans --volumes
+
+  verify-local-workflow:
+    name: Verify Local Developer Workflow
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: |
+      github.event.schedule == '0 3 * * *' ||
+      (github.event_name == 'workflow_dispatch' &&
+       (github.event.inputs.workflow_target == 'smoke' || github.event.inputs.workflow_target == 'nightly' || github.event.inputs.workflow_target == 'all'))
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Python and UV
+        uses: ./.github/actions/setup-python-uv
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          install-dev-deps: "true"
+          cache-venv: "true"
+
+      - name: Configure Local Environment
+        run: |
+          cp .env.example .env
+          make setup-local
+
+      - name: Generate Sample Data
+        run: make sample-data
+
+      - name: Verify Pipeline with Local Data
+        env:
+          SBIR_ETL__EXTRACTION__SBIR__USE_S3_FIRST: "false"
+          SBIR_ETL__EXTRACTION__SAM_GOV__USE_S3_FIRST: "false"
+        run: uv run pytest -m "not real_data and not slow" tests/unit/extractors/
+
+  verify-ml-workflow:
+    name: Verify ML/Cloud Workflow
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    if: |
+      github.event.schedule == '0 3 * * *' ||
+      (github.event_name == 'workflow_dispatch' &&
+       (github.event.inputs.workflow_target == 'smoke' || github.event.inputs.workflow_target == 'nightly' || github.event.inputs.workflow_target == 'all'))
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Python and UV
+        uses: ./.github/actions/setup-python-uv
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          install-dev-deps: "true"
+          cache-venv: "true"
+
+      - name: Install ML Dependencies
+        run: make install-ml
+
+      - name: Configure ML Environment
+        env:
+          HF_TOKEN: "hf_dummy_token_for_ci"
+        run: |
+          echo "HF_TOKEN=hf_dummy_token_for_ci" >> .env
+          make setup-ml
+
+      - name: Verify Notebook Execution
+        run: |
+          uv run --extra ml jupyter nbconvert --to notebook --execute notebooks/getting_started.ipynb --output getting_started_executed.ipynb

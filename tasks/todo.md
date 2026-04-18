@@ -14,6 +14,26 @@ Implemented follow-up fixes for PR #202 consolidation:
 
 ---
 
+# Workflow Consolidation Follow-up (under 10 workflows)
+
+- [x] Review current workflows and identify remaining consolidation candidates
+- [x] Merge weekly awards report automation into `weekly.yml` with schedule-aware conditions
+- [x] Remove redundant standalone `weekly-awards-report.yml` workflow
+- [x] Validate workflow YAML parses cleanly
+- [x] Merge `nightly.yml` into `weekly.yml` → `scheduled-tests.yml`
+- [x] Merge `benchmark-analysis.yml` + `phase-transition-latency.yml` → `monthly-analysis.yml`
+- [x] Merge `data-refresh.yml` into `etl-pipeline.yml`
+
+## Review Notes
+
+Implemented additional consolidation by folding weekly awards reporting into `weekly.yml`:
+- Added dispatch controls to choose tests, report generation, or both from one workflow.
+- Added a dedicated weekly awards report job in `weekly.yml` triggered on Monday schedule or manual dispatch.
+- Updated test/repair flow conditions so report-only dispatches do not trigger false failure handling.
+- Removed the now-redundant `weekly-awards-report.yml` workflow file.
+
+---
+
 # Weekly SBIR Report DRY Re-evaluation — Phase 1
 
 - [x] Create shared reporting helper utilities for script-level reporting concerns
