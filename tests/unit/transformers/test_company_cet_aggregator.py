@@ -509,3 +509,167 @@ class TestCompanyCETAggregatorDataQuality:
         # Should skip empty/None cet_ids
         # Only primary CET should remain
         assert len(matrix) == 1
+
+
+class TestToDataframe:
+    """Tests for to_dataframe output aggregation."""
+
+    def test_aggregate_single_company_basic(self):
+        """Basic aggregation for a single company with coverage, dominant CET,
+        cet_scores, specialization (HHI) and date range."""
+        from datetime import datetime
+
+        data = [
+            {
+                "award_id": "A1",
+                "company_id": "C1",
+                "company_name": "Acme Corp",
+                "primary_cet": "cet_a",
+                "primary_score": 80,
+                "supporting_cets": [],
+                "award_date": "2020-01-15",
+                "classified_at": "2020-01-16",
+            },
+            {
+                "award_id": "A2",
+                "company_id": "C1",
+                "company_name": "Acme Corp",
+                "primary_cet": "cet_b",
+                "primary_score": 20,
+                "supporting_cets": [],
+                "award_date": "2021-06-01",
+                "classified_at": "2021-06-02",
+            },
+            {
+                "award_id": "A3",
+                "company_id": "C1",
+                "company_name": "Acme Corp",
+                "primary_cet": None,
+                "primary_score": None,
+                "supporting_cets": [],
+                "award_date": "2022-03-10",
+                "classified_at": None,
+            },
+        ]
+
+        df = pd.DataFrame(data)
+        agg = CompanyCETAggregator(df)
+        df_comp = agg.to_dataframe()
+
+        assert len(df_comp) == 1
+
+        row = df_comp.iloc[0]
+        assert row["company_id"] == "C1"
+        assert row["company_name"] == "Acme Corp"
+        assert row["total_awards"] == 3
+        assert row["awards_with_cet"] == 2
+        assert pytest.approx(row["coverage"]) == 2 / 3
+
+        expected_scores = {"cet_a": 80.0, "cet_b": 20.0}
+        assert row["cet_scores"] == expected_scores
+        assert row["dominant_cet"] == "cet_a"
+        assert pytest.approx(row["dominant_score"]) == 80.0
+
+        # HHI: (0.8^2 + 0.2^2) = 0.64 + 0.04 = 0.68
+        assert pytest.approx(row["specialization_score"], rel=1e-6) == pytest.approx(
+            0.68, rel=1e-6
+        )
+
+        assert pd.to_datetime(row["first_award_date"]).date() == datetime(2020, 1, 15).date()
+        assert pd.to_datetime(row["last_award_date"]).date() == datetime(2022, 3, 10).date()
+
+        assert isinstance(row["cet_trend"], dict)
+        assert "2020" in row["cet_trend"]
+        assert "2021" in row["cet_trend"]
+
+    def test_include_supporting_cets_affects_scores_and_specialization(self):
+        """Supporting CETs contribute to per-CET aggregates."""
+        data = [
+            {
+                "award_id": "B1",
+                "company_id": "C2",
+                "company_name": "Beta LLC",
+                "primary_cet": "cet_x",
+                "primary_score": 60,
+                "supporting_cets": [
+                    {"cet_id": "cet_y", "score": 40},
+                    {"cet_id": "cet_x", "score": 20},
+                ],
+                "award_date": "2019-05-20",
+            }
+        ]
+
+        df = pd.DataFrame(data)
+        agg = CompanyCETAggregator(df)
+        df_comp = agg.to_dataframe()
+
+        assert len(df_comp) == 1
+        row = df_comp.iloc[0]
+        cet_scores = row["cet_scores"]
+        assert pytest.approx(cet_scores["cet_x"]) == 40.0
+        assert pytest.approx(cet_scores["cet_y"]) == 40.0
+
+        assert pytest.approx(row["specialization_score"], rel=1e-6) == pytest.approx(
+            0.5, rel=1e-6
+        )
+
+    def test_no_cets_results_in_empty_scores_and_zero_coverage(self):
+        """Company with no CETs produces coverage=0, empty cet_scores, no dominant CET."""
+        data = [
+            {"award_id": "C1", "company_id": "C3", "company_name": "Gamma Inc", "primary_cet": None},
+            {"award_id": "C2", "company_id": "C3", "company_name": "Gamma Inc", "primary_cet": None},
+        ]
+        df = pd.DataFrame(data)
+        agg = CompanyCETAggregator(df)
+        df_comp = agg.to_dataframe()
+
+        assert len(df_comp) == 1
+        row = df_comp.iloc[0]
+        assert row["total_awards"] == 2
+        assert row["awards_with_cet"] == 0
+        assert row["coverage"] == 0.0
+        assert row["cet_scores"] == {}
+        assert row["dominant_cet"] is None
+        assert row["dominant_score"] is None
+        assert row["specialization_score"] == 0.0
+
+    def test_trend_by_phase_preference_over_year(self):
+        """When awards contain a phase value, trend is keyed by phase rather than year."""
+        data = [
+            {
+                "award_id": "D1",
+                "company_id": "C4",
+                "company_name": "Delta Co",
+                "primary_cet": "cet_m",
+                "primary_score": 50,
+                "phase": "I",
+                "award_date": "2018-02-02",
+            },
+            {
+                "award_id": "D2",
+                "company_id": "C4",
+                "company_name": "Delta Co",
+                "primary_cet": "cet_n",
+                "primary_score": 50,
+                "phase": "II",
+                "award_date": "2019-07-07",
+            },
+        ]
+        df = pd.DataFrame(data)
+        agg = CompanyCETAggregator(df)
+        df_comp = agg.to_dataframe()
+
+        assert len(df_comp) == 1
+        row = df_comp.iloc[0]
+
+        assert "I" in row["cet_trend"]
+        assert "II" in row["cet_trend"]
+
+        phase_i = row["cet_trend"]["I"]
+        assert isinstance(phase_i, dict)
+        assert pytest.approx(sum(phase_i.values()), rel=1e-6) == pytest.approx(1.0, rel=1e-6)
+        assert "cet_m" in phase_i
+
+        phase_ii = row["cet_trend"]["II"]
+        assert pytest.approx(sum(phase_ii.values()), rel=1e-6) == pytest.approx(1.0, rel=1e-6)
+        assert "cet_n" in phase_ii

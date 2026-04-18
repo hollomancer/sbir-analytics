@@ -7,7 +7,13 @@ from unittest.mock import AsyncMock, Mock, patch
 import httpx
 import pytest
 
-from sbir_etl.enrichers.usaspending.client import USAspendingAPIClient
+from sbir_etl.enrichers.usaspending.client import (
+    ASSISTANCE_TYPE_CODES,
+    CONTRACT_TYPE_CODES,
+    USAspendingAPIClient,
+    build_award_type_groups,
+    classify_award_id,
+)
 from sbir_etl.exceptions import APIError, ConfigurationError, RateLimitError
 from sbir_etl.models.enrichment import EnrichmentFreshnessRecord
 
@@ -961,3 +967,98 @@ class TestGetRecipientProfile:
 
         with pytest.raises(APIError):
             await client.get_recipient_profile("some-hash")
+
+
+# ==================== Award Classification Tests ====================
+
+
+class TestClassifyAwardId:
+    """Tests for classify_award_id helper."""
+
+    def test_dod_piid(self):
+        assert classify_award_id("FA2541-26-C-B005") == "piid"
+
+    def test_two_letter_prefix_digit(self):
+        assert classify_award_id("HQ0034-22-C-0001") == "piid"
+
+    def test_doe_fain(self):
+        assert classify_award_id("DE-AR0001234") == "fain"
+
+    def test_doe_fain_lowercase(self):
+        assert classify_award_id("de-sc001") == "fain"
+
+    def test_bare_numeric(self):
+        assert classify_award_id("2516905") == "unknown"
+
+    def test_empty_string(self):
+        assert classify_award_id("") == "unknown"
+
+    def test_whitespace(self):
+        assert classify_award_id("   ") == "unknown"
+
+    def test_other_mixed(self):
+        assert classify_award_id("SOME-RANDOM") == "unknown"
+
+
+class TestBuildAwardTypeGroups:
+    """Tests for build_award_type_groups helper."""
+
+    def test_piids_grouped(self):
+        groups = build_award_type_groups(["FA2541-26-C-B005", "HQ0034-22-C-0001"])
+        assert len(groups) == 1
+        ids, name, codes = groups[0]
+        assert name == "contracts"
+        assert set(ids) == {"FA2541-26-C-B005", "HQ0034-22-C-0001"}
+        assert codes == list(CONTRACT_TYPE_CODES)
+
+    def test_fains_grouped(self):
+        groups = build_award_type_groups(["DE-AR0001234", "DE-SC001"])
+        assert len(groups) == 1
+        ids, name, codes = groups[0]
+        assert name == "assistance"
+        assert codes == list(ASSISTANCE_TYPE_CODES)
+
+    def test_unknown_generates_both(self):
+        groups = build_award_type_groups(["2516905"])
+        assert len(groups) == 2
+        assert groups[0][1] == "contracts"
+        assert groups[1][1] == "assistance"
+
+    def test_mixed_inputs(self):
+        groups = build_award_type_groups(["FA2541-26-C-B005", "DE-SC001", "999"])
+        # 1 piid group + 1 fain group + 2 unknown groups (999 tried as both)
+        assert len(groups) == 4
+        group_names = [g[1] for g in groups]
+        assert group_names.count("contracts") == 2  # piids + unknown-as-contract
+        assert group_names.count("assistance") == 2  # fains + unknown-as-assistance
+
+    def test_deduplicates(self):
+        groups = build_award_type_groups(["FA2541-26-C-B005", "FA2541-26-C-B005"])
+        assert len(groups) == 1
+        assert len(groups[0][0]) == 1
+
+    def test_empty_input(self):
+        assert build_award_type_groups([]) == []
+
+    def test_blank_strings_skipped(self):
+        groups = build_award_type_groups(["", "  ", "FA2541-26-C-B005"])
+        assert len(groups) == 1
+        assert groups[0][0] == ["FA2541-26-C-B005"]
+
+    def test_returns_mutable_lists(self):
+        """Returned code lists should be mutable copies, not the module constants."""
+        groups = build_award_type_groups(["FA2541-26-C-B005"])
+        codes = groups[0][2]
+        assert isinstance(codes, list)
+        codes.append("X")  # should not affect the constant
+        assert "X" not in CONTRACT_TYPE_CODES
+
+
+class TestTypeCodeConstants:
+    """Verify module-level constants are immutable."""
+
+    def test_contract_codes_are_tuples(self):
+        assert isinstance(CONTRACT_TYPE_CODES, tuple)
+
+    def test_assistance_codes_are_tuples(self):
+        assert isinstance(ASSISTANCE_TYPE_CODES, tuple)
