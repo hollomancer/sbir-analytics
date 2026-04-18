@@ -39,7 +39,6 @@ concurrency:
 env:
   AWS_REGION: us-east-2
   S3_BUCKET: sbir-etl-production-data
-  PYTHONPATH: "${{ github.workspace }}:${{ github.workspace }}/packages/sbir-analytics:${{ github.workspace }}/packages/sbir-ml:${{ github.workspace }}/packages/sbir-graph:${{ github.workspace }}/packages/sbir-rag"
   # Neo4j is not used by this pipeline, but some shared imports probe for it.
   SKIP_NEO4J_LOADING: "true"
 
@@ -97,6 +96,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          # Use $GITHUB_WORKSPACE (resolves to the container mount path, e.g. /__w/<repo>/<repo>)
+          # rather than ${{ github.workspace }} (which returns the host path and doesn't exist
+          # inside the container, so the sbir_analytics import fails).
+          export PYTHONPATH="${GITHUB_WORKSPACE}:${GITHUB_WORKSPACE}/packages/sbir-analytics:${GITHUB_WORKSPACE}/packages/sbir-ml:${GITHUB_WORKSPACE}/packages/sbir-graph:${GITHUB_WORKSPACE}/packages/sbir-rag"
+
           echo "## Phase II -> III Transition Latency" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
           echo "**Data cut:** ${SBIR_ETL__PHASE_TRANSITION__DATA_CUT_DATE:-today (UTC)}" >> "$GITHUB_STEP_SUMMARY"
