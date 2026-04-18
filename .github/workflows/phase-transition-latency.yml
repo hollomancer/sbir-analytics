@@ -102,12 +102,13 @@ jobs:
           echo "**Data cut:** ${SBIR_ETL__PHASE_TRANSITION__DATA_CUT_DATE:-today (UTC)}" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
 
+          set +e
           dagster job execute \
             -m sbir_analytics.definitions \
             -j phase_transition_latency_job \
             2>&1 | tee phase_transition_output.txt
-
           EXIT_CODE=${PIPESTATUS[0]}
+          set -e
           if [ "$EXIT_CODE" -ne 0 ]; then
             echo "### Dagster job failed" >> "$GITHUB_STEP_SUMMARY"
             echo '```' >> "$GITHUB_STEP_SUMMARY"
@@ -196,9 +197,13 @@ jobs:
           RUN_PREFIX="processed/phase_transition/$(date -u +%Y-%m-%d)"
           for f in \
             data/processed/phase_ii_awards.parquet \
+            data/processed/phase_ii_awards.checks.json \
             data/processed/phase_iii_contracts.parquet \
+            data/processed/phase_iii_contracts.checks.json \
             data/processed/phase_ii_iii_pairs.parquet \
+            data/processed/phase_ii_iii_pairs.checks.json \
             data/processed/phase_transition_survival.parquet \
+            data/processed/phase_transition_survival.checks.json \
             reports/phase_transition/phase_transition_report.json; do
             if [ -f "$f" ]; then
               aws s3 cp "$f" "s3://${S3_BUCKET}/${RUN_PREFIX}/$(basename "$f")"
