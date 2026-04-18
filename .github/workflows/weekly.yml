@@ -49,7 +49,7 @@ permissions:
   checks: read
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.event.schedule || github.event.inputs.workflow_target || 'default' }}-${{ github.ref }}
   cancel-in-progress: true
 
 env:
@@ -119,7 +119,7 @@ jobs:
     needs: tests
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    if: always()
+    if: always() && needs.tests.result != 'skipped'
     outputs:
       failed: ${{ steps.check.outputs.failed }}
     steps:
@@ -319,6 +319,8 @@ jobs:
     name: Weekly Awards Report
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    permissions:
+      contents: read
     if: |
       github.event.schedule == '0 12 * * 1' ||
       (github.event_name == 'workflow_dispatch' &&
@@ -331,6 +333,7 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           install-dev-deps: "false"
+          cache-venv: "false"
 
       - name: Generate weekly awards report
         env:
