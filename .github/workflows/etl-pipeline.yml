@@ -43,8 +43,8 @@ env:
   SBIR_ETL_ENV: prod
   SBIR_ETL__PIPELINE__ENVIRONMENT: production
   IMAGE: ghcr.io/hollomancer/sbir-analytics:latest
-  # Module paths for monorepo packages (sbir_analytics imports from all of these)
-  PYTHONPATH: "${{ github.workspace }}:${{ github.workspace }}/packages/sbir-analytics:${{ github.workspace }}/packages/sbir-ml:${{ github.workspace }}/packages/sbir-graph:${{ github.workspace }}/packages/sbir-rag"
+  # PYTHONPATH is set per-step using $GITHUB_WORKSPACE (container mount path).
+  # ${{ github.workspace }} expands to the host path and isn't valid inside the container.
 
 jobs:
   sbir-pipeline:
@@ -100,6 +100,9 @@ jobs:
           SKIP_NEO4J_LOADING: ${{ github.event.inputs.skip_neo4j }}
         shell: bash
         run: |
+          # Use $GITHUB_WORKSPACE (container mount path) so sbir_analytics et al. are importable.
+          export PYTHONPATH="${GITHUB_WORKSPACE}:${GITHUB_WORKSPACE}/packages/sbir-analytics:${GITHUB_WORKSPACE}/packages/sbir-ml:${GITHUB_WORKSPACE}/packages/sbir-graph:${GITHUB_WORKSPACE}/packages/sbir-rag"
+
           echo "## 🎯 SBIR Pipeline" >> $GITHUB_STEP_SUMMARY
           echo "**Environment:** ${{ github.event.inputs.environment || 'production' }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -158,6 +161,8 @@ jobs:
           S3_BUCKET: ${{ env.S3_BUCKET }}
         shell: bash
         run: |
+          export PYTHONPATH="${GITHUB_WORKSPACE}:${GITHUB_WORKSPACE}/packages/sbir-analytics:${GITHUB_WORKSPACE}/packages/sbir-ml:${GITHUB_WORKSPACE}/packages/sbir-graph:${GITHUB_WORKSPACE}/packages/sbir-rag"
+
           echo "## 💰 USAspending Pipeline" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
@@ -229,6 +234,8 @@ jobs:
           SKIP_NEO4J_LOADING: ${{ github.event.inputs.skip_neo4j }}
         shell: bash
         run: |
+          export PYTHONPATH="${GITHUB_WORKSPACE}:${GITHUB_WORKSPACE}/packages/sbir-analytics:${GITHUB_WORKSPACE}/packages/sbir-ml:${GITHUB_WORKSPACE}/packages/sbir-graph:${GITHUB_WORKSPACE}/packages/sbir-rag"
+
           echo "## 📜 USPTO Pipeline" >> $GITHUB_STEP_SUMMARY
           echo "**Environment:** ${{ github.event.inputs.environment || 'production' }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -279,6 +286,8 @@ jobs:
           SKIP_NEO4J_LOADING: ${{ github.event.inputs.skip_neo4j }}
         shell: bash
         run: |
+          export PYTHONPATH="${GITHUB_WORKSPACE}:${GITHUB_WORKSPACE}/packages/sbir-analytics:${GITHUB_WORKSPACE}/packages/sbir-ml:${GITHUB_WORKSPACE}/packages/sbir-graph:${GITHUB_WORKSPACE}/packages/sbir-rag"
+
           echo "## 🏷️ CET Classification Pipeline" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
@@ -335,6 +344,8 @@ jobs:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           PAECTER_MODE: api  # Use API mode, not local model
         run: |
+          export PYTHONPATH="${GITHUB_WORKSPACE}:${GITHUB_WORKSPACE}/packages/sbir-analytics:${GITHUB_WORKSPACE}/packages/sbir-ml:${GITHUB_WORKSPACE}/packages/sbir-graph:${GITHUB_WORKSPACE}/packages/sbir-rag"
+
           echo "## 🔬 Embeddings" >> $GITHUB_STEP_SUMMARY
           # Dagster job still registered as paecter_job (legacy name)
           dagster job execute -m sbir_analytics.definitions -j paecter_job 2>&1 | tee output.txt
