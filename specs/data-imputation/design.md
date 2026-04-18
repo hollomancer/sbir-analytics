@@ -203,17 +203,49 @@ For each `(normalize(company_name), company_state)` key:
 Name normalization reuses `sbir_etl/enrichers/company_fuzzy_matcher.py` so the join key
 matches what enrichment already uses.
 
-#### 4.3 `award_amount.agency_phase_median`
+#### 4.3 `award_amount.solicitation_max` (preferred when solicitation linkage available)
+
+Joins the award to its parent solicitation via `(solicitation_number, topic_code)` —
+both fields already exist on the Award model (`sbir_etl/models/award.py:129,133`) and
+the `Solicitation` model exists at `sbir_etl/models/solicitation.py`. Solicitations
+publish per-phase maximum award amounts (e.g., FY24 SBIR Phase I ≈ $314k, Phase II
+≈ $2.1M) and a period of performance, both of which are far tighter signals than the
+$5M global cap or the corpus median.
+
+Behavior:
+
+- If the linked solicitation publishes a per-phase max, use it as a **hard upper bound**
+  on any imputed amount and as the imputed value when the award is recorded as a
+  full-funded award (most common pattern: agencies fund to the announced ceiling).
+- `confidence: high` when the solicitation max equals a known modal cluster for that
+  agency/phase (≥80% of awards in the cluster equal the max).
+- `confidence: medium` otherwise — solicitation max becomes a ceiling, and we fall back
+  to `award_amount.agency_phase_median` for the point estimate, then clamp to the
+  ceiling.
+
+Prerequisite (Phase 4 task): extend `Solicitation` model and `SolicitationExtractor`
+to capture `phase_i_max_amount`, `phase_ii_max_amount`, and `period_of_performance_months`
+(per phase). These fields are present on agency solicitation pages but not yet
+extracted.
+
+#### 4.4 `award_amount.agency_phase_median` (fallback when no solicitation linkage)
 
 Group by `(agency, program, phase, fiscal_year)`. Impute the group median where
-`award_amount` is null. Guards:
+`award_amount` is null **and** no solicitation-derived value is available. Guards:
 
 - Minimum group size: 10 non-null members (else skip).
 - Imputed value must fall within $1k–$5M (existing cap).
 - `confidence: medium` across the board; `low` if group falls back to
   `(agency, program, phase)` without fiscal year.
 
-#### 4.4 `geography.congressional_district`
+#### 4.5 `contract_dates.solicitation_period_of_performance`
+
+When solicitation linkage exists and the solicitation publishes a phase period of
+performance, prefer it over the static phase-typical durations in §4.6. Used both for
+imputing missing `contract_end_date` and for repairing inverted pairs.
+`confidence: high` when populated.
+
+#### 4.6 `geography.congressional_district`
 
 Thin wrapper over existing `congressional_district_resolver.py`. Populates the existing
 `congressional_district` + `congressional_district_confidence` fields.
@@ -230,9 +262,10 @@ and is populated by the resolver; the imputation layer maps it to a provenance t
 | 0.70–0.89 (zip5) | medium |
 | < 0.70 (centroid) | low |
 
-#### 4.5 `contract_dates.end_date_repair`
+#### 4.7 `contract_dates.end_date_repair` (fallback when no solicitation period)
 
-When `contract_end_date` is null or `< contract_start_date`, impute
+When `contract_end_date` is null or `< contract_start_date` **and**
+`contract_dates.solicitation_period_of_performance` (§4.5) did not fill it, impute
 `contract_start_date + phase_typical_duration`:
 
 | Phase | Typical duration |
@@ -244,15 +277,19 @@ When `contract_end_date` is null or `< contract_start_date`, impute
 Durations are medians computed from the known-good corpus per agency, cached as a
 lookup.
 
-#### 4.6 `naics.hierarchical`
+#### 4.8 `naics.hierarchical` and topic-derived
 
-Two sub-methods sharing the `naics.*` namespace:
+Three sub-methods sharing the `naics.*` namespace:
 
 - **`naics.hierarchical_fallback`** — If 6-digit invalid but 4/3/2-digit prefix is
   valid, emit the shortest valid prefix. Reuses `sbir_etl/enrichers/naics/`.
-- **`naics.abstract_nn`** — When entirely missing, TF-IDF nearest-neighbor lookup on
-  `award_abstract` against awards with known NAICS. Only runs if abstract length > 100
-  chars. `confidence: low`.
+- **`naics.solicitation_topic`** — When solicitation linkage exists, derive NAICS from
+  the topic's research-domain mapping (agencies publish topic-to-NAICS or topic-to-CET
+  crosswalks; e.g., DoD topic prefixes map to defense NAICS clusters).
+  `confidence: medium`.
+- **`naics.abstract_nn`** — When entirely missing and no solicitation linkage exists,
+  TF-IDF nearest-neighbor lookup on `award_abstract` against awards with known NAICS.
+  Only runs if abstract length > 100 chars. `confidence: low`.
 
 ### 5. Configuration
 
@@ -272,6 +309,10 @@ imputation:
       enabled: true
       normalization: fuzzy_matcher_v1
 
+    award_amount.solicitation_max:
+      enabled: true
+      modal_cluster_threshold: 0.80   # high-confidence if ≥80% of cluster equals max
+
     award_amount.agency_phase_median:
       enabled: true
       min_group_size: 10
@@ -280,7 +321,13 @@ imputation:
     geography.congressional_district:
       enabled: true
 
+    contract_dates.solicitation_period_of_performance:
+      enabled: true
+
     contract_dates.end_date_repair:
+      enabled: true
+
+    naics.solicitation_topic:
       enabled: true
 
     naics.hierarchical_fallback:
@@ -415,16 +462,37 @@ would close.
    trivially on the non-null subset. Cross-row propagation (UEI backfill) needs
    careful holdout design to avoid leakage, and k-NN/MICE make leakage far worse.
 
+### The solicitation linkage shortcut
+
+**Solicitations are the highest-value imputation source we have access to**, because the
+linkage already exists on awards (`solicitation_number`, `topic_code`) and solicitations
+publish three of our hardest-to-impute fields directly:
+
+- **Per-phase maximum award amount** — converts `award_amount` from a statistical
+  estimation problem to a bounded lookup. For agencies that fund to the announced
+  ceiling (the modal pattern), the max *is* the imputed value with `confidence: high`.
+- **Period of performance** — replaces the static phase-typical durations in
+  `contract_dates.end_date_repair` with solicitation-specific durations.
+- **Topic research domain** — maps to NAICS far more reliably than abstract-NN.
+
+The cost is small and one-sided: extend `Solicitation` model and
+`SolicitationExtractor` (`sbir_etl/extractors/solicitation.py`) to capture
+`phase_i_max_amount`, `phase_ii_max_amount`, and `period_of_performance_months` per
+phase. This is a prerequisite tracked as a Phase 4 task.
+
+Once available, the solicitation-linked methods (§4.3, §4.5, §4.8 `naics.solicitation_topic`)
+take precedence over their statistical fallbacks for any award where the join succeeds.
+
 ### Expected value ranking
 
 | Rank | Field | Method | Rationale |
 |---|---|---|---|
 | 1 | `award_date` | Deterministic cascade | ~50% missing; unblocks all time-series/cohort analysis |
 | 2 | `company_uei` / `company_duns` | Cross-award backfill + external lookup | Unlocks entity resolution, M&A detection, transition scoring |
-| 3 | `naics_code` | Hierarchical fallback + abstract-NN opt-in | Feeds CET classification and sector analysis |
-| 4 | `congressional_district` | Tiered zip crosswalk (reuse existing resolver) | High policy value; deterministic; confidence tiering is natural |
-| 5 | `award_amount` | Agency-phase-program-FY median | Tight modal distributions; bounded by $5M cap |
-| 6 | `contract_end_date` | Rule: start + phase-typical duration | Low standalone value; cheap repair of inverted pairs |
+| 3 | `award_amount` | **Solicitation max** → group median fallback | Solicitation linkage converts statistical problem into bounded lookup; high confidence where join exists |
+| 4 | `naics_code` | Solicitation topic → hierarchical fallback → abstract-NN opt-in | Topic-derived NAICS dominates abstract-NN where linkage exists |
+| 5 | `congressional_district` | Tiered zip crosswalk (reuse existing resolver) | High policy value; deterministic; confidence tiering is natural |
+| 6 | `contract_end_date` | **Solicitation period of performance** → start + phase-typical duration fallback | Solicitation period is far tighter than corpus medians |
 
 ### Explicitly not pursued in v1
 

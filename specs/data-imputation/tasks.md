@@ -73,24 +73,47 @@ is the initial method rollout; Phase 5 hardens operability.
   `reports/imputation/uei_conflicts.json`.
   → **verify**: Fixture with 3 awards from same company (1 with UEI, 2 without) ends
   with all 3 having the same UEI and `_is_imputed` correctly flagged.
-- [ ] 4.3 `award_amount.agency_phase_median` — group-median imputation with min group
-  size of 10, $5M cap check.
+- [ ] 4.3 **Prerequisite — extend solicitation extraction.** Add
+  `phase_i_max_amount`, `phase_ii_max_amount`, and
+  `period_of_performance_months` (per phase) to `sbir_etl/models/solicitation.py` and
+  populate them in `sbir_etl/extractors/solicitation.py`. Backfill historical
+  solicitations from SBIR.gov bulk download.
+  → **verify**: Solicitation fixtures parse the new fields; coverage of solicitations
+  with at least `phase_i_max_amount` is ≥80% on a recent fiscal-year sample.
+- [ ] 4.4 `award_amount.solicitation_max` — join awards to solicitations on
+  `(solicitation_number, topic_code)`; use phase max as imputed value when the
+  agency-phase modal cluster equals the max (≥80%), otherwise as a hard upper bound on
+  §4.5 fallback.
+  → **verify**: Backtest accuracy on labeled awards with known solicitation linkage
+  ≥90% MAPE for high-confidence tier; ceiling is never exceeded.
+- [ ] 4.5 `award_amount.agency_phase_median` — group-median imputation (only runs when
+  §4.4 did not produce a value) with min group size of 10, $5M cap check.
   → **verify**: Fixture with known group medians produces expected imputed values;
   small groups are skipped.
-- [ ] 4.4 `geography.congressional_district` — wrap existing
-  `congressional_district_resolver.py`; tier confidence by zip+4 / zip5 / centroid.
-  → **verify**: Uses existing resolver fixtures; confidence tier matches resolver
-  output.
-- [ ] 4.5 `contract_dates.end_date_repair` — derive `contract_end_date` when null or
-  inverted, using phase-typical durations.
+- [ ] 4.6 `geography.congressional_district` — wrap existing
+  `congressional_district_resolver.py`; map resolver score to provenance tier
+  (≥0.90 → high, 0.70–0.89 → medium, <0.70 → low).
+  → **verify**: Uses existing resolver fixtures; provenance tier matches the mapping
+  table in design §4.6.
+- [ ] 4.7 `contract_dates.solicitation_period_of_performance` — derive
+  `contract_end_date` from `contract_start_date + solicitation period_of_performance`
+  when solicitation linkage exists.
+  → **verify**: When solicitation period is present, end date matches start +
+  period_of_performance_months; raw value preserved.
+- [ ] 4.8 `contract_dates.end_date_repair` — fallback when §4.7 did not fill it;
+  uses phase-typical durations.
   → **verify**: Inverted end dates are replaced; original values preserved in
   `raw_contract_end_date`.
-- [ ] 4.6 `naics.hierarchical_fallback` — validate 6-digit code; fall back to shortest
-  valid prefix via `sbir_etl/enrichers/naics/`.
+- [ ] 4.9 `naics.solicitation_topic` — derive NAICS from solicitation topic
+  research-domain crosswalk (reuses agency topic-prefix mappings where available).
+  → **verify**: For a fixture set of awards with known solicitation linkage and known
+  NAICS, top-1 accuracy ≥75% on the agency-topic crosswalk.
+- [ ] 4.10 `naics.hierarchical_fallback` — validate 6-digit code; fall back to
+  shortest valid prefix via `sbir_etl/enrichers/naics/`.
   → **verify**: Invalid 6-digit codes with valid 4-digit prefixes are repaired;
   already-valid codes are unchanged.
-- [ ] 4.7 `naics.abstract_nn` — TF-IDF nearest-neighbor on abstracts ≥100 chars;
-  `enabled: false` by default.
+- [ ] 4.11 `naics.abstract_nn` — TF-IDF nearest-neighbor on abstracts ≥100 chars;
+  `enabled: false` by default. Runs only when §4.9 produced nothing.
   → **verify**: Method runs under opt-in flag; `confidence: low` applied.
 
 ## Phase 5 — Backtest, validation, docs
