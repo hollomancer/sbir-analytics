@@ -54,9 +54,23 @@ pytest -n auto               # Parallel execution
 
 Transition scoring changes must maintain ≥85% precision benchmark.
 
+## Code Standards
+
+- Line length: 100
+- Target: Python 3.11
+- Ruff rules: E, W, F, I, B, C4, UP
+- Use `StrEnum` not `str, Enum`
+- Use `datetime.UTC` not `timezone.utc`
+- Do NOT use `from __future__ import annotations` in Dagster asset files — it breaks runtime context type validation
+
 ## Principles
 
-- **Simplicity First**: Simplest change that solves the problem. Minimal code impact.
+- **Simplicity First**: Simplest change that solves the problem. No speculative abstractions, no "flexibility" that wasn't requested. If 200 lines could be 50, rewrite it. Ask: "Would a senior engineer say this is overcomplicated?"
 - **No Laziness**: Root causes, not temporary fixes. Senior developer standards.
-- **Minimal Impact**: Only touch what's necessary. Avoid introducing bugs.
-- **Verify Before Done**: Prove it works — run tests, check logs, demonstrate correctness.
+- **Surgical Changes**: Only touch what the task requires. Don't "improve" adjacent code. Match existing style. If your changes orphan imports/variables, remove them — but don't remove pre-existing dead code unless asked. Every changed line should trace to the request.
+- **Verify Before Done**: Prove it works — run tests, check logs, demonstrate correctness. Transform tasks into verifiable goals:
+
+```
+1. [Step] → verify: [check]
+2. [Step] → verify: [check]
+```

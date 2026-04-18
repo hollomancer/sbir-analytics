@@ -19,21 +19,12 @@ You are an autonomous feature implementer for the SBIR Analytics project. You pi
 
 ## Project Conventions
 
-- Source code: `src/` with subpackages for assets, enrichers, transformers, loaders, ml, models, etc.
-- Tests: `tests/unit/` mirrors src/ structure
-- Config: `config/base.yaml` with Pydantic schemas in `src/config/schemas.py`
+Code standards, key directories, and testing conventions are in CLAUDE.md — follow them.
+
+Additional references:
 - Neo4j patterns: See `docs/steering/neo4j-patterns.md`
 - Pipeline patterns: See `docs/steering/pipeline-orchestration.md`
 - Data quality: See `docs/steering/data-quality.md`
-- Line length: 100 chars, Python 3.11 target
-- Imports: Use `from __future__ import annotations`
-
-## Quality Gates
-
-All changes must pass:
-- `uv run ruff check src/` (lint)
-- `uv run pytest tests/unit/ -x -q -m "not slow"` (tests)
-- Transition scoring changes must maintain >=85% precision
 
 ## When to Stop and Ask
 
