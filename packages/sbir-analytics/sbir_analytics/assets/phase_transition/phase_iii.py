@@ -9,8 +9,6 @@ logged by agency so downstream analysis can qualify the transition rate.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
-
 import pandas as pd
 
 from .phase_ii import DEFAULT_CONTRACTS_PATH, _classify_contract_phase, _is_assistance_row
@@ -134,7 +132,7 @@ def _agency_coverage_table(all_contracts: pd.DataFrame, phase_iii: pd.DataFrame)
         "Row-level contract: `sbir_etl.models.phase_transition.PhaseIIIContract`."
     ),
 )
-def validated_phase_iii_contracts(context: Any | None = None) -> Output[pd.DataFrame]:
+def validated_phase_iii_contracts(context=None) -> Output[pd.DataFrame]:
     contracts_path = Path(
         env_str("SBIR_ETL__PHASE_TRANSITION__CONTRACTS_PATH", DEFAULT_CONTRACTS_PATH)
         or DEFAULT_CONTRACTS_PATH

@@ -19,7 +19,6 @@ from __future__ import annotations
 
 from datetime import date
 from pathlib import Path
-from typing import Any
 
 import pandas as pd
 
@@ -265,7 +264,7 @@ def _latency_summary(pairs: pd.DataFrame) -> dict[str, float | int | None]:
     ),
 )
 def transformed_phase_ii_iii_pairs(
-    context: Any | None = None,
+    context=None,
     validated_phase_ii_awards: pd.DataFrame | None = None,
     validated_phase_iii_contracts: pd.DataFrame | None = None,
 ) -> Output[pd.DataFrame]:
@@ -334,7 +333,7 @@ def transformed_phase_ii_iii_pairs(
     ),
 )
 def transformed_phase_transition_survival(
-    context: Any | None = None,
+    context=None,
     validated_phase_ii_awards: pd.DataFrame | None = None,
     transformed_phase_ii_iii_pairs: pd.DataFrame | None = None,
 ) -> Output[pd.DataFrame]:

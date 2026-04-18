@@ -257,7 +257,7 @@ def _agency_coverage(df: pd.DataFrame) -> dict[str, int]:
         "`sbir_etl.models.phase_transition.PhaseIIAward`."
     ),
 )
-def validated_phase_ii_awards(context: Any | None = None) -> Output[pd.DataFrame]:
+def validated_phase_ii_awards(context=None) -> Output[pd.DataFrame]:
     """Materialize the unified Phase II frame."""
 
     contracts_path = Path(env_str("SBIR_ETL__PHASE_TRANSITION__CONTRACTS_PATH", DEFAULT_CONTRACTS_PATH) or DEFAULT_CONTRACTS_PATH)
