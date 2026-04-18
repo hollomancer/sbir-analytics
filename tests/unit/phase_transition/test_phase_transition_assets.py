@@ -373,9 +373,11 @@ def test_validated_phase_ii_awards_runs_on_empty_inputs(tmp_path, monkeypatch):
     emit an empty frame plus a checks JSON flagging missing inputs."""
 
     monkeypatch.chdir(tmp_path)
+    from dagster import build_asset_context
+
     from sbir_analytics.assets.phase_transition import validated_phase_ii_awards
 
-    out = validated_phase_ii_awards()
+    out = validated_phase_ii_awards(context=build_asset_context())
     assert out.value.empty
     checks_path = tmp_path / "data/processed/phase_ii_awards.checks.json"
     assert checks_path.exists()

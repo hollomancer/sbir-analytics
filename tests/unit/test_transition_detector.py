@@ -293,7 +293,7 @@ class TestVendorMatching:
         match = detector.match_vendor(contract)
 
         assert match is not None
-        assert match.method == "name_fuzzy"
+        assert match.method == "name_exact"
         assert 0.0 < match.score <= 1.0
 
     def test_no_match(self, detector):

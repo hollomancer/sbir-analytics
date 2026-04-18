@@ -20,6 +20,9 @@ class TransitionMocks:
         mock_record = Mock()
         mock_record.name = name
         mock_record.metadata = {"vendor_id": vendor_id}
+        mock_record.uei = None
+        mock_record.cage = None
+        mock_record.duns = None
         return mock_record
 
     @staticmethod

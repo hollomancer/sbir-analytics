@@ -5,7 +5,7 @@ import types
 import pytest
 from dagster import JobDefinition, SensorDefinition
 
-from sbir_etl import assets as assets_pkg
+from sbir_analytics import assets as assets_pkg
 
 
 pytestmark = pytest.mark.fast

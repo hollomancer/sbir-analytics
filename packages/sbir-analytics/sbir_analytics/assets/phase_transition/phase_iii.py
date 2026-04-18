@@ -9,6 +9,7 @@ logged by agency so downstream analysis can qualify the transition rate.
 from __future__ import annotations
 
 from pathlib import Path
+
 import pandas as pd
 
 from .phase_ii import DEFAULT_CONTRACTS_PATH, _classify_contract_phase, _is_assistance_row

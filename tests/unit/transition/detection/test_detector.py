@@ -157,7 +157,9 @@ class TestMatchVendor:
         mock_record = TransitionMocks.vendor_record()
         mock_record.name = "Acme Corporation"
         mock_record.metadata = {"vendor_id": "VENDOR004"}
-        mock_vendor_resolver.resolve_by_name.return_value = Mock(record=mock_record, score=0.92)
+        mock_vendor_resolver.resolve_by_name.return_value = Mock(
+            record=mock_record, score=0.92, method="name_fuzzy",
+        )
 
         detector = TransitionDetector(config=default_config, vendor_resolver=mock_vendor_resolver)
 
