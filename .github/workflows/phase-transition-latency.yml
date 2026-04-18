@@ -1,0 +1,207 @@
+name: Phase Transition Latency
+
+# Materializes the four phase_transition Dagster assets and runs the DuckDB
+# analysis script to produce latency distributions, agency breakdowns, and
+# cohort transition rates.
+#
+# Upstream inputs (``raw_contracts``, ``enriched_sbir_awards``) are assumed
+# to already exist as parquet files — either downloaded from S3 at the start
+# of the run or produced by a preceding sbir_weekly_refresh run. Set the
+# ``skip_upstream_download`` input to true to reuse whatever is already on
+# the runner's workspace (useful when chaining in a larger orchestration).
+
+on:
+  schedule:
+    # First of the month at 14:00 UTC, after the weekly pipelines have run.
+    - cron: "0 14 1 * *"
+  workflow_dispatch:
+    inputs:
+      data_cut_date:
+        description: "Right-censoring date (YYYY-MM-DD). Leave blank for today."
+        required: false
+        default: ""
+        type: string
+      skip_upstream_download:
+        description: "Skip S3 download of upstream parquet files"
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  id-token: write
+  contents: read
+  packages: read
+
+concurrency:
+  group: phase-transition-latency
+  cancel-in-progress: true
+
+env:
+  AWS_REGION: us-east-2
+  S3_BUCKET: sbir-etl-production-data
+  PYTHONPATH: "${{ github.workspace }}:${{ github.workspace }}/packages/sbir-analytics:${{ github.workspace }}/packages/sbir-ml:${{ github.workspace }}/packages/sbir-graph:${{ github.workspace }}/packages/sbir-rag"
+  # Neo4j is not used by this pipeline, but some shared imports probe for it.
+  SKIP_NEO4J_LOADING: "true"
+
+jobs:
+  phase-transition:
+    name: Phase II -> III Transition Latency
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    container:
+      image: ghcr.io/hollomancer/sbir-analytics:latest
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Configure AWS credentials
+        if: inputs.skip_upstream_download != true
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Install AWS CLI
+        if: inputs.skip_upstream_download != true
+        run: pip install awscli && aws --version
+
+      - name: Download upstream parquet files from S3
+        if: inputs.skip_upstream_download != true
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p data/transition data/processed
+
+          CONTRACTS_KEY="processed/transition/contracts_ingestion.parquet"
+          AWARDS_KEY="processed/sbir/enriched_sbir_awards.parquet"
+
+          if aws s3api head-object --bucket "${S3_BUCKET}" --key "${CONTRACTS_KEY}" >/dev/null 2>&1; then
+            aws s3 cp "s3://${S3_BUCKET}/${CONTRACTS_KEY}" data/transition/contracts_ingestion.parquet
+            echo "Contracts parquet downloaded"
+          else
+            echo "No contracts parquet in S3 at s3://${S3_BUCKET}/${CONTRACTS_KEY} — asset will produce empty frame"
+          fi
+
+          if aws s3api head-object --bucket "${S3_BUCKET}" --key "${AWARDS_KEY}" >/dev/null 2>&1; then
+            aws s3 cp "s3://${S3_BUCKET}/${AWARDS_KEY}" data/processed/enriched_sbir_awards.parquet
+            echo "Enriched SBIR awards parquet downloaded"
+          else
+            echo "No SBIR awards parquet in S3 at s3://${S3_BUCKET}/${AWARDS_KEY} — reconciliation layer will be empty"
+          fi
+
+      - name: Materialize phase_transition assets
+        env:
+          SBIR_ETL__PHASE_TRANSITION__DATA_CUT_DATE: ${{ inputs.data_cut_date }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "## Phase II -> III Transition Latency" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "**Data cut:** ${SBIR_ETL__PHASE_TRANSITION__DATA_CUT_DATE:-today (UTC)}" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+
+          dagster job execute \
+            -m sbir_analytics.definitions \
+            -j phase_transition_latency_job \
+            2>&1 | tee phase_transition_output.txt
+
+          EXIT_CODE=${PIPESTATUS[0]}
+          if [ "$EXIT_CODE" -ne 0 ]; then
+            echo "### Dagster job failed" >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+            tail -50 phase_transition_output.txt >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+            exit "$EXIT_CODE"
+          fi
+
+      - name: Run DuckDB analysis
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/phase_transition
+
+          # Skip gracefully if upstream produced no rows — script exits non-zero
+          # when parquet files are missing, but with no upstream contracts
+          # everything is empty and the report is uninteresting.
+          if [ ! -s data/processed/phase_ii_awards.parquet ] || \
+             [ ! -s data/processed/phase_iii_contracts.parquet ] || \
+             [ ! -s data/processed/phase_ii_iii_pairs.parquet ] || \
+             [ ! -s data/processed/phase_transition_survival.parquet ]; then
+            echo "### Skipping analysis (upstream parquet missing or empty)" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          python scripts/phase_transition_analysis.py \
+            --phase-ii data/processed/phase_ii_awards.parquet \
+            --phase-iii data/processed/phase_iii_contracts.parquet \
+            --pairs data/processed/phase_ii_iii_pairs.parquet \
+            --survival data/processed/phase_transition_survival.parquet \
+            --out reports/phase_transition
+
+      - name: Summarize report
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          REPORT=reports/phase_transition/phase_transition_report.json
+          if [ ! -f "$REPORT" ]; then
+            echo "### No report generated" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          echo "### Latency distribution" >> "$GITHUB_STEP_SUMMARY"
+          echo '```json' >> "$GITHUB_STEP_SUMMARY"
+          python -c "
+          import json
+          d = json.load(open('$REPORT'))
+          print(json.dumps(d.get('latency_distribution', {}).get('percentiles_days', {}), indent=2))
+          " >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "### Top agencies by Phase II volume" >> "$GITHUB_STEP_SUMMARY"
+          echo '| Agency | Phase II total | Matched | Match rate | Median latency (days) |' >> "$GITHUB_STEP_SUMMARY"
+          echo '|---|---:|---:|---:|---:|' >> "$GITHUB_STEP_SUMMARY"
+          python -c "
+          import json
+          d = json.load(open('$REPORT'))
+          for row in d.get('agency_breakdown', [])[:10]:
+              print(f\"| {row['agency']} | {row['phase_ii_total']} | {row['matched']} | {row['match_rate']} | {row.get('median_latency_days', 'n/a')} |\")
+          " >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload phase_transition artifacts
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: phase-transition-${{ github.run_id }}
+          retention-days: 30
+          path: |
+            data/processed/phase_ii_awards.parquet
+            data/processed/phase_ii_awards.checks.json
+            data/processed/phase_iii_contracts.parquet
+            data/processed/phase_iii_contracts.checks.json
+            data/processed/phase_ii_iii_pairs.parquet
+            data/processed/phase_ii_iii_pairs.checks.json
+            data/processed/phase_transition_survival.parquet
+            data/processed/phase_transition_survival.checks.json
+            reports/phase_transition/phase_transition_report.json
+
+      - name: Publish outputs to S3
+        if: success() && inputs.skip_upstream_download != true
+        shell: bash
+        run: |
+          set -euo pipefail
+          RUN_PREFIX="processed/phase_transition/$(date -u +%Y-%m-%d)"
+          for f in \
+            data/processed/phase_ii_awards.parquet \
+            data/processed/phase_iii_contracts.parquet \
+            data/processed/phase_ii_iii_pairs.parquet \
+            data/processed/phase_transition_survival.parquet \
+            reports/phase_transition/phase_transition_report.json; do
+            if [ -f "$f" ]; then
+              aws s3 cp "$f" "s3://${S3_BUCKET}/${RUN_PREFIX}/$(basename "$f")"
+            fi
+          done
+          echo "Published outputs to s3://${S3_BUCKET}/${RUN_PREFIX}/" >> "$GITHUB_STEP_SUMMARY"
