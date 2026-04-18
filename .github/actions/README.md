@@ -329,4 +329,4 @@ See the workflow files in `.github/workflows/` for examples of how these actions
 
 - `ci.yml` - Uses `setup-python-uv`, `setup-docker-buildx`, `prepare-env-file`
 - `lambda-deploy.yml` - Uses `setup-aws-credentials`, `setup-docker-buildx`
-- `nightly.yml` - Uses `setup-python-uv`, `setup-neo4j-service`, `wait-for-neo4j`, `prepare-env-file`
+- `weekly.yml` - Uses `setup-python-uv`, `setup-neo4j-service`, `wait-for-neo4j`, `prepare-env-file`
