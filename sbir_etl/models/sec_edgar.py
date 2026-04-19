@@ -174,14 +174,18 @@ class CompanyEdgarProfile(BaseModel):
     # Inbound M&A signals (company mentioned as target in other public filings)
     inbound_ma_mention_count: int = Field(
         default=0,
-        description="Number of times company appears in other filers' 8-K filings",
+        description="Distinct public filers that mention this company in M&A-related filings",
     )
     inbound_ma_acquirers: list[str] = Field(
         default_factory=list,
-        description="Names of public companies that mentioned this company in 8-K filings",
+        description="Names of public companies that mentioned this company",
+    )
+    inbound_ma_filing_types: list[str] = Field(
+        default_factory=list,
+        description="Filing types where mentions were found (8-K, DEFM14A, 10-K, SC 13D, etc.)",
     )
     latest_inbound_ma_date: date | None = Field(
-        None, description="Most recent date this company was mentioned in an 8-K"
+        None, description="Most recent date this company was mentioned in a filing"
     )
 
     # Form D signals (private capital raises)

@@ -182,41 +182,51 @@ def _detect_ma_events(
     return events
 
 
-async def _search_inbound_ma_mentions(
+# Filing types searched for inbound M&A signals, grouped by strength.
+# Stronger types are definitively M&A-related; weaker types may be noise.
+_MA_FILING_TYPES = "8-K,DEFM14A,PREM14A,SC TO-T,SC 14D9,425"
+_ANNUAL_FILING_TYPES = "10-K,10-Q"
+_OWNERSHIP_FILING_TYPES = "SC 13D,SC 13D/A,SC 13G,SC 13G/A"
+
+
+async def _search_filing_mentions_filtered(
     client: EdgarAPIClient,
     company_name: str,
+    forms: str,
     *,
     name_match_threshold: int = 80,
+    limit: int = 20,
 ) -> list[EdgarMAEvent]:
-    """Search for mentions of a company as an M&A target in public filings.
+    """Search for mentions of a company in filings by other public companies.
 
-    Uses EFTS full-text search to find the company name inside 8-K filings
-    filed by *other* public companies. This catches acquisitions where the
-    SBIR company is the private target being acquired.
+    Filters out self-filings (where the filer IS the company) using fuzzy
+    name matching.
 
     Args:
         client: EdgarAPIClient instance.
         company_name: SBIR company name to search for.
-        name_match_threshold: Minimum fuzzy score to accept a mention.
+        forms: Comma-separated filing types to search.
+        name_match_threshold: Fuzzy score at which a filer is considered
+            the same company (and thus excluded as a self-filing).
+        limit: Max EFTS results to process.
 
     Returns:
         List of EdgarMAEvent where is_target=True.
     """
     mentions = await client.search_filing_mentions(
-        company_name, forms="8-K", limit=20
+        company_name, forms=forms, limit=limit
     )
     if not mentions:
         return []
 
     events = []
     for mention in mentions:
-        # Verify the filer is not the same company (would be outbound, not inbound)
         filer_name = mention.get("filer_name", "")
         if not filer_name:
             continue
+        # Skip self-filings
         similarity = fuzz.token_set_ratio(company_name.upper(), filer_name.upper())
         if similarity >= name_match_threshold:
-            # This is the company's own filing, skip
             continue
 
         filing_date_str = mention.get("file_date")
@@ -227,6 +237,7 @@ async def _search_inbound_ma_mentions(
         except ValueError:
             continue
 
+        form_type = mention.get("form_type", "")
         events.append(
             EdgarMAEvent(
                 cik=mention.get("filer_cik", ""),
@@ -234,12 +245,47 @@ async def _search_inbound_ma_mentions(
                 filing_date=filing_date,
                 accession_number=mention.get("accession_number", ""),
                 event_type=MAAcquisitionType.ACQUISITION,
-                items_reported=["inbound_mention"],
+                items_reported=[form_type or "inbound_mention"],
                 description=mention.get("file_description"),
                 is_target=True,
             )
         )
     return events
+
+
+async def _search_inbound_ma_mentions(
+    client: EdgarAPIClient,
+    company_name: str,
+    *,
+    name_match_threshold: int = 80,
+) -> list[EdgarMAEvent]:
+    """Search for M&A-related mentions across strong and weak filing types.
+
+    Searches three tiers of filings:
+    1. Strong M&A signals: 8-K, DEFM14A, PREM14A, SC TO-T, 425
+    2. Annual/quarterly reports: 10-K, 10-Q (post-acquisition mentions)
+    3. Ownership filings: SC 13D/13G (>5% stakes, pre-acquisition signal)
+
+    Returns:
+        Combined list of EdgarMAEvent from all tiers.
+    """
+    # Run all three searches concurrently
+    import asyncio
+    strong, annual, ownership = await asyncio.gather(
+        _search_filing_mentions_filtered(
+            client, company_name, _MA_FILING_TYPES,
+            name_match_threshold=name_match_threshold, limit=20,
+        ),
+        _search_filing_mentions_filtered(
+            client, company_name, _ANNUAL_FILING_TYPES,
+            name_match_threshold=name_match_threshold, limit=10,
+        ),
+        _search_filing_mentions_filtered(
+            client, company_name, _OWNERSHIP_FILING_TYPES,
+            name_match_threshold=name_match_threshold, limit=10,
+        ),
+    )
+    return strong + annual + ownership
 
 
 async def _search_form_d_filings(
@@ -396,6 +442,9 @@ async def enrich_company(
         profile.inbound_ma_mention_count = len(deduped)
         if deduped:
             profile.inbound_ma_acquirers = [e.filer_name for e in deduped if e.filer_name]
+            profile.inbound_ma_filing_types = sorted({
+                ft for e in deduped for ft in e.items_reported if ft
+            })
             profile.latest_inbound_ma_date = max(e.filing_date for e in deduped)
 
     # Form D search — private capital raises under Regulation D
