@@ -111,6 +111,11 @@ class EdgarMAEvent(BaseModel):
     items_reported: list[str] = Field(
         default_factory=list, description="8-K items reported (e.g., ['1.01', '2.01'])"
     )
+    mention_type: str | None = Field(
+        None,
+        description="Classification of how the company was mentioned "
+        "(e.g., 'ma_definitive', 'ownership_active'). None for outbound 8-K events.",
+    )
     description: str | None = Field(None, description="Extracted event description")
     is_target: bool = Field(
         default=False,
@@ -171,21 +176,23 @@ class CompanyEdgarProfile(BaseModel):
     ma_event_count: int = Field(default=0, description="Number of detected M&A events (as filer)")
     latest_ma_event_date: date | None = Field(None, description="Most recent M&A event date")
 
-    # SEC filing mentions (company name found in other public companies' filings)
-    sec_mention_count: int = Field(
+    # Filing mentions (company name found in other public companies' filings)
+    # Field names omit the sec_ prefix because the enricher adds it during
+    # DataFrame column renaming to produce sec_mention_count, etc.
+    mention_count: int = Field(
         default=0,
         description="Distinct public filers whose filings mention this company",
     )
-    sec_mention_filers: list[str] = Field(
+    mention_filers: list[str] = Field(
         default_factory=list,
         description="Names of public companies whose filings mention this company",
     )
-    sec_mention_types: list[str] = Field(
+    mention_types: list[str] = Field(
         default_factory=list,
         description="Classified mention types: ma_definitive, ma_proxy, ownership_active, "
                     "ownership_passive, financial_mention, disclosure, filing_mention",
     )
-    latest_sec_mention_date: date | None = Field(
+    latest_mention_date: date | None = Field(
         None, description="Most recent date this company was mentioned in a filing"
     )
 
