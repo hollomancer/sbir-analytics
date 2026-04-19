@@ -226,73 +226,67 @@ class TestResolveCIK:
 
 class TestEnrichCompany:
     @pytest.mark.asyncio
-    async def test_enriches_public_company(self):
+    async def test_enriches_with_inbound_ma_and_form_d(self):
         mock_client = AsyncMock()
-        mock_client.search_companies = AsyncMock(
-            return_value=[
-                {"cik": "12345", "entity_name": "ACME CORP", "ticker": "ACME"},
-            ]
-        )
-        mock_client.get_company_facts = AsyncMock(
-            return_value={
-                "sic": "3674",
-                "facts": {
-                    "us-gaap": {
-                        "Revenues": {
-                            "units": {
-                                "USD": [
-                                    {"val": 50000000, "end": "2024-12-31", "form": "10-K"},
-                                ]
-                            }
-                        },
-                    }
-                },
-            }
-        )
-        mock_client.get_recent_filings = AsyncMock(
+        mock_client.search_filing_mentions = AsyncMock(
             return_value=[
                 {
-                    "form_type": "10-K",
-                    "filing_date": "2024-03-15",
+                    "filer_cik": "99999",
+                    "filer_name": "Big Acquirer Inc",
+                    "form_type": "8-K",
+                    "file_date": "2024-06-15",
                     "accession_number": "001",
-                    "description": "Annual Report",
+                    "file_description": "Acquisition announcement",
+                },
+            ]
+        )
+        mock_client.search_form_d_filings = AsyncMock(
+            return_value=[
+                {
+                    "cik": "55555",
+                    "entity_name": "Acme Corp",
+                    "file_date": "2023-09-15",
                 },
             ]
         )
 
         profile = await enrich_company(mock_client, "Acme Corp", company_uei="UEI123")
-        assert profile.is_publicly_traded is True
-        assert profile.cik == "12345"
-        assert profile.ticker == "ACME"
-        assert profile.latest_revenue == 50000000.0
-        assert profile.total_filings == 1
         assert profile.company_uei == "UEI123"
+        assert profile.inbound_ma_mention_count == 1
+        assert "Big Acquirer Inc" in profile.inbound_ma_acquirers
+        assert profile.has_form_d is True
+        assert profile.form_d_count == 1
 
     @pytest.mark.asyncio
-    async def test_returns_empty_profile_for_private(self):
+    async def test_returns_empty_profile_for_no_signals(self):
         mock_client = AsyncMock()
-        mock_client.search_companies = AsyncMock(return_value=[])
+        mock_client.search_filing_mentions = AsyncMock(return_value=[])
+        mock_client.search_form_d_filings = AsyncMock(return_value=[])
 
         profile = await enrich_company(mock_client, "Tiny Private LLC")
-        assert profile.is_publicly_traded is False
-        assert profile.cik is None
-        assert profile.latest_revenue is None
+        assert profile.inbound_ma_mention_count == 0
+        assert profile.has_form_d is False
 
     @pytest.mark.asyncio
-    async def test_skips_financials_when_disabled(self):
+    async def test_deduplicates_inbound_by_filer(self):
         mock_client = AsyncMock()
-        mock_client.search_companies = AsyncMock(
+        # Same filer appears in multiple 8-K hits
+        mock_client.search_filing_mentions = AsyncMock(
             return_value=[
-                {"cik": "12345", "entity_name": "ACME CORP", "ticker": None},
+                {"filer_cik": "99999", "filer_name": "Mercury Systems", "form_type": "8-K",
+                 "file_date": "2024-06-15", "accession_number": "001", "file_description": ""},
+                {"filer_cik": "99999", "filer_name": "Mercury Systems", "form_type": "8-K",
+                 "file_date": "2024-07-01", "accession_number": "002", "file_description": ""},
+                {"filer_cik": "88888", "filer_name": "Other Corp", "form_type": "8-K",
+                 "file_date": "2024-08-01", "accession_number": "003", "file_description": ""},
             ]
         )
-        mock_client.get_recent_filings = AsyncMock(return_value=[])
+        mock_client.search_form_d_filings = AsyncMock(return_value=[])
 
-        profile = await enrich_company(
-            mock_client, "Acme Corp", fetch_financials=False
-        )
-        assert profile.is_publicly_traded is True
-        mock_client.get_company_facts.assert_not_called()
+        profile = await enrich_company(mock_client, "Target Co")
+        # Should deduplicate Mercury's 2 filings into 1
+        assert profile.inbound_ma_mention_count == 2
+        assert len(profile.inbound_ma_acquirers) == 2
 
 
 class TestSearchInboundMAMentions:
@@ -395,14 +389,12 @@ class TestSearchFormDFilings:
         assert filings == []
 
 
-class TestEnrichCompanyPrivateSignals:
+class TestEnrichCompanySignals:
     @pytest.mark.asyncio
-    async def test_private_company_with_inbound_ma(self):
-        """A private company with no CIK should still get inbound M&A signals."""
+    async def test_company_with_inbound_ma(self):
+        """Company should get inbound M&A signals from 8-K mentions."""
         mock_client = AsyncMock()
-        # No public match
-        mock_client.search_companies = AsyncMock(return_value=[])
-        # But found as acquisition target
+        # Found as acquisition target
         mock_client.search_filing_mentions = AsyncMock(
             return_value=[
                 {
@@ -418,16 +410,13 @@ class TestEnrichCompanyPrivateSignals:
         mock_client.search_form_d_filings = AsyncMock(return_value=[])
 
         profile = await enrich_company(mock_client, "Tiny SBIR LLC")
-        assert profile.is_publicly_traded is False
-        assert profile.cik is None
         assert profile.inbound_ma_mention_count == 1
         assert "BIG DEFENSE CO" in profile.inbound_ma_acquirers
 
     @pytest.mark.asyncio
-    async def test_private_company_with_form_d(self):
-        """A private company should get Form D signals."""
+    async def test_company_with_form_d(self):
+        """Company should get Form D signals."""
         mock_client = AsyncMock()
-        mock_client.search_companies = AsyncMock(return_value=[])
         mock_client.search_filing_mentions = AsyncMock(return_value=[])
         mock_client.search_form_d_filings = AsyncMock(
             return_value=[
@@ -443,22 +432,14 @@ class TestEnrichCompanyPrivateSignals:
         profile = await enrich_company(
             mock_client, "Venture Backed SBIR Inc"
         )
-        assert profile.is_publicly_traded is False
         assert profile.has_form_d is True
         assert profile.form_d_cik == "77777"
         assert profile.form_d_count == 1
 
     @pytest.mark.asyncio
-    async def test_public_company_also_gets_private_signals(self):
-        """A public company should still get inbound M&A and Form D signals."""
+    async def test_company_with_both_signals(self):
+        """A company can have both inbound M&A and Form D signals."""
         mock_client = AsyncMock()
-        mock_client.search_companies = AsyncMock(
-            return_value=[
-                {"cik": "12345", "entity_name": "DUAL SIGNAL CORP", "ticker": "DUAL"},
-            ]
-        )
-        mock_client.get_company_facts = AsyncMock(return_value=None)
-        mock_client.get_recent_filings = AsyncMock(return_value=[])
         mock_client.search_filing_mentions = AsyncMock(
             return_value=[
                 {
@@ -471,12 +452,19 @@ class TestEnrichCompanyPrivateSignals:
                 },
             ]
         )
-        mock_client.search_form_d_filings = AsyncMock(return_value=[])
+        mock_client.search_form_d_filings = AsyncMock(
+            return_value=[
+                {
+                    "cik": "77777",
+                    "entity_name": "Dual Signal Corp",
+                    "file_date": "2023-06-01",
+                },
+            ]
+        )
 
         profile = await enrich_company(mock_client, "Dual Signal Corp")
-        # Both public and inbound signals
-        assert profile.is_publicly_traded is True
         assert profile.inbound_ma_mention_count == 1
+        assert profile.has_form_d is True
 
 
 class TestModels:
