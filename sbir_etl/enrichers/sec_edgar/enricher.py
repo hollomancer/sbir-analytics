@@ -188,6 +188,47 @@ _MA_FILING_TYPES = "8-K,DEFM14A,PREM14A,SC TO-T,SC 14D9,425"
 _ANNUAL_FILING_TYPES = "10-K,10-Q"
 _OWNERSHIP_FILING_TYPES = "SC 13D,SC 13D/A,SC 13G,SC 13G/A"
 
+# Filer names matching these patterns are almost always noise (lease filings,
+# mortgage pass-throughs, etc. that mention tenant/borrower company names).
+_NOISE_FILER_KEYWORDS = re.compile(
+    r"realty|reit|real estate|properties trust|mortgage|pass thr|"
+    r"commercial mort|capital trust|property trust",
+    re.IGNORECASE,
+)
+
+
+def _is_noise_filer(filer_name: str, target_name: str) -> bool:
+    """Return True if this filer→target mention is likely noise.
+
+    Catches:
+    - REITs and real estate companies (Vornado, Mack-Cali) whose lease
+      filings mention tenant companies
+    - Name collisions where the target name is a substring of a different
+      company name (e.g. "Fibertek" matching "Thermo Fibertek")
+    """
+    if _NOISE_FILER_KEYWORDS.search(filer_name):
+        return True
+
+    # Name collision: target name appears inside filer name as a component
+    # of a longer, different company name.
+    # e.g. "FIBERTEK" in "THERMO FIBERTEK INC" → different company.
+    # But "MERCURY" in "MERCURY SYSTEMS" → same entity family, keep it.
+    _SUFFIXES = re.compile(
+        r",?\s*(Inc\.?|Corp\.?|LLC|Ltd\.?|Co\.?|L\.?P\.?|/DE|/NV|/MD|CORP|INC)$",
+        re.IGNORECASE,
+    )
+    target_clean = _SUFFIXES.sub("", target_name).strip().upper()
+    filer_clean = _SUFFIXES.sub("", filer_name).strip().upper()
+
+    if (
+        target_clean in filer_clean
+        and filer_clean != target_clean
+        and len(filer_clean) > len(target_clean) + 3
+    ):
+        return True
+
+    return False
+
 
 async def _search_filing_mentions_filtered(
     client: EdgarAPIClient,
@@ -199,19 +240,10 @@ async def _search_filing_mentions_filtered(
 ) -> list[EdgarMAEvent]:
     """Search for mentions of a company in filings by other public companies.
 
-    Filters out self-filings (where the filer IS the company) using fuzzy
-    name matching.
-
-    Args:
-        client: EdgarAPIClient instance.
-        company_name: SBIR company name to search for.
-        forms: Comma-separated filing types to search.
-        name_match_threshold: Fuzzy score at which a filer is considered
-            the same company (and thus excluded as a self-filing).
-        limit: Max EFTS results to process.
-
-    Returns:
-        List of EdgarMAEvent where is_target=True.
+    Filters:
+    - Self-filings (filer IS the searched company)
+    - REIT/real estate filers (lease noise)
+    - Name collisions (target name is substring of a different company)
     """
     mentions = await client.search_filing_mentions(
         company_name, forms=forms, limit=limit
@@ -227,6 +259,9 @@ async def _search_filing_mentions_filtered(
         # Skip self-filings
         similarity = fuzz.token_set_ratio(company_name.upper(), filer_name.upper())
         if similarity >= name_match_threshold:
+            continue
+        # Skip noise filers (REITs, name collisions)
+        if _is_noise_filer(filer_name, company_name):
             continue
 
         filing_date_str = mention.get("file_date")
