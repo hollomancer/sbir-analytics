@@ -155,7 +155,7 @@ Replace the entire contents of `infrastructure/cdk/stacks/config.py` with:
 """Shared constants for SBIR Analytics CDK infrastructure."""
 
 # S3
-S3_BUCKET_NAME = "sbir-etl-production-data"
+S3_BUCKET_NAME = "sbir-etl-prod-data"
 
 # Secrets Manager
 NEO4J_SECRET_NAME = "sbir-analytics/neo4j"  # nosec B105
@@ -1168,8 +1168,8 @@ Expected: prompts for IAM changes confirmation. Review the OIDC role and S3 buck
 
 Outputs to note:
 ```
-sbir-analytics-foundation.BucketName = sbir-etl-production-data
-sbir-analytics-foundation.BucketArn = arn:aws:s3:::sbir-etl-production-data
+sbir-analytics-foundation.BucketName = sbir-etl-prod-data
+sbir-analytics-foundation.BucketArn = arn:aws:s3:::sbir-etl-prod-data
 sbir-analytics-foundation.GitHubActionsRoleArn = arn:aws:iam::161066624831:role/sbir-analytics-github-actions
 ```
 

@@ -37,7 +37,7 @@ Old files deleted: `storage.py`, `security.py`, `batch_stack.py`
 
 ### S3 Bucket
 
-- Name: `sbir-etl-production-data`
+- Name: `sbir-etl-prod-data`
 - Versioning: enabled
 - Encryption: S3-managed
 - Public access: blocked
@@ -59,7 +59,7 @@ Lifecycle rules:
 - Name: `sbir-analytics-github-actions`
 - Trust: `token.actions.githubusercontent.com`, audience `sts.amazonaws.com`, subject `repo:hollomancer/sbir-analytics:*`
 - Policies (least-privilege):
-  - S3: `GetObject`, `PutObject`, `DeleteObject`, `ListBucket` on `sbir-etl-production-data`
+  - S3: `GetObject`, `PutObject`, `DeleteObject`, `ListBucket` on `sbir-etl-prod-data`
   - Batch: `SubmitJob`, `DescribeJobs`, `ListJobs`, `TerminateJob` on `sbir-analytics-*` job definitions and queues
   - Batch: `RegisterJobDefinition` on `sbir-analytics-*` (needed for CDK deploys)
   - IAM: `PassRole` to `batch.amazonaws.com` for the two Batch IAM roles
@@ -77,7 +77,7 @@ Depends on `FoundationStack` for bucket ARN and Neo4j secret reference.
 ### IAM Roles
 
 - `sbir-analytics-batch-execution-role` — assumes `ecs-tasks.amazonaws.com`, has `AmazonECSTaskExecutionRolePolicy` (pull images, write logs)
-- `sbir-analytics-batch-task-role` — assumes `ecs-tasks.amazonaws.com`, S3 read/write on `sbir-etl-production-data`, read on `sbir-analytics/neo4j` secret
+- `sbir-analytics-batch-task-role` — assumes `ecs-tasks.amazonaws.com`, S3 read/write on `sbir-etl-prod-data`, read on `sbir-analytics/neo4j` secret
 
 ### Compute Environments
 
@@ -116,7 +116,7 @@ One topic (`sbir-analytics-batch-notifications`) subscribed to `SUCCEEDED`/`FAIL
 **Must do after deployment:**
 - Update `AWS_ROLE_ARN` secret in GitHub repository settings to the new role ARN
 
-**No code changes needed** — workflows already reference the correct bucket name (`sbir-etl-production-data`), region (`us-east-2`), and use `${{ secrets.AWS_ROLE_ARN }}` for authentication.
+**No code changes needed** — workflows already reference the correct bucket name (`sbir-etl-prod-data`), region (`us-east-2`), and use `${{ secrets.AWS_ROLE_ARN }}` for authentication.
 
 **Follow-on task (separate):**
 - Rewrite `etl-pipeline.yml` USAspending job to submit to Batch via `aws batch submit-job` instead of attempting to run in a GitHub Actions container.

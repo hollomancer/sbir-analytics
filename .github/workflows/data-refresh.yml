@@ -245,6 +245,12 @@ jobs:
             echo '3. Run: `gh secret set SAM_GOV_API_KEY --body "SAM-xxxx" --repo hollomancer/sbir-analytics`' >> $GITHUB_STEP_SUMMARY
           fi
 
+          if [ $EXIT_CODE -eq 3 ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### ⏳ SAM.gov Daily Rate Limit Hit" >> $GITHUB_STEP_SUMMARY
+            echo "The API key's daily quota has been exceeded. Retry later (resets at midnight UTC)." >> $GITHUB_STEP_SUMMARY
+          fi
+
           exit $EXIT_CODE
 
       - name: Verify upload

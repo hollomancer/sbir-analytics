@@ -12,6 +12,7 @@ Exit codes:
     1  General failure (network, S3, parse error)
     2  API key problem — expired, invalid, or missing. CI should treat
        exit code 2 as "rotate the key" rather than a transient failure.
+    3  Daily rate limit exceeded — retry after midnight UTC.
 
 API key lifecycle:
     SAM.gov keys expire every ~60 days. Rotating the key:
@@ -42,6 +43,7 @@ from functools import partial
 
 import boto3
 import pandas as pd
+# Standalone script — uses requests (installed ad-hoc in CI) rather than httpx
 import requests
 
 # Force unbuffered output so CI logs stream in real time.
@@ -54,6 +56,8 @@ print = partial(print, flush=True)  # noqa: A001
 EXTRACTS_URL = "https://api.sam.gov/data-services/v1/extracts"
 ENTITY_API_URL = "https://api.sam.gov/entity-information/v3/entities"
 S3_KEY = "raw/sam_gov/sam_entity_records.parquet"
+S3_KEY_PARTIAL = "raw/sam_gov/sam_entity_records_partial.parquet"
+MIN_CANONICAL_ROW_COUNT = 50_000
 REQUEST_TIMEOUT = 120
 DOWNLOAD_TIMEOUT = 1800  # 30 min for large ZIP downloads
 
@@ -494,9 +498,9 @@ def _normalise_chunk(chunk: pd.DataFrame) -> pd.DataFrame:
 # S3 upload
 # ---------------------------------------------------------------------------
 
-def _upload_to_s3(df: pd.DataFrame, bucket: str) -> None:
+def _upload_to_s3(df: pd.DataFrame, bucket: str, *, s3_key: str = S3_KEY) -> None:
     """Write DataFrame to parquet and upload to S3."""
-    print(f"\n📤 Uploading {len(df):,} rows to s3://{bucket}/{S3_KEY}")
+    print(f"\n📤 Uploading {len(df):,} rows to s3://{bucket}/{s3_key}")
     buf = io.BytesIO()
     df.to_parquet(buf, index=False, engine="pyarrow")
     buf.seek(0)
@@ -505,7 +509,7 @@ def _upload_to_s3(df: pd.DataFrame, bucket: str) -> None:
     s3 = boto3.client("s3")
     s3.put_object(
         Bucket=bucket,
-        Key=S3_KEY,
+        Key=s3_key,
         Body=buf,
         ContentType="application/octet-stream",
         Metadata={
@@ -573,7 +577,16 @@ def main() -> None:
         if args.dry_run:
             print("\n🔵 Dry run — skipping S3 upload")
         else:
-            _upload_to_s3(df, args.s3_bucket)
+            # If row count is below the minimum threshold, this is likely a
+            # partial result from paginated fallback. Upload to a separate key
+            # so we don't overwrite the canonical full dataset.
+            if len(df) < MIN_CANONICAL_ROW_COUNT:
+                print(f"\n⚠️  Only {len(df):,} rows — below {MIN_CANONICAL_ROW_COUNT:,} "
+                      f"threshold. Uploading as partial dataset to avoid overwriting "
+                      f"canonical data.")
+                _upload_to_s3(df, args.s3_bucket, s3_key=S3_KEY_PARTIAL)
+            else:
+                _upload_to_s3(df, args.s3_bucket)
 
     except APIKeyError as exc:
         print(f"\n{'='*60}", file=sys.stderr)
@@ -581,6 +594,9 @@ def main() -> None:
         print(f"{'='*60}", file=sys.stderr)
         print(str(exc), file=sys.stderr)
         print(f"{'='*60}", file=sys.stderr)
+        # Distinguish rate limits (exit 3) from expired/invalid keys (exit 2)
+        if "RATE LIMIT" in str(exc):
+            sys.exit(3)
         sys.exit(2)
 
     except Exception as exc:

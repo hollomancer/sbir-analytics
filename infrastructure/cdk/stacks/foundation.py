@@ -164,7 +164,9 @@ class FoundationStack(Stack):
                 resources=["*"],
             )
         )
-        # CloudFormation: full access for CDK deployments
+        # CloudFormation: full access for CDK deployments.
+        # CDK needs broad CloudFormation permissions (create/update/delete stacks,
+        # changesets, exports, etc.) so a wildcard is intentional here.
         self.github_actions_role.add_to_policy(
             iam.PolicyStatement(
                 effect=iam.Effect.ALLOW,
