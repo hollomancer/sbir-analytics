@@ -4,6 +4,8 @@ on:
   schedule:
     # SBIR Awards: Weekly on Monday at 9 AM UTC
     - cron: "0 9 * * 1"
+    # SAM.gov entities: Monthly on 15th at 3 AM UTC
+    - cron: "0 3 15 * *"
     # USAspending: Monthly on 6th at 2 AM UTC
     - cron: "0 2 6 * *"
     # USPTO: Monthly on 1st at 9 AM UTC
@@ -16,6 +18,7 @@ on:
         type: choice
         options:
           - sbir
+          - sam_gov
           - usaspending
           - uspto
           - all
@@ -54,6 +57,7 @@ jobs:
     timeout-minutes: 5
     outputs:
       sbir: ${{ steps.determine.outputs.sbir }}
+      sam_gov: ${{ steps.determine.outputs.sam_gov }}
       usaspending: ${{ steps.determine.outputs.usaspending }}
       uspto: ${{ steps.determine.outputs.uspto }}
     steps:
@@ -65,10 +69,12 @@ jobs:
             SOURCE="${{ github.event.inputs.source }}"
             if [ "$SOURCE" = "all" ]; then
               echo "sbir=true" >> $GITHUB_OUTPUT
+              echo "sam_gov=true" >> $GITHUB_OUTPUT
               echo "usaspending=true" >> $GITHUB_OUTPUT
               echo "uspto=true" >> $GITHUB_OUTPUT
             else
               echo "sbir=$([[ $SOURCE == 'sbir' ]] && echo true || echo false)" >> $GITHUB_OUTPUT
+              echo "sam_gov=$([[ $SOURCE == 'sam_gov' ]] && echo true || echo false)" >> $GITHUB_OUTPUT
               echo "usaspending=$([[ $SOURCE == 'usaspending' ]] && echo true || echo false)" >> $GITHUB_OUTPUT
               echo "uspto=$([[ $SOURCE == 'uspto' ]] && echo true || echo false)" >> $GITHUB_OUTPUT
             fi
@@ -78,16 +84,25 @@ jobs:
             case "$CRON_SCHEDULE" in
               "0 9 * * 1")  # Weekly Monday
                 echo "sbir=true" >> $GITHUB_OUTPUT
+                echo "sam_gov=false" >> $GITHUB_OUTPUT
+                echo "usaspending=false" >> $GITHUB_OUTPUT
+                echo "uspto=false" >> $GITHUB_OUTPUT
+                ;;
+              "0 3 15 * *")  # Monthly 15th — SAM.gov entities
+                echo "sbir=false" >> $GITHUB_OUTPUT
+                echo "sam_gov=true" >> $GITHUB_OUTPUT
                 echo "usaspending=false" >> $GITHUB_OUTPUT
                 echo "uspto=false" >> $GITHUB_OUTPUT
                 ;;
               "0 2 6 * *")  # Monthly 6th
                 echo "sbir=false" >> $GITHUB_OUTPUT
+                echo "sam_gov=false" >> $GITHUB_OUTPUT
                 echo "usaspending=true" >> $GITHUB_OUTPUT
                 echo "uspto=false" >> $GITHUB_OUTPUT
                 ;;
               "0 9 1 * *")  # Monthly 1st
                 echo "sbir=false" >> $GITHUB_OUTPUT
+                echo "sam_gov=false" >> $GITHUB_OUTPUT
                 echo "usaspending=false" >> $GITHUB_OUTPUT
                 echo "uspto=true" >> $GITHUB_OUTPUT
                 ;;
@@ -103,6 +118,9 @@ jobs:
           echo "  A[Determine Source] --> B{Which Source?}" >> $GITHUB_STEP_SUMMARY
           if [ "${{ steps.determine.outputs.sbir }}" = "true" ]; then
             echo "  B -->|SBIR| C[Refresh SBIR Awards]" >> $GITHUB_STEP_SUMMARY
+          fi
+          if [ "${{ steps.determine.outputs.sam_gov }}" = "true" ]; then
+            echo "  B -->|SAM.gov| F[Refresh SAM.gov Entities]" >> $GITHUB_STEP_SUMMARY
           fi
           if [ "${{ steps.determine.outputs.usaspending }}" = "true" ]; then
             echo "  B -->|USAspending| D[Extract Recipients]" >> $GITHUB_STEP_SUMMARY
@@ -170,6 +188,71 @@ jobs:
           echo "### 📦 SBIR Files After Refresh" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           aws s3 ls "s3://${{ env.S3_BUCKET }}/raw/awards/" --recursive --human-readable | tail -10 >> $GITHUB_STEP_SUMMARY || echo "No files found"
+
+  refresh-sam-gov:
+    name: Refresh SAM.gov Entities
+    needs: determine-source
+    if: needs.determine-source.outputs.sam_gov == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Configure AWS credentials
+        uses: ./.github/actions/setup-aws-credentials
+        with:
+          role-arn: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Python and UV
+        uses: ./.github/actions/setup-python-uv
+        with:
+          python-version: "3.11"
+          install-dev-deps: "false"
+
+      - name: Download SAM.gov entities
+        id: download
+        env:
+          S3_BUCKET: ${{ env.S3_BUCKET }}
+          SAM_GOV_API_KEY: ${{ secrets.SAM_GOV_API_KEY }}
+        run: |
+          echo "## 🏛️ SAM.gov Entity Refresh" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          uv pip install boto3 requests pandas pyarrow
+
+          EXIT_CODE=0
+          uv run python scripts/data/download_sam_gov.py 2>&1 | tee sam_gov_download.log || EXIT_CODE=$?
+
+          echo "<details><summary>Download Log</summary>" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          tail -50 sam_gov_download.log >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "</details>" >> $GITHUB_STEP_SUMMARY
+
+          if [ $EXIT_CODE -eq 2 ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### ⚠️ SAM.gov API Key Needs Rotation" >> $GITHUB_STEP_SUMMARY
+            echo "The API key has expired or is invalid. Keys expire every ~60 days." >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**To fix:**" >> $GITHUB_STEP_SUMMARY
+            echo "1. Log in at [sam.gov](https://sam.gov) → Account → API Keys" >> $GITHUB_STEP_SUMMARY
+            echo "2. Generate a new key" >> $GITHUB_STEP_SUMMARY
+            echo '3. Run: `gh secret set SAM_GOV_API_KEY --body "SAM-xxxx" --repo hollomancer/sbir-analytics`' >> $GITHUB_STEP_SUMMARY
+          fi
+
+          exit $EXIT_CODE
+
+      - name: Verify upload
+        if: success()
+        run: |
+          echo "### 📦 SAM.gov Files in S3" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          aws s3 ls "s3://${{ env.S3_BUCKET }}/raw/sam_gov/" --recursive --human-readable >> $GITHUB_STEP_SUMMARY || echo "No files found" >> $GITHUB_STEP_SUMMARY
 
   refresh-usaspending:
     name: Refresh USAspending Recipients
@@ -436,7 +519,7 @@ jobs:
 
   summary:
     name: Refresh Summary
-    needs: [determine-source, refresh-sbir, refresh-usaspending, refresh-uspto]
+    needs: [determine-source, refresh-sbir, refresh-sam-gov, refresh-usaspending, refresh-uspto]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
