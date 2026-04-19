@@ -555,8 +555,8 @@ jobs:
       checks: write          # For creating check runs
     env:
       AWS_REGION: us-east-2
-      S3_BUCKET: sbir-etl-production-data
-      SBIR_ANALYTICS_S3_BUCKET: sbir-etl-production-data
+      S3_BUCKET: sbir-etl-prod-data
+      SBIR_ANALYTICS_S3_BUCKET: sbir-etl-prod-data
     steps:
       - name: Checkout code
         uses: actions/checkout@v6

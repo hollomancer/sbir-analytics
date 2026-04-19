@@ -1,7 +1,7 @@
 """Shared constants for SBIR Analytics CDK infrastructure."""
 
 # S3
-S3_BUCKET_NAME = "sbir-etl-production-data"
+S3_BUCKET_NAME = "sbir-etl-prod-data"
 
 # Secrets Manager
 NEO4J_SECRET_NAME = "sbir-analytics/neo4j"  # nosec B105
