@@ -63,17 +63,16 @@ class EdgarAPIClient(BaseAsyncAPIClient):
             int, self.api_config.get("rate_limit_per_minute", 600)
         )
 
-        # SEC requires a User-Agent with contact info for fair access
-        contact_email = str(
-            self.api_config.get(
-                "contact_email_env_var", "SEC_EDGAR_CONTACT_EMAIL"
-            )
-        )
-        self.contact_email = os.getenv(contact_email, "")
+        # SEC requires a User-Agent with contact info for fair access.
+        # Accept contact_email directly from config, or look it up from env.
+        self.contact_email = str(self.api_config.get("contact_email", ""))
+        if not self.contact_email:
+            env_var = str(self.api_config.get("contact_email_env_var", "SEC_EDGAR_CONTACT_EMAIL"))
+            self.contact_email = os.getenv(env_var, "")
         if not self.contact_email:
             logger.warning(
-                f"SEC EDGAR contact email not found in {contact_email}. "
-                "Set this to comply with SEC fair-access policy."
+                "SEC EDGAR contact email not set. Set contact_email in config "
+                "or SEC_EDGAR_CONTACT_EMAIL env var to comply with SEC fair-access policy."
             )
 
         self._client = http_client or httpx.AsyncClient(timeout=self.timeout)
@@ -241,6 +240,7 @@ class EdgarAPIClient(BaseAsyncAPIClient):
                     "file_description": source.get("file_description", ""),
                     "items": source.get("items", []),
                     "sics": source.get("sics", []),
+                    "doc_id": hit.get("_id", ""),  # accession:filename for document fetch
                 })
             return results
         except APIError as e:
@@ -301,6 +301,48 @@ class EdgarAPIClient(BaseAsyncAPIClient):
                 f"EDGAR Form D search failed for '{company_name}': {e}"
             )
             return []
+
+    async def fetch_filing_document(
+        self,
+        cik: str,
+        accession: str,
+        filename: str,
+    ) -> str | None:
+        """Fetch the text content of a specific filing document.
+
+        Args:
+            cik: CIK (zero-padded or not).
+            accession: Accession number (e.g., '0001049521-20-000067').
+            filename: Document filename within the filing.
+
+        Returns:
+            Raw text content with HTML stripped, or None on error.
+        """
+        accession_path = accession.replace("-", "")
+        cik_padded = cik.zfill(10)
+        url = f"https://www.sec.gov/Archives/edgar/data/{cik_padded}/{accession_path}/{filename}"
+        try:
+            await self._wait_for_rate_limit()
+            headers = {
+                "User-Agent": f"SBIR-Analytics/0.1.0 ({self.contact_email})"
+                if self.contact_email else "SBIR-Analytics/0.1.0",
+                "Accept": "text/html, application/xhtml+xml, */*",
+            }
+            response = await self._client.get(
+                url, headers=headers, follow_redirects=True
+            )
+            if response.status_code != 200:
+                return None
+            text = response.text
+            text = re.sub(r'<style[^>]*>.*?</style>', '', text, flags=re.DOTALL)
+            text = re.sub(r'<script[^>]*>.*?</script>', '', text, flags=re.DOTALL)
+            text = re.sub(r'<[^>]+>', ' ', text)
+            text = re.sub(r'&[a-z]+;', ' ', text)
+            text = re.sub(r'\s+', ' ', text).strip()
+            return text
+        except Exception as e:
+            logger.debug(f"Failed to fetch filing document {url}: {e}")
+            return None
 
     async def get_company_tickers(self) -> dict[str, dict[str, Any]]:
         """Fetch the full CIK-to-ticker mapping from EDGAR.
