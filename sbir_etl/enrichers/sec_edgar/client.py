@@ -12,6 +12,7 @@ containing a contact email address.
 from __future__ import annotations
 
 import os
+import re
 from typing import Any, cast
 
 import httpx
@@ -361,8 +362,8 @@ class EdgarAPIClient(BaseAsyncAPIClient):
             if response.status_code != 200:
                 return None
             text = response.text
-            text = re.sub(r'<style[^>]*>.*?</style>', '', text, flags=re.DOTALL)
-            text = re.sub(r'<script[^>]*>.*?</script>', '', text, flags=re.DOTALL)
+            text = re.sub(r'<style[^>]*>.*?</style>', '', text, flags=re.DOTALL | re.IGNORECASE)
+            text = re.sub(r'<script[^>]*>.*?</script>', '', text, flags=re.DOTALL | re.IGNORECASE)
             text = re.sub(r'<[^>]+>', ' ', text)
             text = re.sub(r'&[a-z]+;', ' ', text)
             text = re.sub(r'\s+', ' ', text).strip()
