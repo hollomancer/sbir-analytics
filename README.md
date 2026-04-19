@@ -14,12 +14,10 @@
 - 💰 **Economic impact** analysis with ROI and federal tax receipt estimates
 - 🔗 **Patent ownership chains** tracking SBIR-funded innovation outcomes
 
-**Want the full list of policy and research questions this pipeline is designed
-to answer, with links to the spec for each?** See
-[docs/research-questions.md](docs/research-questions.md) — an inventory
-organized by policy area (national security, commercialization, innovation,
-fiscal impact, program management), with cross-references to NASEM, GAO, CRS,
-SBA, and peer-reviewed benchmarks.
+For the full inventory of SBIR policy and research questions the pipeline is
+designed to answer — organized by policy area and cross-referenced to NASEM,
+GAO, and peer-reviewed benchmarks — see
+[docs/research-questions.md](docs/research-questions.md).
 
 ## Prerequisites
 
@@ -81,15 +79,6 @@ For production use, see [Deployment Guide](docs/deployment/README.md) for:
 - **Processing**: DuckDB 1.0+ (analytical queries), Pandas 2.2+
 - **Configuration**: Pydantic 2.8+ (type-safe YAML config)
 - **Deployment**: Docker, AWS Lambda, GitHub Actions
-
-### Research Questions
-
-See [docs/research-questions.md](docs/research-questions.md) for the full
-inventory of analytical and research questions the pipeline is designed to
-answer — organized by **policy area** (national security & defense industrial
-base; commercialization; innovation & R&D; fiscal impact; program management),
-with each area ordered by complexity tier and dependency, cross-referenced to
-NASEM reviews and other public benchmarks.
 
 ## Documentation
 

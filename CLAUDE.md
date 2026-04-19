@@ -4,13 +4,7 @@
 
 Graph-based ETL: SBIR awards → Neo4j. Dagster orchestration, DuckDB processing, Docker deployment.
 
-**Overall intent / what this repo is trying to answer:** see
-[docs/research-questions.md](docs/research-questions.md) — the canonical
-inventory of SBIR policy and research questions the pipeline exists to address,
-organized by policy area (national security, commercialization, innovation,
-fiscal impact, program management) and cross-referenced to NASEM, GAO, CRS, and
-peer-reviewed benchmarks. Use it as the north star when deciding whether a
-proposed change serves a real question vs. adds incidental scope.
+**Intent / north star:** [docs/research-questions.md](docs/research-questions.md) is the canonical inventory of what this repo exists to answer. Use it to judge whether a proposed change serves a real question vs. adds incidental scope.
 
 Architectural patterns and technical docs live in `docs/steering/`. Feature specs live in `specs/`.
 
