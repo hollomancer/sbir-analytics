@@ -5,8 +5,10 @@ Converts economic components (wage impact, proprietor income, gross operating
 surplus, consumption) into federal, state, and local tax receipt estimates
 using effective rates derived from BEA NIPA tables.
 
-v2: Rates sourced from NIPARateProvider (BEA NIPA Tables 3.2, 3.3, 1.5)
-    instead of hardcoded config values.  Adds state/local tax columns.
+v2: Federal rates from NIPARateProvider (BEA NIPA Tables 3.2, 3.3, 1.5).
+v3: State-specific rates from StateRateProvider (Tax Foundation / Census).
+    When a state column is present, uses state-specific income, sales, and
+    property rates instead of national NIPA averages.
 """
 
 from __future__ import annotations
@@ -19,6 +21,7 @@ import pandas as pd
 from loguru import logger
 
 from .nipa_rates import NIPARateProvider, NIPATaxRates
+from .state_rates import StateRateProvider
 
 
 @dataclass
@@ -46,6 +49,7 @@ class FiscalTaxEstimator:
     def __init__(
         self,
         rate_provider: NIPARateProvider | None = None,
+        state_rate_provider: StateRateProvider | None = None,
         bea_api_key: str | None = None,
     ):
         """Initialize the fiscal tax estimator.
@@ -53,9 +57,12 @@ class FiscalTaxEstimator:
         Args:
             rate_provider: Pre-configured NIPARateProvider. If None, creates
                 one using bea_api_key (or baseline rates if no key).
+            state_rate_provider: Pre-configured StateRateProvider for
+                state-specific rates. If None, uses built-in 2024 rates.
             bea_api_key: BEA API key for live NIPA rate fetching.
         """
         self.rate_provider = rate_provider or NIPARateProvider(bea_api_key=bea_api_key)
+        self.state_rates = state_rate_provider or StateRateProvider()
 
     def _get_rates(self, year: int | None = None) -> NIPATaxRates:
         return self.rate_provider.get_rates(year)
@@ -130,9 +137,36 @@ class FiscalTaxEstimator:
         )
 
         # --- State & local taxes ---
-        result_df["state_local_income_tax"] = wage * rates.state_local_income_rate
-        result_df["state_local_sales_tax"] = consumption * rates.state_local_sales_rate
-        result_df["state_local_property_tax"] = gos * rates.state_local_property_rate
+        # Use state-specific rates when state column is present;
+        # fall back to NIPA national averages otherwise.
+        has_state_col = "state" in result_df.columns
+        if has_state_col:
+            sl_income = []
+            sl_sales = []
+            sl_property = []
+            sl_source = []
+            for _, row in result_df.iterrows():
+                st = self.state_rates.get_rates(str(row["state"]))
+                if st:
+                    sl_income.append(row["wage_impact"] * st.income_rate)
+                    sl_sales.append(row["consumption_impact"] * st.sales_rate)
+                    sl_property.append(row["gross_operating_surplus"] * st.property_rate)
+                    sl_source.append("state_specific")
+                else:
+                    sl_income.append(row["wage_impact"] * rates.state_local_income_rate)
+                    sl_sales.append(row["consumption_impact"] * rates.state_local_sales_rate)
+                    sl_property.append(row["gross_operating_surplus"] * rates.state_local_property_rate)
+                    sl_source.append("nipa_national")
+            result_df["state_local_income_tax"] = sl_income
+            result_df["state_local_sales_tax"] = sl_sales
+            result_df["state_local_property_tax"] = sl_property
+            result_df["state_rate_source"] = sl_source
+        else:
+            result_df["state_local_income_tax"] = wage * rates.state_local_income_rate
+            result_df["state_local_sales_tax"] = consumption * rates.state_local_sales_rate
+            result_df["state_local_property_tax"] = gos * rates.state_local_property_rate
+            result_df["state_rate_source"] = "nipa_national"
+
         result_df["state_local_other_tax"] = (
             (wage + proprietor + gos) * rates.state_local_other_rate
         )
