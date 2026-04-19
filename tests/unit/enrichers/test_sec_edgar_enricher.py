@@ -292,17 +292,23 @@ class TestEnrichCompany:
 class TestSearchInboundMAMentions:
     @pytest.mark.asyncio
     async def test_finds_inbound_acquisition(self):
+        """Searches across 3 filing type tiers (strong M&A, annual, ownership)."""
         mock_client = AsyncMock()
+        # Return a match on the first call (strong M&A types), empty on the rest
         mock_client.search_filing_mentions = AsyncMock(
-            return_value=[
-                {
-                    "filer_cik": "99999",
-                    "filer_name": "LOCKHEED MARTIN CORPORATION",
-                    "form_type": "8-K",
-                    "file_date": "2024-06-15",
-                    "accession_number": "0001-24-500",
-                    "file_description": "Acquisition of Small SBIR Company",
-                },
+            side_effect=[
+                [  # Strong M&A types (8-K, DEFM14A, etc.)
+                    {
+                        "filer_cik": "99999",
+                        "filer_name": "LOCKHEED MARTIN CORPORATION",
+                        "form_type": "8-K",
+                        "file_date": "2024-06-15",
+                        "accession_number": "0001-24-500",
+                        "file_description": "Acquisition of Small SBIR Company",
+                    },
+                ],
+                [],  # Annual reports (10-K, 10-Q)
+                [],  # Ownership filings (SC 13D/13G)
             ]
         )
 
@@ -313,21 +319,43 @@ class TestSearchInboundMAMentions:
         assert events[0].is_target is True
         assert events[0].filer_name == "LOCKHEED MARTIN CORPORATION"
         assert events[0].event_type == MAAcquisitionType.ACQUISITION
+        # Should have been called 3 times (one per filing type tier)
+        assert mock_client.search_filing_mentions.call_count == 3
+
+    @pytest.mark.asyncio
+    async def test_combines_results_across_tiers(self):
+        """Results from all 3 tiers are combined."""
+        mock_client = AsyncMock()
+        mock_client.search_filing_mentions = AsyncMock(
+            side_effect=[
+                [  # 8-K match
+                    {"filer_cik": "111", "filer_name": "ACQUIRER A", "form_type": "8-K",
+                     "file_date": "2024-06-15", "accession_number": "001", "file_description": ""},
+                ],
+                [  # 10-K match from different filer
+                    {"filer_cik": "222", "filer_name": "ACQUIRER B", "form_type": "10-K",
+                     "file_date": "2024-03-01", "accession_number": "002", "file_description": ""},
+                ],
+                [],  # No ownership filings
+            ]
+        )
+
+        events = await _search_inbound_ma_mentions(mock_client, "Target Co")
+        assert len(events) == 2
 
     @pytest.mark.asyncio
     async def test_filters_out_self_filings(self):
         """If the filer name matches the searched company, it's not an inbound M&A."""
         mock_client = AsyncMock()
         mock_client.search_filing_mentions = AsyncMock(
-            return_value=[
-                {
-                    "filer_cik": "11111",
-                    "filer_name": "ACME CORP",  # Same company
-                    "form_type": "8-K",
-                    "file_date": "2024-03-01",
-                    "accession_number": "001",
-                    "file_description": "Something",
-                },
+            side_effect=[
+                [
+                    {"filer_cik": "11111", "filer_name": "ACME CORP",
+                     "form_type": "8-K", "file_date": "2024-03-01",
+                     "accession_number": "001", "file_description": "Something"},
+                ],
+                [],
+                [],
             ]
         )
 
