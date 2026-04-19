@@ -110,7 +110,8 @@ class SecEdgarLoader(BaseNeo4jLoader):
                 return True
             if record.get("sec_has_form_d"):
                 return True
-            inbound = record.get("sec_inbound_ma_mention_count")
+            # Model field is mention_count, prefixed to sec_mention_count by enricher
+            inbound = record.get("sec_mention_count")
             if isinstance(inbound, int | float) and inbound > 0:
                 return True
             return False

@@ -209,8 +209,8 @@ _CORP_SUFFIX = re.compile(
 def _classify_mention(items: list[str], form_type: str) -> str:
     """Classify a filing mention by signal strength.
 
-    Returns one of: 'ma_definitive', 'ma_proxy', 'ownership',
-    'financial_mention', 'disclosure', 'filing_mention'.
+    Returns one of: 'ma_definitive', 'ma_proxy', 'ownership_active',
+    'ownership_passive', 'financial_mention', 'disclosure', 'filing_mention'.
     """
     item_set = set(items)
 
@@ -316,7 +316,7 @@ async def _search_filing_mentions_filtered(
                 filing_date=filing_date,
                 accession_number=mention.get("accession_number", ""),
                 event_type=MAAcquisitionType.ACQUISITION,
-                items_reported=[mention_type],
+                mention_type=mention_type,
                 description=mention.get("file_description"),
                 is_target=True,
             )
@@ -510,13 +510,13 @@ async def enrich_company(
                 by_filer[key] = e
         deduped = list(by_filer.values())
 
-        profile.sec_mention_count = len(deduped)
+        profile.mention_count = len(deduped)
         if deduped:
-            profile.sec_mention_filers = [e.filer_name for e in deduped if e.filer_name]
-            profile.sec_mention_types = sorted({
-                ft for e in deduped for ft in e.items_reported if ft
+            profile.mention_filers = [e.filer_name for e in deduped if e.filer_name]
+            profile.mention_types = sorted({
+                e.mention_type for e in deduped if e.mention_type
             })
-            profile.latest_sec_mention_date = max(e.filing_date for e in deduped)
+            profile.latest_mention_date = max(e.filing_date for e in deduped)
 
     # Form D search — private capital raises under Regulation D
     if search_form_d:
@@ -602,7 +602,7 @@ async def enrich_companies_with_edgar(
                 search_form_d=search_form_d,
             )
             profiles.append(profile.model_dump())
-            if profile.sec_mention_count or profile.has_form_d:
+            if profile.mention_count or profile.has_form_d:
                 matched_count += 1
 
             if (len(profiles)) % 50 == 0:
@@ -612,7 +612,7 @@ async def enrich_companies_with_edgar(
                 )
 
         # Count private company signals
-        inbound_ma_count = sum(1 for p in profiles if p.get("sec_mention_count", 0) > 0)
+        inbound_ma_count = sum(1 for p in profiles if p.get("mention_count", 0) > 0)
         form_d_count = sum(1 for p in profiles if p.get("has_form_d", False))
 
         logger.info(
