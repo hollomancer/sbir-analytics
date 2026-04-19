@@ -188,38 +188,70 @@ _MA_FILING_TYPES = "8-K,DEFM14A,PREM14A,SC TO-T,SC 14D9,425"
 _ANNUAL_FILING_TYPES = "10-K,10-Q"
 _OWNERSHIP_FILING_TYPES = "SC 13D,SC 13D/A,SC 13G,SC 13G/A"
 
-# Filer names matching these patterns are almost always noise (lease filings,
-# mortgage pass-throughs, etc. that mention tenant/borrower company names).
-_NOISE_FILER_KEYWORDS = re.compile(
-    r"realty|reit|real estate|properties trust|mortgage|pass thr|"
-    r"commercial mort|capital trust|property trust",
+# SIC code ranges that are almost always noise (their filings mention
+# tenant/borrower company names in lease or mortgage documents).
+_NOISE_SIC_RANGES = {
+    range(6500, 6800),  # Real estate (REITs, property trusts)
+    range(6150, 6200),  # Mortgage brokers and pass-throughs
+}
+
+# 8-K item codes that indicate M&A activity.
+_MA_ITEMS = {"1.01", "2.01"}            # definitive agreement, completion of acquisition
+_FINANCIAL_ITEMS = {"2.02", "2.05"}     # results of operations, delisting
+_DISCLOSURE_ITEMS = {"7.01", "8.01"}    # Reg FD, other events
+
+_CORP_SUFFIX = re.compile(
+    r",?\s*(Inc\.?|Corp\.?|LLC|Ltd\.?|Co\.?|L\.?P\.?|/DE|/NV|/MD|CORP|INC)$",
     re.IGNORECASE,
 )
 
 
-def _is_noise_filer(filer_name: str, target_name: str) -> bool:
-    """Return True if this filer→target mention is likely noise.
+def _classify_mention(items: list[str], form_type: str) -> str:
+    """Classify a filing mention by signal strength.
+
+    Returns one of: 'ma_definitive', 'ma_proxy', 'ownership',
+    'financial_mention', 'disclosure', 'filing_mention'.
+    """
+    item_set = set(items)
+
+    if form_type in ("DEFM14A", "PREM14A"):
+        return "ma_proxy"
+    if form_type in ("SC TO-T", "SC 14D9"):
+        return "ma_definitive"
+    if form_type in ("SC 13D", "SC 13D/A"):
+        return "ownership_active"
+    if form_type in ("SC 13G", "SC 13G/A"):
+        return "ownership_passive"
+    if item_set & _MA_ITEMS:
+        return "ma_definitive"
+    if item_set & _FINANCIAL_ITEMS:
+        return "financial_mention"
+    if item_set & _DISCLOSURE_ITEMS:
+        return "disclosure"
+    return "filing_mention"
+
+
+def _is_noise(
+    filer_name: str, target_name: str, sics: list[str],
+) -> bool:
+    """Return True if this mention is likely noise.
 
     Catches:
-    - REITs and real estate companies (Vornado, Mack-Cali) whose lease
-      filings mention tenant companies
-    - Name collisions where the target name is a substring of a different
-      company name (e.g. "Fibertek" matching "Thermo Fibertek")
+    - Real estate / mortgage filers (by SIC code)
+    - Name collisions where target is a substring of a different company
     """
-    if _NOISE_FILER_KEYWORDS.search(filer_name):
-        return True
+    # SIC-based filter: real estate, mortgage pass-throughs
+    for sic_str in sics:
+        try:
+            sic = int(sic_str)
+        except (ValueError, TypeError):
+            continue
+        if any(sic in r for r in _NOISE_SIC_RANGES):
+            return True
 
-    # Name collision: target name appears inside filer name as a component
-    # of a longer, different company name.
-    # e.g. "FIBERTEK" in "THERMO FIBERTEK INC" → different company.
-    # But "MERCURY" in "MERCURY SYSTEMS" → same entity family, keep it.
-    _SUFFIXES = re.compile(
-        r",?\s*(Inc\.?|Corp\.?|LLC|Ltd\.?|Co\.?|L\.?P\.?|/DE|/NV|/MD|CORP|INC)$",
-        re.IGNORECASE,
-    )
-    target_clean = _SUFFIXES.sub("", target_name).strip().upper()
-    filer_clean = _SUFFIXES.sub("", filer_name).strip().upper()
-
+    # Name collision: target appears as a component of the filer's longer name
+    target_clean = _CORP_SUFFIX.sub("", target_name).strip().upper()
+    filer_clean = _CORP_SUFFIX.sub("", filer_name).strip().upper()
     if (
         target_clean in filer_clean
         and filer_clean != target_clean
@@ -242,7 +274,7 @@ async def _search_filing_mentions_filtered(
 
     Filters:
     - Self-filings (filer IS the searched company)
-    - REIT/real estate filers (lease noise)
+    - Real estate / mortgage filers (by SIC code)
     - Name collisions (target name is substring of a different company)
     """
     mentions = await client.search_filing_mentions(
@@ -260,8 +292,9 @@ async def _search_filing_mentions_filtered(
         similarity = fuzz.token_set_ratio(company_name.upper(), filer_name.upper())
         if similarity >= name_match_threshold:
             continue
-        # Skip noise filers (REITs, name collisions)
-        if _is_noise_filer(filer_name, company_name):
+        # Skip noise (REITs by SIC, name collisions)
+        sics = mention.get("sics", [])
+        if _is_noise(filer_name, company_name, sics):
             continue
 
         filing_date_str = mention.get("file_date")
@@ -273,6 +306,9 @@ async def _search_filing_mentions_filtered(
             continue
 
         form_type = mention.get("form_type", "")
+        items = mention.get("items", [])
+        mention_type = _classify_mention(items, form_type)
+
         events.append(
             EdgarMAEvent(
                 cik=mention.get("filer_cik", ""),
@@ -280,7 +316,7 @@ async def _search_filing_mentions_filtered(
                 filing_date=filing_date,
                 accession_number=mention.get("accession_number", ""),
                 event_type=MAAcquisitionType.ACQUISITION,
-                items_reported=[form_type or "inbound_mention"],
+                items_reported=[mention_type],
                 description=mention.get("file_description"),
                 is_target=True,
             )
@@ -461,12 +497,12 @@ async def enrich_company(
         enriched_at=datetime.now(),
     )
 
-    # Inbound M&A detection — search for this company's name in other
-    # public companies' 8-K filings.  Deduplicate by filer so we report
-    # distinct acquirers, not duplicate filings from the same company.
+    # SEC filing mentions — search for this company's name in other public
+    # companies' filings.  Deduplicate by filer so we report distinct
+    # mentioning companies, not duplicate filings from the same filer.
     if search_inbound_ma:
         inbound_events = await _search_inbound_ma_mentions(client, company_name)
-        # Deduplicate: keep the latest filing per filer
+        # Deduplicate: keep the strongest-classified filing per filer
         by_filer: dict[str, EdgarMAEvent] = {}
         for e in inbound_events:
             key = e.filer_name or e.cik
@@ -474,13 +510,13 @@ async def enrich_company(
                 by_filer[key] = e
         deduped = list(by_filer.values())
 
-        profile.inbound_ma_mention_count = len(deduped)
+        profile.sec_mention_count = len(deduped)
         if deduped:
-            profile.inbound_ma_acquirers = [e.filer_name for e in deduped if e.filer_name]
-            profile.inbound_ma_filing_types = sorted({
+            profile.sec_mention_filers = [e.filer_name for e in deduped if e.filer_name]
+            profile.sec_mention_types = sorted({
                 ft for e in deduped for ft in e.items_reported if ft
             })
-            profile.latest_inbound_ma_date = max(e.filing_date for e in deduped)
+            profile.latest_sec_mention_date = max(e.filing_date for e in deduped)
 
     # Form D search — private capital raises under Regulation D
     if search_form_d:
@@ -566,7 +602,7 @@ async def enrich_companies_with_edgar(
                 search_form_d=search_form_d,
             )
             profiles.append(profile.model_dump())
-            if profile.inbound_ma_mention_count or profile.has_form_d:
+            if profile.sec_mention_count or profile.has_form_d:
                 matched_count += 1
 
             if (len(profiles)) % 50 == 0:
@@ -576,13 +612,13 @@ async def enrich_companies_with_edgar(
                 )
 
         # Count private company signals
-        inbound_ma_count = sum(1 for p in profiles if p.get("inbound_ma_mention_count", 0) > 0)
+        inbound_ma_count = sum(1 for p in profiles if p.get("sec_mention_count", 0) > 0)
         form_d_count = sum(1 for p in profiles if p.get("has_form_d", False))
 
         logger.info(
             f"SEC EDGAR enrichment complete: {matched_count}/{total} with signals "
             f"({matched_count / total * 100:.1f}%), "
-            f"{inbound_ma_count} with inbound M&A mentions, "
+            f"{inbound_ma_count} with SEC filing mentions, "
             f"{form_d_count} with Form D filings"
         )
 
