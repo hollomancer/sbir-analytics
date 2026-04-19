@@ -12,7 +12,6 @@ containing a contact email address.
 from __future__ import annotations
 
 import os
-import re
 from typing import Any, cast
 
 import httpx
@@ -22,6 +21,44 @@ from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_ex
 from ...config.loader import get_config
 from ...exceptions import APIError
 from ..base_client import BaseAsyncAPIClient
+
+
+def _parse_display_name(display_name: str) -> tuple[str, str | None]:
+    """Parse an EDGAR display_name into (clean_name, ticker).
+
+    EDGAR EFTS returns display_names like:
+        "QUALCOMM INC/DE  (QCOM)  (CIK 0000804328)"
+
+    Returns the entity name with parenthesized portions removed, and
+    the ticker symbol if present.
+    """
+    if not display_name:
+        return "", None
+
+    ticker = None
+    # Walk through parenthesized segments to find ticker vs CIK
+    clean_parts: list[str] = []
+    i = 0
+    while i < len(display_name):
+        if display_name[i] == "(":
+            close = display_name.find(")", i)
+            if close == -1:
+                break
+            inner = display_name[i + 1 : close].strip()
+            if not inner.startswith("CIK") and ticker is None:
+                # Short uppercase token is likely a ticker
+                if 1 <= len(inner) <= 6 and inner.replace("-", "").isalpha() and inner.isupper():
+                    ticker = inner
+            i = close + 1
+        else:
+            next_paren = display_name.find("(", i)
+            if next_paren == -1:
+                clean_parts.append(display_name[i:])
+                break
+            clean_parts.append(display_name[i:next_paren])
+            i = next_paren
+
+    return "".join(clean_parts).strip(), ticker
 
 
 class EdgarAPIClient(BaseAsyncAPIClient):
@@ -156,18 +193,9 @@ class EdgarAPIClient(BaseAsyncAPIClient):
                     continue
                 seen_ciks.add(cik)
 
-                # Parse entity name and ticker from display_name
-                # Format: "QUALCOMM INC/DE  (QCOM)  (CIK 0000804328)"
-                entity_name = display_names[0] if display_names else ""
-                ticker = None
-                if entity_name:
-                    import re
-                    # Extract ticker from parenthesized portion before CIK
-                    ticker_match = re.search(r'\(([A-Z]{1,5}(?:-[A-Z]{1,3})?)\)', entity_name)
-                    if ticker_match:
-                        ticker = ticker_match.group(1)
-                    # Strip the parenthesized portions for clean name
-                    entity_name = re.sub(r'\s*\(.*?\)', '', entity_name).strip()
+                entity_name, ticker = _parse_display_name(
+                    display_names[0] if display_names else ""
+                )
 
                 results.append({
                     "cik": cik,
@@ -225,10 +253,9 @@ class EdgarAPIClient(BaseAsyncAPIClient):
                 ciks = source.get("ciks", [])
                 display_names = source.get("display_names", [])
                 filer_cik = ciks[0].lstrip("0") or "0" if ciks else ""
-                # Parse clean name from display_name
-                filer_name = display_names[0] if display_names else ""
-                if filer_name:
-                    filer_name = re.sub(r'\s*\(.*?\)', '', filer_name).strip()
+                filer_name, _ = _parse_display_name(
+                    display_names[0] if display_names else ""
+                )
                 results.append({
                     "filer_cik": filer_cik,
                     "filer_name": filer_name,
@@ -286,9 +313,9 @@ class EdgarAPIClient(BaseAsyncAPIClient):
                 ciks = source.get("ciks", [])
                 display_names = source.get("display_names", [])
                 cik = ciks[0].lstrip("0") or "0" if ciks else ""
-                entity_name = display_names[0] if display_names else ""
-                if entity_name:
-                    entity_name = re.sub(r'\s*\(.*?\)', '', entity_name).strip()
+                entity_name, _ = _parse_display_name(
+                    display_names[0] if display_names else ""
+                )
                 results.append({
                     "cik": cik,
                     "entity_name": entity_name,
