@@ -1,13 +1,11 @@
 #!/usr/bin/env python3
 """Download SAM.gov entity data to S3 as parquet.
 
-Uses the SAM.gov Entity Information API v3 extract mode (format=csv) to
-bulk-download active entity registrations, then converts to parquet and
-uploads to S3.
-
 Download strategy (in order):
-  1. API extract mode (format=csv) — async bulk download, up to 1M records
-  2. Paginated API fallback — 10 records/page, capped at 10k records
+  1. Bulk extract API (/data-services/v1/extracts) — single ZIP download of
+     the full monthly entity file.  One API call, no polling.
+  2. Entity API extract mode (format=csv) — async bulk download, up to 1M records.
+  3. Paginated API fallback — 10 records/page, capped at 10k records.
 
 Exit codes:
     0  Success
@@ -53,15 +51,17 @@ print = partial(print, flush=True)  # noqa: A001
 # Constants
 # ---------------------------------------------------------------------------
 
+EXTRACTS_URL = "https://api.sam.gov/data-services/v1/extracts"
 ENTITY_API_URL = "https://api.sam.gov/entity-information/v3/entities"
 S3_KEY = "raw/sam_gov/sam_entity_records.parquet"
 REQUEST_TIMEOUT = 120
+DOWNLOAD_TIMEOUT = 1800  # 30 min for large ZIP downloads
 
-# Extract polling — SAM.gov generates the file asynchronously
-EXTRACT_POLL_INTERVAL = 30  # seconds between polls
-EXTRACT_POLL_MAX = 40  # max polls (~20 min)
+# Extract polling (strategy 2)
+EXTRACT_POLL_INTERVAL = 30
+EXTRACT_POLL_MAX = 40
 
-# Paginated fallback — API returns max 10 per page, 10k record ceiling
+# Paginated fallback (strategy 3)
 PAGE_SIZE = 10
 MAX_PAGINATED_RECORDS = 10_000
 
@@ -78,13 +78,14 @@ REQUIRED_COLUMNS = [
     "duns_number",
 ]
 
-# SAM.gov CSV/JSON field names → our column names.
-# The extract CSV uses UPPER_SNAKE headers; the JSON API uses camelCase.
+# SAM.gov CSV/DAT field names → our column names.
+# The bulk extract .dat files use UPPER SNAKE or space-separated headers.
 CSV_COLUMN_MAP = {
-    # CSV extract headers (UPPER_SNAKE)
+    # Bulk extract .dat headers
     "UNIQUE_ENTITY_ID": "unique_entity_id",
     "UEI": "unique_entity_id",
     "UEI SAM": "unique_entity_id",
+    "ENTITY UEI": "unique_entity_id",
     "LEGAL_BUSINESS_NAME": "legal_business_name",
     "LEGAL BUSINESS NAME": "legal_business_name",
     "DBA_NAME": "dba_name",
@@ -93,6 +94,8 @@ CSV_COLUMN_MAP = {
     "PHYSICAL ADDRESS CITY": "physical_address_city",
     "PHYSICAL_ADDRESS_STATE": "physical_address_state",
     "PHYSICAL ADDRESS STATE OR PROVINCE": "physical_address_state",
+    "PHYSICAL ADDRESS PROVINCE OR STATE": "physical_address_state",
+    "SAM ADDRESS STATE": "physical_address_state",
     "CAGE_CODE": "cage_code",
     "CAGE CODE": "cage_code",
     "PRIMARY_NAICS": "primary_naics",
@@ -101,7 +104,7 @@ CSV_COLUMN_MAP = {
     "NAICS CODE STRING": "naics_code_string",
     "DUNS_NUMBER": "duns_number",
     "DUNS": "duns_number",
-    # JSON API field names (camelCase)
+    # JSON API field names (camelCase) — used by strategy 2 & 3
     "ueiSAM": "unique_entity_id",
     "legalBusinessName": "legal_business_name",
     "dbaName": "dba_name",
@@ -120,11 +123,7 @@ class APIKeyError(Exception):
 
 
 def _check_api_key_response(resp: requests.Response, context: str) -> None:
-    """Raise APIKeyError with a clear remediation message on auth failures.
-
-    SAM.gov returns 401/403 for expired, invalid, or missing keys, and
-    429 when the daily quota is exhausted.
-    """
+    """Raise APIKeyError with a clear remediation message on auth/quota failures."""
     if resp.status_code not in (401, 403, 429):
         return
 
@@ -133,90 +132,118 @@ def _check_api_key_response(resp: requests.Response, context: str) -> None:
     except Exception:
         body = {"raw": resp.text[:500]}
 
-    # Flatten nested error structures into a single string for matching
     message = " ".join(str(v) for v in body.values()).lower()
 
-    if any(kw in message for kw in ("expired", "expir")):
-        hint = (
-            "API key EXPIRED — it needs to be rotated.\n"
+    if resp.status_code == 429 or any(kw in message for kw in ("throttle", "quota", "exceeded")):
+        try:
+            next_access = resp.json().get("nextAccessTime", "midnight UTC")
+        except Exception:
+            next_access = "midnight UTC"
+        raise APIKeyError(
+            f"SAM.gov DAILY RATE LIMIT exceeded during: {context}\n"
+            f"  Retry after: {next_access}\n"
+            "  Non-federal personal keys: 10 requests/day.\n"
+            "  Non-federal system keys: 1,000 requests/day.\n"
+            "  Consider requesting a system key at https://sam.gov."
+        )
+    elif any(kw in message for kw in ("expired", "expir")):
+        raise APIKeyError(
+            f"SAM.gov API key EXPIRED during: {context}\n"
             "  1. Log in at https://sam.gov → Account → API Keys\n"
             "  2. Generate a new key\n"
             "  3. Update the GitHub secret:\n"
             "     gh secret set SAM_GOV_API_KEY --body 'SAM-xxxx' --repo hollomancer/sbir-analytics"
         )
     elif any(kw in message for kw in ("invalid", "not found", "unrecognized")):
-        hint = (
-            "API key INVALID or not recognised.\n"
+        raise APIKeyError(
+            f"SAM.gov API key INVALID during: {context}\n"
             "  Verify the key at https://sam.gov → Account → API Keys.\n"
             "  Expected format: SAM-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
         )
-    elif resp.status_code == 429 or any(kw in message for kw in ("throttle", "quota", "exceeded", "rate")):
-        # Extract next access time if provided
-        try:
-            next_access = resp.json().get("nextAccessTime", "midnight UTC")
-        except Exception:
-            next_access = "midnight UTC"
-        hint = (
-            f"DAILY RATE LIMIT exceeded.  Retry after: {next_access}\n"
-            "  Non-federal personal keys: 10 requests/day.\n"
-            "  Non-federal system keys: 1,000 requests/day.\n"
-            "  Consider requesting a system key at https://sam.gov.\n"
-            "  The previous run may have consumed the quota — check workflow history."
-        )
     else:
-        hint = (
-            f"Unrecognised auth failure.  Raw response:\n"
-            f"  {body}\n"
+        raise APIKeyError(
+            f"SAM.gov auth failure during: {context}\n"
+            f"  HTTP {resp.status_code}: {resp.reason}\n"
+            f"  Body: {body}\n"
             "  Check your key at https://sam.gov → Account → API Keys."
         )
 
-    raise APIKeyError(
-        f"SAM.gov auth failure during: {context}\n"
-        f"  HTTP {resp.status_code}: {resp.reason}\n"
-        f"  {hint}"
-    )
 
+# ---------------------------------------------------------------------------
+# Strategy 1: Bulk extract download (fast — single ZIP, one API call)
+# ---------------------------------------------------------------------------
 
-def _validate_api_key(api_key: str) -> None:
-    """Quick connectivity check — fetch 1 entity to validate the key works."""
-    print("🔑 Validating SAM.gov API key...")
+def _download_bulk_extract(api_key: str) -> pd.DataFrame | None:
+    """Download the latest monthly public entity extract ZIP from SAM.gov.
+
+    Uses /data-services/v1/extracts — a single GET returns the full ZIP file.
+    This is the most efficient path: one API call, no polling.
+    """
+    print("\n📦 Strategy 1: Bulk extract download...")
+    print("   Requesting latest monthly public entity extract...")
+
     resp = requests.get(
-        ENTITY_API_URL,
+        EXTRACTS_URL,
         params={
             "api_key": api_key,
-            "registrationStatus": "A",
-            "includeSections": "entityRegistration",
-            "page": 0,
-            "size": 1,
+            "fileType": "ENTITY",
+            "sensitivity": "PUBLIC",
+            "frequency": "MONTHLY",
         },
-        timeout=REQUEST_TIMEOUT,
+        timeout=DOWNLOAD_TIMEOUT,
+        stream=True,
     )
-    _check_api_key_response(resp, "API key validation (single entity fetch)")
+    _check_api_key_response(resp, "data-services/v1/extracts (bulk download)")
 
     if not resp.ok:
-        raise RuntimeError(
-            f"Unexpected response during key validation: HTTP {resp.status_code}\n"
-            f"  Body: {resp.text[:300]}"
-        )
+        print(f"⚠️  Bulk extract request failed: HTTP {resp.status_code}")
+        print(f"   Body preview: {resp.text[:300]}")
+        return None
 
-    data = resp.json()
-    total = data.get("totalRecords", 0)
-    print(f"   Key valid.  SAM.gov reports {total:,} active entities.")
-    return total
+    content_type = resp.headers.get("content-type", "").lower()
+    content_length = int(resp.headers.get("content-length", 0))
+
+    # If we got JSON back instead of a file, this endpoint might not support
+    # direct downloads — fall through to strategy 2.
+    if "json" in content_type and content_length < 100_000:
+        print(f"⚠️  Got JSON instead of file (content-type: {content_type})")
+        try:
+            data = resp.json()
+            print(f"   Response keys: {list(data.keys())[:10]}")
+            print(f"   Preview: {str(data)[:300]}")
+        except Exception:
+            print(f"   Preview: {resp.text[:300]}")
+        return None
+
+    # Stream the file to memory
+    print(f"   Downloading... (content-type: {content_type}, "
+          f"size: {content_length / 1024 / 1024:.0f} MB)" if content_length
+          else f"   Downloading... (content-type: {content_type}, size: unknown)")
+
+    buf = io.BytesIO()
+    downloaded = 0
+    for chunk in resp.iter_content(chunk_size=4 * 1024 * 1024):
+        buf.write(chunk)
+        downloaded += len(chunk)
+        if content_length:
+            print(f"   {downloaded / 1024 / 1024:.0f} / "
+                  f"{content_length / 1024 / 1024:.0f} MB", end="\r")
+        elif downloaded % (20 * 1024 * 1024) == 0:
+            print(f"   {downloaded / 1024 / 1024:.0f} MB...", end="\r")
+    print(f"\n   Downloaded {downloaded / 1024 / 1024:.1f} MB total")
+
+    buf.seek(0)
+    return _parse_downloaded_file(buf)
 
 
 # ---------------------------------------------------------------------------
-# Strategy 1: Extract mode (format=csv) — async bulk download
+# Strategy 2: Entity API extract mode (format=csv)
 # ---------------------------------------------------------------------------
 
-def _request_extract(api_key: str) -> str | None:
-    """Request a CSV extract and return the download URL (with token).
+def _download_entity_extract(api_key: str) -> pd.DataFrame | None:
+    """Request a CSV extract via the entity API and poll for completion."""
+    print("\n📦 Strategy 2: Entity API extract mode (format=csv)...")
 
-    The SAM.gov entity API supports ``format=csv`` which triggers an async
-    extract.  The response contains a download URL with a placeholder
-    ``REPLACE_WITH_API_KEY`` that must be swapped for the real key.
-    """
-    print("\n📦 Requesting CSV extract of all active entities...")
     resp = requests.get(
         ENTITY_API_URL,
         params={
@@ -227,193 +254,91 @@ def _request_extract(api_key: str) -> str | None:
         },
         timeout=REQUEST_TIMEOUT,
     )
-    _check_api_key_response(resp, "entity extract request (format=csv)")
+    _check_api_key_response(resp, "entity API extract (format=csv)")
 
     if not resp.ok:
         print(f"⚠️  Extract request failed: HTTP {resp.status_code}")
         print(f"   Body: {resp.text[:300]}")
         return None
 
-    # The response body may be JSON with a download URL, or it may contain
-    # the URL in plain text.  Try several extraction strategies.
-    content_type = resp.headers.get("content-type", "")
+    # Find the download URL with REPLACE_WITH_API_KEY token
     text = resp.text.strip()
-
-    # Strategy A: JSON with a download link field
     download_url = None
-    if "json" in content_type or text.startswith("{"):
+
+    # Try JSON response
+    if text.startswith("{"):
         try:
             data = resp.json()
-            download_url = (
-                data.get("downloadUrl")
-                or data.get("downloadLink")
-                or data.get("fileUrl")
-                or data.get("url")
-                or data.get("extractUrl")
-            )
-            # If none of the known fields matched, search all string values
+            for v in data.values():
+                if isinstance(v, str) and "REPLACE_WITH_API_KEY" in v:
+                    download_url = v.replace("REPLACE_WITH_API_KEY", api_key)
+                    break
             if not download_url:
-                for v in data.values():
-                    if isinstance(v, str) and ("http" in v and "REPLACE_WITH_API_KEY" in v):
-                        download_url = v
-                        break
-            if download_url:
-                print(f"   Got download URL from JSON response")
-        except Exception as e:
-            print(f"   Could not parse JSON: {e}")
+                download_url = (data.get("downloadUrl") or data.get("downloadLink")
+                                or data.get("fileUrl") or data.get("url"))
+        except Exception:
+            pass
 
-    # Strategy B: look for a URL anywhere in the response text
+    # Try regex in raw text
     if not download_url:
         urls = re.findall(r'https?://[^\s"<>]+REPLACE_WITH_API_KEY[^\s"<>]*', text)
         if urls:
-            download_url = urls[0]
-            print(f"   Found download URL in response text")
-
-    # Strategy C: the response might be a redirect or direct CSV
-    if not download_url and ("csv" in content_type or text.startswith('"') or "," in text[:200]):
-        print("   Response appears to be direct CSV data")
-        return "__DIRECT_CSV__"
+            download_url = urls[0].replace("REPLACE_WITH_API_KEY", api_key)
 
     if not download_url:
-        print(f"⚠️  Could not find download URL in extract response")
-        print(f"   Content-Type: {content_type}")
-        print(f"   Response preview: {text[:300]}")
+        print(f"⚠️  No download URL found in response")
+        print(f"   Content-Type: {resp.headers.get('content-type', 'unknown')}")
+        print(f"   Preview: {text[:300]}")
         return None
 
-    # Replace the API key placeholder
-    final_url = download_url.replace("REPLACE_WITH_API_KEY", api_key)
-    return final_url
+    print(f"   Got download URL, polling for file readiness...")
 
-
-def _download_extract(api_key: str) -> pd.DataFrame | None:
-    """Request, poll, and download a CSV extract → DataFrame."""
-    url = _request_extract(api_key)
-    if url is None:
-        return None
-
-    # If the response was direct CSV, we already have data (not expected for bulk)
-    if url == "__DIRECT_CSV__":
-        print("⚠️  Direct CSV not expected for bulk extract, falling back")
-        return None
-
-    # Poll until the file is ready
-    print(f"⏳ Polling for extract file (up to {EXTRACT_POLL_MAX * EXTRACT_POLL_INTERVAL // 60} min)...")
+    # Poll for file
     for attempt in range(1, EXTRACT_POLL_MAX + 1):
-        resp = requests.get(url, timeout=600, stream=True)
-        _check_api_key_response(resp, f"extract download (poll {attempt})")
+        print(f"   Poll {attempt}/{EXTRACT_POLL_MAX}...")
+        dl_resp = requests.get(download_url, timeout=DOWNLOAD_TIMEOUT, stream=True)
+        _check_api_key_response(dl_resp, f"extract download poll {attempt}")
 
-        content_type = resp.headers.get("content-type", "")
-        content_length = int(resp.headers.get("content-length", 0))
-
-        # File not ready yet — SAM.gov returns various indicators
-        if resp.status_code in (202, 204):
-            print(f"   Poll {attempt}/{EXTRACT_POLL_MAX}: not ready yet (HTTP {resp.status_code})")
+        if dl_resp.status_code in (202, 204):
             time.sleep(EXTRACT_POLL_INTERVAL)
             continue
 
-        if not resp.ok:
-            # Non-auth failures during polling might be transient
-            print(f"   Poll {attempt}: HTTP {resp.status_code}, retrying...")
+        if not dl_resp.ok:
             time.sleep(EXTRACT_POLL_INTERVAL)
             continue
 
-        # Check if this looks like a real data file vs. a "not ready" JSON message
-        if "json" in content_type and content_length < 10_000:
+        # Check for "not ready" JSON
+        ct = dl_resp.headers.get("content-type", "")
+        cl = int(dl_resp.headers.get("content-length", 0))
+        if "json" in ct and cl < 10_000:
             try:
-                data = resp.json()
-                msg = str(data).lower()
-                if "not ready" in msg or "processing" in msg or "pending" in msg:
-                    print(f"   Poll {attempt}/{EXTRACT_POLL_MAX}: still processing...")
+                msg = str(dl_resp.json()).lower()
+                if any(kw in msg for kw in ("not ready", "processing", "pending")):
                     time.sleep(EXTRACT_POLL_INTERVAL)
                     continue
             except Exception:
                 pass
 
-        # We have a real file — download it
-        print(f"   File ready! Downloading...")
-        return _parse_extract_response(resp)
+        # Got a real file
+        print(f"   File ready!")
+        buf = io.BytesIO()
+        for chunk in dl_resp.iter_content(chunk_size=4 * 1024 * 1024):
+            buf.write(chunk)
+        buf.seek(0)
+        return _parse_downloaded_file(buf)
 
-    print(f"⚠️  Extract not ready after {EXTRACT_POLL_MAX} polls, giving up")
+    print(f"⚠️  Extract not ready after {EXTRACT_POLL_MAX} polls")
     return None
 
 
-def _parse_extract_response(resp: requests.Response) -> pd.DataFrame | None:
-    """Parse a downloaded extract response (CSV or ZIP) into a DataFrame."""
-    total = int(resp.headers.get("content-length", 0))
-    buf = io.BytesIO()
-    downloaded = 0
-    for chunk in resp.iter_content(chunk_size=4 * 1024 * 1024):
-        buf.write(chunk)
-        downloaded += len(chunk)
-        if total:
-            print(f"   {downloaded / 1024 / 1024:.0f} / {total / 1024 / 1024:.0f} MB", end="\r")
-    print()
-    buf.seek(0)
-
-    content_type = resp.headers.get("content-type", "")
-
-    # ZIP file
-    if "zip" in content_type or buf.read(4) in (b"PK\x03\x04", b"PK\x05\x06"):
-        buf.seek(0)
-        return _parse_zip_csv(buf)
-
-    # Plain CSV
-    buf.seek(0)
-    return _parse_csv(buf)
-
-
-def _parse_zip_csv(buf: io.BytesIO) -> pd.DataFrame | None:
-    """Extract a CSV from a ZIP buffer and parse it."""
-    try:
-        with zipfile.ZipFile(buf) as zf:
-            csv_names = [n for n in zf.namelist() if n.lower().endswith(".csv")]
-            if not csv_names:
-                print(f"⚠️  No CSV files in ZIP archive: {zf.namelist()[:10]}")
-                return None
-            csv_name = csv_names[0]
-            info = zf.getinfo(csv_name)
-            print(f"   Parsing {csv_name} ({info.file_size / 1024 / 1024:.0f} MB uncompressed)")
-            with zf.open(csv_name) as fh:
-                return _parse_csv(fh)
-    except zipfile.BadZipFile as exc:
-        print(f"⚠️  Bad ZIP file: {exc}")
-        return None
-
-
-def _parse_csv(fh) -> pd.DataFrame:
-    """Parse a CSV file handle in chunks, normalising columns."""
-    chunks = []
-    reader = pd.read_csv(
-        fh,
-        dtype=str,
-        chunksize=100_000,
-        on_bad_lines="warn",
-        encoding_errors="replace",
-    )
-    for i, chunk in enumerate(reader):
-        chunks.append(_normalise_chunk(chunk))
-        if (i + 1) % 5 == 0:
-            print(f"   Parsed {(i + 1) * 100_000:,} rows...", end="\r")
-
-    print()
-    if not chunks:
-        print("⚠️  CSV was empty")
-        return pd.DataFrame(columns=REQUIRED_COLUMNS)
-
-    df = pd.concat(chunks, ignore_index=True)
-    print(f"   {len(df):,} rows loaded")
-    return df
-
-
 # ---------------------------------------------------------------------------
-# Strategy 2: Paginated API fallback (slow — 10 records/page)
+# Strategy 3: Paginated API fallback
 # ---------------------------------------------------------------------------
 
 def _download_paginated(api_key: str) -> pd.DataFrame:
-    """Page through active entities.  Max 10 per page, ceiling of 10k records."""
+    """Page through active entities. 10/page, capped at 10k records."""
     max_pages = MAX_PAGINATED_RECORDS // PAGE_SIZE
-    print(f"\n📥 Paginated fallback: up to {MAX_PAGINATED_RECORDS:,} records, "
-          f"{PAGE_SIZE}/page ({max_pages} pages)...")
+    print(f"\n📥 Strategy 3: Paginated API ({PAGE_SIZE}/page, max {MAX_PAGINATED_RECORDS:,})...")
 
     rows: list[dict] = []
     page = 0
@@ -440,62 +365,128 @@ def _download_paginated(api_key: str) -> pd.DataFrame:
             if isinstance(total_records, int):
                 print(f"   Total active entities: {total_records:,}")
                 if total_records > MAX_PAGINATED_RECORDS:
-                    print(f"   ⚠️  Pagination can only fetch {MAX_PAGINATED_RECORDS:,} "
-                          f"of {total_records:,} (SAM.gov API limit)")
-            else:
-                print(f"   Total: {total_records}")
+                    print(f"   ⚠️  Can only fetch {MAX_PAGINATED_RECORDS:,} of "
+                          f"{total_records:,} via pagination")
 
         entities = data.get("entityData", [])
         if not entities:
             break
 
         for entity in entities:
-            rows.append(_flatten_entity(entity))
+            reg = entity.get("entityRegistration", {})
+            core = entity.get("coreData", {})
+            addr = core.get("physicalAddress", {})
+            general = core.get("generalInformation", {})
+            naics_list = [n.get("naicsCode", "") for n in
+                          core.get("naicsInformation", {}).get("naicsList", [])]
+            rows.append({
+                "unique_entity_id": reg.get("ueiSAM", ""),
+                "legal_business_name": reg.get("legalBusinessName", ""),
+                "dba_name": reg.get("dbaName", ""),
+                "physical_address_city": addr.get("city", ""),
+                "physical_address_state": addr.get("stateOrProvinceCode", ""),
+                "cage_code": reg.get("cageCode", ""),
+                "primary_naics": general.get("primaryNaics", ""),
+                "naics_code_string": ", ".join(filter(None, naics_list)),
+                "duns_number": reg.get("dunsNumber", ""),
+            })
 
         page += 1
         if page % 50 == 0:
-            print(f"   Fetched {len(rows):,} entities ({page} pages)...", end="\r")
+            print(f"   {len(rows):,} entities ({page} pages)...", end="\r")
 
-    print(f"\n   {len(rows):,} entities fetched via API")
+    print(f"\n   {len(rows):,} entities fetched")
     return pd.DataFrame(rows, columns=REQUIRED_COLUMNS)
 
 
-def _flatten_entity(entity: dict) -> dict:
-    """Flatten a nested SAM.gov entity JSON object to our column schema."""
-    reg = entity.get("entityRegistration", {})
-    core = entity.get("coreData", {})
-    addr = core.get("physicalAddress", {})
-    general = core.get("generalInformation", {})
-
-    # NAICS: may be in several locations depending on API version
-    naics_list_raw = core.get("naicsInformation", {}).get("naicsList", [])
-    naics_codes = [n.get("naicsCode", "") for n in naics_list_raw if n.get("naicsCode")]
-
-    return {
-        "unique_entity_id": reg.get("ueiSAM", ""),
-        "legal_business_name": reg.get("legalBusinessName", ""),
-        "dba_name": reg.get("dbaName", ""),
-        "physical_address_city": addr.get("city", ""),
-        "physical_address_state": addr.get("stateOrProvinceCode", ""),
-        "cage_code": reg.get("cageCode", ""),
-        "primary_naics": general.get("primaryNaics", ""),
-        "naics_code_string": ", ".join(naics_codes),
-        "duns_number": reg.get("dunsNumber", ""),
-    }
-
-
 # ---------------------------------------------------------------------------
-# Column normalisation
+# File parsing
 # ---------------------------------------------------------------------------
+
+def _parse_downloaded_file(buf: io.BytesIO) -> pd.DataFrame | None:
+    """Parse a downloaded file (ZIP or CSV/DAT) into a DataFrame."""
+    header = buf.read(4)
+    buf.seek(0)
+
+    if header[:2] == b"PK":
+        return _parse_zip(buf)
+    else:
+        print("   File appears to be plain CSV/DAT")
+        return _parse_csv(buf)
+
+
+def _parse_zip(buf: io.BytesIO) -> pd.DataFrame | None:
+    """Extract and parse the first CSV/DAT file from a ZIP."""
+    try:
+        with zipfile.ZipFile(buf) as zf:
+            names = zf.namelist()
+            print(f"   ZIP contains {len(names)} file(s): {names[:5]}")
+
+            # Prefer .dat or .csv files
+            data_files = [n for n in names if n.lower().endswith((".csv", ".dat"))]
+            if not data_files:
+                print(f"⚠️  No CSV/DAT files in ZIP: {names[:10]}")
+                return None
+
+            target = data_files[0]
+            info = zf.getinfo(target)
+            print(f"   Parsing {target} "
+                  f"({info.file_size / 1024 / 1024:.0f} MB uncompressed)")
+            with zf.open(target) as fh:
+                return _parse_csv(fh)
+
+    except zipfile.BadZipFile as exc:
+        print(f"⚠️  Bad ZIP file: {exc}")
+        return None
+
+
+def _parse_csv(fh) -> pd.DataFrame:
+    """Parse a CSV/DAT file handle in chunks, normalising columns."""
+    # SAM.gov .dat files use pipe (|) delimiter; CSV uses comma
+    sample = fh.read(2048)
+    fh.seek(0)
+    delimiter = "|" if sample.count(b"|") > sample.count(b",") else ","
+    print(f"   Detected delimiter: {'pipe' if delimiter == '|' else 'comma'}")
+
+    chunks = []
+    reader = pd.read_csv(
+        fh,
+        dtype=str,
+        delimiter=delimiter,
+        chunksize=100_000,
+        on_bad_lines="warn",
+        encoding_errors="replace",
+    )
+    for i, chunk in enumerate(reader):
+        normalised = _normalise_chunk(chunk)
+        chunks.append(normalised)
+        if (i + 1) % 5 == 0:
+            print(f"   Parsed {(i + 1) * 100_000:,} rows...", end="\r")
+
+        # Log available columns on first chunk for debugging
+        if i == 0:
+            print(f"   Source columns ({len(chunk.columns)}): "
+                  f"{list(chunk.columns)[:15]}...")
+            mapped = [c for c in normalised.columns if (normalised[c] != "").any()]
+            print(f"   Mapped non-empty: {mapped}")
+
+    print()
+    if not chunks:
+        print("⚠️  File was empty")
+        return pd.DataFrame(columns=REQUIRED_COLUMNS)
+
+    df = pd.concat(chunks, ignore_index=True)
+    print(f"   {len(df):,} rows loaded")
+    return df
+
 
 def _normalise_chunk(chunk: pd.DataFrame) -> pd.DataFrame:
-    """Rename CSV columns to match REQUIRED_COLUMNS and drop the rest."""
-    chunk = chunk.rename(columns={k: v for k, v in CSV_COLUMN_MAP.items() if k in chunk.columns})
-
+    """Rename columns and keep only REQUIRED_COLUMNS."""
+    chunk = chunk.rename(columns={k: v for k, v in CSV_COLUMN_MAP.items()
+                                  if k in chunk.columns})
     for col in REQUIRED_COLUMNS:
         if col not in chunk.columns:
             chunk[col] = ""
-
     return chunk[REQUIRED_COLUMNS].fillna("")
 
 
@@ -504,9 +495,8 @@ def _normalise_chunk(chunk: pd.DataFrame) -> pd.DataFrame:
 # ---------------------------------------------------------------------------
 
 def _upload_to_s3(df: pd.DataFrame, bucket: str) -> None:
-    """Write DataFrame to parquet in memory and upload to S3."""
+    """Write DataFrame to parquet and upload to S3."""
     print(f"\n📤 Uploading {len(df):,} rows to s3://{bucket}/{S3_KEY}")
-
     buf = io.BytesIO()
     df.to_parquet(buf, index=False, engine="pyarrow")
     buf.seek(0)
@@ -533,54 +523,52 @@ def _upload_to_s3(df: pd.DataFrame, bucket: str) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Download SAM.gov entities to S3")
-    parser.add_argument(
-        "--s3-bucket",
-        default=os.environ.get("S3_BUCKET", "sbir-etl-prod-data"),
-    )
-    parser.add_argument(
-        "--dry-run",
-        action="store_true",
-        help="Download and parse only — skip S3 upload",
-    )
+    parser.add_argument("--s3-bucket",
+                        default=os.environ.get("S3_BUCKET", "sbir-etl-prod-data"))
+    parser.add_argument("--dry-run", action="store_true",
+                        help="Download and parse only — skip S3 upload")
+    parser.add_argument("--strategy", type=int, choices=[1, 2, 3], default=None,
+                        help="Force a specific download strategy (1=bulk, 2=extract, 3=paginated)")
     args = parser.parse_args()
 
-    # --- API key validation ---
     api_key = os.environ.get("SAM_GOV_API_KEY", "")
     if not api_key:
-        print(
-            "❌ SAM_GOV_API_KEY not set.\n"
-            "   Set it in GitHub Secrets or export it locally.\n"
-            "   Obtain a key from https://sam.gov → Account → API Keys.",
-            file=sys.stderr,
-        )
+        print("❌ SAM_GOV_API_KEY not set.\n"
+              "   Obtain a key from https://sam.gov → Account → API Keys.",
+              file=sys.stderr)
         sys.exit(2)
 
     if not api_key.startswith("SAM-"):
-        print(
-            f"⚠️  Key '{api_key[:12]}...' doesn't look like a SAM.gov key.\n"
-            "   Expected format: SAM-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
-            file=sys.stderr,
-        )
+        print(f"⚠️  Key '{api_key[:12]}...' doesn't look like a SAM.gov key.",
+              file=sys.stderr)
 
     try:
-        _validate_api_key(api_key)
+        df = None
 
-        # Strategy 1: CSV extract (up to 1M records)
-        df = _download_extract(api_key)
+        strategies = (
+            [args.strategy] if args.strategy
+            else [1, 2, 3]
+        )
 
-        # Strategy 2: paginated fallback (up to 10k records)
+        for strat in strategies:
+            if strat == 1:
+                df = _download_bulk_extract(api_key)
+            elif strat == 2:
+                df = _download_entity_extract(api_key)
+            elif strat == 3:
+                df = _download_paginated(api_key)
+
+            if df is not None and not df.empty:
+                break
+            print(f"   Strategy {strat} did not produce data, trying next...")
+
         if df is None or df.empty:
-            print("⚠️  Extract unavailable, falling back to paginated API")
-            df = _download_paginated(api_key)
-
-        if df.empty:
-            print("❌ No entity data retrieved from any source", file=sys.stderr)
+            print("❌ No entity data retrieved from any strategy", file=sys.stderr)
             sys.exit(1)
 
-        print(f"\n📊 Final dataset: {len(df):,} entities, {len(df.columns)} columns")
-        print(f"   Columns: {list(df.columns)}")
+        print(f"\n📊 Final: {len(df):,} entities, {len(df.columns)} columns")
         non_empty = {c: int((df[c] != "").sum()) for c in df.columns}
-        print(f"   Non-empty: {non_empty}")
+        print(f"   Non-empty counts: {non_empty}")
 
         if args.dry_run:
             print("\n🔵 Dry run — skipping S3 upload")
@@ -589,7 +577,7 @@ def main() -> None:
 
     except APIKeyError as exc:
         print(f"\n{'='*60}", file=sys.stderr)
-        print(f"❌ SAM.GOV API KEY PROBLEM", file=sys.stderr)
+        print("❌ SAM.GOV API KEY PROBLEM", file=sys.stderr)
         print(f"{'='*60}", file=sys.stderr)
         print(str(exc), file=sys.stderr)
         print(f"{'='*60}", file=sys.stderr)
