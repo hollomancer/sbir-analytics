@@ -64,18 +64,16 @@ class TestSearchCompanies:
                 "hits": [
                     {
                         "_source": {
-                            "entity_id": "12345",
-                            "entity_name": "Acme Corp",
-                            "ticker": "ACME",
+                            "ciks": ["0000012345"],
+                            "display_names": ["Acme Corp  (ACME)  (CIK 0000012345)"],
                             "file_date": "2024-01-15",
-                            "form_type": "10-K",
+                            "root_forms": ["10-K"],
                         }
                     },
                     {
                         "_source": {
-                            "entity_id": "67890",
-                            "entity_name": "Acme Industries",
-                            "ticker": None,
+                            "ciks": ["0000067890"],
+                            "display_names": ["Acme Industries  (CIK 0000067890)"],
                         }
                     },
                 ]
@@ -94,7 +92,7 @@ class TestSearchCompanies:
         mock_response = {
             "hits": {
                 "hits": [
-                    {"_source": {"entity_id": str(i), "entity_name": f"Co {i}"}}
+                    {"_source": {"ciks": [f"000000{i:04d}"], "display_names": [f"Co {i}  (CIK 000000{i:04d})"]}}
                     for i in range(20)
                 ]
             }
@@ -124,9 +122,9 @@ class TestSearchFilingMentions:
                 "hits": [
                     {
                         "_source": {
-                            "entity_id": "99999",
-                            "entity_name": "Lockheed Martin",
-                            "form_type": "8-K",
+                            "ciks": ["0000099999"],
+                            "display_names": ["Lockheed Martin  (LMT)  (CIK 0000099999)"],
+                            "root_forms": ["8-K"],
                             "file_date": "2024-06-15",
                             "file_num": "0001-24-500",
                             "file_description": "Acquisition of Small Co",
@@ -172,8 +170,8 @@ class TestSearchFormDFilings:
                 "hits": [
                     {
                         "_source": {
-                            "entity_id": "55555",
-                            "entity_name": "Startup Inc",
+                            "ciks": ["0000055555"],
+                            "display_names": ["Startup Inc  (CIK 0000055555)"],
                             "file_date": "2023-09-15",
                         }
                     },
