@@ -252,8 +252,8 @@ class TestEnrichCompany:
 
         profile = await enrich_company(mock_client, "Acme Corp", company_uei="UEI123")
         assert profile.company_uei == "UEI123"
-        assert profile.inbound_ma_mention_count == 1
-        assert "Big Acquirer Inc" in profile.inbound_ma_acquirers
+        assert profile.sec_mention_count == 1
+        assert "Big Acquirer Inc" in profile.sec_mention_filers
         assert profile.has_form_d is True
         assert profile.form_d_count == 1
 
@@ -264,7 +264,7 @@ class TestEnrichCompany:
         mock_client.search_form_d_filings = AsyncMock(return_value=[])
 
         profile = await enrich_company(mock_client, "Tiny Private LLC")
-        assert profile.inbound_ma_mention_count == 0
+        assert profile.sec_mention_count == 0
         assert profile.has_form_d is False
 
     @pytest.mark.asyncio
@@ -285,8 +285,8 @@ class TestEnrichCompany:
 
         profile = await enrich_company(mock_client, "Target Co")
         # Should deduplicate Mercury's 2 filings into 1
-        assert profile.inbound_ma_mention_count == 2
-        assert len(profile.inbound_ma_acquirers) == 2
+        assert profile.sec_mention_count == 2
+        assert len(profile.sec_mention_filers) == 2
 
 
 class TestSearchInboundMAMentions:
@@ -438,8 +438,8 @@ class TestEnrichCompanySignals:
         mock_client.search_form_d_filings = AsyncMock(return_value=[])
 
         profile = await enrich_company(mock_client, "Tiny SBIR LLC")
-        assert profile.inbound_ma_mention_count == 1
-        assert "BIG DEFENSE CO" in profile.inbound_ma_acquirers
+        assert profile.sec_mention_count == 1
+        assert "BIG DEFENSE CO" in profile.sec_mention_filers
 
     @pytest.mark.asyncio
     async def test_company_with_form_d(self):
@@ -491,7 +491,7 @@ class TestEnrichCompanySignals:
         )
 
         profile = await enrich_company(mock_client, "Dual Signal Corp")
-        assert profile.inbound_ma_mention_count == 1
+        assert profile.sec_mention_count == 1
         assert profile.has_form_d is True
 
 
@@ -503,7 +503,7 @@ class TestModels:
         assert profile.is_publicly_traded is False
         assert profile.match_confidence == 0.0
         assert profile.ma_event_count == 0
-        assert profile.inbound_ma_mention_count == 0
+        assert profile.sec_mention_count == 0
         assert profile.has_form_d is False
         assert profile.form_d_count == 0
 

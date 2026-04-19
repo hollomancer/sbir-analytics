@@ -171,20 +171,21 @@ class CompanyEdgarProfile(BaseModel):
     ma_event_count: int = Field(default=0, description="Number of detected M&A events (as filer)")
     latest_ma_event_date: date | None = Field(None, description="Most recent M&A event date")
 
-    # Inbound M&A signals (company mentioned as target in other public filings)
-    inbound_ma_mention_count: int = Field(
+    # SEC filing mentions (company name found in other public companies' filings)
+    sec_mention_count: int = Field(
         default=0,
-        description="Distinct public filers that mention this company in M&A-related filings",
+        description="Distinct public filers whose filings mention this company",
     )
-    inbound_ma_acquirers: list[str] = Field(
+    sec_mention_filers: list[str] = Field(
         default_factory=list,
-        description="Names of public companies that mentioned this company",
+        description="Names of public companies whose filings mention this company",
     )
-    inbound_ma_filing_types: list[str] = Field(
+    sec_mention_types: list[str] = Field(
         default_factory=list,
-        description="Filing types where mentions were found (8-K, DEFM14A, 10-K, SC 13D, etc.)",
+        description="Classified mention types: ma_definitive, ma_proxy, ownership_active, "
+                    "ownership_passive, financial_mention, disclosure, filing_mention",
     )
-    latest_inbound_ma_date: date | None = Field(
+    latest_sec_mention_date: date | None = Field(
         None, description="Most recent date this company was mentioned in a filing"
     )
 

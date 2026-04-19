@@ -239,6 +239,8 @@ class EdgarAPIClient(BaseAsyncAPIClient):
                                         if isinstance(source.get("file_num"), list)
                                         else source.get("file_num", "")),
                     "file_description": source.get("file_description", ""),
+                    "items": source.get("items", []),
+                    "sics": source.get("sics", []),
                 })
             return results
         except APIError as e:
