@@ -64,6 +64,7 @@ For production use, see [Deployment Guide](docs/deployment/README.md) for:
 | **Transition Detection** | Identify SBIR → federal contract transitions (≥85% precision) | [docs/transition/](docs/transition/) |
 | **Phase II → III Latency** | Time-to-Phase-III survival analysis with matched-pair + KM frames | [docs/phase-transition-latency.md](docs/phase-transition-latency.md) |
 | **CET Classification** | ML-based technology area classification | [docs/ml/](docs/ml/) |
+| **ModernBERT-Embed** | Patent-award similarity using semantic embeddings | [docs/ml/paecter.md](docs/ml/paecter.md) |
 | **SEC EDGAR** | M&A detection, investment signals, Form D filings for SBIR companies | [sbir_etl/enrichers/sec_edgar/](sbir_etl/enrichers/sec_edgar/) |
 | **Fiscal Returns** | Economic impact & ROI analysis using BEA I-O tables | [docs/fiscal/](docs/fiscal/) |
 | **Patent Analysis** | USPTO patent chains and tech transfer tracking | [docs/schemas/patent-neo4j-schema.md](docs/schemas/patent-neo4j-schema.md) |
@@ -110,7 +111,7 @@ graph TD
     end
 
     subgraph "packages/"
-        ML["sbir-ml · CET · Transition"]
+        ML["sbir-ml · CET · Transition · ModernBERT"]
         AN["sbir-analytics · Dagster Assets · Jobs"]
         GR["sbir-graph · Neo4j Loaders"]
     end
@@ -141,7 +142,7 @@ sbir-analytics/
 ├── packages/
 │   ├── sbir-analytics/    # Dagster orchestration (assets, jobs, sensors, CLI)
 │   ├── sbir-graph/        # Neo4j loading and relationship creation
-│   ├── sbir-ml/           # ML models (CET classification, transition detection)
+│   ├── sbir-ml/           # ML models (CET classification, transition, ModernBERT-Embed)
 │   └── sbir-rag/          # RAG system for award/patent search
 ├── tests/                  # Unit, integration, and E2E tests
 ├── config/                 # YAML configuration (base.yaml, thresholds)
@@ -219,7 +220,9 @@ This project is licensed under the [MIT License](LICENSE). Copyright (c) 2025 Co
 This project makes use of and is grateful for the following open-source tools and research:
 
 - **[BEA API](https://apps.bea.gov/api/)** - Bureau of Economic Analysis Input-Output tables for fiscal impact modeling
+- **[stateior](https://github.com/USEPA/stateior)** - EPA's state-level I-O model, basis for our Python BEA I-O mappings
 - **[Bayesian Mixture-of-Experts](https://www.arxiv.org/abs/2509.23830)** - Research on calibration and uncertainty estimation by Albus Yizhuo Li
+- **[ModernBERT-Embed](https://huggingface.co/nomic-ai/modernbert-embed-base)** - Embedding model by Nomic AI (768-dim, 8192 token context)
 - **[SEC EDGAR EFTS](https://efts.sec.gov)** - Full-text search of SEC filings for M&A and investment signal detection
 - **[SAM.gov Data Services](https://api.sam.gov)** - Federal entity registration and exclusion data
 - **@SquadronConsult** - Help with SAM.gov data integration
