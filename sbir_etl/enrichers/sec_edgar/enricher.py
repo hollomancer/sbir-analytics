@@ -206,6 +206,88 @@ _CORP_SUFFIX = re.compile(
 )
 
 
+# Keywords in surrounding text that indicate specific mention contexts.
+_MA_KEYWORDS = re.compile(
+    r"acquir|acquisition|merger|merg(?:ed|ing)|purchased|buyout|"
+    r"definitive agreement|business combination|tender offer|"
+    r"takeover|bought|close[ds]? (?:the|its) (?:acquisition|purchase)",
+    re.IGNORECASE,
+)
+_SUBSIDIARY_KEYWORDS = re.compile(
+    r"(?:subsidiary|subsidiaries|wholly[- ]owned|100\s*%|exhibit\s*21)",
+    re.IGNORECASE,
+)
+_INVESTMENT_KEYWORDS = re.compile(
+    r"invest(?:ed|ment|ing|or)|venture|equity stake|strategic partnership|"
+    r"funding round|series [A-F]|capital raise|convertible note",
+    re.IGNORECASE,
+)
+_CONTRACT_KEYWORDS = re.compile(
+    r"contract|subcontract|awarded|teaming|supplier|vendor|"
+    r"customer|partner(?:ship)?|teamed with|prime contractor",
+    re.IGNORECASE,
+)
+_COMPETITOR_KEYWORDS = re.compile(
+    r"compet(?:itor|ition|e)|market participant|industry peer|"
+    r"comparable|peer group|competitor",
+    re.IGNORECASE,
+)
+
+
+async def _extract_mention_context(
+    client: EdgarAPIClient,
+    company_name: str,
+    mention: dict,
+    *,
+    context_chars: int = 500,
+) -> str | None:
+    """Fetch the filing document and classify the mention context.
+
+    Returns a context label: 'acquisition', 'subsidiary', 'investment',
+    'contract', 'competitor', or None if context can't be determined.
+    """
+    doc_id = mention.get("doc_id", "")
+    if not doc_id or ":" not in doc_id:
+        return None
+
+    accession, filename = doc_id.split(":", 1)
+    cik = mention.get("filer_cik", "")
+    if not cik:
+        return None
+
+    text = await client.fetch_filing_document(cik, accession, filename)
+    if not text:
+        return None
+
+    # Find the company name and extract surrounding context
+    pattern = re.compile(re.escape(company_name), re.IGNORECASE)
+    match = pattern.search(text)
+    if not match:
+        # Try without corporate suffixes
+        clean_name = _CORP_SUFFIX.sub("", company_name).strip()
+        if len(clean_name) >= 5:
+            match = re.search(re.escape(clean_name), text, re.IGNORECASE)
+    if not match:
+        return None
+
+    start = max(0, match.start() - context_chars)
+    end = min(len(text), match.end() + context_chars)
+    window = text[start:end]
+
+    # Classify based on keywords in the context window
+    if _MA_KEYWORDS.search(window):
+        return "acquisition"
+    if _SUBSIDIARY_KEYWORDS.search(window):
+        return "subsidiary"
+    if _INVESTMENT_KEYWORDS.search(window):
+        return "investment"
+    if _CONTRACT_KEYWORDS.search(window):
+        return "contract"
+    if _COMPETITOR_KEYWORDS.search(window):
+        return "competitor"
+    return None
+
+
 def _classify_mention(items: list[str], form_type: str) -> str:
     """Classify a filing mention by signal strength.
 
@@ -308,6 +390,15 @@ async def _search_filing_mentions_filtered(
         form_type = mention.get("form_type", "")
         items = mention.get("items", [])
         mention_type = _classify_mention(items, form_type)
+
+        # For ambiguous mentions, try to fetch the filing and classify
+        # from surrounding text.  This costs one HTTP request per mention.
+        if mention_type == "filing_mention":
+            text_context = await _extract_mention_context(
+                client, company_name, mention
+            )
+            if text_context:
+                mention_type = text_context
 
         events.append(
             EdgarMAEvent(
