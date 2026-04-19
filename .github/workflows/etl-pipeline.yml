@@ -39,7 +39,7 @@ permissions:
 
 env:
   AWS_REGION: us-east-2
-  S3_BUCKET: sbir-etl-production-data
+  S3_BUCKET: sbir-etl-prod-data
   SBIR_ETL_ENV: prod
   SBIR_ETL__PIPELINE__ENVIRONMENT: production
   IMAGE: ghcr.io/hollomancer/sbir-analytics:latest
@@ -78,7 +78,7 @@ jobs:
           mkdir -p data/raw/sbir data/raw/sam_gov
 
           # Download latest SBIR awards (~350MB)
-          LATEST_SBIR=$(aws s3 ls "s3://${S3_BUCKET}/raw/awards/" --recursive | sort | tail -1 | awk '{print $4}')
+          LATEST_SBIR=$(aws s3 ls "s3://${S3_BUCKET}/raw/awards/" --recursive 2>/dev/null | sort | tail -1 | awk '{print $4}') || true
           if [ -n "$LATEST_SBIR" ]; then
             aws s3 cp "s3://${S3_BUCKET}/${LATEST_SBIR}" data/raw/sbir/award_data.csv
             echo "✅ Downloaded SBIR awards"
