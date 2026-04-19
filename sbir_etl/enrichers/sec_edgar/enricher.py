@@ -354,34 +354,20 @@ async def enrich_company(
     company_name: str,
     company_uei: str | None = None,
     *,
-    high_threshold: int = 90,
-    low_threshold: int = 75,
-    fetch_financials: bool = True,
-    fetch_filings: bool = True,
     search_inbound_ma: bool = True,
     search_form_d: bool = True,
 ) -> CompanyEdgarProfile:
     """Enrich a single company with SEC EDGAR data.
 
-    Steps:
-    1. Resolve company name → CIK via EFTS search (public company match)
-    2. If public: fetch XBRL financials via companyfacts API
-    3. If public: fetch recent filings and detect outbound M&A from 8-Ks
-    4. Search for inbound M&A mentions (private company as target in public 8-Ks)
-    5. Search for Form D filings (private capital raises under Reg D)
-
-    Steps 4 and 5 work for *all* companies, including private ones that
-    have no CIK as a public registrant. This is the primary way to get
-    EDGAR signals for the ~85-95% of SBIR companies that are private.
+    Focuses on signals available for *all* companies (including private):
+    1. Inbound M&A mentions — search for the company name in other public
+       companies' 8-K filings (catches acquisitions of private targets)
+    2. Form D filings — Regulation D private capital raises
 
     Args:
         client: EdgarAPIClient instance.
         company_name: SBIR company name.
         company_uei: Optional UEI for linking.
-        high_threshold: Fuzzy score threshold for auto-accept (0-100).
-        low_threshold: Fuzzy score threshold for inclusion (0-100).
-        fetch_financials: Whether to pull XBRL financial data.
-        fetch_filings: Whether to pull filing history and detect M&A.
         search_inbound_ma: Whether to search for the company as an M&A target.
         search_form_d: Whether to search for Form D (Reg D) filings.
 
@@ -394,67 +380,25 @@ async def enrich_company(
         enriched_at=datetime.now(),
     )
 
-    # Step 1: CIK resolution (public company match)
-    match = await _resolve_cik(
-        client, company_name,
-        high_threshold=high_threshold,
-        low_threshold=low_threshold,
-    )
-
-    if match:
-        cik = match["cik"]
-        profile.cik = cik
-        profile.is_publicly_traded = True
-        profile.match_confidence = match["match_score"]
-        profile.match_method = match["match_method"]
-        profile.ticker = match.get("ticker")
-
-        # Step 2: XBRL financials (public companies only)
-        if fetch_financials:
-            facts = await client.get_company_facts(cik)
-            if facts:
-                financials = _extract_financials(cik, facts)
-                if financials:
-                    profile.latest_revenue = financials.revenue
-                    profile.latest_rd_expense = financials.rd_expense
-                    profile.latest_total_assets = financials.total_assets
-                    profile.latest_net_income = financials.net_income
-                    profile.financials_as_of = financials.filing_date
-                    profile.sic_code = facts.get("sic")
-
-        # Step 3: Filing history and outbound M&A detection (public companies only)
-        if fetch_filings:
-            filings = await client.get_recent_filings(
-                cik, filing_types=["8-K", "10-K", "10-Q"]
-            )
-            profile.total_filings = len(filings)
-            if filings:
-                dates = [f.get("filing_date") for f in filings if f.get("filing_date")]
-                if dates:
-                    try:
-                        profile.latest_filing_date = date.fromisoformat(max(dates))
-                    except ValueError:
-                        pass
-
-                ma_events = _detect_ma_events(cik, filings)
-                profile.ma_event_count = len(ma_events)
-                if ma_events:
-                    profile.latest_ma_event_date = max(e.filing_date for e in ma_events)
-    else:
-        logger.debug(f"No public EDGAR match for '{company_name}', checking private signals")
-
-    # Step 4: Inbound M&A detection (works for all companies, especially private)
-    # Search for this company's name mentioned inside other companies' 8-K filings
+    # Inbound M&A detection — search for this company's name in other
+    # public companies' 8-K filings.  Deduplicate by filer so we report
+    # distinct acquirers, not duplicate filings from the same company.
     if search_inbound_ma:
         inbound_events = await _search_inbound_ma_mentions(client, company_name)
-        profile.inbound_ma_mention_count = len(inbound_events)
-        if inbound_events:
-            profile.inbound_ma_acquirers = list({
-                e.filer_name for e in inbound_events if e.filer_name
-            })
-            profile.latest_inbound_ma_date = max(e.filing_date for e in inbound_events)
+        # Deduplicate: keep the latest filing per filer
+        by_filer: dict[str, EdgarMAEvent] = {}
+        for e in inbound_events:
+            key = e.filer_name or e.cik
+            if key not in by_filer or e.filing_date > by_filer[key].filing_date:
+                by_filer[key] = e
+        deduped = list(by_filer.values())
 
-    # Step 5: Form D search (private capital raises)
+        profile.inbound_ma_mention_count = len(deduped)
+        if deduped:
+            profile.inbound_ma_acquirers = [e.filer_name for e in deduped if e.filer_name]
+            profile.latest_inbound_ma_date = max(e.filing_date for e in deduped)
+
+    # Form D search — private capital raises under Regulation D
     if search_form_d:
         form_d_filings = await _search_form_d_filings(client, company_name)
         profile.form_d_count = len(form_d_filings)
@@ -472,31 +416,21 @@ async def enrich_companies_with_edgar(
     *,
     company_name_col: str = "company_name",
     company_uei_col: str = "uei",
-    high_threshold: int = 90,
-    low_threshold: int = 75,
-    fetch_financials: bool = True,
-    fetch_filings: bool = True,
     search_inbound_ma: bool = True,
     search_form_d: bool = True,
 ) -> pd.DataFrame:
     """Enrich a DataFrame of SBIR companies with SEC EDGAR data.
 
-    Iterates over unique companies, resolves each to EDGAR, and merges
-    enrichment columns back into the DataFrame. Works for both public
-    and private companies:
-    - Public: CIK match → financials, filings, outbound M&A
-    - All: EFTS text search → inbound M&A mentions in public 8-K filings
-    - All: Form D search → private capital raises under Reg D
+    Iterates over unique companies and merges enrichment columns back.
+    Focuses on signals available for all companies (including private):
+    - EFTS text search → inbound M&A mentions in public 8-K filings
+    - Form D search → private capital raises under Reg D
 
     Args:
         companies_df: DataFrame with company records.
         client: Optional pre-configured EdgarAPIClient.
         company_name_col: Column name for company names.
         company_uei_col: Column name for UEI identifiers.
-        high_threshold: Fuzzy score for auto-accept (0-100).
-        low_threshold: Fuzzy score for inclusion (0-100).
-        fetch_financials: Whether to pull XBRL financials.
-        fetch_filings: Whether to pull filing history.
         search_inbound_ma: Search for company as M&A target in public filings.
         search_form_d: Search for Form D (Reg D) filings.
 
@@ -544,15 +478,11 @@ async def enrich_companies_with_edgar(
                 client,
                 name,
                 company_uei=uei,
-                high_threshold=high_threshold,
-                low_threshold=low_threshold,
-                fetch_financials=fetch_financials,
-                fetch_filings=fetch_filings,
                 search_inbound_ma=search_inbound_ma,
                 search_form_d=search_form_d,
             )
             profiles.append(profile.model_dump())
-            if profile.is_publicly_traded:
+            if profile.inbound_ma_mention_count or profile.has_form_d:
                 matched_count += 1
 
             if (len(profiles)) % 50 == 0:
@@ -566,7 +496,7 @@ async def enrich_companies_with_edgar(
         form_d_count = sum(1 for p in profiles if p.get("has_form_d", False))
 
         logger.info(
-            f"SEC EDGAR enrichment complete: {matched_count}/{total} public matches "
+            f"SEC EDGAR enrichment complete: {matched_count}/{total} with signals "
             f"({matched_count / total * 100:.1f}%), "
             f"{inbound_ma_count} with inbound M&A mentions, "
             f"{form_d_count} with Form D filings"

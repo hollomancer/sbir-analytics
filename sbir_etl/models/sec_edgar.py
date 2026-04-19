@@ -104,7 +104,7 @@ class EdgarMAEvent(BaseModel):
     cik: str = Field(..., description="CIK of the filing entity (the acquirer)")
     filer_name: str = Field(default="", description="Name of the filing entity")
     filing_date: date = Field(..., description="8-K filing date")
-    accession_number: str = Field(..., description="SEC accession number")
+    accession_number: str = Field(default="", description="SEC accession number")
     event_type: MAAcquisitionType = Field(
         default=MAAcquisitionType.UNKNOWN, description="Type of M&A event"
     )

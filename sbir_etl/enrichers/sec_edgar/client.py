@@ -235,7 +235,9 @@ class EdgarAPIClient(BaseAsyncAPIClient):
                     "filer_name": filer_name,
                     "form_type": source.get("root_forms", [""])[0] if source.get("root_forms") else "",
                     "file_date": source.get("file_date", None),
-                    "accession_number": source.get("file_num", ""),
+                    "accession_number": (source.get("file_num", [""])[0]
+                                        if isinstance(source.get("file_num"), list)
+                                        else source.get("file_num", "")),
                     "file_description": source.get("file_description", ""),
                 })
             return results
