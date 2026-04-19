@@ -122,10 +122,10 @@ class APIKeyError(Exception):
 def _check_api_key_response(resp: requests.Response, context: str) -> None:
     """Raise APIKeyError with a clear remediation message on auth failures.
 
-    SAM.gov returns 401/403 for expired, invalid, or missing keys.  The JSON
-    body usually contains a ``message`` field that distinguishes the cause.
+    SAM.gov returns 401/403 for expired, invalid, or missing keys, and
+    429 when the daily quota is exhausted.
     """
-    if resp.status_code not in (401, 403):
+    if resp.status_code not in (401, 403, 429):
         return
 
     try:
@@ -150,12 +150,18 @@ def _check_api_key_response(resp: requests.Response, context: str) -> None:
             "  Verify the key at https://sam.gov → Account → API Keys.\n"
             "  Expected format: SAM-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
         )
-    elif "rate" in message or "limit" in message or "exceeded" in message:
+    elif resp.status_code == 429 or any(kw in message for kw in ("throttle", "quota", "exceeded", "rate")):
+        # Extract next access time if provided
+        try:
+            next_access = resp.json().get("nextAccessTime", "midnight UTC")
+        except Exception:
+            next_access = "midnight UTC"
         hint = (
-            "RATE LIMIT exceeded.\n"
+            f"DAILY RATE LIMIT exceeded.  Retry after: {next_access}\n"
             "  Non-federal personal keys: 10 requests/day.\n"
             "  Non-federal system keys: 1,000 requests/day.\n"
-            "  Consider requesting a system key at https://sam.gov."
+            "  Consider requesting a system key at https://sam.gov.\n"
+            "  The previous run may have consumed the quota — check workflow history."
         )
     else:
         hint = (
@@ -188,7 +194,7 @@ def _validate_api_key(api_key: str) -> None:
     _check_api_key_response(resp, "API key validation (single entity fetch)")
 
     if not resp.ok:
-        raise APIKeyError(
+        raise RuntimeError(
             f"Unexpected response during key validation: HTTP {resp.status_code}\n"
             f"  Body: {resp.text[:300]}"
         )
