@@ -12,7 +12,7 @@ containing a contact email address.
 from __future__ import annotations
 
 import os
-import re
+from html.parser import HTMLParser
 from typing import Any, cast
 
 import httpx
@@ -22,6 +22,39 @@ from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_ex
 from ...config.loader import get_config
 from ...exceptions import APIError
 from ..base_client import BaseAsyncAPIClient
+
+
+class _HTMLTextExtractor(HTMLParser):
+    """Extract visible text from HTML, skipping script/style content."""
+
+    _SKIP_TAGS = frozenset({"script", "style"})
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._pieces: list[str] = []
+        self._skip_depth = 0
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if tag.lower() in self._SKIP_TAGS:
+            self._skip_depth += 1
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag.lower() in self._SKIP_TAGS and self._skip_depth > 0:
+            self._skip_depth -= 1
+
+    def handle_data(self, data: str) -> None:
+        if self._skip_depth == 0:
+            self._pieces.append(data)
+
+    def get_text(self) -> str:
+        return " ".join("".join(self._pieces).split())
+
+
+def _strip_html(html: str) -> str:
+    """Extract visible text from HTML using the stdlib parser."""
+    parser = _HTMLTextExtractor()
+    parser.feed(html)
+    return parser.get_text()
 
 
 def _parse_display_name(display_name: str) -> tuple[str, str | None]:
@@ -361,13 +394,7 @@ class EdgarAPIClient(BaseAsyncAPIClient):
             )
             if response.status_code != 200:
                 return None
-            text = response.text
-            text = re.sub(r'<style[^>]*>.*?</style>', '', text, flags=re.DOTALL | re.IGNORECASE)
-            text = re.sub(r'<script[^>]*>.*?</script>', '', text, flags=re.DOTALL | re.IGNORECASE)
-            text = re.sub(r'<[^>]+>', ' ', text)
-            text = re.sub(r'&[a-z]+;', ' ', text)
-            text = re.sub(r'\s+', ' ', text).strip()
-            return text
+            return _strip_html(response.text)
         except Exception as e:
             logger.debug(f"Failed to fetch filing document {url}: {e}")
             return None
