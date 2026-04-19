@@ -194,7 +194,7 @@ jobs:
     needs: determine-source
     if: needs.determine-source.outputs.sam_gov == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     permissions:
       id-token: write
       contents: read
@@ -225,7 +225,7 @@ jobs:
           uv pip install boto3 requests pandas pyarrow
 
           EXIT_CODE=0
-          uv run python scripts/data/download_sam_gov.py 2>&1 | tee sam_gov_download.log || EXIT_CODE=$?
+          uv run python -u scripts/data/download_sam_gov.py 2>&1 | tee sam_gov_download.log || EXIT_CODE=$?
 
           echo "<details><summary>Download Log</summary>" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY

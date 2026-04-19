@@ -40,10 +40,14 @@ import sys
 import time
 import zipfile
 from datetime import UTC, datetime
+from functools import partial
 
 import boto3
 import pandas as pd
 import requests
+
+# Force unbuffered output so CI logs stream in real time.
+print = partial(print, flush=True)  # noqa: A001
 
 # ---------------------------------------------------------------------------
 # Constants
