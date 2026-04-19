@@ -12,6 +12,7 @@ containing a contact email address.
 from __future__ import annotations
 
 import os
+import re
 from typing import Any, cast
 
 import httpx
@@ -142,15 +143,42 @@ class EdgarAPIClient(BaseAsyncAPIClient):
             )
             hits = response.get("hits", {}).get("hits", [])
             results = []
-            for hit in hits[:limit]:
+            seen_ciks: set[str] = set()
+            for hit in hits:
                 source = hit.get("_source", {})
+                # EFTS returns ciks as a list and display_names as a list
+                # e.g. ciks=["0000804328"], display_names=["QUALCOMM INC/DE  (QCOM)  (CIK ...)"]
+                ciks = source.get("ciks", [])
+                display_names = source.get("display_names", [])
+                if not ciks:
+                    continue
+                cik = ciks[0].lstrip("0") or "0"
+                if cik in seen_ciks:
+                    continue
+                seen_ciks.add(cik)
+
+                # Parse entity name and ticker from display_name
+                # Format: "QUALCOMM INC/DE  (QCOM)  (CIK 0000804328)"
+                entity_name = display_names[0] if display_names else ""
+                ticker = None
+                if entity_name:
+                    import re
+                    # Extract ticker from parenthesized portion before CIK
+                    ticker_match = re.search(r'\(([A-Z]{1,5}(?:-[A-Z]{1,3})?)\)', entity_name)
+                    if ticker_match:
+                        ticker = ticker_match.group(1)
+                    # Strip the parenthesized portions for clean name
+                    entity_name = re.sub(r'\s*\(.*?\)', '', entity_name).strip()
+
                 results.append({
-                    "cik": str(source.get("entity_id", "")),
-                    "entity_name": source.get("entity_name", ""),
-                    "ticker": source.get("ticker", None),
+                    "cik": cik,
+                    "entity_name": entity_name,
+                    "ticker": ticker,
                     "file_date": source.get("file_date", None),
-                    "form_type": source.get("form_type", None),
+                    "form_type": source.get("root_forms", [None])[0],
                 })
+                if len(results) >= limit:
+                    break
             return results
         except APIError as e:
             logger.warning(f"EDGAR company search failed for '{company_name}': {e}")
@@ -195,10 +223,17 @@ class EdgarAPIClient(BaseAsyncAPIClient):
             results = []
             for hit in hits[:limit]:
                 source = hit.get("_source", {})
+                ciks = source.get("ciks", [])
+                display_names = source.get("display_names", [])
+                filer_cik = ciks[0].lstrip("0") or "0" if ciks else ""
+                # Parse clean name from display_name
+                filer_name = display_names[0] if display_names else ""
+                if filer_name:
+                    filer_name = re.sub(r'\s*\(.*?\)', '', filer_name).strip()
                 results.append({
-                    "filer_cik": str(source.get("entity_id", "")),
-                    "filer_name": source.get("entity_name", ""),
-                    "form_type": source.get("form_type", ""),
+                    "filer_cik": filer_cik,
+                    "filer_name": filer_name,
+                    "form_type": source.get("root_forms", [""])[0] if source.get("root_forms") else "",
                     "file_date": source.get("file_date", None),
                     "accession_number": source.get("file_num", ""),
                     "file_description": source.get("file_description", ""),
@@ -244,9 +279,15 @@ class EdgarAPIClient(BaseAsyncAPIClient):
             results = []
             for hit in hits[:limit]:
                 source = hit.get("_source", {})
+                ciks = source.get("ciks", [])
+                display_names = source.get("display_names", [])
+                cik = ciks[0].lstrip("0") or "0" if ciks else ""
+                entity_name = display_names[0] if display_names else ""
+                if entity_name:
+                    entity_name = re.sub(r'\s*\(.*?\)', '', entity_name).strip()
                 results.append({
-                    "cik": str(source.get("entity_id", "")),
-                    "entity_name": source.get("entity_name", ""),
+                    "cik": cik,
+                    "entity_name": entity_name,
                     "file_date": source.get("file_date", None),
                     "form_type": "D",
                 })

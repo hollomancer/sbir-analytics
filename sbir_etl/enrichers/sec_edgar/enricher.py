@@ -6,6 +6,7 @@ from XBRL filings, and detects M&A events from 8-K filings.
 
 from __future__ import annotations
 
+import re
 from datetime import date, datetime
 from typing import Any
 
@@ -313,11 +314,25 @@ async def _resolve_cik(
     best_match = None
     best_score = 0
 
+    # Strip common corporate suffixes for better matching of short names
+    _SUFFIXES = re.compile(
+        r",?\s*(Inc\.?|Corp\.?|LLC|Ltd\.?|Co\.?|L\.?P\.?|/DE|/NV|/MD)$",
+        re.IGNORECASE,
+    )
+
+    query_clean = _SUFFIXES.sub("", company_name).strip().upper()
+
     for result in results:
         entity_name = result.get("entity_name", "")
         if not entity_name:
             continue
-        score = fuzz.token_set_ratio(company_name.upper(), entity_name.upper())
+        entity_clean = _SUFFIXES.sub("", entity_name).strip().upper()
+        # Use the better of token_set_ratio (handles word reordering) and
+        # ratio on cleaned names (handles short names like "IonQ" vs "IonQ, Inc.")
+        score = max(
+            fuzz.token_set_ratio(query_clean, entity_clean),
+            fuzz.ratio(query_clean, entity_clean),
+        )
         if score > best_score:
             best_score = score
             best_match = result
