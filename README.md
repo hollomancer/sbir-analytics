@@ -14,6 +14,13 @@
 - 💰 **Economic impact** analysis with ROI and federal tax receipt estimates
 - 🔗 **Patent ownership chains** tracking SBIR-funded innovation outcomes
 
+**Want the full list of policy and research questions this pipeline is designed
+to answer, with links to the spec for each?** See
+[docs/research-questions.md](docs/research-questions.md) — an inventory
+organized by policy area (national security, commercialization, innovation,
+fiscal impact, program management), with cross-references to NASEM, GAO, CRS,
+SBA, and peer-reviewed benchmarks.
+
 ## Prerequisites
 
 - **Python 3.11+** (required)
@@ -79,9 +86,10 @@ For production use, see [Deployment Guide](docs/deployment/README.md) for:
 
 See [docs/research-questions.md](docs/research-questions.md) for the full
 inventory of analytical and research questions the pipeline is designed to
-answer — grouped by theme (transitions, leverage ratio, patent spillover, CET
-taxonomy, fiscal returns, entity resolution, M&A, monitoring, imputation, data
-source evaluation, data quality) with links to the spec or doc for each.
+answer — organized by **policy area** (national security & defense industrial
+base; commercialization; innovation & R&D; fiscal impact; program management),
+with each area ordered by complexity tier and dependency, cross-referenced to
+NASEM reviews and other public benchmarks.
 
 ## Documentation
 
