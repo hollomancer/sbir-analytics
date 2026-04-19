@@ -14,6 +14,11 @@
 - 💰 **Economic impact** analysis with ROI and federal tax receipt estimates
 - 🔗 **Patent ownership chains** tracking SBIR-funded innovation outcomes
 
+For the full inventory of SBIR policy and research questions the pipeline is
+designed to answer — organized by policy area and cross-referenced to NASEM,
+GAO, and peer-reviewed benchmarks — see
+[docs/research-questions.md](docs/research-questions.md).
+
 ## Prerequisites
 
 - **Python 3.11+** (required)
@@ -80,6 +85,7 @@ For production use, see [Deployment Guide](docs/deployment/README.md) for:
 | Topic | Description |
 |-------|-------------|
 | [Getting Started](docs/getting-started/README.md) | Detailed setup guides for local, cloud, and ML workflows |
+| [Research Questions](docs/research-questions.md) | Inventory of SBIR analytical questions the pipeline answers |
 | [Architecture](docs/architecture/) | System design, patterns, and technical decisions |
 | [Deployment](docs/deployment/) | Production deployment options and guides |
 | [Testing](docs/testing/README.md) | Testing strategy, guides, and coverage |

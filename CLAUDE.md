@@ -4,6 +4,8 @@
 
 Graph-based ETL: SBIR awards → Neo4j. Dagster orchestration, DuckDB processing, Docker deployment.
 
+**Intent / north star:** [docs/research-questions.md](docs/research-questions.md) is the canonical inventory of what this repo exists to answer. Use it to judge whether a proposed change serves a real question vs. adds incidental scope.
+
 Architectural patterns and technical docs live in `docs/steering/`. Feature specs live in `specs/`.
 
 ## Agents
