@@ -1,9 +1,8 @@
 """Dagster assets for SEC EDGAR company enrichment.
 
 Enriches SBIR companies with public filing data from SEC EDGAR:
-- CIK resolution (company name → SEC identifier)
-- XBRL financial data (revenue, R&D expense, assets)
-- M&A event detection from 8-K filings
+- Inbound filing mentions (company name appears in other filers' documents)
+- Form D searches (Regulation D private capital raises)
 """
 
 import asyncio
@@ -25,7 +24,7 @@ from sbir_etl.enrichers.sec_edgar import EdgarAPIClient, enrich_companies_with_e
 
 
 @asset(
-    description="SBIR companies enriched with SEC EDGAR public filing data (CIK, financials, M&A events)",
+    description="SBIR companies enriched with SEC EDGAR public filing data (inbound filing mentions, Form D searches)",
     group_name="sec_edgar",
     compute_kind="enrichment",
 )
@@ -35,9 +34,10 @@ def sec_edgar_enriched_companies(
 ) -> Output[pd.DataFrame]:
     """Enrich SBIR companies with SEC EDGAR data.
 
-    Resolves company names to SEC CIK numbers, fetches XBRL financials,
-    and detects M&A events from 8-K filings. Expects ~5-15% match rate
-    since most SBIR awardees are private companies.
+    Searches for inbound filing mentions (company name appearing in other
+    filers' SEC documents) and Form D filings (Regulation D private capital
+    raises). Expects a low match rate since most SBIR awardees are private
+    companies.
 
     Args:
         validated_sbir_awards: Validated SBIR awards with company identifiers.
@@ -214,17 +214,14 @@ def sec_edgar_enrichment_quality_check(
         )
 
     passed = len(issues) == 0
-    result_kwargs: dict = {
-        "passed": passed,
-        "metadata": {
+    return AssetCheckResult(
+        passed=passed,
+        severity=AssetCheckSeverity.WARN,
+        metadata={
             "sec_columns_count": len(sec_cols),
             "issues": issues if issues else ["No issues detected"],
         },
-    }
-    if not passed:
-        result_kwargs["severity"] = AssetCheckSeverity.WARN
-
-    return AssetCheckResult(**result_kwargs)
+    )
 
 
 @asset(
