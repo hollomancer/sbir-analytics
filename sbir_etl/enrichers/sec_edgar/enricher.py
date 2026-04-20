@@ -501,16 +501,51 @@ async def _search_form_d_filings(
     return filings
 
 
+# Words that appear in many company names but don't distinguish one company
+# from another.  Used by CIK resolution to require at least one distinctive
+# word overlap between query and candidate.
+_GENERIC_WORDS = frozenset({
+    "TECHNOLOGIES", "TECHNOLOGY", "SYSTEMS", "SCIENCES", "RESEARCH",
+    "ENGINEERING", "SOLUTIONS", "ANALYTICS", "DYNAMICS", "INDUSTRIES",
+    "ASSOCIATES", "CONSULTING", "SERVICES", "GROUP", "INTERNATIONAL",
+    "LABORATORIES", "INSTRUMENTS", "MATERIALS", "DEVICES", "APPLICATIONS",
+    "ADVANCED", "APPLIED", "DIGITAL", "GENERAL", "NATIONAL", "AMERICAN",
+    "GLOBAL", "INTEGRATED", "PRECISION", "SCIENTIFIC", "TECHNICAL",
+    "INNOVATIONS", "CORPORATION", "COMPANY", "ENTERPRISES",
+})
+
+
+def _clean_company_name(name: str) -> str:
+    """Strip corporate suffixes for matching.  Applied iteratively to handle
+    nested suffixes like 'QUALCOMM INC/DE'."""
+    upper = name.strip().upper()
+    for _ in range(3):  # Max 3 passes
+        cleaned = _CORP_SUFFIX.sub("", upper).strip()
+        if cleaned == upper:
+            break
+        upper = cleaned
+    return upper
+
+
+def _distinctive_words(cleaned_name: str) -> set[str]:
+    """Return the words in a cleaned name that aren't generic."""
+    return set(cleaned_name.split()) - _GENERIC_WORDS
+
+
 async def _resolve_cik(
     client: EdgarAPIClient,
     company_name: str,
     *,
-    high_threshold: int = 90,
-    low_threshold: int = 75,
+    threshold: int = 90,
 ) -> dict[str, Any] | None:
     """Resolve a company name to a CIK using EDGAR full-text search.
 
-    Uses fuzzy matching to compare SBIR company names against EDGAR entity names.
+    Uses three-layer filtering to minimize false positives:
+    1. Fuzzy score threshold (≥90% after suffix stripping)
+    2. Containment filter (reject if query is a substring of a longer,
+       different entity name — e.g. "Fibertek" in "Thermo Fibertek")
+    3. Distinctive word overlap (require at least one non-generic word
+       in common — rejects "Impact Technologies" → "BK Technologies")
 
     Returns:
         Dict with cik, entity_name, match_score, match_method, ticker or None.
@@ -519,39 +554,55 @@ async def _resolve_cik(
     if not results:
         return None
 
+    query_clean = _clean_company_name(company_name)
+    query_distinctive = _distinctive_words(query_clean)
+
     best_match = None
     best_score = 0
-
-    # Strip common corporate suffixes for better matching of short names
-    _SUFFIXES = re.compile(
-        r",?\s*(Inc\.?|Corp\.?|LLC|Ltd\.?|Co\.?|L\.?P\.?|/DE|/NV|/MD)$",
-        re.IGNORECASE,
-    )
-
-    query_clean = _SUFFIXES.sub("", company_name).strip().upper()
 
     for result in results:
         entity_name = result.get("entity_name", "")
         if not entity_name:
             continue
-        entity_clean = _SUFFIXES.sub("", entity_name).strip().upper()
-        # Use the better of token_set_ratio (handles word reordering) and
-        # ratio on cleaned names (handles short names like "IonQ" vs "IonQ, Inc.")
+        entity_clean = _clean_company_name(entity_name)
+
+        # Layer 1: fuzzy score on cleaned names
         score = max(
             fuzz.token_set_ratio(query_clean, entity_clean),
             fuzz.ratio(query_clean, entity_clean),
         )
+        if score < threshold:
+            continue
+
+        # Layer 2: containment filter — reject if query name is embedded
+        # inside a longer, different company name
+        if (
+            query_clean in entity_clean
+            and entity_clean != query_clean
+            and len(entity_clean) > len(query_clean) + 3
+        ):
+            continue
+
+        # Layer 3: distinctive word overlap — at least one non-generic word
+        # must be shared.  Skip this check for single-word names (e.g. "Qualcomm")
+        # where the whole name IS the distinctive word.
+        if len(query_clean.split()) > 1:
+            entity_distinctive = _distinctive_words(entity_clean)
+            if query_distinctive and entity_distinctive:
+                if not (query_distinctive & entity_distinctive):
+                    continue
+
         if score > best_score:
             best_score = score
             best_match = result
 
-    if best_match and best_score >= low_threshold:
+    if best_match:
         return {
             "cik": best_match["cik"],
             "entity_name": best_match["entity_name"],
             "ticker": best_match.get("ticker"),
-            "match_score": best_score / 100.0,  # Normalize to 0-1
-            "match_method": "name_fuzzy_auto" if best_score >= high_threshold else "name_fuzzy_review",
+            "match_score": best_score / 100.0,
+            "match_method": "name_match",
         }
 
     return None
@@ -562,21 +613,27 @@ async def enrich_company(
     company_name: str,
     company_uei: str | None = None,
     *,
+    resolve_cik: bool = True,
+    fetch_financials: bool = True,
     search_inbound_ma: bool = True,
     search_form_d: bool = True,
 ) -> CompanyEdgarProfile:
     """Enrich a single company with SEC EDGAR data.
 
-    Focuses on signals available for *all* companies (including private):
-    1. Inbound M&A mentions — search for the company name in other public
-       companies' 8-K filings (catches acquisitions of private targets)
-    2. Form D filings — Regulation D private capital raises
+    Three signal types:
+    1. CIK resolution — match company name to a public SEC filer, then
+       optionally pull XBRL financials (revenue, R&D, assets)
+    2. Filing mentions — search for the company name in other public
+       companies' filings (M&A, ownership, partnership signals)
+    3. Form D filings — Regulation D private capital raises
 
     Args:
         client: EdgarAPIClient instance.
         company_name: SBIR company name.
         company_uei: Optional UEI for linking.
-        search_inbound_ma: Whether to search for the company as an M&A target.
+        resolve_cik: Whether to attempt CIK resolution (public company match).
+        fetch_financials: Whether to pull XBRL financials for CIK matches.
+        search_inbound_ma: Whether to search for the company in other filings.
         search_form_d: Whether to search for Form D (Reg D) filings.
 
     Returns:
@@ -587,6 +644,30 @@ async def enrich_company(
         company_uei=company_uei,
         enriched_at=datetime.now(),
     )
+
+    # CIK resolution — match to a public SEC filer using 3-layer filtering
+    if resolve_cik:
+        match = await _resolve_cik(client, company_name)
+        if match:
+            cik = match["cik"]
+            profile.cik = cik
+            profile.is_publicly_traded = True
+            profile.match_confidence = match["match_score"]
+            profile.match_method = match["match_method"]
+            profile.ticker = match.get("ticker")
+
+            # Pull XBRL financials for matched public companies
+            if fetch_financials:
+                facts = await client.get_company_facts(cik)
+                if facts:
+                    financials = _extract_financials(cik, facts)
+                    if financials:
+                        profile.latest_revenue = financials.revenue
+                        profile.latest_rd_expense = financials.rd_expense
+                        profile.latest_total_assets = financials.total_assets
+                        profile.latest_net_income = financials.net_income
+                        profile.financials_as_of = financials.filing_date
+                        profile.sic_code = facts.get("sic")
 
     # SEC filing mentions — search for this company's name in other public
     # companies' filings.  Deduplicate by filer so we report distinct
