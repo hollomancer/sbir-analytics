@@ -568,3 +568,194 @@ class TestModels:
         )
         assert filing.cik == "55555"
         assert filing.match_confidence == 0.95
+
+
+class TestEnrichCompanyWithCIK:
+    """Test enrich_company with CIK resolution enabled (full path)."""
+
+    @pytest.mark.asyncio
+    async def test_resolves_cik_and_fetches_financials(self):
+        mock_client = AsyncMock()
+        mock_client.search_companies = AsyncMock(
+            return_value=[
+                {"cik": "12345", "entity_name": "ACME CORP", "ticker": "ACME"},
+            ]
+        )
+        mock_client.get_company_facts = AsyncMock(
+            return_value={
+                "sic": "3674",
+                "facts": {
+                    "us-gaap": {
+                        "Revenues": {
+                            "units": {
+                                "USD": [
+                                    {"val": 50000000, "end": "2024-12-31", "form": "10-K"},
+                                ]
+                            }
+                        },
+                        "ResearchAndDevelopmentExpense": {
+                            "units": {
+                                "USD": [
+                                    {"val": 8000000, "end": "2024-12-31", "form": "10-K"},
+                                ]
+                            }
+                        },
+                    }
+                },
+            }
+        )
+        mock_client.search_filing_mentions = AsyncMock(return_value=[])
+        mock_client.search_form_d_filings = AsyncMock(return_value=[])
+
+        profile = await enrich_company(mock_client, "Acme Corp")
+        assert profile.is_publicly_traded is True
+        assert profile.cik == "12345"
+        assert profile.ticker == "ACME"
+        assert profile.latest_revenue == 50000000.0
+        assert profile.latest_rd_expense == 8000000.0
+        assert profile.sic_code == "3674"
+
+    @pytest.mark.asyncio
+    async def test_cik_disabled_skips_resolution(self):
+        mock_client = AsyncMock()
+        mock_client.search_filing_mentions = AsyncMock(return_value=[])
+        mock_client.search_form_d_filings = AsyncMock(return_value=[])
+
+        profile = await enrich_company(mock_client, "Acme Corp", resolve_cik=False)
+        assert profile.is_publicly_traded is False
+        assert profile.cik is None
+        mock_client.search_companies.assert_not_called()
+
+
+class TestIsNoise:
+    """Test the _is_noise filer filter."""
+
+    def test_rejects_reit_by_sic(self):
+        from sbir_etl.enrichers.sec_edgar.enricher import _is_noise
+        # SIC 6512 = real estate investment trusts
+        assert _is_noise("VORNADO REALTY TRUST", "Aptima Inc", ["6512"]) is True
+
+    def test_rejects_mortgage_by_sic(self):
+        from sbir_etl.enrichers.sec_edgar.enricher import _is_noise
+        assert _is_noise("CSFB MORTGAGE TRUST", "Lynntech Inc", ["6159"]) is True
+
+    def test_accepts_defense_company(self):
+        from sbir_etl.enrichers.sec_edgar.enricher import _is_noise
+        assert _is_noise("MERCURY SYSTEMS INC", "Physical Optics Corp", ["3670"]) is False
+
+    def test_rejects_name_containment(self):
+        from sbir_etl.enrichers.sec_edgar.enricher import _is_noise
+        assert _is_noise("THERMO FIBERTEK INC", "Fibertek, Inc.", []) is True
+
+    def test_accepts_exact_match(self):
+        from sbir_etl.enrichers.sec_edgar.enricher import _is_noise
+        # Same name shouldn't be flagged as containment
+        assert _is_noise("FIBERTEK INC", "Fibertek, Inc.", []) is False
+
+    def test_accepts_no_sic(self):
+        from sbir_etl.enrichers.sec_edgar.enricher import _is_noise
+        assert _is_noise("SOME COMPANY", "Target Co", []) is False
+
+
+class TestClassifyMention:
+    """Test _classify_mention from filing type and item codes."""
+
+    def test_ma_definitive_from_items(self):
+        from sbir_etl.enrichers.sec_edgar.enricher import _classify_mention
+        assert _classify_mention(["1.01", "9.01"], "8-K") == "ma_definitive"
+        assert _classify_mention(["2.01"], "8-K") == "ma_definitive"
+
+    def test_ma_proxy_from_form_type(self):
+        from sbir_etl.enrichers.sec_edgar.enricher import _classify_mention
+        assert _classify_mention([], "DEFM14A") == "ma_proxy"
+        assert _classify_mention([], "PREM14A") == "ma_proxy"
+
+    def test_ownership_active(self):
+        from sbir_etl.enrichers.sec_edgar.enricher import _classify_mention
+        assert _classify_mention([], "SC 13D") == "ownership_active"
+
+    def test_ownership_passive(self):
+        from sbir_etl.enrichers.sec_edgar.enricher import _classify_mention
+        assert _classify_mention([], "SC 13G") == "ownership_passive"
+
+    def test_tender_offer(self):
+        from sbir_etl.enrichers.sec_edgar.enricher import _classify_mention
+        assert _classify_mention([], "SC TO-T") == "ma_definitive"
+
+    def test_financial_mention(self):
+        from sbir_etl.enrichers.sec_edgar.enricher import _classify_mention
+        assert _classify_mention(["2.02", "9.01"], "8-K") == "financial_mention"
+
+    def test_disclosure(self):
+        from sbir_etl.enrichers.sec_edgar.enricher import _classify_mention
+        assert _classify_mention(["7.01", "9.01"], "8-K") == "disclosure"
+
+    def test_generic_filing_mention(self):
+        from sbir_etl.enrichers.sec_edgar.enricher import _classify_mention
+        assert _classify_mention([], "10-K") == "filing_mention"
+
+
+class TestExtractMentionContext:
+    """Test _extract_mention_context document fetch + classification."""
+
+    @pytest.mark.asyncio
+    async def test_classifies_acquisition_context(self):
+        from sbir_etl.enrichers.sec_edgar.enricher import _extract_mention_context
+
+        mock_client = AsyncMock()
+        mock_client.fetch_filing_document = AsyncMock(
+            return_value="...Mercury Systems announced today it has completed the acquisition of "
+                         "Physical Optics Corporation for approximately $310 million..."
+        )
+
+        mention = {"filer_cik": "1049521", "doc_id": "0001049521-20-000067:press.htm"}
+        result = await _extract_mention_context(mock_client, "Physical Optics Corporation", mention)
+        assert result == "acquisition"
+
+    @pytest.mark.asyncio
+    async def test_classifies_subsidiary_context(self):
+        from sbir_etl.enrichers.sec_edgar.enricher import _extract_mention_context
+
+        mock_client = AsyncMock()
+        mock_client.fetch_filing_document = AsyncMock(
+            return_value="...Exhibit 21 - List of Subsidiaries\n"
+                         "Progeny Systems, LLC Virginia 100%..."
+        )
+
+        mention = {"filer_cik": "40533", "doc_id": "0000040533-23-000014:ex21.htm"}
+        result = await _extract_mention_context(mock_client, "Progeny Systems", mention)
+        assert result == "subsidiary"
+
+    @pytest.mark.asyncio
+    async def test_classifies_competitor_context(self):
+        from sbir_etl.enrichers.sec_edgar.enricher import _extract_mention_context
+
+        mock_client = AsyncMock()
+        mock_client.fetch_filing_document = AsyncMock(
+            return_value="...Our primary competitors include Aerojet Rocketdyne, "
+                         "Busek Co. Inc., Blue Origin, and SpaceX in the propulsion market..."
+        )
+
+        mention = {"filer_cik": "40888", "doc_id": "0000040888-22-000005:10k.htm"}
+        result = await _extract_mention_context(mock_client, "Busek Co", mention)
+        assert result == "competitor"
+
+    @pytest.mark.asyncio
+    async def test_returns_none_on_fetch_failure(self):
+        from sbir_etl.enrichers.sec_edgar.enricher import _extract_mention_context
+
+        mock_client = AsyncMock()
+        mock_client.fetch_filing_document = AsyncMock(return_value=None)
+
+        mention = {"filer_cik": "12345", "doc_id": "0000012345-20-000001:doc.htm"}
+        result = await _extract_mention_context(mock_client, "Unknown Co", mention)
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_returns_none_on_no_doc_id(self):
+        from sbir_etl.enrichers.sec_edgar.enricher import _extract_mention_context
+
+        mock_client = AsyncMock()
+        mention = {"filer_cik": "12345"}  # No doc_id
+        result = await _extract_mention_context(mock_client, "Unknown Co", mention)
+        assert result is None
