@@ -174,7 +174,7 @@ class TestDetectMAEvents:
 
 class TestResolveCIK:
     @pytest.mark.asyncio
-    async def test_resolves_high_confidence(self):
+    async def test_resolves_exact_match(self):
         mock_client = AsyncMock()
         mock_client.search_companies = AsyncMock(
             return_value=[
@@ -186,25 +186,10 @@ class TestResolveCIK:
         assert result is not None
         assert result["cik"] == "12345"
         assert result["match_score"] >= 0.9
-        assert result["match_method"] == "name_fuzzy_auto"
+        assert result["match_method"] == "name_match"
 
     @pytest.mark.asyncio
-    async def test_resolves_low_confidence(self):
-        mock_client = AsyncMock()
-        mock_client.search_companies = AsyncMock(
-            return_value=[
-                {"cik": "12345", "entity_name": "QUANTUM HORIZONS DEFENSE TECH", "ticker": None},
-            ]
-        )
-
-        result = await _resolve_cik(
-            mock_client, "Quantum Defense Technologies", high_threshold=95, low_threshold=60
-        )
-        assert result is not None
-        assert result["match_method"] == "name_fuzzy_review"
-
-    @pytest.mark.asyncio
-    async def test_returns_none_below_threshold(self):
+    async def test_rejects_below_threshold(self):
         mock_client = AsyncMock()
         mock_client.search_companies = AsyncMock(
             return_value=[
@@ -213,6 +198,32 @@ class TestResolveCIK:
         )
 
         result = await _resolve_cik(mock_client, "Acme Corp")
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_rejects_containment(self):
+        """'Fibertek' should NOT match 'Thermo Fibertek' (different company)."""
+        mock_client = AsyncMock()
+        mock_client.search_companies = AsyncMock(
+            return_value=[
+                {"cik": "99999", "entity_name": "THERMO FIBERTEK INC", "ticker": None},
+            ]
+        )
+
+        result = await _resolve_cik(mock_client, "Fibertek, Inc.")
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_rejects_no_distinctive_overlap(self):
+        """'Impact Technologies' should NOT match 'BK Technologies'."""
+        mock_client = AsyncMock()
+        mock_client.search_companies = AsyncMock(
+            return_value=[
+                {"cik": "99999", "entity_name": "BK TECHNOLOGIES CORP", "ticker": None},
+            ]
+        )
+
+        result = await _resolve_cik(mock_client, "Impact Technologies")
         assert result is None
 
     @pytest.mark.asyncio
