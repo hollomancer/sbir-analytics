@@ -47,6 +47,18 @@ def load_companies(awards_csv: str) -> list[tuple[str, int]]:
     return counts.most_common()
 
 
+def load_company_cities(awards_csv: str) -> dict[str, str]:
+    """Load the first city seen for each company."""
+    cities: dict[str, str] = {}
+    with open(awards_csv, encoding="utf-8", errors="replace") as f:
+        for row in csv.DictReader(f):
+            name = row.get("Company", "").strip()
+            city = (row.get("City") or "").strip()
+            if name and city and name not in cities:
+                cities[name] = city
+    return cities
+
+
 def load_checkpoint(path: Path) -> set[str]:
     """Load already-scanned company names from checkpoint file."""
     done: set[str] = set()
@@ -62,6 +74,104 @@ def load_checkpoint(path: Path) -> set[str]:
     return done
 
 
+async def run_city_pass(args) -> None:
+    """Second pass: qualify mentions with city co-occurrence."""
+    import httpx
+
+    scan_path = Path(args.output)
+    if not scan_path.exists():
+        print(f"Error: scan file {scan_path} not found. Run the main scan first.")
+        sys.exit(1)
+
+    # Load company cities
+    print(f"Loading cities from {args.awards}...")
+    cities = load_company_cities(args.awards)
+
+    # Load scan results, filter to companies with mentions
+    with_mentions = []
+    with open(scan_path) as f:
+        for line in f:
+            rec = json.loads(line)
+            if rec.get("mention_count", 0) > 0 and "error" not in rec:
+                with_mentions.append(rec)
+
+    print(f"  {len(with_mentions):,} companies with mentions to qualify")
+
+    output_path = scan_path.with_suffix(".city_qualified.jsonl")
+    already_done = set()
+    if args.resume and output_path.exists():
+        with open(output_path) as f:
+            for line in f:
+                already_done.add(json.loads(line).get("company_name"))
+        print(f"  Resuming: {len(already_done):,} already qualified")
+
+    remaining = [r for r in with_mentions if r["company_name"] not in already_done]
+    print(f"  {len(remaining):,} to process\n")
+
+    headers = {"User-Agent": f"SBIR-Analytics/0.1.0 ({args.contact_email})"}
+    confirmed = 0
+    unconfirmed = 0
+    no_city = 0
+    start_time = time.time()
+
+    async with httpx.AsyncClient(timeout=30) as client:
+        with open(output_path, "a") as out:
+            for i, rec in enumerate(remaining):
+                name = rec["company_name"]
+                city = cities.get(name, "")
+
+                if not city or len(city) < 3:
+                    # No city data — can't qualify
+                    rec["city_qualified"] = None
+                    rec["city_hits"] = None
+                    no_city += 1
+                else:
+                    # Search EFTS for company + city
+                    resp = await client.get(
+                        "https://efts.sec.gov/LATEST/search-index",
+                        params={
+                            "q": f'"{name}" AND "{city}"',
+                            "dateRange": "custom",
+                            "startdt": "2000-01-01",
+                            "enddt": "2026-12-31",
+                        },
+                        headers=headers,
+                    )
+                    if resp.status_code == 200:
+                        hits = resp.json().get("hits", {}).get("total", {}).get("value", 0)
+                        rec["city_qualified"] = hits > 0
+                        rec["city_hits"] = hits
+                        rec["city"] = city
+                        if hits > 0:
+                            confirmed += 1
+                        else:
+                            unconfirmed += 1
+                    else:
+                        rec["city_qualified"] = None
+                        rec["city_hits"] = None
+
+                out.write(json.dumps(rec) + "\n")
+                out.flush()
+
+                if (i + 1) % 100 == 0:
+                    elapsed = time.time() - start_time
+                    rate = (i + 1) / elapsed
+                    eta = (len(remaining) - i - 1) / rate / 60
+                    print(
+                        f"  {i+1:,}/{len(remaining):,} ({rate:.1f}/s, ETA {eta:.0f}min) "
+                        f"confirmed={confirmed} unconfirmed={unconfirmed} no_city={no_city}"
+                    )
+
+    elapsed = time.time() - start_time
+    print(f"\n{'='*60}")
+    print(f"CITY QUALIFICATION COMPLETE — {len(remaining):,} companies in {elapsed/60:.1f} min")
+    print(f"{'='*60}")
+    print(f"Confirmed (name+city match):   {confirmed} ({confirmed/max(1,confirmed+unconfirmed)*100:.0f}%)")
+    print(f"Unconfirmed (name only):       {unconfirmed} ({unconfirmed/max(1,confirmed+unconfirmed)*100:.0f}%)")
+    print(f"No city data:                  {no_city}")
+    print(f"Output: {output_path}")
+
+
 async def main() -> None:
     parser = argparse.ArgumentParser(description="Scan SBIR awardees against SEC EDGAR")
     parser.add_argument("--awards", required=True, help="Path to SBIR awards CSV")
@@ -69,6 +179,8 @@ async def main() -> None:
                         help="Output JSONL checkpoint file")
     parser.add_argument("--resume", action="store_true",
                         help="Resume from existing checkpoint")
+    parser.add_argument("--city-pass", action="store_true",
+                        help="Run city qualification pass on existing scan results")
     parser.add_argument("--no-doc-fetch", action="store_true",
                         help="Skip document fetches for context classification")
     parser.add_argument("--limit", type=int, default=0,
@@ -76,6 +188,11 @@ async def main() -> None:
     parser.add_argument("--contact-email", default="conrad@hollomon.dev",
                         help="Email for SEC User-Agent")
     args = parser.parse_args()
+
+    # Dispatch city qualification pass
+    if args.city_pass:
+        await run_city_pass(args)
+        return
 
     output_path = Path(args.output)
     output_path.parent.mkdir(parents=True, exist_ok=True)
