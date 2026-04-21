@@ -287,12 +287,11 @@ async def main() -> None:
     output_path = Path(args.output)
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    # Load companies and state data
+    # Load companies
     print(f"Loading companies from {args.awards}...")
     companies = load_companies(args.awards)
     total_awards = sum(c for _, c in companies)
-    states = load_company_states(args.awards)
-    print(f"  {len(companies):,} unique companies, {total_awards:,} awards, {len(states):,} with state data")
+    print(f"  {len(companies):,} unique companies, {total_awards:,} awards")
 
     if args.limit:
         companies = companies[:args.limit]
@@ -342,16 +341,14 @@ async def main() -> None:
     semaphore = asyncio.Semaphore(args.concurrency)
 
     async def _enrich_one(
-        i: int, name: str, award_count: int, state: str | None, out,
+        i: int, name: str, award_count: int, out,
     ) -> None:
         nonlocal with_mentions, with_form_d, with_both, server_errors, errors, processed
 
         async with semaphore:
             error_tracker.register(name)
             try:
-                p = await enrich_company(
-                    client, name, award_count=award_count, company_state=state,
-                )
+                p = await enrich_company(client, name, award_count=award_count)
 
                 has_mention = p.mention_count > 0
                 has_form_d = p.form_d_count > 0
@@ -403,7 +400,7 @@ async def main() -> None:
         for batch_start in range(0, len(remaining), batch_size):
             batch = remaining[batch_start:batch_start + batch_size]
             tasks = [
-                _enrich_one(batch_start + j, name, count, states.get(name), out)
+                _enrich_one(batch_start + j, name, count, out)
                 for j, (name, count) in enumerate(batch)
             ]
             await asyncio.gather(*tasks)

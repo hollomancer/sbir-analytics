@@ -521,7 +521,6 @@ async def _search_form_d_filings(
     client: EdgarAPIClient,
     company_name: str,
     *,
-    company_state: str | None = None,
     match_threshold: int = 85,
 ) -> list[EdgarFormDFiling]:
     """Search for Form D (Regulation D) filings by a company.
@@ -529,14 +528,13 @@ async def _search_form_d_filings(
     Private companies raising capital under Reg D must file Form D.
     This identifies SBIR companies that raised venture/angel capital.
 
-    When *company_state* is provided (2-letter abbreviation from SBIR award),
-    filings whose ``biz_states`` don't include that state are rejected.
-    This eliminates same-name companies in different states.
+    Only applies name fuzzy matching here. State, temporal, and
+    person-based disambiguation are handled by the confidence scorer
+    in the --form-d-xml pass (see compute_form_d_confidence).
 
     Args:
         client: EdgarAPIClient instance.
         company_name: Company name to search for.
-        company_state: Optional 2-letter state code for cross-referencing.
         match_threshold: Minimum fuzzy score for name match.
 
     Returns:
@@ -554,15 +552,6 @@ async def _search_form_d_filings(
         score = fuzz.token_set_ratio(company_name.upper(), entity_name.upper())
         if score < match_threshold:
             continue
-
-        # State cross-reference: reject if we know the SBIR state and
-        # the Form D filer's business state doesn't match.
-        if company_state:
-            biz_states = result.get("biz_states", [])
-            if biz_states and company_state.upper() not in (
-                s.upper() for s in biz_states
-            ):
-                continue
 
         filing_date_str = result.get("file_date")
         if not filing_date_str:
@@ -696,7 +685,6 @@ async def enrich_company(
     company_uei: str | None = None,
     *,
     award_count: int = 0,
-    company_state: str | None = None,
     resolve_cik: bool = True,
     fetch_financials: bool = True,
     search_inbound_ma: bool = True,
@@ -716,7 +704,6 @@ async def enrich_company(
         company_name: SBIR company name.
         company_uei: Optional UEI for linking.
         award_count: Number of SBIR awards (used for mention noise scoring).
-        company_state: 2-letter state code from SBIR award (for Form D validation).
         resolve_cik: Whether to attempt CIK resolution (public company match).
         fetch_financials: Whether to pull XBRL financials for CIK matches.
         search_inbound_ma: Whether to search for the company in other filings.
@@ -778,9 +765,7 @@ async def enrich_company(
 
     # Form D search — private capital raises under Regulation D
     if search_form_d:
-        form_d_filings = await _search_form_d_filings(
-            client, company_name, company_state=company_state,
-        )
+        form_d_filings = await _search_form_d_filings(client, company_name)
         profile.form_d_count = len(form_d_filings)
         if form_d_filings:
             profile.has_form_d = True
