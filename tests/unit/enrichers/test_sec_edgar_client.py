@@ -273,3 +273,29 @@ class TestGetRecentFilings:
 
         filings = await client.get_recent_filings("99999")
         assert filings == []
+
+
+class TestFetchFormDXml:
+    @pytest.mark.asyncio
+    async def test_fetch_form_d_xml_success(self, client, mock_http_client):
+        mock_response = AsyncMock()
+        mock_response.status_code = 200
+        mock_response.text = (
+            "<edgarSubmission><primaryIssuer><entityName>TEST</entityName>"
+            "</primaryIssuer></edgarSubmission>"
+        )
+        mock_http_client.get = AsyncMock(return_value=mock_response)
+
+        result = await client.fetch_form_d_xml("1145986", "0001145986-11-000003")
+        assert result is not None
+        assert "<entityName>TEST</entityName>" in result
+
+    @pytest.mark.asyncio
+    async def test_fetch_form_d_xml_404_returns_none(self, client, mock_http_client):
+        mock_response = AsyncMock()
+        mock_response.status_code = 404
+        mock_response.text = "Not Found"
+        mock_http_client.get = AsyncMock(return_value=mock_response)
+
+        result = await client.fetch_form_d_xml("0000000", "0000000000-00-000000")
+        assert result is None

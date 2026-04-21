@@ -411,6 +411,53 @@ class EdgarAPIClient(BaseAsyncAPIClient):
             logger.debug(f"Failed to fetch filing document {url}: {e}")
             return None
 
+    async def fetch_form_d_xml(
+        self,
+        cik: str,
+        accession: str,
+    ) -> str | None:
+        """Fetch the raw XML text of a Form D filing.
+
+        Args:
+            cik: CIK (zero-padded or not).
+            accession: Accession number (e.g., '0001145986-11-000003').
+
+        Returns:
+            Raw XML string, or None on error.
+        """
+        accession_path = accession.replace("-", "")
+        cik_padded = cik.zfill(10)
+        url = (
+            f"https://www.sec.gov/Archives/edgar/data/"
+            f"{cik_padded}/{accession_path}/primary_doc.xml"
+        )
+
+        retry_attempts = cast(int, self.api_config.get("retry_attempts", 3))
+        retry_backoff = cast(float, self.api_config.get("retry_backoff_seconds", 2.0))
+
+        @retry(
+            stop=stop_after_attempt(max(1, retry_attempts)),
+            wait=wait_exponential(multiplier=retry_backoff, min=retry_backoff, max=30),
+            retry=retry_if_exception_type((httpx.HTTPError, httpx.TimeoutException)),
+            reraise=True,
+        )
+        async def _do_fetch() -> httpx.Response:
+            await self._wait_for_rate_limit()
+            headers = self._build_headers()
+            headers["Accept"] = "application/xml, text/xml, */*"
+            return await self._client.get(
+                url, headers=headers, follow_redirects=True
+            )
+
+        try:
+            response = await _do_fetch()
+            if response.status_code != 200:
+                return None
+            return response.text
+        except (httpx.HTTPError, httpx.TimeoutException) as e:
+            logger.debug(f"Failed to fetch Form D XML {url}: {e}")
+            return None
+
     async def get_company_tickers(self) -> dict[str, dict[str, Any]]:
         """Fetch the full CIK-to-ticker mapping from EDGAR.
 
