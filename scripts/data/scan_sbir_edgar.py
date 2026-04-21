@@ -37,19 +37,40 @@ from loguru import logger
 from sbir_etl.enrichers.sec_edgar.client import EdgarAPIClient
 from sbir_etl.enrichers.sec_edgar.enricher import enrich_company
 
+# Default concurrency — number of companies enriched simultaneously.
+# The client's rate limiter (600 req/min) is the real throttle; this just
+# keeps enough requests in-flight to fill the rate budget.
+DEFAULT_CONCURRENCY = 8
+
 
 class _ServerErrorTracker:
-    """Loguru sink that detects HTTP 5xx warnings during a company's enrichment."""
+    """Thread-safe loguru sink that tracks which companies hit HTTP 5xx.
+
+    In concurrent mode, multiple companies are in-flight at once, so we
+    match the company name from the log message instead of using a simple
+    boolean flag.
+    """
 
     def __init__(self):
-        self.saw_server_error = False
+        self._affected: set[str] = set()
+        self._active_companies: set[str] = set()
+
+    def register(self, company_name: str) -> None:
+        self._active_companies.add(company_name)
+
+    def unregister(self, company_name: str) -> None:
+        self._active_companies.discard(company_name)
 
     def write(self, message):
-        if "HTTP 5" in message:
-            self.saw_server_error = True
+        if "HTTP 5" not in message:
+            return
+        for name in self._active_companies:
+            if name in message:
+                self._affected.add(name)
+                return
 
-    def reset(self):
-        self.saw_server_error = False
+    def had_error(self, company_name: str) -> bool:
+        return company_name in self._affected
 
 
 def load_companies(awards_csv: str) -> list[tuple[str, int]]:
@@ -212,6 +233,8 @@ async def main() -> None:
                         help="Scan only first N companies (0=all)")
     parser.add_argument("--rescan-errors", action="store_true",
                         help="Re-scan companies that had server errors in previous run")
+    parser.add_argument("--concurrency", type=int, default=DEFAULT_CONCURRENCY,
+                        help=f"Companies to enrich concurrently (default {DEFAULT_CONCURRENCY})")
     parser.add_argument("--contact-email", default="conrad@hollomon.dev",
                         help="Email for SEC User-Agent")
     args = parser.parse_args()
@@ -274,28 +297,24 @@ async def main() -> None:
     errors = 0
     start_time = time.time()
     processed = len(done)
+    write_lock = asyncio.Lock()
+    semaphore = asyncio.Semaphore(args.concurrency)
 
-    with open(output_path, "a") as out:
-        for i, (name, award_count) in enumerate(remaining):
-            error_tracker.reset()
+    async def _enrich_one(
+        i: int, name: str, award_count: int, out,
+    ) -> None:
+        nonlocal with_mentions, with_form_d, with_both, server_errors, errors, processed
+
+        async with semaphore:
+            error_tracker.register(name)
             try:
                 p = await enrich_company(client, name)
 
                 has_mention = p.mention_count > 0
                 has_form_d = p.form_d_count > 0
 
-                if has_mention:
-                    with_mentions += 1
-                if has_form_d:
-                    with_form_d += 1
-                if has_mention and has_form_d:
-                    with_both += 1
+                had_errors = error_tracker.had_error(name)
 
-                had_errors = error_tracker.saw_server_error
-                if had_errors:
-                    server_errors += 1
-
-                # Write checkpoint record
                 rec = {
                     "company_name": name,
                     "award_count": award_count,
@@ -310,27 +329,51 @@ async def main() -> None:
                 }
                 if had_errors:
                     rec["had_server_errors"] = True
-                out.write(json.dumps(rec) + "\n")
-                out.flush()  # Flush after every record
+
+                async with write_lock:
+                    if has_mention:
+                        with_mentions += 1
+                    if has_form_d:
+                        with_form_d += 1
+                    if has_mention and has_form_d:
+                        with_both += 1
+                    if had_errors:
+                        server_errors += 1
+                    out.write(json.dumps(rec) + "\n")
+                    out.flush()
+                    processed += 1
 
             except Exception as e:
-                errors += 1
-                # Still checkpoint the error so we don't re-scan
-                rec = {"company_name": name, "award_count": award_count, "error": str(e)[:200]}
-                out.write(json.dumps(rec) + "\n")
-                out.flush()
+                async with write_lock:
+                    errors += 1
+                    rec = {"company_name": name, "award_count": award_count, "error": str(e)[:200]}
+                    out.write(json.dumps(rec) + "\n")
+                    out.flush()
+                    processed += 1
+            finally:
+                error_tracker.unregister(name)
 
-            processed += 1
-            if (i + 1) % 100 == 0:
-                elapsed = time.time() - start_time
-                rate = (i + 1) / elapsed if elapsed > 0 else 0
-                eta_min = (len(remaining) - i - 1) / rate / 60 if rate > 0 else 0
-                print(
-                    f"  {processed:,}/{len(companies):,} "
-                    f"({rate:.1f}/s, ETA {eta_min:.0f}min) "
-                    f"mentions={with_mentions} formD={with_form_d} "
-                    f"both={with_both} err={errors} 5xx={server_errors}"
-                )
+    # Process in batches to allow periodic progress reporting
+    batch_size = 100
+    with open(output_path, "a") as out:
+        for batch_start in range(0, len(remaining), batch_size):
+            batch = remaining[batch_start:batch_start + batch_size]
+            tasks = [
+                _enrich_one(batch_start + j, name, count, out)
+                for j, (name, count) in enumerate(batch)
+            ]
+            await asyncio.gather(*tasks)
+
+            elapsed = time.time() - start_time
+            scanned = batch_start + len(batch)
+            rate = scanned / elapsed if elapsed > 0 else 0
+            eta_min = (len(remaining) - scanned) / rate / 60 if rate > 0 else 0
+            print(
+                f"  {processed:,}/{len(companies):,} "
+                f"({rate:.1f}/s, ETA {eta_min:.0f}min) "
+                f"mentions={with_mentions} formD={with_form_d} "
+                f"both={with_both} err={errors} 5xx={server_errors}"
+            )
 
     elapsed = time.time() - start_time
     logger.remove(tracker_id)
