@@ -1930,7 +1930,7 @@ wheels = [
 
 [[package]]
 name = "nbconvert"
-version = "7.17.0"
+version = "7.17.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "beautifulsoup4" },
@@ -1948,9 +1948,9 @@ dependencies = [
     { name = "pygments" },
     { name = "traitlets" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/38/47/81f886b699450d0569f7bc551df2b1673d18df7ff25cc0c21ca36ed8a5ff/nbconvert-7.17.0.tar.gz", hash = "sha256:1b2696f1b5be12309f6c7d707c24af604b87dfaf6d950794c7b07acab96dda78", size = 862855, upload-time = "2026-01-29T16:37:48.478Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/01/b1/708e53fe2e429c103c6e6e159106bcf0357ac41aa4c28772bd8402339051/nbconvert-7.17.1.tar.gz", hash = "sha256:34d0d0a7e73ce3cbab6c5aae8f4f468797280b01fd8bd2ca746da8569eddd7d2", size = 865311, upload-time = "2026-04-08T00:44:14.914Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/0d/4b/8d5f796a792f8a25f6925a96032f098789f448571eb92011df1ae59e8ea8/nbconvert-7.17.0-py3-none-any.whl", hash = "sha256:4f99a63b337b9a23504347afdab24a11faa7d86b405e5c8f9881cd313336d518", size = 261510, upload-time = "2026-01-29T16:37:46.322Z" },
+    { url = "https://files.pythonhosted.org/packages/67/f8/bb0a9d5f46819c821dc1f004aa2cc29b1d91453297dbf5ff20470f00f193/nbconvert-7.17.1-py3-none-any.whl", hash = "sha256:aa85c087b435e7bf1ffd03319f658e285f2b89eccab33bc1ba7025495ab3e7c8", size = 261927, upload-time = "2026-04-08T00:44:12.845Z" },
 ]
 
 [[package]]
@@ -3150,7 +3150,7 @@ requires-dist = [
     { name = "pandas-stubs", marker = "extra == 'dev'", specifier = ">=2.2.0,<4.0.0" },
     { name = "plotly", marker = "extra == 'viz'", specifier = ">=5.18.0,<7.0.0" },
     { name = "pre-commit", marker = "extra == 'dev'", specifier = ">=3.5.0,<5.0.0" },
-    { name = "psutil", marker = "extra == 'monitoring'", specifier = ">=5.9.0,<7.0.0" },
+    { name = "psutil", marker = "extra == 'monitoring'", specifier = ">=5.9.0,<8.0.0" },
     { name = "pyarrow", specifier = ">=14.0.2,<24.0.0" },
     { name = "pydantic", specifier = ">=2.8.0,<3.0.0" },
     { name = "pyreadstat", marker = "extra == 'uspto'", specifier = ">=1.1.4,<2.0.0" },
@@ -3169,11 +3169,11 @@ requires-dist = [
     { name = "sbir-graph", marker = "extra == 'stack-dev'", editable = "packages/sbir-graph" },
     { name = "sbir-ml", marker = "extra == 'stack-dev'", editable = "packages/sbir-ml" },
     { name = "sbir-rag", marker = "extra == 'stack-dev'", editable = "packages/sbir-rag" },
-    { name = "tenacity", specifier = ">=8.2.3,<10.0.0" },
+    { name = "tenacity", specifier = ">=9.1.4,<10.0.0" },
     { name = "testcontainers", extras = ["neo4j"], marker = "extra == 'dev'", specifier = ">=4.0.0,<5.0.0" },
     { name = "types-psutil", marker = "extra == 'dev'", specifier = ">=5.9.0,<8.0.0" },
     { name = "types-pyyaml", marker = "extra == 'dev'", specifier = ">=6.0.0,<7.0.0" },
-    { name = "types-tqdm", marker = "extra == 'dev'", specifier = ">=4.66.0,<5.0.0" },
+    { name = "types-tqdm", marker = "extra == 'dev'", specifier = ">=4.67.3.20260408,<5.0.0" },
 ]
 provides-extras = ["uspto", "cloud", "phonetic", "monitoring", "viz", "dev", "stack-dev"]
 
@@ -3546,11 +3546,11 @@ wheels = [
 
 [[package]]
 name = "tenacity"
-version = "8.5.0"
+version = "9.1.4"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/a3/4d/6a19536c50b849338fcbe9290d562b52cbdcf30d8963d3588a68a4107df1/tenacity-8.5.0.tar.gz", hash = "sha256:8bc6c0c8a09b31e6cad13c47afbed1a567518250a9a171418582ed8d9c20ca78", size = 47309, upload-time = "2024-07-05T07:25:31.836Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/47/c6/ee486fd809e357697ee8a44d3d69222b344920433d3b6666ccd9b374630c/tenacity-9.1.4.tar.gz", hash = "sha256:adb31d4c263f2bd041081ab33b498309a57c77f9acf2db65aadf0898179cf93a", size = 49413, upload-time = "2026-02-07T10:45:33.841Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/d2/3f/8ba87d9e287b9d385a02a7114ddcef61b26f86411e121c9003eb509a1773/tenacity-8.5.0-py3-none-any.whl", hash = "sha256:b594c2a5945830c267ce6b79a166228323ed52718f30302c1359836112346687", size = 28165, upload-time = "2024-07-05T07:25:29.591Z" },
+    { url = "https://files.pythonhosted.org/packages/d7/c1/eb8f9debc45d3b7918a32ab756658a0904732f75e555402972246b0b8e71/tenacity-9.1.4-py3-none-any.whl", hash = "sha256:6095a360c919085f28c6527de529e76a06ad89b23659fa881ae0649b867a9d55", size = 28926, upload-time = "2026-02-07T10:45:32.24Z" },
 ]
 
 [[package]]
@@ -3824,14 +3824,14 @@ wheels = [
 
 [[package]]
 name = "types-tqdm"
-version = "4.67.0.20250809"
+version = "4.67.3.20260408"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "types-requests" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/fb/d0/cf498fc630d9fdaf2428b93e60b0e67b08008fec22b78716b8323cf644dc/types_tqdm-4.67.0.20250809.tar.gz", hash = "sha256:02bf7ab91256080b9c4c63f9f11b519c27baaf52718e5fdab9e9606da168d500", size = 17200, upload-time = "2025-08-09T03:17:43.489Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/43/42/2e2968e68a694d3dac3a47aa0df06e46be1a6eef498e5bd15f4c54674eb9/types_tqdm-4.67.3.20260408.tar.gz", hash = "sha256:fd849a79891ae7136ed47541aface15c35bd9a13160fa8a93e42e10f60cf4c8d", size = 18119, upload-time = "2026-04-08T04:36:52.488Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/3f/13/3ff0781445d7c12730befce0fddbbc7a76e56eb0e7029446f2853238360a/types_tqdm-4.67.0.20250809-py3-none-any.whl", hash = "sha256:1a73053b31fcabf3c1f3e2a9d5ecdba0f301bde47a418cd0e0bdf774827c5c57", size = 24020, upload-time = "2025-08-09T03:17:42.453Z" },
+    { url = "https://files.pythonhosted.org/packages/14/5d/7dedddc32ab7bc2344ece772b5e0f03ec63a1d47ad259696689713c1cf50/types_tqdm-4.67.3.20260408-py3-none-any.whl", hash = "sha256:3b9ed74ebef04df8f53d470ffdc84348e93496d8acafa08bf79fafce0f2f5b5d", size = 24561, upload-time = "2026-04-08T04:36:51.538Z" },
 ]
 
 [[package]]
