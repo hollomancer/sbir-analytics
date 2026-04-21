@@ -143,6 +143,74 @@ class EdgarFormDFiling(BaseModel):
     model_config = ConfigDict(validate_assignment=True)
 
 
+class FormDOffering(BaseModel):
+    """Structured data extracted from a Form D XML filing."""
+
+    # Identifiers
+    cik: str = Field(..., description="CIK of the Form D filer")
+    accession_number: str = Field(..., description="SEC accession number")
+    filing_date: date = Field(..., description="Date filed with SEC")
+
+    # Issuer
+    entity_name: str = Field(..., description="Entity name from XML")
+    entity_type: str | None = Field(None, description="Corporation, LLC, LP, etc.")
+    year_of_inc: int | None = Field(None, description="Year of incorporation")
+    jurisdiction_of_inc: str | None = Field(None, description="State/country of incorporation")
+
+    # Address
+    street1: str | None = Field(None, description="Street address")
+    city: str | None = Field(None, description="City")
+    state: str | None = Field(None, description="2-letter state code")
+    zip_code: str | None = Field(None, description="ZIP code")
+    phone: str | None = Field(None, description="Issuer phone number")
+
+    # Offering details
+    industry_group: str | None = Field(None, description="e.g., 'Other Technology', 'Biotechnology'")
+    revenue_range: str | None = Field(None, description="e.g., 'Decline to Disclose', '$1-$5M'")
+    date_of_first_sale: date | None = Field(None, description="When securities were first sold")
+    securities_types: list[str] = Field(default_factory=list, description="e.g., ['debt', 'equity']")
+    federal_exemption: str | None = Field(None, description="Reg D rule: '06'=506(b), '06b'=506(c)")
+
+    # Amounts
+    total_offering_amount: float | None = Field(None, description="Target raise amount (USD)")
+    total_amount_sold: float | None = Field(None, description="Amount actually raised (USD)")
+    total_remaining: float | None = Field(None, description="Amount still available (USD)")
+    minimum_investment: float | None = Field(None, description="Minimum investment accepted (USD)")
+
+    # Investors
+    num_investors: int | None = Field(None, description="Number of investors")
+    has_non_accredited: bool | None = Field(None, description="Whether non-accredited investors participated")
+
+    # People
+    related_persons: list[dict] = Field(
+        default_factory=list,
+        description="Officers/directors/promoters: [{name, title, city, state}]",
+    )
+
+    # Flags
+    is_amendment: bool = Field(default=False, description="Whether this is a D/A amendment")
+    is_business_combination: bool = Field(default=False, description="Business combination transaction flag")
+
+    model_config = ConfigDict(validate_assignment=True)
+
+
+class FormDMatchConfidence(BaseModel):
+    """Confidence assessment for a Form D match to an SBIR company."""
+
+    tier: str = Field(..., description="'high', 'medium', or 'low'")
+    score: float = Field(..., ge=0.0, le=1.0, description="Composite confidence score")
+
+    # Individual signals (None if not evaluable)
+    name_score: float = Field(..., description="Fuzzy name match score")
+    person_score: float | None = Field(None, description="Best PI-to-related-person match")
+    person_match_detail: str | None = Field(None, description="e.g., \"PI 'J Smith' <> Dir 'John Smith' (92%)\"")
+    state_score: float | None = Field(None, description="biz_states overlap with SBIR state")
+    temporal_score: float | None = Field(None, description="Form D date vs SBIR award date plausibility")
+    year_of_inc_score: float | None = Field(None, description="year_of_inc vs earliest SBIR award year")
+
+    model_config = ConfigDict(validate_assignment=True)
+
+
 class CompanyEdgarProfile(BaseModel):
     """Aggregated SEC EDGAR profile for an SBIR company.
 
