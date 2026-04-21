@@ -688,16 +688,18 @@ async def enrich_company(
     resolve_cik: bool = True,
     fetch_financials: bool = True,
     search_inbound_ma: bool = True,
-    search_form_d: bool = True,
+    search_form_d: bool = False,
 ) -> CompanyEdgarProfile:
     """Enrich a single company with SEC EDGAR data.
 
-    Three signal types:
+    Two signal types (Form D sourced separately via bulk index):
     1. CIK resolution — match company name to a public SEC filer, then
        optionally pull XBRL financials (revenue, R&D, assets)
     2. Filing mentions — search for the company name in other public
        companies' filings (M&A, ownership, partnership signals)
-    3. Form D filings — Regulation D private capital raises
+
+    Form D is disabled by default — use fetch_form_d_index.py for bulk
+    Form D matching from EDGAR quarterly index files instead of EFTS.
 
     Args:
         client: EdgarAPIClient instance.
@@ -707,7 +709,7 @@ async def enrich_company(
         resolve_cik: Whether to attempt CIK resolution (public company match).
         fetch_financials: Whether to pull XBRL financials for CIK matches.
         search_inbound_ma: Whether to search for the company in other filings.
-        search_form_d: Whether to search for Form D (Reg D) filings.
+        search_form_d: Whether to search for Form D via EFTS (default False).
 
     Returns:
         CompanyEdgarProfile with whatever data could be resolved.

@@ -331,8 +331,6 @@ async def main() -> None:
     tracker_id = logger.add(error_tracker, level="WARNING", format="{message}")
 
     with_mentions = 0
-    with_form_d = 0
-    with_both = 0
     server_errors = 0
     errors = 0
     start_time = time.time()
@@ -343,7 +341,7 @@ async def main() -> None:
     async def _enrich_one(
         i: int, name: str, award_count: int, out,
     ) -> None:
-        nonlocal with_mentions, with_form_d, with_both, server_errors, errors, processed
+        nonlocal with_mentions, server_errors, errors, processed
 
         async with semaphore:
             error_tracker.register(name)
@@ -351,8 +349,6 @@ async def main() -> None:
                 p = await enrich_company(client, name, award_count=award_count)
 
                 has_mention = p.mention_count > 0
-                has_form_d = p.form_d_count > 0
-
                 had_errors = error_tracker.had_error(name)
 
                 rec = {
@@ -362,10 +358,6 @@ async def main() -> None:
                     "mention_filers": p.mention_filers[:5],
                     "mention_types": p.mention_types,
                     "latest_mention_date": str(p.latest_mention_date) if p.latest_mention_date else None,
-                    "form_d_count": p.form_d_count,
-                    "has_form_d": p.has_form_d,
-                    "form_d_cik": p.form_d_cik,
-                    "latest_form_d_date": str(p.latest_form_d_date) if p.latest_form_d_date else None,
                     "mention_noise_score": p.mention_noise_score,
                 }
                 if had_errors:
@@ -374,10 +366,6 @@ async def main() -> None:
                 async with write_lock:
                     if has_mention:
                         with_mentions += 1
-                    if has_form_d:
-                        with_form_d += 1
-                    if has_mention and has_form_d:
-                        with_both += 1
                     if had_errors:
                         server_errors += 1
                     out.write(json.dumps(rec) + "\n")
@@ -412,8 +400,7 @@ async def main() -> None:
             print(
                 f"  {processed:,}/{len(companies):,} "
                 f"({rate:.1f}/s, ETA {eta_min:.0f}min) "
-                f"mentions={with_mentions} formD={with_form_d} "
-                f"both={with_both} err={errors} 5xx={server_errors}"
+                f"mentions={with_mentions} err={errors} 5xx={server_errors}"
             )
 
     elapsed = time.time() - start_time
@@ -425,11 +412,10 @@ async def main() -> None:
     print(f"SCAN COMPLETE — {processed:,} companies in {elapsed/60:.1f} min")
     print(f"{'='*60}")
     print(f"SEC filing mentions:  {with_mentions:,} ({with_mentions/len(remaining)*100:.1f}%)")
-    print(f"Form D (investment):  {with_form_d:,} ({with_form_d/len(remaining)*100:.1f}%)")
-    print(f"Both signals:         {with_both:,} ({with_both/len(remaining)*100:.1f}%)")
     print(f"Errors:               {errors:,}")
     print(f"Server errors (5xx):  {server_errors:,} (rescan with --rescan-errors)")
     print(f"Output:               {output_path}")
+    print(f"Note: Form D sourced separately via fetch_form_d_index.py")
 
     # Also write summary
     summary_path = output_path.with_suffix(".summary.json")
@@ -437,8 +423,6 @@ async def main() -> None:
         "total_companies": len(companies),
         "scanned": processed,
         "with_mentions": with_mentions,
-        "with_form_d": with_form_d,
-        "with_both": with_both,
         "errors": errors,
         "server_errors": server_errors,
         "elapsed_seconds": elapsed,

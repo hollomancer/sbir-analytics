@@ -261,7 +261,9 @@ class TestEnrichCompany:
             ]
         )
 
-        profile = await enrich_company(mock_client, "Acme Corp", company_uei="UEI123")
+        profile = await enrich_company(
+            mock_client, "Acme Corp", company_uei="UEI123", search_form_d=True,
+        )
         assert profile.company_uei == "UEI123"
         assert profile.mention_count == 1
         assert "Big Acquirer Inc" in profile.mention_filers
@@ -469,7 +471,7 @@ class TestEnrichCompanySignals:
         )
 
         profile = await enrich_company(
-            mock_client, "Venture Backed SBIR Inc"
+            mock_client, "Venture Backed SBIR Inc", search_form_d=True,
         )
         assert profile.has_form_d is True
         assert profile.form_d_cik == "77777"
@@ -501,7 +503,7 @@ class TestEnrichCompanySignals:
             ]
         )
 
-        profile = await enrich_company(mock_client, "Dual Signal Corp")
+        profile = await enrich_company(mock_client, "Dual Signal Corp", search_form_d=True)
         assert profile.mention_count == 1
         assert profile.has_form_d is True
 
