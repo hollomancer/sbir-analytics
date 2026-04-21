@@ -32,8 +32,24 @@ sys.stdout.reconfigure(line_buffering=True)
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
+from loguru import logger
+
 from sbir_etl.enrichers.sec_edgar.client import EdgarAPIClient
 from sbir_etl.enrichers.sec_edgar.enricher import enrich_company
+
+
+class _ServerErrorTracker:
+    """Loguru sink that detects HTTP 5xx warnings during a company's enrichment."""
+
+    def __init__(self):
+        self.saw_server_error = False
+
+    def write(self, message):
+        if "HTTP 5" in message:
+            self.saw_server_error = True
+
+    def reset(self):
+        self.saw_server_error = False
 
 
 def load_companies(awards_csv: str) -> list[tuple[str, int]]:
@@ -59,8 +75,13 @@ def load_company_cities(awards_csv: str) -> dict[str, str]:
     return cities
 
 
-def load_checkpoint(path: Path) -> set[str]:
-    """Load already-scanned company names from checkpoint file."""
+def load_checkpoint(path: Path, *, rescan_errors: bool = False) -> set[str]:
+    """Load already-scanned company names from checkpoint file.
+
+    When *rescan_errors* is True, companies whose records have
+    ``had_server_errors`` or ``error`` are excluded from the done set
+    so they get re-scanned.
+    """
     done: set[str] = set()
     if not path.exists():
         return done
@@ -68,6 +89,10 @@ def load_checkpoint(path: Path) -> set[str]:
         for line in f:
             try:
                 rec = json.loads(line)
+                if rescan_errors and (
+                    rec.get("had_server_errors") or rec.get("error")
+                ):
+                    continue
                 done.add(rec["company_name"])
             except (json.JSONDecodeError, KeyError):
                 continue
@@ -185,6 +210,8 @@ async def main() -> None:
                         help="Skip document fetches for context classification")
     parser.add_argument("--limit", type=int, default=0,
                         help="Scan only first N companies (0=all)")
+    parser.add_argument("--rescan-errors", action="store_true",
+                        help="Re-scan companies that had server errors in previous run")
     parser.add_argument("--contact-email", default="conrad@hollomon.dev",
                         help="Email for SEC User-Agent")
     args = parser.parse_args()
@@ -209,9 +236,11 @@ async def main() -> None:
 
     # Load checkpoint
     done: set[str] = set()
-    if args.resume:
-        done = load_checkpoint(output_path)
+    if args.resume or args.rescan_errors:
+        done = load_checkpoint(output_path, rescan_errors=args.rescan_errors)
         print(f"  Resuming: {len(done):,} already scanned")
+        if args.rescan_errors:
+            print("  (re-scanning companies with server errors)")
 
     remaining = [(name, count) for name, count in companies if name not in done]
     print(f"  {len(remaining):,} companies to scan\n")
@@ -234,16 +263,21 @@ async def main() -> None:
         client.fetch_filing_document = _no_fetch
         print("  Document fetches DISABLED (counts only)\n")
 
-    # Scan
+    # Scan — track server errors per company via loguru sink
+    error_tracker = _ServerErrorTracker()
+    tracker_id = logger.add(error_tracker, level="WARNING", format="{message}")
+
     with_mentions = 0
     with_form_d = 0
     with_both = 0
+    server_errors = 0
     errors = 0
     start_time = time.time()
     processed = len(done)
 
     with open(output_path, "a") as out:
         for i, (name, award_count) in enumerate(remaining):
+            error_tracker.reset()
             try:
                 p = await enrich_company(client, name)
 
@@ -256,6 +290,10 @@ async def main() -> None:
                     with_form_d += 1
                 if has_mention and has_form_d:
                     with_both += 1
+
+                had_errors = error_tracker.saw_server_error
+                if had_errors:
+                    server_errors += 1
 
                 # Write checkpoint record
                 rec = {
@@ -270,6 +308,8 @@ async def main() -> None:
                     "form_d_cik": p.form_d_cik,
                     "latest_form_d_date": str(p.latest_form_d_date) if p.latest_form_d_date else None,
                 }
+                if had_errors:
+                    rec["had_server_errors"] = True
                 out.write(json.dumps(rec) + "\n")
                 out.flush()  # Flush after every record
 
@@ -289,10 +329,11 @@ async def main() -> None:
                     f"  {processed:,}/{len(companies):,} "
                     f"({rate:.1f}/s, ETA {eta_min:.0f}min) "
                     f"mentions={with_mentions} formD={with_form_d} "
-                    f"both={with_both} err={errors}"
+                    f"both={with_both} err={errors} 5xx={server_errors}"
                 )
 
     elapsed = time.time() - start_time
+    logger.remove(tracker_id)
     await client.aclose()
 
     # Summary
@@ -303,6 +344,7 @@ async def main() -> None:
     print(f"Form D (investment):  {with_form_d:,} ({with_form_d/len(remaining)*100:.1f}%)")
     print(f"Both signals:         {with_both:,} ({with_both/len(remaining)*100:.1f}%)")
     print(f"Errors:               {errors:,}")
+    print(f"Server errors (5xx):  {server_errors:,} (rescan with --rescan-errors)")
     print(f"Output:               {output_path}")
 
     # Also write summary
@@ -314,6 +356,7 @@ async def main() -> None:
         "with_form_d": with_form_d,
         "with_both": with_both,
         "errors": errors,
+        "server_errors": server_errors,
         "elapsed_seconds": elapsed,
         "doc_fetch_enabled": not args.no_doc_fetch,
     }

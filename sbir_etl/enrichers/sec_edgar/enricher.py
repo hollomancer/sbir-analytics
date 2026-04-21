@@ -801,6 +801,7 @@ async def enrich_companies_with_edgar(
             col: f"sec_{col}"
             for col in enrichment_df.columns
             if col not in (company_name_col, "company_name")
+            and not col.startswith("sec_")
         }
         enrichment_df = enrichment_df.rename(columns=rename_map)
 

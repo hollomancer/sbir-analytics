@@ -115,6 +115,16 @@ def sec_edgar_enriched_companies(
 
     try:
         result_df = asyncio.run(_run_enrichment())
+    except RuntimeError as e:
+        if "cannot be called from a running event loop" in str(e):
+            loop = asyncio.get_event_loop()
+            result_df = loop.run_until_complete(_run_enrichment())
+        else:
+            context.log.error(f"SEC EDGAR enrichment failed: {e}")
+            return Output(
+                value=validated_sbir_awards,
+                metadata={"status": "error", "reason": str(e)},
+            )
     except Exception as e:
         context.log.error(f"SEC EDGAR enrichment failed: {e}")
         return Output(
@@ -165,7 +175,9 @@ def sec_edgar_enrichment_quality_check(
     Checks:
     - Enrichment columns are present (if enrichment was enabled)
     - Public match rate is not suspiciously high (>50% suggests false positives)
-    - No excessive all-null columns in enriched output
+    - No excessive all-null columns in enriched output (heuristic — compares
+      post-enrichment state only, cannot distinguish merge-introduced nulls
+      from pre-existing ones)
     """
     df = sec_edgar_enriched_companies
     issues = []
@@ -216,7 +228,7 @@ def sec_edgar_enrichment_quality_check(
     passed = len(issues) == 0
     return AssetCheckResult(
         passed=passed,
-        severity=AssetCheckSeverity.WARN,
+        severity=AssetCheckSeverity.WARN if passed else AssetCheckSeverity.ERROR,
         metadata={
             "sec_columns_count": len(sec_cols),
             "issues": issues if issues else ["No issues detected"],

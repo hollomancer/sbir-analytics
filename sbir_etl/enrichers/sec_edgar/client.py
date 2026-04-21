@@ -382,20 +382,30 @@ class EdgarAPIClient(BaseAsyncAPIClient):
         accession_path = accession.replace("-", "")
         cik_padded = cik.zfill(10)
         url = f"https://www.sec.gov/Archives/edgar/data/{cik_padded}/{accession_path}/{filename}"
-        try:
+
+        retry_attempts = cast(int, self.api_config.get("retry_attempts", 3))
+        retry_backoff = cast(float, self.api_config.get("retry_backoff_seconds", 2.0))
+
+        @retry(
+            stop=stop_after_attempt(max(1, retry_attempts)),
+            wait=wait_exponential(multiplier=retry_backoff, min=retry_backoff, max=30),
+            retry=retry_if_exception_type((httpx.HTTPError, httpx.TimeoutException)),
+            reraise=True,
+        )
+        async def _do_fetch() -> httpx.Response:
             await self._wait_for_rate_limit()
-            headers = {
-                "User-Agent": f"SBIR-Analytics/0.1.0 ({self.contact_email})"
-                if self.contact_email else "SBIR-Analytics/0.1.0",
-                "Accept": "text/html, application/xhtml+xml, */*",
-            }
-            response = await self._client.get(
+            headers = self._build_headers()
+            headers["Accept"] = "text/html, application/xhtml+xml, */*"
+            return await self._client.get(
                 url, headers=headers, follow_redirects=True
             )
+
+        try:
+            response = await _do_fetch()
             if response.status_code != 200:
                 return None
             return _strip_html(response.text)
-        except Exception as e:
+        except (httpx.HTTPError, httpx.TimeoutException) as e:
             logger.debug(f"Failed to fetch filing document {url}: {e}")
             return None
 
