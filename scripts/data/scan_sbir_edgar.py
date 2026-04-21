@@ -308,7 +308,7 @@ async def main() -> None:
         async with semaphore:
             error_tracker.register(name)
             try:
-                p = await enrich_company(client, name)
+                p = await enrich_company(client, name, award_count=award_count)
 
                 has_mention = p.mention_count > 0
                 has_form_d = p.form_d_count > 0
@@ -326,6 +326,7 @@ async def main() -> None:
                     "has_form_d": p.has_form_d,
                     "form_d_cik": p.form_d_cik,
                     "latest_form_d_date": str(p.latest_form_d_date) if p.latest_form_d_date else None,
+                    "mention_noise_score": p.mention_noise_score,
                 }
                 if had_errors:
                     rec["had_server_errors"] = True

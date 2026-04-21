@@ -1,6 +1,6 @@
 # SEC EDGAR Enrichment for SBIR Companies — Learnings
 
-**Date:** 2026-04-19/20
+**Date:** 2026-04-19/21
 **Branch:** `claude/integrate-sec-edgar-sbir-6Krd1`
 **PR:** #227
 
@@ -26,7 +26,12 @@ company matches for SBIR awardees using the EFTS full-text search API.
   for M&A keyword qualification.
 - **Rate limit**: 10 requests/second (fair-access policy). Requires User-Agent
   with contact email.
-- **Throughput**: ~2.5 companies/sec with 4 EFTS searches per company.
+- **Throughput**: ~6.7 companies/sec with concurrent enrichment (8 companies
+  in-flight, rate limiter as throttle). Sequential was ~0.4/s.
+- **Transient 500s**: EFTS returns intermittent HTTP 500s (Elasticsearch
+  backend load-shedding). Same queries succeed on retry. Base client now
+  retries 5xx 3x with exponential backoff. Scan flags affected companies
+  with `had_server_errors` for targeted re-scan via `--rescan-errors`.
 
 ### CIK Resolution (Company Name → Public Filer)
 
@@ -98,16 +103,62 @@ correctly identifies acquisitions, subsidiaries, contracts, and competitors.
 - SAM.gov entity registration might have POC names but not accessible without
   the full entity extract
 
-## Results at Scale (Ongoing Scan)
+## Results at Scale (Full Scan — 34,460 Companies)
 
-From ~10,000 companies scanned (29% of 34,460):
+| Signal | Count | Rate |
+|--------|-------|------|
+| Any SEC signal | 9,973 | 28.1% |
+| Filing mentions | 7,545 | 21.3% |
+| Form D (Reg D capital raises) | 3,992 | 11.3% |
+| Both signals | 1,564 | 4.4% |
+| Server errors (5xx, partial data) | 845 | 2.4% |
 
-| Signal | Rate | Extrapolated Total |
-|--------|------|-------------------|
-| Any SEC mention | 27.8% | ~9,600 companies |
-| Form D (investment) | 13.6% | ~4,700 companies |
-| Both signals | 5.9% | ~2,000 companies |
-| Neither | ~55% | ~19,000 companies |
+### Mention Type Distribution
+
+| Type | Count | Description |
+|------|-------|-------------|
+| filing_mention | 4,625 | Unclassified (generic mention in filing text) |
+| ma_definitive | 2,194 | Material agreements, completed acquisitions |
+| disclosure | 1,627 | Reg FD disclosures (8-K items 7.01/8.01) |
+| acquisition | 1,470 | Text-confirmed acquisition context |
+| financial_mention | 844 | Earnings/results mentions (8-K item 2.02) |
+| contract | 733 | Customer/supplier/teaming relationships |
+| investment | 695 | VC, equity stakes, funding rounds |
+| subsidiary | 695 | Exhibit 21 / wholly-owned entity listings |
+| ma_proxy | 675 | Merger proxies (DEFM14A/PREM14A) |
+| ownership_active | 573 | SC 13D (>5% with intent) |
+| ownership_passive | 327 | SC 13G (>5% passive) |
+| competitor | 141 | Market analysis / peer comparisons |
+
+### Mention Noise Filtering
+
+**Problem**: ~9% of mention results are false positives from generic company
+names matching unrelated filing text.
+
+**Noise patterns observed**:
+
+| Pattern | Example | Why it's noise |
+|---------|---------|----------------|
+| Short acronyms (≤3 chars) | LTI, MCA, BMS, STI | Match abbreviations in any filing |
+| Common English words | Sediment, Informed, Ideas | Appear as regular words in 10-K prose |
+| All-generic business terms | Risk Management Systems | Matches generic phrases in filings |
+| High mention:award ratio | 25 mentions / 1 award | Real acquisitions have substantial award histories |
+
+**Solution**: Two-factor `mention_noise_score` (0 = clean, higher = noisier):
+1. **Name distinctiveness** (+1 to +3): short acronyms, common English words,
+   all-generic phrases
+2. **Mention-to-award ratio** (+1 to +2): mention_count / award_count > 2 or > 5
+
+**Recommended threshold**: `score >= 2` is likely noise.
+
+| | Raw | Filtered (score < 2) | Removed |
+|---|---|---|---|
+| Companies with mentions | 7,548 | 6,878 | 670 (8.9%) |
+| M&A definitive signals | 2,194 | 1,707 | 487 |
+
+The noise score is stored in `CompanyEdgarProfile.mention_noise_score` and
+written to JSONL as `mention_noise_score`. The Neo4j loader filters mention-only
+records with score >= 2. Raw data is preserved for analysis.
 
 ## Recommended Refinements
 
@@ -125,12 +176,24 @@ From ~10,000 companies scanned (29% of 34,460):
    is much more likely to be a real acquisition target than one mentioned by
    a single filer repeatedly.
 
+5. **Expand common-word list**: The `_COMMON_ENGLISH_WORDS` set in the enricher
+   is manually curated. Could be expanded with a frequency analysis of false
+   positives from the full scan data.
+
 ## Architecture Decisions
 
 - **No document fetches in bulk scan**: 5-10x slower, burns rate limit budget.
   Save for targeted second pass on companies with mentions.
-- **JSONL checkpoint format**: Resume-safe, streamable, greppable.
+- **JSONL checkpoint format**: Resume-safe, streamable, greppable. Supports
+  `--resume` (skip done), `--rescan-errors` (retry 5xx-affected companies).
 - **Deduplication by filer**: Report distinct mentioning companies, not
   duplicate filings from the same filer.
 - **Filing type tiers searched concurrently**: 3 parallel EFTS calls per
   company (strong M&A types, annual reports, ownership filings).
+- **Concurrent enrichment**: 8 companies in-flight (configurable via
+  `--concurrency`). Rate limiter on the shared client is the real throttle;
+  concurrency overlaps network latency across companies.
+- **Noise scoring, not filtering**: `mention_noise_score` is computed and
+  stored but the raw data is preserved. Downstream consumers (Neo4j loader)
+  apply the threshold. This keeps the scan data reusable for different
+  analysis thresholds.

@@ -206,6 +206,13 @@ class CompanyEdgarProfile(BaseModel):
     )
     latest_form_d_date: date | None = Field(None, description="Most recent Form D filing date")
 
+    # Mention quality
+    mention_noise_score: int = Field(
+        default=0,
+        description="Noise likelihood for filing mentions (0=clean, >=2=likely noise). "
+                    "Based on name distinctiveness and mention-to-award ratio.",
+    )
+
     # Filing activity
     total_filings: int = Field(default=0, description="Total number of filings found")
     latest_filing_date: date | None = Field(None, description="Most recent filing date")

@@ -234,6 +234,73 @@ _COMPETITOR_KEYWORDS = re.compile(
 )
 
 
+# Words that appear in many filings as common English, not as company identifiers.
+_COMMON_ENGLISH_WORDS = frozenset({
+    "sediment", "informed", "ideas", "menara", "elkins", "bai", "nil",
+    "merit", "quest", "delta", "alpha", "summit", "pioneer", "atlas",
+    "nexus", "pulse", "prism", "forge", "apex", "core", "edge",
+    "relay", "array", "signal", "matrix", "tensor", "vector", "orbit",
+    "cipher", "helix", "locus", "verge", "haven", "arbor", "cadre",
+})
+
+# Generic business/tech words that don't distinguish one company from another.
+_GENERIC_NAME_WORDS = frozenset({
+    "advanced", "applied", "central", "digital", "first", "general",
+    "global", "good", "health", "information", "integrated", "management",
+    "material", "national", "new", "process", "quality", "research",
+    "risk", "smith", "systems", "training", "development", "engineering",
+    "computer", "methods", "programs", "services", "consulting", "park",
+    "west", "east", "north", "south", "project", "transfer",
+})
+
+
+def compute_mention_noise_score(
+    company_name: str,
+    mention_count: int,
+    award_count: int,
+) -> int:
+    """Score how likely a company's filing mentions are noise (0=clean, higher=noisier).
+
+    Two-factor scoring:
+    1. Name distinctiveness — short acronyms, single common words, and
+       all-generic phrases are more likely to match unrelated filing text.
+    2. Mention-to-award ratio — a company with many mentions but very few
+       SBIR awards is suspicious (real acquired companies tend to have
+       substantial award histories).
+
+    Recommended threshold: score >= 2 is likely noise (filters ~9% of
+    mentions while preserving real M&A signals).
+    """
+    words = re.findall(r"[A-Za-z]+", company_name)
+    score = 0
+
+    # Name structure signals
+    if len(words) == 1 and len(words[0]) <= 3:
+        # Short acronyms (LTI, MCA, BMS) match everywhere
+        score += 3
+    elif len(words) == 1 and words[0].lower() in _COMMON_ENGLISH_WORDS:
+        # Common English words (Sediment, Informed, Ideas)
+        score += 3
+    elif len(words) == 1:
+        # Single longer word — mildly suspicious
+        score += 1
+    elif all(
+        w.lower() in _GENERIC_NAME_WORDS for w in words if len(w) > 2
+    ):
+        # All words are generic business terms (Risk Management Systems)
+        score += 2
+
+    # Mention-to-award ratio signal
+    if award_count > 0:
+        ratio = mention_count / award_count
+        if ratio > 5:
+            score += 2
+        elif ratio > 2:
+            score += 1
+
+    return score
+
+
 async def _extract_mention_context(
     client: EdgarAPIClient,
     company_name: str,
@@ -613,6 +680,7 @@ async def enrich_company(
     company_name: str,
     company_uei: str | None = None,
     *,
+    award_count: int = 0,
     resolve_cik: bool = True,
     fetch_financials: bool = True,
     search_inbound_ma: bool = True,
@@ -631,6 +699,7 @@ async def enrich_company(
         client: EdgarAPIClient instance.
         company_name: SBIR company name.
         company_uei: Optional UEI for linking.
+        award_count: Number of SBIR awards (used for mention noise scoring).
         resolve_cik: Whether to attempt CIK resolution (public company match).
         fetch_financials: Whether to pull XBRL financials for CIK matches.
         search_inbound_ma: Whether to search for the company in other filings.
@@ -698,6 +767,12 @@ async def enrich_company(
             profile.has_form_d = True
             profile.form_d_cik = form_d_filings[0].cik
             profile.latest_form_d_date = max(f.filing_date for f in form_d_filings)
+
+    # Compute mention noise score (requires mention_count to be set)
+    if profile.mention_count > 0:
+        profile.mention_noise_score = compute_mention_noise_score(
+            company_name, profile.mention_count, award_count,
+        )
 
     return profile
 

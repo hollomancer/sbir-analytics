@@ -105,7 +105,11 @@ class SecEdgarLoader(BaseNeo4jLoader):
             return self.metrics
 
         def _has_sec_signal(record: dict[str, Any]) -> bool:
-            """Return True when a record contains any meaningful SEC data."""
+            """Return True when a record contains any meaningful SEC data.
+
+            Filters out mention-only records with high noise scores
+            (score >= 2 indicates likely false positives from generic names).
+            """
             if record.get("sec_is_publicly_traded") or record.get("sec_cik"):
                 return True
             if record.get("sec_has_form_d"):
@@ -113,6 +117,9 @@ class SecEdgarLoader(BaseNeo4jLoader):
             # Model field is mention_count, prefixed to sec_mention_count by enricher
             inbound = record.get("sec_mention_count")
             if isinstance(inbound, int | float) and inbound > 0:
+                noise = record.get("sec_mention_noise_score", 0)
+                if isinstance(noise, int | float) and noise >= 2:
+                    return False
                 return True
             return False
 
