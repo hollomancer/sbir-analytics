@@ -96,6 +96,46 @@ def load_company_cities(awards_csv: str) -> dict[str, str]:
     return cities
 
 
+_STATE_NAME_TO_CODE = {
+    "ALABAMA": "AL", "ALASKA": "AK", "ARIZONA": "AZ", "ARKANSAS": "AR",
+    "CALIFORNIA": "CA", "COLORADO": "CO", "CONNECTICUT": "CT", "DELAWARE": "DE",
+    "FLORIDA": "FL", "GEORGIA": "GA", "HAWAII": "HI", "IDAHO": "ID",
+    "ILLINOIS": "IL", "INDIANA": "IN", "IOWA": "IA", "KANSAS": "KS",
+    "KENTUCKY": "KY", "LOUISIANA": "LA", "MAINE": "ME", "MARYLAND": "MD",
+    "MASSACHUSETTS": "MA", "MICHIGAN": "MI", "MINNESOTA": "MN",
+    "MISSISSIPPI": "MS", "MISSOURI": "MO", "MONTANA": "MT", "NEBRASKA": "NE",
+    "NEVADA": "NV", "NEW HAMPSHIRE": "NH", "NEW JERSEY": "NJ",
+    "NEW MEXICO": "NM", "NEW YORK": "NY", "NORTH CAROLINA": "NC",
+    "NORTH DAKOTA": "ND", "OHIO": "OH", "OKLAHOMA": "OK", "OREGON": "OR",
+    "PENNSYLVANIA": "PA", "RHODE ISLAND": "RI", "SOUTH CAROLINA": "SC",
+    "SOUTH DAKOTA": "SD", "TENNESSEE": "TN", "TEXAS": "TX", "UTAH": "UT",
+    "VERMONT": "VT", "VIRGINIA": "VA", "WASHINGTON": "WA",
+    "WEST VIRGINIA": "WV", "WISCONSIN": "WI", "WYOMING": "WY",
+    "DISTRICT OF COLUMBIA": "DC", "PUERTO RICO": "PR", "GUAM": "GU",
+    "VIRGIN ISLANDS": "VI",
+}
+
+
+def load_company_states(awards_csv: str) -> dict[str, str]:
+    """Load the first 2-letter state code seen for each company.
+
+    Accepts both 2-letter codes and full state names from the CSV.
+    """
+    states: dict[str, str] = {}
+    with open(awards_csv, encoding="utf-8", errors="replace") as f:
+        for row in csv.DictReader(f):
+            name = row.get("Company", "").strip()
+            raw = (row.get("State") or "").strip()
+            if not name or not raw or name in states:
+                continue
+            upper = raw.upper()
+            if len(upper) == 2:
+                states[name] = upper
+            elif upper in _STATE_NAME_TO_CODE:
+                states[name] = _STATE_NAME_TO_CODE[upper]
+    return states
+
+
 def load_checkpoint(path: Path, *, rescan_errors: bool = False) -> set[str]:
     """Load already-scanned company names from checkpoint file.
 
@@ -247,11 +287,12 @@ async def main() -> None:
     output_path = Path(args.output)
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    # Load companies
+    # Load companies and state data
     print(f"Loading companies from {args.awards}...")
     companies = load_companies(args.awards)
     total_awards = sum(c for _, c in companies)
-    print(f"  {len(companies):,} unique companies, {total_awards:,} awards")
+    states = load_company_states(args.awards)
+    print(f"  {len(companies):,} unique companies, {total_awards:,} awards, {len(states):,} with state data")
 
     if args.limit:
         companies = companies[:args.limit]
@@ -301,14 +342,16 @@ async def main() -> None:
     semaphore = asyncio.Semaphore(args.concurrency)
 
     async def _enrich_one(
-        i: int, name: str, award_count: int, out,
+        i: int, name: str, award_count: int, state: str | None, out,
     ) -> None:
         nonlocal with_mentions, with_form_d, with_both, server_errors, errors, processed
 
         async with semaphore:
             error_tracker.register(name)
             try:
-                p = await enrich_company(client, name, award_count=award_count)
+                p = await enrich_company(
+                    client, name, award_count=award_count, company_state=state,
+                )
 
                 has_mention = p.mention_count > 0
                 has_form_d = p.form_d_count > 0
@@ -360,7 +403,7 @@ async def main() -> None:
         for batch_start in range(0, len(remaining), batch_size):
             batch = remaining[batch_start:batch_start + batch_size]
             tasks = [
-                _enrich_one(batch_start + j, name, count, out)
+                _enrich_one(batch_start + j, name, count, states.get(name), out)
                 for j, (name, count) in enumerate(batch)
             ]
             await asyncio.gather(*tasks)

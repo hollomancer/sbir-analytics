@@ -355,6 +355,8 @@ class EdgarAPIClient(BaseAsyncAPIClient):
                     "entity_name": entity_name,
                     "file_date": source.get("file_date", None),
                     "form_type": "D",
+                    "biz_locations": source.get("biz_locations", []),
+                    "biz_states": source.get("biz_states", []),
                 })
             return results
         except APIError as e:
