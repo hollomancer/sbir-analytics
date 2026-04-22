@@ -185,8 +185,12 @@ async def main() -> None:
                         fetch_errors += 1
                     continue
 
+                try:
+                    fd_date = date.fromisoformat(filing_date)
+                except ValueError:
+                    fd_date = date.today()
                 parsed = parse_form_d_xml(
-                    xml_text, accession=accession, filing_date=filing_date,
+                    xml_text, accession_number=accession, filing_date=fd_date,
                 )
                 if parsed is None:
                     continue
@@ -234,7 +238,7 @@ async def main() -> None:
             async with write_lock:
                 tiers[confidence.tier] += 1
                 processed += 1
-                out.write(json.dumps(rec) + "\n")
+                out.write(json.dumps(rec, default=str) + "\n")
                 out.flush()
 
     # Process in batches
