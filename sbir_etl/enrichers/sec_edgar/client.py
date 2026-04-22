@@ -398,9 +398,13 @@ class EdgarAPIClient(BaseAsyncAPIClient):
             await self._wait_for_rate_limit()
             headers = self._build_headers()
             headers["Accept"] = "text/html, application/xhtml+xml, */*"
-            return await self._client.get(
+            response = await self._client.get(
                 url, headers=headers, follow_redirects=True
             )
+            # Raise on 429/5xx so tenacity retries them
+            if response.status_code in (429, 500, 502, 503):
+                response.raise_for_status()
+            return response
 
         try:
             response = await _do_fetch()
@@ -445,9 +449,13 @@ class EdgarAPIClient(BaseAsyncAPIClient):
             await self._wait_for_rate_limit()
             headers = self._build_headers()
             headers["Accept"] = "application/xml, text/xml, */*"
-            return await self._client.get(
+            response = await self._client.get(
                 url, headers=headers, follow_redirects=True
             )
+            # Raise on 429/5xx so tenacity retries them
+            if response.status_code in (429, 500, 502, 503):
+                response.raise_for_status()
+            return response
 
         try:
             response = await _do_fetch()
