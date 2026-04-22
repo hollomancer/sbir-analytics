@@ -93,8 +93,8 @@ async def main() -> None:
                         help="Fetch only the latest Form D filing per company")
     parser.add_argument("--resume", action="store_true",
                         help="Resume from existing output")
-    parser.add_argument("--concurrency", type=int, default=8,
-                        help="Companies to process concurrently")
+    parser.add_argument("--concurrency", type=int, default=2,
+                        help="Companies to process concurrently (default 2, archive server is strict)")
     parser.add_argument("--contact-email", default="conrad@hollomon.dev",
                         help="Email for SEC User-Agent")
     args = parser.parse_args()
@@ -129,11 +129,15 @@ async def main() -> None:
     remaining = [c for c in companies if c["company_name"] not in done]
     print(f"  {len(remaining):,} companies to process\n")
 
-    # Initialize client
+    # Initialize client — use a conservative rate limit for www.sec.gov
+    # archive fetches.  SEC fair-access policy says 10 req/s but the
+    # archive server throttles more aggressively than EFTS.
     config = {
         "efts_url": "https://efts.sec.gov/LATEST",
-        "rate_limit_per_minute": 600,
+        "rate_limit_per_minute": 300,
         "timeout_seconds": 30,
+        "retry_attempts": 5,
+        "retry_backoff_seconds": 5.0,
         "contact_email": args.contact_email,
     }
     client = EdgarAPIClient(config=config)
