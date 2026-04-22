@@ -1,13 +1,15 @@
 # SEC EDGAR Enrichment for SBIR Companies — Learnings
 
-**Date:** 2026-04-19/21
+**Date:** 2026-04-19/22
 **Branch:** `claude/integrate-sec-edgar-sbir-6Krd1`
 **PR:** #227
 
 ## What We Built
 
-SEC EDGAR enrichment that detects M&A activity, investment signals, and public
-company matches for SBIR awardees using the EFTS full-text search API.
+Two-pipeline SEC EDGAR enrichment for SBIR awardees:
+1. **EFTS pipeline** — filing mention detection and CIK resolution via full-text search
+2. **Form D pipeline** — bulk index download, XML extraction, and confidence-scored
+   entity matching using PI-to-executive person matching
 
 ## Key Technical Learnings
 
@@ -83,9 +85,85 @@ correctly identifies acquisitions, subsidiaries, contracts, and competitors.
 ### Form D (Regulation D Private Capital Raises)
 
 - Filed *after* securities are sold (not just offered)
-- ~13% of SBIR companies have Form D filings
-- Clean signal — minimal noise, 85% fuzzy threshold on entity name is sufficient
 - SBIR companies with Form D = raised venture/angel capital
+- **Bulk index approach** (replaced EFTS queries): download EDGAR quarterly
+  `form.idx` files (761K total Form D entries, 72 quarters, 19 seconds) and
+  match company names locally. Produces 10,405 candidate matches vs 3,992
+  from EFTS — wider net, scored rather than filtered.
+- **XML extraction**: `primary_doc.xml` contains structured issuer data,
+  offering amounts, securities types, investor counts, and — critically —
+  a `relatedPersonsList` with named officers/directors/promoters.
+
+**Form D XML fields extracted:**
+
+| Category | Fields |
+|----------|--------|
+| Issuer | entityName, entityType, yearOfInc, jurisdictionOfInc |
+| Address | street1, city, state, zipCode, phone |
+| Offering | totalOfferingAmount, totalAmountSold, totalRemaining |
+| Securities | isDebtType, isEquityType, isOptionToAcquireType |
+| Investors | totalNumberAlreadyInvested, hasNonAccreditedInvestors |
+| Regulatory | federalExemptionsExclusions (506b/506c), revenueRange |
+| People | relatedPersonName (first/middle/last), relationship, address |
+
+**Rate limiting on www.sec.gov archives**: The archive server throttles more
+aggressively than EFTS. 600 req/min causes widespread 429s. Conservative
+settings (300 req/min, concurrency=2, 5 retries with 5s backoff) reduce
+failures to ~13% but slow throughput to ~0.2 companies/sec. The `--latest-only`
+flag fetches 1 filing per company instead of all, cutting fetch volume ~3-4x.
+
+### Form D Confidence Scoring
+
+**Problem**: Binary state filtering is the wrong tool for Form D entity
+disambiguation. Tightening state-match kills true positives from
+relocations; loosening it readmits homographs. Wrong axis of optimization.
+
+**Solution**: Multi-signal evidence aggregation into confidence tiers
+(High/Medium/Low) instead of binary kept/dropped.
+
+| Signal | Weight | Notes |
+|--------|--------|-------|
+| Name fuzzy ≥ 85% | 0.15 | Baseline gate, required |
+| PI ↔ related_person match | 0.40 | Strongest single signal; near-pathological if present |
+| biz_states ∩ SBIR state | 0.20 | Tolerates multi-office (any match, not all) |
+| Form D date ≥ SBIR award date | 0.15 | ≤2yr gap=1.0, 2-5yr=0.5, >5yr=0.0 |
+| year_of_inc ≤ SBIR award year | 0.10 | Sanity check; postdating = different entity |
+
+**Tier assignment**: High if composite ≥ 0.75 OR person_score ≥ 0.85.
+Medium if composite ≥ 0.50. Low otherwise. Missing signals default to
+0.5 (neutral) — they don't penalize or reward.
+
+**Signals explicitly excluded**:
+- `jurisdiction_of_inc = DE` — near-universal for VC-track companies,
+  uninformative as match or mismatch signal.
+
+**Early results** (400/10,405 companies, in progress):
+
+| Tier | Count | Rate |
+|------|-------|------|
+| High | 74 | 18.5% |
+| Medium | 129 | 32.3% |
+| Low | 197 | 49.3% |
+
+### PI Name Matching
+
+**Dead end for EFTS full-text search**: Searching PI names in filing prose
+returns zero hits — PIs are researchers, not mentioned in corporate filings.
+
+**Effective for Form D person matching**: SBIR PI names (97.8% coverage,
+98.1% clean "First Last" format) matched against Form D `relatedPersons`
+(officers, directors, promoters) is the strongest disambiguation signal.
+Two unrelated companies filing Form D almost never share a named officer
+with an SBIR PI.
+
+Name normalization: strip "Dr.", "Ph.D.", "Mr.", "Jr.", single-letter
+initials ("R."), duplicated names. Match via `rapidfuzz.token_set_ratio`
+at ≥85% threshold.
+
+**Key insight**: the earlier conclusion that "PI names are useless" was
+about searching filing *prose* — a different use case entirely. Comparing
+structured name fields from two databases (SBIR awards vs Form D filings)
+is the right shape for entity resolution.
 
 ### Address Matching
 
@@ -93,15 +171,9 @@ correctly identifies acquisitions, subsidiaries, contracts, and competitors.
   noise by 73-95% for generic company names
 - Only 7/34,459 SBIR companies have multiple addresses in the database
 - SBIR award address is stable per company — reliable for filtering
-
-### PI Name Matching
-
-- **Dead end for this dataset**: SBIR PIs are researchers, not executives
-- The "Contact Name" field is the government program manager, not company personnel
-- PI names show zero hits in SEC filings
-- Would need a separate source of CEO/founder names (not available in SBIR data)
-- SAM.gov entity registration might have POC names but not accessible without
-  the full entity extract
+- **biz_states** (from Form D EFTS metadata or XML) is principal place of
+  business, not registered agent. Noisy but not registered-agent-noisy.
+  Used as one signal in confidence scoring, not as a binary filter.
 
 ## Results at Scale (Full Scan — 34,460 Companies)
 
@@ -162,7 +234,7 @@ records with score >= 2. Raw data is preserved for analysis.
 
 ## Recommended Refinements
 
-1. **City qualification (high priority)**: Re-search companies with mentions
+1. **City qualification for mentions**: Re-search companies with mentions
    using `"Company" AND "City"`. Separates confirmed-location matches from
    potential name collisions. One extra API call per company with mentions.
 
@@ -180,20 +252,73 @@ records with score >= 2. Raw data is preserved for analysis.
    is manually curated. Could be expanded with a frequency analysis of false
    positives from the full scan data.
 
+6. **Confidence scorer tuning**: Once the full Form D XML pass completes,
+   analyze the tier distribution to calibrate signal weights. The current
+   weights are a starting hypothesis, not empirically tuned.
+
+7. **Neo4j Person nodes**: The Form D XML gives us structured executive
+   names and titles. Future work: create Person nodes and
+   person→company relationships to enable cross-company executive tracking.
+
+8. **Funding round classification**: Map securities types + temporal sequence
+   of Form D filings to Series A/B/C rounds.
+
 ## Architecture Decisions
+
+### EFTS Pipeline (filing mentions, CIK resolution)
 
 - **No document fetches in bulk scan**: 5-10x slower, burns rate limit budget.
   Save for targeted second pass on companies with mentions.
-- **JSONL checkpoint format**: Resume-safe, streamable, greppable. Supports
-  `--resume` (skip done), `--rescan-errors` (retry 5xx-affected companies).
-- **Deduplication by filer**: Report distinct mentioning companies, not
-  duplicate filings from the same filer.
 - **Filing type tiers searched concurrently**: 3 parallel EFTS calls per
   company (strong M&A types, annual reports, ownership filings).
 - **Concurrent enrichment**: 8 companies in-flight (configurable via
   `--concurrency`). Rate limiter on the shared client is the real throttle;
   concurrency overlaps network latency across companies.
+
+### Form D Pipeline (bulk index, XML extraction, confidence scoring)
+
+- **Bulk index over EFTS**: Download EDGAR quarterly `form.idx` files
+  (19 seconds) instead of querying EFTS per company (50 minutes). Local
+  fuzzy matching finds more candidates (10,405 vs 3,992).
+- **Score, don't filter**: Confidence tiers (High/Medium/Low) replace
+  binary state filtering. Downstream consumers choose their precision/recall
+  tradeoff. A critic attacks a tier threshold, not the headline number.
+- **PI-to-related-person matching as primary disambiguator**: Structural
+  signal that doesn't depend on location. Two unrelated same-named
+  companies almost never share a named officer with an SBIR PI.
+- **Conservative archive rate limiting**: www.sec.gov archives throttle
+  more aggressively than EFTS. 300 req/min, concurrency=2, 5 retries
+  with 5s backoff. `--latest-only` flag for faster passes.
+
+### Shared
+
+- **JSONL checkpoint format**: Resume-safe, streamable, greppable. Supports
+  `--resume` (skip done), `--rescan-errors` (retry error-affected companies).
+- **Deduplication by filer**: Report distinct mentioning companies, not
+  duplicate filings from the same filer.
 - **Noise scoring, not filtering**: `mention_noise_score` is computed and
   stored but the raw data is preserved. Downstream consumers (Neo4j loader)
   apply the threshold. This keeps the scan data reusable for different
   analysis thresholds.
+
+## Pipeline Summary
+
+```
+SBIR Awards CSV (34,460 companies)
+    │
+    ├─► EFTS Scan (scan_sbir_edgar.py)
+    │     4 queries/company: CIK + 3 filing mention tiers
+    │     ~6.7 companies/sec concurrent
+    │     Output: sec_edgar_scan.jsonl (mentions, noise scores)
+    │
+    ├─► Form D Bulk Index (fetch_form_d_index.py)
+    │     72 quarterly index downloads, 19 seconds total
+    │     Local fuzzy matching → 10,405 candidates
+    │     Output: form_d_index.jsonl (accession numbers, PI names)
+    │
+    └─► Form D XML Details (fetch_form_d_details.py)
+          Fetch primary_doc.xml per filing
+          Parse: offering amounts, executives, addresses
+          Score: PI matching + state + temporal + year_of_inc
+          Output: form_d_details.jsonl (tiered confidence)
+```
