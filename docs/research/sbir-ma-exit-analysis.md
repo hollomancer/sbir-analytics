@@ -173,11 +173,18 @@ companies grow large enough to remain independent.
 
 ## Caveats
 
-- **Medium tier relies on text context extraction** which was only
-  applied when document text was fetched during the EFTS scan.
-  Coverage is incomplete — some genuine acquisitions may lack the
-  `acquisition` text signal because their filing text was never
-  retrieved.
+- **Medium tier precision is ~50-60%.** The `acquisition_text` signal
+  confirms acquisition language near the company name but does not
+  distinguish whether the SBIR company was the target ("acquired
+  Company X"), a licensor ("Company X acquired a license"), or a
+  comparator ("comparable to Company X"). A future refinement pass
+  could re-fetch filing text and apply directional regex to improve
+  precision to an estimated ~70-80%.
+
+- **Medium tier coverage is incomplete.** Text context extraction was
+  only applied when document text was fetched during the EFTS scan.
+  Some genuine acquisitions may lack the `acquisition` text signal
+  because their filing text was never retrieved.
 
 - **Acquirer identification is approximate.** `mention_filers[0]` is
   the first filer that mentioned the SBIR company. Usually the

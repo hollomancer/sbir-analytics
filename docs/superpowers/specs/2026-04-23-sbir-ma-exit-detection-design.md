@@ -139,6 +139,11 @@ Generates tables for exit rates, acquirer rankings, timing analysis.
 
 ## What This Does NOT Include
 
+- **Medium-tier text refinement**: Re-fetch filing text for the ~1,178
+  medium-tier events and apply directional regex to distinguish
+  "acquired [Company]" (target) from "[Company] acquired a license"
+  (licensor) or "comparable to [Company]" (comparator). This would
+  improve medium precision from ~50-60% to an estimated ~70-80%.
 - Patent assignment as an M&A signal (existing asset, separate pipeline)
 - Foreign-acquisition risk scoring (future layer on top of this dataset)
 - GDELT, NewsAPI, or Wikidata enrichment (evaluated, rejected)
