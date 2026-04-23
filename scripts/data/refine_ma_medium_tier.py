@@ -33,6 +33,7 @@ from sbir_etl.enrichers.sec_edgar.client import EdgarAPIClient
 _TARGET_BEFORE = re.compile(
     r"(?:acquir(?:ed|es|ing)|purchas(?:ed|es|ing)|bought|merged with|"
     r"acquisition of|business combination with|tender offer for|"
+    r"asset purchase agreement with|"
     r"completed (?:the |its )?(?:acquisition|purchase) of)\s+"
     r"(?:all of the (?:outstanding )?(?:shares|stock|equity|assets) of\s+)?",
     re.IGNORECASE,
@@ -41,9 +42,26 @@ _TARGET_BEFORE = re.compile(
 # Company is the TARGET — pattern after company name
 # Pattern: [company_name] was acquired/purchased/merged
 _TARGET_AFTER = re.compile(
-    r"\s+(?:was |were |has been |have been )?"
+    r"[,\s]+(?:a .{0,40} )?(?:was |were |has been |have been )?"
     r"(?:acquir(?:ed|es)|purchas(?:ed|es)|merged|bought|"
     r"became a (?:wholly[- ]owned )?subsidiary)",
+    re.IGNORECASE,
+)
+
+# Legal merger boilerplate — company named as "the Company" in a merger agreement
+# Pattern: [company_name], a [state] corporation (the "Company")
+# ...in context with Merger Sub, Acquiror, etc.
+_MERGER_AGREEMENT = re.compile(
+    r"(?:merger sub|acquiror|acquisition corp|merger agreement|"
+    r"plan of merger|agreement and plan of)",
+    re.IGNORECASE,
+)
+
+# Company listed as operating entity / subsidiary in descriptions
+_OPERATING_ENTITY = re.compile(
+    r"(?:operating compan|operating entit|portfolio compan|"
+    r"comprised of|consisting of|includes? the following|"
+    r"wholly[- ]owned subsidiar)",
     re.IGNORECASE,
 )
 
@@ -52,7 +70,8 @@ _TARGET_AFTER = re.compile(
 _NOT_TARGET = re.compile(
     r"\s+(?:acquir(?:ed|es|ing)|purchas(?:ed|es|ing)|obtain(?:ed|s|ing)|"
     r"licens(?:ed|es|ing)|enter(?:ed|s|ing) into)\s+"
-    r"(?:a |an |the |certain |exclusive |non-exclusive )?"
+    r"(?:(?:a|an|the|certain)\s+)?"
+    r"(?:(?:exclusive|non-exclusive|perpetual|worldwide|limited|irrevocable)\s+)?"
     r"(?:licen[sc]e|rights?|assets?|technology|patent|option|agreement|contract)",
     re.IGNORECASE,
 )
@@ -61,6 +80,13 @@ _NOT_TARGET = re.compile(
 _COMPARATOR = re.compile(
     r"(?:comparable|similar to|peer|competitor|in comparison|"
     r"relative to|as compared|benchmarked against)",
+    re.IGNORECASE,
+)
+
+# Employment/consulting agreement — not an acquisition
+_EMPLOYMENT = re.compile(
+    r"(?:employment agreement|consulting agreement|executive employment|"
+    r"offer letter|compensation arrangement)",
     re.IGNORECASE,
 )
 
@@ -98,9 +124,13 @@ def classify_direction(
     after_end = min(len(text), match.end() + context_chars)
     before_window = text[before_start:match.start()]
     after_window = text[match.end():after_end]
+    full_window = text[before_start:after_end]
+
+    # Check for employment/consulting agreement — not an acquisition
+    if _EMPLOYMENT.search(full_window):
+        return "not_target"
 
     # Check for comparator context (anywhere in window)
-    full_window = text[before_start:after_end]
     if _COMPARATOR.search(full_window):
         return "comparator"
 
@@ -109,12 +139,20 @@ def classify_direction(
         return "not_target"
 
     # Check if company IS the target
-    # Look for acquisition verbs just before the company name
-    if _TARGET_BEFORE.search(before_window[-200:]):
+    # 1. Acquisition verbs just before the company name
+    if _TARGET_BEFORE.search(before_window[-300:]):
         return "target"
 
-    # Look for passive construction after the company name
+    # 2. Passive construction after the company name
     if _TARGET_AFTER.match(after_window):
+        return "target"
+
+    # 3. Legal merger boilerplate (Merger Sub, Acquiror, etc.)
+    if _MERGER_AGREEMENT.search(full_window):
+        return "target"
+
+    # 4. Listed as operating entity / subsidiary
+    if _OPERATING_ENTITY.search(full_window):
         return "target"
 
     return "ambiguous"
