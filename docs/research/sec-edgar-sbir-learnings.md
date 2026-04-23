@@ -107,10 +107,12 @@ correctly identifies acquisitions, subsidiaries, contracts, and competitors.
 | People | relatedPersonName (first/middle/last), relationship, address |
 
 **Rate limiting on www.sec.gov archives**: The archive server throttles more
-aggressively than EFTS. 600 req/min causes widespread 429s. Conservative
-settings (300 req/min, concurrency=2, 5 retries with 5s backoff) reduce
-failures to ~13% but slow throughput to ~0.2 companies/sec. The `--latest-only`
-flag fetches 1 filing per company instead of all, cutting fetch volume ~3-4x.
+aggressively than EFTS. 600 req/min causes widespread 429s. 300 req/min
+still produces periodic 429 storms. Best settings found: 120 req/min,
+concurrency=2, 15s retry backoff — reduced 429s to <2% of requests.
+Full 10,405-company fetch completed in ~19 hours (including laptop sleep).
+The `--latest-only` flag fetches 1 filing per company instead of all,
+cutting fetch volume ~3-4x.
 
 ### Form D Confidence Scoring
 
@@ -118,32 +120,60 @@ flag fetches 1 filing per company instead of all, cutting fetch volume ~3-4x.
 disambiguation. Tightening state-match kills true positives from
 relocations; loosening it readmits homographs. Wrong axis of optimization.
 
-**Solution**: Multi-signal evidence aggregation into confidence tiers
-(High/Medium/Low) instead of binary kept/dropped.
+**Solution**: Rule-based tier assignment using discrete signal combinations
+instead of a weighted composite score. Exploratory clustering (GMM, k-means
+on the 4-signal vector) confirmed that the signals are fundamentally discrete
+— person match is bimodal (yes/no), state is binary — and natural clusters
+map directly to signal combinations.
 
-| Signal | Weight | Notes |
-|--------|--------|-------|
-| Name fuzzy ≥ 85% | 0.15 | Baseline gate, required |
-| PI ↔ related_person match | 0.40 | Strongest single signal; near-pathological if present |
-| biz_states ∩ SBIR state | 0.20 | Tolerates multi-office (any match, not all) |
-| Form D date ≥ SBIR award date | 0.15 | ≤2yr gap=1.0, 2-5yr=0.5, >5yr=0.0 |
-| year_of_inc ≤ SBIR award year | 0.10 | Sanity check; postdating = different entity |
+**Signals computed** (all retained in the record as metadata):
 
-**Tier assignment**: High if composite ≥ 0.75 OR person_score ≥ 0.85.
-Medium if composite ≥ 0.50. Low otherwise. Missing signals default to
-0.5 (neutral) — they don't penalize or reward.
+| Signal | Role | Notes |
+|--------|------|-------|
+| Name fuzzy ≥ 85% | Baseline gate | Required for index matching |
+| PI ↔ related_person match | **Primary tier driver** | Bimodal; strongest discriminator |
+| ZIP code match (SBIR ↔ Form D) | **Primary tier driver** | PI-independent; 100% coverage both sides |
+| biz_states ∩ SBIR state | **Secondary tier driver** | Binary match/miss |
+| Form D date vs SBIR award date | Metadata only | ≤2yr=1.0, 2-5yr=0.5, >5yr=0.0 |
+| year_of_inc ≤ SBIR award year | Metadata only | Missing 29% of the time |
 
-**Signals explicitly excluded**:
+**Tier assignment** (rule-based, two independent confirmation signals):
+
+| Tier | Rule | Count | Rate |
+|------|------|-------|------|
+| High | person_score ≥ 0.7 OR address_score = 1.0 | 3,640 | 35.0% |
+| Medium | neither person nor address match, state_score ≥ 0.5 | 1,120 | 10.8% |
+| Low | no confirming signal | 5,645 | 54.3% |
+
+Person match and address (ZIP) match are independent confirmation
+signals — either alone is sufficient for high tier. This is critical
+for HHS/NIH companies where the SBIR PI is often an academic
+collaborator (8.5% have `.edu` emails) who does not appear as an
+officer on the Form D filing. Address matching promoted 1,620
+companies from medium to high tier, improving HHS high-only ratio
+from 0.70x to 2.66x.
+
+The composite score is still computed (weighted sum of all 6 signals)
+and stored for within-tier ranking, but it no longer drives tier
+assignment. Missing signals default to 0.5 (neutral).
+
+**Why temporal was removed as a tier driver**: 81% of records score 1.0
+on temporal — it doesn't discriminate. Removing it demotes ~797 records
+from medium to low that had no confirming signal beyond name + timing,
+while promoting ~95 records with strong person matches that were being
+held back by low composite scores.
+
+**Signals explicitly excluded from tier assignment**:
 - `jurisdiction_of_inc = DE` — near-universal for VC-track companies,
   uninformative as match or mismatch signal.
+- `temporal_score` — too little variance (81% score 1.0) to drive tiers;
+  kept as metadata for downstream filtering.
+- `year_of_inc_score` — missing 29% of the time; kept as metadata.
 
-**Early results** (400/10,405 companies, in progress):
-
-| Tier | Count | Rate |
-|------|-------|------|
-| High | 74 | 18.5% |
-| Medium | 129 | 32.3% |
-| Low | 197 | 49.3% |
+**Industry group exclusions**: Offerings in groups structurally
+incompatible with SBIR companies are excluded from analysis: Insurance,
+Lodging/Conventions, Travel/Tourism, Pooled Investment Fund, Restaurants,
+Retailing. These are 85-100% low-tier (name-collision false positives).
 
 ### PI Name Matching
 
@@ -167,13 +197,27 @@ is the right shape for entity resolution.
 
 ### Address Matching
 
-- **City co-occurrence is highly effective**: `"Company Name" AND "City"` reduces
-  noise by 73-95% for generic company names
-- Only 7/34,459 SBIR companies have multiple addresses in the database
-- SBIR award address is stable per company — reliable for filtering
-- **biz_states** (from Form D EFTS metadata or XML) is principal place of
-  business, not registered agent. Noisy but not registered-agent-noisy.
-  Used as one signal in confidence scoring, not as a binary filter.
+**EFTS city co-occurrence**: `"Company Name" AND "City"` reduces
+noise by 73-95% for generic company names in EFTS mention search.
+
+**Form D ZIP matching**: SBIR address (100% coverage) matched against
+Form D issuer address (100% coverage) by 5-digit ZIP code. This is
+the strongest PI-independent confirmation signal:
+
+| Tier | HHS ZIP match | DoD ZIP match |
+|------|--------------|--------------|
+| High (person-based) | 70% | 59% |
+| Medium (state-only) | 67% | 46% |
+| Low (name-only) | 0% | 0% |
+
+The 0% low-tier match rate validates that low-tier records are almost
+entirely false positives. The 67% HHS medium-tier match rate confirmed
+that most HHS medium-tier companies were genuine matches that failed
+person matching because their PI was academic.
+
+**biz_states** (from Form D EFTS metadata or XML) is principal place of
+business, not registered agent. Used as a tier signal (state match =
+medium if no person/address match), not as a binary filter.
 
 ## Results at Scale (Full Scan — 34,460 Companies)
 

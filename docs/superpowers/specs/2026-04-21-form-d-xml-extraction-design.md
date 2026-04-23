@@ -121,6 +121,7 @@ class FormDMatchConfidence(BaseModel):
     # Individual signals (each 0.0–1.0, None if not evaluable)
     name_score: float                 # Fuzzy name match (baseline, required)
     person_score: float | None        # Best PI-to-related-person match
+    address_score: float | None       # ZIP code match (SBIR ↔ Form D)
     person_match_detail: str | None   # e.g., "PI 'John Smith' ↔ Director 'John R. Smith' (92%)"
     state_score: float | None         # biz_states ∩ SBIR award state
     temporal_score: float | None      # Form D date vs SBIR award date plausibility
@@ -186,7 +187,8 @@ def compute_form_d_confidence(
    SBIR award year, 0.0 if year_of_inc > SBIR award year, None if
    year_of_inc unavailable.
 
-5. **Composite score**: Weighted combination:
+5. **Composite score** (retained for within-tier ranking, not tier
+   assignment):
    ```
    composite = (
        0.15 * name_score +
@@ -199,11 +201,21 @@ def compute_form_d_confidence(
    Missing signals default to 0.5 (neutral) so they don't penalize
    or reward.
 
-6. **Tier assignment**:
-   - **High**: composite ≥ 0.75, OR person_score ≥ 0.85 (person match
-     alone is sufficient)
-   - **Medium**: composite ≥ 0.50
-   - **Low**: composite < 0.50
+6. **Tier assignment** (rule-based on discrete signal combinations):
+
+   Exploratory clustering (GMM + k-means on the 4-signal vector)
+   confirmed that person_score is bimodal and state_score is binary.
+   Natural clusters map directly to signal combinations, so tiers
+   use explicit rules rather than composite thresholds:
+
+   - **High**: `person_score >= 0.7` — PI name matches a Form D executive
+   - **Medium**: `person_score < 0.7 AND state_score >= 0.5` — no PI match
+     but geographic confirmation
+   - **Low**: `person_score < 0.7 AND state_score < 0.5` — name-only match
+
+   Temporal and year-of-inc scores are stored as metadata for downstream
+   filtering but do not drive tier assignment. Temporal has too little
+   variance (81% score 1.0) and year-of-inc is missing 29% of records.
 
 ### Impact on existing binary state filter
 
@@ -348,26 +360,28 @@ The confidence scoring needs these fields from the awards CSV:
 |-------|----------|-----|
 | PI Name | 97.8% of companies (98.1% clean format) | PI-to-related-person matching |
 | State | 99.99% (full names, mapped to 2-letter codes) | State overlap signal |
+| Zip | 99.9% | Address (ZIP) matching — PI-independent confirmation |
 | Award Year | 100% | Temporal plausibility, year_of_inc sanity |
 
 PI name normalization: strip "Dr.", "Ph.D.", "Mr.", "Mrs.", split on
 double-spaces (handles "Oleg Galkin, Ph.D.  Oleg Galkin, Ph.D."
 duplication pattern), take first/last only for matching.
 
-## Estimated Performance
+## Actual Performance (Full Run)
 
-- ~3,900 companies with Form D matches
-- Average ~4 filings per company = ~16K XML fetches (all filings mode)
-- At 10 req/s with concurrency 8: ~27 minutes
-- With `--latest-only`: ~4K fetches, ~7 minutes
-- Confidence scoring is pure computation, negligible time
+- 10,405 companies with Form D matches (bulk index, not EFTS)
+- Average 3 filings per company = ~31K XML fetches
+- At 120 req/min with concurrency 2: ~19 hours (including laptop sleep)
+- 184 XML fetch errors (1.8%), mostly 429 retries exhausted
+- Re-scoring existing data (without re-fetch): seconds
 
 ## What This Does NOT Include
 
 - Neo4j Person nodes or executive-company relationships (future spec)
-- Funding round classification (Series A/B/C from securities types)
-- Aggregated fundraising timeline views (future transformer)
-- Expansion of the common-word list for mention noise scoring
+- Investor-company mapping via pooled fund person cross-links (71 identified)
+- Funding round classification — rejected as infeasible (Form D lacks
+  round labels; Series A/B/C are contractual terms not in SEC filings)
+- Aggregated fundraising timeline views (deferred; ~50-line script when needed)
 
 ## Files Modified
 

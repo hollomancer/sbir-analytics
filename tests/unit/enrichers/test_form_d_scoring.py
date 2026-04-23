@@ -184,7 +184,7 @@ class TestComputeFormDConfidence:
         assert result.year_of_inc_score == 1.0
 
     def test_medium_confidence_state_only(self):
-        """State match + temporal with no person data → medium tier."""
+        """State match with no person data → medium tier (state is secondary signal)."""
         result = compute_form_d_confidence(
             name_score=0.70,
             pi_names=[],
@@ -218,8 +218,8 @@ class TestComputeFormDConfidence:
         assert result.temporal_score == 0.0
         assert result.year_of_inc_score == 0.0
 
-    def test_person_match_overrides_to_high(self):
-        """Strong person match alone should push tier to high even with other weak signals."""
+    def test_person_match_drives_high_tier(self):
+        """Strong person match → high tier regardless of state or temporal signals."""
         result = compute_form_d_confidence(
             name_score=0.60,
             pi_names=["Donald Young"],
@@ -230,14 +230,54 @@ class TestComputeFormDConfidence:
             form_d_dates=[date(2011, 12, 10)],  # big temporal gap
             year_of_inc=None,
         )
-        # person_score should be high (≥0.85) which triggers high tier override
         assert result.person_score is not None
-        assert result.person_score >= 0.85
+        assert result.person_score >= 0.70
         assert result.tier == "high"
         assert result.state_score == 0.0
 
+    def test_address_match_drives_high_tier(self):
+        """ZIP match → high tier even without person match (HHS/academic PI case)."""
+        result = compute_form_d_confidence(
+            name_score=0.95,
+            pi_names=["Academic Professor"],
+            related_persons=[{"name": "CEO Person", "title": "Executive Officer"}],
+            sbir_state="MA",
+            biz_states=["MA"],
+            earliest_sbir_award_year=2015,
+            form_d_dates=[date(2016, 1, 1)],
+            year_of_inc=2010,
+            sbir_zip="01532",
+            form_d_zips=["01532"],
+        )
+        assert result.person_score is not None
+        assert result.person_score < 0.7  # PI doesn't match executive
+        assert result.address_score == 1.0
+        assert result.tier == "high"
+
+    def test_address_mismatch_no_promotion(self):
+        """ZIP mismatch without person match → medium (state match) not high."""
+        result = compute_form_d_confidence(
+            name_score=0.95,
+            pi_names=[],
+            related_persons=[],
+            sbir_state="MA",
+            biz_states=["MA"],
+            earliest_sbir_award_year=2015,
+            form_d_dates=[date(2016, 1, 1)],
+            year_of_inc=None,
+            sbir_zip="01532",
+            form_d_zips=["90210"],
+        )
+        assert result.address_score == 0.0
+        assert result.tier == "medium"
+
     def test_missing_signals_default_neutral(self):
-        """Empty PI list, no state, no year_of_inc, no dates → all signals neutral → medium."""
+        """Empty PI list, no state, no year_of_inc, no dates → all signals neutral.
+
+        With rule-based tiers: person defaults to 0.5 (< 0.7), address
+        defaults to 0.5 (< 1.0), and state defaults to 0.5 (≥ 0.5)
+        → medium tier.
+        """
         result = compute_form_d_confidence(
             name_score=0.60,
             pi_names=[],
@@ -248,11 +288,12 @@ class TestComputeFormDConfidence:
             form_d_dates=[],
             year_of_inc=None,
         )
-        # composite = 0.15*0.60 + 0.40*0.5 + 0.20*0.5 + 0.15*0.5 + 0.10*0.5
-        #           = 0.09 + 0.20 + 0.10 + 0.075 + 0.05 = 0.515
+        # composite = 0.15*0.60 + 0.35*0.5 + 0.15*0.5 + 0.15*0.5 + 0.10*0.5 + 0.10*0.5
+        #           = 0.09 + 0.175 + 0.075 + 0.075 + 0.05 + 0.05 = 0.515
         assert result.tier == "medium"
         assert result.person_score is None
         assert result.state_score is None
+        assert result.address_score is None
         assert result.temporal_score is None
         assert result.year_of_inc_score is None
         assert abs(result.score - 0.515) < 0.001

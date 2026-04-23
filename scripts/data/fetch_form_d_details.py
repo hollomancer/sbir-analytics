@@ -42,13 +42,19 @@ from sbir_etl.enrichers.sec_edgar.form_d_scoring import (
 )
 
 
-def load_earliest_award_years(awards_csv: str) -> dict[str, int]:
-    """Load the earliest SBIR award year per company."""
+def load_award_data(awards_csv: str) -> tuple[dict[str, int], dict[str, str]]:
+    """Load earliest SBIR award year and ZIP per company.
+
+    Returns:
+        (award_years, award_zips) — both keyed by company name.
+    """
     years: dict[str, int] = {}
+    zips: dict[str, str] = {}
     with open(awards_csv, encoding="utf-8", errors="replace") as f:
         for row in csv.DictReader(f):
             name = row.get("Company", "").strip()
             year_str = row.get("Award Year", "").strip()
+            zip_code = row.get("Zip", "").strip()[:5]
             if not name or not year_str:
                 continue
             try:
@@ -57,7 +63,9 @@ def load_earliest_award_years(awards_csv: str) -> dict[str, int]:
                 continue
             if name not in years or year < years[name]:
                 years[name] = year
-    return years
+            if zip_code and name not in zips:
+                zips[name] = zip_code
+    return years, zips
 
 
 def load_checkpoint(path: Path) -> set[str]:
@@ -115,10 +123,11 @@ async def main() -> None:
             companies.append(json.loads(line))
     print(f"  {len(companies):,} companies with Form D matches")
 
-    # Load earliest award years
-    print(f"Loading award years from {args.awards}...")
-    award_years = load_earliest_award_years(args.awards)
+    # Load award data (earliest year + ZIP for address matching)
+    print(f"Loading award data from {args.awards}...")
+    award_years, award_zips = load_award_data(args.awards)
     print(f"  {len(award_years):,} companies with award year data")
+    print(f"  {len(award_zips):,} companies with ZIP codes")
 
     # Load checkpoint
     done: set[str] = set()
@@ -134,10 +143,10 @@ async def main() -> None:
     # archive server throttles more aggressively than EFTS.
     config = {
         "efts_url": "https://efts.sec.gov/LATEST",
-        "rate_limit_per_minute": 300,
+        "rate_limit_per_minute": 120,
         "timeout_seconds": 30,
         "retry_attempts": 5,
-        "retry_backoff_seconds": 5.0,
+        "retry_backoff_seconds": 15.0,
         "contact_email": args.contact_email,
     }
     client = EdgarAPIClient(config=config)
@@ -158,6 +167,7 @@ async def main() -> None:
             pi_names = company.get("pi_names", [])
             sbir_state = company.get("state")
             earliest_year = award_years.get(name, 2000)
+            sbir_zip = award_zips.get(name)
 
             filings = company.get("form_d_filings", [])
             if args.latest_only:
@@ -167,6 +177,7 @@ async def main() -> None:
             offerings = []
             all_persons = []
             all_biz_states = set()
+            all_zips = []
             all_dates = []
             year_of_inc = None
             best_name_score = 0.0
@@ -203,6 +214,8 @@ async def main() -> None:
                 all_persons.extend(parsed.get("related_persons", []))
                 if parsed.get("state"):
                     all_biz_states.add(parsed["state"])
+                if parsed.get("zip_code"):
+                    all_zips.append(parsed["zip_code"])
                 try:
                     all_dates.append(date.fromisoformat(filing_date))
                 except ValueError:
@@ -223,6 +236,8 @@ async def main() -> None:
                 earliest_sbir_award_year=earliest_year,
                 form_d_dates=all_dates,
                 year_of_inc=year_of_inc,
+                sbir_zip=sbir_zip,
+                form_d_zips=all_zips,
             )
 
             # Compute total raised across all offerings

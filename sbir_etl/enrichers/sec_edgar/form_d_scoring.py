@@ -21,6 +21,25 @@ _STRIP_TITLES = re.compile(
 # Single-letter initials like "R." (but not "Jr." etc., already handled above)
 _STRIP_INITIALS = re.compile(r"\b[A-Z]\.\s*")
 
+# Industry groups structurally incompatible with SBIR companies.
+# Offerings with these groups are almost entirely name-collision false
+# positives (85-100% low-tier).  Used by downstream analysis to exclude
+# offerings; not applied during fetch so raw data stays complete.
+#
+# "Pooled Investment Fund" is excluded because these are VC/PE fund
+# vehicles, not operating company raises.  Some funds are linked to real
+# SBIR companies via shared persons/CIKs (71 cross-links found) — worth
+# revisiting for investor-company relationship mapping.
+EXCLUDED_INDUSTRY_GROUPS: frozenset[str] = frozenset({
+    "Insurance",
+    "Lodging and Conventions",
+    "Other Travel",
+    "Pooled Investment Fund",
+    "Restaurants",
+    "Retailing",
+    "Tourism and Travel Services",
+})
+
 _SECURITIES_MAP = {
     "isDebtType": "debt",
     "isEquityType": "equity",
@@ -213,11 +232,14 @@ def compute_form_d_confidence(
     earliest_sbir_award_year: int,
     form_d_dates: list[date],
     year_of_inc: int | None,
+    sbir_zip: str | None = None,
+    form_d_zips: list[str] | None = None,
 ) -> FormDMatchConfidence:
     """Score match confidence between a Form D filing and an SBIR company.
 
-    Combines five signals: entity name match, PI-to-executive name match,
-    state overlap, temporal plausibility, and year-of-incorporation sanity.
+    Combines signals: entity name match, PI-to-executive name match,
+    address match, state overlap, temporal plausibility, and
+    year-of-incorporation sanity.
     """
 
     # --- Signal 1: Person matching ---
@@ -253,7 +275,17 @@ def compute_form_d_confidence(
     if sbir_state and biz_states:
         state_score = 1.0 if sbir_state in biz_states else 0.0
 
-    # --- Signal 3: Temporal plausibility ---
+    # --- Signal 3: Address (ZIP code) match ---
+    address_score: float | None = None
+    if sbir_zip and form_d_zips:
+        sbir_zip_5 = sbir_zip.strip()[:5]
+        address_score = (
+            1.0
+            if any(z.strip()[:5] == sbir_zip_5 for z in form_d_zips if z)
+            else 0.0
+        )
+
+    # --- Signal 4: Temporal plausibility ---
     temporal_score: float | None = None
     if form_d_dates:
         earliest_fd_year = min(d.year for d in form_d_dates)
@@ -265,24 +297,32 @@ def compute_form_d_confidence(
         else:
             temporal_score = 0.0
 
-    # --- Signal 4: Year of incorporation ---
+    # --- Signal 5: Year of incorporation ---
     year_of_inc_score: float | None = None
     if year_of_inc is not None:
         year_of_inc_score = 1.0 if year_of_inc <= earliest_sbir_award_year else 0.0
 
-    # --- Composite ---
+    # --- Composite (for within-tier ranking, not tier assignment) ---
     composite = (
         0.15 * name_score
-        + 0.40 * (person_score if person_score is not None else 0.5)
-        + 0.20 * (state_score if state_score is not None else 0.5)
-        + 0.15 * (temporal_score if temporal_score is not None else 0.5)
+        + 0.35 * (person_score if person_score is not None else 0.5)
+        + 0.15 * (address_score if address_score is not None else 0.5)
+        + 0.15 * (state_score if state_score is not None else 0.5)
+        + 0.10 * (temporal_score if temporal_score is not None else 0.5)
         + 0.10 * (year_of_inc_score if year_of_inc_score is not None else 0.5)
     )
 
-    # --- Tier ---
-    if composite >= 0.75 or (person_score is not None and person_score >= 0.85):
+    # --- Tier (rule-based on discrete signal combinations) ---
+    # Person match and address (ZIP) match are independent confirmation
+    # signals — either one is sufficient for high tier.  This is critical
+    # for HHS/NIH companies where the PI is often an academic collaborator
+    # who does not appear as an officer on the Form D filing.
+    ps = person_score if person_score is not None else 0.5
+    ads = address_score if address_score is not None else 0.5
+    ss = state_score if state_score is not None else 0.5
+    if ps >= 0.7 or ads >= 1.0:
         tier = "high"
-    elif composite >= 0.50:
+    elif ss >= 0.5:
         tier = "medium"
     else:
         tier = "low"
@@ -294,6 +334,7 @@ def compute_form_d_confidence(
         person_score=person_score,
         person_match_detail=person_match_detail,
         state_score=state_score,
+        address_score=address_score,
         temporal_score=temporal_score,
         year_of_inc_score=year_of_inc_score,
     )

@@ -205,6 +205,7 @@ class FormDMatchConfidence(BaseModel):
     person_score: float | None = Field(None, description="Best PI-to-related-person match")
     person_match_detail: str | None = Field(None, description="e.g., \"PI 'J Smith' <> Dir 'John Smith' (92%)\"")
     state_score: float | None = Field(None, description="biz_states overlap with SBIR state")
+    address_score: float | None = Field(None, description="ZIP code match between SBIR and Form D address")
     temporal_score: float | None = Field(None, description="Form D date vs SBIR award date plausibility")
     year_of_inc_score: float | None = Field(None, description="year_of_inc vs earliest SBIR award year")
 
