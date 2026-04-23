@@ -1,13 +1,4 @@
-# Design Document
+# Design
 
-## Overview
-
-## Architecture
-
-## Components and Interfaces
-
-## Data Models
-
-## Error Handling
-
-## Testing Strategy
+Replaced by design spec at
+`docs/superpowers/specs/2026-04-23-sbir-ma-exit-detection-design.md`.
