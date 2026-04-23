@@ -177,10 +177,16 @@ def test_assign_confidence_subsidiary_is_high():
     assert assign_confidence(event) == "high"
 
 
-def test_assign_confidence_ma_definitive_only_is_medium():
+def test_assign_confidence_acquisition_text_is_medium():
+    event = {"form_d_detail": None,
+             "efts_detail": {"mention_types": ["acquisition"]}}
+    assert assign_confidence(event) == "medium"
+
+
+def test_assign_confidence_ma_definitive_alone_is_low():
     event = {"form_d_detail": None,
              "efts_detail": {"mention_types": ["ma_definitive"]}}
-    assert assign_confidence(event) == "medium"
+    assert assign_confidence(event) == "low"
 
 
 def test_assign_confidence_ownership_only_is_low():

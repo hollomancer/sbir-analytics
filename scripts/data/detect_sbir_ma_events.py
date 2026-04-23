@@ -141,14 +141,13 @@ def assign_confidence(event: dict) -> str:
     has_efts_high = (
         efts is not None and "subsidiary" in efts.get("mention_types", [])
     )
-    has_efts_medium = efts is not None and (
-        "ma_definitive" in efts.get("mention_types", [])
-        or "acquisition" in efts.get("mention_types", [])
+    has_acq_text = efts is not None and (
+        "acquisition" in efts.get("mention_types", [])
     )
 
     if has_form_d or has_efts_high:
         return "high"
-    elif has_efts_medium:
+    elif has_acq_text:
         return "medium"
     else:
         return "low"

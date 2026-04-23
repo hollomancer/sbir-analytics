@@ -92,10 +92,12 @@ Per-company record with:
 | Tier | Rule |
 |------|------|
 | High | Form D business combination OR EFTS `subsidiary` |
-| Medium | EFTS `ma_definitive` or `acquisition` text, without high-tier confirmation |
-| Low | `ownership_active` or `ma_proxy` only |
+| Medium | EFTS `acquisition` text confirmed (filing text fetched and acquisition language found) |
+| Low | All other signals (`ma_definitive`, `ma_proxy`, `ownership_active`) |
 
-`ownership_passive` excluded entirely.
+`ownership_passive` excluded entirely. `ma_definitive` alone was
+demoted from medium to low after analysis showed 8-K item 1.01 fires
+for any material contract (~30-40% precision for actual M&A).
 
 ### Analysis Report
 
