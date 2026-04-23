@@ -6,7 +6,7 @@
 
 ## Summary
 
-Of 34,460 SBIR companies in the awards database, **2,375 (6.9%)
+Of 34,460 SBIR companies in the awards database, **2,249 (6.5%)
 show M&A signals** at high or medium confidence, and **1,197 (3.5%)
 at high confidence only**. Median time from first SBIR award to
 M&A event is **14 years** (H+M).
@@ -43,46 +43,75 @@ The initial tier boundaries were refined through signal quality analysis:
 - **`ma_definitive` multi-signal (without `acquisition_text`) was also
   demoted.** Corroborating filing-type signals don't confirm acquisition
   intent — they corroborate "mentioned in M&A-related filing types."
-- **Medium tier is now purely `acquisition_text`** — events where filing
+- **Medium tier is purely `acquisition_text`** — events where filing
   document text was fetched and acquisition language was confirmed near
   the company name.
 
-## Confidence Tiers
+### Medium-Tier Directional Text Refinement
+
+The 1,178 medium-tier events were further refined by re-fetching
+filing documents and applying directional regex to distinguish:
+
+- "BigCo acquired **Company X**" → confirmed target
+- "**Company X** acquired a license" → not a target (demoted to low)
+- "comparable to **Company X**" → comparator (demoted to low)
+- Merger agreement boilerplate naming the company as "the Company" with
+  "Merger Sub" and "Acquiror" → confirmed target
+- Employment/consulting agreements → not a target (demoted to low)
+
+Results:
+
+| Direction | Count | % | Action |
+|-----------|-------|---|--------|
+| Confirmed target | 662 | 56% | Keep medium |
+| Ambiguous | 390 | 33% | Keep medium |
+| Comparator | 56 | 5% | Demoted to low |
+| Not target | 51 | 4% | Demoted to low |
+| No filing found | 19 | 2% | Demoted to low |
+
+126 false positives (11% of original medium tier) were demoted,
+tightening medium from 1,178 to 1,052 events.
+
+## Confidence Tiers (Final)
 
 | Tier | Rule | Count |
 |------|------|-------|
 | High | Form D business combination OR EFTS `subsidiary` | 1,197 |
-| Medium | EFTS `acquisition_text` present | 1,178 |
-| Low | All other M&A signals | 1,931 |
+| Medium | EFTS `acquisition_text`, refined by directional analysis | 1,052 |
+| Low | All other signals + demoted false positives | 2,057 |
 | **Total** | | **4,306** |
+
+Within the medium tier, 662 events (63%) are text-confirmed targets
+and 390 (37%) are ambiguous (acquisition language present but direction
+could not be determined).
 
 ## Exit Rate
 
 | Filter | Companies | Rate |
 |--------|-----------|------|
 | Any M&A signal | 4,306 | 12.5% |
-| High + Medium | 2,375 | 6.9% |
+| High + Medium | 2,249 | 6.5% |
 | High only | 1,197 | 3.5% |
 
 ## Exit Rate by Agency
 
 | Agency | H+M | High | SBIR Cos | Rate (H+M) | Rate (High) |
 |--------|-----|------|----------|-----------|------------|
-| HHS | 996 | 473 | 12,373 | 8.0% | 3.8% |
-| DoD | 715 | 369 | 14,362 | 5.0% | 2.6% |
+| HHS | 936 | 473 | 12,373 | 7.6% | 3.8% |
+| DoD | 675 | 369 | 14,362 | 4.7% | 2.6% |
 | Education | 25 | 17 | 652 | 3.8% | 2.6% |
-| NSF | 277 | 145 | 7,535 | 3.7% | 1.9% |
-| USDA | 72 | 38 | 1,937 | 3.7% | 2.0% |
-| DOE | 119 | 68 | 3,512 | 3.4% | 1.9% |
-| DHS | 16 | 5 | 531 | 3.0% | 0.9% |
-| DOT | 17 | 8 | 616 | 2.8% | 1.3% |
+| NSF | 268 | 145 | 7,535 | 3.6% | 1.9% |
+| USDA | 68 | 38 | 1,937 | 3.5% | 2.0% |
+| DOE | 113 | 68 | 3,512 | 3.2% | 1.9% |
+| DHS | 15 | 5 | 531 | 2.8% | 0.9% |
 | Commerce | 25 | 14 | 928 | 2.7% | 1.5% |
-| NASA | 93 | 48 | 3,714 | 2.5% | 1.3% |
-| EPA | 18 | 10 | 736 | 2.4% | 1.4% |
+| DOT | 15 | 8 | 616 | 2.4% | 1.3% |
+| NASA | 90 | 48 | 3,714 | 2.4% | 1.3% |
+| EPA | 17 | 10 | 736 | 2.3% | 1.4% |
 
-HHS leads at 8.0% (H+M) — biotech/pharma is the most M&A-active
-SBIR sector. DoD is second at 5.0%. Other agencies cluster around
-2.5-3.8%.
+HHS leads at 7.6% (H+M) — biotech/pharma is the most M&A-active
+SBIR sector. DoD is second at 4.7%. Other agencies cluster around
+2.3-3.8%.
 
 ## Top Acquirers (H+M, where identified)
 
@@ -95,17 +124,15 @@ SBIR sector. DoD is second at 5.0%. Other agencies cluster around
 | JANEL CORP | 5 | Logistics |
 | IPG PHOTONICS | 4 | Photonics |
 | AGILENT TECHNOLOGIES | 4 | Life sciences instruments |
-| LIFE TECHNOLOGIES | 4 | Biotech |
 | LIGAND PHARMACEUTICALS | 4 | Pharma |
 
-Acquirer landscape is **highly dispersed**: 2,643 unique acquirers
-for 3,418 identified acquisitions. 80% buy exactly one SBIR company.
-Top 10 acquirers account for only 2% of exits. No "SBIR rollup"
-strategy — acquisitions are driven by individual technology fit.
+Acquirer landscape is **highly dispersed**: ~2,600 unique acquirers.
+80% buy exactly one SBIR company. No "SBIR rollup" strategy —
+acquisitions are driven by individual technology fit.
 
 ## Time from First SBIR Award to M&A Exit
 
-For H+M events with valid dates (N=2,156):
+For H+M events with valid dates (N=2,038):
 
 | Percentile | Years |
 |-----------|-------|
@@ -114,7 +141,7 @@ For H+M events with valid dates (N=2,156):
 | P75 | 23 |
 | Mean | 15.6 |
 
-## Signal Strength Analysis
+## Signal Strength
 
 ### Signal count as quality indicator
 
@@ -126,25 +153,13 @@ For H+M events with valid dates (N=2,156):
 | 4+ | 78 | 96% | 23 years |
 
 Multi-signal events are overwhelmingly high-confidence and correspond
-to older, more established companies. More SEC paper trail accumulates
-over time, so older exits are better-documented.
+to older, more established companies.
 
 ### Form D acquirer blind spot
 
 407 Form D-only events have **0% acquirer identification** — the
 filing names the target's officers but not the acquirer. Every EFTS
 signal has 100% acquirer ID because the filing company is the acquirer.
-For Form D-only high-tier events, the `related_persons` field could
-potentially identify the acquirer by detecting new officers/directors
-who appeared on the business combination filing — future enrichment.
-
-### Form D corroboration rate
-
-Only 145 of 552 Form D business combinations (26%) have EFTS
-corroboration. The other 74% are Form D-only. Possible reasons:
-the acquirer is private (no SEC filings), the acquisition was too
-small for an 8-K, or the business combination flag was checked
-incorrectly.
 
 ### High-tier composition
 
@@ -154,32 +169,16 @@ incorrectly.
 | Form D business combination | 552 | 46% |
 | Overlap (both) | 31 | 3% |
 
-Two nearly non-overlapping populations with different strengths:
-subsidiary gives acquirer identity; Form D gives deal size.
-
-## Exit Rate by SBIR Funding Amount
-
-| Funding Bucket | SBIR Cos | Exits (H+M) | Exit Rate |
-|---------------|----------|-------------|-----------|
-| < $250K | 12,376 | 1,665 | 13.5% |
-| $250K - $1M | 9,199 | 1,000 | 10.9% |
-| $1M - $5M | 9,587 | 842 | 8.8% |
-| $5M - $20M | 2,695 | 258 | 9.6% |
-| > $20M | 600 | 60 | 10.0% |
-
-Smaller SBIR awardees are acquired at a higher rate — likely
-reflecting acqui-hires and early-stage technology purchases before
-companies grow large enough to remain independent.
+Two nearly non-overlapping populations: subsidiary gives acquirer
+identity; Form D gives deal size.
 
 ## Caveats
 
-- **Medium tier precision is ~50-60%.** The `acquisition_text` signal
-  confirms acquisition language near the company name but does not
-  distinguish whether the SBIR company was the target ("acquired
-  Company X"), a licensor ("Company X acquired a license"), or a
-  comparator ("comparable to Company X"). A future refinement pass
-  could re-fetch filing text and apply directional regex to improve
-  precision to an estimated ~70-80%.
+- **Medium tier precision is ~65-70%.** Directional text refinement
+  removed 126 confirmed false positives (11%) and confirmed 662
+  targets (56%). The remaining 390 ambiguous events (33%) could not
+  be classified — acquisition language was present but direction
+  could not be determined from the text window.
 
 - **Medium tier coverage is incomplete.** Text context extraction was
   only applied when document text was fetched during the EFTS scan.
@@ -191,7 +190,7 @@ companies grow large enough to remain independent.
   acquirer, but could be a financial advisor or counterparty.
 
 - **Form D business combinations lack acquirer data.** The 407
-  Form-D-only events identify the target but not the acquirer.
+  Form-D-only events identify the target but not who acquired them.
 
 - **Time coverage varies by signal.** EFTS covers ~2001 onward.
   Form D covers 2009-2025. The 2025-2026 event spike is likely
@@ -204,5 +203,7 @@ companies grow large enough to remain independent.
 ## Data
 
 - Events dataset: `data/sbir_ma_events.jsonl` (4,306 records)
+- Medium-tier refinement: `data/sbir_ma_medium_refined.jsonl` (1,178 records)
 - Detection script: `scripts/data/detect_sbir_ma_events.py`
+- Refinement script: `scripts/data/refine_ma_medium_tier.py`
 - Analysis script: `scripts/data/analyze_sbir_ma_exits.py`
