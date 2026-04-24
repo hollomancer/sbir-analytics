@@ -93,7 +93,7 @@ class TestFiscalTaxEstimator:
     def test_year_from_fiscal_year_column(self, estimator, sample_components_df):
         """Rate year should be derived from fiscal_year column."""
         result_df = estimator.estimate_taxes_from_components(sample_components_df)
-        # sample_components_df has fiscal_year=2023, nearest baseline is 2022
+        # sample_components_df has fiscal_year=2023, so rate_year should reflect the requested year
         assert result_df["rate_year"].iloc[0] == 2023
 
     def test_explicit_year_override(self, estimator, sample_components_df):

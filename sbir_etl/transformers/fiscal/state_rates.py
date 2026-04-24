@@ -31,7 +31,8 @@ class StateTaxRates:
     state: str                    # 2-letter abbreviation
     income_rate: float            # Effective/top marginal income tax rate
     sales_rate: float             # Combined state + avg local sales tax rate
-    property_rate: float          # Effective property tax rate (% of value)
+    property_rate: float          # Property tax rate as fraction of gross operating surplus
+                                  # (property_tax / GOS — consistent with NIPA convention)
     has_income_tax: bool = True
     has_sales_tax: bool = True
 
@@ -46,66 +47,69 @@ class StateTaxRates:
 # Sales: Tax Foundation "State and Local Sales Tax Rates"
 #   Combined state rate + average local rate.
 #
-# Property: Tax Foundation / Census Bureau effective rates
-#   Effective rate = total property tax / total assessed value.
-#   Expressed as fraction (0.01 = 1%).
+# Property: property_tax / gross operating surplus (GOS-based, consistent
+#   with NIPA convention).  Derived by scaling effective assessed-value
+#   rates (Tax Foundation / Census Bureau) by the national GOS/value ratio:
+#     factor = NIPA national rate (0.125) / national avg effective rate (0.011)
+#             ≈ 11.36
+#   This aligns with how FiscalTaxEstimator applies the rate to GOS.
 # -----------------------------------------------------------------------
 
 _STATE_RATES_2024: dict[str, StateTaxRates] = {
     # No income tax states
-    "AK": StateTaxRates("AK", 0.000, 0.018, 0.012, has_income_tax=False),
-    "FL": StateTaxRates("FL", 0.000, 0.072, 0.009, has_income_tax=False),
-    "NV": StateTaxRates("NV", 0.000, 0.082, 0.006, has_income_tax=False),
-    "NH": StateTaxRates("NH", 0.000, 0.000, 0.019, has_income_tax=False, has_sales_tax=False),
-    "SD": StateTaxRates("SD", 0.000, 0.064, 0.012, has_income_tax=False),
-    "TN": StateTaxRates("TN", 0.000, 0.096, 0.007, has_income_tax=False),
-    "TX": StateTaxRates("TX", 0.000, 0.082, 0.017, has_income_tax=False),
-    "WA": StateTaxRates("WA", 0.000, 0.103, 0.010, has_income_tax=False),
-    "WY": StateTaxRates("WY", 0.000, 0.054, 0.006, has_income_tax=False),
+    "AK": StateTaxRates("AK", 0.000, 0.018, 0.136, has_income_tax=False),
+    "FL": StateTaxRates("FL", 0.000, 0.072, 0.102, has_income_tax=False),
+    "NV": StateTaxRates("NV", 0.000, 0.082, 0.068, has_income_tax=False),
+    "NH": StateTaxRates("NH", 0.000, 0.000, 0.216, has_income_tax=False, has_sales_tax=False),
+    "SD": StateTaxRates("SD", 0.000, 0.064, 0.136, has_income_tax=False),
+    "TN": StateTaxRates("TN", 0.000, 0.096, 0.080, has_income_tax=False),
+    "TX": StateTaxRates("TX", 0.000, 0.082, 0.193, has_income_tax=False),
+    "WA": StateTaxRates("WA", 0.000, 0.103, 0.114, has_income_tax=False),
+    "WY": StateTaxRates("WY", 0.000, 0.054, 0.068, has_income_tax=False),
     # No sales tax states (but have income tax)
-    "DE": StateTaxRates("DE", 0.066, 0.000, 0.006, has_sales_tax=False),
-    "MT": StateTaxRates("MT", 0.059, 0.000, 0.008, has_sales_tax=False),
-    "OR": StateTaxRates("OR", 0.099, 0.000, 0.010, has_sales_tax=False),
+    "DE": StateTaxRates("DE", 0.066, 0.000, 0.068, has_sales_tax=False),
+    "MT": StateTaxRates("MT", 0.059, 0.000, 0.091, has_sales_tax=False),
+    "OR": StateTaxRates("OR", 0.099, 0.000, 0.114, has_sales_tax=False),
     # All other states (income + sales + property)
-    "AL": StateTaxRates("AL", 0.050, 0.092, 0.004),
-    "AZ": StateTaxRates("AZ", 0.025, 0.084, 0.007),
-    "AR": StateTaxRates("AR", 0.044, 0.095, 0.006),
-    "CA": StateTaxRates("CA", 0.133, 0.087, 0.008),
-    "CO": StateTaxRates("CO", 0.044, 0.078, 0.005),
-    "CT": StateTaxRates("CT", 0.069, 0.064, 0.021),
-    "DC": StateTaxRates("DC", 0.105, 0.060, 0.006),
-    "GA": StateTaxRates("GA", 0.055, 0.074, 0.009),
-    "HI": StateTaxRates("HI", 0.110, 0.045, 0.003),
-    "ID": StateTaxRates("ID", 0.058, 0.060, 0.007),
-    "IL": StateTaxRates("IL", 0.049, 0.088, 0.022),
-    "IN": StateTaxRates("IN", 0.030, 0.070, 0.009),
-    "IA": StateTaxRates("IA", 0.060, 0.069, 0.016),
-    "KS": StateTaxRates("KS", 0.057, 0.087, 0.014),
-    "KY": StateTaxRates("KY", 0.040, 0.060, 0.009),
-    "LA": StateTaxRates("LA", 0.044, 0.098, 0.006),
-    "ME": StateTaxRates("ME", 0.075, 0.055, 0.014),
-    "MD": StateTaxRates("MD", 0.058, 0.060, 0.011),
-    "MA": StateTaxRates("MA", 0.090, 0.063, 0.012),
-    "MI": StateTaxRates("MI", 0.043, 0.060, 0.015),
-    "MN": StateTaxRates("MN", 0.099, 0.078, 0.011),
-    "MS": StateTaxRates("MS", 0.050, 0.071, 0.008),
-    "MO": StateTaxRates("MO", 0.048, 0.082, 0.010),
-    "NE": StateTaxRates("NE", 0.064, 0.070, 0.017),
-    "NJ": StateTaxRates("NJ", 0.109, 0.066, 0.024),
-    "NM": StateTaxRates("NM", 0.059, 0.079, 0.008),
-    "NY": StateTaxRates("NY", 0.109, 0.088, 0.017),
-    "NC": StateTaxRates("NC", 0.045, 0.070, 0.008),
-    "ND": StateTaxRates("ND", 0.025, 0.069, 0.010),
-    "OH": StateTaxRates("OH", 0.035, 0.072, 0.016),
-    "OK": StateTaxRates("OK", 0.048, 0.086, 0.009),
-    "PA": StateTaxRates("PA", 0.031, 0.063, 0.015),
-    "RI": StateTaxRates("RI", 0.060, 0.070, 0.016),
-    "SC": StateTaxRates("SC", 0.064, 0.074, 0.006),
-    "UT": StateTaxRates("UT", 0.047, 0.073, 0.006),
-    "VT": StateTaxRates("VT", 0.088, 0.063, 0.019),
-    "VA": StateTaxRates("VA", 0.058, 0.058, 0.008),
-    "WV": StateTaxRates("WV", 0.055, 0.065, 0.006),
-    "WI": StateTaxRates("WI", 0.076, 0.055, 0.018),
+    "AL": StateTaxRates("AL", 0.050, 0.092, 0.045),
+    "AZ": StateTaxRates("AZ", 0.025, 0.084, 0.080),
+    "AR": StateTaxRates("AR", 0.044, 0.095, 0.068),
+    "CA": StateTaxRates("CA", 0.133, 0.087, 0.091),
+    "CO": StateTaxRates("CO", 0.044, 0.078, 0.057),
+    "CT": StateTaxRates("CT", 0.069, 0.064, 0.239),
+    "DC": StateTaxRates("DC", 0.105, 0.060, 0.068),
+    "GA": StateTaxRates("GA", 0.055, 0.074, 0.102),
+    "HI": StateTaxRates("HI", 0.110, 0.045, 0.034),
+    "ID": StateTaxRates("ID", 0.058, 0.060, 0.080),
+    "IL": StateTaxRates("IL", 0.049, 0.088, 0.250),
+    "IN": StateTaxRates("IN", 0.030, 0.070, 0.102),
+    "IA": StateTaxRates("IA", 0.060, 0.069, 0.182),
+    "KS": StateTaxRates("KS", 0.057, 0.087, 0.159),
+    "KY": StateTaxRates("KY", 0.040, 0.060, 0.102),
+    "LA": StateTaxRates("LA", 0.044, 0.098, 0.068),
+    "ME": StateTaxRates("ME", 0.075, 0.055, 0.159),
+    "MD": StateTaxRates("MD", 0.058, 0.060, 0.125),
+    "MA": StateTaxRates("MA", 0.090, 0.063, 0.136),
+    "MI": StateTaxRates("MI", 0.043, 0.060, 0.170),
+    "MN": StateTaxRates("MN", 0.099, 0.078, 0.125),
+    "MS": StateTaxRates("MS", 0.050, 0.071, 0.091),
+    "MO": StateTaxRates("MO", 0.048, 0.082, 0.114),
+    "NE": StateTaxRates("NE", 0.064, 0.070, 0.193),
+    "NJ": StateTaxRates("NJ", 0.109, 0.066, 0.273),
+    "NM": StateTaxRates("NM", 0.059, 0.079, 0.091),
+    "NY": StateTaxRates("NY", 0.109, 0.088, 0.193),
+    "NC": StateTaxRates("NC", 0.045, 0.070, 0.091),
+    "ND": StateTaxRates("ND", 0.025, 0.069, 0.114),
+    "OH": StateTaxRates("OH", 0.035, 0.072, 0.182),
+    "OK": StateTaxRates("OK", 0.048, 0.086, 0.102),
+    "PA": StateTaxRates("PA", 0.031, 0.063, 0.170),
+    "RI": StateTaxRates("RI", 0.060, 0.070, 0.182),
+    "SC": StateTaxRates("SC", 0.064, 0.074, 0.068),
+    "UT": StateTaxRates("UT", 0.047, 0.073, 0.068),
+    "VT": StateTaxRates("VT", 0.088, 0.063, 0.216),
+    "VA": StateTaxRates("VA", 0.058, 0.058, 0.091),
+    "WV": StateTaxRates("WV", 0.055, 0.065, 0.068),
+    "WI": StateTaxRates("WI", 0.076, 0.055, 0.205),
 }
 
 

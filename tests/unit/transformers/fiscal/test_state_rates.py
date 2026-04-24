@@ -12,9 +12,7 @@ from sbir_etl.transformers.fiscal.taxes import FiscalTaxEstimator
 class TestStateRateProvider:
     def test_all_50_states_plus_dc(self):
         provider = StateRateProvider()
-        # 50 states minus PR/territories, plus DC = 50 entries
-        # (we have 49 states + DC = 50, missing HI wait let me check)
-        assert len(provider.states) >= 49
+        assert len(provider.states) == 51
 
     def test_no_income_tax_states(self):
         provider = StateRateProvider()
@@ -63,7 +61,7 @@ class TestStateRateProvider:
         for state, rates in _STATE_RATES_2024.items():
             assert 0.0 <= rates.income_rate <= 0.15, f"{state} income"
             assert 0.0 <= rates.sales_rate <= 0.12, f"{state} sales"
-            assert 0.0 <= rates.property_rate <= 0.03, f"{state} property"
+            assert 0.0 <= rates.property_rate <= 0.30, f"{state} property"
 
 
 class TestStateAwareEstimation:
