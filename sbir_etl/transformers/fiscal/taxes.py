@@ -106,7 +106,8 @@ class FiscalTaxEstimator:
         fy_int = result_df["fiscal_year"].astype(int)
 
         def _attr(attr: str) -> pd.Series:
-            return fy_int.map(lambda fy: getattr(year_rates[fy], attr))
+            mapping = {fy: getattr(year_rates[fy], attr) for fy in unique_years}
+            return fy_int.map(mapping)
 
         return {
             "federal_income_rate": _attr("federal_income_rate"),
@@ -281,9 +282,16 @@ class FiscalTaxEstimator:
         """Estimate federal individual income tax on wage income.
 
         Note: rate is derived as personal_taxes / compensation (NIPA),
-        so it is applied to wages only; proprietor_income is accepted for
-        API compatibility but does not affect the result.
+        so it is applied to wages only.  ``proprietor_income`` is accepted
+        for backward compatibility; pass ``Decimal("0")`` if not applicable.
+        Non-zero values are logged as a warning since they do not affect the result.
         """
+        if proprietor_income != Decimal("0"):
+            logger.warning(
+                "estimate_individual_income_tax: proprietor_income is ignored "
+                "(rate is applied to wages only per NIPA convention). "
+                "Use estimate_taxes_from_components for full income coverage."
+            )
         rates = self._get_rates(year)
         return Decimal(str(float(wage) * rates.federal_income_rate))
 
