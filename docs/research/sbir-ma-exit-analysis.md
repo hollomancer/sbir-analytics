@@ -160,6 +160,31 @@ For H+M events with valid dates (N=2,558):
 | P75 | 24 |
 | Mean | 16.4 |
 
+## Characteristics of Expanded Medium Tier
+
+The 541 companies promoted from low to medium through the coverage
+expansion are a systematically different population from the original
+medium tier:
+
+| Metric | Original H+M | New mediums (expansion) |
+|--------|-------------|------------------------|
+| Median SBIR funding | $0.2M | $1.3M |
+| Mean SBIR funding | $1.0M | $7.2M |
+| Median time to exit | 14 years | 19 years |
+| Mean time to exit | 15.6 years | 19.9 years |
+
+The expanded companies are **larger, more established SBIR firms**
+acquired through formal M&A processes (8-K material agreements)
+rather than through the simpler channels captured by the original
+medium tier. These are arguably the more significant exits — companies
+with bigger SBIR portfolios being acquired by major defense primes
+(Titan, Kratos, CACI) and life sciences consolidators (Bruker,
+Integra, Qiagen).
+
+The expansion disproportionately added HHS (209) and DoD (164)
+companies, consistent with those agencies having the most SBIR
+companies overall.
+
 ## Signal Strength
 
 ### Signal count as quality indicator
