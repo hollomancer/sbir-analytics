@@ -1,4 +1,4 @@
-# Phase 3 Solicitation & Award Candidate Alerts — Requirements
+# Phase III Solicitation & Award Candidate Alerts — Requirements
 
 Research-question anchors: **B2, B3, B4, E1, E6**, and the open evaluation in
 **E5** ("Does the SAM.gov Opportunities API replace agency-page scraping?").
@@ -43,37 +43,42 @@ cadence, and precision targets.
    `candidate_score ∈ [0,1]`, a single HIGH-vs-rest boolean flag (v1 keeps
    one threshold per class; multi-band can come later), and an
    `evidence_ref` pointer into an NDJSON bundle.
-3. **SHALL** add two new signal methods to the existing `TransitionScorer`
-   rather than create a new scorer class:
-   - `score_topical_similarity` — cosine between prior-award and target
-     text. v1 uses cheap features (NAICS + token-overlap + agency
-     sub-tier); PaECTER embedding reuse is deferred (see non-goals).
-   - `score_lineage_language` — regex/phrase match over target description
-     for statutory Phase III language ("Phase III", "derives from",
-     "extends", "completes", "prototype transition", "follow-on
-     production") plus a narrow data-rights lineage vocabulary ("technical
-     data package", "interface control document", "source code",
-     "government purpose rights", "unlimited rights") — these phrases are
-     not violations; they indicate the notice is in the Phase III
-     neighborhood and a candidate worth surfacing.
-4. **SHALL** emit candidates via a single parameterized Dagster asset
-   factory that produces three materializations — one per signal class —
-   sharing the scorer and writing to the same parquet (distinguished by
-   `signal_class`). No per-signal-class asset module tree; no
+3. **SHALL** reuse the existing `score_text_similarity` method on
+   `TransitionScorer` for topical similarity — it already accepts a
+   pre-computed similarity float and applies a configured weight.
+   Topical similarity is computed externally by the asset factory using
+   cheap v1 features (NAICS overlap + PSC overlap + token Jaccard over
+   title/abstract vs. target description + agency sub-tier agreement).
+   Embedding reuse is deferred (see non-goals).
+4. **SHALL** add one new signal method to `TransitionScorer` —
+   `score_lineage_language` — following the existing `self.*_config`
+   pattern (reads weight from `self.lineage_config`). Regex/phrase
+   match over target description for statutory Phase III language
+   ("Phase III", "derives from", "extends", "completes", "prototype
+   transition", "follow-on production") plus a narrow data-rights
+   lineage vocabulary ("technical data package", "interface control
+   document", "source code", "government purpose rights", "unlimited
+   rights"). These phrases are not violations; they indicate the notice
+   is in the Phase III neighborhood and a candidate worth surfacing.
+5. **SHALL** emit candidates via a single parameterized Dagster asset
+   factory that produces three materializations — one per `SignalClass`
+   enum value (`RETROSPECTIVE`, `DIRECTED`, `FOLLOWON`) — sharing the
+   scorer and writing to the same parquet (distinguished by the
+   `signal_class` column). No per-signal-class asset module tree; no
    `CandidatePairGenerator` class — each signal's pair filter is a small
    module-level function.
-5. **SHALL** write an evidence bundle (NDJSON) per candidate mirroring the
+6. **SHALL** write an evidence bundle (NDJSON) per candidate mirroring the
    format of `transitions_evidence.ndjson`.
-6. **SHALL** enforce a precision backtest at release time (not as a Dagster
+7. **SHALL** enforce a precision backtest at release time (not as a Dagster
    asset check): a backtest script re-runs the scorer over DoD-coded
-   Phase III contracts and fails CI when **S1 HIGH precision < 0.85**.
-   S2 and S3 precision are tracked via a plain CSV audit log in
-   `reports/phase_iii/audit/`; no parquet-backed ledger, no asset-check
-   blocker on a human-driven process.
-7. **SHOULD** make agency-continuity scoring hierarchical
+   Phase III contracts and fails CI when **`RETROSPECTIVE` HIGH precision
+   < 0.85**. `DIRECTED` and `FOLLOWON` precision are tracked via a plain
+   CSV audit log in `reports/phase_iii/audit/`; no parquet-backed ledger,
+   no asset-check blocker on a human-driven process.
+8. **SHOULD** make agency-continuity scoring hierarchical
    (agency → sub-tier → buying-office), using the finest granularity
-   present. Same buying office is a markedly stronger S1 signal than same
-   department.
+   present. Same buying office is a markedly stronger `RETROSPECTIVE`
+   signal than same department.
 
 ### Out of scope (v1)
 
@@ -112,34 +117,38 @@ cadence, and precision targets.
    `naics_code`, `psc_code`, `posted_date`, `response_deadline`,
    `description`, `awardee_uei` (nullable), and `sol_number`.
 3. **SHALL** add `PhaseIIICandidate` Pydantic model with `candidate_id`,
-   `signal_class` (S1/S2/S3), `prior_award_id`, `target_type`
-   (fpds_contract / opportunity), `target_id`, `candidate_score`,
-   `is_high_confidence` (bool), `evidence_ref`, and per-signal subscores.
-4. **SHALL** hold the precision benchmark of `≥85%` for S1 HIGH. S1
-   output is the input to a reclassification audit the research plan
-   depends on; its precision gate is non-negotiable.
-5. **SHALL** include agency and signal-class stratification in every
-   summary output; civilian-agency coverage is the whole point of S1.
+   `signal_class` (`SignalClass` enum: `RETROSPECTIVE` / `DIRECTED` /
+   `FOLLOWON`), `prior_award_id`, `target_type` (fpds_contract /
+   opportunity), `target_id`, `candidate_score`, `is_high_confidence`
+   (bool), `evidence_ref`, and per-signal subscores.
+4. **SHALL** hold the precision benchmark of `≥85%` for `RETROSPECTIVE`
+   HIGH. `RETROSPECTIVE` output is the input to a reclassification audit
+   the research plan depends on; its precision gate is non-negotiable.
+5. **SHALL** include agency and `SignalClass` stratification in every
+   summary output; civilian-agency coverage is the whole point of
+   `RETROSPECTIVE`.
 6. **SHALL** treat `notice_type IN {sole_source, justification,
-   notice_of_intent, award}` as S2 inputs. The system alerts on both
-   "this notice might be a Phase III" and "this contract just awarded
-   might have been a Phase III".
-7. **SHALL** label S3 output "follow-on candidate" in every column name,
-   evidence field, and downstream query. A competitive solicitation is
-   not statutory Phase III and must not be described as such.
+   notice_of_intent, award}` as `DIRECTED` inputs. The system alerts on
+   both "this notice might be a Phase III" and "this contract just
+   awarded might have been a Phase III".
+7. **SHALL** label `FOLLOWON` output "follow-on candidate" in every
+   column name, evidence field, and downstream query. A competitive
+   solicitation is not statutory Phase III and must not be described as
+   such.
 
 ## Gate condition
 
 The spec is done when we can state:
 
-> For FY [N], the pipeline identified [X] HIGH-confidence S1 candidates
-> (Phase III contracts not coded as such in FPDS); a hand-audited 100-row
-> sample shows [P]% true-positive rate (target ≥ 85%). During the
-> observation window the pipeline surfaced [Y] S2 candidates and [Z] S3
-> follow-on candidates, with evidence bundles in
-> `data/processed/phase_iii_candidates/`. The
+> For FY [N], the pipeline identified [X] HIGH-confidence `RETROSPECTIVE`
+> candidates (Phase III contracts not coded as such in FPDS); a
+> hand-audited 100-row sample shows [P]% true-positive rate (target
+> ≥ 85%). During the observation window the pipeline surfaced [Y]
+> `DIRECTED` candidates and [Z] `FOLLOWON` candidates, with outputs
+> written to `data/processed/phase_iii_candidates.parquet` and evidence
+> to `data/processed/phase_iii_evidence.ndjson`. The
 > `agencies_with_zero_phase_iii` list shrank by [Δ] agencies relative to
-> the pre-S1 baseline.
+> the pre-`RETROSPECTIVE` baseline.
 
 ## Dependencies
 
@@ -169,11 +178,12 @@ The spec is done when we can state:
 - `packages/sbir-analytics/sbir_analytics/assets/phase_iii_candidates/`
   — one asset factory module; three materializations; no nested
   module tree.
-- Two new methods on `TransitionScorer` (`score_topical_similarity`,
-  `score_lineage_language`). Signal-class weights live as constants in
-  the asset module.
-- `scripts/phase_iii_precision_backtest.py` — runs S1 backtest against
-  DoD-coded Phase III and fails on < 0.85.
+- One new method on `TransitionScorer` (`score_lineage_language`,
+  following the existing `self.*_config` pattern). Topical similarity
+  is computed externally and fed into the existing `score_text_similarity`.
+  Per-signal-class weight dicts live as constants in the asset module.
+- `scripts/phase_iii_precision_backtest.py` — runs `RETROSPECTIVE`
+  backtest against DoD-coded Phase III and fails on < 0.85.
 - `reports/phase_iii/audit/` — plain CSVs for hand-audit precision
   tracking.
 

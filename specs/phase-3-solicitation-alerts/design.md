@@ -1,4 +1,4 @@
-# Phase 3 Solicitation & Award Candidate Alerts — Design
+# Phase III Solicitation & Award Candidate Alerts — Design
 
 ## Architecture
 
@@ -40,8 +40,9 @@ validated_phase_ii_awards (existing) ----> |   prior_award_universe      |
                           v
          +----------------------------------+
          |  TransitionScorer (existing)     |
-         |  + score_topical_similarity      |
-         |  + score_lineage_language        |
+         |  + reuse score_text_similarity   |
+         |    (similarity computed upstream)|
+         |  + score_lineage_language (new)  |
          +----------------+-----------------+
                           |
                           v
@@ -63,29 +64,38 @@ validated_phase_ii_awards (existing) ----> |   prior_award_universe      |
    `sam_gov_ingestion.py`. Daily cadence. Output:
    `data/raw/sam_gov_opportunities/opportunities.parquet`.
 
-4. **Two new methods on existing `TransitionScorer`**
-   (`packages/sbir-ml/sbir_ml/transition/detection/scoring.py`):
+4. **Scorer extension** — minimal, consistent with existing patterns.
+   The existing `TransitionScorer`
+   (`packages/sbir-ml/sbir_ml/transition/detection/scoring.py`) exposes
+   five public signal methods: `score_agency_continuity`,
+   `score_timing_proximity`, `score_competition_type`,
+   `score_patent_signal`, `score_cet_alignment`, plus
+   `score_text_similarity` which accepts a pre-computed similarity
+   float and applies `self.text_config["weight"]`.
 
-   - `score_topical_similarity(prior_award, target, *, weight: float) -> float`
-     — v1 implementation combines NAICS-code overlap, PSC-code overlap,
-     and Jaccard token overlap over title + abstract vs. target
-     description. No embeddings.
-   - `score_lineage_language(target_description: str, *, weight: float) -> float`
-     — regex + phrase match. Two phrase lists:
+   - **Topical similarity reuses `score_text_similarity`.** The asset
+     factory computes a similarity float externally (v1: NAICS overlap
+     + PSC overlap + Jaccard token overlap over title/abstract vs.
+     target description) and passes it into the existing method. No
+     new method, no duplicated weight plumbing.
+   - **One new method: `score_lineage_language`**, added to
+     `TransitionScorer` following the same pattern as the existing five
+     scoring methods. Reads weight from `self.lineage_config["weight"]`
+     (new scoring-config key; defaults to 0). Regex + phrase match
+     over target description with two phrase lists:
      - **Phase III lineage**: "Phase III", "Phase 3", "derives from",
        "extends", "completes", "prototype transition", "follow-on
        production", "continuation of".
-     - **Data-rights lineage** (signals that a Phase III / data-rights
-       review is warranted; not evidence of violation): "technical data
-       package", "interface control document", "source code",
+     - **Data-rights lineage** (signals a Phase III / data-rights
+       review is warranted, not evidence of a violation): "technical
+       data package", "interface control document", "source code",
        "government purpose rights", "unlimited rights".
-     Returns a capped max-match score scaled by weight.
+     Returns a capped max-match score scaled by the configured weight.
 
-   Existing six signal methods are untouched. The scorer still reads
-   weights from the config dict it is already handed; the new methods
-   accept a `weight` kwarg explicitly (they do not rely on the
-   `self.*_config` pattern) so they can be called with per-signal-class
-   weights passed in by the asset factory.
+   One scorer instance is constructed per signal class with its own
+   per-class config dict — identical pattern to the existing transition
+   presets. No special API carve-outs, no explicit `weight` kwargs.
+   Existing six methods and their weight-reading pattern are untouched.
 
 5. **`build_candidate_asset`** — factory in
    `packages/sbir-analytics/sbir_analytics/assets/phase_iii_candidates/assets.py`.
@@ -129,22 +139,32 @@ validated_phase_ii_awards (existing) ----> |   prior_award_universe      |
 
 ### Signal-class weight constants
 
-Live as plain constants in `assets.py`, not YAML. Eight-entry dicts per
-class. Sum to 1.0; unit-test asserts.
+Live as plain constants in `assets.py`, not YAML. Each constant is a
+scoring-config dict with weights for the seven signals the scorer
+actually exposes: the existing five (`agency_continuity`,
+`timing_proximity`, `competition_type`, `patent_signal`,
+`cet_alignment`), the existing `text_similarity`, and the new
+`lineage_language`. Weights sum to 1.0; unit-test asserts.
+
+Vendor match is **not** a scorer signal — UEI overlap is a pair-filter
+gate in `pair_filter_s1` and `pair_filter_s2`, so a non-matching pair
+is never scored. (The existing scorer has a `vendor_config` key but no
+`score_vendor_match` method; it is inert in today's code path and this
+spec does not change that.)
 
 ```python
-WEIGHTS_S1 = {
-    "agency_continuity": 0.20,
-    "timing_proximity": 0.15,
-    "competition_type": 0.20,
-    "patent_signal":    0.05,
-    "cet_alignment":    0.10,
-    "vendor_match":     0.20,
-    "topical_similarity": 0.05,
-    "lineage_language":   0.05,
+# Illustrative; per-signal-class scoring-config dicts (sum to 1.0).
+WEIGHTS_RETROSPECTIVE = {
+    "agency_continuity": 0.25,
+    "timing_proximity":  0.15,
+    "competition_type":  0.20,
+    "patent_signal":     0.05,
+    "cet_alignment":     0.15,
+    "text_similarity":   0.10,
+    "lineage_language":  0.10,
 }
-WEIGHTS_S2 = { ... "competition_type": 0.25, ... }  # sole-source dominant
-WEIGHTS_S3 = { ... "topical_similarity": 0.40, "cet_alignment": 0.15, ... }
+WEIGHTS_DIRECTED = { ..., "competition_type": 0.30, ... }  # sole-source dominant
+WEIGHTS_FOLLOWON = { ..., "text_similarity": 0.45, "cet_alignment": 0.20, ... }
 ```
 
 If a consumer needs to tune a weight, they edit a constant and open a PR —
@@ -221,11 +241,13 @@ No `phase_iii_candidates:` config block. If needed later, it's additive.
 
 ## Testing strategy
 
-- **Unit (scorer additions)**: table-driven tests for
-  `score_topical_similarity` and `score_lineage_language`. Lineage
-  phrase-match corpus includes positives (real Phase III justification
-  text) and adversarial negatives (Phase I abstracts mentioning
-  "phase III of combustion", "prototype" in non-transition context).
+- **Unit (scorer additions)**: table-driven tests for the new
+  `score_lineage_language` and for the external topical-similarity
+  computation (NAICS / PSC / Jaccard) feeding `score_text_similarity`.
+  Lineage phrase-match corpus includes positives (real Phase III
+  justification text) and adversarial negatives (Phase I abstracts
+  mentioning "phase III of combustion", "prototype" in non-transition
+  context).
 - **Unit (pair filters)**: three tests, one per filter, each with a
   small synthetic prior-award frame + target frame.
 - **Integration**: one test that materializes all three assets against a
