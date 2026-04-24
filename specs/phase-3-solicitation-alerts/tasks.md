@@ -54,8 +54,13 @@ ship independently.
 - [ ] 3.1 Add `Opportunity` Pydantic model in
       `sbir_etl/models/opportunity.py`.
 - [ ] 3.2 Create `SamGovOpportunitiesExtractor` in
-      `sbir_etl/extractors/sam_gov_opportunities.py` following the
-      Entity-client patterns (rate limit, retry, parquet-first).
+      `sbir_etl/extractors/sam_gov_opportunities.py`. Reuse the existing
+      `BaseAsyncAPIClient` for rate-limiting, retry, and
+      `X-Api-Key` auth. **Add** cursor-based pagination over
+      `postedFrom`/`postedTo` date windows — the existing Entity client
+      pages by UEI lookup, so the date-window iteration is new code,
+      not a shared helper. Mirror the parquet-first, API-fallback
+      structure of `SAMGovExtractor`.
 - [ ] 3.3 Create `sam_gov_opportunities_ingestion` Dagster asset parallel
       to `sam_gov_ingestion.py`. Daily cadence.
 - [ ] 3.4 Add `extraction.sam_gov_opportunities` config block in
