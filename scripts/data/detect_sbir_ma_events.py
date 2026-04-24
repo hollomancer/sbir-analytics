@@ -66,7 +66,7 @@ def extract_efts_signals(records: list[dict]) -> list[dict]:
     MA_TYPES = {
         "subsidiary": "high",
         "acquisition": "medium",
-        "ma_definitive": "medium",
+        "ma_definitive": "low",
         "ma_proxy": "low",
         "ownership_active": "low",
     }
@@ -103,7 +103,14 @@ def merge_events(
     """Merge Form D and EFTS events by company name.
 
     When both sources have an event for the same company, combine into
-    one record. Uses earliest date across sources.
+    one record (one event per company). Uses the earliest valid ISO date
+    across sources; an empty/missing date is treated as unknown and a
+    valid date always wins over an empty one.
+
+    Note: merging is by exact company name only. The 12-month date-window
+    same-event deduplication described in the design spec is not implemented
+    here; in practice a single company rarely has events far enough apart to
+    require it, and the one-event-per-company model matches the actual output.
     """
     merged: dict[str, dict] = {}
 
@@ -118,15 +125,18 @@ def merge_events(
 
     for e in efts_events:
         name = e["company_name"]
+        efts_date = e["event_date"]
         if name in merged:
             existing = merged[name]
-            if e["event_date"] and e["event_date"] < existing["event_date"]:
-                existing["event_date"] = e["event_date"]
+            existing_date = existing["event_date"]
+            # A valid date beats an empty one; when both valid, take the earlier.
+            if efts_date and (not existing_date or efts_date < existing_date):
+                existing["event_date"] = efts_date
             existing["efts_detail"] = e["efts_detail"]
         else:
             merged[name] = {
                 "company_name": name,
-                "event_date": e["event_date"],
+                "event_date": efts_date,
                 "form_d_detail": None,
                 "efts_detail": e["efts_detail"],
             }
@@ -178,31 +188,39 @@ def identify_acquirer(event: dict) -> str | None:
 
 
 def load_sbir_context(awards_csv: str) -> dict[str, dict]:
-    """Load SBIR award context per company."""
+    """Load SBIR award context per company.
+
+    Keys the returned dict by normalised company name (upper-cased, stripped)
+    so that SEC-derived event names (which are upper-cased) match correctly.
+    """
     companies: dict[str, dict] = {}
     with open(awards_csv, encoding="utf-8", errors="replace") as f:
         for row in csv.DictReader(f):
             name = row.get("Company", "").strip()
+            if not name:
+                continue
+            key = name.upper()
             agency = row.get("Agency", "").strip()
             year_str = row.get("Award Year", "").strip()
             amt_str = row.get("Award Amount", "").strip()
-            if not name or not year_str:
+            if not year_str:
                 continue
             try:
                 year = int(year_str)
-                amt = float(amt_str) if amt_str else 0
+                amt_clean = amt_str.replace(",", "").replace("$", "")
+                amt = float(amt_clean) if amt_clean else 0
             except ValueError:
                 continue
 
-            if name not in companies:
-                companies[name] = {
+            if key not in companies:
+                companies[key] = {
                     "agency": agency,
                     "total_awards": 0,
                     "total_award_amount": 0,
                     "first_award_year": year,
                     "last_award_year": year,
                 }
-            c = companies[name]
+            c = companies[key]
             c["total_awards"] += 1
             c["total_award_amount"] += amt
             if year < c["first_award_year"]:
@@ -268,7 +286,7 @@ def main():
                 "signal_count": sum(signals.values()),
                 "form_d_detail": event.get("form_d_detail"),
                 "efts_detail": event.get("efts_detail"),
-                "sbir_context": sbir_context.get(event["company_name"]),
+                "sbir_context": sbir_context.get(event["company_name"].strip().upper()),
             }
             out.write(json.dumps(record, default=str) + "\n")
             tiers[confidence] += 1

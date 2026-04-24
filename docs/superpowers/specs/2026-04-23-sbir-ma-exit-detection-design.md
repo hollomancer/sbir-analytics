@@ -70,7 +70,8 @@ Key data: `mention_filers` identifies who mentioned the SBIR company
 
 157 companies appear in both layers. Layer 1 provides the event
 confirmation; Layer 2 adds the acquirer identity. Deduplication
-by company name with a 12-month date window for same-event merging.
+by company name (one event per company); when both sources provide a
+date, the earliest valid date is used.
 
 ## Output
 

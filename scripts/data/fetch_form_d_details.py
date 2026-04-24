@@ -142,7 +142,7 @@ async def main() -> None:
     # archive fetches.  SEC fair-access policy says 10 req/s but the
     # archive server throttles more aggressively than EFTS.
     config = {
-        "efts_url": "https://efts.sec.gov/LATEST",
+        "base_url": "https://efts.sec.gov/LATEST",
         "rate_limit_per_minute": 120,
         "timeout_seconds": 30,
         "retry_attempts": 5,

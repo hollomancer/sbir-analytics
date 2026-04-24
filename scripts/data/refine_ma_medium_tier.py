@@ -303,7 +303,7 @@ async def main():
     print(f"  {len(remaining):,} to process\n")
 
     config = {
-        "efts_url": "https://efts.sec.gov/LATEST",
+        "base_url": "https://efts.sec.gov/LATEST",
         "rate_limit_per_minute": 120,
         "timeout_seconds": 30,
         "retry_attempts": 3,

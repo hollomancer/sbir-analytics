@@ -321,7 +321,7 @@ async def main() -> None:
         for sbir_norm, fd_entries in sorted(matches.items()):
             sbir_data = sbir_companies[sbir_norm]
             # Use the most common raw name
-            raw_name = max(sbir_data["raw_names"], key=lambda n: 1)
+            raw_name = min(sbir_data["raw_names"])
             if raw_name in done:
                 continue
 

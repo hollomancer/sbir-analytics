@@ -2,7 +2,7 @@
 """Analyze SBIR M&A exit events.
 
 Reads sbir_ma_events.jsonl and produces exit rate analysis by agency,
-year, confidence tier, and funding amount.
+year, and confidence tier.
 
 Usage:
     python scripts/data/analyze_sbir_ma_exits.py
@@ -43,15 +43,8 @@ def main():
 
     events = load_events(events_path)
     total_by_agency = load_total_companies_by_agency(awards_path)
-    total_sbir = len(set().union(*(
-        cos for cos in [set()] +
-        [{row.get("Company", "").strip()
-          for row in csv.DictReader(open(awards_path, encoding="utf-8", errors="replace"))
-          if row.get("Company", "").strip()}]
-    )))
 
-    # Recount properly
-    all_cos = set()
+    all_cos: set[str] = set()
     with open(awards_path, encoding="utf-8", errors="replace") as f:
         for row in csv.DictReader(f):
             name = row.get("Company", "").strip()

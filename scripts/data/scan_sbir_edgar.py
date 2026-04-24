@@ -310,9 +310,9 @@ async def main() -> None:
 
     # Initialize client
     config = {
-        "efts_url": "https://efts.sec.gov/LATEST",
-        "companyfacts_url": "https://data.sec.gov/api/xbrl/companyfacts",
-        "submissions_url": "https://data.sec.gov/submissions",
+        "base_url": "https://efts.sec.gov/LATEST",
+        "facts_base_url": "https://data.sec.gov/api/xbrl",
+        "filings_base_url": "https://data.sec.gov/submissions",
         "rate_limit_per_minute": 600,
         "timeout_seconds": 30,
         "contact_email": args.contact_email,

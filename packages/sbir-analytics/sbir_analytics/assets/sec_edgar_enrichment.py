@@ -98,10 +98,6 @@ def sec_edgar_enriched_companies(
             enrichment_kwargs: dict = {
                 "client": client,
                 "company_name_col": company_name_col,
-                "high_threshold": 90,
-                "low_threshold": 75,
-                "fetch_financials": True,
-                "fetch_filings": True,
             }
             if uei_col in validated_sbir_awards.columns:
                 enrichment_kwargs["company_uei_col"] = uei_col
@@ -117,8 +113,13 @@ def sec_edgar_enriched_companies(
         result_df = asyncio.run(_run_enrichment())
     except RuntimeError as e:
         if "cannot be called from a running event loop" in str(e):
-            loop = asyncio.get_event_loop()
-            result_df = loop.run_until_complete(_run_enrichment())
+            # Already inside a running event loop (e.g. a Jupyter notebook or
+            # certain async test runners). Run in a dedicated thread so it gets
+            # its own event loop via asyncio.run().
+            import concurrent.futures
+
+            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+                result_df = executor.submit(asyncio.run, _run_enrichment()).result()
         else:
             context.log.error(f"SEC EDGAR enrichment failed: {e}")
             return Output(
