@@ -6,10 +6,10 @@
 
 ## Summary
 
-Of 34,460 SBIR companies in the awards database, **2,249 (6.5%)
+Of 34,460 SBIR companies in the awards database, **2,790 (8.1%)
 show M&A signals** at high or medium confidence, and **1,197 (3.5%)
 at high confidence only**. Median time from first SBIR award to
-M&A event is **14 years** (H+M).
+M&A event is **15 years** (H+M).
 
 ## Methodology
 
@@ -72,17 +72,34 @@ Results:
 126 false positives (11% of original medium tier) were demoted,
 tightening medium from 1,178 to 1,052 events.
 
+### Low-Tier Coverage Expansion
+
+The directional text analysis was then applied to 1,450 low-tier
+events that had `ma_definitive` signals but no prior text check.
+541 additional confirmed targets (37%) were promoted to medium.
+
+| Direction | Count | % |
+|-----------|-------|---|
+| Confirmed target | 541 | 37% |
+| Ambiguous | 721 | 50% |
+| Comparator | 95 | 7% |
+| Not target | 93 | 6% |
+
+The lower target rate (37% vs 56% for the original medium tier)
+is expected — these events were never text-classified in the
+original scan, so they are inherently weaker candidates.
+
 ## Confidence Tiers (Final)
 
 | Tier | Rule | Count |
 |------|------|-------|
 | High | Form D business combination OR EFTS `subsidiary` | 1,197 |
-| Medium | EFTS `acquisition_text`, refined by directional analysis | 1,052 |
-| Low | All other signals + demoted false positives | 2,057 |
+| Medium | Text-confirmed acquisition direction (from original scan or expansion) | 1,593 |
+| Low | All other signals + demoted false positives | 1,516 |
 | **Total** | | **4,306** |
 
-Within the medium tier, 662 events (63%) are text-confirmed targets
-and 390 (37%) are ambiguous (acquisition language present but direction
+Within the medium tier, 1,203 events are text-confirmed targets
+and 390 are ambiguous (acquisition language present but direction
 could not be determined).
 
 ## Exit Rate
@@ -90,41 +107,43 @@ could not be determined).
 | Filter | Companies | Rate |
 |--------|-----------|------|
 | Any M&A signal | 4,306 | 12.5% |
-| High + Medium | 2,249 | 6.5% |
+| High + Medium | 2,790 | 8.1% |
 | High only | 1,197 | 3.5% |
 
 ## Exit Rate by Agency
 
 | Agency | H+M | High | SBIR Cos | Rate (H+M) | Rate (High) |
 |--------|-----|------|----------|-----------|------------|
-| HHS | 936 | 473 | 12,373 | 7.6% | 3.8% |
-| DoD | 675 | 369 | 14,362 | 4.7% | 2.6% |
-| Education | 25 | 17 | 652 | 3.8% | 2.6% |
-| NSF | 268 | 145 | 7,535 | 3.6% | 1.9% |
-| USDA | 68 | 38 | 1,937 | 3.5% | 2.0% |
-| DOE | 113 | 68 | 3,512 | 3.2% | 1.9% |
-| DHS | 15 | 5 | 531 | 2.8% | 0.9% |
-| Commerce | 25 | 14 | 928 | 2.7% | 1.5% |
-| DOT | 15 | 8 | 616 | 2.4% | 1.3% |
-| NASA | 90 | 48 | 3,714 | 2.4% | 1.3% |
-| EPA | 17 | 10 | 736 | 2.3% | 1.4% |
+| HHS | 1,145 | 473 | 12,373 | 9.3% | 3.8% |
+| DoD | 839 | 369 | 14,362 | 5.8% | 2.6% |
+| Education | 30 | 17 | 652 | 4.6% | 2.6% |
+| NSF | 329 | 145 | 7,535 | 4.4% | 1.9% |
+| USDA | 81 | 38 | 1,937 | 4.2% | 2.0% |
+| DOE | 145 | 68 | 3,512 | 4.1% | 1.9% |
+| Commerce | 35 | 14 | 928 | 3.8% | 1.5% |
+| NASA | 126 | 48 | 3,714 | 3.4% | 1.3% |
+| DHS | 18 | 5 | 531 | 3.4% | 0.9% |
+| EPA | 22 | 10 | 736 | 3.0% | 1.4% |
+| DOT | 18 | 8 | 616 | 2.9% | 1.3% |
 
-HHS leads at 7.6% (H+M) — biotech/pharma is the most M&A-active
-SBIR sector. DoD is second at 4.7%. Other agencies cluster around
-2.3-3.8%.
+HHS leads at 9.3% (H+M) — biotech/pharma is the most M&A-active
+SBIR sector. DoD is second at 5.8%. Other agencies cluster around
+2.9-4.6%.
 
 ## Top Acquirers (H+M, where identified)
 
 | Acquirer | Acquisitions | Sector |
 |----------|-------------|--------|
+| TITAN CORP | 8 | Defense |
+| SEROLOGICALS CORP | 7 | Life sciences |
+| TELEDYNE TECHNOLOGIES | 7 | Defense |
 | AMETEK INC | 7 | Defense/industrial |
-| SEROLOGICALS CORP | 5 | Life sciences |
-| TELEDYNE TECHNOLOGIES | 5 | Defense |
+| KRATOS DEFENSE & SECURITY | 6 | Defense |
+| BRUKER CORP | 6 | Life sciences instruments |
+| LIGAND PHARMACEUTICALS | 6 | Pharma |
+| AGILENT TECHNOLOGIES | 5 | Life sciences instruments |
 | HERCULES CAPITAL | 5 | Financial |
-| JANEL CORP | 5 | Logistics |
-| IPG PHOTONICS | 4 | Photonics |
-| AGILENT TECHNOLOGIES | 4 | Life sciences instruments |
-| LIGAND PHARMACEUTICALS | 4 | Pharma |
+| THERMO FISHER SCIENTIFIC | 4 | Life sciences instruments |
 
 Acquirer landscape is **highly dispersed**: ~2,600 unique acquirers.
 80% buy exactly one SBIR company. No "SBIR rollup" strategy —
@@ -132,14 +151,14 @@ acquisitions are driven by individual technology fit.
 
 ## Time from First SBIR Award to M&A Exit
 
-For H+M events with valid dates (N=2,038):
+For H+M events with valid dates (N=2,558):
 
 | Percentile | Years |
 |-----------|-------|
-| P25 | 7 |
-| P50 (median) | 14 |
-| P75 | 23 |
-| Mean | 15.6 |
+| P25 | 8 |
+| P50 (median) | 15 |
+| P75 | 24 |
+| Mean | 16.4 |
 
 ## Signal Strength
 
@@ -175,15 +194,10 @@ identity; Form D gives deal size.
 ## Caveats
 
 - **Medium tier precision is ~65-70%.** Directional text refinement
-  removed 126 confirmed false positives (11%) and confirmed 662
-  targets (56%). The remaining 390 ambiguous events (33%) could not
-  be classified — acquisition language was present but direction
-  could not be determined from the text window.
-
-- **Medium tier coverage is incomplete.** Text context extraction was
-  only applied when document text was fetched during the EFTS scan.
-  Some genuine acquisitions may lack the `acquisition` text signal
-  because their filing text was never retrieved.
+  confirmed 1,203 targets and removed 314 false positives across
+  two passes (original medium tier + low-tier expansion). The remaining
+  390 ambiguous events could not be classified — acquisition language
+  was present but direction could not be determined from the text window.
 
 - **Acquirer identification is approximate.** `mention_filers[0]` is
   the first filer that mentioned the SBIR company. Usually the
@@ -204,6 +218,7 @@ identity; Form D gives deal size.
 
 - Events dataset: `data/sbir_ma_events.jsonl` (4,306 records)
 - Medium-tier refinement: `data/sbir_ma_medium_refined.jsonl` (1,178 records)
+- Low-tier expansion: `data/sbir_ma_low_refined.jsonl` (1,450 records)
 - Detection script: `scripts/data/detect_sbir_ma_events.py`
 - Refinement script: `scripts/data/refine_ma_medium_tier.py`
 - Analysis script: `scripts/data/analyze_sbir_ma_exits.py`
