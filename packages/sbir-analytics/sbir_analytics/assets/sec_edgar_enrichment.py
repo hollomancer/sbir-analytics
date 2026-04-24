@@ -6,6 +6,7 @@ Enriches SBIR companies with public filing data from SEC EDGAR:
 """
 
 import asyncio
+import concurrent.futures
 
 import pandas as pd
 from dagster import (
@@ -116,8 +117,6 @@ def sec_edgar_enriched_companies(
             # Already inside a running event loop (e.g. a Jupyter notebook or
             # certain async test runners). Run in a dedicated thread so it gets
             # its own event loop via asyncio.run().
-            import concurrent.futures
-
             with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
                 result_df = executor.submit(asyncio.run, _run_enrichment()).result()
         else:
