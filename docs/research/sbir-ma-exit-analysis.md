@@ -149,6 +149,52 @@ Acquirer landscape is **highly dispersed**: ~2,600 unique acquirers.
 80% buy exactly one SBIR company. No "SBIR rollup" strategy —
 acquisitions are driven by individual technology fit.
 
+### Serial Acquirers (3+ SBIR companies)
+
+81 acquirers have acquired 3 or more SBIR companies (298 acquisitions
+total). They fall into three categories:
+
+**Defense consolidators:**
+
+| Acquirer | # | Years | Targets include |
+|----------|---|-------|----------------|
+| Titan Corp | 8 | 2004-2011 | Delfin Systems, Dba Systems, Visicom Labs |
+| Teledyne Technologies | 7 | 2006-2025 | RD Instruments, BlueView Technologies |
+| Ametek Inc | 7 | 2013-2026 | MI Technologies, Forza Silicon, Precitech |
+| Kratos Defense | 6 | 2008-2026 | Fusion Inc, Florida Turbine Technologies |
+| L3 Communications | 4 | 2001-2024 | Mustang Technology, Ord Inc |
+| Mercury Systems | 3 | 2013-2024 | Physical Optics Corp ($575M SBIR portfolio) |
+| CACI International | 3 | 2010-2026 | Wexford Group, Questech |
+| Rocket Lab USA | 3 | 2024-2026 | Planetary Systems Corp, Advanced Solutions |
+
+**Life sciences consolidators:**
+
+| Acquirer | # | Years | Targets include |
+|----------|---|-------|----------------|
+| Serologicals Corp | 7 | 2004-2017 | Chemicon International, Oncor |
+| Bruker Corp | 6 | 2009-2024 | Anasys Instruments, Active Spectrum |
+| Ligand Pharmaceuticals | 6 | 2019-2026 | Primordial Genetics, Crystal Bioscience |
+| Thermo Fisher Scientific | 4 | 2009-2026 | Life Technologies, One Lambda |
+| Agilent Technologies | 5 | 2002-2019 | Silicon Genetics, American Holographic |
+| Qiagen N.V. | 4 | 2020-2026 | Novawave, Intrinsic Bioprobes |
+| Inverness Medical | 4 | 2010-2017 | TechLab, Biostar, Cholestech |
+| Johnson & Johnson | 3 | 2020-2026 | Biomedical Enterprises, Novira |
+| Boston Scientific | 3 | 2016-2021 | Advanced Bionics, Rhythmia Medical |
+| Gilead Sciences | 3 | 2003-2024 | Triangle Pharmaceuticals, Myogen |
+
+**Financial / investment firms:**
+
+| Acquirer | # | Years | Notes |
+|----------|---|-------|-------|
+| Hercules Capital | 5 | 2018-2026 | Venture lending, not traditional M&A |
+| Horizon Technology Finance | 5 | 2018-2026 | Venture lending |
+
+The defense acquirers target DoD/NASA-funded companies; the life
+sciences acquirers target HHS/NSF-funded companies. Cross-sector
+acquisitions are rare. Financial firms (Hercules, Horizon) appear
+because their SEC filings mention SBIR companies in lending contexts
+— these may not be true acquisitions.
+
 ## Time from First SBIR Award to M&A Exit
 
 For H+M events with valid dates (N=2,558):
