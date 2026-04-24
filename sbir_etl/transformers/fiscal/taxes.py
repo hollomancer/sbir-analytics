@@ -1,21 +1,26 @@
 """
-Federal tax estimator for fiscal returns analysis.
+Tax estimator for fiscal returns analysis.
 
-This module converts economic components into federal tax receipt estimates,
-supporting individual income tax, payroll tax, corporate income tax, and excise taxes
-using configurable effective tax rates and progressive rate structures.
+Converts economic components (wage impact, proprietor income, gross operating
+surplus, consumption) into federal, state, and local tax receipt estimates
+using effective rates derived from BEA NIPA tables.
+
+v2: Federal rates from NIPARateProvider (BEA NIPA Tables 3.2, 3.3, 1.5).
+v3: State-specific rates from StateRateProvider (Tax Foundation / Census).
+    When a state column is present, uses state-specific income, sales, and
+    property rates instead of national NIPA averages.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 from decimal import Decimal
-from typing import Any
 
 import pandas as pd
 from loguru import logger
 
-from ...config.loader import get_config
+from .nipa_rates import NIPARateProvider, NIPATaxRates
+from .state_rates import StateRateProvider
 
 
 @dataclass
@@ -26,185 +31,120 @@ class TaxEstimationStats:
     total_payroll_tax: Decimal
     total_corporate_income_tax: Decimal
     total_excise_tax: Decimal
+    total_state_local_tax: Decimal
     total_tax_receipts: Decimal
     num_estimates: int
     avg_effective_rate: float
 
 
 class FiscalTaxEstimator:
-    """Estimate federal tax receipts from economic components.
+    """Estimate federal, state, and local tax receipts from economic components.
 
-    This estimator transforms wage impacts, proprietor income, gross operating
-    surplus, and consumption into federal tax receipts using configurable tax rates.
+    Uses effective tax rates from BEA NIPA tables via NIPARateProvider.
+    Rates are year-specific and fall back to hardcoded baselines when the
+    BEA API is unavailable.
     """
 
-    def __init__(self, config: Any | None = None):
+    def __init__(
+        self,
+        rate_provider: NIPARateProvider | None = None,
+        state_rate_provider: StateRateProvider | None = None,
+        bea_api_key: str | None = None,
+        config: object = None,
+    ):
         """Initialize the fiscal tax estimator.
 
         Args:
-            config: Optional configuration override
+            rate_provider: Pre-configured NIPARateProvider. If None, creates
+                one using bea_api_key (or baseline rates if no key).
+            state_rate_provider: Pre-configured StateRateProvider for
+                state-specific rates. If None, uses built-in 2024 rates.
+            bea_api_key: BEA API key for live NIPA rate fetching.
+            config: Deprecated. Accepted for backward compatibility but ignored.
         """
-        self.config = config or get_config().fiscal_analysis
-        self.tax_params = self.config.tax_parameters
+        if config is not None:
+            logger.warning(
+                "FiscalTaxEstimator: config= parameter is deprecated and ignored. "
+                "Use rate_provider= or bea_api_key= instead."
+            )
+        self.rate_provider = rate_provider or NIPARateProvider(bea_api_key=bea_api_key)
+        self.state_rates = state_rate_provider or StateRateProvider()
 
-    def _get_individual_income_tax_rate(
-        self, income: Decimal, progressive_rates: dict[str, float]
-    ) -> float:
-        """Calculate effective individual income tax rate using progressive brackets.
+    def _get_rates(self, year: int | None = None) -> NIPATaxRates:
+        return self.rate_provider.get_rates(year)
+
+    def _build_rate_series(
+        self,
+        result_df: pd.DataFrame,
+        year: int | None,
+    ) -> dict[str, pd.Series]:
+        """Return per-row rate Series keyed by rate attribute name.
+
+        When year is given, all rows use that year's rates.
+        Otherwise, each row uses the rates for its fiscal_year column.
+        Falls back to the default year when no year info is available.
+        """
+        if year is not None or "fiscal_year" not in result_df.columns:
+            rates = self._get_rates(year)
+            n = len(result_df)
+            idx = result_df.index
+            return {
+                "federal_income_rate": pd.Series([rates.federal_income_rate] * n, index=idx),
+                "federal_payroll_rate": pd.Series([rates.federal_payroll_rate] * n, index=idx),
+                "federal_corporate_rate": pd.Series([rates.federal_corporate_rate] * n, index=idx),
+                "federal_excise_rate": pd.Series([rates.federal_excise_rate] * n, index=idx),
+                "state_local_income_rate": pd.Series([rates.state_local_income_rate] * n, index=idx),
+                "state_local_sales_rate": pd.Series([rates.state_local_sales_rate] * n, index=idx),
+                "state_local_property_rate": pd.Series([rates.state_local_property_rate] * n, index=idx),
+                "state_local_other_rate": pd.Series([rates.state_local_other_rate] * n, index=idx),
+                "rate_year": pd.Series([rates.year] * n, index=idx),
+                "rate_source": pd.Series([rates.source] * n, index=idx),
+            }
+
+        unique_years = {int(fy) for fy in result_df["fiscal_year"].unique()}
+        year_rates = {fy: self._get_rates(fy) for fy in unique_years}
+        fy_int = result_df["fiscal_year"].astype(int)
+
+        def _attr(attr: str) -> pd.Series:
+            mapping = {fy: getattr(year_rates[fy], attr) for fy in unique_years}
+            return fy_int.map(mapping)
+
+        return {
+            "federal_income_rate": _attr("federal_income_rate"),
+            "federal_payroll_rate": _attr("federal_payroll_rate"),
+            "federal_corporate_rate": _attr("federal_corporate_rate"),
+            "federal_excise_rate": _attr("federal_excise_rate"),
+            "state_local_income_rate": _attr("state_local_income_rate"),
+            "state_local_sales_rate": _attr("state_local_sales_rate"),
+            "state_local_property_rate": _attr("state_local_property_rate"),
+            "state_local_other_rate": _attr("state_local_other_rate"),
+            "rate_year": _attr("year"),
+            "rate_source": _attr("source"),
+        }
+
+    def estimate_taxes_from_components(
+        self,
+        components_df: pd.DataFrame,
+        *,
+        year: int | None = None,
+    ) -> pd.DataFrame:
+        """Estimate taxes from economic components DataFrame.
 
         Args:
-            income: Taxable income amount
-            progressive_rates: Progressive rate brackets (e.g., {"22_percent": 0.22})
+            components_df: DataFrame with columns:
+                - wage_impact, proprietor_income_impact, gross_operating_surplus,
+                  consumption_impact (economic components from I-O multipliers)
+                - state, bea_sector, fiscal_year (identifiers, optional)
+            year: Override year for tax rates. If None, uses per-row fiscal_year
+                column or defaults to most recent NIPA year.
 
         Returns:
-            Effective tax rate (0.0-1.0)
-        """
-        # Use average effective rate if income is very small or progressive calculation not needed
-        if income < Decimal("10000"):
-            return self.tax_params.individual_income_tax.get("effective_rate", 0.22)
-
-        # For larger amounts, use bracket-based calculation
-        # Simplified: apply highest bracket that applies
-        # In practice, this would apply each bracket to its income range
-        income_float = float(income)
-
-        # Sort brackets by rate (ascending)
-        sorted(
-            progressive_rates.items(),
-            key=lambda x: x[1],
-        )
-
-        # Apply progressive brackets (simplified calculation)
-        # Use the effective rate as base, with slight adjustment for high income
-        base_rate = self.tax_params.individual_income_tax.get("effective_rate", 0.22)
-
-        # Adjust upward for high income (top brackets)
-        if income_float > 500000:
-            base_rate = min(base_rate + 0.05, 0.37)  # Cap at 37%
-        elif income_float > 200000:
-            base_rate = min(base_rate + 0.03, 0.35)  # Cap at 35%
-
-        return base_rate
-
-    def estimate_individual_income_tax(
-        self, wage_impact: Decimal, proprietor_income: Decimal
-    ) -> Decimal:
-        """Estimate individual income tax from wage and proprietor income.
-
-        Args:
-            wage_impact: Wage income generated
-            proprietor_income: Proprietor income generated
-
-        Returns:
-            Estimated individual income tax receipts
-        """
-        taxable_income = wage_impact + proprietor_income
-        if taxable_income <= 0:
-            return Decimal("0")
-
-        # Get progressive rates
-        progressive_rates = self.tax_params.individual_income_tax.get("progressive_rates", {})
-
-        # Calculate effective rate
-        effective_rate = self._get_individual_income_tax_rate(taxable_income, progressive_rates)
-
-        # Apply standard deduction if configured
-        standard_deduction = Decimal(
-            str(self.tax_params.individual_income_tax.get("standard_deduction", 13850))
-        )
-        adjusted_income = max(Decimal("0"), taxable_income - standard_deduction)
-
-        tax_receipt = adjusted_income * Decimal(str(effective_rate))
-
-        return tax_receipt
-
-    def estimate_payroll_tax(self, wage_impact: Decimal) -> Decimal:
-        """Estimate payroll taxes (Social Security + Medicare) from wage income.
-
-        Args:
-            wage_impact: Wage income generated
-
-        Returns:
-            Estimated payroll tax receipts
-        """
-        if wage_impact <= 0:
-            return Decimal("0")
-
-        # Get payroll tax rates
-        ss_rate = Decimal(str(self.tax_params.payroll_tax.get("social_security_rate", 0.062)))
-        medicare_rate = Decimal(str(self.tax_params.payroll_tax.get("medicare_rate", 0.0145)))
-        unemployment_rate = Decimal(
-            str(self.tax_params.payroll_tax.get("unemployment_rate", 0.006))
-        )
-
-        # Apply Social Security wage base limit
-        wage_base_limit = Decimal(str(self.tax_params.payroll_tax.get("wage_base_limit", 160200)))
-        taxable_wages = min(wage_impact, wage_base_limit)
-
-        # Calculate taxes (employee + employer portions = 2x for full tax)
-        ss_tax = taxable_wages * ss_rate * Decimal("2")  # Both sides
-        medicare_tax = wage_impact * medicare_rate * Decimal("2")  # Both sides, no cap
-        unemployment_tax = taxable_wages * unemployment_rate  # FUTA typically employer only
-
-        total_payroll_tax = ss_tax + medicare_tax + unemployment_tax
-
-        return total_payroll_tax
-
-    def estimate_corporate_income_tax(self, gross_operating_surplus: Decimal) -> Decimal:
-        """Estimate corporate income tax from gross operating surplus.
-
-        Args:
-            gross_operating_surplus: Corporate profits generated
-
-        Returns:
-            Estimated corporate income tax receipts
-        """
-        if gross_operating_surplus <= 0:
-            return Decimal("0")
-
-        # Use effective rate (accounts for deductions, credits)
-        effective_rate = Decimal(
-            str(self.tax_params.corporate_income_tax.get("effective_rate", 0.18))
-        )
-
-        tax_receipt = gross_operating_surplus * effective_rate
-
-        return tax_receipt
-
-    def estimate_excise_tax(self, consumption_impact: Decimal) -> Decimal:
-        """Estimate excise taxes from consumption expenditures.
-
-        Args:
-            consumption_impact: Consumer spending generated
-
-        Returns:
-            Estimated excise tax receipts
-        """
-        if consumption_impact <= 0:
-            return Decimal("0")
-
-        # Use general excise tax rate
-        general_rate = Decimal(str(self.tax_params.excise_tax.get("general_rate", 0.03)))
-
-        tax_receipt = consumption_impact * general_rate
-
-        return tax_receipt
-
-    def estimate_taxes_from_components(self, components_df: pd.DataFrame) -> pd.DataFrame:
-        """Estimate federal taxes from economic components DataFrame.
-
-        Args:
-            components_df: DataFrame with component columns:
-                - wage_impact, proprietor_income_impact, gross_operating_surplus, consumption_impact
-                - state, bea_sector, fiscal_year (identifiers)
-                - model_version, confidence (metadata)
-
-        Returns:
-            DataFrame with tax estimates:
-                - All input columns preserved
-                - individual_income_tax, payroll_tax, corporate_income_tax, excise_tax
-                - total_tax_receipt (sum of all tax types)
-                - tax_estimation_methodology: methodology string
+            DataFrame with all input columns plus:
+                Federal: individual_income_tax, payroll_tax, corporate_income_tax, excise_tax
+                State/local: state_local_income_tax, state_local_sales_tax,
+                    state_local_property_tax, state_local_other_tax
+                Totals: federal_tax_total, state_local_tax_total, total_tax_receipt
+                Metadata: tax_estimation_methodology, rate_source
         """
         if components_df.empty:
             logger.warning("Empty components DataFrame provided to tax estimator")
@@ -212,133 +152,207 @@ class FiscalTaxEstimator:
 
         result_df = components_df.copy()
 
-        # Ensure component columns are Decimal
+        # Ensure component columns exist as floats
         component_cols = [
             "wage_impact",
             "proprietor_income_impact",
             "gross_operating_surplus",
             "consumption_impact",
         ]
-
         for col in component_cols:
             if col not in result_df.columns:
-                result_df[col] = Decimal("0")
+                result_df[col] = 0.0
             else:
-                result_df[col] = result_df[col].apply(
-                    lambda x: Decimal(str(x)) if pd.notna(x) else Decimal("0")
-                )
+                result_df[col] = pd.to_numeric(result_df[col], errors="coerce").fillna(0.0)
 
-        # Estimate each tax type
-        result_df["individual_income_tax"] = result_df.apply(
-            lambda row: self.estimate_individual_income_tax(
-                row.get("wage_impact", Decimal("0")),
-                row.get("proprietor_income_impact", Decimal("0")),
-            ),
-            axis=1,
-        )
+        # Build per-row rate Series (respects each row's fiscal_year when year is None)
+        rate_s = self._build_rate_series(result_df, year)
 
-        result_df["payroll_tax"] = result_df.apply(
-            lambda row: self.estimate_payroll_tax(row.get("wage_impact", Decimal("0"))),
-            axis=1,
-        )
+        # --- Federal taxes ---
+        wage = result_df["wage_impact"]
+        proprietor = result_df["proprietor_income_impact"]
+        gos = result_df["gross_operating_surplus"]
+        consumption = result_df["consumption_impact"]
 
-        result_df["corporate_income_tax"] = result_df.apply(
-            lambda row: self.estimate_corporate_income_tax(
-                row.get("gross_operating_surplus", Decimal("0"))
-            ),
-            axis=1,
-        )
+        # federal_income_rate is derived as personal_taxes / compensation, so apply to wages only
+        result_df["individual_income_tax"] = wage * rate_s["federal_income_rate"]
+        result_df["payroll_tax"] = wage * rate_s["federal_payroll_rate"]
+        result_df["corporate_income_tax"] = gos * rate_s["federal_corporate_rate"]
+        result_df["excise_tax"] = consumption * rate_s["federal_excise_rate"]
 
-        result_df["excise_tax"] = result_df.apply(
-            lambda row: self.estimate_excise_tax(row.get("consumption_impact", Decimal("0"))),
-            axis=1,
-        )
-
-        # Calculate total tax receipt
-        result_df["total_tax_receipt"] = (
+        result_df["federal_tax_total"] = (
             result_df["individual_income_tax"]
             + result_df["payroll_tax"]
             + result_df["corporate_income_tax"]
             + result_df["excise_tax"]
         )
 
-        # Add methodology metadata
-        result_df["tax_estimation_methodology"] = "fiscal_tax_estimator_v1.0"
-        result_df["tax_parameter_version"] = "config_v2023"
+        # --- State & local taxes ---
+        # Use state-specific rates when state column is present;
+        # fall back to per-row NIPA national averages otherwise.
+        has_state_col = "state" in result_df.columns
+        if has_state_col:
+            state_series = result_df["state"].astype(str)
+            state_rate_map = {
+                state: self.state_rates.get_rates(state)
+                for state in state_series.unique()
+            }
+            mapped = state_series.map(state_rate_map)
 
-        # Create shock_id for linking to EconomicShock
-        if (
-            "state" in result_df.columns
-            and "bea_sector" in result_df.columns
-            and "fiscal_year" in result_df.columns
-        ):
+            income_rates = mapped.map(
+                lambda st: st.income_rate if st is not None else float("nan")
+            ).fillna(rate_s["state_local_income_rate"])
+            sales_rates = mapped.map(
+                lambda st: st.sales_rate if st is not None else float("nan")
+            ).fillna(rate_s["state_local_sales_rate"])
+            property_rates = mapped.map(
+                lambda st: st.property_rate if st is not None else float("nan")
+            ).fillna(rate_s["state_local_property_rate"])
+
+            result_df["state_local_income_tax"] = wage * income_rates
+            result_df["state_local_sales_tax"] = consumption * sales_rates
+            result_df["state_local_property_tax"] = gos * property_rates
+            result_df["state_rate_source"] = mapped.map(
+                lambda st: "state_specific" if st is not None else "nipa_national"
+            )
+        else:
+            result_df["state_local_income_tax"] = wage * rate_s["state_local_income_rate"]
+            result_df["state_local_sales_tax"] = consumption * rate_s["state_local_sales_rate"]
+            result_df["state_local_property_tax"] = gos * rate_s["state_local_property_rate"]
+            result_df["state_rate_source"] = "nipa_national"
+
+        result_df["state_local_other_tax"] = (
+            (wage + proprietor + gos) * rate_s["state_local_other_rate"]
+        )
+
+        result_df["state_local_tax_total"] = (
+            result_df["state_local_income_tax"]
+            + result_df["state_local_sales_tax"]
+            + result_df["state_local_property_tax"]
+            + result_df["state_local_other_tax"]
+        )
+
+        # --- Totals ---
+        result_df["total_tax_receipt"] = (
+            result_df["federal_tax_total"] + result_df["state_local_tax_total"]
+        )
+
+        # Backward compat: tax_impact alias
+        result_df["tax_impact"] = result_df["total_tax_receipt"]
+
+        # --- Metadata ---
+        result_df["tax_estimation_methodology"] = "nipa_effective_rates_v2"
+        result_df["rate_source"] = rate_s["rate_source"]
+        result_df["rate_year"] = rate_s["rate_year"]
+
+        # shock_id for linking
+        if all(c in result_df.columns for c in ["state", "bea_sector", "fiscal_year"]):
             result_df["shock_id"] = (
-                result_df["state"].astype(str)
-                + "_"
-                + result_df["bea_sector"].astype(str)
-                + "_FY"
+                result_df["state"].astype(str) + "_"
+                + result_df["bea_sector"].astype(str) + "_FY"
                 + result_df["fiscal_year"].astype(str)
             )
         else:
             result_df["shock_id"] = result_df.index.astype(str)
 
         # Log summary
-        total_iit = result_df["individual_income_tax"].sum()
-        total_payroll = result_df["payroll_tax"].sum()
-        total_cit = result_df["corporate_income_tax"].sum()
-        total_excise = result_df["excise_tax"].sum()
-        total_taxes = result_df["total_tax_receipt"].sum()
-
+        total_federal = result_df["federal_tax_total"].sum()
+        total_sl = result_df["state_local_tax_total"].sum()
+        total = result_df["total_tax_receipt"].sum()
         logger.info(
-            "Tax estimation complete",
-            extra={
-                "total_individual_income_tax": f"${total_iit:,.2f}",
-                "total_payroll_tax": f"${total_payroll:,.2f}",
-                "total_corporate_income_tax": f"${total_cit:,.2f}",
-                "total_excise_tax": f"${total_excise:,.2f}",
-                "total_tax_receipts": f"${total_taxes:,.2f}",
-                "num_estimates": len(result_df),
-            },
+            f"Tax estimation complete: "
+            f"federal=${total_federal:,.0f} state_local=${total_sl:,.0f} "
+            f"total=${total:,.0f} ({len(result_df)} rows)"
         )
 
         return result_df
 
-    def get_estimation_statistics(self, tax_estimates_df: pd.DataFrame) -> TaxEstimationStats:
-        """Get statistics for tax estimation results.
+    # ------------------------------------------------------------------
+    # Backward-compatible per-component helpers
+    # Used by validation tests and downstream callers.  These delegate to
+    # NIPA rates so they remain consistent with estimate_taxes_from_components.
+    # ------------------------------------------------------------------
 
-        Args:
-            tax_estimates_df: DataFrame with tax estimates
+    def estimate_individual_income_tax(
+        self,
+        wage: Decimal,
+        proprietor_income: Decimal = Decimal("0"),
+        year: int | None = None,
+    ) -> Decimal:
+        """Estimate federal individual income tax on wage income.
 
-        Returns:
-            TaxEstimationStats with aggregated statistics
+        Note: rate is derived as personal_taxes / compensation (NIPA),
+        so it is applied to wages only.  ``proprietor_income`` is accepted
+        for backward compatibility; pass ``Decimal("0")`` if not applicable.
+        Non-zero values are logged as a warning since they do not affect the result.
         """
+        if proprietor_income != Decimal("0"):
+            logger.warning(
+                "estimate_individual_income_tax: proprietor_income is ignored "
+                "(rate is applied to wages only per NIPA convention). "
+                "Use estimate_taxes_from_components for full income coverage."
+            )
+        rates = self._get_rates(year)
+        return Decimal(str(float(wage) * rates.federal_income_rate))
+
+    def estimate_payroll_tax(
+        self,
+        wage: Decimal,
+        year: int | None = None,
+    ) -> Decimal:
+        """Estimate federal payroll (social insurance) tax on wage income."""
+        rates = self._get_rates(year)
+        return Decimal(str(float(wage) * rates.federal_payroll_rate))
+
+    def estimate_corporate_income_tax(
+        self,
+        gross_operating_surplus: Decimal,
+        year: int | None = None,
+    ) -> Decimal:
+        """Estimate federal corporate income tax on gross operating surplus."""
+        rates = self._get_rates(year)
+        return Decimal(str(float(gross_operating_surplus) * rates.federal_corporate_rate))
+
+    def estimate_excise_tax(
+        self,
+        consumption: Decimal,
+        year: int | None = None,
+    ) -> Decimal:
+        """Estimate federal excise tax on consumption."""
+        rates = self._get_rates(year)
+        return Decimal(str(float(consumption) * rates.federal_excise_rate))
+
+    def get_estimation_statistics(self, tax_estimates_df: pd.DataFrame) -> TaxEstimationStats:
+        """Get aggregated statistics for tax estimation results."""
         if tax_estimates_df.empty:
             return TaxEstimationStats(
                 total_individual_income_tax=Decimal("0"),
                 total_payroll_tax=Decimal("0"),
                 total_corporate_income_tax=Decimal("0"),
                 total_excise_tax=Decimal("0"),
+                total_state_local_tax=Decimal("0"),
                 total_tax_receipts=Decimal("0"),
                 num_estimates=0,
                 avg_effective_rate=0.0,
             )
 
-        total_iit = tax_estimates_df["individual_income_tax"].sum()
-        total_payroll = tax_estimates_df["payroll_tax"].sum()
-        total_cit = tax_estimates_df["corporate_income_tax"].sum()
-        total_excise = tax_estimates_df["excise_tax"].sum()
-        total_taxes = tax_estimates_df["total_tax_receipt"].sum()
+        total_iit = Decimal(str(tax_estimates_df["individual_income_tax"].sum()))
+        total_payroll = Decimal(str(tax_estimates_df["payroll_tax"].sum()))
+        total_cit = Decimal(str(tax_estimates_df["corporate_income_tax"].sum()))
+        total_excise = Decimal(str(tax_estimates_df["excise_tax"].sum()))
+        total_sl = Decimal(str(tax_estimates_df["state_local_tax_total"].sum()))
+        total_taxes = Decimal(str(tax_estimates_df["total_tax_receipt"].sum()))
 
-        # Calculate average effective rate
         total_economic_base = (
-            tax_estimates_df.get("wage_impact", pd.Series([Decimal("0")])).sum()
-            + tax_estimates_df.get("proprietor_income_impact", pd.Series([Decimal("0")])).sum()
-            + tax_estimates_df.get("gross_operating_surplus", pd.Series([Decimal("0")])).sum()
-            + tax_estimates_df.get("consumption_impact", pd.Series([Decimal("0")])).sum()
+            tax_estimates_df["wage_impact"].sum()
+            + tax_estimates_df["proprietor_income_impact"].sum()
+            + tax_estimates_df["gross_operating_surplus"].sum()
+            + tax_estimates_df["consumption_impact"].sum()
         )
 
         avg_effective_rate = (
-            float(total_taxes / total_economic_base * 100) if total_economic_base > 0 else 0.0
+            float(total_taxes / Decimal(str(total_economic_base)) * 100)
+            if total_economic_base > 0 else 0.0
         )
 
         return TaxEstimationStats(
@@ -346,6 +360,7 @@ class FiscalTaxEstimator:
             total_payroll_tax=total_payroll,
             total_corporate_income_tax=total_cit,
             total_excise_tax=total_excise,
+            total_state_local_tax=total_sl,
             total_tax_receipts=total_taxes,
             num_estimates=len(tax_estimates_df),
             avg_effective_rate=avg_effective_rate,
