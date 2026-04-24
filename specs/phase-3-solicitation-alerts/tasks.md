@@ -1,4 +1,4 @@
-# Phase 3 Solicitation & Award Candidate Alerts — Tasks
+# Phase III Solicitation & Award Candidate Alerts — Tasks
 
 Ordered so each phase produces a standalone deliverable. S1 first (highest
 ROI, clearest precision benchmark, no new data source). S2 adds the
@@ -11,16 +11,22 @@ ship independently.
       `sbir_etl/models/phase_iii_candidate.py`.
 - [ ] 1.2 Add `SignalClass` StrEnum (`RETROSPECTIVE`, `DIRECTED`,
       `FOLLOWON`) next to it.
-- [ ] 1.3 Add `score_topical_similarity(prior_award, target, *, weight)`
-      method to existing `TransitionScorer` in
-      `packages/sbir-ml/sbir_ml/transition/detection/scoring.py`. v1
-      implementation: NAICS overlap + PSC overlap + Jaccard token overlap.
-      No embeddings.
-- [ ] 1.4 Add `score_lineage_language(target_description, *, weight)`
-      method to existing `TransitionScorer`. Regex + phrase match for
+- [ ] 1.3 Add a `topical_similarity` helper module (e.g.
+      `packages/sbir-analytics/sbir_analytics/assets/phase_iii_candidates/similarity.py`)
+      that computes a float similarity score from (prior_award, target)
+      using NAICS overlap + PSC overlap + Jaccard token overlap. The
+      asset factory passes the result into the existing
+      `TransitionScorer.score_text_similarity`. No new scorer method
+      for this signal.
+- [ ] 1.4 Add `score_lineage_language` method to existing
+      `TransitionScorer` in
+      `packages/sbir-ml/sbir_ml/transition/detection/scoring.py`,
+      reading its weight from `self.lineage_config["weight"]` to match
+      the existing `score_*` pattern. Regex + phrase match for
       Phase III lineage phrases and data-rights lineage phrases (see
       design §4).
-- [ ] 1.5 Unit tests for both new methods including adversarial negatives.
+- [ ] 1.5 Unit tests for the topical-similarity helper and for
+      `score_lineage_language`, including adversarial negatives.
 
 ## Phase 2: S1 — retrospective reclassification
 
@@ -31,12 +37,12 @@ ship independently.
       UEI overlap + hierarchical agency match + NOT already-Phase-III-coded).
 - [ ] 2.3 Implement `build_candidate_asset` factory in `assets.py`.
       Instantiate `phase_iii_retrospective_candidates` from the factory
-      with `WEIGHTS_S1` constants and `HIGH_THRESHOLD_S1 = 0.85`.
+      with `WEIGHTS_RETROSPECTIVE` constants and `HIGH_THRESHOLD_RETROSPECTIVE = 0.85`.
 - [ ] 2.4 Emit one row per candidate into `phase_iii_candidates.parquet`
       and one JSON line into `phase_iii_evidence.ndjson`.
 - [ ] 2.5 Create `scripts/phase_iii_precision_backtest.py` that loads
       DoD-coded Phase III contracts as positives, runs the scorer, asserts
-      S1 HIGH precision ≥ 0.85, writes
+      `RETROSPECTIVE` HIGH precision ≥ 0.85, writes
       `reports/phase_iii/backtest.json`, exits non-zero on failure.
 - [ ] 2.6 Wire the backtest script into the existing CI workflow that
       already runs other release gates (reuse — do not add a new workflow).
@@ -58,8 +64,8 @@ ship independently.
 - [ ] 3.5 Implement `pair_filter_s2` in `pairing.py` (notice-type gate +
       UEI match, else agency + NAICS fallback).
 - [ ] 3.6 Instantiate `phase_iii_directed_candidates` from
-      `build_candidate_asset` with `WEIGHTS_S2` and
-      `HIGH_THRESHOLD_S2 = 0.75`.
+      `build_candidate_asset` with `WEIGHTS_DIRECTED` and
+      `HIGH_THRESHOLD_DIRECTED = 0.75`.
 - [ ] 3.7 Integration test on fixture of synthetic SAM.gov notices
       (include real-world justification text as positives).
 - [ ] 3.8 Write an initial 100-row hand-audit CSV at
@@ -71,8 +77,8 @@ ship independently.
 - [ ] 4.1 Implement `pair_filter_s3` in `pairing.py` (solicitation
       notice-type + NAICS/PSC overlap + token-Jaccard ≥ 0.10).
 - [ ] 4.2 Instantiate `phase_iii_followon_candidates` from
-      `build_candidate_asset` with `WEIGHTS_S3` and
-      `HIGH_THRESHOLD_S3 = 0.60`. Column naming uses "follow-on
+      `build_candidate_asset` with `WEIGHTS_FOLLOWON` and
+      `HIGH_THRESHOLD_FOLLOWON = 0.60`. Column naming uses "follow-on
       candidate", not "Phase III".
 - [ ] 4.3 Integration test on a fixture of open solicitations (mix of
       topically-adjacent and unrelated).
