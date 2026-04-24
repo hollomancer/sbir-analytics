@@ -55,7 +55,14 @@ validated_phase_ii_awards (existing) ----> |   prior_award_universe      |
 ### Key components
 
 1. **`SamGovOpportunitiesExtractor`** — `sbir_etl/extractors/sam_gov_opportunities.py`.
-   Parquet-first, API-fallback. Mirrors `docs/SAM_GOV_INTEGRATION.md`.
+   Parquet-first, API-fallback. Mirrors `docs/SAM_GOV_INTEGRATION.md`
+   for auth, rate-limit, and retry (inherits `BaseAsyncAPIClient` the
+   same way `SAMGovAPIClient` does). **Paginates differently** from the
+   Entity client: the Opportunities endpoint
+   (`https://api.sam.gov/opportunities/v2/search`) is cursor-based over
+   `postedFrom` / `postedTo` date windows rather than UEI lookups, so
+   the extractor owns its own date-window iteration state machine.
+   Response unwrapping is endpoint-specific (no shared helper).
 
 2. **`Opportunity` model** — `sbir_etl/models/opportunity.py`. Pydantic row
    contract (see requirements §3 for fields).
@@ -82,7 +89,12 @@ validated_phase_ii_awards (existing) ----> |   prior_award_universe      |
      `TransitionScorer` following the same pattern as the existing five
      scoring methods. Reads weight from `self.lineage_config["weight"]`
      (new scoring-config key; defaults to 0). Regex + phrase match
-     over target description with two phrase lists:
+     over target description with two phrase lists. No pre-existing
+     Phase III phrase corpus exists anywhere in the repo — the existing
+     Phase III detection (`phase_transition/phase_ii.py`) uses only
+     FPDS Element 10Q codes, not description text — so the phrase
+     lists below are authored fresh and should be treated as v1
+     defaults subject to precision-driven iteration:
      - **Phase III lineage**: "Phase III", "Phase 3", "derives from",
        "extends", "completes", "prototype transition", "follow-on
        production", "continuation of".
@@ -136,6 +148,24 @@ validated_phase_ii_awards (existing) ----> |   prior_award_universe      |
      on title tokens. Cheap pre-filter to keep cross-product manageable.
 
    No class, no generator, no strategy pattern. Three functions.
+
+### Pair-filter scale
+
+The filters are implemented as pandas predicates followed by
+`DataFrame.merge()` on exact-match keys — the same shape as the existing
+`transformed_phase_ii_iii_pairs` asset
+(`packages/sbir-analytics/sbir_analytics/assets/phase_transition/pairs.py`),
+which joins Phase II × Phase III on UEI (then DUNS) with pre-filtering
+to non-null identifiers on both sides. No DuckDB pushdown is required
+for v1.
+
+S1 and S2 are UEI-keyed inner joins → at most one row per prior award
+per target; the full cross-product never materializes. S3 uses a
+pre-merge gate (NAICS overlap OR PSC overlap, then Jaccard ≥ 0.10 on
+title tokens) so the cross-product is never computed — only rows
+satisfying the cheap gate participate in the merge. If production
+numbers later show >10M post-gate pair candidates, revisit a DuckDB
+pushdown at that time; not a v1 concern.
 
 ### Signal-class weight constants
 
