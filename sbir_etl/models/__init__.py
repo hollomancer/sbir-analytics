@@ -52,6 +52,9 @@ __all__: list[str] = [
     "QualitySeverity",
     "EnrichmentResult",
     "DataQualitySummary",
+    # Phase III candidate surfacing
+    "PhaseIIICandidate",
+    "SignalClass",
     # Solicitations
     "Solicitation",
     # Statistical Reports
@@ -98,6 +101,9 @@ _lazy_mapping: dict[str, tuple[str, str]] = {
     "QualityIssue": ("sbir_etl.models.quality", "QualityIssue"),
     "QualityReport": ("sbir_etl.models.quality", "QualityReport"),
     "QualitySeverity": ("sbir_etl.models.quality", "QualitySeverity"),
+    # Phase III candidate surfacing
+    "PhaseIIICandidate": ("sbir_etl.models.phase_iii_candidate", "PhaseIIICandidate"),
+    "SignalClass": ("sbir_etl.models.phase_iii_candidate", "SignalClass"),
     # Solicitation models
     "Solicitation": ("sbir_etl.models.solicitation", "Solicitation"),
     # Statistical Report models
