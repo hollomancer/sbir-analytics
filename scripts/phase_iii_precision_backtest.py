@@ -1,23 +1,5 @@
 #!/usr/bin/env python3
-"""Phase III RETROSPECTIVE precision backtest.
-
-Treats DoD-coded Phase III contracts (FPDS Element 10Q codes ``SR3``/``ST3``,
-or an explicit ``sbir_phase`` of "Phase III") as ground-truth positives, scores
-each one against the prior Phase II award for the same vendor, and asserts that
-HIGH (``candidate_score >= HIGH_THRESHOLD_RETROSPECTIVE``) precision is at
-least 0.85.
-
-The script is the release gate for the RETROSPECTIVE materialization. It is
-intentionally **not** a Dagster asset check — asset materialization must not
-depend on a human-maintained audit ledger or on the precision gate's runtime
-state.
-
-Outputs: ``reports/phase_iii/backtest.json`` with metrics (precision, recall,
-sample size, per-agency breakdown, threshold). Exit code 1 on failure
-(precision below threshold), 0 on success or when input data is missing
-(documented data-missing sentinel — do not fabricate precision numbers when
-the corpus isn't available locally).
-"""
+"""Phase III RETROSPECTIVE precision backtest — scores DoD-coded Phase III contracts and asserts HIGH precision >= 0.85."""
 
 from __future__ import annotations
 
@@ -40,8 +22,7 @@ from sbir_analytics.assets.phase_iii_candidates.assets import (
 from sbir_analytics.assets.phase_iii_candidates.pairing import _prepare_priors
 from sbir_ml.transition.detection.scoring import TransitionScorer
 
-# Paths default to the canonical pipeline outputs. Both can be overridden via
-# CLI flags so this script is testable in isolation.
+# Both paths can be overridden via CLI flags; script tries each in order.
 DEFAULT_CONTRACTS_PATHS = (
     Path("data/transition/contracts_ingestion.parquet"),
     Path("data/processed/contracts_ingestion.parquet"),
@@ -76,7 +57,7 @@ def _load_first_existing(paths: tuple[Path, ...]) -> tuple[pd.DataFrame | None, 
 
 
 def _build_pair_row(prior: pd.Series, contract: pd.Series) -> pd.Series:
-    """Construct a row in the canonical PAIR_S1_COLUMNS shape from raw inputs."""
+    """Return a canonical PAIR_S1_COLUMNS-shaped row from raw prior + contract inputs."""
 
     def _g(d: pd.Series, *keys: str) -> Any:
         for k in keys:
@@ -113,10 +94,7 @@ def _build_pair_row(prior: pd.Series, contract: pd.Series) -> pd.Series:
         "target_obligated_amount": _g(
             contract, "federal_action_obligation", "obligated_amount", "obligation_amount"
         ),
-        # If the contracts parquet has been CET-enriched upstream, surface it
-        # so the cet_alignment signal can score. Production today does not
-        # carry this column; the backtest will report a CET-zero precision
-        # number until enrichment is wired through.
+        # Optional CET column — absent in production today; when present, enables cet_alignment signal.
         "target_cet": _g(contract, "target_cet", "contract_cet", "cet"),
         "agency_match_level": "agency",  # default; refined below
     }
@@ -134,8 +112,7 @@ def _build_pair_row(prior: pd.Series, contract: pd.Series) -> pd.Series:
         == str(data["target_sub_agency"]).strip().upper()
     ):
         data["agency_match_level"] = "sub_tier"
-    # Include extra keys (e.g. target_cet) beyond PAIR_S1_COLUMNS so the
-    # scorer can pick them up via row.get(...).
+    # Include extra keys (e.g. target_cet) beyond PAIR_S1_COLUMNS — scorer reads them via row.get.
     return pd.Series(data)
 
 
@@ -153,12 +130,7 @@ def run_backtest(
     phase_ii: pd.DataFrame,
     threshold: float,
 ) -> dict[str, Any]:
-    """Score every DoD-coded Phase III contract against its vendor's prior Phase II.
-
-    A "true positive" is a HIGH-confidence candidate (score >= threshold). A
-    "false negative" is a known Phase III that scored below the threshold.
-    Recall is reported alongside precision; precision is the gate.
-    """
+    """Score DoD-coded Phase III contracts against vendor Phase II priors; return precision metrics."""
 
     if contracts.empty or phase_ii.empty:
         return _empty_metrics(reason="contracts or phase_ii frame is empty")
@@ -219,9 +191,7 @@ def run_backtest(
             agency: {
                 "scored": stats["scored"],
                 "high": stats["high"],
-                "precision": round(stats["high"] / stats["scored"], 4)
-                if stats["scored"]
-                else 0.0,
+                "precision": round(stats["high"] / stats["scored"], 4) if stats["scored"] else 0.0,
             }
             for agency, stats in sorted(by_agency.items())
         },
@@ -314,7 +284,9 @@ def main() -> int:
     if contracts_df is None or phase_ii_df is None:
         reason_parts: list[str] = []
         if contracts_df is None:
-            reason_parts.append(f"contracts parquet not found at {contracts_path or args.contracts}")
+            reason_parts.append(
+                f"contracts parquet not found at {contracts_path or args.contracts}"
+            )
         if phase_ii_df is None:
             reason_parts.append(f"phase II parquet not found at {args.phase_ii}")
         reason = "; ".join(reason_parts)

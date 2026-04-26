@@ -1,19 +1,6 @@
 """Phase III candidate asset factory and per-signal-class materializations.
 
-A single ``build_candidate_asset`` factory produces one Dagster asset per
-signal class (``RETROSPECTIVE`` / ``DIRECTED`` / ``FOLLOWON``). Each
-materialization writes into the same parquet
-(``data/processed/phase_iii_candidates.parquet``, distinguished by the
-``signal_class`` column) and the same evidence NDJSON
-(``data/processed/phase_iii_evidence.ndjson``).
-
-v1 ships only the RETROSPECTIVE materialization. The DIRECTED and FOLLOWON
-classes will be wired in subsequent phases of the spec but reuse the same
-factory and weight-dict pattern declared here.
-
-NOTE: this module is a Dagster asset module — do NOT add
-``from __future__ import annotations`` (it breaks Dagster's runtime context
-type validation).
+NOTE: do NOT add ``from __future__ import annotations`` — breaks Dagster runtime context validation.
 """
 
 import hashlib
@@ -70,10 +57,7 @@ CANDIDATES_OUTPUT_PATH = Path("data/processed/phase_iii_candidates.parquet")
 EVIDENCE_OUTPUT_PATH = Path("data/processed/phase_iii_evidence.ndjson")
 
 
-# Per-signal-class scoring weights. Sum to 1.0 (asserted at module load below).
-# Weights are NOT YAML — by design (see design.md §"Signal-class weight
-# constants"). Vendor match is intentionally absent: UEI overlap is a
-# pair-filter gate, not a scored signal.
+# Per-signal weights; sum to 1.0 (asserted below). UEI is a pair-filter gate, not a scored signal.
 WEIGHTS_RETROSPECTIVE: dict[str, float] = {
     "agency_continuity": 0.25,
     "timing_proximity": 0.15,
@@ -132,9 +116,7 @@ def _scorer_config(weights: dict[str, float]) -> dict[str, Any]:
             "timing_proximity": {
                 "enabled": True,
                 "weight": weights["timing_proximity"],
-                # Two windows: within 24 months (full credit), within 60 months
-                # (half credit). Beyond that, no credit. v1 defaults; tune via
-                # the precision backtest.
+                # [0, 730] days = full credit; [731, 1825] = half credit; beyond = none.
                 "windows": [
                     {"range": [0, 730], "score": 1.0},
                     {"range": [731, 1825], "score": 0.5},
@@ -173,7 +155,6 @@ def _scorer_config(weights: dict[str, float]) -> dict[str, Any]:
 
 
 _COMPETITION_CODE_MAP: dict[str, CompetitionType] = {
-    # Common FPDS extent_competed codes mapped to our internal taxonomy.
     "A": CompetitionType.FULL_AND_OPEN,
     "B": CompetitionType.LIMITED,
     "C": CompetitionType.FULL_AND_OPEN,
@@ -216,9 +197,7 @@ def _to_date(value: Any):
 
 
 def _candidate_id(signal_class: SignalClass, prior_award_id: str, target_id: str) -> str:
-    h = hashlib.sha1(
-        f"{signal_class.value}|{prior_award_id}|{target_id}".encode()
-    )
+    h = hashlib.sha1(f"{signal_class.value}|{prior_award_id}|{target_id}".encode())
     return f"{signal_class.value}-{h.hexdigest()[:16]}"
 
 
@@ -226,9 +205,7 @@ def _row_to_federal_contract(row: pd.Series) -> FederalContract:
     return FederalContract(
         contract_id=str(row.get("target_id") or uuid.uuid4().hex),
         agency=row.get("target_agency") if pd.notna(row.get("target_agency")) else None,
-        sub_agency=row.get("target_sub_agency")
-        if pd.notna(row.get("target_sub_agency"))
-        else None,
+        sub_agency=row.get("target_sub_agency") if pd.notna(row.get("target_sub_agency")) else None,
         start_date=_to_date(row.get("target_action_date")),
         obligation_amount=float(row.get("target_obligated_amount"))
         if pd.notna(row.get("target_obligated_amount"))
@@ -258,15 +235,8 @@ def _row_to_cet_data(row: pd.Series) -> dict[str, Any] | None:
     return {"award_cet": prior_cet, "contract_cet": target_cet}
 
 
-def _score_pair(
-    scorer: TransitionScorer, row: pd.Series
-) -> tuple[float, dict[str, float], float]:
-    """Score one pre-filtered candidate row.
-
-    Returns ``(composite_score, per_signal_subscores, topical_similarity)``.
-    The composite score is the sum of all per-signal contributions, capped at
-    1.0. Subscores are returned per-signal for evidence/parquet.
-    """
+def _score_pair(scorer: TransitionScorer, row: pd.Series) -> tuple[float, dict[str, float], float]:
+    """Return ``(composite_score, per_signal_subscores, topical_similarity)`` for one candidate row."""
 
     award_data = _row_to_award_data(row)
     contract = _row_to_federal_contract(row)
@@ -293,9 +263,11 @@ def _score_pair(
     text_score = scorer.score_text_similarity(topical)
 
     description = row.get("target_description")
-    desc_str = str(description) if description is not None and not (
-        isinstance(description, float) and pd.isna(description)
-    ) else None
+    desc_str = (
+        str(description)
+        if description is not None and not (isinstance(description, float) and pd.isna(description))
+        else None
+    )
     lineage_score = scorer.score_lineage_language(desc_str)
 
     subscores = {
@@ -316,13 +288,7 @@ def _evidence_bundle(
     row: pd.Series,
     topical_similarity: float,
 ) -> dict[str, Any]:
-    """Build the per-candidate evidence record.
-
-    Mirrors the key shape of ``transitions_evidence.ndjson`` (``award_id``,
-    ``contract_id``, ``score``, ``method``, ``matched_keys``, ``dates``,
-    ``amounts``, ``agencies``) so downstream tooling can reuse the same
-    parsing helpers.
-    """
+    """Build the per-candidate evidence record matching the ``transitions_evidence.ndjson`` key shape."""
 
     return {
         "candidate_id": candidate.candidate_id,
@@ -423,15 +389,7 @@ def _candidate_dataframe(candidates: list[PhaseIIICandidate]) -> pd.DataFrame:
 
 
 def _default_retrospective_loader(_context: Any) -> pd.DataFrame:
-    """Default S1 target loader: read FPDS contracts parquet from disk.
-
-    Production wires this through ``validated_phase_ii_awards`` upstream and
-    a contracts parquet path. Returning an empty frame when the file is
-    missing keeps the asset materializable in dev environments without raw
-    contract data.
-    """
-
-    from .pairing import _is_phase_iii_already_coded  # noqa: F401  # ensure module loads
+    """Read FPDS contracts parquet from disk; returns empty frame when file is missing."""
 
     contracts_path = Path("data/transition/contracts_ingestion.parquet")
     if not contracts_path.exists():
@@ -454,23 +412,7 @@ def build_candidate_asset(
     asset_name: str,
     target_loader: Callable[[Any], pd.DataFrame],
 ):
-    """Factory that produces one Dagster asset per signal class.
-
-    Args:
-        signal_class: Which surfacing pipeline this materialization belongs to.
-        pair_filter: Module-level pair-filter callable
-            ``(prior_awards, targets) -> DataFrame``.
-        weights: Per-signal scoring weights (sum to 1.0).
-        high_threshold: Score cutoff for ``is_high_confidence``.
-        asset_name: Dagster asset name (e.g. ``phase_iii_retrospective_candidates``).
-        target_loader: Callable that returns the target DataFrame given the
-            asset execution context. The factory keeps target loading out of
-            the asset body so each signal class can source its own corpus.
-
-    Returns:
-        A Dagster ``AssetsDefinition`` (or the underlying function when
-        Dagster isn't installed; tests use the shim to call directly).
-    """
+    """Return a Dagster asset function for one signal-class materialization."""
 
     _validate_weights(asset_name, weights)
     target_type = "fpds_contract" if signal_class is SignalClass.RETROSPECTIVE else "opportunity"
@@ -491,9 +433,7 @@ def build_candidate_asset(
         validated_phase_ii_awards: pd.DataFrame | None = None,
     ):
         priors = (
-            validated_phase_ii_awards
-            if validated_phase_ii_awards is not None
-            else pd.DataFrame()
+            validated_phase_ii_awards if validated_phase_ii_awards is not None else pd.DataFrame()
         )
         targets = target_loader(context)
         log = getattr(context, "log", logger) if context is not None else logger
@@ -562,13 +502,7 @@ def _write_outputs(
     evidence_records: list[dict[str, Any]],
     signal_class: SignalClass,
 ) -> None:
-    """Append-and-replace this signal class's rows in the shared outputs.
-
-    The parquet and NDJSON are shared across all three signal-class
-    materializations. To make the per-class run idempotent we read the
-    existing file (if any), drop rows for this class, and concat the new
-    rows. Same idea for the NDJSON.
-    """
+    """Idempotently replace this signal class's rows in the shared parquet + NDJSON outputs."""
 
     CANDIDATES_OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
     EVIDENCE_OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -605,10 +539,6 @@ def _write_outputs(
         for record in evidence_records:
             fh.write(json.dumps(record) + "\n")
 
-
-# ---------------------------------------------------------------------------
-# Concrete materializations — one per signal class.
-# ---------------------------------------------------------------------------
 
 phase_iii_retrospective_candidates = build_candidate_asset(
     signal_class=SignalClass.RETROSPECTIVE,

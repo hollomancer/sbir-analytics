@@ -20,9 +20,7 @@ from typing import Any
 
 from loguru import logger
 
-# Phase III lineage language. Indicates a notice/contract is in the Phase III
-# neighborhood — not evidence of a violation. v1 defaults subject to
-# precision-driven iteration.
+# Phase III lineage language — signals proximity to Phase III, not a violation.
 _PHASE_III_LINEAGE_PHRASES: tuple[str, ...] = (
     "phase iii",
     "phase 3",
@@ -34,8 +32,7 @@ _PHASE_III_LINEAGE_PHRASES: tuple[str, ...] = (
     "continuation of",
 )
 
-# Data-rights lineage vocabulary. Signals a Phase III / data-rights review is
-# warranted, not a violation.
+# Data-rights vocabulary that co-occurs with Phase III deliverable language.
 _DATA_RIGHTS_LINEAGE_PHRASES: tuple[str, ...] = (
     "technical data package",
     "interface control document",
@@ -426,22 +423,7 @@ class TransitionScorer:
         return min(similarity_score * weight, 1.0)
 
     def score_lineage_language(self, description: str | None) -> float:
-        """Score Phase III / data-rights lineage phrases in a target description.
-
-        Regex + phrase match for statutory Phase III language and a narrow
-        data-rights lineage vocabulary. Phrase hits saturate quickly: the
-        per-phrase weight contribution is capped at a small multiplier so a
-        single repeated phrase cannot dominate. The result is scaled by
-        ``self.lineage_config["weight"]``.
-
-        Args:
-            description: Free-text target description (opportunity text or
-                contract description).
-
-        Returns:
-            Weighted contribution in ``[0, 1]``. ``0.0`` when the phrase list
-            is disabled, the description is empty, or no phrase matches.
-        """
+        """Return weighted fraction of distinct lineage phrases matched in ``description``, in ``[0, 1]``."""
 
         if not description:
             return 0.0
@@ -453,16 +435,12 @@ class TransitionScorer:
         if weight <= 0.0:
             return 0.0
 
-        # Count distinct phrases that match at least once. Distinct-phrase
-        # count (not total-match count) is the right saturation knob —
-        # repetition of one phrase shouldn't compound.
+        # Distinct-phrase count (not total-match count) — repetition of one phrase shouldn't compound.
         matches = sum(1 for pat in _LINEAGE_PATTERNS if pat.search(description))
         if matches == 0:
             return 0.0
 
-        # Saturate at 3 distinct phrase hits -> full weight. Fewer hits scale
-        # linearly. This keeps the signal interpretable and bounds precision
-        # loss from one-off keyword coincidences.
+        # Fewer than saturation_matches -> linear scale; at/above -> full weight.
         saturation = self.lineage_config.get("saturation_matches", 3)
         match_fraction = min(matches / float(saturation), 1.0)
         return min(match_fraction * weight, 1.0)

@@ -1,21 +1,4 @@
-"""Pydantic model and signal-class enum for Phase III candidate surfacing.
-
-A ``PhaseIIICandidate`` is one row emitted by the candidate-surfacing pipeline:
-a tuple of (prior award, target, signal class) carrying a composite score in
-``[0, 1]``, a HIGH-confidence flag, an ``evidence_ref`` pointer into the
-per-candidate NDJSON bundle, and per-signal subscores.
-
-The three signal classes share scoring infrastructure but differ in ingestion
-corpus, cadence, and precision targets:
-
-- ``RETROSPECTIVE``: FPDS/USAspending contracts that fit Phase III criteria
-  but are not coded as such (Element 10Q gap). Precision gate: 0.85.
-- ``DIRECTED``: SAM.gov Opportunities notices in ``{sole_source, justification,
-  notice_of_intent, award}`` — the statutorily typical Phase III path.
-- ``FOLLOWON``: competitive solicitations topically adjacent to a prior
-  Phase I/II scope. Not statutory Phase III — always labeled "follow-on
-  candidate".
-"""
+"""Pydantic model and signal-class enum for Phase III candidate surfacing."""
 
 from datetime import UTC, datetime
 from enum import StrEnum
@@ -36,10 +19,7 @@ TargetType = Literal["fpds_contract", "opportunity"]
 
 
 class PhaseIIICandidate(BaseModel):
-    """One (prior_award, target, signal_class) candidate row.
-
-    Row-level contract for ``data/processed/phase_iii_candidates.parquet``.
-    """
+    """One (prior_award, target, signal_class) candidate row; row-level contract for the candidates parquet."""
 
     model_config = ConfigDict(str_strip_whitespace=True)
 
@@ -54,9 +34,7 @@ class PhaseIIICandidate(BaseModel):
         ..., description="Corpus the target came from: FPDS contract or SAM.gov opportunity."
     )
     target_id: str = Field(..., description="Identifier of the target (contract_id or notice_id).")
-    candidate_score: float = Field(
-        ..., ge=0.0, le=1.0, description="Composite score in [0, 1]."
-    )
+    candidate_score: float = Field(..., ge=0.0, le=1.0, description="Composite score in [0, 1].")
     is_high_confidence: bool = Field(
         ..., description="True iff candidate_score >= the signal-class HIGH threshold."
     )

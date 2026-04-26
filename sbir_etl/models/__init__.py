@@ -1,20 +1,9 @@
-"""Data models for the SBIR ETL pipeline.
-
-Avoids importing heavy or environment-dependent submodules at package import
-time — some submodules pull in optional deps (neo4j, duckdb, dagster) that
-may be absent in constrained environments.
-
-Attributes are loaded lazily on first access via `__getattr__`, e.g.:
-
-    from sbir_etl.models import Award
-"""
+"""Data models for the SBIR ETL pipeline — lazily imported to avoid heavy optional-dependency load at package import time."""
 
 from importlib import import_module
 from typing import Any
 
 
-# Symbols exported by each submodule. The `attr_name` defaults to the symbol
-# name; only override when the import name differs from the export name.
 _LAZY_BY_MODULE: dict[str, tuple[str, ...]] = {
     "sbir_etl.models.award": ("Award", "RawAward"),
     "sbir_etl.models.cet_models": (
@@ -72,7 +61,7 @@ def __getattr__(name: str) -> Any:
     if module_path is None:
         raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
     value = getattr(import_module(module_path), name)
-    globals()[name] = value  # Cache for future lookups.
+    globals()[name] = value
     return value
 
 
