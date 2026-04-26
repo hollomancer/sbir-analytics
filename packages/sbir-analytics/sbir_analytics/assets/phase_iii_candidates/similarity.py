@@ -1,23 +1,4 @@
-"""Topical-similarity helper for Phase III candidate scoring.
-
-Computes a single float in ``[0, 1]`` from a (prior_award, target) pair using
-three cheap v1 features:
-
-- NAICS code agreement (single-code exact match on 6-digit NAICS, credited
-  even when only one side carries a value on the basis that NAICS-less
-  targets tend to be miscoded rather than mismatched; see design §4 tests).
-- PSC code agreement (same, for product/service codes).
-- Jaccard token overlap on the union of title and abstract (prior) vs.
-  the target description (contracts or opportunities).
-
-The asset factory feeds the resulting float into the existing
-``TransitionScorer.score_text_similarity`` — the weight lives on the scorer,
-not here. No new scorer method is introduced for this signal.
-
-Defaults reflect the feature contributions and are illustrative:
-NAICS: 0.30, PSC: 0.20, Jaccard: 0.50. They sum to 1.0 so the returned score
-stays in ``[0, 1]`` when each input is already in ``[0, 1]``.
-"""
+"""Topical-similarity helper (NAICS + PSC code agreement + Jaccard token overlap) for Phase III candidate scoring."""
 
 from __future__ import annotations
 
@@ -75,11 +56,7 @@ def _normalize_code(value: Any) -> str | None:
 
 
 def _code_similarity(prior: Any, target: Any) -> float:
-    """1.0 on exact match, 0.0 on explicit mismatch, 0.0 when both missing.
-
-    A one-sided missing code returns 0.0 — conservative; the Jaccard channel
-    still contributes when codes are absent.
-    """
+    """1.0 on exact match, 0.0 otherwise (including when either side is missing)."""
 
     a = _normalize_code(prior)
     b = _normalize_code(target)
@@ -111,19 +88,7 @@ def compute_topical_similarity(
     *,
     weights: dict[str, float] | None = None,
 ) -> float:
-    """Compute a topical-similarity float in ``[0, 1]``.
-
-    Args:
-        prior_award: Prior award dict with optional keys
-            ``naics_code``, ``psc_code``, ``title``, ``abstract``.
-        target: Target dict (contract or opportunity) with optional keys
-            ``naics_code``, ``psc_code``, ``description``.
-        weights: Optional override of the per-feature weights. Must have keys
-            ``naics``, ``psc``, ``jaccard`` and sum to 1.0.
-
-    Returns:
-        Similarity score in ``[0, 1]``.
-    """
+    """Return a weighted NAICS + PSC + Jaccard topical similarity in ``[0, 1]``."""
 
     w = weights if weights is not None else DEFAULT_WEIGHTS
 

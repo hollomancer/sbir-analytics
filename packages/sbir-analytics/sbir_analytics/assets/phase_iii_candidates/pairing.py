@@ -1,26 +1,11 @@
-"""Pair-filter functions for Phase III candidate signal classes.
-
-Each pair filter is a small module-level function that takes a prior-award frame
-and a target frame (contracts or opportunities) and returns the pre-merged
-``(prior, target)`` candidate rows that pass the structural gate. The asset
-factory then scores those rows.
-
-v1 implements the S1 (RETROSPECTIVE) filter only — S2 and S3 land in later
-phases. See ``specs/phase-3-solicitation-alerts/design.md`` for the full set.
-
-The merge shape mirrors ``transformed_phase_ii_iii_pairs``: pre-narrow each
-side, then a pandas inner-merge on the join key. UEI is the gate, so the full
-cross-product never materializes.
-"""
+"""Pair-filter functions for Phase III candidate signal classes."""
 
 from __future__ import annotations
 
 import pandas as pd
 
 # FPDS Element 10Q codes that mark a contract as already-coded Phase III.
-# Mirrors the constant in ``packages/sbir-analytics/.../phase_transition/phase_ii.py``;
-# duplicated here intentionally to keep this filter self-contained and avoid a
-# cross-package import for a five-character set.
+# Duplicated intentionally — avoids cross-package import for a five-element set.
 _PHASE_III_RESEARCH_CODES = frozenset({"SR3", "ST3"})
 
 # Tokens we accept as evidence that ``sbir_phase`` already says "Phase III".
@@ -71,21 +56,13 @@ def _is_phase_iii_already_coded(row: pd.Series) -> bool:
     sbir_phase = row.get("sbir_phase") if "sbir_phase" in row else None
     if sbir_phase is not None:
         label = _normalize(sbir_phase)
-        if label.startswith("PHASE "):
-            label_strip = label
-        else:
-            label_strip = label
-        if label_strip in _PHASE_III_LABELS:
+        if label in _PHASE_III_LABELS:
             return True
     return False
 
 
 def _agency_match_level(prior: pd.Series, target: pd.Series) -> str | None:
-    """Return the finest hierarchical agency match level present, or None.
-
-    Levels (finest first): ``office`` > ``sub_tier`` > ``agency``. A row with
-    no agreement at any tier returns None and is filtered out.
-    """
+    """Return ``office`` > ``sub_tier`` > ``agency`` match level, or None."""
 
     p_office = _normalize(prior.get("prior_office"))
     t_office = _normalize(target.get("target_office"))
@@ -106,11 +83,7 @@ def _agency_match_level(prior: pd.Series, target: pd.Series) -> str | None:
 
 
 def _prepare_priors(prior_awards: pd.DataFrame) -> pd.DataFrame:
-    """Project & rename the prior-award frame to the canonical ``prior_*`` columns.
-
-    Accepts the ``validated_phase_ii_awards`` shape (canonical) or any frame
-    that carries the same column names — missing columns are filled with NaN.
-    """
+    """Project & rename the prior-award frame to canonical ``prior_*`` columns."""
 
     if prior_awards.empty:
         return pd.DataFrame(columns=[c for c in PAIR_S1_COLUMNS if c.startswith("prior_")])
@@ -144,11 +117,7 @@ def _prepare_priors(prior_awards: pd.DataFrame) -> pd.DataFrame:
 
 
 def _prepare_contracts(contracts: pd.DataFrame) -> pd.DataFrame:
-    """Project & rename the contracts frame to the canonical ``target_*`` columns.
-
-    Excludes rows already coded Phase III (research code SR3/ST3 or
-    ``sbir_phase`` matching a Phase III label).
-    """
+    """Project & rename contracts frame to canonical ``target_*`` columns; excludes coded Phase III rows."""
 
     if contracts.empty:
         return pd.DataFrame(columns=[c for c in PAIR_S1_COLUMNS if c.startswith("target_")])
@@ -157,8 +126,8 @@ def _prepare_contracts(contracts: pd.DataFrame) -> pd.DataFrame:
 
     # Compute "already coded" mask before column projection so we can read
     # whichever raw column the input frame carries.
-    coded_mask = df.apply(_is_phase_iii_already_coded, axis=1) if len(df) else pd.Series(
-        [], dtype=bool
+    coded_mask = (
+        df.apply(_is_phase_iii_already_coded, axis=1) if len(df) else pd.Series([], dtype=bool)
     )
     df = df.loc[~coded_mask].copy()
     if df.empty:
@@ -200,16 +169,7 @@ def pair_filter_s1(
     prior_awards: pd.DataFrame,
     contracts: pd.DataFrame,
 ) -> pd.DataFrame:
-    """S1 — Retrospective pair filter.
-
-    Inner-joins prior Phase II awards to FPDS contracts on ``recipient_uei``
-    and requires hierarchical agency agreement at the finest tier present
-    (office > sub-tier > agency). Contracts already coded Phase III are
-    excluded so we only surface miscoded candidates.
-
-    Returns a DataFrame with the canonical ``PAIR_S1_COLUMNS``. Empty when
-    either input lacks the join key or no agency level agrees.
-    """
+    """S1 retrospective filter: UEI inner-join + hierarchical agency gate; excludes coded Phase III."""
 
     priors = _prepare_priors(prior_awards)
     targets = _prepare_contracts(contracts)
