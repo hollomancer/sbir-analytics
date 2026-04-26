@@ -7,46 +7,46 @@ ship independently.
 
 ## Phase 1: Scorer extension + models
 
-- [ ] 1.1 Add `PhaseIIICandidate` Pydantic model in
+- [x] 1.1 Add `PhaseIIICandidate` Pydantic model in
       `sbir_etl/models/phase_iii_candidate.py`.
-- [ ] 1.2 Add `SignalClass` StrEnum (`RETROSPECTIVE`, `DIRECTED`,
+- [x] 1.2 Add `SignalClass` StrEnum (`RETROSPECTIVE`, `DIRECTED`,
       `FOLLOWON`) next to it.
-- [ ] 1.3 Add a `topical_similarity` helper module (e.g.
+- [x] 1.3 Add a `topical_similarity` helper module (e.g.
       `packages/sbir-analytics/sbir_analytics/assets/phase_iii_candidates/similarity.py`)
       that computes a float similarity score from (prior_award, target)
       using NAICS overlap + PSC overlap + Jaccard token overlap. The
       asset factory passes the result into the existing
       `TransitionScorer.score_text_similarity`. No new scorer method
       for this signal.
-- [ ] 1.4 Add `score_lineage_language` method to existing
+- [x] 1.4 Add `score_lineage_language` method to existing
       `TransitionScorer` in
       `packages/sbir-ml/sbir_ml/transition/detection/scoring.py`,
       reading its weight from `self.lineage_config["weight"]` to match
       the existing `score_*` pattern. Regex + phrase match for
       Phase III lineage phrases and data-rights lineage phrases (see
       design §4).
-- [ ] 1.5 Unit tests for the topical-similarity helper and for
+- [x] 1.5 Unit tests for the topical-similarity helper and for
       `score_lineage_language`, including adversarial negatives.
 
 ## Phase 2: S1 — retrospective reclassification
 
-- [ ] 2.1 Create
+- [x] 2.1 Create
       `packages/sbir-analytics/sbir_analytics/assets/phase_iii_candidates/`
       package with `__init__.py`, `assets.py`, `pairing.py`.
-- [ ] 2.2 Implement `pair_filter_s1` in `pairing.py` (structural filter:
+- [x] 2.2 Implement `pair_filter_s1` in `pairing.py` (structural filter:
       UEI overlap + hierarchical agency match + NOT already-Phase-III-coded).
-- [ ] 2.3 Implement `build_candidate_asset` factory in `assets.py`.
+- [x] 2.3 Implement `build_candidate_asset` factory in `assets.py`.
       Instantiate `phase_iii_retrospective_candidates` from the factory
       with `WEIGHTS_RETROSPECTIVE` constants and `HIGH_THRESHOLD_RETROSPECTIVE = 0.85`.
-- [ ] 2.4 Emit one row per candidate into `phase_iii_candidates.parquet`
+- [x] 2.4 Emit one row per candidate into `phase_iii_candidates.parquet`
       and one JSON line into `phase_iii_evidence.ndjson`.
-- [ ] 2.5 Create `scripts/phase_iii_precision_backtest.py` that loads
+- [x] 2.5 Create `scripts/phase_iii_precision_backtest.py` that loads
       DoD-coded Phase III contracts as positives, runs the scorer, asserts
       `RETROSPECTIVE` HIGH precision ≥ 0.85, writes
       `reports/phase_iii/backtest.json`, exits non-zero on failure.
-- [ ] 2.6 Wire the backtest script into the existing CI workflow that
+- [x] 2.6 Wire the backtest script into the existing CI workflow that
       already runs other release gates (reuse — do not add a new workflow).
-- [ ] 2.7 Integration test: 100-row fixture with known positives and
+- [x] 2.7 Integration test: 100-row fixture with known positives and
       negatives; assert schema, evidence NDJSON structure, precision gate.
 
 ## Phase 3: S2 — directed / sole-source notice alerts
