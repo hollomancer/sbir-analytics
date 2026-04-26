@@ -15,9 +15,41 @@ to produce a composite likelihood score (0.0-1.0) and confidence classification.
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from loguru import logger
+
+# Phase III lineage language. Indicates a notice/contract is in the Phase III
+# neighborhood — not evidence of a violation. v1 defaults subject to
+# precision-driven iteration.
+_PHASE_III_LINEAGE_PHRASES: tuple[str, ...] = (
+    "phase iii",
+    "phase 3",
+    "derives from",
+    "extends",
+    "completes",
+    "prototype transition",
+    "follow-on production",
+    "continuation of",
+)
+
+# Data-rights lineage vocabulary. Signals a Phase III / data-rights review is
+# warranted, not a violation.
+_DATA_RIGHTS_LINEAGE_PHRASES: tuple[str, ...] = (
+    "technical data package",
+    "interface control document",
+    "source code",
+    "government purpose rights",
+    "unlimited rights",
+)
+
+# Word-boundary matchers around each phrase, matched case-insensitively.
+_LINEAGE_PATTERNS: tuple[re.Pattern[str], ...] = tuple(
+    re.compile(r"\b" + re.escape(p) + r"\b", re.IGNORECASE)
+    for p in (*_PHASE_III_LINEAGE_PHRASES, *_DATA_RIGHTS_LINEAGE_PHRASES)
+)
+
 
 from sbir_etl.models.transition_models import (
     AgencySignal,
@@ -89,6 +121,7 @@ class TransitionScorer:
         self.patent_config = scoring_config.get("patent_signal", {})
         self.cet_config = scoring_config.get("cet_alignment", {})
         self.vendor_config = scoring_config.get("vendor_match", {})
+        self.lineage_config = scoring_config.get("lineage_language", {})
 
         # Extract confidence thresholds
         thresholds = config.get("confidence_thresholds", {})
@@ -391,6 +424,48 @@ class TransitionScorer:
 
         weight = text_config.get("weight", 0.0)
         return min(similarity_score * weight, 1.0)
+
+    def score_lineage_language(self, description: str | None) -> float:
+        """Score Phase III / data-rights lineage phrases in a target description.
+
+        Regex + phrase match for statutory Phase III language and a narrow
+        data-rights lineage vocabulary. Phrase hits saturate quickly: the
+        per-phrase weight contribution is capped at a small multiplier so a
+        single repeated phrase cannot dominate. The result is scaled by
+        ``self.lineage_config["weight"]``.
+
+        Args:
+            description: Free-text target description (opportunity text or
+                contract description).
+
+        Returns:
+            Weighted contribution in ``[0, 1]``. ``0.0`` when the phrase list
+            is disabled, the description is empty, or no phrase matches.
+        """
+
+        if not description:
+            return 0.0
+
+        if not self.lineage_config.get("enabled", True):
+            return 0.0
+
+        weight = float(self.lineage_config.get("weight", 0.0))
+        if weight <= 0.0:
+            return 0.0
+
+        # Count distinct phrases that match at least once. Distinct-phrase
+        # count (not total-match count) is the right saturation knob —
+        # repetition of one phrase shouldn't compound.
+        matches = sum(1 for pat in _LINEAGE_PATTERNS if pat.search(description))
+        if matches == 0:
+            return 0.0
+
+        # Saturate at 3 distinct phrase hits -> full weight. Fewer hits scale
+        # linearly. This keeps the signal interpretable and bounds precision
+        # loss from one-off keyword coincidences.
+        saturation = self.lineage_config.get("saturation_matches", 3)
+        match_fraction = min(matches / float(saturation), 1.0)
+        return min(match_fraction * weight, 1.0)
 
     def compute_final_score(self, signals: TransitionSignals) -> float:
         """
