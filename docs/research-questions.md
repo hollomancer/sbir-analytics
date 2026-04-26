@@ -21,6 +21,14 @@ respected so foundational work appears before dependents.
 - `CET` — CET technology classifier
 - `PATLINK` — patent-to-award linkage
 - `IMP` — imputed fields for missing data
+- `M&A signals` — M&A event detection (8-K/Form D parsing, ownership-change signals)
+- `SEC EDGAR` — SEC EDGAR filings (Form D Reg D, Form 8-K) for SBIR-firm transactions
+- `NAICS` — industry classification derived from NAICS codes
+- `fiscal model` — fiscal-impact modeling inputs and assumptions
+- `BEA I-O` — BEA input-output tables for economic-impact estimation
+- `transitions` — commercialization/phase-transition outcome definitions
+- `NIPA rate provider` — BEA NIPA-derived effective tax rates (Tables 3.2/3.3)
+- `state rate provider` — state-specific effective tax rates for jurisdiction decomposition
 
 Items marked *(branch: …)* are in-progress on a feature branch and not yet
 merged to `main`. Public-study citations appear as `[L#]` — see
@@ -53,7 +61,7 @@ merged to `main`. Public-study citations appear as `[L#]` — see
 **M&A exit detection (foreign-acquisition + ownership-change risk):**
 
 - Did an SBIR-funded company undergo M&A activity? Foreign-acquisition risk flagged by CSIS [L17] — [../specs/merger_acquisition_detection/](../specs/merger_acquisition_detection/). *(deps: ER)*
-- For SBIR firms acquired by public companies, can inbound M&A be detected via 8-K full-text search? *(branch: claude/integrate-sec-edgar-sbir)* *(deps: ER)*
+- For SBIR firms acquired by public companies, can inbound M&A be detected via 8-K full-text search? *(PR #286)* *(deps: ER)*
 - What is the SBIR-firm M&A exit rate, and how does it stratify by funding agency (e.g., HHS biotech vs. DoD defense)? *(deps: ER, M&A signals)*
 - What is the median time from first SBIR award to M&A exit? *(deps: ER, M&A signals)*
 - Which acquirers concentrate SBIR-firm acquisitions (defense primes vs. life-sciences consolidators), and what fraction are serial acquirers (3+ targets)? *(deps: ER, M&A signals)*
@@ -61,7 +69,7 @@ merged to `main`. Public-study citations appear as `[L#]` — see
 
 **Private capital signals (SBIR firms' non-federal funding posture):**
 
-- What is the Form D [L23] private-placement fundraising profile of SBIR awardees, and how does it compare to SBIR funding (private-to-SBIR leverage ratio)? *(branch: claude/integrate-sec-edgar-sbir)* *(deps: ER, SEC EDGAR)*
+- What is the Form D [L23] private-placement fundraising profile of SBIR awardees, and how does it compare to SBIR funding (private-to-SBIR leverage ratio)? *(PR #286)* *(deps: ER, SEC EDGAR)*
 - What is the debt-vs-equity composition and offering fill rate of SBIR-firm Form D filings? *(deps: ER, SEC EDGAR)*
 
 ## B. Technology commercialization & entrepreneurship
@@ -107,7 +115,7 @@ merged to `main`. Public-study citations appear as `[L#]` — see
 
 ### C2. Relational (Tier 2)
 
-- Which USPTO patents are linked to specific SBIR awards, and with what confidence? — [transition/vendor-matching.md](transition/vendor-matching.md). Parallels Jaffe-Trajtenberg-Henderson [L13]. *(deps: ER)*
+- Which USPTO patents are linked to specific SBIR awards, and with what confidence? — [transition/vendor-matching.md](transition/vendor-matching.md). Parallels Jaffe-Trajtenberg-Henderson [L13]. *(deps: ER, PATLINK)*
 - Which patents are semantically similar to specific SBIR awards (ModernBERT-Embed)? — [../specs/paecter_analysis_layer/](../specs/paecter_analysis_layer/). *(deps: PATLINK)*
 - Do SBIR awards and resulting contracts share the same technology focus (CET alignment signal)? *(deps: ER, ID, CET)*
 - How many patents are linked to each award, and what is the matching confidence distribution? *(deps: PATLINK)*
@@ -127,7 +135,7 @@ merged to `main`. Public-study citations appear as `[L#]` — see
 - Award totals by state, agency, and phase — SBA annual reports [L18]. *(deps: —)*
 - NAICS-sector coverage and fallback usage. *(deps: IMP for NAICS)*
 
-### D2. Inferential (Tier 2)
+### D2. Relational (Tier 2)
 
 - What are federal fiscal returns (tax receipts) from SBIR program spending? — [fiscal/](fiscal/). TechLink's DoD-wide 1995–2018 study reports ~22:1 total-output ROI, 8.4:1 sales ROI, $39.4B tax revenue [L19]; Air Force ~12:1, Navy ~19.5:1 [L19]; NCI published a separate economic-impact study [L20]. *(deps: ER, ID, NAICS, BEA I-O)*
 - What are employment, wage, proprietor-income, and production impacts by award? *(deps: fiscal model)*
@@ -230,3 +238,4 @@ Public studies the inventory draws from or benchmarks against.
 
 - **[L22]** BEA. *NIPA Tables 3.2 (Federal Government Current Receipts), 3.3 (State & Local Government Current Receipts), and 1.5 (GDP by Major Type of Product).* Effective federal/state/local rate baselines for fiscal-impact modeling. <https://apps.bea.gov/iTable/>
 - **[L23]** SEC. *Form D Notice of Exempt Offering of Securities (Reg D) and Form 8-K Current Report.* Public filings used for SBIR-firm M&A and private-placement detection. <https://www.sec.gov/forms>
+

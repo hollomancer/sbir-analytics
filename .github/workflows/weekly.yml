@@ -339,6 +339,7 @@ jobs:
         env:
           DAYS: ${{ github.event.inputs.days || '7' }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          SAM_GOV_API_KEY: ${{ secrets.SAM_GOV_API_KEY }}
           S3_BUCKET: ${{ secrets.S3_BUCKET || '' }}
         run: |
           mkdir -p reports

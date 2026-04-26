@@ -2,34 +2,27 @@
 """AWS CDK app for SBIR ETL infrastructure."""
 
 import os
-from pathlib import Path
 
 import aws_cdk as cdk
-from stacks.storage import StorageStack
-from stacks.security import SecurityStack
-from stacks.batch_stack import BatchStack
+
+from stacks.batch import BatchStack
+from stacks.foundation import FoundationStack
 
 app = cdk.App()
 
-# Environment configuration
 env = cdk.Environment(
-    account=app.node.try_get_context("account") or os.environ.get("CDK_DEFAULT_ACCOUNT"),
-    region=app.node.try_get_context("region") or os.environ.get("CDK_DEFAULT_REGION") or "us-east-2",
+    account=os.environ.get("CDK_DEFAULT_ACCOUNT", "161066624831"),
+    region=os.environ.get("CDK_DEFAULT_REGION", "us-east-2"),
 )
 
-# Stack dependencies:
-# Storage -> Security -> Batch
+foundation = FoundationStack(app, "sbir-analytics-foundation", env=env)
 
-storage_stack = StorageStack(app, "sbir-analytics-storage", env=env)
-security_stack = SecurityStack(
-    app, "sbir-analytics-security", env=env, s3_bucket=storage_stack.bucket
-)
-
-# AWS Batch stack for analysis jobs
-batch_stack = BatchStack(
+BatchStack(
     app,
     "sbir-analytics-batch",
     env=env,
+    bucket=foundation.bucket,
+    neo4j_secret=foundation.neo4j_secret,
 )
 
 app.synth()

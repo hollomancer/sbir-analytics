@@ -1,9 +1,8 @@
 {
-  "lambda_layer_arn": "arn:aws:lambda:us-east-2:658445659195:layer:sbir-analytics-python-dependencies:33",
-  "vpc-provider:account=658445659195:filter.isDefault=true:region=us-east-2:returnAsymmetricSubnets=true": {
-    "vpcId": "vpc-071faf723b3144e8f",
+  "vpc-provider:account=161066624831:filter.isDefault=true:region=us-east-2:returnAsymmetricSubnets=true": {
+    "vpcId": "vpc-986522f0",
     "vpcCidrBlock": "172.31.0.0/16",
-    "ownerAccountId": "658445659195",
+    "ownerAccountId": "161066624831",
     "availabilityZones": [],
     "subnetGroups": [
       {
@@ -11,22 +10,22 @@
         "type": "Public",
         "subnets": [
           {
-            "subnetId": "subnet-0190b4deba937ab6d",
+            "subnetId": "subnet-bbd5a4d3",
             "cidr": "172.31.0.0/20",
             "availabilityZone": "us-east-2a",
-            "routeTableId": "rtb-0a24c0d4ca72577cb"
+            "routeTableId": "rtb-d70b0cbf"
           },
           {
-            "subnetId": "subnet-0d3a9277157f15e92",
+            "subnetId": "subnet-1d3b9567",
             "cidr": "172.31.16.0/20",
             "availabilityZone": "us-east-2b",
-            "routeTableId": "rtb-0a24c0d4ca72577cb"
+            "routeTableId": "rtb-d70b0cbf"
           },
           {
-            "subnetId": "subnet-05e65626d6e705ef5",
+            "subnetId": "subnet-5319041e",
             "cidr": "172.31.32.0/20",
             "availabilityZone": "us-east-2c",
-            "routeTableId": "rtb-0a24c0d4ca72577cb"
+            "routeTableId": "rtb-d70b0cbf"
           }
         ]
       }

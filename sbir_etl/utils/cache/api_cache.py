@@ -314,7 +314,3 @@ class APICache:
             "ttl_hours": self.ttl_hours,
             "default_type": self.default_cache_type,
         }
-
-
-# Backward compatibility alias
-BaseDataFrameCache = APICache

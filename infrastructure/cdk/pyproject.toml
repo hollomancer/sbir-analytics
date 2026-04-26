@@ -7,3 +7,9 @@ dependencies = [
     "aws-cdk-lib>=2.100.0",
     "constructs>=10.0.0",
 ]
+
+[project.optional-dependencies]
+dev = ["pytest>=7.0"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

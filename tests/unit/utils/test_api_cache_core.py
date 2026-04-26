@@ -1,4 +1,4 @@
-"""Unit tests for cache utilities (backward compat for BaseDataFrameCache)."""
+"""Unit tests for APICache core functionality."""
 
 from datetime import datetime, timedelta
 from unittest.mock import patch
@@ -10,19 +10,10 @@ import pytest
 pytestmark = pytest.mark.fast
 
 from sbir_etl.utils.cache.api_cache import APICache
-from sbir_etl.utils.cache.base_cache import BaseDataFrameCache
-
-
-class TestBaseDataFrameCacheCompat:
-    """Tests that BaseDataFrameCache alias still works."""
-
-    def test_backward_compat_alias(self):
-        """BaseDataFrameCache should be an alias for APICache."""
-        assert BaseDataFrameCache is APICache
 
 
 class TestAPICacheCoreFunctionality:
-    """Tests for core cache functionality (formerly tested via BaseDataFrameCache)."""
+    """Tests for core APICache functionality."""
 
     @pytest.fixture
     def cache(self, tmp_path):

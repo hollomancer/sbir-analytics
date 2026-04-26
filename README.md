@@ -1,6 +1,6 @@
 # SBIR ETL Pipeline
 
-> Analyze $50B+ in SBIR/STTR funding data: Track technology transitions, patent outcomes, and economic impact of federal R&D investments.
+> Analyze $90B+ in SBIR/STTR funding data: Track technology transitions, patent outcomes, and economic impact of federal R&D investments.
 
 [![CI](https://github.com/hollomancer/sbir-analytics/workflows/CI/badge.svg)](https://github.com/hollomancer/sbir-analytics/actions)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
@@ -8,8 +8,8 @@
 
 ## What This Does
 
-- 🔍 **533K+ SBIR awards** from 1983-present across all federal agencies
-- 🚀 **40K-80K technology transitions** detected using 6 independent signals
+- 🔍 **Tracks SBIR awards** from 1983-present across all federal agencies
+- 🚀 **Technology transitions** detected using 6 independent signals
 - 📊 **CET classification** for Critical & Emerging Technology trend analysis
 - 💰 **Economic impact** analysis with ROI and federal tax receipt estimates
 - 🔗 **Patent ownership chains** tracking SBIR-funded innovation outcomes
@@ -222,6 +222,7 @@ This project is licensed under the [MIT License](LICENSE). Copyright (c) 2025 Co
 This project makes use of and is grateful for the following open-source tools and research:
 
 - **[BEA API](https://apps.bea.gov/api/)** - Bureau of Economic Analysis Input-Output tables for fiscal impact modeling
+- **stateior
 - **[Bayesian Mixture-of-Experts](https://www.arxiv.org/abs/2509.23830)** - Research on calibration and uncertainty estimation by Albus Yizhuo Li
 - **[ModernBERT-Embed](https://huggingface.co/nomic-ai/modernbert-embed-base)** - Embedding model by Nomic AI (768-dim, 8192 token context)
 - **@SquadronConsult** - Help with SAM.gov data integration
