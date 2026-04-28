@@ -1,20 +1,4 @@
-"""
-Data models for the SBIR ETL pipeline.
-
-This module intentionally avoids importing heavy or environment-dependent submodules at
-package import time. Importing submodules (which may require optional dependencies such
-as `neo4j`, `duckdb`, or `dagster`) can cause import-time failures when running tests
-or tooling in constrained environments.
-
-Consumers can still access models via attribute access on the package, e.g.:
-
-    from sbir_etl.models import Award
-    a = Award(...)
-
-The attributes are loaded lazily on first access using importlib, which keeps the
-package import lightweight and import-safe for environments that do not have all
-optional dependencies available.
-"""
+"""Data models for the SBIR ETL pipeline — lazily imported to avoid heavy optional-dependency load at package import time."""
 
 from importlib import import_module
 from typing import Any
@@ -52,6 +36,9 @@ __all__: list[str] = [
     "QualitySeverity",
     "EnrichmentResult",
     "DataQualitySummary",
+    # Phase III candidate surfacing
+    "PhaseIIICandidate",
+    "SignalClass",
     # Solicitations
     "Solicitation",
     # Statistical Reports
@@ -64,9 +51,6 @@ __all__: list[str] = [
     "ReportFormat",
 ]
 
-# Mapping of exported symbol -> (module_path, attribute_name)
-# When a symbol is accessed on this package, the target module will be imported
-# and the attribute will be resolved and cached in the module globals for future use.
 _lazy_mapping: dict[str, tuple[str, str]] = {
     # Award models
     "Award": ("sbir_etl.models.award", "Award"),
@@ -98,6 +82,9 @@ _lazy_mapping: dict[str, tuple[str, str]] = {
     "QualityIssue": ("sbir_etl.models.quality", "QualityIssue"),
     "QualityReport": ("sbir_etl.models.quality", "QualityReport"),
     "QualitySeverity": ("sbir_etl.models.quality", "QualitySeverity"),
+    # Phase III candidate surfacing
+    "PhaseIIICandidate": ("sbir_etl.models.phase_iii_candidate", "PhaseIIICandidate"),
+    "SignalClass": ("sbir_etl.models.phase_iii_candidate", "SignalClass"),
     # Solicitation models
     "Solicitation": ("sbir_etl.models.solicitation", "Solicitation"),
     # Statistical Report models
@@ -112,13 +99,7 @@ _lazy_mapping: dict[str, tuple[str, str]] = {
 
 
 def __getattr__(name: str) -> Any:
-    """
-    Lazily import and return the requested attribute.
-
-    This function is invoked by Python when attribute `name` is not found in the
-    module globals. It imports the underlying module and fetches the attribute,
-    caching it in the package globals so subsequent accesses do not re-import.
-    """
+    """Lazily import and cache the requested attribute from its submodule."""
     if name in _lazy_mapping:
         module_path, attr_name = _lazy_mapping[name]
         module = import_module(module_path)
@@ -128,14 +109,11 @@ def __getattr__(name: str) -> Any:
             raise AttributeError(
                 f"Module '{module_path}' does not define attribute '{attr_name}'"
             ) from exc
-        # Cache for future lookups
         globals()[name] = value
         return value
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
 def __dir__() -> list[str]:
-    """
-    Enhance completion by exposing defined __all__ items alongside module globals.
-    """
+    """Expose __all__ items alongside module globals for IDE/REPL completion."""
     return sorted(list(__all__) + list(globals().keys()))

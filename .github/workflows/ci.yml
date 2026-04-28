@@ -82,6 +82,10 @@ jobs:
               - 'tests/e2e/transition/**'
               - 'tests/integration/transition/**'
               - 'docs/transition/**'
+              - 'packages/sbir-analytics/sbir_analytics/assets/phase_iii_candidates/**'
+              - 'packages/sbir-ml/sbir_ml/transition/detection/scoring.py'
+              - 'scripts/phase_iii_precision_backtest.py'
+              - 'tests/integration/test_phase_iii_retrospective_asset.py'
             docker:
               - 'Dockerfile*'
               - 'docker-compose*.yml'
@@ -1059,6 +1063,15 @@ jobs:
           set -euo pipefail
           uv run python scripts/ci/gate_check.py transition-analytics
 
+      - name: Phase III RETROSPECTIVE precision backtest
+        run: |
+          set -euo pipefail
+          # Release gate for Phase III S1 candidate surfacing — fails CI if HIGH
+          # precision drops below 0.85 against DoD-coded Phase III contracts.
+          # Writes a data-missing sentinel and exits 0 when the corpus isn't
+          # available locally; see scripts/phase_iii_precision_backtest.py.
+          uv run python scripts/phase_iii_precision_backtest.py
+
       - name: Upload validation summary
         if: always()
         uses: ./.github/actions/upload-artifacts
@@ -1066,6 +1079,7 @@ jobs:
           name: transition-mvp-validation
           path: |
             reports/validation/transition_mvp.json
+            reports/phase_iii/backtest.json
           if-no-files-found: warn
           retention-days: ${{ env.DEFAULT_RETENTION_DAYS }}
 
