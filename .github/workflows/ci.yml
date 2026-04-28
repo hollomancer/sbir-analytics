@@ -82,6 +82,10 @@ jobs:
               - 'tests/e2e/transition/**'
               - 'tests/integration/transition/**'
               - 'docs/transition/**'
+              - 'packages/sbir-analytics/sbir_analytics/assets/phase_iii_candidates/**'
+              - 'packages/sbir-ml/sbir_ml/transition/detection/scoring.py'
+              - 'scripts/phase_iii_precision_backtest.py'
+              - 'tests/integration/test_phase_iii_retrospective_asset.py'
             docker:
               - 'Dockerfile*'
               - 'docker-compose*.yml'
