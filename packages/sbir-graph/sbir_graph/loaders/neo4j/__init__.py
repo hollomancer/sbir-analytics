@@ -41,6 +41,9 @@ __all__ = [
     "CompanyCategorizationLoaderConfig",
     # Organizations
     "OrganizationLoader",
+    # SEC EDGAR
+    "SecEdgarLoader",
+    "SecEdgarLoaderConfig",
 ]
 
 _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
@@ -56,6 +59,8 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "Neo4jHealthStatus": (".client", "Neo4jHealthStatus"),
     "Neo4jStatistics": (".client", "Neo4jStatistics"),
     "OrganizationLoader": (".organizations", "OrganizationLoader"),
+    "SecEdgarLoader": (".sec_edgar", "SecEdgarLoader"),
+    "SecEdgarLoaderConfig": (".sec_edgar", "SecEdgarLoaderConfig"),
     "Neo4jPatentCETLoader": (".patent_cet", "Neo4jPatentCETLoader"),
     "PatentLoader": (".patents", "PatentLoader"),
     "PatentLoaderConfig": (".patents", "PatentLoaderConfig"),
