@@ -22,20 +22,47 @@ instrument types) is treated as feature, not bug, because the policy question
 is "what private-capital alternative would these firms otherwise rely on,"
 not "what would seed VCs alone do."
 
+## Reuse Posture: PR #286
+
+This spec was originally drafted under the assumption that EDGAR ingest, Form
+D parsing, CIK resolution, and M&A signal extraction were all greenfield work.
+That assumption was wrong. **PR #286 (`claude/sbir-ma-exit-analysis`) builds
+all of that infrastructure** and was discovered mid-spec:
+
+- `sbir_etl/enrichers/sec_edgar/{client,enricher,form_d_scoring}.py` — full
+  EDGAR client (~1,800 lines), rate-limited (10 req/s SEC limit), checkpointed
+- `sbir_etl/models/sec_edgar.py` — typed models for filings, mentions, Form D
+- `packages/sbir-analytics/sbir_analytics/assets/sec_edgar_enrichment.py` —
+  Dagster asset, with companion job
+- `scripts/data/{fetch_form_d_index,fetch_form_d_details,detect_sbir_ma_events,
+  refine_ma_medium_tier,analyze_sbir_ma_exits,analyze_form_d_tiers,
+  explore_form_d_clusters,scan_sbir_edgar}.py` — pipeline scripts
+- `data/sbir_ma_events.jsonl` — curated M&A events, confidence-tiered
+- 3-layer CIK resolution (threshold + containment + distinctive-word) with
+  city-co-occurrence disambiguation; 552 high-confidence Form D M&A signals,
+  4,022 EFTS-mention candidates refined to 1,203 confirmed targets after
+  directional text refinement (false-positive removal)
+- Published findings in `docs/research/`: 8.1% SBIR M&A exit rate, 1.82x
+  Form D-to-SBIR leverage ratio (high-confidence), agency stratification,
+  top-acquirer landscape, serial-acquirer count
+
+This spec **consumes** PR #286's outputs rather than reimplementing them.
+Phase 2 collapses from "ingest + parse + crosswalk + cohort + compare" to
+"filter to NSF + build control cohort + compute deltas".
+
 ## Phasing
 
 This spec ships in two sequential phases, each independently useful.
 
 - **Phase 1 — Published-baseline comparison.** Compute NSF SBIR cohort outcomes
-  on metrics with cited public VC baselines (Lerner, Howell, ITIF, NVCA/CB
-  Insights public summaries). No new data ingest.
-- **Phase 2 — Form D matched-cohort comparison.** Ingest SEC EDGAR Form D
-  filings, build a CIK ↔ UEI/EIN crosswalk, construct a matched cohort of
-  private-capital-financed firms, and compute the same outcome metrics on the
-  matched cohort.
+  on metrics with cited public VC baselines. No new data ingest. Independent
+  of PR #286.
+- **Phase 2 — NSF-vs-private-capital matched cohort.** Consume PR #286
+  artifacts to filter to NSF awardees, construct a non-SBIR Form D control
+  cohort, and compute outcome deltas. Gated on PR #286 merging to main.
 
-Phase 1 is the gating deliverable. Phase 2 is contingent on Phase 1 yielding a
-defensible NSF metric set and on Form D ingest landing for A4 / M&A.
+Phase 1 is the gating deliverable. Phase 2 starts after #286 merges and our
+branch rebases on top.
 
 ## Phase 1 Requirements
 
@@ -50,8 +77,9 @@ defensible NSF metric set and on Form D ingest landing for A4 / M&A.
      dataset 5 years post-Phase-II)
    - Patent rate (patents linked to award via PATLINK / award-recipient ÷
      awards)
-   - M&A exit rate (placeholder — populated when M&A spec lands; emit
-     "not-yet-available" until then)
+   - M&A exit rate — reuses #286's `data/sbir_ma_events.jsonl` once that PR
+     merges (was previously gated as "not-yet-available"). NSF-filtered slice
+     is a one-line join.
 3. **SHALL** present results alongside cited public VC baselines:
    - Seed → Series A graduation (NVCA / CB Insights public summaries)
    - 5-year startup survival (BLS BED, public)
@@ -75,49 +103,43 @@ Reproduces the exact reconciliation pattern of `leverage-ratio-analysis`.
 
 ## Phase 2 Requirements
 
-7. **SHALL** ingest SEC EDGAR Form D filings (XML/JSON via EDGAR full-text or
-   bulk archives), persisted to the standard staging layout (DuckDB-backed).
-   Adds a new `sec_edgar` enrichment source under `sbir_etl/enrichers/sec_edgar/`
-   following the existing `BaseAsyncAPIClient` pattern (mirrors `sam_gov`,
-   `usaspending_api`, `patentsview_api`). No prior stub exists — earlier
-   `iterative_api_enrichment` task notes referenced a `sec_edgar` config entry
-   that was never landed.
-8. **SHALL** parse Form D fields needed for cohort comparison: filer CIK,
-   issuer name + address + state, issuer NAICS (self-reported), filing date,
-   amount sold, total offering, security type (equity / debt / option /
-   convertible), industry group, minimum-investment-accepted.
-9. **SHALL** construct a CIK ↔ UEI/EIN crosswalk by extending the existing
-   production `VendorCrosswalk` class (`packages/sbir-ml/sbir_ml/transition/
-   features/vendor_crosswalk.py`, 580 lines, supports UEI/CAGE/DUNS + fuzzy
-   name + acquisition handling) with a CIK field on `CrosswalkRecord` and
-   a `find_by_cik` accessor. Match cascade:
-   - EIN where Form D supplies it (often blank; record availability rate)
-   - Issuer-name + state fuzzy match via existing `find_by_name` machinery
-   - Address normalization for tie-breaking
-   - Crosswalk match rate must be reported per cohort year; under 30% match
-     triggers a Phase 2 stop-and-discuss gate.
-10. **SHALL** define the comparison cohort as Form D issuers that are *not*
-    matched to any SBIR awardee (so we compare NSF-funded firms vs.
-    privately-financed firms with no SBIR exposure).
-11. **SHALL** match NSF and Form D cohorts on covariates: vintage year, NAICS-2
-    sector, state. Document the resulting cohort sizes and balance.
-12. **SHALL** compute the same outcomes from Phase 1 on the Form D cohort,
-    using the same federal-contract / patent / M&A signals (where applicable
-    to private firms).
-13. **SHALL** publish a threats-to-validity section before any headline
-    finding. Required entries: SAFE/convertible undercount, late-stage
-    inclusion, NAICS self-report noise, CIK↔UEI match-rate floor, technical-
-    merit vs. lawyer-access selection bias.
-14. **SHOULD** decompose the Form D cohort by security-type and offering size
-    so that downstream readers can isolate the (noisy but estimable) seed-
-    stage subset if they want.
+Phase 2 consumes PR #286 artifacts. None of the EDGAR/Form-D ingest or
+parsing work belongs in this spec.
+
+7. **SHALL** filter PR #286's SBIR↔EDGAR signal tables (`sec_edgar_enrichment`
+   asset outputs and `data/sbir_ma_events.jsonl`) to NSF SBIR awardees only
+   (ALN 47.041 / 47.084).
+8. **SHALL** construct a non-SBIR control cohort: Form D issuers in #286's
+   index that are *not* matched to any SBIR awardee (CIK is not in the
+   resolved SBIR-CIK set produced by #286). Bucket by issuer-reported
+   vintage (filing year), NAICS-2, state.
+9. **SHALL** match NSF and control cohorts on covariates: vintage year,
+   NAICS-2, state. Coarsened-exact matching, no propensity scoring in v1.
+   Document cohort sizes and balance.
+10. **SHALL** compute Phase 1's outcome metrics on the matched control cohort
+    where applicable: federal-contract presence (FPDS join), patent rate
+    (PATLINK), M&A exit rate (#286's events table). Survival proxy and
+    Phase-graduation rates do not apply to the control cohort and are
+    reported as N/A.
+11. **SHALL** publish a threats-to-validity section before any headline
+    finding. Required entries: SAFE/convertible undercount, late-stage Form
+    D inclusion, NAICS self-report noise, #286's CIK-resolution recall floor
+    (~28% of SBIR companies appear in EDGAR per #286), technical-merit vs.
+    lawyer-access selection bias, control-cohort exclusion of pre-Form-D
+    SBIR awardees who later raised capital.
+12. **SHOULD** decompose results by Form D security-type (equity / debt /
+    option / convertible) and offering-size buckets so downstream readers
+    can zoom in on the noisy seed-stage subset if they want. Use #286's
+    Form D scoring tiers directly.
+13. **SHOULD** reproduce #286's published 1.82x SBIR-to-Form-D leverage
+    ratio scoped to NSF only, as a cross-check on the dataset slice.
 
 ### Phase 2 Gate Condition
 
 Can state: "On vintage [X], NAICS-2 [Y], state [Z]: NSF Phase II awardees
-transitioned to federal contract at [A]% within 5 years; matched Form D
-issuers transitioned at [B]%. Selection-bias and matching caveats below."
-The reconciliation matters more than the headline number.
+transitioned to federal contract at [A]% within 5 years; matched non-SBIR
+Form D issuers transitioned at [B]%. Selection-bias and matching caveats
+below." The reconciliation matters more than the headline number.
 
 ## Dependencies
 
@@ -126,19 +148,12 @@ The reconciliation matters more than the headline number.
 - Entity resolution cascade — UEI/DUNS/CAGE/fuzzy-name (EXISTS)
 - PATLINK patent linkage (EXISTS)
 - CET classifier (EXISTS, used for Phase 1 stratification)
-- M&A detection — `specs/merger_acquisition_detection/` plus a 45-line stub
-  asset at `packages/sbir-analytics/sbir_analytics/assets/ma_detection.py`
-  (patent-assignor flag-flipping only; placeholder date and confidence; not
-  consumable as-is). Phase 1 emits placeholder; Phase 2 may rebuild M&A
-  signal on top of the SEC 8-K data we ingest, separately from this spec.
-- SEC EDGAR ingest — none. Add a new enrichment source under
-  `sbir_etl/enrichers/sec_edgar/` following the established
-  `BaseAsyncAPIClient` pattern (`sam_gov`, `usaspending_api`, etc.).
-- Form D ingest — none. This spec is the canonical implementation; the
-  un-started M&A spec can consume the artifacts when it picks up.
-- `VendorCrosswalk` — production-quality 580-line entity-resolution
-  utility; Phase 2 extends it with CIK rather than building a parallel
-  structure.
+- **PR #286** — provides EDGAR ingest, Form D parsing, CIK resolution, M&A
+  event detection, Form D scoring tiers. Gates all of Phase 2. After merge,
+  this branch must rebase on top of main.
+- `VendorCrosswalk` — used by #286's CIK resolver. Spec authors should not
+  modify it directly; if a CIK field is needed for downstream analysis,
+  request it via the #286 owners or a follow-on PR rather than fork it here.
 
 ## Out of Scope
 
@@ -147,3 +162,6 @@ The reconciliation matters more than the headline number.
 - Causal-effect estimation. This spec is descriptive comparison only; any
   causal claims require IV / regression-discontinuity machinery beyond scope.
 - Non-NSF SBIR programs. DoD / NIH / DOE comparisons are downstream extensions.
+- Re-implementation of any infrastructure delivered by PR #286. If a #286
+  artifact is missing or wrong for our purposes, file an issue against the
+  #286 follow-up; do not duplicate.
