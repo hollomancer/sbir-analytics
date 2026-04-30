@@ -77,16 +77,22 @@ Reproduces the exact reconciliation pattern of `leverage-ratio-analysis`.
 
 7. **SHALL** ingest SEC EDGAR Form D filings (XML/JSON via EDGAR full-text or
    bulk archives), persisted to the standard staging layout (DuckDB-backed).
-   Coordinates with existing `sec_edgar` enrichment-source config in
-   `config/base.yaml` (currently disabled-by-default stub).
+   Adds a new `sec_edgar` enrichment source under `sbir_etl/enrichers/sec_edgar/`
+   following the existing `BaseAsyncAPIClient` pattern (mirrors `sam_gov`,
+   `usaspending_api`, `patentsview_api`). No prior stub exists — earlier
+   `iterative_api_enrichment` task notes referenced a `sec_edgar` config entry
+   that was never landed.
 8. **SHALL** parse Form D fields needed for cohort comparison: filer CIK,
    issuer name + address + state, issuer NAICS (self-reported), filing date,
    amount sold, total offering, security type (equity / debt / option /
    convertible), industry group, minimum-investment-accepted.
-9. **SHALL** construct a CIK ↔ UEI/EIN crosswalk using:
+9. **SHALL** construct a CIK ↔ UEI/EIN crosswalk by extending the existing
+   production `VendorCrosswalk` class (`packages/sbir-ml/sbir_ml/transition/
+   features/vendor_crosswalk.py`, 580 lines, supports UEI/CAGE/DUNS + fuzzy
+   name + acquisition handling) with a CIK field on `CrosswalkRecord` and
+   a `find_by_cik` accessor. Match cascade:
    - EIN where Form D supplies it (often blank; record availability rate)
-   - Issuer-name + state fuzzy match against the existing entity-resolution
-     vendor universe (UEI → CAGE → DUNS cascade, name fallback)
+   - Issuer-name + state fuzzy match via existing `find_by_name` machinery
    - Address normalization for tie-breaking
    - Crosswalk match rate must be reported per cohort year; under 30% match
      triggers a Phase 2 stop-and-discuss gate.
@@ -120,12 +126,19 @@ The reconciliation matters more than the headline number.
 - Entity resolution cascade — UEI/DUNS/CAGE/fuzzy-name (EXISTS)
 - PATLINK patent linkage (EXISTS)
 - CET classifier (EXISTS, used for Phase 1 stratification)
-- M&A detection — `specs/merger_acquisition_detection/` (REQUIREMENTS-ONLY;
-  Phase 1 emits placeholder, Phase 2 consumes when available)
-- SEC EDGAR ingest stub — `config/base.yaml` `sec_edgar` source (DISABLED;
-  Phase 2 enables and implements)
-- Form D ingest is also implicitly claimed by the M&A spec; Phase 2 of this
-  spec is the canonical implementation, M&A spec consumes the same artifacts.
+- M&A detection — `specs/merger_acquisition_detection/` plus a 45-line stub
+  asset at `packages/sbir-analytics/sbir_analytics/assets/ma_detection.py`
+  (patent-assignor flag-flipping only; placeholder date and confidence; not
+  consumable as-is). Phase 1 emits placeholder; Phase 2 may rebuild M&A
+  signal on top of the SEC 8-K data we ingest, separately from this spec.
+- SEC EDGAR ingest — none. Add a new enrichment source under
+  `sbir_etl/enrichers/sec_edgar/` following the established
+  `BaseAsyncAPIClient` pattern (`sam_gov`, `usaspending_api`, etc.).
+- Form D ingest — none. This spec is the canonical implementation; the
+  un-started M&A spec can consume the artifacts when it picks up.
+- `VendorCrosswalk` — production-quality 580-line entity-resolution
+  utility; Phase 2 extends it with CIK rather than building a parallel
+  structure.
 
 ## Out of Scope
 

@@ -76,15 +76,23 @@ EDGAR full-text / bulk archives → Form D filings (XML)
 
 ### Components
 
-5. **`FormDIngestor`** — Wraps the existing disabled `sec_edgar` enrichment
-   source. Pulls Form D submissions from EDGAR (bulk archive or full-text
-   search), persists raw XML to `data/raw/sec_edgar/form_d/` and parsed
-   records to a DuckDB staging table. Idempotent + incremental.
+5. **`FormDIngestor`** — Adds a new `sec_edgar` enrichment source under
+   `sbir_etl/enrichers/sec_edgar/`, following the `BaseAsyncAPIClient`
+   pattern used by `sam_gov`, `usaspending_api`, `patentsview_api`. Pulls
+   Form D submissions from EDGAR (bulk archive preferred over full-text
+   search for completeness + rate-limit margin), persists raw XML to
+   `data/raw/sec_edgar/form_d/` and parsed records to a DuckDB staging
+   table. Idempotent + incremental (track last-processed accession number).
 6. **`FormDParser`** — XML → typed records. Captures all fields listed in
    requirement 8. Strict on schema violations; logs to AlertCollector.
-7. **`CIKCrosswalk`** — Implements the EIN-then-fuzzy-name cascade. Outputs
-   per-record match confidence and method tier. Reports per-vintage match
-   rate (Phase 2 gate: ≥30% before continuing).
+7. **`CIKCrosswalk`** — Extends the existing production `VendorCrosswalk`
+   class (`packages/sbir-ml/sbir_ml/transition/features/vendor_crosswalk.py`)
+   by adding a `cik` field to `CrosswalkRecord`, a `find_by_cik` accessor,
+   and an `_index_cik` lookup map alongside the existing UEI/CAGE/DUNS
+   indexes. Implements the EIN-then-fuzzy-name cascade on top of existing
+   `find_by_name` machinery. Outputs per-record match confidence and method
+   tier. Reports per-vintage match rate (Phase 2 gate: ≥30% before
+   continuing).
 8. **`PrivateCapitalCohortBuilder`** — Filters Form D issuers to those *not*
    matched to any SBIR awardee. Buckets by vintage / NAICS-2 / state.
 9. **`CohortMatcher`** — Coarsened-exact matching on (vintage-year, NAICS-2,
