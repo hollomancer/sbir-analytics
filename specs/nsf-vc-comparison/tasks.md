@@ -40,18 +40,24 @@ Coordinate Form D ingest scope with whoever owns
 `specs/merger_acquisition_detection/` before starting; the ingest built here
 is the canonical one.
 
-- [ ] 2.1 Enable + implement the `sec_edgar` enrichment source already stubbed
-  in `config/base.yaml`. Pull Form D submissions via EDGAR bulk archives
-  (preferred) or full-text search API. Persist raw XML to
-  `data/raw/sec_edgar/form_d/`.
+- [ ] 2.1 Add a new `sec_edgar` enrichment source under
+  `sbir_etl/enrichers/sec_edgar/` following the `BaseAsyncAPIClient` pattern
+  (mirror `sam_gov`, `usaspending_api`, `patentsview_api`). Add the matching
+  config stanza in `config/base.yaml` (no prior stub exists despite earlier
+  task notes). Pull Form D submissions via EDGAR bulk archives (preferred
+  over full-text search). Persist raw XML to `data/raw/sec_edgar/form_d/`.
 - [ ] 2.2 Add `FormDParser` — XML → typed records (filer CIK, issuer name +
   address + state, NAICS, filing date, amount sold, total offering, security
   type, industry group, minimum-investment-accepted). Strict on schema
   violations; emit to AlertCollector.
 - [ ] 2.3 Persist parsed records to a DuckDB staging table; verify schema
   contract with `sbir_etl/models/quality.py` patterns.
-- [ ] 2.4 Build `CIKCrosswalk` — tiered EIN → name+state → fuzzy-name+state+
-  city cascade. Each match record carries tier label + confidence.
+- [ ] 2.4 Extend `VendorCrosswalk` (`packages/sbir-ml/sbir_ml/transition/
+  features/vendor_crosswalk.py`) with a `cik` field on `CrosswalkRecord`,
+  an `_index_cik` map, and a `find_by_cik` accessor. Add a `CIKCrosswalk`
+  helper that runs the tiered EIN → name+state → fuzzy-name+state+city
+  cascade on top of existing `find_by_name` and `add_alias` machinery.
+  Each match record carries tier label + confidence.
 - [ ] 2.5 Build a hand-labeled backtest set of 200 known SBIR-firm ↔ Form D
   issuer pairs (seed from PR #286 references and public NSF awardees with
   known financings). Compute Tier A+B precision and recall.
