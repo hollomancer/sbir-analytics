@@ -166,6 +166,10 @@ class BaseAsyncAPIClient:
                         endpoint=endpoint,
                         http_status=e.response.status_code,
                     ) from e
+                # 5xx errors are transient server failures — re-raise as
+                # httpx.HTTPError so tenacity retries them.
+                if e.response.status_code >= 500:
+                    raise
                 raise APIError(
                     f"HTTP {e.response.status_code}: {e.response.text[:200]}",
                     api_name=self.api_name,
@@ -191,6 +195,14 @@ class BaseAsyncAPIClient:
                 endpoint=endpoint,
                 http_status=408,
                 retryable=False,
+            ) from e
+        except httpx.HTTPStatusError as e:
+            # 5xx errors that exhausted retries
+            raise APIError(
+                f"HTTP {e.response.status_code}: {e.response.text[:200]}",
+                api_name=self.api_name,
+                endpoint=endpoint,
+                http_status=e.response.status_code,
             ) from e
 
     async def _make_request(
