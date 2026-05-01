@@ -220,10 +220,42 @@ Ship with the cohort artifact:
 
 | File | Contents |
 |---|---|
-| `data/sbir_cohorts.parquet` | One row per firm: identity columns, cohort label, `P_filer`, vintage bucket, agency posture, phase ladder reached, state, aggregated raise totals, contributing-match count |
+| `data/sbir_cohorts.parquet` | One row per firm: identity columns, cohort label, `P_filer`, vintage bucket, agency posture, phase ladder reached, state, aggregated raise totals, contributing-match count, imputation provenance flags (see *Imputation interaction*) |
 | `data/form_d_calibration_labels.jsonl` | Labeled match pairs (anchor + boundary-zone) |
 | `data/form_d_calibration.json` | Fitted isotonic map, per-vintage Brier scores, calibration metadata |
 | `reports/cohort_diagnostics.md` | Diagnostic plots and counts listed above |
+
+## Imputation interaction
+
+The data-imputation spec
+(`specs/data-imputation/`, branch `claude/sbir-data-imputation-strategy-HEDC0`)
+proposes per-row imputation of `award_date`, `award_amount`,
+`company_uei`/`duns`, `congressional_district`, `contract_end_date`,
+and `naics_code`, with non-destructive `raw_<field>` shadow columns,
+per-row `<field>_is_imputed` booleans, and an `imputation` provenance
+struct (field/method/method_version/confidence/source_fields).
+
+This spec ships against raw `validated_sbir_awards`. When the
+imputation work lands on `main`, three fields become useful for the
+cohort artifact, one is a trap, and the rest are not consumed.
+
+| Imputed field | Cohort use | Confidence gate |
+|---|---|---|
+| `award_date` | (a) `temporal_score` signal in the per-match score; (b) date-granular first-award → first-Form-D lag | Restrict to `confidence ∈ {high, medium}`. The low tier (FY-midpoint) is too coarse for daily-resolution temporal scoring. |
+| `company_uei` / `duns` | Collapse same-firm awards across the 2018 UEI introduction in firm-identity construction | `confidence = high` only. `cross_award_backfill` is a deterministic match within the corpus; medium/low tiers do not exist for this method. |
+| `award_amount` | **Excluded from the leverage-ratio denominator.** Imputing the denominator inside a metric biased toward agency-phase medians produces circular understatement of leverage. | Reported instead as a sensitivity slice that *excludes* firms whose total `award_amount` includes any imputed value. |
+| `congressional_district`, `contract_end_date`, `naics_code` | Not consumed by the v1 cohort artifact. `naics_code` becomes useful if a sector-stratification axis is added later (currently out of scope). | — |
+
+The cohort artifact passes through imputation provenance flags
+(`award_date_is_imputed`, `uei_is_imputed`, `award_amount_is_imputed`)
+per firm, set to `True` if any contributing award row carries the
+flag. This keeps the diagnostic question *"which cohort labels depend
+on imputed inputs?"* answerable without rerunning anything.
+
+The imputation work does not eliminate the structural pre-2018
+identity gap. `cross_award_backfill` only propagates UEIs that exist
+*somewhere in the corpus*, so a 2010-only firm that never re-won
+post-2018 retains no UEI and continues to use the name+state fallback.
 
 ## Out of scope
 
@@ -297,3 +329,22 @@ proposed buckets.
   bootstrap and for the labeled-pair sampling).
 - T5.3 Spot-check 10 firms across cohorts and strata; confirm cohort
   labels and aggregated raise totals match raw evidence.
+
+### Tier 6 — Imputation upgrade (deferred; gated on imputation spec landing on `main`)
+
+Only runs after the data-imputation work lands. Measures the
+imputation lift on the cohort, rather than assuming it.
+
+- T6.1 Re-run universe construction (T1.1–T1.3) using *effective*
+  `award_date` (high+medium tiers) and *effective* `company_uei`
+  (high tier only). Keep `award_amount` at raw values.
+- T6.2 Re-run calibration (T2.x) on the imputation-aware match
+  scores; the `temporal_score` signal will activate on more rows.
+- T6.3 Re-run cohort assembly (T3.x); pass `award_date_is_imputed`,
+  `uei_is_imputed`, `award_amount_is_imputed` provenance flags
+  through to `data/sbir_cohorts.parquet`.
+- T6.4 Emit a delta report: universe size change, mean-`P_filer`
+  shift, per-stratum filer-share shift, and a leverage-ratio
+  sensitivity slice that excludes firms with any imputed
+  `award_amount` contribution. Output:
+  `reports/cohort_imputation_delta.md`.
