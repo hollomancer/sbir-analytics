@@ -57,9 +57,8 @@ def _threshold_check(
     severity = AssetCheckSeverity.WARN if passed else AssetCheckSeverity.ERROR
     sign = "✓" if passed else "✗"
     verb = "PASSED" if passed else "FAILED"
-    description = (
-        f"{sign} {label} {verb}: {fmt(actual)}"
-        + (f" ({'threshold' if passed else 'below threshold of'}: {fmt(threshold)})")
+    description = f"{sign} {label} {verb}: {fmt(actual)}" + (
+        f" ({'threshold' if passed else 'below threshold of'}: {fmt(threshold)})"
     )
     return AssetCheckResult(
         passed=passed,
@@ -265,9 +264,7 @@ def bea_mapped_sbir_awards(
 )
 def bea_mapping_quality_check(bea_mapped_sbir_awards: pd.DataFrame) -> AssetCheckResult:
     """Asset check: BEA sector mapping coverage ≥ threshold AND confidence ≥ 0.70."""
-    threshold = get_config().fiscal_analysis.quality_thresholds.get(
-        "bea_sector_mapping_rate", 0.90
-    )
+    threshold = get_config().fiscal_analysis.quality_thresholds.get("bea_sector_mapping_rate", 0.90)
     total = len(bea_mapped_sbir_awards)
     if total == 0 or "bea_sector_code" not in bea_mapped_sbir_awards.columns:
         return AssetCheckResult(
@@ -400,10 +397,7 @@ def economic_shocks_quality_check(economic_shocks: pd.DataFrame) -> AssetCheckRe
 
     # Allow 20% tolerance on coverage at the shock-aggregate stage.
     passed = bool(
-        num >= 10
-        and naics >= min_naics * 0.8
-        and geo >= min_geo * 0.8
-        and confidence >= 0.60
+        num >= 10 and naics >= min_naics * 0.8 and geo >= min_geo * 0.8 and confidence >= 0.60
     )
     severity = AssetCheckSeverity.WARN if passed else AssetCheckSeverity.ERROR
     description = (
@@ -451,7 +445,9 @@ def economic_impacts(
 ) -> Output[pd.DataFrame]:
     """Run BEA I-O multipliers on the aggregated shocks; placeholder when BEA unavailable."""
     config = get_config()
-    context.log.info("Starting economic impact computation", extra={"num_shocks": len(economic_shocks)})
+    context.log.info(
+        "Starting economic impact computation", extra={"num_shocks": len(economic_shocks)}
+    )
 
     try:
         adapter = BEAIOAdapter(config=config.fiscal_analysis)
@@ -610,9 +606,7 @@ def fiscal_prepared_sbir_awards(
 
     total = len(resolved_df)
     geo_cov = resolved_df["resolved_state"].notna().sum() / total if total else 0.0
-    naics_cov = (
-        f"{(resolved_df['fiscal_naics_code'].notna().sum() / total):.1%}" if total else "0%"
-    )
+    naics_cov = f"{(resolved_df['fiscal_naics_code'].notna().sum() / total):.1%}" if total else "0%"
 
     context.log.info(
         "Fiscal award preparation complete",
@@ -801,7 +795,9 @@ def federal_tax_estimates(
 ) -> Output[pd.DataFrame]:
     """Estimate federal income, payroll, corporate income, and excise tax receipts."""
     config = get_config()
-    context.log.info("Starting federal tax estimation", extra={"num_components": len(tax_base_components)})
+    context.log.info(
+        "Starting federal tax estimation", extra={"num_components": len(tax_base_components)}
+    )
 
     estimator = FiscalTaxEstimator(config=config.fiscal_analysis)
     with performance_monitor.monitor_block("tax_estimation"):

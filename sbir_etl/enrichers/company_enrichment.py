@@ -169,7 +169,8 @@ def usaspending_autocomplete(
 
     logger.debug(
         "USAspending autocomplete: {} name variations for '{}'",
-        len(variations), company_name,
+        len(variations),
+        company_name,
     )
 
     best_candidate: dict[str, str] | None = None
@@ -189,7 +190,11 @@ def usaspending_autocomplete(
             if _is_valid_uei(matched_uei):
                 logger.debug(
                     "USAspending autocomplete matched '{}' (variation {}: '{}') → '{}' UEI={}",
-                    company_name, idx, name, matched_name, matched_uei,
+                    company_name,
+                    idx,
+                    name,
+                    matched_name,
+                    matched_uei,
                 )
                 return {"uei": matched_uei, "name": matched_name}
             if matched_name and best_candidate is None:
@@ -200,13 +205,15 @@ def usaspending_autocomplete(
     if best_candidate:
         logger.debug(
             "USAspending autocomplete: best candidate for '{}' → '{}' (no UEI)",
-            company_name, best_candidate["name"],
+            company_name,
+            best_candidate["name"],
         )
         return best_candidate
 
     logger.debug(
         "USAspending autocomplete: no match for '{}' after {} variations",
-        company_name, len(variations),
+        company_name,
+        len(variations),
     )
     return None
 
@@ -230,12 +237,21 @@ def usaspending_search(
 ) -> list[dict] | None:
     """Execute USAspending /search/spending_by_award queries across award-type groups."""
     fields = [
-        "Award ID", "Recipient Name", "Award Amount", "Awarding Agency",
-        "Award Type", "Start Date", "Description", "CFDA Number", "naics_code",
+        "Award ID",
+        "Recipient Name",
+        "Award Amount",
+        "Awarding Agency",
+        "Award Type",
+        "Start Date",
+        "Description",
+        "CFDA Number",
+        "naics_code",
     ]
     logger.debug(
         "USAspending query for '{}' ({}='{}'): POST /search/spending_by_award/",
-        company_name, label, search_text,
+        company_name,
+        label,
+        search_text,
     )
 
     all_results: list[dict] = []
@@ -256,20 +272,28 @@ def usaspending_search(
                 group_results = data.get("results", [])
                 logger.debug(
                     "USAspending [{} via {}/{}]: {} results",
-                    company_name, label, group_name, len(group_results),
+                    company_name,
+                    label,
+                    group_name,
+                    len(group_results),
                 )
                 all_results.extend(group_results)
             except Exception as e:
                 logger.debug(
                     "USAspending [{}] {}/{} error: {}",
-                    company_name, label, group_name, e,
+                    company_name,
+                    label,
+                    group_name,
+                    e,
                 )
     finally:
         usa.close()
 
     logger.debug(
         "USAspending [{} via {}]: {} total results",
-        company_name, label, len(all_results),
+        company_name,
+        label,
+        len(all_results),
     )
     return all_results or None
 
@@ -290,9 +314,8 @@ def lookup_company_federal_awards(
         return None
 
     results = (
-        (uei and usaspending_search(company_name, uei, "UEI", rate_limiter=rate_limiter))
-        or usaspending_search(company_name, company_name, "name", rate_limiter=rate_limiter)
-    )
+        uei and usaspending_search(company_name, uei, "UEI", rate_limiter=rate_limiter)
+    ) or usaspending_search(company_name, company_name, "name", rate_limiter=rate_limiter)
     if not results:
         if match := usaspending_autocomplete(company_name, rate_limiter=rate_limiter):
             search_key = match["uei"] if match.get("uei") else match["name"]
@@ -395,7 +418,9 @@ def lookup_usaspending_recipient(
                     recipient_id = results[0].get("id")
                     logger.debug(
                         "USAspending recipient matched '{}' → '{}' id={}",
-                        term, results[0].get("name"), recipient_id,
+                        term,
+                        results[0].get("name"),
+                        recipient_id,
                     )
                     break
             except Exception as e:
@@ -491,11 +516,16 @@ def lookup_sam_entity(
         sam.close()
 
     if not entity:
-        tried = ", ".join(filter(None, [
-            f"UEI={uei}" if uei else None,
-            f"CAGE={cage}" if cage else None,
-            f"name='{company_name}'",
-        ]))
+        tried = ", ".join(
+            filter(
+                None,
+                [
+                    f"UEI={uei}" if uei else None,
+                    f"CAGE={cage}" if cage else None,
+                    f"name='{company_name}'",
+                ],
+            )
+        )
         logger.info("SAM.gov: no entity found for {} (tried: {})", company_name, tried)
         return None
 
@@ -505,7 +535,9 @@ def lookup_sam_entity(
 
     naics_list = core_data.get("naicsCodeList") or []
     naics_codes = [
-        str(n.get("naicsCode", "")) for n in naics_list if isinstance(n, dict) and n.get("naicsCode")
+        str(n.get("naicsCode", ""))
+        for n in naics_list
+        if isinstance(n, dict) and n.get("naicsCode")
     ]
 
     business_type_list = (core_data.get("businessTypes") or {}).get("businessTypeList") or []
@@ -540,9 +572,7 @@ def lookup_sam_entity_with_fallback(
     fallback_rate_limiter: RateLimiter | None = None,
 ) -> SAMEntityRecord | None:
     """Query SAM.gov; on miss, build a partial record from USAspending recipient data."""
-    if result := lookup_sam_entity(
-        company_name, uei=uei, cage=cage, rate_limiter=rate_limiter
-    ):
+    if result := lookup_sam_entity(company_name, uei=uei, cage=cage, rate_limiter=rate_limiter):
         return result
 
     logger.info(
@@ -579,9 +609,7 @@ def lookup_usaspending_recipient_with_fallback(
     fallback_rate_limiter: RateLimiter | None = None,
 ) -> USARecipientProfile | None:
     """Query USAspending recipient; on miss, build a partial record from SAM.gov data."""
-    if result := lookup_usaspending_recipient(
-        company_name, uei=uei, rate_limiter=rate_limiter
-    ):
+    if result := lookup_usaspending_recipient(company_name, uei=uei, rate_limiter=rate_limiter):
         return result
 
     logger.info(
@@ -700,7 +728,8 @@ def fetch_usaspending_contract_descriptions(
     all_ids = list({aid for ids, _, _ in requests_to_make for aid in ids})
     logger.debug(
         "USAspending contract desc: {} IDs in {} groups",
-        len(all_ids), len(requests_to_make),
+        len(all_ids),
+        len(requests_to_make),
     )
 
     results: dict[str, str] = {}
@@ -719,7 +748,9 @@ def fetch_usaspending_contract_descriptions(
             filters = {"award_ids": list(ids), "award_type_codes": codes}
             logger.debug(
                 "USAspending contract desc: {} ({} IDs: {})",
-                group_name, len(ids), ids[:3],
+                group_name,
+                len(ids),
+                ids[:3],
             )
             data: dict | None = None
             used_desc_key = "Description"
@@ -727,12 +758,17 @@ def fetch_usaspending_contract_descriptions(
                 try:
                     _wait(rate_limiter)
                     data = getattr(usa, method)(
-                        filters=filters, fields=fields, limit=len(ids),
-                        sort="Award ID", order="desc",
+                        filters=filters,
+                        fields=fields,
+                        limit=len(ids),
+                        sort="Award ID",
+                        order="desc",
                     )
                     logger.debug(
                         "USAspending {}/{}: {} results",
-                        method, group_name, len(data.get("results", [])),
+                        method,
+                        group_name,
+                        len(data.get("results", [])),
                     )
                     used_desc_key = desc_key
                     break
@@ -750,25 +786,30 @@ def fetch_usaspending_contract_descriptions(
 
     # FPDS Atom Feed fallback for contract PIIDs (not FAINs).
     fpds_eligible = [
-        cid for cid in failed_ids
+        cid
+        for cid in failed_ids
         if cid not in results and not re.match(r"^DE-", cid, re.IGNORECASE)
     ]
     if fpds_eligible:
         logger.debug(
             "USAspending failed for {} IDs, {} eligible for FPDS fallback",
-            len(failed_ids), len(fpds_eligible),
+            len(failed_ids),
+            len(fpds_eligible),
         )
         if fpds_results := fetch_fpds_descriptions(
-            fpds_eligible, rate_limiter=fpds_rate_limiter or rate_limiter,
+            fpds_eligible,
+            rate_limiter=fpds_rate_limiter or rate_limiter,
         ):
             results.update(fpds_results)
             logger.info(
                 "FPDS fallback recovered {}/{} descriptions",
-                len(fpds_results), len(fpds_eligible),
+                len(fpds_results),
+                len(fpds_eligible),
             )
 
     logger.debug(
         "Contract descriptions: {}/{} found (USAspending + FPDS)",
-        len(results), len(all_ids),
+        len(results),
+        len(all_ids),
     )
     return results

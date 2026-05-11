@@ -38,30 +38,85 @@ except ImportError:
 # ---------------------------------------------------------------------------
 
 STATE_NAME_TO_CODE = {
-    "alabama": "AL", "alaska": "AK", "arizona": "AZ", "arkansas": "AR",
-    "california": "CA", "colorado": "CO", "connecticut": "CT", "delaware": "DE",
-    "florida": "FL", "georgia": "GA", "hawaii": "HI", "idaho": "ID",
-    "illinois": "IL", "indiana": "IN", "iowa": "IA", "kansas": "KS",
-    "kentucky": "KY", "louisiana": "LA", "maine": "ME", "maryland": "MD",
-    "massachusetts": "MA", "michigan": "MI", "minnesota": "MN", "mississippi": "MS",
-    "missouri": "MO", "montana": "MT", "nebraska": "NE", "nevada": "NV",
-    "new hampshire": "NH", "new jersey": "NJ", "new mexico": "NM", "new york": "NY",
-    "north carolina": "NC", "north dakota": "ND", "ohio": "OH", "oklahoma": "OK",
-    "oregon": "OR", "pennsylvania": "PA", "rhode island": "RI", "south carolina": "SC",
-    "south dakota": "SD", "tennessee": "TN", "texas": "TX", "utah": "UT",
-    "vermont": "VT", "virginia": "VA", "washington": "WA", "west virginia": "WV",
-    "wisconsin": "WI", "wyoming": "WY", "district of columbia": "DC",
-    "puerto rico": "PR", "guam": "GU", "virgin islands": "VI",
-    "american samoa": "AS", "northern mariana islands": "MP",
+    "alabama": "AL",
+    "alaska": "AK",
+    "arizona": "AZ",
+    "arkansas": "AR",
+    "california": "CA",
+    "colorado": "CO",
+    "connecticut": "CT",
+    "delaware": "DE",
+    "florida": "FL",
+    "georgia": "GA",
+    "hawaii": "HI",
+    "idaho": "ID",
+    "illinois": "IL",
+    "indiana": "IN",
+    "iowa": "IA",
+    "kansas": "KS",
+    "kentucky": "KY",
+    "louisiana": "LA",
+    "maine": "ME",
+    "maryland": "MD",
+    "massachusetts": "MA",
+    "michigan": "MI",
+    "minnesota": "MN",
+    "mississippi": "MS",
+    "missouri": "MO",
+    "montana": "MT",
+    "nebraska": "NE",
+    "nevada": "NV",
+    "new hampshire": "NH",
+    "new jersey": "NJ",
+    "new mexico": "NM",
+    "new york": "NY",
+    "north carolina": "NC",
+    "north dakota": "ND",
+    "ohio": "OH",
+    "oklahoma": "OK",
+    "oregon": "OR",
+    "pennsylvania": "PA",
+    "rhode island": "RI",
+    "south carolina": "SC",
+    "south dakota": "SD",
+    "tennessee": "TN",
+    "texas": "TX",
+    "utah": "UT",
+    "vermont": "VT",
+    "virginia": "VA",
+    "washington": "WA",
+    "west virginia": "WV",
+    "wisconsin": "WI",
+    "wyoming": "WY",
+    "district of columbia": "DC",
+    "puerto rico": "PR",
+    "guam": "GU",
+    "virgin islands": "VI",
+    "american samoa": "AS",
+    "northern mariana islands": "MP",
 }
 
 # Legal suffixes stripped during normalization.
 _LEGAL_SUFFIXES = [
-    r"\bincorporated\b", r"\bincorporation\b", r"\bcorporation\b", r"\bcompany\b",
-    r"\blimited\b", r"\bliability\b", r"\bpartnership\b",
-    r"\binc\.?\b", r"\bcorp\.?\b", r"\bco\.?\b", r"\bltd\.?\b",
-    r"\bllc\.?\b", r"\bllp\.?\b", r"\blp\.?\b", r"\bplc\.?\b",
-    r"\bp\.?c\.?\b", r"\bl\.?l\.?c\.?\b", r"\bl\.?l\.?p\.?\b", r"\bl\.?p\.?\b",
+    r"\bincorporated\b",
+    r"\bincorporation\b",
+    r"\bcorporation\b",
+    r"\bcompany\b",
+    r"\blimited\b",
+    r"\bliability\b",
+    r"\bpartnership\b",
+    r"\binc\.?\b",
+    r"\bcorp\.?\b",
+    r"\bco\.?\b",
+    r"\bltd\.?\b",
+    r"\bllc\.?\b",
+    r"\bllp\.?\b",
+    r"\blp\.?\b",
+    r"\bplc\.?\b",
+    r"\bp\.?c\.?\b",
+    r"\bl\.?l\.?c\.?\b",
+    r"\bl\.?l\.?p\.?\b",
+    r"\bl\.?p\.?\b",
 ]
 
 # Standardized abbreviations applied after suffix removal.
@@ -187,9 +242,7 @@ def detect_award_progressions(
 
     progressions: list[tuple] = []
     for company_award_list in by_company.values():
-        sorted_awards = sorted(
-            company_award_list, key=lambda a: a.award_date or date(1900, 1, 1)
-        )
+        sorted_awards = sorted(company_award_list, key=lambda a: a.award_date or date(1900, 1, 1))
         for i, earlier in enumerate(sorted_awards):
             next_phase = _PHASE_NEXT.get(earlier.phase)
             if not next_phase:
@@ -203,8 +256,8 @@ def detect_award_progressions(
                     if earlier.award_date >= later.award_date:
                         continue
                     years_between: float | None = (
-                        (later.award_date - earlier.award_date).days / 365.25
-                    )
+                        later.award_date - earlier.award_date
+                    ).days / 365.25
                 else:
                     years_between = None
 
@@ -543,9 +596,7 @@ def neo4j_sbir_awards(
 
                 if status == "error":
                     if validation_errors < 10:
-                        logger.warning(
-                            f"Award validation failed for {_award_id_hint(normalized)}"
-                        )
+                        logger.warning(f"Award validation failed for {_award_id_hint(normalized)}")
                     validation_errors += 1
                     metrics.errors += 1
                     continue
@@ -579,9 +630,7 @@ def neo4j_sbir_awards(
 
                 if company_id is None:
                     if skipped_no_company_id < 10:
-                        logger.debug(
-                            f"Award {award.award_id} has no company name, UEI, or DUNS"
-                        )
+                        logger.debug(f"Award {award.award_id} has no company name, UEI, or DUNS")
                     skipped_no_company_id += 1
                 else:
                     organization_id = f"org_company_{company_id}"
@@ -612,9 +661,7 @@ def neo4j_sbir_awards(
                 if award.principal_investigator:
                     pi_name = award.principal_investigator.strip()
                     pi_email = award.pi_email.strip() if award.pi_email else None
-                    researcher_id = (
-                        f"{pi_name}|{pi_email}".lower() if pi_email else pi_name.lower()
-                    )
+                    researcher_id = f"{pi_name}|{pi_email}".lower() if pi_email else pi_name.lower()
                     individual_id = f"ind_researcher_{researcher_id}"
 
                     if researcher_id not in researcher_nodes_map:
@@ -876,13 +923,23 @@ def neo4j_sbir_awards(
         logger.info("Neo4j SBIR Awards Loading Summary")
         logger.info("=" * 80)
         logger.info(f"Total rows processed:      {total_rows}")
-        logger.info(f"Successfully processed:    {successfully_processed} ({pct(successfully_processed):.1f}%)")
+        logger.info(
+            f"Successfully processed:    {successfully_processed} ({pct(successfully_processed):.1f}%)"
+        )
         logger.info(f"Failed to process:         {total_failed} ({pct(total_failed):.1f}%)")
         logger.info("Processing Issues:")
-        logger.info(f"  Zero/missing amount:     {skipped_zero_amount} ({pct(skipped_zero_amount):.1f}%)")
-        logger.info(f"  Date validation errors:  {date_validation_errors} ({pct(date_validation_errors):.1f}%)")
-        logger.info(f"  Other validation errors: {validation_errors} ({pct(validation_errors):.1f}%)")
-        logger.info(f"  No company identifier:   {skipped_no_company_id} ({pct(skipped_no_company_id):.1f}%)")
+        logger.info(
+            f"  Zero/missing amount:     {skipped_zero_amount} ({pct(skipped_zero_amount):.1f}%)"
+        )
+        logger.info(
+            f"  Date validation errors:  {date_validation_errors} ({pct(date_validation_errors):.1f}%)"
+        )
+        logger.info(
+            f"  Other validation errors: {validation_errors} ({pct(validation_errors):.1f}%)"
+        )
+        logger.info(
+            f"  No company identifier:   {skipped_no_company_id} ({pct(skipped_no_company_id):.1f}%)"
+        )
         logger.info("Nodes:")
         logger.info(f"  Awards:                  {len(award_nodes)}")
         company_count = len(company_nodes_map) or 1

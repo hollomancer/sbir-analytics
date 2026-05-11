@@ -37,9 +37,7 @@ MAX_PAGES = 1000
 MAX_RECORDS = 100_000
 
 SBIR_KEYWORDS = ("SBIR", "STTR", "SMALL BUSINESS INNOVATION", "SMALL BUSINESS TECH")
-_SBIR_SQL_PREDICATE = " OR ".join(
-    f"UPPER(award_description) LIKE '%{k}%'" for k in SBIR_KEYWORDS
-)
+_SBIR_SQL_PREDICATE = " OR ".join(f"UPPER(award_description) LIKE '%{k}%'" for k in SBIR_KEYWORDS)
 _SBIR_REGEX = re.compile("|".join(SBIR_KEYWORDS))
 
 _IDENTIFIER_COLUMNS = {
@@ -171,9 +169,7 @@ def _extract_sbir_phase(description: str | None) -> str | None:
     return None
 
 
-def _build_identifier_where_clause(
-    uei: str | None, duns: str | None, cage: str | None
-) -> str:
+def _build_identifier_where_clause(uei: str | None, duns: str | None, cage: str | None) -> str:
     """Build a DuckDB WHERE fragment matching any of the provided identifiers."""
     clauses = []
     for value, key in ((uei, "uei"), (duns, "duns"), (cage, "cage")):
@@ -375,9 +371,7 @@ def _process_transaction(
     }
 
 
-def _fetch_award_details(
-    award_id: str, client: USAspendingAPIClient
-) -> dict[str, Any] | None:
+def _fetch_award_details(award_id: str, client: USAspendingAPIClient) -> dict[str, Any] | None:
     """Fetch PSC code from the per-award endpoint as a fallback."""
     try:
         data = run_sync(client.fetch_award_details(award_id))
@@ -404,9 +398,7 @@ def _fetch_award_details(
             or (data.get("base_transaction") or {}).get("product_or_service_code")
         )
     if not psc:
-        logger.warning(
-            f"PSC not found for award {award_id}. Keys: {list(data.keys())[:10]}"
-        )
+        logger.warning(f"PSC not found for award {award_id}. Keys: {list(data.keys())[:10]}")
         return None
     return {"psc": psc}
 
@@ -465,18 +457,14 @@ def _query_awards_duckdb(
     try:
         result = extractor.connect().execute(query).fetchdf()
     except Exception as e:
-        logger.error(
-            f"Failed to query USAspending (UEI={uei}, DUNS={duns}, CAGE={cage}): {e}"
-        )
+        logger.error(f"Failed to query USAspending (UEI={uei}, DUNS={duns}, CAGE={cage}): {e}")
         return pd.DataFrame()
 
     if result.empty:
         return pd.DataFrame()
 
     if not sbir_only and {"recipient_uei", "awardee_or_recipient_uei"}.issubset(result.columns):
-        result["recipient_uei"] = result["recipient_uei"].fillna(
-            result["awardee_or_recipient_uei"]
-        )
+        result["recipient_uei"] = result["recipient_uei"].fillna(result["awardee_or_recipient_uei"])
         result = result.drop(columns=["awardee_or_recipient_uei"])
 
     result = result[result["award_id"].notna()]
@@ -551,9 +539,7 @@ def _query_awards_api(
     cache = _init_api_cache(config, default_type=cache_type)
     cached = cache.get(uei=uei, duns=duns, company_name=company_name, cache_type=cache_type)
     if cached is not None:
-        logger.debug(
-            f"Cache hit for {cache_type} (UEI={uei}, DUNS={duns}, name={company_name})"
-        )
+        logger.debug(f"Cache hit for {cache_type} (UEI={uei}, DUNS={duns}, name={company_name})")
         return cached
 
     if client is None:
@@ -606,8 +592,12 @@ def _query_awards_api(
             else:
                 out.append(
                     _process_transaction(
-                        raw, uei=uei, duns=duns, client=client,
-                        psc_lookups_used=psc_lookups, index=len(out),
+                        raw,
+                        uei=uei,
+                        duns=duns,
+                        client=client,
+                        psc_lookups_used=psc_lookups,
+                        index=len(out),
                     )
                 )
         return out
@@ -622,9 +612,7 @@ def _query_awards_api(
             [company_name] if company_name else []
         )
         if name_terms:
-            transactions = fetch(
-                {**filters, "recipient_search_text": name_terms}
-            )
+            transactions = fetch({**filters, "recipient_search_text": name_terms})
 
     if not transactions:
         logger.warning(
@@ -638,9 +626,13 @@ def _query_awards_api(
     # Non-SBIR path: exclude any straggling SBIR/STTR rows that snuck through search.
     if not sbir_only:
         before = len(df)
-        df = df[df["description"].isna() | ~df["description"].fillna("").str.upper().str.contains(
-            _SBIR_REGEX, regex=True, na=False
-        )]
+        df = df[
+            df["description"].isna()
+            | ~df["description"]
+            .fillna("")
+            .str.upper()
+            .str.contains(_SBIR_REGEX, regex=True, na=False)
+        ]
         if (filtered := before - len(df)) > 0:
             logger.info(f"Filtered {filtered}/{before} SBIR-tagged rows from contract results")
         if df.empty:

@@ -148,9 +148,9 @@ _OWNERSHIP_FILING_TYPES = "SC 13D,SC 13D/A,SC 13G,SC 13G/A"
 _NOISE_SIC_RANGES = (range(6500, 6800), range(6150, 6200))
 
 # 8-K item codes by signal strength.
-_MA_ITEMS = {"1.01", "2.01"}            # definitive agreement, completion of acquisition
-_FINANCIAL_ITEMS = {"2.02", "2.05"}     # results of operations, delisting
-_DISCLOSURE_ITEMS = {"7.01", "8.01"}    # Reg FD, other events
+_MA_ITEMS = {"1.01", "2.01"}  # definitive agreement, completion of acquisition
+_FINANCIAL_ITEMS = {"2.02", "2.05"}  # results of operations, delisting
+_DISCLOSURE_ITEMS = {"7.01", "8.01"}  # Reg FD, other events
 
 # Form-type → mention classification (when no overriding items match).
 _FORM_TYPE_LABELS: dict[str, str] = {
@@ -215,22 +215,86 @@ _MENTION_CONTEXT_PATTERNS: list[tuple[re.Pattern[str], str]] = [
 
 
 # Common English / generic terms used by noise scoring to detect ambiguous names.
-_COMMON_ENGLISH_WORDS = frozenset({
-    "sediment", "informed", "ideas", "menara", "elkins", "bai", "nil",
-    "merit", "quest", "delta", "alpha", "summit", "pioneer", "atlas",
-    "nexus", "pulse", "prism", "forge", "apex", "core", "edge",
-    "relay", "array", "signal", "matrix", "tensor", "vector", "orbit",
-    "cipher", "helix", "locus", "verge", "haven", "arbor", "cadre",
-})
+_COMMON_ENGLISH_WORDS = frozenset(
+    {
+        "sediment",
+        "informed",
+        "ideas",
+        "menara",
+        "elkins",
+        "bai",
+        "nil",
+        "merit",
+        "quest",
+        "delta",
+        "alpha",
+        "summit",
+        "pioneer",
+        "atlas",
+        "nexus",
+        "pulse",
+        "prism",
+        "forge",
+        "apex",
+        "core",
+        "edge",
+        "relay",
+        "array",
+        "signal",
+        "matrix",
+        "tensor",
+        "vector",
+        "orbit",
+        "cipher",
+        "helix",
+        "locus",
+        "verge",
+        "haven",
+        "arbor",
+        "cadre",
+    }
+)
 
-_GENERIC_NAME_WORDS = frozenset({
-    "advanced", "applied", "central", "digital", "first", "general",
-    "global", "good", "health", "information", "integrated", "management",
-    "material", "national", "new", "process", "quality", "research",
-    "risk", "smith", "systems", "training", "development", "engineering",
-    "computer", "methods", "programs", "services", "consulting", "park",
-    "west", "east", "north", "south", "project", "transfer",
-})
+_GENERIC_NAME_WORDS = frozenset(
+    {
+        "advanced",
+        "applied",
+        "central",
+        "digital",
+        "first",
+        "general",
+        "global",
+        "good",
+        "health",
+        "information",
+        "integrated",
+        "management",
+        "material",
+        "national",
+        "new",
+        "process",
+        "quality",
+        "research",
+        "risk",
+        "smith",
+        "systems",
+        "training",
+        "development",
+        "engineering",
+        "computer",
+        "methods",
+        "programs",
+        "services",
+        "consulting",
+        "park",
+        "west",
+        "east",
+        "north",
+        "south",
+        "project",
+        "transfer",
+    }
+)
 
 
 def compute_mention_noise_score(
@@ -416,16 +480,25 @@ async def _search_inbound_ma_mentions(
     """
     strong, annual, ownership = await asyncio.gather(
         _search_filing_mentions_filtered(
-            client, company_name, _MA_FILING_TYPES,
-            name_match_threshold=name_match_threshold, limit=20,
+            client,
+            company_name,
+            _MA_FILING_TYPES,
+            name_match_threshold=name_match_threshold,
+            limit=20,
         ),
         _search_filing_mentions_filtered(
-            client, company_name, _ANNUAL_FILING_TYPES,
-            name_match_threshold=name_match_threshold, limit=10,
+            client,
+            company_name,
+            _ANNUAL_FILING_TYPES,
+            name_match_threshold=name_match_threshold,
+            limit=10,
         ),
         _search_filing_mentions_filtered(
-            client, company_name, _OWNERSHIP_FILING_TYPES,
-            name_match_threshold=name_match_threshold, limit=10,
+            client,
+            company_name,
+            _OWNERSHIP_FILING_TYPES,
+            name_match_threshold=name_match_threshold,
+            limit=10,
         ),
     )
     return strong + annual + ownership
@@ -477,15 +550,45 @@ async def _search_form_d_filings(
 # ---------------------------------------------------------------------------
 
 # Words common to many company names; don't distinguish one company from another.
-_GENERIC_WORDS = frozenset({
-    "TECHNOLOGIES", "TECHNOLOGY", "SYSTEMS", "SCIENCES", "RESEARCH",
-    "ENGINEERING", "SOLUTIONS", "ANALYTICS", "DYNAMICS", "INDUSTRIES",
-    "ASSOCIATES", "CONSULTING", "SERVICES", "GROUP", "INTERNATIONAL",
-    "LABORATORIES", "INSTRUMENTS", "MATERIALS", "DEVICES", "APPLICATIONS",
-    "ADVANCED", "APPLIED", "DIGITAL", "GENERAL", "NATIONAL", "AMERICAN",
-    "GLOBAL", "INTEGRATED", "PRECISION", "SCIENTIFIC", "TECHNICAL",
-    "INNOVATIONS", "CORPORATION", "COMPANY", "ENTERPRISES",
-})
+_GENERIC_WORDS = frozenset(
+    {
+        "TECHNOLOGIES",
+        "TECHNOLOGY",
+        "SYSTEMS",
+        "SCIENCES",
+        "RESEARCH",
+        "ENGINEERING",
+        "SOLUTIONS",
+        "ANALYTICS",
+        "DYNAMICS",
+        "INDUSTRIES",
+        "ASSOCIATES",
+        "CONSULTING",
+        "SERVICES",
+        "GROUP",
+        "INTERNATIONAL",
+        "LABORATORIES",
+        "INSTRUMENTS",
+        "MATERIALS",
+        "DEVICES",
+        "APPLICATIONS",
+        "ADVANCED",
+        "APPLIED",
+        "DIGITAL",
+        "GENERAL",
+        "NATIONAL",
+        "AMERICAN",
+        "GLOBAL",
+        "INTEGRATED",
+        "PRECISION",
+        "SCIENTIFIC",
+        "TECHNICAL",
+        "INNOVATIONS",
+        "CORPORATION",
+        "COMPANY",
+        "ENTERPRISES",
+    }
+)
 
 
 def _clean_company_name(name: str) -> str:
@@ -554,8 +657,10 @@ async def _resolve_cik(
         # Distinctive-word overlap (multi-word queries only)
         if query_is_multiword:
             entity_distinctive = _distinctive_words(entity_clean)
-            if query_distinctive and entity_distinctive and not (
-                query_distinctive & entity_distinctive
+            if (
+                query_distinctive
+                and entity_distinctive
+                and not (query_distinctive & entity_distinctive)
             ):
                 continue
 
