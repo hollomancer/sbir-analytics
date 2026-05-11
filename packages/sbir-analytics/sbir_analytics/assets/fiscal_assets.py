@@ -1,5 +1,7 @@
 """Dagster assets for fiscal analysis pipeline."""
 
+from decimal import Decimal
+
 import pandas as pd
 from dagster import (
     AssetCheckResult,
@@ -16,6 +18,7 @@ from sbir_etl.config.loader import get_config
 from sbir_etl.enrichers.fiscal_bea_mapper import NAICSToBEAMapper, enrich_awards_with_bea_sectors
 from sbir_etl.enrichers.inflation_adjuster import adjust_awards_for_inflation
 from sbir_etl.enrichers.naics import enrich_sbir_awards_with_fiscal_naics
+from sbir_etl.transformers.bea_io_adapter import BEAIOAdapter
 from sbir_etl.transformers.fiscal import (
     FiscalComponentCalculator,
     FiscalParameterSweep,
@@ -24,21 +27,51 @@ from sbir_etl.transformers.fiscal import (
     FiscalTaxEstimator,
     FiscalUncertaintyQuantifier,
 )
-from sbir_etl.transformers.bea_io_adapter import BEAIOAdapter
 from sbir_etl.utils.monitoring import performance_monitor
 
 
-def _to_python_type(value):
-    """Convert numpy/pandas types to Python native types for Dagster metadata."""
-    import numpy as np
+# ---------------------------------------------------------------------------
+# Metadata helpers (shared across many assets / checks)
+# ---------------------------------------------------------------------------
 
-    if isinstance(value, np.integer | np.int64 | np.int32):
-        return int(value)
-    elif isinstance(value, np.floating | np.float64 | np.float32):
-        return float(value)
-    elif isinstance(value, np.bool_ | bool):
-        return bool(value)
-    return value
+
+def _preview(df: pd.DataFrame, *, empty: str = "No data", head: int | None = 10) -> object:
+    """Return a Markdown preview of `df`, or `empty` placeholder when empty."""
+    if df.empty:
+        return empty
+    table = df.head(head) if head else df
+    return MetadataValue.md(table.to_markdown())
+
+
+def _threshold_check(
+    *,
+    label: str,
+    actual: float,
+    threshold: float,
+    metadata: dict,
+    use_percent: bool = True,
+) -> AssetCheckResult:
+    """Build an AssetCheckResult for a 'rate ≥ threshold' style check."""
+    passed = bool(actual >= threshold)
+    fmt = (lambda v: f"{v:.1%}") if use_percent else (lambda v: f"{v:.3f}")
+    severity = AssetCheckSeverity.WARN if passed else AssetCheckSeverity.ERROR
+    sign = "✓" if passed else "✗"
+    verb = "PASSED" if passed else "FAILED"
+    description = (
+        f"{sign} {label} {verb}: {fmt(actual)}"
+        + (f" ({'threshold' if passed else 'below threshold of'}: {fmt(threshold)})")
+    )
+    return AssetCheckResult(
+        passed=passed,
+        severity=severity,
+        description=description,
+        metadata=metadata,  # type: ignore[arg-type]
+    )
+
+
+# ---------------------------------------------------------------------------
+# NAICS enrichment
+# ---------------------------------------------------------------------------
 
 
 @asset(
@@ -51,25 +84,10 @@ def fiscal_naics_enriched_awards(
     enriched_sbir_awards: pd.DataFrame,
     raw_usaspending_recipients: pd.DataFrame | None = None,
 ) -> Output[pd.DataFrame]:
-    """
-    Enrich SBIR awards with NAICS codes using hierarchical fallback strategy.
-
-    Uses the following fallback chain:
-    1. Original SBIR data (confidence: 0.95)
-    2. Existing USAspending matches in enriched_sbir_awards (confidence: 0.85-0.90)
-    3. Fresh USAspending recipient lookup (confidence: 0.85-0.90)
-    4. Agency defaults (confidence: 0.50)
-    5. Sector fallback (confidence: 0.30)
-
-    Args:
-        enriched_sbir_awards: SBIR awards with USAspending enrichment
-        raw_usaspending_recipients: Optional USAspending recipient data for fresh lookups
-
-    Returns:
-        Enriched DataFrame with NAICS codes and confidence metadata
+    """Enrich SBIR awards with NAICS codes via hierarchical fallback (original →
+    USAspending matches → fresh recipient lookup → agency default → sector default).
     """
     get_config()
-
     context.log.info(
         "Starting NAICS enrichment for fiscal analysis",
         extra={
@@ -78,71 +96,53 @@ def fiscal_naics_enriched_awards(
         },
     )
 
-    # Perform NAICS enrichment with performance monitoring
     with performance_monitor.monitor_block("fiscal_naics_enrichment"):
         enriched_df, quality_metrics = enrich_sbir_awards_with_fiscal_naics(
             awards_df=enriched_sbir_awards,
             usaspending_df=raw_usaspending_recipients,
         )
 
-    # Extract statistics
-    total_awards = len(enriched_df)
-    naics_coverage = enriched_df["fiscal_naics_code"].notna().sum()
-    coverage_rate = naics_coverage / total_awards if total_awards > 0 else 0
-
-    # Source distribution
+    total = len(enriched_df)
+    covered = enriched_df["fiscal_naics_code"].notna().sum()
+    coverage_rate = covered / total if total > 0 else 0
     source_counts = enriched_df["fiscal_naics_source"].value_counts(dropna=False).to_dict()
-
-    # Confidence statistics
-    confidence_stats = enriched_df["fiscal_naics_confidence"].dropna().describe()
-    avg_confidence = confidence_stats.get("mean", 0.0)
-    min_confidence = confidence_stats.get("min", 0.0)
-    max_confidence = confidence_stats.get("max", 1.0)
+    confidence = enriched_df["fiscal_naics_confidence"].dropna().describe()
+    avg_conf = confidence.get("mean", 0.0)
 
     context.log.info(
         "NAICS enrichment complete",
         extra={
-            "total_awards": total_awards,
-            "naics_coverage": naics_coverage,
+            "total_awards": total,
+            "naics_coverage": covered,
             "coverage_rate": f"{coverage_rate:.1%}",
             "source_distribution": source_counts,
-            "avg_confidence": round(avg_confidence, 3),
-            "confidence_range": f"{min_confidence:.2f}-{max_confidence:.2f}",
+            "avg_confidence": round(avg_conf, 3),
         },
     )
 
-    # Get performance metrics
-    perf_summary = performance_monitor.get_metrics_summary()
-    perf_metrics = perf_summary.get("fiscal_naics_enrichment", {})
-    duration = perf_metrics.get("total_duration", 0.0)
-    peak_memory = perf_metrics.get("max_peak_memory_mb", 0.0)
-    records_per_second = total_awards / duration if duration > 0 else 0
-
-    # Create metadata
+    perf = performance_monitor.get_metrics_summary().get("fiscal_naics_enrichment", {})
+    duration = perf.get("total_duration", 0.0)
     metadata = {
-        "num_records": int(len(enriched_df)),
+        "num_records": int(total),
         "naics_coverage": f"{coverage_rate:.1%}",
-        "naics_coverage_count": int(naics_coverage),
+        "naics_coverage_count": int(covered),
         "source_distribution": MetadataValue.json(source_counts),
         "confidence_stats": MetadataValue.json(
             {
-                "mean": round(float(avg_confidence), 3),
-                "min": round(float(min_confidence), 3),
-                "max": round(float(max_confidence), 3),
-                "std": round(float(confidence_stats.get("std", 0.0)), 3),
+                "mean": round(float(avg_conf), 3),
+                "min": round(float(confidence.get("min", 0.0)), 3),
+                "max": round(float(confidence.get("max", 1.0)), 3),
+                "std": round(float(confidence.get("std", 0.0)), 3),
             }
         ),
-        "preview": MetadataValue.md(enriched_df.head(10).to_markdown()),
-        # Performance metrics
+        "preview": _preview(enriched_df),
         "performance_duration_seconds": round(duration, 2),
-        "performance_records_per_second": round(records_per_second, 2),
-        "performance_peak_memory_mb": round(peak_memory, 2),
-        # Quality metrics
+        "performance_records_per_second": round(total / duration if duration > 0 else 0, 2),
+        "performance_peak_memory_mb": round(perf.get("max_peak_memory_mb", 0.0), 2),
         "quality_coverage_threshold": f"{quality_metrics['naics_coverage_threshold']:.1%}",
         "quality_coverage_meets_threshold": bool(quality_metrics["coverage_meets_threshold"]),
-        "quality_avg_confidence": round(float(avg_confidence), 3),
+        "quality_avg_confidence": round(float(avg_conf), 3),
     }
-
     return Output(value=enriched_df, metadata=metadata)
 
 
@@ -151,27 +151,11 @@ def fiscal_naics_enriched_awards(
     description="NAICS coverage rate meets minimum threshold",
 )
 def fiscal_naics_coverage_check(fiscal_naics_enriched_awards: pd.DataFrame) -> AssetCheckResult:
-    """
-    Asset check to ensure NAICS coverage rate meets minimum threshold.
+    """Fail if NAICS coverage falls below threshold (blocks downstream fiscal analysis)."""
+    threshold = get_config().fiscal_analysis.quality_thresholds.get("naics_coverage_rate", 0.85)
 
-    This check will FAIL the asset if coverage falls below the configured threshold,
-    preventing downstream fiscal analysis from running with insufficient NAICS data.
-
-    Args:
-        fiscal_naics_enriched_awards: DataFrame with NAICS enrichment
-
-    Returns:
-        AssetCheckResult with pass/fail status and metrics
-    """
-    # Get configuration
-    config = get_config()
-    min_coverage_rate = config.fiscal_analysis.quality_thresholds.get("naics_coverage_rate", 0.85)
-
-    # Calculate coverage
-    total_records = len(fiscal_naics_enriched_awards)
-
-    # Handle empty DataFrame or missing column
-    if total_records == 0 or "fiscal_naics_code" not in fiscal_naics_enriched_awards.columns:
+    total = len(fiscal_naics_enriched_awards)
+    if total == 0 or "fiscal_naics_code" not in fiscal_naics_enriched_awards.columns:
         return AssetCheckResult(
             passed=False,
             severity=AssetCheckSeverity.ERROR,
@@ -179,42 +163,27 @@ def fiscal_naics_coverage_check(fiscal_naics_enriched_awards: pd.DataFrame) -> A
                 "total_records": 0,
                 "covered_records": 0,
                 "actual_coverage_rate": 0.0,
-                "min_coverage_rate": min_coverage_rate,
+                "min_coverage_rate": threshold,
                 "message": "Empty DataFrame or missing fiscal_naics_code column",
             },
         )
 
-    covered_records = fiscal_naics_enriched_awards["fiscal_naics_code"].notna().sum()
-    actual_coverage_rate = covered_records / total_records if total_records > 0 else 0.0
-
-    # Determine if check passes
-    passed = bool(actual_coverage_rate >= min_coverage_rate)
-
-    # Set severity and description
-    if passed:
-        severity = AssetCheckSeverity.WARN
-        description = f"✓ NAICS coverage check PASSED: {actual_coverage_rate:.1%} (threshold: {min_coverage_rate:.1%})"
-    else:
-        severity = AssetCheckSeverity.ERROR
-        description = f"✗ NAICS coverage check FAILED: {actual_coverage_rate:.1%} is below threshold of {min_coverage_rate:.1%}"
-
-    # Create metadata
-    metadata = {
-        "actual_coverage_rate": f"{actual_coverage_rate:.1%}",
-        "threshold": f"{min_coverage_rate:.1%}",
-        "total_records": int(total_records),
-        "covered_records": int(covered_records),
-        "uncovered_records": int(total_records - covered_records),
-        "source_distribution": fiscal_naics_enriched_awards["fiscal_naics_source"]
-        .value_counts(dropna=False)
-        .to_dict(),
-    }
-
-    return AssetCheckResult(
-        passed=passed,
-        severity=severity,
-        description=description,
-        metadata=metadata,  # type: ignore[arg-type]
+    covered = fiscal_naics_enriched_awards["fiscal_naics_code"].notna().sum()
+    rate = covered / total
+    return _threshold_check(
+        label="NAICS coverage check",
+        actual=rate,
+        threshold=threshold,
+        metadata={
+            "actual_coverage_rate": f"{rate:.1%}",
+            "threshold": f"{threshold:.1%}",
+            "total_records": int(total),
+            "covered_records": int(covered),
+            "uncovered_records": int(total - covered),
+            "source_distribution": fiscal_naics_enriched_awards["fiscal_naics_source"]
+            .value_counts(dropna=False)
+            .to_dict(),
+        },
     )
 
 
@@ -223,57 +192,33 @@ def fiscal_naics_coverage_check(fiscal_naics_enriched_awards: pd.DataFrame) -> A
     description="NAICS confidence scores meet minimum quality threshold",
 )
 def fiscal_naics_quality_check(fiscal_naics_enriched_awards: pd.DataFrame) -> AssetCheckResult:
-    """
-    Asset check to ensure average NAICS confidence score meets quality threshold.
-
-    This check validates that the enrichment quality is sufficient for fiscal analysis,
-    ensuring the NAICS codes are reliable enough for economic modeling.
-
-    Args:
-        fiscal_naics_enriched_awards: DataFrame with NAICS enrichment
-
-    Returns:
-        AssetCheckResult with pass/fail status and metrics
-    """
-    # Get configuration
-    config = get_config()
-    min_confidence_threshold = getattr(
-        config.fiscal_analysis.quality_thresholds,
+    """Validate that average NAICS confidence is high enough for economic modeling."""
+    threshold = getattr(
+        get_config().fiscal_analysis.quality_thresholds,
         "naics_confidence_threshold",
-        0.60,  # Default fallback threshold
+        0.60,
+    )
+    scores = fiscal_naics_enriched_awards["fiscal_naics_confidence"].dropna()
+    avg = scores.mean() if not scores.empty else 0.0
+    return _threshold_check(
+        label="NAICS quality check",
+        actual=avg,
+        threshold=threshold,
+        use_percent=False,
+        metadata={
+            "avg_confidence": round(avg, 3),
+            "threshold": round(threshold, 3),
+            "confidence_distribution": scores.describe().to_dict(),
+            "source_distribution": fiscal_naics_enriched_awards["fiscal_naics_source"]
+            .value_counts(dropna=False)
+            .to_dict(),
+        },
     )
 
-    # Calculate average confidence
-    confidence_scores = fiscal_naics_enriched_awards["fiscal_naics_confidence"].dropna()
-    avg_confidence = confidence_scores.mean() if not confidence_scores.empty else 0.0
 
-    # Determine if check passes
-    passed = bool(avg_confidence >= min_confidence_threshold)
-
-    # Set severity and description
-    if passed:
-        severity = AssetCheckSeverity.WARN
-        description = f"✓ NAICS quality check PASSED: {avg_confidence:.3f} (threshold: {min_confidence_threshold:.3f})"
-    else:
-        severity = AssetCheckSeverity.ERROR
-        description = f"✗ NAICS quality check FAILED: {avg_confidence:.3f} is below threshold of {min_confidence_threshold:.3f}"
-
-    # Create metadata
-    metadata = {
-        "avg_confidence": round(avg_confidence, 3),
-        "threshold": round(min_confidence_threshold, 3),
-        "confidence_distribution": confidence_scores.describe().to_dict(),
-        "source_distribution": fiscal_naics_enriched_awards["fiscal_naics_source"]
-        .value_counts(dropna=False)
-        .to_dict(),
-    }
-
-    return AssetCheckResult(
-        passed=passed,
-        severity=severity,
-        description=description,
-        metadata=metadata,  # type: ignore[arg-type]
-    )
+# ---------------------------------------------------------------------------
+# BEA sector mapping
+# ---------------------------------------------------------------------------
 
 
 @asset(
@@ -285,36 +230,32 @@ def bea_mapped_sbir_awards(
     context: AssetExecutionContext,
     fiscal_naics_enriched_awards: pd.DataFrame,
 ) -> Output[pd.DataFrame]:
-    """
-    Map NAICS codes to BEA Input-Output sectors using hierarchical fallback strategy.
-    """
+    """Map NAICS codes to BEA Input-Output sectors via hierarchical fallback."""
     get_config()
     context.log.info(
         "Starting BEA sector mapping", extra={"sbir_records": len(fiscal_naics_enriched_awards)}
     )
 
-    mapper = NAICSToBEAMapper()
     with performance_monitor.monitor_block("bea_sector_mapping"):
-        enriched_df, mapping_stats = enrich_awards_with_bea_sectors(
+        enriched_df, stats = enrich_awards_with_bea_sectors(
             awards_df=fiscal_naics_enriched_awards,
-            mapper=mapper,
+            mapper=NAICSToBEAMapper(),
         )
 
     context.log.info(
         "BEA sector mapping complete",
         extra={
-            "mapping_coverage_rate": f"{mapping_stats.coverage_rate:.1%}",
-            "avg_confidence": round(mapping_stats.avg_confidence, 3),
+            "mapping_coverage_rate": f"{stats.coverage_rate:.1%}",
+            "avg_confidence": round(stats.avg_confidence, 3),
         },
     )
 
     metadata = {
         "num_input_records": len(fiscal_naics_enriched_awards),
         "num_output_records": len(enriched_df),
-        "mapping_coverage_rate": f"{mapping_stats.coverage_rate:.1%}",
-        "avg_confidence": round(mapping_stats.avg_confidence, 3),
+        "mapping_coverage_rate": f"{stats.coverage_rate:.1%}",
+        "avg_confidence": round(stats.avg_confidence, 3),
     }
-
     return Output(value=enriched_df, metadata=metadata)  # type: ignore[arg-type]
 
 
@@ -323,16 +264,12 @@ def bea_mapped_sbir_awards(
     description="Validate BEA sector mapping coverage and confidence",
 )
 def bea_mapping_quality_check(bea_mapped_sbir_awards: pd.DataFrame) -> AssetCheckResult:
-    """Asset check to ensure BEA sector mapping coverage meets quality thresholds."""
-    config = get_config()
-    min_coverage_rate = config.fiscal_analysis.quality_thresholds.get(
+    """Asset check: BEA sector mapping coverage ≥ threshold AND confidence ≥ 0.70."""
+    threshold = get_config().fiscal_analysis.quality_thresholds.get(
         "bea_sector_mapping_rate", 0.90
     )
-
-    total_mappings = len(bea_mapped_sbir_awards)
-
-    # Handle empty DataFrame or missing columns
-    if total_mappings == 0 or "bea_sector_code" not in bea_mapped_sbir_awards.columns:
+    total = len(bea_mapped_sbir_awards)
+    if total == 0 or "bea_sector_code" not in bea_mapped_sbir_awards.columns:
         return AssetCheckResult(
             passed=False,
             severity=AssetCheckSeverity.ERROR,
@@ -341,38 +278,38 @@ def bea_mapping_quality_check(bea_mapped_sbir_awards: pd.DataFrame) -> AssetChec
                 "valid_mappings": 0,
                 "coverage_rate": 0.0,
                 "avg_confidence": 0.0,
-                "min_coverage_rate": min_coverage_rate,
+                "min_coverage_rate": threshold,
             },
             description="Empty DataFrame or missing bea_sector_code column",
         )
 
-    valid_mappings = bea_mapped_sbir_awards["bea_sector_code"].notna().sum()
-    coverage_rate = valid_mappings / total_mappings if total_mappings > 0 else 0.0
+    valid = bea_mapped_sbir_awards["bea_sector_code"].notna().sum()
+    coverage = valid / total
+    confidences = bea_mapped_sbir_awards["bea_mapping_confidence"].dropna()
+    avg_conf = confidences.mean() if not confidences.empty else 0.0
 
-    confidence_scores = bea_mapped_sbir_awards["bea_mapping_confidence"].dropna()
-    avg_confidence = confidence_scores.mean() if not confidence_scores.empty else 0.0
-
-    passed = bool(coverage_rate >= min_coverage_rate and avg_confidence >= 0.70)
-
+    passed = bool(coverage >= threshold and avg_conf >= 0.70)
     severity = AssetCheckSeverity.WARN if passed else AssetCheckSeverity.ERROR
     description = (
-        f"✓ BEA mapping PASSED: {coverage_rate:.1%} coverage, {avg_confidence:.3f} confidence"
+        f"✓ BEA mapping PASSED: {coverage:.1%} coverage, {avg_conf:.3f} confidence"
         if passed
-        else f"✗ BEA mapping FAILED: {coverage_rate:.1%} coverage (threshold {min_coverage_rate:.1%})"
+        else f"✗ BEA mapping FAILED: {coverage:.1%} coverage (threshold {threshold:.1%})"
     )
-
-    metadata = {
-        "coverage_rate": f"{coverage_rate:.1%}",
-        "avg_confidence": round(avg_confidence, 3),
-        "total_mappings": total_mappings,
-    }
-
     return AssetCheckResult(
         passed=passed,
         severity=severity,
         description=description,
-        metadata=metadata,  # type: ignore[arg-type]
+        metadata={
+            "coverage_rate": f"{coverage:.1%}",
+            "avg_confidence": round(avg_conf, 3),
+            "total_mappings": total,
+        },  # type: ignore[arg-type]
     )
+
+
+# ---------------------------------------------------------------------------
+# Economic shocks
+# ---------------------------------------------------------------------------
 
 
 @asset(
@@ -384,34 +321,25 @@ def economic_shocks(
     context: AssetExecutionContext,
     bea_mapped_sbir_awards: pd.DataFrame,
 ) -> Output[pd.DataFrame]:
-    """
-    Aggregate SBIR awards into state-by-sector-by-fiscal-year economic shocks.
-
-    This asset maintains award-to-shock traceability for audit purposes and supports
-    chunked processing for large datasets. Each shock represents aggregated SBIR spending
-    in a specific state, BEA sector, and fiscal year combination.
-    """
+    """Aggregate SBIR awards into state × sector × fiscal-year shocks."""
     config = get_config()
     context.log.info(
         "Starting economic shock aggregation",
         extra={"bea_mapped_records": len(bea_mapped_sbir_awards)},
     )
 
-    # Get chunk size from config
     chunk_size = config.fiscal_analysis.performance.get("chunk_size", 10000)
-
-    # Aggregate shocks
+    chunk_arg = chunk_size if len(bea_mapped_sbir_awards) > chunk_size else None
     aggregator = FiscalShockAggregator(config=config)
+
     with performance_monitor.monitor_block("economic_shock_aggregation"):
         shocks_df = aggregator.aggregate_shocks_to_dataframe(
             awards_df=bea_mapped_sbir_awards,
-            chunk_size=chunk_size if len(bea_mapped_sbir_awards) > chunk_size else None,
+            chunk_size=chunk_arg,
         )
 
-    # Get statistics
     shocks_list = aggregator.aggregate_shocks(
-        awards_df=bea_mapped_sbir_awards,
-        chunk_size=chunk_size if len(bea_mapped_sbir_awards) > chunk_size else None,
+        awards_df=bea_mapped_sbir_awards, chunk_size=chunk_arg
     )
     stats = aggregator.get_aggregation_statistics(shocks_list)
 
@@ -428,7 +356,6 @@ def economic_shocks(
         },
     )
 
-    # Create metadata
     metadata = {
         "num_shocks": len(shocks_df),
         "total_awards_aggregated": stats.total_awards_aggregated,
@@ -443,11 +370,8 @@ def economic_shocks(
         "naics_coverage_rate": f"{stats.naics_coverage_rate:.1%}",
         "geographic_resolution_rate": f"{stats.geographic_resolution_rate:.1%}",
         "awards_per_shock_avg": round(stats.awards_per_shock_avg, 2),
-        "preview": MetadataValue.md(shocks_df.head(10).to_markdown())
-        if not shocks_df.empty
-        else "No shocks",
+        "preview": _preview(shocks_df, empty="No shocks"),
     }
-
     return Output(value=shocks_df, metadata=metadata)  # type: ignore[arg-type]
 
 
@@ -456,9 +380,7 @@ def economic_shocks(
     description="Validate economic shock aggregation coverage and quality",
 )
 def economic_shocks_quality_check(economic_shocks: pd.DataFrame) -> AssetCheckResult:
-    """Asset check to ensure economic shock aggregation meets quality thresholds."""
-    config = get_config()
-
+    """Check shock count and NAICS / geographic coverage on the aggregated shocks."""
     if economic_shocks.empty:
         return AssetCheckResult(
             passed=False,
@@ -467,57 +389,55 @@ def economic_shocks_quality_check(economic_shocks: pd.DataFrame) -> AssetCheckRe
             metadata={"num_shocks": 0},
         )
 
-    # Check minimum shock count
-    min_shocks = 10  # Reasonable minimum for analysis
-    num_shocks = len(economic_shocks)
-    passed_min_count = num_shocks >= min_shocks
+    num = len(economic_shocks)
+    naics = economic_shocks["naics_coverage_rate"].dropna().mean() or 0.0
+    geo = economic_shocks["geographic_resolution_rate"].dropna().mean() or 0.0
+    confidence = economic_shocks["confidence"].dropna().mean() or 0.0
 
-    # Check coverage rates
-    naics_rates = economic_shocks["naics_coverage_rate"].dropna()
-    geo_rates = economic_shocks["geographic_resolution_rate"].dropna()
+    thresholds = get_config().fiscal_analysis.quality_thresholds
+    min_naics = thresholds.get("naics_coverage_rate", 0.85)
+    min_geo = thresholds.get("geographic_resolution_rate", 0.90)
 
-    avg_naics_coverage = naics_rates.mean() if not naics_rates.empty else 0.0
-    avg_geo_coverage = geo_rates.mean() if not geo_rates.empty else 0.0
-
-    # Check confidence scores
-    confidences = economic_shocks["confidence"].dropna()
-    avg_confidence = confidences.mean() if not confidences.empty else 0.0
-
-    # Get thresholds
-    quality_thresholds = config.fiscal_analysis.quality_thresholds
-    min_naics_coverage = quality_thresholds.get("naics_coverage_rate", 0.85)
-    min_geo_coverage = quality_thresholds.get("geographic_resolution_rate", 0.90)
-
-    # Determine if checks pass
+    # Allow 20% tolerance on coverage at the shock-aggregate stage.
     passed = bool(
-        passed_min_count
-        and avg_naics_coverage >= min_naics_coverage * 0.8  # Allow some tolerance
-        and avg_geo_coverage >= min_geo_coverage * 0.8
-        and avg_confidence >= 0.60
+        num >= 10
+        and naics >= min_naics * 0.8
+        and geo >= min_geo * 0.8
+        and confidence >= 0.60
     )
-
     severity = AssetCheckSeverity.WARN if passed else AssetCheckSeverity.ERROR
     description = (
-        f"✓ Economic shocks aggregation PASSED: {num_shocks} shocks, "
-        f"{avg_naics_coverage:.1%} NAICS coverage, {avg_geo_coverage:.1%} geo coverage"
+        f"✓ Economic shocks aggregation PASSED: {num} shocks, "
+        f"{naics:.1%} NAICS coverage, {geo:.1%} geo coverage"
         if passed
         else "✗ Economic shocks aggregation FAILED: Quality metrics below thresholds"
     )
-
-    metadata = {
-        "num_shocks": num_shocks,
-        "avg_naics_coverage": f"{avg_naics_coverage:.1%}",
-        "avg_geo_coverage": f"{avg_geo_coverage:.1%}",
-        "avg_confidence": round(avg_confidence, 3),
-        "total_shock_amount": f"${economic_shocks['shock_amount'].sum():,.2f}",
-    }
-
     return AssetCheckResult(
         passed=passed,
         severity=severity,
         description=description,
-        metadata=metadata,  # type: ignore[arg-type]
+        metadata={
+            "num_shocks": num,
+            "avg_naics_coverage": f"{naics:.1%}",
+            "avg_geo_coverage": f"{geo:.1%}",
+            "avg_confidence": round(confidence, 3),
+            "total_shock_amount": f"${economic_shocks['shock_amount'].sum():,.2f}",
+        },  # type: ignore[arg-type]
     )
+
+
+# ---------------------------------------------------------------------------
+# Economic impacts (BEA I-O)
+# ---------------------------------------------------------------------------
+
+_IMPACT_COLS = (
+    "wage_impact",
+    "proprietor_income_impact",
+    "gross_operating_surplus",
+    "consumption_impact",
+    "tax_impact",
+    "production_impact",
+)
 
 
 @asset(
@@ -529,19 +449,10 @@ def economic_impacts(
     context: AssetExecutionContext,
     economic_shocks: pd.DataFrame,
 ) -> Output[pd.DataFrame]:
-    """
-    Compute economic impacts from spending shocks using BEA I-O tables.
-
-    This asset uses the BEAIOAdapter to fetch national Input-Output tables
-    from the BEA API and compute multiplier effects from SBIR spending.
-    """
+    """Run BEA I-O multipliers on the aggregated shocks; placeholder when BEA unavailable."""
     config = get_config()
-    context.log.info(
-        "Starting economic impact computation",
-        extra={"num_shocks": len(economic_shocks)},
-    )
+    context.log.info("Starting economic impact computation", extra={"num_shocks": len(economic_shocks)})
 
-    # Initialize BEA I-O adapter
     try:
         adapter = BEAIOAdapter(config=config.fiscal_analysis)
         if not adapter.is_available():
@@ -554,10 +465,7 @@ def economic_impacts(
         context.log.warning(f"BEA I-O adapter not available: {e}")
         return _create_placeholder_impacts(economic_shocks, context)
 
-    # Prepare shocks DataFrame for model input
     shocks_input = economic_shocks[["state", "bea_sector", "fiscal_year", "shock_amount"]].copy()
-
-    # Compute impacts with performance monitoring
     with performance_monitor.monitor_block("economic_impact_computation"):
         try:
             impacts_df = adapter.compute_impacts(shocks_input)
@@ -565,87 +473,58 @@ def economic_impacts(
             context.log.error(f"Failed to compute economic impacts: {e}")
             return _create_placeholder_impacts(economic_shocks, context)
 
-    # Merge back with shock metadata
-    result_df = economic_shocks.merge(
+    result = economic_shocks.merge(
         impacts_df,
         on=["state", "bea_sector", "fiscal_year"],
         how="left",
         suffixes=("_shock", "_impact"),
     )
-
-    # Fill any missing impacts with zeros
-    impact_cols = [
-        "wage_impact",
-        "proprietor_income_impact",
-        "gross_operating_surplus",
-        "consumption_impact",
-        "tax_impact",
-        "production_impact",
-    ]
-    for col in impact_cols:
-        if col not in result_df.columns:
-            result_df[col] = 0.0
-        result_df[col] = result_df[col].fillna(0.0)
+    for col in _IMPACT_COLS:
+        if col not in result.columns:
+            result[col] = 0.0
+        result[col] = result[col].fillna(0.0)
 
     context.log.info(
         "Economic impact computation complete",
         extra={
-            "num_impacts": len(result_df),
-            "total_wage_impact": f"${result_df['wage_impact'].sum():,.2f}",
-            "total_production_impact": f"${result_df['production_impact'].sum():,.2f}",
+            "num_impacts": len(result),
+            "total_wage_impact": f"${result['wage_impact'].sum():,.2f}",
+            "total_production_impact": f"${result['production_impact'].sum():,.2f}",
             "model_version": adapter.get_model_version(),
         },
     )
 
-    # Create metadata
     metadata = {
-        "num_impacts": len(result_df),
+        "num_impacts": len(result),
         "model_version": adapter.get_model_version(),
-        "total_wage_impact": f"${result_df['wage_impact'].sum():,.2f}",
-        "total_proprietor_income_impact": f"${result_df['proprietor_income_impact'].sum():,.2f}",
-        "total_gross_operating_surplus": f"${result_df['gross_operating_surplus'].sum():,.2f}",
-        "total_production_impact": f"${result_df['production_impact'].sum():,.2f}",
-        "preview": MetadataValue.md(result_df.head(10).to_markdown())
-        if not result_df.empty
-        else "No impacts",
+        "total_wage_impact": f"${result['wage_impact'].sum():,.2f}",
+        "total_proprietor_income_impact": f"${result['proprietor_income_impact'].sum():,.2f}",
+        "total_gross_operating_surplus": f"${result['gross_operating_surplus'].sum():,.2f}",
+        "total_production_impact": f"${result['production_impact'].sum():,.2f}",
+        "preview": _preview(result, empty="No impacts"),
     }
-
-    return Output(value=result_df, metadata=metadata)  # type: ignore[arg-type]
+    return Output(value=result, metadata=metadata)  # type: ignore[arg-type]
 
 
 def _create_placeholder_impacts(
     shocks_df: pd.DataFrame, context: AssetExecutionContext
 ) -> Output[pd.DataFrame]:
-    """Create placeholder impacts DataFrame when R adapter is unavailable.
-
-    Args:
-        shocks_df: Economic shocks DataFrame
-        context: Dagster context
-
-    Returns:
-        Output with placeholder impacts DataFrame
-    """
+    """Placeholder impacts (zero values) when the BEA I-O adapter is unavailable."""
     context.log.warning("Creating placeholder impacts (BEA I-O adapter unavailable)")
-
-    placeholder_df = shocks_df.copy()
-    # Add placeholder impact columns with zero values
-    placeholder_df["wage_impact"] = 0.0
-    placeholder_df["proprietor_income_impact"] = 0.0
-    placeholder_df["gross_operating_surplus"] = 0.0
-    placeholder_df["consumption_impact"] = 0.0
-    placeholder_df["tax_impact"] = 0.0
-    placeholder_df["production_impact"] = 0.0
-    placeholder_df["model_version"] = "placeholder"
-    placeholder_df["confidence"] = 0.0
-    placeholder_df["quality_flags"] = "bea_adapter_unavailable"
-
-    metadata = {
-        "num_impacts": len(placeholder_df),
-        "model_version": "placeholder",
-        "warning": "BEA I-O adapter unavailable - placeholder impacts generated",
-    }
-
-    return Output(value=placeholder_df, metadata=metadata)  # type: ignore[arg-type]
+    df = shocks_df.copy()
+    for col in _IMPACT_COLS:
+        df[col] = 0.0
+    df["model_version"] = "placeholder"
+    df["confidence"] = 0.0
+    df["quality_flags"] = "bea_adapter_unavailable"
+    return Output(
+        value=df,
+        metadata={
+            "num_impacts": len(df),
+            "model_version": "placeholder",
+            "warning": "BEA I-O adapter unavailable - placeholder impacts generated",
+        },
+    )  # type: ignore[arg-type]
 
 
 @asset_check(
@@ -653,7 +532,7 @@ def _create_placeholder_impacts(
     description="Validate economic impacts computation quality",
 )
 def economic_impacts_quality_check(economic_impacts: pd.DataFrame) -> AssetCheckResult:
-    """Asset check to ensure economic impacts meet quality thresholds."""
+    """Check no negatives / NaNs in impact columns; fail if placeholder model in use."""
     if economic_impacts.empty:
         return AssetCheckResult(
             passed=False,
@@ -661,14 +540,7 @@ def economic_impacts_quality_check(economic_impacts: pd.DataFrame) -> AssetCheck
             description="✗ Economic impacts FAILED: No impacts generated",
             metadata={"num_impacts": 0},
         )
-
-    # Check if using placeholder model
-    is_placeholder = (
-        economic_impacts["model_version"].iloc[0] == "placeholder"
-        if len(economic_impacts) > 0
-        else False
-    )
-    if is_placeholder:
+    if economic_impacts["model_version"].iloc[0] == "placeholder":
         return AssetCheckResult(
             passed=False,
             severity=AssetCheckSeverity.ERROR,
@@ -676,58 +548,38 @@ def economic_impacts_quality_check(economic_impacts: pd.DataFrame) -> AssetCheck
             metadata={"model_version": "placeholder"},
         )
 
-    # Check impact values are reasonable
-    impact_cols = [
-        "wage_impact",
-        "proprietor_income_impact",
-        "gross_operating_surplus",
-        "consumption_impact",
-        "tax_impact",
-        "production_impact",
-    ]
-
-    checks_passed = True
-    issues = []
-
-    for col in impact_cols:
+    issues: list[str] = []
+    for col in _IMPACT_COLS:
         if col not in economic_impacts.columns:
             issues.append(f"Missing column: {col}")
-            checks_passed = False
             continue
+        if (neg := int((economic_impacts[col] < 0).sum())) > 0:
+            issues.append(f"{col}: {neg} negative values")
+        if (nan := int(economic_impacts[col].isna().sum())) > 0:
+            issues.append(f"{col}: {nan} NaN values")
 
-        # Check for negative values (shouldn't occur for economic impacts)
-        negative_count = (economic_impacts[col] < 0).sum()
-        if negative_count > 0:
-            issues.append(f"{col}: {negative_count} negative values")
-            checks_passed = False
-
-        # Check for NaN values
-        nan_count = economic_impacts[col].isna().sum()
-        if nan_count > 0:
-            issues.append(f"{col}: {nan_count} NaN values")
-            checks_passed = False
-
-    severity = AssetCheckSeverity.WARN if checks_passed else AssetCheckSeverity.ERROR
+    passed = not issues
+    severity = AssetCheckSeverity.WARN if passed else AssetCheckSeverity.ERROR
     description = (
         f"✓ Economic impacts PASSED: {len(economic_impacts)} impacts computed"
-        if checks_passed
+        if passed
         else f"✗ Economic impacts FAILED: {', '.join(issues)}"
     )
-
-    metadata = {
-        "num_impacts": len(economic_impacts),
-        "model_version": economic_impacts["model_version"].iloc[0]
-        if len(economic_impacts) > 0
-        else "unknown",
-        "issues": issues if issues else [],
-    }
-
     return AssetCheckResult(
-        passed=checks_passed, severity=severity, description=description, metadata=metadata
+        passed=passed,
+        severity=severity,
+        description=description,
+        metadata={
+            "num_impacts": len(economic_impacts),
+            "model_version": economic_impacts["model_version"].iloc[0],
+            "issues": issues,
+        },
     )
 
 
-# Task 6.1: Fiscal Data Preparation Assets
+# ---------------------------------------------------------------------------
+# Fiscal data prep (geographic resolution + inflation adjustment)
+# ---------------------------------------------------------------------------
 
 
 @asset(
@@ -739,60 +591,44 @@ def fiscal_prepared_sbir_awards(
     context: AssetExecutionContext,
     fiscal_naics_enriched_awards: pd.DataFrame,
 ) -> Output[pd.DataFrame]:
-    """
-    Prepare SBIR awards for fiscal analysis by adding geographic resolution.
+    """Add state-level geographic resolution to NAICS-enriched awards."""
+    from sbir_etl.enrichers.geographic_resolver import resolve_award_geography
 
-    This asset combines NAICS enrichment (from fiscal_naics_enriched_awards) with
-    geographic resolution to state-level, creating a fully prepared dataset for
-    economic modeling.
-    """
     config = get_config()
     context.log.info(
         "Starting fiscal award preparation",
         extra={"num_awards": len(fiscal_naics_enriched_awards)},
     )
 
-    # Resolve geographic locations
-    from sbir_etl.enrichers.geographic_resolver import resolve_award_geography
-
     with performance_monitor.monitor_block("geographic_resolution"):
-        resolved_df, geo_quality = resolve_award_geography(
+        resolved_df, _ = resolve_award_geography(
             fiscal_naics_enriched_awards,
             config=config.fiscal_analysis,  # type: ignore[arg-type]
         )
-
-    # Map geographic resolution columns to standard names
     if "fiscal_state_code" in resolved_df.columns:
         resolved_df["resolved_state"] = resolved_df["fiscal_state_code"]
 
-    geo_coverage = (
-        resolved_df["resolved_state"].notna().sum() / len(resolved_df)
-        if len(resolved_df) > 0
-        else 0.0
+    total = len(resolved_df)
+    geo_cov = resolved_df["resolved_state"].notna().sum() / total if total else 0.0
+    naics_cov = (
+        f"{(resolved_df['fiscal_naics_code'].notna().sum() / total):.1%}" if total else "0%"
     )
 
     context.log.info(
         "Fiscal award preparation complete",
         extra={
-            "num_awards": len(resolved_df),
-            "naics_coverage": f"{(resolved_df['fiscal_naics_code'].notna().sum() / len(resolved_df)):.1%}"
-            if len(resolved_df) > 0
-            else "0%",
-            "geographic_coverage": f"{geo_coverage:.1%}",
+            "num_awards": total,
+            "naics_coverage": naics_cov,
+            "geographic_coverage": f"{geo_cov:.1%}",
         },
     )
 
     metadata = {
-        "num_awards": len(resolved_df),
-        "naics_coverage": f"{(resolved_df['fiscal_naics_code'].notna().sum() / len(resolved_df)):.1%}"
-        if len(resolved_df) > 0
-        else "0%",
-        "geographic_coverage": f"{geo_coverage:.1%}",
-        "preview": MetadataValue.md(resolved_df.head(10).to_markdown())
-        if not resolved_df.empty
-        else "No awards",
+        "num_awards": total,
+        "naics_coverage": naics_cov,
+        "geographic_coverage": f"{geo_cov:.1%}",
+        "preview": _preview(resolved_df, empty="No awards"),
     }
-
     return Output(value=resolved_df, metadata=metadata)  # type: ignore[arg-type]
 
 
@@ -803,38 +639,24 @@ def fiscal_prepared_sbir_awards(
 def fiscal_geographic_resolution_check(
     fiscal_prepared_sbir_awards: pd.DataFrame,
 ) -> AssetCheckResult:
-    """Asset check to ensure geographic resolution meets minimum threshold."""
-    config = get_config()
-    min_resolution_rate = config.fiscal_analysis.quality_thresholds.get(
+    """Asset check: state-level geographic resolution rate ≥ threshold."""
+    threshold = get_config().fiscal_analysis.quality_thresholds.get(
         "geographic_resolution_rate", 0.90
     )
-
-    total_awards = len(fiscal_prepared_sbir_awards)
-    resolved_awards = fiscal_prepared_sbir_awards.get("resolved_state", pd.Series()).notna().sum()
-    resolution_rate = resolved_awards / total_awards if total_awards > 0 else 0.0
-
-    passed = bool(resolution_rate >= min_resolution_rate)  # Convert numpy bool to Python bool
-
-    severity = AssetCheckSeverity.WARN if passed else AssetCheckSeverity.ERROR
-    description = (
-        f"✓ Geographic resolution PASSED: {resolution_rate:.1%} (threshold: {min_resolution_rate:.1%})"
-        if passed
-        else f"✗ Geographic resolution FAILED: {resolution_rate:.1%} is below threshold of {min_resolution_rate:.1%}"
-    )
-
-    metadata = {
-        "resolution_rate": f"{resolution_rate:.1%}",
-        "threshold": f"{min_resolution_rate:.1%}",
-        "total_awards": int(total_awards),
-        "resolved_awards": int(resolved_awards),
-        "unresolved_awards": int(total_awards - resolved_awards),
-    }
-
-    return AssetCheckResult(
-        passed=passed,
-        severity=severity,
-        description=description,
-        metadata=metadata,  # type: ignore[arg-type]
+    total = len(fiscal_prepared_sbir_awards)
+    resolved = fiscal_prepared_sbir_awards.get("resolved_state", pd.Series()).notna().sum()
+    rate = resolved / total if total > 0 else 0.0
+    return _threshold_check(
+        label="Geographic resolution",
+        actual=rate,
+        threshold=threshold,
+        metadata={
+            "resolution_rate": f"{rate:.1%}",
+            "threshold": f"{threshold:.1%}",
+            "total_awards": int(total),
+            "resolved_awards": int(resolved),
+            "unresolved_awards": int(total - resolved),
+        },
     )
 
 
@@ -847,32 +669,23 @@ def inflation_adjusted_awards(
     context: AssetExecutionContext,
     fiscal_prepared_sbir_awards: pd.DataFrame,
 ) -> Output[pd.DataFrame]:
-    """
-    Adjust SBIR award amounts for inflation using BEA GDP deflator.
-
-    This asset normalizes all award amounts to the configured base year,
-    enabling consistent comparison across different award years.
-    """
+    """Normalize award amounts to the configured base year via BEA GDP deflator."""
     config = get_config()
     context.log.info(
         "Starting inflation adjustment",
         extra={"num_awards": len(fiscal_prepared_sbir_awards)},
     )
 
-    # Adjust for inflation
     with performance_monitor.monitor_block("inflation_adjustment"):
         adjusted_df, quality_metrics = adjust_awards_for_inflation(
             fiscal_prepared_sbir_awards,
             target_year=config.fiscal_analysis.base_year,
             config=config.fiscal_analysis,  # type: ignore[arg-type]
         )
-
-    # Use adjusted amount as primary amount column
     if "fiscal_adjusted_amount" in adjusted_df.columns:
         adjusted_df["inflation_adjusted_amount"] = adjusted_df["fiscal_adjusted_amount"]
 
     success_rate = quality_metrics.get("adjustment_success_rate", 0.0)
-
     context.log.info(
         "Inflation adjustment complete",
         extra={
@@ -887,14 +700,13 @@ def inflation_adjusted_awards(
         "base_year": config.fiscal_analysis.base_year,
         "adjustment_success_rate": f"{success_rate:.1%}",
         "total_original_amount": f"${adjusted_df.get('award_amount', pd.Series([0])).sum():,.2f}",
-        "total_adjusted_amount": f"${adjusted_df['inflation_adjusted_amount'].sum():,.2f}"
-        if "inflation_adjusted_amount" in adjusted_df.columns
-        else "N/A",
-        "preview": MetadataValue.md(adjusted_df.head(10).to_markdown())
-        if not adjusted_df.empty
-        else "No awards",
+        "total_adjusted_amount": (
+            f"${adjusted_df['inflation_adjusted_amount'].sum():,.2f}"
+            if "inflation_adjusted_amount" in adjusted_df.columns
+            else "N/A"
+        ),
+        "preview": _preview(adjusted_df, empty="No awards"),
     }
-
     return Output(value=adjusted_df, metadata=metadata)  # type: ignore[arg-type]
 
 
@@ -903,49 +715,34 @@ def inflation_adjusted_awards(
     description="Validate inflation adjustment quality meets threshold",
 )
 def inflation_adjustment_quality_check(inflation_adjusted_awards: pd.DataFrame) -> AssetCheckResult:
-    """Asset check to ensure inflation adjustment quality meets minimum threshold."""
-    config = get_config()
-    min_success_rate = config.fiscal_analysis.quality_thresholds.get(
+    """Asset check: inflation-adjustment success rate ≥ threshold."""
+    threshold = get_config().fiscal_analysis.quality_thresholds.get(
         "inflation_adjustment_success", 0.95
     )
-
-    total_awards = len(inflation_adjusted_awards)
-    adjusted_cols = ["inflation_adjusted_amount", "fiscal_adjusted_amount"]
-    adjusted_awards = 0
-
-    for col in adjusted_cols:
+    total = len(inflation_adjusted_awards)
+    adjusted = 0
+    for col in ("inflation_adjusted_amount", "fiscal_adjusted_amount"):
         if col in inflation_adjusted_awards.columns:
-            adjusted_awards = inflation_adjusted_awards[col].notna().sum()
+            adjusted = inflation_adjusted_awards[col].notna().sum()
             break
-
-    success_rate = adjusted_awards / total_awards if total_awards > 0 else 0.0
-
-    passed = bool(success_rate >= min_success_rate)  # Convert numpy bool to Python bool
-
-    severity = AssetCheckSeverity.WARN if passed else AssetCheckSeverity.ERROR
-    description = (
-        f"✓ Inflation adjustment PASSED: {success_rate:.1%} (threshold: {min_success_rate:.1%})"
-        if passed
-        else f"✗ Inflation adjustment FAILED: {success_rate:.1%} is below threshold of {min_success_rate:.1%}"
-    )
-
-    metadata = {
-        "success_rate": f"{success_rate:.1%}",
-        "threshold": f"{min_success_rate:.1%}",
-        "total_awards": int(total_awards),
-        "adjusted_awards": int(adjusted_awards),
-        "unadjusted_awards": int(total_awards - adjusted_awards),
-    }
-
-    return AssetCheckResult(
-        passed=passed,
-        severity=severity,
-        description=description,
-        metadata=metadata,  # type: ignore[arg-type]
+    rate = adjusted / total if total > 0 else 0.0
+    return _threshold_check(
+        label="Inflation adjustment",
+        actual=rate,
+        threshold=threshold,
+        metadata={
+            "success_rate": f"{rate:.1%}",
+            "threshold": f"{threshold:.1%}",
+            "total_awards": int(total),
+            "adjusted_awards": int(adjusted),
+            "unadjusted_awards": int(total - adjusted),
+        },
     )
 
 
-# Task 6.3: Tax Calculation Assets
+# ---------------------------------------------------------------------------
+# Tax calculation
+# ---------------------------------------------------------------------------
 
 
 @asset(
@@ -957,30 +754,22 @@ def tax_base_components(
     context: AssetExecutionContext,
     economic_impacts: pd.DataFrame,
 ) -> Output[pd.DataFrame]:
-    """
-    Extract and validate economic components from BEA I-O model outputs.
-
-    This asset transforms economic impacts into validated tax base components:
-    wage impacts, proprietor income, gross operating surplus, and consumption.
-    """
+    """Extract validated tax-base components (wages, proprietor income, GOS, consumption)."""
     config = get_config()
     context.log.info(
-        "Starting tax base component extraction",
-        extra={"num_impacts": len(economic_impacts)},
+        "Starting tax base component extraction", extra={"num_impacts": len(economic_impacts)}
     )
 
     calculator = FiscalComponentCalculator(config=config.fiscal_analysis)
     with performance_monitor.monitor_block("component_extraction"):
         components_df = calculator.extract_components(economic_impacts)
-
-    # Validate aggregate components
-    validation_result = calculator.validate_aggregate_components(components_df)
+    validation = calculator.validate_aggregate_components(components_df)
 
     context.log.info(
         "Tax base component extraction complete",
         extra={
             "num_components": len(components_df),
-            "validation_passed": validation_result.is_valid,
+            "validation_passed": validation.is_valid,
             "total_wage_impact": f"${components_df['wage_impact'].sum():,.2f}",
             "total_component_total": f"${components_df['component_total'].sum():,.2f}",
         },
@@ -988,19 +777,16 @@ def tax_base_components(
 
     metadata = {
         "num_components": len(components_df),
-        "validation_passed": validation_result.is_valid,
+        "validation_passed": validation.is_valid,
         "total_wage_impact": f"${components_df['wage_impact'].sum():,.2f}",
         "total_proprietor_income": f"${components_df['proprietor_income_impact'].sum():,.2f}",
         "total_gos": f"${components_df['gross_operating_surplus'].sum():,.2f}",
         "total_consumption": f"${components_df['consumption_impact'].sum():,.2f}",
-        "validation_difference": f"${validation_result.difference:,.2f}",
-        "validation_tolerance": f"${validation_result.tolerance:,.2f}",
-        "quality_flags": validation_result.quality_flags,
-        "preview": MetadataValue.md(components_df.head(10).to_markdown())
-        if not components_df.empty
-        else "No components",
+        "validation_difference": f"${validation.difference:,.2f}",
+        "validation_tolerance": f"${validation.tolerance:,.2f}",
+        "quality_flags": validation.quality_flags,
+        "preview": _preview(components_df, empty="No components"),
     }
-
     return Output(value=components_df, metadata=metadata)  # type: ignore[arg-type]
 
 
@@ -1013,47 +799,35 @@ def federal_tax_estimates(
     context: AssetExecutionContext,
     tax_base_components: pd.DataFrame,
 ) -> Output[pd.DataFrame]:
-    """
-    Estimate federal tax receipts from economic components.
-
-    This asset computes individual income tax, payroll tax, corporate income tax,
-    and excise tax estimates using configurable tax rates.
-    """
+    """Estimate federal income, payroll, corporate income, and excise tax receipts."""
     config = get_config()
-    context.log.info(
-        "Starting federal tax estimation",
-        extra={"num_components": len(tax_base_components)},
-    )
+    context.log.info("Starting federal tax estimation", extra={"num_components": len(tax_base_components)})
 
     estimator = FiscalTaxEstimator(config=config.fiscal_analysis)
     with performance_monitor.monitor_block("tax_estimation"):
-        tax_estimates_df = estimator.estimate_taxes_from_components(tax_base_components)
-
-    stats = estimator.get_estimation_statistics(tax_estimates_df)
+        tax_df = estimator.estimate_taxes_from_components(tax_base_components)
+    stats = estimator.get_estimation_statistics(tax_df)
 
     context.log.info(
         "Federal tax estimation complete",
         extra={
-            "num_estimates": len(tax_estimates_df),
+            "num_estimates": len(tax_df),
             "total_tax_receipts": f"${stats.total_tax_receipts:,.2f}",
             "avg_effective_rate": f"{stats.avg_effective_rate:.2f}%",
         },
     )
 
     metadata = {
-        "num_estimates": len(tax_estimates_df),
+        "num_estimates": len(tax_df),
         "total_individual_income_tax": f"${stats.total_individual_income_tax:,.2f}",
         "total_payroll_tax": f"${stats.total_payroll_tax:,.2f}",
         "total_corporate_income_tax": f"${stats.total_corporate_income_tax:,.2f}",
         "total_excise_tax": f"${stats.total_excise_tax:,.2f}",
         "total_tax_receipts": f"${stats.total_tax_receipts:,.2f}",
         "avg_effective_rate": f"{stats.avg_effective_rate:.2f}%",
-        "preview": MetadataValue.md(tax_estimates_df.head(10).to_markdown())
-        if not tax_estimates_df.empty
-        else "No estimates",
+        "preview": _preview(tax_df, empty="No estimates"),
     }
-
-    return Output(value=tax_estimates_df, metadata=metadata)  # type: ignore[arg-type]
+    return Output(value=tax_df, metadata=metadata)  # type: ignore[arg-type]
 
 
 @asset(
@@ -1066,12 +840,7 @@ def fiscal_return_summary(
     federal_tax_estimates: pd.DataFrame,
     inflation_adjusted_awards: pd.DataFrame,
 ) -> Output[pd.DataFrame]:
-    """
-    Compute fiscal return summary with ROI metrics.
-
-    This asset aggregates tax receipts and compares them to SBIR investments,
-    computing ROI, payback period, NPV, and benefit-cost ratio.
-    """
+    """Compute ROI / payback / NPV / benefit-cost from tax receipts vs SBIR investment."""
     config = get_config()
     context.log.info(
         "Starting fiscal return summary calculation",
@@ -1081,54 +850,47 @@ def fiscal_return_summary(
         },
     )
 
-    calculator = FiscalROICalculator(config=config.fiscal_analysis)
-
-    # Calculate total SBIR investment
-    investment_cols = [
+    investment = 0.0
+    for col in (
         "inflation_adjusted_amount",
         "fiscal_adjusted_amount",
         "award_amount",
         "shock_amount",
-    ]
-    sbir_investment = 0.0
-    for col in investment_cols:
+    ):
         if col in inflation_adjusted_awards.columns:
-            sbir_investment = float(inflation_adjusted_awards[col].sum())
+            investment = float(inflation_adjusted_awards[col].sum())
             break
-
-    from decimal import Decimal
-
-    if sbir_investment == 0:
+    if investment == 0:
         logger.warning("No SBIR investment amount found in inflation_adjusted_awards")
 
+    calculator = FiscalROICalculator(config=config.fiscal_analysis)
     with performance_monitor.monitor_block("roi_calculation"):
         summary = calculator.calculate_roi_summary(
             tax_estimates_df=federal_tax_estimates,
-            sbir_investment=Decimal(str(sbir_investment)),
-            discount_rate=0.03,  # Default 3% discount rate
-            time_horizon_years=10,  # Default 10-year horizon
+            sbir_investment=Decimal(str(investment)),
+            discount_rate=0.03,
+            time_horizon_years=10,
         )
 
-    # Convert summary to DataFrame for asset output
-    summary_dict = {
-        "analysis_id": [summary.analysis_id],
-        "analysis_date": [summary.analysis_date.isoformat()],
-        "base_year": [summary.base_year],
-        "methodology_version": [summary.methodology_version],
-        "total_sbir_investment": [float(summary.total_sbir_investment)],
-        "total_tax_receipts": [float(summary.total_tax_receipts)],
-        "net_fiscal_return": [float(summary.net_fiscal_return)],
-        "roi_ratio": [summary.roi_ratio],
-        "payback_period_years": [summary.payback_period_years],
-        "net_present_value": [float(summary.net_present_value)],
-        "benefit_cost_ratio": [summary.benefit_cost_ratio],
-        "confidence_interval_low": [float(summary.confidence_interval_low)],
-        "confidence_interval_high": [float(summary.confidence_interval_high)],
-        "confidence_level": [summary.confidence_level],
-        "quality_score": [summary.quality_score],
-    }
-
-    summary_df = pd.DataFrame(summary_dict)
+    summary_df = pd.DataFrame(
+        {
+            "analysis_id": [summary.analysis_id],
+            "analysis_date": [summary.analysis_date.isoformat()],
+            "base_year": [summary.base_year],
+            "methodology_version": [summary.methodology_version],
+            "total_sbir_investment": [float(summary.total_sbir_investment)],
+            "total_tax_receipts": [float(summary.total_tax_receipts)],
+            "net_fiscal_return": [float(summary.net_fiscal_return)],
+            "roi_ratio": [summary.roi_ratio],
+            "payback_period_years": [summary.payback_period_years],
+            "net_present_value": [float(summary.net_present_value)],
+            "benefit_cost_ratio": [summary.benefit_cost_ratio],
+            "confidence_interval_low": [float(summary.confidence_interval_low)],
+            "confidence_interval_high": [float(summary.confidence_interval_high)],
+            "confidence_level": [summary.confidence_level],
+            "quality_score": [summary.quality_score],
+        }
+    )
 
     context.log.info(
         "Fiscal return summary calculation complete",
@@ -1151,13 +913,14 @@ def fiscal_return_summary(
         "net_fiscal_return": f"${summary.net_fiscal_return:,.2f}",
         "quality_score": f"{summary.quality_score:.3f}",
         "quality_flags": summary.quality_flags,
-        "preview": MetadataValue.md(summary_df.to_markdown()),
+        "preview": _preview(summary_df, head=None),
     }
-
     return Output(value=summary_df, metadata=metadata)
 
 
-# Task 6.4: Sensitivity Analysis Assets
+# ---------------------------------------------------------------------------
+# Sensitivity analysis
+# ---------------------------------------------------------------------------
 
 
 @asset(
@@ -1165,15 +928,8 @@ def fiscal_return_summary(
     group_name="sensitivity_analysis",
     compute_kind="pandas",
 )
-def sensitivity_scenarios(
-    context: AssetExecutionContext,
-) -> Output[pd.DataFrame]:
-    """
-    Generate parameter sweep scenarios for uncertainty quantification.
-
-    This asset creates scenario combinations using Monte Carlo, Latin Hypercube,
-    or grid search sampling based on configuration.
-    """
+def sensitivity_scenarios(context: AssetExecutionContext) -> Output[pd.DataFrame]:
+    """Generate Monte Carlo / Latin Hypercube / grid-search scenario combinations."""
     config = get_config()
     context.log.info("Starting sensitivity scenario generation")
 
@@ -1181,32 +937,23 @@ def sensitivity_scenarios(
     with performance_monitor.monitor_block("parameter_sweep"):
         scenarios_df = sweep.generate_scenarios()
 
+    method = scenarios_df["method"].iloc[0] if len(scenarios_df) > 0 else "unknown"
+    parameters = [
+        c
+        for c in scenarios_df.columns
+        if c not in ("scenario_id", "method", "random_seed", "points_per_dimension")
+    ]
     context.log.info(
         "Sensitivity scenario generation complete",
-        extra={
-            "num_scenarios": len(scenarios_df),
-            "method": scenarios_df["method"].iloc[0] if len(scenarios_df) > 0 else "unknown",
-            "parameters": [
-                col
-                for col in scenarios_df.columns
-                if col not in ["scenario_id", "method", "random_seed", "points_per_dimension"]
-            ],
-        },
+        extra={"num_scenarios": len(scenarios_df), "method": method, "parameters": parameters},
     )
 
     metadata = {
         "num_scenarios": len(scenarios_df),
-        "method": scenarios_df["method"].iloc[0] if len(scenarios_df) > 0 else "unknown",
-        "parameters": [
-            col
-            for col in scenarios_df.columns
-            if col not in ["scenario_id", "method", "random_seed", "points_per_dimension"]
-        ],
-        "preview": MetadataValue.md(scenarios_df.head(10).to_markdown())
-        if not scenarios_df.empty
-        else "No scenarios",
+        "method": method,
+        "parameters": parameters,
+        "preview": _preview(scenarios_df, empty="No scenarios"),
     }
-
     return Output(value=scenarios_df, metadata=metadata)
 
 
@@ -1220,12 +967,7 @@ def uncertainty_analysis(
     sensitivity_scenarios: pd.DataFrame,
     federal_tax_estimates: pd.DataFrame,
 ) -> Output[pd.DataFrame]:
-    """
-    Compute uncertainty quantification from sensitivity scenario results.
-
-    This asset computes confidence intervals, min/mean/max estimates, and
-    sensitivity indices from parameter sweep results.
-    """
+    """Quantify uncertainty (CIs, sensitivity indices) from scenario sweep results."""
     config = get_config()
     context.log.info(
         "Starting uncertainty analysis",
@@ -1235,18 +977,10 @@ def uncertainty_analysis(
         },
     )
 
-    # For now, use tax estimates as baseline
-    # In full implementation, would re-run analysis for each scenario
-    # This is a simplified version that quantifies uncertainty from baseline
-    quantifier = FiscalUncertaintyQuantifier(config=config.fiscal_analysis)
-
-    # Create scenario results by using tax estimates as baseline
-    # In production, this would run full pipeline for each scenario
+    # Placeholder: apply parameter variations to a baseline rather than re-running the
+    # full pipeline per scenario. Full implementation would recompute downstream assets.
     scenario_results = sensitivity_scenarios.copy()
     baseline_tax = float(federal_tax_estimates["total_tax_receipt"].sum())
-
-    # Simulate scenario results by applying parameter variations to baseline
-    # This is a placeholder - full implementation would recompute for each scenario
     if "economic_multiplier" in scenario_results.columns:
         scenario_results["total_tax_receipt"] = (
             baseline_tax * scenario_results["economic_multiplier"] / 2.0
@@ -1254,58 +988,49 @@ def uncertainty_analysis(
     else:
         scenario_results["total_tax_receipt"] = baseline_tax
 
+    quantifier = FiscalUncertaintyQuantifier(config=config.fiscal_analysis)
     with performance_monitor.monitor_block("uncertainty_quantification"):
-        uncertainty_result = quantifier.quantify_uncertainty(
-            scenario_results_df=scenario_results,
-            target_column="total_tax_receipt",
+        result = quantifier.quantify_uncertainty(
+            scenario_results_df=scenario_results, target_column="total_tax_receipt"
         )
 
-    # Convert to DataFrame
-    from decimal import Decimal as Dec
-
-    def get_ci_value(level: float, index: int) -> float:
-        """Get confidence interval value safely."""
-        ci_tuple = uncertainty_result.confidence_intervals.get(level, (Dec("0"), Dec("0")))
-        return float(ci_tuple[index])
+    def _ci(level: float, idx: int) -> float:
+        return float(result.confidence_intervals.get(level, (Decimal("0"), Decimal("0")))[idx])
 
     uncertainty_df = pd.DataFrame(
         [
             {
-                "min_estimate": float(uncertainty_result.min_estimate),
-                "mean_estimate": float(uncertainty_result.mean_estimate),
-                "max_estimate": float(uncertainty_result.max_estimate),
-                "confidence_90_low": get_ci_value(0.90, 0),
-                "confidence_90_high": get_ci_value(0.90, 1),
-                "confidence_95_low": get_ci_value(0.95, 0),
-                "confidence_95_high": get_ci_value(0.95, 1),
-                "high_uncertainty": quantifier.flag_high_uncertainty(uncertainty_result),
+                "min_estimate": float(result.min_estimate),
+                "mean_estimate": float(result.mean_estimate),
+                "max_estimate": float(result.max_estimate),
+                "confidence_90_low": _ci(0.90, 0),
+                "confidence_90_high": _ci(0.90, 1),
+                "confidence_95_low": _ci(0.95, 0),
+                "confidence_95_high": _ci(0.95, 1),
+                "high_uncertainty": quantifier.flag_high_uncertainty(result),
             }
         ]
     )
 
-    # Add sensitivity indices as metadata
-    sensitivity_dict = uncertainty_result.sensitivity_indices
-
     context.log.info(
         "Uncertainty analysis complete",
         extra={
-            "min_estimate": f"${uncertainty_result.min_estimate:,.2f}",
-            "mean_estimate": f"${uncertainty_result.mean_estimate:,.2f}",
-            "max_estimate": f"${uncertainty_result.max_estimate:,.2f}",
-            "high_uncertainty": quantifier.flag_high_uncertainty(uncertainty_result),
+            "min_estimate": f"${result.min_estimate:,.2f}",
+            "mean_estimate": f"${result.mean_estimate:,.2f}",
+            "max_estimate": f"${result.max_estimate:,.2f}",
+            "high_uncertainty": quantifier.flag_high_uncertainty(result),
         },
     )
 
     metadata = {
-        "min_estimate": f"${uncertainty_result.min_estimate:,.2f}",
-        "mean_estimate": f"${uncertainty_result.mean_estimate:,.2f}",
-        "max_estimate": f"${uncertainty_result.max_estimate:,.2f}",
-        "sensitivity_indices": MetadataValue.json(sensitivity_dict),
-        "quality_flags": uncertainty_result.quality_flags,
-        "high_uncertainty": quantifier.flag_high_uncertainty(uncertainty_result),
-        "preview": MetadataValue.md(uncertainty_df.to_markdown()),
+        "min_estimate": f"${result.min_estimate:,.2f}",
+        "mean_estimate": f"${result.mean_estimate:,.2f}",
+        "max_estimate": f"${result.max_estimate:,.2f}",
+        "sensitivity_indices": MetadataValue.json(result.sensitivity_indices),
+        "quality_flags": result.quality_flags,
+        "high_uncertainty": quantifier.flag_high_uncertainty(result),
+        "preview": _preview(uncertainty_df, head=None),
     }
-
     return Output(value=uncertainty_df, metadata=metadata)  # type: ignore[arg-type]
 
 
@@ -1320,46 +1045,30 @@ def fiscal_returns_report(
     uncertainty_analysis: pd.DataFrame,
     federal_tax_estimates: pd.DataFrame,
 ) -> Output[pd.DataFrame]:
-    """
-    Generate comprehensive fiscal returns analysis report.
-
-    This asset combines ROI summary, uncertainty analysis, and tax estimates
-    into a comprehensive report for policy analysis.
-    """
+    """Combine ROI summary, uncertainty bands, and tax totals into one policy report."""
     config = get_config()
     context.log.info("Starting fiscal returns report generation")
 
-    # Combine summary and uncertainty
-    report_df = fiscal_return_summary.merge(
-        uncertainty_analysis,
-        left_index=True,
-        right_index=True,
-        how="outer",
+    report = fiscal_return_summary.merge(
+        uncertainty_analysis, left_index=True, right_index=True, how="outer"
     )
+    report["total_tax_receipts_baseline"] = float(federal_tax_estimates["total_tax_receipt"].sum())
+    report["num_tax_estimates"] = len(federal_tax_estimates)
 
-    # Add summary statistics
-    report_df["total_tax_receipts_baseline"] = float(
-        federal_tax_estimates["total_tax_receipt"].sum()
+    roi = (
+        f"{report['roi_ratio'].iloc[0]:.3f}"
+        if len(report) > 0 and "roi_ratio" in report.columns
+        else "N/A"
     )
-    report_df["num_tax_estimates"] = len(federal_tax_estimates)
-
     context.log.info(
         "Fiscal returns report generation complete",
-        extra={
-            "roi_ratio": f"{report_df['roi_ratio'].iloc[0]:.3f}"
-            if len(report_df) > 0 and "roi_ratio" in report_df.columns
-            else "N/A",
-            "num_scenarios": len(uncertainty_analysis),
-        },
+        extra={"roi_ratio": roi, "num_scenarios": len(uncertainty_analysis)},
     )
 
     metadata = {
         "report_generated_at": MetadataValue.timestamp(pd.Timestamp.now(tz="UTC")),
         "base_year": config.fiscal_analysis.base_year,
         "model_version": config.fiscal_analysis.stateio_model_version,
-        "preview": MetadataValue.md(report_df.to_markdown())
-        if not report_df.empty
-        else "No report",
+        "preview": _preview(report, head=None, empty="No report"),
     }
-
-    return Output(value=report_df, metadata=metadata)  # type: ignore[arg-type]
+    return Output(value=report, metadata=metadata)  # type: ignore[arg-type]
