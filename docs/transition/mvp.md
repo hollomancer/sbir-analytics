@@ -36,7 +36,7 @@ uv run python scripts/validate_contracts_sample.py
 
 ## 3. Run MVP
 
-make transition-mvp-run
+make transition-run
 
 ## 4. Review validation summary
 
@@ -104,7 +104,7 @@ No local Neo4j or Dagster environment is required for this MVP run.
 
 The repo includes a convenience Make target that runs the assets in-process with shims (no Dagster needed) and seeds tiny fixtures if needed:
 
-- make transition-mvp-run
+- make transition-run
 
 What it does:
 
