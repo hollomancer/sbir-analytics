@@ -324,9 +324,12 @@ class DuckDBClient:
                     # Register via PyArrow so pandas 3's StringDtype columns (which
                     # DuckDB doesn't introspect) survive the trip. PyArrow handles
                     # all pandas dtype edge cases uniformly.
+                    # `preserve_index=False` matches the pre-Arrow behavior of
+                    # `conn.register(name, df)` — non-RangeIndex frames would
+                    # otherwise materialize an extra `__index_level_0__` column.
                     import pyarrow as pa
 
-                    conn.register("temp_df", pa.Table.from_pandas(df))
+                    conn.register("temp_df", pa.Table.from_pandas(df, preserve_index=False))
                     table_identifier = self.escape_identifier(table_name)
                     conn.execute(f"CREATE TABLE {table_identifier} AS SELECT * FROM temp_df")  # nosec B608
 
