@@ -43,9 +43,7 @@ SAMPLE_PROFILE = {
         },
         "fundings": {"group": [{"funding-summary": [{}]}]},
     },
-    "person": {
-        "keywords": {"keyword": [{"content": "AI"}, {"content": "ML"}]}
-    },
+    "person": {"keywords": {"keyword": [{"content": "AI"}, {"content": "ML"}]}},
 }
 
 
@@ -126,9 +124,7 @@ class TestInitialization:
         headers = c._build_headers()
         assert "Authorization" not in headers
 
-    def test_explicit_token_sets_bearer_header(
-        self, mock_http_client: AsyncMock
-    ) -> None:
+    def test_explicit_token_sets_bearer_header(self, mock_http_client: AsyncMock) -> None:
         c = ORCIDClient(access_token="abc-token", http_client=mock_http_client)
         headers = c._build_headers()
         assert headers["Authorization"] == "Bearer abc-token"
@@ -144,15 +140,11 @@ class TestInitialization:
 
 
 class TestSharedLimiterOverride:
-    async def test_shared_limiter_invoked(
-        self, mock_http_client: AsyncMock
-    ) -> None:
+    async def test_shared_limiter_invoked(self, mock_http_client: AsyncMock) -> None:
         shared = RateLimiter(rate_limit_per_minute=30)
         shared.wait_if_needed = MagicMock()  # type: ignore[method-assign]
         c = ORCIDClient(shared_limiter=shared, http_client=mock_http_client)
-        mock_http_client.get.return_value = _mock_response(
-            200, {"expanded-result": []}
-        )
+        mock_http_client.get.return_value = _mock_response(200, {"expanded-result": []})
 
         await c.search("Smith")
 
@@ -168,11 +160,7 @@ class TestSearch:
     ) -> None:
         mock_http_client.get.return_value = _mock_response(
             200,
-            {
-                "expanded-result": [
-                    {"orcid-id": "0000-0001", "given-names": "Jane"}
-                ]
-            },
+            {"expanded-result": [{"orcid-id": "0000-0001", "given-names": "Jane"}]},
         )
 
         result = await client.search("Doe", "Jane")
@@ -182,18 +170,14 @@ class TestSearch:
     async def test_empty_results_returns_empty_list(
         self, client: ORCIDClient, mock_http_client: AsyncMock
     ) -> None:
-        mock_http_client.get.return_value = _mock_response(
-            200, {"expanded-result": []}
-        )
+        mock_http_client.get.return_value = _mock_response(200, {"expanded-result": []})
 
         assert await client.search("Nobody") == []
 
     async def test_query_with_given_names(
         self, client: ORCIDClient, mock_http_client: AsyncMock
     ) -> None:
-        mock_http_client.get.return_value = _mock_response(
-            200, {"expanded-result": []}
-        )
+        mock_http_client.get.return_value = _mock_response(200, {"expanded-result": []})
 
         await client.search("Smith", "Jane")
 
@@ -206,9 +190,7 @@ class TestSearch:
     async def test_query_without_given_names(
         self, client: ORCIDClient, mock_http_client: AsyncMock
     ) -> None:
-        mock_http_client.get.return_value = _mock_response(
-            200, {"expanded-result": []}
-        )
+        mock_http_client.get.return_value = _mock_response(200, {"expanded-result": []})
 
         await client.search("Smith")
 
@@ -227,9 +209,7 @@ class TestSearch:
 
         assert await client.search("x") == []
 
-    async def test_5xx_propagates(
-        self, client: ORCIDClient, mock_http_client: AsyncMock
-    ) -> None:
+    async def test_5xx_propagates(self, client: ORCIDClient, mock_http_client: AsyncMock) -> None:
         resp = Mock()
         resp.status_code = 500
         resp.text = "boom"
@@ -245,18 +225,14 @@ class TestSearch:
 
 
 class TestGetProfile:
-    async def test_returns_profile(
-        self, client: ORCIDClient, mock_http_client: AsyncMock
-    ) -> None:
+    async def test_returns_profile(self, client: ORCIDClient, mock_http_client: AsyncMock) -> None:
         mock_http_client.get.return_value = _mock_response(200, SAMPLE_PROFILE)
 
         result = await client.get_profile("0000-0001")
 
         assert result == SAMPLE_PROFILE
 
-    async def test_404_returns_none(
-        self, client: ORCIDClient, mock_http_client: AsyncMock
-    ) -> None:
+    async def test_404_returns_none(self, client: ORCIDClient, mock_http_client: AsyncMock) -> None:
         resp = Mock()
         resp.status_code = 404
         resp.text = "not found"
@@ -266,9 +242,7 @@ class TestGetProfile:
 
         assert await client.get_profile("GONE") is None
 
-    async def test_500_propagates(
-        self, client: ORCIDClient, mock_http_client: AsyncMock
-    ) -> None:
+    async def test_500_propagates(self, client: ORCIDClient, mock_http_client: AsyncMock) -> None:
         resp = Mock()
         resp.status_code = 500
         resp.text = "boom"
@@ -284,9 +258,7 @@ class TestGetProfile:
 
 
 class TestLookup:
-    async def test_success_two_step(
-        self, client: ORCIDClient, mock_http_client: AsyncMock
-    ) -> None:
+    async def test_success_two_step(self, client: ORCIDClient, mock_http_client: AsyncMock) -> None:
         mock_http_client.get.side_effect = [
             _mock_response(
                 200,
@@ -313,9 +285,7 @@ class TestLookup:
     async def test_no_search_match_returns_none(
         self, client: ORCIDClient, mock_http_client: AsyncMock
     ) -> None:
-        mock_http_client.get.return_value = _mock_response(
-            200, {"expanded-result": []}
-        )
+        mock_http_client.get.return_value = _mock_response(200, {"expanded-result": []})
 
         assert await client.lookup("Nobody") is None
 
@@ -343,11 +313,7 @@ class TestLookup:
         mock_http_client.get.side_effect = [
             _mock_response(
                 200,
-                {
-                    "expanded-result": [
-                        {"orcid-id": "0000-0001", "given-names": "Jane"}
-                    ]
-                },
+                {"expanded-result": [{"orcid-id": "0000-0001", "given-names": "Jane"}]},
             ),
             httpx.HTTPStatusError("404", request=Mock(), response=resp_404),
         ]

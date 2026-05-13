@@ -5,7 +5,10 @@ from unittest.mock import Mock, patch
 import pandas as pd
 import pytest
 
-from sbir_etl.extractors.usaspending import DuckDBUSAspendingExtractor, extract_usaspending_from_config
+from sbir_etl.extractors.usaspending import (
+    DuckDBUSAspendingExtractor,
+    extract_usaspending_from_config,
+)
 from tests.mocks import DuckDBMocks
 
 

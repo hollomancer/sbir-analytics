@@ -25,8 +25,13 @@ pytestmark = pytest.mark.fast
 def _make_awards_df(rows: list[dict]) -> pd.DataFrame:
     """Create a DataFrame with the columns expected by _build_history_from_df."""
     cols = [
-        "_group_key", "Phase", "Agency", "Award Amount",
-        "Proposal Award Date", "Award Title", "Program",
+        "_group_key",
+        "Phase",
+        "Agency",
+        "Award Amount",
+        "Proposal Award Date",
+        "Award Title",
+        "Program",
     ]
     for col in cols:
         for row in rows:
@@ -41,26 +46,28 @@ def _make_awards_df(rows: list[dict]) -> pd.DataFrame:
 
 class TestBuildHistoryFromDF:
     def test_basic_aggregation(self):
-        df = _make_awards_df([
-            {
-                "_group_key": "ACME CORP",
-                "Phase": "Phase I",
-                "Agency": "DOD",
-                "Award Amount": "150000",
-                "Proposal Award Date": "2021-06-01",
-                "Award Title": "Widget Research",
-                "Program": "SBIR",
-            },
-            {
-                "_group_key": "ACME CORP",
-                "Phase": "Phase II",
-                "Agency": "DOD",
-                "Award Amount": "1000000",
-                "Proposal Award Date": "2023-01-15",
-                "Award Title": "Widget Prototype",
-                "Program": "SBIR",
-            },
-        ])
+        df = _make_awards_df(
+            [
+                {
+                    "_group_key": "ACME CORP",
+                    "Phase": "Phase I",
+                    "Agency": "DOD",
+                    "Award Amount": "150000",
+                    "Proposal Award Date": "2021-06-01",
+                    "Award Title": "Widget Research",
+                    "Program": "SBIR",
+                },
+                {
+                    "_group_key": "ACME CORP",
+                    "Phase": "Phase II",
+                    "Agency": "DOD",
+                    "Award Amount": "1000000",
+                    "Proposal Award Date": "2023-01-15",
+                    "Award Title": "Widget Prototype",
+                    "Program": "SBIR",
+                },
+            ]
+        )
 
         result = _build_history_from_df(df, "_group_key")
 
@@ -76,26 +83,28 @@ class TestBuildHistoryFromDF:
         assert len(entry["sample_titles"]) == 2
 
     def test_multiple_groups(self):
-        df = _make_awards_df([
-            {
-                "_group_key": "ACME CORP",
-                "Phase": "Phase I",
-                "Agency": "DOD",
-                "Award Amount": "100000",
-                "Proposal Award Date": "2021-01-01",
-                "Award Title": "Title A",
-                "Program": "SBIR",
-            },
-            {
-                "_group_key": "BETA INC",
-                "Phase": "Phase I",
-                "Agency": "NASA",
-                "Award Amount": "200000",
-                "Proposal Award Date": "2022-06-01",
-                "Award Title": "Title B",
-                "Program": "STTR",
-            },
-        ])
+        df = _make_awards_df(
+            [
+                {
+                    "_group_key": "ACME CORP",
+                    "Phase": "Phase I",
+                    "Agency": "DOD",
+                    "Award Amount": "100000",
+                    "Proposal Award Date": "2021-01-01",
+                    "Award Title": "Title A",
+                    "Program": "SBIR",
+                },
+                {
+                    "_group_key": "BETA INC",
+                    "Phase": "Phase I",
+                    "Agency": "NASA",
+                    "Award Amount": "200000",
+                    "Proposal Award Date": "2022-06-01",
+                    "Award Title": "Title B",
+                    "Program": "STTR",
+                },
+            ]
+        )
 
         result = _build_history_from_df(df, "_group_key")
 
@@ -104,18 +113,20 @@ class TestBuildHistoryFromDF:
         assert result["BETA INC"]["agencies"] == ["NASA"]
 
     def test_extra_set_cols(self):
-        df = _make_awards_df([
-            {
-                "_group_key": "JANE DOE",
-                "Phase": "Phase I",
-                "Agency": "DOD",
-                "Award Amount": "100000",
-                "Proposal Award Date": "2021-01-01",
-                "Award Title": "Research A",
-                "Program": "SBIR",
-                "Company": "Acme Corp",
-            },
-        ])
+        df = _make_awards_df(
+            [
+                {
+                    "_group_key": "JANE DOE",
+                    "Phase": "Phase I",
+                    "Agency": "DOD",
+                    "Award Amount": "100000",
+                    "Proposal Award Date": "2021-01-01",
+                    "Award Title": "Research A",
+                    "Program": "SBIR",
+                    "Company": "Acme Corp",
+                },
+            ]
+        )
 
         result = _build_history_from_df(df, "_group_key", extra_set_cols=["Company"])
 
@@ -123,16 +134,18 @@ class TestBuildHistoryFromDF:
         assert result["JANE DOE"]["companies"] == ["Acme Corp"]
 
     def test_empty_group_key_skipped(self):
-        df = _make_awards_df([
-            {
-                "_group_key": "",
-                "Phase": "Phase I",
-                "Agency": "DOD",
-                "Award Amount": "50000",
-                "Award Title": "Phantom",
-                "Program": "SBIR",
-            },
-        ])
+        df = _make_awards_df(
+            [
+                {
+                    "_group_key": "",
+                    "Phase": "Phase I",
+                    "Agency": "DOD",
+                    "Award Amount": "50000",
+                    "Award Title": "Phantom",
+                    "Program": "SBIR",
+                },
+            ]
+        )
 
         result = _build_history_from_df(df, "_group_key")
         assert len(result) == 0
@@ -148,17 +161,19 @@ class TestGetCompanyHistory:
         awards = [{"Company": "Acme Corp"}, {"Company": "Beta Inc"}]
 
         mock_extractor = MagicMock()
-        df = _make_awards_df([
-            {
-                "_group_key": "ACME CORP",
-                "Phase": "Phase I",
-                "Agency": "DOD",
-                "Award Amount": "150000",
-                "Proposal Award Date": "2021-06-01",
-                "Award Title": "Widget Research",
-                "Program": "SBIR",
-            },
-        ])
+        df = _make_awards_df(
+            [
+                {
+                    "_group_key": "ACME CORP",
+                    "Phase": "Phase I",
+                    "Agency": "DOD",
+                    "Award Amount": "150000",
+                    "Proposal Award Date": "2021-06-01",
+                    "Award Title": "Widget Research",
+                    "Program": "SBIR",
+                },
+            ]
+        )
         mock_extractor.duckdb_client.execute_query_df.return_value = df
 
         result = get_company_history(
@@ -224,9 +239,7 @@ class TestGetPIHistory:
         df = _make_awards_df(rows)
         mock_extractor.duckdb_client.execute_query_df.return_value = df
 
-        result = get_pi_history(
-            awards, source=None, extractor=mock_extractor, table="sbir_awards"
-        )
+        result = get_pi_history(awards, source=None, extractor=mock_extractor, table="sbir_awards")
 
         assert "JANE DOE" in result
         entry = result["JANE DOE"]

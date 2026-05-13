@@ -262,13 +262,16 @@ def test_asset_neo4j_company_cet_relationships_invokes_loader(monkeypatch, tmp_p
             pass
 
     # Patch asset internals to avoid real IO/Neo4j
-    monkeypatch.setattr("sbir_analytics.assets.cet.loading._get_neo4j_client", lambda: FakeLoader(None, None))
+    monkeypatch.setattr(
+        "sbir_analytics.assets.cet.loading._get_neo4j_client", lambda: FakeLoader(None, None)
+    )
     monkeypatch.setattr(
         "sbir_analytics.assets.cet.loading._read_parquet_or_ndjson", lambda *args, **kwargs: rows
     )
     monkeypatch.setattr("sbir_analytics.assets.cet.loading.CETLoader", FakeLoader)
     monkeypatch.setattr(
-        "sbir_analytics.assets.cet.loading.CETLoaderConfig", lambda batch_size: {"batch_size": batch_size}
+        "sbir_analytics.assets.cet.loading.CETLoaderConfig",
+        lambda batch_size: {"batch_size": batch_size},
     )
 
     # Execute asset using Dagster's proper context

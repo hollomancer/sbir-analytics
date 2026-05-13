@@ -224,7 +224,10 @@ class TestLookupPIPatentsWithFallback:
     @patch(f"{MODULE}.lookup_pi_patents")
     def test_returns_primary_when_available(self, mock_primary):
         record = PIPatentRecord(
-            total_patents=3, sample_titles=["A"], assignees=["Acme"], date_range=("2020-01-01", "2023-01-01"),
+            total_patents=3,
+            sample_titles=["A"],
+            assignees=["Acme"],
+            date_range=("2020-01-01", "2023-01-01"),
         )
         mock_primary.return_value = record
 
@@ -240,12 +243,16 @@ class TestLookupPIPatentsWithFallback:
         lens_ctx = MockLens.return_value.__enter__.return_value
         lens_ctx.search_patents_by_assignee.return_value = [
             LensPatentRecord(
-                patent_number="LENS-001", title="Smart Widget",
-                assignee="Acme Corp", filing_date="2021-03-15",
+                patent_number="LENS-001",
+                title="Smart Widget",
+                assignee="Acme Corp",
+                filing_date="2021-03-15",
             ),
             LensPatentRecord(
-                patent_number="LENS-002", title="Better Widget",
-                assignee="Acme Corp", filing_date="2023-07-01",
+                patent_number="LENS-002",
+                title="Better Widget",
+                assignee="Acme Corp",
+                filing_date="2023-07-01",
             ),
         ]
 
@@ -277,8 +284,11 @@ class TestLookupPIPublicationsWithFallback:
     @patch(f"{MODULE}.lookup_pi_publications")
     def test_returns_primary_when_available(self, mock_primary):
         record = PIPublicationRecord(
-            total_papers=10, h_index=5, citation_count=100,
-            sample_titles=["Paper A"], affiliations=["MIT"],
+            total_papers=10,
+            h_index=5,
+            citation_count=100,
+            sample_titles=["Paper A"],
+            affiliations=["MIT"],
         )
         mock_primary.return_value = record
 
@@ -289,10 +299,14 @@ class TestLookupPIPublicationsWithFallback:
     @patch(f"{MODULE}.lookup_pi_publications", return_value=None)
     def test_falls_back_to_orcid_when_primary_returns_none(self, mock_primary, mock_orcid):
         mock_orcid.return_value = ORCIDRecord(
-            orcid_id="0000-0001-2345-6789", given_name="Jane", family_name="Doe",
-            affiliations=["Stanford"], works_count=15,
+            orcid_id="0000-0001-2345-6789",
+            given_name="Jane",
+            family_name="Doe",
+            affiliations=["Stanford"],
+            works_count=15,
             sample_work_titles=["Study X", "Study Y"],
-            funding_count=2, keywords=["AI"],
+            funding_count=2,
+            keywords=["AI"],
         )
 
         result = lookup_pi_publications_with_fallback("Jane Doe")
@@ -321,9 +335,14 @@ class TestLookupPIOrcidWithFallback:
     @patch(f"{MODULE}.lookup_pi_orcid")
     def test_returns_primary_when_available(self, mock_primary):
         record = ORCIDRecord(
-            orcid_id="0000-0001-2345-6789", given_name="Jane", family_name="Doe",
-            affiliations=["MIT"], works_count=20, sample_work_titles=["Study X"],
-            funding_count=3, keywords=["AI"],
+            orcid_id="0000-0001-2345-6789",
+            given_name="Jane",
+            family_name="Doe",
+            affiliations=["MIT"],
+            works_count=20,
+            sample_work_titles=["Study X"],
+            funding_count=3,
+            keywords=["AI"],
         )
         mock_primary.return_value = record
 

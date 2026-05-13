@@ -21,6 +21,7 @@ pytestmark = pytest.mark.fast
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def sample_awards():
     """A small list of SBIR.gov award dicts with contract, UEI, and DUNS."""
@@ -152,7 +153,7 @@ class TestSbirGovLookupIndexLookup:
         """When contract matches one record and UEI matches another, contract wins."""
         hit = lookup_index.lookup(
             contract="W911NF-20-C-0001",  # → Acme Research
-            uei="DEF987654321",           # → Energy Solutions
+            uei="DEF987654321",  # → Energy Solutions
         )
         assert hit is not None
         assert hit["firm"] == "Acme Research Inc"
@@ -160,7 +161,7 @@ class TestSbirGovLookupIndexLookup:
     def test_lookup_contract_takes_precedence_over_duns(self, lookup_index):
         hit = lookup_index.lookup(
             contract="DE-SC0012345",  # → Energy Solutions
-            duns="123456789",         # → Acme Research
+            duns="123456789",  # → Acme Research
         )
         assert hit is not None
         assert hit["firm"] == "Energy Solutions LLC"
@@ -169,7 +170,7 @@ class TestSbirGovLookupIndexLookup:
         """When contract is None but UEI and DUNS both present, UEI wins."""
         hit = lookup_index.lookup(
             uei="GHI111222333",  # → Space Widgets
-            duns="123456789",    # → Acme Research
+            duns="123456789",  # → Acme Research
         )
         assert hit is not None
         assert hit["firm"] == "Space Widgets Corp"
@@ -242,11 +243,13 @@ class TestCrossrefDataframeWithSbirGov:
 
     def test_matching_and_nonmatching_rows(self):
         index = self._make_index()
-        df = pd.DataFrame({
-            "award_id": ["AWARD-001", "AWARD-002", "NO-MATCH"],
-            "recipient_uei": ["UEI111", "UEI222", "UEIXXX"],
-            "recipient_duns": ["111111111", "222222222", "999999999"],
-        })
+        df = pd.DataFrame(
+            {
+                "award_id": ["AWARD-001", "AWARD-002", "NO-MATCH"],
+                "recipient_uei": ["UEI111", "UEI222", "UEIXXX"],
+                "recipient_duns": ["111111111", "222222222", "999999999"],
+            }
+        )
         result = _crossref_dataframe_with_sbir_gov(df, index)
 
         assert result["sbir_gov_confirmed"].tolist() == [True, True, False]
@@ -257,11 +260,13 @@ class TestCrossrefDataframeWithSbirGov:
 
     def test_all_five_output_columns_added(self):
         index = self._make_index()
-        df = pd.DataFrame({
-            "award_id": ["AWARD-001"],
-            "recipient_uei": ["UEI111"],
-            "recipient_duns": ["111111111"],
-        })
+        df = pd.DataFrame(
+            {
+                "award_id": ["AWARD-001"],
+                "recipient_uei": ["UEI111"],
+                "recipient_duns": ["111111111"],
+            }
+        )
         result = _crossref_dataframe_with_sbir_gov(df, index)
 
         expected_cols = {
@@ -276,27 +281,37 @@ class TestCrossrefDataframeWithSbirGov:
     def test_nan_none_values_handled(self):
         """NaN / None in award_id, uei, duns should not raise."""
         index = self._make_index()
-        df = pd.DataFrame({
-            "award_id": [None, np.nan, "AWARD-001"],
-            "recipient_uei": [np.nan, None, "UEI111"],
-            "recipient_duns": [np.nan, np.nan, "111111111"],
-        })
+        df = pd.DataFrame(
+            {
+                "award_id": [None, np.nan, "AWARD-001"],
+                "recipient_uei": [np.nan, None, "UEI111"],
+                "recipient_duns": [np.nan, np.nan, "111111111"],
+            }
+        )
         result = _crossref_dataframe_with_sbir_gov(df, index)
 
         assert len(result) == 3
         # First two rows should not match
-        assert result["sbir_gov_confirmed"].iloc[0] is False or result["sbir_gov_confirmed"].iloc[0] == False  # noqa: E712
-        assert result["sbir_gov_confirmed"].iloc[1] is False or result["sbir_gov_confirmed"].iloc[1] == False  # noqa: E712
+        assert (
+            result["sbir_gov_confirmed"].iloc[0] is False
+            or result["sbir_gov_confirmed"].iloc[0] == False  # noqa: E712
+        )
+        assert (
+            result["sbir_gov_confirmed"].iloc[1] is False
+            or result["sbir_gov_confirmed"].iloc[1] == False  # noqa: E712
+        )
         # Third row should match
         assert result["sbir_gov_confirmed"].iloc[2] == True  # noqa: E712
 
     def test_empty_dataframe_returns_empty_with_new_columns(self):
         index = self._make_index()
-        df = pd.DataFrame({
-            "award_id": pd.Series([], dtype="object"),
-            "recipient_uei": pd.Series([], dtype="object"),
-            "recipient_duns": pd.Series([], dtype="object"),
-        })
+        df = pd.DataFrame(
+            {
+                "award_id": pd.Series([], dtype="object"),
+                "recipient_uei": pd.Series([], dtype="object"),
+                "recipient_duns": pd.Series([], dtype="object"),
+            }
+        )
         result = _crossref_dataframe_with_sbir_gov(df, index)
 
         assert len(result) == 0
@@ -312,11 +327,13 @@ class TestCrossrefDataframeWithSbirGov:
     def test_custom_column_name_parameters(self):
         """Custom col names for award_id, uei, duns should work."""
         index = self._make_index()
-        df = pd.DataFrame({
-            "my_award": ["AWARD-001", "NO-MATCH"],
-            "my_uei": ["UEI111", "UEIXXX"],
-            "my_duns": ["111111111", "999999999"],
-        })
+        df = pd.DataFrame(
+            {
+                "my_award": ["AWARD-001", "NO-MATCH"],
+                "my_uei": ["UEI111", "UEIXXX"],
+                "my_duns": ["111111111", "999999999"],
+            }
+        )
         result = _crossref_dataframe_with_sbir_gov(
             df,
             index,
@@ -331,11 +348,13 @@ class TestCrossrefDataframeWithSbirGov:
     def test_does_not_mutate_original_dataframe(self):
         """The function returns a copy; original should be untouched."""
         index = self._make_index()
-        df = pd.DataFrame({
-            "award_id": ["AWARD-001"],
-            "recipient_uei": ["UEI111"],
-            "recipient_duns": ["111111111"],
-        })
+        df = pd.DataFrame(
+            {
+                "award_id": ["AWARD-001"],
+                "recipient_uei": ["UEI111"],
+                "recipient_duns": ["111111111"],
+            }
+        )
         original_cols = set(df.columns)
         _crossref_dataframe_with_sbir_gov(df, index)
         assert set(df.columns) == original_cols

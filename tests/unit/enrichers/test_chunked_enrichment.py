@@ -210,7 +210,12 @@ class TestChunkedEnricherInitialization:
 
     @patch("sbir_etl.enrichers.chunked_enrichment.get_config")
     def test_initialization_with_checkpoint_dir(
-        self, mock_get_config, mock_config, enricher_sbir_df, enricher_recipient_df, temp_checkpoint_dir
+        self,
+        mock_get_config,
+        mock_config,
+        enricher_sbir_df,
+        enricher_recipient_df,
+        temp_checkpoint_dir,
     ):
         """Test initialization with checkpoint directory."""
         mock_get_config.return_value = mock_config
@@ -226,7 +231,12 @@ class TestChunkedEnricherInitialization:
 
     @patch("sbir_etl.enrichers.chunked_enrichment.get_config")
     def test_initialization_progress_tracking_disabled(
-        self, mock_get_config, mock_config, enricher_sbir_df, enricher_recipient_df, temp_checkpoint_dir
+        self,
+        mock_get_config,
+        mock_config,
+        enricher_sbir_df,
+        enricher_recipient_df,
+        temp_checkpoint_dir,
     ):
         """Test initialization with progress tracking disabled."""
         mock_get_config.return_value = mock_config
@@ -668,7 +678,12 @@ class TestCheckpointManagement:
 
     @patch("sbir_etl.enrichers.chunked_enrichment.get_config")
     def test_load_last_checkpoint_empty_directory(
-        self, mock_get_config, mock_config, enricher_sbir_df, enricher_recipient_df, temp_checkpoint_dir
+        self,
+        mock_get_config,
+        mock_config,
+        enricher_sbir_df,
+        enricher_recipient_df,
+        temp_checkpoint_dir,
     ):
         """Test load_last_checkpoint with empty directory."""
         mock_get_config.return_value = mock_config
@@ -682,7 +697,12 @@ class TestCheckpointManagement:
 
     @patch("sbir_etl.enrichers.chunked_enrichment.get_config")
     def test_load_last_checkpoint_success(
-        self, mock_get_config, mock_config, enricher_sbir_df, enricher_recipient_df, temp_checkpoint_dir
+        self,
+        mock_get_config,
+        mock_config,
+        enricher_sbir_df,
+        enricher_recipient_df,
+        temp_checkpoint_dir,
     ):
         """Test successful checkpoint loading."""
         mock_get_config.return_value = mock_config
@@ -705,7 +725,12 @@ class TestCheckpointManagement:
 
     @patch("sbir_etl.enrichers.chunked_enrichment.get_config")
     def test_resume_from_checkpoint(
-        self, mock_get_config, mock_config, enricher_sbir_df, enricher_recipient_df, temp_checkpoint_dir
+        self,
+        mock_get_config,
+        mock_config,
+        enricher_sbir_df,
+        enricher_recipient_df,
+        temp_checkpoint_dir,
     ):
         """Test resume from checkpoint."""
         mock_get_config.return_value = mock_config
@@ -729,7 +754,12 @@ class TestCheckpointManagement:
 
     @patch("sbir_etl.enrichers.chunked_enrichment.get_config")
     def test_clear_checkpoints(
-        self, mock_get_config, mock_config, enricher_sbir_df, enricher_recipient_df, temp_checkpoint_dir
+        self,
+        mock_get_config,
+        mock_config,
+        enricher_sbir_df,
+        enricher_recipient_df,
+        temp_checkpoint_dir,
     ):
         """Test checkpoint cleanup."""
         mock_get_config.return_value = mock_config
@@ -960,7 +990,12 @@ class TestEdgeCases:
 
     @patch("sbir_etl.enrichers.chunked_enrichment.get_config")
     def test_load_checkpoint_corrupt_json(
-        self, mock_get_config, mock_config, enricher_sbir_df, enricher_recipient_df, temp_checkpoint_dir
+        self,
+        mock_get_config,
+        mock_config,
+        enricher_sbir_df,
+        enricher_recipient_df,
+        temp_checkpoint_dir,
     ):
         """Test load_last_checkpoint handles corrupt JSON."""
         mock_get_config.return_value = mock_config

@@ -107,9 +107,7 @@ class TestParseRecords:
 
     def test_string_applicant_coerced(self):
         """If applicant is a string (not dict), assignee gets str() form."""
-        records = _parse_records(
-            {"data": [{"lens_id": "x", "title": "t", "applicant": ["Acme"]}]}
-        )
+        records = _parse_records({"data": [{"lens_id": "x", "title": "t", "applicant": ["Acme"]}]})
         assert records[0].assignee == "Acme"
 
 
@@ -155,9 +153,7 @@ class TestInitialization:
         assert headers["Authorization"] == "Bearer test-token"
         assert headers["Content-Type"] == "application/json"
 
-    def test_no_token_no_auth_header(
-        self, mock_http_client: AsyncMock
-    ) -> None:
+    def test_no_token_no_auth_header(self, mock_http_client: AsyncMock) -> None:
         with patch.dict("os.environ", {}, clear=True):
             c = LensPatentClient(http_client=mock_http_client)
         headers = c._build_headers()
@@ -176,14 +172,10 @@ class TestInitialization:
 
 
 class TestSharedLimiter:
-    async def test_shared_limiter_invoked(
-        self, mock_http_client: AsyncMock
-    ) -> None:
+    async def test_shared_limiter_invoked(self, mock_http_client: AsyncMock) -> None:
         shared = RateLimiter(rate_limit_per_minute=50)
         shared.wait_if_needed = MagicMock()  # type: ignore[method-assign]
-        c = LensPatentClient(
-            api_token="t", shared_limiter=shared, http_client=mock_http_client
-        )
+        c = LensPatentClient(api_token="t", shared_limiter=shared, http_client=mock_http_client)
         mock_http_client.post.return_value = _mock_response(200, {"data": []})
 
         await c.search_patents_by_assignee("Acme")
@@ -226,9 +218,7 @@ class TestSearchByAssignee:
     async def test_success_returns_parsed_records(
         self, client: LensPatentClient, mock_http_client: AsyncMock
     ) -> None:
-        mock_http_client.post.return_value = _mock_response(
-            200, SAMPLE_LENS_RESPONSE
-        )
+        mock_http_client.post.return_value = _mock_response(200, SAMPLE_LENS_RESPONSE)
 
         records = await client.search_patents_by_assignee("Acme")
 
@@ -297,12 +287,8 @@ class TestSearchByAssignee:
 
 
 class TestSearchByInventor:
-    async def test_success(
-        self, client: LensPatentClient, mock_http_client: AsyncMock
-    ) -> None:
-        mock_http_client.post.return_value = _mock_response(
-            200, SAMPLE_LENS_RESPONSE
-        )
+    async def test_success(self, client: LensPatentClient, mock_http_client: AsyncMock) -> None:
+        mock_http_client.post.return_value = _mock_response(200, SAMPLE_LENS_RESPONSE)
 
         records = await client.search_patents_by_inventor("Jane Doe")
 
@@ -354,9 +340,7 @@ class TestSyncFacade:
             result = client.search_patents_by_assignee("Acme Corp")
 
             assert result == expected
-            client._client.search_patents_by_assignee.assert_awaited_once_with(
-                "Acme Corp", 100
-            )
+            client._client.search_patents_by_assignee.assert_awaited_once_with("Acme Corp", 100)
 
     def test_shared_limiter_plumbs_through(self) -> None:
         shared = RateLimiter(rate_limit_per_minute=50)

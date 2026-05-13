@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import os
 from datetime import datetime, timedelta
 from unittest.mock import Mock, patch
@@ -12,7 +11,12 @@ import pytest
 
 pytestmark = pytest.mark.fast
 
-from sbir_etl.models.quality import ChangesSummary, DataHygieneMetrics, ModuleReport, StatisticalReport
+from sbir_etl.models.quality import (
+    ChangesSummary,
+    DataHygieneMetrics,
+    ModuleReport,
+    StatisticalReport,
+)
 from sbir_etl.models.statistical_reports import (
     ModuleMetrics,
     PerformanceMetrics,
@@ -423,8 +427,6 @@ class TestReportAggregation:
 # ==================== Format Generation Tests ====================
 
 
-
-
 # ==================== Pipeline Metrics Tests ====================
 
 
@@ -611,4 +613,3 @@ class TestEdgeCases:
             pipeline_metrics = reporter._collect_pipeline_metrics("run_123", run_context)
 
         assert pipeline_metrics.run_id == "run_123"
-

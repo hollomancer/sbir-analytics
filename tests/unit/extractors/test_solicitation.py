@@ -28,9 +28,11 @@ def _ok_response(data):
 
 class TestQueryByKeyword:
     def test_returns_matching_topics(self, extractor, mock_client):
-        mock_client.get.return_value = _ok_response([
-            {"topicCode": "AF241-001", "topicTitle": "Sensor Fusion"},
-        ])
+        mock_client.get.return_value = _ok_response(
+            [
+                {"topicCode": "AF241-001", "topicTitle": "Sensor Fusion"},
+            ]
+        )
         results = extractor.query_by_keyword("AF241-001")
         assert len(results) == 1
         assert results[0]["topicCode"] == "AF241-001"
@@ -48,10 +50,16 @@ class TestQueryByKeyword:
 
 class TestQueryAwardsForTopic:
     def test_finds_matching_award(self, extractor, mock_client):
-        mock_client.get.return_value = _ok_response([
-            {"topicCode": "AF241-001", "topicTitle": "Sensor", "abstract": "Research on sensors"},
-            {"topicCode": "AF241-002", "topicTitle": "Other"},
-        ])
+        mock_client.get.return_value = _ok_response(
+            [
+                {
+                    "topicCode": "AF241-001",
+                    "topicTitle": "Sensor",
+                    "abstract": "Research on sensors",
+                },
+                {"topicCode": "AF241-002", "topicTitle": "Other"},
+            ]
+        )
         result = extractor.query_awards_for_topic("AF241-001")
         assert result is not None
         assert result["topic_code"] == "AF241-001"
@@ -59,9 +67,11 @@ class TestQueryAwardsForTopic:
         assert result["description"] == "Research on sensors"
 
     def test_returns_none_when_no_match(self, extractor, mock_client):
-        mock_client.get.return_value = _ok_response([
-            {"topicCode": "OTHER", "topicTitle": "Unrelated"},
-        ])
+        mock_client.get.return_value = _ok_response(
+            [
+                {"topicCode": "OTHER", "topicTitle": "Unrelated"},
+            ]
+        )
         result = extractor.query_awards_for_topic("AF241-001")
         assert result is None
 
@@ -76,21 +86,25 @@ class TestQueryAwardsForTopic:
         assert result is None
 
     def test_prefers_topic_description(self, extractor, mock_client):
-        mock_client.get.return_value = _ok_response([
-            {
-                "topicCode": "TC1",
-                "topicTitle": "Title",
-                "topicDescription": "Full topic desc",
-                "abstract": "Award abstract",
-            },
-        ])
+        mock_client.get.return_value = _ok_response(
+            [
+                {
+                    "topicCode": "TC1",
+                    "topicTitle": "Title",
+                    "topicDescription": "Full topic desc",
+                    "abstract": "Award abstract",
+                },
+            ]
+        )
         result = extractor.query_awards_for_topic("TC1")
         assert result["description"] == "Full topic desc"
 
     def test_falls_back_to_abstract(self, extractor, mock_client):
-        mock_client.get.return_value = _ok_response([
-            {"topicCode": "TC1", "awardTitle": "Award", "abstract": "Abstract text"},
-        ])
+        mock_client.get.return_value = _ok_response(
+            [
+                {"topicCode": "TC1", "awardTitle": "Award", "abstract": "Abstract text"},
+            ]
+        )
         result = extractor.query_awards_for_topic("TC1")
         assert result["description"] == "Abstract text"
         assert result["title"] == "Award"

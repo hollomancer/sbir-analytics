@@ -571,9 +571,7 @@ class TestToDataframe:
         assert pytest.approx(row["dominant_score"]) == 80.0
 
         # HHI: (0.8^2 + 0.2^2) = 0.64 + 0.04 = 0.68
-        assert pytest.approx(row["specialization_score"], rel=1e-6) == pytest.approx(
-            0.68, rel=1e-6
-        )
+        assert pytest.approx(row["specialization_score"], rel=1e-6) == pytest.approx(0.68, rel=1e-6)
 
         assert pd.to_datetime(row["first_award_date"]).date() == datetime(2020, 1, 15).date()
         assert pd.to_datetime(row["last_award_date"]).date() == datetime(2022, 3, 10).date()
@@ -609,15 +607,23 @@ class TestToDataframe:
         assert pytest.approx(cet_scores["cet_x"]) == 40.0
         assert pytest.approx(cet_scores["cet_y"]) == 40.0
 
-        assert pytest.approx(row["specialization_score"], rel=1e-6) == pytest.approx(
-            0.5, rel=1e-6
-        )
+        assert pytest.approx(row["specialization_score"], rel=1e-6) == pytest.approx(0.5, rel=1e-6)
 
     def test_no_cets_results_in_empty_scores_and_zero_coverage(self):
         """Company with no CETs produces coverage=0, empty cet_scores, no dominant CET."""
         data = [
-            {"award_id": "C1", "company_id": "C3", "company_name": "Gamma Inc", "primary_cet": None},
-            {"award_id": "C2", "company_id": "C3", "company_name": "Gamma Inc", "primary_cet": None},
+            {
+                "award_id": "C1",
+                "company_id": "C3",
+                "company_name": "Gamma Inc",
+                "primary_cet": None,
+            },
+            {
+                "award_id": "C2",
+                "company_id": "C3",
+                "company_name": "Gamma Inc",
+                "primary_cet": None,
+            },
         ]
         df = pd.DataFrame(data)
         agg = CompanyCETAggregator(df)

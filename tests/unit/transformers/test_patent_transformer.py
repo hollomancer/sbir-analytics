@@ -5,7 +5,10 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from sbir_etl.transformers.patent_transformer import PatentAssignmentTransformer, PatentTransformOptions
+from sbir_etl.transformers.patent_transformer import (
+    PatentAssignmentTransformer,
+    PatentTransformOptions,
+)
 
 
 pytestmark = pytest.mark.fast

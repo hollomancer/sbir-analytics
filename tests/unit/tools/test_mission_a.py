@@ -7,21 +7,27 @@ import pandas as pd
 from sbir_analytics.tools.mission_a.extract_topics import ExtractTopicsTool
 from sbir_analytics.tools.mission_a.cluster_topics import ClusterTopicsTool
 from sbir_analytics.tools.mission_a.detect_gaps import DetectGapsTool, NSTC_CET_AREAS
-from sbir_analytics.tools.mission_a.compute_portfolio_metrics import ComputePortfolioMetricsTool, _compute_hhi
+from sbir_analytics.tools.mission_a.compute_portfolio_metrics import (
+    ComputePortfolioMetricsTool,
+    _compute_hhi,
+)
 
 
 # ---- extract_topics ----
 
+
 class TestExtractTopicsTool:
     def test_basic_extraction(self):
-        awards = pd.DataFrame({
-            "solicitation_topic": ["T001", "T001", "T002"],
-            "agency": ["DoD", "DoD", "DOE"],
-            "abstract": ["Battery research", "Battery development", "Solar panel tech"],
-            "award_amount": [100000, 150000, 200000],
-            "fiscal_year": [2023, 2024, 2024],
-            "company": ["Acme", "Widget", "Solar Co"],
-        })
+        awards = pd.DataFrame(
+            {
+                "solicitation_topic": ["T001", "T001", "T002"],
+                "agency": ["DoD", "DoD", "DOE"],
+                "abstract": ["Battery research", "Battery development", "Solar panel tech"],
+                "award_amount": [100000, 150000, 200000],
+                "fiscal_year": [2023, 2024, 2024],
+                "company": ["Acme", "Widget", "Solar Co"],
+            }
+        )
         tool = ExtractTopicsTool()
         result = tool.run(awards_df=awards)
         assert result.metadata.tool_name == "extract_topics"
@@ -29,12 +35,14 @@ class TestExtractTopicsTool:
         assert len(result.data) == 2  # 2 topics
 
     def test_fiscal_year_filter(self):
-        awards = pd.DataFrame({
-            "solicitation_topic": ["T001", "T002"],
-            "agency": ["DoD", "DOE"],
-            "abstract": ["Test 1", "Test 2"],
-            "fiscal_year": [2022, 2024],
-        })
+        awards = pd.DataFrame(
+            {
+                "solicitation_topic": ["T001", "T002"],
+                "agency": ["DoD", "DOE"],
+                "abstract": ["Test 1", "Test 2"],
+                "fiscal_year": [2022, 2024],
+            }
+        )
         tool = ExtractTopicsTool()
         result = tool.run(awards_df=awards, fiscal_years=[2024])
         assert len(result.data) == 1
@@ -48,24 +56,29 @@ class TestExtractTopicsTool:
 
 # ---- cluster_topics ----
 
+
 class TestClusterTopicsTool:
     def test_basic_clustering(self):
-        topics = pd.DataFrame({
-            "topic_id": ["T1", "T2", "T3"],
-            "agency": ["DoD", "DOE", "NIH"],
-            "title": ["Battery tech", "Battery storage", "Cancer treatment"],
-            "description": [
-                "Advanced lithium batteries for military use",
-                "Grid-scale battery storage solutions",
-                "Novel cancer immunotherapy approach",
-            ],
-        })
+        topics = pd.DataFrame(
+            {
+                "topic_id": ["T1", "T2", "T3"],
+                "agency": ["DoD", "DOE", "NIH"],
+                "title": ["Battery tech", "Battery storage", "Cancer treatment"],
+                "description": [
+                    "Advanced lithium batteries for military use",
+                    "Grid-scale battery storage solutions",
+                    "Novel cancer immunotherapy approach",
+                ],
+            }
+        )
         # Create embeddings where T1 and T2 are similar
-        embeddings = np.array([
-            [1.0, 0.1, 0.0],  # T1: battery-ish
-            [0.9, 0.2, 0.0],  # T2: also battery-ish
-            [0.0, 0.0, 1.0],  # T3: completely different
-        ])
+        embeddings = np.array(
+            [
+                [1.0, 0.1, 0.0],  # T1: battery-ish
+                [0.9, 0.2, 0.0],  # T2: also battery-ish
+                [0.0, 0.0, 1.0],  # T3: completely different
+            ]
+        )
         tool = ClusterTopicsTool()
         result = tool.run(
             topics_df=topics,
@@ -82,11 +95,13 @@ class TestClusterTopicsTool:
         assert any("No topics provided" in w for w in result.metadata.warnings)
 
     def test_cross_agency_filter(self):
-        topics = pd.DataFrame({
-            "topic_id": ["T1", "T2"],
-            "agency": ["DoD", "DoD"],  # Same agency
-            "title": ["Battery 1", "Battery 2"],
-        })
+        topics = pd.DataFrame(
+            {
+                "topic_id": ["T1", "T2"],
+                "agency": ["DoD", "DoD"],  # Same agency
+                "title": ["Battery 1", "Battery 2"],
+            }
+        )
         embeddings = np.array([[1.0, 0.0], [0.99, 0.01]])
         tool = ClusterTopicsTool()
         result = tool.run(
@@ -100,14 +115,17 @@ class TestClusterTopicsTool:
 
 # ---- detect_gaps ----
 
+
 class TestDetectGapsTool:
     def test_detects_unfunded_areas(self):
-        awards = pd.DataFrame({
-            "cet_primary": ["Artificial Intelligence"] * 5,
-            "fiscal_year": [2021, 2022, 2023, 2024, 2025],
-            "agency": ["DoD"] * 5,
-            "award_amount": [100000] * 5,
-        })
+        awards = pd.DataFrame(
+            {
+                "cet_primary": ["Artificial Intelligence"] * 5,
+                "fiscal_year": [2021, 2022, 2023, 2024, 2025],
+                "agency": ["DoD"] * 5,
+                "award_amount": [100000] * 5,
+            }
+        )
         tool = DetectGapsTool()
         result = tool.run(classified_awards=awards)
         unfunded = result.data["unfunded_cet_areas"]
@@ -115,12 +133,14 @@ class TestDetectGapsTool:
         assert len(unfunded) == len(NSTC_CET_AREAS) - 1
 
     def test_detects_single_agency_dependency(self):
-        awards = pd.DataFrame({
-            "cet_primary": ["Quantum Information Technologies"] * 10,
-            "fiscal_year": [2023] * 10,
-            "agency": ["DoD"] * 10,
-            "award_amount": [50000] * 10,
-        })
+        awards = pd.DataFrame(
+            {
+                "cet_primary": ["Quantum Information Technologies"] * 10,
+                "fiscal_year": [2023] * 10,
+                "agency": ["DoD"] * 10,
+                "award_amount": [50000] * 10,
+            }
+        )
         tool = DetectGapsTool()
         result = tool.run(classified_awards=awards)
         single_deps = result.data["single_agency_dependencies"]
@@ -140,6 +160,7 @@ class TestDetectGapsTool:
 
 # ---- compute_portfolio_metrics ----
 
+
 class TestComputeHHI:
     def test_monopoly(self):
         assert _compute_hhi([100.0]) == pytest.approx(1.0)
@@ -154,14 +175,16 @@ class TestComputeHHI:
 
 class TestComputePortfolioMetricsTool:
     def test_agency_hhi(self):
-        awards = pd.DataFrame({
-            "cet_primary": ["AI"] * 6,
-            "agency": ["DoD", "DoD", "DoD", "DOE", "NIH", "NIH"],
-            "company": ["A", "B", "C", "D", "E", "F"],
-            "state": ["CA", "MA", "TX", "NY", "CA", "MA"],
-            "fiscal_year": [2024] * 6,
-            "award_amount": [100000] * 6,
-        })
+        awards = pd.DataFrame(
+            {
+                "cet_primary": ["AI"] * 6,
+                "agency": ["DoD", "DoD", "DoD", "DOE", "NIH", "NIH"],
+                "company": ["A", "B", "C", "D", "E", "F"],
+                "state": ["CA", "MA", "TX", "NY", "CA", "MA"],
+                "fiscal_year": [2024] * 6,
+                "award_amount": [100000] * 6,
+            }
+        )
         tool = ComputePortfolioMetricsTool()
         result = tool.run(classified_awards=awards)
         assert isinstance(result.data, dict)
@@ -170,13 +193,15 @@ class TestComputePortfolioMetricsTool:
         assert 0 < hhi < 1  # Not monopoly, not perfect competition
 
     def test_cross_agency_companies(self):
-        awards = pd.DataFrame({
-            "cet_primary": ["AI", "AI"],
-            "agency": ["DoD", "DOE"],
-            "company": ["Acme", "Acme"],  # Same company, different agencies
-            "state": ["CA", "CA"],
-            "fiscal_year": [2024, 2024],
-        })
+        awards = pd.DataFrame(
+            {
+                "cet_primary": ["AI", "AI"],
+                "agency": ["DoD", "DOE"],
+                "company": ["Acme", "Acme"],  # Same company, different agencies
+                "state": ["CA", "CA"],
+                "fiscal_year": [2024, 2024],
+            }
+        )
         tool = ComputePortfolioMetricsTool()
         result = tool.run(classified_awards=awards)
         assert result.data["cross_agency_company_count"] == 1

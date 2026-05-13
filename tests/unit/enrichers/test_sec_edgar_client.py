@@ -92,7 +92,12 @@ class TestSearchCompanies:
         mock_response = {
             "hits": {
                 "hits": [
-                    {"_source": {"ciks": [f"000000{i:04d}"], "display_names": [f"Co {i}  (CIK 000000{i:04d})"]}}
+                    {
+                        "_source": {
+                            "ciks": [f"000000{i:04d}"],
+                            "display_names": [f"Co {i}  (CIK 000000{i:04d})"],
+                        }
+                    }
                     for i in range(20)
                 ]
             }
@@ -148,7 +153,9 @@ class TestSearchFilingMentions:
         await client.search_filing_mentions("Acme Corp")
         call_args = client._make_request.call_args
         # _make_request(method, endpoint, params) — params is positional arg 3
-        params = call_args.args[2] if len(call_args.args) > 2 else call_args.kwargs.get("params", {})
+        params = (
+            call_args.args[2] if len(call_args.args) > 2 else call_args.kwargs.get("params", {})
+        )
         assert params["q"] == '"Acme Corp"'
 
     @pytest.mark.asyncio

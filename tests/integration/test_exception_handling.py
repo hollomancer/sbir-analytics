@@ -7,14 +7,12 @@ useful information in real pipeline scenarios.
 import tempfile
 from pathlib import Path
 
-import pandas as pd
 import pytest
 
 from sbir_etl.exceptions import (
     APIError,
     ConfigurationError,
     DependencyError,
-    ValidationError,
 )
 from tests.utils.exception_helpers import (
     assert_exception_structure,
@@ -67,7 +65,6 @@ class TestConfigurationErrorHandling:
                 expected_operation="load_config_from_files",
             )
             assert exc.cause is not None  # Should preserve original YAML error
-
 
 
 class TestExceptionRetryability:

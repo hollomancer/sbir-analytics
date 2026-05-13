@@ -71,7 +71,6 @@ def neo4j_client(neo4j_config):
     client.close()
 
 
-
 class Neo4jTestHelper:
     """Helper class for Neo4j integration tests."""
 

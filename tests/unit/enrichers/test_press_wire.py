@@ -122,9 +122,7 @@ class TestInitialization:
 
         assert isinstance(client, BaseAsyncAPIClient)
 
-    def test_default_feeds_used_when_not_specified(
-        self, mock_http_client: AsyncMock
-    ) -> None:
+    def test_default_feeds_used_when_not_specified(self, mock_http_client: AsyncMock) -> None:
         c = PressWireClient(http_client=mock_http_client)
         assert "PRNewswire" in c._feeds
         assert "BusinessWire" in c._feeds
@@ -209,9 +207,7 @@ class TestPoll:
         assert len(matches1) == 1
         assert len(matches2) == 0  # Already seen
 
-    async def test_reset_seen(
-        self, client: PressWireClient, mock_http_client: AsyncMock
-    ) -> None:
+    async def test_reset_seen(self, client: PressWireClient, mock_http_client: AsyncMock) -> None:
         client.set_watchlist(["Acme Defense Systems"])
         mock_http_client.get.return_value = _mock_response(200, SAMPLE_RSS)
 

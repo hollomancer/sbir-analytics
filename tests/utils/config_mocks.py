@@ -242,7 +242,7 @@ def create_mock_enrichment_performance_config(
     low_confidence_threshold: float = 0.85,
     enable_memory_monitoring: bool = True,
     enable_fuzzy_matching: bool = True,
-) -> "PipelineConfig":
+) -> PipelineConfig:
     """Create a mock PipelineConfig with enrichment.performance attributes set.
 
     This consolidates the repeated pattern across chunked enrichment test files.

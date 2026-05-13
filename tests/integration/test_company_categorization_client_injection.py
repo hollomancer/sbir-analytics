@@ -48,12 +48,8 @@ def mock_client():
             {"results": [], "page_metadata": {"hasNext": False, "total": 0}}
         )
     )
-    client.autocomplete_recipient = MagicMock(
-        side_effect=lambda *_a, **_k: _coro({"results": []})
-    )
-    client.fetch_award_details = MagicMock(
-        side_effect=lambda *_a, **_k: _coro({})
-    )
+    client.autocomplete_recipient = MagicMock(side_effect=lambda *_a, **_k: _coro({"results": []}))
+    client.fetch_award_details = MagicMock(side_effect=lambda *_a, **_k: _coro({}))
     return client
 
 
@@ -78,9 +74,7 @@ def test_retrieve_sbir_awards_api_uses_injected_client(mock_client):
 
 def test_fuzzy_match_branch_uses_injected_client(mock_client):
     """When UEI/DUNS are missing, fuzzy-match autocomplete also uses injected client."""
-    df = retrieve_company_contracts_api(
-        company_name="Advanced Technologies", client=mock_client
-    )
+    df = retrieve_company_contracts_api(company_name="Advanced Technologies", client=mock_client)
 
     assert isinstance(df, pd.DataFrame)
     assert mock_client.autocomplete_recipient.called

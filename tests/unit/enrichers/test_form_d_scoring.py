@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from datetime import date
 
-import pytest
 
 from sbir_etl.enrichers.sec_edgar.form_d_scoring import (
     compute_form_d_confidence,
@@ -206,7 +205,9 @@ class TestComputeFormDConfidence:
         result = compute_form_d_confidence(
             name_score=0.50,
             pi_names=["Jane Smith"],
-            related_persons=[{"name": "Bob Johnson", "title": "Director", "city": "Dallas", "state": "TX"}],
+            related_persons=[
+                {"name": "Bob Johnson", "title": "Director", "city": "Dallas", "state": "TX"}
+            ],
             sbir_state="MA",
             biz_states=["TX"],
             earliest_sbir_award_year=2013,

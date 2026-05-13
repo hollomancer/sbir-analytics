@@ -141,7 +141,9 @@ class TestCETAwardClassificationsQualityCheck:
             mock_path_class.return_value = mock_path
 
             # Call the check function directly (it's decorated but still callable)
-            from sbir_analytics.assets.cet.classifications import cet_award_classifications_quality_check
+            from sbir_analytics.assets.cet.classifications import (
+                cet_award_classifications_quality_check,
+            )
 
             result = cet_award_classifications_quality_check(mock_context)
 

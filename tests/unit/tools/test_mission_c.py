@@ -15,12 +15,15 @@ from sbir_analytics.tools.mission_c.tax_estimation import (
 
 # ---- naics_to_bea_crosswalk ----
 
+
 class TestNAICSToBEACrosswalkTool:
     def test_basic_mapping(self):
-        awards = pd.DataFrame({
-            "naics_code": ["541511", "236220", ""],
-            "company": ["TechCo", "BuildCo", "NullCo"],
-        })
+        awards = pd.DataFrame(
+            {
+                "naics_code": ["541511", "236220", ""],
+                "company": ["TechCo", "BuildCo", "NullCo"],
+            }
+        )
         tool = NAICSToBEACrosswalkTool()
         result = tool.run(awards_df=awards)
         assert isinstance(result.data, dict)
@@ -34,10 +37,12 @@ class TestNAICSToBEACrosswalkTool:
         assert len(result.data) == 0
 
     def test_metadata_warnings_for_unmapped(self):
-        awards = pd.DataFrame({
-            "naics_code": ["999999"],  # Unlikely to map
-            "company": ["UnknownCo"],
-        })
+        awards = pd.DataFrame(
+            {
+                "naics_code": ["999999"],  # Unlikely to map
+                "company": ["UnknownCo"],
+            }
+        )
         tool = NAICSToBEACrosswalkTool()
         result = tool.run(awards_df=awards)
         stats = result.data["mapping_stats"]
@@ -46,6 +51,7 @@ class TestNAICSToBEACrosswalkTool:
 
 
 # ---- stateio_multipliers ----
+
 
 class TestStateIOMultipliersTool:
     def test_default_fallback(self):
@@ -57,10 +63,12 @@ class TestStateIOMultipliersTool:
         assert "output_multiplier" in result.data.columns
 
     def test_from_awards_df(self):
-        awards = pd.DataFrame({
-            "state": ["CA", "MA"],
-            "bea_sector": ["Manufacturing", "Information"],
-        })
+        awards = pd.DataFrame(
+            {
+                "state": ["CA", "MA"],
+                "bea_sector": ["Manufacturing", "Information"],
+            }
+        )
         tool = StateIOMultipliersTool()
         result = tool.run(awards_df=awards)
         assert len(result.data) == 2
@@ -73,21 +81,26 @@ class TestStateIOMultipliersTool:
 
 # ---- tax_estimation ----
 
+
 class TestTaxEstimationTool:
     def test_basic_estimation(self):
-        awards = pd.DataFrame({
-            "bea_sector": ["Manufacturing", "Information"],
-            "state": ["CA", "MA"],
-            "award_amount": [500000, 300000],
-            "fiscal_year": [2023, 2023],
-            "canonical_id": ["co1", "co2"],
-        })
-        multipliers = pd.DataFrame({
-            "state": ["CA", "MA"],
-            "bea_sector": ["Manufacturing", "Information"],
-            "output_multiplier": [1.8, 1.5],
-            "value_added_multiplier": [1.2, 1.1],
-        })
+        awards = pd.DataFrame(
+            {
+                "bea_sector": ["Manufacturing", "Information"],
+                "state": ["CA", "MA"],
+                "award_amount": [500000, 300000],
+                "fiscal_year": [2023, 2023],
+                "canonical_id": ["co1", "co2"],
+            }
+        )
+        multipliers = pd.DataFrame(
+            {
+                "state": ["CA", "MA"],
+                "bea_sector": ["Manufacturing", "Information"],
+                "output_multiplier": [1.8, 1.5],
+                "value_added_multiplier": [1.2, 1.1],
+            }
+        )
         tool = TaxEstimationTool()
         result = tool.run(awards_df=awards, multipliers_df=multipliers)
         assert isinstance(result.data, dict)
@@ -99,19 +112,23 @@ class TestTaxEstimationTool:
         assert track_a["total_estimated_tax"].sum() > 0
 
     def test_tax_components(self):
-        awards = pd.DataFrame({
-            "bea_sector": ["Manufacturing"],
-            "state": ["CA"],
-            "award_amount": [1_000_000],
-            "fiscal_year": [2023],
-            "canonical_id": ["co1"],
-        })
-        multipliers = pd.DataFrame({
-            "state": ["CA"],
-            "bea_sector": ["Manufacturing"],
-            "output_multiplier": [2.0],
-            "value_added_multiplier": [1.5],
-        })
+        awards = pd.DataFrame(
+            {
+                "bea_sector": ["Manufacturing"],
+                "state": ["CA"],
+                "award_amount": [1_000_000],
+                "fiscal_year": [2023],
+                "canonical_id": ["co1"],
+            }
+        )
+        multipliers = pd.DataFrame(
+            {
+                "state": ["CA"],
+                "bea_sector": ["Manufacturing"],
+                "output_multiplier": [2.0],
+                "value_added_multiplier": [1.5],
+            }
+        )
         tool = TaxEstimationTool()
         result = tool.run(awards_df=awards, multipliers_df=multipliers)
         row = result.data["track_a_estimates"].iloc[0]
@@ -124,26 +141,28 @@ class TestTaxEstimationTool:
 
         # Total should be sum of components
         expected_total = (
-            row["individual_income_tax"] +
-            row["payroll_tax"] +
-            row["corporate_income_tax"]
+            row["individual_income_tax"] + row["payroll_tax"] + row["corporate_income_tax"]
         )
         assert row["total_estimated_tax"] == pytest.approx(expected_total, rel=0.01)
 
     def test_roi_calculation(self):
-        awards = pd.DataFrame({
-            "bea_sector": ["Manufacturing"],
-            "state": ["CA"],
-            "award_amount": [1_000_000],
-            "fiscal_year": [2023],
-            "canonical_id": ["co1"],
-        })
-        multipliers = pd.DataFrame({
-            "state": ["CA"],
-            "bea_sector": ["Manufacturing"],
-            "output_multiplier": [2.0],
-            "value_added_multiplier": [1.5],
-        })
+        awards = pd.DataFrame(
+            {
+                "bea_sector": ["Manufacturing"],
+                "state": ["CA"],
+                "award_amount": [1_000_000],
+                "fiscal_year": [2023],
+                "canonical_id": ["co1"],
+            }
+        )
+        multipliers = pd.DataFrame(
+            {
+                "state": ["CA"],
+                "bea_sector": ["Manufacturing"],
+                "output_multiplier": [2.0],
+                "value_added_multiplier": [1.5],
+            }
+        )
         tool = TaxEstimationTool()
         result = tool.run(awards_df=awards, multipliers_df=multipliers)
         summary = result.data["summary"]
@@ -170,17 +189,21 @@ class TestTaxEstimationTool:
 
     def test_track_b_integration(self):
         """Test Track B data flows through when provided."""
-        awards = pd.DataFrame({
-            "bea_sector": ["Manufacturing"],
-            "state": ["CA"],
-            "award_amount": [500000],
-            "fiscal_year": [2023],
-            "canonical_id": ["co1"],
-        })
-        fpds = pd.DataFrame({
-            "company_id": ["co1"],
-            "fpds_total_revenue": [2_000_000],
-        })
+        awards = pd.DataFrame(
+            {
+                "bea_sector": ["Manufacturing"],
+                "state": ["CA"],
+                "award_amount": [500000],
+                "fiscal_year": [2023],
+                "canonical_id": ["co1"],
+            }
+        )
+        fpds = pd.DataFrame(
+            {
+                "company_id": ["co1"],
+                "fpds_total_revenue": [2_000_000],
+            }
+        )
         tool = TaxEstimationTool()
         result = tool.run(awards_df=awards, fpds_revenue=fpds)
         assert result.data["track_b_observed"]["total_fpds_revenue"] == 2_000_000

@@ -45,7 +45,12 @@ class TestChunkedEnricherInitialization:
 
     @patch("sbir_etl.enrichers.chunked_enrichment.get_config")
     def test_initialization_with_checkpoint_dir(
-        self, mock_get_config, mock_config, enricher_sbir_df, enricher_recipient_df, temp_checkpoint_dir
+        self,
+        mock_get_config,
+        mock_config,
+        enricher_sbir_df,
+        enricher_recipient_df,
+        temp_checkpoint_dir,
     ):
         """Test initialization with checkpoint directory."""
         mock_get_config.return_value = mock_config

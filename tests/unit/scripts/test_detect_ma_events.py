@@ -24,9 +24,7 @@ def test_extract_form_d_signals_finds_business_combination():
                     "filing_date": "2019-03-15",
                     "is_business_combination": True,
                     "total_amount_sold": 25_000_000,
-                    "related_persons": [
-                        {"name": "Jane Doe", "title": "Executive Officer"}
-                    ],
+                    "related_persons": [{"name": "Jane Doe", "title": "Executive Officer"}],
                 },
                 {
                     "filing_date": "2020-01-01",
@@ -139,12 +137,32 @@ def test_extract_efts_signals_no_ma_types():
 
 
 def test_merge_events_both_sources():
-    fd = [{"company_name": "ACME", "event_date": "2020-03-01", "source": "form_d",
-           "form_d_detail": {"filing_date": "2020-03-01", "total_amount_sold": 1e6,
-                             "combo_count": 1, "related_persons": []}}]
-    efts = [{"company_name": "ACME", "event_date": "2020-01-15", "source": "efts",
-             "efts_detail": {"mention_filers": ["BIG CO"], "mention_types": ["ma_definitive"],
-                             "latest_mention_date": "2020-01-15", "efts_tier": "medium"}}]
+    fd = [
+        {
+            "company_name": "ACME",
+            "event_date": "2020-03-01",
+            "source": "form_d",
+            "form_d_detail": {
+                "filing_date": "2020-03-01",
+                "total_amount_sold": 1e6,
+                "combo_count": 1,
+                "related_persons": [],
+            },
+        }
+    ]
+    efts = [
+        {
+            "company_name": "ACME",
+            "event_date": "2020-01-15",
+            "source": "efts",
+            "efts_detail": {
+                "mention_filers": ["BIG CO"],
+                "mention_types": ["ma_definitive"],
+                "latest_mention_date": "2020-01-15",
+                "efts_tier": "medium",
+            },
+        }
+    ]
     merged = merge_events(fd, efts)
     assert len(merged) == 1
     assert merged[0]["form_d_detail"] is not None
@@ -153,12 +171,32 @@ def test_merge_events_both_sources():
 
 
 def test_merge_events_separate_companies():
-    fd = [{"company_name": "A", "event_date": "2020-01-01", "source": "form_d",
-           "form_d_detail": {"filing_date": "2020-01-01", "total_amount_sold": None,
-                             "combo_count": 1, "related_persons": []}}]
-    efts = [{"company_name": "B", "event_date": "2021-06-01", "source": "efts",
-             "efts_detail": {"mention_filers": ["X"], "mention_types": ["subsidiary"],
-                             "latest_mention_date": "2021-06-01", "efts_tier": "high"}}]
+    fd = [
+        {
+            "company_name": "A",
+            "event_date": "2020-01-01",
+            "source": "form_d",
+            "form_d_detail": {
+                "filing_date": "2020-01-01",
+                "total_amount_sold": None,
+                "combo_count": 1,
+                "related_persons": [],
+            },
+        }
+    ]
+    efts = [
+        {
+            "company_name": "B",
+            "event_date": "2021-06-01",
+            "source": "efts",
+            "efts_detail": {
+                "mention_filers": ["X"],
+                "mention_types": ["subsidiary"],
+                "latest_mention_date": "2021-06-01",
+                "efts_tier": "high",
+            },
+        }
+    ]
     merged = merge_events(fd, efts)
     assert len(merged) == 2
 
@@ -172,26 +210,25 @@ def test_assign_confidence_form_d_is_high():
 
 
 def test_assign_confidence_subsidiary_is_high():
-    event = {"form_d_detail": None,
-             "efts_detail": {"mention_types": ["subsidiary", "ma_definitive"]}}
+    event = {
+        "form_d_detail": None,
+        "efts_detail": {"mention_types": ["subsidiary", "ma_definitive"]},
+    }
     assert assign_confidence(event) == "high"
 
 
 def test_assign_confidence_acquisition_text_is_medium():
-    event = {"form_d_detail": None,
-             "efts_detail": {"mention_types": ["acquisition"]}}
+    event = {"form_d_detail": None, "efts_detail": {"mention_types": ["acquisition"]}}
     assert assign_confidence(event) == "medium"
 
 
 def test_assign_confidence_ma_definitive_alone_is_low():
-    event = {"form_d_detail": None,
-             "efts_detail": {"mention_types": ["ma_definitive"]}}
+    event = {"form_d_detail": None, "efts_detail": {"mention_types": ["ma_definitive"]}}
     assert assign_confidence(event) == "low"
 
 
 def test_assign_confidence_ownership_only_is_low():
-    event = {"form_d_detail": None,
-             "efts_detail": {"mention_types": ["ownership_active"]}}
+    event = {"form_d_detail": None, "efts_detail": {"mention_types": ["ownership_active"]}}
     assert assign_confidence(event) == "low"
 
 

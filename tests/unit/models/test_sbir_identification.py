@@ -131,16 +131,16 @@ class TestIsSbirGrant:
     @pytest.mark.parametrize(
         "aln",
         [
-            "10.212",   # USDA
-            "12.910",   # DOD
-            "12.911",   # DOD
-            "43.002",   # NASA
-            "43.003",   # NASA
-            "47.041",   # NSF
-            "47.084",   # NSF
-            "66.511",   # EPA
-            "66.512",   # EPA
-            "97.077",   # DHS
+            "10.212",  # USDA
+            "12.910",  # DOD
+            "12.911",  # DOD
+            "43.002",  # NASA
+            "43.003",  # NASA
+            "47.041",  # NSF
+            "47.084",  # NSF
+            "66.511",  # EPA
+            "66.512",  # EPA
+            "97.077",  # DHS
         ],
     )
     def test_exclusive_alns_match(self, aln):
@@ -160,10 +160,10 @@ class TestIsSbirGrant:
     @pytest.mark.parametrize(
         "aln",
         [
-            "81.049",   # DOE
-            "20.701",   # DOT
-            "84.133",   # ED
-            "93.855",   # HHS
+            "81.049",  # DOE
+            "20.701",  # DOT
+            "84.133",  # ED
+            "93.855",  # HHS
         ],
     )
     def test_shared_alns_match_non_strict(self, aln):
@@ -172,10 +172,10 @@ class TestIsSbirGrant:
     @pytest.mark.parametrize(
         "aln",
         [
-            "81.049",   # DOE
-            "20.701",   # DOT
-            "84.133",   # ED
-            "93.855",   # HHS
+            "81.049",  # DOE
+            "20.701",  # DOT
+            "84.133",  # ED
+            "93.855",  # HHS
         ],
     )
     def test_shared_alns_rejected_strict(self, aln):

@@ -57,6 +57,7 @@ class TestRunSync:
 
     def test_run_sync_thread_safety(self):
         """Test that run_sync can be called safely from multiple threads."""
+
         def call_from_thread(val: int) -> int:
             return run_sync(simple_coro(val))
 

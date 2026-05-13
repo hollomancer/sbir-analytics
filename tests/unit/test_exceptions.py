@@ -161,10 +161,17 @@ class TestComponentExceptions:
 class TestInheritance:
     def test_all_inherit_from_base(self):
         for cls in [
-            ExtractionError, ValidationError, EnrichmentError,
-            TransformationError, APIError, RateLimitError,
-            ConfigurationError, FileSystemError, CETClassificationError,
-            DependencyError, RFunctionError,
+            ExtractionError,
+            ValidationError,
+            EnrichmentError,
+            TransformationError,
+            APIError,
+            RateLimitError,
+            ConfigurationError,
+            FileSystemError,
+            CETClassificationError,
+            DependencyError,
+            RFunctionError,
         ]:
             assert issubclass(cls, SBIRETLError), f"{cls.__name__} must inherit SBIRETLError"
 

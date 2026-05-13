@@ -337,10 +337,20 @@ class TestCalculateTopicSimilarity:
     @pytest.mark.parametrize(
         "patent_title,patent_abstract,contract_desc,min_sim,max_sim",
         [
-            ("Machine Learning System", "Advanced machine learning for data analysis",
-             "Machine learning data analysis system", 0.5, 1.0),
-            ("Medical Device Innovation", "Novel approach to medical diagnostics",
-             "Software development for financial systems", 0.0, 0.5),
+            (
+                "Machine Learning System",
+                "Advanced machine learning for data analysis",
+                "Machine learning data analysis system",
+                0.5,
+                1.0,
+            ),
+            (
+                "Medical Device Innovation",
+                "Novel approach to medical diagnostics",
+                "Software development for financial systems",
+                0.0,
+                0.5,
+            ),
         ],
         ids=["similar_content", "different_content"],
     )
@@ -426,7 +436,9 @@ class TestCalculateTopicSimilarity:
         ],
         ids=["no_patents", "no_description"],
     )
-    def test_calculate_topic_similarity_edge_cases(self, extractor, patents, contract_desc, expected):
+    def test_calculate_topic_similarity_edge_cases(
+        self, extractor, patents, contract_desc, expected
+    ):
         """Test topic similarity returns None for edge cases."""
         if patents is None:
             patents = [

@@ -147,7 +147,9 @@ class TestSAMGovAssetIntegration:
                 mock_path.return_value.exists.return_value = True
 
                 # Mock SAMGovExtractor to return our test data
-                with patch("sbir_analytics.assets.sam_gov_ingestion.SAMGovExtractor") as mock_extractor_class:
+                with patch(
+                    "sbir_analytics.assets.sam_gov_ingestion.SAMGovExtractor"
+                ) as mock_extractor_class:
                     mock_extractor = MagicMock()
                     test_df = pd.read_parquet(sample_sam_gov_parquet)
                     mock_extractor.load_parquet.return_value = test_df

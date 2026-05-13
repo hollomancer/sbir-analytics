@@ -17,20 +17,27 @@ from sbir_analytics.tools.mission_b.compute_observable_commercialization import 
 
 # ---- compute_transition_rate ----
 
+
 class TestComputeTransitionRateTool:
     def _make_awards(self, company, p1_count, p2_count, fy_start=2021, fy_end=2025):
         """Helper to create award records for a company."""
         records = []
         for i in range(p1_count):
-            records.append({
-                "company": company, "phase": "I",
-                "fiscal_year": fy_start + (i % (fy_end - fy_start + 1)),
-            })
+            records.append(
+                {
+                    "company": company,
+                    "phase": "I",
+                    "fiscal_year": fy_start + (i % (fy_end - fy_start + 1)),
+                }
+            )
         for i in range(p2_count):
-            records.append({
-                "company": company, "phase": "II",
-                "fiscal_year": fy_start + (i % (fy_end - fy_start + 1)),
-            })
+            records.append(
+                {
+                    "company": company,
+                    "phase": "II",
+                    "fiscal_year": fy_start + (i % (fy_end - fy_start + 1)),
+                }
+            )
         return records
 
     def test_below_threshold(self):
@@ -72,9 +79,9 @@ class TestComputeTransitionRateTool:
 
     def test_summary_stats(self):
         records = (
-            self._make_awards("Co1", 25, 10) +
-            self._make_awards("Co2", 5, 2) +
-            self._make_awards("Co3", 25, 2)
+            self._make_awards("Co1", 25, 10)
+            + self._make_awards("Co2", 5, 2)
+            + self._make_awards("Co3", 25, 2)
         )
         awards = pd.DataFrame(records)
         tool = ComputeTransitionRateTool()
@@ -95,32 +102,45 @@ class TestComputeTransitionRateTool:
 
 # ---- compute_observable_commercialization ----
 
+
 class TestComputeObservableCommercializationTool:
     def _make_p2_awards(self, company, count, fy_start=2016, fy_end=2024):
-        return [{
-            "company": company, "phase": "II",
-            "fiscal_year": fy_start + (i % (fy_end - fy_start + 1)),
-        } for i in range(count)]
+        return [
+            {
+                "company": company,
+                "phase": "II",
+                "fiscal_year": fy_start + (i % (fy_end - fy_start + 1)),
+            }
+            for i in range(count)
+        ]
 
     def test_qualifying_company(self):
         records = self._make_p2_awards("QualCo", 20)
         awards = pd.DataFrame(records)
-        fpds = pd.DataFrame({
-            "company": ["QualCo"],
-            "obligation_amount": [5_000_000],
-        })
-        patents = pd.DataFrame({
-            "company": ["QualCo"] * 5,
-        })
-        sam = pd.DataFrame({
-            "unique_entity_id": ["QualCo"],
-            "registration_status": ["ACTIVE"],
-        })
+        fpds = pd.DataFrame(
+            {
+                "company": ["QualCo"],
+                "obligation_amount": [5_000_000],
+            }
+        )
+        patents = pd.DataFrame(
+            {
+                "company": ["QualCo"] * 5,
+            }
+        )
+        sam = pd.DataFrame(
+            {
+                "unique_entity_id": ["QualCo"],
+                "registration_status": ["ACTIVE"],
+            }
+        )
 
         tool = ComputeObservableCommercializationTool()
         result = tool.run(
-            awards_df=awards, fpds_contracts=fpds,
-            patent_data=patents, sam_entities=sam,
+            awards_df=awards,
+            fpds_contracts=fpds,
+            patent_data=patents,
+            sam_entities=sam,
         )
         results_df = result.data["results"]
         assert len(results_df) == 1
