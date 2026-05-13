@@ -195,8 +195,12 @@ class TaxParameterConfig(BaseModel):
         default_factory=lambda: {
             "effective_rate": 0.22,
             "progressive_rates": {
-                "10_percent": 0.10, "12_percent": 0.12, "22_percent": 0.22,
-                "24_percent": 0.24, "32_percent": 0.32, "35_percent": 0.35,
+                "10_percent": 0.10,
+                "12_percent": 0.12,
+                "22_percent": 0.22,
+                "24_percent": 0.24,
+                "32_percent": 0.32,
+                "35_percent": 0.35,
                 "37_percent": 0.37,
             },
             "standard_deduction": 13850,
@@ -391,7 +395,6 @@ class PaECTERTextConfig(BaseModel):
     )
 
 
-
 class PaECTERConfig(BaseModel):
     """Configuration for PaECTER patent-award similarity embeddings."""
 
@@ -405,16 +408,22 @@ class PaECTERConfig(BaseModel):
     text: PaECTERTextConfig = Field(default_factory=PaECTERTextConfig)
 
     similarity_threshold: float = Field(
-        default=0.80, ge=0.0, le=1.0,
+        default=0.80,
+        ge=0.0,
+        le=1.0,
         description="Minimum similarity score to include in results",
     )
     top_k: int = Field(default=10, ge=1, description="Number of top matches per award")
     coverage_threshold_awards: float = Field(
-        default=0.95, ge=0.0, le=1.0,
+        default=0.95,
+        ge=0.0,
+        le=1.0,
         description="Minimum fraction of awards with valid embeddings",
     )
     coverage_threshold_patents: float = Field(
-        default=0.98, ge=0.0, le=1.0,
+        default=0.98,
+        ge=0.0,
+        le=1.0,
         description="Minimum fraction of patents with valid embeddings",
     )
     enable_cache: bool = Field(default=False, description="Enable embedding caching to disk")
@@ -441,16 +450,22 @@ class StatisticalReportingConfig(BaseModel):
     output_directory: str = Field(default="reports/statistics")
     report_types: list[str] = Field(
         default_factory=lambda: [
-            "data_quality", "enrichment_performance", "pipeline_performance",
-            "anomaly_detection", "success_metrics",
+            "data_quality",
+            "enrichment_performance",
+            "pipeline_performance",
+            "anomaly_detection",
+            "success_metrics",
         ]
     )
     schedules: dict[str, Any] = Field(
         default_factory=lambda: {
             "daily": {"enabled": True, "hour": 2, "minute": 0, "include_summary": True},
             "weekly": {
-                "enabled": True, "weekday": "monday", "hour": 6,
-                "minute": 0, "include_trends": True,
+                "enabled": True,
+                "weekday": "monday",
+                "hour": 6,
+                "minute": 0,
+                "include_trends": True,
             },
         }
     )
@@ -471,15 +486,18 @@ class StatisticalReportingConfig(BaseModel):
     sections: dict[str, Any] = Field(
         default_factory=lambda: {
             "pipeline_health": {
-                "enabled": True, "include_validation_details": True,
+                "enabled": True,
+                "include_validation_details": True,
                 "include_loading_statistics": True,
             },
             "cet_classification": {
-                "enabled": True, "include_confidence_distribution": True,
+                "enabled": True,
+                "include_confidence_distribution": True,
                 "include_taxonomy_breakdown": True,
             },
             "transition_detection": {
-                "enabled": True, "include_success_stories": True,
+                "enabled": True,
+                "include_success_stories": True,
                 "include_trend_analysis": True,
             },
         }
@@ -493,20 +511,30 @@ class StatisticalReportingConfig(BaseModel):
     )
     formats: dict[str, Any] = Field(
         default_factory=lambda: {
-            "html": {"include_interactive_charts": True, "chart_library": "plotly", "theme": "default"},
+            "html": {
+                "include_interactive_charts": True,
+                "chart_library": "plotly",
+                "theme": "default",
+            },
             "json": {"include_raw_data": False, "pretty_print": True},
             "markdown": {"max_length": 2000, "include_links": True},
-            "executive": {"include_visualizations": True, "focus_areas": ["impact", "quality", "trends"]},
+            "executive": {
+                "include_visualizations": True,
+                "focus_areas": ["impact", "quality", "trends"],
+            },
         }
     )
     cicd: dict[str, Any] = Field(
         default_factory=lambda: {
             "github_actions": {
-                "enabled": True, "upload_artifacts": True,
-                "post_pr_comments": True, "artifact_retention_days": 30,
+                "enabled": True,
+                "upload_artifacts": True,
+                "post_pr_comments": True,
+                "artifact_retention_days": 30,
             },
             "report_comparison": {
-                "enabled": True, "baseline_comparison": True,
+                "enabled": True,
+                "baseline_comparison": True,
                 "trend_analysis_periods": [7, 30, 90],
             },
         }

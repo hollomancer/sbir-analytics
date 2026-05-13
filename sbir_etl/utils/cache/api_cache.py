@@ -41,9 +41,7 @@ class APICache:
             from sbir_etl.utils.path_utils import ensure_dir
 
             ensure_dir(self.cache_dir)
-            logger.debug(
-                f"APICache initialized at {self.cache_dir} (TTL: {ttl_hours}h)"
-            )
+            logger.debug(f"APICache initialized at {self.cache_dir} (TTL: {ttl_hours}h)")
 
     def _generate_cache_key(
         self,

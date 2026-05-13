@@ -72,9 +72,7 @@ def _parse_records(data: dict) -> list[LensPatentRecord]:
         applicants = hit.get("applicant", [])
         if applicants and isinstance(applicants, list):
             first = applicants[0]
-            assignee = (
-                first.get("name") if isinstance(first, dict) else str(first)
-            )
+            assignee = first.get("name") if isinstance(first, dict) else str(first)
 
         # Extract inventors
         inventor_names: list[str] = []
@@ -143,9 +141,7 @@ class LensPatentClient(BaseAsyncAPIClient):
         self.rate_limit_per_minute = rate_limit_per_minute
         self._token = api_token or os.environ.get("LENS_API_TOKEN", "")
         if not self._token:
-            logger.debug(
-                "LENS_API_TOKEN not set — Lens.org patent lookups will short-circuit"
-            )
+            logger.debug("LENS_API_TOKEN not set — Lens.org patent lookups will short-circuit")
         self._client = http_client or httpx.AsyncClient(timeout=timeout)
 
     def _build_headers(self) -> dict[str, str]:

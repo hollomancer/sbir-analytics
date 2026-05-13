@@ -238,9 +238,7 @@ class FPDSAtomClient(BaseAsyncAPIClient):
         catch :class:`APIError` from :meth:`_request_raw` directly.
         """
         try:
-            response = await self._request_raw(
-                "GET", FPDS_ENDPOINT, params=params
-            )
+            response = await self._request_raw("GET", FPDS_ENDPOINT, params=params)
         except APIError as e:
             logger.debug("FPDS API error: {}", e)
             return None

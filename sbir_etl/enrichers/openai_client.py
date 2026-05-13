@@ -75,7 +75,7 @@ class OpenAIClient:
     def close(self) -> None:
         self._client.close()
 
-    def __enter__(self) -> "OpenAIClient":
+    def __enter__(self) -> OpenAIClient:
         return self
 
     def __exit__(self, *exc: object) -> None:
@@ -102,7 +102,10 @@ class OpenAIClient:
             self._semaphore.acquire()
             try:
                 resp = self._client.request(
-                    method, url, headers=self._headers(), json=payload,
+                    method,
+                    url,
+                    headers=self._headers(),
+                    json=payload,
                     timeout=effective_timeout,
                 )
             finally:
@@ -124,9 +127,7 @@ class OpenAIClient:
             except httpx.HTTPStatusError:
                 if attempt < MAX_RETRIES:
                     continue
-                logger.warning(
-                    f"OpenAI API error after {MAX_RETRIES} retries: {resp.status_code}"
-                )
+                logger.warning(f"OpenAI API error after {MAX_RETRIES} retries: {resp.status_code}")
                 return None
 
         return None

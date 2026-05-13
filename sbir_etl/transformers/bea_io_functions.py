@@ -123,10 +123,7 @@ def fetch_value_added(
     df = raw.copy()
     df["DataValue"] = pd.to_numeric(df["DataValue"], errors="coerce").fillna(0.0)
 
-    logger.info(
-        f"BEA Value Added: {len(df)} rows for year {year}, "
-        f"columns: {list(df.columns)}"
-    )
+    logger.info(f"BEA Value Added: {len(df)} rows for year {year}, columns: {list(df.columns)}")
     return df
 
 
@@ -154,10 +151,7 @@ def fetch_employment(
     df = raw.copy()
     df["DataValue"] = pd.to_numeric(df["DataValue"], errors="coerce").fillna(0.0)
 
-    logger.info(
-        f"BEA Employment: {len(df)} rows for year {year}, "
-        f"columns: {list(df.columns)}"
-    )
+    logger.info(f"BEA Employment: {len(df)} rows for year {year}, columns: {list(df.columns)}")
     return df
 
 
@@ -250,9 +244,7 @@ def calculate_value_added_ratios(
             )
 
         if ratios_data:
-            logger.info(
-                f"BEA VA ratios computed for {len(ratios_data)} sectors"
-            )
+            logger.info(f"BEA VA ratios computed for {len(ratios_data)} sectors")
             return pd.DataFrame(ratios_data)
 
         logger.warning(
@@ -315,9 +307,7 @@ def calculate_employment_coefficients(
                     )
 
         if coefficients:
-            logger.info(
-                f"Employment coefficients computed for {len(coefficients)} sectors"
-            )
+            logger.info(f"Employment coefficients computed for {len(coefficients)} sectors")
         else:
             logger.warning(
                 "Employment coefficients: 0 sectors matched between "
@@ -478,9 +468,7 @@ def calculate_employment_from_production(
 
         for sector in production_by_sector.index:
             production_val = production_by_sector[sector]
-            sector_coeff = employment_coefficients[
-                employment_coefficients["sector"] == str(sector)
-            ]
+            sector_coeff = employment_coefficients[employment_coefficients["sector"] == str(sector)]
 
             if not sector_coeff.empty:
                 coeff = sector_coeff["employment_coefficient"].iloc[0]

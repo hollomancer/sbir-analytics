@@ -190,7 +190,7 @@ class SbirGovClient:
     @staticmethod
     def build_lookup_index(
         awards: list[dict[str, Any]],
-    ) -> "SbirGovLookupIndex":
+    ) -> SbirGovLookupIndex:
         """Build a multi-key lookup index from SBIR.gov award data.
 
         Creates indexes keyed by contract/award number, UEI, and DUNS for

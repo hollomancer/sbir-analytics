@@ -80,9 +80,7 @@ def _build_history_from_df(
         if extra_set_cols:
             for col in extra_set_cols:
                 col_key = pluralize_col_key(col)
-                entry[col_key] = sorted(
-                    {v for v in group_df[col].astype(str).str.strip() if v}
-                )
+                entry[col_key] = sorted({v for v in group_df[col].astype(str).str.strip() if v})
 
         history[name] = entry
 
@@ -123,7 +121,11 @@ def _build_history_from_csv(
 
             h = history[name]
             h["total_awards"] += 1
-            for field, set_key in [("Phase", "phases"), ("Agency", "agencies"), ("Program", "programs")]:
+            for field, set_key in [
+                ("Phase", "phases"),
+                ("Agency", "agencies"),
+                ("Program", "programs"),
+            ]:
                 val = str(row.get(field, "")).strip()
                 if val:
                     h[set_key].add(val)
@@ -184,7 +186,7 @@ def get_company_history(
 
     if extractor is not None and table is not None:
         # Build IN clause with escaped names
-        escaped = [f"'{n.replace(chr(39), chr(39)+chr(39))}'" for n in sorted(company_names)]
+        escaped = [f"'{n.replace(chr(39), chr(39) + chr(39))}'" for n in sorted(company_names)]
         in_clause = ", ".join(escaped)
         query = (
             f'SELECT UPPER("Company") AS _group_key, "Phase", "Agency", '
@@ -229,7 +231,7 @@ def get_pi_history(
         return {}
 
     if extractor is not None and table is not None:
-        escaped = [f"'{n.replace(chr(39), chr(39)+chr(39))}'" for n in sorted(pi_names)]
+        escaped = [f"'{n.replace(chr(39), chr(39) + chr(39))}'" for n in sorted(pi_names)]
         in_clause = ", ".join(escaped)
         query = (
             f'SELECT UPPER("PI Name") AS _group_key, "Company", "Phase", "Agency", '

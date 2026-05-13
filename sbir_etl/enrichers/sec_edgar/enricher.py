@@ -80,9 +80,9 @@ def _extract_latest_fact(
             continue
         # Filter to annual (10-K) or quarterly (10-Q) filings
         annual_entries = [
-            e for e in usd_entries
-            if e.get("form") in ("10-K", "10-Q", "20-F")
-            and e.get("val") is not None
+            e
+            for e in usd_entries
+            if e.get("form") in ("10-K", "10-Q", "20-F") and e.get("val") is not None
         ]
         if not annual_entries:
             continue
@@ -97,9 +97,7 @@ def _extract_latest_fact(
     return None, None
 
 
-def _extract_financials(
-    cik: str, facts: dict[str, Any]
-) -> EdgarFinancials | None:
+def _extract_financials(cik: str, facts: dict[str, Any]) -> EdgarFinancials | None:
     """Extract standardized financials from EDGAR company facts."""
     revenue, rev_date = _extract_latest_fact(facts, _REVENUE_CONCEPTS)
     net_income, ni_date = _extract_latest_fact(facts, _NET_INCOME_CONCEPTS)
@@ -135,9 +133,7 @@ def _extract_financials(
     )
 
 
-def _detect_ma_events(
-    cik: str, filings: list[dict[str, Any]]
-) -> list[EdgarMAEvent]:
+def _detect_ma_events(cik: str, filings: list[dict[str, Any]]) -> list[EdgarMAEvent]:
     """Detect M&A events from 8-K filings.
 
     Looks for Item 1.01 (material definitive agreements) and
@@ -196,9 +192,9 @@ _NOISE_SIC_RANGES = {
 }
 
 # 8-K item codes that indicate M&A activity.
-_MA_ITEMS = {"1.01", "2.01"}            # definitive agreement, completion of acquisition
-_FINANCIAL_ITEMS = {"2.02", "2.05"}     # results of operations, delisting
-_DISCLOSURE_ITEMS = {"7.01", "8.01"}    # Reg FD, other events
+_MA_ITEMS = {"1.01", "2.01"}  # definitive agreement, completion of acquisition
+_FINANCIAL_ITEMS = {"2.02", "2.05"}  # results of operations, delisting
+_DISCLOSURE_ITEMS = {"7.01", "8.01"}  # Reg FD, other events
 
 _CORP_SUFFIX = re.compile(
     r",?\s*(Inc\.?|Corp\.?|LLC|Ltd\.?|Co\.?|L\.?P\.?|/DE|/NV|/MD|CORP|INC)$",
@@ -235,23 +231,87 @@ _COMPETITOR_KEYWORDS = re.compile(
 
 
 # Words that appear in many filings as common English, not as company identifiers.
-_COMMON_ENGLISH_WORDS = frozenset({
-    "sediment", "informed", "ideas", "menara", "elkins", "bai", "nil",
-    "merit", "quest", "delta", "alpha", "summit", "pioneer", "atlas",
-    "nexus", "pulse", "prism", "forge", "apex", "core", "edge",
-    "relay", "array", "signal", "matrix", "tensor", "vector", "orbit",
-    "cipher", "helix", "locus", "verge", "haven", "arbor", "cadre",
-})
+_COMMON_ENGLISH_WORDS = frozenset(
+    {
+        "sediment",
+        "informed",
+        "ideas",
+        "menara",
+        "elkins",
+        "bai",
+        "nil",
+        "merit",
+        "quest",
+        "delta",
+        "alpha",
+        "summit",
+        "pioneer",
+        "atlas",
+        "nexus",
+        "pulse",
+        "prism",
+        "forge",
+        "apex",
+        "core",
+        "edge",
+        "relay",
+        "array",
+        "signal",
+        "matrix",
+        "tensor",
+        "vector",
+        "orbit",
+        "cipher",
+        "helix",
+        "locus",
+        "verge",
+        "haven",
+        "arbor",
+        "cadre",
+    }
+)
 
 # Generic business/tech words that don't distinguish one company from another.
-_GENERIC_NAME_WORDS = frozenset({
-    "advanced", "applied", "central", "digital", "first", "general",
-    "global", "good", "health", "information", "integrated", "management",
-    "material", "national", "new", "process", "quality", "research",
-    "risk", "smith", "systems", "training", "development", "engineering",
-    "computer", "methods", "programs", "services", "consulting", "park",
-    "west", "east", "north", "south", "project", "transfer",
-})
+_GENERIC_NAME_WORDS = frozenset(
+    {
+        "advanced",
+        "applied",
+        "central",
+        "digital",
+        "first",
+        "general",
+        "global",
+        "good",
+        "health",
+        "information",
+        "integrated",
+        "management",
+        "material",
+        "national",
+        "new",
+        "process",
+        "quality",
+        "research",
+        "risk",
+        "smith",
+        "systems",
+        "training",
+        "development",
+        "engineering",
+        "computer",
+        "methods",
+        "programs",
+        "services",
+        "consulting",
+        "park",
+        "west",
+        "east",
+        "north",
+        "south",
+        "project",
+        "transfer",
+    }
+)
 
 
 def compute_mention_noise_score(
@@ -284,9 +344,7 @@ def compute_mention_noise_score(
     elif len(words) == 1:
         # Single longer word — mildly suspicious
         score += 1
-    elif all(
-        w.lower() in _GENERIC_NAME_WORDS for w in words if len(w) > 2
-    ):
+    elif all(w.lower() in _GENERIC_NAME_WORDS for w in words if len(w) > 2):
         # All words are generic business terms (Risk Management Systems)
         score += 2
 
@@ -381,7 +439,9 @@ def _classify_mention(items: list[str], form_type: str) -> str:
 
 
 def _is_noise(
-    filer_name: str, target_name: str, sics: list[str],
+    filer_name: str,
+    target_name: str,
+    sics: list[str],
 ) -> bool:
     """Return True if this mention is likely noise.
 
@@ -426,9 +486,7 @@ async def _search_filing_mentions_filtered(
     - Real estate / mortgage filers (by SIC code)
     - Name collisions (target name is substring of a different company)
     """
-    mentions = await client.search_filing_mentions(
-        company_name, forms=forms, limit=limit
-    )
+    mentions = await client.search_filing_mentions(company_name, forms=forms, limit=limit)
     if not mentions:
         return []
 
@@ -461,9 +519,7 @@ async def _search_filing_mentions_filtered(
         # For ambiguous mentions, try to fetch the filing and classify
         # from surrounding text.  This costs one HTTP request per mention.
         if mention_type == "filing_mention":
-            text_context = await _extract_mention_context(
-                client, company_name, mention
-            )
+            text_context = await _extract_mention_context(client, company_name, mention)
             if text_context:
                 mention_type = text_context
 
@@ -500,18 +556,28 @@ async def _search_inbound_ma_mentions(
     """
     # Run all three searches concurrently
     import asyncio
+
     strong, annual, ownership = await asyncio.gather(
         _search_filing_mentions_filtered(
-            client, company_name, _MA_FILING_TYPES,
-            name_match_threshold=name_match_threshold, limit=20,
+            client,
+            company_name,
+            _MA_FILING_TYPES,
+            name_match_threshold=name_match_threshold,
+            limit=20,
         ),
         _search_filing_mentions_filtered(
-            client, company_name, _ANNUAL_FILING_TYPES,
-            name_match_threshold=name_match_threshold, limit=10,
+            client,
+            company_name,
+            _ANNUAL_FILING_TYPES,
+            name_match_threshold=name_match_threshold,
+            limit=10,
         ),
         _search_filing_mentions_filtered(
-            client, company_name, _OWNERSHIP_FILING_TYPES,
-            name_match_threshold=name_match_threshold, limit=10,
+            client,
+            company_name,
+            _OWNERSHIP_FILING_TYPES,
+            name_match_threshold=name_match_threshold,
+            limit=10,
         ),
     )
     return strong + annual + ownership
@@ -575,15 +641,45 @@ async def _search_form_d_filings(
 # Words that appear in many company names but don't distinguish one company
 # from another.  Used by CIK resolution to require at least one distinctive
 # word overlap between query and candidate.
-_GENERIC_WORDS = frozenset({
-    "TECHNOLOGIES", "TECHNOLOGY", "SYSTEMS", "SCIENCES", "RESEARCH",
-    "ENGINEERING", "SOLUTIONS", "ANALYTICS", "DYNAMICS", "INDUSTRIES",
-    "ASSOCIATES", "CONSULTING", "SERVICES", "GROUP", "INTERNATIONAL",
-    "LABORATORIES", "INSTRUMENTS", "MATERIALS", "DEVICES", "APPLICATIONS",
-    "ADVANCED", "APPLIED", "DIGITAL", "GENERAL", "NATIONAL", "AMERICAN",
-    "GLOBAL", "INTEGRATED", "PRECISION", "SCIENTIFIC", "TECHNICAL",
-    "INNOVATIONS", "CORPORATION", "COMPANY", "ENTERPRISES",
-})
+_GENERIC_WORDS = frozenset(
+    {
+        "TECHNOLOGIES",
+        "TECHNOLOGY",
+        "SYSTEMS",
+        "SCIENCES",
+        "RESEARCH",
+        "ENGINEERING",
+        "SOLUTIONS",
+        "ANALYTICS",
+        "DYNAMICS",
+        "INDUSTRIES",
+        "ASSOCIATES",
+        "CONSULTING",
+        "SERVICES",
+        "GROUP",
+        "INTERNATIONAL",
+        "LABORATORIES",
+        "INSTRUMENTS",
+        "MATERIALS",
+        "DEVICES",
+        "APPLICATIONS",
+        "ADVANCED",
+        "APPLIED",
+        "DIGITAL",
+        "GENERAL",
+        "NATIONAL",
+        "AMERICAN",
+        "GLOBAL",
+        "INTEGRATED",
+        "PRECISION",
+        "SCIENTIFIC",
+        "TECHNICAL",
+        "INNOVATIONS",
+        "CORPORATION",
+        "COMPANY",
+        "ENTERPRISES",
+    }
+)
 
 
 def _clean_company_name(name: str) -> str:
@@ -760,9 +856,7 @@ async def enrich_company(
         profile.mention_count = len(deduped)
         if deduped:
             profile.mention_filers = [e.filer_name for e in deduped if e.filer_name]
-            profile.mention_types = sorted({
-                e.mention_type for e in deduped if e.mention_type
-            })
+            profile.mention_types = sorted({e.mention_type for e in deduped if e.mention_type})
             profile.latest_mention_date = max(e.filing_date for e in deduped)
 
     # Form D search — private capital raises under Regulation D
@@ -777,7 +871,9 @@ async def enrich_company(
     # Compute mention noise score (requires mention_count to be set)
     if profile.mention_count > 0:
         profile.mention_noise_score = compute_mention_noise_score(
-            company_name, profile.mention_count, award_count,
+            company_name,
+            profile.mention_count,
+            award_count,
         )
 
     return profile
@@ -822,10 +918,7 @@ async def enrich_companies_with_edgar(
     try:
         # De-duplicate by company name to minimize API calls
         unique_companies = companies_df[[company_name_col]].drop_duplicates()
-        has_uei = (
-            company_uei_col in companies_df.columns
-            and company_uei_col != company_name_col
-        )
+        has_uei = company_uei_col in companies_df.columns and company_uei_col != company_name_col
         if has_uei:
             # Get first UEI per company for linking
             uei_lookup = (
@@ -843,7 +936,7 @@ async def enrich_companies_with_edgar(
         profiles: list[dict[str, Any]] = []
         matched_count = 0
 
-        for idx, row in unique_companies.iterrows():
+        for _idx, row in unique_companies.iterrows():
             name = row[company_name_col]
             uei = uei_lookup.get(name)
 
@@ -881,8 +974,7 @@ async def enrich_companies_with_edgar(
         rename_map = {
             col: f"sec_{col}"
             for col in enrichment_df.columns
-            if col not in (company_name_col, "company_name")
-            and not col.startswith("sec_")
+            if col not in (company_name_col, "company_name") and not col.startswith("sec_")
         }
         enrichment_df = enrichment_df.rename(columns=rename_map)
 

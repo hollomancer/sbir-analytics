@@ -127,23 +127,16 @@ class BaseAsyncAPIClient:
             if endpoint_str.startswith(("http://", "https://")):
                 url = endpoint_str
             else:
-                url = (
-                    f"{str(self.base_url).rstrip('/')}/"
-                    f"{endpoint_str.lstrip('/')}"
-                )
+                url = f"{str(self.base_url).rstrip('/')}/{endpoint_str.lstrip('/')}"
             request_headers = self._build_headers()
             if headers:
                 request_headers.update(headers)
 
             try:
                 if method.upper() == "GET":
-                    response = await self._client.get(
-                        url, params=params, headers=request_headers
-                    )
+                    response = await self._client.get(url, params=params, headers=request_headers)
                 elif method.upper() == "POST":
-                    response = await self._client.post(
-                        url, json=params, headers=request_headers
-                    )
+                    response = await self._client.post(url, json=params, headers=request_headers)
                 else:
                     raise ConfigurationError(f"Unsupported HTTP method: {method}")
 
@@ -226,7 +219,5 @@ class BaseAsyncAPIClient:
             APIError: If request fails after retries
             RateLimitError: If rate limit exceeded
         """
-        response = await self._request_raw(
-            method, endpoint, params=params, headers=headers
-        )
+        response = await self._request_raw(method, endpoint, params=params, headers=headers)
         return response.json()

@@ -136,9 +136,7 @@ class EdgarFormDFiling(BaseModel):
     cik: str = Field(..., description="CIK assigned to the Form D filer")
     entity_name: str = Field(..., description="Entity name on the Form D filing")
     filing_date: date = Field(..., description="Date of the Form D filing")
-    match_confidence: float = Field(
-        ..., ge=0.0, le=1.0, description="Name match confidence (0-1)"
-    )
+    match_confidence: float = Field(..., ge=0.0, le=1.0, description="Name match confidence (0-1)")
 
     model_config = ConfigDict(validate_assignment=True)
 
@@ -165,10 +163,14 @@ class FormDOffering(BaseModel):
     phone: str | None = Field(None, description="Issuer phone number")
 
     # Offering details
-    industry_group: str | None = Field(None, description="e.g., 'Other Technology', 'Biotechnology'")
+    industry_group: str | None = Field(
+        None, description="e.g., 'Other Technology', 'Biotechnology'"
+    )
     revenue_range: str | None = Field(None, description="e.g., 'Decline to Disclose', '$1-$5M'")
     date_of_first_sale: date | None = Field(None, description="When securities were first sold")
-    securities_types: list[str] = Field(default_factory=list, description="e.g., ['debt', 'equity']")
+    securities_types: list[str] = Field(
+        default_factory=list, description="e.g., ['debt', 'equity']"
+    )
     federal_exemption: str | None = Field(None, description="Reg D rule: '06'=506(b), '06b'=506(c)")
 
     # Amounts
@@ -179,7 +181,9 @@ class FormDOffering(BaseModel):
 
     # Investors
     num_investors: int | None = Field(None, description="Number of investors")
-    has_non_accredited: bool | None = Field(None, description="Whether non-accredited investors participated")
+    has_non_accredited: bool | None = Field(
+        None, description="Whether non-accredited investors participated"
+    )
 
     # People
     related_persons: list[dict] = Field(
@@ -189,7 +193,9 @@ class FormDOffering(BaseModel):
 
     # Flags
     is_amendment: bool = Field(default=False, description="Whether this is a D/A amendment")
-    is_business_combination: bool = Field(default=False, description="Business combination transaction flag")
+    is_business_combination: bool = Field(
+        default=False, description="Business combination transaction flag"
+    )
 
     model_config = ConfigDict(validate_assignment=True)
 
@@ -203,11 +209,19 @@ class FormDMatchConfidence(BaseModel):
     # Individual signals (None if not evaluable)
     name_score: float = Field(..., description="Fuzzy name match score")
     person_score: float | None = Field(None, description="Best PI-to-related-person match")
-    person_match_detail: str | None = Field(None, description="e.g., \"PI 'J Smith' <> Dir 'John Smith' (92%)\"")
+    person_match_detail: str | None = Field(
+        None, description="e.g., \"PI 'J Smith' <> Dir 'John Smith' (92%)\""
+    )
     state_score: float | None = Field(None, description="biz_states overlap with SBIR state")
-    address_score: float | None = Field(None, description="ZIP code match between SBIR and Form D address")
-    temporal_score: float | None = Field(None, description="Form D date vs SBIR award date plausibility")
-    year_of_inc_score: float | None = Field(None, description="year_of_inc vs earliest SBIR award year")
+    address_score: float | None = Field(
+        None, description="ZIP code match between SBIR and Form D address"
+    )
+    temporal_score: float | None = Field(
+        None, description="Form D date vs SBIR award date plausibility"
+    )
+    year_of_inc_score: float | None = Field(
+        None, description="year_of_inc vs earliest SBIR award year"
+    )
 
     model_config = ConfigDict(validate_assignment=True)
 
@@ -227,9 +241,7 @@ class CompanyEdgarProfile(BaseModel):
     is_publicly_traded: bool = Field(
         default=False, description="Whether a public filing match was found"
     )
-    match_confidence: float = Field(
-        default=0.0, ge=0.0, le=1.0, description="CIK match confidence"
-    )
+    match_confidence: float = Field(default=0.0, ge=0.0, le=1.0, description="CIK match confidence")
     match_method: str | None = Field(None, description="CIK resolution method")
     ticker: str | None = Field(None, description="Stock ticker if matched")
     sic_code: str | None = Field(None, description="SIC code from EDGAR")
@@ -259,7 +271,7 @@ class CompanyEdgarProfile(BaseModel):
     mention_types: list[str] = Field(
         default_factory=list,
         description="Classified mention types: ma_definitive, ma_proxy, ownership_active, "
-                    "ownership_passive, financial_mention, disclosure, filing_mention",
+        "ownership_passive, financial_mention, disclosure, filing_mention",
     )
     latest_mention_date: date | None = Field(
         None, description="Most recent date this company was mentioned in a filing"
@@ -279,7 +291,7 @@ class CompanyEdgarProfile(BaseModel):
     mention_noise_score: int = Field(
         default=0,
         description="Noise likelihood for filing mentions (0=clean, >=2=likely noise). "
-                    "Based on name distinctiveness and mention-to-award ratio.",
+        "Based on name distinctiveness and mention-to-award ratio.",
     )
 
     # Filing activity

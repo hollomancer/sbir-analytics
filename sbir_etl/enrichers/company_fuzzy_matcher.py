@@ -586,7 +586,11 @@ def enrich_awards_with_companies(
 
         if best_score >= high_threshold:
             _set_award_match(
-                awards, ai, method="fuzzy-auto", score=best_score, company_idx=best_idx,
+                awards,
+                ai,
+                method="fuzzy-auto",
+                score=best_score,
+                company_idx=best_idx,
             )
         elif best_score >= low_threshold:
             _set_award_match(awards, ai, method="fuzzy-candidate", score=best_score)

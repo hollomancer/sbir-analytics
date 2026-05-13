@@ -80,9 +80,7 @@ class SyncUSAspendingClient(_SyncFacade):
     def get_award_by_piid(self, piid: str) -> dict[str, Any] | None:
         return run_sync(self._client.get_award_by_piid(piid))
 
-    def autocomplete_recipient(
-        self, search_text: str, limit: int = 5
-    ) -> dict[str, Any]:
+    def autocomplete_recipient(self, search_text: str, limit: int = 5) -> dict[str, Any]:
         return run_sync(self._client.autocomplete_recipient(search_text, limit))
 
     def search_transactions(
@@ -115,14 +113,10 @@ class SyncUSAspendingClient(_SyncFacade):
             )
         )
 
-    def search_recipients(
-        self, keyword: str, limit: int = 5
-    ) -> list[dict[str, Any]]:
+    def search_recipients(self, keyword: str, limit: int = 5) -> list[dict[str, Any]]:
         return run_sync(self._client.search_recipients(keyword, limit))
 
-    def get_recipient_profile(
-        self, recipient_id: str, year: str = "all"
-    ) -> dict[str, Any] | None:
+    def get_recipient_profile(self, recipient_id: str, year: str = "all") -> dict[str, Any] | None:
         return run_sync(self._client.get_recipient_profile(recipient_id, year))
 
     def fetch_award_details(self, award_id: str) -> dict[str, Any] | None:
@@ -298,26 +292,18 @@ class SyncOpenCorporatesClient(_SyncFacade):
         jurisdiction: str | None = None,
         limit: int = 5,
     ) -> list[dict[str, Any]]:
-        return run_sync(
-            self._client.search_companies(name, jurisdiction, limit)
-        )
+        return run_sync(self._client.search_companies(name, jurisdiction, limit))
 
-    def get_company(
-        self, jurisdiction: str, company_number: str
-    ) -> dict[str, Any] | None:
+    def get_company(self, jurisdiction: str, company_number: str) -> dict[str, Any] | None:
         return run_sync(self._client.get_company(jurisdiction, company_number))
 
-    def get_officers(
-        self, jurisdiction: str, company_number: str
-    ) -> list[Officer]:
+    def get_officers(self, jurisdiction: str, company_number: str) -> list[Officer]:
         return run_sync(self._client.get_officers(jurisdiction, company_number))
 
     def get_corporate_grouping(
         self, jurisdiction: str, company_number: str
     ) -> tuple[str | None, str | None]:
-        return run_sync(
-            self._client.get_corporate_grouping(jurisdiction, company_number)
-        )
+        return run_sync(self._client.get_corporate_grouping(jurisdiction, company_number))
 
     def lookup_company(
         self,
@@ -390,13 +376,9 @@ class SyncLensPatentClient(_SyncFacade):
     def search_patents_by_assignee(
         self, company_name: str, max_results: int = 100
     ) -> list[LensPatentRecord]:
-        return run_sync(
-            self._client.search_patents_by_assignee(company_name, max_results)
-        )
+        return run_sync(self._client.search_patents_by_assignee(company_name, max_results))
 
     def search_patents_by_inventor(
         self, inventor_name: str, max_results: int = 50
     ) -> list[LensPatentRecord]:
-        return run_sync(
-            self._client.search_patents_by_inventor(inventor_name, max_results)
-        )
+        return run_sync(self._client.search_patents_by_inventor(inventor_name, max_results))
