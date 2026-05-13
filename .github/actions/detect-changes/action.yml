@@ -3,15 +3,28 @@ description: Reusable change detection with configurable path filters
 
 inputs:
   filters:
-    description: YAML string of path filters (same format as dorny/paths-filter)
+    description: |
+      YAML string of path filters (same format as dorny/paths-filter).
+      Evaluated with default "some" semantics: a filter is true if at least
+      one changed file matches the filter.
     required: true
+  every-file-filters:
+    description: |
+      YAML string of path filters evaluated with "every file matches" semantics
+      (dorny/paths-filter `predicate-quantifier: 'every'`). Currently only the
+      `docs-only` filter is wired through to a named output; add more outputs
+      below if you need to expose additional every-file filters.
+    required: false
+    default: ''
 
 outputs:
-  # Common outputs
+  # Common outputs. `docs-only` is sourced from the every_filter step (run
+  # only when `every-file-filters` is non-empty) and falls back to 'false'
+  # so callers can always compare against a stable boolean string.
   docs-only:
-    description: Whether only documentation files changed
-    value: ${{ steps.filter.outputs.docs-only }}
-  # CI-specific outputs
+    description: Whether only documentation files changed (every-file semantics)
+    value: ${{ steps.every_filter.outputs.docs-only || 'false' }}
+  # CI-specific outputs (some-file semantics)
   performance:
     description: Whether performance-related files changed
     value: ${{ steps.filter.outputs.performance }}
@@ -44,3 +57,12 @@ runs:
       id: filter
       with:
         filters: ${{ inputs.filters }}
+
+    # Evaluate every-file-filters separately with predicate-quantifier='every'
+    # so e.g. `docs-only` is true only when EVERY changed file is a doc.
+    - if: inputs.every-file-filters != ''
+      uses: dorny/paths-filter@v4
+      id: every_filter
+      with:
+        filters: ${{ inputs.every-file-filters }}
+        predicate-quantifier: 'every'
