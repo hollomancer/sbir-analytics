@@ -7,7 +7,11 @@ inputs:
     required: false
     default: "3.11"
   install-dev-deps:
-    description: Whether to install dev dependencies
+    description: |
+      Whether to install dev dependencies. When "true", installs the
+      `stack-dev` meta-extra (covers sbir-etl[dev] plus the workspace
+      packages: sbir-ml, sbir-graph, sbir-rag, sbir-analytics — the
+      latter pulling in dagster). When "false", runs `uv sync --no-dev`.
     required: false
     default: "true"
   cache-venv:
@@ -96,10 +100,12 @@ runs:
 
     - name: Install dependencies
       run: |
-        # Fiscal analysis uses BEA REST API (no R/rpy2 required)
-        # Use install-r-deps input to include them when R is installed
+        # `stack-dev` is the meta-extra that includes sbir-etl[dev] plus the
+        # four workspace packages (sbir-ml, sbir-graph, sbir-rag,
+        # sbir-analytics). Without it, tests that import dagster, neo4j
+        # loaders, or ML pieces fail with ModuleNotFoundError.
         if [ "${{ inputs.install-dev-deps }}" = "true" ]; then
-          uv sync --extra dev
+          uv sync --extra stack-dev
         else
           uv sync --no-dev
         fi
