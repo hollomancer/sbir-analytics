@@ -321,8 +321,12 @@ class DuckDBClient:
 
             try:
                 with self.connection() as conn:  # type: Any
-                    # Register DataFrame
-                    conn.register("temp_df", df)
+                    # Register via PyArrow so pandas 3's StringDtype columns (which
+                    # DuckDB doesn't introspect) survive the trip. PyArrow handles
+                    # all pandas dtype edge cases uniformly.
+                    import pyarrow as pa
+
+                    conn.register("temp_df", pa.Table.from_pandas(df))
                     table_identifier = self.escape_identifier(table_name)
                     conn.execute(f"CREATE TABLE {table_identifier} AS SELECT * FROM temp_df")  # nosec B608
 
@@ -487,7 +491,10 @@ class DuckDBClient:
                         header=0 if header else None,
                         encoding=encoding,
                         chunksize=batch_size,
-                        dtype=str,  # read as strings to avoid type surprises; downstream logic can cast
+                        # Use numpy `object` rather than `str`: under pandas 3 the
+                        # latter resolves to StringDtype, which DuckDB doesn't
+                        # know how to ingest via register().
+                        dtype=object,
                         low_memory=False,
                         quoting=csv.QUOTE_MINIMAL,
                         quotechar='"',
