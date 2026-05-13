@@ -58,6 +58,20 @@ jobs:
         id: detect
         uses: ./.github/actions/detect-changes
         with:
+          # docs-only uses every-file semantics — true only when EVERY changed
+          # file is a doc. Otherwise a mixed PR (code + docs) would skip CI.
+          every-file-filters: |
+            docs-only:
+              - '**/*.md'
+              - 'docs/**'
+              - '!**/*.py'
+              - '!**/*.yaml'
+              - '!**/*.yml'
+              - '!**/*.json'
+              - '!**/*.toml'
+              - '!**/*.lock'
+              - '!Makefile'
+              - '!.github/**'
           filters: |
             performance:
               - 'src/enrichers/**'
@@ -92,17 +106,6 @@ jobs:
               - '.github/actions/**'
             infrastructure:
               - 'infrastructure/cdk/**'
-            docs-only:
-              - '**/*.md'
-              - 'docs/**'
-              - '!**/*.py'
-              - '!**/*.yaml'
-              - '!**/*.yml'
-              - '!**/*.json'
-              - '!**/*.toml'
-              - '!**/*.lock'
-              - '!Makefile'
-              - '!.github/**'
 
   code-quality:
     name: Code Quality (Lint + Type Check)
