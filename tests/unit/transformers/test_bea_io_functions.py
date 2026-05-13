@@ -1,6 +1,6 @@
 """Tests for BEA I-O functions."""
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pandas as pd
 import pytest
@@ -76,12 +76,14 @@ class TestValueAddedRatioCalculation:
 
     def test_calculate_ratios_with_zero_total(self):
         """Test ratio calculation handles zero total value added gracefully."""
-        va_df = pd.DataFrame([
-            {"ColCode": "11", "RowDescription": "Compensation of employees", "DataValue": "0"},
-            {"ColCode": "11", "RowDescription": "Gross operating surplus", "DataValue": "0"},
-            {"ColCode": "11", "RowDescription": "Taxes on production", "DataValue": "0"},
-            {"ColCode": "11", "RowDescription": "Total value added", "DataValue": "0"},
-        ])
+        va_df = pd.DataFrame(
+            [
+                {"ColCode": "11", "RowDescription": "Compensation of employees", "DataValue": "0"},
+                {"ColCode": "11", "RowDescription": "Gross operating surplus", "DataValue": "0"},
+                {"ColCode": "11", "RowDescription": "Taxes on production", "DataValue": "0"},
+                {"ColCode": "11", "RowDescription": "Total value added", "DataValue": "0"},
+            ]
+        )
         result = bea_io.calculate_value_added_ratios(va_df)
         assert isinstance(result, pd.DataFrame)
 
@@ -179,10 +181,12 @@ class TestMatrixCalculations:
             index=["11", "21"],
             columns=["11", "21"],
         )
-        shocks_df = pd.DataFrame({
-            "bea_sector": ["11", "21"],
-            "shock_amount": [1000.0, 500.0],
-        })
+        shocks_df = pd.DataFrame(
+            {
+                "bea_sector": ["11", "21"],
+                "shock_amount": [1000.0, 500.0],
+            }
+        )
 
         production = bea_io.apply_demand_shocks(leontief_inv, shocks_df)
 
@@ -222,15 +226,17 @@ class TestEmploymentFromProduction:
         Production is in millions (BEA units), coefficients are jobs per $1M.
         """
         production = pd.Series([1.0, 0.5], index=["11", "21"])  # $1M, $0.5M
-        coefficients = pd.DataFrame({
-            "sector": ["11", "21"],
-            "employment": [2000, 1000],
-            "employment_coefficient": [20.0, 10.0],  # jobs per $1M
-        })
+        coefficients = pd.DataFrame(
+            {
+                "sector": ["11", "21"],
+                "employment": [2000, 1000],
+                "employment_coefficient": [20.0, 10.0],  # jobs per $1M
+            }
+        )
 
         jobs = bea_io.calculate_employment_from_production(production, coefficients)
         assert jobs["11"] == 20.0  # 1.0 * 20
-        assert jobs["21"] == 5.0   # 0.5 * 10
+        assert jobs["21"] == 5.0  # 0.5 * 10
 
     def test_without_coefficients(self):
         """Test employment calculation falls back to default (~10 jobs/$1M)."""

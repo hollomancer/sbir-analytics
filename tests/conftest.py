@@ -92,7 +92,6 @@ def cached_sbir_sample_df(sbir_sample_csv_path: Path):
     return pd.read_csv(sbir_sample_csv_path)
 
 
-
 # SBIR Data Fixtures
 # ===================
 

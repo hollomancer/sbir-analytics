@@ -2,7 +2,6 @@
 
 from unittest.mock import MagicMock, patch
 
-import pandas as pd
 import pytest
 
 from sbir_etl.exceptions import APIError, ConfigurationError
@@ -78,11 +77,7 @@ class TestBEAApiClientRequests:
 
         mock_response = MagicMock()
         mock_response.json.return_value = {
-            "BEAAPI": {
-                "Results": {
-                    "Data": [{"RowCode": "11", "DataValue": "100"}]
-                }
-            }
+            "BEAAPI": {"Results": {"Data": [{"RowCode": "11", "DataValue": "100"}]}}
         }
         mock_response.raise_for_status = MagicMock()
         mock_get.return_value = mock_response
@@ -101,9 +96,7 @@ class TestBEAApiClientRequests:
         mock_response = MagicMock()
         mock_response.json.return_value = {
             "BEAAPI": {
-                "Results": {
-                    "Error": {"APIErrorCode": "40", "APIErrorDescription": "Invalid table"}
-                }
+                "Results": {"Error": {"APIErrorCode": "40", "APIErrorDescription": "Invalid table"}}
             }
         }
         mock_response.raise_for_status = MagicMock()

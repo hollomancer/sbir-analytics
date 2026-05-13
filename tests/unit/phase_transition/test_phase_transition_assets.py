@@ -216,9 +216,7 @@ def test_pairs_and_survival_end_to_end():
     assert bool(lookup["C_II_1"]["same_agency"]) is True
 
     # Negative latency must be preserved (not clipped).
-    assert lookup["C_II_3"]["latency_days"] == (
-        date(2023, 9, 1) - date(2024, 1, 1)
-    ).days
+    assert lookup["C_II_3"]["latency_days"] == (date(2023, 9, 1) - date(2024, 1, 1)).days
     assert lookup["C_II_3"]["latency_days"] < 0
 
     # DUNS fallback path.
@@ -235,9 +233,7 @@ def test_pairs_and_survival_end_to_end():
     # Censored row's event_date equals the data-cut date.
     assert s.loc["C_II_2", "event_date"] == data_cut
     # time_days for censored row = data_cut - phase_ii_end_date.
-    assert s.loc["C_II_2", "time_days"] == (
-        data_cut - date(2023, 6, 30)
-    ).days
+    assert s.loc["C_II_2", "time_days"] == (data_cut - date(2023, 6, 30)).days
 
 
 def test_build_pairs_no_double_counting_on_duns_when_uei_already_matched():

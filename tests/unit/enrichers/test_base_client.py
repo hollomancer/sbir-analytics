@@ -111,18 +111,14 @@ class TestRateLimiting:
 
         assert len(client.request_times) == 11
 
-    async def test_records_timestamp_on_every_call(
-        self, client: _StubAPIClient
-    ) -> None:
+    async def test_records_timestamp_on_every_call(self, client: _StubAPIClient) -> None:
         assert client.request_times == []
         await client._wait_for_rate_limit()
         assert len(client.request_times) == 1
         await client._wait_for_rate_limit()
         assert len(client.request_times) == 2
 
-    async def test_evicts_timestamps_older_than_sixty_seconds(
-        self, client: _StubAPIClient
-    ) -> None:
+    async def test_evicts_timestamps_older_than_sixty_seconds(self, client: _StubAPIClient) -> None:
         """Timestamps outside the 60s window are purged before the check."""
         old = datetime.now() - timedelta(seconds=90)
         for _ in range(client.rate_limit_per_minute):
@@ -207,9 +203,7 @@ class TestMakeRequestSuccess:
         payload = {"created": "abc"}
         mock_http_client.post.return_value = _make_mock_response(200, payload)
 
-        result = await client._make_request(
-            "POST", "/things", params={"name": "widget"}
-        )
+        result = await client._make_request("POST", "/things", params={"name": "widget"})
 
         assert result == payload
         call_kwargs = mock_http_client.post.call_args[1]
@@ -290,9 +284,7 @@ class TestMakeRequestSuccess:
     ) -> None:
         mock_http_client.get.return_value = _make_mock_response(200, {})
 
-        await client._make_request(
-            "GET", "/things", headers={"User-Agent": "Custom/9.9"}
-        )
+        await client._make_request("GET", "/things", headers={"User-Agent": "Custom/9.9"})
 
         call_headers = mock_http_client.get.call_args[1]["headers"]
         assert call_headers["User-Agent"] == "Custom/9.9"

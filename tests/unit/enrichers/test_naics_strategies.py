@@ -22,7 +22,9 @@ from sbir_etl.enrichers.naics.fiscal.strategies.simple_strategies import Origina
 from sbir_etl.enrichers.naics.fiscal.strategies.simple_strategies import SectorFallbackStrategy
 from sbir_etl.enrichers.naics.fiscal.strategies.text_inference import TextInferenceStrategy
 from sbir_etl.enrichers.naics.fiscal.strategies.simple_strategies import TopicCodeStrategy
-from sbir_etl.enrichers.naics.fiscal.strategies.usaspending_dataframe import USAspendingDataFrameStrategy
+from sbir_etl.enrichers.naics.fiscal.strategies.usaspending_dataframe import (
+    USAspendingDataFrameStrategy,
+)
 from sbir_etl.enrichers.naics.fiscal.utils import normalize_naics_code, validate_naics_code
 
 

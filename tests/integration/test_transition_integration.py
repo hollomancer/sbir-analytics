@@ -188,9 +188,7 @@ class TestScoringCorrectness:
         }
 
         _, score_no_pat, _ = scorer.score_and_classify(award, contract)
-        _, score_with_pat, _ = scorer.score_and_classify(
-            award, contract, patent_data=patent_data
-        )
+        _, score_with_pat, _ = scorer.score_and_classify(award, contract, patent_data=patent_data)
 
         assert score_with_pat > score_no_pat
 
@@ -232,8 +230,7 @@ class TestScoringCorrectness:
         # Composite should be well above base_score
         base = detector_config.get("base_score", 0.15)
         assert score > base + 0.15, (
-            f"All-positive score ({score:.3f}) should be significantly above "
-            f"base_score ({base})"
+            f"All-positive score ({score:.3f}) should be significantly above base_score ({base})"
         )
 
     def test_minimal_signals_produces_possible_confidence(self, detector_config):

@@ -261,7 +261,12 @@ class TestAggregateCompanyClassification:
     def test_psc_diversity_override_to_mixed(self):
         # >6 PSC families should trigger Mixed override
         contracts = [
-            {"award_id": f"C{i}", "classification": "Product", "award_amount": 100000, "psc": f"{chr(65 + i)}123"}
+            {
+                "award_id": f"C{i}",
+                "classification": "Product",
+                "award_amount": 100000,
+                "psc": f"{chr(65 + i)}123",
+            }
             for i in range(8)  # 8 different PSC families (A-H)
         ]
         result = aggregate_company_classification(contracts, "UEI005", "Diverse Corp")
@@ -282,7 +287,12 @@ class TestAggregateConfidenceLevels:
 
     def test_medium_confidence_three_to_five_awards(self):
         contracts = [
-            {"award_id": f"C{i}", "classification": "Product", "award_amount": 100000, "psc": "1234"}
+            {
+                "award_id": f"C{i}",
+                "classification": "Product",
+                "award_amount": 100000,
+                "psc": "1234",
+            }
             for i in range(4)
         ]
         result = aggregate_company_classification(contracts, "UEI011", "Med Co")
@@ -290,7 +300,12 @@ class TestAggregateConfidenceLevels:
 
     def test_high_confidence_more_than_five_awards(self):
         contracts = [
-            {"award_id": f"C{i}", "classification": "Product", "award_amount": 100000, "psc": "1234"}
+            {
+                "award_id": f"C{i}",
+                "classification": "Product",
+                "award_amount": 100000,
+                "psc": "1234",
+            }
             for i in range(7)
         ]
         result = aggregate_company_classification(contracts, "UEI012", "High Co")
@@ -330,7 +345,12 @@ class TestAggregateOutputFields:
 
     def test_award_count_matches_input(self):
         contracts = [
-            {"award_id": f"C{i}", "classification": "Product", "award_amount": 100000, "psc": "1234"}
+            {
+                "award_id": f"C{i}",
+                "classification": "Product",
+                "award_amount": 100000,
+                "psc": "1234",
+            }
             for i in range(5)
         ]
         result = aggregate_company_classification(contracts, "UEI023", "Test Co")
@@ -339,9 +359,24 @@ class TestAggregateOutputFields:
     def test_company_identifiers_stored(self):
         result = aggregate_company_classification(
             [
-                {"award_id": "C1", "classification": "Product", "award_amount": 100000, "psc": "1234"},
-                {"award_id": "C2", "classification": "Product", "award_amount": 100000, "psc": "5678"},
-                {"award_id": "C3", "classification": "Product", "award_amount": 100000, "psc": "9012"},
+                {
+                    "award_id": "C1",
+                    "classification": "Product",
+                    "award_amount": 100000,
+                    "psc": "1234",
+                },
+                {
+                    "award_id": "C2",
+                    "classification": "Product",
+                    "award_amount": 100000,
+                    "psc": "5678",
+                },
+                {
+                    "award_id": "C3",
+                    "classification": "Product",
+                    "award_amount": 100000,
+                    "psc": "9012",
+                },
             ],
             "MY_UEI_123",
             "Acme Corp",
@@ -414,20 +449,22 @@ class TestRetrieveCompanyContracts:
     def test_uei_query_returns_contracts(self):
         """When UEI is provided, extractor is called and results returned."""
         mock_extractor = MagicMock()
-        sample_data = pd.DataFrame({
-            "award_id": ["AWD001", "AWD002"],
-            "psc": ["1234", "R425"],
-            "contract_type": ["FFP", "CPFF"],
-            "pricing": ["FFP", "CPFF"],
-            "description": ["Prototype device", "Consulting services"],
-            "award_amount": [100000.0, 200000.0],
-            "recipient_uei": ["UEI123", "UEI123"],
-            "awardee_or_recipient_uei": ["UEI123", "UEI123"],
-            "recipient_duns": [None, None],
-            "cage_code": [None, None],
-            "action_date": ["2024-01-01", "2024-02-01"],
-            "fiscal_year": [2024, 2024],
-        })
+        sample_data = pd.DataFrame(
+            {
+                "award_id": ["AWD001", "AWD002"],
+                "psc": ["1234", "R425"],
+                "contract_type": ["FFP", "CPFF"],
+                "pricing": ["FFP", "CPFF"],
+                "description": ["Prototype device", "Consulting services"],
+                "award_amount": [100000.0, 200000.0],
+                "recipient_uei": ["UEI123", "UEI123"],
+                "awardee_or_recipient_uei": ["UEI123", "UEI123"],
+                "recipient_duns": [None, None],
+                "cage_code": [None, None],
+                "action_date": ["2024-01-01", "2024-02-01"],
+                "fiscal_year": [2024, 2024],
+            }
+        )
         mock_conn = MagicMock()
         mock_conn.execute.return_value.fetchdf.return_value = sample_data
         mock_extractor.connect.return_value = mock_conn

@@ -8,7 +8,10 @@ import pytest
 
 pytestmark = pytest.mark.fast
 
-from sbir_etl.transformers.fiscal.components import ComponentValidationResult, FiscalComponentCalculator
+from sbir_etl.transformers.fiscal.components import (
+    ComponentValidationResult,
+    FiscalComponentCalculator,
+)
 
 
 # sample_impacts_df fixture is now in tests/unit/transformers/conftest.py

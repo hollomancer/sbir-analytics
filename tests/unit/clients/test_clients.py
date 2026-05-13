@@ -3,10 +3,8 @@
 from __future__ import annotations
 
 import json
-import tempfile
 from datetime import datetime, timedelta
-from pathlib import Path
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 
 import pytest
 
@@ -180,7 +178,7 @@ class TestMetricsCollector:
 
 class TestReExports:
     def test_neo4j_classes_importable(self):
-        from sbir_analytics.clients import Neo4jClient, Neo4jConfig, Neo4jHealthStatus, Neo4jStatistics
+        from sbir_analytics.clients import Neo4jClient
 
         # Verify they're the actual sbir-graph classes
         from sbir_graph.loaders.neo4j.client import Neo4jClient as GraphClient
@@ -191,8 +189,14 @@ class TestReExports:
         from sbir_analytics import clients
 
         expected = {
-            "AssetStatus", "DagsterClient", "MetricsCollector",
-            "Neo4jClient", "Neo4jConfig", "Neo4jHealthStatus",
-            "Neo4jStatistics", "PipelineMetrics", "RunResult",
+            "AssetStatus",
+            "DagsterClient",
+            "MetricsCollector",
+            "Neo4jClient",
+            "Neo4jConfig",
+            "Neo4jHealthStatus",
+            "Neo4jStatistics",
+            "PipelineMetrics",
+            "RunResult",
         }
         assert expected.issubset(set(clients.__all__))

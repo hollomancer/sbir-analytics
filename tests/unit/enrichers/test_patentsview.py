@@ -99,7 +99,7 @@ class TestEscapeLuceneQuery:
     def test_escapes_common_special_chars(self):
         assert PatentsViewClient._escape_lucene_query("a+b") == r"a\+b"
         assert PatentsViewClient._escape_lucene_query("a:b") == r"a\:b"
-        assert PatentsViewClient._escape_lucene_query('a"b') == r'a\"b'
+        assert PatentsViewClient._escape_lucene_query('a"b') == r"a\"b"
 
     def test_leaves_plain_text_unchanged(self):
         assert PatentsViewClient._escape_lucene_query("Acme Corp") == "Acme Corp"

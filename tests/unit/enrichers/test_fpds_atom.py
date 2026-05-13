@@ -171,9 +171,7 @@ class TestInitialization:
 
 
 class TestSharedLimiterOverride:
-    async def test_shared_limiter_invoked(
-        self, mock_http_client: AsyncMock
-    ) -> None:
+    async def test_shared_limiter_invoked(self, mock_http_client: AsyncMock) -> None:
         shared = RateLimiter(rate_limit_per_minute=30)
         shared.wait_if_needed = MagicMock()  # type: ignore[method-assign]
         c = FPDSAtomClient(shared_limiter=shared, http_client=mock_http_client)
@@ -266,9 +264,7 @@ class TestSearchByPiid:
 
 
 class TestSearchByVendor:
-    async def test_with_uei(
-        self, client: FPDSAtomClient, mock_http_client: AsyncMock
-    ) -> None:
+    async def test_with_uei(self, client: FPDSAtomClient, mock_http_client: AsyncMock) -> None:
         mock_http_client.get.return_value = _mock_response(200, SAMPLE_ATOM_ENTRY)
 
         records = await client.search_by_vendor(uei="ABC123DEF456")
@@ -277,9 +273,7 @@ class TestSearchByVendor:
         call_kwargs = mock_http_client.get.call_args[1]
         assert "VENDOR_UEI_NUMBER" in call_kwargs["params"]["q"]
 
-    async def test_with_name(
-        self, client: FPDSAtomClient, mock_http_client: AsyncMock
-    ) -> None:
+    async def test_with_name(self, client: FPDSAtomClient, mock_http_client: AsyncMock) -> None:
         mock_http_client.get.return_value = _mock_response(200, EMPTY_FEED)
 
         await client.search_by_vendor(name="Acme Corp")

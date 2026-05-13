@@ -168,7 +168,9 @@ class TestFiscalPipelineIntegration:
     @patch("sbir_etl.enrichers.geographic_resolver.resolve_award_geography")
     @patch("sbir_etl.enrichers.inflation_adjuster.adjust_awards_for_inflation")
     @patch("sbir_etl.enrichers.fiscal_bea_mapper.enrich_awards_with_bea_sectors")
-    @patch("sbir_etl.transformers.fiscal.shocks.FiscalShockAggregator.aggregate_shocks_to_dataframe")
+    @patch(
+        "sbir_etl.transformers.fiscal.shocks.FiscalShockAggregator.aggregate_shocks_to_dataframe"
+    )
     @patch("sbir_etl.transformers.bea_io_adapter.BEAIOAdapter._compute_impacts_bea")
     @patch("sbir_etl.transformers.bea_io_adapter.BEAIOAdapter.is_available")
     def test_end_to_end_pipeline(

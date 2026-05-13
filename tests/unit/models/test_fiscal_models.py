@@ -10,11 +10,8 @@ from pydantic import ValidationError
 pytestmark = pytest.mark.fast
 
 from sbir_etl.models.fiscal_models import (
-    EconomicShock,
-    FiscalReturnSummary,
     GeographicResolution,
     InflationAdjustment,
-    NAICSMapping,
     TaxImpactEstimate,
 )
 from tests.factories import EconomicShockFactory, FiscalReturnSummaryFactory, NAICSMappingFactory

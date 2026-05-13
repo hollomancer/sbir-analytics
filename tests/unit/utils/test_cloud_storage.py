@@ -154,7 +154,9 @@ class TestBuildS3Path:
 
     def test_build_s3_path_with_env_bucket(self):
         """Test build_s3_path uses env var when bucket not provided."""
-        with patch("sbir_etl.utils.cloud_storage.get_s3_bucket_from_env", return_value="env-bucket"):
+        with patch(
+            "sbir_etl.utils.cloud_storage.get_s3_bucket_from_env", return_value="env-bucket"
+        ):
             result = build_s3_path("data/raw/file.csv")
 
             assert result == "s3://env-bucket/data/raw/file.csv"
@@ -232,9 +234,7 @@ class TestCheckSbirDataFreshness:
         assert len(warnings_default) == 1
 
         # With slack=10, 12 days < 7+10=17 → fresh
-        warnings_custom = check_sbir_data_freshness(
-            source, None, days=7, s3_slack_days=10
-        )
+        warnings_custom = check_sbir_data_freshness(source, None, days=7, s3_slack_days=10)
         assert warnings_custom == []
 
     def test_edge_case_exactly_at_threshold(self):

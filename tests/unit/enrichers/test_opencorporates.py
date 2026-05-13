@@ -63,9 +63,7 @@ class TestDataClasses:
         assert o.position is None
 
     def test_corporate_record_defaults(self):
-        r = CorporateRecord(
-            company_name="Acme", jurisdiction="us_va", company_number="123"
-        )
+        r = CorporateRecord(company_name="Acme", jurisdiction="us_va", company_number="123")
         assert r.officers == []
         assert r.parent_company is None
 
@@ -97,9 +95,7 @@ class TestTokenInjection:
     async def test_token_appended_to_params(
         self, client: OpenCorporatesClient, mock_http_client: AsyncMock
     ) -> None:
-        mock_http_client.get.return_value = _mock_response(
-            200, {"results": {"companies": []}}
-        )
+        mock_http_client.get.return_value = _mock_response(200, {"results": {"companies": []}})
 
         await client.search_companies("Test Corp")
 
@@ -134,17 +130,11 @@ class TestTokenInjection:
 
 
 class TestSharedLimiter:
-    async def test_shared_limiter_invoked(
-        self, mock_http_client: AsyncMock
-    ) -> None:
+    async def test_shared_limiter_invoked(self, mock_http_client: AsyncMock) -> None:
         shared = RateLimiter(rate_limit_per_minute=30)
         shared.wait_if_needed = MagicMock()  # type: ignore[method-assign]
-        c = OpenCorporatesClient(
-            api_token="t", shared_limiter=shared, http_client=mock_http_client
-        )
-        mock_http_client.get.return_value = _mock_response(
-            200, {"results": {"companies": []}}
-        )
+        c = OpenCorporatesClient(api_token="t", shared_limiter=shared, http_client=mock_http_client)
+        mock_http_client.get.return_value = _mock_response(200, {"results": {"companies": []}})
 
         await c.search_companies("x")
 
@@ -158,9 +148,7 @@ class TestSearchCompanies:
     async def test_with_jurisdiction(
         self, client: OpenCorporatesClient, mock_http_client: AsyncMock
     ) -> None:
-        mock_http_client.get.return_value = _mock_response(
-            200, {"results": {"companies": []}}
-        )
+        mock_http_client.get.return_value = _mock_response(200, {"results": {"companies": []}})
 
         await client.search_companies("Test Corp", jurisdiction="us_va")
 
@@ -274,9 +262,7 @@ class TestLookupCompany:
     async def test_no_search_match_returns_none(
         self, client: OpenCorporatesClient, mock_http_client: AsyncMock
     ) -> None:
-        mock_http_client.get.return_value = _mock_response(
-            200, {"results": {"companies": []}}
-        )
+        mock_http_client.get.return_value = _mock_response(200, {"results": {"companies": []}})
 
         assert await client.lookup_company("Nonexistent") is None
 
@@ -354,9 +340,7 @@ class TestGetOfficers:
     async def test_empty_returns_empty_list(
         self, client: OpenCorporatesClient, mock_http_client: AsyncMock
     ) -> None:
-        mock_http_client.get.return_value = _mock_response(
-            200, {"results": {"officers": []}}
-        )
+        mock_http_client.get.return_value = _mock_response(200, {"results": {"officers": []}})
 
         officers = await client.get_officers("us_va", "123")
 

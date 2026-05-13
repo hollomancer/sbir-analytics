@@ -6,7 +6,10 @@ import pandas as pd
 import pytest
 
 from sbir_ml.transition.evaluation.evaluator import TransitionEvaluator
-from sbir_ml.transition.performance.monitoring import PerformanceTracker, profile_detection_performance
+from sbir_ml.transition.performance.monitoring import (
+    PerformanceTracker,
+    profile_detection_performance,
+)
 
 
 pytestmark = [pytest.mark.e2e, pytest.mark.slow]

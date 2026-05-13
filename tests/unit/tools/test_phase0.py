@@ -3,7 +3,11 @@
 import pytest
 import pandas as pd
 
-from sbir_analytics.tools.phase0.resolve_entities import ResolveEntitiesTool, _normalize_name, _generate_canonical_id
+from sbir_analytics.tools.phase0.resolve_entities import (
+    ResolveEntitiesTool,
+    _normalize_name,
+    _generate_canonical_id,
+)
 
 
 class TestNormalizeName:
@@ -50,18 +54,22 @@ class TestResolveEntitiesTool:
     def test_basic_resolution(self):
         tool = ResolveEntitiesTool()
 
-        sam = pd.DataFrame({
-            "unique_entity_id": ["UEI001", "UEI002"],
-            "legal_business_name": ["Acme Corp", "Widget Inc"],
-            "physical_address_state": ["CA", "MA"],
-            "naics_code": ["541511", "541512"],
-        })
+        sam = pd.DataFrame(
+            {
+                "unique_entity_id": ["UEI001", "UEI002"],
+                "legal_business_name": ["Acme Corp", "Widget Inc"],
+                "physical_address_state": ["CA", "MA"],
+                "naics_code": ["541511", "541512"],
+            }
+        )
 
-        sbir = pd.DataFrame({
-            "company": ["Acme Corporation", "Widget Inc", "Unknown Co"],
-            "state": ["CA", "MA", "TX"],
-            "uei": ["UEI001", "UEI002", ""],
-        })
+        sbir = pd.DataFrame(
+            {
+                "company": ["Acme Corporation", "Widget Inc", "Unknown Co"],
+                "state": ["CA", "MA", "TX"],
+                "uei": ["UEI001", "UEI002", ""],
+            }
+        )
 
         result = tool.run(sam_entities=sam, sbir_companies=sbir)
         assert result.metadata.tool_name == "resolve_entities"
@@ -72,17 +80,21 @@ class TestResolveEntitiesTool:
     def test_uei_exact_match(self):
         tool = ResolveEntitiesTool()
 
-        sam = pd.DataFrame({
-            "unique_entity_id": ["UEI001"],
-            "legal_business_name": ["Acme Corp"],
-            "physical_address_state": ["CA"],
-        })
+        sam = pd.DataFrame(
+            {
+                "unique_entity_id": ["UEI001"],
+                "legal_business_name": ["Acme Corp"],
+                "physical_address_state": ["CA"],
+            }
+        )
 
-        sbir = pd.DataFrame({
-            "company": ["ACME CORPORATION"],
-            "state": ["CA"],
-            "uei": ["UEI001"],
-        })
+        sbir = pd.DataFrame(
+            {
+                "company": ["ACME CORPORATION"],
+                "state": ["CA"],
+                "uei": ["UEI001"],
+            }
+        )
 
         result = tool.run(sam_entities=sam, sbir_companies=sbir)
         stats = result.data["stats"]
@@ -97,11 +109,13 @@ class TestResolveEntitiesTool:
 
     def test_metadata_populated(self):
         tool = ResolveEntitiesTool()
-        sam = pd.DataFrame({
-            "unique_entity_id": ["UEI001"],
-            "legal_business_name": ["Acme Corp"],
-            "physical_address_state": ["CA"],
-        })
+        sam = pd.DataFrame(
+            {
+                "unique_entity_id": ["UEI001"],
+                "legal_business_name": ["Acme Corp"],
+                "physical_address_state": ["CA"],
+            }
+        )
         result = tool.run(sam_entities=sam)
         assert len(result.metadata.data_sources) >= 1
         assert result.metadata.data_sources[0].name == "SAM.gov Entity Data"
@@ -111,18 +125,22 @@ class TestResolveEntitiesTool:
         tool = ResolveEntitiesTool()
 
         # Provide SAM data so fuzzy matching path is exercised
-        sam = pd.DataFrame({
-            "unique_entity_id": ["UEI999"],
-            "legal_business_name": ["Completely Different Corp"],
-            "physical_address_state": ["NY"],
-        })
+        sam = pd.DataFrame(
+            {
+                "unique_entity_id": ["UEI999"],
+                "legal_business_name": ["Completely Different Corp"],
+                "physical_address_state": ["NY"],
+            }
+        )
 
-        sbir = pd.DataFrame({
-            "company": ["Totally New Company"],
-            "state": ["TX"],
-            "uei": [""],
-            "duns": [""],
-        })
+        sbir = pd.DataFrame(
+            {
+                "company": ["Totally New Company"],
+                "state": ["TX"],
+                "uei": [""],
+                "duns": [""],
+            }
+        )
 
         result = tool.run(sam_entities=sam, sbir_companies=sbir)
         stats = result.data["stats"]
@@ -134,6 +152,7 @@ class TestExtractSAMEntitiesTool:
 
     def test_import(self):
         from sbir_analytics.tools.phase0.extract_sam_entities import ExtractSAMEntitiesTool
+
         tool = ExtractSAMEntitiesTool()
         assert tool.name == "extract_sam_entities"
         assert tool.version == "1.0.0"
@@ -144,11 +163,13 @@ class TestExtractFPDSContractsTool:
 
     def test_import(self):
         from sbir_analytics.tools.phase0.extract_fpds_contracts import ExtractFPDSContractsTool
+
         tool = ExtractFPDSContractsTool()
         assert tool.name == "extract_fpds_contracts"
 
     def test_requires_input(self):
         from sbir_analytics.tools.phase0.extract_fpds_contracts import ExtractFPDSContractsTool
+
         tool = ExtractFPDSContractsTool()
         with pytest.raises(ValueError, match="Must provide either"):
             tool.run()

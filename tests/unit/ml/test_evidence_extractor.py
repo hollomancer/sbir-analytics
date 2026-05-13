@@ -18,7 +18,12 @@ import pytest
 
 from sbir_etl.exceptions import ValidationError
 from sbir_ml.ml.features.evidence_extractor import EvidenceExtractor
-from sbir_etl.models.cet_models import CETArea, CETClassification, ClassificationLevel, EvidenceStatement
+from sbir_etl.models.cet_models import (
+    CETArea,
+    CETClassification,
+    ClassificationLevel,
+    EvidenceStatement,
+)
 
 
 pytestmark = pytest.mark.fast

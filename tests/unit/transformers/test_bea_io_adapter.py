@@ -56,9 +56,9 @@ class TestBEAIOAdapterInitialization:
 
     @patch(
         "sbir_etl.transformers.bea_io_adapter.BEAApiClient",
-        side_effect=__import__("sbir_etl.exceptions", fromlist=["ConfigurationError"]).ConfigurationError(
-            "BEA_API_KEY not set", component="test", operation="test"
-        ),
+        side_effect=__import__(
+            "sbir_etl.exceptions", fromlist=["ConfigurationError"]
+        ).ConfigurationError("BEA_API_KEY not set", component="test", operation="test"),
     )
     def test_init_no_api_key(self, mock_client_cls, mock_config):
         """Test initialization falls back when BEA_API_KEY not set."""
@@ -250,9 +250,7 @@ class TestBEAIOAdapterIntegration:
 
         from sbir_etl.transformers.bea_io_adapter import BEAIOAdapter
 
-        adapter = BEAIOAdapter(
-            config=mock_config, cache_enabled=True, cache_dir=str(tmp_path)
-        )
+        adapter = BEAIOAdapter(config=mock_config, cache_enabled=True, cache_dir=str(tmp_path))
 
         result1 = adapter.compute_impacts(sample_shocks)
         assert len(result1) == 3

@@ -6,7 +6,10 @@ import pandas as pd
 import pytest
 
 from sbir_etl.exceptions import ValidationError
-from sbir_etl.transformers.economic_model_interface import EconomicImpactResult, validate_shocks_input
+from sbir_etl.transformers.economic_model_interface import (
+    EconomicImpactResult,
+    validate_shocks_input,
+)
 
 
 pytestmark = pytest.mark.fast

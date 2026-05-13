@@ -37,9 +37,7 @@ class TestUSAspendingAutocomplete:
     def test_match_with_uei(self, MockClient):
         client = MockClient.return_value
         client.autocomplete_recipient.return_value = {
-            "results": [
-                {"legal_business_name": "Acme Inc", "uei": "ABC123DEF456"}
-            ]
+            "results": [{"legal_business_name": "Acme Inc", "uei": "ABC123DEF456"}]
         }
 
         result = usaspending_autocomplete("Acme Inc")
@@ -51,9 +49,7 @@ class TestUSAspendingAutocomplete:
     def test_match_without_uei_returns_best_candidate(self, MockClient):
         client = MockClient.return_value
         client.autocomplete_recipient.return_value = {
-            "results": [
-                {"legal_business_name": "Acme Incorporated", "uei": None}
-            ]
+            "results": [{"legal_business_name": "Acme Incorporated", "uei": None}]
         }
 
         result = usaspending_autocomplete("Acme Inc")
@@ -142,16 +138,19 @@ class TestLookupCompanyFederalAwards:
     def test_name_fallback(self, mock_is_sbir, mock_search, mock_auto):
         mock_is_sbir.return_value = False
         # First call (UEI) returns None, second call (name) returns results
-        mock_search.side_effect = [None, [
-            {
-                "Awarding Agency": "NASA",
-                "Award Type": "Grant",
-                "Award Amount": 100000,
-                "Start Date": "2023-03-15",
-                "Description": "Space stuff",
-                "CFDA Number": "",
-            }
-        ]]
+        mock_search.side_effect = [
+            None,
+            [
+                {
+                    "Awarding Agency": "NASA",
+                    "Award Type": "Grant",
+                    "Award Amount": 100000,
+                    "Start Date": "2023-03-15",
+                    "Description": "Space stuff",
+                    "CFDA Number": "",
+                }
+            ],
+        ]
 
         result = lookup_company_federal_awards("Acme Corp", uei="ABC123")
 
@@ -204,9 +203,7 @@ class TestLookupUSAspendingRecipient:
     @patch(f"{MODULE}.SyncUSAspendingClient")
     def test_two_step_lookup(self, MockClient):
         client = MockClient.return_value
-        client.search_recipients.return_value = [
-            {"id": "hash-abc-123", "name": "Acme Corp"}
-        ]
+        client.search_recipients.return_value = [{"id": "hash-abc-123", "name": "Acme Corp"}]
         client.get_recipient_profile.return_value = {
             "name": "Acme Corp",
             "uei": "ABC123DEF456",
@@ -332,9 +329,7 @@ class TestFetchFPDSDescriptions:
     @patch(f"{MODULE}.SyncFPDSAtomClient")
     def test_success(self, MockClient):
         ctx = MockClient.return_value.__enter__.return_value
-        ctx.get_descriptions.return_value = {
-            "W911NF-20-1-0001": "Research on advanced materials"
-        }
+        ctx.get_descriptions.return_value = {"W911NF-20-1-0001": "Research on advanced materials"}
 
         result = fetch_fpds_descriptions(["W911NF-20-1-0001"])
         assert result == {"W911NF-20-1-0001": "Research on advanced materials"}
@@ -377,9 +372,7 @@ class TestFetchUSAspendingContractDescriptions:
         client.search_awards.side_effect = RuntimeError("API error")
         client.search_transactions.side_effect = RuntimeError("API error")
 
-        mock_fpds.return_value = {
-            "W911NF-20-1-0001": "Fallback description from FPDS"
-        }
+        mock_fpds.return_value = {"W911NF-20-1-0001": "Fallback description from FPDS"}
 
         awards = [{"Contract": "W911NF-20-1-0001"}]
         result = fetch_usaspending_contract_descriptions(awards)
@@ -403,12 +396,18 @@ class TestLookupSAMEntityWithFallback:
     @patch(f"{MODULE}.lookup_sam_entity")
     def test_returns_primary_when_available(self, mock_primary):
         record = SAMEntityRecord(
-            uei="ABC123DEF456", legal_business_name="Acme Inc",
-            dba_name=None, registration_status="Active",
-            expiration_date="2025-12-31", business_type="2X",
-            entity_structure="LLC", naics_codes=["541511"],
-            cage_code="1AB2C", exclusion_status="N",
-            state="VA", congressional_district="11",
+            uei="ABC123DEF456",
+            legal_business_name="Acme Inc",
+            dba_name=None,
+            registration_status="Active",
+            expiration_date="2025-12-31",
+            business_type="2X",
+            entity_structure="LLC",
+            naics_codes=["541511"],
+            cage_code="1AB2C",
+            exclusion_status="N",
+            state="VA",
+            congressional_district="11",
         )
         mock_primary.return_value = record
 
@@ -419,10 +418,15 @@ class TestLookupSAMEntityWithFallback:
     @patch(f"{MODULE}.lookup_sam_entity", return_value=None)
     def test_falls_back_to_usaspending_when_sam_returns_none(self, mock_sam, mock_usa):
         mock_usa.return_value = USARecipientProfile(
-            recipient_id="R123", name="Acme Inc", uei="ABC123DEF456",
-            parent_name=None, parent_uei=None,
-            location_state="VA", location_congressional_district="11",
-            business_types=["Small Business"], total_transaction_amount=1_000_000.0,
+            recipient_id="R123",
+            name="Acme Inc",
+            uei="ABC123DEF456",
+            parent_name=None,
+            parent_uei=None,
+            location_state="VA",
+            location_congressional_district="11",
+            business_types=["Small Business"],
+            total_transaction_amount=1_000_000.0,
             total_transactions=5,
         )
 
@@ -456,10 +460,15 @@ class TestLookupUSAspendingRecipientWithFallback:
     @patch(f"{MODULE}.lookup_usaspending_recipient")
     def test_returns_primary_when_available(self, mock_primary):
         record = USARecipientProfile(
-            recipient_id="R123", name="Acme Inc", uei="ABC123DEF456",
-            parent_name=None, parent_uei=None,
-            location_state="VA", location_congressional_district="11",
-            business_types=["Small Business"], total_transaction_amount=1_000_000.0,
+            recipient_id="R123",
+            name="Acme Inc",
+            uei="ABC123DEF456",
+            parent_name=None,
+            parent_uei=None,
+            location_state="VA",
+            location_congressional_district="11",
+            business_types=["Small Business"],
+            total_transaction_amount=1_000_000.0,
             total_transactions=5,
         )
         mock_primary.return_value = record
@@ -471,12 +480,18 @@ class TestLookupUSAspendingRecipientWithFallback:
     @patch(f"{MODULE}.lookup_usaspending_recipient", return_value=None)
     def test_falls_back_to_sam_when_usaspending_returns_none(self, mock_usa, mock_sam):
         mock_sam.return_value = SAMEntityRecord(
-            uei="ABC123DEF456", legal_business_name="Acme Inc",
-            dba_name=None, registration_status="Active",
-            expiration_date="2025-12-31", business_type="Small Business",
-            entity_structure="LLC", naics_codes=["541511"],
-            cage_code="1AB2C", exclusion_status="N",
-            state="VA", congressional_district="11",
+            uei="ABC123DEF456",
+            legal_business_name="Acme Inc",
+            dba_name=None,
+            registration_status="Active",
+            expiration_date="2025-12-31",
+            business_type="Small Business",
+            entity_structure="LLC",
+            naics_codes=["541511"],
+            cage_code="1AB2C",
+            exclusion_status="N",
+            state="VA",
+            congressional_district="11",
         )
 
         result = lookup_usaspending_recipient_with_fallback("Acme Inc")

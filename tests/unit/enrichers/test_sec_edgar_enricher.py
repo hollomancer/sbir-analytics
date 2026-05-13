@@ -76,9 +76,7 @@ class TestExtractLatestFact:
                 }
             }
         }
-        value, _ = _extract_latest_fact(
-            facts, ["Revenues", "SalesRevenueNet"]
-        )
+        value, _ = _extract_latest_fact(facts, ["Revenues", "SalesRevenueNet"])
         assert value == 2000000.0
 
 
@@ -88,19 +86,13 @@ class TestExtractFinancials:
             "facts": {
                 "us-gaap": {
                     "Revenues": {
-                        "units": {
-                            "USD": [{"val": 5000000, "end": "2024-12-31", "form": "10-K"}]
-                        }
+                        "units": {"USD": [{"val": 5000000, "end": "2024-12-31", "form": "10-K"}]}
                     },
                     "ResearchAndDevelopmentExpense": {
-                        "units": {
-                            "USD": [{"val": 1000000, "end": "2024-12-31", "form": "10-K"}]
-                        }
+                        "units": {"USD": [{"val": 1000000, "end": "2024-12-31", "form": "10-K"}]}
                     },
                     "Assets": {
-                        "units": {
-                            "USD": [{"val": 10000000, "end": "2024-12-31", "form": "10-K"}]
-                        }
+                        "units": {"USD": [{"val": 10000000, "end": "2024-12-31", "form": "10-K"}]}
                     },
                 }
             }
@@ -262,7 +254,10 @@ class TestEnrichCompany:
         )
 
         profile = await enrich_company(
-            mock_client, "Acme Corp", company_uei="UEI123", search_form_d=True,
+            mock_client,
+            "Acme Corp",
+            company_uei="UEI123",
+            search_form_d=True,
         )
         assert profile.company_uei == "UEI123"
         assert profile.mention_count == 1
@@ -286,12 +281,30 @@ class TestEnrichCompany:
         # Same filer appears in multiple 8-K hits
         mock_client.search_filing_mentions = AsyncMock(
             return_value=[
-                {"filer_cik": "99999", "filer_name": "Mercury Systems", "form_type": "8-K",
-                 "file_date": "2024-06-15", "accession_number": "001", "file_description": ""},
-                {"filer_cik": "99999", "filer_name": "Mercury Systems", "form_type": "8-K",
-                 "file_date": "2024-07-01", "accession_number": "002", "file_description": ""},
-                {"filer_cik": "88888", "filer_name": "Other Corp", "form_type": "8-K",
-                 "file_date": "2024-08-01", "accession_number": "003", "file_description": ""},
+                {
+                    "filer_cik": "99999",
+                    "filer_name": "Mercury Systems",
+                    "form_type": "8-K",
+                    "file_date": "2024-06-15",
+                    "accession_number": "001",
+                    "file_description": "",
+                },
+                {
+                    "filer_cik": "99999",
+                    "filer_name": "Mercury Systems",
+                    "form_type": "8-K",
+                    "file_date": "2024-07-01",
+                    "accession_number": "002",
+                    "file_description": "",
+                },
+                {
+                    "filer_cik": "88888",
+                    "filer_name": "Other Corp",
+                    "form_type": "8-K",
+                    "file_date": "2024-08-01",
+                    "accession_number": "003",
+                    "file_description": "",
+                },
             ]
         )
         mock_client.search_form_d_filings = AsyncMock(return_value=[])
@@ -325,9 +338,7 @@ class TestSearchInboundMAMentions:
             ]
         )
 
-        events = await _search_inbound_ma_mentions(
-            mock_client, "Small SBIR Company"
-        )
+        events = await _search_inbound_ma_mentions(mock_client, "Small SBIR Company")
         assert len(events) == 1
         assert events[0].is_target is True
         assert events[0].filer_name == "LOCKHEED MARTIN CORPORATION"
@@ -342,12 +353,24 @@ class TestSearchInboundMAMentions:
         mock_client.search_filing_mentions = AsyncMock(
             side_effect=[
                 [  # 8-K match
-                    {"filer_cik": "111", "filer_name": "ACQUIRER A", "form_type": "8-K",
-                     "file_date": "2024-06-15", "accession_number": "001", "file_description": ""},
+                    {
+                        "filer_cik": "111",
+                        "filer_name": "ACQUIRER A",
+                        "form_type": "8-K",
+                        "file_date": "2024-06-15",
+                        "accession_number": "001",
+                        "file_description": "",
+                    },
                 ],
                 [  # 10-K match from different filer
-                    {"filer_cik": "222", "filer_name": "ACQUIRER B", "form_type": "10-K",
-                     "file_date": "2024-03-01", "accession_number": "002", "file_description": ""},
+                    {
+                        "filer_cik": "222",
+                        "filer_name": "ACQUIRER B",
+                        "form_type": "10-K",
+                        "file_date": "2024-03-01",
+                        "accession_number": "002",
+                        "file_description": "",
+                    },
                 ],
                 [],  # No ownership filings
             ]
@@ -363,9 +386,14 @@ class TestSearchInboundMAMentions:
         mock_client.search_filing_mentions = AsyncMock(
             side_effect=[
                 [
-                    {"filer_cik": "11111", "filer_name": "ACME CORP",
-                     "form_type": "8-K", "file_date": "2024-03-01",
-                     "accession_number": "001", "file_description": "Something"},
+                    {
+                        "filer_cik": "11111",
+                        "filer_name": "ACME CORP",
+                        "form_type": "8-K",
+                        "file_date": "2024-03-01",
+                        "accession_number": "001",
+                        "file_description": "Something",
+                    },
                 ],
                 [],
                 [],
@@ -471,7 +499,9 @@ class TestEnrichCompanySignals:
         )
 
         profile = await enrich_company(
-            mock_client, "Venture Backed SBIR Inc", search_form_d=True,
+            mock_client,
+            "Venture Backed SBIR Inc",
+            search_form_d=True,
         )
         assert profile.has_form_d is True
         assert profile.form_d_cik == "77777"
@@ -542,9 +572,7 @@ class TestModels:
         from sbir_etl.models.sec_edgar import CompanyEdgarProfile
 
         with pytest.raises(ValueError):
-            CompanyEdgarProfile(
-                company_name="Test", match_confidence=1.5
-            )
+            CompanyEdgarProfile(company_name="Test", match_confidence=1.5)
 
     def test_edgar_ma_event_target_flag(self):
         from sbir_etl.models.sec_edgar import EdgarMAEvent
@@ -634,28 +662,34 @@ class TestIsNoise:
 
     def test_rejects_reit_by_sic(self):
         from sbir_etl.enrichers.sec_edgar.enricher import _is_noise
+
         # SIC 6512 = real estate investment trusts
         assert _is_noise("VORNADO REALTY TRUST", "Aptima Inc", ["6512"]) is True
 
     def test_rejects_mortgage_by_sic(self):
         from sbir_etl.enrichers.sec_edgar.enricher import _is_noise
+
         assert _is_noise("CSFB MORTGAGE TRUST", "Lynntech Inc", ["6159"]) is True
 
     def test_accepts_defense_company(self):
         from sbir_etl.enrichers.sec_edgar.enricher import _is_noise
+
         assert _is_noise("MERCURY SYSTEMS INC", "Physical Optics Corp", ["3670"]) is False
 
     def test_rejects_name_containment(self):
         from sbir_etl.enrichers.sec_edgar.enricher import _is_noise
+
         assert _is_noise("THERMO FIBERTEK INC", "Fibertek, Inc.", []) is True
 
     def test_accepts_exact_match(self):
         from sbir_etl.enrichers.sec_edgar.enricher import _is_noise
+
         # Same name shouldn't be flagged as containment
         assert _is_noise("FIBERTEK INC", "Fibertek, Inc.", []) is False
 
     def test_accepts_no_sic(self):
         from sbir_etl.enrichers.sec_edgar.enricher import _is_noise
+
         assert _is_noise("SOME COMPANY", "Target Co", []) is False
 
 
@@ -664,36 +698,44 @@ class TestClassifyMention:
 
     def test_ma_definitive_from_items(self):
         from sbir_etl.enrichers.sec_edgar.enricher import _classify_mention
+
         assert _classify_mention(["1.01", "9.01"], "8-K") == "ma_definitive"
         assert _classify_mention(["2.01"], "8-K") == "ma_definitive"
 
     def test_ma_proxy_from_form_type(self):
         from sbir_etl.enrichers.sec_edgar.enricher import _classify_mention
+
         assert _classify_mention([], "DEFM14A") == "ma_proxy"
         assert _classify_mention([], "PREM14A") == "ma_proxy"
 
     def test_ownership_active(self):
         from sbir_etl.enrichers.sec_edgar.enricher import _classify_mention
+
         assert _classify_mention([], "SC 13D") == "ownership_active"
 
     def test_ownership_passive(self):
         from sbir_etl.enrichers.sec_edgar.enricher import _classify_mention
+
         assert _classify_mention([], "SC 13G") == "ownership_passive"
 
     def test_tender_offer(self):
         from sbir_etl.enrichers.sec_edgar.enricher import _classify_mention
+
         assert _classify_mention([], "SC TO-T") == "ma_definitive"
 
     def test_financial_mention(self):
         from sbir_etl.enrichers.sec_edgar.enricher import _classify_mention
+
         assert _classify_mention(["2.02", "9.01"], "8-K") == "financial_mention"
 
     def test_disclosure(self):
         from sbir_etl.enrichers.sec_edgar.enricher import _classify_mention
+
         assert _classify_mention(["7.01", "9.01"], "8-K") == "disclosure"
 
     def test_generic_filing_mention(self):
         from sbir_etl.enrichers.sec_edgar.enricher import _classify_mention
+
         assert _classify_mention([], "10-K") == "filing_mention"
 
 
@@ -707,7 +749,7 @@ class TestExtractMentionContext:
         mock_client = AsyncMock()
         mock_client.fetch_filing_document = AsyncMock(
             return_value="...Mercury Systems announced today it has completed the acquisition of "
-                         "Physical Optics Corporation for approximately $310 million..."
+            "Physical Optics Corporation for approximately $310 million..."
         )
 
         mention = {"filer_cik": "1049521", "doc_id": "0001049521-20-000067:press.htm"}
@@ -721,7 +763,7 @@ class TestExtractMentionContext:
         mock_client = AsyncMock()
         mock_client.fetch_filing_document = AsyncMock(
             return_value="...Exhibit 21 - List of Subsidiaries\n"
-                         "Progeny Systems, LLC Virginia 100%..."
+            "Progeny Systems, LLC Virginia 100%..."
         )
 
         mention = {"filer_cik": "40533", "doc_id": "0000040533-23-000014:ex21.htm"}
@@ -735,7 +777,7 @@ class TestExtractMentionContext:
         mock_client = AsyncMock()
         mock_client.fetch_filing_document = AsyncMock(
             return_value="...Our primary competitors include Aerojet Rocketdyne, "
-                         "Busek Co. Inc., Blue Origin, and SpaceX in the propulsion market..."
+            "Busek Co. Inc., Blue Origin, and SpaceX in the propulsion market..."
         )
 
         mention = {"filer_cik": "40888", "doc_id": "0000040888-22-000005:10k.htm"}

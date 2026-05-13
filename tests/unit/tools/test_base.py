@@ -34,8 +34,11 @@ class FailingTool(BaseTool):
 class TestDataSourceRef:
     def test_to_dict(self):
         ref = DataSourceRef(
-            name="SBIR.gov", url="https://sbir.gov", version="2024-01",
-            record_count=100, access_method="api",
+            name="SBIR.gov",
+            url="https://sbir.gov",
+            version="2024-01",
+            record_count=100,
+            access_method="api",
         )
         d = ref.to_dict()
         assert d["name"] == "SBIR.gov"
@@ -45,26 +48,33 @@ class TestDataSourceRef:
 class TestToolMetadata:
     def test_duration_seconds(self):
         from datetime import datetime, timedelta
+
         start = datetime(2024, 1, 1, 12, 0, 0)
         end = start + timedelta(seconds=5)
         meta = ToolMetadata(
-            tool_name="test", tool_version="1.0",
-            execution_start=start, execution_end=end,
+            tool_name="test",
+            tool_version="1.0",
+            execution_start=start,
+            execution_end=end,
         )
         assert meta.duration_seconds == 5.0
 
     def test_duration_none_when_not_finished(self):
         from datetime import datetime
+
         meta = ToolMetadata(
-            tool_name="test", tool_version="1.0",
+            tool_name="test",
+            tool_version="1.0",
             execution_start=datetime.utcnow(),
         )
         assert meta.duration_seconds is None
 
     def test_to_dict(self):
         from datetime import datetime
+
         meta = ToolMetadata(
-            tool_name="test", tool_version="1.0",
+            tool_name="test",
+            tool_version="1.0",
             execution_start=datetime(2024, 1, 1),
             execution_end=datetime(2024, 1, 1, 0, 0, 5),
             record_count=42,
@@ -80,16 +90,19 @@ class TestToolMetadata:
 class TestToolResult:
     def test_chain_metadata(self):
         from datetime import datetime
+
         upstream = ToolResult(
             data=pd.DataFrame(),
             metadata=ToolMetadata(
-                tool_name="upstream_tool", tool_version="1.0",
+                tool_name="upstream_tool",
+                tool_version="1.0",
                 execution_start=datetime.utcnow(),
                 data_sources=[DataSourceRef(name="Source A", url="https://a.com")],
             ),
         )
         downstream_meta = ToolMetadata(
-            tool_name="downstream_tool", tool_version="1.0",
+            tool_name="downstream_tool",
+            tool_version="1.0",
             execution_start=datetime.utcnow(),
         )
         chained = upstream.chain_metadata(downstream_meta)
@@ -99,10 +112,12 @@ class TestToolResult:
 
     def test_to_dict_with_dataframe(self):
         from datetime import datetime
+
         result = ToolResult(
             data=pd.DataFrame({"x": [1, 2]}),
             metadata=ToolMetadata(
-                tool_name="test", tool_version="1.0",
+                tool_name="test",
+                tool_version="1.0",
                 execution_start=datetime.utcnow(),
             ),
         )
@@ -112,10 +127,12 @@ class TestToolResult:
 
     def test_to_dict_with_dict(self):
         from datetime import datetime
+
         result = ToolResult(
             data={"key": "value"},
             metadata=ToolMetadata(
-                tool_name="test", tool_version="1.0",
+                tool_name="test",
+                tool_version="1.0",
                 execution_start=datetime.utcnow(),
             ),
         )

@@ -206,11 +206,15 @@ class TestCommercializationRateBenchmark:
         df = _make_awards_df(records)
 
         # Commercialization data: $2.5M total for 20 Phase II = $125K avg
-        comm_df = pd.DataFrame([{
-            "company_id": "uei:UEI000000011",
-            "total_sales_and_investment": 2_500_000,
-            "patent_count": 0,
-        }])
+        comm_df = pd.DataFrame(
+            [
+                {
+                    "company_id": "uei:UEI000000011",
+                    "total_sales_and_investment": 2_500_000,
+                    "patent_count": 0,
+                }
+            ]
+        )
 
         evaluator = BenchmarkEligibilityEvaluator(evaluation_fy=2025)
         summary = evaluator.evaluate(df, comm_df)
@@ -225,11 +229,15 @@ class TestCommercializationRateBenchmark:
         df = _make_awards_df(records)
 
         # 4 patents / 20 Phase II = 20% >= 15%
-        comm_df = pd.DataFrame([{
-            "company_id": "uei:UEI000000012",
-            "total_sales_and_investment": 0,
-            "patent_count": 4,
-        }])
+        comm_df = pd.DataFrame(
+            [
+                {
+                    "company_id": "uei:UEI000000012",
+                    "total_sales_and_investment": 0,
+                    "patent_count": 4,
+                }
+            ]
+        )
 
         evaluator = BenchmarkEligibilityEvaluator(evaluation_fy=2025)
         summary = evaluator.evaluate(df, comm_df)
@@ -245,11 +253,15 @@ class TestCommercializationRateBenchmark:
         df = _make_awards_df(records)
 
         # Has patents but not enough sales
-        comm_df = pd.DataFrame([{
-            "company_id": "uei:UEI000000013",
-            "total_sales_and_investment": 1_000_000,  # ~18K avg < 250K
-            "patent_count": 20,  # 36% rate, but patents path not available
-        }])
+        comm_df = pd.DataFrame(
+            [
+                {
+                    "company_id": "uei:UEI000000013",
+                    "total_sales_and_investment": 1_000_000,  # ~18K avg < 250K
+                    "patent_count": 20,  # 36% rate, but patents path not available
+                }
+            ]
+        )
 
         evaluator = BenchmarkEligibilityEvaluator(evaluation_fy=2025)
         summary = evaluator.evaluate(df, comm_df)
@@ -269,9 +281,7 @@ class TestSensitivityAnalysis:
         records = _phase1_awards("AlmostCo", "UEI000000020", 18, 2019)
         df = _make_awards_df(records)
 
-        evaluator = BenchmarkEligibilityEvaluator(
-            evaluation_fy=2025, sensitivity_margin_awards=5
-        )
+        evaluator = BenchmarkEligibilityEvaluator(evaluation_fy=2025, sensitivity_margin_awards=5)
         summary = evaluator.evaluate(df)
 
         at_risk = [s for s in summary.sensitivity_results if s.at_risk_transition]
@@ -285,9 +295,7 @@ class TestSensitivityAnalysis:
         records += _phase2_awards("NarrowCo", "UEI000000021", 7, 2020)
         df = _make_awards_df(records)
 
-        evaluator = BenchmarkEligibilityEvaluator(
-            evaluation_fy=2025, sensitivity_margin_ratio=0.05
-        )
+        evaluator = BenchmarkEligibilityEvaluator(evaluation_fy=2025, sensitivity_margin_ratio=0.05)
         summary = evaluator.evaluate(df)
 
         at_risk = [s for s in summary.sensitivity_results if s.at_risk_transition]
@@ -302,9 +310,7 @@ class TestSensitivityAnalysis:
         records += _phase2_awards("SafeCo", "UEI000000022", 20, 2020)
         df = _make_awards_df(records)
 
-        evaluator = BenchmarkEligibilityEvaluator(
-            evaluation_fy=2025, sensitivity_margin_ratio=0.05
-        )
+        evaluator = BenchmarkEligibilityEvaluator(evaluation_fy=2025, sensitivity_margin_ratio=0.05)
         summary = evaluator.evaluate(df)
 
         # Should still be in sensitivity results (subject to benchmark) but not flagged at-risk
@@ -380,9 +386,8 @@ class TestEdgeCases:
 
     def test_report_generation(self):
         """Report generation should produce valid markdown."""
-        records = (
-            _phase1_awards("ReportCo", "UEI000000060", 25, 2019)
-            + _phase2_awards("ReportCo", "UEI000000060", 8, 2020)
+        records = _phase1_awards("ReportCo", "UEI000000060", 25, 2019) + _phase2_awards(
+            "ReportCo", "UEI000000060", 8, 2020
         )
         df = _make_awards_df(records)
 

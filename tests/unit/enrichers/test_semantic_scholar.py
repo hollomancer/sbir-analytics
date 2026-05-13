@@ -80,18 +80,14 @@ class TestInitialization:
 
         assert isinstance(client, BaseAsyncAPIClient)
 
-    def test_build_headers_without_api_key(
-        self, mock_http_client: AsyncMock
-    ) -> None:
+    def test_build_headers_without_api_key(self, mock_http_client: AsyncMock) -> None:
         with patch.dict("os.environ", {}, clear=True):
             c = SemanticScholarClient(http_client=mock_http_client)
         headers = c._build_headers()
         assert "x-api-key" not in headers
         assert headers["Accept"] == "application/json"
 
-    def test_build_headers_with_explicit_api_key(
-        self, mock_http_client: AsyncMock
-    ) -> None:
+    def test_build_headers_with_explicit_api_key(self, mock_http_client: AsyncMock) -> None:
         c = SemanticScholarClient(api_key="secret-123", http_client=mock_http_client)
         headers = c._build_headers()
         assert headers["x-api-key"] == "secret-123"
@@ -109,14 +105,10 @@ class TestInitialization:
 class TestSharedLimiterOverride:
     """When a shared sync limiter is injected, it should be used via to_thread."""
 
-    async def test_shared_limiter_called_via_to_thread(
-        self, mock_http_client: AsyncMock
-    ) -> None:
+    async def test_shared_limiter_called_via_to_thread(self, mock_http_client: AsyncMock) -> None:
         shared = RateLimiter(rate_limit_per_minute=50)
         shared.wait_if_needed = MagicMock()  # type: ignore[method-assign]
-        c = SemanticScholarClient(
-            shared_limiter=shared, http_client=mock_http_client
-        )
+        c = SemanticScholarClient(shared_limiter=shared, http_client=mock_http_client)
         mock_http_client.get.return_value = _mock_response(200, {"data": []})
 
         await c.search_author("Alice")
@@ -288,7 +280,8 @@ class TestLookupAuthor:
         self, client: SemanticScholarClient, mock_http_client: AsyncMock
     ) -> None:
         mock_http_client.get.return_value = _mock_response(
-            200, {"data": [{"name": "Jane"}]}  # missing authorId
+            200,
+            {"data": [{"name": "Jane"}]},  # missing authorId
         )
 
         rec = await client.lookup_author("Jane")
