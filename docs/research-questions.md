@@ -71,6 +71,7 @@ merged to `main`. Public-study citations appear as `[L#]` — see
 
 - What is the Form D [L23] private-placement fundraising profile of SBIR awardees, and how does it compare to SBIR funding (private-to-SBIR leverage ratio)? *(PR #286)* *(deps: ER, SEC EDGAR)*
 - What is the debt-vs-equity composition and offering fill rate of SBIR-firm Form D filings? *(deps: ER, SEC EDGAR)*
+- What fraction of SBIR awardees took venture debt, and from which lenders? UCC-1 financing statements complement Form D's equity view — [../specs/ucc1-financing-analysis/](../specs/ucc1-financing-analysis/) *(branch: claude/sbir-ucc1-analysis)*. *(deps: ER)*
 
 ## B. Technology commercialization & entrepreneurship
 
