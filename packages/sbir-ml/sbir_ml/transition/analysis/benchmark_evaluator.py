@@ -562,14 +562,16 @@ class BenchmarkEligibilityEvaluator:
                 sensitivity_results.append(sr)
 
         # Sort: companies subject to benchmarks first, then by company_id
-        transition_results.sort(key=lambda r: (r.tier == BenchmarkTier.NOT_SUBJECT, r.company_id))
+        transition_results.sort(
+            key=lambda r: (r.tier == BenchmarkTier.NOT_SUBJECT, str(r.company_id))
+        )
         commercialization_results.sort(
-            key=lambda r: (r.tier == BenchmarkTier.NOT_SUBJECT, r.company_id)
+            key=lambda r: (r.tier == BenchmarkTier.NOT_SUBJECT, str(r.company_id))
         )
         sensitivity_results.sort(
             key=lambda r: (
                 not r.at_risk_transition and not r.at_risk_commercialization,
-                r.company_id,
+                str(r.company_id),
             )
         )
 
