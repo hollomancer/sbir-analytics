@@ -23,7 +23,7 @@ import time
 from collections.abc import Callable, Iterable
 from pathlib import Path
 
-import httpx
+from curl_cffi import requests as ccrequests
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from ucc._common import data_path  # noqa: E402
@@ -33,21 +33,17 @@ SEARCH_SEED_URL = "https://bizfileonline.sos.ca.gov/search/business"
 
 DEFAULT_DELAY_SECONDS = 1.0
 
-# Imperva anti-bot fronts bizfileOnline and rejects bare httpx default headers
-# with 403. Mimicking a real Chrome request gets through; tested 2026-05-16.
-_BROWSER_HEADERS = {
-    "User-Agent": (
-        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
-        "(KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"
-    ),
-    "Accept": "application/json, text/plain, */*",
-    "Accept-Language": "en-US,en;q=0.9",
+# bizfileOnline is fronted by Imperva. Defeating its bot defenses needs:
+#   1. TLS fingerprint impersonation (curl_cffi impersonate='chrome124')
+#   2. A priming GET to /search/business to set Incapsula session cookies
+#   3. The literal "authorization: undefined" header the browser sends
+# Removing any one of these reproduces 403. Tested 2026-05-16.
+_POST_HEADERS = {
+    "authorization": "undefined",
     "Origin": "https://bizfileonline.sos.ca.gov",
     "Referer": "https://bizfileonline.sos.ca.gov/search/business",
-    "sec-ch-ua": '"Chromium";v="148", "Google Chrome";v="148", "Not/A)Brand";v="99"',
-    "sec-ch-ua-mobile": "?0",
-    "sec-ch-ua-platform": '"macOS"',
 }
+_IMPERSONATE = "chrome124"
 
 # Padding fields the server requires; only SEARCH_VALUE varies per request.
 _BASE_PAYLOAD = {
@@ -96,18 +92,27 @@ def pick_best_match(rows: dict[str, dict]) -> dict | None:
     return min(pool, key=lambda r: r.get("SORT_INDEX", 0))
 
 
-def lookup_ca_sos(company_name: str, client: httpx.Client | None = None) -> dict | None:
-    """Query CA SOS business search; return the best business record or None."""
+def make_session() -> ccrequests.Session:
+    """Build a curl_cffi session primed past Imperva's first-request check."""
+    s = ccrequests.Session(impersonate=_IMPERSONATE)
+    s.get(SEARCH_SEED_URL)
+    return s
+
+
+def lookup_ca_sos(
+    company_name: str, client: ccrequests.Session | None = None,
+) -> dict | None:
+    """Query CA SOS business search; return the best business record or None.
+
+    If client is None, builds a single-shot session (with priming GET); for
+    bulk use, pass a reused session.
+    """
     own_client = client is None
     if own_client:
-        client = httpx.Client(
-            timeout=30.0, follow_redirects=True, headers=_BROWSER_HEADERS,
-        )
-        # Seed cookies (Imperva anti-bot) by hitting the page once first
-        client.get(SEARCH_SEED_URL)
+        client = make_session()
     try:
         payload = {**_BASE_PAYLOAD, "SEARCH_VALUE": company_name}
-        response = client.post(BUSINESS_SEARCH_URL, json=payload)
+        response = client.post(BUSINESS_SEARCH_URL, json=payload, headers=_POST_HEADERS)
         response.raise_for_status()
         body = response.json()
         return pick_best_match(body.get("rows") or {})

@@ -27,6 +27,8 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+# UCC1 pilot — TLS-impersonating HTTP client for bizfileOnline (Imperva-fronted)
+ucc1-pilot = ["curl_cffi>=0.7.0,<1.0.0"]
 # USPTO SPSS/SAS file extraction
 uspto = ["pyreadstat>=1.1.4,<2.0.0"]
 # AWS S3 cloud storage (for extractors that pull from S3)
