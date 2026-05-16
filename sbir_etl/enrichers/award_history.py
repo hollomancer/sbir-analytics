@@ -8,7 +8,7 @@ diligence and trend analysis.
 from __future__ import annotations
 
 import csv
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from loguru import logger
 
@@ -150,8 +150,7 @@ def _build_history_from_csv(
     # Normalize sets to sorted lists and parse dates
     for _name, h in history.items():
         raw_dates = h.pop("dates", [])
-        parsed_dates = [_parse_date_safe(d) for d in raw_dates]
-        parsed_dates = [d for d in parsed_dates if d]
+        parsed_dates: list[str] = [d for d in (_parse_date_safe(d) for d in raw_dates) if d]
         h["earliest_date"] = min(parsed_dates) if parsed_dates else None
         h["latest_date"] = max(parsed_dates) if parsed_dates else None
         for key in ["phases", "agencies", "programs"]:
@@ -169,7 +168,7 @@ def _build_history_from_csv(
 def get_company_history(
     awards: list[dict],
     source: SbirAwardsSource | None = None,
-    extractor: object | None = None,
+    extractor: Any = None,
     table: str | None = None,
 ) -> dict[str, dict]:
     """Extract historical SBIR award context per company from the full dataset.
@@ -211,7 +210,7 @@ def get_company_history(
 def get_pi_history(
     awards: list[dict],
     source: SbirAwardsSource | None = None,
-    extractor: object | None = None,
+    extractor: Any = None,
     table: str | None = None,
 ) -> dict[str, dict]:
     """Extract historical SBIR context per Principal Investigator.

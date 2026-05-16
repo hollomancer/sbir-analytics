@@ -631,7 +631,7 @@ async def _resolve_cik(
     query_is_multiword = len(query_clean.split()) > 1
 
     best_match: dict[str, Any] | None = None
-    best_score = 0
+    best_score: float = 0
 
     for result in results:
         entity_name = result.get("entity_name", "")

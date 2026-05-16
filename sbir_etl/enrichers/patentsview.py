@@ -255,7 +255,8 @@ class PatentsViewClient:
             response = _do_request()
             return response.json()
         except APIError as e:
-            if e.http_status == 404:
+            # APIError stores http_status under `details`, not as a direct attr.
+            if e.details.get("http_status") == 404:
                 # ODP returns 404 when a search query matches no records
                 logger.debug("USPTO ODP {}: 404 (no results)", endpoint)
                 return {}

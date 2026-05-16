@@ -46,6 +46,31 @@ runs:
         port: "7687"
         timeout: ${{ inputs.timeout }}
 
+    # Neo4j's bolt port opens BEFORE auth is fully initialized. Without this
+    # probe, the first integration-test connection can land in the gap and
+    # fail with Neo.ClientError.Security.Unauthorized — which then rate-limits
+    # subsequent attempts (Neo.ClientError.Security.AuthenticationRateLimit).
+    # Poll cypher-shell over docker exec until an authenticated RETURN succeeds.
+    - name: Wait for Neo4j auth to initialize
+      shell: bash
+      run: |
+        set -eu
+        TIMEOUT=${{ inputs.timeout }}
+        ELAPSED=0
+        echo "Probing Neo4j auth as ${{ inputs.neo4j-user }}..."
+        until docker exec ${{ inputs.container-name }} \
+                cypher-shell -u "${{ inputs.neo4j-user }}" -p "${{ inputs.neo4j-password }}" \
+                "RETURN 1" >/dev/null 2>&1; do
+          if [ $ELAPSED -ge $TIMEOUT ]; then
+            echo "❌ Neo4j auth did not initialize within ${TIMEOUT}s"
+            docker logs ${{ inputs.container-name }} | tail -50 || true
+            exit 1
+          fi
+          sleep 2
+          ELAPSED=$((ELAPSED + 2))
+        done
+        echo "✅ Neo4j auth ready (waited ${ELAPSED}s)"
+
     - name: Set environment variables
       shell: bash
       run: |

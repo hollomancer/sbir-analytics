@@ -9,8 +9,9 @@ from __future__ import annotations
 
 import os
 import re
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
+from typing import Any
 
 from loguru import logger
 
@@ -481,24 +482,26 @@ def lookup_sam_entity(
     sam = SyncSAMGovClient()
     try:
         # Try each identifier in priority order; stop on first hit.
-        attempts: list[tuple[str, object, callable]] = []  # type: ignore[valid-type]
+        attempts: list[tuple[str, object, Callable[[], Any]]] = []
         if uei:
             attempts.append(("UEI", uei, lambda: sam.get_entity_by_uei(uei)))
         if cage:
             attempts.append(("CAGE", cage, lambda: sam.get_entity_by_cage(cage)))
         if company_name:
+
+            def _name_lookup() -> Any:
+                results = sam.search_entities(
+                    legal_business_name=company_name,
+                    registration_status="A",
+                    limit=1,
+                )
+                return results[0] if results else None
+
             attempts.append(
                 (
                     "name",
                     company_name,
-                    lambda: (
-                        sam.search_entities(
-                            legal_business_name=company_name,
-                            registration_status="A",
-                            limit=1,
-                        )
-                        or [None]
-                    )[0],
+                    _name_lookup,
                 )
             )
 

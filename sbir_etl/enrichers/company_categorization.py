@@ -124,8 +124,8 @@ def _normalize_company_name_for_search(company_name: str) -> list[str]:
         variations.append(normalized)
 
     base = normalized
-    for pattern in _SUFFIX_STRIPS:
-        base = pattern.sub("", base)
+    for suffix_pat in _SUFFIX_STRIPS:
+        base = suffix_pat.sub("", base)
     base = base.strip().rstrip(",").strip()
     if base and len(base) >= 10 and base not in variations:
         variations.append(base)

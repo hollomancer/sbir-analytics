@@ -566,7 +566,7 @@ def validate_sbir_awards(
         logger.error(f"Missing essential columns: {missing_columns}")
         # All rows fail when essential columns are absent
         all_indices = set(df.index.tolist())
-        issues = [
+        issues: list[QualityIssue] = [
             QualityIssue(
                 severity=QualitySeverity.ERROR,
                 field=col,
@@ -595,7 +595,7 @@ def validate_sbir_awards(
     # failing_row_indices stores raw DataFrame index values for filtering.
     # QualityIssue.row_index is typed int|None — coerce safely so non-integer
     # indexes (unlikely but possible) degrade to None rather than crashing.
-    issues: list[QualityIssue] = []
+    issues = []
     failing_row_indices: set[Any] = set()
     for col in essential_columns:
         null_mask = df[col].isna()
