@@ -3,10 +3,13 @@
 
 SBA's official Company Commercialization Report is not publicly downloadable.
 This script substitutes:
-  - Sales        → USAspending prime contract obligations to the firm in the
-                   commercialization window (FY<start>-FY<end>). Includes Phase
-                   I/II SBIR awards (R&D inputs) by default; --net subtracts the
-                   SBIR.gov Phase I/II totals to approximate commercialization.
+  - Sales        → USAspending prime obligations to the firm in the comm. window:
+                   FPDS contracts (A/B/C/D) PLUS FABS grants/coop agreements
+                   (02/03/04/05). Two API calls per firm. Critical: grants are
+                   included because NIH/NSF/DoE SBIR firms get most of their
+                   federal revenue via FABS, not FPDS. Earlier versions of this
+                   script omitted FABS and produced false-negative failures for
+                   the biomedical/science cohort.
   - Investment   → SEC Form D total offering amounts in window, matched on
                    company name (data/form_d_details.jsonl).
   - Patents      → SKIPPED. USPTO data on disk is fixture-only; ingestion has
@@ -66,12 +69,18 @@ def load_cohort(awards_csv: Path, start_fy: int, end_fy: int) -> pd.DataFrame:
     """).fetchdf()
 
 
-def fetch_usaspending_total(client: httpx.Client, uei: str, start_fy: int, end_fy: int) -> float:
+CONTRACT_TYPES = ["A", "B", "C", "D"]
+GRANT_TYPES = ["02", "03", "04", "05"]
+
+
+def fetch_usaspending_total(
+    client: httpx.Client, uei: str, start_fy: int, end_fy: int, award_types: list[str]
+) -> float:
     body = {
         "group": "fiscal_year",
         "filters": {
             "time_period": [{"start_date": f"{start_fy - 1}-10-01", "end_date": f"{end_fy}-09-30"}],
-            "award_type_codes": ["A", "B", "C", "D"],
+            "award_type_codes": award_types,
             "recipient_search_text": [uei],
         },
         "subawards": False,
@@ -139,10 +148,13 @@ def main() -> int:
     rows = []
     with httpx.Client(timeout=httpx.Timeout(120.0, connect=30.0), headers=HEADERS) as client:
         for i, r in cohort.iterrows():
-            print(f"  [{i+1:3d}/{len(cohort)}] {r.firm[:40]:40s} P2={int(r.p2_count):3d} querying USAspending...",
+            print(f"  [{i+1:3d}/{len(cohort)}] {r.firm[:40]:40s} P2={int(r.p2_count):3d} querying contracts+grants...",
                   end="", flush=True)
-            sales = fetch_usaspending_total(client, r.uei, start_fy, end_fy)
+            contracts = fetch_usaspending_total(client, r.uei, start_fy, end_fy, CONTRACT_TYPES)
+            time.sleep(1.0)
+            grants = fetch_usaspending_total(client, r.uei, start_fy, end_fy, GRANT_TYPES)
             print(f"\r", end="", flush=True)
+            sales = contracts + grants
             net_sales = sales - (r.p1_total_usd + r.p2_total_usd) if args.net else sales
             invest = fd_map.get((r.firm or "").upper().strip(), 0.0)
             denom = max(int(r.p2_count), 1)
@@ -153,6 +165,8 @@ def main() -> int:
             rows.append({
                 "uei": r.uei, "firm": r.firm, "state": r.state,
                 "tier": tier, "p2_count": int(r.p2_count),
+                "contracts_fpds_usd": round(contracts),
+                "grants_fabs_usd": round(grants),
                 "sales_usaspending_usd": round(sales),
                 "p1_p2_subtract_usd": round(r.p1_total_usd + r.p2_total_usd),
                 "net_sales_usd": round(max(net_sales, 0)),
@@ -163,8 +177,8 @@ def main() -> int:
                 "status": status,
             })
             print(f"  [{i+1:3d}/{len(cohort)}] {r.firm[:40]:40s} P2={int(r.p2_count):3d} "
-                  f"sales=${sales/1e6:>8,.1f}M  invest=${invest/1e6:>6,.1f}M  "
-                  f"avg/P2=${avg/1e3:>8,.0f}K vs ${req/1e3:.0f}K  {status}",
+                  f"K=${contracts/1e6:>6,.1f}M G=${grants/1e6:>6,.1f}M invest=${invest/1e6:>5,.1f}M "
+                  f"avg/P2=${avg/1e3:>7,.0f}K vs ${req/1e3:.0f}K  {status}",
                   flush=True)
             time.sleep(1.0)
 
