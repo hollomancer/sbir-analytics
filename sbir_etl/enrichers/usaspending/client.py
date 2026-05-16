@@ -126,7 +126,8 @@ class USAspendingAPIClient(BaseAsyncAPIClient):
             self.config = config
             self.api_config = config.get("usaspending_api", {})
 
-        self.base_url = self.api_config.get("base_url", "https://api.usaspending.gov/api/v2")
+        # api_config is typed dict[str, object]; the URL is always a str in practice.
+        self.base_url = str(self.api_config.get("base_url", "https://api.usaspending.gov/api/v2"))
         self.timeout = self.config.get("timeout_seconds", 30)
         self.rate_limit_per_minute = self.config.get("rate_limit_per_minute", 120)
 

@@ -430,7 +430,7 @@ def validate_duplicate_records(
 
         for row in iter_rows_from_path(file_path, chunk_size=chunk_size):
             total += 1
-            parts = []
+            parts: list[str] = []
             for f in key_fields:
                 v = row.get(f)
                 if not _nonempty(v):

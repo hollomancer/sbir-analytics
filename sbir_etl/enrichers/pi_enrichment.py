@@ -126,7 +126,7 @@ def lookup_pi_patents(
         if not patents:
             return None
 
-        titles = []
+        titles: list[str] = []
         assignees: set[str] = set()
         dates: list[str] = []
         for p in patents:
