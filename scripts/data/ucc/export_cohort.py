@@ -33,7 +33,7 @@ from collections import defaultdict
 from collections.abc import Iterable, Iterator
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from ucc._common import data_path  # noqa: E402
 
 # Threshold for treating person_score as a "name match" (matches tier rule).
