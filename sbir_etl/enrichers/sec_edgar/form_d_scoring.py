@@ -15,9 +15,7 @@ from rapidfuzz import fuzz
 from ...models.sec_edgar import FormDMatchConfidence
 
 # Titles that should be stripped from PI names before matching
-_STRIP_TITLES = re.compile(
-    r"\b(Dr\.|Ph\.D\.|M\.D\.|Mr\.|Mrs\.|Ms\.|Jr\.|Sr\.)\b", re.IGNORECASE
-)
+_STRIP_TITLES = re.compile(r"\b(Dr\.|Ph\.D\.|M\.D\.|Mr\.|Mrs\.|Ms\.|Jr\.|Sr\.)\b", re.IGNORECASE)
 # Single-letter initials like "R." (but not "Jr." etc., already handled above)
 _STRIP_INITIALS = re.compile(r"\b[A-Z]\.\s*")
 
@@ -30,15 +28,17 @@ _STRIP_INITIALS = re.compile(r"\b[A-Z]\.\s*")
 # vehicles, not operating company raises.  Some funds are linked to real
 # SBIR companies via shared persons/CIKs (71 cross-links found) — worth
 # revisiting for investor-company relationship mapping.
-EXCLUDED_INDUSTRY_GROUPS: frozenset[str] = frozenset({
-    "Insurance",
-    "Lodging and Conventions",
-    "Other Travel",
-    "Pooled Investment Fund",
-    "Restaurants",
-    "Retailing",
-    "Tourism and Travel Services",
-})
+EXCLUDED_INDUSTRY_GROUPS: frozenset[str] = frozenset(
+    {
+        "Insurance",
+        "Lodging and Conventions",
+        "Other Travel",
+        "Pooled Investment Fund",
+        "Restaurants",
+        "Retailing",
+        "Tourism and Travel Services",
+    }
+)
 
 _SECURITIES_MAP = {
     "isDebtType": "debt",
@@ -199,19 +199,41 @@ def parse_form_d_xml(
         "state": _text(addr, "stateOrCountry") if addr is not None else None,
         "zip_code": _text(addr, "zipCode") if addr is not None else None,
         "phone": _text(issuer, "issuerPhoneNumber"),
-        "industry_group": _text(offering, "industryGroup/industryGroupType") if offering is not None else None,
-        "revenue_range": _text(offering, "issuerSize/revenueRange") if offering is not None else None,
+        "industry_group": _text(offering, "industryGroup/industryGroupType")
+        if offering is not None
+        else None,
+        "revenue_range": _text(offering, "issuerSize/revenueRange")
+        if offering is not None
+        else None,
         "date_of_first_sale": date_of_first_sale,
         "securities_types": securities_types,
         "federal_exemption": fed_exemption,
-        "total_offering_amount": _float(offering, "offeringSalesAmounts/totalOfferingAmount") if offering is not None else None,
-        "total_amount_sold": _float(offering, "offeringSalesAmounts/totalAmountSold") if offering is not None else None,
-        "total_remaining": _float(offering, "offeringSalesAmounts/totalRemaining") if offering is not None else None,
-        "minimum_investment": _float(offering, "minimumInvestmentAccepted") if offering is not None else None,
-        "num_investors": _int(offering, "investors/totalNumberAlreadyInvested") if offering is not None else None,
-        "has_non_accredited": _bool(offering, "investors/hasNonAccreditedInvestors") if offering is not None else None,
-        "is_amendment": _bool(offering, "typeOfFiling/newOrAmendment/isAmendment") if offering is not None else False,
-        "is_business_combination": _bool(offering, "businessCombinationTransaction/isBusinessCombinationTransaction") if offering is not None else False,
+        "total_offering_amount": _float(offering, "offeringSalesAmounts/totalOfferingAmount")
+        if offering is not None
+        else None,
+        "total_amount_sold": _float(offering, "offeringSalesAmounts/totalAmountSold")
+        if offering is not None
+        else None,
+        "total_remaining": _float(offering, "offeringSalesAmounts/totalRemaining")
+        if offering is not None
+        else None,
+        "minimum_investment": _float(offering, "minimumInvestmentAccepted")
+        if offering is not None
+        else None,
+        "num_investors": _int(offering, "investors/totalNumberAlreadyInvested")
+        if offering is not None
+        else None,
+        "has_non_accredited": _bool(offering, "investors/hasNonAccreditedInvestors")
+        if offering is not None
+        else None,
+        "is_amendment": _bool(offering, "typeOfFiling/newOrAmendment/isAmendment")
+        if offering is not None
+        else False,
+        "is_business_combination": _bool(
+            offering, "businessCombinationTransaction/isBusinessCombinationTransaction"
+        )
+        if offering is not None
+        else False,
         "related_persons": related_persons,
     }
 
@@ -262,9 +284,7 @@ def compute_form_d_confidence(
                     best_score = score
                     title = rp.get("title", "")
                     role_label = title.split(",")[0] if title else "Person"
-                    best_detail = (
-                        f"PI '{pi}' <> {role_label} '{rp_name}' ({int(score * 100)}%)"
-                    )
+                    best_detail = f"PI '{pi}' <> {role_label} '{rp_name}' ({int(score * 100)}%)"
 
         if best_detail is not None:
             person_score = best_score
@@ -279,11 +299,7 @@ def compute_form_d_confidence(
     address_score: float | None = None
     if sbir_zip and form_d_zips:
         sbir_zip_5 = sbir_zip.strip()[:5]
-        address_score = (
-            1.0
-            if any(z.strip()[:5] == sbir_zip_5 for z in form_d_zips if z)
-            else 0.0
-        )
+        address_score = 1.0 if any(z.strip()[:5] == sbir_zip_5 for z in form_d_zips if z) else 0.0
 
     # --- Signal 4: Temporal plausibility ---
     temporal_score: float | None = None

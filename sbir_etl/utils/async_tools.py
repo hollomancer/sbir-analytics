@@ -53,7 +53,5 @@ def run_sync(coro: Coroutine[Any, Any, Any]) -> Any:
     multiple threads (e.g. ``ThreadPoolExecutor`` workers).
     """
     loop = _get_loop()
-    future = asyncio.run_coroutine_threadsafe(
-        cast(Coroutine[Any, Any, Any], coro), loop
-    )
+    future = asyncio.run_coroutine_threadsafe(cast(Coroutine[Any, Any, Any], coro), loop)
     return future.result()

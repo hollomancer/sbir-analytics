@@ -78,6 +78,7 @@ def parse_research_code(code: str | None) -> tuple[str, int] | None:
 # Assistance Listing Numbers (ALN / CFDA) for SBIR/STTR grants
 # ---------------------------------------------------------------------------
 
+
 class AgencyAlnInfo(TypedDict):
     """Typed schema for per-agency SBIR/STTR ALN metadata."""
 

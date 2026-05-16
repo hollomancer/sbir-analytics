@@ -134,10 +134,17 @@ def usaspending_autocomplete(
         variations.append(normalized)
 
     # Remove legal suffixes for broadest match
-    base = re.sub(
-        r",?\s*(Inc\.?|Incorporated|LLC|Ltd\.?|Limited|Corp\.?|Corporation|Company|Co\.?)$",
-        "", normalized, flags=re.IGNORECASE,
-    ).strip().rstrip(",").strip()
+    base = (
+        re.sub(
+            r",?\s*(Inc\.?|Incorporated|LLC|Ltd\.?|Limited|Corp\.?|Corporation|Company|Co\.?)$",
+            "",
+            normalized,
+            flags=re.IGNORECASE,
+        )
+        .strip()
+        .rstrip(",")
+        .strip()
+    )
     if base and base not in variations and len(base) >= 10:
         variations.append(base)
 
@@ -156,7 +163,8 @@ def usaspending_autocomplete(
 
     logger.debug(
         "USAspending autocomplete: {} name variations for '{}'",
-        len(unique), company_name,
+        len(unique),
+        company_name,
     )
 
     best_candidate = None
@@ -176,9 +184,12 @@ def usaspending_autocomplete(
                 matched_uei = match.get("uei")
                 if matched_uei and str(matched_uei).strip().lower() not in ("", "nan", "none"):
                     logger.debug(
-                        "USAspending autocomplete matched '{}' "
-                        "(variation {}: '{}') → '{}' UEI={}",
-                        company_name, idx, name, matched_name, matched_uei,
+                        "USAspending autocomplete matched '{}' (variation {}: '{}') → '{}' UEI={}",
+                        company_name,
+                        idx,
+                        name,
+                        matched_name,
+                        matched_uei,
                     )
                     return {"uei": matched_uei, "name": matched_name}
                 if matched_name and best_candidate is None:
@@ -191,13 +202,15 @@ def usaspending_autocomplete(
     if best_candidate:
         logger.debug(
             "USAspending autocomplete: best candidate for '{}' → '{}' (no UEI)",
-            company_name, best_candidate["name"],
+            company_name,
+            best_candidate["name"],
         )
         return best_candidate
 
     logger.debug(
         "USAspending autocomplete: no match for '{}' after {} variations",
-        company_name, len(unique),
+        company_name,
+        len(unique),
     )
     return None
 
@@ -240,7 +253,9 @@ def usaspending_search(
     all_results: list[dict] = []
     logger.debug(
         "USAspending query for '{}' ({}='{}'): POST /search/spending_by_award/",
-        company_name, label, search_text,
+        company_name,
+        label,
+        search_text,
     )
 
     usa = SyncUSAspendingClient()
@@ -261,13 +276,19 @@ def usaspending_search(
                 group_results = data.get("results", [])
                 logger.debug(
                     "USAspending [{} via {}/{}]: {} results",
-                    company_name, label, group_name, len(group_results),
+                    company_name,
+                    label,
+                    group_name,
+                    len(group_results),
                 )
                 all_results.extend(group_results)
             except Exception as e:
                 logger.debug(
                     "USAspending [{}] {}/{} error: {}",
-                    company_name, label, group_name, e,
+                    company_name,
+                    label,
+                    group_name,
+                    e,
                 )
                 continue
     finally:
@@ -275,7 +296,9 @@ def usaspending_search(
 
     logger.debug(
         "USAspending [{} via {}]: {} total results",
-        company_name, label, len(all_results),
+        company_name,
+        label,
+        len(all_results),
     )
     return all_results if all_results else None
 
@@ -359,9 +382,7 @@ def lookup_company_federal_awards(
             if desc and len(non_sbir_descriptions) < 5:
                 if len(desc) > 200:
                     desc = desc[:200] + "..."
-                non_sbir_descriptions.append(
-                    f"{desc} ({ag}, {at}, ${amount:,.0f})"
-                )
+                non_sbir_descriptions.append(f"{desc} ({ag}, {at}, ${amount:,.0f})")
 
     return FederalAwardSummary(
         total_awards=len(results),
@@ -417,7 +438,9 @@ def lookup_usaspending_recipient(
                     recipient_id = results[0].get("id")
                     logger.debug(
                         "USAspending recipient matched '{}' → '{}' id={}",
-                        term, results[0].get("name"), recipient_id,
+                        term,
+                        results[0].get("name"),
+                        recipient_id,
                     )
                     break
             except Exception as e:
@@ -526,7 +549,8 @@ def lookup_sam_entity(
         methods_tried.append(f"name='{company_name}'")
         logger.info(
             "SAM.gov: no entity found for {} (tried: {})",
-            company_name, ", ".join(methods_tried),
+            company_name,
+            ", ".join(methods_tried),
         )
         return None
 
@@ -537,9 +561,7 @@ def lookup_sam_entity(
 
     naics_list = entity.get("coreData", {}).get("naicsCodeList", [])
     if isinstance(naics_list, list):
-        naics_codes = [
-            str(n.get("naicsCode", "")) for n in naics_list if n.get("naicsCode")
-        ]
+        naics_codes = [str(n.get("naicsCode", "")) for n in naics_list if n.get("naicsCode")]
     else:
         naics_codes = []
 
@@ -580,7 +602,10 @@ def lookup_sam_entity_with_fallback(
     SAM.gov maintenance windows.
     """
     result = lookup_sam_entity(
-        company_name, uei=uei, cage=cage, rate_limiter=rate_limiter,
+        company_name,
+        uei=uei,
+        cage=cage,
+        rate_limiter=rate_limiter,
     )
     if result is not None:
         return result
@@ -591,7 +616,9 @@ def lookup_sam_entity_with_fallback(
     )
 
     profile = lookup_usaspending_recipient(
-        company_name, uei=uei, rate_limiter=fallback_rate_limiter,
+        company_name,
+        uei=uei,
+        rate_limiter=fallback_rate_limiter,
     )
     if profile is None:
         return None
@@ -627,7 +654,9 @@ def lookup_usaspending_recipient_with_fallback(
     when USAspending is unavailable.
     """
     result = lookup_usaspending_recipient(
-        company_name, uei=uei, rate_limiter=rate_limiter,
+        company_name,
+        uei=uei,
+        rate_limiter=rate_limiter,
     )
     if result is not None:
         return result
@@ -638,7 +667,9 @@ def lookup_usaspending_recipient_with_fallback(
     )
 
     entity = lookup_sam_entity(
-        company_name, uei=uei, rate_limiter=fallback_rate_limiter,
+        company_name,
+        uei=uei,
+        rate_limiter=fallback_rate_limiter,
     )
     if entity is None:
         return None
@@ -704,6 +735,7 @@ def fetch_usaspending_contract_descriptions(
     try:
         from sbir_etl.enrichers.usaspending.client import build_award_type_groups
     except ImportError:
+
         def build_award_type_groups(ids):  # type: ignore[misc]
             piids, fains, unknown = [], [], []
             seen: set[str] = set()
@@ -738,7 +770,8 @@ def fetch_usaspending_contract_descriptions(
 
     logger.debug(
         "USAspending contract desc: {} IDs in {} groups",
-        len(all_ids), len(requests_to_make),
+        len(all_ids),
+        len(requests_to_make),
     )
     results: dict[str, str] = {}
     failed_ids: set[str] = set()
@@ -771,7 +804,9 @@ def fetch_usaspending_contract_descriptions(
             filters = {"award_ids": list(ids), "award_type_codes": codes}
             logger.debug(
                 "USAspending contract desc: {} ({} IDs: {})",
-                group_name, len(ids), ids[:3],
+                group_name,
+                len(ids),
+                ids[:3],
             )
             data = None
             used_method = "search_awards"
@@ -790,7 +825,9 @@ def fetch_usaspending_contract_descriptions(
                     num_results = len(data.get("results", []))
                     logger.debug(
                         "USAspending {}/{}: {} results",
-                        method, group_name, num_results,
+                        method,
+                        group_name,
+                        num_results,
                     )
                     used_method = method
                     break
@@ -809,26 +846,31 @@ def fetch_usaspending_contract_descriptions(
 
     # FPDS Atom Feed fallback for contract PIIDs that failed at USAspending.
     fpds_eligible = [
-        cid for cid in failed_ids
+        cid
+        for cid in failed_ids
         if cid not in results and not re.match(r"^DE-", cid, re.IGNORECASE)
     ]
     if fpds_eligible:
         logger.debug(
             "USAspending failed for {} IDs, {} eligible for FPDS fallback",
-            len(failed_ids), len(fpds_eligible),
+            len(failed_ids),
+            len(fpds_eligible),
         )
         fpds_results = fetch_fpds_descriptions(
-            fpds_eligible, rate_limiter=fpds_rate_limiter or rate_limiter,
+            fpds_eligible,
+            rate_limiter=fpds_rate_limiter or rate_limiter,
         )
         if fpds_results:
             results.update(fpds_results)
             logger.info(
                 "FPDS fallback recovered {}/{} descriptions",
-                len(fpds_results), len(fpds_eligible),
+                len(fpds_results),
+                len(fpds_eligible),
             )
 
     logger.debug(
         "Contract descriptions: {}/{} found (USAspending + FPDS)",
-        len(results), len(all_ids),
+        len(results),
+        len(all_ids),
     )
     return results

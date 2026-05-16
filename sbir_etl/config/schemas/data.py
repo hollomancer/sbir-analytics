@@ -20,6 +20,7 @@ from pydantic import BaseModel, Field, field_validator
 # Helpers (inlined from former common.py mixins)
 # ---------------------------------------------------------------------------
 
+
 def _coerce_percentage_mapping(
     values: Mapping[str, Any],
     *,
@@ -37,9 +38,7 @@ def _coerce_percentage_mapping(
         except (TypeError, ValueError) as exc:
             raise ValueError(f"{key} must be numeric, got {value!r}") from exc
         if not (lower_bound <= number <= upper_bound):
-            raise ValueError(
-                f"{key} must be between {lower_bound} and {upper_bound}, got {number}"
-            )
+            raise ValueError(f"{key} must be between {lower_bound} and {upper_bound}, got {number}")
         normalized[key] = number
     return normalized
 
@@ -314,11 +313,15 @@ class CompanyCategorizationConfig(BaseModel):
     """Configuration for company categorization system."""
 
     product_leaning_pct: float = Field(
-        default=51.0, ge=0.0, le=100.0,
+        default=51.0,
+        ge=0.0,
+        le=100.0,
         description="Product percentage threshold for Product-leaning classification",
     )
     service_leaning_pct: float = Field(
-        default=51.0, ge=0.0, le=100.0,
+        default=51.0,
+        ge=0.0,
+        le=100.0,
         description="Service percentage threshold for Service-leaning classification",
     )
     psc_family_diversity_threshold: int = Field(

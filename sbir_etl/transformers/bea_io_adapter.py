@@ -218,9 +218,7 @@ class BEAIOAdapter:
                 "Set BEA_API_KEY for real I-O analysis. "
                 "Register at https://apps.bea.gov/API/signup/"
             )
-            return self._compute_placeholder_impacts(
-                shocks_df, model_version or self.model_version
-            )
+            return self._compute_placeholder_impacts(shocks_df, model_version or self.model_version)
 
         self._validate_bea_sectors(shocks_df)
         model_ver = model_version or self.model_version
@@ -229,9 +227,9 @@ class BEAIOAdapter:
             result = self._compute_impacts_via_bea(shocks_df, model_ver)
             # Check if the result actually used real BEA data or fell back
             if "quality_flags" in result.columns:
-                placeholder_count = result["quality_flags"].str.contains(
-                    "placeholder|failed", na=False
-                ).sum()
+                placeholder_count = (
+                    result["quality_flags"].str.contains("placeholder|failed", na=False).sum()
+                )
                 if placeholder_count > 0:
                     logger.warning(
                         f"BEA I-O computation: {placeholder_count}/{len(result)} "
@@ -248,9 +246,7 @@ class BEAIOAdapter:
             )
             return self._compute_placeholder_impacts(shocks_df, model_ver)
 
-    def _compute_impacts_via_bea(
-        self, shocks_df: pd.DataFrame, model_version: str
-    ) -> pd.DataFrame:
+    def _compute_impacts_via_bea(self, shocks_df: pd.DataFrame, model_version: str) -> pd.DataFrame:
         """Core Leontief computation using BEA Use tables."""
         # Handle multi-year inputs by splitting into per-year groups
         fiscal_years = shocks_df["fiscal_year"].dropna().unique().tolist()
@@ -296,14 +292,12 @@ class BEAIOAdapter:
                 # before the matrix multiplication, then convert back to dollars.
                 state_shocks_millions = state_shocks.copy()
                 state_shocks_millions["shock_amount"] = (
-                    pd.to_numeric(
-                        state_shocks_millions["shock_amount"], errors="coerce"
-                    ).fillna(0.0)
+                    pd.to_numeric(state_shocks_millions["shock_amount"], errors="coerce").fillna(
+                        0.0
+                    )
                     / 1_000_000.0
                 )
-                production_by_sector = apply_demand_shocks(
-                    leontief_inv, state_shocks_millions
-                )
+                production_by_sector = apply_demand_shocks(leontief_inv, state_shocks_millions)
 
                 # Compute employment impacts (jobs) from production vector
                 employment_by_sector = calculate_employment_from_production(
@@ -355,9 +349,7 @@ class BEAIOAdapter:
                         employment_impact = production_millions * 10.0
 
                     quality_flags = (
-                        "bea_api_with_ratios"
-                        if used_actual_ratios
-                        else "bea_api_default_ratios"
+                        "bea_api_with_ratios" if used_actual_ratios else "bea_api_default_ratios"
                     )
 
                     all_results.append(
@@ -469,9 +461,7 @@ class BEAIOAdapter:
         result_df["consumption_impact"] = result_df["shock_amount"] * Decimal("0.2") * multiplier  # type: ignore[operator]
         result_df["tax_impact"] = result_df["shock_amount"] * Decimal("0.15") * multiplier  # type: ignore[operator]
         result_df["production_impact"] = result_df["shock_amount"] * multiplier
-        result_df["employment_impact"] = (
-            result_df["wage_impact"].astype(float) / 100_000
-        )
+        result_df["employment_impact"] = result_df["wage_impact"].astype(float) / 100_000
         result_df["model_version"] = model_version
         result_df["confidence"] = Decimal("0.75")
         result_df["quality_flags"] = "placeholder_computation"

@@ -124,13 +124,13 @@ jobs:
           cache-venv: "true"
 
       - name: Run Ruff lint
-        run: uv run python -m ruff check src tests
+        run: uv run python -m ruff check sbir_etl tests
 
       - name: Run Ruff format check
-        run: uv run python -m ruff format --check src tests
+        run: uv run python -m ruff format --check sbir_etl tests
 
       - name: Run MyPy type checker
-        run: uv run python -m mypy src
+        run: uv run python -m mypy sbir_etl
 
   verify-setup-script:
     name: Verify Setup Script

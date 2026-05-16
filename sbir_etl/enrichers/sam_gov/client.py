@@ -88,9 +88,7 @@ class SAMGovAPIClient(BaseAsyncAPIClient):
         """
         try:
             # SAM.gov Entity Information API v3: UEI is a query parameter
-            response = await self._make_request(
-                "GET", "/entities", params={"ueiSAM": uei}
-            )
+            response = await self._make_request("GET", "/entities", params={"ueiSAM": uei})
             if isinstance(response, dict) and "entityData" in response:
                 entities = response["entityData"]
                 return entities[0] if entities else None
@@ -114,9 +112,7 @@ class SAMGovAPIClient(BaseAsyncAPIClient):
         """
         try:
             # SAM.gov Entity Information API v3: CAGE is a query parameter
-            response = await self._make_request(
-                "GET", "/entities", params={"cageCode": cage}
-            )
+            response = await self._make_request("GET", "/entities", params={"cageCode": cage})
             if isinstance(response, dict) and "entityData" in response:
                 entities = response["entityData"]
                 return entities[0] if entities else None

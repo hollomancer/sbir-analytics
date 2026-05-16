@@ -97,9 +97,19 @@ def _normalize(name: str) -> str:
     """
     lower = name.lower().strip()
     for suffix in (
-        " inc", " inc.", " llc", " corp", " corp.",
-        " corporation", " company", " co.", " ltd", " ltd.",
-        " lp", " l.p.", " plc",
+        " inc",
+        " inc.",
+        " llc",
+        " corp",
+        " corp.",
+        " corporation",
+        " company",
+        " co.",
+        " ltd",
+        " ltd.",
+        " lp",
+        " l.p.",
+        " plc",
     ):
         if lower.endswith(suffix):
             lower = lower[: -len(suffix)].rstrip(" ,")
@@ -186,17 +196,13 @@ class PressWireClient(BaseAsyncAPIClient):
     # Parsing — handles both RSS 2.0 and Atom formats
     # ------------------------------------------------------------------
 
-    def _parse_rss_items(
-        self, root: ET.Element, source: str
-    ) -> list[PressRelease]:
+    def _parse_rss_items(self, root: ET.Element, source: str) -> list[PressRelease]:
         """Parse RSS 2.0 ``<item>`` elements."""
         items: list[PressRelease] = []
         for item in root.iter("item"):
             title = (item.findtext("title") or "").strip()
             link = (item.findtext("link") or "").strip()
-            pub_date = item.findtext("pubDate") or item.findtext(
-                "dc:date", namespaces=NS
-            )
+            pub_date = item.findtext("pubDate") or item.findtext("dc:date", namespaces=NS)
             summary = (item.findtext("description") or "").strip()
 
             if not title:
@@ -214,9 +220,7 @@ class PressWireClient(BaseAsyncAPIClient):
             )
         return items
 
-    def _parse_atom_entries(
-        self, root: ET.Element, source: str
-    ) -> list[PressRelease]:
+    def _parse_atom_entries(self, root: ET.Element, source: str) -> list[PressRelease]:
         """Parse Atom ``<entry>`` elements."""
         items: list[PressRelease] = []
         for entry in root.iter(f"{{{NS['atom']}}}entry"):
@@ -228,9 +232,8 @@ class PressWireClient(BaseAsyncAPIClient):
             if link_el is not None:
                 link = link_el.get("href", "")
 
-            pub_el = (
-                entry.find(f"{{{NS['atom']}}}published")
-                or entry.find(f"{{{NS['atom']}}}updated")
+            pub_el = entry.find(f"{{{NS['atom']}}}published") or entry.find(
+                f"{{{NS['atom']}}}updated"
             )
             pub_date = pub_el.text if pub_el is not None else None
 
@@ -276,9 +279,7 @@ class PressWireClient(BaseAsyncAPIClient):
 
         Uses normalized substring matching against title and summary.
         """
-        searchable = _normalize(
-            f"{item.title} {item.summary or ''}"
-        )
+        searchable = _normalize(f"{item.title} {item.summary or ''}")
         for normalized_name, original_name in self._watchlist.items():
             if normalized_name in searchable:
                 return original_name
@@ -320,9 +321,7 @@ class PressWireClient(BaseAsyncAPIClient):
                     self._seen_hashes.add(item.content_hash)
                     all_matches.append(item)
 
-        logger.info(
-            f"Press wire poll complete: {len(all_matches)} matches"
-        )
+        logger.info(f"Press wire poll complete: {len(all_matches)} matches")
         return all_matches
 
     async def poll_all_unfiltered(self) -> list[PressRelease]:

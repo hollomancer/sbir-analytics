@@ -10,6 +10,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -96,7 +97,6 @@ def build_award_type_groups(
         groups.append(([uid], "contracts", list(CONTRACT_TYPE_CODES)))
         groups.append(([uid], "assistance", list(ASSISTANCE_TYPE_CODES)))
     return groups
-
 
 
 class USAspendingAPIClient(BaseAsyncAPIClient):
@@ -487,8 +487,7 @@ class USAspendingAPIClient(BaseAsyncAPIClient):
                             results[aid] = record
                 except APIError as e:
                     logger.warning(
-                        f"Batch search failed for {group_name} group "
-                        f"({len(chunk)} ids): {e}"
+                        f"Batch search failed for {group_name} group ({len(chunk)} ids): {e}"
                     )
 
         logger.info(

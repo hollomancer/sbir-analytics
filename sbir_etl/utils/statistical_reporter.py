@@ -623,5 +623,3 @@ class StatisticalReporter:
 
         collection.pr_comment_generated = True
         logger.info("PR comment content generated")
-
-

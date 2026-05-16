@@ -58,19 +58,9 @@ def parse_patent_record(record: dict[str, Any]) -> dict[str, Any]:
         or record.get("patentNumber")
         or record.get("applicationNumberText")
     )
-    patent_title = (
-        record.get("inventionTitle")
-        or metadata.get("inventionTitle")
-        or ""
-    )
-    filing_date = (
-        record.get("filingDate")
-        or metadata.get("filingDate")
-    )
-    grant_date = (
-        metadata.get("grantDate")
-        or record.get("grantDate")
-    )
+    patent_title = record.get("inventionTitle") or metadata.get("inventionTitle") or ""
+    filing_date = record.get("filingDate") or metadata.get("filingDate")
+    grant_date = metadata.get("grantDate") or record.get("grantDate")
 
     # Extract assignee information
     assignees = record.get("assignees", []) or []
@@ -430,11 +420,13 @@ class PatentsViewClient:
                         org_name = assignee.get("assigneeName") or assignee.get("orgName")
                         if org_name and org_name.lower() not in seen_orgs:
                             seen_orgs.add(org_name.lower())
-                            assignees.append({
-                                "assignee_id": assignee.get("assigneeEntityId"),
-                                "assignee_organization": org_name,
-                                "assignee_type": assignee.get("assigneeTypeCategory"),
-                            })
+                            assignees.append(
+                                {
+                                    "assignee_id": assignee.get("assigneeEntityId"),
+                                    "assignee_organization": org_name,
+                                    "assignee_type": assignee.get("assigneeTypeCategory"),
+                                }
+                            )
 
             logger.debug(f"Found {len(assignees)} assignee matches for {company_name}")
             return assignees
@@ -481,18 +473,18 @@ class PatentsViewClient:
                 # Fall back to extracting assignee from the search result
                 parsed = self._parse_patent_record(records[0])
                 if parsed.get("assignee_organization"):
-                    return [{
-                        "patent_number": clean_patent_number,
-                        "assignee": parsed["assignee_organization"],
-                        "assignee_id": parsed.get("assignee_id"),
-                        "assignor": None,
-                    }]
+                    return [
+                        {
+                            "patent_number": clean_patent_number,
+                            "assignee": parsed["assignee_organization"],
+                            "assignee_id": parsed.get("assignee_id"),
+                            "assignor": None,
+                        }
+                    ]
                 return []
 
             # Fetch assignment data for this application
-            assignment_response = self._make_request(
-                f"/{app_number}/assignment", method="GET"
-            )
+            assignment_response = self._make_request(f"/{app_number}/assignment", method="GET")
 
             assignments = []
             assignment_records = assignment_response.get("patentAssignmentDataBag", [])
@@ -502,31 +494,33 @@ class PatentsViewClient:
 
             for assignment in assignment_records:
                 if isinstance(assignment, dict):
-                    assignee_name = (
-                        assignment.get("assigneeName")
-                        or assignment.get("assigneeEntityName")
+                    assignee_name = assignment.get("assigneeName") or assignment.get(
+                        "assigneeEntityName"
                     )
-                    assignor_name = (
-                        assignment.get("assignorName")
-                        or assignment.get("assignorEntityName")
+                    assignor_name = assignment.get("assignorName") or assignment.get(
+                        "assignorEntityName"
                     )
-                    assignments.append({
-                        "patent_number": clean_patent_number,
-                        "assignee": assignee_name,
-                        "assignee_id": assignment.get("assigneeEntityId"),
-                        "assignor": assignor_name,
-                    })
+                    assignments.append(
+                        {
+                            "patent_number": clean_patent_number,
+                            "assignee": assignee_name,
+                            "assignee_id": assignment.get("assigneeEntityId"),
+                            "assignor": assignor_name,
+                        }
+                    )
 
             # If no assignment endpoint data, fall back to patent record assignee
             if not assignments:
                 parsed = self._parse_patent_record(records[0])
                 if parsed.get("assignee_organization"):
-                    assignments.append({
-                        "patent_number": clean_patent_number,
-                        "assignee": parsed["assignee_organization"],
-                        "assignee_id": parsed.get("assignee_id"),
-                        "assignor": None,
-                    })
+                    assignments.append(
+                        {
+                            "patent_number": clean_patent_number,
+                            "assignee": parsed["assignee_organization"],
+                            "assignee_id": parsed.get("assignee_id"),
+                            "assignor": None,
+                        }
+                    )
 
             logger.debug(f"Found {len(assignments)} assignment records for patent {patent_number}")
             return assignments
@@ -547,7 +541,7 @@ class PatentsViewClient:
         """
         # Lucene special characters: + - && || ! ( ) { } [ ] ^ " ~ * ? : \ /
         special_chars = r'([+\-&|!(){}\[\]^"~*?:\\/])'
-        return re.sub(special_chars, r'\\\1', text)
+        return re.sub(special_chars, r"\\\1", text)
 
     def close(self) -> None:
         """Close the HTTP client."""

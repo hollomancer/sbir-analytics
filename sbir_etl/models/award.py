@@ -1,6 +1,6 @@
 """Pydantic models for SBIR award data."""
 
-from datetime import date, datetime, timezone
+from datetime import date, datetime, UTC
 from typing import Any
 
 from pydantic import (
@@ -182,8 +182,8 @@ class Award(BaseModel):
             return None
         if isinstance(v, datetime):
             if v.tzinfo is None:
-                return v.replace(tzinfo=timezone.utc)
-            return v.astimezone(timezone.utc)
+                return v.replace(tzinfo=UTC)
+            return v.astimezone(UTC)
         return v
 
     @field_validator("award_amount", mode="before")

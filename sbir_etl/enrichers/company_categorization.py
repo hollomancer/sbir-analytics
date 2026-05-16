@@ -1009,9 +1009,7 @@ def retrieve_company_contracts_api(
         return pd.DataFrame()
 
 
-def _fetch_award_details(
-    award_id: str, client: USAspendingAPIClient
-) -> dict[str, Any] | None:
+def _fetch_award_details(award_id: str, client: USAspendingAPIClient) -> dict[str, Any] | None:
     """Fetch detailed award information including PSC code as a fallback.
 
     Args:
@@ -1274,7 +1272,9 @@ def retrieve_sbir_awards_api(
         )
     except Exception as e:
         logger.debug(f"Could not initialize cache, proceeding without caching: {e}")
-        cache = APICache(cache_dir="data/cache/usaspending", default_cache_type="contracts", enabled=False)
+        cache = APICache(
+            cache_dir="data/cache/usaspending", default_cache_type="contracts", enabled=False
+        )
 
     # Check cache first (SBIR awards only)
     cached_result = cache.get(uei=uei, duns=duns, company_name=company_name, cache_type="sbir")

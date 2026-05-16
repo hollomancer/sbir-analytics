@@ -72,8 +72,8 @@ class TransitionRateThresholds:
     """Thresholds for the Phase I→II transition rate benchmark."""
 
     lookback_years: int = 5
-    phase1_exclude_recent_years: int = 1   # Exclude most recently completed FY
-    phase2_exclude_recent_years: int = 0   # Phase II count includes most recent FY
+    phase1_exclude_recent_years: int = 1  # Exclude most recently completed FY
+    phase2_exclude_recent_years: int = 0  # Phase II count includes most recent FY
     standard_min_phase1: int = 21
     standard_min_ratio: float = 0.25
     increased_min_phase1: int = 51
@@ -85,7 +85,7 @@ class CommercializationRateThresholds:
     """Thresholds for the commercialization rate benchmark."""
 
     lookback_years: int = 10
-    exclude_recent_years: int = 2          # Exclude 2 most recently completed FYs
+    exclude_recent_years: int = 2  # Exclude 2 most recently completed FYs
     standard_min_phase2: int = 16
     standard_min_avg_sales: float = 100_000.0
     standard_min_patent_rate: float = 0.15  # Patents path only for standard tier

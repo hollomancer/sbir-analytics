@@ -177,43 +177,67 @@ class GeographicResolver:
         # Source: USPS Publication 65, National Five-Digit ZIP Code & Post Office Directory
         ranges: list[tuple[int, int, str]] = [
             # New England
-            (10, 27, "MA"), (28, 29, "RI"), (30, 38, "NH"),
-            (39, 49, "ME"), (50, 54, "VT"), (60, 69, "CT"),
+            (10, 27, "MA"),
+            (28, 29, "RI"),
+            (30, 38, "NH"),
+            (39, 49, "ME"),
+            (50, 54, "VT"),
+            (60, 69, "CT"),
             # Mid-Atlantic
-            (1, 5, "NY"), (6, 9, "PR"),
+            (1, 5, "NY"),
+            (6, 9, "PR"),
             (100, 149, "NY"),
             (150, 196, "PA"),
             # DC / Maryland / Virginia / West Virginia
-            (200, 205, "DC"), (206, 219, "MD"),
-            (220, 246, "VA"), (247, 268, "WV"),
+            (200, 205, "DC"),
+            (206, 219, "MD"),
+            (220, 246, "VA"),
+            (247, 268, "WV"),
             # Carolinas
-            (270, 289, "NC"), (290, 299, "SC"),
+            (270, 289, "NC"),
+            (290, 299, "SC"),
             # Southeast
-            (300, 319, "GA"), (320, 349, "FL"),
-            (350, 369, "AL"), (370, 385, "TN"),
+            (300, 319, "GA"),
+            (320, 349, "FL"),
+            (350, 369, "AL"),
+            (370, 385, "TN"),
             (386, 397, "MS"),
             # Central
-            (400, 427, "KY"), (430, 459, "OH"),
-            (460, 479, "IN"), (480, 499, "MI"),
+            (400, 427, "KY"),
+            (430, 459, "OH"),
+            (460, 479, "IN"),
+            (480, 499, "MI"),
             # Upper Midwest
-            (500, 528, "IA"), (530, 549, "WI"),
-            (550, 567, "MN"), (570, 577, "SD"),
-            (580, 588, "ND"), (590, 599, "MT"),
+            (500, 528, "IA"),
+            (530, 549, "WI"),
+            (550, 567, "MN"),
+            (570, 577, "SD"),
+            (580, 588, "ND"),
+            (590, 599, "MT"),
             # Illinois / Missouri / Kansas / Nebraska
-            (600, 629, "IL"), (630, 658, "MO"),
-            (660, 679, "KS"), (680, 693, "NE"),
+            (600, 629, "IL"),
+            (630, 658, "MO"),
+            (660, 679, "KS"),
+            (680, 693, "NE"),
             # South Central
-            (700, 714, "LA"), (716, 729, "AR"),
-            (730, 749, "OK"), (750, 799, "TX"),
+            (700, 714, "LA"),
+            (716, 729, "AR"),
+            (730, 749, "OK"),
+            (750, 799, "TX"),
             # Mountain West
-            (800, 816, "CO"), (820, 831, "WY"),
-            (832, 838, "ID"), (840, 847, "UT"),
-            (850, 865, "AZ"), (870, 884, "NM"),
+            (800, 816, "CO"),
+            (820, 831, "WY"),
+            (832, 838, "ID"),
+            (840, 847, "UT"),
+            (850, 865, "AZ"),
+            (870, 884, "NM"),
             (889, 898, "NV"),
             # Pacific
-            (900, 961, "CA"), (967, 968, "HI"),
+            (900, 961, "CA"),
+            (967, 968, "HI"),
             (962, 966, "CA"),  # military/misc CA
-            (970, 979, "OR"), (980, 994, "WA"),
+            (970, 979, "OR"),
+            (980, 994, "WA"),
             (995, 999, "AK"),
         ]
 
@@ -460,9 +484,7 @@ class GeographicResolver:
                         state_code = self._zip3_to_state.get(prefix)
                         if state_code and state_code in self.valid_state_codes:
                             state_name = self.state_mappings.get(state_code)
-                            logger.debug(
-                                f"Resolved state {state_code} from ZIP prefix {prefix}"
-                            )
+                            logger.debug(f"Resolved state {state_code} from ZIP prefix {prefix}")
                             return GeographicResolutionResult(
                                 state_code=state_code,
                                 state_name=state_name,

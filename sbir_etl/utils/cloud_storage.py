@@ -59,9 +59,7 @@ def resolve_data_path(
 
     if is_s3:
         if S3Path is None:
-            raise ImportError(
-                "S3 support requires the 'cloud' extra: pip install sbir-etl[cloud]"
-            )
+            raise ImportError("S3 support requires the 'cloud' extra: pip install sbir-etl[cloud]")
         # Try S3 first
         try:
             s3_path = S3Path(cloud_str)
@@ -489,9 +487,7 @@ def resolve_sbir_awards_csv(
         try:
             s3_url = find_latest_sbir_awards(bucket)
         except (ImportError, ModuleNotFoundError) as e:
-            logger.warning(
-                f"S3 lookup unavailable (missing cloud dependencies): {e}"
-            )
+            logger.warning(f"S3 lookup unavailable (missing cloud dependencies): {e}")
             s3_url = None
         if s3_url:
             logger.info(f"Using S3-cached CSV: {s3_url}")
@@ -500,9 +496,7 @@ def resolve_sbir_awards_csv(
             # Download S3 object to a local temp file so downstream code
             # (DuckDB, pandas) can read it without special S3 handling.
             local_path_resolved = resolve_data_path(s3_url)
-            return SbirAwardsSource(
-                path=local_path_resolved, origin="s3", s3_key_date=key_date
-            )
+            return SbirAwardsSource(path=local_path_resolved, origin="s3", s3_key_date=key_date)
 
     # 2. Download from URL
     logger.info(f"S3 not available; downloading from {download_url}")
@@ -512,7 +506,10 @@ def resolve_sbir_awards_csv(
             response.raise_for_status()
 
         with tempfile.NamedTemporaryFile(
-            mode="wb", suffix=".csv", prefix="sbir_awards_", delete=False,
+            mode="wb",
+            suffix=".csv",
+            prefix="sbir_awards_",
+            delete=False,
         ) as tmp_file:
             tmp_file.write(response.content)
             tmp = Path(tmp_file.name)

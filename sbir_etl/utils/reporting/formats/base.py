@@ -109,5 +109,3 @@ class BaseReportProcessor(ABC):
         """
         # Override in subclasses that include visualizations
         return False
-
-

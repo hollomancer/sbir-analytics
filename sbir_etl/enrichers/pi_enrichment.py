@@ -167,9 +167,7 @@ def lookup_pi_patents_with_fallback(
     if result is not None:
         return result
 
-    logger.info(
-        "No PatentsView data for '{}'; falling back to Lens.org", pi_name
-    )
+    logger.info("No PatentsView data for '{}'; falling back to Lens.org", pi_name)
 
     try:
         with SyncLensPatentClient(shared_limiter=lens_rate_limiter) as lens:

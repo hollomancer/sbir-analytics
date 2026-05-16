@@ -113,9 +113,7 @@ class OpenCorporatesClient(BaseAsyncAPIClient):
         super().__init__(shared_limiter=shared_limiter)
         self.base_url = OPENCORPORATES_API_URL
         self.rate_limit_per_minute = rate_limit_per_minute
-        self._token = api_token or os.environ.get(
-            "OPENCORPORATES_API_TOKEN", ""
-        )
+        self._token = api_token or os.environ.get("OPENCORPORATES_API_TOKEN", "")
         self._client = http_client or httpx.AsyncClient(timeout=timeout)
 
     async def _get(
@@ -155,9 +153,7 @@ class OpenCorporatesClient(BaseAsyncAPIClient):
         (search requires a token).
         """
         if not self._token:
-            logger.debug(
-                "OpenCorporates: no API token configured, skipping search"
-            )
+            logger.debug("OpenCorporates: no API token configured, skipping search")
             return []
         params: dict[str, Any] = {"q": name, "per_page": limit}
         if jurisdiction:
@@ -173,19 +169,13 @@ class OpenCorporatesClient(BaseAsyncAPIClient):
     # Company details
     # ------------------------------------------------------------------
 
-    async def get_company(
-        self, jurisdiction: str, company_number: str
-    ) -> dict[str, Any] | None:
+    async def get_company(self, jurisdiction: str, company_number: str) -> dict[str, Any] | None:
         """Fetch full company details by jurisdiction and company number."""
         return await self._get(f"companies/{jurisdiction}/{company_number}")
 
-    async def get_officers(
-        self, jurisdiction: str, company_number: str
-    ) -> list[Officer]:
+    async def get_officers(self, jurisdiction: str, company_number: str) -> list[Officer]:
         """Fetch officers for a company."""
-        data = await self._get(
-            f"companies/{jurisdiction}/{company_number}/officers"
-        )
+        data = await self._get(f"companies/{jurisdiction}/{company_number}/officers")
         if data is None:
             return []
 
@@ -237,9 +227,7 @@ class OpenCorporatesClient(BaseAsyncAPIClient):
         Returns ``None`` if no match found. Propagates :class:`APIError`
         on transport/server failures so callers can distinguish.
         """
-        results = await self.search_companies(
-            name, jurisdiction=jurisdiction, limit=3
-        )
+        results = await self.search_companies(name, jurisdiction=jurisdiction, limit=3)
         if not results:
             return None
 
@@ -263,10 +251,7 @@ class OpenCorporatesClient(BaseAsyncAPIClient):
         detail_data = await self.get_company(jur, num)
         company = {}
         if detail_data:
-            company = (
-                detail_data.get("results", {})
-                .get("company", detail_data.get("company", {}))
-            )
+            company = detail_data.get("results", {}).get("company", detail_data.get("company", {}))
 
         # Officers
         officers = await self.get_officers(jur, num)

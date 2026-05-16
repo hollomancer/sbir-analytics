@@ -120,9 +120,7 @@ class EdgarAPIClient(BaseAsyncAPIClient):
         else:
             self.api_config = config
 
-        self.base_url = str(
-            self.api_config.get("base_url", "https://efts.sec.gov/LATEST")
-        )
+        self.base_url = str(self.api_config.get("base_url", "https://efts.sec.gov/LATEST"))
         self.facts_base_url = str(
             self.api_config.get("facts_base_url", "https://data.sec.gov/api/xbrl")
         )
@@ -130,9 +128,7 @@ class EdgarAPIClient(BaseAsyncAPIClient):
             self.api_config.get("filings_base_url", "https://data.sec.gov/submissions")
         )
         self.timeout = cast(int, self.api_config.get("timeout_seconds", 30))
-        self.rate_limit_per_minute = cast(
-            int, self.api_config.get("rate_limit_per_minute", 600)
-        )
+        self.rate_limit_per_minute = cast(int, self.api_config.get("rate_limit_per_minute", 600))
 
         # SEC requires a User-Agent with contact info for fair access.
         # Accept contact_email directly from config, or look it up from env.
@@ -208,9 +204,7 @@ class EdgarAPIClient(BaseAsyncAPIClient):
             "forms": "10-K",
         }
         try:
-            response = await self._make_request(
-                "GET", "/search-index", params=params
-            )
+            response = await self._make_request("GET", "/search-index", params=params)
             hits = response.get("hits", {}).get("hits", [])
             results = []
             seen_ciks: set[str] = set()
@@ -227,17 +221,17 @@ class EdgarAPIClient(BaseAsyncAPIClient):
                     continue
                 seen_ciks.add(cik)
 
-                entity_name, ticker = _parse_display_name(
-                    display_names[0] if display_names else ""
-                )
+                entity_name, ticker = _parse_display_name(display_names[0] if display_names else "")
 
-                results.append({
-                    "cik": cik,
-                    "entity_name": entity_name,
-                    "ticker": ticker,
-                    "file_date": source.get("file_date", None),
-                    "form_type": source.get("root_forms", [None])[0],
-                })
+                results.append(
+                    {
+                        "cik": cik,
+                        "entity_name": entity_name,
+                        "ticker": ticker,
+                        "file_date": source.get("file_date", None),
+                        "form_type": source.get("root_forms", [None])[0],
+                    }
+                )
                 if len(results) >= limit:
                     break
             return results
@@ -277,9 +271,7 @@ class EdgarAPIClient(BaseAsyncAPIClient):
             "forms": forms,
         }
         try:
-            response = await self._make_request(
-                "GET", "/search-index", params=params
-            )
+            response = await self._make_request("GET", "/search-index", params=params)
             hits = response.get("hits", {}).get("hits", [])
             results = []
             for hit in hits[:limit]:
@@ -287,27 +279,29 @@ class EdgarAPIClient(BaseAsyncAPIClient):
                 ciks = source.get("ciks", [])
                 display_names = source.get("display_names", [])
                 filer_cik = ciks[0].lstrip("0") or "0" if ciks else ""
-                filer_name, _ = _parse_display_name(
-                    display_names[0] if display_names else ""
+                filer_name, _ = _parse_display_name(display_names[0] if display_names else "")
+                results.append(
+                    {
+                        "filer_cik": filer_cik,
+                        "filer_name": filer_name,
+                        "form_type": source.get("root_forms", [""])[0]
+                        if source.get("root_forms")
+                        else "",
+                        "file_date": source.get("file_date", None),
+                        "accession_number": (
+                            source.get("file_num", [""])[0]
+                            if isinstance(source.get("file_num"), list)
+                            else source.get("file_num", "")
+                        ),
+                        "file_description": source.get("file_description", ""),
+                        "items": source.get("items", []),
+                        "sics": source.get("sics", []),
+                        "doc_id": hit.get("_id", ""),  # accession:filename for document fetch
+                    }
                 )
-                results.append({
-                    "filer_cik": filer_cik,
-                    "filer_name": filer_name,
-                    "form_type": source.get("root_forms", [""])[0] if source.get("root_forms") else "",
-                    "file_date": source.get("file_date", None),
-                    "accession_number": (source.get("file_num", [""])[0]
-                                        if isinstance(source.get("file_num"), list)
-                                        else source.get("file_num", "")),
-                    "file_description": source.get("file_description", ""),
-                    "items": source.get("items", []),
-                    "sics": source.get("sics", []),
-                    "doc_id": hit.get("_id", ""),  # accession:filename for document fetch
-                })
             return results
         except APIError as e:
-            logger.warning(
-                f"EDGAR filing mention search failed for '{company_name}': {e}"
-            )
+            logger.warning(f"EDGAR filing mention search failed for '{company_name}': {e}")
             return []
 
     async def search_form_d_filings(
@@ -337,9 +331,7 @@ class EdgarAPIClient(BaseAsyncAPIClient):
             "enddt": "2026-12-31",
         }
         try:
-            response = await self._make_request(
-                "GET", "/search-index", params=params
-            )
+            response = await self._make_request("GET", "/search-index", params=params)
             hits = response.get("hits", {}).get("hits", [])
             results = []
             for hit in hits[:limit]:
@@ -347,22 +339,20 @@ class EdgarAPIClient(BaseAsyncAPIClient):
                 ciks = source.get("ciks", [])
                 display_names = source.get("display_names", [])
                 cik = ciks[0].lstrip("0") or "0" if ciks else ""
-                entity_name, _ = _parse_display_name(
-                    display_names[0] if display_names else ""
+                entity_name, _ = _parse_display_name(display_names[0] if display_names else "")
+                results.append(
+                    {
+                        "cik": cik,
+                        "entity_name": entity_name,
+                        "file_date": source.get("file_date", None),
+                        "form_type": "D",
+                        "biz_locations": source.get("biz_locations", []),
+                        "biz_states": source.get("biz_states", []),
+                    }
                 )
-                results.append({
-                    "cik": cik,
-                    "entity_name": entity_name,
-                    "file_date": source.get("file_date", None),
-                    "form_type": "D",
-                    "biz_locations": source.get("biz_locations", []),
-                    "biz_states": source.get("biz_states", []),
-                })
             return results
         except APIError as e:
-            logger.warning(
-                f"EDGAR Form D search failed for '{company_name}': {e}"
-            )
+            logger.warning(f"EDGAR Form D search failed for '{company_name}': {e}")
             return []
 
     async def fetch_filing_document(
@@ -398,9 +388,7 @@ class EdgarAPIClient(BaseAsyncAPIClient):
             await self._wait_for_rate_limit()
             headers = self._build_headers()
             headers["Accept"] = "text/html, application/xhtml+xml, */*"
-            response = await self._client.get(
-                url, headers=headers, follow_redirects=True
-            )
+            response = await self._client.get(url, headers=headers, follow_redirects=True)
             # Raise on 429/5xx so tenacity retries them
             if response.status_code in (429, 500, 502, 503):
                 response.raise_for_status()
@@ -432,8 +420,7 @@ class EdgarAPIClient(BaseAsyncAPIClient):
         accession_path = accession.replace("-", "")
         cik_padded = cik.zfill(10)
         url = (
-            f"https://www.sec.gov/Archives/edgar/data/"
-            f"{cik_padded}/{accession_path}/primary_doc.xml"
+            f"https://www.sec.gov/Archives/edgar/data/{cik_padded}/{accession_path}/primary_doc.xml"
         )
 
         retry_attempts = cast(int, self.api_config.get("retry_attempts", 3))
@@ -449,9 +436,7 @@ class EdgarAPIClient(BaseAsyncAPIClient):
             await self._wait_for_rate_limit()
             headers = self._build_headers()
             headers["Accept"] = "application/xml, text/xml, */*"
-            response = await self._client.get(
-                url, headers=headers, follow_redirects=True
-            )
+            response = await self._client.get(url, headers=headers, follow_redirects=True)
             # Raise on 429/5xx so tenacity retries them
             if response.status_code in (429, 500, 502, 503):
                 response.raise_for_status()
@@ -558,13 +543,15 @@ class EdgarAPIClient(BaseAsyncAPIClient):
             for i in range(len(forms)):
                 if filing_types and forms[i] not in filing_types:
                     continue
-                filings.append({
-                    "form_type": forms[i],
-                    "filing_date": dates[i] if i < len(dates) else None,
-                    "accession_number": accessions[i] if i < len(accessions) else None,
-                    "primary_document": primary_docs[i] if i < len(primary_docs) else None,
-                    "description": descriptions[i] if i < len(descriptions) else None,
-                })
+                filings.append(
+                    {
+                        "form_type": forms[i],
+                        "filing_date": dates[i] if i < len(dates) else None,
+                        "accession_number": accessions[i] if i < len(accessions) else None,
+                        "primary_document": primary_docs[i] if i < len(primary_docs) else None,
+                        "description": descriptions[i] if i < len(descriptions) else None,
+                    }
+                )
             return filings
         except httpx.HTTPStatusError as e:
             if e.response.status_code == 404:

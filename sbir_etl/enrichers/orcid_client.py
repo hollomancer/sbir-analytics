@@ -52,57 +52,35 @@ class ORCIDRecord:
     keywords: list[str] = field(default_factory=list)
 
 
-def _parse_profile(
-    orcid_id: str, search_result: dict, profile: dict
-) -> ORCIDRecord:
+def _parse_profile(orcid_id: str, search_result: dict, profile: dict) -> ORCIDRecord:
     """Parse an ORCID profile response into an :class:`ORCIDRecord`."""
     # Affiliations
     affiliations: list[str] = []
     affiliation_groups = (
-        profile.get("activities-summary", {})
-        .get("employments", {})
-        .get("affiliation-group", [])
+        profile.get("activities-summary", {}).get("employments", {}).get("affiliation-group", [])
     )
     for group in affiliation_groups[:10]:
         for s in group.get("summaries", []):
-            org_name = (
-                s.get("employment-summary", {})
-                .get("organization", {})
-                .get("name", "")
-            )
+            org_name = s.get("employment-summary", {}).get("organization", {}).get("name", "")
             if org_name and org_name not in affiliations:
                 affiliations.append(org_name)
 
     # Works
-    works_group = (
-        profile.get("activities-summary", {})
-        .get("works", {})
-        .get("group", [])
-    )
+    works_group = profile.get("activities-summary", {}).get("works", {}).get("group", [])
     sample_titles: list[str] = []
     for wg in works_group[:5]:
         summaries = wg.get("work-summary", [])
         if summaries:
-            title_val = (
-                summaries[0].get("title", {}).get("title", {}).get("value", "")
-            )
+            title_val = summaries[0].get("title", {}).get("title", {}).get("value", "")
             if title_val:
                 sample_titles.append(title_val)
 
     # Funding
-    funding_group = (
-        profile.get("activities-summary", {})
-        .get("fundings", {})
-        .get("group", [])
-    )
+    funding_group = profile.get("activities-summary", {}).get("fundings", {}).get("group", [])
 
     # Keywords
-    keyword_list = (
-        profile.get("person", {}).get("keywords", {}).get("keyword", [])
-    )
-    keywords = [
-        kw.get("content", "") for kw in keyword_list[:10] if kw.get("content")
-    ]
+    keyword_list = profile.get("person", {}).get("keywords", {}).get("keyword", [])
+    keywords = [kw.get("content", "") for kw in keyword_list[:10] if kw.get("content")]
 
     return ORCIDRecord(
         orcid_id=orcid_id,
@@ -150,9 +128,7 @@ class ORCIDClient(BaseAsyncAPIClient):
         super().__init__(shared_limiter=shared_limiter)
         self.base_url = ORCID_API_URL
         self.rate_limit_per_minute = rate_limit_per_minute
-        self._access_token = access_token or os.environ.get(
-            "ORCID_ACCESS_TOKEN", ""
-        )
+        self._access_token = access_token or os.environ.get("ORCID_ACCESS_TOKEN", "")
         self._client = http_client or httpx.AsyncClient(timeout=timeout)
 
     def _build_headers(self) -> dict[str, str]:

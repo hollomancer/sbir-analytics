@@ -103,9 +103,7 @@ class SemanticScholarClient(BaseAsyncAPIClient):
             headers["x-api-key"] = self._api_key
         return headers
 
-    async def search_author(
-        self, name: str, limit: int = 5
-    ) -> list[dict[str, Any]]:
+    async def search_author(self, name: str, limit: int = 5) -> list[dict[str, Any]]:
         """Search for authors by name.
 
         Returns the ``data`` list from the API response (possibly empty).
@@ -124,9 +122,7 @@ class SemanticScholarClient(BaseAsyncAPIClient):
             raise
         return data.get("data", [])
 
-    async def get_author_details(
-        self, author_id: str
-    ) -> dict[str, Any] | None:
+    async def get_author_details(self, author_id: str) -> dict[str, Any] | None:
         """Fetch author details including papers, h-index, and affiliations.
 
         Returns ``None`` if the author is not found (404); propagates
@@ -137,10 +133,7 @@ class SemanticScholarClient(BaseAsyncAPIClient):
                 "GET",
                 f"author/{author_id}",
                 params={
-                    "fields": (
-                        "name,hIndex,citationCount,affiliations,"
-                        "papers.title,papers.year"
-                    ),
+                    "fields": ("name,hIndex,citationCount,affiliations,papers.title,papers.year"),
                 },
             )
         except APIError as e:

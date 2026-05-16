@@ -134,7 +134,9 @@ class SbirDuckDBExtractor:
             # Force native DuckDB import — pandas chunking and fallback
             # modes require a local file and will fail on s3:// URLs.
             if incremental:
-                logger.warning("Incremental mode not supported for S3 paths; using native DuckDB import")
+                logger.warning(
+                    "Incremental mode not supported for S3 paths; using native DuckDB import"
+                )
                 incremental = False
         elif not Path(self.csv_path).exists():
             raise FileNotFoundError(f"CSV file not found: {self.csv_path}")
@@ -199,7 +201,9 @@ class SbirDuckDBExtractor:
                 # If native import appears to be wrong, try pandas-based import as fallback.
                 # Skip fallback for S3 paths — pandas can't read s3:// URLs directly.
                 expected_column_count = 42
-                if not _using_s3 and (row_count_check == 0 or len(discovered_columns) != expected_column_count):
+                if not _using_s3 and (
+                    row_count_check == 0 or len(discovered_columns) != expected_column_count
+                ):
                     logger.warning(
                         "Native DuckDB CSV import produced unexpected results; trying pandas fallback",
                         row_count=row_count_check,
