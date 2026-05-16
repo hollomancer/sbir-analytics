@@ -1036,7 +1036,7 @@ jobs:
 
       - name: Run Transition MVP (shim)
         run: |
-          make transition-mvp-run
+          make transition-run
 
       - name: Export precision audit sample (CSV)
         run: |

@@ -510,16 +510,8 @@ paecter-run: ## Run PaECTER embeddings and similarity
 	@$(call success,PaECTER analysis completed)
 
 # -----------------------------------------------------------------------------
-# Legacy aliases (deprecated, use function-specific targets above)
+# Legacy artifact cleanup
 # -----------------------------------------------------------------------------
-
-.PHONY: transition-mvp-run
-transition-mvp-run: transition-run ## [DEPRECATED] Use 'make transition-run' instead
-	@$(call warn,transition-mvp-run is deprecated, use 'make transition-run' instead)
-
-.PHONY: cet-pipeline-dev
-cet-pipeline-dev: cet-run ## [DEPRECATED] Use 'make cet-run' instead
-	@$(call warn,cet-pipeline-dev is deprecated, use 'make cet-run' instead)
 
 .PHONY: transition-mvp-clean
 transition-mvp-clean: ## Clean up Transition MVP artifacts
@@ -536,12 +528,6 @@ transition-mvp-clean: ## Clean up Transition MVP artifacts
 # -----------------------------------------------------------------------------
 # Convenience targets
 # -----------------------------------------------------------------------------
-
-## docker-logs SERVICE=name: Tail logs (default SERVICE=dagster-webserver)
-## docker-exec SERVICE=name CMD="sh -lc 'command'": Execute a command inside a container
-## docker-rebuild: Stop everything, rebuild the image, and restart the dev stack
-## docker-check / docker-check-install: Docker diagnostics
-## docker-e2e-* targets: Convenience wrappers around docker-e2e
 
 .PHONY: logs-all
 logs-all: ## Show logs from all running containers
@@ -614,10 +600,3 @@ ci-local: ## Run CI checks locally (mimics GitHub Actions)
 	   $(call warn,Python3 not found, skipping secret scan); \
 	 fi; \
 	 $(call success,CI checks completed)
-
-.PHONY: docker-build docker-buildx docker-push docker-up-dev docker-up-tools docker-down docker-rebuild docker-test \
-	docker-e2e docker-e2e-clean docker-e2e-minimal docker-e2e-standard \
-	docker-e2e-large docker-e2e-edge-cases docker-e2e-debug docker-logs \
-	docker-exec env-check docker-check docker-check-install docker-check-prerequisites docker-verify neo4j-up \
-	neo4j-down neo4j-reset neo4j-check transition-mvp-run transition-mvp-clean \
-	logs-all ps clean-all shell db-shell validate-config validate ci-local

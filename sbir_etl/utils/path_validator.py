@@ -213,7 +213,7 @@ class PathValidator:
             print(
                 f"\nTotal errors: {len(self.validation_errors)}\n"
                 "Fix these paths in your configuration or set environment variables.\n"
-                "See docs/configuration/paths.md for details."
+                "See docs/configuration.md for details."
             )
         else:
             print("✓ All paths validated successfully")

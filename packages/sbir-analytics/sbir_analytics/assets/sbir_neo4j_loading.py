@@ -1,6 +1,7 @@
 """Neo4j loading assets for SBIR awards."""
 
 import json
+import os
 import re
 import time
 from datetime import date
@@ -20,6 +21,7 @@ from loguru import logger
 
 from sbir_etl.config.loader import get_config
 from sbir_etl.models.award import Award
+from sbir_etl.utils.company_canonicalizer import canonicalize_companies_from_awards
 
 try:
     from sbir_graph.loaders.neo4j import LoadMetrics, Neo4jClient, Neo4jConfig
@@ -29,10 +31,12 @@ except ImportError:
     Neo4jClient = None  # type: ignore[assignment, misc]
     Neo4jConfig = None  # type: ignore[assignment, misc]
     OrganizationLoader = None  # type: ignore[assignment, misc]
-from sbir_etl.utils.company_canonicalizer import canonicalize_companies_from_awards
 
 
-# State name to code mapping
+# ---------------------------------------------------------------------------
+# Constants
+# ---------------------------------------------------------------------------
+
 STATE_NAME_TO_CODE = {
     "alabama": "AL",
     "alaska": "AK",
@@ -92,8 +96,8 @@ STATE_NAME_TO_CODE = {
     "northern mariana islands": "MP",
 }
 
-# Legal suffixes to remove during company name normalization
-LEGAL_SUFFIXES = [
+# Legal suffixes stripped during normalization.
+_LEGAL_SUFFIXES = [
     r"\bincorporated\b",
     r"\bincorporation\b",
     r"\bcorporation\b",
@@ -115,8 +119,8 @@ LEGAL_SUFFIXES = [
     r"\bl\.?p\.?\b",
 ]
 
-# Common abbreviation standardizations
-ABBREVIATION_REPLACEMENTS = {
+# Standardized abbreviations applied after suffix removal.
+_ABBREVIATION_REPLACEMENTS = {
     r"\btechnologies\b": "tech",
     r"\btechnology\b": "tech",
     r"\bsystems?\b": "sys",
@@ -134,74 +138,68 @@ ABBREVIATION_REPLACEMENTS = {
     r"\bdevelopment\b": "dev",
 }
 
+_PHASE_NEXT = {"I": "II", "II": "III"}
+
+_BOOL_FIELDS_WITH_UNKNOWN = (
+    "hubzone_owned",
+    "woman_owned",
+    "socially_and_economically_disadvantaged",
+)
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
 
 def normalize_company_name(name: str) -> str:
-    """Normalize company name for better matching across records.
+    """Normalize a company name for cross-record matching.
 
-    Applies the following transformations:
-    1. Lowercase and strip whitespace
-    2. Remove punctuation (except hyphens in the middle of words)
-    3. Remove legal suffixes (Inc, Corp, LLC, etc.)
-    4. Standardize common abbreviations
-    5. Normalize whitespace to single spaces
-
-    Args:
-        name: Raw company name
-
-    Returns:
-        Normalized company name for use as identifier
+    Lowercases, strips punctuation, removes legal suffixes (Inc/Corp/LLC/etc.),
+    standardizes abbreviations, and collapses whitespace.
 
     Example:
         >>> normalize_company_name("Acme Technologies, Inc.")
         'acme tech'
-        >>> normalize_company_name("ABC Systems & Solutions LLC")
-        'abc sys sol'
     """
     if not name:
         return ""
-
-    # Lowercase and strip
-    normalized = name.lower().strip()
-
-    # Remove punctuation except hyphens (but replace hyphens with spaces)
-    normalized = re.sub(r"[^\w\s-]", " ", normalized)
-    normalized = normalized.replace("-", " ")
-
-    # Remove legal suffixes
-    for suffix in LEGAL_SUFFIXES:
-        normalized = re.sub(suffix, "", normalized, flags=re.IGNORECASE)
-
-    # Apply abbreviation standardizations
-    for pattern, replacement in ABBREVIATION_REPLACEMENTS.items():
-        normalized = re.sub(pattern, replacement, normalized, flags=re.IGNORECASE)
-
-    # Normalize whitespace to single spaces
-    normalized = " ".join(normalized.split())
-
-    return normalized.strip()
+    s = name.lower().strip()
+    s = re.sub(r"[^\w\s-]", " ", s).replace("-", " ")
+    for pattern in _LEGAL_SUFFIXES:
+        s = re.sub(pattern, "", s, flags=re.IGNORECASE)
+    for pattern, repl in _ABBREVIATION_REPLACEMENTS.items():
+        s = re.sub(pattern, repl, s, flags=re.IGNORECASE)
+    return " ".join(s.split()).strip()
 
 
-def _get_neo4j_client() -> Neo4jClient | None:
-    """Get Neo4j client from configuration, or None if unavailable."""
-    import os
+def _company_id_for_award(award: Award) -> str | None:
+    """Return UEI / DUNS-prefixed / NAME-prefixed identifier (in that priority)."""
+    if award.company_uei:
+        return award.company_uei
+    if award.company_duns:
+        return f"DUNS:{award.company_duns}"
+    if award.company_name:
+        normalized = normalize_company_name(award.company_name)
+        if normalized:
+            return f"NAME:{normalized}"
+    return None
 
-    # Check if Neo4j loading is explicitly skipped
+
+def _get_neo4j_client() -> "Neo4jClient | None":
+    """Open a Neo4j connection from config; return None when SKIP_NEO4J_LOADING is set."""
     skip_neo4j = os.getenv("SKIP_NEO4J_LOADING", "false").lower() in ("true", "1", "yes")
-
     try:
-        config = get_config()
-        neo4j_config = config.neo4j
-
-        client_config = Neo4jConfig(
-            uri=neo4j_config.uri,
-            username=neo4j_config.username,
-            password=neo4j_config.password,
-            database=neo4j_config.database,
-            batch_size=neo4j_config.batch_size,
+        neo4j_config = get_config().neo4j
+        client = Neo4jClient(
+            Neo4jConfig(
+                uri=neo4j_config.uri,
+                username=neo4j_config.username,
+                password=neo4j_config.password,
+                database=neo4j_config.database,
+                batch_size=neo4j_config.batch_size,
+            )
         )
-
-        client = Neo4jClient(client_config)
-        # Test connection
         with client.session() as session:
             session.run("RETURN 1")
         return client
@@ -209,157 +207,329 @@ def _get_neo4j_client() -> Neo4jClient | None:
         if skip_neo4j:
             logger.warning(f"Neo4j unavailable but skipping: {e}")
             return None
-        else:
-            raise RuntimeError(
-                f"Neo4j connection failed but Neo4j loading not skipped: {e}. Set SKIP_NEO4J_LOADING=true to skip."
-            )
+        raise RuntimeError(
+            f"Neo4j connection failed but Neo4j loading not skipped: {e}. "
+            "Set SKIP_NEO4J_LOADING=true to skip."
+        )
+
+
+# ---------------------------------------------------------------------------
+# Phase-progression detection
+# ---------------------------------------------------------------------------
 
 
 def detect_award_progressions(
     awards: list[Award],
 ) -> list[tuple[str, str, str, str, str, str, str, dict[str, Any] | None]]:
-    """Detect Phase I → Phase II → Phase III award progressions.
+    """Detect Phase I → II → III progressions across awards.
 
-    Matches awards that represent the same project progressing through SBIR/STTR phases.
+    Matches awards from the same company (UEI/DUNS/normalized-name), same agency,
+    same program, sequential phases, chronological order. Confidence scoring adds
+    +0.3 for same topic code, +0.2 for same PI, +0.1 for 1–4 year gap.
 
-    Matching criteria:
-    - Same company (via UEI, DUNS, or normalized name)
-    - Same agency
-    - Same program (SBIR or STTR)
-    - Sequential phases (I → II or II → III)
-    - Chronological order (earlier phase comes first)
-
-    Additional scoring factors:
-    - Same topic code (+0.3)
-    - Same PI (+0.2)
-    - Time gap within reasonable bounds (+0.1 if 1-4 years)
-
-    Args:
-        awards: List of Award objects to analyze
-
-    Returns:
-        List of relationship tuples in the format expected by batch_create_relationships:
-        (source_label, source_key, source_id, target_label, target_key, target_id, rel_type, properties)
+    Returns: list of relationship tuples in `batch_create_relationships` format
+    (source_label, source_key, source_id, target_label, target_key, target_id,
+    rel_type, properties). All relationships are FinancialTransaction → FinancialTransaction
+    with rel_type "FOLLOWS".
     """
-    # Group awards by company identifier for efficient matching
-    company_awards: dict[str, list[Award]] = {}
-
+    by_company: dict[str, list[Award]] = {}
     for award in awards:
-        if not award.phase or award.phase not in ["I", "II", "III"]:
+        if award.phase not in ("I", "II", "III"):
             continue
-
-        # Determine company identifier (same logic as main loading code)
-        company_id = None
-        if award.company_uei:
-            company_id = award.company_uei
-        elif award.company_duns:
-            company_id = f"DUNS:{award.company_duns}"
-        elif award.company_name:
-            normalized_name = normalize_company_name(award.company_name)
-            if normalized_name:
-                company_id = f"NAME:{normalized_name}"
-
+        company_id = _company_id_for_award(award)
         if company_id:
-            if company_id not in company_awards:
-                company_awards[company_id] = []
-            company_awards[company_id].append(award)
+            by_company.setdefault(company_id, []).append(award)
 
-    # Detect progressions within each company's awards
-    progressions = []
-    phase_transitions = {"I": "II", "II": "III"}
-
-    for _company_id, company_award_list in company_awards.items():
-        # Sort by award date for chronological matching
-        sorted_awards = sorted(
-            company_award_list, key=lambda a: a.award_date if a.award_date else date(1900, 1, 1)
-        )
-
-        for i, earlier_award in enumerate(sorted_awards):
-            if earlier_award.phase not in phase_transitions:
+    progressions: list[tuple] = []
+    for company_award_list in by_company.values():
+        sorted_awards = sorted(company_award_list, key=lambda a: a.award_date or date(1900, 1, 1))
+        for i, earlier in enumerate(sorted_awards):
+            next_phase = _PHASE_NEXT.get(earlier.phase)
+            if not next_phase:
                 continue
-
-            expected_next_phase = phase_transitions[earlier_award.phase]
-
-            # Look for matching later awards in the next phase
-            for later_award in sorted_awards[i + 1 :]:
-                if later_award.phase != expected_next_phase:
+            for later in sorted_awards[i + 1 :]:
+                if later.phase != next_phase:
                     continue
-
-                # Check basic matching criteria
-                if earlier_award.agency != later_award.agency:
+                if earlier.agency != later.agency or earlier.program != later.program:
                     continue
-
-                if earlier_award.program != later_award.program:
-                    continue
-
-                # Ensure chronological order
-                if earlier_award.award_date and later_award.award_date:
-                    if earlier_award.award_date >= later_award.award_date:
+                if earlier.award_date and later.award_date:
+                    if earlier.award_date >= later.award_date:
                         continue
-                    years_between = (
-                        later_award.award_date - earlier_award.award_date
+                    years_between: float | None = (
+                        later.award_date - earlier.award_date
                     ).days / 365.25
                 else:
                     years_between = None
 
-                # Calculate confidence score
-                confidence = 0.5  # Base confidence for matching company, agency, program
+                same_topic = bool(
+                    earlier.topic_code
+                    and later.topic_code
+                    and earlier.topic_code == later.topic_code
+                )
+                same_pi = bool(
+                    earlier.principal_investigator
+                    and later.principal_investigator
+                    and earlier.principal_investigator.lower()
+                    == later.principal_investigator.lower()
+                )
 
-                # Same topic code boosts confidence
-                same_topic = False
-                if (
-                    earlier_award.topic_code
-                    and later_award.topic_code
-                    and earlier_award.topic_code == later_award.topic_code
-                ):
+                confidence = 0.5
+                if same_topic:
                     confidence += 0.3
-                    same_topic = True
-
-                # Same PI boosts confidence
-                same_pi = False
-                if (
-                    earlier_award.principal_investigator
-                    and later_award.principal_investigator
-                    and earlier_award.principal_investigator.lower()
-                    == later_award.principal_investigator.lower()
-                ):
+                if same_pi:
                     confidence += 0.2
-                    same_pi = True
-
-                # Reasonable time gap boosts confidence
                 if years_between is not None and 1 <= years_between <= 4:
                     confidence += 0.1
 
-                # Create relationship properties
-                rel_props = {
-                    "phase_progression": f"{earlier_award.phase}_to_{expected_next_phase}",
+                props: dict[str, Any] = {
+                    "phase_progression": f"{earlier.phase}_to_{next_phase}",
                     "confidence": round(confidence, 2),
                     "same_topic": same_topic,
                     "same_pi": same_pi,
                 }
-
                 if years_between is not None:
-                    rel_props["years_between"] = round(years_between, 2)
+                    props["years_between"] = round(years_between, 2)
 
-                # Add relationship tuple (FinancialTransaction -> FinancialTransaction)
                 progressions.append(
                     (
                         "FinancialTransaction",
                         "transaction_id",
-                        f"txn_award_{earlier_award.award_id}",
+                        f"txn_award_{earlier.award_id}",
                         "FinancialTransaction",
                         "transaction_id",
-                        f"txn_award_{later_award.award_id}",
+                        f"txn_award_{later.award_id}",
                         "FOLLOWS",
-                        rel_props,
+                        props,
                     )
                 )
-
-                # Only match each Phase I to the first qualifying Phase II
-                # (to avoid multiple FOLLOWS from one award if there are multiple Phase IIs)
+                # Only match each earlier award to the first qualifying later award.
                 break
-
     return progressions  # type: ignore[return-value]
+
+
+# ---------------------------------------------------------------------------
+# Row normalization & Award construction
+# ---------------------------------------------------------------------------
+
+
+def _normalize_row(row: pd.Series) -> dict[str, Any]:
+    """Convert a CSV row to the dict shape expected by Award.from_sbir_csv.
+
+    Normalizes column names, replaces NaN/NA with None, and applies a few
+    field-specific fixups (state name→code, employee count cast, DUNS padding,
+    'U' boolean handling).
+    """
+    out: dict[str, Any] = {}
+    for key, value in row.to_dict().items():
+        nk = key.lower().replace(" ", "_")
+        if pd.isna(value):
+            out[nk] = None
+            continue
+        if nk == "state" and isinstance(value, str):
+            out[nk] = STATE_NAME_TO_CODE.get(value.strip().lower(), value)
+        elif nk == "number_employees" and isinstance(value, float) and value.is_integer():
+            out[nk] = int(value)
+        elif nk == "zip" and isinstance(value, str) and value.strip() == "-":
+            out[nk] = None
+        elif nk == "duns" and isinstance(value, str):
+            digits = "".join(ch for ch in value if ch.isdigit())
+            out[nk] = digits.zfill(9) if 7 <= len(digits) <= 8 else value
+        elif nk in _BOOL_FIELDS_WITH_UNKNOWN and value == "U":
+            out[nk] = None
+        else:
+            out[nk] = value
+    return out
+
+
+def _award_id_hint(normalized: dict[str, Any]) -> str:
+    """Best-effort short identifier for logging when Award validation fails."""
+    tracking = normalized.get("agency_tracking_number") or ""
+    contract = normalized.get("contract") or ""
+    company = normalized.get("company_name") or ""
+    return tracking[:20] or contract[:20] or company[:30]
+
+
+def _is_date_error(exc: BaseException) -> bool:
+    msg = str(exc).lower()
+    return any(k in msg for k in ("date", "future", "before", "after", "time", "year"))
+
+
+def _try_create_award(normalized: dict[str, Any]) -> tuple[Award | None, str]:
+    """Build an Award from a normalized row.
+
+    Returns (award, status). status is one of:
+      - "ok"         — created successfully
+      - "ok_minimal" — created with date fields zeroed after a date validation failure
+      - "date_error" — date-related failure, even minimal Award couldn't be built
+      - "error"      — other validation failure
+    """
+    try:
+        return Award.from_sbir_csv(normalized), "ok"
+    except Exception as e:
+        if not _is_date_error(e):
+            return None, "error"
+        try:
+            return (
+                Award(
+                    award_id=normalized.get("award_id", ""),
+                    company_name=normalized.get("company_name", ""),
+                    award_amount=normalized.get("award_amount", 0.0),
+                    award_date=None,
+                    program=normalized.get("program"),
+                    phase=normalized.get("phase"),
+                    agency=normalized.get("agency"),
+                    company_uei=normalized.get("company_uei"),
+                    company_duns=normalized.get("company_duns"),
+                ),
+                "ok_minimal",
+            )
+        except Exception:
+            return None, "date_error"
+
+
+# ---------------------------------------------------------------------------
+# Node-property builders
+# ---------------------------------------------------------------------------
+
+
+def _transaction_props(award: Award) -> dict[str, Any]:
+    """Build the FinancialTransaction node properties for an SBIR award."""
+    props: dict[str, Any] = {
+        "transaction_id": f"txn_award_{award.award_id}",
+        "transaction_type": "AWARD",
+        "award_id": award.award_id,
+        "recipient_name": award.company_name,
+        "amount": award.award_amount,
+        "transaction_date": award.award_date.isoformat() if award.award_date else None,
+        "program": award.program,
+        "phase": award.phase,
+        "agency": award.agency,
+        "agency_name": award.agency,
+        "sub_agency": award.branch,
+        "title": award.award_title,
+        "description": award.abstract,
+        "award_year": award.award_year,
+        "fiscal_year": award.fiscal_year,
+        "principal_investigator": award.principal_investigator,
+        "research_institution": award.research_institution,
+        "completion_date": (
+            award.contract_end_date.isoformat() if award.contract_end_date else None
+        ),
+        "start_date": (
+            award.contract_start_date.isoformat() if award.contract_start_date else None
+        ),
+        "end_date": award.contract_end_date.isoformat() if award.contract_end_date else None,
+    }
+    if award.company_uei:
+        props["recipient_uei"] = award.company_uei
+    if award.company_duns:
+        props["recipient_duns"] = award.company_duns
+    if award.company_cage:
+        props["recipient_cage"] = award.company_cage
+    naics = getattr(award, "naics_primary", None)
+    if naics:
+        props["naics_code"] = naics
+    return props
+
+
+def _company_node_props(
+    award: Award, *, company_id: str, id_type: str, normalized_name: str
+) -> dict[str, Any]:
+    props: dict[str, Any] = {
+        "organization_id": f"org_company_{company_id}",
+        "company_id": company_id,
+        "name": award.company_name,
+        "normalized_name": normalized_name,
+        "organization_type": "COMPANY",
+        "source_contexts": ["SBIR"],
+        "id_type": id_type,
+    }
+    if award.company_uei:
+        props["uei"] = award.company_uei
+    if award.company_duns:
+        props["duns"] = award.company_duns
+    if award.company_city:
+        props["city"] = award.company_city
+    if award.company_state:
+        props["state"] = award.company_state
+    if award.company_zip:
+        props["postcode"] = award.company_zip
+    return props
+
+
+def _update_company_crosswalk(existing: dict[str, Any], award: Award) -> None:
+    """Cross-walk additional identifiers / location onto an existing Organization."""
+    if award.company_uei and not existing.get("uei"):
+        existing["uei"] = award.company_uei
+    if award.company_duns and not existing.get("duns"):
+        existing["duns"] = award.company_duns
+    if award.company_city and not existing.get("city"):
+        existing["city"] = award.company_city
+    if award.company_state and not existing.get("state"):
+        existing["state"] = award.company_state
+    if award.company_zip and not existing.get("postcode"):
+        existing["postcode"] = award.company_zip
+
+
+def _resolve_canonical_company(
+    award: Award, canonical_map: dict[str, str], normalized_name: str
+) -> tuple[str | None, str | None, bool]:
+    """Resolve canonical company ID + id_type from the pre-loading dedup map.
+
+    Returns (company_id, id_type, name_only_fallback) where name_only_fallback is
+    True when the fallback name-based path was used (used for telemetry).
+    """
+    if award.company_uei:
+        original_key = award.company_uei
+    elif award.company_duns:
+        original_key = f"DUNS:{award.company_duns}"
+    elif normalized_name:
+        original_key = f"NAME:{normalized_name}"
+    else:
+        return None, None, False
+
+    canonical = canonical_map.get(original_key)
+    if canonical:
+        if canonical.startswith("UEI:"):
+            return canonical[4:], "uei", False
+        if canonical.startswith("DUNS:"):
+            return canonical[5:], "duns", False
+        return canonical, "name", False
+
+    # Fallback: use original identifier (no canonical mapping found).
+    if award.company_uei:
+        return award.company_uei, "uei", False
+    if award.company_duns:
+        return f"DUNS:{award.company_duns}", "duns", False
+    if normalized_name:
+        return f"NAME:{normalized_name}", "name", True
+    return None, None, False
+
+
+# ---------------------------------------------------------------------------
+# Main asset
+# ---------------------------------------------------------------------------
+
+
+def _load_nodes(
+    client: "Neo4jClient",
+    *,
+    label: str,
+    key: str,
+    nodes_map: dict[str, dict[str, Any]],
+    metrics: "LoadMetrics",
+    description: str,
+    context: AssetExecutionContext,
+) -> "LoadMetrics":
+    """Upsert a node map and log the count."""
+    if not nodes_map:
+        return metrics
+    nodes = list(nodes_map.values())
+    new_metrics = client.batch_upsert_nodes(
+        label=label, key_property=key, nodes=nodes, metrics=metrics
+    )
+    context.log.info(f"Loaded {len(nodes)} {label} nodes ({description})")
+    return new_metrics
 
 
 @asset(
@@ -370,28 +540,12 @@ def detect_award_progressions(
 def neo4j_sbir_awards(
     context: AssetExecutionContext, validated_sbir_awards: pd.DataFrame
 ) -> Output[dict[str, Any]]:
-    """
-    Load validated SBIR awards into Neo4j.
+    """Load validated SBIR awards into Neo4j.
 
-    Creates the following nodes:
-    - Award nodes with properties from the validated DataFrame
-    - Organization nodes (companies, deduplicated by UEI/DUNS/Name)
-    - Individual nodes (researchers from PI fields, deduplicated by name+email)
-    - Organization nodes (research institutions from RI fields, deduplicated by name)
-
-    Creates the following relationships:
-    - (FinancialTransaction)-[RECIPIENT_OF]->(Organization)
-    - (Individual)-[PARTICIPATED_IN]->(Award)
-    - (Award)-[CONDUCTED_AT]->(Organization)
-    - (Individual)-[WORKED_AT]->(Organization)
-    - (FinancialTransaction)-[FOLLOWS]->(FinancialTransaction) - Phase I → II → III progressions
-    - (FinancialTransaction)-[FUNDED_BY]->(Organization {agency})
-
-    Args:
-        validated_sbir_awards: Validated SBIR awards DataFrame
-
-    Returns:
-        Dictionary with load metrics and status
+    Creates FinancialTransaction (AWARD) nodes, Organization nodes for companies /
+    research institutions / agencies / sub-agencies, and Individual nodes for PIs.
+    Creates RECIPIENT_OF, PARTICIPATED_IN, CONDUCTED_AT, WORKED_AT, FUNDED_BY,
+    SUBSIDIARY_OF, and FOLLOWS (phase-progression) relationships.
     """
     client = _get_neo4j_client()
     if client is None:
@@ -404,308 +558,97 @@ def neo4j_sbir_awards(
     metrics = LoadMetrics()
 
     try:
-        # Ensure constraints exist (deprecated - migrations handle this, but keep for backward compatibility)
+        # Legacy: migrations own constraints/indexes, but keep these for backward compat.
         client.create_constraints()
         client.create_indexes()
 
-        # STEP 1: Pre-loading deduplication - canonicalize companies before processing
-        config = get_config()
-        dedup_config = config.transformation.company_deduplication  # type: ignore[attr-defined]
+        dedup_config = get_config().transformation.company_deduplication  # type: ignore[attr-defined]
         context.log.info("Pre-processing: Canonicalizing companies...")
-
         canonical_map = canonicalize_companies_from_awards(
             validated_sbir_awards,
             high_threshold=dedup_config.get("high_threshold", 90),
             low_threshold=dedup_config.get("low_threshold", 75),
             enhanced_config=dedup_config.get("enhanced_matching"),
         )
-
         context.log.info(f"Canonicalized {len(canonical_map)} companies")
 
-        # Convert DataFrame rows to Award models, then to Neo4j node properties
-        award_nodes = []
-        award_objects: list[Award] = []  # Keep Award objects for progression detection
+        award_nodes: list[dict[str, Any]] = []
+        award_objects: list[Award] = []
         company_nodes_map: dict[str, dict[str, Any]] = {}
         researcher_nodes_map: dict[str, dict[str, Any]] = {}
         institution_nodes_map: dict[str, dict[str, Any]] = {}
-        award_company_rels: list[
-            tuple[str, str, Any, str, str, Any, str, dict[str, Any] | None]
-        ] = []
-        award_institution_rels: list[
-            tuple[str, str, Any, str, str, Any, str, dict[str, Any] | None]
-        ] = []
-        researcher_award_rels: list[
-            tuple[str, str, Any, str, str, Any, str, dict[str, Any] | None]
-        ] = []  # PARTICIPATED_IN
-        researcher_company_rels: list[
-            tuple[str, str, Any, str, str, Any, str, dict[str, Any] | None]
-        ] = []  # WORKED_AT
+        award_company_rels: list[tuple] = []
+        award_institution_rels: list[tuple] = []
+        researcher_award_rels: list[tuple] = []
+        researcher_company_rels: list[tuple] = []
 
-        # Track skip reasons
+        # Error counters (logged at end; first 10 of each kind go to debug log).
         skipped_zero_amount = 0
         skipped_no_company_id = 0
         validation_errors = 0
-        date_validation_errors = 0  # Track date hygiene validation errors
-        companies_by_name_only = 0  # Track companies identified by name only
+        date_validation_errors = 0
+        companies_by_name_only = 0
 
         for _, row in validated_sbir_awards.iterrows():
             try:
-                # Convert row dict to Award model
-                # Normalize column names: lowercase and replace spaces with underscores
-                # Also convert pandas NaN to None for proper Pydantic validation
-                row_dict = row.to_dict()
-                normalized_dict: dict[str, Any] = {}
-                for key, value in row_dict.items():
-                    normalized_key = key.lower().replace(" ", "_")
-                    # Convert pandas NaN/NA to None
-                    if pd.isna(value):
-                        normalized_dict[normalized_key] = None
-                    else:
-                        # Special handling for state - convert full name to 2-letter code
-                        if normalized_key == "state" and isinstance(value, str):
-                            state_lower = value.strip().lower()
-                            normalized_dict[normalized_key] = STATE_NAME_TO_CODE.get(
-                                state_lower, value
-                            )
-                        # Special handling for number_employees - convert float to int
-                        # (CSV has "Number Employees", not "Number Of Employees")
-                        elif normalized_key == "number_employees" and isinstance(value, float):
-                            # Only convert if it's a whole number (no fractional part)
-                            if value.is_integer():
-                                normalized_dict[normalized_key] = int(value)
-                            else:
-                                normalized_dict[normalized_key] = value
-                        # Special handling for zip - convert '-' placeholder to None
-                        elif (
-                            normalized_key == "zip"
-                            and isinstance(value, str)
-                            and value.strip() == "-"
-                        ):
-                            normalized_dict[normalized_key] = None
-                        # Special handling for DUNS - pad short DUNS with leading zeros
-                        elif normalized_key == "duns" and isinstance(value, str):
-                            # Strip hyphens and extract digits
-                            digits = "".join(ch for ch in value if ch.isdigit())
-                            # Pad with leading zeros if 7-8 digits (some old DUNS were 7-8 digits)
-                            if 7 <= len(digits) <= 8:
-                                normalized_dict[normalized_key] = digits.zfill(9)
-                            else:
-                                normalized_dict[normalized_key] = value
-                        # Special handling for boolean fields - convert 'U' (Unknown) to None
-                        elif (
-                            normalized_key
-                            in (
-                                "hubzone_owned",
-                                "woman_owned",
-                                "socially_and_economically_disadvantaged",
-                            )
-                            and value == "U"
-                        ):
-                            normalized_dict[normalized_key] = None
-                        else:
-                            normalized_dict[normalized_key] = value
+                normalized = _normalize_row(row)
+                award, status = _try_create_award(normalized)
 
-                # Try to create Award model with validation
-                try:
-                    award = Award.from_sbir_csv(normalized_dict)
-                except Exception as e:
-                    # For date-related errors, try to create a minimal Award with just essential fields
-                    error_msg = str(e).lower()
-                    is_date_error = any(
-                        keyword in error_msg
-                        for keyword in ["date", "future", "before", "after", "time", "year"]
-                    )
+                if status == "error":
+                    if validation_errors < 10:
+                        logger.warning(f"Award validation failed for {_award_id_hint(normalized)}")
+                    validation_errors += 1
+                    metrics.errors += 1
+                    continue
+                if status == "date_error":
+                    if validation_errors < 10:
+                        logger.warning(
+                            f"Award validation failed for {_award_id_hint(normalized)} (date)"
+                        )
+                    validation_errors += 1
+                    metrics.errors += 1
+                    continue
+                if status == "ok_minimal":
+                    if date_validation_errors < 10:
+                        logger.warning(
+                            f"Date validation failed for {_award_id_hint(normalized)}, "
+                            "using minimal Award"
+                        )
+                    date_validation_errors += 1
+                assert award is not None  # for type-checkers
 
-                    if is_date_error:
-                        # Try to create Award with minimal required fields, setting problematic dates to None
-                        try:
-                            minimal_data = {
-                                "award_id": normalized_dict.get("award_id", ""),
-                                "company_name": normalized_dict.get("company_name", ""),
-                                "award_amount": normalized_dict.get("award_amount", 0.0),
-                                "award_date": None,  # Set to None to avoid date parsing issues
-                                "program": normalized_dict.get("program"),
-                                "phase": normalized_dict.get("phase"),
-                                "agency": normalized_dict.get("agency"),
-                                "company_uei": normalized_dict.get("company_uei"),
-                                "company_duns": normalized_dict.get("company_duns"),
-                            }
-                            award = Award(**minimal_data)
-                            if date_validation_errors < 10:  # Only log first 10 to avoid spam
-                                tracking = normalized_dict.get("agency_tracking_number", "")
-                                contract = normalized_dict.get("contract", "")
-                                company = normalized_dict.get("company_name", "")
-                                award_id_hint = f"{tracking[:20] if tracking else contract[:20] if contract else company[:30]}"
-                                logger.warning(
-                                    f"Date validation failed for {award_id_hint}, using minimal Award: {e}"
-                                )
-                            date_validation_errors += 1
-                        except Exception as e2:
-                            # If even minimal Award creation fails, skip the record
-                            if validation_errors < 10:
-                                tracking = normalized_dict.get("agency_tracking_number", "")
-                                contract = normalized_dict.get("contract", "")
-                                company = normalized_dict.get("company_name", "")
-                                award_id_hint = f"{tracking[:20] if tracking else contract[:20] if contract else company[:30]}"
-                                logger.warning(f"Award validation failed for {award_id_hint}: {e2}")
-                            validation_errors += 1
-                            metrics.errors += 1
-                            continue
-                    else:
-                        if validation_errors < 10:  # Only log first 10 to avoid spam
-                            tracking = normalized_dict.get("agency_tracking_number", "")
-                            contract = normalized_dict.get("contract", "")
-                            company = normalized_dict.get("company_name", "")
-                            award_id_hint = f"{tracking[:20] if tracking else contract[:20] if contract else company[:30]}"
-                            logger.warning(f"Award validation failed for {award_id_hint}: {e}")
-                        validation_errors += 1
-                        metrics.errors += 1
-                        continue
-
-                # Create FinancialTransaction node properties (unified Award/Contract model)
                 transaction_id = f"txn_award_{award.award_id}"
-                transaction_props = {
-                    "transaction_id": transaction_id,
-                    "transaction_type": "AWARD",
-                    "award_id": award.award_id,  # Legacy ID for backward compatibility
-                    "recipient_name": award.company_name,
-                    "amount": award.award_amount,
-                    "transaction_date": award.award_date.isoformat() if award.award_date else None,
-                    "program": award.program,
-                    "phase": award.phase,
-                    "agency": award.agency,
-                    "agency_name": award.agency,  # Will be enriched later
-                    "sub_agency": award.branch,
-                    "title": award.award_title,
-                    "description": award.abstract,
-                    "award_year": award.award_year,
-                    "fiscal_year": award.fiscal_year,
-                    "principal_investigator": award.principal_investigator,
-                    "research_institution": award.research_institution,
-                    "completion_date": award.contract_end_date.isoformat()
-                    if award.contract_end_date
-                    else None,
-                    "start_date": award.contract_start_date.isoformat()
-                    if award.contract_start_date
-                    else None,
-                    "end_date": award.contract_end_date.isoformat()
-                    if award.contract_end_date
-                    else None,
-                }
+                award_nodes.append(_transaction_props(award))
+                award_objects.append(award)
 
-                # Add optional fields if present
-                if award.company_uei:
-                    transaction_props["recipient_uei"] = award.company_uei
-                if award.company_duns:
-                    transaction_props["recipient_duns"] = award.company_duns
-                if award.company_cage:
-                    transaction_props["recipient_cage"] = award.company_cage
-                # NAICS code might be on award if enriched, otherwise skip
-                naics_code = getattr(award, "naics_primary", None)  # type: ignore[arg-type]
-                if naics_code:
-                    transaction_props["naics_code"] = naics_code
-
-                award_nodes.append(transaction_props)
-                award_objects.append(award)  # Keep Award object for progression detection
-
-                # Create Company node with fallback hierarchy: UEI > DUNS > Name
-                # Use canonical mapping from pre-loading deduplication
-                normalized_company_name = (
-                    normalize_company_name(award.company_name) if award.company_name else ""
+                normalized_name = normalize_company_name(award.company_name or "")
+                company_id, id_type, name_only_fallback = _resolve_canonical_company(
+                    award, canonical_map, normalized_name
                 )
+                if name_only_fallback:
+                    companies_by_name_only += 1
 
-                # Build original key
-                if award.company_uei:
-                    original_key = award.company_uei
-                elif award.company_duns:
-                    original_key = f"DUNS:{award.company_duns}"
-                elif normalized_company_name:
-                    original_key = f"NAME:{normalized_company_name}"
-                else:
-                    original_key = None
-
-                # Map to canonical using pre-loading deduplication result
-                company_id = None
-                company_id_type = None
-
-                if original_key and original_key in canonical_map:
-                    canonical_key = canonical_map[original_key]
-                    if canonical_key.startswith("UEI:"):
-                        company_id = canonical_key[4:]  # Remove "UEI:" prefix
-                        company_id_type = "uei"
-                    elif canonical_key.startswith("DUNS:"):
-                        company_id = canonical_key[5:]  # Remove "DUNS:" prefix
-                        company_id_type = "duns"
-                    else:
-                        company_id = canonical_key  # Keep full "NAME:..." for name-based
-                        company_id_type = "name"
-                elif original_key:
-                    # Fallback to original logic if not in canonical map
-                    if award.company_uei:
-                        company_id = award.company_uei
-                        company_id_type = "uei"
-                    elif award.company_duns:
-                        company_id = f"DUNS:{award.company_duns}"
-                        company_id_type = "duns"
-                    elif normalized_company_name:
-                        company_id = f"NAME:{normalized_company_name}"
-                        company_id_type = "name"
-                        companies_by_name_only += 1
-                else:
-                    # Track awards without any company identifier
+                if company_id is None:
                     if skipped_no_company_id < 10:
                         logger.debug(f"Award {award.award_id} has no company name, UEI, or DUNS")
                     skipped_no_company_id += 1
-
-                if company_id:
-                    # Generate organization_id from company_id
+                else:
                     organization_id = f"org_company_{company_id}"
-
                     if company_id not in company_nodes_map:
-                        company_props = {
-                            "organization_id": organization_id,
-                            "company_id": company_id,  # Keep for backward compatibility
-                            "name": award.company_name,
-                            "normalized_name": normalized_company_name,
-                            "organization_type": "COMPANY",
-                            "source_contexts": ["SBIR"],
-                            "id_type": company_id_type,  # Track identification method
-                        }
-                        # Store all known identifiers for cross-walking
-                        if award.company_uei:
-                            company_props["uei"] = award.company_uei
-                        if award.company_duns:
-                            company_props["duns"] = award.company_duns
-                        if award.company_city:
-                            company_props["city"] = award.company_city
-                        if award.company_state:
-                            company_props["state"] = award.company_state
-                        if award.company_zip:
-                            company_props["postcode"] = (
-                                award.company_zip
-                            )  # Use postcode for consistency
-                        company_nodes_map[company_id] = company_props
+                        company_nodes_map[company_id] = _company_node_props(
+                            award,
+                            company_id=company_id,
+                            id_type=id_type or "name",
+                            normalized_name=normalized_name,
+                        )
                     else:
-                        # Company already exists - update with additional identifiers (cross-walking)
-                        existing_company = company_nodes_map[company_id]
-                        if award.company_uei and not existing_company.get("uei"):
-                            existing_company["uei"] = award.company_uei
-                        if award.company_duns and not existing_company.get("duns"):
-                            existing_company["duns"] = award.company_duns
-                        # Update location if missing
-                        if award.company_city and not existing_company.get("city"):
-                            existing_company["city"] = award.company_city
-                        if award.company_state and not existing_company.get("state"):
-                            existing_company["state"] = award.company_state
-                        if award.company_zip and not existing_company.get("postcode"):
-                            existing_company["postcode"] = award.company_zip
+                        _update_company_crosswalk(company_nodes_map[company_id], award)
 
-                    # Create RECIPIENT_OF relationship (FinancialTransaction -> Organization)
                     award_company_rels.append(
                         (
-                            "Award",
-                            "award_id",
-                            award.award_id,
+                            "FinancialTransaction",
+                            "transaction_id",
+                            transaction_id,
                             "Organization",
                             "organization_id",
                             organization_id,
@@ -714,55 +657,43 @@ def neo4j_sbir_awards(
                         )
                     )
 
-                # Create Researcher node if PI name available
+                # Researcher node (PI) and PARTICIPATED_IN / WORKED_AT relationships.
                 if award.principal_investigator:
-                    # Generate researcher_id from name and email (or just name)
                     pi_name = award.principal_investigator.strip()
                     pi_email = award.pi_email.strip() if award.pi_email else None
-
-                    # Create unique researcher ID
-                    if pi_email:
-                        researcher_id = f"{pi_name}|{pi_email}".lower()
-                    else:
-                        researcher_id = pi_name.lower()
+                    researcher_id = f"{pi_name}|{pi_email}".lower() if pi_email else pi_name.lower()
+                    individual_id = f"ind_researcher_{researcher_id}"
 
                     if researcher_id not in researcher_nodes_map:
-                        individual_id = f"ind_researcher_{researcher_id}"
-                        researcher_props = {
+                        props: dict[str, Any] = {
                             "individual_id": individual_id,
-                            "researcher_id": researcher_id,  # Keep for backward compatibility
+                            "researcher_id": researcher_id,
                             "name": pi_name,
                             "normalized_name": pi_name.upper(),
                             "individual_type": "RESEARCHER",
                             "source_contexts": ["SBIR"],
                         }
                         if pi_email:
-                            researcher_props["email"] = pi_email
+                            props["email"] = pi_email
                         if award.pi_title:
-                            researcher_props["title"] = award.pi_title
+                            props["title"] = award.pi_title
                         if award.pi_phone:
-                            researcher_props["phone"] = award.pi_phone
-                        researcher_nodes_map[researcher_id] = researcher_props
+                            props["phone"] = award.pi_phone
+                        researcher_nodes_map[researcher_id] = props
 
-                    # Create PARTICIPATED_IN relationship (Individual -> Award)
-                    # Unified relationship replacing RESEARCHED_BY and WORKED_ON
-                    individual_id = f"ind_researcher_{researcher_id}"
                     researcher_award_rels.append(
                         (
                             "Individual",
                             "individual_id",
                             individual_id,
-                            "Award",
-                            "award_id",
-                            award.award_id,
+                            "FinancialTransaction",
+                            "transaction_id",
+                            transaction_id,
                             "PARTICIPATED_IN",
                             {"role": "RESEARCHER"},
                         )
                     )
-
-                    # Create WORKED_AT relationship (Individual -> Organization) if company exists
                     if company_id:
-                        organization_id = f"org_company_{company_id}"
                         researcher_company_rels.append(
                             (
                                 "Individual",
@@ -770,401 +701,263 @@ def neo4j_sbir_awards(
                                 individual_id,
                                 "Organization",
                                 "organization_id",
-                                organization_id,
+                                f"org_company_{company_id}",
                                 "WORKED_AT",
                                 None,
                             )
                         )
 
-                # Create Research Institution node as Organization if RI name available
+                # Research institution node + CONDUCTED_AT relationship.
                 if award.research_institution:
                     institution_name = award.research_institution.strip()
-                    organization_id = f"org_research_{institution_name}"
-
+                    institution_org_id = f"org_research_{institution_name}"
                     if institution_name not in institution_nodes_map:
-                        institution_props = {
-                            "organization_id": organization_id,
+                        ri_props: dict[str, Any] = {
+                            "organization_id": institution_org_id,
                             "name": institution_name,
                             "normalized_name": institution_name.upper(),
                             "organization_type": "UNIVERSITY",
                             "source_contexts": ["RESEARCH"],
                         }
                         if award.ri_poc_name:
-                            institution_props["poc_name"] = award.ri_poc_name
+                            ri_props["poc_name"] = award.ri_poc_name
                         if award.ri_poc_phone:
-                            institution_props["poc_phone"] = award.ri_poc_phone
-                        institution_nodes_map[institution_name] = institution_props
+                            ri_props["poc_phone"] = award.ri_poc_phone
+                        institution_nodes_map[institution_name] = ri_props
 
-                    # Create CONDUCTED_AT relationship (Award -> Organization)
                     award_institution_rels.append(
                         (
-                            "Award",
-                            "award_id",
-                            award.award_id,
+                            "FinancialTransaction",
+                            "transaction_id",
+                            transaction_id,
                             "Organization",
                             "organization_id",
-                            organization_id,
+                            institution_org_id,
                             "CONDUCTED_AT",
                             None,
                         )
                     )
 
             except Exception as e:
-                error_msg = str(e)
-                # Check if it's a date validation error by examining the error message
-                is_date_error = any(
-                    keyword in error_msg.lower()
-                    for keyword in ["date", "future", "before", "after"]
-                )
-
-                if is_date_error:
-                    if date_validation_errors < 10:  # Only log first 10 to avoid spam
+                if _is_date_error(e):
+                    if date_validation_errors < 10:
                         logger.warning(f"Date validation error: {e}")
                     date_validation_errors += 1
                 else:
-                    if validation_errors < 10:  # Only log first 10 to avoid spam
+                    if validation_errors < 10:
                         logger.warning(f"Failed to process award row: {e}")
                     validation_errors += 1
                 metrics.errors += 1
 
-        # Load Organization nodes (companies) first - using multi-key MERGE
+        # Companies use a multi-key MERGE (UEI ∪ DUNS) so they cross-walk correctly.
         if company_nodes_map:
-            company_nodes_list = list(company_nodes_map.values())
-            company_metrics = client.batch_upsert_organizations_with_multi_key(
-                nodes=company_nodes_list,
+            nodes = list(company_nodes_map.values())
+            metrics = client.batch_upsert_organizations_with_multi_key(
+                nodes=nodes,
                 metrics=metrics,
                 merge_on_uei=dedup_config.get("merge_on_uei", True),
                 merge_on_duns=dedup_config.get("merge_on_duns", True),
                 track_merge_history=dedup_config.get("track_merge_history", True),
             )
-            metrics = company_metrics
             context.log.info(
-                f"Loaded {len(company_nodes_list)} Organization nodes (companies): "
+                f"Loaded {len(nodes)} Organization nodes (companies): "
                 f"{metrics.nodes_created.get('Organization', 0)} created, "
                 f"{metrics.nodes_updated.get('Organization', 0)} updated"
             )
 
-        # Load FinancialTransaction nodes (unified Award/Contract model)
         if award_nodes:
-            transaction_metrics = client.batch_upsert_nodes(
+            metrics = client.batch_upsert_nodes(
                 label="FinancialTransaction",
                 key_property="transaction_id",
                 nodes=award_nodes,
                 metrics=metrics,
             )
-            metrics = transaction_metrics
             context.log.info(f"Loaded {len(award_nodes)} FinancialTransaction nodes (AWARD type)")
 
-        # Load Individual nodes (researchers)
-        if researcher_nodes_map:
-            researcher_nodes_list = list(researcher_nodes_map.values())
-            researcher_metrics = client.batch_upsert_nodes(
-                label="Individual",
-                key_property="individual_id",
-                nodes=researcher_nodes_list,
-                metrics=metrics,
-            )
-            metrics = researcher_metrics
-            context.log.info(f"Loaded {len(researcher_nodes_list)} Individual nodes (researchers)")
+        metrics = _load_nodes(
+            client,
+            label="Individual",
+            key="individual_id",
+            nodes_map=researcher_nodes_map,
+            metrics=metrics,
+            description="researchers",
+            context=context,
+        )
+        metrics = _load_nodes(
+            client,
+            label="Organization",
+            key="organization_id",
+            nodes_map=institution_nodes_map,
+            metrics=metrics,
+            description="research institutions",
+            context=context,
+        )
 
-        # Load Research Institution nodes as Organizations
-        if institution_nodes_map:
-            institution_nodes_list = list(institution_nodes_map.values())
-            institution_metrics = client.batch_upsert_nodes(
-                label="Organization",
-                key_property="organization_id",
-                nodes=institution_nodes_list,
-                metrics=metrics,
-            )
-            metrics = institution_metrics
-            context.log.info(
-                f"Loaded {len(institution_nodes_list)} Organization nodes (research institutions)"
-            )
+        for rels, desc in (
+            (award_company_rels, "RECIPIENT_OF (FinancialTransaction → Organization)"),
+            (award_institution_rels, "CONDUCTED_AT (FinancialTransaction → Organization)"),
+            (researcher_award_rels, "PARTICIPATED_IN (Individual → FinancialTransaction)"),
+            (researcher_company_rels, "WORKED_AT (Individual → Organization)"),
+        ):
+            if rels:
+                metrics = client.batch_create_relationships(rels, metrics=metrics)
+                context.log.info(f"Created {len(rels)} {desc} relationships")
 
-        # Create RECIPIENT_OF relationships (FinancialTransaction -> Organization)
-        if award_company_rels:
-            # Update relationship tuples to use FinancialTransaction instead of Award
-            updated_rels = []
-            for rel in award_company_rels:
-                if rel[0] == "Award":
-                    # Convert Award relationships to FinancialTransaction
-                    updated_rels.append(
-                        (
-                            "FinancialTransaction",
-                            "transaction_id",
-                            f"txn_award_{rel[2]}",  # transaction_id from award_id
-                            rel[3],
-                            rel[4],
-                            rel[5],
-                            rel[6],
-                            rel[7],
-                        )
-                    )
-                else:
-                    updated_rels.append(rel)
-            rel_metrics = client.batch_create_relationships(updated_rels, metrics=metrics)
-            metrics = rel_metrics
-            context.log.info(
-                f"Created {len(updated_rels)} RECIPIENT_OF relationships (FinancialTransaction -> Organization)"
-            )
-
-        # Create CONDUCTED_AT relationships (FinancialTransaction -> Organization)
-        if award_institution_rels:
-            # Update relationship tuples to use FinancialTransaction instead of Award
-            updated_rels = []
-            for rel in award_institution_rels:
-                if rel[0] == "Award":
-                    updated_rels.append(
-                        (
-                            "FinancialTransaction",
-                            "transaction_id",
-                            f"txn_award_{rel[2]}",
-                            rel[3],
-                            rel[4],
-                            rel[5],
-                            rel[6],
-                            rel[7],
-                        )
-                    )
-                else:
-                    updated_rels.append(rel)
-            rel_metrics = client.batch_create_relationships(updated_rels, metrics=metrics)
-            metrics = rel_metrics
-            context.log.info(
-                f"Created {len(updated_rels)} CONDUCTED_AT relationships (FinancialTransaction -> Organization)"
-            )
-
-        # Create PARTICIPATED_IN relationships (Individual -> FinancialTransaction)
-        # Unified relationship replacing RESEARCHED_BY and WORKED_ON
-        if researcher_award_rels:
-            # Update relationship tuples to use FinancialTransaction instead of Award
-            updated_rels = []
-            for rel in researcher_award_rels:
-                if rel[3] == "Award":
-                    updated_rels.append(
-                        (
-                            rel[0],
-                            rel[1],
-                            rel[2],
-                            "FinancialTransaction",
-                            "transaction_id",
-                            f"txn_award_{rel[5]}",  # transaction_id from award_id
-                            rel[6],
-                            rel[7],
-                        )
-                    )
-                else:
-                    updated_rels.append(rel)
-            rel_metrics = client.batch_create_relationships(updated_rels, metrics=metrics)
-            metrics = rel_metrics
-            context.log.info(
-                f"Created {len(updated_rels)} PARTICIPATED_IN relationships (Individual -> FinancialTransaction)"
-            )
-
-        # Create WORKED_AT relationships (Individual -> Organization)
-        if researcher_company_rels:
-            rel_metrics = client.batch_create_relationships(
-                researcher_company_rels, metrics=metrics
-            )
-            metrics = rel_metrics
-            context.log.info(
-                f"Created {len(researcher_company_rels)} WORKED_AT relationships (Individual -> Organization)"
-            )
-
-        # Create FUNDED_BY relationships (Award -> Organization {agency})
-        # Extract unique agencies and create Organization nodes for them
-        # Also create sub-agency nodes and SUBSIDIARY_OF relationships
-        agency_orgs_map = {}
-        sub_agency_orgs_map = {}
-        award_agency_rels = []
-        agency_subsidiary_pairs = []
+        # FUNDED_BY: agency Organization nodes + sub-agency hierarchy.
+        agency_orgs_map: dict[str, dict[str, Any]] = {}
+        sub_agency_orgs_map: dict[str, dict[str, Any]] = {}
+        award_agency_rels: list[tuple] = []
+        agency_subsidiary_pairs: list[tuple] = []
 
         for award in award_objects:
             agency_code = award.agency
-            agency_name = getattr(award, "agency_name", award.agency)  # type: ignore[arg-type]
-            if agency_code and agency_name:
-                parent_organization_id = f"org_agency_{agency_code}"
+            agency_name = getattr(award, "agency_name", award.agency)
+            if not (agency_code and agency_name):
+                continue
 
-                # Create parent agency node if not exists
-                if parent_organization_id not in agency_orgs_map:
-                    agency_props = {
-                        "organization_id": parent_organization_id,
-                        "name": agency_name,
-                        "normalized_name": agency_name.upper(),
+            parent_organization_id = f"org_agency_{agency_code}"
+            if parent_organization_id not in agency_orgs_map:
+                agency_orgs_map[parent_organization_id] = {
+                    "organization_id": parent_organization_id,
+                    "name": agency_name,
+                    "normalized_name": agency_name.upper(),
+                    "organization_type": "AGENCY",
+                    "source_contexts": ["AGENCY"],
+                    "agency_code": agency_code,
+                    "agency_name": agency_name,
+                }
+
+            target_organization_id = parent_organization_id
+            sub_agency_code = getattr(award, "sub_agency", None)
+            sub_agency_name = getattr(award, "sub_agency_name", None)
+            if award.branch and sub_agency_code:
+                sub_agency_name = sub_agency_name or award.branch
+                sub_organization_id = f"org_agency_{agency_code}_{sub_agency_code}"
+                if sub_organization_id not in sub_agency_orgs_map:
+                    sub_agency_orgs_map[sub_organization_id] = {
+                        "organization_id": sub_organization_id,
+                        "name": sub_agency_name,
+                        "normalized_name": sub_agency_name.upper(),
                         "organization_type": "AGENCY",
                         "source_contexts": ["AGENCY"],
                         "agency_code": agency_code,
                         "agency_name": agency_name,
+                        "sub_agency_code": sub_agency_code,
+                        "sub_agency_name": sub_agency_name,
                     }
-                    agency_orgs_map[parent_organization_id] = agency_props
-
-                # Handle sub-agency if present
-                target_organization_id = parent_organization_id
-                sub_agency_code = getattr(award, "sub_agency", None)  # type: ignore[arg-type]
-                sub_agency_name = getattr(award, "sub_agency_name", None)  # type: ignore[arg-type]
-                if award.branch and sub_agency_code:
-                    sub_agency_name = sub_agency_name or award.branch
-                    sub_organization_id = f"org_agency_{agency_code}_{sub_agency_code}"
-
-                    # Create sub-agency node if not exists
-                    if sub_organization_id not in sub_agency_orgs_map:
-                        sub_agency_props = {
-                            "organization_id": sub_organization_id,
-                            "name": sub_agency_name,
-                            "normalized_name": sub_agency_name.upper(),
-                            "organization_type": "AGENCY",
-                            "source_contexts": ["AGENCY"],
-                            "agency_code": agency_code,
-                            "agency_name": agency_name,
-                            "sub_agency_code": sub_agency_code,
-                            "sub_agency_name": sub_agency_name,
-                        }
-                        sub_agency_orgs_map[sub_organization_id] = sub_agency_props
-
-                    # Track SUBSIDIARY_OF relationship (sub-agency -> parent agency)
-                    agency_subsidiary_pairs.append(
-                        (
-                            "organization_id",
-                            sub_organization_id,
-                            "organization_id",
-                            parent_organization_id,
-                        )
-                    )
-                    target_organization_id = sub_organization_id
-
-                # Create FUNDED_BY relationship (to parent agency or sub-agency)
-                award_agency_rels.append(
+                agency_subsidiary_pairs.append(
                     (
-                        "FinancialTransaction",
-                        "transaction_id",
-                        f"txn_award_{award.award_id}",
-                        "Organization",
                         "organization_id",
-                        target_organization_id,
-                        "FUNDED_BY",
-                        None,
+                        sub_organization_id,
+                        "organization_id",
+                        parent_organization_id,
                     )
                 )
+                target_organization_id = sub_organization_id
 
-        # Load Agency Organization nodes (parent agencies)
-        if agency_orgs_map:
-            agency_nodes_list = list(agency_orgs_map.values())
-            agency_metrics = client.batch_upsert_nodes(
-                label="Organization",
-                key_property="organization_id",
-                nodes=agency_nodes_list,
-                metrics=metrics,
-            )
-            metrics = agency_metrics
-            context.log.info(
-                f"Loaded {len(agency_nodes_list)} Organization nodes (parent agencies)"
-            )
-
-        # Load Sub-Agency Organization nodes
-        if sub_agency_orgs_map:
-            sub_agency_nodes_list = list(sub_agency_orgs_map.values())
-            sub_agency_metrics = client.batch_upsert_nodes(
-                label="Organization",
-                key_property="organization_id",
-                nodes=sub_agency_nodes_list,
-                metrics=metrics,
-            )
-            metrics = sub_agency_metrics
-            context.log.info(
-                f"Loaded {len(sub_agency_nodes_list)} Organization nodes (sub-agencies)"
+            award_agency_rels.append(
+                (
+                    "FinancialTransaction",
+                    "transaction_id",
+                    f"txn_award_{award.award_id}",
+                    "Organization",
+                    "organization_id",
+                    target_organization_id,
+                    "FUNDED_BY",
+                    None,
+                )
             )
 
-        # Create FUNDED_BY relationships
+        metrics = _load_nodes(
+            client,
+            label="Organization",
+            key="organization_id",
+            nodes_map=agency_orgs_map,
+            metrics=metrics,
+            description="parent agencies",
+            context=context,
+        )
+        metrics = _load_nodes(
+            client,
+            label="Organization",
+            key="organization_id",
+            nodes_map=sub_agency_orgs_map,
+            metrics=metrics,
+            description="sub-agencies",
+            context=context,
+        )
+
         if award_agency_rels:
-            rel_metrics = client.batch_create_relationships(award_agency_rels, metrics=metrics)  # type: ignore[arg-type]
-            metrics = rel_metrics
+            metrics = client.batch_create_relationships(award_agency_rels, metrics=metrics)  # type: ignore[arg-type]
             context.log.info(
-                f"Created {len(award_agency_rels)} FUNDED_BY relationships (FinancialTransaction -> Organization)"
+                f"Created {len(award_agency_rels)} FUNDED_BY relationships "
+                "(FinancialTransaction → Organization)"
             )
-
-        # Create SUBSIDIARY_OF relationships (sub-agency -> parent agency)
         if agency_subsidiary_pairs:
-            org_loader = OrganizationLoader(client)
-            org_metrics = org_loader.create_subsidiary_relationships(
+            metrics = OrganizationLoader(client).create_subsidiary_relationships(
                 agency_subsidiary_pairs,
                 source="AGENCY_HIERARCHY",
             )
-            metrics = org_metrics
             context.log.info(
-                f"Created {len(agency_subsidiary_pairs)} SUBSIDIARY_OF relationships (sub-agency -> parent agency)"
+                f"Created {len(agency_subsidiary_pairs)} SUBSIDIARY_OF relationships "
+                "(sub-agency → parent agency)"
             )
 
-        # Detect and create FOLLOWS relationships (FinancialTransaction -> FinancialTransaction for phase progressions)
+        # FOLLOWS: phase progressions.
         context.log.info("Detecting award phase progressions...")
         follows_rels = detect_award_progressions(award_objects)
         if follows_rels:
-            rel_metrics = client.batch_create_relationships(follows_rels, metrics=metrics)
-            metrics = rel_metrics
+            metrics = client.batch_create_relationships(follows_rels, metrics=metrics)
             context.log.info(
-                f"Created {len(follows_rels)} FOLLOWS relationships for award progressions (FinancialTransaction -> FinancialTransaction)"
+                f"Created {len(follows_rels)} FOLLOWS relationships for award progressions"
             )
         else:
             context.log.info("No award progressions detected")
 
-        # Log comprehensive summary of processing results
+        # Summary logging.
         total_rows = len(validated_sbir_awards)
         successfully_processed = len(award_nodes)
-        # Only count actual failures (zero amounts and validation errors), not missing company IDs
-        # Awards without company IDs are still successfully processed, just not linked to companies
         total_failed = skipped_zero_amount + validation_errors + date_validation_errors
-
+        pct = lambda n: (n / total_rows * 100) if total_rows else 0  # noqa: E731
         logger.info("=" * 80)
         logger.info("Neo4j SBIR Awards Loading Summary")
         logger.info("=" * 80)
-        logger.info(f"Total rows processed: {total_rows}")
+        logger.info(f"Total rows processed:      {total_rows}")
         logger.info(
-            f"Successfully processed: {successfully_processed} ({successfully_processed / total_rows * 100:.1f}%)"
+            f"Successfully processed:    {successfully_processed} ({pct(successfully_processed):.1f}%)"
         )
-        logger.info(f"Failed to process: {total_failed} ({total_failed / total_rows * 100:.1f}%)")
-        logger.info("")
+        logger.info(f"Failed to process:         {total_failed} ({pct(total_failed):.1f}%)")
         logger.info("Processing Issues:")
         logger.info(
-            f"  • Zero/missing award amount: {skipped_zero_amount} ({skipped_zero_amount / total_rows * 100:.1f}%)"
+            f"  Zero/missing amount:     {skipped_zero_amount} ({pct(skipped_zero_amount):.1f}%)"
         )
         logger.info(
-            f"  • Date validation errors: {date_validation_errors} ({date_validation_errors / total_rows * 100:.1f}%)"
+            f"  Date validation errors:  {date_validation_errors} ({pct(date_validation_errors):.1f}%)"
         )
         logger.info(
-            f"  • Other validation errors: {validation_errors} ({validation_errors / total_rows * 100:.1f}%)"
+            f"  Other validation errors: {validation_errors} ({pct(validation_errors):.1f}%)"
         )
         logger.info(
-            f"  • Awards without any company identifier: {skipped_no_company_id} ({skipped_no_company_id / total_rows * 100:.1f}%)"
+            f"  No company identifier:   {skipped_no_company_id} ({pct(skipped_no_company_id):.1f}%)"
         )
-        logger.info("")
-        logger.info("Nodes Created/Updated:")
-        logger.info(f"  • Awards: {len(award_nodes)} nodes")
-        logger.info(f"  • Companies: {len(company_nodes_map)} unique nodes")
+        logger.info("Nodes:")
+        logger.info(f"  Awards:                  {len(award_nodes)}")
+        company_count = len(company_nodes_map) or 1
         logger.info(
-            f"    - Identified by name only: {companies_by_name_only} ({companies_by_name_only / len(company_nodes_map) * 100:.1f}% of companies)"
+            f"  Companies:               {len(company_nodes_map)} "
+            f"({companies_by_name_only} ({companies_by_name_only / company_count * 100:.1f}%) name-only)"
         )
-        logger.info(f"  • Researchers: {len(researcher_nodes_map)} unique nodes")
-        logger.info(f"  • Research Institutions: {len(institution_nodes_map)} unique nodes")
-        logger.info("")
-        logger.info("Relationships Created:")
-        logger.info(
-            f"  • RECIPIENT_OF (FinancialTransaction → Organization): {len(award_company_rels)} relationships"
-        )
-        logger.info(
-            f"  • PARTICIPATED_IN (Individual → Award): {len(researcher_award_rels)} relationships"
-        )
-        logger.info(
-            f"  • CONDUCTED_AT (Award → Organization): {len(award_institution_rels)} relationships"
-        )
-        logger.info(
-            f"  • WORKED_AT (Individual → Organization): {len(researcher_company_rels)} relationships"
-        )
-        logger.info(
-            f"  • FOLLOWS (FinancialTransaction → FinancialTransaction): {len(follows_rels)} phase progressions"
-        )
+        logger.info(f"  Researchers:             {len(researcher_nodes_map)}")
+        logger.info(f"  Research Institutions:   {len(institution_nodes_map)}")
+        logger.info("Relationships:")
+        logger.info(f"  RECIPIENT_OF:            {len(award_company_rels)}")
+        logger.info(f"  PARTICIPATED_IN:         {len(researcher_award_rels)}")
+        logger.info(f"  CONDUCTED_AT:            {len(award_institution_rels)}")
+        logger.info(f"  WORKED_AT:               {len(researcher_company_rels)}")
+        logger.info(f"  FOLLOWS:                 {len(follows_rels)} phase progressions")
         logger.info("=" * 80)
 
         duration = time.time() - start_time
-
         result = {
             "status": "success",
             "awards_loaded": len(award_nodes),
@@ -1195,7 +988,6 @@ def neo4j_sbir_awards(
             },
         }
 
-        # Write metrics to file
         output_dir = Path("data/loaded/neo4j")
         output_dir.mkdir(parents=True, exist_ok=True)
         metrics_file = output_dir / f"neo4j_sbir_awards_metrics_{int(time.time())}.json"
@@ -1215,6 +1007,11 @@ def neo4j_sbir_awards(
             },
         )
 
+        errors_meta = (
+            len(result["errors"])  # type: ignore[arg-type]
+            if isinstance(result.get("errors"), list)
+            else 0
+        )
         return Output(
             value=result,
             metadata={  # type: ignore[dict-item]
@@ -1223,9 +1020,7 @@ def neo4j_sbir_awards(
                 "researchers_loaded": int(result.get("researchers_loaded", 0)),  # type: ignore[call-overload]
                 "institutions_loaded": int(result.get("institutions_loaded", 0)),  # type: ignore[call-overload]
                 "relationships_created": int(result.get("relationships_created", 0)),  # type: ignore[call-overload]
-                "errors": len(result.get("errors", []))  # type: ignore[arg-type]
-                if isinstance(result.get("errors"), list)
-                else 0,
+                "errors": errors_meta,
                 "duration_seconds": round(duration, 2),
                 "metrics_file": str(metrics_file),
             },
@@ -1246,11 +1041,7 @@ def neo4j_sbir_awards(
     description="Verify SBIR awards were loaded successfully into Neo4j",
 )
 def neo4j_sbir_awards_load_check(neo4j_sbir_awards: dict[str, Any]) -> AssetCheckResult:
-    """
-    Check that SBIR awards were loaded successfully into Neo4j.
-
-    Fails if load status is not "success" or if error count is too high.
-    """
+    """Fail if the loader status is not "success", error rate is too high, or no awards loaded."""
     status = neo4j_sbir_awards.get("status")
     errors = neo4j_sbir_awards.get("errors", 0)
     awards_loaded = neo4j_sbir_awards.get("awards_loaded", 0)
@@ -1265,19 +1056,20 @@ def neo4j_sbir_awards_load_check(neo4j_sbir_awards: dict[str, Any]) -> AssetChec
             metadata={"status": status, "reason": reason},
         )
 
-    # Allow some errors but fail if error rate is too high (percentage-based threshold)
-    error_rate_threshold = 0.25  # 25% error rate threshold
     error_rate = errors / total_rows if total_rows > 0 else 0
-    if error_rate > error_rate_threshold:
+    if error_rate > 0.25:
         return AssetCheckResult(
             passed=False,
             severity=AssetCheckSeverity.ERROR,
-            description=f"✗ Too many load errors: {errors}/{total_rows} ({error_rate * 100:.1f}% > {error_rate_threshold * 100:.0f}% threshold)",
+            description=(
+                f"✗ Too many load errors: {errors}/{total_rows} "
+                f"({error_rate * 100:.1f}% > 25% threshold)"
+            ),
             metadata={
                 "errors": errors,
                 "total_rows": total_rows,
                 "error_rate": error_rate,
-                "threshold": error_rate_threshold,
+                "threshold": 0.25,
             },
         )
 
@@ -1292,7 +1084,12 @@ def neo4j_sbir_awards_load_check(neo4j_sbir_awards: dict[str, Any]) -> AssetChec
     return AssetCheckResult(
         passed=True,
         severity=AssetCheckSeverity.WARN,
-        description=f"✓ Neo4j load successful: {awards_loaded} awards, {neo4j_sbir_awards.get('researchers_loaded', 0)} researchers, {neo4j_sbir_awards.get('institutions_loaded', 0)} institutions ({error_rate * 100:.1f}% error rate)",
+        description=(
+            f"✓ Neo4j load successful: {awards_loaded} awards, "
+            f"{neo4j_sbir_awards.get('researchers_loaded', 0)} researchers, "
+            f"{neo4j_sbir_awards.get('institutions_loaded', 0)} institutions "
+            f"({error_rate * 100:.1f}% error rate)"
+        ),
         metadata={
             "awards_loaded": awards_loaded,
             "companies_loaded": neo4j_sbir_awards.get("companies_loaded", 0),

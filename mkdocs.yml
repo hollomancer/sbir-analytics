@@ -8,7 +8,6 @@ nav:
       - Shared Tech Stack: docs/architecture/shared-tech-stack.md
       - Detailed Overview: docs/architecture/detailed-overview.md
       - Asset Naming Standards: docs/architecture/asset-naming-standards.md
-      - Asset Refactoring Plan: docs/architecture/asset-refactoring-plan.md
   - Data Sources:
       - Overview: docs/data/index.md
       - Awards Refresh: docs/data/awards-refresh.md

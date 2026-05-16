@@ -115,7 +115,7 @@ dagster job execute -f src/definitions.py -j fiscal_returns_full_job
 ## Container-based development
 
 make docker-up-dev
-make cet-pipeline-dev  # Run CET pipeline in container
+make cet-run  # Run CET pipeline in container
 ```
 
 ### Container Operations
@@ -146,7 +146,7 @@ make docker-exec SERVICE=app CMD="uv run pytest"
 
 ## Transition Detection MVP (local)
 
-make transition-mvp-run
+make transition-run
 make transition-mvp-clean
 
 ## Neo4j operations

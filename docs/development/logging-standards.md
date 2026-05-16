@@ -579,7 +579,7 @@ class MockLogger:
 ## Related Documentation
 
 - [Exception Handling Guide](exception-handling.md)
-- [Configuration Overview](../configuration/paths.md)
+- [Configuration Overview](../configuration.md)
 - [CLI Reference](../cli/README.md)
 
 ## Change Log
