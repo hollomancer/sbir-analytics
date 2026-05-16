@@ -98,6 +98,8 @@ def build_cohort_rows(
         yield {
             "company_name": sbir_name,
             "state": joined_awards[0].get("state", rec.get("issuer_state", "")),
+            "city": joined_awards[0].get("city", ""),
+            "zip_code": joined_awards[0].get("zip_code", ""),
             "agency": primary_agency,
             "first_award_year": years[0] if years else 0,
             "last_award_year": years[-1] if years else 0,
@@ -155,6 +157,7 @@ def _normalize_sbir_award(row: dict) -> dict:
     return {
         "company_name": (row.get("Company") or "").strip(),
         "state": (row.get("State") or "").strip(),
+        "city": (row.get("City") or "").strip(),
         "zip_code": zip5,
         "agency": (row.get("Agency") or "").strip(),
         "award_year": year,
