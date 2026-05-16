@@ -24,8 +24,16 @@ pytestmark = pytest.mark.fast
 
 
 @pytest.fixture(autouse=True)
-def clear_config_cache():
-    """Clear config cache before each test to ensure isolation."""
+def clear_config_cache(monkeypatch):
+    """Clear config cache and runtime env overrides before each test.
+
+    CI sets NEO4J_URI / NEO4J_USER / NEO4J_PASSWORD on test jobs, which
+    the loader picks up and uses to override the configured defaults.
+    These tests assert on the configured defaults, so the env vars need
+    to be cleared for the assertions to be meaningful.
+    """
+    for var in ("NEO4J_URI", "NEO4J_USER", "NEO4J_USERNAME", "NEO4J_PASSWORD"):
+        monkeypatch.delenv(var, raising=False)
     get_config.cache_clear()
     yield
     get_config.cache_clear()
