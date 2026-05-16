@@ -126,18 +126,27 @@ def narrow_to_ca_organized(
     lookup_fn: Callable[[str], dict | None] | None = None,
     delay_seconds: float = DEFAULT_DELAY_SECONDS,
     checkpoint_path: Path | None = None,
+    session_rotate_every: int = 50,
 ) -> tuple[list[dict], int]:
     """Filter cohort to CA-organized entities.
 
     Returns (kept_rows, lookups_performed).
 
     Writes a JSONL checkpoint (one line per processed firm) so re-runs skip
-    completed lookups. Checkpoint format:
-        {"company_name": str, "is_ca_organized": bool, "business_record": dict | None}
+    completed lookups. Errors are caught per-firm; the checkpoint records
+    them so the firm isn't retried on resume (re-runs against the same
+    checkpoint will skip).
+
+    For real (non-mocked) lookups, the session is rebuilt every
+    `session_rotate_every` firms to avoid Imperva session-age limits.
+
+    Checkpoint format:
+        {"company_name": str, "is_ca_organized": bool, "business_record": dict | None,
+         "error": str | None}
     """
+    using_real_lookup = lookup_fn is None
     lookup_fn = lookup_fn or lookup_ca_sos
 
-    # Replay checkpoint for prior decisions
     decisions: dict[str, bool] = {}
     if checkpoint_path and checkpoint_path.exists():
         with checkpoint_path.open() as f:
@@ -149,6 +158,9 @@ def narrow_to_ca_organized(
 
     kept: list[dict] = []
     lookups = 0
+    session: object | None = None
+    since_rotate = 0
+
     for row in cohort:
         name = row["company_name"]
         if name in decisions:
@@ -156,8 +168,30 @@ def narrow_to_ca_organized(
                 kept.append(row)
             continue
 
-        record = lookup_fn(name)
+        # Session rotation (only for real lookups)
+        if using_real_lookup and (session is None or since_rotate >= session_rotate_every):
+            if session is not None:
+                try:
+                    session.close()
+                except Exception:
+                    pass
+            session = make_session()
+            since_rotate = 0
+
+        try:
+            if using_real_lookup:
+                record = lookup_fn(name, client=session)
+            else:
+                record = lookup_fn(name)
+            error_msg = None
+        except Exception as e:
+            record = None
+            error_msg = f"{type(e).__name__}: {e}"
+            # Force session rotation on error
+            since_rotate = session_rotate_every
+
         lookups += 1
+        since_rotate += 1
         ca_org = is_ca_organized(record)
         if ca_org:
             kept.append(row)
@@ -168,10 +202,17 @@ def narrow_to_ca_organized(
                     "company_name": name,
                     "is_ca_organized": ca_org,
                     "business_record": record,
+                    "error": error_msg,
                 }) + "\n")
 
         if delay_seconds:
             time.sleep(delay_seconds)
+
+    if session is not None:
+        try:
+            session.close()
+        except Exception:
+            pass
 
     return kept, lookups
 
