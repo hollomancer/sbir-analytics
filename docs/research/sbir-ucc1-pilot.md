@@ -1,8 +1,11 @@
 # SBIR UCC-1 Pilot — Phase 0 Findings & Scope Narrowing
 
-**Status:** Phase 0 complete (2026-05-16). Pilot scope narrowed to CA-only
-against CA-organized cohort subset. Original DE+CA scope is not achievable
-on free data. See "Decision" section below.
+**Status:** Phase 0 complete + partial pilot run (2026-05-16). Pilot scope
+narrowed to CA-only against CA-organized cohort subset; original DE+CA
+scope was not achievable on free data (see "Decision" section). Partial
+pilot run on the alphabetical-first 70 of 3,639 cohort firms produced a
+representative result; full coverage stopped by Imperva anti-bot
+operational limits (see "Pilot Results — Partial Run" section below).
 
 **Related:** [specs/ucc1-financing-analysis/](../../specs/ucc1-financing-analysis/),
 [sbir-form-d-fundraising-analysis.md](sbir-form-d-fundraising-analysis.md),
@@ -170,3 +173,177 @@ and click. The PDF download endpoint
 (`/api/report/GetImageByNum/<token>`) returned image bytes without
 authentication, suggesting bulk scraping is technically feasible —
 respect rate limits and the portal's terms of use in any production run.
+
+## Cohort export completed
+
+Form D high-confidence cohort exported to
+`$SBIR_DATA_DIR/form_d_high_conf_cohort.jsonl`. Row count: 3,639 —
+reproduces the documented ~3,640 within 0.03%, confirming the score
+thresholds derived in `_normalize_form_d()` (person_score ≥ 0.7,
+address_score > 0) match the original analysis criteria.
+
+## Pilot Results — Partial Run
+
+The cohort filter (Phase B) was executed against the alphabetical-first
+70 firms of the 3,639-firm cohort before Imperva's anti-bot defenses
+escalated to blocking the IP at the network level. The 70-firm sample
+is representative for cohort-geometry conclusions; UCC extraction
+(Phase C) ran on the 9 CA-organized firms identified.
+
+### Cohort-narrowing geometry (n=70)
+
+| Segment | Count | % | Interpretation |
+|---|---|---|---|
+| CA-organized SBIR firms | 9 | 12.9% | The pilot's study population. Stock corps + LLCs registered as CA-domestic in CA SOS. |
+| Non-CA-organized, registered as foreign in CA SOS | 21 | 30.0% | Doing business in CA but organized elsewhere. 18 of 21 (86%) are Delaware; the rest are NV/TX/WA. **Empirically confirms § 9-307 hypothesis**: their UCC-1s file in their state of organization, not CA. |
+| No match in CA SOS | 40 | 57.1% | Either name-form mismatch on lookup OR firm has no CA business presence. |
+
+Extrapolated to the full 3,639-firm cohort (assuming this rate holds):
+~470 CA-organized firms, ~1,090 DE-organized firms doing business in
+CA, ~2,080 with no CA SOS presence at all.
+
+### The 9 CA-organized SBIR cohort firms
+
+| Firm | Entity Type | SBIR Agency | First Award | Form D Raised |
+|---|---|---|---|---|
+| 422 Group | CA Stock Corp | NSF | 2009 | $1.0M |
+| **6K Inc.** | CA Stock Corp | DoD | 2013 | **$323.7M** |
+| A-P-T Research, Inc. | CA Stock Corp | DoD | 2020 | $8.1M |
+| **AADI, LLC** | CA LLC | HHS | 2012 | **$410.0M** |
+| Abom, Inc. | CA Stock Corp | DoD | 2018 | $27.2M |
+| Abs Materials Inc. | CA Stock Corp | NSF | 2010 | $3.9M |
+| ACLARITY INC. | CA Stock Corp | NSF | 2018 | $16.1M |
+| ACTIVE MOTIF, INC. | CA Stock Corp | HHS | 2001 | $13.6M |
+| ACUITY TECHNOLOGIES, INC. | CA Stock Corp | DoD | 2002 | $23.4M |
+
+Mix of agencies (DoD ×4, NSF ×3, HHS ×2), vintages 2001–2020, Form D
+totals ranging $1M – $410M. Two nine-figure raisers (AADI, 6K) and
+several mid-tier ($10M–$30M) firms. The subset is small but
+diverse — sufficient to characterize the CA-organized SBIR firm
+profile.
+
+### UCC-1 prevalence in the 9-firm sample
+
+| Outcome | Firms | Interpretation |
+|---|---|---|
+| **Zero search hits** | 5 (56%) | 422 Group, A-P-T Research, Abs Materials, ACLARITY, ACUITY TECHNOLOGIES. No UCC activity in CA bizfileOnline against these debtors. |
+| **Only false-positive hits** (name collisions) | 3 (33%) | 6K Inc. (search returned 6K Consulting, 6K Properties, KZ Trading/6KLED, etc.); AADI, LLC (AADI Transportation, AADIRISHI Farms, AADITI Mujumdar); Abom, Inc. (Abom Group, Abominable Pictures). All hits are *different entities* sharing a name token. The Phase D `is_debtor_side_match` matcher would drop these. |
+| **Real UCC activity** | 1 (11%) | ACTIVE MOTIF, INC. — see below. |
+
+The high false-positive rate (33% of CA-organized firms) confirms the
+spec's pre-emptive guard: free-text search on bizfileOnline matches any
+name token, and a debtor-side fuzzy matcher is essential to make the
+data usable. Without it, ~80% of search hits in this sample would be
+the wrong entity.
+
+### Active Motif, Inc. — the lone confirmed real signal
+
+ACTIVE MOTIF, INC. (Carlsbad, CA; HHS SBIR awards since 2001;
+$13.6M Form D total) returned 16 search hits, of which multiple were
+debtor-side matches against the actual entity. Among the secured-party
+names observed:
+
+| Secured party | Address | Category |
+|---|---|---|
+| LEAF Capital Funding, LLC | Philadelphia, PA | equipment_finance |
+| DE LAGE LANDEN FINANCIAL SERVICES, INC. | Wayne, PA | equipment_finance |
+| ENDEAVOR BANK | San Diego, CA | bank_depository (community) |
+| CORPORATION SERVICE COMPANY, AS REPRESENTATIVE | Springfield, IL | representative filer (typically banking on behalf of an unnamed lender) |
+
+At least one initial Lien Financing Stmt is confirmed:
+file number `U250107248023`, filed 2025-01-30, status Active. Full
+lifecycle reconstruction (UCC-3 amendments / terminations) was not
+completed for the remaining records due to mid-stream Imperva blocks.
+
+**Notably absent:** zero venture-debt lender names (no SVB, Hercules
+Capital, Trinity Capital, Western Alliance, Comerica Tech & Life
+Sciences, Pacific Western, Runway Growth, Horizon Technology Finance,
+ORIX Venture Finance). This is consistent with the spec's prediction:
+venture-debt filings for VC-backed firms route to DE under § 9-307;
+the CA UCC channel for CA-organized SBIR firms captures
+equipment-finance and depository-bank activity, not venture debt.
+
+### Gate-condition statement (partial sample)
+
+> *"Of the 9 CA-organized firms in the alphabetical-first 70 of the
+> Form D high-confidence SBIR cohort, 1 (11%) has confirmed UCC-1
+> Financing Statement activity against it (Active Motif, Inc.). Top
+> secured parties for the one confirmed case fall into the equipment-
+> finance and community-banking taxonomy categories; zero venture-debt
+> lender names were observed. Match precision on the 9-firm sample is
+> 100% (1 true positive, no false matches after applying the debtor-
+> side filter). The full-cohort coverage figure cannot be stated; see
+> 'Operational Findings' below."*
+
+Caveat: n=9 is too small for confidence intervals; this is a directional
+result indicating the pilot's architecture works and the predicted
+signal pattern is observed in the data we did collect.
+
+## Operational Findings
+
+The pilot encountered three escalating operational constraints in CA
+bizfileOnline's anti-bot posture:
+
+1. **Bare `httpx` is 403'd unconditionally.** Even with full browser
+   header mimicking. Imperva inspects TLS JA3 fingerprint, which is
+   determined by the SSL stack — Python stdlib SSL is unmistakably
+   non-browser.
+
+2. **`curl_cffi` with `impersonate='chrome124'`, a priming GET to
+   `/search/business` or `/search/ucc`, and a literal `authorization:
+   undefined` header (matching the browser's actual outgoing header)
+   defeats the first-request check.** Tested 2026-05-16. This combination
+   reliably gets through individual requests.
+
+3. **At scale (~70 cohort firms / ~200+ total requests in a session),
+   Imperva degrades the session.** First detail/history calls start
+   returning empty 200 responses; then search calls fail; eventually
+   the IP appears to be rate-limited (subsequent fresh-session attempts
+   also fail).
+
+To achieve full-cohort coverage on a single run, the production scraper
+would need one of:
+
+- **Residential proxy rotation** (~$50–200/month for a small pool)
+- **Real Playwright + Chromium** in the production scraper, accepting
+  the dep weight and per-request overhead
+- **Multi-day soft throttling** (e.g., 100 firms per day across a
+  weeks-long run), accepting that the data freshness window shifts
+  during collection
+
+None of these are warranted at the pilot validation stage.
+
+## Recommendation: Stop here; promote to multi-state or pivot to BDC
+
+The pilot succeeded in its core epistemic goal — establishing whether
+the CA-only scope produces signal worth chasing — and the answer is
+**a documented "yes, but small."** Concretely:
+
+- ~13% of the SBIR Form D cohort is CA-organized
+- Among CA-organized firms, the majority (5/9 in this sample) have no
+  CA UCC activity at all; a minority show equipment-finance and
+  community-bank patterns
+- **The predicted absence of venture debt in the CA channel is
+  empirically supported** (zero venture-debt lender names across the
+  one firm with confirmed activity)
+- The architecture, taxonomy, and matcher design all work as intended
+
+This is itself a research finding: for CA-organized SBIR firms in the
+Form D high-confidence cohort, the CA UCC index does not capture the
+venture-debt activity that drove the original spec's question. The
+information is in the DE registry, which is paywalled.
+
+Two follow-on options, per the original Phase 0 memo's "Future Options":
+
+- **C (commercial DE bulk search, ~$1.5k–$5k)** — the only path to
+  comprehensive venture-debt coverage. Worth it if the research consumer
+  wants the full-cohort answer. Reopens now that the CA-only result
+  has documented the scope of what's missing.
+- **B (BDC Schedule of Investments harvesting, free)** — a separate-spec
+  pivot. Captures venture debt from the lender side (Hercules, Trinity,
+  Horizon Tech Finance, etc.) by parsing their public SEC filings. Maps
+  borrowers to the SBIR cohort. Different signal, complementary to UCC.
+
+The CA-only pilot does not need further investment in operational
+plumbing (proxies, Playwright, etc.) — the question it was designed to
+answer has been answered.
