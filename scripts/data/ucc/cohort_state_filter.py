@@ -18,6 +18,7 @@ Usage:
 
 import argparse
 import json
+import re
 import sys
 import time
 from collections.abc import Callable, Iterable
@@ -77,6 +78,98 @@ def is_ca_organized(business_record: dict | None) -> bool:
     return formed_in == "CALIFORNIA" and "out of state" not in entity_type
 
 
+# Common entity-suffix tokens to strip/swap when generating name variants
+_SUFFIX_PATTERN = re.compile(
+    r",?\s+(INC|INCORPORATED|LLC|L\.L\.C|L\.L\.C\.|LTD|LIMITED|CORP|CORPORATION|"
+    r"CO|COMPANY|LP|L\.P\.|LLP|HOLDINGS?|GROUP|PARTNERS|PARTNERSHIP)\.?\s*$",
+    re.IGNORECASE,
+)
+
+
+def generate_name_variants(name: str) -> list[str]:
+    """Produce ordered search-variant candidates for a cohort firm name.
+
+    Returns variants in order from most specific to most general:
+      1. Original name (unmodified)
+      2. Without trailing entity suffix
+      3. Without comma+suffix (clean root)
+      4. Root + " HOLDINGS" (catches HoldCo-style legal names like
+         "23ANDME HOLDING COMPANY, INC.")
+      5. First word only (last-ditch broad match)
+    Duplicates removed; order preserved.
+    """
+    if not name:
+        return []
+    raw = name.strip()
+    variants: list[str] = [raw]
+
+    # Strip trailing suffix
+    stripped = _SUFFIX_PATTERN.sub("", raw).strip()
+    if stripped and stripped != raw:
+        variants.append(stripped)
+
+    # Strip any trailing comma
+    no_comma = stripped.rstrip(",").strip() if stripped else raw.rstrip(",").strip()
+    if no_comma and no_comma not in variants:
+        variants.append(no_comma)
+
+    # HoldCo variant
+    root = no_comma or stripped or raw
+    holdco = f"{root} HOLDING"
+    if holdco not in variants:
+        variants.append(holdco)
+
+    # First word — only if it's distinctive (>=4 chars or contains a digit)
+    first = root.split()[0] if root else ""
+    if first and (len(first) >= 4 or any(c.isdigit() for c in first)):
+        if first not in variants:
+            variants.append(first)
+
+    # Deduplicate case-insensitively while preserving order
+    seen: set[str] = set()
+    deduped: list[str] = []
+    for v in variants:
+        key = v.lower()
+        if key not in seen:
+            seen.add(key)
+            deduped.append(v)
+    return deduped
+
+
+def lookup_ca_sos_with_variants(
+    company_name: str,
+    client: ccrequests.Session | None = None,
+    max_variants: int = 5,
+) -> tuple[dict | None, str | None]:
+    """Try name variants until one returns a result.
+
+    Returns (best_record, matched_variant). If no variant returns any
+    rows, returns (None, None). The matched_variant tells callers which
+    spelling worked, which is useful for debugging coverage gaps.
+    """
+    own_client = client is None
+    if own_client:
+        client = make_session()
+    try:
+        variants = generate_name_variants(company_name)[:max_variants]
+        for variant in variants:
+            payload = {**_BASE_PAYLOAD, "SEARCH_VALUE": variant}
+            try:
+                response = client.post(
+                    BUSINESS_SEARCH_URL, json=payload, headers=_POST_HEADERS,
+                )
+                response.raise_for_status()
+                rows = response.json().get("rows") or {}
+            except Exception:
+                rows = {}
+            if rows:
+                return (pick_best_match(rows), variant)
+        return (None, None)
+    finally:
+        if own_client:
+            client.close()
+
+
 def pick_best_match(rows: dict[str, dict]) -> dict | None:
     """Pick the best business-search result for a single firm.
 
@@ -102,23 +195,14 @@ def make_session() -> ccrequests.Session:
 def lookup_ca_sos(
     company_name: str, client: ccrequests.Session | None = None,
 ) -> dict | None:
-    """Query CA SOS business search; return the best business record or None.
+    """Query CA SOS business search with name-variant retry; return best record.
 
-    If client is None, builds a single-shot session (with priming GET); for
-    bulk use, pass a reused session.
+    Delegates to lookup_ca_sos_with_variants and discards the variant-matched
+    indicator. If you need to know which variant succeeded (for debugging
+    coverage), call lookup_ca_sos_with_variants directly.
     """
-    own_client = client is None
-    if own_client:
-        client = make_session()
-    try:
-        payload = {**_BASE_PAYLOAD, "SEARCH_VALUE": company_name}
-        response = client.post(BUSINESS_SEARCH_URL, json=payload, headers=_POST_HEADERS)
-        response.raise_for_status()
-        body = response.json()
-        return pick_best_match(body.get("rows") or {})
-    finally:
-        if own_client:
-            client.close()
+    record, _variant = lookup_ca_sos_with_variants(company_name, client=client)
+    return record
 
 
 def narrow_to_ca_organized(

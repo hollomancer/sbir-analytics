@@ -7,7 +7,9 @@ from unittest.mock import MagicMock
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "scripts" / "data"))
 
 from ucc.cohort_state_filter import (  # noqa: E402
+    generate_name_variants,
     is_ca_organized,
+    lookup_ca_sos_with_variants,
     narrow_to_ca_organized,
     pick_best_match,
 )
@@ -80,6 +82,103 @@ def test_narrow_to_ca_organized_keeps_ca_drops_de():
     kept, lookups_done = narrow_to_ca_organized(cohort, lookup_fn=fn, delay_seconds=0)
     assert [r["company_name"] for r in kept] == ["CA Co"]
     assert lookups_done == 3
+
+
+def test_generate_name_variants_strips_suffix():
+    variants = generate_name_variants("Acme Tech, Inc.")
+    assert "Acme Tech, Inc." in variants
+    assert "Acme Tech" in variants
+    assert "Acme Tech HOLDING" in variants
+
+
+def test_generate_name_variants_handles_llc():
+    variants = generate_name_variants("AADI, LLC")
+    assert "AADI, LLC" in variants
+    assert "AADI" in variants
+
+
+def test_generate_name_variants_includes_first_word_for_long_names():
+    variants = generate_name_variants("Pacific Biosciences of California, Inc.")
+    assert "Pacific" in variants
+
+
+def test_generate_name_variants_skips_too_short_first_word_for_long_names():
+    """For a multi-word firm name, the first-word heuristic should not add
+    short tokens like 'AI' (would match tons of unrelated entities).
+
+    Note: when the suffix-strip itself yields a short core (e.g., "AI" from
+    "AI, Inc."), that's a legitimate variant and we keep it — different rule.
+    """
+    variants = generate_name_variants("AI Research Industries Inc")
+    # "AI" is too short to be added via the first-word rule
+    assert "AI" not in variants
+    # But the stripped core "AI Research Industries" should be there
+    assert "AI Research Industries" in variants
+
+
+def test_generate_name_variants_keeps_digit_first_word():
+    variants = generate_name_variants("3D Systems Corporation")
+    # "3D" has a digit so it should be included even though length < 4
+    assert "3D" in variants
+
+
+def test_generate_name_variants_dedupes():
+    """If suffix strip yields the same as original, no dupes in the output."""
+    variants = generate_name_variants("Acme Industries")
+    # No entity suffix, so original == stripped
+    # But HOLDING and first-word may still add — check no exact dupes
+    assert len(variants) == len(set(v.lower() for v in variants))
+
+
+def test_generate_name_variants_returns_empty_for_blank():
+    assert generate_name_variants("") == []
+    assert generate_name_variants(None) == []
+
+
+def test_lookup_with_variants_returns_first_match():
+    """Variant retry: first call (original) → empty; second call (stripped) → hit."""
+    from unittest.mock import MagicMock
+
+    class FakeResp:
+        def __init__(self, rows):
+            self._rows = rows
+            self.status_code = 200
+        def json(self):
+            return {"rows": self._rows}
+        def raise_for_status(self):
+            pass
+
+    client = MagicMock()
+    # First call (original "23ANDME, INC.") returns no rows
+    # Second call (stripped "23ANDME") returns a hit
+    client.post.side_effect = [
+        FakeResp({}),
+        FakeResp({"123": {"SORT_INDEX": 0, "FORMED_IN": "DELAWARE",
+                          "ENTITY_TYPE": "Stock Corporation - Out of State", "STATUS": "Active"}}),
+    ]
+    rec, variant = lookup_ca_sos_with_variants("23ANDME, INC.", client=client)
+    assert rec is not None
+    assert rec["FORMED_IN"] == "DELAWARE"
+    assert variant == "23ANDME"  # the stripped variant
+    assert client.post.call_count == 2
+
+
+def test_lookup_with_variants_returns_none_when_all_variants_fail():
+    from unittest.mock import MagicMock
+
+    class FakeResp:
+        status_code = 200
+        def json(self):
+            return {"rows": {}}
+        def raise_for_status(self):
+            pass
+
+    client = MagicMock()
+    client.post.return_value = FakeResp()
+    rec, variant = lookup_ca_sos_with_variants("UnknownCorp, Inc.", client=client)
+    assert rec is None
+    assert variant is None
+    assert client.post.call_count >= 2  # at least original + one variant tried
 
 
 def test_narrow_to_ca_organized_skips_checkpointed(tmp_path):
