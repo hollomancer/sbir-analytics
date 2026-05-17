@@ -24,6 +24,8 @@ class CohortRow(TypedDict):
 
     company_name: str
     state: str               # primary SBIR address state
+    city: str                # SBIR city (consumed by matcher for address overlap)
+    zip_code: str            # SBIR ZIP (5-digit prefix)
     agency: str
     first_award_year: int
     last_award_year: int

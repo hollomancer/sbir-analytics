@@ -21,13 +21,30 @@ import json
 import sys
 import time
 from pathlib import Path
-from typing import Protocol
-
-from curl_cffi import requests as ccrequests
+from typing import Any, Protocol
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from ucc._common import data_path  # noqa: E402
 from ucc.schema import FilingType  # noqa: E402
+
+_CURL_CFFI_HINT = (
+    "curl_cffi is required for the UCC pilot CA bizfileOnline extractor. "
+    "Install with: uv sync --extra ucc1-pilot"
+)
+
+
+def _curl_cffi_requests():
+    """Lazy-import curl_cffi.requests with a helpful error if the extra is missing.
+
+    Kept out of module scope so unit tests (and helpers like
+    build_filings_from_history that don't make HTTP calls) can import
+    this module without the optional extra installed.
+    """
+    try:
+        from curl_cffi import requests as ccrequests
+    except ImportError as e:  # pragma: no cover - tested only by CI without the extra
+        raise ImportError(_CURL_CFFI_HINT) from e
+    return ccrequests
 
 UCC_SEARCH_URL = "https://bizfileonline.sos.ca.gov/api/Records/uccsearch"
 UCC_DETAIL_URL_TPL = "https://bizfileonline.sos.ca.gov/api/FilingDetail/ucc/{id}/false"
@@ -74,8 +91,9 @@ class _BizfileClient(Protocol):
 class HttpBizfileClient:
     """curl_cffi-based client against bizfileOnline UCC API."""
 
-    def __init__(self, session: ccrequests.Session | None = None):
+    def __init__(self, session: Any | None = None):
         if session is None:
+            ccrequests = _curl_cffi_requests()
             session = ccrequests.Session(impersonate=_IMPERSONATE)
             session.get(SEARCH_SEED_URL)
         self.session = session

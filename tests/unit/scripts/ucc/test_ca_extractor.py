@@ -24,10 +24,16 @@ def test_build_filings_from_history_groups_lifecycle():
         "LAPSE_DATE": "08/20/2029",
     }
     history = [
-        {"AMENDMENT_TYPE": "Lien Financing Stmt", "AMENDMENT_NUM": "197728978614",
-         "AMENDMENT_DATE": "8/20/2019"},
-        {"AMENDMENT_TYPE": "Termination", "AMENDMENT_NUM": "1977361234",
-         "AMENDMENT_DATE": "9/23/2019"},
+        {
+            "AMENDMENT_TYPE": "Lien Financing Stmt",
+            "AMENDMENT_NUM": "197728978614",
+            "AMENDMENT_DATE": "8/20/2019",
+        },
+        {
+            "AMENDMENT_TYPE": "Termination",
+            "AMENDMENT_NUM": "1977361234",
+            "AMENDMENT_DATE": "9/23/2019",
+        },
     ]
     rows = build_filings_from_history(detail, history)
     assert len(rows) == 2
@@ -46,16 +52,24 @@ def test_build_filings_from_history_groups_lifecycle():
 
 def test_build_filings_handles_all_filing_types():
     detail = {
-        "RECORD_NUM": "INIT-1", "DEBTOR_NAME": "X", "DEBTOR_ADDRESS": "",
-        "SEC_PARTY_NAME": "Y", "SEC_PARTY_ADDRESS": "",
-        "STATUS": "Active", "LAPSE_DATE": None,
+        "RECORD_NUM": "INIT-1",
+        "DEBTOR_NAME": "X",
+        "DEBTOR_ADDRESS": "",
+        "SEC_PARTY_NAME": "Y",
+        "SEC_PARTY_ADDRESS": "",
+        "STATUS": "Active",
+        "LAPSE_DATE": None,
     }
     history = [
-        {"AMENDMENT_TYPE": "Lien Financing Stmt", "AMENDMENT_NUM": "INIT-1", "AMENDMENT_DATE": "1/1/2020"},
-        {"AMENDMENT_TYPE": "Amendment",           "AMENDMENT_NUM": "AM-1",    "AMENDMENT_DATE": "1/1/2021"},
-        {"AMENDMENT_TYPE": "Continuation",        "AMENDMENT_NUM": "CN-1",    "AMENDMENT_DATE": "12/1/2024"},
-        {"AMENDMENT_TYPE": "Assignment",          "AMENDMENT_NUM": "AS-1",    "AMENDMENT_DATE": "2/1/2025"},
-        {"AMENDMENT_TYPE": "Termination",         "AMENDMENT_NUM": "TM-1",    "AMENDMENT_DATE": "1/1/2026"},
+        {
+            "AMENDMENT_TYPE": "Lien Financing Stmt",
+            "AMENDMENT_NUM": "INIT-1",
+            "AMENDMENT_DATE": "1/1/2020",
+        },
+        {"AMENDMENT_TYPE": "Amendment", "AMENDMENT_NUM": "AM-1", "AMENDMENT_DATE": "1/1/2021"},
+        {"AMENDMENT_TYPE": "Continuation", "AMENDMENT_NUM": "CN-1", "AMENDMENT_DATE": "12/1/2024"},
+        {"AMENDMENT_TYPE": "Assignment", "AMENDMENT_NUM": "AS-1", "AMENDMENT_DATE": "2/1/2025"},
+        {"AMENDMENT_TYPE": "Termination", "AMENDMENT_NUM": "TM-1", "AMENDMENT_DATE": "1/1/2026"},
     ]
     rows = build_filings_from_history(detail, history)
     types = sorted(r["filing_type"] for r in rows)
@@ -63,10 +77,21 @@ def test_build_filings_handles_all_filing_types():
 
 
 def test_build_filings_skips_unknown_amendment_types():
-    detail = {"RECORD_NUM": "X", "DEBTOR_NAME": "X", "DEBTOR_ADDRESS": "",
-              "SEC_PARTY_NAME": "Y", "SEC_PARTY_ADDRESS": "", "STATUS": "", "LAPSE_DATE": None}
+    detail = {
+        "RECORD_NUM": "X",
+        "DEBTOR_NAME": "X",
+        "DEBTOR_ADDRESS": "",
+        "SEC_PARTY_NAME": "Y",
+        "SEC_PARTY_ADDRESS": "",
+        "STATUS": "",
+        "LAPSE_DATE": None,
+    }
     history = [
-        {"AMENDMENT_TYPE": "Lien Financing Stmt", "AMENDMENT_NUM": "X", "AMENDMENT_DATE": "1/1/2020"},
+        {
+            "AMENDMENT_TYPE": "Lien Financing Stmt",
+            "AMENDMENT_NUM": "X",
+            "AMENDMENT_DATE": "1/1/2020",
+        },
         {"AMENDMENT_TYPE": "Mystery Type", "AMENDMENT_NUM": "Y", "AMENDMENT_DATE": "2/1/2020"},
     ]
     rows = build_filings_from_history(detail, history)
@@ -75,8 +100,15 @@ def test_build_filings_skips_unknown_amendment_types():
 
 
 def test_build_filings_empty_history_returns_no_rows():
-    detail = {"RECORD_NUM": "X", "DEBTOR_NAME": "X", "DEBTOR_ADDRESS": "",
-              "SEC_PARTY_NAME": "", "SEC_PARTY_ADDRESS": "", "STATUS": "", "LAPSE_DATE": None}
+    detail = {
+        "RECORD_NUM": "X",
+        "DEBTOR_NAME": "X",
+        "DEBTOR_ADDRESS": "",
+        "SEC_PARTY_NAME": "",
+        "SEC_PARTY_ADDRESS": "",
+        "STATUS": "",
+        "LAPSE_DATE": None,
+    }
     assert build_filings_from_history(detail, []) == []
 
 
@@ -88,16 +120,40 @@ def test_extract_for_debtor_walks_results():
         {"ID": 200, "RECORD_NUM": "F2"},
     ]
     client.detail.side_effect = [
-        {"RECORD_NUM": "F1", "DEBTOR_NAME": "ACME", "DEBTOR_ADDRESS": "",
-         "SEC_PARTY_NAME": "Bank", "SEC_PARTY_ADDRESS": "",
-         "STATUS": "Active", "LAPSE_DATE": None},
-        {"RECORD_NUM": "F2", "DEBTOR_NAME": "ACME", "DEBTOR_ADDRESS": "",
-         "SEC_PARTY_NAME": "Bank", "SEC_PARTY_ADDRESS": "",
-         "STATUS": "Active", "LAPSE_DATE": None},
+        {
+            "RECORD_NUM": "F1",
+            "DEBTOR_NAME": "ACME",
+            "DEBTOR_ADDRESS": "",
+            "SEC_PARTY_NAME": "Bank",
+            "SEC_PARTY_ADDRESS": "",
+            "STATUS": "Active",
+            "LAPSE_DATE": None,
+        },
+        {
+            "RECORD_NUM": "F2",
+            "DEBTOR_NAME": "ACME",
+            "DEBTOR_ADDRESS": "",
+            "SEC_PARTY_NAME": "Bank",
+            "SEC_PARTY_ADDRESS": "",
+            "STATUS": "Active",
+            "LAPSE_DATE": None,
+        },
     ]
     client.history.side_effect = [
-        [{"AMENDMENT_TYPE": "Lien Financing Stmt", "AMENDMENT_NUM": "F1", "AMENDMENT_DATE": "1/1/2020"}],
-        [{"AMENDMENT_TYPE": "Lien Financing Stmt", "AMENDMENT_NUM": "F2", "AMENDMENT_DATE": "1/1/2021"}],
+        [
+            {
+                "AMENDMENT_TYPE": "Lien Financing Stmt",
+                "AMENDMENT_NUM": "F1",
+                "AMENDMENT_DATE": "1/1/2020",
+            }
+        ],
+        [
+            {
+                "AMENDMENT_TYPE": "Lien Financing Stmt",
+                "AMENDMENT_NUM": "F2",
+                "AMENDMENT_DATE": "1/1/2021",
+            }
+        ],
     ]
     rows = extract_for_debtor("ACME", client=client)
     assert len(rows) == 2
