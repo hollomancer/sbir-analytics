@@ -1,18 +1,19 @@
 """Cross-worktree data path helpers for the UCC pilot.
 
 The pilot's data inputs (form_d_details.jsonl, sbir_ma_events.jsonl) live
-in the gitignored data/ dir of the main repo; outputs go alongside. From
-worktrees, scripts must read/write that shared dir, not the worktree's
-own data/ (which would be empty).
+in the gitignored data/ dir of the repo; outputs go alongside.
 
-Override via the SBIR_DATA_DIR env var when running from anywhere other
-than the main repo.
+Default: the repo's own data/ directory (resolved relative to this file).
+Override via the SBIR_DATA_DIR env var to point at a shared dir (e.g.,
+the main repo's data/) when running from a worktree without its own copy.
 """
 
 import os
 from pathlib import Path
 
-DEFAULT_DATA_DIR = Path("/Users/hollomancer/projects/sbir-analytics/data")
+# Repo root's data/ dir, resolved from this file's location:
+#   scripts/data/ucc/_common.py → repo_root/data
+DEFAULT_DATA_DIR = Path(__file__).resolve().parents[3] / "data"
 
 
 def data_dir() -> Path:

@@ -23,11 +23,29 @@ import sys
 import time
 from collections.abc import Callable, Iterable
 from pathlib import Path
-
-from curl_cffi import requests as ccrequests
+from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from ucc._common import data_path  # noqa: E402
+
+_CURL_CFFI_HINT = (
+    "curl_cffi is required for the UCC pilot CA SOS scraper. "
+    "Install with: uv sync --extra ucc1-pilot"
+)
+
+
+def _curl_cffi_requests():
+    """Lazy-import curl_cffi.requests with a helpful error if the extra is missing.
+
+    Kept out of module scope so unit tests (and other scripts that only
+    need the pure helpers) can import this module without the optional
+    extra installed.
+    """
+    try:
+        from curl_cffi import requests as ccrequests
+    except ImportError as e:  # pragma: no cover - tested only by CI without the extra
+        raise ImportError(_CURL_CFFI_HINT) from e
+    return ccrequests
 
 BUSINESS_SEARCH_URL = "https://bizfileonline.sos.ca.gov/api/Records/businesssearch"
 SEARCH_SEED_URL = "https://bizfileonline.sos.ca.gov/search/business"
@@ -138,20 +156,24 @@ def generate_name_variants(name: str) -> list[str]:
 
 def lookup_ca_sos_with_variants(
     company_name: str,
-    client: ccrequests.Session | None = None,
+    client: Any | None = None,
     max_variants: int = 5,
 ) -> tuple[dict | None, str | None]:
     """Try name variants until one returns a result.
 
-    Returns (best_record, matched_variant). If no variant returns any
-    rows, returns (None, None). The matched_variant tells callers which
-    spelling worked, which is useful for debugging coverage gaps.
+    Returns (best_record, matched_variant). If at least one variant
+    returns a successful (but empty) response, returns (None, None).
+    If every variant request fails (e.g., Imperva block), the last
+    error is re-raised so the caller can distinguish a true no-result
+    from systemic failure.
     """
     own_client = client is None
     if own_client:
         client = make_session()
     try:
         variants = generate_name_variants(company_name)[:max_variants]
+        last_error: Exception | None = None
+        successful_responses = 0
         for variant in variants:
             payload = {**_BASE_PAYLOAD, "SEARCH_VALUE": variant}
             try:
@@ -160,10 +182,16 @@ def lookup_ca_sos_with_variants(
                 )
                 response.raise_for_status()
                 rows = response.json().get("rows") or {}
-            except Exception:
-                rows = {}
+            except (OSError, ValueError) as e:
+                # curl_cffi RequestsError is an OSError; json.JSONDecodeError
+                # is a ValueError. Narrow enough to surface unexpected bugs.
+                last_error = e
+                continue
+            successful_responses += 1
             if rows:
                 return (pick_best_match(rows), variant)
+        if successful_responses == 0 and last_error is not None:
+            raise last_error
         return (None, None)
     finally:
         if own_client:
@@ -185,15 +213,17 @@ def pick_best_match(rows: dict[str, dict]) -> dict | None:
     return min(pool, key=lambda r: r.get("SORT_INDEX", 0))
 
 
-def make_session() -> ccrequests.Session:
+def make_session() -> Any:
     """Build a curl_cffi session primed past Imperva's first-request check."""
+    ccrequests = _curl_cffi_requests()
     s = ccrequests.Session(impersonate=_IMPERSONATE)
     s.get(SEARCH_SEED_URL)
     return s
 
 
 def lookup_ca_sos(
-    company_name: str, client: ccrequests.Session | None = None,
+    company_name: str,
+    client: Any | None = None,
 ) -> dict | None:
     """Query CA SOS business search with name-variant retry; return best record.
 

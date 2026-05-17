@@ -19,29 +19,29 @@ from ucc.matcher import (  # noqa: E402
 # ---- 20-pair test set: 10 matches, 10 non-matches (per plan) ----
 
 MATCH_PAIRS = [
-    ("Acme Tech, Inc.",                  "ACME TECH INC."),
-    ("3D Systems Corporation",           "3D SYSTEMS CORP"),
-    ("Quantum Computing LLC",            "Quantum Computing, L.L.C."),
-    ("Foo Bar Industries",               "Foo Bar Industries Inc"),
-    ("Genome Sciences, Inc.",            "Genome Sciences Inc."),
-    ("Pacific Biosciences of California","PACIFIC BIOSCIENCES OF CALIFORNIA"),
-    ("BioMarin Pharmaceutical",          "BIOMARIN PHARMACEUTICAL INC"),
-    ("Advanced Materials Corp",          "ADVANCED MATERIALS CORPORATION"),
-    ("Inhibrx, Inc.",                    "Inhibrx Inc"),
-    ("Cohu, Inc.",                       "COHU, INC."),
+    ("Acme Tech, Inc.", "ACME TECH INC."),
+    ("3D Systems Corporation", "3D SYSTEMS CORP"),
+    ("Quantum Computing LLC", "Quantum Computing, L.L.C."),
+    ("Foo Bar Industries", "Foo Bar Industries Inc"),
+    ("Genome Sciences, Inc.", "Genome Sciences Inc."),
+    ("Pacific Biosciences of California", "PACIFIC BIOSCIENCES OF CALIFORNIA"),
+    ("BioMarin Pharmaceutical", "BIOMARIN PHARMACEUTICAL INC"),
+    ("Advanced Materials Corp", "ADVANCED MATERIALS CORPORATION"),
+    ("Inhibrx, Inc.", "Inhibrx Inc"),
+    ("Cohu, Inc.", "COHU, INC."),
 ]
 
 NON_MATCH_PAIRS = [
-    ("Acme Tech, Inc.",                  "Acme Manufacturing, Inc."),
-    ("Pacific Biosciences of California","Pacific Industries"),
-    ("3D Systems",                       "5D Systems"),
-    ("BioMarin",                         "BioGen"),
-    ("Quantum Computing",                "Classical Computing"),
-    ("AeroVironment",                    "Aerodyne Systems"),
-    ("Tesla, Inc.",                      "Cisco Systems, Inc."),
-    ("Inhibrx, Inc.",                    "InhibitionRx, Inc."),
-    ("Genome Sciences",                  "Genome Therapeutics"),
-    ("Cohu",                             "Coho Systems"),
+    ("Acme Tech, Inc.", "Acme Manufacturing, Inc."),
+    ("Pacific Biosciences of California", "Pacific Industries"),
+    ("3D Systems", "5D Systems"),
+    ("BioMarin", "BioGen"),
+    ("Quantum Computing", "Classical Computing"),
+    ("AeroVironment", "Aerodyne Systems"),
+    ("Tesla, Inc.", "Cisco Systems, Inc."),
+    ("Inhibrx, Inc.", "InhibitionRx, Inc."),
+    ("Genome Sciences", "Genome Therapeutics"),
+    ("Cohu", "Coho Systems"),
 ]
 
 
@@ -50,24 +50,27 @@ def test_normalize_name_strips_punctuation_and_lowercases():
 
 
 def test_normalize_name_handles_suffix_variations():
-    assert normalize_name("Advanced Materials Corp") == normalize_name("Advanced Materials Corporation")
+    assert normalize_name("Advanced Materials Corp") == normalize_name(
+        "Advanced Materials Corporation"
+    )
 
 
 def test_all_match_pairs_classify_high_or_medium():
     for cohort, ucc in MATCH_PAIRS:
         tier, score = classify_match(cohort, ucc)
-        assert tier in ("high", "medium"), \
+        assert tier in ("high", "medium"), (
             f"{cohort!r} vs {ucc!r}: got tier={tier}, score={score:.3f}"
+        )
 
 
 def test_all_non_match_pairs_classify_low_or_drop():
     for cohort, ucc in NON_MATCH_PAIRS:
         tier, score = classify_match(cohort, ucc)
-        assert tier in ("low", "drop"), \
-            f"{cohort!r} vs {ucc!r}: got tier={tier}, score={score:.3f}"
+        assert tier in ("low", "drop"), f"{cohort!r} vs {ucc!r}: got tier={tier}, score={score:.3f}"
 
 
 # ---- Address city/state extraction ----
+
 
 def test_address_city_state_parses_full_address():
     # CA UCC format: "STREET ADDRESS, CITY, ST  ZIP" (double space common)
@@ -88,6 +91,7 @@ def test_address_city_state_returns_empty_for_invalid():
 
 
 # ---- Address overlap scoring ----
+
 
 def test_address_overlap_exact_city_state_match():
     """Same city + state = 1.0"""
@@ -119,11 +123,13 @@ def test_address_overlap_state_mismatch():
 def test_address_overlap_city_match_bonus():
     """Same city should score higher than state-only."""
     state_only = address_overlap_score(
-        cohort_state="CA", cohort_city="CARLSBAD",
+        cohort_state="CA",
+        cohort_city="CARLSBAD",
         filing_address="1 BANK ST, SAN FRANCISCO, CA",
     )
     same_city = address_overlap_score(
-        cohort_state="CA", cohort_city="CARLSBAD",
+        cohort_state="CA",
+        cohort_city="CARLSBAD",
         filing_address="500 LAB DR, CARLSBAD, CA",
     )
     assert same_city > state_only
@@ -131,6 +137,7 @@ def test_address_overlap_city_match_bonus():
 
 
 # ---- Person-name detection ----
+
 
 def test_looks_like_person_name_true_for_first_last():
     assert looks_like_person_name("AADITI MUJUMDAR") is True
@@ -157,6 +164,7 @@ def test_looks_like_person_name_false_for_descriptive_company():
 
 
 # ---- Debtor-side matching (the integrated filter) ----
+
 
 def test_is_debtor_side_match_inhibrx_real_case():
     """Phase 0 case: Inhibrx hit where debtor is INHIBRX and SP is EDD."""
@@ -221,6 +229,7 @@ def test_is_debtor_side_match_keeps_active_motif():
 
 # ---- match_extraction (end-to-end with tier + address) ----
 
+
 def test_match_extraction_returns_match_for_clean_case():
     filing = {
         "filing_number": "ABC123",
@@ -239,9 +248,12 @@ def test_match_extraction_returns_match_for_clean_case():
 
 def test_match_extraction_returns_none_for_person_name():
     filing = {
-        "filing_number": "X", "filing_type": "initial",
-        "debtor_name": "AADITI MUJUMDAR", "debtor_address": "SANTA CLARA, CA",
-        "secured_party_name": "WELLS FARGO", "secured_party_address": "",
+        "filing_number": "X",
+        "filing_type": "initial",
+        "debtor_name": "AADITI MUJUMDAR",
+        "debtor_address": "SANTA CLARA, CA",
+        "secured_party_name": "WELLS FARGO",
+        "secured_party_address": "",
     }
     cohort_row = {"company_name": "AADI, LLC", "state": "CA"}
     assert match_extraction(filing, cohort_row) is None
@@ -249,9 +261,12 @@ def test_match_extraction_returns_none_for_person_name():
 
 def test_match_extraction_returns_none_for_cross_state_collision():
     filing = {
-        "filing_number": "X", "filing_type": "initial",
-        "debtor_name": "6K CONSULTING INC", "debtor_address": "SACRAMENTO, CA",
-        "secured_party_name": "U.S. BANK", "secured_party_address": "",
+        "filing_number": "X",
+        "filing_type": "initial",
+        "debtor_name": "6K CONSULTING INC",
+        "debtor_address": "SACRAMENTO, CA",
+        "secured_party_name": "U.S. BANK",
+        "secured_party_address": "",
     }
     cohort_row = {"company_name": "6K Inc.", "state": "MA"}
     assert match_extraction(filing, cohort_row) is None
