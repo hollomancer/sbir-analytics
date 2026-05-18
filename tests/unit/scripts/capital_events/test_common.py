@@ -47,3 +47,10 @@ def test_normalize_date_empty_returns_empty():
 def test_normalize_date_invalid_returns_empty():
     assert normalize_date("not-a-date") == ""
     assert normalize_date("13/45/2024") == ""  # invalid date components
+
+
+def test_data_path_rejects_absolute(monkeypatch, tmp_path):
+    import pytest
+    monkeypatch.setenv("SBIR_DATA_DIR", str(tmp_path))
+    with pytest.raises(ValueError, match="must be relative"):
+        data_path("/absolute/path.jsonl")
