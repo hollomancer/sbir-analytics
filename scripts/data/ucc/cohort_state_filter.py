@@ -247,9 +247,11 @@ def narrow_to_ca_organized(
     Returns (kept_rows, lookups_performed).
 
     Writes a JSONL checkpoint (one line per processed firm) so re-runs skip
-    completed lookups. Errors are caught per-firm; the checkpoint records
-    them so the firm isn't retried on resume (re-runs against the same
-    checkpoint will skip).
+    completed lookups. Errored firms (checkpoint entries with a non-null
+    `error` field) are NOT carried forward in the decisions map, so a
+    resume retries them — this avoids silently undercounting the
+    CA-organized cohort when a systemic Imperva block trips the
+    extractor mid-run.
 
     For real (non-mocked) lookups, the session is rebuilt every
     `session_rotate_every` firms to avoid Imperva session-age limits.
@@ -268,6 +270,9 @@ def narrow_to_ca_organized(
                 line = line.strip()
                 if line:
                     rec = json.loads(line)
+                    if rec.get("error"):
+                        # Errored lookups are retried on resume, not skipped.
+                        continue
                     decisions[rec["company_name"]] = bool(rec.get("is_ca_organized"))
 
     kept: list[dict] = []
