@@ -91,10 +91,11 @@ jobs:
               - 'pyproject.toml'
               - 'uv.lock'
             transition:
-              - 'src/assets/transition/**'
-              - 'src/assets/jobs/transition_job.py'
+              - 'packages/sbir-analytics/sbir_analytics/assets/phase_transition/**'
+              - 'packages/sbir-analytics/sbir_analytics/assets/jobs/phase_transition_job.py'
+              - 'packages/sbir-ml/sbir_ml/transition/**'
               - 'tests/e2e/transition/**'
-              - 'tests/integration/transition/**'
+              - 'tests/integration/test_transition_*.py'
               - 'docs/transition/**'
             docker:
               - 'Dockerfile*'
