@@ -168,11 +168,15 @@ in `UCCMatcher`.
 ### Cross-worktree data access
 
 `data/sbir_ma_events.jsonl`, `data/form_d_details.jsonl`, and `data/`
-generally are gitignored and live only in the main repo at
-`/Users/hollomancer/projects/sbir-analytics/data/`. Scripts run from this
-worktree read those files via an env var (`SBIR_DATA_DIR`, defaulting to
-the main-repo absolute path). New pilot artifacts are written to the
-worktree's own `data/` directory.
+generally are gitignored. Pilot scripts resolve all data paths via
+`ucc._common.data_path()`, which defaults to the repo's own `data/`
+directory (resolved relative to the script location) and can be
+overridden via the `SBIR_DATA_DIR` environment variable. Set
+`SBIR_DATA_DIR` to point at a shared dir (e.g. the main repo's `data/`)
+when running scripts from a worktree that doesn't have its own copy of
+the gitignored inputs. Both reads (form_d_details.jsonl, awards CSV,
+sbir_ma_events.jsonl) and writes (pilot artifacts) share that one
+resolved directory.
 
 ### Manual Validation
 

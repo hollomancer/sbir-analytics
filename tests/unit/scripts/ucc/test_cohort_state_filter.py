@@ -72,11 +72,13 @@ def test_narrow_to_ca_organized_keeps_ca_drops_de():
         {"company_name": "DE Co", "state": "CA"},
         {"company_name": "No Match Co", "state": "TX"},
     ]
-    lookups = iter([
-        {"FORMED_IN": "CALIFORNIA", "ENTITY_TYPE": "Limited Liability Company"},
-        {"FORMED_IN": "DELAWARE", "ENTITY_TYPE": "Stock Corporation - Out of State - Stock"},
-        None,
-    ])
+    lookups = iter(
+        [
+            {"FORMED_IN": "CALIFORNIA", "ENTITY_TYPE": "Limited Liability Company"},
+            {"FORMED_IN": "DELAWARE", "ENTITY_TYPE": "Stock Corporation - Out of State - Stock"},
+            None,
+        ]
+    )
     fn = MagicMock(side_effect=lambda name: next(lookups))
 
     kept, lookups_done = narrow_to_ca_organized(cohort, lookup_fn=fn, delay_seconds=0)
@@ -127,7 +129,7 @@ def test_generate_name_variants_dedupes():
     variants = generate_name_variants("Acme Industries")
     # No entity suffix, so original == stripped
     # But HOLDING and first-word may still add — check no exact dupes
-    assert len(variants) == len(set(v.lower() for v in variants))
+    assert len(variants) == len({v.lower() for v in variants})
 
 
 def test_generate_name_variants_returns_empty_for_blank():
@@ -143,8 +145,10 @@ def test_lookup_with_variants_returns_first_match():
         def __init__(self, rows):
             self._rows = rows
             self.status_code = 200
+
         def json(self):
             return {"rows": self._rows}
+
         def raise_for_status(self):
             pass
 
@@ -153,8 +157,16 @@ def test_lookup_with_variants_returns_first_match():
     # Second call (stripped "23ANDME") returns a hit
     client.post.side_effect = [
         FakeResp({}),
-        FakeResp({"123": {"SORT_INDEX": 0, "FORMED_IN": "DELAWARE",
-                          "ENTITY_TYPE": "Stock Corporation - Out of State", "STATUS": "Active"}}),
+        FakeResp(
+            {
+                "123": {
+                    "SORT_INDEX": 0,
+                    "FORMED_IN": "DELAWARE",
+                    "ENTITY_TYPE": "Stock Corporation - Out of State",
+                    "STATUS": "Active",
+                }
+            }
+        ),
     ]
     rec, variant = lookup_ca_sos_with_variants("23ANDME, INC.", client=client)
     assert rec is not None
@@ -168,8 +180,10 @@ def test_lookup_with_variants_returns_none_when_all_variants_fail():
 
     class FakeResp:
         status_code = 200
+
         def json(self):
             return {"rows": {}}
+
         def raise_for_status(self):
             pass
 
@@ -189,21 +203,68 @@ def test_narrow_to_ca_organized_skips_checkpointed(tmp_path):
     checkpoint = tmp_path / "ckpt.jsonl"
     # Pre-populate checkpoint with "Skip Me" as CA-organized
     import json
-    checkpoint.write_text(json.dumps({
-        "company_name": "Skip Me",
-        "is_ca_organized": True,
-        "business_record": {"FORMED_IN": "CALIFORNIA", "ENTITY_TYPE": "LLC"},
-    }) + "\n")
 
-    lookups = iter([
-        {"FORMED_IN": "CALIFORNIA", "ENTITY_TYPE": "LLC"},
-    ])
+    checkpoint.write_text(
+        json.dumps(
+            {
+                "company_name": "Skip Me",
+                "is_ca_organized": True,
+                "business_record": {"FORMED_IN": "CALIFORNIA", "ENTITY_TYPE": "LLC"},
+            }
+        )
+        + "\n"
+    )
+
+    lookups = iter(
+        [
+            {"FORMED_IN": "CALIFORNIA", "ENTITY_TYPE": "LLC"},
+        ]
+    )
     fn = MagicMock(side_effect=lambda name: next(lookups))
 
     kept, lookups_done = narrow_to_ca_organized(
-        cohort, lookup_fn=fn, delay_seconds=0, checkpoint_path=checkpoint,
+        cohort,
+        lookup_fn=fn,
+        delay_seconds=0,
+        checkpoint_path=checkpoint,
     )
     names = [r["company_name"] for r in kept]
     assert "CA Co" in names
     assert "Skip Me" in names  # restored from checkpoint
-    assert lookups_done == 1   # only CA Co triggered a lookup
+    assert lookups_done == 1  # only CA Co triggered a lookup
+
+
+def test_narrow_to_ca_organized_retries_errored_checkpoint_entries(tmp_path):
+    """Checkpoint rows with a non-null error are retried on resume rather than
+    treated as confirmed non-CA-organized. Prevents silent under-counting when
+    an Imperva block trips the extractor mid-run.
+    """
+    import json
+
+    cohort = [{"company_name": "Retry Me", "state": "CA"}]
+    checkpoint = tmp_path / "ckpt.jsonl"
+    # Pre-populate checkpoint with an error row (is_ca_organized=False, error set)
+    checkpoint.write_text(
+        json.dumps(
+            {
+                "company_name": "Retry Me",
+                "is_ca_organized": False,
+                "business_record": None,
+                "error": "RequestsError: 403",
+            }
+        )
+        + "\n"
+    )
+
+    # On retry, the lookup succeeds and returns a CA-organized record
+    lookups = iter([{"FORMED_IN": "CALIFORNIA", "ENTITY_TYPE": "LLC"}])
+    fn = MagicMock(side_effect=lambda name: next(lookups))
+
+    kept, lookups_done = narrow_to_ca_organized(
+        cohort,
+        lookup_fn=fn,
+        delay_seconds=0,
+        checkpoint_path=checkpoint,
+    )
+    assert [r["company_name"] for r in kept] == ["Retry Me"]
+    assert lookups_done == 1  # retried, not skipped

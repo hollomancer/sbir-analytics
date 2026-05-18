@@ -29,7 +29,7 @@ import argparse
 import csv
 import json
 import sys
-from collections import defaultdict
+from collections import Counter, defaultdict
 from collections.abc import Iterable, Iterator
 from pathlib import Path
 
@@ -93,7 +93,13 @@ def build_cohort_rows(
         years = sorted({int(a["award_year"]) for a in joined_awards if a.get("award_year")})
         amounts = [float(a.get("award_amount") or 0) for a in joined_awards]
         agencies = [a.get("agency") for a in joined_awards if a.get("agency")]
-        primary_agency = max(set(agencies), key=agencies.count) if agencies else "Unknown"
+        # Deterministic tie-break: most common first, then alphabetical.
+        agency_counts = Counter(agencies)
+        if agency_counts:
+            max_count = max(agency_counts.values())
+            primary_agency = min(a for a, c in agency_counts.items() if c == max_count)
+        else:
+            primary_agency = "Unknown"
 
         yield {
             "company_name": sbir_name,
@@ -104,7 +110,7 @@ def build_cohort_rows(
             "first_award_year": years[0] if years else 0,
             "last_award_year": years[-1] if years else 0,
             "total_award_amount": sum(amounts),
-            "form_d_filing_count": 1,
+            "form_d_filing_count": int(rec.get("offering_count") or 1),
             "form_d_total_raised": float(rec.get("total_amount_sold") or 0),
         }
 
@@ -115,6 +121,8 @@ def _normalize_form_d(raw: dict) -> dict:
     Derives:
       - issuer_zip from the first offering's zip_code (5-digit prefix)
       - issuer_state from the first offering's state
+      - offering_count from the raw field (set by the form_d fetcher) or
+        falls back to len(offerings) if absent
       - name_match from match_confidence.person_score >= 0.7
       - zip_match from match_confidence.address_score > 0
       - total_amount_sold from the top-level total_raised field
@@ -130,6 +138,7 @@ def _normalize_form_d(raw: dict) -> dict:
         "company_name": raw.get("company_name", ""),
         "issuer_state": first_offering.get("state", ""),
         "issuer_zip": issuer_zip,
+        "offering_count": raw.get("offering_count") or len(offerings),
         "total_amount_sold": raw.get("total_raised", 0),
         "match_confidence": mc,
         "name_match": float(mc.get("person_score") or 0) >= _PERSON_SCORE_THRESHOLD,
@@ -150,8 +159,11 @@ def _normalize_sbir_award(row: dict) -> dict:
         year = int(row.get("Award Year") or 0)
     except (ValueError, TypeError):
         year = 0
+    # award_data.csv carries amounts with commas and '$' (e.g. "$1,234,567").
+    # Strip both before float() to avoid silently zeroing legitimate values.
+    raw_amount = str(row.get("Award Amount") or "").replace(",", "").replace("$", "").strip()
     try:
-        amount = float(row.get("Award Amount") or 0)
+        amount = float(raw_amount) if raw_amount else 0.0
     except (ValueError, TypeError):
         amount = 0.0
     return {
