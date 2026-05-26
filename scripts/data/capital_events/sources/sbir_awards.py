@@ -49,19 +49,21 @@ def build_sbir_award_events(
     """Yield CapitalEvent rows for SBIR awards to cohort firms."""
     if not source_path.exists():
         return
-    cohort_names = {row["company_name"] for row in cohort}
+    # Build {UPPERCASE: canonical} so we can match case-insensitively but
+    # emit the cohort's canonical name (preserves case used downstream).
+    canonical_by_upper = {row["company_name"].upper(): row["company_name"] for row in cohort}
     with source_path.open(newline="") as f:
         reader = csv.DictReader(f)
         for row in reader:
             raw_company = (row.get("Company") or "").strip()
-            normalized = raw_company.upper()
-            if normalized not in cohort_names:
+            canonical = canonical_by_upper.get(raw_company.upper())
+            if canonical is None:
                 continue
             event_date = normalize_date(row.get("Proposal Award Date"))
             source_id = (row.get("Agency Tracking Number") or "").strip() \
                 or (row.get("Contract") or "").strip()
             yield {
-                "company_name": normalized,
+                "company_name": canonical,
                 "event_date": event_date,
                 "event_type": EventType.SBIR_AWARD.value,
                 "event_subtype": classify_phase(row.get("Phase")),
