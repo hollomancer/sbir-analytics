@@ -37,8 +37,15 @@ def _to_int(value) -> int | None:
 
 
 def _to_float(value) -> float | None:
+    """Parse a number, tolerating `$` / comma formatting that may appear in
+    SBIR award amounts (matches scripts/data/ucc/export_cohort.py pattern)."""
+    if value in (None, ""):
+        return None
+    s = str(value).replace(",", "").replace("$", "").strip()
+    if not s:
+        return None
     try:
-        return float(value) if value not in (None, "") else None
+        return float(s)
     except (ValueError, TypeError):
         return None
 
@@ -59,7 +66,22 @@ def build_sbir_award_events(
             canonical = canonical_by_upper.get(raw_company.upper())
             if canonical is None:
                 continue
-            event_date = normalize_date(row.get("Proposal Award Date"))
+            # Date resolution: prefer Proposal Award Date; fall back to
+            # Award Year (with a Jan-1 placeholder day) when the explicit
+            # date is missing. ~21% of real SBIR rows lack Proposal Award
+            # Date but have Award Year. Document the fallback in metadata.
+            raw_date = row.get("Proposal Award Date")
+            event_date = normalize_date(raw_date)
+            date_source = "proposal_award_date"
+            if not event_date:
+                award_year = _to_int(row.get("Award Year"))
+                if award_year and 1900 <= award_year <= 2100:
+                    event_date = f"{award_year}-01-01"
+                    date_source = "award_year_fallback"
+            if not event_date:
+                # No usable date; skip rather than emit an empty-date event
+                # that breaks chronological ordering.
+                continue
             source_id = (row.get("Agency Tracking Number") or "").strip() \
                 or (row.get("Contract") or "").strip()
             yield {
@@ -77,5 +99,6 @@ def build_sbir_award_events(
                     "award_year": _to_int(row.get("Award Year")),
                     "city": (row.get("City") or "").strip() or None,
                     "state": (row.get("State") or "").strip() or None,
+                    "date_source": date_source,
                 }),
             }

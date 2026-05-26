@@ -5,7 +5,10 @@ import re
 from datetime import datetime
 from pathlib import Path
 
-DEFAULT_DATA_DIR = Path("/Users/hollomancer/projects/sbir-analytics/data")
+# Repo-relative default: scripts/data/capital_events/_common.py is 3 parents
+# above the repo root, so the data dir is parents[3] / "data". Matches
+# scripts/data/ucc/_common.py pattern. Override via SBIR_DATA_DIR env var.
+DEFAULT_DATA_DIR = Path(__file__).resolve().parents[3] / "data"
 
 
 def data_dir() -> Path:

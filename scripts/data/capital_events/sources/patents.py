@@ -52,9 +52,14 @@ def build_patent_events(
             for linked_name in linked:
                 if linked_name not in cohort_names:
                     continue
+                event_date = normalize_date(patent.get("latest_recorded_date"))
+                if not event_date:
+                    # Skip patents with no resolvable grant date; ISO-date
+                    # schema invariant + sort-order correctness.
+                    continue
                 yield {
                     "company_name": linked_name,
-                    "event_date": normalize_date(patent.get("latest_recorded_date")),
+                    "event_date": event_date,
                     "event_type": EventType.PATENT_GRANT.value,
                     "event_subtype": None,
                     "amount_usd": None,

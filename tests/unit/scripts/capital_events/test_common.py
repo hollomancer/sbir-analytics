@@ -9,8 +9,14 @@ from capital_events._common import data_dir, data_path, normalize_date  # noqa: 
 
 
 def test_data_dir_default_when_env_unset(monkeypatch):
+    """Default resolves to <repo-root>/data, computed relative to _common.py."""
     monkeypatch.delenv("SBIR_DATA_DIR", raising=False)
-    assert data_dir() == Path("/Users/hollomancer/projects/sbir-analytics/data")
+    # _common.py lives at scripts/data/capital_events/_common.py
+    # parents[3] from there is the repo root; data is sibling of scripts/
+    expected = (
+        Path(__file__).resolve().parents[4] / "data"
+    )
+    assert data_dir() == expected
 
 
 def test_data_dir_uses_env_var(monkeypatch, tmp_path):

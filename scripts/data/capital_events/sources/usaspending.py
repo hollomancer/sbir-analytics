@@ -56,17 +56,29 @@ def build_usaspending_events(
             if canonical is None:
                 continue
             event_date = normalize_date(contract.get("Start Date"))
+            if not event_date:
+                # Skip rather than emit an empty-date event; ISO-date
+                # schema invariant + sort-order correctness.
+                continue
             award_id = (contract.get("Award ID") or "").strip()
             if award_id:
                 source_id = award_id
             else:
                 source_id = (contract.get("generated_internal_id") or "").strip() or "GEN-"
+            # Preserve legitimate 0.0 obligations; only treat None/empty as missing.
+            raw_amount = contract.get("Award Amount")
+            amount_usd: float | None = None
+            if raw_amount not in (None, ""):
+                try:
+                    amount_usd = float(raw_amount)
+                except (ValueError, TypeError):
+                    amount_usd = None
             yield {
                 "company_name": canonical,
                 "event_date": event_date,
                 "event_type": EventType.USASPENDING_CONTRACT.value,
                 "event_subtype": None,
-                "amount_usd": float(contract.get("Award Amount") or 0) or None,
+                "amount_usd": amount_usd,
                 "counterparty": (contract.get("Funding Agency") or "").strip() or None,
                 "source_id": source_id,
                 "metadata": json.dumps({
