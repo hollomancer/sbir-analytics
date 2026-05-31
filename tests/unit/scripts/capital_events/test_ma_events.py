@@ -27,11 +27,17 @@ def _ma_row(name, date, confidence, acquirer=None, signals=None, press=None):
 
 def test_emits_high_and_medium_drops_low(cohort, tmp_path):
     src = tmp_path / "ma.jsonl"
-    src.write_text("\n".join(json.dumps(r) for r in [
-        _ma_row("ACME INC", "2023-06-15", "high", acquirer="GiantCo"),
-        _ma_row("OUT-OF-STATE CORP", "2022-11-01", "medium"),
-        _ma_row("ACME INC", "2024-02-01", "low"),
-    ]) + "\n")
+    src.write_text(
+        "\n".join(
+            json.dumps(r)
+            for r in [
+                _ma_row("ACME INC", "2023-06-15", "high", acquirer="GiantCo"),
+                _ma_row("OUT-OF-STATE CORP", "2022-11-01", "medium"),
+                _ma_row("ACME INC", "2024-02-01", "low"),
+            ]
+        )
+        + "\n"
+    )
 
     events = list(build_ma_events(cohort, src))
     assert len(events) == 2
@@ -57,11 +63,18 @@ def test_returns_empty_when_file_missing(cohort, tmp_path):
 
 def test_metadata_carries_signals_and_press_wire(cohort, tmp_path):
     src = tmp_path / "ma.jsonl"
-    src.write_text(json.dumps(_ma_row(
-        "ACME INC", "2023-06-15", "high",
-        signals={"form_d_business_combination": True},
-        press={"acquisition_announcement_count": 3},
-    )) + "\n")
+    src.write_text(
+        json.dumps(
+            _ma_row(
+                "ACME INC",
+                "2023-06-15",
+                "high",
+                signals={"form_d_business_combination": True},
+                press={"acquisition_announcement_count": 3},
+            )
+        )
+        + "\n"
+    )
     events = list(build_ma_events(cohort, src))
     meta = json.loads(events[0]["metadata"])
     assert meta["signals"]["form_d_business_combination"] is True
