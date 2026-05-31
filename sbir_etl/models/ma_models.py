@@ -11,5 +11,8 @@ class MAEvent(BaseModel):
     acquisition_date: date = Field(description="The date of the acquisition event.")
     source: str = Field(description="The source of the M&A event information.")
     confidence_score: float = Field(
-        description="A score indicating the confidence in the M&A event."
+        description="A numerical score (0.0-1.0) indicating confidence in the event."
+    )
+    confidence: str = Field(
+        description="Categorical confidence tier (low, medium, high) derived from the score."
     )
