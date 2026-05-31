@@ -17,23 +17,28 @@ def test_returns_empty_when_file_missing(cohort, tmp_path):
 
 def test_yields_one_event_per_match(cohort, tmp_path):
     src = tmp_path / "ucc1_pilot_matches.jsonl"
-    src.write_text(json.dumps({
-        "cohort_company_name": "ACME INC",
-        "match_confidence": "high",
-        "match_score": 1.0,
-        "filing": {
-            "filing_number": "U240107248023",
-            "filing_type": "initial",
-            "filing_date": "2024-01-30",
-            "debtor_name": "ACME INC",
-            "debtor_address": "SAN DIEGO, CA",
-            "secured_party_name": "LEAF CAPITAL FUNDING, LLC",
-            "secured_party_address": "PHILADELPHIA, PA",
-            "status_portal": "Active",
-            "lapse_date": "2029-01-30",
-            "source": "CA",
-        },
-    }) + "\n")
+    src.write_text(
+        json.dumps(
+            {
+                "cohort_company_name": "ACME INC",
+                "match_confidence": "high",
+                "match_score": 1.0,
+                "filing": {
+                    "filing_number": "U240107248023",
+                    "filing_type": "initial",
+                    "filing_date": "2024-01-30",
+                    "debtor_name": "ACME INC",
+                    "debtor_address": "SAN DIEGO, CA",
+                    "secured_party_name": "LEAF CAPITAL FUNDING, LLC",
+                    "secured_party_address": "PHILADELPHIA, PA",
+                    "status_portal": "Active",
+                    "lapse_date": "2029-01-30",
+                    "source": "CA",
+                },
+            }
+        )
+        + "\n"
+    )
 
     events = list(build_ucc_events(cohort, src))
     assert len(events) == 1
@@ -52,15 +57,26 @@ def test_yields_one_event_per_match(cohort, tmp_path):
 
 def test_skips_filings_for_non_cohort_firms(cohort, tmp_path):
     src = tmp_path / "ucc1_pilot_matches.jsonl"
-    src.write_text(json.dumps({
-        "cohort_company_name": "UNRELATED INC",
-        "match_confidence": "high", "match_score": 1.0,
-        "filing": {
-            "filing_number": "X", "filing_type": "initial",
-            "filing_date": "2024-01-01",
-            "debtor_name": "UNRELATED INC", "debtor_address": "",
-            "secured_party_name": "BANK", "secured_party_address": "",
-            "status_portal": "Active", "lapse_date": None, "source": "CA",
-        },
-    }) + "\n")
+    src.write_text(
+        json.dumps(
+            {
+                "cohort_company_name": "UNRELATED INC",
+                "match_confidence": "high",
+                "match_score": 1.0,
+                "filing": {
+                    "filing_number": "X",
+                    "filing_type": "initial",
+                    "filing_date": "2024-01-01",
+                    "debtor_name": "UNRELATED INC",
+                    "debtor_address": "",
+                    "secured_party_name": "BANK",
+                    "secured_party_address": "",
+                    "status_portal": "Active",
+                    "lapse_date": None,
+                    "source": "CA",
+                },
+            }
+        )
+        + "\n"
+    )
     assert list(build_ucc_events(cohort, src)) == []

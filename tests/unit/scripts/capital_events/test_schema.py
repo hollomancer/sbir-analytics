@@ -23,8 +23,14 @@ def test_event_type_values():
 
 def test_event_table_columns_match_typeddict():
     expected = {
-        "company_name", "event_date", "event_type", "event_subtype",
-        "amount_usd", "counterparty", "source_id", "metadata",
+        "company_name",
+        "event_date",
+        "event_type",
+        "event_subtype",
+        "amount_usd",
+        "counterparty",
+        "source_id",
+        "metadata",
     }
     assert set(EVENT_TABLE_COLUMNS) == expected
     assert EVENT_TABLE_COLUMNS[0] == "company_name"
@@ -34,6 +40,7 @@ def test_event_table_columns_match_typeddict():
 
 def test_capital_event_can_round_trip_as_json():
     import json
+
     row: CapitalEvent = {
         "company_name": "Acme Inc",
         "event_date": "2024-03-15",

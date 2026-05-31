@@ -13,9 +13,7 @@ def test_data_dir_default_when_env_unset(monkeypatch):
     monkeypatch.delenv("SBIR_DATA_DIR", raising=False)
     # _common.py lives at scripts/data/capital_events/_common.py
     # parents[3] from there is the repo root; data is sibling of scripts/
-    expected = (
-        Path(__file__).resolve().parents[4] / "data"
-    )
+    expected = Path(__file__).resolve().parents[4] / "data"
     assert data_dir() == expected
 
 
@@ -57,6 +55,7 @@ def test_normalize_date_invalid_returns_empty():
 
 def test_data_path_rejects_absolute(monkeypatch, tmp_path):
     import pytest
+
     monkeypatch.setenv("SBIR_DATA_DIR", str(tmp_path))
     with pytest.raises(ValueError, match="must be relative"):
         data_path("/absolute/path.jsonl")

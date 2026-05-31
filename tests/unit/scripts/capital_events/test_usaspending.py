@@ -31,10 +31,16 @@ def _contract(recipient, award_id, start, amount, agency="Department of Defense"
 
 def test_emits_one_event_per_contract(cohort, tmp_path):
     src = tmp_path / "usaspending.jsonl"
-    src.write_text("\n".join(json.dumps(c) for c in [
-        _contract("ACME INC", "W56HZV-22-D-0001", "2022-06-01", 5_000_000.0),
-        _contract("ACME INC", "W56HZV-23-D-0002", "2023-09-15", 8_000_000.0),
-    ]) + "\n")
+    src.write_text(
+        "\n".join(
+            json.dumps(c)
+            for c in [
+                _contract("ACME INC", "W56HZV-22-D-0001", "2022-06-01", 5_000_000.0),
+                _contract("ACME INC", "W56HZV-23-D-0002", "2023-09-15", 8_000_000.0),
+            ]
+        )
+        + "\n"
+    )
 
     events = list(build_usaspending_events(cohort, src))
     assert len(events) == 2

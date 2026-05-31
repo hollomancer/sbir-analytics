@@ -41,7 +41,10 @@ def _offering(accession, filing_date, amount, securities=None, is_combo=False, *
 def test_classify_securities_types():
     assert classify_securities_types(["Equity"]) == "equity"
     assert classify_securities_types(["Debt"]) == "debt"
-    assert classify_securities_types(["Option, Warrant or Other Right to Acquire Another Security"]) == "option_warrant"
+    assert (
+        classify_securities_types(["Option, Warrant or Other Right to Acquire Another Security"])
+        == "option_warrant"
+    )
     assert classify_securities_types(["Equity", "Debt"]) == "other"
     assert classify_securities_types([]) == "other"
     assert classify_securities_types(None) == "other"
@@ -49,10 +52,19 @@ def test_classify_securities_types():
 
 def test_emits_one_event_per_offering(cohort, tmp_path):
     src = tmp_path / "form_d.jsonl"
-    src.write_text(json.dumps(_form_d("ACME INC", "high", [
-        _offering("ACC-1", "2023-01-15", 5_000_000.0),
-        _offering("ACC-2", "2023-08-22", 10_000_000.0, securities=["Debt"]),
-    ])) + "\n")
+    src.write_text(
+        json.dumps(
+            _form_d(
+                "ACME INC",
+                "high",
+                [
+                    _offering("ACC-1", "2023-01-15", 5_000_000.0),
+                    _offering("ACC-2", "2023-08-22", 10_000_000.0, securities=["Debt"]),
+                ],
+            )
+        )
+        + "\n"
+    )
 
     events = list(build_form_d_events(cohort, src))
     assert len(events) == 2
@@ -71,19 +83,41 @@ def test_emits_one_event_per_offering(cohort, tmp_path):
 
 def test_business_combination_overrides_subtype(cohort, tmp_path):
     src = tmp_path / "form_d.jsonl"
-    src.write_text(json.dumps(_form_d("ACME INC", "high", [
-        _offering("ACC-3", "2024-05-01", 50_000_000.0, securities=["Equity"], is_combo=True),
-    ])) + "\n")
+    src.write_text(
+        json.dumps(
+            _form_d(
+                "ACME INC",
+                "high",
+                [
+                    _offering(
+                        "ACC-3", "2024-05-01", 50_000_000.0, securities=["Equity"], is_combo=True
+                    ),
+                ],
+            )
+        )
+        + "\n"
+    )
     events = list(build_form_d_events(cohort, src))
     assert events[0]["event_subtype"] == "combination"
 
 
 def test_drops_non_high_tier_records(cohort, tmp_path):
     src = tmp_path / "form_d.jsonl"
-    src.write_text("\n".join([
-        json.dumps(_form_d("ACME INC", "medium", [_offering("ACC-A", "2024-01-01", 1_000_000.0)])),
-        json.dumps(_form_d("OUT-OF-STATE CORP", "high", [_offering("ACC-B", "2023-01-01", 5_000_000.0)])),
-    ]) + "\n")
+    src.write_text(
+        "\n".join(
+            [
+                json.dumps(
+                    _form_d("ACME INC", "medium", [_offering("ACC-A", "2024-01-01", 1_000_000.0)])
+                ),
+                json.dumps(
+                    _form_d(
+                        "OUT-OF-STATE CORP", "high", [_offering("ACC-B", "2023-01-01", 5_000_000.0)]
+                    )
+                ),
+            ]
+        )
+        + "\n"
+    )
     events = list(build_form_d_events(cohort, src))
     assert len(events) == 1
     assert events[0]["company_name"] == "OUT-OF-STATE CORP"
@@ -91,17 +125,41 @@ def test_drops_non_high_tier_records(cohort, tmp_path):
 
 def test_skips_non_cohort_firms(cohort, tmp_path):
     src = tmp_path / "form_d.jsonl"
-    src.write_text(json.dumps(_form_d("UNRELATED INC", "high", [
-        _offering("ACC-X", "2024-01-01", 1_000_000.0),
-    ])) + "\n")
+    src.write_text(
+        json.dumps(
+            _form_d(
+                "UNRELATED INC",
+                "high",
+                [
+                    _offering("ACC-X", "2024-01-01", 1_000_000.0),
+                ],
+            )
+        )
+        + "\n"
+    )
     assert list(build_form_d_events(cohort, src)) == []
 
 
 def test_metadata_carries_offering_extras(cohort, tmp_path):
     src = tmp_path / "form_d.jsonl"
-    src.write_text(json.dumps(_form_d("ACME INC", "high", [
-        _offering("ACC-1", "2024-01-01", 5_000_000.0, minimum_investment=50000, num_investors=8),
-    ])) + "\n")
+    src.write_text(
+        json.dumps(
+            _form_d(
+                "ACME INC",
+                "high",
+                [
+                    _offering(
+                        "ACC-1",
+                        "2024-01-01",
+                        5_000_000.0,
+                        minimum_investment=50000,
+                        num_investors=8,
+                    ),
+                ],
+            )
+        )
+        + "\n"
+    )
     events = list(build_form_d_events(cohort, src))
     meta = json.loads(events[0]["metadata"])
     assert meta["minimum_investment"] == 50000

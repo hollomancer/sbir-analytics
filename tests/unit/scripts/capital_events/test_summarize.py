@@ -11,18 +11,33 @@ from capital_events.summarize import summarize_per_firm  # noqa: E402
 
 
 def _events_df(rows: list[dict]) -> pd.DataFrame:
-    return pd.DataFrame(rows, columns=[
-        "company_name", "event_date", "event_type", "event_subtype",
-        "amount_usd", "counterparty", "source_id", "metadata",
-    ])
+    return pd.DataFrame(
+        rows,
+        columns=[
+            "company_name",
+            "event_date",
+            "event_type",
+            "event_subtype",
+            "amount_usd",
+            "counterparty",
+            "source_id",
+            "metadata",
+        ],
+    )
 
 
-def _event(company, date, etype, subtype=None, amount=None, counterparty=None,
-           source_id="X", metadata="{}"):
+def _event(
+    company, date, etype, subtype=None, amount=None, counterparty=None, source_id="X", metadata="{}"
+):
     return {
-        "company_name": company, "event_date": date, "event_type": etype,
-        "event_subtype": subtype, "amount_usd": amount,
-        "counterparty": counterparty, "source_id": source_id, "metadata": metadata,
+        "company_name": company,
+        "event_date": date,
+        "event_type": etype,
+        "event_subtype": subtype,
+        "amount_usd": amount,
+        "counterparty": counterparty,
+        "source_id": source_id,
+        "metadata": metadata,
     }
 
 
@@ -34,11 +49,13 @@ def test_summary_includes_one_row_per_cohort_firm(cohort):
 
 
 def test_summary_counts_and_sums_sbir_events(cohort):
-    events = _events_df([
-        _event("ACME INC", "2018-06-15", "sbir_award", "sbir_phase_i", 150000.0),
-        _event("ACME INC", "2020-09-01", "sbir_award", "sbir_phase_ii", 1000000.0),
-        _event("BORING LLC", "2020-04-01", "sbir_award", "sbir_phase_i", 250000.0),
-    ])
+    events = _events_df(
+        [
+            _event("ACME INC", "2018-06-15", "sbir_award", "sbir_phase_i", 150000.0),
+            _event("ACME INC", "2020-09-01", "sbir_award", "sbir_phase_ii", 1000000.0),
+            _event("BORING LLC", "2020-04-01", "sbir_award", "sbir_phase_i", 250000.0),
+        ]
+    )
     summary = summarize_per_firm(events, cohort)
     acme = summary[summary.company_name == "ACME INC"].iloc[0]
     assert acme["sbir_award_count"] == 2
@@ -46,10 +63,12 @@ def test_summary_counts_and_sums_sbir_events(cohort):
 
 
 def test_summary_form_d_aggregations(cohort):
-    events = _events_df([
-        _event("ACME INC", "2023-01-15", "form_d_filing", "equity", 5_000_000.0),
-        _event("ACME INC", "2023-08-22", "form_d_filing", "debt", 10_000_000.0),
-    ])
+    events = _events_df(
+        [
+            _event("ACME INC", "2023-01-15", "form_d_filing", "equity", 5_000_000.0),
+            _event("ACME INC", "2023-08-22", "form_d_filing", "debt", 10_000_000.0),
+        ]
+    )
     summary = summarize_per_firm(events, cohort)
     acme = summary[summary.company_name == "ACME INC"].iloc[0]
     assert acme["form_d_filing_count"] == 2
@@ -57,10 +76,12 @@ def test_summary_form_d_aggregations(cohort):
 
 
 def test_summary_ma_flags_and_dates(cohort):
-    events = _events_df([
-        _event("ACME INC", "2024-02-01", "ma_event", "medium"),
-        _event("ACME INC", "2024-03-01", "ma_event", "high"),
-    ])
+    events = _events_df(
+        [
+            _event("ACME INC", "2024-02-01", "ma_event", "medium"),
+            _event("ACME INC", "2024-03-01", "ma_event", "high"),
+        ]
+    )
     summary = summarize_per_firm(events, cohort)
     acme = summary[summary.company_name == "ACME INC"].iloc[0]
     assert bool(acme["has_ma_event"]) is True
@@ -69,11 +90,13 @@ def test_summary_ma_flags_and_dates(cohort):
 
 
 def test_summary_first_and_last_event_dates(cohort):
-    events = _events_df([
-        _event("ACME INC", "2018-06-15", "sbir_award", "sbir_phase_i", 150000.0),
-        _event("ACME INC", "2024-02-01", "ma_event", "high"),
-        _event("ACME INC", "2023-08-22", "form_d_filing", "equity", 10_000_000.0),
-    ])
+    events = _events_df(
+        [
+            _event("ACME INC", "2018-06-15", "sbir_award", "sbir_phase_i", 150000.0),
+            _event("ACME INC", "2024-02-01", "ma_event", "high"),
+            _event("ACME INC", "2023-08-22", "form_d_filing", "equity", 10_000_000.0),
+        ]
+    )
     summary = summarize_per_firm(events, cohort)
     acme = summary[summary.company_name == "ACME INC"].iloc[0]
     assert acme["first_event_date"] == "2018-06-15"
