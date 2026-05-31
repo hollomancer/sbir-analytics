@@ -15,9 +15,38 @@ to produce a composite likelihood score (0.0-1.0) and confidence classification.
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from loguru import logger
+
+# Phase III lineage language — signals proximity to Phase III, not a violation.
+_PHASE_III_LINEAGE_PHRASES: tuple[str, ...] = (
+    "phase iii",
+    "phase 3",
+    "derives from",
+    "extends",
+    "completes",
+    "prototype transition",
+    "follow-on production",
+    "continuation of",
+)
+
+# Data-rights vocabulary that co-occurs with Phase III deliverable language.
+_DATA_RIGHTS_LINEAGE_PHRASES: tuple[str, ...] = (
+    "technical data package",
+    "interface control document",
+    "source code",
+    "government purpose rights",
+    "unlimited rights",
+)
+
+# Word-boundary matchers around each phrase, matched case-insensitively.
+_LINEAGE_PATTERNS: tuple[re.Pattern[str], ...] = tuple(
+    re.compile(r"\b" + re.escape(p) + r"\b", re.IGNORECASE)
+    for p in (*_PHASE_III_LINEAGE_PHRASES, *_DATA_RIGHTS_LINEAGE_PHRASES)
+)
+
 
 from sbir_etl.models.transition_models import (
     AgencySignal,
@@ -89,6 +118,7 @@ class TransitionScorer:
         self.patent_config = scoring_config.get("patent_signal", {})
         self.cet_config = scoring_config.get("cet_alignment", {})
         self.vendor_config = scoring_config.get("vendor_match", {})
+        self.lineage_config = scoring_config.get("lineage_language", {})
 
         # Extract confidence thresholds
         thresholds = config.get("confidence_thresholds", {})
@@ -391,6 +421,29 @@ class TransitionScorer:
 
         weight = text_config.get("weight", 0.0)
         return min(similarity_score * weight, 1.0)
+
+    def score_lineage_language(self, description: str | None) -> float:
+        """Return weighted fraction of distinct lineage phrases matched in ``description``, in ``[0, 1]``."""
+
+        if not description:
+            return 0.0
+
+        if not self.lineage_config.get("enabled", True):
+            return 0.0
+
+        weight = float(self.lineage_config.get("weight", 0.0))
+        if weight <= 0.0:
+            return 0.0
+
+        # Distinct-phrase count (not total-match count) — repetition of one phrase shouldn't compound.
+        matches = sum(1 for pat in _LINEAGE_PATTERNS if pat.search(description))
+        if matches == 0:
+            return 0.0
+
+        # Fewer than saturation_matches -> linear scale; at/above -> full weight.
+        saturation = self.lineage_config.get("saturation_matches", 3)
+        match_fraction = min(matches / float(saturation), 1.0)
+        return min(match_fraction * weight, 1.0)
 
     def compute_final_score(self, signals: TransitionSignals) -> float:
         """
