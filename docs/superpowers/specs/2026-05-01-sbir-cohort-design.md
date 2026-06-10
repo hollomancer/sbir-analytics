@@ -105,10 +105,10 @@ threshold can be adjusted with evidence before downstream analysis runs.
 ### Match-level score
 
 `FormDMatchConfidence.score ∈ [0,1]` is the existing weighted sum in
-`form_d_scoring.py`. Weights are **frozen** at the values present at
-spec-acceptance commit; the spec records them in
-`docs/superpowers/specs/2026-05-01-sbir-cohort-design-weights.json`
-so changes are traceable.
+`sbir_etl/enrichers/sec_edgar/form_d_scoring.py`. The weights are pinned
+to the code at spec-acceptance commit; any change to the scoring logic
+requires updating this spec so the cohort definition remains
+reproducible.
 
 ### Firm-level filer probability
 
