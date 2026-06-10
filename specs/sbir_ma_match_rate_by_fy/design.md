@@ -3,24 +3,29 @@
 ## Approach
 
 Read-only analysis on top of existing enrichment outputs. No new
-extraction, no schema changes. One script, one Dagster asset,
-two report files.
+extraction, no schema changes. One script, one Dagster asset, and
+three report files (per-FY CSV, narrative MD, firm-level detail CSV)
+matching the outputs enumerated in `requirements.md`.
 
-## Inputs (existing parquet)
+## Inputs (existing JSONL + Dagster asset)
 
-- `data/processed/sbir_awards.parquet` — award_recipient, award start
-  date, agency.
-- `data/processed/sec_edgar_mentions.parquet` — EFTS mentions with
-  classification and filing dates.
-- `data/processed/sec_edgar_ma_events.parquet` — `EdgarMAEvent` rows
-  (8-K Item 1.01/2.01 detections from `_detect_ma_events`).
-- `data/processed/form_d_filings.parquet` — Form D with
-  `is_business_combination` flag.
-- `data/processed/sbir_company_cik_map.parquet` — SBIR firm → CIK
-  mapping (existing entity resolution output).
+The implemented enrichment pipeline emits JSONL artifacts and one
+DataFrame asset, not per-filing parquet. The canonical inputs are:
 
-If any of these names differ in the actual repo, use the canonical
-asset names from `packages/sbir-analytics/sbir_analytics/assets/`.
+- `data/sbir_ma_events.jsonl` — curated M&A events output from PR #286
+  (`scripts/data/detect_sbir_ma_events.py`).
+- `data/sec_edgar_scan.jsonl` — resumable EFTS scan output.
+- `data/form_d_details.jsonl` — Form D filings with
+  `is_business_combination` flag and confidence tier.
+- Dagster asset `sec_edgar_enriched_companies` (DataFrame) — per-firm
+  enrichment surface including `mention_*` aggregates and CIK linkage;
+  use this rather than re-deriving from raw mentions.
+- SBIR awards: the canonical `enriched_sbir_awards` asset.
+
+If any later refactor introduces parquet equivalents, those become the
+preferred inputs; update this section accordingly. The acceptance
+criterion (AC1) is "reproducible from existing artifacts," not
+specifically parquet.
 
 ## Pipeline
 
@@ -77,11 +82,16 @@ Per firm, keep one row:
 
 Per FY:
 - Denominator: distinct firms with `primary_award_fy = FY`.
-- Numerator: distinct matched firms whose `match_fy` falls in any FY
-  ≥ their `primary_award_fy` and ≤ 2024.
+- Numerator (per requirements.md): distinct matched firms with at least
+  one qualifying M&A signal dated in FY2015–2024. A match is attributed
+  to the FY of its earliest qualifying signal.
+- Per AC6, firms whose `match_fy` precedes their `primary_award_fy`
+  are still counted in the numerator but flagged
+  `match_before_first_award = true` in the firm-level detail CSV and
+  surfaced as a caveat in the narrative.
 
-Two rate columns:
-- `match_rate_high` = high+medium tier matches / denom.
+Two rate columns (note the inclusive-tier semantics in the names):
+- `match_rate_high_medium` = (high + medium tier matches) / denom.
 - `match_rate_total` = all-tier matches / denom.
 
 Aggregate FY2015–2024 row reports Wilson 95% CI.

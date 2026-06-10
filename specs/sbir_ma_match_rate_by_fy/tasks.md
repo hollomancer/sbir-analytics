@@ -4,9 +4,13 @@ Estimated total: 1–1.5 days. No new extraction; analysis only.
 
 ## T0. Resolve open questions (design.md §"Open questions")
 
-- [ ] Confirm canonical join key between awards and SEC enrichment.
-- [ ] Confirm `form_d_filings` parquet schema and SBIR-firm linkage.
-- [ ] Confirm `sec_edgar_mentions` parquet column names.
+- [ ] Confirm canonical join key between awards and SEC enrichment
+  (UEI/DUNS vs. normalized company name) for both `sbir_ma_events.jsonl`
+  and the `sec_edgar_enriched_companies` asset.
+- [ ] Confirm `data/form_d_details.jsonl` schema and SBIR-firm linkage
+  (CIK and/or normalized name).
+- [ ] Confirm `data/sec_edgar_scan.jsonl` mention columns and
+  classification labels.
 - [ ] Decide FY2024 right-censoring policy (footnote vs. exclude).
   → verify: each question answered in design.md before T1.
 

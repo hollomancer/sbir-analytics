@@ -17,8 +17,9 @@ by combining the full signal stack.
   matched against SEC filings indicating acquisition in the same window.
 - **In:** Per-FY breakdown of match counts and rates.
 - **In:** Signal-tier breakdown (high / medium / low confidence).
-- **Out:** New signal extraction — reuse existing `EdgarMAEvent`,
-  `EdgarMention`, and Form D enrichment outputs.
+- **Out:** New signal extraction — reuse existing `EdgarMAEvent` rows,
+  the `mention_*` aggregates on `CompanyEdgarProfile`, and Form D
+  enrichment outputs.
 - **Out:** Re-running EFTS or Form D fetches.
 - **Out:** Backfilling Form 15 (deregistration) — tracked separately.
 
@@ -54,7 +55,10 @@ in which the firm appears — flagged as `date_upper_bound = true`.
 
 1. `reports/sbir_ma_match_rate_by_fy.csv` — one row per FY, columns:
    `fiscal_year, awardees_in_fy, matched_high, matched_medium,
-   matched_low, matched_total, match_rate_high, match_rate_total`.
+   matched_low, matched_total, match_rate_high_medium,
+   match_rate_total`. The `match_rate_high_medium` column is named
+   for what it contains (high + medium tier numerator) so it cannot
+   be misread as "high tier only."
 2. `reports/sbir_ma_match_rate_by_fy.md` — narrative summary with
    methodology, caveats, and the FY2015–2024 aggregate.
 3. `reports/sbir_ma_matched_firms_fy2015_2024.csv` — firm-level
