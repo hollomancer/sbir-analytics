@@ -139,9 +139,12 @@ class FiscalROICalculator:
         if tax_estimates_df.empty:
             logger.warning("Empty tax estimates DataFrame provided to ROI calculator")
 
-        # Aggregate tax receipts
+        # Aggregate tax receipts. v2's NIPA-rate path stores the per-row
+        # totals as float64 for vectorized math, so coerce the sum back to
+        # Decimal here to keep the ROI / payback calculations consistent
+        # with sbir_investment (Decimal).
         total_tax_receipts = (
-            tax_estimates_df["total_tax_receipt"].sum()
+            Decimal(str(tax_estimates_df["total_tax_receipt"].sum()))
             if not tax_estimates_df.empty
             else Decimal("0")
         )
