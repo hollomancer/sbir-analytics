@@ -13,6 +13,7 @@ respected so foundational work appears before dependents.
 - [C. Innovation & knowledge generation (R&D policy)](#c-innovation--knowledge-generation-rd-policy)
 - [D. Economic & fiscal impact](#d-economic--fiscal-impact)
 - [E. Program management & data infrastructure](#e-program-management--data-infrastructure)
+- [F. Capital formation & entrepreneurial finance](#f-capital-formation--entrepreneurial-finance)
 
 **Dependency tags** used in parentheses after each question:
 
@@ -23,6 +24,7 @@ respected so foundational work appears before dependents.
 - `IMP` — imputed fields for missing data
 - `M&A signals` — M&A event detection (8-K/Form D parsing, ownership-change signals)
 - `SEC EDGAR` — SEC EDGAR filings (Form D Reg D, Form 8-K) for SBIR-firm transactions
+- `UCC-1` — UCC-1 financing-statement filings (state-level secured-debt registry, evidence of venture debt)
 - `NAICS` — industry classification derived from NAICS codes
 - `fiscal model` — fiscal-impact modeling inputs and assumptions
 - `BEA I-O` — BEA input-output tables for economic-impact estimation
@@ -58,20 +60,14 @@ merged to `main`. Public-study citations appear as `[L#]` — see
 
 ### A4. Risk & monitoring (Tier 4)
 
-**M&A exit detection (foreign-acquisition + ownership-change risk):**
+*Defense-industrial-base risk only. For SBIR-firm capital structure and exit
+analysis from an entrepreneurial-finance perspective, see
+[F. Capital formation & entrepreneurial finance](#f-capital-formation--entrepreneurial-finance).*
 
-- Did an SBIR-funded company undergo M&A activity? Foreign-acquisition risk flagged by CSIS [L17] — [../specs/merger_acquisition_detection/](../specs/merger_acquisition_detection/). *(deps: ER)*
-- For SBIR firms acquired by public companies, can inbound M&A be detected via 8-K full-text search? *(PR #286)* *(deps: ER)*
-- What is the SBIR-firm M&A exit rate, and how does it stratify by funding agency (e.g., HHS biotech vs. DoD defense)? *(deps: ER, M&A signals)*
-- What is the median time from first SBIR award to M&A exit? *(deps: ER, M&A signals)*
-- Which acquirers concentrate SBIR-firm acquisitions (defense primes vs. life-sciences consolidators), and what fraction are serial acquirers (3+ targets)? *(deps: ER, M&A signals)*
-- How does M&A activity affect transition pathways? *(deps: ER, transitions)*
-
-**Private capital signals (SBIR firms' non-federal funding posture):**
-
-- What is the Form D [L23] private-placement fundraising profile of SBIR awardees, and how does it compare to SBIR funding (private-to-SBIR leverage ratio)? *(PR #286)* *(deps: ER, SEC EDGAR)*
-- What is the debt-vs-equity composition and offering fill rate of SBIR-firm Form D filings? *(deps: ER, SEC EDGAR)*
-- What fraction of SBIR awardees took venture debt, and from which lenders? UCC-1 financing statements complement Form D's equity view — [../specs/ucc1-financing-analysis/](../specs/ucc1-financing-analysis/) *(branch: claude/sbir-ucc1-analysis)*. *(deps: ER)*
+- Did a defense-funded SBIR company undergo M&A activity, especially involving a foreign acquirer? Foreign-acquisition risk flagged by CSIS [L17] — [../specs/merger_acquisition_detection/](../specs/merger_acquisition_detection/). *(deps: ER, M&A signals)*
+- For SBIR firms acquired by public companies, can inbound M&A be detected via 8-K full-text search? *(PR #286)* *(deps: ER, SEC EDGAR)*
+- Which defense primes concentrate SBIR-firm acquisitions (e.g., Titan, Teledyne, Ametek, Kratos), and are any of those acquirers themselves foreign-owned or under CFIUS review? *(deps: ER, M&A signals)*
+- How does M&A activity affect Phase III / federal-contract transition pathways? *(deps: ER, M&A signals, transitions)*
 
 ## B. Technology commercialization & entrepreneurship
 
@@ -198,6 +194,39 @@ merged to `main`. Public-study citations appear as `[L#]` — see
 - How have transition rates, patent output, and fiscal returns changed quarter-over-quarter? *(deps: all)*
 - Which agencies are under-performing on transitions vs. historical baseline? *(deps: all)*
 
+## F. Capital formation & entrepreneurial finance
+
+*Audience: NVCA, Kauffman Foundation, NBER entrepreneurship researchers, VC/PE analysts, agencies (NSF, NIH) running founder-track programs. Does SBIR funding substitute for, complement, or seed private capital?*
+
+This area treats the SBIR awardee as a **firm with a capital history**, not as a federal-contract counterparty. Data comes from SEC EDGAR (Form D, 8-K), state UCC-1 financing-statement registries, and the unified capital-event timeline. The literature is Lerner [L10], Howell [L11], Kortum & Lerner [L24], and the NVCA Yearbook [L25] rather than NASEM and GAO.
+
+### F1. Descriptive (Tier 1)
+
+- What is the Form D [L23] private-placement fundraising profile of SBIR awardees? *(PR #286 merged)* *(deps: ER, SEC EDGAR)*
+- What is the debt-vs-equity composition and offering fill rate of SBIR-firm Form D filings? *(PR #286 merged)* *(deps: ER, SEC EDGAR)*
+- What fraction of SBIR awardees took venture debt, and from which lenders? UCC-1 financing complements Form D's equity view — [../specs/ucc1-financing-analysis/](../specs/ucc1-financing-analysis/) *(PRs #303 / #305 merged, CA-only pilot)*. *(deps: ER, UCC-1)*
+- Unified capital-event timeline: federal awards, private placements, M&A, and patent events on a single firm history *(PR #307 merged)*. *(deps: ER, SEC EDGAR, UCC-1, M&A signals)*
+- What is the SBIR-firm M&A exit rate, and how does it stratify by funding agency (HHS biotech ~9.3% vs. DoD defense ~5.8%)? *(PR #286 merged)* *(deps: ER, M&A signals)*
+- What is the median time from first SBIR award to M&A exit (~15 years per PR #286)? *(deps: ER, M&A signals)*
+
+### F2. Relational (Tier 2)
+
+- Among acquirers of SBIR firms, what share are life-sciences consolidators (Bruker, Ligand, Thermo Fisher) vs. defense primes vs. financial sponsors? What fraction of acquirers are serial (3+ SBIR-firm targets)? *(deps: ER, M&A signals)*
+- Do Form D filers and non-filers differ on transition, patent, and exit outcomes — controlling for vintage, agency, and CET area? *(PR #314)* *(deps: ER, ID, CET, SEC EDGAR)*
+- What is the SBIR ↔ M&A-event match rate by fiscal year, and how is coverage trending? *(PR #313)* *(deps: ER, M&A signals)*
+- How does SBIR-firm capital structure benchmark against the NVCA Yearbook [L25] cohort of comparable-stage VC-backed startups? *(deps: ER, SEC EDGAR)*
+
+### F3. Inferential (Tier 3)
+
+- What is the **private-to-SBIR leverage ratio** (private capital raised ÷ SBIR funding) by agency, vintage, and firm size? The private-side mirror to NASEM's 4:1 DoD non-SBIR-federal leverage [L1]. *(deps: ER, ID, SEC EDGAR)*
+- For NSF Phase II awardees, do follow-on funding and exit outcomes match the published VC/PE-backed-startup baselines? *(PR #311)* *(deps: ER, SEC EDGAR, NVCA Yearbook [L25])*
+- Does SBIR funding crowd in or crowd out subsequent private capital? **Target: reproduce or extend Howell's finding that an early-stage DOE SBIR grant roughly doubles the probability of subsequent VC** [L11]. Compare against Kortum & Lerner [L24] on VC's contribution to innovation. *(deps: ER, ID, SEC EDGAR)*
+- Does the Lerner [L10] finding — SBIR growth effects concentrated in VC-rich zip codes — still hold post-2010 and across all eleven agencies? *(deps: ER, ID, SEC EDGAR)*
+
+### F4. Predictive (Tier 4)
+
+- Forward-looking probability of an exit event (M&A or IPO) for a given SBIR firm, conditional on capital-event history and CET area. *(deps: all of F1–F3)*
+
 ## Prior literature & benchmarks
 
 Public studies the inventory draws from or benchmarks against.
@@ -239,4 +268,9 @@ Public studies the inventory draws from or benchmarks against.
 
 - **[L22]** BEA. *NIPA Tables 3.2 (Federal Government Current Receipts), 3.3 (State & Local Government Current Receipts), and 1.5 (GDP by Major Type of Product).* Effective federal/state/local rate baselines for fiscal-impact modeling. <https://apps.bea.gov/iTable/>
 - **[L23]** SEC. *Form D Notice of Exempt Offering of Securities (Reg D) and Form 8-K Current Report.* Public filings used for SBIR-firm M&A and private-placement detection. <https://www.sec.gov/forms>
+
+**Entrepreneurial-finance literature & benchmarks:**
+
+- **[L24]** Kortum, S. & Lerner, J. (2000). "Assessing the Contribution of Venture Capital to Innovation." *RAND Journal of Economics* 31(4), 674–692. Foundational study estimating VC's marginal contribution to patenting; reference point for SBIR-vs-VC innovation comparisons. <https://www.jstor.org/stable/2696354>
+- **[L25]** National Venture Capital Association. *NVCA Yearbook* (annual). Industry-standard benchmarks for VC fundraising, deployment, deal stage/size, and exit activity used as the non-SBIR cohort for capital-formation comparisons. <https://nvca.org/research/nvca-yearbook/>
 
