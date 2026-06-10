@@ -69,14 +69,28 @@ class TestStateAwareEstimation:
         """TX (no income tax) should produce less state tax than CA (13.3%)."""
         estimator = FiscalTaxEstimator()
 
-        df = pd.DataFrame([
-            {"state": "CA", "bea_sector": "54", "fiscal_year": 2022,
-             "wage_impact": 500_000, "proprietor_income_impact": 100_000,
-             "gross_operating_surplus": 50_000, "consumption_impact": 100_000},
-            {"state": "TX", "bea_sector": "54", "fiscal_year": 2022,
-             "wage_impact": 500_000, "proprietor_income_impact": 100_000,
-             "gross_operating_surplus": 50_000, "consumption_impact": 100_000},
-        ])
+        df = pd.DataFrame(
+            [
+                {
+                    "state": "CA",
+                    "bea_sector": "54",
+                    "fiscal_year": 2022,
+                    "wage_impact": 500_000,
+                    "proprietor_income_impact": 100_000,
+                    "gross_operating_surplus": 50_000,
+                    "consumption_impact": 100_000,
+                },
+                {
+                    "state": "TX",
+                    "bea_sector": "54",
+                    "fiscal_year": 2022,
+                    "wage_impact": 500_000,
+                    "proprietor_income_impact": 100_000,
+                    "gross_operating_surplus": 50_000,
+                    "consumption_impact": 100_000,
+                },
+            ]
+        )
 
         result = estimator.estimate_taxes_from_components(df)
 
@@ -98,40 +112,67 @@ class TestStateAwareEstimation:
     def test_state_rate_source_column(self):
         """When state is present, rate source should be 'state_specific'."""
         estimator = FiscalTaxEstimator()
-        df = pd.DataFrame([{
-            "state": "NY", "wage_impact": 100_000, "proprietor_income_impact": 0,
-            "gross_operating_surplus": 0, "consumption_impact": 50_000,
-        }])
+        df = pd.DataFrame(
+            [
+                {
+                    "state": "NY",
+                    "wage_impact": 100_000,
+                    "proprietor_income_impact": 0,
+                    "gross_operating_surplus": 0,
+                    "consumption_impact": 50_000,
+                }
+            ]
+        )
         result = estimator.estimate_taxes_from_components(df)
         assert result["state_rate_source"].iloc[0] == "state_specific"
 
     def test_unknown_state_falls_back_to_nipa(self):
         """Unknown state should fall back to NIPA national average."""
         estimator = FiscalTaxEstimator()
-        df = pd.DataFrame([{
-            "state": "XX", "wage_impact": 100_000, "proprietor_income_impact": 0,
-            "gross_operating_surplus": 0, "consumption_impact": 50_000,
-        }])
+        df = pd.DataFrame(
+            [
+                {
+                    "state": "XX",
+                    "wage_impact": 100_000,
+                    "proprietor_income_impact": 0,
+                    "gross_operating_surplus": 0,
+                    "consumption_impact": 50_000,
+                }
+            ]
+        )
         result = estimator.estimate_taxes_from_components(df)
         assert result["state_rate_source"].iloc[0] == "nipa_national"
 
     def test_no_state_column_uses_nipa(self):
         """Without state column, should use NIPA national averages."""
         estimator = FiscalTaxEstimator()
-        df = pd.DataFrame([{
-            "wage_impact": 100_000, "proprietor_income_impact": 0,
-            "gross_operating_surplus": 0, "consumption_impact": 50_000,
-        }])
+        df = pd.DataFrame(
+            [
+                {
+                    "wage_impact": 100_000,
+                    "proprietor_income_impact": 0,
+                    "gross_operating_surplus": 0,
+                    "consumption_impact": 50_000,
+                }
+            ]
+        )
         result = estimator.estimate_taxes_from_components(df)
         assert result["state_rate_source"].iloc[0] == "nipa_national"
 
     def test_oregon_no_sales_tax(self):
         """Oregon has no sales tax — sales tax should be zero."""
         estimator = FiscalTaxEstimator()
-        df = pd.DataFrame([{
-            "state": "OR", "wage_impact": 100_000, "proprietor_income_impact": 0,
-            "gross_operating_surplus": 0, "consumption_impact": 100_000,
-        }])
+        df = pd.DataFrame(
+            [
+                {
+                    "state": "OR",
+                    "wage_impact": 100_000,
+                    "proprietor_income_impact": 0,
+                    "gross_operating_surplus": 0,
+                    "consumption_impact": 100_000,
+                }
+            ]
+        )
         result = estimator.estimate_taxes_from_components(df)
         assert result["state_local_sales_tax"].iloc[0] == 0.0
         # But Oregon has income tax
