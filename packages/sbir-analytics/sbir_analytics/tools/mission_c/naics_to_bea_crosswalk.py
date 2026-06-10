@@ -53,7 +53,7 @@ class NAICSToBEACrosswalkTool(BaseTool):
         Returns:
             ToolResult with awards DataFrame augmented with bea_sector column
         """
-        from sbir_etl.transformers.naics_to_bea import NAICSToBEAMapper
+        from sbir_etl.enrichers.fiscal_bea_mapper import NAICSToBEAMapper
 
         if awards_df is None or awards_df.empty:
             metadata.warnings.append("No awards data provided for crosswalk")

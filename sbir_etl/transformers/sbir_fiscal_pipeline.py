@@ -16,7 +16,7 @@ from typing import TYPE_CHECKING, Any
 import pandas as pd
 from loguru import logger
 
-from .naics_bea_mapper import NAICSBEAMapper
+from ..enrichers.fiscal_bea_mapper import NAICSToBEAMapper as NAICSBEAMapper
 from .bea_io_adapter import BEAIOAdapter
 
 

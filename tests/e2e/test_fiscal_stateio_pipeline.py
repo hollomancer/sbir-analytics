@@ -24,7 +24,7 @@ from sbir_etl.enrichers.usaspending import enrich_sbir_with_usaspending
 from sbir_etl.transformers.fiscal.roi import FiscalROICalculator
 from sbir_etl.transformers.fiscal.shocks import calculate_fiscal_year
 from sbir_etl.transformers.fiscal.taxes import FiscalTaxEstimator
-from sbir_etl.transformers.naics_to_bea import NAICSToBEAMapper
+from sbir_etl.enrichers.fiscal_bea_mapper import NAICSToBEAMapper
 
 
 pytestmark = [pytest.mark.e2e, pytest.mark.weekly]
@@ -179,12 +179,16 @@ def sample_sam_gov_fiscal():
 
 @pytest.fixture
 def sample_naics_to_bea_mapping(tmp_path):
-    """Create sample NAICS-to-BEA mapping file."""
-    mapping_file = tmp_path / "naics_to_bea_mapping.csv"
-    mapping_data = """naics_prefix,bea_sector,bea_description
-5417,54,Professional Scientific and Technical Services
-5415,54,Computer Systems Design and Related Services
-54,54,Professional Scientific and Technical Services
+    """Create sample NAICS-to-BEA crosswalk file in canonical format."""
+    mapping_file = tmp_path / "naics_to_bea_crosswalk.csv"
+    mapping_data = """naics_code,bea_sector_code,bea_sector_name,allocation_weight,confidence
+541712,54,Professional Scientific and Technical Services,1.0,0.90
+541715,54,R&D in Physical/Engineering Sciences,1.0,0.90
+541714,54,R&D in Biotechnology,1.0,0.90
+541511,54,Computer Systems Design and Related Services,1.0,0.90
+541512,54,Computer Systems Design and Related Services,1.0,0.90
+541330,54,Engineering Services,1.0,0.90
+540000,54,Professional and Technical Services,1.0,0.85
 """
     mapping_file.write_text(mapping_data)
     return mapping_file
@@ -272,7 +276,7 @@ class TestFiscalStateIOPipelineE2E:
         enriched = enriched.merge(sam_data, on="UEI", how="left")
 
         # Map NAICS to BEA
-        mapper = NAICSToBEAMapper(mapping_path=str(sample_naics_to_bea_mapping))
+        mapper = NAICSToBEAMapper(crosswalk_path=str(sample_naics_to_bea_mapping))
 
         enriched["bea_sector_code"] = enriched["sam_primary_naics"].apply(
             lambda x: mapper.map_code(x) if pd.notna(x) else None
@@ -338,7 +342,7 @@ class TestFiscalStateIOPipelineE2E:
         enriched = enriched.merge(sam_data, on="UEI", how="left")
 
         # Map NAICS to BEA
-        mapper = NAICSToBEAMapper(mapping_path=str(sample_naics_to_bea_mapping))
+        mapper = NAICSToBEAMapper(crosswalk_path=str(sample_naics_to_bea_mapping))
         enriched["bea_sector_code"] = enriched["sam_primary_naics"].apply(
             lambda x: mapper.map_code(x) if pd.notna(x) else None
         )
@@ -410,7 +414,7 @@ class TestFiscalStateIOPipelineE2E:
         sam_data.rename(columns={"sam_unique_entity_id": "UEI"}, inplace=True)
         enriched = enriched.merge(sam_data, on="UEI", how="left")
 
-        mapper = NAICSToBEAMapper(mapping_path=str(sample_naics_to_bea_mapping))
+        mapper = NAICSToBEAMapper(crosswalk_path=str(sample_naics_to_bea_mapping))
         enriched["bea_sector_code"] = enriched["sam_primary_naics"].apply(
             lambda x: mapper.map_code(x) if pd.notna(x) else None
         )
@@ -599,7 +603,7 @@ class TestFiscalStateIOPipelineE2E:
 
         # Step 3: Map NAICS to BEA
         print("\n[Step 3] Mapping NAICS codes to BEA sectors...")
-        mapper = NAICSToBEAMapper(mapping_path=str(sample_naics_to_bea_mapping))
+        mapper = NAICSToBEAMapper(crosswalk_path=str(sample_naics_to_bea_mapping))
         enriched["bea_sector_code"] = enriched["sam_primary_naics"].apply(
             lambda x: mapper.map_code(x) if pd.notna(x) else None
         )
@@ -743,7 +747,7 @@ class TestFiscalDataQualityThresholds:
         sam_data.rename(columns={"sam_unique_entity_id": "UEI"}, inplace=True)
         enriched = enriched.merge(sam_data, on="UEI", how="left")
 
-        mapper = NAICSToBEAMapper(mapping_path=str(sample_naics_to_bea_mapping))
+        mapper = NAICSToBEAMapper(crosswalk_path=str(sample_naics_to_bea_mapping))
         enriched["bea_sector_code"] = enriched["sam_primary_naics"].apply(
             lambda x: mapper.map_code(x) if pd.notna(x) else None
         )
