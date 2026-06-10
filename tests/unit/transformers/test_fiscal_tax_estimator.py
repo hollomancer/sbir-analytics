@@ -103,15 +103,19 @@ class TestFiscalTaxEstimator:
 
     def test_reasonable_effective_rate_on_1m(self, estimator):
         """$1M economic activity should produce $200-500K total taxes."""
-        df = pd.DataFrame([{
-            "state": "CA",
-            "bea_sector": "54",
-            "fiscal_year": 2022,
-            "wage_impact": 600_000.0,
-            "proprietor_income_impact": 150_000.0,
-            "gross_operating_surplus": 100_000.0,
-            "consumption_impact": 150_000.0,
-        }])
+        df = pd.DataFrame(
+            [
+                {
+                    "state": "CA",
+                    "bea_sector": "54",
+                    "fiscal_year": 2022,
+                    "wage_impact": 600_000.0,
+                    "proprietor_income_impact": 150_000.0,
+                    "gross_operating_surplus": 100_000.0,
+                    "consumption_impact": 150_000.0,
+                }
+            ]
+        )
         result_df = estimator.estimate_taxes_from_components(df)
         total = result_df["total_tax_receipt"].iloc[0]
         assert 200_000 < total < 500_000, f"Total tax on $1M = ${total:,.0f}"

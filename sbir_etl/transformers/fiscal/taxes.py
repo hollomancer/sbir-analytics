@@ -93,9 +93,13 @@ class FiscalTaxEstimator:
                 "federal_payroll_rate": pd.Series([rates.federal_payroll_rate] * n, index=idx),
                 "federal_corporate_rate": pd.Series([rates.federal_corporate_rate] * n, index=idx),
                 "federal_excise_rate": pd.Series([rates.federal_excise_rate] * n, index=idx),
-                "state_local_income_rate": pd.Series([rates.state_local_income_rate] * n, index=idx),
+                "state_local_income_rate": pd.Series(
+                    [rates.state_local_income_rate] * n, index=idx
+                ),
                 "state_local_sales_rate": pd.Series([rates.state_local_sales_rate] * n, index=idx),
-                "state_local_property_rate": pd.Series([rates.state_local_property_rate] * n, index=idx),
+                "state_local_property_rate": pd.Series(
+                    [rates.state_local_property_rate] * n, index=idx
+                ),
                 "state_local_other_rate": pd.Series([rates.state_local_other_rate] * n, index=idx),
                 "rate_year": pd.Series([rates.year] * n, index=idx),
                 "rate_source": pd.Series([rates.source] * n, index=idx),
@@ -194,8 +198,7 @@ class FiscalTaxEstimator:
         if has_state_col:
             state_series = result_df["state"].astype(str)
             state_rate_map = {
-                state: self.state_rates.get_rates(state)
-                for state in state_series.unique()
+                state: self.state_rates.get_rates(state) for state in state_series.unique()
             }
             mapped = state_series.map(state_rate_map)
 
@@ -221,9 +224,9 @@ class FiscalTaxEstimator:
             result_df["state_local_property_tax"] = gos * rate_s["state_local_property_rate"]
             result_df["state_rate_source"] = "nipa_national"
 
-        result_df["state_local_other_tax"] = (
-            (wage + proprietor + gos) * rate_s["state_local_other_rate"]
-        )
+        result_df["state_local_other_tax"] = (wage + proprietor + gos) * rate_s[
+            "state_local_other_rate"
+        ]
 
         result_df["state_local_tax_total"] = (
             result_df["state_local_income_tax"]
@@ -248,8 +251,10 @@ class FiscalTaxEstimator:
         # shock_id for linking
         if all(c in result_df.columns for c in ["state", "bea_sector", "fiscal_year"]):
             result_df["shock_id"] = (
-                result_df["state"].astype(str) + "_"
-                + result_df["bea_sector"].astype(str) + "_FY"
+                result_df["state"].astype(str)
+                + "_"
+                + result_df["bea_sector"].astype(str)
+                + "_FY"
                 + result_df["fiscal_year"].astype(str)
             )
         else:
@@ -352,7 +357,8 @@ class FiscalTaxEstimator:
 
         avg_effective_rate = (
             float(total_taxes / Decimal(str(total_economic_base)) * 100)
-            if total_economic_base > 0 else 0.0
+            if total_economic_base > 0
+            else 0.0
         )
 
         return TaxEstimationStats(

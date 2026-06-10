@@ -28,11 +28,11 @@ from dataclasses import dataclass
 class StateTaxRates:
     """Tax rates for a single state."""
 
-    state: str                    # 2-letter abbreviation
-    income_rate: float            # Effective/top marginal income tax rate
-    sales_rate: float             # Combined state + avg local sales tax rate
-    property_rate: float          # Property tax rate as fraction of gross operating surplus
-                                  # (property_tax / GOS — consistent with NIPA convention)
+    state: str  # 2-letter abbreviation
+    income_rate: float  # Effective/top marginal income tax rate
+    sales_rate: float  # Combined state + avg local sales tax rate
+    property_rate: float  # Property tax rate as fraction of gross operating surplus
+    # (property_tax / GOS — consistent with NIPA convention)
     has_income_tax: bool = True
     has_sales_tax: bool = True
 

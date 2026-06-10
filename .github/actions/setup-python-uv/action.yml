@@ -10,7 +10,7 @@ inputs:
     description: |
       Whether to install dev dependencies. When "true", installs the
       `stack-dev` meta-extra (covers sbir-etl[dev] plus the workspace
-      packages: sbir-ml, sbir-graph, sbir-rag, sbir-analytics — the
+      packages: sbir-ml, sbir-graph, sbir-analytics — the
       latter pulling in dagster). When "false", runs `uv sync --no-dev`.
     required: false
     default: "true"
@@ -101,9 +101,9 @@ runs:
     - name: Install dependencies
       run: |
         # `stack-dev` is the meta-extra that includes sbir-etl[dev] plus the
-        # four workspace packages (sbir-ml, sbir-graph, sbir-rag,
-        # sbir-analytics). Without it, tests that import dagster, neo4j
-        # loaders, or ML pieces fail with ModuleNotFoundError.
+        # three workspace packages (sbir-ml, sbir-graph, sbir-analytics).
+        # Without it, tests that import dagster, neo4j loaders, or ML pieces
+        # fail with ModuleNotFoundError.
         if [ "${{ inputs.install-dev-deps }}" = "true" ]; then
           uv sync --extra stack-dev
         else

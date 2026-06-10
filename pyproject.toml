@@ -66,14 +66,12 @@ stack-dev = [
     "sbir-etl[dev]",
     "sbir-ml",
     "sbir-graph",
-    "sbir-rag",
     "sbir-analytics",
 ]
 
 [tool.uv.sources]
 sbir-ml = { path = "packages/sbir-ml", editable = true }
 sbir-graph = { path = "packages/sbir-graph", editable = true }
-sbir-rag = { path = "packages/sbir-rag", editable = true }
 sbir-analytics = { path = "packages/sbir-analytics", editable = true }
 
 [tool.bandit]

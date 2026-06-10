@@ -38,19 +38,19 @@ class NIPATaxRates:
     year: int
 
     # Federal rates
-    federal_income_rate: float       # Personal income tax / compensation
-    federal_payroll_rate: float      # Social insurance / compensation
-    federal_corporate_rate: float    # Corporate income tax / corporate profits
-    federal_excise_rate: float       # Excise + production taxes / consumption
+    federal_income_rate: float  # Personal income tax / compensation
+    federal_payroll_rate: float  # Social insurance / compensation
+    federal_corporate_rate: float  # Corporate income tax / corporate profits
+    federal_excise_rate: float  # Excise + production taxes / consumption
 
     # State & local (combined)
-    state_local_income_rate: float   # State/local income tax / compensation
-    state_local_sales_rate: float    # State/local sales tax / consumption
-    state_local_property_rate: float # Property tax / gross operating surplus
-    state_local_other_rate: float    # Other state/local / gross domestic income
+    state_local_income_rate: float  # State/local income tax / compensation
+    state_local_sales_rate: float  # State/local sales tax / consumption
+    state_local_property_rate: float  # Property tax / gross operating surplus
+    state_local_other_rate: float  # Other state/local / gross domestic income
 
     # Metadata
-    source: str = "nipa_baseline"    # "nipa_api" or "nipa_baseline"
+    source: str = "nipa_baseline"  # "nipa_api" or "nipa_baseline"
 
     @property
     def total_federal_rate(self) -> float:
@@ -141,8 +141,8 @@ _DEFAULT_YEAR = 2022
 
 # BEA NIPA table IDs for API fetching
 NIPA_TABLES = {
-    "federal_receipts": "T30200",      # Table 3.2
-    "state_local_receipts": "T30300",   # Table 3.3
+    "federal_receipts": "T30200",  # Table 3.2
+    "state_local_receipts": "T30300",  # Table 3.3
     "gross_domestic_income": "T10500",  # Table 1.5
 }
 
@@ -279,7 +279,6 @@ class NIPARateProvider:
         # GDI components (Table 1.5)
         compensation = _val(gdi, "2")
         corp_profits = _val(gdi, "14")
-        net_operating_surplus = _val(gdi, "9")
 
         # Guard against division by zero
         if compensation <= 0:
@@ -297,7 +296,7 @@ class NIPARateProvider:
             state_local_income_rate=sl_personal_taxes / compensation if compensation else 0.04,
             state_local_sales_rate=sl_prod_import_taxes / pce_proxy if pce_proxy else 0.034,
             state_local_property_rate=0.125,  # Stable, use baseline (not in these tables)
-            state_local_other_rate=0.008,     # Small, use baseline
+            state_local_other_rate=0.008,  # Small, use baseline
             source="nipa_api",
         )
 
@@ -311,17 +310,17 @@ class NIPARateProvider:
         )
         return rates
 
-    def _fetch_nipa_table(
-        self, client: Any, table_name: str, year: int
-    ) -> pd.DataFrame:
+    def _fetch_nipa_table(self, client: Any, table_name: str, year: int) -> pd.DataFrame:
         """Fetch a single NIPA table via the BEA API."""
-        data = client._request({
-            "method": "GetData",
-            "DataSetName": "NIPA",
-            "TableName": table_name,
-            "Frequency": "A",
-            "Year": str(year),
-        })
+        data = client._request(
+            {
+                "method": "GetData",
+                "DataSetName": "NIPA",
+                "TableName": table_name,
+                "Frequency": "A",
+                "Year": str(year),
+            }
+        )
         return client._rows_to_dataframe(data)
 
 
@@ -337,6 +336,4 @@ def _validate_rates(rates: NIPATaxRates) -> None:
     ]
     for name, value, low, high in checks:
         if not (low <= value <= high):
-            logger.warning(
-                f"NIPA rate {name}={value:.4f} outside expected range [{low}, {high}]"
-            )
+            logger.warning(f"NIPA rate {name}={value:.4f} outside expected range [{low}, {high}]")
