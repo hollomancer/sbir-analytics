@@ -279,7 +279,6 @@ class NIPARateProvider:
         # GDI components (Table 1.5)
         compensation = _val(gdi, "2")
         corp_profits = _val(gdi, "14")
-        net_operating_surplus = _val(gdi, "9")
 
         # Guard against division by zero
         if compensation <= 0:
