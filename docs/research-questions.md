@@ -24,7 +24,7 @@ respected so foundational work appears before dependents.
 - `IMP` — imputed fields for missing data
 - `M&A signals` — M&A event detection (8-K/Form D parsing, ownership-change signals)
 - `SEC EDGAR` — SEC EDGAR filings (Form D Reg D, Form 8-K) for SBIR-firm transactions
-- `UCC-1` — UCC-1 financing-statement filings (state-level secured-debt registry, evidence of venture debt)
+- `UCC-1` — UCC-1 financing-statement filings (state-level secured-debt registry; captures equipment finance, depository-bank loans, and venture debt as distinct sub-channels)
 - `NAICS` — industry classification derived from NAICS codes
 - `fiscal model` — fiscal-impact modeling inputs and assumptions
 - `BEA I-O` — BEA input-output tables for economic-impact estimation
@@ -204,7 +204,7 @@ This area treats the SBIR awardee as a **firm with a capital history**, not as a
 
 - What is the Form D [L23] private-placement fundraising profile of SBIR awardees? *(PR #286 merged)* *(deps: ER, SEC EDGAR)*
 - What is the debt-vs-equity composition and offering fill rate of SBIR-firm Form D filings? *(PR #286 merged)* *(deps: ER, SEC EDGAR)*
-- What fraction of SBIR awardees took venture debt, and from which lenders? UCC-1 financing complements Form D's equity view — [../specs/ucc1-financing-analysis/](../specs/ucc1-financing-analysis/) *(PRs #303 / #305 merged, CA-only pilot)*. *(deps: ER, UCC-1)*
+- What fraction of SBIR awardees show secured-debt activity (UCC-1 filings), and what mix of equipment finance, depository-bank lending, and venture debt do those filings represent by lender? UCC-1 complements Form D's equity view — [../specs/ucc1-financing-analysis/](../specs/ucc1-financing-analysis/) *(PRs #303 / #305 merged, CA-only pilot found equipment + community-bank patterns and an absence of venture-debt lenders in the CA channel)*. *(deps: ER, UCC-1)*
 - Unified capital-event timeline: federal awards, private placements, M&A, and patent events on a single firm history *(PR #307 merged)*. *(deps: ER, SEC EDGAR, UCC-1, M&A signals)*
 - What is the SBIR-firm M&A exit rate, and how does it stratify by funding agency (HHS biotech ~9.3% vs. DoD defense ~5.8%)? *(PR #286 merged)* *(deps: ER, M&A signals)*
 - What is the median time from first SBIR award to M&A exit (~15 years per PR #286)? *(deps: ER, M&A signals)*
@@ -219,7 +219,7 @@ This area treats the SBIR awardee as a **firm with a capital history**, not as a
 ### F3. Inferential (Tier 3)
 
 - What is the **private-to-SBIR leverage ratio** (private capital raised ÷ SBIR funding) by agency, vintage, and firm size? The private-side mirror to NASEM's 4:1 DoD non-SBIR-federal leverage [L1]. *(deps: ER, ID, SEC EDGAR)*
-- For NSF Phase II awardees, do follow-on funding and exit outcomes match the published VC/PE-backed-startup baselines? *(PR #311)* *(deps: ER, SEC EDGAR, NVCA Yearbook [L25])*
+- For NSF Phase II awardees, do follow-on funding and exit outcomes match the published VC/PE-backed-startup baselines from the NVCA Yearbook [L25]? *(PR #311)* *(deps: ER, SEC EDGAR)*
 - Does SBIR funding crowd in or crowd out subsequent private capital? **Target: reproduce or extend Howell's finding that an early-stage DOE SBIR grant roughly doubles the probability of subsequent VC** [L11]. Compare against Kortum & Lerner [L24] on VC's contribution to innovation. *(deps: ER, ID, SEC EDGAR)*
 - Does the Lerner [L10] finding — SBIR growth effects concentrated in VC-rich zip codes — still hold post-2010 and across all eleven agencies? *(deps: ER, ID, SEC EDGAR)*
 
