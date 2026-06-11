@@ -208,3 +208,74 @@ class TestAgencyDefaultsStrategy:
 
         assert strategy.strategy_name == "agency_defaults"
         assert strategy.confidence_level == 0.50
+
+
+# =============================================================================
+# R4 — Strategy registry tests
+# =============================================================================
+
+
+class TestDefaultStrategies:
+    """Tests for the strategy_registry.default_strategies factory."""
+
+    def test_returns_list_of_six_strategies(self):
+        """default_strategies() returns six strategies in the expected order."""
+        from sbir_etl.enrichers.naics.fiscal.strategy_registry import default_strategies
+        from sbir_etl.enrichers.naics.fiscal.strategies.simple_strategies import (
+            AgencyDefaultsStrategy,
+            OriginalDataStrategy,
+            SectorFallbackStrategy,
+            TopicCodeStrategy,
+        )
+        from sbir_etl.enrichers.naics.fiscal.strategies.text_inference import TextInferenceStrategy
+        from sbir_etl.enrichers.naics.fiscal.strategies.usaspending_dataframe import (
+            USAspendingDataFrameStrategy,
+        )
+
+        strategies = default_strategies()
+
+        assert len(strategies) == 6
+        assert isinstance(strategies[0], OriginalDataStrategy)
+        assert isinstance(strategies[1], USAspendingDataFrameStrategy)
+        assert isinstance(strategies[2], TopicCodeStrategy)
+        assert isinstance(strategies[3], TextInferenceStrategy)
+        assert isinstance(strategies[4], AgencyDefaultsStrategy)
+        assert isinstance(strategies[5], SectorFallbackStrategy)
+
+    def test_passes_usaspending_df_to_strategy(self):
+        """default_strategies(usaspending_df=...) propagates df to the USAspending strategy."""
+        import pandas as pd
+        from sbir_etl.enrichers.naics.fiscal.strategy_registry import default_strategies
+        from sbir_etl.enrichers.naics.fiscal.strategies.usaspending_dataframe import (
+            USAspendingDataFrameStrategy,
+        )
+
+        df = pd.DataFrame({"recipient_uei": ["ABC123"]})
+        strategies = default_strategies(usaspending_df=df)
+
+        usa_strat = strategies[1]
+        assert isinstance(usa_strat, USAspendingDataFrameStrategy)
+        assert usa_strat.usaspending_df is df
+
+
+class TestFiscalNAICSEnricherStrategiesArg:
+    """Tests for FiscalNAICSEnricher accepting a custom strategies= argument."""
+
+    def test_custom_strategies_override_default(self):
+        """Passing strategies=[...] replaces the default strategy list."""
+        from unittest.mock import MagicMock
+        from sbir_etl.enrichers.naics.fiscal.enricher import FiscalNAICSEnricher
+        from sbir_etl.enrichers.naics.fiscal.strategies.base import EnrichmentStrategy
+
+        sentinel = MagicMock(spec=EnrichmentStrategy)
+        enricher = FiscalNAICSEnricher(strategies=[sentinel])
+
+        assert enricher.strategies == [sentinel]
+
+    def test_default_strategies_used_when_none_passed(self):
+        """Without strategies=, the enricher builds the default six-strategy list."""
+        from sbir_etl.enrichers.naics.fiscal.enricher import FiscalNAICSEnricher
+
+        enricher = FiscalNAICSEnricher()
+
+        assert len(enricher.strategies) == 6

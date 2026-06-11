@@ -37,8 +37,8 @@ class NAICSToBEACrosswalkTool(BaseTool):
         *,
         awards_df: pd.DataFrame | None = None,
         naics_column: str = "naics_code",
-        mapping_path: str | None = None,
-        bea_excel_path: str | None = None,
+        crosswalk_path: str | None = None,
+        fallback_config_path: str | None = None,
         **kwargs: Any,
     ) -> ToolResult:
         """Map NAICS codes on awards to BEA sectors.
@@ -47,13 +47,15 @@ class NAICSToBEACrosswalkTool(BaseTool):
             metadata: Pre-initialized metadata to populate
             awards_df: DataFrame with a NAICS code column
             naics_column: Name of the column containing NAICS codes
-            mapping_path: Override path to naics_to_bea.csv
-            bea_excel_path: Override path to BEA concordance Excel
+            crosswalk_path: Override path to the BEA NAICS crosswalk CSV
+                (canonical mapper parameter; default resolves from config)
+            fallback_config_path: Override path to the fallback YAML mapping
+                (canonical mapper parameter; default resolves from config)
 
         Returns:
             ToolResult with awards DataFrame augmented with bea_sector column
         """
-        from sbir_etl.transformers.naics_to_bea import NAICSToBEAMapper
+        from sbir_etl.enrichers.fiscal_bea_mapper import NAICSToBEAMapper
 
         if awards_df is None or awards_df.empty:
             metadata.warnings.append("No awards data provided for crosswalk")
@@ -62,10 +64,10 @@ class NAICSToBEACrosswalkTool(BaseTool):
         metadata.upstream_tools.extend(["extract_awards", "classify_cet"])
 
         mapper_kwargs: dict[str, Any] = {}
-        if mapping_path:
-            mapper_kwargs["mapping_path"] = mapping_path
-        if bea_excel_path:
-            mapper_kwargs["bea_excel_path"] = bea_excel_path
+        if crosswalk_path:
+            mapper_kwargs["crosswalk_path"] = crosswalk_path
+        if fallback_config_path:
+            mapper_kwargs["fallback_config_path"] = fallback_config_path
 
         mapper = NAICSToBEAMapper(**mapper_kwargs)
 

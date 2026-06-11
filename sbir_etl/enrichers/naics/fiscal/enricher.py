@@ -9,14 +9,11 @@ from loguru import logger
 
 from ....config.loader import get_config
 from .strategies import (
-    AgencyDefaultsStrategy,
     NAICSEnrichmentResult,
-    OriginalDataStrategy,
-    SectorFallbackStrategy,
-    TextInferenceStrategy,
-    TopicCodeStrategy,
     USAspendingDataFrameStrategy,
 )
+from .strategies.base import EnrichmentStrategy
+from .strategy_registry import default_strategies
 
 
 class FiscalNAICSEnricher:
@@ -40,6 +37,7 @@ class FiscalNAICSEnricher:
         config: dict[str, Any] | None = None,
         usaspending_df: pd.DataFrame | None = None,
         api_client: Any | None = None,
+        strategies: list[EnrichmentStrategy] | None = None,
     ):
         """Initialize the NAICS enricher with strategies.
 
@@ -47,6 +45,8 @@ class FiscalNAICSEnricher:
             config: Optional configuration override
             usaspending_df: Optional USAspending DataFrame for lookups
             api_client: Optional API client (for future API-based strategies)
+            strategies: Optional list of enrichment strategies to use.
+                If None, uses default_strategies(usaspending_df=usaspending_df).
         """
         from sbir_etl.config.schemas.domain import FiscalAnalysisConfig
 
@@ -60,15 +60,12 @@ class FiscalNAICSEnricher:
         self.usaspending_df = usaspending_df
         self.api_client = api_client
 
-        # Initialize strategies in order of confidence
-        self.strategies = [
-            OriginalDataStrategy(),
-            USAspendingDataFrameStrategy(usaspending_df=usaspending_df, confidence=0.85),
-            TopicCodeStrategy(),
-            TextInferenceStrategy(),
-            AgencyDefaultsStrategy(),
-            SectorFallbackStrategy(fallback_code="5415"),
-        ]
+        # Use caller-supplied strategies or fall back to the default order.
+        self.strategies = (
+            strategies
+            if strategies is not None
+            else default_strategies(usaspending_df=usaspending_df)
+        )
 
         logger.info(
             f"Initialized FiscalNAICSEnricher with {len(self.strategies)} strategies "

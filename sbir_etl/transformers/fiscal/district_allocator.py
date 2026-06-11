@@ -70,9 +70,9 @@ def allocate_state_impacts_to_districts(
     # Map NAICS to BEA if not already present
     if "bea_sector" not in awards_with_districts.columns:
         if "naics_code" in awards_with_districts.columns:
-            from ..naics_bea_mapper import NAICSBEAMapper
+            from ...enrichers.fiscal_bea_mapper import NAICSToBEAMapper
 
-            mapper = NAICSBEAMapper()
+            mapper = NAICSToBEAMapper()
             awards_with_districts["bea_sector"] = awards_with_districts["naics_code"].apply(
                 lambda x: mapper.map_naics_to_bea_summary(str(x))
             )

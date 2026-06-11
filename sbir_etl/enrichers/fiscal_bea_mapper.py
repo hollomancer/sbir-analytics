@@ -10,6 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
+from types import MappingProxyType
 from typing import Any
 
 import pandas as pd
@@ -52,6 +53,38 @@ class BEAMappingStatistics:
 
 class NAICSToBEAMapper:
     """Map NAICS codes to BEA Input-Output sectors using hierarchical fallback."""
+
+    # 24-entry 2-digit NAICS prefix → BEA Summary sector code.
+    # Ported from the deleted sbir_etl.transformers.naics_bea_mapper.NAICSBEAMapper so that
+    # map_naics_to_bea_summary() has a last-resort fallback matching the deleted mapper's behavior.
+    _SUMMARY_FALLBACK: MappingProxyType[str, str] = MappingProxyType(
+        {
+            "11": "11",  # Agriculture, forestry, fishing, and hunting
+            "21": "21",  # Mining, quarrying, and oil and gas extraction
+            "22": "22",  # Utilities
+            "23": "23",  # Construction
+            "31": "31-33",  # Manufacturing (Food, beverage, tobacco)
+            "32": "31-33",  # Manufacturing (Textiles, apparel, leather)
+            "33": "31-33",  # Manufacturing (Wood, paper, printing)
+            "42": "42",  # Wholesale trade
+            "44": "44-45",  # Retail trade (Motor vehicle and parts)
+            "45": "44-45",  # Retail trade (General merchandise)
+            "48": "48-49",  # Transportation and warehousing
+            "49": "48-49",  # Transportation and warehousing
+            "51": "51",  # Information
+            "52": "52",  # Finance and insurance
+            "53": "53",  # Real estate and rental and leasing
+            "54": "54",  # Professional, scientific, and technical services
+            "55": "55",  # Management of companies and enterprises
+            "56": "56",  # Administrative and support services
+            "61": "61",  # Educational services
+            "62": "62",  # Health care and social assistance
+            "71": "71",  # Arts, entertainment, and recreation
+            "72": "72",  # Accommodation and food services
+            "81": "81",  # Other services (except public administration)
+            "92": "92",  # Public administration
+        }
+    )
 
     def __init__(
         self,
@@ -106,6 +139,12 @@ class NAICSToBEAMapper:
                 self.crosswalk_df["naics_code"] = (
                     self.crosswalk_df["naics_code"].astype(str).str.zfill(6)
                 )
+                # Ensure BEA sector codes are strings (pandas may parse short numeric
+                # values such as "54" as int64 without an explicit dtype override)
+                if "bea_sector_code" in self.crosswalk_df.columns:
+                    self.crosswalk_df["bea_sector_code"] = self.crosswalk_df[
+                        "bea_sector_code"
+                    ].astype(str)
                 logger.info(
                     f"Loaded BEA crosswalk: {len(self.crosswalk_df)} mappings from {self.crosswalk_path}"
                 )
@@ -440,6 +479,111 @@ class NAICSToBEAMapper:
             hierarchical_fallback_count=hierarchical_count,
             weighted_allocation_count=weighted_count,
         )
+
+    def map_code(self, naics_code: str, vintage: str | None = None) -> str | None:
+        """Return the BEA sector code for the highest-confidence mapping.
+
+        Backward-compatible shim for callers that previously used the deleted
+        sbir_etl.transformers.naics_to_bea.NAICSToBEAMapper.map_code().
+
+        Args:
+            naics_code: The NAICS code to map.
+            vintage: Accepted for API parity with the deleted mapper; currently
+                ignored (only one vintage is supported by the canonical crosswalk).
+
+        Returns:
+            The bea_sector_code of the highest-confidence NAICSToBEAResult, or
+            None if no mapping is found (i.e. only a default_fallback result exists).
+        """
+        if not naics_code:
+            return None
+        results = self.map_naics_to_bea(naics_code)
+        if not results:
+            return None
+        top = results[0]
+        # Don't return the generic default fallback sector as a positive match —
+        # the deleted mapper returned None when the code couldn't be mapped.
+        if top.source == "default_fallback":
+            return None
+        return top.bea_sector_code
+
+    def get_bea_code_description(self, bea_code: str) -> str:
+        """Return a human-readable description of a BEA sector code.
+
+        Backward-compatible shim for callers that previously used the deleted
+        sbir_etl.transformers.naics_bea_mapper.NAICSBEAMapper.get_bea_code_description().
+
+        Args:
+            bea_code: BEA sector code (e.g. "54", "31-33").
+
+        Returns:
+            Description string, or "Unknown sector: <bea_code>" if not found.
+        """
+        descriptions: dict[str, str] = {
+            "11": "Agriculture, forestry, fishing, and hunting",
+            "21": "Mining, quarrying, and oil and gas extraction",
+            "22": "Utilities",
+            "23": "Construction",
+            "31-33": "Manufacturing",
+            "42": "Wholesale trade",
+            "44-45": "Retail trade",
+            "48-49": "Transportation and warehousing",
+            "51": "Information",
+            "52": "Finance and insurance",
+            "53": "Real estate and rental and leasing",
+            "54": "Professional, scientific, and technical services",
+            "55": "Management of companies and enterprises",
+            "56": "Administrative and support services",
+            "61": "Educational services",
+            "62": "Health care and social assistance",
+            "71": "Arts, entertainment, and recreation",
+            "72": "Accommodation and food services",
+            "81": "Other services (except public administration)",
+            "92": "Public administration",
+        }
+        return descriptions.get(bea_code, f"Unknown sector: {bea_code}")
+
+    def map_naics_to_bea_summary(self, naics_code: str) -> str:
+        """Return the BEA Summary-level sector code for a NAICS code.
+
+        Backward-compatible shim for callers that previously used the deleted
+        sbir_etl.transformers.naics_bea_mapper.NAICSBEAMapper.map_naics_to_bea_summary().
+
+        The deleted mapper used a 24-entry 2-digit prefix table and returned the
+        raw 2-digit prefix as a fallback when no entry matched.  This method
+        preserves that contract exactly so behavior is unchanged for callers.
+
+        Note: this method intentionally does NOT consult the rich
+        `map_naics_to_bea()` crosswalk.  Summary-level mapping is a much coarser
+        operation than the Detail-level mapping that crosswalk feeds, and the
+        deleted mapper's prefix table is the authoritative Summary contract.
+
+        Args:
+            naics_code: NAICS industry code (2-6 digits).
+
+        Returns:
+            BEA Summary-level sector code (e.g. "54", "31-33").
+
+        Raises:
+            ValueError: If naics_code is empty or too short (< 2 chars after stripping).
+        """
+        if not naics_code:
+            raise ValueError("NAICS code cannot be empty")
+        code = str(naics_code).strip()
+        if len(code) < 2:
+            raise ValueError(f"NAICS code too short: {naics_code}")
+
+        prefix = code[:2]
+        summary = self._SUMMARY_FALLBACK.get(prefix)
+        if summary is not None:
+            return summary
+
+        # Unknown prefix — mirror the deleted mapper: return the 2-digit prefix.
+        logger.warning(
+            f"No BEA Summary mapping for NAICS {naics_code} (prefix {prefix}). "
+            "Using NAICS 2-digit as fallback."
+        )
+        return prefix
 
 
 def enrich_awards_with_bea_sectors(
