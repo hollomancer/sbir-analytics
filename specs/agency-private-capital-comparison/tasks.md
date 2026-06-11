@@ -6,7 +6,7 @@ Phase 2 starts after PR #286 merges to main and this branch rebases.
 ## Phase 1 — Published-Baseline Comparison
 
 - [ ] 1.1 Add `AgencyCohortBuilder` under
-  `packages/sbir-analytics/sbir_analytics/assets/agency_vc/`. Filter award
+  `packages/sbir-analytics/sbir_analytics/assets/agency_private_capital/`. Filter award
   universe to the configured agency (default NSF: ALN ∈ {47.041, 47.084}),
   stratify by vintage (5-yr buckets) + phase. Verify: cohort sizes match
   SBA annual report [L18] NSF totals within 5%.
@@ -18,7 +18,7 @@ Phase 2 starts after PR #286 merges to main and this branch rebases.
   re-running on the leverage-ratio fixture set reproduces transition rates
   within tolerance.
 - [ ] 1.3 Add `PublishedBaselineRegistry` — hard-coded YAML at
-  `config/agency_vc/published_baselines.yaml` with source citations + as-of
+  `config/agency_private_capital/published_baselines.yaml` with source citations + as-of
   dates. Initial entries: NVCA seed→A, BLS BED 5-yr survival, Lerner [L10]
   effect size, Howell [L11] follow-on-VC effect, ITIF [L21] framing claims.
   These baselines are agency-agnostic VC-industry data; one file for all
@@ -26,12 +26,12 @@ Phase 2 starts after PR #286 merges to main and this branch rebases.
 - [ ] 1.4 Add `ReconciliationNarrative` writer. For each (agency metric,
   baseline) pair, emit JSON record + markdown line. Mirror the structure
   of the existing leverage-ratio reconciler.
-- [ ] 1.5 Wire as a Dagster asset `agency_vc_published_baseline_comparison`
-  with `AgencyVCConfig` (agency_code, default "NSF"). Output artifacts:
+- [ ] 1.5 Wire as a Dagster asset `agency_private_capital_baseline_comparison`
+  with `AgencyPrivateCapitalConfig` (agency_code, default "NSF"). Output artifacts:
   `agency_cohort_outcomes.parquet`, `agency_vs_published_baselines.md`,
   `agency_baseline_comparison.json` under
-  `data/processed/agency_vc/<agency_lower>/`.
-- [ ] 1.6 Add unit tests under `tests/unit/agency_vc/` covering: ALN filter
+  `data/processed/agency_private_capital/<agency_lower>/`.
+- [ ] 1.6 Add unit tests under `tests/unit/agency_private_capital/` covering: ALN filter
   correctness (NSF and NIH variants), Wilson CI math, baseline-registry
   loading, reconciliation record shape.
 - [ ] 1.7 Add an integration test against a small NSF fixture (vintage 2015,
@@ -74,15 +74,15 @@ haven't drifted; if they have, fix the dependency references in tasks
   control-cohort timing-leak. Headline artifact suppressed if any entry
   is missing or stale.
 - [ ] 2.6 Wire Phase 2 as a Dagster asset
-  `agency_vc_form_d_matched_comparison`. Output artifacts:
+  `agency_private_capital_form_d_matched_comparison`. Output artifacts:
   `agency_vs_form_d_comparison.parquet`, `agency_vs_form_d_comparison.md`,
   `threats_to_validity.json`.
 - [ ] 2.7 Add security-type / offering-size decomposition view (uses #286's
   Form D scoring tiers directly). Cross-check by reproducing #286's
   published 1.82x SBIR-to-Form-D leverage ratio scoped to the configured
   agency only.
-- [ ] 2.8 Add unit + integration tests under `tests/unit/agency_vc/` and
-  `tests/integration/agency_vc/`. Integration test reuses #286's existing
+- [ ] 2.8 Add unit + integration tests under `tests/unit/agency_private_capital/` and
+  `tests/integration/agency_private_capital/`. Integration test reuses #286's existing
   fixtures where available.
 - [ ] 2.9 **Phase 2 gate:** produce cohort-vs-cohort report. Deliverable
   language: "On vintage [X], NAICS-2 [Y], state [Z]: NSF Phase II awardees
@@ -92,7 +92,7 @@ haven't drifted; if they have, fix the dependency references in tasks
 
 ## Cross-Phase Tasks
 
-- [ ] X.1 Add `docs/agency-vc-comparison/` with methodology, glossary, and
+- [ ] X.1 Add `docs/agency-private-capital-comparison/` with methodology, glossary, and
   citation table (mirrors `docs/transition/`).
 - [ ] X.2 Update `docs/research-questions.md` to cite this spec under B2/B3
   and A4 (do not invent a new question — annotate existing ones).
@@ -117,7 +117,7 @@ because PR #286 delivers them. Listed here for reviewer visibility:
   upstream artifact).
 - ~~Form D ingest scope coordination with M&A spec~~ — moot; #286
   consolidates both M&A and Form D under one PR.
-- ~~NSF-only scope~~ — module renamed from `nsf_vc/` to `agency_vc/`;
+- ~~NSF-only scope~~ — module renamed from `nsf_vc/` to `agency_private_capital/`;
   all code now accepts `agency_code` parameter (default "NSF"). The
   configured funding agency, with NSF as the initial implementation target,
   can now be extended to DoD / NIH / DOE without a separate spec.

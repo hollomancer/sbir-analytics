@@ -18,16 +18,16 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from sbir_analytics.assets.agency_vc.baselines import PublishedBaselineRegistry
-from sbir_analytics.assets.agency_vc.cohort import AgencyCohortBuilder
-from sbir_analytics.assets.agency_vc.outcomes import OutcomeMetricsCalculator
-from sbir_analytics.assets.agency_vc.reconcile import ReconciliationNarrative
+from sbir_analytics.assets.agency_private_capital.baselines import PublishedBaselineRegistry
+from sbir_analytics.assets.agency_private_capital.cohort import AgencyCohortBuilder
+from sbir_analytics.assets.agency_private_capital.outcomes import OutcomeMetricsCalculator
+from sbir_analytics.assets.agency_private_capital.reconcile import ReconciliationNarrative
 
 
 pytestmark = pytest.mark.integration
 
 
-REPO_REGISTRY = Path("config/agency_vc/published_baselines.yaml")
+REPO_REGISTRY = Path("config/agency_private_capital/published_baselines.yaml")
 
 
 def _make_nsf_fixture(n_phase_i: int = 200, graduation_rate: float = 0.30) -> pd.DataFrame:
@@ -115,10 +115,10 @@ def test_phase1_pipeline_produces_three_artifacts(tmp_path) -> None:
     payload = json.loads(json_path.read_text(encoding="utf-8"))
     by_id = {r["baseline_id"]: r for r in payload}
     nvca = by_id["nvca_seed_to_series_a"]
-    assert nvca["nsf_rate"] == pytest.approx(0.30, abs=1e-6)
+    assert nvca["cohort_rate"] == pytest.approx(0.30, abs=1e-6)
     assert nvca["baseline_point_estimate"] == pytest.approx(0.33)
     assert nvca["delta"] == pytest.approx(0.30 - 0.33, abs=1e-6)
-    assert nvca["nsf_available"] is True
+    assert nvca["cohort_available"] is True
 
 
 def test_phase1_pipeline_reproducible(tmp_path) -> None:

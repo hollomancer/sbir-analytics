@@ -7,8 +7,11 @@ import math
 import pandas as pd
 import pytest
 
-from sbir_analytics.assets.agency_vc.cohort import AgencyCohortBuilder
-from sbir_analytics.assets.agency_vc.outcomes import OutcomeMetricsCalculator, wilson_interval
+from sbir_analytics.assets.agency_private_capital.cohort import AgencyCohortBuilder
+from sbir_analytics.assets.agency_private_capital.outcomes import (
+    OutcomeMetricsCalculator,
+    wilson_interval,
+)
 
 
 pytestmark = pytest.mark.fast

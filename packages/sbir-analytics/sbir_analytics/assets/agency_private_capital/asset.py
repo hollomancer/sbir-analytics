@@ -2,9 +2,9 @@
 (agency-parameterized).
 
 The asset reads SBIR awards for the configured agency (default: NSF, via
-``AgencyVCConfig``), optionally consumes upstream transition scores and M&A
+``AgencyPrivateCapitalConfig``), optionally consumes upstream transition scores and M&A
 events, then emits three artifacts under
-``data/processed/agency_vc/<agency_lower>/``:
+``data/processed/agency_private_capital/<agency_lower>/``:
 
 - ``agency_cohort_outcomes.parquet`` — long-format per-stratum metric table.
 - ``agency_vs_published_baselines.md`` — human-readable reconciliation report.
@@ -32,8 +32,8 @@ DEFAULT_MA_EVENTS_PATH = Path("data/sbir_ma_events.jsonl")
 DEFAULT_HEADLINE_VINTAGE = "2015-2019"
 
 
-class AgencyVCConfig(Config):
-    """Dagster run config for the agency-VC comparison asset.
+class AgencyPrivateCapitalConfig(Config):
+    """Dagster run config for the agency private-capital comparison asset.
 
     Attributes:
         agency_code: The funding agency to filter to. Default ``"NSF"``
@@ -44,8 +44,8 @@ class AgencyVCConfig(Config):
 
 
 @asset(
-    name="agency_vc_published_baseline_comparison",
-    group_name="agency_vc",
+    name="agency_private_capital_baseline_comparison",
+    group_name="agency_private_capital",
     compute_kind="pandas",
     description=(
         "SBIR cohort outcomes (Phase I->II graduation, transitions, survival, "
@@ -54,14 +54,14 @@ class AgencyVCConfig(Config):
         "reconciliation narrative; not a causal estimate."
     ),
 )
-def agency_vc_published_baseline_comparison(
+def agency_private_capital_baseline_comparison(
     context: AssetExecutionContext,
-    config: AgencyVCConfig,
+    config: AgencyPrivateCapitalConfig,
     enriched_sbir_awards: pd.DataFrame,
     transformed_transition_scores: pd.DataFrame,
 ) -> Output[str]:
     agency_code = config.agency_code
-    output_dir = Path("data/processed/agency_vc") / agency_code.lower()
+    output_dir = Path("data/processed/agency_private_capital") / agency_code.lower()
     output_dir.mkdir(parents=True, exist_ok=True)
     parquet_path = output_dir / "agency_cohort_outcomes.parquet"
     md_path = output_dir / "agency_vs_published_baselines.md"
@@ -98,7 +98,11 @@ def agency_vc_published_baseline_comparison(
     registry = PublishedBaselineRegistry.load(DEFAULT_REGISTRY_PATH)
     narrative = ReconciliationNarrative(registry=registry)
     records = narrative.reconcile(outcomes, headline_vintage=DEFAULT_HEADLINE_VINTAGE)
-    md_text = narrative.to_markdown(records, headline_vintage=DEFAULT_HEADLINE_VINTAGE)
+    md_text = narrative.to_markdown(
+        records,
+        headline_vintage=DEFAULT_HEADLINE_VINTAGE,
+        agency_code=config.agency_code,
+    )
     md_path.write_text(md_text, encoding="utf-8")
     json_path.write_text(
         json.dumps([r.to_json() for r in records], indent=2, default=str),

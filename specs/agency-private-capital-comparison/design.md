@@ -5,7 +5,7 @@
 Builds on existing SBIR identification, transition detection, PATLINK,
 entity-resolution pipelines, and (post-merge) the SEC EDGAR / Form D / M&A
 infrastructure landed by PR #286. New code lives in
-`packages/sbir-analytics/sbir_analytics/assets/agency_vc/` (an outcomes-comparison
+`packages/sbir-analytics/sbir_analytics/assets/agency_private_capital/` (an outcomes-comparison
 artifact, parallel to `leverage_ratio/`).
 
 ## Phase 1 — Published-Baseline Comparison
@@ -53,7 +53,7 @@ SBIR.gov awards → filter by agency_code (default NSF: ALN ∈ {47.041, 47.084}
    selection-bias caveat. Output as JSON + markdown, mirroring the leverage-
    ratio reconciler.
 
-### Output (under `data/processed/agency_vc/<agency_lower>/`)
+### Output (under `data/processed/agency_private_capital/<agency_lower>/`)
 
 - `agency_cohort_outcomes.parquet` — long-format metrics table (vintage × phase
   × CET × metric)

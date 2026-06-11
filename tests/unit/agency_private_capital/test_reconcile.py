@@ -7,8 +7,8 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from sbir_analytics.assets.agency_vc.baselines import PublishedBaselineRegistry
-from sbir_analytics.assets.agency_vc.reconcile import (
+from sbir_analytics.assets.agency_private_capital.baselines import PublishedBaselineRegistry
+from sbir_analytics.assets.agency_private_capital.reconcile import (
     ReconciliationNarrative,
     ReconciliationRecord,
 )
@@ -17,7 +17,7 @@ from sbir_analytics.assets.agency_vc.reconcile import (
 pytestmark = pytest.mark.fast
 
 
-REPO_REGISTRY = Path("config/agency_vc/published_baselines.yaml")
+REPO_REGISTRY = Path("config/agency_private_capital/published_baselines.yaml")
 
 
 def _outcomes_fixture() -> pd.DataFrame:
@@ -66,14 +66,14 @@ def test_record_shape_for_rate_baseline() -> None:
     by_id = {r.baseline_id: r for r in records}
     nvca = by_id["nvca_seed_to_series_a"]
     assert isinstance(nvca, ReconciliationRecord)
-    assert nvca.nsf_metric == "phase_i_to_ii_graduation"
+    assert nvca.cohort_metric == "phase_i_to_ii_graduation"
     assert nvca.baseline_kind == "rate"
     assert nvca.baseline_point_estimate == pytest.approx(0.33)
-    assert nvca.nsf_rate == pytest.approx(0.25)
+    assert nvca.cohort_rate == pytest.approx(0.25)
     assert nvca.delta == pytest.approx(0.25 - 0.33)
     assert nvca.attribution
     assert nvca.caveat
-    assert nvca.nsf_available is True
+    assert nvca.cohort_available is True
 
 
 def test_record_shape_for_effect_size_baseline() -> None:
@@ -93,17 +93,33 @@ def test_record_shape_when_metric_missing_from_outcomes() -> None:
     records = ReconciliationNarrative(reg).reconcile(sparse)
     by_id = {r.baseline_id: r for r in records}
     bls = by_id["bls_bed_5yr_survival"]
-    assert bls.nsf_available is False
-    assert bls.nsf_rate is None
-    assert bls.nsf_denominator is None
+    assert bls.cohort_available is False
+    assert bls.cohort_rate is None
+    assert bls.cohort_denominator is None
 
 
 def test_to_json_replaces_nan_with_none() -> None:
     reg = PublishedBaselineRegistry.load(REPO_REGISTRY)
     rec = ReconciliationNarrative(reg).reconcile(_outcomes_fixture())[0]
     payload = rec.to_json()
-    for key in ("nsf_rate", "nsf_ci_low", "nsf_ci_high", "delta", "baseline_point_estimate"):
+    for key in (
+        "cohort_rate",
+        "cohort_ci_low",
+        "cohort_ci_high",
+        "delta",
+        "baseline_point_estimate",
+    ):
         assert key in payload
+
+
+def test_markdown_agency_code_parameterizes_header_and_rows() -> None:
+    reg = PublishedBaselineRegistry.load(REPO_REGISTRY)
+    narrative = ReconciliationNarrative(reg)
+    records = narrative.reconcile(_outcomes_fixture(), headline_vintage="2015-2019")
+    md = narrative.to_markdown(records, headline_vintage="2015-2019", agency_code="NIH")
+    assert "# NIH SBIR vs. Published Private-Capital" in md
+    assert "NIH is 25.0% on vintage 2015-2019 Phase I" in md
+    assert "NSF" not in md  # nothing hardcoded leaks through
 
 
 def test_markdown_contains_gate_statement_pattern() -> None:
@@ -111,7 +127,7 @@ def test_markdown_contains_gate_statement_pattern() -> None:
     narrative = ReconciliationNarrative(reg)
     records = narrative.reconcile(_outcomes_fixture(), headline_vintage="2015-2019")
     md = narrative.to_markdown(records, headline_vintage="2015-2019")
-    assert "# NSF SBIR vs. Published VC" in md
+    assert "# NSF SBIR vs. Published Private-Capital" in md
     assert "Gate statements" in md
     # Required gate-statement template per spec: NVCA reports X%, NSF is Y%.
     assert "NVCA seed -> Series A graduation rate reports 33%" in md

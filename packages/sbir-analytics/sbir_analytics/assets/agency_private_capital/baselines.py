@@ -1,7 +1,7 @@
 """Published-baseline registry.
 
 Loads the cited VC / small-business-survival baselines from
-``config/agency_vc/published_baselines.yaml`` and exposes them as typed
+``config/agency_private_capital/published_baselines.yaml`` and exposes them as typed
 records. Three baseline kinds are supported:
 
 - ``rate``: a published proportion comparable to a cohort rate.
@@ -19,7 +19,7 @@ from pathlib import Path
 import yaml
 
 
-DEFAULT_REGISTRY_PATH = Path("config/agency_vc/published_baselines.yaml")
+DEFAULT_REGISTRY_PATH = Path("config/agency_private_capital/published_baselines.yaml")
 
 
 class BaselineKind(StrEnum):
@@ -33,7 +33,7 @@ class PublishedBaseline:
     """One cited VC / small-business baseline."""
 
     id: str
-    nsf_metric: str
+    cohort_metric: str
     label: str
     kind: BaselineKind
     point_estimate: float | None
@@ -60,7 +60,7 @@ class PublishedBaselineRegistry:
         return cls(baselines=records)
 
     def for_metric(self, metric: str) -> list[PublishedBaseline]:
-        return [b for b in self.baselines if b.nsf_metric == metric]
+        return [b for b in self.baselines if b.cohort_metric == metric]
 
     def __iter__(self):
         return iter(self.baselines)
@@ -70,14 +70,14 @@ class PublishedBaselineRegistry:
 
 
 def _to_baseline(entry: dict) -> PublishedBaseline:
-    required = ("id", "nsf_metric", "label", "kind", "as_of", "citation")
+    required = ("id", "cohort_metric", "label", "kind", "as_of", "citation")
     missing = [k for k in required if k not in entry]
     if missing:
         raise ValueError(f"baseline entry missing keys {missing}: {entry!r}")
     pe = entry.get("point_estimate")
     return PublishedBaseline(
         id=str(entry["id"]),
-        nsf_metric=str(entry["nsf_metric"]),
+        cohort_metric=str(entry["cohort_metric"]),
         label=str(entry["label"]),
         kind=BaselineKind(entry["kind"]),
         point_estimate=float(pe) if pe is not None else None,

@@ -5,7 +5,7 @@ from __future__ import annotations
 import pandas as pd
 import pytest
 
-from sbir_analytics.assets.agency_vc.cohort import (
+from sbir_analytics.assets.agency_private_capital.cohort import (
     AGENCY_ALN_MAP,
     NSF_ALNS,
     AgencyCohortBuilder,

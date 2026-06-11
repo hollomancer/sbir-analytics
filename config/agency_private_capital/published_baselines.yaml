@@ -2,7 +2,7 @@
 # (agency-parameterized).
 #
 # Each entry pairs an SBIR outcome metric (computed in
-# packages/sbir-analytics/sbir_analytics/assets/agency_vc/outcomes.py) with a
+# packages/sbir-analytics/sbir_analytics/assets/agency_private_capital/outcomes.py) with a
 # cited public baseline. Effect-size baselines (Lerner, Howell, ITIF) carry
 # `kind: effect_size` and are reported as narrative context rather than
 # rate-vs-rate deltas — they describe directional findings against
@@ -19,7 +19,7 @@
 
 baselines:
   - id: nvca_seed_to_series_a
-    nsf_metric: phase_i_to_ii_graduation
+    cohort_metric: phase_i_to_ii_graduation
     label: "NVCA seed -> Series A graduation rate"
     kind: rate
     point_estimate: 0.33
@@ -33,7 +33,7 @@ baselines:
       Phase I -> Phase II graduation.
 
   - id: bls_bed_5yr_survival
-    nsf_metric: five_year_survival_proxy
+    cohort_metric: five_year_survival_proxy
     label: "BLS Business Employment Dynamics 5-year survival"
     kind: rate
     point_estimate: 0.50
@@ -47,7 +47,7 @@ baselines:
       survival proxy.
 
   - id: lerner_growth_effect
-    nsf_metric: phase_ii_to_federal_contract_transition
+    cohort_metric: phase_ii_to_federal_contract_transition
     label: "Lerner [L10] long-run growth effect"
     kind: effect_size
     point_estimate: null
@@ -61,7 +61,7 @@ baselines:
       as directional context. Effect concentrated in VC-rich zip codes.
 
   - id: howell_followon_vc
-    nsf_metric: phase_ii_to_federal_contract_transition
+    cohort_metric: phase_ii_to_federal_contract_transition
     label: "Howell [L11] follow-on-VC effect"
     kind: effect_size
     point_estimate: null
@@ -76,7 +76,7 @@ baselines:
       directly comparable to NSF rate, used as effect-size context.
 
   - id: itif_seed_fund_framing
-    nsf_metric: phase_i_to_ii_graduation
+    cohort_metric: phase_i_to_ii_graduation
     label: "ITIF [L21] 'America's Seed Fund' framing"
     kind: framing
     point_estimate: null

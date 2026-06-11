@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from sbir_analytics.assets.agency_vc.baselines import (
+from sbir_analytics.assets.agency_private_capital.baselines import (
     BaselineKind,
     PublishedBaseline,
     PublishedBaselineRegistry,
@@ -16,7 +16,7 @@ from sbir_analytics.assets.agency_vc.baselines import (
 pytestmark = pytest.mark.fast
 
 
-REPO_REGISTRY = Path("config/agency_vc/published_baselines.yaml")
+REPO_REGISTRY = Path("config/agency_private_capital/published_baselines.yaml")
 
 
 def test_default_registry_loads_and_contains_required_baselines() -> None:
@@ -57,7 +57,7 @@ def test_load_rejects_entry_missing_required_keys(tmp_path) -> None:
     bad.write_text(
         """baselines:
   - id: orphan
-    nsf_metric: foo
+    cohort_metric: foo
 """,
         encoding="utf-8",
     )

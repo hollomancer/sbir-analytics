@@ -3,17 +3,17 @@
 SBIR.gov bulk award data, bypassing the Dagster materialization chain.
 
 Usage:
-    python scripts/data/run_agency_vc_phase1.py
-    python scripts/data/run_agency_vc_phase1.py --agency NSF
-    python scripts/data/run_agency_vc_phase1.py --awards-csv /tmp/sbir_awards_full.csv
-    python scripts/data/run_agency_vc_phase1.py --headline-vintage 2010-2014
+    python scripts/data/run_agency_private_capital_phase1.py
+    python scripts/data/run_agency_private_capital_phase1.py --agency NSF
+    python scripts/data/run_agency_private_capital_phase1.py --awards-csv /tmp/sbir_awards_full.csv
+    python scripts/data/run_agency_private_capital_phase1.py --headline-vintage 2010-2014
 
 Defaults mirror PR #286's pipeline conventions: the awards CSV defaults to
 ``/tmp/sbir_awards_full.csv`` (downloaded on first run from SBIR.gov), and
 the M&A events JSONL defaults to ``data/sbir_ma_events.jsonl`` (produced by
 ``scripts/data/detect_sbir_ma_events.py``).
 
-Outputs three artifacts to ``data/processed/agency_vc/<agency_lower>/``:
+Outputs three artifacts to ``data/processed/agency_private_capital/<agency_lower>/``:
 - agency_cohort_outcomes.parquet
 - agency_vs_published_baselines.md
 - agency_baseline_comparison.json
@@ -35,13 +35,13 @@ import pandas as pd
 import requests
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
-from sbir_analytics.assets.agency_vc.baselines import (
+from sbir_analytics.assets.agency_private_capital.baselines import (
     DEFAULT_REGISTRY_PATH,
     PublishedBaselineRegistry,
 )
-from sbir_analytics.assets.agency_vc.cohort import AgencyCohortBuilder
-from sbir_analytics.assets.agency_vc.outcomes import OutcomeMetricsCalculator
-from sbir_analytics.assets.agency_vc.reconcile import ReconciliationNarrative
+from sbir_analytics.assets.agency_private_capital.cohort import AgencyCohortBuilder
+from sbir_analytics.assets.agency_private_capital.outcomes import OutcomeMetricsCalculator
+from sbir_analytics.assets.agency_private_capital.reconcile import ReconciliationNarrative
 from sbir_etl.extractors.sbir_gov_api import SBIR_AWARDS_CSV_URL
 
 
@@ -115,7 +115,7 @@ def main() -> int:
         type=Path,
         default=None,
         help=(
-            "Output directory. Defaults to data/processed/agency_vc/<agency_lower>/"
+            "Output directory. Defaults to data/processed/agency_private_capital/<agency_lower>/"
             " so different agencies don't clobber each other."
         ),
     )
@@ -127,7 +127,9 @@ def main() -> int:
     args = parser.parse_args()
 
     agency_code: str = args.agency.strip().upper()
-    output_dir: Path = args.output_dir or (Path("data/processed/agency_vc") / agency_code.lower())
+    output_dir: Path = args.output_dir or (
+        Path("data/processed/agency_private_capital") / agency_code.lower()
+    )
 
     if args.skip_download and not args.awards_csv.exists():
         print(f"awards CSV not found at {args.awards_csv}", file=sys.stderr)
@@ -164,7 +166,11 @@ def main() -> int:
     narrative = ReconciliationNarrative(registry=registry)
     records = narrative.reconcile(outcomes, headline_vintage=args.headline_vintage)
     md_path.write_text(
-        narrative.to_markdown(records, headline_vintage=args.headline_vintage),
+        narrative.to_markdown(
+            records,
+            headline_vintage=args.headline_vintage,
+            agency_code=args.agency,
+        ),
         encoding="utf-8",
     )
     json_path.write_text(
