@@ -1,5 +1,7 @@
 # Patent Cost and Spillover Analysis — Requirements
 
+> **Status:** Not yet started — spec is design-only, zero implementation code as of June 2026. Anchors inventory questions **C3a–c** in [docs/research-questions.md](../../docs/research-questions.md). Target benchmark: Myers & Lanahan AER 2022 (~3× DOE spillover, ~60% US-retained).
+
 Research Plan Milestone: **M2 — Patent Linkage and Spillover Pipeline**
 
 ## Background

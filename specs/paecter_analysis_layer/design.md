@@ -1,5 +1,7 @@
 # Design Document
 
+> **Implementation status (June 2026):** Only the **Core PaECTER Assets** layer (embedding generation, ~488 LOC at `packages/sbir-analytics/sbir_analytics/assets/paecter/embeddings.py`) is implemented. The **Bayesian Mixture-of-Experts**, **LoRA expert** routing, and **three-stage Bayesian routing pipeline** sections below describe **deferred future work** — they are kept in this spec as design reference but are not in scope until C2b (in [docs/research-questions.md](../../docs/research-questions.md)) is prioritized. Treat the "Core PaECTER Assets" and "Integration Assets" subsections as the actionable surface.
+
 ## Overview
 
 This design implements a Bayesian Mixture-of-Experts (MoE) enhanced PaECTER analysis layer that provides robust, explainable patent and SBIR award analysis with uncertainty quantification. The system follows a three-stage Bayesian routing pipeline: Classification → Similarity → Embedding, where each stage uses probabilistic expert selection to improve accuracy and provide calibrated confidence scores.

@@ -1,5 +1,7 @@
 # Leverage Ratio Analysis — Requirements
 
+> **Status:** Not yet started — spec is design-only, zero implementation code as of June 2026. Anchors inventory question **A3** in [docs/research-questions.md](../../docs/research-questions.md). Prerequisites (entity resolution, SBIR identification, USAspending enrichment) are all live on `main`.
+
 Research Plan Milestone: **M1 — DOD Leverage Ratio Replication**
 
 ## Background
