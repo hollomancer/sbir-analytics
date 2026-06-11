@@ -1,4 +1,4 @@
-"""Outcome-metric calculator for the NSF SBIR cohort.
+"""Outcome-metric calculator for the SBIR cohort (agency-parameterized).
 
 Computes per-stratum (vintage x phase) commercialization rates with Wilson-
 score confidence intervals. Inputs are optional; when an upstream artifact
@@ -7,7 +7,7 @@ all numeric fields are ``None`` so the downstream report can still render.
 
 Metrics:
     - phase_i_to_ii_graduation: any company with a Phase I award in stratum
-      that has a Phase II award (any year) in the NSF cohort.
+      that has a Phase II award (any year) in the cohort.
     - phase_ii_to_federal_contract_transition: Phase II awards with at least
       one upstream transition score >= the configured threshold (consumes
       ``transformed_transition_scores`` produced by the existing detector;
@@ -15,8 +15,10 @@ Metrics:
       here).
     - five_year_survival_proxy: Phase II company appears as a recipient or
       vendor in any federal dataset >=5 years after Phase II award year.
-    - patent_rate: NSF awardee linked to >=1 patent via PATLINK.
-    - ma_exit_rate: NSF awardee appears in the M&A events JSONL (post-#286).
+      Denominator is unique companies (not award rows) per stratum.
+    - ma_exit_rate: SBIR awardee appears in the M&A events JSONL (post-#286).
+      Join is UEI/DUNS-first; falls back to normalized company name when
+      UEI/DUNS are absent from the cohort row.
 """
 
 from __future__ import annotations
@@ -84,9 +86,25 @@ def _company_key(row: pd.Series) -> str | None:
     return None
 
 
+def _normalized_name_key(row: pd.Series) -> str | None:
+    """Return a ``name:`` key regardless of whether UEI/DUNS are present.
+
+    Used for the M&A exit-rate join: ``sbir_ma_events.jsonl`` is keyed by
+    company name, so a cohort row that has a UEI (and therefore resolves
+    to ``uei:XXX`` via ``_company_key``) still needs a name-based fallback
+    for the join. When both keys are available we join on both; any match
+    counts.
+    """
+    for key in ("company_name", "Company"):
+        v = row.get(key)
+        if v is not None and not (isinstance(v, float) and pd.isna(v)) and str(v).strip():
+            return f"name:{str(v).strip().lower()}"
+    return None
+
+
 @dataclass
 class OutcomeMetricsCalculator:
-    """Compute per-stratum NSF SBIR cohort outcome rates with Wilson CIs.
+    """Compute per-stratum SBIR cohort outcome rates with Wilson CIs.
 
     Args:
         transition_score_threshold: minimum upstream transition-score for a
@@ -103,7 +121,6 @@ class OutcomeMetricsCalculator:
 
     transition_scores: pd.DataFrame | None = field(default=None)
     federal_activity_companies: set[str] | None = field(default=None)
-    patent_award_ids: set[str] | None = field(default=None)
     ma_event_companies: set[str] | None = field(default=None)
 
     def compute(self, cohort: pd.DataFrame) -> pd.DataFrame:
@@ -127,6 +144,7 @@ class OutcomeMetricsCalculator:
         records: list[dict[str, Any]] = []
         cohort = cohort.copy()
         cohort["_company_key"] = cohort.apply(_company_key, axis=1)
+        cohort["_name_key"] = cohort.apply(_normalized_name_key, axis=1)
 
         # Phase I->II graduation: per-vintage
         phase_i = cohort[cohort["phase_label"] == "I"]
@@ -178,9 +196,11 @@ class OutcomeMetricsCalculator:
                 )
             )
 
-        # 5-year survival proxy (Phase II only)
+        # 5-year survival proxy (Phase II only).
+        # Bug fix: denominator is unique companies, not award rows.
         for vintage, group in phase_ii.groupby("vintage_bucket", dropna=False):
-            denom = len(group)
+            unique_companies = group["_company_key"].dropna().nunique()
+            denom = unique_companies
             if self.federal_activity_companies is None:
                 records.append(
                     self._make_row(
@@ -206,37 +226,10 @@ class OutcomeMetricsCalculator:
                 )
             )
 
-        # Patent rate (per stratum, all phases)
-        for (vintage, phase), group in cohort.groupby(
-            ["vintage_bucket", "phase_label"], dropna=False
-        ):
-            denom = len(group)
-            if self.patent_award_ids is None:
-                records.append(
-                    self._make_row(
-                        vintage,
-                        phase,
-                        "patent_rate",
-                        numerator=0,
-                        denominator=denom,
-                        available=False,
-                    )
-                )
-                continue
-            award_ids = set(group.get("award_id", pd.Series(dtype=object)).dropna().astype(str))
-            patented = award_ids & self.patent_award_ids
-            records.append(
-                self._make_row(
-                    vintage,
-                    phase,
-                    "patent_rate",
-                    numerator=len(patented),
-                    denominator=denom,
-                    available=True,
-                )
-            )
-
-        # M&A exit rate (per stratum, all phases)
+        # M&A exit rate (per stratum, all phases).
+        # Bug fix: join on UEI/DUNS key first; also check name key as fallback so
+        # that sbir_ma_events.jsonl (keyed by company_name) matches cohort rows
+        # that have a UEI/DUNS in addition to rows that only have a name.
         for (vintage, phase), group in cohort.groupby(
             ["vintage_bucket", "phase_label"], dropna=False
         ):
@@ -254,7 +247,25 @@ class OutcomeMetricsCalculator:
                     )
                 )
                 continue
+            # Primary join: UEI/DUNS company keys
             exited = denom_keys & self.ma_event_companies
+            # Fallback join: normalized name keys for rows where UEI/DUNS matched
+            # to a different key format than what the M&A JSONL uses. Only count
+            # each unique company once.
+            name_keys = {k for k in group["_name_key"].tolist() if k}
+            exited_by_name = name_keys & self.ma_event_companies
+            # A company that has a UEI key may not appear in exited yet; add any
+            # that match by name, de-duplicated by tracking which names already
+            # contributed a counted company.
+            already_counted_ueis = {
+                row["_company_key"] for _, row in group.iterrows() if row["_company_key"] in exited
+            }
+            for _, row in group.iterrows():
+                name_k = row.get("_name_key")
+                company_k = row.get("_company_key")
+                if name_k and name_k in exited_by_name and company_k not in already_counted_ueis:
+                    exited.add(company_k or name_k)
+                    already_counted_ueis.add(company_k)
             records.append(
                 self._make_row(
                     vintage,

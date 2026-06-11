@@ -1,21 +1,22 @@
 #!/usr/bin/env python3
-"""Run the NSF SBIR vs. published-baseline (Phase 1) comparison against
+"""Run the SBIR vs. published-baseline (Phase 1) comparison against
 SBIR.gov bulk award data, bypassing the Dagster materialization chain.
 
 Usage:
-    python scripts/data/run_nsf_vc_phase1.py
-    python scripts/data/run_nsf_vc_phase1.py --awards-csv /tmp/sbir_awards_full.csv
-    python scripts/data/run_nsf_vc_phase1.py --headline-vintage 2010-2014
+    python scripts/data/run_agency_vc_phase1.py
+    python scripts/data/run_agency_vc_phase1.py --agency NSF
+    python scripts/data/run_agency_vc_phase1.py --awards-csv /tmp/sbir_awards_full.csv
+    python scripts/data/run_agency_vc_phase1.py --headline-vintage 2010-2014
 
 Defaults mirror PR #286's pipeline conventions: the awards CSV defaults to
 ``/tmp/sbir_awards_full.csv`` (downloaded on first run from SBIR.gov), and
 the M&A events JSONL defaults to ``data/sbir_ma_events.jsonl`` (produced by
 ``scripts/data/detect_sbir_ma_events.py``).
 
-Outputs three artifacts to ``data/processed/nsf_vc/``:
-- nsf_cohort_outcomes.parquet
-- nsf_vs_published_baselines.md
-- nsf_baseline_comparison.json
+Outputs three artifacts to ``data/processed/agency_vc/<agency_lower>/``:
+- agency_cohort_outcomes.parquet
+- agency_vs_published_baselines.md
+- agency_baseline_comparison.json
 
 This script reproduces the Dagster asset's logic in-process so we can
 materialize Phase 1 against real data without wiring the full
@@ -34,19 +35,18 @@ import pandas as pd
 import requests
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
-from sbir_analytics.assets.nsf_vc.baselines import (
+from sbir_analytics.assets.agency_vc.baselines import (
     DEFAULT_REGISTRY_PATH,
     PublishedBaselineRegistry,
 )
-from sbir_analytics.assets.nsf_vc.cohort import NSFCohortBuilder
-from sbir_analytics.assets.nsf_vc.outcomes import OutcomeMetricsCalculator
-from sbir_analytics.assets.nsf_vc.reconcile import ReconciliationNarrative
+from sbir_analytics.assets.agency_vc.cohort import AgencyCohortBuilder
+from sbir_analytics.assets.agency_vc.outcomes import OutcomeMetricsCalculator
+from sbir_analytics.assets.agency_vc.reconcile import ReconciliationNarrative
 from sbir_etl.extractors.sbir_gov_api import SBIR_AWARDS_CSV_URL
 
 
 DEFAULT_AWARDS_CSV = Path("/tmp/sbir_awards_full.csv")
 DEFAULT_MA_EVENTS = Path("data/sbir_ma_events.jsonl")
-DEFAULT_OUTPUT_DIR = Path("data/processed/nsf_vc")
 DEFAULT_HEADLINE_VINTAGE = "2015-2019"
 
 
@@ -100,17 +100,34 @@ def _load_ma_event_companies(path: Path) -> set[str] | None:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--agency",
+        default="NSF",
+        metavar="CODE",
+        help="Funding agency code to filter to (default: NSF)",
+    )
     parser.add_argument("--awards-csv", type=Path, default=DEFAULT_AWARDS_CSV)
     parser.add_argument("--ma-events", type=Path, default=DEFAULT_MA_EVENTS)
-    parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
     parser.add_argument("--registry", type=Path, default=DEFAULT_REGISTRY_PATH)
     parser.add_argument("--headline-vintage", default=DEFAULT_HEADLINE_VINTAGE)
+    parser.add_argument(
+        "--output-dir",
+        type=Path,
+        default=None,
+        help=(
+            "Output directory. Defaults to data/processed/agency_vc/<agency_lower>/"
+            " so different agencies don't clobber each other."
+        ),
+    )
     parser.add_argument(
         "--skip-download",
         action="store_true",
         help="Fail rather than download the awards CSV if missing.",
     )
     args = parser.parse_args()
+
+    agency_code: str = args.agency.strip().upper()
+    output_dir: Path = args.output_dir or (Path("data/processed/agency_vc") / agency_code.lower())
 
     if args.skip_download and not args.awards_csv.exists():
         print(f"awards CSV not found at {args.awards_csv}", file=sys.stderr)
@@ -121,9 +138,10 @@ def main() -> int:
     awards = pd.read_csv(awards_path, dtype=str, low_memory=False, encoding_errors="replace")
     print(f"Total rows: {len(awards):,}")
 
-    cohort = NSFCohortBuilder().build(awards)
-    print(f"NSF cohort rows: {len(cohort):,}")
-    counts = NSFCohortBuilder.stratum_counts(cohort)
+    builder = AgencyCohortBuilder(agency_code=agency_code)
+    cohort = builder.build(awards)
+    print(f"{agency_code} cohort rows: {len(cohort):,}")
+    counts = AgencyCohortBuilder.stratum_counts(cohort)
     print(f"Strata: {len(counts)}")
     print(counts.to_string(index=False))
 
@@ -136,10 +154,10 @@ def main() -> int:
     calc = OutcomeMetricsCalculator(ma_event_companies=ma_companies)
     outcomes = calc.compute(cohort)
 
-    args.output_dir.mkdir(parents=True, exist_ok=True)
-    parquet_path = args.output_dir / "nsf_cohort_outcomes.parquet"
-    md_path = args.output_dir / "nsf_vs_published_baselines.md"
-    json_path = args.output_dir / "nsf_baseline_comparison.json"
+    output_dir.mkdir(parents=True, exist_ok=True)
+    parquet_path = output_dir / "agency_cohort_outcomes.parquet"
+    md_path = output_dir / "agency_vs_published_baselines.md"
+    json_path = output_dir / "agency_baseline_comparison.json"
     outcomes.to_parquet(parquet_path, index=False)
 
     registry = PublishedBaselineRegistry.load(args.registry)

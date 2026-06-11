@@ -219,7 +219,7 @@ This area treats the SBIR awardee as a **firm with a capital history**, not as a
 ### F3. Inferential (Tier 3)
 
 - What is the **private-to-SBIR leverage ratio** (private capital raised ÷ SBIR funding) by agency, vintage, and firm size? The private-side mirror to NASEM's 4:1 DoD non-SBIR-federal leverage [L1]. *(deps: ER, ID, SEC EDGAR)*
-- For NSF Phase II awardees, do follow-on funding and exit outcomes match the published VC/PE-backed-startup baselines from the NVCA Yearbook [L25]? *(PR #311)* *(deps: ER, SEC EDGAR)*
+- For Phase II awardees of any agency (NSF as Phase 1 target), do follow-on funding and exit outcomes match the published VC/PE-backed-startup baselines from the NVCA Yearbook [L25]? *(PR #311)* *(deps: ER, SEC EDGAR)*
 - Does SBIR funding crowd in or crowd out subsequent private capital? **Target: reproduce or extend Howell's finding that an early-stage DOE SBIR grant roughly doubles the probability of subsequent VC** [L11]. Compare against Kortum & Lerner [L24] on VC's contribution to innovation. *(deps: ER, ID, SEC EDGAR)*
 - Does the Lerner [L10] finding — SBIR growth effects concentrated in VC-rich zip codes — still hold post-2010 and across all eleven agencies? *(deps: ER, ID, SEC EDGAR)*
 

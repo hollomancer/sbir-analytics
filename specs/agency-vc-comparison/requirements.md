@@ -1,4 +1,4 @@
-# NSF SBIR vs. Private-Capital Comparison — Requirements
+# SBIR vs. Private-Capital Comparison — Requirements (agency-parameterized; NSF as initial target)
 
 Research-questions tags: **B2/B3** (commercialization), **A4** (private-capital signals),
 **[L21]** (ITIF "America's Seed Fund"), **[L10]** (Lerner), **[L11]** (Howell), **[L23]** (Form D).
@@ -9,8 +9,9 @@ ITIF [L21] frames NSF SBIR as the federal analogue of a seed-stage venture fund.
 Lerner [L10] and Howell [L11] establish empirically that SBIR awardees grow
 faster, attract more follow-on private capital, and produce more patents than
 matched non-awardees — but neither study uses a *private-capital cohort* as the
-control group. This spec builds that comparison for NSF specifically: how does
-the NSF SBIR portfolio perform on commercialization-outcome metrics relative to
+control group. This spec builds that comparison for the configured funding agency,
+with NSF as the initial implementation target: how does the SBIR portfolio of
+the configured agency perform on commercialization-outcome metrics relative to
 firms financed via private capital (Reg D / Form D filers)?
 
 The user-stated framing: "compare NSF SBIR portfolio rank against pre-seed/seed
@@ -66,31 +67,35 @@ branch rebases on top.
 
 ## Phase 1 Requirements
 
-1. **SHALL** isolate the NSF SBIR cohort using ALN `47.041` and `47.084`
-   (existing identification classifier).
-2. **SHALL** compute the following NSF-cohort outcomes, stratified by award
+1. **SHALL** isolate the cohort for the configured funding agency using that
+   agency's ALN(s) (e.g. NSF uses ALN `47.041` and `47.084`). NSF is the
+   initial implementation target.
+2. **SHALL** compute the following cohort outcomes, stratified by award
    vintage (5-year buckets) and Phase (I, II):
    - Phase I → Phase II graduation rate
    - Phase II → first non-SBIR federal contract transition rate (reuse
      existing transition detector, ≥85% precision benchmark)
    - 5-year survival proxy (firm appears as recipient/vendor in any federal
-     dataset 5 years post-Phase-II)
-   - Patent rate (patents linked to award via PATLINK / award-recipient ÷
-     awards)
+     dataset 5 years post-Phase-II). Denominator is unique companies per
+     stratum, not award rows.
    - M&A exit rate — reuses #286's `data/sbir_ma_events.jsonl` once that PR
-     merges (was previously gated as "not-yet-available"). NSF-filtered slice
-     is a one-line join.
+     merges (was previously gated as "not-yet-available"). Agency-filtered
+     slice is a one-line join. Join is UEI/DUNS-first; falls back to
+     normalized company name when UEI/DUNS are absent.
+   - Patent rate — **deferred to Phase 2**. The asset does not accept
+     PATLINK as an input in Phase 1; adding PATLINK is out of scope here.
 3. **SHALL** present results alongside cited public VC baselines:
    - Seed → Series A graduation (NVCA / CB Insights public summaries)
    - 5-year startup survival (BLS BED, public)
    - Exit rate at 5 / 10 years (NVCA, public)
    - Lerner [L10] and Howell [L11] published effect sizes
 4. **SHALL** produce a reconciliation narrative explaining each delta between
-   the NSF metric and the cited VC baseline, including selection-bias caveats
-   ("NSF awardees pre-selected on technical merit and proposal quality; VC-
-   financed firms self-select on lawyer access and growth narrative").
-5. **SHOULD** stratify NSF outcomes by CET technology area (reuse CET
-   classifier) so the comparison is not blurred by sector mix.
+   the cohort metric and the cited VC baseline, including selection-bias
+   caveats ("NSF awardees pre-selected on technical merit and proposal
+   quality; VC-financed firms self-select on lawyer access and growth
+   narrative").
+5. **SHOULD** stratify outcomes by CET technology area (reuse CET classifier)
+   so the comparison is not blurred by sector mix.
 6. **SHALL** report match rates and entity-resolution coverage as sensitivity
    metadata (mirrors `leverage-ratio-analysis` requirement 7).
 
@@ -107,15 +112,15 @@ Phase 2 consumes PR #286 artifacts. None of the EDGAR/Form-D ingest or
 parsing work belongs in this spec.
 
 7. **SHALL** filter PR #286's SBIR↔EDGAR signal tables (`sec_edgar_enrichment`
-   asset outputs and `data/sbir_ma_events.jsonl`) to NSF SBIR awardees only
-   (ALN 47.041 / 47.084).
+   asset outputs and `data/sbir_ma_events.jsonl`) to the configured agency's
+   SBIR awardees only (e.g. NSF: ALN 47.041 / 47.084).
 8. **SHALL** construct a non-SBIR control cohort: Form D issuers in #286's
    index that are *not* matched to any SBIR awardee (CIK is not in the
    resolved SBIR-CIK set produced by #286). Bucket by issuer-reported
    vintage (filing year), NAICS-2, state.
-9. **SHALL** match NSF and control cohorts on covariates: vintage year,
-   NAICS-2, state. Coarsened-exact matching, no propensity scoring in v1.
-   Document cohort sizes and balance.
+9. **SHALL** match the agency cohort and control cohort on covariates: vintage
+   year, NAICS-2, state. Coarsened-exact matching, no propensity scoring in
+   v1. Document cohort sizes and balance.
 10. **SHALL** compute Phase 1's outcome metrics on the matched control cohort
     where applicable: federal-contract presence (FPDS join), patent rate
     (PATLINK), M&A exit rate (#286's events table). Survival proxy and
@@ -132,14 +137,16 @@ parsing work belongs in this spec.
     can zoom in on the noisy seed-stage subset if they want. Use #286's
     Form D scoring tiers directly.
 13. **SHOULD** reproduce #286's published 1.82x SBIR-to-Form-D leverage
-    ratio scoped to NSF only, as a cross-check on the dataset slice.
+    ratio scoped to the configured agency only, as a cross-check on the
+    dataset slice.
 
 ### Phase 2 Gate Condition
 
-Can state: "On vintage [X], NAICS-2 [Y], state [Z]: NSF Phase II awardees
-transitioned to federal contract at [A]% within 5 years; matched non-SBIR
-Form D issuers transitioned at [B]%. Selection-bias and matching caveats
-below." The reconciliation matters more than the headline number.
+Can state: "On vintage [X], NAICS-2 [Y], state [Z]: the configured agency's
+Phase II awardees transitioned to federal contract at [A]% within 5 years;
+matched non-SBIR Form D issuers transitioned at [B]%. Selection-bias and
+matching caveats below." The reconciliation matters more than the headline
+number.
 
 ## Dependencies
 
@@ -161,7 +168,8 @@ below." The reconciliation matters more than the headline number.
 - Crunchbase / PitchBook integration (deferred to a future licensed-data spec).
 - Causal-effect estimation. This spec is descriptive comparison only; any
   causal claims require IV / regression-discontinuity machinery beyond scope.
-- Non-NSF SBIR programs. DoD / NIH / DOE comparisons are downstream extensions.
+- Patent rate in Phase 1 — deferred to Phase 2 (the asset does not accept
+  PATLINK as an input; adding it is out of scope for the current iteration).
 - Re-implementation of any infrastructure delivered by PR #286. If a #286
   artifact is missing or wrong for our purposes, file an issue against the
   #286 follow-up; do not duplicate.

@@ -1,9 +1,13 @@
-"""Integration test: Phase 1 NSF SBIR vs published-baseline pipeline.
+"""Integration test: Phase 1 SBIR vs published-baseline pipeline (agency-parameterized).
 
 Builds a small NSF Phase II fixture (vintage 2015, n~=100), runs the
 cohort -> outcomes -> reconciliation pipeline end-to-end, and verifies
 that the three artifacts (parquet, markdown, JSON) are produced and
 contain the gate-statement template required by Phase 1 Requirement 4.
+
+NSF is used as the initial implementation target; the test also verifies
+that the agency_code parameter routes correctly so future agencies can
+reuse the same pipeline.
 """
 
 from __future__ import annotations
@@ -14,16 +18,16 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from sbir_analytics.assets.nsf_vc.baselines import PublishedBaselineRegistry
-from sbir_analytics.assets.nsf_vc.cohort import NSFCohortBuilder
-from sbir_analytics.assets.nsf_vc.outcomes import OutcomeMetricsCalculator
-from sbir_analytics.assets.nsf_vc.reconcile import ReconciliationNarrative
+from sbir_analytics.assets.agency_vc.baselines import PublishedBaselineRegistry
+from sbir_analytics.assets.agency_vc.cohort import AgencyCohortBuilder
+from sbir_analytics.assets.agency_vc.outcomes import OutcomeMetricsCalculator
+from sbir_analytics.assets.agency_vc.reconcile import ReconciliationNarrative
 
 
 pytestmark = pytest.mark.integration
 
 
-REPO_REGISTRY = Path("config/nsf_vc/published_baselines.yaml")
+REPO_REGISTRY = Path("config/agency_vc/published_baselines.yaml")
 
 
 def _make_nsf_fixture(n_phase_i: int = 200, graduation_rate: float = 0.30) -> pd.DataFrame:
@@ -73,13 +77,13 @@ def _make_nsf_fixture(n_phase_i: int = 200, graduation_rate: float = 0.30) -> pd
 def test_phase1_pipeline_produces_three_artifacts(tmp_path) -> None:
     awards = _make_nsf_fixture(n_phase_i=200, graduation_rate=0.30)
 
-    cohort = NSFCohortBuilder().build(awards)
+    cohort = AgencyCohortBuilder(agency_code="NSF").build(awards)
     # Filter discarded the 5 DOD rows
     assert (cohort["agency"].str.lower() != "department of defense").all()
     assert len(cohort) == 200 + 60
 
     outcomes = OutcomeMetricsCalculator().compute(cohort)
-    parquet_path = tmp_path / "nsf_cohort_outcomes.parquet"
+    parquet_path = tmp_path / "agency_cohort_outcomes.parquet"
     outcomes.to_parquet(parquet_path, index=False)
     assert parquet_path.exists()
 
@@ -87,10 +91,10 @@ def test_phase1_pipeline_produces_three_artifacts(tmp_path) -> None:
     narrative = ReconciliationNarrative(registry=registry)
     records = narrative.reconcile(outcomes, headline_vintage="2015-2019")
     md_text = narrative.to_markdown(records, headline_vintage="2015-2019")
-    md_path = tmp_path / "nsf_vs_published_baselines.md"
+    md_path = tmp_path / "agency_vs_published_baselines.md"
     md_path.write_text(md_text, encoding="utf-8")
 
-    json_path = tmp_path / "nsf_baseline_comparison.json"
+    json_path = tmp_path / "agency_baseline_comparison.json"
     json_path.write_text(json.dumps([r.to_json() for r in records], indent=2))
 
     # Verify graduation rate matches the seeded ratio
@@ -119,7 +123,7 @@ def test_phase1_pipeline_produces_three_artifacts(tmp_path) -> None:
 
 def test_phase1_pipeline_reproducible(tmp_path) -> None:
     awards = _make_nsf_fixture(n_phase_i=120, graduation_rate=0.25)
-    cohort = NSFCohortBuilder().build(awards)
+    cohort = AgencyCohortBuilder(agency_code="NSF").build(awards)
     o1 = OutcomeMetricsCalculator().compute(cohort)
     o2 = OutcomeMetricsCalculator().compute(cohort)
     pd.testing.assert_frame_equal(

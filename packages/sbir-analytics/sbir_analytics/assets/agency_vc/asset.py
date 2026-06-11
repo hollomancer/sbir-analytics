@@ -1,15 +1,14 @@
-"""Dagster asset wiring for the NSF SBIR vs. published-baseline comparison.
+"""Dagster asset wiring for the SBIR vs. published-baseline comparison
+(agency-parameterized).
 
-The asset reads NSF SBIR awards (filter applied via ``NSFCohortBuilder``),
-optionally consumes upstream transition scores, M&A events, PATLINK output,
-and a federal-activity company set, then emits three artifacts:
+The asset reads SBIR awards for the configured agency (default: NSF, via
+``AgencyVCConfig``), optionally consumes upstream transition scores and M&A
+events, then emits three artifacts under
+``data/processed/agency_vc/<agency_lower>/``:
 
-- ``data/processed/nsf_vc/nsf_cohort_outcomes.parquet`` — long-format
-  per-stratum metric table.
-- ``data/processed/nsf_vc/nsf_vs_published_baselines.md`` — human-readable
-  reconciliation report.
-- ``data/processed/nsf_vc/nsf_baseline_comparison.json`` — structured
-  comparison records.
+- ``agency_cohort_outcomes.parquet`` — long-format per-stratum metric table.
+- ``agency_vs_published_baselines.md`` — human-readable reconciliation report.
+- ``agency_baseline_comparison.json`` — structured comparison records.
 
 Per project convention: ``from __future__ import annotations`` is NOT used
 here because Dagster's runtime context type-validation requires concrete
@@ -21,45 +20,60 @@ from pathlib import Path
 from typing import Any
 
 import pandas as pd
-from dagster import AssetExecutionContext, MetadataValue, Output, asset
+from dagster import AssetExecutionContext, Config, MetadataValue, Output, asset
 
 from .baselines import DEFAULT_REGISTRY_PATH, PublishedBaselineRegistry
-from .cohort import NSFCohortBuilder
+from .cohort import AgencyCohortBuilder
 from .outcomes import OutcomeMetricsCalculator
 from .reconcile import ReconciliationNarrative
 
 
-DEFAULT_OUTPUT_DIR = Path("data/processed/nsf_vc")
 DEFAULT_MA_EVENTS_PATH = Path("data/sbir_ma_events.jsonl")
 DEFAULT_HEADLINE_VINTAGE = "2015-2019"
 
 
+class AgencyVCConfig(Config):
+    """Dagster run config for the agency-VC comparison asset.
+
+    Attributes:
+        agency_code: The funding agency to filter to. Default ``"NSF"``
+            preserves existing behavior.
+    """
+
+    agency_code: str = "NSF"
+
+
 @asset(
-    name="nsf_vc_published_baseline_comparison",
-    group_name="nsf_vc",
+    name="agency_vc_published_baseline_comparison",
+    group_name="agency_vc",
     compute_kind="pandas",
     description=(
-        "NSF SBIR cohort outcomes (Phase I->II graduation, transitions, survival, "
-        "patents, M&A) compared to published seed-VC and small-business baselines. "
-        "Descriptive comparison + reconciliation narrative; not a causal estimate."
+        "SBIR cohort outcomes (Phase I->II graduation, transitions, survival, "
+        "M&A) compared to published seed-VC and small-business baselines for the "
+        "configured funding agency (default: NSF). Descriptive comparison + "
+        "reconciliation narrative; not a causal estimate."
     ),
 )
-def nsf_vc_published_baseline_comparison(
+def agency_vc_published_baseline_comparison(
     context: AssetExecutionContext,
+    config: AgencyVCConfig,
     enriched_sbir_awards: pd.DataFrame,
     transformed_transition_scores: pd.DataFrame,
 ) -> Output[str]:
-    output_dir = DEFAULT_OUTPUT_DIR
+    agency_code = config.agency_code
+    output_dir = Path("data/processed/agency_vc") / agency_code.lower()
     output_dir.mkdir(parents=True, exist_ok=True)
-    parquet_path = output_dir / "nsf_cohort_outcomes.parquet"
-    md_path = output_dir / "nsf_vs_published_baselines.md"
-    json_path = output_dir / "nsf_baseline_comparison.json"
+    parquet_path = output_dir / "agency_cohort_outcomes.parquet"
+    md_path = output_dir / "agency_vs_published_baselines.md"
+    json_path = output_dir / "agency_baseline_comparison.json"
 
-    cohort = NSFCohortBuilder().build(enriched_sbir_awards)
-    counts = NSFCohortBuilder.stratum_counts(cohort)
+    builder = AgencyCohortBuilder(agency_code=agency_code)
+    cohort = builder.build(enriched_sbir_awards)
+    counts = AgencyCohortBuilder.stratum_counts(cohort)
     context.log.info(
-        "NSF cohort built",
+        f"{agency_code} cohort built",
         extra={
+            "agency_code": agency_code,
             "rows": int(len(cohort)),
             "strata": int(len(counts)),
             "stratum_counts": counts.to_dict("records"),
@@ -92,6 +106,7 @@ def nsf_vc_published_baseline_comparison(
     )
 
     metadata: dict[str, Any] = {
+        "agency_code": agency_code,
         "outcomes_path": str(parquet_path),
         "markdown_path": str(md_path),
         "json_path": str(json_path),
@@ -105,12 +120,13 @@ def nsf_vc_published_baseline_comparison(
 
 
 def _load_ma_event_companies(path: Path) -> set[str] | None:
-    """Read PR #286's M&A events JSONL and return a set of company keys.
+    """Read PR #286's M&A events JSONL and return a set of company name keys.
 
     Each event has a ``company_name`` field; we normalize to ``name:<lower>``
-    so it joins against the cohort's ``_company_key`` (which falls back to a
-    name-based key when UEI/DUNS are absent). Returns ``None`` if the file
-    is missing so the calculator can render the metric as unavailable.
+    so it can join against the cohort's ``_name_key`` (the name-based key
+    computed on every cohort row regardless of whether UEI/DUNS are present).
+    Returns ``None`` if the file is missing so the calculator can render the
+    metric as unavailable.
     """
 
     if not path.exists():

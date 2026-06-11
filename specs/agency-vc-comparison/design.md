@@ -1,11 +1,11 @@
-# NSF SBIR vs. Private-Capital Comparison — Design
+# SBIR vs. Private-Capital Comparison — Design (agency-parameterized; NSF as initial target)
 
 ## Architecture
 
-Builds on existing NSF identification, transition detection, PATLINK,
+Builds on existing SBIR identification, transition detection, PATLINK,
 entity-resolution pipelines, and (post-merge) the SEC EDGAR / Form D / M&A
 infrastructure landed by PR #286. New code lives in
-`packages/sbir-analytics/sbir_analytics/assets/nsf_vc/` (an outcomes-comparison
+`packages/sbir-analytics/sbir_analytics/assets/agency_vc/` (an outcomes-comparison
 artifact, parallel to `leverage_ratio/`).
 
 ## Phase 1 — Published-Baseline Comparison
@@ -13,7 +13,9 @@ artifact, parallel to `leverage_ratio/`).
 ### Data Flow
 
 ```
-SBIR.gov awards → filter ALN ∈ {47.041, 47.084} → NSF cohort
+SBIR.gov awards → filter by agency_code (default NSF: ALN ∈ {47.041, 47.084})
+                                                       ↓
+                                          agency cohort
                                                        ↓
                                           stratify by vintage / phase / CET
                                                        ↓
@@ -21,8 +23,8 @@ SBIR.gov awards → filter ALN ∈ {47.041, 47.084} → NSF cohort
                                               - I → II graduation
                                               - II → federal-contract transition
                                               - 5-yr survival proxy
-                                              - patent rate
                                               - M&A exit rate (#286 join)
+                                              - patent rate (Phase 2 only)
                                                        ↓
                                           present alongside cited VC baselines
                                                        ↓
@@ -31,27 +33,32 @@ SBIR.gov awards → filter ALN ∈ {47.041, 47.084} → NSF cohort
 
 ### Components
 
-1. **`NSFCohortBuilder`** — Filters award universe to NSF SBIR (ALN-based),
-   stratifies by vintage / phase, attaches CET labels.
-2. **`OutcomeMetricsCalculator`** — Reuses existing transition detector,
-   PATLINK, and #286's `sbir_ma_events.jsonl` for the M&A-exit metric. Emits
-   per-cohort rates with Wilson confidence intervals and sample sizes.
+1. **`AgencyCohortBuilder`** — Filters award universe to the configured funding
+   agency (default: NSF), stratifies by vintage / phase, attaches CET labels.
+   NSF is the initial implementation target; other agencies work via the
+   `agency_code` parameter.
+2. **`OutcomeMetricsCalculator`** — Reuses existing transition detector and
+   #286's `sbir_ma_events.jsonl` for the M&A-exit metric. Emits per-cohort
+   rates with Wilson confidence intervals and sample sizes. Five-year survival
+   denominator is unique companies (not award rows). M&A join is UEI/DUNS-
+   first with a normalized-name fallback.
 3. **`PublishedBaselineRegistry`** — Hard-coded table of cited VC baselines
-   with source citation + as-of date. Examples:
+   with source citation + as-of date. These baselines are NVCA / VC-industry
+   data and are agency-agnostic. Examples:
    - NVCA 2023 Yearbook: seed→A ~33% (5-yr cohort)
    - BLS BED: ~50% 5-yr survival, all small firms
    - Lerner [L10]: SBIR awardees grew 27% faster over 10 yrs (effect size)
-4. **`ReconciliationNarrative`** — For each (NSF metric, baseline) pair,
+4. **`ReconciliationNarrative`** — For each (agency metric, baseline) pair,
    emit a structured comparison record: delta, plausible-cause attribution,
    selection-bias caveat. Output as JSON + markdown, mirroring the leverage-
    ratio reconciler.
 
-### Output
+### Output (under `data/processed/agency_vc/<agency_lower>/`)
 
-- `nsf_cohort_outcomes.parquet` — long-format metrics table (vintage × phase
+- `agency_cohort_outcomes.parquet` — long-format metrics table (vintage × phase
   × CET × metric)
-- `nsf_vs_published_baselines.md` — human-readable reconciliation narrative
-- `nsf_baseline_comparison.json` — structured comparison records
+- `agency_vs_published_baselines.md` — human-readable reconciliation narrative
+- `agency_baseline_comparison.json` — structured comparison records
 
 ## Phase 2 — NSF-vs-Private-Capital Matched Cohort
 

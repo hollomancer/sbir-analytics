@@ -7,8 +7,8 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from sbir_analytics.assets.nsf_vc.baselines import PublishedBaselineRegistry
-from sbir_analytics.assets.nsf_vc.reconcile import (
+from sbir_analytics.assets.agency_vc.baselines import PublishedBaselineRegistry
+from sbir_analytics.assets.agency_vc.reconcile import (
     ReconciliationNarrative,
     ReconciliationRecord,
 )
@@ -17,7 +17,7 @@ from sbir_analytics.assets.nsf_vc.reconcile import (
 pytestmark = pytest.mark.fast
 
 
-REPO_REGISTRY = Path("config/nsf_vc/published_baselines.yaml")
+REPO_REGISTRY = Path("config/agency_vc/published_baselines.yaml")
 
 
 def _outcomes_fixture() -> pd.DataFrame:

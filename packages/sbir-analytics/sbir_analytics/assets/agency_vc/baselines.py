@@ -1,10 +1,10 @@
 """Published-baseline registry.
 
 Loads the cited VC / small-business-survival baselines from
-``config/nsf_vc/published_baselines.yaml`` and exposes them as typed
+``config/agency_vc/published_baselines.yaml`` and exposes them as typed
 records. Three baseline kinds are supported:
 
-- ``rate``: a published proportion comparable to an NSF rate.
+- ``rate``: a published proportion comparable to a cohort rate.
 - ``effect_size``: a directional effect (e.g. +27% growth) reported as
   narrative context rather than a rate-vs-rate delta.
 - ``framing``: qualitative claim with no numeric baseline (e.g. ITIF).
@@ -19,7 +19,7 @@ from pathlib import Path
 import yaml
 
 
-DEFAULT_REGISTRY_PATH = Path("config/nsf_vc/published_baselines.yaml")
+DEFAULT_REGISTRY_PATH = Path("config/agency_vc/published_baselines.yaml")
 
 
 class BaselineKind(StrEnum):

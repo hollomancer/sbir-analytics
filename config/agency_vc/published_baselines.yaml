@@ -1,11 +1,16 @@
-# Published VC / small-business baselines for NSF SBIR comparison.
+# Published VC / small-business baselines for SBIR-vs-published-baseline comparison
+# (agency-parameterized).
 #
-# Each entry pairs an NSF outcome metric (computed in
-# packages/sbir-analytics/sbir_analytics/assets/nsf_vc/outcomes.py) with a
+# Each entry pairs an SBIR outcome metric (computed in
+# packages/sbir-analytics/sbir_analytics/assets/agency_vc/outcomes.py) with a
 # cited public baseline. Effect-size baselines (Lerner, Howell, ITIF) carry
 # `kind: effect_size` and are reported as narrative context rather than
 # rate-vs-rate deltas — they describe directional findings against
 # matched-non-awardee comparisons, not VC-cohort rates.
+#
+# These baselines are NVCA / VC-industry data and are agency-agnostic by
+# nature. A single file serves all agencies; per-agency filtering happens
+# in the outcome-metrics layer, not here.
 #
 # Source citations are tracked in docs/research-questions.md under
 # "Prior literature & benchmarks". As-of dates record the underlying

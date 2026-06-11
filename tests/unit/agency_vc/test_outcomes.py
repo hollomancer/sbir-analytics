@@ -7,8 +7,8 @@ import math
 import pandas as pd
 import pytest
 
-from sbir_analytics.assets.nsf_vc.cohort import NSFCohortBuilder
-from sbir_analytics.assets.nsf_vc.outcomes import OutcomeMetricsCalculator, wilson_interval
+from sbir_analytics.assets.agency_vc.cohort import AgencyCohortBuilder
+from sbir_analytics.assets.agency_vc.outcomes import OutcomeMetricsCalculator, wilson_interval
 
 
 pytestmark = pytest.mark.fast
@@ -103,7 +103,7 @@ def _nsf_awards() -> pd.DataFrame:
 
 
 def test_phase_i_to_ii_graduation_uses_company_match() -> None:
-    cohort = NSFCohortBuilder().build(_nsf_awards())
+    cohort = AgencyCohortBuilder(agency_code="NSF").build(_nsf_awards())
     outcomes = OutcomeMetricsCalculator().compute(cohort)
     grad_rows = outcomes[outcomes["metric"] == "phase_i_to_ii_graduation"]
     assert len(grad_rows) == 1
@@ -115,12 +115,11 @@ def test_phase_i_to_ii_graduation_uses_company_match() -> None:
 
 
 def test_metrics_with_missing_inputs_marked_unavailable() -> None:
-    cohort = NSFCohortBuilder().build(_nsf_awards())
+    cohort = AgencyCohortBuilder(agency_code="NSF").build(_nsf_awards())
     outcomes = OutcomeMetricsCalculator().compute(cohort)
     for metric in (
         "phase_ii_to_federal_contract_transition",
         "five_year_survival_proxy",
-        "patent_rate",
         "ma_exit_rate",
     ):
         rows = outcomes[outcomes["metric"] == metric]
@@ -129,7 +128,7 @@ def test_metrics_with_missing_inputs_marked_unavailable() -> None:
 
 
 def test_transition_rate_consumes_score_threshold() -> None:
-    cohort = NSFCohortBuilder().build(_nsf_awards())
+    cohort = AgencyCohortBuilder(agency_code="NSF").build(_nsf_awards())
     transitions = pd.DataFrame(
         [
             {"award_id": "II-A", "score": 0.90, "method": "uei"},
@@ -150,15 +149,23 @@ def test_transition_rate_consumes_score_threshold() -> None:
     assert bool(row["available"]) is True
 
 
-def test_ma_event_rate_joins_on_company_name() -> None:
-    cohort = NSFCohortBuilder().build(_nsf_awards())
+def test_ma_exit_rate_joins_on_uei_keyed_cohort_via_name_fallback() -> None:
+    """Bug fix 1: M&A events JSONL is name-keyed; cohort rows with UEI should
+    still match when the company name is provided in the M&A set.
+
+    Previously the join used only _company_key (UEI/DUNS-first), so a cohort
+    row with UEI=AAA and company_name=Alpha would resolve to 'uei:AAA' and
+    never match the M&A key 'name:alpha'. After the fix, the name-key fallback
+    allows the match.
+    """
+    cohort = AgencyCohortBuilder(agency_code="NSF").build(_nsf_awards())
+    # M&A events are name-keyed (as sbir_ma_events.jsonl is)
     ma_keys = {"name:alpha"}
     outcomes = OutcomeMetricsCalculator(ma_event_companies=ma_keys).compute(cohort)
     rows = outcomes[outcomes["metric"] == "ma_exit_rate"]
-    # Each (vintage, phase) stratum gets its own ma_exit_rate row.
-    # Alpha has UEI AAA so its company_key is "uei:AAA", not "name:alpha".
-    # Confirms the join uses the cohort's resolved key, not just the name.
-    assert (rows["numerator"] == 0).all()
+    # Alpha has UEI AAA; with the name-key fallback, the match should succeed.
+    phase_ii_row = rows[rows["phase_label"] == "II"].iloc[0]
+    assert phase_ii_row["numerator"] == 1
 
 
 def test_ma_event_rate_matches_when_uei_missing() -> None:
@@ -173,15 +180,61 @@ def test_ma_event_rate_matches_when_uei_missing() -> None:
             },
         ]
     )
-    cohort = NSFCohortBuilder().build(awards)
+    cohort = AgencyCohortBuilder(agency_code="NSF").build(awards)
     outcomes = OutcomeMetricsCalculator(ma_event_companies={"name:alpha"}).compute(cohort)
     rows = outcomes[outcomes["metric"] == "ma_exit_rate"]
     assert rows.iloc[0]["numerator"] == 1
     assert rows.iloc[0]["denominator"] == 1
 
 
+def test_five_year_survival_denominator_is_company_level() -> None:
+    """Bug fix 2: denominator for five_year_survival_proxy should be unique
+    companies, not award rows. A company with two Phase II awards in the same
+    vintage should count as 1 in the denominator, not 2.
+    """
+    awards = pd.DataFrame(
+        [
+            # Company AAA has two Phase II awards in the same vintage
+            {
+                "award_id": "II-A1",
+                "agency": "NSF",
+                "phase": "Phase II",
+                "award_year": 2016,
+                "uei": "AAA",
+                "company_name": "Alpha",
+            },
+            {
+                "award_id": "II-A2",
+                "agency": "NSF",
+                "phase": "Phase II",
+                "award_year": 2017,
+                "uei": "AAA",
+                "company_name": "Alpha",
+            },
+            # Company BBB has one Phase II award
+            {
+                "award_id": "II-B1",
+                "agency": "NSF",
+                "phase": "Phase II",
+                "award_year": 2016,
+                "uei": "BBB",
+                "company_name": "Beta",
+            },
+        ]
+    )
+    cohort = AgencyCohortBuilder(agency_code="NSF").build(awards)
+    federal_activity = {"uei:AAA"}  # only Alpha survives
+    outcomes = OutcomeMetricsCalculator(federal_activity_companies=federal_activity).compute(cohort)
+    rows = outcomes[outcomes["metric"] == "five_year_survival_proxy"]
+    assert len(rows) == 1
+    row = rows.iloc[0]
+    # 2 unique companies (AAA, BBB), 1 survived => denominator=2, numerator=1
+    assert row["denominator"] == 2
+    assert row["numerator"] == 1
+
+
 def test_empty_cohort_returns_empty_metrics_frame() -> None:
-    cohort = NSFCohortBuilder().build(pd.DataFrame(columns=["agency", "phase"]))
+    cohort = AgencyCohortBuilder(agency_code="NSF").build(pd.DataFrame(columns=["agency", "phase"]))
     outcomes = OutcomeMetricsCalculator().compute(cohort)
     assert outcomes.empty
     assert set(outcomes.columns) >= {
