@@ -142,9 +142,9 @@ class NAICSToBEAMapper:
                 # Ensure BEA sector codes are strings (pandas may parse short numeric
                 # values such as "54" as int64 without an explicit dtype override)
                 if "bea_sector_code" in self.crosswalk_df.columns:
-                    self.crosswalk_df["bea_sector_code"] = (
-                        self.crosswalk_df["bea_sector_code"].astype(str)
-                    )
+                    self.crosswalk_df["bea_sector_code"] = self.crosswalk_df[
+                        "bea_sector_code"
+                    ].astype(str)
                 logger.info(
                     f"Loaded BEA crosswalk: {len(self.crosswalk_df)} mappings from {self.crosswalk_path}"
                 )
@@ -480,7 +480,6 @@ class NAICSToBEAMapper:
             weighted_allocation_count=weighted_count,
         )
 
-
     def map_code(self, naics_code: str, vintage: str | None = None) -> str | None:
         """Return the BEA sector code for the highest-confidence mapping.
 
@@ -550,8 +549,14 @@ class NAICSToBEAMapper:
         Backward-compatible shim for callers that previously used the deleted
         sbir_etl.transformers.naics_bea_mapper.NAICSBEAMapper.map_naics_to_bea_summary().
 
-        The deleted mapper never raised on a missing prefix — it returned the raw
-        2-digit prefix as a fallback.  This method preserves that contract exactly.
+        The deleted mapper used a 24-entry 2-digit prefix table and returned the
+        raw 2-digit prefix as a fallback when no entry matched.  This method
+        preserves that contract exactly so behavior is unchanged for callers.
+
+        Note: this method intentionally does NOT consult the rich
+        `map_naics_to_bea()` crosswalk.  Summary-level mapping is a much coarser
+        operation than the Detail-level mapping that crosswalk feeds, and the
+        deleted mapper's prefix table is the authoritative Summary contract.
 
         Args:
             naics_code: NAICS industry code (2-6 digits).
@@ -568,28 +573,14 @@ class NAICSToBEAMapper:
         if len(code) < 2:
             raise ValueError(f"NAICS code too short: {naics_code}")
 
-        # Try the canonical mapper first (direct or hierarchical match).
-        results = self.map_naics_to_bea(code)
-        if results and results[0].source != "default_fallback":
-            # bea_sector_code from the crosswalk is already at the Summary level
-            # (e.g. "54", "31-33").  Use it when it looks like a BEA Summary code
-            # (≤5 chars, may contain "-"), otherwise fall through to the 2-digit dict.
-            sector = results[0].bea_sector_code
-            prefix = code[:2]
-            summary = self._SUMMARY_FALLBACK.get(prefix)
-            if summary is not None:
-                return summary
-            # Crosswalk returned something outside our 24-entry dict — return it as-is.
-            return sector
-
-        # Fallback: use the 24-entry 2-digit prefix dict (matches deleted mapper behavior).
         prefix = code[:2]
         summary = self._SUMMARY_FALLBACK.get(prefix)
         if summary is not None:
             return summary
+
         # Unknown prefix — mirror the deleted mapper: return the 2-digit prefix.
         logger.warning(
-            f"No BEA mapping found for NAICS {naics_code} (prefix {prefix}). "
+            f"No BEA Summary mapping for NAICS {naics_code} (prefix {prefix}). "
             "Using NAICS 2-digit as fallback."
         )
         return prefix

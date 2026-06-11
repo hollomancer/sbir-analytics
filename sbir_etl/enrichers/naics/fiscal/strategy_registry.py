@@ -4,6 +4,7 @@ Single source of truth for the default strategy order. Tests and assets
 that want a custom ordering can build their own list; this factory exists
 so the default is in one place instead of buried in FiscalNAICSEnricher.__init__.
 """
+
 from __future__ import annotations
 
 import pandas as pd

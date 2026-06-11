@@ -61,7 +61,11 @@ class FiscalNAICSEnricher:
         self.api_client = api_client
 
         # Use caller-supplied strategies or fall back to the default order.
-        self.strategies = strategies if strategies is not None else default_strategies(usaspending_df=usaspending_df)
+        self.strategies = (
+            strategies
+            if strategies is not None
+            else default_strategies(usaspending_df=usaspending_df)
+        )
 
         logger.info(
             f"Initialized FiscalNAICSEnricher with {len(self.strategies)} strategies "
