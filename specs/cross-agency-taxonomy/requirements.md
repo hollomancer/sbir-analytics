@@ -1,6 +1,6 @@
 # Cross-Agency Technology Taxonomy — Requirements
 
-> **Status:** Not yet started — spec is design-only, zero implementation code as of June 2026. Anchors inventory questions **C1a–c** in [docs/research-questions.md](../../docs/research-questions.md). CET classifier (C1d) is already implemented at `packages/sbir-ml/sbir_ml/ml/models/cet_classifier.py`; this spec covers the cross-agency aggregation layer on top of it.
+> **Status:** Partially implemented as of June 2026 — `packages/sbir-analytics/sbir_analytics/tools/mission_a/` already covers portfolio metrics (`compute_portfolio_metrics.py`: HHI per CET area, cross-agency company count, geographic concentration), semantic clustering (`cluster_topics.py`), gap detection (`detect_gaps.py`), and topic extraction (`extract_topics.py`). What's still missing is the dedicated end-to-end Dagster pipeline / reporting asset that this spec covers — wiring the tools into a scheduled cross-agency view per inventory questions **C1a–c** in [docs/research-questions.md](../../docs/research-questions.md). The CET classifier (C1d) is also already implemented at `packages/sbir-ml/sbir_ml/ml/models/cet_classifier.py`.
 
 Research Plan Milestone: **M3 — Cross-Agency Technology Taxonomy**
 
