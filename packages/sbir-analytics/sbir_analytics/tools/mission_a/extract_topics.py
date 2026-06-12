@@ -85,15 +85,22 @@ class ExtractTopicsTool(BaseTool):
 
             # Group awards by solicitation topic to extract topic-level data
             topic_col = next(
-                (c for c in ["solicitation_topic", "topic_code", "topic_number", "solicitation_id"]
-                 if c in df.columns),
+                (
+                    c
+                    for c in ["solicitation_topic", "topic_code", "topic_number", "solicitation_id"]
+                    if c in df.columns
+                ),
                 None,
             )
 
             if topic_col:
                 for topic_key, group in df.groupby(topic_col):
                     abstract_col = next(
-                        (c for c in ["abstract", "award_abstract", "description"] if c in group.columns),
+                        (
+                            c
+                            for c in ["abstract", "award_abstract", "description"]
+                            if c in group.columns
+                        ),
                         None,
                     )
                     agency_col = next(
@@ -101,7 +108,11 @@ class ExtractTopicsTool(BaseTool):
                         None,
                     )
                     title_col = next(
-                        (c for c in ["solicitation_title", "topic_title", "title"] if c in group.columns),
+                        (
+                            c
+                            for c in ["solicitation_title", "topic_title", "title"]
+                            if c in group.columns
+                        ),
                         None,
                     )
 
@@ -110,16 +121,47 @@ class ExtractTopicsTool(BaseTool):
                     if abstract_col:
                         abstracts = group[abstract_col].dropna().tolist()
 
-                    topics.append({
-                        "topic_id": str(topic_key),
-                        "agency": group[agency_col].iloc[0] if agency_col and agency_col in group.columns else None,
-                        "title": group[title_col].iloc[0] if title_col and title_col in group.columns else str(topic_key),
-                        "description": " ".join(abstracts[:5]) if abstracts else None,
-                        "award_count": len(group),
-                        "total_amount": group["award_amount"].sum() if "award_amount" in group.columns else None,
-                        "fiscal_years": sorted(group[next((c for c in ["fiscal_year", "award_year", "fy"] if c in group.columns), "fiscal_year")].dropna().unique().tolist()) if any(c in group.columns for c in ["fiscal_year", "award_year", "fy"]) else [],
-                        "companies": group[next((c for c in ["company", "company_name"] if c in group.columns), "company")].nunique() if any(c in group.columns for c in ["company", "company_name"]) else 0,
-                    })
+                    topics.append(
+                        {
+                            "topic_id": str(topic_key),
+                            "agency": group[agency_col].iloc[0]
+                            if agency_col and agency_col in group.columns
+                            else None,
+                            "title": group[title_col].iloc[0]
+                            if title_col and title_col in group.columns
+                            else str(topic_key),
+                            "description": " ".join(abstracts[:5]) if abstracts else None,
+                            "award_count": len(group),
+                            "total_amount": group["award_amount"].sum()
+                            if "award_amount" in group.columns
+                            else None,
+                            "fiscal_years": sorted(
+                                group[
+                                    next(
+                                        (
+                                            c
+                                            for c in ["fiscal_year", "award_year", "fy"]
+                                            if c in group.columns
+                                        ),
+                                        "fiscal_year",
+                                    )
+                                ]
+                                .dropna()
+                                .unique()
+                                .tolist()
+                            )
+                            if any(c in group.columns for c in ["fiscal_year", "award_year", "fy"])
+                            else [],
+                            "companies": group[
+                                next(
+                                    (c for c in ["company", "company_name"] if c in group.columns),
+                                    "company",
+                                )
+                            ].nunique()
+                            if any(c in group.columns for c in ["company", "company_name"])
+                            else 0,
+                        }
+                    )
             else:
                 # No topic column — create pseudo-topics from agency + abstract clustering
                 metadata.warnings.append(
@@ -132,22 +174,28 @@ class ExtractTopicsTool(BaseTool):
                 )
                 if agency_col:
                     for agency, group in df.groupby(agency_col):
-                        topics.append({
-                            "topic_id": f"agency-{agency}",
-                            "agency": agency,
-                            "title": f"All {agency} topics",
-                            "description": None,
-                            "award_count": len(group),
-                            "total_amount": group["award_amount"].sum() if "award_amount" in group.columns else None,
-                            "fiscal_years": [],
-                            "companies": 0,
-                        })
+                        topics.append(
+                            {
+                                "topic_id": f"agency-{agency}",
+                                "agency": agency,
+                                "title": f"All {agency} topics",
+                                "description": None,
+                                "award_count": len(group),
+                                "total_amount": group["award_amount"].sum()
+                                if "award_amount" in group.columns
+                                else None,
+                                "fiscal_years": [],
+                                "companies": 0,
+                            }
+                        )
 
         # Load solicitation data file if provided
         if solicitation_data_path:
             try:
                 sol_df = pd.read_csv(solicitation_data_path)
-                logger.info(f"Loaded {len(sol_df)} solicitation records from {solicitation_data_path}")
+                logger.info(
+                    f"Loaded {len(sol_df)} solicitation records from {solicitation_data_path}"
+                )
                 metadata.data_sources.append(
                     DataSourceRef(
                         name="SBIR.gov Solicitations (file)",
@@ -160,10 +208,22 @@ class ExtractTopicsTool(BaseTool):
                 logger.warning(f"Could not load solicitation data: {e}")
                 metadata.warnings.append(f"Solicitation file load failed: {e}")
 
-        topics_df = pd.DataFrame(topics) if topics else pd.DataFrame(columns=[
-            "topic_id", "agency", "title", "description", "award_count",
-            "total_amount", "fiscal_years", "companies",
-        ])
+        topics_df = (
+            pd.DataFrame(topics)
+            if topics
+            else pd.DataFrame(
+                columns=[
+                    "topic_id",
+                    "agency",
+                    "title",
+                    "description",
+                    "award_count",
+                    "total_amount",
+                    "fiscal_years",
+                    "companies",
+                ]
+            )
+        )
 
         metadata.data_sources.append(
             DataSourceRef(

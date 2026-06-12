@@ -157,7 +157,7 @@ install: ## Install dependencies with uv
 .PHONY: test
 test: ## Run all tests
 	@$(call info,Running tests)
-	$(call run,uv run pytest -v --cov=src)
+	$(call run,uv run pytest -v --cov=sbir_etl --cov=packages/sbir-analytics/sbir_analytics --cov=packages/sbir-ml/sbir_ml --cov=packages/sbir-graph/sbir_graph)
 
 .PHONY: test-unit
 test-unit: ## Run unit tests only
@@ -214,7 +214,7 @@ format: ## Format code
 .PHONY: dev
 dev: ## Run Dagster dev server locally
 	@$(call info,Starting Dagster dev server)
-	$(call run,uv run dagster dev -m src.definitions)
+	$(call run,uv run dagster dev -m sbir_analytics.definitions)
 
 .PHONY: install-ml
 install-ml: ## Install ML dependencies (jupyter, paecter)
@@ -488,25 +488,25 @@ neo4j-check: env-check ## Run the Neo4j health check
 .PHONY: transition-run
 transition-run: ## Run transition detection pipeline
 	@$(call info,Running transition detection)
-	$(call run,uv run dagster job execute -m src.definitions -j transition_job)
+	$(call run,uv run dagster job execute -m sbir_analytics.definitions -j transition_job)
 	@$(call success,Transition detection completed)
 
 .PHONY: cet-run
 cet-run: ## Run CET classification pipeline
 	@$(call info,Running CET classification)
-	$(call run,uv run dagster job execute -m src.definitions_ml -j cet_full_pipeline_job)
+	$(call run,uv run dagster job execute -m sbir_analytics.definitions_ml -j cet_full_pipeline_job)
 	@$(call success,CET classification completed)
 
 .PHONY: fiscal-run
 fiscal-run: ## Run fiscal returns analysis (BEA API)
 	@$(call info,Running fiscal returns analysis)
-	$(call run,uv run dagster job execute -m src.definitions_ml -j fiscal_returns_mvp_job)
+	$(call run,uv run dagster job execute -m sbir_analytics.definitions_ml -j fiscal_returns_mvp_job)
 	@$(call success,Fiscal returns analysis completed)
 
 .PHONY: paecter-run
 paecter-run: ## Run PaECTER embeddings and similarity
 	@$(call info,Running PaECTER analysis)
-	$(call run,uv run dagster job execute -m src.definitions_ml -j paecter_job)
+	$(call run,uv run dagster job execute -m sbir_analytics.definitions_ml -j paecter_job)
 	@$(call success,PaECTER analysis completed)
 
 # -----------------------------------------------------------------------------

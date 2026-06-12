@@ -25,7 +25,7 @@ from typing import Any
 
 from loguru import logger
 
-# Import the project's TaxonomyLoader. This module lives under src/ml/config and
+# Import the project's TaxonomyLoader. This module lives under packages/sbir-ml/sbir_ml/ml/config and
 # depends on the project's models (Pydantic) to validate the taxonomy.
 from sbir_ml.ml.config.taxonomy_loader import TaxonomyConfig, TaxonomyLoader
 

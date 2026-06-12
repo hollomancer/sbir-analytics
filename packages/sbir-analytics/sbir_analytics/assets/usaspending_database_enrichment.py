@@ -5,7 +5,7 @@ to extract and enrich SBIR award data with transaction-level details.
 """
 
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import pandas as pd
 from dagster import AssetExecutionContext, MetadataValue, Output, asset
@@ -15,7 +15,11 @@ from sbir_etl.config.loader import get_config
 from sbir_etl.exceptions import ExtractionError
 from sbir_etl.extractors.sbir_gov_api import SbirGovClient, SbirGovLookupIndex
 from sbir_etl.extractors.usaspending import DuckDBUSAspendingExtractor
-from sbir_etl.models.sbir_identification import ALL_SBIR_ALNS, EXCLUSIVE_SBIR_ALNS, SBIR_RESEARCH_CODES
+from sbir_etl.models.sbir_identification import (
+    ALL_SBIR_ALNS,
+    EXCLUSIVE_SBIR_ALNS,
+    SBIR_RESEARCH_CODES,
+)
 from sbir_etl.utils.cloud_storage import find_latest_usaspending_dump, get_s3_bucket_from_env
 
 
@@ -40,9 +44,9 @@ def _table_has_column(
 def _build_sbir_gov_index(
     context: AssetExecutionContext,
     *,
-    agencies: Optional[list[str]] = None,
-    year_range: Optional[tuple[int, int]] = None,
-) -> Optional[SbirGovLookupIndex]:
+    agencies: list[str] | None = None,
+    year_range: tuple[int, int] | None = None,
+) -> SbirGovLookupIndex | None:
     """Build a SBIR.gov cross-reference index, trying API first then bulk file.
 
     Args:
@@ -59,11 +63,7 @@ def _build_sbir_gov_index(
     try:
         with SbirGovClient() as client:
             target_agencies = agencies or ["HHS", "DOE", "ED", "DOT"]
-            years = (
-                list(range(year_range[0], year_range[1] + 1))
-                if year_range
-                else [None]
-            )
+            years = list(range(year_range[0], year_range[1] + 1)) if year_range else [None]
 
             for agency in target_agencies:
                 for year in years:
@@ -108,7 +108,7 @@ def _build_sbir_gov_index(
     return None
 
 
-def _find_sbir_gov_bulk_file() -> Optional[Path]:
+def _find_sbir_gov_bulk_file() -> Path | None:
     """Locate a SBIR.gov bulk awards JSON file.
 
     Checks:
@@ -165,8 +165,14 @@ def _crossref_dataframe_with_sbir_gov(
     """
     if df.empty:
         df = df.copy()
-        for col in ["sbir_gov_confirmed", "sbir_gov_match_key", "sbir_gov_program",
-                     "sbir_gov_phase", "sbir_gov_topic_code", "sbir_gov_firm"]:
+        for col in [
+            "sbir_gov_confirmed",
+            "sbir_gov_match_key",
+            "sbir_gov_program",
+            "sbir_gov_phase",
+            "sbir_gov_topic_code",
+            "sbir_gov_firm",
+        ]:
             df[col] = pd.Series(dtype="object")
         df["sbir_gov_confirmed"] = df["sbir_gov_confirmed"].astype(bool)
         return df
@@ -207,9 +213,15 @@ def _crossref_dataframe_with_sbir_gov(
     df = df.copy()
     df["sbir_gov_confirmed"] = hits.apply(lambda h: isinstance(h, dict))
     df["sbir_gov_match_key"] = match_keys
-    df["sbir_gov_program"] = hits.apply(lambda h: h.get("program", "") if isinstance(h, dict) else "")
-    df["sbir_gov_phase"] = hits.apply(lambda h: str(h.get("phase", "")) if isinstance(h, dict) else "")
-    df["sbir_gov_topic_code"] = hits.apply(lambda h: h.get("topic_code", "") if isinstance(h, dict) else "")
+    df["sbir_gov_program"] = hits.apply(
+        lambda h: h.get("program", "") if isinstance(h, dict) else ""
+    )
+    df["sbir_gov_phase"] = hits.apply(
+        lambda h: str(h.get("phase", "")) if isinstance(h, dict) else ""
+    )
+    df["sbir_gov_topic_code"] = hits.apply(
+        lambda h: h.get("topic_code", "") if isinstance(h, dict) else ""
+    )
     df["sbir_gov_firm"] = hits.apply(lambda h: h.get("firm", "") if isinstance(h, dict) else "")
 
     return df
@@ -331,18 +343,31 @@ def sbir_relevant_usaspending_transactions(
     else:
         # FALLBACK: Heuristic filter (agency + NAICS + dollar cap)
         sbir_agencies = [
-            "Department of Defense", "DOD",
-            "Department of Energy", "DOE",
-            "National Aeronautics and Space Administration", "NASA",
-            "National Science Foundation", "NSF",
-            "Department of Health and Human Services", "HHS",
-            "NIH", "National Institutes of Health",
-            "Department of Agriculture", "USDA",
-            "Department of Commerce", "DOC", "NOAA",
-            "Department of Homeland Security", "DHS",
-            "Department of Transportation", "DOT",
-            "Environmental Protection Agency", "EPA",
-            "Department of Education", "ED",
+            "Department of Defense",
+            "DOD",
+            "Department of Energy",
+            "DOE",
+            "National Aeronautics and Space Administration",
+            "NASA",
+            "National Science Foundation",
+            "NSF",
+            "Department of Health and Human Services",
+            "HHS",
+            "NIH",
+            "National Institutes of Health",
+            "Department of Agriculture",
+            "USDA",
+            "Department of Commerce",
+            "DOC",
+            "NOAA",
+            "Department of Homeland Security",
+            "DHS",
+            "Department of Transportation",
+            "DOT",
+            "Environmental Protection Agency",
+            "EPA",
+            "Department of Education",
+            "ED",
         ]
         agencies_sql = ",".join(f"'{a}'" for a in sbir_agencies)
 
@@ -418,9 +443,7 @@ def sbir_relevant_usaspending_transactions(
     # ones are real SBIR awards.
     sbir_gov_stats: dict[str, Any] = {}
     if not has_research_col and not df.empty:
-        context.log.info(
-            "Heuristic filter used — cross-referencing with SBIR.gov to validate"
-        )
+        context.log.info("Heuristic filter used — cross-referencing with SBIR.gov to validate")
         sbir_gov_index = _build_sbir_gov_index(context)
         if sbir_gov_index:
             df = _crossref_dataframe_with_sbir_gov(df, sbir_gov_index)
@@ -430,9 +453,7 @@ def sbir_relevant_usaspending_transactions(
                 "sbir_gov_confirmed": confirmed,
                 "sbir_gov_unconfirmed": len(df) - confirmed,
             }
-            context.log.info(
-                f"SBIR.gov cross-reference: {confirmed}/{len(df)} confirmed"
-            )
+            context.log.info(f"SBIR.gov cross-reference: {confirmed}/{len(df)} confirmed")
         else:
             sbir_gov_stats = {"sbir_gov_status": "unavailable"}
 
@@ -719,9 +740,7 @@ def sbir_grant_transactions(
     # enrichment fields (topic_code, PI); for shared ALNs it confirms or denies.
     sbir_gov_stats: dict[str, Any] = {}
     if shared_count > 0:
-        context.log.info(
-            f"Cross-referencing {shared_count} shared-ALN grants with SBIR.gov"
-        )
+        context.log.info(f"Cross-referencing {shared_count} shared-ALN grants with SBIR.gov")
 
         # Determine which agencies have shared ALNs to limit API queries
         shared_agencies = []
@@ -765,12 +784,12 @@ def sbir_grant_transactions(
 
             # Upgrade shared-ALN records that are confirmed by SBIR.gov
             if "sbir_gov_confirmed" in df.columns and "sbir_aln_confidence" in df.columns:
-                upgrade_mask = (
-                    (df["sbir_aln_confidence"] == "shared") & df["sbir_gov_confirmed"]
-                )
+                upgrade_mask = (df["sbir_aln_confidence"] == "shared") & df["sbir_gov_confirmed"]
                 df.loc[upgrade_mask, "sbir_aln_confidence"] = "shared_confirmed"
 
-            confirmed_total = int(df["sbir_gov_confirmed"].sum()) if "sbir_gov_confirmed" in df.columns else 0
+            confirmed_total = (
+                int(df["sbir_gov_confirmed"].sum()) if "sbir_gov_confirmed" in df.columns else 0
+            )
             shared_confirmed = int(
                 (df["sbir_aln_confidence"] == "shared_confirmed").sum()
                 if "sbir_aln_confidence" in df.columns

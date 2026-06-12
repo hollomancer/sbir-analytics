@@ -11,8 +11,8 @@
 #  - executes the provided command
 #
 # Usage:
-#   sh etl-runner.sh -- python -m src.scripts.materialize
-#   sh etl-runner.sh python -m src.scripts.materialize
+#   sh etl-runner.sh -- python -m scripts.materialize
+#   sh etl-runner.sh python -m scripts.materialize
 #
 # Exit codes:
 #   0  - command executed successfully
@@ -177,7 +177,7 @@ usage() {
 Usage: $0 -- <cmd>
 Run an ad-hoc ETL command inside the container after ensuring dependencies.
 Examples:
-  $0 -- python -m src.scripts.materialize
+  $0 -- python -m scripts.materialize
   $0 -- dbt run
 Notes:
   - Ensure you have a local .env file (copy from .env.example) or the environment

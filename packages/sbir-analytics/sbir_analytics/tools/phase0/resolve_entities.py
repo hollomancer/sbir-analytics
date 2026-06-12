@@ -106,7 +106,9 @@ class ResolveEntitiesTool(BaseTool):
             try:
                 gold_df = pd.read_csv(gold_set_path)
                 src_col = next((c for c in ["source_name", "name"] if c in gold_df.columns), None)
-                can_col = next((c for c in ["canonical_id", "canonical"] if c in gold_df.columns), None)
+                can_col = next(
+                    (c for c in ["canonical_id", "canonical"] if c in gold_df.columns), None
+                )
                 if src_col and can_col:
                     gold_set = dict(zip(gold_df[src_col], gold_df[can_col], strict=False))
                     logger.info(f"Loaded {len(gold_set)} gold set linkages from {gold_set_path}")
@@ -215,17 +217,24 @@ class ResolveEntitiesTool(BaseTool):
                     matched["source_ids"]["sbir_gov"] = uei or duns or name
                     if name not in matched["name_variants"]:
                         matched["name_variants"].append(name)
-                    match_log.append({
-                        "source": "sbir_gov",
-                        "source_name": name,
-                        "canonical_id": matched["canonical_id"],
-                        "method": method,
-                        "confidence": 1.0 if method in ("uei_exact", "duns_exact") else 0.95,
-                    })
+                    match_log.append(
+                        {
+                            "source": "sbir_gov",
+                            "source_name": name,
+                            "canonical_id": matched["canonical_id"],
+                            "method": method,
+                            "confidence": 1.0 if method in ("uei_exact", "duns_exact") else 0.95,
+                        }
+                    )
                 else:
-                    unmatched_sbir.append({
-                        "name": name, "state": state, "uei": uei, "duns": duns,
-                    })
+                    unmatched_sbir.append(
+                        {
+                            "name": name,
+                            "state": state,
+                            "uei": uei,
+                            "duns": duns,
+                        }
+                    )
 
             logger.info(
                 f"SBIR deterministic: {deterministic_matches}/{len(sbir_companies)} matched, "
@@ -259,27 +268,35 @@ class ResolveEntitiesTool(BaseTool):
                     if best_score >= fuzzy_auto_threshold and best_idx >= 0:
                         # Auto-merge
                         matched = entities[canonical_names[best_idx][1]]
-                        matched["source_ids"]["sbir_gov"] = company["uei"] or company["duns"] or company["name"]
+                        matched["source_ids"]["sbir_gov"] = (
+                            company["uei"] or company["duns"] or company["name"]
+                        )
                         if company["name"] not in matched["name_variants"]:
                             matched["name_variants"].append(company["name"])
                         fuzzy_matches += 1
-                        match_log.append({
-                            "source": "sbir_gov",
-                            "source_name": company["name"],
-                            "canonical_id": matched["canonical_id"],
-                            "method": "fuzzy_auto",
-                            "confidence": best_score / 100.0,
-                        })
+                        match_log.append(
+                            {
+                                "source": "sbir_gov",
+                                "source_name": company["name"],
+                                "canonical_id": matched["canonical_id"],
+                                "method": "fuzzy_auto",
+                                "confidence": best_score / 100.0,
+                            }
+                        )
                     elif best_score >= fuzzy_review_threshold and best_idx >= 0:
                         # Flag for review
                         flagged_for_review += 1
-                        match_log.append({
-                            "source": "sbir_gov",
-                            "source_name": company["name"],
-                            "canonical_id": entities[canonical_names[best_idx][1]]["canonical_id"],
-                            "method": "fuzzy_review_needed",
-                            "confidence": best_score / 100.0,
-                        })
+                        match_log.append(
+                            {
+                                "source": "sbir_gov",
+                                "source_name": company["name"],
+                                "canonical_id": entities[canonical_names[best_idx][1]][
+                                    "canonical_id"
+                                ],
+                                "method": "fuzzy_review_needed",
+                                "confidence": best_score / 100.0,
+                            }
+                        )
                     else:
                         # Create new entity
                         canonical_id = _generate_canonical_id(company["name"], company["uei"])
@@ -292,18 +309,22 @@ class ResolveEntitiesTool(BaseTool):
                             "state": company["state"],
                             "naics": None,
                             "name_variants": [company["name"]],
-                            "source_ids": {"sbir_gov": company["uei"] or company["duns"] or company["name"]},
+                            "source_ids": {
+                                "sbir_gov": company["uei"] or company["duns"] or company["name"]
+                            },
                             "confidence": 0.5,
                             "match_method": "new_entity",
                         }
                         entities.append(new_entity)
-                        match_log.append({
-                            "source": "sbir_gov",
-                            "source_name": company["name"],
-                            "canonical_id": canonical_id,
-                            "method": "new_entity",
-                            "confidence": 0.5,
-                        })
+                        match_log.append(
+                            {
+                                "source": "sbir_gov",
+                                "source_name": company["name"],
+                                "canonical_id": canonical_id,
+                                "method": "new_entity",
+                                "confidence": 0.5,
+                            }
+                        )
 
                 logger.info(
                     f"Fuzzy matching: {fuzzy_matches} auto-merged, "
@@ -347,11 +368,21 @@ class ResolveEntitiesTool(BaseTool):
         if entities:
             entity_df = pd.DataFrame(entities)
         else:
-            entity_df = pd.DataFrame(columns=[
-                "canonical_id", "canonical_name", "uei", "duns", "cage",
-                "state", "naics", "name_variants", "source_ids",
-                "confidence", "match_method",
-            ])
+            entity_df = pd.DataFrame(
+                columns=[
+                    "canonical_id",
+                    "canonical_name",
+                    "uei",
+                    "duns",
+                    "cage",
+                    "state",
+                    "naics",
+                    "name_variants",
+                    "source_ids",
+                    "confidence",
+                    "match_method",
+                ]
+            )
 
         match_log_df = pd.DataFrame(match_log) if match_log else pd.DataFrame()
 
@@ -367,10 +398,14 @@ class ResolveEntitiesTool(BaseTool):
             "match_log": match_log_df,
             "stats": {
                 "total_canonical_entities": len(entity_df),
-                "deterministic_matches": len([m for m in match_log if m.get("method", "").endswith("exact")]),
+                "deterministic_matches": len(
+                    [m for m in match_log if m.get("method", "").endswith("exact")]
+                ),
                 "fuzzy_auto_merges": fuzzy_matches,
                 "flagged_for_review": flagged_for_review,
-                "new_entities_created": len([e for e in entities if e.get("match_method") == "new_entity"]),
+                "new_entities_created": len(
+                    [e for e in entities if e.get("match_method") == "new_entity"]
+                ),
             },
         }
 

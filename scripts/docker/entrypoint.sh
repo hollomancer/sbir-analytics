@@ -203,7 +203,7 @@ If invoked with no service or with '-- <cmd>', the provided command will be exec
 Examples:
   entrypoint.sh dagster-webserver
   entrypoint.sh dagster-daemon
-  entrypoint.sh etl-runner -- python -m src.scripts.my_job
+  entrypoint.sh etl-runner -- python -m scripts.my_job
   entrypoint.sh -- python -c 'print(\"hello\")'
 EOF
 }

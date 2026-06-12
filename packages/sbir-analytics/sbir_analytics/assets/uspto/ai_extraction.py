@@ -405,9 +405,7 @@ def raw_uspto_ai_human_sample_extraction(context, uspto_ai_deduplicate) -> str:
     try:
         con = duckdb.connect(database=str(duckdb_path), read_only=True)
         try:
-            df = con.execute(
-                f"SELECT * FROM {table} ORDER BY RANDOM() LIMIT {sample_n}"
-            ).fetchdf()
+            df = con.execute(f"SELECT * FROM {table} ORDER BY RANDOM() LIMIT {sample_n}").fetchdf()
         except Exception:
             context.log.warning("Failed to query DuckDB table %s for sampling", table)
             df = None

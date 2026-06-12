@@ -1,5 +1,5 @@
 """
-sbir-analytics/src/loaders/neo4j_patent_loader.py
+packages/sbir-graph/sbir_graph/loaders/neo4j/patent_cet.py
 
 Neo4j loader for patent CET classifications with idempotent MERGE operations.
 

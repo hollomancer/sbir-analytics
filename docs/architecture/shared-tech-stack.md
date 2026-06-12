@@ -340,7 +340,7 @@ def my_asset_quality_check(my_asset: pd.DataFrame) -> AssetCheckResult:
 ## packages/sbir-analytics/sbir_analytics/assets/__init__.py
 
 from dagster import load_assets_from_modules
-from src import assets
+from sbir_analytics import assets
 
 asset_modules = assets.iter_asset_modules()
 all_assets = load_assets_from_modules(asset_modules)

@@ -221,7 +221,7 @@ def run_validation_scripts(
     # Try multiple possible locations for schema files
     schema_paths = [
         Path("/var/task/docs/data/sbir_awards_columns.json"),
-        Path("/var/task/src/docs/data/sbir_awards_columns.json"),
+        Path("/var/task/docs/data/sbir_awards_columns.json"),
     ]
     schema_path = next((p for p in schema_paths if p.exists()), None)
     if not schema_path:
@@ -229,7 +229,7 @@ def run_validation_scripts(
 
     company_schema_paths = [
         Path("/var/task/docs/data/sbir_company_columns.json"),
-        Path("/var/task/src/docs/data/sbir_company_columns.json"),
+        Path("/var/task/docs/data/sbir_company_columns.json"),
     ]
     company_schema_path = next((p for p in company_schema_paths if p.exists()), None)
     if not company_schema_path:

@@ -75,7 +75,7 @@ export SBIR_ETL__LOGGING__LEVEL="DEBUG"
 
 ## Type Safety
 
-Configuration is validated using Pydantic models in `src/config/schemas.py`. This ensures:
+Configuration is validated using Pydantic models in `sbir_etl/config/schemas/`. This ensures:
 
 - Type safety at runtime
 - Automatic validation of configuration values
@@ -149,7 +149,7 @@ Configuration is automatically validated when loaded. Invalid configuration will
 
 ## Adding New Configuration
 
-1. Add the new fields to the appropriate Pydantic model in `src/config/schemas.py`
+1. Add the new fields to the appropriate Pydantic model in `sbir_etl/config/schemas/`
 2. Add default values to `base.yaml`
 3. Add environment-specific overrides to `dev.yaml`/`test.yaml`/`prod.yaml` as needed
 4. Update this documentation

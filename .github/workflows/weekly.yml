@@ -250,7 +250,7 @@ jobs:
         run: |
           uv run pytest \
             -m "e2e or real_data or weekly" \
-            --cov=src \
+            --cov=sbir_etl --cov=packages/sbir-analytics/sbir_analytics --cov=packages/sbir-ml/sbir_ml --cov=packages/sbir-graph/sbir_graph \
             --cov-report=html \
             --cov-report=xml \
             --cov-report=term \

@@ -1,4 +1,4 @@
-# sbir-analytics/src/assets/jobs/cet_pipeline_job.py
+# packages/sbir-analytics/sbir_analytics/assets/jobs/cet_pipeline_job.py
 """
 Dagster job that orchestrates the full CET flow end-to-end:
 

@@ -90,10 +90,13 @@ class TaxEstimationTool(BaseTool):
         Returns:
             ToolResult with Track A estimates, Track B observations, calibration
         """
-        metadata.upstream_tools.extend([
-            "naics_to_bea_crosswalk", "stateio_multipliers",
-            "compute_observable_commercialization",
-        ])
+        metadata.upstream_tools.extend(
+            [
+                "naics_to_bea_crosswalk",
+                "stateio_multipliers",
+                "compute_observable_commercialization",
+            ]
+        )
 
         tax_rates = effective_tax_rates or DEFAULT_EFFECTIVE_TAX_RATES
 
@@ -107,19 +110,24 @@ class TaxEstimationTool(BaseTool):
 
             # Required columns
             sector_col = next(
-                (c for c in ["bea_sector", "sector"] if c in df.columns), None,
+                (c for c in ["bea_sector", "sector"] if c in df.columns),
+                None,
             )
             state_col = next(
-                (c for c in ["state", "company_state"] if c in df.columns), None,
+                (c for c in ["state", "company_state"] if c in df.columns),
+                None,
             )
             amount_col = next(
-                (c for c in ["award_amount", "amount"] if c in df.columns), None,
+                (c for c in ["award_amount", "amount"] if c in df.columns),
+                None,
             )
             fy_col = next(
-                (c for c in ["fiscal_year", "award_year", "fy"] if c in df.columns), None,
+                (c for c in ["fiscal_year", "award_year", "fy"] if c in df.columns),
+                None,
             )
             company_col = next(
-                (c for c in ["canonical_id", "company"] if c in df.columns), None,
+                (c for c in ["canonical_id", "company"] if c in df.columns),
+                None,
             )
 
             # Build multiplier lookup
@@ -142,7 +150,9 @@ class TaxEstimationTool(BaseTool):
                 company = row.get(company_col) if company_col else None
 
                 # Get multiplier
-                mult = mult_lookup.get((state, sector), {"output": 1.0, "employment": 1.0, "value_added": 1.0})
+                mult = mult_lookup.get(
+                    (state, sector), {"output": 1.0, "employment": 1.0, "value_added": 1.0}
+                )
                 output_impact = award_amount * mult["output"]
                 value_added = award_amount * mult["value_added"]
 
@@ -167,24 +177,26 @@ class TaxEstimationTool(BaseTool):
                 discount_factor = 1.0 / ((1.0 + discount_rate) ** years_from_present)
                 discounted_tax = total_tax * discount_factor
 
-                track_a_results.append({
-                    "company_id": company,
-                    "fiscal_year": fy,
-                    "state": state,
-                    "bea_sector": sector,
-                    "award_amount": round(award_amount, 2),
-                    "output_multiplier": round(mult["output"], 4),
-                    "output_impact": round(output_impact, 2),
-                    "value_added": round(value_added, 2),
-                    "estimated_wages": round(wages, 2),
-                    "individual_income_tax": round(individual_income_tax, 2),
-                    "payroll_tax": round(payroll_tax, 2),
-                    "corporate_income_tax": round(corporate_income_tax, 2),
-                    "total_estimated_tax": round(total_tax, 2),
-                    "discounted_tax": round(discounted_tax, 2),
-                    "discount_factor": round(discount_factor, 6),
-                    "effective_tax_rate_used": corp_tax_rate,
-                })
+                track_a_results.append(
+                    {
+                        "company_id": company,
+                        "fiscal_year": fy,
+                        "state": state,
+                        "bea_sector": sector,
+                        "award_amount": round(award_amount, 2),
+                        "output_multiplier": round(mult["output"], 4),
+                        "output_impact": round(output_impact, 2),
+                        "value_added": round(value_added, 2),
+                        "estimated_wages": round(wages, 2),
+                        "individual_income_tax": round(individual_income_tax, 2),
+                        "payroll_tax": round(payroll_tax, 2),
+                        "corporate_income_tax": round(corporate_income_tax, 2),
+                        "total_estimated_tax": round(total_tax, 2),
+                        "discounted_tax": round(discounted_tax, 2),
+                        "discount_factor": round(discount_factor, 6),
+                        "effective_tax_rate_used": corp_tax_rate,
+                    }
+                )
 
         track_a_df = pd.DataFrame(track_a_results) if track_a_results else pd.DataFrame()
 
@@ -194,8 +206,11 @@ class TaxEstimationTool(BaseTool):
         track_b_summary: dict[str, Any] = {}
         if fpds_revenue is not None and not fpds_revenue.empty:
             amount_col_b = next(
-                (c for c in ["fpds_total_revenue", "obligation_amount", "amount"]
-                 if c in fpds_revenue.columns),
+                (
+                    c
+                    for c in ["fpds_total_revenue", "obligation_amount", "amount"]
+                    if c in fpds_revenue.columns
+                ),
                 None,
             )
             if amount_col_b:
@@ -227,7 +242,11 @@ class TaxEstimationTool(BaseTool):
             if company_col_b:
                 a_by_company = track_a_df.groupby(company_col_a)["total_estimated_tax"].sum()
                 b_col = next(
-                    (c for c in ["fpds_total_revenue", "obligation_amount"] if c in fpds_revenue.columns),
+                    (
+                        c
+                        for c in ["fpds_total_revenue", "obligation_amount"]
+                        if c in fpds_revenue.columns
+                    ),
                     None,
                 )
                 if b_col:
@@ -241,7 +260,11 @@ class TaxEstimationTool(BaseTool):
                             "overlapping_companies": len(overlap),
                             "track_a_total": float(a_vals.sum()),
                             "track_b_total": float(b_vals.sum()),
-                            "median_ratio": float((a_vals / b_vals.replace(0, float("nan"))).median()) if len(overlap) > 0 else None,
+                            "median_ratio": float(
+                                (a_vals / b_vals.replace(0, float("nan"))).median()
+                            )
+                            if len(overlap) > 0
+                            else None,
                         }
 
         # =====================================================================
@@ -249,17 +272,31 @@ class TaxEstimationTool(BaseTool):
         # =====================================================================
         summary: dict[str, Any] = {
             "track_a": {
-                "total_estimated_tax_receipts": float(track_a_df["total_estimated_tax"].sum()) if not track_a_df.empty else 0.0,
-                "total_discounted_tax_receipts": float(track_a_df["discounted_tax"].sum()) if not track_a_df.empty and "discounted_tax" in track_a_df.columns else 0.0,
-                "total_sbir_investment": float(track_a_df["award_amount"].sum()) if not track_a_df.empty else 0.0,
+                "total_estimated_tax_receipts": float(track_a_df["total_estimated_tax"].sum())
+                if not track_a_df.empty
+                else 0.0,
+                "total_discounted_tax_receipts": float(track_a_df["discounted_tax"].sum())
+                if not track_a_df.empty and "discounted_tax" in track_a_df.columns
+                else 0.0,
+                "total_sbir_investment": float(track_a_df["award_amount"].sum())
+                if not track_a_df.empty
+                else 0.0,
                 "implied_roi": round(
-                    float(track_a_df["total_estimated_tax"].sum()) /
-                    float(track_a_df["award_amount"].sum()), 4
-                ) if not track_a_df.empty and track_a_df["award_amount"].sum() > 0 else None,
+                    float(track_a_df["total_estimated_tax"].sum())
+                    / float(track_a_df["award_amount"].sum()),
+                    4,
+                )
+                if not track_a_df.empty and track_a_df["award_amount"].sum() > 0
+                else None,
                 "npv_roi": round(
-                    float(track_a_df["discounted_tax"].sum()) /
-                    float(track_a_df["award_amount"].sum()), 4
-                ) if not track_a_df.empty and "discounted_tax" in track_a_df.columns and track_a_df["award_amount"].sum() > 0 else None,
+                    float(track_a_df["discounted_tax"].sum())
+                    / float(track_a_df["award_amount"].sum()),
+                    4,
+                )
+                if not track_a_df.empty
+                and "discounted_tax" in track_a_df.columns
+                and track_a_df["award_amount"].sum() > 0
+                else None,
                 "discount_rate": discount_rate,
                 "awards_estimated": len(track_a_df),
             },

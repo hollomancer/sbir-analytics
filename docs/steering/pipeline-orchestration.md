@@ -206,7 +206,7 @@ def enrichment_success_rate_check(enriched_sbir_awards: pd.DataFrame) -> AssetCh
 
 ### How to Add a New Quality Gate
 
-1. Co-locate the check with the target asset in `src/assets/...`.
+1. Co-locate the check with the target asset in `packages/sbir-analytics/sbir_analytics/assets/...`.
 2. Name the function `<asset_name>_<check_purpose>_check`.
 3. Read thresholds from loaded config (e.g., `config.data_quality.thresholds`).
 4. Compute metrics and return `AssetCheckResult(passed=..., metadata=...)`.

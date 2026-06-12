@@ -69,7 +69,7 @@ mypy sbir_etl/
 
 ## Security scan
 
-bandit -r src/
+bandit -r sbir_etl packages/sbir-analytics/sbir_analytics packages/sbir-ml/sbir_ml packages/sbir-graph/sbir_graph
 
 ## Run all quality checks
 
@@ -107,10 +107,10 @@ uv run dagster dev
 
 ## Run specific jobs via CLI
 
-dagster job execute -f src/definitions.py -j sbir_weekly_refresh_job
-dagster job execute -f src/definitions.py -j cet_full_pipeline_job
-dagster job execute -f src/definitions.py -j fiscal_returns_mvp_job
-dagster job execute -f src/definitions.py -j fiscal_returns_full_job
+dagster job execute -m sbir_analytics.definitions -j sbir_weekly_refresh_job
+dagster job execute -m sbir_analytics.definitions -j cet_full_pipeline_job
+dagster job execute -m sbir_analytics.definitions -j fiscal_returns_mvp_job
+dagster job execute -m sbir_analytics.definitions -j fiscal_returns_full_job
 
 ## Container-based development
 

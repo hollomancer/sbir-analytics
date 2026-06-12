@@ -240,7 +240,10 @@ Detects which parts of the codebase changed using path filters.
   with:
     filters: |
       code-changed:
-        - 'src/**'
+        - 'sbir_etl/**'
+        - 'packages/sbir-analytics/sbir_analytics/**'
+        - 'packages/sbir-ml/sbir_ml/**'
+        - 'packages/sbir-graph/sbir_graph/**'
         - 'tests/**'
       docs-only:
         - '**/*.md'

@@ -2,7 +2,7 @@
 
 import json
 import os
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from pathlib import Path
 from typing import Any
 
@@ -56,11 +56,13 @@ def _apply_quality_filters(
         sample_indices = df.index[empty_mask].tolist()[:_SAMPLE_LIMIT]
         df = df[~empty_mask].copy()
         after = len(df)
-        audit["steps"].append({
-            "name": "empty_award_id",
-            "dropped_count": dropped_count,
-            "sample_indices": sample_indices,
-        })
+        audit["steps"].append(
+            {
+                "name": "empty_award_id",
+                "dropped_count": dropped_count,
+                "sample_indices": sample_indices,
+            }
+        )
         if before != after:
             context.log.info(f"Empty award_id filter: {before} -> {after} ({after / before:.1%})")
 
@@ -73,10 +75,12 @@ def _apply_quality_filters(
         became_null = before_numeric.isna()
         amount_coerced_count = int((was_non_null & became_null).sum())
         df["award_amount"] = before_numeric
-        audit["steps"].append({
-            "name": "award_amount_coercion",
-            "coerced_to_nan_count": amount_coerced_count,
-        })
+        audit["steps"].append(
+            {
+                "name": "award_amount_coercion",
+                "coerced_to_nan_count": amount_coerced_count,
+            }
+        )
 
     # 3. Coerce award_date to datetime (records modified, not dropped)
     date_coerced_count = 0
@@ -86,10 +90,12 @@ def _apply_quality_filters(
         became_null = before_dates.isna()
         date_coerced_count = int((was_non_null & became_null).sum())
         df["award_date"] = before_dates
-        audit["steps"].append({
-            "name": "award_date_coercion",
-            "coerced_to_nat_count": date_coerced_count,
-        })
+        audit["steps"].append(
+            {
+                "name": "award_date_coercion",
+                "coerced_to_nat_count": date_coerced_count,
+            }
+        )
 
     # 4. Remove exact duplicates (award_id + phase or award_id only)
     if "award_id" in df.columns and "phase" in df.columns:
@@ -99,11 +105,13 @@ def _apply_quality_filters(
         sample_indices = df.index[dup_mask].tolist()[:_SAMPLE_LIMIT]
         df = df[~dup_mask].copy()
         after = len(df)
-        audit["steps"].append({
-            "name": "dedup_award_id_phase",
-            "dropped_count": dropped_count,
-            "sample_indices": sample_indices,
-        })
+        audit["steps"].append(
+            {
+                "name": "dedup_award_id_phase",
+                "dropped_count": dropped_count,
+                "sample_indices": sample_indices,
+            }
+        )
         if before != after:
             context.log.info(
                 f"Duplicate filter (award_id + phase): {before} -> {after} ({after / before:.1%})"
@@ -115,11 +123,13 @@ def _apply_quality_filters(
         sample_indices = df.index[dup_mask].tolist()[:_SAMPLE_LIMIT]
         df = df[~dup_mask].copy()
         after = len(df)
-        audit["steps"].append({
-            "name": "dedup_award_id",
-            "dropped_count": dropped_count,
-            "sample_indices": sample_indices,
-        })
+        audit["steps"].append(
+            {
+                "name": "dedup_award_id",
+                "dropped_count": dropped_count,
+                "sample_indices": sample_indices,
+            }
+        )
         if before != after:
             context.log.info(
                 f"Duplicate filter (award_id only): {before} -> {after} ({after / before:.1%})"
@@ -304,7 +314,7 @@ def raw_sbir_awards(context: AssetExecutionContext) -> Output[pd.DataFrame]:
 
     # Stamp data source provenance on every record
     # Prefer the original S3 URL over the resolved temp/cache path
-    ingested_at = datetime.now(timezone.utc)
+    ingested_at = datetime.now(UTC)
     source_url = sbir_config.csv_path_s3 or str(extractor.csv_path)
     df["data_source"] = "sbir.gov"
     df["data_source_url"] = str(source_url)
@@ -352,9 +362,7 @@ def validated_sbir_awards(
     filtered_df, filter_audit = _apply_quality_filters(raw_sbir_awards, context)
 
     # Run validation on the filtered data
-    quality_report = validate_sbir_awards(
-        df=filtered_df, pass_rate_threshold=pass_rate_threshold
-    )
+    quality_report = validate_sbir_awards(df=filtered_df, pass_rate_threshold=pass_rate_threshold)
 
     # Filter to passing records using failing_row_indices (fast path) or
     # fall back to issue-based filtering for backward compatibility
@@ -388,9 +396,7 @@ def validated_sbir_awards(
     # Build audit summary for metadata (strip sample indices for serialization —
     # keep counts and step names so Dagster UI shows a concise trail)
     audit_summary = {
-        step["name"]: {
-            k: v for k, v in step.items() if k != "sample_indices"
-        }
+        step["name"]: {k: v for k, v in step.items() if k != "sample_indices"}
         for step in filter_audit.get("steps", [])
     }
     audit_summary["totals"] = {

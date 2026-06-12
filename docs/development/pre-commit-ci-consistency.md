@@ -149,7 +149,7 @@ Some rule failed
 
 **Common issues:**
 
-- **Ruff errors:** Run `ruff check src tests --fix` to auto-fix many issues
+- **Ruff errors:** Run `ruff check sbir_etl packages/sbir-analytics/sbir_analytics packages/sbir-ml/sbir_ml packages/sbir-graph/sbir_graph tests --fix` to auto-fix many issues
 - **MyPy errors:** Read the error message and add type hints or `# type: ignore` comments
 - **Bandit alerts:** Review and fix security issues, or add `# nosec` if false positive
 - **Detect-secrets alerts:** Review the secret, or add to `.secrets.baseline` if approved
@@ -174,17 +174,17 @@ This workflow runs on:
    - Time: ~5-10 minutes
 
 2. **lint** (Ruff)
-   - Runs: `ruff check src tests` + `ruff format --check src tests`
+   - Runs: `ruff check sbir_etl packages/sbir-analytics/sbir_analytics packages/sbir-ml/sbir_ml packages/sbir-graph/sbir_graph tests` + `ruff format --check sbir_etl packages/sbir-analytics/sbir_analytics packages/sbir-ml/sbir_ml packages/sbir-graph/sbir_graph tests`
    - Purpose: Visibility into linting results
    - Time: ~1-2 minutes
 
 3. **types** (MyPy)
-   - Runs: `mypy src`
+   - Runs: `mypy sbir_etl`
    - Purpose: Type checking visibility
    - Time: ~1-2 minutes
 
 4. **security** (Bandit)
-   - Runs: `bandit -r src -c pyproject.toml`
+   - Runs: `bandit -r sbir_etl packages/sbir-analytics/sbir_analytics packages/sbir-ml/sbir_ml packages/sbir-graph/sbir_graph -c pyproject.toml`
    - Purpose: Security scanning visibility
    - Time: ~1 minute
 
@@ -253,11 +253,11 @@ Tool versions are pinned in:
 | Item | Local | CI | Notes |
 |------|-------|----|----|
 | Tool versions | `.pre-commit-config.yaml` | `.pre-commit-config.yaml` | Identical |
-| Ruff scope | `.pre-commit-config.yaml` | `static-analysis.yml` | Both: `src tests` |
+| Ruff scope | `.pre-commit-config.yaml` | `static-analysis.yml` | Both: all production roots plus `tests` |
 | Ruff config | `pyproject.toml` | `pyproject.toml` | Identical |
-| MyPy scope | `pyproject.toml` + `.pre-commit-config.yaml` | `static-analysis.yml` | Both: `src` only |
+| MyPy scope | `pyproject.toml` + `.pre-commit-config.yaml` | `static-analysis.yml` | Both: `sbir_etl` only |
 | MyPy config | `pyproject.toml` | `pyproject.toml` | Identical |
-| Bandit scope | `.pre-commit-config.yaml` | `static-analysis.yml` | Both: `-r src` |
+| Bandit scope | `.pre-commit-config.yaml` | `static-analysis.yml` | Both: all production roots |
 | Bandit config | `pyproject.toml` | `pyproject.toml` | Identical |
 
 ---

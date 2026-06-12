@@ -1,4 +1,4 @@
-# sbir-analytics/src/enrichers/usaspending_enricher.py
+# sbir_etl/enrichers/usaspending/enricher.py
 """
 USAspending enricher for SBIR awards using identifier-first matching strategy.
 

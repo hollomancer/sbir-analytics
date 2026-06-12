@@ -308,7 +308,7 @@ class CompanyCETAggregator:
 
         # Build dominant CET and specialization
         rows: list[dict[str, Any]] = []
-        company_ids = sorted(stats.index.tolist(), key=lambda x: (str(x) if x is not None else ""))
+        company_ids = sorted(stats.index.tolist(), key=lambda x: str(x) if x is not None else "")
         for cid in company_ids:
             company_row = stats.loc[cid]
             c_name = self.df.loc[self.df["company_id"] == cid, "company_name"]

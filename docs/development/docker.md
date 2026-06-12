@@ -96,7 +96,7 @@ S3_BUCKET=sbir-etl-production-data
 DAGSTER_HOME=/app/.dagster
 
 # Python environment
-PYTHONPATH=/app/src
+PYTHONPATH=/app
 ```
 
 ## Docker Compose Configuration
@@ -117,7 +117,7 @@ Development profile mounts local directories for live editing:
 
 | Local | Container | Purpose |
 |-------|-----------|---------|
-| `./src` | `/app/src` | Source code |
+| `./sbir_etl` | `/app/sbir_etl` | ETL source code |
 | `./tests` | `/app/tests` | Test files |
 | `./config` | `/app/config` | Configuration |
 

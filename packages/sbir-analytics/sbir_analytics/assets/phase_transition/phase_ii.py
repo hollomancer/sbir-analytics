@@ -172,7 +172,9 @@ def _prepare_contract_rows(contracts: pd.DataFrame) -> pd.DataFrame:
                 _pick("federal_action_obligation", "obligation_amount", "obligated_amount"),
                 errors="coerce",
             ),
-            "award_date": coerce_date_series(_pick("action_date", "award_date", "start_date")).dt.date,
+            "award_date": coerce_date_series(
+                _pick("action_date", "award_date", "start_date")
+            ).dt.date,
             "period_of_performance_start": coerce_date_series(
                 _pick("period_of_performance_start_date", "start_date", "pop_start_date")
             ).dt.date,
@@ -212,7 +214,9 @@ def _prepare_sbir_gov_rows(sbir_awards: pd.DataFrame) -> pd.DataFrame:
             "sub_agency": df.get("branch"),
             "award_amount": pd.to_numeric(df.get("award_amount"), errors="coerce"),
             "award_date": coerce_date_series(df.get("award_date")).dt.date,
-            "period_of_performance_start": coerce_date_series(df.get("contract_start_date")).dt.date,
+            "period_of_performance_start": coerce_date_series(
+                df.get("contract_start_date")
+            ).dt.date,
             "period_of_performance_end": coerce_date_series(df.get("contract_end_date")).dt.date,
             "source": "sbir_gov",
             "phase_coding_reconciled": True,
@@ -260,12 +264,17 @@ def _agency_coverage(df: pd.DataFrame) -> dict[str, int]:
 def validated_phase_ii_awards(context=None) -> Output[pd.DataFrame]:
     """Materialize the unified Phase II frame."""
 
-    contracts_path = Path(env_str("SBIR_ETL__PHASE_TRANSITION__CONTRACTS_PATH", DEFAULT_CONTRACTS_PATH) or DEFAULT_CONTRACTS_PATH)
+    contracts_path = Path(
+        env_str("SBIR_ETL__PHASE_TRANSITION__CONTRACTS_PATH", DEFAULT_CONTRACTS_PATH)
+        or DEFAULT_CONTRACTS_PATH
+    )
     sbir_awards_path = Path(
-        env_str("SBIR_ETL__PHASE_TRANSITION__SBIR_AWARDS_PATH", DEFAULT_SBIR_AWARDS_PATH) or DEFAULT_SBIR_AWARDS_PATH
+        env_str("SBIR_ETL__PHASE_TRANSITION__SBIR_AWARDS_PATH", DEFAULT_SBIR_AWARDS_PATH)
+        or DEFAULT_SBIR_AWARDS_PATH
     )
     output_path = Path(
-        env_str("SBIR_ETL__PHASE_TRANSITION__PHASE_II_OUTPUT_PATH", DEFAULT_OUTPUT_PATH) or DEFAULT_OUTPUT_PATH
+        env_str("SBIR_ETL__PHASE_TRANSITION__PHASE_II_OUTPUT_PATH", DEFAULT_OUTPUT_PATH)
+        or DEFAULT_OUTPUT_PATH
     )
 
     contracts = load_parquet_if_exists(contracts_path)
@@ -283,16 +292,10 @@ def validated_phase_ii_awards(context=None) -> Output[pd.DataFrame]:
     if not unified.empty:
         unified.to_parquet(output_path, index=False)
 
-    uei_cov = (
-        float(unified["recipient_uei"].notna().mean()) if not unified.empty else 0.0
-    )
-    duns_cov = (
-        float(unified["recipient_duns"].notna().mean()) if not unified.empty else 0.0
-    )
+    uei_cov = float(unified["recipient_uei"].notna().mean()) if not unified.empty else 0.0
+    duns_cov = float(unified["recipient_duns"].notna().mean()) if not unified.empty else 0.0
     pop_end_cov = (
-        float(unified["period_of_performance_end"].notna().mean())
-        if not unified.empty
-        else 0.0
+        float(unified["period_of_performance_end"].notna().mean()) if not unified.empty else 0.0
     )
     source_counts = unified["source"].value_counts().to_dict() if not unified.empty else {}
 

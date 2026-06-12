@@ -141,11 +141,15 @@ class ToolResult:
         return downstream_metadata
 
     def to_dict(self) -> dict[str, Any]:
-        data_repr = self.data if isinstance(self.data, dict) else {
-            "type": "DataFrame",
-            "shape": list(self.data.shape),
-            "columns": list(self.data.columns),
-        }
+        data_repr = (
+            self.data
+            if isinstance(self.data, dict)
+            else {
+                "type": "DataFrame",
+                "shape": list(self.data.shape),
+                "columns": list(self.data.columns),
+            }
+        )
         return {
             "data": data_repr,
             "metadata": self.metadata.to_dict(),
@@ -198,8 +202,7 @@ class BaseTool(ABC):
             metadata.execution_end = datetime.utcnow()
             elapsed = time.monotonic() - start
             logger.info(
-                f"Tool '{self.name}' completed in {elapsed:.2f}s "
-                f"({metadata.record_count} records)"
+                f"Tool '{self.name}' completed in {elapsed:.2f}s ({metadata.record_count} records)"
             )
             return result
         except Exception:
@@ -236,7 +239,10 @@ class BaseTool(ABC):
             elif isinstance(v, (str, int, float, bool, type(None))):
                 sanitized[k] = v
             elif isinstance(v, (list, tuple)):
-                sanitized[k] = [str(item) if not isinstance(item, (str, int, float, bool, type(None))) else item for item in v]
+                sanitized[k] = [
+                    str(item) if not isinstance(item, (str, int, float, bool, type(None))) else item
+                    for item in v
+                ]
             elif isinstance(v, dict):
                 sanitized[k] = str(v)[:200]
             else:

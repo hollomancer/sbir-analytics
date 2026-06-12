@@ -1,5 +1,5 @@
 """
-Tests for src/transition/features/vendor_resolver.py
+Tests for the current package module: transition/features/vendor_resolver.py
 
 Tests the VendorResolver for vendor identity resolution across
 multiple identifier spaces (UEI, CAGE, DUNS) with fuzzy name matching.

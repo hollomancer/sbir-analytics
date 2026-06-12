@@ -34,9 +34,9 @@ try:
 
     print("\n✓ Dagster setup is valid and ready to use!")
     print("\nTo launch the Dagster UI, run:")
-    print("  dagster dev -f src/definitions.py")
+    print("  dagster dev -m sbir_analytics.definitions")
     print("\nOr if using the module:")
-    print("  DAGSTER_HOME=. dagster dev -m src.definitions")
+    print("  DAGSTER_HOME=. dagster dev -m sbir_analytics.definitions")
 
 except ImportError as e:
     print(f"✗ Failed to import Dagster definitions: {e}")

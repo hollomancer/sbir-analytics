@@ -6,7 +6,7 @@ The project has undergone major consolidation to eliminate code duplication and 
 
 ### Key Consolidation Achievements
 
-- ✅ **Asset Consolidation**: USPTO assets unified into single file (`src/assets/uspto_assets.py`)
+- ✅ **Asset Consolidation**: USPTO assets unified into single file (`packages/sbir-analytics/sbir_analytics/assets/uspto/`)
 - ✅ **Configuration Consolidation**: Hierarchical PipelineConfig with 16+ consolidated schemas
 - ✅ **Model Consolidation**: Unified Award model replaces separate implementations
 - ✅ **Docker Consolidation**: Single profile-based docker-compose.yml
@@ -17,19 +17,11 @@ The project has undergone major consolidation to eliminate code duplication and 
 The project follows a consolidated modular ETL architecture with clear separation of concerns:
 
 ```text
-src/
-├── assets/                 # Dagster asset definitions (pipeline orchestration)
-├── config/                 # Configuration management and schemas
-├── extractors/             # Stage 1: Data extraction from various sources
-├── validators/             # Stage 2: Schema validation and data quality checks
-├── enrichers/              # Stage 3: External enrichment and fuzzy matching (includes fiscal enrichers)
-├── transformers/           # Stage 4: Business logic and graph preparation (includes fiscal transformers)
-├── loaders/                # Stage 5: Neo4j loading and relationship creation
-├── models/                 # Pydantic data models and type definitions
-├── utils/                  # Shared utilities (logging, metrics, performance)
-├── quality/                # Data quality validation modules
-├── ml/                     # Machine learning models (CET classification)
-└── transition/             # Technology transition detection logic
+sbir_etl/                                  # Core extraction, validation, and loading library
+packages/
+├── sbir-analytics/sbir_analytics/         # Dagster definitions, assets, and analytics tools
+├── sbir-ml/sbir_ml/                       # Machine-learning and transition models
+└── sbir-graph/sbir_graph/                 # Graph loaders and queries
 ```
 
 ## Key Architectural Patterns
@@ -44,15 +36,15 @@ src/
 
 ### Consolidated Dagster Asset Organization
 
-- **Unified Assets**: Major consolidation completed - USPTO assets in single file (`src/assets/uspto_assets.py`)
+- **Unified Assets**: Major consolidation completed - USPTO assets in single file (`packages/sbir-analytics/sbir_analytics/assets/uspto/`)
 - **Consistent Naming**: Standardized prefixes (raw_, validated_, enriched_, transformed_, loaded_)
-- **Jobs**: Defined in `src/assets/jobs/` for pipeline orchestration
+- **Jobs**: Defined in `packages/sbir-analytics/sbir_analytics/assets/jobs/` for pipeline orchestration
 - **Asset Checks**: Co-located with assets for quality validation
 - **Groups**: Assets organized by functional area (sbir_ingestion, cet_pipeline, etc.)
 
 ### Consolidated Configuration Management
 
-- **Hierarchical Schema**: Single PipelineConfig with 16+ consolidated schemas in `src/config/schemas.py`
+- **Hierarchical Schema**: Single PipelineConfig with 16+ consolidated schemas in `sbir_etl/config/schemas/`
 - **Type Safety**: Complete Pydantic validation with custom validators
 - **YAML Files**: Environment-specific configs in `config/` directory
 - **Environment Overrides**: Standardized `SBIR_ETL__SECTION__KEY` format for runtime configuration

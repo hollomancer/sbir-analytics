@@ -1,5 +1,5 @@
 """
-Tests for src/enrichers/geographic_resolver.py
+Tests for the current package module: enrichers/geographic_resolver.py
 
 Tests the GeographicResolver for normalizing company locations to state-level
 codes using multiple resolution strategies.

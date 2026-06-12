@@ -78,7 +78,9 @@ class ExtractFPDSContractsTool(BaseTool):
             )
 
             dump_path = Path(dump_dir)
-            out_path = Path(output_path) if output_path else dump_path / "extracted_contracts.parquet"
+            out_path = (
+                Path(output_path) if output_path else dump_path / "extracted_contracts.parquet"
+            )
 
             count = extractor.extract_from_dump(
                 dump_dir=dump_path,

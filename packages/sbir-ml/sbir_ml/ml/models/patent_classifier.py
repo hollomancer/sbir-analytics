@@ -1,4 +1,4 @@
-# sbir-analytics/src/ml/models/patent_classifier.py
+# packages/sbir-ml/sbir_ml/ml/models/patent_classifier.py
 """
 PatentCETClassifier
 
@@ -42,7 +42,12 @@ except Exception:  # pragma: no cover - defensive import
 
 import pickle  # nosec B403 - Used for loading internally-generated ML model files
 
-from sbir_etl.exceptions import CETClassificationError, DependencyError, FileSystemError, ValidationError
+from sbir_etl.exceptions import (
+    CETClassificationError,
+    DependencyError,
+    FileSystemError,
+    ValidationError,
+)
 
 
 # Define optional placeholders so static analysis doesn't flag undefined names before lazy import

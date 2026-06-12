@@ -12,7 +12,7 @@
 #
 # Usage:
 #   sh dagster-daemon.sh start
-#   sh dagster-daemon.sh etl-runner -- python -m src.scripts.job
+#   sh dagster-daemon.sh etl-runner -- python -m scripts.job
 #   sh dagster-daemon.sh healthcheck
 #
 # Notes:
@@ -234,7 +234,7 @@ start_daemon() {
 etl_runner() {
   # Expect the user to pass the command to run after the 'etl-runner' arg
   if [ "$#" -eq 0 ]; then
-    err "etl-runner requires a command to execute. Example: etl-runner -- python -m src.scripts.job"
+    err "etl-runner requires a command to execute. Example: etl-runner -- python -m scripts.job"
     exit 2
   fi
 
@@ -271,7 +271,7 @@ Modes:
   help              Show this usage
 Examples:
   $0 start
-  $0 etl-runner -- python -m src.scripts.materialize
+  $0 etl-runner -- python -m scripts.materialize
   $0 healthcheck
 EOF
 }

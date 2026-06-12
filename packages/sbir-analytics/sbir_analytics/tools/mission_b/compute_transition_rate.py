@@ -22,7 +22,7 @@ from ..base import BaseTool, DataSourceRef, ToolMetadata, ToolResult
 
 
 # Statutory thresholds
-STANDARD_THRESHOLD = 21   # Phase I awards to trigger benchmark
+STANDARD_THRESHOLD = 21  # Phase I awards to trigger benchmark
 INCREASED_THRESHOLD = 51  # Phase I awards for stricter standard
 
 
@@ -76,16 +76,21 @@ class ComputeTransitionRateTool(BaseTool):
         # Map company names to canonical IDs using entity table for deduplication
         if entity_table is not None and not entity_table.empty:
             canonical_col = next(
-                (c for c in ["canonical_id"] if c in entity_table.columns), None,
+                (c for c in ["canonical_id"] if c in entity_table.columns),
+                None,
             )
             name_col = next(
-                (c for c in ["canonical_name"] if c in entity_table.columns), None,
+                (c for c in ["canonical_name"] if c in entity_table.columns),
+                None,
             )
             company_src = next(
-                (c for c in ["company", "company_name"] if c in df.columns), None,
+                (c for c in ["company", "company_name"] if c in df.columns),
+                None,
             )
             if canonical_col and name_col and company_src:
-                name_to_id = dict(zip(entity_table[name_col], entity_table[canonical_col], strict=False))
+                name_to_id = dict(
+                    zip(entity_table[name_col], entity_table[canonical_col], strict=False)
+                )
                 df["canonical_id"] = df[company_src].map(name_to_id).fillna(df[company_src])
 
         # Identify columns
@@ -159,17 +164,23 @@ class ComputeTransitionRateTool(BaseTool):
             else:
                 status = "failing"
 
-            results.append({
-                "company_id": company,
-                "phase_1_count": p1,
-                "phase_2_count": p2,
-                "transition_rate": round(transition_rate, 4),
-                "threshold_tier": threshold_tier,
-                "minimum_rate": min_rate,
-                "status": status,
-                "awards_to_next_threshold": max(0, STANDARD_THRESHOLD - p1) if p1 < STANDARD_THRESHOLD else max(0, INCREASED_THRESHOLD - p1) if p1 < INCREASED_THRESHOLD else 0,
-                "measurement_window": f"FY{start_fy}-FY{end_fy}",
-            })
+            results.append(
+                {
+                    "company_id": company,
+                    "phase_1_count": p1,
+                    "phase_2_count": p2,
+                    "transition_rate": round(transition_rate, 4),
+                    "threshold_tier": threshold_tier,
+                    "minimum_rate": min_rate,
+                    "status": status,
+                    "awards_to_next_threshold": max(0, STANDARD_THRESHOLD - p1)
+                    if p1 < STANDARD_THRESHOLD
+                    else max(0, INCREASED_THRESHOLD - p1)
+                    if p1 < INCREASED_THRESHOLD
+                    else 0,
+                    "measurement_window": f"FY{start_fy}-FY{end_fy}",
+                }
+            )
 
         results_df = pd.DataFrame(results) if results else pd.DataFrame()
 
@@ -186,7 +197,9 @@ class ComputeTransitionRateTool(BaseTool):
             "failing": len(failing),
             "standard_tier_count": len([r for r in results if r["threshold_tier"] == "standard"]),
             "increased_tier_count": len([r for r in results if r["threshold_tier"] == "increased"]),
-            "below_threshold_count": len([r for r in results if r["threshold_tier"] == "below_threshold"]),
+            "below_threshold_count": len(
+                [r for r in results if r["threshold_tier"] == "below_threshold"]
+            ),
         }
 
         metadata.record_count = len(results_df)

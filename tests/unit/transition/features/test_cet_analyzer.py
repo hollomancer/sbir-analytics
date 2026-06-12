@@ -1,5 +1,5 @@
 """
-Tests for src/transition/features/cet_analyzer.py
+Tests for the current package module: transition/features/cet_analyzer.py
 
 Tests the CETSignalExtractor for extracting CET (Critical and Emerging
 Technologies) area alignment signals between SBIR awards and contracts.

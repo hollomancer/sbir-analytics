@@ -24,8 +24,8 @@ from pathlib import Path
 from typing import Any
 
 
-# Add src to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
+# Add the repository root to the import path
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 
 def get_test_config(scenario: str) -> dict[str, Any]:
@@ -166,7 +166,10 @@ def run_e2e_tests(scenario: str, timeout: int) -> int:
     if scenario != "minimal":
         pytest_args.extend(
             [
-                "--cov=src",
+                "--cov=sbir_etl",
+                "--cov=packages/sbir-analytics/sbir_analytics",
+                "--cov=packages/sbir-ml/sbir_ml",
+                "--cov=packages/sbir-graph/sbir_graph",
                 "--cov-report=term-missing",
                 "--cov-report=html:/app/artifacts/htmlcov",
             ]

@@ -87,7 +87,17 @@ def _join_on(
     # avoid pandas' merge-suffix gymnastics.
     ii = (
         phase_ii.loc[phase_ii[key].notna()]
-        .loc[:, ["award_id", "source", "agency", "period_of_performance_end", "recipient_uei", "recipient_duns"]]
+        .loc[
+            :,
+            [
+                "award_id",
+                "source",
+                "agency",
+                "period_of_performance_end",
+                "recipient_uei",
+                "recipient_duns",
+            ],
+        ]
         .rename(
             columns={
                 "award_id": "phase_ii_award_id",
@@ -269,9 +279,7 @@ def transformed_phase_ii_iii_pairs(
     validated_phase_iii_contracts: pd.DataFrame | None = None,
 ) -> Output[pd.DataFrame]:
     phase_ii = (
-        validated_phase_ii_awards
-        if validated_phase_ii_awards is not None
-        else pd.DataFrame()
+        validated_phase_ii_awards if validated_phase_ii_awards is not None else pd.DataFrame()
     )
     phase_iii = (
         validated_phase_iii_contracts
@@ -290,9 +298,7 @@ def transformed_phase_ii_iii_pairs(
         pairs.to_parquet(output_path, index=False)
 
     summary = _latency_summary(pairs)
-    basis_counts = (
-        pairs["identifier_basis"].value_counts().to_dict() if not pairs.empty else {}
-    )
+    basis_counts = pairs["identifier_basis"].value_counts().to_dict() if not pairs.empty else {}
 
     checks = {
         "ok": True,
@@ -338,9 +344,7 @@ def transformed_phase_transition_survival(
     transformed_phase_ii_iii_pairs: pd.DataFrame | None = None,
 ) -> Output[pd.DataFrame]:
     phase_ii = (
-        validated_phase_ii_awards
-        if validated_phase_ii_awards is not None
-        else pd.DataFrame()
+        validated_phase_ii_awards if validated_phase_ii_awards is not None else pd.DataFrame()
     )
     pairs = (
         transformed_phase_ii_iii_pairs

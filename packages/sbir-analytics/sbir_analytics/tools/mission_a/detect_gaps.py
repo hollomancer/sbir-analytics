@@ -133,18 +133,22 @@ class DetectGapsTool(BaseTool):
                     area_awards = df[df[cet_col] == area]
                     if not area_awards.empty:
                         last_funded = int(area_awards[fy_col].max())
-                unfunded_areas.append({
-                    "area": area,
-                    "award_count": 0,
-                    "last_funded_fy": last_funded,
-                    "nstc_priority": True,
-                })
+                unfunded_areas.append(
+                    {
+                        "area": area,
+                        "award_count": 0,
+                        "last_funded_fy": last_funded,
+                        "nstc_priority": True,
+                    }
+                )
             elif count < min_awards_threshold:
-                minimal_areas.append({
-                    "area": area,
-                    "award_count": count,
-                    "threshold": min_awards_threshold,
-                })
+                minimal_areas.append(
+                    {
+                        "area": area,
+                        "award_count": count,
+                        "threshold": min_awards_threshold,
+                    }
+                )
 
         # b. Single-agency concentration
         single_agency_deps = []
@@ -156,12 +160,16 @@ class DetectGapsTool(BaseTool):
                 agencies = area_df[agency_col].nunique()
                 if agencies == 1:
                     sole_agency = area_df[agency_col].iloc[0]
-                    single_agency_deps.append({
-                        "area": area,
-                        "sole_agency": sole_agency,
-                        "award_count": len(area_df),
-                        "total_amount": float(area_df[amount_col].sum()) if amount_col else None,
-                    })
+                    single_agency_deps.append(
+                        {
+                            "area": area,
+                            "sole_agency": sole_agency,
+                            "award_count": len(area_df),
+                            "total_amount": float(area_df[amount_col].sum())
+                            if amount_col
+                            else None,
+                        }
+                    )
 
         # c. Declining investment
         declining = []
@@ -180,18 +188,20 @@ class DetectGapsTool(BaseTool):
                 counts = yearly.values.astype(float)
                 if len(years) >= 2:
                     slope = float(
-                        (len(years) * (years * counts).sum() - years.sum() * counts.sum()) /
-                        (len(years) * (years ** 2).sum() - years.sum() ** 2 + 1e-10)
+                        (len(years) * (years * counts).sum() - years.sum() * counts.sum())
+                        / (len(years) * (years**2).sum() - years.sum() ** 2 + 1e-10)
                     )
                     if slope < -0.5:  # Meaningful decline
                         peak_fy = int(years[counts.argmax()])
-                        declining.append({
-                            "area": area,
-                            "trend_slope": round(slope, 3),
-                            "peak_fy": peak_fy,
-                            "current_count": int(counts[-1]) if len(counts) > 0 else 0,
-                            "peak_count": int(counts.max()),
-                        })
+                        declining.append(
+                            {
+                                "area": area,
+                                "trend_slope": round(slope, 3),
+                                "peak_fy": peak_fy,
+                                "current_count": int(counts[-1]) if len(counts) > 0 else 0,
+                                "peak_count": int(counts.max()),
+                            }
+                        )
 
         # d. Mission misalignment — placeholder for LLM judgment
         # This is a genuine decision point requiring interpretation of
@@ -233,7 +243,10 @@ class DetectGapsTool(BaseTool):
     @staticmethod
     def _empty_gap_result(taxonomy: list[str]) -> dict[str, Any]:
         return {
-            "unfunded_cet_areas": [{"area": a, "award_count": 0, "last_funded_fy": None, "nstc_priority": True} for a in taxonomy],
+            "unfunded_cet_areas": [
+                {"area": a, "award_count": 0, "last_funded_fy": None, "nstc_priority": True}
+                for a in taxonomy
+            ],
             "minimal_investment_areas": [],
             "single_agency_dependencies": [],
             "declining_investment": [],

@@ -14,8 +14,7 @@ try:
     from neo4j import Driver, GraphDatabase, Session, Transaction  # type: ignore[attr-defined]
 except ImportError as _neo4j_err:
     raise ImportError(
-        "The neo4j package is required for Neo4j loaders. "
-        "Install it with: pip install sbir-graph"
+        "The neo4j package is required for Neo4j loaders. Install it with: pip install sbir-graph"
     ) from _neo4j_err
 
 
@@ -799,8 +798,7 @@ class Neo4jClient:
 
                 if record and record["test"] == 1:
                     version_result = session.run(
-                        "CALL dbms.components() YIELD name, versions "
-                        "RETURN versions[0] as version"
+                        "CALL dbms.components() YIELD name, versions RETURN versions[0] as version"
                     )
                     version_record = version_result.single()
                     version = version_record["version"] if version_record else None
@@ -836,9 +834,7 @@ class Neo4jClient:
                 """
                 node_result = session.run(node_query)
                 node_counts = {
-                    record["label"]: record["count"]
-                    for record in node_result
-                    if record["label"]
+                    record["label"]: record["count"] for record in node_result if record["label"]
                 }
 
                 rel_query = """
@@ -847,9 +843,7 @@ class Neo4jClient:
                 ORDER BY count DESC
                 """
                 rel_result = session.run(rel_query)
-                relationship_counts = {
-                    record["rel_type"]: record["count"] for record in rel_result
-                }
+                relationship_counts = {record["rel_type"]: record["count"] for record in rel_result}
 
                 return Neo4jStatistics(
                     node_counts=node_counts,

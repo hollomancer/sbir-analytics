@@ -13,7 +13,11 @@ from typing import Any
 __all__ = ["Neo4jClient", "Neo4jConfig", "LoadMetrics", "PatentLoader", "PatentLoaderConfig"]
 
 _NEO4J_NAMES = {
-    "LoadMetrics", "Neo4jClient", "Neo4jConfig", "PatentLoader", "PatentLoaderConfig",
+    "LoadMetrics",
+    "Neo4jClient",
+    "Neo4jConfig",
+    "PatentLoader",
+    "PatentLoaderConfig",
 }
 
 

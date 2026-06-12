@@ -1,4 +1,4 @@
-# sbir-analytics/src/ml/models/dummy_pipeline.py
+# packages/sbir-ml/sbir_ml/ml/models/dummy_pipeline.py
 """
 DummyPipeline
 

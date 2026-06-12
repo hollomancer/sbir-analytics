@@ -92,12 +92,14 @@ class StateIOMultipliersTool(BaseTool):
                     from decimal import Decimal
 
                     unit_shock = Decimal("1000000")
-                    shocks_df = pd.DataFrame({
-                        "state": [s for s, _ in pairs],
-                        "bea_sector": [b for _, b in pairs],
-                        "fiscal_year": [2020] * len(pairs),
-                        "shock_amount": [unit_shock] * len(pairs),
-                    })
+                    shocks_df = pd.DataFrame(
+                        {
+                            "state": [s for s, _ in pairs],
+                            "bea_sector": [b for _, b in pairs],
+                            "fiscal_year": [2020] * len(pairs),
+                            "shock_amount": [unit_shock] * len(pairs),
+                        }
+                    )
                     impacts_df = adapter.compute_impacts(shocks_df)
 
                     for _, row in impacts_df.iterrows():
@@ -112,18 +114,22 @@ class StateIOMultipliersTool(BaseTool):
                         else:
                             emp_multiplier = None
 
-                        multipliers.append({
-                            "state": row["state"],
-                            "bea_sector": row["bea_sector"],
-                            "output_multiplier": float(row.get("production_impact", shock)) / shock,
-                            "employment_multiplier": emp_multiplier,
-                            "value_added_multiplier": (
-                                float(row.get("wage_impact", 0))
-                                + float(row.get("gross_operating_surplus", 0))
-                                + float(row.get("tax_impact", 0))
-                            ) / shock,
-                            "source": "bea_api",
-                        })
+                        multipliers.append(
+                            {
+                                "state": row["state"],
+                                "bea_sector": row["bea_sector"],
+                                "output_multiplier": float(row.get("production_impact", shock))
+                                / shock,
+                                "employment_multiplier": emp_multiplier,
+                                "value_added_multiplier": (
+                                    float(row.get("wage_impact", 0))
+                                    + float(row.get("gross_operating_surplus", 0))
+                                    + float(row.get("tax_impact", 0))
+                                )
+                                / shock,
+                                "source": "bea_api",
+                            }
+                        )
                     if multipliers:
                         access_method = "bea_api"
                 except Exception as e:
@@ -136,19 +142,23 @@ class StateIOMultipliersTool(BaseTool):
             try:
                 csv_df = pd.read_csv(csv_fallback_path)
                 for state, sector in pairs:
-                    match = csv_df[
-                        (csv_df["state"] == state) & (csv_df["bea_sector"] == sector)
-                    ]
+                    match = csv_df[(csv_df["state"] == state) & (csv_df["bea_sector"] == sector)]
                     if not match.empty:
                         row = match.iloc[0]
-                        multipliers.append({
-                            "state": state,
-                            "bea_sector": sector,
-                            "output_multiplier": float(row.get("output_multiplier", 1.0)),
-                            "employment_multiplier": float(row.get("employment_multiplier", 1.0)),
-                            "value_added_multiplier": float(row.get("value_added_multiplier", 1.0)),
-                            "source": "csv_precomputed",
-                        })
+                        multipliers.append(
+                            {
+                                "state": state,
+                                "bea_sector": sector,
+                                "output_multiplier": float(row.get("output_multiplier", 1.0)),
+                                "employment_multiplier": float(
+                                    row.get("employment_multiplier", 1.0)
+                                ),
+                                "value_added_multiplier": float(
+                                    row.get("value_added_multiplier", 1.0)
+                                ),
+                                "source": "csv_precomputed",
+                            }
+                        )
                 access_method = "csv_precomputed"
             except Exception as e:
                 logger.warning(f"CSV fallback failed: {e}")
@@ -160,14 +170,16 @@ class StateIOMultipliersTool(BaseTool):
                 "No multiplier source available (R or CSV). Using default multiplier of 1.0"
             )
             for state, sector in pairs:
-                multipliers.append({
-                    "state": state,
-                    "bea_sector": sector,
-                    "output_multiplier": 1.0,
-                    "employment_multiplier": 1.0,
-                    "value_added_multiplier": 1.0,
-                    "source": "default",
-                })
+                multipliers.append(
+                    {
+                        "state": state,
+                        "bea_sector": sector,
+                        "output_multiplier": 1.0,
+                        "employment_multiplier": 1.0,
+                        "value_added_multiplier": 1.0,
+                        "source": "default",
+                    }
+                )
             access_method = "default_fallback"
 
         multipliers_df = pd.DataFrame(multipliers)

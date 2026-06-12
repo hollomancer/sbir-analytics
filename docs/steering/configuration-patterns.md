@@ -18,7 +18,7 @@ This document centralizes all configuration examples and patterns used throughou
 ```text
 Layer 1: YAML Files (config/)
     ↓
-Layer 2: Pydantic Validation (src/config/schemas.py)
+Layer 2: Pydantic Validation (sbir_etl/config/schemas/)
     ↓
 Layer 3: Runtime Configuration with Environment Overrides
 ```
