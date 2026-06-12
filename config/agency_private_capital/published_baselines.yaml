@@ -1,0 +1,89 @@
+# Published VC / small-business baselines for SBIR-vs-published-baseline comparison
+# (agency-parameterized).
+#
+# Each entry pairs an SBIR outcome metric (computed in
+# packages/sbir-analytics/sbir_analytics/assets/agency_private_capital/outcomes.py) with a
+# cited public baseline. Effect-size baselines (Lerner, Howell, ITIF) carry
+# `kind: effect_size` and are reported as narrative context rather than
+# rate-vs-rate deltas — they describe directional findings against
+# matched-non-awardee comparisons, not VC-cohort rates.
+#
+# These baselines are NVCA / VC-industry data and are agency-agnostic by
+# nature. A single file serves all agencies; per-agency filtering happens
+# in the outcome-metrics layer, not here.
+#
+# Source citations are tracked in docs/research-questions.md under
+# "Prior literature & benchmarks". As-of dates record the underlying
+# study or report year; consumers should treat baselines as stable for
+# at least a year and re-cite if revised.
+
+baselines:
+  - id: nvca_seed_to_series_a
+    cohort_metric: phase_i_to_ii_graduation
+    label: "NVCA seed -> Series A graduation rate"
+    kind: rate
+    point_estimate: 0.33
+    as_of: "2023"
+    population: "U.S. seed-stage VC-financed companies, 5-year cohort window"
+    citation: "NVCA (2023). NVCA Yearbook 2023. Public summaries via PitchBook/CB Insights."
+    citation_url: "https://nvca.org/research/nvca-yearbook/"
+    notes: |
+      Public summaries report seed -> Series A graduation in the 30-35% range
+      depending on cohort window. Used as the headline analogue for SBIR
+      Phase I -> Phase II graduation.
+
+  - id: bls_bed_5yr_survival
+    cohort_metric: five_year_survival_proxy
+    label: "BLS Business Employment Dynamics 5-year survival"
+    kind: rate
+    point_estimate: 0.50
+    as_of: "2023"
+    population: "All U.S. private-sector establishments, 5-year survival"
+    citation: "U.S. Bureau of Labor Statistics, Business Employment Dynamics."
+    citation_url: "https://www.bls.gov/bdm/entrepreneurship/bdm_chart3.htm"
+    notes: |
+      BLS BED reports ~50% of new establishments survive 5 years. Used as
+      the small-business survival baseline for the NSF Phase II 5-year
+      survival proxy.
+
+  - id: lerner_growth_effect
+    cohort_metric: phase_ii_to_federal_contract_transition
+    label: "Lerner [L10] long-run growth effect"
+    kind: effect_size
+    point_estimate: null
+    effect_description: "+27% employment growth over 10 years vs. matched non-awardees"
+    as_of: "1999"
+    population: "Pre-1995 SBIR awardees, matched on industry and size"
+    citation: "Lerner, J. (1999). The Government as Venture Capitalist. J. of Business 72(3)."
+    citation_url: "https://www.nber.org/papers/w5753"
+    notes: |
+      Effect is vs. matched non-awardees, not vs. VC-financed firms; reported
+      as directional context. Effect concentrated in VC-rich zip codes.
+
+  - id: howell_followon_vc
+    cohort_metric: phase_ii_to_federal_contract_transition
+    label: "Howell [L11] follow-on-VC effect"
+    kind: effect_size
+    point_estimate: null
+    effect_description: "Early-stage SBIR roughly doubles probability of subsequent VC"
+    as_of: "2017"
+    population: "DOE SBIR Phase I applicants, RD-style identification"
+    citation: "Howell, S.T. (2017). Financing Innovation. American Economic Review 107(4)."
+    citation_url: "https://www.aeaweb.org/articles?id=10.1257/aer.20150808"
+    notes: |
+      DOE-specific RDD design; cited as the closest causal estimate for
+      SBIR -> follow-on-private-capital transitions. Magnitude not
+      directly comparable to NSF rate, used as effect-size context.
+
+  - id: itif_seed_fund_framing
+    cohort_metric: phase_i_to_ii_graduation
+    label: "ITIF [L21] 'America's Seed Fund' framing"
+    kind: framing
+    point_estimate: null
+    as_of: "2019"
+    population: "NSF SBIR program portfolio, qualitative review"
+    citation: "ITIF (2019). Becoming America's Seed Fund."
+    citation_url: "https://itif.org/publications/2019/09/26/becoming-americas-seed-fund-why-nsfs-sbir-program-should-be-model-rest/"
+    notes: |
+      Frames NSF SBIR as the federal analogue of a seed VC. Provides the
+      qualitative claim this spec quantifies. Not a numeric baseline.
