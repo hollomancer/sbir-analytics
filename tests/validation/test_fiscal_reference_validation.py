@@ -10,6 +10,7 @@ from __future__ import annotations
 from decimal import Decimal
 
 import pandas as pd
+import pytest
 
 from sbir_etl.transformers.fiscal import (
     FiscalComponentCalculator,
@@ -212,12 +213,17 @@ class TestNumericalStability:
 
 
 class TestReferenceValidation:
-    """Tests for validating against reference implementation (when available)."""
+    """Validation against the unavailable external R fiscal reference implementation."""
 
-    # Test removed - R reference implementation not available
-    # This should be implemented when R reference is available for comparison
-    # Would validate: tax estimates, ROI calculations, component aggregations
-    pass
+    @pytest.mark.real_data
+    @pytest.mark.skip(
+        reason=(
+            "requires the external R fiscal reference implementation, its package lockfile, "
+            "and approved reference-data snapshots; these are not distributed in local CI"
+        )
+    )
+    def test_fiscal_outputs_match_r_reference(self):
+        """Compare tax estimates, ROI, and component aggregations with approved R outputs."""
 
 
 class TestSensitivityAnalysis:

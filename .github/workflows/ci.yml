@@ -310,6 +310,11 @@ jobs:
           neo4j-user: ${{ env.NEO4J_USERNAME }}
           neo4j-password: ${{ env.NEO4J_PASSWORD }}
 
+      - name: Collect ${{ matrix.suite.name }} tests
+        run: |
+          uv run pytest --collect-only ${{ matrix.suite.path }} ${{ matrix.suite.args }} \
+            --junitxml=test-collection-${{ matrix.suite.name }}.xml -q
+
       - name: Run ${{ matrix.suite.name }} tests
         env:
           NEO4J_URI: "bolt://localhost:7687"

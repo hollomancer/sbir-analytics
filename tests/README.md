@@ -107,3 +107,12 @@ Tests run in CI with:
 - `--dist=loadgroup` - Respects `@pytest.mark.xdist_group` for test isolation
 - `-n auto` - Parallel execution across CPU cores
 - Skips tests requiring unavailable services (Neo4j, R, external APIs)
+
+## Integration and validation execution models
+
+The detailed [suite inventory](../docs/testing/test-suite-inventory.md) distinguishes fixture-based
+integration tests, service-backed integration tests, real-data validation tests, and scheduled
+end-to-end tests. CI performs `pytest --collect-only` as a separate step before execution so empty
+or marker-filtered suites are visible in reporting. Unsupported local scenarios must be represented
+by an explicit marked skip that documents their prerequisites; concrete test classes must never be
+left as `pass` placeholders.

@@ -357,12 +357,17 @@ class TestMultiSourceEnrichmentPipeline:
 
 
 class TestRealDataEnrichmentPipeline:
-    """Test enrichment pipeline with real data sources (slower, skipped by default)."""
+    """Scheduled enrichment validation using restricted production-derived snapshots."""
 
-    # Tests removed - placeholders for real data testing
-    # These should be implemented when real data files are available
-    # See INTEGRATION_TEST_ANALYSIS.md for details
-    pass
+    @pytest.mark.real_data
+    @pytest.mark.skip(
+        reason=(
+            "requires approved SBIR, USAspending, and SAM.gov snapshots mounted by the "
+            "scheduled real-data workflow; those datasets are not available in local CI"
+        )
+    )
+    def test_enrichment_pipeline_with_approved_real_data_snapshots(self):
+        """Run the fixture-proven enrichment behavior against approved real-data snapshots."""
 
 
 class TestDataSourceIntegrity:

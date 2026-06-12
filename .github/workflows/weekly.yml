@@ -105,6 +105,11 @@ jobs:
           neo4j-user: ${{ env.NEO4J_USERNAME }}
           neo4j-password: ${{ env.NEO4J_PASSWORD }}
 
+      - name: Collect ${{ matrix.suite }} tests
+        run: |
+          uv run pytest --collect-only ${{ matrix.pytest_target }} ${{ matrix.pytest_args }} \
+            --junitxml=test-collection-${{ matrix.suite }}.xml -q
+
       - name: Run ${{ matrix.suite }} tests
         run: uv run pytest ${{ matrix.pytest_target }} ${{ matrix.pytest_args }}
 
