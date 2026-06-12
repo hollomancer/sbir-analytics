@@ -1,13 +1,11 @@
 import json
 import os
-import sys
-import types
 from pathlib import Path
 
 import pandas as pd
 import pytest
 
-# Group these tests to run on same worker - they modify sys.modules and chdir
+# Group these tests to run on the same worker because they change the working directory
 pytestmark = pytest.mark.xdist_group("transition_mvp")
 
 
@@ -15,9 +13,8 @@ def _unwrap_output(result):
     """
     Helper to unwrap Dagster Output or bare values.
 
-    The transition assets return an Output(value=..., metadata=...).
-    In case Dagster isn't installed (shim), the object still has 'value'.
-    If behavior changes, fall back to returning the object itself.
+    The current transition assets return an Output(value=..., metadata=...).
+    Keep this helper tolerant of direct function invocation returning a bare value.
     """
     if hasattr(result, "value"):
         return result.value, getattr(result, "metadata", None)
@@ -37,53 +34,9 @@ def _assert_artifact_exists(base_path: Path) -> Path:
     return ndjson
 
 
-def _install_dagster_shim(monkeypatch) -> None:
-    # Skip if dagster already imported - shim won't work
-    if "dagster" in sys.modules:
-        pytest.skip("dagster already imported, cannot install shim")
-
-    shim = types.SimpleNamespace()
-
-    def _asset(*_args, **_kwargs):
-        def _wrap(fn):
-            return fn
-
-        return _wrap
-
-    class _Output:
-        def __init__(self, value, metadata=None):
-            self.value = value
-            self.metadata = metadata or {}
-
-    class _MetadataValue:
-        @staticmethod
-        def json(value):
-            return value
-
-    class _Log:
-        def info(self, *args, **kwargs):
-            return None
-
-    class _AssetExecutionContext:
-        def __init__(self):
-            self.log = _Log()
-
-    shim.asset = _asset
-    shim.Output = _Output
-    shim.MetadataValue = _MetadataValue
-    shim.AssetExecutionContext = _AssetExecutionContext
-
-    monkeypatch.setitem(sys.modules, "dagster", shim)
-
-    # Tests removed - require complex mocking of get_config() for test isolation
-    # These tests were testing implementation details that have changed
-    # See INTEGRATION_TEST_ANALYSIS.md for details
-    pass
-
-
-def test_transition_mvp_chain_shimmed(tmp_path, monkeypatch):
+def test_transition_mvp_chain_current_assets(tmp_path, monkeypatch):
     """
-    Tiny integration test for the Transition MVP chain using import shims (no Dagster required).
+    Integration test for the Transition MVP chain through the current exported asset interfaces.
 
     Flow:
       - Prepare minimal contracts and enriched awards DataFrames
@@ -96,8 +49,7 @@ def test_transition_mvp_chain_shimmed(tmp_path, monkeypatch):
     # Loosen fuzzy threshold slightly to be robust to tokenization variants
     monkeypatch.setenv("SBIR_ETL__TRANSITION__FUZZY__THRESHOLD", "0.7")
 
-    # Import assets and shim context from the transition assets module
-    _install_dagster_shim(monkeypatch)
+    # Import the current public transition asset interfaces.
     from sbir_analytics.assets.transition import (
         AssetExecutionContext,
         enriched_vendor_resolution,
@@ -219,15 +171,14 @@ def test_transition_mvp_chain_shimmed(tmp_path, monkeypatch):
     assert str(trans_art.resolve()).startswith(str(cwd))
 
 
-def test_transition_mvp_analytics_shimmed(tmp_path, monkeypatch):
+def test_transition_mvp_analytics_current_assets(tmp_path, monkeypatch):
     """
-    Exercise transition_analytics on the tiny shimmed fixture and validate outputs/checks.
+    Exercise the current transition analytics asset interface and validate outputs/checks.
     """
     # Isolate IO
     monkeypatch.chdir(tmp_path)
     monkeypatch.setenv("SBIR_ETL__TRANSITION__FUZZY__THRESHOLD", "0.7")
 
-    _install_dagster_shim(monkeypatch)
     from sbir_analytics.assets.transition import (
         AssetExecutionContext,
         enriched_vendor_resolution,

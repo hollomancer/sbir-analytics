@@ -195,10 +195,3 @@ class TestSAMGovAssetIntegration:
                     raw_sam_gov_entities(context)
 
                 assert "SAM.gov data unavailable" in str(exc_info.value)
-
-
-class TestSAMGovS3Integration:
-    """Integration tests for S3 path resolution (mocked S3)."""
-
-    # S3 functionality removed from SAMGovExtractor
-    pass
