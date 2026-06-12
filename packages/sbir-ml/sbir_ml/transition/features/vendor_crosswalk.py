@@ -1,4 +1,4 @@
-# sbir-analytics/src/transition/features/vendor_crosswalk.py
+# packages/sbir-ml/sbir_ml/transition/features/vendor_crosswalk.py
 """
 Vendor cross-walk and alias management.
 

@@ -677,7 +677,7 @@ services:
       - NEO4J_PASSWORD=${NEO4J_PASSWORD}
       - DAGSTER_HOME=/opt/dagster/dagster_home
     volumes:
-      - ./src:/app/src  # Dev profile only
+      - ./sbir_etl:/app/sbir_etl  # Dev profile only
       - ./config:/app/config
       - dagster-home:/opt/dagster/dagster_home
     depends_on:
@@ -717,7 +717,7 @@ services:
   app:
     command: dagster-webserver -h 0.0.0.0 -p 3000
     volumes:
-      - ./src:/app/src:ro  # Read-only bind mount
+      - ./sbir_etl:/app/sbir_etl:ro  # Read-only bind mount
       - ./config:/app/config:ro
     environment:
       - DAGSTER_RELOAD=true
@@ -769,7 +769,7 @@ services:
           memory: 4G
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "python", "-c", "import src"]
+      test: ["CMD", "python", "-c", "import sbir_etl"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -844,7 +844,7 @@ See [Configuration Patterns](../steering/configuration-patterns.md) for complete
 | `neo4j-data` | Named | Neo4j database | Required |
 | `dagster-home` | Named | Dagster metadata | Recommended |
 | `app-data` | Named | Application data | Optional |
-| `./src` | Bind | Source code (dev) | N/A |
+| `./sbir_etl` | Bind | Source code (dev) | N/A |
 | `./config` | Bind | Configuration | N/A |
 
 ### Backup Strategy
@@ -1002,7 +1002,7 @@ services:
 
 ```dockerfile
 HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
-  CMD python -c "import importlib; importlib.import_module('src')" || exit 1
+  CMD python -c "import importlib; importlib.import_module('sbir_etl')" || exit 1
 ```
 
 ### Neo4j Health Check

@@ -7,7 +7,7 @@ Data Source Priority:
 """
 
 import json
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from pathlib import Path
 from typing import Any
 
@@ -154,7 +154,7 @@ def _import_usaspending_table(
     # Stamp data source provenance on the returned DataFrame
     # Note: _import_usaspending_table returns a sample (limit=100) per the existing
     # query_awards call above. Provenance is stamped on whatever this function returns.
-    ingested_at = datetime.now(timezone.utc)
+    ingested_at = datetime.now(UTC)
     source_url = str(dump_path) if dump_path else "usaspending_api"
     sample_df["data_source"] = "usaspending"
     sample_df["data_source_url"] = source_url
@@ -234,7 +234,7 @@ def raw_usaspending_recipients(context: AssetExecutionContext) -> Output[pd.Data
 
     # Stamp data source provenance (if not already stamped by _import_usaspending_table)
     if "data_source" not in df.columns:
-        ingested_at = datetime.now(timezone.utc)
+        ingested_at = datetime.now(UTC)
         source_url = parquet_url if parquet_url else "usaspending_dump"
         df["data_source"] = "usaspending"
         df["data_source_url"] = str(source_url)

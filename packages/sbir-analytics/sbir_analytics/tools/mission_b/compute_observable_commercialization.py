@@ -82,10 +82,14 @@ class ComputeObservableCommercializationTool(BaseTool):
         Returns:
             ToolResult with per-company three-prong scores and profiles
         """
-        metadata.upstream_tools.extend([
-            "extract_awards", "extract_fpds_contracts",
-            "extract_sam_entities", "resolve_entities",
-        ])
+        metadata.upstream_tools.extend(
+            [
+                "extract_awards",
+                "extract_fpds_contracts",
+                "extract_sam_entities",
+                "resolve_entities",
+            ]
+        )
 
         if awards_df is None or awards_df.empty:
             metadata.warnings.append("No awards data provided")
@@ -99,10 +103,12 @@ class ComputeObservableCommercializationTool(BaseTool):
             None,
         )
         phase_col = next(
-            (c for c in ["phase", "award_phase"] if c in df.columns), None,
+            (c for c in ["phase", "award_phase"] if c in df.columns),
+            None,
         )
         fy_col = next(
-            (c for c in ["fiscal_year", "award_year", "fy"] if c in df.columns), None,
+            (c for c in ["fiscal_year", "award_year", "fy"] if c in df.columns),
+            None,
         )
 
         if not all([company_col, phase_col, fy_col]):
@@ -133,20 +139,23 @@ class ComputeObservableCommercializationTool(BaseTool):
         fpds_revenue: dict[str, float] = {}
         if fpds_contracts is not None and not fpds_contracts.empty:
             fpds_co_col = next(
-                (c for c in ["canonical_id", "vendor_uei", "vendor_name"] if c in fpds_contracts.columns),
+                (
+                    c
+                    for c in ["canonical_id", "vendor_uei", "vendor_name"]
+                    if c in fpds_contracts.columns
+                ),
                 None,
             )
             amount_col = next(
-                (c for c in ["obligation_amount", "amount", "federal_action_obligation"]
-                 if c in fpds_contracts.columns),
+                (
+                    c
+                    for c in ["obligation_amount", "amount", "federal_action_obligation"]
+                    if c in fpds_contracts.columns
+                ),
                 None,
             )
             if fpds_co_col and amount_col:
-                fpds_revenue = (
-                    fpds_contracts.groupby(fpds_co_col)[amount_col]
-                    .sum()
-                    .to_dict()
-                )
+                fpds_revenue = fpds_contracts.groupby(fpds_co_col)[amount_col].sum().to_dict()
             metadata.data_sources.append(
                 DataSourceRef(
                     name="FPDS-NG (via USAspending.gov)",
@@ -160,7 +169,11 @@ class ComputeObservableCommercializationTool(BaseTool):
         patent_counts: dict[str, int] = {}
         if patent_data is not None and not patent_data.empty:
             pat_co_col = next(
-                (c for c in ["canonical_id", "assignee_name", "company"] if c in patent_data.columns),
+                (
+                    c
+                    for c in ["canonical_id", "assignee_name", "company"]
+                    if c in patent_data.columns
+                ),
                 None,
             )
             if pat_co_col:
@@ -179,7 +192,11 @@ class ComputeObservableCommercializationTool(BaseTool):
         sam_growth: dict[str, bool] = {}
         if sam_entities is not None and not sam_entities.empty:
             sam_co_col = next(
-                (c for c in ["canonical_id", "unique_entity_id", "uei"] if c in sam_entities.columns),
+                (
+                    c
+                    for c in ["canonical_id", "unique_entity_id", "uei"]
+                    if c in sam_entities.columns
+                ),
                 None,
             )
             status_col = next(
@@ -206,13 +223,19 @@ class ComputeObservableCommercializationTool(BaseTool):
             # Prong 1: Federal revenue
             total_revenue = fpds_revenue.get(company, 0.0)
             avg_revenue_per_p2 = total_revenue / p2_count if p2_count > 0 else 0.0
-            revenue_prong = min(avg_revenue_per_p2 / revenue_threshold, 1.0) if revenue_threshold > 0 else 0.0
+            revenue_prong = (
+                min(avg_revenue_per_p2 / revenue_threshold, 1.0) if revenue_threshold > 0 else 0.0
+            )
             revenue_pass = avg_revenue_per_p2 >= revenue_threshold
 
             # Prong 2: Patent portfolio
             patents = patent_counts.get(company, 0)
             patent_ratio = patents / p2_count if p2_count > 0 else 0.0
-            patent_prong = min(patent_ratio / PATENT_PRONG_THRESHOLD, 1.0) if PATENT_PRONG_THRESHOLD > 0 else 0.0
+            patent_prong = (
+                min(patent_ratio / PATENT_PRONG_THRESHOLD, 1.0)
+                if PATENT_PRONG_THRESHOLD > 0
+                else 0.0
+            )
             patent_pass = patent_ratio >= PATENT_PRONG_THRESHOLD
 
             # Prong 3: Entity survival
@@ -223,44 +246,46 @@ class ComputeObservableCommercializationTool(BaseTool):
 
             # Composite score (weighted)
             composite = (
-                weight_revenue * revenue_prong +
-                weight_patent * patent_prong +
-                weight_survival * survival_prong
+                weight_revenue * revenue_prong
+                + weight_patent * patent_prong
+                + weight_survival * survival_prong
             )
 
             # Overall pass: at least 2 of 3 prongs passing
             prongs_passing = sum([revenue_pass, patent_pass, survival_pass])
             overall_status = "passing" if prongs_passing >= 2 else "failing"
 
-            results.append({
-                "company_id": company,
-                "phase_2_count": p2_count,
-                "measurement_window": f"FY{start_fy}-FY{end_fy}",
-                # Revenue prong
-                "fpds_total_revenue": round(total_revenue, 2),
-                "avg_revenue_per_p2": round(avg_revenue_per_p2, 2),
-                "revenue_prong_score": round(revenue_prong, 4),
-                "revenue_prong_pass": revenue_pass,
-                # Patent prong
-                "patent_count": patents,
-                "patent_ratio": round(patent_ratio, 4),
-                "patent_prong_score": round(patent_prong, 4),
-                "patent_prong_pass": patent_pass,
-                # Survival prong
-                "sam_active": is_active,
-                "survival_prong_score": round(survival_prong, 4),
-                "survival_prong_pass": survival_pass,
-                # Composite
-                "composite_score": round(composite, 4),
-                "prongs_passing": prongs_passing,
-                "overall_status": overall_status,
-                # Weights used
-                "weights": {
-                    "revenue": weight_revenue,
-                    "patent": weight_patent,
-                    "survival": weight_survival,
-                },
-            })
+            results.append(
+                {
+                    "company_id": company,
+                    "phase_2_count": p2_count,
+                    "measurement_window": f"FY{start_fy}-FY{end_fy}",
+                    # Revenue prong
+                    "fpds_total_revenue": round(total_revenue, 2),
+                    "avg_revenue_per_p2": round(avg_revenue_per_p2, 2),
+                    "revenue_prong_score": round(revenue_prong, 4),
+                    "revenue_prong_pass": revenue_pass,
+                    # Patent prong
+                    "patent_count": patents,
+                    "patent_ratio": round(patent_ratio, 4),
+                    "patent_prong_score": round(patent_prong, 4),
+                    "patent_prong_pass": patent_pass,
+                    # Survival prong
+                    "sam_active": is_active,
+                    "survival_prong_score": round(survival_prong, 4),
+                    "survival_prong_pass": survival_pass,
+                    # Composite
+                    "composite_score": round(composite, 4),
+                    "prongs_passing": prongs_passing,
+                    "overall_status": overall_status,
+                    # Weights used
+                    "weights": {
+                        "revenue": weight_revenue,
+                        "patent": weight_patent,
+                        "survival": weight_survival,
+                    },
+                }
+            )
 
         results_df = pd.DataFrame(results) if results else pd.DataFrame()
 
@@ -274,10 +299,20 @@ class ComputeObservableCommercializationTool(BaseTool):
             "failing": len(qualifying) - len(passing),
             "avg_composite_score": round(
                 sum(r["composite_score"] for r in results) / len(results), 4
-            ) if results else None,
-            "revenue_data_coverage": len([c for c in qualifying if c in fpds_revenue]) / len(qualifying) if qualifying else 0,
-            "patent_data_coverage": len([c for c in qualifying if c in patent_counts]) / len(qualifying) if qualifying else 0,
-            "sam_data_coverage": len([c for c in qualifying if c in sam_active]) / len(qualifying) if qualifying else 0,
+            )
+            if results
+            else None,
+            "revenue_data_coverage": len([c for c in qualifying if c in fpds_revenue])
+            / len(qualifying)
+            if qualifying
+            else 0,
+            "patent_data_coverage": len([c for c in qualifying if c in patent_counts])
+            / len(qualifying)
+            if qualifying
+            else 0,
+            "sam_data_coverage": len([c for c in qualifying if c in sam_active]) / len(qualifying)
+            if qualifying
+            else 0,
             "limitation_note": (
                 "Observable benchmark cannot see private-market-only commercialization. "
                 "FPDS captures federal pathway only. Patent prong preserves statutory 15% threshold."

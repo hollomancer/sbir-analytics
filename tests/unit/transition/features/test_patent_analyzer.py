@@ -1,5 +1,5 @@
 """
-Tests for src/transition/features/patent_analyzer.py
+Tests for the current package module: transition/features/patent_analyzer.py
 
 Tests the PatentSignalExtractor for extracting patent-related signals
 that indicate SBIR Phase III commercialization through federal contracts.

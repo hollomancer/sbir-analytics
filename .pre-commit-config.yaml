@@ -8,26 +8,26 @@ repos:
       - id: end-of-file-fixer
       - id: trailing-whitespace
 
-  # Python linting and formatting (matches CI scope: src and tests)
-  # CI equivalent: ruff check src tests && ruff format --check src tests
+  # Python linting and formatting (matches CI scope: production packages and tests)
+  # CI equivalent: ruff check <production-roots> tests && ruff format --check <production-roots> tests
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.14.4
     hooks:
       - id: ruff
-        files: ^(src|tests)/
+        files: ^(sbir_etl|packages/sbir-(analytics/sbir_analytics|ml/sbir_ml|graph/sbir_graph)|tests)/
         args: [--fix, --exit-non-zero-on-fix]
       - id: ruff-format
-        files: ^(src|tests)/
+        files: ^(sbir_etl|packages/sbir-(analytics/sbir_analytics|ml/sbir_ml|graph/sbir_graph)|tests)/
 
-  # Type checking (matches CI scope: src only)
-  # CI equivalent: mypy src
+  # Type checking (matches blocking CI scope: sbir_etl only)
+  # CI equivalent: mypy sbir_etl
   # Note: mypy is configured in pyproject.toml with exclude patterns for
   # scripts/, tests/, examples/, and migrations/ to match this scope
   - repo: https://github.com/pre-commit/mirrors-mypy
     rev: v1.18.2
     hooks:
       - id: mypy
-        files: ^src/
+        files: ^sbir_etl/
         args: [--config-file=pyproject.toml]
         additional_dependencies:
           [
@@ -40,8 +40,18 @@ repos:
             pydantic,
           ]
 
+  # Source-layout regression guard (matches CI)
+  - repo: local
+    hooks:
+      - id: removed-src-root
+        name: Reject removed src source-root references
+        entry: python scripts/ci/check_removed_src_references.py
+        language: system
+        pass_filenames: false
+        always_run: true
+
 # Security scanning (bandit and detect-secrets) moved to nightly CI only
-# Run manually with: uv run bandit -r src -c pyproject.toml
+# Run manually with: uv run bandit -r sbir_etl packages/sbir-analytics/sbir_analytics packages/sbir-ml/sbir_ml packages/sbir-graph/sbir_graph -c pyproject.toml
 # Run manually with: uv run detect-secrets scan --baseline .secrets.baseline
 
 # Configuration notes for maintainers:
@@ -52,9 +62,9 @@ repos:
 #   the same paths to ensure consistency between local and CI environments.
 #
 #   Tool Scope Mapping:
-#   - Ruff (lint/format): src/ tests/     [matches CI: ruff check src tests]
-#   - MyPy (type check):  src/            [matches CI: mypy src]
-#   - Bandit (security):  src/            [matches CI: bandit -r src]
+#   - Ruff (lint/format): all production package roots and tests
+#   - MyPy (type check):  sbir_etl/      [matches blocking CI check]
+#   - Bandit (security):  all production package roots
 #   - Standard hooks:     all files       [good practice, not in CI]
 #   - Detect-secrets:     all files       [best practice, not in CI]
 #

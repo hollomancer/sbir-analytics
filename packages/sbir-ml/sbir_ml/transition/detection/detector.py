@@ -25,7 +25,12 @@ from uuid import uuid4
 from loguru import logger
 from tqdm import tqdm
 
-from sbir_etl.models.transition_models import ConfidenceLevel, FederalContract, Transition, VendorMatch
+from sbir_etl.models.transition_models import (
+    ConfidenceLevel,
+    FederalContract,
+    Transition,
+    VendorMatch,
+)
 from sbir_ml.transition.detection.evidence import EvidenceGenerator
 from sbir_ml.transition.detection.scoring import TransitionScorer
 from sbir_ml.transition.features.vendor_resolver import ResolverMatch, VendorResolver
@@ -219,7 +224,9 @@ class TransitionDetector:
                 if resolver_match.record:
                     self.metrics["vendor_matches"] += 1
                     return self._resolver_to_domain_match(
-                        resolver_match, method, fallback_id,
+                        resolver_match,
+                        method,
+                        fallback_id,
                         extra_metadata={method: identifier},
                     )
 
@@ -231,7 +238,8 @@ class TransitionDetector:
             ):
                 self.metrics["vendor_matches"] += 1
                 return self._resolver_to_domain_match(
-                    resolver_match, resolver_match.method,
+                    resolver_match,
+                    resolver_match.method,
                     resolver_match.record.metadata.get("vendor_id", "unknown"),
                     extra_metadata={
                         "input_name": contract.vendor_name,

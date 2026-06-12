@@ -11,8 +11,8 @@ import sys
 from pathlib import Path
 
 
-# Add src to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
+# Add the repository root to the import path
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 
 def check_neo4j_connection() -> tuple[bool, str]:

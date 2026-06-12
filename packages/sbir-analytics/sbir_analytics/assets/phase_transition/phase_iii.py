@@ -92,7 +92,9 @@ def _prepare_phase_iii_rows(contracts: pd.DataFrame) -> pd.DataFrame:
     return out
 
 
-def _agency_coverage_table(all_contracts: pd.DataFrame, phase_iii: pd.DataFrame) -> dict[str, dict[str, int]]:
+def _agency_coverage_table(
+    all_contracts: pd.DataFrame, phase_iii: pd.DataFrame
+) -> dict[str, dict[str, int]]:
     """Row counts by agency for both the full contract frame and Phase III.
 
     This is the "Phase III flag as known undercount" audit: total contract

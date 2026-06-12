@@ -1,5 +1,5 @@
 """
-Tests for src/transition/analysis/analytics.py
+Tests for the current package module: transition/analysis/analytics.py
 
 Tests the TransitionAnalytics module for computing KPIs and breakdowns
 from transition detection outputs (award-level, company-level, by agency).

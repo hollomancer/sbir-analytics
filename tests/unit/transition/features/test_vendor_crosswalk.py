@@ -1,5 +1,5 @@
 """
-Tests for src/transition/features/vendor_crosswalk.py
+Tests for the current package module: transition/features/vendor_crosswalk.py
 
 Tests the VendorCrosswalk manager for vendor identity resolution,
 alias management, and acquisition tracking with optional persistence.

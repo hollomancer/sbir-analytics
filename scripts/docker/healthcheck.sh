@@ -123,18 +123,18 @@ tcp_probe() {
 
 # Mode implementations
 check_app() {
-  # Try importing the project package. Common module names include 'sbir_etl' or 'src'.
-  # Try in order: sbir_etl, src
+  # Try importing the project package. Current module names include 'sbir_etl' and 'sbir_analytics'.
+  # Try the current top-level application packages
   # Exit 0 on first success, otherwise non-zero.
   log "Running app import check (timeout ${TIMEOUT}s)"
   # Use python -c in a separate process; respect TIMEOUT if available
   if command -v timeout >/dev/null 2>&1; then
-    timeout "$TIMEOUT" sh -c "python - <<'PY'\nimport sys\nok=False\nfor mod in ('sbir_etl','src'):\n  try:\n    __import__(mod)\n    ok=True\n    break\n  except Exception as e:\n    pass\nsys.exit(0 if ok else 2)\nPY" >/dev/null 2>&1 || rc=$? ; rc=${rc:-$?}
+    timeout "$TIMEOUT" sh -c "python - <<'PY'\nimport sys\nok=False\nfor mod in ('sbir_etl','sbir_analytics'):\n  try:\n    __import__(mod)\n    ok=True\n    break\n  except Exception as e:\n    pass\nsys.exit(0 if ok else 2)\nPY" >/dev/null 2>&1 || rc=$? ; rc=${rc:-$?}
   else
     python - <<'PY' >/dev/null 2>&1 || rc=$? ; rc=${rc:-$?}
 import sys
 ok=False
-for mod in ('sbir_etl','src'):
+for mod in ('sbir_etl','sbir_analytics'):
   try:
     __import__(mod)
     ok=True

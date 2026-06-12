@@ -580,8 +580,8 @@ class TestEdgeCases:
         mock_checks_path = Mock()
         mock_checks_path.parent = Mock()
         mock_checks_path.parent.mkdir = Mock()
-        mock_path.with_suffix.side_effect = (
-            lambda suffix: mock_json_path if suffix == ".json" else mock_checks_path
+        mock_path.with_suffix.side_effect = lambda suffix: (
+            mock_json_path if suffix == ".json" else mock_checks_path
         )
         mock_path_class.return_value = mock_path
 

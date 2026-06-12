@@ -1,4 +1,4 @@
-# sbir-analytics/src/transformers/patent_transformer.py
+# sbir_etl/transformers/patent_transformer.py
 """
 PatentAssignmentTransformer
 

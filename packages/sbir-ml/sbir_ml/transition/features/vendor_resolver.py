@@ -1,4 +1,4 @@
-# sbir-analytics/src/transition/features/vendor_resolver.py
+# packages/sbir-ml/sbir_ml/transition/features/vendor_resolver.py
 """
 Vendor resolution utilities for transition detection.
 
@@ -232,7 +232,12 @@ class VendorResolver:
                 score = fuzz.token_sort_ratio(s1, s2) / 100.0
                 return float(score)
             except (TypeError, ValueError) as exc:
-                logger.debug("rapidfuzz scoring failed for {!r} vs {!r}: {}; falling back to difflib", s1, s2, exc)
+                logger.debug(
+                    "rapidfuzz scoring failed for {!r} vs {!r}: {}; falling back to difflib",
+                    s1,
+                    s2,
+                    exc,
+                )
         # difflib fallback
         sm = SequenceMatcher(None, s1, s2)
         return float(sm.ratio())

@@ -65,8 +65,7 @@ class SecEdgarLoader(BaseNeo4jLoader):
         """Create indexes for SEC EDGAR properties on Company nodes."""
         if indexes is None:
             indexes = [
-                "CREATE INDEX company_sec_cik_idx IF NOT EXISTS "
-                "FOR (c:Company) ON (c.sec_cik)",
+                "CREATE INDEX company_sec_cik_idx IF NOT EXISTS FOR (c:Company) ON (c.sec_cik)",
                 "CREATE INDEX company_sec_publicly_traded_idx IF NOT EXISTS "
                 "FOR (c:Company) ON (c.sec_is_publicly_traded)",
                 "CREATE INDEX company_sec_ticker_idx IF NOT EXISTS "

@@ -94,7 +94,7 @@ runs:
       uses: actions/cache@v5
       with:
         path: .pytest_cache
-        key: pytest-${{ runner.os }}-${{ inputs.python-version }}-${{ hashFiles('tests/**/*.py', 'src/**/*.py') }}
+        key: pytest-${{ runner.os }}-${{ inputs.python-version }}-${{ hashFiles('tests/**/*.py', 'sbir_etl/**/*.py', 'packages/sbir-analytics/sbir_analytics/**/*.py', 'packages/sbir-ml/sbir_ml/**/*.py', 'packages/sbir-graph/sbir_graph/**/*.py') }}
         restore-keys: |
           pytest-${{ runner.os }}-${{ inputs.python-version }}-
 

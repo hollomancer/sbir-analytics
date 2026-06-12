@@ -54,6 +54,7 @@ _CACHE_SAVE_INTERVAL = 500  # save cache every N completed queries
 # Parquet-based path
 # ═══════════════════════════════════════════════════════════════════════
 
+
 def build_commercialization_from_usaspending(
     transaction_path: str | Path,
     evaluation_fy: int = 2026,
@@ -95,9 +96,7 @@ def build_commercialization_from_usaspending(
         df["action_date"] = pd.to_datetime(df["action_date"], errors="coerce")
         df["_fy"] = df["action_date"].dt.year + (df["action_date"].dt.month >= 10).astype(int)
     else:
-        raise ValueError(
-            "Transaction data must contain 'start_date' or 'action_date' column"
-        )
+        raise ValueError("Transaction data must contain 'start_date' or 'action_date' column")
 
     end_fy = evaluation_fy - exclude_recent_years
     start_fy = end_fy - lookback_years + 1
@@ -108,7 +107,9 @@ def build_commercialization_from_usaspending(
         if uei_col:
             before = len(df)
             df = df[df[uei_col].astype(str).str.strip().isin(uei_filter)]
-            print(f"  Filtered Parquet to {len(df):,} rows (from {before:,}) for {len(uei_filter)} candidate UEIs")
+            print(
+                f"  Filtered Parquet to {len(df):,} rows (from {before:,}) for {len(uei_filter)} candidate UEIs"
+            )
 
     if df.empty:
         return _empty_commercialization_df()
@@ -136,6 +137,7 @@ def build_commercialization_from_usaspending(
 # ═══════════════════════════════════════════════════════════════════════
 # API-based path
 # ═══════════════════════════════════════════════════════════════════════
+
 
 def fetch_commercialization_from_api(
     awards_df: pd.DataFrame,
@@ -278,10 +280,7 @@ def fetch_commercialization_from_api(
         print(f"  Fetching with {workers} concurrent workers...")
 
         with ThreadPoolExecutor(max_workers=workers) as pool:
-            futures = {
-                pool.submit(_rate_limited_fetch, uei): uei
-                for uei in to_fetch
-            }
+            futures = {pool.submit(_rate_limited_fetch, uei): uei for uei in to_fetch}
             for future in as_completed(futures):
                 uei, total = future.result()
                 if total is not None:
@@ -453,6 +452,7 @@ def _api_post(endpoint: str, payload: dict, *, retries: int = 3) -> dict:
 # Shared helpers
 # ═══════════════════════════════════════════════════════════════════════
 
+
 def _extract_unique_ueis(df: pd.DataFrame) -> list[str]:
     """Extract unique non-empty UEI values from an awards DataFrame."""
     uei_col = _first_present(df, ["UEI", "uei", "company_uei", "vendor_uei"])
@@ -460,16 +460,12 @@ def _extract_unique_ueis(df: pd.DataFrame) -> list[str]:
         return []
 
     ueis = df[uei_col].dropna().astype(str).str.strip()
-    ueis = ueis[
-        (ueis != "") & (~ueis.isin(["None", "nan", "NaN"])) & (ueis.str.len() == 12)
-    ]
+    ueis = ueis[(ueis != "") & (~ueis.isin(["None", "nan", "NaN"])) & (ueis.str.len() == 12)]
     return sorted(ueis.unique().tolist())
 
 
 def _empty_commercialization_df() -> pd.DataFrame:
-    return pd.DataFrame(
-        columns=["company_id", "total_sales_and_investment", "patent_count"]
-    )
+    return pd.DataFrame(columns=["company_id", "total_sales_and_investment", "patent_count"])
 
 
 def _resolve_company_id(df: pd.DataFrame) -> pd.Series:

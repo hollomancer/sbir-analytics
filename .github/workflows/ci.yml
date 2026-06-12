@@ -45,6 +45,7 @@ jobs:
       contents: read
       pull-requests: read
     outputs:
+      production: ${{ steps.detect.outputs.production }}
       performance: ${{ steps.detect.outputs.performance }}
       cet: ${{ steps.detect.outputs.cet }}
       transition: ${{ steps.detect.outputs.transition }}
@@ -73,17 +74,24 @@ jobs:
               - '!Makefile'
               - '!.github/**'
           filters: |
+            production:
+              - 'sbir_etl/**'
+              - 'packages/sbir-analytics/sbir_analytics/**'
+              - 'packages/sbir-ml/sbir_ml/**'
+              - 'packages/sbir-graph/sbir_graph/**'
             performance:
-              - 'src/enrichers/**'
-              - 'src/assets/**'
-              - 'src/utils/performance_monitor.py'
-              - 'src/extractors/**'
+              - 'sbir_etl/enrichers/**'
+              - 'sbir_etl/extractors/**'
+              - 'sbir_etl/utils/performance_monitor.py'
+              - 'packages/sbir-analytics/sbir_analytics/assets/**'
+              - 'packages/sbir-graph/sbir_graph/**'
               - 'scripts/performance/benchmark_enrichment.py'
               - 'scripts/performance/detect_performance_regression.py'
               - 'config/base.yaml'
             cet:
-              - 'src/ml/config/**'
-              - 'src/assets/jobs/cet_*.py'
+              - 'packages/sbir-ml/sbir_ml/ml/config/**'
+              - 'packages/sbir-analytics/sbir_analytics/assets/cet/**'
+              - 'packages/sbir-analytics/sbir_analytics/assets/jobs/cet_*.py'
               - 'tests/unit/ml/**'
               - 'tests/integration/ml/**'
               - 'tests/e2e/ml/**'
@@ -129,13 +137,47 @@ jobs:
           cache-venv: "true"
 
       - name: Run Ruff lint
-        run: uv run python -m ruff check sbir_etl tests
+        run: uv run python -m ruff check sbir_etl packages/sbir-analytics/sbir_analytics packages/sbir-ml/sbir_ml packages/sbir-graph/sbir_graph tests
 
       - name: Run Ruff format check
-        run: uv run python -m ruff format --check sbir_etl tests
+        run: uv run python -m ruff format --check sbir_etl packages/sbir-analytics/sbir_analytics packages/sbir-ml/sbir_ml packages/sbir-graph/sbir_graph tests
 
       - name: Run MyPy type checker
         run: uv run python -m mypy sbir_etl
+
+      - name: Reject removed source-root references
+        run: uv run python scripts/ci/check_removed_src_references.py
+
+  package-type-checks:
+    name: Package MyPy - ${{ matrix.package.name }}
+    needs: [detect-changes]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: needs.detect-changes.outputs.docs-only != 'true'
+    continue-on-error: ${{ matrix.package.non_blocking }}
+    strategy:
+      fail-fast: false
+      matrix:
+        package:
+          - name: sbir-analytics
+            path: packages/sbir-analytics/sbir_analytics
+            non_blocking: true
+          - name: sbir-ml
+            path: packages/sbir-ml/sbir_ml
+            non_blocking: true
+          - name: sbir-graph
+            path: packages/sbir-graph/sbir_graph
+            non_blocking: false
+    steps:
+      - uses: actions/checkout@v6
+      - name: Setup Python and UV
+        uses: ./.github/actions/setup-python-uv
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          install-dev-deps: "true"
+          cache-venv: "true"
+      - name: Run package MyPy
+        run: uv run python -m mypy ${{ matrix.package.path }}
 
   verify-setup-script:
     name: Verify Setup Script
@@ -323,7 +365,7 @@ jobs:
           REQUIRE_NEO4J: ${{ matrix.suite.needs_neo4j && '1' || '' }}
         run: |
           uv run pytest ${{ matrix.suite.path }} ${{ matrix.suite.args }} \
-            --cov=src --cov-report=xml --cov-report=term \
+            --cov=sbir_etl --cov=packages/sbir-analytics/sbir_analytics --cov=packages/sbir-ml/sbir_ml --cov=packages/sbir-graph/sbir_graph --cov-report=xml --cov-report=term \
             --junitxml=test-results-${{ matrix.suite.name }}.xml -v
 
       - name: Stop Neo4j service

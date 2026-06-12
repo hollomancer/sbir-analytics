@@ -1,5 +1,5 @@
 """
-Tests for src/transition/detection/detector.py
+Tests for the current package module: transition/detection/detector.py
 
 Tests the TransitionDetector orchestration class that coordinates
 vendor matching, scoring, evidence generation, and metrics tracking

@@ -88,8 +88,9 @@ class TestPaECTERPipeline:
             "transitions",
             ["award_id", "contract_id", "transition_score", "confidence"],
             {
-                "transition_score": lambda df: df["transition_score"].dtype
-                in ["float64", "float32"],
+                "transition_score": lambda df: (
+                    df["transition_score"].dtype in ["float64", "float32"]
+                ),
                 "confidence": lambda df: df["confidence"].dtype in ["float64", "float32"],
             },
         ),
@@ -97,17 +98,18 @@ class TestPaECTERPipeline:
             "cet_classifications",
             ["award_id", "cet_id", "score", "classification"],
             {
-                "classification": lambda df: df["classification"]
-                .isin(["High", "Medium", "Low"])
-                .all(),
+                "classification": lambda df: (
+                    df["classification"].isin(["High", "Medium", "Low"]).all()
+                ),
             },
         ),
         (
             "fiscal_returns",
             ["award_id", "roi", "federal_tax_receipts", "economic_impact"],
             {
-                "roi": lambda df: df["roi"].dtype in ["float64", "float32"]
-                and (df["roi"] >= 0).all(),
+                "roi": lambda df: (
+                    df["roi"].dtype in ["float64", "float32"] and (df["roi"] >= 0).all()
+                ),
             },
         ),
         (

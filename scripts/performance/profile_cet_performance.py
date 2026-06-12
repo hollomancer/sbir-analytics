@@ -15,7 +15,7 @@ Behavior:
   - If a real trained model artifact exists at `artifacts/models/cet_classifier_v1.pkl`
     this script will attempt to load it (best-effort). If loading fails, a
     deterministic keyword-based fallback classifier is used for profiling.
-- Uses the performance monitoring utilities (`src.utils.monitoring`)
+- Uses the performance monitoring utilities (`sbir_etl.utils.monitoring`)
   to capture timing/memory metrics where available.
 - Writes outputs:
   - JSON summary: --output-json (default: /tmp/cet_performance.json)

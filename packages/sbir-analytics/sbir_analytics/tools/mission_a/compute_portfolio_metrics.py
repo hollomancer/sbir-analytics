@@ -79,25 +79,36 @@ class ComputePortfolioMetricsTool(BaseTool):
         # Map company names to canonical IDs using entity table for deduplication
         if entity_table is not None and not entity_table.empty:
             canonical_col = next(
-                (c for c in ["canonical_id"] if c in entity_table.columns), None,
+                (c for c in ["canonical_id"] if c in entity_table.columns),
+                None,
             )
             name_col = next(
-                (c for c in ["canonical_name"] if c in entity_table.columns), None,
+                (c for c in ["canonical_name"] if c in entity_table.columns),
+                None,
             )
             company_src = next(
-                (c for c in ["company", "company_name"] if c in df.columns), None,
+                (c for c in ["company", "company_name"] if c in df.columns),
+                None,
             )
             if canonical_col and name_col and company_src:
-                name_to_id = dict(zip(entity_table[name_col], entity_table[canonical_col], strict=False))
+                name_to_id = dict(
+                    zip(entity_table[name_col], entity_table[canonical_col], strict=False)
+                )
                 df["canonical_id"] = df[company_src].map(name_to_id).fillna(df[company_src])
 
         # Identify columns
-        cet_col = next((c for c in ["cet_primary", "cet_area", "cet_classification"] if c in df.columns), None)
+        cet_col = next(
+            (c for c in ["cet_primary", "cet_area", "cet_classification"] if c in df.columns), None
+        )
         agency_col = next((c for c in ["agency", "awarding_agency"] if c in df.columns), None)
-        company_col = next((c for c in ["canonical_id", "company", "company_name"] if c in df.columns), None)
+        company_col = next(
+            (c for c in ["canonical_id", "company", "company_name"] if c in df.columns), None
+        )
         state_col = next((c for c in ["state", "company_state"] if c in df.columns), None)
         fy_col = next((c for c in ["fiscal_year", "award_year", "fy"] if c in df.columns), None)
-        phase_col = next((c for c in ["phase", "award_phase", "program_phase"] if c in df.columns), None)
+        phase_col = next(
+            (c for c in ["phase", "award_phase", "program_phase"] if c in df.columns), None
+        )
         # Apply fiscal year filter
         if fiscal_years and fy_col:
             df = df[df[fy_col].isin(fiscal_years)]
@@ -108,7 +119,9 @@ class ComputePortfolioMetricsTool(BaseTool):
             for area, group in df.groupby(cet_col):
                 agency_counts = group[agency_col].value_counts().tolist()
                 hhi = _compute_hhi(agency_counts)
-                dominant = group[agency_col].value_counts().index[0] if len(agency_counts) > 0 else None
+                dominant = (
+                    group[agency_col].value_counts().index[0] if len(agency_counts) > 0 else None
+                )
                 agency_hhi[area] = {
                     "hhi": round(hhi, 4),
                     "dominant_agency": dominant,
@@ -164,9 +177,21 @@ class ComputePortfolioMetricsTool(BaseTool):
         if cet_col and phase_col and company_col:
             for area, group in df.groupby(cet_col):
                 phase_counts = group[phase_col].value_counts().to_dict()
-                p1 = sum(v for k, v in phase_counts.items() if str(k).strip().upper() in ("I", "1", "PHASE I"))
-                p2 = sum(v for k, v in phase_counts.items() if str(k).strip().upper() in ("II", "2", "PHASE II"))
-                p3 = sum(v for k, v in phase_counts.items() if str(k).strip().upper() in ("III", "3", "PHASE III"))
+                p1 = sum(
+                    v
+                    for k, v in phase_counts.items()
+                    if str(k).strip().upper() in ("I", "1", "PHASE I")
+                )
+                p2 = sum(
+                    v
+                    for k, v in phase_counts.items()
+                    if str(k).strip().upper() in ("II", "2", "PHASE II")
+                )
+                p3 = sum(
+                    v
+                    for k, v in phase_counts.items()
+                    if str(k).strip().upper() in ("III", "3", "PHASE III")
+                )
                 progression_rates[area] = {
                     "phase_1_count": p1,
                     "phase_2_count": p2,
@@ -188,7 +213,9 @@ class ComputePortfolioMetricsTool(BaseTool):
                 "cross_agency_companies": cross_agency_companies,
                 "avg_agency_hhi": round(
                     sum(v["hhi"] for v in agency_hhi.values()) / len(agency_hhi), 4
-                ) if agency_hhi else None,
+                )
+                if agency_hhi
+                else None,
             },
         }
 

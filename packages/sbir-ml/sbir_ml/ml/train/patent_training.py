@@ -1,5 +1,5 @@
 """
-sbir-analytics/src/ml/train/patent_training.py
+packages/sbir-ml/sbir_ml/ml/train/patent_training.py
 
 Helper routines to train and persist a PatentCETClassifier from a labeled
 DataFrame. Keeps Dagster assets thin and enables unit tests to call training

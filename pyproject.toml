@@ -113,6 +113,7 @@ ignore = [
     "C901", # too complex
     "E402", # module level import not at top - OK for conditional imports after version checks
     "I001", # import sorting - OK for optional imports in try blocks
+    "UP042", # preserve str/Enum behavior until a dedicated StrEnum migration
 ]
 
 [tool.ruff.lint.isort]

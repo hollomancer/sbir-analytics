@@ -216,12 +216,8 @@ class BenchmarkEligibilityEvaluator:
         comm_p2_counts = df[comm_p2_mask].groupby("_company_id").size().to_dict()
 
         # Phase I FYs per company (for detail)
-        p1_fys = (
-            df[p1_mask].groupby("_company_id")["_fy"].apply(sorted).apply(list).to_dict()
-        )
-        p2_fys = (
-            df[p2_mask].groupby("_company_id")["_fy"].apply(sorted).apply(list).to_dict()
-        )
+        p1_fys = df[p1_mask].groupby("_company_id")["_fy"].apply(sorted).apply(list).to_dict()
+        p2_fys = df[p2_mask].groupby("_company_id")["_fy"].apply(sorted).apply(list).to_dict()
 
         # Company names
         if name_col:
@@ -268,9 +264,7 @@ class BenchmarkEligibilityEvaluator:
 
     # ─── Transition rate evaluation ──────────────────────────────────
 
-    def _evaluate_transition_rate(
-        self, counts: CompanyAwardCounts
-    ) -> TransitionRateResult:
+    def _evaluate_transition_rate(self, counts: CompanyAwardCounts) -> TransitionRateResult:
         """Evaluate the Phase I→II transition rate benchmark for one company."""
         t = self.transition_thresholds
         p1 = counts.phase1_count
@@ -360,9 +354,7 @@ class BenchmarkEligibilityEvaluator:
         required_patent_rate = c.standard_min_patent_rate if patents_path else None
 
         # Compute metrics
-        avg_sales = (
-            counts.total_sales_and_investment / p2 if p2 > 0 else None
-        )
+        avg_sales = counts.total_sales_and_investment / p2 if p2 > 0 else None
         patent_rate = counts.patent_count / p2 if p2 > 0 else None
 
         # Determine status
@@ -469,7 +461,12 @@ class BenchmarkEligibilityEvaluator:
         # Already subject and close to failing
         if commercialization_result.margin_from_sales_threshold is not None:
             margin = commercialization_result.margin_from_sales_threshold
-            if commercialization_result.required_avg_sales is not None and 0 <= margin <= self.sensitivity_margin_ratio * commercialization_result.required_avg_sales:
+            if (
+                commercialization_result.required_avg_sales is not None
+                and 0
+                <= margin
+                <= self.sensitivity_margin_ratio * commercialization_result.required_avg_sales
+            ):
                 at_risk_commercialization = True
 
         return SensitivityResult(
@@ -565,9 +562,7 @@ class BenchmarkEligibilityEvaluator:
                 sensitivity_results.append(sr)
 
         # Sort: companies subject to benchmarks first, then by company_id
-        transition_results.sort(
-            key=lambda r: (r.tier == BenchmarkTier.NOT_SUBJECT, r.company_id)
-        )
+        transition_results.sort(key=lambda r: (r.tier == BenchmarkTier.NOT_SUBJECT, r.company_id))
         commercialization_results.sort(
             key=lambda r: (r.tier == BenchmarkTier.NOT_SUBJECT, r.company_id)
         )
@@ -626,9 +621,7 @@ class BenchmarkEligibilityEvaluator:
             name_col = _first_col(df, ["Company", "company", "company_name"])
             if name_col:
                 company_df = df[
-                    df[name_col].astype(str).str.lower().str.contains(
-                        company_id.lower(), na=False
-                    )
+                    df[name_col].astype(str).str.lower().str.contains(company_id.lower(), na=False)
                 ]
 
         if company_df.empty:
@@ -710,7 +703,8 @@ class BenchmarkEligibilityEvaluator:
         ]
         for label, status in [("Failing", BenchmarkStatus.FAIL), ("Passing", BenchmarkStatus.PASS)]:
             rows = [
-                r for r in summary.transition_results
+                r
+                for r in summary.transition_results
                 if r.status == status and r.tier != BenchmarkTier.NOT_SUBJECT
             ]
             if rows:
@@ -720,7 +714,9 @@ class BenchmarkEligibilityEvaluator:
 
         # Commercialization rate details — failures first
         def _cr_row(r: CommercializationRateResult) -> str:
-            sales_str = f"${r.avg_sales_per_phase2:,.0f}" if r.avg_sales_per_phase2 is not None else "N/A"
+            sales_str = (
+                f"${r.avg_sales_per_phase2:,.0f}" if r.avg_sales_per_phase2 is not None else "N/A"
+            )
             pat_str = f"{r.patent_rate:.1%}" if r.patent_rate is not None else "N/A"
             name = r.company_name or r.company_id
             return (
@@ -734,7 +730,8 @@ class BenchmarkEligibilityEvaluator:
         ]
         for label, status in [("Failing", BenchmarkStatus.FAIL), ("Passing", BenchmarkStatus.PASS)]:
             rows = [
-                r for r in summary.commercialization_results
+                r
+                for r in summary.commercialization_results
                 if r.status == status and r.tier != BenchmarkTier.NOT_SUBJECT
             ]
             if rows:
@@ -744,16 +741,19 @@ class BenchmarkEligibilityEvaluator:
 
         # Sensitivity analysis
         at_risk = [
-            sr for sr in summary.sensitivity_results
+            sr
+            for sr in summary.sensitivity_results
             if sr.at_risk_transition or sr.at_risk_commercialization
         ]
         if at_risk:
-            lines.extend([
-                "## Sensitivity Analysis: Companies Near Thresholds",
-                "",
-                "| Company | Phase I | To Std Trans | To Inc Trans | Phase II (Comm) | To Std Comm | Risk |",
-                "|---------|---------|-------------|-------------|-----------------|-------------|------|",
-            ])
+            lines.extend(
+                [
+                    "## Sensitivity Analysis: Companies Near Thresholds",
+                    "",
+                    "| Company | Phase I | To Std Trans | To Inc Trans | Phase II (Comm) | To Std Comm | Risk |",
+                    "|---------|---------|-------------|-------------|-----------------|-------------|------|",
+                ]
+            )
             for sr in at_risk:
                 name = sr.company_name or sr.company_id
                 risks = []
@@ -772,22 +772,24 @@ class BenchmarkEligibilityEvaluator:
                 )
             lines.append("")
 
-        lines.extend([
-            "## Benchmark Rules Reference",
-            "",
-            "### Phase I to Phase II Transition Rate",
-            "- **Standard:** >=21 Phase I awards -> ratio must be >= 0.25",
-            "- **Increased (experienced):** >=51 Phase I awards -> ratio must be >= 0.50",
-            "- **Consequence (standard fail):** Ineligible for Phase I awards for 1 year",
-            "- **Consequence (increased fail):** Capped at 20 Phase I awards per agency",
-            "",
-            "### Commercialization Rate",
-            "- **Standard:** >=16 Phase II awards -> avg $100K+ sales/investment per Phase II, "
-            "OR >= 15% patents per Phase II",
-            "- **Increased Tier 1:** >=51 Phase II awards -> avg $250K+ (no patent path)",
-            "- **Increased Tier 2:** >=101 Phase II awards -> avg $450K+ (no patent path)",
-            "",
-        ])
+        lines.extend(
+            [
+                "## Benchmark Rules Reference",
+                "",
+                "### Phase I to Phase II Transition Rate",
+                "- **Standard:** >=21 Phase I awards -> ratio must be >= 0.25",
+                "- **Increased (experienced):** >=51 Phase I awards -> ratio must be >= 0.50",
+                "- **Consequence (standard fail):** Ineligible for Phase I awards for 1 year",
+                "- **Consequence (increased fail):** Capped at 20 Phase I awards per agency",
+                "",
+                "### Commercialization Rate",
+                "- **Standard:** >=16 Phase II awards -> avg $100K+ sales/investment per Phase II, "
+                "OR >= 15% patents per Phase II",
+                "- **Increased Tier 1:** >=51 Phase II awards -> avg $250K+ (no patent path)",
+                "- **Increased Tier 2:** >=101 Phase II awards -> avg $450K+ (no patent path)",
+                "",
+            ]
+        )
 
         return "\n".join(lines)
 

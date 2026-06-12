@@ -76,9 +76,7 @@ class ClusterTopicsTool(BaseTool):
             sim_matrix = normalized @ normalized.T
         else:
             # Fallback: generate embeddings on-the-fly with ModernBERT-Embed
-            metadata.warnings.append(
-                "No embeddings provided; generating via ModernBERT-Embed"
-            )
+            metadata.warnings.append("No embeddings provided; generating via ModernBERT-Embed")
             try:
                 from sbir_ml.ml.config import PaECTERClientConfig
                 from sbir_ml.ml.paecter_client import PaECTERClient
@@ -109,8 +107,14 @@ class ClusterTopicsTool(BaseTool):
         assigned = set()
         cluster_id = 0
 
-        agencies = topics_df["agency"].tolist() if "agency" in topics_df.columns else [None] * n_topics
-        topic_ids = topics_df["topic_id"].tolist() if "topic_id" in topics_df.columns else list(range(n_topics))
+        agencies = (
+            topics_df["agency"].tolist() if "agency" in topics_df.columns else [None] * n_topics
+        )
+        topic_ids = (
+            topics_df["topic_id"].tolist()
+            if "topic_id" in topics_df.columns
+            else list(range(n_topics))
+        )
 
         for i in range(n_topics):
             if i in assigned:
@@ -141,32 +145,44 @@ class ClusterTopicsTool(BaseTool):
 
             # Calculate cluster statistics
             cluster_agencies = {agencies[idx] for idx in candidate if agencies[idx] is not None}
-            pairwise_sims = [
-                sim_matrix[a, b] for a in candidate for b in candidate if a < b
-            ]
+            pairwise_sims = [sim_matrix[a, b] for a in candidate for b in candidate if a < b]
             avg_sim = float(np.mean(pairwise_sims)) if pairwise_sims else 0.0
 
             cluster_topics = [topic_ids[idx] for idx in candidate]
-            clusters.append({
-                "cluster_id": f"cluster-{cluster_id:04d}",
-                "topic_ids": cluster_topics,
-                "agencies_involved": sorted(a for a in cluster_agencies if a is not None),
-                "num_agencies": len(cluster_agencies),
-                "num_topics": len(candidate),
-                "avg_similarity": round(avg_sim, 4),
-                "max_similarity": round(float(max(pairwise_sims)) if pairwise_sims else 0.0, 4),
-                "classification": "ambiguous",  # LLM judgment point — not resolved here
-                "classification_reasoning": None,
-            })
+            clusters.append(
+                {
+                    "cluster_id": f"cluster-{cluster_id:04d}",
+                    "topic_ids": cluster_topics,
+                    "agencies_involved": sorted(a for a in cluster_agencies if a is not None),
+                    "num_agencies": len(cluster_agencies),
+                    "num_topics": len(candidate),
+                    "avg_similarity": round(avg_sim, 4),
+                    "max_similarity": round(float(max(pairwise_sims)) if pairwise_sims else 0.0, 4),
+                    "classification": "ambiguous",  # LLM judgment point — not resolved here
+                    "classification_reasoning": None,
+                }
+            )
 
             assigned.update(candidate)
             cluster_id += 1
 
-        clusters_df = pd.DataFrame(clusters) if clusters else pd.DataFrame(columns=[
-            "cluster_id", "topic_ids", "agencies_involved", "num_agencies",
-            "num_topics", "avg_similarity", "max_similarity",
-            "classification", "classification_reasoning",
-        ])
+        clusters_df = (
+            pd.DataFrame(clusters)
+            if clusters
+            else pd.DataFrame(
+                columns=[
+                    "cluster_id",
+                    "topic_ids",
+                    "agencies_involved",
+                    "num_agencies",
+                    "num_topics",
+                    "avg_similarity",
+                    "max_similarity",
+                    "classification",
+                    "classification_reasoning",
+                ]
+            )
+        )
 
         metadata.record_count = len(clusters_df)
         metadata.data_sources.append(

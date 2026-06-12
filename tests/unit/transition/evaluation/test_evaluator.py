@@ -1,5 +1,5 @@
 """
-Tests for src/transition/evaluation/evaluator.py
+Tests for the current package module: transition/evaluation/evaluator.py
 
 Tests the TransitionEvaluator for measuring transition detection quality
 against ground truth using precision, recall, F1, and confusion matrices.
