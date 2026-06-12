@@ -1,6 +1,6 @@
 # Leverage Ratio Analysis — Requirements
 
-> **Status:** Not yet started — spec is design-only, zero implementation code as of June 2026. Anchors inventory question **A3** in [docs/research-questions.md](../../docs/research-questions.md). Prerequisites (entity resolution, SBIR identification, USAspending enrichment) are all live on `main`.
+> **Status:** Core computation and independent validation/sensitivity layer implemented as of June 2026; orchestration and NASEM narrative remain pending. Anchors inventory question **A3** in [docs/research-questions.md](../../docs/research-questions.md). Prerequisites (entity resolution, SBIR identification, USAspending enrichment) are all live on `main`.
 
 Research Plan Milestone: **M1 — DOD Leverage Ratio Replication**
 
@@ -37,3 +37,8 @@ The reconciliation matters more than the match.
 - Entity resolution (`src/tools/phase0/resolve_entities.py`) — EXISTS
 - Company categorization (`specs/company-categorization/`) — 77% complete
 - CET classifier (`src/transition/features/cet_analyzer.py`) — EXISTS (for tech-area stratification)
+
+
+## Validation and sensitivity
+
+Publication quality checks, sensitivity dimensions, manual-review fields, and known limitations are documented in [the leverage-ratio validation guide](../../docs/leverage-ratio-validation.md).
