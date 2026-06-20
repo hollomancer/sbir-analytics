@@ -50,8 +50,8 @@
 - [x] 5.2 Create integration tests that simulate at least one USAspending iterative cycle (using fixtures) to ensure freshness metadata, delta detection, and resume flows behave as expected.
   - Notes: Created `tests/integration/test_usaspending_iterative_enrichment.py` with comprehensive integration tests covering freshness tracking cycle, delta detection, checkpoint/resume flows, and full iterative cycle simulation. Uses mocked API client with fixtures.
 
-- [x] 5.3 Document the iterative workflow, credential requirements, and troubleshooting steps in `docs/enrichment/iterative-refresh.md` and update `README.md`/`CONTRIBUTING.md` references.
-  - Notes: Created comprehensive documentation in `docs/enrichment/usaspending-iterative-refresh.md` covering architecture, configuration, workflow, credentials, delta detection, metrics, troubleshooting, and monitoring. Updated `README.md` with quick start section and `CONTRIBUTING.md` with file reference.
+- [x] 5.3 Document the iterative workflow, credential requirements, and troubleshooting steps in `docs/enrichment/iterative-refresh.md` and update `README.md` references.
+  - Notes: Created comprehensive documentation in `docs/enrichment/usaspending-iterative-refresh.md` covering architecture, configuration, workflow, credentials, delta detection, metrics, troubleshooting, and monitoring. Updated `README.md` with quick start section.
 
 - [ ] 6.1 Produce a comparison matrix covering OpenCorporates, SEC EDGAR, DLA CAGE/BIS, SAM Exclusions, ORCID/OpenAlex, OpenFEC (and any licensed commercial sources), noting auth model, rate limits, available fields, and incremental query capabilities.
 
