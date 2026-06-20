@@ -48,8 +48,9 @@ record to other public datasets. A few of the questions it explores:
   and how does that vary by agency and technology area?
 - **Technology classification & patent linkage.** Which awards map to
   Critical & Emerging Technology (CET) areas, and which awards produced patents?
-- **Economic & fiscal impact.** Rough estimates of tax receipts and economic
-  activity attributable to award spending, using BEA input-output tables.
+- **Economic & fiscal impact.** Rough exploratory estimates of tax receipts and
+  economic activity attributable to award spending, using BEA input-output tables
+  where available and fallback assumptions when live BEA inputs are unavailable.
 
 The full, sourced inventory — organized by policy area and complexity tier — is
 in [docs/research-questions.md](docs/research-questions.md).
