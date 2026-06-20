@@ -64,6 +64,14 @@ merged to `main`. Public-study citations appear as `[L#]` — see
 analysis from an entrepreneurial-finance perspective, see
 [F. Capital formation & entrepreneurial finance](#f-capital-formation--entrepreneurial-finance).*
 
+*Implementation note: M&A event detection runs as a CLI script
+(`scripts/data/detect_sbir_ma_events.py`, SEC EDGAR 8-K and Form D full-text
+search), not as a Dagster asset. The orchestrated graph has no continuous
+M&A-event materialization; rerunning the script is how the M&A signal that
+feeds the A4 and F-area questions gets refreshed. The previously-existing
+`packages/sbir-analytics/sbir_analytics/assets/ma_detection.py` stub was a
+placeholder, never wired into the M&A pipeline, and was removed in PR #317.*
+
 - Did a defense-funded SBIR company undergo M&A activity, especially involving a foreign acquirer? Foreign-acquisition risk flagged by CSIS [L17] — [../specs/merger_acquisition_detection/](../specs/merger_acquisition_detection/). *(deps: ER, M&A signals)*
 - For SBIR firms acquired by public companies, can inbound M&A be detected via 8-K full-text search? *(PR #286)* *(deps: ER, SEC EDGAR)*
 - Which defense primes concentrate SBIR-firm acquisitions (e.g., Titan, Teledyne, Ametek, Kratos), and are any of those acquirers themselves foreign-owned or under CFIUS review? *(deps: ER, M&A signals)*
@@ -170,9 +178,9 @@ analysis from an entrepreneurial-finance perspective, see
 - What is the data-freshness lag for SBIR.gov, USAspending, USPTO, and BEA I-O sources? *(deps: —)*
 - Which awards have missing or null critical fields (amount, dates, recipient)? *(deps: —)*
 
-### E4. Data imputation (Tier 2–3) *(branch: claude/sbir-data-imputation-strategy)*
+### E4. Data imputation (Tier 2–3) *(spec merged via PR #277; implementation not yet started)*
 
-- Why is `award_date` missing on ~50% of records, and can it be recovered non-destructively? — `specs/data-imputation/` *(branch)*. *(deps: E3)*
+- Why is `award_date` missing on ~50% of records, and can it be recovered non-destructively? — [../specs/data-imputation/](../specs/data-imputation/). *(deps: E3)*
 - For each imputable field (award date, amount, contract dates, NAICS, identifiers), which methods are available and at what confidence tier (high ≥90%, medium 75–90%, low <75%)? *(deps: E3)*
 - What is per-method backtest accuracy / MAE against ground-truth holdouts? *(deps: IMP)*
 - Can solicitation topics be mapped to NAICS (agency-topic crosswalk top-1 accuracy ≥75%)? *(deps: IMP, CET)*
@@ -219,7 +227,7 @@ This area treats the SBIR awardee as a **firm with a capital history**, not as a
 ### F3. Inferential (Tier 3)
 
 - What is the **private-to-SBIR leverage ratio** (private capital raised ÷ SBIR funding) by agency, vintage, and firm size? The private-side mirror to NASEM's 4:1 DoD non-SBIR-federal leverage [L1]. *(deps: ER, ID, SEC EDGAR)*
-- For Phase II awardees of any agency (NSF as Phase 1 target), do follow-on funding and exit outcomes match the published VC/PE-backed-startup baselines from the NVCA Yearbook [L25]? *(PR #311)* *(deps: ER, SEC EDGAR)*
+- For Phase II awardees of any agency, do follow-on funding and exit outcomes match the published private-capital-backed-startup baselines from the NVCA Yearbook [L25]? *(PR #321 merged, supersedes #311; agency-parameterized via the `agency_private_capital` asset, terminology changed from "VC" to "private capital")* *(deps: ER, SEC EDGAR)*
 - Does SBIR funding crowd in or crowd out subsequent private capital? **Target: reproduce or extend Howell's finding that an early-stage DOE SBIR grant roughly doubles the probability of subsequent VC** [L11]. Compare against Kortum & Lerner [L24] on VC's contribution to innovation. *(deps: ER, ID, SEC EDGAR)*
 - Does the Lerner [L10] finding — SBIR growth effects concentrated in VC-rich zip codes — still hold post-2010 and across all eleven agencies? *(deps: ER, ID, SEC EDGAR)*
 
