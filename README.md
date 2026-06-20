@@ -123,8 +123,9 @@ brings one up along with the supporting services. See
 > **Note on data and reproducibility.** No award data is committed to this repo
 > (only a small NAICS→BEA reference table). Reproducing the analyses end-to-end
 > means downloading the source datasets yourself and supplying your own API
-> credentials, which is a non-trivial amount of setup. The pipeline runs; it is
-> not a one-command turnkey reproduction.
+> credentials, which is a non-trivial amount of setup. Core components are
+> designed to run locally, but full end-to-end reproduction requires source-data
+> downloads, API credentials, and local services such as Neo4j.
 
 ## Honest limitations
 
