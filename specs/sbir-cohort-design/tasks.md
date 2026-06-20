@@ -1,4 +1,5 @@
 # Tasks
 
-See *Tasks* section in
-`docs/superpowers/specs/2026-05-01-sbir-cohort-design.md`.
+Implemented and merged. See research area F (capital formation &
+entrepreneurial finance) in
+[`../../docs/research-questions.md`](../../docs/research-questions.md).

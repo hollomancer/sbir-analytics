@@ -596,7 +596,6 @@ raise ValidationError(
 
 ## See Also
 
-- [CONTRIBUTING.md](../../CONTRIBUTING.md#exception-handling) - Exception handling guidelines for contributors
 - [sbir_etl/exceptions.py](../../sbir_etl/exceptions.py) - Exception class implementations
 - [tests/unit/test_exceptions.py](../../tests/unit/test_exceptions.py) - Exception unit tests
 - [tests/utils/exception_helpers.py](../../tests/utils/exception_helpers.py) - Test utilities

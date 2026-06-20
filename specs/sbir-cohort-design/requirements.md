@@ -1,6 +1,5 @@
 # Requirements
 
-Replaced by design spec at
-`docs/superpowers/specs/2026-05-01-sbir-cohort-design.md`.
-
-See also: research question A4 in `docs/research-questions.md`.
+Implemented and merged. See research area F (capital formation &
+entrepreneurial finance) in
+[`../../docs/research-questions.md`](../../docs/research-questions.md).

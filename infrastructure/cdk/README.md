@@ -46,7 +46,7 @@ cdk deploy sbir-analytics-step-functions
 
 ### Handling Existing Resources
 
-**Storage Stack**: Defaults to importing the existing bucket `sbir-etl-production-data`:
+**Storage Stack**: Defaults to importing an existing bucket named via the `DATA_BUCKET` context/env (e.g. `sbir-etl-<env>-data`):
 
 ```bash
 # Default: imports existing bucket (no context needed)

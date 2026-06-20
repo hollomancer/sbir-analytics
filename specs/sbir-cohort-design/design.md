@@ -1,3 +1,5 @@
 # Design
 
-See `docs/superpowers/specs/2026-05-01-sbir-cohort-design.md`.
+Implemented and merged. The SBIR capital-cohort definition is described in
+research area F (capital formation & entrepreneurial finance) of
+[`../../docs/research-questions.md`](../../docs/research-questions.md).

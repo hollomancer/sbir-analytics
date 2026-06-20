@@ -418,4 +418,3 @@ Project files:
 - `.pre-commit-config.yaml` - Local hook configuration
 - `.github/workflows/static-analysis.yml` - CI configuration
 - `pyproject.toml` - Tool-specific configuration
-- `CONTRIBUTING.md` - Development guidelines
