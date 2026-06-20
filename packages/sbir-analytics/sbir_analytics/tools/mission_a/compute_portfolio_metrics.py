@@ -114,7 +114,7 @@ class ComputePortfolioMetricsTool(BaseTool):
             df = df[df[fy_col].isin(fiscal_years)]
 
         # a. Agency HHI by CET area
-        agency_hhi = {}
+        agency_hhi: dict[str, dict[str, Any]] = {}
         if cet_col and agency_col:
             for area, group in df.groupby(cet_col):
                 agency_counts = group[agency_col].value_counts().tolist()
@@ -122,7 +122,7 @@ class ComputePortfolioMetricsTool(BaseTool):
                 dominant = (
                     group[agency_col].value_counts().index[0] if len(agency_counts) > 0 else None
                 )
-                agency_hhi[area] = {
+                agency_hhi[str(area)] = {
                     "hhi": round(hhi, 4),
                     "dominant_agency": dominant,
                     "num_agencies": len(agency_counts),

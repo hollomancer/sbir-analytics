@@ -37,8 +37,8 @@ try:  # pragma: no cover - defensive import
     from sbir_etl.models.quality import ModuleReport  # type: ignore
     from sbir_etl.utils.reporting.analyzers.patent_analyzer import PatentAnalysisAnalyzer  # type: ignore
 except Exception:
-    ModuleReport = None
-    PatentAnalysisAnalyzer = None
+    ModuleReport = None  # type: ignore[assignment,misc]
+    PatentAnalysisAnalyzer = None  # type: ignore[assignment,misc]
 
 # ============================================================================
 # Optional imports - degrade gracefully when dependencies are unavailable
@@ -48,20 +48,20 @@ except Exception:
 try:  # pragma: no cover - defensive import
     from sbir_etl.extractors.uspto_extractor import USPTOExtractor  # type: ignore
 except Exception:
-    USPTOExtractor = None
+    USPTOExtractor = None  # type: ignore[assignment,misc]
 
 try:  # pragma: no cover - defensive import
     from sbir_etl.extractors.uspto_ai_extractor import USPTOAIExtractor  # type: ignore
 except Exception:
-    USPTOAIExtractor = None
+    USPTOAIExtractor = None  # type: ignore[assignment,misc]
 
 # Validators
 try:  # pragma: no cover - defensive import
     from sbir_etl.quality import USPTODataQualityValidator, USPTOValidationConfig  # type: ignore
 except Exception:
     validate_rf_id_uniqueness = None
-    USPTODataQualityValidator = None
-    USPTOValidationConfig = None
+    USPTODataQualityValidator = None  # type: ignore[assignment,misc]
+    USPTOValidationConfig = None  # type: ignore[assignment,misc]
 
 # Transformers
 try:  # pragma: no cover - defensive import
@@ -73,7 +73,7 @@ except Exception:
 try:  # pragma: no cover - defensive import
     from sbir_etl.models.uspto_models import PatentAssignment  # type: ignore
 except Exception:
-    PatentAssignment = None
+    PatentAssignment = None  # type: ignore[assignment,misc]
 
 # Neo4j loaders
 try:  # pragma: no cover - defensive import
@@ -203,12 +203,10 @@ def _attempt_parse_sample(fp: str, sample_limit: int = 10, chunk_size: int = 100
         return summary
 
     try:
-        extractor = USPTOExtractor()
+        extractor = USPTOExtractor(Path(fp).parent)
         # stream_rows yields dictionaries/rows; we collect up to sample_limit
         rows = []
-        for i, row in enumerate(
-            extractor.stream_rows(fp, chunk_size=chunk_size, sample_limit=sample_limit)
-        ):
+        for i, row in enumerate(extractor.stream_rows(fp, chunk_size=chunk_size)):
             rows.append(row)
             if i + 1 >= sample_limit:
                 break

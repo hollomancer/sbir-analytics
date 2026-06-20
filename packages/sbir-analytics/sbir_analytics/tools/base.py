@@ -232,7 +232,7 @@ class BaseTool(ABC):
     @staticmethod
     def _sanitize_params(params: dict[str, Any]) -> dict[str, Any]:
         """Remove non-serializable parameters for metadata storage."""
-        sanitized = {}
+        sanitized: dict[str, Any] = {}
         for k, v in params.items():
             if isinstance(v, pd.DataFrame):
                 sanitized[k] = f"DataFrame(shape={v.shape})"
