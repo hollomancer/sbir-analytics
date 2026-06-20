@@ -232,7 +232,8 @@ def test_transition_mvp_analytics_current_assets(tmp_path, monkeypatch):
     p = Path(analytics_path)
     assert p.exists()
 
-    # The asset writes its checks alongside the summary at <summary>.checks.json.
+    # The asset writes its checks next to the summary, replacing the summary's
+    # suffix with .checks.json (e.g. transition_analytics.json -> .checks.json).
     checks_path = p.with_suffix(".checks.json")
     assert checks_path.exists()
 

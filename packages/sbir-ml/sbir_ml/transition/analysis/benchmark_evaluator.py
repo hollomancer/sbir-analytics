@@ -729,14 +729,14 @@ class BenchmarkEligibilityEvaluator:
             "|---------|----------|-----------|-------------|------|-------------|",
         ]
         for label, status in [("Failing", BenchmarkStatus.FAIL), ("Passing", BenchmarkStatus.PASS)]:
-            rows = [
+            cr_rows = [
                 r
                 for r in summary.commercialization_results
                 if r.status == status and r.tier != BenchmarkTier.NOT_SUBJECT
             ]
-            if rows:
+            if cr_rows:
                 lines.extend([f"## {label} Commercialization Rate Benchmark", ""] + cr_header)
-                lines.extend(_cr_row(r) for r in rows)
+                lines.extend(_cr_row(r) for r in cr_rows)
                 lines.append("")
 
         # Sensitivity analysis
