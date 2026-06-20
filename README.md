@@ -100,6 +100,12 @@ scripts/               One-off analysis and operational scripts
 infrastructure/        AWS CDK deployment (my personal cloud setup; optional)
 ```
 
+Directories such as `.github/`, `infrastructure/`, deployment docs, and E2E
+testing docs reflect experiments in making the project more runnable and
+maintainable. They should not be read as a claim that this repository contains
+production-grade infrastructure, and they should not be deleted or restructured
+without explicit approval.
+
 ## Running it
 
 The project uses **Python 3.11** and [`uv`](https://github.com/astral-sh/uv) for
