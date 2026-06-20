@@ -240,7 +240,7 @@ def raw_usaspending_recipients(context: AssetExecutionContext) -> Output[pd.Data
         df["data_source_url"] = str(source_url)
         df["ingested_at"] = ingested_at
 
-    metadata = {
+    metadata: dict[str, Any] = {
         "num_records": len(df),
         "columns": list(df.columns),
         "source": "parquet" if parquet_url else "dump",

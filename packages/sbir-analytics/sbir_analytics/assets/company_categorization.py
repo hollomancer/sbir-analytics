@@ -456,14 +456,16 @@ def neo4j_company_categorization(
 
     if skip_neo4j:
         context.log.warning("Neo4j loading skipped via SKIP_NEO4J_LOADING environment variable")
-        return {
-            "status": "skipped",
-            "reason": "neo4j_loading_skipped",
-            "companies_updated": 0,
-            "total_attempted": len(enriched_sbir_companies_with_categorization),
-            "success_rate": 0.0,
-            "errors": 0,
-        }
+        return Output(
+            value={
+                "status": "skipped",
+                "reason": "neo4j_loading_skipped",
+                "companies_updated": 0,
+                "total_attempted": len(enriched_sbir_companies_with_categorization),
+                "success_rate": 0.0,
+                "errors": 0,
+            }
+        )
 
     # Initialize Neo4j client
     try:

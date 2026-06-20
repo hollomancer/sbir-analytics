@@ -63,7 +63,9 @@ def _build_sbir_gov_index(
     try:
         with SbirGovClient() as client:
             target_agencies = agencies or ["HHS", "DOE", "ED", "DOT"]
-            years = list(range(year_range[0], year_range[1] + 1)) if year_range else [None]
+            years: list[int | None] = (
+                list(range(year_range[0], year_range[1] + 1)) if year_range else [None]
+            )
 
             for agency in target_agencies:
                 for year in years:

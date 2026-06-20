@@ -244,7 +244,7 @@ def detect_award_progressions(
     for company_award_list in by_company.values():
         sorted_awards = sorted(company_award_list, key=lambda a: a.award_date or date(1900, 1, 1))
         for i, earlier in enumerate(sorted_awards):
-            next_phase = _PHASE_NEXT.get(earlier.phase)
+            next_phase = _PHASE_NEXT.get(earlier.phase or "")
             if not next_phase:
                 continue
             for later in sorted_awards[i + 1 :]:

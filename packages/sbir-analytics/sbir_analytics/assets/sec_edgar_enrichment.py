@@ -7,6 +7,7 @@ Enriches SBIR companies with public filing data from SEC EDGAR:
 
 import asyncio
 import concurrent.futures
+from typing import Any
 
 import pandas as pd
 from dagster import (
@@ -144,7 +145,7 @@ def sec_edgar_enriched_companies(
         f"({match_rate * 100:.1f}%)"
     )
 
-    metadata = {
+    metadata: dict[str, Any] = {
         "row_count": len(result_df),
         "unique_companies": unique_companies,
         "sec_matched_companies": matched,
