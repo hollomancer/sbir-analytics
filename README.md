@@ -116,7 +116,7 @@ make dev            # start the Dagster UI at http://localhost:3000
 
 `make help` lists every available target. Most data sources need an API key or a
 local bulk download; copy `.env.example` to `.env` and fill in what you have.
-A local Neo4j instance is required to materialize the graph — `docker compose up`
+A local Neo4j instance is required to materialize the graph — `docker compose --profile dev up`
 brings one up along with the supporting services. See
 [docs/getting-started/](docs/getting-started/README.md) for a fuller walkthrough.
 

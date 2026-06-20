@@ -5,3 +5,4 @@ __pycache__/
 venv/
 cdk.out/
 *.zip
+cdk.context.json

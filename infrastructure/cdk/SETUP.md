@@ -49,3 +49,8 @@ AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 cdk bootstrap aws://$AWS_ACCOUNT_ID/us-east-2
 cdk deploy --all   # foundation first, then batch
 ```
+
+> **Note:** CDK regenerates `cdk.context.json` on every `synth`/`deploy` run with
+> account- and VPC-specific lookup results. That file is listed in
+> `.gitignore` — do not commit it; it contains account IDs and VPC topology that
+> should not be stored in the repository.
