@@ -231,14 +231,23 @@ def neo4j_driver():
     """
     from neo4j import GraphDatabase
 
-    from tests.neo4j_service import get_neo4j_service
+    from tests.neo4j_service import connect_with_retry, get_neo4j_service
 
     service = get_neo4j_service()
     if service is None:
         pytest.skip("Neo4j not available (no running instance, testcontainers unavailable)")
 
-    driver = GraphDatabase.driver(service.uri, auth=(service.username, service.password))
-    driver.verify_connectivity()
+    def _connect():
+        driver = GraphDatabase.driver(service.uri, auth=(service.username, service.password))
+        try:
+            driver.verify_connectivity()
+        except Exception:
+            driver.close()
+            raise
+        return driver
+
+    # Retry transient auth/rate-limit errors while Neo4j finishes initializing.
+    driver = connect_with_retry(_connect)
 
     yield driver
     driver.close()

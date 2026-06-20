@@ -53,14 +53,17 @@ from tests.utils.fixtures import (
 @pytest.fixture(scope="module")
 def neo4j_config():
     """Create Neo4j configuration for testing."""
-    return Neo4jConfig(
-        **create_mock_neo4j_config(
-            uri=os.getenv("NEO4J_URI", "bolt://localhost:7687"),
-            username=os.getenv("NEO4J_USERNAME", "neo4j"),
-            password=os.getenv("NEO4J_PASSWORD", "password"),
-            database=os.getenv("NEO4J_DATABASE", "neo4j"),
-        )
+    config = create_mock_neo4j_config(
+        uri=os.getenv("NEO4J_URI", "bolt://localhost:7687"),
+        username=os.getenv("NEO4J_USERNAME", "neo4j"),
+        password=os.getenv("NEO4J_PASSWORD", "password"),
+        database=os.getenv("NEO4J_DATABASE", "neo4j"),
     )
+    # Don't eagerly connect/migrate on construction: it breaks the lazy-init
+    # contract (test_create_client) and adds auth attempts that can trip Neo4j's
+    # auth rate limiter during startup.
+    config["auto_migrate"] = False
+    return Neo4jConfig(**config)
 
 
 @pytest.fixture(scope="module")
