@@ -107,6 +107,23 @@ maintainable. They should not be read as a claim that this repository contains
 production-grade infrastructure, and they should not be deleted or restructured
 without explicit approval.
 
+## Suggested reading path
+
+If you want the fastest route to the domain insight without reading the whole
+repository, start with these documents in order:
+
+1. [Research questions](docs/research-questions.md) — the core policy and
+   evaluation questions the project is trying to answer.
+2. [SEC EDGAR SBIR learnings](docs/research/sec-edgar-sbir-learnings.md) —
+   practical findings from using EDGAR to detect SBIR-related exits and
+   financing signals.
+3. [SBIR Form D fundraising analysis](docs/research/sbir-form-d-fundraising-analysis.md) —
+   the private-capital lens on awardee commercialization.
+4. [Phase transition latency](docs/phase-transition-latency.md) — how the repo
+   thinks about timing from SBIR awards to follow-on federal contracts.
+5. [SBIR identification methodology](docs/sbir-identification-methodology.md) —
+   the methodology behind identifying and linking SBIR firms across datasets.
+
 ## Running it
 
 The project uses **Python 3.11** and [`uv`](https://github.com/astral-sh/uv) for
