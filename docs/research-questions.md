@@ -65,12 +65,16 @@ analysis from an entrepreneurial-finance perspective, see
 [F. Capital formation & entrepreneurial finance](#f-capital-formation--entrepreneurial-finance).*
 
 *Implementation note: M&A event detection runs as a CLI script
-(`scripts/data/detect_sbir_ma_events.py`, SEC EDGAR 8-K and Form D full-text
-search), not as a Dagster asset. The orchestrated graph has no continuous
-M&A-event materialization; rerunning the script is how the M&A signal that
-feeds the A4 and F-area questions gets refreshed. The previously-existing
-`packages/sbir-analytics/sbir_analytics/assets/ma_detection.py` stub was a
-placeholder, never wired into the M&A pipeline, and was removed in PR #317.*
+(`scripts/data/detect_sbir_ma_events.py`), not as a Dagster asset. The script
+merges two signals: Form D filings (entity_type-based business-combination
+heuristics) and SEC EDGAR full-text mention scan across multiple filing types
+(operationally: 8-K, 10-K, DEFM14A, PREM14A, SC TO-T, SC 14D9 — see
+`scripts/data/refine_ma_medium_tier.py`). The orchestrated graph has no
+continuous M&A-event materialization; rerunning the script is how the M&A
+signal that feeds the A4 and F-area questions gets refreshed. The
+previously-existing `packages/sbir-analytics/sbir_analytics/assets/ma_detection.py`
+stub was a placeholder, never wired into the M&A pipeline, and was removed
+in PR #317.*
 
 - Did a defense-funded SBIR company undergo M&A activity, especially involving a foreign acquirer? Foreign-acquisition risk flagged by CSIS [L17] — [../specs/merger_acquisition_detection/](../specs/merger_acquisition_detection/). *(deps: ER, M&A signals)*
 - For SBIR firms acquired by public companies, can inbound M&A be detected via 8-K full-text search? *(PR #286)* *(deps: ER, SEC EDGAR)*
@@ -227,7 +231,7 @@ This area treats the SBIR awardee as a **firm with a capital history**, not as a
 ### F3. Inferential (Tier 3)
 
 - What is the **private-to-SBIR leverage ratio** (private capital raised ÷ SBIR funding) by agency, vintage, and firm size? The private-side mirror to NASEM's 4:1 DoD non-SBIR-federal leverage [L1]. *(deps: ER, ID, SEC EDGAR)*
-- For Phase II awardees of any agency, do follow-on funding and exit outcomes match the published private-capital-backed-startup baselines from the NVCA Yearbook [L25]? *(PR #321 merged, supersedes #311; agency-parameterized via the `agency_private_capital` asset, terminology changed from "VC" to "private capital")* *(deps: ER, SEC EDGAR)*
+- For Phase II awardees of any agency, do follow-on funding and exit outcomes match the published private-capital-backed-startup baselines from the NVCA Yearbook [L25]? *(PR #321 merged, supersedes #311; agency-parameterized via the `agency_private_capital_baseline_comparison` asset in group `agency_private_capital`, terminology changed from "VC" to "private capital")* *(deps: ER, SEC EDGAR)*
 - Does SBIR funding crowd in or crowd out subsequent private capital? **Target: reproduce or extend Howell's finding that an early-stage DOE SBIR grant roughly doubles the probability of subsequent VC** [L11]. Compare against Kortum & Lerner [L24] on VC's contribution to innovation. *(deps: ER, ID, SEC EDGAR)*
 - Does the Lerner [L10] finding — SBIR growth effects concentrated in VC-rich zip codes — still hold post-2010 and across all eleven agencies? *(deps: ER, ID, SEC EDGAR)*
 
