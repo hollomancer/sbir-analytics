@@ -1,122 +1,79 @@
 # AWS CDK Infrastructure
 
-This directory contains AWS CDK code for deploying the SBIR ETL infrastructure to AWS.
+AWS CDK code for the cloud setup behind this project. This is **my personal
+deployment** — it runs the analysis containers on AWS Batch on demand. It is
+optional: nothing in the core ETL pipeline requires it, and you do not need AWS
+to run the project locally (see the repo root README).
+
+## Architecture
+
+The app (`app.py`) defines two stacks:
+
+1. **`sbir-analytics-foundation`** (`FoundationStack`) — the durable, shared
+   resources: an S3 data bucket (`RemovalPolicy.RETAIN`), a GitHub Actions OIDC
+   role so CI can assume AWS credentials without long-lived keys, and a
+   reference to the Neo4j credentials secret in Secrets Manager.
+2. **`sbir-analytics-batch`** (`BatchStack`) — on-demand compute: Fargate
+   compute environments (Spot + on-demand), a job queue, the analysis job
+   definitions, and SNS notifications. It consumes the bucket and secret from
+   the foundation stack, so **foundation must be deployed first.**
+
+Shared names and the container image are constants in
+[`stacks/config.py`](stacks/config.py) (S3 bucket name, IAM role names, the
+`ghcr.io/...` analysis image, and the GitHub repo for the OIDC trust). Adjust
+them there rather than via CDK context.
 
 ## Prerequisites
 
-1. AWS Account with appropriate permissions
-2. AWS CLI configured (`aws configure`)
-3. AWS CDK installed (`npm install -g aws-cdk`)
-4. Python 3.11+
+1. An AWS account and the AWS CLI configured (`aws configure`).
+2. AWS CDK (`npm install -g aws-cdk`).
+3. Python 3.11+ and [`uv`](https://github.com/astral-sh/uv).
+4. The one-time AWS resources described in [SETUP.md](SETUP.md) (GitHub OIDC
+   provider, the Neo4j secret, and the published analysis image).
 
-## Setup
+## Deploy
 
 ```bash
-# Install Python dependencies using uv
 uv sync
 
-# Bootstrap CDK (first time only)
+# First time per account/region only:
 AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 cdk bootstrap aws://$AWS_ACCOUNT_ID/us-east-2
+
+cdk diff                          # review changes
+cdk deploy --all                  # or deploy individually, foundation first:
+cdk deploy sbir-analytics-foundation
+cdk deploy sbir-analytics-batch
 ```
 
-## Deployment
-
-```bash
-# Make sure dependencies are synced
-uv sync
-
-# Review what will be created
-cdk diff
-
-# Deploy all stacks
-# Note: Storage stack defaults to importing existing bucket
-cdk deploy --all
-
-# Deploy specific stack
-# Default: imports existing bucket (if it exists)
-cdk deploy sbir-analytics-storage
-# To create a new bucket instead:
-cdk deploy sbir-analytics-storage --context create_new_bucket=true
-
-cdk deploy sbir-analytics-security
-cdk deploy sbir-analytics-lambda
-cdk deploy sbir-analytics-step-functions
-```
-
-### Handling Existing Resources
-
-**Storage Stack**: Defaults to importing an existing bucket named via the `DATA_BUCKET` context/env (e.g. `sbir-etl-<env>-data`):
-
-```bash
-# Default: imports existing bucket (no context needed)
-cdk deploy sbir-analytics-storage
-
-# To create a new bucket (will fail if bucket already exists)
-cdk deploy sbir-analytics-storage --context create_new_bucket="true"
-```
-
-**Security Stack**: Defaults to importing existing IAM roles and Secrets Manager secrets:
-
-```bash
-# Default: imports existing resources (roles and secrets)
-cdk deploy sbir-analytics-security
-
-# To create new resources (will fail if they already exist)
-cdk deploy sbir-analytics-security --context create_new_resources="true"
-```
-
-### Fixing Failed Deployments
-
-If a stack is in `ROLLBACK_COMPLETE` or `CREATE_FAILED` state, you must delete it before redeploying:
-
-```bash
-# Delete the failed stack via AWS CLI
-aws cloudformation delete-stack --stack-name sbir-analytics-security --region us-east-2
-
-# Wait for deletion to complete, then redeploy
-cdk deploy sbir-analytics-security
-```
-
-Or delete via AWS Console: CloudFormation → Stacks → Select stack → Delete
-
-## Stacks
-
-1. **StorageStack**: S3 bucket for data storage
-2. **SecurityStack**: IAM roles and Secrets Manager
-3. **LambdaStack**: Lambda functions (layer-based only; container-based functions migrated to GitHub Actions)
-4. **StepFunctionsStack**: Step Functions state machine
-
-**Note**: Infrastructure is managed exclusively via AWS CDK. Terraform files have been removed in favor of CDK for consistency and maintainability.
-
-## Configuration
-
-Update `cdk.json` with your GitHub repository:
-
-```json
-{
-  "context": {
-    "github_repo": "owner/repo-name"
-  }
-}
-```
+The account is taken from `CDK_DEFAULT_ACCOUNT` and the region from
+`CDK_DEFAULT_REGION` (default `us-east-2`). The batch stack accepts an optional
+`--context notification_email=you@example.com` to subscribe an address to its
+SNS job notifications.
 
 ## Outputs
 
-After deployment, CDK outputs important ARNs:
+- `FoundationStack`: `BucketName`, `BucketArn`, `GitHubActionsRoleArn`
+- `BatchStack`: `JobQueueName`
 
-- Lambda function ARNs
-- Step Functions state machine ARN
-- IAM role ARNs
-- S3 bucket name
+Use the role ARN to configure GitHub Actions, and the job-queue name to submit
+jobs.
 
-Use these values to configure GitHub Actions secrets.
+## Fixing a failed deployment
 
-## Destroying
+If a stack is stuck in `ROLLBACK_COMPLETE` or `CREATE_FAILED`, delete it before
+redeploying:
 
 ```bash
-# Destroy all stacks
+aws cloudformation delete-stack --stack-name sbir-analytics-batch --region us-east-2
+# wait for deletion, then redeploy
+```
+
+## Destroy
+
+```bash
 cdk destroy --all
 ```
 
-**Warning**: This will delete all resources. S3 bucket has `RemovalPolicy.RETAIN` to prevent data loss.
+The S3 bucket uses `RemovalPolicy.RETAIN`, so it (and your data) survives a
+stack destroy and must be removed manually if you really want it gone.
