@@ -1060,10 +1060,14 @@ jobs:
   transition-mvp:
     name: Run Transition MVP (shim) and gate on validation summary
     needs: [detect-changes]
-    # Run on PR only if transition files changed, always run on push to main/develop, skip docs-only
+    # The transition pipeline needs bulk SBIR/SAM/USAspending data that is
+    # gitignored and only reachable from S3 with AWS credentials. Pull requests
+    # have neither that data nor those credentials, so this gate cannot run
+    # there. Restrict it to push / scheduled (workflow_call) / manual runs,
+    # where the data is available; it is skipped (not failed) on PRs.
     if: |
       needs.detect-changes.outputs.docs-only != 'true' &&
-      (github.event_name == 'push' || needs.detect-changes.outputs.transition == 'true')
+      github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
