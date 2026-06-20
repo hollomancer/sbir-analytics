@@ -213,8 +213,8 @@ class OutcomeMetricsCalculator:
                     )
                 )
                 continue
-            keys = {k for k in group["_company_key"].tolist() if k}
-            survived = keys & self.federal_activity_companies
+            company_keys = {k for k in group["_company_key"].tolist() if k}
+            survived = company_keys & self.federal_activity_companies
             records.append(
                 self._make_row(
                     vintage,

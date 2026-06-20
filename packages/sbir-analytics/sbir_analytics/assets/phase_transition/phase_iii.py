@@ -9,6 +9,7 @@ logged by agency so downstream analysis can qualify the transition rate.
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 import pandas as pd
 
@@ -52,8 +53,8 @@ def _prepare_phase_iii_rows(contracts: pd.DataFrame) -> pd.DataFrame:
     if contracts.empty:
         return pd.DataFrame(columns=PHASE_III_COLUMNS)
 
-    phase = contracts.apply(_classify_contract_phase, axis=1)
-    assistance = contracts.apply(_is_assistance_row, axis=1)
+    phase = contracts.apply(_classify_contract_phase, axis=1)  # type: ignore[call-overload]
+    assistance = contracts.apply(_is_assistance_row, axis=1)  # type: ignore[call-overload]
     mask = (phase == "III") & (~assistance)
     df = contracts.loc[mask].copy()
     if df.empty:
@@ -162,15 +163,16 @@ def validated_phase_iii_contracts(context=None) -> Output[pd.DataFrame]:
     # Summarize: what fraction of agencies show zero Phase III flags?
     zero_p3_agencies = [a for a, c in agency_coverage.items() if c["phase_iii_rows"] == 0]
 
-    checks = {
+    coverage_dict: dict[str, float] = {
+        "recipient_uei": round(uei_cov, 4),
+        "recipient_duns": round(duns_cov, 4),
+        "action_date": round(action_cov, 4),
+    }
+    checks: dict[str, Any] = {
         "ok": True,
         "generated_at": now_utc_iso(),
         "total_rows": int(len(phase_iii)),
-        "coverage": {
-            "recipient_uei": round(uei_cov, 4),
-            "recipient_duns": round(duns_cov, 4),
-            "action_date": round(action_cov, 4),
-        },
+        "coverage": coverage_dict,
         "undercount_warning": {
             "agencies_with_zero_phase_iii": zero_p3_agencies,
             "agencies_total": len(agency_coverage),
@@ -188,11 +190,11 @@ def validated_phase_iii_contracts(context=None) -> Output[pd.DataFrame]:
     checks_path = output_path.with_suffix(".checks.json")
     write_json(checks_path, checks)
 
-    metadata = {
+    metadata: dict[str, Any] = {
         "rows": int(len(phase_iii)),
         "output_path": str(output_path),
         "checks_path": str(checks_path),
-        "coverage": MetadataValue.json(checks["coverage"]),
+        "coverage": MetadataValue.json(coverage_dict),
         "agencies_with_zero_phase_iii": len(zero_p3_agencies),
     }
 
