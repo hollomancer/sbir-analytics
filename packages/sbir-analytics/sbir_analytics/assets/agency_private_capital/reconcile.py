@@ -321,7 +321,7 @@ def _int_or_none(v: object) -> int | None:
     if isinstance(v, float) and math.isnan(v):
         return None
     try:
-        return int(v)
+        return int(v)  # type: ignore[arg-type, call-overload]
     except (TypeError, ValueError):
         return None
 
@@ -330,7 +330,7 @@ def _nan_to_none(v: object) -> float | None:
     if v is None:
         return None
     try:
-        f = float(v)
+        f = float(v)  # type: ignore[arg-type]
     except (TypeError, ValueError):
         return None
     if math.isnan(f):

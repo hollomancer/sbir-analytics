@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pandas as pd
 import pytest
+from dagster import build_asset_context
 
 # Group these tests to run on the same worker because they change the working directory
 pytestmark = pytest.mark.xdist_group("transition_mvp")
@@ -51,7 +52,6 @@ def test_transition_mvp_chain_current_assets(tmp_path, monkeypatch):
 
     # Import the current public transition asset interfaces.
     from sbir_analytics.assets.transition import (
-        AssetExecutionContext,
         enriched_vendor_resolution,
         transformed_transition_evidence,
         transformed_transition_scores,
@@ -97,7 +97,7 @@ def test_transition_mvp_chain_current_assets(tmp_path, monkeypatch):
         ]
     )
 
-    ctx = AssetExecutionContext()
+    ctx = build_asset_context()
 
     # 1) Vendor resolution
     vendor_res_out = enriched_vendor_resolution(ctx, contracts_df, awards_df)
@@ -180,7 +180,6 @@ def test_transition_mvp_analytics_current_assets(tmp_path, monkeypatch):
     monkeypatch.setenv("SBIR_ETL__TRANSITION__FUZZY__THRESHOLD", "0.7")
 
     from sbir_analytics.assets.transition import (
-        AssetExecutionContext,
         enriched_vendor_resolution,
         transformed_transition_analytics,
         transformed_transition_scores,
@@ -221,23 +220,21 @@ def test_transition_mvp_analytics_current_assets(tmp_path, monkeypatch):
     )
 
     # Run chain subset up to analytics
-    ctx = AssetExecutionContext()
+    ctx = build_asset_context()
     vr_df, _ = _unwrap_output(enriched_vendor_resolution(ctx, contracts_df, awards_df))
     scores_df, _ = _unwrap_output(
         transformed_transition_scores(ctx, vr_df, contracts_df, awards_df)
     )
 
-    analytics_path, meta = _unwrap_output(
+    analytics_path, _meta = _unwrap_output(
         transformed_transition_analytics(ctx, awards_df, scores_df, contracts_df)
     )
     p = Path(analytics_path)
     assert p.exists()
 
-    checks_path = (
-        Path(meta.get("checks_path"))
-        if meta and meta.get("checks_path")
-        else p.with_suffix(".checks.json")
-    )
+    # The asset writes its checks next to the summary, replacing the summary's
+    # suffix with .checks.json (e.g. transition_analytics.json -> .checks.json).
+    checks_path = p.with_suffix(".checks.json")
     assert checks_path.exists()
 
     # Load and validate basic payload shape

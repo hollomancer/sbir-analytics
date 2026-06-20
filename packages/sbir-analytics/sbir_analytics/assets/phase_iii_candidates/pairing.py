@@ -189,7 +189,7 @@ def pair_filter_s1(
         return pd.DataFrame(columns=PAIR_S1_COLUMNS)
 
     # Apply the hierarchical agency gate row-wise.
-    levels = merged.apply(
+    levels = merged.apply(  # type: ignore[call-overload]
         lambda r: _agency_match_level(r, r),
         axis=1,
     )

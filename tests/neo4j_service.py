@@ -16,9 +16,61 @@ from __future__ import annotations
 
 import atexit
 import os
+import time
+from collections.abc import Callable
 from dataclasses import dataclass
+from typing import Any
 
 from loguru import logger
+
+
+# Neo4j opens its bolt port before the auth subsystem is ready. Early connects
+# fail with Unauthorized and, after a few failures, the server rate-limits auth
+# (Neo.ClientError.Security.AuthenticationRateLimit) — rejecting even the
+# correct credentials until a short cooldown elapses. Both clear on their own,
+# so retry them with exponential backoff. A genuine "no server" error
+# (ServiceUnavailable) is NOT treated as transient, so local runs without Neo4j
+# fall back to testcontainers immediately instead of waiting out the retries.
+_AUTH_RETRY_ATTEMPTS = 8
+_AUTH_RETRY_MAX_DELAY = 10.0
+
+
+def _is_transient_auth_error(exc: BaseException) -> bool:
+    from neo4j.exceptions import AuthError, ClientError
+
+    if isinstance(exc, AuthError):
+        return True
+    if isinstance(exc, ClientError):
+        return "AuthenticationRateLimit" in (getattr(exc, "code", "") or "")
+    return False
+
+
+def connect_with_retry(connect: Callable[[], Any]) -> Any:
+    """Run ``connect`` (returns a verified driver), retrying transient Neo4j
+    auth / rate-limit errors with exponential backoff.
+
+    Re-raises immediately for non-transient failures, and re-raises the last
+    transient error once the retries are exhausted.
+    """
+    last_exc: BaseException | None = None
+    for attempt in range(_AUTH_RETRY_ATTEMPTS):
+        try:
+            return connect()
+        except Exception as exc:
+            if not _is_transient_auth_error(exc):
+                raise
+            last_exc = exc
+            delay = min(2.0 * (2**attempt), _AUTH_RETRY_MAX_DELAY)
+            logger.warning(
+                "Neo4j auth not ready (attempt {}/{}): {}; retrying in {:.0f}s",
+                attempt + 1,
+                _AUTH_RETRY_ATTEMPTS,
+                exc,
+                delay,
+            )
+            time.sleep(delay)
+    assert last_exc is not None
+    raise last_exc
 
 
 @dataclass(frozen=True)
@@ -42,8 +94,16 @@ def _try_existing_instance() -> Neo4jServiceInfo | None:
     try:
         from neo4j import GraphDatabase
 
-        driver = GraphDatabase.driver(uri, auth=(user, password))
-        driver.verify_connectivity()
+        def _connect() -> Any:
+            driver = GraphDatabase.driver(uri, auth=(user, password))
+            try:
+                driver.verify_connectivity()
+            except Exception:
+                driver.close()
+                raise
+            return driver
+
+        driver = connect_with_retry(_connect)
         driver.close()
         logger.info("Connected to existing Neo4j at {}", uri)
         return Neo4jServiceInfo(uri=uri, username=user, password=password)
@@ -57,11 +117,14 @@ def _try_testcontainer() -> Neo4jServiceInfo | None:
     try:
         from testcontainers.neo4j import Neo4jContainer
 
-        _container = Neo4jContainer("neo4j:5")
+        # Pin the password explicitly so it always matches what callers connect
+        # with (neo4j/password), rather than parsing it back out of the
+        # container env where a default mismatch could cause auth failures.
+        password = "password"  # pragma: allowlist secret
+        _container = Neo4jContainer("neo4j:5", password=password)
         _container.start()
 
         uri = _container.get_connection_url()
-        password = _container.env.get("NEO4J_AUTH", "neo4j/test").split("/", 1)[-1]
 
         logger.info("Started testcontainer Neo4j at {}", uri)
         return Neo4jServiceInfo(uri=uri, username="neo4j", password=password)

@@ -117,10 +117,10 @@ class ResolveEntitiesTool(BaseTool):
                 metadata.warnings.append(f"Gold set load failed: {e}")
 
         # Build canonical index from SAM.gov (authoritative UEI source)
-        canonical_by_uei: dict[str, dict] = {}
-        canonical_by_duns: dict[str, dict] = {}
-        canonical_by_cage: dict[str, dict] = {}
-        canonical_by_name_state: dict[str, dict] = {}
+        canonical_by_uei: dict[str, dict[str, Any]] = {}
+        canonical_by_duns: dict[str, dict[str, Any]] = {}
+        canonical_by_cage: dict[str, dict[str, Any]] = {}
+        canonical_by_name_state: dict[str, dict[str, Any]] = {}
 
         if sam_entities is not None and not sam_entities.empty:
             metadata.data_sources.append(
@@ -140,7 +140,7 @@ class ResolveEntitiesTool(BaseTool):
                 naics = str(row.get("naics_code", "")).strip() or None
 
                 canonical_id = _generate_canonical_id(name, uei)
-                entity = {
+                entity: dict[str, Any] = {
                     "canonical_id": canonical_id,
                     "canonical_name": name,
                     "uei": uei,

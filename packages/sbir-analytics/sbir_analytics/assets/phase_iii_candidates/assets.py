@@ -31,23 +31,23 @@ try:
     )
 except Exception:  # pragma: no cover - test-only shim
 
-    def asset(*_args: Any, **_kwargs: Any):  # type: ignore[override]
+    def asset(*_args: Any, **_kwargs: Any):  # type: ignore[no-redef]
         def _wrap(fn):
             return fn
 
         return _wrap
 
-    class Output:  # type: ignore[override]
+    class Output:  # type: ignore[no-redef]
         def __init__(self, value: Any, metadata: dict | None = None) -> None:
             self.value = value
             self.metadata = metadata or {}
 
-    class MetadataValue:  # type: ignore[override]
+    class MetadataValue:  # type: ignore[no-redef]
         @staticmethod
         def json(v: Any) -> Any:
             return v
 
-    class OpExecutionContext:  # type: ignore[override]
+    class OpExecutionContext:  # type: ignore[no-redef]
         pass
 
     AssetsDefinition = Any  # type: ignore[assignment, misc]
@@ -207,7 +207,7 @@ def _row_to_federal_contract(row: pd.Series) -> FederalContract:
         agency=row.get("target_agency") if pd.notna(row.get("target_agency")) else None,
         sub_agency=row.get("target_sub_agency") if pd.notna(row.get("target_sub_agency")) else None,
         start_date=_to_date(row.get("target_action_date")),
-        obligation_amount=float(row.get("target_obligated_amount"))
+        obligation_amount=float(row.get("target_obligated_amount"))  # type: ignore[arg-type]
         if pd.notna(row.get("target_obligated_amount"))
         else None,
         competition_type=_coerce_competition_type(row.get("target_competition_type")),
@@ -484,7 +484,7 @@ def build_candidate_asset(
                 "high_confidence_rows": high_count,
             },
         )
-        metadata = {
+        metadata: dict[str, Any] = {
             "rows": int(len(df)),
             "high_confidence_rows": high_count,
             "candidates_path": str(CANDIDATES_OUTPUT_PATH),

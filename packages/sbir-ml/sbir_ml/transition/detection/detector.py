@@ -174,6 +174,9 @@ class TransitionDetector:
         """Convert an internal ResolverMatch to the domain VendorMatch model."""
         metadata = extra_metadata or {}
         record = resolver_match.record
+        assert record is not None, (
+            "record must be non-None before calling _resolver_to_domain_match"
+        )
         return VendorMatch(
             vendor_id=record.metadata.get("vendor_id") or vendor_id_fallback,
             method=method,
@@ -240,7 +243,7 @@ class TransitionDetector:
                 return self._resolver_to_domain_match(
                     resolver_match,
                     resolver_match.method,
-                    resolver_match.record.metadata.get("vendor_id", "unknown"),
+                    str(resolver_match.record.metadata.get("vendor_id", "unknown")),
                     extra_metadata={
                         "input_name": contract.vendor_name,
                         "fuzzy_score": resolver_match.score,

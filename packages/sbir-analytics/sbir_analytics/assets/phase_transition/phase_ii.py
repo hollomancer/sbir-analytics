@@ -147,7 +147,7 @@ def _prepare_contract_rows(contracts: pd.DataFrame) -> pd.DataFrame:
     if contracts.empty:
         return pd.DataFrame(columns=PHASE_II_COLUMNS)
 
-    phase = contracts.apply(_classify_contract_phase, axis=1)
+    phase = contracts.apply(_classify_contract_phase, axis=1)  # type: ignore[call-overload]
     mask = phase == "II"
     df = contracts.loc[mask].copy()
     if df.empty:
@@ -212,12 +212,16 @@ def _prepare_sbir_gov_rows(sbir_awards: pd.DataFrame) -> pd.DataFrame:
             "recipient_name": df.get("company_name"),
             "agency": df.get("agency"),
             "sub_agency": df.get("branch"),
-            "award_amount": pd.to_numeric(df.get("award_amount"), errors="coerce"),
-            "award_date": coerce_date_series(df.get("award_date")).dt.date,
+            "award_amount": pd.to_numeric(
+                df.get("award_amount", pd.Series(dtype=object)), errors="coerce"
+            ),
+            "award_date": coerce_date_series(df.get("award_date", pd.Series(dtype=object))).dt.date,
             "period_of_performance_start": coerce_date_series(
-                df.get("contract_start_date")
+                df.get("contract_start_date", pd.Series(dtype=object))
             ).dt.date,
-            "period_of_performance_end": coerce_date_series(df.get("contract_end_date")).dt.date,
+            "period_of_performance_end": coerce_date_series(
+                df.get("contract_end_date", pd.Series(dtype=object))
+            ).dt.date,
             "source": "sbir_gov",
             "phase_coding_reconciled": True,
         }
@@ -299,16 +303,18 @@ def validated_phase_ii_awards(context=None) -> Output[pd.DataFrame]:
     )
     source_counts = unified["source"].value_counts().to_dict() if not unified.empty else {}
 
-    checks = {
+    coverage_dict: dict[str, float] = {
+        "recipient_uei": round(uei_cov, 4),
+        "recipient_duns": round(duns_cov, 4),
+        "period_of_performance_end": round(pop_end_cov, 4),
+    }
+    sources_dict: dict[str, int] = {str(k): int(v) for k, v in source_counts.items()}
+    checks: dict[str, Any] = {
         "ok": True,
         "generated_at": now_utc_iso(),
         "total_rows": int(len(unified)),
-        "sources": {str(k): int(v) for k, v in source_counts.items()},
-        "coverage": {
-            "recipient_uei": round(uei_cov, 4),
-            "recipient_duns": round(duns_cov, 4),
-            "period_of_performance_end": round(pop_end_cov, 4),
-        },
+        "sources": sources_dict,
+        "coverage": coverage_dict,
         "agency_row_counts": _agency_coverage(unified),
         "inputs": {
             "contracts_path": str(contracts_path),
@@ -320,12 +326,12 @@ def validated_phase_ii_awards(context=None) -> Output[pd.DataFrame]:
     checks_path = output_path.with_suffix(".checks.json")
     write_json(checks_path, checks)
 
-    metadata = {
+    metadata: dict[str, Any] = {
         "rows": int(len(unified)),
         "output_path": str(output_path),
         "checks_path": str(checks_path),
-        "coverage": MetadataValue.json(checks["coverage"]),
-        "sources": MetadataValue.json(checks["sources"]),
+        "coverage": MetadataValue.json(coverage_dict),
+        "sources": MetadataValue.json(sources_dict),
     }
 
     log = getattr(context, "log", logger) if context is not None else logger

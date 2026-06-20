@@ -409,7 +409,7 @@ def validated_sbir_awards(
     }
 
     # Create metadata - convert numpy types to Python types for JSON serialization
-    metadata = {
+    metadata: dict[str, Any] = {
         "num_records": len(validated_df),
         "pass_rate": f"{quality_report.pass_rate:.1%}",  # type: ignore[attr-defined]
         "passed_records": int(quality_report.passed_records),  # type: ignore[attr-defined]

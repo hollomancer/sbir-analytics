@@ -145,13 +145,13 @@ class AgencyCohortBuilder:
             return awards.assign(
                 vintage_bucket=pd.Series(dtype="object"), phase_label=pd.Series(dtype="object")
             )
-        mask = awards.apply(_is_agency_row, axis=1, agency_code=self.agency_code)
+        mask = awards.apply(_is_agency_row, axis=1, agency_code=self.agency_code)  # type: ignore[call-overload]
         cohort = awards[mask].copy()
         if cohort.empty:
             cohort["vintage_bucket"] = pd.Series(dtype="object")
             cohort["phase_label"] = pd.Series(dtype="object")
             return cohort
-        years = cohort.apply(_award_year, axis=1)
+        years = cohort.apply(_award_year, axis=1)  # type: ignore[call-overload]
         cohort["vintage_bucket"] = years.map(
             lambda y: vintage_bucket(y, size=self.vintage_size) if y is not None else None
         )

@@ -28,8 +28,8 @@ try:  # pragma: no cover - defensive import
     from sbir_etl.models.quality import ModuleReport  # type: ignore
     from sbir_etl.utils.reporting.analyzers.transition_analyzer import TransitionDetectionAnalyzer
 except Exception:
-    ModuleReport = None
-    TransitionDetectionAnalyzer = None
+    ModuleReport = None  # type: ignore[assignment,misc]
+    TransitionDetectionAnalyzer = None  # type: ignore[assignment,misc]
 
 
 # Import-safe shims for Dagster
