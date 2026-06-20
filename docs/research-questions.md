@@ -15,6 +15,17 @@ respected so foundational work appears before dependents.
 - [E. Program management & data infrastructure](#e-program-management--data-infrastructure)
 - [F. Capital formation & entrepreneurial finance](#f-capital-formation--entrepreneurial-finance)
 
+**Where to start, by audience:**
+
+- **Policymakers** (Congress, OMB, agency leadership, congressional defense committees): start with **A3** (DoD leverage ratio vs. NASEM's ~4:1 benchmark), **D2** (Treasury ROI / tax receipts from SBIR spending), and **F3** (private-to-SBIR leverage as the mirror to A3 on the private side).
+- **SBIR program managers** (NSF, NIH, DoD, DOE, SBA program offices): start with **B** (transitions, Phase II→III latency, company performance), **C1** (cross-agency CET portfolio composition), and **E6** (rolling quarterly snapshots / continuous monitoring).
+- **Investors** (VC, PE, angels, family offices, corporate VC): start with **F1** (Form D fundraising profile, M&A exit rate by funding agency, capital-event timeline) and **F2** (cohort outcomes vs. published VC/PE baselines, acquirer-type concentration).
+
+Each pointer above lands inside a section that mixes implemented and spec-only
+work — see status banners in the linked specs, and the inline *(PR #)* /
+*(branch: …)* tags on individual questions, to tell what's answerable today
+from what's a research target.
+
 **Dependency tags** used in parentheses after each question:
 
 - `ER` — entity resolution (UEI/CAGE/DUNS/fuzzy-name cascade)
