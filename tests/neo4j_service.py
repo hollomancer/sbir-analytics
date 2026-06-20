@@ -57,11 +57,14 @@ def _try_testcontainer() -> Neo4jServiceInfo | None:
     try:
         from testcontainers.neo4j import Neo4jContainer
 
-        _container = Neo4jContainer("neo4j:5")
+        # Pin the password explicitly so it always matches what callers connect
+        # with (neo4j/password), rather than parsing it back out of the
+        # container env where a default mismatch could cause auth failures.
+        password = "password"  # pragma: allowlist secret
+        _container = Neo4jContainer("neo4j:5", password=password)
         _container.start()
 
         uri = _container.get_connection_url()
-        password = _container.env.get("NEO4J_AUTH", "neo4j/test").split("/", 1)[-1]
 
         logger.info("Started testcontainer Neo4j at {}", uri)
         return Neo4jServiceInfo(uri=uri, username="neo4j", password=password)
