@@ -11,7 +11,10 @@ import pytest
 
 
 SCRIPT_PATH = (
-    Path(__file__).resolve().parents[3] / "scripts" / "data" / "dod_form_d_leverage_decomposition.py"
+    Path(__file__).resolve().parents[3]
+    / "scripts"
+    / "data"
+    / "dod_form_d_leverage_decomposition.py"
 )
 _spec = importlib.util.spec_from_file_location("dod_form_d_leverage_decomposition", SCRIPT_PATH)
 _mod = importlib.util.module_from_spec(_spec)
@@ -53,7 +56,9 @@ class TestBootstrapProgramRatio:
     def test_point_estimate_matches_aggregate(self):
         raised = np.array([100.0, 200.0, 300.0])
         rng = np.random.default_rng(42)
-        result = _mod.bootstrap_program_ratio(raised, program_denominator=1000.0, n_iter=100, rng=rng)
+        result = _mod.bootstrap_program_ratio(
+            raised, program_denominator=1000.0, n_iter=100, rng=rng
+        )
         # 600/1000 = 0.6
         assert result["point_estimate"] == pytest.approx(0.6)
         assert result["n_firms"] == 3
@@ -62,13 +67,17 @@ class TestBootstrapProgramRatio:
         rng_data = np.random.default_rng(7)
         raised = rng_data.gamma(2.0, 50.0, size=200)
         rng = np.random.default_rng(42)
-        result = _mod.bootstrap_program_ratio(raised, program_denominator=10000.0, n_iter=1000, rng=rng)
+        result = _mod.bootstrap_program_ratio(
+            raised, program_denominator=10000.0, n_iter=1000, rng=rng
+        )
         assert result["ci_lo"] <= result["point_estimate"] <= result["ci_hi"]
 
     def test_empty_cohort_returns_zero(self):
         raised = np.array([], dtype=float)
         rng = np.random.default_rng(42)
-        result = _mod.bootstrap_program_ratio(raised, program_denominator=1000.0, n_iter=10, rng=rng)
+        result = _mod.bootstrap_program_ratio(
+            raised, program_denominator=1000.0, n_iter=10, rng=rng
+        )
         assert result["point_estimate"] == 0.0
         assert result["n_firms"] == 0
 
@@ -163,13 +172,18 @@ class TestLoadFormDPerFirm:
     @pytest.fixture
     def jsonl_path(self, tmp_path):
         import json
+
         records = [
             # High tier, normal industry, in window → counted
             {
                 "company_name": "High Co",
                 "match_confidence": {"tier": "high"},
                 "offerings": [
-                    {"industry_group": "Other Technology", "filing_date": "2020-05-01", "total_amount_sold": 1_000_000.0},
+                    {
+                        "industry_group": "Other Technology",
+                        "filing_date": "2020-05-01",
+                        "total_amount_sold": 1_000_000.0,
+                    },
                 ],
             },
             # High tier, PIF industry → excluded
@@ -177,7 +191,11 @@ class TestLoadFormDPerFirm:
                 "company_name": "PIF Co",
                 "match_confidence": {"tier": "high"},
                 "offerings": [
-                    {"industry_group": "Pooled Investment Fund", "filing_date": "2020-05-01", "total_amount_sold": 5_000_000.0},
+                    {
+                        "industry_group": "Pooled Investment Fund",
+                        "filing_date": "2020-05-01",
+                        "total_amount_sold": 5_000_000.0,
+                    },
                 ],
             },
             # Low tier → filtered out by tier_filter
@@ -185,7 +203,11 @@ class TestLoadFormDPerFirm:
                 "company_name": "Low Co",
                 "match_confidence": {"tier": "low"},
                 "offerings": [
-                    {"industry_group": "Other Technology", "filing_date": "2020-05-01", "total_amount_sold": 999_999.0},
+                    {
+                        "industry_group": "Other Technology",
+                        "filing_date": "2020-05-01",
+                        "total_amount_sold": 999_999.0,
+                    },
                 ],
             },
             # High tier, out-of-window filing → excluded
@@ -193,7 +215,11 @@ class TestLoadFormDPerFirm:
                 "company_name": "Old Co",
                 "match_confidence": {"tier": "high"},
                 "offerings": [
-                    {"industry_group": "Other Technology", "filing_date": "2005-05-01", "total_amount_sold": 1_000.0},
+                    {
+                        "industry_group": "Other Technology",
+                        "filing_date": "2005-05-01",
+                        "total_amount_sold": 1_000.0,
+                    },
                 ],
             },
         ]
@@ -267,7 +293,9 @@ class TestDecomposition1BranchRatios:
         fd = {"AF_1": 200.0, "AF_2": 300.0, "NAVY_1": 50.0, "HHS_1": 500.0}
         program = {"Air Force": 1000.0, "Navy": 500.0}
         rng = np.random.default_rng(42)
-        out = _mod.decomposition_1_branch_ratios(firms, fd, program, n_iter=100, rng=rng, min_program_usd=0)
+        out = _mod.decomposition_1_branch_ratios(
+            firms, fd, program, n_iter=100, rng=rng, min_program_usd=0
+        )
         by_branch = {r["branch"]: r for r in out}
         # Air Force: 500/1000 = 0.5
         assert by_branch["Air Force"]["point_estimate"] == pytest.approx(0.5)
@@ -283,7 +311,9 @@ class TestDecomposition1BranchRatios:
         program = {"Air Force": 1000.0, "Navy": 500.0}
         rng = np.random.default_rng(42)
         # Filter out branches with < 600 program $ → only Air Force passes
-        out = _mod.decomposition_1_branch_ratios(firms, fd, program, n_iter=100, rng=rng, min_program_usd=600)
+        out = _mod.decomposition_1_branch_ratios(
+            firms, fd, program, n_iter=100, rng=rng, min_program_usd=600
+        )
         assert len(out) == 1
         assert out[0]["branch"] == "Air Force"
 
@@ -350,7 +380,9 @@ class TestDecomposition4SingleVsMulti:
         }
         fd = {"DOD_ONLY_1": 200.0, "MULTI_1": 100.0, "NON_DOD": 9999.0}
         rng = np.random.default_rng(42)
-        out = _mod.decomposition_4_single_vs_multi_agency(firms, fd, program_total_dod=1000.0, n_iter=100, rng=rng)
+        out = _mod.decomposition_4_single_vs_multi_agency(
+            firms, fd, program_total_dod=1000.0, n_iter=100, rng=rng
+        )
         # DoD-only: 1 firm, raised 200 → ratio = 0.2
         assert out["dod_only"]["n_firms"] == 1
         assert out["dod_only"]["point_estimate"] == pytest.approx(0.2)
@@ -371,6 +403,7 @@ class TestLoadMaEvents:
     @pytest.fixture
     def jsonl_path(self, tmp_path):
         import json
+
         records = [
             {"company_name": "Acme Inc", "event_date": "2020-01-01"},
             {"company_name": "Acme Inc", "event_date": "2021-03-15"},  # multiple events per firm
@@ -396,7 +429,9 @@ class TestLoadMaEvents:
 
     def test_handles_invalid_json_lines(self, tmp_path):
         p = tmp_path / "broken.jsonl"
-        p.write_text('{"company_name":"A","event_date":"2020-01-01"}\nnot json\n{"company_name":"B","event_date":"2021-01-01"}\n')
+        p.write_text(
+            '{"company_name":"A","event_date":"2020-01-01"}\nnot json\n{"company_name":"B","event_date":"2021-01-01"}\n'
+        )
         out = _mod.load_ma_events(p)
         assert "A" in out
         assert "B" in out

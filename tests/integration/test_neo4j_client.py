@@ -66,12 +66,14 @@ class TestNeo4jConstraintsAndIndexes:
         """Test creating unique constraints."""
         neo4j_client.create_constraints()
 
-        # Verify constraints exist
+        # Verify constraints exist. `create_constraints()` (see
+        # sbir_graph.loaders.neo4j.client) creates legacy constraints keyed by
+        # the primary-id of each entity — `company_id`, `award_id`, etc.
         with neo4j_client.session() as session:
             result = session.run("SHOW CONSTRAINTS")
             constraints = [record["name"] for record in result]
 
-            assert any("company_uei" in c for c in constraints)
+            assert any("company_id" in c for c in constraints)
             assert any("award_id" in c for c in constraints)
 
     def test_create_indexes(self, neo4j_client):

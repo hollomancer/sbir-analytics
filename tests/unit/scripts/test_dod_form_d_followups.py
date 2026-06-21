@@ -10,9 +10,7 @@ from pathlib import Path
 import pytest
 
 
-SCRIPT_PATH = (
-    Path(__file__).resolve().parents[3] / "scripts" / "data" / "dod_form_d_followups.py"
-)
+SCRIPT_PATH = Path(__file__).resolve().parents[3] / "scripts" / "data" / "dod_form_d_followups.py"
 _spec = importlib.util.spec_from_file_location("dod_form_d_followups", SCRIPT_PATH)
 _mod = importlib.util.module_from_spec(_spec)
 sys.modules["dod_form_d_followups"] = _mod
@@ -253,12 +251,32 @@ class TestItem4NavyAcquirers:
     def ma_events_path(self, tmp_path):
         records = [
             # Navy firms
-            {"company_name": "NavyFirm1", "acquirer": "LOCKHEED MARTIN CORP", "event_date": "2020-01-01"},
-            {"company_name": "NavyFirm2", "acquirer": "Acme Commercial Inc.", "event_date": "2021-01-01"},
-            {"company_name": "NavyFirm3", "acquirer": "Golub Capital BDC", "event_date": "2022-01-01"},
+            {
+                "company_name": "NavyFirm1",
+                "acquirer": "LOCKHEED MARTIN CORP",
+                "event_date": "2020-01-01",
+            },
+            {
+                "company_name": "NavyFirm2",
+                "acquirer": "Acme Commercial Inc.",
+                "event_date": "2021-01-01",
+            },
+            {
+                "company_name": "NavyFirm3",
+                "acquirer": "Golub Capital BDC",
+                "event_date": "2022-01-01",
+            },
             # Air Force firms
-            {"company_name": "AfFirm1", "acquirer": "RAYTHEON TECHNOLOGIES CORP", "event_date": "2020-01-01"},
-            {"company_name": "AfFirm2", "acquirer": "Megacorp Industries", "event_date": "2021-01-01"},
+            {
+                "company_name": "AfFirm1",
+                "acquirer": "RAYTHEON TECHNOLOGIES CORP",
+                "event_date": "2020-01-01",
+            },
+            {
+                "company_name": "AfFirm2",
+                "acquirer": "Megacorp Industries",
+                "event_date": "2021-01-01",
+            },
             # Firm not in any branch — should be ignored
             {"company_name": "Stranger", "acquirer": "Whoever", "event_date": "2023-01-01"},
             # Event with no acquirer — should not affect classified counts
@@ -297,7 +315,7 @@ class TestItem4NavyAcquirers:
         p = tmp_path / "broken.jsonl"
         p.write_text(
             '{"company_name":"NavyFirm","acquirer":"LOCKHEED MARTIN","event_date":"2020-01-01"}\n'
-            'not json\n'
+            "not json\n"
         )
         firms = {"NAVYFIRM": {"dominant_dod_branch": "Navy"}}
         out = _mod.item_4_navy_acquirer_analysis(firms, p)
