@@ -155,7 +155,7 @@ def _parse_amount(s: str | None) -> float | None:
 
 def load_sbir_firm_index(
     path: Path, year_min: int, year_max: int
-) -> tuple[dict[str, dict[str, Any]], dict[str, float]]:
+) -> tuple[dict[str, dict[str, Any]], dict[tuple[str, int], float]]:
     """Per-firm SBIR aggregates (DoD only) + per-(branch, year) totals.
 
     Returns:
@@ -219,13 +219,21 @@ def load_sbir_firm_index(
 def load_form_d_per_firm(
     path: Path, year_min: int, year_max: int
 ) -> tuple[dict[str, float], dict[str, dict[int, float]]]:
-    """Per-firm Form D total + per-firm-per-year breakdown (high tier only)."""
+    """Per-firm Form D total + per-firm-per-year breakdown (high tier only).
+
+    Defensive: skips malformed JSON lines and records missing
+    company_name / match_confidence.tier, matching the convention in
+    bootstrap_form_d_leverage_ci.py.
+    """
     per_firm: dict[str, float] = {}
     per_firm_year: dict[str, dict[int, float]] = defaultdict(lambda: defaultdict(float))
     for line in open(path):
-        r = json.loads(line)
+        try:
+            r = json.loads(line)
+        except json.JSONDecodeError:
+            continue
         name = _norm_name(r.get("company_name"))
-        tier = r.get("match_confidence", {}).get("tier")
+        tier = (r.get("match_confidence") or {}).get("tier")
         if not name or tier != "high":
             continue
         raised = 0.0
@@ -349,7 +357,7 @@ def item_3_time_series_branch_ratios(
 def item_4_navy_acquirer_analysis(
     sbir_firms: dict[str, dict[str, Any]],
     ma_events_path: Path,
-    target_branches: list[str] = None,
+    target_branches: list[str] | None = None,
 ) -> dict[str, Any]:
     """Classify acquirers of SBIR firms with the given dominant DoD Branch.
 
@@ -468,7 +476,7 @@ def write_markdown(snapshot: dict[str, Any], path: Path) -> None:
 
     L.append("## Item 4 — Navy acquirer-type analysis (Air Force as control)")
     L.append("")
-    L.append("Classifies acquirers of M&A-event SBIR firms into three types using substring matching against canonical name patterns: **defense_prime** (Lockheed, Northrop, L3Harris, Leidos, CACI, Kratos, etc.), **financial_sponsor** (Capital, Partners, BDC, Fund, Holdings, etc.), and **commercial** (everything else). Tests whether Navy's higher M&A-than-Form-D pattern is driven by defense-prime acquisition specifically.")
+    L.append("Classifies acquirers of M&A-event SBIR firms into three types using substring matching against canonical name patterns: **defense_prime** (Lockheed, Northrop, L3Harris, Leidos, CACI, Kratos, KBR, BAE, etc. — short acronyms use word-boundary regex), **financial_sponsor** (narrow markers only: Capital, Partners, BDC, Acquisition Corp, plus specific named investment vehicles like Hercules Capital, Golub Capital, Churchill Capital — \"Holdings\" alone is NOT matched because too many real operating companies use it), and **commercial** (everything else). Tests whether Navy's higher M&A-than-Form-D pattern is driven by defense-prime acquisition specifically.")
     L.append("")
     for branch, r in snapshot["item_4_navy_acquirers"].items():
         L.append(f"### {branch}")
