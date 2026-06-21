@@ -114,7 +114,9 @@ class TestBootstrapTwoViews:
         raised = np.array([100.0, 200.0, 300.0])
         sbir = np.array([10.0, 20.0, 30.0])
         rng = np.random.default_rng(42)
-        result = _mod.bootstrap_two_views(raised, sbir, program_denominator=1000.0, n_iter=100, rng=rng)
+        result = _mod.bootstrap_two_views(
+            raised, sbir, program_denominator=1000.0, n_iter=100, rng=rng
+        )
         # 600 / 60 = 10.0
         assert result["per_matched_firm"]["point_estimate"] == pytest.approx(10.0)
 
@@ -162,7 +164,9 @@ class TestBootstrapTwoViews:
         raised = np.array([], dtype=float)
         sbir = np.array([], dtype=float)
         rng = np.random.default_rng(42)
-        result = _mod.bootstrap_two_views(raised, sbir, program_denominator=100.0, n_iter=10, rng=rng)
+        result = _mod.bootstrap_two_views(
+            raised, sbir, program_denominator=100.0, n_iter=10, rng=rng
+        )
         assert result["n_firms"] == 0
         assert result["program_level"]["point_estimate"] == 0.0
         assert result["per_matched_firm"]["point_estimate"] == 0.0
@@ -184,10 +188,34 @@ class TestBootstrapTwoViews:
 class TestCohortArrays:
     def _make_cohort(self):
         return [
-            {"name": "A", "tier": "high", "raised": 100.0, "award_total": 10.0, "has_sbir_in_window": True},
-            {"name": "B", "tier": "high", "raised": 200.0, "award_total": 0.0, "has_sbir_in_window": False},
-            {"name": "C", "tier": "medium", "raised": 300.0, "award_total": 30.0, "has_sbir_in_window": True},
-            {"name": "D", "tier": "low", "raised": 400.0, "award_total": 40.0, "has_sbir_in_window": True},
+            {
+                "name": "A",
+                "tier": "high",
+                "raised": 100.0,
+                "award_total": 10.0,
+                "has_sbir_in_window": True,
+            },
+            {
+                "name": "B",
+                "tier": "high",
+                "raised": 200.0,
+                "award_total": 0.0,
+                "has_sbir_in_window": False,
+            },
+            {
+                "name": "C",
+                "tier": "medium",
+                "raised": 300.0,
+                "award_total": 30.0,
+                "has_sbir_in_window": True,
+            },
+            {
+                "name": "D",
+                "tier": "low",
+                "raised": 400.0,
+                "award_total": 40.0,
+                "has_sbir_in_window": True,
+            },
         ]
 
     def test_tier_filter_high_only(self):
@@ -197,7 +225,9 @@ class TestCohortArrays:
         assert sorted(sbir.tolist()) == [0.0, 10.0]
 
     def test_tier_filter_high_plus_medium(self):
-        raised, sbir = _mod.cohort_arrays(self._make_cohort(), {"high", "medium"}, require_sbir=False)
+        raised, sbir = _mod.cohort_arrays(
+            self._make_cohort(), {"high", "medium"}, require_sbir=False
+        )
         # A, B, C. raised = [100, 200, 300]
         assert sorted(raised.tolist()) == [100.0, 200.0, 300.0]
 
