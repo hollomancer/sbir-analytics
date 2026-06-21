@@ -901,7 +901,9 @@ jobs:
         uses: ./.github/actions/setup-python-uv
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-          install-dev-deps: "false"
+          # stack-dev is required: smoke test imports sbir_graph.loaders.*,
+          # which only resolves after the workspace package is installed.
+          install-dev-deps: "true"
           cache-venv: "true"
           cache-pytest: "false"
           install-pyreadstat: "false"
