@@ -7,14 +7,24 @@ NEO4J_USERNAME / NEO4J_PASSWORD with sensible test defaults.
 Avoids defining a local fixture: a hardcoded password mismatched with the CI
 container trips Neo4j's auth rate limiter, which then rejects every other
 test in the run.
+
+All tests in this module share an `xdist_group("neo4j_integration")` so they
+run sequentially on a single xdist worker. The integration test job uses
+`-n auto --dist=loadgroup`, so without the group these tests would race each
+other (and `tests/integration/test_neo4j_client.py`) against the same Neo4j
+container, producing `AssertionError: assert 2 == 1` / `assert 0 == 20`
+style failures from leftover state.
 """
 
 import pytest
 from tests.conftest import neo4j_running as neo4j_available
 
-pytestmark = pytest.mark.skipif(
-    not neo4j_available(), reason="Neo4j not running - see INTEGRATION_TEST_ANALYSIS.md"
-)
+pytestmark = [
+    pytest.mark.skipif(
+        not neo4j_available(), reason="Neo4j not running - see INTEGRATION_TEST_ANALYSIS.md"
+    ),
+    pytest.mark.xdist_group("neo4j_integration"),
+]
 
 
 @pytest.mark.integration

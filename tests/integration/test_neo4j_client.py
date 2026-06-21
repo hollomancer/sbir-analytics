@@ -2,6 +2,14 @@
 
 These tests require a running Neo4j instance.
 Run with: docker-compose up -d neo4j
+
+All tests in this module share an `xdist_group("neo4j_integration")` so they
+run sequentially on a single xdist worker, alongside
+`tests/integration/neo4j/test_multi_key_merge.py`. The integration job uses
+`-n auto --dist=loadgroup`; without the group these tests race each other
+against the shared Neo4j container (leftover-state `AssertionError`s and
+sporadic `EntityNotFound` errors when one worker deletes a node another is
+mid-test on).
 """
 
 import pytest
@@ -14,6 +22,7 @@ pytestmark = [
     pytest.mark.skipif(
         not neo4j_available(), reason="Neo4j not running - see INTEGRATION_TEST_ANALYSIS.md"
     ),
+    pytest.mark.xdist_group("neo4j_integration"),
 ]
 
 
