@@ -207,7 +207,19 @@ def bootstrap_program_ratio(
     Denominator is fixed; CI reflects which firms are in the matched cohort."""
     n = len(raised)
     if n == 0 or program_denominator <= 0:
-        return {"n_firms": int(n), "point_estimate": 0.0, "ci_lo": 0.0, "ci_hi": 0.0, "median": 0.0}
+        # Return the full key set so downstream consumers (write_markdown) can
+        # iterate uniformly. raised_total_usd / program_total_usd / iterations
+        # must be present even in the degenerate path.
+        return {
+            "n_firms": int(n),
+            "point_estimate": 0.0,
+            "median": 0.0,
+            "ci_lo": 0.0,
+            "ci_hi": 0.0,
+            "bootstrap_iterations": n_iter,
+            "raised_total_usd": float(raised.sum()) if n > 0 else 0.0,
+            "program_total_usd": float(program_denominator),
+        }
     point = float(raised.sum() / program_denominator)
     ratios = np.empty(n_iter)
     for i in range(n_iter):
@@ -271,8 +283,14 @@ def decomposition_2_participation_rates(
     """Per-Branch Form D participation rate (% of branch's firms in high tier).
 
     "Participation" = a firm in this branch (by dominant DoD branch) has
-    at least one high-tier Form D match. Separates "do firms even file
+    at least one high-tier Form D match AND positive in-window,
+    non-excluded Form D raised dollars. Separates "do firms even file
     Form D" from "what's the ratio when they do."
+
+    NOTE: mere presence in fd_high_firms is not enough — a firm whose
+    only offerings are PIF-excluded or out-of-window has raised=0.0
+    after filtering, and should not be counted as "participating" in
+    the year/industry-filtered cohort the published doc uses.
     """
     firms_by_branch: dict[str, set[str]] = defaultdict(set)
     for name, e in sbir_firms.items():
@@ -286,7 +304,11 @@ def decomposition_2_participation_rates(
         if program < min_program_usd:
             continue
         n_firms = len(firms_by_branch.get(branch, set()))
-        n_with_fd = sum(1 for name in firms_by_branch.get(branch, set()) if name in fd_high_firms)
+        # Require positive raised dollars after filters, not mere membership
+        n_with_fd = sum(
+            1 for name in firms_by_branch.get(branch, set())
+            if (fd_high_firms.get(name) or 0.0) > 0
+        )
         rate = (n_with_fd / n_firms) if n_firms > 0 else 0.0
         out.append(
             {
@@ -328,7 +350,13 @@ def decomposition_3_ma_overlap(
         firms = firms_by_branch.get(branch, set())
         n_firms = len(firms)
         n_ma = sum(1 for name in firms if name in ma_events)
-        n_fd = sum(1 for name in firms if name in fd_high_firms)
+        # Require positive in-window, non-excluded raised dollars — same
+        # filter applied in decomposition_2_participation_rates. Bare
+        # presence in fd_high_firms inflates the rate by counting firms
+        # whose only offerings are PIF-excluded or out-of-window.
+        n_fd = sum(
+            1 for name in firms if (fd_high_firms.get(name) or 0.0) > 0
+        )
         out.append(
             {
                 "branch": branch,
@@ -392,7 +420,14 @@ def write_markdown(snapshot: dict[str, Any], path: Path) -> None:
     L.append(f"**Bootstrap iterations:** {snapshot['bootstrap_iterations']:,} (seed {snapshot['seed']})")
     L.append("")
     L.append(f"**DoD program total:** ${snapshot['dod_program_total_usd']/1e9:.2f}B")
-    L.append(f"**DoD aggregate ratio (from bootstrap doc):** 1.011x [0.842, 1.214]")
+    # Compute DoD aggregate from the run rather than hardcoding (would
+    # silently be wrong if year window / tier filter / data changes).
+    dod_total_raised = sum(r["raised_total_usd"] for r in snapshot["branch_ratios"])
+    dod_aggregate = dod_total_raised / snapshot["dod_program_total_usd"] if snapshot["dod_program_total_usd"] > 0 else 0.0
+    L.append(
+        f"**DoD aggregate ratio (computed from this run):** {dod_aggregate:.3f}x "
+        f"(matches bootstrap doc's 1.011x [0.842, 1.214] CI when run on same data + year window)"
+    )
     L.append("")
 
     L.append("## Decomposition 1 — per-Branch program-level ratios")

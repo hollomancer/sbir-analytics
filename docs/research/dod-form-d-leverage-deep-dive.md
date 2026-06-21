@@ -56,25 +56,27 @@ This separates "do DoD firms file Form D at all" from "what's the ratio when the
 
 | Branch | DoD firms | With high-tier Form D | Participation rate |
 |---|---|---|---|
-| **CBD** | 58 | 20 | **34.5%** |
-| **SDA** | 21 | 7 | **33.3%** |
-| **DHA** | 215 | 50 | **23.3%** |
-| Air Force | 3,539 | 659 | **18.6%** |
-| DARPA | 525 | 81 | 15.4% |
-| SOCOM | 137 | 19 | 13.9% |
-| Army | 1,122 | 140 | 12.5% |
+| **CBD** | 58 | 18 | **31.0%** |
+| **SDA** | 21 | 5 | **23.8%** |
+| **DHA** | 215 | 46 | **21.4%** |
+| Air Force | 3,539 | 605 | **17.1%** |
+| DARPA | 525 | 77 | 14.7% |
+| SOCOM | 137 | 18 | 13.1% |
 | DTRA | 58 | 7 | 12.1% |
-| DLA | 117 | 13 | 11.1% |
+| Army | 1,122 | 135 | 12.0% |
+| DLA | 117 | 12 | 10.3% |
 | OSD | 24 | 2 | 8.3% |
-| MDA | 267 | 22 | 8.2% |
-| **Navy** | 1,495 | 98 | **6.6%** |
+| MDA | 267 | 19 | 7.1% |
+| **Navy** | 1,495 | 91 | **6.1%** |
+
+Participation = firm has at least one high-tier Form D match AND positive in-window, non-excluded Form D raised dollars. (The "and positive raised after filters" condition was a Copilot review fix to PR #342; earlier rates were a couple of points higher because they counted firms whose only offerings were PIF-excluded or out-of-window.)
 
 Key observations:
 
-- **Navy's low ratio is driven by BOTH low participation AND low per-firm raises.** Only 6.6% of Navy SBIR firms file high-tier Form D — less than half the Air Force rate. Of those 98 firms that do file, they collectively raise just $2.48B against $6.10B of program SBIR.
-- **CBD and DHA have the highest participation rates** (34.5% and 23.3%). Both are mission areas with high overlap with commercial biotech / pharma — exactly the verticals where VC funding is most active.
-- **MDA's 8.2% participation** is consistent with the classified-/mission-specific hypothesis. Missile defense work doesn't generate VC-fundable products.
-- **Air Force's 18.6%** is the highest large-cohort participation rate in DoD — and combined with its high per-firm ratio explains its 2.12x leverage.
+- **Navy's low ratio is driven by BOTH low participation AND low per-firm raises.** Only 6.1% of Navy SBIR firms have a high-tier Form D with positive in-window raises — less than half the Air Force rate. Of those 91 firms, they collectively raise just $2.48B against $6.10B of program SBIR.
+- **CBD and DHA have the highest participation rates** (31.0% and 21.4%). Both are mission areas with high overlap with commercial biotech / pharma — exactly the verticals where VC funding is most active.
+- **MDA's 7.1% participation** is consistent with the classified-/mission-specific hypothesis. Missile defense work doesn't generate VC-fundable products.
+- **Air Force's 17.1%** is the highest large-cohort participation rate in DoD — and combined with its high per-firm ratio explains its 2.12x leverage.
 
 ### 3 — M&A event rate vs Form D participation
 
@@ -82,20 +84,20 @@ If DoD firms commercialize via *acquisition* instead of private capital, low-For
 
 | Branch | DoD firms | Form D rate | M&A event rate | Read |
 |---|---|---|---|---|
-| **Navy** | 1,495 | 6.6% | **10.3%** | **M&A higher (1.6×) — only branch where this holds** |
-| MDA | 267 | 8.2% | 8.6% | comparable |
-| DLA | 117 | 11.1% | 9.4% | comparable |
-| Army | 1,122 | 12.5% | 9.7% | Form D higher (1.3×) |
+| **Navy** | 1,495 | 6.1% | **10.3%** | **M&A higher (1.7×) — strongest substitution signal** |
+| **MDA** | 267 | 7.1% | **8.6%** | M&A higher (1.2×) — weak substitution signal |
+| DLA | 117 | 10.3% | 9.4% | comparable |
+| Army | 1,122 | 12.0% | 9.7% | Form D higher (1.2×) |
 | DTRA | 58 | 12.1% | 8.6% | Form D higher (1.4×) |
-| DARPA | 525 | 15.4% | 11.0% | Form D higher (1.4×) |
+| DARPA | 525 | 14.7% | 11.0% | Form D higher (1.3×) |
 | OSD | 24 | 8.3% | 4.2% | Form D higher (2.0×) |
-| SOCOM | 137 | 13.9% | 5.1% | Form D higher (2.7×) |
-| Air Force | 3,539 | 18.6% | 6.6% | Form D higher (2.8×) |
-| DHA | 215 | 23.3% | 8.4% | Form D higher (2.8×) |
-| CBD | 58 | 34.5% | 5.2% | Form D higher (6.7×) |
-| SDA | 21 | 33.3% | 0.0% | Form D only (no M&A) |
+| SOCOM | 137 | 13.1% | 5.1% | Form D higher (2.6×) |
+| Air Force | 3,539 | 17.1% | 6.6% | Form D higher (2.6×) |
+| DHA | 215 | 21.4% | 8.4% | Form D higher (2.5×) |
+| CBD | 58 | 31.0% | 5.2% | Form D higher (6.0×) |
+| SDA | 21 | 23.8% | 0.0% | Form D only (no M&A) |
 
-**The acquisition-substitution hypothesis only holds for Navy** (and weakly for MDA). In every other branch, Form D filings substantially outnumber M&A events — typically by 1.5–3×.
+**The acquisition-substitution hypothesis holds for Navy and weakly for MDA.** In every other branch, Form D filings substantially outnumber M&A events — typically by 1.2–6×.
 
 This is a methodologically significant finding: the "DoD firms commercialize via acquisition not private capital" hypothesis is **branch-specific, not DoD-wide**. Navy is the one branch where it has empirical support; Air Force and DHA actively contradict it.
 
@@ -117,7 +119,7 @@ The honest takeaway from this decomposition: **DoD-only firms collectively accou
 The bootstrap doc raised four candidate explanations for DoD's 1.011x. Re-evaluating each with the decomposition data:
 
 1. **DoD SBIR firms are systematically less commercially-oriented (gov-services / classified-heavy / SBIR-as-sole-revenue).** 
-   **Partially true, branch-specific.** Holds for Navy (6.6% participation), MDA (8.2%), DTRA (12.1%) — all classified/mission-specific. Does NOT hold for Air Force (18.6%), DHA (23.3%), CBD (34.5%), Air Force.
+   **Partially true, branch-specific.** Holds for Navy (6.1% participation), MDA (7.1%), DTRA (12.1%) — all classified/mission-specific. Does NOT hold for Air Force (17.1%), DHA (21.4%), CBD (31.0%).
 
 2. **DoD firms commercialize via federal contracts rather than VC (FPDS substitution).**
    **Cannot evaluate without USAspending pulls.** Flagged as future work.
@@ -126,7 +128,7 @@ The bootstrap doc raised four candidate explanations for DoD's 1.011x. Re-evalua
    **Plausible for the low-Form-D branches** (Navy, MDA, DTRA) — these are exactly the branches where classified work is concentrated. Air Force and DHA contradict the "DoD = classified-heavy" framing.
 
 4. **Acquisition path replaces capital-raising path.**
-   **Branch-specific and weaker than the bootstrap doc hinted.** Only Navy has M&A rate > Form D rate (1.6×). Every other branch has the opposite. The acquisition-substitute hypothesis is *Navy-specific*, not DoD-wide.
+   **Branch-specific and weaker than the bootstrap doc hinted.** Navy has M&A rate > Form D rate (1.7×); MDA also shows weak M&A-over-Form-D (1.2×). Every other branch has the opposite. The acquisition-substitute hypothesis is concentrated in classified-mission branches, not DoD-wide.
 
 The decomposition revises the bootstrap doc's framing in one important way: instead of "DoD doesn't attract private capital," the more accurate statement is:
 
@@ -136,9 +138,9 @@ The decomposition revises the bootstrap doc's framing in one important way: inst
 
 - **Stop citing "DoD 1:1 leverage" as a uniform agency-level finding.** It's not; it's an average of two very different portfolios.
 - **Air Force SBIR looks similar to commercial-tech ecosystem leverage** (2.12x, brushes NSF range). If the policy question is "is DoD SBIR commercially generative," the answer for Air Force is *yes*.
-- **Navy SBIR is genuinely low-leverage** with both low participation (6.6%) and low per-firm raises. Combined with the only-branch-where-M&A-substitutes-for-Form-D finding, this looks like a portfolio where commercialization happens via *prime contractor acquisition* rather than private-capital growth.
+- **Navy SBIR is genuinely low-leverage** with both low participation (6.1%) and low per-firm raises. Combined with the strongest-substitution-signal M&A finding (Navy M&A rate 1.7× Form D rate), this looks like a portfolio where commercialization happens via *prime contractor acquisition* rather than private-capital growth.
 - **MDA and DTRA leverage is essentially zero** — consistent with classified work that can't attract outside capital. Probably correct outcome for those mission areas; not a methodology failure.
-- **DHA and CBD have unusually high participation rates** (23.3%, 34.5%) and ratios in the 1.1–1.6x range. These mission areas overlap with biotech/medical devices where commercial markets exist. They're the DoD's bright spots for private-capital leverage.
+- **DHA and CBD have unusually high participation rates** (21.4%, 31.0%) and ratios in the 1.1–1.6x range. These mission areas overlap with biotech/medical devices where commercial markets exist. They're the DoD's bright spots for private-capital leverage.
 
 ## Future work
 
