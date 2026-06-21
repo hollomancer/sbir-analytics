@@ -213,6 +213,9 @@ report.md
 **/cdk.out/
 *.template.json
 *.assets.json
+# CDK context cache (per-developer AWS lookup snapshots; CI generates a stub
+# inline in the workflow rather than committing a shared file).
+**/cdk.context.json
 infrastructure/**/.venv/
 results.csv
 
