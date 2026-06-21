@@ -298,31 +298,41 @@ jobs:
           # BatchStack uses `ec2.Vpc.from_lookup(is_default=True)`, which forces
           # CDK to call AWS at synth time. CI has no AWS credentials, so seed
           # cdk.context.json with the same stub VPC used by
-          # tests/test_batch_stack.py to keep synth offline.
-          cat > cdk.context.json <<'JSON'
-          {
-            "vpc-provider:account=123456789012:filter.isDefault=true:region=us-east-2:returnAsymmetricSubnets=true": {
-              "vpcId": "vpc-12345",
-              "vpcCidrBlock": "172.31.0.0/16",
-              "ownerAccountId": "123456789012",
-              "availabilityZones": [],
-              "subnetGroups": [
-                {
-                  "name": "Public",
-                  "type": "Public",
-                  "subnets": [
-                    {
-                      "subnetId": "subnet-aaa",
-                      "cidr": "172.31.0.0/20",
-                      "availabilityZone": "us-east-2a",
-                      "routeTableId": "rtb-aaa"
-                    }
-                  ]
-                }
-              ]
-            }
+          # tests/test_batch_stack.py to keep synth offline. Use python to write
+          # the file rather than a YAML heredoc (heredoc indentation + JSON
+          # special chars are too fragile across runners).
+          python <<'PYEOF'
+          import json
+          ctx = {
+              "vpc-provider:account=123456789012:filter.isDefault=true:region=us-east-2:returnAsymmetricSubnets=true": {
+                  "vpcId": "vpc-12345",
+                  "vpcCidrBlock": "172.31.0.0/16",
+                  "ownerAccountId": "123456789012",
+                  "availabilityZones": [],
+                  "subnetGroups": [
+                      {
+                          "name": "Public",
+                          "type": "Public",
+                          "subnets": [
+                              {
+                                  "subnetId": "subnet-aaa",
+                                  "cidr": "172.31.0.0/20",
+                                  "availabilityZone": "us-east-2a",
+                                  "routeTableId": "rtb-aaa",
+                              }
+                          ],
+                      }
+                  ],
+              }
           }
-          JSON
+          with open("cdk.context.json", "w") as f:
+              json.dump(ctx, f, indent=2)
+          PYEOF
+          echo "--- cdk.context.json written: ---"
+          ls -la cdk.context.json
+          echo "--- contents: ---"
+          cat cdk.context.json
+          echo "--- (end) ---"
 
           # Run CDK synth with python directly (bypass cdk.json's uv command)
           if cdk synth --app "python app.py" --quiet 2>&1; then
