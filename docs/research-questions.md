@@ -117,10 +117,11 @@ in PR #317.*
 - Transition effectiveness rate by CET area, agency, and firm size — compare to Link & Scott [L12] and NASEM [L1][L3][L4]. *(deps: ER, ID, CET)*
 - How much undercount exists in Phase III coding by agency? Corroborated by GAO [L14] and NASEM [L1][L3]. *(deps: ID)*
 - How does company categorization relate to transition likelihood? Baseline: Link & Scott commercialization-probability econometrics [L12]. *(deps: ER, ID)*
+- Which Phase II awardees subject to §638(qq)(3) Increased Performance Standards meet the **statutory Commercialization Benchmark** (sales + private investment over the 10-FY covered period ÷ SBIR funding ≥ specified ratio)? Pub. L. 117-183 SBIR/STTR Extension Act of 2022 §638(qq)(3). Implementation: `scripts/data/run_commercialization_benchmark.py` + `scripts/data/audit_one_firm.py` (audited FY2026 cohort lives at `reports/validation/commercialization_benchmark_eval_fy2026.csv`). Methodology details in `docs/commercialization-benchmark-methodology.md` *(currently untracked, see "Output products" section below)*. *(deps: ER, ID, transitions, SEC EDGAR)*
 
 ### B4. Predictive (Tier 4)
 
-- Forward-looking transition probabilities for Phase II awards nearing completion. *(deps: all of B1–B3)*
+- Forward-looking transition probabilities for Phase II awards nearing completion. Per-firm **Phase III prospect digest** builder *(branch: claude/sbir-phase3-analysis, commit 4470b921 — not yet merged to main)*. Surfaces top candidates for outreach using B1-B3 features as scoring inputs. *(deps: all of B1–B3)*
 
 ## C. Innovation & knowledge generation (R&D policy)
 
@@ -249,6 +250,30 @@ This area treats the SBIR awardee as a **firm with a capital history**, not as a
 ### F4. Predictive (Tier 4)
 
 - Forward-looking probability of an exit event (M&A or IPO) for a given SBIR firm, conditional on capital-event history and CET area. *(deps: all of F1–F3)*
+
+## Output products & audiences
+
+Documents and reports the question inventory has produced for specific audiences. Each is a synthesis of A-F questions for a particular reader, not a new research question itself.
+
+### Congressional district success-story briefings
+
+**Audience:** members of Congress and their staff, for constituent-facing communication.
+**Format:** per-district briefing identifying 3-5 SBIR firms within the member's district that represent the strongest success stories (FDA-cleared products, defense supplier roles, follow-on capital raises, M&A exits) with political-safety vetting.
+**Districts covered to date** (in conversation; not yet committed as repo artifacts): KY-3 (McGarvey), NJ-10 (McIver), NY-16 (Latimer), NH-2 (Goodlander), MT-2 (Downing), TX-6 (Ellzey), and a CNMI null finding for King-Hinds. Vetting depth includes press review, SEC Form D filings, M&A history, and any political-sensitivity factors (foreign ownership, classified work exposure, recent acquisition).
+**Supporting code:** `sbir_etl/enrichers/congressional_district_resolver.py` (UEI → district resolver), `scripts/setup_congressional_districts.py` (district reference data).
+**Pulls from:** A1 (portfolio composition), A4 (defense-industrial-base), B1-B3 (commercialization signals), F1-F2 (capital events, M&A).
+
+### Form D fundraising analysis (published)
+
+**Audience:** F-area analysts, investor researchers, policy staff studying program-wide private-capital leverage.
+**Format:** `docs/research/sbir-form-d-fundraising-analysis.md` (canonical) + companion methodology docs: `form-d-leverage-bootstrap-findings.md` (CIs), `form-d-pif-cross-link-audit.md` (PIF integrity), `dod-form-d-leverage-deep-dive.md` (Branch decomposition), `dod-form-d-followup-findings.md` (per-firm + time-series + acquirer-type).
+**Pulls from:** F1 (Form D profile), F3 (private-to-SBIR leverage), A3/A4 (DoD-specific decomposition).
+
+### Commercialization-benchmark methodology (in progress, not yet committed)
+
+**Audience:** SBA program oversight, statutory compliance reviewers, GAO.
+**Format:** `docs/commercialization-benchmark-methodology.md` (locally present but not committed to the repo) documenting the §638(qq)(3) statutory framework, the FY2026 evaluation methodology, the data-source provenance (FPDS/USAspending contracts, SEC Form D investment, SBIR.gov FABS grants), and the per-firm audit protocol. Pairs with `scripts/data/run_commercialization_benchmark.py` and `scripts/data/audit_one_firm.py`. **Should be committed once methodology stabilizes** — the untracked status is itself a coverage gap worth closing.
+**Pulls from:** B3 (transition effectiveness + new §638(qq) benchmark question), F1 (Form D investment signal), F2 (NVCA-baseline comparison).
 
 ## Prior literature & benchmarks
 
