@@ -19,15 +19,26 @@ For every $1 of federal SBIR funding, SBIR companies raised between
 $1.82 and $2.37 in private capital via SEC Regulation D offerings,
 depending on match confidence tier.
 
-| Confidence Filter | Nominal Ratio | Companies |
-|-------------------|---------------|-----------|
-| High + Medium | 2.37x | 4,760 |
-| High only | 1.82x | 3,640 |
+| Confidence Filter | Nominal Ratio | 95% Bootstrap CI | Companies |
+|-------------------|---------------|-------------------|-----------|
+| High + Medium | 2.37x | [2.10, 2.67] | 4,760 |
+| High only | 1.82x | [1.65, 2.02] | 3,640 |
+
+CIs are firm-level percentile bootstrap (1,000 iterations, seed 42) from PR #338 / [form-d-leverage-bootstrap-findings.md](form-d-leverage-bootstrap-findings.md), rounded to two decimal places for display (full-precision bounds: [1.650, 2.024] high-only, [2.100, 2.668] H+M). Both headlines are statistically distinguishable from 1.0x ("no leverage") and from each other; both are clearly distinguishable from NASEM's 4:1 benchmark.
 
 These ratios measure a **different channel** than the commonly cited
 NASEM 4:1 benchmark. NASEM measures follow-on *federal contracts* (FPDS);
 this analysis measures *private capital* raised through Reg D filings.
 The two are complementary, not comparable.
+
+### Two ratio interpretations
+
+The 1.82x headline uses *total federal SBIR program spending* ($50.98B) as the denominator. A complementary **per-matched-firm** ratio — Form D $ divided by SBIR $ only for firms with in-window SBIR awards — produces **9.48x [8.26, 10.85]** for the same high-tier cohort. Both are valid:
+
+- **1.82x** ≈ "What fraction of total SBIR program spending is followed by Form-D-detected private capital across the matched-firm cohort?" (program-wide ROI framing.)
+- **9.48x** ≈ "For SBIR awardees who go on to attract private capital, what's their leverage per SBIR dollar received?" (per-firm leverage framing.)
+
+The denominator gap explains the 5× difference: the program total includes ~$42B going to SBIR firms with no Form D activity at all. See [form-d-leverage-bootstrap-findings.md](form-d-leverage-bootstrap-findings.md) for the full methodology comparison.
 
 ## Methodology
 
@@ -57,9 +68,15 @@ company's Form D filing. See "HHS/NIH and Address Matching" below.
 incompatible with SBIR companies are excluded: Insurance, Lodging and
 Conventions, Other Travel, Pooled Investment Fund, Restaurants, Retailing,
 Tourism and Travel Services. Pooled Investment Fund entities (520 companies,
-92% low-tier) are VC/PE fund vehicles, not operating company raises; 71
-cross-links to SBIR companies via shared persons/CIKs were identified
-for future investor-relationship mapping.
+92% low-tier) are VC/PE fund vehicles, not operating company raises;
+[PR #340](https://github.com/hollomancer/sbir-analytics/pull/340)
+quantified ~100 cross-links from PIFs to operating-co SBIR matches via
+shared persons/CIKs and found the at-risk exposure is **$151M (0.16% of
+high-only headline)** — well below the bootstrap CI noise floor. See
+the companion `form-d-pif-cross-link-audit.md` for the audit
+methodology (added by PR #340). The cross-link list is best treated as a
+starting point for investor → portfolio relationship mapping, not as a
+methodology bias to correct.
 
 **Exclusions**: 2025 excluded (partial year for both SBIR awards and
 Form D filings).
@@ -181,6 +198,8 @@ half their target.
 | DOE | $4.0B | $7.4B | 1.85x | $6.3B | 1.57x | 10% |
 | DoD | $24.5B | $35.0B | 1.43x | $28.5B | 1.16x | 17% |
 
+Per-agency bootstrap CIs (PR #338 / [form-d-leverage-bootstrap-findings.md](form-d-leverage-bootstrap-findings.md)) reveal substantial heterogeneity. Highlights for the high-only column: **DoD 1.011x [0.842, 1.214]** (statistically distinguishable from the cross-agency average and from HHS / NSF / USDA at 95%; CI overlaps with DoE / NASA / DHS / Commerce / EPA — see DoD finding in the bootstrap doc); **NSF 3.230x [2.600, 4.016]**; **HHS 2.360x [2.059, 2.674]**. Small-cohort agencies (Commerce, DHS, NASA, EPA, USDA) have wide CIs (typical span ~3-10×) — quoting their per-agency point estimates without CI overstates precision.
+
 NSF leads at 5.54x (H+M) / 3.54x (high-only). HHS — previously
 the weakest agency in high-only (0.70x with person matching alone) —
 now shows 2.66x after address matching recovered companies where the
@@ -265,7 +284,11 @@ a large bucket of unconfirmed matches.
   the amounts reported in Form D filings.
 
 - **Pooled Investment Funds excluded.** Fund vehicles matched to SBIR
-  company names are excluded from totals. Some are linked to real SBIR
-  companies via shared persons/CIKs (71 cross-links identified) — these
-  represent potential investor-to-company relationships worth mapping
-  in future work.
+  company names are excluded from totals. ~100 PIF→operating-co
+  cross-links via shared persons/CIKs exist
+  ([PR #340](https://github.com/hollomancer/sbir-analytics/pull/340)
+  added the audit; see `form-d-pif-cross-link-audit.md` for
+  methodology). The audit quantified the at-risk operating-co exposure
+  at $151M (0.16% of high-only headline), well below the bootstrap CI
+  noise floor. Treat the cross-link list as a starting point for
+  investor → portfolio relationship mapping, not as a bias correction.
