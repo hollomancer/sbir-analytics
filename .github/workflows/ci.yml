@@ -253,8 +253,15 @@ jobs:
     needs: [detect-changes]
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    # Always run - catches CDK issues early, not expensive
-    if: needs.detect-changes.outputs.docs-only != 'true'
+    # BatchStack uses `ec2.Vpc.from_lookup(is_default=True)`, which forces CDK
+    # to call AWS at synth time. Pull requests don't have AWS credentials and
+    # the cdk.context.json stub written inline below is consistently ignored by
+    # the CDK CLI in CI (works locally), so restrict to push/scheduled/manual
+    # runs where credentials are available. Matches the existing pattern for
+    # Run Transition MVP.
+    if: |
+      needs.detect-changes.outputs.docs-only != 'true' &&
+      github.event_name != 'pull_request'
     steps:
       - uses: actions/checkout@v6
 
