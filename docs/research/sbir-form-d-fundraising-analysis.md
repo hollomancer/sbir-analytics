@@ -24,7 +24,7 @@ depending on match confidence tier.
 | High + Medium | 2.37x | [2.10, 2.67] | 4,760 |
 | High only | 1.82x | [1.65, 2.02] | 3,640 |
 
-CIs are firm-level percentile bootstrap (1,000 iterations, seed 42) from PR #338 / [form-d-leverage-bootstrap-findings.md](form-d-leverage-bootstrap-findings.md). Both headlines are statistically distinguishable from 1.0x ("no leverage") and from each other; both are clearly distinguishable from NASEM's 4:1 benchmark.
+CIs are firm-level percentile bootstrap (1,000 iterations, seed 42) from PR #338 / [form-d-leverage-bootstrap-findings.md](form-d-leverage-bootstrap-findings.md), rounded to two decimal places for display (full-precision bounds: [1.650, 2.024] high-only, [2.100, 2.668] H+M). Both headlines are statistically distinguishable from 1.0x ("no leverage") and from each other; both are clearly distinguishable from NASEM's 4:1 benchmark.
 
 These ratios measure a **different channel** than the commonly cited
 NASEM 4:1 benchmark. NASEM measures follow-on *federal contracts* (FPDS);
@@ -69,12 +69,14 @@ incompatible with SBIR companies are excluded: Insurance, Lodging and
 Conventions, Other Travel, Pooled Investment Fund, Restaurants, Retailing,
 Tourism and Travel Services. Pooled Investment Fund entities (520 companies,
 92% low-tier) are VC/PE fund vehicles, not operating company raises;
-PR #340 / [form-d-pif-cross-link-audit.md](form-d-pif-cross-link-audit.md)
+[PR #340](https://github.com/hollomancer/sbir-analytics/pull/340)
 quantified ~100 cross-links from PIFs to operating-co SBIR matches via
 shared persons/CIKs and found the at-risk exposure is **$151M (0.16% of
-high-only headline)** — well below the bootstrap CI noise floor. The
-cross-link list is best treated as a starting point for investor →
-portfolio relationship mapping, not as a methodology bias to correct.
+high-only headline)** — well below the bootstrap CI noise floor. See
+the companion `form-d-pif-cross-link-audit.md` for the audit
+methodology (added by PR #340). The cross-link list is best treated as a
+starting point for investor → portfolio relationship mapping, not as a
+methodology bias to correct.
 
 **Exclusions**: 2025 excluded (partial year for both SBIR awards and
 Form D filings).
@@ -196,7 +198,7 @@ half their target.
 | DOE | $4.0B | $7.4B | 1.85x | $6.3B | 1.57x | 10% |
 | DoD | $24.5B | $35.0B | 1.43x | $28.5B | 1.16x | 17% |
 
-Per-agency bootstrap CIs (PR #338 / [form-d-leverage-bootstrap-findings.md](form-d-leverage-bootstrap-findings.md)) reveal substantial heterogeneity. Highlights for the high-only column: **DoD 1.011x [0.842, 1.214]** (statistically distinguishable from every other large-cohort agency at 95% — see DoD finding in the bootstrap doc); **NSF 3.230x [2.600, 4.016]**; **HHS 2.360x [2.059, 2.674]**. Small-cohort agencies (Commerce, DHS, NASA, EPA, USDA) have wide CIs that span an order of magnitude — quoting their per-agency point estimates without CI overstates precision.
+Per-agency bootstrap CIs (PR #338 / [form-d-leverage-bootstrap-findings.md](form-d-leverage-bootstrap-findings.md)) reveal substantial heterogeneity. Highlights for the high-only column: **DoD 1.011x [0.842, 1.214]** (statistically distinguishable from the cross-agency average and from HHS / NSF / USDA at 95%; CI overlaps with DoE / NASA / DHS / Commerce / EPA — see DoD finding in the bootstrap doc); **NSF 3.230x [2.600, 4.016]**; **HHS 2.360x [2.059, 2.674]**. Small-cohort agencies (Commerce, DHS, NASA, EPA, USDA) have wide CIs (typical span ~3-10×) — quoting their per-agency point estimates without CI overstates precision.
 
 NSF leads at 5.54x (H+M) / 3.54x (high-only). HHS — previously
 the weakest agency in high-only (0.70x with person matching alone) —
@@ -283,9 +285,10 @@ a large bucket of unconfirmed matches.
 
 - **Pooled Investment Funds excluded.** Fund vehicles matched to SBIR
   company names are excluded from totals. ~100 PIF→operating-co
-  cross-links via shared persons/CIKs exist (PR #340 /
-  [form-d-pif-cross-link-audit.md](form-d-pif-cross-link-audit.md));
-  the audit quantified the at-risk operating-co exposure at $151M
-  (0.16% of high-only headline), well below the bootstrap CI noise
-  floor. Treat the cross-link list as a starting point for investor →
-  portfolio relationship mapping, not as a bias correction.
+  cross-links via shared persons/CIKs exist
+  ([PR #340](https://github.com/hollomancer/sbir-analytics/pull/340)
+  added the audit; see `form-d-pif-cross-link-audit.md` for
+  methodology). The audit quantified the at-risk operating-co exposure
+  at $151M (0.16% of high-only headline), well below the bootstrap CI
+  noise floor. Treat the cross-link list as a starting point for
+  investor → portfolio relationship mapping, not as a bias correction.
