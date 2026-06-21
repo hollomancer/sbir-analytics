@@ -57,7 +57,14 @@ class TestFindCrossLinks:
     def test_finds_person_based_cross_link(self):
         records = [
             _record("PIF_A", "low", has_pif=True, has_non_pif=False, persons=["ALICE"]),
-            _record("OP_B", "high", has_pif=False, has_non_pif=True, persons=["ALICE", "BOB"], raised=1_000_000.0),
+            _record(
+                "OP_B",
+                "high",
+                has_pif=False,
+                has_non_pif=True,
+                persons=["ALICE", "BOB"],
+                raised=1_000_000.0,
+            ),
         ]
         xl = _mod.find_cross_links(records)
         assert len(xl) == 1
@@ -81,8 +88,18 @@ class TestFindCrossLinks:
         """Same (PIF, op) pair sharing both a person AND a CIK should produce
         only one cross-link row to avoid double-counting in the summary."""
         records = [
-            _record("PIF_A", "low", has_pif=True, has_non_pif=False, persons=["ALICE"], ciks=["999"]),
-            _record("OP_B", "high", has_pif=False, has_non_pif=True, persons=["ALICE"], ciks=["999"], raised=1.0),
+            _record(
+                "PIF_A", "low", has_pif=True, has_non_pif=False, persons=["ALICE"], ciks=["999"]
+            ),
+            _record(
+                "OP_B",
+                "high",
+                has_pif=False,
+                has_non_pif=True,
+                persons=["ALICE"],
+                ciks=["999"],
+                raised=1.0,
+            ),
         ]
         xl = _mod.find_cross_links(records)
         assert len(xl) == 1
@@ -92,7 +109,9 @@ class TestFindCrossLinks:
         (via its non-PIF offerings) and should be eligible as a cross-link target."""
         records = [
             _record("PURE_PIF", "low", has_pif=True, has_non_pif=False, persons=["SHARED"]),
-            _record("MIXED", "medium", has_pif=True, has_non_pif=True, persons=["SHARED"], raised=500.0),
+            _record(
+                "MIXED", "medium", has_pif=True, has_non_pif=True, persons=["SHARED"], raised=500.0
+            ),
         ]
         xl = _mod.find_cross_links(records)
         assert len(xl) == 1
@@ -177,10 +196,28 @@ class TestSummarize:
         records = [
             _record("PIF_A", "low", has_pif=True, has_non_pif=False, persons=["ALICE"]),
             _record("PIF_B", "low", has_pif=True, has_non_pif=False, persons=["BOB"]),
-            _record("OP_HIGH", "high", has_pif=False, has_non_pif=True, persons=["ALICE"],
-                    raised=100_000_000.0, person_score=0.9, address_score=0.0, state_score=1.0),
-            _record("OP_MED", "medium", has_pif=False, has_non_pif=True, persons=["BOB"],
-                    raised=50_000_000.0, person_score=0.9, address_score=0.0, state_score=1.0),
+            _record(
+                "OP_HIGH",
+                "high",
+                has_pif=False,
+                has_non_pif=True,
+                persons=["ALICE"],
+                raised=100_000_000.0,
+                person_score=0.9,
+                address_score=0.0,
+                state_score=1.0,
+            ),
+            _record(
+                "OP_MED",
+                "medium",
+                has_pif=False,
+                has_non_pif=True,
+                persons=["BOB"],
+                raised=50_000_000.0,
+                person_score=0.9,
+                address_score=0.0,
+                state_score=1.0,
+            ),
         ]
         cross_links = _mod.find_cross_links(records)
         return records, cross_links
@@ -196,7 +233,9 @@ class TestSummarize:
 
     def test_summary_percentages(self):
         records, xl = self._make_records_and_xl()
-        s = _mod.summarize(xl, records, high_headline_usd=10_000_000_000.0, hm_headline_usd=15_000_000_000.0)
+        s = _mod.summarize(
+            xl, records, high_headline_usd=10_000_000_000.0, hm_headline_usd=15_000_000_000.0
+        )
         # $100M / $10B = 1.0%
         assert s["high_tier_pct_of_headline"] == pytest.approx(1.0)
         # $150M / $15B = 1.0%
@@ -204,7 +243,9 @@ class TestSummarize:
 
     def test_summary_at_risk_quantification(self):
         records, xl = self._make_records_and_xl()
-        s = _mod.summarize(xl, records, high_headline_usd=10_000_000_000.0, hm_headline_usd=15_000_000_000.0)
+        s = _mod.summarize(
+            xl, records, high_headline_usd=10_000_000_000.0, hm_headline_usd=15_000_000_000.0
+        )
         # OP_HIGH has person=0.9, ZIP=0 → at-risk
         assert s["at_risk_dollars_usd"] == 100_000_000.0
         assert s["at_risk_pct_of_high_headline"] == pytest.approx(1.0)
@@ -218,6 +259,44 @@ class TestSummarize:
         assert s["high_tier_pct_of_headline"] == 0.0
         assert s["hm_pct_of_headline"] == 0.0
         assert s["at_risk_pct_of_high_headline"] == 0.0
+
+    def test_cik_only_cross_link_does_not_count_as_at_risk(self):
+        """Regression: at-risk is defined as person-based cross-links where
+        the shared person could be the deciding match signal. A CIK-only
+        cross-link can't make a shared person the deciding signal — there
+        is no shared person. Verify CIK-only cross-links to person-only-
+        confirmed high-tier ops do NOT contribute to at_risk_dollars_usd
+        or at_risk_ops."""
+        # PIF_CIK (low, pif) shares CIK "999" with OP_HIGH_CIK (high)
+        # OP_HIGH_CIK is person-only confirmed (person=0.9, ZIP=0) — would
+        # be at-risk if the cross-link were person-based. Since it's
+        # CIK-based, it must NOT be counted as at-risk.
+        records = [
+            _record("PIF_CIK", "low", has_pif=True, has_non_pif=False, persons=["A"], ciks=["999"]),
+            _record(
+                "OP_HIGH_CIK",
+                "high",
+                has_pif=False,
+                has_non_pif=True,
+                persons=["B"],  # no person overlap with PIF_CIK
+                ciks=["999"],  # shared CIK is the link signal
+                raised=100_000_000.0,
+                person_score=0.9,
+                address_score=0.0,
+                state_score=1.0,
+            ),
+        ]
+        xl = _mod.find_cross_links(records)
+        # Confirm we found one CIK-based cross-link
+        assert len(xl) == 1
+        assert xl[0]["link_type"] == "cik"
+
+        s = _mod.summarize(xl, records, high_headline_usd=10_000_000_000.0, hm_headline_usd=15_000_000_000.0)
+        # Op IS in the high-tier cross-link cohort dollar exposure
+        assert s["high_tier_counted_dollars_at_cross_link_op_side"] == 100_000_000.0
+        # But it must NOT contribute to at-risk (which is person-based only)
+        assert s["at_risk_dollars_usd"] == 0.0
+        assert s["at_risk_ops"] == []
 
 
 class TestNormName:

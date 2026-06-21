@@ -6,7 +6,7 @@
 
 ## Summary
 
-The published doc disclaims that **71 cross-links exist between Pooled Investment Fund (PIF) entities and operating-company SBIR matches** via shared `related_persons` or CIK. PIF entities are excluded from cohort totals via `EXCLUDED_INDUSTRY_GROUPS`, but the disclaim language raised an open methodology question: do those cross-links indicate that some counted operating-company matches might be inflated or false-positive?
+The published doc's disclaimer references **71 cross-links between Pooled Investment Fund (PIF) entities and operating-company SBIR matches** via shared `related_persons` or CIK. PIF entities are excluded from cohort totals via `EXCLUDED_INDUSTRY_GROUPS`, but the disclaimer language raised an open methodology question: do those cross-links indicate that some counted operating-company matches might be inflated or false-positive?
 
 **This audit quantifies the answer: no material methodology risk.**
 

@@ -2,10 +2,10 @@
 """Audit Pooled Investment Fund cross-links into the counted operating-co cohort.
 
 The published doc ``docs/research/sbir-form-d-fundraising-analysis.md``
-disclaims that 71 cross-links exist between Pooled Investment Fund (PIF)
+disclaimer references 71 cross-links between Pooled Investment Fund (PIF)
 entities and operating-company SBIR matches, identified via shared
 related_persons or CIK. PIF entities are excluded from cohort totals
-via ``EXCLUDED_INDUSTRY_GROUPS``, but the disclaim flags an open question:
+via ``EXCLUDED_INDUSTRY_GROUPS``, but the disclaimer flags an open question:
 do those cross-links indicate that some counted operating-company matches
 might be inflated or false-positive?
 
@@ -66,10 +66,23 @@ def _norm_name(s: str | None) -> str:
 
 
 def load_records(path: Path, year_min: int, year_max: int) -> list[dict[str, Any]]:
-    """Load Form D records and pre-compute the fields we need for the audit."""
+    """Load Form D records and pre-compute the fields we need for the audit.
+
+    Defensive: skips malformed JSON lines and records missing company_name
+    or match_confidence.tier, matching the convention in
+    ``bootstrap_form_d_leverage_ci.py``.
+    """
     out: list[dict[str, Any]] = []
     for line in open(path):
-        r = json.loads(line)
+        try:
+            r = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        name = r.get("company_name")
+        mc = r.get("match_confidence") or {}
+        tier = mc.get("tier")
+        if not name or not tier:
+            continue
         has_pif = any(o.get("industry_group") == PIF_INDUSTRY for o in r.get("offerings", []))
         has_non_pif = any(o.get("industry_group") != PIF_INDUSTRY for o in r.get("offerings", []))
 
@@ -80,9 +93,9 @@ def load_records(path: Path, year_min: int, year_max: int) -> list[dict[str, Any
             if cik:
                 ciks.add(cik)
             for p in off.get("related_persons", []):
-                name = _norm_name(p.get("name"))
-                if name:
-                    persons.add(name)
+                p_name = _norm_name(p.get("name"))
+                if p_name:
+                    persons.add(p_name)
 
         # Compute the cohort-counted raised total (after year + industry filter)
         raised_counted = 0.0
@@ -102,16 +115,16 @@ def load_records(path: Path, year_min: int, year_max: int) -> list[dict[str, Any
 
         out.append(
             {
-                "company_name": r["company_name"],
-                "tier": r["match_confidence"]["tier"],
+                "company_name": name,
+                "tier": tier,
                 "has_pif": has_pif,
                 "has_non_pif": has_non_pif,
                 "persons": persons,
                 "ciks": ciks,
                 "raised_counted": raised_counted,
-                "person_score": r["match_confidence"].get("person_score"),
-                "address_score": r["match_confidence"].get("address_score"),
-                "state_score": r["match_confidence"].get("state_score"),
+                "person_score": mc.get("person_score"),
+                "address_score": mc.get("address_score"),
+                "state_score": mc.get("state_score"),
             }
         )
     return out
@@ -191,8 +204,19 @@ def classify_high_tier_robustness(
 ) -> dict[str, Any]:
     """For each distinct high-tier cross-linked operating co, classify
     whether its tier confirmation is robust to losing the cross-linked
-    person signal."""
-    high_xl = [x for x in cross_links if x["op_tier"] == "high"]
+    person signal.
+
+    Only person-based cross-links are considered for at-risk
+    classification: a CIK-only cross-link cannot make a shared person
+    the deciding match signal because there is no shared person. CIK
+    overlap may indicate a deeper entity relationship but isn't the
+    bias path the audit is designed to catch.
+    """
+    # Filter to person-based cross-links to high-tier ops
+    high_xl = [
+        x for x in cross_links
+        if x["op_tier"] == "high" and x["link_type"] == "person"
+    ]
     distinct_ops: dict[str, dict[str, Any]] = {}
     for x in high_xl:
         op_name = x["op_company"]
