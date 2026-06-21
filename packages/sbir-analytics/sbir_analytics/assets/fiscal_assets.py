@@ -1,6 +1,7 @@
 """Dagster assets for fiscal analysis pipeline."""
 
 from decimal import Decimal
+from typing import Any
 
 import pandas as pd
 from dagster import (
@@ -899,7 +900,7 @@ def fiscal_return_summary(
         },
     )
 
-    metadata = {
+    metadata: dict[str, Any] = {
         "roi_ratio": f"{summary.roi_ratio:.3f}",
         "payback_period_years": summary.payback_period_years,
         "net_present_value": f"${summary.net_present_value:,.2f}",
@@ -944,7 +945,7 @@ def sensitivity_scenarios(context: AssetExecutionContext) -> Output[pd.DataFrame
         extra={"num_scenarios": len(scenarios_df), "method": method, "parameters": parameters},
     )
 
-    metadata = {
+    metadata: dict[str, Any] = {
         "num_scenarios": len(scenarios_df),
         "method": method,
         "parameters": parameters,

@@ -9,7 +9,8 @@ This module contains:
 
 from __future__ import annotations
 
-from typing import Any
+from pathlib import Path
+from typing import Any, cast
 
 from .utils import (
     AssetCheckResult,
@@ -54,13 +55,16 @@ def validated_uspto_assignments(
             "failure_samples": [],
         }
 
-    files_by_table = {
-        "assignments": assignment_files or [],
-        "assignees": assignee_files or [],
-        "assignors": assignor_files or [],
-        "documentids": documentid_files or [],
-        "conveyances": conveyance_files or [],
-    }
+    files_by_table: dict[str, list[str | Path]] = cast(
+        dict[str, list[str | Path]],
+        {
+            "assignments": assignment_files or [],
+            "assignees": assignee_files or [],
+            "assignors": assignor_files or [],
+            "documentids": documentid_files or [],
+            "conveyances": conveyance_files or [],
+        },
+    )
 
     validator = USPTODataQualityValidator(_build_validator_config(context))
     write_report = (

@@ -488,7 +488,7 @@ neo4j-check: env-check ## Run the Neo4j health check
 .PHONY: transition-run
 transition-run: ## Run transition detection pipeline
 	@$(call info,Running transition detection)
-	$(call run,uv run dagster job execute -m sbir_analytics.definitions -j transition_job)
+	$(call run,uv run dagster job execute -m sbir_analytics.definitions -j transition_mvp_job)
 	@$(call success,Transition detection completed)
 
 .PHONY: cet-run

@@ -19,18 +19,18 @@ try:
     from dagster import MetadataValue, Output, asset
 except Exception:  # pragma: no cover - test-only shim
 
-    def asset(*args: Any, **kwargs: Any):  # type: ignore[override]
+    def asset(*args: Any, **kwargs: Any):  # type: ignore[no-redef]
         def _wrap(fn):
             return fn
 
         return _wrap
 
-    class Output:  # type: ignore[override]
+    class Output:  # type: ignore[no-redef]
         def __init__(self, value: Any, metadata: dict | None = None) -> None:
             self.value = value
             self.metadata = metadata or {}
 
-    class MetadataValue:  # type: ignore[override]
+    class MetadataValue:  # type: ignore[no-redef]
         @staticmethod
         def json(v: Any) -> Any:
             return v

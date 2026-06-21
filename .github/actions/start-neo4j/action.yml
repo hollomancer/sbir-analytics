@@ -46,30 +46,53 @@ runs:
         port: "7687"
         timeout: ${{ inputs.timeout }}
 
-    # Neo4j's bolt port opens BEFORE auth is fully initialized. Without this
-    # probe, the first integration-test connection can land in the gap and
-    # fail with Neo.ClientError.Security.Unauthorized — which then rate-limits
-    # subsequent attempts (Neo.ClientError.Security.AuthenticationRateLimit).
-    # Poll cypher-shell over docker exec until an authenticated RETURN succeeds.
-    - name: Wait for Neo4j auth to initialize
+    # Neo4j's bolt port opens BEFORE the auth subsystem is initialized. Probing
+    # auth during that gap fails with Neo.ClientError.Security.Unauthorized and,
+    # after a few failed attempts, trips Neo4j's auth rate limiter
+    # (Neo.ClientError.Security.AuthenticationRateLimit) — which then rejects the
+    # *correct* credentials too, breaking every test that follows. So wait for
+    # the "Started." log line (emitted once Neo4j is fully up, auth included)
+    # BEFORE making any authenticated request, to avoid generating failed
+    # attempts at all.
+    - name: Wait for Neo4j to finish starting
       shell: bash
       run: |
         set -eu
         TIMEOUT=${{ inputs.timeout }}
         ELAPSED=0
-        echo "Probing Neo4j auth as ${{ inputs.neo4j-user }}..."
-        until docker exec ${{ inputs.container-name }} \
-                cypher-shell -u "${{ inputs.neo4j-user }}" -p "${{ inputs.neo4j-password }}" \
-                "RETURN 1" >/dev/null 2>&1; do
+        echo "Waiting for Neo4j to report full startup..."
+        until docker logs ${{ inputs.container-name }} 2>&1 | grep -q "Started."; do
           if [ $ELAPSED -ge $TIMEOUT ]; then
-            echo "❌ Neo4j auth did not initialize within ${TIMEOUT}s"
+            echo "❌ Neo4j did not report startup within ${TIMEOUT}s"
             docker logs ${{ inputs.container-name }} | tail -50 || true
             exit 1
           fi
-          sleep 2
-          ELAPSED=$((ELAPSED + 2))
+          sleep 3
+          ELAPSED=$((ELAPSED + 3))
         done
-        echo "✅ Neo4j auth ready (waited ${ELAPSED}s)"
+        echo "✅ Neo4j fully started (waited ${ELAPSED}s)"
+
+    # Single authenticated probe to confirm the credentials work. Because we
+    # waited for full startup above, this should succeed on the first attempt
+    # and not consume the auth rate-limit budget. Retries use a long backoff so
+    # that, even in an edge case, we never hammer the limiter.
+    - name: Verify Neo4j auth
+      shell: bash
+      run: |
+        set -eu
+        for attempt in 1 2 3 4 5; do
+          if docker exec ${{ inputs.container-name }} \
+               cypher-shell -u "${{ inputs.neo4j-user }}" -p "${{ inputs.neo4j-password }}" \
+               "RETURN 1" >/dev/null 2>&1; then
+            echo "✅ Neo4j auth verified (attempt ${attempt})"
+            exit 0
+          fi
+          echo "Auth not ready yet (attempt ${attempt}); waiting 10s..."
+          sleep 10
+        done
+        echo "❌ Neo4j auth check failed after retries"
+        docker logs ${{ inputs.container-name }} | tail -50 || true
+        exit 1
 
     - name: Set environment variables
       shell: bash

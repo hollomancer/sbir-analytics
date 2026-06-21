@@ -77,7 +77,7 @@ class NAICSToBEACrosswalkTool(BaseTool):
         mapped_count = 0
         unmapped_count = 0
         ambiguous_count = 0
-        bea_sectors = []
+        bea_sectors: list[str | None] = []
 
         for _, row in df.iterrows():
             naics = str(row.get(naics_column, "")).strip()

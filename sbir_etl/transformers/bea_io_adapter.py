@@ -448,6 +448,7 @@ class BEAIOAdapter:
     def _compute_placeholder_impacts(
         self, shocks_df: pd.DataFrame, model_version: str
     ) -> pd.DataFrame:
+        """Fallback for exploratory/local use, not a validated fiscal-impact model."""
         result_df = shocks_df.copy()
         multiplier = Decimal("2.0")
 

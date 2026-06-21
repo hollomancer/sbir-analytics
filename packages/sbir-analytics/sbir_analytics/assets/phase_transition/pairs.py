@@ -300,11 +300,12 @@ def transformed_phase_ii_iii_pairs(
     summary = _latency_summary(pairs)
     basis_counts = pairs["identifier_basis"].value_counts().to_dict() if not pairs.empty else {}
 
+    identifier_basis_dict: dict[str, int] = {str(k): int(v) for k, v in basis_counts.items()}
     checks = {
         "ok": True,
         "generated_at": now_utc_iso(),
         "total_pairs": int(len(pairs)),
-        "identifier_basis": {str(k): int(v) for k, v in basis_counts.items()},
+        "identifier_basis": identifier_basis_dict,
         "latency_summary_days": summary,
         "inputs": {
             "phase_ii_rows": int(len(phase_ii)),
@@ -318,7 +319,7 @@ def transformed_phase_ii_iii_pairs(
         "rows": int(len(pairs)),
         "output_path": str(output_path),
         "checks_path": str(checks_path),
-        "identifier_basis": MetadataValue.json(checks["identifier_basis"]),
+        "identifier_basis": MetadataValue.json(identifier_basis_dict),
         "latency_summary_days": MetadataValue.json(summary),
     }
 
