@@ -301,7 +301,7 @@ Public studies the inventory draws from or benchmarks against.
 
 ## Maintenance
 
-**Last reviewed:** 2026-06-21 — staleness audit verified all PR refs, branch tags, spec/doc links, and architectural notes against current `main`. Three corrections shipped via PR #335 (F3 supersession by #321, E4 spec landed via #277, A4 M&A pipeline architecture note). One follow-on (PR #341) updated the published Form D fundraising doc with bootstrap CIs and PIF cross-link audit findings.
+**Last reviewed:** 2026-06-21 — staleness audit verified all PR refs, branch tags, spec/doc links, and architectural notes against current `main`. Three corrections shipped via PR #335 (F3 supersession by #321, E4 spec landed via #277, A4 M&A pipeline architecture note). A follow-on PR #341 (currently open) proposes updating the published Form D fundraising doc with bootstrap CIs and PIF cross-link audit findings.
 
 When this doc is reviewed next, the audit should cover:
 
