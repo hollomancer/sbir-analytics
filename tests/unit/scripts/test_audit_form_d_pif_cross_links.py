@@ -291,7 +291,9 @@ class TestSummarize:
         assert len(xl) == 1
         assert xl[0]["link_type"] == "cik"
 
-        s = _mod.summarize(xl, records, high_headline_usd=10_000_000_000.0, hm_headline_usd=15_000_000_000.0)
+        s = _mod.summarize(
+            xl, records, high_headline_usd=10_000_000_000.0, hm_headline_usd=15_000_000_000.0
+        )
         # Op IS in the high-tier cross-link cohort dollar exposure
         assert s["high_tier_counted_dollars_at_cross_link_op_side"] == 100_000_000.0
         # But it must NOT contribute to at-risk (which is person-based only)

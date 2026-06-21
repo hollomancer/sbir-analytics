@@ -1,28 +1,30 @@
-"""Integration tests for multi-key MERGE functionality."""
+"""Integration tests for multi-key MERGE functionality.
+
+Uses the shared `neo4j_client` fixture from tests/conftest_shared.py
+(reachable via tests/integration/conftest.py), which reads credentials from
+NEO4J_USERNAME / NEO4J_PASSWORD with sensible test defaults.
+
+Avoids defining a local fixture: a hardcoded password mismatched with the CI
+container trips Neo4j's auth rate limiter, which then rejects every other
+test in the run.
+
+All tests in this module share an `xdist_group("neo4j_integration")` so they
+run sequentially on a single xdist worker. The integration test job uses
+`-n auto --dist=loadgroup`, so without the group these tests would race each
+other (and `tests/integration/test_neo4j_client.py`) against the same Neo4j
+container, producing `AssertionError: assert 2 == 1` / `assert 0 == 20`
+style failures from leftover state.
+"""
 
 import pytest
 from tests.conftest import neo4j_running as neo4j_available
 
-from sbir_graph.loaders.neo4j import Neo4jClient, Neo4jConfig
-
-pytestmark = pytest.mark.skipif(
-    not neo4j_available(), reason="Neo4j not running - see INTEGRATION_TEST_ANALYSIS.md"
-)
-
-
-@pytest.fixture
-def neo4j_client():
-    """Create Neo4j client for testing."""
-    config = Neo4jConfig(
-        uri="bolt://localhost:7687",
-        username="neo4j",
-        password="neo4j",  # pragma: allowlist secret
-        database="neo4j",
-        auto_migrate=False,  # Don't run migrations in tests
-    )
-    client = Neo4jClient(config)
-    yield client
-    client.close()
+pytestmark = [
+    pytest.mark.skipif(
+        not neo4j_available(), reason="Neo4j not running - see INTEGRATION_TEST_ANALYSIS.md"
+    ),
+    pytest.mark.xdist_group("neo4j_integration"),
+]
 
 
 @pytest.mark.integration
