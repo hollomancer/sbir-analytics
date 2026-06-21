@@ -8,7 +8,7 @@
 
 The published doc reports headline private-capital leverage ratios as point estimates: **1.82x** for the high-confidence cohort and **2.37x** for high+medium. This analysis adds **95% bootstrap confidence intervals at the firm level**, reproduces both headline numbers exactly, and surfaces two findings that change how readers should interpret the headline:
 
-1. **The denominator choice is doing a lot of work.** The doc's ratio uses *total federal SBIR program spending* ($50.98B) as the denominator. A complementary **per-matched-firm** ratio — Form D $ divided by SBIR $ for firms that actually match in Form D — comes out to **10.70x [9.39, 12.16]** for the same high-tier cohort. Neither number is wrong; they answer different policy questions. The doc doesn't currently flag this.
+1. **The denominator choice is doing a lot of work.** The doc's ratio uses *total federal SBIR program spending* ($50.98B) as the denominator. A complementary **per-matched-firm** ratio — Form D $ divided by SBIR $ for firms that actually match in Form D (restricted to firms with in-window SBIR awards) — comes out to **9.48x [8.26, 10.85]** for the high-tier cohort. Neither number is wrong; they answer different policy questions. The doc doesn't currently flag this.
 2. **DoD's leverage ratio is essentially 1:1 with a tight CI.** Among large-cohort agencies, **DoD is 1.011x [0.842, 1.214]** at the program level — statistically distinguishable from the cross-agency average and from NSF's 3.23x. This is a real finding worth understanding rather than a small-sample artifact.
 
 ## Method
@@ -63,11 +63,11 @@ The inner-join drops 404 firms (high-tier) whose SBIR awards fall outside 2009-2
 
 The 1.82x point estimate is tightly bracketed [1.650, 2.024]: under firm-level resampling, the headline is clearly distinguishable from 1.0x ("no leverage") and from 2.5x. The published number isn't a noisy estimate.
 
-But the headline interpretation depends on a methodological choice the doc doesn't flag. The denominator is *total program SBIR spending*, including the ~$42B going to SBIR firms with no Form D activity at all. From a "what's the per-firm leverage SBIR achieves when it leads to private capital" perspective, the relevant number is closer to **10.7x [9.39, 12.16]** — a different headline entirely.
+But the headline interpretation depends on a methodological choice the doc doesn't flag. The denominator is *total program SBIR spending*, including the ~$42B going to SBIR firms with no Form D activity at all. From a "what's the per-firm leverage SBIR achieves when it leads to private capital" perspective, the relevant number is closer to **9.48x [8.26, 10.85]** — a different headline entirely.
 
 Both numbers matter, but they answer different policy questions:
 - **1.82x ≈** "How much Form-D-detected private capital flows back to the SBIR-firm cohort per dollar of total program spending?" (Useful for: program-wide ROI framing, Congressional appropriations debates.)
-- **10.7x ≈** "For SBIR awardees who go on to attract private capital, what's their leverage?" (Useful for: investor/founder-track program design, Howell-style replication targets.)
+- **9.48x ≈** "For SBIR awardees who go on to attract private capital (filtered to firms with in-window SBIR awards), what's their leverage?" (Useful for: investor/founder-track program design, Howell-style replication targets.)
 
 The published doc should either (a) report both, or (b) make the methodological choice explicit so readers don't misread 1.82x as "the per-firm SBIR leverage."
 

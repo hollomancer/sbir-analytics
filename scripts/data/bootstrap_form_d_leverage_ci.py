@@ -84,6 +84,27 @@ def _norm_name(s: str | None) -> str:
     return (s or "").strip().upper()
 
 
+def _parse_amount(s: str | None) -> float | None:
+    """Parse SBIR/Form D dollar amount strings defensively.
+
+    SBIR.gov bulk file historically uses plain numeric strings, but other
+    sources (and older bulk exports) include leading ``$`` and thousands-
+    separator commas. Match the convention in
+    ``sbir_etl/enrichers/award_history.py`` and ``inflation_adjuster.py``
+    by stripping both before float-converting. Returns None on parse
+    failure so the caller can decide whether to skip or zero-fill.
+    """
+    if s is None:
+        return None
+    cleaned = str(s).replace("$", "").replace(",", "").strip()
+    if not cleaned:
+        return None
+    try:
+        return float(cleaned)
+    except ValueError:
+        return None
+
+
 def load_form_d_per_firm(
     path: Path, year_min: int, year_max: int
 ) -> dict[str, dict[str, Any]]:
@@ -134,11 +155,8 @@ def load_sbir_program_and_per_firm(
                 continue
             if year < year_min or year > year_max:
                 continue
-            try:
-                amt = float(row.get("Award Amount") or 0)
-            except ValueError:
-                continue
-            if amt <= 0:
+            amt = _parse_amount(row.get("Award Amount"))
+            if amt is None or amt <= 0:
                 continue
             agency = (row.get("Agency") or "Unknown").strip()
             program_total += amt
@@ -178,9 +196,13 @@ def build_cohort(
 
     Firms without SBIR awards in window get ``award_total = 0`` and
     ``dominant_agency = None``. They contribute to the program-level
-    numerator and to the all-matched cohort sizing, but are excluded
-    from the per-matched-firm ratio (denominator would be zero) and
-    from per-agency cohorts (no dominant agency).
+    numerator and to the all-matched cohort sizing. They are excluded
+    from per-agency cohorts (no dominant agency). The per-matched-firm
+    ratio is only computed on the inner-joined subset
+    (``has_sbir_in_window=True``) because mixing time-window semantics
+    in the per-firm ratio (Form D from all matched, SBIR from the
+    subset) would produce a hybrid number that doesn't cleanly answer
+    either of the framing questions in the published doc.
     """
     cohort = []
     for name, fd in form_d.items():
@@ -210,33 +232,54 @@ def bootstrap_two_views(
     program_denominator: float,
     n_iter: int,
     rng: np.random.Generator,
+    compute_per_firm: bool = True,
 ) -> dict[str, Any]:
-    """Bootstrap both program-level and per-matched-firm ratios in one pass."""
+    """Bootstrap program-level and (optionally) per-matched-firm ratios.
+
+    Args:
+      raised: Per-firm Form D dollars (cohort length N).
+      sbir_matched: Per-firm SBIR dollars from the same N firms. Used as
+        denominator for the per-matched-firm ratio. Should be sums of
+        ONLY in-window SBIR (otherwise per-firm ratio is undefined for
+        zero-SBIR firms).
+      program_denominator: Fixed total program SBIR $ in window.
+      n_iter: Bootstrap iterations.
+      rng: Seeded numpy Generator.
+      compute_per_firm: If False, the per-matched-firm ratio is omitted
+        (used for the all-matched cohort, where zero-SBIR firms would
+        make per-firm semantics a meaningless hybrid).
+    """
     n = len(raised)
     out: dict[str, Any] = {
         "n_firms": int(n),
         "raised_total_usd": float(raised.sum()),
         "matched_sbir_total_usd": float(sbir_matched.sum()),
         "program_sbir_total_usd": float(program_denominator),
+        "bootstrap_iterations": n_iter,
     }
     if n == 0:
-        return {**out, "program_level": _zero_result(), "per_matched_firm": _zero_result(), "bootstrap_iterations": n_iter}
+        out["program_level"] = _zero_result()
+        if compute_per_firm:
+            out["per_matched_firm"] = _zero_result()
+        return out
 
     out["program_level"] = {
         "point_estimate": float(raised.sum() / program_denominator) if program_denominator > 0 else 0.0
     }
-    out["per_matched_firm"] = {
-        "point_estimate": float(raised.sum() / sbir_matched.sum()) if sbir_matched.sum() > 0 else 0.0
-    }
+    if compute_per_firm:
+        out["per_matched_firm"] = {
+            "point_estimate": float(raised.sum() / sbir_matched.sum()) if sbir_matched.sum() > 0 else 0.0
+        }
 
     program_ratios = np.empty(n_iter)
-    perfirm_ratios = np.empty(n_iter)
+    perfirm_ratios = np.empty(n_iter) if compute_per_firm else None
     for i in range(n_iter):
         idx = rng.integers(0, n, size=n)
         raised_sum = raised[idx].sum()
-        sbir_sum = sbir_matched[idx].sum()
         program_ratios[i] = (raised_sum / program_denominator) if program_denominator > 0 else 0.0
-        perfirm_ratios[i] = (raised_sum / sbir_sum) if sbir_sum > 0 else 0.0
+        if compute_per_firm:
+            sbir_sum = sbir_matched[idx].sum()
+            perfirm_ratios[i] = (raised_sum / sbir_sum) if sbir_sum > 0 else 0.0
 
     out["program_level"].update(
         {
@@ -245,14 +288,14 @@ def bootstrap_two_views(
             "ci_hi": float(np.percentile(program_ratios, 97.5)),
         }
     )
-    out["per_matched_firm"].update(
-        {
-            "median": float(np.median(perfirm_ratios)),
-            "ci_lo": float(np.percentile(perfirm_ratios, 2.5)),
-            "ci_hi": float(np.percentile(perfirm_ratios, 97.5)),
-        }
-    )
-    out["bootstrap_iterations"] = n_iter
+    if compute_per_firm:
+        out["per_matched_firm"].update(
+            {
+                "median": float(np.median(perfirm_ratios)),
+                "ci_lo": float(np.percentile(perfirm_ratios, 2.5)),
+                "ci_hi": float(np.percentile(perfirm_ratios, 97.5)),
+            }
+        )
     return out
 
 
@@ -333,14 +376,15 @@ def write_markdown(snapshot: dict[str, Any], path: Path) -> None:
     L.append("")
     L.append("This reproduces the published doc's methodology: the cohort is all 3,640 high-tier (and 4,760 H+M) Form D matches, regardless of whether their SBIR awards fall in the 2009-2024 window.")
     L.append("")
-    L.append("| Cohort | Firms | Form D $ | Matched SBIR $ | Program-level ratio (95% CI) |")
-    L.append("|---|---|---|---|---|")
+    L.append("Only the program-level ratio is reported here. The per-matched-firm ratio is omitted because mixing time-window semantics (Form D from all 3,640 matched firms, SBIR from the 3,236 inner-join subset) would produce a hybrid number that doesn't cleanly answer either framing question. See the inner-joined table below for the per-firm leverage.")
+    L.append("")
+    L.append("| Cohort | Firms | Form D $ | Program-level ratio (95% CI) |")
+    L.append("|---|---|---|---|")
     for k, label in [("high_only_all_matched", "High only"), ("high_plus_medium_all_matched", "High + Medium")]:
         r = snapshot[k]
         pl = r["program_level"]
         L.append(
-            f"| {label} | {r['n_firms']:,} | "
-            f"${r['raised_total_usd']/1e9:.2f}B | ${r['matched_sbir_total_usd']/1e9:.2f}B | "
+            f"| {label} | {r['n_firms']:,} | ${r['raised_total_usd']/1e9:.2f}B | "
             f"**{pl['point_estimate']:.3f}x** [{pl['ci_lo']:.3f}, {pl['ci_hi']:.3f}] |"
         )
     L.append("")
@@ -432,14 +476,20 @@ def main() -> int:
 
     print(f"\nBootstrapping with {args.n_iter:,} iterations...", file=sys.stderr)
 
-    # Program-level cohort: ALL matched firms (reproduces doc)
+    # All-matched cohort: program-level only (reproduces doc; per-firm
+    # would be a hybrid that mixes time-window semantics — see build_cohort
+    # docstring for why)
     raised_h, sbir_h = cohort_arrays(cohort, {"high"}, require_sbir=False)
-    high_only_program = bootstrap_two_views(raised_h, sbir_h, program_total, args.n_iter, rng)
+    high_only_program = bootstrap_two_views(
+        raised_h, sbir_h, program_total, args.n_iter, rng, compute_per_firm=False
+    )
 
     raised_hm, sbir_hm = cohort_arrays(cohort, {"high", "medium"}, require_sbir=False)
-    h_plus_m_program = bootstrap_two_views(raised_hm, sbir_hm, program_total, args.n_iter, rng)
+    h_plus_m_program = bootstrap_two_views(
+        raised_hm, sbir_hm, program_total, args.n_iter, rng, compute_per_firm=False
+    )
 
-    # Per-firm cohort: only firms with SBIR in window (statistically cleaner)
+    # Inner-join cohort: program-level AND per-matched-firm
     raised_h_inner, sbir_h_inner = cohort_arrays(cohort, {"high"}, require_sbir=True)
     high_only_perfirm = bootstrap_two_views(raised_h_inner, sbir_h_inner, program_total, args.n_iter, rng)
 
@@ -477,10 +527,12 @@ def main() -> int:
         ("High + Medium (SBIR in window, per-firm)", "high_plus_medium_sbir_in_window"),
     ]:
         r = snapshot[key]
-        pl, pf = r["program_level"], r["per_matched_firm"]
+        pl = r["program_level"]
         print(f"\n  {label} (n={r['n_firms']:,}):", file=sys.stderr)
         print(f"    program-level: {pl['point_estimate']:.3f}x [{pl['ci_lo']:.3f}, {pl['ci_hi']:.3f}]", file=sys.stderr)
-        print(f"    per-firm:      {pf['point_estimate']:.3f}x [{pf['ci_lo']:.3f}, {pf['ci_hi']:.3f}]", file=sys.stderr)
+        if "per_matched_firm" in r:
+            pf = r["per_matched_firm"]
+            print(f"    per-firm:      {pf['point_estimate']:.3f}x [{pf['ci_lo']:.3f}, {pf['ci_hi']:.3f}]", file=sys.stderr)
 
     print(f"\nWrote {args.output_json} and {args.output_md}", file=sys.stderr)
     return 0
