@@ -216,3 +216,6 @@ report.md
 infrastructure/**/.venv/
 results.csv
 
+# Git worktrees (project-local, ignored to keep git status clean)
+.worktrees/
+
