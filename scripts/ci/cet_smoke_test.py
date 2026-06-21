@@ -107,9 +107,9 @@ def main():
         ).single()["c"]
         assert rel_count == 1, f"Expected 1 APPLICABLE_TO, found {rel_count}"
 
-        # Company -> CET relationship exists
+        # Organization -> CET relationship exists
         comp_rel_count = session.run(
-            "MATCH (:Company {uei:$uei})-[:SPECIALIZES_IN]->(:CETArea {cet_id:$cid}) RETURN count(*) AS c",
+            "MATCH (:Organization {uei:$uei})-[:SPECIALIZES_IN]->(:CETArea {cet_id:$cid}) RETURN count(*) AS c",
             uei="UEI-SMOKE",
             cid="artificial_intelligence",
         ).single()["c"]
