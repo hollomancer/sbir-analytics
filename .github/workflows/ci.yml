@@ -973,13 +973,16 @@ jobs:
     name: Run Transition MVP (shim) and gate on validation summary
     needs: [detect-changes]
     # The transition pipeline needs bulk SBIR/SAM/USAspending data that is
-    # gitignored and only reachable from S3 with AWS credentials. Pull requests
-    # have neither that data nor those credentials, so this gate cannot run
-    # there. Restrict it to push / scheduled (workflow_call) / manual runs,
-    # where the data is available; it is skipped (not failed) on PRs.
+    # gitignored and only reachable from S3 with AWS credentials. Neither PRs
+    # nor `push` events on this repo have credentials configured yet, so the
+    # `make transition-run` step always fails with
+    # `FileNotFoundError: ... /storage/enriched_sbir_awards`. Restrict to
+    # explicit triggers (`workflow_dispatch` and `schedule`) where an
+    # operator can inject credentials, until OIDC AWS access is wired up
+    # for push events.
     if: |
       needs.detect-changes.outputs.docs-only != 'true' &&
-      github.event_name != 'pull_request'
+      (github.event_name == 'workflow_dispatch' || github.event_name == 'schedule')
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
