@@ -132,7 +132,7 @@ Navy is statistically distinct from other DoD branches on every commercializatio
 
 Default config: year window 2009-2024, inputs `data/form_d_details.jsonl` + `data/raw/sbir/award_data.csv`. Caches per-firm USAspending pulls to `data/processed/fpds_substitution/firm_contracts.jsonl` (gitignored, but reruns reuse cache so the ~30-min initial pull happens only once). Outputs `reports/ml/dod_fpds_substitution_test.{json,md}`.
 
-Same dependency set as the other Form D scripts (numpy + httpx).
+Only depends on `httpx` (already in the project's pyproject for other API clients). No numpy required — the aggregation logic is small-cardinality dict math, not array operations.
 
 ## Future work
 

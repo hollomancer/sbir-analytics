@@ -68,7 +68,6 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
-import numpy as np
 import httpx
 
 
@@ -299,7 +298,11 @@ def fetch_firm_contracts(
     cache_path.parent.mkdir(parents=True, exist_ok=True)
     new_pulls = 0
     errors = 0
-    with httpx.Client() as client, open(cache_path, "a") as cache_f:
+    # Set an explicit User-Agent so USAspending can attribute traffic to
+    # this project (other clients in the repo set one too — best practice
+    # for public-API consumers, and prevents anonymous-default throttling).
+    headers = {"User-Agent": "sbir-analytics/dod-fpds-substitution-test (https://github.com/hollomancer/sbir-analytics)"}
+    with httpx.Client(headers=headers) as client, open(cache_path, "a") as cache_f:
         for i, (name, entry) in enumerate(cohort_items):
             if name in cached:
                 continue
