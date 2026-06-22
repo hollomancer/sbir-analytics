@@ -1,32 +1,30 @@
 # SBIR/STTR Commercialization Analytics
 
-A personal research project that links federal SBIR/STTR award data to
+A research project linking federal SBIR/STTR award data to
 downstream commercialization signals — federal contracts, patents, private
-investment, and acquisitions — to ask better questions about what happens
+financing, and acquisitions — to ask better questions about what happens
 after a small business wins an SBIR award.
 
 ## About this project (please read first)
 
-This is a **personal side project, not production software, and not a polished
+This is a **personal side project, not production software or a polished
 engineering portfolio piece.** A few things to set expectations honestly:
 
-- I'm a **federal program manager working in the SBIR/STTR domain** — not a
-  trained data scientist or ML engineer. My contribution here is the domain
-  framing: which questions are worth asking, how they map to the policy and
+- I am a **federal employee working in the SBIR/STTR domain**, not a
+  trained data scientist or ML engineer. I'm hoping to contribute which questions are worth asking, how they map to the policy and
   academic literature, and what data could plausibly answer them.
-- I built it with **substantial help from AI coding assistants.** Much of the
-  implementation was generated and iterated with AI; I directed the design and
-  validated the analysis, but I would not represent the code as professional-grade
+- This is built with **substantial help from AI coding assistants.** Much of the
+  implementation was generated and iterated with Claude and Codex. I directed the design and
+  validated the analysis, but I'd definitely not represent the code as professional-grade
   engineering.
-- The value I'd point a reader to is **[docs/research-questions.md](docs/research-questions.md)** —
+- The value I'd point a reader to is **[docs/research-questions.md](docs/research-questions.md)**, 
   a structured inventory of the questions this project exists to answer, each
   tied to the relevant GAO/NASEM/CRS reports and peer-reviewed studies. That
-  document is the heart of the project; the pipeline is the scaffolding I built
-  to chip away at it.
+  document is the heart of the project, and the pipeline is the work to validate it.
 
-Read this as an exploration by a domain practitioner, not a finished product.
+Read this as an exploration by a domain practitioner, not as a finished product.
 
-## The questions it tries to answer
+## The questions I'm trying to answer
 
 SBIR/STTR is a ~$4B/year federal program whose statutory goal is
 *commercialization* — turning early-stage R&D awards into products, contracts,
@@ -37,7 +35,7 @@ record to other public datasets. A few of the questions it explores:
 
 - **Follow-on private investment.** Do SBIR awardees go on to raise private
   capital, and how much? This uses **SEC Form D** (Regulation D exempt-offering
-  notices) to build a private-financing profile for awardee firms, and compares
+  notices) to build a private financing profile for awardee firms, and compares
   it against the SBIR funding they received.
 - **Mergers & acquisitions / exits.** Which SBIR firms get acquired, by whom,
   and how long after their first award? This detects M&A events from **SEC EDGAR
@@ -103,9 +101,7 @@ infrastructure/        AWS CDK deployment (my personal cloud setup; optional)
 
 Directories such as `.github/`, `infrastructure/`, deployment docs, and E2E
 testing docs reflect experiments in making the project more runnable and
-maintainable. They should not be read as a claim that this repository contains
-production-grade infrastructure, and they should not be deleted or restructured
-without explicit approval.
+maintainable - we're definitely a long way from production-grade infrastructure.
 
 ## Suggested reading path
 
