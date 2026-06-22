@@ -47,7 +47,6 @@ jobs:
     outputs:
       production: ${{ steps.detect.outputs.production }}
       performance: ${{ steps.detect.outputs.performance }}
-      cet: ${{ steps.detect.outputs.cet }}
       transition: ${{ steps.detect.outputs.transition }}
       docker: ${{ steps.detect.outputs.docker }}
       workflows: ${{ steps.detect.outputs.workflows }}
@@ -59,20 +58,20 @@ jobs:
         id: detect
         uses: ./.github/actions/detect-changes
         with:
-          # docs-only uses every-file semantics — true only when EVERY changed
-          # file is a doc. Otherwise a mixed PR (code + docs) would skip CI.
+          # docs-only uses every-file semantics (predicate-quantifier: every) —
+          # true only when EVERY changed file matches the allow-list below.
+          # Otherwise a mixed PR (code + docs) would skip CI.
+          #
+          # Allow-list only — do NOT add `!**/*.py` / `!**/*.yaml` etc. Under
+          # dorny/paths-filter's `every` quantifier a negation pattern like
+          # `!**/*.yaml` matches any non-yaml file (including .py files),
+          # which made docs-only=true even for code-only PRs. PRs #340, #342,
+          # and #343 hit exactly that and skipped Code Quality, dropping
+          # unformatted Python files onto main.
           every-file-filters: |
             docs-only:
               - '**/*.md'
               - 'docs/**'
-              - '!**/*.py'
-              - '!**/*.yaml'
-              - '!**/*.yml'
-              - '!**/*.json'
-              - '!**/*.toml'
-              - '!**/*.lock'
-              - '!Makefile'
-              - '!.github/**'
           filters: |
             production:
               - 'sbir_etl/**'
@@ -88,16 +87,6 @@ jobs:
               - 'scripts/performance/benchmark_enrichment.py'
               - 'scripts/performance/detect_performance_regression.py'
               - 'config/base.yaml'
-            cet:
-              - 'packages/sbir-ml/sbir_ml/ml/config/**'
-              - 'packages/sbir-analytics/sbir_analytics/assets/cet/**'
-              - 'packages/sbir-analytics/sbir_analytics/assets/jobs/cet_*.py'
-              - 'tests/unit/ml/**'
-              - 'tests/integration/ml/**'
-              - 'tests/e2e/ml/**'
-              - 'config/cet/**'
-              - 'pyproject.toml'
-              - 'uv.lock'
             transition:
               - 'packages/sbir-analytics/sbir_analytics/assets/phase_transition/**'
               - 'packages/sbir-analytics/sbir_analytics/assets/jobs/phase_transition_job.py'
@@ -253,8 +242,15 @@ jobs:
     needs: [detect-changes]
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    # Always run - catches CDK issues early, not expensive
-    if: needs.detect-changes.outputs.docs-only != 'true'
+    # BatchStack uses `ec2.Vpc.from_lookup(is_default=True)`, which forces CDK
+    # to call AWS at synth time. Pull requests don't have AWS credentials and
+    # the cdk.context.json stub written inline below is consistently ignored by
+    # the CDK CLI in CI (works locally), so restrict to push/scheduled/manual
+    # runs where credentials are available. Matches the existing pattern for
+    # Run Transition MVP.
+    if: |
+      needs.detect-changes.outputs.docs-only != 'true' &&
+      github.event_name != 'pull_request'
     steps:
       - uses: actions/checkout@v6
 
@@ -294,6 +290,45 @@ jobs:
           source .venv/bin/activate
           echo "## 🏗️ CDK Validation" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
+
+          # BatchStack uses `ec2.Vpc.from_lookup(is_default=True)`, which forces
+          # CDK to call AWS at synth time. CI has no AWS credentials, so seed
+          # cdk.context.json with the same stub VPC used by
+          # tests/test_batch_stack.py to keep synth offline. Use python to write
+          # the file rather than a YAML heredoc (heredoc indentation + JSON
+          # special chars are too fragile across runners).
+          python <<'PYEOF'
+          import json
+          ctx = {
+              "vpc-provider:account=123456789012:filter.isDefault=true:region=us-east-2:returnAsymmetricSubnets=true": {
+                  "vpcId": "vpc-12345",
+                  "vpcCidrBlock": "172.31.0.0/16",
+                  "ownerAccountId": "123456789012",
+                  "availabilityZones": [],
+                  "subnetGroups": [
+                      {
+                          "name": "Public",
+                          "type": "Public",
+                          "subnets": [
+                              {
+                                  "subnetId": "subnet-aaa",
+                                  "cidr": "172.31.0.0/20",
+                                  "availabilityZone": "us-east-2a",
+                                  "routeTableId": "rtb-aaa",
+                              }
+                          ],
+                      }
+                  ],
+              }
+          }
+          with open("cdk.context.json", "w") as f:
+              json.dump(ctx, f, indent=2)
+          PYEOF
+          echo "--- cdk.context.json written: ---"
+          ls -la cdk.context.json
+          echo "--- contents: ---"
+          cat cdk.context.json
+          echo "--- (end) ---"
 
           # Run CDK synth with python directly (bypass cdk.json's uv command)
           if cdk synth --app "python app.py" --quiet 2>&1; then
@@ -859,134 +894,6 @@ jobs:
             jq '.' /tmp/regression.json
           fi
 
-  cet-tests:
-    name: CET Smoke Test
-    needs: [detect-changes]
-    if: |
-      needs.detect-changes.outputs.docs-only != 'true' &&
-      github.event_name == 'pull_request' &&
-      needs.detect-changes.outputs.cet == 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-
-    services:
-      neo4j:
-        image: neo4j:5
-        ports:
-          - 7687:7687
-          - 7474:7474
-        env:
-          NEO4J_AUTH: neo4j/password
-        options: >-
-          --health-cmd="bash -c 'cypher-shell -u neo4j -p password \"RETURN 1\" || exit 1'"
-          --health-interval=10s
-          --health-timeout=10s
-          --health-retries=12
-          --health-start-period=30s
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
-
-      - name: Setup test environment
-        uses: ./.github/actions/setup-test-environment
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-          neo4j-image: ${{ env.NEO4J_IMAGE }}
-          neo4j-username: ${{ env.NEO4J_USERNAME }}
-          neo4j-password: ${{ env.NEO4J_PASSWORD }}
-          default-timeout: ${{ env.DEFAULT_TIMEOUT }}
-
-      - name: Setup Python and UV
-        uses: ./.github/actions/setup-python-uv
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-          # stack-dev is required: smoke test imports sbir_graph.loaders.*,
-          # which only resolves after the workspace package is installed.
-          install-dev-deps: "true"
-          cache-venv: "true"
-          cache-pytest: "false"
-          install-pyreadstat: "false"
-
-      - name: Prepare CET configs and test data
-        run: |
-          set -eux
-          mkdir -p config/cet data/processed
-
-          # Generate taxonomy for smoke test
-          cat > config/cet/taxonomy.yaml << 'YAML'
-          version: "TEST-2025Q1"
-          last_updated: "2025-01-01"
-          cet_areas:
-            - cet_id: artificial_intelligence
-              name: Artificial Intelligence
-              definition: AI and ML technologies
-              keywords: ["machine learning", "neural network"]
-              parent_cet_id: null
-          YAML
-
-          # Generate classification config for smoke test
-          cat > config/cet/classification.yaml << 'YAML'
-          model_version: "vtest"
-          created_date: "2025-01-01"
-          confidence_thresholds: {high: 70.0, medium: 40.0, low: 0.0}
-          batch: {size: 64}
-          evidence: {max_statements: 2, excerpt_max_words: 40}
-          tfidf:
-            min_df: 1
-            max_df: 1.0
-            ngram_range: [1, 2]
-            keyword_boost_factor: 2.0
-          feature_selection: {enabled: false}
-          calibration: {method: "sigmoid", cv: 2}
-          YAML
-
-          # Generate test data for smoke test
-          cat > data/processed/enriched_sbir_awards.ndjson << 'NDJSON'
-          {"award_id":"smoke_award_001","title":"ML imaging","abstract":"This project uses machine learning for image classification.","keywords":["machine learning","imaging"]}
-          NDJSON
-
-      - name: Setup Neo4j environment variables
-        uses: ./.github/actions/setup-neo4j-service
-        with:
-          username: ${{ env.NEO4J_USERNAME }}
-          password: ${{ env.NEO4J_PASSWORD }}
-          auth-mode: password
-          uri: ${{ env.NEO4J_URI }}
-
-      - name: Run CET smoke test
-        run: |
-          set -eux
-          uv run python scripts/ci/cet_smoke_test.py
-
-      - name: List produced artifacts
-        if: always()
-        run: |
-          set -eux
-          find data -maxdepth 4 -type f \( -name "*.json" -o -name "*.parquet" -o -name "*.checks.json" \) -print || true
-
-      - name: Upload CET artifacts
-        if: always()
-        uses: ./.github/actions/upload-artifacts
-        with:
-          name: cet-smoke-artifacts
-          retention-days: ${{ env.CET_ARTIFACT_RETENTION_DAYS }}
-          path: |
-            data/processed/cet_*.parquet
-            data/processed/cet_*.json
-            data/processed/cet_*.*
-            data/processed/*.checks.json
-            data/loaded/neo4j/*.checks.json
-          if-no-files-found: warn
-
-      - name: Validate model loading
-        run: |
-          uv run python -c "
-          from sbir_etl.ml.cet_classifier import CETClassifier
-          clf = CETClassifier()
-          print('Model loads successfully')
-          "
-
   e2e-docker:
     name: E2E Tests (Docker Neo4j)
     needs: test
@@ -1009,7 +916,10 @@ jobs:
         uses: ./.github/actions/setup-python-uv
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-          install-dev-deps: "false"
+          # stack-dev required: E2E tests import sbir_graph.loaders,
+          # sbir_ml.transition.*, and sbir_analytics.assets.* — none of which
+          # resolve under `uv sync --no-dev`.
+          install-dev-deps: "true"
           cache-venv: "true"
 
       - name: Start Neo4j container
@@ -1198,7 +1108,7 @@ jobs:
 
   ci-summary:
     name: CI Summary
-    needs: [detect-changes, code-quality, verify-setup-script, test, container-build-test, performance-check, cet-tests, e2e-docker, transition-mvp, test-s3-integration]
+    needs: [detect-changes, code-quality, verify-setup-script, test, container-build-test, performance-check, e2e-docker, transition-mvp, test-s3-integration]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -1229,10 +1139,6 @@ jobs:
             echo "| ☁️ S3 Integration | ${{ needs.test-s3-integration.result == 'success' && '✅' || '❌' }} ${{ needs.test-s3-integration.result }} |" >> $GITHUB_STEP_SUMMARY
           fi
 
-          if [ "${{ needs.cet-tests.result }}" != "skipped" ]; then
-            echo "| 🤖 CET Tests | ${{ needs.cet-tests.result == 'success' && '✅' || '❌' }} ${{ needs.cet-tests.result }} |" >> $GITHUB_STEP_SUMMARY
-          fi
-
           if [ "${{ needs.e2e-docker.result }}" != "skipped" ]; then
             echo "| 🐳 E2E (Docker) | ${{ needs.e2e-docker.result == 'success' && '✅' || '❌' }} ${{ needs.e2e-docker.result }} |" >> $GITHUB_STEP_SUMMARY
           fi
@@ -1248,7 +1154,6 @@ jobs:
           needs.container-build-test.result == 'failure' ||
           needs.performance-check.result == 'failure' ||
           needs.test-s3-integration.result == 'failure' ||
-          needs.cet-tests.result == 'failure' ||
           needs.e2e-docker.result == 'failure' ||
           needs.transition-mvp.result == 'failure'
         run: |

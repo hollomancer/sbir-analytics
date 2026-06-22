@@ -117,10 +117,11 @@ in PR #317.*
 - Transition effectiveness rate by CET area, agency, and firm size — compare to Link & Scott [L12] and NASEM [L1][L3][L4]. *(deps: ER, ID, CET)*
 - How much undercount exists in Phase III coding by agency? Corroborated by GAO [L14] and NASEM [L1][L3]. *(deps: ID)*
 - How does company categorization relate to transition likelihood? Baseline: Link & Scott commercialization-probability econometrics [L12]. *(deps: ER, ID)*
+- Which Phase II awardees subject to §638(qq)(3) Increased Performance Standards meet the **statutory Commercialization Benchmark** (sales + private investment over the 10-FY covered period ÷ SBIR funding ≥ specified ratio)? Pub. L. 117-183 SBIR/STTR Extension Act of 2022 §638(qq)(3). Implementation on main: `scripts/run_benchmark.py` (evaluate / sensitivity / company-level CLI) backed by `sbir_etl/models/benchmark_models.py`, with tests in `tests/unit/test_benchmark_evaluator.py`. Additional per-firm audit infrastructure and a more comprehensive methodology doc exist as local-only / uncommitted work — see "Output products" section below for the in-progress status. *(deps: ER, ID, transitions, SEC EDGAR)*
 
 ### B4. Predictive (Tier 4)
 
-- Forward-looking transition probabilities for Phase II awards nearing completion. *(deps: all of B1–B3)*
+- Forward-looking transition probabilities for Phase II awards nearing completion. Per-firm **Phase III prospect digest** builder exists at commit [`4470b921`](https://github.com/hollomancer/sbir-analytics/commit/4470b921) (not on `main`; was developed on a since-removed feature branch — re-introduce as needed). Surfaces top candidates for outreach using B1-B3 features as scoring inputs. *(deps: all of B1–B3)*
 
 ## C. Innovation & knowledge generation (R&D policy)
 
@@ -250,6 +251,30 @@ This area treats the SBIR awardee as a **firm with a capital history**, not as a
 
 - Forward-looking probability of an exit event (M&A or IPO) for a given SBIR firm, conditional on capital-event history and CET area. *(deps: all of F1–F3)*
 
+## Output products & audiences
+
+Documents and reports the question inventory has produced for specific audiences. Each is a synthesis of A-F questions for a particular reader, not a new research question itself.
+
+### Congressional district success-story briefings
+
+**Audience:** members of Congress and their staff, for constituent-facing communication.
+**Format:** per-district briefing identifying 3-5 SBIR firms within the member's district that represent the strongest success stories (FDA-cleared products, defense supplier roles, follow-on capital raises, M&A exits) with political-safety vetting.
+**Districts covered to date** (in conversation; not yet committed as repo artifacts): KY-3 (McGarvey), NJ-10 (McIver), NY-16 (Latimer), NH-2 (Goodlander), MT-2 (Downing), TX-6 (Ellzey), and a CNMI null finding for King-Hinds. Vetting depth includes press review, SEC Form D filings, M&A history, and any political-sensitivity factors (foreign ownership, classified work exposure, recent acquisition).
+**Supporting code:** `sbir_etl/enrichers/congressional_district_resolver.py` (UEI → district resolver), `scripts/setup_congressional_districts.py` (district reference data).
+**Pulls from:** A1 (portfolio composition), A4 (defense-industrial-base), B1-B3 (commercialization signals), F1-F2 (capital events, M&A).
+
+### Form D fundraising analysis (published)
+
+**Audience:** F-area analysts, investor researchers, policy staff studying program-wide private-capital leverage.
+**Format:** `docs/research/sbir-form-d-fundraising-analysis.md` (canonical, on main) + companion methodology docs: `form-d-leverage-bootstrap-findings.md` (CIs, on main from PR #338); `form-d-pif-cross-link-audit.md` (PIF integrity, in [PR #340](https://github.com/hollomancer/sbir-analytics/pull/340)); `dod-form-d-leverage-deep-dive.md` (Branch decomposition, in [PR #342](https://github.com/hollomancer/sbir-analytics/pull/342)); `dod-form-d-followup-findings.md` (per-firm + time-series + acquirer-type, in [PR #343](https://github.com/hollomancer/sbir-analytics/pull/343)).
+**Pulls from:** F1 (Form D profile), F3 (private-to-SBIR leverage), A3/A4 (DoD-specific decomposition).
+
+### Commercialization-benchmark methodology (in progress, not yet committed)
+
+**Audience:** SBA program oversight, statutory compliance reviewers, GAO.
+**Format:** `docs/commercialization-benchmark-methodology.md` (locally present but **not committed** to the repo) documenting the §638(qq)(3) statutory framework, the FY2026 evaluation methodology, the data-source provenance (FPDS/USAspending contracts, SEC Form D investment, SBIR.gov FABS grants), and the per-firm audit protocol. The methodology doc pairs with a per-firm audit harness (`scripts/data/run_commercialization_benchmark.py` and `scripts/data/audit_one_firm.py`) and an FY2026 audited cohort CSV — all of which are **local-only / uncommitted** on the author's machine. The shippable counterpart on main is `scripts/run_benchmark.py` + `sbir_etl/models/benchmark_models.py`, which implements the same statutory framework via a different CLI shape. **The methodology doc + audit harness should be committed once stabilized** — the untracked status is itself a coverage gap worth closing.
+**Pulls from:** B3 (transition effectiveness + new §638(qq) benchmark question), F1 (Form D investment signal), F2 (NVCA-baseline comparison).
+
 ## Prior literature & benchmarks
 
 Public studies the inventory draws from or benchmarks against.
@@ -296,4 +321,20 @@ Public studies the inventory draws from or benchmarks against.
 
 - **[L24]** Kortum, S. & Lerner, J. (2000). "Assessing the Contribution of Venture Capital to Innovation." *RAND Journal of Economics* 31(4), 674–692. Foundational study estimating VC's marginal contribution to patenting; reference point for SBIR-vs-VC innovation comparisons. <https://www.jstor.org/stable/2696354>
 - **[L25]** National Venture Capital Association. *NVCA Yearbook* (annual). Industry-standard benchmarks for VC fundraising, deployment, deal stage/size, and exit activity used as the non-SBIR cohort for capital-formation comparisons. <https://nvca.org/research/nvca-yearbook/>
+
+---
+
+## Maintenance
+
+**Last reviewed:** 2026-06-21 — staleness audit verified all PR refs, branch tags, spec/doc links, and architectural notes against current `main`. Three corrections shipped via PR #335 (F3 supersession by #321, E4 spec landed via #277, A4 M&A pipeline architecture note). A follow-on PR #341 (currently open) proposes updating the published Form D fundraising doc with bootstrap CIs and PIF cross-link audit findings.
+
+When this doc is reviewed next, the audit should cover:
+
+- All `*(PR #...)*` references resolve to merged or otherwise tracked PRs (closed-without-merge PRs need explicit successor links — PR #311 → #321 was the prior failure mode)
+- All `*(branch: ...)*` tags point at branches that still exist on origin (`claude/sbir-data-imputation-strategy` was the prior failure mode — branch deleted, work landed under a different name)
+- Internal links to `../specs/` and `docs/` directories resolve
+- Each "deps:" tag accurately reflects current pipeline structure (M&A signals are script-driven, not orchestrated — flagged in the A4 implementation note)
+- Coverage gaps: cross-reference recent merged feature PRs against the question inventory to surface work not yet documented here
+
+Update this footer with the new review date when the audit completes.
 
