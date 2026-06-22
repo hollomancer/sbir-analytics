@@ -1,8 +1,8 @@
 # SBIR/STTR Commercialization Analytics
 
 A research project linking federal SBIR/STTR award data to
-downstream commercialization signals — federal contracts, patents, private
-financing, and acquisitions — to ask better questions about what happens
+downstream commercialization signals (federal contracts, patents, private
+financing, and acquisitions) to ask better questions about what happens
 after a small business wins an SBIR award.
 
 ## About this project (please read first)
@@ -13,18 +13,15 @@ engineering portfolio piece.** A few things to set expectations honestly:
 - I am a **federal employee working in the SBIR/STTR domain**, not a
   trained data scientist or ML engineer. I'm hoping to contribute which questions are worth asking, how they map to the policy and
   academic literature, and what data could plausibly answer them.
-- This is built with **substantial help from AI coding assistants.** Much of the
+- This is built with **substantial help from AI agents.** Much of the
   implementation was generated and iterated with Claude and Codex. I directed the design and
-  validated the analysis, but I'd definitely not represent the code as professional-grade
-  engineering.
-- The value I'd point a reader to is **[docs/research-questions.md](docs/research-questions.md)**, 
+  validated the analysis, but this code defintely isn't professional-grade engineering. PRs welcome!
+- Recommend newcomers read **[docs/research-questions.md](docs/research-questions.md)**, 
   a structured inventory of the questions this project exists to answer, each
   tied to the relevant GAO/NASEM/CRS reports and peer-reviewed studies. That
-  document is the heart of the project, and the pipeline is the work to validate it.
+  document is the heart of the project, and the code is the work to validate it.
 
-Read this as an exploration by a domain practitioner, not as a finished product.
-
-## The questions I'm trying to answer
+## Questions I'm trying to answer
 
 SBIR/STTR is a ~$4B/year federal program whose statutory goal is
 *commercialization* — turning early-stage R&D awards into products, contracts,
@@ -55,7 +52,7 @@ in [docs/research-questions.md](docs/research-questions.md).
 
 ## What it actually does
 
-At a mechanical level, it's an ETL pipeline that ingests several public
+At a mechanical level, this is an ETL pipeline that ingests several public
 datasets, resolves them to common entities (the hard part — companies appear
 under different names and identifiers across sources), and loads the result into
 a graph so the relationships can be queried.
@@ -147,7 +144,7 @@ brings one up along with the supporting services. See
 > designed to run locally, but full end-to-end reproduction requires source-data
 > downloads, API credentials, and local services such as Neo4j.
 
-## Honest limitations
+## Limitations
 
 - **Entity resolution is probabilistic.** Cross-dataset matches use fuzzy logic
   and will include false positives and misses. Match rates and confidence are
