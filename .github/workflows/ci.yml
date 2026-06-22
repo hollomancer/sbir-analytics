@@ -53,7 +53,7 @@ jobs:
       infrastructure: ${{ steps.detect.outputs.infrastructure }}
       docs-only: ${{ steps.detect.outputs.docs-only }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Detect changes
         id: detect
         uses: ./.github/actions/detect-changes
@@ -107,7 +107,7 @@ jobs:
     timeout-minutes: 10
     if: needs.detect-changes.outputs.docs-only != 'true'
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Setup Python and UV
         uses: ./.github/actions/setup-python-uv
@@ -149,7 +149,7 @@ jobs:
             path: packages/sbir-graph/sbir_graph
             non_blocking: false
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Setup Python and UV
         uses: ./.github/actions/setup-python-uv
         with:
@@ -166,7 +166,7 @@ jobs:
     timeout-minutes: 10
     if: needs.detect-changes.outputs.docs-only != 'true'
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Set up Python 3.11
         uses: actions/setup-python@v6
@@ -192,7 +192,7 @@ jobs:
     # Always run - fast job, no need to filter by changes
     if: needs.detect-changes.outputs.docs-only != 'true'
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Validate workflow YAML syntax
         run: |
@@ -243,7 +243,7 @@ jobs:
       needs.detect-changes.outputs.docs-only != 'true' &&
       github.event_name != 'pull_request'
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Setup Python
         uses: actions/setup-python@v6
@@ -358,7 +358,7 @@ jobs:
             needs_neo4j: true
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Setup Python and UV
         uses: ./.github/actions/setup-python-uv
@@ -425,7 +425,7 @@ jobs:
     permissions:
       pull-requests: write
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Download all test results
         uses: actions/download-artifact@v8
@@ -533,7 +533,7 @@ jobs:
       IMAGE_NAME: ${{ github.repository }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Set up Docker Buildx
         uses: ./.github/actions/setup-docker-buildx
@@ -651,7 +651,7 @@ jobs:
       SBIR_ANALYTICS_S3_BUCKET: sbir-etl-prod-data
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -912,7 +912,7 @@ jobs:
       SBIR_ETL__PIPELINE__SAMPLE_SIZE: "10000"  # Must match DOCKER_SAMPLE_LIMIT
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Setup Python and UV
         uses: ./.github/actions/setup-python-uv
@@ -996,7 +996,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Setup Python and UV
         uses: ./.github/actions/setup-python-uv
@@ -1081,7 +1081,7 @@ jobs:
       id-token: write
       contents: read
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Configure AWS credentials
         continue-on-error: true

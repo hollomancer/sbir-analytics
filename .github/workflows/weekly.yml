@@ -86,7 +86,7 @@ jobs:
             pytest_args: '-m "e2e and not weekly" -v'
             needs_neo4j: false
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Setup Python and UV
         uses: ./.github/actions/setup-python-uv
@@ -146,7 +146,7 @@ jobs:
     outputs:
       changed: ${{ steps.commit.outputs.changed }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Create repair branch
         id: branch
@@ -227,7 +227,7 @@ jobs:
         github.event.inputs.test_level == 'comprehensive'
       )
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Setup Python and UV
         uses: ./.github/actions/setup-python-uv
@@ -297,7 +297,7 @@ jobs:
         github.event.inputs.test_level == 'comprehensive'
       )
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Setup Python and UV
         uses: ./.github/actions/setup-python-uv
@@ -331,7 +331,7 @@ jobs:
       (github.event_name == 'workflow_dispatch' &&
        (github.event.inputs.workflow_target == 'awards-report' || github.event.inputs.workflow_target == 'both' || github.event.inputs.workflow_target == 'all'))
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Setup Python and UV
         uses: ./.github/actions/setup-python-uv
@@ -389,7 +389,7 @@ jobs:
       (github.event_name == 'workflow_dispatch' &&
        (github.event.inputs.workflow_target == 'security' || github.event.inputs.workflow_target == 'nightly' || github.event.inputs.workflow_target == 'all'))
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - name: Setup Python and UV
@@ -414,7 +414,7 @@ jobs:
       (github.event_name == 'workflow_dispatch' &&
        (github.event.inputs.workflow_target == 'security' || github.event.inputs.workflow_target == 'nightly' || github.event.inputs.workflow_target == 'all'))
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
@@ -443,7 +443,7 @@ jobs:
     env:
       MODE: ${{ github.event.inputs.mode || 'dry-run' }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -488,7 +488,7 @@ jobs:
       (github.event_name == 'workflow_dispatch' &&
        (github.event.inputs.workflow_target == 'smoke' || github.event.inputs.workflow_target == 'nightly' || github.event.inputs.workflow_target == 'all'))
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Setup Python and UV
         uses: ./.github/actions/setup-python-uv
@@ -520,7 +520,7 @@ jobs:
       (github.event_name == 'workflow_dispatch' &&
        (github.event.inputs.workflow_target == 'smoke' || github.event.inputs.workflow_target == 'nightly' || github.event.inputs.workflow_target == 'all'))
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Setup Python and UV
         uses: ./.github/actions/setup-python-uv
