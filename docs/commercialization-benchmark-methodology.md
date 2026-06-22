@@ -58,7 +58,7 @@ SBA reinforces this on the performance-benchmarks page:
 
 > "Government awards received as a prime or subcontractor that satisfy the definition of Phase III…are not considered covered sales because the payment was or is made using Federal funds."
 
-The script implements this by computing Tier 1/2 sales as `Form D investment / P2 count` only — federal $ is structurally excluded from the threshold.
+The script implements this by computing the Tier 1/2 threshold numerator as `Form D / P2 count` only — federal $ is structurally excluded by the covered-sale definition. (Calling Form D "sales" would be a misnomer here; under §638(qq) the federal-excluded numerator collapses to just the private-investment component.)
 
 ## Dual-compliance verdicts per firm
 
@@ -76,12 +76,12 @@ The script writes one verdict per (regime × reading), giving up to four verdict
 ### Standard tier (`standard_*`) — applies to every firm in the cohort
 
 **§638(mm) reading "net broad" (CCR-aligned):**
-Sales counted = `federal_observed − own_sbir_total` (clamped to 0). Investment = filtered Form D. Threshold $100K/P2.
+Counted dollars = `(federal_observed − own_sbir_total)` (clamped to 0) `+` filtered Form D. Threshold $100K/P2. The first term lands in CCR's "Additional Investment" bucket (follow-on federal contracts/grants); the Form D term lands in CCR's investment bucket too. Both are summed into the `standard_net_sales_counted_usd` column.
 
 This matches CCR Do/Don't #1 ("Do not include Phase I or Phase II SBIR/STTR awards in sales or investment") and the broad operational reading: follow-on federal R&D contracts/grants count under "Additional Investment" because SBA's CCR system auto-populates DoD contracts and "Other Federal Contracts/Grants" as investment.
 
 **§638(mm) reading "strict CCR":**
-Sales counted = non-R&D-NAICS contracts only. Investment = filtered Form D. Threshold $100K/P2.
+Counted dollars = non-R&D-NAICS contracts `+` filtered Form D. Threshold $100K/P2. Same column structure as net broad (sums both terms into `standard_strict_sales_counted_usd`) but excludes R&D-NAICS contracts and grants entirely from the federal term.
 
 The CCR Sales definition explicitly excludes "revenue from any other R&D activities, including follow-on R&D contracts or grants." Under the strict reading those dollars don't count at all.
 
