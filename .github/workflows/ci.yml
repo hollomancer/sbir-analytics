@@ -576,12 +576,16 @@ jobs:
           build-args: |
             WITH_R=false
             BUILDKIT_INLINE_CACHE=1
-          # Unified cache scope shared across workflows
+          # Unified cache scope shared across workflows. Pulling from
+          # registry is anonymous (image is public) so PRs benefit from a
+          # warm cache. Pushing to registry needs the GHCR login step, which
+          # is gated to push events — so only emit the registry cache-to
+          # entry there. PRs still push to GHA cache for branch-local reuse.
           cache-from: |
             type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache
             type=gha,scope=sbir-python-deps
           cache-to: |
-            type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache,mode=max
+            ${{ github.event_name == 'push' && format('type=registry,ref={0}/{1}:buildcache,mode=max', env.REGISTRY, env.IMAGE_NAME) || '' }}
             type=gha,mode=max,scope=sbir-python-deps
 
       - name: Tag and push to registry
