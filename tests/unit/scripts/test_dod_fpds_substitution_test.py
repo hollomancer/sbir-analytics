@@ -58,21 +58,33 @@ class TestLoadDoDCohort:
                 "company_name": "AcmeAF",
                 "match_confidence": {"tier": "high"},
                 "offerings": [
-                    {"industry_group": "Other Technology", "filing_date": "2020-05-01", "total_amount_sold": 1_000_000.0},
+                    {
+                        "industry_group": "Other Technology",
+                        "filing_date": "2020-05-01",
+                        "total_amount_sold": 1_000_000.0,
+                    },
                 ],
             },
             {
                 "company_name": "BetaNavy",
                 "match_confidence": {"tier": "high"},
                 "offerings": [
-                    {"industry_group": "Other Technology", "filing_date": "2021-05-01", "total_amount_sold": 500_000.0},
+                    {
+                        "industry_group": "Other Technology",
+                        "filing_date": "2021-05-01",
+                        "total_amount_sold": 500_000.0,
+                    },
                 ],
             },
             {
                 "company_name": "CharlieHHS",
                 "match_confidence": {"tier": "high"},
                 "offerings": [
-                    {"industry_group": "Other Technology", "filing_date": "2020-05-01", "total_amount_sold": 9_999_999.0},
+                    {
+                        "industry_group": "Other Technology",
+                        "filing_date": "2020-05-01",
+                        "total_amount_sold": 9_999_999.0,
+                    },
                 ],
             },
             # Medium-tier — must be excluded
@@ -80,7 +92,11 @@ class TestLoadDoDCohort:
                 "company_name": "MediumFirm",
                 "match_confidence": {"tier": "medium"},
                 "offerings": [
-                    {"industry_group": "Other Technology", "filing_date": "2020-05-01", "total_amount_sold": 5_000.0},
+                    {
+                        "industry_group": "Other Technology",
+                        "filing_date": "2020-05-01",
+                        "total_amount_sold": 5_000.0,
+                    },
                 ],
             },
         ]
@@ -125,6 +141,7 @@ class TestQueryUsaspendingForFirm:
     def _build_mock_client(self, responses):
         """responses is a list of dicts that will be returned in order."""
         from unittest.mock import MagicMock
+
         client = MagicMock()
         post_results = []
         for body in responses:
@@ -139,8 +156,16 @@ class TestQueryUsaspendingForFirm:
         responses = [
             {
                 "results": [
-                    {"Recipient Name": "ACME INC", "Award Amount": 100_000.0, "Awarding Sub Agency": "Army"},
-                    {"Recipient Name": "ACME INC", "Award Amount": 50_000.0, "Awarding Sub Agency": "Air Force"},
+                    {
+                        "Recipient Name": "ACME INC",
+                        "Award Amount": 100_000.0,
+                        "Awarding Sub Agency": "Army",
+                    },
+                    {
+                        "Recipient Name": "ACME INC",
+                        "Award Amount": 50_000.0,
+                        "Awarding Sub Agency": "Air Force",
+                    },
                 ],
                 "page_metadata": {"hasNext": False},
             }
@@ -157,8 +182,16 @@ class TestQueryUsaspendingForFirm:
         responses = [
             {
                 "results": [
-                    {"Recipient Name": "ACME INC", "Award Amount": 100_000.0, "Awarding Sub Agency": "Army"},
-                    {"Recipient Name": "ACME RESEARCH LLC", "Award Amount": 999_999.0, "Awarding Sub Agency": "Army"},  # different firm
+                    {
+                        "Recipient Name": "ACME INC",
+                        "Award Amount": 100_000.0,
+                        "Awarding Sub Agency": "Army",
+                    },
+                    {
+                        "Recipient Name": "ACME RESEARCH LLC",
+                        "Award Amount": 999_999.0,
+                        "Awarding Sub Agency": "Army",
+                    },  # different firm
                 ],
                 "page_metadata": {"hasNext": False},
             }
@@ -172,15 +205,33 @@ class TestQueryUsaspendingForFirm:
     def test_pagination_walks_to_last_page(self):
         responses = [
             {
-                "results": [{"Recipient Name": "ACME INC", "Award Amount": 100.0, "Awarding Sub Agency": "Army"}],
+                "results": [
+                    {
+                        "Recipient Name": "ACME INC",
+                        "Award Amount": 100.0,
+                        "Awarding Sub Agency": "Army",
+                    }
+                ],
                 "page_metadata": {"hasNext": True},
             },
             {
-                "results": [{"Recipient Name": "ACME INC", "Award Amount": 200.0, "Awarding Sub Agency": "Navy"}],
+                "results": [
+                    {
+                        "Recipient Name": "ACME INC",
+                        "Award Amount": 200.0,
+                        "Awarding Sub Agency": "Navy",
+                    }
+                ],
                 "page_metadata": {"hasNext": True},
             },
             {
-                "results": [{"Recipient Name": "ACME INC", "Award Amount": 50.0, "Awarding Sub Agency": "Air Force"}],
+                "results": [
+                    {
+                        "Recipient Name": "ACME INC",
+                        "Award Amount": 50.0,
+                        "Awarding Sub Agency": "Air Force",
+                    }
+                ],
                 "page_metadata": {"hasNext": False},
             },
         ]
@@ -210,7 +261,9 @@ class TestQueryUsaspendingForFirm:
         ok_resp = MagicMock()
         ok_resp.status_code = 200
         ok_resp.json.return_value = {
-            "results": [{"Recipient Name": "ACME INC", "Award Amount": 100.0, "Awarding Sub Agency": "Army"}],
+            "results": [
+                {"Recipient Name": "ACME INC", "Award Amount": 100.0, "Awarding Sub Agency": "Army"}
+            ],
             "page_metadata": {"hasNext": True},
         }
         client.post.side_effect = [ok_resp, httpx.HTTPError("network")]
@@ -222,9 +275,24 @@ class TestQueryUsaspendingForFirm:
 class TestComputePerBranchSubstitution:
     def test_per_branch_aggregation(self):
         cohort = {
-            "AF1": {"dominant_dod_branch": "Air Force", "sbir_dod_total": 1_000_000.0, "form_d_raised": 5_000_000.0, "original_name": "AF1"},
-            "AF2": {"dominant_dod_branch": "Air Force", "sbir_dod_total": 500_000.0, "form_d_raised": 2_000_000.0, "original_name": "AF2"},
-            "NAVY1": {"dominant_dod_branch": "Navy", "sbir_dod_total": 1_000_000.0, "form_d_raised": 500_000.0, "original_name": "NAVY1"},
+            "AF1": {
+                "dominant_dod_branch": "Air Force",
+                "sbir_dod_total": 1_000_000.0,
+                "form_d_raised": 5_000_000.0,
+                "original_name": "AF1",
+            },
+            "AF2": {
+                "dominant_dod_branch": "Air Force",
+                "sbir_dod_total": 500_000.0,
+                "form_d_raised": 2_000_000.0,
+                "original_name": "AF2",
+            },
+            "NAVY1": {
+                "dominant_dod_branch": "Navy",
+                "sbir_dod_total": 1_000_000.0,
+                "form_d_raised": 500_000.0,
+                "original_name": "NAVY1",
+            },
         }
         contracts = {
             "AF1": {"total_contract_usd": 100_000.0},  # low FPDS
@@ -250,8 +318,18 @@ class TestComputePerBranchSubstitution:
         """A firm in the cohort with no entry in the contracts dict
         contributes 0 to FPDS but still counts in firm/Form-D/SBIR totals."""
         cohort = {
-            "FIRM1": {"dominant_dod_branch": "Navy", "sbir_dod_total": 1_000_000.0, "form_d_raised": 500_000.0, "original_name": "FIRM1"},
-            "FIRM2": {"dominant_dod_branch": "Navy", "sbir_dod_total": 500_000.0, "form_d_raised": 200_000.0, "original_name": "FIRM2"},
+            "FIRM1": {
+                "dominant_dod_branch": "Navy",
+                "sbir_dod_total": 1_000_000.0,
+                "form_d_raised": 500_000.0,
+                "original_name": "FIRM1",
+            },
+            "FIRM2": {
+                "dominant_dod_branch": "Navy",
+                "sbir_dod_total": 500_000.0,
+                "form_d_raised": 200_000.0,
+                "original_name": "FIRM2",
+            },
         }
         contracts = {"FIRM1": {"total_contract_usd": 5_000_000.0}}  # FIRM2 missing
         program = {"Navy": 5_000_000.0}
@@ -262,14 +340,30 @@ class TestComputePerBranchSubstitution:
         assert navy["form_d_total_usd"] == 700_000.0  # both firms count
 
     def test_excludes_branches_below_min_program(self):
-        cohort = {"X": {"dominant_dod_branch": "TinyBranch", "sbir_dod_total": 1.0, "form_d_raised": 1.0, "original_name": "X"}}
+        cohort = {
+            "X": {
+                "dominant_dod_branch": "TinyBranch",
+                "sbir_dod_total": 1.0,
+                "form_d_raised": 1.0,
+                "original_name": "X",
+            }
+        }
         contracts = {"X": {"total_contract_usd": 1.0}}
         program = {"TinyBranch": 50_000.0}  # below 100M default
-        out = _mod.compute_per_branch_substitution(cohort, contracts, program, min_program_usd=100_000.0)
+        out = _mod.compute_per_branch_substitution(
+            cohort, contracts, program, min_program_usd=100_000.0
+        )
         assert out == []
 
     def test_substitution_signal_none_when_form_d_zero(self):
-        cohort = {"X": {"dominant_dod_branch": "Navy", "sbir_dod_total": 1.0, "form_d_raised": 0.0, "original_name": "X"}}
+        cohort = {
+            "X": {
+                "dominant_dod_branch": "Navy",
+                "sbir_dod_total": 1.0,
+                "form_d_raised": 0.0,
+                "original_name": "X",
+            }
+        }
         contracts = {"X": {"total_contract_usd": 100.0}}
         program = {"Navy": 1.0}
         out = _mod.compute_per_branch_substitution(cohort, contracts, program, min_program_usd=0)
