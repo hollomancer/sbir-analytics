@@ -1,17 +1,18 @@
 # SBIR/STTR Commercialization Analytics
 
 A research project linking federal SBIR/STTR award data to
-downstream commercialization signals (federal contracts, patents, private
-financing, and acquisitions) to ask better questions about what happens
-after a small business wins an SBIR award.
+downstream commercialization signals (federal contracts,
+patents, private financing, and acquisitions) to better
+understand what happens after a small business wins an SBIR award.
 
 ## About this project (please read first)
 
 This is a **personal side project, not production software or a polished
-engineering portfolio piece.** A few things to set expectations honestly:
+engineering portfolio piece.** A few things to set expectations:
 
 - I am a **federal employee working in the SBIR/STTR domain**, not a
-  trained data scientist or ML engineer. I'm hoping to contribute which questions are worth asking, how they map to the policy and
+  trained data scientist or ML engineer. I'm hoping to contribute which
+  questions are worth asking, how they map to the policy and
   academic literature, and what data could plausibly answer them.
 - This is built with **substantial help from AI agents.** Much of the
   implementation was generated and iterated with Claude and Codex. I directed the design and
@@ -25,9 +26,9 @@ engineering portfolio piece.** A few things to set expectations honestly:
 
 SBIR/STTR is a ~$4B/year federal program whose statutory goal is
 *commercialization* — turning early-stage R&D awards into products, contracts,
-and companies. But the program's own tracking of what happens after Phase II is
-famously thin (GAO has flagged Phase III data as unreliable for years). This
-project is an attempt to reconstruct those outcomes by joining the public award
+and companies. But the program's own tracking of what happens after Phase II has
+challenges (GAO has flagged Phase III data as unreliable for years). This project
+is an attempt to reconstruct those outcomes by joining the public award
 record to other public datasets. A few of the questions it explores:
 
 - **Follow-on private investment.** Do SBIR awardees go on to raise private
