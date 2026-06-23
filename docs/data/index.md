@@ -7,6 +7,9 @@ Status: active
 
 # Data Sources Overview
 
+> **Operational data caveat.** No SBIR/STTR award data is committed to this repository. Commands and scripts referenced in this section can support local development once you provide `.env` values and small/local inputs, but full dataset reproduction requires downloading the source/bulk datasets yourself, supplying API credentials, and running supporting services such as Neo4j; reproducing the analyses end-to-end is non-trivial.
+
+
 This section provides comprehensive documentation for all data sources used in the SBIR Analytics pipeline.
 
 ## Primary Data Sources

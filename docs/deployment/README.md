@@ -7,6 +7,9 @@ Status: active
 
 # Deployment Documentation
 
+> **Operational data caveat.** No SBIR/STTR award data is committed to this repository. Local-development commands in these docs are intended to bring up services, run tests, or exercise pipeline components against small/local inputs after you provide `.env` values. Full dataset reproduction requires downloading the source/bulk datasets yourself, supplying the relevant API credentials, and running supporting services such as Neo4j; reproducing the analyses end-to-end is non-trivial setup, not a one-command deployment.
+
+
 This directory contains deployment documentation for the SBIR ETL project.
 
 ## Deployment Overview

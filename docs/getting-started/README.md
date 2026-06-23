@@ -1,5 +1,8 @@
 # Getting Started
 
+> **Operational data caveat.** No SBIR/STTR award data is committed to this repository. The setup commands below install dependencies and start local development services; they do not recreate the full research dataset by themselves. Full dataset reproduction requires downloading source/bulk data, adding your own API credentials to `.env`, and running supporting services such as Neo4j, so reproducing the analyses end-to-end is non-trivial.
+
+
 Quick setup guides for the SBIR ETL pipeline.
 
 ## Local Development

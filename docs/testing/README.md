@@ -1,5 +1,8 @@
 # Testing Guide
 
+> **Operational data caveat.** No SBIR/STTR award data is committed to this repository. The quick-start and unit-test commands below are for local development and should run against fixtures, mocks, or small local inputs. Integration, E2E, and full dataset reproduction require your own source/bulk data downloads, API credentials, and local services such as Neo4j; reproducing the complete analyses end-to-end is non-trivial.
+
+
 Testing strategy and commands for the SBIR ETL pipeline.
 
 ## Quick Start
