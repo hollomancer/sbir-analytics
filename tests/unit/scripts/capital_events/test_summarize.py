@@ -113,3 +113,60 @@ def test_summary_zero_event_firm_has_zero_counts(cohort):
     assert boring["form_d_filing_count"] == 0
     assert bool(boring["has_ma_event"]) is False
     assert pd.isna(boring["first_event_date"])
+    # Pathway flag defaults to False when there are no events.
+    assert bool(boring["has_strict_phase_ii_to_ma_pathway"]) is False
+
+
+def test_summary_strict_pathway_for_p2_fd_ma_sequence(cohort):
+    """Firm with Phase II → Form D → M&A in order gets pathway columns set."""
+    events = _events_df(
+        [
+            _event("ACME INC", "2018-06-15", "sbir_award", "sbir_phase_i", 150000.0),
+            _event("ACME INC", "2020-09-01", "sbir_award", "sbir_phase_ii", 1_000_000.0),
+            _event("ACME INC", "2022-03-10", "form_d_filing", "equity", 5_000_000.0),
+            _event("ACME INC", "2024-02-01", "ma_event", "high"),
+        ]
+    )
+    summary = summarize_per_firm(events, cohort)
+    acme = summary[summary.company_name == "ACME INC"].iloc[0]
+    assert acme["first_phase_ii_date"] == "2020-09-01"
+    assert acme["first_form_d_date"] == "2022-03-10"
+    assert acme["first_ma_event_date"] == "2024-02-01"
+    # 2020-09-01 → 2022-03-10 = 555 days
+    assert acme["days_phase_ii_to_form_d"] == 555
+    # 2022-03-10 → 2024-02-01 = 693 days
+    assert acme["days_form_d_to_ma"] == 693
+    # 2020-09-01 → 2024-02-01 = 1248 days
+    assert acme["days_phase_ii_to_ma"] == 1248
+    assert bool(acme["has_strict_phase_ii_to_ma_pathway"]) is True
+
+
+def test_summary_strict_pathway_requires_p2_before_fd_before_ma(cohort):
+    """Out-of-order events do not satisfy the strict pathway."""
+    events = _events_df(
+        [
+            # Form D before Phase II — invalid sequence.
+            _event("ACME INC", "2018-06-15", "form_d_filing", "equity", 1_000_000.0),
+            _event("ACME INC", "2020-09-01", "sbir_award", "sbir_phase_ii", 1_000_000.0),
+            _event("ACME INC", "2024-02-01", "ma_event", "high"),
+        ]
+    )
+    summary = summarize_per_firm(events, cohort)
+    acme = summary[summary.company_name == "ACME INC"].iloc[0]
+    assert bool(acme["has_strict_phase_ii_to_ma_pathway"]) is False
+
+
+def test_summary_strict_pathway_false_when_only_phase_i(cohort):
+    """A Phase I award is not Phase II — pathway only triggers on Phase II."""
+    events = _events_df(
+        [
+            _event("ACME INC", "2018-06-15", "sbir_award", "sbir_phase_i", 150000.0),
+            _event("ACME INC", "2020-03-10", "form_d_filing", "equity", 5_000_000.0),
+            _event("ACME INC", "2024-02-01", "ma_event", "high"),
+        ]
+    )
+    summary = summarize_per_firm(events, cohort)
+    acme = summary[summary.company_name == "ACME INC"].iloc[0]
+    assert bool(acme["has_strict_phase_ii_to_ma_pathway"]) is False
+    assert pd.isna(acme["first_phase_ii_date"])
+    assert pd.isna(acme["days_phase_ii_to_ma"])
