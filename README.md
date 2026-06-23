@@ -48,7 +48,7 @@ record to other public datasets. A few of the questions it explores:
   economic activity attributable to award spending, using BEA input-output tables
   where available and fallback assumptions when live BEA inputs are unavailable.
 
-The full, sourced inventory — organized by policy area and complexity tier — is
+The full, sourced inventory (organized by policy area and complexity) is
 in [docs/research-questions.md](docs/research-questions.md).
 
 ## What it actually does
@@ -106,16 +106,16 @@ maintainable - we're definitely a long way from production-grade infrastructure.
 If you want the fastest route to the domain insight without reading the whole
 repository, start with these documents in order:
 
-1. [Research questions](docs/research-questions.md) — the core policy and
+1. [Research questions](docs/research-questions.md): the core policy and
    evaluation questions the project is trying to answer.
-2. [SEC EDGAR SBIR learnings](docs/research/sec-edgar-sbir-learnings.md) —
+2. [SEC EDGAR SBIR learnings](docs/research/sec-edgar-sbir-learnings.md):
    practical findings from using EDGAR to detect SBIR-related exits and
    financing signals.
-3. [SBIR Form D fundraising analysis](docs/research/sbir-form-d-fundraising-analysis.md) —
+3. [SBIR Form D fundraising analysis](docs/research/sbir-form-d-fundraising-analysis.md):
    the private-capital lens on awardee commercialization.
-4. [Phase transition latency](docs/phase-transition-latency.md) — how the repo
+4. [Phase transition latency](docs/phase-transition-latency.md): how the repo
    thinks about timing from SBIR awards to follow-on federal contracts.
-5. [SBIR identification methodology](docs/sbir-identification-methodology.md) —
+5. [SBIR identification methodology](docs/sbir-identification-methodology.md):
    the methodology behind identifying and linking SBIR firms across datasets.
 
 ## Running it
