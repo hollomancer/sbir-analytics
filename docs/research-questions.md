@@ -104,14 +104,14 @@ in PR #317.*
 
 ### B2. Relational (Tier 2)
 
-- Did this SBIR-funded research result in a federal contract? — [transition/overview.md](transition/overview.md). Baselines: NASEM DoD [L1][L2], NIH/NSF ~50% commercialization [L3][L4][L6]. *(deps: ER, ID)*
+- Did this SBIR-funded research result in a federal contract? — [transition/overview.md](transition/overview.md). Baselines: NASEM DoD [L1][L2]; Link & Scott ~50% commercialization probability [L12]; NASEM program reviews [L3][L4][L6]. *(deps: ER, ID)*
 - Which SBIR-funded companies transitioned research into federal procurements? — [transition/detection-algorithm.md](transition/detection-algorithm.md). *(deps: ER, ID)*
 - What is the average time from award to transition by technology area? *(deps: ER, ID, CET)*
 - Which SBIR awards transitioned with patent backing, and what share of transitions are patent-enabled? Related to Lerner [L10] and Howell [L11]. *(deps: ER, ID, PATLINK)*
 
 ### B3. Inferential (Tier 3)
 
-- What is the elapsed time between Phase II completion and first Phase III contract? — [phase-transition-latency.md](phase-transition-latency.md). GAO flagged Phase III data as limited/unreliable [L14]; SBA ran the Commercialization Benchmark once (2014) for the same reason [L14]. *(deps: ER, ID)*
+- What is the elapsed time between Phase II completion and first Phase III contract? — [phase-transition-latency.md](phase-transition-latency.md). GAO flagged Phase III data as limited/unreliable [L14]; SBA ran the Commercialization Benchmark once (2014) for the same reason [L15]. *(deps: ER, ID)*
 - Phase II → III survival probability by agency, firm size, and vintage. *(deps: ER, ID)*
 - Does Phase II → III latency vary by technology area? *(deps: ER, ID, CET)*
 - Transition effectiveness rate by CET area, agency, and firm size — compare to Link & Scott [L12] and NASEM [L1][L3][L4]. *(deps: ER, ID, CET)*
@@ -281,12 +281,12 @@ Public studies the inventory draws from or benchmarks against.
 
 **NASEM reviews (congressionally mandated):**
 
-- **[L1]** NASEM (2024). *Review of the SBIR and STTR Programs at the Department of Defense.* Key finding: DoD SBIR firms attract >4× non-SBIR DoD funding per SBIR dollar (2012–2020); SBIR firms are ~1/3 of the defense R&D base. <https://www.nationalacademies.org/projects/PGA-STEP-17-08/publication/29329>
-- **[L2]** NASEM (2014). *SBIR at the Department of Defense.* Earlier assessment — baseline for longitudinal comparison. <https://nap.nationalacademies.org/read/18821/>
+- **[L1]** NASEM (2026). *Review of the SBIR and STTR Programs at the Department of Defense.* Key finding: DoD SBIR firms attract >4× non-SBIR DoD funding per SBIR dollar (2012–2020); SBIR firms are ~1/3 of the defense R&D base. <https://www.nationalacademies.org/projects/PGA-STEP-17-08/publication/29329>
+- **[L2]** NRC (2014). *SBIR at the Department of Defense.* Earlier assessment — baseline for longitudinal comparison. (Published under the National Research Council name, before the July 2015 NASEM rename.) <https://nap.nationalacademies.org/read/18821/>
 - **[L3]** NASEM (2022). *Assessment of the SBIR and STTR Programs at the NIH.* <https://nap.nationalacademies.org/read/26376/>
-- **[L4]** NASEM (2022). *Review of the SBIR and STTR Programs at the National Science Foundation.* <https://nap.nationalacademies.org/read/26884/>
+- **[L4]** NASEM (2023). *Review of the SBIR and STTR Programs at the National Science Foundation.* <https://nap.nationalacademies.org/read/26884/>
 - **[L5]** NASEM (2020). *Review of the SBIR and STTR Programs at the Department of Energy.* Draws on Myers & Lanahan spillover work. <https://nap.nationalacademies.org/read/25674/>
-- **[L6]** NASEM (2016). *SBIR/STTR at the National Institutes of Health.* <https://www.ncbi.nlm.nih.gov/books/NBK338158/>
+- **[L6]** NASEM (2015). *SBIR/STTR at the National Institutes of Health.* <https://www.ncbi.nlm.nih.gov/books/NBK338158/>
 - **[L7]** NASEM (2016). *STTR: An Assessment of the Small Business Technology Transfer Program.* <https://www.ncbi.nlm.nih.gov/books/NBK338709/>
 - **[L8]** NASEM. *Capitalizing on Science, Technology, and Innovation: An Assessment of the SBIR Program — Phase II.* <https://www.nationalacademies.org/our-work/capitalizing-on-science-technology-and-innovation-an-assessment-of-the-small-business-innovation-research-program---phase-ii>
 
@@ -300,7 +300,7 @@ Public studies the inventory draws from or benchmarks against.
 
 **Government & policy reports:**
 
-- **[L14]** GAO-24-107036 (2024). *Small Business Research Programs: Increased Performance Standards Likely to Require Better Data.* Documents Phase III data limitations and the single (2014) Commercialization Benchmark run. <https://www.gao.gov/assets/gao-24-107036.pdf>
+- **[L14]** GAO-24-107036 (2024). *Small Business Research Programs: Agencies Broadly Solicit Ideas, but Clearer Guidance Could Improve DOD Efforts.* Documents Phase III data limitations and open-topic solicitation practices. The "single (2014) Commercialization Benchmark run" finding is documented in CRS R43695 [L15], not this report. <https://www.gao.gov/assets/gao-24-107036.pdf>
 - **[L15]** CRS R43695. *Small Business Research Programs: SBIR and STTR.* Statutory structure, three-phase model, identifier mechanics. <https://www.congress.gov/crs-product/R43695>
 - **[L16]** CSIS Center for the Industrial Base (formerly DIIG). Defense-industrial-base research, including SBIR coverage. <https://www.csis.org/programs/center-industrial-base>
 - **[L17]** CSIS (various). *SBIR and STTR Reauthorization and the Future of Small Business Innovation.* Policy analysis including foreign-acquisition risk. <https://www.csis.org/analysis/sbir-and-sttr-reauthorization-and-future-small-business-innovation>
