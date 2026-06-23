@@ -576,12 +576,16 @@ jobs:
           build-args: |
             WITH_R=false
             BUILDKIT_INLINE_CACHE=1
-          # Unified cache scope shared across workflows
+          # Unified cache scope shared across workflows. Pulling from
+          # registry is anonymous (image is public) so PRs benefit from a
+          # warm cache. Pushing to registry needs the GHCR login step, which
+          # is gated to push events — so only emit the registry cache-to
+          # entry there. PRs still push to GHA cache for branch-local reuse.
           cache-from: |
             type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache
             type=gha,scope=sbir-python-deps
           cache-to: |
-            type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache,mode=max
+            ${{ github.event_name == 'push' && format('type=registry,ref={0}/{1}:buildcache,mode=max', env.REGISTRY, env.IMAGE_NAME) || '' }}
             type=gha,mode=max,scope=sbir-python-deps
 
       - name: Tag and push to registry
@@ -606,6 +610,13 @@ jobs:
         env:
           # Provide the GITHUB_SHA used in the test compose overlay variable
           GITHUB_SHA: ${{ github.sha }}
+          # The `ci` profile's compose command runs `pytest -m fast` and then
+          # conditionally `scripts/run_e2e_tests.py` if E2E_TEST_SCENARIO is
+          # non-empty and not "none". `.env.example` defaults the scenario to
+          # `standard` (for local dev), but here we only want the fast-test
+          # smoke; the full E2E suite runs in the dedicated `e2e-docker` job
+          # below. Force the scenario to "none" so the conditional skips.
+          E2E_TEST_SCENARIO: "none"
         run: |
           set -eux
           # Use profile-based compose to bring up ephemeral neo4j + app (app configured to run pytest)
@@ -973,13 +984,16 @@ jobs:
     name: Run Transition MVP (shim) and gate on validation summary
     needs: [detect-changes]
     # The transition pipeline needs bulk SBIR/SAM/USAspending data that is
-    # gitignored and only reachable from S3 with AWS credentials. Pull requests
-    # have neither that data nor those credentials, so this gate cannot run
-    # there. Restrict it to push / scheduled (workflow_call) / manual runs,
-    # where the data is available; it is skipped (not failed) on PRs.
+    # gitignored and only reachable from S3 with AWS credentials. Neither PRs
+    # nor `push` events on this repo have credentials configured yet, so the
+    # `make transition-run` step always fails with
+    # `FileNotFoundError: ... /storage/enriched_sbir_awards`. Restrict to
+    # `workflow_dispatch` where an operator can inject credentials. (A nightly
+    # schedule could be added later by extending the workflow's `on:` block
+    # and this condition.)
     if: |
       needs.detect-changes.outputs.docs-only != 'true' &&
-      github.event_name != 'pull_request'
+      github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
