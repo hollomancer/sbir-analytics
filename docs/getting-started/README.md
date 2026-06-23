@@ -4,15 +4,23 @@ Quick setup guides for the SBIR ETL pipeline.
 
 ## Local Development
 
+The project uses Python 3.11 and [`uv`](https://github.com/astral-sh/uv) for dependency management. The recommended local flow mirrors the repository README:
+
 ```bash
 # Clone and install
 git clone https://github.com/hollomancer/sbir-analytics
 cd sbir-analytics
-uv sync
+make install
 
 # Start Dagster UI
-uv run dagster dev
+make dev
 # Open http://localhost:3000
+```
+
+If you prefer to run the underlying commands directly, `make install` is equivalent to `uv sync`, and `make dev` runs:
+
+```bash
+uv run dagster dev -m sbir_analytics.definitions
 ```
 
 ## First Steps
@@ -39,6 +47,7 @@ NEO4J_PASSWORD=password
 
 ## Next Steps
 
+- [Local Development Setup](local-development.md) - Detailed local workflow
 - [Docker Setup](../development/docker.md) - Container-based development
 - [Deployment Guide](../deployment/README.md) - Production deployment
 - [Testing Guide](../testing/index.md) - Running tests
