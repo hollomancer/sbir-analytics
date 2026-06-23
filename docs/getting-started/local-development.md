@@ -43,7 +43,7 @@ make dev
 # Materialize raw_sbir_awards asset
 ```
 
-`make dev` uses the same Dagster module path as the Makefile target:
+`make dev` uses the same Dagster module path as the Makefile’s `dev` target:
 
 ```bash
 uv run dagster dev -m sbir_analytics.definitions
