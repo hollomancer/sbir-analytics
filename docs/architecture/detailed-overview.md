@@ -133,17 +133,17 @@ sbir-analytics/
 │
 ├── specs/                        # Feature specifications
 │   ├── statistical_reporting/
-│   ├── weekly-award-data-refresh/
+│   ├── data-refresh/
 │   ├── merger_acquisition_detection/
 │   └── archive/                  # Completed specs
 │
 ├── .github/workflows/            # CI/CD pipelines
 │   ├── ci.yml                    # Standard lint/test
-│   ├── container-ci.yml          # Docker build & test
-│   ├── neo4j-smoke.yml           # Integration tests
-│   ├── performance-regression-check.yml
-│   ├── cet-pipeline-ci.yml
-│   └── secret-scan.yml
+│   ├── build-images.yml          # Docker build & test
+│   ├── data-refresh.yml          # Scheduled source refreshes
+│   ├── etl-pipeline.yml          # ETL orchestration
+│   ├── monthly-analysis.yml      # Scheduled analysis
+│   └── weekly.yml                # Scheduled tests and quality
 │
 └── docker-compose.yml            # Local dev/test environment
 ```

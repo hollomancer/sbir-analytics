@@ -459,4 +459,4 @@ For large datasets (>100K records):
 - **Configuration**: `config/base.yaml` (statistical_reporting section)
 - **CI Integration**: `.github/workflows/ci.yml`
 - **Quality Assurance Guide**: [`quality-assurance.md`](quality-assurance.md)
-- **Performance Monitoring**: [`../performance/index.md`
+- **Performance Monitoring**: [`../performance.md`](../performance.md)

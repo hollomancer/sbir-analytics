@@ -234,7 +234,7 @@ Example monthly costs:
 You currently have **EC2 configuration ready**:
 
 - ✅ `scripts/setup-ec2-agent.sh` - one-command setup
-- ✅ `docs/deployment/multi-location-setup.md` - full guide
+- ✅ `docs/deployment/usaspending-ec2-automation.md` - EC2 automation guide
 
 To switch to Batch later, you'll have:
 

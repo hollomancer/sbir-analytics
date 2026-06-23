@@ -262,11 +262,11 @@ Test the workflow without actually running it:
 
 ```bash
 # Check workflow syntax
-act -l --workflows .github/workflows/usaspending-database-download.yml
+act -l --workflows .github/workflows/data-refresh.yml
 
 # Dry run (requires act: https://github.com/nektos/act)
 act workflow_dispatch \
-  --workflows .github/workflows/usaspending-database-download.yml \
+  --workflows .github/workflows/data-refresh.yml \
   --eventpath test-event.json
 
 # Create test event file

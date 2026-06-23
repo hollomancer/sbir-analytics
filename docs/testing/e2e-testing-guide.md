@@ -133,12 +133,12 @@ CI jobs are organized into three priority tiers:
 
 #### Workflow-Specific Behavior
 
-- **PR/Commit Workflows** (`on-pr.yml`, `on-commit.yml`, `on-push-main.yml`):
+- **PR/Commit Workflow** (`.github/workflows/ci.yml`):
   - Tier 1: Fast tests run immediately
   - Tier 2: User story jobs run conditionally (based on path filters for PRs)
   - Tier 3: Performance checks run last, non-blocking
 
-- **Nightly Builds** (`nightly.yml`):
+- **Scheduled Builds** (`.github/workflows/weekly.yml`):
   - Runs comprehensive test suite in parallel:
     - `test-unit`: All unit tests (fast + slow)
     - `test-integration`: Integration tests with Neo4j service
@@ -154,9 +154,9 @@ CI jobs are organized into three priority tiers:
 
 ### Workflow Files
 
-- `container-ci.yml` runs the containerized suites in GitHub Actions
-- `neo4j-smoke.yml` validates graph connectivity and schema expectations
-- `performance-regression-check.yml` compares benchmark artifacts and alerts on drift
+- `.github/workflows/ci.yml` and `.github/workflows/build-images.yml` cover CI checks and image builds in GitHub Actions
+- `.github/workflows/weekly.yml` includes scheduled smoke, security, and comprehensive test targets
+- Performance checks run through `scripts/performance/detect_performance_regression.py` when invoked by CI or maintainers
 - Artifacts (logs, coverage, metrics) publish to `reports/` and the CI UI for inspection
 
 ## Contributing to Tests
@@ -219,7 +219,7 @@ CI jobs are organized into three priority tiers:
   ```
 
 - Threshold flags control warning/failure levels; the script returns non-zero on regression when `--fail-on-regression` is supplied.
-- GitHub Actions integration (`.github/workflows/performance-regression-check.yml`) runs the script and posts the Markdown summary as a PR comment.
+- GitHub Actions can invoke `scripts/performance/detect_performance_regression.py` from existing CI workflows and attach the Markdown summary as an artifact or PR comment.
 
 ## Test Scenarios
 

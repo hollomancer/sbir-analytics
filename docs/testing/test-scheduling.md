@@ -94,7 +94,7 @@ pytest -m "fast and not integration and not e2e" -n auto --maxfail=5
 
 #### Estimated Runtime: 20-30 minutes
 
-#### Current Implementation: Already in `.github/workflows/nightly.yml`
+#### Current Implementation: Already in `.github/workflows/weekly.yml`
 
 ---
 
@@ -296,7 +296,7 @@ jobs:
 
 1. Modify ci.yml to run only fast tests on commit
 2. Add conditional integration tests on PR
-3. Update nightly.yml to run slow tests
+3. Update weekly.yml to run slow tests
 
 ### Phase 3: Create weekly workflow (Week 2)
 

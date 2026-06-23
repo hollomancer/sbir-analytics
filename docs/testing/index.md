@@ -21,7 +21,6 @@ This directory hosts the complete testing playbook for SBIR ETL. The [Testing In
 - [Test Coverage Strategy](testing-strategy.md)
 - [Categorization Testing](categorization-testing.md)
 - [Validation Testing](validation-testing.md)
-- [CLI Testing Guide](../cli/TESTING.md)
 
 ## Best Practices Snapshot
 
@@ -100,8 +99,8 @@ Env vars: copy `.env.example` to `.env` and set `NEO4J_USER`, `NEO4J_PASSWORD` b
 GitHub Actions workflows wire these commands:
 
 - `.github/workflows/ci.yml` – runs `uv run pytest -v --cov=sbir_etl` plus lint/type checks.
-- `.github/workflows/nightly.yml` – nightly security scans and smoke tests.
-- `.github/workflows/weekly.yml` – weekly comprehensive test suite.
+- `.github/workflows/weekly.yml` – scheduled nightly smoke/security targets and weekly comprehensive tests.
+- `.github/workflows/build-images.yml` – container image build validation.
 
 Use `gh workflow run <name>` for manual triggers or inspect [Actions](https://github.com/<org>/<repo>/actions).
 
@@ -121,6 +120,5 @@ See [docs/guides/quality-assurance.md](../guides/quality-assurance.md) for thres
 - [E2E Testing Guide](e2e-testing-guide.md) – scenarios, data prep, CI integration.
 - [Test Coverage Strategy](testing-strategy.md) – coverage goals and focus areas.
 - [Categorization Testing](categorization-testing.md) / [Validation Testing](validation-testing.md) – domain-specific instructions.
-- [CLI Testing Guide](../cli/TESTING.md) – CLI-specific fixtures and snapshot tests.
 
 > ⚠️ Whenever you add a new Make target, pytest marker, or workflow, update this index and link to it from README/Quick Start instead of duplicating the command.

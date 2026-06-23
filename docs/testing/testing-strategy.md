@@ -417,7 +417,7 @@ pytest --json-report --json-report-file=test-results.json
 
 ## Completed Improvements
 
-See [archive/testing/IMPROVEMENTS.md](../../archive/testing/IMPROVEMENTS.md) for historical improvements.
+Historical testing improvements were consolidated into this testing strategy and the docs in `docs/testing/`.
 
 ## Related Documentation
 

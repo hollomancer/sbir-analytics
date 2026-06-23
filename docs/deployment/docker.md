@@ -1228,7 +1228,7 @@ For CI/CD pipelines:
 - Build image using Buildx/cache
 - Run tests using `docker compose --profile ci`
 - Push artifacts to registry only when tests pass
-- See `scripts/ci/build_container.sh` and `.github/workflows/container-ci.yml` for examples
+- See `scripts/ci/build_container.sh` and `.github/workflows/build-images.yml` for examples
 
 ## Entrypoint Scripts
 
