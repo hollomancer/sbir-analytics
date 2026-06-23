@@ -98,38 +98,51 @@ def summarize_per_firm(events: pd.DataFrame, cohort: list[dict]) -> pd.DataFrame
         # previous (gap > 0 days). Flags a commercialization-pathway cohort
         # (~86 firms / 2.4% of the 3,639-firm Form D high-confidence cohort
         # at time of writing).
-        phase2_first = (
-            events[
-                (events["event_type"] == "sbir_award")
-                & (events["event_subtype"] == "sbir_phase_ii")
-            ]
-            .groupby("company_name")["event_date"]
-            .min()
+        #
+        # We compute `first_*` dates via groupby().min() on the raw string
+        # event_date column. Empty strings ("") would sort before any ISO
+        # date and win the min(), so explicitly drop empties before grouping
+        # — current source builders all skip events with unresolvable dates,
+        # but defending against future regressions here is cheap. ~1,227
+        # cohort firms have Form D filings preceding their first Phase II
+        # (typical: firms incorporated and raised before pursuing SBIR),
+        # so the day-delta columns are masked to NaN when the gap is not
+        # strictly positive — that matches the boolean `has_strict_*` flag
+        # and avoids emitting misleading negative durations.
+        def _first_date_by_firm(mask: pd.Series) -> pd.Series:
+            valid = events[mask & events["event_date"].notna() & (events["event_date"] != "")]
+            if valid.empty:
+                return pd.Series(dtype=object)
+            return valid.groupby("company_name")["event_date"].min()
+
+        phase2_first = _first_date_by_firm(
+            (events["event_type"] == "sbir_award") & (events["event_subtype"] == "sbir_phase_ii")
         )
-        fd_first = (
-            events[events["event_type"] == "form_d_filing"]
-            .groupby("company_name")["event_date"]
-            .min()
-        )
+        fd_first = _first_date_by_firm(events["event_type"] == "form_d_filing")
         agg["first_phase_ii_date"] = agg["company_name"].map(phase2_first)
         # first_ma_event_date is already populated above; first_form_d_date is
         # new — add it for symmetry and downstream legibility.
         agg["first_form_d_date"] = agg["company_name"].map(fd_first)
 
-        def _days_between(start: pd.Series, end: pd.Series) -> pd.Series:
+        def _strict_days_between(start: pd.Series, end: pd.Series) -> pd.Series:
+            """Day delta from `start` to `end`, NaN unless `end` is strictly after `start`.
+
+            Negative deltas (events out of order) and zero deltas (same-day) are
+            masked to NaN — the column describes the *strict pathway* leg, so
+            sub-positive durations would be misleading.
+            """
             s = pd.to_datetime(start, errors="coerce")
             e = pd.to_datetime(end, errors="coerce")
-            return (e - s).dt.days
+            delta = (e - s).dt.days
+            return delta.where(delta > 0)
 
-        days_p2_to_fd = _days_between(agg["first_phase_ii_date"], agg["first_form_d_date"])
-        days_fd_to_ma = _days_between(agg["first_form_d_date"], agg["first_ma_event_date"])
-        days_p2_to_ma = _days_between(agg["first_phase_ii_date"], agg["first_ma_event_date"])
+        days_p2_to_fd = _strict_days_between(agg["first_phase_ii_date"], agg["first_form_d_date"])
+        days_fd_to_ma = _strict_days_between(agg["first_form_d_date"], agg["first_ma_event_date"])
+        days_p2_to_ma = _strict_days_between(agg["first_phase_ii_date"], agg["first_ma_event_date"])
         agg["days_phase_ii_to_form_d"] = days_p2_to_fd
         agg["days_form_d_to_ma"] = days_fd_to_ma
         agg["days_phase_ii_to_ma"] = days_p2_to_ma
-        agg["has_strict_phase_ii_to_ma_pathway"] = (
-            (days_p2_to_fd > 0) & (days_fd_to_ma > 0)
-        ).fillna(False)
+        agg["has_strict_phase_ii_to_ma_pathway"] = days_p2_to_fd.notna() & days_fd_to_ma.notna()
 
     # Drop any cohort columns that would clash with computed aggregate columns
     # (e.g. form_d_filing_count / form_d_total_raised that some cohort schemas carry)

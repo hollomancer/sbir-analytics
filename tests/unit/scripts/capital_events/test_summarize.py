@@ -170,3 +170,59 @@ def test_summary_strict_pathway_false_when_only_phase_i(cohort):
     assert bool(acme["has_strict_phase_ii_to_ma_pathway"]) is False
     assert pd.isna(acme["first_phase_ii_date"])
     assert pd.isna(acme["days_phase_ii_to_ma"])
+
+
+def test_summary_pathway_day_deltas_are_nan_when_out_of_order(cohort):
+    """Negative or zero pathway-leg deltas are masked to NaN to avoid misleading
+    downstream consumers (the columns describe the strict pathway, not arbitrary
+    gaps). Flag is False; full-span gap is NaN. ~1,227 cohort firms in production
+    data have Form D before Phase II — typical: incorporated and raised seed
+    capital before pursuing SBIR.
+    """
+    events = _events_df(
+        [
+            # Form D before Phase II — negative P2 → FD gap.
+            _event("ACME INC", "2018-06-15", "form_d_filing", "equity", 1_000_000.0),
+            _event("ACME INC", "2020-09-01", "sbir_award", "sbir_phase_ii", 1_000_000.0),
+            _event("ACME INC", "2024-02-01", "ma_event", "high"),
+        ]
+    )
+    summary = summarize_per_firm(events, cohort)
+    acme = summary[summary.company_name == "ACME INC"].iloc[0]
+    # All three first-* dates still populated (they're factual, not pathway-conditional).
+    assert acme["first_phase_ii_date"] == "2020-09-01"
+    assert acme["first_form_d_date"] == "2018-06-15"
+    assert acme["first_ma_event_date"] == "2024-02-01"
+    # But the day-deltas are NaN for any leg that isn't strictly positive.
+    assert pd.isna(acme["days_phase_ii_to_form_d"])  # FD → P2 is negative
+    # FD → MA is still strictly positive (and unrelated to P2 ordering), so populated.
+    assert acme["days_form_d_to_ma"] == 2057  # 2018-06-15 → 2024-02-01
+    # P2 → MA is strictly positive in absolute terms.
+    assert acme["days_phase_ii_to_ma"] == 1248
+    # But the strict-pathway flag requires BOTH legs (P2 → FD AND FD → MA) to be > 0.
+    assert bool(acme["has_strict_phase_ii_to_ma_pathway"]) is False
+
+
+def test_summary_pathway_ignores_empty_event_dates(cohort):
+    """Empty-string event dates must not win groupby().min() and propagate into
+    `first_*` columns. Current source builders all skip events with unresolvable
+    dates, but we defend against future regressions.
+    """
+    events = _events_df(
+        [
+            # An empty-date Phase II row would naively sort before "2020-09-01"
+            # and become first_phase_ii_date if not filtered.
+            _event("ACME INC", "", "sbir_award", "sbir_phase_ii", 0.0),
+            _event("ACME INC", "2020-09-01", "sbir_award", "sbir_phase_ii", 1_000_000.0),
+            _event("ACME INC", "2022-03-10", "form_d_filing", "equity", 5_000_000.0),
+            _event("ACME INC", "2024-02-01", "ma_event", "high"),
+        ]
+    )
+    summary = summarize_per_firm(events, cohort)
+    acme = summary[summary.company_name == "ACME INC"].iloc[0]
+    # The empty-date row is dropped; first valid Phase II date wins.
+    assert acme["first_phase_ii_date"] == "2020-09-01"
+    # Pathway still resolves correctly with the valid date.
+    assert bool(acme["has_strict_phase_ii_to_ma_pathway"]) is True
+    assert acme["days_phase_ii_to_form_d"] == 555
+    assert acme["days_phase_ii_to_ma"] == 1248
