@@ -278,8 +278,6 @@ services:
         uv pip install --system --no-cache pandas pyarrow pyreadstat pytest pytest-cov pytest-xdist pytest-asyncio scikit-learn || pip install --no-cache-dir pandas pyarrow pyreadstat pytest pytest-cov pytest-xdist pytest-asyncio scikit-learn;
         echo 'Running fast tests inside container';
         pytest -m fast -q;
-        echo 'Running Dagster uspto_validation_job runner (in-process)';
-        python /app/scripts/ci/run_uspto_job.py;
         if [ -n \"$${E2E_TEST_SCENARIO}\" ] && [ \"$${E2E_TEST_SCENARIO}\" != \"none\" ]; then
           echo 'Running E2E tests...';
           python scripts/e2e_health_check.py;

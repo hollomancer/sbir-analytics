@@ -981,12 +981,12 @@ jobs:
     # nor `push` events on this repo have credentials configured yet, so the
     # `make transition-run` step always fails with
     # `FileNotFoundError: ... /storage/enriched_sbir_awards`. Restrict to
-    # explicit triggers (`workflow_dispatch` and `schedule`) where an
-    # operator can inject credentials, until OIDC AWS access is wired up
-    # for push events.
+    # `workflow_dispatch` where an operator can inject credentials. (A nightly
+    # schedule could be added later by extending the workflow's `on:` block
+    # and this condition.)
     if: |
       needs.detect-changes.outputs.docs-only != 'true' &&
-      (github.event_name == 'workflow_dispatch' || github.event_name == 'schedule')
+      github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
