@@ -20,22 +20,24 @@ def summarize_per_firm(events: pd.DataFrame, cohort: list[dict]) -> pd.DataFrame
     if events.empty:
         agg = pd.DataFrame(columns=["company_name"])
     else:
-        by_firm_type = events.groupby(
-            ["company_name", "event_type"], dropna=False
-        ).agg(
-            count=("source_id", "size"),
-            total_amount=("amount_usd", "sum"),
-            first_date=("event_date", "min"),
-        ).reset_index()
-        counts = by_firm_type.pivot(
-            index="company_name", columns="event_type", values="count"
-        ).fillna(0).astype(int)
+        by_firm_type = (
+            events.groupby(["company_name", "event_type"], dropna=False)
+            .agg(
+                count=("source_id", "size"),
+                total_amount=("amount_usd", "sum"),
+                first_date=("event_date", "min"),
+            )
+            .reset_index()
+        )
+        counts = (
+            by_firm_type.pivot(index="company_name", columns="event_type", values="count")
+            .fillna(0)
+            .astype(int)
+        )
         sums = by_firm_type.pivot(
             index="company_name", columns="event_type", values="total_amount"
         ).fillna(0.0)
-        firsts = by_firm_type.pivot(
-            index="company_name", columns="event_type", values="first_date"
-        )
+        firsts = by_firm_type.pivot(index="company_name", columns="event_type", values="first_date")
         firms = counts.index.union(sums.index).union(firsts.index)
 
         def _counts_col(name: str) -> pd.Series:
@@ -45,7 +47,11 @@ def summarize_per_firm(events: pd.DataFrame, cohort: list[dict]) -> pd.DataFrame
             return sums[name] if name in sums.columns else pd.Series(0.0, index=firms, dtype=float)
 
         def _firsts_col(name: str) -> pd.Series:
-            return firsts[name] if name in firsts.columns else pd.Series(None, index=firms, dtype=object)
+            return (
+                firsts[name]
+                if name in firsts.columns
+                else pd.Series(None, index=firms, dtype=object)
+            )
 
         def _year_from(name: str) -> pd.Series:
             col = _firsts_col(name)
@@ -80,13 +86,63 @@ def summarize_per_firm(events: pd.DataFrame, cohort: list[dict]) -> pd.DataFrame
 
         ma_only = events[events["event_type"] == "ma_event"]
         if not ma_only.empty:
-            ma_max_tier = (
-                ma_only.groupby("company_name")["event_subtype"]
-                .apply(lambda s: "high" if (s == "high").any() else "medium")
+            ma_max_tier = ma_only.groupby("company_name")["event_subtype"].apply(
+                lambda s: "high" if (s == "high").any() else "medium"
             )
             agg["ma_confidence_max_tier"] = agg["company_name"].map(ma_max_tier)
         else:
             agg["ma_confidence_max_tier"] = None
+
+        # Strict pathway sequence: first Phase II SBIR award -> first Form D
+        # filing -> first M&A event, with each step strictly after the
+        # previous (gap > 0 days). Flags a commercialization-pathway cohort
+        # (~86 firms / 2.4% of the 3,639-firm Form D high-confidence cohort
+        # at time of writing).
+        #
+        # We compute `first_*` dates via groupby().min() on the raw string
+        # event_date column. Empty strings ("") would sort before any ISO
+        # date and win the min(), so explicitly drop empties before grouping
+        # — current source builders all skip events with unresolvable dates,
+        # but defending against future regressions here is cheap. ~1,227
+        # cohort firms have Form D filings preceding their first Phase II
+        # (typical: firms incorporated and raised before pursuing SBIR),
+        # so the day-delta columns are masked to NaN when the gap is not
+        # strictly positive — that matches the boolean `has_strict_*` flag
+        # and avoids emitting misleading negative durations.
+        def _first_date_by_firm(mask: pd.Series) -> pd.Series:
+            valid = events[mask & events["event_date"].notna() & (events["event_date"] != "")]
+            if valid.empty:
+                return pd.Series(dtype=object)
+            return valid.groupby("company_name")["event_date"].min()
+
+        phase2_first = _first_date_by_firm(
+            (events["event_type"] == "sbir_award") & (events["event_subtype"] == "sbir_phase_ii")
+        )
+        fd_first = _first_date_by_firm(events["event_type"] == "form_d_filing")
+        agg["first_phase_ii_date"] = agg["company_name"].map(phase2_first)
+        # first_ma_event_date is already populated above; first_form_d_date is
+        # new — add it for symmetry and downstream legibility.
+        agg["first_form_d_date"] = agg["company_name"].map(fd_first)
+
+        def _strict_days_between(start: pd.Series, end: pd.Series) -> pd.Series:
+            """Day delta from `start` to `end`, NaN unless `end` is strictly after `start`.
+
+            Negative deltas (events out of order) and zero deltas (same-day) are
+            masked to NaN — the column describes the *strict pathway* leg, so
+            sub-positive durations would be misleading.
+            """
+            s = pd.to_datetime(start, errors="coerce")
+            e = pd.to_datetime(end, errors="coerce")
+            delta = (e - s).dt.days
+            return delta.where(delta > 0)
+
+        days_p2_to_fd = _strict_days_between(agg["first_phase_ii_date"], agg["first_form_d_date"])
+        days_fd_to_ma = _strict_days_between(agg["first_form_d_date"], agg["first_ma_event_date"])
+        days_p2_to_ma = _strict_days_between(agg["first_phase_ii_date"], agg["first_ma_event_date"])
+        agg["days_phase_ii_to_form_d"] = days_p2_to_fd
+        agg["days_form_d_to_ma"] = days_fd_to_ma
+        agg["days_phase_ii_to_ma"] = days_p2_to_ma
+        agg["has_strict_phase_ii_to_ma_pathway"] = days_p2_to_fd.notna() & days_fd_to_ma.notna()
 
     # Drop any cohort columns that would clash with computed aggregate columns
     # (e.g. form_d_filing_count / form_d_total_raised that some cohort schemas carry)
@@ -94,12 +150,18 @@ def summarize_per_firm(events: pd.DataFrame, cohort: list[dict]) -> pd.DataFrame
     cohort_df = cohort_df.drop(columns=[c for c in cohort_df.columns if c in agg_cols])
     result = cohort_df.merge(agg, on="company_name", how="left")
     fill_zero_int_cols = [
-        "sbir_award_count", "form_d_filing_count", "ma_event_count",
-        "usaspending_contract_count", "patent_count", "ucc_filing_count",
+        "sbir_award_count",
+        "form_d_filing_count",
+        "ma_event_count",
+        "usaspending_contract_count",
+        "patent_count",
+        "ucc_filing_count",
         "event_type_count",
     ]
     fill_zero_float_cols = [
-        "total_sbir_amount", "total_form_d_raised", "total_usaspending_obligated",
+        "total_sbir_amount",
+        "total_form_d_raised",
+        "total_usaspending_obligated",
     ]
     for col in fill_zero_int_cols:
         if col in result.columns:
@@ -111,10 +173,25 @@ def summarize_per_firm(events: pd.DataFrame, cohort: list[dict]) -> pd.DataFrame
             result[col] = result[col].fillna(0.0)
         else:
             result[col] = 0.0
-    for col in ("first_event_date", "last_event_date", "first_ma_event_date",
-                "ma_confidence_max_tier"):
+    for col in (
+        "first_event_date",
+        "last_event_date",
+        "first_ma_event_date",
+        "ma_confidence_max_tier",
+        "first_phase_ii_date",
+        "first_form_d_date",
+        "days_phase_ii_to_form_d",
+        "days_form_d_to_ma",
+        "days_phase_ii_to_ma",
+    ):
         if col not in result.columns:
             result[col] = None
     result["has_ma_event"] = result["ma_event_count"] > 0
     result["has_ucc_match"] = result["ucc_filing_count"] > 0
+    if "has_strict_phase_ii_to_ma_pathway" in result.columns:
+        result["has_strict_phase_ii_to_ma_pathway"] = (
+            result["has_strict_phase_ii_to_ma_pathway"].fillna(False).astype(bool)
+        )
+    else:
+        result["has_strict_phase_ii_to_ma_pathway"] = False
     return result
