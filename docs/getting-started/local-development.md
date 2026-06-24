@@ -16,11 +16,13 @@ git clone https://github.com/hollomancer/sbir-analytics
 cd sbir-analytics
 
 # Install dependencies
-uv sync
+make install
 
 # Copy environment template
 cp .env.example .env
 ```
+
+`make install` wraps the direct `uv sync` command used by the project.
 
 ## Neo4j Setup
 
@@ -35,10 +37,16 @@ docker compose --profile dev up neo4j -d
 
 ```bash
 # Start Dagster UI
-uv run dagster dev
+make dev
 
 # Open http://localhost:3000
 # Materialize raw_sbir_awards asset
+```
+
+`make dev` uses the same Dagster module path as the Makefile’s `dev` target:
+
+```bash
+uv run dagster dev -m sbir_analytics.definitions
 ```
 
 ## Development Workflow
@@ -58,7 +66,7 @@ uv run ruff format .
 ## Common Issues
 
 - **Neo4j connection failed**: Check `.env` credentials
-- **Import errors**: Run `uv sync` to update dependencies
+- **Import errors**: Run `make install` (or `uv sync`) to update dependencies
 - **Memory issues**: Reduce `SBIR_ETL__PIPELINE__CHUNK_SIZE`
 
 ## Next Steps
