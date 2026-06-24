@@ -58,20 +58,11 @@ jobs:
         id: detect
         uses: ./.github/actions/detect-changes
         with:
-          # docs-only uses every-file semantics (predicate-quantifier: every) —
-          # true only when EVERY changed file matches the allow-list below.
-          # Otherwise a mixed PR (code + docs) would skip CI.
-          #
-          # Allow-list only — do NOT add `!**/*.py` / `!**/*.yaml` etc. Under
-          # dorny/paths-filter's `every` quantifier a negation pattern like
-          # `!**/*.yaml` matches any non-yaml file (including .py files),
-          # which made docs-only=true even for code-only PRs. PRs #340, #342,
-          # and #343 hit exactly that and skipped Code Quality, dropping
-          # unformatted Python files onto main.
-          every-file-filters: |
-            docs-only:
-              - '**/*.md'
-              - 'docs/**'
+          # docs-only (every changed file is Markdown or under docs/) is computed
+          # explicitly inside the action — see its "Compute docs-only" step. It
+          # intentionally does NOT use dorny's predicate-quantifier:'every',
+          # which is "every pattern matched by some file" rather than "every
+          # file is a doc" and silently let mixed code+docs PRs skip CI.
           filters: |
             production:
               - 'sbir_etl/**'

@@ -8,22 +8,14 @@ inputs:
       Evaluated with default "some" semantics: a filter is true if at least
       one changed file matches the filter.
     required: true
-  every-file-filters:
-    description: |
-      YAML string of path filters evaluated with "every file matches" semantics
-      (dorny/paths-filter `predicate-quantifier: 'every'`). Currently only the
-      `docs-only` filter is wired through to a named output; add more outputs
-      below if you need to expose additional every-file filters.
-    required: false
-    default: ''
 
 outputs:
-  # Common outputs. `docs-only` is sourced from the every_filter step (run
-  # only when `every-file-filters` is non-empty) and falls back to 'false'
-  # so callers can always compare against a stable boolean string.
+  # `docs-only` is computed explicitly from the full changed-file list (see the
+  # "Compute docs-only" step) and falls back to 'false' so callers can always
+  # compare against a stable boolean string.
   docs-only:
-    description: Whether only documentation files changed (every-file semantics)
-    value: ${{ steps.every_filter.outputs.docs-only || 'false' }}
+    description: Whether only documentation files changed (every changed file is Markdown or under docs/)
+    value: ${{ steps.docs_only.outputs.docs-only || 'false' }}
   # CI-specific outputs (some-file semantics)
   performance:
     description: Whether performance-related files changed
@@ -58,11 +50,38 @@ runs:
       with:
         filters: ${{ inputs.filters }}
 
-    # Evaluate every-file-filters separately with predicate-quantifier='every'
-    # so e.g. `docs-only` is true only when EVERY changed file is a doc.
-    - if: inputs.every-file-filters != ''
-      uses: dorny/paths-filter@v4
-      id: every_filter
+    # Full list of changed files (JSON), used to compute docs-only.
+    - uses: dorny/paths-filter@v4
+      id: all_changes
       with:
-        filters: ${{ inputs.every-file-filters }}
-        predicate-quantifier: 'every'
+        list-files: json
+        filters: |
+          all:
+            - '**'
+
+    # Compute docs-only deterministically: true ONLY when every changed file is
+    # Markdown (anywhere) or lives under docs/. We deliberately do NOT use
+    # dorny's predicate-quantifier:'every' here — its semantics are "every
+    # pattern is matched by some file" (not "every file matches a pattern"), so
+    # a mixed PR like #350 (one doc + two .py files) was reported docs-only=true
+    # and skipped Code Quality, dropping unformatted Python onto main. An empty
+    # changed-file list yields false so CI is never skipped vacuously.
+    - name: Compute docs-only
+      id: docs_only
+      shell: bash
+      run: |
+        set -euo pipefail
+        files_json='${{ steps.all_changes.outputs.all_files }}'
+        [ -z "$files_json" ] && files_json='[]'
+        if [ "$(jq 'length' <<<"$files_json")" -eq 0 ]; then
+          echo "docs-only=false" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+        docs_only=true
+        while IFS= read -r f; do
+          case "$f" in
+            docs/*|*.md) ;;             # under docs/, or Markdown anywhere
+            *) docs_only=false; break ;;
+          esac
+        done < <(jq -r '.[]' <<<"$files_json")
+        echo "docs-only=$docs_only" >> "$GITHUB_OUTPUT"
