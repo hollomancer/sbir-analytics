@@ -21,132 +21,61 @@
 
 ### 1.1 Core Directory Structure
 
+The repository now uses a hybrid layout: reusable ETL code lives in the
+`sbir_etl/` library, while separately installable packages under `packages/`
+cover Dagster orchestration, Neo4j graph loading, and ML/heuristic components.
+
 ```text
 sbir-analytics/
-├── packages/                     # Multi-package layout
-│   ├── assets/                   # Dagster asset definitions (pipeline nodes)
-│   │   ├── cet/                  # CET classification pipeline
-│   │   ├── transition/           # Transition detection pipeline
-│   │   ├── sbir_ingestion.py     # Extract & validate SBIR awards
-│   │   ├── sbir_neo4j_loading.py # Load awards into Neo4j
-│   │   ├── sbir_usaspending_enrichment.py
-│   │   ├── usaspending_ingestion.py
-│   │   ├── usaspending_iterative_enrichment.py
-│   │   ├── uspto/                # Patent processing assets
-│   │   ├── fiscal_assets.py      # Fiscal returns analysis
-│   │   └── jobs/                 # Composite job definitions
-│   │
-│   ├── extractors/               # Stage 1: Data extraction
-│   │   ├── sbir.py               # SBIR CSV via DuckDB
-│   │   ├── usaspending.py        # USAspending database dumps
-│   │   ├── contract_extractor.py # Federal contracts
-│   │   └── uspto_*.py            # USPTO patent data
-│   │
-│   ├── validators/               # Stage 2: Schema & quality validation
-│   │   ├── sbir_awards.py        # SBIR award validation
-│   │   └── schemas.py            # Pydantic validation schemas
-│   │
-│   ├── enrichers/                # Stage 3: External enrichment
-│   │   ├── company_fuzzy_matcher.py # rapidfuzz-based local company matching
-│   │   ├── geographic_resolver.py # NAICS/GICS mapping
-│   │   ├── inflation_adjuster.py # Fiscal year adjustments
-│   │   ├── chunked_enrichment.py # Memory-efficient batching
-│   │   └── usaspending/          # USAspending API integration
-│   │
-│   ├── transformers/             # Stage 4: Business logic & modeling
-│   │   ├── patent_transformer.py # Patent chain processing
-│   │   ├── company_cet_aggregator.py # Company-level CET profiles
-│   │   ├── bea_io_adapter.py     # BEA I-O economic model interface
-│   │   └── fiscal/               # Fiscal impact calculations
-│   │
-│   ├── loaders/                  # Stage 5: Neo4j persistence
-│   │   └── neo4j/
-│   │       ├── client.py         # Neo4j client wrapper
-│   │       ├── cet.py            # CET loader
-│   │       ├── patents.py        # Patent loader
-│   │       ├── transitions.py    # Transition detector loader
-│   │       └── profiles.py       # Company profile loader
-│   │
-│   ├── models/                   # Pydantic data models
-│   │   ├── award.py              # Unified Award model
-│   │   ├── company.py            # Company model
-│   │   ├── cet_models.py         # CET classes
-│   │   ├── patent.py             # Patent models
-│   │   ├── contract_models.py
-│   │   ├── transition_models.py
-│   │   └── fiscal_models.py
-│   │
-│   ├── ml/                       # Machine learning (CET classification)
-│   │   ├── config/               # Taxonomy loader
-│   │   ├── models/
-│   │   │   ├── cet_classifier.py # TF-IDF + LogisticRegression
-│   │   │   └── patent_classifier.py
-│   │   ├── features/             # Feature extraction
-│   │   ├── train/                # Training pipeline
-│   │   └── evaluation/           # Model evaluation
-│   │
-│   ├── quality/                  # Data quality checks
-│   │   ├── checks.py
-│   │   ├── baseline.py
-│   │   └── dashboard.py
-│   │
-│   ├── utils/                    # Shared utilities
-│   │   ├── duckdb_client.py      # DuckDB wrapper
-│   │   ├── monitoring/            # Metrics & monitoring utilities
-│   │   ├── enrichment_metrics.py
-│   │   ├── enrichment_freshness.py
-│   │   ├── text_normalization.py
-│   │   └── statistical_reporter.py # Report generation
-│   │
-│   ├── config/                   # Configuration management
-│   │   ├── loader.py             # Config loading with env overrides
-│   │   └── schemas.py            # Pydantic config schemas
-│   │
-│   ├── cli/                      # Command-line interface
-│   │   ├── main.py               # CLI entry point (sbir-cli)
-│   │   └── commands/             # Command implementations
-│   │
-│   └── definitions.py            # Dagster repository root
+├── sbir_etl/                      # Core ETL library modules
+│   ├── extractors/                # Source-specific ingestion (SBIR, USAspending, USPTO, SEC, etc.)
+│   ├── validators/                # Schema and data-quality validation
+│   ├── enrichers/                 # External enrichment and entity-resolution helpers
+│   ├── transformers/              # Business transformations and fiscal/analytic adapters
+│   ├── models/                    # Shared Pydantic/domain models
+│   ├── config/                    # Library configuration loading and schemas
+│   ├── quality/                   # Data-quality checks and baselines
+│   └── utils/                     # Shared DuckDB, monitoring, reporting, cache, and data utilities
 │
-├── config/                       # YAML configuration files
-│   ├── base.yaml                 # Defaults (version controlled)
-│   ├── dev.yaml                  # Development overrides
-│   ├── prod.yaml                 # Production overrides
-│   ├── sbir/                     # SBIR-specific configs
-│   ├── transition/               # Transition detection configs
-│   └── cet/                      # CET taxonomy & classification configs
+├── packages/                      # Separately installable application packages
+│   ├── sbir-analytics/            # Dagster orchestration package
+│   │   └── sbir_analytics/
+│   │       ├── assets/            # Dagster assets for ingestion, enrichment, CET, transition, fiscal, SEC, USPTO
+│   │       ├── assets/jobs/       # Dagster job definitions
+│   │       ├── assets/sensors/    # Dagster sensors
+│   │       ├── clients/           # Orchestration-layer clients
+│   │       ├── lambda/            # Lambda entry points/helpers
+│   │       ├── tools/             # Analysis tool modules
+│   │       └── definitions.py     # Dagster repository root
+│   │
+│   ├── sbir-graph/                # Neo4j graph loading and graph query utilities
+│   │   └── sbir_graph/
+│   │       ├── loaders/neo4j/     # Neo4j clients and loaders for awards, patents, CET, transitions, profiles
+│   │       └── queries/           # Graph query helpers
+│   │
+│   └── sbir-ml/                   # CET and transition-related ML components
+│       └── sbir_ml/
+│           ├── ml/                # CET/patent classifiers, taxonomy loading, vectorizers, training helpers
+│           └── transition/        # Transition detection, scoring, features, analytics, and evaluation
 │
-├── tests/                        # Test suite (29+ tests)
-│   ├── unit/                     # Component tests
-│   ├── integration/              # Multi-component tests
-│   └── e2e/                      # End-to-end pipeline tests
-│
-├── docs/                         # User/developer documentation
-│   ├── architecture/             # Architecture decisions
-│   ├── configuration/            # Configuration guides
-│   ├── data-dictionaries/        # Data reference docs
-│   ├── ml/                       # CET classifier docs
-│   ├── neo4j/                    # Neo4j schema & queries
-│   ├── schemas/                  # Data model documentation
-│   ├── transition/               # Transition detection docs
-│   └── references/               # Data dictionaries
-│
-├── specs/                        # Feature specifications
-│   ├── statistical_reporting/
-│   ├── data-refresh/
-│   ├── merger_acquisition_detection/
-│   └── archive/                  # Completed specs
-│
-├── .github/workflows/            # CI/CD pipelines
-│   ├── ci.yml                    # Standard lint/test
-│   ├── build-images.yml          # Docker build & test
-│   ├── data-refresh.yml          # Scheduled source refreshes
-│   ├── etl-pipeline.yml          # ETL orchestration
-│   ├── monthly-analysis.yml      # Scheduled analysis
-│   └── weekly.yml                # Scheduled tests and quality
-│
-└── docker-compose.yml            # Local dev/test environment
+├── config/                        # YAML configuration: thresholds, paths, Neo4j, fiscal, CET, transition
+├── docs/                          # Research notes, architecture, methodology, guides, schemas, deployment docs
+├── specs/                         # Per-feature design notes and archived completed/superseded specs
+├── examples/                      # Standalone demonstration scripts
+├── notebooks/                     # Exploratory Jupyter notebooks
+├── scripts/                       # One-off analysis, data, validation, CI, Docker, and operational scripts
+├── infrastructure/                # AWS CDK deployment resources
+├── tests/                         # Unit, integration, functional, e2e, slow, and validation tests
+├── .github/workflows/             # CI/CD and scheduled workflow definitions
+├── workspace.yaml                 # Dagster workspace entry point (loads sbir_analytics.definitions)
+└── docker-compose.yml             # Local dev/test services
 ```
+
+Older documentation may refer to top-level `assets`, `extractors`, or
+`validators` directories under `packages/`. Those locations have been
+consolidated: Dagster assets now live under
+`packages/sbir-analytics/sbir_analytics/assets/`, and reusable ETL extractors
+and validators are under `sbir_etl/extractors/` and `sbir_etl/validators/`.
 
 ### 1.2 Key Files
 
