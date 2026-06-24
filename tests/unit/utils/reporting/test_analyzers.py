@@ -473,16 +473,15 @@ class TestCetClassificationAnalyzer:
 
         import yaml
 
-        taxonomy_path = (
-            Path(__file__).parents[4] / "config" / "cet" / "taxonomy.yaml"
-        )
+        taxonomy_path = Path(__file__).parents[4] / "config" / "cet" / "taxonomy.yaml"
         taxonomy = yaml.safe_load(taxonomy_path.read_text())
-        canonical_ids = {area["cet_id"] for area in taxonomy["cet_areas"]}
+        canonical_ids = [area["cet_id"] for area in taxonomy["cet_areas"]]
 
         analyzer = CetClassificationAnalyzer()
 
-        assert set(analyzer.cet_areas) == canonical_ids
-        assert len(analyzer.cet_areas) == len(canonical_ids) == 21
+        # Ordered comparison: catches membership *and* ordering drift vs the YAML.
+        assert analyzer.cet_areas == canonical_ids
+        assert len(analyzer.cet_areas) == 21
 
 
 # =============================================================================
