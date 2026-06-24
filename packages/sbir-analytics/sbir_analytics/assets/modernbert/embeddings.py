@@ -1,8 +1,8 @@
-"""Dagster assets for PaECTER embedding generation and similarity computation.
+"""Dagster assets for ModernBert embedding generation and similarity computation.
 
 This module provides assets for:
-- Generating PaECTER embeddings for SBIR awards
-- Generating PaECTER embeddings for USPTO patents
+- Generating ModernBert embeddings for SBIR awards
+- Generating ModernBert embeddings for USPTO patents
 - Computing similarity scores between awards and patents
 """
 
@@ -16,8 +16,8 @@ import pandas as pd
 from dagster import AssetCheckResult, AssetCheckSeverity, MetadataValue, Output, asset, asset_check
 
 from sbir_etl.config.loader import get_config
-from sbir_ml.ml.config import PaECTERClientConfig
-from sbir_ml.ml.paecter_client import PaECTERClient
+from sbir_ml.ml.config import ModernBertClientConfig
+from sbir_ml.ml.modernbert_client import ModernBertClient
 from sbir_etl.utils.asset_column_helper import AssetColumnHelper
 from sbir_etl.utils.monitoring import performance_monitor
 
@@ -33,16 +33,16 @@ def _get_config_val(config: Any, path: str, default: Any = None) -> Any:
 
 
 @asset(
-    description="PaECTER embeddings for SBIR awards",
-    group_name="paecter",
+    description="ModernBert embeddings for SBIR awards",
+    group_name="modernbert",
     compute_kind="ml",
 )
-def paecter_embeddings_awards(
+def modernbert_embeddings_awards(
     context,
     validated_sbir_awards: pd.DataFrame,
 ) -> Output[pd.DataFrame]:
     """
-    Generate PaECTER embeddings for SBIR awards.
+    Generate ModernBert embeddings for SBIR awards.
 
     Args:
         validated_sbir_awards: Validated SBIR awards DataFrame
@@ -53,13 +53,13 @@ def paecter_embeddings_awards(
     config = get_config()
 
     context.log.info(
-        "Starting PaECTER embedding generation for SBIR awards",
+        "Starting ModernBert embedding generation for SBIR awards",
         extra={"award_count": len(validated_sbir_awards)},
     )
 
-    # Initialize PaECTER client
-    use_local = _get_config_val(config, "ml.paecter.use_local", False)
-    client = PaECTERClient(config=PaECTERClientConfig(use_local=use_local))
+    # Initialize ModernBert client
+    use_local = _get_config_val(config, "ml.modernbert.use_local", False)
+    client = ModernBertClient(config=ModernBertClientConfig(use_local=use_local))
 
     # Find award ID column using helper
     award_id_col = AssetColumnHelper.find_award_id_column(validated_sbir_awards)
@@ -101,8 +101,8 @@ def paecter_embeddings_awards(
         texts.append(text)
 
     # Generate embeddings with performance monitoring
-    with performance_monitor.monitor_block("paecter_generate_award_embeddings"):
-        batch_size = _get_config_val(config, "ml.paecter.batch_size", 32)
+    with performance_monitor.monitor_block("modernbert_generate_award_embeddings"):
+        batch_size = _get_config_val(config, "ml.modernbert.batch_size", 32)
         result = client.generate_embeddings(
             texts,
             batch_size=batch_size,
@@ -121,7 +121,7 @@ def paecter_embeddings_awards(
     )
 
     context.log.info(
-        "PaECTER embeddings generated",
+        "ModernBert embeddings generated",
         extra={
             "award_count": len(embeddings_df),
             "model_version": result.model_version,
@@ -143,16 +143,16 @@ def paecter_embeddings_awards(
 
 
 @asset(
-    description="PaECTER embeddings for USPTO patents",
-    group_name="paecter",
+    description="ModernBert embeddings for USPTO patents",
+    group_name="modernbert",
     compute_kind="ml",
 )
-def paecter_embeddings_patents(
+def modernbert_embeddings_patents(
     context,
     transformed_patents: dict[str, Any],
 ) -> Output[pd.DataFrame]:
     """
-    Generate PaECTER embeddings for USPTO patents.
+    Generate ModernBert embeddings for USPTO patents.
 
     Loads patent data from transformed_patents JSONL file or S3 PatentsView data.
 
@@ -170,11 +170,11 @@ def paecter_embeddings_patents(
 
     config = get_config()
 
-    context.log.info("Starting PaECTER embedding generation for USPTO patents")
+    context.log.info("Starting ModernBert embedding generation for USPTO patents")
 
-    # Initialize PaECTER client
-    use_local = _get_config_val(config, "ml.paecter.use_local", False)
-    client = PaECTERClient(config=PaECTERClientConfig(use_local=use_local))
+    # Initialize ModernBert client
+    use_local = _get_config_val(config, "ml.modernbert.use_local", False)
+    client = ModernBertClient(config=ModernBertClientConfig(use_local=use_local))
 
     # Try to load from transformed_patents JSONL file first
     patents_df = None
@@ -205,7 +205,7 @@ def paecter_embeddings_patents(
         context.log.info(f"Loading from S3: {s3_url}")
 
         # Download and extract
-        temp_dir = Path(tempfile.gettempdir()) / "sbir-analytics-paecter"
+        temp_dir = Path(tempfile.gettempdir()) / "sbir-analytics-modernbert"
         temp_dir.mkdir(parents=True, exist_ok=True)
         local_zip = temp_dir / "patentsview.zip"
 
@@ -279,8 +279,8 @@ def paecter_embeddings_patents(
         texts.append(text)
 
     # Generate embeddings with performance monitoring
-    with performance_monitor.monitor_block("paecter_generate_patent_embeddings"):
-        batch_size = _get_config_val(config, "ml.paecter.batch_size", 32)
+    with performance_monitor.monitor_block("modernbert_generate_patent_embeddings"):
+        batch_size = _get_config_val(config, "ml.modernbert.batch_size", 32)
         result = client.generate_embeddings(
             texts,
             batch_size=batch_size,
@@ -299,7 +299,7 @@ def paecter_embeddings_patents(
     )
 
     context.log.info(
-        "PaECTER embeddings generated",
+        "ModernBert embeddings generated",
         extra={
             "patent_count": len(embeddings_df),
             "model_version": result.model_version,
@@ -322,20 +322,20 @@ def paecter_embeddings_patents(
 
 @asset(
     description="Similarity scores between SBIR awards and USPTO patents",
-    group_name="paecter",
+    group_name="modernbert",
     compute_kind="ml",
 )
-def paecter_award_patent_similarity(
+def modernbert_award_patent_similarity(
     context,
-    paecter_embeddings_awards: pd.DataFrame,
-    paecter_embeddings_patents: pd.DataFrame,
+    modernbert_embeddings_awards: pd.DataFrame,
+    modernbert_embeddings_patents: pd.DataFrame,
 ) -> Output[pd.DataFrame]:
     """
     Compute similarity scores between SBIR awards and USPTO patents.
 
     Args:
-        paecter_embeddings_awards: Award embeddings DataFrame
-        paecter_embeddings_patents: Patent embeddings DataFrame
+        modernbert_embeddings_awards: Award embeddings DataFrame
+        modernbert_embeddings_patents: Patent embeddings DataFrame
 
     Returns:
         DataFrame with award_id, patent_id, and similarity_score
@@ -345,29 +345,29 @@ def paecter_award_patent_similarity(
     context.log.info(
         "Computing award-patent similarities",
         extra={
-            "award_count": len(paecter_embeddings_awards),
-            "patent_count": len(paecter_embeddings_patents),
+            "award_count": len(modernbert_embeddings_awards),
+            "patent_count": len(modernbert_embeddings_patents),
         },
     )
 
     # Convert embeddings to numpy arrays
-    award_embeddings = np.array([np.array(e) for e in paecter_embeddings_awards["embedding"]])
-    patent_embeddings = np.array([np.array(e) for e in paecter_embeddings_patents["embedding"]])
+    award_embeddings = np.array([np.array(e) for e in modernbert_embeddings_awards["embedding"]])
+    patent_embeddings = np.array([np.array(e) for e in modernbert_embeddings_patents["embedding"]])
 
     # Initialize client for similarity computation
-    use_local = _get_config_val(config, "ml.paecter.use_local", False)
-    client = PaECTERClient(config=PaECTERClientConfig(use_local=use_local))
+    use_local = _get_config_val(config, "ml.modernbert.use_local", False)
+    client = ModernBertClient(config=ModernBertClientConfig(use_local=use_local))
 
     # Compute similarities with performance monitoring
-    with performance_monitor.monitor_block("paecter_compute_similarities"):
+    with performance_monitor.monitor_block("modernbert_compute_similarities"):
         similarities = client.compute_similarity(award_embeddings, patent_embeddings)
 
     # Get similarity threshold from config
-    threshold = _get_config_val(config, "ml.paecter.similarity_threshold", 0.80)
+    threshold = _get_config_val(config, "ml.modernbert.similarity_threshold", 0.80)
 
     # Find matches above threshold
     matches = []
-    for i, award_id in enumerate(paecter_embeddings_awards["award_id"]):
+    for i, award_id in enumerate(modernbert_embeddings_awards["award_id"]):
         top_indices = np.argsort(similarities[i])[::-1][:10]  # Top 10
         top_scores = similarities[i][top_indices]
 
@@ -376,7 +376,7 @@ def paecter_award_patent_similarity(
                 matches.append(
                     {
                         "award_id": award_id,
-                        "patent_id": paecter_embeddings_patents.iloc[idx]["patent_id"],
+                        "patent_id": modernbert_embeddings_patents.iloc[idx]["patent_id"],
                         "similarity_score": float(score),
                     }
                 )
@@ -409,68 +409,29 @@ def paecter_award_patent_similarity(
 
 
 @asset_check(
-    asset="paecter_embeddings_awards",
-    description="Check that PaECTER embeddings coverage meets threshold",
+    asset="modernbert_embeddings_awards",
+    description="Check that ModernBert embeddings coverage meets threshold",
 )
-def paecter_awards_coverage_check(
+def modernbert_awards_coverage_check(
     context,
-    paecter_embeddings_awards: pd.DataFrame,
+    modernbert_embeddings_awards: pd.DataFrame,
 ) -> AssetCheckResult:
     """Check that award embedding coverage meets quality threshold."""
 
     config = get_config()
-    threshold = _get_config_val(config, "ml.paecter.coverage_threshold_awards", 0.95)
+    threshold = _get_config_val(config, "ml.modernbert.coverage_threshold_awards", 0.95)
 
     # Count valid embeddings (non-null, correct dimension)
     valid_count = 0
     expected_dim = 768  # ModernBERT-Embed embeddings are 768-dimensional
 
-    for embedding in paecter_embeddings_awards["embedding"]:
+    for embedding in modernbert_embeddings_awards["embedding"]:
         if embedding and len(embedding) == expected_dim:
             valid_count += 1
 
     coverage = (
-        valid_count / len(paecter_embeddings_awards) if len(paecter_embeddings_awards) > 0 else 0.0
-    )
-    passed = coverage >= threshold
-
-    return AssetCheckResult(
-        passed=passed,
-        severity=AssetCheckSeverity.ERROR if not passed else AssetCheckSeverity.WARN,
-        description=f"Embedding coverage: {coverage:.2%} (threshold: {threshold:.2%})",
-        metadata={
-            "coverage": MetadataValue.float(coverage),
-            "threshold": MetadataValue.float(threshold),
-            "valid_embeddings": MetadataValue.int(valid_count),
-            "total_awards": MetadataValue.int(len(paecter_embeddings_awards)),
-        },
-    )
-
-
-@asset_check(
-    asset="paecter_embeddings_patents",
-    description="Check that PaECTER embeddings coverage meets threshold",
-)
-def paecter_patents_coverage_check(
-    context,
-    paecter_embeddings_patents: pd.DataFrame,
-) -> AssetCheckResult:
-    """Check that patent embedding coverage meets quality threshold."""
-
-    config = get_config()
-    threshold = _get_config_val(config, "ml.paecter.coverage_threshold_patents", 0.98)
-
-    # Count valid embeddings (non-null, correct dimension)
-    valid_count = 0
-    expected_dim = 768  # ModernBERT-Embed embeddings are 768-dimensional
-
-    for embedding in paecter_embeddings_patents["embedding"]:
-        if embedding and len(embedding) == expected_dim:
-            valid_count += 1
-
-    coverage = (
-        valid_count / len(paecter_embeddings_patents)
-        if len(paecter_embeddings_patents) > 0
+        valid_count / len(modernbert_embeddings_awards)
+        if len(modernbert_embeddings_awards) > 0
         else 0.0
     )
     passed = coverage >= threshold
@@ -483,6 +444,47 @@ def paecter_patents_coverage_check(
             "coverage": MetadataValue.float(coverage),
             "threshold": MetadataValue.float(threshold),
             "valid_embeddings": MetadataValue.int(valid_count),
-            "total_patents": MetadataValue.int(len(paecter_embeddings_patents)),
+            "total_awards": MetadataValue.int(len(modernbert_embeddings_awards)),
+        },
+    )
+
+
+@asset_check(
+    asset="modernbert_embeddings_patents",
+    description="Check that ModernBert embeddings coverage meets threshold",
+)
+def modernbert_patents_coverage_check(
+    context,
+    modernbert_embeddings_patents: pd.DataFrame,
+) -> AssetCheckResult:
+    """Check that patent embedding coverage meets quality threshold."""
+
+    config = get_config()
+    threshold = _get_config_val(config, "ml.modernbert.coverage_threshold_patents", 0.98)
+
+    # Count valid embeddings (non-null, correct dimension)
+    valid_count = 0
+    expected_dim = 768  # ModernBERT-Embed embeddings are 768-dimensional
+
+    for embedding in modernbert_embeddings_patents["embedding"]:
+        if embedding and len(embedding) == expected_dim:
+            valid_count += 1
+
+    coverage = (
+        valid_count / len(modernbert_embeddings_patents)
+        if len(modernbert_embeddings_patents) > 0
+        else 0.0
+    )
+    passed = coverage >= threshold
+
+    return AssetCheckResult(
+        passed=passed,
+        severity=AssetCheckSeverity.ERROR if not passed else AssetCheckSeverity.WARN,
+        description=f"Embedding coverage: {coverage:.2%} (threshold: {threshold:.2%})",
+        metadata={
+            "coverage": MetadataValue.float(coverage),
+            "threshold": MetadataValue.float(threshold),
+            "valid_embeddings": MetadataValue.int(valid_count),
+            "total_patents": MetadataValue.int(len(modernbert_embeddings_patents)),
         },
     )

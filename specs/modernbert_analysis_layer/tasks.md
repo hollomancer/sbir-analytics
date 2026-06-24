@@ -1,69 +1,69 @@
 # Implementation Plan
 
-## Phase 1: Core PaECTER Infrastructure
+## Phase 1: Core ModernBert Infrastructure
 
-- [x] 1.1 Implement PaECTER client wrapper for Hugging Face API
-  - [x] Create `PaECTERClient` class with batch processing and caching
+- [x] 1.1 Implement ModernBert client wrapper for Hugging Face API
+  - [x] Create `ModernBertClient` class with batch processing and caching
   - [x] Implement authentication via Bearer token from environment variable
   - [x] Support both API mode (HuggingFace) and local mode (sentence-transformers)
   - [x] Include embedding metadata (model_id, inference_mode, dimension, timestamp)
   - _Requirements: 1.1, 1.2_
-  - _Status: Implemented in `src/ml/paecter_client.py`_
+  - _Status: Implemented in `src/ml/modernbert_client.py`_
 
 - [x] 1.2 Implement text preprocessing utilities
   - [x] Create text builders for patents (title + abstract) and awards (solicitation_title + abstract)
   - [x] Add field concatenation with space separator, whitespace trimming
   - [x] Static methods `prepare_patent_text()` and `prepare_award_text()`
   - _Requirements: 1.1, 1.2_
-  - _Status: Implemented in `PaECTERClient` class_
+  - _Status: Implemented in `ModernBertClient` class_
 
-- [x] 1.3 Create core Dagster assets for basic PaECTER functionality
-  - [x] `paecter_embeddings_awards` → generates embeddings for SBIR awards
-  - [x] `paecter_embeddings_patents` → generates embeddings for USPTO patents
+- [x] 1.3 Create core Dagster assets for basic ModernBert functionality
+  - [x] `modernbert_embeddings_awards` → generates embeddings for SBIR awards
+  - [x] `modernbert_embeddings_patents` → generates embeddings for USPTO patents
   - [x] Include columns: award_id/patent_id, embedding, model_version, inference_mode, dimension
   - [x] Add asset checks for embedding coverage thresholds
   - _Requirements: 1.1, 1.2_
-  - _Status: Implemented in `src/assets/paecter/embeddings.py`_
+  - _Status: Implemented in `src/assets/modernbert/embeddings.py`_
 
 - [x] 1.4 Implement basic similarity computation
-  - [x] Create `paecter_award_patent_similarity` asset with cosine similarity computation
+  - [x] Create `modernbert_award_patent_similarity` asset with cosine similarity computation
   - [x] Support brute-force similarity computation
   - [x] Output similarity pairs with scores above configurable threshold
   - [x] Top-k filtering (top 10 per award)
   - _Requirements: 2.1, 2.2_
-  - _Status: Implemented in `src/assets/paecter/embeddings.py`_
+  - _Status: Implemented in `src/assets/modernbert/embeddings.py`_
 
-- [x] 1.5 Add `ml.paecter.*` configuration block to config/base.yaml
+- [x] 1.5 Add `ml.modernbert.*` configuration block to config/base.yaml
   - [x] use_local: false (default to API mode)
-  - [x] model_name: "mpi-inno-comp/paecter"
+  - [x] model_name: "mpi-inno-comp/modernbert"
   - [x] batch_size: 32
   - [x] similarity_threshold: 0.80
   - [x] coverage_threshold_awards: 0.95
   - [x] coverage_threshold_patents: 0.98
   - [x] enable_cache: false
   - _Requirements: 1.1, 1.2, 1.3, 1.4_
-  - _Status: Config exists in `config/base.yaml`. Validated Pydantic schema added in `src/config/schemas/ml.py` with `MLConfig` and `PaECTERConfig` models wired into `PipelineConfig`._
+  - _Status: Config exists in `config/base.yaml`. Validated Pydantic schema added in `src/config/schemas/ml.py` with `MLConfig` and `ModernBertConfig` models wired into `PipelineConfig`._
 
 ## Phase 2: Neo4j Integration and Quality Validation
 
 - [ ] 2.1 Implement Neo4j similarity edge loading asset
-  - [ ] Create `neo4j_paecter_similarity_edges` Dagster asset (optional, disabled by default)
-  - [ ] Load similarity pairs as (Award)-[:SIMILAR_TO {score, method:"paecter", rank, computed_at}]->(Patent)
+  - [ ] Create `neo4j_modernbert_similarity_edges` Dagster asset (optional, disabled by default)
+  - [ ] Load similarity pairs as (Award)-[:SIMILAR_TO {score, method:"modernbert", rank, computed_at}]->(Patent)
   - [ ] Use MERGE for idempotent relationship creation
   - [ ] Include configurable batch size and transaction management
   - [ ] Add dry-run mode for testing without committing changes
   - _Requirements: 4.1, 4.2, 4.3_
 
 - [x] 2.2 Add Neo4j configuration to config/base.yaml
-  - [x] ml.paecter.neo4j.enabled: false (disabled by default)
-  - [x] ml.paecter.neo4j.batch_size: 1000
-  - [x] ml.paecter.neo4j.dry_run: false
-  - [x] ml.paecter.neo4j.prune_previous: false (optional cleanup of old edges)
+  - [x] ml.modernbert.neo4j.enabled: false (disabled by default)
+  - [x] ml.modernbert.neo4j.batch_size: 1000
+  - [x] ml.modernbert.neo4j.dry_run: false
+  - [x] ml.modernbert.neo4j.prune_previous: false (optional cleanup of old edges)
   - _Requirements: 4.1, 4.2, 4.3_
-  - _Status: Config added to `config/base.yaml` under `ml.paecter.neo4j`. Schema already existed in `src/config/schemas/ml.py` as `PaECTERNeo4jConfig`._
+  - _Status: Config added to `config/base.yaml` under `ml.modernbert.neo4j`. Schema already existed in `src/config/schemas/ml.py` as `ModernBertNeo4jConfig`._
 
 - [ ] 2.3 Implement quality metrics and performance baselines
-  - [ ] Create `paecter_quality_metrics` asset for tracking embedding quality
+  - [ ] Create `modernbert_quality_metrics` asset for tracking embedding quality
   - [ ] Generate performance baselines for similarity computation
   - [ ] Add cohesion metrics to validate embeddings cluster within CET classifications
   - [ ] Implement quality gates for embedding coverage and similarity distributions
@@ -78,13 +78,13 @@
 
 ## Phase 3: Testing and Documentation
 
-- [x] 3.1 Unit testing for PaECTER components
-  - [x] Test PaECTER client configuration and initialization
+- [x] 3.1 Unit testing for ModernBert components
+  - [x] Test ModernBert client configuration and initialization
   - [x] Test text preprocessing edge cases (missing fields, empty strings)
   - [x] Test embedding caching behavior
   - [x] Test similarity computation with various input sizes
   - _Requirements: All requirements_
-  - _Status: 19 tests in `tests/unit/ml/test_paecter_client.py` covering config, text prep edge cases, caching, and similarity computation (identical, orthogonal, matrix shape)._
+  - _Status: 19 tests in `tests/unit/ml/test_modernbert_client.py` covering config, text prep edge cases, caching, and similarity computation (identical, orthogonal, matrix shape)._
 
 - [ ] 3.2 Integration testing for Dagster assets
   - [ ] Test complete embedding generation pipeline (awards → patents → similarity)
@@ -94,7 +94,7 @@
   - _Requirements: All requirements_
 
 - [ ] 3.3 Create comprehensive documentation
-  - [ ] Document PaECTER configuration options in config/base.yaml
+  - [ ] Document ModernBert configuration options in config/base.yaml
   - [ ] Document Dagster asset usage and dependencies
   - [ ] Document Neo4j schema for SIMILAR_TO relationships
   - [ ] Create usage examples for common workflows
@@ -103,13 +103,13 @@
 - [ ] 3.4 Add monitoring and observability
   - [ ] Implement performance metrics collection for embedding generation
   - [ ] Add similarity computation performance tracking
-  - [ ] Create dashboards for PaECTER pipeline health
+  - [ ] Create dashboards for ModernBert pipeline health
   - [ ] Add alerting for quality threshold violations
   - _Requirements: All requirements_
 
 ## Future Enhancements (Optional - Not in Current Scope)
 
-The following Bayesian MoE enhancements are documented in the design but marked as optional future work. They are NOT required for the core PaECTER functionality and should only be implemented if explicitly requested:
+The following Bayesian MoE enhancements are documented in the design but marked as optional future work. They are NOT required for the core ModernBert functionality and should only be implemented if explicitly requested:
 
 - [ ]* Bayesian MoE Framework Foundation (Phase 2 from original design)
   - Bayesian router framework with uncertainty quantification
@@ -131,6 +131,6 @@ The following Bayesian MoE enhancements are documented in the design but marked 
 
 - [ ]* Stage 3: Bayesian Embedding Routing (Phase 5 from original design)
   - Bayesian embedding router with multi-stage informed routing
-  - Domain-specific PaECTER LoRA adapters
+  - Domain-specific ModernBert LoRA adapters
   - Embedding routing asset with uncertainty propagation
   - _Requirements: 7.1, 7.2, 7.3, 7.4, 7.5_

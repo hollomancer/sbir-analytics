@@ -707,7 +707,7 @@ cli:
 
 # Embedding model configuration (ModernBERT-Embed)
 ml:
-  paecter:
+  modernbert:
     # Provider selection: "huggingface" (default, uses API) or "local" (requires sentence-transformers)
     provider: "huggingface"
     use_local: false  # Set to true to use local model instead of API

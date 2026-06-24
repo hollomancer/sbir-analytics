@@ -72,7 +72,7 @@ Each milestone produces an analytical output that (a) replicates or exceeds a sp
 | Topic clustering | Built | `packages/sbir-analytics/sbir_analytics/tools/mission_a/cluster_topics.py` |
 | Portfolio metrics | Built | `packages/sbir-analytics/sbir_analytics/tools/mission_a/compute_portfolio_metrics.py` |
 | Gap detection | Built | `packages/sbir-analytics/sbir_analytics/tools/mission_a/detect_gaps.py` |
-| PaECTER embeddings | 30% spec | `specs/paecter_analysis_layer/` |
+| ModernBert embeddings | 30% spec | `specs/modernbert_analysis_layer/` |
 | **Full corpus classification** | **Missing** | Needs: batch classifier run on all SBIR.gov awards |
 | **Cross-agency visualization** | **Missing** | Needs: agency-level technology allocation output |
 
@@ -125,7 +125,7 @@ Each milestone produces an analytical output that (a) replicates or exceeds a sp
 
 ### Next Sprint (M1 + M3 parallel)
 4. **New: `leverage-ratio-analysis`** — M1 core: ratio computation, cohort stratification, NASEM reconciliation
-5. **`paecter_analysis_layer`** (30%) — Embeddings infrastructure for M3 full-corpus classification
+5. **`modernbert_analysis_layer`** (30%) — Embeddings infrastructure for M3 full-corpus classification
 6. **New: `cross-agency-taxonomy`** — M3 core: batch classifier, agency-level output, visualization
 
 ### Following Sprint (M2 analytical layer)

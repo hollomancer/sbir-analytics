@@ -120,7 +120,7 @@ ship independently.
 - Per-user subscription / filter UI.
 - Non-federal solicitation corpora.
 - Direct agency-page scraping.
-- `paecter_embeddings_opportunities` asset (S3 uses cheaper filters in
+- `modernbert_embeddings_opportunities` asset (S3 uses cheaper filters in
   v1; embeddings re-enter only if precision falls short).
 - `validated_phase_iii_contracts` reclassified-column feedback loop.
 - Predictive model of Phase II completion likelihood (belongs in B4).

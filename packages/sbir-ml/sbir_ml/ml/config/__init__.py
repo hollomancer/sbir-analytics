@@ -1,12 +1,12 @@
-"""Configuration loaders for CET taxonomy, hyperparameters, and PaECTER client."""
+"""Configuration loaders for CET taxonomy, hyperparameters, and ModernBert client."""
 
 from pydantic import BaseModel, Field
 
 from .taxonomy_loader import ClassificationConfig, TaxonomyConfig, TaxonomyLoader
 
 
-class PaECTERClientConfig(BaseModel):
-    """Configuration for the PaECTERClient."""
+class ModernBertClientConfig(BaseModel):
+    """Configuration for the ModernBertClient."""
 
     model_name: str = Field(
         "nomic-ai/modernbert-embed-base", description="HuggingFace model identifier"
@@ -26,5 +26,5 @@ __all__ = [
     "ClassificationConfig",
     "TaxonomyConfig",
     "TaxonomyLoader",
-    "PaECTERClientConfig",
+    "ModernBertClientConfig",
 ]

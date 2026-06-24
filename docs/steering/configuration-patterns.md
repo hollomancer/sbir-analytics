@@ -211,13 +211,13 @@ neo4j:
     enable_data_validation: true
 ```
 
-## PaECTER Configuration
+## ModernBert Configuration
 
-### PaECTER Embedding and Similarity Configuration
+### ModernBert Embedding and Similarity Configuration
 
 ```yaml
 ml:
-  paecter:
+  modernbert:
     # Inference mode selection
     use_local: false  # false = API mode, true = local mode
 
@@ -356,11 +356,11 @@ export SBIR_ETL__ENRICHMENT__MIN_SUCCESS_RATE=0.88
 export SBIR_ETL__CET__CLASSIFICATION__MAX_FEATURES=75000
 export SBIR_ETL__CET__SCORING__HIGH_MIN=75
 
-## PaECTER configuration
+## ModernBert configuration
 
-export SBIR_ETL__ML__PAECTER__USE_LOCAL=true
-export SBIR_ETL__ML__PAECTER__API__BATCH_SIZE=64
-export SBIR_ETL__ML__PAECTER__SIMILARITY_THRESHOLD=0.85
+export SBIR_ETL__ML__MODERNBERT__USE_LOCAL=true
+export SBIR_ETL__ML__MODERNBERT__API__BATCH_SIZE=64
+export SBIR_ETL__ML__MODERNBERT__SIMILARITY_THRESHOLD=0.85
 export HF_TOKEN="your_huggingface_token"  # pragma: allowlist secret
 ```
 

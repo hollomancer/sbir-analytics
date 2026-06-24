@@ -21,8 +21,8 @@ LOG = logging.getLogger(__name__)
 # Heavy modules that can be skipped in resource-constrained environments
 HEAVY_ASSET_MODULES = {
     "sbir_analytics.assets.fiscal_assets",  # R dependencies, economic modeling
-    "sbir_analytics.assets.paecter.embeddings",  # Sentence transformers, ML models
-    "sbir_analytics.assets.paecter.similarity",  # Large-scale similarity computation
+    "sbir_analytics.assets.modernbert.embeddings",  # Sentence transformers, ML models
+    "sbir_analytics.assets.modernbert.similarity",  # Large-scale similarity computation
     "sbir_analytics.assets.ml.cet_training",  # scikit-learn, model training
     "sbir_analytics.assets.ml.cet_inference",  # Model inference
     "sbir_analytics.assets.ml.cet_drift_detection",  # Statistical analysis

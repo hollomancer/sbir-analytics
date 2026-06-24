@@ -89,7 +89,7 @@ cadence, and precision targets.
   delivery.
 - **Triage action labels** (Monitor / PCR inquiry / letter-of-concern).
   Those are an SBA workflow concern, not a research-question concern.
-- **`paecter_embeddings_opportunities` asset.** S3 v1 uses NAICS +
+- **`modernbert_embeddings_opportunities` asset.** S3 v1 uses NAICS +
   token-overlap + agency-sub-tier-match pre-filters. Embeddings only
   re-enter v1.x if the cheap filter cannot hit 0.60 HIGH precision.
 - **Per-signal-class YAML weight presets + Pydantic config tree.** v1

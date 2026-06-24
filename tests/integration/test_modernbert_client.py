@@ -16,7 +16,7 @@ import os
 import numpy as np
 import pytest
 
-from sbir_ml.ml.paecter_client import EmbeddingResult, PaECTERClient
+from sbir_ml.ml.modernbert_client import EmbeddingResult, ModernBertClient
 
 
 # Sample SBIR award data
@@ -89,16 +89,16 @@ SAMPLE_PATENTS = [
 
 
 @pytest.fixture(scope="module")
-def paecter_client():
-    """Create a PaECTER client for testing.
+def modernbert_client():
+    """Create a ModernBert client for testing.
 
     This fixture creates a single client instance that is reused across all tests
     in this module to avoid reloading the model multiple times.
 
     Uses local mode by default (requires sentence-transformers).
-    Set USE_PAECTER_API=1 environment variable to test API mode instead.
+    Set USE_MODERNBERT_API=1 environment variable to test API mode instead.
     """
-    use_api = os.getenv("USE_PAECTER_API") == "1"
+    use_api = os.getenv("USE_MODERNBERT_API") == "1"
 
     if use_api:
         # API mode - requires HF_TOKEN
@@ -106,42 +106,44 @@ def paecter_client():
         # Use hf_token fixture to skip if not available
         if not os.getenv("HF_TOKEN"):
             pytest.skip("HF_TOKEN environment variable required for API mode")
-        from sbir_ml.ml.config import PaECTERClientConfig
+        from sbir_ml.ml.config import ModernBertClientConfig
 
-        config = PaECTERClientConfig(use_local=False)
-        return PaECTERClient(config=config)
+        config = ModernBertClientConfig(use_local=False)
+        return ModernBertClient(config=config)
     else:
         # Local mode - requires sentence-transformers
         pytest.importorskip("sentence_transformers")
-        from sbir_ml.ml.config import PaECTERClientConfig
+        from sbir_ml.ml.config import ModernBertClientConfig
 
-        config = PaECTERClientConfig(use_local=True)
-        return PaECTERClient(config=config)
+        config = ModernBertClientConfig(use_local=True)
+        return ModernBertClient(config=config)
 
 
 @pytest.mark.integration
 @pytest.mark.slow
-class TestPaECTERClient:
-    """Integration tests for PaECTER client."""
+class TestModernBertClient:
+    """Integration tests for ModernBert client."""
 
-    def test_client_initialization(self, paecter_client):
+    def test_client_initialization(self, modernbert_client):
         """Test that client initializes successfully."""
-        assert paecter_client.inference_mode in ("api", "local")
-        assert paecter_client.embedding_dim == 768  # ModernBERT-Embed produces 768-dim embeddings
-        assert paecter_client.model_name == "nomic-ai/modernbert-embed-base"
+        assert modernbert_client.inference_mode in ("api", "local")
+        assert (
+            modernbert_client.embedding_dim == 768
+        )  # ModernBERT-Embed produces 768-dim embeddings
+        assert modernbert_client.model_name == "nomic-ai/modernbert-embed-base"
 
         # Check mode-specific attributes
-        if paecter_client.inference_mode == "local":
-            assert hasattr(paecter_client, "model")
-            assert paecter_client.model is not None
+        if modernbert_client.inference_mode == "local":
+            assert hasattr(modernbert_client, "model")
+            assert modernbert_client.model is not None
         else:
-            assert hasattr(paecter_client, "client")
-            assert paecter_client.client is not None
+            assert hasattr(modernbert_client, "client")
+            assert modernbert_client.client is not None
 
-    def test_generate_embeddings_single(self, paecter_client):
+    def test_generate_embeddings_single(self, modernbert_client):
         """Test embedding generation for a single text."""
         texts = ["This is a test patent abstract about solar cells."]
-        result = paecter_client.generate_embeddings(texts)
+        result = modernbert_client.generate_embeddings(texts)
 
         assert isinstance(result, EmbeddingResult)
         assert result.embeddings.shape == (1, 768)
@@ -149,22 +151,22 @@ class TestPaECTERClient:
         assert result.dimension == 768
         assert result.model_version == "nomic-ai/modernbert-embed-base"
 
-    def test_generate_embeddings_batch(self, paecter_client):
+    def test_generate_embeddings_batch(self, modernbert_client):
         """Test embedding generation for multiple texts."""
         texts = [
             "First patent about machine learning",
             "Second patent about renewable energy",
             "Third patent about advanced materials",
         ]
-        result = paecter_client.generate_embeddings(texts, batch_size=2)
+        result = modernbert_client.generate_embeddings(texts, batch_size=2)
 
         assert result.embeddings.shape == (3, 768)
         assert result.input_count == 3
 
-    def test_embeddings_are_normalized(self, paecter_client):
+    def test_embeddings_are_normalized(self, modernbert_client):
         """Test that embeddings are unit-normalized (for cosine similarity)."""
         texts = ["Test text for normalization check"]
-        result = paecter_client.generate_embeddings(texts, normalize=True)
+        result = modernbert_client.generate_embeddings(texts, normalize=True)
 
         # Check that embeddings have unit length (within floating point precision)
         norms = np.linalg.norm(result.embeddings, axis=1)
@@ -175,7 +177,7 @@ class TestPaECTERClient:
         title = "Novel Solar Cell Design"
         abstract = "This invention relates to improved solar cells with higher efficiency."
 
-        text = PaECTERClient.prepare_patent_text(title, abstract)
+        text = ModernBertClient.prepare_patent_text(title, abstract)
 
         assert title in text
         assert abstract in text
@@ -184,15 +186,15 @@ class TestPaECTERClient:
     def test_prepare_patent_text_missing_fields(self):
         """Test patent text preparation with missing fields."""
         # Only title
-        text1 = PaECTERClient.prepare_patent_text("Title only", None)
+        text1 = ModernBertClient.prepare_patent_text("Title only", None)
         assert text1 == "Title only"
 
         # Only abstract
-        text2 = PaECTERClient.prepare_patent_text(None, "Abstract only")
+        text2 = ModernBertClient.prepare_patent_text(None, "Abstract only")
         assert text2 == "Abstract only"
 
         # Both missing
-        text3 = PaECTERClient.prepare_patent_text(None, None)
+        text3 = ModernBertClient.prepare_patent_text(None, None)
         assert text3 == ""
 
     def test_prepare_award_text(self):
@@ -201,13 +203,13 @@ class TestPaECTERClient:
         award_title = "Novel Method for X"
         abstract = "This SBIR project will develop..."
 
-        text = PaECTERClient.prepare_award_text(solicitation, abstract, award_title)
+        text = ModernBertClient.prepare_award_text(solicitation, abstract, award_title)
 
         assert solicitation in text
         assert award_title in text
         assert abstract in text
 
-    def test_compute_similarity(self, paecter_client):
+    def test_compute_similarity(self, modernbert_client):
         """Test similarity computation between embeddings."""
         texts1 = ["Machine learning for drug discovery", "Deep learning for medicine"]
         texts2 = [
@@ -215,10 +217,10 @@ class TestPaECTERClient:
             "Solar cell efficiency improvements",
         ]
 
-        result1 = paecter_client.generate_embeddings(texts1)
-        result2 = paecter_client.generate_embeddings(texts2)
+        result1 = modernbert_client.generate_embeddings(texts1)
+        result2 = modernbert_client.generate_embeddings(texts2)
 
-        similarities = paecter_client.compute_similarity(result1.embeddings, result2.embeddings)
+        similarities = modernbert_client.compute_similarity(result1.embeddings, result2.embeddings)
 
         # Check shape
         assert similarities.shape == (2, 2)
@@ -228,10 +230,10 @@ class TestPaECTERClient:
         # texts1[0] and texts2[1] are about different topics
         assert similarities[0, 0] > similarities[0, 1]
 
-    def test_award_embeddings(self, paecter_client):
+    def test_award_embeddings(self, modernbert_client):
         """Test embedding generation for sample SBIR awards."""
         award_texts = [
-            PaECTERClient.prepare_award_text(
+            ModernBertClient.prepare_award_text(
                 award["solicitation_title"],
                 award["abstract"],
                 award.get("award_title"),
@@ -239,27 +241,27 @@ class TestPaECTERClient:
             for award in SAMPLE_AWARDS
         ]
 
-        result = paecter_client.generate_embeddings(award_texts)
+        result = modernbert_client.generate_embeddings(award_texts)
 
         assert result.embeddings.shape == (len(SAMPLE_AWARDS), 768)
         assert result.input_count == len(SAMPLE_AWARDS)
 
-    def test_patent_embeddings(self, paecter_client):
+    def test_patent_embeddings(self, modernbert_client):
         """Test embedding generation for sample patents."""
         patent_texts = [
-            PaECTERClient.prepare_patent_text(
+            ModernBertClient.prepare_patent_text(
                 patent["title"],
                 patent["abstract"],
             )
             for patent in SAMPLE_PATENTS
         ]
 
-        result = paecter_client.generate_embeddings(patent_texts)
+        result = modernbert_client.generate_embeddings(patent_texts)
 
         assert result.embeddings.shape == (len(SAMPLE_PATENTS), 768)
         assert result.input_count == len(SAMPLE_PATENTS)
 
-    def test_award_patent_similarity(self, paecter_client):
+    def test_award_patent_similarity(self, modernbert_client):
         """Test computing similarity between awards and patents.
 
         This is the core use case: finding patents similar to SBIR awards
@@ -267,7 +269,7 @@ class TestPaECTERClient:
         """
         # Prepare award texts
         award_texts = [
-            PaECTERClient.prepare_award_text(
+            ModernBertClient.prepare_award_text(
                 award["solicitation_title"],
                 award["abstract"],
                 award.get("award_title"),
@@ -277,7 +279,7 @@ class TestPaECTERClient:
 
         # Prepare patent texts
         patent_texts = [
-            PaECTERClient.prepare_patent_text(
+            ModernBertClient.prepare_patent_text(
                 patent["title"],
                 patent["abstract"],
             )
@@ -285,11 +287,11 @@ class TestPaECTERClient:
         ]
 
         # Generate embeddings
-        award_result = paecter_client.generate_embeddings(award_texts)
-        patent_result = paecter_client.generate_embeddings(patent_texts)
+        award_result = modernbert_client.generate_embeddings(award_texts)
+        patent_result = modernbert_client.generate_embeddings(patent_texts)
 
         # Compute similarities
-        similarities = paecter_client.compute_similarity(
+        similarities = modernbert_client.compute_similarity(
             award_result.embeddings, patent_result.embeddings
         )
 
@@ -320,12 +322,12 @@ class TestPaECTERClient:
                     f"(similarity: {score:.3f})"
                 )
 
-    def test_empty_input_raises_error(self, paecter_client):
+    def test_empty_input_raises_error(self, modernbert_client):
         """Test that empty input raises ValueError."""
         with pytest.raises(ValueError, match="texts cannot be empty"):
-            paecter_client.generate_embeddings([])
+            modernbert_client.generate_embeddings([])
 
-    def test_semantic_similarity_properties(self, paecter_client):
+    def test_semantic_similarity_properties(self, modernbert_client):
         """Test that embeddings capture semantic similarity as expected."""
         # Similar texts should have high similarity
         similar_texts = [
@@ -339,14 +341,14 @@ class TestPaECTERClient:
             "Solar panel efficiency in desert environments",
         ]
 
-        result_similar = paecter_client.generate_embeddings(similar_texts)
-        result_dissimilar = paecter_client.generate_embeddings(dissimilar_texts)
+        result_similar = modernbert_client.generate_embeddings(similar_texts)
+        result_dissimilar = modernbert_client.generate_embeddings(dissimilar_texts)
 
-        sim_score = paecter_client.compute_similarity(
+        sim_score = modernbert_client.compute_similarity(
             result_similar.embeddings[0:1], result_similar.embeddings[1:2]
         )[0, 0]
 
-        dissim_score = paecter_client.compute_similarity(
+        dissim_score = modernbert_client.compute_similarity(
             result_dissimilar.embeddings[0:1], result_dissimilar.embeddings[1:2]
         )[0, 0]
 
@@ -359,40 +361,40 @@ class TestPaECTERClient:
 @pytest.mark.integration
 def test_api_mode_requires_huggingface_hub():
     """Test that API mode requires huggingface_hub."""
-    from sbir_ml.ml.config import PaECTERClientConfig
+    from sbir_ml.ml.config import ModernBertClientConfig
 
     try:
         import huggingface_hub  # noqa: F401
 
         # If we get here, huggingface_hub is installed
         # API mode should work (even without token, just won't make requests)
-        config = PaECTERClientConfig(use_local=False)
-        client = PaECTERClient(config)
+        config = ModernBertClientConfig(use_local=False)
+        client = ModernBertClient(config)
         assert client.config.use_local is False
         assert client.client is not None
     except ImportError:
         # If huggingface_hub is not installed, verify our error handling
         with pytest.raises(ImportError, match="huggingface_hub is required"):
-            config = PaECTERClientConfig(use_local=False)
-            PaECTERClient(config)
+            config = ModernBertClientConfig(use_local=False)
+            ModernBertClient(config)
 
 
 @pytest.mark.integration
 @pytest.mark.slow
 def test_local_mode_requires_sentence_transformers():
     """Test that local mode requires sentence-transformers."""
-    from sbir_ml.ml.config import PaECTERClientConfig
+    from sbir_ml.ml.config import ModernBertClientConfig
 
     try:
         import sentence_transformers  # noqa: F401
 
         # If we get here, sentence_transformers is installed
-        config = PaECTERClientConfig(use_local=True)
-        client = PaECTERClient(config)
+        config = ModernBertClientConfig(use_local=True)
+        client = ModernBertClient(config)
         assert client.config.use_local is True
         assert client.model is not None
     except ImportError:
         # If sentence_transformers is not installed, verify our error handling
         with pytest.raises(ImportError, match="sentence-transformers is required"):
-            config = PaECTERClientConfig(use_local=True)
-            PaECTERClient(config)
+            config = ModernBertClientConfig(use_local=True)
+            ModernBertClient(config)

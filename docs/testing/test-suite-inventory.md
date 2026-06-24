@@ -35,7 +35,7 @@ assertions.
 | `test_fiscal_pipeline_integration.py` | 4 | Fixture-based integration |
 | `test_naics_integration.py` | 1 | Fixture-based integration |
 | `test_neo4j_client.py` | 16 | Service-backed integration: Neo4j |
-| `test_paecter_client.py` | 15 | Fixture-based and explicitly marked service-backed cases |
+| `test_modernbert_client.py` | 15 | Fixture-based and explicitly marked service-backed cases |
 | `test_patent_etl_integration.py` | 32 | Fixture-based integration |
 | `test_phase_iii_retrospective_asset.py` | 2 | Fixture-based integration |
 | `test_s3_operations.py` | 10 | Service-backed integration: S3/AWS credentials |
@@ -87,7 +87,7 @@ Modules shown as `module-level tests only` contain executable test functions wit
 | `tests/integration/test_fiscal_pipeline_integration.py` | `TestFiscalPipelineIntegration`, `TestPerformanceThresholds` |
 | `tests/integration/test_naics_integration.py` | module-level tests only |
 | `tests/integration/test_neo4j_client.py` | `TestNeo4jClientConnection`, `TestNeo4jConstraintsAndIndexes`, `TestNeo4jNodeUpsert`, `TestNeo4jRelationships`, `TestNeo4jTransactions` |
-| `tests/integration/test_paecter_client.py` | `TestPaECTERClient` |
+| `tests/integration/test_modernbert_client.py` | `TestModernBertClient` |
 | `tests/integration/test_patent_etl_integration.py` | `TestExtractorBasicParsing`, `TestTransformerBasicNormalization`, `TestDataQualityValidation`, `TestCompanyLinkageMatcher`, `TestEdgeCasesAndErrors`, `TestBatchProcessing`, `TestEndToEndPipeline`, `TestPerformanceMetrics` |
 | `tests/integration/test_phase_iii_retrospective_asset.py` | module-level tests only |
 | `tests/integration/test_s3_operations.py` | `TestS3Upload`, `TestS3Download`, `TestS3Fallback`, `TestS3PathBuilding`, `TestS3Permissions` |
