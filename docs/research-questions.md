@@ -63,6 +63,7 @@ merged to `main`. Public-study citations appear as `[L#]` — see
 - Which federal awards are SBIR/STTR vs. non-SBIR, and with what confidence? — [sbir-identification-methodology.md](sbir-identification-methodology.md). CRS R43695 [L15]. *(deps: ID)*
 - Do firms show higher transition rates within the same awarding agency (agency continuity signal)? *(deps: ER, ID)*
 - Can assignment chains show SBIR patent flow through prime contractors? Aligns with NASEM's "knowledge transfer to primes" finding [L1]. *(deps: ER, PATLINK)*
+- **(supply chain)** Is a defense-critical CET area sourced across more than one DoD component, or would a single component's withdrawal collapse its supplier base (cross-agency source redundancy)? *(deps: CET)*
 
 ### A3. Inferential (Tier 3)
 
@@ -95,6 +96,7 @@ in PR #317.*
 - How does M&A activity affect Phase III / federal-contract transition pathways? *(deps: ER, M&A signals, transitions)*
 - **(supply chain)** Which defense-critical CET areas rely on a single SBIR firm or a thin supplier base (single-source fragility), and has that base thinned or thickened over time? *(deps: ER, CET)*
 - **(supply chain)** What share of suppliers in each critical CET area have undergone foreign acquisition or sit under foreign-owned primes — i.e., where is adversarial-capital exposure concentrated by technology area? *(deps: ER, CET, M&A signals)*
+- **(supply chain)** Which individual SBIR firms are sole suppliers in their CET area such that their acquisition or loss would remove a defense capability with no in-program substitute (capability-loss risk)? *(deps: ER, CET, M&A signals)*
 
 ## B. Technology commercialization & entrepreneurship
 
