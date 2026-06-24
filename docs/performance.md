@@ -602,7 +602,7 @@ sbir_enrichment_fuzzy_matches: gauge
 Use automated regression detection script:
 
 ```bash
-python scripts/detect_performance_regression.py \
+python scripts/performance/detect_performance_regression.py \
 
   --output-json regression.json \
   --fail-on-regression
@@ -754,7 +754,7 @@ cat regression.json | jq '.baseline_comparison'
 
 ## Re-run locally to verify
 
-python scripts/detect_performance_regression.py \
+python scripts/performance/detect_performance_regression.py \
 
   --output-markdown /tmp/local_report.md
 ```
@@ -775,13 +775,13 @@ Common causes:
 1. **Run benchmarks locally**
 
    ```bash
-   python scripts/benchmark_enrichment.py --sample-size 500
+   python scripts/performance/benchmark_enrichment.py --sample-size 500
    ```
 
 2. **Create a baseline early**
 
    ```bash
-   python scripts/benchmark_enrichment.py --save-as-baseline
+   python scripts/performance/benchmark_enrichment.py --save-as-baseline
    ```
 
 3. **Test with realistic data volumes**
@@ -791,7 +791,7 @@ Common causes:
 4. **Monitor regressions**
 
    ```bash
-   python scripts/detect_performance_regression.py
+   python scripts/performance/detect_performance_regression.py
    ```
 
 ### For Production
@@ -802,7 +802,7 @@ Common causes:
    - Set up alerts
 
 2. **Use the deployment checklist**
-   - See `docs/DEPLOYMENT_CHECKLIST.md`
+   - See `docs/deployment/README.md`
    - Verify all quality gates passing
    - Test failover scenarios
 
@@ -825,7 +825,7 @@ Common causes:
    ls -la reports/benchmarks/baseline.json
 
    # Check recent performance
-   python scripts/detect_performance_regression.py
+   python scripts/performance/detect_performance_regression.py
    ```
 
 2. **Handle quality gate failures**
@@ -904,19 +904,19 @@ Variation depends on:
 
 ## Run benchmark with sample
 
-python scripts/benchmark_enrichment.py --sample-size 1000
+python scripts/performance/benchmark_enrichment.py --sample-size 1000
 
 ## Save as new baseline
 
-python scripts/benchmark_enrichment.py --save-as-baseline
+python scripts/performance/benchmark_enrichment.py --save-as-baseline
 
 ## Detect regression vs baseline
 
-python scripts/detect_performance_regression.py
+python scripts/performance/detect_performance_regression.py
 
 ## Generate performance report
 
-python scripts/detect_performance_regression.py \
+python scripts/performance/detect_performance_regression.py \
 
   --output-markdown report.md \
   --output-html report.html
@@ -1622,11 +1622,11 @@ cp reports/benchmarks/baseline.json reports/benchmarks/baseline.backup.json
 
 ## Run benchmark with new config
 
-python scripts/benchmark_enrichment.py --sample-size 1000
+python scripts/performance/benchmark_enrichment.py --sample-size 1000
 
 ## Compare results
 
-python scripts/detect_performance_regression.py --output-markdown report.md
+python scripts/performance/detect_performance_regression.py --output-markdown report.md
 ```
 
 ### 2. Review Impact
@@ -1662,7 +1662,7 @@ Make one change at a time:
 Once satisfied with new configuration:
 
 ```bash
-python scripts/benchmark_enrichment.py --save-as-baseline
+python scripts/performance/benchmark_enrichment.py --save-as-baseline
 ```
 
 ### 5. Monitor Production
@@ -1803,7 +1803,7 @@ python -c "from sbir_etl.config.loader import get_config; print(get_config().enr
 
 ## Run with validation
 
-python scripts/benchmark_enrichment.py --sample-size 100
+python scripts/performance/benchmark_enrichment.py --sample-size 100
 
 ## Check for warnings
 
@@ -1819,7 +1819,7 @@ python scripts/benchmark_enrichment.py --sample-size 100
 For configuration questions:
 
 1. Check this guide first
-2. Review performance documentation: `docs/performance/index.md`
+2. Review performance documentation: `docs/performance.md`
 3. Check configuration examples above
 4. Review logs for specific errors
 5. Create GitHub issue with benchmark data if needed

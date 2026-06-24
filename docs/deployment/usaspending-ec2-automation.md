@@ -254,7 +254,7 @@ aws ssm list-commands --instance-id $INSTANCE_ID
 
 **Solution:**
 
-- Increase workflow timeout in `.github/workflows/usaspending-database-download.yml`
+- Increase workflow timeout in `.github/workflows/data-refresh.yml`
 - Check network speed (may need larger instance type)
 - Verify source URL is accessible
 

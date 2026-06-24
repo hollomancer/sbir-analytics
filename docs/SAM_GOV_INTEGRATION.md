@@ -54,7 +54,7 @@ sbir_etl/
 │   └── cloud_storage.py            # S3 utilities (find_latest_sam_gov_parquet)
 └── config/
     └── schemas/
-        └── data_pipeline.py         # SamGovConfig schema
+        └── data.py         # SamGovConfig schema
 
 packages/sbir-analytics/sbir_analytics/
 └── assets/
@@ -96,7 +96,7 @@ extraction:
 
 ### Schema Definition
 
-Located in `sbir_etl/config/schemas/data_pipeline.py`:
+Located in `sbir_etl/config/schemas/data.py`:
 
 ```python
 class SamGovConfig(BaseModel):
@@ -357,7 +357,7 @@ MemoryError: Unable to allocate array
 
 - [SAM.gov Entity Information API](https://open.gsa.gov/api/entity-api/)
 - [Cloud Storage Utilities](../sbir_etl/utils/cloud_storage.py)
-- [Configuration Schema](../sbir_etl/config/schemas/data_pipeline.py)
+- [Configuration Schema](../sbir_etl/config/schemas/data.py)
 
 ## Changelog
 

@@ -262,18 +262,19 @@ Test the workflow without actually running it:
 
 ```bash
 # Check workflow syntax
-act -l --workflows .github/workflows/usaspending-database-download.yml
+act -l --workflows .github/workflows/data-refresh.yml
 
 # Dry run (requires act: https://github.com/nektos/act)
 act workflow_dispatch \
-  --workflows .github/workflows/usaspending-database-download.yml \
+  --workflows .github/workflows/data-refresh.yml \
   --eventpath test-event.json
 
 # Create test event file
 cat > test-event.json << EOF
 {
   "inputs": {
-    "database_type": "test",
+    "source": "usaspending",
+    "environment": "test",
     "force_refresh": "false"
   }
 }
@@ -282,9 +283,9 @@ EOF
 
 **Or test manually via GitHub UI:**
 
-1. Go to Actions → USAspending Database Download
+1. Go to Actions → Data Refresh
 2. Click "Run workflow"
-3. Select `database_type: test` (smaller file)
+3. Select `source: usaspending` and `environment: test`
 4. Monitor execution
 
 ## 7. Test EC2 Automation (Full Test)

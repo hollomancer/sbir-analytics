@@ -580,7 +580,6 @@ class MockLogger:
 
 - [Exception Handling Guide](exception-handling.md)
 - [Configuration Overview](../configuration.md)
-- [CLI Reference](../cli/README.md)
 
 ## Change Log
 

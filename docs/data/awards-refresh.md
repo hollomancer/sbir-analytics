@@ -4,8 +4,8 @@ Weekly automation keeps the canonical SBIR.gov CSV (`data/raw/sbir/award_data.cs
 
 ## Workflow summary
 
-- **Workflow:** `.github/workflows/weekly-award-data-refresh.yml` (runs Mondays at 09:00 UTC)
-- **Triggers:** scheduled cron + `workflow_dispatch` with `force_refresh` (bool) and `source_url` (string) inputs
+- **Workflow:** `.github/workflows/data-refresh.yml` (runs Mondays at 09:00 UTC)
+- **Triggers:** scheduled cron + `workflow_dispatch` with `source`, `environment`, and `force_refresh` inputs
 - **Branch / commit:** `data-refresh/<YYYY-MM-DD>` with commit `chore(data): refresh sbir awards <YYYY-MM-DD>`
 - **Owners:** `@sbir-analytics/data-stewards` (see `.github/CODEOWNERS`)
 - **Neo4j:** Optionally loads to Neo4j (Docker locally, EC2 in production)
@@ -35,10 +35,10 @@ Weekly automation keeps the canonical SBIR.gov CSV (`data/raw/sbir/award_data.cs
 
 ### Trigger a manual refresh
 
-1. Navigate to **Actions → Weekly SBIR Awards Refresh → Run workflow**.
+1. Navigate to **Actions → Data Refresh → Run workflow**.
 2. Optionally set:
    - `force_refresh` = `true` to capture metadata even if the CSV is unchanged.
-   - `source_url` to point at an alternate mirror or local test server.
+   - `source` = `sbir` and the target `environment` for an awards-only refresh.
 3. Monitor the run for validation logs and artifact uploads.
 
 ### Run validation locally

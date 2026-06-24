@@ -165,7 +165,7 @@ make neo4j-reset   # Fresh instance
 
 ## Related Documents
 
-- **[README.md](README.md)** - Complete navigation guide
+- **[Documentation index](../index.md)** - Complete navigation guide
 - **[configuration-patterns.md](configuration-patterns.md)** - Full configuration examples
 - **[data-quality.md](data-quality.md)** - Quality framework details
 - **[enrichment-patterns.md](enrichment-patterns.md)** - Enrichment strategy details

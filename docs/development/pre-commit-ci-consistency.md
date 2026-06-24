@@ -24,17 +24,16 @@ This document defines the **single source of truth** for code quality tools and 
 ```text
 Developer's Machine                    GitHub Actions (CI)
 └─ git commit                          └─ Pull Request / Push
-   └─ pre-commit hooks run            └─ .github/workflows/static-analysis.yml
-      ├─ Standard file checks            ├─ pre-commit-check job
-      ├─ Ruff (lint/format)             │  (runs all pre-commit hooks)
-      ├─ MyPy (types)                   │
-      ├─ Bandit (security)              ├─ lint job (Ruff)
-      ├─ Detect-secrets                 ├─ types job (MyPy)
-                                        ├─ security job (Bandit)
-                                        ├─ docs-link-check job
+   └─ pre-commit hooks run            └─ .github/workflows/ci.yml
+      ├─ Standard file checks            ├─ code-quality job
+      ├─ Ruff (lint/format)             │  (Ruff lint/format, MyPy for sbir_etl,
+      ├─ MyPy (types)                   │   removed-src reference check)
+      ├─ Bandit (security)              ├─ package-type-checks job (per-package MyPy)
+      ├─ Detect-secrets                 ├─ workflow-lint job (YAML validation)
+                                        └─ test job (unit / integration matrix)
 ```
 
-**Key Principle:** Pre-commit hooks define what developers must fix locally. The same tools run in CI. Individual CI jobs provide visibility and parallelization.
+**Key Principle:** Pre-commit hooks define what developers must fix locally. CI runs the same Ruff + MyPy + (removed-src) gates as the `code-quality` job, with per-package MyPy and tests as additional jobs. Bandit and Detect-secrets currently run only as pre-commit hooks locally, not as standalone CI jobs.
 
 ---
 
@@ -158,43 +157,39 @@ Some rule failed
 
 ## CI Configuration
 
-### Workflow: `.github/workflows/static-analysis.yml`
+### Workflow: `.github/workflows/ci.yml`
 
 This workflow runs on:
 
 - Every push to `main` or `develop`
 - Every pull request
 
-**Jobs (in parallel):**
+**Jobs (in parallel/sequence):**
 
-1. **pre-commit-check** (NEW)
-   - Runs: `pre-commit run --all-files`
-   - Purpose: Comprehensive local/CI consistency check
-   - Covers: All pre-commit hooks (Ruff, MyPy, Bandit, Detect-secrets, Standard checks)
+1. **code-quality**
+   - Runs: Ruff lint/format, MyPy for `sbir_etl`, and `scripts/ci/check_removed_src_references.py`
+   - Purpose: CI visibility for the same core quality gates defined by local configuration
+   - Covers: Production source roots plus tests where applicable
    - Time: ~5-10 minutes
 
-2. **lint** (Ruff)
-   - Runs: `ruff check sbir_etl packages/sbir-analytics/sbir_analytics packages/sbir-ml/sbir_ml packages/sbir-graph/sbir_graph tests` + `ruff format --check sbir_etl packages/sbir-analytics/sbir_analytics packages/sbir-ml/sbir_ml packages/sbir-graph/sbir_graph tests`
-   - Purpose: Visibility into linting results
-   - Time: ~1-2 minutes
+2. **package-type-checks** (MyPy)
+   - Runs: `mypy` for `packages/sbir-analytics/sbir_analytics`, `packages/sbir-ml/sbir_ml`, and `packages/sbir-graph/sbir_graph`
+   - Purpose: Package-level type-checking visibility
+   - Time: ~5-10 minutes
 
-3. **types** (MyPy)
-   - Runs: `mypy sbir_etl`
-   - Purpose: Type checking visibility
-   - Time: ~1-2 minutes
-
-4. **security** (Bandit)
-   - Runs: `bandit -r sbir_etl packages/sbir-analytics/sbir_analytics packages/sbir-ml/sbir_ml packages/sbir-graph/sbir_graph -c pyproject.toml`
-   - Purpose: Security scanning visibility
+3. **workflow-lint**
+   - Runs: YAML syntax validation for `.github/workflows/*.yml`
+   - Purpose: Keeps GitHub Actions workflow files parseable
    - Time: ~1 minute
 
-5. **docs-link-check** (on docs changes)
-   - External link validation
-   - Not included in pre-commit (external checks)
+4. **test**
+   - Runs: unit and integration test suites via a fixed matrix in `.github/workflows/ci.yml`
+   - Purpose: Functional validation across the test matrix (does not include smoke tests, which run in separate workflows)
+   - Time: varies by selected suite
 
 ### Why Multiple Jobs?
 
-- **pre-commit-check:** Ensures all local checks pass in CI
+- **code-quality:** Runs Ruff, MyPy, and removed source-root reference checks in CI
 - **Individual jobs:** Provide clear, separate visibility in GitHub checks
 - **Parallelization:** Faster overall execution
 - **Debugging:** Easier to identify which check failed
@@ -208,7 +203,7 @@ This workflow runs on:
 Tool versions are pinned in:
 
 - `.pre-commit-config.yaml` (local)
-- `.github/workflows/static-analysis.yml` (CI)
+- `.github/workflows/ci.yml` (CI)
 - `pyproject.toml` (tool configuration)
 
 **Update process:**
@@ -219,7 +214,7 @@ Tool versions are pinned in:
    # Don't update just one - keep them in sync!
    # Update in:
    # - .pre-commit-config.yaml (rev field)
-   # - .github/workflows/static-analysis.yml (setup-python-uv action versions)
+   # - .github/workflows/ci.yml (setup-python-uv action versions)
    # - pyproject.toml (if tool config changes)
    ```
 
@@ -232,7 +227,7 @@ Tool versions are pinned in:
 3. **Commit the changes:**
 
    ```bash
-   git add .pre-commit-config.yaml .github/workflows/static-analysis.yml pyproject.toml
+   git add .pre-commit-config.yaml .github/workflows/ci.yml pyproject.toml
    git commit -m "chore: update pre-commit tools to [version]"
    ```
 
@@ -253,11 +248,11 @@ Tool versions are pinned in:
 | Item | Local | CI | Notes |
 |------|-------|----|----|
 | Tool versions | `.pre-commit-config.yaml` | `.pre-commit-config.yaml` | Identical |
-| Ruff scope | `.pre-commit-config.yaml` | `static-analysis.yml` | Both: all production roots plus `tests` |
+| Ruff scope | `.pre-commit-config.yaml` | `ci.yml` | Both: all production roots plus `tests` |
 | Ruff config | `pyproject.toml` | `pyproject.toml` | Identical |
-| MyPy scope | `pyproject.toml` + `.pre-commit-config.yaml` | `static-analysis.yml` | Both: `sbir_etl` only |
+| MyPy scope | `pyproject.toml` + `.pre-commit-config.yaml` | `ci.yml` | Both: `sbir_etl` only |
 | MyPy config | `pyproject.toml` | `pyproject.toml` | Identical |
-| Bandit scope | `.pre-commit-config.yaml` | `static-analysis.yml` | Both: all production roots |
+| Bandit scope | `.pre-commit-config.yaml` | `ci.yml` | Both: all production roots |
 | Bandit config | `pyproject.toml` | `pyproject.toml` | Identical |
 
 ---
@@ -281,7 +276,7 @@ Tool versions are pinned in:
    pre-commit run --all-files
    ```
 
-3. Check `.pre-commit-config.yaml` against `.github/workflows/static-analysis.yml`
+3. Check `.pre-commit-config.yaml` against `.github/workflows/ci.yml`
 
 4. **Report as bug:** This indicates a configuration mismatch
 
@@ -377,7 +372,7 @@ pre-commit run ruff
 ### How do I add a new pre-commit hook?
 
 1. Add to `.pre-commit-config.yaml`
-2. Add equivalent CI job to `.github/workflows/static-analysis.yml`
+2. Add equivalent CI job to `.github/workflows/ci.yml`
 3. Update this documentation
 4. Test locally: `pre-commit run --all-files`
 5. Submit PR with changes to all three files
@@ -416,5 +411,5 @@ If you need type checking for a specific file, add:
 Project files:
 
 - `.pre-commit-config.yaml` - Local hook configuration
-- `.github/workflows/static-analysis.yml` - CI configuration
+- `.github/workflows/ci.yml` - CI configuration
 - `pyproject.toml` - Tool-specific configuration
