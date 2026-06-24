@@ -307,8 +307,8 @@ class TestCetClassificationAnalyzer:
                 "award_id": [1, 2, 3, 4, 5],
                 "primary_cet_area": [
                     "artificial_intelligence",
-                    "quantum_information_technologies",
-                    "biotechnology",
+                    "quantum_information_science",
+                    "biotechnologies",
                     "artificial_intelligence",
                     None,
                 ],
@@ -347,8 +347,8 @@ class TestCetClassificationAnalyzer:
 
         assert "artificial_intelligence" in distribution
         assert distribution["artificial_intelligence"] == 0.4  # 2 out of 5
-        assert "quantum_information_technologies" in distribution
-        assert "biotechnology" in distribution
+        assert "quantum_information_science" in distribution
+        assert "biotechnologies" in distribution
 
     def test_calculate_category_distribution_empty(self):
         """Test category distribution with empty DataFrame."""
@@ -462,6 +462,27 @@ class TestCetClassificationAnalyzer:
 
         assert report.total_records == 0
         assert "error" in report.module_metrics
+
+    def test_cet_areas_match_canonical_taxonomy(self):
+        """Analyzer's CET areas must match the canonical config/cet/taxonomy.yaml.
+
+        Guards against the divergent-taxonomy drift that previously left this
+        analyzer with a stale 19-area list using non-canonical ids.
+        """
+        from pathlib import Path
+
+        import yaml
+
+        taxonomy_path = (
+            Path(__file__).parents[4] / "config" / "cet" / "taxonomy.yaml"
+        )
+        taxonomy = yaml.safe_load(taxonomy_path.read_text())
+        canonical_ids = {area["cet_id"] for area in taxonomy["cet_areas"]}
+
+        analyzer = CetClassificationAnalyzer()
+
+        assert set(analyzer.cet_areas) == canonical_ids
+        assert len(analyzer.cet_areas) == len(canonical_ids) == 21
 
 
 # =============================================================================

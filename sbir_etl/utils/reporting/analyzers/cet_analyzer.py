@@ -34,27 +34,32 @@ class CetClassificationAnalyzer(ModuleAnalyzer):
             "max_unclassified_rate": self.config.get("max_unclassified_rate", 0.15),
         }
 
-        # CET taxonomy areas (major categories)
+        # Canonical CET taxonomy areas — the 21 NSTC-2025Q1 cet_ids defined in
+        # config/cet/taxonomy.yaml and enforced by the classifier's
+        # taxonomy_loader. Keep this list in sync with that file; the
+        # test suite guards against drift (test_cet_areas_match_canonical_taxonomy).
         self.cet_areas = [
-            "artificial_intelligence",
-            "quantum_information_technologies",
-            "biotechnology",
-            "advanced_materials",
-            "advanced_manufacturing",
-            "microelectronics",
-            "space_technology",
-            "renewable_energy",
             "advanced_computing",
-            "hypersonics",
-            "networked_sensors",
-            "data_science",
+            "advanced_engineering_materials",
+            "advanced_gas_turbine_engine_technologies",
+            "advanced_manufacturing",
+            "advanced_and_networked_sensing_and_signature_management",
+            "advanced_nuclear_energy_systems",
+            "artificial_intelligence",
             "autonomous_systems",
-            "human_machine_interfaces",
+            "biotechnologies",
+            "communication_and_networking_technologies",
             "directed_energy",
             "financial_technologies",
-            "semiconductors",
-            "advanced_nuclear",
-            "cybersecurity",
+            "human_machine_interfaces",
+            "hypersonics",
+            "integrated_sensing_and_cyber",
+            "quantum_information_science",
+            "renewable_energy_generation_and_storage",
+            "semiconductors_and_microelectronics",
+            "space_technologies_and_systems",
+            "trusted_ai_and_autonomy",
+            "integrated_network_systems_of_systems",
         ]
 
         # Classification confidence bands
