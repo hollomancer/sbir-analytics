@@ -504,7 +504,7 @@ SBIR_MAX_WORKERS=4                       # Parallel workers
 
 #### Executive Summary
 
-The SBIR CET Classifier is a production-ready ML-based system for classifying Small Business Innovation Research (SBIR) awards against 20 Critical and Emerging Technology (CET) areas. The project demonstrates sophisticated architecture patterns, comprehensive test coverage (232/232 tests passing), and achieves exceptional performance (97.9% success rate, 5,979 records/second).
+The SBIR CET Classifier is a production-ready ML-based system for classifying Small Business Innovation Research (SBIR) awards against 21 Critical and Emerging Technology (CET) areas. The project demonstrates sophisticated architecture patterns, comprehensive test coverage (232/232 tests passing), and achieves exceptional performance (97.9% success rate, 5,979 records/second).
 
 ### Key Metrics
 
