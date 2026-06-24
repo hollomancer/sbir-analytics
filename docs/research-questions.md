@@ -8,7 +8,7 @@ respected so foundational work appears before dependents.
 
 **Policy areas:**
 
-- [A. National security, defense industrial base & supply-chain resilience](#a-national-security-defense-industrial-base--supply-chain-resilience)
+- [A. National security, industrial base, and supply chain](#a-national-security-industrial-base-and-supply-chain)
 - [B. Technology commercialization & entrepreneurship](#b-technology-commercialization--entrepreneurship)
 - [C. Innovation & knowledge generation (R&D policy)](#c-innovation--knowledge-generation-rd-policy)
 - [D. Economic & fiscal impact](#d-economic--fiscal-impact)
@@ -47,7 +47,7 @@ Items marked *(branch: …)* are in-progress on a feature branch and not yet
 merged to `main`. Public-study citations appear as `[L#]` — see
 [Prior literature & benchmarks](#prior-literature--benchmarks) at the bottom.
 
-## A. National security, defense industrial base & supply-chain resilience
+## A. National security, industrial base, and supply chain
 
 *Audience: DoD acquisition leadership, congressional defense committees, CSIS-style industrial-base analysts. The defense-industrial-base and critical-supply-chain questions are **merged into a single framing** below — they serve the same audience and statutory goal and draw on the same `CET`, `NAICS`, `ER`, and `M&A signals` data. Supporting DIB questions that fall outside that framing (leverage ratio, SBIR identification, patent-flow-to-primes) follow it, grouped by complexity tier.*
 
@@ -57,7 +57,7 @@ merged to `main`. Public-study citations appear as `[L#]` — see
 
 The question splits into two axes — **Capability** (Axis A) and **Vulnerability** (Axis B) — each sub-question carrying an answerability label. The merge is only honest because award data answers the DIB/institutional (capability) side **well** and the supply-chain/chokepoint (vulnerability) side **only weakly**: strong capability metrics must not lend false confidence to weak vulnerability inferences, so every sub-question keeps its own label and weak ones are not allowed to free-ride.
 
-**CET spine.** The organizing spine is the repo's **21-area `NSTC-2025Q1`** taxonomy defined in `config/cet/taxonomy.yaml` and validated to exactly 21 areas by `packages/sbir-ml/sbir_ml/ml/config/taxonomy_loader.py`. This is *not* the external 18-area Feb-2024 NSTC Critical and Emerging Technologies list, nor DoD's 14 Critical Technology Areas — both are narrower external frameworks, and the repo's 21-area set already blends NSTC CET areas with several DoD critical-technology areas (Hypersonics, Directed Energy, Advanced Gas Turbine Engine Technologies, Integrated Network Systems-of-Systems). **Crosswalk note:** for DoD-facing outputs each CET area should also carry a **DoD-14** and an **NDIS-8** (National Defense Industrial Strategy supply-chain-priority) tag where a mapping exists, so results speak to both NSTC and DoD audiences. (Two other, divergent CET taxonomies exist in code — a 10-area transition-system set and a 19-area reporting-analyzer set — and are not yet reconciled to the canonical 21; see Maintenance.)
+**CET spine.** The organizing spine is the repo's **21-area `NSTC-2025Q1`** taxonomy defined in `config/cet/taxonomy.yaml`; `packages/sbir-ml/sbir_ml/ml/config/taxonomy_loader.py` expects exactly 21 areas and logs a warning on any mismatch (a soft check, not a hard-failing validation). This is *not* the external 18-area Feb-2024 NSTC Critical and Emerging Technologies list, nor DoD's 14 Critical Technology Areas — both are narrower external frameworks, and the repo's 21-area set already blends NSTC CET areas with several DoD critical-technology areas (Hypersonics, Directed Energy, Advanced Gas Turbine Engine Technologies, Integrated Network Systems-of-Systems). **Crosswalk note:** for DoD-facing outputs each CET area should also carry a **DoD-14** and an **NDIS-8** (National Defense Industrial Strategy supply-chain-priority) tag where a mapping exists, so results speak to both NSTC and DoD audiences. (Two other, divergent CET taxonomies exist in code — a 10-area transition-system set and a 19-area reporting-analyzer set — and are not yet reconciled to the canonical 21; see Maintenance.)
 
 **Statutory grounding.** Axis B maps to the risk-based due-diligence factors of the SBIR/STTR reauthorization, **Pub. L. 119-83** (signed April 13, 2026), and its eight restricted-entity screening lists — the UFLPA Entity List, the Non-SDN Chinese Military-Industrial Complex Companies (NS-CMIC) List, the Section 889 Prohibition List, the 1260H list, the Military End-User (MEU) List, the BIS Entity List, the FCC Covered List, and the CBP WRO/Findings List [L26]. Axis A maps to the same law's Strategic Breakthrough Allocation and Phase III provisions. (Statute linked, not reproduced.)
 
@@ -74,6 +74,12 @@ The question splits into two axes — **Capability** (Axis A) and **Vulnerabilit
 - **B2. Adversary-affiliation screening** — entity resolution of awardees and key personnel against the named restricted-entity lists and foreign-country-of-concern ties. **[Partial via public lists; full coverage needs agency-held due-diligence data]** *(deps: ER)*
 - **B3. Concentration-as-fragility** — single-firm or thin-base dominance within a CET cluster, read as risk rather than capability (the same HHI as A1, inverted, including geographically narrow supplier bases). Has the base for a given area thinned or thickened over time, and which sole-supplier firms would, if acquired or lost, remove a capability with no in-program substitute? **[Answerable now]** *(deps: ER, CET)*
 - **B4. Physical input chokepoints** — dependence on contested physical inputs (rare earths, castings, advanced chips, APIs). **NOT answerable with award-type data.** Identifying sole-source physical inputs, foreign-content percentages, surge capacity, or sub-tier chokepoints requires bill-of-materials, customs, or contractual country-of-origin data the pipeline does not ingest. **[Out of scope — stated explicitly, not as a research target]** *(deps: —)*
+
+#### Proposed (unvetted)
+
+*Candidate questions raised in review but not yet scoped against the data or methodology. Listed here rather than inline so they don't read as graded, answerable metrics until vetted.*
+
+- **Awardee-as-chokepoint (knowledge/IP supply-chain position)** — using patent holdings, award-description embeddings, and contract text, identify SBIR awardees that occupy a chokepoint position in a CET supply chain: the sole or dominant holder of an enabling capability, technique, or IP that downstream primes and follow-on programs depend on. This is distinct from **B4**: it reads chokepoints from the patent/award/contract corpus we *do* hold (a knowledge/IP-concentration lens), not from bill-of-materials or customs data, so it surfaces capability and IP single-points-of-failure rather than physical-input dependence. Overlaps **B3** (concentration-as-fragility) but adds the supply-chain-position framing — who depends on whom — via patent-citation and contract-linkage structure. **[Proposed — needs a chokepoint definition + validation before it earns an answerability label]** *(deps: ER, CET, PATLINK)*
 
 ### Supporting DIB questions (outside the capability/vulnerability frame)
 
@@ -282,7 +288,7 @@ Documents and reports the question inventory has produced for specific audiences
 **Format:** per-district briefing identifying 3-5 SBIR firms within the member's district that represent the strongest success stories (FDA-cleared products, defense supplier roles, follow-on capital raises, M&A exits) with political-safety vetting.
 **Districts covered to date** (in conversation; not yet committed as repo artifacts): KY-3 (McGarvey), NJ-10 (McIver), NY-16 (Latimer), NH-2 (Goodlander), MT-2 (Downing), TX-6 (Ellzey), and a CNMI null finding for King-Hinds. Vetting depth includes press review, SEC Form D filings, M&A history, and any political-sensitivity factors (foreign ownership, classified work exposure, recent acquisition).
 **Supporting code:** `sbir_etl/enrichers/congressional_district_resolver.py` (UEI → district resolver), `scripts/setup_congressional_districts.py` (district reference data).
-**Pulls from:** Section A (portfolio composition + Axis B vulnerability screens — foreign ownership, recent acquisition, classified-work exposure), B1-B3 (commercialization signals, §B), F1-F2 (capital events, M&A).
+**Pulls from:** Section A (portfolio composition + Axis B foreign-ownership / acquisition screens, B1), B1-B3 (commercialization signals, §B), F1-F2 (capital events, M&A). (Classified-work exposure remains a manual political-sensitivity vetting factor, not an automated pipeline screen — there is no Axis B signal for it.)
 
 ### Form D fundraising analysis (published)
 
