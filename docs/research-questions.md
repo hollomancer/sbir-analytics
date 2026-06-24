@@ -8,7 +8,7 @@ respected so foundational work appears before dependents.
 
 **Policy areas:**
 
-- [A. National security & defense industrial base](#a-national-security--defense-industrial-base)
+- [A. National security, defense industrial base & supply-chain resilience](#a-national-security-defense-industrial-base--supply-chain-resilience)
 - [B. Technology commercialization & entrepreneurship](#b-technology-commercialization--entrepreneurship)
 - [C. Innovation & knowledge generation (R&D policy)](#c-innovation--knowledge-generation-rd-policy)
 - [D. Economic & fiscal impact](#d-economic--fiscal-impact)
@@ -47,14 +47,16 @@ Items marked *(branch: …)* are in-progress on a feature branch and not yet
 merged to `main`. Public-study citations appear as `[L#]` — see
 [Prior literature & benchmarks](#prior-literature--benchmarks) at the bottom.
 
-## A. National security & defense industrial base
+## A. National security, defense industrial base & supply-chain resilience
 
-*Audience: DoD acquisition leadership, congressional defense committees, CSIS-style industrial-base analysts.*
+*Audience: DoD acquisition leadership, congressional defense committees, CSIS-style industrial-base analysts. Critical-supply-chain questions live here rather than in a separate area: supplier concentration, single-source fragility, and foreign-ownership exposure serve the same audience and statutory goal as the broader defense-industrial-base questions, and draw on the same `CET`, `NAICS`, `ER`, and `M&A signals` data. Supply-chain questions are tagged inline within the tiers below (descriptive concentration in A1, integrity/fragility risk in A4).*
 
 ### A1. Descriptive (Tier 1)
 
 - Portfolio composition by DoD component (Army/Navy/AF/DARPA/DLA), phase, and vintage — SBA annual reports [L18]. *(deps: —)*
-- Which CET areas are single-agency-dominated vs. multi-agency, surfacing concentration risk for defense-critical tech — CSIS Center for the Industrial Base [L16]. *(deps: CET)*
+- **(supply chain)** Which CET areas are single-agency-dominated vs. multi-agency, surfacing concentration risk for defense-critical tech — CSIS Center for the Industrial Base [L16]. *(deps: CET)*
+- **(supply chain)** How concentrated is the defense SBIR supplier base by NAICS sector — which defense-critical sectors depend on a handful of firms? *(deps: NAICS)*
+- **(supply chain)** Where are defense-critical SBIR suppliers geographically clustered (state / congressional district), and which CET areas have a geographically narrow supplier base? *(deps: CET, NAICS)*
 
 ### A2. Relational (Tier 2)
 
@@ -87,10 +89,12 @@ previously-existing `packages/sbir-analytics/sbir_analytics/assets/ma_detection.
 stub was a placeholder, never wired into the M&A pipeline, and was removed
 in PR #317.*
 
-- Did a defense-funded SBIR company undergo M&A activity, especially involving a foreign acquirer? Foreign-acquisition risk flagged by CSIS [L17] — [../specs/merger_acquisition_detection/](../specs/merger_acquisition_detection/). *(deps: ER, M&A signals)*
+- **(supply chain)** Did a defense-funded SBIR company undergo M&A activity, especially involving a foreign acquirer? Foreign-acquisition risk flagged by CSIS [L17] — [../specs/merger_acquisition_detection/](../specs/merger_acquisition_detection/). *(deps: ER, M&A signals)*
 - For SBIR firms acquired by public companies, can inbound M&A be detected via 8-K full-text search? *(PR #286)* *(deps: ER, SEC EDGAR)*
-- Which defense primes concentrate SBIR-firm acquisitions (e.g., Titan, Teledyne, Ametek, Kratos), and are any of those acquirers themselves foreign-owned or under CFIUS review? *(deps: ER, M&A signals)*
+- **(supply chain)** Which defense primes concentrate SBIR-firm acquisitions (e.g., Titan, Teledyne, Ametek, Kratos), and are any of those acquirers themselves foreign-owned or under CFIUS review? *(deps: ER, M&A signals)*
 - How does M&A activity affect Phase III / federal-contract transition pathways? *(deps: ER, M&A signals, transitions)*
+- **(supply chain)** Which defense-critical CET areas rely on a single SBIR firm or a thin supplier base (single-source fragility), and has that base thinned or thickened over time? *(deps: ER, CET)*
+- **(supply chain)** What share of suppliers in each critical CET area have undergone foreign acquisition or sit under foreign-owned primes — i.e., where is adversarial-capital exposure concentrated by technology area? *(deps: ER, CET, M&A signals)*
 
 ## B. Technology commercialization & entrepreneurship
 
