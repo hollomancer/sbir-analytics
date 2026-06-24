@@ -74,9 +74,9 @@ The documented approach can use GitHub Actions for orchestration with optional A
 | [Neo4j Runbook](neo4j-runbook.md) | Neo4j operations |
 | [GitHub Actions ML](github-actions-ml.md) | ML job configuration |
 
-## Required Secrets
+## Secrets (for optional GitHub Actions / AWS deployment)
 
-Set these in GitHub → Settings → Secrets:
+These secrets are only required if you use the optional GitHub Actions / AWS deployment path; local runs do not need them. Set them in GitHub → Settings → Secrets:
 
 | Secret | Description |
 |--------|-------------|

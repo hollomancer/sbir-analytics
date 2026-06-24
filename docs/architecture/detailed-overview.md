@@ -814,7 +814,7 @@ Local Development Alternative:
 # 1. Configure Neo4j (optional cloud setup)
 neo4j_config = Neo4jConfig(
     uri=os.getenv("NEO4J_URI", "bolt://your-ec2-host:7687"),
-    username=os.getenv("NEO4J_USERNAME", "neo4j"),
+    username=os.getenv("NEO4J_USER", "neo4j"),
     password=os.getenv("NEO4J_PASSWORD"),  # Stored in AWS Secrets Manager
     database="neo4j",
     batch_size=5000
@@ -823,7 +823,7 @@ neo4j_config = Neo4jConfig(
 # Local Development Alternative
 neo4j_config = Neo4jConfig(
     uri=os.getenv("NEO4J_URI", "bolt://localhost:7687"),
-    username=os.getenv("NEO4J_USERNAME", "neo4j"),
+    username=os.getenv("NEO4J_USER", "neo4j"),
     password=os.getenv("NEO4J_PASSWORD", "neo4j"),
     database="neo4j",
     batch_size=5000
