@@ -26,15 +26,14 @@ Developer's Machine                    GitHub Actions (CI)
 └─ git commit                          └─ Pull Request / Push
    └─ pre-commit hooks run            └─ .github/workflows/ci.yml
       ├─ Standard file checks            ├─ code-quality job
-      ├─ Ruff (lint/format)             │  (runs all pre-commit hooks)
-      ├─ MyPy (types)                   │
-      ├─ Bandit (security)              ├─ lint job (Ruff)
-      ├─ Detect-secrets                 ├─ types job (MyPy)
-                                        ├─ security job (Bandit)
-                                        ├─ docs-link-check job
+      ├─ Ruff (lint/format)             │  (Ruff lint/format, MyPy for sbir_etl,
+      ├─ MyPy (types)                   │   removed-src reference check)
+      ├─ Bandit (security)              ├─ package-type-checks job (per-package MyPy)
+      ├─ Detect-secrets                 ├─ workflow-lint job (YAML validation)
+                                        └─ test job (unit / integration matrix)
 ```
 
-**Key Principle:** Pre-commit hooks define what developers must fix locally. The same tools run in CI. Individual CI jobs provide visibility and parallelization.
+**Key Principle:** Pre-commit hooks define what developers must fix locally. CI runs the same Ruff + MyPy + (removed-src) gates as the `code-quality` job, with per-package MyPy and tests as additional jobs. Bandit and Detect-secrets currently run only as pre-commit hooks locally, not as standalone CI jobs.
 
 ---
 
@@ -183,9 +182,9 @@ This workflow runs on:
    - Purpose: Keeps GitHub Actions workflow files parseable
    - Time: ~1 minute
 
-4. **tests**
-   - Runs: unit, integration, and smoke tests selected by the CI change-detection outputs
-   - Purpose: Functional validation for affected code paths
+4. **test**
+   - Runs: unit and integration test suites via a fixed matrix in `.github/workflows/ci.yml`
+   - Purpose: Functional validation across the test matrix (does not include smoke tests, which run in separate workflows)
    - Time: varies by selected suite
 
 ### Why Multiple Jobs?
