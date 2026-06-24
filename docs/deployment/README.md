@@ -7,18 +7,17 @@ Status: active
 
 # Deployment Documentation
 
+This directory documents the current experimental deployment path for the SBIR ETL project. The repository is a personal research project, not production software; these notes preserve useful operational details for repeatable runs and optional cloud experimentation without implying a production-grade service.
+
 > **Operational data caveat.** No SBIR/STTR award data is committed to this repository. Local-development commands in these docs are intended to bring up services, run tests, or exercise pipeline components against small/local inputs after you provide `.env` values. Full dataset reproduction requires downloading the source/bulk datasets yourself, supplying the relevant API credentials, and running supporting services such as Neo4j; reproducing the analyses end-to-end is non-trivial setup, not a one-command deployment.
-
-
-This directory contains deployment documentation for the SBIR ETL project.
 
 ## Deployment Overview
 
-The SBIR ETL project uses GitHub Actions for orchestration with AWS infrastructure:
+The documented approach can use GitHub Actions for orchestration with optional AWS infrastructure:
 
-1. **GitHub Actions (Primary)** - Orchestrates all ETL pipelines via `dagster job execute`
-2. **AWS Batch** - Heavy compute jobs (ML, fiscal analysis)
-3. **AWS Lambda + Step Functions** - Data download workflows
+1. **GitHub Actions** - Orchestrates ETL pipelines via `dagster job execute`
+2. **AWS Batch** - Optional heavy compute jobs (ML, fiscal analysis)
+3. **AWS Lambda + Step Functions** - Optional data download workflows
 4. **Docker (Development)** - Local development and testing
 
 ## Architecture
@@ -75,16 +74,16 @@ The SBIR ETL project uses GitHub Actions for orchestration with AWS infrastructu
 | [Neo4j Runbook](neo4j-runbook.md) | Neo4j operations |
 | [GitHub Actions ML](github-actions-ml.md) | ML job configuration |
 
-## Required Secrets
+## Secrets (for optional GitHub Actions / AWS deployment)
 
-Set these in GitHub → Settings → Secrets:
+These secrets are only required if you use the optional GitHub Actions / AWS deployment path; local runs do not need them. Set them in GitHub → Settings → Secrets:
 
 | Secret | Description |
 |--------|-------------|
 | `AWS_ROLE_ARN` | IAM role for AWS access |
-| `NEO4J_URI` | Production Neo4j connection URI |
+| `NEO4J_URI` | Cloud Neo4j connection URI, if using the optional cloud setup |
 | `NEO4J_USER` | Neo4j username |
-| `NEO4J_PASSWORD` | Production Neo4j password |
+| `NEO4J_PASSWORD` | Cloud Neo4j password, if using the optional cloud setup |
 | `NEO4J_TEST_URI` | Test Neo4j connection URI (used when `environment: test`) |
 | `NEO4J_TEST_PASSWORD` | Test Neo4j password (used when `environment: test`) |
 

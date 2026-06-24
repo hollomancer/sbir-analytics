@@ -9,25 +9,25 @@ Status: active
 
 # SBIR ETL Documentation
 
-Welcome. This site is the canonical documentation for the SBIR ETL pipeline.
+Welcome. This site collects the current documentation for the SBIR/STTR commercialization analytics research project. Like the README notes, this is a personal side project rather than production software, so the docs should be read as the current documented approach and working notes rather than polished, authoritative product documentation.
 
-- **specifications** (`specs/`) are the source of truth for designs, tasks, and requirements.
+- **specifications** (`specs/`) capture design notes, tasks, and requirements as they evolved.
 - User and developer documentation lives under `docs/` (this site).
 - Steering documents live in `docs/steering/` (architectural patterns and guidance).
 
 ## What is this project?
 
-Cloud-native, graph-based ETL pipeline that ingests SBIR/USAspending/USPTO data and loads a Neo4j graph database.
+Experimental, graph-based ETL pipeline that ingests SBIR/USAspending/USPTO data and loads a Neo4j graph database for exploratory analysis. The cloud pieces described below are an optional deployment path that has been documented for repeatability, not a claim that the project is production-grade.
 
-**Production Architecture**:
+**Current documented deployment approach**:
 
 - **Orchestration**: GitHub Actions Solo Plan, AWS Step Functions
 - **Compute**: AWS Lambda (serverless)
 - **Storage**: AWS S3 (data lake)
-- **Database**: Neo4j (Docker locally, EC2 in production)
+- **Database**: Neo4j (Docker locally, EC2 in the optional cloud setup)
 - **Processing**: DuckDB/Pandas
 
-**Development**: Docker Compose + local Dagster (secondary/failover option)
+**Local development**: Docker Compose + local Dagster (recommended for iteration)
 
 ## Quick links
 
@@ -37,11 +37,11 @@ Cloud-native, graph-based ETL pipeline that ingests SBIR/USAspending/USPTO data 
 - Architecture overview: [`architecture/detailed-overview.md`](architecture/detailed-overview.md)
 - Shared tech stack: [`architecture/shared-tech-stack.md`](architecture/shared-tech-stack.md)
 
-### Deployment (Cloud-First)
+### Deployment (Optional Cloud Setup)
 
-- **[Production deployment](deployment/README.md)** - GitHub Actions (Primary)
-- **[AWS Infrastructure](deployment/aws-deployment.md)** - Lambda + S3 + Step Functions
-- [Containerization guide](deployment/containerization.md) - Docker (Development/Failover)
+- **[Experimental deployment path](deployment/README.md)** - GitHub Actions orchestration notes
+- **[AWS Infrastructure](deployment/aws-deployment.md)** - Optional Lambda + S3 + Step Functions setup
+- [Containerization guide](deployment/containerization.md) - Docker for local development and fallback testing
 
 ### Development Guides
 

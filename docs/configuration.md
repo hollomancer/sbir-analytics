@@ -7,9 +7,9 @@
 
 ## Overview
 
-The SBIR ETL pipeline uses a flexible, configuration-driven approach to file system paths that supports both cloud storage (AWS S3) and local filesystem. All paths are configurable via YAML configuration files and can be overridden using environment variables, making the pipeline portable across different deployment environments.
+The SBIR ETL pipeline uses a flexible, configuration-driven approach to file system paths that supports both local filesystem storage and optional cloud storage (AWS S3). All paths are configurable via YAML configuration files and can be overridden using environment variables, making the research pipeline portable across local runs and the current documented cloud setup.
 
-**Cloud-First Architecture**: The pipeline automatically detects S3 paths (`s3://bucket/key`) and uses boto3 for cloud storage operations, with automatic fallback to local filesystem for development.
+**Optional cloud setup**: The pipeline can detect S3 paths (`s3://bucket/key`) and use boto3 for cloud storage operations, while local filesystem paths remain the default development path.
 
 ## Table of Contents
 
@@ -26,11 +26,11 @@ The SBIR ETL pipeline uses a flexible, configuration-driven approach to file sys
 
 ### S3 Path Support
 
-The pipeline supports AWS S3 paths for cloud-first deployments:
+The pipeline supports AWS S3 paths for the optional cloud deployment path:
 
 ```yaml
 paths:
-  # S3 paths (production)
+  # S3 paths (optional cloud setup)
   data_root: "s3://sbir-analytics-data-prod"
   raw_data: "s3://sbir-analytics-data-prod/raw"
   usaspending_dump_file: "s3://sbir-analytics-data-prod/usaspending/dump.zip"
@@ -45,7 +45,7 @@ paths:
 Enable S3 storage via environment variables:
 
 ```bash
-# Production (S3)
+# Optional cloud setup (S3)
 export SBIR_ETL_USE_S3=true
 export SBIR_ETL_S3_BUCKET=sbir-analytics-data-prod
 export AWS_REGION=us-east-1
@@ -114,7 +114,7 @@ df = duckdb.sql("""
 
 ### S3 Best Practices
 
-1. **Use S3 for production** - Scalable, durable, managed
+1. **Use S3 for larger or repeatable cloud runs** - Scalable, durable, managed
 2. **Use local filesystem for development** - Faster iteration, no AWS costs
 3. **Store credentials securely** - Use AWS Secrets Manager or IAM roles
 4. **Enable versioning** - Protect against accidental deletions
@@ -206,7 +206,7 @@ cd /home/user/sbir-analytics
 uv run dagster dev
 ```
 
-#### Production Environment (Mounted Volumes)
+#### Cloud or Server Environment (Mounted Volumes)
 
 ```bash
 # Override paths to use mounted volumes

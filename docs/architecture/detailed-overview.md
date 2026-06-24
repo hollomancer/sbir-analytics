@@ -2,17 +2,17 @@
 
 ## Executive Summary
 
-The **sbir-analytics** is a robust, cloud-native ETL (Extract, Transform, Load) pipeline for processing Small Business Innovation Research (SBIR) program data into a Neo4j graph database. It orchestrates multi-source data ingestion, complex transformations, and sophisticated analysis workflows through Dagster asset definitions.
+**sbir-analytics** is an experimental ETL (Extract, Transform, Load) research pipeline for linking Small Business Innovation Research (SBIR) program data to commercialization signals in a Neo4j graph database. It orchestrates multi-source data ingestion, transformations, and exploratory analysis workflows through Dagster asset definitions. As described in the README, this is a personal side project rather than production software; the architecture below describes the current documented approach, including an optional cloud setup.
 
 **Key Characteristics:**
 
 - **Data Sources**: SBIR.gov awards, USAspending contracts, USPTO patents, transition detection
 - **Processing**: DuckDB (extraction), Pandas/Python (transformation), Neo4j (graph storage)
-- **Orchestration**: GitHub Actions (primary), AWS Step Functions (scheduled workflows)
-- **Compute**: AWS Lambda functions (serverless processing), GitHub Actions runners
-- **Storage**: AWS S3 (primary data lake), local filesystem (development fallback)
-- **Database**: Neo4j (EC2 production), Docker Neo4j (local development)
-- **Deployment**: Cloud-first (GitHub Actions + AWS + Neo4j EC2), Docker (local development)
+- **Orchestration**: GitHub Actions and optional AWS Step Functions for documented repeatable runs
+- **Compute**: GitHub Actions runners, with optional AWS Lambda functions for cloud experiments
+- **Storage**: Local filesystem for development, with optional AWS S3 data lake paths
+- **Database**: Neo4j via Docker for local development, with optional EC2-hosted Neo4j notes
+- **Deployment**: Docker for local development, plus an experimental GitHub Actions + AWS + Neo4j EC2 deployment path
 - **Tech Stack**: Python 3.11/3.12, Neo4j 5.x, AWS Lambda, S3, DuckDB, Pandas, Pydantic, scikit-learn
 
 ---
@@ -722,9 +722,9 @@ Each transition is flagged with:
 |-----------|-----------|---------|
 | **Orchestration** | GitHub Actions Solo Plan | Managed workflow DAG, asset dependencies, cloud observability |
 | **Compute** | AWS Lambda | Serverless compute for scheduled data refresh workflows |
-| **Storage** | AWS S3 | Primary data lake for CSV files, intermediate results, artifacts |
+| **Storage** | AWS S3 | Optional cloud data lake for CSV files, intermediate results, artifacts |
 | **Secrets Management** | AWS Secrets Manager | Secure storage for Neo4j credentials, API keys |
-| **Database (Production)** | Neo4j (EC2) | Self-hosted graph database |
+| **Database (Optional Cloud Setup)** | Neo4j (EC2) | Self-hosted graph database for cloud experiments |
 | **Database (Development)** | Neo4j 5.x (Docker) | Local graph database for development and testing |
 | **Data Processing** | DuckDB + Pandas | Efficient CSV/SQL processing + transformation |
 | **Configuration** | Pydantic 2.x | Type-safe YAML loading with validation |
@@ -734,9 +734,9 @@ Each transition is flagged with:
 | **Logging** | Loguru | Structured logging |
 | **CLI** | Typer + Rich | Interactive dashboard commands |
 | **Testing** | Pytest + Pytest-Cov | Unit/integration/E2E tests |
-| **Local Development** | Docker + Docker Compose | Local dev/test environment (secondary deployment) |
+| **Local Development** | Docker + Docker Compose | Local dev/test environment |
 
-### 6.2 Data Flow Connections (Cloud Architecture)
+### 6.2 Data Flow Connections (Optional Cloud Architecture)
 
 ```
 ┌─────────────────────────────────────────┐
@@ -808,13 +808,13 @@ Local Development Alternative:
 
 ### 6.3 Neo4j Integration
 
-**Production (Neo4j EC2):**
+**Optional cloud setup (Neo4j EC2):**
 
 ```python
-# 1. Configure Neo4j (Production)
+# 1. Configure Neo4j (optional cloud setup)
 neo4j_config = Neo4jConfig(
     uri=os.getenv("NEO4J_URI", "bolt://your-ec2-host:7687"),
-    username=os.getenv("NEO4J_USERNAME", "neo4j"),
+    username=os.getenv("NEO4J_USER", "neo4j"),
     password=os.getenv("NEO4J_PASSWORD"),  # Stored in AWS Secrets Manager
     database="neo4j",
     batch_size=5000
@@ -823,7 +823,7 @@ neo4j_config = Neo4jConfig(
 # Local Development Alternative
 neo4j_config = Neo4jConfig(
     uri=os.getenv("NEO4J_URI", "bolt://localhost:7687"),
-    username=os.getenv("NEO4J_USERNAME", "neo4j"),
+    username=os.getenv("NEO4J_USER", "neo4j"),
     password=os.getenv("NEO4J_PASSWORD", "neo4j"),
     database="neo4j",
     batch_size=5000
@@ -1099,7 +1099,7 @@ class CETClassifier(Protocol):
 
 ## Summary
 
-The **sbir-analytics** codebase is a comprehensive, production-grade ETL system that:
+The **sbir-analytics** codebase is an experimental research ETL system that currently:
 
 1. **Ingests** multi-source government data (SBIR awards, USAspending, USPTO patents)
 2. **Validates & Enriches** with external APIs and ML classification
