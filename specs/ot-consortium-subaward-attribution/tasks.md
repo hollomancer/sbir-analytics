@@ -2,6 +2,15 @@
 
 **Status:** spec only — not started. See `requirements.md` / `design.md`.
 
+## Stage 0 — Coverage probe (go/no-go, do this first)
+
+- [ ] **T0.1** Run `scripts/ot_consortium/probe_subaward_coverage.py` (needs
+      egress to `api.usaspending.gov`). Report the coverage_pct = reported
+      sub-award $ / CMF prime obligation $ across the seed CMFs.
+- [ ] **T0.2** Decision gate: >~20% coverage → proceed to Stage 1; single-digit
+      coverage → shelve (the route would recover almost nothing). Record the
+      number and decision here.
+
 ## Stage 1 — Sub-award model & index (no external deps)
 
 - [ ] **T1.1** Add `sbir_etl/ot_consortium/subawards.py` with `SubawardRecord`
