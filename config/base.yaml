@@ -748,3 +748,15 @@ ml:
     # Validation thresholds
     coverage_threshold_awards: 0.95  # 95% of awards must have valid embeddings
     coverage_threshold_patents: 0.98  # 98% of patents must have valid embeddings
+
+# OT consortium Phase III verification tiering
+# Classifies OT-consortium-linked transitions / firm claims into honest
+# verification tiers (T1 member-confirmed; T2/T3/T4 unverifiable). See
+# docs/ot-consortium/tiers.md.
+ot_consortium:
+  cmf_registry_path: "data/reference/cmf_registry.csv"
+  # Set claims_path (or SBIR_ETL__OT_CONSORTIUM__CLAIMS_PATH) to switch the
+  # tiering asset into audit mode over a firm-reported covered-sales file.
+  claims_path: null
+  unknown_vendor_min_obligation: 1000000.0
+  fpds_reporting_lag_days: 90

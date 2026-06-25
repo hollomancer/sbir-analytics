@@ -571,6 +571,30 @@ class StatisticalReportingConfig(BaseModel):
         return normalized
 
 
+class OTConsortiumConfig(BaseModel):
+    """Configuration for OT consortium Phase III verification tiering."""
+
+    cmf_registry_path: str = Field(
+        default="data/reference/cmf_registry.csv",
+        description="Path to the Consortium Management Firm registry CSV.",
+    )
+    claims_path: str | None = Field(
+        default=None,
+        description="Optional path to a firm-reported covered-sales claims file; "
+        "presence switches the tiering asset into audit mode.",
+    )
+    unknown_vendor_min_obligation: float = Field(
+        default=1_000_000.0,
+        ge=0.0,
+        description="Minimum total obligation for the unknown-rollup-vendor diagnostic.",
+    )
+    fpds_reporting_lag_days: int = Field(
+        default=90,
+        ge=0,
+        description="Documented DoD FPDS reporting lag, surfaced in report metadata.",
+    )
+
+
 __all__ = [
     "EnrichmentConfig",
     "EnrichmentRefreshConfig",
@@ -581,6 +605,7 @@ __all__ = [
     "ModernBertConfig",
     "ModernBertLocalConfig",
     "ModernBertTextConfig",
+    "OTConsortiumConfig",
     "SensitivityConfig",
     "StatisticalReportingConfig",
     "TaxParameterConfig",

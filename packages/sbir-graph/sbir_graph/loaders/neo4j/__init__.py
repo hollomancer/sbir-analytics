@@ -34,6 +34,8 @@ __all__ = [
     "CETLoaderConfig",
     # Transitions
     "TransitionLoader",
+    # OT consortium verification tiers
+    "OTConsortiumLoader",
     # Profiles
     "TransitionProfileLoader",
     # Categorization (Product/Service/Mixed)
@@ -66,6 +68,7 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "PatentLoaderConfig": (".patents", "PatentLoaderConfig"),
     "TransitionProfileLoader": (".profiles", "TransitionProfileLoader"),
     "TransitionLoader": (".transitions", "TransitionLoader"),
+    "OTConsortiumLoader": (".ot_consortium", "OTConsortiumLoader"),
 }
 
 
