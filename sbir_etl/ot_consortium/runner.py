@@ -18,9 +18,24 @@ from typing import Any, cast
 import pandas as pd
 
 from .classifier import assign_tier
-from .models import CoveredSalesClaim, FirmUEISource, TierAssignment
+from .models import CoveredSalesClaim, FirmUEISource, OTAward, TierAssignment
 from .registry import CMFRegistry
 from .usaspending_ot import build_ot_award, is_ot_record
+
+
+def _populate_base_recipient(ot_award: OTAward, by_piid: dict[str, dict[str, Any]]) -> None:
+    """Fill the base OT recipient by looking up the parent row, enabling the
+    order-level recipient T1 route. Only fills when not already present on the row."""
+    if ot_award.base_recipient_uei or ot_award.base_recipient_name:
+        return
+    if not ot_award.parent_piid:
+        return
+    base_row = by_piid.get(str(ot_award.parent_piid))
+    if not base_row:
+        return
+    base = build_ot_award(base_row)
+    ot_award.base_recipient_uei = base.recipient_uei
+    ot_award.base_recipient_name = base.recipient_name
 
 
 def assignments_to_records(assignments: list[TierAssignment]) -> list[dict[str, Any]]:
@@ -125,6 +140,7 @@ def classify_baseline(
         ot_award = build_ot_award(contract_row)
         if not ot_award.award_id:
             ot_award.award_id = contract_id
+        _populate_base_recipient(ot_award, contracts_by_id)
 
         firm_row = firm_by_award.get(sbir_award_id, {})
         firm_uei = _award_firm_uei(firm_row)
@@ -183,6 +199,7 @@ def classify_claims(
             ot_award = build_ot_award(fed_row)
             if not ot_award.award_id:
                 ot_award.award_id = str(claim.claimed_award_piid or claim.claim_id)
+            _populate_base_recipient(ot_award, fed_by_piid)
         else:
             # No federal record located → T4. Carry claim context for the report.
             ot_award = build_ot_award(

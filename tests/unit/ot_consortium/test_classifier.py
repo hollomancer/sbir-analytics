@@ -177,6 +177,66 @@ def test_name_resolved_firm_can_reach_t1(registry):
     assert "name resolution" in result.confidence_note
 
 
+def test_t1_via_order_recipient_under_cmf_base(registry):
+    """Order records the firm as its own recipient under a CMF-managed base OT →
+    authoritative T1 even with the Consortia member field blank."""
+    award = OTAward(
+        award_id="ORD-1",
+        piid=PIID_PROTOTYPE,
+        parent_piid="BASE-1",
+        base_recipient_name="NSTXL",  # base OT held by a CMF
+        recipient_uei=FIRM_UEI,  # this order's recipient is the firm
+        recipient_name="Member Firm",
+        consortia_flag=None,  # member field unpopulated
+        primary_consortia_member_uei=None,
+    )
+    result = _confirm(award, firm_uei=FIRM_UEI, registry=registry)
+    assert result.tier == VerificationTier.MEMBER_CONFIRMED
+    assert result.resolution_method == "order_recipient_uei"
+    assert result.cmf_name == "National Security Technology Accelerator"
+    assert "order-level recipient" in result.confidence_note
+
+
+def test_order_recipient_not_t1_when_base_not_cmf(registry):
+    """Firm is the order recipient but the base is not a CMF → not a consortium
+    confirmation, must not reach T1."""
+    award = OTAward(
+        award_id="ORD-2",
+        piid=PIID_PROTOTYPE,
+        parent_piid="BASE-2",
+        base_recipient_name="Random Prime Inc",  # not in registry
+        recipient_uei=FIRM_UEI,
+    )
+    result = _confirm(award, firm_uei=FIRM_UEI, registry=registry)
+    assert result.tier != VerificationTier.MEMBER_CONFIRMED
+
+
+def test_order_recipient_not_t1_when_recipient_differs(registry):
+    """Base is a CMF but the order recipient is a different UEI → not this firm."""
+    award = OTAward(
+        award_id="ORD-3",
+        piid=PIID_PROTOTYPE,
+        parent_piid="BASE-3",
+        base_recipient_name="NSTXL",
+        recipient_uei="SOMEONEELSE1",
+    )
+    result = _confirm(award, firm_uei=FIRM_UEI, registry=registry)
+    assert result.tier != VerificationTier.MEMBER_CONFIRMED
+
+
+def test_order_recipient_requires_qualifying_piid(registry):
+    """Order recipient under a CMF base but non-qualifying PIID → not T1."""
+    award = OTAward(
+        award_id="ORD-4",
+        piid=PIID_CONTRACT,  # 9th position not in {3,9}
+        parent_piid="BASE-4",
+        base_recipient_name="NSTXL",
+        recipient_uei=FIRM_UEI,
+    )
+    result = _confirm(award, firm_uei=FIRM_UEI, registry=registry)
+    assert result.tier != VerificationTier.MEMBER_CONFIRMED
+
+
 def test_residual_is_conservative_t2(registry):
     """Consortium-linked but unconfirmable and not a CMF/mod → conservative T2 floor."""
     award = OTAward(

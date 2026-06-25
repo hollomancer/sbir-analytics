@@ -82,6 +82,14 @@ class OTAward(BaseModel):
     parent_piid: str | None = Field(
         None, description="Base OT / IDV this order sits under, if any (base→order linkage)."
     )
+    base_recipient_uei: str | None = Field(
+        None,
+        description="UEI recorded on the base/parent OT. When the base is a CMF and this order's "
+        "recipient is the firm, the order-level recipient authoritatively attributes the award.",
+    )
+    base_recipient_name: str | None = Field(
+        None, description="Recipient name recorded on the base/parent OT (CMF in consortium cases)."
+    )
     recipient_uei: str | None = Field(
         None, description="FPDS recorded recipient/vendor UEI (the CMF UEI in rollup cases)."
     )

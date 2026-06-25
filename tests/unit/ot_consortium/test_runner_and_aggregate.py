@@ -63,6 +63,37 @@ def test_classify_baseline_empty():
     assert classify_baseline(pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), None) == []
 
 
+def test_baseline_t1_via_order_recipient_base_lookup(registry):
+    """Order recipient is the firm; base OT (looked up by parent_piid) is a CMF →
+    authoritative T1 via the order-level recipient route, Consortia field blank."""
+    detections = pd.DataFrame([{"award_id": "award_0", "contract_id": "ORDER-1"}])
+    contracts = pd.DataFrame(
+        [
+            {
+                "contract_id": "ORDER-1",
+                "piid": PIID_PROTOTYPE,
+                "parent_piid": "BASE-1",
+                "vendor_name": "Member Firm",
+                "vendor_uei": FIRM_UEI,  # order recipient is the firm
+                "award_type": "Other Transaction",
+                "obligated_amount": 100,
+                "fiscal_year": 2023,
+            },
+            {  # the base OT, held by a CMF — only present for lookup
+                "contract_id": "BASE-1",
+                "piid": "BASE-1",
+                "vendor_name": "NSTXL",
+                "award_type": "Other Transaction",
+            },
+        ]
+    )
+    awards = pd.DataFrame([{"award_id": "award_0", "Company": "Member Firm", "UEI": FIRM_UEI}])
+    assignments = classify_baseline(detections, contracts, awards, registry)
+    assert len(assignments) == 1
+    assert assignments[0].tier == VerificationTier.MEMBER_CONFIRMED
+    assert assignments[0].resolution_method == "order_recipient_uei"
+
+
 def test_classify_claims_t4_when_absent(registry):
     claims = load_claims(
         [{"company": "Ghost Co", "piid": "NOPE-1", "uei": "GHOST0000001", "obligation": "100"}]

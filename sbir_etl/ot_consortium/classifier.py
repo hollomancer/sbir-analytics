@@ -9,14 +9,20 @@ keeping that out of the classifier means the tier rules are trivially testable.
 Tier precedence (strict, never upgraded on weak evidence):
 
     T4  no federal record               (audit mode only)
-    T1  positive member confirmation    (Consortia=Yes + member UEI == firm UEI + PIID 9th in {3,9})
+    T1  positive member confirmation, by EITHER authoritative UEI route:
+          (a) Consortia=Yes + Primary Consortia Member UEI == firm UEI, or
+          (b) order recipient UEI == firm UEI under a CMF-managed base OT,
+        each also requiring PIID 9th position in {3, 9}
     T3  modification-based, member field unfillable by construction
     T2  rollup / residual unverifiable attribution
 
-T1 is checked before T3 because a *populated and matching* member field is
-positive confirmation that overrides the structural-invisibility heuristic. The
-name-collision guard lives in T1: a member UEI that mismatches the firm UEI never
-reaches T1 no matter how closely the names resemble each other.
+T1 is checked before T3 because a *populated and matching* member/recipient field
+is positive confirmation that overrides the structural-invisibility heuristic.
+Route (b) recovers awards where the order records the firm as its own recipient
+even though the Consortia member field is blank — authoritative because the order
+recipient UEI is the legal recipient of that order. The name-collision guard
+lives in T1: a UEI that mismatches the firm never reaches T1 no matter how closely
+the names resemble each other.
 
 Assumptions (also documented in docs/ot-consortium/tiers.md):
   * ``Consortia`` and ``Primary Consortia Member UEI`` are ``None`` when not
@@ -154,6 +160,60 @@ def assign_tier(
             **base,
         )
 
+    # ---- T1 (alternative route): order-level recipient under a CMF base OT --
+    # When the base/parent OT is held by a CMF and THIS order records the firm as
+    # its own recipient (order recipient UEI == firm UEI), the federal record
+    # authoritatively attributes the award to the firm — even with the Consortia
+    # member field unpopulated. This is UEI-to-UEI attribution via a different
+    # field than the Consortia member UEI, so it is recorded as a distinct route.
+    norm_recipient = _norm_uei(award.recipient_uei)
+    order_recipient_is_firm = bool(norm_firm) and norm_recipient == norm_firm
+    base_match = _base_cmf_match(registry, award)
+    if base_match is not None and order_recipient_is_firm and piid_qualifies:
+        evidence.append(
+            TierEvidenceItem(
+                field="recipient_uei",
+                value=award.recipient_uei,
+                rule="T1",
+                note="Order records the claiming firm as its own recipient (UEI match).",
+            )
+        )
+        evidence.append(
+            TierEvidenceItem(
+                field="parent_piid",
+                value=award.parent_piid,
+                rule="T1",
+                note=f"Base OT is managed by CMF {base_match.record.cmf_id} "
+                f"(matched by {base_match.method}); order recipient is authoritative.",
+            )
+        )
+        evidence.append(
+            TierEvidenceItem(
+                field="piid",
+                value=award.piid,
+                rule="T1",
+                note=f"PIID 9th position {ninth!r} indicates research/prototype-production.",
+            )
+        )
+        note = (
+            "Member-confirmed via order-level recipient: this order records the firm as its own "
+            f"recipient UEI under a CMF-managed base OT ({base_match.record.canonical_name}). "
+            "Authoritative even though the Consortia member field is unpopulated."
+        )
+        if firm_uei_source == FirmUEISource.NAME_RESOLVED:
+            note += (
+                " NOTE: firm UEI was recovered by name resolution (still a UEI-to-UEI match, but a"
+                " weaker firm anchor than a firm-provided UEI)."
+            )
+        return TierAssignment(
+            tier=VerificationTier.MEMBER_CONFIRMED,
+            resolution_method="order_recipient_uei",
+            cmf_name=base_match.record.canonical_name,
+            evidence=evidence,
+            confidence_note=note,
+            **base,
+        )
+
     # Record why T1 was not reached (for the audit trail) before falling through.
     t1_block = _t1_block_reason(
         consortia_yes=consortia_yes,
@@ -266,6 +326,14 @@ def _match(registry: object, award: OTAward):  # type: ignore[no-untyped-def]
     if matcher is None:
         return None
     return matcher(name=award.recipient_name, uei=award.recipient_uei)
+
+
+def _base_cmf_match(registry: object, award: OTAward):  # type: ignore[no-untyped-def]
+    """Match the base/parent OT recipient against the CMF registry, if known."""
+    matcher = getattr(registry, "match", None)
+    if matcher is None or not (award.base_recipient_name or award.base_recipient_uei):
+        return None
+    return matcher(name=award.base_recipient_name, uei=award.base_recipient_uei)
 
 
 def _cmf_name(registry: object, award: OTAward) -> str | None:

@@ -32,7 +32,7 @@ contradiction is not confirmation.**
 
 | Tier | Name | Meaning |
 |------|------|---------|
-| **T1** | Member-confirmed | `Consortia = Yes`, the `Primary Consortia Member UEI` resolves to the claiming firm **by UEI** (never name alone), and the PIID 9th position is `3` (research) or `9` (prototype/production). Attribution is verifiable. |
+| **T1** | Member-confirmed | Attribution is authoritatively verifiable by **either** UEI route, each also requiring PIID 9th position `3` (research) or `9` (prototype/production): **(a)** `Consortia = Yes` and `Primary Consortia Member UEI` == the claiming firm by UEI (never name alone); **or (b)** this order records the firm as its own recipient (order `recipient_uei` == firm UEI) under a **CMF-managed base OT**. |
 | **T2** | Rollup-only | Obligation recorded against a known CMF with no usable member UEI. The firm *may* be a member, but the data cannot attribute the award or amount to it. |
 | **T3** | Structurally invisible | Modification-based consortium OT (single base row; member field unfillable by construction). Member identity not derivable from federal data, period. |
 | **T4** | No federal record | Claimed award not located in USAspending/FPDS at all (audit mode only). |
@@ -55,6 +55,17 @@ T2  recorded vendor is a CMF        → return T2
 positive confirmation that overrides the structural-invisibility heuristic. A
 modification row that nonetheless carries a matching member UEI is genuinely
 confirmable.
+
+**The two T1 routes.** Route (a) keys on the DoD `Primary Consortia Member UEI`
+field. Route (b) — `resolution_method = "order_recipient_uei"` — handles the
+common case where the *order* records the performing member as its own recipient
+while the **CMF holds the base agreement**: there the order's `recipient_uei` is
+the legal recipient of that order, so attribution is authoritative even when the
+`Consortia` member field is blank. The base OT's CMF identity is established by
+matching the parent/base recipient against the CMF registry (UEI-preferred). This
+route recovers awards that would otherwise be under-tiered to T2. It is **not** a
+relaxation of the UEI rule — it is a second authoritative UEI-to-UEI path, and the
+audit trail records which route confirmed each T1.
 
 **The name-collision guard lives in T1:** a member UEI that does not equal the
 claiming firm UEI never reaches T1 — no matter how closely the recorded names

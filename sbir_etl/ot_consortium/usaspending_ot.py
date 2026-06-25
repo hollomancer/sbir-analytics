@@ -179,6 +179,10 @@ def build_ot_award(row: dict[str, Any], *, found_in_federal_data: bool = True) -
         obligation_amount=_to_float(_get(row, _COL_CANDIDATES["obligation_amount"])),
         agency=_to_str(_get(row, _COL_CANDIDATES["agency"])),
         fiscal_year=_to_int(_get(row, _COL_CANDIDATES["fiscal_year"])),
+        base_recipient_uei=_to_str(
+            _get(row, ("base_recipient_uei", "parent_recipient_uei", "parent_uei"))
+        ),
+        base_recipient_name=_to_str(_get(row, ("base_recipient_name", "parent_recipient_name"))),
         found_in_federal_data=found_in_federal_data,
     )
 
