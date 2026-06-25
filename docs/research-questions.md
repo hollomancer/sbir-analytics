@@ -111,7 +111,7 @@ in PR #317.*
 
 ### B3. Inferential (Tier 3)
 
-- What is the elapsed time between Phase II completion and first Phase III contract? — [phase-transition-latency.md](phase-transition-latency.md). GAO flagged Phase III data as limited/unreliable [L14]; SBA ran the Commercialization Benchmark once (2014) for the same reason [L14]. *(deps: ER, ID)*
+- What is the elapsed time between Phase II completion and first Phase III contract? — [phase-transition-latency.md](phase-transition-latency.md). GAO documents the newer §638(qq)(3) performance-standard framework and notes that commercialization progress is measured from multiple SBA data sources [L14]. *(deps: ER, ID)*
 - Phase II → III survival probability by agency, firm size, and vintage. *(deps: ER, ID)*
 - Does Phase II → III latency vary by technology area? *(deps: ER, ID, CET)*
 - Transition effectiveness rate by CET area, agency, and firm size — compare to Link & Scott [L12] and NASEM [L1][L3][L4]. *(deps: ER, ID, CET)*
@@ -266,7 +266,7 @@ Documents and reports the question inventory has produced for specific audiences
 ### Form D fundraising analysis (published)
 
 **Audience:** F-area analysts, investor researchers, policy staff studying program-wide private-capital leverage.
-**Format:** `docs/research/sbir-form-d-fundraising-analysis.md` (canonical, on main) + companion methodology docs: `form-d-leverage-bootstrap-findings.md` (CIs, on main from PR #338); `form-d-pif-cross-link-audit.md` (PIF integrity, in [PR #340](https://github.com/hollomancer/sbir-analytics/pull/340)); `dod-form-d-leverage-deep-dive.md` (Branch decomposition, in [PR #342](https://github.com/hollomancer/sbir-analytics/pull/342)); `dod-form-d-followup-findings.md` (per-firm + time-series + acquirer-type, in [PR #343](https://github.com/hollomancer/sbir-analytics/pull/343)).
+**Format:** `docs/research/sbir-form-d-fundraising-analysis.md` (canonical, on main) + companion methodology docs: `form-d-leverage-bootstrap-findings.md` (CIs, on main from PR #338); `form-d-pif-cross-link-audit.md` (PIF integrity, on main from PR #341); `dod-form-d-leverage-deep-dive.md` (Branch decomposition, on main from PR #342); `dod-form-d-followup-findings.md` (per-firm + time-series + acquirer-type, on main from PR #343); `dod-fpds-substitution-test-findings.md` (Form D vs. FPDS substitution-channel follow-up, on main from PR #350).
 **Pulls from:** F1 (Form D profile), F3 (private-to-SBIR leverage), A3/A4 (DoD-specific decomposition).
 
 ### Commercialization-benchmark methodology (in progress, not yet committed)
@@ -281,7 +281,7 @@ Public studies the inventory draws from or benchmarks against.
 
 **NASEM reviews (congressionally mandated):**
 
-- **[L1]** NASEM (2024). *Review of the SBIR and STTR Programs at the Department of Defense.* Key finding: DoD SBIR firms attract >4× non-SBIR DoD funding per SBIR dollar (2012–2020); SBIR firms are ~1/3 of the defense R&D base. <https://www.nationalacademies.org/projects/PGA-STEP-17-08/publication/29329>
+- **[L1]** NASEM (2026). *Review of the SBIR and STTR Programs at the Department of Defense.* Key finding: DoD SBIR firms attract >4× non-SBIR DoD funding per SBIR dollar (2012–2020); SBIR firms are ~1/3 of the defense R&D base. <https://www.nationalacademies.org/projects/PGA-STEP-17-08/publication/29329>
 - **[L2]** NASEM (2014). *SBIR at the Department of Defense.* Earlier assessment — baseline for longitudinal comparison. <https://nap.nationalacademies.org/read/18821/>
 - **[L3]** NASEM (2022). *Assessment of the SBIR and STTR Programs at the NIH.* <https://nap.nationalacademies.org/read/26376/>
 - **[L4]** NASEM (2022). *Review of the SBIR and STTR Programs at the National Science Foundation.* <https://nap.nationalacademies.org/read/26884/>
@@ -300,7 +300,7 @@ Public studies the inventory draws from or benchmarks against.
 
 **Government & policy reports:**
 
-- **[L14]** GAO-24-107036 (2024). *Small Business Research Programs: Increased Performance Standards Likely to Require Better Data.* Documents Phase III data limitations and the single (2014) Commercialization Benchmark run. <https://www.gao.gov/assets/gao-24-107036.pdf>
+- **[L14]** GAO-24-106398 (2024). *Small Business Research Programs: Increased Performance Standards Likely Affect Few Businesses Receiving Multiple Awards.* Documents the §638(qq)(3) increased performance standards and SBA data sources for transition/commercialization measures. <https://www.gao.gov/assets/d24106398.pdf>
 - **[L15]** CRS R43695. *Small Business Research Programs: SBIR and STTR.* Statutory structure, three-phase model, identifier mechanics. <https://www.congress.gov/crs-product/R43695>
 - **[L16]** CSIS Center for the Industrial Base (formerly DIIG). Defense-industrial-base research, including SBIR coverage. <https://www.csis.org/programs/center-industrial-base>
 - **[L17]** CSIS (various). *SBIR and STTR Reauthorization and the Future of Small Business Innovation.* Policy analysis including foreign-acquisition risk. <https://www.csis.org/analysis/sbir-and-sttr-reauthorization-and-future-small-business-innovation>
@@ -326,7 +326,7 @@ Public studies the inventory draws from or benchmarks against.
 
 ## Maintenance
 
-**Last reviewed:** 2026-06-21 — staleness audit verified all PR refs, branch tags, spec/doc links, and architectural notes against current `main`. Three corrections shipped via PR #335 (F3 supersession by #321, E4 spec landed via #277, A4 M&A pipeline architecture note). A follow-on PR #341 (currently open) proposes updating the published Form D fundraising doc with bootstrap CIs and PIF cross-link audit findings.
+**Last reviewed:** 2026-06-23 — citation/staleness audit verified external literature identifiers, internal doc/spec links, PR refs, branch tags, and architectural notes against current `main`. Corrections include updating L1 to the 2026 NASEM publication year, replacing the incorrect GAO-24-107036/L14 entry with GAO-24-106398, marking PR #341 as merged, and surfacing the PR #350 FPDS substitution follow-up in the Form D output-products list.
 
 When this doc is reviewed next, the audit should cover:
 
