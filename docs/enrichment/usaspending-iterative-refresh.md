@@ -10,22 +10,24 @@ The USAspending iterative enrichment system automatically refreshes enrichment d
 
 ### Components
 
-1. **USAspending API Client** (`sbir_etl/enrichers/usaspending_api_client.py`)
-   - Async HTTP client with rate limiting and retry logic
+1. **USAspending Package** (`sbir_etl/enrichers/usaspending/client.py`, `sbir_etl/enrichers/usaspending/enricher.py`, `sbir_etl/enrichers/usaspending/index.py`)
+   - `USAspendingAPIClient` async HTTP client with rate limiting and retry logic
+   - `enrich_sbir_with_usaspending` batch enrichment helper
+   - `parse_toc_table_dat_map` and `extract_table_sample` helpers for USAspending bulk download indexes
    - Delta detection via payload hashing
    - State management for cursors/ETags
 
-2. **Freshness Store** (`sbir_etl/utils/enrichment_freshness.py`)
-   - Persists enrichment freshness records to Parquet
+2. **Freshness Store** (`sbir_etl/utils/enrichment/freshness.py`)
+   - `FreshnessStore` persists enrichment freshness records to Parquet
    - Tracks `last_attempt_at`, `last_success_at`, `payload_hash`, and `status` per award/source
    - Identifies stale records based on SLA thresholds
 
-3. **Checkpoint Store** (`sbir_etl/utils/enrichment_checkpoints.py`)
-   - Enables resume functionality for interrupted refresh runs
+3. **Checkpoint Store** (`sbir_etl/utils/enrichment/checkpoints.py`)
+   - `CheckpointStore` and `EnrichmentCheckpoint` enable resume functionality for interrupted refresh runs
    - Tracks partition progress and last processed award ID
 
-4. **Metrics Collector** (`sbir_etl/utils/enrichment_metrics.py`)
-   - Emits freshness coverage metrics
+4. **Metrics Collector** (`sbir_etl/utils/enrichment/metrics.py`)
+   - `EnrichmentMetricsCollector` and `EnrichmentFreshnessMetrics` emit freshness coverage metrics
    - Tracks success rates, error rates, and SLA compliance
    - Logs to `reports/metrics/enrichment_freshness.json`
 
