@@ -103,6 +103,29 @@ def test_load_claims_alias_mapping_and_attributability():
     assert gamma.is_attributable is True
 
 
+def test_load_claims_explicit_aggregate_flag_overrides_award_handle():
+    # A row may cite a PIID yet still be an explicitly-flagged aggregate total;
+    # such rows must be non-attributable despite the award handle.
+    claims = load_claims(
+        [
+            {"company": "Flagged Co", "piid": "FA8650-23-9-0002", "aggregate_only": "true"},
+            {
+                "company": "Status Co",
+                "piid": "FA8650-23-9-0003",
+                "attribution_status": "non_attributable",
+            },
+            {"company": "Normal Co", "piid": "FA8650-23-9-0004", "aggregate_only": "false"},
+        ]
+    )
+    flagged, status, normal = claims
+    assert flagged.is_attributable is False
+    assert status.is_attributable is False
+    assert normal.is_attributable is True
+    # The flag columns are consumed, not leaked into metadata.
+    assert "aggregate_only" not in flagged.metadata
+    assert "attribution_status" not in status.metadata
+
+
 def test_load_claims_from_list_of_dicts():
     claims = load_claims([{"company": "Solo", "piid": "X-23-3-0001", "obligation": "1"}])
     assert claims[0].firm_name == "Solo"

@@ -7,9 +7,13 @@ columns are preserved in ``metadata``.
 
 Attributability rule: a claim that cites no PIID, no parent PIID, and no
 firm-internal reference is an aggregated covered-sales total that cannot be tied
-to a specific award. It is flagged ``is_attributable = False`` so the classifier
-skips it and the magnitude report counts its dollars in a separate
-non-attributable bucket — never folded into a tier.
+to a specific award. It is also treated as non-attributable when the source row
+carries an explicit aggregate/non-attributable flag (e.g. ``aggregate_only`` or
+``attribution_status = non_attributable``), even if an award handle is present —
+a firm sheet may cite a PIID yet still mark a line as a rolled-up total. Such
+rows are flagged ``is_attributable = False`` so the classifier skips them and the
+magnitude report counts their dollars in a separate non-attributable bucket —
+never folded into a tier.
 """
 
 from __future__ import annotations
@@ -45,11 +49,54 @@ _COLUMN_ALIASES: dict[str, tuple[str, ...]] = {
 }
 
 
+# Source columns that explicitly mark a row as an aggregate / non-attributable
+# total, independent of whether an award handle is present.
+_AGGREGATE_FLAG_COLUMNS: tuple[str, ...] = (
+    "non_attributable",
+    "is_non_attributable",
+    "aggregate_only",
+    "is_aggregate_only",
+)
+_AGGREGATE_STATUS_COLUMN = "attribution_status"
+_AGGREGATE_STATUS_VALUES = {"aggregate_only", "non_attributable", "non-attributable"}
+
+
 def _first_present(row: dict[str, Any], aliases: tuple[str, ...]) -> Any:
     for alias in aliases:
         if alias in row and not _is_blank(row[alias]):
             return row[alias]
     return None
+
+
+def _truthy_flag(value: Any) -> bool:
+    if _is_blank(value):
+        return False
+    if isinstance(value, str):
+        return value.strip().lower() in {
+            "1",
+            "true",
+            "t",
+            "yes",
+            "y",
+            "aggregate_only",
+            "non_attributable",
+        }
+    return bool(value)
+
+
+def _is_explicit_aggregate(row: dict[str, Any]) -> bool:
+    """Honor an explicit aggregate/non-attributable flag in the source row.
+
+    Independent of award handles: a row may carry a PIID yet still be marked as a
+    rolled-up covered-sales total, in which case it must not be tiered.
+    """
+    for col in _AGGREGATE_FLAG_COLUMNS:
+        if col in row and _truthy_flag(row[col]):
+            return True
+    status = row.get(_AGGREGATE_STATUS_COLUMN)
+    if isinstance(status, str) and status.strip().lower() in _AGGREGATE_STATUS_VALUES:
+        return True
+    return False
 
 
 def _is_blank(value: Any) -> bool:
@@ -111,6 +158,8 @@ def load_claims(source: Any) -> list[CoveredSalesClaim]:
     rows = _coerce_rows(source)
     claims: list[CoveredSalesClaim] = []
     known_aliases = {a for aliases in _COLUMN_ALIASES.values() for a in aliases}
+    known_aliases.update(_AGGREGATE_FLAG_COLUMNS)
+    known_aliases.add(_AGGREGATE_STATUS_COLUMN)
 
     for idx, row in enumerate(rows):
         vals: dict[str, Any] = {
@@ -122,8 +171,9 @@ def load_claims(source: Any) -> list[CoveredSalesClaim]:
         parent = _to_str(vals["claimed_parent_piid"])
         internal = _to_str(vals["firm_internal_ref"])
 
-        # Aggregated total with no award handle → not attributable to one award.
-        is_attributable = bool(piid or parent or internal)
+        # Not attributable when there is no award handle, or when the row is
+        # explicitly flagged as an aggregate/non-attributable total.
+        is_attributable = bool(piid or parent or internal) and not _is_explicit_aggregate(row)
 
         extras = {k: v for k, v in row.items() if k not in known_aliases and not _is_blank(v)}
 
