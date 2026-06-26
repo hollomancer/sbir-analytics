@@ -79,3 +79,22 @@ def test_pathway_query_execution_structure():
     assert hasattr(result, "records_count")
     assert hasattr(result, "records")
     assert hasattr(result, "metadata")
+
+
+def test_pathway_queries_target_financial_transaction_not_award():
+    """All award-anchored pathway queries match :FinancialTransaction, never :Award."""
+    queries, session = _build_mock_queries()
+    session.run.return_value = []
+
+    queries.award_to_transition_to_contract()
+    queries.award_to_patent_to_transition_to_contract()
+    queries.award_to_cet_to_transition()
+    queries.transition_rates_by_cet_area()
+    queries.patent_backed_transition_rates_by_cet_area()
+
+    executed = [call.args[0] for call in session.run.call_args_list]
+    assert executed, "expected pathway queries to issue Cypher"
+    for query in executed:
+        assert ":Award" not in query
+        if "FinancialTransaction" in query:
+            assert "transaction_type: 'AWARD'" in query

@@ -535,6 +535,20 @@ class TestGeneratedFromRelationships:
 
         assert result.relationships_created["GENERATED_FROM"] == 1
 
+        # GENERATED_FROM must target the unified FinancialTransaction node (matched on
+        # award_id), never a legacy :Award node.
+        _, kwargs = mock_client.batch_create_relationships.call_args
+        rels = kwargs["relationships"]
+        assert len(rels) == 1
+        tuple_rel = rels[0]
+        # (source_label, source_key, source_value, target_label, target_key, ...)
+        assert tuple_rel[0] == "Patent"
+        assert tuple_rel[3] == "FinancialTransaction"
+        assert tuple_rel[4] == "award_id"
+        assert tuple_rel[6] == "GENERATED_FROM"
+        assert "Award" not in result.nodes_created
+        assert "Award" not in result.nodes_updated
+
 
 class TestOwnsRelationships:
     """Test OWNS relationship creation."""

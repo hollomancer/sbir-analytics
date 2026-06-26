@@ -84,7 +84,7 @@ def test_create_award_cet_relationships_builds_primary_and_supporting(neo4j_avai
         r for r in relationships if r[5] == "artificial_intelligence"
     )  # target_value is index 5
     assert primary[0:7] == (
-        "Award",
+        "FinancialTransaction",
         "award_id",
         "AWD-001",
         "CETArea",

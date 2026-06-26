@@ -103,8 +103,9 @@ class TestCETLoaderConstraints:
         loader = CETLoader(mock_client)
         loader.create_constraints()
 
-        # Should run 3 constraint statements (CETArea, Award, Company)
-        assert mock_session.run.call_count == 3
+        # Should run 2 constraint statements (CETArea, Company);
+        # the legacy Award constraint was removed in the FinancialTransaction unification.
+        assert mock_session.run.call_count == 2
 
     def test_create_constraints_handles_existing(self):
         """Test create_constraints handles already existing constraints."""
@@ -123,7 +124,7 @@ class TestCETLoaderConstraints:
         loader.create_constraints()
 
         # Should have attempted all constraints
-        assert mock_session.run.call_count == 3
+        assert mock_session.run.call_count == 2
 
     def test_create_constraints_cetarea_uniqueness(self):
         """Test CETArea constraint is for cet_id uniqueness."""
@@ -144,7 +145,7 @@ class TestCETLoaderConstraints:
         assert "UNIQUE" in constraint_query
 
     def test_create_constraints_includes_entity_constraints(self):
-        """Test constraints include Award and Company."""
+        """Test constraints include CETArea and Company (no legacy Award)."""
         mock_session = Neo4jMocks.session()
         mock_client = _create_mock_client_with_session(mock_session)
         mock_session = Neo4jMocks.session()
@@ -156,8 +157,10 @@ class TestCETLoaderConstraints:
         # Collect all queries
         all_queries = " ".join([call[0][0] for call in mock_session.run.call_args_list])
 
-        assert "Award" in all_queries
+        assert "CETArea" in all_queries
         assert "Company" in all_queries
+        # The legacy :Award constraint must no longer be created.
+        assert ":Award" not in all_queries
 
 
 class TestCETLoaderIndexes:
@@ -270,7 +273,7 @@ class TestCETLoaderEdgeCases:
         loader.create_constraints()
 
         # Should execute statements each time (idempotent with IF NOT EXISTS)
-        assert mock_session.run.call_count == 6  # 3 constraints × 2 calls
+        assert mock_session.run.call_count == 4  # 2 constraints × 2 calls
 
     def test_multiple_index_creation_calls(self):
         """Test calling create_indexes multiple times."""
@@ -378,8 +381,8 @@ class TestCETLoaderConstraintQueries:
         assert "cet_id" in query
         assert "UNIQUE" in query
 
-    def test_award_constraint_included(self):
-        """Test Award constraint is included."""
+    def test_legacy_award_constraint_not_created(self):
+        """Test the legacy :Award constraint is no longer created."""
         mock_session = Neo4jMocks.session()
         mock_client = _create_mock_client_with_session(mock_session)
         mock_session = Neo4jMocks.session()
@@ -388,12 +391,9 @@ class TestCETLoaderConstraintQueries:
         loader = CETLoader(mock_client)
         loader.create_constraints()
 
-        # One of the constraints should be for Award
+        # No constraint statement should target the legacy :Award label.
         all_queries = [call[0][0] for call in mock_session.run.call_args_list]
-        award_queries = [q for q in all_queries if "Award" in q]
-
-        assert len(award_queries) > 0
-        assert "award_id" in award_queries[0]
+        assert not any(":Award" in q for q in all_queries)
 
     def test_company_constraint_included(self):
         """Test Company constraint is included."""

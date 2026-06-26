@@ -317,7 +317,8 @@ def transition_relationships_check(
         with driver.session(database=DEFAULT_NEO4J_DATABASE) as session:
             # Count relationships
             tt_count = session.run(
-                "MATCH (a:Award)-[r:TRANSITIONED_TO]->(t:Transition) RETURN count(r) as n"
+                "MATCH (a:FinancialTransaction {transaction_type: 'AWARD'})"
+                "-[r:TRANSITIONED_TO]->(t:Transition) RETURN count(r) as n"
             ).single()["n"]
 
             ri_count = session.run(

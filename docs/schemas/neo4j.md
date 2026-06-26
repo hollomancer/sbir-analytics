@@ -39,13 +39,17 @@ and links to the per-node reference docs.
 > researchers and patent individuals. Several sbir-graph package loaders still write
 > **legacy** labels and actively link to them:
 >
-> - `:Award` — `cet.py` (`APPLICABLE_TO`) and `patents.py` (`GENERATED_FROM`)
 > - `:Company` — `categorization.py`, `cet.py`, `sec_edgar.py`
 > - `:Contract` — `transition/loading.py`
 > - `:PatentEntity` — `patents.py` (individual assignors/assignees; `ASSIGNED_FROM`/`ASSIGNED_TO`)
 >
 > Treat the legacy labels as **active until those loaders migrate** to the unified
 > model; the relationship table below lists the edges that target them.
+>
+> `:Award` has been unified onto `:FinancialTransaction` (migration `006`): CET
+> enrichment, `APPLICABLE_TO`, and `GENERATED_FROM` now attach to the
+> `FinancialTransaction` with `transaction_type = "AWARD"`, matched on its
+> `award_id` property. No loader writes a separate `:Award` node any more.
 
 ## Relationship Types
 
@@ -63,18 +67,18 @@ and links to the per-node reference docs.
 | `ENABLED_BY` | `Transition` → `Patent` | `transitions.py` |
 | `INVOLVES_TECHNOLOGY` | `Transition` → `CETArea` | `transitions.py` |
 | `ACHIEVED` | `Organization` (COMPANY) → `TransitionProfile` | `profiles.py` |
-| `APPLICABLE_TO` | `Award` → `CETArea` (CET classification; legacy node target) | `cet.py` |
+| `APPLICABLE_TO` | `FinancialTransaction` (AWARD) → `CETArea` (CET classification) | `cet.py` |
 | `SPECIALIZES_IN` | `Organization` (COMPANY) → `CETArea` | `cet.py` |
 | `OWNS` | `Organization` (COMPANY) → `Patent` | `patents.py` |
 | `ASSIGNED_VIA` | `Patent` → `PatentAssignment` | `patents.py` |
 | `ASSIGNED_TO` | `PatentAssignment` → `Organization` / `Individual` | `patents.py` |
 | `ASSIGNED_FROM` | `PatentAssignment` → `Organization` / `Individual` | `patents.py` |
 | `CHAIN_OF` | `PatentAssignment` → `PatentAssignment` | `patents.py` |
-| `GENERATED_FROM` | `Patent` → `Award` (SBIR-funded patents) | `patents.py` |
+| `GENERATED_FROM` | `Patent` → `FinancialTransaction` (AWARD; SBIR-funded patents) | `patents.py` |
 
-> `GENERATED_FROM` targets an `award_id` key; in the unified model an SBIR award is a
-> `FinancialTransaction` with `transaction_type = "AWARD"` (key `transaction_id =
-> "txn_award_<award_id>"`).
+> `GENERATED_FROM` is resolved by matching the `FinancialTransaction` on its
+> `award_id` property; an SBIR award is a `FinancialTransaction` with
+> `transaction_type = "AWARD"` (key `transaction_id = "txn_award_<award_id>"`).
 
 ## Transition, TransitionProfile, and CETArea nodes
 
@@ -130,7 +134,7 @@ Source: `cet.py`. Key: `cet_id` (UNIQUE). Critical & Emerging Technology taxonom
 
 Indexes: `cet_id` (constraint), `name`, `taxonomy_version`.
 CET classifications are also written as enrichment properties on `Organization` (companies)
-and `Award` nodes, and as `SPECIALIZES_IN` / `APPLICABLE_TO` relationships.
+and `FinancialTransaction` (AWARD) nodes, and as `SPECIALIZES_IN` / `APPLICABLE_TO` relationships.
 
 ## Per-node reference docs
 

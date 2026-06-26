@@ -66,12 +66,12 @@ class TransitionPathwayQueries:
         award_filter = "" if not award_id else f"WHERE a.award_id = '{award_id}'"
 
         query = f"""
-        MATCH (a:Award) {award_filter}
+        MATCH (a:FinancialTransaction {{transaction_type: 'AWARD'}}) {award_filter}
         MATCH (a)-[r:TRANSITIONED_TO]->(trans:Transition)-[r2:RESULTED_IN]->(c:Contract)
         WHERE r.score >= {min_score} {confidence_filter}
         RETURN {{
             award_id: a.award_id,
-            award_name: a.award_title,
+            award_name: a.title,
             transition_id: trans.transition_id,
             transition_score: r.score,
             transition_confidence: r.confidence,
@@ -115,14 +115,14 @@ class TransitionPathwayQueries:
         award_filter = "" if not award_id else f"WHERE a.award_id = '{award_id}'"
 
         query = f"""
-        MATCH (a:Award) {award_filter}
+        MATCH (a:FinancialTransaction {{transaction_type: 'AWARD'}}) {award_filter}
         MATCH (p:Patent)-[:GENERATED_FROM]->(a)
         MATCH (trans:Transition)-[r:ENABLED_BY]->(p)
         WHERE r.contribution_score >= {min_patent_contribution}
         MATCH (trans)-[r2:RESULTED_IN]->(c:Contract)
         RETURN {{
             award_id: a.award_id,
-            award_name: a.award_title,
+            award_name: a.title,
             patent_id: p.patent_id,
             patent_title: p.title,
             patent_contribution: r.contribution_score,
@@ -167,13 +167,13 @@ class TransitionPathwayQueries:
         cet_filter = "" if not cet_area else f"WHERE cet.cet_id = '{cet_area}'"
 
         query = f"""
-        MATCH (a:Award)
+        MATCH (a:FinancialTransaction {{transaction_type: 'AWARD'}})
         MATCH (trans:Transition)-[r1:TRANSITIONED_TO]-(a)
         MATCH (trans)-[r2:INVOLVES_TECHNOLOGY]->(cet:CETArea) {cet_filter}
         WHERE trans.likelihood_score >= {min_score}
         RETURN {{
             award_id: a.award_id,
-            award_title: a.award_title,
+            award_title: a.title,
             transition_id: trans.transition_id,
             transition_score: trans.likelihood_score,
             cet_area: cet.cet_id,
@@ -264,7 +264,7 @@ class TransitionPathwayQueries:
              COUNT(DISTINCT trans) as transition_count,
              AVG(trans.likelihood_score) as avg_score,
              COUNT(CASE WHEN trans.confidence = 'high' THEN 1 END) as high_conf_count
-        MATCH (cet)<-[:APPLICABLE_TO]-(a:Award)
+        MATCH (cet)<-[:APPLICABLE_TO]-(a:FinancialTransaction {{transaction_type: 'AWARD'}})
         WITH cet,
              transition_count,
              avg_score,
@@ -309,7 +309,7 @@ class TransitionPathwayQueries:
         WITH cet,
              COUNT(DISTINCT trans) as patent_backed_transitions,
              AVG(trans.likelihood_score) as avg_score
-        MATCH (cet)<-[:APPLICABLE_TO]-(a:Award)
+        MATCH (cet)<-[:APPLICABLE_TO]-(a:FinancialTransaction {{transaction_type: 'AWARD'}})
         WITH cet,
              patent_backed_transitions,
              avg_score,
