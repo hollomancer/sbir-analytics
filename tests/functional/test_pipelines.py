@@ -73,12 +73,12 @@ class TestModernBertPipeline:
     def test_modernbert_run_produces_outputs(self, sentence_transformers_available):
         """Test that ModernBert pipeline produces expected outputs."""
         from dagster import materialize
-        from sbir_analytics.assets.modernbert.modernbert_assets import modernbert_embeddings
+        from sbir_analytics.assets.modernbert.embeddings import modernbert_embeddings_awards
 
-        result = materialize([modernbert_embeddings])
+        result = materialize([modernbert_embeddings_awards])
 
         assert result.success
-        assert len(result.asset_materializations_for_node("modernbert_embeddings")) > 0
+        assert len(result.asset_materializations_for_node("modernbert_embeddings_awards")) > 0
 
 
 @pytest.mark.parametrize(
@@ -113,7 +113,7 @@ class TestModernBertPipeline:
             },
         ),
         (
-            "modernbert_embeddings",
+            "modernbert_award_patent_similarity",
             ["award_id", "patent_id", "similarity_score"],
             {
                 "similarity_score": lambda df: (
@@ -171,7 +171,9 @@ class TestPipelineIntegration:
             "data/processed/transitions.parquet",
             "data/processed/cet_classifications.parquet",
             "data/processed/fiscal_returns.parquet",
-            "data/processed/modernbert_embeddings.parquet",
+            "data/processed/modernbert_embeddings_awards.parquet",
+            "data/processed/modernbert_embeddings_patents.parquet",
+            "data/processed/modernbert_award_patent_similarity.parquet",
         ]
 
         # Check that outputs are distinct
