@@ -20,7 +20,9 @@ class OTTransitionClaimClassification:
     matched_signals: tuple[str, ...]
 
 
-def classify_external_ot_transition_claim(claim_text: str | None) -> OTTransitionClaimClassification:
+def classify_external_ot_transition_claim(
+    claim_text: str | None,
+) -> OTTransitionClaimClassification:
     """Classify analyst/vendor/source assertions into generic T1-T4 claim tiers.
 
     T1 is strongest (explicit OT + Phase III + transition/follow-on language).

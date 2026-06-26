@@ -9,9 +9,7 @@ import pytest
 pytestmark = pytest.mark.fast
 
 # The migration module name begins with a digit, so import it dynamically.
-_module = importlib.import_module(
-    "migrations.versions.006_unify_award_into_financial_transaction"
-)
+_module = importlib.import_module("migrations.versions.006_unify_award_into_financial_transaction")
 UnifyAwardIntoFinancialTransaction = _module.UnifyAwardIntoFinancialTransaction
 
 

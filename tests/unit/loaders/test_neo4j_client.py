@@ -616,8 +616,26 @@ class TestNeo4jClientBatchRelationships:
 
         client = Neo4jClient(neo4j_config)
         relationships = [
-            ("Company", "uei", "ABC123", "FinancialTransaction", "award_id", "AWD001", "HAS_AWARD", None),
-            ("Company", "uei", "XYZ789", "FinancialTransaction", "award_id", "AWD002", "HAS_AWARD", None),
+            (
+                "Company",
+                "uei",
+                "ABC123",
+                "FinancialTransaction",
+                "award_id",
+                "AWD001",
+                "HAS_AWARD",
+                None,
+            ),
+            (
+                "Company",
+                "uei",
+                "XYZ789",
+                "FinancialTransaction",
+                "award_id",
+                "AWD002",
+                "HAS_AWARD",
+                None,
+            ),
         ]
 
         metrics = client.batch_create_relationships(relationships)
@@ -645,9 +663,36 @@ class TestNeo4jClientBatchRelationships:
 
         client = Neo4jClient(neo4j_config)
         relationships = [
-            ("Company", "uei", "ABC123", "FinancialTransaction", "award_id", "AWD001", "HAS_AWARD", None),
-            ("Company", "uei", "NOTFOUND", "FinancialTransaction", "award_id", "AWD002", "HAS_AWARD", None),
-            ("Company", "uei", "XYZ789", "FinancialTransaction", "award_id", "AWD003", "HAS_AWARD", None),
+            (
+                "Company",
+                "uei",
+                "ABC123",
+                "FinancialTransaction",
+                "award_id",
+                "AWD001",
+                "HAS_AWARD",
+                None,
+            ),
+            (
+                "Company",
+                "uei",
+                "NOTFOUND",
+                "FinancialTransaction",
+                "award_id",
+                "AWD002",
+                "HAS_AWARD",
+                None,
+            ),
+            (
+                "Company",
+                "uei",
+                "XYZ789",
+                "FinancialTransaction",
+                "award_id",
+                "AWD003",
+                "HAS_AWARD",
+                None,
+            ),
         ]
 
         metrics = client.batch_create_relationships(relationships)
