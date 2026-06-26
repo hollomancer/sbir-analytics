@@ -150,7 +150,7 @@ The default dictionary includes 40+ common abbreviations:
 | engineering | eng | Function |
 | development | dev | Function |
 
-See `sbir_etl/utils/enhanced_matching.py:ENHANCED_ABBREVIATIONS` for the complete list.
+See `sbir_etl/enrichers/matching.py:ENHANCED_ABBREVIATIONS` for the complete list.
 
 ### Use Cases
 
@@ -240,7 +240,7 @@ enrichment:
 ### Code Example
 
 ```python
-from sbir_etl.utils.enhanced_matching import ResearcherMatcher
+from sbir_etl.enrichers.matching import ResearcherMatcher
 
 matcher_config = {
     "enable_orcid_matching": True,
@@ -303,7 +303,7 @@ matched, confidence, method = matcher.match_researcher(
 Run enhanced matching tests:
 
 ```bash
-pytest tests/unit/utils/test_enhanced_matching.py -v
+pytest tests/unit/enrichers/test_matching.py -v
 pytest tests/unit/enrichers/test_company_fuzzy_matcher.py -v
 ```
 
@@ -385,4 +385,4 @@ For questions or issues:
 
 - Open an issue on GitHub
 - See `examples/enhanced_matching_demo.py` for usage examples
-- Review unit tests in `tests/unit/utils/test_enhanced_matching.py`
+- Review unit tests in `tests/unit/enrichers/test_matching.py`

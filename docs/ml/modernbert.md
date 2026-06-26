@@ -128,13 +128,13 @@ export HF_TOKEN="your_huggingface_token"
 
 ```bash
 # Materialize all embedding assets
-dagster asset materialize -m sbir_etl.definitions --select "modernbert*"
+dagster asset materialize -m sbir_analytics.definitions --select "modernbert*"
 
 # Materialize specific asset
-dagster asset materialize -m sbir_etl.definitions --select modernbert_embeddings_awards
+dagster asset materialize -m sbir_analytics.definitions --select modernbert_embeddings_awards
 
 # Run the complete embedding job
-dagster job execute -m sbir_etl.definitions -j modernbert_job
+dagster job execute -m sbir_analytics.definitions -j modernbert_job
 ```
 
 ### Programmatic Usage

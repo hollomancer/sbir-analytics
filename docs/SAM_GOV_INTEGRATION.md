@@ -150,7 +150,7 @@ entity = extractor.get_entity_by_cage(df, "1ABC5")
 
 ```python
 from dagster import asset
-from sbir_etl.assets.sam_gov_ingestion import raw_sam_gov_entities
+from sbir_analytics.assets.sam_gov_ingestion import raw_sam_gov_entities
 
 # The asset automatically handles:
 # 1. S3-first path resolution

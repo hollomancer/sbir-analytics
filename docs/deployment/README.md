@@ -97,7 +97,7 @@ make neo4j-up
 uv run dagster dev
 
 # Run specific job
-uv run dagster job execute -m sbir_etl.definitions -j sbir_weekly_refresh_job
+uv run dagster job execute -m sbir_analytics.definitions -j sbir_weekly_refresh_job
 ```
 
 See [Docker Guide](docker.md) for full local setup.

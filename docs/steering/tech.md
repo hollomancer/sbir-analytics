@@ -13,7 +13,7 @@
 - **Pydantic 2.8+**: Type-safe configuration and data validation
 - **DuckDB 1.0+**: High-performance analytical database for CSV/PostgreSQL processing
 - **Neo4j 5.x**: Graph database for storing relationships and entities
-- **Pandas 2.2+**: Data manipulation and analysis
+- **Pandas 3.0+**: Data manipulation and analysis
 - **RapidFuzz 3.0+**: Fast fuzzy string matching for entity resolution
 
 ### Development Tools

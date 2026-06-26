@@ -199,18 +199,9 @@ patent_score = (has_patent × 0.05 +
 - Same CET area: +0.05 bonus × 0.10 weight = **+0.005**
 - Different CET area: 0.0
 
-**CET Areas** (10 critical emerging technologies):
-
-- AI & Machine Learning
-- Advanced Computing
-- Biotechnology & Advanced Biology
-- Advanced Manufacturing
-- Quantum Computing
-- Biodefense
-- Microelectronics
-- Hypersonics
-- Space Systems
-- Climate Resilience
+**CET Areas**: 21 critical & emerging technologies (NSTC-2025Q1 framework). The
+authoritative list and per-area keywords live in `config/cet/taxonomy.yaml`; see
+[CET integration](../ml/cet-integration.md) for the full taxonomy.
 
 **Award CET**: From SBIR classification (explicit field)
 **Contract CET**: Inferred from contract description via keyword matching

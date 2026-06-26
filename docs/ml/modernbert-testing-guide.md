@@ -92,7 +92,7 @@ pytest tests/integration/test_modernbert_client.py -v
 
 ```python
 import os
-from sbir_etl.ml.modernbert_client import ModernBertClient
+from sbir_ml.ml.modernbert_client import ModernBertClient
 
 # Set token (or use environment variable)
 os.environ["HF_TOKEN"] = "your_token_here"
@@ -117,7 +117,7 @@ print(f"Mode: {result.inference_mode}")  # "api"
 **Local Mode (Optional):**
 
 ```python
-from sbir_etl.ml.modernbert_client import ModernBertClient
+from sbir_ml.ml.modernbert_client import ModernBertClient
 
 # Initialize client in local mode
 client = ModernBertClient(use_local=True)
@@ -238,7 +238,7 @@ df = pd.read_parquet("data/processed/modernbert_embeddings_awards_sample.parquet
 embeddings = np.array([np.array(e) for e in df['embedding']])
 
 # Use with ModernBert client for similarity
-from sbir_etl.ml.modernbert_client import ModernBertClient
+from sbir_ml.ml.modernbert_client import ModernBertClient
 client = ModernBertClient()
 similarities = client.compute_similarity(embeddings[:10], embeddings[10:20])
 ```
@@ -810,7 +810,7 @@ uv run dagster dev
 uv run dagster asset materialize validated_sbir_awards transformed_patents
 
 # Then run ModernBert job
-uv run dagster asset materialize -m src.assets.jobs.modernbert_job modernbert_job
+uv run dagster asset materialize -m sbir_analytics.assets.jobs.modernbert_job modernbert_job
 ```
 
 ## 📊 Output Files
@@ -969,7 +969,7 @@ uv run dagster dev
 
 ```bash
 # Materialize all ModernBert assets
-uv run dagster asset materialize -m src.assets.jobs.modernbert_job modernbert_job
+uv run dagster asset materialize -m sbir_analytics.assets.jobs.modernbert_job modernbert_job
 
 # Or materialize individual assets
 uv run dagster asset materialize \

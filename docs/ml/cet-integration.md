@@ -538,7 +538,7 @@ class CustomCETClassifier:
         return evidence_snippets
 
 # Update classifications.py to use it
-from sbir_etl.ml.models.custom_classifier import CustomCETClassifier
+from sbir_ml.ml.models.custom_classifier import CustomCETClassifier
 classifier = CustomCETClassifier()  # Instead of ApplicabilityModel
 ```
 
@@ -634,7 +634,7 @@ with client.session() as session:
 PYTHON
 
 # Run CET pipeline
-uv run dagster job execute -m sbir_etl.definitions -j cet_full_pipeline_job
+uv run dagster job execute -m sbir_analytics.definitions -j cet_full_pipeline_job
 
 # View Dagster UI
 uv run dagster dev

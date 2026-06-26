@@ -197,7 +197,7 @@ updated_at: DateTime (nullable)
 
 ### Outgoing Relationships
 
-- `AWARDED_TO`: (FinancialTransaction) → (Organization)
+- `RECIPIENT_OF`: (FinancialTransaction) → (Organization)
 - `FUNDED_BY`: (FinancialTransaction) → (Organization {agency})
 - `CONDUCTED_AT`: (FinancialTransaction) → (Organization {research institution})
 - `TRANSITIONED_TO`: (FinancialTransaction {AWARD}) → (Transition)
@@ -248,7 +248,7 @@ CREATE (ft:FinancialTransaction {
 ### Find All Awards for a Company
 
 ```cypher
-MATCH (ft:FinancialTransaction {transaction_type: "AWARD"})-[:AWARDED_TO]->(o:Organization {organization_id: $org_id})
+MATCH (ft:FinancialTransaction {transaction_type: "AWARD"})-[:RECIPIENT_OF]->(o:Organization {organization_id: $org_id})
 RETURN ft
 ORDER BY ft.transaction_date DESC
 ```
@@ -256,7 +256,7 @@ ORDER BY ft.transaction_date DESC
 ### Find All Contracts for a Company
 
 ```cypher
-MATCH (ft:FinancialTransaction {transaction_type: "CONTRACT"})-[:AWARDED_TO]->(o:Organization {organization_id: $org_id})
+MATCH (ft:FinancialTransaction {transaction_type: "CONTRACT"})-[:RECIPIENT_OF]->(o:Organization {organization_id: $org_id})
 RETURN ft
 ORDER BY ft.transaction_date DESC
 ```
@@ -264,7 +264,7 @@ ORDER BY ft.transaction_date DESC
 ### Find All Financial Transactions (Awards + Contracts)
 
 ```cypher
-MATCH (ft:FinancialTransaction)-[:AWARDED_TO]->(o:Organization {organization_id: $org_id})
+MATCH (ft:FinancialTransaction)-[:RECIPIENT_OF]->(o:Organization {organization_id: $org_id})
 RETURN ft.transaction_type, ft.amount, ft.transaction_date
 ORDER BY ft.transaction_date DESC
 ```

@@ -437,18 +437,9 @@ has_patent_bonus: 0.10  # Higher bonus for patent presence
 | Different CET Area | 0.0 | 0.0 | Misaligned technology areas |
 | Unknown CET | 0.0 | 0.0 | Missing CET information (no contribution) |
 
-**CET Areas** (10 critical emerging technologies):
-
-1. **AI & Machine Learning**: Neural networks, NLP, computer vision, reinforcement learning
-2. **Advanced Computing**: High-performance computing, quantum computing, neuromorphic systems
-3. **Biotechnology & Advanced Biology**: Gene editing, synthetic biology, biomanufacturing
-4. **Advanced Manufacturing**: 3D printing, robotics, digital twins, precision manufacturing
-5. **Quantum Computing**: Quantum algorithms, quantum hardware, quantum error correction
-6. **Biodefense**: Biosecurity, pandemic preparedness, infectious disease mitigation
-7. **Microelectronics**: Semiconductor manufacturing, photonics, advanced materials
-8. **Hypersonics**: Hypersonic vehicle design, propulsion, thermal management
-9. **Space Systems**: Satellite systems, autonomous spacecraft, space infrastructure
-10. **Climate Resilience**: Climate adaptation, decarbonization, environmental monitoring
+**CET Areas**: 21 critical & emerging technologies (NSTC-2025Q1 framework). The
+authoritative list and per-area keywords live in `config/cet/taxonomy.yaml`; see
+[CET integration](../ml/cet-integration.md) for the full taxonomy.
 
 ### Example Scenarios
 

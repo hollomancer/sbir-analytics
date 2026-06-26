@@ -81,36 +81,27 @@ enrichment_refresh:
      - Records API calls for metrics
 5. Emits freshness metrics
 
-### Manual Refresh (CLI)
+### Manual Refresh (Dagster job)
 
-Use the CLI command for ad-hoc refreshes:
+Refresh is orchestrated by the `usaspending_iterative_enrichment_job` Dagster job
+(assets `usaspending_freshness_ledger` → `stale_usaspending_awards` →
+`usaspending_refresh_batch`), normally triggered by `usaspending_refresh_sensor`.
+For an ad-hoc run:
 
 ```bash
+## Run the full iterative-refresh job
+dagster job execute -m sbir_analytics.definitions -j usaspending_iterative_enrichment_job
 
-## Refresh specific awards
+## Or materialize the assets individually (recomputes the stale set, then refreshes a batch)
+dagster asset materialize -m sbir_analytics.definitions \
+  --select usaspending_freshness_ledger+
 
-uv run sbir-cli enrich refresh-usaspending --award-ids "AWARD-001,AWARD-002"
-
-## Refresh all stale awards
-
-uv run sbir-cli enrich refresh-usaspending --stale-only
-
-## Refresh awards from 2023
-
-uv run sbir-cli enrich refresh-usaspending --cohort 2023
-
-## Force refresh (ignores staleness)
-
-uv run sbir-cli enrich refresh-usaspending --cohort 2023 --force
-
-## List stale awards
-
-uv run sbir-cli enrich list-stale --source usaspending
-
-## View freshness statistics
-
-uv run sbir-cli enrich freshness-stats --source usaspending
+## In the Dagster UI, launch the same job and tune batch size / staleness via run config.
+dagster dev -m sbir_analytics.definitions
 ```
+
+Staleness thresholds and batch size are set via config (see `config/base.yaml`), not
+CLI flags; the `stale_usaspending_awards` asset computes the stale set each run.
 
 ### Backfilling Freshness Records
 
@@ -201,10 +192,11 @@ Metrics are emitted to `reports/metrics/enrichment_freshness.json` after each re
 
 ### No Awards Are Being Refreshed
 
-1. **Check freshness ledger**:
+1. **Check the stale set**: materialize `stale_usaspending_awards` (or inspect it in
+   the Dagster UI) to see which awards the job currently considers stale:
 
    ```bash
-   uv run sbir-cli enrich list-stale --source usaspending
+   dagster asset materialize -m sbir_analytics.definitions --select stale_usaspending_awards
    ```
 
 2. **Verify SLA threshold**: Awards must be older than `sla_staleness_days` to be considered stale
