@@ -1,4 +1,5 @@
 import pandas as pd
+import pytest
 
 from sbir_analytics.assets.ot_consortium.reporting import (
     aggregate_assignment_frame,
@@ -44,3 +45,15 @@ def test_external_rows_without_firm_identifier_are_non_attributable():
         "non_attributable_external_count": 1,
         "non_attributable_external_usd": 12.5,
     }
+
+
+def test_tiered_rows_without_tier_column_fail_loudly():
+    frame = pd.DataFrame(
+        [
+            {"recipient_uei": "ABC", "transition_amount_usd": 100.0},
+            {"recipient_uei": "DEF", "transition_amount_usd": 25.0},
+        ]
+    )
+
+    with pytest.raises(ValueError, match="no tier column"):
+        aggregate_assignment_frame(frame)

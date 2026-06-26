@@ -13,7 +13,8 @@ import pandas as pd
 
 try:
     from dagster import MetadataValue, Output, asset
-except Exception:  # pragma: no cover - import-safe unit-test shim
+except ImportError:  # pragma: no cover - import-safe unit-test shim
+
     def asset(*args: Any, **kwargs: Any):
         def _wrap(fn):
             return fn
@@ -24,6 +25,11 @@ except Exception:  # pragma: no cover - import-safe unit-test shim
         def __init__(self, value: Any, metadata: dict[str, Any] | None = None) -> None:
             self.value = value
             self.metadata = metadata or {}
+
+        def __class_getitem__(cls, _item: Any) -> type:
+            # Allow the ``-> Output[pd.DataFrame]`` annotation to evaluate when the
+            # real (subscriptable) dagster Output is unavailable in unit tests.
+            return cls
 
     class MetadataValue:  # type: ignore[no-redef]
         @staticmethod
@@ -102,16 +108,21 @@ def non_attributable_external_mask(frame: pd.DataFrame) -> pd.Series:
 
     if "attribution_status" in frame.columns:
         status = frame["attribution_status"].fillna("").astype(str).str.lower()
-        mask = mask | status.isin({"aggregate_only", "non_attributable", "non-attributable"})
+        mask = mask | status.isin(
+            {"aggregate_only", "non_attributable", "non-attributable"}
+        )
 
-    source_col = _first_present(frame.columns, ("source", "evidence_source", "input_source"))
+    source_col = _first_present(
+        frame.columns, ("source", "evidence_source", "input_source")
+    )
     if source_col is not None:
         source = frame[source_col].fillna("").astype(str).str.lower()
         external = source.str.contains("external|manual|consortium", regex=True)
         firm_cols = [col for col in _FIRM_COLUMNS if col in frame.columns]
         if firm_cols:
-            has_firm = frame[firm_cols].fillna("").astype(str).apply(
-                lambda row: any(value.strip() for value in row), axis=1
+            firm_values = frame[firm_cols].fillna("").astype(str)
+            has_firm = (firm_values.apply(lambda col: col.str.strip() != "")).any(
+                axis=1
             )
             mask = mask | (external & ~has_firm)
 
@@ -145,15 +156,31 @@ def aggregate_assignment_frame(
     frame = assignment_frame.copy()
     if not frame.empty:
         embedded = non_attributable_external_totals(frame)
-        non_attributable_external_count += int(embedded["non_attributable_external_count"])
-        non_attributable_external_usd += float(embedded["non_attributable_external_usd"])
+        non_attributable_external_count += int(
+            embedded["non_attributable_external_count"]
+        )
+        non_attributable_external_usd += float(
+            embedded["non_attributable_external_usd"]
+        )
         frame = frame.loc[~non_attributable_external_mask(frame)].copy()
 
-    tier_col = _first_present(frame.columns, ("tier", "assignment_tier", "evidence_tier"))
+    tier_col = _first_present(
+        frame.columns, ("tier", "assignment_tier", "evidence_tier")
+    )
     usd_col = _first_present(frame.columns, _USD_COLUMNS)
     count_col = _first_present(frame.columns, _COUNT_COLUMNS)
 
-    def summarize(label: str, tier_values: set[str], description: str) -> dict[str, Any]:
+    if tier_col is None and not frame.empty:
+        # Tiered rows exist but none of the expected tier columns are present, so we
+        # cannot bucket them. Fail loudly rather than silently report zero transitions.
+        raise ValueError(
+            "OT consortium assignment frame has rows but no tier column "
+            f"(expected one of: tier, assignment_tier, evidence_tier); got {list(frame.columns)}"
+        )
+
+    def summarize(
+        label: str, tier_values: set[str], description: str
+    ) -> dict[str, Any]:
         if tier_col is None or frame.empty:
             subset = frame.iloc[0:0]
         else:
@@ -167,7 +194,9 @@ def aggregate_assignment_frame(
             subset = frame.loc[normalized.isin(tier_values)]
         if count_col:
             numeric_count = pd.to_numeric(subset[count_col], errors="coerce")
-            count = int(numeric_count.sum()) if numeric_count.notna().any() else len(subset)
+            count = (
+                int(numeric_count.sum()) if numeric_count.notna().any() else len(subset)
+            )
         else:
             count = len(subset)
         usd = (
