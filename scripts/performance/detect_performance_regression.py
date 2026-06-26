@@ -27,7 +27,7 @@ _workspace_root = str(Path(__file__).resolve().parent.parent.parent)
 if _workspace_root not in sys.path:
     sys.path.insert(0, _workspace_root)
 
-from sbir_etl.utils.monitoring.metrics import PerformanceMetrics
+from sbir_etl.utils.monitoring.metrics import MetricComparison, PerformanceMetrics
 from sbir_etl.utils.monitoring.reporting import PerformanceReporter
 
 from scripts.performance.benchmark_base import (
@@ -47,8 +47,8 @@ def generate_regression_summary(
     current_benchmark: dict[str, Any],
     baseline: dict[str, Any] | None,
     reporter: PerformanceReporter,
-) -> dict[str, Any]:
-    """Build a structured regression summary dict."""
+) -> tuple[dict[str, Any], MetricComparison | None]:
+    """Build a structured regression summary dict and (when a baseline exists) the comparison."""
     current_metrics = PerformanceMetrics.from_benchmark(current_benchmark)
     summary: dict[str, Any] = {
         "timestamp": datetime.now().isoformat(),
@@ -64,6 +64,7 @@ def generate_regression_summary(
         "baseline_comparison": None,
     }
 
+    comparison: MetricComparison | None = None
     if baseline:
         baseline_metrics = PerformanceMetrics.from_benchmark(baseline)
         comparison = reporter.compare_metrics(baseline_metrics, current_metrics)
@@ -82,7 +83,7 @@ def generate_regression_summary(
             summary["severity"] = comparison.regression_severity
             summary["issues"] = comparison.regression_messages
 
-    return summary
+    return summary, comparison
 
 
 def output_github_pr_comment(summary: dict[str, Any], output_path: Path) -> None:
@@ -105,13 +106,15 @@ def output_github_pr_comment(summary: dict[str, Any], output_path: Path) -> None
     ]
 
     if baseline:
-        lines.extend([
-            "### Regression Analysis",
-            "",
-            f"- **Time Delta:** {baseline['time_delta_percent']:+.1f}%",
-            f"- **Memory Delta:** {baseline['memory_delta_percent']:+.1f}%",
-            "",
-        ])
+        lines.extend(
+            [
+                "### Regression Analysis",
+                "",
+                f"- **Time Delta:** {baseline['time_delta_percent']:+.1f}%",
+                f"- **Memory Delta:** {baseline['memory_delta_percent']:+.1f}%",
+                "",
+            ]
+        )
         if summary["issues"]:
             lines.append("### Issues Detected")
             lines.append("")
@@ -135,7 +138,9 @@ def main() -> int:
     )
     parser.add_argument("--sample-size", type=int, default=None, help="Records to benchmark")
     parser.add_argument(
-        "--baseline", type=Path, default=Path("reports/benchmarks/baseline.json"),
+        "--baseline",
+        type=Path,
+        default=Path("reports/benchmarks/baseline.json"),
         help="Path to baseline benchmark",
     )
     parser.add_argument("--output-json", type=Path, default=None)
@@ -175,7 +180,7 @@ def main() -> int:
             memory_warning_threshold=args.memory_warning_threshold,
             memory_failure_threshold=args.memory_failure_threshold,
         )
-        summary = generate_regression_summary(current_benchmark, baseline, reporter)
+        summary, comparison = generate_regression_summary(current_benchmark, baseline, reporter)
 
         # 5. Output results
         logger.info("\n5. Saving results...")
@@ -190,9 +195,13 @@ def main() -> int:
             args.output_markdown.write_text(markdown)
             logger.info(f"Markdown report saved to {args.output_markdown}")
 
-        if args.output_html:
+        if args.output_html and comparison is not None:
             args.output_html.parent.mkdir(parents=True, exist_ok=True)
-            reporter.save_html_report(current_benchmark, args.output_html)
+            reporter.save_html_report(comparison, args.output_html)
+        elif args.output_html:
+            logger.info(
+                f"Skipping HTML report at {args.output_html}: no baseline comparison available"
+            )
 
         if args.output_github_comment:
             output_github_pr_comment(summary, args.output_github_comment)

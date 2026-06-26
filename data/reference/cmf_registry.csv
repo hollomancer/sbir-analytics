@@ -1,0 +1,7 @@
+cmf_id,canonical_name,aliases,uei,cage,consortia_managed,agencies,notes,source
+ATI,Advanced Technology International,ATI|Advanced Technology Intl,,,National Armaments Consortium (NAC)|MTEC|Naval Aviation Systems Consortium,DoD|Navy|Army,Largest OT consortium manager; frequent FPDS rollup vendor. UEI left blank pending recipient_lookup verification.,seed
+NSTXL,National Security Technology Accelerator,NSTXL,,,S2MARTS|Information Warfare Research Project (IWRP)|Training & Readiness Accelerator (TReX),DoD|Navy,Manages multiple DoD OT consortia. UEI left blank pending recipient_lookup verification.,seed
+CMG,Consortium Management Group,CMG,,,SOSSEC,DoD,Management arm associated with SOSSEC. UEI left blank pending recipient_lookup verification.,seed
+SOSSEC,SOSSEC Inc,System of Systems Consortium|SOSSEC Inc.,,,System of Systems Consortium (SOSSEC),DoD,Base-agreement OT vehicle with frequent modification-based orders (T3). UEI left blank pending verification.,seed
+NCMS,National Center for Manufacturing Sciences,NCMS,,,Commercial Technologies for Maintenance Activities (CTMA),DoD|DLA,Manufacturing-focused OT consortium. UEI left blank pending recipient_lookup verification.,seed
+MTEC,Medical Technology Enterprise Consortium,MTEC,,,Medical Technology Enterprise Consortium,DoD|USAMRDC,Biomedical OT consortium; commonly ATI-administered. UEI left blank pending verification.,seed

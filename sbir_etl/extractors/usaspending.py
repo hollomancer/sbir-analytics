@@ -381,6 +381,51 @@ class DuckDBUSAspendingExtractor:
                 logger.error(f"Query failed: {e}")
                 raise
 
+    def extract_ot_awards(
+        self,
+        table_name: str = "usaspending_awards",
+        limit: int | None = None,
+        ot_only: bool = True,
+    ) -> tuple[pd.DataFrame, dict[str, Any]]:
+        """Query OT-relevant award fields for consortium verification tiering.
+
+        Surfaces the fields the tiering module needs — OT indicator, PIID (for
+        the 9th-position rule), recipient UEI, the DoD ``Consortia`` flag and
+        ``Primary Consortia Member UEI`` where present, base→order parent
+        linkage, and obligation — and tags each record with whether it looks like
+        an Other Transaction instrument.
+
+        Returns:
+            ``(dataframe, metadata)`` where metadata records the DoD FPDS
+            reporting-lag caveat for downstream provenance.
+        """
+        from ..ot_consortium.usaspending_ot import (
+            FPDS_REPORTING_LAG_DAYS,
+            build_ot_awards,
+            is_ot_record,
+        )
+
+        df = self.query_awards(table_name=table_name, limit=limit)
+        if not df.empty:
+            records: list[dict[str, Any]] = df.to_dict("records")  # type: ignore[assignment]
+            df["is_ot"] = [is_ot_record(r) for r in records]
+            if ot_only:
+                df = df[df["is_ot"]].reset_index(drop=True)
+
+        metadata = {
+            "table_name": table_name,
+            "ot_record_count": int(len(df)),
+            "fpds_reporting_lag_days": FPDS_REPORTING_LAG_DAYS,
+            "fpds_lag_note": (
+                "DoD OT actions post to FPDS/USAspending with an ~90-day lag; recent fiscal years "
+                "undercount and the Consortia / Primary Consortia Member UEI fields are sparser."
+            ),
+        }
+        # ot_awards is the parsed, tier-ready projection; callers may ignore the
+        # raw frame and use these directly.
+        metadata["ot_awards"] = build_ot_awards(df, ot_only=ot_only) if not df.empty else []
+        return df, metadata
+
     def get_table_info(self, table_name: str = "usaspending_awards") -> dict:
         """Get information about the imported table.
 

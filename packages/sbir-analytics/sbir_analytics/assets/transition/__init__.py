@@ -66,6 +66,12 @@ from .loading import (
     transition_relationships_check,
 )
 
+# OT consortium verification tiering
+from .ot_tiering import (
+    ot_consortium_magnitude_report,
+    ot_consortium_verification_tiers,
+)
+
 # Scoring module
 from .scoring import transformed_transition_scores
 
@@ -96,6 +102,9 @@ __all__ = [
     "transformed_transition_evidence",
     # Detections
     "transformed_transition_detections",
+    # OT consortium verification tiering
+    "ot_consortium_verification_tiers",
+    "ot_consortium_magnitude_report",
     # Analytics
     "transformed_transition_analytics",
     # Checks
