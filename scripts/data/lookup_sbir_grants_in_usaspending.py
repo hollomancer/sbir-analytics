@@ -27,7 +27,7 @@ from pathlib import Path
 import httpx
 
 API = "https://api.usaspending.gov/api/v2/search/spending_by_award/"
-HEADERS = {"User-Agent": "sbir-analytics-research/0.1 (chollomon@gmail.com)"}
+HEADERS = {"User-Agent": "SBIR-Analytics/0.1.0"}
 BATCH = 50
 
 # USAspending assistance award type codes: 02 block, 03 formula, 04 project,
@@ -60,7 +60,9 @@ def collect_grants(src: Path, award_year: int, agencies: list[str]) -> list[tupl
             if not raw:
                 continue
             out.append((ag, normalize(ag, raw)))
-    # Dedupe (preserve agency context)
+    # Dedupe by normalized contract ID. Agency context is dropped here; only
+    # the (ag, nid) pair is kept for the first occurrence of each nid, so
+    # downstream consumers should not rely on agency attribution past this step.
     seen: set[str] = set()
     result: list[tuple[str, str]] = []
     for ag, nid in out:

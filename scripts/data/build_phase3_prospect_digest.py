@@ -177,7 +177,7 @@ def main() -> int:
           BOOL_OR("Socially and Economically Disadvantaged"='Y') AS sed,
           SUM(CASE WHEN Phase='Phase I'  THEN 1 ELSE 0 END) AS phase_i_n,
           SUM(CASE WHEN Phase='Phase II' THEN 1 ELSE 0 END) AS phase_ii_n,
-          ROUND(SUM("Award Amount"),0)::BIGINT AS fy_total_usd,
+          ROUND(SUM(CAST(REPLACE(REPLACE(CAST("Award Amount" AS VARCHAR), '$', ''), ',', '') AS DOUBLE)),0)::BIGINT AS fy_total_usd,
           MAX("Proposal Award Date") AS latest_award_date,
           ARG_MAX(Agency, "Proposal Award Date") AS latest_agency,
           ARG_MAX(Branch, "Proposal Award Date") AS latest_branch,

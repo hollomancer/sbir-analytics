@@ -36,7 +36,7 @@ import httpx
 import pandas as pd
 
 API = "https://api.usaspending.gov/api/v2/search/spending_over_time/"
-HEADERS = {"User-Agent": "sbir-analytics-research/0.1 (chollomon@gmail.com)"}
+HEADERS = {"User-Agent": "SBIR-Analytics/0.1.0"}
 
 THRESHOLDS = {
     "standard": {"min_p2": 16, "max_p2": 50, "dollar": 100_000, "patent": 0.15},
@@ -61,8 +61,8 @@ def load_cohort(awards_csv: Path, start_fy: int, end_fy: int) -> pd.DataFrame:
           any_value(Company) AS firm,
           any_value(State) AS state,
           SUM(CASE WHEN Phase='Phase II' AND "Award Year" BETWEEN {start_fy} AND {end_fy} THEN 1 ELSE 0 END) AS p2_count,
-          SUM(CASE WHEN Phase='Phase II' AND "Award Year" BETWEEN {start_fy} AND {end_fy} THEN "Award Amount" ELSE 0 END) AS p2_total_usd,
-          SUM(CASE WHEN Phase='Phase I'  AND "Award Year" BETWEEN {start_fy} AND {end_fy} THEN "Award Amount" ELSE 0 END) AS p1_total_usd
+          SUM(CASE WHEN Phase='Phase II' AND "Award Year" BETWEEN {start_fy} AND {end_fy} THEN CAST(REPLACE(REPLACE(CAST("Award Amount" AS VARCHAR), '$', ''), ',', '') AS DOUBLE) ELSE 0 END) AS p2_total_usd,
+          SUM(CASE WHEN Phase='Phase I'  AND "Award Year" BETWEEN {start_fy} AND {end_fy} THEN CAST(REPLACE(REPLACE(CAST("Award Amount" AS VARCHAR), '$', ''), ',', '') AS DOUBLE) ELSE 0 END) AS p1_total_usd
         FROM s WHERE UEI IS NOT NULL AND TRIM(UEI)<>''
         GROUP BY UEI HAVING p2_count >= 16
         ORDER BY p2_count DESC

@@ -26,7 +26,7 @@ from pathlib import Path
 import httpx
 
 API = "https://api.usaspending.gov/api/v2/search/spending_by_award/"
-HEADERS = {"User-Agent": "sbir-analytics-research/0.1 (chollomon@gmail.com)"}
+HEADERS = {"User-Agent": "SBIR-Analytics/0.1.0"}
 BATCH = 50
 NUMERIC_ID = re.compile(r"^[0-9]+$")
 
