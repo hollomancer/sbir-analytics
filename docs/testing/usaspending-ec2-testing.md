@@ -216,8 +216,8 @@ Test that assets can find and use S3 files:
 ```python
 # Test script: test_usaspending_assets.py
 from dagster import build_op_context
-from sbir_etl.assets.usaspending_database_enrichment import sbir_relevant_usaspending_transactions
-from sbir_etl.assets.usaspending_ingestion import raw_usaspending_recipients
+from sbir_analytics.assets.usaspending_database_enrichment import sbir_relevant_usaspending_transactions
+from sbir_analytics.assets.usaspending_ingestion import raw_usaspending_recipients
 
 # Test recipient ingestion asset
 context = build_op_context()
@@ -347,7 +347,7 @@ Test that assets prioritize S3 and fail appropriately:
 ```python
 # Test script: test_s3_priority.py
 import os
-from sbir_etl.assets.usaspending_database_enrichment import sbir_relevant_usaspending_transactions
+from sbir_analytics.assets.usaspending_database_enrichment import sbir_relevant_usaspending_transactions
 from dagster import build_op_context
 
 # Test 1: S3 bucket configured, file exists
@@ -397,7 +397,7 @@ Test the complete flow:
 aws s3 ls s3://$S3_BUCKET/raw/usaspending/database/ --recursive
 
 # 3. Run Dagster asset that uses it
-dagster asset materialize -m src.assets.usaspending_database_enrichment sbir_relevant_usaspending_transactions
+dagster asset materialize -m sbir_analytics.assets.usaspending_database_enrichment sbir_relevant_usaspending_transactions
 
 # 4. Verify asset succeeded
 # Check Dagster UI or logs

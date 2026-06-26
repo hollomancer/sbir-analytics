@@ -17,7 +17,7 @@ This directory contains guides and documentation for developers working on the S
 
 **Related:**
 
-- [Containerization Guide](../deployment/containerization.md) - Advanced Docker usage
+- [Docker Development Guide](docker.md) - Advanced Docker usage
 - [Testing in Docker](../testing/index.md#2-docker--compose-workflows) - Running tests
 
 ## Code Quality

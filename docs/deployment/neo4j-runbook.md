@@ -41,7 +41,7 @@ Locations referenced in this runbook:
     (safe restore using container volumes or local tools)
     ```
 
-- Makefile neo4j helpers: top-level `Makefile` targets include `neo4j-up`, `neo4j-down`, `neo4j-reset`, `neo4j-backup`, `neo4j-restore`, `neo4j-check`.
+- Makefile neo4j helpers: top-level `Makefile` targets include `neo4j-up`, `neo4j-down`, `neo4j-reset`, `neo4j-check`. Backup/restore are run directly via `scripts/neo4j/backup.sh` and `scripts/neo4j/restore.sh` (no Makefile wrapper).
 
   ```sbir-analytics/Makefile#L140-220
   (neo4j targets and usage)
@@ -198,9 +198,10 @@ Makefile helpers
   - `make neo4j-up` — start the neo4j profile with the override compose
   - `make neo4j-down` — stop and remove compose resources and volumes
   - `make neo4j-reset` — remove named volumes and start with a clean state
-  - `make neo4j-backup` — runs the backup script (set `BACKUP_DIR`/`KEEP_LAST` env vars as needed)
-  - `make neo4j-restore` — wrapper for restore (requires `BACKUP_PATH`)
   - `make neo4j-check` — runs a quick cypher-shell health probe
+- Backup/restore are run directly (no Makefile target):
+  - `BACKUP_DIR=backups/neo4j KEEP_LAST=14 scripts/neo4j/backup.sh` — back up (set `BACKUP_DIR`/`KEEP_LAST` as needed)
+  - `BACKUP_PATH=<path> scripts/neo4j/restore.sh` — restore from a backup archive
 
 Health checks & CI
 
@@ -260,7 +261,7 @@ Where to look in the repo
 - Neo4j config template: `config/neo4j/neo4j.conf`
 - Bootstrap / migrations / backup / restore: `scripts/neo4j/*`
 - Makefile neo4j wrappers: `Makefile` (search `neo4j-` targets)
-- General containerization and runbook: `docs/deployment/containerization.md`
+- General containerization and runbook: `docs/development/docker.md`
 
 If you'd like, I can next:
 

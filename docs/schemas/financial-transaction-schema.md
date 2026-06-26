@@ -197,17 +197,22 @@ updated_at: DateTime (nullable)
 
 ### Outgoing Relationships
 
-- `AWARDED_TO`: (FinancialTransaction) → (Organization)
+- `RECIPIENT_OF`: (FinancialTransaction) → (Organization)
 - `FUNDED_BY`: (FinancialTransaction) → (Organization {agency})
 - `CONDUCTED_AT`: (FinancialTransaction) → (Organization {research institution})
 - `TRANSITIONED_TO`: (FinancialTransaction {AWARD}) → (Transition)
 - `FOLLOWS`: (FinancialTransaction) → (FinancialTransaction) - Phase progressions
-- `GENERATED_FROM`: (Patent) → (FinancialTransaction)
 
 ### Incoming Relationships
 
 - `PARTICIPATED_IN`: (Individual) → (FinancialTransaction)
 - `RESULTED_IN`: (Transition) → (FinancialTransaction {CONTRACT})
+
+> **Note — patents link to the legacy `:Award` label, not this node.** The patent
+> loader creates `(:Patent)-[:GENERATED_FROM]->(:Award)`, where `:Award` is a separate
+> legacy label written by the sbir-graph package (CET / patent loaders), *not* the
+> `:FinancialTransaction` node described here. See [neo4j.md](neo4j.md) for the two
+> coexisting label families.
 
 ## Example Cypher Queries
 
@@ -248,7 +253,7 @@ CREATE (ft:FinancialTransaction {
 ### Find All Awards for a Company
 
 ```cypher
-MATCH (ft:FinancialTransaction {transaction_type: "AWARD"})-[:AWARDED_TO]->(o:Organization {organization_id: $org_id})
+MATCH (ft:FinancialTransaction {transaction_type: "AWARD"})-[:RECIPIENT_OF]->(o:Organization {organization_id: $org_id})
 RETURN ft
 ORDER BY ft.transaction_date DESC
 ```
@@ -256,7 +261,7 @@ ORDER BY ft.transaction_date DESC
 ### Find All Contracts for a Company
 
 ```cypher
-MATCH (ft:FinancialTransaction {transaction_type: "CONTRACT"})-[:AWARDED_TO]->(o:Organization {organization_id: $org_id})
+MATCH (ft:FinancialTransaction {transaction_type: "CONTRACT"})-[:RECIPIENT_OF]->(o:Organization {organization_id: $org_id})
 RETURN ft
 ORDER BY ft.transaction_date DESC
 ```
@@ -264,7 +269,7 @@ ORDER BY ft.transaction_date DESC
 ### Find All Financial Transactions (Awards + Contracts)
 
 ```cypher
-MATCH (ft:FinancialTransaction)-[:AWARDED_TO]->(o:Organization {organization_id: $org_id})
+MATCH (ft:FinancialTransaction)-[:RECIPIENT_OF]->(o:Organization {organization_id: $org_id})
 RETURN ft.transaction_type, ft.amount, ft.transaction_date
 ORDER BY ft.transaction_date DESC
 ```
@@ -285,6 +290,6 @@ RETURN award, t, contract
 
 ## Related Documentation
 
-- [Transition Graph Schema](./transition-graph-schema.md)
+- [Neo4j Schema (Canonical Index)](./neo4j.md)
 - [Organization Schema](./organization-schema.md)
 - [Architecture Overview](../architecture/detailed-overview.md) - For migration context

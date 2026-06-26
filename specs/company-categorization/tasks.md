@@ -377,4 +377,4 @@ The implementation is complete when:
 - Requirements: `specs/company-categorization/requirements.md`
 - Design: `specs/company-categorization/design.md`
 - Pipeline Orchestration: `docs/steering/pipeline-orchestration.md`
-- Configuration Patterns: `docs/steering/configuration-patterns.md`
+- Configuration Patterns: `docs/configuration.md`

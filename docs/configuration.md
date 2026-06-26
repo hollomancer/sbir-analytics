@@ -1,4 +1,4 @@
-# Path Configuration Guide
+# Configuration Reference
 
 **Type**: Reference
 **Owner**: Engineering Team
@@ -7,18 +7,48 @@
 
 ## Overview
 
-The SBIR ETL pipeline uses a flexible, configuration-driven approach to file system paths that supports both local filesystem storage and optional cloud storage (AWS S3). All paths are configurable via YAML configuration files and can be overridden using environment variables, making the research pipeline portable across local runs and the current documented cloud setup.
+The SBIR ETL pipeline is configuration-driven. Settings live in YAML files under `config/`, are validated by Pydantic schemas in `sbir_etl/config/schemas/`, and can be overridden at runtime with environment variables. The same mechanism covers file system paths (local or AWS S3) and every other pipeline section (data quality, enrichment, pipeline orchestration, performance, Neo4j, ModernBert, CET).
 
-**Optional cloud setup**: The pipeline can detect S3 paths (`s3://bucket/key`) and use boto3 for cloud storage operations, while local filesystem paths remain the default development path.
+This document is the canonical configuration reference: paths first, then the remaining sections, then the shared override mechanics.
+
+### Three-layer configuration system
+
+```text
+Layer 1: YAML Files (config/)
+    ↓
+Layer 2: Pydantic Validation (sbir_etl/config/schemas/)
+    ↓
+Layer 3: Runtime Configuration with Environment Overrides
+```
+
+### Configuration files structure
+
+```text
+config/
+├── base.yaml              # Default settings (version controlled)
+├── dev.yaml               # Development overrides
+├── prod.yaml              # Production settings
+├── cet/                   # CET-specific configurations
+└── envs/                  # Environment-specific configs
+```
+
+Schemas are defined in `sbir_etl/config/schemas/` (`data.py`, `domain.py`, `pipeline.py`) and loaded/merged by `sbir_etl/config/loader.py`. Treat those files — not this doc — as the source of truth for defaults and validation bounds; the YAML examples below are illustrative.
 
 ## Table of Contents
 
 - [Cloud Storage (AWS S3)](#cloud-storage-aws-s3)
 - [Configuration Structure](#configuration-structure)
 - [Default Paths](#default-paths)
-- [Environment Variable Overrides](#environment-variable-overrides)
 - [Path Resolution](#path-resolution)
 - [Validation](#validation)
+- [Configuration Sections](#configuration-sections)
+  - [Data Quality](#data-quality-configuration)
+  - [Enrichment](#enrichment-configuration)
+  - [Pipeline Orchestration](#pipeline-orchestration-configuration)
+  - [Neo4j](#neo4j-configuration)
+  - [ModernBert](#modernbert-configuration)
+  - [CET Classification](#cet-classification-configuration)
+- [Environment Variable Overrides](#environment-variable-overrides)
 - [Docker Deployment](#docker-deployment)
 - [Troubleshooting](#troubleshooting)
 
@@ -179,11 +209,29 @@ The path resolver automatically:
 
 ## Environment Variable Overrides
 
-All path configuration values can be overridden using environment variables with the `SBIR_ETL__PATHS__` prefix.
+Any configuration value can be overridden at runtime with an environment variable that mirrors the YAML path. The override applies after YAML files are merged and before Pydantic validation.
 
-### Naming Convention
+### Override Format
 
-Convert the YAML key to uppercase and add the prefix:
+```text
+SBIR_ETL__SECTION__SUBSECTION__KEY=value
+```
+
+Convert each YAML key segment to uppercase, join with double underscores, and prefix with `SBIR_ETL__`:
+
+```bash
+export SBIR_ETL__DATA_QUALITY__MAX_DUPLICATE_RATE=0.05
+export SBIR_ETL__ENRICHMENT__BATCH_SIZE=200
+export SBIR_ETL__NEO4J__URI="bolt://localhost:7687"
+export SBIR_ETL__PIPELINE__CHUNK_SIZE=5000
+export SBIR_ETL__PERFORMANCE__PARALLEL_THREADS=8
+export SBIR_ETL__CET__CLASSIFICATION__MAX_FEATURES=75000
+export SBIR_ETL__ML__MODERNBERT__USE_LOCAL=true
+```
+
+### Path Overrides
+
+Path values follow the same convention under the `PATHS` section:
 
 ```bash
 # YAML: paths.data_root
@@ -195,6 +243,30 @@ export SBIR_ETL__PATHS__USASPENDING_DUMP_FILE=/mnt/dumps/usaspending.zip
 # YAML: paths.transition_contracts_output
 export SBIR_ETL__PATHS__TRANSITION_CONTRACTS_OUTPUT=/mnt/output/contracts.parquet
 ```
+
+### Override Model and Secret Mapping
+
+There are two complementary layers for runtime configuration:
+
+- **`SBIR_ETL__...` overrides**: env vars that mirror the YAML structure and directly override loaded config values.
+- **Secret mapping**: some sections (e.g., `neo4j`) reference raw env var *names* such as `NEO4J_URI`, `NEO4J_USER`, and `NEO4J_PASSWORD`. The YAML keys (e.g., `uri_env_var`) specify which raw environment variables to read.
+
+You can either set raw secrets:
+
+```bash
+export NEO4J_URI="bolt://localhost:7687"
+export NEO4J_USER="neo4j"
+export NEO4J_PASSWORD="dev_password"  # pragma: allowlist secret
+```
+
+Or override resolved values directly via `SBIR_ETL` overrides:
+
+```bash
+export SBIR_ETL__NEO4J__URI="bolt://localhost:7687"
+export SBIR_ETL__NEO4J__PASSWORD="dev_password"  # pragma: allowlist secret
+```
+
+Prefer `SBIR_ETL` overrides in development/CI for clarity and portability; use raw env secrets where infrastructure already manages them.
 
 ### Common Deployment Examples
 
@@ -317,6 +389,130 @@ if not success:
     # Get list of errors
     errors = validator.get_validation_errors()
 ```
+
+## Configuration Sections
+
+Beyond paths, the pipeline exposes the following YAML sections in `config/base.yaml`. The examples below are illustrative; the authoritative defaults and validation bounds live in the Pydantic schemas under `sbir_etl/config/schemas/` (data quality, extraction, validation, Neo4j, DuckDB, logging, etc. in `data.py`; CET / ModernBert / enrichment / pipeline domain models in `domain.py` and `pipeline.py`).
+
+### Data Quality Configuration
+
+```yaml
+data_quality:
+  # SBIR-specific validation thresholds
+  sbir_awards:
+    pass_rate_threshold: 0.95      # 95% of records must pass validation
+    completeness_threshold: 0.90   # 90% completeness for individual fields
+    uniqueness_threshold: 0.99     # 99% unique Contract IDs (allows phase progressions)
+
+  # Completeness requirements (fraction of non-null values required)
+  completeness:
+    award_id: 1.00          # 100% required
+    company_name: 0.95      # 95% required
+    award_amount: 0.90      # 90% required
+    award_date: 0.95        # 95% required
+    program: 0.98           # 98% required
+
+  # Uniqueness requirements (no duplicates allowed)
+  uniqueness:
+    award_id: 1.00          # No duplicate award IDs
+
+  # Value range validation
+  validity:
+    award_amount_min: 0.0
+    award_amount_max: 5000000.0   # $5M max SBIR award
+    award_year_min: 1983          # SBIR program start
+    award_year_max: 2030          # Future limit
+
+  # Enrichment success rates
+  enrichment:
+    sam_gov_success_rate: 0.85      # 85% of companies should enrich successfully
+    usaspending_match_rate: 0.70    # 70% of awards should match USAspending data
+```
+
+Schema: `DataQualityConfig` in `sbir_etl/config/schemas/data.py`.
+
+### Enrichment Configuration
+
+Enrichment sources, fallback chain, batch processing, and confidence thresholds are configured under the `enrichment` section. See `config/base.yaml` for the full block and the enrichment domain schema in `sbir_etl/config/schemas/domain.py` for fields and bounds. Key elements:
+
+- **Source priority chain**: `original_data` → `usaspending_api` → `sam_gov_api` → `fuzzy_match`, each with `enabled`, `priority`, and `confidence`.
+- **Batch processing**: `batch_size`, `max_retries`, `timeout_seconds`, `rate_limit_per_second`.
+- **Confidence thresholds**: `high` / `medium` / `low` bands.
+- **Quality targets**: `min_success_rate`, `min_high_confidence`, `max_fallback_rate`.
+- **Fallback rules**: agency/sector default NAICS mappings.
+
+### Pipeline Orchestration Configuration
+
+```yaml
+pipeline:
+  chunk_size: 10000              # Records per processing chunk
+  memory_threshold_mb: 2048      # Memory pressure threshold
+  timeout_seconds: 300           # Processing timeout per chunk
+  enable_incremental: true       # Support incremental processing
+
+  asset_execution:
+    max_retries: 3
+    retry_delay_seconds: 5
+    enable_parallel: true
+    max_parallel_assets: 4
+
+performance:
+  batch_size: 1000              # Neo4j batch size
+  parallel_threads: 4           # Parallel processing threads
+  retry_attempts: 3             # Retry failed operations
+  backoff_strategy: exponential # Retry backoff strategy
+
+  memory_monitoring:
+    enabled: true
+    warning_threshold_mb: 1500
+    critical_threshold_mb: 2000
+
+  thresholds:
+    duration_warning_seconds: 5.0
+    memory_delta_warning_mb: 500.0
+    memory_pressure_warn_percent: 80.0
+    memory_pressure_critical_percent: 95.0
+```
+
+Schemas: pipeline/performance models in `sbir_etl/config/schemas/pipeline.py`.
+
+### Neo4j Configuration
+
+```yaml
+neo4j:
+  # Secret mapping — names of the raw env vars to read for connection secrets
+  uri_env_var: "NEO4J_URI"
+  user_env_var: "NEO4J_USER"
+  password_env_var: "NEO4J_PASSWORD"  # pragma: allowlist secret
+
+  loading:
+    batch_size: 1000
+    parallel_threads: 4
+    transaction_timeout_seconds: 300
+    retry_on_deadlock: true
+    max_deadlock_retries: 3
+
+  performance:
+    create_indexes: true
+    create_constraints: true
+    batch_operations: true
+    enable_query_cache: true
+
+  quality:
+    load_success_threshold: 0.99   # 99% success rate required
+    max_constraint_violations: 10
+    enable_data_validation: true
+```
+
+Schema: `Neo4jConfig` in `sbir_etl/config/schemas/data.py`.
+
+### ModernBert Configuration
+
+ModernBert embedding/similarity settings live under `ml.modernbert`. Notable fields: `use_local` (API vs local inference), `api` (token env, batch size, QPS, retries), `local` (model name, device), `text` (max length, award/patent fields), `similarity_threshold`, `top_k`, and coverage thresholds. See `config/base.yaml` and the ML domain schema in `sbir_etl/config/schemas/domain.py`.
+
+### CET Classification Configuration
+
+CET taxonomy and classifier settings live under the `cet` section: `taxonomy` (version, file, hierarchy), `classification.vectorizer` (TF-IDF n-grams, max features), `feature_selection`, `classifier`, `calibration`, and `scoring.bands` (high/medium/low). See `config/base.yaml` and `sbir_etl/config/schemas/domain.py`.
 
 ## Docker Deployment
 
@@ -501,8 +697,10 @@ output_file = config.paths.resolve_path("transition_contracts_output")
 
 ## Related Documentation
 
+- Config schemas: `sbir_etl/config/schemas/` (`data.py`, `domain.py`, `pipeline.py`)
+- Config loader: `sbir_etl/config/loader.py`
 - [Configuration Overview](index.md)
-- [Deployment Guide](deployment/containerization.md)
+- [Docker Guide](development/docker.md)
 - [Exception Handling](development/exception-handling.md)
 
 ## Change Log

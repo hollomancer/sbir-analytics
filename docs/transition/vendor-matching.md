@@ -188,7 +188,7 @@ def resolve_by_duns(sbir_duns: str, contract_duns: str) -> bool:
 
 **What it does**: Approximate string matching on company names using normalized text comparison.
 
-**Algorithm**: RapidFuzz `token_set_ratio` with configurable thresholds.
+**Algorithm**: RapidFuzz `token_sort_ratio` with configurable thresholds.
 
 ### Matching Process
 
@@ -201,12 +201,12 @@ def resolve_by_duns(sbir_duns: str, contract_duns: str) -> bool:
 
 2. **Similarity Calculation**:
    - Tokenize names into words
-   - Calculate token_set_ratio (order-independent token comparison)
+   - Calculate token_sort_ratio (order-independent token comparison)
    - Return score 0.0 (completely different) to 1.0 (identical)
 
 3. **Thresholds**:
-   - **Primary threshold**: 0.85 (high confidence, ~80% reliable)
-   - **Secondary threshold**: 0.70 (exploratory, ~60% reliable)
+   - **Primary threshold**: 0.90 (high confidence, ~80% reliable)
+   - **Secondary threshold**: 0.80 (exploratory, ~60% reliable)
 
 ### Data Fields
 
@@ -229,7 +229,7 @@ Token Sets:
 - SBIR: {ACME, ARTIFICIAL, INTELLIGENCE, INC}
 - Contract: {ACME, AI, INC}
 
-Similarity (token_set_ratio): 0.88 (≥0.85 threshold)
+Similarity (token_sort_ratio): 0.92 (≥0.90 threshold)
 → MATCH (confidence: 0.80)
 ```
 
@@ -249,7 +249,7 @@ Token Sets:
 - SBIR: {ACME, AI, LLC}
 - Contract: {ACME, ARTIFICIAL, INTELLIGENCE, LIMITED, LIABILITY}
 
-Similarity (token_set_ratio): 0.72 (≥0.70 threshold)
+Similarity (token_sort_ratio): 0.84 (≥0.80 threshold)
 → POSSIBLE MATCH (confidence: 0.65)
 ```
 
@@ -264,7 +264,7 @@ Normalized:
 - SBIR: "ACME AI"
 - Contract: "BETA COMPUTING"
 
-Similarity (token_set_ratio): 0.22 (<0.70 threshold)
+Similarity (token_sort_ratio): 0.22 (<0.80 threshold)
 → NO MATCH
 ```
 
@@ -276,15 +276,15 @@ Similarity (token_set_ratio): 0.22 (<0.70 threshold)
 
 ### Disadvantages
 
-- High false positive rate at low thresholds (~15% at 0.70)
+- High false positive rate at low thresholds (~15% at 0.80)
 - False negatives for companies with different trading names
 - Computationally expensive for large datasets (O(n²) worst case)
 - Requires manual validation for exploratory use
 
 ### Coverage
 
-- **Fuzzy Primary (0.85)**: ~10–15% of awards without identifiers
-- **Fuzzy Secondary (0.70)**: ~30–40% of awards without identifiers
+- **Fuzzy Primary (0.90)**: ~10–15% of awards without identifiers
+- **Fuzzy Secondary (0.80)**: ~30–40% of awards without identifiers
 
 **When to Use**: Last resort when UEI/CAGE/DUNS not available; requires manual verification.
 
@@ -311,8 +311,8 @@ from rapidfuzz import fuzz
 def resolve_by_name(
     sbir_name: str,
     contract_name: str,
-    primary_threshold: float = 0.85,
-    secondary_threshold: float = 0.70
+    primary_threshold: float = 0.90,
+    secondary_threshold: float = 0.80
 ) -> tuple[bool, float, str]:
     """
     Fuzzy match company names.
@@ -331,7 +331,7 @@ def resolve_by_name(
         return True, 1.0, "exact"
 
     # Calculate similarity
-    similarity = fuzz.token_set_ratio(sbir_norm, contract_norm) / 100.0
+    similarity = fuzz.token_sort_ratio(sbir_norm, contract_norm) / 100.0
 
     # Apply thresholds
     if similarity >= primary_threshold:
@@ -411,8 +411,8 @@ The vendor resolver uses a **priority cascade**: try highest-confidence methods 
 3. Try UEI match → If match, record (UEI, 0.99) and move to next contract
 4. Else try CAGE match → If match, record (CAGE, 0.95) and move to next contract
 5. Else try DUNS match → If match, record (DUNS, 0.90) and move to next contract
-6. Else try fuzzy name match (primary 0.85) → If match, record (FUZZY_PRIMARY, 0.80-0.85) and move to next contract
-7. Else try fuzzy name match (secondary 0.70) → If match, record (FUZZY_SECONDARY, 0.65-0.75) and move to next contract
+6. Else try fuzzy name match (primary 0.90) → If match, record (FUZZY_PRIMARY, 0.80-0.85) and move to next contract
+7. Else try fuzzy name match (secondary 0.80) → If match, record (FUZZY_SECONDARY, 0.65-0.75) and move to next contract
 8. Else no match for this contract
 
 **Output**: For each award-contract pair, one of:
@@ -456,9 +456,9 @@ vendor_resolution:
 
   # Fuzzy matching parameters
   fuzzy_matching:
-    algorithm: "token_set_ratio"  # or "token_sort_ratio", "ratio"
-    primary_threshold: 0.85
-    secondary_threshold: 0.70
+    algorithm: "token_sort_ratio"  # or "token_set_ratio", "ratio"
+    primary_threshold: 0.90
+    secondary_threshold: 0.80
 
     # Name normalization
     normalize:
@@ -501,8 +501,8 @@ vendor_resolution:
 
 ## Thresholds
 
-export SBIR_ETL__VENDOR_RESOLUTION__FUZZY_PRIMARY_THRESHOLD=0.85
-export SBIR_ETL__VENDOR_RESOLUTION__FUZZY_SECONDARY_THRESHOLD=0.70
+export SBIR_ETL__VENDOR_RESOLUTION__FUZZY_PRIMARY_THRESHOLD=0.90
+export SBIR_ETL__VENDOR_RESOLUTION__FUZZY_SECONDARY_THRESHOLD=0.80
 
 ## Methods (disable/enable)
 
@@ -637,8 +637,8 @@ Name Available: 100%
 UEI matches: ~70% (highest confidence)
 CAGE matches: ~5%
 DUNS matches: ~10%
-Fuzzy Primary (0.85): ~10%
-Fuzzy Secondary (0.70): ~5%
+Fuzzy Primary (0.90): ~10%
+Fuzzy Secondary (0.80): ~5%
 No match: ~20%
 ```
 
@@ -694,8 +694,8 @@ Fuzzy Secondary   ~60%               15 samples   Manual verification
 
 ```yaml
 fuzzy_matching:
-  primary_threshold: 0.80  # was 0.85
-  secondary_threshold: 0.65  # was 0.70
+  primary_threshold: 0.80  # was 0.90
+  secondary_threshold: 0.65  # was 0.80
 ```
 
 ### Issue 2: High False Positive Rate (>20% incorrect matches)
@@ -724,8 +724,8 @@ fuzzy_matching:
 
 ```yaml
 fuzzy_matching:
-  primary_threshold: 0.90  # was 0.85
-  secondary_threshold: 0.75  # was 0.70
+  primary_threshold: 0.95  # was 0.90
+  secondary_threshold: 0.85  # was 0.80
 
 exclusions:
 
@@ -863,7 +863,7 @@ Solution: Add acquisition record
 - Fuzzy name matching: ~1,000 matches/second
 - Full resolution (mixed methods): ~5,000–10,000 matches/second
 
-**Bottleneck**: Fuzzy name matching (token_set_ratio is O(n²) in name length)
+**Bottleneck**: Fuzzy name matching (token_sort_ratio is O(n²) in name length)
 
 ### Memory Usage
 

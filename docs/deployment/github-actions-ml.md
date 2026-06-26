@@ -269,7 +269,7 @@ To run a single asset instead of a full job:
 - name: Run specific asset
   run: |
     dagster asset materialize \
-      -m sbir_etl.definitions_ml \
+      -m sbir_analytics.definitions \
       --select cet_model_training
 ```
 
@@ -285,7 +285,7 @@ strategy:
 steps:
   - name: Run job
     run: |
-      dagster job execute -m sbir_etl.definitions_ml -j ${{ matrix.job }}
+      dagster job execute -m sbir_analytics.definitions -j ${{ matrix.job }}
 ```
 
 ### Integration with GitHub Actions

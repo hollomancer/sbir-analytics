@@ -102,7 +102,7 @@ class EnrichmentResult:
 
 ## Configuration
 
-Enrichment sources, fallback rules, and quality thresholds are configured in YAML. See **[configuration-patterns.md](configuration-patterns.md)** for complete configuration examples including:
+Enrichment sources, fallback rules, and quality thresholds are configured in YAML. See **[configuration.md](../configuration.md)** for complete configuration examples including:
 
 - Enrichment source configuration with priorities
 - Batch processing settings
@@ -129,7 +129,7 @@ Enrichment sources, fallback rules, and quality thresholds are configured in YAM
 
 ## Related Documents
 
-- **[configuration-patterns.md](configuration-patterns.md)** - Complete enrichment configuration examples
+- **[configuration.md](../configuration.md)** - Complete enrichment configuration examples
 - **[pipeline-orchestration.md](pipeline-orchestration.md)** - Performance monitoring and asset integration
 - **[data-quality.md](data-quality.md)** - Quality validation for enriched data
 - **[quick-reference.md](quick-reference.md)** - Confidence levels and configuration quick lookup

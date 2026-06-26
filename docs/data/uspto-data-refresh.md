@@ -357,10 +357,9 @@ pytest tests/integration/test_uspto_download.py -v
 
 ## Related Documentation
 
-- [USPTO Patent Data Dictionary](dictionaries/uspto-patent-data-dictionary.md)
-- [Patent Neo4j Schema](../schemas/patent-neo4j-schema.md)
+- [USPTO Patents (source, fields, graph mapping)](../schemas/uspto-patents.md)
 - [Data Sources Overview](index.md)
-- [Configuration Patterns](../steering/configuration-patterns.md)
+- [Configuration Patterns](../configuration.md)
 
 ## Contact
 

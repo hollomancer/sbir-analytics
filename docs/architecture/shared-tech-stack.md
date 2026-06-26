@@ -885,7 +885,7 @@ from sbir_etl.models.base import BaseEntity
 
 from sbir_etl.sbir.enrichment import SAMGovClient
 from sbir_etl.uspto.extractors import StataExtractor
-from sbir_etl.ml.models import CETClassifier  # Requires ml extras
+from sbir_ml.ml.models import CETClassifier  # Requires ml extras
 ```
 
 ### 7.3 Configuration Naming Conventions

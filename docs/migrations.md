@@ -21,6 +21,8 @@ Migrations are located in `migrations/versions/` and follow the naming pattern:
 - `001_initial_schema.py` - Initial constraints and indexes
 - `002_add_organization_deduplication_indexes.py` - Indexes for deduplication
 - `003_merge_existing_duplicate_organizations.py` - One-time data cleanup
+- `004_vector_indexes.py` - Vector/cross-reference indexes
+- `005_drop_lightrag_vector_indexes.py` - Drop LightRAG-era vector indexes (award_embedding, patent_embedding)
 
 ## Running Migrations
 

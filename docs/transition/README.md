@@ -19,7 +19,7 @@ The transition detection system identifies successful transitions of SBIR/STTR-f
 New to transition detection? Start here:
 
 1. **[Complete Overview](overview.md)** - Comprehensive system overview with quick start
-2. **[MVP Guide](mvp.md)** - Quick start and minimum viable product overview
+2. **[MVP Guide](../archive/transition/mvp.md)** - Quick start and minimum viable product overview
 3. **[Detection Algorithm](detection-algorithm.md)** - Core algorithm and methodology
 
 ## Core Documentation
@@ -60,7 +60,7 @@ New to transition detection? Start here:
   - Classification-based scoring
   - Combined analysis approach
 
-- **[USAspending Integration](usaspending-integration.md)** - Federal contract data
+- **[USAspending Integration](../archive/transition/usaspending-integration.md)** - Federal contract data
   - Contract data extraction
   - Transition signal detection from contracts
   - Spend analysis integration
@@ -135,7 +135,7 @@ Transitions are scored on confidence levels:
 # Navigate to Assets → Transition Detection → Materialize
 
 # Via CLI
-dagster asset materialize -m sbir_etl.definitions --select transition_profiles
+dagster asset materialize -m sbir_analytics.definitions --select transition_profiles
 ```
 
 ### Querying Transitions
@@ -146,8 +146,7 @@ See the [Transition Queries](../queries/transition-queries.md) documentation for
 
 Transition data is stored in Neo4j. For schema details:
 
-- **[Transition Graph Schema](../schemas/transition-graph-schema.md)** - Neo4j schema for transitions
-- **[Neo4j Schema Reference](../schemas/neo4j.md)** - Overall graph schema
+- **[Neo4j Schema Reference](../schemas/neo4j.md)** - Graph schema (FinancialTransaction, Transition, CETArea, and related labels)
 
 ## Data Flow
 

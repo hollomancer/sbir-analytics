@@ -108,7 +108,7 @@ cadence, and precision targets.
 
 1. **SHALL** integrate the SAM.gov Opportunities API with the
    parquet-first, API-fallback pattern established by the existing
-   SAM.gov Entity Extracts integration (`docs/SAM_GOV_INTEGRATION.md`).
+   SAM.gov Entity Extracts integration (`docs/enrichment/sam-gov-integration.md`).
    Rate-limit and retry semantics mirror `SAMGovAPIClient`.
 2. **SHALL** define an `Opportunity` Pydantic model with fields:
    `notice_id`, `notice_type` (pre-solicitation / solicitation /

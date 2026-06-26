@@ -48,7 +48,7 @@ The system implements comprehensive data quality validation at every pipeline st
 
 ## Configuration
 
-Quality thresholds and validation rules are configured in YAML. See **[configuration-patterns.md](configuration-patterns.md)** for complete configuration examples including:
+Quality thresholds and validation rules are configured in YAML. See **[configuration.md](../configuration.md)** for complete configuration examples including:
 
 - Completeness requirements by field
 - Uniqueness constraints
@@ -74,6 +74,6 @@ Quality thresholds and validation rules are configured in YAML. See **[configura
 
 ## Related Documents
 
-- **[configuration-patterns.md](configuration-patterns.md)** - Complete quality configuration examples
+- **[configuration.md](../configuration.md)** - Complete quality configuration examples
 - **[pipeline-orchestration.md](pipeline-orchestration.md)** - Asset check implementation patterns
 - **[quick-reference.md](quick-reference.md)** - Quality thresholds quick lookup

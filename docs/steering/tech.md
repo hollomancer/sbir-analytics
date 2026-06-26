@@ -13,7 +13,7 @@
 - **Pydantic 2.8+**: Type-safe configuration and data validation
 - **DuckDB 1.0+**: High-performance analytical database for CSV/PostgreSQL processing
 - **Neo4j 5.x**: Graph database for storing relationships and entities
-- **Pandas 2.2+**: Data manipulation and analysis
+- **Pandas 3.0+**: Data manipulation and analysis
 - **RapidFuzz 3.0+**: Fast fuzzy string matching for entity resolution
 
 ### Development Tools
@@ -193,6 +193,6 @@ export SBIR_ETL__ENRICHMENT__MATCH_RATE_THRESHOLD=0.75
 
 - **[product.md](product.md)** - Project overview and key features
 - **[structure.md](structure.md)** - Project organization and code structure
-- **[configuration-patterns.md](configuration-patterns.md)** - Environment variable configuration examples
+- **[configuration.md](../configuration.md)** - Environment variable configuration examples
 - **[pipeline-orchestration.md](pipeline-orchestration.md)** - Dagster orchestration and development workflow
 - **[quick-reference.md](quick-reference.md)** - Common commands quick reference

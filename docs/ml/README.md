@@ -43,11 +43,6 @@ Start with these guides to understand and use the ML features:
   - Training process and evaluation
   - Usage examples and API reference
 
-- **[CET Classifier Appendix](cet-classifier-appendix.md)** - Extended technical details
-  - Detailed feature engineering
-  - Model evaluation metrics
-  - Performance analysis and tuning
-  - Implementation details
 
 - **[CET Award Training Data](cet-award-training-data.md)** - Training data documentation
   - Data sources and collection methodology
@@ -66,10 +61,10 @@ Generate embeddings and compute similarity scores:
 # Navigate to Assets → modernbert group → Materialize
 
 # Via CLI
-dagster asset materialize -m sbir_etl.definitions --select "modernbert*"
+dagster asset materialize -m sbir_analytics.definitions --select "modernbert*"
 
 # Run complete ModernBert job
-dagster job execute -m sbir_etl.definitions -j modernbert_job
+dagster job execute -m sbir_analytics.definitions -j modernbert_job
 ```
 
 ### Using the CET Classifier
@@ -81,7 +76,7 @@ The CET classifier is integrated into the Dagster pipeline as an asset. To run c
 # Navigate to Assets → CET Classification → Materialize
 
 # Via CLI
-dagster asset materialize -m sbir_etl.definitions --select cet_classifications
+dagster asset materialize -m sbir_analytics.definitions --select cet_classifications
 ```
 
 ### Classification Categories

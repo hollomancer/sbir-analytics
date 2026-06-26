@@ -58,7 +58,7 @@ Represents a detected commercialization transition from SBIR award to federal co
 
 | Field | Type | Nullable | Constraints | Description | Example | Related |
 |-------|------|----------|-------------|-------------|---------|---------|
-| `detection_date` | DateTime | No | ISO 8601 | `2025-01-15T10:30:00Z` |
+| `detection_date` | DateTime | No | ISO 8601 | When the transition was detected | `2025-01-15T10:30:00Z` | Audit trail |
 | `detection_method` | String | Yes | Version string | Detection algorithm version | `transition_detector_v1` | Reproducibility |
 | `created_at` | DateTime | No | ISO 8601 | Record creation time | `2025-01-15T10:30:00Z` | Audit trail |
 | `updated_at` | DateTime | No | ISO 8601 | Last update time | `2025-01-15T10:30:00Z` | Audit trail |
@@ -678,8 +678,7 @@ Represents company-level aggregated statistics.
 - **Algorithm Details**: `docs/transition/detection-algorithm.md`
 - **Scoring Guide**: `docs/transition/scoring-guide.md`
 - **Evidence Structure**: `docs/transition/evidence-bundles.md`
-- **Neo4j Schema**: `docs/schemas/transition-graph-schema.md`
+- **Neo4j Schema**: `docs/schemas/neo4j.md`
 - **Configuration**: `config/transition/detection.yaml`
 - **Data Models**: `sbir_etl/models/transition_models.py`
 
-</parameter>

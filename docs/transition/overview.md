@@ -110,13 +110,13 @@ export SBIR_ETL__TRANSITION__DETECTION__CET_WEIGHT=0.15
 - 📖 [Scoring Guide](scoring-guide.md) - Detailed scoring breakdown + tuning
 - 📖 [Vendor Matching](vendor-matching.md) - Vendor resolution methods + validation
 - 📖 [Evidence Bundles](evidence-bundles.md) - Evidence structure + interpretation
-- 📖 [Neo4j Schema](../schemas/transition-graph-schema.md) - Graph model + queries
+- 📖 [Neo4j Schema](../schemas/neo4j.md) - Graph model + queries
 - 📖 [CET Integration](cet-integration.md) - Technology area alignment
 - 📖 [Data Dictionary](../data/dictionaries/transition-fields-dictionary.md) - Field reference
 
 **Quick Reference**:
 
-- 📋 [MVP Guide](mvp.md) - Minimal viable product
+- 📋 [MVP Guide](../archive/transition/mvp.md) - Minimal viable product
 - 📋 [Configuration Guide](../../config/README.md) - YAML configuration guide
 
 ## Neo4j Queries

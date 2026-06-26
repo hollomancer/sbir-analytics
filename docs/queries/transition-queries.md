@@ -23,11 +23,11 @@ Company
 
 ## Query Interface
 
-All queries are implemented in `packages/sbir-ml/sbir_ml/transition/queries/pathway_queries.py` through the `TransitionPathwayQueries` class.
+All queries are implemented in `packages/sbir-graph/sbir_graph/queries/pathway_queries.py` through the `TransitionPathwayQueries` class.
 
 ```python
 from neo4j import GraphDatabase
-from sbir_etl.transition.queries.pathway_queries import TransitionPathwayQueries
+from sbir_graph.queries.pathway_queries import TransitionPathwayQueries
 
 ## Initialize driver
 
@@ -434,7 +434,7 @@ def analyze_company_performance(company_id):
 
 ## Related Documentation
 
-- **Graph Model:** [`docs/schemas/transition-graph-schema.md`](../schemas/transition-graph-schema.md)
+- **Graph Model:** [`docs/schemas/neo4j.md`](../schemas/neo4j.md)
 - **Detection Algorithm:** [`docs/transition/detection-algorithm.md`](../transition/detection-algorithm.md)
 - **Scoring Guide:** [`docs/transition/scoring-guide.md`](../transition/scoring-guide.md)
 - **Evidence Bundles:** [`docs/transition/evidence-bundles.md`](../transition/evidence-bundles.md)

@@ -210,8 +210,8 @@ print(f"Total Contracts: {company_result.award_count}")
 
 ```python
 from dagster import build_asset_context, materialize
-from sbir_etl.assets.company_categorization import enriched_sbir_companies_with_categorization
-from sbir_etl.assets.sbir_ingestion import validated_sbir_awards
+from sbir_analytics.assets.company_categorization import enriched_sbir_companies_with_categorization
+from sbir_analytics.assets.sbir_ingestion import validated_sbir_awards
 
 # Materialize the categorization asset
 result = materialize(
