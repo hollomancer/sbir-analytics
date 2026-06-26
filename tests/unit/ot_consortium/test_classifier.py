@@ -155,6 +155,22 @@ def test_t1_beats_t3_when_member_confirmed(registry):
     assert result.tier == VerificationTier.MEMBER_CONFIRMED
 
 
+def test_unresolved_firm_is_not_flagged_name_collision(registry):
+    """Member UEI populated but the claiming firm UEI is unknown: no mismatch can
+    be established, so the record must NOT be flagged as a name-collision."""
+    award = OTAward(
+        award_id="UNRES-1",
+        piid=PIID_PROTOTYPE,
+        consortia_flag=True,
+        primary_consortia_member_uei="SOMEMEMBER01",
+        recipient_name="NSTXL",
+    )
+    result = _confirm(award, firm_uei=None, source=FirmUEISource.UNRESOLVED, registry=registry)
+    assert result.tier != VerificationTier.MEMBER_CONFIRMED
+    assert result.resolution_method != "name_collision"
+    assert result.resolution_method is None
+
+
 def test_t4_no_federal_record(registry):
     """Claimed award absent from federal data → T4."""
     award = OTAward(award_id="GHOST-1", found_in_federal_data=False)

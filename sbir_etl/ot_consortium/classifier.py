@@ -223,9 +223,13 @@ def assign_tier(
         ninth=ninth,
         norm_firm=bool(norm_firm),
     )
-    # If a populated member UEI mismatched the firm, surface it as a rejected
-    # name-collision near-miss in resolution_method so a human can spot-check.
-    rejected_method = "name_collision" if (member_present and not member_matches_firm) else None
+    # If a populated member UEI mismatched a KNOWN firm UEI, surface it as a
+    # rejected name-collision near-miss so a human can spot-check. Requires the
+    # firm UEI to be available — without it no mismatch can be established, so an
+    # unresolved-firm record is not a collision.
+    rejected_method = (
+        "name_collision" if (member_present and norm_firm and not member_matches_firm) else None
+    )
 
     # ---- T3: structurally invisible (modification-based) -------------------
     if award.is_modification is True:

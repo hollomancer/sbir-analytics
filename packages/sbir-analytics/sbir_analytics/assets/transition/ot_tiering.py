@@ -19,6 +19,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from sbir_etl.config.loader import get_config
 from sbir_etl.ot_consortium.aggregate import aggregate_assignment_frame
 from sbir_etl.ot_consortium.claims_loader import load_claims
 from sbir_etl.ot_consortium.registry import CMFRegistry
@@ -44,8 +45,21 @@ _REGISTRY_PATH_ENV = "SBIR_ETL__OT_CONSORTIUM__CMF_REGISTRY_PATH"
 
 
 def _load_registry() -> CMFRegistry:
-    path = os.getenv(_REGISTRY_PATH_ENV)
-    return CMFRegistry.from_csv(path)
+    # Env var wins; otherwise CMFRegistry.from_csv falls back to the validated
+    # PipelineConfig (ot_consortium.cmf_registry_path), then the default path.
+    return CMFRegistry.from_csv(os.getenv(_REGISTRY_PATH_ENV), config=get_config())
+
+
+def _resolve_claims_path() -> str | None:
+    """Effective claims-file path: env var wins, else the config value."""
+    return os.getenv(_CLAIMS_PATH_ENV) or get_config().ot_consortium.claims_path
+
+
+def _is_audit_mode() -> bool:
+    """Audit mode requires a configured claims path that actually exists. Shared
+    by both assets so their reported mode can never disagree."""
+    path = _resolve_claims_path()
+    return bool(path and Path(path).exists())
 
 
 def _build_firm_resolver(awards: pd.DataFrame):
@@ -83,11 +97,11 @@ def ot_consortium_verification_tiers(
     registry = _load_registry()
     out_path = Path("data/processed/ot_consortium_tiers.parquet")
 
-    claims_path = os.getenv(_CLAIMS_PATH_ENV)
+    claims_path = _resolve_claims_path()
     non_attributable_count = 0
     non_attributable_usd = 0.0
 
-    if claims_path and Path(claims_path).exists():
+    if _is_audit_mode():
         mode = "audit"
         claims = load_claims(claims_path)
         # Locate claimed awards against the federal OT records, and resolve
@@ -156,7 +170,7 @@ def ot_consortium_magnitude_report(
     ot_consortium_verification_tiers: pd.DataFrame,
 ) -> Output[dict]:
     df = ot_consortium_verification_tiers
-    mode = "audit" if os.getenv(_CLAIMS_PATH_ENV) else "baseline"
+    mode = "audit" if _is_audit_mode() else "baseline"
 
     report = aggregate_assignment_frame(df, mode=mode)
     report_dict = report.model_dump(mode="json")
