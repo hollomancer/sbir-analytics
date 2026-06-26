@@ -22,15 +22,15 @@ This document defines the **single source of truth** for code quality tools and 
 ### Architecture
 
 ```text
-Developer's Machine                    GitHub Actions (CI)
-└─ git commit                          └─ Pull Request / Push
-   └─ pre-commit hooks run            └─ .github/workflows/ci.yml
-      ├─ Standard file checks            ├─ code-quality job
-      ├─ Ruff (lint/format)             │  (Ruff lint/format, MyPy for sbir_etl,
-      ├─ MyPy (types)                   │   removed-src reference check)
-      ├─ Bandit (security)              ├─ package-type-checks job (per-package MyPy)
-      ├─ Detect-secrets                 ├─ workflow-lint job (YAML validation)
-                                        └─ test job (unit / integration matrix)
+Local pre-commit hook            Runs in CI as
+─────────────────────            ──────────────
+Standard file checks       →     (local only)
+Ruff (lint/format)         →     ci.yml · code-quality job
+MyPy (types)               →     ci.yml · code-quality job (sbir_etl)
+                                 ci.yml · package-type-checks job (packages)
+Bandit (security)          →     weekly.yml · security-scan job
+Detect-secrets             →     weekly.yml · security-scan job (detect-secrets scan)
+(no local hook)            →     ci.yml · workflow-lint job
 ```
 
 **Key Principle:** Pre-commit hooks define what developers must fix locally. CI runs the same Ruff + MyPy + (removed-src) gates as the `code-quality` job, with per-package MyPy and tests as additional jobs. Bandit and Detect-secrets currently run only as pre-commit hooks locally, not as standalone CI jobs.
@@ -167,30 +167,27 @@ This workflow runs on:
 **Jobs (in parallel/sequence):**
 
 1. **code-quality**
-   - Runs: Ruff lint/format, MyPy for `sbir_etl`, and `scripts/ci/check_removed_src_references.py`
-   - Purpose: CI visibility for the same core quality gates defined by local configuration
-   - Covers: Production source roots plus tests where applicable
-   - Time: ~5-10 minutes
+   - Runs: `ruff check`, `ruff format --check`, `mypy sbir_etl`, and a removed-source-root reference check (`scripts/ci/check_removed_src_references.py`, the "Reject removed source-root references" step).
+   - Purpose: Pull-request and push quality gate for checks that mirror the local Ruff/MyPy pre-commit hooks.
+   - Time: ~5-10 minutes.
 
-2. **package-type-checks** (MyPy)
-   - Runs: `mypy` for `packages/sbir-analytics/sbir_analytics`, `packages/sbir-ml/sbir_ml`, and `packages/sbir-graph/sbir_graph`
-   - Purpose: Package-level type-checking visibility
-   - Time: ~5-10 minutes
+2. **package-type-checks**
+   - Runs: package-specific MyPy checks for `sbir-analytics`, `sbir-ml`, and `sbir-graph`.
+   - Purpose: Package-level type-checking visibility beyond the core `sbir_etl` check.
+   - Time: ~1-2 minutes per package.
 
 3. **workflow-lint**
-   - Runs: YAML syntax validation for `.github/workflows/*.yml`
-   - Purpose: Keeps GitHub Actions workflow files parseable
-   - Time: ~1 minute
+   - Runs: GitHub Actions workflow syntax/lint validation.
+   - Purpose: Keeps the current workflow set valid as `.github/workflows/` changes.
 
-4. **test**
-   - Runs: unit and integration test suites via a fixed matrix in `.github/workflows/ci.yml`
-   - Purpose: Functional validation across the test matrix (does not include smoke tests, which run in separate workflows)
-   - Time: varies by selected suite
+4. **test**, **container-build-test**, **performance-check**, **e2e-docker**, and related CI jobs
+   - Runs: unit/integration tests, container checks, performance regression checks, E2E Docker checks, and transition MVP checks as configured in `ci.yml`.
+   - Purpose: Keeps PR/push feedback consolidated in the current CI workflow.
 
 ### Why Multiple Jobs?
 
-- **code-quality:** Runs Ruff, MyPy, and removed source-root reference checks in CI
-- **Individual jobs:** Provide clear, separate visibility in GitHub checks
+- **code-quality:** Ensures core local style checks pass in CI
+- **Individual jobs:** Provide clear, separate visibility in GitHub checks for linting, typing, workflow validation, tests, containers, performance, and E2E coverage
 - **Parallelization:** Faster overall execution
 - **Debugging:** Easier to identify which check failed
 
@@ -250,9 +247,9 @@ Tool versions are pinned in:
 | Tool versions | `.pre-commit-config.yaml` | `.pre-commit-config.yaml` | Identical |
 | Ruff scope | `.pre-commit-config.yaml` | `ci.yml` | Both: all production roots plus `tests` |
 | Ruff config | `pyproject.toml` | `pyproject.toml` | Identical |
-| MyPy scope | `pyproject.toml` + `.pre-commit-config.yaml` | `ci.yml` | Both: `sbir_etl` only |
+| MyPy scope | `pyproject.toml` + `.pre-commit-config.yaml` | `ci.yml` | Local: `sbir_etl`. CI: `sbir_etl` (code-quality) **plus** per-package MyPy for `sbir-analytics`, `sbir-ml`, `sbir-graph` (package-type-checks job) |
 | MyPy config | `pyproject.toml` | `pyproject.toml` | Identical |
-| Bandit scope | `.pre-commit-config.yaml` | `ci.yml` | Both: all production roots |
+| Bandit scope | `.pre-commit-config.yaml` | `weekly.yml` security-scan job | Scheduled security scan for production roots |
 | Bandit config | `pyproject.toml` | `pyproject.toml` | Identical |
 
 ---

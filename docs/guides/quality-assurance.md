@@ -25,7 +25,7 @@ This guide centralizes performance and data quality practices.
 ## CI
 
 - CI checks in `.github/workflows/ci.yml`
-- Nightly tests in `.github/workflows/weekly.yml`
+- Scheduled tests, smoke checks, and security scans in `.github/workflows/weekly.yml`
 
 Ensure PRs that change performance-sensitive paths update baselines/thresholds when appropriate.
 

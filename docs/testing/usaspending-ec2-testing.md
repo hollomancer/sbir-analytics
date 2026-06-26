@@ -285,7 +285,7 @@ EOF
 
 1. Go to Actions → Data Refresh
 2. Click "Run workflow"
-3. Select `source: usaspending` and `environment: test`
+3. Select `source: usaspending`, the target `environment`, and `force_refresh: false`
 4. Monitor execution
 
 ## 7. Test EC2 Automation (Full Test)

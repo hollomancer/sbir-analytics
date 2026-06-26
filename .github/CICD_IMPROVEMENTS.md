@@ -6,7 +6,7 @@ This document summarizes the CI/CD improvements made to reduce duplication, impr
 
 ### 1. Secret Scanning Script Extraction ✅
 
-**Problem**: Secret scanning logic was embedded in 100+ lines of bash in `static-analysis.yml`, making it hard to test and maintain.
+**Problem**: Secret scanning logic was embedded in 100+ lines of bash in `ci.yml`, making it hard to test and maintain.
 
 **Solution**:
 
@@ -25,8 +25,8 @@ This document summarizes the CI/CD improvements made to reduce duplication, impr
 
 **Files Changed**:
 
-- `.github/workflows/static-analysis.yml` - Now calls Python script instead of inline bash
-- `scripts/ci/scan_secrets.py` - New script (executable)
+- `scripts/ci/scan_secrets.py` - Standalone script (executable) for local secret scanning
+- Note: no workflow currently invokes `scan_secrets.py`. CI secret scanning runs in `.github/workflows/weekly.yml` (`security-scan` job) via `detect-secrets scan --baseline .secrets.baseline`.
 
 **Usage**:
 
@@ -153,7 +153,7 @@ python3 scripts/ci/scan_secrets.py --baseline .secrets.baseline
 
 **Solution**:
 
-- Updated `nightly.yml` to use `setup-test-environment` action
+- Updated `weekly.yml` to use `setup-test-environment` action
 - Updated `ci.yml` to use `setup-test-environment` action in multiple jobs:
   - `test` job - Now uses action and `wait-for-neo4j` action
   - `cet-tests` job - Now uses action for environment setup
@@ -163,7 +163,7 @@ python3 scripts/ci/scan_secrets.py --baseline .secrets.baseline
 
 **Files Changed**:
 
-- `.github/workflows/nightly.yml` (modified) - Now uses `setup-test-environment` action
+- `.github/workflows/weekly.yml` (modified) - Uses shared setup where scheduled test jobs require it
 - `.github/workflows/ci.yml` (modified) - Multiple jobs now use `setup-test-environment` action
 
 ## Remaining Medium-Priority Tasks
@@ -172,7 +172,7 @@ python3 scripts/ci/scan_secrets.py --baseline .secrets.baseline
 
 **Status**: Partially complete
 
-- ✅ `nightly.yml` updated
+- ✅ `weekly.yml` updated
 - ⏳ `ci.yml` has workflow-level `env` block (could optionally use action for consistency)
 - ⏳ Other workflows could benefit (lower priority as they may not need all env vars)
 

@@ -83,18 +83,20 @@ aws ec2 associate-iam-instance-profile \
 
 ### 3. Configure GitHub Secrets
 
-Add the EC2 instance ID to GitHub secrets:  # pragma: allowlist secret
+`.github/workflows/data-refresh.yml` authenticates to AWS via OIDC and runs the
+USAspending refresh through AWS Batch — it does **not** start/stop an EC2 instance
+or read an `EC2_INSTANCE_ID` secret.
 
 1. Go to GitHub repository → Settings → Secrets and variables → Actions
-2. Add secret: `EC2_INSTANCE_ID` = your EC2 instance ID
-3. Ensure `AWS_ROLE_ARN` is already configured (for OIDC)
+2. Ensure `AWS_ROLE_ARN` is configured (the OIDC role the workflow assumes)
 
 ### 4. Test the Workflow
 
-1. Go to Actions → "USAspending Database Download"
+1. Go to Actions → "Data Refresh"
 2. Click "Run workflow"
 3. Select:
-   - **Database type:** `test` (for first test, smaller file)
+   - **Source:** `usaspending`
+   - **Environment:** `production` (default) or `test`
    - **Force refresh:** `false`
 4. Monitor the workflow execution
 
@@ -113,27 +115,20 @@ schedule:
 
 You can trigger manually with options:
 
-- **Database type:** `full` or `test`
-- **Date:** Override date (YYYYMMDD format)
-- **Source URL:** Override download URL
-- **Force refresh:** Download even if file exists
+- **Source:** `usaspending` (or `all` when refreshing every source)
+- **Environment:** `production` or `test`
+- **Force refresh:** Submit extraction even when existing S3 lookup data appears current
 
 ### What the Workflow Does
 
-1. **Starts EC2 instance** (if stopped)
-2. **Uploads download script** via SSM
-3. **Executes download** using the script
-4. **Monitors progress** (waits up to 3 hours)
-5. **Stops EC2 instance** when complete
+1. **Checks for the latest USAspending dump** using HTTP HEAD requests against `https://files.usaspending.gov/database_download/`.
+2. **Compares existing S3 recipient and NAICS lookup data** to decide whether extraction is needed.
+3. **Submits an AWS Batch extraction job** for recipient and NAICS lookup processing when new data is available or `force_refresh` is `true`.
+4. **Records the Batch job ID and console URL** in the GitHub Actions step summary for monitoring.
 
-### Download Script
+### Current extraction job
 
-The script (`scripts/usaspending/download_database.py`):
-
-- Downloads from `https://files.usaspending.gov/database_download/`
-- Streams directly to S3 using multipart upload
-- Computes SHA256 hash for integrity
-- Handles large files efficiently (100MB chunks)
+The current `.github/workflows/data-refresh.yml` workflow submits the `sbir-analytics-usaspending-extract` AWS Batch job instead of driving a long-running EC2 download from GitHub Actions. Use the Batch job logs and S3 outputs to verify extraction progress and results.
 
 ## Cost Breakdown
 
@@ -254,7 +249,7 @@ aws ssm list-commands --instance-id $INSTANCE_ID
 
 **Solution:**
 
-- Increase workflow timeout in `.github/workflows/data-refresh.yml`
+- Review the `refresh-usaspending` timeout or AWS Batch job settings in `.github/workflows/data-refresh.yml`
 - Check network speed (may need larger instance type)
 - Verify source URL is accessible
 
@@ -302,7 +297,7 @@ aws s3 head-object s3://sbir-etl-production-data/raw/usaspending/database/2025-1
 
 ## Next Steps
 
-1. Set up EC2 instance and IAM role
-2. Add `EC2_INSTANCE_ID` to GitHub secrets
-3. Test with `test` database type first
-4. Schedule monthly runs or trigger manually as needed
+1. Ensure the `AWS_ROLE_ARN` OIDC role is configured (the workflow runs the
+   USAspending refresh via AWS Batch — no EC2 instance to manage)
+2. Test with `test` database type first
+3. Schedule monthly runs or trigger manually as needed
