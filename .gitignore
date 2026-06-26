@@ -222,3 +222,11 @@ results.csv
 # Git worktrees (project-local, ignored to keep git status clean)
 .worktrees/
 
+# Claude Code local harness state (settings.json is shared; .local.json is per-user)
+.claude/settings.local.json
+.claude/scheduled_tasks.lock
+.claude/worktrees/
+
+# Playwright MCP browser-automation traces (local debugging only)
+.playwright-mcp/
+
