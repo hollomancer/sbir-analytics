@@ -33,6 +33,23 @@ paths:
   # Scripts output
   scripts_output: "data/scripts_output"
 
+ot_consortium:
+  # CMF consortium member registry input.
+  # Override per deployment with:
+  #   SBIR_ETL__OT_CONSORTIUM__CMF_REGISTRY_PATH=/path/to/cmf_registry.csv
+  cmf_registry_path: null
+
+  # Optional external OT Phase III transition assertions input.
+  # This may point to manually curated or partner-supplied assertions that are
+  # joined into OT consortium transition analytics when present.
+  # Preferred deployment override:
+  #   SBIR_ETL__OT_CONSORTIUM__TRANSITION_CLAIMS_PATH=/path/to/transition_claims.csv
+  # Backward-compatible override:
+  #   SBIR_ETL__OT_CONSORTIUM__CLAIMS_PATH=/path/to/transition_claims.csv
+  transition_claims_path: null
+  # Deprecated alias retained for older deployments.
+  claims_path: null
+
 data_quality:
   sbir_awards:
     # SBIR-specific validation thresholds

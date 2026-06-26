@@ -407,6 +407,40 @@ class TestGetConfig:
 
             assert config.logging.level == "DEBUG"
 
+    def test_get_config_loads_ot_consortium_and_applies_path_overrides(self):
+        """OT consortium paths come from config and environment overrides."""
+        base_content = {
+            "ot_consortium": {
+                "cmf_registry_path": "data/config/registry.csv",
+                "transition_claims_path": "data/config/transition_claims.csv",
+            }
+        }
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config_dir = Path(tmpdir)
+            base_file = config_dir / "base.yaml"
+
+            with open(base_file, "w") as f:
+                yaml.dump(base_content, f)
+
+            with patch.dict(
+                os.environ,
+                {
+                    "SBIR_ETL__OT_CONSORTIUM__CMF_REGISTRY_PATH": "data/env/registry.csv",
+                    "SBIR_ETL__OT_CONSORTIUM__TRANSITION_CLAIMS_PATH": (
+                        "data/env/transition_claims.csv"
+                    ),
+                },
+            ):
+                reload_config()
+                config = get_config(environment=None, config_dir=config_dir)
+
+            assert config.ot_consortium.cmf_registry_path == "data/env/registry.csv"
+            assert (
+                config.ot_consortium.effective_transition_claims_path
+                == "data/env/transition_claims.csv"
+            )
+
     def test_get_config_skips_env_overrides_when_disabled(self):
         """Test get_config skips env overrides when flag is False."""
         base_content = {"logging": {"level": "INFO"}}

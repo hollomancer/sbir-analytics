@@ -17,6 +17,7 @@ from sbir_etl.config.schemas import (
     LoggingConfig,
     MetricsConfig,
     Neo4jConfig,
+    OtConsortiumConfig,
     PathsConfig,
     PipelineConfig,
     PipelineMetadata,
@@ -736,6 +737,7 @@ class TestPipelineConfig:
         assert isinstance(config.paths, PathsConfig)
         assert isinstance(config.data_quality, DataQualityConfig)
         assert isinstance(config.neo4j, Neo4jConfig)
+        assert isinstance(config.ot_consortium, OtConsortiumConfig)
 
     def test_pipeline_metadata_attribute_access(self):
         """Pipeline metadata supports attribute and dict-style access."""
@@ -786,6 +788,26 @@ class TestPipelineConfig:
         assert isinstance(config.statistical_reporting, StatisticalReportingConfig)
         assert isinstance(config.fiscal_analysis, FiscalAnalysisConfig)
         assert isinstance(config.cli, CLIConfig)
+        assert isinstance(config.ot_consortium, OtConsortiumConfig)
+
+
+class TestOtConsortiumConfig:
+    """Tests for OT consortium configuration."""
+
+    def test_transition_claims_path_preferred_over_legacy_claims_path(self):
+        """Preferred transition_claims_path wins over the legacy key."""
+        config = OtConsortiumConfig(
+            transition_claims_path="data/ot/new_claims.csv",
+            claims_path="data/ot/legacy_claims.csv",
+        )
+
+        assert config.effective_transition_claims_path == "data/ot/new_claims.csv"
+
+    def test_claims_path_legacy_fallback(self):
+        """Legacy claims_path remains a supported fallback."""
+        config = OtConsortiumConfig(claims_path="data/ot/legacy_claims.csv")
+
+        assert config.effective_transition_claims_path == "data/ot/legacy_claims.csv"
 
 
 class TestTransformationConfig:

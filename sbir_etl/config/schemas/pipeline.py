@@ -16,6 +16,7 @@ from .data import (
     LoggingConfig,
     MetricsConfig,
     Neo4jConfig,
+    OtConsortiumConfig,
     PathsConfig,
     SbirDuckDBConfig,
     SbirValidationConfig,
@@ -100,6 +101,10 @@ class PipelineConfig(BaseModel):
         default_factory=CompanyCategorizationConfig,
         description="Company categorization configuration",
     )
+    ot_consortium: OtConsortiumConfig = Field(
+        default_factory=OtConsortiumConfig,
+        description="OT consortium transition assertion input configuration",
+    )
     ml: MLConfig = Field(
         default_factory=MLConfig,
         description="Machine learning configuration (ModernBert, embeddings)",
@@ -124,6 +129,7 @@ __all__ = [
     "MetricsConfig",
     "MLConfig",
     "Neo4jConfig",
+    "OtConsortiumConfig",
     "PathsConfig",
     "PipelineConfig",
     "PipelineMetadata",

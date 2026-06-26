@@ -348,6 +348,30 @@ class CompanyCategorizationConfig(BaseModel):
     include_metadata: bool = Field(default=True, description="Include classification metadata")
 
 
+class OtConsortiumConfig(BaseModel):
+    """Configuration for OT consortium transition assertion inputs."""
+
+    cmf_registry_path: str | None = Field(
+        default=None,
+        description="Path to the CMF consortium member registry input.",
+    )
+    transition_claims_path: str | None = Field(
+        default=None,
+        description="Optional external OT Phase III transition assertions input.",
+    )
+    claims_path: str | None = Field(
+        default=None,
+        description=(
+            "Deprecated alias for transition_claims_path; retained for backward compatibility."
+        ),
+    )
+
+    @property
+    def effective_transition_claims_path(self) -> str | None:
+        """Return the preferred transition assertions path with legacy fallback."""
+        return self.transition_claims_path or self.claims_path
+
+
 class PathsConfig(BaseModel):
     """File system paths configuration with environment variable expansion."""
 
@@ -424,6 +448,7 @@ __all__ = [
     "LoggingConfig",
     "MetricsConfig",
     "Neo4jConfig",
+    "OtConsortiumConfig",
     "PathsConfig",
     "SamGovConfig",
     "SbirDuckDBConfig",
