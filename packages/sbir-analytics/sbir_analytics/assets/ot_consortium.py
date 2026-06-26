@@ -33,11 +33,15 @@ def _resolve_configured_path(path: str | None) -> Path | None:
 
 
 def cmf_registry_path(config: PipelineConfig | None = None) -> Path | None:
-    """Return the CMF registry path, allowing a deployment env override."""
+    """Return the CMF registry path.
+
+    Environment overrides apply only when no ``config`` is injected. When a caller
+    passes an explicit ``PipelineConfig`` it is authoritative — deterministic for
+    tests and for callers that intentionally disable env overrides.
+    """
     ot_config = (config or get_config()).ot_consortium
-    return _resolve_configured_path(
-        os.getenv(REGISTRY_PATH_ENV) or ot_config.cmf_registry_path
-    )
+    env_override = os.getenv(REGISTRY_PATH_ENV) if config is None else None
+    return _resolve_configured_path(env_override or ot_config.cmf_registry_path)
 
 
 def transition_claims_path(config: PipelineConfig | None = None) -> Path | None:
@@ -45,10 +49,13 @@ def transition_claims_path(config: PipelineConfig | None = None) -> Path | None:
 
     The preferred configuration key is ``transition_claims_path``. The legacy
     ``claims_path`` key and matching environment variable are still supported.
+    Environment overrides apply only when no ``config`` is injected, so an explicit
+    ``PipelineConfig`` is authoritative.
     """
     ot_config = (config or get_config()).ot_consortium
-    return _resolve_configured_path(
-        os.getenv(TRANSITION_CLAIMS_PATH_ENV)
-        or os.getenv(LEGACY_CLAIMS_PATH_ENV)
-        or ot_config.effective_transition_claims_path
+    env_override = (
+        (os.getenv(TRANSITION_CLAIMS_PATH_ENV) or os.getenv(LEGACY_CLAIMS_PATH_ENV))
+        if config is None
+        else None
     )
+    return _resolve_configured_path(env_override or ot_config.effective_transition_claims_path)
