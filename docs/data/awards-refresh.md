@@ -1,47 +1,49 @@
 # SBIR Awards Data Refresh
 
-Weekly automation keeps the canonical SBIR.gov CSV (`data/raw/sbir/award_data.csv`) in sync with the upstream feed while generating auditable metadata for reviewers.
+Automation keeps the canonical SBIR.gov awards CSV in sync in S3
+(`s3://<S3_BUCKET>/raw/awards/`), which downstream pipelines consume.
 
 ## Workflow summary
 
-- **Workflow:** `.github/workflows/data-refresh.yml` (runs Mondays at 09:00 UTC)
-- **Triggers:** scheduled cron + `workflow_dispatch` with `source`, `environment`, and `force_refresh` inputs
-- **Branch / commit:** `data-refresh/<YYYY-MM-DD>` with commit `chore(data): refresh sbir awards <YYYY-MM-DD>`
-- **Owners:** `@sbir-analytics/data-stewards` (see `.github/CODEOWNERS`)
-- **Neo4j:** Optionally loads to Neo4j (Docker locally, EC2 in production)
+- **Workflow:** `.github/workflows/data-refresh.yml` (`refresh-sbir` job)
+- **Triggers:** scheduled cron + `workflow_dispatch` with `source` (e.g. `sbir`
+  or `all`), `environment`, and `force_refresh` inputs
+- **Auth:** AWS OIDC via the `AWS_ROLE_ARN` role (no static keys)
+- **Behavior:** downloads the upstream CSV and uploads it to
+  `s3://<S3_BUCKET>/raw/awards/`. The job does **not** create a branch, commit,
+  or pull request, and it does not run schema validation in CI.
 
 ### Execution steps
 
-1. Download `https://data.www.sbir.gov/mod_awarddatapublic/award_data.csv` with retries and atomic writes.
-2. Optionally override the source URL or force a refresh via manual dispatch inputs.
-3. Run `scripts/data/awards_refresh_validation.py` to:
-   - Verify the header matches `docs/data/sbir_awards_columns.json`
-   - Count rows without loading the entire file into memory
-   - Compute SHA-256 checksum and byte size
-   - Emit metadata JSON + Markdown summary under `reports/awards_data_refresh/`
-4. If the CSV is byte-identical and `force_refresh` is `false`, the workflow exits without a commit/PR.
-5. When changes exist (or `force_refresh=true`), stage the refreshed CSV + metadata, create a PR via `peter-evans/create-pull-request`, and upload artifacts.
+1. **Check existing SBIR files** — `aws s3 ls s3://<S3_BUCKET>/raw/awards/`,
+   summarized into the GitHub Actions run summary.
+2. **Download SBIR awards** — installs `boto3`/`requests` and runs
+   `scripts/data/download_sbir.py`, which downloads the upstream
+   `award_data.csv` and uploads it to `s3://<S3_BUCKET>/raw/awards/`. The full
+   download log is attached to the run summary.
+3. **Check downloaded files** — re-lists the S3 prefix to confirm the upload.
 
-### Generated artifacts
+### Outputs
 
-- `reports/awards_data_refresh/<YYYY-MM-DD>.json` – immutable snapshot metadata
-- `reports/awards_data_refresh/latest.json` – most recent metadata
-- `reports/awards_data_refresh/latest.md` – Markdown summary used in the PR body
-- Workflow artifacts:
-  - `sbir-awards-csv` – gzip copy of the downloaded CSV (7-day retention)
-  - `sbir-awards-metadata` – JSON + Markdown metadata (30-day retention)
+- The refreshed CSV object under `s3://<S3_BUCKET>/raw/awards/`.
+- The download log and before/after S3 listings in the workflow run summary.
 
 ## Manual operations
 
 ### Trigger a manual refresh
 
 1. Navigate to **Actions → Data Refresh → Run workflow**.
-2. Optionally set:
-   - `force_refresh` = `true` to capture metadata even if the CSV is unchanged.
-   - `source` = `sbir` and the target `environment` for an awards-only refresh.
-3. Monitor the run for validation logs and artifact uploads.
+2. Set inputs:
+   - `source` = `sbir` (or `all`)
+   - `environment` = `production` (default) or `test`
+   - `force_refresh` = `true` to re-download even if unchanged
+3. Monitor the run for the download log and S3 listings.
 
-### Run validation locally
+### Run validation locally (optional)
+
+`scripts/data/awards_refresh_validation.py` is a standalone local tool (it is
+**not** invoked by the workflow) for spot-checking a downloaded CSV against the
+expected schema:
 
 ```bash
 python scripts/data/awards_refresh_validation.py \
@@ -52,19 +54,20 @@ python scripts/data/awards_refresh_validation.py \
   --previous-metadata reports/awards_data_refresh/latest.json
 ```
 
-The script streams the CSV, enforces the column schema, and writes both JSON + Markdown summaries. Use `--allow-schema-drift` only when schema changes have been reviewed.
+The script streams the CSV, enforces the column schema, and writes JSON +
+Markdown summaries. Use `--allow-schema-drift` only when schema changes have been
+reviewed.
 
 ## Troubleshooting
 
 | Symptom | Likely cause | Next steps |
 | --- | --- | --- |
-| Workflow skipped commit/PR | No diff detected and `force_refresh=false` | Inspect run logs + gzip artifact to confirm upstream data is unchanged. |
-| Workflow fails during validation | Header mismatch or structural drift | Review `reports/awards_data_refresh/latest.md`, update `docs/data/sbir_awards_columns.json`, rerun with `force_refresh`. |
-| PR missing metadata | Validation skipped due to missing diff | Re-run workflow with `force_refresh=true` to capture metadata intentionally. |
-| Need historical stats | Check `reports/awards_data_refresh/<date>.json` in git history; each file includes timestamp, row counts, SHA-256, and deltas. |
+| No new object in S3 | Upstream unchanged, or download failed | Check the download log in the run summary; re-run with `force_refresh=true`. |
+| AWS auth failure | `AWS_ROLE_ARN` misconfigured / OIDC trust | Verify the role and its trust policy for GitHub OIDC. |
+| Schema drift suspected | Upstream column changes | Run `awards_refresh_validation.py` locally against the new CSV; update `docs/data/sbir_awards_columns.json` if the change is intended. |
 
-## PR review checklist
+## Verify a refresh
 
-- Confirm metadata deltas (row count / SHA-256) look reasonable.
-- Spot-check `reports/awards_data_refresh/latest.md` inside the PR for warnings (schema drift, large row drops).
-- Approve via CODEOWNERS to keep automation unblocked.
+- Confirm a new/updated object under `s3://<S3_BUCKET>/raw/awards/` (timestamp,
+  size) in the "Check downloaded files" step.
+- Review the download log in the run summary for HTTP/transfer errors.

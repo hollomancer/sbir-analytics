@@ -99,8 +99,8 @@ Env vars: copy `.env.example` to `.env` and set `NEO4J_USER`, `NEO4J_PASSWORD` b
 GitHub Actions workflows wire these commands:
 
 - `.github/workflows/ci.yml` – runs `uv run pytest -v --cov=sbir_etl` plus lint/type checks.
-- `.github/workflows/weekly.yml` – scheduled nightly smoke/security targets and weekly comprehensive tests.
-- `.github/workflows/build-images.yml` – container image build validation.
+- `.github/workflows/weekly.yml` – scheduled tests, nightly smoke/security checks, and weekly comprehensive suites.
+- `.github/workflows/etl-pipeline.yml` – scheduled/manual ETL pipeline jobs, including USAspending ingestion.
 
 Use `gh workflow run <name>` for manual triggers or inspect [Actions](https://github.com/<org>/<repo>/actions).
 

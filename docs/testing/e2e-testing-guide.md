@@ -133,18 +133,17 @@ CI jobs are organized into three priority tiers:
 
 #### Workflow-Specific Behavior
 
-- **PR/Commit Workflow** (`.github/workflows/ci.yml`):
+- **PR/Commit Workflow** (`ci.yml`):
   - Tier 1: Fast tests run immediately
   - Tier 2: User story jobs run conditionally (based on path filters for PRs)
   - Tier 3: Performance checks run last, non-blocking
 
-- **Scheduled Builds** (`.github/workflows/weekly.yml`):
-  - Runs comprehensive test suite in parallel:
-    - `test-unit`: All unit tests (fast + slow)
-    - `test-integration`: Integration tests with Neo4j service
-    - `test-e2e`: End-to-end tests
-  - Completes in ~10-15 minutes total
-  - All tests run in parallel for faster completion
+- **Scheduled Tests & Quality** (`weekly.yml`):
+  - Runs scheduled test and quality jobs in parallel where possible:
+    - `tests`: scheduled standard/comprehensive pytest suites
+    - `comprehensive-tests`: weekly E2E, real-data, and comprehensive validation
+    - `real-data-validation`, `neo4j-smoke`, and `security-scan`: scheduled data, graph, and security checks
+  - Uses the `workflow_target` and `test_level` manual-dispatch inputs to select targeted runs.
 
 - **Test Markers**:
   - `@pytest.mark.fast` - Fast unit tests (< 1 second each)
@@ -154,9 +153,9 @@ CI jobs are organized into three priority tiers:
 
 ### Workflow Files
 
-- `.github/workflows/ci.yml` and `.github/workflows/build-images.yml` cover CI checks and image builds in GitHub Actions
-- `.github/workflows/weekly.yml` includes scheduled smoke, security, and comprehensive test targets
-- Performance checks run through `scripts/performance/detect_performance_regression.py` when invoked by CI or maintainers
+- `.github/workflows/ci.yml` runs PR/push tests, container build checks, E2E Docker checks, transition MVP checks, and performance checks
+- `.github/workflows/weekly.yml` runs the scheduled `neo4j-smoke` job for graph connectivity and schema expectations
+- `.github/workflows/ci.yml` runs the `performance-check` job to compare benchmark artifacts and alert on drift
 - Artifacts (logs, coverage, metrics) publish to `reports/` and the CI UI for inspection
 
 ## Contributing to Tests
@@ -219,7 +218,7 @@ CI jobs are organized into three priority tiers:
   ```
 
 - Threshold flags control warning/failure levels; the script returns non-zero on regression when `--fail-on-regression` is supplied.
-- GitHub Actions can invoke `scripts/performance/detect_performance_regression.py` from existing CI workflows and attach the Markdown summary as an artifact or PR comment.
+- GitHub Actions integration now lives in `.github/workflows/ci.yml` as the `performance-check` job, which runs the script, publishes regression artifacts, and posts the regression summary as a PR comment.
 
 ## Test Scenarios
 

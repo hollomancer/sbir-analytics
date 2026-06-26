@@ -94,7 +94,7 @@ pytest -m "fast and not integration and not e2e" -n auto --maxfail=5
 
 #### Estimated Runtime: 20-30 minutes
 
-#### Current Implementation: Already in `.github/workflows/weekly.yml`
+#### Current Implementation: Scheduled test, smoke, and security jobs run in `.github/workflows/weekly.yml`
 
 ---
 
@@ -126,7 +126,7 @@ pytest -m "fast and not integration and not e2e" -n auto --maxfail=5
 #### Implementation
 
 ```yaml
-# New workflow: .github/workflows/weekly.yml
+# Current workflow: .github/workflows/weekly.yml
 on:
   schedule:
     - cron: "0 2 * * 0"  # Sunday 2 AM UTC
@@ -230,7 +230,7 @@ weekly-tests:
   run: pytest -m "e2e or real_data or weekly" -n auto
 ```
 
-### 4. Create weekly workflow
+### 4. Update weekly workflow
 
 ```yaml
 # .github/workflows/weekly.yml
@@ -296,11 +296,11 @@ jobs:
 
 1. Modify ci.yml to run only fast tests on commit
 2. Add conditional integration tests on PR
-3. Update weekly.yml to run slow tests
+3. Update weekly.yml scheduled jobs to run slow/nightly tests
 
-### Phase 3: Create weekly workflow (Week 2)
+### Phase 3: Update weekly workflow (Week 2)
 
-1. Create weekly.yml for comprehensive tests
+1. Update weekly.yml for comprehensive tests
 2. Move real_data tests to weekly
 3. Add performance profiling to weekly
 
