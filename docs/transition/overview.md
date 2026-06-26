@@ -116,7 +116,7 @@ export SBIR_ETL__TRANSITION__DETECTION__CET_WEIGHT=0.15
 
 **Quick Reference**:
 
-- 📋 [MVP Guide](mvp.md) - Minimal viable product
+- 📋 [MVP Guide](../archive/transition/mvp.md) - Minimal viable product
 - 📋 [Configuration Guide](../../config/README.md) - YAML configuration guide
 
 ## Neo4j Queries

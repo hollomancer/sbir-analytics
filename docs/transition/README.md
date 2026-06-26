@@ -19,7 +19,7 @@ The transition detection system identifies successful transitions of SBIR/STTR-f
 New to transition detection? Start here:
 
 1. **[Complete Overview](overview.md)** - Comprehensive system overview with quick start
-2. **[MVP Guide](mvp.md)** - Quick start and minimum viable product overview
+2. **[MVP Guide](../archive/transition/mvp.md)** - Quick start and minimum viable product overview
 3. **[Detection Algorithm](detection-algorithm.md)** - Core algorithm and methodology
 
 ## Core Documentation
@@ -60,7 +60,7 @@ New to transition detection? Start here:
   - Classification-based scoring
   - Combined analysis approach
 
-- **[USAspending Integration](usaspending-integration.md)** - Federal contract data
+- **[USAspending Integration](../archive/transition/usaspending-integration.md)** - Federal contract data
   - Contract data extraction
   - Transition signal detection from contracts
   - Spend analysis integration

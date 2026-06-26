@@ -9,6 +9,13 @@ Status: accepted
 
 # ADR: ETL Library Extraction Evaluation
 
+> **Update (2026-06-26):** The "Current Architecture" snapshot below describes the
+> pre-split layout (`sbir_etl/assets/`, `sbir_etl/loaders/neo4j/`). The repo has since
+> moved to a multi-package workspace under `packages/` (`sbir-analytics` for Dagster
+> assets, `sbir-graph` for Neo4j loaders, `sbir-ml` for models), with the core library
+> remaining as `sbir_etl/`. The proposed `sbir-models` package was not created. This
+> note is informational; the decision record itself is left unchanged.
+
 ## Context
 
 We're evaluating whether to extract the ETL pipeline from `sbir-analytics` into a

@@ -378,7 +378,7 @@ roadmap.
 
 ## Related work in `docs/research/`
 
-- `capital-events-v1.md` — the underlying events-table build and per-source coverage
+- `archive/research/capital-events-v1.md` — the underlying events-table build and per-source coverage
 - `sbir-ma-exit-analysis.md` — M&A exit analytics over the broader 429-firm M&A cohort (no sequencing constraint)
 - `sbir-form-d-fundraising-analysis.md` — Form D fundraising profiles over the 3,638 cohort firms with any Form D
 - `dod-form-d-leverage.md` — DoD-specific Form D leverage analysis (branch decomposition, follow-ups, FPDS substitution)

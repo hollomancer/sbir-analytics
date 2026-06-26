@@ -55,7 +55,7 @@ validated_phase_ii_awards (existing) ----> |   prior_award_universe      |
 ### Key components
 
 1. **`SamGovOpportunitiesExtractor`** — `sbir_etl/extractors/sam_gov_opportunities.py`.
-   Parquet-first, API-fallback. Mirrors `docs/SAM_GOV_INTEGRATION.md`
+   Parquet-first, API-fallback. Mirrors `docs/enrichment/sam-gov-integration.md`
    for auth, rate-limit, and retry (inherits `BaseAsyncAPIClient` the
    same way `SAMGovAPIClient` does). **Paginates differently** from the
    Entity client: the Opportunities endpoint
