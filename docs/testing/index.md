@@ -139,7 +139,7 @@ Maintain overall coverage ≥85% (higher for loaders and enrichers). Priority by
 
 ### Quality gates
 
-- Coverage thresholds enforced in CI (`--cov-fail-under`).
+- Coverage is measured with pytest-cov and reported to Codecov; there is no hard `--cov-fail-under` gate in CI.
 - 100% pass rate required — fix or skip flaky tests and document known issues.
 - Ruff linting, MyPy type checking, and Bandit security scan must pass.
 

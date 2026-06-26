@@ -32,13 +32,20 @@ and links to the per-node reference docs.
 | `Patent` | `grant_doc_num` | `patents.py` | [uspto-patents.md](uspto-patents.md) |
 | `PatentAssignment` | `rf_id` | `patents.py` | [uspto-patents.md](uspto-patents.md) |
 
-> **Not in the graph.** Earlier drafts referenced `:Award`, `:Contract`, `:Company`,
-> and `:PatentEntity` nodes. These are **not** written by the loaders. Awards and
-> contracts are unified as `FinancialTransaction`; companies/universities/agencies/
-> patent organizations are unified as `Organization`; researchers and patent
-> individuals are unified as `Individual`. (Some loader helper methods still carry
-> legacy `:Award`/`:Company` constraints and CET-enrichment paths for backward
-> compatibility, but the active asset graph uses the unified labels above.)
+> **Two label families coexist (the graph is mid-migration).** The Dagster analytics
+> loader (`sbir_neo4j_loading.py`) writes the **unified** labels above —
+> `FinancialTransaction` for SBIR awards and federal contracts, `Organization` for
+> companies/universities/agencies/patent organizations, and `Individual` for
+> researchers and patent individuals. Several sbir-graph package loaders still write
+> **legacy** labels and actively link to them:
+>
+> - `:Award` — `cet.py` (`APPLICABLE_TO`) and `patents.py` (`GENERATED_FROM`)
+> - `:Company` — `categorization.py`, `cet.py`, `sec_edgar.py`
+> - `:Contract` — `transition/loading.py`
+> - `:PatentEntity` — `patents.py` (individual assignors/assignees; `ASSIGNED_FROM`/`ASSIGNED_TO`)
+>
+> Treat the legacy labels as **active until those loaders migrate** to the unified
+> model; the relationship table below lists the edges that target them.
 
 ## Relationship Types
 

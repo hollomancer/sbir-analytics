@@ -202,12 +202,17 @@ updated_at: DateTime (nullable)
 - `CONDUCTED_AT`: (FinancialTransaction) → (Organization {research institution})
 - `TRANSITIONED_TO`: (FinancialTransaction {AWARD}) → (Transition)
 - `FOLLOWS`: (FinancialTransaction) → (FinancialTransaction) - Phase progressions
-- `GENERATED_FROM`: (Patent) → (Award) - SBIR-funded patents; an SBIR award is a `FinancialTransaction` with `transaction_type = "AWARD"`
 
 ### Incoming Relationships
 
 - `PARTICIPATED_IN`: (Individual) → (FinancialTransaction)
 - `RESULTED_IN`: (Transition) → (FinancialTransaction {CONTRACT})
+
+> **Note — patents link to the legacy `:Award` label, not this node.** The patent
+> loader creates `(:Patent)-[:GENERATED_FROM]->(:Award)`, where `:Award` is a separate
+> legacy label written by the sbir-graph package (CET / patent loaders), *not* the
+> `:FinancialTransaction` node described here. See [neo4j.md](neo4j.md) for the two
+> coexisting label families.
 
 ## Example Cypher Queries
 

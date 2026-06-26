@@ -146,8 +146,7 @@ See the [Transition Queries](../queries/transition-queries.md) documentation for
 
 Transition data is stored in Neo4j. For schema details:
 
-- **[Transition Graph Schema](../schemas/neo4j.md)** - Neo4j schema for transitions
-- **[Neo4j Schema Reference](../schemas/neo4j.md)** - Overall graph schema
+- **[Neo4j Schema Reference](../schemas/neo4j.md)** - Graph schema (FinancialTransaction, Transition, CETArea, and related labels)
 
 ## Data Flow
 

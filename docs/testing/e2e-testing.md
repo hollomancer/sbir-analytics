@@ -118,40 +118,22 @@ loading:
 
 ## Docker Compose Configuration
 
-The E2E layer (`docker/docker-compose.e2e.yml`) defines an orchestrator and an
-isolated Neo4j instance with ephemeral data:
+The E2E environment is defined in the **root `docker-compose.yml` under the `ci`
+profile** — there is no separate `docker-compose.e2e.yml`. It runs two services:
 
-```yaml
-services:
-  e2e-orchestrator:
-    build:
-      context: .
-      dockerfile: docker/Dockerfile.e2e
-    environment:
-      - ENVIRONMENT=e2e-test
-      - NEO4J_URI=bolt://neo4j-e2e:7687
-      - E2E_MEMORY_LIMIT_GB=8.0
-    depends_on:
-      neo4j-e2e:
-        condition: service_healthy
-    volumes:
-      - ./tests/fixtures:/app/test-data:ro
-      - e2e-artifacts:/app/artifacts
+- **`neo4j`** — an ephemeral Neo4j instance (apoc plugin, healthcheck-gated).
+- **`app`** — the test container. Its `ci`-profile command runs
+  `scripts/e2e_health_check.py` and then
+  `scripts/run_e2e_tests.py --scenario $E2E_TEST_SCENARIO`.
 
-  neo4j-e2e:
-    image: neo4j:5.20.0
-    environment:
-      - NEO4J_AUTH=neo4j/e2e-password
-      - NEO4J_PLUGINS=["apoc"]
-      - NEO4J_dbms_memory_heap_max__size=1g
-      - NEO4J_dbms_memory_pagecache_size=256m
-    volumes:
-      - e2e-neo4j-data:/data
-    healthcheck:
-      test: ["CMD-SHELL", "cypher-shell -u neo4j -p e2e-password 'RETURN 1'"]
-      interval: 10s
-      timeout: 5s
-      retries: 12
+Bring it up with the Make targets (each wraps `docker compose --profile ci up
+--build --abort-on-container-exit neo4j app`):
+
+```bash
+make docker-e2e            # full suite (profile: ci)
+make docker-e2e-minimal    # minimal / fast scenario
+make docker-e2e-standard   # standard scenario
+make docker-e2e-clean      # tear down
 ```
 
 ## Resource Optimizations
@@ -195,8 +177,7 @@ Generated under the orchestrator container:
 Copy artifacts to the host:
 
 ```bash
-docker compose -f docker-compose.yml -f docker/docker-compose.e2e.yml \
-  cp e2e-orchestrator:/app/artifacts ./e2e-artifacts
+docker compose --profile ci cp app:/app/artifacts ./e2e-artifacts
 ```
 
 ## Test Fixtures
@@ -263,8 +244,7 @@ A minimal workflow step looks like:
 **Neo4j connection timeout** — check the instance is healthy:
 
 ```bash
-docker compose -f docker-compose.yml -f docker/docker-compose.e2e.yml \
-  exec neo4j-e2e cypher-shell -u neo4j -p your-password "RETURN 1"
+docker compose --profile ci exec neo4j cypher-shell -u neo4j -p your-password "RETURN 1"
 ```
 
 **Memory pressure** — inspect usage with `docker stats` and lower
@@ -278,8 +258,8 @@ in `.env`.
 **Inspect logs**:
 
 ```bash
-docker compose -f docker-compose.yml -f docker/docker-compose.e2e.yml logs e2e-orchestrator
-docker compose -f docker-compose.yml -f docker/docker-compose.e2e.yml logs neo4j-e2e
+docker compose --profile ci logs app
+docker compose --profile ci logs neo4j
 ```
 
 ## Related Documentation
