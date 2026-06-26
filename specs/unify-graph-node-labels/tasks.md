@@ -20,11 +20,12 @@ All tasks pending — this is a fresh plan from the `unify-graph-node-labels` sp
 - **Verify:** a short inventory table committed in the PR description / design note;
       `grep`-backed, no guesses.
 
-### 2. Add `FinancialTransaction(award_id)` index → verify: index exists
-- [ ] If not already indexed, add an index on `:FinancialTransaction(award_id)` so
-      the MATCH-on-`award_id` upserts are not full scans. (Fold into migration 006
-      or a small prior statement.)
-- **Verify:** `SHOW INDEXES` lists it; loader queries use it (PROFILE shows NodeIndexSeek).
+### 2. Confirm `FinancialTransaction(award_id)` index (already exists) → verify: index present
+- [ ] No new index needed — `:FinancialTransaction(award_id)` is already created as
+      `financial_transaction_award_id` in `migrations/versions/001_initial_schema.py`.
+      Just confirm the MATCH-on-`award_id` upserts use it.
+- **Verify:** `SHOW INDEXES` lists `financial_transaction_award_id`; loader queries
+      hit it (PROFILE shows NodeIndexSeek, not NodeByLabelScan).
 
 ### 3. Retarget CET loader to `:FinancialTransaction` → verify: unit tests + no `:Award` written
 - [ ] In `cet.py`, change the award CET upsert to `MATCH (ft:FinancialTransaction

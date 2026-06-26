@@ -17,7 +17,7 @@ surface (two loaders, one query module) plus a one-time data migration.
 | Patent `GENERATED_FROM` | `loaders/neo4j/patents.py` (~L679–733) | `:Award` (target) | `award_id` |
 | Pathway query API (reader) | `queries/pathway_queries.py` (L118–122, 170–171, 312) | `:Award`, `:Contract` | — |
 | Transitions (already unified) | `loaders/neo4j/transitions.py` (L168, 235) | `:FinancialTransaction` | — |
-| Legacy constraint/index | `client.py`, `migrations/001`, `migrations/004` | `:Award` | `award_id`, `award_date`, `award_topic_code` |
+| Legacy constraint/index | `client.py`, `migrations/001`, `migrations/004` | `:Award` | unique constraint on `award_id`; indexes on properties `award_date` and `topic_code` (index name `award_topic_code`) |
 
 `:Award` and `:FinancialTransaction{award_id}` are disjoint nodes for the same
 award. `transitions.py` already attaches to `:FinancialTransaction`, so the public
