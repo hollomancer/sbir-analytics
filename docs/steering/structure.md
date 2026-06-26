@@ -176,5 +176,5 @@ from sbir_etl.models.sbir_award import SbirAward
 - **[product.md](product.md)** - Project overview and business context
 - **[tech.md](tech.md)** - Technology stack and development tools
 - **[pipeline-orchestration.md](pipeline-orchestration.md)** - Dagster asset organization patterns
-- **[configuration-patterns.md](configuration-patterns.md)** - Configuration management examples
+- **[configuration.md](../configuration.md)** - Configuration management examples
 - **[quick-reference.md](quick-reference.md)** - Common commands and development setup

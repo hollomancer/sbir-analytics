@@ -2,12 +2,9 @@
 
 This document describes the lightweight CET patent classifier components, feature extraction, training flow, evaluation, and Dagster assets. It also documents the award-level ApplicabilityModel architecture and its key hyperparameters used by the award classification asset.
 
-## Exploration Summary
+## Taxonomy
 
-- ✅ October 26, 2025 exploration delivered a production-ready classifier with 232/232 tests passing and >85% coverage.
-- ✅ Three packaged artifacts are maintained as appendices: a quick reference, comprehensive analysis, and CLI/API checklists.
-- ✅ 21 CET categories, taxonomy versioning, and configuration guidance consolidated here for sbir-analytics engineers.
-- 📎 For the deep-dive reports—including diagrams, architecture walkthroughs, and training notes—see [`docs/ml/cet-classifier-appendix.md`](cet-classifier-appendix.md).
+The classifier targets the **21 Critical and Emerging Technology areas** defined by the NSTC framework. The taxonomy is the single source of truth in [`config/cet/taxonomy.yaml`](../../config/cet/taxonomy.yaml) (version `NSTC-2025Q1`); each area carries a definition, keyword list, optional `negative_keywords`, and optional `parent_cet_id`. `TaxonomyLoader` loads these `CETArea` records, and the resulting `taxonomy_version` is propagated to every classification output. Do not hardcode the area list in docs or code — read it from the YAML.
 
 ## Award ApplicabilityModel (Awards)
 

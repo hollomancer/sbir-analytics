@@ -116,8 +116,7 @@ raw/uspto/
 **Related Documentation:**
 
 - [USPTO Data Refresh Process](uspto-data-refresh.md) - Automated download workflow
-- [USPTO Patent Data Dictionary](dictionaries/uspto-patent-data-dictionary.md)
-- [Patent Neo4j Schema](../schemas/patent-neo4j-schema.md)
+- [USPTO Patents (source, fields, graph mapping)](../schemas/uspto-patents.md)
 
 ## External API Services
 
@@ -204,7 +203,7 @@ s3://sbir-etl-production-data/
 
 Detailed field-level documentation:
 
-- [USPTO Patent Data Dictionary](dictionaries/uspto-patent-data-dictionary.md)
+- [USPTO Patents (source, fields, graph mapping)](../schemas/uspto-patents.md)
 - [Transition Fields Dictionary](dictionaries/transition-fields-dictionary.md)
 
 ## Schema Documentation
@@ -212,7 +211,7 @@ Detailed field-level documentation:
 Graph database schemas and entity relationships:
 
 - [Neo4j Schema Overview](../schemas/neo4j.md)
-- [Patent Neo4j Schema](../schemas/patent-neo4j-schema.md)
+- [USPTO Patents Schema](../schemas/uspto-patents.md)
 
 ## Congressional District Analysis
 

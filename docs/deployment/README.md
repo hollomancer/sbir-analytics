@@ -70,7 +70,7 @@ The documented approach can use GitHub Actions for orchestration with optional A
 |-------|-------------|
 | [AWS Deployment](aws-deployment.md) | Lambda, Step Functions, S3 setup |
 | [AWS Batch Jobs](aws-batch-analysis-jobs.md) | Heavy ML/fiscal analysis jobs |
-| [Docker](docker.md) | Local development setup |
+| [Docker](../development/docker.md) | Local development setup |
 | [Neo4j Runbook](neo4j-runbook.md) | Neo4j operations |
 | [GitHub Actions ML](github-actions-ml.md) | ML job configuration |
 
@@ -100,4 +100,4 @@ uv run dagster dev
 uv run dagster job execute -m sbir_analytics.definitions -j sbir_weekly_refresh_job
 ```
 
-See [Docker Guide](docker.md) for full local setup.
+See [Docker Guide](../development/docker.md) for full local setup.

@@ -131,7 +131,7 @@ Assets organized by functional area:
 
 ## Configuration
 
-Pipeline processing, performance tuning, and orchestration settings are configured in YAML. See **[configuration-patterns.md](configuration-patterns.md)** for complete configuration examples including:
+Pipeline processing, performance tuning, and orchestration settings are configured in YAML. See **[configuration.md](../configuration.md)** for complete configuration examples including:
 
 - Pipeline processing configuration (chunk sizes, memory thresholds, timeouts)
 - Performance tuning settings (batch sizes, parallel threads, retry strategies)
@@ -263,7 +263,7 @@ def enrichment_success_rate_check(enriched_sbir_awards: pd.DataFrame) -> AssetCh
 
 ## Related Documents
 
-- **[configuration-patterns.md](configuration-patterns.md)** - Complete pipeline and performance configuration examples
+- **[configuration.md](../configuration.md)** - Complete pipeline and performance configuration examples
 - **[data-quality.md](data-quality.md)** - Quality framework integrated with asset checks
 - **[enrichment-patterns.md](enrichment-patterns.md)** - Enrichment performance monitoring patterns
 - **[neo4j-patterns.md](neo4j-patterns.md)** - Graph database loading patterns

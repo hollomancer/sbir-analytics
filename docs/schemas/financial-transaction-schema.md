@@ -202,7 +202,7 @@ updated_at: DateTime (nullable)
 - `CONDUCTED_AT`: (FinancialTransaction) → (Organization {research institution})
 - `TRANSITIONED_TO`: (FinancialTransaction {AWARD}) → (Transition)
 - `FOLLOWS`: (FinancialTransaction) → (FinancialTransaction) - Phase progressions
-- `GENERATED_FROM`: (Patent) → (FinancialTransaction)
+- `GENERATED_FROM`: (Patent) → (Award) - SBIR-funded patents; an SBIR award is a `FinancialTransaction` with `transaction_type = "AWARD"`
 
 ### Incoming Relationships
 
@@ -285,6 +285,6 @@ RETURN award, t, contract
 
 ## Related Documentation
 
-- [Transition Graph Schema](./transition-graph-schema.md)
+- [Neo4j Schema (Canonical Index)](./neo4j.md)
 - [Organization Schema](./organization-schema.md)
 - [Architecture Overview](../architecture/detailed-overview.md) - For migration context

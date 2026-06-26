@@ -434,7 +434,7 @@ def analyze_company_performance(company_id):
 
 ## Related Documentation
 
-- **Graph Model:** [`docs/schemas/transition-graph-schema.md`](../schemas/transition-graph-schema.md)
+- **Graph Model:** [`docs/schemas/neo4j.md`](../schemas/neo4j.md)
 - **Detection Algorithm:** [`docs/transition/detection-algorithm.md`](../transition/detection-algorithm.md)
 - **Scoring Guide:** [`docs/transition/scoring-guide.md`](../transition/scoring-guide.md)
 - **Evidence Bundles:** [`docs/transition/evidence-bundles.md`](../transition/evidence-bundles.md)

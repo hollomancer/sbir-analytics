@@ -2,7 +2,7 @@
 
 Fast lookup for common patterns, configurations, and code snippets used in the SBIR analytics repository.
 
-Note: Values shown here are illustrative. The single source of truth for configuration and defaults is `configuration-patterns.md` and `config/base.yaml`.
+Note: Values shown here are illustrative. The single source of truth for configuration and defaults is `../configuration.md` and `config/base.yaml`.
 
 ## Quality Thresholds Quick Lookup
 
@@ -20,12 +20,12 @@ See confidence definitions in `glossary.md`.
 
 ## Common Configuration Snippets
 
-For full YAML examples, see `configuration-patterns.md`.
+For full YAML examples, see `../configuration.md`.
 
-- Quality gates: thresholds and actions → `configuration-patterns.md#data-quality-configuration`
-- Enrichment: sources, batch processing, confidence → `configuration-patterns.md#enrichment-configuration`
-- Pipeline performance: chunking, memory, retries → `configuration-patterns.md#pipeline-orchestration-configuration`
-- Neo4j loading: batch size, parallelism, timeouts → `configuration-patterns.md#neo4j-configuration`
+- Quality gates: thresholds and actions → `../configuration.md#data-quality-configuration`
+- Enrichment: sources, batch processing, confidence → `../configuration.md#enrichment-configuration`
+- Pipeline performance: chunking, memory, retries → `../configuration.md#pipeline-orchestration-configuration`
+- Neo4j loading: batch size, parallelism, timeouts → `../configuration.md#neo4j-configuration`
 
 ## Asset Check Templates
 
@@ -72,7 +72,7 @@ CREATE FULLTEXT INDEX idx_company_name_fulltext ON (c:Company) FOR (c.name);
 
 ## Environment Variables Quick Setup
 
-Prefer `SBIR_ETL__...` overrides that mirror YAML structure. See details in `configuration-patterns.md#environment-variable-overrides`.
+Prefer `SBIR_ETL__...` overrides that mirror YAML structure. See details in `../configuration.md#environment-variable-overrides`.
 
 Example:
 
@@ -128,7 +128,7 @@ make neo4j-reset   # Fresh instance
 | Neo4j constraint violations | Check for duplicate data | [neo4j-patterns.md](neo4j-patterns.md) |
 | Memory issues | Reduce chunk_size | [pipeline-orchestration.md](pipeline-orchestration.md) |
 | Asset dependency errors | Check asset function signatures | [pipeline-orchestration.md](pipeline-orchestration.md) |
-| Fiscal analysis R errors | Check R/rpy2 installation and StateIO package | [configuration-patterns.md](configuration-patterns.md) |
+| Fiscal analysis R errors | Check R/rpy2 installation and StateIO package | [configuration.md](../configuration.md) |
 
 ### Performance Issues
 
@@ -146,27 +146,27 @@ make neo4j-reset   # Fresh instance
 ### Need data validation?
 
 → Use asset checks from [pipeline-orchestration.md](pipeline-orchestration.md)
-→ Configure thresholds in [configuration-patterns.md](configuration-patterns.md)
+→ Configure thresholds in [configuration.md](../configuration.md)
 
 ### Need external data enrichment?
 
 → Use hierarchical enrichment from [enrichment-patterns.md](enrichment-patterns.md)
-→ Configure sources in [configuration-patterns.md](configuration-patterns.md)
+→ Configure sources in [configuration.md](../configuration.md)
 
 ### Need to load data to Neo4j?
 
 → Use batch loading patterns from [neo4j-patterns.md](neo4j-patterns.md)
-→ Configure connection in [configuration-patterns.md](configuration-patterns.md)
+→ Configure connection in [configuration.md](../configuration.md)
 
 ### Need to optimize performance?
 
 → Use chunked processing from [pipeline-orchestration.md](pipeline-orchestration.md)
-→ Configure performance settings in [configuration-patterns.md](configuration-patterns.md)
+→ Configure performance settings in [configuration.md](../configuration.md)
 
 ## Related Documents
 
 - **[Documentation index](../index.md)** - Complete navigation guide
-- **[configuration-patterns.md](configuration-patterns.md)** - Full configuration examples
+- **[configuration.md](../configuration.md)** - Full configuration examples
 - **[data-quality.md](data-quality.md)** - Quality framework details
 - **[enrichment-patterns.md](enrichment-patterns.md)** - Enrichment strategy details
 - **[pipeline-orchestration.md](pipeline-orchestration.md)** - Pipeline patterns details

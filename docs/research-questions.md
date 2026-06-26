@@ -293,7 +293,7 @@ Documents and reports the question inventory has produced for specific audiences
 ### Form D fundraising analysis (published)
 
 **Audience:** F-area analysts, investor researchers, policy staff studying program-wide private-capital leverage.
-**Format:** `docs/research/sbir-form-d-fundraising-analysis.md` (canonical, on main) + companion methodology docs: `form-d-leverage-bootstrap-findings.md` (CIs, on main from PR #338); `form-d-pif-cross-link-audit.md` (PIF integrity, on main from PR #341); `dod-form-d-leverage-deep-dive.md` (Branch decomposition, on main from PR #342); `dod-form-d-followup-findings.md` (per-firm + time-series + acquirer-type, on main from PR #343); `dod-fpds-substitution-test-findings.md` (Form D vs. FPDS substitution-channel follow-up, on main from PR #350).
+**Format:** `docs/research/sbir-form-d-fundraising-analysis.md` (canonical, on main; now includes Appendix A — firm-level bootstrap CIs, PR #338 — and Appendix B — PIF cross-link integrity audit, PR #341); `docs/research/dod-form-d-leverage.md` (DoD Branch decomposition + per-firm/time-series/acquirer-type follow-ups + Form D vs. FPDS substitution test, PRs #342/#343/#350); `docs/research/form-d-data-dictionary.md` (field reference).
 **Pulls from:** F1 (Form D profile), F3 (private-to-SBIR leverage), A3/A4 (DoD-specific decomposition).
 
 ### Commercialization-benchmark methodology (in progress, not yet committed)

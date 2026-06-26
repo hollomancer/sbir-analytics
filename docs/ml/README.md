@@ -43,11 +43,6 @@ Start with these guides to understand and use the ML features:
   - Training process and evaluation
   - Usage examples and API reference
 
-- **[CET Classifier Appendix](cet-classifier-appendix.md)** - Extended technical details
-  - Detailed feature engineering
-  - Model evaluation metrics
-  - Performance analysis and tuning
-  - Implementation details
 
 - **[CET Award Training Data](cet-award-training-data.md)** - Training data documentation
   - Data sources and collection methodology

@@ -193,6 +193,6 @@ export SBIR_ETL__ENRICHMENT__MATCH_RATE_THRESHOLD=0.75
 
 - **[product.md](product.md)** - Project overview and key features
 - **[structure.md](structure.md)** - Project organization and code structure
-- **[configuration-patterns.md](configuration-patterns.md)** - Environment variable configuration examples
+- **[configuration.md](../configuration.md)** - Environment variable configuration examples
 - **[pipeline-orchestration.md](pipeline-orchestration.md)** - Dagster orchestration and development workflow
 - **[quick-reference.md](quick-reference.md)** - Common commands quick reference

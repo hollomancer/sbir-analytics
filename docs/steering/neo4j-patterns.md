@@ -331,7 +331,7 @@ CREATE (c)-[:OWNS {as_of_date: $assignment_date}]->(p)
 
 ## Related Documents
 
-- **[configuration-patterns.md](configuration-patterns.md)** - Complete Neo4j configuration examples
+- **[configuration.md](../configuration.md)** - Complete Neo4j configuration examples
 - **[pipeline-orchestration.md](pipeline-orchestration.md)** - Loading performance optimization and memory management
 - **[data-quality.md](data-quality.md)** - Data quality constraints and validation
 - **[quick-reference.md](quick-reference.md)** - Neo4j patterns quick reference and common queries

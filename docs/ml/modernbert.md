@@ -420,6 +420,63 @@ Get a token from: <https://huggingface.co/settings/tokens>
 - Verify text field names match configuration
 - Review logs for specific failures
 
+## Testing
+
+Integration tests for the client live in `tests/integration/test_modernbert_client.py`. They exercise text preparation, embedding generation, and award–patent similarity against bundled sample SBIR awards and USPTO patents.
+
+By default the tests run in **local mode** (requires `sentence-transformers`; the first run downloads the model). To exercise **API mode** instead, set `HF_TOKEN` and `USE_MODERNBERT_API=1`:
+
+```bash
+# Local mode (default — requires sentence-transformers)
+pytest tests/integration/test_modernbert_client.py -v
+
+# API mode (requires a HuggingFace token)
+export HF_TOKEN="your_token_here"
+export USE_MODERNBERT_API=1
+pytest tests/integration/test_modernbert_client.py -v
+```
+
+`ModernBertClient` requires a `ModernBertClientConfig`; there is no zero-argument
+constructor. Select the mode via `use_local` on the config:
+
+```python
+from sbir_ml.ml.modernbert_client import ModernBertClient
+from sbir_ml.ml.config import ModernBertClientConfig
+
+# API mode (default)
+client = ModernBertClient(config=ModernBertClientConfig(use_local=False))
+
+# Local mode
+client = ModernBertClient(config=ModernBertClientConfig(use_local=True))
+
+award_text = client.prepare_award_text(
+    solicitation_title="Advanced Manufacturing Technologies",
+    abstract="This project develops novel 3D printing methods...",
+    award_title="Innovative Additive Manufacturing",
+)
+result = client.generate_embeddings([award_text])
+assert result.embeddings.shape == (1, 768)  # (n_texts, dimension)
+```
+
+### Interpreting Similarity Scores
+
+Embeddings use cosine similarity (typically 0.0–1.0 for the normalized vectors this
+client produces). Useful reference bands:
+
+| Score | Interpretation |
+|-------|----------------|
+| 0.95–1.0 | Very high — likely related technologies |
+| 0.85–0.95 | High — possibly related; review carefully |
+| 0.70–0.85 | Moderate — may only share technical language |
+| < 0.70 | Low — likely unrelated |
+
+Because ModernBERT-Embed is general-purpose, unrelated technical documents can show
+inflated similarity (e.g. ~0.87) due to shared vocabulary ("architecture",
+"efficiency", "stability") and similar sentence structure. This is expected. To reduce
+false positives, prefer threshold-based filtering plus domain/CET pre-filtering and
+top-k retrieval rather than a single global cutoff (the `top_k` and
+`similarity_threshold` config keys support this).
+
 ## References
 
 - **Model Card**: <https://huggingface.co/nomic-ai/modernbert-embed-base>
@@ -433,7 +490,7 @@ Get a token from: <https://huggingface.co/settings/tokens>
 - [CET Classification](cet-integration.md) - Technology classification system
 - [Transition Detection](../transition/) - Technology transition detection
 - [ML Documentation Index](README.md) - Machine learning overview
-- [Configuration Patterns](../steering/configuration-patterns.md) - Configuration guide
+- [Configuration Patterns](../configuration.md) - Configuration guide
 
 ---
 

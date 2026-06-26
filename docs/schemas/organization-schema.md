@@ -192,7 +192,11 @@ CREATE FULLTEXT INDEX idx_organization_name_fulltext FOR (o:Organization) ON (o.
 - `ASSIGNED_FROM`: (PatentAssignment) → (Organization {organization_type IN ["COMPANY", "UNIVERSITY", "GOVERNMENT"]})
 - `OWNS`: (Organization {organization_type: "COMPANY"}) → (Patent)
 - `SPECIALIZES_IN`: (Organization {organization_type: "COMPANY"}) → (CETArea)
-- Transition metrics are now stored directly on Organization nodes (no separate TransitionProfile node)
+- `ACHIEVED`: (Organization {organization_type: "COMPANY"}) → (TransitionProfile)
+  - Company-level transition metrics are aggregated into a separate `:TransitionProfile`
+    node (created by `profiles.py`); see [neo4j.md](neo4j.md) for that node's properties.
+  - Some CET / transition summary properties may additionally be cached on the
+    Organization node, but the canonical aggregate is the `TransitionProfile` node.
 
 ### New Relationships
 
@@ -260,8 +264,8 @@ ORDER BY patent_count DESC
 ### Find Funding Agencies
 
 ```cypher
-MATCH (a:Award)-[:FUNDED_BY]->(o:Organization {organization_type: "AGENCY"})
-RETURN o.agency_name, count(a) as award_count
+MATCH (ft:FinancialTransaction)-[:FUNDED_BY]->(o:Organization {organization_type: "AGENCY"})
+RETURN o.agency_name, count(ft) as award_count
 ORDER BY award_count DESC
 ```
 

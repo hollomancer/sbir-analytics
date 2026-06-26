@@ -41,7 +41,7 @@ Experimental, graph-based ETL pipeline that ingests SBIR/USAspending/USPTO data 
 
 - **[Experimental deployment path](deployment/README.md)** - GitHub Actions orchestration notes
 - **[AWS Infrastructure](deployment/aws-deployment.md)** - Optional Lambda + S3 + Step Functions setup
-- [Containerization guide](deployment/containerization.md) - Docker for local development and fallback testing
+- [Docker guide](development/docker.md) - Containers for local development, CI, and testing
 
 ### Development Guides
 

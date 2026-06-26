@@ -2,7 +2,7 @@
 
 **Audience**: DevOps, Cloud Engineers
 **Prerequisites**: AWS account, AWS CLI configured
-**Related**: [GitHub Actions](README.md), [Docker Guide](docker.md)
+**Related**: [GitHub Actions](README.md), [Docker Guide](../development/docker.md)
 **Last Updated**: 2025-11-29
 
 ## Overview
@@ -339,6 +339,6 @@ aws stepfunctions start-execution \
 ## Related Documentation
 
 - [GitHub Actions](README.md) - Primary deployment method
-- [Docker Guide](docker.md) - Local development
+- [Docker Guide](../development/docker.md) - Local development
 - [AWS Serverless Guide](aws-deployment.md) - Detailed Lambda setup (archived)
 - [AWS Batch Setup](aws-deployment.md) - Detailed Batch setup (archived)

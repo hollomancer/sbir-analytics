@@ -261,7 +261,7 @@ Where to look in the repo
 - Neo4j config template: `config/neo4j/neo4j.conf`
 - Bootstrap / migrations / backup / restore: `scripts/neo4j/*`
 - Makefile neo4j wrappers: `Makefile` (search `neo4j-` targets)
-- General containerization and runbook: `docs/deployment/containerization.md`
+- General containerization and runbook: `docs/development/docker.md`
 
 If you'd like, I can next:
 
