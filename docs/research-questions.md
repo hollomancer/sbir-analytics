@@ -293,7 +293,7 @@ Documents and reports the question inventory has produced for specific audiences
 ### Form D fundraising analysis (published)
 
 **Audience:** F-area analysts, investor researchers, policy staff studying program-wide private-capital leverage.
-**Format:** `docs/research/sbir-form-d-fundraising-analysis.md` (canonical, on main) + companion methodology docs: `form-d-leverage-bootstrap-findings.md` (CIs, on main from PR #338); `form-d-pif-cross-link-audit.md` (PIF integrity, in [PR #340](https://github.com/hollomancer/sbir-analytics/pull/340)); `dod-form-d-leverage-deep-dive.md` (Branch decomposition, in [PR #342](https://github.com/hollomancer/sbir-analytics/pull/342)); `dod-form-d-followup-findings.md` (per-firm + time-series + acquirer-type, in [PR #343](https://github.com/hollomancer/sbir-analytics/pull/343)).
+**Format:** `docs/research/sbir-form-d-fundraising-analysis.md` (canonical, on main) + companion methodology docs: `form-d-leverage-bootstrap-findings.md` (CIs, on main from PR #338); `form-d-pif-cross-link-audit.md` (PIF integrity, in [PR #340](https://github.com/hollomancer/sbir-analytics/pull/340)); `dod-form-d-leverage-deep-dive.md` (Branch decomposition, in [PR #342](https://github.com/hollomancer/sbir-analytics/pull/342)); `dod-form-d-followup-findings.md` (per-firm + time-series + acquirer-type, in [PR #343](https://github.com/hollomancer/sbir-analytics/pull/343)); `dod-fpds-substitution-test-findings.md` (Form D vs. FPDS substitution-channel follow-up, on main from PR #350).
 **Pulls from:** F1 (Form D profile), F3 (private-to-SBIR leverage), Section A (DoD leverage ratio + Axis B vulnerability decomposition).
 
 ### Commercialization-benchmark methodology (in progress, not yet committed)
