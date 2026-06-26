@@ -30,9 +30,10 @@ def classify_external_ot_transition_claim(claim_text: str | None) -> OTTransitio
     text = (claim_text or "").lower()
     signals: list[str] = []
 
-    has_ot = bool(
-        re.search(r"\b(other transaction|ota|ot agreement|ot consortium|consortium)\b", text)
-    )
+    # Explicit OT/OTA phrasing only. Bare "consortium" is too generic (any text
+    # mentioning a consortium + a transition word would false-positive into an
+    # OT-related tier), so it is intentionally excluded.
+    has_ot = bool(re.search(r"\b(other transaction|ota|ot agreement|ot consortium)\b", text))
     has_phase_iii = bool(re.search(r"\b(phase iii|phase 3|phase three)\b", text))
     has_transition = bool(
         re.search(
