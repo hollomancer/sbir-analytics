@@ -34,8 +34,7 @@ class OTConsortiumLoader(BaseNeo4jLoader):
         """Create indexes for the OT consortium node labels."""
         self.create_indexes(
             [
-                "CREATE INDEX project_ot_award_id IF NOT EXISTS "
-                "FOR (p:ProjectOT) ON (p.award_id)",
+                "CREATE INDEX project_ot_award_id IF NOT EXISTS FOR (p:ProjectOT) ON (p.award_id)",
                 "CREATE INDEX project_ot_tier IF NOT EXISTS FOR (p:ProjectOT) ON (p.tier)",
                 "CREATE INDEX base_ot_piid IF NOT EXISTS FOR (b:BaseOT) ON (b.piid)",
                 "CREATE INDEX cmf_name IF NOT EXISTS FOR (c:CMF) ON (c.name)",
