@@ -68,13 +68,17 @@ class TestNeo4jConstraintsAndIndexes:
 
         # Verify constraints exist. `create_constraints()` (see
         # sbir_graph.loaders.neo4j.client) creates legacy constraints keyed by
-        # the primary-id of each entity — `company_id`, `award_id`, etc.
+        # the primary-id of each entity — e.g. `company_id`. The legacy `:Award`
+        # constraint was removed when `:Award` was unified onto
+        # `:FinancialTransaction` (migration 006).
         with neo4j_client.session() as session:
             result = session.run("SHOW CONSTRAINTS")
             constraints = [record["name"] for record in result]
 
             assert any("company_id" in c for c in constraints)
-            assert any("award_id" in c for c in constraints)
+            # No `:Award` constraint assertion: `:Award` was unified onto
+            # `:FinancialTransaction` (migration 006) and `create_constraints()`
+            # no longer creates an `award_id` constraint.
 
     def test_create_indexes(self, neo4j_client):
         """Test creating indexes."""
@@ -86,7 +90,8 @@ class TestNeo4jConstraintsAndIndexes:
             indexes = [record["name"] for record in result]
 
             assert any("company_name" in idx for idx in indexes)
-            assert any("award_date" in idx for idx in indexes)
+            # No `:Award` index assertion: the legacy `award_date` index was removed
+            # when `:Award` was unified onto `:FinancialTransaction` (migration 006).
 
 
 @pytest.mark.integration
