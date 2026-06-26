@@ -12,7 +12,7 @@ This directory contains Jupyter notebooks for interactive analysis of SBIR data,
     make install-ml
     ```
 
-    This installs `ml`, `paecter-local`, and `r` dependency groups.
+    This installs `ml`, `modernbert-local`, and `r` dependency groups.
 
 2. **Configure Environment:**
 
@@ -21,7 +21,7 @@ This directory contains Jupyter notebooks for interactive analysis of SBIR data,
     ```
 
     - Enables S3 usage (`use_s3_first=true`).
-    - Ensures `HF_TOKEN` is present in `.env` (required for Paecter/CET models).
+    - Ensures `HF_TOKEN` is present in `.env` (required for ModernBert/CET models).
 
 ## Running Notebooks
 

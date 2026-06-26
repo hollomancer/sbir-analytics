@@ -102,7 +102,7 @@ class PipelineConfig(BaseModel):
     )
     ml: MLConfig = Field(
         default_factory=MLConfig,
-        description="Machine learning configuration (PaECTER, embeddings)",
+        description="Machine learning configuration (ModernBert, embeddings)",
     )
 
     model_config = ConfigDict(

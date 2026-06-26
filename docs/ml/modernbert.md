@@ -26,13 +26,13 @@ This guide covers the integration of ModernBERT-Embed into the SBIR analytics pi
 │                                                             │
 │  validated_sbir_awards ──┐                                 │
 │                          │                                  │
-│                          ├──> paecter_embeddings_awards     │
+│                          ├──> modernbert_embeddings_awards     │
 │                          │         (768-dim vectors)        │
 │                          │                                  │
-│  transformed_patents ────┼──> paecter_embeddings_patents   │
+│  transformed_patents ────┼──> modernbert_embeddings_patents   │
 │                          │         (768-dim vectors)        │
 │                          │                                  │
-│                          └──> paecter_award_patent_similarity│
+│                          └──> modernbert_award_patent_similarity│
 │                                    (cosine similarity)       │
 │                                                             │
 └─────────────────────────────────────────────────────────────┘
@@ -40,19 +40,19 @@ This guide covers the integration of ModernBERT-Embed into the SBIR analytics pi
 
 ### Dagster Assets
 
-1. **`paecter_embeddings_awards`**
+1. **`modernbert_embeddings_awards`**
    - Generates embeddings for SBIR awards
    - Input: `validated_sbir_awards` DataFrame
    - Output: DataFrame with `award_id`, `embedding`, metadata
    - Text fields: solicitation_title, award_title, abstract
 
-2. **`paecter_embeddings_patents`**
+2. **`modernbert_embeddings_patents`**
    - Generates embeddings for USPTO patents
    - Input: `transformed_patents` metadata (loads from JSONL or S3)
    - Output: DataFrame with `patent_id`, `embedding`, metadata
    - Text fields: title, abstract
 
-3. **`paecter_award_patent_similarity`**
+3. **`modernbert_award_patent_similarity`**
    - Computes cosine similarity between awards and patents
    - Input: Both embedding DataFrames
    - Output: DataFrame with `award_id`, `patent_id`, `similarity_score`
@@ -62,11 +62,11 @@ This guide covers the integration of ModernBERT-Embed into the SBIR analytics pi
 
 ### Basic Configuration
 
-Embedding configuration is located in `config/base.yaml` under the `ml.paecter` section:
+Embedding configuration is located in `config/base.yaml` under the `ml.modernbert` section:
 
 ```yaml
 ml:
-  paecter:
+  modernbert:
     # Inference mode
     use_local: false  # false = API mode, true = local mode
 
@@ -100,13 +100,13 @@ Override configuration using environment variables:
 
 ```bash
 # Use local mode instead of API
-export SBIR_ETL__ML__PAECTER__USE_LOCAL=true
+export SBIR_ETL__ML__MODERNBERT__USE_LOCAL=true
 
 # Adjust batch size
-export SBIR_ETL__ML__PAECTER__API__BATCH_SIZE=64
+export SBIR_ETL__ML__MODERNBERT__API__BATCH_SIZE=64
 
 # Change similarity threshold
-export SBIR_ETL__ML__PAECTER__SIMILARITY_THRESHOLD=0.85
+export SBIR_ETL__ML__MODERNBERT__SIMILARITY_THRESHOLD=0.85
 
 # Set HuggingFace token for API mode
 export HF_TOKEN="your_huggingface_token"
@@ -117,34 +117,34 @@ export HF_TOKEN="your_huggingface_token"
 ### Running via Dagster UI
 
 1. Navigate to the Dagster UI (<http://localhost:3000>)
-2. Go to **Assets** → **paecter** group
+2. Go to **Assets** → **modernbert** group
 3. Select the assets you want to materialize:
-   - `paecter_embeddings_awards`
-   - `paecter_embeddings_patents`
-   - `paecter_award_patent_similarity`
+   - `modernbert_embeddings_awards`
+   - `modernbert_embeddings_patents`
+   - `modernbert_award_patent_similarity`
 4. Click **Materialize**
 
 ### Running via CLI
 
 ```bash
 # Materialize all embedding assets
-dagster asset materialize -m sbir_etl.definitions --select "paecter*"
+dagster asset materialize -m sbir_etl.definitions --select "modernbert*"
 
 # Materialize specific asset
-dagster asset materialize -m sbir_etl.definitions --select paecter_embeddings_awards
+dagster asset materialize -m sbir_etl.definitions --select modernbert_embeddings_awards
 
 # Run the complete embedding job
-dagster job execute -m sbir_etl.definitions -j paecter_job
+dagster job execute -m sbir_etl.definitions -j modernbert_job
 ```
 
 ### Programmatic Usage
 
 ```python
-from sbir_ml.ml.paecter_client import PaECTERClient
-from sbir_ml.ml.config import PaECTERClientConfig
+from sbir_ml.ml.modernbert_client import ModernBertClient
+from sbir_ml.ml.config import ModernBertClientConfig
 
 # Initialize client (API mode)
-client = PaECTERClient(config=PaECTERClientConfig(use_local=False))
+client = ModernBertClient(config=ModernBertClientConfig(use_local=False))
 
 # Prepare texts
 award_texts = [
@@ -195,7 +195,7 @@ print(f"Similarity score: {similarities[0, 0]:.3f}")
 
 ```yaml
 ml:
-  paecter:
+  modernbert:
     use_local: false
     api:
       token_env: "HF_TOKEN"
@@ -222,7 +222,7 @@ ml:
 
 ```yaml
 ml:
-  paecter:
+  modernbert:
     use_local: true
     local:
       model_name: "nomic-ai/modernbert-embed-base"
@@ -236,12 +236,12 @@ ml:
 
 Two asset checks enforce quality thresholds:
 
-1. **`paecter_awards_coverage_check`**
+1. **`modernbert_awards_coverage_check`**
    - Validates that >=95% of awards have valid embeddings
    - Checks embedding dimension (768)
    - Severity: ERROR if threshold not met
 
-2. **`paecter_patents_coverage_check`**
+2. **`modernbert_patents_coverage_check`**
    - Validates that >=98% of patents have valid embeddings
    - Checks embedding dimension (768)
    - Severity: ERROR if threshold not met
@@ -252,7 +252,7 @@ The pipeline includes performance monitoring:
 
 ```python
 # Automatic monitoring in assets
-with performance_monitor.monitor_block("paecter_generate_award_embeddings"):
+with performance_monitor.monitor_block("modernbert_generate_award_embeddings"):
     result = client.generate_embeddings(texts, batch_size=batch_size)
 ```
 
@@ -338,14 +338,14 @@ Approximate times for 10,000 documents:
 1. **Use caching** for repeated computations:
 
    ```python
-   config = PaECTERClientConfig(use_local=False, enable_cache=True)
+   config = ModernBertClientConfig(use_local=False, enable_cache=True)
    ```
 
 2. **Increase batch size** for local mode with GPU:
 
    ```yaml
    ml:
-     paecter:
+     modernbert:
        local:
          batch_size: 64
    ```
@@ -354,7 +354,7 @@ Approximate times for 10,000 documents:
 
    ```yaml
    ml:
-     paecter:
+     modernbert:
        api:
          max_qps: 20  # Increase if you have higher tier
    ```
@@ -371,7 +371,7 @@ Approximate times for 10,000 documents:
 
 ```yaml
 ml:
-  paecter:
+  modernbert:
     api:
       max_qps: 5  # Reduce queries per second
       max_retries: 10  # Increase retries
@@ -386,7 +386,7 @@ ml:
 
 ```yaml
 ml:
-  paecter:
+  modernbert:
     local:
       batch_size: 16  # Reduce batch size
       device: "cpu"   # Use CPU instead of GPU
@@ -424,9 +424,9 @@ Get a token from: <https://huggingface.co/settings/tokens>
 
 - **Model Card**: <https://huggingface.co/nomic-ai/modernbert-embed-base>
 - **ModernBERT Paper**: <https://arxiv.org/abs/2412.13663>
-- **Implementation**: `packages/sbir-ml/sbir_ml/ml/paecter_client.py`
-- **Assets**: `packages/sbir-analytics/sbir_analytics/assets/paecter/embeddings.py`
-- **Configuration**: `config/base.yaml` (ml.paecter section)
+- **Implementation**: `packages/sbir-ml/sbir_ml/ml/modernbert_client.py`
+- **Assets**: `packages/sbir-analytics/sbir_analytics/assets/modernbert/embeddings.py`
+- **Configuration**: `config/base.yaml` (ml.modernbert section)
 
 ## Related Documentation
 

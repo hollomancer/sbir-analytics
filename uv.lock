@@ -2642,9 +2642,9 @@ requires-dist = [
     { name = "sbir-etl", extras = ["r"], marker = "extra == 'r'" },
     { name = "sbir-graph" },
     { name = "sbir-ml", extras = ["nlp"] },
-    { name = "sbir-ml", extras = ["paecter-local"], marker = "extra == 'paecter-local'" },
+    { name = "sbir-ml", extras = ["modernbert-local"], marker = "extra == 'modernbert-local'" },
 ]
-provides-extras = ["r", "paecter-local", "dev"]
+provides-extras = ["r", "modernbert-local", "dev"]
 
 [[package]]
 name = "sbir-etl"
@@ -2826,13 +2826,13 @@ requires-dist = [
     { name = "huggingface-hub", marker = "extra == 'nlp'", specifier = ">=0.20.0,<2.0.0" },
     { name = "sbir-etl" },
     { name = "scikit-learn", specifier = ">=1.4.0,<2.0.0" },
-    { name = "sentence-transformers", marker = "extra == 'paecter-local'", specifier = ">=2.7.0,<6.0.0" },
+    { name = "sentence-transformers", marker = "extra == 'modernbert-local'", specifier = ">=2.7.0,<6.0.0" },
     { name = "spacy", marker = "extra == 'nlp'", specifier = ">=3.7.0,<4.0.0" },
-    { name = "torch", marker = "extra == 'paecter-local'", specifier = ">=2.0.0,<3.0.0" },
+    { name = "torch", marker = "extra == 'modernbert-local'", specifier = ">=2.0.0,<3.0.0" },
     { name = "tqdm", specifier = ">=4.66.0,<5.0.0" },
-    { name = "transformers", marker = "extra == 'paecter-local'", specifier = ">=4.35.0,<6.0.0" },
+    { name = "transformers", marker = "extra == 'modernbert-local'", specifier = ">=4.35.0,<6.0.0" },
 ]
-provides-extras = ["nlp", "paecter-local"]
+provides-extras = ["nlp", "modernbert-local"]
 
 [[package]]
 name = "scikit-learn"

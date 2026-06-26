@@ -13,7 +13,7 @@ ModernBERT-Embed is a general-purpose embedding model from HuggingFace (`nomic-a
 
 ## Two Modes of Operation
 
-The PaECTER client supports two modes:
+The ModernBert client supports two modes:
 
 **API Mode (Default - Recommended)**
 
@@ -45,7 +45,7 @@ The PaECTER client supports two modes:
 
 ```bash
 # Install local model dependencies
-uv pip install -e ".[paecter-local]"
+uv pip install -e ".[modernbert-local]"
 
 # Or install manually
 pip install sentence-transformers torch transformers
@@ -68,22 +68,22 @@ echo "HF_TOKEN=your_token_here" >> .env
 ```bash
 # API mode (default - requires HF_TOKEN)
 export HF_TOKEN="your_token_here"
-python scripts/test_paecter_quick.py
+python scripts/test_modernbert_quick.py
 
 # Local mode (requires sentence-transformers)
-python scripts/test_paecter_quick.py --local
+python scripts/test_modernbert_quick.py --local
 ```
 
 ### 4. Run Integration Tests
 
 ```bash
 # Local mode tests (default - requires sentence-transformers)
-pytest tests/integration/test_paecter_client.py -v
+pytest tests/integration/test_modernbert_client.py -v
 
 # API mode tests (requires HF_TOKEN)
 export HF_TOKEN="your_token_here"
-export USE_PAECTER_API=1
-pytest tests/integration/test_paecter_client.py -v
+export USE_MODERNBERT_API=1
+pytest tests/integration/test_modernbert_client.py -v
 ```
 
 ### 5. Quick Examples
@@ -92,14 +92,14 @@ pytest tests/integration/test_paecter_client.py -v
 
 ```python
 import os
-from sbir_etl.ml.paecter_client import PaECTERClient
+from sbir_etl.ml.modernbert_client import ModernBertClient
 
 # Set token (or use environment variable)
 os.environ["HF_TOKEN"] = "your_token_here"
 
 # Initialize client (uses API by default)
-client = PaECTERClient()
-# or explicitly: client = PaECTERClient(use_local=False)
+client = ModernBertClient()
+# or explicitly: client = ModernBertClient(use_local=False)
 
 # Prepare texts
 award_text = client.prepare_award_text(
@@ -117,10 +117,10 @@ print(f"Mode: {result.inference_mode}")  # "api"
 **Local Mode (Optional):**
 
 ```python
-from sbir_etl.ml.paecter_client import PaECTERClient
+from sbir_etl.ml.modernbert_client import ModernBertClient
 
 # Initialize client in local mode
-client = PaECTERClient(use_local=True)
+client = ModernBertClient(use_local=True)
 
 # Same API as above, but runs locally
 result = client.generate_embeddings([award_text])
@@ -135,8 +135,8 @@ print(f"Mode: {result.inference_mode}")  # "local"
 
 **What's included:**
 
-- Basic PaECTER client (`packages/sbir-ml/sbir_ml/ml/paecter_client.py`)
-- Integration tests with sample data (`tests/integration/test_paecter_client.py`)
+- Basic ModernBert client (`packages/sbir-ml/sbir_ml/ml/modernbert_client.py`)
+- Integration tests with sample data (`tests/integration/test_modernbert_client.py`)
 - Text preparation utilities for awards and patents
 - Similarity computation
 - Sample award and patent data in tests
@@ -144,11 +144,11 @@ print(f"Mode: {result.inference_mode}")  # "local"
 **How to test:**
 
 ```bash
-# Run all PaECTER tests
-uv run pytest tests/integration/test_paecter_client.py -v
+# Run all ModernBert tests
+uv run pytest tests/integration/test_modernbert_client.py -v
 
 # Run specific test
-uv run pytest tests/integration/test_paecter_client.py::TestPaECTERClient::test_award_patent_similarity -v -s
+uv run pytest tests/integration/test_modernbert_client.py::TestModernBertClient::test_award_patent_similarity -v -s
 ```
 
 **Expected results:**
@@ -172,11 +172,11 @@ uv run pytest tests/integration/test_paecter_client.py::TestPaECTERClient::test_
 
 **Implementation:**
 
-A test script is available at `scripts/test_paecter_real_data.py` that:
+A test script is available at `scripts/test_modernbert_real_data.py` that:
 
 1. **Loads real SBIR data** from CSV (using DuckDB for efficient processing)
 2. **Prepares award texts** from Award Title, Abstract, and Solicitation Title fields
-3. **Generates embeddings** using PaECTER (API or local mode)
+3. **Generates embeddings** using ModernBert (API or local mode)
 4. **Saves embeddings** to Parquet format for reuse
 5. **Displays statistics** and summary information
 
@@ -185,32 +185,32 @@ A test script is available at `scripts/test_paecter_real_data.py` that:
 ```bash
 # API mode (default - requires HF_TOKEN)
 export HF_TOKEN="your_token_here"
-python scripts/test_paecter_real_data.py
+python scripts/test_modernbert_real_data.py
 
 # Local mode (requires sentence-transformers)
-python scripts/test_paecter_real_data.py --local
+python scripts/test_modernbert_real_data.py --local
 
 # Process limited number of records
-python scripts/test_paecter_real_data.py --limit 100
+python scripts/test_modernbert_real_data.py --limit 100
 
 # Use specific CSV file
-python scripts/test_paecter_real_data.py --csv data/raw/sbir/awards_data.csv
+python scripts/test_modernbert_real_data.py --csv data/raw/sbir/awards_data.csv
 
 # Load from S3 (direct URL)
-python scripts/test_paecter_real_data.py \
+python scripts/test_modernbert_real_data.py \
     --s3 s3://your-bucket-name/data/raw/sbir/awards_data.csv
 
 # Load from S3 (using bucket env var)
 export SBIR_ANALYTICS_S3_BUCKET=your-bucket-name
-python scripts/test_paecter_real_data.py
+python scripts/test_modernbert_real_data.py
 
 # Load from S3 (using --s3-bucket flag)
-python scripts/test_paecter_real_data.py \
+python scripts/test_modernbert_real_data.py \
     --s3-bucket your-bucket-name \
     --csv data/raw/sbir/awards_data.csv
 
 # Custom output path and batch size
-python scripts/test_paecter_real_data.py \
+python scripts/test_modernbert_real_data.py \
     --output data/processed/my_embeddings.parquet \
     --batch-size 64
 ```
@@ -232,14 +232,14 @@ import pandas as pd
 import numpy as np
 
 # Load embeddings
-df = pd.read_parquet("data/processed/paecter_embeddings_awards_sample.parquet")
+df = pd.read_parquet("data/processed/modernbert_embeddings_awards_sample.parquet")
 
 # Convert to numpy array for similarity computation
 embeddings = np.array([np.array(e) for e in df['embedding']])
 
-# Use with PaECTER client for similarity
-from sbir_etl.ml.paecter_client import PaECTERClient
-client = PaECTERClient()
+# Use with ModernBert client for similarity
+from sbir_etl.ml.modernbert_client import ModernBertClient
+client = ModernBertClient()
 similarities = client.compute_similarity(embeddings[:10], embeddings[10:20])
 ```
 
@@ -275,15 +275,15 @@ similarities = client.compute_similarity(embeddings[:10], embeddings[10:20])
 **Dagster assets to create:**
 
 ```python
-# packages/sbir-analytics/sbir_analytics/assets/paecter/embeddings.py
+# packages/sbir-analytics/sbir_analytics/assets/modernbert/embeddings.py
 
-@asset(group_name="paecter", compute_kind="ml")
-def paecter_embeddings_awards(
+@asset(group_name="modernbert", compute_kind="ml")
+def modernbert_embeddings_awards(
     context: AssetExecutionContext,
     validated_sbir_awards: pd.DataFrame,
 ) -> pd.DataFrame:
-    """Generate PaECTER embeddings for SBIR awards."""
-    client = PaECTERClient()
+    """Generate ModernBert embeddings for SBIR awards."""
+    client = ModernBertClient()
 
     texts = [
         client.prepare_award_text(
@@ -328,7 +328,7 @@ def paecter_embeddings_awards(
 - Implement uncertainty quantification
 - Dynamic expert pool expansion
 
-See `specs/paecter_analysis_layer/` for detailed design.
+See `specs/modernbert_analysis_layer/` for detailed design.
 
 ## Testing Patterns
 
@@ -339,7 +339,7 @@ Focus on individual components:
 ```python
 # Test text preparation
 def test_prepare_patent_text():
-    text = PaECTERClient.prepare_patent_text(
+    text = ModernBertClient.prepare_patent_text(
         title="Solar Cell",
         abstract="High efficiency photovoltaic..."
     )
@@ -354,9 +354,9 @@ Test with real model and sample data:
 ```python
 @pytest.mark.integration
 @pytest.mark.slow
-def test_generate_embeddings(paecter_client):
+def test_generate_embeddings(modernbert_client):
     texts = ["Sample patent text"]
-    result = paecter_client.generate_embeddings(texts)
+    result = modernbert_client.generate_embeddings(texts)
     assert result.embeddings.shape == (1, 768)
 ```
 
@@ -454,7 +454,7 @@ echo "HF_TOKEN=your_token_here" >> .env
 
 ```bash
 pip install sentence-transformers torch transformers
-# Or: uv pip install -e ".[paecter-local]"
+# Or: uv pip install -e ".[modernbert-local]"
 ```
 
 **Model download fails (403 Forbidden)**
@@ -469,14 +469,14 @@ rm -rf ~/.cache/huggingface/hub/models--nomic-ai--modernbert-embed-base
 Reduce batch size:
 
 ```python
-client = PaECTERClient(use_local=True)
+client = ModernBertClient(use_local=True)
 result = client.generate_embeddings(texts, batch_size=8)  # Reduce from 32
 ```
 
 Or force CPU usage:
 
 ```python
-client = PaECTERClient(use_local=True, device='cpu')
+client = ModernBertClient(use_local=True, device='cpu')
 ```
 
 **Slow embedding generation (local mode)**
@@ -497,7 +497,7 @@ If performance is significantly slower:
 
 ### Understanding Cosine Similarity
 
-PaECTER embeddings use **cosine similarity** (range: -1 to 1, typically 0 to 1 for normalized embeddings):
+ModernBert embeddings use **cosine similarity** (range: -1 to 1, typically 0 to 1 for normalized embeddings):
 
 - **0.95-1.0**: Very high similarity (likely related technologies)
 - **0.85-0.95**: High similarity (possibly related, but review carefully)
@@ -517,7 +517,7 @@ You may observe unexpectedly high similarity scores (e.g., 0.85-0.90) between cl
 
 1. **Shared technical vocabulary**: Terms like "architecture", "materials", "efficiency", "stability" appear in many technical domains
 2. **General language patterns**: Both texts describe advanced technology with similar sentence structures
-3. **Model training data**: PaECTER is trained on patents, which share common technical language patterns across domains
+3. **General-purpose training**: ModernBERT-Embed is trained on broad text rather than a single domain, so shared technical vocabulary across fields maps to nearby regions of the embedding space
 4. **Embedding space compression**: High-dimensional embeddings can create spurious similarities
 
 **This is expected behavior** and not necessarily a bug. The model captures semantic similarity at multiple levels, including:
@@ -614,7 +614,7 @@ for award_idx, award_id in enumerate(award_ids):
 If you encounter unexpectedly high similarities, use the diagnostic script:
 
 ```bash
-python scripts/debug_paecter_similarity.py
+python scripts/debug_modernbert_similarity.py
 ```
 
 This script will:
@@ -627,7 +627,7 @@ This script will:
 
 ### Expected Similarity Distributions
 
-Based on the PaECTER specification, you should expect:
+Based on the ModernBERT-Embed specification, you should expect:
 
 - **Negative pairs** (unrelated): Mean cosine similarity ≤ 0.30
 - **Positive pairs** (related): Mean cosine similarity ≥ 0.55
@@ -660,20 +660,20 @@ These are intentionally matched to demonstrate similarity scoring.
 
 1. **Get HuggingFace token:** Sign up at <https://huggingface.co/settings/tokens> (free)
 2. **Set token:** `export HF_TOKEN="your_token_here"`
-3. **Run quick test:** `python scripts/test_paecter_quick.py`
-4. **Run integration tests:** `USE_PAECTER_API=1 pytest tests/integration/test_paecter_client.py -v`
-5. **Test with your data:** `python scripts/test_paecter_real_data.py --limit 100`
+3. **Run quick test:** `python scripts/test_modernbert_quick.py`
+4. **Run integration tests:** `USE_MODERNBERT_API=1 pytest tests/integration/test_modernbert_client.py -v`
+5. **Test with your data:** `python scripts/test_modernbert_real_data.py --limit 100`
 6. **Evaluate quality:** Check similarity scores make sense for known similar pairs
 7. **Scale up:** Move to Dagster pipeline integration (Phase 4)
 
-**Optional:** For local mode testing, install `uv pip install -e ".[paecter-local]"` and run without HF_TOKEN.
+**Optional:** For local mode testing, install `uv pip install -e ".[modernbert-local]"` and run without HF_TOKEN.
 
 ## References
 
 - **Model:** <https://huggingface.co/nomic-ai/modernbert-embed-base>
 - **ModernBERT Paper:** <https://arxiv.org/abs/2412.13663>
 - **Sentence Transformers:** <https://www.sbert.net/>
-- **Embedding Spec:** `specs/paecter_analysis_layer/`
+- **Embedding Spec:** `specs/modernbert_analysis_layer/`
 
 ## Questions?
 
@@ -700,28 +700,28 @@ A: HuggingFace offers a free tier. For high volume, you can:
 - Switch to local mode with your own GPU
 
 **Q: Can I use a different model?**
-A: Yes! The `PaECTERClient` accepts any compatible model:
+A: Yes! The `ModernBertClient` accepts any compatible model:
 
 ```python
 # API mode - any HuggingFace model with feature-extraction
-client = PaECTERClient(model_name="AI-Growth-Lab/PatentSBERTa")
+client = ModernBertClient(model_name="AI-Growth-Lab/PatentSBERTa")
 
 # Local mode - any sentence-transformers model
-client = PaECTERClient(use_local=True, model_name="AI-Growth-Lab/PatentSBERTa")
+client = ModernBertClient(use_local=True, model_name="AI-Growth-Lab/PatentSBERTa")
 ```
 
 **Q: How do I integrate with existing CET classification?**
-A: PaECTER embeddings can be used alongside CET classification. In fact, the Bayesian MoE design (Phase 6) combines them: Classification → Similarity → Embedding.
+A: ModernBert embeddings can be used alongside CET classification. In fact, the Bayesian MoE design (Phase 6) combines them: Classification → Similarity → Embedding.
 
-**Q: What's the difference between PaECTER and PatentSBERTa?**
-A: PaECTER is fine-tuned with examiner citations and optimized for prior art search. PatentSBERTa is a more general patent BERT model. Both work with our client.
+**Q: What's the difference between ModernBERT-Embed and PatentSBERTa?**
+A: ModernBERT-Embed is a general-purpose, long-context (8192-token) embedding model; PatentSBERTa is a patent-specific BERT model. Both work with our client. (The pipeline previously used PaECTER, a patent-specific model fine-tuned on examiner citations for prior-art search — see the migration note in `modernbert.md`.)
 
 **Q: Can I run this in GitHub Actions?**
 A: Yes! **Use API mode** (default) - it's perfect for serverless deployment:
 
 ```python
 # In your Dagster asset
-client = PaECTERClient()  # Uses API mode by default
+client = ModernBertClient()  # Uses API mode by default
 result = client.generate_embeddings(texts)
 ```
 
@@ -731,7 +731,7 @@ Just set `HF_TOKEN` in your GitHub Actions environment variables.
 
 # Quick Start
 
-# PaECTER Testing Quick Start
+# ModernBert Testing Quick Start
 
 ## 🚀 Quick Test (5 minutes)
 
@@ -741,44 +741,44 @@ export HF_TOKEN="your_huggingface_token"  # Get from https://huggingface.co/sett
 export SBIR_ANALYTICS_S3_BUCKET="sbir-analytics-production-data"
 
 # 2. Run combined test script
-python scripts/test_paecter_combined_s3.py --limit-sbir 10 --limit-uspto 10
+python scripts/test_modernbert_combined_s3.py --limit-sbir 10 --limit-uspto 10
 ```
 
 ## 📋 What Was Created
 
 ### 1. Combined Test Script
 
-**File**: `scripts/test_paecter_combined_s3.py`
+**File**: `scripts/test_modernbert_combined_s3.py`
 
 Tests both SBIR and USPTO data from S3:
 
 - Loads SBIR awards from S3
 - Loads USPTO patents from S3 (PatentsView)
-- Generates PaECTER embeddings for both
+- Generates ModernBert embeddings for both
 - Computes similarity scores
 - Saves results to Parquet files
 
 ### 2. Dagster Assets
 
-**Directory**: `packages/sbir-analytics/sbir_analytics/assets/paecter/`
+**Directory**: `packages/sbir-analytics/sbir_analytics/assets/modernbert/`
 
 Three new assets:
 
-- `paecter_embeddings_awards`: Embeddings for SBIR awards
-- `paecter_embeddings_patents`: Embeddings for USPTO patents
-- `paecter_award_patent_similarity`: Similarity scores between awards and patents
+- `modernbert_embeddings_awards`: Embeddings for SBIR awards
+- `modernbert_embeddings_patents`: Embeddings for USPTO patents
+- `modernbert_award_patent_similarity`: Similarity scores between awards and patents
 
 ### 3. Dagster Job
 
-**File**: `packages/sbir-analytics/sbir_analytics/assets/jobs/paecter_job.py`
+**File**: `packages/sbir-analytics/sbir_analytics/assets/jobs/modernbert_job.py`
 
-Job to materialize all PaECTER assets in one run.
+Job to materialize all ModernBert assets in one run.
 
 ### 4. Configuration
 
 **File**: `config/base.yaml`
 
-Added `ml.paecter` section with:
+Added `ml.modernbert` section with:
 
 - API/local mode settings
 - Batch size and rate limiting
@@ -791,13 +791,13 @@ Added `ml.paecter` section with:
 
 ```bash
 # Basic test
-python scripts/test_paecter_combined_s3.py
+python scripts/test_modernbert_combined_s3.py
 
 # With limits (faster)
-python scripts/test_paecter_combined_s3.py --limit-sbir 100 --limit-uspto 50
+python scripts/test_modernbert_combined_s3.py --limit-sbir 100 --limit-uspto 50
 
 # Local mode (no API required)
-python scripts/test_paecter_combined_s3.py --local
+python scripts/test_modernbert_combined_s3.py --local
 ```
 
 ### Option 2: Dagster Assets (Recommended for Production)
@@ -809,16 +809,16 @@ uv run dagster dev
 # Materialize prerequisites first
 uv run dagster asset materialize validated_sbir_awards transformed_patents
 
-# Then run PaECTER job
-uv run dagster asset materialize -m src.assets.jobs.paecter_job paecter_job
+# Then run ModernBert job
+uv run dagster asset materialize -m src.assets.jobs.modernbert_job modernbert_job
 ```
 
 ## 📊 Output Files
 
-All outputs are saved to `data/processed/paecter/`:
+All outputs are saved to `data/processed/modernbert/`:
 
-- `paecter_embeddings_sbir.parquet` - Award embeddings
-- `paecter_embeddings_uspto.parquet` - Patent embeddings
+- `modernbert_embeddings_sbir.parquet` - Award embeddings
+- `modernbert_embeddings_uspto.parquet` - Patent embeddings
 - `award_patent_similarities.parquet` - Similarity scores
 
 ## 🔧 Configuration
@@ -827,7 +827,7 @@ Edit `config/base.yaml` to customize:
 
 ```yaml
 ml:
-  paecter:
+  modernbert:
     use_local: false  # Set to true for local mode
     api:
       batch_size: 32
@@ -849,7 +849,7 @@ ml:
 - [ ] HuggingFace token set (`echo $HF_TOKEN`)
 - [ ] Data exists in S3 (check Lambda downloads)
 - [ ] Test script runs successfully
-- [ ] Output files generated in `data/processed/paecter/`
+- [ ] Output files generated in `data/processed/modernbert/`
 
 ## 🆘 Common Issues
 
@@ -864,9 +864,9 @@ For detailed troubleshooting, see the full guide.
 
 # S3 Testing
 
-# PaECTER S3 Testing Guide
+# ModernBert S3 Testing Guide
 
-This guide provides comprehensive instructions for testing PaECTER (Patent Embeddings) integration with SBIR and USPTO data stored in S3.
+This guide provides comprehensive instructions for testing ModernBert (Patent Embeddings) integration with SBIR and USPTO data stored in S3.
 
 ## Prerequisites
 
@@ -900,7 +900,7 @@ This guide provides comprehensive instructions for testing PaECTER (Patent Embed
 
 ## Quick Start: Combined Test Script
 
-The easiest way to test PaECTER with both SBIR and USPTO data from S3 is using the combined test script:
+The easiest way to test ModernBert with both SBIR and USPTO data from S3 is using the combined test script:
 
 ### Basic Usage (API Mode)
 
@@ -910,32 +910,32 @@ export HF_TOKEN="your_token_here"
 export SBIR_ANALYTICS_S3_BUCKET="sbir-analytics-production-data"
 
 # Run the combined test
-python scripts/test_paecter_combined_s3.py
+python scripts/test_modernbert_combined_s3.py
 ```
 
 ### Local Mode (No API Required)
 
 ```bash
 # Use local sentence-transformers model
-python scripts/test_paecter_combined_s3.py --local
+python scripts/test_modernbert_combined_s3.py --local
 ```
 
 ### Advanced Options
 
 ```bash
 # Limit records for faster testing
-python scripts/test_paecter_combined_s3.py \
+python scripts/test_modernbert_combined_s3.py \
     --limit-sbir 100 \
     --limit-uspto 50
 
 # Use specific S3 paths
-python scripts/test_paecter_combined_s3.py \
+python scripts/test_modernbert_combined_s3.py \
     --sbir-s3 s3://sbir-analytics-production-data/raw/sbir/award_data.csv \
     --uspto-s3 s3://sbir-analytics-production-data/raw/uspto/patentsview/2025-11-18/patent.zip
 
 # Custom output directory and similarity threshold
-python scripts/test_paecter_combined_s3.py \
-    --output-dir data/processed/paecter_test \
+python scripts/test_modernbert_combined_s3.py \
+    --output-dir data/processed/modernbert_test \
     --similarity-threshold 0.85 \
     --batch-size 64
 ```
@@ -944,17 +944,17 @@ python scripts/test_paecter_combined_s3.py \
 
 The script generates:
 
-- `paecter_embeddings_sbir.parquet`: SBIR award embeddings
-- `paecter_embeddings_uspto.parquet`: USPTO patent embeddings
+- `modernbert_embeddings_sbir.parquet`: SBIR award embeddings
+- `modernbert_embeddings_uspto.parquet`: USPTO patent embeddings
 - `award_patent_similarities.parquet`: Similarity scores between awards and patents
 
-All files are saved to `data/processed/paecter/` by default (or `--output-dir` if specified).
+All files are saved to `data/processed/modernbert/` by default (or `--output-dir` if specified).
 
 ## Testing with Dagster Assets
 
 ### 1. Materialize Prerequisites
 
-Before running PaECTER assets, ensure the following assets are materialized:
+Before running ModernBert assets, ensure the following assets are materialized:
 
 ```bash
 # Start Dagster UI
@@ -965,26 +965,26 @@ uv run dagster dev
 # - transformed_patents
 ```
 
-### 2. Run PaECTER Job
+### 2. Run ModernBert Job
 
 ```bash
-# Materialize all PaECTER assets
-uv run dagster asset materialize -m src.assets.jobs.paecter_job paecter_job
+# Materialize all ModernBert assets
+uv run dagster asset materialize -m src.assets.jobs.modernbert_job modernbert_job
 
 # Or materialize individual assets
 uv run dagster asset materialize \
-    paecter_embeddings_awards \
-    paecter_embeddings_patents \
-    paecter_award_patent_similarity
+    modernbert_embeddings_awards \
+    modernbert_embeddings_patents \
+    modernbert_award_patent_similarity
 ```
 
 ### 3. View Results
 
 Results are saved as Parquet files:
 
-- `data/processed/paecter_embeddings_awards.parquet`
-- `data/processed/paecter_embeddings_patents.parquet`
-- `data/processed/paecter_award_patent_similarity.parquet`
+- `data/processed/modernbert_embeddings_awards.parquet`
+- `data/processed/modernbert_embeddings_patents.parquet`
+- `data/processed/modernbert_award_patent_similarity.parquet`
 
 View in Dagster UI or load with pandas:
 
@@ -992,11 +992,11 @@ View in Dagster UI or load with pandas:
 import pandas as pd
 
 # Load embeddings
-award_embeddings = pd.read_parquet("data/processed/paecter_embeddings_awards.parquet")
-patent_embeddings = pd.read_parquet("data/processed/paecter_embeddings_patents.parquet")
+award_embeddings = pd.read_parquet("data/processed/modernbert_embeddings_awards.parquet")
+patent_embeddings = pd.read_parquet("data/processed/modernbert_embeddings_patents.parquet")
 
 # Load similarities
-similarities = pd.read_parquet("data/processed/paecter_award_patent_similarity.parquet")
+similarities = pd.read_parquet("data/processed/modernbert_award_patent_similarity.parquet")
 
 # View top matches
 print(similarities.nlargest(10, "similarity_score"))
@@ -1008,7 +1008,7 @@ print(similarities.nlargest(10, "similarity_score"))
 
 ```bash
 # Use the existing test script with S3
-python scripts/test_paecter_real_data.py \
+python scripts/test_modernbert_real_data.py \
     --s3 s3://sbir-analytics-production-data/raw/sbir/award_data.csv \
     --limit 100
 ```
@@ -1018,7 +1018,7 @@ python scripts/test_paecter_real_data.py \
 The combined script supports USPTO-only testing by providing only `--uspto-s3`:
 
 ```bash
-python scripts/test_paecter_combined_s3.py \
+python scripts/test_modernbert_combined_s3.py \
     --uspto-s3 s3://sbir-analytics-production-data/raw/uspto/patentsview/2025-11-18/patent.zip \
     --limit-uspto 50
 ```
@@ -1031,7 +1031,7 @@ The default configuration uses HuggingFace Inference API. Configure in `config/b
 
 ```yaml
 ml:
-  paecter:
+  modernbert:
     provider: "huggingface"
     use_local: false
     api:
@@ -1047,7 +1047,7 @@ To use local sentence-transformers model:
 
 ```yaml
 ml:
-  paecter:
+  modernbert:
     provider: "huggingface"
     use_local: true
     local:
@@ -1059,7 +1059,7 @@ ml:
 Or override via environment variable:
 
 ```bash
-export SBIR_ETL__ML__PAECTER__USE_LOCAL=true
+export SBIR_ETL__ML__MODERNBERT__USE_LOCAL=true
 ```
 
 ## Troubleshooting
@@ -1090,7 +1090,7 @@ aws s3 ls s3://sbir-analytics-production-data/
 
 ```yaml
 ml:
-  paecter:
+  modernbert:
     api:
       batch_size: 16  # Reduce from 32
       max_qps: 5      # Reduce from 10

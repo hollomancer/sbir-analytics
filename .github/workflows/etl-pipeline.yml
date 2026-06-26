@@ -379,14 +379,14 @@ jobs:
           NEO4J_USER: neo4j
           NEO4J_PASSWORD: ${{ github.event.inputs.environment == 'test' && secrets.NEO4J_TEST_PASSWORD || secrets.NEO4J_PASSWORD }}
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
-          PAECTER_MODE: api  # Use API mode, not local model
+          SBIR_ETL__ML__MODERNBERT__USE_LOCAL: "false"  # API mode, not local model
         run: |
           export PYTHONPATH="${GITHUB_WORKSPACE}:${GITHUB_WORKSPACE}/packages/sbir-analytics:${GITHUB_WORKSPACE}/packages/sbir-ml:${GITHUB_WORKSPACE}/packages/sbir-graph:/app"
 
           echo "## 🔬 Embeddings" >> $GITHUB_STEP_SUMMARY
-          # Dagster job still registered as paecter_job (legacy name)
+          # Dagster job that generates ModernBERT-Embed embeddings
           set +o pipefail
-          dagster job execute -m sbir_analytics.definitions -j paecter_job 2>&1 | tee output.txt
+          dagster job execute -m sbir_analytics.definitions -j modernbert_job 2>&1 | tee output.txt
           if [ ${PIPESTATUS[0]} -eq 0 ]; then
             echo "✅ Embeddings pipeline completed" >> $GITHUB_STEP_SUMMARY
           else

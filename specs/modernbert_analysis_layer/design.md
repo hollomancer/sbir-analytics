@@ -1,12 +1,12 @@
 # Design Document
 
-> **Implementation status (June 2026):** Only the **Core PaECTER Assets** layer (embedding generation, ~488 LOC at `packages/sbir-analytics/sbir_analytics/assets/paecter/embeddings.py`) is implemented. The **Bayesian Mixture-of-Experts**, **LoRA expert** routing, and **three-stage Bayesian routing pipeline** sections below describe **deferred future work** — they are kept in this spec as design reference but are not in scope until C2b (in [docs/research-questions.md](../../docs/research-questions.md)) is prioritized. Treat the "Core PaECTER Assets" and "Integration Assets" subsections as the actionable surface.
+> **Implementation status (June 2026):** Only the **Core ModernBert Assets** layer (embedding generation, ~488 LOC at `packages/sbir-analytics/sbir_analytics/assets/modernbert/embeddings.py`) is implemented. The **Bayesian Mixture-of-Experts**, **LoRA expert** routing, and **three-stage Bayesian routing pipeline** sections below describe **deferred future work** — they are kept in this spec as design reference but are not in scope until C2b (in [docs/research-questions.md](../../docs/research-questions.md)) is prioritized. Treat the "Core ModernBert Assets" and "Integration Assets" subsections as the actionable surface.
 
 ## Overview
 
-This design implements a Bayesian Mixture-of-Experts (MoE) enhanced PaECTER analysis layer that provides robust, explainable patent and SBIR award analysis with uncertainty quantification. The system follows a three-stage Bayesian routing pipeline: Classification → Similarity → Embedding, where each stage uses probabilistic expert selection to improve accuracy and provide calibrated confidence scores.
+This design implements a Bayesian Mixture-of-Experts (MoE) enhanced ModernBert analysis layer that provides robust, explainable patent and SBIR award analysis with uncertainty quantification. The system follows a three-stage Bayesian routing pipeline: Classification → Similarity → Embedding, where each stage uses probabilistic expert selection to improve accuracy and provide calibrated confidence scores.
 
-The design is strictly additive to existing CET classification systems, using Hugging Face Inference API for PaECTER embeddings and implementing Bayesian uncertainty principles from recent MoE research to create a more reliable and self-aware analysis system.
+The design is strictly additive to existing CET classification systems, using Hugging Face Inference API for ModernBert embeddings and implementing Bayesian uncertainty principles from recent MoE research to create a more reliable and self-aware analysis system.
 
 ## Architecture
 
@@ -26,12 +26,12 @@ Final Outputs (Neo4j, Reports, Baselines)
 
 ### Dagster Assets (Additive)
 
-### Core PaECTER Assets
+### Core ModernBert Assets
 
-- `paecter_embeddings_patents` → `data/processed/paecter_embeddings_patents.parquet`
-- `paecter_embeddings_awards` → `data/processed/paecter_embeddings_awards.parquet`
-- `paecter_award_patent_similarity` → `data/processed/paecter_award_patent_similarity.parquet`
-- `paecter_quality_metrics` → `data/processed/paecter_quality_metrics.json`
+- `modernbert_embeddings_patents` → `data/processed/modernbert_embeddings_patents.parquet`
+- `modernbert_embeddings_awards` → `data/processed/modernbert_embeddings_awards.parquet`
+- `modernbert_award_patent_similarity` → `data/processed/modernbert_award_patent_similarity.parquet`
+- `modernbert_quality_metrics` → `data/processed/modernbert_quality_metrics.json`
 
 ### Bayesian MoE Assets
 
@@ -43,7 +43,7 @@ Final Outputs (Neo4j, Reports, Baselines)
 ### Integration Assets
 
 - `neo4j_bayesian_similarity_edges` (optional; off by default)
-- `paecter_performance_baselines` → `reports/benchmarks/paecter_bayesian.json`
+- `modernbert_performance_baselines` → `reports/benchmarks/modernbert_bayesian.json`
 
 ### LoRA-Based Expert Implementation Strategy
 
@@ -92,14 +92,14 @@ BayesianSimilarityRouter:
   - Uncertainty Head: Confidence intervals for similarity
 ```
 
-#### Stage 3: Embedding Routing (LoRA-based PaECTER Experts)
+#### Stage 3: Embedding Routing (LoRA-based ModernBert Experts)
 
 ```python
 BayesianEmbeddingRouter:
 
   - Input: Documents + categories + similarity patterns
-  - Expert Pool: {Biotech_PaECTER_LoRA, AI_PaECTER_LoRA, Defense_PaECTER_LoRA, Base_PaECTER}
-  - Implementation: LoRA adapters on base PaECTER model
+  - Expert Pool: {Biotech_ModernBert_LoRA, AI_ModernBert_LoRA, Defense_ModernBert_LoRA, Base_ModernBert}
+  - Implementation: LoRA adapters on base ModernBert model
   - Routing Method: Multi-stage informed probabilistic routing
   - Output: Specialized embeddings + generation uncertainty
   - Uncertainty Head: Embedding quality confidence scores
@@ -143,11 +143,11 @@ class UncertaintyHead:
     def flag_uncertain_cases(self, uncertainty: float, threshold: float) -> bool
 ```
 
-#### 4. LoRA-Enhanced PaECTER Integration Layer
+#### 4. LoRA-Enhanced ModernBert Integration Layer
 
 ```python
-class LoRAPaECTERClient:
-    def __init__(self, config: PaECTERConfig, lora_expert_pool: LoRAExpertPool)
+class LoRAModernBertClient:
+    def __init__(self, config: ModernBertConfig, lora_expert_pool: LoRAExpertPool)
     def generate_embeddings(self, texts: List[str], lora_adapter_id: str = None) -> EmbeddingResult
     def route_to_lora_expert(self, document: Document, routing_decision: RoutingDecision) -> str
     def batch_process_with_adapters(self, documents: List[Document]) -> BatchResult

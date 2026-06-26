@@ -60,9 +60,13 @@ _JOB_CONFIGS = [
         id="CETJob",
         name="sbir-analytics-cet-pipeline",
         command=[
-            "dagster", "job", "execute",
-            "-m", "sbir_analytics.definitions_ml",
-            "-j", "cet_full_pipeline_job",
+            "dagster",
+            "job",
+            "execute",
+            "-m",
+            "sbir_analytics.definitions_ml",
+            "-j",
+            "cet_full_pipeline_job",
         ],
         vcpus="2",
         memory_mb="4096",
@@ -74,9 +78,13 @@ _JOB_CONFIGS = [
         id="FiscalJob",
         name="sbir-analytics-fiscal-returns",
         command=[
-            "dagster", "job", "execute",
-            "-m", "sbir_analytics.definitions_ml",
-            "-j", "fiscal_returns_mvp_job",
+            "dagster",
+            "job",
+            "execute",
+            "-m",
+            "sbir_analytics.definitions_ml",
+            "-j",
+            "fiscal_returns_mvp_job",
         ],
         vcpus="4",
         memory_mb="8192",
@@ -85,25 +93,30 @@ _JOB_CONFIGS = [
         extra_env=_DAGSTER_ENV,
     ),
     JobConfig(
-        id="PaecterJob",
-        name="sbir-analytics-paecter-embeddings",
+        id="ModernBertJob",
+        name="sbir-analytics-modernbert-embeddings",
         command=[
-            "dagster", "job", "execute",
-            "-m", "sbir_analytics.definitions_ml",
-            "-j", "paecter_job",
+            "dagster",
+            "job",
+            "execute",
+            "-m",
+            "sbir_analytics.definitions_ml",
+            "-j",
+            "modernbert_job",
         ],
         vcpus="2",
         memory_mb="4096",
         timeout_seconds=21600,
-        log_prefix="paecter",
+        log_prefix="modernbert",
         extra_env=_DAGSTER_ENV,
     ),
     JobConfig(
         id="UsaspendingExtractJob",
         name="sbir-analytics-usaspending-extract",
         command=[
-            "bash", "-c",
-            f'cd /app && python scripts/usaspending/download_database.py'
+            "bash",
+            "-c",
+            f"cd /app && python scripts/usaspending/download_database.py"
             f' --source-url "${{USASPENDING_URL}}"'
             f" --s3-bucket {S3_BUCKET_NAME}",
         ],
@@ -228,9 +241,7 @@ class BatchStack(Stack):
 
         notification_email = self.node.try_get_context("notification_email")
         if notification_email:
-            notification_topic.add_subscription(
-                subscriptions.EmailSubscription(notification_email)
-            )
+            notification_topic.add_subscription(subscriptions.EmailSubscription(notification_email))
 
         events.Rule(
             self,
@@ -258,13 +269,15 @@ class BatchStack(Stack):
     ) -> batch.CfnJobDefinition:
         env_vars = [
             batch.CfnJobDefinition.EnvironmentProperty(
-                name="AWS_DEFAULT_REGION", value=self.region,
+                name="AWS_DEFAULT_REGION",
+                value=self.region,
             ),
         ]
         for entry in config.extra_env or []:
             env_vars.append(
                 batch.CfnJobDefinition.EnvironmentProperty(
-                    name=entry["name"], value=entry["value"],
+                    name=entry["name"],
+                    value=entry["value"],
                 )
             )
 
@@ -272,10 +285,12 @@ class BatchStack(Stack):
             image=ANALYSIS_IMAGE,
             resource_requirements=[
                 batch.CfnJobDefinition.ResourceRequirementProperty(
-                    type="VCPU", value=config.vcpus,
+                    type="VCPU",
+                    value=config.vcpus,
                 ),
                 batch.CfnJobDefinition.ResourceRequirementProperty(
-                    type="MEMORY", value=config.memory_mb,
+                    type="MEMORY",
+                    value=config.memory_mb,
                 ),
             ],
             job_role_arn=task_role.role_arn,

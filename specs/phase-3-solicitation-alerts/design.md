@@ -294,7 +294,7 @@ No `phase_iii_candidates:` config block. If needed later, it's additive.
 - Weekly markdown digest / review-card output format.
 - Triage action labels ("letter of concern" etc.).
 - YAML weight presets + Pydantic config tree.
-- `paecter_embeddings_opportunities` asset. S3 v1 uses NAICS / PSC /
+- `modernbert_embeddings_opportunities` asset. S3 v1 uses NAICS / PSC /
   Jaccard filters; embeddings return only if precision < 0.60.
 - `validated_phase_iii_contracts` reclassification feedback column.
 - Multi-band confidence (LIKELY / POSSIBLE) — single HIGH flag for v1.

@@ -364,7 +364,7 @@ def golden_transitions(repo_root: Path) -> Path:
 
 
 @pytest.fixture(
-    params=["transitions", "cet_classifications", "fiscal_returns", "paecter_embeddings"]
+    params=["transitions", "cet_classifications", "fiscal_returns", "modernbert_embeddings"]
 )
 def pipeline_output(request, repo_root: Path) -> tuple[str, Path]:
     """Parametrized fixture for pipeline outputs."""

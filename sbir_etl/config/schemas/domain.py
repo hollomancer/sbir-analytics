@@ -1,7 +1,7 @@
 """Domain-specific configuration schemas.
 
 Consolidated from enrichment.py, fiscal.py, ml.py, and reporting.py.
-Covers: enrichment services, fiscal analysis, ML/PaECTER, and reporting.
+Covers: enrichment services, fiscal analysis, ML/ModernBert, and reporting.
 """
 
 from __future__ import annotations
@@ -356,8 +356,8 @@ class FiscalAnalysisConfig(BaseModel):
 # ---------------------------------------------------------------------------
 
 
-class PaECTERApiConfig(BaseModel):
-    """Configuration for PaECTER HuggingFace Inference API."""
+class ModernBertApiConfig(BaseModel):
+    """Configuration for ModernBert HuggingFace Inference API."""
 
     token_env: str = Field(
         default="HF_TOKEN", description="Environment variable for HuggingFace API token"
@@ -371,7 +371,7 @@ class PaECTERApiConfig(BaseModel):
     )
 
 
-class PaECTERLocalConfig(BaseModel):
+class ModernBertLocalConfig(BaseModel):
     """Configuration for local embedding model inference (ModernBERT-Embed)."""
 
     model_name: str = Field(
@@ -381,7 +381,7 @@ class PaECTERLocalConfig(BaseModel):
     batch_size: int = Field(default=32, ge=1, description="Batch size for local inference")
 
 
-class PaECTERTextConfig(BaseModel):
+class ModernBertTextConfig(BaseModel):
     """Configuration for text preprocessing before embedding."""
 
     max_length: int = Field(default=512, ge=1, description="Maximum token length (truncation)")
@@ -395,17 +395,17 @@ class PaECTERTextConfig(BaseModel):
     )
 
 
-class PaECTERConfig(BaseModel):
-    """Configuration for PaECTER patent-award similarity embeddings."""
+class ModernBertConfig(BaseModel):
+    """Configuration for ModernBert patent-award similarity embeddings."""
 
     provider: str = Field(
         default="huggingface",
         description="Provider selection: huggingface (API) or local (sentence-transformers)",
     )
     use_local: bool = Field(default=False, description="Use local model instead of API")
-    api: PaECTERApiConfig = Field(default_factory=PaECTERApiConfig)
-    local: PaECTERLocalConfig = Field(default_factory=PaECTERLocalConfig)
-    text: PaECTERTextConfig = Field(default_factory=PaECTERTextConfig)
+    api: ModernBertApiConfig = Field(default_factory=ModernBertApiConfig)
+    local: ModernBertLocalConfig = Field(default_factory=ModernBertLocalConfig)
+    text: ModernBertTextConfig = Field(default_factory=ModernBertTextConfig)
 
     similarity_threshold: float = Field(
         default=0.80,
@@ -432,9 +432,9 @@ class PaECTERConfig(BaseModel):
 class MLConfig(BaseModel):
     """Machine learning configuration."""
 
-    paecter: PaECTERConfig = Field(
-        default_factory=PaECTERConfig,
-        description="PaECTER patent-award similarity configuration",
+    modernbert: ModernBertConfig = Field(
+        default_factory=ModernBertConfig,
+        description="ModernBert patent-award similarity configuration",
     )
 
 
@@ -577,10 +577,10 @@ __all__ = [
     "EnrichmentSourceConfig",
     "FiscalAnalysisConfig",
     "MLConfig",
-    "PaECTERApiConfig",
-    "PaECTERConfig",
-    "PaECTERLocalConfig",
-    "PaECTERTextConfig",
+    "ModernBertApiConfig",
+    "ModernBertConfig",
+    "ModernBertLocalConfig",
+    "ModernBertTextConfig",
     "SensitivityConfig",
     "StatisticalReportingConfig",
     "TaxParameterConfig",

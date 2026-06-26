@@ -15,21 +15,21 @@ This directory contains documentation for machine learning features in the SBIR 
 This directory contains documentation for machine learning features in the SBIR ETL project:
 
 - **CET Classification**: Categorizes SBIR/STTR awards based on commercialization potential and economic impact
-- **PaECTER Embeddings**: Generates semantic embeddings for awards and patents to compute similarity scores
+- **ModernBert Embeddings**: Generates semantic embeddings for awards and patents to compute similarity scores
 
 ## Getting Started
 
 Start with these guides to understand and use the ML features:
 
-1. **[PaECTER Integration Guide](paecter.md)** - Patent and award similarity using embeddings
+1. **[ModernBert Integration Guide](modernbert.md)** - Patent and award similarity using embeddings
 2. **[CET Integration Guide](cet-integration.md)** - How to integrate CET classification into your workflow
 3. **[CET Classifier](cet-classifier.md)** - Core classifier documentation and usage
 
 ## Detailed Documentation
 
-### PaECTER Embeddings
+### ModernBert Embeddings
 
-- **[PaECTER Integration Guide](paecter.md)** - Complete PaECTER documentation
+- **[ModernBert Integration Guide](modernbert.md)** - Complete ModernBert documentation
   - Dual inference modes (API and local)
   - Configuration and setup
   - Dagster asset integration
@@ -57,19 +57,19 @@ Start with these guides to understand and use the ML features:
 
 ## Quick Reference
 
-### Using PaECTER Embeddings
+### Using ModernBert Embeddings
 
 Generate embeddings and compute similarity scores:
 
 ```bash
 # Via Dagster UI
-# Navigate to Assets → paecter group → Materialize
+# Navigate to Assets → modernbert group → Materialize
 
 # Via CLI
-dagster asset materialize -m sbir_etl.definitions --select "paecter*"
+dagster asset materialize -m sbir_etl.definitions --select "modernbert*"
 
-# Run complete PaECTER job
-dagster job execute -m sbir_etl.definitions -j paecter_job
+# Run complete ModernBert job
+dagster job execute -m sbir_etl.definitions -j modernbert_job
 ```
 
 ### Using the CET Classifier
@@ -97,7 +97,7 @@ The CET classifier categorizes awards into:
 
 The ML systems integrate with the broader SBIR analytics pipeline:
 
-### PaECTER Embeddings
+### ModernBert Embeddings
 
 - **Input**: SBIR awards and USPTO patents
 - **Processing**: Text embedding generation (1024-dimensional vectors)
@@ -121,7 +121,7 @@ The ML systems integrate with the broader SBIR analytics pipeline:
 
 ML feature configuration is managed through:
 
-- **PaECTER**: `config/base.yaml` (ml.paecter section)
+- **ModernBert**: `config/base.yaml` (ml.modernbert section)
   - Inference mode (API or local)
   - Batch sizes and rate limits
   - Similarity thresholds
@@ -133,7 +133,7 @@ ML feature configuration is managed through:
   - Classification thresholds
 
 - **Environment Variables**: Override any configuration at runtime
-  - `SBIR_ETL__ML__PAECTER__*` for PaECTER settings
+  - `SBIR_ETL__ML__MODERNBERT__*` for ModernBert settings
   - `HF_TOKEN` for HuggingFace API access
 
 ---

@@ -78,13 +78,13 @@ class ClusterTopicsTool(BaseTool):
             # Fallback: generate embeddings on-the-fly with ModernBERT-Embed
             metadata.warnings.append("No embeddings provided; generating via ModernBERT-Embed")
             try:
-                from sbir_ml.ml.config import PaECTERClientConfig
-                from sbir_ml.ml.paecter_client import PaECTERClient
+                from sbir_ml.ml.config import ModernBertClientConfig
+                from sbir_ml.ml.modernbert_client import ModernBertClient
 
                 text_col = "description" if "description" in topics_df.columns else "title"
                 texts = topics_df[text_col].fillna("").tolist()
 
-                client = PaECTERClient(config=PaECTERClientConfig(use_local=False))
+                client = ModernBertClient(config=ModernBertClientConfig(use_local=False))
                 result = client.generate_embeddings(texts)
                 fallback_embeddings = result.embeddings
 

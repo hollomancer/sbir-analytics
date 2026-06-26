@@ -58,13 +58,13 @@ class EmbeddingResult:
     inference_mode: Literal["api", "local"]
 
 
-from sbir_ml.ml.config import PaECTERClientConfig
+from sbir_ml.ml.config import ModernBertClientConfig
 
 
-class PaECTERClient:
+class ModernBertClient:
     """Client for interacting with the ModernBERT-Embed embedding model."""
 
-    def __init__(self, config: PaECTERClientConfig):
+    def __init__(self, config: ModernBertClientConfig):
         """Initialize the embedding client."""
         self.config = config
         self.model_name = config.model_name
@@ -101,7 +101,7 @@ class PaECTERClient:
         if SentenceTransformer is None:
             raise ImportError(
                 "sentence-transformers is required for local mode. "
-                "Install with: pip install 'sbir-etl[paecter-local]' or "
+                "Install with: pip install 'sbir-etl[modernbert-local]' or "
                 "pip install sentence-transformers"
             )
 
@@ -149,7 +149,7 @@ class PaECTERClient:
             RuntimeError: If embedding generation fails
 
         Example:
-            >>> client = PaECTERClient()
+            >>> client = ModernBertClient()
             >>> texts = ["First patent abstract", "Second patent abstract"]
             >>> result = client.generate_embeddings(texts)
             >>> similarities = result.embeddings @ result.embeddings.T
@@ -300,7 +300,7 @@ class PaECTERClient:
             Similarity matrix (N x M) with cosine similarity scores
 
         Example:
-            >>> client = PaECTERClient()
+            >>> client = ModernBertClient()
             >>> awards = client.generate_embeddings(["Award text 1", "Award text 2"])
             >>> patents = client.generate_embeddings(["Patent text 1", "Patent text 2"])
             >>> similarities = client.compute_similarity(awards.embeddings, patents.embeddings)
@@ -323,7 +323,7 @@ class PaECTERClient:
             Concatenated text suitable for embedding
 
         Example:
-            >>> text = PaECTERClient.prepare_patent_text(
+            >>> text = ModernBertClient.prepare_patent_text(
             ...     "Novel Solar Cell Design",
             ...     "This invention relates to improved solar cells..."
             ... )
@@ -353,7 +353,7 @@ class PaECTERClient:
             Concatenated text suitable for embedding
 
         Example:
-            >>> text = PaECTERClient.prepare_award_text(
+            >>> text = ModernBertClient.prepare_award_text(
             ...     "Advanced Manufacturing Technologies",
             ...     "Development of novel 3D printing methods..."
             ... )

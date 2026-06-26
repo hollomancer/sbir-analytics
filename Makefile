@@ -189,10 +189,10 @@ test-fiscal: ## Test fiscal returns pipeline
 	@$(call info,Testing fiscal pipeline)
 	$(call run,uv run pytest tests/functional/test_pipelines.py::TestFiscalPipeline -v)
 
-.PHONY: test-paecter
-test-paecter: ## Test PaECTER pipeline
-	@$(call info,Testing PaECTER pipeline)
-	$(call run,uv run pytest tests/functional/test_pipelines.py::TestPaECTERPipeline -v)
+.PHONY: test-modernbert
+test-modernbert: ## Test ModernBert pipeline
+	@$(call info,Testing ModernBert pipeline)
+	$(call run,uv run pytest tests/functional/test_pipelines.py::TestModernBertPipeline -v)
 
 .PHONY: test-s3
 test-s3: ## Test S3 integration (requires AWS credentials)
@@ -217,9 +217,9 @@ dev: ## Run Dagster dev server locally
 	$(call run,uv run dagster dev -m sbir_analytics.definitions)
 
 .PHONY: install-ml
-install-ml: ## Install ML dependencies (jupyter, paecter)
+install-ml: ## Install ML dependencies (jupyter, modernbert)
 	@$(call info,Installing ML dependencies)
-	$(call run,uv sync --extra ml --extra paecter-local)
+	$(call run,uv sync --extra ml --extra modernbert-local)
 
 .PHONY: install-fiscal
 install-fiscal: ## Verify BEA API key is set for fiscal analysis
@@ -234,7 +234,7 @@ install-fiscal: ## Verify BEA API key is set for fiscal analysis
 notebook: install-ml ## Start Jupyter Lab for ML analysis (Cloud-Native)
 	@$(call info,Starting Jupyter Lab)
 	@mkdir -p notebooks
-	$(call run,uv run --extra ml --extra paecter-local jupyter lab --notebook-dir=notebooks)
+	$(call run,uv run --extra ml --extra modernbert-local jupyter lab --notebook-dir=notebooks)
 
 .PHONY: setup-ml
 setup-ml: env-check ## Configure environment for ML (Cloud + HF)
@@ -503,11 +503,11 @@ fiscal-run: ## Run fiscal returns analysis (BEA API)
 	$(call run,uv run dagster job execute -m sbir_analytics.definitions_ml -j fiscal_returns_mvp_job)
 	@$(call success,Fiscal returns analysis completed)
 
-.PHONY: paecter-run
-paecter-run: ## Run PaECTER embeddings and similarity
-	@$(call info,Running PaECTER analysis)
-	$(call run,uv run dagster job execute -m sbir_analytics.definitions_ml -j paecter_job)
-	@$(call success,PaECTER analysis completed)
+.PHONY: modernbert-run
+modernbert-run: ## Run ModernBert embeddings and similarity
+	@$(call info,Running ModernBert analysis)
+	$(call run,uv run dagster job execute -m sbir_analytics.definitions_ml -j modernbert_job)
+	@$(call success,ModernBert analysis completed)
 
 # -----------------------------------------------------------------------------
 # Legacy artifact cleanup

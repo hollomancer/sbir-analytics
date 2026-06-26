@@ -3,7 +3,7 @@
 # Setup script for Dagster Cloud Hybrid Agent on EC2
 #
 # This script sets up a Dagster Cloud hybrid agent on an EC2 instance to run
-# heavy ML workloads (CET training, fiscal analysis, PaECTER embeddings, etc.)
+# heavy ML workloads (CET training, fiscal analysis, ModernBert embeddings, etc.)
 #
 # Usage:
 #   1. Launch EC2 instance (t3.medium or larger recommended)
