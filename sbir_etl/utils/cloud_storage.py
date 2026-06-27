@@ -206,6 +206,42 @@ def sync_s3_prefix_to_dir(
     return dest
 
 
+def upload_file_to_s3(local_path: str | Path, s3_url: str) -> str:
+    """Upload a single local file to an ``s3://`` URL.
+
+    The write-side counterpart to ``resolve_data_path`` — lets an asset persist a
+    produced artifact (e.g. ``contracts_ingestion.parquet``) back to S3 for
+    cross-run reuse in a fresh/ephemeral environment.
+
+    Args:
+        local_path: Local file to upload.
+        s3_url: Destination ``s3://bucket/key`` URL.
+
+    Returns:
+        The destination ``s3_url``.
+
+    Raises:
+        ValueError: if ``s3_url`` is not an ``s3://`` URL or carries no key.
+        FileNotFoundError: if ``local_path`` does not exist.
+    """
+    import boto3
+
+    if not is_s3_path(s3_url):
+        raise ValueError(f"Not an S3 URL: {s3_url}")
+
+    local = Path(local_path)
+    if not local.exists():
+        raise FileNotFoundError(f"Local file not found: {local}")
+
+    bucket, _, key = str(s3_url)[len("s3://") :].partition("/")
+    if not key:
+        raise ValueError(f"S3 URL missing object key: {s3_url}")
+
+    boto3.client("s3").upload_file(str(local), bucket, key)
+    logger.info(f"Uploaded {local} -> {s3_url}")
+    return s3_url
+
+
 def cleanup_s3_cache(
     max_size_gb: float | None = None,
     max_age_hours: float | None = None,

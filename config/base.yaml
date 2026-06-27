@@ -27,6 +27,9 @@ paths:
 
   # Transition detection outputs
   transition_contracts_output: "data/transition/contracts_ingestion.parquet"
+  # Optional s3:// URL to upload the extracted contracts parquet to after writing
+  # it locally (cross-run reuse). Empty = local only.
+  transition_contracts_output_s3_path: ""
   transition_dump_dir: "data/transition/pruned_data_store_api_dump"
   # Optional s3:// prefix holding the dump objects (.dat.gz + toc.dat). When set,
   # the transition contracts asset syncs only the needed table file(s) + toc.dat

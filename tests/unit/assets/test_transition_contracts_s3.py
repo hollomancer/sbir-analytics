@@ -3,6 +3,7 @@
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+import pandas as pd
 import pytest
 
 from sbir_etl.exceptions import FileSystemError
@@ -88,3 +89,36 @@ def test_dump_synced_selectively_with_table_files(
     assert args[1] == dump_local
     # Selective: only the named table file plus the table-of-contents.
     assert kwargs["include"] == ["toc.dat", "best.dat.gz"]
+
+
+@patch("sbir_analytics.assets.transition.contracts.upload_file_to_s3")
+@patch("sbir_analytics.assets.transition.contracts.get_config")
+def test_output_uploaded_to_s3_when_configured(mock_get_config, mock_upload, tmp_path):
+    """When the output S3 url is set, the written parquet is uploaded after extraction."""
+    from sbir_analytics.assets.transition.contracts import raw_contracts
+
+    # Happy path: dump dir + vendor file exist, output parquet already present
+    # (so extraction is skipped), and an output S3 url is configured.
+    out = tmp_path / "contracts.parquet"
+    dump = tmp_path / "dump"
+    dump.mkdir()
+    vendor = tmp_path / "sbir_vendor_filters.json"
+    vendor.write_text('{"uei": [], "duns": [], "company_names": []}')
+    pd.DataFrame({"contract_id": ["c1"], "action_date": ["2023-01-01"]}).to_parquet(out)
+
+    resolved = {
+        "transition_contracts_output": out,
+        "transition_dump_dir": dump,
+        "transition_vendor_filters": vendor,
+    }
+    s3_out = "s3://bucket/raw/transition/contracts_ingestion.parquet"
+    config = MagicMock()
+    config.paths.resolve_path.side_effect = lambda key: resolved[key]
+    config.paths.transition_vendor_filters_s3_path = ""
+    config.paths.transition_dump_s3_prefix = ""
+    config.paths.transition_contracts_output_s3_path = s3_out
+    mock_get_config.return_value = config
+
+    raw_contracts(ContextMocks.context_with_logging())
+
+    mock_upload.assert_called_once_with(out, s3_out)

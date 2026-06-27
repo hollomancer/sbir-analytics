@@ -16,6 +16,7 @@ from sbir_etl.utils.cloud_storage import (
     get_s3_bucket_from_env,
     resolve_data_path,
     sync_s3_prefix_to_dir,
+    upload_file_to_s3,
 )
 
 
@@ -66,9 +67,36 @@ class TestSyncS3PrefixToDir:
         client = self._client_with(["p/toc.dat", "p/a.dat.gz"])
         with patch("boto3.client", return_value=client):
             with pytest.raises(FileNotFoundError):
-                sync_s3_prefix_to_dir(
-                    "s3://bucket/p/", tmp_path / "d", include=["nope.dat.gz"]
-                )
+                sync_s3_prefix_to_dir("s3://bucket/p/", tmp_path / "d", include=["nope.dat.gz"])
+
+
+class TestUploadFileToS3:
+    """Tests for upload_file_to_s3."""
+
+    def test_uploads_local_file(self, tmp_path):
+        local = tmp_path / "out.parquet"
+        local.write_bytes(b"data")
+        client = MagicMock()
+        with patch("boto3.client", return_value=client):
+            url = upload_file_to_s3(local, "s3://bucket/raw/out.parquet")
+        assert url == "s3://bucket/raw/out.parquet"
+        client.upload_file.assert_called_once_with(str(local), "bucket", "raw/out.parquet")
+
+    def test_raises_on_non_s3_url(self, tmp_path):
+        local = tmp_path / "out.parquet"
+        local.write_bytes(b"data")
+        with pytest.raises(ValueError):
+            upload_file_to_s3(local, "/local/out.parquet")
+
+    def test_raises_when_local_missing(self, tmp_path):
+        with pytest.raises(FileNotFoundError):
+            upload_file_to_s3(tmp_path / "missing.parquet", "s3://bucket/out.parquet")
+
+    def test_raises_when_no_object_key(self, tmp_path):
+        local = tmp_path / "out.parquet"
+        local.write_bytes(b"data")
+        with pytest.raises(ValueError):
+            upload_file_to_s3(local, "s3://bucket")
 
 
 class TestResolveDataPath:

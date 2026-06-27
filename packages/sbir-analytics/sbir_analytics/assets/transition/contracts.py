@@ -14,7 +14,11 @@ from typing import Any
 import pandas as pd
 
 from sbir_etl.exceptions import FileSystemError
-from sbir_etl.utils.cloud_storage import resolve_data_path, sync_s3_prefix_to_dir
+from sbir_etl.utils.cloud_storage import (
+    resolve_data_path,
+    sync_s3_prefix_to_dir,
+    upload_file_to_s3,
+)
 
 from .utils import (
     ContractExtractor,
@@ -183,6 +187,19 @@ def raw_contracts(context) -> Output[pd.DataFrame]:
 
     checks_path = output_path.with_suffix(".checks.json")
     write_json(checks_path, checks)
+
+    # Optionally persist the extracted parquet back to S3 for cross-run reuse
+    # (e.g. so a later/remote run can read it without re-extracting from the dump).
+    # Empty config = local only (unchanged behavior).
+    output_s3 = config.paths.transition_contracts_output_s3_path
+    if output_s3:
+        try:
+            upload_file_to_s3(output_path, output_s3)
+            context.log.info(f"Uploaded contracts output -> {output_s3}")
+        except Exception as e:
+            context.log.warning(
+                f"S3 output upload failed ({e}); output remains local at {output_path}"
+            )
 
     metadata = {
         "rows": total_rows,

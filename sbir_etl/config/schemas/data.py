@@ -364,7 +364,15 @@ class PathsConfig(BaseModel):
     )
     transition_contracts_output: str = Field(
         default="data/transition/contracts_ingestion.parquet",
-        description="Transition contracts output file",
+        description="Transition contracts output file (local path)",
+    )
+    transition_contracts_output_s3_path: str = Field(
+        default="",
+        description=(
+            "Optional s3:// URL to upload the extracted contracts parquet to after "
+            "the transition contracts asset writes it locally (cross-run reuse in a "
+            "fresh/ephemeral env). Empty = local only."
+        ),
     )
     transition_dump_dir: str = Field(
         default="data/transition/pruned_data_store_api_dump",
