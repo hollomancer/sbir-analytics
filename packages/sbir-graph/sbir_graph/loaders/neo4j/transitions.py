@@ -210,10 +210,20 @@ class TransitionLoader(BaseNeo4jLoader):
         transitions_df: pd.DataFrame,
     ) -> int:
         """
-        Create RESULTED_IN relationships from Transitions to Contracts.
+        Create RESULTED_IN relationships from Transitions to their follow-on
+        contract :FinancialTransaction nodes.
+
+        The contract node is created here (``MERGE`` on its primary key
+        ``transaction_id = "txn_contract_<contract_id>"``) because no upstream loader
+        writes ``:FinancialTransaction {transaction_type: "CONTRACT"}`` nodes — without
+        it the RESULTED_IN endpoint would not exist and the edge would never be
+        created. MERGE is keyed on the PK (never on the non-key ``contract_id``), so no
+        duplicate nodes are minted; the disjoint ``txn_contract_`` / ``txn_award_``
+        prefixes keep contract and award PKs from colliding. Rows with a missing
+        ``contract_id`` are skipped.
 
         Args:
-            transitions_df: DataFrame with transition_id and contract_id
+            transitions_df: DataFrame with transition_id, contract_id, confidence
 
         Returns:
             Number of relationships created
@@ -227,25 +237,36 @@ class TransitionLoader(BaseNeo4jLoader):
             for i in range(0, len(transitions_df), batch_size):
                 batch = transitions_df.iloc[i : i + batch_size]
 
+                rows = [
+                    {
+                        "transition_id": t["transition_id"],
+                        "contract_id": str(t["contract_id"]),
+                        "confidence": t["confidence"],
+                    }
+                    for _, t in batch.iterrows()
+                    if pd.notna(t.get("contract_id")) and str(t["contract_id"]).strip()
+                ]
+                if not rows:
+                    continue
+
                 try:
                     result = session.run(
                         """
                         UNWIND $transitions AS t
                         MATCH (trans:Transition {transition_id: t.transition_id})
-                        MATCH (ft:FinancialTransaction {contract_id: t.contract_id, transaction_type: 'CONTRACT'})
+                        MERGE (ft:FinancialTransaction
+                               {transaction_id: 'txn_contract_' + t.contract_id})
+                          ON CREATE SET ft.transaction_type = 'CONTRACT',
+                                        ft.contract_id = t.contract_id
+                          ON MATCH SET ft.transaction_type = coalesce(
+                                           ft.transaction_type, 'CONTRACT'),
+                                       ft.contract_id = t.contract_id
                         MERGE (trans)-[r:RESULTED_IN]->(ft)
                         SET r.confidence = t.confidence,
                             r.creation_date = datetime()
                         RETURN count(r) as created
                         """,
-                        transitions=[
-                            {
-                                "transition_id": t["transition_id"],
-                                "contract_id": t["contract_id"],
-                                "confidence": t["confidence"],
-                            }
-                            for _, t in batch.iterrows()
-                        ],
+                        transitions=rows,
                     )
                     single_result = result.single()
                     count = (
