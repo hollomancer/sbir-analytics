@@ -4,7 +4,7 @@ This module provides the PatentLoader class for loading USPTO patent assignment 
 into Neo4j. It implements a multi-phase loading strategy:
 
 Phase 1: Load Patents and PatentAssignments
-Phase 2: Load PatentEntity nodes (assignees and assignors)
+Phase 2: Load entity nodes — :Organization (non-individuals) and :Individual (individuals) — for assignees and assignors
 Phase 3: Link assignments to entities (ASSIGNED_TO, ASSIGNED_FROM relationships)
 Phase 4: SBIR integration (link to Company and Award nodes)
 Phase 5: Compute metrics (assignment chains, entity statistics)
@@ -72,9 +72,6 @@ class PatentLoader(BaseNeo4jLoader):
                 "FOR (p:Patent) REQUIRE p.grant_doc_num IS UNIQUE",
                 "CREATE CONSTRAINT patent_assignment_rf_id IF NOT EXISTS "
                 "FOR (a:PatentAssignment) REQUIRE a.rf_id IS UNIQUE",
-                # Legacy PatentEntity constraint (kept for backward compatibility)
-                "CREATE CONSTRAINT patent_entity_id IF NOT EXISTS "
-                "FOR (e:PatentEntity) REQUIRE e.entity_id IS UNIQUE",
                 # Organization constraint for unified entities
                 "CREATE CONSTRAINT organization_id IF NOT EXISTS "
                 "FOR (o:Organization) REQUIRE o.organization_id IS UNIQUE",
@@ -90,11 +87,6 @@ class PatentLoader(BaseNeo4jLoader):
                 "FOR (p:Patent) ON (p.grant_doc_num)",
                 "CREATE INDEX patent_assignment_rf_id_idx IF NOT EXISTS "
                 "FOR (a:PatentAssignment) ON (a.rf_id)",
-                # Legacy PatentEntity indexes (kept for backward compatibility)
-                "CREATE INDEX patent_entity_normalized_name_idx IF NOT EXISTS "
-                "FOR (e:PatentEntity) ON (e.normalized_name)",
-                "CREATE INDEX patent_entity_type_idx IF NOT EXISTS "
-                "FOR (e:PatentEntity) ON (e.entity_type)",
                 # Organization indexes for unified entities
                 "CREATE INDEX organization_entity_id_idx IF NOT EXISTS "
                 "FOR (o:Organization) ON (o.entity_id)",
@@ -277,10 +269,10 @@ class PatentLoader(BaseNeo4jLoader):
         entity_type: str,
         metrics: LoadMetrics | None = None,
     ) -> LoadMetrics:
-        """Load patent entities as Organization nodes (non-individuals) or PatentEntity (individuals).
+        """Load patent entities as :Organization (non-individuals) or :Individual (individuals).
 
         Phase 2: Create Organization nodes for companies/universities/government entities,
-        and PatentEntity nodes for individuals.
+        and :Individual nodes for individuals.
 
         Args:
             entities: List of entity dictionaries with keys:
@@ -496,14 +488,14 @@ class PatentLoader(BaseNeo4jLoader):
         assignments: list[dict[str, str]],
         metrics: LoadMetrics | None = None,
     ) -> LoadMetrics:
-        """Create ASSIGNED_FROM relationships (PatentAssignment → PatentEntity).
+        """Create ASSIGNED_FROM relationships (PatentAssignment → Organization/Individual).
 
-        Phase 3: Link PatentAssignment nodes to PatentEntity (assignor) nodes.
+        Phase 3: Link PatentAssignment nodes to the assignor :Organization/:Individual nodes.
 
         Args:
             assignments: List of assignments with:
                 - rf_id: PatentAssignment key
-                - assignor_entity_id: PatentEntity key for assignor
+                - assignor_entity_id: entity_id of the assignor :Organization/:Individual
                 - execution_date (optional): date of assignment
 
             metrics: Optional LoadMetrics to accumulate results
@@ -587,14 +579,14 @@ class PatentLoader(BaseNeo4jLoader):
         assignments: list[dict[str, str]],
         metrics: LoadMetrics | None = None,
     ) -> LoadMetrics:
-        """Create ASSIGNED_TO relationships (PatentAssignment → PatentEntity).
+        """Create ASSIGNED_TO relationships (PatentAssignment → Organization/Individual).
 
-        Phase 3: Link PatentAssignment nodes to PatentEntity (assignee) nodes.
+        Phase 3: Link PatentAssignment nodes to the assignee :Organization/:Individual nodes.
 
         Args:
             assignments: List of assignments with:
                 - rf_id: PatentAssignment key
-                - assignee_entity_id: PatentEntity key for assignee
+                - assignee_entity_id: entity_id of the assignee :Organization/:Individual
                 - recorded_date (optional): date of recording
 
             metrics: Optional LoadMetrics to accumulate results

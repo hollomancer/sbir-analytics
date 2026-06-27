@@ -405,7 +405,7 @@ class PatentETLValidator:
             },
             {
                 "name": "Entity Relationships",
-                "query": "MATCH (pe:PatentEntity)-[r]-() RETURN pe.entity_type, COUNT(r) LIMIT 5",
+                "query": "MATCH (:PatentAssignment)-[r:ASSIGNED_TO|ASSIGNED_FROM]->(e) RETURN labels(e)[0] AS entity_label, COUNT(r) AS rels LIMIT 5",
                 "description": "Analyze entity relationships",
             },
         ]

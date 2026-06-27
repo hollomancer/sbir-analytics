@@ -322,15 +322,15 @@ def loaded_patent_assignments(context) -> dict[str, Any]:
 
 
 @asset(
-    description="Load PatentEntity nodes and create relationships in Neo4j",
+    description="Load patent assignee/assignor entities and create relationships in Neo4j",
     group_name="uspto_loading",
     deps=["neo4j_patients", "loaded_patent_assignments", "transformed_patent_entities"],
 )
 def loaded_patent_entities(context) -> dict[str, Any]:
-    """Phase 2 & 3: Load PatentEntity nodes and create relationships.
+    """Phase 2 & 3: Load patent entities (:Organization/:Individual) and create relationships.
 
     Reads transformed patent entities (assignees and assignors), creates
-    PatentEntity nodes, and establishes ASSIGNED_TO/ASSIGNED_FROM relationships.
+    entity nodes (:Organization/:Individual), and establishes ASSIGNED_TO/ASSIGNED_FROM relationships.
     """
     if PatentLoader is None:
         context.log.error("PatentLoader unavailable; skipping entity loading")
@@ -370,8 +370,11 @@ def loaded_patent_entities(context) -> dict[str, Any]:
         metrics = loader.load_patent_entities(assignors, entity_type="ASSIGNOR", metrics=metrics)
 
         duration = time.time() - start_time
-        success_count = metrics.nodes_created.get("PatentEntity", 0) + metrics.nodes_updated.get(
-            "PatentEntity", 0
+        # Patent entities are loaded as :Organization (non-individuals) and
+        # :Individual (individuals) — not a separate :PatentEntity label.
+        success_count = sum(
+            metrics.nodes_created.get(label, 0) + metrics.nodes_updated.get(label, 0)
+            for label in ("Organization", "Individual")
         )
         total_entities = len(assignees) + len(assignors)
         success_rate = (success_count / total_entities) if total_entities else 0.0
@@ -439,8 +442,8 @@ def loaded_patent_relationships(
 
     Creates relationships:
     - ASSIGNED_VIA: Patent → PatentAssignment
-    - ASSIGNED_FROM: PatentAssignment → PatentEntity (assignor)
-    - ASSIGNED_TO: PatentAssignment → PatentEntity (assignee)
+    - ASSIGNED_FROM: PatentAssignment → :Organization/:Individual (assignor)
+    - ASSIGNED_TO: PatentAssignment → :Organization/:Individual (assignee)
     - GENERATED_FROM: Patent → Award (SBIR linkage)
     - OWNS: Company → Patent (current ownership)
     - CHAIN_OF: PatentAssignment → PatentAssignment (sequential)
@@ -486,7 +489,7 @@ def loaded_patent_relationships(
                     }
                 )
 
-            # ASSIGNED_FROM: PatentAssignment → PatentEntity (assignor)
+            # ASSIGNED_FROM: PatentAssignment → :Organization/:Individual (assignor)
             if assignment.get("rf_id") and assignment.get("assignor_entity_id"):
                 assigned_from_rels.append(
                     {
@@ -496,7 +499,7 @@ def loaded_patent_relationships(
                     }
                 )
 
-            # ASSIGNED_TO: PatentAssignment → PatentEntity (assignee)
+            # ASSIGNED_TO: PatentAssignment → :Organization/:Individual (assignee)
             if assignment.get("rf_id") and assignment.get("assignee_entity_id"):
                 assigned_to_rels.append(
                     {

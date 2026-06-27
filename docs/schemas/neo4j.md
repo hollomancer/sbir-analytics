@@ -41,7 +41,6 @@ and links to the per-node reference docs.
 >
 > - `:Company` — `categorization.py`, `cet.py`, `sec_edgar.py`
 > - `:Contract` — `transition/loading.py`
-> - `:PatentEntity` — `patents.py` (individual assignors/assignees; `ASSIGNED_FROM`/`ASSIGNED_TO`)
 >
 > Treat the legacy labels as **active until those loaders migrate** to the unified
 > model; the relationship table below lists the edges that target them.
