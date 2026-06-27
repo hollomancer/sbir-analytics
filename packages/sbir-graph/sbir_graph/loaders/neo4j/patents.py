@@ -87,9 +87,13 @@ class PatentLoader(BaseNeo4jLoader):
                 "FOR (p:Patent) ON (p.grant_doc_num)",
                 "CREATE INDEX patent_assignment_rf_id_idx IF NOT EXISTS "
                 "FOR (a:PatentAssignment) ON (a.rf_id)",
-                # Organization indexes for unified entities
+                # Organization / Individual indexes for unified entities. Patent
+                # assignees/assignors are matched by entity_id during ASSIGNED_TO/
+                # ASSIGNED_FROM creation, so both labels need an entity_id index.
                 "CREATE INDEX organization_entity_id_idx IF NOT EXISTS "
                 "FOR (o:Organization) ON (o.entity_id)",
+                "CREATE INDEX individual_entity_id_idx IF NOT EXISTS "
+                "FOR (i:Individual) ON (i.entity_id)",
                 "CREATE INDEX organization_normalized_name_idx IF NOT EXISTS "
                 "FOR (o:Organization) ON (o.normalized_name)",
                 # Tier 2: High value indexes

@@ -30,7 +30,7 @@ SET c.name = row.name,
 - **Award**: SBIR/STTR awards with funding and phase information
 - **Patent**: USPTO patents with grant numbers and metadata
 - **PatentAssignment**: Patent ownership transfer events
-- **PatentEntity**: Patent assignees and assignors
+- **Organization / Individual**: Patent assignees and assignors (unified entity labels)
 - **CETArea**: Critical and Emerging Technology categories
 
 ## Relationship Creation Patterns
@@ -158,8 +158,8 @@ def load_nodes_in_batches(data, batch_size=1000):
 (patent:Patent)-[:ASSIGNED_VIA]->(assignment:PatentAssignment)
 
 // Assignment to Entities
-(assignment:PatentAssignment)-[:ASSIGNED_FROM {exec_date: date("1994-12-22")}]->(assignor:PatentEntity)
-(assignment:PatentAssignment)-[:ASSIGNED_TO {record_date: date("1999-07-29")}]->(assignee:PatentEntity)
+(assignment:PatentAssignment)-[:ASSIGNED_FROM {exec_date: date("1994-12-22")}]->(assignor:Organization)
+(assignment:PatentAssignment)-[:ASSIGNED_TO {record_date: date("1999-07-29")}]->(assignee:Organization)
 
 // Current Ownership
 (company:Company)-[:OWNS {as_of_date: date("1999-07-29")}]->(patent:Patent)
@@ -172,10 +172,10 @@ def load_nodes_in_batches(data, batch_size=1000):
 MATCH (p:Patent {grant_doc_num: "5858003"})
 
 -[:ASSIGNED_VIA]->(a:PatentAssignment)
--[:ASSIGNED_FROM]->(originator:PatentEntity)
+-[:ASSIGNED_FROM]->(originator:Organization)
 
 ,
-(a)-[:ASSIGNED_TO]->(recipient:PatentEntity)
+(a)-[:ASSIGNED_TO]->(recipient:Organization)
 RETURN
   a.record_date AS assignment_date,
   originator.name AS from_entity,
