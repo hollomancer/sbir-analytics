@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import tempfile
+from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -142,6 +143,67 @@ def _download_s3_to_temp(s3_path: S3Path) -> Path:
         logger.debug(f"Using cached S3 file: {local_file}")
 
     return local_file
+
+
+def sync_s3_prefix_to_dir(
+    s3_prefix: str,
+    dest_dir: str | Path,
+    include: Iterable[str] | None = None,
+) -> Path:
+    """Download objects under an S3 prefix into a local directory.
+
+    Selective by design: when ``include`` is provided, only objects whose basename
+    is in ``include`` are downloaded; otherwise every object under the prefix is
+    pulled. This lets callers fetch just the table file(s) they need from a large
+    multi-file dump (e.g. the ~17GB transition ``pruned_data_store_api_dump``)
+    instead of the whole prefix.
+
+    Args:
+        s3_prefix: ``s3://bucket/prefix/`` URL to list under.
+        dest_dir: Local directory to populate (created if missing).
+        include: Optional basenames to restrict the download (e.g. ``["toc.dat",
+            "best.dat.gz"]``). ``None`` downloads every object under the prefix.
+
+    Returns:
+        The local ``dest_dir`` path.
+
+    Raises:
+        ValueError: if ``s3_prefix`` is not an ``s3://`` URL.
+        FileNotFoundError: if no matching objects were found under the prefix.
+    """
+    import boto3
+
+    if not is_s3_path(s3_prefix):
+        raise ValueError(f"Not an S3 prefix: {s3_prefix}")
+
+    bucket, _, prefix = str(s3_prefix)[len("s3://") :].partition("/")
+    include_set = set(include) if include is not None else None
+
+    dest = Path(dest_dir)
+    dest.mkdir(parents=True, exist_ok=True)
+
+    s3_client = boto3.client("s3")
+    paginator = s3_client.get_paginator("list_objects_v2")
+    downloaded = 0
+
+    for page in paginator.paginate(Bucket=bucket, Prefix=prefix):
+        for obj in page.get("Contents", []):
+            key = obj["Key"]
+            name = key.rsplit("/", 1)[-1]
+            if not name:  # skip "directory" placeholder keys
+                continue
+            if include_set is not None and name not in include_set:
+                continue
+            target = dest / name
+            logger.info(f"Downloading s3://{bucket}/{key} -> {target}")
+            s3_client.download_file(bucket, key, str(target))
+            downloaded += 1
+
+    if downloaded == 0:
+        raise FileNotFoundError(f"No objects downloaded from {s3_prefix} (include={include})")
+
+    logger.info(f"Synced {downloaded} object(s) from {s3_prefix} to {dest}")
+    return dest
 
 
 def cleanup_s3_cache(

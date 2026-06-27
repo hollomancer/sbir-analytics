@@ -672,8 +672,9 @@ class TestPathsConfig:
         assert config.raw_data == "data/raw"
         assert config.usaspending_dump_dir == "data/usaspending"
         assert config.transition_contracts_output == "data/transition/contracts_ingestion.parquet"
-        # S3 vendor-filter sourcing is opt-in: empty by default (local only).
+        # S3 sourcing is opt-in: empty by default (local only).
         assert config.transition_vendor_filters_s3_path == ""
+        assert config.transition_dump_s3_prefix == ""
 
     def test_custom_paths(self):
         """Test PathsConfig with custom paths."""

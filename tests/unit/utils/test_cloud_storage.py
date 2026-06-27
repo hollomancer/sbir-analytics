@@ -15,7 +15,60 @@ from sbir_etl.utils.cloud_storage import (
     check_sbir_data_freshness,
     get_s3_bucket_from_env,
     resolve_data_path,
+    sync_s3_prefix_to_dir,
 )
+
+
+class TestSyncS3PrefixToDir:
+    """Tests for sync_s3_prefix_to_dir (selective prefix download)."""
+
+    def _client_with(self, keys):
+        client = MagicMock()
+        paginator = MagicMock()
+        client.get_paginator.return_value = paginator
+        paginator.paginate.return_value = [{"Contents": [{"Key": k} for k in keys]}]
+        return client
+
+    def test_downloads_only_included_basenames(self, tmp_path):
+        client = self._client_with(
+            [
+                "raw/transition/dump/toc.dat",
+                "raw/transition/dump/a.dat.gz",
+                "raw/transition/dump/b.dat.gz",
+            ]
+        )
+        with patch("boto3.client", return_value=client):
+            dest = sync_s3_prefix_to_dir(
+                "s3://bucket/raw/transition/dump/",
+                tmp_path / "dump",
+                include=["toc.dat", "a.dat.gz"],
+            )
+
+        assert dest == tmp_path / "dump"
+        downloaded_keys = {c.args[1] for c in client.download_file.call_args_list}
+        assert downloaded_keys == {
+            "raw/transition/dump/toc.dat",
+            "raw/transition/dump/a.dat.gz",
+        }
+        assert client.download_file.call_count == 2  # b.dat.gz skipped
+
+    def test_downloads_all_when_include_none(self, tmp_path):
+        client = self._client_with(["p/toc.dat", "p/a.dat.gz", "p/b.dat.gz"])
+        with patch("boto3.client", return_value=client):
+            sync_s3_prefix_to_dir("s3://bucket/p/", tmp_path / "d", include=None)
+        assert client.download_file.call_count == 3
+
+    def test_raises_on_non_s3_prefix(self, tmp_path):
+        with pytest.raises(ValueError):
+            sync_s3_prefix_to_dir("/local/dir", tmp_path / "d")
+
+    def test_raises_when_no_objects_match(self, tmp_path):
+        client = self._client_with(["p/toc.dat", "p/a.dat.gz"])
+        with patch("boto3.client", return_value=client):
+            with pytest.raises(FileNotFoundError):
+                sync_s3_prefix_to_dir(
+                    "s3://bucket/p/", tmp_path / "d", include=["nope.dat.gz"]
+                )
 
 
 class TestResolveDataPath:
