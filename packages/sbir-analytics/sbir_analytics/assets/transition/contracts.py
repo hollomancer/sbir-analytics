@@ -223,67 +223,42 @@ def raw_contracts(context) -> Output[pd.DataFrame]:
 # -----------------------------
 
 
-# Maps the nested FederalContract.model_dump() schema (what raw_contracts writes to
-# contracts_ingestion.parquet) onto the flat columns the transition sample expects.
-# Each entry: flat_target -> (nested_column, key_inside_that_dict).
-_CONTRACT_NESTED_FLATTEN = {
-    "vendor_uei": ("vendor", "uei"),
-    "vendor_duns": ("vendor", "duns_number"),
-    "vendor_name": ("vendor", "name"),
-    "vendor_cage": ("vendor", "cage_code"),
-    "obligated_amount": ("value", "obligated_amount"),
-    "action_date": ("period", "effective_date"),
+# Rename map: source column (as produced by the extractor or a raw seed) -> the flat
+# canonical column the transition sample expects. ``raw_contracts`` writes the FLAT
+# ``transition_models.FederalContract`` schema, where vendor_uei / vendor_duns /
+# vendor_name already match the canonical names — only amount/date/agency differ — so
+# the bridge is a set of flat renames, not a nested flatten.
+_CONTRACT_COLUMN_ALIASES = {
+    # Defensive: raw USAspending-style column names, if a seed uses them.
+    "uei": "vendor_uei",
+    "duns": "vendor_duns",
+    "recipient_name": "vendor_name",
+    "federal_action_obligation": "obligated_amount",
+    "awarding_agency": "awarding_agency_name",
+    # Extractor output (transition_models.FederalContract) -> canonical sample schema.
+    "obligation_amount": "obligated_amount",
+    # NOTE: the extractor stores period_of_performance_start_date as `start_date` and
+    # does not carry the transaction action_date (column 2); start_date is the best
+    # available action-date proxy until the extractor captures the true action_date.
+    "start_date": "action_date",
+    "agency": "awarding_agency_name",
 }
-# Flat renames where the extractor's column name differs from the expected one.
-_CONTRACT_FLAT_RENAME = {
-    "agency_code": "awarding_agency_code",
-    "agency_name": "awarding_agency_name",
-}
 
 
-def flatten_contract_records(df: pd.DataFrame) -> pd.DataFrame:
-    """Flatten a FederalContract-dump DataFrame to the flat transition-sample schema.
+def normalize_contract_columns(df: pd.DataFrame) -> pd.DataFrame:
+    """Rename extractor/raw contract columns to the flat transition-sample schema.
 
-    ``raw_contracts`` writes ``FederalContract.model_dump()`` rows, where ``vendor`` /
-    ``value`` / ``period`` are **nested dicts** — so the flat ``vendor_uei`` /
-    ``obligated_amount`` / ``action_date`` columns the detection chain needs are
-    absent. This lifts those nested values up to flat columns (and renames
-    ``agency_code`` → ``awarding_agency_code``), letting ``validated_contracts_sample``
-    consume the extractor output directly (e.g. via ``CONTRACTS_SAMPLE__PATH`` pointed
-    at ``contracts_ingestion.parquet``).
-
-    Only fills a flat target when it is **absent**, so an already-flat seeded sample
-    passes through unchanged. No-op on an empty frame.
+    The extractor output is already flat (``vendor_uei`` / ``vendor_duns`` /
+    ``vendor_name`` match directly); this fills the remaining canonical columns
+    (``obligated_amount`` / ``action_date`` / ``awarding_agency_name``) from their
+    differently-named sources. Only fills a target column when it is **absent**, so
+    an already-canonical seeded sample passes through unchanged. No-op on empty.
     """
     if df.empty:
         return df
-
-    def _from_nested(col: str, key: str) -> pd.Series | None:
-        if col not in df.columns:
-            return None
-        return df[col].apply(lambda v: v.get(key) if isinstance(v, dict) else None)
-
-    # Record which flat targets were absent up front, so we never touch values that
-    # a flat seed already provided (the "absent only" contract).
-    action_date_derived = "action_date" not in df.columns
-
-    for dst, (col, key) in _CONTRACT_NESTED_FLATTEN.items():
-        if dst not in df.columns:
-            values = _from_nested(col, key)
-            if values is not None:
-                df[dst] = values
-
-    # signed_date fallback applies only to an action_date we just derived from the
-    # nested period (effective_date) — never to a pre-existing flat action_date.
-    if action_date_derived and "action_date" in df.columns:
-        signed = _from_nested("period", "signed_date")
-        if signed is not None:
-            df["action_date"] = df["action_date"].where(df["action_date"].notna(), signed)
-
-    for src_col, dst_col in _CONTRACT_FLAT_RENAME.items():
+    for src_col, dst_col in _CONTRACT_COLUMN_ALIASES.items():
         if src_col in df.columns and dst_col not in df.columns:
             df[dst_col] = df[src_col]
-
     return df
 
 
@@ -294,10 +269,10 @@ def flatten_contract_records(df: pd.DataFrame) -> pd.DataFrame:
     description=(
         "Load or create a sample of federal contracts for transition detection. "
         "Accepts either a flat seeded sample or the raw extractor output "
-        "(contracts_ingestion.parquet, nested FederalContract schema) — the nested "
-        "vendor/value/period columns are flattened to the expected flat schema. "
-        "If no file is found, an empty dataframe with expected schema is produced. "
-        "Writes checks JSON with coverage metrics."
+        "(contracts_ingestion.parquet) — extractor/raw column names are normalized to "
+        "the canonical flat schema (e.g. obligation_amount -> obligated_amount, "
+        "start_date -> action_date). If no file is found, an empty dataframe with the "
+        "expected schema is produced. Writes checks JSON with coverage metrics."
     ),
 )
 def validated_contracts_sample(context) -> Output[pd.DataFrame]:
@@ -333,21 +308,10 @@ def validated_contracts_sample(context) -> Output[pd.DataFrame]:
         df = pd.DataFrame({c: pd.Series(dtype="object") for c in expected_cols})
         src = "generated_empty"
 
-    # Flatten the extractor's nested vendor/value/period schema (no-op for flat seeds),
-    # so contracts_ingestion.parquet can be used directly as the sample source.
-    df = flatten_contract_records(df)
+    # Normalize extractor/raw column names to the flat canonical sample schema, so
+    # contracts_ingestion.parquet can be used directly as the sample source.
+    df = normalize_contract_columns(df)
 
-    # Column aliases -> canonical names (best-effort)
-    alias_map = {
-        "uei": "vendor_uei",
-        "duns": "vendor_duns",
-        "recipient_name": "vendor_name",
-        "federal_action_obligation": "obligated_amount",
-        "awarding_agency": "awarding_agency_name",
-    }
-    for src_col, dst_col in alias_map.items():
-        if src_col in df.columns and dst_col not in df.columns:
-            df[dst_col] = df[src_col]
     # Ensure required columns exist (fill missing)
     for c in expected_cols:
         if c not in df.columns:
