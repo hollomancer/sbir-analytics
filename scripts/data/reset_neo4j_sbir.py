@@ -74,10 +74,13 @@ def reset_neo4j(
             # Delete Organization nodes (only those not connected to other entities)
             # Note: We're being conservative - only delete Organizations that aren't connected
             # to Patents, Transitions, etc. In a full reset, you might want to delete all of them.
+            # A relationship-agnostic isolation check (NOT (o)--()) keeps DELETE safe: it
+            # matches only truly orphaned Organizations, so a plain DELETE never hits a node
+            # that still has relationships.
             company_result = session.run(
                 """
                 MATCH (o:Organization)
-                WHERE NOT (o)<-[:AWARDS]-()
+                WHERE NOT (o)--()
                 DELETE o
                 RETURN count(o) as deleted
                 """

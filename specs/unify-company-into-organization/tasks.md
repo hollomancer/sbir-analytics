@@ -47,8 +47,11 @@ Implemented. Phase 1 (PR #379) merged; both writers now retarget to
 - [x] `run_neo4j_smoke_checks.py`, `reset_neo4j_sbir.py`, `apply_schema.py`,
       `validate_patent_etl_deployment.py`: `:Company` → `:Organization` (or drop the
       empty `:Company` cleanup blocks).
-- **Verify:** `grep -rn ':Company' packages/ sbir_etl/ scripts/` returns only the
-      migration + tests.
+- **Verify:** no live Cypher still references the legacy label —
+      `grep -rn ':Company' packages/ sbir_etl/ scripts/ --include='*.py'` returns only
+      the migration (007), tests, and a couple of negative-reference *comments*
+      (e.g. `patent_analyzer.py` "…not :PatentEntity/:Company"); zero `MATCH` / `MERGE`
+      / `CREATE … :Company` query patterns remain.
 
 ### 6. Migration `007_unify_company_into_organization.py` → verify: dry-run on seed
 - [x] `upgrade()`: batched `MATCH (c:Company) MATCH (o:Organization {uei:c.uei})
