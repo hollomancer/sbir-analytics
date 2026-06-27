@@ -240,7 +240,10 @@ class TransitionLoader(BaseNeo4jLoader):
                 rows = [
                     {
                         "transition_id": t["transition_id"],
-                        "contract_id": str(t["contract_id"]),
+                        # Strip the sent value too (not just the filter) so the MERGE
+                        # key matches the filter — otherwise padded ids would mint
+                        # distinct txn_contract_ PKs for the same logical contract.
+                        "contract_id": str(t["contract_id"]).strip(),
                         "confidence": t["confidence"],
                     }
                     for _, t in batch.iterrows()

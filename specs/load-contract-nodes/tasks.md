@@ -32,7 +32,7 @@ effort).
 - **Verify:** no doc claims a separate writer is missing; precondition is stated.
 
 ### 3. PR + expectations → verify: reviewer-ready
-- [ ] State plainly: structural fix; pathway returns 0 until `contracts_sample.parquet`
+- [x] State plainly: structural fix; pathway returns 0 until `contracts_sample.parquet`
       is seeded; rich nodes / RECIPIENT_OF / FUNDED_BY / full ingestion deferred; no
       migration; the amount-validator does not fire on this path.
 

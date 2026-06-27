@@ -273,3 +273,21 @@ class TestResultedInInlineContractNode:
         assert len(rows) == 1  # the None-contract_id row is dropped
         assert rows[0]["transition_id"] == "t1"
         assert rows[0]["contract_id"] == "W911NF20C0001"
+
+    def test_strips_whitespace_from_contract_id(self):
+        """The sent contract_id is stripped so the MERGE PK matches the filter."""
+        loader, mock_session = self._loader_with_capture()
+
+        df = pd.DataFrame(
+            {
+                "transition_id": ["t1"],
+                "contract_id": ["  W911NF20C0001  "],
+                "confidence": ["high"],
+            }
+        )
+
+        loader.create_resulted_in_relationships(df)
+
+        rows = mock_session.run.call_args.kwargs["transitions"]
+        # Stripped value → stable txn_contract_<id> PK (no whitespace-duplicated nodes).
+        assert rows[0]["contract_id"] == "W911NF20C0001"
