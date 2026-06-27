@@ -29,6 +29,9 @@ paths:
   transition_contracts_output: "data/transition/contracts_ingestion.parquet"
   transition_dump_dir: "data/transition/pruned_data_store_api_dump"
   transition_vendor_filters: "data/transition/sbir_vendor_filters.json"
+  # Optional s3:// URL for the vendor-filter JSON (S3-first, local fallback).
+  # Empty = local only. Format: s3://bucket-name/path/to/sbir_vendor_filters.json
+  transition_vendor_filters_s3_path: ""
 
   # Scripts output
   scripts_output: "data/scripts_output"

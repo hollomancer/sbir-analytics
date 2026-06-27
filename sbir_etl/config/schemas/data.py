@@ -372,7 +372,15 @@ class PathsConfig(BaseModel):
     )
     transition_vendor_filters: str = Field(
         default="data/transition/sbir_vendor_filters.json",
-        description="SBIR vendor filters file",
+        description="SBIR vendor filters file (local path)",
+    )
+    transition_vendor_filters_s3_path: str = Field(
+        default="",
+        description=(
+            "Optional s3:// URL for the SBIR vendor filters JSON. When set, the "
+            "transition contracts asset resolves it S3-first and falls back to the "
+            "local transition_vendor_filters path. Empty = local only."
+        ),
     )
     scripts_output: str = Field(
         default="data/scripts_output", description="Scripts output directory"

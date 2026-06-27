@@ -14,6 +14,7 @@ from typing import Any
 import pandas as pd
 
 from sbir_etl.exceptions import FileSystemError
+from sbir_etl.utils.cloud_storage import resolve_data_path
 
 from .utils import (
     ContractExtractor,
@@ -46,6 +47,23 @@ def raw_contracts(context) -> Output[pd.DataFrame]:
     output_path = config.paths.resolve_path("transition_contracts_output")
     dump_dir = config.paths.resolve_path("transition_dump_dir")
     vendor_filter_path = config.paths.resolve_path("transition_vendor_filters")
+
+    # Optionally source the vendor-filter JSON from S3 (S3-first, local fallback).
+    # Lets the asset run in a fresh/ephemeral env (e.g. AWS Batch) without the file
+    # pre-staged on local disk. Empty config = local only (unchanged behavior).
+    vendor_filters_s3 = config.paths.transition_vendor_filters_s3_path
+    if vendor_filters_s3:
+        try:
+            vendor_filter_path = resolve_data_path(
+                vendor_filters_s3, local_fallback=vendor_filter_path
+            )
+            context.log.info(
+                f"Resolved vendor filters: {vendor_filters_s3} -> {vendor_filter_path}"
+            )
+        except Exception as e:
+            context.log.warning(
+                f"S3 vendor-filter resolution failed ({e}); using local {vendor_filter_path}"
+            )
     table_files_env = os.getenv("SBIR_ETL__TRANSITION__CONTRACTS__TABLE_FILES")
     table_files = (
         [item.strip() for item in table_files_env.split(",") if item.strip()]
