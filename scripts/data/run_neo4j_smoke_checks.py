@@ -57,18 +57,18 @@ def run_smoke_checks(uri: str, username: str, password: str, database: str) -> d
             )
             results["summary"]["award_count"] = award_count
 
-            # Check 2: Company node count
-            company_count_result = session.run("MATCH (c:Company) RETURN count(c) as count")
+            # Check 2: Organization node count (companies are unified onto :Organization)
+            company_count_result = session.run("MATCH (o:Organization) RETURN count(o) as count")
             company_count = company_count_result.single()["count"]
             results["checks"].append(
                 {
-                    "name": "company_node_count",
+                    "name": "organization_node_count",
                     "passed": company_count > 0,
                     "value": company_count,
-                    "message": f"Found {company_count} Company nodes",
+                    "message": f"Found {company_count} Organization nodes",
                 }
             )
-            results["summary"]["company_count"] = company_count
+            results["summary"]["organization_count"] = company_count
 
             # Check 3: RECIPIENT_OF relationship count
             awards_rel_result = session.run(

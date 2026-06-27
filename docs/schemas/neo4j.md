@@ -32,23 +32,29 @@ and links to the per-node reference docs.
 | `Patent` | `grant_doc_num` | `patents.py` | [uspto-patents.md](uspto-patents.md) |
 | `PatentAssignment` | `rf_id` | `patents.py` | [uspto-patents.md](uspto-patents.md) |
 
-> **Two label families coexist (the graph is mid-migration).** The Dagster analytics
-> loader (`sbir_neo4j_loading.py`) writes the **unified** labels above —
+> **Unified label model.** The Dagster analytics loader (`sbir_neo4j_loading.py`)
+> and the sbir-graph package loaders all write the **unified** labels above —
 > `FinancialTransaction` for SBIR awards and federal contracts, `Organization` for
 > companies/universities/agencies/patent organizations, and `Individual` for
-> researchers and patent individuals. Several sbir-graph package loaders still write
-> **legacy** labels and actively link to them:
->
-> - `:Company` — `categorization.py`, `cet.py`, `sec_edgar.py`
-> - `:Contract` — `transition/loading.py`
->
-> Treat the legacy labels as **active until those loaders migrate** to the unified
-> model; the relationship table below lists the edges that target them.
+> researchers and patent individuals. No loader or query references a legacy node
+> label (`:Award`, `:Company`, `:Contract`, `:PatentEntity`) any more.
 >
 > `:Award` has been unified onto `:FinancialTransaction` (migration `006`): CET
 > enrichment, `APPLICABLE_TO`, and `GENERATED_FROM` now attach to the
 > `FinancialTransaction` with `transaction_type = "AWARD"`, matched on its
-> `award_id` property. No loader writes a separate `:Award` node any more.
+> `award_id` property.
+>
+> `:Company` has been unified onto `:Organization` (migration `007`): business
+> categorization (`categorization.py`) and SEC EDGAR enrichment (`sec_edgar.py`) now
+> set their properties directly on the `:Organization`, matched on its indexed `uei`
+> property.
+>
+> `:Contract` has been unified onto `:FinancialTransaction` with
+> `transaction_type = "CONTRACT"`: the `RESULTED_IN` writer (`transitions.py`) and the
+> transition-pathway read queries (`pathway_queries.py`) all target it, matched on its
+> indexed `contract_id` property. Note that **federal-contract node ingestion is not
+> yet built** — no loader writes `FinancialTransaction {transaction_type: "CONTRACT"}`
+> nodes, so `RESULTED_IN` / contract pathways stay empty until that writer lands.
 
 ## Relationship Types
 

@@ -1,9 +1,9 @@
 """SEC EDGAR Loader for Neo4j Graph Operations.
 
-Enriches existing Company nodes with SEC EDGAR public filing data including
-CIK identifiers, financial metrics, and M&A event signals.
+Enriches existing :Organization nodes (matched by ``uei``) with SEC EDGAR public
+filing data including CIK identifiers, financial metrics, and M&A event signals.
 
-Properties added to Company nodes:
+Properties added to Organization nodes:
   - sec_cik: Central Index Key (SEC identifier)
   - sec_is_publicly_traded: Boolean flag
   - sec_ticker: Stock ticker symbol
@@ -26,7 +26,6 @@ from datetime import datetime
 from typing import Any
 
 from loguru import logger
-from pydantic import Field
 
 from .base import BaseLoaderConfig, BaseNeo4jLoader
 from .client import LoadMetrics, Neo4jClient
@@ -35,17 +34,13 @@ from .client import LoadMetrics, Neo4jClient
 class SecEdgarLoaderConfig(BaseLoaderConfig):
     """Configuration for SEC EDGAR loading operations."""
 
-    update_existing_only: bool = Field(
-        default=True,
-        description="Only update existing Company nodes (do not create new ones)",
-    )
-
 
 class SecEdgarLoader(BaseNeo4jLoader):
-    """Loads SEC EDGAR enrichment data into Neo4j Company nodes.
+    """Loads SEC EDGAR enrichment data into Neo4j :Organization nodes.
 
-    Enriches existing Company nodes with public filing data from SEC EDGAR.
-    Uses idempotent MERGE operations for safe reprocessing.
+    Enriches existing :Organization nodes with public filing data from SEC EDGAR.
+    Uses MATCH-and-SET semantics (existing nodes only, matched by ``uei``) for
+    safe, idempotent reprocessing.
     """
 
     def __init__(
@@ -56,20 +51,19 @@ class SecEdgarLoader(BaseNeo4jLoader):
         super().__init__(client)
         self.config = config or SecEdgarLoaderConfig()
         logger.info(
-            "SecEdgarLoader initialized with batch_size={}, update_existing_only={}",
+            "SecEdgarLoader initialized with batch_size={}",
             self.config.batch_size,
-            self.config.update_existing_only,
         )
 
     def create_indexes(self, indexes: list[str] | None = None) -> None:  # type: ignore[override]
-        """Create indexes for SEC EDGAR properties on Company nodes."""
+        """Create indexes for SEC EDGAR properties on Organization nodes."""
         if indexes is None:
             indexes = [
-                "CREATE INDEX company_sec_cik_idx IF NOT EXISTS FOR (c:Company) ON (c.sec_cik)",
-                "CREATE INDEX company_sec_publicly_traded_idx IF NOT EXISTS "
-                "FOR (c:Company) ON (c.sec_is_publicly_traded)",
-                "CREATE INDEX company_sec_ticker_idx IF NOT EXISTS "
-                "FOR (c:Company) ON (c.sec_ticker)",
+                "CREATE INDEX org_sec_cik_idx IF NOT EXISTS FOR (o:Organization) ON (o.sec_cik)",
+                "CREATE INDEX org_sec_publicly_traded_idx IF NOT EXISTS "
+                "FOR (o:Organization) ON (o.sec_is_publicly_traded)",
+                "CREATE INDEX org_sec_ticker_idx IF NOT EXISTS "
+                "FOR (o:Organization) ON (o.sec_ticker)",
             ]
         super().create_indexes(indexes)
 
@@ -78,10 +72,10 @@ class SecEdgarLoader(BaseNeo4jLoader):
         enrichments: Iterable[dict[str, Any]],
         metrics: LoadMetrics | None = None,
     ) -> LoadMetrics:
-        """Enrich Company nodes with SEC EDGAR data.
+        """Enrich :Organization nodes with SEC EDGAR data.
 
         Each enrichment dict should include:
-          - company_uei (required): UEI to match Company node
+          - company_uei (required): UEI to match the Organization node
           - sec_cik: CIK identifier
           - sec_is_publicly_traded: Boolean
           - sec_ticker: Ticker symbol
@@ -130,8 +124,8 @@ class SecEdgarLoader(BaseNeo4jLoader):
             f"companies with SEC signals (of {len(enrichment_list)} total)"
         )
 
-        # Build enrichment tuples for base class method
-        enrichment_tuples: list[tuple[str, dict[str, Any]]] = []
+        # Build flattened node dicts (match key + props) for MATCH-and-SET.
+        nodes: list[dict[str, Any]] = []
         for record in sec_records:
             # Accept both "uei" and "company_uei" as the UEI key
             uei = record.get("company_uei") or record.get("uei")
@@ -139,7 +133,8 @@ class SecEdgarLoader(BaseNeo4jLoader):
                 self.metrics.errors += 1
                 continue
 
-            props: dict[str, Any] = {
+            node: dict[str, Any] = {
+                "uei": uei,
                 "sec_enriched_at": datetime.now().isoformat(),
             }
             # Copy all sec_ prefixed properties
@@ -147,17 +142,22 @@ class SecEdgarLoader(BaseNeo4jLoader):
                 if key.startswith("sec_") and value is not None:
                     # Convert date objects to strings for Neo4j
                     if hasattr(value, "isoformat"):
-                        props[key] = value.isoformat()
+                        node[key] = value.isoformat()
                     else:
-                        props[key] = value
+                        node[key] = value
 
-            enrichment_tuples.append((uei, props))
+            nodes.append(node)
 
-        if enrichment_tuples:
-            self.enrich_node_properties(
-                label="Company",
+        if nodes:
+            # Update existing :Organization nodes only (MATCH-and-SET, never create).
+            # MATCHing on the non-key ``uei`` avoids minting duplicate Organizations,
+            # whose authoritative key is ``organization_id``.
+            self.client.config.batch_size = self.config.batch_size
+            self.client.batch_set_existing_node_properties(
+                label="Organization",
                 key_property="uei",
-                enrichments=enrichment_tuples,
+                nodes=nodes,
+                metrics=self.metrics,
             )
 
         return self.metrics

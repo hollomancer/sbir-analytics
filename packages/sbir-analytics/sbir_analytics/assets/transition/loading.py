@@ -322,7 +322,8 @@ def transition_relationships_check(
             ).single()["n"]
 
             ri_count = session.run(
-                "MATCH (t:Transition)-[r:RESULTED_IN]->(c:Contract) RETURN count(r) as n"
+                "MATCH (t:Transition)-[r:RESULTED_IN]->"
+                "(c:FinancialTransaction {transaction_type: 'CONTRACT'}) RETURN count(r) as n"
             ).single()["n"]
 
             eb_count = session.run(

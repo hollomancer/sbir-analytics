@@ -67,7 +67,8 @@ class TransitionPathwayQueries:
 
         query = f"""
         MATCH (a:FinancialTransaction {{transaction_type: 'AWARD'}}) {award_filter}
-        MATCH (a)-[r:TRANSITIONED_TO]->(trans:Transition)-[r2:RESULTED_IN]->(c:Contract)
+        MATCH (a)-[r:TRANSITIONED_TO]->(trans:Transition)
+              -[r2:RESULTED_IN]->(c:FinancialTransaction {{transaction_type: 'CONTRACT'}})
         WHERE r.score >= {min_score} {confidence_filter}
         RETURN {{
             award_id: a.award_id,
@@ -119,7 +120,7 @@ class TransitionPathwayQueries:
         MATCH (p:Patent)-[:GENERATED_FROM]->(a)
         MATCH (trans:Transition)-[r:ENABLED_BY]->(p)
         WHERE r.contribution_score >= {min_patent_contribution}
-        MATCH (trans)-[r2:RESULTED_IN]->(c:Contract)
+        MATCH (trans)-[r2:RESULTED_IN]->(c:FinancialTransaction {{transaction_type: 'CONTRACT'}})
         RETURN {{
             award_id: a.award_id,
             award_name: a.title,

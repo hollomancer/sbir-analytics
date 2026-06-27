@@ -390,7 +390,7 @@ class PatentETLValidator:
         query_patterns = [
             {
                 "name": "Patent Ownership Chain",
-                "query": "MATCH (c:Company)-[r:OWNS]->(p:Patent) RETURN c.name, p.grant_doc_num LIMIT 10",
+                "query": "MATCH (o:Organization)-[r:OWNS]->(p:Patent) RETURN o.name, p.grant_doc_num LIMIT 10",
                 "description": "Find patents owned by companies",
             },
             {

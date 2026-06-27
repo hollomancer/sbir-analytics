@@ -72,9 +72,6 @@ class CETLoader(BaseNeo4jLoader):
                 # CETArea uniqueness on cet_id
                 "CREATE CONSTRAINT cetarea_cet_id IF NOT EXISTS "
                 "FOR (c:CETArea) REQUIRE c.cet_id IS UNIQUE",
-                # Optional: ensure Company constraint exists for enrichment keys
-                "CREATE CONSTRAINT company_id IF NOT EXISTS "
-                "FOR (c:Company) REQUIRE c.company_id IS UNIQUE",
             ]
         super().create_constraints(constraints)
 
@@ -180,7 +177,8 @@ class CETLoader(BaseNeo4jLoader):
 
         Args:
             enrichments: iterable of mappings with key_property and enrichment fields
-            key_property: Organization key to MERGE on (default 'uei'); can be 'organization_id' or 'company_id' if that's your key
+            key_property: Organization property to MATCH on (default 'uei'); can be
+                'organization_id' or 'company_id' if that's your key
             metrics: optional LoadMetrics
 
         Returns:
@@ -222,10 +220,15 @@ class CETLoader(BaseNeo4jLoader):
             return metrics
 
         logger.info(
-            "Upserting {} Organization CET enrichment nodes (key={})", len(nodes), key_property
+            "Enriching {} existing Organization node(s) with CET properties (key={})",
+            len(nodes),
+            key_property,
         )
+        # MATCH-and-SET (existing nodes only): the Organization's authoritative key is
+        # organization_id, so a MERGE on the non-key uei would mint a duplicate, partial
+        # Organization. Orphans (key absent from the graph) are logged and skipped.
         self.client.config.batch_size = self.config.batch_size
-        metrics = self.client.batch_upsert_nodes(
+        metrics = self.client.batch_set_existing_node_properties(
             label="Organization", key_property=key_property, nodes=nodes, metrics=metrics
         )
         return metrics

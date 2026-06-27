@@ -200,6 +200,23 @@ class TestCETLoaderCompanyEnrichment:
         assert captured["label"] == "Organization"
         assert captured["key_property"] == "company_id"
 
+    def test_upsert_company_cet_enrichment_matches_never_creates(self):
+        """Company CET enrichment must MATCH existing Organizations, never MERGE.
+
+        The Organization's authoritative key is organization_id, so a MERGE on the
+        non-key uei would mint a duplicate, partial Organization. This pins the
+        loader to the MATCH-and-SET primitive.
+        """
+        mock_client, _ = _make_mock_client_with_capture()
+        loader = CETLoader(mock_client)
+
+        loader.upsert_company_cet_enrichment(
+            [{"uei": "UEI123", "cet_dominant_id": "AI"}], key_property="uei"
+        )
+
+        assert mock_client.batch_set_existing_node_properties.called
+        assert not mock_client.batch_upsert_nodes.called
+
 
 class TestCETLoaderAwardEnrichment:
     def test_upsert_award_cet_enrichment_supporting_ids_and_autotimestamp(self):

@@ -35,16 +35,16 @@ def reset_neo4j(
                     "MATCH (a:FinancialTransaction {transaction_type: 'AWARD'}) "
                     "RETURN count(a) as count"
                 ).single()["count"]
-                company_count = session.run("MATCH (c:Company) RETURN count(c) as count").single()[
-                    "count"
-                ]
+                company_count = session.run(
+                    "MATCH (o:Organization) RETURN count(o) as count"
+                ).single()["count"]
                 rel_count = session.run(
                     "MATCH (a:FinancialTransaction {transaction_type: 'AWARD'})"
                     "-[r:RECIPIENT_OF]->(o:Organization) RETURN count(r) as count"
                 ).single()["count"]
                 print(
                     f"Would delete: {award_count} Awards (FinancialTransaction), "
-                    f"{company_count} Companies, {rel_count} RECIPIENT_OF relationships"
+                    f"{company_count} Organizations, {rel_count} RECIPIENT_OF relationships"
                 )
                 return 0
 
@@ -71,19 +71,22 @@ def reset_neo4j(
             awards_deleted = award_result.single()["deleted"]
             print(f"Deleted {awards_deleted} award FinancialTransaction nodes")
 
-            # Delete Company nodes (only those not connected to other entities)
-            # Note: We're being conservative - only delete Companies that aren't connected
-            # to Patents, Transitions, etc. In a full reset, you might want to delete all Companies.
+            # Delete Organization nodes (only those not connected to other entities)
+            # Note: We're being conservative - only delete Organizations that aren't connected
+            # to Patents, Transitions, etc. In a full reset, you might want to delete all of them.
+            # A relationship-agnostic isolation check (NOT (o)--()) keeps DELETE safe: it
+            # matches only truly orphaned Organizations, so a plain DELETE never hits a node
+            # that still has relationships.
             company_result = session.run(
                 """
-                MATCH (c:Company)
-                WHERE NOT (c)<-[:AWARDS]-()
-                DELETE c
-                RETURN count(c) as deleted
+                MATCH (o:Organization)
+                WHERE NOT (o)--()
+                DELETE o
+                RETURN count(o) as deleted
                 """
             )
             companies_deleted = company_result.single()["deleted"]
-            print(f"Deleted {companies_deleted} Company nodes (unconnected)")
+            print(f"Deleted {companies_deleted} Organization nodes (unconnected)")
 
             print("Neo4j reset complete")
             return 0
