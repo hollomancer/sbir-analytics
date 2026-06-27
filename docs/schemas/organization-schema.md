@@ -221,7 +221,16 @@ CREATE FULLTEXT INDEX idx_organization_name_fulltext FOR (o:Organization) ON (o.
 
 - All Company nodes migrated with `organization_type = "COMPANY"`
 - `source_contexts = ["SBIR"]`
-- `company_id` preserved for backward compatibility
+- Business categorization (`categorization.py`) and SEC EDGAR enrichment
+  (`sec_edgar.py`) now set their properties **directly on `:Organization`**,
+  matched on the indexed `uei`. These include `classification`, `product_pct`,
+  `service_pct`, the `categorization_*` family, and the `sec_*` family
+  (`sec_cik`, `sec_ticker`, `sec_is_publicly_traded`, financials, …).
+- Migration `007_unify_company_into_organization` merges any remaining legacy
+  `:Company` enrichment nodes onto the matching `:Organization` (preserving the
+  Organization's authoritative `name` / `normalized_name` / `organization_id` and
+  dropping the legacy `company_id` key), then deletes the `:Company` node.
+- No loader writes a separate `:Company` node any more.
 
 ### PatentEntity → Organization
 
@@ -311,6 +320,9 @@ LIMIT 10
 
 ## Backward Compatibility
 
-- Legacy properties (`company_id`, `entity_id`) preserved on Organization nodes
-- Old node types (Company, PatentEntity, ResearchInstitution) remain in database until explicitly removed
+- Legacy properties (`entity_id`) preserved on Organization nodes
+- `:Company` has been unified onto `:Organization` (migration `007`); no `:Company`
+  nodes remain and the legacy `company_id` key is dropped during the merge
+- Remaining legacy node types (PatentEntity, ResearchInstitution) stay in the
+  database until explicitly removed
 - Queries can filter by `organization_type` to maintain type-specific behavior

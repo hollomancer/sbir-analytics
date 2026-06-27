@@ -67,18 +67,19 @@ class TestNeo4jConstraintsAndIndexes:
         neo4j_client.create_constraints()
 
         # Verify constraints exist. `create_constraints()` (see
-        # sbir_graph.loaders.neo4j.client) creates legacy constraints keyed by
-        # the primary-id of each entity — e.g. `company_id`. The legacy `:Award`
-        # constraint was removed when `:Award` was unified onto
-        # `:FinancialTransaction` (migration 006).
+        # sbir_graph.loaders.neo4j.client) creates constraints keyed by the
+        # primary-id of each entity — e.g. `organization_id`. The legacy `:Award`
+        # and `:Company` constraints were removed when those nodes were unified
+        # onto `:FinancialTransaction` (migration 006) and `:Organization`
+        # (migration 007).
         with neo4j_client.session() as session:
             result = session.run("SHOW CONSTRAINTS")
             constraints = [record["name"] for record in result]
 
-            assert any("company_id" in c for c in constraints)
-            # No `:Award` constraint assertion: `:Award` was unified onto
-            # `:FinancialTransaction` (migration 006) and `create_constraints()`
-            # no longer creates an `award_id` constraint.
+            assert any("organization_id" in c for c in constraints)
+            # No `:Award` / `:Company` constraint assertions: both were unified
+            # (migrations 006 / 007) and `create_constraints()` no longer creates
+            # `award_id` or `company_id` constraints.
 
     def test_create_indexes(self, neo4j_client):
         """Test creating indexes."""
@@ -89,9 +90,10 @@ class TestNeo4jConstraintsAndIndexes:
             result = session.run("SHOW INDEXES")
             indexes = [record["name"] for record in result]
 
-            assert any("company_name" in idx for idx in indexes)
-            # No `:Award` index assertion: the legacy `award_date` index was removed
-            # when `:Award` was unified onto `:FinancialTransaction` (migration 006).
+            assert any("organization_name" in idx for idx in indexes)
+            # No `:Award` / `:Company` index assertions: the legacy `award_date` and
+            # `company_name` indexes were removed when those nodes were unified onto
+            # `:FinancialTransaction` (migration 006) and `:Organization` (migration 007).
 
 
 @pytest.mark.integration

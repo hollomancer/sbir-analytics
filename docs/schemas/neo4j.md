@@ -36,19 +36,23 @@ and links to the per-node reference docs.
 > loader (`sbir_neo4j_loading.py`) writes the **unified** labels above —
 > `FinancialTransaction` for SBIR awards and federal contracts, `Organization` for
 > companies/universities/agencies/patent organizations, and `Individual` for
-> researchers and patent individuals. Several sbir-graph package loaders still write
-> **legacy** labels and actively link to them:
+> researchers and patent individuals. One sbir-graph package loader still writes a
+> **legacy** label and actively links to it:
 >
-> - `:Company` — `categorization.py`, `cet.py`, `sec_edgar.py`
 > - `:Contract` — `transition/loading.py`
 >
-> Treat the legacy labels as **active until those loaders migrate** to the unified
-> model; the relationship table below lists the edges that target them.
+> Treat the legacy label as **active until that loader migrates** to the unified
+> model; the relationship table below lists the edges that target it.
 >
 > `:Award` has been unified onto `:FinancialTransaction` (migration `006`): CET
 > enrichment, `APPLICABLE_TO`, and `GENERATED_FROM` now attach to the
 > `FinancialTransaction` with `transaction_type = "AWARD"`, matched on its
 > `award_id` property. No loader writes a separate `:Award` node any more.
+>
+> `:Company` has been unified onto `:Organization` (migration `007`): business
+> categorization (`categorization.py`) and SEC EDGAR enrichment (`sec_edgar.py`) now
+> set their properties directly on the `:Organization`, matched on its indexed `uei`
+> property. No loader writes a separate `:Company` node any more.
 
 ## Relationship Types
 

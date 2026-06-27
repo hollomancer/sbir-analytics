@@ -1,16 +1,16 @@
 """Company Categorization Loader for Neo4j Graph Operations.
 
 This module loads company categorization data into Neo4j, enriching existing
-Company nodes with Product/Service/Mixed classification properties derived
-from USAspending contract portfolio analysis.
+``:Organization`` nodes with Product/Service/Mixed classification properties
+derived from USAspending contract portfolio analysis.
 
 Responsibilities:
-  - Add categorization properties to existing Company nodes
-  - Create idempotent updates using MERGE operations
+  - Add categorization properties to existing Organization nodes (matched by ``uei``)
+  - Update existing nodes only (MATCH-and-SET, never create)
   - Track classification metadata (confidence, award counts, etc.)
   - Support batch operations for performance
 
-The loader updates Company nodes with:
+The loader updates Organization nodes with:
   - classification: Product-leaning, Service-leaning, Mixed, or Uncertain
   - product_pct: Percentage of dollars from product contracts
   - service_pct: Percentage of dollars from service/R&D contracts
@@ -28,7 +28,6 @@ from datetime import datetime
 from typing import Any
 
 from loguru import logger
-from pydantic import Field
 
 from .base import BaseLoaderConfig, BaseNeo4jLoader
 from .client import LoadMetrics, Neo4jClient
@@ -37,18 +36,13 @@ from .client import LoadMetrics, Neo4jClient
 class CompanyCategorizationLoaderConfig(BaseLoaderConfig):
     """Configuration for company categorization loading operations."""
 
-    update_existing_only: bool = Field(
-        default=True,
-        description="Only update existing Company nodes (do not create new ones)",
-    )
-
 
 class CompanyCategorizationLoader(BaseNeo4jLoader):
-    """Loads company categorization data into Neo4j Company nodes.
+    """Loads company categorization data into Neo4j :Organization nodes.
 
-    Enriches existing Company nodes with classification properties based on
-    USAspending contract portfolio analysis. Uses idempotent MERGE operations
-    to support reprocessing and updates.
+    Enriches existing :Organization nodes with classification properties based
+    on USAspending contract portfolio analysis. Uses MATCH-and-SET semantics
+    (existing nodes only, matched by ``uei``) to support idempotent reprocessing.
 
     Refactored to inherit from BaseNeo4jLoader for consistency.
 
@@ -72,11 +66,9 @@ class CompanyCategorizationLoader(BaseNeo4jLoader):
         super().__init__(client)
         self.config = config or CompanyCategorizationLoaderConfig()
         logger.info(
-            "CompanyCategorizationLoader initialized with batch_size={}, "
-            "create_indexes={}, update_existing_only={}",
+            "CompanyCategorizationLoader initialized with batch_size={}, create_indexes={}",
             self.config.batch_size,
             self.config.create_indexes,
-            self.config.update_existing_only,
         )
 
     # -------------------------------------------------------------------------
@@ -84,23 +76,23 @@ class CompanyCategorizationLoader(BaseNeo4jLoader):
     # -------------------------------------------------------------------------
 
     def create_indexes(self, indexes: list[str] | None = None) -> None:  # type: ignore[override]
-        """Create indexes for categorization properties on Company nodes."""
+        """Create indexes for categorization properties on Organization nodes."""
         if indexes is None:
             indexes = [
                 # Index on classification for filtering queries
-                "CREATE INDEX company_classification_idx IF NOT EXISTS "
-                "FOR (c:Company) ON (c.classification)",
+                "CREATE INDEX org_classification_idx IF NOT EXISTS "
+                "FOR (o:Organization) ON (o.classification)",
                 # Index on confidence for quality filtering
-                "CREATE INDEX company_categorization_confidence_idx IF NOT EXISTS "
-                "FOR (c:Company) ON (c.categorization_confidence)",
+                "CREATE INDEX org_categorization_confidence_idx IF NOT EXISTS "
+                "FOR (o:Organization) ON (o.categorization_confidence)",
                 # Composite index for classification + confidence queries
-                "CREATE INDEX company_classification_confidence_idx IF NOT EXISTS "
-                "FOR (c:Company) ON (c.classification, c.categorization_confidence)",
+                "CREATE INDEX org_classification_confidence_idx IF NOT EXISTS "
+                "FOR (o:Organization) ON (o.classification, o.categorization_confidence)",
             ]
         super().create_indexes(indexes)
 
     # -------------------------------------------------------------------------
-    # Company categorization enrichment
+    # Organization categorization enrichment
     # -------------------------------------------------------------------------
 
     def load_categorizations(
@@ -108,10 +100,10 @@ class CompanyCategorizationLoader(BaseNeo4jLoader):
         categorizations: Iterable[dict[str, Any]],
         metrics: LoadMetrics | None = None,
     ) -> LoadMetrics:
-        """Enrich Company nodes with categorization properties.
+        """Enrich :Organization nodes with categorization properties.
 
         Each categorization dict should include:
-          - company_uei (required): UEI to match Company node
+          - company_uei (required): UEI to match the Organization node
           - classification (required): Product-leaning, Service-leaning, Mixed, Uncertain
           - product_pct (required): Percentage of product dollars
           - service_pct (required): Percentage of service dollars
@@ -186,66 +178,27 @@ class CompanyCategorizationLoader(BaseNeo4jLoader):
             if raw.get("override_reason"):
                 props["categorization_override_reason"] = _as_str(raw.get("override_reason"))
 
-            categorization_data.append({"uei": uei, "props": props})
+            # Flatten props alongside the match key for MATCH-and-SET.
+            categorization_data.append({"uei": uei, **props})
 
         if not categorization_data:
             logger.info("No valid categorizations to load")
             return metrics
 
-        # Batch update Company nodes
-        logger.info(
-            "Loading {} company categorizations in batches of {}",
-            len(categorization_data),
-            self.config.batch_size,
+        # Update existing :Organization nodes only (MATCH-and-SET, never create).
+        # MATCHing on the non-key ``uei`` property is correct here: the firm's key is
+        # ``organization_id``, so a MERGE on ``uei`` would mint a duplicate Organization.
+        self.client.config.batch_size = self.config.batch_size
+        metrics = self.client.batch_set_existing_node_properties(
+            label="Organization",
+            key_property="uei",
+            nodes=categorization_data,
+            metrics=metrics,
         )
 
-        # Process in batches
-        for i in range(0, len(categorization_data), self.config.batch_size):
-            batch = categorization_data[i : i + self.config.batch_size]
-
-            # Build Cypher query for batch update using query builder
-            from ..query_builder import Neo4jQueryBuilder
-
-            if self.config.update_existing_only:
-                # Only update existing Company nodes (safer)
-                query = Neo4jQueryBuilder.build_batch_match_update_query(
-                    label="Company",
-                    key_property="uei",
-                    return_count=True,
-                )
-            else:
-                # Create Company node if it doesn't exist (more permissive)
-                query = Neo4jQueryBuilder.build_batch_merge_query(
-                    label="Company",
-                    key_property="uei",
-                    include_hash_check=False,
-                    return_counts=True,
-                )
-
-            try:
-                with self.client.session() as session:
-                    result = session.run(query, {"batch": batch})
-                    record = result.single()
-                    if record:
-                        updated = record["updated_count"]
-                        metrics.nodes_updated["Company"] = (
-                            metrics.nodes_updated.get("Company", 0) + updated
-                        )
-                        logger.debug(
-                            "Batch {}-{}: Updated {} Company nodes",
-                            i,
-                            i + len(batch),
-                            updated,
-                        )
-            except Exception as exc:
-                logger.error(
-                    "Failed to update Company nodes in batch {}-{}: {}", i, i + len(batch), exc
-                )
-                metrics.errors += len(batch)
-
         logger.info(
-            "Company categorization loading complete: {} companies updated, {} errors",
-            metrics.nodes_updated.get("Company", 0),
+            "Organization categorization loading complete: {} organizations updated, {} errors",
+            metrics.nodes_updated.get("Organization", 0),
             metrics.errors,
         )
 

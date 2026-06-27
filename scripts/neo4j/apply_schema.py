@@ -45,16 +45,14 @@ except Exception:  # pragma: no cover - graceful fallback if dependency missing
 # We use relatively standard "IF NOT EXISTS" where available; if your Neo4j version
 # doesn't support it, the script will attempt the statement and ignore "already exists" errors.
 SCHEMA_STATEMENTS: list[str] = [
-    # Example unique constraint on Company by UEI (adapt label and property as needed)
+    # Unique constraint on the authoritative firm node (Organization) by its key.
     # Modern Neo4j (4.4+) syntax:
-    # "CREATE CONSTRAINT IF NOT EXISTS FOR (c:Company) REQUIRE c.uei IS UNIQUE",
-    # Older Neo4j (3.x) syntax would be different; adapt as needed.
-    "CREATE CONSTRAINT IF NOT EXISTS FOR (c:Company) REQUIRE c.uei IS UNIQUE",
+    "CREATE CONSTRAINT IF NOT EXISTS FOR (o:Organization) REQUIRE o.organization_id IS UNIQUE",
     # Unique constraint on the authoritative award node (FinancialTransaction)
     "CREATE CONSTRAINT IF NOT EXISTS FOR (ft:FinancialTransaction) "
     "REQUIRE ft.transaction_id IS UNIQUE",
-    # Example index for frequently queried property (e.g., company name)
-    "CREATE INDEX IF NOT EXISTS FOR (c:Company) ON (c.name)",
+    # Example index for frequently queried property (e.g., organization name)
+    "CREATE INDEX IF NOT EXISTS FOR (o:Organization) ON (o.name)",
     # Add any additional constraints/indexes your schema requires here
 ]
 

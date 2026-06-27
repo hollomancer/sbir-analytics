@@ -952,9 +952,9 @@ def export_results(results: pd.DataFrame, output_path: str) -> None:
     # Format consecutive_product_years as string for CSV
     if "consecutive_product_years" in export_df.columns:
         export_df["consecutive_product_years"] = export_df["consecutive_product_years"].apply(
-            lambda x: ", ".join(map(str, x))
-            if isinstance(x, list)
-            else (str(x) if x is not None else "")
+            lambda x: (
+                ", ".join(map(str, x)) if isinstance(x, list) else (str(x) if x is not None else "")
+            )
         )
 
     # Rename columns to match user's requested format
@@ -1355,7 +1355,6 @@ def load_to_neo4j(results: pd.DataFrame) -> None:
         loader_config = CompanyCategorizationLoaderConfig(
             batch_size=neo4j_cfg.batch_size,
             create_indexes=neo4j_cfg.create_indexes,
-            update_existing_only=True,
         )
 
         loader = CompanyCategorizationLoader(client, loader_config)
@@ -1372,7 +1371,7 @@ def load_to_neo4j(results: pd.DataFrame) -> None:
         metrics = loader.load_categorizations(categorization_records)
 
         # Report results
-        successful = metrics.nodes_updated.get("Company", 0)
+        successful = metrics.nodes_updated.get("Organization", 0)
         total = len(categorization_records)
         success_rate = (successful / total * 100) if total > 0 else 0
 

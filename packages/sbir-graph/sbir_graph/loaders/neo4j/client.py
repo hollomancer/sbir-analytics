@@ -146,7 +146,6 @@ class Neo4jClient:
         """
         constraints = [
             # Legacy constraints (kept for backward compatibility)
-            "CREATE CONSTRAINT company_id IF NOT EXISTS FOR (c:Company) REQUIRE c.company_id IS UNIQUE",
             "CREATE CONSTRAINT researcher_id IF NOT EXISTS FOR (r:Researcher) REQUIRE r.researcher_id IS UNIQUE",
             "CREATE CONSTRAINT patent_id IF NOT EXISTS FOR (p:Patent) REQUIRE p.patent_id IS UNIQUE",
             "CREATE CONSTRAINT institution_name IF NOT EXISTS FOR (i:ResearchInstitution) REQUIRE i.name IS UNIQUE",
@@ -175,10 +174,6 @@ class Neo4jClient:
         """
         indexes = [
             # Legacy indexes (kept for backward compatibility)
-            "CREATE INDEX company_name IF NOT EXISTS FOR (c:Company) ON (c.name)",
-            "CREATE INDEX company_normalized_name IF NOT EXISTS FOR (c:Company) ON (c.normalized_name)",
-            "CREATE INDEX company_uei IF NOT EXISTS FOR (c:Company) ON (c.uei)",
-            "CREATE INDEX company_duns IF NOT EXISTS FOR (c:Company) ON (c.duns)",
             "CREATE INDEX researcher_name IF NOT EXISTS FOR (r:Researcher) ON (r.name)",
             "CREATE INDEX patent_number IF NOT EXISTS FOR (p:Patent) ON (p.patent_number)",
             "CREATE INDEX institution_name IF NOT EXISTS FOR (i:ResearchInstitution) ON (i.name)",

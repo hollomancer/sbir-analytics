@@ -303,7 +303,6 @@ def neo4j_sec_edgar_enrichment(
         loader_config = SecEdgarLoaderConfig(
             batch_size=neo4j_cfg.batch_size,
             create_indexes=neo4j_cfg.create_indexes,
-            update_existing_only=True,
         )
         loader = SecEdgarLoader(client, loader_config)
 
@@ -316,7 +315,7 @@ def neo4j_sec_edgar_enrichment(
 
         metrics = loader.load_sec_edgar_data(records)
 
-        updated = metrics.nodes_updated.get("Company", 0)
+        updated = metrics.nodes_updated.get("Organization", 0)
         context.log.info(
             f"SEC EDGAR Neo4j loading complete: {updated} companies updated, "
             f"{metrics.errors} errors"

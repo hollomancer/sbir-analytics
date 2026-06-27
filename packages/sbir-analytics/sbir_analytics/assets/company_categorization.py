@@ -491,7 +491,6 @@ def neo4j_company_categorization(
         loader_config = CompanyCategorizationLoaderConfig(
             batch_size=neo4j_cfg.batch_size,
             create_indexes=neo4j_cfg.create_indexes,
-            update_existing_only=True,  # Only update existing Company nodes
         )
 
         loader = CompanyCategorizationLoader(client, loader_config)
@@ -516,7 +515,7 @@ def neo4j_company_categorization(
 
         # Calculate success rate
         total_attempted = len(categorization_records)
-        successful = metrics.nodes_updated.get("Company", 0)
+        successful = metrics.nodes_updated.get("Organization", 0)
         success_rate = (successful / total_attempted * 100) if total_attempted > 0 else 0
 
         context.log.info(
@@ -531,7 +530,6 @@ def neo4j_company_categorization(
             "success_rate_pct": round(success_rate, 2),
             "errors": metrics.errors,
             "batch_size": loader_config.batch_size,
-            "update_existing_only": loader_config.update_existing_only,
         }
 
         # Return summary

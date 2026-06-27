@@ -72,9 +72,6 @@ class CETLoader(BaseNeo4jLoader):
                 # CETArea uniqueness on cet_id
                 "CREATE CONSTRAINT cetarea_cet_id IF NOT EXISTS "
                 "FOR (c:CETArea) REQUIRE c.cet_id IS UNIQUE",
-                # Optional: ensure Company constraint exists for enrichment keys
-                "CREATE CONSTRAINT company_id IF NOT EXISTS "
-                "FOR (c:Company) REQUIRE c.company_id IS UNIQUE",
             ]
         super().create_constraints(constraints)
 
