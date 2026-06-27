@@ -217,3 +217,77 @@ class TestTransitionLoaderEdgeCases:
 
         # Should execute statements each time (idempotent with IF NOT EXISTS)
         assert mock_session.run.call_count == 8  # 4 indexes × 2 calls
+
+
+class TestResultedInInlineContractNode:
+    """RESULTED_IN must create the CONTRACT FinancialTransaction node inline."""
+
+    def _loader_with_capture(self):
+        mock_session = Neo4jMocks.session()
+        mock_result = Neo4jMocks.result()
+        mock_result.single.return_value = {"created": 1}
+        mock_session.run.return_value = mock_result
+        mock_client = create_mock_client_with_session(mock_session)
+        return TransitionLoader(mock_client), mock_session
+
+    def test_merges_contract_node_on_primary_key(self):
+        """The writer MERGEs the CONTRACT node on its PK, never MATCHes contract_id."""
+        loader, mock_session = self._loader_with_capture()
+
+        df = pd.DataFrame(
+            {
+                "transition_id": ["t1"],
+                "contract_id": ["c1"],
+                "confidence": ["high"],
+            }
+        )
+
+        created = loader.create_resulted_in_relationships(df)
+        assert created == 1
+
+        query = mock_session.run.call_args.args[0]
+        # CONTRACT node is created inline, keyed on the transaction_id PK.
+        assert "MERGE (ft:FinancialTransaction" in query
+        assert "'txn_contract_' + t.contract_id" in query
+        assert "ON CREATE SET ft.transaction_type = 'CONTRACT'" in query
+        assert "MERGE (trans)-[r:RESULTED_IN]->(ft)" in query
+        # Must NOT MATCH on the non-key contract_id (the old split-brain pattern).
+        assert "MATCH (ft:FinancialTransaction {contract_id" not in query
+
+    def test_skips_rows_without_contract_id(self):
+        """Rows with a missing contract_id are skipped (no node minted for them)."""
+        loader, mock_session = self._loader_with_capture()
+
+        # contract_id is a PIID string in practice; one row has none.
+        df = pd.DataFrame(
+            {
+                "transition_id": ["t1", "t2"],
+                "contract_id": ["W911NF20C0001", None],
+                "confidence": ["high", "low"],
+            }
+        )
+
+        loader.create_resulted_in_relationships(df)
+
+        rows = mock_session.run.call_args.kwargs["transitions"]
+        assert len(rows) == 1  # the None-contract_id row is dropped
+        assert rows[0]["transition_id"] == "t1"
+        assert rows[0]["contract_id"] == "W911NF20C0001"
+
+    def test_strips_whitespace_from_contract_id(self):
+        """The sent contract_id is stripped so the MERGE PK matches the filter."""
+        loader, mock_session = self._loader_with_capture()
+
+        df = pd.DataFrame(
+            {
+                "transition_id": ["t1"],
+                "contract_id": ["  W911NF20C0001  "],
+                "confidence": ["high"],
+            }
+        )
+
+        loader.create_resulted_in_relationships(df)
+
+        rows = mock_session.run.call_args.kwargs["transitions"]
+        # Stripped value → stable txn_contract_<id> PK (no whitespace-duplicated nodes).
+        assert rows[0]["contract_id"] == "W911NF20C0001"

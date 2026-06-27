@@ -51,10 +51,14 @@ and links to the per-node reference docs.
 >
 > `:Contract` has been unified onto `:FinancialTransaction` with
 > `transaction_type = "CONTRACT"`: the `RESULTED_IN` writer (`transitions.py`) and the
-> transition-pathway read queries (`pathway_queries.py`) all target it, matched on its
-> indexed `contract_id` property. Note that **federal-contract node ingestion is not
-> yet built** — no loader writes `FinancialTransaction {transaction_type: "CONTRACT"}`
-> nodes, so `RESULTED_IN` / contract pathways stay empty until that writer lands.
+> transition-pathway read queries (`pathway_queries.py`) all target it. The contract
+> node is created **inline by the `RESULTED_IN` writer** — when a transition carries a
+> `contract_id`, the writer `MERGE`s the `FinancialTransaction {transaction_type:
+> "CONTRACT"}` node on its primary key (`transaction_id = "txn_contract_<contract_id>"`)
+> and then the edge, so the endpoint always exists. There is no standalone
+> contract-ingestion loader yet; the nodes are sparse (carry `contract_id` only) and
+> the pathway returns rows only once the transition pipeline has contract data to detect
+> from (the contract sample input is empty in-repo until seeded).
 
 ## Relationship Types
 
