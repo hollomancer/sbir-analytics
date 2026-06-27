@@ -398,6 +398,11 @@ Public studies the inventory draws from or benchmarks against.
 - **[L24]** Kortum, S. & Lerner, J. (2000). "Assessing the Contribution of Venture Capital to Innovation." *RAND Journal of Economics* 31(4), 674–692. Foundational study estimating VC's marginal contribution to patenting; reference point for SBIR-vs-VC innovation comparisons. <https://www.jstor.org/stable/2696354>
 - **[L25]** National Venture Capital Association. *NVCA Yearbook* (annual). Industry-standard benchmarks for VC fundraising, deployment, deal stage/size, and exit activity used as the non-SBIR cohort for capital-formation comparisons. <https://nvca.org/research/nvca-yearbook/>
 
+**Statute:**
+
+- **[L26]** Pub. L. 119-83 — SBIR/STTR reauthorization, enacting S.3971, the *Small Business Innovation and Economic Security Act of 2026* (signed April 13, 2026). Establishes the risk-based due-diligence factors and the eight restricted-entity screening lists (UFLPA Entity List; NS-CMIC List; Section 889 Prohibition List; 1260H list; Military End-User List; BIS Entity List; FCC Covered List; CBP WRO/Findings List) that ground Axis B, plus the Strategic Breakthrough Allocation and Phase III provisions that ground Axis A. <https://www.congress.gov/bill/119th-congress/senate-bill/3971>
+- **[L27]** Pub. L. 119-60 — *National Defense Authorization Act for Fiscal Year 2026* (S.1071; signed December 18, 2025). FY2026 DIB and small-business authorities that contextualize the choke-point question set. <https://www.congress.gov/bill/119th-congress/senate-bill/1071>
+
 **Industrial-base resilience & choke-point sources (added for the Section A choke-point extensions and Section G):**
 
 - **[L28]** DoD. *National Defense Industrial Strategy (NDIS)* (released January 11, 2024). First-ever DoD industrial strategy; four priorities (supply-chain resilience, workforce readiness, flexible acquisition, economic deterrence) and ten systemic challenges including sub-tier supplier fragility. <https://www.businessdefense.gov/docs/ndis/2023-NDIS.pdf>
@@ -406,11 +411,6 @@ Public studies the inventory draws from or benchmarks against.
 - **[L31]** DoD. *State of Competition within the Defense Industrial Base* (February 15, 2022). Documents defense-sector consolidation (prime contractors 51→5 since the 1990s; small businesses in the DIB down >40% over a decade) and five priority sectors (microelectronics, missiles & munitions, high-capacity batteries, castings & forgings, critical minerals & materials). <https://media.defense.gov/2022/Feb/15/2002939087/-1/-1/1/STATE-OF-COMPETITION-WITHIN-THE-DEFENSE-INDUSTRIAL-BASE.PDF>
 - **[L32]** CSIS Center for the Industrial Base. *New Entrants and Small Business Graduation in the Market for Federal Contracts.* FPDS-based analysis (2001–2016) of entrant, exit, and small-business graduation rates in federal contracting. <https://www.csis.org/analysis/new-entrants-and-small-business-graduation-market-federal-contracts>
 - **[L33]** DoD SBIR/STTR Fast Track. Match mechanism of up to four SBIR/STTR dollars per outside-investor dollar (1:1 to 1:4), contingent on Phase II selection. Verified leverage anchor for A-CP11. <https://www.sbir.gov/tutorials/individual-agency-requirements/DOD-services>
-
-**Statute:**
-
-- **[L26]** Pub. L. 119-83 — SBIR/STTR reauthorization, enacting S.3971, the *Small Business Innovation and Economic Security Act of 2026* (signed April 13, 2026). Establishes the risk-based due-diligence factors and the eight restricted-entity screening lists (UFLPA Entity List; NS-CMIC List; Section 889 Prohibition List; 1260H list; Military End-User List; BIS Entity List; FCC Covered List; CBP WRO/Findings List) that ground Axis B, plus the Strategic Breakthrough Allocation and Phase III provisions that ground Axis A. <https://www.congress.gov/bill/119th-congress/senate-bill/3971>
-- **[L27]** Pub. L. 119-60 — *National Defense Authorization Act for Fiscal Year 2026* (S.1071; signed December 18, 2025). FY2026 DIB and small-business authorities that contextualize the choke-point question set. <https://www.congress.gov/bill/119th-congress/senate-bill/1071>
 
 ---
 
