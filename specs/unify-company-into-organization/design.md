@@ -92,5 +92,13 @@ One Cypher check: `count(:Company)` == orphan count (ideally 0); a sampled
 
 ## Deferred
 
-- `:Contract` writer (M1 feature). `:PatentEntity` constraint cleanup (after
-  confirming no readers). After Phase 2, no property-only legacy node remains.
+- **`:Contract` reader relabel — DONE (Slice A, folded into this branch).** The
+  `RESULTED_IN` writer already targeted `:FinancialTransaction {transaction_type:
+  "CONTRACT"}`; the stale `:Contract` reads in `pathway_queries.py` and the
+  transition asset-check now match it too. No legacy `:Contract` label remains.
+- **`:Contract` node ingestion — still deferred (M1 feature).** No loader writes
+  `FinancialTransaction {transaction_type: "CONTRACT"}` nodes yet, so contract
+  pathways stay empty until that writer lands. This is new functionality, not a
+  relabel.
+- `:PatentEntity` constraint cleanup was already completed in #383.
+- After Phase 2 + Slice A, no legacy node label is written or read anywhere.
