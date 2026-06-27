@@ -364,15 +364,40 @@ class PathsConfig(BaseModel):
     )
     transition_contracts_output: str = Field(
         default="data/transition/contracts_ingestion.parquet",
-        description="Transition contracts output file",
+        description="Transition contracts output file (local path)",
+    )
+    transition_contracts_output_s3_path: str = Field(
+        default="",
+        description=(
+            "Optional s3:// URL to upload the extracted contracts parquet to after "
+            "the transition contracts asset writes it locally (cross-run reuse in a "
+            "fresh/ephemeral env). Empty = local only."
+        ),
     )
     transition_dump_dir: str = Field(
         default="data/transition/pruned_data_store_api_dump",
-        description="Transition API dump directory",
+        description="Transition API dump directory (local path)",
+    )
+    transition_dump_s3_prefix: str = Field(
+        default="",
+        description=(
+            "Optional s3:// prefix holding the transition dump objects "
+            "(.dat.gz files + toc.dat). When set, the transition contracts asset "
+            "syncs only the needed table file(s) + toc.dat into transition_dump_dir "
+            "(selective; avoids pulling the full ~17GB dump). Empty = local only."
+        ),
     )
     transition_vendor_filters: str = Field(
         default="data/transition/sbir_vendor_filters.json",
-        description="SBIR vendor filters file",
+        description="SBIR vendor filters file (local path)",
+    )
+    transition_vendor_filters_s3_path: str = Field(
+        default="",
+        description=(
+            "Optional s3:// URL for the SBIR vendor filters JSON. When set, the "
+            "transition contracts asset resolves it S3-first and falls back to the "
+            "local transition_vendor_filters path. Empty = local only."
+        ),
     )
     scripts_output: str = Field(
         default="data/scripts_output", description="Scripts output directory"

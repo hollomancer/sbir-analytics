@@ -15,7 +15,113 @@ from sbir_etl.utils.cloud_storage import (
     check_sbir_data_freshness,
     get_s3_bucket_from_env,
     resolve_data_path,
+    sync_s3_prefix_to_dir,
+    upload_file_to_s3,
 )
+
+
+class TestSyncS3PrefixToDir:
+    """Tests for sync_s3_prefix_to_dir (selective prefix download)."""
+
+    def _client_with(self, keys):
+        client = MagicMock()
+        paginator = MagicMock()
+        client.get_paginator.return_value = paginator
+        paginator.paginate.return_value = [{"Contents": [{"Key": k} for k in keys]}]
+        return client
+
+    def test_downloads_only_included_basenames(self, tmp_path):
+        client = self._client_with(
+            [
+                "raw/transition/dump/toc.dat",
+                "raw/transition/dump/a.dat.gz",
+                "raw/transition/dump/b.dat.gz",
+            ]
+        )
+        with patch("boto3.client", return_value=client):
+            dest = sync_s3_prefix_to_dir(
+                "s3://bucket/raw/transition/dump/",
+                tmp_path / "dump",
+                include=["toc.dat", "a.dat.gz"],
+            )
+
+        assert dest == tmp_path / "dump"
+        downloaded_keys = {c.args[1] for c in client.download_file.call_args_list}
+        assert downloaded_keys == {
+            "raw/transition/dump/toc.dat",
+            "raw/transition/dump/a.dat.gz",
+        }
+        assert client.download_file.call_count == 2  # b.dat.gz skipped
+
+    def test_downloads_all_when_include_none(self, tmp_path):
+        client = self._client_with(["p/toc.dat", "p/a.dat.gz", "p/b.dat.gz"])
+        with patch("boto3.client", return_value=client):
+            sync_s3_prefix_to_dir("s3://bucket/p/", tmp_path / "d", include=None)
+        assert client.download_file.call_count == 3
+
+    def test_raises_on_non_s3_prefix(self, tmp_path):
+        with pytest.raises(ValueError):
+            sync_s3_prefix_to_dir("/local/dir", tmp_path / "d")
+
+    def test_raises_when_no_objects_match(self, tmp_path):
+        client = self._client_with(["p/toc.dat", "p/a.dat.gz"])
+        with patch("boto3.client", return_value=client):
+            with pytest.raises(FileNotFoundError):
+                sync_s3_prefix_to_dir("s3://bucket/p/", tmp_path / "d", include=["nope.dat.gz"])
+
+    def test_missing_requested_basename_raises_without_side_effects(self, tmp_path):
+        """If any requested file is absent, raise before creating dir or downloading."""
+        client = self._client_with(["p/toc.dat", "p/a.dat.gz"])
+        dest = tmp_path / "d"
+        with patch("boto3.client", return_value=client):
+            with pytest.raises(FileNotFoundError):
+                sync_s3_prefix_to_dir(
+                    "s3://bucket/p/", dest, include=["toc.dat", "a.dat.gz", "missing.dat.gz"]
+                )
+        # No partial sync: nothing downloaded and no directory left behind.
+        client.download_file.assert_not_called()
+        assert not dest.exists()
+
+    def test_raises_on_empty_bucket(self, tmp_path):
+        with pytest.raises(ValueError):
+            sync_s3_prefix_to_dir("s3:///raw/dump/", tmp_path / "d")
+
+    def test_normalizes_prefix_trailing_slash(self, tmp_path):
+        """A prefix without a trailing slash is normalized so siblings can't match."""
+        client = self._client_with(["raw/dump/toc.dat"])
+        with patch("boto3.client", return_value=client):
+            sync_s3_prefix_to_dir("s3://bucket/raw/dump", tmp_path / "d", include=["toc.dat"])
+        _, kwargs = client.get_paginator.return_value.paginate.call_args
+        assert kwargs["Prefix"] == "raw/dump/"
+
+
+class TestUploadFileToS3:
+    """Tests for upload_file_to_s3."""
+
+    def test_uploads_local_file(self, tmp_path):
+        local = tmp_path / "out.parquet"
+        local.write_bytes(b"data")
+        client = MagicMock()
+        with patch("boto3.client", return_value=client):
+            url = upload_file_to_s3(local, "s3://bucket/raw/out.parquet")
+        assert url == "s3://bucket/raw/out.parquet"
+        client.upload_file.assert_called_once_with(str(local), "bucket", "raw/out.parquet")
+
+    def test_raises_on_non_s3_url(self, tmp_path):
+        local = tmp_path / "out.parquet"
+        local.write_bytes(b"data")
+        with pytest.raises(ValueError):
+            upload_file_to_s3(local, "/local/out.parquet")
+
+    def test_raises_when_local_missing(self, tmp_path):
+        with pytest.raises(FileNotFoundError):
+            upload_file_to_s3(tmp_path / "missing.parquet", "s3://bucket/out.parquet")
+
+    def test_raises_when_no_object_key(self, tmp_path):
+        local = tmp_path / "out.parquet"
+        local.write_bytes(b"data")
+        with pytest.raises(ValueError):
+            upload_file_to_s3(local, "s3://bucket")
 
 
 class TestResolveDataPath:

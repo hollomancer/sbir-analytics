@@ -126,6 +126,24 @@ _JOB_CONFIGS = [
         log_prefix="usaspending-extract",
         ephemeral_storage_gib=200,
     ),
+    JobConfig(
+        id="TransitionJob",
+        name="sbir-analytics-transition-detection",
+        command=[
+            "dagster",
+            "job",
+            "execute",
+            "-m",
+            "sbir_analytics.definitions_ml",
+            "-j",
+            "transition_mvp_job",
+        ],
+        vcpus="2",
+        memory_mb="8192",
+        timeout_seconds=14400,
+        log_prefix="transition",
+        extra_env=_DAGSTER_ENV,
+    ),
 ]
 
 

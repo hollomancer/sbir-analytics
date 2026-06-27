@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import tempfile
+from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -142,6 +143,127 @@ def _download_s3_to_temp(s3_path: S3Path) -> Path:
         logger.debug(f"Using cached S3 file: {local_file}")
 
     return local_file
+
+
+def sync_s3_prefix_to_dir(
+    s3_prefix: str,
+    dest_dir: str | Path,
+    include: Iterable[str] | None = None,
+) -> Path:
+    """Download objects under an S3 prefix into a local directory.
+
+    Selective by design: when ``include`` is provided, only objects whose basename
+    is in ``include`` are downloaded; otherwise every object under the prefix is
+    pulled. This lets callers fetch just the table file(s) they need from a large
+    multi-file dump (e.g. the ~17GB transition ``pruned_data_store_api_dump``)
+    instead of the whole prefix.
+
+    Args:
+        s3_prefix: ``s3://bucket/prefix/`` URL to list under.
+        dest_dir: Local directory to populate (created if missing).
+        include: Optional basenames to restrict the download (e.g. ``["toc.dat",
+            "best.dat.gz"]``). ``None`` downloads every object under the prefix.
+
+    Returns:
+        The local ``dest_dir`` path.
+
+    Raises:
+        ValueError: if ``s3_prefix`` is not an ``s3://`` URL or has no bucket.
+        FileNotFoundError: if no matching objects were found, or — when ``include``
+            is given — any requested basename is missing under the prefix.
+
+    Resolves the full object list and validates it *before* creating ``dest_dir`` or
+    downloading anything, so a missing requested file never leaves a populated-looking
+    but incomplete directory behind.
+    """
+    import boto3
+
+    if not is_s3_path(s3_prefix):
+        raise ValueError(f"Not an S3 prefix: {s3_prefix}")
+
+    bucket, _, prefix = str(s3_prefix)[len("s3://") :].partition("/")
+    if not bucket:
+        raise ValueError(f"S3 prefix missing bucket: {s3_prefix}")
+    # Normalize the prefix to end with '/' so string-based listing can't match
+    # sibling keys (e.g. ".../dump" otherwise also matching ".../dump2/...").
+    if prefix and not prefix.endswith("/"):
+        prefix += "/"
+
+    include_set = set(include) if include is not None else None
+
+    s3_client = boto3.client("s3")
+    paginator = s3_client.get_paginator("list_objects_v2")
+
+    # First pass: resolve the objects to download (no side effects yet).
+    to_download: list[tuple[str, str]] = []  # (key, basename)
+    for page in paginator.paginate(Bucket=bucket, Prefix=prefix):
+        for obj in page.get("Contents", []):
+            key = obj["Key"]
+            name = key.rsplit("/", 1)[-1]
+            if not name:  # skip "directory" placeholder keys
+                continue
+            if include_set is not None and name not in include_set:
+                continue
+            to_download.append((key, name))
+
+    # When specific basenames were requested, require all of them up front so a
+    # partial sync can't pass a later dump_dir.exists() check and fail confusingly.
+    if include_set is not None:
+        missing = include_set - {name for _, name in to_download}
+        if missing:
+            raise FileNotFoundError(
+                f"Missing required object(s) under {s3_prefix}: {sorted(missing)}"
+            )
+
+    if not to_download:
+        raise FileNotFoundError(f"No objects found under {s3_prefix} (include={include})")
+
+    # Only now create the destination and download.
+    dest = Path(dest_dir)
+    dest.mkdir(parents=True, exist_ok=True)
+    for key, name in to_download:
+        target = dest / name
+        logger.info(f"Downloading s3://{bucket}/{key} -> {target}")
+        s3_client.download_file(bucket, key, str(target))
+
+    logger.info(f"Synced {len(to_download)} object(s) from {s3_prefix} to {dest}")
+    return dest
+
+
+def upload_file_to_s3(local_path: str | Path, s3_url: str) -> str:
+    """Upload a single local file to an ``s3://`` URL.
+
+    The write-side counterpart to ``resolve_data_path`` — lets an asset persist a
+    produced artifact (e.g. ``contracts_ingestion.parquet``) back to S3 for
+    cross-run reuse in a fresh/ephemeral environment.
+
+    Args:
+        local_path: Local file to upload.
+        s3_url: Destination ``s3://bucket/key`` URL.
+
+    Returns:
+        The destination ``s3_url``.
+
+    Raises:
+        ValueError: if ``s3_url`` is not an ``s3://`` URL or carries no key.
+        FileNotFoundError: if ``local_path`` does not exist.
+    """
+    import boto3
+
+    if not is_s3_path(s3_url):
+        raise ValueError(f"Not an S3 URL: {s3_url}")
+
+    local = Path(local_path)
+    if not local.exists():
+        raise FileNotFoundError(f"Local file not found: {local}")
+
+    bucket, _, key = str(s3_url)[len("s3://") :].partition("/")
+    if not key:
+        raise ValueError(f"S3 URL missing object key: {s3_url}")
+
+    boto3.client("s3").upload_file(str(local), bucket, key)
+    logger.info(f"Uploaded {local} -> {s3_url}")
+    return s3_url
 
 
 def cleanup_s3_cache(

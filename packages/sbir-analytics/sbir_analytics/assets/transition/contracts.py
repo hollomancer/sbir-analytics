@@ -14,6 +14,11 @@ from typing import Any
 import pandas as pd
 
 from sbir_etl.exceptions import FileSystemError
+from sbir_etl.utils.cloud_storage import (
+    resolve_data_path,
+    sync_s3_prefix_to_dir,
+    upload_file_to_s3,
+)
 
 from .utils import (
     ContractExtractor,
@@ -46,6 +51,7 @@ def raw_contracts(context) -> Output[pd.DataFrame]:
     output_path = config.paths.resolve_path("transition_contracts_output")
     dump_dir = config.paths.resolve_path("transition_dump_dir")
     vendor_filter_path = config.paths.resolve_path("transition_vendor_filters")
+
     table_files_env = os.getenv("SBIR_ETL__TRANSITION__CONTRACTS__TABLE_FILES")
     table_files = (
         [item.strip() for item in table_files_env.split(",") if item.strip()]
@@ -54,6 +60,40 @@ def raw_contracts(context) -> Output[pd.DataFrame]:
     )
     batch_size = _env_int("SBIR_ETL__TRANSITION__CONTRACTS__BATCH_SIZE", 10000)
     force_refresh = _env_bool("SBIR_ETL__TRANSITION__CONTRACTS__FORCE_REFRESH", False)
+
+    # Optionally sync the dump from an S3 prefix into the local dump_dir. Selective:
+    # when table_files is set we pull only those + toc.dat (avoids fetching the full
+    # ~17GB dump); otherwise the whole prefix. Lets the asset run in a fresh/ephemeral
+    # env (e.g. AWS Batch). Empty config = local only (unchanged behavior).
+    dump_s3_prefix = config.paths.transition_dump_s3_prefix
+    if dump_s3_prefix:
+        include = ["toc.dat", *table_files] if table_files else None
+        if include is None:
+            context.log.warning(
+                "transition_dump_s3_prefix is set without TABLE_FILES; syncing the "
+                "entire dump prefix (potentially very large). Set "
+                "SBIR_ETL__TRANSITION__CONTRACTS__TABLE_FILES to sync selectively."
+            )
+        try:
+            sync_s3_prefix_to_dir(dump_s3_prefix, dump_dir, include=include)
+            context.log.info(f"Synced dump from {dump_s3_prefix} -> {dump_dir} (include={include})")
+        except Exception as e:
+            context.log.warning(f"S3 dump sync failed ({e}); using local {dump_dir}")
+
+    # Optionally source the vendor-filter JSON from S3 (S3-first, local fallback).
+    vendor_filters_s3 = config.paths.transition_vendor_filters_s3_path
+    if vendor_filters_s3:
+        try:
+            vendor_filter_path = resolve_data_path(
+                vendor_filters_s3, local_fallback=vendor_filter_path
+            )
+            context.log.info(
+                f"Resolved vendor filters: {vendor_filters_s3} -> {vendor_filter_path}"
+            )
+        except Exception as e:
+            context.log.warning(
+                f"S3 vendor-filter resolution failed ({e}); using local {vendor_filter_path}"
+            )
 
     context.log.info(
         "Starting contracts_ingestion",
@@ -147,6 +187,19 @@ def raw_contracts(context) -> Output[pd.DataFrame]:
 
     checks_path = output_path.with_suffix(".checks.json")
     write_json(checks_path, checks)
+
+    # Optionally persist the extracted parquet back to S3 for cross-run reuse
+    # (e.g. so a later/remote run can read it without re-extracting from the dump).
+    # Empty config = local only (unchanged behavior).
+    output_s3 = config.paths.transition_contracts_output_s3_path
+    if output_s3:
+        try:
+            upload_file_to_s3(output_path, output_s3)
+            context.log.info(f"Uploaded contracts output -> {output_s3}")
+        except Exception as e:
+            context.log.warning(
+                f"S3 output upload failed ({e}); output remains local at {output_path}"
+            )
 
     metadata = {
         "rows": total_rows,

@@ -27,8 +27,19 @@ paths:
 
   # Transition detection outputs
   transition_contracts_output: "data/transition/contracts_ingestion.parquet"
+  # Optional s3:// URL to upload the extracted contracts parquet to after writing
+  # it locally (cross-run reuse). Empty = local only.
+  transition_contracts_output_s3_path: ""
   transition_dump_dir: "data/transition/pruned_data_store_api_dump"
+  # Optional s3:// prefix holding the dump objects (.dat.gz + toc.dat). When set,
+  # the transition contracts asset syncs only the needed table file(s) + toc.dat
+  # into transition_dump_dir (selective; avoids the full ~17GB dump). Empty = local.
+  # Format: s3://bucket-name/raw/transition/pruned_data_store_api_dump/
+  transition_dump_s3_prefix: ""
   transition_vendor_filters: "data/transition/sbir_vendor_filters.json"
+  # Optional s3:// URL for the vendor-filter JSON (S3-first, local fallback).
+  # Empty = local only. Format: s3://bucket-name/path/to/sbir_vendor_filters.json
+  transition_vendor_filters_s3_path: ""
 
   # Scripts output
   scripts_output: "data/scripts_output"
