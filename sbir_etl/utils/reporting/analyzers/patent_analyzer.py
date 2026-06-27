@@ -46,7 +46,9 @@ class PatentAnalysisAnalyzer(ModuleAnalyzer):
         ]
 
         # Neo4j node and relationship types
-        self.node_types = ["Patent", "PatentAssignment", "PatentEntity", "Company"]
+        # Patent assignees/assignors are written as unified :Organization
+        # (org_patent_*) and :Individual (ind_patent_*) nodes, not :PatentEntity/:Company.
+        self.node_types = ["Patent", "PatentAssignment", "Organization", "Individual"]
         self.relationship_types = ["ASSIGNED_VIA", "ASSIGNED_FROM", "ASSIGNED_TO", "OWNS"]
 
     def analyze(self, module_data: dict[str, Any]) -> ModuleReport:

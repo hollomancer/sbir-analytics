@@ -85,8 +85,8 @@ class TestPatentLoaderConstraints:
         loader = PatentLoader(mock_client)
         loader.create_constraints()
 
-        # Should run 4 constraint statements (Patent, PatentAssignment, PatentEntity, Organization)
-        assert mock_session.run.call_count == 4
+        # Should run 3 constraint statements (Patent, PatentAssignment, Organization)
+        assert mock_session.run.call_count == 3
 
     def test_create_constraints_handles_existing_constraints(self):
         """Test create_constraints handles already existing constraints."""
@@ -101,8 +101,8 @@ class TestPatentLoaderConstraints:
         # Should not raise exception
         loader.create_constraints()
 
-        # Should have attempted all 4 constraints
-        assert mock_session.run.call_count == 4
+        # Should have attempted all 3 constraints
+        assert mock_session.run.call_count == 3
 
     def test_create_constraints_patent_uniqueness(self):
         """Test Patent constraint is for grant_doc_num uniqueness."""
@@ -171,8 +171,8 @@ class TestPatentLoaderIndexes:
         # Should include indexes for key properties
         assert "grant_doc_num" in all_queries
         assert "rf_id" in all_queries
-        assert "normalized_name" in all_queries
-        assert "entity_type" in all_queries
+        assert "normalized_name" in all_queries  # organization_normalized_name_idx
+        assert "entity_id" in all_queries  # organization_entity_id_idx
 
 
 class TestPatentLoaderBatchOperations:
@@ -279,7 +279,7 @@ class TestPatentLoaderEdgeCases:
         loader.create_constraints()
 
         # Should execute statements each time (idempotent with IF NOT EXISTS)
-        assert mock_session.run.call_count == 8  # 4 constraints × 2 calls
+        assert mock_session.run.call_count == 6  # 3 constraints × 2 calls
 
     def test_multiple_index_creation_calls(self):
         """Test calling create_indexes multiple times."""
@@ -379,23 +379,6 @@ class TestPatentLoaderConstraintQueries:
 
         assert "PatentAssignment" in constraint_query
         assert "rf_id" in constraint_query
-
-    def test_patent_entity_constraint_query(self):
-        """Test PatentEntity constraint includes entity_id."""
-        mock_client = Mock(spec=Neo4jClient)
-        mock_session = Neo4jMocks.session()
-        mock_client.session.return_value = Neo4jMocks.session()
-        mock_client.session.return_value.__enter__.return_value = mock_session
-
-        loader = PatentLoader(mock_client)
-        loader.create_constraints()
-
-        # Check third call (PatentEntity)
-        third_call = mock_session.run.call_args_list[2]
-        constraint_query = third_call[0][0]
-
-        assert "PatentEntity" in constraint_query
-        assert "entity_id" in constraint_query
 
     def test_all_constraints_use_if_not_exists(self):
         """Test all constraints use IF NOT EXISTS for idempotency."""

@@ -807,8 +807,8 @@ LIMIT 100
 
 -- Identify patent-backed transitions
 MATCH (a:Award)<-[:GENERATED_FROM]-(p:Patent)-[:ASSIGNED_VIA]->(pa:PatentAssignment)
-  -[:ASSIGNMENT_FROM]-(assignor:PatentEntity)
-  -[:ASSIGNMENT_TO]-(assignee:PatentEntity)
+  -[:ASSIGNMENT_FROM]-(assignor:Organization)
+  -[:ASSIGNMENT_TO]-(assignee:Organization)
 WHERE a.award_id = "SBIR-2020-PHASE-II-001"
 RETURN p.title, assignor.name, pa.recorded_date, assignee.name
 

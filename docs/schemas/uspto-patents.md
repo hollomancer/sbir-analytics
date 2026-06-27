@@ -202,9 +202,9 @@ unified `Organization` or `Individual` nodes, and SBIR linkage uses `GENERATED_F
 
 > Patent assignees/assignors are routed to the unified `Organization` / `Individual`
 > labels (see [organization-schema.md](organization-schema.md) and
-> [individual-schema.md](individual-schema.md)); the legacy `PatentEntity` constraint/index
-> definitions remain in the loader for backward compatibility but no `:PatentEntity`
-> nodes are created.
+> [individual-schema.md](individual-schema.md)). The legacy `:PatentEntity`
+> constraint/index definitions have been removed from the loader; no `:PatentEntity`
+> nodes were ever created.
 
 ### Relationships
 
