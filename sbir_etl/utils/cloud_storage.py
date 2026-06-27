@@ -168,8 +168,13 @@ def sync_s3_prefix_to_dir(
         The local ``dest_dir`` path.
 
     Raises:
-        ValueError: if ``s3_prefix`` is not an ``s3://`` URL.
-        FileNotFoundError: if no matching objects were found under the prefix.
+        ValueError: if ``s3_prefix`` is not an ``s3://`` URL or has no bucket.
+        FileNotFoundError: if no matching objects were found, or — when ``include``
+            is given — any requested basename is missing under the prefix.
+
+    Resolves the full object list and validates it *before* creating ``dest_dir`` or
+    downloading anything, so a missing requested file never leaves a populated-looking
+    but incomplete directory behind.
     """
     import boto3
 
@@ -177,15 +182,20 @@ def sync_s3_prefix_to_dir(
         raise ValueError(f"Not an S3 prefix: {s3_prefix}")
 
     bucket, _, prefix = str(s3_prefix)[len("s3://") :].partition("/")
-    include_set = set(include) if include is not None else None
+    if not bucket:
+        raise ValueError(f"S3 prefix missing bucket: {s3_prefix}")
+    # Normalize the prefix to end with '/' so string-based listing can't match
+    # sibling keys (e.g. ".../dump" otherwise also matching ".../dump2/...").
+    if prefix and not prefix.endswith("/"):
+        prefix += "/"
 
-    dest = Path(dest_dir)
-    dest.mkdir(parents=True, exist_ok=True)
+    include_set = set(include) if include is not None else None
 
     s3_client = boto3.client("s3")
     paginator = s3_client.get_paginator("list_objects_v2")
-    downloaded = 0
 
+    # First pass: resolve the objects to download (no side effects yet).
+    to_download: list[tuple[str, str]] = []  # (key, basename)
     for page in paginator.paginate(Bucket=bucket, Prefix=prefix):
         for obj in page.get("Contents", []):
             key = obj["Key"]
@@ -194,15 +204,29 @@ def sync_s3_prefix_to_dir(
                 continue
             if include_set is not None and name not in include_set:
                 continue
-            target = dest / name
-            logger.info(f"Downloading s3://{bucket}/{key} -> {target}")
-            s3_client.download_file(bucket, key, str(target))
-            downloaded += 1
+            to_download.append((key, name))
 
-    if downloaded == 0:
-        raise FileNotFoundError(f"No objects downloaded from {s3_prefix} (include={include})")
+    # When specific basenames were requested, require all of them up front so a
+    # partial sync can't pass a later dump_dir.exists() check and fail confusingly.
+    if include_set is not None:
+        missing = include_set - {name for _, name in to_download}
+        if missing:
+            raise FileNotFoundError(
+                f"Missing required object(s) under {s3_prefix}: {sorted(missing)}"
+            )
 
-    logger.info(f"Synced {downloaded} object(s) from {s3_prefix} to {dest}")
+    if not to_download:
+        raise FileNotFoundError(f"No objects found under {s3_prefix} (include={include})")
+
+    # Only now create the destination and download.
+    dest = Path(dest_dir)
+    dest.mkdir(parents=True, exist_ok=True)
+    for key, name in to_download:
+        target = dest / name
+        logger.info(f"Downloading s3://{bucket}/{key} -> {target}")
+        s3_client.download_file(bucket, key, str(target))
+
+    logger.info(f"Synced {len(to_download)} object(s) from {s3_prefix} to {dest}")
     return dest
 
 
