@@ -76,6 +76,23 @@ def test_does_not_clobber_existing_flat_columns():
     assert out.iloc[0]["vendor_uei"] == "PRESET_UEI00"
 
 
+def test_preexisting_action_date_not_backfilled_from_signed_date():
+    """A pre-existing flat action_date (even null) is never backfilled, even if a
+    period column is also present (the 'absent only' contract)."""
+    df = pd.DataFrame(
+        [
+            {
+                "contract_id": "C1",
+                "action_date": None,  # flat, pre-existing, null
+                "period": {"effective_date": None, "signed_date": "2023-07-15"},
+            }
+        ]
+    )
+    out = flatten_contract_records(df)
+    # action_date existed up front → signed_date fallback must NOT touch it.
+    assert out.iloc[0]["action_date"] is None
+
+
 def test_empty_frame_is_noop():
     empty = pd.DataFrame()
     out = flatten_contract_records(empty)

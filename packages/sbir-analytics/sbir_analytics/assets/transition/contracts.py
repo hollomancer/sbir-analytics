@@ -210,14 +210,19 @@ def flatten_contract_records(df: pd.DataFrame) -> pd.DataFrame:
             return None
         return df[col].apply(lambda v: v.get(key) if isinstance(v, dict) else None)
 
+    # Record which flat targets were absent up front, so we never touch values that
+    # a flat seed already provided (the "absent only" contract).
+    action_date_derived = "action_date" not in df.columns
+
     for dst, (col, key) in _CONTRACT_NESTED_FLATTEN.items():
         if dst not in df.columns:
             values = _from_nested(col, key)
             if values is not None:
                 df[dst] = values
 
-    # action_date falls back to the signed date when effective_date is missing.
-    if "action_date" in df.columns:
+    # signed_date fallback applies only to an action_date we just derived from the
+    # nested period (effective_date) — never to a pre-existing flat action_date.
+    if action_date_derived and "action_date" in df.columns:
         signed = _from_nested("period", "signed_date")
         if signed is not None:
             df["action_date"] = df["action_date"].where(df["action_date"].notna(), signed)
