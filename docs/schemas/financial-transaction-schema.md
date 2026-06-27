@@ -201,18 +201,19 @@ updated_at: DateTime (nullable)
 - `FUNDED_BY`: (FinancialTransaction) → (Organization {agency})
 - `CONDUCTED_AT`: (FinancialTransaction) → (Organization {research institution})
 - `TRANSITIONED_TO`: (FinancialTransaction {AWARD}) → (Transition)
+- `APPLICABLE_TO`: (FinancialTransaction {AWARD}) → (CETArea) - CET classification
 - `FOLLOWS`: (FinancialTransaction) → (FinancialTransaction) - Phase progressions
 
 ### Incoming Relationships
 
 - `PARTICIPATED_IN`: (Individual) → (FinancialTransaction)
 - `RESULTED_IN`: (Transition) → (FinancialTransaction {CONTRACT})
+- `GENERATED_FROM`: (Patent) → (FinancialTransaction {AWARD}) - SBIR-funded patents
 
-> **Note — patents link to the legacy `:Award` label, not this node.** The patent
-> loader creates `(:Patent)-[:GENERATED_FROM]->(:Award)`, where `:Award` is a separate
-> legacy label written by the sbir-graph package (CET / patent loaders), *not* the
-> `:FinancialTransaction` node described here. See [neo4j.md](neo4j.md) for the two
-> coexisting label families.
+> CET enrichment, `APPLICABLE_TO`, and `GENERATED_FROM` attach to the award
+> `FinancialTransaction` (matched on its `award_id` property), not to a separate
+> `:Award` node. The legacy `:Award` label was unified onto `FinancialTransaction`
+> in migration `006`. See [neo4j.md](neo4j.md) for the remaining legacy labels.
 
 ## Example Cypher Queries
 

@@ -333,7 +333,7 @@ def persist_to_neo4j(
         neo4j_driver: Neo4j driver instance
     """
     query = """
-    MATCH (a:Award {award_id: $award_id})
+    MATCH (a:FinancialTransaction {award_id: $award_id})
     SET a.`enrichment_freshness_` + $source + `_last_attempt_at` = $last_attempt_at,
         a.`enrichment_freshness_` + $source + `_last_success_at` = $last_success_at,
         a.`enrichment_freshness_` + $source + `_payload_hash` = $payload_hash,

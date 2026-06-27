@@ -31,41 +31,45 @@ def reset_neo4j(
         with driver.session(database=database) as session:
             if dry_run:
                 # Count what would be deleted
-                award_count = session.run("MATCH (a:Award) RETURN count(a) as count").single()[
-                    "count"
-                ]
+                award_count = session.run(
+                    "MATCH (a:FinancialTransaction {transaction_type: 'AWARD'}) "
+                    "RETURN count(a) as count"
+                ).single()["count"]
                 company_count = session.run("MATCH (c:Company) RETURN count(c) as count").single()[
                     "count"
                 ]
                 rel_count = session.run(
-                    "MATCH (a:Award)-[r:AWARDS]->(c:Company) RETURN count(r) as count"
+                    "MATCH (a:FinancialTransaction {transaction_type: 'AWARD'})"
+                    "-[r:RECIPIENT_OF]->(o:Organization) RETURN count(r) as count"
                 ).single()["count"]
                 print(
-                    f"Would delete: {award_count} Awards, {company_count} Companies, {rel_count} AWARDS relationships"
+                    f"Would delete: {award_count} Awards (FinancialTransaction), "
+                    f"{company_count} Companies, {rel_count} RECIPIENT_OF relationships"
                 )
                 return 0
 
-            # Delete AWARDS relationships first
+            # Delete RECIPIENT_OF relationships first
             rel_result = session.run(
                 """
-                MATCH (a:Award)-[r:AWARDS]->(c:Company)
+                MATCH (a:FinancialTransaction {transaction_type: 'AWARD'})
+                      -[r:RECIPIENT_OF]->(o:Organization)
                 DELETE r
                 RETURN count(r) as deleted
                 """
             )
             rel_deleted = rel_result.single()["deleted"]
-            print(f"Deleted {rel_deleted} AWARDS relationships")
+            print(f"Deleted {rel_deleted} RECIPIENT_OF relationships")
 
-            # Delete Award nodes
+            # Delete award FinancialTransaction nodes (DETACH to drop remaining edges)
             award_result = session.run(
                 """
-                MATCH (a:Award)
-                DELETE a
+                MATCH (a:FinancialTransaction {transaction_type: 'AWARD'})
+                DETACH DELETE a
                 RETURN count(a) as deleted
                 """
             )
             awards_deleted = award_result.single()["deleted"]
-            print(f"Deleted {awards_deleted} Award nodes")
+            print(f"Deleted {awards_deleted} award FinancialTransaction nodes")
 
             # Delete Company nodes (only those not connected to other entities)
             # Note: We're being conservative - only delete Companies that aren't connected

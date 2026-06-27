@@ -6,13 +6,13 @@ Implements Section 12 (Neo4j CET Graph Model - Nodes):
 12.2 Add uniqueness constraints for CETArea
 12.3 Add CETArea properties (id, name, keywords, taxonomy_version)
 12.4 Create Company node CET enrichment properties
-12.5 Create Award node CET enrichment properties
+12.5 Set FinancialTransaction node CET enrichment properties
 12.6 Add batching + idempotent merges
 
 This module provides CETLoader with helpers to:
 - Create constraints and indexes for CETArea
 - Upsert CETArea nodes (idempotent MERGE via Neo4jClient)
-- Upsert Company and Award enrichment properties related to CET classifications
+- Enrich Company and FinancialTransaction nodes with CET classifications
 
 Notes:
 - Relies on Neo4jClient for batching and transaction mgmt
@@ -41,7 +41,7 @@ class CETLoader(BaseNeo4jLoader):
     Responsibilities:
       - Define CETArea schema (constraints + indexes)
       - Idempotently upsert CETArea nodes
-      - Add CET enrichment properties to Company and Award nodes
+      - Add CET enrichment properties to Company and FinancialTransaction nodes
 
     Refactored to inherit from BaseNeo4jLoader for consistency.
 
@@ -72,9 +72,7 @@ class CETLoader(BaseNeo4jLoader):
                 # CETArea uniqueness on cet_id
                 "CREATE CONSTRAINT cetarea_cet_id IF NOT EXISTS "
                 "FOR (c:CETArea) REQUIRE c.cet_id IS UNIQUE",
-                # Optional: ensure Award and Company constraints exist for enrichment keys
-                "CREATE CONSTRAINT award_award_id IF NOT EXISTS "
-                "FOR (a:Award) REQUIRE a.award_id IS UNIQUE",
+                # Optional: ensure Company constraint exists for enrichment keys
                 "CREATE CONSTRAINT company_id IF NOT EXISTS "
                 "FOR (c:Company) REQUIRE c.company_id IS UNIQUE",
             ]
@@ -233,7 +231,7 @@ class CETLoader(BaseNeo4jLoader):
         return metrics
 
     # -------------------------------------------------------------------------
-    # Award enrichment properties
+    # Award-level CET enrichment (on FinancialTransaction)
     # -------------------------------------------------------------------------
 
     def upsert_award_cet_enrichment(
@@ -243,7 +241,12 @@ class CETLoader(BaseNeo4jLoader):
         key_property: str = "award_id",
         metrics: LoadMetrics | None = None,
     ) -> LoadMetrics:
-        """Upsert CET enrichment properties onto Award nodes.
+        """Set CET enrichment properties onto existing FinancialTransaction nodes.
+
+        Resolves each award by MATCH on the FinancialTransaction ``award_id``
+        property (never MERGE on it, which would mint a duplicate FT keyed by
+        ``transaction_id``). Awards with no matching FinancialTransaction are
+        logged and skipped, not created.
 
         Each enrichment dict must include key_property (default 'award_id').
         Allowed enrichment properties:
@@ -256,11 +259,11 @@ class CETLoader(BaseNeo4jLoader):
 
         Args:
             enrichments: iterable of mappings with key_property and enrichment fields
-            key_property: Award key to MERGE on (default 'award_id')
+            key_property: FinancialTransaction property to MATCH on (default 'award_id')
             metrics: optional LoadMetrics
 
         Returns:
-            LoadMetrics with counts of updated nodes
+            LoadMetrics with counts of matched/updated nodes
         """
         metrics = metrics or LoadMetrics()
         nodes: list[dict[str, Any]] = []
@@ -268,7 +271,11 @@ class CETLoader(BaseNeo4jLoader):
         for raw in enrichments:
             key_val = _as_str(raw.get(key_property))
             if not key_val:
-                logger.warning("Skipping Award enrichment missing key {}: {}", key_property, raw)
+                logger.warning(
+                    "Skipping FinancialTransaction CET enrichment missing key {}: {}",
+                    key_property,
+                    raw,
+                )
                 metrics.errors += 1
                 continue
 
@@ -295,18 +302,25 @@ class CETLoader(BaseNeo4jLoader):
             nodes.append(node)
 
         if not nodes:
-            logger.info("No Award CET enrichments to upsert")
+            logger.info("No FinancialTransaction CET enrichments to set")
             return metrics
 
-        logger.info("Upserting {} Award CET enrichment nodes (key={})", len(nodes), key_property)
+        logger.info(
+            "Setting CET enrichment on {} FinancialTransaction nodes (key={})",
+            len(nodes),
+            key_property,
+        )
         self.client.config.batch_size = self.config.batch_size
-        metrics = self.client.batch_upsert_nodes(
-            label="Award", key_property=key_property, nodes=nodes, metrics=metrics
+        metrics = self.client.batch_set_existing_node_properties(
+            label="FinancialTransaction",
+            key_property=key_property,
+            nodes=nodes,
+            metrics=metrics,
         )
         return metrics
 
     # -------------------------------------------------------------------------
-    # Award -> CETArea relationships
+    # FinancialTransaction -> CETArea relationships
     # -------------------------------------------------------------------------
 
     def create_award_cet_relationships(
@@ -316,10 +330,14 @@ class CETLoader(BaseNeo4jLoader):
         rel_type: str = "APPLICABLE_TO",
         metrics: LoadMetrics | None = None,
     ) -> LoadMetrics:
-        """Create Award -> CETArea relationships with MERGE semantics.
+        """Create FinancialTransaction -> CETArea relationships with MERGE semantics.
+
+        The FinancialTransaction is resolved by MATCH on its ``award_id`` property
+        and only the relationship is MERGEd, so no FinancialTransaction node is
+        ever created (which a MERGE on ``award_id`` would do).
 
         Relationship schema:
-            (a:Award)-[:APPLICABLE_TO {
+            (a:FinancialTransaction)-[:APPLICABLE_TO {
                 score: FLOAT,
                 primary: BOOLEAN,
                 role: STRING,    # 'PRIMARY' or 'SUPPORTING'
@@ -344,7 +362,9 @@ class CETLoader(BaseNeo4jLoader):
         for row in classifications:
             aid = _as_str(row.get("award_id"))
             if not aid:
-                logger.warning("Skipping Award->CET mapping with missing award_id: {}", row)
+                logger.warning(
+                    "Skipping FinancialTransaction->CET mapping with missing award_id: {}", row
+                )
                 metrics.errors += 1
                 continue
 
@@ -377,7 +397,16 @@ class CETLoader(BaseNeo4jLoader):
                 # remove None values to avoid overwriting with nulls
                 props = {k: v for k, v in props.items() if v is not None}
                 relationships.append(
-                    ("Award", "award_id", aid, "CETArea", "cet_id", primary_id, rel_type, props)
+                    (
+                        "FinancialTransaction",
+                        "award_id",
+                        aid,
+                        "CETArea",
+                        "cet_id",
+                        primary_id,
+                        rel_type,
+                        props,
+                    )
                 )
 
             # Supporting
@@ -399,17 +428,26 @@ class CETLoader(BaseNeo4jLoader):
                         }
                         props = {k: v for k, v in props.items() if v is not None}
                         relationships.append(
-                            ("Award", "award_id", aid, "CETArea", "cet_id", cid, rel_type, props)
+                            (
+                                "FinancialTransaction",
+                                "award_id",
+                                aid,
+                                "CETArea",
+                                "cet_id",
+                                cid,
+                                rel_type,
+                                props,
+                            )
                         )
                     except Exception:
                         continue
 
         if not relationships:
-            logger.info("No Award -> CETArea relationships to create")
+            logger.info("No FinancialTransaction -> CETArea relationships to create")
             return metrics
 
         logger.info(
-            "Creating {} Award -> CETArea relationships (type={})",
+            "Creating {} FinancialTransaction -> CETArea relationships (type={})",
             len(relationships),
             rel_type,
         )

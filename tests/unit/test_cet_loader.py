@@ -42,7 +42,22 @@ def _make_mock_client_with_capture():
         m.nodes_created[label] = m.nodes_created.get(label, 0) + len(nodes)
         return m
 
+    def _fake_batch_set_existing_node_properties(
+        label: str, key_property: str, nodes: list[dict[str, Any]], metrics=None
+    ):
+        # MATCH-and-SET primitive: capture the same way, but record as updates
+        # (never creates), so tests can assert no :Award node was created.
+        captured["label"] = label
+        captured["key_property"] = key_property
+        captured["nodes"] = nodes
+        m = metrics or LoadMetrics()
+        m.nodes_updated[label] = m.nodes_updated.get(label, 0) + len(nodes)
+        return m
+
     mock_client.batch_upsert_nodes.side_effect = _fake_batch_upsert_nodes
+    mock_client.batch_set_existing_node_properties.side_effect = (
+        _fake_batch_set_existing_node_properties
+    )
     return mock_client, captured
 
 
@@ -235,5 +250,11 @@ class TestCETLoaderAwardEnrichment:
         assert isinstance(metrics, LoadMetrics)
         assert metrics.errors == 1
 
-        assert captured["label"] == "Award"
+        # Enrichment now targets FinancialTransaction via MATCH-and-SET (no node create).
+        assert captured["label"] == "FinancialTransaction"
         assert captured["key_property"] == "award_id"
+        mock_client.batch_set_existing_node_properties.assert_called_once()
+        mock_client.batch_upsert_nodes.assert_not_called()
+        # No :Award node is ever created/updated by the loader.
+        assert "Award" not in metrics.nodes_created
+        assert "Award" not in metrics.nodes_updated

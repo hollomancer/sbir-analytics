@@ -147,7 +147,6 @@ class Neo4jClient:
         constraints = [
             # Legacy constraints (kept for backward compatibility)
             "CREATE CONSTRAINT company_id IF NOT EXISTS FOR (c:Company) REQUIRE c.company_id IS UNIQUE",
-            "CREATE CONSTRAINT award_id IF NOT EXISTS FOR (a:Award) REQUIRE a.award_id IS UNIQUE",
             "CREATE CONSTRAINT researcher_id IF NOT EXISTS FOR (r:Researcher) REQUIRE r.researcher_id IS UNIQUE",
             "CREATE CONSTRAINT patent_id IF NOT EXISTS FOR (p:Patent) REQUIRE p.patent_id IS UNIQUE",
             "CREATE CONSTRAINT institution_name IF NOT EXISTS FOR (i:ResearchInstitution) REQUIRE i.name IS UNIQUE",
@@ -180,7 +179,6 @@ class Neo4jClient:
             "CREATE INDEX company_normalized_name IF NOT EXISTS FOR (c:Company) ON (c.normalized_name)",
             "CREATE INDEX company_uei IF NOT EXISTS FOR (c:Company) ON (c.uei)",
             "CREATE INDEX company_duns IF NOT EXISTS FOR (c:Company) ON (c.duns)",
-            "CREATE INDEX award_date IF NOT EXISTS FOR (a:Award) ON (a.award_date)",
             "CREATE INDEX researcher_name IF NOT EXISTS FOR (r:Researcher) ON (r.name)",
             "CREATE INDEX patent_number IF NOT EXISTS FOR (p:Patent) ON (p.patent_number)",
             "CREATE INDEX institution_name IF NOT EXISTS FOR (i:ResearchInstitution) ON (i.name)",
@@ -360,6 +358,99 @@ class Neo4jClient:
             f"{metrics.nodes_created.get(label, 0)} created, "
             f"{metrics.nodes_updated.get(label, 0)} updated, "
             f"{metrics.errors} errors"
+        )
+
+        return metrics
+
+    def batch_set_existing_node_properties(
+        self,
+        label: str,
+        key_property: str,
+        nodes: list[dict[str, Any]],
+        metrics: LoadMetrics | None = None,
+    ) -> LoadMetrics:
+        """Set properties on existing nodes only (MATCH-and-SET, never create).
+
+        Unlike ``batch_upsert_nodes`` (which ``MERGE``s and would create a node when
+        none exists), this resolves each node by ``MATCH`` on ``key_property`` and
+        ``SET n += row``. It NEVER creates a node. This is the safe primitive for
+        enriching ``:FinancialTransaction`` by its non-key ``award_id`` property:
+        a ``MERGE`` on ``award_id`` would mint a duplicate FinancialTransaction.
+
+        Rows whose ``key_property`` does not match an existing node are orphans:
+        they are logged and skipped (counted as updates of 0), never created.
+
+        Args:
+            label: Node label to match (e.g. "FinancialTransaction")
+            key_property: Property name to MATCH on (e.g. "award_id")
+            nodes: List of property dicts; each must carry ``key_property``
+            metrics: Optional metrics object to update
+
+        Returns:
+            Load metrics with the count of matched/updated nodes recorded under
+            ``nodes_updated[label]``.
+        """
+        if metrics is None:
+            metrics = LoadMetrics()
+
+        batch_size = self.config.batch_size
+        total_batches = (len(nodes) + batch_size - 1) // batch_size
+
+        logger.info(
+            f"Setting properties on existing {label} nodes "
+            f"({len(nodes)} rows in {total_batches} batches of {batch_size}, "
+            f"matched by {key_property})"
+        )
+
+        with self.session() as session:
+            for i in range(0, len(nodes), batch_size):
+                batch = nodes[i : i + batch_size]
+                batch_num = i // batch_size + 1
+
+                # Filter out rows missing the key property
+                valid_batch = [n for n in batch if n.get(key_property) is not None]
+                invalid_count = len(batch) - len(valid_batch)
+                if invalid_count > 0:
+                    logger.error(f"{invalid_count} rows missing key property {key_property}")
+                    metrics.errors += invalid_count
+
+                if not valid_batch:
+                    continue
+
+                try:
+                    query = f"""
+                    UNWIND $batch AS row
+                    MATCH (n:{label} {{{key_property}: row.{key_property}}})
+                    SET n += row
+                    RETURN count(n) AS matched_count
+                    """
+
+                    result = session.run(query, batch=valid_batch)
+                    record = result.single()
+                    matched = record["matched_count"] if record else 0
+                    skipped = len(valid_batch) - matched
+
+                    metrics.nodes_updated[label] = metrics.nodes_updated.get(label, 0) + matched
+
+                    if skipped > 0:
+                        logger.warning(
+                            f"Batch {batch_num}/{total_batches}: {skipped} {label} "
+                            f"rows had no existing node for {key_property} (orphans skipped, "
+                            "not created)"
+                        )
+
+                    logger.debug(
+                        f"Batch {batch_num}/{total_batches} committed "
+                        f"({matched}/{len(valid_batch)} {label} nodes matched and updated)"
+                    )
+
+                except Exception as e:
+                    metrics.errors += len(valid_batch)
+                    logger.error(f"Error in batch {batch_num}/{total_batches} for {label}: {e}")
+
+        logger.info(
+            f"Completed {label} property set: "
+            f"{metrics.nodes_updated.get(label, 0)} matched/updated, {metrics.errors} errors"
         )
 
         return metrics

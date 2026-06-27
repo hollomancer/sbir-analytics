@@ -50,8 +50,9 @@ SCHEMA_STATEMENTS: list[str] = [
     # "CREATE CONSTRAINT IF NOT EXISTS FOR (c:Company) REQUIRE c.uei IS UNIQUE",
     # Older Neo4j (3.x) syntax would be different; adapt as needed.
     "CREATE CONSTRAINT IF NOT EXISTS FOR (c:Company) REQUIRE c.uei IS UNIQUE",
-    # Unique constraint on award id if present in domain
-    "CREATE CONSTRAINT IF NOT EXISTS FOR (a:Award) REQUIRE a.award_id IS UNIQUE",
+    # Unique constraint on the authoritative award node (FinancialTransaction)
+    "CREATE CONSTRAINT IF NOT EXISTS FOR (ft:FinancialTransaction) "
+    "REQUIRE ft.transaction_id IS UNIQUE",
     # Example index for frequently queried property (e.g., company name)
     "CREATE INDEX IF NOT EXISTS FOR (c:Company) ON (c.name)",
     # Add any additional constraints/indexes your schema requires here

@@ -85,7 +85,7 @@ class TestLoadMetrics:
     def test_load_metrics_with_data(self):
         """Test LoadMetrics with populated data."""
         metrics = LoadMetrics(
-            nodes_created={"Company": 10, "Award": 5},
+            nodes_created={"Company": 10, "FinancialTransaction": 5},
             nodes_updated={"Company": 3},
             relationships_created={"HAS_AWARD": 5},
             errors=2,
@@ -93,6 +93,7 @@ class TestLoadMetrics:
         )
 
         assert metrics.nodes_created["Company"] == 10
+        assert metrics.nodes_created["FinancialTransaction"] == 5
         assert metrics.nodes_updated["Company"] == 3
         assert metrics.relationships_created["HAS_AWARD"] == 5
         assert metrics.errors == 2
@@ -421,6 +422,98 @@ class TestNeo4jClientBatchOperations:
         assert metrics.errors >= 1
 
 
+class TestBatchSetExistingNodeProperties:
+    """Tests for the MATCH-and-SET primitive (never creates nodes)."""
+
+    @patch.object(Neo4jClient, "session")
+    def test_match_and_set_updates_existing_nodes(self, mock_session_cm, neo4j_config):
+        """All rows match an existing node: counted as updates, query is MATCH+SET."""
+        neo4j_config.auto_migrate = False
+        neo4j_config.batch_size = 1000
+        mock_session = Neo4jMocks.session()
+        mock_session_cm.return_value.__enter__.return_value = mock_session
+
+        mock_result = Neo4jMocks.result()
+        mock_record = MagicMock()
+        mock_record.__getitem__.side_effect = lambda key: {"matched_count": 2}[key]
+        mock_result.single.return_value = mock_record
+        mock_session.run.return_value = mock_result
+
+        client = Neo4jClient(neo4j_config)
+        nodes = [
+            {"award_id": "AWD001", "cet_primary_id": "AI"},
+            {"award_id": "AWD002", "cet_primary_id": "ML"},
+        ]
+
+        metrics = client.batch_set_existing_node_properties(
+            "FinancialTransaction", "award_id", nodes
+        )
+
+        # Recorded as updates, never creates.
+        assert metrics.nodes_updated["FinancialTransaction"] == 2
+        assert "FinancialTransaction" not in metrics.nodes_created
+
+        # The query must MATCH (not MERGE) the node and SET properties.
+        query = mock_session.run.call_args[0][0]
+        assert "MATCH (n:FinancialTransaction {award_id: row.award_id})" in query
+        assert "SET n += row" in query
+        assert "MERGE" not in query
+
+    @patch.object(Neo4jClient, "session")
+    def test_no_match_creates_no_nodes(self, mock_session_cm, neo4j_config):
+        """When no existing node matches, nothing is created (orphans skipped)."""
+        neo4j_config.auto_migrate = False
+        neo4j_config.batch_size = 1000
+        mock_session = Neo4jMocks.session()
+        mock_session_cm.return_value.__enter__.return_value = mock_session
+
+        # matched_count == 0: no existing FinancialTransaction for these award_ids
+        mock_result = Neo4jMocks.result()
+        mock_record = MagicMock()
+        mock_record.__getitem__.side_effect = lambda key: {"matched_count": 0}[key]
+        mock_result.single.return_value = mock_record
+        mock_session.run.return_value = mock_result
+
+        client = Neo4jClient(neo4j_config)
+        nodes = [{"award_id": "ORPHAN1", "cet_primary_id": "AI"}]
+
+        metrics = client.batch_set_existing_node_properties(
+            "FinancialTransaction", "award_id", nodes
+        )
+
+        # No node created, no update recorded; errors not incremented for orphans.
+        assert metrics.nodes_created == {}
+        assert metrics.nodes_updated.get("FinancialTransaction", 0) == 0
+        assert metrics.errors == 0
+
+    @patch.object(Neo4jClient, "session")
+    def test_missing_key_property_is_error(self, mock_session_cm, neo4j_config):
+        """Rows missing the key property are counted as errors and skipped."""
+        neo4j_config.auto_migrate = False
+        neo4j_config.batch_size = 1000
+        mock_session = Neo4jMocks.session()
+        mock_session_cm.return_value.__enter__.return_value = mock_session
+
+        mock_result = Neo4jMocks.result()
+        mock_record = MagicMock()
+        mock_record.__getitem__.side_effect = lambda key: {"matched_count": 1}[key]
+        mock_result.single.return_value = mock_record
+        mock_session.run.return_value = mock_result
+
+        client = Neo4jClient(neo4j_config)
+        nodes = [
+            {"award_id": "AWD001", "cet_primary_id": "AI"},
+            {"cet_primary_id": "ML"},  # missing award_id
+        ]
+
+        metrics = client.batch_set_existing_node_properties(
+            "FinancialTransaction", "award_id", nodes
+        )
+
+        assert metrics.errors == 1
+        assert metrics.nodes_updated["FinancialTransaction"] == 1
+
+
 class TestNeo4jClientRelationshipOperations:
     """Tests for relationship creation operations."""
 
@@ -438,7 +531,7 @@ class TestNeo4jClientRelationshipOperations:
             "Company",
             "uei",
             "ABC123",
-            "Award",
+            "FinancialTransaction",
             "award_id",
             "AWD001",
             "HAS_AWARD",
@@ -461,7 +554,7 @@ class TestNeo4jClientRelationshipOperations:
             "Company",
             "uei",
             "NOTFOUND",
-            "Award",
+            "FinancialTransaction",
             "award_id",
             "AWD001",
             "HAS_AWARD",
@@ -483,7 +576,7 @@ class TestNeo4jClientRelationshipOperations:
             "Company",
             "uei",
             "ABC123",
-            "Award",
+            "FinancialTransaction",
             "award_id",
             "AWD001",
             "HAS_AWARD",
@@ -494,7 +587,7 @@ class TestNeo4jClientRelationshipOperations:
         query = call_args[0][0]
 
         assert "MATCH (source:Company {uei: $source_value})" in query
-        assert "MATCH (target:Award {award_id: $target_value})" in query
+        assert "MATCH (target:FinancialTransaction {award_id: $target_value})" in query
         assert "MERGE (source)-[r:HAS_AWARD]->(target)" in query
         assert "SET r += $properties" in query
 
@@ -523,8 +616,26 @@ class TestNeo4jClientBatchRelationships:
 
         client = Neo4jClient(neo4j_config)
         relationships = [
-            ("Company", "uei", "ABC123", "Award", "award_id", "AWD001", "HAS_AWARD", None),
-            ("Company", "uei", "XYZ789", "Award", "award_id", "AWD002", "HAS_AWARD", None),
+            (
+                "Company",
+                "uei",
+                "ABC123",
+                "FinancialTransaction",
+                "award_id",
+                "AWD001",
+                "HAS_AWARD",
+                None,
+            ),
+            (
+                "Company",
+                "uei",
+                "XYZ789",
+                "FinancialTransaction",
+                "award_id",
+                "AWD002",
+                "HAS_AWARD",
+                None,
+            ),
         ]
 
         metrics = client.batch_create_relationships(relationships)
@@ -552,9 +663,36 @@ class TestNeo4jClientBatchRelationships:
 
         client = Neo4jClient(neo4j_config)
         relationships = [
-            ("Company", "uei", "ABC123", "Award", "award_id", "AWD001", "HAS_AWARD", None),
-            ("Company", "uei", "NOTFOUND", "Award", "award_id", "AWD002", "HAS_AWARD", None),
-            ("Company", "uei", "XYZ789", "Award", "award_id", "AWD003", "HAS_AWARD", None),
+            (
+                "Company",
+                "uei",
+                "ABC123",
+                "FinancialTransaction",
+                "award_id",
+                "AWD001",
+                "HAS_AWARD",
+                None,
+            ),
+            (
+                "Company",
+                "uei",
+                "NOTFOUND",
+                "FinancialTransaction",
+                "award_id",
+                "AWD002",
+                "HAS_AWARD",
+                None,
+            ),
+            (
+                "Company",
+                "uei",
+                "XYZ789",
+                "FinancialTransaction",
+                "award_id",
+                "AWD003",
+                "HAS_AWARD",
+                None,
+            ),
         ]
 
         metrics = client.batch_create_relationships(relationships)
@@ -575,7 +713,7 @@ class TestNeo4jClientConstraintsAndIndexes:
         client.create_constraints()
 
         # Should run multiple constraint creation queries
-        assert mock_session.run.call_count >= 4  # Company, Award, Researcher, Patent
+        assert mock_session.run.call_count >= 4  # Company, Researcher, Patent, FinancialTransaction
 
     @patch.object(Neo4jClient, "session")
     def test_create_constraints_handles_existing(self, mock_session_cm, neo4j_config):

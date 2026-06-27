@@ -42,8 +42,10 @@ def run_smoke_checks(uri: str, username: str, password: str, database: str) -> d
 
     try:
         with driver.session(database=database) as session:
-            # Check 1: Award node count
-            award_count_result = session.run("MATCH (a:Award) RETURN count(a) as count")
+            # Check 1: Award node count (FinancialTransaction AWARD)
+            award_count_result = session.run(
+                "MATCH (a:FinancialTransaction {transaction_type: 'AWARD'}) RETURN count(a) as count"
+            )
             award_count = award_count_result.single()["count"]
             results["checks"].append(
                 {
@@ -68,9 +70,10 @@ def run_smoke_checks(uri: str, username: str, password: str, database: str) -> d
             )
             results["summary"]["company_count"] = company_count
 
-            # Check 3: AWARDS relationship count
+            # Check 3: RECIPIENT_OF relationship count
             awards_rel_result = session.run(
-                "MATCH (a:Award)-[r:AWARDS]->(c:Company) RETURN count(r) as count"
+                "MATCH (a:FinancialTransaction {transaction_type: 'AWARD'})"
+                "-[r:RECIPIENT_OF]->(o:Organization) RETURN count(r) as count"
             )
             awards_rel_count = awards_rel_result.single()["count"]
             results["checks"].append(
@@ -78,7 +81,7 @@ def run_smoke_checks(uri: str, username: str, password: str, database: str) -> d
                     "name": "awards_relationship_count",
                     "passed": awards_rel_count > 0,
                     "value": awards_rel_count,
-                    "message": f"Found {awards_rel_count} AWARDS relationships",
+                    "message": f"Found {awards_rel_count} RECIPIENT_OF relationships",
                 }
             )
             results["summary"]["awards_relationship_count"] = awards_rel_count
@@ -86,9 +89,9 @@ def run_smoke_checks(uri: str, username: str, password: str, database: str) -> d
             # Check 4: Sample award properties
             sample_award_result = session.run(
                 """
-                MATCH (a:Award)
+                MATCH (a:FinancialTransaction {transaction_type: 'AWARD'})
                 WHERE a.award_id IS NOT NULL
-                RETURN a.award_id, a.company_name, a.award_amount, a.program, a.phase
+                RETURN a.award_id, a.recipient_name, a.amount, a.program, a.phase
                 LIMIT 5
                 """
             )
@@ -104,10 +107,11 @@ def run_smoke_checks(uri: str, username: str, password: str, database: str) -> d
             )
             results["summary"]["sample_awards"] = len(sample_awards)
 
-            # Check 5: Award-Company connectivity
+            # Check 5: Award-Organization connectivity
             connected_count_result = session.run(
                 """
-                MATCH (a:Award)-[:AWARDS]->(c:Company)
+                MATCH (a:FinancialTransaction {transaction_type: 'AWARD'})
+                      -[:RECIPIENT_OF]->(o:Organization)
                 RETURN count(DISTINCT a) as connected_awards
                 """
             )

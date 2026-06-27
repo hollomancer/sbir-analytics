@@ -400,7 +400,7 @@ class PatentETLValidator:
             },
             {
                 "name": "SBIR-Funded Patents",
-                "query": "MATCH (a:Award)-[:GENERATED_FROM]->(p:Patent) RETURN a.title, p.grant_doc_num LIMIT 10",
+                "query": "MATCH (p:Patent)-[:GENERATED_FROM]->(a:FinancialTransaction {transaction_type: 'AWARD'}) RETURN a.title, p.grant_doc_num LIMIT 10",
                 "description": "Find SBIR-funded patents",
             },
             {

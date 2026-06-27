@@ -676,14 +676,17 @@ class PatentLoader(BaseNeo4jLoader):
         patent_awards: list[dict[str, str]],
         metrics: LoadMetrics | None = None,
     ) -> LoadMetrics:
-        """Create GENERATED_FROM relationships (Patent → Award).
+        """Create GENERATED_FROM relationships (Patent → FinancialTransaction).
 
-        Phase 4: Link Patent nodes to Award nodes for SBIR-funded patents.
+        Phase 4: Link Patent nodes to the FinancialTransaction (AWARD) node for
+        SBIR-funded patents. The FinancialTransaction is resolved by MATCH on its
+        ``award_id`` property; only the relationship is MERGEd, so no
+        FinancialTransaction node is ever created.
 
         Args:
             patent_awards: List of patent-award pairs with:
                 - grant_doc_num: Patent key
-                - award_id: Award key
+                - award_id: FinancialTransaction award_id
 
             metrics: Optional LoadMetrics to accumulate results
 
@@ -715,7 +718,7 @@ class PatentLoader(BaseNeo4jLoader):
                     "Patent",
                     "grant_doc_num",
                     str(grant_doc_num).strip(),
-                    "Award",
+                    "FinancialTransaction",
                     "award_id",
                     str(award_id).strip(),
                     "GENERATED_FROM",

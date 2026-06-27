@@ -26,14 +26,14 @@ def test_build_batch_merge_query_simple():
 def test_build_batch_merge_query_with_hash():
     """Test building a batch MERGE query with hash checking."""
     query = Neo4jQueryBuilder.build_batch_merge_query(
-        label="Award",
+        label="FinancialTransaction",
         key_property="award_id",
         include_hash_check=True,
         return_counts=True,
     )
 
     assert "UNWIND $batch AS node" in query
-    assert "MERGE (n:Award {award_id: node.award_id})" in query
+    assert "MERGE (n:FinancialTransaction {award_id: node.award_id})" in query
     assert "__hash" in query
     assert "created_count" in query
     assert "updated_count" in query
@@ -56,7 +56,7 @@ def test_build_batch_match_update_query():
 def test_build_relationship_merge_query():
     """Test building a relationship MERGE query."""
     query = Neo4jQueryBuilder.build_relationship_merge_query(
-        source_label="Award",
+        source_label="FinancialTransaction",
         source_key="award_id",
         rel_type="AWARDED_TO",
         target_label="Company",
@@ -64,7 +64,7 @@ def test_build_relationship_merge_query():
     )
 
     assert "UNWIND $batch AS rel" in query
-    assert "MATCH (source:Award {award_id: rel.source_key})" in query
+    assert "MATCH (source:FinancialTransaction {award_id: rel.source_key})" in query
     assert "MATCH (target:Company {uei: rel.target_key})" in query
     assert "MERGE (source)-[r:AWARDED_TO]->(target)" in query
 
@@ -72,7 +72,7 @@ def test_build_relationship_merge_query():
 def test_build_relationship_merge_query_with_properties():
     """Test building a relationship MERGE query with properties."""
     query = Neo4jQueryBuilder.build_relationship_merge_query(
-        source_label="Award",
+        source_label="FinancialTransaction",
         source_key="award_id",
         rel_type="TRANSITIONED_TO",
         target_label="Transition",
