@@ -20,9 +20,6 @@ outputs:
   performance:
     description: Whether performance-related files changed
     value: ${{ steps.filter.outputs.performance }}
-  cet:
-    description: Whether CET-related files changed
-    value: ${{ steps.filter.outputs.cet }}
   transition:
     description: Whether transition-related files changed
     value: ${{ steps.filter.outputs.transition }}
@@ -35,10 +32,6 @@ outputs:
   infrastructure:
     description: Whether infrastructure/CDK files changed
     value: ${{ steps.filter.outputs.infrastructure }}
-  # Static analysis outputs
-  code-changed:
-    description: Whether code files changed
-    value: ${{ steps.filter.outputs.code-changed }}
 
 runs:
   using: composite
