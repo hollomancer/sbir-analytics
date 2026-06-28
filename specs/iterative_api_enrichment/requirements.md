@@ -38,8 +38,9 @@ This specification implements an iterative API enrichment refresh loop to keep c
 - **iterative_enrichment_refresh_job**: Code component or file: iterative_enrichment_refresh_job
 - **last_attempt_at**: Code component or file: last_attempt_at
 - **last_success_at**: Code component or file: last_success_at
-- **config.enrichment.***: Code component or file: config.enrichment.*
-- **enrichment_events**: Code component or file: enrichment_events
+- **PipelineConfig.enrichment_refresh**: Code component or file: sbir_etl/config/schemas/pipeline.py — the actual config namespace for iterative-refresh settings (e.g., `config.enrichment_refresh.usaspending.*`).
+- **data/derived/enrichment_freshness.parquet**: Code component or file: the Parquet ledger where per-source freshness metrics are persisted.
+- **data/state/enrichment_refresh_state.json**: Code component or file: the JSON state file tracking per-source last-attempt / last-success timestamps.
 - **poetry run refresh_enrichment --source sam_gov --window 2023-10-01:2023-10-07**: Code component or file: poetry run refresh_enrichment --source sam_gov --window 2023-10-01:2023-10-07
 - **docs/enrichment/iterative-refresh.md**: Code component or file: docs/enrichment/iterative-refresh.md
 - **Iterative enrichment scheduler**: Key concept: Iterative enrichment scheduler
@@ -72,7 +73,7 @@ This specification implements an iterative API enrichment refresh loop to keep c
 
 ### Requirement 3 — Freshness telemetry and SLA monitoring
 
-**User Story:** As a pipeline engineer responsible for data quality SLAs, I want per-source freshness metrics logged to `enrichment_events` and surfaced as staleness alerts, so that I can identify which enrichment sources have drifted beyond acceptable windows and trigger targeted remediation without a full re-enrichment run.
+**User Story:** As a pipeline engineer responsible for data quality SLAs, I want per-source freshness metrics persisted to `data/derived/enrichment_freshness.parquet` (with state in `data/state/enrichment_refresh_state.json`) and surfaced as staleness alerts, so that I can identify which enrichment sources have drifted beyond acceptable windows and trigger targeted remediation without a full re-enrichment run.
 
 #### Acceptance Criteria
 
