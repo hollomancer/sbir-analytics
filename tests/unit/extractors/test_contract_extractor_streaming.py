@@ -42,12 +42,16 @@ def _fake_remotezip_module(member_gzip: bytes) -> types.ModuleType:
     return mod
 
 
-def _fake_remotezip_module_multi(members: dict[str, bytes]) -> types.ModuleType:
+def _fake_remotezip_module_multi(
+    members: dict[str, bytes],
+    sizes: dict[str, int] | None = None,
+) -> types.ModuleType:
     """Multi-member fake ``remotezip`` for auto-detection tests.
 
-    ``members`` maps ``filename → gzip-compressed bytes``. ``infolist()`` exposes
-    each member with a ``file_size`` equal to the gzip blob's length so the
-    largest-first probe ordering inside ``find_transaction_member`` is exercised.
+    ``members`` maps ``filename → gzip-compressed bytes`` used by ``open()``.
+    ``sizes`` optionally overrides each entry's reported ``file_size`` — useful
+    for exercising ``find_transaction_member``'s largest-first probe ordering
+    without bloating the actual gzip payloads. Defaults to the blob length.
     """
     mod = types.ModuleType("remotezip")
 
@@ -67,7 +71,10 @@ def _fake_remotezip_module_multi(members: dict[str, bytes]) -> types.ModuleType:
             return False
 
         def infolist(self):
-            return [_Info(name, len(blob)) for name, blob in members.items()]
+            return [
+                _Info(name, (sizes or {}).get(name, len(blob)))
+                for name, blob in members.items()
+            ]
 
         def open(self, member_name):
             return io.BytesIO(members[member_name])
@@ -148,25 +155,30 @@ def test_stream_remote_zip_member_missing_dependency_raises(sample_vendor_filter
 def test_find_transaction_member_skips_wrong_layout(
     sample_vendor_filters, sample_contract_row_full
 ):
-    """find_transaction_member skips short/wrong-shape members and picks the match."""
-    # Two decoys (too few cols / non-date col[2]) plus the real transaction member.
+    """find_transaction_member skips short/wrong-shape members and picks the match.
+
+    The decoys are declared *larger* than the real match via the ``sizes`` override
+    so the largest-first probe ordering inside ``find_transaction_member`` is
+    actually exercised: decoys get probed first and skipped, then the match wins.
+    """
     decoy_short = gzip.compress(b"\t".join([b"x"] * 20) + b"\n")
     decoy_no_date = gzip.compress(
         ("\t".join(["123", "id1", "NOT_A_DATE", "A"] + ["x"] * 99)).encode("utf-8") + b"\n"
     )
     txn_blob = gzip.compress(("\t".join(sample_contract_row_full) + "\n").encode("utf-8"))
-    # Order the dict so the decoys are larger → probed first → skipped first.
     members = {
-        "pruned_data_store_api_dump/9999.dat.gz": b"x" * (len(txn_blob) + 200) + decoy_short,
-        "pruned_data_store_api_dump/9998.dat.gz": b"x" * (len(txn_blob) + 100) + decoy_no_date,
+        "pruned_data_store_api_dump/9999.dat.gz": decoy_short,
+        "pruned_data_store_api_dump/9998.dat.gz": decoy_no_date,
         "pruned_data_store_api_dump/5183.dat.gz": txn_blob,
     }
-    # Use the real gzip blobs (decoys above were padded only to inflate file_size);
-    # restore them so the parser sees valid gzip when opened.
-    members["pruned_data_store_api_dump/9999.dat.gz"] = decoy_short
-    members["pruned_data_store_api_dump/9998.dat.gz"] = decoy_no_date
+    # Force decoys to appear larger so largest-first ordering probes them first.
+    sizes = {
+        "pruned_data_store_api_dump/9999.dat.gz": len(txn_blob) + 200,
+        "pruned_data_store_api_dump/9998.dat.gz": len(txn_blob) + 100,
+        "pruned_data_store_api_dump/5183.dat.gz": len(txn_blob),
+    }
 
-    fake = _fake_remotezip_module_multi(members)
+    fake = _fake_remotezip_module_multi(members, sizes=sizes)
     with patch.dict(sys.modules, {"remotezip": fake}):
         picked = ContractExtractor.find_transaction_member("https://x/y.zip")
 

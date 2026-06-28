@@ -131,11 +131,12 @@ def check_file_availability(
     return result
 
 
-def find_latest_file_in_s3(s3_bucket: str, database_type: str) -> dict:
+def find_latest_file_in_s3(s3_bucket: str, database_type: str) -> dict | None:
     """Find the most recent file in S3 for a given database type.
 
     Returns:
         dict with s3_key, last_modified, and date_str of the latest file, or None
+        (when no file is found, on S3 errors, or when ``boto3`` is not installed).
     """
     try:
         import boto3

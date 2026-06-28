@@ -529,7 +529,7 @@ class ContractExtractor:
 
         raise RuntimeError(
             f"No .dat.gz member in {zip_url} matched the transaction_normalized "
-            "signature (≥100 cols, 8-digit col[2], col[3] in A/B/C/D)."
+            "signature (≥100 cols, 8-digit col[2], col[3] in A/B/C/D/\\N)."
         )
 
     def stream_remote_zip_member(
