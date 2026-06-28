@@ -1,12 +1,18 @@
 # Requirements — State & Local Tax Rate Reference Data
 
-> **Status:** Not yet started. Required by **Phase 3** of
-> [../fiscal-tax-impact-v2.md](../fiscal-tax-impact-v2.md) and by
+> **Status:** Not yet started — but significant existing implementation.
+> `sbir_etl/transformers/fiscal/state_rates.py` already contains all 50 states
+> with hardcoded 2024 Tax Foundation / Census ASGF rates and a `StateRateProvider`
+> class. **The task is to make those rates data-driven** (loaded from a refreshable
+> CSV) rather than hardcoded constants. The `StateTaxRates` dataclass and
+> `StateRateProvider` interface stay unchanged.
+>
+> Required by **Phase 3** of [../fiscal-tax-impact-v2.md](../fiscal-tax-impact-v2.md) and
 > **Requirement 3** of [../fiscal-sensitivity-reconciliation/](../fiscal-sensitivity-reconciliation/).
-> Anchors inventory questions **D2** (state-level fiscal returns) and **D3**
-> (state-rate sensitivity) in [docs/research-questions.md](../../docs/research-questions.md).
+> Anchors inventory questions **D2** and **D3** in
+> [docs/research-questions.md](../../docs/research-questions.md).
 
-**Research question anchor:** D2 — how do fiscal returns stratify by state? D3 — does state-specific vs. national-average rate choice materially change state-by-state ROI estimates?
+**Research question anchor:** D2 — state-level fiscal return stratification; D3 — does state-specific vs. national-average rate choice materially change state-by-state ROI estimates?
 **Answers for:** pipeline engineers, Treasury / OMB analysts, state economic-development offices
 **Complexity tier:** Foundational data acquisition
 
@@ -15,88 +21,80 @@
 ## Done when
 
 > A pipeline engineer can state: "`data/reference/tax/state_effective_rates.csv`
-> contains state income tax, state sales tax, state SUTA payroll tax, and local
-> effective property tax rates for all 50 states and D.C., by year (2010–present),
-> sourced from Tax Foundation annual tables and Census ASGF. Rates are refreshed
-> annually. The `FiscalTaxEstimator` uses state-specific rates when a `state` field
-> is present and falls back to the NIPA national average with a `rate_source` flag
-> when state is missing."
+> contains the same rates as `state_rates.py`'s `_STATE_RATES_2024` dict — but
+> refreshed from Tax Foundation and Census ASGF source files, not hardcoded. Running
+> `poetry run refresh-state-rates` downloads the latest Tax Foundation tables and
+> updates the CSV. `StateRateProvider` loads from the CSV when a path is supplied,
+> falls back to the hardcoded dict otherwise. Existing tests pass unchanged."
 
 ---
 
-## Introduction
+## Current state
 
-BEA NIPA tables (D2 Phase 1, `specs/bea-nipa-tax-rates/`) produce national-average
-effective tax rates. Texas has no state income tax; California tops out at 13.3%.
-Applying a national average to every SBIR award introduces systematic error for
-state-level fiscal return estimates. This spec covers the two data sources that
-provide state-specific rates:
+`sbir_etl/transformers/fiscal/state_rates.py` already has:
 
-- **Tax Foundation** annual tables: state income tax, state sales tax, SUTA (state
-  unemployment insurance payroll tax). Published annually; freely downloadable.
-- **Census Annual Survey of Government Finances (ASGF)**: local effective property
-  tax rates by state, derived from Census-reported local tax collections ÷ Census
-  property value estimates.
+- `StateTaxRates` dataclass (income_rate, sales_rate, property_rate, has_income_tax, has_sales_tax)
+- `_STATE_RATES_2024` — all 50 states + D.C. hardcoded with 2024 Tax Foundation (income, sales) and Census ASGF (property) rates
+- `StateRateProvider` class with `get_rates(state)` and no-income-tax / no-sales-tax helpers
 
-Both sources are assembled into a single `state_effective_rates.csv` that the
-`FiscalTaxEstimator` can join to award records by `state` and `fiscal_year`.
+Tests at `tests/unit/transformers/fiscal/test_state_rates.py`.
+
+The hardcoded dict is the problem: it requires a code change every year to update rates and has no provenance trail (which exact Tax Foundation edition, which line?). This spec makes the rates data-driven without changing the interface.
 
 ---
 
 ## User Stories
 
-**As a pipeline engineer,** I want state-specific effective tax rates in a single
-reference CSV, refreshed annually without code changes, so that the fiscal estimator
-can apply the correct rate for each award's state rather than a national average.
+**As a pipeline engineer,** I want the state rate data loaded from a version-controlled
+CSV rather than a hardcoded Python dict, so that annual rate updates don't require a
+code change — only a data file update with a cited source.
 
-**As a Treasury analyst reporting state-level SBIR ROI to state economic-development
-offices,** I want state-specific rates documented with their Tax Foundation source
-year, so that I can defend the rate assumptions in state-facing reports.
+**As a Treasury analyst,** I want each rate in the CSV to carry a source citation
+(Tax Foundation edition year, table, line), so that the methodology is auditable
+without reading source code.
 
 ---
 
 ## Requirements
 
-### Requirement 1 — Tax Foundation state rate ingestion
+### Requirement 1 — CSV reference file with source citations
 
 #### Acceptance Criteria
 
-1. THE System SHALL source the following rates per state per year from Tax Foundation
-   published tables: state individual income tax top rate, state sales tax average
-   rate, and state SUTA (unemployment insurance) tax rate.
-2. THE System SHALL cover years 2010 through the most recent published Tax Foundation
-   edition, adding new years annually.
-3. THE System SHALL store raw Tax Foundation source files in
-   `data/reference/tax/sources/tax_foundation/` with filename including the
-   publication year (e.g., `state_individual_income_tax_rates_2024.csv`).
-4. THE System SHALL note the Tax Foundation's "State Individual Income Tax Rates and
-   Brackets" and "State and Local Sales Tax Rates" annual publications as the
-   authoritative source in the reference CSV's header metadata.
+1. THE System SHALL create `data/reference/tax/state_effective_rates.csv` with one
+   row per state-year containing: `state_fips`, `state_abbr`, `fiscal_year`,
+   `income_rate`, `sales_rate`, `property_rate`, `has_income_tax`, `has_sales_tax`,
+   `income_source`, `sales_source`, `property_source`.
+2. THE initial population SHALL match the values in `_STATE_RATES_2024` exactly, with
+   `fiscal_year = 2024` and source columns citing the specific Tax Foundation and
+   Census ASGF publications used.
+3. WHEN a state has no income tax (AK, FL, NV, NH, SD, TN, TX, WA, WY) or no sales
+   tax (DE, MT, NH, OR), the corresponding rate SHALL be 0.0 and the `has_*` flag
+   SHALL be `False`.
 
-### Requirement 2 — Census ASGF local property tax rates
-
-#### Acceptance Criteria
-
-1. THE System SHALL derive local effective property tax rates from Census ASGF
-   state-level data: (total local property tax collections) ÷ (total assessed
-   property value) per state per year.
-2. THE System SHALL cover years 2010–present, refreshing when Census publishes the
-   latest ASGF edition (typically 18 months after the survey year).
-3. THE System SHALL store raw Census ASGF files in
-   `data/reference/tax/sources/census_asgf/`.
-
-### Requirement 3 — Unified reference table
+### Requirement 2 — StateRateProvider updated to load from CSV
 
 #### Acceptance Criteria
 
-1. THE System SHALL assemble a single `data/reference/tax/state_effective_rates.csv`
-   with columns: `state_fips`, `state_abbr`, `fiscal_year`, `state_income_tax_rate`,
-   `state_sales_tax_rate`, `state_suta_rate`, `local_property_tax_rate`,
-   `income_source`, `sales_source`, `suta_source`, `property_source`.
-2. WHEN a state-year cell is missing from any source, THE System SHALL fill it with
-   the national average from the NIPA tables and set the corresponding `*_source`
-   column to `"nipa_national_avg"`.
-3. THE System SHALL include Washington D.C. as a jurisdiction row.
-4. THE `FiscalTaxEstimator` SHALL consume this file by joining on `state_fips` and
-   `fiscal_year`, and attach a `rate_source` metadata column
-   (`"state_specific"` vs. `"nipa_national_avg"`) to each output row.
+1. THE `StateRateProvider` class SHALL accept an optional `csv_path: Path | None = None`
+   parameter. When provided, it loads rates from the CSV filtered to
+   `fiscal_year = max(available year ≤ requested_year)`. When `None`, it falls back
+   to `_STATE_RATES_2024` for backwards compatibility.
+2. THE public interface (`get_rates(state)`, `states`, `no_income_tax_states`,
+   `no_sales_tax_states`) SHALL remain unchanged so all existing callers work without
+   modification.
+3. Existing tests in `tests/unit/transformers/fiscal/test_state_rates.py` SHALL pass
+   without modification after this change.
+
+### Requirement 3 — Annual refresh CLI
+
+#### Acceptance Criteria
+
+1. THE System SHALL implement `poetry run refresh-state-rates` that downloads the
+   latest Tax Foundation "State Individual Income Tax Rates" and "State and Local
+   Sales Tax Rates" tables, appends a new fiscal-year row for each state, and
+   writes the updated CSV.
+2. WHEN a state-year already exists in the CSV, THE System SHALL overwrite it rather
+   than append a duplicate.
+3. THE CLI SHALL log which Tax Foundation edition it sourced and the count of states
+   updated, and fall back gracefully (log warning, no update) if the download fails.
