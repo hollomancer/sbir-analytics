@@ -197,10 +197,12 @@ class TransitionScorer:
         contract: FederalContract,
     ) -> TimingSignal:
         """
-        Score timing proximity between award completion and contract start.
+        Score timing proximity between award completion and contract date.
 
-        Closer timing indicates stronger likelihood of transition. Uses
-        configured time windows with decay multipliers.
+        Uses the contract's true transaction ``action_date`` (the obligating-action
+        date), falling back to the period-of-performance ``start_date`` when
+        ``action_date`` is absent. Closer timing indicates stronger likelihood of
+        transition. Uses configured time windows with decay multipliers.
 
         Args:
             award_data: Award information
@@ -210,22 +212,24 @@ class TransitionScorer:
             TimingSignal with days/months and timing score
         """
         award_completion_date = award_data.get("completion_date")
-        contract_start_date = contract.start_date
+        # Prefer the true transaction action_date (the obligating-action date); fall
+        # back to the period-of-performance start when action_date is absent.
+        contract_date = contract.action_date or contract.start_date
 
-        if not award_completion_date or not contract_start_date:
+        if not award_completion_date or not contract_date:
             return TimingSignal(timing_score=0.0)
 
         # Calculate days between
-        days_between = (contract_start_date - award_completion_date).days
+        days_between = (contract_date - award_completion_date).days
 
         # Handle contracts before award completion (negative days)
         if days_between < 0:
             logger.warning(
-                "Contract starts before award completion",
+                "Contract action precedes award completion",
                 extra={
                     "days_between": days_between,
                     "award_completion": award_completion_date.isoformat(),
-                    "contract_start": contract_start_date.isoformat(),
+                    "contract_date": contract_date.isoformat(),
                 },
             )
             return TimingSignal(

@@ -230,6 +230,42 @@ class TestScoreTimingProximity:
 
         assert signal.timing_score == 0.0
 
+    def test_score_timing_prefers_action_date_over_start_date(self, default_config):
+        """Timing uses the true transaction action_date, not the PoP start_date."""
+        scorer = TransitionScorer(default_config)
+
+        award_data = {"completion_date": date(2023, 1, 1)}
+        contract = FederalContract(
+            contract_id="C123",
+            vendor_name="Vendor",
+            agency="DOD",
+            action_date=date(2023, 2, 1),  # 31 days after completion (the real date)
+            start_date=date(2023, 6, 1),  # PoP start, much later — must NOT be used
+            competition_type=CompetitionType.SOLE_SOURCE,
+        )
+
+        signal = scorer.score_timing_proximity(award_data, contract)
+
+        assert signal.days_between_award_and_contract == 31
+
+    def test_score_timing_falls_back_to_start_date(self, default_config):
+        """When action_date is absent, timing falls back to start_date."""
+        scorer = TransitionScorer(default_config)
+
+        award_data = {"completion_date": date(2023, 1, 1)}
+        contract = FederalContract(
+            contract_id="C123",
+            vendor_name="Vendor",
+            agency="DOD",
+            action_date=None,
+            start_date=date(2023, 2, 1),  # 31 days after completion
+            competition_type=CompetitionType.SOLE_SOURCE,
+        )
+
+        signal = scorer.score_timing_proximity(award_data, contract)
+
+        assert signal.days_between_award_and_contract == 31
+
 
 class TestScoreCompetitionType:
     """Tests for score_competition_type method."""

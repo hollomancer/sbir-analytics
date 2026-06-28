@@ -145,10 +145,13 @@ class TransitionDetector:
 
         filtered = []
         for contract in contracts:
-            if not contract.start_date:
+            # Prefer the true transaction action_date; fall back to the
+            # period-of-performance start when action_date is absent.
+            contract_date = contract.action_date or contract.start_date
+            if not contract_date:
                 continue
 
-            if min_date <= contract.start_date <= max_date:
+            if min_date <= contract_date <= max_date:
                 filtered.append(contract)
 
         logger.debug(
