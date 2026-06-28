@@ -107,7 +107,7 @@ class TestImportSAMGovEntitiesHelper:
 
     @patch("sbir_analytics.assets.sam_gov_ingestion.get_s3_bucket_from_env")
     @patch("sbir_analytics.assets.sam_gov_ingestion.find_latest_sam_gov_parquet")
-    @patch("sbir_analytics.assets.sam_gov_ingestion.resolve_data_path")
+    @patch("sbir_analytics.assets._ingestion_utils.resolve_data_path")
     @patch("sbir_analytics.assets.sam_gov_ingestion.SAMGovExtractor")
     @patch("sbir_analytics.assets.sam_gov_ingestion.get_config")
     def test_import_from_s3_parquet(

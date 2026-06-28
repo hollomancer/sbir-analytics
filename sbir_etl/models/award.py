@@ -218,7 +218,8 @@ class Award(BaseModel):
     @classmethod
     def validate_award_date(cls, v: Any) -> date | None:
         """Parse award_date strings; lenient on format failures."""
-        return parse_date(v)  # type: ignore[return-value]
+        result = parse_date(v)
+        return result.date() if isinstance(result, datetime) else result
 
     @field_validator("program")
     @classmethod

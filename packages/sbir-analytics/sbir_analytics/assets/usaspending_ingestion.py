@@ -43,7 +43,7 @@ def _import_usaspending_table(
     config = get_config()
     s3_bucket = get_s3_bucket_from_env()
 
-    dump_path, _ = _resolve_tiered_path(
+    dump_path, s3_dump_url = _resolve_tiered_path(
         context,
         s3_finder=lambda b: (
             find_latest_usaspending_dump(bucket=b, database_type="test")
@@ -64,7 +64,7 @@ def _import_usaspending_table(
             extra={
                 "dump_path": str(dump_path),
                 "duckdb_path": config.duckdb.database_path,
-                "source": "S3_dump",
+                "source": "S3_dump" if s3_dump_url else "local_dump",
             },
         )
 

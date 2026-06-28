@@ -65,7 +65,8 @@ def normalize_name(
     if remove_suffixes:
         # Remove all common business suffixes (usaspending_enricher behavior)
         s = re.sub(
-            r"\b(incorporated|incorporation|inc|corp|corporation|llc|ltd|limited|co|company)\b",
+            r"\b(incorporated|incorporation|inc|corp|corporation|llc|llp|lp|ltd|limited"
+            r"|plc|liability|partnership|co|company)\b",
             "",
             s,
         )

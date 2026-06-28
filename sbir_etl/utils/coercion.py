@@ -6,10 +6,16 @@ from typing import Any
 
 import pandas as pd
 
+# Explicit pandas NA singleton types — avoids pd.isna() on arrays/lists
+# which returns an ambiguous boolean array and triggers DeprecationWarning.
+_PANDAS_NA_TYPES = (type(pd.NA), type(pd.NaT))
+
 
 def _blank(value: Any) -> bool:
-    """Return True for None, NaN, or whitespace-only strings."""
+    """Return True for None, NaN, pd.NA, pd.NaT, or whitespace-only strings."""
     if value is None:
+        return True
+    if isinstance(value, _PANDAS_NA_TYPES):
         return True
     if isinstance(value, float) and pd.isna(value):
         return True

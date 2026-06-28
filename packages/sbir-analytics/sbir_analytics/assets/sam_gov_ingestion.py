@@ -58,7 +58,7 @@ def _import_sam_gov_entities(
             "Starting SAM.gov entity extraction from parquet",
             extra={
                 "parquet_path": str(parquet_path),
-                "source": "S3_parquet" if s3_bucket else "local_parquet",
+                "source": "S3_parquet" if s3_parquet_url else "local_parquet",
             },
         )
 
