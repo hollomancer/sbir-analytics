@@ -196,3 +196,45 @@ class TestFilterByTimingWindow:
         filtered = detector.filter_by_timing_window(completion_date, [contract])
 
         assert len(filtered) == 0
+
+    def test_filter_prefers_action_date_over_start_date(self, default_config):
+        """Window membership uses action_date, not the PoP start_date."""
+        detector = TransitionDetector(config=default_config)  # window [0, 730] days
+        completion_date = date(2023, 6, 1)
+
+        contract = FederalContract(
+            contract_id="CTR001",
+            agency="DOD",
+            vendor_name="Acme",
+            action_date=completion_date + timedelta(days=90),  # inside the window
+            start_date=completion_date + timedelta(days=800),  # outside — must be ignored
+            amount=100000,
+            description="Services",
+            naics_code="541715",
+        )
+
+        filtered = detector.filter_by_timing_window(completion_date, [contract])
+
+        assert len(filtered) == 1
+        assert filtered[0].contract_id == "CTR001"
+
+    def test_filter_falls_back_to_start_date_when_action_date_none(self, default_config):
+        """When action_date is absent, window membership falls back to start_date."""
+        detector = TransitionDetector(config=default_config)
+        completion_date = date(2023, 6, 1)
+
+        contract = FederalContract(
+            contract_id="CTR001",
+            agency="DOD",
+            vendor_name="Acme",
+            action_date=None,
+            start_date=completion_date + timedelta(days=90),  # inside the window
+            amount=100000,
+            description="Services",
+            naics_code="541715",
+        )
+
+        filtered = detector.filter_by_timing_window(completion_date, [contract])
+
+        assert len(filtered) == 1
+        assert filtered[0].contract_id == "CTR001"

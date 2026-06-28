@@ -197,10 +197,12 @@ class TransitionScorer:
         contract: FederalContract,
     ) -> TimingSignal:
         """
-        Score timing proximity between award completion and contract start.
+        Score timing proximity between award completion and contract date.
 
-        Closer timing indicates stronger likelihood of transition. Uses
-        configured time windows with decay multipliers.
+        Uses the contract's true transaction ``action_date`` (the obligating-action
+        date), falling back to the period-of-performance ``start_date`` when
+        ``action_date`` is absent. Closer timing indicates stronger likelihood of
+        transition. Uses configured time windows with decay multipliers.
 
         Args:
             award_data: Award information
