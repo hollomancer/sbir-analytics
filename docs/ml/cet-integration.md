@@ -114,7 +114,7 @@ Output: {
 
 Implemented in `packages/sbir-ml/sbir_ml/ml/models/cet_classifier.py` as `ApplicabilityModel`. Key hyperparameters (from `config/cet/classification.yaml`):
 
-- `tfidf.max_features` (e.g., 5000), `ngram_range` ([1,2]), `min_df`, `max_df` (0.95), `keyword_boost_factor` (2.0), `sublinear_tf`, `norm`
+- `tfidf.max_features` (e.g., 5000), `tfidf.ngram_range` ([1,2]), `tfidf.min_df`, `tfidf.max_df` (0.95), `tfidf.keyword_boost_factor` (2.0), `tfidf.sublinear_tf`, `tfidf.norm`
 - `logistic_regression.C` (regularization), `max_iter`, `solver`, `class_weight`, `n_jobs`
 - `feature_selection.enabled`, `feature_selection.k_best` (e.g., 3000)
 - `calibration.method` ("sigmoid" | "isotonic"), `calibration.cv` (folds)

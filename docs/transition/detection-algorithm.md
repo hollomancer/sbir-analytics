@@ -112,7 +112,7 @@ The Transition Detection Algorithm is a multi-signal scoring system that identif
 
 ### 3. Signal Extraction & Scoring
 
-The algorithm combines six independent signals, each with configurable weights summing to 1.0:
+The algorithm combines six independent signals, each with a configurable weight (active defaults sum to 0.90; text similarity carries a weight but is disabled by default):
 
 | Signal | Default Weight | Logic |
 |--------|---------------|-------|
@@ -121,7 +121,7 @@ The algorithm combines six independent signals, each with configurable weights s
 | Competition Type | 0.20 | Sole source / limited = vendor-targeted procurement |
 | Patent Signal | 0.15 | Patent activity signals technology maturity |
 | CET Alignment | 0.10 | Same NSTC technology area (see `config/cet/taxonomy.yaml`) |
-| Text Similarity | 0.00 | Disabled — high false-positive rate |
+| Text Similarity | 0.05 (disabled by default) | Disabled — high false-positive rate |
 
 For full scoring tables, per-signal tuning guidance, and preset configurations, see [scoring-guide.md](scoring-guide.md).
 
