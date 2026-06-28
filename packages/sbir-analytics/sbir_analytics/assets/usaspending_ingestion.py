@@ -20,6 +20,7 @@ from sbir_etl.extractors.usaspending import DuckDBUSAspendingExtractor
 from sbir_etl.utils.cloud_storage import (
     find_latest_usaspending_dump,
     get_s3_bucket_from_env,
+    resolve_data_path,
 )
 
 from ._ingestion_utils import _resolve_tiered_path
