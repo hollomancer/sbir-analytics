@@ -13,7 +13,7 @@ Two ML systems: CET classification (predicts applicability to 21 NSTC critical &
 **Run award classification:**
 
 ```bash
-dagster asset materialize -m sbir_analytics.definitions --select cet_classifications
+dagster asset materialize -m sbir_analytics.definitions --select ml/enriched_cet_award_classifications
 dagster job execute -m sbir_analytics.definitions -j cet_full_pipeline_job
 ```
 
