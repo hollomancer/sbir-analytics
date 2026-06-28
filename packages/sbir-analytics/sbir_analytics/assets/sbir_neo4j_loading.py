@@ -111,7 +111,6 @@ _BOOL_FIELDS_WITH_UNKNOWN = (
 # ---------------------------------------------------------------------------
 
 
-
 def _company_id_for_award(award: Award) -> str | None:
     """Return UEI / DUNS-prefixed / NAME-prefixed identifier (in that priority)."""
     if award.company_uei:
@@ -119,7 +118,9 @@ def _company_id_for_award(award: Award) -> str | None:
     if award.company_duns:
         return f"DUNS:{award.company_duns}"
     if award.company_name:
-        normalized = normalize_name(award.company_name, remove_suffixes=True, apply_abbreviations=True)
+        normalized = normalize_name(
+            award.company_name, remove_suffixes=True, apply_abbreviations=True
+        )
         if normalized:
             return f"NAME:{normalized}"
     return None
@@ -560,7 +561,9 @@ def neo4j_sbir_awards(
                 award_nodes.append(_transaction_props(award))
                 award_objects.append(award)
 
-                normalized_name = normalize_name(award.company_name or "", remove_suffixes=True, apply_abbreviations=True)
+                normalized_name = normalize_name(
+                    award.company_name or "", remove_suffixes=True, apply_abbreviations=True
+                )
                 company_id, id_type, name_only_fallback = _resolve_canonical_company(
                     award, canonical_map, normalized_name
                 )
