@@ -11,8 +11,9 @@ We filter specifically for contract transactions (type code 'contract').
 """
 
 import gzip
+import io
 import json
-from collections.abc import Iterator
+from collections.abc import Iterable, Iterator
 from pathlib import Path
 
 import pandas as pd
@@ -405,12 +406,58 @@ class ContractExtractor:
             logger.debug(f"Failed to parse contract row: {e}")
             return None
 
+    def _parse_lines(
+        self,
+        lines: Iterable[str],
+        source_name: str = "stream",
+    ) -> Iterator[FederalContract]:
+        """Parse tab-delimited transaction_normalized lines into FederalContracts.
+
+        Transport-agnostic core shared by the local-file and remote-stream readers:
+        it consumes any iterable of text lines (a gzip file handle, a decompressed
+        remote member, a test fixture) and applies the same type / vendor filtering
+        and row parsing.
+        """
+        for line_num, line in enumerate(lines, 1):
+            self.stats["records_scanned"] += 1
+
+            # Progress logging
+            if line_num % 100000 == 0:
+                logger.info(
+                    f"  [{source_name}] processed {line_num:,} records, "
+                    f"found {self.stats['records_extracted']} contracts"
+                )
+
+            # Split tab-delimited row
+            row_data = line.strip().split("\t")
+
+            # Check if it's a contract type (columns 4 and 6)
+            if len(row_data) > 5:
+                type_code = row_data[3]  # Column 4: type
+                award_type_code = row_data[5]  # Column 6: award_type_code
+                if not self._is_contract_type(type_code, award_type_code):
+                    continue
+
+                self.stats["contracts_found"] += 1
+
+            # Check vendor filter
+            if not self._matches_vendor_filter(row_data):
+                continue
+
+            self.stats["vendor_matches"] += 1
+
+            # Parse into FederalContract
+            contract = self._parse_contract_row(row_data)
+            if contract:
+                self.stats["records_extracted"] += 1
+                yield contract
+
     def stream_dat_gz_file(
         self,
         dat_file: Path,
     ) -> Iterator[FederalContract]:
         """
-        Stream and parse a single .dat.gz file.
+        Stream and parse a single local .dat.gz file.
 
         Args:
             dat_file: Path to .dat.gz file
@@ -419,44 +466,56 @@ class ContractExtractor:
             FederalContract instances that match vendor filters
         """
         logger.info(f"Processing {dat_file.name}...")
-
         with gzip.open(dat_file, "rt", encoding="utf-8", errors="replace") as f:
-            for line_num, line in enumerate(f, 1):
-                self.stats["records_scanned"] += 1
-
-                # Progress logging
-                if line_num % 100000 == 0:
-                    logger.info(
-                        f"  Processed {line_num:,} records, "
-                        f"found {self.stats['records_extracted']} contracts"
-                    )
-
-                # Split tab-delimited row
-                row_data = line.strip().split("\t")
-
-                # Check if it's a contract type (columns 4 and 6)
-                if len(row_data) > 5:
-                    type_code = row_data[3]  # Column 4: type
-                    award_type_code = row_data[5]  # Column 6: award_type_code
-                    if not self._is_contract_type(type_code, award_type_code):
-                        continue
-
-                    self.stats["contracts_found"] += 1
-
-                # Check vendor filter
-                if not self._matches_vendor_filter(row_data):
-                    continue
-
-                self.stats["vendor_matches"] += 1
-
-                # Parse into FederalContract
-                contract = self._parse_contract_row(row_data)
-                if contract:
-                    self.stats["records_extracted"] += 1
-                    yield contract
-
+            yield from self._parse_lines(f, dat_file.name)
         logger.info(
             f"Completed {dat_file.name}: {self.stats['records_extracted']} contracts extracted"
+        )
+
+    def stream_remote_zip_member(
+        self,
+        zip_url: str,
+        member_name: str,
+    ) -> Iterator[FederalContract]:
+        """Stream-parse one ``.dat.gz`` member directly from a remote ``.zip``.
+
+        Uses HTTP Range requests (via ``remotezip``) to read **only** the bytes of
+        ``member_name`` (e.g. the ``transaction_normalized`` table) out of the
+        USAspending database zip — never downloading the full ~217GB archive, and
+        without staging it on local disk. The member is itself gzip-compressed
+        (``.dat.gz``), so it is decompressed on the fly as bytes arrive.
+
+        Requires the server to support HTTP Range (``files.usaspending.gov`` does)
+        and the optional ``remotezip`` dependency.
+
+        Args:
+            zip_url: ``https://`` URL of the database zip (e.g.
+                ``https://files.usaspending.gov/database_download/usaspending-db-subset_YYYYMMDD.zip``).
+            member_name: Path of the ``.dat.gz`` member inside the zip.
+
+        Yields:
+            FederalContract instances that match vendor filters.
+        """
+        try:
+            from remotezip import RemoteZip
+        except ImportError as e:  # pragma: no cover - exercised via import guard
+            raise ImportError(
+                "Remote zip streaming requires the optional 'streaming' extra "
+                "(uv sync --extra streaming / pip install 'sbir-etl[streaming]')."
+            ) from e
+
+        logger.info(f"Streaming member {member_name} from {zip_url} (HTTP range)")
+        with (
+            RemoteZip(zip_url) as remote_zip,
+            remote_zip.open(member_name) as member,
+            # `member` yields the gzip-compressed .dat.gz bytes; decompress streaming.
+            gzip.GzipFile(fileobj=member) as gz,
+            io.TextIOWrapper(gz, encoding="utf-8", errors="replace") as text,
+        ):
+            yield from self._parse_lines(text, member_name)
+        logger.info(
+            f"Completed streaming {member_name}: "
+            f"{self.stats['records_extracted']} contracts extracted"
         )
 
     def extract_from_dump(
@@ -493,32 +552,62 @@ class ContractExtractor:
                 f"Auto-selected largest file: {table_files[0]} ({dat_files[0].stat().st_size / 1e9:.1f} GB)"
             )
 
-        # Process files and collect contracts
-        all_contracts = []
-        batch_contracts = []
+        # Scan each table file (streaming) and write the filtered contracts.
+        def _stream_all() -> Iterator[FederalContract]:
+            for table_file in table_files:
+                yield from self.stream_dat_gz_file(dump_dir / table_file)
 
-        for table_file in table_files:
-            dat_path = dump_dir / table_file
+        return self._collect_and_write(_stream_all(), output_file)
 
-            for contract in self.stream_dat_gz_file(dat_path):
-                batch_contracts.append(contract.model_dump())
+    def extract_from_remote_zip(
+        self,
+        zip_url: str,
+        member_name: str,
+        output_file: Path,
+    ) -> int:
+        """Extract SBIR-relevant contracts by streaming one member from a remote zip.
 
-                # Write batch to avoid memory issues
-                if len(batch_contracts) >= self.batch_size:
-                    all_contracts.extend(batch_contracts)
-                    logger.info(f"Batch accumulated: {len(all_contracts):,} total contracts")
-                    batch_contracts = []
+        The remote counterpart to :meth:`extract_from_dump`: streams ``member_name``
+        (the ``transaction_normalized`` ``.dat.gz``) straight from ``zip_url`` over
+        HTTP range, applies the same vendor/type filtering, and writes the filtered
+        Parquet. No full ~217GB download and nothing staged on local disk.
 
-        # Add remaining contracts
-        if batch_contracts:
-            all_contracts.extend(batch_contracts)
+        Args:
+            zip_url: ``https://`` URL of the USAspending database zip.
+            member_name: Path of the ``.dat.gz`` member inside the zip.
+            output_file: Parquet output path.
 
-        # Write to Parquet
-        if all_contracts:
-            logger.info(f"Writing {len(all_contracts):,} contracts to {output_file}")
-            df = pd.DataFrame(all_contracts)
+        Returns:
+            Number of contracts extracted.
+        """
+        output_file = Path(output_file)
+        return self._collect_and_write(
+            self.stream_remote_zip_member(zip_url, member_name), output_file
+        )
+
+    def _collect_and_write(
+        self,
+        contracts: Iterable[FederalContract],
+        output_file: Path,
+    ) -> int:
+        """Materialize matched contracts, write Parquet, log stats. Returns row count.
+
+        The source table is *scanned* streaming (line by line); only the matched,
+        vendor-filtered contracts accumulate here — a tiny fraction of the input — so
+        holding them in memory before a single Parquet write is safe even for the
+        full dump.
+        """
+        rows: list[dict] = []
+        for contract in contracts:
+            rows.append(contract.model_dump())
+            if len(rows) % self.batch_size == 0:
+                logger.info(f"Accumulated {len(rows):,} matched contracts")
+
+        if rows:
+            logger.info(f"Writing {len(rows):,} contracts to {output_file}")
             from sbir_etl.utils.data.file_io import save_dataframe_parquet
 
+            df = pd.DataFrame(rows)
             save_dataframe_parquet(df, output_file, index=False, compression="snappy")
             logger.success(f"Contracts saved to {output_file}")
         else:
@@ -534,7 +623,7 @@ class ContractExtractor:
             logger.info(f"  {key}: {value:,}")
         logger.info("=" * 60)
 
-        return len(all_contracts)
+        return len(rows)
 
 
 __all__ = ["ContractExtractor"]

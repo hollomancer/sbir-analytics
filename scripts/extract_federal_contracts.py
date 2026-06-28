@@ -6,11 +6,18 @@ This script extracts contracts for SBIR vendors only, filtering the
 large USAspending dataset to manageable size.
 
 Usage:
-    # Extract from subset (17GB)
-    poetry run python scripts/extract_federal_contracts.py --subset
+    # Extract from a locally-extracted subset dump
+    python scripts/extract_federal_contracts.py --subset
 
-    # Extract from full dataset (200GB)
-    poetry run python scripts/extract_federal_contracts.py --full
+    # Extract from a locally-extracted full dump
+    python scripts/extract_federal_contracts.py --full
+
+    # Stream one table member straight from the remote USAspending .zip over HTTP
+    # range — no full ~217GB download, nothing staged on local disk (needs the
+    # 'streaming' extra: uv sync --extra streaming):
+    python scripts/extract_federal_contracts.py \\
+        --remote-zip https://files.usaspending.gov/database_download/usaspending-db-subset_20240101.zip \\
+        --member 5530.dat.gz
 """
 
 import argparse
@@ -31,11 +38,57 @@ def main():
     parser.add_argument("--full", action="store_true", help="Extract from full dump (200GB)")
     parser.add_argument("--dump-dir", type=Path, help="Custom dump directory path")
     parser.add_argument("--output", type=Path, help="Custom output file path")
+    parser.add_argument(
+        "--remote-zip",
+        type=str,
+        help=(
+            "Stream one member from a remote USAspending database .zip over HTTP range "
+            "(no full download). Requires the 'streaming' extra; the member streamed is "
+            "set by --member (defaults to the transaction_normalized table)."
+        ),
+    )
+    parser.add_argument(
+        "--member",
+        type=str,
+        default="5530.dat.gz",
+        help=(
+            "Name of the .dat.gz member inside --remote-zip to stream "
+            "(default: 5530.dat.gz, the transaction_normalized table)."
+        ),
+    )
 
     args = parser.parse_args()
 
     # Load configuration for default paths
     config = get_config()
+
+    vendor_filter_file = config.paths.resolve_path("transition_vendor_filters")
+    if not vendor_filter_file.exists():
+        logger.error(f"Vendor filter file not found: {vendor_filter_file}")
+        logger.info("Run: python scripts/extract_sbir_vendors.py")
+        return
+
+    # Remote-zip streaming path: no local dump required.
+    if args.remote_zip:
+        output_file = args.output or config.paths.resolve_path("transition_contracts_output")
+        logger.info("Initializing ContractExtractor (remote-zip streaming)...")
+        extractor = ContractExtractor(
+            vendor_filter_file=vendor_filter_file,
+            batch_size=10000,
+        )
+        logger.info(f"Streaming member {args.member} from {args.remote_zip}")
+        logger.info(f"Output will be saved to {output_file}")
+        try:
+            num_contracts = extractor.extract_from_remote_zip(
+                zip_url=args.remote_zip,
+                member_name=args.member,
+                output_file=output_file,
+            )
+            logger.success(f"Extraction complete! {num_contracts:,} contracts extracted")
+        except Exception as e:
+            logger.error(f"Remote-zip extraction failed: {e}")
+            raise
+        return
 
     # Determine paths
     if args.dump_dir:
@@ -54,19 +107,12 @@ def main():
     else:
         output_file = config.paths.resolve_path("transition_contracts_output")
 
-    vendor_filter_file = config.paths.resolve_path("transition_vendor_filters")
-
     # Validate inputs
     if not dump_dir.exists():
         logger.error(f"Dump directory not found: {dump_dir}")
         if not args.subset:
             logger.info("For subset extraction, the dump should be extracted to:")
             logger.info(f"  {dump_dir}")
-        return
-
-    if not vendor_filter_file.exists():
-        logger.error(f"Vendor filter file not found: {vendor_filter_file}")
-        logger.info("Run: poetry run python scripts/extract_sbir_vendors.py")
         return
 
     # Initialize extractor
