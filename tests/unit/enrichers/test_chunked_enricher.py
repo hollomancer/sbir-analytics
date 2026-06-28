@@ -17,14 +17,6 @@ def mock_config():
     return create_mock_enrichment_performance_config()
 
 
-@pytest.fixture
-def temp_checkpoint_dir(tmp_path):
-    """Temporary checkpoint directory."""
-    checkpoint_dir = tmp_path / "checkpoints"
-    checkpoint_dir.mkdir()
-    return checkpoint_dir
-
-
 class TestChunkedEnricherInitialization:
     """Tests for ChunkedEnricher initialization."""
 

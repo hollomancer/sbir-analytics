@@ -11,14 +11,6 @@ from sbir_etl.enrichers.chunked_enrichment import ChunkProgress
 pytestmark = pytest.mark.fast
 
 
-@pytest.fixture
-def temp_checkpoint_dir(tmp_path):
-    """Temporary checkpoint directory."""
-    checkpoint_dir = tmp_path / "checkpoints"
-    checkpoint_dir.mkdir()
-    return checkpoint_dir
-
-
 class TestChunkProgressInit:
     """Tests for ChunkProgress initialization."""
 

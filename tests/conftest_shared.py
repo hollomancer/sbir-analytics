@@ -14,14 +14,12 @@ Fixture Categories:
 - Neo4j: neo4j_config, neo4j_client, neo4j_helper
 - Mocks: mock_driver, mock_session, mock_transaction
 - Enrichment: mock_enrichment_config, sample_sbir_df, sample_recipient_df
-- Fiscal: sample_fiscal_awards_df, sample_fiscal_impacts_df, sample_tax_parameters
 - Transition: default_transition_config, sample_award, sample_contract, mock_scorer
 - DataFrame Builders: builder_awards_df, builder_contracts_df, builder_companies_df
 """
 
 import os
-from datetime import date, datetime, timedelta
-from decimal import Decimal
+from datetime import date, datetime
 from unittest.mock import Mock
 
 import pandas as pd
@@ -39,7 +37,6 @@ from tests.mocks import Neo4jMocks
 from tests.utils.config_mocks import create_mock_neo4j_config
 from tests.utils.fixtures import (
     create_sample_award_dict,
-    create_sample_enriched_awards_df,
     create_sample_sbir_data,
     create_sample_transition_detector_config,
 )
@@ -146,12 +143,6 @@ def mock_transaction():
     return Neo4jMocks.transaction()
 
 
-@pytest.fixture
-def empty_load_metrics():
-    """Empty LoadMetrics instance."""
-    return LoadMetrics()
-
-
 # ============================================================================
 # Enrichment Fixtures
 # ============================================================================
@@ -181,76 +172,6 @@ def sample_recipient_df():
             "total_amount": [5000000, 3000000, 2000000, 1000000],
         }
     )
-
-
-# ============================================================================
-# Fiscal Fixtures
-# ============================================================================
-
-
-@pytest.fixture
-def sample_fiscal_awards_df():
-    """Sample enriched awards DataFrame for fiscal analysis."""
-    return create_sample_enriched_awards_df(num_awards=20)
-
-
-@pytest.fixture
-def sample_fiscal_impacts_df():
-    """Sample fiscal impact data for testing."""
-    return pd.DataFrame(
-        [
-            {
-                "state": "CA",
-                "bea_sector": "11",
-                "fiscal_year": 2023,
-                "wage_impact": Decimal("100000.00"),
-                "consumption_impact": Decimal("50000.00"),
-                "investment_impact": Decimal("25000.00"),
-            },
-            {
-                "state": "TX",
-                "bea_sector": "11",
-                "fiscal_year": 2023,
-                "wage_impact": Decimal("150000.00"),
-                "consumption_impact": Decimal("75000.00"),
-                "investment_impact": Decimal("35000.00"),
-            },
-        ]
-    )
-
-
-@pytest.fixture
-def sample_tax_parameters():
-    """Sample tax parameter configuration."""
-    return {
-        "payroll_tax_rate": 0.15,
-        "income_tax_rate": 0.25,
-        "excise_tax_rate": 0.05,
-        "corporate_tax_rate": 0.21,
-    }
-
-
-@pytest.fixture
-def sample_sbir_investment():
-    """Sample SBIR investment amount."""
-    return Decimal("1000000.00")
-
-
-@pytest.fixture
-def sample_discount_rate():
-    """Sample discount rate for ROI calculations."""
-    return Decimal("0.03")  # 3%
-
-
-@pytest.fixture
-def sample_fiscal_summary():
-    """Sample fiscal return summary."""
-    return {
-        "total_tax_receipts": Decimal("250000.00"),
-        "net_fiscal_return": Decimal("150000.00"),
-        "roi_ratio": Decimal("0.25"),
-        "payback_period_years": Decimal("4.0"),
-    }
 
 
 # ============================================================================
@@ -329,34 +250,6 @@ def sample_contract():
         "period_of_performance_start_date": date(2023, 8, 1),
         "period_of_performance_current_end_date": date(2024, 8, 1),
     }
-
-
-@pytest.fixture
-def sample_contracts_df(sample_contract):
-    """Sample contracts DataFrame for testing."""
-    return pd.DataFrame([sample_contract])
-
-
-@pytest.fixture
-def recent_award():
-    """Award that completed recently (within detection window)."""
-    return create_sample_award_dict(
-        award_id="AWD-RECENT",
-        company_name="Recent Corp",
-        agency="NSF",
-        completion_date=date.today() - timedelta(days=90),  # 3 months ago
-    )
-
-
-@pytest.fixture
-def old_award():
-    """Award that completed outside detection window."""
-    return create_sample_award_dict(
-        award_id="AWD-OLD",
-        company_name="Old Corp",
-        agency="NIH",
-        completion_date=date.today() - timedelta(days=800),  # > 2 years ago
-    )
 
 
 @pytest.fixture
@@ -445,7 +338,3 @@ def builder_companies_df():
     return DataFrameBuilder.companies(5).build()
 
 
-@pytest.fixture
-def builder_patents_df():
-    """Sample patents DataFrame using builder (5 patents)."""
-    return DataFrameBuilder.patents(5).build()
