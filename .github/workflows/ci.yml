@@ -789,23 +789,25 @@ jobs:
             echo "match_rate=$MATCH_RATE" >> $GITHUB_OUTPUT
           fi
 
-      - name: Set check status - Success
+      - name: Set check status - Pass or Warning
         # Gate on severity, not on the regression step's exit code. The detector exits
         # non-zero for ANY regression (incl. WARNING), so steps.regression.outcome is
         # 'failure' even for sub-threshold warnings. Only a FAILURE-severity regression
         # should be a red check — matching the "Fail if FAILURE severity detected" gate.
-        # WARNING is surfaced as a non-blocking 'neutral' check; PASS as 'success'.
+        # PASS -> success; WARNING -> non-blocking 'neutral'. Fire only when a real
+        # result was parsed: an empty severity means the detector produced no JSON
+        # (e.g. crashed), so post no status rather than a misleading green pass.
         if: >-
           github.event_name == 'pull_request' &&
-          steps.regression.outcome != 'skipped' &&
-          steps.parse_results.outputs.severity != 'FAILURE'
+          (steps.parse_results.outputs.severity == 'PASS' ||
+           steps.parse_results.outputs.severity == 'WARNING')
         uses: actions/github-script@v9
         env:
           PERF_SEVERITY: ${{ steps.parse_results.outputs.severity }}
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const severity = process.env.PERF_SEVERITY || 'PASS';
+            const severity = process.env.PERF_SEVERITY;
             const warned = severity === 'WARNING';
             github.rest.checks.create({
               owner: context.repo.owner,
