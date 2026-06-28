@@ -20,8 +20,9 @@ from sbir_etl.extractors.usaspending import DuckDBUSAspendingExtractor
 from sbir_etl.utils.cloud_storage import (
     find_latest_usaspending_dump,
     get_s3_bucket_from_env,
-    resolve_data_path,
 )
+
+from ._ingestion_utils import _resolve_tiered_path
 
 
 def _import_usaspending_table(
@@ -39,38 +40,18 @@ def _import_usaspending_table(
     3. Fail if both fail
     """
     config = get_config()
-
-    # PRIMARY: Try S3 database dump first
-    dump_path = None
     s3_bucket = get_s3_bucket_from_env()
 
-    if s3_bucket:
-        context.log.info("Attempting to load USAspending data from S3 (PRIMARY)")
-        # Find latest dump in S3 (prefer test, fallback to full)
-        s3_dump_url = find_latest_usaspending_dump(
-            bucket=s3_bucket, database_type="test"
-        ) or find_latest_usaspending_dump(bucket=s3_bucket, database_type="full")
-
-        if s3_dump_url:
-            try:
-                # Resolve S3 path (downloads to temp if needed)
-                dump_path = resolve_data_path(s3_dump_url)
-                context.log.info(f"Using S3 dump: {s3_dump_url} -> {dump_path}")
-            except Exception as e:
-                context.log.warning(f"S3 dump resolution failed: {e}")
-                dump_path = None
-
-    # If S3 failed, try configured path (local fallback)
-    if not dump_path:
-        try:
-            dump_path = config.paths.resolve_path("usaspending_dump_file")
-            if dump_path.exists():
-                context.log.info(f"Using configured dump path: {dump_path}")
-            else:
-                dump_path = None
-        except Exception as e:
-            context.log.warning(f"Configured dump path not available: {e}")
-            dump_path = None
+    dump_path, _ = _resolve_tiered_path(
+        context,
+        s3_finder=lambda b: (
+            find_latest_usaspending_dump(bucket=b, database_type="test")
+            or find_latest_usaspending_dump(bucket=b, database_type="full")
+        ),
+        local_path_getter=lambda: config.paths.resolve_path("usaspending_dump_file"),
+        s3_bucket=s3_bucket,
+        label="USAspending dump",
+    )
 
     # Try to import from dump if available
     extractor = DuckDBUSAspendingExtractor(db_path=config.duckdb.database_path)

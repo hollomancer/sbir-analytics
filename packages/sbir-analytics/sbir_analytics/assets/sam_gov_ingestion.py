@@ -19,8 +19,9 @@ from sbir_etl.extractors.sam_gov import SAMGovExtractor
 from sbir_etl.utils.cloud_storage import (
     find_latest_sam_gov_parquet,
     get_s3_bucket_from_env,
-    resolve_data_path,
 )
+
+from ._ingestion_utils import _resolve_tiered_path
 
 
 def _import_sam_gov_entities(
@@ -37,38 +38,16 @@ def _import_sam_gov_entities(
     """
     config = get_config()
     sam_config = config.extraction.sam_gov
-
-    # PRIMARY: Try S3 parquet file first
-    parquet_path = None
-    s3_parquet_url = None
     s3_bucket = get_s3_bucket_from_env()
 
-    if s3_bucket and sam_config.use_s3_first:
-        context.log.info("Attempting to load SAM.gov data from S3 (PRIMARY)")
-        s3_parquet_url = find_latest_sam_gov_parquet(bucket=s3_bucket)
-
-        if s3_parquet_url:
-            try:
-                # Resolve S3 path (downloads to temp if needed)
-                parquet_path = resolve_data_path(s3_parquet_url)
-                context.log.info(f"Using S3 parquet: {s3_parquet_url} -> {parquet_path}")
-            except Exception as e:
-                context.log.warning(f"S3 parquet resolution failed: {e}")
-                parquet_path = None
-
-    # FALLBACK: Try local parquet file
-    if not parquet_path:
-        try:
-            local_path = Path(sam_config.parquet_path)
-            if local_path.exists():
-                parquet_path = local_path
-                context.log.info(f"Using local parquet: {parquet_path}")
-            else:
-                context.log.warning(f"Local parquet not found: {local_path}")
-                parquet_path = None
-        except Exception as e:
-            context.log.warning(f"Local parquet path check failed: {e}")
-            parquet_path = None
+    parquet_path, s3_parquet_url = _resolve_tiered_path(
+        context,
+        s3_finder=lambda b: find_latest_sam_gov_parquet(bucket=b),
+        local_path_getter=lambda: Path(sam_config.parquet_path),
+        s3_bucket=s3_bucket,
+        use_s3=sam_config.use_s3_first,
+        label="SAM.gov parquet",
+    )
 
     # Try to load from parquet if available
     parquet_success = False
