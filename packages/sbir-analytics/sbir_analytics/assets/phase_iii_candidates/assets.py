@@ -206,7 +206,9 @@ def _row_to_federal_contract(row: pd.Series) -> FederalContract:
         contract_id=str(row.get("target_id") or uuid.uuid4().hex),
         agency=row.get("target_agency") if pd.notna(row.get("target_agency")) else None,
         sub_agency=row.get("target_sub_agency") if pd.notna(row.get("target_sub_agency")) else None,
-        start_date=_to_date(row.get("target_action_date")),
+        # target_action_date IS the contract's transaction action_date — carry it in the
+        # action_date field (the scorer reads action_date, falling back to start_date).
+        action_date=_to_date(row.get("target_action_date")),
         obligation_amount=float(row.get("target_obligated_amount"))  # type: ignore[arg-type]
         if pd.notna(row.get("target_obligated_amount"))
         else None,
