@@ -1,6 +1,6 @@
 # Requirements — Iterative API Enrichment Refresh
 
-> **Status:** Not yet started.
+> **Status:** Partially implemented — USAspending iterative enrichment is live (`packages/sbir-analytics/sbir_analytics/assets/usaspending_iterative_enrichment.py`); other sources (SAM.gov, NIH RePORTER, PatentsView) pending.
 > Supports inventory question **E3** (enrichment freshness infrastructure) in [docs/research-questions.md](../../docs/research-questions.md).
 
 **Research question anchor:** E3 — incremental enrichment refresh to keep company, award, and patent metadata current
@@ -11,7 +11,7 @@
 
 ## Done when
 
-> A pipeline engineer can state: "The `iterative_enrichment_refresh_job` Dagster job runs nightly after bulk enrichment succeeds, processing only stale or failed records by source. Per-source freshness metrics are visible in `enrichment_events`. A targeted refresh can be triggered via `poetry run refresh_enrichment --source <name> --window <start>:<end>`."
+> A pipeline engineer can state: "The `iterative_enrichment_refresh_job` Dagster job runs nightly after bulk enrichment succeeds, processing only stale or failed records by source. Per-source freshness state is tracked in `data/derived/enrichment_freshness.parquet` and `data/state/enrichment_refresh_state.json`. A targeted refresh can be triggered via `poetry run refresh_enrichment --source <name> --window <start>:<end>`."
 
 ---
 
@@ -58,7 +58,7 @@ This specification implements an iterative API enrichment refresh loop to keep c
 
 1. THE System SHALL implement a Dagster job and sensor that activates after bulk enrichment asset materialization succeeds and runs on a configurable schedule (default: nightly).
 2. THE System SHALL track per-record enrichment state via `last_attempt_at` and `last_success_at` timestamps so that only stale or failed records are queued for refresh.
-3. THE System SHALL be configurable via `config.enrichment.*` per-source toggles and schedule parameters without code changes.
+3. THE System SHALL be configurable via `PipelineConfig.enrichment_refresh` (e.g., `config.enrichment_refresh.usaspending.*`) per-source toggles and schedule parameters without code changes.
 
 ### Requirement 2 — Per-source partitioned processing
 
@@ -76,6 +76,6 @@ This specification implements an iterative API enrichment refresh loop to keep c
 
 #### Acceptance Criteria
 
-1. THE System SHALL emit per-source enrichment events to `enrichment_events` recording attempt count, last success timestamp, and staleness window.
+1. THE System SHALL persist per-source enrichment state to `data/derived/enrichment_freshness.parquet` and `data/state/enrichment_refresh_state.json`, recording attempt count, last success timestamp, and staleness window per source.
 2. THE System SHALL alert (via Dagster asset check or log warning) when any source's last successful enrichment exceeds its configured SLA window.
 3. THE System SHALL support a `--window` CLI flag (`poetry run refresh_enrichment --source <name> --window <start>:<end>`) for manual targeted refreshes of specific date ranges.

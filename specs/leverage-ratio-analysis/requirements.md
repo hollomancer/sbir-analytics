@@ -155,7 +155,7 @@ quadrennial reviews cannot answer.
 
 ## Dependencies
 
-- FPDS contract data (`scripts/data/extract_fpds_contracts.py`) — EXISTS
+- FPDS contract data (`packages/sbir-analytics/sbir_analytics/tools/phase0/extract_fpds_contracts.py`) — EXISTS
 - Entity resolution (`sbir_etl/enrichers/`) — EXISTS
 - CET classifier (`packages/sbir-ml/sbir_ml/ml/models/cet_classifier.py`) — EXISTS
 - Company categorization (`specs/company-categorization/`) — 77% complete
