@@ -500,16 +500,19 @@ class ContractExtractor:
             from remotezip import RemoteZip
         except ImportError as e:  # pragma: no cover - exercised via import guard
             raise ImportError(
-                "Remote zip streaming requires the 'remotezip' package "
-                "(uv add remotezip / pip install remotezip)."
+                "Remote zip streaming requires the optional 'streaming' extra "
+                "(uv sync --extra streaming / pip install 'sbir-etl[streaming]')."
             ) from e
 
         logger.info(f"Streaming member {member_name} from {zip_url} (HTTP range)")
-        with RemoteZip(zip_url) as remote_zip, remote_zip.open(member_name) as member:
+        with (
+            RemoteZip(zip_url) as remote_zip,
+            remote_zip.open(member_name) as member,
             # `member` yields the gzip-compressed .dat.gz bytes; decompress streaming.
-            with gzip.GzipFile(fileobj=member) as gz:
-                text = io.TextIOWrapper(gz, encoding="utf-8", errors="replace")
-                yield from self._parse_lines(text, member_name)
+            gzip.GzipFile(fileobj=member) as gz,
+            io.TextIOWrapper(gz, encoding="utf-8", errors="replace") as text,
+        ):
+            yield from self._parse_lines(text, member_name)
         logger.info(
             f"Completed streaming {member_name}: "
             f"{self.stats['records_extracted']} contracts extracted"

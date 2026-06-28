@@ -106,5 +106,6 @@ def test_stream_remote_zip_member_missing_dependency_raises(sample_vendor_filter
     extractor = ContractExtractor(vendor_filter_file=sample_vendor_filters)
     # Force the lazy `from remotezip import RemoteZip` to fail.
     with patch.dict(sys.modules, {"remotezip": None}):
-        with pytest.raises(ImportError, match="remotezip"):
+        # The message points users at the optional 'streaming' extra.
+        with pytest.raises(ImportError, match="streaming"):
             list(extractor.stream_remote_zip_member("https://x/y.zip", "m.dat.gz"))

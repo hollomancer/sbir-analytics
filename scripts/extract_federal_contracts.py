@@ -43,7 +43,8 @@ def main():
         type=str,
         help=(
             "Stream one member from a remote USAspending database .zip over HTTP range "
-            "(no full download). Requires the 'streaming' extra and --member."
+            "(no full download). Requires the 'streaming' extra; the member streamed is "
+            "set by --member (defaults to the transaction_normalized table)."
         ),
     )
     parser.add_argument(
