@@ -336,5 +336,3 @@ def builder_contracts_df():
 def builder_companies_df():
     """Sample companies DataFrame using builder (5 companies)."""
     return DataFrameBuilder.companies(5).build()
-
-
