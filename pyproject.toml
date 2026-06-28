@@ -36,6 +36,9 @@ cloud = [
     "boto3>=1.34.0,<2.0.0",
     "cloudpathlib[s3]>=0.23.0,<1.0.0",
 ]
+# Stream a single member out of a remote USAspending database .zip over HTTP range,
+# avoiding the full ~217GB download (contract_extractor.stream_remote_zip_member).
+streaming = ["remotezip>=0.12.0,<1.0.0"]
 # Phonetic matching (enrichers — fallback to built-in if absent)
 phonetic = ["jellyfish>=1.0.0,<2.0.0"]
 # Process memory monitoring (falls back to timing-only if absent)
@@ -179,6 +182,7 @@ module = [
     "tenacity.*",  # Retry library
     "cloudpathlib.*",  # Cloud storage path library
     "jellyfish.*",  # Phonetic matching library
+    "remotezip.*",  # Optional remote-zip streaming (extra: streaming)
 ]
 ignore_missing_imports = true
 
