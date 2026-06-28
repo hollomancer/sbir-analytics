@@ -225,7 +225,14 @@ class FederalContract(BaseModel):
             "start_date, which is the period-of-performance start."
         ),
     )
-    start_date: date | None = Field(None, description="Contract start/award effective date.")
+    start_date: date | None = Field(
+        None,
+        description=(
+            "Period-of-performance start date (USAspending "
+            "period_of_performance_start_date). Distinct from action_date, the "
+            "transaction/obligating-action date; falls back to action_date when absent."
+        ),
+    )
     end_date: date | None = Field(None, description="Contract end date (if present).")
     obligation_amount: float | None = Field(
         None, description="Contract obligation/award amount. Can be negative for deobligations."

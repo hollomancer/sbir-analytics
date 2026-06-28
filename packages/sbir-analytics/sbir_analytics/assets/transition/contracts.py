@@ -246,11 +246,12 @@ _CONTRACT_COLUMN_ALIASES = {
 def normalize_contract_columns(df: pd.DataFrame) -> pd.DataFrame:
     """Rename extractor/raw contract columns to the flat transition-sample schema.
 
-    The extractor output is already flat (``vendor_uei`` / ``vendor_duns`` /
-    ``vendor_name`` match directly); this fills the remaining canonical columns
-    (``obligated_amount`` / ``action_date`` / ``awarding_agency_name``) from their
-    differently-named sources. Only fills a target column when it is **absent**, so
-    an already-canonical seeded sample passes through unchanged. No-op on empty.
+    The extractor output is already flat — ``vendor_uei`` / ``vendor_duns`` /
+    ``vendor_name`` / ``action_date`` match the canonical schema directly. This fills
+    the remaining canonical columns (``obligated_amount`` / ``awarding_agency_name``)
+    from their differently-named sources. Only fills a target column when it is
+    **absent**, so an already-canonical seeded sample passes through unchanged. No-op
+    on empty.
     """
     if df.empty:
         return df
@@ -269,8 +270,9 @@ def normalize_contract_columns(df: pd.DataFrame) -> pd.DataFrame:
         "Accepts either a flat seeded sample or the raw extractor output "
         "(contracts_ingestion.parquet) — extractor/raw column names are normalized to "
         "the canonical flat schema (e.g. obligation_amount -> obligated_amount, "
-        "start_date -> action_date). If no file is found, an empty dataframe with the "
-        "expected schema is produced. Writes checks JSON with coverage metrics."
+        "agency -> awarding_agency_name; action_date maps through directly). If no file "
+        "is found, an empty dataframe with the expected schema is produced. Writes "
+        "checks JSON with coverage metrics."
     ),
 )
 def validated_contracts_sample(context) -> Output[pd.DataFrame]:
