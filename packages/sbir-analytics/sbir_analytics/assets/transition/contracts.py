@@ -236,11 +236,9 @@ _CONTRACT_COLUMN_ALIASES = {
     "federal_action_obligation": "obligated_amount",
     "awarding_agency": "awarding_agency_name",
     # Extractor output (transition_models.FederalContract) -> canonical sample schema.
+    # action_date is now a real top-level field (the true USAspending transaction
+    # action_date, column 2), so it maps through directly and needs no alias.
     "obligation_amount": "obligated_amount",
-    # NOTE: the extractor stores period_of_performance_start_date as `start_date` and
-    # does not carry the transaction action_date (column 2); start_date is the best
-    # available action-date proxy until the extractor captures the true action_date.
-    "start_date": "action_date",
     "agency": "awarding_agency_name",
 }
 

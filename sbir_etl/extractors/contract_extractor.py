@@ -370,6 +370,7 @@ class ContractExtractor:
                 vendor_uei=vendor_uei,
                 vendor_cage=cage_code,  # CAGE code from column 98
                 vendor_duns=vendor_duns,
+                action_date=action_date,  # transaction action_date (column 2)
                 start_date=start_date,
                 end_date=end_date,
                 obligation_amount=obligation_amount,

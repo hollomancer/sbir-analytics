@@ -1,8 +1,9 @@
 """Tests for normalize_contract_columns — the extractor→sample column bridge.
 
 The extractor writes the FLAT ``transition_models.FederalContract`` schema, so the
-bridge is a set of flat renames (obligation_amount -> obligated_amount, start_date ->
-action_date, agency -> awarding_agency_name); vendor_uei/duns/name already match.
+bridge is a set of flat renames (obligation_amount -> obligated_amount, agency ->
+awarding_agency_name); vendor_uei/duns/name and action_date already match (action_date
+is now a real top-level field carrying USAspending's true transaction action_date).
 """
 
 import datetime
@@ -22,6 +23,7 @@ def test_normalizes_real_extractor_model_dump():
         vendor_duns="123456789",
         vendor_name="Acme Robotics",
         obligation_amount=500000.0,
+        action_date=datetime.date(2023, 3, 15),
         start_date=datetime.date(2023, 8, 1),
         agency="Department of Defense",
     )
@@ -34,9 +36,12 @@ def test_normalizes_real_extractor_model_dump():
     assert r["vendor_duns"] == "123456789"
     assert r["vendor_name"] == "Acme Robotics"
     assert r["contract_id"] == "W911NF20C0001"
+    # action_date is a real top-level field — the true transaction date, distinct from
+    # the period-of-performance start_date — and passes through untouched.
+    assert str(r["action_date"]) == "2023-03-15"
+    assert str(r["start_date"]) == "2023-08-01"
     # Renamed fields are populated from their extractor sources.
     assert r["obligated_amount"] == 500000.0  # <- obligation_amount
-    assert str(r["action_date"]) == "2023-08-01"  # <- start_date
     assert r["awarding_agency_name"] == "Department of Defense"  # <- agency
 
 

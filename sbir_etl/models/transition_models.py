@@ -217,6 +217,14 @@ class FederalContract(BaseModel):
     vendor_uei: str | None = Field(None, description="Vendor UEI if available.")
     vendor_cage: str | None = Field(None, description="Vendor CAGE code if available.")
     vendor_duns: str | None = Field(None, description="Vendor DUNS if available (legacy).")
+    action_date: date | None = Field(
+        None,
+        description=(
+            "USAspending transaction action_date (the date of the obligating action) — "
+            "the canonical transaction date for temporal scoring. Distinct from "
+            "start_date, which is the period-of-performance start."
+        ),
+    )
     start_date: date | None = Field(None, description="Contract start/award effective date.")
     end_date: date | None = Field(None, description="Contract end date (if present).")
     obligation_amount: float | None = Field(
@@ -247,7 +255,7 @@ class FederalContract(BaseModel):
     )
     metadata: dict[str, object] = Field(default_factory=dict)
 
-    @field_validator("start_date", "end_date", mode="before")
+    @field_validator("action_date", "start_date", "end_date", mode="before")
     @classmethod
     def validate_and_parse_dates(cls, v):
         """Parse and validate date fields from various input formats."""
