@@ -14,14 +14,13 @@ respected so foundational work appears before dependents.
 - [D. Economic & fiscal impact](#d-economic--fiscal-impact)
 - [E. Program management & data infrastructure](#e-program-management--data-infrastructure)
 - [F. Capital formation & entrepreneurial finance](#f-capital-formation--entrepreneurial-finance)
-- [G. Industrial-base resilience & technology choke points](#g-industrial-base-resilience--technology-choke-points)
 
 **Where to start, by audience:**
 
-- **Policymakers** (Congress, OMB, agency leadership, congressional defense committees): start with the **DoD leverage ratio** question (Section A → Supporting DIB questions, inferential tier; reproduces NASEM's ~4:1 benchmark), **D2** (Treasury ROI / tax receipts from SBIR spending), and **F3** (private-to-SBIR leverage as the mirror to the DoD leverage ratio on the private side).
+- **Policymakers** (Congress, OMB, agency leadership, congressional defense committees): start with the **DoD leverage ratio** question (Section **A3**, inferential tier; reproduces NASEM's ~4:1 benchmark), **D2** (Treasury ROI / tax receipts from SBIR spending), and **F3** (private-to-SBIR leverage as the mirror to the DoD leverage ratio on the private side).
 - **SBIR program managers** (NSF, NIH, DoD, DOE, SBA program offices): start with **B** (transitions, Phase II→III latency, company performance), **C1** (cross-agency CET portfolio composition), and **E6** (rolling quarterly snapshots / continuous monitoring).
 - **Investors** (VC, PE, angels, family offices, corporate VC): start with **F1** (Form D fundraising profile, M&A exit rate by funding agency, capital-event timeline) and **F2** (cohort outcomes vs. published VC/PE baselines, acquirer-type concentration).
-- **OSTP / congressional oversight** (OSTP, armed-services / science / small-business committees): start with **A-CP13** (choke-point fragility watchlist, the flagship composite in Section G) and **A-CP1** (CET choke-point concentration map). These are research targets, not yet scoped or implemented — see Section G's status note.
+- **OSTP / congressional oversight** (OSTP, armed-services / science / small-business committees): start with the **choke-point fragility watchlist** (Section **A4**, A-CP13 — the flagship composite) and the **capability density & choke-point concentration map** (Section **A1**, A-CP1/A-CP2/A-CP3). The choke-point questions are research targets, not yet scoped or implemented — see their inline status labels.
 
 Each pointer above lands inside a section that mixes implemented and spec-only
 work — see status banners in the linked specs, and the inline *(PR #)* /
@@ -51,81 +50,68 @@ merged to `main`. Public-study citations appear as `[L#]` — see
 
 ## A. National security, industrial base, and supply chain
 
-*Audience: DoD acquisition leadership, congressional defense committees, CSIS-style industrial-base analysts. The defense-industrial-base and critical-supply-chain questions are **merged into a single framing** below — they serve the same audience and statutory goal and draw on the same `CET`, `NAICS`, `ER`, and `M&A signals` data. Supporting DIB questions that fall outside that framing (leverage ratio, SBIR identification, patent-flow-to-primes) follow it, grouped by complexity tier.*
+*Audience: DoD acquisition leadership, congressional defense / armed-services committees, OSTP, congressional science / small-business committees, CSIS-style industrial-base analysts. This section merges three previously-separate framings — the defense-industrial-base questions, the supply-chain / technology choke-point set, and the former standalone "industrial-base resilience" section — into one complexity-tier ladder. They serve the same audience and statutory goal and draw on the same `CET`, `NAICS`, `ER`, `SEC EDGAR`, and `M&A signals` data. For SBIR-firm capital structure and exit analysis from an entrepreneurial-finance perspective, see [F. Capital formation & entrepreneurial finance](#f-capital-formation--entrepreneurial-finance).*
 
-### The merged question: industrial capability vs. vulnerability
+### The master question: industrial capability vs. vulnerability
 
 **Master question:** Across the CET areas, where does SBIR/STTR build domestic industrial capability that strengthens the DIB, and where are awardees exposed to adversary ownership/control or capability concentration that creates vulnerability?
 
-The question splits into two axes — **Capability** (Axis A) and **Vulnerability** (Axis B) — each sub-question carrying an answerability label. The merge is only honest because award data answers the DIB/institutional (capability) side **well** and the supply-chain/chokepoint (vulnerability) side **only weakly**: strong capability metrics must not lend false confidence to weak vulnerability inferences, so every sub-question keeps its own label and weak ones are not allowed to free-ride.
+Two lenses run through every tier below — **capability** (does SBIR/STTR build domestic industrial capability?) and **vulnerability / choke-point exposure** (are awardees exposed to adversary control or capability concentration?). The framing is only honest because award data answers the capability side **well** and the vulnerability / choke-point side **only weakly**: strong capability metrics must not lend false confidence to weak vulnerability inferences, so every question keeps its own answerability label and weak ones are not allowed to free-ride. Questions are tagged **(cap)**, **(vuln)**, or **(cap/vuln)** for the lens(es) they read; the supply-chain choke-point questions carry their original `A-CP#` identifiers inline so prior references still resolve. Physical / sub-tier supply-chain questions that award data cannot answer are listed in the **Out of scope** appendix at the end of the section, stated explicitly rather than as graded metrics.
 
-**CET spine.** The organizing spine is the repo's **21-area `NSTC-2025Q1`** taxonomy defined in `config/cet/taxonomy.yaml`; `packages/sbir-ml/sbir_ml/ml/config/taxonomy_loader.py` expects exactly 21 areas and logs a warning on any mismatch (a soft check, not a hard-failing validation). This is *not* the external 18-area Feb-2024 NSTC Critical and Emerging Technologies list, nor DoD's 14 Critical Technology Areas — both are narrower external frameworks, and the repo's 21-area set already blends NSTC CET areas with several DoD critical-technology areas (Hypersonics, Directed Energy, Advanced Gas Turbine Engine Technologies, Integrated Network Systems-of-Systems). **Crosswalk note:** for DoD-facing outputs each CET area should also carry a **DoD-14** and an **NDIS-8** (National Defense Industrial Strategy supply-chain-priority) tag where a mapping exists, so results speak to both NSTC and DoD audiences. (Two other, divergent CET taxonomies exist in code — a 10-area transition-system set and a 19-area reporting-analyzer set — and are not yet reconciled to the canonical 21; see Maintenance.)
+**CET spine.** The organizing spine is the repo's **21-area `NSTC-2025Q1`** taxonomy defined in `config/cet/taxonomy.yaml`; `packages/sbir-ml/sbir_ml/ml/config/taxonomy_loader.py` expects exactly 21 areas and logs a warning on any mismatch (a soft check, not a hard-failing validation). This is *not* the external 18-area Feb-2024 NSTC Critical and Emerging Technologies list [L29], nor DoD's 14 Critical Technology Areas — both are narrower external frameworks, and the repo's 21-area set already blends NSTC CET areas with several DoD critical-technology areas (Hypersonics, Directed Energy, Advanced Gas Turbine Engine Technologies, Integrated Network Systems-of-Systems). **Crosswalk note:** for DoD-facing outputs each CET area should also carry a **DoD-14** and an **NDIS-8** (National Defense Industrial Strategy supply-chain-priority) tag where a mapping exists, so results speak to both NSTC and DoD audiences. (Two other, divergent CET taxonomies exist in code — a 10-area transition-system set and a 19-area reporting-analyzer set — and are not yet reconciled to the canonical 21; see Maintenance.)
 
-**Statutory grounding.** Axis B maps to the risk-based due-diligence factors of the SBIR/STTR reauthorization, **Pub. L. 119-83** (signed April 13, 2026), and its eight restricted-entity screening lists — the UFLPA Entity List, the Non-SDN Chinese Military-Industrial Complex Companies (NS-CMIC) List, the Section 889 Prohibition List, the 1260H list, the Military End-User (MEU) List, the BIS Entity List, the FCC Covered List, and the CBP WRO/Findings List [L26]. Axis A maps to the same law's Strategic Breakthrough Allocation and Phase III provisions. (Statute linked, not reproduced.)
+**Statutory grounding.** The vulnerability lens maps to the risk-based due-diligence factors of the SBIR/STTR reauthorization, **Pub. L. 119-83** (signed April 13, 2026), and its eight restricted-entity screening lists — the UFLPA Entity List, the Non-SDN Chinese Military-Industrial Complex Companies (NS-CMIC) List, the Section 889 Prohibition List, the 1260H list, the Military End-User (MEU) List, the BIS Entity List, the FCC Covered List, and the CBP WRO/Findings List [L26]; the FY2026 NDAA [L27] carries related DIB authorities. The capability lens maps to the same law's Strategic Breakthrough Allocation and Phase III provisions. The choke-point questions are framed by the DoD National Defense Industrial Strategy [L28] and the DoD State of Competition report [L31]. (Statutes linked, not reproduced.)
 
-#### Axis A — Capability (does SBIR/STTR build domestic industrial capability?)
+### A1. Descriptive (Tier 1)
 
-- **A1. Domestic capability density per CET area** — distinct awardee counts and award volume per area, with an HHI on awardees to flag thin or concentrated clusters (the same density lens also reads across NAICS sector and geography — state / congressional district). CSIS Center for the Industrial Base [L16]. **[Answerable now]** *(deps: CET, ER, NAICS)*
-- **A2. DIB integration** — Phase II→III transition rate per CET area via FPDS, plus SAM.gov subaward links to prime contractors. Aligns with NASEM's "knowledge transfer to primes" finding [L1]. **[Answerable now, moderate confidence — FPDS Phase III tagging is historically incomplete; GAO [L14]]** *(deps: ER, ID, CET, transitions)*
-- **A3. Capital formation / firm health per CET area** — Form D raises and follow-on funding as a proxy for awardee financial health by technology area. **[Partial — SEC/Form D filers only]** *(deps: ER, CET, SEC EDGAR)*
-- **A4. Whitespace** — CET subfields with DoD demand signals but sparse SBIR coverage, surfaced via semantic search over award and solicitation text. **[Answerable now]** *(deps: CET)*
+- Portfolio composition by DoD component (Army/Navy/AF/DARPA/DLA), phase, and vintage — SBA annual reports [L18]. *(deps: —)*
+- **(cap/vuln) Capability density & choke-point concentration map per CET area** *(A-CP1 concentration map / A-CP2 supplier-base thickness / A-CP3 geographic distribution)* — distinct awardee counts, award volume, and an awardee **HHI** per CET area, read across NAICS sector and geography (state / congressional district). High density reads as capability; the same HHI inverted is the choke-point concentration map, flagging single-/thin-supplier clusters and geographically narrow bases. GAO's program-wide Phase II HHI of ~11 [L14] is the diffuse baseline that area-level concentration is measured against. CSIS Center for the Industrial Base [L16]; cross-read against the external NSTC CET list [L29]. **[Answerable now]** *(deps: CET, ER, NAICS)*
+- **(cap) Whitespace** — CET subfields with DoD demand signals but sparse SBIR coverage, surfaced via semantic search over award and solicitation text. **[Answerable now]** *(deps: CET)*
+- **(cap) Capital formation / firm health per CET area** — Form D raises and follow-on funding as a proxy for awardee financial health by technology area (the defense-CET slice of F1). **[Partial — SEC/Form D filers only]** *(deps: ER, CET, SEC EDGAR)*
+- **(vuln) Foreign ownership / control (FOCI) exposure share per CET area** *(A-CP4; LOWER-BOUND proxy — EDGAR Exhibit 21 / 8-K plus entity resolution detect only disclosed/structured ownership, not private beneficial ownership)* — share of awardees and award volume per CET area under disclosed foreign ownership / control / influence, screened against the eight Pub. L. 119-83 restricted-entity lists [L26] and read alongside GAO's foreign-supplier-dependence findings [L30]. Foreign-acquisition risk flagged by CSIS [L17]. **[Now for the SEC-filer subset; needs data acquisition for the private majority]** *(deps: ER, SEC EDGAR, M&A signals)*
 
-#### Axis B — Vulnerability (are awardees exposed to adversary control or capability concentration?)
+### A2. Relational (Tier 2)
 
-- **B1. Foreign ownership/control exposure** — EDGAR Exhibit 21 (subsidiary/parent structure) and 8-K M&A flags on awardees and their parents, screened against the eight Pub. L. 119-83 restricted-entity lists [L26]. Captures adversarial-capital exposure by technology area (which areas sit under foreign acquirers or foreign-owned primes). Foreign-acquisition risk flagged by CSIS [L17]. **[Now for the SEC-filer subset; needs data acquisition for the private majority]** *(deps: ER, SEC EDGAR, M&A signals)*
-- **B2. Adversary-affiliation screening** — entity resolution of awardees and key personnel against the named restricted-entity lists and foreign-country-of-concern ties. **[Partial via public lists; full coverage needs agency-held due-diligence data]** *(deps: ER)*
-- **B3. Concentration-as-fragility** — single-firm or thin-base dominance within a CET cluster, read as risk rather than capability (the same HHI as A1, inverted, including geographically narrow supplier bases). Has the base for a given area thinned or thickened over time, and which sole-supplier firms would, if acquired or lost, remove a capability with no in-program substitute? **[Answerable now]** *(deps: ER, CET)*
-- **B4. Physical input chokepoints** — dependence on contested physical inputs (rare earths, castings, advanced chips, APIs). **NOT answerable with award-type data.** Identifying sole-source physical inputs, foreign-content percentages, surge capacity, or sub-tier chokepoints requires bill-of-materials, customs, or contractual country-of-origin data the pipeline does not ingest. **[Out of scope — stated explicitly, not as a research target]** *(deps: —)*
-
-#### Proposed (unvetted)
-
-*Candidate questions raised in review but not yet scoped against the data or methodology. Listed here rather than inline so they don't read as graded, answerable metrics until vetted.*
-
-- **Awardee-as-chokepoint (knowledge/IP supply-chain position)** — identify SBIR awardees that are the sole or dominant holder of an enabling capability or IP in a CET area that downstream primes and follow-on programs depend on. Much of the machinery already exists: patents are linked to awardee `Company`/`Award` nodes in the graph and classified into the 21 CET areas, patent **assignment chains** (`ASSIGNED_VIA/FROM/TO`) already track IP flow to primes (the C2 question), and ModernBERT-Embed embeddings give semantic overlap across awards/patents/contracts — so the IP-concentration and ownership-transfer chokepoint lenses are largely buildable on current pieces. The missing input is patent **citation edges**: a `PatentCitation` model exists but citations are not yet ingested as graph relationships, which is what a true citation-centrality "who-depends-on-whom" measure would require. Distinct from **B4** (physical inputs, out of scope) and sharper than **B3** (adds supply-chain position). **[Proposed — mostly assembles existing patent/graph/embedding capability; needs a chokepoint definition, and patent-citation ingestion for the citation-centrality variant]** *(deps: ER, CET, PATLINK)*
-
-### Supporting DIB questions (outside the capability/vulnerability frame)
-
-*These defense-industrial-base questions predate the merged framing and remain organized by complexity tier. For SBIR-firm capital structure and exit analysis from an entrepreneurial-finance perspective, see [F. Capital formation & entrepreneurial finance](#f-capital-formation--entrepreneurial-finance).*
-
-**Descriptive.** Portfolio composition by DoD component (Army/Navy/AF/DARPA/DLA), phase, and vintage — SBA annual reports [L18]. *(deps: —)*
-
-*Choke-point extensions (net-new research targets — no implementation; not presented as answerable today). Concentration framing aligns with the DoD National Defense Industrial Strategy's sub-tier-supplier-fragility challenge [L28] and the State of Competition report [L31].*
-
-- **A-CP1. CET choke-point concentration map** — per CET area, distinct-awardee counts, award volume, and an awardee HHI to surface single-/thin-supplier concentration (the choke-point map across the 21-area `NSTC-2025Q1` spine; cross-read against the external NSTC CET list [L29] and CSIS industrial-base work [L16]). *(deps: CET, ER, NAICS)*
-- **A-CP2. Supplier-base thickness** — distinct-awardee thickness per CET × NAICS sector, and whether a given base has thinned or thickened over time; GAO's program-wide Phase II HHI of ~11 [L14] is the diffuse-baseline reference that area-level concentration is measured against. *(deps: CET, ER, NAICS)*
-- **A-CP3. Geographic distribution / single-region concentration** — state- and congressional-district dispersion of a CET area's supplier base vs. single-region clustering that concentrates geographic risk [L31]. *(deps: CET, ER, NAICS)*
-- **A-CP4. FOCI share per CET area** *(LOWER-BOUND proxy — EDGAR Exhibit 21 / 8-K plus entity resolution detect only disclosed/structured foreign ownership, control, or influence, not private beneficial ownership)* — share of awardees and award volume per CET area sitting under disclosed FOCI, screened against the Pub. L. 119-83 restricted-entity lists [L26] and read alongside GAO's foreign-supplier-dependence findings [L30]. *(deps: ER, SEC EDGAR, M&A signals)*
-
-**Relational.**
-
-- Which federal awards are SBIR/STTR vs. non-SBIR, and with what confidence? — [sbir-identification-methodology.md](sbir-identification-methodology.md). CRS R43695 [L15]. *(deps: ID)*
 - Do firms show higher transition rates within the same awarding agency (agency continuity signal)? *(deps: ER, ID)*
-- Can assignment chains show SBIR patent flow through prime contractors? Aligns with NASEM's "knowledge transfer to primes" finding [L1]. *(deps: ER, PATLINK)*
+- **(cap) DIB integration** — Phase II→III transition rate per CET area via FPDS, plus SAM.gov subaward links to prime contractors. Aligns with NASEM's "knowledge transfer to primes" finding [L1]. **[Answerable now, moderate confidence — FPDS Phase III tagging is historically incomplete; GAO [L14]]** *(deps: ER, ID, CET, transitions)*
+- **(cap/vuln) Awardee-as-IP-chokepoint** *(A-CP6)* — within a CET area, do patent assignment chains (`ASSIGNED_VIA/FROM/TO`) show a small number of awardees as the dominant source of enabling IP flowing to primes (knowledge-supply-chain position)? Builds on the C2 patent-linkage work; the citation-centrality "who-depends-on-whom" variant needs patent-citation edge ingestion (a `PatentCitation` model exists but citations are not yet graph relationships). Aligns with NASEM's knowledge-transfer-to-primes finding [L1]. **[Partial — assignment-chain lens buildable now; citation-centrality needs ingestion]** *(deps: ER, PATLINK, CET)*
+- **(vuln) Adversary-affiliation screening** — entity resolution of awardees and key personnel against the named restricted-entity lists and foreign-country-of-concern ties. **[Partial via public lists; full coverage needs agency-held due-diligence data]** *(deps: ER)*
+- **(vuln) Concentration vs. transition-thinness** *(A-CP5)* — do the most concentrated (thin-base) CET areas also show the thinnest Phase II→III transition pipelines, compounding fragility (concentrated AND failing to graduate)? FPDS Phase III undercount [L14] bounds confidence. **[Research target — not yet scoped]** *(deps: ER, ID, CET, transitions)*
+- **(vuln) New-entrant vs. repeat-winner mix per CET area** *(A-CP7)* — share of awards going to first-time vs. repeat winners, as a read on entrant-pipeline health and graduation (CSIS new-entrant / small-business-graduation analysis [L32]). **[Research target — not yet scoped]** *(deps: ER, ID, CET)*
 
-*Choke-point extensions (net-new research targets — no implementation; not presented as answerable today):*
+*The SBIR-vs-non-SBIR identification question and the underlying patent-to-award linkage are foundational and live at their canonical homes — see **E1** and **C2** — rather than being restated here.*
 
-- **A-CP5. Concentration vs. transition-thinness** — do the most concentrated (thin-base) CET areas from A-CP1/A-CP2 also show the thinnest Phase II→III transition pipelines, compounding fragility (concentrated AND failing to graduate)? FPDS Phase III undercount [L14] bounds confidence. *(deps: ER, ID, CET, transitions)*
-- **A-CP6. IP-flow concentration** — within a CET area, do patent assignment chains show a small number of awardees as the dominant source of IP flowing to primes (knowledge-supply-chain position), per NASEM's knowledge-transfer-to-primes finding [L1]? *(deps: ER, PATLINK, CET)*
-- **A-CP7. New-entrant vs. repeat-winner mix** — per CET area, the share of awards going to first-time vs. repeat winners, as a read on entrant-pipeline health and graduation (CSIS new-entrant / small-business-graduation analysis [L32]). *(deps: ER, ID, CET)*
+### A3. Inferential (Tier 3)
 
-**Inferential — DoD leverage ratio.**
+**DoD leverage ratio.**
 
 - What is the aggregate leverage ratio (non-SBIR DoD obligations ÷ SBIR/STTR obligations) for DoD SBIR firms? **Target: reproduce NASEM's ~4:1 for 2012–2020** [L1][L2] — [../specs/leverage-ratio-analysis/](../specs/leverage-ratio-analysis/). *(deps: ER, ID)*
 - How does the leverage ratio stratify by award vintage, firm size, technology area, and firm experience (new vs. repeat)? NASEM reports SBIR firms = ~1/3 of DoD's extramural R&D base [L1]. *(deps: ER, ID, CET)*
 - How is the leverage ratio changing over time? *(deps: ER, ID)*
 - What is the leverage ratio for civilian agencies (e.g., DOE)? Myers & Lanahan [L9] and NASEM DOE [L5] supply baselines. *(deps: ER, ID)*
 
-**Risk & monitoring — M&A detection & transition pathways.** *(These feed Axis B; the operational M&A-detection questions are kept here because they carry concrete implementation status.)*
+**Concentration & choke-point inference.**
 
-- Did a defense-funded SBIR company undergo M&A activity, especially involving a foreign acquirer? — [../specs/merger_acquisition_detection/](../specs/merger_acquisition_detection/). Feeds **B1**. *(deps: ER, M&A signals)*
+- **(vuln) Concentration-as-fragility** — single-firm or thin-base dominance within a CET cluster, read as risk rather than capability (the A1 HHI inverted, including geographically narrow bases). Has the base for a given area thinned or thickened over time, and which sole-supplier firms would, if acquired or lost, remove a capability with no in-program substitute? **[Answerable now]** *(deps: ER, CET)*
+- **(vuln) Composite fragility inference per CET area** *(A-CP10)* — combine concentration (A-CP1/A-CP2), geographic narrowness (A-CP3), transition-thinness (A-CP5), and new-entrant deficit (A-CP7) into a per-area fragility judgment that flags areas concentrated, failing to graduate, and starved of new entrants at once [L28][L30]. **[Research target — not yet scoped]** *(deps: CET, ER, ID, NAICS, transitions)*
+- **(vuln) Program leverage at choke points** *(A-CP11; LOWER-BOUND proxy — EDGAR captures only disclosed private capital)* — the DoD leverage ratio above and the private-to-SBIR leverage ratio (**F3**) sliced to choke-point firms: does thin-base concentration coincide with low or high leverage? Anchor to the verifiable DoD SBIR Fast Track match of up to four SBIR dollars per outside-investor dollar [L33] and NSF's reported portfolio leverage [TODO: verify NSF primary source for the ~18:1 figure — found only in trade press, not confirmed against an NSF publication; do not state as fact until verified]. **[Research target — not yet scoped]** *(deps: ER, ID, SEC EDGAR, CET)*
+- **(vuln) Foreign-acquisition-pathway inference** *(A-CP12; LOWER-BOUND proxy — only disclosed/structured ownership and M&A signals are detectable, not private beneficial ownership)* — from disclosed ownership structure and M&A signals, infer which choke-point firms sit on a plausible foreign-acquisition pathway, screened against the restricted-entity lists [L26] and GAO's foreign-dependence findings [L30]. **[Research target — not yet scoped]** *(deps: ER, SEC EDGAR, M&A signals, CET)*
+
+### A4. Risk, monitoring & prediction (Tier 4)
+
+**M&A detection & transition pathways.**
+
+- Did a defense-funded SBIR company undergo M&A activity, especially involving a foreign acquirer? — [../specs/merger_acquisition_detection/](../specs/merger_acquisition_detection/). *(deps: ER, M&A signals)*
 - For SBIR firms acquired by public companies, can inbound M&A be detected via 8-K full-text search? *(PR #286)* *(deps: ER, SEC EDGAR)*
-- Which defense primes concentrate SBIR-firm acquisitions (e.g., Titan, Teledyne, Ametek, Kratos), and are any of those acquirers themselves foreign-owned or under CFIUS review? Feeds **B1**. *(deps: ER, M&A signals)*
+- Which defense primes concentrate SBIR-firm acquisitions (e.g., Titan, Teledyne, Ametek, Kratos), and are any of those acquirers themselves foreign-owned or under CFIUS review? *(deps: ER, M&A signals)*
 - How does M&A activity affect Phase III / federal-contract transition pathways? *(deps: ER, M&A signals, transitions)*
 
-*Choke-point extensions (net-new research targets — no implementation; not presented as answerable today):*
+**Choke-point monitoring & prediction.**
 
-- **A-CP8. Acquisition-erosion of thin bases** *(foreign-acquisition component is a LOWER-BOUND proxy — only disclosed/structured ownership is detectable)* — do M&A events remove sole- or dominant-supplier firms from already-thin CET bases (A-CP2), eroding capability through consolidation, and are any acquirers foreign-owned? Defense-sector consolidation [L31] and foreign-acquisition risk [L17] frame the concern. *(deps: ER, M&A signals, CET)*
-- **A-CP9. UCC-1 financial-distress signal** — do shifts in UCC-1 secured-debt filing patterns (lapses, new liens, lender churn) flag financial distress among choke-point firms ahead of exit or capability loss? No external benchmark; novel signal. *(deps: ER, UCC-1, CET)*
+- **(vuln) Acquisition-erosion of thin bases** *(A-CP8; foreign-acquisition component is a LOWER-BOUND proxy)* — do M&A events remove sole- or dominant-supplier firms from already-thin CET bases, eroding capability through consolidation? Defense-sector consolidation [L31] and foreign-acquisition risk [L17] frame the concern. **[Research target — not yet scoped]** *(deps: ER, M&A signals, CET)*
+- **(vuln) UCC-1 financial-distress signal** *(A-CP9)* — do shifts in UCC-1 secured-debt filing patterns (lapses, new liens, lender churn) flag financial distress among choke-point firms ahead of exit or capability loss? No external benchmark; novel signal. **[Research target — not yet scoped]** *(deps: ER, UCC-1, CET)*
+- **(vuln) Choke-point fragility watchlist** *(A-CP13 — flagship).* A composite, forward-looking watchlist ranking CET areas — and the individual sole-/dominant-supplier firms within them — whose acquisition or loss would remove a capability with no in-program substitute. It fuses every signal above: concentration (A-CP1/A-CP2), geographic narrowness (A-CP3), FOCI (A-CP4), transition-thinness (A-CP5), IP-flow position (A-CP6), new-entrant deficit (A-CP7), composite fragility (A-CP10), acquisition-erosion (A-CP8), and UCC-1 distress (A-CP9); the FOCI and foreign-acquisition inputs are LOWER-BOUND proxies. Grounded in the NDIS supply-chain-resilience priority [L28], the State of Competition priority-sector framing [L31], and GAO-25-107283's sub-tier-visibility gap [L30]. **[Research target — flagship; not yet scoped or implemented]** *(deps: CET, ER, ID, transitions, M&A signals, UCC-1, SEC EDGAR)*
+- **(vuln) Predictive erosion / early warning** *(A-CP14; foreign-acquisition component is a LOWER-BOUND proxy)* — forward probability that a given choke-point firm exits (M&A or financial distress) within a horizon, feeding the continuous-monitoring loop (**E6**) so a fragility flag is raised before the capability is lost [L30][L31]. **[Research target — not yet scoped]** *(deps: ER, M&A signals, UCC-1, CET, transitions)*
 
 *Implementation note: M&A event detection runs as a CLI script
 (`scripts/data/detect_sbir_ma_events.py`), not as a Dagster asset. The script
@@ -134,10 +120,21 @@ heuristics) and SEC EDGAR full-text mention scan across multiple filing types
 (operationally: 8-K, 10-K, DEFM14A, PREM14A, SC TO-T, SC 14D9 — see
 `scripts/data/refine_ma_medium_tier.py`). The orchestrated graph has no
 continuous M&A-event materialization; rerunning the script is how the M&A
-signal that feeds the Axis B (vulnerability) and F-area questions gets
+signal that feeds the vulnerability (A1/A3/A4) and F-area questions gets
 refreshed. The previously-existing
 `packages/sbir-analytics/sbir_analytics/assets/ma_detection.py` stub was a
 placeholder, never wired into the M&A pipeline, and was removed in PR #317.*
+
+### Out of scope — physical & sub-tier supply chain (data the project does not ingest)
+
+*Listed for visibility, these choke-point questions are **not answerable** with award-type data and are **not research targets** for this pipeline. Each requires bill-of-materials, customs, contractual country-of-origin, or sub-tier supplier data the pipeline does not ingest. Stated explicitly, not as graded metrics. GAO-25-107283 documents exactly this sub-tier-visibility gap [L30].*
+
+- **Physical input chokepoints** — dependence on contested physical inputs (rare earths, castings, advanced chips, APIs); sole-source inputs, foreign-content percentages, and surge capacity. *(deps: — / out of scope)*
+- **Tiered BoM / supplier-tier maps** — sub-tier (Tier 2/3/N) supplier-dependency mapping for a CET capability. *(deps: — / out of scope)*
+- **Critical-mineral dependency** — exposure of a CET area to contested minerals/materials (rare earths, gallium, etc.). *(deps: — / out of scope)*
+- **Allied-supplier substitution** — whether an allied or partner-nation supplier could substitute for a domestic choke point. *(deps: — / out of scope)*
+- **Customs / trade-flow dependency** — import-dependence and trade-flow chokepoints for inputs to a CET capability. *(deps: — / out of scope)*
+- **Sub-tier foreign integration** — foreign content or foreign-owned sub-tier suppliers buried below the prime/awardee tier. *(deps: — / out of scope)*
 
 ## B. Technology commercialization & entrepreneurship
 
@@ -298,35 +295,6 @@ This area treats the SBIR awardee as a **firm with a capital history**, not as a
 
 - Forward-looking probability of an exit event (M&A or IPO) for a given SBIR firm, conditional on capital-event history and CET area. *(deps: all of F1–F3)*
 
-## G. Industrial-base resilience & technology choke points
-
-*Audience: OSTP, congressional armed-services / science / small-business committees.*
-
-> **Status: research target — not yet scoped or implemented.** Every question in this section is net-new. None has an implementation, spec, PR, or branch behind it, and none is answerable today. The section gathers the inferential and predictive choke-point questions that compose the descriptive/relational building blocks defined in Section A (A-CP1–A-CP9) into program-wide fragility judgments. The choke-point framing tracks the DoD National Defense Industrial Strategy [L28], the DoD State of Competition report [L31], and GAO's findings on limited sub-tier supplier visibility [L30].
-
-This section reuses the Section A choke-point building blocks: concentration (A-CP1/A-CP2), geographic spread (A-CP3), disclosed FOCI (A-CP4), transition-thinness (A-CP5), IP-flow position (A-CP6), entrant-pipeline health (A-CP7), acquisition-erosion (A-CP8), and the UCC-1 distress signal (A-CP9).
-
-### G1. Inferential (Tier 3)
-
-- **A-CP10. Composite fragility inference per CET area** — combine concentration (A-CP1/A-CP2), geographic narrowness (A-CP3), transition-thinness (A-CP5), and new-entrant deficit (A-CP7) into a per-area fragility judgment that flags areas concentrated, failing to graduate, and starved of new entrants at once [L28][L30]. *(deps: CET, ER, ID, NAICS, transitions)*
-- **A-CP11. Program leverage at choke points** *(LOWER-BOUND proxy — EDGAR captures only disclosed private capital, not the private majority)* — what private and non-SBIR-federal leverage do choke-point firms attract, and does thin-base concentration coincide with low or high leverage? Anchor to the verifiable DoD SBIR Fast Track match of up to four SBIR dollars per outside-investor dollar [L33] and NSF's reported portfolio leverage [TODO: verify NSF primary source for the ~18:1 figure — found only in trade press, not confirmed against an NSF publication; do not state as fact until verified]. *(deps: ER, ID, SEC EDGAR, CET)*
-- **A-CP12. Foreign-acquisition-pathway inference** *(LOWER-BOUND proxy — only disclosed/structured ownership and M&A signals are detectable, not private beneficial ownership)* — from disclosed ownership structure and M&A signals, infer which choke-point firms sit on a plausible foreign-acquisition pathway, screened against the Pub. L. 119-83 restricted-entity lists [L26] and GAO's foreign-dependence findings [L30]. *(deps: ER, SEC EDGAR, M&A signals, CET)*
-
-### G2. Predictive / Risk (Tier 4)
-
-- **A-CP13. Choke-point fragility watchlist (flagship).** A composite, forward-looking watchlist ranking CET areas — and the individual sole-/dominant-supplier firms within them — whose acquisition or loss would remove a capability with no in-program substitute. It fuses every choke-point signal: concentration and thin-base dominance (A-CP1/A-CP2), geographic narrowness (A-CP3), disclosed FOCI (A-CP4), transition-thinness (A-CP5), IP-flow position (A-CP6), new-entrant deficit (A-CP7), acquisition-erosion (A-CP8), and UCC-1 distress (A-CP9). The FOCI and foreign-acquisition inputs are LOWER-BOUND proxies — disclosed/structured ownership only. Grounded in the NDIS supply-chain-resilience priority [L28], the State of Competition priority-sector framing [L31], and GAO-25-107283's sub-tier-visibility gap [L30]. *(deps: CET, ER, ID, transitions, M&A signals, UCC-1, SEC EDGAR)*
-- **A-CP14. Predictive erosion / early warning** *(foreign-acquisition component is a LOWER-BOUND proxy)* — forward probability that a given choke-point firm exits (M&A or financial distress) within a horizon, feeding the continuous-monitoring loop so a fragility flag is raised before the capability is lost [L30][L31]. *(deps: all of G1 + M&A signals, UCC-1)*
-
-### G3. Out-of-boundary choke-point questions (data the project does not have)
-
-*These choke-point questions are listed so they are visible, but they are **not answerable** with award-type data and are **not research targets** for this pipeline. Each requires bill-of-materials, customs, contractual country-of-origin, or sub-tier supplier data the pipeline does not ingest (the same boundary as B4). Stated explicitly, not as graded metrics.*
-
-- **Tiered BoM / supplier-tier maps** — sub-tier (Tier 2/3/N) supplier-dependency mapping for a CET capability. Requires bill-of-materials and contractual supplier-tier data. *(deps: — / out of scope)*
-- **Critical-mineral dependency** — exposure of a CET area to contested minerals/materials (rare earths, gallium, etc.). Requires materials-composition and country-of-origin data. *(deps: — / out of scope)*
-- **Allied-supplier substitution** — whether an allied or partner-nation supplier could substitute for a domestic choke point. Requires allied-industrial-base capacity data. *(deps: — / out of scope)*
-- **Customs / trade-flow dependency** — import-dependence and trade-flow chokepoints for inputs to a CET capability. Requires customs/import records. *(deps: — / out of scope)*
-- **Sub-tier foreign integration** — foreign content or foreign-owned sub-tier suppliers buried below the prime/awardee tier. Requires sub-tier country-of-origin disclosure the award data does not contain (GAO-25-107283 documents exactly this visibility gap [L30]). *(deps: — / out of scope)*
-
 ## Output products & audiences
 
 Documents and reports the question inventory has produced for specific audiences. Each is a synthesis of A-F questions for a particular reader, not a new research question itself.
@@ -337,13 +305,13 @@ Documents and reports the question inventory has produced for specific audiences
 **Format:** per-district briefing identifying 3-5 SBIR firms within the member's district that represent the strongest success stories (FDA-cleared products, defense supplier roles, follow-on capital raises, M&A exits) with political-safety vetting.
 **Districts covered to date** (in conversation; not yet committed as repo artifacts): KY-3 (McGarvey), NJ-10 (McIver), NY-16 (Latimer), NH-2 (Goodlander), MT-2 (Downing), TX-6 (Ellzey), and a CNMI null finding for King-Hinds. Vetting depth includes press review, SEC Form D filings, M&A history, and any political-sensitivity factors (foreign ownership, classified work exposure, recent acquisition).
 **Supporting code:** `sbir_etl/enrichers/congressional_district_resolver.py` (UEI → district resolver), `scripts/setup_congressional_districts.py` (district reference data).
-**Pulls from:** Section A (portfolio composition + Axis B foreign-ownership / acquisition screens, B1), B1-B3 (commercialization signals, §B), F1-F2 (capital events, M&A). (Classified-work exposure remains a manual political-sensitivity vetting factor, not an automated pipeline screen — there is no Axis B signal for it.)
+**Pulls from:** Section A (portfolio composition; A1 foreign-ownership / A4 acquisition screens), B1-B3 (commercialization signals), F1-F2 (capital events, M&A). (Classified-work exposure remains a manual political-sensitivity vetting factor, not an automated pipeline screen — there is no vulnerability signal for it.)
 
 ### Form D fundraising analysis (published)
 
 **Audience:** F-area analysts, investor researchers, policy staff studying program-wide private-capital leverage.
 **Format:** `docs/research/sbir-form-d-fundraising-analysis.md` (canonical, on main; now includes Appendix A — firm-level bootstrap CIs, PR #338 — and Appendix B — PIF cross-link integrity audit, PR #341); `docs/research/dod-form-d-leverage.md` (DoD Branch decomposition + per-firm/time-series/acquirer-type follow-ups + Form D vs. FPDS substitution test, PRs #342/#343/#350); `docs/research/form-d-data-dictionary.md` (field reference).
-**Pulls from:** F1 (Form D profile), F3 (private-to-SBIR leverage), A3/A4 (DoD-specific decomposition).
+**Pulls from:** F1 (Form D profile), F3 (private-to-SBIR leverage), A1/A4 (DoD-specific firm-health and acquisition decomposition).
 
 ### Commercialization-benchmark methodology (in progress, not yet committed)
 
@@ -400,10 +368,10 @@ Public studies the inventory draws from or benchmarks against.
 
 **Statute:**
 
-- **[L26]** Pub. L. 119-83 — SBIR/STTR reauthorization, enacting S.3971, the *Small Business Innovation and Economic Security Act of 2026* (signed April 13, 2026). Establishes the risk-based due-diligence factors and the eight restricted-entity screening lists (UFLPA Entity List; NS-CMIC List; Section 889 Prohibition List; 1260H list; Military End-User List; BIS Entity List; FCC Covered List; CBP WRO/Findings List) that ground Axis B, plus the Strategic Breakthrough Allocation and Phase III provisions that ground Axis A. <https://www.congress.gov/bill/119th-congress/senate-bill/3971>
+- **[L26]** Pub. L. 119-83 — SBIR/STTR reauthorization, enacting S.3971, the *Small Business Innovation and Economic Security Act of 2026* (signed April 13, 2026). Establishes the risk-based due-diligence factors and the eight restricted-entity screening lists (UFLPA Entity List; NS-CMIC List; Section 889 Prohibition List; 1260H list; Military End-User List; BIS Entity List; FCC Covered List; CBP WRO/Findings List) that ground the Section A **vulnerability** lens, plus the Strategic Breakthrough Allocation and Phase III provisions that ground the **capability** lens. <https://www.congress.gov/bill/119th-congress/senate-bill/3971>
 - **[L27]** Pub. L. 119-60 — *National Defense Authorization Act for Fiscal Year 2026* (S.1071; signed December 18, 2025). FY2026 DIB and small-business authorities that contextualize the choke-point question set. <https://www.congress.gov/bill/119th-congress/senate-bill/1071>
 
-**Industrial-base resilience & choke-point sources (added for the Section A choke-point extensions and Section G):**
+**Industrial-base resilience & choke-point sources (for the Section A choke-point questions):**
 
 - **[L28]** DoD. *National Defense Industrial Strategy (NDIS)* (released January 11, 2024). First-ever DoD industrial strategy; four priorities (supply-chain resilience, workforce readiness, flexible acquisition, economic deterrence) and ten systemic challenges including sub-tier supplier fragility. <https://www.businessdefense.gov/docs/ndis/2023-NDIS.pdf>
 - **[L29]** OSTP / NSTC. *Critical and Emerging Technologies List — 2024 Update* (February 2024). NSTC interagency CET list; external reference framework distinct from the repo's 21-area `NSTC-2025Q1` spine. <https://bidenwhitehouse.archives.gov/wp-content/uploads/2024/02/Critical-and-Emerging-Technologies-List-2024-Update.pdf>
@@ -416,7 +384,7 @@ Public studies the inventory draws from or benchmarks against.
 
 ## Maintenance
 
-**Last reviewed:** 2026-06-27 — added the supply-chain & technology choke-point question set: Section A extensions A-CP1–A-CP9 (Descriptive A-CP1–4, Relational A-CP5–7, Risk & monitoring A-CP8–9) and a new **Section G** (Industrial-base resilience & technology choke points) with A-CP10–A-CP14 plus an out-of-boundary list (G3). All are net-new research targets with no implementation — no PR/branch tags attached. New literature entries L27 (FY2026 NDAA, Pub. L. 119-60), L28 (DoD NDIS 2024), L29 (OSTP/NSTC 2024 CET List), L30 (GAO-25-107283), L31 (DoD State of Competition 2022), L32 (CSIS new-entrant/graduation), L33 (DoD SBIR Fast Track 1:4 match) were verified against primary sources before citing; GAO-24-106398's program-wide Phase II HHI ~11 reuses the existing **L14** entry (no duplicate created). No new dependency tags were introduced — all "(deps: …)" tags draw from the existing legend.
+**Last reviewed:** 2026-06-27 — **consolidated Section A** into a single complexity-tier ladder (A1 Descriptive → A4 Risk/monitoring/prediction) following a holistic overlap/redundancy review. This collapsed the three previously-coexisting sub-structures (the Axis A / Axis B "capability vs. vulnerability" split, the separately-tiered "Supporting DIB questions," and the interleaved A-CP1–A-CP9 choke-point extensions) and folded in the former **Section G** (Industrial-base resilience), which was removed as a standalone policy area because its audience and content fully overlapped Section A. Each question now appears once at its highest tier; the capability/vulnerability distinction is preserved as inline **(cap)** / **(vuln)** tags and per-question answerability labels; the choke-point questions retain their `A-CP#` identifiers inline so prior references resolve. Fixes the prior `A1–A4` / `B1–B4` label collision (Axis B's `B1–B4` had clashed with Section B). The out-of-scope physical / sub-tier supply-chain questions (former B4 + Section G's G3 list) are merged into one **Out of scope** appendix at the end of Section A. De-duplicated the foundational SBIR-identification and patent-flow bullets out of Section A (they live at E1 / C2). No questions were dropped and no citations changed; the choke-point citation set (L27–L33, GAO-24-106398/L14 reuse) and the open `[TODO: verify]` items below carry over from the prior choke-point addition.
 
 **Open [TODO: verify] items from the choke-point set (resolve before relying on the figures):**
 
@@ -428,7 +396,7 @@ When this doc is reviewed next, the audit should cover:
 - All `*(PR #...)*` references resolve to merged or otherwise tracked PRs (closed-without-merge PRs need explicit successor links — PR #311 → #321 was the prior failure mode)
 - All `*(branch: ...)*` tags point at branches that still exist on origin (`claude/sbir-data-imputation-strategy` was the prior failure mode — branch deleted, work landed under a different name)
 - Internal links to `../specs/` and `docs/` directories resolve
-- Each "deps:" tag accurately reflects current pipeline structure (M&A signals are script-driven, not orchestrated — flagged in the M&A implementation note under Section A → Supporting DIB questions)
+- Each "deps:" tag accurately reflects current pipeline structure (M&A signals are script-driven, not orchestrated — flagged in the M&A implementation note under Section A → A4)
 - Coverage gaps: cross-reference recent merged feature PRs against the question inventory to surface work not yet documented here
 - CET taxonomy consistency: the canonical spine is the 21-area `NSTC-2025Q1` set (`config/cet/taxonomy.yaml`, validated by `taxonomy_loader.py`). Two divergent code-level taxonomies remain unreconciled — a 10-area transition-system set (`docs/transition/cet-integration.md`, code in transition CET inference) and a 19-area hardcoded reporting set (`sbir_etl/utils/reporting/analyzers/cet_analyzer.py`). Reconciling these to the 21-area spine is a code change with test/precision-benchmark risk and should be scoped separately.
 
