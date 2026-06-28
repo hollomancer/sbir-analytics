@@ -1,5 +1,19 @@
 # Transition Detection System - Complete Overview
 
+## Two related but distinct analyses
+
+This repo contains two systems that both involve SBIR awards and follow-on contracts. They answer different questions and should not be confused:
+
+| | Transition Detection (this doc) | [Phase-Transition Latency](../phase-transition-latency.md) |
+|--|--|--|
+| **Question** | Did this award lead to *any* federal contract? | How long did it take to reach a *Phase III* contract? |
+| **Method** | 6-signal probabilistic scoring (ML) | Survival analysis on explicitly-coded Phase III records |
+| **Contract scope** | Any USAspending federal contract | FPDS rows flagged `SR3`/`ST3` (Phase III only) |
+| **Output** | Likelihood score + confidence band per award-contract pair | Latency percentiles, KM curves, cohort rates |
+| **Use for** | Identifying which companies commercialized | Measuring how fast the program converts to Phase III |
+
+---
+
 ## What is Transition Detection?
 
 The **Transition Detection System** identifies which SBIR-funded companies likely transitioned their research into federal procurement contracts. It combines six independent signals to estimate the probability that an SBIR award led to a subsequent federal contract (commercialization).

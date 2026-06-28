@@ -11,6 +11,16 @@ This directory documents the current experimental deployment path for the SBIR E
 
 > **Operational data caveat.** No SBIR/STTR award data is committed to this repository. Local-development commands in these docs are intended to bring up services, run tests, or exercise pipeline components against small/local inputs after you provide `.env` values. Full dataset reproduction requires downloading the source/bulk datasets yourself, supplying the relevant API credentials, and running supporting services such as Neo4j; reproducing the analyses end-to-end is non-trivial setup, not a one-command deployment.
 
+## Choose your path
+
+| Goal | Use |
+|------|-----|
+| Run the pipeline locally, iterate on code | [Docker guide](../development/docker.md) — `make docker-up-dev` |
+| Run a one-off job without Docker | [Getting started](../getting-started/README.md) — `make dev` + Dagster UI |
+| Scheduled/automated runs (personal cloud) | GitHub Actions — see Quick Start below |
+| Heavy ML or fiscal jobs that need more RAM | [AWS Batch](aws-batch-analysis-jobs.md) |
+| Reproduce the author's optional cloud setup | [AWS Deployment](aws-deployment.md) |
+
 ## Deployment Overview
 
 The documented approach can use GitHub Actions for orchestration with optional AWS infrastructure:
