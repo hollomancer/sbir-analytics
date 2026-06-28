@@ -5,6 +5,8 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from sbir_etl.utils.identifiers import normalize_cage, normalize_duns, normalize_uei
+
 
 class Organization(BaseModel):
     """Unified organization model consolidating Company, PatentEntity, ResearchInstitution, and Agency.
@@ -99,36 +101,27 @@ class Organization(BaseModel):
     @field_validator("duns")
     @classmethod
     def validate_duns(cls, v):
-        """Validate DUNS number format."""
         if v is None:
-            return v
-        clean_duns = v.replace("-", "").replace(" ", "")
-        if not clean_duns.isdigit() or len(clean_duns) != 9:
+            return None
+        result = normalize_duns(v)
+        if result is None:
             raise ValueError("DUNS must be 9 digits")
-        return clean_duns
+        return result
 
     @field_validator("cage")
     @classmethod
     def validate_cage(cls, v):
-        """Validate CAGE code format."""
         if v is None:
-            return v
-        if len(v) != 5:
+            return None
+        result = normalize_cage(v)
+        if result is None:
             raise ValueError("CAGE code must be 5 characters")
-        return v.upper()
+        return result
 
     @field_validator("uei")
     @classmethod
     def validate_uei(cls, v):
-        """Normalize and validate UEI if provided."""
-        if v is None:
-            return v
-        if not isinstance(v, str):
-            return None
-        cleaned = "".join(ch for ch in v if ch.isalnum()).strip()
-        if len(cleaned) != 12:
-            return None
-        return cleaned.upper()
+        return normalize_uei(v)
 
     @field_validator("source_contexts")
     @classmethod

@@ -2,6 +2,8 @@
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from sbir_etl.utils.identifiers import normalize_cage, normalize_duns
+
 
 class Company(BaseModel):
     """Company data model with SAM.gov enrichment."""
@@ -36,25 +38,22 @@ class Company(BaseModel):
     @field_validator("duns")
     @classmethod
     def validate_duns(cls, v):
-        """Validate DUNS number format."""
         if v is None:
-            return v
-        # Remove any hyphens or spaces
-        clean_duns = v.replace("-", "").replace(" ", "")
-        if not clean_duns.isdigit() or len(clean_duns) != 9:
+            return None
+        result = normalize_duns(v)
+        if result is None:
             raise ValueError("DUNS must be 9 digits")
-        return clean_duns
+        return result
 
     @field_validator("cage")
     @classmethod
     def validate_cage(cls, v):
-        """Validate CAGE code format."""
         if v is None:
-            return v
-        # CAGE codes are typically 5 characters
-        if len(v) != 5:
+            return None
+        result = normalize_cage(v)
+        if result is None:
             raise ValueError("CAGE code must be 5 characters")
-        return v.upper()
+        return result
 
     @field_validator("zip_code")
     @classmethod
