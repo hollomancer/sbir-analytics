@@ -133,46 +133,46 @@ class TestSAMGovAssetIntegration:
     """Integration tests for SAM.gov Dagster asset."""
 
     def test_asset_execution_with_local_file(self, sample_sam_gov_parquet):
-        """Test Dagster asset execution with local parquet file."""
+        """Test Dagster asset execution with local parquet file.
+
+        The fixture writes a real parquet at ``tmp_path``, so the asset's
+        tiered-path resolver (`_ingestion_utils._resolve_tiered_path`) finds it
+        directly via ``Path(local).exists()`` — no Path mock needed.
+        """
         from dagster import build_asset_context
 
-        # Mock config
         with patch("sbir_analytics.assets.sam_gov_ingestion.get_config") as mock_config:
             mock_config.return_value.extraction.sam_gov.parquet_path = str(sample_sam_gov_parquet)
             mock_config.return_value.extraction.sam_gov.use_s3_first = False
             mock_config.return_value.s3 = {}
 
-            # Mock Path.exists
-            with patch("sbir_analytics.assets.sam_gov_ingestion.Path") as mock_path:
-                mock_path.return_value.exists.return_value = True
+            # Mock SAMGovExtractor to return our test data
+            with patch(
+                "sbir_analytics.assets.sam_gov_ingestion.SAMGovExtractor"
+            ) as mock_extractor_class:
+                mock_extractor = MagicMock()
+                test_df = pd.read_parquet(sample_sam_gov_parquet)
+                mock_extractor.load_parquet.return_value = test_df
+                mock_extractor_class.return_value = mock_extractor
 
-                # Mock SAMGovExtractor to return our test data
-                with patch(
-                    "sbir_analytics.assets.sam_gov_ingestion.SAMGovExtractor"
-                ) as mock_extractor_class:
-                    mock_extractor = MagicMock()
-                    test_df = pd.read_parquet(sample_sam_gov_parquet)
-                    mock_extractor.load_parquet.return_value = test_df
-                    mock_extractor_class.return_value = mock_extractor
+                # Execute asset with proper context
+                context = build_asset_context()
+                result = raw_sam_gov_entities(context)
 
-                    # Execute asset with proper context
-                    context = build_asset_context()
-                    result = raw_sam_gov_entities(context)
+                # Verify result
+                assert result is not None
+                assert hasattr(result, "value")
+                assert isinstance(result.value, pd.DataFrame)
+                assert len(result.value) == 5
 
-                    # Verify result
-                    assert result is not None
-                    assert hasattr(result, "value")
-                    assert isinstance(result.value, pd.DataFrame)
-                    assert len(result.value) == 5
-
-                    # Verify metadata
-                    assert result.metadata is not None
-                    assert "row_count" in result.metadata
-                    # Metadata values are wrapped in MetadataValue objects
-                    row_count = result.metadata["row_count"]
-                    assert row_count == 5 or (hasattr(row_count, "value") and row_count.value == 5)
-                    assert "num_columns" in result.metadata
-                    assert "key_columns" in result.metadata
+                # Verify metadata
+                assert result.metadata is not None
+                assert "row_count" in result.metadata
+                # Metadata values are wrapped in MetadataValue objects
+                row_count = result.metadata["row_count"]
+                assert row_count == 5 or (hasattr(row_count, "value") and row_count.value == 5)
+                assert "num_columns" in result.metadata
+                assert "key_columns" in result.metadata
 
     def test_asset_error_handling_no_file(self):
         """Test Dagster asset error handling when parquet file is missing."""
