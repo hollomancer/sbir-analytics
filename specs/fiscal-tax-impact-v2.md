@@ -5,6 +5,28 @@
 **Branch:** `research/open-source-tax-impact-modeling`
 **Research:** `docs/research/open-source-tax-impact-modeling.md`
 
+**Research question anchor:** D2 — jurisdiction-separated fiscal tax impact from SBIR spending
+**Answers for:** policy analysts, pipeline engineers
+**Complexity tier:** Descriptive (Tier 1)
+
+---
+
+## Done when
+
+> A policy analyst preparing a Treasury/OMB report can state: "Federal income, payroll, and corporate tax receipts from SBIR spending, plus state and local estimates, are separated by jurisdiction type. Per-dollar SBIR return estimates are within 20% of published IMPLAN benchmarks. Rates are sourced from BEA NIPA tables, not hardcoded."
+
+---
+
+## User Stories
+
+**As a policy analyst preparing a fiscal impact report for Treasury or OMB,**
+I want SBIR spending translated into jurisdiction-separated tax receipt estimates (federal income, payroll, corporate; state; local) using BEA NIPA-derived rates, so that I can cite defensible, data-grounded numbers rather than a hardcoded flat rate when estimating the public-finance return on SBIR investment.
+
+**As a pipeline engineer maintaining the BEA NIPA rate logic,**
+I want state-level and national tax rates refreshed from published BEA and Tax Foundation data rather than hardcoded constants, so that the pipeline remains accurate as rates change without requiring a code change per tax year.
+
+---
+
 ## Goal
 
 Replace the current hardcoded effective tax rates in `FiscalTaxEstimator` with

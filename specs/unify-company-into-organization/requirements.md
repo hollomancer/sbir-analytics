@@ -1,4 +1,19 @@
-# Requirements Document
+# Requirements — Unify :Company onto :Organization (Phase 2)
+
+> **Status:** Not yet started. Stacks on Phase 1 (PR #379).
+> Phase 2 of graph label unification. Supports inventory question **E2** (graph schema correctness) in [docs/research-questions.md](../../docs/research-questions.md).
+
+**Research question anchor:** E2 — graph label unification (Phase 2: :Company → :Organization)
+**Answers for:** pipeline engineers
+**Complexity tier:** Foundational infrastructure
+
+---
+
+## Done when
+
+> A pipeline engineer can state: "`grep ':Company' packages/sbir-graph/` returns zero hits in live loader source (migrations and tests excepted). Categorization and SEC EDGAR enrichment properties appear on `:Organization{uei}` nodes. Migration `007` ran with no property loss; orphaned `:Company` nodes without a matching `:Organization` are logged and left in place."
+
+---
 
 ## Introduction
 

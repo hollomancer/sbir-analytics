@@ -1,8 +1,23 @@
-# Requirements Document
+# Requirements — Iterative API Enrichment Refresh
+
+> **Status:** Not yet started.
+> Supports inventory question **E3** (enrichment freshness infrastructure) in [docs/research-questions.md](../../docs/research-questions.md).
+
+**Research question anchor:** E3 — incremental enrichment refresh to keep company, award, and patent metadata current
+**Answers for:** pipeline engineers
+**Complexity tier:** Foundational infrastructure
+
+---
+
+## Done when
+
+> A pipeline engineer can state: "The `iterative_enrichment_refresh_job` Dagster job runs nightly after bulk enrichment succeeds, processing only stale or failed records by source. Per-source freshness metrics are visible in `enrichment_events`. A targeted refresh can be triggered via `poetry run refresh_enrichment --source <name> --window <start>:<end>`."
+
+---
 
 ## Introduction
 
-This specification implements Add Iterative API Enrichment Refresh Loop.
+This specification implements an iterative API enrichment refresh loop to keep company, award, and patent metadata current.
 
 - The current enrichment stage performs a heavy, mostly one-off merge after SBIR bulk ingestion, so company, award, and patent metadata start to drift as soon as external systems publish corrections or new records.
 - The external sources we already rely on (SBIR.gov awards API, USAspending v2, SAM.gov entity data, NIH RePORTER, PatentsView, plus the other APIs called out across docs/config) publish updated snapshots daily to monthly; without an iterative refresh we miss compliance actions, debarments, UEI/DUNS changes, new transitions, and patent grants that happen after the initial load.
@@ -35,38 +50,32 @@ This specification implements Add Iterative API Enrichment Refresh Loop.
 
 ## Requirements
 
-### Requirement 1
+### Requirement 1 — Scheduled incremental refresh loop
 
-**User Story:** As a developer, I want add iterative api enrichment refresh loop, so that - the current enrichment stage performs a heavy, mostly one-off merge after sbir bulk ingestion, so company, award, and patent metadata start to drift as soon as external systems publish corrections or new records.
-
-#### Acceptance Criteria
-
-1. THE System SHALL implement iterative api enrichment refresh loop
-2. THE System SHALL validate the implementation of iterative api enrichment refresh loop
-
-### Requirement 2
-
-**User Story:** As a developer, I want **Iterative enrichment scheduler**, so that support the enhanced functionality described in the proposal.
+**User Story:** As a pipeline engineer maintaining data freshness, I want a Dagster job (`iterative_enrichment_refresh_job`) and sensor that activates once bulk enrichment assets have succeeded and runs on a nightly rolling schedule, so that the pipeline incrementally refreshes only records changed since the last run rather than re-running a full enrichment against all awards.
 
 #### Acceptance Criteria
 
-1. THE System SHALL support **iterative enrichment scheduler**
-2. THE System SHALL ensure proper operation of **iterative enrichment scheduler**
+1. THE System SHALL implement a Dagster job and sensor that activates after bulk enrichment asset materialization succeeds and runs on a configurable schedule (default: nightly).
+2. THE System SHALL track per-record enrichment state via `last_attempt_at` and `last_success_at` timestamps so that only stale or failed records are queued for refresh.
+3. THE System SHALL be configurable via `config.enrichment.*` per-source toggles and schedule parameters without code changes.
 
-### Requirement 3
+### Requirement 2 — Per-source partitioned processing
 
-**User Story:** As a developer, I want Add a Dagster job (`iterative_enrichment_refresh_job`) plus sensor that activates once bulk enrichment assets have succeeded and then runs on a rolling schedule (nightly by default), so that support the enhanced functionality described in the proposal.
-
-#### Acceptance Criteria
-
-1. THE System SHALL implement a dagster job (`iterative_enrichment_refresh_job`) plus sensor that activates once bulk enrichment assets have succeeded and then runs on a rolling schedule (nightly by default)
-2. THE System SHALL validate the implementation of a dagster job (`iterative_enrichment_refresh_job`) plus sensor that activates once bulk enrichment assets have succeeded and then runs on a rolling schedule (nightly by default)
-
-### Requirement 4
-
-**User Story:** As a developer, I want Partition work by API/source and record cohort (e.g., UEI batches for SAM.gov, award years for USAspending) so each run respects rate limits and can be retried independently, so that support the enhanced functionality described in the proposal.
+**User Story:** As a pipeline engineer managing external API quotas, I want enrichment work partitioned by source and record cohort (e.g., UEI batches for SAM.gov, award-year slices for USAspending), so that each refresh run respects per-source rate limits and individual partition failures can be retried independently without re-processing the full corpus.
 
 #### Acceptance Criteria
 
-1. THE System SHALL support partition work by api/source and record cohort (e.g., uei batches for sam.gov, award years for usaspending) so each run respects rate limits and can be retried independently
-2. THE System SHALL ensure proper operation of partition work by api/source and record cohort (e.g., uei batches for sam.gov, award years for usaspending) so each run respects rate limits and can be retried independently
+1. THE System SHALL partition each refresh run by source (SAM.gov, USAspending, NIH RePORTER, PatentsView) and record cohort (e.g., UEI batches, award-year windows).
+2. THE System SHALL respect per-source rate limits using the same retry and back-off semantics as the existing `SAMGovAPIClient`.
+3. THE System SHALL make each partition independently retryable; a single-partition failure SHALL NOT abort the remaining partitions.
+
+### Requirement 3 — Freshness telemetry and SLA monitoring
+
+**User Story:** As a pipeline engineer responsible for data quality SLAs, I want per-source freshness metrics logged to `enrichment_events` and surfaced as staleness alerts, so that I can identify which enrichment sources have drifted beyond acceptable windows and trigger targeted remediation without a full re-enrichment run.
+
+#### Acceptance Criteria
+
+1. THE System SHALL emit per-source enrichment events to `enrichment_events` recording attempt count, last success timestamp, and staleness window.
+2. THE System SHALL alert (via Dagster asset check or log warning) when any source's last successful enrichment exceeds its configured SLA window.
+3. THE System SHALL support a `--window` CLI flag (`poetry run refresh_enrichment --source <name> --window <start>:<end>`) for manual targeted refreshes of specific date ranges.

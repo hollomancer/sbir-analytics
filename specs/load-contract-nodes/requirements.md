@@ -1,5 +1,27 @@
 # Requirements: Make `RESULTED_IN` resolve (CONTRACT FinancialTransaction nodes)
 
+> **Status:** Not yet started.
+> Supports inventory question **A3** (SBIR → follow-on contract linkage) in [docs/research-questions.md](../../docs/research-questions.md).
+
+**Research question anchor:** A3 — SBIR award → follow-on federal contract linkage
+**Answers for:** defense industrial base analysts, pipeline engineers
+**Complexity tier:** Foundational infrastructure
+
+---
+
+## Done when
+
+> A pipeline engineer can state: "On a seeded graph, `RESULTED_IN` returns non-empty rows. `TransitionPathwayQueries.award_to_transition_to_contract` returns results. CONTRACT nodes are created idempotently (MERGE on `transaction_id`); no `:FinancialTransaction` nodes are duplicated."
+
+---
+
+## User Story
+
+**As a defense industrial base analyst tracking the SBIR-to-contract pipeline,**
+I want the `RESULTED_IN` graph edge to be structurally resolvable, so that I can query the "SBIR award → follow-on federal contract" pathway and measure how often SBIR awards lead to follow-on procurement once seed contract data is loaded.
+
+---
+
 > **Revised after scope-guard (verdict: TRIM).** Original draft proposed a
 > transformer + new `loaded_contracts` asset + RECIPIENT_OF/FUNDED_BY edges +
 > sequencing. Scope-guard (verified) showed that's over-built for the goal and that
