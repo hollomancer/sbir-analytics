@@ -472,6 +472,66 @@ class ContractExtractor:
             f"Completed {dat_file.name}: {self.stats['records_extracted']} contracts extracted"
         )
 
+    @staticmethod
+    def find_transaction_member(zip_url: str) -> str:
+        """Probe a remote USAspending DB zip for the transaction_normalized member.
+
+        The dump's per-table file id (e.g. ``5530.dat.gz``) is a PostgreSQL OID and
+        varies between dumps. Open each ``.dat.gz`` (largest first), read one row,
+        and return the first member whose layout matches the
+        ``transaction_normalized`` signature: ≥100 tab-separated columns, col[2] is
+        an 8-digit YYYYMMDD action_date, and col[3] is one of {A, B, C, D, \\N}.
+
+        Raises:
+            ImportError: if ``remotezip`` (the ``streaming`` extra) is not installed.
+            RuntimeError: if no member matches the signature.
+        """
+        try:
+            from remotezip import RemoteZip
+        except ImportError as e:  # pragma: no cover - exercised via import guard
+            raise ImportError(
+                "Remote zip streaming requires the optional 'streaming' extra "
+                "(uv sync --extra streaming / pip install 'sbir-etl[streaming]')."
+            ) from e
+
+        valid_type_codes = {"A", "B", "C", "D", "\\N"}
+
+        with RemoteZip(zip_url) as remote_zip:
+            members = sorted(
+                (i for i in remote_zip.infolist() if i.filename.endswith(".dat.gz")),
+                key=lambda i: -i.file_size,
+            )
+            for info in members:
+                try:
+                    with (
+                        remote_zip.open(info.filename) as raw,
+                        gzip.GzipFile(fileobj=raw) as gz,
+                    ):
+                        first = gz.readline()
+                except Exception as exc:  # pragma: no cover - defensive
+                    logger.debug(f"Skipping {info.filename}: {exc}")
+                    continue
+                if not first:
+                    continue
+                cols = first.decode("utf-8", errors="replace").rstrip("\n").split("\t")
+                if len(cols) < 100:
+                    continue
+                col2, col3 = cols[2], cols[3]
+                if len(col2) != 8 or not col2.isdigit():
+                    continue
+                if col3 not in valid_type_codes:
+                    continue
+                logger.info(
+                    f"Auto-detected transaction member: {info.filename} "
+                    f"(ncols={len(cols)}, action_date={col2}, type={col3!r})"
+                )
+                return info.filename
+
+        raise RuntimeError(
+            f"No .dat.gz member in {zip_url} matched the transaction_normalized "
+            "signature (≥100 cols, 8-digit col[2], col[3] in A/B/C/D)."
+        )
+
     def stream_remote_zip_member(
         self,
         zip_url: str,
@@ -562,7 +622,7 @@ class ContractExtractor:
     def extract_from_remote_zip(
         self,
         zip_url: str,
-        member_name: str,
+        member_name: str | None,
         output_file: Path,
     ) -> int:
         """Extract SBIR-relevant contracts by streaming one member from a remote zip.
@@ -574,13 +634,17 @@ class ContractExtractor:
 
         Args:
             zip_url: ``https://`` URL of the USAspending database zip.
-            member_name: Path of the ``.dat.gz`` member inside the zip.
+            member_name: Path of the ``.dat.gz`` member inside the zip. If ``None``,
+                :meth:`find_transaction_member` probes the zip and picks the member
+                whose layout matches transaction_normalized.
             output_file: Parquet output path.
 
         Returns:
             Number of contracts extracted.
         """
         output_file = Path(output_file)
+        if member_name is None:
+            member_name = self.find_transaction_member(zip_url)
         return self._collect_and_write(
             self.stream_remote_zip_member(zip_url, member_name), output_file
         )

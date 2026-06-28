@@ -14,10 +14,10 @@ Usage:
 
     # Stream one table member straight from the remote USAspending .zip over HTTP
     # range — no full ~217GB download, nothing staged on local disk (needs the
-    # 'streaming' extra: uv sync --extra streaming):
+    # 'streaming' extra: uv sync --extra streaming). The transaction_normalized
+    # member is auto-detected from the zip's layout; pass --member to override.
     python scripts/extract_federal_contracts.py \\
-        --remote-zip https://files.usaspending.gov/database_download/usaspending-db-subset_20240101.zip \\
-        --member 5530.dat.gz
+        --remote-zip https://files.usaspending.gov/database_download/usaspending-db-subset_20240101.zip
 """
 
 import argparse
@@ -50,10 +50,11 @@ def main():
     parser.add_argument(
         "--member",
         type=str,
-        default="5530.dat.gz",
+        default=None,
         help=(
-            "Name of the .dat.gz member inside --remote-zip to stream "
-            "(default: 5530.dat.gz, the transaction_normalized table)."
+            "Override the .dat.gz member inside --remote-zip to stream. "
+            "When omitted, the transaction_normalized member is auto-detected by "
+            "sniffing the zip's .dat.gz layouts (per-table OIDs vary between dumps)."
         ),
     )
 
@@ -76,7 +77,8 @@ def main():
             vendor_filter_file=vendor_filter_file,
             batch_size=10000,
         )
-        logger.info(f"Streaming member {args.member} from {args.remote_zip}")
+        member_label = args.member or "(auto-detect)"
+        logger.info(f"Streaming member {member_label} from {args.remote_zip}")
         logger.info(f"Output will be saved to {output_file}")
         try:
             num_contracts = extractor.extract_from_remote_zip(
