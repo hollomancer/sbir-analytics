@@ -6,7 +6,6 @@ Data Source Priority:
 3. FAIL: If both sources fail
 """
 
-from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -21,7 +20,7 @@ from sbir_etl.utils.cloud_storage import (
     get_s3_bucket_from_env,
 )
 
-from ._ingestion_utils import _resolve_tiered_path
+from ._ingestion_utils import _resolve_tiered_path, stamp_provenance
 
 
 def _import_sam_gov_entities(
@@ -127,11 +126,7 @@ def _import_sam_gov_entities(
     )
 
     # Stamp data source provenance on every record
-    # Prefer the original S3 URL over the resolved temp/cache path
-    ingested_at = datetime.now(UTC)
-    df["data_source"] = "sam.gov"
-    df["data_source_url"] = str(s3_parquet_url or parquet_path)
-    df["ingested_at"] = ingested_at
+    stamp_provenance(df, "sam.gov", str(s3_parquet_url or parquet_path))
 
     # Create metadata
     metadata: dict[str, Any] = {

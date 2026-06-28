@@ -34,19 +34,11 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from dataclasses import dataclass, field
-from difflib import SequenceMatcher
 from typing import Any
 
 from loguru import logger
 
-
-# Try to use rapidfuzz if installed for higher-quality fuzzy matching.
-try:
-    from rapidfuzz import fuzz
-
-    _RAPIDFUZZ_AVAILABLE = True
-except ImportError:
-    _RAPIDFUZZ_AVAILABLE = False
+from sbir_ml.transition.features.vendor_crosswalk import _fuzzy_score as _crosswalk_fuzzy_score
 
 
 @dataclass
@@ -215,32 +207,9 @@ class VendorResolver:
             return ResolverMatch(record=rec, method="duns", score=1.0)
         return ResolverMatch(record=None, method="duns", score=0.0, note="no match")
 
-    # -----------------------------
-    # Name matching helpers
-    # -----------------------------
     def _fuzzy_score(self, s1: str, s2: str) -> float:
-        """Compute a similarity score between 0 and 1 between two strings.
-
-        Uses rapidfuzz if available for better performance and options; falls back
-        to difflib.SequenceMatcher ratio otherwise.
-        """
-        if not s1 or not s2:
-            return 0.0
-        if _RAPIDFUZZ_AVAILABLE:
-            try:
-                # rapidfuzz.fuzz.token_sort_ratio returns 0-100
-                score = fuzz.token_sort_ratio(s1, s2) / 100.0
-                return float(score)
-            except (TypeError, ValueError) as exc:
-                logger.debug(
-                    "rapidfuzz scoring failed for {!r} vs {!r}: {}; falling back to difflib",
-                    s1,
-                    s2,
-                    exc,
-                )
-        # difflib fallback
-        sm = SequenceMatcher(None, s1, s2)
-        return float(sm.ratio())
+        """Delegate to the canonical fuzzy scorer in vendor_crosswalk."""
+        return _crosswalk_fuzzy_score(s1, s2)
 
     def resolve_by_name(self, name: str, prefer_identifiers: bool = True) -> ResolverMatch:
         """

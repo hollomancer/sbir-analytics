@@ -7,7 +7,6 @@ Data Source Priority:
 """
 
 import json
-from datetime import datetime, UTC
 from pathlib import Path
 from typing import Any
 
@@ -23,7 +22,7 @@ from sbir_etl.utils.cloud_storage import (
     resolve_data_path,
 )
 
-from ._ingestion_utils import _resolve_tiered_path
+from ._ingestion_utils import _resolve_tiered_path, stamp_provenance
 
 
 def _import_usaspending_table(
@@ -134,13 +133,7 @@ def _import_usaspending_table(
     )
 
     # Stamp data source provenance on the returned DataFrame
-    # Note: _import_usaspending_table returns a sample (limit=100) per the existing
-    # query_awards call above. Provenance is stamped on whatever this function returns.
-    ingested_at = datetime.now(UTC)
-    source_url = str(dump_path) if dump_path else "usaspending_api"
-    sample_df["data_source"] = "usaspending"
-    sample_df["data_source_url"] = source_url
-    sample_df["ingested_at"] = ingested_at
+    stamp_provenance(sample_df, "usaspending", str(dump_path) if dump_path else "usaspending_api")
 
     metadata = {
         "table_name": table_info.get("table_name"),
@@ -216,11 +209,7 @@ def raw_usaspending_recipients(context: AssetExecutionContext) -> Output[pd.Data
 
     # Stamp data source provenance (if not already stamped by _import_usaspending_table)
     if "data_source" not in df.columns:
-        ingested_at = datetime.now(UTC)
-        source_url = parquet_url if parquet_url else "usaspending_dump"
-        df["data_source"] = "usaspending"
-        df["data_source_url"] = str(source_url)
-        df["ingested_at"] = ingested_at
+        stamp_provenance(df, "usaspending", str(parquet_url) if parquet_url else "usaspending_dump")
 
     metadata: dict[str, Any] = {
         "num_records": len(df),

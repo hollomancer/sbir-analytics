@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from datetime import UTC, datetime
 from pathlib import Path
 
+import pandas as pd
 from dagster import AssetExecutionContext
 
 from sbir_etl.utils.cloud_storage import resolve_data_path
@@ -46,3 +48,10 @@ def _resolve_tiered_path(
         context.log.warning(f"Local {label} path check failed: {e}")
 
     return None, None
+
+
+def stamp_provenance(df: pd.DataFrame, source: str, url: str) -> None:
+    """Set data_source, data_source_url, and ingested_at columns on df in-place."""
+    df["data_source"] = source
+    df["data_source_url"] = url
+    df["ingested_at"] = datetime.now(UTC)
