@@ -80,7 +80,7 @@ def normalize_name(
         if abbreviations is None:
             # Import here to avoid circular dependency
             try:
-                from .enhanced_matching import ENHANCED_ABBREVIATIONS
+                from sbir_etl.enrichers.matching import ENHANCED_ABBREVIATIONS
 
                 abbreviations = ENHANCED_ABBREVIATIONS
             except ImportError:  # pragma: no cover

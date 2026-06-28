@@ -2,7 +2,6 @@
 
 import json
 import os
-import re
 import time
 from datetime import date
 from pathlib import Path
@@ -22,6 +21,7 @@ from loguru import logger
 from sbir_etl.config.loader import get_config
 from sbir_etl.models.award import Award
 from sbir_etl.utils.company_canonicalizer import canonicalize_companies_from_awards
+from sbir_etl.utils.text_normalization import normalize_name
 
 try:
     from sbir_graph.loaders.neo4j import LoadMetrics, Neo4jClient, Neo4jConfig
@@ -96,47 +96,6 @@ STATE_NAME_TO_CODE = {
     "northern mariana islands": "MP",
 }
 
-# Legal suffixes stripped during normalization.
-_LEGAL_SUFFIXES = [
-    r"\bincorporated\b",
-    r"\bincorporation\b",
-    r"\bcorporation\b",
-    r"\bcompany\b",
-    r"\blimited\b",
-    r"\bliability\b",
-    r"\bpartnership\b",
-    r"\binc\.?\b",
-    r"\bcorp\.?\b",
-    r"\bco\.?\b",
-    r"\bltd\.?\b",
-    r"\bllc\.?\b",
-    r"\bllp\.?\b",
-    r"\blp\.?\b",
-    r"\bplc\.?\b",
-    r"\bp\.?c\.?\b",
-    r"\bl\.?l\.?c\.?\b",
-    r"\bl\.?l\.?p\.?\b",
-    r"\bl\.?p\.?\b",
-]
-
-# Standardized abbreviations applied after suffix removal.
-_ABBREVIATION_REPLACEMENTS = {
-    r"\btechnologies\b": "tech",
-    r"\btechnology\b": "tech",
-    r"\bsystems?\b": "sys",
-    r"\bsolutions?\b": "sol",
-    r"\bservices?\b": "svc",
-    r"\binternational\b": "intl",
-    r"\bamerican\b": "amer",
-    r"\bmanufacturing\b": "mfg",
-    r"\bindustries\b": "ind",
-    r"\benterprises?\b": "ent",
-    r"\bassociates?\b": "assoc",
-    r"\blaboratories\b": "lab",
-    r"\blaboratory\b": "lab",
-    r"\bresearch\b": "rsch",
-    r"\bdevelopment\b": "dev",
-}
 
 _PHASE_NEXT = {"I": "II", "II": "III"}
 
@@ -152,26 +111,6 @@ _BOOL_FIELDS_WITH_UNKNOWN = (
 # ---------------------------------------------------------------------------
 
 
-def normalize_company_name(name: str) -> str:
-    """Normalize a company name for cross-record matching.
-
-    Lowercases, strips punctuation, removes legal suffixes (Inc/Corp/LLC/etc.),
-    standardizes abbreviations, and collapses whitespace.
-
-    Example:
-        >>> normalize_company_name("Acme Technologies, Inc.")
-        'acme tech'
-    """
-    if not name:
-        return ""
-    s = name.lower().strip()
-    s = re.sub(r"[^\w\s-]", " ", s).replace("-", " ")
-    for pattern in _LEGAL_SUFFIXES:
-        s = re.sub(pattern, "", s, flags=re.IGNORECASE)
-    for pattern, repl in _ABBREVIATION_REPLACEMENTS.items():
-        s = re.sub(pattern, repl, s, flags=re.IGNORECASE)
-    return " ".join(s.split()).strip()
-
 
 def _company_id_for_award(award: Award) -> str | None:
     """Return UEI / DUNS-prefixed / NAME-prefixed identifier (in that priority)."""
@@ -180,7 +119,7 @@ def _company_id_for_award(award: Award) -> str | None:
     if award.company_duns:
         return f"DUNS:{award.company_duns}"
     if award.company_name:
-        normalized = normalize_company_name(award.company_name)
+        normalized = normalize_name(award.company_name, remove_suffixes=True, apply_abbreviations=True)
         if normalized:
             return f"NAME:{normalized}"
     return None
@@ -621,7 +560,7 @@ def neo4j_sbir_awards(
                 award_nodes.append(_transaction_props(award))
                 award_objects.append(award)
 
-                normalized_name = normalize_company_name(award.company_name or "")
+                normalized_name = normalize_name(award.company_name or "", remove_suffixes=True, apply_abbreviations=True)
                 company_id, id_type, name_only_fallback = _resolve_canonical_company(
                     award, canonical_map, normalized_name
                 )
