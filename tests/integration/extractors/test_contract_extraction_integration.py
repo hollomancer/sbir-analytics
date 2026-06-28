@@ -8,12 +8,14 @@ Tests cover end-to-end extraction scenarios:
 - Parent/child relationship tracking
 """
 
+import datetime
 import gzip
 import json
 
 import pandas as pd
 import pytest
 
+from sbir_analytics.assets.transition.contracts import normalize_contract_columns
 from sbir_etl.extractors.contract_extractor import ContractExtractor
 
 
@@ -358,6 +360,73 @@ class TestExtractFromDump:
 
         # Should have selected large.dat.gz (7 rows instead of 6)
         assert extractor.stats["records_scanned"] == 7
+
+
+class TestActionDateEndToEnd:
+    """End-to-end: the true transaction action_date survives extract→parquet→bridge.
+
+    Drives the real pipeline (``extract_from_dump`` writes Parquet, then
+    ``normalize_contract_columns`` maps it to the sample schema) on a row where the
+    transaction action_date (column 2) deliberately differs from the
+    period-of-performance start (column 71), proving action_date is carried as the
+    true obligating-action date — not the start_date proxy the bridge used before.
+    """
+
+    @pytest.fixture
+    def action_date_dat_gz_file(self, tmp_path):
+        """A single contract whose action_date (col 2) ≠ start_date (col 71)."""
+        data_file = tmp_path / "action_date.dat.gz"
+
+        row = ["\\N"] * 103
+        row[0] = "5001"  # transaction_id
+        row[1] = "CONT_AWD_ACTION_DATE_001"
+        row[2] = "20221101"  # action_date — the obligating-action date
+        row[3] = "A"  # type (contract)
+        row[5] = "A"  # award_type_code
+        row[9] = "TEST CONTRACTOR ONE"  # recipient_name
+        row[10] = "TEST123456789"  # recipient_unique_id
+        row[12] = "Department of Defense"
+        row[28] = "ACT001"  # piid
+        row[29] = "100000.00"  # obligation
+        row[71] = "20230801"  # period_of_performance_start_date — later, distinct
+        row[96] = "TEST123456789"  # recipient_uei
+        row[99] = "FULL"  # extent_competed
+
+        with gzip.open(data_file, "wt", encoding="utf-8") as f:
+            f.write("\t".join(row) + "\n")
+
+        return data_file
+
+    def test_true_action_date_survives_extract_and_bridge(
+        self, tmp_path, action_date_dat_gz_file, vendor_filter_file
+    ):
+        output_file = tmp_path / "output" / "action_date.parquet"
+        dump_dir = tmp_path / "dump"
+        dump_dir.mkdir()
+
+        import shutil
+
+        target_file = dump_dir / "action_date.dat.gz"
+        shutil.copy(action_date_dat_gz_file, target_file)
+
+        extractor = ContractExtractor(vendor_filter_file=vendor_filter_file)
+        count = extractor.extract_from_dump(
+            dump_dir=dump_dir,
+            output_file=output_file,
+            table_files=["action_date.dat.gz"],
+        )
+        assert count == 1
+
+        # Read the extractor's real Parquet output and run the sample bridge on it.
+        df = normalize_contract_columns(pd.read_parquet(output_file))
+        r = df.iloc[0]
+
+        assert r["contract_id"] == "ACT001"
+        # action_date is the transaction action_date (col 2), NOT the PoP start (col 71).
+        assert pd.Timestamp(r["action_date"]).date() == datetime.date(2022, 11, 1)
+        assert pd.Timestamp(r["start_date"]).date() == datetime.date(2023, 8, 1)
+        # The bridge no longer overwrites action_date with start_date.
+        assert r["action_date"] != r["start_date"]
 
 
 class TestContractExtractorEdgeCasesIntegration:

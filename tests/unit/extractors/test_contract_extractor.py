@@ -288,8 +288,23 @@ class TestParseContractRow:
         assert contract.obligation_amount == 250000.00
         assert contract.competition_type == CompetitionType.FULL_AND_OPEN
         assert contract.is_deobligation is False
+        assert contract.action_date == date(2023, 3, 15)  # transaction action_date (col 2)
         assert contract.start_date == date(2023, 3, 15)
         assert contract.end_date == date(2024, 3, 15)
+
+    def test_parse_contract_row_captures_action_date_from_column_2(self, sample_contract_row_full):
+        """action_date is the true transaction date (col 2), independent of start_date (col 71)."""
+        row = list(sample_contract_row_full)
+        row[2] = "20221101"  # action_date: obligating-action date
+        row[71] = "20230801"  # period_of_performance_start_date: later, distinct
+
+        extractor = ContractExtractor()
+        contract = extractor._parse_contract_row(row)
+
+        assert contract is not None
+        # action_date follows the transaction action_date (col 2), NOT the PoP start.
+        assert contract.action_date == date(2022, 11, 1)
+        assert contract.start_date == date(2023, 8, 1)
 
     def test_parse_contract_row_minimal(self, sample_contract_row_minimal):
         """Test parsing a minimal contract row."""
