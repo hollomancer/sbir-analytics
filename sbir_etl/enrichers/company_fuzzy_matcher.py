@@ -88,13 +88,7 @@ except ImportError:  # pragma: no cover
 phonetic_match = _phonetic_match
 jaro_winkler_similarity = _jaro_winkler_similarity
 
-
-def _coerce_int(value: object) -> int | None:
-    """Best-effort conversion to int without propagating errors."""
-    try:
-        return int(cast(Any, value))
-    except (TypeError, ValueError):
-        return None
+from sbir_etl.utils.coercion import _to_int as _coerce_int  # noqa: E402
 
 
 # -------------------------

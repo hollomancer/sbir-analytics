@@ -24,6 +24,9 @@ from typing import Any, cast
 import pandas as pd
 from loguru import logger
 
+from sbir_etl.utils.coercion import _blank as _is_blank
+from sbir_etl.utils.coercion import _to_float, _to_int, _to_str
+
 from .models import CoveredSalesClaim, FirmUEISource
 
 # Maps canonical CoveredSalesClaim fields to accepted source-column aliases.
@@ -97,38 +100,6 @@ def _is_explicit_aggregate(row: dict[str, Any]) -> bool:
     if isinstance(status, str) and status.strip().lower() in _AGGREGATE_STATUS_VALUES:
         return True
     return False
-
-
-def _is_blank(value: Any) -> bool:
-    if value is None:
-        return True
-    if isinstance(value, float) and pd.isna(value):
-        return True
-    return isinstance(value, str) and not value.strip()
-
-
-def _to_float(value: Any) -> float | None:
-    if _is_blank(value):
-        return None
-    try:
-        return float(str(value).replace(",", "").replace("$", "").strip())
-    except (TypeError, ValueError):
-        return None
-
-
-def _to_int(value: Any) -> int | None:
-    if _is_blank(value):
-        return None
-    try:
-        return int(float(str(value).strip()))
-    except (TypeError, ValueError):
-        return None
-
-
-def _to_str(value: Any) -> str | None:
-    if _is_blank(value):
-        return None
-    return str(value).strip()
 
 
 def _coerce_rows(source: Any) -> list[dict[str, Any]]:
