@@ -72,8 +72,7 @@ def _fake_remotezip_module_multi(
 
         def infolist(self):
             return [
-                _Info(name, (sizes or {}).get(name, len(blob)))
-                for name, blob in members.items()
+                _Info(name, (sizes or {}).get(name, len(blob))) for name, blob in members.items()
             ]
 
         def open(self, member_name):
