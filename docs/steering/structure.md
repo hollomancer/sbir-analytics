@@ -1,62 +1,6 @@
 # Project Structure & Organization
 
-## 🎉 Consolidated Architecture (2025-01-01)
-
-The project has undergone major consolidation to eliminate code duplication and improve maintainability. The architecture now follows a streamlined modular ETL design with clear separation of concerns:
-
-### Key Consolidation Achievements
-
-- ✅ **Asset Consolidation**: USPTO assets unified into single file (`packages/sbir-analytics/sbir_analytics/assets/uspto/`)
-- ✅ **Configuration Consolidation**: Hierarchical PipelineConfig with 16+ consolidated schemas
-- ✅ **Model Consolidation**: Unified Award model replaces separate implementations
-- ✅ **Docker Consolidation**: Single profile-based docker-compose.yml
-- ✅ **Utility Consolidation**: Performance monitoring and utilities streamlined
-
-## Source Code Architecture
-
-The project follows a consolidated modular ETL architecture with clear separation of concerns:
-
-```text
-sbir_etl/                                  # Core extraction, validation, and loading library
-packages/
-├── sbir-analytics/sbir_analytics/         # Dagster definitions, assets, and analytics tools
-├── sbir-ml/sbir_ml/                       # Machine-learning and transition models
-└── sbir-graph/sbir_graph/                 # Graph loaders and queries
-```
-
-## Key Architectural Patterns
-
-### ETL Pipeline Stages
-
-1. **Extract**: Raw data ingestion (SBIR CSV, USAspending PostgreSQL, USPTO)
-2. **Validate**: Schema validation using Pydantic models
-3. **Enrich**: External API enrichment and fuzzy entity matching
-4. **Transform**: Business logic, deduplication, graph preparation
-5. **Load**: Neo4j batch loading with relationship creation
-
-### Consolidated Dagster Asset Organization
-
-- **Unified Assets**: Major consolidation completed - USPTO assets in single file (`packages/sbir-analytics/sbir_analytics/assets/uspto/`)
-- **Consistent Naming**: Standardized prefixes (raw_, validated_, enriched_, transformed_, loaded_)
-- **Jobs**: Defined in `packages/sbir-analytics/sbir_analytics/assets/jobs/` for pipeline orchestration
-- **Asset Checks**: Co-located with assets for quality validation
-- **Groups**: Assets organized by functional area (sbir_ingestion, cet_pipeline, etc.)
-
-### Consolidated Configuration Management
-
-- **Hierarchical Schema**: Single PipelineConfig with 16+ consolidated schemas in `sbir_etl/config/schemas/`
-- **Type Safety**: Complete Pydantic validation with custom validators
-- **YAML Files**: Environment-specific configs in `config/` directory
-- **Environment Overrides**: Standardized `SBIR_ETL__SECTION__KEY` format for runtime configuration
-- **No Duplication**: All configuration patterns unified and documented
-
-### Unified Data Models
-
-- **Consolidated Models**: Award model replaces separate SbirAward implementations
-- **Pydantic Validation**: All data structures use Pydantic for validation
-- **Field Validation**: Custom validators for business rules (UEI format, date ranges)
-- **Type Safety**: Strict typing throughout with MyPy enforcement
-- **Consistent Patterns**: Standardized model structure across all domains
+For the full directory tree and pipeline architecture, see [architecture/detailed-overview.md](../architecture/detailed-overview.md). This document covers the developer-facing conventions: directory layout, naming rules, and code organization principles.
 
 ## Directory Conventions
 

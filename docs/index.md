@@ -17,17 +17,7 @@ Welcome. This site collects the current documentation for the SBIR/STTR commerci
 
 ## What is this project?
 
-Experimental, graph-based ETL pipeline that ingests SBIR/USAspending/USPTO data and loads a Neo4j graph database for exploratory analysis. The cloud pieces described below are an optional deployment path that has been documented for repeatability, not a claim that the project is production-grade.
-
-**Current documented deployment approach**:
-
-- **Orchestration**: GitHub Actions Solo Plan, AWS Step Functions
-- **Compute**: AWS Lambda (serverless)
-- **Storage**: AWS S3 (data lake)
-- **Database**: Neo4j (Docker locally, EC2 in the optional cloud setup)
-- **Processing**: DuckDB/Pandas
-
-**Local development**: Docker Compose + local Dagster (recommended for iteration)
+See [README](../README.md) for project context, research questions, and setup. The docs here are the detailed reference: architecture, methodology, guides, and schemas.
 
 ## Quick links
 

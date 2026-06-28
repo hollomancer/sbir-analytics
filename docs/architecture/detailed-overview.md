@@ -219,32 +219,6 @@ class Award(BaseModel):
     # Validators: awards must have positive amount, valid dates, etc.
 ```
 
-#### CET Classification Result
-
-```python
-class CETClassification(BaseModel):
-    cet_id: str                 # e.g., "artificial_intelligence"
-    cet_name: str               # Human-readable name
-    score: float                # 0-100 confidence
-    classification: ClassificationLevel  # HIGH/MEDIUM/LOW
-    primary: bool               # True if highest score for this award
-    evidence: list[EvidenceStatement]  # Supporting excerpts
-    classified_at: str          # ISO 8601 timestamp
-```
-
-#### Transition Detection Result
-
-```python
-# From transition_models.py
-# 6-signal composite score:
-# - Agency continuity (25%)
-# - Timing proximity (20%)
-# - Competition type (20%)
-# - Patent signal (15%)
-# - CET alignment (10%)
-# - Vendor match confidence (10%)
-# Result: likelihood_score (0.0-1.0) + confidence band (HIGH/LIKELY/POSSIBLE)
-```
 
 ---
 
@@ -304,159 +278,29 @@ enrichment:
 
 ### 3.2 CET Classification (Machine Learning)
 
-**Pipeline:**
-
-```python
-# 1. Load CET Taxonomy (21 NSTC technology areas)
-cet_taxonomy = load_cet_taxonomy()  # From config/cet/taxonomy.yaml
-
-# 2. TF-IDF Feature Extraction (with keyword boosting)
-class CETAwareTfidfVectorizer(TfidfVectorizer):
-    """TF-IDF with CET-keyword boosting (2x multiplier)"""
-
-    def _apply_keyword_boost(self, X):
-        X_boosted = X.copy()
-        X_boosted[:, keyword_indices] *= self.keyword_boost_factor
-        return X_boosted
-
-# 3. Train Multi-Label Classifier
-model = Pipeline([
-    ('tfidf', CETAwareTfidfVectorizer(cet_keywords=taxonomy)),
-    ('feature_selection', SelectKBest(chi2, k=1000)),
-    ('classifier', CalibratedClassifierCV(LogisticRegression()))
-])
-
-# 4. Classify Awards (batch)
-classifications = model.predict_proba(awards['abstract'])
-# Output: score (0-100), classification (HIGH/MEDIUM/LOW), evidence statements
-
-# 5. Validate & Report
-quality_check = {
-    'high_conf_rate': 0.65,           # Target: ≥60%
-    'evidence_coverage_rate': 0.82,   # Target: ≥80%
-    'classification_threshold': 0.70  # HIGH confidence
-}
-```
+Awards are classified against 21 NSTC technology areas using TF-IDF + Logistic Regression with keyword boosting. See [ml/cet-integration.md](../ml/cet-integration.md) for the full data flow, model architecture, hyperparameters, and Neo4j loading details.
 
 ### 3.3 Transition Detection (6-Signal Scoring)
 
-**Algorithm:**
-
-```python
-# Detect when SBIR-funded research resulted in federal contracts
-
-def detect_transition(award: Award, contracts: List[Contract]) -> TransitionResult:
-    signals = {
-        'vendor_match': compute_vendor_match_signal(award, contracts),
-        'agency_continuity': compute_agency_signal(award, contracts),
-        'timing_proximity': compute_timing_signal(award, contracts),
-        'competition_type': compute_competition_signal(award, contracts),
-        'patent_signal': compute_patent_signal(award, contracts, patents),
-        'cet_alignment': compute_cet_alignment_signal(award, contracts)
-    }
-
-    # Weighted composite score
-    likelihood_score = (
-        0.25 * signals['agency_continuity'] +
-        0.20 * signals['timing_proximity'] +
-        0.20 * signals['competition_type'] +
-        0.15 * signals['patent_signal'] +
-        0.10 * signals['cet_alignment'] +
-        0.10 * signals['vendor_match']
-    )
-
-    # Confidence classification
-    confidence = (
-        'HIGH'     if likelihood_score >= 0.85 else
-        'LIKELY'   if likelihood_score >= 0.65 else
-        'POSSIBLE'
-    )
-
-    return TransitionResult(
-        award_id=award.award_id,
-        contract_id=matched_contract.id,
-        likelihood_score=likelihood_score,
-        confidence=confidence,
-        evidence={
-            'signals': signals,
-            'supporting_facts': [...]
-        }
-    )
-```
+Six independent signals (agency continuity, timing proximity, competition type, patent signal, CET alignment, vendor match) combine into a likelihood score (0.0–1.0) with HIGH/LIKELY/POSSIBLE confidence bands. See [transition/detection-algorithm.md](../transition/detection-algorithm.md) for the full algorithm.
 
 **Vendor Resolution (4-step cascade):**
 
 1. UEI exact match (confidence: 0.99)
 2. CAGE code exact match (confidence: 0.95)
 3. DUNS exact match (confidence: 0.90)
-4. RapidFuzz fuzzy name matching (confidence: 0.65-0.85)
+4. RapidFuzz fuzzy name matching (confidence: 0.65–0.85)
 
 ### 3.4 Fiscal Returns Analysis
 
 **Economic Modeling Pipeline:**
 
-```python
-# 1. Prepare SBIR Awards (NAICS + Geography + Inflation)
-fiscal_prepared_awards = prepare_awards(
-    awards,
-    naics_enrichment=True,
-    geographic_resolution='state',
-    inflation_adjustment=True,
-    base_year=2023
-)
-
-# 2. Map NAICS → BEA Sectors
-bea_mapped_awards = map_naics_to_bea(
-    fiscal_prepared_awards,
-    naics_to_bea_mapping={
-        '611310': 'professional_services',
-        ...
-    }
-)
-
-# 3. Aggregate into Economic Shocks
-shocks = aggregate_economic_shocks(
-    bea_mapped_awards,
-    shock_type='direct_industry_output'  # Dollar amounts by sector/region
-)
-
-# 4. Model Economic Impacts (BEA I-O tables)
-impacts = compute_economic_impacts(
-    shocks,
-    model='bea_io',
-    multiplier_type='gross_output',  # Industry multipliers
-    geographic_level='state'
-)
-
-# 5. Extract Tax Components
-tax_components = extract_tax_components(
-    impacts,
-    components=[
-        'wage_income',
-        'proprietor_income',
-        'corporate_profits'
-    ]
-)
-
-# 6. Calculate Federal Tax Receipts
-tax_estimates = estimate_federal_taxes(
-    tax_components,
-    tax_rates={
-        'wage_income': 0.20,      # 20% effective federal rate
-        'proprietor_income': 0.25,
-        'corporate_profit': 0.21
-    }
-)
-
-# 7. Compute ROI Metrics
-roi = calculate_roi(
-    sbir_investment=award.award_amount,
-    tax_receipts=tax_estimates.total_federal_tax,
-    discount_rate=0.03,
-    analysis_period_years=10
-)
-# Output: ROI ratio, NPV, payback period, sensitivity analysis
-```
+1. Prepare SBIR Awards (NAICS codes + state geography + inflation adjustment to base year 2023)
+2. Map NAICS codes → BEA sectors
+3. Aggregate into economic shocks (direct industry output by sector/region)
+4. Apply BEA I-O multipliers (Leontief gross output, state-level)
+5. Extract tax components (wage income, proprietor income, corporate profits)
+6. Estimate federal tax receipts and compute ROI metrics (NPV, payback period, sensitivity analysis)
 
 ---
 
@@ -568,61 +412,13 @@ PipelineConfig (root):
 
 ### 5.1 CET Classification System
 
-**21 NSTC Technology Areas:**
+Classifies awards and patents against 21 NSTC technology areas (TF-IDF + Logistic Regression). Outputs `APPLICABLE_TO` (Award→CETArea) and `SPECIALIZES_IN` (Company→CETArea) relationships in Neo4j.
 
-- Artificial Intelligence & Machine Learning
-- Quantum Computing
-- Biotechnology
-- Advanced Manufacturing
-- ... (18 more)
-
-**Classification Process:**
-
-1. **Taxonomy Loading** (`cet_taxonomy` asset)
-   - Load YAML/JSON definitions from config/cet/
-   - Extract keywords for each CET area
-   - Create feature mapping
-
-2. **Award Classification** (`enriched_cet_award_classifications` asset)
-   - Input: `enriched_sbir_awards` + `cet_taxonomy`
-   - Model: TF-IDF + Logistic Regression (calibrated)
-   - Process:
-     - Vectorize award abstract/keywords/title
-     - Boost CET-specific keywords (2x multiplier)
-     - Predict probabilities for all 21 categories
-     - Apply multi-threshold scoring (HIGH ≥70, MEDIUM 40-69, LOW <40)
-     - Extract supporting evidence (top 3 excerpts per classification)
-   - Output: `enriched_cet_award_classifications.parquet`
-     - Columns: award_id, cet_id, score, classification, primary, evidence
-   - Quality checks: High-confidence rate ≥60%, evidence coverage ≥80%
-
-3. **Patent Classification** (`enriched_cet_patent_classifications` asset)
-   - Same pipeline applied to patent titles/abstracts
-   - Identifies SBIR-funded patents by CET area
-
-4. **Company Profiling** (`transformed_cet_company_profiles` asset)
-   - Aggregate award classifications to company level
-   - Compute CET specialization scores
-   - Rank technologies by company focus
-   - Output: company-level CET profiles
-
-5. **Neo4j Graph Loading**
-   - Create `CETArea` nodes (upsert via cet_id)
-   - Add enrichment properties to Award nodes
-   - Create `APPLICABLE_TO` relationships (Award → CETArea)
-   - Add enrichment properties to Company nodes
-   - Create `SPECIALIZES_IN` relationships (Company → CETArea)
+See [ml/cet-integration.md](../ml/cet-integration.md) for the full pipeline: taxonomy loading, award/patent classification, company profiling, and Neo4j loading details.
 
 ### 5.2 Transition Detection Tags
 
-**6-Signal Scoring System:**
-
-Each transition is flagged with:
-
-- **Likelihood Score** (0.0-1.0 composite)
-- **Confidence Band** (HIGH ≥0.85, LIKELY 0.65-0.84, POSSIBLE <0.65)
-- **Signal Breakdown** (what drove the detection)
-- **Evidence Bundle** (supporting facts: dates, amounts, relationships)
+Each detected transition carries a likelihood score (0.0–1.0), confidence band (HIGH/LIKELY/POSSIBLE), signal breakdown, and evidence bundle. See [transition/detection-algorithm.md](../transition/detection-algorithm.md) for scoring details.
 
 **Neo4j Relationships:**
 
@@ -737,87 +533,7 @@ Local Development Alternative:
 
 ### 6.3 Neo4j Integration
 
-**Optional cloud setup (Neo4j EC2):**
-
-```python
-# 1. Configure Neo4j (optional cloud setup)
-neo4j_config = Neo4jConfig(
-    uri=os.getenv("NEO4J_URI", "bolt://your-ec2-host:7687"),
-    username=os.getenv("NEO4J_USER", "neo4j"),
-    password=os.getenv("NEO4J_PASSWORD"),  # Stored in AWS Secrets Manager
-    database="neo4j",
-    batch_size=5000
-)
-
-# Local Development Alternative
-neo4j_config = Neo4jConfig(
-    uri=os.getenv("NEO4J_URI", "bolt://localhost:7687"),
-    username=os.getenv("NEO4J_USER", "neo4j"),
-    password=os.getenv("NEO4J_PASSWORD", "neo4j"),
-    database="neo4j",
-    batch_size=5000
-)
-
-# 2. Initialize Client
-client = Neo4jClient(neo4j_config)
-
-# 3. Create Schema (Constraints + Indexes)
-client.create_constraints()  # UNIQUE constraints on primary keys
-client.create_indexes()      # Performance indexes on common queries
-
-# 4. Upsert Nodes (Batch Processing)
-with client.session() as session:
-    # Merge Award nodes
-    query = """
-    UNWIND $awards as award
-    MERGE (a:Award {award_id: award.award_id})
-    ON CREATE SET a += award, a.__created = true
-    ON MATCH SET a += award
-    RETURN a
-    """
-    session.run(query, awards=awards_list, batch_size=5000)
-
-# 5. Create Relationships
-    query = """
-    MATCH (a:Award {award_id: $award_id}), (c:Company {company_id: $company_id})
-    CREATE (c)-[:RECEIVED]->(a)
-    """
-    session.run(query, award_id="...", company_id="...")
-```
-
-**Node Types Loaded:**
-
-| Node Type | Count | Key Properties | Relationships |
-|-----------|-------|-----------------|---|
-| Award | ~250K | award_id, company_name, amount, date | RECEIVED, INVOLVED_IN, APPLICABLE_TO |
-| Company | ~50K | company_id (UEI/DUNS), name | RECEIVED (inverse), OWNS, SPECIALIZES_IN |
-| Patent | ~2M | patent_id (grant_doc_num), title | GENERATED_FROM, OWNS, ASSIGNED_VIA |
-| CETArea | 21 | cet_id, name | APPLICABLE_TO, SPECIALIZES_IN |
-| Transition | ~50K | transition_id, likelihood_score | RESULTED_IN, ENABLED_BY |
-| Contract | ~6M+ | contract_id (PIID) | TRANSITIONED_FROM |
-
-**Example Queries:**
-
-```cypher
--- Find all SBIR-funded transitions
-MATCH (a:Award)-[:TRANSITIONED_TO]->(t:Transition)-[:RESULTED_IN]->(c:Contract)
-WHERE t.confidence IN ["HIGH", "LIKELY"]
-RETURN a.award_id, c.contract_id, t.likelihood_score
-LIMIT 100
-
--- Identify patent-backed transitions
-MATCH (a:Award)<-[:GENERATED_FROM]-(p:Patent)-[:ASSIGNED_VIA]->(pa:PatentAssignment)
-  -[:ASSIGNMENT_FROM]-(assignor:Organization)
-  -[:ASSIGNMENT_TO]-(assignee:Organization)
-WHERE a.award_id = "SBIR-2020-PHASE-II-001"
-RETURN p.title, assignor.name, pa.recorded_date, assignee.name
-
--- Company technology specialization
-MATCH (c:Company {name: "Acme Inc"})-[:SPECIALIZES_IN]->(cet:CETArea)
-WHERE c.cet_specialization_score > 0.7
-RETURN cet.name, c.cet_specialization_score
-ORDER BY c.cet_specialization_score DESC
-```
+Neo4j is loaded via batch MERGE operations from `packages/sbir-graph/sbir_graph/loaders/`. For node labels, relationship types, constraints, indexes, and example queries, see [schemas/neo4j.md](../schemas/neo4j.md).
 
 ---
 
@@ -825,32 +541,13 @@ ORDER BY c.cet_specialization_score DESC
 
 ### 7.1 CET Classification Integration Points
 
-**Where CET classification can be added/enhanced:**
+Key files for CET classification:
 
-1. **Input enrichment**
-   - `packages/sbir-analytics/sbir_analytics/assets/cet/classifications.py` → Award abstract/keywords/title
-   - Currently: TF-IDF classification with keyword boosting
-   - Enhancement: Could integrate LLM-based classifiers, BERT embeddings, multi-modal features
-
-2. **Feature engineering**
-   - `packages/sbir-ml/sbir_ml/ml/models/cet_classifier.py` → TF-IDF vectorization
-   - Current: Keyword boosting (2x multiplier for CET keywords)
-   - Enhancement: Entity extraction, semantic similarity, domain-specific embeddings
-
-3. **Model training**
-   - `packages/sbir-analytics/sbir_analytics/assets/cet/training.py` → scikit-learn pipeline
-   - Current: Logistic Regression with calibration
-   - Enhancement: Ensemble methods, ensemble diversity, active learning
-
-4. **Validation/evaluation**
-   - `packages/sbir-analytics/sbir_analytics/assets/cet/validation.py` → Human sampling, IAA (inter-annotator agreement)
-   - Current: Manual sampling, drift detection
-   - Enhancement: Confidence thresholds, disagreement analysis
-
-5. **Neo4j enrichment**
-   - `packages/sbir-analytics/sbir_analytics/assets/cet/loading.py` → Load CET relationships
-   - Current: APPLICABLE_TO (Award→CET), SPECIALIZES_IN (Company→CET)
-   - Enhancement: Temporal CET evolution, CET relationship networks
+- `packages/sbir-analytics/sbir_analytics/assets/cet/classifications.py` — award classification asset
+- `packages/sbir-ml/sbir_ml/ml/models/cet_classifier.py` — `ApplicabilityModel` (TF-IDF + LR)
+- `packages/sbir-analytics/sbir_analytics/assets/cet/training.py` — training data generation
+- `packages/sbir-analytics/sbir_analytics/assets/cet/validation.py` — IAA evaluation and drift detection
+- `packages/sbir-analytics/sbir_analytics/assets/cet/loading.py` — Neo4j relationship loading
 
 ### 7.2 Transition Detection Integration Points
 
@@ -914,40 +611,9 @@ Located in `docs/decisions/`:
 
 ---
 
-## 9. Key Integration Points for CET Classification Addition
+## 9. Performance Characteristics
 
-### Where to Add New CET Features
-
-1. **Model Enhancement** (`packages/sbir-ml/sbir_ml/ml/models/cet_classifier.py`)
-   - Swap TF-IDF for BERT embeddings
-   - Add hierarchical classification (parent → child CET areas)
-   - Integrate LLM-based probability calibration
-
-2. **Feature Engineering** (`packages/sbir-analytics/sbir_analytics/assets/cet/classifications.py`)
-   - Extract entities (organizations, technologies)
-   - Compute semantic similarity to CET definitions
-   - Multi-modal features (if abstracts include structured data)
-
-3. **Quality Control** (`packages/sbir-analytics/sbir_analytics/assets/cet/validation.py`)
-   - Drift detection (compare current vs baseline distribution)
-   - Human-in-the-loop (flag low-confidence for manual review)
-   - Disagreement analysis (identify model uncertainty)
-
-4. **Neo4j Relationships** (`packages/sbir-graph/sbir_graph/loaders/neo4j/cet.py`)
-   - Add CET relationship networks (which CET areas are related)
-   - Temporal evolution (track CET focus over time)
-   - Strength scoring (degree of alignment per company/award)
-
-5. **Aggregation** (`sbir_etl/transformers/company_cet_aggregator.py`)
-   - Company CET profiles from award classifications
-   - Market positioning analysis
-   - Competitive landscape by CET area
-
----
-
-## 10. Performance Characteristics
-
-### 10.1 Processing Throughput
+### 9.1 Processing Throughput
 
 | Stage | Dataset | Throughput | Duration |
 |-------|---------|-----------|----------|
@@ -959,70 +625,19 @@ Located in `docs/decisions/`:
 | Fiscal Analysis | 250K awards | 5-10K/min | 30-50 min |
 | Neo4j Loading | ~500K nodes + rels | 5-10K/min | 60-100 min |
 
-### 10.2 Resource Requirements
+### 9.2 Resource Requirements
 
 - **Memory**: 2-6 GB (depending on chunk size)
 - **Disk**: 50 GB (raw data + processed artifacts)
 - **Time**: 4-6 hours for full pipeline (parallel job execution)
 
-### 10.3 Quality Gates
+### 9.3 Quality Gates
 
 - **SBIR Validation**: ≥95% pass rate
 - **Enrichment Success**: ≥70% match rate (SAM.gov)
 - **CET Classification**: ≥60% high-confidence (score ≥70)
 - **Transition Detection**: Evidence completeness ≥80%
 - **Neo4j Loading**: ≥99% successful node/relationship creation
-
----
-
-## 11. Entry Points for CET Classifier Review/Integration
-
-### Immediate Integration Opportunities
-
-1. **Classification Asset** (`packages/sbir-analytics/sbir_analytics/assets/cet/classifications.py`)
-   - Input: `enriched_sbir_awards` (parquet)
-   - Process: Batch classify with CET classifier
-   - Output: `enriched_cet_award_classifications` (parquet)
-   - **Hook**: Replace scikit-learn model with new classifier at `ApplicabilityModel` instantiation
-
-2. **Training Data Generation** (`packages/sbir-analytics/sbir_analytics/assets/cet/training.py`)
-   - Input: Sample of awards + manual labels
-   - Process: Generate training dataset
-   - Output: `cet_award_training_dataset` (parquet)
-   - **Hook**: Integrate new labeling strategy or active learning
-
-3. **Model Evaluation** (`packages/sbir-analytics/sbir_analytics/assets/cet/validation.py`)
-   - Input: Classifications + human annotations
-   - Process: Compute precision/recall/F1
-   - Output: `validated_cet_iaa_report` (JSON)
-   - **Hook**: Add new evaluation metrics or calibration analysis
-
-4. **Drift Detection** (`packages/sbir-analytics/sbir_analytics/assets/cet/validation.py`)
-   - Input: Current classifications vs baseline
-   - Process: Detect distribution shifts
-   - Output: `validated_cet_drift_detection` (JSON)
-   - **Hook**: Compare model outputs to baseline distribution
-
-### CET Classifier API Contract
-
-```python
-# Expected interface for CET classifier integration
-class CETClassifier(Protocol):
-    def fit(self, X: List[str], y: List[dict]) -> None:
-        """Train on award abstracts + labels"""
-        pass
-
-    def predict_proba(self, X: List[str]) -> Dict[str, float]:
-        """Return {cet_id: score} for each document"""
-        pass
-
-    def get_evidence(self, X: str, cet_id: str) -> List[str]:
-        """Extract supporting evidence snippets"""
-        pass
-
-# Current implementation uses sklearn Pipeline:
-# TF-IDF → SelectKBest → CalibratedClassifierCV(LogisticRegression)
-```
 
 ---
 
