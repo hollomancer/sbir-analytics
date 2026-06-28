@@ -114,253 +114,44 @@ The Transition Detection Algorithm is a multi-signal scoring system that identif
 
 The algorithm combines six independent signals, each with configurable weights summing to 1.0:
 
-#### Signal 1: Agency Continuity (Weight: 0.25)
+| Signal | Default Weight | Logic |
+|--------|---------------|-------|
+| Agency Continuity | 0.25 | Same agency = ongoing relationship |
+| Timing Proximity | 0.20 | Contracts within 0–730 days of award completion |
+| Competition Type | 0.20 | Sole source / limited = vendor-targeted procurement |
+| Patent Signal | 0.15 | Patent activity signals technology maturity |
+| CET Alignment | 0.10 | Same NSTC technology area (see `config/cet/taxonomy.yaml`) |
+| Text Similarity | 0.00 | Disabled — high false-positive rate |
 
-**Logic**: Federal agencies that award SBIR contracts often have related procurement needs.
-
-### Scoring
-
-- Same agency: +0.25 bonus × 0.25 weight = **+0.0625**
-- Cross-service (same department): +0.125 bonus × 0.25 weight = **+0.03125**
-- Different department: +0.05 bonus × 0.25 weight = **+0.00125**
-
-### Example
-
-- Award: NSF (National Science Foundation)
-- Contract: NSF procurement → Same agency → High score contribution
-- Award: DOD → Contract: Navy → Same department → Moderate score contribution
-
-**Data Fields**: `agency`, `sub_agency`, `department`
-
-#### Signal 2: Timing Proximity (Weight: 0.20)
-
-**Logic**: Commercial transitions typically occur within a defined window after research completion.
-
-**Scoring** (days between award completion and contract start):
-
-- 0-90 days: 1.0× multiplier → **+0.20**
-- 91-365 days: 0.75× multiplier → **+0.15**
-- 366-730 days: 0.50× multiplier → **+0.10**
-- Beyond 730 days: 0.0 (outside window)
-
-### Configurable Parameters
-
-- `timing_window`: Min/max days (default: 0-730)
-- Multiplier curves per preset (high_precision: 12mo, broad_discovery: 36mo)
-
-**Edge Cases**: Contracts pre-dating award completion are scored as 0.0 (timing anomaly).
-
-#### Signal 3: Competition Type (Weight: 0.20)
-
-**Logic**: Sole source and limited competition contracts indicate targeted, vendor-specific procurement (prior relationship signal).
-
-### Scoring
-
-- Sole source: +0.20 bonus × 0.20 weight = **+0.04**
-- Limited competition: +0.10 bonus × 0.20 weight = **+0.02**
-- Full and open: 0.0 (any vendor can bid)
-
-**Data Source**: USAspending `extent_competed` field
-
-### Mapping
-
-- Full/open: FULL, FSS, A&A, CDO codes
-- Sole source: NONE, NDO codes
-- Limited: LIMITED, RESTRICTED patterns
-
-#### Signal 4: Patent Signal (Weight: 0.15)
-
-**Logic**: Patent activity indicates technology maturity and commercialization readiness.
-
-### Components
-
-- **Has patent bonus**: +0.05 (award has ≥1 associated patent)
-- **Pre-contract bonus**: +0.03 (patent filed before contract start)
-- **Topic match bonus**: +0.02 (patent abstract similarity ≥ 0.7 to contract description)
-
-**Topic Similarity**: TF-IDF cosine similarity between patent abstract and contract description.
-
-### Scoring
-
-```text
-patent_score = (has_patent × 0.05 +
-                pre_contract × 0.03 +
-                topic_match × 0.02) × 0.15 (weight)
-```
-
-**Data Fields**: Patent filing date, abstract, assignee; Contract start date, description
-
-#### Signal 5: CET Alignment (Weight: 0.10)
-
-**Logic**: Technology area consistency between award and contract indicates sustained technology focus.
-
-### Scoring
-
-- Same CET area: +0.05 bonus × 0.10 weight = **+0.005**
-- Different CET area: 0.0
-
-**CET Areas**: 21 critical & emerging technologies (NSTC-2025Q1 framework). The
-authoritative list and per-area keywords live in `config/cet/taxonomy.yaml`; see
-[CET integration](../ml/cet-integration.md) for the full taxonomy.
-
-**Award CET**: From SBIR classification (explicit field)
-**Contract CET**: Inferred from contract description via keyword matching
-
-#### Signal 6: Text Similarity (Weight: 0.0 - Optional/Disabled)
-
-**Logic**: Similar technical descriptions suggest related work.
-
-**Method**: TF-IDF cosine similarity between award description and contract description.
-
-**Status**: Currently disabled (weight = 0.0) due to high false-positive rate; available for future enhancement.
+For full scoring tables, per-signal tuning guidance, and preset configurations, see [scoring-guide.md](scoring-guide.md).
 
 ### 4. Composite Scoring
 
-**Base Score**: 0.15 (minimum baseline)
-
-### Final Score Calculation
-
 ```text
-final_score = base_score + (
-    agency_score +
-    timing_score +
-    competition_score +
-    patent_score +
-    cet_score +
-    text_similarity_score
-)
+final_score = base_score (0.15) + Σ(signal_bonus × signal_weight)
 ```
 
-**Range**: 0.0 - 1.0 (normalized)
-
-**Deterministic**: Same inputs always produce same output.
+Range: 0.0–1.0. Deterministic — same inputs always produce the same output.
 
 ### 5. Confidence Classification
 
-**Purpose**: Categorize detections into confidence bands for downstream decision-making.
+| Score | Confidence | Typical Use |
+|-------|-----------|-------------|
+| ≥ 0.85 | HIGH | Executive reporting, high-precision findings |
+| 0.65–0.84 | LIKELY | General analysis, stakeholder review |
+| < 0.65 | POSSIBLE | Research, hypothesis generation |
 
-**Thresholds** (configurable):
-
-- **HIGH**: score ≥ 0.85 (strong evidence, high precision)
-- **LIKELY**: 0.65 ≤ score < 0.85 (moderate evidence, balanced)
-- **POSSIBLE**: score < 0.65 (weak evidence, high recall)
-
-**Usage**: Stakeholders typically focus on HIGH and LIKELY confidence transitions; POSSIBLE used for research/discovery.
+Thresholds are configurable. See [scoring-guide.md](scoring-guide.md) for tuning and preset configurations.
 
 ### 6. Evidence Bundle
 
-**Purpose**: Provide transparent, auditable justification for each detection.
+Each detection includes an auditable JSON evidence bundle recording all signal evaluations, vendor match details, and raw contract/award data. See [evidence-bundles.md](evidence-bundles.md) for the full schema and field definitions.
 
-**Contents** (JSON structure):
-
-```json
-{
-  "transition_id": "trans_abc123",
-  "award_id": "award_123",
-  "contract_id": "contract_456",
-  "signals": {
-    "agency": {
-      "snippet": "Same agency (NSF → NSF)",
-      "details": {"same_agency": true, "score": 0.0625}
-    },
-    "timing": {
-      "snippet": "45 days after completion (high proximity)",
-      "details": {"days_between": 45, "score": 0.20}
-    },
-    "competition": {
-      "snippet": "Limited competition (vendor-targeted)",
-      "details": {"competition_type": "LIMITED", "score": 0.02}
-    },
-    "patent": {
-      "snippet": "2 patents filed; 1 pre-contract",
-      "details": {"patent_count": 2, "pre_contract_count": 1, "score": 0.06}
-    },
-    "cet": {
-      "snippet": "CET area match (AI & ML)",
-      "details": {"award_cet": "AI", "contract_cet": "AI", "score": 0.005}
-    }
-  },
-  "vendor_match": {
-    "method": "UEI",
-    "confidence": 0.99,
-    "award_uei": "ABC123DEF456",  # pragma: allowlist secret
-    "contract_uei": "ABC123DEF456"  # pragma: allowlist secret
-  },
-  "contract_details": {
-    "piid": "FA1234-20-C-0001",
-    "agency": "DOD",
-    "action_date": "2020-06-15",
-    "obligated_amount": 500000
-  }
-}
-```
-
-**Storage**: NDJSON (newline-delimited JSON) for efficient streaming and Neo4j relationship storage.
-
-**Validation**: All required fields present, scores within [0, 1], consistency checks.
+Storage: NDJSON file (`data/processed/transitions_evidence.ndjson`) and as a property on the `TRANSITIONED_TO` Neo4j relationship.
 
 ## Configuration & Customization
 
-### Presets
-
-**High Precision** (Conservative)
-
-- Confidence threshold: ≥0.85
-- Time window: 12 months
-- Use case: Stakeholder reporting, high-confidence findings
-
-**Balanced** (Default)
-
-- Confidence threshold: ≥0.65
-- Time window: 24 months
-- Use case: General analysis, development
-
-**Broad Discovery** (Exploratory)
-
-- Confidence threshold: ≥0.50
-- Time window: 36 months
-- Use case: Research, hypothesis generation
-
-**Research** (No threshold)
-
-- Confidence threshold: None (all detections)
-- Time window: 48 months
-- Use case: Scientific exploration
-
-### Phase II Focus
-
-- Optimized for Phase II awards
-- Weights emphasis on timing and competition signals
-- Use case: Phase II program analysis
-
-### CET Focused
-
-- CET alignment weight increased to 0.20
-- Other weights reduced proportionally
-- Use case: Critical technology analysis
-
-### Environment Variables
-
-```bash
-
-## Scoring thresholds
-
-SBIR_ETL__TRANSITION__DETECTION__HIGH_CONFIDENCE_THRESHOLD=0.85
-SBIR_ETL__TRANSITION__DETECTION__LIKELY_CONFIDENCE_THRESHOLD=0.65
-
-## Timing window (days)
-
-SBIR_ETL__TRANSITION__DETECTION__MIN_DAYS=0
-SBIR_ETL__TRANSITION__DETECTION__MAX_DAYS=730
-
-## Signal weights (must sum to 1.0)
-
-SBIR_ETL__TRANSITION__DETECTION__AGENCY_WEIGHT=0.25
-SBIR_ETL__TRANSITION__DETECTION__TIMING_WEIGHT=0.20
-SBIR_ETL__TRANSITION__DETECTION__COMPETITION_WEIGHT=0.20
-SBIR_ETL__TRANSITION__DETECTION__PATENT_WEIGHT=0.15
-SBIR_ETL__TRANSITION__DETECTION__CET_WEIGHT=0.10
-```
+Four built-in presets (High Precision, Balanced, Broad Discovery, CET Focused) cover the main use cases. See [scoring-guide.md](scoring-guide.md) for preset YAML, advanced tuning by award phase and sector, and environment variable overrides.
 
 ## Validation & Quality Metrics
 
