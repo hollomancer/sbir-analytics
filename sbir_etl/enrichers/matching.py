@@ -25,6 +25,16 @@ except ImportError:  # pragma: no cover
     JaroWinkler = None  # type: ignore
 
 
+# Business-entity suffix tokens removed during name normalization.
+SUFFIX_TOKENS: frozenset[str] = frozenset({
+    "inc", "incorporated",
+    "llc", "l.l.c", "l l c",
+    "ltd", "limited",
+    "corp", "corporation", "co",
+    "lp", "llp",
+    "company", "the",
+})
+
 # Enhanced abbreviation dictionary for company name normalization
 ENHANCED_ABBREVIATIONS = {
     # Technology terms

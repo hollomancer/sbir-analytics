@@ -12,6 +12,7 @@ from typing import Any
 
 import pandas as pd
 
+from sbir_etl.utils.coercion import _to_float
 from .utils import (
     MetadataValue,
     Output,
@@ -189,12 +190,6 @@ def transformed_transition_scores(
             id_boost = id_link_boost_val if (piid_match or fain_match) else 0.0
 
             # Amount sanity boost (contract vs award amount roughly similar)
-            def _to_float(x):
-                try:
-                    return float(str(x).replace(",", ""))
-                except Exception:
-                    return None
-
             c_amt = _to_float(contract_row.get("obligated_amount"))
             a_amt = _to_float(
                 a_row.get("Award Amount") if a_row is not None else None

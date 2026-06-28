@@ -17,6 +17,8 @@ from typing import Any, cast
 
 import pandas as pd
 
+from sbir_etl.utils.coercion import _blank, _to_float, _to_int, _to_str
+
 from .models import OTAward
 
 #: DoD Other Transaction actions typically post to FPDS/USAspending ~90 days after
@@ -59,38 +61,6 @@ def _get(row: dict[str, Any], candidates: tuple[str, ...]) -> Any:
         if col in row and not _blank(row[col]):
             return row[col]
     return None
-
-
-def _blank(value: Any) -> bool:
-    if value is None:
-        return True
-    if isinstance(value, float) and pd.isna(value):
-        return True
-    return isinstance(value, str) and not value.strip()
-
-
-def _to_float(value: Any) -> float | None:
-    if _blank(value):
-        return None
-    try:
-        return float(str(value).replace(",", "").replace("$", "").strip())
-    except (TypeError, ValueError):
-        return None
-
-
-def _to_int(value: Any) -> int | None:
-    if _blank(value):
-        return None
-    try:
-        return int(float(str(value).strip()))
-    except (TypeError, ValueError):
-        return None
-
-
-def _to_str(value: Any) -> str | None:
-    if _blank(value):
-        return None
-    return str(value).strip()
 
 
 def parse_consortia_flag(value: Any) -> bool | None:

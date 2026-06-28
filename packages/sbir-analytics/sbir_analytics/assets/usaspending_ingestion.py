@@ -7,7 +7,6 @@ Data Source Priority:
 """
 
 import json
-from datetime import datetime, UTC
 from pathlib import Path
 from typing import Any
 
@@ -22,6 +21,8 @@ from sbir_etl.utils.cloud_storage import (
     get_s3_bucket_from_env,
     resolve_data_path,
 )
+
+from ._ingestion_utils import _resolve_tiered_path, stamp_provenance
 
 
 def _import_usaspending_table(
@@ -39,38 +40,18 @@ def _import_usaspending_table(
     3. Fail if both fail
     """
     config = get_config()
-
-    # PRIMARY: Try S3 database dump first
-    dump_path = None
     s3_bucket = get_s3_bucket_from_env()
 
-    if s3_bucket:
-        context.log.info("Attempting to load USAspending data from S3 (PRIMARY)")
-        # Find latest dump in S3 (prefer test, fallback to full)
-        s3_dump_url = find_latest_usaspending_dump(
-            bucket=s3_bucket, database_type="test"
-        ) or find_latest_usaspending_dump(bucket=s3_bucket, database_type="full")
-
-        if s3_dump_url:
-            try:
-                # Resolve S3 path (downloads to temp if needed)
-                dump_path = resolve_data_path(s3_dump_url)
-                context.log.info(f"Using S3 dump: {s3_dump_url} -> {dump_path}")
-            except Exception as e:
-                context.log.warning(f"S3 dump resolution failed: {e}")
-                dump_path = None
-
-    # If S3 failed, try configured path (local fallback)
-    if not dump_path:
-        try:
-            dump_path = config.paths.resolve_path("usaspending_dump_file")
-            if dump_path.exists():
-                context.log.info(f"Using configured dump path: {dump_path}")
-            else:
-                dump_path = None
-        except Exception as e:
-            context.log.warning(f"Configured dump path not available: {e}")
-            dump_path = None
+    dump_path, s3_dump_url = _resolve_tiered_path(
+        context,
+        s3_finder=lambda b: (
+            find_latest_usaspending_dump(bucket=b, database_type="test")
+            or find_latest_usaspending_dump(bucket=b, database_type="full")
+        ),
+        local_path_getter=lambda: config.paths.resolve_path("usaspending_dump_file"),
+        s3_bucket=s3_bucket,
+        label="USAspending dump",
+    )
 
     # Try to import from dump if available
     extractor = DuckDBUSAspendingExtractor(db_path=config.duckdb.database_path)
@@ -82,7 +63,7 @@ def _import_usaspending_table(
             extra={
                 "dump_path": str(dump_path),
                 "duckdb_path": config.duckdb.database_path,
-                "source": "S3_dump",
+                "source": "S3_dump" if s3_dump_url else "local_dump",
             },
         )
 
@@ -152,13 +133,7 @@ def _import_usaspending_table(
     )
 
     # Stamp data source provenance on the returned DataFrame
-    # Note: _import_usaspending_table returns a sample (limit=100) per the existing
-    # query_awards call above. Provenance is stamped on whatever this function returns.
-    ingested_at = datetime.now(UTC)
-    source_url = str(dump_path) if dump_path else "usaspending_api"
-    sample_df["data_source"] = "usaspending"
-    sample_df["data_source_url"] = source_url
-    sample_df["ingested_at"] = ingested_at
+    stamp_provenance(sample_df, "usaspending", str(dump_path) if dump_path else "usaspending_api")
 
     metadata = {
         "table_name": table_info.get("table_name"),
@@ -234,11 +209,7 @@ def raw_usaspending_recipients(context: AssetExecutionContext) -> Output[pd.Data
 
     # Stamp data source provenance (if not already stamped by _import_usaspending_table)
     if "data_source" not in df.columns:
-        ingested_at = datetime.now(UTC)
-        source_url = parquet_url if parquet_url else "usaspending_dump"
-        df["data_source"] = "usaspending"
-        df["data_source_url"] = str(source_url)
-        df["ingested_at"] = ingested_at
+        stamp_provenance(df, "usaspending", str(parquet_url) if parquet_url else "usaspending_dump")
 
     metadata: dict[str, Any] = {
         "num_records": len(df),

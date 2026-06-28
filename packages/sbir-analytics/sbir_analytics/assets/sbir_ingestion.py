@@ -2,7 +2,6 @@
 
 import json
 import os
-from datetime import datetime, UTC
 from pathlib import Path
 from typing import Any
 
@@ -24,6 +23,8 @@ from sbir_etl.config.loader import get_config
 from sbir_etl.extractors.sbir import SbirDuckDBExtractor
 from sbir_etl.utils.monitoring import performance_monitor
 from sbir_etl.validators.sbir_awards import validate_sbir_awards
+
+from ._ingestion_utils import stamp_provenance
 
 
 def _apply_quality_filters(
@@ -314,11 +315,7 @@ def raw_sbir_awards(context: AssetExecutionContext) -> Output[pd.DataFrame]:
 
     # Stamp data source provenance on every record
     # Prefer the original S3 URL over the resolved temp/cache path
-    ingested_at = datetime.now(UTC)
-    source_url = sbir_config.csv_path_s3 or str(extractor.csv_path)
-    df["data_source"] = "sbir.gov"
-    df["data_source_url"] = str(source_url)
-    df["ingested_at"] = ingested_at
+    stamp_provenance(df, "sbir.gov", str(sbir_config.csv_path_s3 or extractor.csv_path))
 
     # Update metadata to reflect normalized columns
     metadata["normalized_columns"] = MetadataValue.json(list(df.columns))

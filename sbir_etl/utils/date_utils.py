@@ -23,6 +23,9 @@ COMMON_DATE_FORMATS = [
     "%m/%d/%Y",  # US format: 01/15/2023
     "%Y/%m/%d",  # ISO-like with slashes: 2023/01/15
     "%m-%d-%Y",  # US format with dashes: 01-15-2023
+    "%d/%m/%Y",  # Day-first: 24/07/2025
+    "%B %d, %Y",  # Full month name: July 24, 2025
+    "%b %d, %Y",  # Abbreviated month: Jul 24, 2025
 ]
 
 # Date formats with time component

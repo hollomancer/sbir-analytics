@@ -37,6 +37,8 @@ from typing import Any
 
 import pandas as pd
 
+from ._utils import _company_id_series, _first_col
+
 
 def _norm_str(v: Any) -> str:
     try:
@@ -44,62 +46,6 @@ def _norm_str(v: Any) -> str:
         return s
     except Exception:
         return ""
-
-
-def _first_col(df: pd.DataFrame, candidates: list[str]) -> str | None:
-    for c in candidates:
-        if c in df.columns:
-            return c
-    # try case-insensitive
-    lower_map = {c.lower(): c for c in df.columns}
-    for c in candidates:
-        if c.lower() in lower_map:
-            return lower_map[c.lower()]
-    return None
-
-
-def _company_id_series(awards_df: pd.DataFrame) -> pd.Series:
-    """
-    Construct a canonical company_id with priority UEI > DUNS > normalized Company name.
-    """
-    uei_col = _first_col(awards_df, ["UEI", "uei"])
-    duns_col = _first_col(awards_df, ["Duns", "duns"])
-    name_col = _first_col(awards_df, ["Company", "company", "vendor_name", "Vendor", "Name"])
-
-    uei = (
-        awards_df[uei_col].fillna("").astype(str).str.strip()
-        if uei_col
-        else pd.Series([""] * len(awards_df))
-    )
-    duns = (
-        awards_df[duns_col].fillna("").astype(str).str.strip()
-        if duns_col
-        else pd.Series([""] * len(awards_df))
-    )
-    names = (
-        awards_df[name_col].fillna("").astype(str).str.strip().str.lower()
-        if name_col
-        else pd.Series([""] * len(awards_df))
-    )
-
-    # Build canonical id with prefixes to avoid collisions between ID systems
-    company_id = pd.Series([""] * len(awards_df), index=awards_df.index, dtype="object")
-    if uei_col:
-        # Check for valid UEI values (not empty, not "None", not "nan")
-        uei_valid = (uei != "") & (~uei.isin(["None", "nan", "NaN"]))
-        company_id = company_id.mask(uei_valid, "uei:" + uei)
-    if duns_col:
-        # Check for valid DUNS values (not empty, not "None", not "nan")
-        duns_valid = (duns != "") & (~duns.isin(["None", "nan", "NaN"]))
-        company_id = company_id.mask((~company_id.astype(bool)) & duns_valid, "duns:" + duns)
-    if name_col:
-        # Check for valid name values (not empty, not "None", not "nan")
-        names_valid = (names != "") & (~names.isin(["None", "nan", "NaN"]))
-        company_id = company_id.mask((~company_id.astype(bool)) & names_valid, "name:" + names)
-
-    # Last resort: row index as id to avoid empties
-    company_id = company_id.where(company_id.astype(bool), "row:" + awards_df.index.astype(str))
-    return company_id
 
 
 def _award_id_col(df: pd.DataFrame) -> str:

@@ -48,42 +48,7 @@ from sbir_etl.models.benchmark_models import (
     consequence_for_tier,
 )
 
-
-def _first_col(df: pd.DataFrame, candidates: list[str]) -> str | None:
-    """Return the first column name from candidates that exists in df."""
-    for c in candidates:
-        if c in df.columns:
-            return c
-    lower_map = {c.lower(): c for c in df.columns}
-    for c in candidates:
-        if c.lower() in lower_map:
-            return lower_map[c.lower()]
-    return None
-
-
-def _company_id_series(df: pd.DataFrame) -> pd.Series:
-    """Build a canonical company ID with priority: UEI > DUNS > name."""
-    uei_col = _first_col(df, ["UEI", "uei", "company_uei"])
-    duns_col = _first_col(df, ["Duns", "duns", "company_duns"])
-    name_col = _first_col(df, ["Company", "company", "company_name", "vendor_name"])
-
-    result = pd.Series([""] * len(df), index=df.index, dtype="object")
-
-    if uei_col:
-        uei = df[uei_col].astype(str).str.strip()
-        valid = (uei != "") & (~uei.isin(["None", "nan", "NaN"]))
-        result = result.mask(valid, "uei:" + uei)
-    if duns_col:
-        duns = df[duns_col].astype(str).str.strip()
-        valid = (duns != "") & (~duns.isin(["None", "nan", "NaN"]))
-        result = result.mask((~result.astype(bool)) & valid, "duns:" + duns)
-    if name_col:
-        names = df[name_col].astype(str).str.strip().str.lower()
-        valid = (names != "") & (~names.isin(["none", "nan"]))
-        result = result.mask((~result.astype(bool)) & valid, "name:" + names)
-
-    result = result.where(result.astype(bool), "row:" + df.index.astype(str))
-    return result
+from ._utils import _company_id_series, _first_col
 
 
 class BenchmarkEligibilityEvaluator:

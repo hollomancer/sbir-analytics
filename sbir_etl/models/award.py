@@ -13,16 +13,7 @@ from pydantic import (
     model_validator,
 )
 
-
-_DATE_FORMATS = (
-    "%Y-%m-%d",  # 2025-07-24
-    "%m/%d/%Y",  # 07/24/2025
-    "%m-%d-%Y",  # 07-24-2025
-    "%Y/%m/%d",  # 2025/07/24
-    "%d/%m/%Y",  # 24/07/2025
-    "%B %d, %Y",  # July 24, 2025
-    "%b %d, %Y",  # Jul 24, 2025
-)
+from sbir_etl.utils.date_utils import parse_date
 
 _PHASE_NORMALIZE = {
     "I": "I",
@@ -46,16 +37,6 @@ def _clean_digits(v: Any, *, allowed_lengths: tuple[int, ...]) -> str | None:
         return None
     digits = "".join(ch for ch in v if ch.isdigit())
     return digits if len(digits) in allowed_lengths else None
-
-
-def _parse_date_string(v: str) -> date | None:
-    """Parse a date from any of the supported formats; return None if none match."""
-    for fmt in _DATE_FORMATS:
-        try:
-            return datetime.strptime(v.strip(), fmt).date()
-        except ValueError:
-            continue
-    return None
 
 
 class Award(BaseModel):
@@ -237,13 +218,8 @@ class Award(BaseModel):
     @classmethod
     def validate_award_date(cls, v: Any) -> date | None:
         """Parse award_date strings; lenient on format failures."""
-        if v is None or v == "":
-            return None
-        if isinstance(v, date):
-            return v
-        if isinstance(v, str):
-            return _parse_date_string(v)
-        return None
+        result = parse_date(v)
+        return result.date() if isinstance(result, datetime) else result
 
     @field_validator("program")
     @classmethod

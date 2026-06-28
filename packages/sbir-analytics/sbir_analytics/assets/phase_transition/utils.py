@@ -38,6 +38,7 @@ except Exception:  # pragma: no cover - test-only shim
 
 # Centralized path / IO utilities from sbir_etl (re-exported where convenient).
 from sbir_etl.utils.data.file_io import write_json
+from sbir_etl.utils.identifiers import normalize_duns, normalize_uei
 from sbir_etl.utils.path_utils import ensure_parent_dir
 
 
@@ -96,24 +97,6 @@ def coerce_date_series(series: pd.Series) -> pd.Series:
     """Best-effort conversion to datetime64[ns]; non-parseable -> NaT."""
 
     return pd.to_datetime(series, errors="coerce")
-
-
-def normalize_uei(v: Any) -> str | None:
-    """Return a 12-char alnum uppercased UEI, or None."""
-
-    if v is None or (isinstance(v, float) and pd.isna(v)):
-        return None
-    s = "".join(ch for ch in str(v) if ch.isalnum()).upper()
-    return s if len(s) == 12 else None
-
-
-def normalize_duns(v: Any) -> str | None:
-    """Return a 9-digit DUNS string, or None."""
-
-    if v is None or (isinstance(v, float) and pd.isna(v)):
-        return None
-    digits = "".join(ch for ch in str(v) if ch.isdigit())
-    return digits if len(digits) == 9 else None
 
 
 def load_parquet_if_exists(path: str | os.PathLike[str]) -> pd.DataFrame | None:

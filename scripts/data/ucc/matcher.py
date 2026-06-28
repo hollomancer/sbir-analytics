@@ -30,6 +30,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 from sbir_etl.enrichers.matching import (  # noqa: E402
     ENHANCED_ABBREVIATIONS,
+    SUFFIX_TOKENS,
     apply_enhanced_abbreviations,
     jaro_winkler_similarity,
 )
@@ -43,16 +44,6 @@ TIER_LOW_THRESHOLD = 0.85
 
 # Combined-score required for a final accept (after address + person filters)
 ACCEPT_COMBINED_SCORE = 0.75
-
-# Entity-suffix tokens removed during name normalization
-SUFFIX_TOKENS = {
-    "inc", "incorporated",
-    "llc", "l.l.c", "l l c",
-    "ltd", "limited",
-    "corp", "corporation", "co",
-    "lp", "llp",
-    "company", "the",
-}
 
 # Person-name detection: if a debtor name has no entity suffix and looks
 # like First [Middle] Last, it's almost certainly a natural person, not
