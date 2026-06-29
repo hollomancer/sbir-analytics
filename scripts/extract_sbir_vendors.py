@@ -105,14 +105,15 @@ def main():
     """Main execution."""
     # Paths
     project_root = Path(__file__).parent.parent
-    awards_file = project_root / "data" / "raw" / "sbir" / "awards_data.csv"
+    awards_file = project_root / "data" / "raw" / "sbir" / "award_data.csv"
 
-    # Determine output file from config if available
+    # Determine paths from config if available (output + awards input)
     output_file = project_root / "data" / "transition" / "sbir_vendor_filters.json"
     if _config_available:
         try:
             config = get_config()
             output_file = config.paths.resolve_path("transition_vendor_filters")
+            awards_file = project_root / config.extraction.sbir.csv_path
         except Exception:
             pass  # Fall back to default
 

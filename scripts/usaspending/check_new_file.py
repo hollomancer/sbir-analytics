@@ -24,8 +24,6 @@ import sys
 from datetime import datetime, timedelta, UTC
 from urllib.request import Request, urlopen
 
-import boto3
-
 # USAspending database download base URL
 USASPENDING_DB_BASE_URL = "https://files.usaspending.gov/database_download"
 
@@ -95,6 +93,12 @@ def check_file_availability(
 
     # Compare with S3 if bucket and key provided
     if s3_bucket and s3_key:
+        try:
+            import boto3
+        except ImportError:
+            print("boto3 not installed — skipping S3 comparison", file=sys.stderr)
+            return result
+
         s3_client = boto3.client("s3")
         try:
             s3_obj = s3_client.head_object(Bucket=s3_bucket, Key=s3_key)
@@ -127,12 +131,19 @@ def check_file_availability(
     return result
 
 
-def find_latest_file_in_s3(s3_bucket: str, database_type: str) -> dict:
+def find_latest_file_in_s3(s3_bucket: str, database_type: str) -> dict | None:
     """Find the most recent file in S3 for a given database type.
 
     Returns:
         dict with s3_key, last_modified, and date_str of the latest file, or None
+        (when no file is found, on S3 errors, or when ``boto3`` is not installed).
     """
+    try:
+        import boto3
+    except ImportError:
+        print("boto3 not installed — skipping S3 lookup", file=sys.stderr)
+        return None
+
     s3_client = boto3.client("s3")
     prefix = "raw/usaspending/database/"
 
