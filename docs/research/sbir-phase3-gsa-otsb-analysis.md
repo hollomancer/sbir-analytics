@@ -359,25 +359,69 @@ Reclassifying the corporate-successor cases (Sierra Space, EDO) and the matching
 
 **Roughly 92% of OTSB Phase III dollars are explainable as SBIR-ecosystem outcomes**, the remaining ~8% breaks into clear (production-scaling, teaming, lifecycle) mechanisms plus a small unexplained tail.
 
-### Least-clear cases (worth flagging for follow-up)
+### Puzzle cases investigated via FPDS competition data
 
-These are the contracts where the §638(r) linkage is hardest to establish from the public record. Listed in descending dollar value:
+Pulled the FPDS competition fields (`extent_competed`, `solicitation_procedures`, `type_set_aside`, number of offers) from USAspending's per-award detail endpoint for each puzzle case. The results split into two very different sub-populations.
 
-1. **LMI Consulting, "Human Performance SBIR Phase III" ($7M, FA877125C0002, FY2025)** — Largest of the "Mechanism E" discretionary cases. LMI Government Consulting is a federal advisory firm, not a typical SBIR R&D participant. Description is generic; no identifiable underlying SBIR R&D linkage. Worth checking the FPDS justification-and-approval document for the §638(r) basis.
+#### Genuine §638(r) sole-source to OTSB without identifiable SBIR sub
 
-2. **JJR Solutions, "DEVCOM SBIR Phase III" ($5M, W519TC25CA035, FY2025)** — Generic description. DEVCOM = Army Combat Capabilities Development Command. JJR is a small consulting/services firm but no SBIR P1/P2 history. Either teaming (likely) or discretionary §638(r) labeling.
+These contracts show "NOT AVAILABLE FOR COMPETITION" + "ONLY ONE SOURCE" — the classic §638(r) sole-source signature. The contracting officer affirmatively claimed Phase III sole-source authority. The recipient has no SBIR history and the description doesn't name a sub.
 
-3. **Oliver Wyman, "Global Business Intelligence Tool" ($1.1M, FA281624P0001, FY2024)** — Oliver Wyman is a Marsh & McLennan-owned global management consultancy (not a defense R&D firm). SSC/IA award. Why this is labeled SBIR Phase III rather than ordinary sole-source consulting is not clear from the description.
+| Recipient | $ | Description | Most likely mechanism |
+|---|---:|---|---|
+| **Rockwell Collins** | $15M | Production of Shadow UAS mission computer | Production scaling of SBIR-derived design |
+| **LMI Consulting** | $7M | "Human Performance SBIR Phase III" | Discretionary §638(r); no visible SBIR sub or scaling rationale |
+| **JCB** | $1.3M | Multi-Terrain Loader Replacement | Production scaling of equipment design |
+| **Oliver Wyman** | $1.1M | "Global Business Intelligence Tool" | Discretionary §638(r); no visible SBIR sub or scaling rationale |
+| **BAE Systems Protection** | $1.0M | Bailout parachute components | Production scaling |
+| **Coherent Corp** | $0.6M | ACV 2.0 Modular Lightweight Armor | Production scaling |
 
-4. **Louisiana Board of Regents (NASA, $0.1M, NNS16AA28T, FY2016)** — A state university board is structurally ineligible to be a "small business concern" under §638(r). Possible explanations: (a) misclassification — the contract is actually STTR-adjacent, not §638(r); (b) the Board is acting as a pass-through to an SBIR-firm partner; (c) Phase III labeling is a record-keeping convention for some other authority. The dollar value is small but the structural anomaly is the most interesting.
+The production-scaling cases (Rockwell Collins, JCB, BAE, Coherent) are defensible under §638(r) — small SBIR firms typically lack manufacturing capacity, so production phase goes to a large prime with the §638(r)-qualified status passed through. **LMI Consulting and Oliver Wyman are the genuinely discretionary cases** — generic consulting work labeled SBIR Phase III without any visible R&D linkage or named subcontractor.
 
-5. **Coherent Corp, "Modular Lightweight Armor" ($0.6M, M6785415C0014, FY2015)** — Coherent is primarily a photonics/laser firm; armor is far outside their typical work. Possible legacy product line from an acquisition we haven't identified.
+#### Not actually §638(r) sole-source: contract labeled "SBIR Phase III" but procured under different authority
 
-6. **Romitech, "Composite Sandwich Structure" (NASA, $0.5M, NNC09CA16C, FY2009)** — Small specialty firm. Should plausibly be a SBIR awardee but isn't in our SBIR.gov data — possibly because it was pre-SBIR.gov modern registration, or because they did STTR rather than SBIR.
+**This was the surprise of the validation.** Several OTSB contracts pulled by the "SBIR Phase III" keyword fetch are NOT §638(r) sole-source procurements at all. The "SBIR Phase III" string appears in the description, but FPDS records show the contract was procured under different authority — competitive procurement, set-asides, simplified acquisition, or task orders against multiple-award vehicles.
 
-7. **"SBCC" in the Amentum description** — what entity is SBCC? Identifying this would either confirm Amentum's role as prime-with-SBIR-sub (most likely) or surface a different mechanism. Searchable in FPDS subaward records if those have been ingested.
+| Recipient | $ | Actual procurement (FPDS) | What's going on |
+|---|---:|---|---|
+| **Amentum Services** | $37M | "FULL AND OPEN COMPETITION" + "SUBJECT TO MULTIPLE AWARD FAIR OPPORTUNITY" | Task order against a **multiple-award IDIQ**, awarded via fair-opportunity competition between IDIQ holders. Not §638(r) sole-source. The "TO SBCC FOR TRANSITION FROM IPODS-IT TO IPODS" wording describes the work-sharing arrangement on the resulting contract; the procurement authority is the IDIQ rules. |
+| **JJR Solutions** | $5M | "FULL AND OPEN COMPETITION" + "NEGOTIATED PROPOSAL/QUOTE" + 1 offer | **Competitively procured** Army contract. "DEVCOM SBIR PHASE III" is description language, not procurement authority. Only one offer was received in an open competition. |
+| **Vantor Services** | $3M | **"SMALL BUSINESS SET ASIDE - TOTAL"** + "FULL AND OPEN COMPETITION AFTER EXCLUSION OF SOURCES" | Contract was **set aside for small businesses** at award time. Vantor was apparently small then. The OTSB designation reflects current size status, not award conditions. Not §638(r). |
+| **Louisiana Board of Regents** | $0.1M | "FULL AND OPEN COMPETITION AFTER EXCLUSION OF SOURCES" + 1 offer; description prefixed `IGF::OT::IGF` | Description begins with the FPDS code for "Inherently Governmental Function." Competitively procured by NASA Stennis to support its SBIR program work. **Not §638(r)** — the SBIR program context is about *what work is performed*, not about which procurement authority was claimed. |
+| **Romitech** | $0.5M | "NOT COMPETED UNDER SAP" + "SIMPLIFIED ACQUISITION" | Below the simplified-acquisition threshold. Not §638(r) sole-source under §638. |
 
-**What would tighten these:** pulling the FPDS Justification and Approval (J&A) documents for each contract. The J&A explicitly states the §638(r) basis (or other sole-source authority being claimed). USAspending exposes some of this; the rest is at sam.gov/fpds.gov in the contract files. For ~7 contracts, this is half a day of manual lookup.
+**~$45M of OTSB Phase III "dollars" in our keyword-discoverable universe weren't actually §638(r) Phase III contracts.** This is real signal contamination: the keyword fetch pulls contracts whose descriptions contain "SBIR Phase III" but were procured under other authorities. The same contamination almost certainly exists in the Small Business universe (we just can't separate it as easily because SB contracts without §638(r) sole-source look similar to other SB R&D contracts).
+
+### The four-category breakdown
+
+Putting the validation together — OTSB Phase III dollars by mechanism:
+
+| Cat | Definition | Rows | $M | % of all OTSB $ |
+|---|---|---:|---:|---:|
+| **1** | **Firms with Phase 1/2 history** (UEI/name match to SBIR.gov P1/P2 awardees, including suffix variations) | ~120 | **$835** | **82.7%** |
+| **2** | **Corporate spinouts of P1/P2 awardees** (Sierra Space ← Sierra Nevada Corp; EDO Reconnaissance ← EDO Corp) | 6 | **$68** | **6.7%** |
+| **3** | **Large primes with an SBIR sub** (Amentum/SBCC, Parsons/BLACKJACK — prime itself has no SBIR history, the Phase III is teaming with a small SBIR firm) | 2 | **$64** | **6.3%** |
+| **4** | **The Rest** | ~12 | **$42** | **4.2%** |
+| ↳ Cat 4a | Genuine §638(r) sole-source to OTSB without identifiable SBIR sub (RC production, LMI discretionary, JCB scaling, Oliver Wyman discretionary, BAE production, Coherent production) | 6 | $25 | 2.5% |
+| ↳ Cat 4b | Contracts labeled "SBIR Phase III" but **not actually §638(r) sole-source** (Vantor, JJR Solutions, LA Board of Regents, Romitech) | ~5 | $9 | 0.9% |
+| ↳ Cat 4b-IDIQ | The Amentum task order — sits in Cat 3 narratively (teaming with SBCC sub) but procured via multiple-award IDIQ fair-opportunity rather than §638(r) | 1 | $37 | (counted in Cat 3) |
+| ↳ Cat 4c | Lifecycle / maintenance / other | ~3 | $3 | 0.3% |
+
+**Of $964M in OTSB Phase III dollars that were actually issued under §638(r) sole-source authority** (excluding the $45M of Cat 4b contamination):
+- ~$835M / 86.6% = Cat 1 (direct ex-SBIR firms)
+- ~$68M / 7.1% = Cat 2 (corporate spinouts)
+- ~$27M (Parsons + Amentum's underlying SBCC sub work) / ~2.8% = Cat 3 minus the IDIQ-procured Amentum dollars
+- ~$25M / ~2.6% = Cat 4a (genuine §638(r) sole-source to OTSB without identifiable sub)
+
+**Roughly 97% of genuine §638(r) OTSB Phase III dollars are explainable as SBIR-ecosystem outcomes.** The truly hard-to-explain residual is Cat 4a — about $25M, ~3% — concentrated in production-scaling cases that are defensible and two discretionary cases (LMI, Oliver Wyman, combined $8M) where the §638(r) connection is genuinely unclear from the public record.
+
+### What this implies about the broader Phase III universe
+
+Two structural takeaways for any future Phase III analysis:
+
+1. **The keyword-discoverable Phase III universe contains contamination.** Roughly $45M of OTSB rows (~4%) were pulled by the "SBIR Phase III" keyword fetch but procured under non-§638(r) authority. Equivalent contamination almost certainly exists in the Small Business universe — perhaps a similar 3-5% — but is harder to detect there. **The "$6.86B Phase III universe" headline includes some contamination; the true §638(r) Phase III dollar figure is plausibly ~$6.5–6.6B.**
+
+2. **Disambiguating §638(r) sole-source from "SBIR Phase III" description language requires FPDS competition fields.** The fields `extent_competed`, `solicitation_procedures`, and `other_than_full_and_open_competition_description` together identify whether the procurement was sole-source under §638(r) or done under another authority. These should be added to the universe builder's fetched fields for future runs.
 
 ## Caveats & limitations
 
