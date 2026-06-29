@@ -9,7 +9,7 @@
 - **GSA accounts for 27.2% of Phase III dollars ($1.86B of $6.85B) and 10.1% of contracts (204 of 2,013) across FY2008–FY2026.** GSA is acting as the *procurement vehicle*, not the funder — GSA funds zero Phase III work; DoD pays for 96% of GSA-awarded Phase III.
 - **96% of GSA Phase III flows through FEDSIM**, not the well-known multi-agency GWACs (OASIS, Alliant, STARS, Polaris). PIID-prefix attribution: 130 contracts ($1.32B) on `47QFLA*` (FEDSIM East / Loudoun, VA HQ); 51 contracts ($0.37B) on `47QFCA*` (FEDSIM West).
 - **GSA Phase III was effectively zero before FY2014, peaked at $508M in FY2021 (64% of all Phase III dollars that year), then collapsed to $109M in FY2024 (15% share).** **Partial channel shift, partial contraction:** roughly 40% of the GSA-era dollars reappeared as direct-DoD work; the other ~60% disappeared from keyword-discoverable Phase III. Combined GSA + direct-DoD Phase III fell 34% from FY2023 peak ($764M) to FY2025 ($506M).
-- **14.7% of Phase III dollars ($1.01B) went to Other Than Small Business (OTSB) recipients**, 7.0% of contracts. OTSB Phase III is concentrated: 11 prime contractors hold 70% of OTSB dollars. **Roughly one-third of OTSB dollars are demonstrably or plausibly M&A-driven (acquired-SBIR continuations);** the rest is organic OTSB primes (LinQuest at $237M alone, etc.) plus a long tail.
+- **14.7% of Phase III dollars ($1.01B) went to Other Than Small Business (OTSB) recipients**, 7.0% of contracts. 11 prime contractors hold 70.4% of OTSB dollars. **82.7% of OTSB dollars went to firms with documented Phase I/II SBIR history** — split between known M&A continuations (~20%), grew-out firms like LinQuest and Anduril (~63%), and likely-M&A cases our data missed. **Only 17.3% ($175M) went to genuinely external large primes** with no SBIR history (Sierra Space, Amentum, Parsons, Rockwell Collins). OTSB designation is misleading as a "program leakage" signal — the SBIR ecosystem is producing the OTSB outcome by design.
 
 ## What "Phase III" means in this dataset
 
@@ -124,7 +124,14 @@ Rolling up parent IDV vintage (the FY the parent vehicle was awarded):
 
 - **140 of 2,007 enriched contracts (7.0%) went to OTSB**
 - **$1.01B of $6.85B (14.7%) of dollars went to OTSB**
-- Mean OTSB contract size: **$7.2M**; mean Small Business contract size: $3.1M. OTSB awardees win **larger** contracts on average.
+- **Contract size distribution** (OTSB vs Small Business):
+
+| Group | n | Total $M | Mean | **Median** | P25 | P75 | P95 | Max |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| OTSB | 140 | $1,009 | $7.21M | **$1.52M** | $0.27M | $7.86M | $35.9M | $85.3M |
+| Small Business | 1,867 | $5,841 | $3.13M | **$0.75M** | $0.20M | $2.55M | $11.6M | $195.6M |
+
+OTSB awardees win larger contracts on average (2.3× the mean, 2.0× the median). Both distributions are heavily right-skewed — medians are well below means. Note: the single largest contract in the whole universe is a *Small Business* award ($195.6M to MI Technical Solutions, Navy-funded GSA-awarded). The right tail of the SB distribution actually reaches higher than OTSB's.
 
 ### Year-over-year OTSB share
 
@@ -215,7 +222,7 @@ Three implications worth flagging for SBIR program managers, GAO, and congressio
 
 **2. The FY2024 picture is messier than a clean channel shift: the recipient population changed.** FEDSIM's assisted-acquisition model includes standardized SOW templates and trained SBIR-aware contracting officers. Direct-DoD Phase III contracting depends on individual program offices having that knowledge. But the Tier 1 migration analysis below shows only 12% of GSA-era recipients (FY2020-2023) appear in direct-DoD post-FY2023. Direct-DoD is mostly hiring **different SBIR firms** than the FEDSIM-era cohort, and combined Phase III volume contracted 34% from FY2023 peak. This is consistent with one or more of: (a) a real Phase III pipeline contraction, (b) work moving to classified DoD contracts that don't appear in USAspending, (c) program offices losing the FEDSIM-era institutional knowledge of which SBIR firms to engage. The three explanations have different policy responses; they need to be disambiguated.
 
-**3. OTSB Phase III is partly an M&A success signal, not just program leakage, but only partly.** Of the $1.01B in OTSB Phase III dollars, ~14% is demonstrably tied to known SBIR acquisitions (L3 Adaptive Methods, Mercury Defense Systems, AeroVironment, Rockwell Collins, etc.). Adding manually-verifiable cases that the M&A data missed (Comtech AeroAstro, KBR Wyle Services, GD Mission Systems, Parsons Government Services) pushes the M&A-driven share to roughly 35%. But the **largest single OTSB recipient at $237M — LinQuest Corporation — is not an acquired-SBIR firm**. It's an organic large prime that grew into the Phase III role. So OTSB Phase III is genuinely heterogeneous: maybe 1/3 acquired-SBIR continuations, the rest a mix of organic OTSB primes and a long tail. The cross-walk to `sbir_ma_events.jsonl` puts useful bounds on this but isn't precise enough to fully separate the two populations — a UEI-history-based join would do better.
+**3. OTSB Phase III is overwhelmingly an SBIR-ecosystem outcome, not program leakage.** Joining each OTSB recipient against SBIR.gov's 219,501 Phase I/II awardee records (17,154 distinct UEIs) by UEI exact-match, name match, and name-containment shows **82.7% of OTSB Phase III dollars ($834M of $1.01B) went to firms with documented Phase I/II SBIR history**. Of that, ~20% are known M&A continuations (in MAEvent), ~63% are grew-out cases (LinQuest with 4 P1/P2 awards 2005-2008 → $237M Phase III; Anduril with 5 P1/P2 in 2019-2020 → $12M; Perduco; Janus; Chesapeake Technology Intl), and a substantial slice is likely-M&A continuations our M&A data missed (KBR Wyle inheriting Wyle's UEI; GD Mission Systems rolling up Progeny Systems' 309 P1/P2 awards). **Only 17.3% ($175M) went to genuinely external large primes** that never held SBIR P1/P2 awards — Sierra Space ($67M), Amentum ($37M), Parsons ($27M), Rockwell Collins ($15M), BAE Systems Protection, Oliver Wyman, etc. This finding inverts the original report's framing: the OTSB designation is misleading as a "program leakage" signal because the vast majority of OTSB recipients are program participants who either graduated past small-business size or were acquired. The §638(qq) theory of change is largely operating as designed.
 
 ## Tier 1 follow-up findings (2026-06-29)
 
@@ -252,25 +259,50 @@ Annualized direct-DoD Phase III by funding sub-agency:
 
 GSA-era Phase III was 86% Navy+Air Force. Their combined direct-DoD growth is +$98M/yr, against a combined GSA-era loss of ~$236M/yr. **~40% of the GSA shed reappeared as direct-DoD work for the same two services**; the rest is unaccounted for. Army contracted on both channels.
 
-### OTSB × MAEvent cross-walk: ~14% strict, ~35% with manual verification
+### OTSB × SBIR.gov history: 82.7% of OTSB dollars have SBIR P1/P2 lineage
 
-Of the 140 OTSB Phase III contracts ($1.01B):
+The initial M&A-only cross-walk in this report (using `data/enriched_sbir_ma_events.jsonl`) returned a 14.2% strict match rate, with a manually-extrapolated ~35% upper bound. **That framing materially understated the SBIR-history connection.** Replacing the M&A-only join with a direct join against SBIR.gov's 219,501 Phase I/II awardee records (17,154 distinct UEIs across 1991-2025) by UEI exact-match, name match, and name-containment shows a very different picture.
 
-| Match strictness | Rows | $ matched |
-|---|---:|---:|
-| **Strict** (recipient name = MAEvent acquirer, or recipient contains acquired-SBIR-firm name) | 11 (7.9%) | **$143M (14.2%)** |
+For each of the 140 OTSB Phase III contracts, asked: "did the recipient (or a firm whose name it contains) ever hold a Phase I or Phase II SBIR award?"
 
-Strict matches: L3 Adaptive Methods, Mercury Defense Systems, AeroVironment, Rockwell Collins, Honeywell International, Modern Technology Solutions, CACI Azure Summit Technology.
+| Category | Rows | $M | % of OTSB $ |
+|---|---:|---:|---:|
+| **Ex-SBIR firms** (recipient was a Phase I/II awardee) | 117 | **$834** | **82.7%** |
+| ↳ Of which: known-acquired (also in MAEvent) | 14 | $201 | 19.9% |
+| ↳ Of which: ex-SBIR without M&A signal | 103 | $633 | 62.7% |
+| **Genuinely organic large primes** (no SBIR P1/P2 history) | 23 | $175 | **17.3%** |
 
-Manual-verification adds: Comtech AeroAstro ($54M), KBR Wyle Services ($18M), GD Mission Systems ($124M), Parsons Government Services ($27M) — these are recognized SBIR-acquirer patterns that fell through the automated match because either (a) the SEC filing identified by MAEvent didn't capture the specific acquisition (KBR-Wyle 2018, AeroAstro-Comtech 2008), or (b) the recipient name doesn't structurally contain the acquired-firm name (GD Mission Systems rolls up many smaller acquired firms under a single brand).
+Spot-checked every top recipient against raw SBIR.gov data:
 
-With those added, OTSB Phase III is approximately:
+| Recipient | Verdict | Phase I/II count | Years |
+|---|---|---:|---|
+| LinQuest Corporation ($237M) | **Ex-SBIR, grew out** | 4 P1/P2 | 2005-2008 |
+| GD Mission Systems ($124M) | **M&A continuation (via Progeny Systems)** | 309 (Progeny) | 1996-2020 |
+| Sierra Space Corp ($67M) | **Organic — no SBIR history** | 0 | — |
+| L3 Adaptive Methods ($56M) | **M&A continuation (Adaptive Methods)** | 94 | 1991-2017 |
+| Comtech AeroAstro ($54M) | **M&A continuation (AeroAstro)** | 53 | 1992-2008 |
+| Amentum Services ($37M) | **Organic** | 0 | — |
+| CGI Federal ($35M) | **M&A continuation (Morgan Research Corp)** | 37 | 1991-2006 |
+| Mercury Defense Systems ($31M) | **M&A continuation** | confirmed | — |
+| Parsons Government Services ($27M) | **Organic** | 0 | — |
+| Janus Research Group ($21M) | Ex-SBIR — thin (1 Phase I only) | 1 | 2017 |
+| AeroVironment ($29M) | Ex-SBIR, known acquirer | direct match | — |
+| KBR Wyle Services ($18M) | **M&A continuation (Wyle was SBIR firm; UEI inherited)** | 75 (Wyle) | 2003-2019 |
+| Anduril Industries ($12M) | **Ex-SBIR, grew out** | 5 | 2019-2020 |
+| Perduco Group ($14M) | Ex-SBIR, grew out | 7 | 2014-2019 |
+| Chesapeake Technology Intl ($11M) | Ex-SBIR | 17 | 2007-2021 |
+| Rockwell Collins ($15M) | **Organic** | 0 | — |
 
-- **~35% acquired-SBIR continuations** ($350M of $1.01B) — work continuing under acquirer designation
-- **~24% organic OTSB primes** ($237M, all LinQuest) — large firms that won Phase III directly via §638(r) sole-source
-- **~41% long tail** — mix of acquired-SBIR not captured here, organic OTSB primes, mid-size firms that crossed the small-business threshold during the contract lifecycle
+**The MAEvent-only cross-walk was too narrow.** Cases like KBR Wyle Services (UEI inherited from Wyle), GD Mission Systems (Progeny Systems acquisition), and CGI Federal (Morgan Research acquisition) are M&A continuations that the MAEvent data didn't surface. The SBIR.gov-history join catches them automatically because the underlying acquired firm shows up as a Phase I/II awardee.
 
-The fully-disambiguated number requires UEI-history tracking (when did each recipient's UEI first appear, when did it transition from Small Business to OTSB designation), which is feasible from the existing FPDS data but out of scope for this report.
+### Caveats on the 82.7% number
+
+- **"Ex-SBIR" doesn't prove the Phase III work derives from the original P1/P2 R&D.** LinQuest's 4 P1/P2 awards (2005-2008) and its $237M Phase III work (2020-2023) might be largely unrelated technology. §638(r) sole-source Phase III is legally available to any SBIR firm regardless of R&D linkage. So 82.7% is "had any SBIR history," not "Phase III directly derived from prior P1/P2 R&D."
+- **UEI inheritance through M&A** means some "ex-SBIR" cases (KBR Wyle, GD Mission Systems) are functionally M&A continuations our MAEvent data missed. The 19.9% known-acquired share is therefore a lower bound — the true M&A share is probably 30-40% of OTSB, with the remainder being grew-out cases.
+- **Thin-history cases (Janus, 1 Phase I award) are counted as ex-SBIR**, which may overstate the category at the margin. The dollar share moves little even if these are reclassified.
+- **The 23 organic OTSB recipients are uniform in type:** large defense / engineering services primes (Sierra Space, Amentum, Parsons, Rockwell Collins, BAE Systems variants, Oliver Wyman, LMI Consulting). These won §638(r) sole-source Phase III despite having no SBIR participation history — likely via teaming arrangements with SBIR-firm subs or by being designated the "best qualified" sole-source vendor.
+
+**Implication:** OTSB is misleading as a "program leakage" signal. The SBIR ecosystem is producing the OTSB outcome by design — small firms that the program funded then either graduate past small-business size (the canonical SBIR success story) or get acquired, in both cases continuing as Phase III recipients with their now-larger size designation.
 
 ## Caveats & limitations
 
