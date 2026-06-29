@@ -45,7 +45,6 @@ jobs:
       contents: read
       pull-requests: read
     outputs:
-      production: ${{ steps.detect.outputs.production }}
       performance: ${{ steps.detect.outputs.performance }}
       transition: ${{ steps.detect.outputs.transition }}
       docker: ${{ steps.detect.outputs.docker }}
@@ -64,11 +63,6 @@ jobs:
           # which is "every pattern matched by some file" rather than "every
           # file is a doc" and silently let mixed code+docs PRs skip CI.
           filters: |
-            production:
-              - 'sbir_etl/**'
-              - 'packages/sbir-analytics/sbir_analytics/**'
-              - 'packages/sbir-ml/sbir_ml/**'
-              - 'packages/sbir-graph/sbir_graph/**'
             performance:
               - 'sbir_etl/enrichers/**'
               - 'sbir_etl/extractors/**'

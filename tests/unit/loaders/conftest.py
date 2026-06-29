@@ -6,7 +6,6 @@ import pytest
 
 # Import shared fixtures
 from tests.conftest_shared import (
-    empty_load_metrics,
     mock_driver,
     mock_session,
     mock_transaction,
@@ -41,7 +40,6 @@ __all__ = [
     "mock_driver",
     "mock_session",
     "mock_transaction",
-    "empty_load_metrics",
     "create_mock_client_with_session",
     "mock_client_factory",
 ]

@@ -21,6 +21,14 @@ def enricher_sbir_df():
 
 
 @pytest.fixture
+def temp_checkpoint_dir(tmp_path):
+    """Temporary checkpoint directory."""
+    checkpoint_dir = tmp_path / "checkpoints"
+    checkpoint_dir.mkdir()
+    return checkpoint_dir
+
+
+@pytest.fixture
 def enricher_recipient_df():
     """Sample recipient DataFrame for enricher tests.
 

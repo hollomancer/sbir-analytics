@@ -284,15 +284,6 @@ def test_config():
 # ============================
 
 
-@pytest.fixture(scope="session")
-def session_tmp_dir(tmp_path_factory):
-    """
-    Session-scoped temporary directory for shared test artifacts.
-    Useful for caching expensive computations across tests.
-    """
-    return tmp_path_factory.mktemp("session_data")
-
-
 # Mock Fixtures
 # =============
 
@@ -351,15 +342,6 @@ def bea_mapping(repo_root: Path) -> Path:
     path = repo_root / "data" / "reference" / "naics_to_bea.csv"
     if not path.exists():
         pytest.skip(f"BEA mapping not available: {path}")
-    return path
-
-
-@pytest.fixture
-def golden_transitions(repo_root: Path) -> Path:
-    """Fixture for golden transition data."""
-    path = repo_root / "tests" / "data" / "transition" / "golden_transitions.ndjson"
-    if not path.exists():
-        pytest.skip(f"Golden transitions not available: {path}")
     return path
 
 
@@ -463,28 +445,6 @@ def aws_credentials():
 
 # Data Generator Fixtures
 # =======================
-
-
-@pytest.fixture
-def usaspending_sample(tmp_path):
-    """Generate synthetic USAspending sample data."""
-    import pandas as pd
-    import random
-
-    random.seed(42)
-    n_records = 1000
-
-    data = {
-        "award_id": [f"AWARD_{i:06d}" for i in range(n_records)],
-        "recipient_uei": [f"UEI{i:012d}" for i in range(n_records)],
-        "naics_code": [random.choice(["541715", "541712", "334111"]) for _ in range(n_records)],
-        "award_amount": [random.uniform(50000, 1000000) for _ in range(n_records)],
-    }
-
-    df = pd.DataFrame(data)
-    output_path = tmp_path / "usaspending_sample.parquet"
-    df.to_parquet(output_path)
-    return output_path
 
 
 @pytest.fixture
