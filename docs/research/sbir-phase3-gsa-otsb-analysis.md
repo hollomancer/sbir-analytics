@@ -10,7 +10,7 @@
 - **96% of GSA Phase III flows through FEDSIM**, not the well-known multi-agency GWACs (OASIS, Alliant, STARS, Polaris). PIID-prefix attribution: 130 contracts ($1.32B) on `47QFLA*` (FEDSIM East / Loudoun, VA HQ); 51 contracts ($0.37B) on `47QFCA*` (FEDSIM West).
 - **GSA Phase III was effectively zero before FY2014, peaked at $508M in FY2021 (64% of all Phase III dollars that year), then collapsed to $109M in FY2024 (15% share).** **Partial channel shift, partial contraction:** roughly 40% of the GSA-era dollars reappeared as direct-DoD work; the other ~60% disappeared from keyword-discoverable Phase III. Combined GSA + direct-DoD Phase III fell 34% from FY2023 peak ($764M) to FY2025 ($506M).
 - **14.7% of Phase III dollars ($1.01B) went to Other Than Small Business (OTSB) recipients**, 7.0% of contracts. **97% of genuine §638(r) OTSB Phase III dollars are explainable as SBIR-ecosystem outcomes** — direct ex-SBIR firms (~87%), corporate spinouts of P1/P2 awardees (Sierra Space ← Sierra Nevada Corp, ~7%), or large primes teaming with SBIR subs (~3%). The hard-to-explain residual is ~$25M (~3%), mostly defensible production-scaling. OTSB designation is misleading as a "program leakage" signal — the SBIR ecosystem is producing the OTSB outcome by design.
-- **The keyword-discoverable universe contains ~$45M of contamination** in OTSB — contracts whose descriptions contain "SBIR Phase III" but were procured under non-§638(r) authority (multiple-award IDIQ task orders, competitive procurement, set-asides, simplified acquisition). The same contamination likely exists at similar 3-5% rate in the Small Business universe. **The true §638(r) Phase III universe is plausibly $6.5–6.6B**, not the headline $6.86B. Future universe builds should fetch FPDS competition fields to disambiguate at scrape time.
+- **Only 55.7% of keyword-discoverable Phase III dollars ($3.82B of $6.86B) are §638(r) sole-source** — much lower than the Tier 1 OTSB-only puzzle-case investigation suggested. The other 44.3% is competitive procurement, set-asides, IDIQ task orders, or simplified acquisitions whose descriptions reference Phase III work without claiming §638(r) authority. **GSA Phase III is 99% §638(r) sole-source; direct-DoD Phase III is only 41%.** GSA's share of the strict §638(r) universe is **48.2%** (vs. 27.2% of the keyword universe) — the keyword view *understates* FEDSIM's dominance of the actual §638(r) channel.
 
 ## What "Phase III" means in this dataset
 
@@ -420,11 +420,104 @@ Putting the validation together — OTSB Phase III dollars by mechanism:
 
 ### What this implies about the broader Phase III universe
 
-Two structural takeaways for any future Phase III analysis:
+Two structural takeaways from the OTSB-only puzzle-case investigation:
 
-1. **The keyword-discoverable Phase III universe contains contamination.** Roughly $45M of OTSB rows (~4%) were pulled by the "SBIR Phase III" keyword fetch but procured under non-§638(r) authority. Equivalent contamination almost certainly exists in the Small Business universe — perhaps a similar 3-5% — but is harder to detect there. **The "$6.86B Phase III universe" headline includes some contamination; the true §638(r) Phase III dollar figure is plausibly ~$6.5–6.6B.**
+1. **The keyword-discoverable Phase III universe mixes §638(r) sole-source contracts with contracts procured under other authorities.** The OTSB puzzle-cases caught some of this (~$45M of OTSB rows). The Tier 2 universe-wide enrichment (below) quantifies the broader pattern: ~44% of all keyword-discoverable Phase III dollars aren't §638(r) sole-source.
 
-2. **Disambiguating §638(r) sole-source from "SBIR Phase III" description language requires FPDS competition fields.** The fields `extent_competed`, `solicitation_procedures`, and `other_than_full_and_open_competition_description` together identify whether the procurement was sole-source under §638(r) or done under another authority. These should be added to the universe builder's fetched fields for future runs.
+2. **Disambiguating §638(r) sole-source from "SBIR Phase III" description language requires FPDS competition fields.** The fields `extent_competed`, `solicitation_procedures`, and `other_than_full_and_open_competition_description` together identify whether the procurement was sole-source under §638(r) or done under another authority. These were added in Tier 2 (PR #410's `enrich_phase3_competition.py`).
+
+## Tier 2 follow-up findings (2026-06-29): §638(r) competition-fields enrichment
+
+The OTSB-only Tier 1 finding hinted at signal contamination in the keyword-discoverable universe. Tier 2 ran the same FPDS competition-fields disambiguation across all 2,013 contracts in the universe. The result is bigger and more nuanced than the Tier 1 OTSB sub-sample suggested.
+
+### §638(r) share across the full universe
+
+The cleanest §638(r) signal is `solicitation_procedures = "ONLY ONE SOURCE"`. This captures both extent variants ("NOT AVAILABLE FOR COMPETITION" and "NOT COMPETED" — both pair with sole-source procurement; the difference is procedural coding).
+
+| Procurement authority | Contracts | $M | % of $ |
+|---|---:|---:|---:|
+| **§638(r) sole-source** (`ONLY ONE SOURCE`) | 742 | **$3,818** | **55.7%** |
+| **NOT §638(r) sole-source** | 1,271 | **$3,037** | **44.3%** |
+
+The non-§638(r) bucket itself breaks into distinct patterns:
+
+| Procurement combination | Contracts | $M | What it is |
+|---|---:|---:|---|
+| FULL AND OPEN COMPETITION AFTER EXCLUSION OF SOURCES + NEGOTIATED | 907 | $2,384 | Mostly small-business / 8(a) / HUBZone set-asides procured competitively |
+| FULL AND OPEN COMPETITION + NEGOTIATED | 91 | $285 | Open competition between SBIR firms |
+| NOT COMPETED UNDER SAP + SIMPLIFIED ACQUISITION | 125 | $74 | Below SAP threshold |
+| COMPETED UNDER SAP | 81 | $54 | Competitive simplified acquisition |
+| FULL AND OPEN + BASIC RESEARCH | 14 | $49 | Likely Phase II-style work mislabeled as III |
+| FOLLOW ON TO COMPETED ACTION + ONLY ONE SOURCE | 12 | $45 | Hybrid: follow-on to a prior competition |
+| SUBJECT TO MULTIPLE AWARD FAIR OPPORTUNITY | 4 | $59 | IDIQ task orders (including Amentum's $37M) |
+| Other | 37 | $87 | mix |
+
+**The biggest non-§638(r) bucket is competitive set-asides — $2.4B across 907 contracts**, mostly small-business set-asides where multiple SBIR firms competed for the Phase III work. This is legitimate Phase III work in the broader sense ([SBA Policy Directive](https://www.sba.gov/document/policy-directive-sbir-sttr-policy-directive) defines Phase III as any work that derives from, extends, or completes earlier Phase I/II R&D regardless of how procured) — it's just not §638(r) sole-source.
+
+### §638(r) share by awarding agency
+
+| Bucket | Total $M | §638(r) $M | **§638(r) share by $** |
+|---|---:|---:|---:|
+| **GSA** | $1,864 | $1,843 | **99.0%** |
+| **DoD direct** | $4,344 | $1,781 | **41.0%** |
+| **Other agencies** | $647 | $194 | **29.9%** |
+
+GSA Phase III is **almost entirely** §638(r) sole-source — FEDSIM's assisted-acquisition model is built around invoking the §638(r) authority. Direct-DoD Phase III is mostly competitive — program offices use "SBIR Phase III" as program-context language while procuring under set-asides, IDIQ task orders, or open competition. Other agencies (NASA, DHS, etc.) are even more weighted toward competitive procurement.
+
+**The keyword-derived headline "GSA = 27.2% of Phase III" understates GSA's role in the actual §638(r) channel:**
+
+| Lens | GSA share of $ |
+|---|---:|
+| Keyword-discoverable Phase III universe ($6.86B) | 27.2% |
+| **Strict §638(r) sole-source only ($3.82B)** | **48.2%** |
+
+When you restrict to actual §638(r) sole-source contracts, GSA accounts for nearly half. FEDSIM's role is even more central than the keyword analysis showed.
+
+### §638(r) share by FY tracks the GSA cycle
+
+| FY | Total $M | §638(r) $M | §638(r) % |
+|---:|---:|---:|---:|
+| 2014 | 115 | 29 | 25% |
+| 2015 | 98 | 14 | 15% |
+| 2016 | 271 | 19 | 7% |
+| 2017 | 225 | 167 | 74% |
+| 2018 | 259 | 120 | 46% |
+| 2019 | 376 | 134 | 36% |
+| **2020** | **617** | **446** | **72%** |
+| **2021** | **827** | **650** | **79%** |
+| **2022** | **822** | **669** | **81%** |
+| **2023** | **808** | **607** | **75%** |
+| **2024** | **752** | **363** | **48%** ← drop |
+| **2025** | **643** | **326** | **51%** |
+| 2026 | 160 | 101 | 63% (partial) |
+
+§638(r) usage peaked at 79-81% during the GSA/FEDSIM peak years (FY2020-2023) — because FEDSIM is 99% §638(r). When DoD repatriated Phase III contracting in FY2024, the §638(r) share dropped to ~50%, because **direct-DoD program offices use §638(r) authority much less than FEDSIM did**. This is a second mechanism for the FY2024 cliff alongside the channel shift and recipient-population change: a shift in **procurement authority** away from sole-source toward competitive procurement.
+
+### §638(r) by Small Business vs OTSB — reverses the Tier 1 read
+
+The Tier 1 puzzle-case investigation looked only at the 23 "genuinely organic" OTSB rows and concluded ~$45M of OTSB contracts weren't §638(r). The full-universe enrichment shows a different distribution:
+
+| Group | n | Total $M | §638(r) $M | **§638(r) %** |
+|---|---:|---:|---:|---:|
+| **OTSB** | 140 | $1,009 | $713 | **70.7%** |
+| **Small Business** | 1,867 | $5,846 | $3,105 | **53.1%** |
+
+**OTSB Phase III is MORE likely to be §638(r) sole-source than SB Phase III**, not less. Driven by:
+- **Acquired-SBIR continuations** (L3 Adaptive Methods, Mercury Defense Systems, etc.) — sole-source is the natural mechanism when the acquirer claims the §638(r) standing inherited from the acquired SBIR firm
+- **Production-scaling cases** (Rockwell Collins, JCB, BAE Systems Protection) — sole-source is used to award the production phase to the large prime with manufacturing capacity
+- **Corporate-successor cases** (Sierra Space ← SNC) — sole-source on inherited §638(r) standing
+
+The Small Business universe has more **competitive set-asides** where multiple small SBIR firms compete for Phase III follow-on work, lowering the SB §638(r) share to ~53%.
+
+### Updated narrative for the FY2024 channel shift
+
+Combining Tier 1 + Tier 2, the FY2024 cliff has three layered mechanisms, not one:
+
+1. **Channel shift:** GSA-vehicle dollars dropped $281M ($390M → $109M YoY); direct-DoD grew ~$213M. ~40% of the GSA shed reappeared as direct-DoD.
+2. **Recipient population change:** Only 7 of 58 GSA-era firms appear in direct-DoD post-FY2023. Direct-DoD is mostly hiring different SBIR firms.
+3. **Authority shift (new):** When DoD repatriated Phase III, they used §638(r) sole-source authority less. §638(r) share of total Phase III dollars dropped from 75-81% (GSA peak) to 48-51% post-cliff. Direct-DoD's institutional habits favor competitive procurement (set-asides, IDIQs) over §638(r) sole-source.
+
+The combined effect: combined GSA + direct-DoD Phase III dollars fell 34% from FY2023 peak ($764M) to FY2025 ($506M), AND the share procured under §638(r) sole-source fell from 75% to 51%. So the program-evaluation question changes: it's not just that less Phase III work is happening, it's that proportionally less of it is using the canonical §638(r) authority that SBA tracks as Phase III commercialization.
 
 ## Caveats & limitations
 
