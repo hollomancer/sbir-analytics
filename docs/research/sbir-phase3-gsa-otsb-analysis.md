@@ -8,8 +8,8 @@
 
 - **GSA accounts for 27.2% of Phase III dollars ($1.86B of $6.85B) and 10.1% of contracts (204 of 2,013) across FY2008–FY2026.** GSA is acting as the *procurement vehicle*, not the funder — GSA funds zero Phase III work; DoD pays for 96% of GSA-awarded Phase III.
 - **96% of GSA Phase III flows through FEDSIM**, not the well-known multi-agency GWACs (OASIS, Alliant, STARS, Polaris). PIID-prefix attribution: 130 contracts ($1.32B) on `47QFLA*` (FEDSIM East / Loudoun, VA HQ); 51 contracts ($0.37B) on `47QFCA*` (FEDSIM West).
-- **GSA Phase III was effectively zero before FY2014, peaked at $508M in FY2021 (64% of all Phase III dollars that year), then collapsed to $109M in FY2024 (15% share).** The total Phase III pie kept growing — direct-DoD contracting absorbed most of the GSA shed.
-- **14.7% of Phase III dollars ($1.01B) went to Other Than Small Business (OTSB) recipients**, 7.0% of contracts. OTSB Phase III is concentrated: 11 prime contractors hold 70% of OTSB dollars. A meaningful share is acquired SBIR firms continuing the work under the acquirer's size designation.
+- **GSA Phase III was effectively zero before FY2014, peaked at $508M in FY2021 (64% of all Phase III dollars that year), then collapsed to $109M in FY2024 (15% share).** **Partial channel shift, partial contraction:** roughly 40% of the GSA-era dollars reappeared as direct-DoD work; the other ~60% disappeared from keyword-discoverable Phase III. Combined GSA + direct-DoD Phase III fell 34% from FY2023 peak ($764M) to FY2025 ($506M).
+- **14.7% of Phase III dollars ($1.01B) went to Other Than Small Business (OTSB) recipients**, 7.0% of contracts. OTSB Phase III is concentrated: 11 prime contractors hold 70% of OTSB dollars. **Roughly one-third of OTSB dollars are demonstrably or plausibly M&A-driven (acquired-SBIR continuations);** the rest is organic OTSB primes (LinQuest at $237M alone, etc.) plus a long tail.
 
 ## What "Phase III" means in this dataset
 
@@ -63,7 +63,7 @@ Awarding-agency bucket, contract counts and dollars by Start-Date fiscal year (F
 
 **2. The 2020–2023 era is the GSA story.** Across those four fiscal years, GSA awarded $1.52B of Phase III work — roughly 47% of total Phase III dollars in that window. In FY2021 specifically, GSA was the **majority channel** for Phase III dollars (61%). This is not a small or peripheral channel; this is *the* dominant procurement path for SBIR Phase III work during the peak years.
 
-**3. The FY2024 cliff is real and the dollars did not vanish from Phase III.** Total Phase III dollars grew slightly from $762M in FY2023 to $755M in FY2024. What changed was where they flowed: DoD direct-contracting dollars went from $374M (FY2023) → $587M (FY2024), a +$213M YoY jump that almost exactly absorbs the $281M GSA decline. Channel shift, not program shrinkage.
+**3. The FY2024 cliff is partly real channel shift and partly real Phase III contraction.** Direct-DoD dollars grew from $374M (FY2023) → $587M (FY2024), absorbing about $213M of the $281M GSA decline that year. But the FY2025 picture is worse: combined GSA + direct-DoD fell to $506M, a 34% drop from the FY2023 peak ($764M). Annualized by sub-agency, Navy and Air Force grew direct-DoD Phase III by $58M/yr and $40M/yr respectively from the FY2018-2023 era to the FY2024-2026 era; Army contracted by $24M/yr. **The Navy+AF growth of ~$98M/yr replaces roughly 40% of their $236M/yr GSA-era loss** — the rest disappeared from keyword-discoverable Phase III, either through outright contraction, classified contracting (DoD has Phase III activity that doesn't appear in USAspending regardless of keyword), or migration to vehicles/agencies/keywords we cannot see in this dataset. See **Tier 1 follow-up findings** below for the recipient-migration and sub-agency analysis that produced these numbers.
 
 ## What "GSA Phase III" really means: it's FEDSIM
 
@@ -213,13 +213,69 @@ Three implications worth flagging for SBIR program managers, GAO, and congressio
 
 **1. Channel attribution matters for SBIR program evaluation.** When NASEM and GAO assess "SBIR commercialization through Phase III transitions," they are mostly counting work that **DoD funds but routes through GSA/FEDSIM**. Treating these as separate channels for evaluation purposes (e.g., DoD's Phase III conversion rate) misses where the actual dollars and contracting-officer decisions sit. The funder-vs-vehicle distinction needs to be explicit in any Phase III rate.
 
-**2. The FY2024 channel shift to direct-DoD has program-management consequences.** FEDSIM's assisted-acquisition model includes standardized SOW templates and trained SBIR-aware contracting officers. Direct-DoD Phase III contracting depends on individual program offices having that knowledge. The +$280M FY2024 swing into direct DoD likely came with reduced consistency of SBIR Phase III tagging, SOW quality, and contracting-officer training — all of which deserve audit attention.
+**2. The FY2024 picture is messier than a clean channel shift: the recipient population changed.** FEDSIM's assisted-acquisition model includes standardized SOW templates and trained SBIR-aware contracting officers. Direct-DoD Phase III contracting depends on individual program offices having that knowledge. But the Tier 1 migration analysis below shows only 12% of GSA-era recipients (FY2020-2023) appear in direct-DoD post-FY2023. Direct-DoD is mostly hiring **different SBIR firms** than the FEDSIM-era cohort, and combined Phase III volume contracted 34% from FY2023 peak. This is consistent with one or more of: (a) a real Phase III pipeline contraction, (b) work moving to classified DoD contracts that don't appear in USAspending, (c) program offices losing the FEDSIM-era institutional knowledge of which SBIR firms to engage. The three explanations have different policy responses; they need to be disambiguated.
 
-**3. OTSB Phase III is partly an M&A success signal, not just program leakage.** SBIR firms achieving acquisitions and continuing Phase III work under acquirer ownership is consistent with the program's commercialization-success theory of change. A raw "OTSB share grew" headline misreads the M&A-driven share as program failure. Distinguishing "original-recipient OTSB" (where a non-small firm won the SBIR contract via §638(r) sole-source) from "acquired-recipient OTSB" (where the SBIR-firm was bought and the Phase III continued) requires UEI-based ownership-history tracking — non-trivial but tractable.
+**3. OTSB Phase III is partly an M&A success signal, not just program leakage, but only partly.** Of the $1.01B in OTSB Phase III dollars, ~14% is demonstrably tied to known SBIR acquisitions (L3 Adaptive Methods, Mercury Defense Systems, AeroVironment, Rockwell Collins, etc.). Adding manually-verifiable cases that the M&A data missed (Comtech AeroAstro, KBR Wyle Services, GD Mission Systems, Parsons Government Services) pushes the M&A-driven share to roughly 35%. But the **largest single OTSB recipient at $237M — LinQuest Corporation — is not an acquired-SBIR firm**. It's an organic large prime that grew into the Phase III role. So OTSB Phase III is genuinely heterogeneous: maybe 1/3 acquired-SBIR continuations, the rest a mix of organic OTSB primes and a long tail. The cross-walk to `sbir_ma_events.jsonl` puts useful bounds on this but isn't precise enough to fully separate the two populations — a UEI-history-based join would do better.
+
+## Tier 1 follow-up findings (2026-06-29)
+
+Three targeted analyses run after the initial report. Each tightens or revises a specific claim above.
+
+### Recipient migration: only 7 of 58 GSA-era firms appear in direct-DoD post-FY2023
+
+The original report's implicit assumption was that DoD program offices continued working with the same SBIR firms but routed contracts through their own shops instead of FEDSIM. The data says no:
+
+| Cohort | Distinct firms | Total $M |
+|---|---:|---:|
+| GSA-channel recipients FY2020-2023 | 58 | $1,519 |
+| Direct-DoD recipients FY2024-2025 | 203 | $1,060 |
+| **Overlap (firms in both)** | **7 (12.1% of GSA-era)** | — |
+| GSA $ to overlap firms | — | $328M (21.6% of GSA-era $) |
+| DoD $ to overlap firms | — | $80M (7.5% of DoD-post $) |
+
+The seven firms that crossed the channel: LinQuest ($174M GSA-era → $22M DoD-post, **-87%**), Sabel Systems ($107M → $3M, **-97%**), Eccalon ($17M → $39M, **+135%**), Frontier Technology, Advanced Systems Supportability, Cornerstone Research, Valid Evaluation. Six of seven contracted significantly; only Eccalon grew across the shift.
+
+Implication: the FY2024 channel shift is **not a pure administrative reroute**. ~96% of DoD's post-shift recipients are firms that had no prior GSA Phase III work. Either DoD program offices lost the FEDSIM-era awareness of which SBIR firms to engage, or there's a deeper shift in who DoD is hiring for follow-on work.
+
+### Sub-agency split: Navy and Air Force grew direct-DoD; Army contracted
+
+Annualized direct-DoD Phase III by funding sub-agency:
+
+| Sub-agency | FY2018-23 $M/yr | FY2024-26 $M/yr | Δ |
+|---|---:|---:|---:|
+| Air Force | $131 | $171 | **+$40/yr (+30%)** |
+| Navy | $80 | $138 | **+$58/yr (+73%)** |
+| **Army** | **$70** | **$46** | **-$24/yr (-34%)** |
+| Defense Logistics Agency | $4 | $12 | +$8/yr |
+| Missile Defense Agency | $8 | $9 | +$1/yr |
+| Defense Health Agency | $6 | $5 | -$1/yr |
+
+GSA-era Phase III was 86% Navy+Air Force. Their combined direct-DoD growth is +$98M/yr, against a combined GSA-era loss of ~$236M/yr. **~40% of the GSA shed reappeared as direct-DoD work for the same two services**; the rest is unaccounted for. Army contracted on both channels.
+
+### OTSB × MAEvent cross-walk: ~14% strict, ~35% with manual verification
+
+Of the 140 OTSB Phase III contracts ($1.01B):
+
+| Match strictness | Rows | $ matched |
+|---|---:|---:|
+| **Strict** (recipient name = MAEvent acquirer, or recipient contains acquired-SBIR-firm name) | 11 (7.9%) | **$143M (14.2%)** |
+
+Strict matches: L3 Adaptive Methods, Mercury Defense Systems, AeroVironment, Rockwell Collins, Honeywell International, Modern Technology Solutions, CACI Azure Summit Technology.
+
+Manual-verification adds: Comtech AeroAstro ($54M), KBR Wyle Services ($18M), GD Mission Systems ($124M), Parsons Government Services ($27M) — these are recognized SBIR-acquirer patterns that fell through the automated match because either (a) the SEC filing identified by MAEvent didn't capture the specific acquisition (KBR-Wyle 2018, AeroAstro-Comtech 2008), or (b) the recipient name doesn't structurally contain the acquired-firm name (GD Mission Systems rolls up many smaller acquired firms under a single brand).
+
+With those added, OTSB Phase III is approximately:
+
+- **~35% acquired-SBIR continuations** ($350M of $1.01B) — work continuing under acquirer designation
+- **~24% organic OTSB primes** ($237M, all LinQuest) — large firms that won Phase III directly via §638(r) sole-source
+- **~41% long tail** — mix of acquired-SBIR not captured here, organic OTSB primes, mid-size firms that crossed the small-business threshold during the contract lifecycle
+
+The fully-disambiguated number requires UEI-history tracking (when did each recipient's UEI first appear, when did it transition from Small Business to OTSB designation), which is feasible from the existing FPDS data but out of scope for this report.
 
 ## Caveats & limitations
 
 - **Keyword-derived undercount.** Real Phase III universe is bigger than this analysis captures. GAO-24-107036 estimates ~30% DoD undercount for canonical-keyword fetches; the six-variant union recovers some but not all. Direct-DoD contracts are more under-represented than FEDSIM contracts.
+- **Classified contracting is structurally invisible.** DoD has Phase III activity on classified contracts (likely concentrated in Air Force, Navy SOCOM, and SDA programs) that does not appear in USAspending regardless of keyword. This means the FY2024-2025 contraction observed here is an **upper-bound estimate** — some unknown share of the "missing" Phase III dollars may have moved to classified vehicles. The fraction is impossible to estimate from public data alone.
 - **FY2026 is partial.** Only ~3 months of data. Drawing conclusions from FY2026 numbers is unwarranted.
 - **FY2007 and earlier are inaccessible** via the USAspending search API (returns HTTP 500); use the bulk download endpoint if pre-2008 history is needed.
 - **OTSB classification reflects size at award time.** A firm classified Small Business in 2018 and acquired in 2022 shows as Small Business on the 2018 Phase III and OTSB on any 2023+ Phase III.
