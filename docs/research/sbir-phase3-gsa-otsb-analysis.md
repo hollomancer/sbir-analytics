@@ -300,9 +300,84 @@ Spot-checked every top recipient against raw SBIR.gov data:
 - **"Ex-SBIR" doesn't prove the Phase III work derives from the original P1/P2 R&D.** LinQuest's 4 P1/P2 awards (2005-2008) and its $237M Phase III work (2020-2023) might be largely unrelated technology. §638(r) sole-source Phase III is legally available to any SBIR firm regardless of R&D linkage. So 82.7% is "had any SBIR history," not "Phase III directly derived from prior P1/P2 R&D."
 - **UEI inheritance through M&A** means some "ex-SBIR" cases (KBR Wyle, GD Mission Systems) are functionally M&A continuations our MAEvent data missed. The 19.9% known-acquired share is therefore a lower bound — the true M&A share is probably 30-40% of OTSB, with the remainder being grew-out cases.
 - **Thin-history cases (Janus, 1 Phase I award) are counted as ex-SBIR**, which may overstate the category at the margin. The dollar share moves little even if these are reclassified.
-- **The 23 organic OTSB recipients are uniform in type:** large defense / engineering services primes (Sierra Space, Amentum, Parsons, Rockwell Collins, BAE Systems variants, Oliver Wyman, LMI Consulting). These won §638(r) sole-source Phase III despite having no SBIR participation history — likely via teaming arrangements with SBIR-firm subs or by being designated the "best qualified" sole-source vendor.
+- **The "23 organic OTSB recipients" number shrinks under closer inspection** (see next subsection for the mechanism breakdown). After fixing matching false-negatives (Honeybee Robotics LLC vs. Honeybee Robotics Ltd; AgileDelta name variation) and accounting for one obvious corporate-successor case the name matching can't catch (Sierra Space, 2021 spinout from Sierra Nevada Corp), the truly "no SBIR linkage" set is closer to 14-17 contracts / ~$79M, not 23 / $175M.
 
 **Implication:** OTSB is misleading as a "program leakage" signal. The SBIR ecosystem is producing the OTSB outcome by design — small firms that the program funded then either graduate past small-business size (the canonical SBIR success story) or get acquired, in both cases continuing as Phase III recipients with their now-larger size designation.
+
+### How OTSB Phase IIIs are issued: §638(r) mechanism breakdown
+
+For the 23 contracts initially flagged as "organic OTSB" (no SBIR P1/P2 history found), reading the actual contract descriptions reveals five distinct mechanisms by which Phase III work flows to non-small-business recipients. These aren't loopholes — they're all defensible interpretations of §638(r), which authorizes Phase III sole-source to "an SBC that has been engaged in SBIR/STTR work" but leaves the qualifying-entity definition to contracting officer discretion.
+
+**Mechanism A — Corporate successor inheriting Phase III standing** (~$68M, 6 contracts)
+
+The recipient is a spinout, name change, or restructured entity of a firm with documented SBIR P1/P2 history. §638(r) standing transfers to the successor. Simple name matching can't catch these because the successor's name shares no tokens with the predecessor's.
+
+- **Sierra Space Corp ($67M, 5 contracts)** — 2021 spinout of Sierra Nevada Corporation. SNC has 78 P1/P2 awards in SBIR.gov; Sierra Space inherits Phase III standing for SNC-derived engine technology. Their own descriptions are explicit: "SBIR PHASE III WITH SNC", "MATURATION OF SNC UPPER STAGE VORTEX ENGINE ENHANCEMENT".
+- **EDO Reconnaissance and Surveillance Systems ($1M, 2007)** — EDO Corp acquired by ITT 2007 then spun off; the Phase III is at the transition moment.
+
+**Mechanism B — Large prime fronting an SBIR-firm subcontractor** (~$71M, 3-4 contracts)
+
+The Phase III is awarded to the large prime, but the work is done with an SBIR firm as subcontractor. Descriptions often name the SBIR sub explicitly.
+
+- **Amentum Services ($37M)** — "SBIR PHASE III **TO SBCC** FOR TRANSITION FROM IPODS-IT TO IPODS." SBCC is the SBIR sub; Amentum is the prime/integrator.
+- **Parsons Government Services ($27M)** — "SBIR PHASE III - **BLACKJACK PROTOTYPE GROUND OPERATIONS CENTER**." DARPA BLACKJACK was built from multiple small-firm SBIR contributions; Parsons is the systems integrator.
+- **Rancher Federal ($7M)** — "**Platform 1 Support**." Platform 1 (Space Force Kubernetes) was developed by Defense Unicorns (small SBIR firm); Rancher provides the underlying Kubernetes distribution.
+
+**Mechanism C — Production scaling to a large manufacturer** (~$17M, 3 contracts)
+
+§638(r) sole-source for the production phase of an SBIR-derived design. The original SBIR firm did the R&D; the large prime has the manufacturing capacity.
+
+- **Rockwell Collins ($15M)** — "PRODUCTION OF SMALL MISSION COMPUTER FOR RQ-7B SHADOW TACTICAL UAS." Production phase.
+- **JCB Inc. ($1.3M)** — "MULTI-TERRAIN LOADER REPLACEMENT (MTLR)." Production phase of equipment derived from a smaller-firm design.
+- **Coherent Corp ($0.6M)** — "ACV 2.0 MODULAR LIGHTWEIGHT ARMOR." Production scaling (note: Coherent is primarily a photonics firm; this contract is unusual for them and may indicate a divestiture/legacy line).
+
+**Mechanism D — Lifecycle transition to a maintenance vendor** (~$3M, 2 contracts)
+
+An SBIR-derived program in production / maintenance phase awards Phase III to a different vendor than the original SBIR R&D firm.
+
+- **Vantor Services ($3M)** and **Radiant Analytic Solutions ($0.04M)** — both reference "R2D2 (Risk-Based Resource Deployment Decision)" for DHS Office of the Under Secretary for Science and Technology. The original R2D2 SBIR R&D was done by another firm; Vantor and Radiant are doing evaluation/maintenance phases.
+
+**Mechanism E — Discretionary §638(r) interpretation** (~$13M, 4-5 contracts)
+
+Contracting officers use "SBIR Phase III" labeling for sole-source contracts with looser ties to specific Phase I/II R&D, often for services, analysis, or integration work derived from program outputs. These are the cases where the §638(r) connection is least visible from the contract record.
+
+- **LMI Consulting ($7M, FY2025)** — "HUMAN PERFORMANCE SBIR PHASE III." Generic description. LMI Government Consulting is an FFRDC-adjacent management consultancy without obvious SBIR R&D claim.
+- **JJR Solutions ($5M, FY2025)** — "DEVCOM SBIR PHASE III." Generic services-integration description. No identifiable underlying SBIR firm.
+- **Oliver Wyman ($1.1M, FY2024)** — "SSC/IA SBIR PHASE III GLOBAL BUSINESS INTELLIGENCE TOOL." Oliver Wyman is a Marsh & McLennan management consulting subsidiary.
+- **Louisiana Board of Regents ($0.1M, FY2016)** — NASA contract to a state university board. Universities can't be small business concerns; this is either misclassification, an STTR transition mislabeled as SBIR Phase III, or a Phase III flowing through a university to an SBIR firm partner.
+
+**Net effect on the OTSB framing:**
+
+Reclassifying the corporate-successor cases (Sierra Space, EDO) and the matching false-negatives (AgileDelta, Honeybee Robotics LLC) brings the "ex-SBIR" share to roughly:
+
+| Bucket | $M | % of OTSB $ |
+|---|---:|---:|
+| Ex-SBIR by direct or corporate-successor match | ~$930 | ~92% |
+| Large-prime + SBIR-sub teaming | ~$71 | ~7% |
+| Production scaling / lifecycle / discretionary | ~$33 | ~3% |
+| Unexplained | ~$2 | ~0.2% |
+
+**Roughly 92% of OTSB Phase III dollars are explainable as SBIR-ecosystem outcomes**, the remaining ~8% breaks into clear (production-scaling, teaming, lifecycle) mechanisms plus a small unexplained tail.
+
+### Least-clear cases (worth flagging for follow-up)
+
+These are the contracts where the §638(r) linkage is hardest to establish from the public record. Listed in descending dollar value:
+
+1. **LMI Consulting, "Human Performance SBIR Phase III" ($7M, FA877125C0002, FY2025)** — Largest of the "Mechanism E" discretionary cases. LMI Government Consulting is a federal advisory firm, not a typical SBIR R&D participant. Description is generic; no identifiable underlying SBIR R&D linkage. Worth checking the FPDS justification-and-approval document for the §638(r) basis.
+
+2. **JJR Solutions, "DEVCOM SBIR Phase III" ($5M, W519TC25CA035, FY2025)** — Generic description. DEVCOM = Army Combat Capabilities Development Command. JJR is a small consulting/services firm but no SBIR P1/P2 history. Either teaming (likely) or discretionary §638(r) labeling.
+
+3. **Oliver Wyman, "Global Business Intelligence Tool" ($1.1M, FA281624P0001, FY2024)** — Oliver Wyman is a Marsh & McLennan-owned global management consultancy (not a defense R&D firm). SSC/IA award. Why this is labeled SBIR Phase III rather than ordinary sole-source consulting is not clear from the description.
+
+4. **Louisiana Board of Regents (NASA, $0.1M, NNS16AA28T, FY2016)** — A state university board is structurally ineligible to be a "small business concern" under §638(r). Possible explanations: (a) misclassification — the contract is actually STTR-adjacent, not §638(r); (b) the Board is acting as a pass-through to an SBIR-firm partner; (c) Phase III labeling is a record-keeping convention for some other authority. The dollar value is small but the structural anomaly is the most interesting.
+
+5. **Coherent Corp, "Modular Lightweight Armor" ($0.6M, M6785415C0014, FY2015)** — Coherent is primarily a photonics/laser firm; armor is far outside their typical work. Possible legacy product line from an acquisition we haven't identified.
+
+6. **Romitech, "Composite Sandwich Structure" (NASA, $0.5M, NNC09CA16C, FY2009)** — Small specialty firm. Should plausibly be a SBIR awardee but isn't in our SBIR.gov data — possibly because it was pre-SBIR.gov modern registration, or because they did STTR rather than SBIR.
+
+7. **"SBCC" in the Amentum description** — what entity is SBCC? Identifying this would either confirm Amentum's role as prime-with-SBIR-sub (most likely) or surface a different mechanism. Searchable in FPDS subaward records if those have been ingested.
+
+**What would tighten these:** pulling the FPDS Justification and Approval (J&A) documents for each contract. The J&A explicitly states the §638(r) basis (or other sole-source authority being claimed). USAspending exposes some of this; the rest is at sam.gov/fpds.gov in the contract files. For ~7 contracts, this is half a day of manual lookup.
 
 ## Caveats & limitations
 
