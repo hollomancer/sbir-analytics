@@ -5,7 +5,12 @@ import pytest
 
 pytestmark = pytest.mark.fast
 
-from sbir_etl.transformers.fiscal.state_rates import StateRateProvider, _STATE_RATES_2024
+from sbir_etl.transformers.fiscal.state_rates import (
+    DEFAULT_CSV_PATH,
+    StateRateProvider,
+    StateTaxRates,
+    _STATE_RATES_2024,
+)
 from sbir_etl.transformers.fiscal.taxes import FiscalTaxEstimator
 
 
@@ -177,3 +182,104 @@ class TestStateAwareEstimation:
         assert result["state_local_sales_tax"].iloc[0] == 0.0
         # But Oregon has income tax
         assert result["state_local_income_tax"].iloc[0] > 0
+
+
+class TestStateRateProviderCsvLoading:
+    """CSV-backed construction of StateRateProvider (Reqs 1 + 2 of #402)."""
+
+    def _write_csv(self, path, rows):
+        import csv
+
+        with path.open("w", newline="") as f:
+            writer = csv.DictWriter(f, fieldnames=list(rows[0].keys()))
+            writer.writeheader()
+            writer.writerows(rows)
+
+    def test_default_csv_file_exists_and_covers_51_states(self):
+        """The committed CSV reference must cover 50 states + DC for fiscal_year=2024."""
+        assert DEFAULT_CSV_PATH.exists(), f"Missing {DEFAULT_CSV_PATH}"
+        provider = StateRateProvider(csv_path=DEFAULT_CSV_PATH)
+        assert len(provider.states) == 51
+
+    def test_csv_loaded_rates_match_hardcoded_baseline(self):
+        """Req 1.2: initial CSV population matches `_STATE_RATES_2024` exactly."""
+        csv_provider = StateRateProvider(csv_path=DEFAULT_CSV_PATH)
+        for state, hardcoded in _STATE_RATES_2024.items():
+            csv_rates = csv_provider.get_rates(state)
+            assert csv_rates is not None, f"CSV missing {state}"
+            assert csv_rates.income_rate == pytest.approx(hardcoded.income_rate), state
+            assert csv_rates.sales_rate == pytest.approx(hardcoded.sales_rate), state
+            assert csv_rates.property_rate == pytest.approx(hardcoded.property_rate), state
+            assert csv_rates.has_income_tax is hardcoded.has_income_tax, state
+            assert csv_rates.has_sales_tax is hardcoded.has_sales_tax, state
+
+    def test_year_filter_picks_max_year_le_requested(self, tmp_path):
+        """Req 2.1: with multiple years, pick max(fiscal_year ≤ requested_year)."""
+        csv_path = tmp_path / "rates.csv"
+        self._write_csv(
+            csv_path,
+            [
+                {
+                    "state_fips": "06",
+                    "state_abbr": "CA",
+                    "fiscal_year": 2022,
+                    "income_rate": 0.123,
+                    "sales_rate": 0.085,
+                    "property_rate": 0.090,
+                    "has_income_tax": True,
+                    "has_sales_tax": True,
+                },
+                {
+                    "state_fips": "06",
+                    "state_abbr": "CA",
+                    "fiscal_year": 2024,
+                    "income_rate": 0.133,
+                    "sales_rate": 0.087,
+                    "property_rate": 0.091,
+                    "has_income_tax": True,
+                    "has_sales_tax": True,
+                },
+            ],
+        )
+        # year=2023 → pick the 2022 row (max ≤ 2023).
+        ca_2023 = StateRateProvider(csv_path=csv_path, year=2023).get_rates("CA")
+        assert ca_2023.income_rate == pytest.approx(0.123)
+        # year=None → pick the latest available (2024).
+        ca_latest = StateRateProvider(csv_path=csv_path).get_rates("CA")
+        assert ca_latest.income_rate == pytest.approx(0.133)
+        # year=2024 → exact match also picks 2024.
+        ca_2024 = StateRateProvider(csv_path=csv_path, year=2024).get_rates("CA")
+        assert ca_2024.income_rate == pytest.approx(0.133)
+
+    def test_year_too_early_returns_state_missing(self, tmp_path):
+        """A year strictly below all CSV rows yields no rate for the state."""
+        csv_path = tmp_path / "rates.csv"
+        self._write_csv(
+            csv_path,
+            [
+                {
+                    "state_fips": "06",
+                    "state_abbr": "CA",
+                    "fiscal_year": 2024,
+                    "income_rate": 0.133,
+                    "sales_rate": 0.087,
+                    "property_rate": 0.091,
+                    "has_income_tax": True,
+                    "has_sales_tax": True,
+                },
+            ],
+        )
+        provider = StateRateProvider(csv_path=csv_path, year=2010)
+        assert provider.get_rates("CA") is None
+
+    def test_default_construction_uses_hardcoded_dict(self):
+        """Req 2.1: csv_path=None → backwards-compatible hardcoded fallback."""
+        provider = StateRateProvider()
+        # Identity check: provider should be backed by the same dict, not a copy.
+        assert provider._rates is _STATE_RATES_2024
+
+    def test_explicit_rates_override_takes_precedence(self):
+        """The legacy `rates=` argument wins over csv_path (test-injection path)."""
+        custom = {"AA": StateTaxRates("AA", 0.5, 0.5, 0.5)}
+        provider = StateRateProvider(rates=custom, csv_path=DEFAULT_CSV_PATH)
+        assert provider.states == ["AA"]
