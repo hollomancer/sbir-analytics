@@ -24,6 +24,8 @@ from typing import Any
 
 import pandas as pd
 
+from sbir_etl.transformers.fiscal.nipa_rates import NIPARateProvider
+
 from ..base import BaseTool, DataSourceRef, ToolMetadata, ToolResult
 
 
@@ -46,10 +48,10 @@ DEFAULT_EFFECTIVE_TAX_RATES = {
     "Other": 0.18,
 }
 
-# Payroll tax rates (FICA)
+# Payroll tax rates (FICA): statutory rate, no NIPA equivalent.
 PAYROLL_TAX_RATE = 0.153  # Combined employer + employee (Social Security + Medicare)
-# Approximate individual income tax effective rate for SBIR-relevant income levels
-INDIVIDUAL_INCOME_TAX_RATE = 0.22
+# Individual income effective tax rate is resolved per-row via NIPARateProvider
+# (BEA NIPA Tables 3.2/3.3/1.5); see TaxEstimationTool.execute.
 
 
 class TaxEstimationTool(BaseTool):
@@ -71,6 +73,7 @@ class TaxEstimationTool(BaseTool):
         fpds_revenue: pd.DataFrame | None = None,
         commercialization_scores: pd.DataFrame | None = None,
         effective_tax_rates: dict[str, float] | None = None,
+        nipa_rate_provider: NIPARateProvider | None = None,
         discount_rate: float = 0.03,
         assessment_year: int = 2026,
         **kwargs: Any,
@@ -99,6 +102,9 @@ class TaxEstimationTool(BaseTool):
         )
 
         tax_rates = effective_tax_rates or DEFAULT_EFFECTIVE_TAX_RATES
+        # NIPA-derived individual income effective rate; in-memory cache makes
+        # the per-row get_rates(fy_int) calls cheap.
+        rate_provider = nipa_rate_provider or NIPARateProvider()
 
         # =====================================================================
         # Track A: Multiplier-based estimation
@@ -164,15 +170,18 @@ class TaxEstimationTool(BaseTool):
                 wages = value_added * wage_share
                 corporate_surplus = value_added * 0.25
 
-                # Tax estimates
-                individual_income_tax = wages * INDIVIDUAL_INCOME_TAX_RATE
+                # Tax estimates — federal income rate is year-stamped via NIPA;
+                # FICA payroll rate is statutory and stays a module constant.
+                fy_int = int(fy) if fy is not None else assessment_year
+                individual_income_rate = rate_provider.get_rates(fy_int).federal_income_rate
+                individual_income_tax = wages * individual_income_rate
                 payroll_tax = wages * PAYROLL_TAX_RATE
                 corporate_income_tax = corporate_surplus * corp_tax_rate
                 total_tax = individual_income_tax + payroll_tax + corporate_income_tax
 
                 # NPV discounting: discount tax receipts to present value
-                # Years from assessment reference point (latest FY in data)
-                fy_int = int(fy) if fy is not None else assessment_year
+                # Years from assessment reference point (latest FY in data); fy_int
+                # was already resolved above for the NIPA rate lookup.
                 years_from_present = max(0, assessment_year - fy_int)
                 discount_factor = 1.0 / ((1.0 + discount_rate) ** years_from_present)
                 discounted_tax = total_tax * discount_factor
