@@ -81,6 +81,127 @@ class TestNIPARateProvider:
             assert "baseline" in rates.source
 
 
+class TestNIPAParquetCache:
+    """On-disk parquet cache backing NIPARateProvider.get_rates."""
+
+    def _provider(self, tmp_path, **kwargs):
+        return NIPARateProvider(cache_path=tmp_path / "nipa_tax_rates.parquet", **kwargs)
+
+    def test_api_fetch_persists_to_parquet(self, tmp_path):
+        provider = self._provider(tmp_path, bea_api_key="fake-key")
+        api_rates = NIPATaxRates(
+            year=2023,
+            federal_income_rate=0.20,
+            federal_payroll_rate=0.13,
+            federal_corporate_rate=0.16,
+            federal_excise_rate=0.010,
+            state_local_income_rate=0.045,
+            state_local_sales_rate=0.035,
+            state_local_property_rate=0.128,
+            state_local_other_rate=0.009,
+            source="nipa_api",
+        )
+        with patch.object(provider, "_fetch_from_api", return_value=api_rates):
+            rates = provider.get_rates(2023)
+
+        assert rates.source == "nipa_api"
+        assert (tmp_path / "nipa_tax_rates.parquet").exists()
+
+    def test_fresh_provider_reads_parquet_cache(self, tmp_path):
+        """A second provider with the same cache_path skips the API entirely."""
+        api_rates = NIPATaxRates(
+            year=2023,
+            federal_income_rate=0.20,
+            federal_payroll_rate=0.13,
+            federal_corporate_rate=0.16,
+            federal_excise_rate=0.010,
+            state_local_income_rate=0.045,
+            state_local_sales_rate=0.035,
+            state_local_property_rate=0.128,
+            state_local_other_rate=0.009,
+            source="nipa_api",
+        )
+        # Seed the cache via a first provider.
+        seeder = self._provider(tmp_path, bea_api_key="fake-key")
+        with patch.object(seeder, "_fetch_from_api", return_value=api_rates):
+            seeder.get_rates(2023)
+
+        # Second provider — even with an API key, the parquet hit must short-circuit
+        # before `_fetch_from_api` is consulted.
+        reader = self._provider(tmp_path, bea_api_key="fake-key")
+        with patch.object(reader, "_fetch_from_api") as mock_fetch:
+            rates = reader.get_rates(2023)
+
+        assert rates.source == "nipa_api"
+        assert rates.federal_income_rate == pytest.approx(0.20)
+        mock_fetch.assert_not_called()
+
+    def test_baseline_rates_not_written_to_cache(self, tmp_path):
+        """Without an API key we serve baselines but must not pollute the cache."""
+        provider = self._provider(tmp_path)
+        provider.get_rates(2022)
+        assert not (tmp_path / "nipa_tax_rates.parquet").exists()
+
+    def test_write_upserts_on_year_source_key(self, tmp_path):
+        """Repeated _write_parquet_cache for the same (year, source) overwrites in-place.
+
+        The defensive upsert protects against hand-edited / partially-corrupted
+        caches; normal get_rates() short-circuits on the parquet hit before
+        re-writing, so this exercises the writer directly.
+        """
+        provider = self._provider(tmp_path)
+
+        def _rates(income_rate: float, source: str = "nipa_api") -> NIPATaxRates:
+            return NIPATaxRates(
+                year=2023,
+                federal_income_rate=income_rate,
+                federal_payroll_rate=0.12,
+                federal_corporate_rate=0.15,
+                federal_excise_rate=0.009,
+                state_local_income_rate=0.040,
+                state_local_sales_rate=0.034,
+                state_local_property_rate=0.125,
+                state_local_other_rate=0.008,
+                source=source,
+            )
+
+        provider._write_parquet_cache(_rates(0.18))
+        provider._write_parquet_cache(_rates(0.21))
+
+        import pandas as pd
+
+        df = pd.read_parquet(tmp_path / "nipa_tax_rates.parquet")
+        rows = df[df["year"] == 2023]
+        assert len(rows) == 1
+        assert rows.iloc[0]["federal_income_rate"] == pytest.approx(0.21)
+
+    def test_write_keeps_distinct_year_source_pairs(self, tmp_path):
+        """Distinct (year, source) keys coexist in the cache."""
+        provider = self._provider(tmp_path)
+
+        def _rates(year: int, source: str) -> NIPATaxRates:
+            return NIPATaxRates(
+                year=year,
+                federal_income_rate=0.19,
+                federal_payroll_rate=0.12,
+                federal_corporate_rate=0.15,
+                federal_excise_rate=0.009,
+                state_local_income_rate=0.040,
+                state_local_sales_rate=0.034,
+                state_local_property_rate=0.125,
+                state_local_other_rate=0.008,
+                source=source,
+            )
+
+        provider._write_parquet_cache(_rates(2022, "nipa_api"))
+        provider._write_parquet_cache(_rates(2023, "nipa_api"))
+
+        import pandas as pd
+
+        df = pd.read_parquet(tmp_path / "nipa_tax_rates.parquet")
+        assert sorted(df["year"].tolist()) == [2022, 2023]
+
+
 class TestValidateRates:
     def test_valid_rates_pass(self):
         rates = _BASELINE_RATES[2022]

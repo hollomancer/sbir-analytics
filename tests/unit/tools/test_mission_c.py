@@ -9,8 +9,8 @@ from sbir_analytics.tools.mission_c.tax_estimation import (
     TaxEstimationTool,
     DEFAULT_EFFECTIVE_TAX_RATES,
     PAYROLL_TAX_RATE,
-    INDIVIDUAL_INCOME_TAX_RATE,
 )
+from sbir_etl.transformers.fiscal.nipa_rates import NIPARateProvider
 
 
 # ---- naics_to_bea_crosswalk ----
@@ -176,9 +176,17 @@ class TestTaxEstimationTool:
         assert summary["track_a"]["total_estimated_tax_receipts"] == 0.0
 
     def test_default_tax_rates(self):
+        """Sanity-check the rate inputs the tool uses.
+
+        The SOI corporate-effective-rate dict and the statutory FICA constant
+        live in this module; the individual income effective rate now comes from
+        NIPARateProvider — assert its baseline falls in a plausible range so
+        a wildly-off NIPA refresh is caught here.
+        """
         assert "Manufacturing" in DEFAULT_EFFECTIVE_TAX_RATES
         assert 0 < PAYROLL_TAX_RATE < 0.5
-        assert 0 < INDIVIDUAL_INCOME_TAX_RATE < 0.5
+        baseline = NIPARateProvider().get_rates().federal_income_rate
+        assert 0 < baseline < 0.5
 
     def test_limitation_disclosure(self):
         tool = TaxEstimationTool()
