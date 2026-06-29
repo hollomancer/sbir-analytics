@@ -519,6 +519,114 @@ Combining Tier 1 + Tier 2, the FY2024 cliff has three layered mechanisms, not on
 
 The combined effect: combined GSA + direct-DoD Phase III dollars fell 34% from FY2023 peak ($764M) to FY2025 ($506M), AND the share procured under §638(r) sole-source fell from 75% to 51%. So the program-evaluation question changes: it's not just that less Phase III work is happening, it's that proportionally less of it is using the canonical §638(r) authority that SBA tracks as Phase III commercialization.
 
+### Tier 2 #2: parent IDV reconciliation
+
+The earlier FEDSIM IDIQ analysis (in "Surprise finding: not the famous GWACs") parsed parent IDVs from the regex of `generated_internal_id`. Tier 2 also pulled the canonical `Parent Award ID` field directly from the per-award detail endpoint and confirmed **zero mismatches across all 2,013 contracts** — the regex extraction is accurate. The $463M "no parent IDV" bucket of GSA-awarded standalone direct contracts is real, not a data-quality artifact.
+
+Universe-wide parent-IDV coverage by awarding agency:
+
+| Bucket | Total | With parent IDV | % | $ with parent |
+|---|---:|---:|---:|---:|
+| GSA | 204 | 186 | **91.2%** | $1.40B / $1.86B |
+| DoD direct | 1,251 | 363 | **29.0%** | $1.07B / $4.34B |
+| Other agencies | 558 | 34 | **6.1%** | $83M / $647M |
+
+GSA's procurement model is overwhelmingly task-orders-on-IDIQs (91%). DoD direct is mostly standalone contracts (only 29% have parent IDVs). Other agencies essentially never use IDIQs for Phase III (6%). DoD's IDIQ use has grown from <5% before FY2017 to 35-40% in FY2020-2025 — a modest but real shift toward parent-vehicle architecture for DoD direct Phase III.
+
+### Tier 2 #3: FEDSIM IDIQ lifecycle confirms the FY2024 cliff hypothesis (with a twist)
+
+Pulled the IDV detail (`Start Date`, `Last Date to Order`, first task order date, last task order date) from USAspending for the top 20 parent IDVs by total Phase III dollars. The lifecycle-decay hypothesis is partly confirmed and partly more interesting:
+
+**FEDSIM IDIQs with ordering periods that expired in FY2023-FY2024:**
+
+| Parent IDV | Total $M | Start | **Last Date to Order** | Last actual TO |
+|---|---:|---|---|---|
+| W911W617D0004 (Army) | $44 | 2017-09 | **2023-03** | 2022-10 |
+| 47QFLA19D0003 (GSA) | $76 | 2019-01 | **2023-09** | 2022-03 (1.5yr idle before LDO) |
+| N6833519G0037 (Navy) | $41 | 2019-02 | **2024-02** | 2023-08 |
+| 47QFLA19D0007 (GSA) | $109 | 2019-04 | **2024-04** | 2022-03 (2yr idle before LDO) |
+| 47QFCA19D0005 (GSA) | $46 | 2019-09 | **2024-09** | 2023-09 |
+| N6833520G3039 (Navy) | $38 | 2019-12 | **2024-12** | 2024-08 |
+
+Combined ~$354M of IDV-level value from vehicles whose ordering periods expired in FY2023-2024. So lifecycle decay is real and material.
+
+**But — many vehicles went idle before LDO:**
+
+`47QFLA19D0007` (the largest, at $109M total) had its last task order in March 2022, fully **two years before** the ordering period ended in April 2024. `47QFLA19D0003` went idle ~18 months before LDO. This suggests **DoD program offices pulled away from FEDSIM ahead of the vehicles' natural expiry**, not just at end-of-life. The vehicles weren't replaced quickly enough at scale either.
+
+**FY2023-FY2024 successor IDIQs are smaller-scale:**
+
+| Successor IDIQ | $M | Start | LDO |
+|---|---:|---|---|
+| 47QFLA23D0007 (GSA) | $66 | 2023-07 | 2028-07 |
+| 47QFLA23D0008 (GSA) | $66 | 2023-07 | 2028-07 |
+| 47QFCA23D0002 (GSA) | $47 | 2023-03 | 2028-03 |
+| **47QFLA24D0001 (GSA)** | **$72** | 2023-12 | 2028-12 |
+
+The FY2024-vintage IDIQ is $72M of total task orders (one big TO + nothing else). The FY2019 generation peaked at $109M from 12 TOs across the vehicle's life. So the **replacement vehicles are running at roughly two-thirds the scale of the FY2019-2021 cohort** — consistent with the structural narrowing we see at the universe level.
+
+**Net interpretation:** the FY2024 cliff is a combination of (a) natural ordering-period expiry of FY2019-2020 IDIQs, (b) earlier-than-expected withdrawal of demand from those vehicles, and (c) successor IDIQs being launched at smaller scale. All three reinforce each other.
+
+### Tier 2 #4: UEI-based undercount check — keyword universe captures ~7% of follow-on contract dollars to top SBIR firms
+
+The most dramatic Tier 2 finding. Pulled every FPDS contract ≥ $1M (FY2018-FY2026) for the top 30 SBIR Phase II awardees — firms ranging from 113 to 596 Phase II awards each. Compared those rows against our keyword-discoverable Phase III universe.
+
+| | Contracts | $M |
+|---|---:|---:|
+| In our Phase III keyword universe | 83 | $462 |
+| NOT in our Phase III keyword universe | **1,709** | **$6,313** |
+| **Total to these 30 firms (≥ $1M)** | **1,792** | **$6,775** |
+| **Keyword universe captures** | **4.6%** | **6.8%** |
+
+**For 30 of the most prolific SBIR Phase II awardees, the keyword "SBIR Phase III" search picks up only 6.8% of the $6.78B in ≥ $1M FPDS contracts they won during FY2018-2026.**
+
+Sampling the missed contracts confirms many are functionally Phase III-equivalent — SBIR-derived production, follow-on R&D, or system integration work — without the explicit keyword:
+
+| Firm | "Missed" $M | Sample missed contracts |
+|---|---:|---|
+| Progeny Systems | $2,303 | MK54 LWT torpedo kits ($201M), MK48 G&C section ($165M) |
+| Physical Optics Corp | $582 | DTU ($87M), T-45 HUD production ($71M) |
+| ARETE Associates | $398 | MK 1 integration services ($42M), COBRA Block I ($28M) |
+| Physical Sciences | $342 | DARPA SIGMA+ ($14M), SIGMA program ($8M) |
+| Charles River Analytics | $334 | PPB biosystems ($12.5M), HEALTH analytics ($11.7M) |
+| Toyon Research | $302 | SP201 ($90M), Strategic Systems Survivability ($32M) |
+| Foster-Miller | $154 | Common Robotic System EMD/LRIP ($63M), Reset/Sustainment IDIQ ($13M) |
+
+Even taking only a 50% "this is plausibly Phase III work" haircut on the $6.31B missed bucket — to be conservative about the share that's genuinely non-SBIR-derived — implies these 30 firms alone have **~$3.2B of hidden Phase III-equivalent follow-on work** the keyword fetch doesn't see.
+
+### What this implies for the broader Phase III universe
+
+The whole keyword-discoverable Phase III universe is $6.86B across 2,013 contracts to ~700 distinct firms (most of whom have small Phase III footprints). The top 30 SBIR firms alone have $6.78B in ≥ $1M FPDS contracts during the same window. So a single 30-firm sample exposes a parallel-magnitude universe of follow-on contracts that don't carry the "SBIR Phase III" keyword.
+
+**Plausible bounds on the true Phase III universe** (broad SBA definition: any work that derives from, extends, or completes prior SBIR R&D, regardless of procurement authority):
+
+- **Lower bound** (strict §638(r) sole-source only): ~$3.82B — confirmed from Tier 2 #1
+- **Keyword-discoverable** (current report headline): $6.86B
+- **Plausible broad-definition universe** (extrapolating from 30-firm sample): **$30-60B+** across the full ~17,000-UEI SBIR firm population
+
+The ~10x gap between keyword and broad-definition universes is **wildly larger than GAO-24-107036's ~30% undercount estimate** for DoD Phase III specifically. The discrepancy comes from definitional scope: GAO measures undercount of "SBIR Phase III" tagging within FPDS records that the contracting officer attempted to label as Phase III but did so inconsistently. The 30-firm UEI-based pull measures something different: total FPDS revenue to SBIR firms that doesn't carry any Phase III tagging — regardless of whether the contracting officer intended it as Phase III.
+
+**Two interpretations are both defensible:**
+
+1. **Narrow (procurement-authority-based):** Only §638(r) sole-source counts as "Phase III." The universe is ~$3.82B. The keyword universe and the 30-firm gap mostly capture program-context language and non-Phase-III contracts to SBIR-firms. This is the SBA-tracking definition.
+
+2. **Broad (commercialization-outcome-based):** All federal contract dollars to SBIR firms that derive from prior R&D count as Phase III commercialization, regardless of how procured. The universe is plausibly $30B+. This is the SBA Policy Directive definition.
+
+**The two interpretations imply different policy questions.** For SBA Phase III commercialization tracking, the narrow definition is what's measured. For evaluating SBIR's actual economic impact via follow-on federal contracts to program participants, the broad definition is closer to the truth — and it's an order of magnitude larger than the SBA-tracked numbers.
+
+### Caveats on the 30-firm undercount finding
+
+- **The 30-firm sample is biased toward heavy SBIR participants.** These firms have 113-596 Phase II awards each — they're the highest-volume SBIR participants in the federal database. Average SBIR firms have many fewer Phase II awards and likely smaller follow-on footprints. The 93% missed ratio doesn't extrapolate proportionally to all 17,000 SBIR firms.
+- **Not all "missed" contracts are SBIR-derived.** These firms also win non-SBIR contracts. Without contract-by-contract review, the share that's genuinely Phase III-equivalent vs. non-SBIR-derived is unknown. Conservative haircut: 50% is genuinely SBIR-derived ⇒ ~$3B for the 30-firm sample.
+- **The ≥ $1M threshold excludes smaller contracts.** Real follow-on Phase III work happens at sub-$1M too. Including those would widen the gap further but introduce more non-SBIR noise.
+- **`recipient_search_text` filter precision was verified** by checking each result's `Recipient UEI` matched the queried UEI. False-positive matches are excluded.
+
+### Implications
+
+1. **The current report's GSA/OTSB findings, all built on the keyword-discoverable universe, are accurate within that universe.** They describe the §638(r)-tagged Phase III channel, which is the channel SBA actually tracks.
+2. **The "FY2024 cliff" finding may be partly an artifact of changes in keyword-tagging behavior, not just real contraction.** If contracting officers shifted to less-explicit Phase III labeling post-FY2023, the cliff overstates the actual decline. Combined GSA + direct-DoD Phase III could be flat or growing in the broad-definition universe while the keyword universe shrinks 34%.
+3. **For program evaluation, SBA should either (a) track the broad-definition universe via UEI-based federal-contract tracking** (which would require integrating SBIR.gov with FPDS at the recipient level) **or (b) explicitly limit Phase III commercialization metrics to the narrow §638(r) definition** to avoid the ambiguity.
+
 ## Caveats & limitations
 
 - **Keyword-derived undercount.** Real Phase III universe is bigger than this analysis captures. GAO-24-107036 estimates ~30% DoD undercount for canonical-keyword fetches; the six-variant union recovers some but not all. Direct-DoD contracts are more under-represented than FEDSIM contracts.
