@@ -4,6 +4,16 @@ Provides state-specific income tax, sales tax, and property tax rates
 so the fiscal pipeline can produce state-level tax receipt estimates
 instead of using national NIPA averages for all states.
 
+Two data sources:
+  - ``_STATE_RATES_2024`` (hardcoded, always available): the original 2024
+    Tax Foundation / Census ASGF baseline, kept for backwards-compatible
+    construction and for environments where the CSV reference file is
+    unavailable.
+  - ``data/reference/tax/state_effective_rates.csv`` (refreshable, opt-in):
+    the same rates plus source citations, with a ``fiscal_year`` column so
+    additional years can be appended without code changes. Loaded when
+    ``StateRateProvider(csv_path=...)`` is constructed.
+
 Sources:
     Income tax: Tax Foundation "State Individual Income Tax Rates" (annual)
     Sales tax: Tax Foundation "State and Local Sales Tax Rates" (annual)
@@ -21,7 +31,9 @@ Rate convention:
 
 from __future__ import annotations
 
+import csv
 from dataclasses import dataclass
+from pathlib import Path
 
 
 @dataclass(frozen=True)
@@ -117,10 +129,65 @@ class StateRateProvider:
     """Provides state-specific tax rates.
 
     Falls back to national NIPA averages for unknown states.
+
+    Construction sources rates from (in priority order):
+      1. The ``rates`` dict argument, if supplied (test-injection / overrides).
+      2. ``csv_path``, if supplied: loads the CSV reference file and picks the
+         ``max(fiscal_year ≤ year)`` row for each state (``year`` defaults to
+         the latest year present in the CSV).
+      3. ``_STATE_RATES_2024`` — the hardcoded 2024 baseline.
+
+    The public interface (``get_rates``, ``states``, ``no_income_tax_states``,
+    ``no_sales_tax_states``) is year-agnostic: the provider is frozen to a
+    single year at construction. Construct a new provider per analysis year.
     """
 
-    def __init__(self, rates: dict[str, StateTaxRates] | None = None):
-        self._rates = rates or _STATE_RATES_2024
+    def __init__(
+        self,
+        rates: dict[str, StateTaxRates] | None = None,
+        csv_path: Path | str | None = None,
+        year: int | None = None,
+    ):
+        if rates is not None:
+            self._rates = rates
+        elif csv_path is not None:
+            self._rates = self._load_from_csv(Path(csv_path), year)
+        else:
+            self._rates = _STATE_RATES_2024
+
+    @staticmethod
+    def _load_from_csv(csv_path: Path, year: int | None) -> dict[str, StateTaxRates]:
+        """Load state rates from the reference CSV, picking max year ≤ requested.
+
+        For each state, selects the row with the largest ``fiscal_year`` that is
+        still ≤ ``year``. If ``year`` is None, the latest year present for that
+        state wins. States missing entirely from the CSV simply don't appear in
+        the returned dict — callers see them via the standard ``get_rates`` →
+        ``None`` path.
+        """
+        # Group by state, keep the best row (highest fiscal_year ≤ requested).
+        best_row: dict[str, dict[str, str]] = {}
+        with csv_path.open() as f:
+            for row in csv.DictReader(f):
+                state = row["state_abbr"].strip().upper()
+                row_year = int(row["fiscal_year"])
+                if year is not None and row_year > year:
+                    continue
+                prior = best_row.get(state)
+                if prior is None or int(prior["fiscal_year"]) < row_year:
+                    best_row[state] = row
+
+        rates: dict[str, StateTaxRates] = {}
+        for state, row in best_row.items():
+            rates[state] = StateTaxRates(
+                state=state,
+                income_rate=float(row["income_rate"]),
+                sales_rate=float(row["sales_rate"]),
+                property_rate=float(row["property_rate"]),
+                has_income_tax=row["has_income_tax"].strip().lower() == "true",
+                has_sales_tax=row["has_sales_tax"].strip().lower() == "true",
+            )
+        return rates
 
     def get_rates(self, state: str) -> StateTaxRates | None:
         """Get rates for a state. Returns None if state not found."""
@@ -140,3 +207,7 @@ class StateRateProvider:
     def no_sales_tax_states(self) -> list[str]:
         """States with no sales tax."""
         return [s for s, r in self._rates.items() if not r.has_sales_tax]
+
+
+# Canonical path to the CSV reference file. Tests use a ``tmp_path`` override.
+DEFAULT_CSV_PATH = Path("data/reference/tax/state_effective_rates.csv")

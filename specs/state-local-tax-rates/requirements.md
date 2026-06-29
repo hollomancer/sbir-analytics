@@ -86,7 +86,14 @@ without reading source code.
 3. Existing tests in `tests/unit/transformers/fiscal/test_state_rates.py` SHALL pass
    without modification after this change.
 
-### Requirement 3 — Annual refresh CLI
+### Requirement 3 — Annual refresh CLI (**deferred to follow-up**)
+
+> **Status:** Out of scope for this PR. Requirements 1 + 2 (CSV reference file +
+> CSV-loading `StateRateProvider`) ship the year-aware substrate; the data file
+> is hand-updated annually for now. A `refresh-state-rates` CLI that automates
+> fetching Tax Foundation / Census ASGF tables is logged below for a follow-up
+> PR — the Tax Foundation site changes layout year-over-year and parser
+> stability is its own work-item.
 
 #### Acceptance Criteria
 
