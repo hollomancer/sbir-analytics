@@ -19,7 +19,7 @@ peer-reviewed entries. The remaining 13 are renumbered L34–L46 with no gap.
 **Two entries are not standard journal articles (kept deliberately):**
 - **L35** (Link & van Hasselt, *Small Firms and U.S. Technology Policy*) is a **book**
   (Edward Elgar) — a synthesis/companion to L10/L12, not a research article.
-- **L44** (Howell & Brown, *Cash Windfalls*) is an **NBER working paper**; OpenAlex shows no
+- **L43** (Howell & Brown, *Cash Windfalls*) is an **NBER working paper**; OpenAlex shows no
   published version as of June 2026, so cite the WP (the list already cites WPs, e.g. L10).
 
 **Formatting note.** The existing `[L#]` entries do not carry the `(→ slot)` trailer; that line
