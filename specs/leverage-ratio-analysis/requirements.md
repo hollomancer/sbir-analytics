@@ -1,10 +1,14 @@
-# Leverage Ratio Analysis — Requirements
+# Follow-on Funding Multiplier Analysis — Requirements
 
 > **Status:** Not yet started — zero implementation code as of June 2026.
 > Anchors inventory question **A3** in [docs/research-questions.md](../../docs/research-questions.md).
 > Prerequisites (entity resolution, SBIR identification, USAspending enrichment) are all live on `main`.
+>
+> NASEM's reviews of DoD SBIR call this quantity the *leverage ratio*. This codebase
+> uses *follow-on funding multiplier* for the same calculation to avoid the debt
+> connotation that "leverage" carries in finance.
 
-**Research question anchor:** A3 — DoD leverage ratio (inferential tier)
+**Research question anchor:** A3 — DoD follow-on funding multiplier (inferential tier)
 **Answers for:** policy analysts (congressional briefings, OMB), SBIR program managers
 **Complexity tier:** Inferential (Tier 3)
 
@@ -27,16 +31,17 @@ NASEM reports a ~4:1 ratio of non-SBIR DoD obligations to SBIR/STTR obligations 
 DoD SBIR firms (2012–2020) [L1][L2], computed manually on a quadrennial review cycle.
 USAspending shows that a firm received a SBIR Phase II award and later won a non-SBIR
 DoD contract — but it does not flag the relationship. Our entity resolution + FPDS
-pipeline automates this linkage at scale, enabling a continuously-updateable leverage
-computation and stratifications NASEM does not publish (by CET area, firm experience,
-and time trend).
+pipeline automates this linkage at scale, enabling a continuously-updateable follow-on
+funding multiplier computation and stratifications NASEM does not publish (by CET
+area, firm experience, and time trend).
 
 ---
 
 ## Glossary
 
-- **Leverage ratio** — Non-SBIR DoD obligations ÷ SBIR/STTR obligations for the set of
-  firms that received at least one SBIR/STTR award in the measurement window.
+- **Follow-on funding multiplier** (a.k.a. NASEM's *leverage ratio*) — Non-SBIR DoD
+  obligations ÷ SBIR/STTR obligations for the set of firms that received at least one
+  SBIR/STTR award in the measurement window.
 - **Cohort** — The set of SBIR/STTR awardees grouped by their first-award fiscal year.
 - **Experienced firm** — A firm with more than one prior SBIR award at the time of the
   award being measured.
@@ -47,18 +52,18 @@ and time trend).
 
 ## Requirements
 
-### Requirement 1 — Aggregate ratio computation
+### Requirement 1 — Aggregate multiplier computation
 
 **User story:** As a policy analyst preparing a congressional briefing, I want an
-aggregate DoD leverage ratio computed from our pipeline, so that I can benchmark it
-against NASEM's 4:1 figure and state either a confirmation or a characterized
-divergence before an HASC or SASC audience.
+aggregate DoD follow-on funding multiplier computed from our pipeline, so that I can
+benchmark it against NASEM's 4:1 figure and state either a confirmation or a
+characterized divergence before an HASC or SASC audience.
 
 #### Acceptance Criteria
 
 1. WHEN the pipeline runs over the SBIR firm universe, THE System SHALL compute the
-   aggregate leverage ratio as: sum(non-SBIR DoD obligations) / sum(SBIR/STTR
-   obligations) across all resolved firms.
+   aggregate follow-on funding multiplier as: sum(non-SBIR DoD obligations) /
+   sum(SBIR/STTR obligations) across all resolved firms.
 2. WHEN separating SBIR from non-SBIR obligations, THE System SHALL use FPDS
    product-or-service codes and contract-type flags (not just the SBIR.gov award list)
    to classify each obligation.
@@ -73,10 +78,10 @@ divergence before an HASC or SASC audience.
 
 ### Requirement 2 — Cohort stratification
 
-**User story:** As an SBIR program manager, I want the leverage ratio broken out by
-award vintage, firm size, technology area, and firm experience, so that I can identify
-which cohorts and technology clusters generate the highest follow-on DoD investment and
-target program support accordingly.
+**User story:** As an SBIR program manager, I want the follow-on funding multiplier
+broken out by award vintage, firm size, technology area, and firm experience, so that
+I can identify which cohorts and technology clusters generate the highest follow-on
+DoD investment and target program support accordingly.
 
 #### Acceptance Criteria
 
@@ -112,15 +117,16 @@ data-source differences rather than leaving it unexplained.
    window, FPDS Phase III undercount, ER coverage) account for the gap.
 3. WHEN producing the reconciliation report, THE System SHALL emit both a JSON artifact
    (for programmatic consumption) and a markdown summary (for human review), to the
-   `reports/leverage-ratio/` directory.
+   `reports/follow-on-multiplier/` directory.
 
 ---
 
 ### Requirement 4 — Civilian-agency extension
 
 **User story:** As an SBIR program manager at a civilian agency, I want the same
-leverage ratio computed for DOE so that my agency can benchmark its follow-on
-investment generation against DoD and against the Myers & Lanahan DOE baseline [L9][L5].
+follow-on funding multiplier computed for DOE so that my agency can benchmark its
+follow-on investment generation against DoD and against the Myers & Lanahan DOE
+baseline [L9][L5].
 
 #### Acceptance Criteria
 
@@ -136,10 +142,10 @@ investment generation against DoD and against the Myers & Lanahan DOE baseline [
 
 ### Requirement 5 — Time-series trend
 
-**User story:** As a policy analyst tracking program-level trends, I want the leverage
-ratio expressed as a time series by fiscal year, so that I can show whether DoD's
-follow-on investment in SBIR firms is growing, shrinking, or stable — a question NASEM's
-quadrennial reviews cannot answer.
+**User story:** As a policy analyst tracking program-level trends, I want the
+follow-on funding multiplier expressed as a time series by fiscal year, so that I can
+show whether DoD's follow-on investment in SBIR firms is growing, shrinking, or
+stable — a question NASEM's quadrennial reviews cannot answer.
 
 #### Acceptance Criteria
 
