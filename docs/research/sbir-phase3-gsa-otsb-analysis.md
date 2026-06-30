@@ -668,9 +668,31 @@ Ran the repo's `TransitionScorer` (`packages/sbir-ml/sbir_ml/transition/detectio
 
 The at-max-band (0.40+) cases are textbook Phase III production / system-integration work for SBIR-derived technology to SBIR firms via same-agency channels. The 0.36 cases are similar work outside the 24-month timing window (typically 36-60 months after a P2 completion, but the firm has multiple P2s feeding into the same product line). The 0.21 case (Foster-Miller IDIQ) is the parent vehicle itself, not the underlying SBIR-derived task orders.
 
-#### What changes when we add the FPDS competition signal
+#### With FPDS competition signal enriched
 
-The competition_type signal contributes up to +0.20 weight. If most of the at-max contracts are §638(r) sole-source (probable, given the production-scaling pattern), their scores would jump from 0.41 to ~0.61 — into the LIKELY band. Enriching the missed contracts with FPDS competition fields (same enrichment pattern as Tier 2 #1) would give a substantially sharper distribution. **This is in flight** and will be added as a follow-up commit once the API enrichment completes.
+Subsequently enriched the 1,804 missed contracts with FPDS competition fields (same per-award-detail pattern as Tier 2 #1) and re-ran the scorer. Of the 1,804 missed contracts, **164 (~9%) carry the canonical `solicitation_procedures = "ONLY ONE SOURCE"` signature** — these are unambiguously §638(r)-style sole-source procurements.
+
+| Band | Contracts | $M | % of $ |
+|---|---:|---:|---:|
+| At-max (0.40-0.45) | 1,350 | **$5,142** | **79.4%** |
+| Below-max (0.16-0.40) | 454 | $1,336 | 20.6% |
+
+The competition signal pushed an additional $612M of contracts into the at-max band (vs. the without-competition run that had $4.53B in this band). The max possible score is now 0.45 (was 0.41) — sole-source bonus adds 0.04.
+
+Examples of contracts that climbed from 0.41 → 0.45 when their sole-source status registered:
+- GD Mission Systems MK54 MOD1 LWT KITS LRIP ($201M, §638(r)=True)
+- GD Mission Systems NAVY SOFTWARE ENGINEERING SERVICES ($92M, §638(r)=True)
+- Toyon Research FY20 SP201 ($90M, §638(r)=True)
+
+The Foster-Miller IDIQ at $63M scores 0.21 (low) — `638r=False` and timing outside the window — correctly identified as the parent vehicle, not the SBIR-derived task orders against it.
+
+#### Why HIGH and LIKELY bands are empty
+
+With **3 of 6 signals available** (agency, timing, competition; missing patent, CET alignment, text similarity), the realistic ceiling is ~0.45 — well below the calibrated LIKELY threshold of 0.65 and the HIGH threshold of 0.85. The calibrated thresholds assume **all 6 signals fire including text similarity**.
+
+To reach LIKELY band with confidence, we'd need to wire ModernBERT-derived text similarity into the scorer's text_similarity slot (currently disabled per the design rationale below). With text similarity enabled and tuned, contracts at the current 0.45 ceiling that have semantically-derived descriptions would jump into the 0.55-0.70 range.
+
+The score-distribution-relative-to-ceiling is the cleaner interpretation: **79.4% of missed-bucket dollars achieve the maximum score the available-signal subset supports**, meaning all available derivation signals fire for these contracts (same-agency, timing within follow-on window, sole-source).
 
 #### Interpretation
 
