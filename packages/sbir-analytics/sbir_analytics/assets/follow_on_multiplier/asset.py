@@ -66,12 +66,13 @@ def follow_on_multiplier_analysis(
     (output_dir / "nasem_reconciliation.md").write_text(
         reconciliation_markdown(report), encoding="utf-8"
     )
+    quality_record = result.quality.to_dict("records")[0]
     return Output(
         tables,
         metadata={
             "agency_rows": len(result.agency),
             "company_rows": len(result.company),
-            "quality": MetadataValue.json(result.quality.to_dict("records")[0]),
+            "quality": MetadataValue.json({str(k): v for k, v in quality_record.items()}),
             "reconciliation": MetadataValue.json(report),
         },
     )

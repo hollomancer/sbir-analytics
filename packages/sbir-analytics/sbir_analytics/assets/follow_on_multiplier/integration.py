@@ -15,9 +15,17 @@ def _pick(frame: pd.DataFrame, *names: str, default=None) -> pd.Series:
 
 
 def _norm(value: object) -> str | None:
-    if value is None or pd.isna(value) or not str(value).strip():
+    if value is None:
         return None
-    return str(value).strip().upper()
+    try:
+        if pd.isna(value):  # type: ignore[call-overload]
+            return None
+    except (TypeError, ValueError):
+        pass
+    text = str(value).strip()
+    if not text:
+        return None
+    return text.upper()
 
 
 def build_canonical_obligations(

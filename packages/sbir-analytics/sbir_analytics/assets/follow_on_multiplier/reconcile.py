@@ -14,7 +14,7 @@ NASEM_DOD_BENCHMARK = 4.0
 _DOD_NAME_PATTERN = (
     r"\bDOD\b"
     r"|\bDEPARTMENT OF DEFENSE\b"
-    r"|\bDEPT(\.|\s)+OF\s+DEFENSE\b"
+    r"|\bDEPT(?:\.|\s)+OF\s+DEFENSE\b"
     r"|\bDEFENSE\s+DEPARTMENT\b"
 )
 _DOD_CODE_PATTERN = r"^9700$"
@@ -118,7 +118,9 @@ def _delta_cell(value: object) -> str:
 
 
 def reconciliation_markdown(report: dict[str, object]) -> str:
-    differences = "\n".join(f"- {item}" for item in report["methodological_differences"])
+    methodological_differences = report["methodological_differences"]
+    assert isinstance(methodological_differences, list)
+    differences = "\n".join(f"- {item}" for item in methodological_differences)
     # Pre-format display cells so ``None``/NaN render as ``N/A`` rather than the
     # literal token ``None:1``.
     benchmark_cell = _ratio_cell(report["benchmark"])
