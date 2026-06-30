@@ -1,34 +1,36 @@
-# Leverage-Ratio Validation, Sensitivity & Review-Sampling — Design
+# Follow-on Funding Multiplier Validation, Sensitivity & Review-Sampling — Design
 
 **Status:** Spec.
 **Date:** 2026-06-30.
-**Builds on:** [PR #323](https://github.com/hollomancer/sbir-analytics/pull/323) (`packages/sbir-analytics/sbir_analytics/assets/leverage_ratio/`).
+**Builds on:** [PR #323](https://github.com/hollomancer/sbir-analytics/pull/323) (`packages/sbir-analytics/sbir_analytics/assets/follow_on_multiplier/`).
 **Supersedes:** [PR #324](https://github.com/hollomancer/sbir-analytics/pull/324), closed as a parallel-implementation fork (different schema, different module path).
+
+> The follow-on funding multiplier is the non-SBIR federal obligations per dollar of SBIR/STTR investment for SBIR-recipient firms. NASEM's reviews of DoD SBIR call this quantity the *leverage ratio*; this codebase uses *follow-on funding multiplier* for the same calculation.
 
 ## Why this is a separate spec
 
-The leverage-ratio analysis asset in `assets/leverage_ratio/` (landing in PR #323) computes the core metric. PR #324 attempted to add validation gates, sensitivity analysis, and manual-review sampling — but did so as an independent implementation at `tools/mission_b/` with a completely different data schema (`canonical_company_id` vs `company_id`; `analysis_amount` + `is_sbir` flag vs `sbir_amount`/`non_sbir_amount` columns). Schema-aligning #324 onto #323's foundation would have been a 2-3 hour rewrite of code that hadn't yet been validated against real data — and the Copilot review identified several substantive bugs (silent NaN coercion, tautological validation checks, IndexError on empty scenarios, type-mixing in evidence sorting).
+The follow-on funding multiplier asset in `assets/follow_on_multiplier/` (landing in PR #323) computes the core metric. PR #324 attempted to add validation gates, sensitivity analysis, and manual-review sampling — but did so as an independent implementation at `tools/mission_b/` with a completely different data schema (`canonical_company_id` vs `company_id`; `analysis_amount` + `is_sbir` flag vs `sbir_amount`/`non_sbir_amount` columns). Schema-aligning #324 onto #323's foundation would have been a 2-3 hour rewrite of code that hadn't yet been validated against real data — and the Copilot review identified several substantive bugs (silent NaN coercion, tautological validation checks, IndexError on empty scenarios, type-mixing in evidence sorting).
 
 This spec captures the **design intent** from #324 so it can be re-implemented cleanly on top of #323's foundation when the next investment cycle starts.
 
 ## Goals
 
-1. **Validation:** Independent invariants that test whether the computed leverage ratio is internally consistent with its source data and SBIR/STTR classification.
-2. **Sensitivity:** Full-factorial parameter sweep across the methodological choices (match threshold, fiscal-year window, dollar basis, negative-obligation treatment, STTR inclusion) so the headline ratio is bounded by an interval rather than asserted as a point.
+1. **Validation:** Independent invariants that test whether the computed follow-on multiplier is internally consistent with its source data and SBIR/STTR classification.
+2. **Sensitivity:** Full-factorial parameter sweep across the methodological choices (match threshold, fiscal-year window, dollar basis, negative-obligation treatment, STTR inclusion) so the headline multiplier is bounded by an interval rather than asserted as a point.
 3. **Manual-review sampling:** Deterministic stratified sample of obligations carrying the evidence fields a human reviewer needs to confirm entity-match and SBIR/STTR classification accuracy.
 
 ## Non-goals
 
-- Re-implementing the core ratio calculation (already in `assets/leverage_ratio/analysis.py`).
+- Re-implementing the core multiplier calculation (already in `assets/follow_on_multiplier/analysis.py`).
 - Replacing #323's `agency_results` / NASEM reconciliation outputs.
-- Producing a single "right" leverage ratio — the point of sensitivity analysis is to surface ranges.
+- Producing a single "right" follow-on multiplier — the point of sensitivity analysis is to surface ranges.
 
 ## Architecture
 
-Three modules added under `packages/sbir-analytics/sbir_analytics/assets/leverage_ratio/`:
+Three modules added under `packages/sbir-analytics/sbir_analytics/assets/follow_on_multiplier/`:
 
 ```
-assets/leverage_ratio/
+assets/follow_on_multiplier/
 ├── analysis.py            (existing — PR #323)
 ├── asset.py               (existing — PR #323)
 ├── integration.py         (existing — PR #323)
@@ -52,8 +54,8 @@ Each invariant is a function `(prepared_obligations, computed_result, config) ->
 | `deobligations_handled_as_configured` | If `config.include_negative_obligations == True`, the sum of `obligation_amount < 0` rows matches what's in `analysis_amount`. If `False`, those rows are absent from the prepared frame. |
 | `stable_aggregation_across_dimensions` | The headline `(non_sbir_obligations, sbir_sttr_obligations)` totals equal the sums from the `company`, `agency`, and `cohort` aggregates. |
 | `match_quality_coverage` | The match-quality stratification reports cover ≥99% of obligation dollars. Surfaces cases where a meaningful share of dollars has no match-confidence value. |
-| `required_output_dimensions` | The output frames contain the required columns (`leverage_ratio`, `obligation_count`, scenario_id) and no others — schema lock for downstream consumers. |
-| `no_unexplained_invalid_ratios` | Any row with `leverage_ratio == NaN` has either `sbir_sttr_obligations == 0` (legitimate undefined) or carries an explicit reason in metadata. |
+| `required_output_dimensions` | The output frames contain the required columns (`follow_on_multiplier`, `obligation_count`, scenario_id) and no others — schema lock for downstream consumers. |
+| `no_unexplained_invalid_multipliers` | Any row with `follow_on_multiplier == NaN` has either `sbir_sttr_obligations == 0` (legitimate undefined) or carries an explicit reason in metadata. |
 
 Each invariant carries a tolerance value (default `1e-6` for dollar sums) so floating-point drift doesn't cause spurious failures.
 
@@ -71,9 +73,9 @@ Full-factorial sweep across the configurable methodology choices:
 | `include_negative_obligations` | True | `[True, False]` |
 | `sttr_treatment` | "include" | `["include", "exclude"]` |
 
-That's 3 × 3 × 2 × 2 × 2 = 72 scenarios. Each produces a `LeverageRatioResult` carrying the same `scenario_id` schema #324 introduced (kept as a useful identifier). The runner emits a `sensitivity_summary` table with one row per scenario: scenario_id, headline ratio, numerator total, denominator total, obligation count.
+That's 3 × 3 × 2 × 2 × 2 = 72 scenarios. Each produces a `FollowOnMultiplierResult` carrying the same `scenario_id` schema #324 introduced (kept as a useful identifier). The runner emits a `sensitivity_summary` table with one row per scenario: scenario_id, headline multiplier, numerator total, denominator total, obligation count.
 
-**Lessons from #324's Copilot review:** the original implementation assumed every scenario produced at least one headline row and used `.iloc[0]`. The spec'd version must handle the empty-headline case (when filters remove all obligations) — return a sentinel `LeverageRatioResult` with NaN ratio and explicit `n_obligations=0` rather than raising IndexError.
+**Lessons from #324's Copilot review:** the original implementation assumed every scenario produced at least one headline row and used `.iloc[0]`. The spec'd version must handle the empty-headline case (when filters remove all obligations) — return a sentinel `FollowOnMultiplierResult` with NaN multiplier and explicit `n_obligations=0` rather than raising IndexError.
 
 ## Manual-review sampling (`review_sampling.py`)
 
@@ -103,10 +105,10 @@ The sampling function returns a CSV-writable DataFrame. Reviewers fill in the ri
 
 `enforce_report_gate(validation_results, sensitivity_summary) -> None`:
 - Raises if any validation invariant failed.
-- Raises if the sensitivity range for the headline ratio exceeds a configured ratio span (default: 2× — i.e., max ratio / min ratio > 2 across all scenarios means the methodology choices dominate the result and the report shouldn't be published).
+- Raises if the sensitivity range for the headline multiplier exceeds a configured multiplier span (default: 2× — i.e., max / min > 2 across all scenarios means the methodology choices dominate the result and the report shouldn't be published).
 - Logs a warning (not a raise) if the sensitivity range is between 1.5× and 2×.
 
-Wired into the Dagster asset for the leverage-ratio report so a methodologically-fragile result fails the asset run instead of being silently published.
+Wired into the Dagster asset for the follow-on-multiplier report so a methodologically-fragile result fails the asset run instead of being silently published.
 
 ## Testing approach
 
@@ -128,8 +130,8 @@ Wired into the Dagster asset for the leverage-ratio report so a methodologically
 
 ## Open questions for implementation
 
-1. **Where does the canonical "review sample CSV" get written?** Probably `data/processed/leverage_ratio/review_sample_<scenario_id>.csv`, but should this be part of the asset output or a separate Dagster asset/job?
-2. **What's the right ratio-span threshold for the report gate?** 2× is a starting point; should be tuned empirically against the first sensitivity run.
+1. **Where does the canonical "review sample CSV" get written?** Probably `data/processed/follow_on_multiplier/review_sample_<scenario_id>.csv`, but should this be part of the asset output or a separate Dagster asset/job?
+2. **What's the right multiplier-span threshold for the report gate?** 2× is a starting point; should be tuned empirically against the first sensitivity run.
 3. **Should the validation invariants run on every scenario in the sensitivity sweep, or only on the headline scenario?** Running them all is more thorough but expensive on a 72-scenario factorial. Default: headline only, with a flag to run all.
 
 These are the kinds of decisions worth deferring to actual implementation rather than over-spec'ing here.
