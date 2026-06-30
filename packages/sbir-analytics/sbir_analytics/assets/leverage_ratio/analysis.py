@@ -63,13 +63,16 @@ def _safe_ratio(numerator: pd.Series, denominator: pd.Series) -> pd.Series:
 
 
 def _aggregate(rows: pd.DataFrame, dimensions: list[str]) -> pd.DataFrame:
+    # ``rows`` arrives already filtered to ``accepted_match == True`` (see
+    # calculate_leverage_ratios), so per-stratum ``matched_record_count`` would
+    # always equal ``record_count`` and adds no information. Match-coverage stats
+    # are surfaced at the run level via the ``quality`` DataFrame.
     columns = dimensions + [
         "sbir_funding_denominator",
         "non_sbir_obligations_numerator",
         "leverage_ratio",
         "record_count",
         "company_count",
-        "matched_record_count",
         "mean_match_confidence",
         "min_match_confidence",
     ]
@@ -81,7 +84,6 @@ def _aggregate(rows: pd.DataFrame, dimensions: list[str]) -> pd.DataFrame:
         non_sbir_obligations_numerator=("non_sbir_amount", "sum"),
         record_count=("obligation_id", "count"),
         company_count=("company_id", "nunique"),
-        matched_record_count=("accepted_match", "sum"),
         mean_match_confidence=("match_confidence", "mean"),
         min_match_confidence=("match_confidence", "min"),
     ).reset_index()

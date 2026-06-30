@@ -57,8 +57,12 @@ def leverage_ratio_analysis(
         table.to_parquet(output_dir / f"{name}.parquet", index=False)
     method = f"Net USAspending obligations; threshold={config.match_confidence_threshold}; FY={config.fiscal_year_start or 'all'}-{config.fiscal_year_end or 'all'}; dollars={config.dollar_basis}; STTR included={config.include_sttr}."
     report = reconcile_nasem(result.agency, methodology=method)
-    (output_dir / "nasem_reconciliation.json").write_text(json.dumps(report, indent=2))
-    (output_dir / "nasem_reconciliation.md").write_text(reconciliation_markdown(report))
+    (output_dir / "nasem_reconciliation.json").write_text(
+        json.dumps(report, indent=2), encoding="utf-8"
+    )
+    (output_dir / "nasem_reconciliation.md").write_text(
+        reconciliation_markdown(report), encoding="utf-8"
+    )
     return Output(
         tables,
         metadata={

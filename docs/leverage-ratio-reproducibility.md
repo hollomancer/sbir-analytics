@@ -22,4 +22,4 @@ NASEM reports **4:1**. The deterministic pipeline fixture yields **1.1667:1** us
 - The pipeline uses explicit cohort/fiscal windows and a same-agency SBIR-firm universe.
 - The NASEM source edition, exact study window, transaction coverage, and denominator method remain product decisions documented in the analysis guide.
 
-The deterministic numerator and denominator are asserted in unit tests. A difference from 4:1 is therefore classified as methodological; a non-finite observed aggregate is the implemented implementation-error signal.
+The deterministic numerator and denominator are asserted in unit tests. A difference from 4:1 is therefore classified as methodological; a non-finite observed aggregate is the implementation-error signal.

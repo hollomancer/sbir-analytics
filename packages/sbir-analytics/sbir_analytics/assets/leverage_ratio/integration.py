@@ -95,7 +95,17 @@ def build_canonical_obligations(
                 "piid",
             ),
             "recipient_uei": _pick(tx, "recipient_uei", "vendor_uei", "uei").map(_norm),
-            "agency": _pick(tx, "agency", "awarding_agency_code", "awarding_agency_name"),
+            # Prefer the name when present (USAspending often surfaces a numeric
+            # ``awarding_agency_code`` like ``9700`` for DoD, which splits agency
+            # groupings from the name-based variants downstream reconciliation
+            # expects). Normalize to a consistent uppercase string so name
+            # variants don't proliferate by case.
+            "agency": _pick(
+                tx,
+                "agency",
+                "awarding_agency_name",
+                "awarding_agency_code",
+            ).map(lambda v: None if v is None or pd.isna(v) else str(v).strip().upper()),
             "fiscal_year": pd.to_numeric(
                 _pick(tx, "fiscal_year", "action_date_fiscal_year", "award_year"), errors="coerce"
             ).astype("Int64"),
