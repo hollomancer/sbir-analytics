@@ -18,6 +18,7 @@ import pandas as pd
 from loguru import logger
 
 from ...config.loader import get_config
+from .nipa_rates import NIPARateProvider
 
 
 # =============================================================================
@@ -51,14 +52,22 @@ class FiscalParameterSweep:
     various sampling methods for uncertainty quantification.
     """
 
-    def __init__(self, config: Any | None = None):
+    def __init__(
+        self,
+        config: Any | None = None,
+        rate_provider: NIPARateProvider | None = None,
+    ):
         """Initialize the parameter sweep engine.
 
         Args:
-            config: Optional configuration override
+            config: Optional configuration override.
+            rate_provider: Optional ``NIPARateProvider`` for tax-rate centers. When
+                ``None`` a default provider is constructed; tests pass a mock so
+                they don't reach the live BEA API.
         """
         self.config = config or get_config().fiscal_analysis
         self.sensitivity_config = self.config.sensitivity_parameters
+        self.rate_provider = rate_provider or NIPARateProvider()
 
     def _get_config_value(self, key: str, default: Any = None) -> Any:
         """Get a value from sensitivity_config, handling both dict and SensitivityConfig objects.
@@ -103,23 +112,26 @@ class FiscalParameterSweep:
 
         ranges = {}
 
-        # Tax rate parameters
+        # Tax rate parameters — center the sensitivity bands on the actual
+        # NIPA-derived rates the fiscal estimator applies, not literal defaults,
+        # so the bands track methodology changes (e.g. updated BEA tables).
         if "tax_rates" in uncertainty_params:
             tax_config = uncertainty_params["tax_rates"]
             variation = tax_config.get("variation_percent", 0.10)
-            base_rate = 0.22  # Default individual income tax rate
+            base_year = getattr(self.config, "base_year", None)
+            nipa = self.rate_provider.get_rates(base_year)
 
             ranges["individual_income_tax_rate"] = ParameterRange(
                 name="individual_income_tax_rate",
-                min_value=base_rate * (1 - variation),
-                max_value=base_rate * (1 + variation),
+                min_value=nipa.federal_income_rate * (1 - variation),
+                max_value=nipa.federal_income_rate * (1 + variation),
                 distribution=tax_config.get("distribution", "normal"),
             )
 
             ranges["corporate_income_tax_rate"] = ParameterRange(
                 name="corporate_income_tax_rate",
-                min_value=0.18 * (1 - variation),
-                max_value=0.18 * (1 + variation),
+                min_value=nipa.federal_corporate_rate * (1 - variation),
+                max_value=nipa.federal_corporate_rate * (1 + variation),
                 distribution=tax_config.get("distribution", "normal"),
             )
 

@@ -189,11 +189,21 @@ class EnrichmentRefreshConfig(BaseModel):
 
 
 class TaxParameterConfig(BaseModel):
-    """Configuration for federal tax calculation parameters."""
+    """Configuration for federal tax calculation parameters.
+
+    These defaults are a static snapshot used by
+    ``fiscal_audit_trail.log_configuration()`` for audit-log provenance. Runtime
+    fiscal calculations resolve the actual ``individual_income_tax.effective_rate``
+    per analysis year via ``NIPARateProvider`` (BEA NIPA Tables 3.2/3.3/1.5) —
+    see ``sbir_etl/transformers/fiscal/nipa_rates.py``. Update the default below
+    when ``_BASELINE_RATES`` gains a newer reference year.
+    """
 
     individual_income_tax: dict[str, Any] = Field(
         default_factory=lambda: {
-            "effective_rate": 0.22,
+            # NIPA-derived 2022 baseline (personal_current_taxes / compensation
+            # of employees). See nipa_rates.py:_BASELINE_RATES[2022].
+            "effective_rate": 0.194,
             "progressive_rates": {
                 "10_percent": 0.10,
                 "12_percent": 0.12,
