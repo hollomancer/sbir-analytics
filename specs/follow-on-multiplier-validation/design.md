@@ -44,17 +44,17 @@ All three modules consume the canonical schema from #323's `integration.py` (`bu
 
 ## Validation invariants (`validation.py`)
 
-Each invariant is a function `(prepared_obligations, computed_result, config) -> ValidationResult` with three fields: `name`, `passed: bool`, `observed_value`, `expected_value`, `tolerance`, `explanation`. The runner collects results; `enforce_report_gate()` raises if any gate fails.
+Each invariant is a function `(prepared_obligations, computed_result, config) -> ValidationResult` with six fields: `name`, `passed: bool`, `observed_value`, `expected_value`, `tolerance`, `explanation`. The runner collects results; `enforce_report_gate()` raises if any gate fails.
 
 | Invariant | What it checks |
 |---|---|
 | `source_reconciliation` | Sum of computed numerator and denominator equals the totals derived independently from `is_sbir`/`is_sttr` flags (within a tolerance for floating-point drift). **NOT** tautological — independently computes numerator/denominator from source flags and compares to the analysis output. |
 | `no_sbir_in_non_sbir_numerator` | The non-SBIR obligations (numerator) sum, restricted to rows with `is_sbir == True OR is_sttr == True`, should be `0` within the configured tolerance. Any positive value signals SBIR/STTR leakage into the numerator. |
 | `no_duplicate_obligations_after_matching` | `obligation_id` is unique across the prepared obligations frame. Catches join-fanout bugs from the entity-match step. |
-| `deobligations_handled_as_configured` | If `config.include_negative_obligations == True`, the sum of `obligation_amount < 0` rows matches what's in `analysis_amount`. If `False`, those rows are absent from the prepared frame. |
+| `deobligations_handled_as_configured` | If `config.include_negative_obligations == True`, the sum of `obligation_amount < 0` rows present in the prepared frame equals the sum of those rows in the source (i.e., they were retained, not silently clipped). If `False`, those rows are absent from the prepared frame. |
 | `stable_aggregation_across_dimensions` | The headline `(non_sbir_obligations, sbir_sttr_obligations)` totals equal the sums from the `company`, `agency`, and `cohort` aggregates. |
 | `match_quality_coverage` | The match-quality stratification reports cover ≥99% of obligation dollars. Surfaces cases where a meaningful share of dollars has no match-confidence value. |
-| `required_output_dimensions` | The output frames contain the required columns (`follow_on_multiplier`, `obligation_count`, scenario_id) and no others — schema lock for downstream consumers. |
+| `required_output_dimensions` | Each output frame contains the required core columns (`follow_on_multiplier`, `record_count`, `scenario_id`) so downstream consumers can rely on a stable schema. Per-frame dimension columns (e.g., `company_id`, `agency`, `cohort_year`) are not constrained — the check verifies presence of the core columns, not absence of additional ones. |
 | `no_unexplained_invalid_multipliers` | Any row with `follow_on_multiplier == NaN` has either `sbir_sttr_obligations == 0` (legitimate undefined) or carries an explicit reason in metadata. |
 
 Each invariant carries a tolerance value (default `1e-6` for dollar sums) so floating-point drift doesn't cause spurious failures.
@@ -84,8 +84,8 @@ Stratified sample across confidence-bucket × agency × dollar-decile, determini
 | Field | Source | Why it matters for review |
 |---|---|---|
 | `obligation_id` | source | Anchor for the record being reviewed |
-| `canonical_company_id` | entity-resolution | The match the reviewer is checking |
-| `entity_match_confidence` | entity-resolution | Score the reviewer is calibrating against |
+| `company_id` | entity-resolution (canonical schema from #323) | The match the reviewer is checking |
+| `match_confidence` | entity-resolution (canonical schema from #323) | Score the reviewer is calibrating against |
 | `is_sbir`, `is_sttr` | source | Classification the reviewer confirms |
 | `obligation_amount`, `fiscal_year`, `agency` | source | Disposition context |
 | `original_recipient_name` | source | Raw name from USAspending |
@@ -105,15 +105,17 @@ The sampling function returns a CSV-writable DataFrame. Reviewers fill in the ri
 
 `enforce_report_gate(validation_results, sensitivity_summary) -> None`:
 - Raises if any validation invariant failed.
-- Raises if the sensitivity range for the headline multiplier exceeds a configured multiplier span (default: 2× — i.e., max / min > 2 across all scenarios means the methodology choices dominate the result and the report shouldn't be published).
-- Logs a warning (not a raise) if the sensitivity range is between 1.5× and 2×.
+- Computes the sensitivity span only over scenarios with **finite, strictly positive** multipliers (drop NaN, ±inf, and ≤ 0 values before computing `max / min`). Sentinel rows from empty scenarios (NaN multiplier, `n_obligations=0`) and degenerate cases (zero or negative denominators) are excluded from the gate.
+- If fewer than two scenarios remain after filtering, the gate raises a `SensitivityGateInsufficientData` error (not a multiplier-span violation) so the failure mode is unambiguous.
+- Raises if the filtered span exceeds the configured threshold (default: 2× — i.e., `max / min > 2` across the surviving scenarios means the methodology choices dominate the result).
+- Logs a warning (not a raise) if the span is between 1.5× and 2×.
 
 Wired into the Dagster asset for the follow-on-multiplier report so a methodologically-fragile result fails the asset run instead of being silently published.
 
 ## Testing approach
 
 - **Unit tests per invariant** with hand-constructed fixtures that exercise pass and fail paths.
-- **Fixtures explicitly include** the edge cases the original #324 implementation broke on: empty filtered output, mixed-type obligation IDs, NaN canonical_company_ids, negative obligations.
+- **Fixtures explicitly include** the edge cases the original #324 implementation broke on: empty filtered output, mixed-type obligation IDs, NaN `company_id` values (canonical schema from #323), negative obligations.
 - **Sensitivity smoke test** that runs a 4-scenario subset against a small fixture and verifies the sensitivity_summary frame has the expected shape and scenario_ids.
 - **Review-sampling determinism test** with a fixed seed asserting the same input produces the same sample.
 - **Report-gate integration test** with crafted inputs that trip each gate condition.
