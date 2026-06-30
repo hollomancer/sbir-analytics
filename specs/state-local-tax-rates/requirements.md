@@ -1,11 +1,11 @@
 # Requirements — State & Local Tax Rate Reference Data
 
-> **Status:** Not yet started — but significant existing implementation.
-> `sbir_etl/transformers/fiscal/state_rates.py` already contains all 50 states
-> with hardcoded 2024 Tax Foundation / Census ASGF rates and a `StateRateProvider`
-> class. **The task is to make those rates data-driven** (loaded from a refreshable
-> CSV) rather than hardcoded constants. The `StateTaxRates` dataclass and
-> `StateRateProvider` interface stay unchanged.
+> **Status:** Requirements 1 + 2 implemented in PR #402 — the CSV reference file
+> (`data/reference/tax/state_effective_rates.csv`) and a CSV-backed
+> `StateRateProvider(csv_path=..., year=...)` constructor are now in place, with
+> the hardcoded `_STATE_RATES_2024` dict retained as a backwards-compatible
+> default. Requirement 3 (annual `refresh-state-rates` CLI) is deferred to a
+> follow-up PR.
 >
 > Required by **Phase 3** of [../fiscal-tax-impact-v2.md](../fiscal-tax-impact-v2.md) and
 > **Requirement 3** of [../fiscal-sensitivity-reconciliation/](../fiscal-sensitivity-reconciliation/).
@@ -77,13 +77,20 @@ without reading source code.
 #### Acceptance Criteria
 
 1. THE `StateRateProvider` class SHALL accept an optional `csv_path: Path | None = None`
-   parameter. When provided, it loads rates from the CSV filtered to
-   `fiscal_year = max(available year ≤ requested_year)`. When `None`, it falls back
+   parameter. When provided, it loads rates from the CSV. When `None`, it falls back
    to `_STATE_RATES_2024` for backwards compatibility.
-2. THE public interface (`get_rates(state)`, `states`, `no_income_tax_states`,
+2. THE `StateRateProvider` class SHALL accept an optional `year: int | None = None`
+   parameter that controls which CSV row is selected for each state:
+   for each state, the provider picks the row with the largest `fiscal_year` that is
+   still ≤ `year`. WHEN `year` is `None`, the provider picks the latest year present
+   in the CSV for that state (no upper bound). WHEN every CSV row for a state has
+   `fiscal_year > year`, that state is omitted from the loaded rates and
+   `get_rates(state)` returns `None` (callers see the same code path as for an
+   unknown state). The `year` parameter is ignored when `csv_path` is `None`.
+3. THE public interface (`get_rates(state)`, `states`, `no_income_tax_states`,
    `no_sales_tax_states`) SHALL remain unchanged so all existing callers work without
    modification.
-3. Existing tests in `tests/unit/transformers/fiscal/test_state_rates.py` SHALL pass
+4. Existing tests in `tests/unit/transformers/fiscal/test_state_rates.py` SHALL pass
    without modification after this change.
 
 ### Requirement 3 — Annual refresh CLI (**deferred to follow-up**)

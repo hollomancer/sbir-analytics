@@ -167,7 +167,7 @@ class StateRateProvider:
         """
         # Group by state, keep the best row (highest fiscal_year ≤ requested).
         best_row: dict[str, dict[str, str]] = {}
-        with csv_path.open() as f:
+        with csv_path.open(encoding="utf-8", newline="") as f:
             for row in csv.DictReader(f):
                 state = row["state_abbr"].strip().upper()
                 row_year = int(row["fiscal_year"])
