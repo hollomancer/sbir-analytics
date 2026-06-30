@@ -15,7 +15,7 @@ Phase 2 starts after PR #286 merges to main and this branch rebases.
   rates per stratum. M&A exit rate consumes #286's `data/sbir_ma_events.jsonl`
   directly (post-rebase); join is UEI/DUNS-first with normalized-name fallback.
   Five-year survival denominator is unique companies, not award rows. Verify:
-  re-running on the leverage-ratio fixture set reproduces transition rates
+  re-running on the follow-on-multiplier fixture set reproduces transition rates
   within tolerance.
 - [ ] 1.3 Add `PublishedBaselineRegistry` — hard-coded YAML at
   `config/agency_private_capital/published_baselines.yaml` with source citations + as-of
@@ -25,7 +25,7 @@ Phase 2 starts after PR #286 merges to main and this branch rebases.
   agencies.
 - [ ] 1.4 Add `ReconciliationNarrative` writer. For each (agency metric,
   baseline) pair, emit JSON record + markdown line. Mirror the structure
-  of the existing leverage-ratio reconciler.
+  of the existing follow-on-multiplier reconciler.
 - [ ] 1.5 Wire as a Dagster asset `agency_private_capital_baseline_comparison`
   with `AgencyPrivateCapitalConfig` (agency_code, default "NSF"). Output artifacts:
   `agency_cohort_outcomes.parquet`, `agency_vs_published_baselines.md`,

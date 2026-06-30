@@ -85,6 +85,6 @@ are out of scope either way (see requirements non-goals).
 ## Deferred
 
 - Rich contract node props + separate loader/asset (until a consumer exists).
-- RECIPIENT_OF / FUNDED_BY contract edges (→ `leverage-ratio-analysis` if needed).
+- RECIPIENT_OF / FUNDED_BY contract edges (→ `follow-on-multiplier-analysis` if needed).
 - Full USAspending contract ingestion; seeding `contracts_sample.parquet`; source
   reconciliation.

@@ -1,4 +1,4 @@
-"""Dagster reporting asset for the leverage-ratio analysis."""
+"""Dagster reporting asset for the follow-on funding multiplier analysis."""
 
 import json
 from pathlib import Path
@@ -6,12 +6,12 @@ from pathlib import Path
 import pandas as pd
 from dagster import AssetExecutionContext, Config, MetadataValue, Output, asset
 
-from .analysis import LeverageRatioPolicy, calculate_leverage_ratios
+from .analysis import FollowOnMultiplierPolicy, calculate_follow_on_multipliers
 from .integration import build_canonical_obligations
 from .reconcile import reconcile_nasem, reconciliation_markdown
 
 
-class LeverageRatioConfig(Config):
+class FollowOnMultiplierConfig(Config):
     match_confidence_threshold: float = 0.80
     fiscal_year_start: int | None = None
     fiscal_year_end: int | None = None
@@ -21,20 +21,23 @@ class LeverageRatioConfig(Config):
 
 
 @asset(
-    group_name="leverage_ratio",
+    group_name="follow_on_multiplier",
     compute_kind="pandas",
-    description="Traceable SBIR/STTR leverage ratios from enriched SBIR and USAspending outputs.",
+    description=(
+        "Traceable SBIR/STTR follow-on funding multipliers from enriched SBIR and "
+        "USAspending outputs."
+    ),
 )
-def leverage_ratio_analysis(
+def follow_on_multiplier_analysis(
     context: AssetExecutionContext,
-    config: LeverageRatioConfig,
+    config: FollowOnMultiplierConfig,
     enriched_sbir_awards: pd.DataFrame,
     raw_usaspending_transactions: pd.DataFrame,
 ) -> Output[dict[str, pd.DataFrame]]:
     canonical = build_canonical_obligations(
         enriched_sbir_awards, enriched_sbir_awards, raw_usaspending_transactions
     )
-    policy = LeverageRatioPolicy(
+    policy = FollowOnMultiplierPolicy(
         include_sttr=config.include_sttr,
         match_confidence_threshold=config.match_confidence_threshold,
         fiscal_year_start=config.fiscal_year_start,
@@ -44,14 +47,14 @@ def leverage_ratio_analysis(
     adjustment_factors = (
         pd.read_csv(config.adjustment_factors_path) if config.adjustment_factors_path else None
     )
-    result = calculate_leverage_ratios(
+    result = calculate_follow_on_multipliers(
         canonical, policy=policy, adjustment_factors=adjustment_factors
     )
     tables = {
         name: getattr(result, name)
         for name in ("company", "agency", "cohort", "fiscal_year", "quality")
     }
-    output_dir = Path("data/processed/leverage_ratio")
+    output_dir = Path("data/processed/follow_on_multiplier")
     output_dir.mkdir(parents=True, exist_ok=True)
     for name, table in tables.items():
         table.to_parquet(output_dir / f"{name}.parquet", index=False)

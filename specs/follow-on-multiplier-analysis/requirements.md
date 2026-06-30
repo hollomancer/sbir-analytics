@@ -1,6 +1,6 @@
 # Follow-on Funding Multiplier Analysis — Requirements
 
-> **Status:** Implemented in this PR — see the [specification validation, semantics, execution guide, and requirement map](../../docs/leverage-ratio-analysis.md).
+> **Status:** Implemented in this PR — see the [specification validation, semantics, execution guide, and requirement map](../../docs/follow-on-multiplier-analysis.md).
 > Anchors inventory question **A3** in [docs/research-questions.md](../../docs/research-questions.md).
 >
 > NASEM's reviews of DoD SBIR call this quantity the *leverage ratio*. This codebase
@@ -10,6 +10,7 @@
 **Research question anchor:** A3 — DoD follow-on funding multiplier (inferential tier)
 **Answers for:** policy analysts (congressional briefings, OMB), SBIR program managers
 **Complexity tier:** Inferential (Tier 3)
+**Research Plan Milestone:** M1 — DOD Follow-on Funding Multiplier Replication
 
 ---
 

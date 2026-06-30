@@ -14,7 +14,7 @@ You are not a builder. You do not write code. You produce a written assessment t
 This project builds the **outcomes layer** — four linkages between federal award records and downstream effects. Everything that doesn't directly advance M1–M5 milestones is suspect.
 
 The four linkages:
-1. Award → Follow-on Contract (M1: leverage ratio)
+1. Award → Follow-on Contract (M1: follow-on funding multiplier; NASEM's *leverage ratio*)
 2. Award → Patent (M2: patent cost, citation spillover)
 3. Award → Outcome Through Primes (M2 ext: citation networks trace IP flow)
 4. Award → Firm-Level Outcomes (M4: fiscal returns)

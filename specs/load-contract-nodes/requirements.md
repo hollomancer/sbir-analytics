@@ -75,7 +75,7 @@ carrying `contract_id`), `MERGE` the CONTRACT node on its PK
 - **RECIPIENT_OF / FUNDED_BY edges — CUT.** Not needed for the goal (the edge and
   pathway only need the node + `contract_id`). The award `FUNDED_BY` path *mints*
   agency orgs (`sbir_neo4j_loading.py:806-868`); a MATCH-only contract version would
-  be silently empty. Add later, in `leverage-ratio-analysis`, if a consumer needs them.
+  be silently empty. Add later, in `follow-on-multiplier-analysis`, if a consumer needs them.
 - **Rich node props (psc_code, competition_type, parent_uei, …) — CUT** until a query
   reads them. Load only the load-bearing fields (`transaction_id`, `contract_id`,
   `transaction_type`, and a human-readable `recipient_name`/`amount`/`agency` if cheap).

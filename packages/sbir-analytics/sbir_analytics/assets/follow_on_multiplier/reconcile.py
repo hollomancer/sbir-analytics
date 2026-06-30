@@ -1,4 +1,4 @@
-"""NASEM benchmark reconciliation for leverage-ratio results."""
+"""NASEM benchmark reconciliation for follow-on funding multiplier results."""
 
 from __future__ import annotations
 
@@ -47,7 +47,7 @@ def _sum_dod_rows(agency_results: pd.DataFrame) -> tuple[float | None, int]:
         return None, 0
 
     # Sum numerator and denominator across all DOD-matching rows; compute ratio once.
-    # Falls back to ``leverage_ratio`` column if numerator/denominator aren't surfaced
+    # Falls back to ``follow_on_multiplier`` column if numerator/denominator aren't surfaced
     # at the agency level (kept for backward compatibility with older fixtures).
     if {"non_sbir_amount", "sbir_amount"}.issubset(dod_rows.columns):
         num = float(dod_rows["non_sbir_amount"].fillna(0).sum())
@@ -63,10 +63,10 @@ def _sum_dod_rows(agency_results: pd.DataFrame) -> tuple[float | None, int]:
         weights = dod_rows["sbir_amount"].fillna(0).clip(lower=0)
         if weights.sum() <= 0:
             return None, int(len(dod_rows))
-        weighted = (dod_rows["leverage_ratio"].fillna(0) * weights).sum() / weights.sum()
+        weighted = (dod_rows["follow_on_multiplier"].fillna(0) * weights).sum() / weights.sum()
         return float(weighted), int(len(dod_rows))
 
-    ratios = dod_rows["leverage_ratio"].dropna()
+    ratios = dod_rows["follow_on_multiplier"].dropna()
     if ratios.empty:
         return None, int(len(dod_rows))
     return float(ratios.mean()), int(len(dod_rows))
@@ -124,7 +124,7 @@ def reconciliation_markdown(report: dict[str, object]) -> str:
     benchmark_cell = _ratio_cell(report["benchmark"])
     observed_cell = _ratio_cell(report["observed"])
     delta_cell = _delta_cell(report["delta"])
-    return f"""# DOD Leverage Ratio Reproducibility Report
+    return f"""# DOD Follow-on Funding Multiplier Reproducibility Report
 
 ## Gate statement
 

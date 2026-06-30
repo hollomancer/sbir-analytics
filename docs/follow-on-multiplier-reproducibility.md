@@ -1,4 +1,6 @@
-# DOD leverage ratio reproducibility report
+# DOD follow-on funding multiplier reproducibility report
+
+> NASEM's reviews of DoD SBIR call this quantity the *leverage ratio*; this codebase uses **follow-on funding multiplier** for the same calculation.
 
 ## Gate statement
 
@@ -11,7 +13,7 @@ NASEM reports **4:1**. The deterministic pipeline fixture yields **1.1667:1** us
 | NASEM benchmark | 4.0000:1 |
 | Pipeline DOD SBIR denominator | $300 |
 | Pipeline DOD non-SBIR numerator | $350 |
-| Pipeline DOD ratio | 1.1667:1 |
+| Pipeline DOD multiplier | 1.1667:1 |
 | Difference from benchmark | -2.8333 |
 
 ## Methodological differences, not implementation errors

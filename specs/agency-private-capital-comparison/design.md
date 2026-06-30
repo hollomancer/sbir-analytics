@@ -6,7 +6,7 @@ Builds on existing SBIR identification, transition detection, PATLINK,
 entity-resolution pipelines, and (post-merge) the SEC EDGAR / Form D / M&A
 infrastructure landed by PR #286. New code lives in
 `packages/sbir-analytics/sbir_analytics/assets/agency_private_capital/` (an outcomes-comparison
-artifact, parallel to `leverage_ratio/`).
+artifact, parallel to `follow_on_multiplier/`).
 
 ## Phase 1 — Published-Baseline Comparison
 
@@ -50,8 +50,8 @@ SBIR.gov awards → filter by agency_code (default NSF: ALN ∈ {47.041, 47.084}
    - Lerner [L10]: SBIR awardees grew 27% faster over 10 yrs (effect size)
 4. **`ReconciliationNarrative`** — For each (agency metric, baseline) pair,
    emit a structured comparison record: delta, plausible-cause attribution,
-   selection-bias caveat. Output as JSON + markdown, mirroring the leverage-
-   ratio reconciler.
+   selection-bias caveat. Output as JSON + markdown, mirroring the
+   follow-on-multiplier reconciler.
 
 ### Output (under `data/processed/agency_private_capital/<agency_lower>/`)
 
@@ -139,7 +139,7 @@ zoom in on a tighter slice if they want.
 ### Why no propensity scoring in v1
 
 Coarsened-exact matching is reproducible, debuggable, and matches the
-conservative tone of the leverage-ratio spec. Propensity scoring requires
+conservative tone of the follow-on-multiplier spec. Propensity scoring requires
 firm-level covariates that don't reliably exist on the Form D side
 (founding date, founder background, prior funding). Defer to a v2 if v1
 yields a publishable result.
@@ -149,7 +149,7 @@ yields a publishable result.
 The user asked for a comparison; the scope-guard flagged that NSF-vs-
 private selection bias is severe and one-way. We deliberately frame the
 deliverable as "descriptive comparison with reconciliation narrative" —
-same posture as `leverage-ratio-analysis`. Causal claims (e.g., "NSF
+same posture as `follow-on-multiplier-analysis`. Causal claims (e.g., "NSF
 SBIR causes N% higher transition than private capital would have")
 require RDD or IV designs and are out of scope.
 

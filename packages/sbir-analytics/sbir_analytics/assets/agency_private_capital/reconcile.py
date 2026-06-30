@@ -2,7 +2,7 @@
 
 For each (agency-cohort outcome metric, published baseline) pair, emit a
 structured record summarizing the comparison plus a one-line markdown row.
-Mirrors the leverage-ratio reconciliation pattern: the gate-statement
+Mirrors the follow-on-multiplier reconciliation pattern: the gate-statement
 ("X reports A%, the cohort is B%, difference attributable to C") matters
 more than the match.
 """

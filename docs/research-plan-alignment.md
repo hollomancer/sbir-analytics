@@ -21,7 +21,7 @@ Each milestone produces an analytical output that (a) replicates or exceeds a sp
 
 ## Milestone → Codebase Status
 
-### M1: DOD Leverage Ratio Replication — PARTIAL
+### M1: DOD Follow-on Funding Multiplier Replication — PARTIAL
 
 **Linkage:** Award → Follow-on Contract
 
@@ -34,10 +34,10 @@ Each milestone produces an analytical output that (a) replicates or exceeds a sp
 | Contract analytics (DuckDB) | Built | `packages/sbir-ml/sbir_ml/transition/performance/contract_analytics.py` |
 | Vendor crosswalk | Built | `packages/sbir-ml/sbir_ml/transition/features/vendor_crosswalk.py` |
 | Company categorization | 77% spec | `specs/company-categorization/` |
-| **Leverage ratio computation** | **Missing** | Needs: ratio calculator, cohort stratification, NASEM reconciliation |
-| **Agency comparison (DOE)** | **Missing** | Needs: civilian agency extraction, cross-agency ratio |
+| **Follow-on funding multiplier computation** | **Missing** | Needs: multiplier calculator, cohort stratification, NASEM reconciliation |
+| **Agency comparison (DOE)** | **Missing** | Needs: civilian agency extraction, cross-agency multiplier |
 
-**Gap:** Core data plumbing exists. Missing the actual leverage ratio computation and NASEM reconciliation logic.
+**Gap:** Core data plumbing exists. Missing the actual follow-on funding multiplier computation and NASEM reconciliation logic.
 
 ### M2: Patent Linkage and Spillover — PARTIAL
 
@@ -119,12 +119,12 @@ Each milestone produces an analytical output that (a) replicates or exceeds a sp
 ## Priority Matrix
 
 ### Immediate (finish what's started — highest ROI)
-1. **`company-categorization`** (77%) — Entity categorization unlocks M1 leverage ratios
+1. **`company-categorization`** (77%) — Entity categorization unlocks M1 follow-on funding multipliers
 2. **`uspto-lambda-downloads`** (90%) — URL verification unlocks M2 patent pipeline refresh
 3. **`weekly-award-data-refresh`** (85%) — PR automation unlocks M5 continuous monitoring
 
 ### Next Sprint (M1 + M3 parallel)
-4. **New: `leverage-ratio-analysis`** — M1 core: ratio computation, cohort stratification, NASEM reconciliation
+4. **New: `follow-on-multiplier-analysis`** — M1 core: multiplier computation, cohort stratification, NASEM reconciliation
 5. **`modernbert_analysis_layer`** (30%) — Embeddings infrastructure for M3 full-corpus classification
 6. **New: `cross-agency-taxonomy`** — M3 core: batch classifier, agency-level output, visualization
 

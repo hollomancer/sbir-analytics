@@ -40,6 +40,6 @@ effort).
 
 - Separate `loaded_contracts` asset + `_contract_transaction_props` transformer (rich
   node props).
-- RECIPIENT_OF / FUNDED_BY contract edges (→ `leverage-ratio-analysis`).
+- RECIPIENT_OF / FUNDED_BY contract edges (→ `follow-on-multiplier-analysis`).
 - Full USAspending contract ingestion; seeding `contracts_sample.parquet`; FPDS-dump
   vs DuckDB source reconciliation.

@@ -1,4 +1,9 @@
-"""Pure, deterministic leverage-ratio calculations over canonical obligation rows."""
+"""Pure, deterministic follow-on funding multiplier calculations over canonical obligation rows.
+
+The follow-on funding multiplier (sometimes called the *leverage ratio* in NASEM's reviews of
+DoD SBIR) is the dollar of non-SBIR federal obligations per dollar of SBIR/STTR investment for
+SBIR-recipient firms.
+"""
 
 from __future__ import annotations
 
@@ -23,11 +28,11 @@ CANONICAL_COLUMNS = (
 
 
 @dataclass(frozen=True)
-class LeverageRatioPolicy:
-    """Explicit semantics for a leverage-ratio run.
+class FollowOnMultiplierPolicy:
+    """Explicit semantics for a follow-on funding multiplier run.
 
     Amounts are net obligations: negative transactions/de-obligations are retained.
-    Ratios with a non-positive SBIR denominator are undefined (``pd.NA``).
+    Multipliers with a non-positive SBIR denominator are undefined (``pd.NA``).
     """
 
     include_sttr: bool = True
@@ -44,7 +49,7 @@ class LeverageRatioPolicy:
 
 
 @dataclass(frozen=True)
-class LeverageRatioResult:
+class FollowOnMultiplierResult:
     company: pd.DataFrame
     agency: pd.DataFrame
     cohort: pd.DataFrame
@@ -64,13 +69,13 @@ def _safe_ratio(numerator: pd.Series, denominator: pd.Series) -> pd.Series:
 
 def _aggregate(rows: pd.DataFrame, dimensions: list[str]) -> pd.DataFrame:
     # ``rows`` arrives already filtered to ``accepted_match == True`` (see
-    # calculate_leverage_ratios), so per-stratum ``matched_record_count`` would
+    # calculate_follow_on_multipliers), so per-stratum ``matched_record_count`` would
     # always equal ``record_count`` and adds no information. Match-coverage stats
     # are surfaced at the run level via the ``quality`` DataFrame.
     columns = dimensions + [
         "sbir_funding_denominator",
         "non_sbir_obligations_numerator",
-        "leverage_ratio",
+        "follow_on_multiplier",
         "record_count",
         "company_count",
         "mean_match_confidence",
@@ -87,22 +92,22 @@ def _aggregate(rows: pd.DataFrame, dimensions: list[str]) -> pd.DataFrame:
         mean_match_confidence=("match_confidence", "mean"),
         min_match_confidence=("match_confidence", "min"),
     ).reset_index()
-    output["leverage_ratio"] = _safe_ratio(
+    output["follow_on_multiplier"] = _safe_ratio(
         output["non_sbir_obligations_numerator"], output["sbir_funding_denominator"]
     )
     return output[columns]
 
 
-def calculate_leverage_ratios(
+def calculate_follow_on_multipliers(
     obligations: pd.DataFrame,
     *,
-    policy: LeverageRatioPolicy = LeverageRatioPolicy(),
+    policy: FollowOnMultiplierPolicy = FollowOnMultiplierPolicy(),
     adjustment_factors: pd.DataFrame | None = None,
-) -> LeverageRatioResult:
-    """Calculate traceable company, agency, cohort, and fiscal-year leverage ratios.
+) -> FollowOnMultiplierResult:
+    """Calculate traceable company, agency, cohort, and fiscal-year follow-on funding multipliers.
 
     ``obligations`` must be canonical, transaction-level rows. Unmatched and low-confidence
-    rows are retained in the quality table but excluded from ratio calculations.
+    rows are retained in the quality table but excluded from multiplier calculations.
     """
 
     missing = sorted(set(CANONICAL_COLUMNS) - set(obligations.columns))
@@ -143,7 +148,7 @@ def calculate_leverage_ratios(
         ]
     )
     rows = rows[rows["accepted_match"]].copy()
-    # The agency ratio is for that agency's SBIR/STTR-firm universe. Keep all of a
+    # The agency multiplier is for that agency's SBIR/STTR-firm universe. Keep all of a
     # firm's transactions only when the firm has an accepted SBIR row at that agency.
     eligible_pairs = rows.loc[
         rows["is_sbir"].astype(bool), ["company_id", "agency"]
@@ -174,7 +179,7 @@ def calculate_leverage_ratios(
     rows["non_sbir_amount"] = rows["obligation_amount"].where(~rows["is_sbir"].astype(bool), 0.0)
     strata = ["company_id", "agency", "cohort_year", "firm_size", "technology_area", "experience"]
     company = _aggregate(rows, strata)
-    return LeverageRatioResult(
+    return FollowOnMultiplierResult(
         company=company,
         agency=_aggregate(rows, ["agency"]),
         cohort=_aggregate(

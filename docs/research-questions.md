@@ -17,7 +17,7 @@ respected so foundational work appears before dependents.
 
 **Where to start, by audience:**
 
-- **Policymakers** (Congress, OMB, agency leadership, congressional defense committees): start with the **DoD leverage ratio** question (Section **A3**, inferential tier; reproduces NASEM's ~4:1 benchmark), **D2** (Treasury ROI / tax receipts from SBIR spending), and **F3** (private-to-SBIR leverage as the mirror to the DoD leverage ratio on the private side).
+- **Policymakers** (Congress, OMB, agency leadership, congressional defense committees): start with the **DoD follow-on funding multiplier** question (Section **A3**, inferential tier; reproduces NASEM's ~4:1 benchmark — NASEM calls this quantity the *leverage ratio*), **D2** (Treasury ROI / tax receipts from SBIR spending), and **F3** (private-to-SBIR leverage as the private-side mirror to the DoD follow-on funding multiplier).
 - **SBIR program managers** (NSF, NIH, DoD, DOE, SBA program offices): start with **B** (transitions, Phase II→III latency, company performance), **C1** (cross-agency CET portfolio composition), and **E6** (rolling quarterly snapshots / continuous monitoring).
 - **Investors** (VC, PE, angels, family offices, corporate VC): start with **F1** (Form D fundraising profile, M&A exit rate by funding agency, capital-event timeline) and **F2** (cohort outcomes vs. published VC/PE baselines, acquirer-type concentration).
 - **OSTP / congressional oversight** (OSTP, armed-services / science / small-business committees): start with the **choke-point fragility watchlist** (Section **A4**, A-CP13 — the flagship composite) and the **capability density & choke-point concentration map** (Section **A1**, A-CP1/A-CP2/A-CP3). The choke-point questions are research targets, not yet scoped or implemented — see their inline status labels.
@@ -83,18 +83,18 @@ Two lenses run through every tier below — **capability** (does SBIR/STTR build
 
 ### A3. Inferential (Tier 3)
 
-**DoD leverage ratio.**
+**DoD follow-on funding multiplier** (NASEM calls this the *leverage ratio*).
 
-- What is the aggregate leverage ratio (non-SBIR DoD obligations ÷ SBIR/STTR obligations) for DoD SBIR firms? **Target: reproduce NASEM's ~4:1 for 2012–2020** [L1][L2] — [../specs/leverage-ratio-analysis/](../specs/leverage-ratio-analysis/) (FPDS contract-node ingestion: [../specs/load-contract-nodes/](../specs/load-contract-nodes/)). *(deps: ER, ID)*
-- How does the leverage ratio stratify by award vintage, firm size, technology area, and firm experience (new vs. repeat)? NASEM reports SBIR firms = ~1/3 of DoD's extramural R&D base [L1]. *(deps: ER, ID, CET)*
-- How is the leverage ratio changing over time? *(deps: ER, ID)*
-- What is the leverage ratio for civilian agencies (e.g., DOE)? Myers & Lanahan [L9] and NASEM DOE [L5] supply baselines. *(deps: ER, ID)*
+- What is the aggregate follow-on funding multiplier (non-SBIR DoD obligations ÷ SBIR/STTR obligations) for DoD SBIR firms? **Target: reproduce NASEM's ~4:1 for 2012–2020** [L1][L2] — [../specs/follow-on-multiplier-analysis/](../specs/follow-on-multiplier-analysis/) (FPDS contract-node ingestion: [../specs/load-contract-nodes/](../specs/load-contract-nodes/)). *(deps: ER, ID)*
+- How does the multiplier stratify by award vintage, firm size, technology area, and firm experience (new vs. repeat)? NASEM reports SBIR firms = ~1/3 of DoD's extramural R&D base [L1]. *(deps: ER, ID, CET)*
+- How is the multiplier changing over time? *(deps: ER, ID)*
+- What is the multiplier for civilian agencies (e.g., DOE)? Myers & Lanahan [L9] and NASEM DOE [L5] supply baselines. *(deps: ER, ID)*
 
 **Concentration & choke-point inference.**
 
 - **(vuln) Concentration-as-fragility** — single-firm or thin-base dominance within a CET cluster, read as risk rather than capability (the A1 HHI inverted, including geographically narrow bases). Has the base for a given area thinned or thickened over time, and which sole-supplier firms would, if acquired or lost, remove a capability with no in-program substitute? **[Answerable now]** *(deps: ER, CET)*
 - **(vuln) Composite fragility inference per CET area** *(A-CP10)* — combine concentration (A-CP1/A-CP2), geographic narrowness (A-CP3), transition-thinness (A-CP5), and new-entrant deficit (A-CP7) into a per-area fragility judgment that flags areas concentrated, failing to graduate, and starved of new entrants at once [L28][L30]. **[Research target — not yet scoped]** *(deps: CET, ER, ID, NAICS, transitions)*
-- **(vuln) Program leverage at choke points** *(A-CP11; LOWER-BOUND proxy — EDGAR captures only disclosed private capital)* — the DoD leverage ratio above and the private-to-SBIR leverage ratio (**F3**) sliced to choke-point firms: does thin-base concentration coincide with low or high leverage? Anchor to the verifiable DoD SBIR Fast Track match of up to four SBIR dollars per outside-investor dollar [L33] and NSF's reported portfolio leverage [TODO: verify NSF primary source for the ~18:1 figure — found only in trade press, not confirmed against an NSF publication; do not state as fact until verified]. **[Research target — not yet scoped]** *(deps: ER, ID, SEC EDGAR, CET)*
+- **(vuln) Program leverage at choke points** *(A-CP11; LOWER-BOUND proxy — EDGAR captures only disclosed private capital)* — the DoD follow-on funding multiplier above and the private-to-SBIR leverage ratio (**F3**) sliced to choke-point firms: does thin-base concentration coincide with low or high leverage? Anchor to the verifiable DoD SBIR Fast Track match of up to four SBIR dollars per outside-investor dollar [L33] and NSF's reported portfolio leverage [TODO: verify NSF primary source for the ~18:1 figure — found only in trade press, not confirmed against an NSF publication; do not state as fact until verified]. **[Research target — not yet scoped]** *(deps: ER, ID, SEC EDGAR, CET)*
 - **(vuln) Foreign-acquisition-pathway inference** *(A-CP12; LOWER-BOUND proxy — only disclosed/structured ownership and M&A signals are detectable, not private beneficial ownership)* — from disclosed ownership structure and M&A signals, infer which choke-point firms sit on a plausible foreign-acquisition pathway, screened against the restricted-entity lists [L26] and GAO's foreign-dependence findings [L30]. **[Research target — not yet scoped]** *(deps: ER, SEC EDGAR, M&A signals, CET)*
 
 ### A4. Risk, monitoring & prediction (Tier 4)
@@ -212,7 +212,7 @@ placeholder, never wired into the M&A pipeline, and was removed in PR #317.*
 ### D3. Uncertainty & reconciliation (Tier 3)
 
 - How robust are fiscal return estimates to parameter uncertainty (sensitivity bands)? *(deps: full fiscal model)*
-- What are match rates and entity-resolution coverage needed to reconcile to NASEM leverage and impact figures [L1][L2]? *(deps: ER, ID)*
+- What are match rates and entity-resolution coverage needed to reconcile to NASEM follow-on funding multiplier and impact figures [L1][L2]? *(deps: ER, ID)*
 - Are tax-impact estimates more credible when derived from BEA NIPA tables [L22] than from hardcoded effective rates? Does state-specific variation (e.g., TX with no income tax vs. CA at 13.3%) materially change state-by-state ROI estimates? *(deps: NIPA rate provider, state rate provider)*
 
 ## E. Program management & data infrastructure
@@ -286,7 +286,7 @@ This area treats the SBIR awardee as a **firm with a capital history**, not as a
 
 ### F3. Inferential (Tier 3)
 
-- What is the **private-to-SBIR leverage ratio** (private capital raised ÷ SBIR funding) by agency, vintage, and firm size? The private-side mirror to NASEM's 4:1 DoD non-SBIR-federal leverage [L1] — [../specs/form-d-pipeline/](../specs/form-d-pipeline/), [../specs/agency-private-capital-comparison/](../specs/agency-private-capital-comparison/). *(deps: ER, ID, SEC EDGAR)*
+- What is the **private-to-SBIR leverage ratio** (private capital raised ÷ SBIR funding) by agency, vintage, and firm size? The private-side mirror to NASEM's 4:1 DoD follow-on funding multiplier [L1] — [../specs/form-d-pipeline/](../specs/form-d-pipeline/), [../specs/agency-private-capital-comparison/](../specs/agency-private-capital-comparison/). *(deps: ER, ID, SEC EDGAR)*
 - For Phase II awardees of any agency, do follow-on funding and exit outcomes match the published private-capital-backed-startup baselines from the NVCA Yearbook [L25]? *(PR #321 merged, supersedes #311; agency-parameterized via the `agency_private_capital_baseline_comparison` asset in group `agency_private_capital`, terminology changed from "VC" to "private capital")* *(deps: ER, SEC EDGAR)*
 - Does SBIR funding crowd in or crowd out subsequent private capital? **Target: reproduce or extend Howell's finding that an early-stage DOE SBIR grant roughly doubles the probability of subsequent VC** [L11]. Compare against Kortum & Lerner [L24] on VC's contribution to innovation. *(deps: ER, ID, SEC EDGAR)*
 - Does the Lerner [L10] finding — SBIR growth effects concentrated in VC-rich zip codes — still hold post-2010 and across all eleven agencies? *(deps: ER, ID, SEC EDGAR)*
@@ -389,7 +389,7 @@ Public studies the inventory draws from or benchmarks against.
 **Open [TODO: verify] items from the choke-point set (resolve before relying on the figures):**
 
 - **A-CP11 / NSF ~18:1 portfolio leverage** — the ~18:1 private-to-public figure was found only in trade press, not confirmed against an NSF publication (NSF primary pages returned 403 during the review; a separate NSF page cites "$6.5B private investment since 2015," which does not reconcile). Marked `[TODO: verify]` inline and **not stated as fact**. The DoD Fast Track 1:4 anchor [L33] is verified.
-- **A3 / "4:1 NASEM" leverage attribution** — the existing A3 (Inferential — DoD leverage ratio) "~4:1" figure and its NASEM attribution [L1][L2] were left untouched in this pass per scope. `[TODO: verify A3 4:1 attribution against NASEM source]` before the next citation audit relies on it.
+- **A3 / "4:1 NASEM" multiplier attribution** — the existing A3 (Inferential — DoD follow-on funding multiplier) "~4:1" figure and its NASEM attribution [L1][L2] were left untouched in this pass per scope. `[TODO: verify A3 4:1 attribution against NASEM source]` before the next citation audit relies on it.
 
 When this doc is reviewed next, the audit should cover:
 
