@@ -745,7 +745,7 @@ The 43 contracts that still score LOW (<0.40) reveal a interesting pattern. **Th
 
 #### Why HIGH and LIKELY bands are still unreachable
 
-Even with 4 of 6 signals firing (agency, timing, competition, text similarity), the realistic ceiling is **~0.63** (base 0.15 + agency 0.0625 + timing 0.20 + sole-source 0.04 + text-sim 0.18 max). The remaining patent and CET signals contribute at most +0.10 combined — leaving the all-signals ceiling at ~0.74, just barely into the LIKELY (≥0.65) band.
+Even with 4 of 6 signals firing (agency, timing, competition, text similarity), the realistic ceiling is **~0.63** (base 0.15 + agency 0.0625 + timing 0.20 + sole-source 0.04 + text-sim 0.18 max). The remaining patent and CET signals contribute at most +0.020 combined when the configured per-signal weights are applied (patent: 0.15 weight × 0.10 max raw bonus = 0.015; CET: 0.10 weight × 0.05 raw bonus = 0.005) — leaving the all-signals ceiling at ~0.65, exactly at the LIKELY (≥0.65) threshold.
 
 The HIGH (≥0.85) threshold was calibrated against the labeled transition benchmark assuming all signals are highly aligned — text similarity ~0.9, patents present, CET match, and timing within 3 months. That combination is rare in the keyword-discoverable universe (which is where the labeled benchmark lives) and even rarer in the missed bucket. The HIGH band is the boundary for "essentially certain Phase III transition with full evidence stack." Most real Phase III work doesn't hit that bar even when it clearly IS Phase III.
 
@@ -788,7 +788,7 @@ Results:
 
 The sparsity on contract descriptions is structural: the CET taxonomy keywords are technology-area terms ("artificial intelligence", "advanced manufacturing"), but Phase III contract descriptions tend to use product-specific terminology ("MK54 MOD1 LWT KITS LRIP", "DESIGN OF MK 48 MOD 7 G&C SECTION", "T-45 HUD PRODUCTION UNITS") that doesn't contain the CET vocabulary. Where the classifier *did* fire on contracts, 134 of 135 matches aligned with the firm's P2 CET set — **high precision (99%), but low recall**.
 
-Effect on scoring: the CET signal's max contribution is +0.005 (weight 0.10 × match bonus 0.05), and it only fires for 7.4% of contracts. Total dollar share in the POSSIBLE band moved from 79.4% (3 signals) to 88.7% (with CET, but without ModernBERT text similarity in the same run) — a directional improvement, but small. Combining CET with the ModernBERT text-similarity signal would push to ~97% of dollars — marginal additional lift over text similarity alone (96.4%).
+Effect on scoring: the CET signal's max contribution is +0.005 (weight 0.10 × match bonus 0.05), and it only fires for 7.4% of contracts. Total dollar share in the POSSIBLE band moved from 79.4% (4 signals: agency + timing + base + competition) to 88.7% (with CET added, but without ModernBERT text similarity in the same run) — a directional improvement, but small. Combining CET with the ModernBERT text-similarity signal would push to ~97% of dollars — marginal additional lift over text similarity alone (96.4%).
 
 **Conclusion:** keyword-based CET is too sparse to be worth the integration cost given we already have ModernBERT text similarity. A semantic-CET approach (embed taxonomy definitions, cosine-similarity to contracts) would likely fix the sparsity, but is a meaningful detour and the analytical conclusion is already established.
 
@@ -812,7 +812,7 @@ To proceed with patent data would require one of:
 2. **Google Patents Public Datasets on BigQuery** — free dataset, requires GCP credentials
 3. **Browser-based manual download via the ODP UI** — the existing `scripts/data/download_uspto_browser.py` was built for this but was not run
 
-**Decision: skipped.** The patent signal's max contribution is +0.10 (weight 0.15 × max-bonus combination); even if every contract had patents that aligned perfectly, the score ceiling would move from ~0.61 to ~0.71 — pushing some contracts into the LIKELY band for the first time but not changing the substantive conclusion (broad-definition Phase III is already triple-corroborated at 96.4% dollar share with positive derivation signals).
+**Decision: skipped.** The patent signal's max contribution after applying the configured weight is +0.015 (weight 0.15 × max raw bonuses 0.05 + 0.03 + 0.02 = 0.10); even if every contract had patents that aligned perfectly, the score ceiling would move from ~0.61 to ~0.625 — not enough to push contracts into the LIKELY band, and not changing the substantive conclusion (broad-definition Phase III is already triple-corroborated at 96.4% dollar share with positive derivation signals).
 
 When formal LIKELY-band claims are required for the analysis — e.g., for an external publication that needs the full calibrated signal stack — the patent acquisition should be revisited via path 1 (ODP API key). For the current analysis (which characterizes the broad-definition vs keyword-discoverable universe gap), patent data is diminishing-returns territory.
 
