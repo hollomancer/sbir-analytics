@@ -172,7 +172,9 @@ class TaxEstimationTool(BaseTool):
 
                 # Tax estimates — federal income rate is year-stamped via NIPA;
                 # FICA payroll rate is statutory and stays a module constant.
-                fy_int = int(fy) if fy is not None else assessment_year
+                # `fy` comes from a pandas row, so missing values are typically
+                # NaN (not None); `int(np.nan)` would raise ValueError.
+                fy_int = int(fy) if fy is not None and pd.notna(fy) else assessment_year
                 individual_income_rate = rate_provider.get_rates(fy_int).federal_income_rate
                 individual_income_tax = wages * individual_income_rate
                 payroll_tax = wages * PAYROLL_TAX_RATE

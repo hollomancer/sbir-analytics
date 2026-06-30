@@ -71,13 +71,15 @@ literal sitting in a config default.
 
 #### Acceptance Criteria
 
-1. THE System SHALL persist fetched / baseline rates to
+1. THE System SHALL persist fetched (API-sourced) rates to
    `data/reference/bea/nipa_tax_rates.parquet` (one row per `(year, source)`)
-   with columns: `year`, `source` (`nipa_api` | `nipa_baseline`),
+   with columns: `year`, `source` (`nipa_api`),
    `federal_income_rate`, `federal_payroll_rate`, `federal_corporate_rate`,
    `federal_excise_rate`, `state_local_income_rate`, `state_local_sales_rate`,
    `state_local_property_rate`, `state_local_other_rate`, `fetched_at`
-   (UTC timestamp).
+   (UTC timestamp). Baseline rates are NOT written to the parquet cache —
+   they are deterministic from `_BASELINE_RATES` and caching them adds no
+   value.
 2. THE System SHALL, on `NIPARateProvider.get_rates(year)`, check the on-disk
    parquet **before** hitting the BEA API; in-memory cache short-circuits both.
 3. THE System SHALL, on a successful API fetch, append (or upsert on

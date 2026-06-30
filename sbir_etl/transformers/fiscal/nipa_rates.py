@@ -20,6 +20,8 @@ Rate calculation:
 
 from __future__ import annotations
 
+import os
+import tempfile
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -252,6 +254,14 @@ class NIPARateProvider:
         except Exception as e:  # pragma: no cover - corrupt cache is unusual
             logger.warning(f"NIPA parquet cache read failed ({self._cache_path}): {e}")
             return None
+        required_cols = {"year", "source", *_PARQUET_RATE_COLUMNS}
+        if not required_cols.issubset(df.columns):
+            missing = required_cols - set(df.columns)
+            logger.warning(
+                f"NIPA parquet cache at {self._cache_path} missing columns {missing}; "
+                "ignoring cache and falling back to fetch/baseline"
+            )
+            return None
         rows = df[df["year"] == year]
         if rows.empty:
             return None
@@ -299,10 +309,22 @@ class NIPARateProvider:
         else:
             combined = row
 
-        # Atomic write: temp file in the same directory, then rename.
-        tmp = self._cache_path.with_suffix(self._cache_path.suffix + ".tmp")
-        combined.to_parquet(tmp, index=False)
-        tmp.replace(self._cache_path)
+        # Atomic write: unique temp file in the same directory, then rename.
+        # Using mkstemp avoids races when multiple processes refresh concurrently
+        # (a fixed ".tmp" suffix would collide and corrupt the cache).
+        fd, tmp_name = tempfile.mkstemp(dir=self._cache_path.parent, suffix=".parquet.tmp")
+        os.close(fd)
+        tmp_path = Path(tmp_name)
+        try:
+            combined.to_parquet(tmp_path, index=False)
+            os.replace(tmp_path, self._cache_path)
+        except Exception:
+            # Clean up the orphaned temp file so we don't leak junk in the cache dir.
+            try:
+                tmp_path.unlink(missing_ok=True)
+            except OSError:
+                pass
+            raise
 
     def _get_baseline(self, year: int) -> NIPATaxRates:
         """Return hardcoded baseline rates for the given year."""
