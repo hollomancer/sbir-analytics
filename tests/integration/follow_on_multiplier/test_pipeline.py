@@ -24,8 +24,7 @@ def test_production_shaped_inputs_to_reconciliation_report():
     result = calculate_follow_on_multipliers(canonical)
     report = reconcile_nasem(result.agency, methodology="deterministic fixture")
     assert (
-        report["observed"]
-        == result.agency.query("agency == 'DOD'").iloc[0]["follow_on_multiplier"]
+        report["observed"] == result.agency.query("agency == 'DOD'").iloc[0]["follow_on_multiplier"]
     )
     assert report["implementation_error"] is False
     assert "methodological" in reconciliation_markdown(report).lower()
