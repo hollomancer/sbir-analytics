@@ -21,8 +21,8 @@ connector), covering 2019–2026.
   candidates, full metadata.
 - [`recommended_citation_additions.csv`](recommended_citation_additions.csv) — top-5-per-area
   scored shortlist.
-- [`proposed-L-entries.md`](proposed-L-entries.md) — **paste-ready** `[L34]–[L47]` benchmark
-  entries (14 SBIR-specific works, verified DOIs/authors via OpenAlex), formatted to drop into
+- [`proposed-L-entries.md`](proposed-L-entries.md) — **paste-ready** `[L34]–[L46]` benchmark
+  entries (13 SBIR-specific works, verified DOIs/authors via OpenAlex), formatted to drop into
   `research-questions.md`. Advisory — not yet merged.
 
 **Spec implementation-status survey**
