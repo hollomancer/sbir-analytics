@@ -175,17 +175,21 @@ class TestTaxEstimationTool:
         summary = result.data["summary"]
         assert summary["track_a"]["total_estimated_tax_receipts"] == 0.0
 
-    def test_default_tax_rates(self):
+    def test_default_tax_rates(self, tmp_path):
         """Sanity-check the rate inputs the tool uses.
 
         The SOI corporate-effective-rate dict and the statutory FICA constant
         live in this module; the individual income effective rate now comes from
         NIPARateProvider — assert its baseline falls in a plausible range so
         a wildly-off NIPA refresh is caught here.
+
+        Pass an explicit ``cache_path`` so the test is hermetic and doesn't
+        read whatever happens to be in the developer's repo cache.
         """
         assert "Manufacturing" in DEFAULT_EFFECTIVE_TAX_RATES
         assert 0 < PAYROLL_TAX_RATE < 0.5
-        baseline = NIPARateProvider().get_rates().federal_income_rate
+        provider = NIPARateProvider(cache_path=tmp_path / "nipa_cache.parquet")
+        baseline = provider.get_rates().federal_income_rate
         assert 0 < baseline < 0.5
 
     def test_limitation_disclosure(self):
