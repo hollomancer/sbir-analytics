@@ -275,8 +275,12 @@ class TestStateRateProviderCsvLoading:
     def test_default_construction_uses_hardcoded_dict(self):
         """Req 2.1: csv_path=None → backwards-compatible hardcoded fallback."""
         provider = StateRateProvider()
-        # Identity check: provider should be backed by the same dict, not a copy.
-        assert provider._rates is _STATE_RATES_2024
+        # Behavior assertion: the provider exposes exactly the baseline rates,
+        # state-for-state — without coupling to internal storage.
+        assert set(provider.states) == set(_STATE_RATES_2024.keys())
+        for state, expected in _STATE_RATES_2024.items():
+            actual = provider.get_rates(state)
+            assert actual == expected, state
 
     def test_explicit_rates_override_takes_precedence(self):
         """The legacy `rates=` argument wins over csv_path (test-injection path)."""
