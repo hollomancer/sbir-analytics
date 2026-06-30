@@ -1,0 +1,21 @@
+spec,area,title,status,evidence
+merger_acquisition_detection,A,SBIR-firm M&A / exit detection,Implemented,'Implemented and merged'; script-driven (detect_sbir_ma_events.py)
+sbir_ma_match_rate_by_fy,A,SBIR M&A match rate by fiscal year,Implemented,Enrichment pipeline emits JSONL artifacts
+company-categorization,B,Product/service/mixed firm categorization,Implemented,Multiple 'Completed' assets; 51% threshold in runtime schema
+phase-3-solicitation-alerts,B,Phase III solicitation/award candidate alerts,Implemented,Filters implemented as pandas predicates
+unify-company-into-organization,E,Unify Company → Organization node label,Implemented,Design + migration; categorization keyed on Organization UEIs
+unify-graph-node-labels,E,Unify graph node labels,Implemented,Design doc; node-label unification
+sbir-cohort-design,F,SBIR capital-cohort definition,Implemented,'Implemented and merged'
+cross-agency-taxonomy,C,Cross-agency CET portfolio view (C1a–c),Partial,"Tools live (portfolio metrics/HHI, clustering, gap detection, CET classifier); end-to-end Dagster reporting asset missing"
+modernbert_analysis_layer,C,Semantic patent–award similarity (C2b),Partial,Core embeddings (~488 LOC) live; Bayesian MoE / LoRA routing deferred
+state-local-tax-rates,D,State & local effective tax-rate reference,Partial,'Not yet started — but significant existing implementation'; Req 1+2 out of scope for PR
+data-imputation,E,Imputed fields for missing solicitation data,Partial,Three-tier confidence ImputationEntry implemented; some source fields not yet captured
+load-contract-nodes,E,RESULTED_IN → CONTRACT FinancialTransaction nodes,Partial,Status table in design.md; mixed piece-by-piece
+naics-enricher-consolidation,A,NAICS enricher consolidation,Spec / requirements,requirements.md; consolidation pending
+ucc1-financing-analysis,A/F,UCC-1 secured-debt distress signal (A-CP9),Spec / design,Detailed portal-level design; data acquisition pending
+iterative_api_enrichment,E,Iterative API enrichment loop,Spec / design,design.md only; no status banner
+weekly-awards-report-refactor,E,Weekly awards report refactor,Spec / requirements,requirements.md
+agency-private-capital-comparison,F,SBIR vs private-capital comparison (NSF target),Spec / design,Design doc present; agency-parameterized comparison not flagged implemented
+ot-consortium-subaward-attribution,A,OT consortium sub-award attribution (FFATA/FSRS),Spec only,'spec only' banner
+leverage-ratio-analysis,A,"DoD leverage ratio (A3, ~4:1 NASEM target)",Not started,"Spec design-only; prerequisites (ER, ID, USAspending) live on main"
+patent-cost-spillover,C,Marginal cost per patent + spillover (C3a–c),Not started,"Design-only, zero code; targets Myers & Lanahan ~3×"
