@@ -49,9 +49,10 @@
   YAML. Frozen dataclasses; tested.
 - **`published_baselines.yaml`** — 5 entries today: `nvca_seed_to_series_a`,
   `bls_bed_5yr_survival`, `lerner_growth_effect`, `howell_followon_vc`,
-  `itif_seed_fund_framing`. All paired against the **three** cohort metrics
+  `itif_seed_fund_framing`. All paired against the **four** cohort metrics
   `outcomes.py` produces today: `phase_i_to_ii_graduation`,
-  `phase_ii_to_federal_contract_transition`, `five_year_survival_proxy`.
+  `phase_ii_to_federal_contract_transition`, `five_year_survival_proxy`,
+  `ma_exit_rate`.
 - **`reconcile.py`** — iterates the registry, joins to outcomes on
   `cohort_metric == metric`, emits one row per (metric, baseline) pair with a
   curated `_ATTRIBUTION` narrative explaining the cohort-vs-baseline
@@ -74,10 +75,14 @@ Three problems:
    require restructuring or duplicating storage.
 
 2. **Each new baseline needs a paired SBIR-side cohort metric in
-   `outcomes.py`.** `reconcile.py` only emits records for metrics that exist
-   on both sides. Adding "median seed deal size" as a baseline does nothing
-   until `median_form_d_round_size_phase_ii` (or similar) is also implemented.
-   Original spec didn't acknowledge the paired-work requirement.
+   `outcomes.py`.** When a baseline's `cohort_metric` has no matching rows
+   in outcomes, `reconcile.py` emits an "empty" record (`cohort_available=False`,
+   numeric fields `None`) rather than skipping the pair — useful for surfacing
+   gaps but the comparison row carries no SBIR-side numerator. Adding
+   "median seed deal size" as a baseline produces only empty rows until
+   `median_form_d_round_size_phase_ii` (or similar) is implemented in
+   `outcomes.py`. Original spec didn't acknowledge the paired-work
+   requirement.
 
 3. **F3 anchor is mis-stated.** F3's canonical metric per
    `docs/research-questions.md:289` is the private-to-SBIR leverage ratio,
@@ -112,8 +117,9 @@ anchor — not a deal-size analogue that the public reader won't recognize.
 #### Acceptance Criteria
 
 1. THE System SHALL append additional `kind: rate` NVCA Yearbook entries to
-   `published_baselines.yaml`, each with `as_of`, `population`, `citation`
-   (e.g. "NVCA (2024). NVCA Yearbook 2024, p. NN"), and `citation_url`.
+   `config/agency_private_capital/published_baselines.yaml`, each with
+   `as_of`, `population`, `citation` (e.g. "NVCA (2024). NVCA Yearbook 2024,
+   p. NN"), and `citation_url`.
 2. EACH new NVCA entry SHALL be paired with a `cohort_metric` value that is
    **already implemented** in `outcomes.py`, or paired with a new metric
    added under Requirement 2.
@@ -129,7 +135,7 @@ anchor — not a deal-size analogue that the public reader won't recognize.
 1. EACH new baseline added under Requirement 1 SHALL be paired with a
    matching `outcomes.py` cohort metric — either an existing one
    (`phase_i_to_ii_graduation`, `phase_ii_to_federal_contract_transition`,
-   `five_year_survival_proxy`) or a newly added metric that
+   `five_year_survival_proxy`, `ma_exit_rate`) or a newly added metric that
    `agency_private_capital_outcomes` emits.
 2. WHEN adding a new cohort metric, THE System SHALL also add a
    corresponding `_ATTRIBUTION` entry in `reconcile.py` explaining the
