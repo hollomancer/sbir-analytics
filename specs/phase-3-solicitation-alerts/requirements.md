@@ -1,5 +1,33 @@
 # Phase III Solicitation & Award Candidate Alerts — Requirements
 
+> **Status:** Not yet started.
+> Supports inventory questions **B2 / B3 / B4 / E1 / E6 / E5** in [docs/research-questions.md](../../docs/research-questions.md).
+
+**Research question anchor:** B2 / B3 / B4 / E1 / E6 / E5 — Phase III identification, solicitation alerting, and FPDS data-gap measurement
+**Answers for:** SBIR program managers, GAO/SBA oversight analysts, pipeline engineers
+**Complexity tier:** Relational (Tier 2)
+
+---
+
+## Done when
+
+> For FY [N], the pipeline identified [X] HIGH-confidence `RETROSPECTIVE` candidates (Phase III contracts not coded as such in FPDS); a hand-audited 100-row sample shows [P]% true-positive rate (≥85% target). The pipeline surfaced [Y] `DIRECTED` and [Z] `FOLLOWON` candidates; outputs written to `data/processed/phase_iii_candidates.parquet` and evidence to `data/processed/phase_iii_evidence.ndjson`. The `agencies_with_zero_phase_iii` list shrank by [Δ] agencies relative to the pre-`RETROSPECTIVE` baseline.
+
+---
+
+## User Stories
+
+**As an SBIR program manager tracking whether prior awardees receive follow-on contracts,**
+I want sole-source and directed-award notices from SAM.gov surfaced as `DIRECTED` Phase III candidates linked to prior awards, so that I can identify opportunities my agency's awardees are likely eligible for under the Phase III sole-source authority.
+
+**As a GAO/SBA oversight analyst measuring Phase III undercount in FPDS,**
+I want a scored list of `RETROSPECTIVE` candidates — contracts that fit Phase III criteria but are not coded as such in FPDS — with ≥85% precision on a hand-audited sample, so that I can quantify the Phase III data-quality gap cited in GAO-24-107036 and report how many agencies previously showed zero Phase III activity.
+
+**As a pipeline engineer maintaining the Phase III detection asset,**
+I want a CI backtest that fails when `RETROSPECTIVE` HIGH precision drops below 0.85, so that any change to scoring logic is immediately validated against the DoD-coded Phase III ground truth before it reaches production.
+
+---
+
 Research-question anchors: **B2, B3, B4, E1, E6**, and the open evaluation in
 **E5** ("Does the SAM.gov Opportunities API replace agency-page scraping?").
 Narrows the Phase III undercount flagged as a threat-to-validity in
@@ -136,7 +164,7 @@ cadence, and precision targets.
    solicitation is not statutory Phase III and must not be described as
    such.
 
-## Gate condition
+## Done when (reference)
 
 The spec is done when we can state:
 

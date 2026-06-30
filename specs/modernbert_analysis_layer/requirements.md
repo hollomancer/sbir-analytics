@@ -1,4 +1,19 @@
-# Requirements Document
+# Requirements — ModernBert Analysis Layer
+
+> **Status:** Not yet started. Requirements 5–7 (Bayesian MoE routing) are flagged for scope review before implementation.
+> Supports inventory question **C2** (patent–award semantic similarity) in [docs/research-questions.md](../../docs/research-questions.md).
+
+**Research question anchor:** C2 — patent–award semantic similarity via ModernBert embeddings
+**Answers for:** pipeline engineers, defense industrial base analysts
+**Complexity tier:** Relational (Tier 2)
+
+---
+
+## Done when
+
+> A pipeline engineer can state: "Querying `SIMILAR_TO` edges in Neo4j returns the top-N SBIR awards most semantically similar to a given patent. Embedding coverage is ≥95% for awards and ≥98% for patents. The CET cohesion check passes. Requirements 5–7 (Bayesian MoE routing) are deferred pending scope review."
+
+---
 
 ## Introduction
 
@@ -33,7 +48,7 @@ The system will use Hugging Face's hosted Inference API by default (no local GPU
 
 ### Requirement 1
 
-**User Story:** As a data scientist, I want to compute dense embeddings for patents and awards using ModernBert, so that I can perform semantic analysis and similarity matching across the SBIR ecosystem.
+**User Story:** As a pipeline engineer building the semantic similarity layer, I want to compute dense embeddings for patents and awards using ModernBert, so that downstream assets can perform semantic analysis and similarity matching across the SBIR ecosystem.
 
 #### Acceptance Criteria
 
@@ -45,7 +60,7 @@ The system will use Hugging Face's hosted Inference API by default (no local GPU
 
 ### Requirement 2
 
-**User Story:** As a researcher, I want to identify semantic similarity between awards and patents, so that I can discover potential technology transfer relationships and prior art connections.
+**User Story:** As an R&D policy researcher, I want to identify semantic similarity between awards and patents, so that I can discover potential technology transfer relationships and prior art connections across the SBIR corpus.
 
 #### Acceptance Criteria
 
@@ -57,7 +72,7 @@ The system will use Hugging Face's hosted Inference API by default (no local GPU
 
 ### Requirement 3
 
-**User Story:** As a system administrator, I want quality validation for the ModernBert analysis pipeline, so that I can ensure data quality and system reliability.
+**User Story:** As a pipeline engineer responsible for data quality, I want quality validation gates for the ModernBert analysis pipeline, so that embedding coverage and cohesion thresholds are enforced before downstream assets consume similarity data.
 
 #### Acceptance Criteria
 
@@ -69,7 +84,7 @@ The system will use Hugging Face's hosted Inference API by default (no local GPU
 
 ### Requirement 4
 
-**User Story:** As a graph database user, I want semantic similarity relationships loaded into Neo4j, so that I can query and visualize award-patent connections alongside existing graph data.
+**User Story:** As a defense industrial base analyst, I want semantic similarity relationships loaded into Neo4j, so that I can query award-patent connections alongside transition and CET graph data to surface technology transfer signals.
 
 #### Acceptance Criteria
 
@@ -81,7 +96,7 @@ The system will use Hugging Face's hosted Inference API by default (no local GPU
 
 ### Requirement 5
 
-**User Story:** As a policy researcher, I want Bayesian MoE classification routing for CET/CPC categories, so that I can quickly categorize patents and SBIR awards into technology domains with calibrated uncertainty before detailed analysis.
+**User Story:** As an R&D policy researcher, I want Bayesian MoE classification routing for CET/CPC categories, so that I can quickly categorize patents and SBIR awards into technology domains with calibrated uncertainty before detailed analysis.
 
 #### Acceptance Criteria
 
@@ -93,7 +108,7 @@ The system will use Hugging Face's hosted Inference API by default (no local GPU
 
 ### Requirement 6
 
-**User Story:** As a researcher, I want Bayesian MoE similarity computation routing, so that I can get robust semantic similarity measures within and across technology categories with uncertainty quantification.
+**User Story:** As an R&D policy researcher, I want Bayesian MoE similarity computation routing, so that I can get robust semantic similarity measures within and across technology categories with uncertainty quantification.
 
 #### Acceptance Criteria
 
@@ -105,7 +120,7 @@ The system will use Hugging Face's hosted Inference API by default (no local GPU
 
 ### Requirement 7
 
-**User Story:** As a technology analyst, I want Bayesian MoE embedding generation routing, so that patents and SBIR awards can be processed by specialized embedding experts optimized for their identified technology domains.
+**User Story:** As an R&D policy researcher, I want Bayesian MoE embedding generation routing, so that patents and SBIR awards can be processed by specialized embedding experts optimized for their identified technology domains.
 
 #### Acceptance Criteria
 
@@ -117,7 +132,7 @@ The system will use Hugging Face's hosted Inference API by default (no local GPU
 
 ### Requirement 8
 
-**User Story:** As a developer, I want the ModernBert analysis layer to be strictly additive, so that existing CET classification and pipeline functionality remains unchanged.
+**User Story:** As a pipeline engineer, I want the ModernBert analysis layer to be strictly additive, so that existing CET classification and pipeline functionality remains unchanged and the feature can be enabled or disabled without affecting other assets.
 
 #### Acceptance Criteria
 

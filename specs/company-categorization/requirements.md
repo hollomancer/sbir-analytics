@@ -1,8 +1,25 @@
-# Requirements Document
+# Company Categorization — Requirements
 
-## Introduction
+> **Status:** 77% complete.
+> Anchors inventory question **B1** in [docs/research-questions.md](../../docs/research-questions.md).
 
-This feature implements a classification system to categorize SBIR companies as Product, Service, or Mixed firms based on their complete federal contract portfolio from USAspending. The system identifies SBIR award recipients, retrieves their full contract history from USAspending, and classifies their business orientation based on contract characteristics. The classification uses a minimal set of data fields (PSC, Contract Type, Pricing, Award Description, SBIR Phase) and applies rule-based logic at both the award level and company level to determine business orientation with confidence scoring.
+**Research question anchor:** B1 — product / service / mixed-mode firm classification
+**Answers for:** SBIR program managers, policy analysts (§638(qq)(3) compliance review)
+**Complexity tier:** Descriptive (Tier 1)
+
+---
+
+## Done when
+
+> An analyst can state: "Of the N SBIR companies in the pipeline, X% are product-leaning,
+> Y% service-leaning, Z% mixed, with high-confidence classifications covering NN% of
+> award dollars. Product-leaning firms show a [higher / lower] Phase II→III transition
+> rate relative to service-leaning firms."
+>
+> The output must be queryable by CET area, agency, and confidence tier so that
+> orientation can be used as a covariate in transition and benchmark analyses.
+
+---
 
 ## Glossary
 
@@ -20,11 +37,17 @@ This feature implements a classification system to categorize SBIR companies as 
 - **Confidence Level**: Classification reliability based on number of awards (Low: <2, Medium: 2-5, High: >5)
 - **PSC Family**: The first character or digit grouping of a PSC code
 
+---
+
 ## Requirements
 
 ### Requirement 1
 
-**User Story:** As a data analyst, I want to retrieve the complete federal contract portfolio for each SBIR company from USAspending, so that I can classify their business orientation based on their full revenue profile rather than just SBIR awards.
+**User Story:** As an SBIR program manager evaluating firm commercialization history,
+I want to retrieve the complete federal contract portfolio for each SBIR company from
+USAspending, so that classification reflects the firm's full federal revenue profile —
+not just SBIR awards — and can support §638(qq)(3) benchmark evaluation and
+transition-effectiveness comparisons.
 
 #### Acceptance Criteria
 
@@ -36,7 +59,10 @@ This feature implements a classification system to categorize SBIR companies as 
 
 ### Requirement 2
 
-**User Story:** As a data analyst, I want to classify individual federal contracts as Product, Service, or R&D based on minimal data fields, so that I can understand the nature of each contract.
+**User Story:** As a pipeline engineer building award-level classification logic, I want
+to classify individual federal contracts as Product, Service, or R&D from PSC and
+contract-type fields alone, so that company-level orientation rests on a consistent,
+auditable per-award classification that does not require manual review.
 
 #### Acceptance Criteria
 
@@ -48,7 +74,10 @@ This feature implements a classification system to categorize SBIR companies as 
 
 ### Requirement 3
 
-**User Story:** As a data analyst, I want to apply description-based inference to award classification, so that I can improve classification accuracy when explicit indicators suggest product orientation.
+**User Story:** As a pipeline engineer improving classification signal coverage, I want
+to apply description-based keyword inference when PSC signals are ambiguous, so that
+prototype, hardware, and device awards are correctly labeled rather than defaulting to
+service classification.
 
 #### Acceptance Criteria
 
@@ -60,7 +89,10 @@ This feature implements a classification system to categorize SBIR companies as 
 
 ### Requirement 4
 
-**User Story:** As a data analyst, I want to adjust award classification for SBIR-specific characteristics, so that I can account for the research-oriented nature of SBIR Phase I and Phase II awards.
+**User Story:** As a pipeline engineer preserving the integrity of SBIR-phase signals,
+I want to override award classification for Phase I and II awards, so that early-stage
+R&D contracts do not inflate a firm's product count and misrepresent its commercial
+orientation.
 
 #### Acceptance Criteria
 
@@ -72,7 +104,10 @@ This feature implements a classification system to categorize SBIR companies as 
 
 ### Requirement 5
 
-**User Story:** As a data analyst, I want to aggregate award classifications at the company level, so that I can determine each company's overall business orientation.
+**User Story:** As an SBIR program manager comparing firm orientations across the
+portfolio, I want award classifications rolled up to a company-level product / service /
+mixed label, so that I can correlate orientation with transition rates and exit outcomes
+and identify whether product-leaning firms systematically outperform service-leaning ones.
 
 #### Acceptance Criteria
 
@@ -84,7 +119,9 @@ This feature implements a classification system to categorize SBIR companies as 
 
 ### Requirement 6
 
-**User Story:** As a data analyst, I want to assign confidence levels to company classifications, so that I can assess the reliability of each classification based on portfolio size.
+**User Story:** As a policy analyst preparing a briefing, I want confidence levels
+assigned to company classifications, so that thin-portfolio results are clearly marked
+and not cited alongside high-confidence findings in published reports.
 
 #### Acceptance Criteria
 
@@ -96,7 +133,9 @@ This feature implements a classification system to categorize SBIR companies as 
 
 ### Requirement 7
 
-**User Story:** As a data analyst, I want to apply override rules for edge cases, so that I can prevent misclassification of companies with unusual portfolio characteristics.
+**User Story:** As a pipeline engineer preventing misclassification of edge-case firms,
+I want override rules for highly diversified portfolios, so that firms spanning many PSC
+families are not misleadingly labeled by a narrow-category majority.
 
 #### Acceptance Criteria
 
@@ -108,7 +147,9 @@ This feature implements a classification system to categorize SBIR companies as 
 
 ### Requirement 8
 
-**User Story:** As a data analyst, I want to generate classification output with complete metadata, so that I can audit and validate the classification results.
+**User Story:** As a pipeline engineer maintaining classification transparency, I want
+full metadata emitted with each company classification, so that any result can be traced
+back to its source awards, PSC families, and override reasons for audit or validation.
 
 #### Acceptance Criteria
 

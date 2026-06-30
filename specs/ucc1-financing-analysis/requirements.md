@@ -1,13 +1,22 @@
 # UCC-1 Financing Analysis — Requirements
 
-**Research questions:** A4 (private capital signals, foreign-acquisition risk,
-M&A exit detection), B3 (Phase II → III latency)
+> **Status:** Pilot complete — PRs #303 / #305 merged. CA-only pilot found
+> equipment-finance and community-bank lender patterns and an absence of venture-debt
+> lenders in the CA-organized channel. See
+> [docs/research/sbir-ucc1-pilot.md](../../docs/research/sbir-ucc1-pilot.md)
+> for findings. Anchors inventory question **F1** (UCC-1 sub-question) in
+> [docs/research-questions.md](../../docs/research-questions.md).
 
-**Status:** Pilot scope, **narrowed after Phase 0** to CA-only against the
-CA-organized subset of the Form D cohort. The original DE+CA scope was not
-achievable on free data — see
-[docs/research/sbir-ucc1-pilot.md](../../docs/research/sbir-ucc1-pilot.md)
-for the Phase 0 findings.
+**Research question anchor:** F1 — secured-debt composition of SBIR firms; A4 — foreign-lender signal
+**Answers for:** entrepreneurial finance researchers, defense industrial base analysts
+**Complexity tier:** Descriptive (Tier 1)
+
+---
+
+## Done when
+
+> *See [Gate Condition](#done-when-pilot-gate-condition) below for the specific
+> quantified statement this pilot was designed to produce.*
 
 ## Background
 
@@ -35,6 +44,20 @@ This spec scopes a **CA-only pilot** answering:
    fraction took secured debt and from whom?*
 2. *Does UCC-3 termination timing line up with known M&A events for that
    subset, making it a usable corroborating / earlier signal?*
+
+## User Stories
+
+**As an entrepreneurial finance researcher benchmarking SBIR-firm capital structure,**
+I want to know what fraction of CA-organized SBIR firms took secured debt and from which
+lender types, so that I can complete the capital-structure picture that Form D's equity
+view leaves out and compare it to VC-backed startup norms.
+
+**As a defense industrial base analyst tracking foreign-capital exposure,**
+I want foreign secured parties flagged in the UCC-1 dataset, so that I can surface
+potential national-security signals (foreign-lender relationships at SBIR firms)
+consistent with the A4 foreign-acquisition-risk question.
+
+---
 
 ## Requirements
 
@@ -72,7 +95,7 @@ This spec scopes a **CA-only pilot** answering:
     IP-collateral parsing, or Neo4j loading in the pilot. Those are
     explicitly out of scope; revisit after pilot results.
 
-## Gate Condition
+## Done when (pilot gate condition)
 
 Can state, on completion:
 

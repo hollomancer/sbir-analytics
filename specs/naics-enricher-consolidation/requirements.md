@@ -1,5 +1,23 @@
 # Requirements — NAICS Enricher Consolidation
 
+> **Status:** Not yet started.
+> Supports inventory questions **D1 / E3** (NAICS coverage and fiscal-impact infrastructure)
+> in [docs/research-questions.md](../../docs/research-questions.md).
+
+**Research question anchor:** D1 / E3 — NAICS code coverage and NAICS→BEA sector mapping
+**Answers for:** pipeline engineers
+**Complexity tier:** Foundational infrastructure
+
+---
+
+## Done when
+
+> A pipeline engineer can state: "`grep -r 'Backward-compat re-export' sbir_etl/` returns
+> zero hits. There is exactly one public class for NAICS→BEA mapping. All pre-existing
+> NAICS tests pass and the golden-file comparison against `naics_to_bea` output is clean."
+
+---
+
 ## Purpose
 
 Reduce the current NAICS enricher surface

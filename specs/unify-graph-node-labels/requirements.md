@@ -1,4 +1,19 @@
-# Requirements Document
+# Requirements — Unify :Award onto :FinancialTransaction (Phase 1)
+
+> **Status:** Implemented — PR #379 merged.
+> Phase 1 of graph label unification. Supports inventory question **E2** (graph schema correctness) in [docs/research-questions.md](../../docs/research-questions.md).
+
+**Research question anchor:** E2 — graph label unification (Phase 1: :Award → :FinancialTransaction)
+**Answers for:** pipeline engineers
+**Complexity tier:** Foundational infrastructure (completed)
+
+---
+
+## Done when
+
+> A pipeline engineer can state: "Zero `:Award` nodes remain in the graph. `APPLICABLE_TO` and `GENERATED_FROM` edges land on `:FinancialTransaction`. `pathway_queries.py` returns equivalent results against `:FinancialTransaction` as it previously did against `:Award`. Migration `006_*` is idempotent with a working `downgrade()`."
+
+---
 
 ## Introduction
 

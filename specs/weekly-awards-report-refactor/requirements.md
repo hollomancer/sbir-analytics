@@ -1,5 +1,20 @@
 # Requirements — Weekly Awards Report Refactor
 
+> **Status:** Not yet started.
+> Supports inventory question **E6** (weekly report maintainability) in [docs/research-questions.md](../../docs/research-questions.md).
+
+**Research question anchor:** E6 — weekly awards report pipeline maintainability
+**Answers for:** pipeline engineers
+**Complexity tier:** Foundational infrastructure
+
+---
+
+## Done when
+
+> A pipeline engineer can state: "`scripts/data/weekly_awards_report.py` is ≤200 lines. Every enrichment and rendering function lives in `sbir_etl/reporting/weekly/` with ≥70% line coverage. A golden-file test against a recorded pre-refactor output passes with zero diff (modulo timestamp)."
+
+---
+
 ## Purpose
 
 Break up `scripts/data/weekly_awards_report.py` (2,807 lines, 44 top-level
