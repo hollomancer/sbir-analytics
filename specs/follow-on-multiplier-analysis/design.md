@@ -1,9 +1,11 @@
-# Leverage Ratio Analysis — Design
+# Follow-on Funding Multiplier Analysis — Design
+
+> NASEM's reviews of DoD SBIR call this quantity the *leverage ratio*. This codebase uses *follow-on funding multiplier* for the same calculation to avoid the debt connotation that "leverage" carries in finance.
 
 ## Architecture
 
 Builds on existing FPDS extraction and entity resolution pipelines. New code lives in
-`src/tools/mission_b/` (leverage ratio is a commercialization/outcomes metric).
+`src/tools/mission_b/` (the follow-on funding multiplier is a commercialization/outcomes metric).
 
 ### Data Flow
 
@@ -12,18 +14,18 @@ SBIR.gov awards → entity resolution (UEI/DUNS) → vendor universe
                                                        ↓
 FPDS contracts → filter to vendor universe → separate SBIR-coded vs non-SBIR
                                                        ↓
-                                              compute ratios by cohort
+                                          compute multipliers by cohort
                                                        ↓
                                               reconcile with NASEM 4:1
 ```
 
 ### Key Components
 
-1. **`LeverageRatioCalculator`** — Core computation: takes vendor-filtered FPDS data,
-   separates SBIR/STTR-coded obligations from non-SBIR, computes ratios at firm and
+1. **`FollowOnMultiplierCalculator`** — Core computation: takes vendor-filtered FPDS data,
+   separates SBIR/STTR-coded obligations from non-SBIR, computes multipliers at firm and
    aggregate level.
 
-2. **`CohortStratifier`** — Stratifies ratios by award vintage, firm size buckets,
+2. **`CohortStratifier`** — Stratifies multipliers by award vintage, firm size buckets,
    technology area (via CET classifier), and experienced vs. new firm classification.
 
 3. **`NASEMReconciler`** — Compares pipeline output to NASEM benchmark values. Produces

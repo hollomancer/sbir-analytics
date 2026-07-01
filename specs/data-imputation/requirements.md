@@ -37,7 +37,7 @@ pipeline, but it is systematically incomplete and internally inconsistent:
   `WARNING` rather than `ERROR` and pass through unchanged.
 
 Downstream consumers — CET classification, phase-transition detection (≥85% precision
-benchmark), leverage-ratio analysis, and weekly reporting — treat these nulls as true
+benchmark), follow-on-multiplier analysis, and weekly reporting — treat these nulls as true
 absences. That biases cohort statistics (missing `award_date` disproportionately affects
 older awards), suppresses legitimate phase-transition matches (missing `company_uei`),
 and degrades any time-series analysis that keys on `award_year`.

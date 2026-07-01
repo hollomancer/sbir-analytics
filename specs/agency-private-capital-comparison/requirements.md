@@ -44,7 +44,7 @@ firms financed via private capital (Reg D / Form D filers)?
 The user-stated framing: "compare NSF SBIR portfolio rank against pre-seed/seed
 VCs." Per scope review, we drop the "rank" composite and frame the deliverable
 as a **comparison table with reconciliation narrative**, matching the pattern
-established by `specs/leverage-ratio-analysis/`. Form D is intentionally
+established by `specs/follow-on-multiplier-analysis/`. Form D is intentionally
 *not* filtered to seed-only — its broader coverage (debt, later-stage, multiple
 instrument types) is treated as feature, not bug, because the policy question
 is "what private-capital alternative would these firms otherwise rely on,"
@@ -124,14 +124,14 @@ branch rebases on top.
 5. **SHOULD** stratify outcomes by CET technology area (reuse CET classifier)
    so the comparison is not blurred by sector mix.
 6. **SHALL** report match rates and entity-resolution coverage as sensitivity
-   metadata (mirrors `leverage-ratio-analysis` requirement 7).
+   metadata (mirrors `follow-on-multiplier-analysis` requirement 7).
 
 ### Phase 1 Gate Condition
 
 Can produce a single artifact (notebook or markdown report) that states:
 "NVCA reports seed→A graduation at ~30%. NSF Phase I→II graduation is [X]%
 on cohort [vintage range, n=Y]. The difference is attributable to [Z]."
-Reproduces the exact reconciliation pattern of `leverage-ratio-analysis`.
+Reproduces the exact reconciliation pattern of `follow-on-multiplier-analysis`.
 
 ## Phase 2 Requirements
 

@@ -147,3 +147,4 @@ IP retention rather than diffusion into the broader ecosystem.
 - CET classifier (`packages/sbir-ml/sbir_ml/ml/models/cet_classifier.py`) — EXISTS
 - Entity resolution — EXISTS
 - USPTO citation data ingestion — **PRECONDITION; not yet implemented** (see design.md)
+- Follow-on funding multiplier analysis (M1) — for shared entity universe
