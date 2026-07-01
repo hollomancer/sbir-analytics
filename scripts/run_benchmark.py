@@ -2,10 +2,10 @@
 """Evaluate benchmark eligibility for SBIR companies.
 
 Usage:
-    python scripts/run_benchmark.py evaluate awards.parquet
+    python scripts/run_benchmark.py evaluate awards.parquet --fy 2025
     python scripts/run_benchmark.py evaluate awards.csv --fy 2023 --output results.json
-    python scripts/run_benchmark.py sensitivity awards.parquet --margin-ratio 0.05
-    python scripts/run_benchmark.py company awards.parquet --id "COMPANY_UEI"
+    python scripts/run_benchmark.py sensitivity awards.parquet --fy 2025 --margin-ratio 0.05
+    python scripts/run_benchmark.py company awards.parquet --fy 2025 --id "COMPANY_UEI"
 """
 
 from __future__ import annotations
@@ -37,27 +37,25 @@ def cmd_evaluate(args) -> None:
     commercialization = load_awards(args.commercialization) if args.commercialization else None
 
     evaluator = BenchmarkEligibilityEvaluator(
-        awards_df=awards,
-        commercialization_df=commercialization,
-        fiscal_year=args.fy,
+        evaluation_fy=args.fy,
     )
-    results = evaluator.evaluate()
+    summary = evaluator.evaluate(awards, commercialization)
+    results = summary.to_dict()
 
     if args.subject_only:
-        results = [r for r in results if r.get("status") != "NOT_SUBJECT"]
+        results["transition_results"] = [
+            r for r in results["transition_results"] if r.get("tier") != "not_subject"
+        ]
+        results["commercialization_results"] = [
+            r for r in results["commercialization_results"] if r.get("tier") != "not_subject"
+        ]
 
     if args.output:
         with open(args.output, "w", encoding="utf-8") as f:
             json.dump(results, f, indent=2, default=str)
-        print(f"Wrote {len(results)} results to {args.output}")
+        print(f"Wrote benchmark evaluation to {args.output}")
     elif args.report:
-        # Print markdown summary
-        subject = [r for r in results if r.get("status") != "NOT_SUBJECT"]
-        failing = [r for r in results if r.get("status") == "FAILING"]
-        print(f"# Benchmark Evaluation (FY {args.fy or 'latest'})")
-        print(f"\n- **Total companies:** {len(results)}")
-        print(f"- **Subject to benchmark:** {len(subject)}")
-        print(f"- **Failing:** {len(failing)}")
+        print(evaluator.generate_report(summary))
     else:
         print(json.dumps(results, indent=2, default=str))
 
@@ -66,26 +64,30 @@ def cmd_sensitivity(args) -> None:
     from sbir_ml.transition.analysis.benchmark_evaluator import BenchmarkEligibilityEvaluator
 
     awards = load_awards(args.awards)
-    evaluator = BenchmarkEligibilityEvaluator(awards_df=awards, fiscal_year=args.fy)
-    at_risk = evaluator.get_companies_at_risk(
-        margin_awards=args.margin_awards,
-        margin_ratio=args.margin_ratio,
+    commercialization = load_awards(args.commercialization) if args.commercialization else None
+    evaluator = BenchmarkEligibilityEvaluator(
+        evaluation_fy=args.fy,
+        sensitivity_margin_awards=args.margin_awards,
+        sensitivity_margin_ratio=args.margin_ratio,
     )
+    at_risk = evaluator.get_companies_at_risk(awards, commercialization)
+    at_risk_results = [r.to_dict() for r in at_risk]
 
     if args.output:
         with open(args.output, "w", encoding="utf-8") as f:
-            json.dump(at_risk, f, indent=2, default=str)
-        print(f"Wrote {len(at_risk)} at-risk companies to {args.output}")
+            json.dump(at_risk_results, f, indent=2, default=str)
+        print(f"Wrote {len(at_risk_results)} at-risk companies to {args.output}")
     else:
-        print(json.dumps(at_risk, indent=2, default=str))
+        print(json.dumps(at_risk_results, indent=2, default=str))
 
 
 def cmd_company(args) -> None:
     from sbir_ml.transition.analysis.benchmark_evaluator import BenchmarkEligibilityEvaluator
 
     awards = load_awards(args.awards)
-    evaluator = BenchmarkEligibilityEvaluator(awards_df=awards, fiscal_year=args.fy)
-    result = evaluator.evaluate_single_company(args.id)
+    commercialization = load_awards(args.commercialization) if args.commercialization else None
+    evaluator = BenchmarkEligibilityEvaluator(evaluation_fy=args.fy)
+    result = evaluator.evaluate_single_company(awards, args.id, commercialization)
     print(json.dumps(result, indent=2, default=str))
 
 
@@ -96,7 +98,7 @@ def main() -> None:
     # evaluate
     p_eval = sub.add_parser("evaluate", help="Full benchmark evaluation")
     p_eval.add_argument("awards", help="Path to awards file (CSV or Parquet)")
-    p_eval.add_argument("--fy", type=int, help="Fiscal year")
+    p_eval.add_argument("--fy", type=int, required=True, help="Evaluation fiscal year")
     p_eval.add_argument("--commercialization", help="Path to commercialization data file")
     p_eval.add_argument("--output", help="Output JSON file path")
     p_eval.add_argument("--report", action="store_true", help="Print markdown summary")
@@ -105,7 +107,8 @@ def main() -> None:
     # sensitivity
     p_sens = sub.add_parser("sensitivity", help="Find companies near threshold boundaries")
     p_sens.add_argument("awards", help="Path to awards file (CSV or Parquet)")
-    p_sens.add_argument("--fy", type=int, help="Fiscal year")
+    p_sens.add_argument("--fy", type=int, required=True, help="Evaluation fiscal year")
+    p_sens.add_argument("--commercialization", help="Path to commercialization data file")
     p_sens.add_argument("--margin-awards", type=int, default=5, help="Award count margin")
     p_sens.add_argument("--margin-ratio", type=float, default=0.05, help="Ratio margin")
     p_sens.add_argument("--output", help="Output JSON file path")
@@ -114,7 +117,8 @@ def main() -> None:
     p_comp = sub.add_parser("company", help="Evaluate a single company")
     p_comp.add_argument("awards", help="Path to awards file (CSV or Parquet)")
     p_comp.add_argument("--id", required=True, help="Company identifier (UEI, DUNS, or name)")
-    p_comp.add_argument("--fy", type=int, help="Fiscal year")
+    p_comp.add_argument("--fy", type=int, required=True, help="Evaluation fiscal year")
+    p_comp.add_argument("--commercialization", help="Path to commercialization data file")
 
     args = parser.parse_args()
 
