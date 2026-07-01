@@ -13,9 +13,40 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from dataclasses import replace
 from pathlib import Path
 
 import pandas as pd
+
+
+def _filter_to_subject_only(summary):
+    """Return a new summary containing only subject rows, with counters recomputed.
+
+    Applied before generating either JSON or the markdown report so ``--subject-only``
+    behaves consistently across output modes and no counter drifts out of sync with the
+    row list it summarizes.
+    """
+    from sbir_etl.models.benchmark_models import BenchmarkStatus, BenchmarkTier
+
+    def _is_subject(r) -> bool:
+        return r.tier != BenchmarkTier.NOT_SUBJECT
+
+    transition = [r for r in summary.transition_results if _is_subject(r)]
+    commercialization = [r for r in summary.commercialization_results if _is_subject(r)]
+    subject_ids = {r.company_id for r in transition} | {r.company_id for r in commercialization}
+
+    return replace(
+        summary,
+        total_companies_evaluated=len(subject_ids),
+        companies_subject_to_transition=len(transition),
+        companies_subject_to_commercialization=len(commercialization),
+        companies_failing_transition=sum(1 for r in transition if r.status == BenchmarkStatus.FAIL),
+        companies_failing_commercialization=sum(
+            1 for r in commercialization if r.status == BenchmarkStatus.FAIL
+        ),
+        transition_results=transition,
+        commercialization_results=commercialization,
+    )
 
 
 def load_awards(path: str) -> pd.DataFrame:
@@ -40,15 +71,9 @@ def cmd_evaluate(args) -> None:
         evaluation_fy=args.fy,
     )
     summary = evaluator.evaluate(awards, commercialization)
-    results = summary.to_dict()
-
     if args.subject_only:
-        results["transition_results"] = [
-            r for r in results["transition_results"] if r.get("tier") != "not_subject"
-        ]
-        results["commercialization_results"] = [
-            r for r in results["commercialization_results"] if r.get("tier") != "not_subject"
-        ]
+        summary = _filter_to_subject_only(summary)
+    results = summary.to_dict()
 
     if args.output:
         with open(args.output, "w", encoding="utf-8") as f:
