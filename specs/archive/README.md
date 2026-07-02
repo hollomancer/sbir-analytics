@@ -46,3 +46,4 @@ This specification demonstrates the full spec-driven development workflow from r
 See `superseded/README.md` for specs that were archived because they were replaced or deferred:
 - **mcp_interface** — Superseded by `mcp_agent_tools` (2026-03-12)
 - **web_search_enrichment** — Deferred, no implementation built (2026-03-12)
+- **data-imputation** — Superseded by `firm-identity-resolution` and `input-validation-hardening` after empirical analysis reframed the problem from statistical imputation to entity resolution + time-key routing (2026-07-02)
