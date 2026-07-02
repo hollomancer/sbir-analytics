@@ -1,0 +1,29 @@
+# Coverage gate: fail the Codecov project status check when a PR drops overall
+# coverage by more than 1% versus its base commit. Coverage was previously
+# uploaded but never enforced. `target: auto` compares against the base rather
+# than a hard floor, so this blocks regressions without requiring a guess at
+# the current absolute coverage number.
+coverage:
+  status:
+    project:
+      default:
+        target: auto
+        threshold: 1%
+    # Patch (new-lines-only) coverage stays informational for now — the
+    # codebase has untyped/untested corners (notably scripts/) where a hard
+    # patch gate would block unrelated fixes.
+    patch:
+      default:
+        informational: true
+
+# The CI test job uploads three coverage reports per commit (unit-fast,
+# unit-slow, integration flags in .github/workflows/ci.yml). Wait for all
+# three before computing status or commenting, so partial uploads don't
+# produce false coverage-drop failures.
+codecov:
+  notify:
+    after_n_builds: 3
+
+comment:
+  after_n_builds: 3
+  require_changes: true

@@ -1055,9 +1055,11 @@ jobs:
           set -euo pipefail
           # Release gate for Phase III S1 candidate surfacing — fails CI if HIGH
           # precision drops below 0.85 against DoD-coded Phase III contracts.
-          # Writes a data-missing sentinel and exits 0 when the corpus isn't
-          # available locally; see scripts/phase_iii_precision_backtest.py.
-          uv run python scripts/phase_iii_precision_backtest.py
+          # --strict: missing corpus is a failure here, not a sentinel pass —
+          # this job only runs via workflow_dispatch where an operator stages
+          # the data, so a silent no-op would defeat the gate. A fixture-based
+          # canary runs on every PR in tests/unit/scripts/.
+          uv run python scripts/phase_iii_precision_backtest.py --strict
 
       - name: Upload validation summary
         if: always()
