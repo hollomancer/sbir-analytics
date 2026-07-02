@@ -13,7 +13,7 @@ The implemented enrichment pipeline emits JSONL artifacts and one
 DataFrame asset, not per-filing parquet. The canonical inputs are:
 
 - `data/sbir_ma_events.jsonl` — curated M&A events output from PR #286
-  (`scripts/data/detect_sbir_ma_events.py`).
+  (`scripts/archive/data/detect_sbir_ma_events.py`).
 - `data/sec_edgar_scan.jsonl` — resumable EFTS scan output.
 - `data/form_d_details.jsonl` — Form D filings with
   `is_business_combination` flag and confidence tier.

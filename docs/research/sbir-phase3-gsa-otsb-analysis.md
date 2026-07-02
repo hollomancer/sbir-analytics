@@ -1,6 +1,6 @@
 # SBIR Phase III: GSA Channel, OTSB Recipients, and the FY2024 Channel Shift
 
-**Status:** Working analysis. All figures from `data/processed/sbir_phase3/phase3_universe_enriched.jsonl` built 2026-06-28 via `scripts/data/build_phase3_universe.py` + `scripts/data/enrich_phase3_business_size.py` (PR #394).
+**Status:** Working analysis. All figures from `data/processed/sbir_phase3/phase3_universe_enriched.jsonl` built 2026-06-28 via `scripts/archive/data/build_phase3_universe.py` + `scripts/archive/data/enrich_phase3_business_size.py` (PR #394).
 **Date:** 2026-06-29.
 **Audience:** Defense industrial-base analysts, SBIR program managers, GAO/CRS, congressional defense committee staff.
 
@@ -22,8 +22,8 @@ That tagging is unreliable. [GAO-24-107036](https://www.gao.gov/products/gao-24-
 
 The cached USAspending Phase III set on this repo was built by:
 
-1. **`scripts/data/build_phase3_universe.py`** — fetches `spending_by_award` across **six description-keyword variants** for FY2008–FY2026: `SBIR Phase III`, `SBIR Phase 3`, `SBIR PH III`, `Phase III SBIR`, `SBIR follow-on`, `Small Business Innovation Research Phase III`. Unions by Award ID, tags each row with `_keywords_matched` provenance. Adds `Parent Award ID` to fetched fields so contract-vehicle attribution is one query away.
-2. **`scripts/data/enrich_phase3_business_size.py`** — for each row, calls the per-award detail endpoint `/awards/{generated_unique_award_id}/`, which returns `business_categories` (the canonical signal for `Small Business` vs `Not Designated a Small Business`). The search endpoint does not populate this field; it must come from per-award lookup.
+1. **`scripts/archive/data/build_phase3_universe.py`** — fetches `spending_by_award` across **six description-keyword variants** for FY2008–FY2026: `SBIR Phase III`, `SBIR Phase 3`, `SBIR PH III`, `Phase III SBIR`, `SBIR follow-on`, `Small Business Innovation Research Phase III`. Unions by Award ID, tags each row with `_keywords_matched` provenance. Adds `Parent Award ID` to fetched fields so contract-vehicle attribution is one query away.
+2. **`scripts/archive/data/enrich_phase3_business_size.py`** — for each row, calls the per-award detail endpoint `/awards/{generated_unique_award_id}/`, which returns `business_categories` (the canonical signal for `Small Business` vs `Not Designated a Small Business`). The search endpoint does not populate this field; it must come from per-award lookup.
 
 **Coverage gain vs. the prior single-keyword fetch:** +20% rows (1,671 → 2,013) and +14% dollars ($6.00B → $6.85B). FY2007 returns HTTP 500 from USAspending — that's the API's reliable depth limit. 99.7% of rows enriched successfully with size data.
 
@@ -800,16 +800,16 @@ These came up during analysis and aren't answered by the cached data:
 
 ```bash
 # Build universe (~5 min)
-uv run python scripts/data/build_phase3_universe.py --start-fy 2008 --end-fy 2026
+uv run python scripts/archive/data/build_phase3_universe.py --start-fy 2008 --end-fy 2026
 
 # Enrich with business-size (~5 min)
-uv run python scripts/data/enrich_phase3_business_size.py \
+uv run python scripts/archive/data/enrich_phase3_business_size.py \
   --input data/processed/sbir_phase3/phase3_universe.jsonl \
   --output data/processed/sbir_phase3/phase3_universe_enriched.jsonl
 
 # If many rows fail with RemoteProtocolError, re-run failed rows with lower concurrency:
 # (extract failed rows, then)
-uv run python scripts/data/enrich_phase3_business_size.py \
+uv run python scripts/archive/data/enrich_phase3_business_size.py \
   --input /tmp/failed.jsonl --output /tmp/retried.jsonl --concurrency 3
 ```
 

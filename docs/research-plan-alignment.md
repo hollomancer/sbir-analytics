@@ -2,6 +2,10 @@
 
 Maps the [SBIR Analytics Research Plan](# "Obsidian: SBIR Analytics Research Plan — Summary") milestones to codebase components, specs, and remaining work.
 
+> **Last verified against the codebase: 2026-07-02.** This is a point-in-time
+> map — component statuses drift as PRs merge. When a row disagrees with what
+> is on disk, trust the code and fix the row.
+
 ## What We Are Building
 
 The awards database already exists (SAM.gov, USAspending, FPDS, SBIR.gov). We are **not** duplicating it. We are building the **outcomes layer** — the connective tissue between award records and downstream effects that no existing system provides.
@@ -21,7 +25,7 @@ Each milestone produces an analytical output that (a) replicates or exceeds a sp
 
 ## Milestone → Codebase Status
 
-### M1: DOD Follow-on Funding Multiplier Replication — PARTIAL
+### M1: DOD Follow-on Funding Multiplier Replication — SUBSTANTIALLY BUILT
 
 **Linkage:** Award → Follow-on Contract
 
@@ -33,11 +37,11 @@ Each milestone produces an analytical output that (a) replicates or exceeds a sp
 | Entity resolution (UEI/DUNS) | Built | `packages/sbir-analytics/sbir_analytics/tools/phase0/resolve_entities.py`, `packages/sbir-ml/sbir_ml/transition/features/vendor_resolver.py` |
 | Contract analytics (DuckDB) | Built | `packages/sbir-ml/sbir_ml/transition/performance/contract_analytics.py` |
 | Vendor crosswalk | Built | `packages/sbir-ml/sbir_ml/transition/features/vendor_crosswalk.py` |
-| Company categorization | 77% spec | `specs/company-categorization/` |
-| **Follow-on funding multiplier computation** | **Missing** | Needs: multiplier calculator, cohort stratification, NASEM reconciliation |
-| **Agency comparison (DOE)** | **Missing** | Needs: civilian agency extraction, cross-agency multiplier |
+| Company categorization | 80% spec | `specs/company-categorization/` |
+| Follow-on funding multiplier computation | Built (PR #323) | `packages/sbir-analytics/sbir_analytics/assets/follow_on_multiplier/` (spec archived) |
+| Agency comparison | Partial (Phase 1 built) | `packages/sbir-analytics/sbir_analytics/assets/agency_private_capital/`, `specs/agency-private-capital-comparison/` |
 
-**Gap:** Core data plumbing exists. Missing the actual follow-on funding multiplier computation and NASEM reconciliation logic.
+**Gap:** Multiplier computation and NASEM reconciliation are built. Remaining: validation/sensitivity work (`specs/follow-on-multiplier-validation/`) and the agency-comparison Phase 2.
 
 ### M2: Patent Linkage and Spillover — PARTIAL
 
@@ -51,7 +55,7 @@ Each milestone produces an analytical output that (a) replicates or exceeds a sp
 | Patent transformer | Built | `sbir_etl/transformers/patent_transformer.py` |
 | Patent-award fuzzy matching | Built | `PatentAssignmentTransformer` with rapidfuzz |
 | Patent analyzer (transition) | Built | `packages/sbir-ml/sbir_ml/transition/features/patent_analyzer.py` |
-| USPTO Lambda downloads | 90% spec | `specs/uspto-lambda-downloads/` |
+| USPTO Lambda downloads | Done (spec archived) | `specs/archive/completed-features/uspto-lambda-downloads/` |
 | USPTO data validators | Built | `sbir_etl/quality/uspto_validators.py` |
 | **Marginal cost per patent** | **Missing** | Needs: cost calculator linking award amounts to patent counts |
 | **Citation network/spillover** | **Missing** | Needs: citation graph builder, spillover multiplier computation |
@@ -72,7 +76,7 @@ Each milestone produces an analytical output that (a) replicates or exceeds a sp
 | Topic clustering | Built | `packages/sbir-analytics/sbir_analytics/tools/mission_a/cluster_topics.py` |
 | Portfolio metrics | Built | `packages/sbir-analytics/sbir_analytics/tools/mission_a/compute_portfolio_metrics.py` |
 | Gap detection | Built | `packages/sbir-analytics/sbir_analytics/tools/mission_a/detect_gaps.py` |
-| ModernBert embeddings | 30% spec | `specs/modernbert_analysis_layer/` |
+| ModernBert embeddings | ~50% spec | `specs/modernbert_analysis_layer/` |
 | **Full corpus classification** | **Missing** | Needs: batch classifier run on all SBIR.gov awards |
 | **Cross-agency visualization** | **Missing** | Needs: agency-level technology allocation output |
 
@@ -108,9 +112,9 @@ Each milestone produces an analytical output that (a) replicates or exceeds a sp
 
 | Component | Status | Location |
 |-----------|--------|----------|
-| Weekly data refresh | 85% spec | `specs/weekly-award-data-refresh/` |
+| Weekly data refresh | Done (spec archived) | `specs/archive/completed-features/weekly-award-data-refresh/` |
 | Dagster asset pipeline | Built | `packages/sbir-analytics/sbir_analytics/assets/` |
-| MCP agent tools | Missing | Needs: spec and implementation |
+| MCP agent tools | Superseded | `specs/archive/superseded/mcp_interface/` — deliberately dropped |
 | **Rolling analytics API** | **Missing** | Needs: snapshot generation, quarter-over-quarter comparison |
 | **User-facing dashboard** | **Missing** | Needs: query interface for current-quarter snapshots |
 
@@ -118,26 +122,28 @@ Each milestone produces an analytical output that (a) replicates or exceeds a sp
 
 ## Priority Matrix
 
-### Immediate (finish what's started — highest ROI)
-1. **`company-categorization`** (77%) — Entity categorization unlocks M1 follow-on funding multipliers
-2. **`uspto-lambda-downloads`** (90%) — URL verification unlocks M2 patent pipeline refresh
-3. **`weekly-award-data-refresh`** (85%) — PR automation unlocks M5 continuous monitoring
+### Done since the original audit
+- `uspto-lambda-downloads`, `weekly-award-data-refresh` — completed and archived
+- `follow-on-multiplier-analysis` — delivered (PR #323) and archived; validation continues in `specs/follow-on-multiplier-validation/`
 
-### Next Sprint (M1 + M3 parallel)
-4. **New: `follow-on-multiplier-analysis`** — M1 core: multiplier computation, cohort stratification, NASEM reconciliation
-5. **`modernbert_analysis_layer`** (30%) — Embeddings infrastructure for M3 full-corpus classification
-6. **New: `cross-agency-taxonomy`** — M3 core: batch classifier, agency-level output, visualization
+### Immediate (finish what's started — highest ROI)
+1. **`company-categorization`** (~80%) — Entity categorization unlocks M1 follow-on funding multipliers
+2. **`follow-on-multiplier-validation`** — validation/sensitivity/review-sampling for the delivered M1 multiplier
+
+### Next Sprint (M3 parallel)
+3. **`modernbert_analysis_layer`** (~50%) — Embeddings infrastructure for M3 full-corpus classification
+4. **`cross-agency-taxonomy`** (spec exists, not started) — M3 core: batch classifier, agency-level output, visualization
 
 ### Following Sprint (M2 analytical layer)
-7. **New: `patent-cost-spillover`** — M2 core: marginal cost calculator, citation network builder, spillover tracing
+5. **`patent-cost-spillover`** (spec exists, not started) — M2 core: marginal cost calculator, citation network builder, spillover tracing
 
 ### Integration Sprint (M4 refresh + M5 operationalization)
-8. **M4 refresh** — Connect M1/M2 outputs to existing fiscal pipeline
-9. **New: `monitoring-snapshot-api`** — M5 core: rolling analytics, quarterly snapshots
+6. **M4 refresh** — Connect M1/M2 outputs to existing fiscal pipeline
+7. **New: `monitoring-snapshot-api`** — M5 core: rolling analytics, quarterly snapshots
 
 ## Phase 0 Checklist (from Research Plan)
 
-Audit completed 2026-03-13. Status: **ready for Phase 1**.
+Audit completed 2026-03-13 (statuses re-verified 2026-07-02). Status: **ready for Phase 1**.
 
 - [x] **Graph DB state:** Neo4j 5.x with Company, Patent, Award, CET nodes. SBIR.gov, SAM.gov, USAspending, USPTO all loaded. Entity linkages via canonical IDs. 3,500+ lines of Neo4j loader code.
 - [x] **Entity resolution:** Hybrid 6-step pipeline: UEI exact → DUNS exact → CAGE code → Name+State+NAICS deterministic → rapidfuzz (75-90 thresholds) → LLM tiebreaker. 85%+ deterministic match rate. Gold set calibration. Confidence scoring (1.0 deterministic, 0.5-0.95 fuzzy). (`packages/sbir-analytics/sbir_analytics/tools/phase0/resolve_entities.py`, 376 lines)

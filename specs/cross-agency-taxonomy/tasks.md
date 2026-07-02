@@ -1,5 +1,7 @@
 # Cross-Agency Technology Taxonomy — Tasks
 
+> **Status (2026-07-02):** Not started. CET classifier infrastructure exists (`packages/sbir-analytics/sbir_analytics/assets/cet/`), but the cross-agency analyzer and full-corpus batch run described here are not implemented.
+
 ## Phase 1: Full Corpus Classification
 
 - [ ] 1.1 Verify SBIR.gov award corpus completeness and freshness (count by agency, date range)
@@ -9,7 +11,7 @@
 
 ## Phase 2: Agency-Level Analysis
 
-- [ ] 2.1 Create `src/tools/mission_a/cross_agency_taxonomy.py` with `AgencyTaxonomyAnalyzer`
+- [ ] 2.1 Create `packages/sbir-analytics/sbir_analytics/tools/mission_a/cross_agency_taxonomy.py` with `AgencyTaxonomyAnalyzer`
 - [ ] 2.2 Compute per-agency technology allocation (% of awards per CET area)
 - [ ] 2.3 Compute cross-agency overlap matrix (Jaccard similarity of technology portfolios)
 - [ ] 2.4 Identify concentration risk (HHI or single-agency dominance per technology area)

@@ -44,7 +44,7 @@ firms financed via private capital (Reg D / Form D filers)?
 The user-stated framing: "compare NSF SBIR portfolio rank against pre-seed/seed
 VCs." Per scope review, we drop the "rank" composite and frame the deliverable
 as a **comparison table with reconciliation narrative**, matching the pattern
-established by `specs/follow-on-multiplier-analysis/`. Form D is intentionally
+established by `specs/archive/completed-features/follow-on-multiplier-analysis/`. Form D is intentionally
 *not* filtered to seed-only — its broader coverage (debt, later-stage, multiple
 instrument types) is treated as feature, not bug, because the policy question
 is "what private-capital alternative would these firms otherwise rely on,"

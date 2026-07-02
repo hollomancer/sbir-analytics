@@ -1,5 +1,14 @@
 # Phase III Solicitation & Award Candidate Alerts — Tasks
 
+> **Status (2026-07-02):** Phases 1–2 (S1 retrospective reclassification) implemented and merged
+> (PRs #394, #410, #412) — models in `sbir_etl/models/phase_iii_candidate.py`, asset package in
+> `packages/sbir-analytics/sbir_analytics/assets/phase_iii_candidates/` (`assets.py`, `pairing.py`,
+> `similarity.py`), precision gate `scripts/phase_iii_precision_backtest.py` wired into
+> `.github/workflows/ci.yml`. Phases 3–5 (S2 directed notice alerts via the SAM.gov Opportunities
+> API, S3 competitive follow-on candidates, docs + sign-off) are not started — no
+> `sbir_etl/models/opportunity.py`, `sam_gov_opportunities` extractor/asset/config,
+> `pair_filter_s2`/`pair_filter_s3`, or `docs/phase-iii-candidates.md` exist yet.
+
 Ordered so each phase produces a standalone deliverable. S1 first (highest
 ROI, clearest precision benchmark, no new data source). S2 adds the
 Opportunities API. S3 adds the competitive-follow-on path. Each phase can

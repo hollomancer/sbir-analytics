@@ -58,7 +58,7 @@ by combining the full signal stack.
   per awardee (one match per firm).
 - **Confidence tier per match:** the highest tier among that firm's
   qualifying signals, using the existing tier rules in
-  `scripts/data/detect_sbir_ma_events.py`.
+  `scripts/archive/data/detect_sbir_ma_events.py`.
 
 ## Signals used and date attribution
 

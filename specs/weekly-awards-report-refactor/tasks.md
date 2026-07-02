@@ -1,5 +1,7 @@
 # Tasks — Weekly Awards Report Refactor
 
+> **Status (2026-07-02):** Not started. `scripts/data/weekly_awards_report.py` is still a ~2,800-line monolith; `sbir_etl/reporting/weekly/` does not exist.
+
 Sequenced tasks. Each should land as an independent PR with tests.
 
 ## Stage 0 — Baseline

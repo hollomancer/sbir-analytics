@@ -165,7 +165,7 @@
   - Notes: `VendorMatch` includes a `score` field and `VendorResolver` populates scores for fuzzy matches; the transformer/pipeline will persist these confidence scores.
 
 - [x] 5.1 Create ContractExtractor in src/extractors/contract_extractor.py
-  - Notes: Implemented streaming extractor for USAspending .dat.gz (PostgreSQL dump), vendor filters (UEI/DUNS/name), Parquet output; CLI wrapper in scripts/extract_federal_contracts.py.
+  - Notes: Implemented streaming extractor for USAspending .dat.gz (PostgreSQL dump), vendor filters (UEI/DUNS/name), Parquet output; CLI wrapper in scripts/archive/extract_federal_contracts.py.
 
 - [x] 5.2 Integrate with USAspending.gov CSV data
   - Notes: Streamed USAspending `transaction_normalized` dump (13 GB `.dat.gz`) from removable storage to create `contracts_test_sample.parquet` for transition workflows.
