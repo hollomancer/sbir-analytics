@@ -40,7 +40,13 @@ from sbir_etl.utils.date_utils import parse_date as _parse_date
 from sbir_etl.utils.text_normalization import normalize_name as _normalize_name
 from sbir_etl.validators.sbir_awards import validate_sbir_award_record as _validate_record
 
-from sbir_etl.extractors.solicitation import SolicitationExtractor
+# SolicitationExtractor was lost from the tree (import fails on main as of
+# 2026-07 — see fetch_solicitation_topics). Optional so the report still runs;
+# topics degrade to empty, same as --skip-sbir-api.
+try:
+    from sbir_etl.extractors.solicitation import SolicitationExtractor
+except ImportError:
+    SolicitationExtractor = None  # type: ignore[assignment,misc]
 from sbir_etl.enrichers.rate_limiting import RateLimiter
 from sbir_etl.enrichers.inflation_adjuster import InflationAdjuster
 from sbir_etl.enrichers.congressional_district_resolver import CongressionalDistrictResolver
@@ -765,6 +771,14 @@ def fetch_solicitation_topics(awards: list[dict]) -> dict[str, SolicitationTopic
             topic_codes[tc] = sol
 
     if not topic_codes:
+        return {}
+
+    if SolicitationExtractor is None:
+        print(
+            "SolicitationExtractor unavailable (sbir_etl.extractors.solicitation "
+            "missing) — skipping solicitation topics",
+            file=sys.stderr,
+        )
         return {}
 
     results: dict[str, SolicitationTopic] = {}
