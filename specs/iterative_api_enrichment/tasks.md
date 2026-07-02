@@ -58,8 +58,10 @@
   - Notes: Created comprehensive documentation in `docs/enrichment/usaspending-iterative-refresh.md` covering architecture, configuration, workflow, credentials, delta detection, metrics, troubleshooting, and monitoring. Updated `README.md` with quick start section.
 
 - [ ] 6.1 Produce a comparison matrix covering OpenCorporates, SEC EDGAR, DLA CAGE/BIS, SAM Exclusions, ORCID/OpenAlex, OpenFEC (and any licensed commercial sources), noting auth model, rate limits, available fields, and incremental query capabilities.
+  - Notes (2026-07-02): verified not done — no comparison matrix exists in `docs/` or `specs/`.
 
 - [ ] 6.2 Prototype connector shims (schema + request/response models) for at least OpenCorporates, EDGAR, and DLA CAGE/BIS using recorded fixtures so they can plug into the iterative refresh orchestrator once credentials are available.
+  - Notes (2026-07-02): partially done — OpenCorporates client exists (`sbir_etl/enrichers/opencorporates.py`, tested in `tests/unit/enrichers/test_opencorporates.py`) and SEC EDGAR client/enricher exist (`sbir_etl/enrichers/sec_edgar/`, wired into `enrichment_refresh.sec_edgar` in `config/base.yaml`). No DLA CAGE/BIS connector exists anywhere in the repo, so the task's minimum bar ("at least ... DLA CAGE/BIS") is unmet; left unchecked.
 
 - [x] 6.3 Extend `config/base.yaml` with optional `enrichment_refresh` entries for each evaluated API, including feature flags so environments can opt-in once legal/data-sharing reviews are completed.
-  - Notes: Added `enabled` feature flag to `EnrichmentSourceConfig` schema. Added `sec_edgar`, `opencorporates`, and `dla_cage` source configs (all disabled by default) to both `EnrichmentRefreshConfig` and `config/base.yaml`. Environments opt-in via env var (e.g., `SBIR_ETL__ENRICHMENT__ENRICHMENT_REFRESH__SEC_EDGAR__ENABLED=true`).
+  - Notes: Added `enabled` feature flag to `EnrichmentSourceConfig` schema (`sbir_etl/config/schemas/domain.py`). Environments opt-in via env var (e.g., `SBIR_ETL__ENRICHMENT_REFRESH__SEC_EDGAR__ENABLED=true`). Drift note (2026-07-02): current `config/base.yaml` and `EnrichmentRefreshConfig` carry only `usaspending` and `sec_edgar` (disabled by default); the `opencorporates`/`dla_cage` entries originally added have since been removed.
