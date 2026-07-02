@@ -3,9 +3,9 @@
 **Date:** 2026-06-23
 **PR:** #356 (adds `has_strict_phase_ii_to_ma_pathway` and gap-day columns
 to `data/capital_events_per_firm.parquet`)
-**Source code:** `scripts/data/capital_events/summarize.py`
+**Source code:** `sbir_etl/capital_events/summarize.py`
 **Cohort universe:** Form D high-confidence SBIR cohort — 3,639 firms,
-produced by `scripts/data/ucc/export_cohort.py` (PR #303)
+produced by `sbir_etl/ucc/export_cohort.py` (PR #303)
 
 ## Cohort definition (precision)
 

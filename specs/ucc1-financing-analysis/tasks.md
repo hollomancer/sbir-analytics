@@ -33,7 +33,7 @@ Recorded in [docs/research/sbir-ucc1-pilot.md](../../docs/research/sbir-ucc1-pil
 
 ## Phase 0.5: Prerequisites (no Phase 1 code without these)
 
-- [x] 0.6 Write `scripts/data/ucc/export_cohort.py` — one-shot script that
+- [x] 0.6 Write `sbir_etl/ucc/export_cohort.py` — one-shot script that
       reproduces the Form D high-confidence SBIR cohort per the rules in
       `sbir-form-d-fundraising-analysis.md` (high tier + name OR ZIP
       match against `data/form_d_details.jsonl`). Output:
@@ -47,12 +47,12 @@ Recorded in [docs/research/sbir-ucc1-pilot.md](../../docs/research/sbir-ucc1-pil
 - [x] 0.8 Establish `SBIR_DATA_DIR` env-var convention for cross-worktree
       data access (default: repo's own `data/` resolved relative to the
       script; override via `SBIR_DATA_DIR`)
-      → verified: `scripts/data/ucc/_common.py` resolves `data_path()`
+      → verified: `sbir_etl/ucc/_common.py` resolves `data_path()`
       via the env var; all ucc1 scripts use it
 
 ## Phase 1: Cohort narrowing
 
-- [x] 1.1 Create `scripts/data/ucc/cohort_state_filter.py` with
+- [x] 1.1 Create `sbir_etl/ucc/cohort_state_filter.py` with
       `CohortStateFilter` that takes the Form D cohort and emits a
       CA-organized subset by querying CA SOS Business Search
       (`bizfileonline.sos.ca.gov/search/business`)
@@ -76,14 +76,14 @@ Recorded in [docs/research/sbir-ucc1-pilot.md](../../docs/research/sbir-ucc1-pil
 
 ## Phase 2: UCC extraction
 
-- [x] 2.1 Create `scripts/data/ucc/ca_extractor.py` with `CAUCCExtractor`
+- [x] 2.1 Create `sbir_etl/ucc/ca_extractor.py` with `CAUCCExtractor`
       that, per debtor name, submits a bizfileOnline UCC search with
       Advanced filter `File Type = Financing Statement`, expands each
       result, and pulls the full History modal (initial + UCC-3
       amendments / continuations / assignments / terminations)
       → verified: `HttpBizfileClient` walks search → detail → history;
       Active Motif lifecycle reproduced in memo
-- [x] 2.2 Define output schema in `scripts/data/ucc/schema.py` (TypedDict)
+- [x] 2.2 Define output schema in `sbir_etl/ucc/schema.py` (TypedDict)
       including `filing_type` enum and `parent_filing_number`
       → verified: `UCCFiling`, `UCCLifecycle`, `UCCMatch`, etc. TypedDicts
       + `FilingType` StrEnum. (Note: `scripts/` is mypy-excluded; tests
@@ -99,7 +99,7 @@ Recorded in [docs/research/sbir-ucc1-pilot.md](../../docs/research/sbir-ucc1-pil
 
 ## Phase 3: Matching
 
-- [x] 3.1 Create `scripts/data/ucc/matcher.py` with `UCCMatcher` reusing
+- [x] 3.1 Create `sbir_etl/ucc/matcher.py` with `UCCMatcher` reusing
       `sbir_etl` name-normalization helpers, filtering to debtor-side
       matches only (drop rows where the search hit was on the
       secured-party field)
@@ -152,7 +152,7 @@ Re-open with a larger denominator.
 
 ## Phase 7: Analysis & memo
 
-- [ ] 7.1 Create `scripts/data/ucc/analyze_pilot.py` — **DEFERRED.**
+- [ ] 7.1 Create `sbir_etl/ucc/analyze_pilot.py` — **DEFERRED.**
       The partial-run sample (14 hits, 4 retained) was small enough to
       summarize by hand directly in the memo. A scripted analyzer
       becomes worthwhile only after the cohort scales up.

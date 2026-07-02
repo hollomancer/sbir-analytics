@@ -19,16 +19,15 @@ from pathlib import Path
 
 import pandas as pd
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-from capital_events._common import data_path  # noqa: E402
-from capital_events.schema import EVENT_TABLE_COLUMNS  # noqa: E402
-from capital_events.sources.form_d import build_form_d_events  # noqa: E402
-from capital_events.sources.ma_events import build_ma_events  # noqa: E402
-from capital_events.sources.patents import build_patent_events  # noqa: E402
-from capital_events.sources.sbir_awards import build_sbir_award_events  # noqa: E402
-from capital_events.sources.ucc import build_ucc_events  # noqa: E402
-from capital_events.sources.usaspending import build_usaspending_events  # noqa: E402
-from capital_events.summarize import summarize_per_firm  # noqa: E402
+from sbir_etl.capital_events._common import data_path
+from sbir_etl.capital_events.schema import EVENT_TABLE_COLUMNS
+from sbir_etl.capital_events.sources.form_d import build_form_d_events
+from sbir_etl.capital_events.sources.ma_events import build_ma_events
+from sbir_etl.capital_events.sources.patents import build_patent_events
+from sbir_etl.capital_events.sources.sbir_awards import build_sbir_award_events
+from sbir_etl.capital_events.sources.ucc import build_ucc_events
+from sbir_etl.capital_events.sources.usaspending import build_usaspending_events
+from sbir_etl.capital_events.summarize import summarize_per_firm
 
 
 def _read_cohort(path: Path) -> list[dict]:
