@@ -57,9 +57,7 @@ def fixture_csv(tmp_path, injected_dates) -> Path:
 
 def _normalize(report: str, injected_dates, fixture_csv) -> str:
     """Replace run-dependent strings (dates, timestamps) with sentinels."""
-    report = re.sub(
-        r"\*\*Period:\*\* .+? - .+?$", "**Period:** <PERIOD>", report, flags=re.M
-    )
+    report = re.sub(r"\*\*Period:\*\* .+? - .+?$", "**Period:** <PERIOD>", report, flags=re.M)
     report = re.sub(
         r"Generated on \d{4}-\d{2}-\d{2} \d{2}:\d{2} UTC",
         "Generated on <TIMESTAMP>",
@@ -74,22 +72,26 @@ def _normalize(report: str, injected_dates, fixture_csv) -> str:
 
 
 def test_weekly_report_matches_golden(monkeypatch, tmp_path, fixture_csv, injected_dates):
+    from sbir_etl.reporting.weekly import enrichment, fetching
+
     mod = _load_script()
 
     # Hermetic data source: fixture CSV, no S3/download.
     monkeypatch.setattr(
-        mod, "_resolve_csv_path", lambda: mod.DataSource(path=fixture_csv, origin="local")
+        fetching,
+        "_resolve_csv_path",
+        lambda: fetching.DataSource(path=fixture_csv, origin="local"),
     )
     # Stub every network-touching stage-1 fetch (their absence is a supported
     # degraded mode — the report renders without those sections).
-    monkeypatch.setattr(mod, "fetch_usaspending_contract_descriptions", lambda awards: {})
-    monkeypatch.setattr(mod, "lookup_usaspending_recipients", lambda awards: {})
-    monkeypatch.setattr(mod, "lookup_sam_entities", lambda awards: {})
-    monkeypatch.setattr(mod, "lookup_opencorporates", lambda awards: {})
-    monkeypatch.setattr(mod, "poll_press_wire", lambda awards: {})
+    monkeypatch.setattr(enrichment, "fetch_usaspending_contract_descriptions", lambda awards: {})
+    monkeypatch.setattr(enrichment, "lookup_usaspending_recipients", lambda awards: {})
+    monkeypatch.setattr(enrichment, "lookup_sam_entities", lambda awards: {})
+    monkeypatch.setattr(enrichment, "lookup_opencorporates", lambda awards: {})
+    monkeypatch.setattr(enrichment, "poll_press_wire", lambda awards: {})
     # Inflation enrichment can consult the BEA API depending on env; stub for
     # determinism (covered by its own unit tests).
-    monkeypatch.setattr(mod, "enrich_with_inflation", lambda awards, base_year=None: {})
+    monkeypatch.setattr(enrichment, "enrich_with_inflation", lambda awards, base_year=None: {})
 
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     out_path = tmp_path / "report.md"
@@ -115,7 +117,5 @@ def test_weekly_report_matches_golden(monkeypatch, tmp_path, fixture_csv, inject
         GOLDEN_MD.write_text(actual)
         pytest.skip("golden.md regenerated; rerun without UPDATE_GOLDEN")
 
-    assert GOLDEN_MD.exists(), (
-        "golden.md missing — generate it with UPDATE_GOLDEN=1 pytest ..."
-    )
+    assert GOLDEN_MD.exists(), "golden.md missing — generate it with UPDATE_GOLDEN=1 pytest ..."
     assert actual == GOLDEN_MD.read_text()
