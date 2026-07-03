@@ -29,17 +29,10 @@ from sbir_etl.enrichers.opencorporates import CorporateRecord
 from sbir_etl.enrichers.sync_wrappers import SyncOpenCorporatesClient, SyncPressWireClient
 from sbir_etl.enrichers.press_wire import PressRelease
 
+from sbir_etl.extractors.solicitation import SolicitationExtractor
 from sbir_etl.reporting.weekly.debug import _debug
 from sbir_etl.reporting.weekly.fetching import _company_key
 from sbir_etl.reporting.weekly.models import SolicitationTopic
-
-# SolicitationExtractor was lost from the tree (import fails on main as of
-# 2026-07 — see fetch_solicitation_topics). Optional so the report still runs;
-# topics degrade to empty, same as --skip-sbir-api.
-try:
-    from sbir_etl.extractors.solicitation import SolicitationExtractor
-except ImportError:
-    SolicitationExtractor = None  # type: ignore[assignment,misc]
 
 
 STAGE_TIMEOUT = int(os.environ.get("STAGE_TIMEOUT", "60"))
@@ -424,9 +417,8 @@ def poll_press_wire(
 def fetch_solicitation_topics(awards: list[dict]) -> dict[str, SolicitationTopic]:
     """Fetch solicitation topic titles and descriptions from SBIR.gov API.
 
-    Uses SolicitationExtractor when available (tenacity retry, pagination,
-    keyword search, awards fallback). Falls back to hand-rolled queries
-    otherwise.
+    Uses SolicitationExtractor: tenacity retry, year-batch pagination,
+    keyword search, and an awards-corpus fallback for anything still missing.
     """
     # Collect unique topic codes
     topic_codes: dict[str, str] = {}  # topic_code -> solicitation_number
@@ -437,14 +429,6 @@ def fetch_solicitation_topics(awards: list[dict]) -> dict[str, SolicitationTopic
             topic_codes[tc] = sol
 
     if not topic_codes:
-        return {}
-
-    if SolicitationExtractor is None:
-        print(
-            "SolicitationExtractor unavailable (sbir_etl.extractors.solicitation "
-            "missing) — skipping solicitation topics",
-            file=sys.stderr,
-        )
         return {}
 
     results: dict[str, SolicitationTopic] = {}

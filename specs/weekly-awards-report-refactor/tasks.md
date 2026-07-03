@@ -1,15 +1,18 @@
 # Tasks — Weekly Awards Report Refactor
 
-> **Status (2026-07-02):** Substantially complete. The 2,807-line monolith is now a
+> **Status (2026-07-03):** Substantially complete. The 2,807-line monolith is now a
 > 116-line CLI over `sbir_etl/reporting/weekly/` (models, fetching, enrichment,
 > llm_digests, llm, rendering, link_verification, debug, orchestrator), with the
 > golden-file test green across the extraction and `mypy`/`ruff` clean. Remaining:
 > T2.3 (injected clients), the typed-dataclass half of T3.2, coverage targets
 > (T5.2), and the `_lib_*` alias removal (T5.3 — kept deliberately, see note).
-> Discovered during Stage 0: the script was unimportable on main
-> (`sbir_etl/extractors/solicitation.py` does not exist); the import is now
-> optional and topics degrade to empty. Rebuilding SolicitationExtractor is a
-> separate work item.
+> Discovered during Stage 0: the script was unimportable on main because
+> `sbir_etl/extractors/solicitation.py` did not exist anywhere in this repo's
+> git history — since rebuilt (18 unit tests, `httpx.MockTransport`-based, no
+> live network needed). Field-name handling inside it is defensive/unverified
+> against a live API response (this sandbox cannot reach `api.www.sbir.gov`);
+> see the module docstring for what to check first if solicitation topics
+> come back empty in production.
 
 Sequenced tasks. Each should land as an independent PR with tests.
 
