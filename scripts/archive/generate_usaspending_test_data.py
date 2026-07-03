@@ -2,7 +2,6 @@
 """Generate realistic USAspending test data matching the real schema."""
 
 import gzip
-import io
 import zipfile
 from pathlib import Path
 

@@ -699,11 +699,13 @@ usaspending_df = usaspending_df[usaspending_df['year'] >= 2019]
 ```bash
 
 ## Check identifier availability
-
-python scripts/validation/validate_enrichment_quality.py \
-
-  --enriched-file reports/enriched.parquet \
-  --json-output /tmp/quality.json
+##
+## Note: scripts/validate_enrichment_quality.py (referenced by an earlier
+## version of this doc) was archived to scripts/archive/validation/ — it
+## imports a scripts.lib.cli_utils module that has never existed in this
+## repo, so it has never run successfully. Its EnrichmentQualityValidator
+## class is self-contained in that file; porting it into sbir_etl/quality/
+## with a working CLI is a follow-up.
 
 ## Review identifier breakdown
 
@@ -921,11 +923,8 @@ python scripts/performance/detect_performance_regression.py \
   --output-markdown report.md \
   --output-html report.html
 
-## Check quality metrics
-
-python scripts/validation/validate_enrichment_quality.py \
-
-  --enriched-file reports/enriched.parquet
+## Check quality metrics (see the Low Match Rate troubleshooting section
+## above — this tool is currently non-functional, see the note there)
 
 ## View baseline metrics
 
