@@ -26,6 +26,7 @@ class PerformanceReporter:
         memory_warning_threshold: float = 20.0,
         memory_failure_threshold: float = 50.0,
         match_rate_failure_threshold: float = -5.0,
+        time_noise_floor_seconds: float = 0.5,
     ):
         """Initialize reporter with regression thresholds.
 
@@ -35,12 +36,17 @@ class PerformanceReporter:
             memory_warning_threshold: Memory increase % for warning (default 20%)
             memory_failure_threshold: Memory increase % for failure (default 50%)
             match_rate_failure_threshold: Match rate decrease % for failure (default -5%)
+            time_noise_floor_seconds: Absolute time delta below which percentage
+                time regressions are ignored (default 0.5s). Percentage-only
+                comparison flags millisecond scheduler jitter as a regression
+                on micro-benchmarks (e.g. 1.8ms -> 2.4ms = "+36%").
         """
         self.time_warning_threshold = time_warning_threshold
         self.time_failure_threshold = time_failure_threshold
         self.memory_warning_threshold = memory_warning_threshold
         self.memory_failure_threshold = memory_failure_threshold
         self.match_rate_failure_threshold = match_rate_failure_threshold
+        self.time_noise_floor_seconds = time_noise_floor_seconds
 
     def compare_metrics(
         self,
@@ -81,14 +87,17 @@ class PerformanceReporter:
         messages = []
         severity = "PASS"
 
-        # Time checks
-        if time_delta_percent > self.time_failure_threshold:
+        # Time checks — require BOTH the percentage threshold and an absolute
+        # delta above the noise floor, so micro-benchmark jitter can't fail CI.
+        time_delta_seconds = current.total_duration_seconds - baseline.total_duration_seconds
+        above_noise_floor = time_delta_seconds > self.time_noise_floor_seconds
+        if time_delta_percent > self.time_failure_threshold and above_noise_floor:
             messages.append(
                 f"Time regression: +{time_delta_percent:.1f}% "
                 f"({baseline.total_duration_seconds:.2f}s → {current.total_duration_seconds:.2f}s)"
             )
             severity = "FAILURE"
-        elif time_delta_percent > self.time_warning_threshold:
+        elif time_delta_percent > self.time_warning_threshold and above_noise_floor:
             messages.append(
                 f"Time warning: +{time_delta_percent:.1f}% "
                 f"({baseline.total_duration_seconds:.2f}s → {current.total_duration_seconds:.2f}s)"

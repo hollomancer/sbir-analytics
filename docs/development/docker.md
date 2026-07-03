@@ -212,7 +212,7 @@ make docker-exec SERVICE=dagster-webserver CMD=bash
 
 # Run a Python script
 docker compose --profile dev exec dagster-webserver \
-  python scripts/data/download_sbir_data.py
+  python scripts/data/download_sbir.py
 
 # Run pytest
 docker compose --profile dev exec dagster-webserver pytest tests/unit/

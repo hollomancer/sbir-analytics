@@ -1,6 +1,6 @@
 # SBA Commercialization Rate Benchmark — Methodology
 
-This document describes how a per-firm audit harness — `scripts/data/run_commercialization_benchmark.py` paired with `scripts/data/audit_one_firm.py` — computes a public-data approximation of the SBA Commercialization Rate Benchmark for SBIR/STTR firms, with explicit citations to the governing statute, regulation, and SBA guidance.
+This document describes how a per-firm audit harness — `scripts/archive/data/run_commercialization_benchmark.py` paired with `scripts/data/audit_one_firm.py` — computes a public-data approximation of the SBA Commercialization Rate Benchmark for SBIR/STTR firms, with explicit citations to the governing statute, regulation, and SBA guidance.
 
 It also documents where our methodology diverges from the authoritative SBA process and why.
 
@@ -167,13 +167,13 @@ CCR Standard tier allows passing via ≥15% patents per P2 as an alternative to 
 To re-run on the same FY:
 
 ```bash
-.venv/bin/python scripts/data/run_commercialization_benchmark.py --eval-fy 2026
+.venv/bin/python scripts/archive/data/run_commercialization_benchmark.py --eval-fy 2026
 ```
 
 To capture full audit artifacts:
 
 ```bash
-.venv/bin/python scripts/data/run_commercialization_benchmark.py --eval-fy 2026 --audit-dir data/audit/fy2026/
+.venv/bin/python scripts/archive/data/run_commercialization_benchmark.py --eval-fy 2026 --audit-dir data/audit/fy2026/
 ```
 
 To spot-check a single firm:

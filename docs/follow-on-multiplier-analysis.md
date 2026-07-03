@@ -4,7 +4,7 @@
 
 ## Specification validation and requirement map
 
-Validation was completed before implementation against `specs/follow-on-multiplier-analysis/requirements.md`. The specification's old `src/tools/mission_b` paths do not match the current package layout, so implementation follows the repository's current analytics convention under `packages/sbir-analytics/sbir_analytics/assets/`.
+Validation was completed before implementation against `specs/archive/completed-features/follow-on-multiplier-analysis/requirements.md`. The specification's old `src/tools/mission_b` paths do not match the current package layout, so implementation follows the repository's current analytics convention under `packages/sbir-analytics/sbir_analytics/assets/`.
 
 | Requirement | Existing data / identifier | Implementation | Test |
 |---|---|---|---|

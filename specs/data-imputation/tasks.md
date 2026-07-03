@@ -1,5 +1,7 @@
 # Data Imputation — Implementation Plan
 
+> **Status (2026-07-02):** Not started. Spec merged via PR #277; no `sbir_etl/imputation/` module exists yet.
+
 Execution order is top-to-bottom within each phase. Phases 1–3 are required; Phase 4
 is the initial method rollout; Phase 5 hardens operability.
 

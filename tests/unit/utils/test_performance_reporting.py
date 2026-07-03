@@ -281,6 +281,64 @@ class TestPerformanceReporter:
         assert comparison.regression_severity == "FAILURE"
         assert len(comparison.regression_messages) > 0
 
+    def test_time_jitter_below_noise_floor_passes(self):
+        """Millisecond jitter must not trip the percentage thresholds.
+
+        Regression guard for CI: a 1.8ms -> 2.4ms micro-benchmark run is +36%
+        but only +0.6ms — percentage-only comparison failed the build.
+        """
+        reporter = PerformanceReporter()
+        baseline = PerformanceMetrics(
+            total_duration_seconds=0.0018,
+            records_per_second=2000.0,
+            peak_memory_mb=189.0,
+            avg_memory_delta_mb=0.0,
+            match_rate=0.0,
+            matched_records=0,
+            total_records=500,
+        )
+        current = PerformanceMetrics(
+            total_duration_seconds=0.0024,  # +36% but only +0.6ms
+            records_per_second=2059.0,
+            peak_memory_mb=195.0,
+            avg_memory_delta_mb=0.0,
+            match_rate=0.0,
+            matched_records=0,
+            total_records=500,
+        )
+
+        comparison = reporter.compare_metrics(baseline, current)
+
+        assert comparison.regression_severity == "PASS"
+        assert not any("Time" in m for m in comparison.regression_messages)
+
+    def test_time_regression_above_noise_floor_still_fails(self):
+        """The floor must not mask real regressions on real-sized runs."""
+        reporter = PerformanceReporter()
+        baseline = PerformanceMetrics(
+            total_duration_seconds=10.0,
+            records_per_second=100.0,
+            peak_memory_mb=500.0,
+            avg_memory_delta_mb=0.0,
+            match_rate=0.9,
+            matched_records=900,
+            total_records=1000,
+        )
+        current = PerformanceMetrics(
+            total_duration_seconds=13.5,  # +35% and +3.5s
+            records_per_second=74.0,
+            peak_memory_mb=500.0,
+            avg_memory_delta_mb=0.0,
+            match_rate=0.9,
+            matched_records=900,
+            total_records=1000,
+        )
+
+        comparison = reporter.compare_metrics(baseline, current)
+
+        assert comparison.regression_severity == "FAILURE"
+        assert any("Time regression" in m for m in comparison.regression_messages)
+
     def test_compare_metrics_zero_baseline_time(self):
         """Test comparison handles zero baseline time gracefully."""
         reporter = PerformanceReporter()

@@ -1,5 +1,7 @@
 # Tasks: SBIR M&A Match Rate by Fiscal Year
 
+> **Status (2026-07-02):** Not started. Analysis-only spec building on the completed M&A detection work (`scripts/archive/data/detect_sbir_ma_events.py`).
+
 Estimated total: 1–1.5 days. No new extraction; analysis only.
 
 ## T0. Resolve open questions (design.md §"Open questions")
