@@ -700,7 +700,7 @@ usaspending_df = usaspending_df[usaspending_df['year'] >= 2019]
 
 ## Check identifier availability
 
-python scripts/validate_enrichment_quality.py \
+python scripts/validation/validate_enrichment_quality.py \
 
   --enriched-file reports/enriched.parquet \
   --json-output /tmp/quality.json
@@ -923,7 +923,7 @@ python scripts/performance/detect_performance_regression.py \
 
 ## Check quality metrics
 
-python scripts/validate_enrichment_quality.py \
+python scripts/validation/validate_enrichment_quality.py \
 
   --enriched-file reports/enriched.parquet
 

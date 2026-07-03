@@ -184,7 +184,8 @@ Legacy group names have been updated to reflect pipeline stages:
 
 ## Implementation
 
-The standardization was implemented using the `scripts/standardize_asset_names.py` script, which:
+The standardization was implemented as a one-time migration script (not retained in the
+repo — see the git history for the migration commit), which:
 
 1. Applied consistent naming patterns across all asset files
 2. Updated asset dependencies and references
@@ -206,10 +207,6 @@ When creating new assets:
 The naming standards can be validated using:
 
 ```bash
-
-## Check for naming consistency
-
-python scripts/standardize_asset_names.py --dry-run
 
 ## Validate asset definitions
 

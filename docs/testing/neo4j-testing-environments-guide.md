@@ -124,7 +124,7 @@ pytest -m integration
 
 ```bash
 docker compose --profile dev up -d
-python scripts/run_pipeline.py  # Full dataset
+dagster job execute -m sbir_analytics.definitions -j sbir_weekly_refresh_job  # Full dataset
 ```
 
 ## 4. Troubleshooting

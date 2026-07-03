@@ -175,7 +175,7 @@ Re-open with a larger denominator.
 - [x] 8.1 Unit test for name normalization edge cases (Inc / LLC / Corp,
       punctuation, DBAs)
       → verified: `test_normalize_name_*` + 20-pair MATCH/NON_MATCH set
-      in `tests/unit/scripts/ucc/test_matcher.py`
+      in `tests/unit/ucc/test_matcher.py`
 - [ ] 8.2 Unit test for secured-party classifier — **DEFERRED** with
       Phase 5
 - [x] 8.3 Fixture-based test for matcher on the 20-pair test set,
@@ -187,7 +187,7 @@ Re-open with a larger denominator.
 - [x] 8.5 Fixture-based test for `CohortStateFilter` covering: CA-organized
       domestic entity, foreign entity registered in CA, no-result, multiple
       entities with similar names
-      → verified: `tests/unit/scripts/ucc/test_cohort_state_filter.py`
+      → verified: `tests/unit/ucc/test_cohort_state_filter.py`
       (CA domestic, CA foreign, DE-organized-foreign, None record, empty
       record, pick-best ranking)
 
