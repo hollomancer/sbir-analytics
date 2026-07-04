@@ -1,5 +1,6 @@
 """Dagster assets for SBIR data ingestion pipeline."""
 
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -22,6 +23,7 @@ from loguru import logger
 from sbir_etl.config.loader import get_config
 from sbir_etl.extractors.sbir import SbirDuckDBExtractor
 from sbir_etl.utils.monitoring import performance_monitor
+from sbir_etl.utils.monitoring.alerts import AlertCollector
 from sbir_etl.validators.sbir_awards import validate_sbir_awards
 
 from ._ingestion_utils import stamp_provenance
@@ -151,6 +153,168 @@ def _apply_quality_filters(
     )
 
     return df, audit
+
+
+def _get_run_id(context: AssetExecutionContext) -> str | None:
+    """Return the Dagster run_id, tolerating direct-invocation test contexts.
+
+    `context.run.run_id` is the non-deprecated path in production; direct
+    invocation raises on `.run`, so fall back to the deprecated `context.run_id`
+    (which still works in DirectOpExecutionContext).
+    """
+    try:
+        return context.run.run_id
+    except Exception:
+        return getattr(context, "run_id", None)
+
+
+def _hash_or_reason(source_location: str) -> tuple[str | None, str | None]:
+    """Return (sha256, hash_omitted_reason) for a source location.
+
+    Hashes the file when the location is a resolvable local path; otherwise
+    returns None with a reason explaining why the per-byte hash was skipped.
+    """
+    if source_location.startswith(("s3://", "http://", "https://")):
+        return None, "streaming s3 source, per-byte hash not computed in-pipeline"
+
+    try:
+        source_path = Path(source_location)
+        if source_path.exists() and source_path.is_file():
+            with open(source_path, "rb") as f:
+                digest = hashlib.file_digest(f, "sha256")
+            return digest.hexdigest(), None
+    except (OSError, ValueError) as e:
+        logger.warning(f"Could not hash source at {source_location}: {e}")
+
+    return None, "source path not accessible from asset execution context"
+
+
+def _emit_validation_caveats(
+    collector: AlertCollector,
+    quality_report: Any,
+    filter_audit: dict[str, Any],
+    raw_row_count: int,
+) -> None:
+    """Emit reliability caveats from already-computed validation signals.
+
+    No new detection logic is introduced — every caveat is a durable
+    disclosure of a signal that today is computed and then discarded. See
+    specs/data-reliability-manifest/design.md section 5 for the mapping.
+    """
+    # Static qualitative caveat — persistent known limitation, always emitted.
+    # UEI absence is a firm-level property (bifurcation), not per-record noise.
+    collector.emit_caveat(
+        dimension="completeness",
+        metric_name="uei_missing_pre_2015_bifurcation",
+        observed_value=(
+            "UEI absence is a firm-level property on multi-award firms "
+            "in the 2000-2020 window"
+        ),
+        expected_value="field present on all records",
+        description=(
+            "Known firm-level bifurcation: UEI absence is a firm property, "
+            "not per-record noise."
+        ),
+        impact=(
+            "Longitudinal joins keyed on UEI alone under-count firm-level "
+            "activity; use firm_id (per specs/firm-identity-resolution/) where "
+            "available."
+        ),
+    )
+
+    # 1. Pass rate below the 99% caveat floor (but above gate).
+    pass_rate = float(getattr(quality_report, "pass_rate", 1.0))
+    if pass_rate < 0.99:
+        collector.emit_caveat(
+            dimension="validity",
+            metric_name="sbir_awards_pass_rate",
+            observed_value=round(pass_rate, 4),
+            expected_value=0.99,
+            description=(
+                f"Validation pass rate {pass_rate:.1%} below 99% expected floor."
+            ),
+            impact=(
+                "Records dropped from downstream analyses may bias cohort counts."
+            ),
+        )
+
+    # 2. Duplicate rows removed by dedup step.
+    dropped_duplicates = 0
+    coerced_fields = int(filter_audit.get("total_coerced_fields", 0))
+    for step in filter_audit.get("steps", []):
+        if step.get("name", "").startswith("dedup_"):
+            dropped_duplicates += int(step.get("dropped_count", 0))
+
+    if dropped_duplicates > 0:
+        collector.emit_caveat(
+            dimension="consistency",
+            metric_name="sbir_awards_dropped_duplicates",
+            observed_value=dropped_duplicates,
+            expected_value=0,
+            description=(
+                f"{dropped_duplicates:,} duplicate rows removed during dedup filter."
+            ),
+            impact=(
+                "Duplicate detection removed rows; check upstream for repeat "
+                "submissions."
+            ),
+        )
+
+    # 3. Silent field coercions during type normalization.
+    if coerced_fields > 0:
+        collector.emit_caveat(
+            dimension="validity",
+            metric_name="sbir_awards_coerced_field_count",
+            observed_value=coerced_fields,
+            expected_value=0,
+            description=(
+                f"{coerced_fields:,} field values silently coerced to null during "
+                "pre-validation cleanup."
+            ),
+            impact=(
+                "Field-level completeness reported downstream may include hidden "
+                "parse failures until input-validation-hardening lands."
+            ),
+        )
+
+    # 4. Row-count reduction from raw -> validated exceeds 5%.
+    final_count = int(filter_audit.get("final_count", 0))
+    if raw_row_count > 0:
+        reduction = 1.0 - (final_count / raw_row_count)
+        if reduction > 0.05:
+            collector.emit_caveat(
+                dimension="completeness",
+                metric_name="sbir_awards_row_reduction_rate",
+                observed_value=round(reduction, 4),
+                expected_value=0.05,
+                description=(
+                    f"Row-count reduction {reduction:.1%} exceeds 5% caveat threshold."
+                ),
+                impact=(
+                    "Downstream cohorts under-count relative to raw source."
+                ),
+            )
+
+    # 5. Any WARNING-severity issues from the validator (e.g., date-consistency).
+    warning_issues = [
+        issue for issue in getattr(quality_report, "issues", [])
+        if getattr(issue, "severity", None) == "warning"
+    ]
+    if warning_issues:
+        collector.emit_caveat(
+            dimension="validity",
+            metric_name="sbir_awards_validator_warnings",
+            observed_value=len(warning_issues),
+            expected_value=0,
+            description=(
+                f"{len(warning_issues):,} WARNING-severity validator issues retained "
+                "(e.g., date-consistency violations)."
+            ),
+            impact=(
+                "Records with impossible date orderings retained; time-series joins "
+                "may be affected."
+            ),
+        )
 
 
 def _save_to_s3(df: pd.DataFrame, s3_key: str, context: AssetExecutionContext) -> str | None:
@@ -354,6 +518,31 @@ def validated_sbir_awards(
         extra={"pass_rate_threshold": pass_rate_threshold},
     )
 
+    # Reliability manifest: capture provenance + subthreshold caveats.
+    # See specs/data-reliability-manifest/ for the disclosure contract.
+    run_id = _get_run_id(context)
+    collector = AlertCollector(
+        asset_name="validated_sbir_awards",
+        run_id=run_id,
+        config=config,
+    )
+
+    # Record provenance for the upstream source. The raw dataframe is already
+    # stamped with data_source_url and ingested_at by raw_sbir_awards; pull the
+    # first row as the source snapshot metadata.
+    if len(raw_sbir_awards) > 0:
+        source_location = str(raw_sbir_awards["data_source_url"].iloc[0])
+        sha256, hash_omitted = _hash_or_reason(source_location)
+        collector.record_provenance(
+            source_id="sbir_gov_bulk_download",
+            location=source_location,
+            retrieved_at=pd.Timestamp(raw_sbir_awards["ingested_at"].iloc[0]).to_pydatetime(),
+            row_count=len(raw_sbir_awards),
+            extractor_module="sbir_etl.extractors.sbir",
+            sha256=sha256,
+            hash_omitted_reason=hash_omitted,
+        )
+
     # Apply structural quality filters (empty IDs, duplicates, type coercion)
     # Returns audit trail with per-step drop counts and affected indices
     filtered_df, filter_audit = _apply_quality_filters(raw_sbir_awards, context)
@@ -418,6 +607,14 @@ def validated_sbir_awards(
     }
     if s3_uri:
         metadata["s3_uri"] = s3_uri
+
+    # Reliability manifest: emit caveats + persist manifest + attach summary keys.
+    _emit_validation_caveats(collector, quality_report, filter_audit, len(raw_sbir_awards))
+    manifest_path = Path("reports/reliability/validated_sbir_awards") / f"{run_id}.json"
+    manifest = collector.save_manifest(manifest_path)
+    metadata["caveat_count"] = len(manifest["caveats"])
+    metadata["resolved_caveat_count"] = len(manifest["resolved_caveats"])
+    metadata["manifest_path"] = str(manifest_path)
 
     return Output(value=validated_df, metadata=metadata)
 

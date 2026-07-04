@@ -1,13 +1,22 @@
 """Unit tests for performance alerts utilities."""
 
-from datetime import datetime
+import dataclasses
+import json
+from datetime import UTC, datetime
+from pathlib import Path
 
 import pytest
 
 
 pytestmark = pytest.mark.fast
 
-from sbir_etl.utils.monitoring.alerts import Alert, AlertCollector, AlertSeverity
+from sbir_etl.utils.monitoring.alerts import (
+    Alert,
+    AlertCollector,
+    AlertSeverity,
+    Caveat,
+    ProvenanceEntry,
+)
 
 
 class TestAlert:
@@ -177,3 +186,276 @@ class TestAlertCollector:
         assert alert is not None
         assert alert.severity == AlertSeverity.FAILURE
         assert "match_rate" in alert.alert_type.lower()
+
+
+class TestCaveat:
+    """Tests for Caveat dataclass."""
+
+    def _caveat(self, **overrides):
+        defaults = {
+            "timestamp": datetime(2026, 7, 2, 15, 32, 4, tzinfo=UTC),
+            "dimension": "validity",
+            "metric_name": "sbir_awards_pass_rate",
+            "observed_value": 0.972,
+            "expected_value": 0.99,
+            "description": "Pass rate below floor.",
+            "impact": "Cohort counts under-report.",
+        }
+        defaults.update(overrides)
+        return Caveat(**defaults)
+
+    def test_caveat_is_frozen(self):
+        caveat = self._caveat()
+        with pytest.raises(dataclasses.FrozenInstanceError):
+            caveat.observed_value = 0.5  # type: ignore[misc]
+
+    def test_caveat_to_dict_roundtrip(self):
+        caveat = self._caveat(asset_name="validated_sbir_awards", run_id="r1")
+        data = caveat.to_dict()
+        assert data["dimension"] == "validity"
+        assert data["observed_value"] == 0.972
+        assert data["expected_value"] == 0.99
+        assert data["asset_name"] == "validated_sbir_awards"
+        assert data["run_id"] == "r1"
+        # timestamp is ISO string
+        assert isinstance(data["timestamp"], str)
+        json.dumps(data)  # must be JSON-serializable
+
+
+class TestProvenanceEntry:
+    """Tests for ProvenanceEntry dataclass."""
+
+    def _entry(self, **overrides):
+        defaults = {
+            "source_id": "sbir_gov_bulk_download",
+            "location": "s3://bucket/key.csv",
+            "retrieved_at": datetime(2026, 7, 2, 14, 58, 12, tzinfo=UTC),
+            "sha256": None,
+            "row_count": 540123,
+            "extractor_module": "sbir_etl.extractors.sbir",
+            "hash_omitted_reason": "streaming s3 source",
+        }
+        defaults.update(overrides)
+        return ProvenanceEntry(**defaults)
+
+    def test_provenance_is_frozen(self):
+        entry = self._entry()
+        with pytest.raises(dataclasses.FrozenInstanceError):
+            entry.row_count = 0  # type: ignore[misc]
+
+    def test_provenance_to_dict_roundtrip(self):
+        entry = self._entry(sha256="abc123", hash_omitted_reason=None)
+        data = entry.to_dict()
+        assert data["source_id"] == "sbir_gov_bulk_download"
+        assert data["sha256"] == "abc123"
+        assert data["hash_omitted_reason"] is None
+        assert data["row_count"] == 540123
+        assert isinstance(data["retrieved_at"], str)
+        json.dumps(data)
+
+
+class TestEmitCaveat:
+    """Tests for AlertCollector.emit_caveat."""
+
+    def test_emit_caveat_appends_to_caveats_not_alerts(self):
+        collector = AlertCollector(asset_name="a", run_id="r")
+        caveat = collector.emit_caveat(
+            dimension="validity",
+            metric_name="m",
+            observed_value=1,
+            expected_value=0,
+            description="d",
+            impact="i",
+        )
+        assert len(collector.caveats) == 1
+        assert collector.caveats[0] is caveat
+        assert len(collector.alerts) == 0
+
+    def test_emit_caveat_stamps_asset_and_run(self):
+        collector = AlertCollector(asset_name="asset_x", run_id="run_x")
+        caveat = collector.emit_caveat(
+            dimension="completeness",
+            metric_name="m",
+            observed_value=1,
+            expected_value=0,
+            description="d",
+            impact="i",
+        )
+        assert caveat.asset_name == "asset_x"
+        assert caveat.run_id == "run_x"
+
+    def test_emit_caveat_rejects_invalid_dimension(self):
+        collector = AlertCollector()
+        with pytest.raises(ValueError, match="Invalid dimension"):
+            collector.emit_caveat(
+                dimension="not_a_dimension",  # type: ignore[arg-type]
+                metric_name="m",
+                observed_value=1,
+                expected_value=0,
+                description="d",
+                impact="i",
+            )
+
+    def test_emit_caveat_accepts_all_four_dimensions(self):
+        collector = AlertCollector()
+        for dim in ("accuracy", "completeness", "consistency", "validity"):
+            collector.emit_caveat(
+                dimension=dim,  # type: ignore[arg-type]
+                metric_name=f"m_{dim}",
+                observed_value=1,
+                expected_value=0,
+                description="d",
+                impact="i",
+            )
+        assert len(collector.caveats) == 4
+
+
+class TestRecordProvenance:
+    """Tests for AlertCollector.record_provenance."""
+
+    def test_record_provenance_appends(self):
+        collector = AlertCollector()
+        entry = collector.record_provenance(
+            source_id="src",
+            location="/path/to/file.csv",
+            row_count=100,
+            extractor_module="mod",
+            sha256="deadbeef",
+        )
+        assert len(collector.provenance) == 1
+        assert collector.provenance[0] is entry
+
+    def test_record_provenance_defaults_retrieved_at(self):
+        collector = AlertCollector()
+        before = datetime.now(UTC)
+        entry = collector.record_provenance(
+            source_id="src",
+            location="/p",
+            row_count=1,
+            extractor_module="m",
+            sha256="abc",
+        )
+        after = datetime.now(UTC)
+        assert before <= entry.retrieved_at <= after
+
+    def test_record_provenance_null_hash_requires_reason(self):
+        collector = AlertCollector()
+        with pytest.raises(ValueError, match="hash_omitted_reason"):
+            collector.record_provenance(
+                source_id="src",
+                location="/p",
+                row_count=1,
+                extractor_module="m",
+                sha256=None,
+            )
+
+    def test_record_provenance_null_hash_with_reason_ok(self):
+        collector = AlertCollector()
+        entry = collector.record_provenance(
+            source_id="src",
+            location="s3://b/k",
+            row_count=1,
+            extractor_module="m",
+            sha256=None,
+            hash_omitted_reason="s3 streaming",
+        )
+        assert entry.sha256 is None
+        assert entry.hash_omitted_reason == "s3 streaming"
+
+
+class TestSaveManifest:
+    """Tests for AlertCollector.save_manifest."""
+
+    def _emit(self, collector, metric_name):
+        collector.emit_caveat(
+            dimension="validity",
+            metric_name=metric_name,
+            observed_value=1,
+            expected_value=0,
+            description=f"desc {metric_name}",
+            impact=f"impact {metric_name}",
+        )
+
+    def test_save_manifest_writes_valid_json(self, tmp_path: Path):
+        collector = AlertCollector(asset_name="a", run_id="run1")
+        self._emit(collector, "m1")
+        collector.record_provenance(
+            source_id="src",
+            location="/p",
+            row_count=1,
+            extractor_module="mod",
+            sha256="abc",
+        )
+        out = tmp_path / "sub" / "run1.json"
+
+        manifest = collector.save_manifest(out)
+
+        assert out.exists()
+        assert manifest["asset_name"] == "a"
+        assert manifest["run_id"] == "run1"
+        assert len(manifest["caveats"]) == 1
+        assert len(manifest["provenance"]) == 1
+        assert manifest["resolved_caveats"] == []
+        assert manifest["framework_reference"] == "GAO-20-283G"
+
+        with open(out) as f:
+            on_disk = json.load(f)
+        assert on_disk["asset_name"] == "a"
+        assert on_disk["caveats"][0]["metric_name"] == "m1"
+
+    def test_save_manifest_creates_parent_dirs(self, tmp_path: Path):
+        deep = tmp_path / "a" / "b" / "c" / "manifest.json"
+        collector = AlertCollector()
+        collector.save_manifest(deep)
+        assert deep.exists()
+
+    def test_resolved_caveats_populated_from_prior_manifest(self, tmp_path: Path):
+        # Run 1: emit m1 and m2
+        c1 = AlertCollector(asset_name="a", run_id="run1")
+        self._emit(c1, "m1")
+        self._emit(c1, "m2")
+        c1.save_manifest(tmp_path / "run1.json")
+
+        # Run 2: emit only m2 -> m1 should appear in resolved_caveats
+        c2 = AlertCollector(asset_name="a", run_id="run2")
+        self._emit(c2, "m2")
+        manifest = c2.save_manifest(tmp_path / "run2.json")
+
+        assert len(manifest["caveats"]) == 1
+        assert manifest["caveats"][0]["metric_name"] == "m2"
+        assert len(manifest["resolved_caveats"]) == 1
+        assert manifest["resolved_caveats"][0]["metric_name"] == "m1"
+        # Resolved carries the full prior caveat dict (design open-question #3).
+        assert manifest["resolved_caveats"][0]["description"] == "desc m1"
+        assert manifest["resolved_caveats"][0]["impact"] == "impact m1"
+
+    def test_identical_reruns_produce_empty_resolved(self, tmp_path: Path):
+        c1 = AlertCollector(asset_name="a", run_id="run1")
+        self._emit(c1, "m1")
+        c1.save_manifest(tmp_path / "run1.json")
+
+        c2 = AlertCollector(asset_name="a", run_id="run2")
+        self._emit(c2, "m1")
+        manifest = c2.save_manifest(tmp_path / "run2.json")
+
+        assert manifest["resolved_caveats"] == []
+
+    def test_empty_prior_directory_produces_empty_resolved(self, tmp_path: Path):
+        collector = AlertCollector()
+        self._emit(collector, "m1")
+        manifest = collector.save_manifest(tmp_path / "run1.json")
+        assert manifest["resolved_caveats"] == []
+
+    def test_rewrite_same_path_does_not_self_resolve(self, tmp_path: Path):
+        # Writing to the same path twice: the exclude logic should prevent
+        # the caveats from the first write showing up as "resolved" in the second.
+        out = tmp_path / "run1.json"
+        c1 = AlertCollector(asset_name="a", run_id="run1")
+        self._emit(c1, "m1")
+        c1.save_manifest(out)
+
+        c2 = AlertCollector(asset_name="a", run_id="run1")
+        # No caveats emitted this time
+        manifest = c2.save_manifest(out)
+        # The excluded file is the one being written, so no prior candidate exists.
+        assert manifest["resolved_caveats"] == []

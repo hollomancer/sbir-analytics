@@ -18,12 +18,14 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import Enum
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from loguru import logger
+
+_VALID_DIMENSIONS = ("accuracy", "completeness", "consistency", "validity")
 
 
 class AlertSeverity(str, Enum):
@@ -95,6 +97,65 @@ class Alert:
         }
 
 
+@dataclass(frozen=True)
+class Caveat:
+    """Subthreshold reliability observation. Disclosure, not failure.
+
+    Emitted where a signal is worse than a caveat threshold but does not
+    fail an existing gate. Caveats surface known limitations on the manifest
+    without changing run outcome.
+    """
+
+    timestamp: datetime
+    dimension: Literal["accuracy", "completeness", "consistency", "validity"]
+    metric_name: str
+    observed_value: Any
+    expected_value: Any
+    description: str
+    impact: str
+    asset_name: str | None = None
+    run_id: str | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert caveat to dict for JSON serialization."""
+        return {
+            "timestamp": self.timestamp.isoformat(),
+            "dimension": self.dimension,
+            "metric_name": self.metric_name,
+            "observed_value": self.observed_value,
+            "expected_value": self.expected_value,
+            "description": self.description,
+            "impact": self.impact,
+            "asset_name": self.asset_name,
+            "run_id": self.run_id,
+        }
+
+
+@dataclass(frozen=True)
+class ProvenanceEntry:
+    """Per-input-source record. One entry per source the asset consumed."""
+
+    source_id: str
+    location: str
+    retrieved_at: datetime
+    sha256: str | None
+    row_count: int
+    extractor_module: str
+    hash_omitted_reason: str | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert provenance entry to dict for JSON serialization."""
+        return {
+            "source_id": self.source_id,
+            "location": self.location,
+            "retrieved_at": self.retrieved_at.isoformat(),
+            "sha256": self.sha256,
+            "row_count": self.row_count,
+            "extractor_module": self.extractor_module,
+            "hash_omitted_reason": self.hash_omitted_reason,
+        }
+
+
 class AlertThresholds:
     """Configurable alert thresholds."""
 
@@ -154,6 +215,8 @@ class AlertCollector:
         self.asset_name = asset_name
         self.run_id = run_id
         self.alerts: list[Alert] = []
+        self.caveats: list[Caveat] = []
+        self.provenance: list[ProvenanceEntry] = []
         self.thresholds = AlertThresholds.from_config(config) if config else AlertThresholds()
 
     def check_duration_per_record(
@@ -422,3 +485,155 @@ class AlertCollector:
 
         logger.info(f"Alerts saved to {output_path}")
         return output_path
+
+    def emit_caveat(
+        self,
+        dimension: Literal["accuracy", "completeness", "consistency", "validity"],
+        metric_name: str,
+        observed_value: Any,
+        expected_value: Any,
+        description: str,
+        impact: str,
+    ) -> Caveat:
+        """Emit a subthreshold reliability disclosure.
+
+        Does NOT append to self.alerts and does NOT change run outcome.
+        Caveats are persisted only via save_manifest().
+
+        Args:
+            dimension: One of "accuracy", "completeness", "consistency", "validity".
+            metric_name: Stable key used for cross-run diffing.
+            observed_value: The measured value (float, int, or string).
+            expected_value: Threshold, target, or expected shape.
+            description: One-sentence human-readable statement.
+            impact: One-sentence downstream-effect statement (required).
+
+        Returns:
+            The appended Caveat.
+
+        Raises:
+            ValueError: If dimension is not one of the four permitted values.
+        """
+        if dimension not in _VALID_DIMENSIONS:
+            raise ValueError(
+                f"Invalid dimension: {dimension!r}. Must be one of {_VALID_DIMENSIONS}"
+            )
+
+        caveat = Caveat(
+            timestamp=datetime.now(UTC),
+            dimension=dimension,
+            metric_name=metric_name,
+            observed_value=observed_value,
+            expected_value=expected_value,
+            description=description,
+            impact=impact,
+            asset_name=self.asset_name,
+            run_id=self.run_id,
+        )
+        self.caveats.append(caveat)
+        return caveat
+
+    def record_provenance(
+        self,
+        source_id: str,
+        location: str,
+        row_count: int,
+        extractor_module: str,
+        sha256: str | None = None,
+        hash_omitted_reason: str | None = None,
+        retrieved_at: datetime | None = None,
+    ) -> ProvenanceEntry:
+        """Record one input source consumed by the asset.
+
+        Args:
+            source_id: Stable string identifier, e.g., "sbir_gov_bulk_download".
+            location: URL or absolute path of the source.
+            row_count: Number of rows the source contributed.
+            extractor_module: Dotted Python path of the extractor.
+            sha256: SHA-256 of source bytes; None permitted only with hash_omitted_reason.
+            hash_omitted_reason: Required when sha256 is None.
+            retrieved_at: When the source was retrieved (UTC). Defaults to now.
+
+        Returns:
+            The appended ProvenanceEntry.
+
+        Raises:
+            ValueError: If sha256 is None but no hash_omitted_reason is provided.
+        """
+        if sha256 is None and not hash_omitted_reason:
+            raise ValueError("sha256=None requires hash_omitted_reason")
+
+        entry = ProvenanceEntry(
+            source_id=source_id,
+            location=location,
+            retrieved_at=retrieved_at or datetime.now(UTC),
+            sha256=sha256,
+            row_count=row_count,
+            extractor_module=extractor_module,
+            hash_omitted_reason=hash_omitted_reason,
+        )
+        self.provenance.append(entry)
+        return entry
+
+    def save_manifest(self, manifest_path: Path) -> dict[str, Any]:
+        """Persist reliability manifest JSON.
+
+        Computes resolved_caveats by diffing metric_names against the most-recent
+        prior manifest in the same directory (mtime scan, excluding manifest_path
+        itself so re-writes are idempotent).
+
+        Args:
+            manifest_path: Full path to write the manifest JSON to.
+
+        Returns:
+            The manifest dict that was written (so callers can pull counts without
+            re-reading from disk).
+        """
+        manifest_path.parent.mkdir(parents=True, exist_ok=True)
+
+        prior_caveats = self._read_prior_caveats(manifest_path.parent, manifest_path)
+        current_metric_names = {c.metric_name for c in self.caveats}
+        resolved = [
+            c for c in prior_caveats if c.get("metric_name") not in current_metric_names
+        ]
+
+        manifest = {
+            "asset_name": self.asset_name,
+            "run_id": self.run_id,
+            "generated_at": datetime.now(UTC).isoformat(),
+            "framework_reference": "GAO-20-283G",
+            "caveats": [c.to_dict() for c in self.caveats],
+            "resolved_caveats": resolved,
+            "provenance": [p.to_dict() for p in self.provenance],
+        }
+
+        with open(manifest_path, "w") as f:
+            json.dump(manifest, f, indent=2, default=str)
+
+        logger.info(f"Reliability manifest saved to {manifest_path}")
+        return manifest
+
+    def _read_prior_caveats(
+        self, directory: Path, exclude: Path
+    ) -> list[dict[str, Any]]:
+        """Return caveats from the most-recent manifest in `directory`.
+
+        Excludes the file at `exclude` (typically the manifest currently being
+        written). Returns an empty list if no prior manifest exists.
+        """
+        if not directory.exists():
+            return []
+        candidates = sorted(
+            (p for p in directory.glob("*.json") if p != exclude),
+            key=lambda p: p.stat().st_mtime,
+            reverse=True,
+        )
+        if not candidates:
+            return []
+        try:
+            with open(candidates[0]) as f:
+                prior = json.load(f)
+        except (OSError, json.JSONDecodeError) as e:
+            logger.warning(f"Could not read prior manifest {candidates[0]}: {e}")
+            return []
+        return prior.get("caveats", [])
