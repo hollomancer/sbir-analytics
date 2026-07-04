@@ -43,7 +43,7 @@ See [README](../README.md) for project context, research questions, and setup. T
 
 ### Reference
 
-- Government policy demo plan: [`guides/government-policy-demo-plan.md`](guides/government-policy-demo-plan.md)
+- Government policy demo plan (incl. NSF/SBA worked example): [`guides/government-policy-demo-plan.md`](guides/government-policy-demo-plan.md)
 - Statistical reporting guide: [`guides/statistical-reporting.md`](guides/statistical-reporting.md)
 - Neo4j schema reference: [`schemas/neo4j.md`](schemas/neo4j.md)
 - Data dictionaries: [`data/dictionaries/`](data/dictionaries/)

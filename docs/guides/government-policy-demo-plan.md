@@ -29,8 +29,10 @@ helps answer questions government already has:
 
 ## 2. Audience framing
 
-Do **not** frame this as a demo for one named agency. Frame it as a reusable
-policy workflow with different entry points depending on the stakeholder's job.
+Frame the core narrative as a reusable policy workflow with different entry
+points depending on the stakeholder's job — not as a demo built for one named
+agency. When you *are* presenting to a specific agency, tailor the entry point
+(see the worked NSF/SBA example in section 11).
 
 | Audience type | What they care about | Best demo entry point |
 |---|---|---|
@@ -228,10 +230,19 @@ Policy interpretation:
 
 ### Leave out of the live room unless specifically asked
 
-- Unverified headline numbers from trade press or uncommitted notes.
+- Unverified headline numbers from trade press or uncommitted notes. Concrete
+  example: the NSF ~18:1 portfolio-leverage figure is flagged `[TODO: verify]`
+  in [research-questions.md](../research-questions.md) — found only in trade
+  press, not confirmed against an NSF publication. If asked, say it's being
+  verified.
 - Supply-chain chokepoint / fragility hypotheses that are not scoped or
-  implemented.
-- Local-only audit harnesses or files that are not in the repository.
+  implemented (A-CP5, A-CP7, A-CP10–A-CP14 in the research-questions
+  inventory). Fine to mention as roadmap if asked, not to demo.
+- Local-only audit harnesses or files that are not in the repository — e.g.
+  the commercialization-benchmark methodology doc and per-firm audit harness.
+  Don't promise a paper trail that isn't on `main` yet.
+- Congressional district success-story briefings — these exist only "in
+  conversation," not as committed repo artifacts.
 - Any language implying official agency validation.
 
 ## 6. Required artifacts for a credible policy demo
@@ -297,3 +308,78 @@ The demo succeeds if the audience leaves understanding:
 The demo fails if it becomes a tour of code, a debate over one headline number,
 or an implied claim that public-data linkage is equivalent to official program
 measurement.
+
+## 11. Worked example: NSF and SBA
+
+"Policy leaders" is not one audience. NSF and SBA sit in different roles
+relative to the SBIR/STTR program, and the [research-questions
+inventory](../research-questions.md) already tells you where each one's entry
+point is:
+
+- **SBA** is the program's statutory overseer. It has a specific compliance
+  question to answer every year: which Phase II awardees meet the §638(qq)(3)
+  Commercialization Benchmark (Pub. L. 117-183)? This is not a research
+  question for SBA — it's a legal obligation. Lead with the tool that answers
+  it directly.
+- **NSF** is a program office running its own SBIR portfolio. Per the
+  inventory's audience guidance, NSF program managers start with **B**
+  (transitions, Phase II→III latency), **C1** (cross-agency CET portfolio
+  composition), and **E6** (rolling quarterly snapshots) — i.e., "how is my
+  program's technology mix and commercialization trending relative to other
+  agencies," not "are we compliant."
+
+Treat this as two short, separate walkthroughs rather than one combined
+narrative — the material that lands for one audience (statutory compliance)
+falls flat for the other (portfolio strategy), and vice versa.
+
+### What's genuinely demo-ready today
+
+Everything below is implemented on `main`, backed by real data, and
+reproducible — not a spec or a research target.
+
+| Artifact | What it shows | Where |
+|---|---|---|
+| Commercialization Benchmark CLI | Live §638(qq)(3) eligibility, sensitivity, and per-company evaluation against real award data | `scripts/run_benchmark.py` (`evaluate` / `sensitivity` / `company` subcommands), backed by `sbir_etl/models/benchmark_models.py` |
+| Form D private-capital leverage | For every $1 of federal SBIR funding, SBIR companies raised $1.82–$2.37 in private capital via SEC Reg D (95% bootstrap CIs, 3,640–4,760 companies) | `docs/research/sbir-form-d-fundraising-analysis.md` |
+| DoD branch leverage heterogeneity | Aggregate DoD Form D leverage (1.01x) masks a ~9x spread — Air Force 2.12x vs. Navy 0.41x, tied to a federal-contract substitution channel | `docs/research/dod-form-d-leverage.md` |
+| Cross-agency CET portfolio composition | Federal SBIR portfolio broken out by the 21-area NSTC-2025Q1 technology taxonomy, across all 11 agencies | `config/cet/taxonomy.yaml`, `packages/sbir-ml/sbir_ml/ml/config/taxonomy_loader.py`, spec at `specs/cross-agency-taxonomy/` |
+| SEC EDGAR outcomes plain-English guide | Explains, in non-technical terms, how the pipeline detects acquisitions/investment/public-filer status for SBIR firms — good leave-behind reading | [sec-edgar-for-policy-makers.md](sec-edgar-for-policy-makers.md) |
+
+### Suggested flow
+
+1. **Open together (5 min):** the Form D leverage finding and the DoD
+   branch-heterogeneity breakdown, framed as "this pipeline finds things a
+   quadrennial NASEM review can't, because it runs continuously." Works for
+   both audiences as an opener.
+2. **Split for ~10 minutes each:**
+   - *SBA track:* run the benchmark CLI live against real award data (the
+     commands in section 4, Segment 3); walk through one company's
+     `evaluate_single_company` output to show the statutory test resolving
+     end-to-end.
+   - *NSF track:* CET cross-agency portfolio composition — NSF's technology
+     mix vs. other agencies, then Phase II→III transition latency for NSF's
+     own awards.
+3. **Close together (5 min):** the continuous-monitoring pitch (E6) — this
+   isn't a one-time study, it's infrastructure that can produce
+   quarter-over-quarter snapshots between NASEM's four-year review cycles.
+   See `docs/research-plan-alignment.md`, milestone M5.
+
+### Rehearsing the live commands
+
+Rehearse against a real awards file before the demo. The SBIR.gov bulk CSV
+(`data/raw/sbir/award_data.csv`, see
+[awards-refresh.md](../data/awards-refresh.md)) works directly — the evaluator
+resolves its `Company` / `UEI` / `Phase` / `Award Year` columns as-is. Any
+substitute file must have a phase column (`Phase` or `phase`) and a fiscal-year
+column (`fiscal_year`, `award_year`, or `Award Year`); the CLI exits with an
+error if either is missing. Do not use
+`tests/fixtures/follow_on_multiplier/sbir_awards.csv` — it has no phase column.
+
+### Where to go next
+
+- Full research-question inventory and audience map:
+  [research-questions.md](../research-questions.md)
+- Milestone-by-milestone build status vs. the underlying research plan:
+  [research-plan-alignment.md](../research-plan-alignment.md)
+- Plain-English methodology explainer to leave behind:
+  [sec-edgar-for-policy-makers.md](sec-edgar-for-policy-makers.md)
