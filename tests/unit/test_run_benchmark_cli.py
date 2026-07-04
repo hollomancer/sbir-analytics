@@ -54,6 +54,28 @@ def test_evaluate_requires_fy(tmp_path, monkeypatch):
     assert exc.value.code == 2
 
 
+def test_report_marks_commercialization_not_evaluable_without_data(tmp_path, monkeypatch, capsys):
+    """Without --commercialization, subject companies must not be reported as failing."""
+    awards = tmp_path / "awards.csv"
+    # 16 Phase II awards inside the FY2025 commercialization window (FY2013-2022)
+    rows = "".join(f"Subject Co,SUBJ789,II,{2013 + (i % 10)}\n" for i in range(16))
+    awards.write_text(f"Company,UEI,phase,fiscal_year\n{rows}", encoding="utf-8")
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["run_benchmark.py", "evaluate", str(awards), "--fy", "2025", "--report"],
+    )
+
+    run_benchmark.main()
+
+    out = capsys.readouterr().out
+    assert "- Failing commercialization benchmark: **0**" in out
+    assert "no commercialization data was supplied" in out
+    assert "Not Evaluable" in out
+    assert "Subject Co" in out
+
+
 def test_evaluate_rejects_awards_missing_phase_column(tmp_path, monkeypatch, capsys):
     """A file the evaluator can't resolve must fail loudly, not report 0 companies.
 

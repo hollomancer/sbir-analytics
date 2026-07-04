@@ -271,6 +271,49 @@ class TestCommercializationRateBenchmark:
         assert cr.patents_path_available is False
         assert cr.status == BenchmarkStatus.FAIL
 
+    def test_subject_company_not_evaluable_without_commercialization_data(self):
+        """Absent commercialization data yields NOT_EVALUABLE, not FAIL.
+
+        Sales/patent counts default to zero when no data is supplied; reporting
+        that as failure would be a false claim about the company.
+        """
+        records = _phase2_awards("NoDataCo", "UEI000000014", 20, 2013)
+        df = _make_awards_df(records)
+
+        evaluator = BenchmarkEligibilityEvaluator(evaluation_fy=2025)
+        summary = evaluator.evaluate(df)
+
+        cr = summary.commercialization_results[0]
+        assert cr.tier == BenchmarkTier.STANDARD
+        assert cr.status == BenchmarkStatus.NOT_EVALUABLE
+        assert cr.consequence == ConsequenceType.NONE
+        assert cr.avg_sales_per_phase2 is None
+        assert cr.patent_rate is None
+        assert summary.companies_failing_commercialization == 0
+        assert summary.commercialization_data_supplied is False
+
+    def test_supplied_commercialization_data_still_fails_below_threshold(self):
+        """With data supplied, a subject company below threshold still FAILs."""
+        records = _phase2_awards("LowSalesCo", "UEI000000015", 20, 2013)
+        df = _make_awards_df(records)
+
+        comm_df = pd.DataFrame(
+            [
+                {
+                    "company_id": "uei:UEI000000015",
+                    "total_sales_and_investment": 100_000,  # $5K avg < $100K
+                    "patent_count": 0,
+                }
+            ]
+        )
+
+        evaluator = BenchmarkEligibilityEvaluator(evaluation_fy=2025)
+        summary = evaluator.evaluate(df, comm_df)
+
+        cr = summary.commercialization_results[0]
+        assert cr.status == BenchmarkStatus.FAIL
+        assert summary.commercialization_data_supplied is True
+
 
 # ─── Sensitivity Analysis Tests ──────────────────────────────────────
 

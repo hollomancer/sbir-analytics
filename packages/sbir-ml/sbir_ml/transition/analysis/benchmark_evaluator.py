@@ -290,9 +290,14 @@ class BenchmarkEligibilityEvaluator:
     # ─── Commercialization rate evaluation ───────────────────────────
 
     def _evaluate_commercialization_rate(
-        self, counts: CompanyAwardCounts
+        self, counts: CompanyAwardCounts, has_commercialization_data: bool = True
     ) -> CommercializationRateResult:
-        """Evaluate the commercialization rate benchmark for one company."""
+        """Evaluate the commercialization rate benchmark for one company.
+
+        When ``has_commercialization_data`` is False, subject companies get
+        NOT_EVALUABLE rather than FAIL: sales/patent counts defaulting to zero
+        reflect absent input, not observed non-commercialization.
+        """
         c = self.commercialization_thresholds
         p2 = counts.phase2_count_commercialization
 
@@ -318,13 +323,20 @@ class BenchmarkEligibilityEvaluator:
             required_avg_sales = None
         required_patent_rate = c.standard_min_patent_rate if patents_path else None
 
-        # Compute metrics
-        avg_sales = counts.total_sales_and_investment / p2 if p2 > 0 else None
-        patent_rate = counts.patent_count / p2 if p2 > 0 else None
+        # Compute metrics (None when no data supplied — zero would be a false claim)
+        if has_commercialization_data:
+            avg_sales = counts.total_sales_and_investment / p2 if p2 > 0 else None
+            patent_rate = counts.patent_count / p2 if p2 > 0 else None
+        else:
+            avg_sales = None
+            patent_rate = None
 
         # Determine status
         if tier == BenchmarkTier.NOT_SUBJECT:
             status = BenchmarkStatus.NOT_APPLICABLE
+            consequence = ConsequenceType.NONE
+        elif not has_commercialization_data:
+            status = BenchmarkStatus.NOT_EVALUABLE
             consequence = ConsequenceType.NONE
         else:
             passes_sales = (
@@ -505,6 +517,7 @@ class BenchmarkEligibilityEvaluator:
             results, commercialization rate results, and sensitivity analysis.
         """
         company_counts = self._count_awards_by_company(awards_df, commercialization_df)
+        has_comm_data = commercialization_df is not None and not commercialization_df.empty
 
         transition_results: list[TransitionRateResult] = []
         commercialization_results: list[CommercializationRateResult] = []
@@ -512,7 +525,7 @@ class BenchmarkEligibilityEvaluator:
 
         for _cid, counts in company_counts.items():
             tr = self._evaluate_transition_rate(counts)
-            cr = self._evaluate_commercialization_rate(counts)
+            cr = self._evaluate_commercialization_rate(counts, has_comm_data)
             sr = self._compute_sensitivity(counts, tr, cr)
 
             transition_results.append(tr)
@@ -563,6 +576,7 @@ class BenchmarkEligibilityEvaluator:
             companies_failing_commercialization=sum(
                 1 for r in commercialization_results if r.status == BenchmarkStatus.FAIL
             ),
+            commercialization_data_supplied=has_comm_data,
             transition_results=transition_results,
             commercialization_results=commercialization_results,
             sensitivity_results=sensitivity_results,
@@ -655,6 +669,22 @@ class BenchmarkEligibilityEvaluator:
             "",
         ]
 
+        if not summary.commercialization_data_supplied:
+            not_evaluable = sum(
+                1
+                for r in summary.commercialization_results
+                if r.status == BenchmarkStatus.NOT_EVALUABLE
+            )
+            lines.extend(
+                [
+                    f"> **Note:** no commercialization data was supplied — the sales/patent "
+                    f"test is not evaluable for the {not_evaluable} companies subject to the "
+                    f"commercialization benchmark. Absence of data is reported as "
+                    f"`not_evaluable`, not as failure.",
+                    "",
+                ]
+            )
+
         # Transition rate details — failures first
         def _tr_row(r: TransitionRateResult) -> str:
             ratio_str = f"{r.transition_ratio:.2%}" if r.transition_ratio is not None else "N/A"
@@ -696,14 +726,22 @@ class BenchmarkEligibilityEvaluator:
             "| Company | Phase II | Avg Sales | Patent Rate | Tier | Consequence |",
             "|---------|----------|-----------|-------------|------|-------------|",
         ]
-        for label, status in [("Failing", BenchmarkStatus.FAIL), ("Passing", BenchmarkStatus.PASS)]:
+        cr_sections = [
+            ("Failing Commercialization Rate Benchmark", BenchmarkStatus.FAIL),
+            ("Passing Commercialization Rate Benchmark", BenchmarkStatus.PASS),
+            (
+                "Commercialization Rate Benchmark: Not Evaluable (no data supplied)",
+                BenchmarkStatus.NOT_EVALUABLE,
+            ),
+        ]
+        for title, status in cr_sections:
             cr_rows = [
                 r
                 for r in summary.commercialization_results
                 if r.status == status and r.tier != BenchmarkTier.NOT_SUBJECT
             ]
             if cr_rows:
-                lines.extend([f"## {label} Commercialization Rate Benchmark", ""] + cr_header)
+                lines.extend([f"## {title}", ""] + cr_header)
                 lines.extend(_cr_row(r) for r in cr_rows)
                 lines.append("")
 
