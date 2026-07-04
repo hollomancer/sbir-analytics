@@ -55,9 +55,30 @@ def load_awards(path: str) -> pd.DataFrame:
     if p.suffix == ".parquet":
         return pd.read_parquet(p)
     elif p.suffix == ".csv":
-        return pd.read_csv(p)
+        return pd.read_csv(p, low_memory=False)
     else:
         print(f"Unsupported file format: {p.suffix}", file=sys.stderr)
+        sys.exit(1)
+
+
+# Column aliases the evaluator resolves; without both, it silently evaluates 0 companies.
+_PHASE_COLUMNS = ("Phase", "phase")
+_FY_COLUMNS = ("fiscal_year", "award_year", "Award Year")
+
+
+def check_award_columns(df: pd.DataFrame, path: str) -> None:
+    """Exit with a clear error if the awards file lacks columns the evaluator requires."""
+    missing = []
+    if not any(c in df.columns for c in _PHASE_COLUMNS):
+        missing.append(f"phase (one of: {', '.join(_PHASE_COLUMNS)})")
+    if not any(c in df.columns for c in _FY_COLUMNS):
+        missing.append(f"fiscal year (one of: {', '.join(_FY_COLUMNS)})")
+    if missing:
+        print(
+            f"Error: {path} is missing required columns: {'; '.join(missing)}.\n"
+            f"Found columns: {', '.join(df.columns)}",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
 
@@ -65,6 +86,7 @@ def cmd_evaluate(args) -> None:
     from sbir_ml.transition.analysis.benchmark_evaluator import BenchmarkEligibilityEvaluator
 
     awards = load_awards(args.awards)
+    check_award_columns(awards, args.awards)
     commercialization = load_awards(args.commercialization) if args.commercialization else None
 
     evaluator = BenchmarkEligibilityEvaluator(
@@ -89,6 +111,7 @@ def cmd_sensitivity(args) -> None:
     from sbir_ml.transition.analysis.benchmark_evaluator import BenchmarkEligibilityEvaluator
 
     awards = load_awards(args.awards)
+    check_award_columns(awards, args.awards)
     commercialization = load_awards(args.commercialization) if args.commercialization else None
     evaluator = BenchmarkEligibilityEvaluator(
         evaluation_fy=args.fy,
@@ -110,6 +133,7 @@ def cmd_company(args) -> None:
     from sbir_ml.transition.analysis.benchmark_evaluator import BenchmarkEligibilityEvaluator
 
     awards = load_awards(args.awards)
+    check_award_columns(awards, args.awards)
     commercialization = load_awards(args.commercialization) if args.commercialization else None
     evaluator = BenchmarkEligibilityEvaluator(evaluation_fy=args.fy)
     result = evaluator.evaluate_single_company(awards, args.id, commercialization)

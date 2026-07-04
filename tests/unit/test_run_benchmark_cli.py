@@ -54,6 +54,33 @@ def test_evaluate_requires_fy(tmp_path, monkeypatch):
     assert exc.value.code == 2
 
 
+def test_evaluate_rejects_awards_missing_phase_column(tmp_path, monkeypatch, capsys):
+    """A file the evaluator can't resolve must fail loudly, not report 0 companies.
+
+    Regression test: tests/fixtures/follow_on_multiplier/sbir_awards.csv has no Phase
+    column, and the evaluator silently returned an empty summary for it.
+    """
+    awards = tmp_path / "awards.csv"
+    awards.write_text(
+        "company_id,recipient_uei,award_id,fiscal_year\nAlpha,UEI-ALPHA,S-A1,2020\n",
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["run_benchmark.py", "evaluate", str(awards), "--fy", "2025", "--report"],
+    )
+
+    with pytest.raises(SystemExit) as exc:
+        run_benchmark.main()
+
+    assert exc.value.code == 1
+    err = capsys.readouterr().err
+    assert "missing required columns" in err
+    assert "Phase" in err
+
+
 def test_sensitivity_accepts_commercialization_data(tmp_path, monkeypatch, capsys):
     awards = tmp_path / "awards.csv"
     commercialization = tmp_path / "commercialization.csv"
