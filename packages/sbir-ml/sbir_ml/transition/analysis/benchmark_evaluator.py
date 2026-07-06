@@ -527,6 +527,7 @@ class BenchmarkEligibilityEvaluator:
                 sensitivity_results.append(sr)
 
         # Sort: companies subject to benchmarks first, then by company_id
+        # Use str() to handle mixed types (float NaN vs str) in company_id
         transition_results.sort(
             key=lambda r: (r.tier == BenchmarkTier.NOT_SUBJECT, str(r.company_id))
         )
