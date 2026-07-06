@@ -3,6 +3,7 @@
 import hashlib
 import json
 import os
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -155,17 +156,23 @@ def _apply_quality_filters(
     return df, audit
 
 
-def _get_run_id(context: AssetExecutionContext) -> str | None:
+def _get_run_id(context: AssetExecutionContext) -> str:
     """Return the Dagster run_id, tolerating direct-invocation test contexts.
 
     `context.run.run_id` is the non-deprecated path in production; direct
     invocation raises on `.run`, so fall back to the deprecated `context.run_id`
-    (which still works in DirectOpExecutionContext).
+    (which still works in DirectOpExecutionContext). If neither is available
+    (e.g. a context built outside Dagster's own harnesses), fall back to a
+    timestamp-based id so repeated manual runs don't collide on one manifest
+    file.
     """
     try:
-        return context.run.run_id
+        run_id = context.run.run_id
     except Exception:
-        return getattr(context, "run_id", None)
+        run_id = getattr(context, "run_id", None)
+    if run_id is not None:
+        return run_id
+    return f"manual-{datetime.now(UTC).strftime('%Y%m%dT%H%M%S%f')}"
 
 
 def _hash_or_reason(source_location: str) -> tuple[str | None, str | None]:
