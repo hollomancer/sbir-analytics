@@ -1,42 +1,64 @@
 # SBIR vs. Private-Capital Comparison — Tasks (agency-parameterized; NSF as initial target)
 
+> **Status (2026-07-02):** Phase 1 implemented — cohort/outcomes/baselines/reconciliation modules and the
+> `agency_private_capital_baseline_comparison` Dagster asset live in
+> `packages/sbir-analytics/sbir_analytics/assets/agency_private_capital/`, with unit tests
+> (`tests/unit/agency_private_capital/`) and an integration test (`tests/integration/agency_private_capital/`).
+> Phase 2 (Form D matched cohort) not started; its PR #286 prerequisites (`sbir_etl/enrichers/sec_edgar/`,
+> `form_d_scoring.py`, M&A events) are on main. Phase 1 gate (1.8) and cross-phase docs tasks remain open.
+
 Tasks are grouped by phase. Phase 1 ships independently of PR #286.
 Phase 2 starts after PR #286 merges to main and this branch rebases.
 
 ## Phase 1 — Published-Baseline Comparison
 
-- [ ] 1.1 Add `AgencyCohortBuilder` under
+- [x] 1.1 Add `AgencyCohortBuilder` under
   `packages/sbir-analytics/sbir_analytics/assets/agency_private_capital/`. Filter award
   universe to the configured agency (default NSF: ALN ∈ {47.041, 47.084}),
   stratify by vintage (5-yr buckets) + phase. Verify: cohort sizes match
   SBA annual report [L18] NSF totals within 5%.
-- [ ] 1.2 Add `OutcomeMetricsCalculator` that reuses the existing transition
+  — implemented: `packages/sbir-analytics/sbir_analytics/assets/agency_private_capital/cohort.py`
+  (ALN-first + agency-name fallback matching, 5-yr `vintage_bucket`, `stratum_counts`)
+- [x] 1.2 Add `OutcomeMetricsCalculator` that reuses the existing transition
   detector (`packages/sbir-ml/sbir_ml/transition/`). Emits Wilson-CI-bounded
   rates per stratum. M&A exit rate consumes #286's `data/sbir_ma_events.jsonl`
   directly (post-rebase); join is UEI/DUNS-first with normalized-name fallback.
   Five-year survival denominator is unique companies, not award rows. Verify:
-  re-running on the leverage-ratio fixture set reproduces transition rates
+  re-running on the follow-on-multiplier fixture set reproduces transition rates
   within tolerance.
-- [ ] 1.3 Add `PublishedBaselineRegistry` — hard-coded YAML at
+  — implemented: `packages/sbir-analytics/sbir_analytics/assets/agency_private_capital/outcomes.py`
+  (`wilson_interval`, consumes upstream transition scores, UEI/DUNS-first M&A join
+  with name fallback, company-level survival denominator)
+- [x] 1.3 Add `PublishedBaselineRegistry` — hard-coded YAML at
   `config/agency_private_capital/published_baselines.yaml` with source citations + as-of
   dates. Initial entries: NVCA seed→A, BLS BED 5-yr survival, Lerner [L10]
   effect size, Howell [L11] follow-on-VC effect, ITIF [L21] framing claims.
   These baselines are agency-agnostic VC-industry data; one file for all
   agencies.
-- [ ] 1.4 Add `ReconciliationNarrative` writer. For each (agency metric,
+  — implemented: `packages/sbir-analytics/sbir_analytics/assets/agency_private_capital/baselines.py`
+  + `config/agency_private_capital/published_baselines.yaml` (all 5 cited entries)
+- [x] 1.4 Add `ReconciliationNarrative` writer. For each (agency metric,
   baseline) pair, emit JSON record + markdown line. Mirror the structure
-  of the existing leverage-ratio reconciler.
-- [ ] 1.5 Wire as a Dagster asset `agency_private_capital_baseline_comparison`
+  of the existing follow-on-multiplier reconciler.
+  — implemented: `packages/sbir-analytics/sbir_analytics/assets/agency_private_capital/reconcile.py`
+  (per-pair attribution + caveat tables, JSON records via `to_json`, markdown via `to_markdown`)
+- [x] 1.5 Wire as a Dagster asset `agency_private_capital_baseline_comparison`
   with `AgencyPrivateCapitalConfig` (agency_code, default "NSF"). Output artifacts:
   `agency_cohort_outcomes.parquet`, `agency_vs_published_baselines.md`,
   `agency_baseline_comparison.json` under
   `data/processed/agency_private_capital/<agency_lower>/`.
-- [ ] 1.6 Add unit tests under `tests/unit/agency_private_capital/` covering: ALN filter
+  — implemented: `packages/sbir-analytics/sbir_analytics/assets/agency_private_capital/asset.py`
+  (asset + config + all three artifacts, auto-discovered by `definitions.py`)
+- [x] 1.6 Add unit tests under `tests/unit/agency_private_capital/` covering: ALN filter
   correctness (NSF and NIH variants), Wilson CI math, baseline-registry
   loading, reconciliation record shape.
-- [ ] 1.7 Add an integration test against a small NSF fixture (vintage 2015,
+  — implemented: `tests/unit/agency_private_capital/` (`test_cohort.py`, `test_outcomes.py`,
+  `test_baselines.py`, `test_reconcile.py`)
+- [x] 1.7 Add an integration test against a small NSF fixture (vintage 2015,
   Phase II, n≈100) verifying the full Phase 1 pipeline produces a
   reproducible report.
+  — implemented: `tests/integration/agency_private_capital/test_phase1_pipeline.py`
+  (vintage-2015 NSF fixture; artifact-production + reproducibility tests)
 - [ ] 1.8 **Phase 1 gate:** produce the report, hand to user for review.
   Deliverable language: "NVCA reports seed→A graduation at ~33%. NSF Phase
   I→II graduation is [X]% on vintage 2015–2020 (n=Y). Difference is

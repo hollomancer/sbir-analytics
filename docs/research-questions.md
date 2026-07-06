@@ -17,7 +17,7 @@ respected so foundational work appears before dependents.
 
 **Where to start, by audience:**
 
-- **Policymakers** (Congress, OMB, agency leadership, congressional defense committees): start with the **DoD leverage ratio** question (Section **A3**, inferential tier; reproduces NASEM's ~4:1 benchmark), **D2** (Treasury ROI / tax receipts from SBIR spending), and **F3** (private-to-SBIR leverage as the mirror to the DoD leverage ratio on the private side).
+- **Policymakers** (Congress, OMB, agency leadership, congressional defense committees): start with the **DoD follow-on funding multiplier** question (Section **A3**, inferential tier; reproduces NASEM's ~4:1 benchmark — NASEM calls this quantity the *leverage ratio*), **D2** (Treasury ROI / tax receipts from SBIR spending), and **F3** (private-to-SBIR leverage as the private-side mirror to the DoD follow-on funding multiplier).
 - **SBIR program managers** (NSF, NIH, DoD, DOE, SBA program offices): start with **B** (transitions, Phase II→III latency, company performance), **C1** (cross-agency CET portfolio composition), and **E6** (rolling quarterly snapshots / continuous monitoring).
 - **Investors** (VC, PE, angels, family offices, corporate VC): start with **F1** (Form D fundraising profile, M&A exit rate by funding agency, capital-event timeline) and **F2** (cohort outcomes vs. published VC/PE baselines, acquirer-type concentration).
 - **OSTP / congressional oversight** (OSTP, armed-services / science / small-business committees): start with the **choke-point fragility watchlist** (Section **A4**, A-CP13 — the flagship composite) and the **capability density & choke-point concentration map** (Section **A1**, A-CP1/A-CP2/A-CP3). The choke-point questions are research targets, not yet scoped or implemented — see their inline status labels.
@@ -73,7 +73,7 @@ Two lenses run through every tier below — **capability** (does SBIR/STTR build
 ### A2. Relational (Tier 2)
 
 - Do firms show higher transition rates within the same awarding agency (agency continuity signal)? *(deps: ER, ID)*
-- **(cap) DIB integration** — Phase II→III transition rate per CET area via FPDS, plus SAM.gov subaward links to prime contractors. Aligns with NASEM's "knowledge transfer to primes" finding [L1]. **[Answerable now, moderate confidence — FPDS Phase III tagging is historically incomplete; GAO [L14]]** *(deps: ER, ID, CET, transitions)*
+- **(cap) DIB integration** — Phase II→III transition rate per CET area via FPDS, plus SAM.gov subaward links to prime contractors — [../specs/ot-consortium-subaward-attribution/](../specs/ot-consortium-subaward-attribution/) (FFATA/FSRS sub-award T1 recovery). Aligns with NASEM's "knowledge transfer to primes" finding [L1]. **[Answerable now, moderate confidence — FPDS Phase III tagging is historically incomplete; GAO [L14]]** *(deps: ER, ID, CET, transitions)*
 - **(cap/vuln) Awardee-as-IP-chokepoint** *(A-CP6)* — within a CET area, do patent assignment chains (`ASSIGNED_VIA/FROM/TO`) show a small number of awardees as the dominant source of enabling IP flowing to primes (knowledge-supply-chain position)? Builds on the C2 patent-linkage work; the citation-centrality "who-depends-on-whom" variant needs patent-citation edge ingestion (a `PatentCitation` model exists but citations are not yet graph relationships). Aligns with NASEM's knowledge-transfer-to-primes finding [L1]. **[Partial — assignment-chain lens buildable now; citation-centrality needs ingestion]** *(deps: ER, PATLINK, CET)*
 - **(vuln) Adversary-affiliation screening** — entity resolution of awardees and key personnel against the named restricted-entity lists and foreign-country-of-concern ties. **[Partial via public lists; full coverage needs agency-held due-diligence data]** *(deps: ER)*
 - **(vuln) Concentration vs. transition-thinness** *(A-CP5)* — do the most concentrated (thin-base) CET areas also show the thinnest Phase II→III transition pipelines, compounding fragility (concentrated AND failing to graduate)? FPDS Phase III undercount [L14] bounds confidence. **[Research target — not yet scoped]** *(deps: ER, ID, CET, transitions)*
@@ -83,25 +83,25 @@ Two lenses run through every tier below — **capability** (does SBIR/STTR build
 
 ### A3. Inferential (Tier 3)
 
-**DoD leverage ratio.**
+**DoD follow-on funding multiplier** (NASEM calls this the *leverage ratio*).
 
-- What is the aggregate leverage ratio (non-SBIR DoD obligations ÷ SBIR/STTR obligations) for DoD SBIR firms? **Target: reproduce NASEM's ~4:1 for 2012–2020** [L1][L2] — [../specs/leverage-ratio-analysis/](../specs/leverage-ratio-analysis/). *(deps: ER, ID)*
-- How does the leverage ratio stratify by award vintage, firm size, technology area, and firm experience (new vs. repeat)? NASEM reports SBIR firms = ~1/3 of DoD's extramural R&D base [L1]. *(deps: ER, ID, CET)*
-- How is the leverage ratio changing over time? *(deps: ER, ID)*
-- What is the leverage ratio for civilian agencies (e.g., DOE)? Myers & Lanahan [L9] and NASEM DOE [L5] supply baselines. *(deps: ER, ID)*
+- What is the aggregate follow-on funding multiplier (non-SBIR DoD obligations ÷ SBIR/STTR obligations) for DoD SBIR firms? **Target: reproduce NASEM's ~4:1 for 2012–2020** [L1][L2] — [../specs/archive/completed-features/follow-on-multiplier-analysis/](../specs/archive/completed-features/follow-on-multiplier-analysis/) (FPDS contract-node ingestion: [../specs/archive/completed-features/load-contract-nodes/](../specs/archive/completed-features/load-contract-nodes/)). *(deps: ER, ID)*
+- How does the multiplier stratify by award vintage, firm size, technology area, and firm experience (new vs. repeat)? NASEM reports SBIR firms = ~1/3 of DoD's extramural R&D base [L1]. *(deps: ER, ID, CET)*
+- How is the multiplier changing over time? *(deps: ER, ID)*
+- What is the multiplier for civilian agencies (e.g., DOE)? Myers & Lanahan [L9] and NASEM DOE [L5] supply baselines. *(deps: ER, ID)*
 
 **Concentration & choke-point inference.**
 
 - **(vuln) Concentration-as-fragility** — single-firm or thin-base dominance within a CET cluster, read as risk rather than capability (the A1 HHI inverted, including geographically narrow bases). Has the base for a given area thinned or thickened over time, and which sole-supplier firms would, if acquired or lost, remove a capability with no in-program substitute? **[Answerable now]** *(deps: ER, CET)*
 - **(vuln) Composite fragility inference per CET area** *(A-CP10)* — combine concentration (A-CP1/A-CP2), geographic narrowness (A-CP3), transition-thinness (A-CP5), and new-entrant deficit (A-CP7) into a per-area fragility judgment that flags areas concentrated, failing to graduate, and starved of new entrants at once [L28][L30]. **[Research target — not yet scoped]** *(deps: CET, ER, ID, NAICS, transitions)*
-- **(vuln) Program leverage at choke points** *(A-CP11; LOWER-BOUND proxy — EDGAR captures only disclosed private capital)* — the DoD leverage ratio above and the private-to-SBIR leverage ratio (**F3**) sliced to choke-point firms: does thin-base concentration coincide with low or high leverage? Anchor to the verifiable DoD SBIR Fast Track match of up to four SBIR dollars per outside-investor dollar [L33] and NSF's reported portfolio leverage [TODO: verify NSF primary source for the ~18:1 figure — found only in trade press, not confirmed against an NSF publication; do not state as fact until verified]. **[Research target — not yet scoped]** *(deps: ER, ID, SEC EDGAR, CET)*
+- **(vuln) Program leverage at choke points** *(A-CP11; LOWER-BOUND proxy — EDGAR captures only disclosed private capital)* — the DoD follow-on funding multiplier above and the private-to-SBIR leverage ratio (**F3**) sliced to choke-point firms: does thin-base concentration coincide with low or high leverage? Anchor to the verifiable DoD SBIR Fast Track match of up to four SBIR dollars per outside-investor dollar [L33] and NSF's reported portfolio leverage [TODO: verify NSF primary source for the ~18:1 figure — found only in trade press, not confirmed against an NSF publication; do not state as fact until verified]. **[Research target — not yet scoped]** *(deps: ER, ID, SEC EDGAR, CET)*
 - **(vuln) Foreign-acquisition-pathway inference** *(A-CP12; LOWER-BOUND proxy — only disclosed/structured ownership and M&A signals are detectable, not private beneficial ownership)* — from disclosed ownership structure and M&A signals, infer which choke-point firms sit on a plausible foreign-acquisition pathway, screened against the restricted-entity lists [L26] and GAO's foreign-dependence findings [L30]. **[Research target — not yet scoped]** *(deps: ER, SEC EDGAR, M&A signals, CET)*
 
 ### A4. Risk, monitoring & prediction (Tier 4)
 
 **M&A detection & transition pathways.**
 
-- Did a defense-funded SBIR company undergo M&A activity, especially involving a foreign acquirer? — [../specs/merger_acquisition_detection/](../specs/merger_acquisition_detection/). *(deps: ER, M&A signals)*
+- Did a defense-funded SBIR company undergo M&A activity, especially involving a foreign acquirer? — [../specs/archive/completed-features/merger_acquisition_detection/](../specs/archive/completed-features/merger_acquisition_detection/). *(deps: ER, M&A signals)*
 - For SBIR firms acquired by public companies, can inbound M&A be detected via 8-K full-text search? *(PR #286)* *(deps: ER, SEC EDGAR)*
 - Which defense primes concentrate SBIR-firm acquisitions (e.g., Titan, Teledyne, Ametek, Kratos), and are any of those acquirers themselves foreign-owned or under CFIUS review? *(deps: ER, M&A signals)*
 - How does M&A activity affect Phase III / federal-contract transition pathways? *(deps: ER, M&A signals, transitions)*
@@ -114,11 +114,11 @@ Two lenses run through every tier below — **capability** (does SBIR/STTR build
 - **(vuln) Predictive erosion / early warning** *(A-CP14; foreign-acquisition component is a LOWER-BOUND proxy)* — forward probability that a given choke-point firm exits (M&A or financial distress) within a horizon, feeding the continuous-monitoring loop (**E6**) so a fragility flag is raised before the capability is lost [L30][L31]. **[Research target — not yet scoped]** *(deps: ER, M&A signals, UCC-1, CET, transitions)*
 
 *Implementation note: M&A event detection runs as a CLI script
-(`scripts/data/detect_sbir_ma_events.py`), not as a Dagster asset. The script
+(`scripts/archive/data/detect_sbir_ma_events.py`), not as a Dagster asset. The script
 merges two signals: Form D filings (entity_type-based business-combination
 heuristics) and SEC EDGAR full-text mention scan across multiple filing types
 (operationally: 8-K, 10-K, DEFM14A, PREM14A, SC TO-T, SC 14D9 — see
-`scripts/data/refine_ma_medium_tier.py`). The orchestrated graph has no
+`scripts/archive/data/refine_ma_medium_tier.py`). The orchestrated graph has no
 continuous M&A-event materialization; rerunning the script is how the M&A
 signal that feeds the vulnerability (A1/A3/A4) and F-area questions gets
 refreshed. The previously-existing
@@ -148,7 +148,7 @@ placeholder, never wired into the M&A pipeline, and was removed in PR #317.*
 
 ### B2. Relational (Tier 2)
 
-- Did this SBIR-funded research result in a federal contract? — [transition/overview.md](transition/overview.md). Baselines: NASEM DoD [L1][L2]; Link & Scott ~50% commercialization probability [L12]; NASEM program reviews [L3][L4][L6]. *(deps: ER, ID)*
+- Did this SBIR-funded research result in a federal contract? — [transition/overview.md](transition/overview.md), [../specs/archive/completed-features/transition_detection/](../specs/archive/completed-features/transition_detection/). Baselines: NASEM DoD [L1][L2]; Link & Scott ~50% commercialization probability [L12]; NASEM program reviews [L3][L4][L6]. *(deps: ER, ID)*
 - Which SBIR-funded companies transitioned research into federal procurements? — [transition/detection-algorithm.md](transition/detection-algorithm.md). *(deps: ER, ID)*
 - What is the average time from award to transition by technology area? *(deps: ER, ID, CET)*
 - Which SBIR awards transitioned with patent backing, and what share of transitions are patent-enabled? Related to Lerner [L10] and Howell [L11]. *(deps: ER, ID, PATLINK)*
@@ -159,9 +159,9 @@ placeholder, never wired into the M&A pipeline, and was removed in PR #317.*
 - Phase II → III survival probability by agency, firm size, and vintage. *(deps: ER, ID)*
 - Does Phase II → III latency vary by technology area? *(deps: ER, ID, CET)*
 - Transition effectiveness rate by CET area, agency, and firm size — compare to Link & Scott [L12] and NASEM [L1][L3][L4]. *(deps: ER, ID, CET)*
-- How much undercount exists in Phase III coding by agency? Corroborated by GAO [L14] and NASEM [L1][L3]. *(deps: ID)*
+- How much undercount exists in Phase III coding by agency? Corroborated by GAO [L14] and NASEM [L1][L3]. Phase III solicitation monitoring: [../specs/phase-3-solicitation-alerts/](../specs/phase-3-solicitation-alerts/). *(deps: ID)*
 - How does company categorization relate to transition likelihood? Baseline: Link & Scott commercialization-probability econometrics [L12]. *(deps: ER, ID)*
-- Which Phase II awardees subject to §638(qq)(3) Increased Performance Standards meet the **statutory Commercialization Benchmark** (sales + private investment over the 10-FY covered period ÷ SBIR funding ≥ specified ratio)? Pub. L. 117-183 SBIR/STTR Extension Act of 2022 §638(qq)(3). Implementation on main: `scripts/run_benchmark.py` (evaluate / sensitivity / company-level CLI) backed by `sbir_etl/models/benchmark_models.py`, with tests in `tests/unit/test_benchmark_evaluator.py`. Additional per-firm audit infrastructure and a more comprehensive methodology doc exist as local-only / uncommitted work — see "Output products" section below for the in-progress status. *(deps: ER, ID, transitions, SEC EDGAR)*
+- Which Phase II awardees subject to §638(qq)(3) Increased Performance Standards meet the **statutory Commercialization Benchmark** (sales + private investment over the 10-FY covered period ÷ SBIR funding ≥ specified ratio)? Pub. L. 117-183 SBIR/STTR Extension Act of 2022 §638(qq)(3). Implementation on main: `scripts/run_benchmark.py` (evaluate / sensitivity / company-level CLI) backed by `sbir_etl/models/benchmark_models.py`, with tests in `tests/unit/test_benchmark_evaluator.py`. Spec: [../specs/archive/completed-features/commercialization-benchmark/](../specs/archive/completed-features/commercialization-benchmark/). Additional per-firm audit infrastructure and a more comprehensive methodology doc exist as local-only / uncommitted work — see "Output products" section below for the in-progress status. *(deps: ER, ID, transitions, SEC EDGAR)*
 
 ### B4. Predictive (Tier 4)
 
@@ -198,11 +198,11 @@ placeholder, never wired into the M&A pipeline, and was removed in PR #317.*
 ### D1. Descriptive (Tier 1)
 
 - Award totals by state, agency, and phase — SBA annual reports [L18]. *(deps: —)*
-- NAICS-sector coverage and fallback usage. *(deps: IMP for NAICS)*
+- NAICS-sector coverage and fallback usage — [../specs/naics-enricher-consolidation/](../specs/naics-enricher-consolidation/). *(deps: IMP for NAICS)*
 
 ### D2. Relational (Tier 2)
 
-- What are federal fiscal returns (tax receipts) from SBIR program spending? — [fiscal/](fiscal/). TechLink's DoD-wide 1995–2018 study reports ~22:1 total-output ROI, 8.4:1 sales ROI, $39.4B tax revenue [L19]; Air Force ~12:1, Navy ~19.5:1 [L19]; NCI published a separate economic-impact study [L20]. *(deps: ER, ID, NAICS, BEA I-O)*
+- What are federal fiscal returns (tax receipts) from SBIR program spending? — [fiscal/](fiscal/) ([../specs/fiscal-tax-impact-v2.md](../specs/fiscal-tax-impact-v2.md)). TechLink's DoD-wide 1995–2018 study reports ~22:1 total-output ROI, 8.4:1 sales ROI, $39.4B tax revenue [L19]; Air Force ~12:1, Navy ~19.5:1 [L19]; NCI published a separate economic-impact study [L20]. *(deps: ER, ID, NAICS, BEA I-O)*
 - What are employment, wage, proprietor-income, and production impacts by award? *(deps: fiscal model)*
 - How do fiscal returns stratify by state and NAICS sector? *(deps: ER, NAICS)*
 - Which NAICS sectors show the highest fiscal return multipliers? *(deps: fiscal model)*
@@ -212,7 +212,7 @@ placeholder, never wired into the M&A pipeline, and was removed in PR #317.*
 ### D3. Uncertainty & reconciliation (Tier 3)
 
 - How robust are fiscal return estimates to parameter uncertainty (sensitivity bands)? *(deps: full fiscal model)*
-- What are match rates and entity-resolution coverage needed to reconcile to NASEM leverage and impact figures [L1][L2]? *(deps: ER, ID)*
+- What are match rates and entity-resolution coverage needed to reconcile to NASEM follow-on funding multiplier and impact figures [L1][L2]? *(deps: ER, ID)*
 - Are tax-impact estimates more credible when derived from BEA NIPA tables [L22] than from hardcoded effective rates? Does state-specific variation (e.g., TX with no income tax vs. CA at 13.3%) materially change state-by-state ROI estimates? *(deps: NIPA rate provider, state rate provider)*
 
 ## E. Program management & data infrastructure
@@ -221,21 +221,21 @@ placeholder, never wired into the M&A pipeline, and was removed in PR #317.*
 
 ### E1. SBIR identification (foundation, Tier 1–2)
 
-- Which federal awards are SBIR/STTR vs. non-SBIR, and with what confidence? Three-tier classifier (FPDS research field 1.0 → ALN 0.8–1.0 → description parsing 0.5–0.7) — [sbir-identification-methodology.md](sbir-identification-methodology.md). CRS [L15], GAO [L14]. *(deps: —)*
+- Which federal awards are SBIR/STTR vs. non-SBIR, and with what confidence? Three-tier classifier (FPDS research field 1.0 → ALN 0.8–1.0 → description parsing 0.5–0.7) — [sbir-identification-methodology.md](sbir-identification-methodology.md), [../specs/archive/completed-features/sbir-identification/](../specs/archive/completed-features/sbir-identification/). CRS [L15], GAO [L14]. *(deps: —)*
 - What are false-positive rates for shared-ALN grant identification (e.g., NIH ~20%)? *(deps: ID)*
 - How does SBIR.gov data reconcile with federal USAspending/FPDS records? GAO [L14] and NASEM [L1][L3] flag tracking-data limits. *(deps: —)*
 
 ### E2. Entity resolution (foundation, Tier 1–2)
 
-- Is this SBIR recipient the same entity that won the federal contract? UEI → CAGE → DUNS → fuzzy-name cascade — [transition/vendor-matching.md](transition/vendor-matching.md). *(deps: —)*
+- Is this SBIR recipient the same entity that won the federal contract? UEI → CAGE → DUNS → fuzzy-name cascade — [transition/vendor-matching.md](transition/vendor-matching.md). Graph schema: [../specs/archive/completed-features/unify-graph-node-labels/](../specs/archive/completed-features/unify-graph-node-labels/) (Phase 1, `:Award`→`:FinancialTransaction`) and [../specs/archive/completed-features/unify-company-into-organization/](../specs/archive/completed-features/unify-company-into-organization/) (Phase 2, `:Company`→`:Organization`). *(deps: —)*
 - What is the entity-resolution match rate, and what is the exact-vs-fuzzy share? *(deps: ER)*
 - Have companies undergone acquisitions or rebrandings that break matching? *(deps: ER)*
 
 ### E3. Data quality & completeness (Tier 1)
 
-- What percentage of awards have valid NAICS codes, and what is the fallback usage rate? *(deps: —)*
+- What percentage of awards have valid NAICS codes, and what is the fallback usage rate? — [../specs/naics-enricher-consolidation/](../specs/naics-enricher-consolidation/). *(deps: —)*
 - How many awards lack UEI/DUNS identifiers? *(deps: —)*
-- What is the data-freshness lag for SBIR.gov, USAspending, USPTO, and BEA I-O sources? *(deps: —)*
+- What is the data-freshness lag for SBIR.gov, USAspending, USPTO, and BEA I-O sources? — [../specs/iterative_api_enrichment/](../specs/iterative_api_enrichment/). *(deps: —)*
 - Which awards have missing or null critical fields (amount, dates, recipient)? *(deps: —)*
 
 ### E4. Data imputation (Tier 2–3) *(spec merged via PR #277; implementation not yet started)*
@@ -250,7 +250,7 @@ placeholder, never wired into the M&A pipeline, and was removed in PR #317.*
 ### E5. External data source evaluation (Tier 2) *(branch: claude/procurement-data-sources-eval)*
 
 - Does SAM.gov Entity Extracts materially improve UEI backfill recall? — `specs/procurement-data-sources-eval/` *(branch)*. *(deps: ER)*
-- Does the SAM.gov Opportunities API replace agency-page scraping for solicitation ceilings and periods of performance? *(deps: E3)*
+- Does the SAM.gov Opportunities API replace agency-page scraping for solicitation ceilings and periods of performance? — [../specs/phase-3-solicitation-alerts/](../specs/phase-3-solicitation-alerts/). *(deps: E3)*
 - Does FSCPSC NAICS prediction beat our abstract-nearest-neighbor baseline? *(deps: IMP)*
 - Does the PSC Selection Tool provide the NAICS ↔ PSC crosswalk needed for topic-derived NAICS? *(deps: IMP)*
 - Do DIIG CSIS lookup tables feed our NAICS hierarchy or agency normalization? *(deps: —)*
@@ -258,7 +258,7 @@ placeholder, never wired into the M&A pipeline, and was removed in PR #317.*
 
 ### E6. Continuous monitoring & rolling analytics (Tier 4, capstone)
 
-- What are current-quarter SBIR metrics and trends (weekly snapshots)? — [research-plan-alignment.md](research-plan-alignment.md). Fills the gap between point-in-time NASEM reviews [L1][L3][L4][L5]. *(deps: E1–E5 + A–D pipelines)*
+- What are current-quarter SBIR metrics and trends (weekly snapshots)? — [research-plan-alignment.md](research-plan-alignment.md), [../specs/weekly-awards-report-refactor/](../specs/weekly-awards-report-refactor/). Fills the gap between point-in-time NASEM reviews [L1][L3][L4][L5]. *(deps: E1–E5 + A–D pipelines)*
 - How have transition rates, patent output, and fiscal returns changed quarter-over-quarter? *(deps: all)*
 - Which agencies are under-performing on transitions vs. historical baseline? *(deps: all)*
 
@@ -270,7 +270,7 @@ This area treats the SBIR awardee as a **firm with a capital history**, not as a
 
 ### F1. Descriptive (Tier 1)
 
-- What is the Form D [L23] private-placement fundraising profile of SBIR awardees? *(PR #286 merged)* *(deps: ER, SEC EDGAR)*
+- What is the Form D [L23] private-placement fundraising profile of SBIR awardees? *(PR #286 merged)* — [../specs/archive/completed-features/form-d-pipeline/](../specs/archive/completed-features/form-d-pipeline/). *(deps: ER, SEC EDGAR)*
 - What is the debt-vs-equity composition and offering fill rate of SBIR-firm Form D filings? *(PR #286 merged)* *(deps: ER, SEC EDGAR)*
 - What fraction of SBIR awardees show secured-debt activity (UCC-1 filings), and what mix of equipment finance, depository-bank lending, and venture debt do those filings represent by lender? UCC-1 complements Form D's equity view — [../specs/ucc1-financing-analysis/](../specs/ucc1-financing-analysis/) *(PRs #303 / #305 merged, CA-only pilot found equipment + community-bank patterns and an absence of venture-debt lenders in the CA channel)*. *(deps: ER, UCC-1)*
 - Unified capital-event timeline: federal awards, private placements, M&A, and patent events on a single firm history *(PR #307 merged)*. *(deps: ER, SEC EDGAR, UCC-1, M&A signals)*
@@ -281,12 +281,12 @@ This area treats the SBIR awardee as a **firm with a capital history**, not as a
 
 - Among acquirers of SBIR firms, what share are life-sciences consolidators (Bruker, Ligand, Thermo Fisher) vs. defense primes vs. financial sponsors? What fraction of acquirers are serial (3+ SBIR-firm targets)? *(deps: ER, M&A signals)*
 - Do Form D filers and non-filers differ on transition, patent, and exit outcomes — controlling for vintage, agency, and CET area? *(PR #314)* *(deps: ER, ID, CET, SEC EDGAR)*
-- What is the SBIR ↔ M&A-event match rate by fiscal year, and how is coverage trending? *(PR #313)* *(deps: ER, M&A signals)*
+- What is the SBIR ↔ M&A-event match rate by fiscal year, and how is coverage trending? *(PR #313)* — [../specs/sbir_ma_match_rate_by_fy/](../specs/sbir_ma_match_rate_by_fy/). *(deps: ER, M&A signals)*
 - How does SBIR-firm capital structure benchmark against the NVCA Yearbook [L25] cohort of comparable-stage VC-backed startups? *(deps: ER, SEC EDGAR)*
 
 ### F3. Inferential (Tier 3)
 
-- What is the **private-to-SBIR leverage ratio** (private capital raised ÷ SBIR funding) by agency, vintage, and firm size? The private-side mirror to NASEM's 4:1 DoD non-SBIR-federal leverage [L1]. *(deps: ER, ID, SEC EDGAR)*
+- What is the **private-to-SBIR leverage ratio** (private capital raised ÷ SBIR funding) by agency, vintage, and firm size? The private-side mirror to NASEM's 4:1 DoD follow-on funding multiplier [L1] — [../specs/archive/completed-features/form-d-pipeline/](../specs/archive/completed-features/form-d-pipeline/), [../specs/agency-private-capital-comparison/](../specs/agency-private-capital-comparison/). *(deps: ER, ID, SEC EDGAR)*
 - For Phase II awardees of any agency, do follow-on funding and exit outcomes match the published private-capital-backed-startup baselines from the NVCA Yearbook [L25]? *(PR #321 merged, supersedes #311; agency-parameterized via the `agency_private_capital_baseline_comparison` asset in group `agency_private_capital`, terminology changed from "VC" to "private capital")* *(deps: ER, SEC EDGAR)*
 - Does SBIR funding crowd in or crowd out subsequent private capital? **Target: reproduce or extend Howell's finding that an early-stage DOE SBIR grant roughly doubles the probability of subsequent VC** [L11]. Compare against Kortum & Lerner [L24] on VC's contribution to innovation. *(deps: ER, ID, SEC EDGAR)*
 - Does the Lerner [L10] finding — SBIR growth effects concentrated in VC-rich zip codes — still hold post-2010 and across all eleven agencies? *(deps: ER, ID, SEC EDGAR)*
@@ -316,7 +316,7 @@ Documents and reports the question inventory has produced for specific audiences
 ### Commercialization-benchmark methodology (in progress, not yet committed)
 
 **Audience:** SBA program oversight, statutory compliance reviewers, GAO.
-**Format:** `docs/commercialization-benchmark-methodology.md` (locally present but **not committed** to the repo) documenting the §638(qq)(3) statutory framework, the FY2026 evaluation methodology, the data-source provenance (FPDS/USAspending contracts, SEC Form D investment, SBIR.gov FABS grants), and the per-firm audit protocol. The methodology doc pairs with a per-firm audit harness (`scripts/data/run_commercialization_benchmark.py` and `scripts/data/audit_one_firm.py`) and an FY2026 audited cohort CSV — all of which are **local-only / uncommitted** on the author's machine. The shippable counterpart on main is `scripts/run_benchmark.py` + `sbir_etl/models/benchmark_models.py`, which implements the same statutory framework via a different CLI shape. **The methodology doc + audit harness should be committed once stabilized** — the untracked status is itself a coverage gap worth closing.
+**Format:** `docs/commercialization-benchmark-methodology.md` (locally present but **not committed** to the repo) documenting the §638(qq)(3) statutory framework, the FY2026 evaluation methodology, the data-source provenance (FPDS/USAspending contracts, SEC Form D investment, SBIR.gov FABS grants), and the per-firm audit protocol. The methodology doc pairs with a per-firm audit harness (`scripts/archive/data/run_commercialization_benchmark.py` and `scripts/data/audit_one_firm.py`) and an FY2026 audited cohort CSV — all of which are **local-only / uncommitted** on the author's machine. The shippable counterpart on main is `scripts/run_benchmark.py` + `sbir_etl/models/benchmark_models.py`, which implements the same statutory framework via a different CLI shape. **The methodology doc + audit harness should be committed once stabilized** — the untracked status is itself a coverage gap worth closing.
 **Pulls from:** B3 (transition effectiveness + new §638(qq) benchmark question), F1 (Form D investment signal), F2 (NVCA-baseline comparison).
 
 ## Prior literature & benchmarks
@@ -389,7 +389,7 @@ Public studies the inventory draws from or benchmarks against.
 **Open [TODO: verify] items from the choke-point set (resolve before relying on the figures):**
 
 - **A-CP11 / NSF ~18:1 portfolio leverage** — the ~18:1 private-to-public figure was found only in trade press, not confirmed against an NSF publication (NSF primary pages returned 403 during the review; a separate NSF page cites "$6.5B private investment since 2015," which does not reconcile). Marked `[TODO: verify]` inline and **not stated as fact**. The DoD Fast Track 1:4 anchor [L33] is verified.
-- **A3 / "4:1 NASEM" leverage attribution** — the existing A3 (Inferential — DoD leverage ratio) "~4:1" figure and its NASEM attribution [L1][L2] were left untouched in this pass per scope. `[TODO: verify A3 4:1 attribution against NASEM source]` before the next citation audit relies on it.
+- **A3 / "4:1 NASEM" multiplier attribution** — the existing A3 (Inferential — DoD follow-on funding multiplier) "~4:1" figure and its NASEM attribution [L1][L2] were left untouched in this pass per scope. `[TODO: verify A3 4:1 attribution against NASEM source]` before the next citation audit relies on it.
 
 When this doc is reviewed next, the audit should cover:
 

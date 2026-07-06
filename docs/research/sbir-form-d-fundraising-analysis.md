@@ -14,7 +14,7 @@
 - **What changed:** Replaced the weighted-composite confidence score with **rule-based two-signal tiering** (high = person ≥ 0.7 OR ZIP match; medium = state match; low = neither). Added ZIP-address matching as a parallel confirmation signal (motivation in the "HHS/NIH and Address Matching" section below). Added `EXCLUDED_INDUSTRY_GROUPS` (Pooled Investment Fund, Insurance, Restaurants, etc.) for false-positive prevention.
 - **Net cohort impact (v1 → current):** High **2,212 → 3,640 (+65%)** · Medium 3,310 → 1,120 (−66%) · Low 4,883 → 5,645 (+16%). 2,844 records (27% of 10,405) changed tier under the new rule.
 - **Address-signal-specific contribution:** 1,620 of the current high-tier records have ZIP as the deciding signal — i.e., they would have been medium or low under the new rule without the ZIP component. Detailed breakdown in the "HHS/NIH and Address Matching" section below.
-- **Reproducibility:** The pre-change snapshot is preserved locally as `data/form_d_details_v1.jsonl` for verifying the methodology change. The file is gitignored under `/data/` (raw analysis output) and is regenerable by reverting `sbir_etl/enrichers/sec_edgar/form_d_scoring.py` to its pre-`f65abb89` state and re-running `scripts/data/fetch_form_d_details.py`.
+- **Reproducibility:** The pre-change snapshot is preserved locally as `data/form_d_details_v1.jsonl` for verifying the methodology change. The file is gitignored under `/data/` (raw analysis output) and is regenerable by reverting `sbir_etl/enrichers/sec_edgar/form_d_scoring.py` to its pre-`f65abb89` state and re-running `scripts/archive/data/fetch_form_d_details.py`.
 - **Findings below are computed against the post-change (current) cohort.**
 
 ## Summary
@@ -302,7 +302,7 @@ a large bucket of unconfirmed matches.
 ## Appendix A — Bootstrap confidence intervals (PR #338)
 
 **Date:** 2026-06-20
-**Script:** [`scripts/data/bootstrap_form_d_leverage_ci.py`](../../scripts/data/bootstrap_form_d_leverage_ci.py)
+**Script:** [`scripts/archive/data/bootstrap_form_d_leverage_ci.py`](../../scripts/archive/data/bootstrap_form_d_leverage_ci.py)
 
 This appendix folds in the methodology supplement (previously `form-d-leverage-bootstrap-findings.md`) that adds **95% bootstrap confidence intervals at the firm level** to the headline ratios above, reproduces both headline numbers exactly, and surfaces two findings that change how readers should interpret the headline:
 
@@ -386,7 +386,7 @@ CIs quantify **sampling uncertainty only**. They do NOT capture: measurement err
 ### Reproducibility
 
 ```bash
-.venv/bin/python scripts/data/bootstrap_form_d_leverage_ci.py
+.venv/bin/python scripts/archive/data/bootstrap_form_d_leverage_ci.py
 ```
 
 Default config: 1,000 iterations, seed 42, window 2009-2024, inputs `data/form_d_details.jsonl` + `data/raw/sbir/award_data.csv`. Outputs to `reports/ml/form_d_leverage_ci.{json,md}` (gitignored). Self-contained, numpy only, runs in ~5 seconds.
@@ -396,7 +396,7 @@ Default config: 1,000 iterations, seed 42, window 2009-2024, inputs `data/form_d
 ## Appendix B — Pooled Investment Fund cross-link integrity audit (PR #340)
 
 **Date:** 2026-06-21
-**Script:** [`scripts/data/audit_form_d_pif_cross_links.py`](../../scripts/data/audit_form_d_pif_cross_links.py)
+**Script:** [`scripts/archive/data/audit_form_d_pif_cross_links.py`](../../scripts/archive/data/audit_form_d_pif_cross_links.py)
 
 This appendix folds in the integrity audit (previously `form-d-pif-cross-link-audit.md`). The disclaimer above references cross-links between Pooled Investment Fund (PIF) entities and operating-company SBIR matches via shared `related_persons` or CIK. PIF entities are excluded from cohort totals via `EXCLUDED_INDUSTRY_GROUPS`, but the disclaimer raised an open question: do those cross-links indicate that some counted operating-company matches might be inflated or false-positive?
 
@@ -492,7 +492,7 @@ The cross-link concern is real conceptually but small in dollar terms. The 0.16%
 ### Reproducibility
 
 ```bash
-.venv/bin/python scripts/data/audit_form_d_pif_cross_links.py
+.venv/bin/python scripts/archive/data/audit_form_d_pif_cross_links.py
 ```
 
 Default config: inputs `data/form_d_details.jsonl`, year window 2009-2024, hardcoded high-only and H+M headline numbers from this doc. Outputs `reports/ml/form_d_pif_cross_links.{json,md}` (gitignored). Runs in <1s.

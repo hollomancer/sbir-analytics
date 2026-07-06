@@ -1,5 +1,25 @@
 # Data Imputation — Requirements
 
+> **Status:** Spec merged via PR #277 — implementation not yet started as of June 2026.
+> Anchors inventory question **E4** in [docs/research-questions.md](../../docs/research-questions.md).
+
+**Research question anchor:** E4 — missing-field recovery (award_date ~50% absent; UEI/DUNS gaps)
+**Answers for:** pipeline engineers, SBIR program managers (downstream data consumers)
+**Complexity tier:** Descriptive / foundational (Tier 1–2)
+
+---
+
+## Done when
+
+> A pipeline engineer can state: "The effective `award_date` completeness rate rises
+> from ~50% (raw) to ≥90% (effective) after imputation. Every imputed value carries
+> a method name, confidence tier (high / medium / low), and a raw field backup.
+> The phase-transition precision benchmark remains ≥85% when imputed values are
+> included. An SBIR program manager can filter any analysis to raw-only or
+> imputed-OK with a single boolean column per field."
+
+---
+
 ## Introduction
 
 The SBIR.gov bulk download is the canonical source of SBIR/STTR award records for this
@@ -17,7 +37,7 @@ pipeline, but it is systematically incomplete and internally inconsistent:
   `WARNING` rather than `ERROR` and pass through unchanged.
 
 Downstream consumers — CET classification, phase-transition detection (≥85% precision
-benchmark), leverage-ratio analysis, and weekly reporting — treat these nulls as true
+benchmark), follow-on-multiplier analysis, and weekly reporting — treat these nulls as true
 absences. That biases cohort statistics (missing `award_date` disproportionately affects
 older awards), suppresses legitimate phase-transition matches (missing `company_uei`),
 and degrades any time-series analysis that keys on `award_year`.
@@ -46,8 +66,9 @@ choose whether to include imputed values.
 
 ### Requirement 1 — Non-destructive imputation
 
-**User Story:** As a data consumer, I want imputed values to never overwrite raw source
-data, so that I can always recover the original and audit downstream claims.
+**User Story:** As an SBIR program manager or downstream analyst relying on pipeline
+output, I want imputed values to never overwrite raw source data, so that I can always
+recover the original value and audit any claim that cites an imputed field.
 
 #### Acceptance Criteria
 
@@ -62,8 +83,10 @@ data, so that I can always recover the original and audit downstream claims.
 
 ### Requirement 2 — Provenance and auditability
 
-**User Story:** As an analyst, I want to filter imputed values in or out per-field, so
-that I can run analyses at different confidence levels without re-deriving imputations.
+**User Story:** As an SBIR program manager running portfolio analysis, I want to filter
+imputed values in or out per field, so that I can run the same analysis at different
+confidence levels — raw-only for audits, imputed-included for trend reporting — without
+re-deriving imputations each time.
 
 #### Acceptance Criteria
 

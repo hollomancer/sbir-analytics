@@ -1,5 +1,32 @@
 # SBIR vs. Private-Capital Comparison — Requirements (agency-parameterized; NSF as initial target)
 
+> **Status:** Phase 1 not yet started; Phase 2 gated on PR #286 merging.
+> Supports inventory questions **F3** (private-capital comparison), **B2** (commercialization outcomes), **B3** (transition rates) in [docs/research-questions.md](../../docs/research-questions.md).
+
+**Research question anchor:** F3 / B2 / B3 — SBIR vs. private-capital cohort comparison (NSF initial target)
+**Answers for:** entrepreneurial finance researchers, SBIR program managers, policy analysts
+**Complexity tier:** Relational → Inferential (Tier 2–3)
+
+---
+
+## Done when
+
+> **Phase 1:** A policy analyst can state: "NVCA reports seed→A graduation at ~30%. NSF Phase I→II graduation is [X]% on cohort [vintage range, n=Y]. The difference is attributable to [Z]." Produces the exact reconciliation pattern of `leverage-ratio-analysis`.
+>
+> **Phase 2:** An entrepreneurial finance researcher can state: "On vintage [X], NAICS-2 [Y], state [Z]: NSF Phase II awardees transitioned to federal contract at [A]% within 5 years; matched non-SBIR Form D issuers transitioned at [B]%. Selection-bias and matching caveats: [see threats-to-validity section]."
+
+---
+
+## User Stories
+
+**As a policy analyst benchmarking NSF's SBIR program against published venture-capital performance metrics,**
+I want Phase I→II graduation rates, 5-year survival proxies, and M&A exit rates computed for the NSF cohort and placed alongside NVCA/Howell/Lerner baselines with a reconciliation narrative, so that I can report how NSF SBIR performs relative to seed-stage private capital in a form suitable for OSTP or congressional briefings.
+
+**As an entrepreneurial finance researcher studying whether SBIR awardees outperform comparable private-capital-financed firms,**
+I want a covariate-matched control cohort of non-SBIR Form D issuers with outcome deltas computed against the NSF SBIR cohort, so that I can assess whether the SBIR treatment effect on commercialization holds after controlling for vintage, NAICS sector, and firm geography.
+
+---
+
 Research-questions tags: **B2/B3** (commercialization), **A4** (private-capital signals),
 **[L21]** (ITIF "America's Seed Fund"), **[L10]** (Lerner), **[L11]** (Howell), **[L23]** (Form D).
 
@@ -17,7 +44,7 @@ firms financed via private capital (Reg D / Form D filers)?
 The user-stated framing: "compare NSF SBIR portfolio rank against pre-seed/seed
 VCs." Per scope review, we drop the "rank" composite and frame the deliverable
 as a **comparison table with reconciliation narrative**, matching the pattern
-established by `specs/leverage-ratio-analysis/`. Form D is intentionally
+established by `specs/archive/completed-features/follow-on-multiplier-analysis/`. Form D is intentionally
 *not* filtered to seed-only — its broader coverage (debt, later-stage, multiple
 instrument types) is treated as feature, not bug, because the policy question
 is "what private-capital alternative would these firms otherwise rely on,"
@@ -97,14 +124,14 @@ branch rebases on top.
 5. **SHOULD** stratify outcomes by CET technology area (reuse CET classifier)
    so the comparison is not blurred by sector mix.
 6. **SHALL** report match rates and entity-resolution coverage as sensitivity
-   metadata (mirrors `leverage-ratio-analysis` requirement 7).
+   metadata (mirrors `follow-on-multiplier-analysis` requirement 7).
 
 ### Phase 1 Gate Condition
 
 Can produce a single artifact (notebook or markdown report) that states:
 "NVCA reports seed→A graduation at ~30%. NSF Phase I→II graduation is [X]%
 on cohort [vintage range, n=Y]. The difference is attributable to [Z]."
-Reproduces the exact reconciliation pattern of `leverage-ratio-analysis`.
+Reproduces the exact reconciliation pattern of `follow-on-multiplier-analysis`.
 
 ## Phase 2 Requirements
 

@@ -1,0 +1,5 @@
+company_id,recipient_uei,match_confidence
+Alpha,UEI-ALPHA,1.0
+Beta,UEI-BETA,0.95
+Gamma,UEI-GAMMA,0.60
+,UEI-UNKNOWN,0.0

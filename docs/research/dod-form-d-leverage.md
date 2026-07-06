@@ -2,7 +2,7 @@
 
 **Date:** 2026-06-21 (consolidates PRs #342 → #343 → #350)
 **Companion to:** [sbir-form-d-fundraising-analysis.md](sbir-form-d-fundraising-analysis.md) (the published headline finding), [form-d-data-dictionary.md](form-d-data-dictionary.md) (field reference)
-**Scripts:** [`scripts/data/dod_form_d_leverage_decomposition.py`](../../scripts/data/dod_form_d_leverage_decomposition.py), [`scripts/data/dod_form_d_followups.py`](../../scripts/data/dod_form_d_followups.py), [`scripts/data/dod_fpds_substitution_test.py`](../../scripts/data/dod_fpds_substitution_test.py)
+**Scripts:** [`scripts/archive/data/dod_form_d_leverage_decomposition.py`](../../scripts/archive/data/dod_form_d_leverage_decomposition.py), [`scripts/archive/data/dod_form_d_followups.py`](../../scripts/archive/data/dod_form_d_followups.py), [`scripts/archive/data/dod_fpds_substitution_test.py`](../../scripts/archive/data/dod_fpds_substitution_test.py)
 
 ## Overview
 
@@ -155,7 +155,7 @@ The decomposition revises the bootstrap framing in one important way. Instead of
 ### Reproducibility
 
 ```bash
-.venv/bin/python scripts/data/dod_form_d_leverage_decomposition.py
+.venv/bin/python scripts/archive/data/dod_form_d_leverage_decomposition.py
 ```
 
 Default config: 1,000 bootstrap iterations, seed 42, year window 2009-2024, minimum branch program-$ threshold $100M. Outputs `reports/ml/dod_form_d_decomposition.{json,md}` (gitignored). Runs in ~5 seconds. numpy only; no new deps.
@@ -348,7 +348,7 @@ The honest reframing:
 ### Reproducibility
 
 ```bash
-.venv/bin/python scripts/data/dod_form_d_followups.py
+.venv/bin/python scripts/archive/data/dod_form_d_followups.py
 ```
 
 Default config: year window 2009-2024, inputs `data/form_d_details.jsonl` + `data/raw/sbir/award_data.csv` + `data/sbir_ma_events.jsonl`. Outputs `reports/ml/dod_form_d_followups.{json,md}` (gitignored). Runs in ~3 seconds. numpy only; no new deps.
@@ -463,7 +463,7 @@ Navy is statistically distinct from other DoD branches on every commercializatio
 ### Reproducibility
 
 ```bash
-.venv/bin/python scripts/data/dod_fpds_substitution_test.py
+.venv/bin/python scripts/archive/data/dod_fpds_substitution_test.py
 ```
 
 Default config: year window 2009-2024, inputs `data/form_d_details.jsonl` + `data/raw/sbir/award_data.csv`. Caches per-firm USAspending pulls to `data/processed/fpds_substitution/firm_contracts.jsonl` (gitignored, but reruns reuse cache so the ~30-min initial pull happens only once). Outputs `reports/ml/dod_fpds_substitution_test.{json,md}`.

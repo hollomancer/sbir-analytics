@@ -16,6 +16,8 @@ from sbir_etl.config.schemas import (
     FiscalAnalysisConfig,
     LoggingConfig,
     MetricsConfig,
+    ModernBertConfig,
+    ModernBertNeo4jConfig,
     Neo4jConfig,
     PathsConfig,
     PipelineConfig,
@@ -298,6 +300,37 @@ class TestNeo4jConfig:
         assert config.batch_size == batch_size
         assert config.parallel_threads == threads
         assert config.transaction_timeout_seconds == timeout
+
+
+class TestModernBertNeo4jConfig:
+    """Tests for ModernBertNeo4jConfig — validates the config/base.yaml
+    ml.modernbert.neo4j block ahead of the SIMILAR_TO edge-loading asset
+    (specs/modernbert_analysis_layer, task 2.1) landing."""
+
+    def test_defaults_match_base_yaml(self):
+        config = ModernBertNeo4jConfig()
+        assert config.enabled is False
+        assert config.batch_size == 1000
+        assert config.dry_run is False
+        assert config.prune_previous is False
+
+    def test_custom_values(self):
+        config = ModernBertNeo4jConfig(
+            enabled=True, batch_size=500, dry_run=True, prune_previous=True
+        )
+        assert config.enabled is True
+        assert config.batch_size == 500
+        assert config.dry_run is True
+        assert config.prune_previous is True
+
+    def test_batch_size_must_be_positive(self):
+        with pytest.raises(ValidationError):
+            ModernBertNeo4jConfig(batch_size=0)
+
+    def test_modernbert_config_exposes_neo4j_field(self):
+        config = ModernBertConfig()
+        assert isinstance(config.neo4j, ModernBertNeo4jConfig)
+        assert config.neo4j.enabled is False
 
 
 class TestExtractionConfig:

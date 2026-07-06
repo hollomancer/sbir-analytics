@@ -1,0 +1,5 @@
+company_id,recipient_uei,award_id,fiscal_year,firm_size,technology_area
+Alpha,UEI-ALPHA,S-A1,2020,small,AI
+Alpha,UEI-ALPHA,S-A2,2021,small,AI
+Beta,UEI-BETA,S-B1,2021,medium,energy
+Gamma,,S-G1,2022,small,space

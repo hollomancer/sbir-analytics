@@ -290,6 +290,6 @@ identity; Form D gives deal size.
 - Events dataset: `data/sbir_ma_events.jsonl` (4,306 records)
 - Medium-tier refinement: `data/sbir_ma_medium_refined.jsonl` (1,178 records)
 - Low-tier expansion: `data/sbir_ma_low_refined.jsonl` (1,450 records)
-- Detection script: `scripts/data/detect_sbir_ma_events.py`
-- Refinement script: `scripts/data/refine_ma_medium_tier.py`
-- Analysis script: `scripts/data/analyze_sbir_ma_exits.py`
+- Detection script: `scripts/archive/data/detect_sbir_ma_events.py`
+- Refinement script: `scripts/archive/data/refine_ma_medium_tier.py`
+- Analysis script: `scripts/archive/data/analyze_sbir_ma_exits.py`

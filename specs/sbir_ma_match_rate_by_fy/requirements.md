@@ -1,5 +1,30 @@
 # Requirements: SBIR M&A Match Rate by Fiscal Year
 
+> **Status:** Not yet started.
+> Supports inventory question **F2** (M&A exit rate by vintage) in [docs/research-questions.md](../../docs/research-questions.md).
+
+**Research question anchor:** F2 — SBIR-awardee M&A match rate by fiscal year
+**Answers for:** entrepreneurial finance researchers, policy analysts
+**Complexity tier:** Descriptive (Tier 1)
+
+---
+
+## Done when
+
+> An entrepreneurial finance researcher can state: "The FY2015–2024 aggregate high+medium M&A match rate for SBIR awardees is [X]% (95% Wilson CI: [Y–Z]%), based on [N] distinct firms. The FY-by-FY breakdown shows [trend]. Item-2.01-only sub-rate is [P]% (reported as methodological footnote, not the headline number)."
+
+---
+
+## User Stories
+
+**As an entrepreneurial finance researcher comparing SBIR-firm exit outcomes to venture-backed norms,**
+I want the SBIR M&A match rate broken down by fiscal year and confidence tier, so that I can report how acquisition frequency has changed over time and compare it to published VC exit-rate benchmarks alongside the leverage-ratio and private-capital comparison analyses.
+
+**As a policy analyst preparing a brief on SBIR program outcomes,**
+I want a reproducible firm-level M&A attribution table with signal provenance and explicit caveats, so that I can cite defensible exit-rate numbers without overstating precision from low-confidence signals like Item-2.01-only filings or Exhibit-21-only attributions.
+
+---
+
 ## Question of record
 
 What is the SBIR-awardee → M&A-event match rate for FY2015–2024,
@@ -33,7 +58,7 @@ by combining the full signal stack.
   per awardee (one match per firm).
 - **Confidence tier per match:** the highest tier among that firm's
   qualifying signals, using the existing tier rules in
-  `scripts/data/detect_sbir_ma_events.py`.
+  `scripts/archive/data/detect_sbir_ma_events.py`.
 
 ## Signals used and date attribution
 

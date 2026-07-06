@@ -1,7 +1,7 @@
 # bizfileOnline JSON API — Captured Endpoints
 
 Reverse-engineered 2026-05-16 via Chrome DevTools (Playwright MCP) on
-`bizfileonline.sos.ca.gov`. Used by the UCC-1 pilot (`scripts/data/ucc/`).
+`bizfileonline.sos.ca.gov`. Used by the UCC-1 pilot (`sbir_etl/ucc/`).
 All endpoints are public — no authentication header observed.
 
 ## UCC search

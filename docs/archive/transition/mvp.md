@@ -32,7 +32,7 @@ uv sync
 
 ## 2. Verify contracts_sample is valid
 
-uv run python scripts/validate_contracts_sample.py
+uv run python scripts/archive/validation/validate_contracts_sample.py
 
 ## 3. Run MVP
 

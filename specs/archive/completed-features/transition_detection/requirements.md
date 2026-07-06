@@ -1,4 +1,14 @@
-# Requirements Document
+# Requirements — SBIR Transition Detection (Archive)
+
+> **Status:** Implemented and merged (October 30, 2025). Current live spec stub:
+> [`specs/transition-detection/requirements.md`](../../../transition-detection/requirements.md).
+> Supports inventory questions **B2** and **B3** in
+> [docs/research-questions.md](../../../../docs/research-questions.md).
+
+**Research question anchor:** B2 (did SBIR research result in a federal contract?),
+B3 (Phase II→III latency, survival probability, transition effectiveness)
+
+---
 
 ## Introduction
 

@@ -4,7 +4,7 @@ Produces a descriptive comparison artifact: SBIR cohort outcome rates for
 the configured funding agency alongside published seed-VC / small-business-
 survival baselines, with a reconciliation narrative attributing each delta.
 NSF is the initial implementation target and the default agency. Mirrors
-the posture of ``specs/leverage-ratio-analysis``: reconciliation matters
+the posture of ``specs/archive/completed-features/follow-on-multiplier-analysis``: reconciliation matters
 more than the match.
 
 Outputs (under ``data/processed/agency_private_capital/<agency_lower>/``):

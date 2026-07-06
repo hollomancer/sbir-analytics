@@ -1,8 +1,29 @@
 # Requirements — OT Consortium Sub-Award Attribution (FFATA/FSRS)
 
-**Status:** spec only — not implemented. Follow-on to the OT consortium
-verification-tiering module (`sbir_etl/ot_consortium/`, see
-`docs/ot-consortium/tiers.md`).
+> **Status:** Spec only — not implemented. Follow-on to the OT consortium verification-tiering module.
+> Supports inventory question **A2** (OT consortium attribution) in [docs/research-questions.md](../../docs/research-questions.md).
+
+**Research question anchor:** A2 — OT consortium sub-award attribution and T2→T1 recovery via FSRS
+**Answers for:** DoD acquisition analysts, SBIR program managers
+**Complexity tier:** Relational (Tier 2)
+
+---
+
+## Done when
+
+> A DoD acquisition analyst can state: "Of [N] T2 (rollup-only) OT consortium records, [X] were upgraded to T1 via sub-award UEI match. The recovered amount is $[Y] ([Z]% of the T2 pool). `recovered_from_rollup_usd` and `recovered_from_rollup_count` are surfaced in the magnitude report alongside the existing verified total."
+
+---
+
+## User Stories
+
+**As a DoD acquisition analyst measuring how much SBIR-adjacent OT consortium spending is attributable to specific firms,**
+I want T2 (rollup-only) records upgraded to T1 when FSRS sub-award data provides a UEI-keyed attribution, so that obligated dollars previously hidden in CMF rollups can be linked to individual SBIR-eligible firms for transition-rate and concentration analysis.
+
+**As an SBIR program manager reviewing firm-level federal contract history,**
+I want the magnitude report to expose how much formerly unverifiable T2 spending was recovered to T1 via sub-award UEI match, so that I can understand the lower bound of OT-consortium activity that was previously invisible in firm-level obligation totals.
+
+---
 
 ## Problem
 
