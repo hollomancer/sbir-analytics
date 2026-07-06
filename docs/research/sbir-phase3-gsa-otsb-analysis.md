@@ -745,7 +745,7 @@ The 43 contracts that still score LOW (<0.40) reveal a interesting pattern. **Th
 
 #### Why HIGH and LIKELY bands are still unreachable
 
-Even with 4 of 6 signals firing (agency, timing, competition, text similarity), the realistic ceiling is **~0.63** (base 0.15 + agency 0.0625 + timing 0.20 + sole-source 0.04 + text-sim 0.18 max). The remaining patent and CET signals contribute at most +0.10 combined — leaving the all-signals ceiling at ~0.74, just barely into the LIKELY (≥0.65) band.
+Even with 4 of 6 signals firing (agency, timing, competition, text similarity), the realistic ceiling is **~0.63** (base 0.15 + agency 0.0625 + timing 0.20 + sole-source 0.04 + text-sim 0.18 max). The remaining patent and CET signals contribute at most +0.020 combined when the configured per-signal weights are applied (patent: 0.15 weight × 0.10 max raw bonus = 0.015; CET: 0.10 weight × 0.05 raw bonus = 0.005) — leaving the all-signals ceiling at ~0.65, exactly at the LIKELY (≥0.65) threshold.
 
 The HIGH (≥0.85) threshold was calibrated against the labeled transition benchmark assuming all signals are highly aligned — text similarity ~0.9, patents present, CET match, and timing within 3 months. That combination is rare in the keyword-discoverable universe (which is where the labeled benchmark lives) and even rarer in the missed bucket. The HIGH band is the boundary for "essentially certain Phase III transition with full evidence stack." Most real Phase III work doesn't hit that bar even when it clearly IS Phase III.
 
@@ -770,6 +770,51 @@ For the 30-firm sample alone, this puts the **broad-definition Phase III footpri
 - **Domain shift uncertainty.** `nomic-ai/modernbert-embed-base` is a general-purpose embedding model trained on web text, not SBIR R&D specifically. Defense/aerospace technical vocabulary may produce inflated similarities (most contracts to defense firms share the same domain language). A SBIR-specific fine-tune could be informative.
 - **Bag-of-keywords inflation.** Two contracts containing "radar," "Navy," "underwater," and "acoustic" will have high similarity regardless of whether one derives from the other. This is a known limitation of generic embeddings vs. content-aware Phase III detection.
 - **The threshold-band calibration assumes labels.** The HIGH (≥0.85) / LIKELY (≥0.65) thresholds were tuned against a labeled transition benchmark that ModernBERT-derived similarity *wasn't part of*. Adding it shifts the score distribution in ways the calibration didn't anticipate. A clean integration would require re-calibrating the bands against a held-out labeled set that uses the text_similarity signal.
+
+### Signals attempted but not integrated: CET and patent data
+
+For completeness, the remaining two transition-scorer signals — `cet_alignment` and `patent_signal` — were attempted as part of Tier 2 work but neither materially shifted the analytical conclusion. Documenting here so future work doesn't re-tread the same path without knowing what was tried.
+
+#### CET alignment — keyword classification is too sparse on contract descriptions
+
+Approach taken: keyword-based scoring against the 21-area NSTC-2025Q1 taxonomy (218 keyword patterns from `config/cet/taxonomy.yaml`), normalized by document length. Assigned the primary CET as the highest-scoring area per document.
+
+Results:
+
+| Document type | Classified | Top areas |
+|---|---:|---|
+| P1/P2 abstracts | 40% (8,869 of 22,047) | Adv Manufacturing 6%, Gas Turbine 5%, AI 4%, Sensors 4% |
+| Contract descriptions | **7.5% (135 of 1,804)** | AI 1.7%, Sensors 1.3%, Hypersonics 0.9% |
+
+The sparsity on contract descriptions is structural: the CET taxonomy keywords are technology-area terms ("artificial intelligence", "advanced manufacturing"), but Phase III contract descriptions tend to use product-specific terminology ("MK54 MOD1 LWT KITS LRIP", "DESIGN OF MK 48 MOD 7 G&C SECTION", "T-45 HUD PRODUCTION UNITS") that doesn't contain the CET vocabulary. Where the classifier *did* fire on contracts, 134 of 135 matches aligned with the firm's P2 CET set — **high precision (99%), but low recall**.
+
+Effect on scoring: the CET signal's max contribution is +0.005 (weight 0.10 × match bonus 0.05), and it only fires for 7.4% of contracts. Total dollar share in the POSSIBLE band moved from 79.4% (4 signals: agency + timing + base + competition) to 88.7% (with CET added, but without ModernBERT text similarity in the same run) — a directional improvement, but small. Combining CET with the ModernBERT text-similarity signal would push to ~97% of dollars — marginal additional lift over text similarity alone (96.4%).
+
+**Conclusion:** keyword-based CET is too sparse to be worth the integration cost given we already have ModernBERT text similarity. A semantic-CET approach (embed taxonomy definitions, cosine-similarity to contracts) would likely fix the sparsity, but is a meaningful detour and the analytical conclusion is already established.
+
+#### Patent signal — USPTO data acquisition path is broken
+
+Approach attempted: pull patents per SBIR firm via the USPTO PatentsView API for the 30-firm sample, then compute `patent_count`, `patents_pre_contract` (filed before the contract start date), and `patent_topic_similarity` (via ModernBERT) per (firm, contract) pair.
+
+Acquisition blocked by USPTO's March 2026 migration to the Open Data Portal (ODP). All anonymous access paths now return either the SPA shell HTML, an AWS WAF challenge, or `Missing Authentication Token`:
+
+| Path attempted | Result |
+|---|---|
+| `data.uspto.gov/download/g_patent.tsv.zip` (existing script in repo) | Returns Angular SPA HTML, not the ZIP |
+| `data.uspto.gov/bulkdata/api/v1/datasets` (ODP API listing) | Same SPA HTML |
+| `api.uspto.gov/api/v1/patent/search` | `{"message": "Missing Authentication Token"}` — needs ODP API key |
+| `search.patentsview.org/api/v1/patent/` (legacy API) | DNS does not resolve (defunct) |
+| `developer.uspto.gov/ds-api/...` | 503 Service Temporarily Unavailable |
+
+To proceed with patent data would require one of:
+
+1. **USPTO ODP API key signup** (free, ~5 min, email-based) — then targeted assignee-name queries
+2. **Google Patents Public Datasets on BigQuery** — free dataset, requires GCP credentials
+3. **Browser-based manual download via the ODP UI** — the existing `scripts/data/download_uspto_browser.py` was built for this but was not run
+
+**Decision: skipped.** The patent signal's max contribution after applying the configured weight is +0.015 (weight 0.15 × max raw bonuses 0.05 + 0.03 + 0.02 = 0.10); even if every contract had patents that aligned perfectly, the score ceiling would move from ~0.61 to ~0.625 — not enough to push contracts into the LIKELY band, and not changing the substantive conclusion (broad-definition Phase III is already triple-corroborated at 96.4% dollar share with positive derivation signals).
+
+When formal LIKELY-band claims are required for the analysis — e.g., for an external publication that needs the full calibrated signal stack — the patent acquisition should be revisited via path 1 (ODP API key). For the current analysis (which characterizes the broad-definition vs keyword-discoverable universe gap), patent data is diminishing-returns territory.
 
 ## Caveats & limitations
 
