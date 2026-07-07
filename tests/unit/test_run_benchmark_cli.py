@@ -136,15 +136,15 @@ def test_subject_only_report_matches_filtered_json(tmp_path, monkeypatch, capsys
     with the filtered lists.
     """
     awards = tmp_path / "awards.csv"
-    awards.write_text(
-        "Company,UEI,phase,fiscal_year\n"
-        # Not subject: Phase I but no completed transition window (recent)
-        "New Co,NEWCO456,I,2025\n"
-        # Subject: full transition history landing in evaluation-fy window
-        "Acme Labs,ACME123,I,2021\n"
-        "Acme Labs,ACME123,II,2022\n",
-        encoding="utf-8",
-    )
+    rows = ["Company,UEI,phase,fiscal_year\n"]
+    # Not subject and not at-risk: recent Phase I outside the completed window.
+    rows.append("New Co,NEWCO456,I,2025\n")
+    # Not subject but at-risk: 18 Phase I awards, within 5 of the standard threshold.
+    rows.extend(f"Almost Co,ALMOST456,I,{2019 + (i % 5)}\n" for i in range(18))
+    # Subject: 21 Phase I awards and enough Phase II awards to pass.
+    rows.extend(f"Subject Co,SUBJ123,I,{2019 + (i % 5)}\n" for i in range(21))
+    rows.extend(f"Subject Co,SUBJ123,II,{2020 + (i % 5)}\n" for i in range(6))
+    awards.write_text("".join(rows), encoding="utf-8")
 
     # --subject-only + JSON output
     output_json = tmp_path / "results.json"
@@ -180,9 +180,12 @@ def test_subject_only_report_matches_filtered_json(tmp_path, monkeypatch, capsys
         r["company_id"] for r in payload["commercialization_results"]
     }
     assert payload["total_companies_evaluated"] == len(subject_ids)
+    assert "uei:ALMOST456" not in subject_ids
+    assert all(r["company_id"] in subject_ids for r in payload["sensitivity_results"])
 
     # --subject-only + --report must produce a report whose counter matches the
-    # filtered universe (not the unfiltered total_companies_evaluated).
+    # filtered universe (not the unfiltered total_companies_evaluated), and
+    # must not leak non-subject at-risk companies through the sensitivity section.
     monkeypatch.setattr(
         sys,
         "argv",
@@ -199,6 +202,7 @@ def test_subject_only_report_matches_filtered_json(tmp_path, monkeypatch, capsys
     run_benchmark.main()
     report = capsys.readouterr().out
     assert f"- Total companies evaluated: **{payload['total_companies_evaluated']}**" in report
+    assert "Almost Co" not in report
 
 
 def test_company_accepts_commercialization_data(tmp_path, monkeypatch, capsys):

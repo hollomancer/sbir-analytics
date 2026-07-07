@@ -34,6 +34,7 @@ def _filter_to_subject_only(summary):
     transition = [r for r in summary.transition_results if _is_subject(r)]
     commercialization = [r for r in summary.commercialization_results if _is_subject(r)]
     subject_ids = {r.company_id for r in transition} | {r.company_id for r in commercialization}
+    sensitivity = [r for r in summary.sensitivity_results if r.company_id in subject_ids]
 
     return replace(
         summary,
@@ -46,6 +47,7 @@ def _filter_to_subject_only(summary):
         ),
         transition_results=transition,
         commercialization_results=commercialization,
+        sensitivity_results=sensitivity,
     )
 
 

@@ -314,6 +314,33 @@ class TestCommercializationRateBenchmark:
         assert cr.status == BenchmarkStatus.FAIL
         assert summary.commercialization_data_supplied is True
 
+    def test_sparse_commercialization_data_is_not_evaluable_per_company(self):
+        """A sparse commercialization file must not turn unmatched companies into failures."""
+        records = _phase2_awards("LowSalesCo", "UEI000000015", 20, 2013)
+        records += _phase2_awards("MissingDataCo", "UEI000000016", 20, 2013)
+        df = _make_awards_df(records)
+
+        comm_df = pd.DataFrame(
+            [
+                {
+                    "company_id": "uei:UEI000000015",
+                    "total_sales_and_investment": 100_000,  # $5K avg < $100K
+                    "patent_count": 0,
+                }
+            ]
+        )
+
+        evaluator = BenchmarkEligibilityEvaluator(evaluation_fy=2025)
+        summary = evaluator.evaluate(df, comm_df)
+
+        by_company = {r.company_id: r for r in summary.commercialization_results}
+        assert by_company["uei:UEI000000015"].status == BenchmarkStatus.FAIL
+        assert by_company["uei:UEI000000016"].status == BenchmarkStatus.NOT_EVALUABLE
+        assert by_company["uei:UEI000000016"].avg_sales_per_phase2 is None
+        assert by_company["uei:UEI000000016"].patent_rate is None
+        assert summary.companies_failing_commercialization == 1
+        assert summary.commercialization_data_supplied is True
+
 
 # ─── Sensitivity Analysis Tests ──────────────────────────────────────
 

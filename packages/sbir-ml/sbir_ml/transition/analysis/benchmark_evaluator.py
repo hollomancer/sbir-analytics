@@ -227,6 +227,18 @@ class BenchmarkEligibilityEvaluator:
 
         return results
 
+    @staticmethod
+    def _commercialization_company_ids(
+        commercialization_df: pd.DataFrame | None,
+    ) -> set[str]:
+        """Return company IDs that have supplied commercialization evidence."""
+        if commercialization_df is None or commercialization_df.empty:
+            return set()
+        cid_col = _first_col(commercialization_df, ["company_id", "_company_id"])
+        if not cid_col:
+            return set()
+        return {str(cid) for cid in commercialization_df[cid_col].dropna()}
+
     # ─── Transition rate evaluation ──────────────────────────────────
 
     def _evaluate_transition_rate(self, counts: CompanyAwardCounts) -> TransitionRateResult:
@@ -517,6 +529,7 @@ class BenchmarkEligibilityEvaluator:
             results, commercialization rate results, and sensitivity analysis.
         """
         company_counts = self._count_awards_by_company(awards_df, commercialization_df)
+        commercialization_company_ids = self._commercialization_company_ids(commercialization_df)
         has_comm_data = commercialization_df is not None and not commercialization_df.empty
 
         transition_results: list[TransitionRateResult] = []
@@ -525,7 +538,10 @@ class BenchmarkEligibilityEvaluator:
 
         for _cid, counts in company_counts.items():
             tr = self._evaluate_transition_rate(counts)
-            cr = self._evaluate_commercialization_rate(counts, has_comm_data)
+            cr = self._evaluate_commercialization_rate(
+                counts,
+                counts.company_id in commercialization_company_ids,
+            )
             sr = self._compute_sensitivity(counts, tr, cr)
 
             transition_results.append(tr)
@@ -669,18 +685,29 @@ class BenchmarkEligibilityEvaluator:
             "",
         ]
 
-        if not summary.commercialization_data_supplied:
-            not_evaluable = sum(
-                1
-                for r in summary.commercialization_results
-                if r.status == BenchmarkStatus.NOT_EVALUABLE
-            )
-            lines.extend(
-                [
+        not_evaluable = sum(
+            1
+            for r in summary.commercialization_results
+            if r.status == BenchmarkStatus.NOT_EVALUABLE
+        )
+        if not_evaluable:
+            if summary.commercialization_data_supplied:
+                note = (
+                    f"> **Note:** commercialization data was supplied, but no sales/patent "
+                    f"row matched {not_evaluable} companies subject to the commercialization "
+                    f"benchmark. Missing company-level evidence is reported as "
+                    f"`not_evaluable`, not as failure."
+                )
+            else:
+                note = (
                     f"> **Note:** no commercialization data was supplied — the sales/patent "
                     f"test is not evaluable for the {not_evaluable} companies subject to the "
                     f"commercialization benchmark. Absence of data is reported as "
-                    f"`not_evaluable`, not as failure.",
+                    f"`not_evaluable`, not as failure."
+                )
+            lines.extend(
+                [
+                    note,
                     "",
                 ]
             )
@@ -730,7 +757,7 @@ class BenchmarkEligibilityEvaluator:
             ("Failing Commercialization Rate Benchmark", BenchmarkStatus.FAIL),
             ("Passing Commercialization Rate Benchmark", BenchmarkStatus.PASS),
             (
-                "Commercialization Rate Benchmark: Not Evaluable (no data supplied)",
+                "Commercialization Rate Benchmark: Not Evaluable (missing company data)",
                 BenchmarkStatus.NOT_EVALUABLE,
             ),
         ]
