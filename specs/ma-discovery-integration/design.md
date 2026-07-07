@@ -74,7 +74,9 @@ class MAEvent(BaseModel):
         return "low"
 ```
 
-**File-contract requirement.** The capital-events builder filters on the string-typed `confidence` tier (`_KEEP_CONFIDENCES = {"high", "medium"}`); it does not read a numeric score. Discovery must emit the string `confidence` tier in each row of `enriched_sbir_ma_events.jsonl` — internally derived from `confidence_score` via the `@computed_field` above, but the on-disk contract is the tier, not the score. The `≥ 0.45` threshold above is therefore an *internal* mapping; the builder-level inclusion bar is `confidence in {"high", "medium"}`. Calibrate the score → tier thresholds against existing detector output on first run.
+**File-contract requirement.** The capital-events builder filters on the string-typed `confidence` tier (`_KEEP_CONFIDENCES = {"high", "medium"}`); it does not read a numeric score. Discovery must emit the string `confidence` tier in each row of `enriched_sbir_ma_events.jsonl` — internally derived from `confidence_score` via the `@computed_field` above, but the on-disk contract is the tier, not the score. The `≥ 0.45` threshold above is therefore an *internal* starting point; the builder-level inclusion bar is `confidence in {"high", "medium"}`.
+
+**Threshold alignment requirement.** The preserved toolkit branch in PR #371 currently maps `confidence_score` to tiers at different cutoffs (`high >= 0.8`, `medium >= 0.5`) via a model validator. Do not land the confidence-field cleanup until the implementation branch either adopts the provisional `0.75 / 0.45` cutoffs in this design or explicitly replaces them with empirically calibrated thresholds. The important invariant is that every producer writes the same string tier for the same numeric score before rows reach `capital_events.parquet`.
 
 ## Triggering & cost
 
@@ -100,11 +102,11 @@ These are choices the design intentionally does *not* pin, because they're indep
 | Search backend (Tavily / Brave / Bing / Serper) | Tavily — purpose-built for snippet-focused agentic search; pluggable interface stays put | Pricing changes; better resolved with a real cost estimate |
 | LLM verifier model | Claude Haiku 4.5 for cost; Sonnet 4.6 for ambiguous cases (two-stage) | Calibrate per actual snippet quality |
 | Output module path | `sbir_etl/enrichers/ma_discovery/` (matches enricher convention) | Easier to refactor when tests exist |
-| Confidence threshold tuning | Start at 0.75 / 0.45; revisit after first 100-row run | Empirical |
+| Confidence threshold tuning | Provisional 0.75 / 0.45; must align #371 or be replaced by calibrated cutoffs before implementation lands | Empirical |
 
 ## Implementation sequencing (after this design is approved)
 
-1. **Fix `MAEvent.confidence`** as a `@computed_field`. Standalone PR; small, safe, lands first.
+1. **Fix `MAEvent.confidence`** as a `@computed_field` and align the score-to-tier cutoffs with this design (or replace both with calibrated thresholds). Standalone PR; small, safe, lands first.
 2. **Move toolkit scripts to a module path** (`sbir_etl/enrichers/ma_discovery/`) and fix relative imports. No behavior change.
 3. **Implement a real `SearchTool`** against the chosen backend, with config + credentials in `.env.example` and `OTConsortiumConfig`-style schema entry.
 4. **Replace keyword verifier with LLM extractor.** Structured output: `{matched_company, matched_acquirer, acquisition_date, value_usd, citation_url}`.
