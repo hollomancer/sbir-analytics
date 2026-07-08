@@ -55,3 +55,45 @@ P1 positives ("coded Phase III, same firm") must be labeled from the **structure
 
 ## 7. Paused here
 Awaiting review of this survey/plan and a go decision on the M0 pulls (and the M0b 10Q-source question), before any large data pull or spec writing.
+
+---
+
+# Phase 0 Addendum — verified findings + scope decision (post scope-guard)
+
+## Verified since survey
+- **M0b RESOLVED — 10Q is reachable.** The FPDS ATOM feed exposes element 10Q as
+  `<ns1:research>` (value `SR3`/`SR2`, `description="… PHASE III ACTION"`) and is
+  queryable via `q=RESEARCH:SR3`. This is the structured, non-leaking label source
+  for P1 positives. Confirmed the ~2k Phase III rows already on disk carry **no**
+  `research` field, so the ATOM pull is genuinely required (not redundant).
+- **Product 1 is already built.** `phase_iii_retrospective_candidates`
+  (`packages/sbir-analytics/.../phase_iii_candidates/assets.py:545`) +
+  `_is_phase_iii_already_coded` (`pairing.py:49`) already implement the
+  status-denial filter (SBIR-lineage follow-on lacking Phase III coding). Product 1
+  becomes a **tuning/labeling PR** (threshold + nullable `disposition` on
+  `PhaseIIICandidate` + real contracts loader), not a new pipeline.
+- **"22k already embedded" is false on disk.** Only the asset module
+  (`assets/modernbert/embeddings.py`) exists; no materialized `.npy`/parquet.
+  Embeddings must be regenerated as the first embedding step.
+
+## Scope decision (adopted)
+- **Benchmark trimmed 6→3 strata:** P1, N1 (+N3 if cheap). Drop P2, N2, and
+  P3-recall@50 from the go/no-go gate. Size **~200 pairs/class** (separability
+  test with bootstrap CI, not model training). Baselines = existing **Jaccard
+  topical + ModernBERT cosine**; TF-IDF/BM25 cut from the gating path.
+- **Gating question (unchanged):** can text separate P1 derivatives from N1 hard
+  negatives in the well-described stratum? ROC-AUC(P1 vs N1) + N3 sibling check.
+- **Products:** P1 = tuning PR; **write Product 2 and Product 4 specs** (P4 as a
+  thin watchlist over coded Phase IIIs + P1 flags). One benchmark spec dir
+  `specs/phase3-match-benchmark/`.
+- **Sequence:** M0b (targeted FPDS-ATOM SR3 pull) **before** M0a (full population).
+  M0a deferred behind a Product 2 go.
+
+## Small M0b build (in progress this pass)
+1. Pull ~200–300 SR3-coded records from FPDS ATOM → `data/raw/fpds/` (cached XML).
+2. Parse → structured (PIID, UEI, requirement description, dates, PSC/NAICS, IDV).
+3. Join to Phase II abstracts by resolved identity → **P1** pairs.
+4. Assemble **N1** (same office / adjacent PSC / overlapping time, different lineage
+   confirmed via `resolve_entities`) and **N3** (same-topic sibling) if cheap.
+5. Embed via `ModernBertClient`; **P1-vs-N1 separability** (AUC + bootstrap CI),
+   Jaccard baseline alongside. No large population pull.
