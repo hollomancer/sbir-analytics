@@ -229,3 +229,7 @@ results.csv
 # Playwright MCP browser-automation traces (local debugging only)
 .playwright-mcp/
 
+data/raw/fpds/
+data/derived/fpds_10q_*.parquet
+data/derived/phase3_match_benchmark_pairs.parquet
+data/derived/phase3_benchmark_scores_*.parquet
