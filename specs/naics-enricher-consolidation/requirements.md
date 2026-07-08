@@ -1,6 +1,9 @@
 # Requirements — NAICS Enricher Consolidation
 
-> **Status:** Not yet started.
+> **Status:** Largely complete. Shim deletion, canonical mapper consolidation,
+> strategy registration, and Ruff/mypy verification are done. Remaining work is
+> documentation cleanup and deciding whether obsolete audit/golden-file tasks
+> should be closed as superseded rather than re-created.
 > Supports inventory questions **D1 / E3** (NAICS coverage and fiscal-impact infrastructure)
 > in [docs/research-questions.md](../../docs/research-questions.md).
 

@@ -62,7 +62,7 @@
 
 - [ ] **T5.1** Update `docs/ot-consortium/tiers.md`: document route (c), the
       amount-override semantics, and the "absence is not contradiction" caveat.
-- [ ] **T5.2** Full gate: ≥85% coverage on new code; ruff/black/mypy clean;
-      existing OT + transition suites green.
+- [ ] **T5.2** Full gate: >=85% coverage on new code; Ruff formatting, Ruff
+      lint, and mypy clean; existing OT + transition suites green.
 - [ ] **T5.3** Sanity run on a real CMF prime (e.g. an ATI/NSTXL PIID) to confirm
       sub-award rows resolve and the recovered-$ line is non-zero where expected.

@@ -1,6 +1,10 @@
 # Cross-Agency Technology Taxonomy — Tasks
 
-> **Status (2026-07-02):** Not started. CET classifier infrastructure exists (`packages/sbir-analytics/sbir_analytics/assets/cet/`), but the cross-agency analyzer and full-corpus batch run described here are not implemented.
+> **Status (2026-07-07):** Gated backlog. Prerequisite CET classifier and
+> mission-a analysis tools exist, but none of this spec's listed tasks are
+> complete: no full-corpus batch run, cross-agency report, visualization output,
+> or scheduled Dagster asset exists yet. Promote only when M3 cross-agency
+> taxonomy reporting is selected as the next research priority.
 
 ## Phase 1: Full Corpus Classification
 

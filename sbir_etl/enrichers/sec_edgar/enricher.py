@@ -703,8 +703,8 @@ async def enrich_company(
       2. Filing mentions — search for the company in other filers' filings
          (M&A, ownership, partnership signals).
 
-    Form D is off by default — use `scripts/archive/data/fetch_form_d_index.py` for bulk Form D
-    matching from EDGAR quarterly index files instead of EFTS.
+    Form D is off by default; bulk Form D matching should run from the maintained
+    capital-events pipeline rather than from this single-company EFTS entry point.
     """
     profile = CompanyEdgarProfile(
         company_name=company_name,

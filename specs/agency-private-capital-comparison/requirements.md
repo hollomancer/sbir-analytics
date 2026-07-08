@@ -1,6 +1,9 @@
 # SBIR vs. Private-Capital Comparison — Requirements (agency-parameterized; NSF as initial target)
 
-> **Status:** Phase 1 not yet started; Phase 2 gated on PR #286 merging.
+> **Status:** Phase 1 implemented; Phase 2 is a gated backlog item now that the
+> Form D / M&A infrastructure from PR #286 is available. Do not start Phase 2
+> until the private-capital control-cohort comparison is selected as a current
+> research priority.
 > Supports inventory questions **F3** (private-capital comparison), **B2** (commercialization outcomes), **B3** (transition rates) in [docs/research-questions.md](../../docs/research-questions.md).
 
 **Research question anchor:** F3 / B2 / B3 — SBIR vs. private-capital cohort comparison (NSF initial target)

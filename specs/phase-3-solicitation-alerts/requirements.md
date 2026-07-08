@@ -1,6 +1,8 @@
 # Phase III Solicitation & Award Candidate Alerts — Requirements
 
-> **Status:** Not yet started.
+> **Status:** Partially implemented. S1 retrospective reclassification shipped
+> in PRs #394, #410, and #412; S2/S3 SAM.gov Opportunities candidate paths and
+> final documentation/sign-off remain backlog.
 > Supports inventory questions **B2 / B3 / B4 / E1 / E6 / E5** in [docs/research-questions.md](../../docs/research-questions.md).
 
 **Research question anchor:** B2 / B3 / B4 / E1 / E6 / E5 — Phase III identification, solicitation alerting, and FPDS data-gap measurement

@@ -11,7 +11,7 @@
 
 ## Done when
 
-> A pipeline engineer can state: "The `iterative_enrichment_refresh_job` Dagster job runs nightly after bulk enrichment succeeds, processing only stale or failed records by source. Per-source freshness state is tracked in `data/derived/enrichment_freshness.parquet` and `data/state/enrichment_refresh_state.json`. A targeted refresh can be triggered via `poetry run refresh_enrichment --source <name> --window <start>:<end>`."
+> A pipeline engineer can state: "The `iterative_enrichment_refresh_job` Dagster job runs nightly after bulk enrichment succeeds, processing only stale or failed records by source. Per-source freshness state is tracked in `data/derived/enrichment_freshness.parquet` and `data/state/enrichment_refresh_state.json`. A targeted refresh can be triggered via `uv run refresh_enrichment --source <name> --window <start>:<end>`."
 
 ---
 
@@ -41,7 +41,7 @@ This specification implements an iterative API enrichment refresh loop to keep c
 - **PipelineConfig.enrichment_refresh**: Code component or file: sbir_etl/config/schemas/pipeline.py — the actual config namespace for iterative-refresh settings (e.g., `config.enrichment_refresh.usaspending.*`).
 - **data/derived/enrichment_freshness.parquet**: Code component or file: the Parquet ledger where per-source freshness metrics are persisted.
 - **data/state/enrichment_refresh_state.json**: Code component or file: the JSON state file tracking per-source last-attempt / last-success timestamps.
-- **poetry run refresh_enrichment --source sam_gov --window 2023-10-01:2023-10-07**: Code component or file: poetry run refresh_enrichment --source sam_gov --window 2023-10-01:2023-10-07
+- **uv run refresh_enrichment --source sam_gov --window 2023-10-01:2023-10-07**: Code component or file: uv run refresh_enrichment --source sam_gov --window 2023-10-01:2023-10-07
 - **docs/enrichment/iterative-refresh.md**: Code component or file: docs/enrichment/iterative-refresh.md
 - **Iterative enrichment scheduler**: Key concept: Iterative enrichment scheduler
 - **Per-source refresh policies**: Key concept: Per-source refresh policies
@@ -79,4 +79,4 @@ This specification implements an iterative API enrichment refresh loop to keep c
 
 1. THE System SHALL persist per-source enrichment state to `data/derived/enrichment_freshness.parquet` and `data/state/enrichment_refresh_state.json`, recording attempt count, last success timestamp, and staleness window per source.
 2. THE System SHALL alert (via Dagster asset check or log warning) when any source's last successful enrichment exceeds its configured SLA window.
-3. THE System SHALL support a `--window` CLI flag (`poetry run refresh_enrichment --source <name> --window <start>:<end>`) for manual targeted refreshes of specific date ranges.
+3. THE System SHALL support a `--window` CLI flag (`uv run refresh_enrichment --source <name> --window <start>:<end>`) for manual targeted refreshes of specific date ranges.
