@@ -81,6 +81,22 @@ The quality framework above governs the Dagster pipeline (`sbir_etl`). The one-o
 - **Match the population, not just the column names.** A script computed a firm's "first Phase II award year" by joining against a *different, more narrowly-scoped* cohort file than the one the statistic was actually about, because both files happened to have compatible `company`/`award_year` columns. The join ran without error and produced a plausible-looking but wrong number. When a stat is defined over population X, source every input for it from X's own data — a column with the same name in a sibling file may carry a different, incompatible population underneath.
 - **Hand-typed, non-reproducible figures are the highest-risk category.** The one error with no backing script at all (Finding 2's acquisition-timing paragraph — a median and an outlier example, asserted directly in prose) was also the most wrong: not a rounding slip but the wrong firm identified as the outlier. A number nobody can rerun is a number nobody re-verifies. Prefer computing every reportable figure in a script, even a throwaway one; if a figure must be asserted by hand (e.g. reasoning about a small hand-curated table), say so explicitly in the text so it gets extra scrutiny during review.
 - **Build the audit script alongside the report, not after.** `nano_verify_report_figures.py` recomputes every load-bearing number in the report from source and diffs it against the value actually printed in the markdown. Keep this pattern for any new findings report (the quantum/hypersonics generalization is a natural next user) — rerun it whenever an upstream script or source CSV changes, not just once at publication.
+## Data-key traps (join grain)
+
+- **FPDS PIID is not a key.** Order numbers recur across parent IDVs ("0001"), PIIDs recur across
+  modifications/transactions, and legacy (pre-FY17) PIIDs collide across agencies. Join on the
+  compound award key — roughly `(PIID, awarding agency, referenced-IDV PIID, referenced-IDV agency)`
+  or the dataset's precomputed unique award key (e.g. USAspending `contract_award_unique_key`) — and
+  **assert grain before joining**. Never use bare PIID as an identity or dedup key. Empirically, a
+  600-record FPDS SR3 pull had all 600 records at PIID "0001" across 286 firms.
+- **SBIR.gov `Contract` and `Agency Tracking Number` are not award-unique either.** `Contract` is
+  often a solicitation/BAA number ("NAS 96-1" on 348 awards); ATN is shared across ~47k values. Do
+  not join SBIR↔FPDS on these bare fields.
+- **`award_data.csv` is 219,501 records, not the ~540k `wc -l` reports** — embedded newlines in quoted
+  `Abstract` fields. Always parse with a real CSV reader.
+- Guardrail helper: `sbir_analytics.assets.phase_iii_candidates.pairing.award_key_series` builds an
+  award key and fails loud on bare-PIID-only frames. See
+  `specs/product-1-status-denial-flags/audit-piid-grain.md`.
 
 ## Related Documents
 
