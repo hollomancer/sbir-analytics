@@ -27,6 +27,8 @@ TEXT_FIELDS = [
     "signedDate", "effectiveDate", "currentCompletionDate",
     "productOrServiceCode", "principalNAICSCode", "research",
     "agencyID", "contractActionType", "referencedIDVID", "extentCompeted",
+    # funding office / command — enables true same-office hard negatives (N1)
+    "contractingOfficeID", "contractingOfficeAgencyID", "fundingRequestingOfficeID",
 ]
 
 
