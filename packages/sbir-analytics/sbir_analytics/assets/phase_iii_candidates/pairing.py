@@ -46,6 +46,29 @@ def _normalize(value: object) -> str:
     return "" if s in {"", "NAN", "NONE"} else s
 
 
+# Columns that carry Phase III coding. If a non-empty contracts frame has NONE of these,
+# the "already coded" exclusion cannot fire and would silently pass coded Phase IIIs through
+# as flags — so we fail loudly instead (see _prepare_contracts).
+_CODED_STATUS_COLUMNS: tuple[str, ...] = ("research", "sbir_phase")
+
+# A precomputed, award-unique key if the ingestion provides one (preferred over any compound).
+_UNIQUE_AWARD_KEY_COLUMNS: tuple[str, ...] = (
+    "contract_award_unique_key",
+    "generated_unique_award_id",
+    "unique_award_key",
+    "contract_id",
+)
+# Compound award-key parts (FPDS + FederalContract naming). Bare PIID alone is NOT a key:
+# order numbers ("0001") recur across parent IDVs, PIIDs recur across mods, legacy PIIDs
+# collide across agencies. The parent-IDV + agency parts disambiguate.
+_PIID_COLUMNS: tuple[str, ...] = ("piid", "PIID", "award_id")
+_AWARD_KEY_PART_COLUMNS: tuple[str, ...] = (
+    "agencyID", "agency_id", "awarding_agency_code",
+    "referencedIDVID", "referenced_idv_piid", "parent_contract_id", "parent_award_id",
+    "referenced_idv_agency_id", "parent_contract_agency",
+)
+
+
 def _is_phase_iii_already_coded(row: pd.Series) -> bool:
     """True iff a contract row already carries explicit Phase III coding."""
 
@@ -59,6 +82,35 @@ def _is_phase_iii_already_coded(row: pd.Series) -> bool:
         if label in _PHASE_III_LABELS:
             return True
     return False
+
+
+def award_key_series(df: pd.DataFrame) -> pd.Series:
+    """Return an award-grade unique key per contract row.
+
+    Preference: a precomputed unique award key, else a compound key
+    (PIID + awarding agency + parent-IDV PIID + parent-IDV agency). Raises if only a bare
+    PIID is available — bare PIID is not a key (recurs across IDVs/mods/agencies).
+    """
+
+    for col in _UNIQUE_AWARD_KEY_COLUMNS:
+        if col in df.columns and df[col].astype(str).str.strip().replace("nan", "").ne("").any():
+            return df[col].astype(str).str.strip()
+
+    piid_col = next((c for c in _PIID_COLUMNS if c in df.columns), None)
+    part_cols = [c for c in _AWARD_KEY_PART_COLUMNS if c in df.columns]
+    if piid_col is None:
+        raise ValueError(
+            "contracts frame has no award-key column "
+            f"(none of {_UNIQUE_AWARD_KEY_COLUMNS} or {_PIID_COLUMNS})"
+        )
+    if not part_cols:
+        raise ValueError(
+            f"bare PIID ({piid_col!r}) is not an award key: order numbers recur across parent "
+            "IDVs, PIIDs recur across mods, legacy PIIDs collide across agencies. Provide a "
+            f"unique award key {_UNIQUE_AWARD_KEY_COLUMNS} or compound parts {_AWARD_KEY_PART_COLUMNS}."
+        )
+    key_cols = [piid_col, *part_cols]
+    return df[key_cols].fillna("").astype(str).agg("|".join, axis=1)
 
 
 def _agency_match_level(prior: pd.Series, target: pd.Series) -> str | None:
@@ -124,14 +176,42 @@ def _prepare_contracts(contracts: pd.DataFrame) -> pd.DataFrame:
 
     df = contracts.copy()
 
-    # Compute "already coded" mask before column projection so we can read
-    # whichever raw column the input frame carries.
-    coded_mask = (
+    # Guard: if no coding column is present, the "already coded" exclusion silently passes
+    # every coded Phase III through as a flag. For a report-bound audit that is a correctness
+    # failure, not a soft default — fail loudly.
+    if not any(c in df.columns for c in _CODED_STATUS_COLUMNS):
+        raise ValueError(
+            "contracts frame carries no Phase III coding column "
+            f"(need one of {_CODED_STATUS_COLUMNS}); the already-coded exclusion cannot fire. "
+            "USAspending-derived frames must be enriched with the FPDS 10Q 'research' element first."
+        )
+
+    # Award-grade unique key (never bare PIID). This is both target_id and the grain at which
+    # coded-status is aggregated.
+    df = df.assign(_award_key=award_key_series(df))
+
+    # Coded status at AWARD grain: an award is coded if ANY of its transactions carries the
+    # Phase III research code (conservative, agency-generous). Per-row masking would keep the
+    # non-coded mods of an award that IS coded, manufacturing false flags.
+    row_coded = (
         df.apply(_is_phase_iii_already_coded, axis=1) if len(df) else pd.Series([], dtype=bool)
     )
-    df = df.loc[~coded_mask].copy()
+    award_coded = row_coded.groupby(df["_award_key"]).transform("any")
+    df = df.loc[~award_coded].copy()
     if df.empty:
         return pd.DataFrame(columns=[c for c in PAIR_S1_COLUMNS if c.startswith("target_")])
+
+    # Collapse to AWARD grain: one row per award key, so downstream flags are award-grade,
+    # not transaction/mod-grade (which would multiply a single uncoded award into many flags).
+    _date_col = next(
+        (c for c in ("action_date", "award_date", "signedDate", "effectiveDate") if c in df.columns),
+        None,
+    )
+    if _date_col is not None:
+        df = df.assign(_d=pd.to_datetime(df[_date_col], errors="coerce")).sort_values(
+            "_d", na_position="first"
+        ).drop(columns="_d")
+    df = df.drop_duplicates("_award_key", keep="last").copy()
 
     def _pick(*names: str) -> pd.Series:
         for n in names:
@@ -141,7 +221,7 @@ def _prepare_contracts(contracts: pd.DataFrame) -> pd.DataFrame:
 
     out = pd.DataFrame(
         {
-            "target_id": _pick("contract_id", "piid", "generated_unique_award_id"),
+            "target_id": df["_award_key"],
             "target_recipient_uei": _pick("vendor_uei", "recipient_uei", "uei"),
             "target_agency": _pick("awarding_agency_name", "agency", "awarding_agency"),
             "target_sub_agency": _pick("awarding_sub_tier_agency_name", "sub_agency"),
