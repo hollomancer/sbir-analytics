@@ -1,8 +1,12 @@
 # Product 2 — Bypass Leads — Requirements
 
-> **Status:** Spec / design. **Gated on the A3 benchmark** ([../phase3-match-benchmark/findings.md](../phase3-match-benchmark/findings.md)).
-> Preliminary result: viable **only in the well-described stratum** (ModernBERT AUC 0.824 for FPDS
-> descriptions ≥100 chars; ≈ chance below that) — blocking MUST gate on description length.
+> **Status:** Spec / design — **DESCOPE recommended per A3**
+> ([../phase3-match-benchmark/findings.md](../phase3-match-benchmark/findings.md)). Against true
+> same-contracting-office hard negatives, embedding separability is ≈ chance (AUC 0.564) and **no
+> better than the lexical baseline**; realistic same-office retrieval is weak (P@1 0.23, ~2× random,
+> optimistic upper bound). Recommendation: build **Tier-1 string-evidence-only**; demote the
+> embedding (Tier 2) to a weak secondary signal for a review queue; reopen the embedding ranker only
+> after M0a enables real-pool precision@k.
 > Supports inventory question **B3** (Phase III derivation / bypass detection) in
 > [docs/research-questions.md](../../docs/research-questions.md).
 
