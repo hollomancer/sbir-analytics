@@ -90,6 +90,12 @@ is only ~2× random. Therefore:
 - **Join-key bug fixed.** P1↔N1 were joined on FPDS `PIID`, which is a non-unique order/mod number
   ("0001"), collapsing strata. Replaced with a unique `pair_id`. This removed a spurious
   well-described-stratum advantage.
+- **Results are unaffected by the FPDS PIID/parser issue** (surfaced in the Product 1 audit, where
+  the ATOM parser initially dropped the parent-IDV PIID). The benchmark keys every pair on the unique
+  `pair_id` and scores on descriptions + recipient UEI + `contractingOfficeID` — never on PIID — so
+  the near-chance separability and weak precision@k conclusions stand. The one refinement the parser
+  fix enables: dedup the 600 SR3 rows to 485 award-grade keys (the rest are mod dups), which cannot
+  strengthen a near-chance result.
 
 ## Limitations (direction of bias)
 - **Pool = SR3-coded only** (M0a pending) → precision@k is an upper bound; real pool is larger/harder.

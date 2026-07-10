@@ -54,6 +54,36 @@ def fetch_page(code: str, start: int, cache_dir: Path) -> str:
     return ""
 
 
+def _subfield(block: str, tag: str) -> str:
+    """Text of a leaf <ns:tag> within a sub-block (empty if absent)."""
+    m = re.search(rf"<ns\d+:{tag}\b[^>]*>([^<]*)</ns\d+:{tag}>", block)
+    return m.group(1).strip() if m else ""
+
+
+def _award_key_fields(entry: str) -> dict:
+    """Extract the compound-award-key parts from the NESTED awardContractID / referencedIDVID
+    blocks. FPDS ``<referencedIDVID>`` is a PARENT element (agencyID + PIID children), so a flat
+    text regex misses the parent-IDV PIID — the varying disambiguator. See audit-piid-grain.md.
+    """
+    ac = re.search(r"<ns\d+:awardContractID\b.*?</ns\d+:awardContractID>", entry, re.S)
+    iv = re.search(r"<ns\d+:referencedIDVID\b.*?</ns\d+:referencedIDVID>", entry, re.S)
+    acb = ac.group(0) if ac else ""
+    ivb = iv.group(0) if iv else ""
+    order_piid = _subfield(acb, "PIID")
+    order_agency = _subfield(acb, "agencyID")
+    idv_piid = _subfield(ivb, "PIID")
+    idv_agency = _subfield(ivb, "agencyID")
+    # Award-unique compound key: order PIID + awarding agency + parent-IDV PIID + parent-IDV agency.
+    award_key = "|".join([order_piid, order_agency, idv_piid, idv_agency])
+    return {
+        "order_piid": order_piid, "order_agency_id": order_agency,
+        "referenced_idv_piid": idv_piid, "referenced_idv_agency_id": idv_agency,
+        "mod_number": _subfield(acb, "modNumber"),
+        "transaction_number": _subfield(acb, "transactionNumber"),
+        "award_key": award_key,
+    }
+
+
 def parse_entry(entry: str) -> dict:
     rec: dict[str, str | None] = {}
     for tag in TEXT_FIELDS:
@@ -66,6 +96,8 @@ def parse_entry(entry: str) -> dict:
         man = re.search(rf'<ns\d+:{tag}\b[^>]*\bname="([^"]*)"', entry)
         if man:
             rec[f"{tag}_name"] = man.group(1).strip()
+    # nested compound-key fields (fixes the degenerate all-"0001" bare-PIID census)
+    rec.update(_award_key_fields(entry))
     return rec
 
 
@@ -112,7 +144,11 @@ def main() -> None:
         print(f"  UEI fill: {df['UEI'].notna().mean():.0%}  "
               f"desc fill: {(desc.str.len()>0).mean():.0%}  "
               f"median desc len: {int(desc.str.len().median())} chars")
-        print(f"  distinct UEIs: {df['UEI'].nunique()}  distinct agencies: {df.get('agencyID_name', pd.Series()).nunique()}")
+        print(f"  distinct UEIs: {df['UEI'].nunique()}")
+        # key structure — bare order PIID vs recoverable compound award key
+        print(f"  distinct bare order PIID: {df['order_piid'].nunique()}  "
+              f"distinct parent-IDV PIID: {df['referenced_idv_piid'].nunique()}  "
+              f"distinct COMPOUND award_key: {df['award_key'].nunique()}  of {len(df)} rows")
 
 
 if __name__ == "__main__":

@@ -34,12 +34,24 @@ primary join is **not** a PIID join. The PIID exposure is entirely on the **targ
   parsed records**; the gap is **fully explained by embedded newlines in quoted `Abstract` fields**
   (award-grain data, not mods/transactions). Nothing unexplained remains. Use a real CSV parser, never
   `wc -l`.
-- **FPDS SR3 pull (600 records, the future contract source):** bare PIID is catastrophically
-  non-unique — **every one of the 600 records carries PIID "0001"** (order numbers under parent IDVs),
-  spanning **286 distinct firms**. Under a bare-`piid` `target_id`, all 600 distinct Phase III awards
-  collapse toward a single identity; `_candidate_id` would then collide across unrelated awards.
-  *(Note: this pull captures the order PIID but not the nested parent-IDV PIID — see Phase D / open
-  questions; a production ingestion must capture both.)*
+- **FPDS SR3 pull (600 records, the future contract source):** the bare **order** PIID is genuinely
+  "0001" for all 600 (these are all first-orders under parent IDVs, `referencedIDVID` present 100%) —
+  spanning **286 firms**. Under a bare-`piid` `target_id`, all 600 collapse to a *single* identity;
+  `_candidate_id` would collide across unrelated awards. **But "collapse to one key" was a parser
+  artifact, not the true state** (correction below): the parent-IDV PIID varies (**485 distinct**), so
+  the correct compound key `(order PIID, awarding agency, parent-IDV PIID, parent-IDV agency)` yields
+  **485 distinct awards of 600 rows** (the ~115 remainder are mod/transaction dups — the transaction-
+  grain multiplicity this audit warns about). The bare-PIID conclusion is *strengthened* (all → "0001"
+  is worse than a partial collision); the "1 key" figure is corrected to 485.
+
+  > **Correction (auditability, this branch).** The initial census reported "600/600 = 0001,
+  > collapsing to 1 key." That uniformity was a **parser tell**: FPDS `<referencedIDVID>` is a *parent*
+  > element (agencyID + PIID children), and the flat text-regex extractor silently dropped the
+  > parent-IDV PIID — the varying disambiguator — leaving a degenerate compound key. Hand-verified
+  > against three raw ATOM entries (parent PIIDs `OASCOOB9001`, `DAAB0700DK516`, `DAAE3003D1009`);
+  > `parse_entry` now extracts the nested blocks. **The true keys were recoverable from the cache with
+  > no re-pull** — 485 distinct compound keys. Lesson logged: 100% uniformity on a field that should
+  > vary is a parser signal, not a data fact.
 - **Cross-system key `Contract` (SBIR.gov → FPDS):** 76% non-null, but **9,204 values are shared by
   >1 award (19,815 rows)** — and many are not PIIDs at all: "NAS 96-1" (348 awards), "PHS2001-2" (145)
   are solicitation/BAA numbers. **`Agency Tracking Number` also collides** (47,105 values shared by
@@ -79,11 +91,11 @@ Post-fix, an order's award key includes its parent-IDV reference, so orders unde
 distinguishable. **Whether an order should inherit its parent IDV's Phase III coding is a treatment
 decision, not an audit call.** FPDS semantics: a task/delivery order under a Phase-III-coded IDV
 frequently *is* Phase III work even when the order line omits the code; but coding practice is
-inconsistent. **This bucket cannot be populated yet** — the current SR3 pull did not fetch parent-IDV
-records' coding (and captured `referencedIDVID` at 0% due to a nested-element parser gap). Method to
-resolve post-M0a: for each flagged order, look up its `referenced_idv_piid`'s coding, then report the
-ratio under **both** treatments (parent-coded orders counted as coded vs. as flags). The human
-reviewing flags decides; the pipeline must not silently pick one.
+inconsistent. **the parent-IDV **PIID** is now captured (parser fixed; 485 distinct), but the parent IDV's own
+Phase III **coding** still requires a separate lookup of the parent records. Method to resolve
+post-M0a: for each flagged order, fetch its `referenced_idv_piid`'s coding, then report the ratio
+under **both** treatments (parent-coded orders counted as coded vs. as flags). The human reviewing
+flags decides; the pipeline must not silently pick one.
 
 ## Phase E — Regression guards installed
 
@@ -100,7 +112,7 @@ reviewing flags decides; the pipeline must not silently pick one.
 
 | Site | Risk | One-line note |
 |---|---|---|
-| `sbir_etl/ot_consortium/runner.py:26-38,112-117,181-197` | **CRITICAL** | bare-PIID dicts bridge firm claims → federal records with no agency disambiguation; last-write-wins collisions |
+| `sbir_etl/ot_consortium/runner.py:26-38,112-117,181-197` | **CRITICAL — candidate preventive-audit #2** | bare-PIID dicts bridge firm claims → federal records, no agency disambiguation. **Not dead code** — wired into the live `assets/transition/ot_tiering.py` asset + a Neo4j loader. Triage question: do the published §638(qq)(3) commercialization-benchmark verdicts depend on this OT tiering output? If yes → audit before it bites; if no → ticket with CRITICAL label |
 | `sbir_etl/extractors/sbir_gov_api.py:255-296` | MEDIUM | `by_contract` index keyed on bare SBIR.gov contract; lookup prefers it over UEI |
 | `sbir_etl/enrichers/company_enrichment.py:656,726` | MEDIUM | bare `Contract` extracted → FPDS description lookup, no agency context |
 | `sbir_etl/capital_events/sources/sbir_awards.py:81-83` | MEDIUM | falls back to bare `Contract` when ATN missing |
