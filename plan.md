@@ -8,19 +8,24 @@
 | Capability | Status | Location / evidence | Dependency tags |
 |---|---|---|---|
 | SBIR Phase II **abstracts** | **Implemented** | `data/raw/sbir/award_data.csv` — 99.9% fill on 68,075 Phase II; median 1,308 chars; **13.5% are ≤100-char stubs** | — |
-| Entity-resolution cascade (`resolve_entities`) | **Implemented** | `packages/sbir-analytics/sbir_analytics/tools/phase0/resolve_entities.py` — UEI→DUNS→CAGE→Name+State+NAICS→fuzzy(rapidfuzz)→LLM tiebreak | `ER` |
-| **Successor-in-interest / novation** resolution | **Not started** (events only = Partial) | `sec_edgar/enricher.py` emits `EdgarMAEvent`/`CompanyEdgarProfile` but does **not** cascade acquirer→SBIR lineage. **Gap** for Product 2 and for N1 non-lineage confirmation | `M&A signals`, `SEC EDGAR`, `ER` |
+| Entity-resolution cascade (`resolve_entities`) | **Implemented** | `packages/sbir-analytics/sbir_analytics/tools/phase0/resolve_entities.py` — UEI→DUNS exact, then **Name+State** deterministic (Step 4), then fuzzy(rapidfuzz)→LLM tiebreak. *Note: the docstring says "Name+State+NAICS" but the code matches on Name+State only — NAICS is stored, not used. CAGE is indexed for FPDS vendors, not SBIR company rows.* | `ER` |
+| **Successor-in-interest / novation** resolution | **Not started** (events only = Partial) | `sbir_etl/enrichers/sec_edgar/enricher.py` emits `EdgarMAEvent`/`CompanyEdgarProfile` but does **not** cascade acquirer→SBIR lineage. **Gap** for Product 2 and for N1 non-lineage confirmation | `M&A signals`, `SEC EDGAR`, `ER` |
 | ModernBERT-Embed similarity | **Implemented** | `packages/sbir-ml/sbir_ml/ml/modernbert_client.py` (`nomic-ai/modernbert-embed-base`, `compute_similarity`); 22k abstracts + contract descs already embedded (PR #413, median cosine ~0.69) | `IMP` |
 | Lexical baseline (topical) | **Partial** | `packages/sbir-analytics/sbir_analytics/assets/phase_iii_candidates/similarity.py` — NAICS+PSC+Jaccard. **No TF-IDF/BM25** → build for A2 | — |
 | FPDS **descriptions** (SBIR subset) | **Partial** | `data/processed/sbir_phase3/*.jsonl` `Description` field, 100% fill on 2,013–4,082 keyword-filtered rows; **text is thin** ("SBIR PHASE III AWARD.") | — |
-| FPDS **full candidate population** (all contracts, SBIR agencies, 5–8 FYs) | **Not started** | `contract_extractor.py` reads a USAspending Postgres dump that is absent; `data/transition/contracts_ingestion.parquet` empty | — |
+| FPDS **full candidate population** (all contracts, SBIR agencies, 5–8 FYs) | **Not started** | `sbir_etl/extractors/contract_extractor.py` reads a USAspending Postgres dump that is absent; its output `data/transition/contracts_ingestion.parquet` is an **expected runtime artifact, not present** in the repo — so the Product 1 asset emits nothing (confirmed in the join-key audit) | — |
 | **FPDS Element 10Q** (`research`, SR3/ST3 coding) | **Not started** | Codes defined in `sbir_etl/models/sbir_identification.py` but **not populated**; Phase III currently inferred from description text (~32% DoD recall) | `ID` |
 | IDV↔order linkage | **Partial** | `parent_contract_id` (referenced_idv_piid), ~20% fill | — |
 | Competition/authority codes | **Partial** | `extent_competed` 100%; `other_than_full_and_open` not ingested | — |
-| FSRS / subaward | **Not started** | Absent repo-wide (`subawards=false` explicit). **Blocks Product 2 subaward check** | — |
+| FSRS / subaward | **Not integrated** | Not wired into the core pipeline; subaward *exploration* tooling exists (`scripts/ot_consortium/probe_subaward_coverage.py`; USAspending queries pass `subawards: false`). **Blocks Product 2 subaward check** until integrated | — |
 | Phase I→II→III progression (same firm) | **Implemented** | `detect_award_progressions` (`sbir_neo4j_loading.py`) → Neo4j `FOLLOWS`, conf = 0.5 +topic +PI +timing. **Prior art for Product 1** | `ER`, `ID` |
 | Transition-detection scorer | **Implemented** | `packages/sbir-ml/sbir_ml/transition/detection/` — lineage regex, 6-signal score, `ConfidenceLevel {HIGH,LIKELY,POSSIBLE}`. **Prior art overlapping Products 1/2 — reuse, do not re-implement** | `transitions` |
-| Two-tier confidence grammar | **Implemented (convention)** | `specs/nih-commercialization-signal/requirements.md`: Tier 1 exact (~0.98 P) / Tier 2 fuzzy (~0.78 P). Product 2 lead tiers mirror this | — |
+| Two-tier confidence grammar | **Convention** | Tier-1-exact / Tier-2-fuzzy grammar used across the repo (transition scorer `ConfidenceLevel {HIGH,LIKELY,POSSIBLE}`; enrichment High/Med/Low in `docs/steering/glossary.md`). Product 2 lead tiers mirror this. *(A `specs/nih-commercialization-signal/` spec stating Tier 1 ~0.98 / Tier 2 ~0.78 exists locally but is **untracked** — not in this PR.)* | — |
+
+> **Evidence note.** `data/` is gitignored, so rows citing `data/**` (fill rates, lengths, coverage)
+> are computed from **local, uncommitted data runs** (SBIR / USAspending / FPDS pulls) and are not
+> validatable from the PR diff alone. Reproduce via `scripts/phase3_benchmark/` and the pull commands
+> in §5. File paths are shown at full repo-relative form where they exist in-tree.
 
 ## 2. Milestone zero (data) — the timeline-defining gap
 
