@@ -111,6 +111,11 @@ def create_session_with_retries() -> requests.Session:
     return session
 
 
+def _redact_url(url: str) -> str:
+    """Strip the query string before logging — presigned URLs carry signatures."""
+    return url.split("?", 1)[0] + ("?<redacted>" if "?" in url else "")
+
+
 def resolve_api_key(cli_value: str | None) -> str:
     """Resolve the ODP API key: --api-key flag, environment, then repo-root .env."""
     if cli_value:
@@ -186,7 +191,7 @@ def stream_download(source_url: str, dest_path: Path, session: requests.Session)
         ValueError: If response is HTML instead of the expected binary file
                     (for presigned URLs this usually means the mint expired)
     """
-    print(f"📥 Downloading: {source_url[:120]}{'...' if len(source_url) > 120 else ''}")
+    print(f"📥 Downloading: {_redact_url(source_url)}")
     print(f"   User-Agent: {USER_AGENT}")
 
     response = session.get(source_url, stream=True, timeout=300)
@@ -398,7 +403,7 @@ Examples:
         print("❌ Download Timeout")
         print("=" * 60)
         print(f"Error: Request timed out after 300 seconds")
-        print(f"URL: {source_url}")
+        print(f"URL: {_redact_url(source_url)}")
         print(f"Suggestion: Check network connectivity or try again later")
         print("=" * 60)
         sys.exit(1)
@@ -409,7 +414,7 @@ Examples:
         print("❌ HTTP Error")
         print("=" * 60)
         print(f"Status Code: {e.response.status_code}")
-        print(f"URL: {source_url}")
+        print(f"URL: {_redact_url(source_url)}")
         print(f"Error: {e}")
         print(f"Suggestion: Verify URL is correct and accessible")
         print("=" * 60)
@@ -421,7 +426,7 @@ Examples:
         print("❌ Network Error")
         print("=" * 60)
         print(f"Error: {e}")
-        print(f"URL: {source_url}")
+        print(f"URL: {_redact_url(source_url)}")
         print(f"Suggestion: Check network connectivity and try again")
         print("=" * 60)
         sys.exit(1)
@@ -432,10 +437,10 @@ Examples:
         print("❌ Invalid Response or Configuration")
         print("=" * 60)
         print(f"Error: {e}")
-        print(f"URL: {source_url}")
+        print(f"URL: {_redact_url(source_url)}")
         print()
         print("Common causes:")
-        print(f"  1. Missing/invalid API key — set {API_KEY_ENV_VAR} (see .env.example)")
+        print("  1. Missing/invalid API key — set USPTO_ODP_API_KEY (see .env.example)")
         print("  2. Presigned URL expired before download started (mint lasts ~30s) — re-run")
         print("  3. assignments/ai_patents URLs still require browser-based download;")
         print("     contact EconomicsData@uspto.gov for programmatic access")
