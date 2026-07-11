@@ -70,13 +70,13 @@ def agency_private_capital_form_d_matched_comparison(
     form_d_matches_path = Path(config.form_d_matches_path)
     control_path = Path(config.form_d_control_universe_path)
     missing_inputs = [
-        str(path)
-        for path in (form_d_matches_path, control_path)
-        if not path.exists()
+        str(path) for path in (form_d_matches_path, control_path) if not path.exists()
     ]
     if missing_inputs:
         threats_payload = ThreatsToValidity().write(threats_path)
-        md_path.write_text(_missing_inputs_markdown(config.agency_code, missing_inputs), encoding="utf-8")
+        md_path.write_text(
+            _missing_inputs_markdown(config.agency_code, missing_inputs), encoding="utf-8"
+        )
         empty = pd.DataFrame()
         empty.to_parquet(comparison_path, index=False)
         empty.to_parquet(pairs_path, index=False)
@@ -230,12 +230,23 @@ def _comparison_markdown(
 
 
 def _money(value: object) -> str:
-    if value is None or pd.isna(value):
+    parsed = _float_or_none(value)
+    if parsed is None:
         return "n/a"
-    return f"${float(value):,.0f}"
+    return f"${parsed:,.0f}"
 
 
 def _multiple(value: object) -> str:
-    if value is None or pd.isna(value):
+    parsed = _float_or_none(value)
+    if parsed is None:
         return "n/a"
-    return f"{float(value):.2f}x"
+    return f"{parsed:.2f}x"
+
+
+def _float_or_none(value: object) -> float | None:
+    if value is None or (isinstance(value, float) and pd.isna(value)):
+        return None
+    try:
+        return float(str(value))
+    except ValueError:
+        return None

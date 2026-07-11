@@ -51,7 +51,9 @@ class CohortMatcher:
                         "control_total_form_d_raised": control_row.get("total_form_d_raised"),
                     }
                 )
-        return _pairs_frame(pairs), self._balance(treated, controls, matched_treated=matched_treated)
+        return _pairs_frame(pairs), self._balance(
+            treated, controls, matched_treated=matched_treated
+        )
 
     def _balance(
         self,

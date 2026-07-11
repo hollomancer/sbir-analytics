@@ -35,9 +35,7 @@ def _pairs() -> pd.DataFrame:
 
 
 def test_ma_exit_rate_available_for_treated_and_controls() -> None:
-    outcomes = MatchedCohortOutcomes(
-        ma_event_keys={"name:acme corp", "cik:998"}
-    ).compute(_pairs())
+    outcomes = MatchedCohortOutcomes(ma_event_keys={"name:acme corp", "cik:998"}).compute(_pairs())
     rows = {
         (row["cohort"], row["metric"]): row
         for _, row in outcomes[outcomes["metric"] == "ma_exit_rate"].iterrows()

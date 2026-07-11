@@ -109,8 +109,7 @@ def _iter_company_form_d_rows(
         kept_offerings = [
             offering
             for offering in offerings
-            if offering
-            and (offering.get("industry_group") or "") not in EXCLUDED_INDUSTRY_GROUPS
+            if offering and (offering.get("industry_group") or "") not in EXCLUDED_INDUSTRY_GROUPS
         ]
         if not kept_offerings:
             continue
@@ -191,13 +190,20 @@ def _year(value: object) -> int | None:
 def _sum_float(values: Iterable[object]) -> float:
     total = 0.0
     for value in values:
-        if value is None:
+        parsed = _float_or_none(value)
+        if parsed is None:
             continue
-        try:
-            total += float(value)
-        except (TypeError, ValueError):
-            continue
+        total += parsed
     return total
+
+
+def _float_or_none(value: object) -> float | None:
+    if value is None or (isinstance(value, float) and pd.isna(value)):
+        return None
+    try:
+        return float(str(value))
+    except ValueError:
+        return None
 
 
 def _state_code(value: object) -> str:
