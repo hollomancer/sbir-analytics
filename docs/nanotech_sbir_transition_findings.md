@@ -186,6 +186,24 @@ Several commercialization pathways are beyond the reach of this analysis:
 
 ---
 
+## What This Says About Nanotechnology Commercialization
+
+Read together, the findings support five bounded conclusions.
+
+**1. Nanotechnology commercializes as an ingredient, not as a sector.** The pathway follows the application market rather than the technology: DoD- and DOE-funded nanotech returns to government procurement at three to five times the rate of NSF/NIH nanotech, NSF nanotech raises private capital at seven times the rate it appears in Phase III records, and the two populations barely overlap (1.3%; Finding 1). The firm data says the same thing: 293 firms hold nanotechnology patents while their SBIR awards are described in other domains entirely — nano capability diffuses through firm portfolios rather than defining them (Finding 5). Policy aimed at "the nanotech industry" targets something that does not exist as a unit; policy aimed at defense sensing, drug delivery, or semiconductor process technology targets real populations.
+
+**2. Observable commercialization is roughly one award in six — and that is a floor, not a rate.** 17.4% of awards show at least one commercialization signal. The remaining 82.6% is dominated by measurement failure rather than proven failure: Phase III coding is structurally absent outside DoD (Finding 4), sub-threshold acquisitions and licensing are invisible, and 32 firms counted as "disappeared" were provably filing nanotech patent applications after their awards (Finding 3). Commercialization can be demonstrated for about one award in six; failure can be demonstrated for almost none.
+
+**3. Value concentrates in IP-rich exits, and returns bifurcate by firm type.** The acquisition pathway is numerically small (11 confirmed prime acquisitions; 0.8% of cohort firms) but carries the strongest outcomes, in two regimes: defense service firms are absorbed near or below their cumulative SBIR funding (Physical Optics: ~$310M against $564M, 0.55×), while technology creators exit at premiums (EraGen 6.8×, Visen 5.8×, Anasys 2.3×; Finding 2). The patent data corroborates this independently: patent-holding firms show two to three times the M&A and Form D rates of non-holders but identical FPDS Phase III rates (Finding 5). Markets and acquirers reward nanotech IP; procurement rewards deliverability.
+
+**4. Nanotech commercialization is slower than any standard evaluation window.** Median two years from Phase II end to first private raise (Finding 1), roughly seven years to acquisition with a twelve-year tail (Finding 2), and half of patent-holding firms filed their first nanotech application only after their award era began (Finding 5). Nanotech sits at the deep-tech end of SBIR — physical-science product cycles, regulatory gates on the biomedical side, qualification cycles on the defense side. Annual or biennial assessments will structurally undercount the field; four to seven years is the realistic horizon.
+
+**5. The program appears to build nanotech capability, not just rent it.** Half of the patent-holding firms first filed nanotech IP after entering the program — consistent with SBIR generating new capability rather than only subsidizing firms that already had it, though this is correlation, and the pre-award and same-year filers show that existing capability also flows in (Finding 5). Together with the leverage bifurcation, the fair characterization is that SBIR nanotech runs two different successful programs under one name: a defense-industrial capability pipeline whose commercialization is sustained federal absorption, and a venture-adjacent IP-seeding program whose commercialization is private capital and strategic exit. A single average misrepresents both.
+
+The measurement lesson is itself a finding about commercialization: the phenomenon is only as visible as the instruments observing it. Procurement data sees the defense half, SEC data sees the venture half, patent data sees the IP half — and each half looks like failure through the other's lens.
+
+---
+
 ## Policy Implications
 
 **1. Aggregate transition rates are uninformative for nanotech.** The split between government-procurement and private-capital pathways is large enough that a single program-wide number will be misleading regardless of how it is computed. Reporting should distinguish DoD from non-DoD, and procurement-pathway from commercial-pathway, as a minimum.
