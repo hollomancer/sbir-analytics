@@ -750,12 +750,49 @@ def write_methodology_doc(
             "subsidiaries, university assignees produce false negatives). Treat CPC cohort "
             "membership as high-precision, unknown-recall."
         )
+        # --- §5D firm-level triangulation: de-grain both cohorts to firms ---
+        def _firm_rate(enriched: list[dict], field: str) -> tuple[int, int, float]:
+            firms: dict[str, bool] = {}
+            for r in enriched:
+                fname = r.get("company", "").strip().upper()
+                firms[fname] = firms.get(fname, False) or bool(r.get(field))
+            pos = sum(1 for v in firms.values() if v)
+            return pos, len(firms), 100 * pos / max(1, len(firms))
+
+        kw_firm_set = {r["company"].strip().upper() for r in kw_cohort}
+        both_firms = kw_firm_set & {r["company"].strip().upper() for r in cpc_cohort}
+        kw_firm_fpds: dict[str, bool] = {}
+        for r in kw_enriched:
+            fname = r["company"].strip().upper()
+            kw_firm_fpds[fname] = kw_firm_fpds.get(fname, False) or bool(r.get("sig_fpds_phase3_coded"))
+        with_pat = [f for f in kw_firm_fpds if f in both_firms]
+        without_pat = [f for f in kw_firm_fpds if f not in both_firms]
+        with_rate = 100 * sum(1 for f in with_pat if kw_firm_fpds[f]) / max(1, len(with_pat))
+        without_rate = 100 * sum(1 for f in without_pat if kw_firm_fpds[f]) / max(1, len(without_pat))
+        inter_by_id = {r["award_id"]: r for r in cpc_enriched if r["award_id"] in kw_ids}
+        inter_fpds_rate = 100 * sum(
+            1 for r in inter_by_id.values() if r.get("sig_fpds_phase3_coded")
+        ) / max(1, len(inter_by_id))
+
+        firm_rate_rows = []
+        for field, label in [
+            ("sig_fpds_phase3_coded", "FPDS-coded Phase III"),
+            ("sig_any_federal_obligation", "Any federal obligation"),
+            ("sig_form_d_detected", "Form D (high-confidence)"),
+            ("sig_ma_medium_high", "M&A signal (med+high)"),
+        ]:
+            kp, kn, kr = _firm_rate(kw_enriched, field)
+            cp, cn, cr = _firm_rate(cpc_enriched, field)
+            firm_rate_rows.append(f"| {label} | {kp}/{kn:,} ({kr:.1f}%) | {cp}/{cn} ({cr:.1f}%) |")
+        firm_rate_table = "\n".join(firm_rate_rows)
+
         cpc_signals_section = f"""### 5C. CPC cohort (n={len(cpc_enriched):,})
 
 ⚠ **Grain warning:** Method C is firm-grained — every Phase II award of a matched firm enters
 the cohort, so prolific multi-award firms dominate these per-award rates (one firm contributes
 {max(Counter(r["company"].upper() for r in cpc_enriched).values()):,} awards). Do not compare
 rates against §5A/§5B, which are award-text cohorts, without accounting for grain.
+§5D below de-grains the comparison.
 
 | Channel | Signal-positive | % | Coverage caveat |
 |---|---|---|---|
@@ -765,6 +802,38 @@ rates against §5A/§5B, which are award-text cohorts, without accounting for gr
 | M&A signal — high conf only | {cpc_sigs["sig_ma_high_conf"]} | {100*cpc_sigs["sig_ma_high_conf"]/max(1,len(cpc_enriched)):.1f}% | Narrowest M&A signal |
 | Form D (high-confidence) | {cpc_sigs["sig_form_d_detected"]} | {100*cpc_sigs["sig_form_d_detected"]/max(1,len(cpc_enriched)):.1f}% | Investment signal only |
 | **Union (any positive)** | **{cpc_sigs["sig_any_positive"]}** | **{100*cpc_sigs["sig_any_positive"]/max(1,len(cpc_enriched)):.1f}%** | **See caution above** |
+
+### 5D. Firm-level triangulation (keyword × CPC)
+
+De-graining both cohorts to firms (share of firms with ≥1 signal-positive award) removes the
+prolific-firm inflation in §5C:
+
+| Channel (firm-level) | Keyword firms | CPC firms |
+|---|---|---|
+{firm_rate_table}
+
+**What this shows:**
+
+1. **The §5C award-level FPDS gap is a grain artifact.** Firm-level FPDS-coded Phase III rates
+   are indistinguishable between the cohorts (table above); the award-level gap comes from
+   prolific multi-award firms dominating the CPC cohort.
+2. **Patents discriminate *within* the keyword cohort.** Keyword-cohort firms holding ≥1 B82
+   patent have a {with_rate:.1f}% firm-level FPDS-coded Phase III rate vs {without_rate:.1f}% for
+   non-holders. Every CPC-cohort firm with FPDS-coded Phase III lies in the keyword ∩ CPC
+   firm intersection (n={len(both_firms)}).
+3. **Private-market signals stay elevated for patent holders after de-graining** (Form D and
+   M&A rows above) — patents correlate more with acquisition/investment outcomes than with
+   government Phase III coding.
+4. **The double-confirmed subset is the strongest cohort.** The {len(inter_by_id):,} unique awards
+   that are both text-matched and from patent-verified firms show {inter_fpds_rate:.1f}%
+   FPDS-coded Phase III — use this subset for headline claims.
+5. **Coverage asymmetry:** the keyword method catches {100*len(both_firms)/max(1,cpc_firms):.0f}%
+   of patent-verified nanotech firms; {100*len(both_firms)/max(1,len(kw_firm_set)):.0f}% of keyword-cohort firms hold B82 patents
+   (examiner under-assignment of B82 and small-firm non-patenting both suppress this).
+
+**Caveat:** the "any federal obligation" channel under-measures the CPC cohort — the prospect
+digest joins by UEI, and the CPC cohort skews toward older prolific firms whose activity
+predates UEI-era tracking.
 
 ---
 

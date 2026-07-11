@@ -2,7 +2,7 @@
 
 **Prepared for:** NSET Subcommittee  
 **Status:** Provisional — figures are bounded estimates, not rates  
-**Data through:** FY2025 (SBIR.gov); FY2024 (USAspending); SEC EDGAR (ongoing)
+**Data through:** FY2025 (SBIR.gov); FY2024 (USAspending); SEC EDGAR (ongoing); USPTO PatentsView (March 2026 release)
 
 ---
 
@@ -15,6 +15,7 @@ Analysis of 2,849 nanotechnology-adjacent SBIR/STTR Phase II awards identifies t
 - **Overlap between pathways:** 1.3% (37 awards). These populations are nearly disjoint. Firms that return for government Phase III are largely not the same firms that attract venture capital, and vice versa.
 - **Combined observable signal:** 17.4% of nanotech Phase II awards show evidence of post-award commercialization activity through at least one channel.
 - **Status indeterminate for 82.6%** of the cohort — a measurement problem, not necessarily a commercialization failure.
+- **Patent lens (new):** 481 SBIR Phase II firms hold B82-classified nanotechnology patents. Within the keyword cohort, patent-holding firms show roughly three times the firm-level FPDS Phase III rate of non-holders (6.4% vs 2.2%) and substantially higher private-market signals; the 742 awards confirmed by both text and patents form a high-confidence core with 23.7% FPDS-coded Phase III (Finding 5).
 
 ---
 
@@ -32,12 +33,12 @@ A second structural problem: there is no authoritative definition of a "nanotech
 
 Awards were identified through keyword and phrase matching over award title and abstract text, using 52 patterns anchored to specific nanotechnology terminology (nanoparticle, nanotube, graphene, quantum dot, atomic layer deposition, NEMS, and related terms). This produced **2,849 Phase II awards** from a base of 68,075 total Phase II records in SBIR.gov — approximately 4.2% of all Phase II activity.
 
-Two alternative methods were tested:
+Two alternative methods were also run:
 
-- A proxy based on the repository's existing CET (Critical and Emerging Technology) keyword heuristic produced 650 awards — a strict subset. This narrower count reflects only awards using the words "nanotechnology" or "nanomaterials" explicitly, missing awards that describe techniques without using the category label.
-- A USPTO CPC-based approach (patent classification codes B82Y/B82B) could not be executed due to absent local patent data, but would provide a third, patent-anchored perspective on the same population.
+- A proxy based on the repository's existing CET (Critical and Emerging Technology) keyword heuristic produced 650 awards. This is not a subset of the keyword cohort: the CET term list includes "carbon fiber," which the nanotech keyword list deliberately omits, so 217 of its 640 unique award IDs fall outside the keyword cohort. The narrower count otherwise reflects awards using the words "nanotechnology" or "nanomaterials" explicitly, missing awards that describe techniques without using the category label.
+- A USPTO patent-classification approach — CPC classes B82Y/B82B over PatentsView bulk data — identifies **481 Phase II firms** holding at least one nanotechnology-classified patent, expanding to **6,786 Phase II awards** at the firm level. This method classifies firms by patenting behavior rather than awards by text, which makes it grain-incompatible with the other two until de-grained (Finding 5).
 
-The roughly 4:1 spread between methods (650 to 2,849) illustrates how much cohort size depends on definitional choices. The NNI's implied universe ($230M ÷ typical Phase II size) is larger still, suggesting NNI's agency-level identification captures solicitation-topic classifications that are invisible in abstract text.
+The spread between methods — 650, 2,849, or 6,786 awards depending on instrument and grain — illustrates how much cohort size depends on definitional choices. The NNI's implied universe ($230M ÷ typical Phase II size) sits within this span, suggesting NNI's agency-level identification captures solicitation-topic classifications that are invisible in abstract text.
 
 ---
 
@@ -151,6 +152,20 @@ This matters for program evaluation. Using FPDS Phase III rates as a comparative
 
 ---
 
+## Finding 5: The Patent Lens — Grain Artifacts, a Real Discriminator, and a High-Confidence Core
+
+Executing the patent-classification method (USPTO CPC B82Y/B82B over PatentsView bulk data) added an independent, behavior-based view of the same population: 481 SBIR Phase II firms hold at least one nanotechnology-classified patent, covering 6,786 Phase II awards. Comparing this cohort against the keyword cohort produced three lessons.
+
+**Award-level rates mislead across cohort grains.** At the award level, the patent cohort shows 38.2% FPDS-coded Phase III — over four times the keyword cohort's 9.2%. De-grained to firms, the difference disappears: 2.5% of patent-cohort firms versus 2.8% of keyword-cohort firms have at least one FPDS-coded Phase III award. The apparent gap is a composition effect — prolific multi-award firms (one contributes 596 Phase II awards) dominate the patent cohort and concentrate FPDS coding. Any comparison across cohorts in this domain must state its grain, and award-level rates from firm-defined cohorts should not be cited.
+
+**Patents are a genuine within-cohort discriminator.** Among keyword-cohort firms, those holding ≥1 B82 patent show a 6.4% firm-level FPDS Phase III rate versus 2.2% for non-holders — roughly 3×. Every patent-cohort firm with FPDS-coded Phase III activity sits in the keyword ∩ patent intersection (188 firms); patent-holding firms whose award abstracts do not read as nanotech contributed none. The private-market pathways stay elevated after de-graining: Form D 23.5% vs 15.0%, medium+high M&A signal 16.6% vs 6.1% at the firm level. Patenting predicts acquisition and investment outcomes more strongly than government procurement outcomes — consistent with the Finding 2 acquisition pathway (Physical Optics and Anasys, both acquired by primes, both hold B82 patents).
+
+**A high-confidence core exists.** The 742 unique awards that are both text-matched and from patent-verified firms show 23.7% FPDS-coded Phase III — 2.6 times the keyword-cohort baseline. Where a single headline number is unavoidable, it should come from this double-confirmed subset, with the definitional layering stated alongside it.
+
+**Coverage caveats.** The keyword method catches only 39% of patent-verified nanotech firms; the other 293 firms do patent-classified nanoscale work without using nanotech vocabulary in Phase II abstracts. Conversely, only 14% of keyword-cohort firms hold B82 patents — USPTO examiners under-assign the B82 classes, and small firms frequently do not patent — so patents cannot serve as the sole definition either. Assignee-to-firm matching is exact on normalized names (high precision, unknown recall: renames, subsidiaries, and university assignees are missed). The "any federal obligation" channel under-measures the patent cohort because the underlying digest joins on UEI and patent-cohort firms skew older than UEI-era tracking.
+
+---
+
 ## What Is Not Visible
 
 Several commercialization pathways are beyond the reach of this analysis:
@@ -161,7 +176,7 @@ Several commercialization pathways are beyond the reach of this analysis:
 
 **Licensing and technology transfer.** University-adjacent SBIR recipients (particularly common in NSF and NIH nanotech) often commercialize through patent licensing agreements that generate no SBIR-traceable transaction.
 
-**NNI-classified awards missed by keyword matching.** The gap between our 2,849-award keyword cohort and NNI's implied ~3,800–6,000 award universe (based on $230M at typical Phase II sizes) means a meaningful fraction of nanotech SBIR activity is not captured here. Awards where the nanotech scope is stated in a classified solicitation topic, or where the abstract uses domain-specific terminology without standard nano-vocabulary, will be missed.
+**NNI-classified awards missed by keyword matching.** The gap between our 2,849-award keyword cohort and NNI's implied ~3,800–6,000 award universe (based on $230M at typical Phase II sizes) means a meaningful fraction of nanotech SBIR activity is not captured here. Awards where the nanotech scope is stated in a classified solicitation topic, or where the abstract uses domain-specific terminology without standard nano-vocabulary, will be missed. The patent method now confirms this empirically: 61% of patent-verified nanotech firms (293 of 481) are invisible to abstract-text matching (Finding 5).
 
 ---
 
@@ -187,6 +202,7 @@ All figures in this report are provisional and subject to the following limitati
 - **FPDS Phase III undercounting:** GAO-24-106398 documents this as a structural problem, concentrated outside DoD. FPDS-coded rates should be treated as floors.
 - **Form D matching:** Entity matching is by firm name and is imperfect. False positives (two different firms with similar names) and false negatives (name changes after acquisition) both occur. The high-confidence tier used here applies a multi-signal scoring algorithm (name, person, state, temporal), but exact attribution to specific Phase II awards is not possible.
 - **NNI reference figures:** The agency-by-year NNI Table 5 figures used in the underlying reconciliation analysis are approximate public summary values. The exact NNI methodology for identifying nanotech SBIR awards is not published.
+- **CPC/B82 patent method:** Built from the USPTO PatentsView PVGPATDIS release (extract built 2026-07-11): 63,287 B82Y/B82B patents, 7,510 unique assignee organizations. Assignee organizations are matched to SBIR firm names by exact match on normalized names — high precision, unknown recall (renames, subsidiaries, and university assignees are missed; USPTO examiners under-assign B82 classes). The patent cohort is firm-grained; its award-level rates are not comparable to text-cohort rates without de-graining (methodology doc §5C–§5D).
 - **SEC EDGAR M&A scan:** The full scan of 34,460 SBIR firms in `sec_edgar_scan.jsonl` is complete and covers 99.9% of the nanotech cohort. A separate recent scan run wrote a summary showing zero detections due to repeated HTTP 500 errors — that summary reflects a failed process, not the underlying data. M&A mention signals in this report draw on the complete scan, filtered to acquisition-specific mention types (`ma_definitive`, `ma_proxy`, `acquisition`, `subsidiary`, `ownership_active`). Confidence tiers reflect multi-signal scoring from the enrichment pipeline: high-confidence M&A signals are present for 54 awards (1.9%); medium for 166 (5.8%); low for 214 (7.5%). Only high-confidence signals should be cited in formal contexts.
 
 Full methodology, term lists, confidence tags, and reproducible code are in `docs/nano_phase3_methodology.md` and `scripts/data/build_nano_cohort.py`.

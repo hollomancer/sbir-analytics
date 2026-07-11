@@ -243,6 +243,7 @@ Each channel has different coverage gaps and none is authoritative.
 the cohort, so prolific multi-award firms dominate these per-award rates (one firm contributes
 596 awards). Do not compare
 rates against §5A/§5B, which are award-text cohorts, without accounting for grain.
+§5D below de-grains the comparison.
 
 | Channel | Signal-positive | % | Coverage caveat |
 |---|---|---|---|
@@ -252,6 +253,41 @@ rates against §5A/§5B, which are award-text cohorts, without accounting for gr
 | M&A signal — high conf only | 160 | 2.4% | Narrowest M&A signal |
 | Form D (high-confidence) | 800 | 11.8% | Investment signal only |
 | **Union (any positive)** | **5215** | **76.8%** | **See caution above** |
+
+### 5D. Firm-level triangulation (keyword × CPC)
+
+De-graining both cohorts to firms (share of firms with ≥1 signal-positive award) removes the
+prolific-firm inflation in §5C:
+
+| Channel (firm-level) | Keyword firms | CPC firms |
+|---|---|---|
+| FPDS-coded Phase III | 37/1,339 (2.8%) | 12/481 (2.5%) |
+| Any federal obligation | 270/1,339 (20.2%) | 46/481 (9.6%) |
+| Form D (high-confidence) | 201/1,339 (15.0%) | 113/481 (23.5%) |
+| M&A signal (med+high) | 82/1,339 (6.1%) | 80/481 (16.6%) |
+
+**What this shows:**
+
+1. **The §5C award-level FPDS gap is a grain artifact.** Firm-level FPDS-coded Phase III rates
+   are indistinguishable between the cohorts (table above); the award-level gap comes from
+   prolific multi-award firms dominating the CPC cohort.
+2. **Patents discriminate *within* the keyword cohort.** Keyword-cohort firms holding ≥1 B82
+   patent have a 6.4% firm-level FPDS-coded Phase III rate vs 2.2% for
+   non-holders. Every CPC-cohort firm with FPDS-coded Phase III lies in the keyword ∩ CPC
+   firm intersection (n=188).
+3. **Private-market signals stay elevated for patent holders after de-graining** (Form D and
+   M&A rows above) — patents correlate more with acquisition/investment outcomes than with
+   government Phase III coding.
+4. **The double-confirmed subset is the strongest cohort.** The 742 unique awards
+   that are both text-matched and from patent-verified firms show 23.7%
+   FPDS-coded Phase III — use this subset for headline claims.
+5. **Coverage asymmetry:** the keyword method catches 39%
+   of patent-verified nanotech firms; 14% of keyword-cohort firms hold B82 patents
+   (examiner under-assignment of B82 and small-firm non-patenting both suppress this).
+
+**Caveat:** the "any federal obligation" channel under-measures the CPC cohort — the prospect
+digest joins by UEI, and the CPC cohort skews toward older prolific firms whose activity
+predates UEI-era tracking.
 
 ---
 
