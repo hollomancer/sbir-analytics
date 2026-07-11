@@ -23,7 +23,7 @@ import csv
 import json
 import re
 import sys
-from collections import defaultdict
+from collections import Counter, defaultdict
 from datetime import date
 from pathlib import Path
 
@@ -39,6 +39,9 @@ DATA = REPO / "data"
 DOCS = REPO / "docs"
 ANALYSIS_DIR = DATA / "analysis"
 ANALYSIS_DIR.mkdir(parents=True, exist_ok=True)
+
+sys.path.insert(0, str(REPO))
+from sbir_etl.utils.text_normalization import normalize_name  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # NNI Table 5 reference data (FY26 Supplement to President's Budget)
@@ -199,18 +202,21 @@ def cet_proxy_match(text: str) -> dict[str, str]:
 
 # ---------------------------------------------------------------------------
 # Method (c): USPTO CPC B82Y / B82B — patent-level nanotech classification
-# Status: ABSENT — no local CPC data. PatentsView bulk data goes to S3.
-# Methodology for when CPC data is available:
-#   1. Join patent g_cpc_current.tsv.zip on assignee → SBIR firm name/UEI
-#   2. Filter CPC codes starting with B82Y (nanotech applications)
-#      or B82B (nanostructures/fabrication)
-#   3. Firms with ≥1 B82* patent linked to Phase II award → cohort member
+#   1. scripts/data/extract_b82_patents.py filters PatentsView g_cpc_current
+#      to CPC subclasses B82Y (nanotech applications) and B82B (nanostructures)
+#      and joins assignee organizations + grant dates
+#   2. Assignee organizations are matched to Phase II firm names by EXACT match
+#      on normalize_name(remove_suffixes=True) — conservative for precision;
+#      renamed/subsidiary firms are missed (recall caveat in methodology doc)
+#   3. Firms with ≥1 matched B82* patent → all their Phase II awards in scope
+# Falls back to an empty cohort with a provenance note when the extract is absent.
 # ---------------------------------------------------------------------------
+B82_PATENTS_CSV = DATA / "processed/uspto/b82_patents.csv"
 CPC_COHORT_ABSENT_REASON = (
-    "USPTO CPC bulk data (g_cpc_current.tsv.zip) not present locally; "
-    "download pipeline routes to S3 (see scripts/data/download_uspto.py). "
-    "Run: python scripts/data/download_uspto.py --dataset patentsview --table cpc "
-    "then rebuild this cohort."
+    "USPTO B82 patent extract (data/processed/uspto/b82_patents.csv) not present. "
+    "Download tables: python scripts/data/download_uspto.py --dataset patentsview "
+    "--table {cpc,assignee,patent} --local data/raw/uspto/patentsview "
+    "then run: python scripts/data/extract_b82_patents.py and rebuild this cohort."
 )
 
 
@@ -291,9 +297,53 @@ def build_cet_cohort(awards: list[dict]) -> list[dict]:
     return cohort
 
 
-def build_cpc_cohort_stub() -> list[dict]:
-    """Method (c): USPTO CPC stub — returns empty cohort with provenance note."""
-    return []  # deliberate: absence of data ≠ absence of nanotech activity
+def load_b82_assignees(path: Path) -> dict[str, dict]:
+    """Load B82 patent-assignee rows keyed by normalized organization name.
+
+    Returns {normalized_org: {orgs, patent_ids, grant_dates, subclasses}}.
+    """
+    by_norm: dict[str, dict] = {}
+    if not path.exists():
+        return by_norm
+    with open(path, newline="", encoding="utf-8") as f:
+        for row in csv.DictReader(f):
+            norm = normalize_name(row["assignee_organization"], remove_suffixes=True)
+            if not norm:
+                continue
+            rec = by_norm.setdefault(
+                norm, {"orgs": set(), "patent_ids": set(), "grant_dates": [], "subclasses": set()}
+            )
+            rec["orgs"].add(row["assignee_organization"])
+            rec["patent_ids"].add(row["patent_id"])
+            if row["grant_date"]:
+                rec["grant_dates"].append(row["grant_date"])
+            rec["subclasses"].update(s for s in row["cpc_subclasses"].split("|") if s)
+    return by_norm
+
+
+def build_cpc_cohort(awards: list[dict]) -> list[dict]:
+    """Method (c): B82Y/B82B patent assignees matched to Phase II firm names.
+
+    Returns [] with no side effects when the B82 extract is absent
+    (absence of data ≠ absence of nanotech activity).
+    """
+    b82 = load_b82_assignees(B82_PATENTS_CSV)
+    if not b82:
+        return []
+    cohort = []
+    for aw in awards:
+        norm = normalize_name(aw["company"], remove_suffixes=True)
+        rec = b82.get(norm)
+        if not rec:
+            continue
+        r = dict(aw)
+        r["cohort_cpc"] = True
+        r["cpc_matched_assignees"] = "|".join(sorted(rec["orgs"])[:3])
+        r["cpc_b82_patent_count"] = len(rec["patent_ids"])
+        r["cpc_first_b82_grant"] = min(rec["grant_dates"]) if rec["grant_dates"] else ""
+        r["cpc_subclasses"] = "|".join(sorted(rec["subclasses"]))
+        cohort.append(r)
+    return cohort
 
 
 def load_phase3_digest(digest_csv: Path) -> dict[str, dict]:
@@ -624,6 +674,7 @@ def write_methodology_doc(
     cpc_cohort: list[dict],
     kw_enriched: list[dict],
     cet_enriched: list[dict],
+    cpc_enriched: list[dict],
     kw_nni: dict,
     cet_nni: dict,
     out_path: Path,
@@ -646,6 +697,113 @@ def write_methodology_doc(
 
     kw_sigs = sig_counts(kw_enriched)
     cet_sigs = sig_counts(cet_enriched)
+    cpc_sigs = sig_counts(cpc_enriched)
+
+    # --- Method C content: two variants depending on whether the B82 extract exists ---
+    if cpc_cohort:
+        b82_index = load_b82_assignees(B82_PATENTS_CSV)
+        b82_patents = set().union(*(r["patent_ids"] for r in b82_index.values()))
+        b82_orgs = set().union(*(r["orgs"] for r in b82_index.values()))
+        b82_vintage = date.fromtimestamp(B82_PATENTS_CSV.stat().st_mtime).isoformat()
+        cpc_firms = len({r["company"].upper() for r in cpc_cohort})
+        cpc_in_kw = 100 * len(cpc_ids & kw_ids) / max(1, len(cpc_ids))
+
+        uspto_source_row = (
+            "| USPTO PatentsView CPC codes | B82Y/B82B patent classes | Local extract "
+            f"`data/processed/uspto/b82_patents.csv` (built {b82_vintage}) | Assignee→firm "
+            "linkage is exact normalized-name match; renamed/subsidiary firms missed |"
+        )
+        cpc_section_2c = f"""### 2C. USPTO CPC B82Y/B82B Cohort [MED confidence — name-match linkage]
+
+**Status:** EXECUTED — built from local PatentsView PVGPATDIS extract ({b82_vintage}).
+
+**What B82Y/B82B covers:**
+- B82Y: Specific uses or applications of nanostructures or nanotechnology (functional/application layer)
+- B82B: Nanostructures formed by manipulation of individual atoms, molecules, or limited collections
+
+**Pipeline:**
+1. `scripts/data/extract_b82_patents.py` filters PatentsView `g_cpc_current` (~60M CPC rows)
+   to B82 subclasses and joins assignee organizations and grant dates:
+   {len(b82_patents):,} B82 patents, {len(b82_orgs):,} unique assignee organizations
+2. Assignee organizations are matched to SBIR Phase II firm names by **exact match on
+   normalized names** (`sbir_etl.utils.text_normalization.normalize_name`, suffixes stripped)
+3. Firms with ≥1 matched B82 patent → all their Phase II awards enter the cohort
+
+**Cohort size:** {len(cpc_cohort):,} Phase II awards across {cpc_firms:,} firms
+
+**Matching caveats [HIGH confidence these matter]:**
+- Exact normalized-name matching favors precision; firms that patent under a different name
+  (renames, subsidiaries, university research partners) are missed — recall is uncertain
+- Generic firm names can collide across distinct entities; spot-check before citing
+  firm-level claims from this cohort alone"""
+        cpc_overlap_note = (
+            f"Keyword ∩ CPC Jaccard is {pairwise_jaccard(kw_ids, cpc_ids):.3f}, with "
+            f"{cpc_in_kw:.0f}% of CPC-cohort award IDs also in the keyword cohort — the first "
+            "cross-source triangulation in this analysis. Partial overlap is expected: CPC "
+            "captures firms by patenting behavior rather than award text, so text-matched "
+            "awards without patents and patent-holding firms whose abstracts avoid nanotech "
+            "vocabulary both legitimately exist."
+        )
+        caveat_5 = (
+            "5. **CPC cohort uses exact name matching [MED].** B82 assignee → firm linkage is an "
+            "exact match on normalized names. Precision is high; recall is uncertain (renames, "
+            "subsidiaries, university assignees produce false negatives). Treat CPC cohort "
+            "membership as high-precision, unknown-recall."
+        )
+        cpc_signals_section = f"""### 5C. CPC cohort (n={len(cpc_enriched):,})
+
+⚠ **Grain warning:** Method C is firm-grained — every Phase II award of a matched firm enters
+the cohort, so prolific multi-award firms dominate these per-award rates (one firm contributes
+{max(Counter(r["company"].upper() for r in cpc_enriched).values()):,} awards). Do not compare
+rates against §5A/§5B, which are award-text cohorts, without accounting for grain.
+
+| Channel | Signal-positive | % | Coverage caveat |
+|---|---|---|---|
+| FPDS-coded Phase III contract | {cpc_sigs["sig_fpds_phase3_coded"]} | {100*cpc_sigs["sig_fpds_phase3_coded"]/max(1,len(cpc_enriched)):.1f}% | Known undercount |
+| Any subsequent federal obligation | {cpc_sigs["sig_any_federal_obligation"]} | {100*cpc_sigs["sig_any_federal_obligation"]/max(1,len(cpc_enriched)):.1f}% | Broad; per-firm |
+| M&A signal — medium+high only | {cpc_sigs["sig_ma_medium_high"]} | {100*cpc_sigs["sig_ma_medium_high"]/max(1,len(cpc_enriched)):.1f}% | Preferred M&A signal tier |
+| M&A signal — high conf only | {cpc_sigs["sig_ma_high_conf"]} | {100*cpc_sigs["sig_ma_high_conf"]/max(1,len(cpc_enriched)):.1f}% | Narrowest M&A signal |
+| Form D (high-confidence) | {cpc_sigs["sig_form_d_detected"]} | {100*cpc_sigs["sig_form_d_detected"]/max(1,len(cpc_enriched)):.1f}% | Investment signal only |
+| **Union (any positive)** | **{cpc_sigs["sig_any_positive"]}** | **{100*cpc_sigs["sig_any_positive"]/max(1,len(cpc_enriched)):.1f}%** | **See caution above** |
+
+---
+
+"""
+    else:
+        uspto_source_row = (
+            "| USPTO PatentsView CPC codes | B82Y/B82B patent classes | **ABSENT** | Download via "
+            "`scripts/data/download_uspto.py --dataset patentsview --table {cpc,assignee,patent} "
+            "--local data/raw/uspto/patentsview` then run `extract_b82_patents.py` |"
+        )
+        cpc_section_2c = f"""### 2C. USPTO CPC B82Y/B82B Cohort [DATA ABSENT]
+
+**Status:** Cohort not buildable — local B82 extract absent.
+
+**What B82Y/B82B covers:**
+- B82Y: Specific uses or applications of nanostructures or nanotechnology (functional/application layer)
+- B82B: Nanostructures formed by manipulation of individual atoms, molecules, or limited collections
+
+**To build this cohort:**
+1. `python scripts/data/download_uspto.py --dataset patentsview --table cpc --local data/raw/uspto/patentsview`
+   (repeat for `--table assignee` and `--table patent`)
+2. `python scripts/data/extract_b82_patents.py`
+3. Re-run this script; assignee names are matched to SBIR firm names via
+   `sbir_etl.utils.text_normalization.normalize_name`
+
+**Known limitation:** Patent assignee → SBIR firm linkage via name matching has
+uncertain recall. Technology transfer (patents assigned to university research partners)
+will produce false negatives.
+
+{CPC_COHORT_ABSENT_REASON}"""
+        cpc_overlap_note = (
+            "Keyword ∩ CPC is zero because the CPC cohort is empty — we cannot triangulate "
+            "confidence from independent sources until CPC data is available."
+        )
+        caveat_5 = (
+            "5. **CPC cohort is empty [HIGH].** No local CPC data. CPC-based classification is a "
+            "described methodology, not an executed one. This is reported as a deficiency, not suppressed."
+        )
+        cpc_signals_section = ""
 
     def deficiency_table(enriched: list[dict]) -> str:
         counts: dict[str, int] = defaultdict(int)
@@ -689,7 +847,7 @@ def write_methodology_doc(
 | USAspending Phase III prospect digest | Firm-level FPDS/FABS aggregates | Local CSV | Per-firm, not per-award; FPDS Phase III coding sparse outside DoD (GAO-24-106398) |
 | SEC EDGAR M&A signals | 8-K Items 1.01/2.01 | `sec_edgar_scan.jsonl` (35k firms, complete) | A subsequent scan wrote a summary showing 0 detections due to HTTP 500 errors — that summary file is not representative; the JSONL is the authoritative source and has 99.9% cohort coverage |
 | SEC Form D (high-confidence) | Regulation D capital raises | Local JSONL | High-confidence subset only; ~35% match rate for NSF cohort from prior analysis |
-| USPTO PatentsView CPC codes | B82Y/B82B patent classes | **ABSENT** | Must download via `scripts/data/download_uspto.py --dataset patentsview --table cpc` |
+{uspto_source_row}
 | NNI Table 5 (FY26 Supplement) | Agency nanotech SBIR/STTR totals | **UNVERIFIED reference** | Methodology not published; our classification will not reconcile exactly |
 
 ---
@@ -750,26 +908,7 @@ term list but not in the keyword list, so carbon-fiber-only awards fall outside 
 
 ---
 
-### 2C. USPTO CPC B82Y/B82B Cohort [DATA ABSENT]
-
-**Status:** Cohort not buildable — local CPC data absent.
-
-**What B82Y/B82B covers:**
-- B82Y: Specific uses or applications of nanostructures or nanotechnology (functional/application layer)
-- B82B: Nanostructures formed by manipulation of individual atoms, molecules, or limited collections
-
-**To build this cohort when data is available:**
-1. Download: `python scripts/data/download_uspto.py --dataset patentsview --table cpc`
-2. Download: `python scripts/data/download_uspto.py --dataset patentsview --table assignee`
-3. Join `g_cpc_current.tsv` WHERE cpc_section='B' AND cpc_class IN ('B82Y','B82B')
-4. Link assignee names to SBIR firm UEIs via `company_fuzzy_matcher.py`
-5. Firms with ≥1 matched B82* patent → Phase II awards in scope
-
-**Known limitation:** Patent assignee → SBIR firm linkage via fuzzy name matching will have
-uncertain recall. Technology transfer (patents assigned to university research partners)
-will produce false negatives.
-
-{CPC_COHORT_ABSENT_REASON}
+{cpc_section_2c}
 
 ---
 
@@ -786,8 +925,7 @@ contain {len(kw_ids):,} unique IDs and the CET cohort's {len(cet_cohort):,} rows
 (SBIR.gov repeats some Contract numbers). Keyword ∩ CET Jaccard is low ({pairwise_jaccard(kw_ids, cet_ids):.3f}),
 driven by the size mismatch rather than disagreement: {100 * len(kw_ids & cet_ids) / max(1, len(cet_ids)):.0f}% of
 CET award IDs fall inside the keyword cohort, and the remainder is carbon-fiber-only matches (see §2B).
-Keyword ∩ CPC is zero because the CPC cohort is empty — we cannot triangulate confidence from
-independent sources until CPC data is available.
+{cpc_overlap_note}
 
 ---
 
@@ -842,7 +980,7 @@ Each channel has different coverage gaps and none is authoritative.
 
 ---
 
-## 6. Deficiency Classification (Task 4 — Primary Deliverable)
+{cpc_signals_section}## 6. Deficiency Classification (Task 4 — Primary Deliverable)
 
 For every Phase II award in the keyword cohort without FPDS-coded Phase III evidence,
 the following taxonomy classifies why transition status is indeterminate.
@@ -882,8 +1020,7 @@ the following taxonomy classifies why transition status is indeterminate.
    process, not the data. M&A signals in this analysis draw on `sec_edgar_scan.jsonl` directly,
    filtered to M&A-specific mention types. See `scripts/data/nano_ma_signal.py`.
 
-5. **CPC cohort is empty [HIGH].** No local CPC data. CPC-based classification is a described methodology,
-   not an executed one. This is reported as a deficiency, not suppressed.
+{caveat_5}
 
 6. **Form D is an investment signal, not a transition signal [HIGH].** A Form D filing indicates capital
    raised, which may correlate with commercialization but does not prove Phase III transition.
@@ -927,9 +1064,13 @@ def main() -> int:
     cet_cohort = build_cet_cohort(awards)
     print(f"  {len(cet_cohort):,} awards matched")
 
-    print("Building CPC stub cohort (Method C)...")
-    cpc_cohort = build_cpc_cohort_stub()
-    print(f"  {len(cpc_cohort):,} awards (CPC data absent — see methodology doc)")
+    print("Building CPC cohort (Method C)...")
+    cpc_cohort = build_cpc_cohort(awards)
+    if cpc_cohort:
+        print(f"  {len(cpc_cohort):,} awards matched (B82 assignee ↔ firm name, "
+              f"{len({r['company'].upper() for r in cpc_cohort}):,} firms)")
+    else:
+        print("  0 awards (B82 extract absent — see methodology doc)")
 
     print("Loading Phase III prospect digest...")
     digest_csv = DATA / "processed/sbir_phase3/fy25_phase3_prospect_digest.csv"
@@ -947,6 +1088,7 @@ def main() -> int:
     print("Enriching cohorts with transition signals...")
     kw_enriched = enrich_cohort_with_signals(kw_cohort, digest, ma_signals, form_d_signals)
     cet_enriched = enrich_cohort_with_signals(cet_cohort, digest, ma_signals, form_d_signals)
+    cpc_enriched = enrich_cohort_with_signals(cpc_cohort, digest, ma_signals, form_d_signals)
 
     print("Running NNI reconciliation (FY2020–2023, 9 agencies)...")
     kw_nni = nni_reconciliation(kw_cohort, NNI_AGENCIES_SET)
@@ -957,11 +1099,15 @@ def main() -> int:
     print(f"  data/nano_cohort_keyword.csv ({len(kw_enriched):,} rows)")
     write_output_csv(cet_enriched, DATA / "nano_cohort_cet.csv")
     print(f"  data/nano_cohort_cet.csv ({len(cet_enriched):,} rows)")
-    write_output_csv(
-        [{"note": CPC_COHORT_ABSENT_REASON, "cohort_cpc": False}],
-        DATA / "nano_cohort_cpc.csv",
-    )
-    print("  data/nano_cohort_cpc.csv (stub — CPC data absent)")
+    if cpc_enriched:
+        write_output_csv(cpc_enriched, DATA / "nano_cohort_cpc.csv")
+        print(f"  data/nano_cohort_cpc.csv ({len(cpc_enriched):,} rows)")
+    else:
+        write_output_csv(
+            [{"note": CPC_COHORT_ABSENT_REASON, "cohort_cpc": False}],
+            DATA / "nano_cohort_cpc.csv",
+        )
+        print("  data/nano_cohort_cpc.csv (stub — B82 extract absent)")
 
     print("Generating figures...")
     kw_ids = {r["award_id"] for r in kw_cohort}
@@ -974,7 +1120,7 @@ def main() -> int:
     print("Writing methodology doc...")
     write_methodology_doc(
         kw_cohort, cet_cohort, cpc_cohort,
-        kw_enriched, cet_enriched,
+        kw_enriched, cet_enriched, cpc_enriched,
         kw_nni, cet_nni,
         DOCS / "nano_phase3_methodology.md",
     )
@@ -987,7 +1133,8 @@ def main() -> int:
     print(f"Total Phase II awards in CSV:     {len(awards):,}")
     print(f"Keyword cohort (Method A):        {len(kw_cohort):,}")
     print(f"CET proxy cohort (Method B):      {len(cet_cohort):,}")
-    print(f"CPC cohort (Method C):            {len(cpc_cohort):,}  [DATA ABSENT]")
+    cpc_note = "" if cpc_cohort else "  [DATA ABSENT]"
+    print(f"CPC cohort (Method C):            {len(cpc_cohort):,}{cpc_note}")
     print()
     print("Transition signals (keyword cohort):")
     for field, label in [

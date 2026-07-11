@@ -16,7 +16,7 @@
 | USAspending Phase III prospect digest | Firm-level FPDS/FABS aggregates | Local CSV | Per-firm, not per-award; FPDS Phase III coding sparse outside DoD (GAO-24-106398) |
 | SEC EDGAR M&A signals | 8-K Items 1.01/2.01 | `sec_edgar_scan.jsonl` (35k firms, complete) | A subsequent scan wrote a summary showing 0 detections due to HTTP 500 errors — that summary file is not representative; the JSONL is the authoritative source and has 99.9% cohort coverage |
 | SEC Form D (high-confidence) | Regulation D capital raises | Local JSONL | High-confidence subset only; ~35% match rate for NSF cohort from prior analysis |
-| USPTO PatentsView CPC codes | B82Y/B82B patent classes | **ABSENT** | Must download via `scripts/data/download_uspto.py --dataset patentsview --table cpc` |
+| USPTO PatentsView CPC codes | B82Y/B82B patent classes | Local extract `data/processed/uspto/b82_patents.csv` (built 2026-07-11) | Assignee→firm linkage is exact normalized-name match; renamed/subsidiary firms missed |
 | NNI Table 5 (FY26 Supplement) | Agency nanotech SBIR/STTR totals | **UNVERIFIED reference** | Methodology not published; our classification will not reconcile exactly |
 
 ---
@@ -77,26 +77,29 @@ term list but not in the keyword list, so carbon-fiber-only awards fall outside 
 
 ---
 
-### 2C. USPTO CPC B82Y/B82B Cohort [DATA ABSENT]
+### 2C. USPTO CPC B82Y/B82B Cohort [MED confidence — name-match linkage]
 
-**Status:** Cohort not buildable — local CPC data absent.
+**Status:** EXECUTED — built from local PatentsView PVGPATDIS extract (2026-07-11).
 
 **What B82Y/B82B covers:**
 - B82Y: Specific uses or applications of nanostructures or nanotechnology (functional/application layer)
 - B82B: Nanostructures formed by manipulation of individual atoms, molecules, or limited collections
 
-**To build this cohort when data is available:**
-1. Download: `python scripts/data/download_uspto.py --dataset patentsview --table cpc`
-2. Download: `python scripts/data/download_uspto.py --dataset patentsview --table assignee`
-3. Join `g_cpc_current.tsv` WHERE cpc_section='B' AND cpc_class IN ('B82Y','B82B')
-4. Link assignee names to SBIR firm UEIs via `company_fuzzy_matcher.py`
-5. Firms with ≥1 matched B82* patent → Phase II awards in scope
+**Pipeline:**
+1. `scripts/data/extract_b82_patents.py` filters PatentsView `g_cpc_current` (~60M CPC rows)
+   to B82 subclasses and joins assignee organizations and grant dates:
+   61,517 B82 patents, 7,510 unique assignee organizations
+2. Assignee organizations are matched to SBIR Phase II firm names by **exact match on
+   normalized names** (`sbir_etl.utils.text_normalization.normalize_name`, suffixes stripped)
+3. Firms with ≥1 matched B82 patent → all their Phase II awards enter the cohort
 
-**Known limitation:** Patent assignee → SBIR firm linkage via fuzzy name matching will have
-uncertain recall. Technology transfer (patents assigned to university research partners)
-will produce false negatives.
+**Cohort size:** 6,786 Phase II awards across 481 firms
 
-USPTO CPC bulk data (g_cpc_current.tsv.zip) not present locally; download pipeline routes to S3 (see scripts/data/download_uspto.py). Run: python scripts/data/download_uspto.py --dataset patentsview --table cpc then rebuild this cohort.
+**Matching caveats [HIGH confidence these matter]:**
+- Exact normalized-name matching favors precision; firms that patent under a different name
+  (renames, subsidiaries, university research partners) are missed — recall is uncertain
+- Generic firm names can collide across distinct entities; spot-check before citing
+  firm-level claims from this cohort alone
 
 ---
 
@@ -105,16 +108,15 @@ USPTO CPC bulk data (g_cpc_current.tsv.zip) not present locally; download pipeli
 | Pair | Set A | Set B | Intersection | Jaccard |
 |---|---|---|---|---|
 | Keyword ∩ CET | 2,798 | 640 | 426 | 0.141 |
-| Keyword ∩ CPC | 2,798 | 0 | 0 | 0.000 |
-| CET ∩ CPC | 640 | 0 | 0 | 0.000 |
+| Keyword ∩ CPC | 2,798 | 6,703 | 742 | 0.085 |
+| CET ∩ CPC | 640 | 6,703 | 159 | 0.022 |
 
 **Interpretation:** Set sizes count unique award IDs: the keyword cohort's 2,849 rows
 contain 2,798 unique IDs and the CET cohort's 650 rows contain 640
 (SBIR.gov repeats some Contract numbers). Keyword ∩ CET Jaccard is low (0.141),
 driven by the size mismatch rather than disagreement: 67% of
 CET award IDs fall inside the keyword cohort, and the remainder is carbon-fiber-only matches (see §2B).
-Keyword ∩ CPC is zero because the CPC cohort is empty — we cannot triangulate confidence from
-independent sources until CPC data is available.
+Keyword ∩ CPC Jaccard is 0.085, with 11% of CPC-cohort award IDs also in the keyword cohort — the first cross-source triangulation in this analysis. Partial overlap is expected: CPC captures firms by patenting behavior rather than award text, so text-matched awards without patents and patent-holding firms whose abstracts avoid nanotech vocabulary both legitimately exist.
 
 ---
 
@@ -235,6 +237,24 @@ Each channel has different coverage gaps and none is authoritative.
 
 ---
 
+### 5C. CPC cohort (n=6,786)
+
+⚠ **Grain warning:** Method C is firm-grained — every Phase II award of a matched firm enters
+the cohort, so prolific multi-award firms dominate these per-award rates (one firm contributes
+596 awards). Do not compare
+rates against §5A/§5B, which are award-text cohorts, without accounting for grain.
+
+| Channel | Signal-positive | % | Coverage caveat |
+|---|---|---|---|
+| FPDS-coded Phase III contract | 2592 | 38.2% | Known undercount |
+| Any subsequent federal obligation | 3409 | 50.2% | Broad; per-firm |
+| M&A signal — medium+high only | 1923 | 28.3% | Preferred M&A signal tier |
+| M&A signal — high conf only | 160 | 2.4% | Narrowest M&A signal |
+| Form D (high-confidence) | 800 | 11.8% | Investment signal only |
+| **Union (any positive)** | **5215** | **76.8%** | **See caution above** |
+
+---
+
 ## 6. Deficiency Classification (Task 4 — Primary Deliverable)
 
 For every Phase II award in the keyword cohort without FPDS-coded Phase III evidence,
@@ -281,8 +301,7 @@ the following taxonomy classifies why transition status is indeterminate.
    process, not the data. M&A signals in this analysis draw on `sec_edgar_scan.jsonl` directly,
    filtered to M&A-specific mention types. See `scripts/data/nano_ma_signal.py`.
 
-5. **CPC cohort is empty [HIGH].** No local CPC data. CPC-based classification is a described methodology,
-   not an executed one. This is reported as a deficiency, not suppressed.
+5. **CPC cohort uses exact name matching [MED].** B82 assignee → firm linkage is an exact match on normalized names. Precision is high; recall is uncertain (renames, subsidiaries, university assignees produce false negatives). Treat CPC cohort membership as high-precision, unknown-recall.
 
 6. **Form D is an investment signal, not a transition signal [HIGH].** A Form D filing indicates capital
    raised, which may correlate with commercialization but does not prove Phase III transition.
