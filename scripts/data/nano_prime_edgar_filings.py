@@ -7,17 +7,21 @@ find 8-K filings (acquisition announcements and closings), then fetches the
 press release exhibit text to extract deal terms: purchase price, multiples,
 revenue, strategic rationale.
 
-Inputs:
-  data/nano_prime_acquisitions.csv    — confirmed prime acquisition list
+Targets:
+  Curated TARGETS list below — confirmed prime acquisitions distilled from
+  data/nano_prime_acquisitions.csv (output of nano_prime_acquisitions.py),
+  each with a manually scoped EDGAR search window. The CSV is not read at
+  runtime; edit TARGETS to add or rescope a deal.
 
 Outputs:
   data/nano_prime_edgar_text.jsonl    — one record per filing fetched
   data/nano_prime_deal_terms.csv      — extracted deal terms per acquisition
 
 Usage:
-  python scripts/data/nano_prime_edgar_filings.py
+  python scripts/data/nano_prime_edgar_filings.py [--contact-email EMAIL]
 """
 
+import argparse
 import csv
 import json
 import re
@@ -33,7 +37,9 @@ DATA = REPO / "data"
 
 EDGAR_EFTS = "https://efts.sec.gov/LATEST/search-index"
 EDGAR_ARCHIVES = "https://www.sec.gov/Archives/edgar/data"
-UA = "sbir-research/1.0 contact@example.com"
+# SEC fair-access policy: descriptive User-Agent with a real contact email.
+# Overridden via --contact-email; format matches scan_sbir_edgar.py.
+UA = "SBIR-Analytics/0.1.0 (conrad@hollomon.dev)"
 
 # Acquisition targets with known dates for scoping the search window
 TARGETS = [
@@ -292,6 +298,13 @@ def extract_deal_terms(firm: str, text: str) -> dict:
 
 
 def main() -> int:
+    global UA
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--contact-email", default="conrad@hollomon.dev",
+                        help="Email for SEC User-Agent")
+    args = parser.parse_args()
+    UA = f"SBIR-Analytics/0.1.0 ({args.contact_email})"
+
     out_jsonl = DATA / "nano_prime_edgar_text.jsonl"
     out_csv = DATA / "nano_prime_deal_terms.csv"
 
@@ -317,7 +330,9 @@ def main() -> int:
                 "filename": "",
                 "score": 0,
                 "found": False,
-                **{k: "" for k in ["price_mention", "multiple_mention", "revenue_mention", "rationale_snippet", "text_length"]},
+                "full_text_excerpt": "",
+                **{k: "" for k in ["price_mention", "multiple_mention", "revenue_mention", "rationale_snippet"]},
+                "text_length": 0,
             })
             continue
 
@@ -388,7 +403,8 @@ def main() -> int:
                 "score": 0,
                 "found": False,
                 **{k: "" for k in ["price_mention", "multiple_mention", "revenue_mention",
-                                    "rationale_snippet", "text_length", "full_text_excerpt"]},
+                                    "rationale_snippet", "full_text_excerpt"]},
+                "text_length": 0,
             })
 
         time.sleep(1.0)

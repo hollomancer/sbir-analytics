@@ -216,14 +216,14 @@ CPC_COHORT_ABSENT_REASON = (
 
 def _safe_float(v: str) -> float:
     try:
-        return float(v.replace(",", "")) if v else 0.0
+        return float(v.replace("$", "").replace(",", "")) if v else 0.0
     except ValueError:
         return 0.0
 
 
 def _safe_int(v: str) -> int:
     try:
-        return int(float(v.replace(",", ""))) if v else 0
+        return int(float(v.replace("$", "").replace(",", ""))) if v else 0
     except ValueError:
         return 0
 
@@ -605,6 +605,19 @@ def plot_transition_channels(kw_enriched: list[dict], cet_enriched: list[dict], 
     print(f"  Saved: {out_path}")
 
 
+def _git_branch() -> str:
+    try:
+        import subprocess
+
+        out = subprocess.run(
+            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+            capture_output=True, text=True, cwd=REPO, timeout=5,
+        ).stdout.strip()
+        return out or "unknown"
+    except Exception:
+        return "unknown"
+
+
 def write_methodology_doc(
     kw_cohort: list[dict],
     cet_cohort: list[dict],
@@ -662,7 +675,7 @@ def write_methodology_doc(
 
 **Status:** Provisional — all figures subject to revision
 **Audience:** NSET Subcommittee methodology review
-**Repo branch:** `claude/product1-piid-audit`
+**Repo branch:** `{_git_branch()}`
 **Generated:** (see git log for date)
 **Confidence tags:** [HIGH] reproducible from data; [MED] depends on third-party data; [LOW] approximate/estimated; [UNVERIFIED] requires manual check against source document
 
@@ -674,7 +687,7 @@ def write_methodology_doc(
 |---|---|---|---|
 | SBIR.gov `award_data.csv` | SBIR/STTR awards (all phases) | Local | Title/abstract completeness varies; some abstracts blank |
 | USAspending Phase III prospect digest | Firm-level FPDS/FABS aggregates | Local CSV | Per-firm, not per-award; FPDS Phase III coding sparse outside DoD (GAO-24-106398) |
-| SEC EDGAR enriched M&A events | 8-K Items 1.01/2.01 | Local JSONL | Most recent scan shows 0 matches; scan may have had API errors (check `data/edgar_scan.log`) |
+| SEC EDGAR M&A signals | 8-K Items 1.01/2.01 | `sec_edgar_scan.jsonl` (35k firms, complete) | A subsequent scan wrote a summary showing 0 detections due to HTTP 500 errors — that summary file is not representative; the JSONL is the authoritative source and has 99.9% cohort coverage |
 | SEC Form D (high-confidence) | Regulation D capital raises | Local JSONL | High-confidence subset only; ~35% match rate for NSF cohort from prior analysis |
 | USPTO PatentsView CPC codes | B82Y/B82B patent classes | **ABSENT** | Must download via `scripts/data/download_uspto.py --dataset patentsview --table cpc` |
 | NNI Table 5 (FY26 Supplement) | Agency nanotech SBIR/STTR totals | **UNVERIFIED reference** | Methodology not published; our classification will not reconcile exactly |
@@ -730,7 +743,10 @@ Terms matched: `nanotechnology`, `nanomaterials`, `graphene`, `carbon fiber`
 CET areas triggered: Advanced Manufacturing, Advanced Engineering Materials
 
 **Cohort size:** {len(cet_cohort):,} Phase II awards
-**Subset relationship:** CET cohort is a strict subset of keyword cohort (terms overlap; keyword set is larger)
+**Overlap with keyword cohort:** {len(kw_ids & cet_ids):,} of {len(cet_ids):,} unique CET award IDs
+({100 * len(kw_ids & cet_ids) / max(1, len(cet_ids)):.0f}%) also appear in the keyword cohort.
+The CET cohort is **not** a subset of the keyword cohort: `carbon fiber` appears in the CET
+term list but not in the keyword list, so carbon-fiber-only awards fall outside the keyword cohort.
 
 ---
 
@@ -765,9 +781,13 @@ will produce false negatives.
 | Keyword ∩ CPC | {len(kw_ids):,} | {len(cpc_ids):,} | {len(kw_ids & cpc_ids):,} | {pairwise_jaccard(kw_ids, cpc_ids):.3f} |
 | CET ∩ CPC | {len(cet_ids):,} | {len(cpc_ids):,} | {len(cet_ids & cpc_ids):,} | {pairwise_jaccard(cet_ids, cpc_ids):.3f} |
 
-**Interpretation:** Low Jaccard between Keyword and CPC (expected: CPC cohort is empty) means
-we cannot triangulate confidence from independent sources. High Keyword ∩ CET Jaccard means
-the CET proxy is largely a subset of the keyword approach — as expected, since both use similar terms.
+**Interpretation:** Set sizes count unique award IDs: the keyword cohort's {len(kw_cohort):,} rows
+contain {len(kw_ids):,} unique IDs and the CET cohort's {len(cet_cohort):,} rows contain {len(cet_ids):,}
+(SBIR.gov repeats some Contract numbers). Keyword ∩ CET Jaccard is low ({pairwise_jaccard(kw_ids, cet_ids):.3f}),
+driven by the size mismatch rather than disagreement: {100 * len(kw_ids & cet_ids) / max(1, len(cet_ids)):.0f}% of
+CET award IDs fall inside the keyword cohort, and the remainder is carbon-fiber-only matches (see §2B).
+Keyword ∩ CPC is zero because the CPC cohort is empty — we cannot triangulate confidence from
+independent sources until CPC data is available.
 
 ---
 
@@ -855,8 +875,12 @@ the following taxonomy classifies why transition status is indeterminate.
 3. **NNI reconciliation is not expected to close [HIGH].** NNI uses agency+OMB identification methods
    not published in the Supplement. Our text classification approach differs by design.
 
-4. **EDGAR scan likely incomplete [MED].** Summary shows 0 M&A detections from 34,460 companies scanned.
-   Check `data/edgar_scan.log` for server errors. M&A signal rates are likely understated.
+4. **EDGAR scan data is usable; summary file is not [HIGH].** `sec_edgar_scan.jsonl` contains
+   complete results for 34,451 firms (99.9% of nanotech cohort) with 7,548 having at least one
+   mention and 2,195 tagged `ma_definitive`. A subsequent scan process wrote `sec_edgar_scan.summary.json`
+   showing 0 detections after hitting HTTP 500 errors on every request — that summary reflects a failed
+   process, not the data. M&A signals in this analysis draw on `sec_edgar_scan.jsonl` directly,
+   filtered to M&A-specific mention types. See `scripts/data/nano_ma_signal.py`.
 
 5. **CPC cohort is empty [HIGH].** No local CPC data. CPC-based classification is a described methodology,
    not an executed one. This is reported as a deficiency, not suppressed.

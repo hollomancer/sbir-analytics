@@ -2,7 +2,7 @@
 
 **Status:** Provisional — all figures subject to revision
 **Audience:** NSET Subcommittee methodology review
-**Repo branch:** `claude/product1-piid-audit`
+**Repo branch:** `claude/nanotech-sbir-analysis`
 **Generated:** (see git log for date)
 **Confidence tags:** [HIGH] reproducible from data; [MED] depends on third-party data; [LOW] approximate/estimated; [UNVERIFIED] requires manual check against source document
 
@@ -70,7 +70,10 @@ Terms matched: `nanotechnology`, `nanomaterials`, `graphene`, `carbon fiber`
 CET areas triggered: Advanced Manufacturing, Advanced Engineering Materials
 
 **Cohort size:** 650 Phase II awards
-**Subset relationship:** CET cohort is a strict subset of keyword cohort (terms overlap; keyword set is larger)
+**Overlap with keyword cohort:** 426 of 640 unique CET award IDs
+(67%) also appear in the keyword cohort.
+The CET cohort is **not** a subset of the keyword cohort: `carbon fiber` appears in the CET
+term list but not in the keyword list, so carbon-fiber-only awards fall outside the keyword cohort.
 
 ---
 
@@ -105,9 +108,13 @@ USPTO CPC bulk data (g_cpc_current.tsv.zip) not present locally; download pipeli
 | Keyword ∩ CPC | 2,798 | 0 | 0 | 0.000 |
 | CET ∩ CPC | 640 | 0 | 0 | 0.000 |
 
-**Interpretation:** Low Jaccard between Keyword and CPC (expected: CPC cohort is empty) means
-we cannot triangulate confidence from independent sources. High Keyword ∩ CET Jaccard means
-the CET proxy is largely a subset of the keyword approach — as expected, since both use similar terms.
+**Interpretation:** Set sizes count unique award IDs: the keyword cohort's 2,849 rows
+contain 2,798 unique IDs and the CET cohort's 650 rows contain 640
+(SBIR.gov repeats some Contract numbers). Keyword ∩ CET Jaccard is low (0.141),
+driven by the size mismatch rather than disagreement: 67% of
+CET award IDs fall inside the keyword cohort, and the remainder is carbon-fiber-only matches (see §2B).
+Keyword ∩ CPC is zero because the CPC cohort is empty — we cannot triangulate confidence from
+independent sources until CPC data is available.
 
 ---
 

@@ -203,9 +203,17 @@ def main() -> int:
     enriched_jsonl = DATA / "enriched_sbir_ma_events.jsonl"
     temporal_csv = DATA / "nano_form_d_post_phase2.csv"
 
-    for p in (cohort_csv,):
+    # All four inputs are load-bearing: missing scan/enriched/temporal files would
+    # otherwise yield empty indexes and a plausible-looking "0 matches" output.
+    required_inputs = {
+        cohort_csv: "run scripts/data/build_nano_cohort.py first",
+        scan_jsonl: "SEC EDGAR scan output expected at this path",
+        enriched_jsonl: "M&A enrichment output expected at this path",
+        temporal_csv: "run scripts/data/nano_form_d_temporal.py first",
+    }
+    for p, hint in required_inputs.items():
         if not p.exists():
-            print(f"ERROR: {p} not found — run build_nano_cohort.py first", file=sys.stderr)
+            print(f"ERROR: {p} not found — {hint}", file=sys.stderr)
             return 1
 
     print("Loading nanotech keyword cohort...")

@@ -234,7 +234,13 @@ def main() -> int:
     print(f"  All offerings predate Phase II:   {n_predate:,}  ← would inflate unadjusted count")
     print(f"  No date anchor available:         {stats['form_d_match_no_anchor']:,}")
     print()
-    print(f"Unadjusted Form D rate (build_nano_cohort):  13.8% (394 awards)")
+    # Unadjusted rate comes from the cohort CSV's own sig_form_d_detected column
+    # (written by build_nano_cohort.py) so it tracks upstream changes.
+    if awards and "sig_form_d_detected" in awards[0]:
+        unadj_n = sum(1 for r in awards if r.get("sig_form_d_detected") == "True")
+        print(f"Unadjusted Form D rate (build_nano_cohort):  {100*unadj_n/total:.1f}% ({unadj_n} awards)")
+    else:
+        print("Unadjusted Form D rate (build_nano_cohort):  n/a — sig_form_d_detected column absent")
     print(f"Temporally-filtered rate (this script):      {100*n_match/total:.1f}% ({n_match} awards)")
     print(f"Mature-only (strongest claim):               {100*n_mature/total:.1f}% ({n_mature} awards)")
     print()
