@@ -311,12 +311,16 @@ def load_b82_assignees(path: Path) -> dict[str, dict]:
             if not norm:
                 continue
             rec = by_norm.setdefault(
-                norm, {"orgs": set(), "patent_ids": set(), "grant_dates": [], "subclasses": set()}
+                norm,
+                {"orgs": set(), "patent_ids": set(), "grant_dates": [], "filing_dates": [],
+                 "subclasses": set()},
             )
             rec["orgs"].add(row["assignee_organization"])
             rec["patent_ids"].add(row["patent_id"])
             if row["grant_date"]:
                 rec["grant_dates"].append(row["grant_date"])
+            if row.get("filing_date"):
+                rec["filing_dates"].append(row["filing_date"])
             rec["subclasses"].update(s for s in row["cpc_subclasses"].split("|") if s)
     return by_norm
 
@@ -341,6 +345,7 @@ def build_cpc_cohort(awards: list[dict]) -> list[dict]:
         r["cpc_matched_assignees"] = "|".join(sorted(rec["orgs"])[:3])
         r["cpc_b82_patent_count"] = len(rec["patent_ids"])
         r["cpc_first_b82_grant"] = min(rec["grant_dates"]) if rec["grant_dates"] else ""
+        r["cpc_first_b82_filing"] = min(rec["filing_dates"]) if rec["filing_dates"] else ""
         r["cpc_subclasses"] = "|".join(sorted(rec["subclasses"]))
         cohort.append(r)
     return cohort
@@ -786,6 +791,64 @@ def write_methodology_doc(
             firm_rate_rows.append(f"| {label} | {kp}/{kn:,} ({kr:.1f}%) | {cp}/{cn} ({cr:.1f}%) |")
         firm_rate_table = "\n".join(firm_rate_rows)
 
+        # --- §5E: what the patent lens implies about Methods A and B ---
+        # Test 1: do C-only firms' award abstracts contain near-nano vocabulary A lacks?
+        near_nano_patterns = [
+            r"\bthin[\- ]?film", r"\bquantum well", r"\bself[\- ]assembl",
+            r"\batomic force microscop", r"\bphotonic crystal", r"\bsuperlattice",
+            r"\bmonolayer", r"\b2d material", r"\bepitax", r"\bcolloid", r"\baerosol",
+            r"\bmicrofluidic", r"\bthermoelectric", r"\bmetamaterial", r"\bplasmon",
+        ]
+        near_nano_compiled = [re.compile(p, re.IGNORECASE) for p in near_nano_patterns]
+        cpc_firm_names = {r["company"].strip().upper() for r in cpc_cohort}
+        c_only_awards = [
+            r for r in cpc_cohort if r["company"].strip().upper() not in kw_firm_set
+        ]
+        near_nano_hits = sum(
+            1 for r in c_only_awards
+            if any(
+                p.search(" ".join([r.get("title", ""), r.get("abstract", "")]))
+                for p in near_nano_compiled
+            )
+        )
+        near_nano_pct = 100 * near_nano_hits / max(1, len(c_only_awards))
+
+        # Test 2: do carbon-fiber-only CET firms hold B82 patents at the cohort base rate?
+        cf_only_firms = {
+            r["company"].strip().upper()
+            for r in cet_cohort
+            if r.get("cet_terms_matched", "") == "carbon fiber" and r["award_id"] not in kw_ids
+        }
+        cf_b82_pct = 100 * len(cf_only_firms & cpc_firm_names) / max(1, len(cf_only_firms))
+        kw_b82_pct = 100 * len(both_firms) / max(1, len(kw_firm_set))
+
+        # Test 3: per firm, does the first B82 filing/grant predate or postdate the first award?
+        firm_first_award: dict[str, int] = {}
+        firm_first_filing: dict[str, int] = {}
+        firm_first_grant: dict[str, int] = {}
+        for r in cpc_cohort:
+            fname = r["company"].strip().upper()
+            yr = int(r.get("award_year") or 0)
+            if yr:
+                firm_first_award[fname] = min(firm_first_award.get(fname, 9999), yr)
+            if r.get("cpc_first_b82_filing"):
+                firm_first_filing[fname] = int(str(r["cpc_first_b82_filing"])[:4])
+            if r.get("cpc_first_b82_grant"):
+                firm_first_grant[fname] = int(str(r["cpc_first_b82_grant"])[:4])
+
+        def _post_award_share(first_patent_year: dict[str, int]) -> float:
+            in_both = [f for f in first_patent_year if f in firm_first_award]
+            post = sum(1 for f in in_both if first_patent_year[f] > firm_first_award[f])
+            return 100 * post / max(1, len(in_both))
+
+        post_share_filing = _post_award_share(firm_first_filing)
+        post_share_grant = _post_award_share(firm_first_grant)
+        filing_both = [f for f in firm_first_filing if f in firm_first_award]
+        pre_share_filing = 100 * sum(
+            1 for f in filing_both if firm_first_filing[f] < firm_first_award[f]
+        ) / max(1, len(filing_both))
+        same_share_filing = 100 - post_share_filing - pre_share_filing
+
         cpc_signals_section = f"""### 5C. CPC cohort (n={len(cpc_enriched):,})
 
 ⚠ **Grain warning:** Method C is firm-grained — every Phase II award of a matched firm enters
@@ -834,6 +897,41 @@ prolific-firm inflation in §5C:
 **Caveat:** the "any federal obligation" channel under-measures the CPC cohort — the prospect
 digest joins by UEI, and the CPC cohort skews toward older prolific firms whose activity
 predates UEI-era tracking.
+
+### 5E. What the patent lens implies about Methods A and B
+
+Three follow-up tests, all computed from cohort data at generation time:
+
+1. **Method A's misses are construct differences, not vocabulary gaps.** Of the
+   {len(c_only_awards):,} awards held by the {len(cpc_firm_names - kw_firm_set)} patent-verified
+   firms outside the keyword cohort, only {near_nano_pct:.0f}% contain even near-nano vocabulary
+   (thin film, epitaxy, superlattice, plasmonic, quantum well, and ten related terms — list in
+   `build_nano_cohort.py`). The rest show no nano-adjacent language at all: these firms' SBIR
+   awards sit in other domains, and their B82 patents reflect nanotech capability elsewhere in
+   the business. Expanding the keyword list would recover little and cost precision — Method A
+   stands as the award-content instrument.
+
+2. **Method B's unique contribution is noise.** Firms appearing only via the CET `carbon fiber`
+   term hold B82 patents at {cf_b82_pct:.0f}%, versus {kw_b82_pct:.0f}% for keyword-cohort firms —
+   carbon-fiber-only awards are *less* nano-patent-active than the baseline. `carbon fiber` does
+   not belong in a nanotech definition. Method B should not be used as a cohort definition; its
+   remaining value is diagnostic (surfacing the CET taxonomy disagreement, §2B).
+
+3. **Method C is half capability marker, half outcome measure.** On a filing-date basis,
+   {post_share_filing:.0f}% of CPC-cohort firms filed their first B82 patent application *after*
+   their first Phase II award year, {pre_share_filing:.0f}% before it, and {same_share_filing:.0f}%
+   in the same year (plausibly award-period IP). The grant-date basis says
+   {post_share_grant:.0f}% post-award, but grants lag filings by 2–4 years — filing dates are the
+   honest clock. The two halves have different uses: pre-award filers form a genuine capability
+   stratifier available at application time; post-award filing repositions B82 patenting as a
+   **fifth transition-signal channel** (alongside FPDS coding, federal obligations, Form D, and
+   M&A). Either way, C is not an independent cohort definition — and §5D's within-cohort
+   discriminator mixes pre-award capability with downstream outcome, so it must not be read as a
+   pure pre-award predictor.
+
+**Revised architecture:** Method A defines the award cohort; Method C supplies a pre-award
+capability stratifier and a post-award outcome channel; Method B retires to taxonomy
+diagnostics; the A ∩ C core (§5D) remains the high-confidence set for headline claims.
 
 ---
 

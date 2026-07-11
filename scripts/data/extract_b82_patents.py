@@ -12,10 +12,11 @@ CPC scope:
   B82Y — specific uses or applications of nanostructures
 
 Inputs (download via: python scripts/data/download_uspto.py --dataset patentsview
-        --table {cpc,assignee,patent} --local data/raw/uspto/patentsview):
+        --table {cpc,assignee,patent,application} --local data/raw/uspto/patentsview):
   data/raw/uspto/patentsview/g_cpc_current.tsv.zip
   data/raw/uspto/patentsview/g_assignee_disambiguated.tsv.zip
   data/raw/uspto/patentsview/g_patent.tsv.zip
+  data/raw/uspto/patentsview/g_application.tsv.zip   — filing dates (capability-vs-outcome timing)
 
 Outputs:
   data/processed/uspto/b82_patents.csv — one row per (patent, org assignee)
@@ -55,6 +56,7 @@ def main() -> int:
         "cpc": RAW / "g_cpc_current.tsv.zip",
         "assignee": RAW / "g_assignee_disambiguated.tsv.zip",
         "patent": RAW / "g_patent.tsv.zip",
+        "application": RAW / "g_application.tsv.zip",
     }
     for table, p in required.items():
         if not p.exists():
@@ -65,7 +67,7 @@ def main() -> int:
             )
             return 1
 
-    print("Pass 1/3: scanning g_cpc_current for B82 subclasses...")
+    print("Pass 1/4: scanning g_cpc_current for B82 subclasses...")
     subclasses: dict[str, set[str]] = defaultdict(set)
     rows_seen = 0
     for idx, row in tsv_rows(required["cpc"]):
@@ -76,7 +78,7 @@ def main() -> int:
     b82_ids = set(subclasses)
     print(f"  {rows_seen:,} CPC rows scanned; {len(b82_ids):,} unique B82 patents")
 
-    print("Pass 2/3: joining assignee organizations...")
+    print("Pass 2/4: joining assignee organizations...")
     org_rows: dict[str, list[tuple[str, str]]] = defaultdict(list)  # patent_id → [(org, type)]
     individual_only = set(b82_ids)
     for idx, row in tsv_rows(required["assignee"]):
@@ -92,7 +94,7 @@ def main() -> int:
         f"{len(individual_only):,} individual-only or unassigned"
     )
 
-    print("Pass 3/3: joining grant dates and titles...")
+    print("Pass 3/4: joining grant dates and titles...")
     meta: dict[str, tuple[str, str]] = {}
     for idx, row in tsv_rows(required["patent"]):
         pid = row[idx["patent_id"]]
@@ -100,18 +102,32 @@ def main() -> int:
             meta[pid] = (row[idx["patent_date"]], row[idx["patent_title"]][:120])
     print(f"  {len(meta):,} B82 patents matched in g_patent")
 
+    print("Pass 4/4: joining filing dates...")
+    filing: dict[str, str] = {}
+    for idx, row in tsv_rows(required["application"]):
+        pid = row[idx["patent_id"]]
+        if pid in b82_ids:
+            fd = row[idx["filing_date"]]
+            # g_application contains typo'd dates (e.g. year 1074); keep plausible only
+            if len(fd) == 10 and "1900" <= fd[:4] <= "2030":
+                filing[pid] = fd
+    print(f"  {len(filing):,} B82 patents with plausible filing dates")
+
     OUT_CSV.parent.mkdir(parents=True, exist_ok=True)
     n_out = 0
     with open(OUT_CSV, "w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
         w.writerow(
-            ["patent_id", "grant_date", "assignee_organization", "assignee_type",
+            ["patent_id", "grant_date", "filing_date", "assignee_organization", "assignee_type",
              "cpc_subclasses", "patent_title"]
         )
         for pid in sorted(org_rows):
             date, title = meta.get(pid, ("", ""))
             for org, a_type in org_rows[pid]:
-                w.writerow([pid, date, org, a_type, "|".join(sorted(subclasses[pid])), title])
+                w.writerow(
+                    [pid, date, filing.get(pid, ""), org, a_type,
+                     "|".join(sorted(subclasses[pid])), title]
+                )
                 n_out += 1
     print(f"  Written: {OUT_CSV} ({n_out:,} patent-assignee rows)")
 

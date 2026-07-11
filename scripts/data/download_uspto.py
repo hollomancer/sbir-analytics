@@ -52,6 +52,7 @@ PATENTSVIEW_PRODUCT = "PVGPATDIS"  # PatentsView Granted Patent Disambiguated Da
 API_KEY_ENV_VAR = "USPTO_ODP_API_KEY"
 PATENTSVIEW_TABLES = {
     "patent": "g_patent.tsv.zip",
+    "application": "g_application.tsv.zip",
     "assignee": "g_assignee_disambiguated.tsv.zip",
     "inventor": "g_inventor_disambiguated.tsv.zip",
     "location": "g_location_disambiguated.tsv.zip",

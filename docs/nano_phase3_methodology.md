@@ -289,6 +289,41 @@ prolific-firm inflation in §5C:
 digest joins by UEI, and the CPC cohort skews toward older prolific firms whose activity
 predates UEI-era tracking.
 
+### 5E. What the patent lens implies about Methods A and B
+
+Three follow-up tests, all computed from cohort data at generation time:
+
+1. **Method A's misses are construct differences, not vocabulary gaps.** Of the
+   1,416 awards held by the 293 patent-verified
+   firms outside the keyword cohort, only 10% contain even near-nano vocabulary
+   (thin film, epitaxy, superlattice, plasmonic, quantum well, and ten related terms — list in
+   `build_nano_cohort.py`). The rest show no nano-adjacent language at all: these firms' SBIR
+   awards sit in other domains, and their B82 patents reflect nanotech capability elsewhere in
+   the business. Expanding the keyword list would recover little and cost precision — Method A
+   stands as the award-content instrument.
+
+2. **Method B's unique contribution is noise.** Firms appearing only via the CET `carbon fiber`
+   term hold B82 patents at 7%, versus 14% for keyword-cohort firms —
+   carbon-fiber-only awards are *less* nano-patent-active than the baseline. `carbon fiber` does
+   not belong in a nanotech definition. Method B should not be used as a cohort definition; its
+   remaining value is diagnostic (surfacing the CET taxonomy disagreement, §2B).
+
+3. **Method C is half capability marker, half outcome measure.** On a filing-date basis,
+   50% of CPC-cohort firms filed their first B82 patent application *after*
+   their first Phase II award year, 42% before it, and 7%
+   in the same year (plausibly award-period IP). The grant-date basis says
+   74% post-award, but grants lag filings by 2–4 years — filing dates are the
+   honest clock. The two halves have different uses: pre-award filers form a genuine capability
+   stratifier available at application time; post-award filing repositions B82 patenting as a
+   **fifth transition-signal channel** (alongside FPDS coding, federal obligations, Form D, and
+   M&A). Either way, C is not an independent cohort definition — and §5D's within-cohort
+   discriminator mixes pre-award capability with downstream outcome, so it must not be read as a
+   pure pre-award predictor.
+
+**Revised architecture:** Method A defines the award cohort; Method C supplies a pre-award
+capability stratifier and a post-award outcome channel; Method B retires to taxonomy
+diagnostics; the A ∩ C core (§5D) remains the high-confidence set for headline claims.
+
 ---
 
 ## 6. Deficiency Classification (Task 4 — Primary Deliverable)
