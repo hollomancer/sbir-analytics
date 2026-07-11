@@ -7,15 +7,15 @@ understand what happens after a small business wins an SBIR award.
 
 ## About this project (please read first)
 
-- I am a **federal employee working in the SBIR/STTR domain**, not a
+- I am a federal employee working in the SBIR/STTR domain, not a
   trained data scientist or ML engineer. I'm hoping to contribute which
   questions are worth asking, how they map to the policy and
   academic literature, and what data could plausibly answer them.
-- This is built with **substantial help from AI agents.** Much of the
+- This is built with substantial help from AI agents. Much of the
   implementation was generated and iterated with Claude and Codex. I
   directed the design and validated the analysis, but this code defintely
   isn't professional-grade engineering. This is a **personal side project,
-  not production software or a polished engineering portfolio piece.** PRs welcome!
+  not production software.** PRs welcome!
 - Recommend newcomers read **[docs/research-questions.md](docs/research-questions.md)**, 
   a structured inventory of the questions this project exists to answer, each
   tied to the relevant GAO/NASEM/CRS reports and peer-reviewed studies. That
