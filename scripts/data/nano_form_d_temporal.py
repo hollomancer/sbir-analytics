@@ -202,9 +202,12 @@ def main() -> int:
 
         results.append(row)
 
-    # Write output CSV
+    # Write output CSV. Build the header from the union of keys across all rows,
+    # not just results[0]: the Form D detail columns are attached only to matched
+    # rows, so keying off the first (usually unmatched) row would silently drop
+    # them via extrasaction="ignore".
     out_csv = DATA / "nano_form_d_post_phase2.csv"
-    fieldnames = list(results[0].keys())
+    fieldnames = list(dict.fromkeys(key for row in results for key in row))
     with open(out_csv, "w", newline="", encoding="utf-8") as f:
         w = csv.DictWriter(f, fieldnames=fieldnames, extrasaction="ignore")
         w.writeheader()
