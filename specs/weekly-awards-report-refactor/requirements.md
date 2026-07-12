@@ -1,6 +1,6 @@
 # Requirements — Weekly Awards Report Refactor
 
-> **Status (2026-07-12):** Substantially complete — see the dated banner in [tasks.md](tasks.md). The 2,807-line monolith is now a 116-line CLI over `sbir_etl/reporting/weekly/` with the golden-file test green; remaining work: T2.3, the typed-dataclass half of T3.2, coverage targets (T5.2), and T5.3.
+> **Status (2026-07-12):** Substantially complete — see the current task breakdown in [tasks.md](tasks.md). The 2,807-line monolith is now a 116-line CLI over `sbir_etl/reporting/weekly/` with the golden-file test green; remaining work: T2.3, the typed-dataclass half of T3.2, coverage targets (T5.2), and T5.3.
 > Supports inventory question **E6** (weekly report maintainability) in [docs/research-questions.md](../../docs/research-questions.md).
 
 **Research question anchor:** E6 — weekly awards report pipeline maintainability

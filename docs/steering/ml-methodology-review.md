@@ -173,7 +173,6 @@ scicode-lint lint \
   packages/sbir-ml/sbir_ml/ml/models/cet_classifier.py \
   packages/sbir-ml/sbir_ml/ml/models/patent_classifier.py \
   packages/sbir-ml/sbir_ml/ml/models/multi_source_vectorizer.py \
-  packages/sbir-ml/sbir_ml/ml/huggingface_inference.py \
   --vllm-url http://localhost:8080 \
   --category ai-training,scientific-reproducibility,scientific-numerical \
   --format json \

@@ -35,7 +35,7 @@ Each milestone produces an analytical output that (a) replicates or exceeds a sp
 |-----------|--------|----------|
 | FPDS contract extraction | Built | `packages/sbir-analytics/sbir_analytics/tools/phase0/extract_fpds_contracts.py` |
 | Entity resolution (UEI/DUNS) | Built | `packages/sbir-analytics/sbir_analytics/tools/phase0/resolve_entities.py`, `packages/sbir-ml/sbir_ml/transition/features/vendor_resolver.py` |
-| Contract analytics (DuckDB) | Built | `packages/sbir-ml/sbir_ml/transition/performance/contract_analytics.py` |
+| Contract analytics (DuckDB) | Removed (unused legacy implementation) | Superseded by `packages/sbir-analytics/sbir_analytics/assets/follow_on_multiplier/` |
 | Vendor crosswalk | Built | `packages/sbir-ml/sbir_ml/transition/features/vendor_crosswalk.py` |
 | Company categorization | 80% spec | `specs/company-categorization/` |
 | Follow-on funding multiplier computation | Built (PR #323) | `packages/sbir-analytics/sbir_analytics/assets/follow_on_multiplier/` (spec archived) |
@@ -148,5 +148,5 @@ Audit completed 2026-03-13 (statuses re-verified 2026-07-02). Status: **ready fo
 - [x] **Graph DB state:** Neo4j 5.x with Company, Patent, Award, CET nodes. SBIR.gov, SAM.gov, USAspending, USPTO all loaded. Entity linkages via canonical IDs. 3,500+ lines of Neo4j loader code.
 - [x] **Entity resolution:** Hybrid 6-step pipeline: UEI exact → DUNS exact → CAGE code → Name+State+NAICS deterministic → rapidfuzz (75-90 thresholds) → LLM tiebreaker. 85%+ deterministic match rate. Gold set calibration. Confidence scoring (1.0 deterministic, 0.5-0.95 fuzzy). (`packages/sbir-analytics/sbir_analytics/tools/phase0/resolve_entities.py`, 376 lines)
 - [x] **Classifier state:** CET classifier trained on 21 NSTC Critical & Emerging Technology categories. TF-IDF + keyword boosting + logistic regression with probability calibration. Production-ready with ≥60% high-confidence target. Full training pipeline in `packages/sbir-analytics/sbir_analytics/assets/cet/training.py`.
-- [x] **FPDS data:** Pulled via USAspending PostgreSQL dump streaming. Linked to entities via vendor crosswalk. Refresh: daily (FPDS), monthly (USAspending bulk). DuckDB analytics for 6.7M+ contracts. (`packages/sbir-analytics/sbir_analytics/tools/phase0/extract_fpds_contracts.py`, `packages/sbir-ml/sbir_ml/transition/performance/contract_analytics.py`)
+- [x] **FPDS data:** Pulled via USAspending PostgreSQL dump streaming. Linked to entities via vendor crosswalk. Refresh: daily (FPDS), monthly (USAspending bulk). Follow-on contract analytics now live in `packages/sbir-analytics/sbir_analytics/assets/follow_on_multiplier/`; the unused legacy DuckDB implementation was removed in the 2026-07 repo cleanup. (`packages/sbir-analytics/sbir_analytics/tools/phase0/extract_fpds_contracts.py`)
 - [x] **Infrastructure:** CDK stacks defined (Storage → Security → Batch). 6+ GitHub Actions workflows active (CI, data-refresh, ML jobs, nightly security). Docker + Dagster orchestration. Deployment status to AWS uncertain — verify before M5 operationalization.
