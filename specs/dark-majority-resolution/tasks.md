@@ -107,9 +107,17 @@ Sequencing rationale in `requirements.md`. Effort tags: S (<half day), M (1–2 
 - [ ] **T14 (S–M, WS5b):** SAM.gov registration status for all UEI'd cohort firms
   (public extracts or Entity Management API; a SAM key exists in repo tooling).
   Output active vs lapsed-with-year; feed lapse years into WS4 survival framing.
-- [ ] **T15 (M, WS6a):** Build `data/processed/firm_aliases.csv` from owner_name_change
+- [x] **T15 (M, WS6a):** Build `data/processed/firm_aliases.csv` from owner_name_change
   (on disk), PatentsView assignee_id clusters (on disk), USAspending DBA/parent
   linkages, and — if programmatically available on ODP — patent assignment records.
+  → Reconnaissance revised the sources: **patent assignments** (ECORSEXC, ODP-servable)
+  are the rich source — 150 edges (110 namechg + 37 merger + 3 shared-UEI) across 119
+  firms (e.g. microlab→magfusion, t j technologies→a123 systems, voltaix→air liquide).
+  **assignee_id clusters are DEAD** (disambiguation already collapses variants: 0/293k
+  sampled ids carry >1 name); **owner_name_change is a coded annotation**, not a name
+  pair — deferred. Core logic is in `sbir_etl/utils/firm_aliases.py` (pure, 22 unit tests
+  in `tests/unit/utils/test_firm_aliases.py`); driver `scripts/data/build_firm_alias_graph.py`.
+  Self-edge filter drops 219 suffix-only false edges (ACME→ACME CORP).
 - [ ] **T16 (S–M, WS6b):** Alias-expanded re-runs of patent/trademark/USAspending
   matchers; alias matches require corroboration and carry alias_source provenance;
   report per-instrument recall delta.
