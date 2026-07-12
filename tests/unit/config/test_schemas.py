@@ -541,7 +541,10 @@ class TestTaxParameterConfig:
     def test_default_individual_income_tax(self):
         """Test TaxParameterConfig default individual income tax."""
         config = TaxParameterConfig()
-        assert config.individual_income_tax["effective_rate"] == 0.22
+        # NIPA-derived 2022 baseline (see nipa_rates.py:_BASELINE_RATES[2022]).
+        # Runtime fiscal calculations resolve the rate per analysis year via
+        # NIPARateProvider; this default is only used in audit-trail snapshots.
+        assert config.individual_income_tax["effective_rate"] == 0.194
         assert config.individual_income_tax["progressive_rates"]["10_percent"] == 0.10
 
     def test_default_payroll_tax(self):

@@ -20,7 +20,10 @@ Rate calculation:
 
 from __future__ import annotations
 
+import os
+import tempfile
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -139,6 +142,21 @@ _BASELINE_RATES: dict[int, NIPATaxRates] = {
 # Default to 2022 for years we don't have explicit data for
 _DEFAULT_YEAR = 2022
 
+# On-disk cache: one row per (year, source). API-sourced rows are persisted on
+# successful fetch; baseline rows are not written (they are deterministic from
+# _BASELINE_RATES, so caching them adds no value).
+_DEFAULT_CACHE_PATH = Path("data/reference/bea/nipa_tax_rates.parquet")
+_PARQUET_RATE_COLUMNS = (
+    "federal_income_rate",
+    "federal_payroll_rate",
+    "federal_corporate_rate",
+    "federal_excise_rate",
+    "state_local_income_rate",
+    "state_local_sales_rate",
+    "state_local_property_rate",
+    "state_local_other_rate",
+)
+
 # BEA NIPA table IDs for API fetching
 NIPA_TABLES = {
     "federal_receipts": "T30200",  # Table 3.2
@@ -181,14 +199,18 @@ class NIPARateProvider:
     def __init__(
         self,
         bea_api_key: str | None = None,
-        cache_dir: str | Path | None = None,
+        cache_path: str | Path | None = None,
     ):
         self._api_key = bea_api_key
-        self._cache_dir = Path(cache_dir) if cache_dir else None
+        self._cache_path = Path(cache_path) if cache_path else _DEFAULT_CACHE_PATH
         self._cache: dict[int, NIPATaxRates] = {}
 
     def get_rates(self, year: int | None = None) -> NIPATaxRates:
         """Get effective tax rates for a given year.
+
+        Resolution order: in-memory cache → on-disk parquet cache (API-sourced
+        rows only) → BEA API → ``_BASELINE_RATES`` fallback. API fetches are
+        appended to the parquet cache so a fresh process reuses them.
 
         Args:
             year: NIPA data year. If None, uses most recent available.
@@ -202,11 +224,18 @@ class NIPARateProvider:
         if year in self._cache:
             return self._cache[year]
 
+        # Check on-disk parquet cache (API-sourced rows take precedence)
+        cached = self._read_parquet_cache(year)
+        if cached is not None:
+            self._cache[year] = cached
+            return cached
+
         # Try API fetch
         if self._api_key:
             try:
                 rates = self._fetch_from_api(year)
                 self._cache[year] = rates
+                self._write_parquet_cache(rates)
                 return rates
             except Exception as e:
                 logger.warning(f"BEA NIPA API fetch failed for {year}: {e}, using baseline")
@@ -215,6 +244,87 @@ class NIPARateProvider:
         rates = self._get_baseline(year)
         self._cache[year] = rates
         return rates
+
+    def _read_parquet_cache(self, year: int) -> NIPATaxRates | None:
+        """Return a previously-cached API-sourced row for ``year``, or None."""
+        if not self._cache_path.exists():
+            return None
+        try:
+            df = pd.read_parquet(self._cache_path)
+        except Exception as e:  # pragma: no cover - corrupt cache is unusual
+            logger.warning(f"NIPA parquet cache read failed ({self._cache_path}): {e}")
+            return None
+        required_cols = {"year", "source", *_PARQUET_RATE_COLUMNS}
+        if not required_cols.issubset(df.columns):
+            missing = required_cols - set(df.columns)
+            logger.warning(
+                f"NIPA parquet cache at {self._cache_path} missing columns {missing}; "
+                "ignoring cache and falling back to fetch/baseline"
+            )
+            return None
+        rows = df[df["year"] == year]
+        if rows.empty:
+            return None
+        # Prefer nipa_api rows over baselines if both exist (cache shouldn't
+        # contain baselines, but defend against a hand-edited file).
+        api_rows = rows[rows["source"] == "nipa_api"]
+        chosen = api_rows.iloc[0] if not api_rows.empty else rows.iloc[0]
+        return NIPATaxRates(
+            year=int(chosen["year"]),
+            federal_income_rate=float(chosen["federal_income_rate"]),
+            federal_payroll_rate=float(chosen["federal_payroll_rate"]),
+            federal_corporate_rate=float(chosen["federal_corporate_rate"]),
+            federal_excise_rate=float(chosen["federal_excise_rate"]),
+            state_local_income_rate=float(chosen["state_local_income_rate"]),
+            state_local_sales_rate=float(chosen["state_local_sales_rate"]),
+            state_local_property_rate=float(chosen["state_local_property_rate"]),
+            state_local_other_rate=float(chosen["state_local_other_rate"]),
+            source=str(chosen["source"]),
+        )
+
+    def _write_parquet_cache(self, rates: NIPATaxRates) -> None:
+        """Upsert ``rates`` into the parquet cache (atomic temp-file + rename)."""
+        self._cache_path.parent.mkdir(parents=True, exist_ok=True)
+
+        row = pd.DataFrame(
+            [
+                {
+                    "year": rates.year,
+                    "source": rates.source,
+                    **{col: getattr(rates, col) for col in _PARQUET_RATE_COLUMNS},
+                    "fetched_at": datetime.now(UTC),
+                }
+            ]
+        )
+
+        if self._cache_path.exists():
+            try:
+                existing = pd.read_parquet(self._cache_path)
+                # Replace any prior row with the same (year, source) key.
+                mask = ~((existing["year"] == rates.year) & (existing["source"] == rates.source))
+                combined = pd.concat([existing[mask], row], ignore_index=True)
+            except Exception as e:
+                logger.warning(f"NIPA parquet cache rewrite — existing read failed, replacing: {e}")
+                combined = row
+        else:
+            combined = row
+
+        # Atomic write: unique temp file in the same directory, then rename.
+        # Using mkstemp avoids races when multiple processes refresh concurrently
+        # (a fixed ".tmp" suffix would collide and corrupt the cache).
+        fd, tmp_name = tempfile.mkstemp(dir=self._cache_path.parent, suffix=".parquet.tmp")
+        os.close(fd)
+        tmp_path = Path(tmp_name)
+        try:
+            combined.to_parquet(tmp_path, index=False)
+            os.replace(tmp_path, self._cache_path)
+        except Exception:
+            # Clean up the orphaned temp file so we don't leak junk in the cache dir.
+            try:
+                tmp_path.unlink(missing_ok=True)
+            except OSError:
+                pass
+            raise
 
     def _get_baseline(self, year: int) -> NIPATaxRates:
         """Return hardcoded baseline rates for the given year."""
