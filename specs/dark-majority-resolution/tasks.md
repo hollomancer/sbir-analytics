@@ -41,11 +41,20 @@ Sequencing rationale in `requirements.md`. Effort tags: S (<half day), M (1–2 
 
 ## Phase 3 — identity recovery
 
-- [ ] **T5 (M, WS2):** Multi-key resolution of the 368 no-UEI firms against FPDS recipient
+- [x] **T5 (M, WS2):** Multi-key resolution of the 368 no-UEI firms against FPDS recipient
   names + SAM historical (name+state+PI, tiered confidence). Output
   `data/nano_no_uei_resolution.csv`.
-- [ ] **T6 (S, WS2):** Route high-confidence resolutions through T3's contract-level
+  → `scripts/data/nano_ws2_resolve_no_uei.py`: name search against USAspending recipients
+  with exact normalized-name equality resolves 157/368 firms (43%; 156 single-UEI high
+  confidence). The 57% unresolved have no post-FY2008 footprint under any matching name.
+  (SAM historical and state/PI keys not needed at this precision; revisit if fuzzy
+  matching is ever added.)
+- [x] **T6 (S, WS2):** Route high-confidence resolutions through T3's contract-level
   classification.
+  → Done inside the WS2 script (reuses the WS1 classifier): 247 awards of resolved firms →
+  strong 21, moderate 79, weak 40, none 107. Report updated: observable 27.5% → 28.1%,
+  indeterminate 71.9% (70.6% matured); Finding 3's "permanently opaque" claim corrected;
+  Policy #3 now cites the 43% recovery as the floor for SBA UEI backfill.
 
 ## Phase 4 — external instruments
 
