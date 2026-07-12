@@ -284,6 +284,7 @@ services:
     working_dir: /app
     volumes:
       - ./data/raw/uspto:/app/data/raw/uspto:rw
+      - ./data/reference:/app/data/reference:ro
       - ./tests/fixtures:/app/test-data:ro
       # Tests live outside the production image; mount them so `pytest -m fast`
       # in the ci profile command (above) finds tests/. Without this, pytest

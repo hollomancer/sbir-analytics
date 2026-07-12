@@ -141,12 +141,10 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-# Data files
-/data/
-!data/reference/*.csv
-!data/reference/*.xlsx
-!data/reference/*.xls
-!data/reference/*.txt
+# Data files (runtime artifacts); keep versioned reference tables under data/reference/
+/data/*
+!/data/reference/
+!/data/reference/**
 logs/
 *.db
 *.duckdb
