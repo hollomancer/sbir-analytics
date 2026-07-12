@@ -39,8 +39,11 @@ class TestMakeAliasEdge:
 
     def test_state_corroboration_is_uppercased(self):
         edge = make_alias_edge(
-            "Kionix", "Calient Networks", source="patent_assignment",
-            relation="merger", corrob_state="ca",
+            "Kionix",
+            "Calient Networks",
+            source="patent_assignment",
+            relation="merger",
+            corrob_state="ca",
         )
         assert edge is not None
         assert edge.corrob_state == "CA"

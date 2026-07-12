@@ -105,12 +105,10 @@ def alias_edges_from_shared_uei(
             nn = _norm(raw)
             if nn:
                 by_norm.setdefault(nn, raw)
-        reps = sorted(by_norm.items())
-        for i, (na, ra) in enumerate(reps):
-            for nb, rb in reps[i + 1 :]:
-                edge = make_alias_edge(
-                    ra, rb, source="shared_uei", relation="shared_uei"
-                )
+        reps = [raw for _, raw in sorted(by_norm.items())]
+        for i, ra in enumerate(reps):
+            for rb in reps[i + 1 :]:
+                edge = make_alias_edge(ra, rb, source="shared_uei", relation="shared_uei")
                 if edge:
                     edges.append(edge)
     return edges
