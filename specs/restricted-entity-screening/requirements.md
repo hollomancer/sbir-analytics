@@ -35,18 +35,21 @@ Ingesting all eight lists and building a `RestrictedEntityScreener` enables the 
 FOCI exposure question to be answered for the full awardee universe, not just the
 disclosed/structured ownership subset.
 
-**The eight lists (all publicly downloadable):**
+**The eight lists (all publicly downloadable), aligned with Pub. L. 119-83, sec. 2
+(codified at 15 U.S.C. § 638(g)(16)(D) and (o)(20)(D)):**
 
-| List | Authority | Format |
-|------|-----------|--------|
-| UFLPA Entity List | CBP / DHS | CSV |
-| NS-CMIC List (Non-SDN Chinese Military-Industrial Complex) | OFAC / Treasury | CSV |
-| Section 889 Prohibition List | GSA / FCC | CSV |
-| 1260H List | DoD | CSV / PDF |
-| Military End-User (MEU) List | BIS / Commerce | CSV |
-| BIS Entity List | BIS / Commerce | CSV |
-| FCC Covered List | FCC | JSON |
-| CBP WRO/Findings List | CBP / DHS | CSV |
+| List (statutory label) | Maintainer / authority | Format | Notes |
+|------|-----------|--------|-------|
+| UFLPA Entity List | CBP / DHS | CSV | |
+| NS-CMIC List (Non-SDN Chinese Military-Industrial Complex) | OFAC / Treasury | CSV | |
+| Section 889 Prohibition List | **Department of Defense** | CSV | Statute names the DoD-maintained prohibition list; do not route implementers to GSA/FCC endpoints |
+| 1260H List | DoD | CSV / PDF | |
+| Military End-User (MEU) List | BIS / Commerce | CSV | |
+| BIS Entity List | BIS / Commerce | CSV | |
+| FCC List of Equipment and Services | FCC | JSON | Statutory label; not the informal "Covered List" shorthand alone |
+| CBP WRO/Findings List | CBP / DHS | CSV | |
+
+**Statutory source:** [Pub. L. 119-83 (2026)](https://www.govinfo.gov/content/pkg/PLAW-119publ83/pdf/PLAW-119publ83.pdf), Small Business Innovation and Economic Security Act, sec. 2.
 
 ---
 
@@ -70,6 +73,9 @@ enrichment run without manual intervention.
 
 1. THE System SHALL implement a downloader for each of the eight lists, fetching from
    their authoritative government sources on a configurable schedule (default: weekly).
+   Each downloader SHALL record the canonical source URL, update cadence, identifier
+   fields available, alias handling, and whether matches are entity-level vs.
+   person/ownership-level in the manifest.
 2. THE System SHALL normalize each list to a common schema:
    `entity_name`, `entity_aliases`, `country`, `list_name`, `list_authority`,
    `effective_date`, `source_url`, `raw_id`.
