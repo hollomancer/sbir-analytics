@@ -23,6 +23,7 @@ incrementally via ``--area nanotechnology --legacy``.
 
 from __future__ import annotations
 
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -144,3 +145,19 @@ def add_area_args(parser) -> None:
         action="store_true",
         help="Read/write PR #428 data/nano_*.csv paths (nanotechnology only)",
     )
+
+
+def resolve_area_paths(args, argv: list[str] | None = None) -> ReportPaths:
+    """Resolve ReportPaths from parsed args (Form D / WS1 / WS2 convention).
+
+    Unflagged ``nano_*.py`` invocation (no ``--area``) keeps PR #428
+    ``data/nano_*`` paths. Explicit ``--area X`` uses ``data/reports/X/``
+    unless ``--legacy`` is also set.
+    """
+    argv = argv if argv is not None else sys.argv[1:]
+    area_flagged = any(a == "--area" or a.startswith("--area=") for a in argv)
+    legacy = bool(getattr(args, "legacy", False) or not area_flagged)
+    area_id = "nanotechnology" if legacy else args.area
+    paths = ReportPaths.for_area(area_id, legacy=legacy)
+    paths.ensure_dirs()
+    return paths

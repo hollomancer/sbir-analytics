@@ -17,7 +17,10 @@
 - [x] T12 `sbir_etl.utils.transition_signals` enrichment helpers + unit tests;
       wire into `build_tech_area_cohort.py` (always write `deficiency_class`)
 - [x] T13 Migrate `nano_form_d_temporal.py` to `--area` / `--legacy` (reference pattern)
-- [ ] T14 Migrate WS1, WS2, dark_firm_liveness (B82 optional), trademarks
+- [~] T14 Migrate WS1, WS2, dark_firm_liveness (B82 optional), trademarks
+  - [x] WS1 `nano_ws1_contract_evidence.py` (`resolve_area_paths`)
+  - [x] WS2 `nano_ws2_resolve_no_uei.py` (`resolve_area_paths`)
+  - [ ] dark_firm_liveness / trademarks
 - [ ] T15 Migrate WS5a, alias graph, alias-expanded; gate WS5c on YAML
 - [ ] T16 Migrate capture-recapture / survey_frame; nanotech `--legacy` cutover
 

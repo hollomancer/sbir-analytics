@@ -15,8 +15,12 @@ Outputs:
   data/nano_form_d_post_phase2.csv      — one row per award with post-Phase II Form D signal
   data/analysis/nano_form_d_temporal.png
 
+Path convention:
+  --area <id>   → data/reports/<id>/form_d_post_phase2.csv
+  (no flag)     → data/nano_form_d_post_phase2.csv  (legacy PR #428)
+
 Usage:
-  python scripts/data/nano_form_d_temporal.py
+  python scripts/data/nano_form_d_temporal.py [--area AREA] [--legacy]
 """
 
 import csv
@@ -144,22 +148,17 @@ def main() -> int:
     import argparse
 
     try:
-        from sbir_etl.utils.transition_report_paths import ReportPaths, add_area_args
+        from sbir_etl.utils.transition_report_paths import add_area_args, resolve_area_paths
     except ImportError:
         sys.path.insert(0, str(REPO))
-        from sbir_etl.utils.transition_report_paths import ReportPaths, add_area_args
+        from sbir_etl.utils.transition_report_paths import add_area_args, resolve_area_paths
 
     parser = argparse.ArgumentParser(description=__doc__)
     add_area_args(parser)
     args = parser.parse_args()
-    # Unflagged `python nano_form_d_temporal.py` keeps PR #428 data/nano_* paths.
-    # Explicit `--area X` writes under data/reports/X/ unless --legacy is also set.
-    area_flagged = any(a == "--area" or a.startswith("--area=") for a in sys.argv[1:])
-    legacy = args.legacy or not area_flagged
-    if legacy:
-        args.area = "nanotechnology"
-    paths = ReportPaths.for_area(args.area, legacy=legacy)
-    paths.ensure_dirs()
+    # Unflagged keeps PR #428 data/nano_* paths; --area X → data/reports/X/.
+    paths = resolve_area_paths(args)
+    legacy = paths.legacy
 
     cohort_csv = paths.artifact("cohort_keyword")
     form_d_jsonl = DATA / "form_d_details.jsonl"
@@ -169,13 +168,13 @@ def main() -> int:
     if not cohort_csv.exists():
         print(
             f"ERROR: {cohort_csv} not found — run "
-            f"build_tech_area_cohort.py --area {args.area} first "
+            f"build_tech_area_cohort.py --area {paths.area_id} first "
             f"(or build_nano_cohort.py for --legacy)",
             file=sys.stderr,
         )
         return 1
 
-    print(f"Loading keyword cohort ({args.area}{', legacy' if legacy else ''})...")
+    print(f"Loading keyword cohort ({paths.area_id}{', legacy' if legacy else ''})...")
     with open(cohort_csv, newline="", encoding="utf-8") as f:
         awards = list(csv.DictReader(f))
     print(f"  {len(awards):,} Phase II awards")
@@ -354,7 +353,7 @@ def main() -> int:
                      f"{rate:.1f}%", va="center", fontsize=9)
 
         fig.suptitle(
-            f"{args.area}: Form D private investment (temporally filtered)",
+            f"{paths.area_id}: Form D private investment (temporally filtered)",
             fontsize=12, fontweight="bold",
         )
         fig.tight_layout()
