@@ -32,11 +32,22 @@ def test_enrich_supplemented_by_other_channel():
 
 
 def test_enrich_ma_requires_signal_count():
-    cohort = [{"uei": "U1", "company": "Acme", "agency": "Department of Defense", "award_year": 2015}]
+    cohort = [
+        {"uei": "U1", "company": "Acme", "agency": "Department of Defense", "award_year": 2015}
+    ]
     ma = {"ACME": {"ma_signal_count": 0, "ma_confidence": "low"}}
-    out = enrich_cohort_with_signals(cohort, {"U1": {"has_fy_phase3": False,
-                                                      "phase3_awards_n": 0,
-                                                      "phase3_total_usd": 0.0,
-                                                      "fy_contracts_in_fpds": 0,
-                                                      "fy_grants_in_fabs": 0}}, ma, {})
+    out = enrich_cohort_with_signals(
+        cohort,
+        {
+            "U1": {
+                "has_fy_phase3": False,
+                "phase3_awards_n": 0,
+                "phase3_total_usd": 0.0,
+                "fy_contracts_in_fpds": 0,
+                "fy_grants_in_fabs": 0,
+            }
+        },
+        ma,
+        {},
+    )
     assert out[0]["sig_ma_detected"] is False

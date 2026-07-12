@@ -117,9 +117,7 @@ def load_form_d_signals(jsonl_path: Path) -> dict[str, dict]:
                     "form_d_total_raised": _safe_float(
                         str(rec.get("form_d_total_raised", "") or "")
                     ),
-                    "form_d_filing_count": _safe_int(
-                        str(rec.get("form_d_filing_count", "") or "")
-                    ),
+                    "form_d_filing_count": _safe_int(str(rec.get("form_d_filing_count", "") or "")),
                     "form_d_latest_date": "",
                     "form_d_confidence": "high",
                 }
@@ -161,9 +159,9 @@ def enrich_cohort_with_signals(
         r["sig_fpds_phase3_coded"] = dig.get("has_fy_phase3", False)
         r["sig_fpds_phase3_awards_n"] = dig.get("phase3_awards_n", 0)
         r["sig_fpds_phase3_usd"] = dig.get("phase3_total_usd", 0.0)
-        r["sig_any_federal_obligation"] = dig.get("fy_contracts_in_fpds", 0) > 0 or dig.get(
-            "fy_grants_in_fabs", 0
-        ) > 0
+        r["sig_any_federal_obligation"] = (
+            dig.get("fy_contracts_in_fpds", 0) > 0 or dig.get("fy_grants_in_fabs", 0) > 0
+        )
 
         ma = ma_signals.get(company_upper, {})
         # Require a positive signal_count so empty enrichment rows don't inflate.
