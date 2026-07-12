@@ -63,10 +63,18 @@ downstream analytics can segment NIH-funded work by institute, mechanism, and pr
    filtering on `activity_codes` R43, R44, R41, R42 (Phase I / Phase II SBIR/STTR).
 2. THE client SHALL implement the same retry and exponential backoff semantics as
    `SAMGovAPIClient` (3 retries, 2s/4s/8s backoff) to respect NIH's rate limits.
-3. THE client SHALL paginate through results (default page size: 500) and handle
-   the `total` vs. `offset` response envelope to avoid missing records near page
-   boundaries.
-4. THE client SHALL store raw responses to `data/raw/nih_reporter/` before
+3. THE client SHALL paginate through results (default page size: 500, NIH maximum)
+   and handle the `total` vs. `offset` response envelope to avoid missing records near
+   page boundaries. Client tests SHALL cover a boundary case where the final page is
+   partial and the next offset equals `total`.
+4. THE client SHALL accept an optional refresh window and translate it into explicit
+   API predicates — a window MUST NOT silently re-fetch the full historical corpus:
+   - `--window <start>:<end>` (ISO dates) filters on `project_start_date` within the
+     inclusive range when both bounds are provided.
+   - `--window fy:<start_fy>-<end_fy>` filters on the RePORTER `fiscal_years` field.
+   - When no window is supplied, THE client SHALL perform a deliberate full snapshot
+     fetch for activity codes R43/R44/R41/R42 and upsert by `(project_num, fy)`.
+5. THE client SHALL store raw responses to `data/raw/nih_reporter/` before
    transformation, following the same raw-cache pattern as other extractors.
 
 ### Requirement 2 — Record normalization and storage
@@ -90,7 +98,10 @@ downstream analytics can segment NIH-funded work by institute, mechanism, and pr
    `data/state/enrichment_refresh_state.json`, tracking `last_attempt_at`,
    `last_success_at`, and `staleness_window_days` (default: 7).
 2. THE System SHALL be invocable via the targeted-refresh CLI:
-   `poetry run refresh_enrichment --source nih_reporter --window <start>:<end>`.
+   `uv run refresh_enrichment --source nih_reporter --window <start>:<end>` or
+   `uv run refresh_enrichment --source nih_reporter --window fy:<start_fy>-<end_fy>`.
+   The CLI SHALL pass the parsed window directly to `NIHReporterAPIClient` query
+   construction (Requirement 1.4) rather than re-filtering client-side after download.
 3. WHEN the NIH RePORTER source exceeds its staleness window, THE System SHALL
    emit a Dagster asset check warning consistent with the E3 SLA monitoring
    requirement in `specs/iterative_api_enrichment/`.
