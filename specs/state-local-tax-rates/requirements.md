@@ -91,6 +91,9 @@ without reading source code.
    modification.
 4. Existing tests in `tests/unit/transformers/fiscal/test_state_rates.py` SHALL pass
    without modification after this change.
+5. THE default `FiscalTaxEstimator()` construction path SHALL use
+   `default_state_rate_provider()`, which loads `DEFAULT_CSV_PATH` when the file
+   exists and otherwise falls back to `_STATE_RATES_2024`.
 
 ### Requirement 3 — Annual refresh CLI (**deferred to follow-up**)
 

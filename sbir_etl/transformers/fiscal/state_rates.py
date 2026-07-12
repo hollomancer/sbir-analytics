@@ -211,3 +211,10 @@ class StateRateProvider:
 
 # Canonical path to the CSV reference file. Tests use a ``tmp_path`` override.
 DEFAULT_CSV_PATH = Path("data/reference/tax/state_effective_rates.csv")
+
+
+def default_state_rate_provider() -> StateRateProvider:
+    """Return the normal runtime provider, preferring the committed CSV when present."""
+    if DEFAULT_CSV_PATH.exists():
+        return StateRateProvider(csv_path=DEFAULT_CSV_PATH)
+    return StateRateProvider()
