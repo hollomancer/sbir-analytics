@@ -84,5 +84,9 @@ Sequencing rationale in `requirements.md`. Effort tags: S (<half day), M (1–2 
   across S1 active-evidence (20/317), S2 holder-only (20/111), S3 dark-core (35/223,
   oversampled) with 2× ranked backups. S1 doubles as validation of the patent-liveness
   instrument; confirmed dissolutions supply the first negative-evidence mass for T10.
-- [ ] **T12 (S):** Final findings-report pass reconciling all recovered populations;
+- [x] **T12 (S):** Final findings-report pass reconciling all recovered populations;
   regenerate methodology doc.
+  → Stale-number sweep clean (82.6% appears only as the flags-alone baseline, 27.5% only
+  as the WS1-scoped step); methodology doc regenerates byte-stable. Cumulative outcome of
+  the plan: indeterminate 82.6% → 71.9% (70.6% matured); every remaining dark firm carries
+  instrument outcomes; ceiling awaits negative evidence (deferred T7 / survey fielding).
