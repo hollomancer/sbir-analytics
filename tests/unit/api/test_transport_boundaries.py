@@ -18,6 +18,23 @@ def _imports(path: Path) -> set[str]:
     return imported
 
 
+def _forbidden_mcp_imports(path: Path) -> set[str]:
+    imports = _imports(path)
+    forbidden_roots = {"neo4j", "dagster", "sbir_graph", "duckdb"}
+    forbidden_internal = {
+        "sbir_analytics.api.repository",
+        "sbir_analytics.api.snapshots",
+        "api.repository",
+        "api.snapshots",
+    }
+    return {
+        module
+        for module in imports
+        if module.split(".", maxsplit=1)[0] in forbidden_roots
+        or any(module == prefix or module.startswith(f"{prefix}.") for prefix in forbidden_internal)
+    }
+
+
 def test_domain_layers_do_not_depend_on_fastapi() -> None:
     """The repository and service remain reusable by HTTP and future MCP transports."""
 
@@ -35,9 +52,20 @@ def test_future_mcp_adapter_cannot_bypass_service_boundary() -> None:
     if not mcp_root.exists():
         return
 
-    forbidden_roots = {"neo4j", "dagster", "sbir_graph", "duckdb"}
     for path in mcp_root.rglob("*.py"):
-        roots = {module.split(".", maxsplit=1)[0] for module in _imports(path)}
-        assert roots.isdisjoint(forbidden_roots), (
-            f"{path} bypasses the API/service boundary via {roots & forbidden_roots}"
-        )
+        forbidden = _forbidden_mcp_imports(path)
+        assert not forbidden, f"{path} bypasses the API/service boundary via {forbidden}"
+
+
+def test_mcp_boundary_detects_fully_qualified_internal_bypass(tmp_path: Path) -> None:
+    bypass = tmp_path / "tool.py"
+    bypass.write_text(
+        "from sbir_analytics.api.repository import AnalyticsRepository\n", encoding="utf-8"
+    )
+    assert _forbidden_mcp_imports(bypass) == {"sbir_analytics.api.repository"}
+
+    allowed = tmp_path / "allowed.py"
+    allowed.write_text(
+        "from sbir_analytics.api.service import AnalyticsService\n", encoding="utf-8"
+    )
+    assert not _forbidden_mcp_imports(allowed)

@@ -31,3 +31,7 @@ class AnalyticsResponse(BaseModel):
 class HealthResponse(BaseModel):
     status: str
     service: str = "sbir-analytics-api"
+
+
+class ReadinessResponse(HealthResponse):
+    components: dict[str, str]

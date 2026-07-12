@@ -14,5 +14,16 @@ The `/v1/snapshots` endpoints read validated JSON files from
 the analytics `ToolResult`: tool and schema versions, source references, warnings, and run ID.
 Comparisons reject snapshots produced by different tools or versions.
 
+Pipeline code creates snapshots with `snapshot_from_tool_result(...)`, or
+`snapshot_from_result(...)` for deterministic analyses such as the follow-on multiplier that do
+not return `ToolResult`, and persists them atomically with `write_snapshot(...)`. Those writer
+utilities normalize pandas/numpy values and retain explicit provenance. They are deliberately not
+exposed as HTTP endpoints; the API container mounts the snapshot directory read-only.
+
+`/health/live` reports process liveness. `/health/ready` checks Neo4j connectivity and snapshot-store
+access. Neo4j availability errors are returned as a sanitized `503`. API requests emit structured
+audit records with a correlation ID, route template, status, and duration; request headers,
+identifiers, and query strings are not logged.
+
 MCP should be implemented, if needed, as an adapter over these service methods. It must not gain
 raw graph access or pipeline controls that are absent from the HTTP API.

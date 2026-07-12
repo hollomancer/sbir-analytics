@@ -1,32 +1,40 @@
 """Curated, parameterized Neo4j reads used by every API transport."""
 
-from collections.abc import Mapping
-from typing import Any, Protocol
+from typing import Any
 
-from neo4j import Query
-
-
-class QuerySession(Protocol):
-    def run(self, query: Query | str, parameters: Mapping[str, Any] | None = None): ...
+from neo4j import Driver, Query
+from neo4j.exceptions import AuthError, ServiceUnavailable, SessionExpired, TransientError
 
 
-class SessionProvider(Protocol):
-    def session(self, **kwargs: Any): ...
+class AnalyticsBackendUnavailable(RuntimeError):
+    """The analytics data store cannot currently serve requests."""
 
 
 class AnalyticsRepository:
     """Read-only domain queries; callers cannot supply Cypher."""
 
-    def __init__(self, driver: SessionProvider, database: str = "neo4j", timeout: float = 10.0):
+    def __init__(self, driver: Driver, database: str = "neo4j", timeout: float = 10.0):
         self.driver = driver
         self.database = database
         self.timeout = timeout
 
     def _read(self, cypher: str, **parameters: Any) -> list[dict[str, Any]]:
         query = Query(cypher, timeout=self.timeout)
-        with self.driver.session(database=self.database, default_access_mode="READ") as session:
-            result = session.run(query, parameters)
-            return [dict(record["item"]) for record in result]
+        try:
+            with self.driver.session(database=self.database, default_access_mode="READ") as session:
+                result = session.run(query, parameters)
+                return [dict(record["item"]) for record in result]
+        except (AuthError, ServiceUnavailable, SessionExpired, TransientError) as exc:
+            raise AnalyticsBackendUnavailable("Analytics backend is unavailable") from exc
+
+    def verify_connectivity(self) -> None:
+        try:
+            self.driver.verify_connectivity()
+        except (AuthError, ServiceUnavailable, SessionExpired, TransientError) as exc:
+            raise AnalyticsBackendUnavailable("Analytics backend is unavailable") from exc
+
+    def close(self) -> None:
+        self.driver.close()
 
     def organization(self, identifier: str) -> list[dict[str, Any]]:
         return self._read(

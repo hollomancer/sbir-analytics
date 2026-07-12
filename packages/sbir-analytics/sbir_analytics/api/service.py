@@ -29,7 +29,9 @@ class AnalyticsService:
         )
 
     def organization(self, identifier: str) -> AnalyticsResponse:
-        return AnalyticsResponse(data=self.repository.organization(identifier), provenance=self._provenance())
+        return AnalyticsResponse(
+            data=self.repository.organization(identifier), provenance=self._provenance()
+        )
 
     def award_history(self, identifier: str, limit: int, offset: int) -> AnalyticsResponse:
         return self._page(self.repository.award_history, limit, offset, identifier=identifier)
@@ -62,3 +64,9 @@ class AnalyticsService:
 
     def freshness(self) -> AnalyticsResponse:
         return AnalyticsResponse(data=self.repository.freshness(), provenance=self._provenance())
+
+    def verify_connectivity(self) -> None:
+        self.repository.verify_connectivity()
+
+    def close(self) -> None:
+        self.repository.close()
