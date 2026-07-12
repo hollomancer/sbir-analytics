@@ -90,7 +90,10 @@ Method A remains **2,849** (exact vs PR #428). Soft-pattern machinery is unused 
 
 Cohort + triangulation + agency composition (no pathway rates — signal artifacts absent):
 
-- [`docs/quantum_information_science_sbir_transition_findings.md`](../../docs/quantum_information_science_sbir_transition_findings.md) — Method A **138**, 82 firms, ~$150M; DoD 59% / DOE 23%
-- [`docs/hypersonics_sbir_transition_findings.md`](../../docs/hypersonics_sbir_transition_findings.md) — Method A **813**, 355 firms, ~$968M; DoD 88% / NASA 11%
+- [`docs/nanotech_sbir_policy_brief.md`](../../docs/nanotech_sbir_policy_brief.md) — full channel headline table (nanotech)
+- [`docs/quantum_information_science_sbir_policy_brief.md`](../../docs/quantum_information_science_sbir_policy_brief.md) — Method A **138**, provisional cohort brief
+- [`docs/hypersonics_sbir_policy_brief.md`](../../docs/hypersonics_sbir_policy_brief.md) — Method A **813**, provisional cohort brief
+
+Technical appendices: `docs/*_sbir_transition_findings.md`. Format spec: `specs/tech-area-transition-report/publication-format.md`.
 
 Regenerate underlying CSVs with `build_tech_area_cohort.py --area <id>` (outputs under gitignored `data/reports/<id>/`).

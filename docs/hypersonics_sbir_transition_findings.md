@@ -1,26 +1,11 @@
-# Hypersonics SBIR/STTR Phase II: Cohort Definition and Measurement Limits
+# Hypersonics SBIR/STTR Phase II: Technical Findings (Provisional)
 
-**Prepared for:** DoD / NASA hypersonics S&T and SBIR program evaluation  
-**Status:** Provisional — **cohort and triangulation only**; transition-channel rates not yet computed  
-**Companion:** Nanotech full pathway report in `docs/nanotech_sbir_transition_findings.md`  
-**Data through:** FY2025 (SBIR.gov Phase II universe)  
+**Prepared for:** Analysts and reproducibility reviewers  
+**Policy brief:** [`hypersonics_sbir_policy_brief.md`](hypersonics_sbir_policy_brief.md)  
+**Status:** Provisional — cohort and triangulation only; channel rates not computed  
+**Data through:** FY2025 SBIR.gov Phase II universe  
 **CLI:** `python scripts/data/build_tech_area_cohort.py --area hypersonics`  
 **Config:** `config/transition_reports/hypersonics.yaml`
-
----
-
-## Summary
-
-Analysis of **813** hypersonics Phase II awards — **1.19%** of the 68,077-award Phase II universe — defines a high-precision cohort and triangulates it against the repository's CET taxonomy. This is the hypersonics counterpart to the nanotech findings report's *cohort* sections. Nanotech pathway rates (FPDS Phase III, Form D, M&A, dark-majority recovery) are **not repeated here**: the shared signal artifacts those numbers require are absent in this environment.
-
-- **Method A (keyword pack):** 813 awards, **355** unique firms, ~**$968M** in Phase II obligations.
-- **Method B (CET taxonomy):** 962 awards; **795** unique awards sit in both methods (Jaccard **0.815**; Method A⊆B **98.1%**).
-- **Agency structure:** DoD **87.7%**, NASA **10.7%**, DOE **1.5%**, NSF **0.1%** — a near-pure defense/aerospace procurement market.
-- **Recency:** **402** awards (49%) fall in the 2020s; **255** (31%) are from 2023 onward (right-censored for mature transition windows).
-- **Precision pass:** TPS and Mach 5–19 language are **soft** and require core co-occurrence (`hypersonic*` / `scramjet*` / `boost-glide`) — cutting a prior pack from 886 → 813. Bare `supersonic` is excluded from Method A.
-- **What this report does *not* claim:** FPDS Phase III %, Form D %, M&A %, dark-majority recovery, or a combined "observable commercialization" share.
-
-**How to read this alongside nanotech:** Hypersonics is ~¼ of nanotech's Phase II footprint and almost entirely DoD/NASA. The dual-pathway story that structured the nanotech report (procurement vs venture) is expected to collapse toward a single **procurement / prime-supply** pathway — but that hypothesis is compositional, not yet measured with transition signals.
 
 ---
 

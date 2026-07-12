@@ -1,26 +1,11 @@
-# Quantum Information Science SBIR/STTR Phase II: Cohort Definition and Measurement Limits
+# Quantum Information Science SBIR/STTR Phase II: Technical Findings (Provisional)
 
-**Prepared for:** Cross-agency CET / QIS program evaluation  
-**Status:** Provisional — **cohort and triangulation only**; transition-channel rates not yet computed  
-**Companion:** Nanotech full pathway report in `docs/nanotech_sbir_transition_findings.md`  
-**Data through:** FY2025 (SBIR.gov Phase II universe)  
+**Prepared for:** Analysts and reproducibility reviewers  
+**Policy brief:** [`quantum_information_science_sbir_policy_brief.md`](quantum_information_science_sbir_policy_brief.md)  
+**Status:** Provisional — cohort and triangulation only; channel rates not computed  
+**Data through:** FY2025 SBIR.gov Phase II universe  
 **CLI:** `python scripts/data/build_tech_area_cohort.py --area quantum_information_science`  
 **Config:** `config/transition_reports/quantum_information_science.yaml`
-
----
-
-## Summary
-
-Analysis of **138** quantum-information-science (QIS) Phase II awards — **0.20%** of the 68,077-award Phase II universe — defines a high-precision cohort and triangulates it against the repository's CET taxonomy. This is the quantum counterpart to the nanotech findings report's *cohort* sections. The nanotech report's pathway rates (FPDS Phase III, Form D, M&A, dark-majority recovery) are **not repeated here**: the shared signal artifacts those numbers require are absent in this environment.
-
-- **Method A (keyword pack):** 138 awards, **82** unique firms, ~**$150M** in Phase II obligations.
-- **Method B (CET taxonomy):** 158 awards; **118** unique awards sit in both methods (Jaccard **0.694**; Method A⊆B **87.4%**).
-- **Agency structure:** DoD **59%**, DOE **23%**, NASA **9%**, NSF **4%** — a dual DoD/DOE spine, unlike nanotech's broader five-agency mix.
-- **Recency:** **89** awards (64%) fall in the 2020s; **41** awards (30%) are from 2023 onward and are too recent for mature transition windows.
-- **Precision pass:** Soft patterns (`quantum comput*`, `quantum sens*`, post-quantum/PQC) admit only on title hit or ≥2 soft hits — cutting a prior pack from 203 → 138 and correctly excluding **185** quantum-dot/well-only awards.
-- **What this report does *not* claim:** FPDS Phase III %, Form D %, M&A %, dark-majority recovery, or a combined "observable commercialization" share. Those require the prospect digest, Form D JSONL, and M&A enrichment used in the nanotech report.
-
-**How to read this alongside nanotech:** Nanotech (~4.2% of Phase II) is a broad materials umbrella with enough volume for pathway splits. QIS (~0.20%) is a narrow instrument set; most Phase II text that says "quantum" is not QIS. Size differences are domain prevalence, not a broken filter (`specs/tech-area-transition-report/validation.md`).
 
 ---
 

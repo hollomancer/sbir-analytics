@@ -126,3 +126,15 @@ Full runbook: `specs/dark-majority-resolution/tasks.md` § Area parameterization
 
 No Dagster, no API refresh layer, no auto findings narrative, no required CPC or
 external reference table.
+
+## Publication format
+
+Policy-leader and technical layers are split per `publication-format.md`:
+
+| Layer | Nanotech | Quantum | Hypersonics |
+|-------|----------|---------|-------------|
+| Policy brief | `docs/nanotech_sbir_policy_brief.md` | `docs/quantum_information_science_sbir_policy_brief.md` | `docs/hypersonics_sbir_policy_brief.md` |
+| Technical findings | `docs/nanotech_sbir_transition_findings.md` | `docs/quantum_information_science_sbir_transition_findings.md` | `docs/hypersonics_sbir_transition_findings.md` |
+
+Provisional area briefs use the same headline-table + language-guardrails structure but
+omit channel rows until digest / Form D / M&A artifacts exist.
