@@ -76,6 +76,25 @@ Sequencing rationale in `requirements.md`. Effort tags: S (<half day), M (1–2 
   enriched_sbir_ma_events.jsonl, and the Finding 2 prime registry — invisible to all
   three). Six conclusions total (was five).
 
+- [x] **T21 (S, addendum, 2026-07-12, branch claude/nanotech-maintenance-fee-lapses):**
+  Patent maintenance-fee lapse check — the first weak-negative instrument in the plan
+  (every prior WS3/5/6 channel is a positive detector that can only raise the floor).
+  → `scripts/data/nano_dark_firm_maintenance_lapses.py`, USPTO PTMNFEE2 (single latest
+  cumulative snapshot, 27M event records streamed, fixed-width format verified byte-exact
+  against a live sample before parsing). Scoped to the 582 dark firms already matched to
+  patents at high confidence. Result is genuinely humbling, reported as such: 89 firms
+  show ≥80% of their fee-eligible patents lapsed, but 81% of those (72) are contradicted
+  by evidence elsewhere — letting old patents lapse is routine for otherwise-active firms,
+  not a dormancy signal by itself. Threshold checked at 90%/100%, doesn't materially
+  change the contradiction rate. The residue — 17 firms (19%) with a fully-lapsed
+  portfolio AND no other signal anywhere — is real but modest corroboration, explicitly
+  NOT counted toward the illuminated/dark tally (it supplies no positive evidence); its
+  use is ranking the T11 survey's priority stratum, not moving the headline percentages.
+  Report: new Finding 3 paragraph, methodological note, and a sentence in the "measurement
+  lesson" closing paragraph. Opened as an isolated branch/PR per user request, based on
+  the tip of claude/nanotech-sbir-analysis (PR #428) so the shared liveness/alias
+  infrastructure is available without re-deriving it.
+
 - [ ] **T7 (M, WS3.3) — DEFERRED (2026-07-12):** State corporate registry status for dark
   firms, top ~5 states by cohort count (reuse UCC1 CA approach). Deferred pending a
   sourcing decision (official state APIs vs aggregator vs manual pulls); note T10 showed
