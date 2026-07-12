@@ -118,9 +118,14 @@ Sequencing rationale in `requirements.md`. Effort tags: S (<half day), M (1–2 
   pair — deferred. Core logic is in `sbir_etl/utils/firm_aliases.py` (pure, 22 unit tests
   in `tests/unit/utils/test_firm_aliases.py`); driver `scripts/data/build_firm_alias_graph.py`.
   Self-edge filter drops 219 suffix-only false edges (ACME→ACME CORP).
-- [ ] **T16 (S–M, WS6b):** Alias-expanded re-runs of patent/trademark/USAspending
+- [x] **T16 (S–M, WS6b):** Alias-expanded re-runs of patent/trademark/USAspending
   matchers; alias matches require corroboration and carry alias_source provenance;
   report per-instrument recall delta.
+  → `scripts/data/nano_alias_expanded_evidence.py`. 103 dark firms have ≥1 alias; recall
+  delta = 11 firms negative under own name but active under a successor (WaveBand→Sierra
+  Nevada, Boulder Ionics→CoorsTek, Microchip Biotechnologies→IntegenX, …), 3 with federal
+  evidence under the new identity. Patent-assignment aliases are documentary (trusted);
+  shared-UEI aliases only counted with independent evidence. Finding 3 + Policy #6 updated.
 - [ ] **T17 (M, WS5c):** ClinicalTrials.gov + openFDA go-to-market check for the biomed
   slice (alias-expanded), name+state confidence tiers; report alongside trademarks.
 - [ ] **T18 (S):** Integrate Phase 6 outcomes into the findings report and refresh the
