@@ -60,6 +60,22 @@ Sequencing rationale in `requirements.md`. Effort tags: S (<half day), M (1–2 
 
 ## Phase 4 — external instruments
 
+- [x] **T20 (S, addendum, 2026-07-12):** Subaward leverage analysis — post-award
+  subcontract dollar volume against cumulative SBIR investment for the 103 strong-tier
+  WS5a firms, same framing as Finding 2's acquisition-leverage table (methodology
+  matched exactly: cumulative SBIR $ = all-phases-all-years Award Amount sum).
+  → `scripts/data/nano_subaward_leverage.py`. $3.2B aggregate volume (dominated by two
+  large active engineering firms, Foster-Miller and Technology Service Corp — median
+  firm is $1.4M, the representative figure). Median leverage 0.18x; 19/103 (18%) firms
+  show subaward $ exceeding cumulative SBIR investment. 4 firms already known from
+  Finding 2's confirmed acquisitions (incl. Physical Optics) flagged and excluded from
+  "newly characterized" framing. Report gets a new What-This-Says conclusion (#6, third
+  commercialization track: prime-supplier absorption); conclusion #2 rewritten around
+  the tiered disappearance reframe; conclusion #3 extended with the WaveBand/Sierra
+  Nevada private-acquirer blind-spot confirmation (verified against sec_edgar_scan.jsonl,
+  enriched_sbir_ma_events.jsonl, and the Finding 2 prime registry — invisible to all
+  three). Six conclusions total (was five).
+
 - [ ] **T7 (M, WS3.3) — DEFERRED (2026-07-12):** State corporate registry status for dark
   firms, top ~5 states by cohort count (reuse UCC1 CA approach). Deferred pending a
   sourcing decision (official state APIs vs aggregator vs manual pulls); note T10 showed
