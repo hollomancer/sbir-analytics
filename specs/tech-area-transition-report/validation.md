@@ -85,3 +85,12 @@ Method A remains **2,849** (exact vs PR #428). Soft-pattern machinery is unused 
 1. Re-run with prospect digest / Form D / M&A for channel enrichment.
 2. Optional: demote soft title-only quantum admits that are clearly tool/supply-chain (CFD, inventory) via a denylist on title patterns.
 3. Optional Method C for quantum (`G06N10`) once CPC extract is generalized (T8).
+
+## Provisional findings reports (2026-07-12)
+
+Cohort + triangulation + agency composition (no pathway rates — signal artifacts absent):
+
+- [`docs/quantum_information_science_sbir_transition_findings.md`](../../docs/quantum_information_science_sbir_transition_findings.md) — Method A **138**, 82 firms, ~$150M; DoD 59% / DOE 23%
+- [`docs/hypersonics_sbir_transition_findings.md`](../../docs/hypersonics_sbir_transition_findings.md) — Method A **813**, 355 firms, ~$968M; DoD 88% / NASA 11%
+
+Regenerate underlying CSVs with `build_tech_area_cohort.py --area <id>` (outputs under gitignored `data/reports/<id>/`).

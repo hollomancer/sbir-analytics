@@ -10,6 +10,10 @@
 - [x] T5 Nanotech smoke: Method A size exact match to 2,849 with ported keyword pack
 - [x] T10 Quantum pack precision pass (`soft_patterns` + `title_or_multi`); hypersonics
       TPS/Mach `core_cooccur` rule — see `validation.md`
+- [x] T17 Provisional findings reports for quantum + hypersonics (cohort / triangulation /
+      agency composition; pathway rates deferred until signal artifacts exist)
+      — `docs/quantum_information_science_sbir_transition_findings.md`,
+        `docs/hypersonics_sbir_transition_findings.md`
 
 ## Phase 1b — Dark-majority area-awareness foundation
 
