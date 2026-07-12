@@ -4,13 +4,27 @@ Sequencing rationale in `requirements.md`. Effort tags: S (<half day), M (1–2 
 
 ## Phase 1 — data on disk
 
-- [ ] **T1 (S, WS3.2):** Add confidence scoring to any-class patent matches in
+- [x] **T1 (S, WS3.2):** Add confidence scoring to any-class patent matches in
   `nano_dark_firm_liveness.py`: assignee-location state vs firm state, inventor names vs
   award PI names, name-token rarity. Output tier column; report high-confidence liveness
   rate as the new floor.
-- [ ] **T2 (S, WS4):** Exclude `INSUFFICIENT_TIME` awards from indeterminate percentages;
+  → Bracket collapsed: FIRM_ACTIVITY_ABSENT post-award liveness 317/651 (49%) at high
+  confidence — 100% of high-tier matches are inventor↔PI corroborated; no-UEI bucket
+  126/368 (34%). Report Finding 3 updated to the single defensible number.
+- [x] **T2 (S, WS4):** Exclude `INSUFFICIENT_TIME` awards from indeterminate percentages;
   add Kaplan–Meier time-to-first-signal figure to the methodology doc; define annual
   re-observation job.
+  → `scripts/data/nano_survival_analysis.py` → `data/analysis/nano_time_to_signal_km.png`
+  (dateable channels; 71% of first signals within 2y of Phase II end; ~30% after year 2).
+  Matured-basis indeterminate (71.2%) added to report Summary; INSUFFICIENT_TIME threshold
+  in `build_nano_cohort.py` is now dynamic (`date.today().year - 3`).
+  **Re-observation runbook (annual):**
+  1. `python scripts/data/build_nano_cohort.py` (threshold advances automatically)
+  2. `python scripts/data/nano_form_d_temporal.py`
+  3. `python scripts/data/nano_ws1_contract_evidence.py --refresh`
+  4. `python scripts/data/nano_dark_firm_liveness.py` (after refreshing PatentsView tables
+     via `download_uspto.py --local`)
+  5. `python scripts/data/nano_survival_analysis.py` (bump CUTOFF)
 
 ## Phase 2 — contract-level recovery
 

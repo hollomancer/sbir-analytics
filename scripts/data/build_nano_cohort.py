@@ -432,6 +432,11 @@ def load_form_d_signals(jsonl_path: Path) -> dict[str, dict]:
     return by_name
 
 
+# Awards younger than this are censored observations, not transition failures.
+# Dynamic so annual re-observation (dark-majority spec WS4) advances the window.
+INSUFFICIENT_TIME_YEAR = date.today().year - 3
+
+
 def classify_deficiency(row: dict) -> str:
     """
     Classify why Phase III transition status is indeterminate.
@@ -441,12 +446,12 @@ def classify_deficiency(row: dict) -> str:
       DATA_GAP_FPDS_NONDOD        non-DoD agency where FPDS P3 coding is sparse (GAO-24-106398)
       ENTITY_RESOLUTION_FAILURE   UEI absent from SBIR.gov record; cannot link to federal systems
       FIRM_ACTIVITY_ABSENT        firm not found in prospect digest; no recent federal activity
-      INSUFFICIENT_TIME           Phase II award year ≥ 2023 (< 3yr maturation window)
+      INSUFFICIENT_TIME           award year within the last 3 years (< maturation window)
       INDETERMINATE               none of the above; cause not derivable from available data
     """
     if not row.get("uei"):
         return "ENTITY_RESOLUTION_FAILURE"
-    if row.get("award_year", 0) >= 2023:
+    if row.get("award_year", 0) >= INSUFFICIENT_TIME_YEAR:
         return "INSUFFICIENT_TIME"
     if not row.get("digest_found"):
         return "FIRM_ACTIVITY_ABSENT"
@@ -1161,7 +1166,7 @@ the following taxonomy classifies why transition status is indeterminate.
 | Class | Definition |
 |---|---|
 | `ENTITY_RESOLUTION_FAILURE` | UEI absent from SBIR.gov record; cannot link award to federal procurement systems |
-| `INSUFFICIENT_TIME` | Award year ≥ 2023; typical Phase III maturation requires 3–7 years; censored observation, not negative signal |
+| `INSUFFICIENT_TIME` | Award year ≥ {INSUFFICIENT_TIME_YEAR}; typical Phase III maturation requires 3–7 years; censored observation, not negative signal |
 | `FIRM_ACTIVITY_ABSENT` | Firm not found in USAspending prospect digest; no contracts or grants found under this UEI |
 | `DATA_GAP_FPDS_NONDOD` | Non-DoD agency where FPDS Phase III column coding is sparse (GAO-24-106398, pp. 26-29); absence is system gap, not transition failure |
 | `NO_FPDS_CODING` | Firm has FPDS activity but no contract carries Phase III coding; may be uncoded transition (common) |

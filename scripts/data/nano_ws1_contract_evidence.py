@@ -249,6 +249,9 @@ def main() -> int:
         evidence.sort(key=lambda e: (strength_order[e[0]], e[1]))
         top = " || ".join(f"[{k}] {d} {aid} {ag} ${amt:,.0f} :: {desc}"
                           for k, d, aid, ag, amt, desc in evidence[:3])
+        # Earliest non-SBIR evidence date (for time-to-signal survival analysis)
+        non_sbir_dates = [e[1] for e in evidence if e[0] != "sbir_p12"]
+        first_evidence_date = min(non_sbir_dates) if non_sbir_dates else ""
 
         out_rows.append({
             "award_id": aw["award_id"],
@@ -261,10 +264,12 @@ def main() -> int:
             "evidence_tier": tier,
             "n_phase3_marker": counts["phase3"],
             "n_same_agency_contracts": counts["same_agency"],
+            "n_same_agency_small": counts["same_agency_small"],
             "n_other_agency_contracts": counts["other_agency"],
             "n_post_grants": counts["same_agency_grant"] + counts["other_agency_grant"],
             "n_sbir_p12": counts["sbir_p12"],
             "total_post_award_usd": round(total_post_usd, 2),
+            "first_evidence_date": first_evidence_date,
             "top_evidence": top,
         })
 
