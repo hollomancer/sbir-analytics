@@ -208,7 +208,7 @@ lint: ## Run linting and type checking
 .PHONY: format
 format: ## Format code
 	@$(call info,Formatting code)
-	$(call run,uv run black .)
+	$(call run,uv run ruff format .)
 	$(call run,uv run ruff check --fix .)
 
 .PHONY: dev
@@ -217,9 +217,9 @@ dev: ## Run Dagster dev server locally
 	$(call run,uv run dagster dev -m sbir_analytics.definitions)
 
 .PHONY: install-ml
-install-ml: ## Install ML dependencies (jupyter, modernbert)
+install-ml: ## Install ML/notebook dependencies (jupyter + first-party packages)
 	@$(call info,Installing ML dependencies)
-	$(call run,uv sync --extra ml --extra modernbert-local)
+	$(call run,uv sync --extra stack-dev --group notebooks)
 
 .PHONY: install-fiscal
 install-fiscal: ## Verify BEA API key is set for fiscal analysis
@@ -234,7 +234,7 @@ install-fiscal: ## Verify BEA API key is set for fiscal analysis
 notebook: install-ml ## Start Jupyter Lab for ML analysis (Cloud-Native)
 	@$(call info,Starting Jupyter Lab)
 	@mkdir -p notebooks
-	$(call run,uv run --extra ml --extra modernbert-local jupyter lab --notebook-dir=notebooks)
+	$(call run,uv run --group notebooks jupyter lab --notebook-dir=notebooks)
 
 .PHONY: setup-ml
 setup-ml: env-check ## Configure environment for ML (Cloud + HF)
@@ -245,8 +245,9 @@ setup-ml: env-check ## Configure environment for ML (Cloud + HF)
 		echo "SBIR_ETL__EXTRACTION__SAM_GOV__USE_S3_FIRST=true" >> .env; \
 		$(call success,Added cloud configuration to .env); \
 	else \
-		sed -i '' 's/SBIR_ETL__EXTRACTION__SBIR__USE_S3_FIRST=false/SBIR_ETL__EXTRACTION__SBIR__USE_S3_FIRST=true/g' .env; \
-		sed -i '' 's/SBIR_ETL__EXTRACTION__SAM_GOV__USE_S3_FIRST=false/SBIR_ETL__EXTRACTION__SAM_GOV__USE_S3_FIRST=true/g' .env; \
+		sed -e 's/SBIR_ETL__EXTRACTION__SBIR__USE_S3_FIRST=false/SBIR_ETL__EXTRACTION__SBIR__USE_S3_FIRST=true/' \
+			-e 's/SBIR_ETL__EXTRACTION__SAM_GOV__USE_S3_FIRST=false/SBIR_ETL__EXTRACTION__SAM_GOV__USE_S3_FIRST=true/' \
+			.env > .env.tmp && mv .env.tmp .env; \
 		$(call success,Updated .env to use S3); \
 	fi
 	@if ! grep -q "HF_TOKEN" .env; then \
@@ -282,8 +283,9 @@ setup-cloud: env-check ## Configure environment for cloud development
 		echo "SBIR_ETL__EXTRACTION__SAM_GOV__USE_S3_FIRST=true" >> .env; \
 		$(call success,Added cloud configuration to .env); \
 	else \
-		sed -i '' 's/SBIR_ETL__EXTRACTION__SBIR__USE_S3_FIRST=false/SBIR_ETL__EXTRACTION__SBIR__USE_S3_FIRST=true/g' .env; \
-		sed -i '' 's/SBIR_ETL__EXTRACTION__SAM_GOV__USE_S3_FIRST=false/SBIR_ETL__EXTRACTION__SAM_GOV__USE_S3_FIRST=true/g' .env; \
+		sed -e 's/SBIR_ETL__EXTRACTION__SBIR__USE_S3_FIRST=false/SBIR_ETL__EXTRACTION__SBIR__USE_S3_FIRST=true/' \
+			-e 's/SBIR_ETL__EXTRACTION__SAM_GOV__USE_S3_FIRST=false/SBIR_ETL__EXTRACTION__SAM_GOV__USE_S3_FIRST=true/' \
+			.env > .env.tmp && mv .env.tmp .env; \
 		$(call success,Updated .env to use S3); \
 	fi
 

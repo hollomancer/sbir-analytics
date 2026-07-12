@@ -12,7 +12,13 @@ This directory contains Jupyter notebooks for interactive analysis of SBIR data,
     make install-ml
     ```
 
-    This installs `ml`, `modernbert-local`, and `r` dependency groups.
+    This installs the `stack-dev` extra (first-party packages) and the
+    `notebooks` dependency group (jupyter, matplotlib, seaborn). For local
+    ModernBERT/GPU inference, additionally run:
+
+    ```bash
+    uv pip install -e "packages/sbir-ml[modernbert-local]"
+    ```
 
 2. **Configure Environment:**
 

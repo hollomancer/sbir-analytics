@@ -57,8 +57,9 @@ repos:
 # Configuration notes for maintainers:
 #
 # SCOPE ALIGNMENT WITH CI:
-#   This pre-commit configuration is designed to match the CI workflow
-#   defined in .github/workflows/static-analysis.yml. All tools run on
+#   This pre-commit configuration is designed to match the CI checks in
+#   .github/workflows/ci.yml (code-quality, package-type-checks jobs) and
+#   .github/workflows/weekly.yml (security-scan job). All tools run on
 #   the same paths to ensure consistency between local and CI environments.
 #
 #   Tool Scope Mapping:
@@ -82,4 +83,4 @@ repos:
 #
 # CI ENFORCEMENT:
 #   For additional CI enforcement, run pre-commit via GitHub Actions.
-#   See .github/workflows/static-analysis.yml for the complete set of checks.
+#   See .github/workflows/ci.yml for the complete set of checks.
