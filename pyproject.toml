@@ -7,9 +7,6 @@ readme = "README.md"
 license = {text = "MIT"}
 requires-python = ">=3.11,<3.13"
 
-[project.scripts]
-refresh-state-rates = "sbir_etl.transformers.fiscal.refresh_state_rates:main"
-
 # Core dependencies: sufficient for ETL library use (extractors, enrichers, transformers).
 # Consumer apps can import sbir_etl.extractors/enrichers/transformers with just these.
 # For orchestration, CLI, ML, or specific storage backends, install extras below.
@@ -28,6 +25,9 @@ dependencies = [
     # Fuzzy matching (enrichers)
     "rapidfuzz>=3.0.0,<4.0.0",
 ]
+
+[project.scripts]
+refresh-state-rates = "sbir_etl.transformers.fiscal.refresh_state_rates:main"
 
 [project.optional-dependencies]
 # UCC1 pilot — TLS-impersonating HTTP client for bizfileOnline (Imperva-fronted)

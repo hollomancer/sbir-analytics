@@ -308,7 +308,7 @@ def merge_fiscal_year(
                 "property_rate": prior["property_rate"],
                 "has_income_tax": "True" if income_rate > 0 else "False",
                 "has_sales_tax": "True" if sales_rate > 0 else "False",
-                "income_source": _income_source_note(abbr, income_rate, fiscal_year, edition),
+                "income_source": _income_source_note(abbr, income_rate, fiscal_year),
                 "sales_source": _sales_source_note(abbr, sales_rate, fiscal_year),
                 "property_source": prior["property_source"],
             }
