@@ -58,17 +58,31 @@ Sequencing rationale in `requirements.md`. Effort tags: S (<half day), M (1–2 
 
 ## Phase 4 — external instruments
 
-- [ ] **T7 (M, WS3.3):** State corporate registry status for dark firms, top ~5 states by
-  cohort count (reuse UCC1 CA approach).
+- [ ] **T7 (M, WS3.3) — DEFERRED (2026-07-12):** State corporate registry status for dark
+  firms, top ~5 states by cohort count (reuse UCC1 CA approach). Deferred pending a
+  sourcing decision (official state APIs vs aggregator vs manual pulls); note T10 showed
+  this is the highest-value remaining instrument, since dissolution records are negative
+  evidence and nothing else bounds the true rate from above.
 - [ ] **T8 (M, WS3.4):** Trademark-filing check for dark firms (normalized-name match +
   confidence, filing dates).
 - [ ] **T9 (S, WS3.5):** Web/domain liveness sweep (tie-breaker signal only).
 
 ## Phase 5 — synthesis
 
-- [ ] **T10 (M, cross-cutting):** Stratified capture-recapture bound on the true transition
+- [x] **T10 (M, cross-cutting):** Stratified capture-recapture bound on the true transition
   rate; document independence assumptions; replace "82.6% unknown" with the bounded interval.
-- [ ] **T11 (S, WS3.6):** Stratified survey design + sample frame (50–100 firms) for the
+  → `scripts/data/nano_capture_recapture.py`. Result deviates from the acceptance criterion,
+  with cause documented: capture histories are singleton-dominated (287/31/6/1 firms by
+  1/2/3/4 channels), WS-recovery channels target the complement of existing detection
+  (structural zero overlap), and the Chao bound exceeds the cohort size — the multi-list
+  model rejects the common-population premise. Reportable: floor 24.3% of firms / 28.1% of
+  awards; NO defensible data-driven ceiling exists without negative evidence (T7/T11).
+  Report updated (Policy #5, synthesis, methodological notes).
+- [x] **T11 (S, WS3.6):** Stratified survey design + sample frame (50–100 firms) for the
   no-evidence residual. Design only; fielding is out of scope.
+  → `survey-design.md` + `scripts/data/nano_survey_frame.py` (seed 20260712): 75 primaries
+  across S1 active-evidence (20/317), S2 holder-only (20/111), S3 dark-core (35/223,
+  oversampled) with 2× ranked backups. S1 doubles as validation of the patent-liveness
+  instrument; confirmed dissolutions supply the first negative-evidence mass for T10.
 - [ ] **T12 (S):** Final findings-report pass reconciling all recovered populations;
   regenerate methodology doc.
