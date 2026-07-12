@@ -25,8 +25,21 @@ ASSUMPTIONS — read before citing any number:
   data-driven upper bound tighter than LP exists yet — that is what state
   registries / the survey (T7/T11) would add.
 
+A second, SEPARATE analysis (run_dark_population_analysis) repeats this exercise
+within the 1,019-firm dark population (FIRM_ACTIVITY_ABSENT + ENTITY_RESOLUTION_
+FAILURE) using the WS5/WS6 "life evidence" channels: patent, trademark, alias,
+subaward. This is NOT comparable to the cohort-wide numbers from main() above
+and must not be merged with them — the dark population is, by construction, already negative
+on every cohort-wide channel (fpds/formd/strong/ma), so within-population capture
+counts measure something narrower: given a firm shows none of the primary
+transition signals, how disjoint are the SECONDARY "is it alive" signals from
+each other? Sector-registry evidence (WS5c) is excluded from this second pass
+because it was only searched for 206 of the 1,019 firms (HHS-funded slice) —
+including it would confound "no evidence" with "never searched."
+
 Outputs:
-  stdout summary + data/nano_capture_recapture.csv (per-firm channel matrix)
+  stdout summary + data/nano_capture_recapture.csv (per-firm channel matrix,
+  cohort-wide) + data/nano_capture_recapture_darkfirms.csv (dark-population pass)
 
 Usage:
   python scripts/data/nano_capture_recapture.py
@@ -151,5 +164,84 @@ def main() -> int:
     return 0
 
 
+DARK_CHANNELS = ("patent", "trademark", "alias", "subaward")
+
+
+def run_dark_population_analysis() -> int:
+    """Second, separate capture-recapture pass within the dark-firm population.
+
+    See module docstring for why this is not comparable to run_cohort_analysis().
+    """
+    liveness_csv = DATA / "nano_dark_firm_liveness.csv"
+    tm_csv = DATA / "nano_dark_firm_trademarks.csv"
+    alias_csv = DATA / "nano_alias_expanded_evidence.csv"
+    sub_csv = DATA / "nano_ws5a_subawards.csv"
+    for p in (liveness_csv, tm_csv, alias_csv, sub_csv):
+        if not p.exists():
+            print(f"SKIP dark-population pass: {p.name} not found", file=sys.stderr)
+            return 1
+
+    liv = list(csv.DictReader(open(liveness_csv, newline="", encoding="utf-8")))
+    firms = {r["normalized_name"] for r in liv}
+    detect: dict[str, set[str]] = {c: set() for c in DARK_CHANNELS}
+
+    for r in liv:
+        if r.get("match_confidence") == "high" and r.get("any_filed_post_award") == "True":
+            detect["patent"].add(r["normalized_name"])
+    for r in csv.DictReader(open(tm_csv, newline="", encoding="utf-8")):
+        if r.get("tm_filed_post_award") == "True":
+            detect["trademark"].add(r["normalized_name"])
+    for r in csv.DictReader(open(alias_csv, newline="", encoding="utf-8")):
+        if r.get("negative_under_own_name") == "True":
+            detect["alias"].add(r["firm_normalized"])
+    for r in csv.DictReader(open(sub_csv, newline="", encoding="utf-8")):
+        if r.get("subaward_tier") in ("strong", "moderate"):
+            detect["subaward"].add(r["firm_normalized"])
+
+    histories = {f: tuple(f in detect[c] for c in DARK_CHANNELS) for f in firms}
+    n_firms = len(firms)
+    observed = {f for f, h in histories.items() if any(h)}
+    s_obs = len(observed)
+    capture_counts = Counter(sum(h) for h in histories.values() if any(h))
+    f1, f2 = capture_counts.get(1, 0), capture_counts.get(2, 0)
+    chao = s_obs + (f1 * f1) / (2 * f2) if f2 else float("inf")
+
+    out_csv = DATA / "nano_capture_recapture_darkfirms.csv"
+    with open(out_csv, "w", newline="", encoding="utf-8") as f:
+        w = csv.writer(f)
+        w.writerow(["firm_normalized", *DARK_CHANNELS, "n_channels"])
+        for fm in sorted(firms):
+            h = histories[fm]
+            w.writerow([fm, *(int(x) for x in h), sum(h)])
+    print(f"Written: {out_csv} ({n_firms:,} firms)")
+
+    print()
+    print("=" * 70)
+    print("CAPTURE-RECAPTURE — WITHIN DARK-FIRM POPULATION (separate from cohort-wide)")
+    print("=" * 70)
+    print(f"Dark firms: {n_firms:,}   detected by ≥1 of {len(DARK_CHANNELS)} secondary channels: "
+          f"{s_obs:,} ({100*s_obs/n_firms:.1f}%)")
+    for c in DARK_CHANNELS:
+        print(f"  {c:<10} {len(detect[c] & firms):>4}")
+    print(f"Capture-count distribution: {dict(sorted(capture_counts.items()))}")
+    if f2:
+        print(f"\nChao lower bound: N ≥ {s_obs} + {f1}²/(2×{f2}) = {chao:.0f} "
+              f"→ ≥ {100*chao/n_firms:.1f}% of dark firms")
+    else:
+        print("\nChao bound undefined (f2=0) — cannot estimate from doubletons alone.")
+
+    print("\nPairwise overlaps (independence not assumed; informational only):")
+    for a, b in combinations(DARK_CHANNELS, 2):
+        na, nb = len(detect[a] & firms), len(detect[b] & firms)
+        m = len(detect[a] & detect[b] & firms)
+        note = ""
+        if "alias" in (a, b) and {a, b} & {"patent", "trademark"}:
+            note = "overlap ~0 BY CONSTRUCTION — alias recovery requires patent+trademark negativity"
+        print(f"  {a}×{b:<10} {na:>4} {nb:>4}   overlap {m:>4}   {note}")
+    return 0
+
+
 if __name__ == "__main__":
-    sys.exit(main())
+    rc1 = main()
+    rc2 = run_dark_population_analysis()
+    sys.exit(rc1 or rc2)

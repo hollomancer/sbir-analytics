@@ -85,13 +85,26 @@ Sequencing rationale in `requirements.md`. Effort tags: S (<half day), M (1–2 
   (structural zero overlap), and the Chao bound exceeds the cohort size — the multi-list
   model rejects the common-population premise. Reportable: floor 24.3% of firms / 28.1% of
   awards; NO defensible data-driven ceiling exists without negative evidence (T7/T11).
-  Report updated (Policy #5, synthesis, methodological notes).
+  Report updated (Policy #6 [renumbered from #5 in the 2026-07-12 policy-point insertion], synthesis, methodological notes).
 - [x] **T11 (S, WS3.6):** Stratified survey design + sample frame (50–100 firms) for the
   no-evidence residual. Design only; fielding is out of scope.
   → `survey-design.md` + `scripts/data/nano_survey_frame.py` (seed 20260712): 75 primaries
   across S1 active-evidence (20/317), S2 holder-only (20/111), S3 dark-core (35/223,
   oversampled) with 2× ranked backups. S1 doubles as validation of the patent-liveness
   instrument; confirmed dissolutions supply the first negative-evidence mass for T10.
+- [x] **T19 (S, addendum, 2026-07-12):** Re-run T10's capture-recapture within the
+  1,019-firm dark population using the WS5/WS6 secondary channels (patent, trademark,
+  alias, subaward; sector excluded — 206-firm subset only), separately from the
+  cohort-wide five-channel pass. Result: well-behaved (Chao ≈ 81% vs 59% observed),
+  contrasting with the cohort-wide self-rejection — real co-occurrence (38% of detected
+  firms hit by ≥2 channels) among the secondary instruments, evidence of a genuine
+  still-active subpopulation distinct from the residual no instrument here reaches.
+  Also added: Summary disambiguation note (the 71.9%/28.1% award-level metric and the
+  66% firm-level "any evidence" metric answer different questions and are not merged —
+  sized the gap at ~38 points to make the distinction concrete); new Policy point on
+  subcontract-based transitions being structurally invisible by design (renumbered
+  policy list 1-7 → 1-8); Policy #3 cross-referenced with the alias/rename finding.
+
 - [x] **T12 (S):** Final findings-report pass reconciling all recovered populations;
   regenerate methodology doc.
   → Stale-number sweep clean (82.6% appears only as the flags-alone baseline, 27.5% only
@@ -134,7 +147,7 @@ Sequencing rationale in `requirements.md`. Effort tags: S (<half day), M (1–2 
   delta = 11 firms negative under own name but active under a successor (WaveBand→Sierra
   Nevada, Boulder Ionics→CoorsTek, Microchip Biotechnologies→IntegenX, …), 3 with federal
   evidence under the new identity. Patent-assignment aliases are documentary (trusted);
-  shared-UEI aliases only counted with independent evidence. Finding 3 + Policy #6 updated.
+  shared-UEI aliases only counted with independent evidence. Finding 3 + Policy #7 [renumbered from #6] updated.
 - [x] **T17 (M, WS5c):** ClinicalTrials.gov + openFDA go-to-market check for the biomed
   slice (alias-expanded), name+state confidence tiers; report alongside trademarks.
   → `scripts/data/nano_ws5c_sector_registries.py`, keyless APIs. 33/206 HHS-funded dark
@@ -143,7 +156,7 @@ Sequencing rationale in `requirements.md`. Effort tags: S (<half day), M (1–2 
 - [x] **T18 (S):** Integrate Phase 6 outcomes into the findings report and refresh the
   headline observable/indeterminate shares.
   → Finding 3 gains WS5a/WS5c paragraphs and a combined-instrument tally; Summary,
-  synthesis conclusion 2, and Policy #5 updated to the stacked result: **427/651 (66%)**
+  synthesis conclusion 2, and Policy #6 [renumbered from #5] updated to the stacked result: **427/651 (66%)**
   of "disappeared" firms now show post-award activity evidence across patents,
   trademarks, subawards, aliases, and sector registries (up from 50% patent-only);
   no-UEI bucket 183/368 (50%). Methodological notes extended with all four new
