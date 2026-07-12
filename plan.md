@@ -156,3 +156,15 @@ sampling frame only after** the pull + per-agency ratio + the audit before/after
 ## Coverage gaps (all bias the undercount DOWN)
 DoD-scope excludes civilian contract-based Phase III (small — NASA ~6k SR3 could be added as a v1.1
 extension); 210 name-only recipient firms (3%); unresolved successors; FPDS-only.
+
+## M0a spike — FY2022 validation (done)
+Ran `scripts/phase3_benchmark/m0a_spike_fy2022.py` (one FY shard) to de-risk before the full pull:
+- **Coded pull:** FY2022 DoD SR3+ST3 = **3,144 records in 316 requests** (~2.7 min) → **~3,160
+  requests** projected for all 10 FYs (matches the estimate).
+- **Award-grain dedup confirmed essential:** 3,144 records → **1,389 distinct compound keys** (~55%
+  are mod/transaction dups). The `award_key_series` collapse is load-bearing, not cosmetic.
+- **USAspending join validated:** 24/25 sampled coded records found in USAspending on
+  `order_piid == "Award ID"`. Set-difference for uncoded flags is feasible.
+- **Refinement for the full run:** join on the FULL compound key (order PIID + parent PIID + agency),
+  not order-PIID alone — a loose join biases toward false uncoded flags. The ~1/25 miss is a lower
+  bound from the spike's per-UEI presence check, not the production compound join.
