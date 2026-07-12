@@ -18,18 +18,22 @@ follow-on evidence per award:
   none      no post-Phase-II federal actions returned
 
 Temporal filter: action Start Date > the award's phase_ii_end_date
-(anchors from nano_form_d_post_phase2.csv).
+(anchors from form_d_post_phase2.csv).
+
+Path convention (same as nano_form_d_temporal.py):
+  --area <id>   → data/reports/<id>/ws1_contract_evidence.csv
+  (no flag)     → data/nano_ws1_contract_evidence.csv  (legacy PR #428)
 
 Inputs:
-  data/nano_cohort_keyword.csv          — awards + deficiency classes
-  data/nano_form_d_post_phase2.csv      — phase_ii_end_date anchors
+  cohort_keyword.csv / nano_cohort_keyword.csv
+  form_d_post_phase2.csv / nano_form_d_post_phase2.csv
   USAspending API (cached: data/api_cache/usaspending_ws1/)
 
 Outputs:
-  data/nano_ws1_contract_evidence.csv   — per-award tier + provenance
+  ws1_contract_evidence.csv — per-award tier + provenance
 
 Usage:
-  python scripts/data/nano_ws1_contract_evidence.py [--refresh]
+  python scripts/data/nano_ws1_contract_evidence.py [--area AREA] [--legacy] [--refresh]
 """
 
 import argparse
@@ -44,8 +48,34 @@ from pathlib import Path
 import requests
 
 REPO = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(REPO))
+from sbir_etl.utils.transition_report_paths import (  # noqa: E402
+    add_area_args,
+    resolve_area_paths,
+)
+
 DATA = REPO / "data"
 CACHE = DATA / "api_cache/usaspending_ws1"
+
+WS1_OUT_FIELDS = [
+    "award_id",
+    "company",
+    "uei",
+    "agency",
+    "award_year",
+    "phase_ii_end_date",
+    "deficiency_class",
+    "evidence_tier",
+    "n_phase3_marker",
+    "n_same_agency_contracts",
+    "n_same_agency_small",
+    "n_other_agency_contracts",
+    "n_post_grants",
+    "n_sbir_p12",
+    "total_post_award_usd",
+    "first_evidence_date",
+    "top_evidence",
+]
 
 API = "https://api.usaspending.gov/api/v2/search/spending_by_award/"
 HEADERS = {"User-Agent": "SBIR-Analytics/0.1.0"}
@@ -170,22 +200,34 @@ def classify_action(action: dict, award_agency: str, is_contract: bool,
     return "other_agency" if is_contract else "other_agency_grant"
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
+    add_area_args(parser)
     parser.add_argument("--refresh", action="store_true", help="Ignore cached API responses")
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
+    paths = resolve_area_paths(args, argv)
 
-    cohort_csv = DATA / "nano_cohort_keyword.csv"
-    anchors_csv = DATA / "nano_form_d_post_phase2.csv"
-    for p, hint in {cohort_csv: "run build_nano_cohort.py first",
-                    anchors_csv: "run nano_form_d_temporal.py first"}.items():
+    cohort_csv = paths.artifact("cohort_keyword")
+    anchors_csv = paths.artifact("form_d_post_phase2")
+    out_csv = paths.artifact("ws1_contract_evidence")
+    for p, hint in {
+        cohort_csv: f"run build_tech_area_cohort.py --area {paths.area_id} first",
+        anchors_csv: "run nano_form_d_temporal.py first",
+    }.items():
         if not p.exists():
             print(f"ERROR: {p} not found — {hint}", file=sys.stderr)
             return 1
 
+    print(
+        f"area={paths.area_id}{', legacy' if paths.legacy else ''}  out={out_csv}",
+        file=sys.stderr,
+    )
+
     csv.field_size_limit(sys.maxsize)
-    anchors = {r["award_id"]: r.get("phase_ii_end_date", "")
-               for r in csv.DictReader(open(anchors_csv, newline="", encoding="utf-8"))}
+    anchors = {
+        r["award_id"]: r.get("phase_ii_end_date", "")
+        for r in csv.DictReader(open(anchors_csv, newline="", encoding="utf-8"))
+    }
 
     sbir_csv = DATA / "raw/sbir/award_data.csv"
     if not sbir_csv.exists():
@@ -195,8 +237,11 @@ def main() -> int:
     sbir_piids = load_sbir_piids(sbir_csv)
     print(f"  {len(sbir_piids):,} normalized SBIR award IDs")
 
-    awards = [r for r in csv.DictReader(open(cohort_csv, newline="", encoding="utf-8"))
-              if r.get("deficiency_class") in WS1_BUCKETS]
+    awards = [
+        r
+        for r in csv.DictReader(open(cohort_csv, newline="", encoding="utf-8"))
+        if r.get("deficiency_class") in WS1_BUCKETS
+    ]
     ueis = sorted({r["uei"] for r in awards if r.get("uei")})
     print(f"WS1 population: {len(awards)} awards, {len(ueis)} unique UEIs")
 
@@ -228,54 +273,74 @@ def main() -> int:
                 kind = classify_action(a, aw["agency"], is_contract, sbir_piids)
                 counts[kind] += 1
                 total_post_usd += float(a.get("Award Amount") or 0)
-                evidence.append((kind, start, a.get("Award ID", ""),
-                                 (a.get("Funding Agency") or a.get("Awarding Agency") or "")[:40],
-                                 float(a.get("Award Amount") or 0),
-                                 (a.get("Description") or "")[:100]))
+                evidence.append(
+                    (
+                        kind,
+                        start,
+                        a.get("Award ID", ""),
+                        (a.get("Funding Agency") or a.get("Awarding Agency") or "")[:40],
+                        float(a.get("Award Amount") or 0),
+                        (a.get("Description") or "")[:100],
+                    )
+                )
 
         if counts["phase3"] or counts["same_agency"]:
             tier = "strong"
-        elif (counts["other_agency"] or counts["same_agency_small"]
-              or counts["same_agency_grant"] or counts["other_agency_grant"]):
+        elif (
+            counts["other_agency"]
+            or counts["same_agency_small"]
+            or counts["same_agency_grant"]
+            or counts["other_agency_grant"]
+        ):
             tier = "moderate"
         elif counts["sbir_p12"]:
             tier = "weak"
         else:
             tier = "none"
 
-        strength_order = {"phase3": 0, "same_agency": 1, "other_agency": 2,
-                          "same_agency_small": 3, "same_agency_grant": 4,
-                          "other_agency_grant": 5, "sbir_p12": 6}
+        strength_order = {
+            "phase3": 0,
+            "same_agency": 1,
+            "other_agency": 2,
+            "same_agency_small": 3,
+            "same_agency_grant": 4,
+            "other_agency_grant": 5,
+            "sbir_p12": 6,
+        }
         evidence.sort(key=lambda e: (strength_order[e[0]], e[1]))
-        top = " || ".join(f"[{k}] {d} {aid} {ag} ${amt:,.0f} :: {desc}"
-                          for k, d, aid, ag, amt, desc in evidence[:3])
+        top = " || ".join(
+            f"[{k}] {d} {aid} {ag} ${amt:,.0f} :: {desc}"
+            for k, d, aid, ag, amt, desc in evidence[:3]
+        )
         # Earliest non-SBIR evidence date (for time-to-signal survival analysis)
         non_sbir_dates = [e[1] for e in evidence if e[0] != "sbir_p12"]
         first_evidence_date = min(non_sbir_dates) if non_sbir_dates else ""
 
-        out_rows.append({
-            "award_id": aw["award_id"],
-            "company": aw["company"],
-            "uei": uei,
-            "agency": aw["agency"],
-            "award_year": aw["award_year"],
-            "phase_ii_end_date": end_date,
-            "deficiency_class": aw["deficiency_class"],
-            "evidence_tier": tier,
-            "n_phase3_marker": counts["phase3"],
-            "n_same_agency_contracts": counts["same_agency"],
-            "n_same_agency_small": counts["same_agency_small"],
-            "n_other_agency_contracts": counts["other_agency"],
-            "n_post_grants": counts["same_agency_grant"] + counts["other_agency_grant"],
-            "n_sbir_p12": counts["sbir_p12"],
-            "total_post_award_usd": round(total_post_usd, 2),
-            "first_evidence_date": first_evidence_date,
-            "top_evidence": top,
-        })
+        out_rows.append(
+            {
+                "award_id": aw["award_id"],
+                "company": aw["company"],
+                "uei": uei,
+                "agency": aw["agency"],
+                "award_year": aw["award_year"],
+                "phase_ii_end_date": end_date,
+                "deficiency_class": aw["deficiency_class"],
+                "evidence_tier": tier,
+                "n_phase3_marker": counts["phase3"],
+                "n_same_agency_contracts": counts["same_agency"],
+                "n_same_agency_small": counts["same_agency_small"],
+                "n_other_agency_contracts": counts["other_agency"],
+                "n_post_grants": counts["same_agency_grant"] + counts["other_agency_grant"],
+                "n_sbir_p12": counts["sbir_p12"],
+                "total_post_award_usd": round(total_post_usd, 2),
+                "first_evidence_date": first_evidence_date,
+                "top_evidence": top,
+            }
+        )
 
-    out_csv = DATA / "nano_ws1_contract_evidence.csv"
+    out_csv.parent.mkdir(parents=True, exist_ok=True)
     with open(out_csv, "w", newline="", encoding="utf-8") as f:
-        w = csv.DictWriter(f, fieldnames=list(out_rows[0].keys()))
+        w = csv.DictWriter(f, fieldnames=WS1_OUT_FIELDS, extrasaction="ignore")
         w.writeheader()
         w.writerows(out_rows)
     print(f"  Written: {out_csv} ({len(out_rows)} rows)")
@@ -287,13 +352,22 @@ def main() -> int:
     for bucket in WS1_BUCKETS:
         sub = [r for r in out_rows if r["deficiency_class"] == bucket]
         tiers = Counter(r["evidence_tier"] for r in sub)
-        print(f"{bucket} ({len(sub)} awards): " +
-              "  ".join(f"{t}={tiers.get(t, 0)}" for t in ("strong", "moderate", "weak", "none")))
+        print(
+            f"{bucket} ({len(sub)} awards): "
+            + "  ".join(f"{t}={tiers.get(t, 0)}" for t in ("strong", "moderate", "weak", "none"))
+        )
     tiers_all = Counter(r["evidence_tier"] for r in out_rows)
     n = len(out_rows)
-    print(f"TOTAL ({n}): " +
-          "  ".join(f"{t}={tiers_all.get(t, 0)} ({100*tiers_all.get(t, 0)/n:.0f}%)"
-                    for t in ("strong", "moderate", "weak", "none")))
+    if n:
+        print(
+            f"TOTAL ({n}): "
+            + "  ".join(
+                f"{t}={tiers_all.get(t, 0)} ({100 * tiers_all.get(t, 0) / n:.0f}%)"
+                for t in ("strong", "moderate", "weak", "none")
+            )
+        )
+    else:
+        print("TOTAL (0): no WS1-bucket awards in cohort")
     return 0
 
 

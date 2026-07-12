@@ -15,8 +15,12 @@ Outputs:
   data/nano_form_d_post_phase2.csv      — one row per award with post-Phase II Form D signal
   data/analysis/nano_form_d_temporal.png
 
+Path convention:
+  --area <id>   → data/reports/<id>/form_d_post_phase2.csv
+  (no flag)     → data/nano_form_d_post_phase2.csv  (legacy PR #428)
+
 Usage:
-  python scripts/data/nano_form_d_temporal.py
+  python scripts/data/nano_form_d_temporal.py [--area AREA] [--legacy]
 """
 
 import csv
@@ -141,14 +145,36 @@ def temporal_join(award: dict, form_d: dict) -> dict | None:
 
 
 def main() -> int:
-    cohort_csv = DATA / "nano_cohort_keyword.csv"
+    import argparse
+
+    try:
+        from sbir_etl.utils.transition_report_paths import add_area_args, resolve_area_paths
+    except ImportError:
+        sys.path.insert(0, str(REPO))
+        from sbir_etl.utils.transition_report_paths import add_area_args, resolve_area_paths
+
+    parser = argparse.ArgumentParser(description=__doc__)
+    add_area_args(parser)
+    args = parser.parse_args()
+    # Unflagged keeps PR #428 data/nano_* paths; --area X → data/reports/X/.
+    paths = resolve_area_paths(args)
+    legacy = paths.legacy
+
+    cohort_csv = paths.artifact("cohort_keyword")
     form_d_jsonl = DATA / "form_d_details.jsonl"
+    out_csv = paths.artifact("form_d_post_phase2")
+    fig_name = "nano_form_d_temporal.png" if legacy else "form_d_temporal.png"
 
     if not cohort_csv.exists():
-        print(f"ERROR: {cohort_csv} not found — run build_nano_cohort.py first", file=sys.stderr)
+        print(
+            f"ERROR: {cohort_csv} not found — run "
+            f"build_tech_area_cohort.py --area {paths.area_id} first "
+            f"(or build_nano_cohort.py for --legacy)",
+            file=sys.stderr,
+        )
         return 1
 
-    print("Loading nanotech keyword cohort...")
+    print(f"Loading keyword cohort ({paths.area_id}{', legacy' if legacy else ''})...")
     with open(cohort_csv, newline="", encoding="utf-8") as f:
         awards = list(csv.DictReader(f))
     print(f"  {len(awards):,} Phase II awards")
@@ -206,7 +232,6 @@ def main() -> int:
     # not just results[0]: the Form D detail columns are attached only to matched
     # rows, so keying off the first (usually unmatched) row would silently drop
     # them via extrasaction="ignore".
-    out_csv = DATA / "nano_form_d_post_phase2.csv"
     fieldnames = list(dict.fromkeys(key for row in results for key in row))
     with open(out_csv, "w", newline="", encoding="utf-8") as f:
         w = csv.DictWriter(f, fieldnames=fieldnames, extrasaction="ignore")
@@ -327,10 +352,12 @@ def main() -> int:
             ax2.text(rate + 0.3, bar.get_y() + bar.get_height() / 2,
                      f"{rate:.1f}%", va="center", fontsize=9)
 
-        fig.suptitle("Nanotech SBIR Phase II: Form D private investment (temporally filtered)",
-                     fontsize=12, fontweight="bold")
+        fig.suptitle(
+            f"{paths.area_id}: Form D private investment (temporally filtered)",
+            fontsize=12, fontweight="bold",
+        )
         fig.tight_layout()
-        fig_path = ANALYSIS_DIR / "nano_form_d_temporal.png"
+        fig_path = paths.analysis_dir / fig_name
         fig.savefig(fig_path, dpi=150)
         plt.close(fig)
         print()

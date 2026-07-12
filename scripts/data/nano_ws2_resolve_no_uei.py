@@ -16,17 +16,21 @@ recipient *names*. For each no-UEI firm:
      join, Phase I/II text precedence, $25K same-agency floor).
 
 Inputs:
-  data/nano_cohort_keyword.csv          — ENTITY_RESOLUTION_FAILURE awards
-  data/nano_form_d_post_phase2.csv      — phase_ii_end_date anchors
-  data/raw/sbir/award_data.csv          — later-SBIR ID exclusion
+  cohort_keyword.csv / nano_cohort_keyword.csv — ENTITY_RESOLUTION_FAILURE awards
+  form_d_post_phase2.csv / nano_form_d_post_phase2.csv — phase_ii_end_date anchors
+  data/raw/sbir/award_data.csv — later-SBIR ID exclusion (global)
   USAspending API (cached: data/api_cache/usaspending_ws2/)
 
+Path convention (same as nano_form_d_temporal.py):
+  --area <id>   → data/reports/<id>/{no_uei_resolution,ws2_contract_evidence}.csv
+  (no flag)     → data/nano_{no_uei_resolution,ws2_contract_evidence}.csv  (legacy)
+
 Outputs:
-  data/nano_no_uei_resolution.csv       — per-firm candidate UEIs + confidence
-  data/nano_ws2_contract_evidence.csv   — per-award evidence tiers (resolved firms)
+  no_uei_resolution.csv — per-firm candidate UEIs + confidence
+  ws2_contract_evidence.csv — per-award evidence tiers (resolved firms)
 
 Usage:
-  python scripts/data/nano_ws2_resolve_no_uei.py [--refresh]
+  python scripts/data/nano_ws2_resolve_no_uei.py [--area AREA] [--legacy] [--refresh]
 """
 
 import argparse
@@ -47,6 +51,10 @@ CACHE = DATA / "api_cache/usaspending_ws2"
 
 sys.path.insert(0, str(REPO))
 from sbir_etl.utils.text_normalization import normalize_name  # noqa: E402
+from sbir_etl.utils.transition_report_paths import (  # noqa: E402
+    add_area_args,
+    resolve_area_paths,
+)
 
 _ws1_spec = importlib.util.spec_from_file_location(
     "nano_ws1", Path(__file__).parent / "nano_ws1_contract_evidence.py"
@@ -56,9 +64,41 @@ _ws1_spec.loader.exec_module(ws1)
 
 API = "https://api.usaspending.gov/api/v2/search/spending_by_award/"
 HEADERS = {"User-Agent": "SBIR-Analytics/0.1.0"}
-FIELDS = ["Award ID", "Recipient Name", "Recipient UEI", "Award Amount", "Description",
-          "Start Date", "Awarding Agency", "Funding Agency", "generated_internal_id"]
+FIELDS = [
+    "Award ID",
+    "Recipient Name",
+    "Recipient UEI",
+    "Award Amount",
+    "Description",
+    "Start Date",
+    "Awarding Agency",
+    "Funding Agency",
+    "generated_internal_id",
+]
 MAX_PAGES = 6
+
+WS2_RESOLUTION_FIELDS = [
+    "company",
+    "normalized_name",
+    "awards_n",
+    "candidate_ueis",
+    "candidate_uei_count",
+    "matched_recipient_names",
+    "matched_actions_n",
+    "resolution_confidence",
+]
+WS2_EVIDENCE_FIELDS = [
+    "award_id",
+    "company",
+    "agency",
+    "award_year",
+    "phase_ii_end_date",
+    "resolution_confidence",
+    "evidence_tier",
+    "n_phase3_marker",
+    "n_same_agency_contracts",
+    "top_evidence",
+]
 
 
 def fetch_by_name(name: str, type_codes: list[str], label: str, refresh: bool) -> list[dict]:
@@ -111,26 +151,43 @@ def fetch_by_name(name: str, type_codes: list[str], label: str, refresh: bool) -
     return results
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
+    add_area_args(parser)
     parser.add_argument("--refresh", action="store_true")
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
+    paths = resolve_area_paths(args, argv)
 
-    cohort_csv = DATA / "nano_cohort_keyword.csv"
-    anchors_csv = DATA / "nano_form_d_post_phase2.csv"
+    cohort_csv = paths.artifact("cohort_keyword")
+    anchors_csv = paths.artifact("form_d_post_phase2")
+    res_csv = paths.artifact("no_uei_resolution")
+    out_csv = paths.artifact("ws2_contract_evidence")
     sbir_csv = DATA / "raw/sbir/award_data.csv"
-    for p, hint in {cohort_csv: "run build_nano_cohort.py first",
-                    anchors_csv: "run nano_form_d_temporal.py first",
-                    sbir_csv: "SBIR.gov bulk CSV expected"}.items():
+    for p, hint in {
+        cohort_csv: f"run build_tech_area_cohort.py --area {paths.area_id} first",
+        anchors_csv: "run nano_form_d_temporal.py first",
+        sbir_csv: "SBIR.gov bulk CSV expected",
+    }.items():
         if not p.exists():
             print(f"ERROR: {p} not found — {hint}", file=sys.stderr)
             return 1
 
+    print(
+        f"area={paths.area_id}{', legacy' if paths.legacy else ''}  "
+        f"out={res_csv.name}, {out_csv.name}",
+        file=sys.stderr,
+    )
+
     csv.field_size_limit(sys.maxsize)
-    anchors = {r["award_id"]: r.get("phase_ii_end_date", "")
-               for r in csv.DictReader(open(anchors_csv, newline="", encoding="utf-8"))}
-    awards = [r for r in csv.DictReader(open(cohort_csv, newline="", encoding="utf-8"))
-              if r.get("deficiency_class") == "ENTITY_RESOLUTION_FAILURE"]
+    anchors = {
+        r["award_id"]: r.get("phase_ii_end_date", "")
+        for r in csv.DictReader(open(anchors_csv, newline="", encoding="utf-8"))
+    }
+    awards = [
+        r
+        for r in csv.DictReader(open(cohort_csv, newline="", encoding="utf-8"))
+        if r.get("deficiency_class") == "ENTITY_RESOLUTION_FAILURE"
+    ]
     firms: dict[str, dict] = {}
     for r in awards:
         norm = normalize_name(r["company"], remove_suffixes=True)
@@ -175,22 +232,24 @@ def main() -> int:
         if confidence in ("high", "medium"):
             firm_activity[norm] = matched_actions
 
-        resolution_rows.append({
-            "company": rec["company"],
-            "normalized_name": norm,
-            "awards_n": len(rec["awards"]),
-            "candidate_ueis": "|".join(u for u, _ in cand_ueis.most_common()),
-            "candidate_uei_count": n_ueis,
-            "matched_recipient_names": "|".join(sorted(cand_names)[:3]),
-            "matched_actions_n": len(matched_actions),
-            "resolution_confidence": confidence,
-        })
+        resolution_rows.append(
+            {
+                "company": rec["company"],
+                "normalized_name": norm,
+                "awards_n": len(rec["awards"]),
+                "candidate_ueis": "|".join(u for u, _ in cand_ueis.most_common()),
+                "candidate_uei_count": n_ueis,
+                "matched_recipient_names": "|".join(sorted(cand_names)[:3]),
+                "matched_actions_n": len(matched_actions),
+                "resolution_confidence": confidence,
+            }
+        )
         if i % 50 == 0:
             print(f"  {i}/{len(firms)} firms searched")
 
-    res_csv = DATA / "nano_no_uei_resolution.csv"
+    res_csv.parent.mkdir(parents=True, exist_ok=True)
     with open(res_csv, "w", newline="", encoding="utf-8") as f:
-        w = csv.DictWriter(f, fieldnames=list(resolution_rows[0].keys()))
+        w = csv.DictWriter(f, fieldnames=WS2_RESOLUTION_FIELDS, extrasaction="ignore")
         w.writeheader()
         w.writerows(resolution_rows)
     print(f"  Written: {res_csv} ({len(resolution_rows)} firms)")
@@ -212,42 +271,63 @@ def main() -> int:
                         continue
                     kind = ws1.classify_action(a, aw["agency"], is_contract, sbir_piids)
                     counts[kind] += 1
-                    evidence.append((kind, start, a.get("Award ID", ""),
-                                     (a.get("Funding Agency") or a.get("Awarding Agency") or "")[:40],
-                                     float(a.get("Award Amount") or 0),
-                                     (a.get("Description") or "")[:100]))
+                    evidence.append(
+                        (
+                            kind,
+                            start,
+                            a.get("Award ID", ""),
+                            (a.get("Funding Agency") or a.get("Awarding Agency") or "")[:40],
+                            float(a.get("Award Amount") or 0),
+                            (a.get("Description") or "")[:100],
+                        )
+                    )
                 if counts["phase3"] or counts["same_agency"]:
                     tier = "strong"
-                elif (counts["other_agency"] or counts["same_agency_small"]
-                      or counts["same_agency_grant"] or counts["other_agency_grant"]):
+                elif (
+                    counts["other_agency"]
+                    or counts["same_agency_small"]
+                    or counts["same_agency_grant"]
+                    or counts["other_agency_grant"]
+                ):
                     tier = "moderate"
                 elif counts["sbir_p12"]:
                     tier = "weak"
                 else:
                     tier = "none"
-            order = {"phase3": 0, "same_agency": 1, "other_agency": 2, "same_agency_small": 3,
-                     "same_agency_grant": 4, "other_agency_grant": 5, "sbir_p12": 6}
+            order = {
+                "phase3": 0,
+                "same_agency": 1,
+                "other_agency": 2,
+                "same_agency_small": 3,
+                "same_agency_grant": 4,
+                "other_agency_grant": 5,
+                "sbir_p12": 6,
+            }
             evidence.sort(key=lambda e: (order[e[0]], e[1]))
-            out_rows.append({
-                "award_id": aw["award_id"],
-                "company": aw["company"],
-                "agency": aw["agency"],
-                "award_year": aw["award_year"],
-                "phase_ii_end_date": end_date,
-                "resolution_confidence": next(
-                    r["resolution_confidence"] for r in resolution_rows
-                    if r["normalized_name"] == norm),
-                "evidence_tier": tier,
-                "n_phase3_marker": counts["phase3"],
-                "n_same_agency_contracts": counts["same_agency"],
-                "top_evidence": " || ".join(
-                    f"[{k}] {d} {aid} {ag} ${amt:,.0f} :: {desc}"
-                    for k, d, aid, ag, amt, desc in evidence[:3]),
-            })
+            out_rows.append(
+                {
+                    "award_id": aw["award_id"],
+                    "company": aw["company"],
+                    "agency": aw["agency"],
+                    "award_year": aw["award_year"],
+                    "phase_ii_end_date": end_date,
+                    "resolution_confidence": next(
+                        r["resolution_confidence"]
+                        for r in resolution_rows
+                        if r["normalized_name"] == norm
+                    ),
+                    "evidence_tier": tier,
+                    "n_phase3_marker": counts["phase3"],
+                    "n_same_agency_contracts": counts["same_agency"],
+                    "top_evidence": " || ".join(
+                        f"[{k}] {d} {aid} {ag} ${amt:,.0f} :: {desc}"
+                        for k, d, aid, ag, amt, desc in evidence[:3]
+                    ),
+                }
+            )
 
-    out_csv = DATA / "nano_ws2_contract_evidence.csv"
     with open(out_csv, "w", newline="", encoding="utf-8") as f:
-        w = csv.DictWriter(f, fieldnames=list(out_rows[0].keys()))
+        w = csv.DictWriter(f, fieldnames=WS2_EVIDENCE_FIELDS, extrasaction="ignore")
         w.writeheader()
         w.writerows(out_rows)
     print(f"  Written: {out_csv} ({len(out_rows)} rows)")
@@ -258,16 +338,27 @@ def main() -> int:
     print("=" * 70)
     conf = Counter(r["resolution_confidence"] for r in resolution_rows)
     n = len(resolution_rows)
-    print("Firm resolution: " + "  ".join(
-        f"{c}={conf.get(c, 0)} ({100*conf.get(c, 0)/n:.0f}%)"
-        for c in ("high", "medium", "low", "unresolved")))
+    if n:
+        print(
+            "Firm resolution: "
+            + "  ".join(
+                f"{c}={conf.get(c, 0)} ({100 * conf.get(c, 0) / n:.0f}%)"
+                for c in ("high", "medium", "low", "unresolved")
+            )
+        )
+    else:
+        print("Firm resolution: 0 firms (no ENTITY_RESOLUTION_FAILURE awards)")
     resolved_awards = [r for r in out_rows if r["resolution_confidence"] in ("high", "medium")]
     tiers = Counter(r["evidence_tier"] for r in resolved_awards)
     m = len(resolved_awards)
     if m:
-        print(f"Evidence for {m} awards of resolved firms: " + "  ".join(
-            f"{t}={tiers.get(t, 0)} ({100*tiers.get(t, 0)/m:.0f}%)"
-            for t in ("strong", "moderate", "weak", "none")))
+        print(
+            f"Evidence for {m} awards of resolved firms: "
+            + "  ".join(
+                f"{t}={tiers.get(t, 0)} ({100 * tiers.get(t, 0) / m:.0f}%)"
+                for t in ("strong", "moderate", "weak", "none")
+            )
+        )
     return 0
 
 

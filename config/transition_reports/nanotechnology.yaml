@@ -1,0 +1,75 @@
+area_id: nanotechnology
+display_name: Nanotechnology
+audience: NSET Subcommittee
+cet_id: null  # spans multiple CET areas; Method B uses method_b_terms below
+
+# Ported from scripts/data/build_nano_cohort.py KEYWORD_PATTERNS (PR #428)
+keyword_pack:
+  patterns:
+    - '\bnanoparticle[s]?\b'
+    - '\bnanomaterial[s]?\b'
+    - '\bnanotube[s]?\b'
+    - '\bnanowire[s]?\b'
+    - '\bnanostructure[s]?\b'
+    - '\bnanophoton(?:ics?|ic)\b'
+    - '\bnanoelectron(?:ics?|ic)\b'
+    - '\bnanofabric(?:ation)?\b'
+    - '\bnanolithograph(?:y|ic)\b'
+    - '\bnanocrystal[s]?\b'
+    - '\bnanopore[s]?\b'
+    - '\bnanoscale\b'
+    - '\bnanometer[\- ]scale\b'
+    - '\bnanocomposite[s]?\b'
+    - '\bnanomedicine\b'
+    - '\bnanosensor[s]?\b'
+    - '\bnanolayer[s]?\b'
+    - '\bnanofilm[s]?\b'
+    - '\bnanoribb(?:on|ons)\b'
+    - '\bnanofluid[s]?\b'
+    - '\bnanocluster[s]?\b'
+    - '\bnanocapsule[s]?\b'
+    - '\bnanocoat(?:ing|ings)?\b'
+    - '\bnanotechnology\b'
+    - '\bnano(?:scale|sized?|enabled?|structured?)\b'
+    - '\bcarbon nanotube[s]?\b'
+    - '\bCNT[s]?\b'
+    - '\bgraphene\b'
+    - '\bfullerene[s]?\b'
+    - '\bquantum dot[s]?\b'
+    - '\bquantum confinement\b'
+    - '\bnanocrystalline\b'
+    - '\bnanostructured\b'
+    - '\bsingle.?wall(?:ed)? (?:carbon )?nanotube[s]?\b'
+    - '\bmulti.?wall(?:ed)? (?:carbon )?nanotube[s]?\b'
+    - '\bMEMS\b'
+    - '\bNEMS\b'
+    - '\batomic layer deposition\b'
+    - '\bALD\b'
+    - '\bmolecular beam epitaxy\b'
+    - '\bMBE\b'
+    - '\bnanoimprint\b'
+    - '\belectron.?beam lithograph(?:y|ic)\b'
+    - '\bEUV lithograph(?:y|ic)\b'
+    - '\bnanodrug[s]?\b'
+    - '\bnano-drug[s]?\b'
+    - '\bnano-carrier[s]?\b'
+    - '\bnanocarrier[s]?\b'
+    - '\bnano-encapsul\w+\b'
+    - '\bnanoencapsul\w+\b'
+    - '\bsub-?\s*(?:\d+\s*)?nm\b'
+    - '\bangstrom.?scale\b'
+  negative_patterns: []
+
+method_b_terms:
+  nanotechnology: Advanced Manufacturing
+  nanomaterials: Advanced Engineering Materials
+  graphene: Advanced Engineering Materials
+  carbon fiber: Advanced Engineering Materials
+
+cpc_prefixes:
+  - B82Y
+  - B82B
+
+external_reference:
+  name: NNI Table 5
+  note: Hand-maintained in build_nano_cohort.py; not loaded by v1 CLI

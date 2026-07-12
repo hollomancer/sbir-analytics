@@ -1,0 +1,35 @@
+area_id: quantum_information_science
+display_name: Quantum Information Science
+cet_id: quantum_information_science
+
+# Core = high-precision QIS instruments (any hit admits).
+# Soft = terms that often appear as one-line application/market drops in unrelated
+# abstracts (cryocoolers, generic lasers, workforce, supply chain). Soft admits only
+# when the term is in the title OR ≥2 distinct soft hits appear in title+abstract.
+keyword_pack:
+  patterns:
+    - '\bqubits?\b'
+    - '\bquantum information\b'
+    - '\bquantum communicat(?:ion|ions)?\b'
+    - '\bquantum cryptograph(?:y|ic)\b'
+    - '\bquantum entanglement\b'
+    - '\bquantum algorithm[s]?\b'
+    - '\bquantum network[s]?\b'
+    - '\bquantum key distribution\b'
+    - '\bQKD\b'
+    - '\bquantum anneal(?:ing|er|ers)?\b'
+    - '\bion trap qubit[s]?\b'
+    - '\bsuperconducting qubit[s]?\b'
+    - '\bNV[- ]center\b'
+    - '\bquantum memory\b'
+    - '\bquantum repeater[s]?\b'
+    - '\bquantum metrology\b'
+  soft_patterns:
+    - '\bquantum comput(?:er|ers|ing)?\b'
+    - '\bquantum sens(?:or|ors|ing)\b'
+    - '\bpost-?quantum\b'
+    - '\bPQC\b'
+  soft_requires: title_or_multi
+  negative_patterns: []  # taxonomy negatives loaded via cet_id
+
+cpc_prefixes: []

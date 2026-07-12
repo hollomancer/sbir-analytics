@@ -1,0 +1,26 @@
+area_id: hypersonics
+display_name: Hypersonics
+cet_id: hypersonics
+
+# Core = hypersonic/scramjet/boost-glide language (any hit admits).
+# Soft = TPS and Mach numbers that appear across aerospace; admit only with title
+# hit or ≥2 soft hits. Prefer pairing soft with core via natural co-occurrence
+# (a scramjet+TPS abstract admits on core). Bare "supersonic" stays out of Method A.
+keyword_pack:
+  patterns:
+    - '\bhypersonic[s]?\b'
+    - '\bhypersonic flight\b'
+    - '\bhypersonic weapon[s]?\b'
+    - '\bhypersonic vehicle[s]?\b'
+    - '\bhypersonic missile[s]?\b'
+    - '\bscramjet[s]?\b'
+    - '\bboost[- ]glide\b'
+  soft_patterns:
+    - '\bthermal protection system\b'
+    - '\bMach\s*[5-9]\b'
+    - '\bMach\s*1[0-9]\b'
+  soft_requires: core_cooccur  # TPS/Mach never admit alone
+  negative_patterns:
+    - '\bsupersonic\b'
+
+cpc_prefixes: []
