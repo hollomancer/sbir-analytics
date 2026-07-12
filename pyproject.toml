@@ -221,7 +221,7 @@ markers = [
     "requires_ml: tests requiring ML dependencies",
     "s3: tests requiring S3 access",
 ]
-testpaths = ["tests", "sbir-analytics/tests"]
+testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]

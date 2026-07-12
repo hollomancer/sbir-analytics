@@ -541,4 +541,4 @@ jobs:
 
       - name: Verify Notebook Execution
         run: |
-          uv run --extra ml jupyter nbconvert --to notebook --execute notebooks/getting_started.ipynb --output getting_started_executed.ipynb
+          uv run --group notebooks jupyter nbconvert --to notebook --execute notebooks/getting_started.ipynb --output getting_started_executed.ipynb

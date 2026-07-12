@@ -10,7 +10,9 @@ Methodology bugs in the CET classifier directly distort its own reported precisi
 
 ### What this checklist does and does not cover
 
-**Covers:** ML methodology in `packages/sbir-ml/sbir_ml/ml/` — TF-IDF + LogisticRegression CET classifier (`cet_classifier.py`), patent classifier (`patent_classifier.py`), trainer (`trainer.py`), vectorizers (`multi_source_vectorizer.py`), HuggingFace embeddings inference (`huggingface_inference.py`).
+**Covers:** ML methodology in `packages/sbir-ml/sbir_ml/ml/` — TF-IDF + LogisticRegression CET classifier (`cet_classifier.py`), patent classifier (`patent_classifier.py`), trainer (`trainer.py`), vectorizers (`multi_source_vectorizer.py`).
+
+> **Note (2026-07 repo cleanup):** The unused `huggingface_inference.py` client was removed. Historical findings below that reference it are retained for audit traceability but no longer apply to live code.
 
 **Does NOT cover:** the rule-based **transition scorer** at `packages/sbir-ml/sbir_ml/transition/`. That's a separate system with separate methodology risks (signal weight calibration, threshold drift, ground-truth labeling protocol). CLAUDE.md's ≥85% precision target lives there, not here. See "Next audit scope" below.
 
@@ -80,19 +82,19 @@ These are not a single scicode-lint pattern but were the most consequential clas
 
 | ID | Verify | Where it bites |
 |---|---|---|
-| `pt-007` | PyTorch models call `.eval()` before inference (handled internally by `SentenceTransformer.encode`; verify if any raw `nn.Module` is added) | Currently N/A — HF inference uses high-level libs that handle this |
+| `pt-007` | PyTorch models call `.eval()` before inference (handled internally by `SentenceTransformer.encode`; verify if any raw `nn.Module` is added) | Currently N/A — no live HF inference client in repo |
 | `pt-013` | Inference paths use `torch.inference_mode()` or `torch.no_grad()` (also handled internally by `SentenceTransformer`) | Currently N/A — verify when raw PyTorch lands |
-| `pt-011` | GPU inference is batched (not one item per `predict()` call) | `huggingface_inference.py` batches correctly |
-| API retry logic distinguishes retryable (5xx, 429) from non-retryable (4xx auth/validation) errors | `huggingface_inference.py:194-208` retries 4xx too |
-| Embedding outputs maintain 2-D shape even for single-item batches | `huggingface_inference.py:215-217` can collapse to 1-D |
-| Normalization protected against zero-norm vectors (`/ (norms + 1e-8)` is OK as long as the epsilon is documented) | `huggingface_inference.py:221-222` correct |
+| `pt-011` | GPU inference is batched (not one item per `predict()` call) | N/A — `huggingface_inference.py` removed (2026-07 cleanup) |
+| API retry logic distinguishes retryable (5xx, 429) from non-retryable (4xx auth/validation) errors | N/A — `huggingface_inference.py` removed (2026-07 cleanup) |
+| Embedding outputs maintain 2-D shape even for single-item batches | N/A — `huggingface_inference.py` removed (2026-07 cleanup) |
+| Normalization protected against zero-norm vectors (`/ (norms + 1e-8)` is OK as long as the epsilon is documented) | N/A — `huggingface_inference.py` removed (2026-07 cleanup) |
 
 ### 6. Error handling
 
 | Verify | Where it bites |
 |---|---|
 | No bare `except Exception:` that masks fitting failures by falling back to a different feature representation | `patent_classifier.py:308-322` — silent fit on wrong representation |
-| Errors at system boundaries (HF API, disk I/O) are explicit, propagated, and not retried indiscriminately | `huggingface_inference.py:194-208` |
+| Errors at system boundaries (HF API, disk I/O) are explicit, propagated, and not retried indiscriminately | N/A — `huggingface_inference.py` removed (2026-07 cleanup) |
 | `is_trained = True` is set only after all per-class pipelines actually fit successfully — not when some silently failed | Verify before sign-off |
 
 ### 7. Performance (lower priority)
@@ -120,8 +122,8 @@ The first full pass of this checklist against `packages/sbir-ml/sbir_ml/ml/` sur
 - **H2 — `trainer.py:312,400-401`** — `accuracy_score` prominent in metrics dict and report. Pattern: `ml-004`.
 - **H3 — `cet_classifier.py:411-440`** — "Primary" CET selected by argmax across independently-calibrated binary classifiers; cross-classifier comparability is an implicit assumption.
 - **H4 — `trainer.py:119`** — Random train/test split on inherently time-ordered SBIR data. Pattern: `ml-005`/`ml-006`.
-- **H5 — `huggingface_inference.py:194-208`** — Retries 4xx HTTP errors with exponential backoff.
-- **H6 — `huggingface_inference.py:215-217`** — Single-batch shape can collapse from `(1, D)` to `(D,)`, breaking downstream normalization.
+- **H5 — `huggingface_inference.py:194-208`** — Retries 4xx HTTP errors with exponential backoff. *(Module removed 2026-07; finding archived.)*
+- **H6 — `huggingface_inference.py:215-217`** — Single-batch shape can collapse from `(1, D)` to `(D,)`, breaking downstream normalization. *(Module removed 2026-07; finding archived.)*
 - **H7 — `multi_source_vectorizer.py:95-99`** — Integer-cast weighting (`int(weight * 10)`) silently drops sources whose weight rounds to zero.
 
 ### Medium (6)
@@ -137,8 +139,8 @@ The first full pass of this checklist against `packages/sbir-ml/sbir_ml/ml/` sur
 | `ml-001` (scaler-leakage) | `cet_classifier.py:264-277` | TF-IDF vectorizer is correctly inside the `Pipeline` |
 | `ml-007` (test-set preprocessing) | `cet_classifier.py:335-341` | `pipeline.predict_proba(X_test)` uses transform path correctly |
 | `ml-010` (multi-test-leakage) | `cet_classifier.py:257-261` | Calibration runs on training data only via internal CV |
-| `num-005` (division-by-zero, normalization) | `huggingface_inference.py:221-222` | `norms + 1e-8` is correct here |
-| PT inference modes (`pt-007/011/013`) | `huggingface_inference.py` | N/A — `SentenceTransformer.encode` and `InferenceClient.feature_extraction` handle eval/no_grad internally |
+| `num-005` (division-by-zero, normalization) | `huggingface_inference.py:221-222` | Module removed 2026-07; was clean at removal |
+| PT inference modes (`pt-007/011/013`) | `huggingface_inference.py` | Module removed 2026-07 |
 
 ## Running scicode-lint for real
 
@@ -173,7 +175,6 @@ scicode-lint lint \
   packages/sbir-ml/sbir_ml/ml/models/cet_classifier.py \
   packages/sbir-ml/sbir_ml/ml/models/patent_classifier.py \
   packages/sbir-ml/sbir_ml/ml/models/multi_source_vectorizer.py \
-  packages/sbir-ml/sbir_ml/ml/huggingface_inference.py \
   --vllm-url http://localhost:8080 \
   --category ai-training,scientific-reproducibility,scientific-numerical \
   --format json \
@@ -260,7 +261,7 @@ The tool's ai-training/rep/num scope doesn't directly target these, but they are
 
 6. Silent fit fallback in `patent_classifier.py` (C4 — manual-only finding)
 7. Deterministic set iteration in `patent_classifier.py` + `ParameterGrid` (C3 + new tool finding)
-8. HF retry semantics + shape collapse (H5, H6 — manual-only)
+8. ~~HF retry semantics + shape collapse (H5, H6)~~ — module removed 2026-07; no action needed
 9. Library version persistence in saved models (M1 — confirmed)
 10. Datetime hygiene (M3 — confirmed)
 
@@ -271,7 +272,7 @@ The tool's ai-training/rep/num scope doesn't directly target these, but they are
 
 **Don't fix:**
 
-- Tool's false-positive on HF normalization epsilon
+- Tool's false-positive on HF normalization epsilon (module since removed)
 - Tool's "in-place mutation" flags on `X.copy()` then mutate-copy patterns
 - Tool's dict iteration order flags where determinism is already guaranteed by insertion-order semantics
 

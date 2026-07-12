@@ -26,7 +26,7 @@ Locations referenced in this runbook:
   - Migration CLI: `scripts/neo4j/migrate.py`
 
     ```sbir-analytics/scripts/neo4j/migrate.py#L1-50
-    (versioned schema migrations - see docs/migrations/README.md)
+    (versioned schema migrations - see docs/migrations.md)
     ```
 
   - Backup: `scripts/neo4j/backup.sh`
@@ -162,7 +162,7 @@ NEO4J_PASSWORD=<admin_password> python scripts/neo4j/migrate.py upgrade
 python scripts/neo4j/migrate.py upgrade --dry-run
 ```
 
-- See `docs/migrations/README.md` for detailed migration documentation.
+- See `docs/migrations.md` for detailed migration documentation.
 
 Backup & restore
 
@@ -238,7 +238,7 @@ Troubleshooting checklist
    - Check migration logs in Neo4j client initialization
    - Run `python scripts/neo4j/migrate.py history` to see applied migrations
    - Check `migrations/versions/` for migration definitions
-   - See `docs/migrations/README.md` for troubleshooting
+   - See `docs/migrations.md` for troubleshooting
 5. Slow imports or OOM:
    - Increase `server.memory.heap.max_size` and `server.memory.pagecache.size` in `config/neo4j/neo4j.conf` and restart.
    - Consider chunked loads and prefer offline import tools for large initial imports.
@@ -266,5 +266,5 @@ Where to look in the repo
 If you'd like, I can next:
 
 - Implement automated CI job for scheduled backups (uploading to a configured S3 bucket).
-- Migrations are versioned and tracked in Neo4j. See `docs/migrations/README.md` for details.
+- Migrations are versioned and tracked in Neo4j. See `docs/migrations.md` for details.
 - Add example TLS configuration and an integration test that validates TLS-enabled Bolt connections.

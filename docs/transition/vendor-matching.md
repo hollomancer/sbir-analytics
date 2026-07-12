@@ -582,33 +582,6 @@ SBIR-2020-2         CONTRACT-003   CAGE        0.95        ABC456DEF123     XYZ7
 SBIR-2020-3         CONTRACT-004   FUZZY_PRIM  0.84        [null]           [null]
 ```
 
-### Caching & Performance
-
-For large datasets (6.7M+ contracts), vendor resolution can be slow. Use caching:
-
-```python
-from sbir_etl.transition.performance.contract_analytics import VendorResolutionCache
-
-## Initialize cache
-
-cache = VendorResolutionCache(ttl_hours=24)
-
-## Resolve with caching
-
-matches = resolver.resolve_batch(
-    contracts_df,
-    use_cache=True,
-    cache_backend=cache
-)
-
-## Monitor cache performance
-
-print(cache.get_stats())
-
-## Output: {'hits': 1250, 'misses': 350, 'hit_rate': 0.78}
-
-```
-
 ---
 
 ## Quality Metrics

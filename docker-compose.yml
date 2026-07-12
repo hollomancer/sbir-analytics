@@ -139,7 +139,6 @@ services:
       HEALTHCHECK_PATH: ${DAGSTER_HEALTH_PATH:-/server_info}
     volumes:
       # Bind mounts work for both dev (live editing) and CI (ephemeral runner filesystem)
-      - ./src:/app/src:rw
       - ./config:/app/config:rw
       - ./.env:/app/.env:ro
       - ./reports:/app/reports:rw
@@ -171,7 +170,6 @@ services:
     environment: *common-environment
     volumes:
       # Bind mounts work for both dev (live editing) and CI (ephemeral runner filesystem)
-      - ./src:/app/src:rw
       - ./config:/app/config:rw
       - ./.env:/app/.env:ro
       - ./reports:/app/reports:rw
@@ -204,7 +202,6 @@ services:
     environment: *common-environment
     volumes:
       # Bind mounts work for both dev (live editing) and CI (ephemeral runner filesystem)
-      - ./src:/app/src:rw
       - ./config:/app/config:rw
       - ./.env:/app/.env:ro
       - ./reports:/app/reports:rw
@@ -310,7 +307,6 @@ services:
       PYTHONUNBUFFERED: 1
     volumes:
       # Bind mounts work for both dev (live editing) and CI (ephemeral runner filesystem)
-      - ./src:/workspace/src:rw
       - ./config:/workspace/config:rw
       - ./.env:/workspace/.env:ro
       - ./data:/workspace/data:rw
@@ -332,16 +328,6 @@ volumes:
   neo4j_logs:
     driver: local
   neo4j_import:
-    driver: local
-  reports:
-    driver: local
-  logs:
-    driver: local
-  data:
-    driver: local
-  config:
-    driver: local
-  metrics:
     driver: local
 
 # =============================================================================

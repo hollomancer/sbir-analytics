@@ -257,15 +257,6 @@ jobs:
           pip install -r requirements.txt
           npm install -g aws-cdk
 
-      - name: Prepare Lambda functions
-        run: |
-          # Copy common module to Lambda directories (required for CDK synth)
-          for dir in scripts/lambda/*/; do
-            if [ -d "$dir" ] && [ "$(basename $dir)" != "common" ]; then
-              cp -r scripts/lambda/common/* "$dir" 2>/dev/null || true
-            fi
-          done
-
       - name: CDK Synth (validate templates)
         working-directory: infrastructure/cdk
         env:

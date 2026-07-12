@@ -37,7 +37,7 @@ def transformed_cet_analytics() -> Output:
 
     # Lazy import to avoid heavy imports at module import time
     try:
-        from sbir_etl.utils.performance_alerts import AlertCollector
+        from sbir_etl.utils.monitoring.alerts import AlertCollector
     except Exception:  # nosec B110
         AlertCollector = None  # type: ignore
 
@@ -185,7 +185,7 @@ def transformed_cet_analytics_aggregates() -> Output:
 
     # Lazy import to avoid heavy deps at module import time
     try:
-        from sbir_etl.utils.performance_alerts import AlertCollector
+        from sbir_etl.utils.monitoring.alerts import AlertCollector
     except Exception:  # nosec B110
         AlertCollector = None  # type: ignore
 
