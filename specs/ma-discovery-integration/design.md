@@ -2,7 +2,7 @@
 
 **Status:** Draft for review.
 **Date:** 2026-06-26.
-**Relates to:** [`specs/merger_acquisition_detection/`](../merger_acquisition_detection/design.md) (existing Form D + EFTS detection), [`scripts/data/capital_events/sources/ma_events.py`](../../scripts/data/capital_events/sources/ma_events.py) (downstream consumer), local branch `chore/ma-discovery-toolkit` (scaffolded toolkit, never merged) preserved in draft PR [#371](https://github.com/hollomancer/sbir-analytics/pull/371).
+**Relates to:** [`specs/archive/completed-features/merger_acquisition_detection/`](../archive/completed-features/merger_acquisition_detection/design.md) (existing Form D + EFTS detection), [`sbir_etl/capital_events/sources/ma_events.py`](../../sbir_etl/capital_events/sources/ma_events.py) (downstream consumer), local branch `chore/ma-discovery-toolkit` (scaffolded toolkit, never merged) preserved in draft PR [#371](https://github.com/hollomancer/sbir-analytics/pull/371).
 
 ## Why
 
@@ -12,7 +12,7 @@ A web-search-based discovery path can recover some of those, but only if the row
 
 ## The Decision
 
-The capital-events builder at `scripts/data/capital_events/sources/ma_events.py:13-55` reads `data/enriched_sbir_ma_events.jsonl` and filters on `confidence in {"high", "medium"}` (string tier, not a numeric score). The pipeline shape is fixed; discovery must conform to it.
+The capital-events builder at `sbir_etl/capital_events/sources/ma_events.py:13-55` reads `data/enriched_sbir_ma_events.jsonl` and filters on `confidence in {"high", "medium"}` (string tier, not a numeric score). The pipeline shape is fixed; discovery must conform to it.
 
 Note: `detect_sbir_ma_events.py` writes `data/sbir_ma_events.jsonl`; the builder reads `data/enriched_sbir_ma_events.jsonl`. **No script in this branch produces the enriched file** — the press-wire enrichment step (`SyncPressWireClient` in `sbir_etl/enrichers/press_wire.py`) exists as a library but is not wired into a standalone CLI. The diagram below treats `enrich_ma_with_press.py` as a **to-be-added** component; discovery integration assumes this enrichment glue lands as part of (or before) the discovery implementation PR.
 
@@ -41,7 +41,7 @@ When a discovered row matches an existing `sbir_ma_events.jsonl` row on `(compan
 
 Discovery never *lowers* a confidence and never *overwrites* a Form D-derived acquirer. If the LLM extractor disagrees with Form D on the acquirer name, the Form D value wins and the discovered acquirer is recorded as `signals.discovered_acquirer_disagrees = "<discovered_name>"`.
 
-**Why `signals` and not a new top-level field:** `scripts/data/capital_events/sources/ma_events.py` builds the emitted `CapitalEvent.metadata` from a fixed set of keys (`signals`, `press_wire_signals`, `signal_count`, `enriched`). Any flag placed in a *new* top-level field on `enriched_sbir_ma_events.jsonl` would be silently dropped at the builder step. Adding flags inside `signals` propagates them into `capital_events.parquet` without changing the builder. The existing `signals` dict is `dict[str, bool]` — extending it with one additional `str` value (`discovered_acquirer_disagrees`) is the smallest accommodating change; if a strict-type contract is preferred, that disagreement payload can move to `signals.discovered_acquirer_disagrees: bool` plus a sibling `signals.discovered_acquirer_name: str` written by the orchestrator.
+**Why `signals` and not a new top-level field:** `sbir_etl/capital_events/sources/ma_events.py` builds the emitted `CapitalEvent.metadata` from a fixed set of keys (`signals`, `press_wire_signals`, `signal_count`, `enriched`). Any flag placed in a *new* top-level field on `enriched_sbir_ma_events.jsonl` would be silently dropped at the builder step. Adding flags inside `signals` propagates them into `capital_events.parquet` without changing the builder. The existing `signals` dict is `dict[str, bool]` — extending it with one additional `str` value (`discovered_acquirer_disagrees`) is the smallest accommodating change; if a strict-type contract is preferred, that disagreement payload can move to `signals.discovered_acquirer_disagrees: bool` plus a sibling `signals.discovered_acquirer_name: str` written by the orchestrator.
 
 ### Per-discovered-row confidence (new rows, no collision)
 
@@ -124,4 +124,4 @@ Discovery is worth landing if, after the sample run in step 7:
 - The false-positive rate (manual review of a stratified sample of 20 medium-confidence rows) is ≤ 25%.
 - Per-row cost (search + LLM) is ≤ $0.10 at the chosen backend / model combo.
 
-Below those numbers, close the draft PR and document the lessons in `specs/merger_acquisition_detection/` as a "tried, didn't pay off" note.
+Below those numbers, close the draft PR and document the lessons in `specs/archive/completed-features/merger_acquisition_detection/` as a "tried, didn't pay off" note.
