@@ -27,10 +27,13 @@ env/
 *~
 .editorconfig
 
-# Data files (large, not needed in image)
-data/
+# Data files (large, not needed in image) — keep versioned reference tables
+data/*
+!data/reference/
+!data/reference/**
 reports/
 *.csv
+!data/reference/**
 *.parquet
 *.db
 *.duckdb
