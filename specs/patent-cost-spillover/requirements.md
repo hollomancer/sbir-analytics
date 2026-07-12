@@ -1,6 +1,7 @@
 # Patent Cost and Spillover Analysis — Requirements
 
-> **Status:** Not yet started — zero implementation code as of June 2026.
+> **Status:** Gated backlog — zero cost/citation/spillover analytical-layer
+> implementation as of July 2026.
 > Anchors inventory questions **C3a–c** in [docs/research-questions.md](../../docs/research-questions.md).
 > Target benchmarks: NIH ~$1.5M marginal cost per patent; Myers & Lanahan AER 2022 ~3× DOE
 > spillover, ~60% U.S.-retained [L9][L5].

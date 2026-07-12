@@ -290,7 +290,8 @@ def aggregate_company_classification(contracts: list[dict], company_uei: str) ->
 
 **Integration Points**:
 
-- Uses existing `DuckDBUSAspendingExtractor` from `src/extractors/usaspending.py`
+- Uses existing `DuckDBUSAspendingExtractor` from
+  `sbir_etl/extractors/usaspending.py`
 - Queries `transaction_normalized` table from USAspending dump
 - Filters by recipient identifiers
 
@@ -691,8 +692,8 @@ def company_categorization_completeness_check(
 ## Related Documents
 
 - Requirements: `specs/company-categorization/requirements.md`
-- USAspending Extractor: `src/extractors/usaspending.py`
-- Award Model: `src/models/award.py`
-- Company Model: `src/models/company.py`
+- USAspending Extractor: `sbir_etl/extractors/usaspending.py`
+- Award Model: `sbir_etl/models/award.py`
+- Company Model: `sbir_etl/models/company.py`
 - Enrichment Patterns: `docs/steering/enrichment-patterns.md`
 - Pipeline Orchestration: `docs/steering/pipeline-orchestration.md`

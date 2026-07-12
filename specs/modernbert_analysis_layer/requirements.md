@@ -1,6 +1,10 @@
 # Requirements — ModernBert Analysis Layer
 
-> **Status:** Not yet started. Requirements 5–7 (Bayesian MoE routing) are flagged for scope review before implementation.
+> **Status:** Partially implemented. Core ModernBert client, embedding assets,
+> similarity output, config, and client-level tests exist. Neo4j `SIMILAR_TO`
+> loading, quality/cohesion metrics, fuller asset checks, and Dagster integration
+> tests remain open. Requirements 5–7 (Bayesian MoE routing) are deferred pending
+> explicit scope review.
 > Supports inventory question **C2** (patent–award semantic similarity) in [docs/research-questions.md](../../docs/research-questions.md).
 
 **Research question anchor:** C2 — patent–award semantic similarity via ModernBert embeddings

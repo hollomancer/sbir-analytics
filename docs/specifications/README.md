@@ -1,10 +1,12 @@
 # Specification System Documentation
 
-This document centralizes information about the specification systems used in the SBIR ETL project, including the active specifications and the archived OpenSpec content.
+This document centralizes information about the specification systems used in
+the SBIR ETL project, including top-level specs, their status registry, and the
+archived OpenSpec content.
 
 ## Table of Contents
 
-1. [Specifications (Active)](#1-specifications-active)
+1. [Specifications](#1-specifications)
     * [Purpose](#purpose)
     * [Location](#location)
     * [Usage](#usage)
@@ -18,11 +20,16 @@ This document centralizes information about the specification systems used in th
 
 ---
 
-## 1. Specifications (Active)
+## 1. Specifications
 
 ### Purpose
 
-Specifications are the **active and authoritative source of truth** for all development work in the SBIR ETL project. They are used for:
+Specifications are the source of truth for planned and in-progress development
+work in the SBIR ETL project. Not every top-level spec is an active
+implementation target; some are gated, deferred, or archive candidates. Check
+[`specs/status.md`](../../specs/status.md) before starting work from a spec.
+
+They are used for:
 
 * **Planning**: Defining new features, capabilities, and project phases.
 * **Architecture**: Documenting design decisions, architectural patterns, and system components.

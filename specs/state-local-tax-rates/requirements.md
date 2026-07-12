@@ -1,14 +1,14 @@
 # Requirements — State & Local Tax Rate Reference Data
 
-> **Status:** Not yet started — but significant existing implementation.
+> **Status:** Maintenance backlog — significant existing implementation remains
+> hardcoded.
 > `sbir_etl/transformers/fiscal/state_rates.py` already contains all 50 states
 > with hardcoded 2024 Tax Foundation / Census ASGF rates and a `StateRateProvider`
 > class. **The task is to make those rates data-driven** (loaded from a refreshable
 > CSV) rather than hardcoded constants. The `StateTaxRates` dataclass and
 > `StateRateProvider` interface stay unchanged.
 >
-> Required by **Phase 3** of [../fiscal-tax-impact-v2.md](../fiscal-tax-impact-v2.md) and
-> **Requirement 3** of [../fiscal-sensitivity-reconciliation/](../fiscal-sensitivity-reconciliation/).
+> Required by **Phase 3** of [../fiscal-tax-impact-v2.md](../fiscal-tax-impact-v2.md).
 > Anchors inventory questions **D2** and **D3** in
 > [docs/research-questions.md](../../docs/research-questions.md).
 
@@ -23,7 +23,7 @@
 > A pipeline engineer can state: "`data/reference/tax/state_effective_rates.csv`
 > contains the same rates as `state_rates.py`'s `_STATE_RATES_2024` dict — but
 > refreshed from Tax Foundation and Census ASGF source files, not hardcoded. Running
-> `poetry run refresh-state-rates` downloads the latest Tax Foundation tables and
+> `uv run refresh-state-rates` downloads the latest Tax Foundation tables and
 > updates the CSV. `StateRateProvider` loads from the CSV when a path is supplied,
 > falls back to the hardcoded dict otherwise. Existing tests pass unchanged."
 
@@ -97,7 +97,7 @@ without reading source code.
 
 #### Acceptance Criteria
 
-1. THE System SHALL implement `poetry run refresh-state-rates` that downloads the
+1. THE System SHALL implement `uv run refresh-state-rates` that downloads the
    latest Tax Foundation "State Individual Income Tax Rates" and "State and Local
    Sales Tax Rates" tables, appends a new fiscal-year row for each state, and
    writes the updated CSV.

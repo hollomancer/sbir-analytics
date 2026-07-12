@@ -8,11 +8,11 @@ This implementation plan tracks the remaining work for the company categorizatio
 
 **Completed:**
 
-- ✅ Data models (`src/models/categorization.py`)
-- ✅ Contract classifier (`src/transformers/company_categorization.py`)
-- ✅ Company aggregator (`src/transformers/company_categorization.py`)
-- ✅ USAspending contract retrieval (`src/enrichers/company_categorization.py`)
-- ✅ Dagster asset (`src/assets/company_categorization.py`)
+- ✅ Data models (`sbir_etl/models/categorization.py`)
+- ✅ Contract classifier (`sbir_etl/transformers/company_categorization.py`)
+- ✅ Company aggregator (`sbir_etl/transformers/company_categorization.py`)
+- ✅ USAspending contract retrieval (`sbir_etl/enrichers/company_categorization.py`)
+- ✅ Dagster asset (`packages/sbir-analytics/sbir_analytics/assets/company_categorization.py`)
 - ✅ Asset checks for quality validation
 
 **Remaining:**
@@ -26,15 +26,15 @@ This implementation plan tracks the remaining work for the company categorizatio
 ## Implementation Tasks
 
 - [x] 1. Create data models for contract and company classifications
-  - Create `ContractClassification` Pydantic model in `src/models/`
-  - Create `CompanyClassification` Pydantic model in `src/models/`
+  - Create `ContractClassification` Pydantic model in `sbir_etl/models/categorization.py`
+  - Create `CompanyClassification` Pydantic model in `sbir_etl/models/categorization.py`
   - Add field validators for classification values and confidence scores
   - Add model serialization methods for DataFrame conversion
   - _Requirements: 7.1, 7.2, 7.3, 7.4, 7.5_
-  - _Status: Completed in `src/models/categorization.py`_
+  - _Status: Completed in `sbir_etl/models/categorization.py`_
 
 - [x] 2. Implement contract classifier module
-  - [x] 2.1 Create `src/transformers/company_categorization.py` module
+  - [x] 2.1 Create `sbir_etl/transformers/company_categorization.py` module
     - Implement `classify_contract()` function with PSC-based rules
     - Implement contract type override logic (CPFF, Cost-Type, T&M → Service)
     - Implement description inference logic (prototype, hardware, device → Product)
@@ -106,7 +106,7 @@ This implementation plan tracks the remaining work for the company categorizatio
 
 - [x] 4. Implement USAspending contract retrieval
   - [x] 4.1 Create contract retrieval function
-    - Implement `retrieve_company_contracts()` function in `src/enrichers/company_categorization.py`
+    - Implement `retrieve_company_contracts()` function in `sbir_etl/enrichers/company_categorization.py`
     - Query USAspending by UEI using existing `DuckDBUSAspendingExtractor`
     - Query USAspending by DUNS if UEI query returns no results
     - Query USAspending by CAGE if DUNS query returns no results
@@ -130,13 +130,14 @@ This implementation plan tracks the remaining work for the company categorizatio
 
 - [x] 5. Create Dagster asset for company categorization
   - [x] 5.1 Implement main categorization asset
-    - Create `enriched_sbir_companies_with_categorization` asset in `src/assets/`
+    - Create `enriched_sbir_companies_with_categorization` asset in
+      `packages/sbir-analytics/sbir_analytics/assets/company_categorization.py`
     - Depend on `validated_sbir_awards` asset
     - Load configuration from `get_config()`
     - Initialize `DuckDBUSAspendingExtractor` with database path
     - Extract unique companies from validated SBIR awards
     - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5_
-    - _Status: Completed in `src/assets/company_categorization.py`_
+    - _Status: Completed in `packages/sbir-analytics/sbir_analytics/assets/company_categorization.py`_
 
   - [x] 5.2 Implement batch processing loop
     - Iterate through companies in batches
@@ -175,13 +176,15 @@ This implementation plan tracks the remaining work for the company categorizatio
 
 - [x] 7. Add configuration schema
   - [x] 7.1 Create configuration model
-    - Add `CompanyCategorization` config schema to `src/config/schemas.py`
+    - Add `CompanyCategorization` config schema to `sbir_etl/config/schemas/data.py`
     - Define threshold parameters (product_leaning_pct: 51, service_leaning_pct: 51, psc_family_diversity: 6)
     - Define confidence level parameters (low_max_awards: 2, medium_max_awards: 5)
     - Define processing parameters (batch_size: 100, parallel_workers: 4)
     - Define USAspending query parameters (table_name, timeout, retries)
     - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5, 6.1, 6.2, 6.3, 6.4, 6.5, 7.1, 7.2, 7.3, 7.4, 7.5_
-    - _Status: Implemented in `src/config/schemas/runtime.py` as `CompanyCategorizationConfig`. Schema defaults corrected from 60% to 51% threshold._
+    - _Status: Implemented in `sbir_etl/config/schemas/data.py` as
+      `CompanyCategorizationConfig`. Schema defaults corrected from 60% to 51%
+      threshold._
 
   - [x] 7.2 Add default configuration
     - Add `company_categorization` section to `config/base.yaml`
@@ -193,7 +196,8 @@ This implementation plan tracks the remaining work for the company categorizatio
 
 - [ ] 8. Implement Neo4j loader
   - [ ] 8.1 Create CompanyCategorizationLoader class
-    - Create `CompanyCategorizationLoader` in `src/loaders/neo4j/`
+    - Create `CompanyCategorizationLoader` in
+      `packages/sbir-graph/sbir_graph/loaders/neo4j/categorization.py`
     - Implement `load_categorizations()` method for batch loading
     - Update existing Company nodes with categorization properties
     - Handle missing companies gracefully (log warnings)
@@ -275,7 +279,9 @@ This implementation plan tracks the remaining work for the company categorizatio
     - Document `aggregate_company_classification()` function with examples
     - Document `retrieve_company_contracts()` function with examples
     - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 2.1, 2.2, 2.3, 2.4, 2.5, 5.1, 5.2, 5.3, 5.4, 5.5_
-    - _Status: Comprehensive docstrings already exist in `src/transformers/company_categorization.py` and `src/enrichers/company_categorization.py`_
+    - _Status: Comprehensive docstrings already exist in
+      `sbir_etl/transformers/company_categorization.py` and
+      `sbir_etl/enrichers/company_categorization.py`_
 
   - [ ]* 10.2 Create usage guide
     - Document how to run categorization asset in Dagster UI

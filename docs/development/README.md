@@ -24,6 +24,7 @@ This directory contains guides and documentation for developers working on the S
 
 - [Exception Handling](exception-handling.md) - Custom exception hierarchy and patterns
 - [Logging Standards](logging-standards.md) - When to use logger vs console.print
+- [Cleanup Inventory](cleanup-inventory.md) - Current simplification, stale-content, and CI/test drift inventory
 
 ## Workflow
 

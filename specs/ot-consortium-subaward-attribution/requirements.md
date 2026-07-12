@@ -1,6 +1,7 @@
 # Requirements — OT Consortium Sub-Award Attribution (FFATA/FSRS)
 
-> **Status:** Spec only — not implemented. Follow-on to the OT consortium verification-tiering module.
+> **Status:** Gated backlog — not implemented. Run the T0 coverage probe before
+> promoting beyond the OT consortium verification-tiering follow-up.
 > Supports inventory question **A2** (OT consortium attribution) in [docs/research-questions.md](../../docs/research-questions.md).
 
 **Research question anchor:** A2 — OT consortium sub-award attribution and T2→T1 recovery via FSRS
@@ -75,5 +76,5 @@ this gives us exactly what the rollup destroys:
 - Magnitude report exposes `recovered_from_rollup_usd` /
   `recovered_from_rollup_count`: obligated $ and records moved T2→T1 via
   sub-awards, reported alongside (not folded into) the existing verified total.
-- Unit tests for each case above; ≥85% coverage on new code; ruff/black/mypy
-  clean.
+- Unit tests for each case above; >=85% coverage on new code; Ruff formatting,
+  Ruff lint, and mypy clean.

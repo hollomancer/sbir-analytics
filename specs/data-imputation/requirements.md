@@ -1,6 +1,7 @@
 # Data Imputation — Requirements
 
-> **Status:** Spec merged via PR #277 — implementation not yet started as of June 2026.
+> **Status:** Gated backlog — spec merged via PR #277; implementation not yet
+> started as of July 2026.
 > Anchors inventory question **E4** in [docs/research-questions.md](../../docs/research-questions.md).
 
 **Research question anchor:** E4 — missing-field recovery (award_date ~50% absent; UEI/DUNS gaps)
