@@ -105,54 +105,54 @@ Awaiting review of this survey/plan and a go decision on the M0 pulls (and the M
 
 ---
 
-# M0a — Scoped contract pull (frozen decisions)
+# M0a — DoD-scoped hybrid contract pull (revised)
 
-> **Status:** Spec frozen; **execution gated on explicit go** (this is the large pull). Recipient
-> firm list built deterministically (see below). Decisions accepted 2026-07: recipient-scoped,
-> FPDS-ATOM-authoritative, 10-FY window, non-negotiable keys/coding, IDV inheritance bucketed for
-> human decision, successor resolution as a stated v1 coverage gap.
+> **Status:** Spec revised; **execution gated on explicit go**. Supersedes the earlier per-UEI
+> "frozen" draft. Reframed to DoD after measuring that SR3 coding is 82% DoD (civilian Phase III is
+> structurally non-contract — see below). Recipient firm list already built (8,290 entities / 8,090
+> UEIs, FY2016–2025).
 
-## Scope (concrete)
-- **Recipient frame:** the **8,290 resolved SBIR Phase II entities** with ≥1 Phase II award in
-  **FY2016–2025** (canonicalized via `canonicalize_companies_from_awards`). **8,090 distinct UEIs**
-  to query (97% of entities carry a UEI). **210 entities (3%) are name-only** — a stated FPDS-by-UEI
-  coverage gap (not queryable by UEI; excluded from v1, biases the undercount *down*).
-- **Source:** **FPDS ATOM feed, queried by recipient UEI** — the only clean source of the 10Q
-  `research` code and the compound award key. Optionally enrich with USAspending for descriptions /
-  obligations later; not required for the coded/uncoded partition.
-- **Window:** FY2016–2025 (aligns with the commercialization-benchmark covered period).
+## Why DoD-scoped
+FPDS SR3 coded records by department: **DoD 66,450 (82%)**, NASA 6,130, DOE 120, NIH 80, **NSF 1**.
+The civilian near-zeros are mostly **structural** — NIH/NSF/DOE SBIR runs on grants and their "Phase
+III" is commercialization/sales, not a follow-on federal *contract* — so an "uncoded Phase III
+contract" undercount is only well-defined for **DoD** (and partly NASA). **Product 1's undercount
+ratio is therefore DoD-primary**; civilian Phase III is treated separately / out of scope for v1.
 
-## Required fields (audit guards will reject a frame missing these)
-Compound award key `(order PIID, awarding agency, parent-IDV PIID, parent-IDV agency)`; the **10Q
-`research`** code (SR3/ST3); **parent-IDV linkage** (`referencedIDVID` — for the inheritance bucket);
-recipient UEI; `descriptionOfContractRequirement`; obligations; signed/effective dates; competition
-codes. Grain must be recorded so coded-status aggregates at **award grain** (coded if ANY transaction
-carries SR3/ST3 — the fix already in `pairing.py`).
+## Architecture — hybrid (not per-UEI, not pure bulk)
+Pure bulk is impossible: USAspending exposes a `Research` column but **leaves it null even for
+contracts whose description says "SBIR PHASE III"** (verified: 0/40). FPDS ATOM is the only working
+10Q source, and its feed is **hard-capped at 10 records/page** (no `num/count/rows/size` override).
+So:
 
-## Undercount-ratio method
-For each recipient firm, pull all its FPDS contracts in-window, then partition at award grain:
-- **coded** = award has any SR3/ST3 transaction;
-- **flagged (uncoded)** = same-entity follow-on award, no code, that the Product 1 filter surfaces.
-- **Ratio** = flagged / (flagged + coded), per agency (GAO-24-106398 [L14] undercount).
+1. **Coded set — FPDS ATOM** (`RESEARCH:SR3` + `ST3`, `DEPARTMENT_ID:9700`, `SIGNED_DATE:[2015/10/01,
+   2025/09/30]`). In-window DoD coded ≈ **28,270 records** (SR3 25,050 + ST3 3,220) → **~2,830
+   paginated requests**. Shard by fiscal year (10 shards) to parallelize + cache under
+   `data/raw/fpds/`. Extract the compound key + `research` + parent-IDV per M0b's fixed parser.
+2. **Recipient universe — USAspending bulk_download** (DoD prime contracts A/B/C/D, FY2016–2025) →
+   one job → one CSV/ZIP. Columns: `contract_award_unique_key` (a precomputed unique award key —
+   the audit's `award_key_series` prefers it, so no PIID compounding needed here), recipient UEI,
+   description, obligations, `parent_award_id`, dates, competition. **Filter locally** to the 8,090
+   recipient UEIs. ~1–5 requests.
+3. **Flags = uncoded** = recipient contracts in the bulk universe **not** matched to a coded ATOM
+   record (join on compound key / PIID + agency). Partition at **award grain** (coded if ANY
+   transaction SR3/ST3 — the `pairing.py` fix).
 
-## IDV-inheritance bucket (validation Step 0)
-Orders whose **parent IDV** carries Phase III coding are bucketed separately and reported under BOTH
-treatments (parent-coded orders as coded vs. as flags). Parent-IDV coding requires a second lookup of
-the parent records. **The human reviewer picks the treatment**, not the pipeline.
+## Request-count estimate
+| Component | Requests | Note |
+|---|---|---|
+| Coded set (FPDS ATOM, DoD, in-window) | **~2,830** | hard 10/page cap; shard by FY; cacheable |
+| Recipient universe (USAspending bulk) | ~1–5 | bulk file(s), filtered locally |
+| **Total** | **~2,835** | vs ~20,000+ for the per-UEI draft (~7× fewer) |
 
-## Cost / mechanics
-~8,090 UEI queries against the FPDS ATOM feed, paginated and **cached** under `data/raw/fpds/` (same
-puller as M0b, extended to query by UEI + FY window). Est. ~1–2 h wall-clock; deterministic,
-re-runnable. Recipient list persisted; regenerate via the M0a firm-list step.
+~20–40 min wall-clock if the coded pull is sharded and polite. Bounded, cacheable, single-query —
+**API-heavy but not a firm-by-firm hammer, and not a one-click bulk download.**
 
-## Stated coverage gaps (all bias the undercount DOWN)
-- 210 name-only firms (3%) not queryable by UEI.
-- Successor-in-interest not resolved → a firm acquired mid-window, whose later contracts sit under the
-  acquirer's UEI, is under-attributed (v1 gap; not built).
-- FPDS-only (no USAspending grant side) — Phase III is a contract concept, so acceptable.
+## Unchanged
+Required fields, the award-grain coded rule + audit guards, the IDV-inheritance bucket (parent-coded
+orders reported both ways; human reviewer decides), and the go/no-go: **freeze the validation
+sampling frame only after** the pull + per-agency ratio + the audit before/after table.
 
-## Sequencing
-1. (done) Build recipient firm list — 8,290 entities / 8,090 UEIs.
-2. **[gated]** Extend the puller to query by UEI + FY; pull + cache (the large step).
-3. A0 census over the pulled population; partition coded/uncoded; compute the per-agency ratio.
-4. Populate the audit's before/after table; **only then** freeze the validation sampling frame.
+## Coverage gaps (all bias the undercount DOWN)
+DoD-scope excludes civilian contract-based Phase III (small — NASA ~6k SR3 could be added as a v1.1
+extension); 210 name-only recipient firms (3%); unresolved successors; FPDS-only.
