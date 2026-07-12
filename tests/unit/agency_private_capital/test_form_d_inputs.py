@@ -109,3 +109,34 @@ def test_load_form_d_control_universe_excludes_sbir_ciks(tmp_path) -> None:
     assert len(df) == 1
     assert df.iloc[0]["issuer_key"] == "CONTROL ONE"
     assert df.iloc[0]["form_d_cik"] == "999"
+
+
+def test_load_form_d_control_universe_dedupes_duplicate_ciks(tmp_path) -> None:
+    path = tmp_path / "controls.jsonl"
+    _write_jsonl(
+        path,
+        [
+            {
+                "issuer_name": "Control One",
+                "cik": "0000999",
+                "filing_date": "2020-01-01",
+                "state": "CA",
+                "industry_group": "Other Technology",
+                "total_amount_sold": 2_000_000,
+            },
+            {
+                "issuer_name": "Control One Duplicate",
+                "cik": "0000999",
+                "filing_date": "2021-01-01",
+                "state": "CA",
+                "industry_group": "Other Technology",
+                "total_amount_sold": 3_000_000,
+            },
+        ],
+    )
+
+    df = load_form_d_control_universe(path, sbir_ciks=set(), year_min=2009, year_max=2024)
+
+    assert len(df) == 1
+    assert df.iloc[0]["form_d_cik"] == "999"
+    assert df.iloc[0]["first_form_d_year"] == 2020

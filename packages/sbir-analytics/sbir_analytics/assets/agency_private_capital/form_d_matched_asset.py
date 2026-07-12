@@ -18,8 +18,8 @@ from .form_d_inputs import (
     load_form_d_control_universe,
     load_form_d_matches,
 )
-from .matching import CohortMatcher
-from .phase2_outcomes import MatchedCohortOutcomes, keys_from_ma_events
+from .matching import CohortMatcher, _pairs_frame
+from .phase2_outcomes import MatchedCohortOutcomes, _outcome_frame, keys_from_ma_events
 from .threats import ThreatsToValidity
 
 
@@ -77,9 +77,8 @@ def agency_private_capital_form_d_matched_comparison(
         md_path.write_text(
             _missing_inputs_markdown(config.agency_code, missing_inputs), encoding="utf-8"
         )
-        empty = pd.DataFrame()
-        empty.to_parquet(comparison_path, index=False)
-        empty.to_parquet(pairs_path, index=False)
+        _outcome_frame([]).to_parquet(comparison_path, index=False)
+        _pairs_frame([]).to_parquet(pairs_path, index=False)
         balance_path.write_text(
             json.dumps({"status": "missing_inputs", "missing_inputs": missing_inputs}, indent=2),
             encoding="utf-8",

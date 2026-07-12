@@ -90,7 +90,14 @@ def load_form_d_control_universe(
         if not _keep_row(row, tier_filter=None, year_min=year_min, year_max=year_max):
             continue
         rows.append(row)
-    return _frame(rows)
+    frame = _frame(rows)
+    if frame.empty:
+        return frame
+    return (
+        frame.sort_values(["first_form_d_year", "company_key"], na_position="last")
+        .drop_duplicates(subset=["form_d_cik"], keep="first")
+        .reset_index(drop=True)
+    )
 
 
 def _iter_company_form_d_rows(
