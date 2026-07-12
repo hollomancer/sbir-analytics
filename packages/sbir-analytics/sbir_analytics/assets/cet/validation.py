@@ -388,7 +388,7 @@ def validated_cet_drift_detection() -> Output:
 
     # Lazy import for AlertCollector (best-effort)
     try:
-        from sbir_etl.utils.performance_alerts import Alert, AlertCollector, AlertSeverity
+        from sbir_etl.utils.monitoring.alerts import Alert, AlertCollector, AlertSeverity
     except Exception:
         AlertCollector = None  # type: ignore
         Alert = None  # type: ignore
