@@ -92,6 +92,97 @@ report; survival curve figure generated; re-observation job defined (Dagster/cro
 
 **Effort:** small.
 
+## WS5 — New positive channels (raise the floor)
+
+Ranked by expected recovery per unit effort. All reuse existing infrastructure
+(USAspending client pattern, ODP downloader, confidence-tier conventions).
+
+### WS5a — Subawards (FSRS)
+
+The largest untapped federal source: every contract check so far queried *prime*
+awards, but delivering technology through a prime (becoming Lockheed's or Raytheon's
+subcontractor) is a canonical SBIR transition that looks exactly like disappearance
+in prime-award data.
+
+**Requirement:** For dark-bucket firms (651 disappeared + WS2-resolved no-UEI first;
+full cohort if cheap), query USAspending subaward records by sub-awardee (UEI where
+known, exact normalized name otherwise), temporally filtered to actions after Phase II
+end, classified with the WS1 tier conventions (prime's funding agency vs award agency,
+SBIR exclusion, de-minimis floor).
+
+**Known limits (state in outputs):** FSRS reporting threshold (~$30K) and documented
+under-reporting; coverage begins ~FY2011; sub-awardee names are prime-entered and
+dirtier than recipient names.
+
+**Acceptance:** per-firm subaward evidence CSV with provenance (prime, sub amount,
+dates, description); count of previously-dark firms recovered; report + headline update
+if material. Effort: M.
+
+### WS5b — SAM.gov registration status
+
+Registration renewal is affirmative liveness (annual requirement); a lapse *date*
+brackets when a firm stopped seeking federal work — the closest quasi-negative signal
+short of state registries.
+
+**Requirement:** For all cohort firms with UEIs (including WS2 resolutions), pull SAM
+entity status (public monthly extracts, or the Entity Management API — a SAM API key
+already exists in this repo's tooling). Output per-firm: status, last-update/expiry,
+purpose-of-registration codes; classify active vs lapsed-with-year.
+
+**Acceptance:** liveness/lapse table joined into the dark-firm instrument set; lapse
+years feed the survival framing (WS4) as dormancy timestamps. Effort: S–M.
+
+### WS5c — Sector go-to-market registries (biomed slice first)
+
+Commercialization-specific registries for the pathway federal procurement sees worst.
+
+**Requirement:** Match dark-bucket firms against (1) ClinicalTrials.gov sponsors
+(bulk/API), (2) FDA 510(k) applicants + establishment registrations (openFDA), with
+name+state confidence tiers. Scope to the biomed slice (HHS-funded awards, plus
+NSF/NIH-adjacent firms) before considering the electronics analog (FCC equipment
+authorizations).
+
+**Acceptance:** per-firm go-to-market hits with dates and confidence; sponsor/clearance
+counts reported alongside the trademark instrument in Finding 3. Effort: M.
+
+## WS6 — Recall multipliers (rename-aware identity graph)
+
+Exact-name matching is every instrument's shared false-negative: renamed or quietly
+acquired firms defeat all of them at once. Fixing identity once lifts recall everywhere.
+
+### WS6a — Build the alias graph
+
+**Sources, cheapest first:**
+1. `owner_name_change` from TRCFECO2 (2.9 MB, same product already downloaded) — an
+   explicit old-name → new-name mapping.
+2. PatentsView `assignee_id` clusters in `g_assignee_disambiguated` (already on disk) —
+   the disambiguation already groups name variants we currently treat as distinct.
+3. USAspending recipient profiles for known UEIs — "doing business as" and
+   parent/child recipient linkages.
+4. USPTO patent assignment records — portfolio transfers reveal renames AND
+   sub-SEC-threshold acquisitions. Locate the research-edition product on ODP first
+   (the legacy ECORSEXC path is browser-gated); if unavailable programmatically,
+   descope this source and note it.
+
+**Acceptance:** `data/processed/firm_aliases.csv` (firm → alias, source, effective
+date where known); alias coverage stats per source. Effort: M.
+
+### WS6b — Alias-expanded re-runs
+
+**Requirement:** Re-run the patent, trademark, and USAspending matchers with alias
+expansion. Alias-mediated matches are indirect — they REQUIRE corroboration (state or
+PI agreement) regardless of name specificity, and carry an `alias_source` provenance
+column.
+
+**Acceptance:** per-instrument recall delta (firms recovered only via alias), report
+update if material. Effort: S–M after WS6a.
+
+**Unscoped but noted:** patent maintenance-fee lapses (portfolio-wide lapse as a
+dormancy signal), Wayback-dated web presence (T9 upgrade), and the SBA/CCR access
+lever (the government already holds mandatory self-reported commercialization data;
+an NSET request for tabulation needs no new collection). These stay out of scope until
+prioritized.
+
 ## Cross-cutting — bound what remains
 
 With five semi-independent channels (FPDS contract-level, Form D, M&A, patents,
@@ -109,3 +200,6 @@ replacing "82.6% unknown" in the report's summary.
 3. WS2 (entity resolution) — feeds WS1.
 4. WS3 steps 3–5 (registries, trademarks, web).
 5. Capture-recapture bound, then WS3 step 6 (survey design) on the residual.
+6. WS5a subawards → WS5b SAM status → WS6 alias graph + re-runs → WS5c sector
+   registries. Subawards first (highest expected recovery per effort); the alias graph
+   before WS5c so the sector matchers run alias-expanded from the start.

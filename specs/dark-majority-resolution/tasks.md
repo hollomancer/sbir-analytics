@@ -98,3 +98,22 @@ Sequencing rationale in `requirements.md`. Effort tags: S (<half day), M (1–2 
   as the WS1-scoped step); methodology doc regenerates byte-stable. Cumulative outcome of
   the plan: indeterminate 82.6% → 71.9% (70.6% matured); every remaining dark firm carries
   instrument outcomes; ceiling awaits negative evidence (deferred T7 / survey fielding).
+
+## Phase 6 — new channels and recall multipliers (scoped 2026-07-12)
+
+- [ ] **T13 (M, WS5a):** Subaward (FSRS) evidence pull for dark-bucket firms — USAspending
+  subaward records by sub-awardee UEI/name, post-Phase-II temporal filter, WS1 tier
+  conventions. State FSRS threshold/under-reporting and FY2011+ coverage in outputs.
+- [ ] **T14 (S–M, WS5b):** SAM.gov registration status for all UEI'd cohort firms
+  (public extracts or Entity Management API; a SAM key exists in repo tooling).
+  Output active vs lapsed-with-year; feed lapse years into WS4 survival framing.
+- [ ] **T15 (M, WS6a):** Build `data/processed/firm_aliases.csv` from owner_name_change
+  (on disk), PatentsView assignee_id clusters (on disk), USAspending DBA/parent
+  linkages, and — if programmatically available on ODP — patent assignment records.
+- [ ] **T16 (S–M, WS6b):** Alias-expanded re-runs of patent/trademark/USAspending
+  matchers; alias matches require corroboration and carry alias_source provenance;
+  report per-instrument recall delta.
+- [ ] **T17 (M, WS5c):** ClinicalTrials.gov + openFDA go-to-market check for the biomed
+  slice (alias-expanded), name+state confidence tiers; report alongside trademarks.
+- [ ] **T18 (S):** Integrate Phase 6 outcomes into the findings report and refresh the
+  headline observable/indeterminate shares.
