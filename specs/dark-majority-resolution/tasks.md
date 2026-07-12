@@ -14,10 +14,16 @@ Sequencing rationale in `requirements.md`. Effort tags: S (<half day), M (1–2 
 
 ## Phase 2 — contract-level recovery
 
-- [ ] **T3 (M, WS1):** Pull post-award USAspending contracts/grants for the 536 mislabeled
+- [x] **T3 (M, WS1):** Pull post-award USAspending contracts/grants for the 536 mislabeled
   awards' firms (compound award keys); classify follow-on evidence tiers with provenance.
-- [ ] **T4 (S, WS1):** Precision spot-check ≥20 strong-tier reclassifications; write
+  → `scripts/data/nano_ws1_contract_evidence.py` / `data/nano_ws1_contract_evidence.csv`:
+  strong 301 (56%), moderate 159 (30%), weak 72 (13%), none 4 (all 2024+ P2 ends).
+- [x] **T4 (S, WS1):** Precision spot-check ≥20 strong-tier reclassifications; write
   recovery summary into the findings report.
+  → First spot-check caught 3 classification defects (Phase-III-mention false positives,
+  unmarked later-SBIR inflation, $500 de-minimis); fixed via P1/P2-text precedence,
+  SBIR.gov ID-join exclusion, $25K floor. Re-check clean. Report updated (Finding 4):
+  combined observable 17.4% → 27.5%, indeterminate 82.6% → 72.5%.
 
 ## Phase 3 — identity recovery
 
