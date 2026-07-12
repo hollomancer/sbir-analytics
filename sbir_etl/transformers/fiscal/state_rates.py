@@ -167,7 +167,7 @@ class StateRateProvider:
         """
         # Group by state, keep the best row (highest fiscal_year ≤ requested).
         best_row: dict[str, dict[str, str]] = {}
-        with csv_path.open() as f:
+        with csv_path.open(encoding="utf-8", newline="") as f:
             for row in csv.DictReader(f):
                 state = row["state_abbr"].strip().upper()
                 row_year = int(row["fiscal_year"])
@@ -211,3 +211,10 @@ class StateRateProvider:
 
 # Canonical path to the CSV reference file. Tests use a ``tmp_path`` override.
 DEFAULT_CSV_PATH = Path("data/reference/tax/state_effective_rates.csv")
+
+
+def default_state_rate_provider() -> StateRateProvider:
+    """Return the normal runtime provider, preferring the committed CSV when present."""
+    if DEFAULT_CSV_PATH.exists():
+        return StateRateProvider(csv_path=DEFAULT_CSV_PATH)
+    return StateRateProvider()

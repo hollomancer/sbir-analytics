@@ -20,7 +20,7 @@ import pandas as pd
 from loguru import logger
 
 from .nipa_rates import NIPARateProvider, NIPATaxRates
-from .state_rates import StateRateProvider
+from .state_rates import StateRateProvider, default_state_rate_provider
 
 
 @dataclass
@@ -58,7 +58,8 @@ class FiscalTaxEstimator:
             rate_provider: Pre-configured NIPARateProvider. If None, creates
                 one using bea_api_key (or baseline rates if no key).
             state_rate_provider: Pre-configured StateRateProvider for
-                state-specific rates. If None, uses built-in 2024 rates.
+                state-specific rates. If None, uses the committed CSV reference
+                file when present, otherwise the built-in 2024 baseline.
             bea_api_key: BEA API key for live NIPA rate fetching.
             config: Deprecated. Accepted for backward compatibility but ignored.
         """
@@ -68,7 +69,7 @@ class FiscalTaxEstimator:
                 "Use rate_provider= or bea_api_key= instead."
             )
         self.rate_provider = rate_provider or NIPARateProvider(bea_api_key=bea_api_key)
-        self.state_rates = state_rate_provider or StateRateProvider()
+        self.state_rates = state_rate_provider or default_state_rate_provider()
 
     def _get_rates(self, year: int | None = None) -> NIPATaxRates:
         return self.rate_provider.get_rates(year)
