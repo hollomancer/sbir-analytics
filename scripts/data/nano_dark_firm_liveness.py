@@ -70,6 +70,30 @@ GENERIC_TOKENS = frozenset(
 )
 
 
+# SBIR.gov stores full state names; USPTO tables store USPS codes. Normalize to codes.
+STATE_TO_CODE = {
+    "ALABAMA": "AL", "ALASKA": "AK", "ARIZONA": "AZ", "ARKANSAS": "AR", "CALIFORNIA": "CA",
+    "COLORADO": "CO", "CONNECTICUT": "CT", "DELAWARE": "DE", "FLORIDA": "FL", "GEORGIA": "GA",
+    "HAWAII": "HI", "IDAHO": "ID", "ILLINOIS": "IL", "INDIANA": "IN", "IOWA": "IA",
+    "KANSAS": "KS", "KENTUCKY": "KY", "LOUISIANA": "LA", "MAINE": "ME", "MARYLAND": "MD",
+    "MASSACHUSETTS": "MA", "MICHIGAN": "MI", "MINNESOTA": "MN", "MISSISSIPPI": "MS",
+    "MISSOURI": "MO", "MONTANA": "MT", "NEBRASKA": "NE", "NEVADA": "NV",
+    "NEW HAMPSHIRE": "NH", "NEW JERSEY": "NJ", "NEW MEXICO": "NM", "NEW YORK": "NY",
+    "NORTH CAROLINA": "NC", "NORTH DAKOTA": "ND", "OHIO": "OH", "OKLAHOMA": "OK",
+    "OREGON": "OR", "PENNSYLVANIA": "PA", "RHODE ISLAND": "RI", "SOUTH CAROLINA": "SC",
+    "SOUTH DAKOTA": "SD", "TENNESSEE": "TN", "TEXAS": "TX", "UTAH": "UT", "VERMONT": "VT",
+    "VIRGINIA": "VA", "WASHINGTON": "WA", "WEST VIRGINIA": "WV", "WISCONSIN": "WI",
+    "WYOMING": "WY", "DISTRICT OF COLUMBIA": "DC", "PUERTO RICO": "PR", "GUAM": "GU",
+    "VIRGIN ISLANDS": "VI", "AMERICAN SAMOA": "AS", "NORTHERN MARIANA ISLANDS": "MP",
+}
+
+
+def state_code(raw: str) -> str:
+    """Normalize an SBIR.gov state value (full name or code) to a USPS code."""
+    s = (raw or "").strip().upper()
+    return STATE_TO_CODE.get(s, s if len(s) == 2 else "")
+
+
 def pi_last_name(raw: str) -> str:
     """Extract a comparable last name from an SBIR 'PI Name' field."""
     s = (raw or "").strip()
@@ -145,7 +169,7 @@ def main() -> int:
             norm = normalize_name(row.get("Company", ""), remove_suffixes=True)
             if norm not in firms:
                 continue
-            state = (row.get("State") or "").strip().upper()
+            state = state_code(row.get("State", ""))
             if state:
                 firm_states[norm].add(state)
             pi = pi_last_name(row.get("PI Name", ""))

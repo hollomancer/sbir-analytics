@@ -47,7 +47,7 @@ REPO = Path(__file__).resolve().parents[2]
 # Migration: https://data.uspto.gov/support/transition-guide/patentsview
 # Files are served via a mint-then-download flow (see module docstring); the
 # relational tables below belong to the PVGPATDIS bulk product.
-PATENTSVIEW_FILES_API = "https://api.uspto.gov/api/v1/datasets/products/files"
+ODP_FILES_API = "https://api.uspto.gov/api/v1/datasets/products/files"
 PATENTSVIEW_PRODUCT = "PVGPATDIS"  # PatentsView Granted Patent Disambiguated Data
 API_KEY_ENV_VAR = "USPTO_ODP_API_KEY"
 PATENTSVIEW_TABLES = {
@@ -136,8 +136,9 @@ def resolve_api_key(cli_value: str | None) -> str:
     )
 
 
-def download_patentsview(filename: str, api_key: str, dest_path: Path, session: requests.Session) -> dict:
-    """Download a PVGPATDIS file via the ODP files API.
+def download_odp_file(product_file: str, api_key: str, dest_path: Path, session: requests.Session) -> dict:
+    """Download any ODP bulk product file (e.g. "PVGPATDIS/g_patent.tsv.zip",
+    "TRCFECO2/2023/owner.csv.zip") via the ODP files API.
 
     The API has two response modes (both observed July 2026):
     - Small files: the response body IS the ZIP — stream it straight to disk.
@@ -146,8 +147,8 @@ def download_patentsview(filename: str, api_key: str, dest_path: Path, session: 
 
     Each file allows 20 API requests per 365 days, so do not call speculatively.
     """
-    api_url = f"{PATENTSVIEW_FILES_API}/{PATENTSVIEW_PRODUCT}/{filename}"
-    print(f"🔑 Requesting {filename} from ODP files API...")
+    api_url = f"{ODP_FILES_API}/{product_file}"
+    print(f"🔑 Requesting {product_file} from ODP files API...")
     resp = session.get(api_url, headers={"X-API-KEY": api_key}, stream=True, timeout=300)
     resp.raise_for_status()
 
@@ -301,9 +302,14 @@ Examples:
     )
     parser.add_argument(
         "--dataset",
-        required=True,
         choices=["patentsview", "assignments", "ai_patents"],
-        help="Dataset to download",
+        help="Dataset to download (or use --product-file for any ODP product)",
+    )
+    parser.add_argument(
+        "--product-file",
+        metavar="PRODUCT/PATH/FILE",
+        help="Any ODP bulk product file, e.g. TRCFECO2/2023/owner.csv.zip "
+        "(requires the API key; overrides --dataset)",
     )
     parser.add_argument(
         "--table",
@@ -327,6 +333,8 @@ Examples:
         "Required for the patentsview dataset.",
     )
     args = parser.parse_args()
+    if not args.dataset and not args.product_file:
+        parser.error("provide --dataset or --product-file")
 
     date_str = datetime.now(UTC).strftime("%Y-%m-%d")
 
@@ -339,8 +347,17 @@ Examples:
     try:
         session = create_session_with_retries()
         patentsview_file = None
+        product_file = None
 
-        if args.dataset == "patentsview":
+        if args.product_file:
+            product_file = args.product_file.strip("/")
+            filename = product_file.rsplit("/", 1)[-1]
+            api_key = resolve_api_key(args.api_key)
+            source_url = f"{ODP_FILES_API}/{product_file}"
+            s3_key = f"raw/uspto/odp/{date_str}/{filename}"
+            print(f"   Product file: {product_file}")
+
+        elif args.dataset == "patentsview":
             table = args.table or "patent"
             if table not in PATENTSVIEW_TABLES:
                 print(f"❌ Unknown table: {table}")
@@ -351,7 +368,7 @@ Examples:
             api_key = resolve_api_key(args.api_key)
             patentsview_file = filename
             # For error messages; the real download URL is resolved by the API
-            source_url = f"{PATENTSVIEW_FILES_API}/{PATENTSVIEW_PRODUCT}/{filename}"
+            source_url = f"{ODP_FILES_API}/{PATENTSVIEW_PRODUCT}/{filename}"
             s3_key = f"raw/uspto/patentsview/{date_str}/{table}.zip"
             print(f"   Table: {table}")
 
@@ -373,8 +390,10 @@ Examples:
             dest_path = Path(f"/tmp/uspto_download_{os.getpid()}.zip")
 
         print()
-        if patentsview_file:
-            result = download_patentsview(patentsview_file, api_key, dest_path, session)
+        if product_file:
+            result = download_odp_file(product_file, api_key, dest_path, session)
+        elif patentsview_file:
+            result = download_odp_file(f"{PATENTSVIEW_PRODUCT}/{patentsview_file}", api_key, dest_path, session)
         else:
             result = stream_download(source_url, dest_path, session)
 

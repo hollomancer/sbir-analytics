@@ -8,9 +8,11 @@ Sequencing rationale in `requirements.md`. Effort tags: S (<half day), M (1–2 
   `nano_dark_firm_liveness.py`: assignee-location state vs firm state, inventor names vs
   award PI names, name-token rarity. Output tier column; report high-confidence liveness
   rate as the new floor.
-  → Bracket collapsed: FIRM_ACTIVITY_ABSENT post-award liveness 317/651 (49%) at high
-  confidence — 100% of high-tier matches are inventor↔PI corroborated; no-UEI bucket
-  126/368 (34%). Report Finding 3 updated to the single defensible number.
+  → Bracket collapsed: FIRM_ACTIVITY_ABSENT post-award liveness 328/651 (50%) at high
+  confidence — 95% of high-tier matches inventor↔PI corroborated, 5% state-corroborated;
+  no-UEI bucket 131/368 (36%). (Initial run under-counted state corroboration: SBIR.gov
+  full state names vs USPS codes — fixed via STATE_TO_CODE normalization, found during
+  the T8 spot-check.) Report Finding 3 updated to the single defensible number.
 - [x] **T2 (S, WS4):** Exclude `INSUFFICIENT_TIME` awards from indeterminate percentages;
   add Kaplan–Meier time-to-first-signal figure to the methodology doc; define annual
   re-observation job.
@@ -63,8 +65,14 @@ Sequencing rationale in `requirements.md`. Effort tags: S (<half day), M (1–2 
   sourcing decision (official state APIs vs aggregator vs manual pulls); note T10 showed
   this is the highest-value remaining instrument, since dissolution records are negative
   evidence and nothing else bounds the true rate from above.
-- [ ] **T8 (M, WS3.4):** Trademark-filing check for dark firms (normalized-name match +
+- [x] **T8 (M, WS3.4):** Trademark-filing check for dark firms (normalized-name match +
   confidence, filing dates).
+  → `scripts/data/nano_dark_firm_trademarks.py` over TRCFECO2/2023 (owner + case_file via
+  the new `download_uspto.py --product-file` mode): FIRM_ACTIVITY_ABSENT — 51% own marks,
+  43% registered, 35% filed post-award, 19% high-confidence; no-UEI — 48%/40%/32%/13%.
+  Spot-check surfaced two defects fixed before reporting: registration_no '0000000' means
+  never-registered, and the SBIR-vs-USPTO state format mismatch (which also silently
+  suppressed state corroboration in T1 — both scripts fixed, T1 numbers refreshed).
 - [ ] **T9 (S, WS3.5):** Web/domain liveness sweep (tie-breaker signal only).
 
 ## Phase 5 — synthesis
