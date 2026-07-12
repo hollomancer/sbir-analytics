@@ -195,7 +195,6 @@ uv run pytest tests/unit/test_cet_signal_extractor.py -v  # 37 tests, 96% covera
 ### Configuration
 
 - `config/transition/detection.yaml` - Scoring weights, thresholds
-- `config/transition/presets.yaml` - Preset configurations
 - `config/README.md` - Configuration guide
 
 ### Data
