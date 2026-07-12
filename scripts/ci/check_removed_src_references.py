@@ -12,9 +12,11 @@ from urllib.parse import unquote
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 AUTOMATION_PREFIXES = (".github/", "scripts/", "sbir_etl/", "packages/", "tests/")
-ARCHIVE_GUARD_PREFIXES = (".github/", "scripts/", "sbir_etl/", "packages/", "tests/")
 SCANNED_FILES = {"Makefile", ".pre-commit-config.yaml"}
 EXCLUDED_HISTORICAL_DOCUMENTS = {"docs/decisions/ADR-002-etl-library-extraction.md"}
+EXCLUDED_SCAN_FILES = {
+    "tests/unit/scripts/test_repository_hygiene.py",
+}
 REMOVED_SRC_PATTERNS = (
     re.compile(r"--cov=src(?:\b|/)"),
     re.compile(r"\bsrc\.definitions(?:_ml)?\b"),
@@ -39,7 +41,9 @@ LIVE_DOC_STALE_PATTERNS = (
         "Poetry command in live docs",
     ),
     (
-        re.compile(r"(?:^|[\s`'\"])(?:python\s+-m\s+)?black(?:[\s`'\"]|$)"),
+        re.compile(
+            r"(?:^|[\s'\"(=:/])(?:python\s+-m\s+)?black\s+(?:--|[A-Za-z0-9_.-]+)"
+        ),
         "Black command in live docs",
     ),
 )
@@ -90,7 +94,9 @@ def _relative_to_repository(path: Path, root: Path = REPOSITORY_ROOT) -> str:
 
 
 def _is_automation_file(relative: str) -> bool:
-    if relative in EXCLUDED_HISTORICAL_DOCUMENTS or relative == __file_relative__():
+    if relative in EXCLUDED_HISTORICAL_DOCUMENTS or relative in EXCLUDED_SCAN_FILES:
+        return False
+    if relative == __file_relative__():
         return False
     return relative in SCANNED_FILES or relative.startswith(AUTOMATION_PREFIXES)
 
@@ -108,11 +114,11 @@ def _is_live_doc_file(relative: str) -> bool:
 
 
 def _is_archive_guard_file(relative: str) -> bool:
-    if relative == __file_relative__():
+    if relative in EXCLUDED_SCAN_FILES or relative == __file_relative__():
         return False
     if relative.startswith(("scripts/archive/", "tests/unit/scripts/archive/")):
         return False
-    return relative in SCANNED_FILES or relative.startswith(ARCHIVE_GUARD_PREFIXES)
+    return relative in SCANNED_FILES or relative.startswith(AUTOMATION_PREFIXES)
 
 
 def _read_text_lines(path: Path) -> list[str] | None:
