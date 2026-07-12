@@ -1,4 +1,4 @@
-# Requirements — UCC-1 National Coverage (50-State Expansion)
+# Requirements — UCC-1 National Coverage (49-State Public-Portal Expansion)
 
 > **Status:** Not yet started — but a significant CA pilot implementation exists.
 > `scripts/data/ucc/` contains the full pilot framework: `schema.py` (typed dicts
@@ -28,14 +28,16 @@
 ## Done when
 
 > A pipeline engineer can state: "UCC-1 financing statement extractors exist for all
-> 50 states (Delaware excluded — no free public portal), extending the CA pilot
-> pattern in `scripts/data/ucc/ca_extractor.py`. Each state's SOS portal has a
+> **49 states with free public SOS portals** (Delaware excluded — no free public
+> portal; documented as `state_fips=10 unavailable`). The framework extends the CA
+> pilot pattern in `scripts/data/ucc/ca_extractor.py`. Each state's SOS portal has a
 > documented extractor with rate limits, session-handling, and anti-bot notes. The
 > `UCC1StateExtractor` base class and registry sit alongside the existing `schema.py`
 > typed dicts, which are reused unchanged. Extracted filings are normalized to
 > `data/derived/ucc1_filings.parquet` with a `state_fips` column and refreshed on a
-> per-state configurable cadence. National coverage enables the F1 debt-vs-equity
-> question for the full SBIR awardee universe, not just California-incorporated firms."
+> per-state configurable cadence. National coverage reports carry an explicit
+> Delaware-exclusion caveat and denominator adjustment because UCC jurisdiction follows
+> state of organization, not HQ state."
 
 ---
 
@@ -63,9 +65,12 @@ stopped at 70 of 3,639 cohort firms when anti-bot rate limits were hit.
 | `scripts/data/ucc/_common.py` | `data_dir()` / `data_path()` helpers; respects `SBIR_DATA_DIR` env var |
 | `scripts/data/ucc/cohort_state_filter.py` | Cohort firm filtering by state |
 
-Extending to all 50 states requires a per-state extractor — each state Secretary of
-State portal has a different HTML structure, session model, and rate-limit policy.
-Delaware has no free public portal and is excluded.
+Extending to **49 states with free public portals** requires a per-state extractor —
+each state Secretary of State portal has a different HTML structure, session model,
+and rate-limit policy. **Delaware (state of organization for many private firms) has
+no free public portal and is excluded from coverage.** Downstream F1/A-CP9 reporting
+MUST surface this gap explicitly (coverage denominator excludes DE-organized firms;
+national rates are not complete for DE-incorporated entities).
 
 **Scope note:** Each state SOS portal is a distinct integration effort. This spec
 scopes the national framework and the first five-state expansion. Remaining states
@@ -138,6 +143,9 @@ incorporated in California.
    existing `matcher.py` Jaro-Winkler + address-overlap + person-name-rejection
    pipeline, populating `debtor_uei` via UEI → CAGE → DUNS → fuzzy-name cascade
    consistent with `SAMGovAPIClient`.
+4. THE System SHALL emit coverage metadata (per-state extractor status, Delaware
+   exclusion flag, and DE-organized cohort share) alongside F1/A-CP9 outputs so
+   consumers do not treat 49-state portal coverage as a complete national universe.
 
 ### Requirement 4 — Cadence and scheduling
 
