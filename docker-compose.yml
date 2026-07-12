@@ -119,6 +119,40 @@ services:
     <<: *resource-limits
 
   # =============================================================================
+  # Private Read-Only Analytics API
+  # =============================================================================
+  analytics-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    image: ${IMAGE_NAME:-sbir-analytics}:${IMAGE_TAG:-local}
+    profiles:
+      - dev
+    environment:
+      <<: *common-environment
+      NEO4J_READ_USER: ${NEO4J_READ_USER:-neo4j}
+      NEO4J_READ_PASSWORD: ${NEO4J_READ_PASSWORD:-password}
+      SBIR_ANALYTICS_API_TOKEN: ${SBIR_ANALYTICS_API_TOKEN:?set SBIR_ANALYTICS_API_TOKEN}
+      SBIR_ANALYTICS_SNAPSHOT_DIR: /app/reports/analytics_snapshots
+    command: ["sbir-analytics-api"]
+    volumes:
+      - ./reports:/app/reports:ro
+    ports:
+      - "${SBIR_ANALYTICS_API_PORT:-8000}:8000"
+    depends_on:
+      neo4j:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8000/health/live || exit 1"]
+      interval: 15s
+      timeout: 3s
+      retries: 5
+    networks:
+      - sbir-network
+    restart: ${ANALYTICS_API_RESTART_POLICY:-unless-stopped}
+
+  # =============================================================================
   # Dagster Webserver Service
   # =============================================================================
   dagster-webserver:
