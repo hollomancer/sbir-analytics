@@ -9,7 +9,7 @@ sbir-cohort-design,F,SBIR capital-cohort definition,Implemented,'Implemented and
 cross-agency-taxonomy,C,Cross-agency CET portfolio view (C1a–c),Partial,"Tools live (portfolio metrics/HHI, clustering, gap detection, CET classifier); end-to-end Dagster reporting asset missing"
 modernbert_analysis_layer,C,Semantic patent–award similarity (C2b),Partial,Core embeddings (~488 LOC) live; Bayesian MoE / LoRA routing deferred
 state-local-tax-rates,D,State & local effective tax-rate reference,Partial,'Not yet started — but significant existing implementation'; Req 1+2 out of scope for PR
-data-imputation,E,Imputed fields for missing solicitation data,Partial,Three-tier confidence ImputationEntry implemented; some source fields not yet captured
+data-imputation,E,Imputed fields for missing solicitation data,Archived / superseded,Spec archived at specs/archive/superseded/data-imputation/; superseded by firm-identity-resolution + input-validation-hardening
 load-contract-nodes,E,RESULTED_IN → CONTRACT FinancialTransaction nodes,Partial,Status table in design.md; mixed piece-by-piece
 naics-enricher-consolidation,A,NAICS enricher consolidation,Spec / requirements,requirements.md; consolidation pending
 ucc1-financing-analysis,A/F,UCC-1 secured-debt distress signal (A-CP9),Spec / design,Detailed portal-level design; data acquisition pending

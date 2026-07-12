@@ -45,8 +45,10 @@ artifacts. The implemented core sits in **commercialization (B)** and **data inf
   are explicitly **deferred** (gated on C2b).
 - **state-local-tax-rates (D)** — "not yet started, but significant existing implementation";
   the CSV reference file + provider (Reqs 1–2) were scoped out of the relevant PR.
-- **data-imputation (E)** — three-tier confidence `ImputationEntry` is implemented; some
-  solicitation-page source fields are not yet captured.
+- **data-imputation (E)** — archived/superseded at
+  `specs/archive/superseded/data-imputation/`; replaced by
+  `firm-identity-resolution` and `input-validation-hardening`. No live
+  `sbir_etl/imputation/` module or `ImputationEntry` implementation remains.
 - **load-contract-nodes (E)** — `RESULTED_IN` → CONTRACT FinancialTransaction resolution;
   piece-by-piece status table, mixed.
 

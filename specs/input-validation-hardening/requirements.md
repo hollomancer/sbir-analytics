@@ -2,7 +2,7 @@
 
 ## Introduction
 
-The SBIR extractor and Pydantic models currently apply **lenient validators** that silently coerce invalid values to `None` on core fields (`award_amount`, `program`, `phase`) rather than rejecting the record or quarantining the field (`sbir_etl/models/award.py:189-332`). Date-consistency violations (`contract_end_date < contract_start_date`, `proposal_receipt_date > award_date`) are emitted as `WARNING` in `sbir_etl/validators/sbir_awards.py` and pass through unchanged into downstream assets.
+The SBIR extractor and Pydantic models currently apply **lenient validators** that coerce invalid values to `None` on core fields (`award_amount`, `program`, `phase`) rather than rejecting the record or quarantining the field (`sbir_etl/models/award.py:189-332`). Date-consistency violations (`contract_end_date < contract_start_date`, `proposal_receipt_date > award_date`) are emitted as `WARNING` in `sbir_etl/models/award.py` (`validate_date_order` and related field validators) and pass through unchanged into downstream assets.
 
 The operational consequence is that downstream code cannot distinguish two very different rows: one where the source field was truly missing, and one where the source field was present but malformed. Both appear as `None`. Cohort and quality metrics treat parse failures as source-data gaps, which biases coverage measurements and hides upstream data issues that would otherwise be actionable.
 
@@ -10,7 +10,7 @@ This spec covers **validator strictness only**. It does not cover firm identity 
 
 ## Glossary
 
-- **Lenient coercion** — Validator behavior where an invalid value is silently converted to `None` and the record proceeds through the pipeline. Current default for `award_amount`, `program`, `phase`.
+- **Lenient coercion** — Validator behavior where an invalid value is converted to `None` and the record proceeds through the pipeline. For `program` and `phase`, invalid values are logged at `WARNING` before coercion; `award_amount` coercion is currently quieter. Current default for all three fields.
 - **Strict rejection** — Validator behavior where an invalid value causes the field to be quarantined with a distinguishing sentinel (or the record routed to a rejection stream). Proposed default.
 - **Parse-failure null** — A field value that is `None` because the source data was malformed, not because the source data was absent. Currently indistinguishable from a true absence.
 - **True null** — A field value that is `None` because the source data did not contain a value. The intended semantic for downstream consumers.

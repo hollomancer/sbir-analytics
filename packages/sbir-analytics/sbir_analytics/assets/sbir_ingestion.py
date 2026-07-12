@@ -534,10 +534,13 @@ def validated_sbir_awards(
         config=config,
     )
 
-    # Record provenance for the upstream source. The raw dataframe is already
-    # stamped with data_source_url and ingested_at by raw_sbir_awards; pull the
-    # first row as the source snapshot metadata.
-    if len(raw_sbir_awards) > 0:
+    # Record provenance for the upstream source when available. The raw dataframe is
+    # normally stamped with data_source_url and ingested_at by raw_sbir_awards.
+    if (
+        len(raw_sbir_awards) > 0
+        and "data_source_url" in raw_sbir_awards.columns
+        and "ingested_at" in raw_sbir_awards.columns
+    ):
         source_location = str(raw_sbir_awards["data_source_url"].iloc[0])
         sha256, hash_omitted = _hash_or_reason(source_location)
         collector.record_provenance(
@@ -548,6 +551,16 @@ def validated_sbir_awards(
             extractor_module="sbir_etl.extractors.sbir",
             sha256=sha256,
             hash_omitted_reason=hash_omitted,
+        )
+    else:
+        collector.record_provenance(
+            source_id="sbir_gov_bulk_download",
+            location="unknown",
+            retrieved_at=datetime.now(UTC),
+            row_count=len(raw_sbir_awards),
+            extractor_module="sbir_etl.extractors.sbir",
+            sha256=None,
+            hash_omitted_reason="source provenance columns unavailable",
         )
 
     # Apply structural quality filters (empty IDs, duplicates, type coercion)
