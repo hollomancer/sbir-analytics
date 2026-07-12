@@ -74,8 +74,8 @@ nanotech-specific scripts.
 
 #### Acceptance Criteria
 
-1. WHEN invoked with `--area <cet_id>`, THE System SHALL write outputs under
-   `data/reports/<cet_id>/` (keyword cohort CSV at minimum).
+1. WHEN invoked with `--area <area_id>`, THE System SHALL write outputs under
+   `data/reports/<area_id>/` (keyword cohort CSV at minimum).
 2. THE System SHALL report Method-A size, Method-B (taxonomy) size, and Method-A ∩ Method-B
    containment and Jaccard on unique award IDs.
 3. WHEN shared signal artifacts exist (prospect digest, Form D high-conf, M&A enrichment),
