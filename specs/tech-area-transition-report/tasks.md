@@ -9,12 +9,5 @@
       (`--area`, Method A/B, negatives, overlap, optional signal enrichment note, stub doc)
 - [x] T4 Run quantum + hypersonics; record sizes / Jaccard / spot-check in `validation.md`
 - [x] T5 Nanotech smoke: Method A size exact match to 2,849 with ported keyword pack
-
-## Phase 2 — Follow-ups (out of this PR unless cheap)
-
-- [ ] T6 Extract shared enrichment helpers from `build_nano_cohort.py` into
-      `sbir_etl/` (stop importing from a script)
-- [ ] T7 Point `nano_*` dark-majority scripts at `data/reports/<cet_id>/` via `--area`
-- [ ] T8 Optional Method C for quantum (`G06N10` etc.) once CPC extract is generalized
-- [ ] T9 Dagster asset wrapper (only after CLI is stable across ≥3 areas)
-- [ ] T10 Quantum pack precision pass; hypersonics TPS co-occurrence rule (see `validation.md`)
+- [x] T10 Quantum pack precision pass (`soft_patterns` + `title_or_multi`); hypersonics
+      TPS/Mach `core_cooccur` rule — see `validation.md`

@@ -19,6 +19,7 @@ import csv
 import json
 import re
 import sys
+from collections import Counter
 from pathlib import Path
 
 import yaml
@@ -108,14 +109,20 @@ def _phrase_to_pattern(phrase: str) -> re.Pattern:
 
 def resolve_method_a(
     cfg: dict, taxonomy: dict[str, dict]
-) -> tuple[list[re.Pattern], list[re.Pattern], str]:
+) -> tuple[list[re.Pattern], list[re.Pattern], list[re.Pattern], str]:
+    """Return (core_positives, soft_positives, negatives, source_label).
+
+    Soft positives only admit an award when corroborated (see build_keyword_cohort).
+    """
     pack = cfg.get("keyword_pack") or {}
-    positives: list[re.Pattern] = []
+    core: list[re.Pattern] = []
+    soft: list[re.Pattern] = []
     negatives: list[re.Pattern] = []
     source = "keyword_pack"
 
-    if pack.get("patterns"):
-        positives = _compile_patterns(list(pack["patterns"]))
+    if pack.get("patterns") or pack.get("soft_patterns"):
+        core = _compile_patterns(list(pack.get("patterns") or []))
+        soft = _compile_patterns(list(pack.get("soft_patterns") or []))
         negatives.extend(_compile_patterns(list(pack.get("negative_patterns") or [])))
     else:
         cet_id = cfg.get("cet_id")
@@ -123,7 +130,7 @@ def resolve_method_a(
             raise ValueError(
                 f"area {cfg['area_id']}: no keyword_pack.patterns and no usable cet_id"
             )
-        positives = [_phrase_to_pattern(k) for k in taxonomy[cet_id].get("keywords") or []]
+        core = [_phrase_to_pattern(k) for k in taxonomy[cet_id].get("keywords") or []]
         source = "taxonomy"
         negatives.extend(
             [_phrase_to_pattern(k) for k in taxonomy[cet_id].get("negative_keywords") or []]
@@ -134,9 +141,9 @@ def resolve_method_a(
         for k in taxonomy[cet_id].get("negative_keywords") or []:
             negatives.append(_phrase_to_pattern(k))
 
-    if not positives:
+    if not core and not soft:
         raise ValueError(f"area {cfg['area_id']}: empty Method A pattern list")
-    return positives, negatives, source
+    return core, soft, negatives, source
 
 
 def resolve_method_b(
@@ -157,32 +164,58 @@ def resolve_method_b(
     return {}, "absent"
 
 
+def _collect_hits(text: str, patterns: list[re.Pattern]) -> list[str]:
+    hits = []
+    for pat in patterns:
+        m = pat.search(text)
+        if m:
+            hits.append(m.group(0).lower())
+    return hits
+
+
 def build_keyword_cohort(
     awards: list[dict],
-    positives: list[re.Pattern],
+    core: list[re.Pattern],
+    soft: list[re.Pattern],
     negatives: list[re.Pattern],
     source: str,
+    soft_requires: str = "title_or_multi",
 ) -> list[dict]:
-    """Method A: require ≥1 positive match. Negatives alone never admit an award.
+    """Method A with optional soft-pattern corroboration.
 
-    Mixed abstracts (positive + negative) are kept — e.g. a QIS award that also
-    mentions quantum dots. Pure quantum-dot abstracts match no positive → excluded.
+    soft_requires:
+      - ``title_or_multi`` (default): soft-only admits if soft term is in the title
+        or ≥2 distinct soft hits appear (quantum market-name-drop filter).
+      - ``core_cooccur``: soft-only never admits; soft hits only tag awards that
+        already matched a core pattern (hypersonics TPS/Mach rule).
     """
-    del negatives  # used by callers for spot-checks; admission is positive-gated
+    del negatives  # spot-checks use these; admission is positive-gated
+    if soft_requires not in ("title_or_multi", "core_cooccur"):
+        raise ValueError(f"unknown soft_requires={soft_requires!r}")
     cohort = []
     for aw in awards:
-        text = " ".join([aw["title"], aw["abstract"]])
-        pos = []
-        for pat in positives:
-            m = pat.search(text)
-            if m:
-                pos.append(m.group(0).lower())
-        if not pos:
+        title = aw["title"]
+        text = " ".join([title, aw["abstract"]])
+        core_hits = _collect_hits(text, core)
+        soft_hits = _collect_hits(text, soft)
+        if core_hits:
+            admitted_by = "core"
+            pos = core_hits + soft_hits
+        elif soft_hits and soft_requires == "title_or_multi":
+            soft_in_title = _collect_hits(title, soft)
+            if soft_in_title or len(set(soft_hits)) >= 2:
+                admitted_by = "soft_corroborated"
+                pos = soft_hits
+            else:
+                continue
+        else:
+            # soft_requires == core_cooccur and no core → reject soft-only
             continue
         rec = dict(aw)
         rec["cohort_keyword"] = True
         rec["keyword_matches"] = "|".join(sorted(set(pos))[:10])
         rec["keyword_source"] = source
+        rec["admitted_by"] = admitted_by
         cohort.append(rec)
     return cohort
 
@@ -317,11 +350,13 @@ def try_enrich_note() -> tuple[list[str], dict | None]:
 
 def contamination_spotcheck(
     kw_cohort: list[dict],
-    positives: list[re.Pattern],
+    core: list[re.Pattern],
+    soft: list[re.Pattern],
     negatives: list[re.Pattern],
     sample: int = 20,
 ) -> dict:
     """Count Method-A awards that also match negatives; sample for review."""
+    positives = core + soft
     both = []
     for r in kw_cohort:
         text = " ".join([r["title"], r["abstract"]])
@@ -332,6 +367,7 @@ def contamination_spotcheck(
                     "award_id": r["award_id"],
                     "company": r["company"],
                     "keyword_matches": r["keyword_matches"],
+                    "admitted_by": r.get("admitted_by", ""),
                     "negative_patterns": neg_hits[:3],
                     "title": r["title"][:120],
                 }
@@ -343,15 +379,20 @@ def contamination_spotcheck(
             p.search(text) for p in positives
         ):
             pure_neg_admitted += 1
+    by = Counter(r.get("admitted_by", "") for r in kw_cohort)
     return {
         "method_a_with_negative_cooccurrence": len(both),
         "pure_negative_admissions": pure_neg_admitted,
+        "admitted_by": dict(by),
         "sample": both[:sample],
     }
 
 
-def quantum_dot_only_false_positives(awards: list[dict], positives: list[re.Pattern]) -> int:
+def quantum_dot_only_false_positives(
+    awards: list[dict], core: list[re.Pattern], soft: list[re.Pattern]
+) -> int:
     """Awards that mention quantum dot/well but no Method-A positive — should be excluded."""
+    positives = core + soft
     neg_only = [
         re.compile(r"\bquantum dots?\b", re.I),
         re.compile(r"\bquantum wells?\b", re.I),
@@ -359,7 +400,9 @@ def quantum_dot_only_false_positives(awards: list[dict], positives: list[re.Patt
     n = 0
     for aw in awards:
         text = " ".join([aw["title"], aw["abstract"]])
-        if any(p.search(text) for p in neg_only) and not any(p.search(text) for p in positives):
+        if any(p.search(text) for p in neg_only) and not any(
+            p.search(text) for p in positives
+        ):
             n += 1
     return n
 
@@ -392,10 +435,19 @@ def main() -> int:
     awards = load_phase2_awards(awards_csv)
     print(f"  {len(awards):,} Phase II awards")
 
-    positives, negatives, src_a = resolve_method_a(cfg, taxonomy)
-    print(f"Method A: {len(positives)} patterns from {src_a}; {len(negatives)} negatives")
-    kw_cohort = build_keyword_cohort(awards, positives, negatives, src_a)
+    core, soft, negatives, src_a = resolve_method_a(cfg, taxonomy)
+    soft_requires = (cfg.get("keyword_pack") or {}).get("soft_requires", "title_or_multi")
+    print(
+        f"Method A: {len(core)} core + {len(soft)} soft patterns from {src_a}; "
+        f"{len(negatives)} negatives; soft_requires={soft_requires}"
+    )
+    kw_cohort = build_keyword_cohort(
+        awards, core, soft, negatives, src_a, soft_requires=soft_requires
+    )
     print(f"  {len(kw_cohort):,} awards matched")
+    adm = Counter(r.get("admitted_by", "") for r in kw_cohort)
+    if adm:
+        print(f"  admitted_by: {dict(adm)}")
 
     compiled_b, src_b = resolve_method_b(cfg, taxonomy)
     print(f"Method B: {len(compiled_b)} terms from {src_b}")
@@ -420,7 +472,9 @@ def main() -> int:
         for p in absent:
             print(f"  - {p}")
 
-    spot = contamination_spotcheck(kw_cohort, positives, negatives, args.sample_negatives)
+    spot = contamination_spotcheck(
+        kw_cohort, core, soft, negatives, args.sample_negatives
+    )
     print(
         f"Negative co-occurrence in Method A: {spot['method_a_with_negative_cooccurrence']:,} "
         f"(pure-negative admissions={spot['pure_negative_admissions']})"
@@ -428,7 +482,7 @@ def main() -> int:
 
     qdot_excluded = None
     if cfg.get("cet_id") == "quantum_information_science":
-        qdot_excluded = quantum_dot_only_false_positives(awards, positives)
+        qdot_excluded = quantum_dot_only_false_positives(awards, core, soft)
         print(
             f"Quantum-dot/well awards with no QIS positive (correctly excluded from A): "
             f"{qdot_excluded:,}"

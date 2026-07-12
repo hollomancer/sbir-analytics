@@ -45,9 +45,11 @@ cet_id: quantum_information_science
 # Method A — optional richer pack. If omitted AND cet_id is set, taxonomy keywords
 # are used. If both omitted, config is invalid.
 keyword_pack:
-  patterns:                           # regexes OR plain phrases
-    - 'quantum comput'
-    - 'qubit'
+  patterns:                           # core regexes/phrases — any hit admits
+    - 'quantum information'
+  soft_patterns:                      # optional; admission gated by soft_requires
+    - 'quantum computing'
+  soft_requires: title_or_multi         # or core_cooccur (soft tags only; never admits alone)
   negative_patterns: []               # extra negatives beyond taxonomy
 
 # Method B override when cet_id is null (nanotech-style multi-CET proxy terms)
