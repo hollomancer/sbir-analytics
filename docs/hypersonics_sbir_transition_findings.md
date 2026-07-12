@@ -1,11 +1,12 @@
 # Hypersonics SBIR/STTR Phase II: Technical Findings (Provisional)
 
-**Prepared for:** Analysts and reproducibility reviewers  
-**Policy brief:** [`hypersonics_sbir_policy_brief.md`](hypersonics_sbir_policy_brief.md)  
+**Role:** Technical appendix (not the NSET-facing default)  
+**Policy brief (start here):** [`hypersonics_sbir_policy_brief.md`](hypersonics_sbir_policy_brief.md)  
 **Status:** Provisional — cohort and triangulation only; channel rates not computed  
 **Data through:** FY2025 SBIR.gov Phase II universe  
 **CLI:** `python scripts/data/build_tech_area_cohort.py --area hypersonics`  
-**Config:** `config/transition_reports/hypersonics.yaml`
+**Config:** `config/transition_reports/hypersonics.yaml`  
+**Publication format:** [`specs/tech-area-transition-report/publication-format.md`](../specs/tech-area-transition-report/publication-format.md)
 
 ---
 
@@ -144,6 +145,8 @@ Outputs: `data/reports/hypersonics/`. Remaining dark-majority scripts (liveness,
 ---
 
 ## Policy Implications (Provisional)
+
+**For leaders:** use [`hypersonics_sbir_policy_brief.md`](hypersonics_sbir_policy_brief.md). Items below are the technical cross-reference.
 
 1. **Publish Method A vs Method B with the number** — 813 vs 962 is a definitional choice, not measurement error.
 2. **Prioritize FPDS + contract-level recovery (WS1) and subaward (WS5a) over Form D** for this area once signals are restored — match instruments to the DoD/NASA customer.

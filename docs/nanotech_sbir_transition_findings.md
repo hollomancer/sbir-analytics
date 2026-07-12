@@ -1,24 +1,18 @@
 # Nanotechnology SBIR/STTR Phase II: Commercialization Pathways and Measurement Limits
 
-**Prepared for:** NSET Subcommittee (technical appendix)  
-**Policy brief:** [`nanotech_sbir_policy_brief.md`](nanotech_sbir_policy_brief.md) — executive summary for S&T policy leaders  
+**Role:** Technical appendix (not the NSET-facing default)  
+**Policy brief (start here):** [`nanotech_sbir_policy_brief.md`](nanotech_sbir_policy_brief.md)  
 **Status:** Provisional — figures are bounded estimates, not rates  
-**Data through:** FY2025 (SBIR.gov); FY2024 (USAspending); SEC EDGAR (ongoing); USPTO PatentsView (March 2026 release)
+**Data through:** FY2025 (SBIR.gov); FY2024 (USAspending); SEC EDGAR (ongoing); USPTO PatentsView (March 2026 release)  
+**Publication format:** [`specs/tech-area-transition-report/publication-format.md`](../specs/tech-area-transition-report/publication-format.md)
 
 ---
 
-## Summary
+## Summary (technical)
 
-Analysis of 2,849 nanotechnology-adjacent SBIR/STTR Phase II awards identifies two nearly independent commercialization pathways, each visible in roughly one in ten awards. They are not additive — they serve different firms, funded by different agencies, going to different markets.
+Leaders should use the **policy brief** for decisions and the headline table (9.2% / 9.5% / 17.4% / 28.1% / 71.9%). This document holds instrument detail, matching rules, and extended tables.
 
-- **Government procurement pathway:** 9.2% of nanotech Phase II awards show a subsequent federally-coded Phase III contract. This signal is concentrated in DoD (67% of coded contracts) and is a known undercount for all other agencies.
-- **Private investment pathway:** 9.5% of nanotech Phase II awards have a Regulation D offering filed *after* their Phase II ended — a temporal filter that eliminates 31% of the raw Form D matches. This signal is strongest for NSF-funded firms (17.7%).
-- **Overlap between pathways:** 1.3% (37 awards). These populations are nearly disjoint. Firms that return for government Phase III are largely not the same firms that attract venture capital, and vice versa.
-- **Combined observable signal:** 17.4% of nanotech Phase II awards show evidence of post-award commercialization activity through the flag-based channels. Contract-level recovery of awards mislabeled by the FPDS coding gap (Finding 4) plus identity resolution of no-UEI awards (Finding 3) raise this to **28.1%**.
-- **Status indeterminate for 71.9%** of the cohort after recovery (82.6% on flags alone; 70.6% on the matured subset, since 246 awards from 2023 onward are censored observations, not failures) — a measurement problem, not necessarily a commercialization failure.
-- **Patent lens (new):** 481 SBIR Phase II firms hold B82-classified nanotechnology patents. Half filed their first nanotech application only *after* their first Phase II award (a commercialization-adjacent outcome); the rest filed before or during the award era (a capability marker). The patent data validates the keyword cohort definition, empirically retires the CET proxy, and — stacked with trademark, subaward, and identity-alias instruments — recovers post-award activity evidence for 66% of the firms otherwise counted as "disappeared" (Finding 3); it also marks out a 742-award high-confidence core with 23.7% FPDS-coded Phase III (Finding 5).
-
-**A note on how to read these two headline numbers together:** the 71.9%/28.1% split above answers "did this *award* produce a coded federal transition, a private raise, or documented follow-on contract activity" — a strict, financially-grounded bar. The 66% figure answers a narrower, different question about a specific subgroup: "is this *firm* still doing something, under any name." Counting the second kind of evidence (a patent filing, a trademark, a subcontract) as equivalent to the first would collapse the indeterminate share from 71.9% to roughly 33% — a comparison run once, deliberately, to size the gap, not a revision the report makes. A firm that filed one defensive trademark is not the same claim as a firm that raised a Series A or won a coded Phase III contract; the two statistics are reported side by side precisely so neither is mistaken for the other.
+**Grain note (do not conflate):** the **28.1% / 71.9%** award-level split is a strict, financially grounded bar (coded Phase III, private raise, or recovered follow-on contract). The **66%** figure is firm-level liveness among disappeared firms (patent / trademark / subaward / alias / registries). Equating them would collapse indeterminacy to ~33% — a gap-sizing thought experiment, not the headline the brief uses.
 
 ---
 
@@ -237,6 +231,8 @@ The measurement lesson is itself a finding about commercialization: the phenomen
 ---
 
 ## Policy Implications
+
+**For leaders:** use [`nanotech_sbir_policy_brief.md`](nanotech_sbir_policy_brief.md) § What policy leaders should take away and § Language to avoid. The numbered items below are the technical cross-reference that the brief compresses.
 
 **1. Aggregate transition rates are uninformative for nanotech.** The split between government-procurement and private-capital pathways is large enough that a single program-wide number will be misleading regardless of how it is computed. Reporting should distinguish DoD from non-DoD, and procurement-pathway from commercial-pathway, as a minimum.
 

@@ -1,17 +1,20 @@
 # Tech-Area Transition Report — Publication Format (policy leaders)
 
-**Status:** normative for new and revised findings documents  
-**Applies to:** `docs/*_sbir_transition_findings.md` (technical) and optional `docs/*_sbir_policy_brief.md` (executive)
+**Status:** normative — **accepted** for all area reports  
+**Default NSET-facing deliverable:** `docs/<area>_sbir_policy_brief.md`  
+**Applies to:** policy briefs (required) + technical findings (appendix) + methodology stubs
 
 ## Two-layer model
 
 | Layer | Audience | File pattern | Content |
 |-------|----------|--------------|---------|
-| **Policy brief** | S&T policy leaders, NSET reviewers | `docs/<area>_sbir_policy_brief.md` | Decisions, headline table, interpretations, language guardrails |
+| **Policy brief** (default) | S&T policy leaders, NSET reviewers | `docs/<area>_sbir_policy_brief.md` | Decisions, headline table, interpretations, language guardrails |
 | **Technical findings** | Analysts, reproducibility | `docs/<area>_sbir_transition_findings.md` | Full evidence, instrument detail, methodological notes |
 | **Appendix** | Implementers | `docs/<area>_phase3_methodology.md` or `data/reports/<area>/methodology_stub.md` | Cohort defs, matching rules, confidence tiers, CLI |
 
-Policy briefs may be produced by restructuring technical findings (nanotech) or as a **provisional cohort brief** when channel signals are absent (quantum, hypersonics v1).
+**Rule:** Do not ask leaders to read the technical findings first. Technical docs must link to the policy brief in the header and keep executive Summary short (or point entirely to the brief).
+
+Policy briefs are **required** for each published area. When channel signals are absent (quantum, hypersonics v1), ship a **provisional cohort brief** — never invent channel rates.
 
 ## Required policy-brief elements
 

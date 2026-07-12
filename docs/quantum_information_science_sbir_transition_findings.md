@@ -1,11 +1,12 @@
 # Quantum Information Science SBIR/STTR Phase II: Technical Findings (Provisional)
 
-**Prepared for:** Analysts and reproducibility reviewers  
-**Policy brief:** [`quantum_information_science_sbir_policy_brief.md`](quantum_information_science_sbir_policy_brief.md)  
+**Role:** Technical appendix (not the NSET-facing default)  
+**Policy brief (start here):** [`quantum_information_science_sbir_policy_brief.md`](quantum_information_science_sbir_policy_brief.md)  
 **Status:** Provisional — cohort and triangulation only; channel rates not computed  
 **Data through:** FY2025 SBIR.gov Phase II universe  
 **CLI:** `python scripts/data/build_tech_area_cohort.py --area quantum_information_science`  
-**Config:** `config/transition_reports/quantum_information_science.yaml`
+**Config:** `config/transition_reports/quantum_information_science.yaml`  
+**Publication format:** [`specs/tech-area-transition-report/publication-format.md`](../specs/tech-area-transition-report/publication-format.md)
 
 ---
 
@@ -142,6 +143,8 @@ None of these absences imply failed commercialization. They are instrument gaps.
 ---
 
 ## Policy Implications (Provisional)
+
+**For leaders:** use [`quantum_information_science_sbir_policy_brief.md`](quantum_information_science_sbir_policy_brief.md). Items below are the technical cross-reference.
 
 1. **Publish the instrument with the count.** "Quantum SBIR" is 138 (Method A), 158 (CET), or ~1,100 (bare `quantum`) depending on the filter — same lesson as nanotech Policy Implication 8.
 2. **Do not use FPDS Phase III alone for cross-agency QIS comparison** once rates exist — GAO-24-106398 still applies, and DOE/NASA/NSF shares are material enough to distort a DoD-coded metric.

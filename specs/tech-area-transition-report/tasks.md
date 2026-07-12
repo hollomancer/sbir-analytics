@@ -12,8 +12,9 @@
       TPS/Mach `core_cooccur` rule — see `validation.md`
 - [x] T17 Provisional findings reports for quantum + hypersonics (cohort / triangulation /
       agency composition; pathway rates deferred until signal artifacts exist)
-      — `docs/quantum_information_science_sbir_transition_findings.md`,
-        `docs/hypersonics_sbir_transition_findings.md`
+- [x] T18 Publication format accepted: policy brief = default NSET-facing deliverable;
+      technical findings = appendix (`publication-format.md`); nanotech policy brief +
+      Q/H provisional briefs; technical nanotech Summary trimmed to point at brief
 
 ## Phase 1b — Dark-majority area-awareness foundation
 
@@ -33,3 +34,8 @@
 - [ ] T6 Point remaining `nano_*` dark-majority scripts at `ReportPaths`
 - [ ] T8 Optional Method C for quantum (`G06N10`) once CPC extract is generalized
 - [ ] T9 Dagster asset wrapper (only after CLI is stable across ≥3 areas)
+- [ ] T19 When digest / Form D / M&A exist: extend Q/H policy-brief headline tables with
+      channel rows (`Measure | Result | How to use it`) + Policy interpretation blocks;
+      hypersonics prioritizes WS1 + WS5a over Form D; quantum keeps small-N caveats
+- [ ] T20 Optional: `build_tech_area_cohort.py` emits `policy_brief_stub.md` from
+      `overlap_summary.json` + agency aggregates
