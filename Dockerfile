@@ -16,7 +16,9 @@ RUN pip install \
     "rapidfuzz>=3.0.0,<4.0.0" \
     "jellyfish>=1.0.0,<2.0.0" \
     "httpx>=0.27.0,<1.0.0" \
-    "tenacity>=8.2.3,<10.0.0"
+    "tenacity>=8.2.3,<10.0.0" \
+    "fastapi>=0.115.0,<1.0.0" \
+    "uvicorn>=0.30.0,<1.0.0"
 
 # Copy application code
 COPY sbir_etl/ /app/sbir_etl/

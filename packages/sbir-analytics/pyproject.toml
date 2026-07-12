@@ -14,7 +14,13 @@ dependencies = [
     "sbir-graph",
     # Dagster orchestration
     "dagster>=1.7.0,<2.0.0",
+    # Private analytics API
+    "fastapi>=0.115.0,<1.0.0",
+    "uvicorn>=0.30.0,<1.0.0",
 ]
+
+[project.scripts]
+sbir-analytics-api = "sbir_analytics.api.__main__:main"
 
 [project.optional-dependencies]
 r = ["sbir-etl[r]"]

@@ -40,6 +40,8 @@ Each ADR follows this structure:
 ## ADR List
 
 - [ADR-001: Allow Negative Obligation Amounts in Federal Contracts](./ADR-001-negative-obligations.md) - Accepted (2025-10-28)
+- [ADR-002: Extract a Standalone ETL Library](./ADR-002-etl-library-extraction.md) - Accepted
+- [ADR-003: Establish APIs Before MCP Adapters](./ADR-003-api-before-mcp.md) - Accepted (2026-07-12)
 
 ## Resources
 
