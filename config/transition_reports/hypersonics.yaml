@@ -1,0 +1,22 @@
+area_id: hypersonics
+display_name: Hypersonics
+cet_id: hypersonics
+
+# Deliberately omit bare "supersonic" and vague "high speed flight" from Method A.
+# Those remain in taxonomy Method B for contrast (expect Method B ⊇ Method A).
+keyword_pack:
+  patterns:
+    - '\bhypersonic[s]?\b'
+    - '\bhypersonic flight\b'
+    - '\bhypersonic weapon[s]?\b'
+    - '\bhypersonic vehicle[s]?\b'
+    - '\bhypersonic missile[s]?\b'
+    - '\bscramjet[s]?\b'
+    - '\bMach\s*[5-9]\b'
+    - '\bMach\s*1[0-9]\b'
+    - '\bboost[- ]glide\b'
+    - '\bthermal protection system\b'
+  negative_patterns:
+    - '\bsupersonic\b'  # do not let a future taxonomy merge reintroduce it into Method A
+
+cpc_prefixes: []
