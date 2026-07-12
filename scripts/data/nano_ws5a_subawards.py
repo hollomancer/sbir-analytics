@@ -167,7 +167,7 @@ def main() -> int:
             "n_primes": len(primes),
             "top_primes": " | ".join(sorted(p for p in primes if p)[:3]),
             "top_subawards": " || ".join(
-                f"{s.get('Sub-Award Date','')} {s.get('Prime Recipient Name','')[:30]} "
+                f"{s.get('Sub-Award Date') or ''} {(s.get('Prime Recipient Name') or '')[:30]} "
                 f"${float(s.get('Sub-Award Amount') or 0):,.0f}" for s in top),
         })
         if i % 100 == 0:

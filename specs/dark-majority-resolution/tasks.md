@@ -101,12 +101,21 @@ Sequencing rationale in `requirements.md`. Effort tags: S (<half day), M (1–2 
 
 ## Phase 6 — new channels and recall multipliers (scoped 2026-07-12)
 
-- [ ] **T13 (M, WS5a):** Subaward (FSRS) evidence pull for dark-bucket firms — USAspending
+- [x] **T13 (M, WS5a):** Subaward (FSRS) evidence pull for dark-bucket firms — USAspending
   subaward records by sub-awardee UEI/name, post-Phase-II temporal filter, WS1 tier
   conventions. State FSRS threshold/under-reporting and FY2011+ coverage in outputs.
-- [ ] **T14 (S–M, WS5b):** SAM.gov registration status for all UEI'd cohort firms
-  (public extracts or Entity Management API; a SAM key exists in repo tooling).
-  Output active vs lapsed-with-year; feed lapse years into WS4 survival framing.
+  → `scripts/data/nano_ws5a_subawards.py`. 117/651 (18%) disappeared firms show a
+  post-award subaward (96 strong); 22 net-new beyond patent+trademark+alias — the
+  largest single marginal contribution of any WS3/5/6 instrument — including firms
+  subcontracting directly to Northrop Grumman, Lockheed Martin, and SRI International.
+  Two None-slicing bugs caught and fixed in the API-field formatting before reporting.
+- [ ] **T14 (S–M, WS5b) — BLOCKED (2026-07-12):** SAM.gov registration status for all
+  UEI'd cohort firms (public extracts or Entity Management API; a SAM key exists in repo
+  tooling). Output active vs lapsed-with-year; feed lapse years into WS4 survival framing.
+  → `scripts/data/nano_ws5b_sam_status.py` implemented, modeled on `download_sam_gov.py`'s
+  key-resolution pattern; exits 2 with a clear message when `SAM_GOV_API_KEY` is absent
+  (this analysis has no key — SAM.gov keys are tied to a login, cannot self-issue). Ready
+  to run once one is supplied; no partial output was written.
 - [x] **T15 (M, WS6a):** Build `data/processed/firm_aliases.csv` from owner_name_change
   (on disk), PatentsView assignee_id clusters (on disk), USAspending DBA/parent
   linkages, and — if programmatically available on ODP — patent assignment records.
@@ -126,7 +135,16 @@ Sequencing rationale in `requirements.md`. Effort tags: S (<half day), M (1–2 
   Nevada, Boulder Ionics→CoorsTek, Microchip Biotechnologies→IntegenX, …), 3 with federal
   evidence under the new identity. Patent-assignment aliases are documentary (trusted);
   shared-UEI aliases only counted with independent evidence. Finding 3 + Policy #6 updated.
-- [ ] **T17 (M, WS5c):** ClinicalTrials.gov + openFDA go-to-market check for the biomed
+- [x] **T17 (M, WS5c):** ClinicalTrials.gov + openFDA go-to-market check for the biomed
   slice (alias-expanded), name+state confidence tiers; report alongside trademarks.
-- [ ] **T18 (S):** Integrate Phase 6 outcomes into the findings report and refresh the
+  → `scripts/data/nano_ws5c_sector_registries.py`, keyless APIs. 33/206 HHS-funded dark
+  firms show a lead-sponsor trial (24) or 510(k) clearance (12); 7 net-new beyond
+  patent+trademark (Imbed Biosciences' Microlyte, EraGen's FLEXMAP 3D, etc.).
+- [x] **T18 (S):** Integrate Phase 6 outcomes into the findings report and refresh the
   headline observable/indeterminate shares.
+  → Finding 3 gains WS5a/WS5c paragraphs and a combined-instrument tally; Summary,
+  synthesis conclusion 2, and Policy #5 updated to the stacked result: **427/651 (66%)**
+  of "disappeared" firms now show post-award activity evidence across patents,
+  trademarks, subawards, aliases, and sector registries (up from 50% patent-only);
+  no-UEI bucket 183/368 (50%). Methodological notes extended with all four new
+  instruments' caveats. Stale-number sweep clean.
