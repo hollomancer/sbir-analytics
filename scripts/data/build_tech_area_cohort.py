@@ -332,20 +332,14 @@ def signal_paths() -> dict[str, Path]:
     }
 
 
-def try_enrich_note() -> tuple[list[str], dict | None]:
-    """v1: report which signal artifacts are present; full enrich needs nano helpers."""
-    absent = []
-    present = []
-    for name, path in signal_paths().items():
-        if path.exists():
-            present.append(name)
-        else:
-            absent.append(str(path.relative_to(REPO)))
-    if present and not absent:
-        # Enrichment deferred to nano helper import when all artifacts exist;
-        # local cloud runs typically lack them — avoid matplotlib hard-dep.
-        return absent, None
-    return absent, None
+def try_enrich(kw_cohort: list[dict], *, require_signals: bool = False):
+    """Enrich with shared transition signals when artifacts exist."""
+    import sys
+
+    sys.path.insert(0, str(REPO))
+    from sbir_etl.utils.transition_signals import enrich_from_artifacts
+
+    return enrich_from_artifacts(kw_cohort, REPO, require_signals=require_signals)
 
 
 def contamination_spotcheck(
@@ -466,14 +460,19 @@ def main() -> int:
     else:
         print(f"Overlap: ∩={stats['intersection_n']:,}")
 
-    absent, channel_summary = try_enrich_note()
+    enriched, absent, channel_summary = try_enrich(kw_cohort)
     if absent:
-        print("Signal artifacts absent (cohort-only run):")
+        print("Signal artifacts absent — writing deficiency_class with empty signals:")
         for p in absent:
             print(f"  - {p}")
+        print("  (dark-majority WS need digest/Form D/M&A for meaningful buckets)")
+    elif channel_summary:
+        print("Transition channels (keyword cohort):")
+        for k, v in channel_summary.items():
+            print(f"  {k}: {v}")
 
     spot = contamination_spotcheck(
-        kw_cohort, core, soft, negatives, args.sample_negatives
+        enriched, core, soft, negatives, args.sample_negatives
     )
     print(
         f"Negative co-occurrence in Method A: {spot['method_a_with_negative_cooccurrence']:,} "
@@ -488,10 +487,12 @@ def main() -> int:
             f"{qdot_excluded:,}"
         )
 
-    out_dir = REPORTS / cfg["area_id"]
-    out_dir.mkdir(parents=True, exist_ok=True)
-    write_csv(kw_cohort, out_dir / "cohort_keyword.csv")
-    write_csv(cet_cohort, out_dir / "cohort_cet.csv")
+    from sbir_etl.utils.transition_report_paths import ReportPaths
+
+    paths = ReportPaths.for_area(cfg["area_id"])
+    paths.ensure_dirs()
+    write_csv(enriched, paths.artifact("cohort_keyword"))
+    write_csv(cet_cohort, paths.artifact("cohort_cet"))
     summary = {
         "area_id": cfg["area_id"],
         "display_name": cfg["display_name"],
@@ -504,14 +505,16 @@ def main() -> int:
         "channels": channel_summary,
         "spotcheck": spot,
         "quantum_dot_well_excluded_count": qdot_excluded,
+        "has_deficiency_class": bool(enriched)
+        and "deficiency_class" in enriched[0],
     }
-    (out_dir / "overlap_summary.json").write_text(
+    paths.artifact("overlap_summary").write_text(
         json.dumps(summary, indent=2) + "\n", encoding="utf-8"
     )
     write_methodology_stub(
-        cfg, out_dir / "methodology_stub.md", stats, absent, channel_summary
+        cfg, paths.artifact("methodology_stub"), stats, absent, channel_summary
     )
-    print(f"Wrote {out_dir}/")
+    print(f"Wrote {paths.report_dir}/")
     return 0
 
 

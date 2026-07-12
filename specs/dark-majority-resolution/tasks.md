@@ -177,3 +177,44 @@ Sequencing rationale in `requirements.md`. Effort tags: S (<half day), M (1–2 
   trademarks, subawards, aliases, and sector registries (up from 50% patent-only);
   no-UEI bucket 183/368 (50%). Methodological notes extended with all four new
   instruments' caveats. Stale-number sweep clean.
+
+---
+
+## Area parameterization (post tech-area-transition-report v1)
+
+**Prerequisite:** enriched `data/reports/<area_id>/cohort_keyword.csv` with
+`deficiency_class` and `sig_*` (from `build_tech_area_cohort.py` +
+`sbir_etl.utils.transition_signals`).
+
+**Path convention:** area artifacts under `data/reports/<area_id>/`
+(`form_d_post_phase2.csv`, `ws1_contract_evidence.csv`, `dark_firm_liveness.csv`, …).
+Plots under `analysis/`. Global bulk inputs and `data/api_cache/` unchanged.
+Helper: `sbir_etl.utils.transition_report_paths.ReportPaths`.
+
+**`nano_*` policy:** add `--area` / `--legacy`. Unflagged invocation keeps
+`data/nano_*.csv` for nanotech regression. New areas never write `data/nano_*`.
+
+### Phases
+
+| Phase | Work | Status |
+|---|---|---|
+| 0 | Signal enrichment on area cohort | **done** (T11–T12) |
+| 1 | Path helper + migrate `form_d_temporal` as reference | **done** (T13) |
+| 2 | WS1, WS2, liveness (B82 optional), trademarks, survival | open |
+| 3 | firm alias graph, WS5a, WS6b; WS5c gated by YAML `sector_registries` | open |
+| 4 | capture-recapture, survey frame; nanotech cutover | open |
+
+### Area-specific (not path-only)
+
+- B82 / Method C — skip when `cpc_prefixes: []`
+- WS5c biomed — skip unless YAML `sector_registries` set
+- NNI / prime EDGAR TARGETS / Finding-2 exclusion lists — per-area config
+
+### Quantum v1 runbook (once Phase 2+ lands)
+
+```text
+build_tech_area_cohort.py --area quantum_information_science
+nano_form_d_temporal.py --area quantum_information_science
+# then WS1 → WS2 → liveness (no B82) → trademarks → alias → ws5a → capture-recapture
+# skip WS5c / prime EDGAR
+```

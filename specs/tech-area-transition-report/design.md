@@ -85,20 +85,34 @@ hypersonics dropping bare `supersonic`).
 
 ## Signal enrichment
 
-Reuse functions from `build_nano_cohort.py` (import or thin shared module later):
-`load_phase3_digest`, `load_ma_signals`, `load_form_d_signals`,
-`enrich_cohort_with_signals`, `classify_deficiency`.
+Live in ``sbir_etl.utils.transition_signals`` (extracted from ``build_nano_cohort.py``
+so area runners avoid the matplotlib hard-dep). ``build_tech_area_cohort.py`` always
+writes ``deficiency_class`` + ``sig_*`` columns; when digest/Form D/M&A artifacts are
+absent it records ``signals_absent`` and still emits empty-signal deficiency labels
+so dark-majority scripts have a column (buckets will be skewed until artifacts exist).
 
-Missing artifacts → print `signals_absent: [...]` in `overlap_summary.json`; do not
-write a methodology claiming 0% channels as measured rates.
+Also introduces ``SUPPLEMENTED_BY_OTHER_CHANNEL`` when Form D/M&A/federal obligation
+is positive but FPDS Phase III is not — so dark-majority doesn't treat those as
+``FIRM_ACTIVITY_ABSENT``.
 
 ## Ownership vs dark-majority-resolution
 
 | Concern | Owner |
 |---|---|
-| Area YAML, Method A/B/C, overlap, stub methodology | **this spec** |
+| Area YAML, Method A/B/C, overlap, stub methodology, signal enrichment | **this spec** |
 | WS1–WS6, survey frame, dark capture-recapture | **dark-majority-resolution** |
-| Existing `nano_*` scripts / findings prose | PR #428 reference; migrate later |
+| Existing `nano_*` scripts / findings prose | PR #428; migrate via `--area` |
+
+### Making dark-majority area-aware
+
+Most WS scripts are **path-locked**, not logic-locked. Plan:
+
+1. **Prerequisite (landed):** enriched `data/reports/<area>/cohort_keyword.csv` with `deficiency_class`.
+2. **Path helper (landed):** `sbir_etl.utils.transition_report_paths.ReportPaths` + `--area` / `--legacy`.
+3. **Migrate one runner at a time** — reference: `nano_form_d_temporal.py --area <id>`. Unflagged `nano_*` invocation still uses `data/nano_*` (legacy).
+4. **Gate area-specific plugs** via YAML: `cpc_prefixes`, `sector_registries`, `external_reference` — empty = skip.
+
+Full runbook: `specs/dark-majority-resolution/tasks.md` § Area parameterization.
 
 ## Test areas
 
