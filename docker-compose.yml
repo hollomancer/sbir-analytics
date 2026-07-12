@@ -133,9 +133,12 @@ services:
       <<: *common-environment
       NEO4J_READ_USER: ${NEO4J_READ_USER:-neo4j}
       NEO4J_READ_PASSWORD: ${NEO4J_READ_PASSWORD:-password}
+      # Default empty rather than :? so an unset token cannot break compose
+      # interpolation for other profiles (e.g. the ci `app` service). The API
+      # itself refuses to serve (503) until a non-empty token is provided.
       SBIR_ANALYTICS_API_TOKEN: ${SBIR_ANALYTICS_API_TOKEN:-}
       SBIR_ANALYTICS_SNAPSHOT_DIR: /app/reports/analytics_snapshots
-    command: ["sbir-analytics-api"]
+    command: ["python", "-m", "sbir_analytics.api"]
     volumes:
       - ./reports:/app/reports:ro
     ports:
