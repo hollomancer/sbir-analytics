@@ -181,7 +181,18 @@ def build_keyword_cohort(
     source: str,
     soft_requires: str = "title_or_multi",
 ) -> list[dict]:
-    """Method A with optional soft-pattern corroboration.
+    """Method A with optional soft-pattern corroboration and a negative veto.
+
+    Admission:
+      - A core hit always admits. A specific, high-precision positive (qubit,
+        ``quantum information``, scramjet) is strong enough that a co-occurring
+        negative term does not veto it — e.g. a genuine qubit award that also
+        mentions ``quantum well`` in passing stays in.
+      - A soft-only award admits only when it clears ``soft_requires`` **and** no
+        negative pattern fires. Negatives veto soft-only admissions, which is where
+        market-name-drop contamination enters (a ``quantum computing`` title-drop
+        over a quantum-dot materials abstract). This is the load-bearing use of the
+        taxonomy / pack negatives; without it they are inert.
 
     soft_requires:
       - ``title_or_multi`` (default): soft-only admits if soft term is in the title
@@ -189,7 +200,6 @@ def build_keyword_cohort(
       - ``core_cooccur``: soft-only never admits; soft hits only tag awards that
         already matched a core pattern (hypersonics TPS/Mach rule).
     """
-    del negatives  # spot-checks use these; admission is positive-gated
     if soft_requires not in ("title_or_multi", "core_cooccur"):
         raise ValueError(f"unknown soft_requires={soft_requires!r}")
     cohort = []
@@ -203,11 +213,14 @@ def build_keyword_cohort(
             pos = core_hits + soft_hits
         elif soft_hits and soft_requires == "title_or_multi":
             soft_in_title = _collect_hits(title, soft)
-            if soft_in_title or len(set(soft_hits)) >= 2:
-                admitted_by = "soft_corroborated"
-                pos = soft_hits
-            else:
+            if not (soft_in_title or len(set(soft_hits)) >= 2):
                 continue
+            # Negative veto: a soft-only admit with a negative hit is contamination
+            # (market-name-drop over off-target work). Core admits are never vetoed.
+            if any(p.search(text) for p in negatives):
+                continue
+            admitted_by = "soft_corroborated"
+            pos = soft_hits
         else:
             # soft_requires == core_cooccur and no core → reject soft-only
             continue
@@ -382,6 +395,70 @@ def contamination_spotcheck(
     }
 
 
+_NEGATORS = frozenset(
+    {
+        "no",
+        "not",
+        "without",
+        "non",
+        "neither",
+        "nor",
+        "lacks",
+        "lacking",
+        "absent",
+        "excludes",
+        "excluding",
+        "except",
+        "avoid",
+        "avoids",
+        "avoiding",
+        "rather",
+    }
+)
+_WORD_RE = re.compile(r"[a-zA-Z][a-zA-Z\-']*")
+
+
+def negation_spotcheck(
+    kw_cohort: list[dict],
+    core: list[re.Pattern],
+    soft: list[re.Pattern],
+    window: int = 4,
+    sample: int = 15,
+) -> dict:
+    """Flag admitted awards where a positive is negated in context.
+
+    Regex matching cannot read negation: ``does not involve quantum information``
+    still fires the ``quantum information`` positive. This does not change admission
+    (a diagnostic, not a veto); it quantifies a known false-positive class the
+    negative-cooccurrence spot-check misses. A positive match is flagged when a
+    negator token appears within ``window`` words immediately before it.
+    """
+    positives = core + soft
+    flagged = []
+    for r in kw_cohort:
+        text = " ".join([r["title"], r["abstract"]])
+        negated: list[str] = []
+        for pat in positives:
+            for m in pat.finditer(text):
+                pre_tokens = _WORD_RE.findall(text[: m.start()].lower())[-window:]
+                if any(tok in _NEGATORS for tok in pre_tokens):
+                    negated.append(m.group(0).lower())
+        if negated:
+            flagged.append(
+                {
+                    "award_id": r["award_id"],
+                    "company": r["company"],
+                    "admitted_by": r.get("admitted_by", ""),
+                    "negated_positive": sorted(set(negated))[:3],
+                    "title": r["title"][:120],
+                }
+            )
+    return {
+        "method_a_with_negated_positive": len(flagged),
+        "sample": flagged[:sample],
+    }
+
+
 def quantum_dot_only_false_positives(
     awards: list[dict], core: list[re.Pattern], soft: list[re.Pattern]
 ) -> int:
@@ -479,6 +556,12 @@ def main() -> int:
         f"(pure-negative admissions={spot['pure_negative_admissions']})"
     )
 
+    negation = negation_spotcheck(enriched, core, soft)
+    print(
+        f"Negated-positive admissions in Method A (diagnostic, not vetoed): "
+        f"{negation['method_a_with_negated_positive']:,}"
+    )
+
     qdot_excluded = None
     if cfg.get("cet_id") == "quantum_information_science":
         qdot_excluded = quantum_dot_only_false_positives(awards, core, soft)
@@ -504,6 +587,7 @@ def main() -> int:
         "signals_absent": absent,
         "channels": channel_summary,
         "spotcheck": spot,
+        "negation_spotcheck": negation,
         "quantum_dot_well_excluded_count": qdot_excluded,
         "has_deficiency_class": bool(enriched)
         and "deficiency_class" in enriched[0],

@@ -68,6 +68,38 @@ Method A remains **2,849** (exact vs PR #428). Soft-pattern machinery is unused 
 
 ---
 
+## Negative veto + negation diagnostic (2026-07-13)
+
+**Change:** the negative-keyword list was previously loaded but inert — `build_keyword_cohort`
+discarded it (`del negatives`) and admission was purely positive-gated, so the taxonomy
+negatives (quantum dot/well/mechanics/chemistry/field theory) and pack negatives
+(`supersonic`) rejected nothing. They now **veto soft-only admissions**: a `soft_corroborated`
+award is dropped if any negative pattern fires. **Core admits are never vetoed** — a specific
+positive (qubit, `quantum information`, scramjet) is strong enough to survive an incidental
+`quantum well` mention.
+
+Also added `negation_spotcheck`: a diagnostic (not a veto) that flags admitted awards where a
+positive is negated in context (e.g. "does not involve quantum information"). Regex cannot read
+negation; the count is reported in `overlap_summary.json` and stdout so the false-positive class
+is quantified rather than silent.
+
+**Predicted effect on cohort sizes (needs re-run on `award_data.csv` to confirm — absent here):**
+
+| Area | `soft_requires` | Veto reachable? | Predicted change |
+|---|---|---|---|
+| `nanotechnology` | n/a (`soft_patterns: []`) | no | **2,849 unchanged** (no soft admits) |
+| `hypersonics` | `core_cooccur` | no (soft-only never admits) | **813 unchanged** by construction; `supersonic` stays a spot-check flag |
+| `quantum_information_science` | `title_or_multi` | **yes** | ≤ **138** — any of the 17 `soft_corroborated` admits that co-occur with a taxonomy negative now drop |
+
+**Action for next data run:** re-run `build_tech_area_cohort.py --area quantum_information_science`,
+read the new Method A size + `admitted_by`/`negation_spotcheck` from `overlap_summary.json`, and
+reconcile the QIS findings/brief numbers (138) against it before publishing.
+
+Engine coverage: `tests/unit/scripts/test_build_tech_area_cohort.py` (17 tests) now exercises
+`resolve_method_a`, both soft-gating modes, the veto, `overlap_stats`, and `negation_spotcheck`.
+
+---
+
 ## Acceptance checklist
 
 | Criterion | Result |
