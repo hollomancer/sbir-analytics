@@ -16,14 +16,15 @@ stay under ``data/`` and are shared across areas.
 
 Legacy nanotech layout
 ----------------------
-PR #428 wrote ``data/nano_*.csv``. ``ReportPaths.legacy_nano()`` maps the same
-logical stems onto those filenames so existing ``nano_*`` scripts can migrate
-incrementally via ``--area nanotechnology --legacy``.
+The nanotech cohort originally wrote ``data/nano_*.csv`` directly. As of the
+default cutover, unflagged invocation now uses the area layout
+(``data/reports/nanotechnology/``) like every other area. ``--legacy`` (or
+``ReportPaths.legacy_nano()``) opts back into the old ``data/nano_*`` paths —
+kept as an escape hatch, not the default.
 """
 
 from __future__ import annotations
 
-import sys
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -167,21 +168,26 @@ def add_area_args(parser) -> None:
     parser.add_argument(
         "--legacy",
         action="store_true",
-        help="Read/write PR #428 data/nano_*.csv paths (nanotechnology only)",
+        help="Read/write the pre-cutover data/nano_*.csv paths (nanotechnology only)",
     )
 
 
 def resolve_area_paths(args, argv: list[str] | None = None) -> ReportPaths:
     """Resolve ReportPaths from parsed args (Form D / WS1 / WS2 convention).
 
-    Unflagged ``nano_*.py`` invocation (no ``--area``) keeps PR #428
-    ``data/nano_*`` paths. Explicit ``--area X`` uses ``data/reports/X/``
-    unless ``--legacy`` is also set.
+    Default (unflagged, or explicit ``--area X``) uses the area layout
+    ``data/reports/<area_id>/``; unflagged invocation resolves to
+    ``area_id=nanotechnology`` via ``--area``'s own argparse default. Pass
+    ``--legacy`` to read/write the pre-cutover ``data/nano_*`` paths instead
+    (nanotechnology only) — an explicit opt-out, not the default.
+
+    ``argv`` is accepted for call-site consistency with earlier callers but is
+    no longer inspected: the legacy/area choice now depends only on
+    ``args.legacy``.
     """
-    argv = argv if argv is not None else sys.argv[1:]
-    area_flagged = any(a == "--area" or a.startswith("--area=") for a in argv)
-    legacy = bool(getattr(args, "legacy", False) or not area_flagged)
-    area_id = "nanotechnology" if legacy else args.area
+    del argv
+    legacy = bool(getattr(args, "legacy", False))
+    area_id = getattr(args, "area", None) or "nanotechnology"
     paths = ReportPaths.for_area(area_id, legacy=legacy)
     paths.ensure_dirs()
     return paths

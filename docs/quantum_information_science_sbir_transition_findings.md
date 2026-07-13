@@ -1,6 +1,6 @@
 # Quantum Information Science SBIR/STTR Phase II: Technical Findings (Provisional)
 
-**Role:** Technical appendix (not the NSET-facing default)  
+**Role:** Technical appendix (not the policy-leader-facing default)  
 **Policy brief (start here):** [`quantum_information_science_sbir_policy_brief.md`](quantum_information_science_sbir_policy_brief.md)  
 **Status:** Provisional — cohort and triangulation only; channel rates not computed  
 **Data through:** FY2025 SBIR.gov Phase II universe  

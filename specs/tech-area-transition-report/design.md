@@ -7,7 +7,7 @@
 Generalize the PR #428 nanotech *pattern* (multi-method cohort → shared transition
 signals → deficiency labels → methodology stub) so any `cet_id` can run Method A with
 optional Method B/C, without inventing a parallel taxonomy or requiring nanotech-only
-inputs (NNI, B82).
+inputs (published external budget reference, B82).
 
 ## Architecture
 
@@ -91,9 +91,13 @@ writes ``deficiency_class`` + ``sig_*`` columns; when digest/Form D/M&A artifact
 absent it records ``signals_absent`` and still emits empty-signal deficiency labels
 so dark-majority scripts have a column (buckets will be skewed until artifacts exist).
 
-Also introduces ``SUPPLEMENTED_BY_OTHER_CHANNEL`` when Form D/M&A/federal obligation
-is positive but FPDS Phase III is not — so dark-majority doesn't treat those as
-``FIRM_ACTIVITY_ABSENT``.
+Classification priority matches ``build_nano_cohort.py`` exactly (verified bit-for-bit
+against real nanotech data): entity-resolution / insufficient-time / activity-absent /
+FPDS-coding-gap are data-quality problems that hold independent of whether some other
+channel (Form D/M&A/federal obligation) also shows a signal. An earlier version
+introduced a ``SUPPLEMENTED_BY_OTHER_CHANNEL`` bucket that short-circuited ahead of
+those checks whenever any other channel was positive; that broke exact reproduction
+of the published nanotech bucket counts and was removed.
 
 ## Ownership vs dark-majority-resolution
 

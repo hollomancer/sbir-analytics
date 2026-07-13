@@ -1,6 +1,6 @@
 # Hypersonics SBIR/STTR Phase II: Technical Findings (Provisional)
 
-**Role:** Technical appendix (not the NSET-facing default)  
+**Role:** Technical appendix (not the policy-leader-facing default)  
 **Policy brief (start here):** [`hypersonics_sbir_policy_brief.md`](hypersonics_sbir_policy_brief.md)  
 **Status:** Provisional — cohort and triangulation only; channel rates not computed  
 **Data through:** FY2025 SBIR.gov Phase II universe  
@@ -14,7 +14,7 @@
 
 "Hypersonic" in SBIR abstracts co-occurs with adjacent aerospace language — thermal protection systems (TPS), Mach numbers, and especially **supersonic** flight — that is necessary for hypersonic vehicles but also appears in unrelated aero work. A bare `hypersonic*` probe hits ~763 Phase II awards; expanding with ungated TPS/Mach language inflated the prior pack to 886. Requiring TPS/Mach to co-occur with core hypersonic/scramjet/boost-glide language lands at **813**, with **zero** Method A awards lacking a core match.
 
-Unlike nanotech (no authoritative NNI-style public table used here) or QIS (heavy quantum-dot contamination), the main precision risk for hypersonics is **aerospace adjacency**, not a different technology using the same token.
+Unlike nanotech (no published external budget reference used here) or QIS (heavy quantum-dot contamination), the main precision risk for hypersonics is **aerospace adjacency**, not a different technology using the same token.
 
 Commercialization measurement is dominated by the federal customer:
 

@@ -3,8 +3,9 @@
 Nanotech SBIR/STTR Phase II → Phase III transition analysis.
 
 Three independent cohort methods (keyword, CET-proxy, CPC-stub) to bound the
-nanotech award universe, reconcile against NNI Table 5, and classify transition
-evidence across independent signal channels.
+nanotech award universe, reconcile against a published external budget
+reference, and classify transition evidence across independent signal
+channels.
 
 Outputs:
   data/nano_cohort_keyword.csv
@@ -44,15 +45,14 @@ sys.path.insert(0, str(REPO))
 from sbir_etl.utils.text_normalization import normalize_name  # noqa: E402
 
 # ---------------------------------------------------------------------------
-# NNI Table 5 reference data (FY26 Supplement to President's Budget)
-# Source: https://www.nano.gov/node/2899  [verify against published PDF]
+# Published external budget reference (a public federal budget supplement)
 # ~$230M total FY2023; cumulative ~$2.7B since 2004.
-# Agency mapping: NNI agency name → award_data.csv Agency field
-# NOTE: These numbers are approximate from public NNI summary figures.
-#       REPLACE with exact Table 5 values from the published PDF.
+# Agency mapping: reference source's agency name → award_data.csv Agency field
+# NOTE: These numbers are approximate, transcribed from a public summary.
+#       REPLACE with exact values from the source document.
 #       Methodology note in docs/ flags this as UNVERIFIED REFERENCE.
 # ---------------------------------------------------------------------------
-NNI_AGENCY_MAP = {
+EXT_REF_AGENCY_MAP = {
     "National Science Foundation": "NSF",
     "Department of Health and Human Services": "NIH/DHHS",
     "Department of Defense": "DoD",
@@ -63,11 +63,12 @@ NNI_AGENCY_MAP = {
     "Department of Agriculture": "USDA",
     "Department of Transportation": "DOT",
 }
-NNI_AGENCIES_SET = set(NNI_AGENCY_MAP.keys())
+EXT_REF_AGENCIES = set(EXT_REF_AGENCY_MAP.keys())
 
-# NNI Table 5: nanotech SBIR/STTR $M by agency × FY (approximate from public summary)
-# Format: {agency_short: {fy: dollars_USD}} — UNVERIFIED; must confirm against PDF
-NNI_TABLE5_REF = {
+# Published reference: nanotech SBIR/STTR $M by agency × FY (approximate from
+# public summary). Format: {agency_short: {fy: dollars_USD}} — UNVERIFIED;
+# must confirm against the source document.
+EXT_REF_TABLE = {
     "NSF": {2020: 43_000_000, 2021: 46_000_000, 2022: 48_000_000, 2023: 50_000_000},
     "NIH/DHHS": {2020: 70_000_000, 2021: 74_000_000, 2022: 77_000_000, 2023: 80_000_000},
     "DoD": {2020: 55_000_000, 2021: 58_000_000, 2022: 61_000_000, 2023: 65_000_000},
@@ -532,17 +533,18 @@ def enrich_cohort_with_signals(
     return enriched
 
 
-def nni_reconciliation(cohort: list[dict], nni_agencies: set[str]) -> dict:
+def external_reference_reconciliation(cohort: list[dict], ext_ref_agencies: set[str]) -> dict:
     """
-    Restrict cohort to NNI agencies + FY2020-2023, compare dollar totals to NNI Table 5.
-    Returns reconciliation dict per agency × FY.
+    Restrict cohort to reference-covered agencies + FY2020-2023, compare dollar
+    totals to the published external reference. Returns reconciliation dict
+    per agency × FY.
     """
     results = defaultdict(lambda: defaultdict(float))
     for row in cohort:
         agency = row.get("agency", "")
         fy = row.get("award_year", 0)
-        if agency in nni_agencies and 2020 <= fy <= 2023:
-            short = NNI_AGENCY_MAP[agency]
+        if agency in ext_ref_agencies and 2020 <= fy <= 2023:
+            short = EXT_REF_AGENCY_MAP[agency]
             results[short][fy] += row.get("award_amount", 0.0)
     return dict(results)
 
@@ -685,8 +687,8 @@ def write_methodology_doc(
     kw_enriched: list[dict],
     cet_enriched: list[dict],
     cpc_enriched: list[dict],
-    kw_nni: dict,
-    cet_nni: dict,
+    kw_ext_ref: dict,
+    cet_ext_ref: dict,
     out_path: Path,
 ) -> None:
     kw_ids = {r["award_id"] for r in kw_cohort}
@@ -987,15 +989,15 @@ will produce false negatives.
             lines.append(f"| {k} | {counts[k]} |")
         return "\n".join(lines)
 
-    def nni_table(our_totals: dict, method: str) -> str:
+    def ext_ref_table(our_totals: dict, method: str) -> str:
         lines = [
-            "| Agency | FY | Our cohort ($M) | NNI Table 5 ref ($M) [UNVERIFIED] | Delta ($M) |",
+            "| Agency | FY | Our cohort ($M) | External reference ($M) [UNVERIFIED] | Delta ($M) |",
             "|---|---|---|---|---|",
         ]
         for agency_short, fy_dict in sorted(our_totals.items()):
             for fy in [2020, 2021, 2022, 2023]:
                 our = fy_dict.get(fy, 0.0) / 1e6
-                ref_dict = NNI_TABLE5_REF.get(agency_short, {})
+                ref_dict = EXT_REF_TABLE.get(agency_short, {})
                 ref = ref_dict.get(fy, 0.0) / 1e6
                 delta = our - ref
                 lines.append(f"| {agency_short} | {fy} | {our:.2f} | {ref:.2f} | {delta:+.2f} |")
@@ -1004,7 +1006,7 @@ will produce false negatives.
     doc = f"""# Nanotechnology SBIR/STTR Phase II → Phase III Transition: Methodology Note
 
 **Status:** Provisional — all figures subject to revision
-**Audience:** NSET Subcommittee methodology review
+**Audience:** S&T policy leaders, methodology review
 **Repo branch:** `{_git_branch()}`
 **Generated:** (see git log for date)
 **Confidence tags:** [HIGH] reproducible from data; [MED] depends on third-party data; [LOW] approximate/estimated; [UNVERIFIED] requires manual check against source document
@@ -1020,7 +1022,7 @@ will produce false negatives.
 | SEC EDGAR M&A signals | 8-K Items 1.01/2.01 | `sec_edgar_scan.jsonl` (35k firms, complete) | A subsequent scan wrote a summary showing 0 detections due to HTTP 500 errors — that summary file is not representative; the JSONL is the authoritative source and has 99.9% cohort coverage |
 | SEC Form D (high-confidence) | Regulation D capital raises | Local JSONL | High-confidence subset only; ~35% match rate for NSF cohort from prior analysis |
 {uspto_source_row}
-| NNI Table 5 (FY26 Supplement) | Agency nanotech SBIR/STTR totals | **UNVERIFIED reference** | Methodology not published; our classification will not reconcile exactly |
+| Published external budget reference (FY26 Supplement) | Agency nanotech SBIR/STTR totals | **UNVERIFIED reference** | Methodology not published; our classification will not reconcile exactly |
 
 ---
 
@@ -1047,12 +1049,12 @@ nano-encapsul*, nanoencapsul*, sub-Xnm, angstrom-scale
 ```
 
 **Methodological note:** MEMS is borderline (micro-, not nano-scale); included because
-MEMS devices routinely involve nanoscale features and appear extensively in NNI reports.
-CNT as bare acronym may match non-nanotech contexts; flagged but retained. Exclusion of
-bare "nano" prevents matching "nanosecond" and "nanosat."
+MEMS devices routinely involve nanoscale features and appear extensively in published
+nanotechnology program reporting. CNT as bare acronym may match non-nanotech contexts;
+flagged but retained. Exclusion of bare "nano" prevents matching "nanosecond" and "nanosat."
 
 **Cohort size:** {len(kw_cohort):,} Phase II awards (all years)
-**NNI window (FY2020–2023, 9 agencies):** {sum(1 for r in kw_cohort if NNI_AGENCY_MAP.get(r.get('agency','')) and 2020 <= r.get('award_year',0) <= 2023):,} awards
+**External-reference window (FY2020–2023, 9 agencies):** {sum(1 for r in kw_cohort if EXT_REF_AGENCY_MAP.get(r.get('agency','')) and 2020 <= r.get('award_year',0) <= 2023):,} awards
 
 ---
 
@@ -1101,24 +1103,26 @@ CET award IDs fall inside the keyword cohort, and the remainder is carbon-fiber-
 
 ---
 
-## 4. NNI Table 5 Reconciliation
+## 4. Published External Reference Reconciliation
 
-**Scope:** FY2020–FY2023, nine NNI-reporting agencies
-**Caveat [UNVERIFIED]:** NNI Table 5 reference figures are approximate public summary values,
-not extracted from the PDF. Methodology for OMB-identified classification not published.
-Our classification method differs; exact reconciliation is not expected.
+**Scope:** FY2020–FY2023, nine agencies covered by the reference
+**Caveat [UNVERIFIED]:** the external reference figures are approximate public summary
+values, not extracted from the source document. Methodology for the reference source's
+own agency classification is not published. Our classification method differs; exact
+reconciliation is not expected.
 
-### 4A. Keyword Cohort vs NNI Table 5
+### 4A. Keyword Cohort vs Published Reference
 
-{nni_table(kw_nni, 'keyword')}
+{ext_ref_table(kw_ext_ref, 'keyword')}
 
-### 4B. CET Proxy Cohort vs NNI Table 5
+### 4B. CET Proxy Cohort vs Published Reference
 
-{nni_table(cet_nni, 'cet')}
+{ext_ref_table(cet_ext_ref, 'cet')}
 
 **Methodological choice note [HIGH]:** We do not tune the keyword list or CET proxy to close
-the delta. The gap itself is informative: it represents awards NNI counts as nanotech that our
-text-based methods miss (e.g., awards with nanotech scope stated in solicitation topic, not abstract).
+the delta. The gap itself is informative: it represents awards the reference counts as
+nanotech that our text-based methods miss (e.g., awards with nanotech scope stated in
+solicitation topic, not abstract).
 
 ---
 
@@ -1182,8 +1186,9 @@ the following taxonomy classifies why transition status is indeterminate.
 2. **FPDS Phase III undercounting [HIGH].** GAO-24-106398 documents that FPDS `sbir_program` coding is
    sparse outside DoD. Absence of a Phase III-coded contract is not evidence of no transition.
 
-3. **NNI reconciliation is not expected to close [HIGH].** NNI uses agency+OMB identification methods
-   not published in the Supplement. Our text classification approach differs by design.
+3. **External reference reconciliation is not expected to close [HIGH].** The reference source
+   uses agency+OMB identification methods not published in its own supplement document. Our
+   text classification approach differs by design.
 
 4. **EDGAR scan data is usable; summary file is not [HIGH].** `sec_edgar_scan.jsonl` contains
    complete results for 34,451 firms (99.9% of nanotech cohort) with 7,548 having at least one
@@ -1262,9 +1267,9 @@ def main() -> int:
     cet_enriched = enrich_cohort_with_signals(cet_cohort, digest, ma_signals, form_d_signals)
     cpc_enriched = enrich_cohort_with_signals(cpc_cohort, digest, ma_signals, form_d_signals)
 
-    print("Running NNI reconciliation (FY2020–2023, 9 agencies)...")
-    kw_nni = nni_reconciliation(kw_cohort, NNI_AGENCIES_SET)
-    cet_nni = nni_reconciliation(cet_cohort, NNI_AGENCIES_SET)
+    print("Running external reference reconciliation (FY2020–2023, 9 agencies)...")
+    kw_ext_ref = external_reference_reconciliation(kw_cohort, EXT_REF_AGENCIES)
+    cet_ext_ref = external_reference_reconciliation(cet_cohort, EXT_REF_AGENCIES)
 
     print("Writing output CSVs...")
     write_output_csv(kw_enriched, DATA / "nano_cohort_keyword.csv")
@@ -1293,7 +1298,7 @@ def main() -> int:
     write_methodology_doc(
         kw_cohort, cet_cohort, cpc_cohort,
         kw_enriched, cet_enriched, cpc_enriched,
-        kw_nni, cet_nni,
+        kw_ext_ref, cet_ext_ref,
         DOCS / "nano_phase3_methodology.md",
     )
 

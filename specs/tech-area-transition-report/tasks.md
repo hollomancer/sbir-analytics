@@ -12,7 +12,7 @@
       TPS/Mach `core_cooccur` rule — see `validation.md`
 - [x] T17 Provisional findings reports for quantum + hypersonics (cohort / triangulation /
       agency composition; pathway rates deferred until signal artifacts exist)
-- [x] T18 Publication format accepted: policy brief = default NSET-facing deliverable;
+- [x] T18 Publication format accepted: policy brief = default policy-leader-facing deliverable;
       technical findings = appendix (`publication-format.md`); nanotech policy brief +
       Q/H provisional briefs; technical nanotech Summary trimmed to point at brief
 
@@ -33,14 +33,31 @@
   - [x] WS5c gated on area YAML `sector_registries:` list
         (`ReportPaths.load_config()`); nanotech enables clinical_trials + fda_510k,
         quantum/hypersonics declare `[]` → no-op
-- [~] T16 Migrate capture-recapture / survey_frame; nanotech `--legacy` cutover
+- [x] T16 Migrate capture-recapture / survey_frame; nanotech `--legacy` cutover
   - [x] `nano_capture_recapture.py`, `nano_survey_frame.py` → `resolve_area_paths`
-  - [ ] nanotech `--legacy` cutover — deliberate global default flip (unflagged
-        nano → `data/reports/nanotechnology/`); left as its own decision since
-        every migrated script currently keeps legacy-as-default. Cohort production
-        under the new layout is `build_tech_area_cohort.py --area nanotechnology`
-        (blocked on porting the hand-maintained NNI Method-B table from
-        `build_nano_cohort.py`)
+  - [x] Ported the hand-maintained external-budget-reference reconciliation
+        (`external_reference_reconciliation`, agency map + by-agency/FY table)
+        from `build_nano_cohort.py` into `build_tech_area_cohort.py`, generalized
+        to read an optional `external_reference` block from any area's YAML
+        (nanotech's data moved to `config/transition_reports/nanotechnology.yaml`).
+        Verified bit-exact against `build_nano_cohort.py`'s output: identical
+        Method A (2,849) and Method B (650) award sets, identical reconciliation
+        dollar totals for every agency × FY cell.
+  - [x] Found and fixed a classification-priority bug while verifying parity:
+        `sbir_etl.utils.transition_signals.enrich_cohort_with_signals` short-
+        circuited to `SUPPLEMENTED_BY_OTHER_CHANNEL` whenever any positive signal
+        existed, ahead of the entity-resolution/insufficient-time/activity-absent
+        checks — this silently reclassified ~40% of `deficiency_class` values
+        relative to `build_nano_cohort.py`'s original logic. Fixed to match
+        legacy priority order exactly (verified bit-exact on real data).
+  - [x] nanotech `--legacy` cutover — flipped `resolve_area_paths`'s default from
+        legacy `data/nano_*` to the area layout `data/reports/nanotechnology/`
+        (unflagged invocation now behaves like `--area nanotechnology`; `--legacy`
+        remains as an explicit opt-out). One-time move of existing `data/nano_*`
+        artifacts to `data/reports/nanotechnology/` via the stem mapping (cohort
+        CSVs kept as freshly regenerated, confirmed equivalent). All downstream
+        scripts (WS1/WS2/dark-firm/etc.) smoke-tested unflagged against the new
+        default paths and reproduce previously-audited figures exactly.
 
 ## Phase 2 — Follow-ups
 

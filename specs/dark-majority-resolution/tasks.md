@@ -227,7 +227,7 @@ Helper: `sbir_etl.utils.transition_report_paths.ReportPaths`.
 
 - B82 / Method C — skip when `cpc_prefixes: []`
 - WS5c biomed — skip unless YAML `sector_registries` set
-- NNI / prime EDGAR TARGETS / Finding-2 exclusion lists — per-area config
+- External budget reference / prime EDGAR TARGETS / Finding-2 exclusion lists — per-area config
 
 ### Quantum v1 runbook (once Phase 2+ lands)
 

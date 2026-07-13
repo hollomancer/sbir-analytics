@@ -1,6 +1,6 @@
 # Nanotechnology SBIR/STTR Phase II Outcomes: What Policy Leaders Can Safely Conclude
 
-**Prepared for:** S&T policy leaders and NSET Subcommittee reviewers
+**Prepared for:** S&T policy leaders
 **Status:** Provisional; figures are bounded estimates, not final program rates
 **Data through:** FY2025 SBIR.gov awards, FY2024 USAspending records, SEC EDGAR scans, and the March 2026 PatentsView release
 **Technical appendix:** [`nanotech_sbir_transition_findings.md`](nanotech_sbir_transition_findings.md), [`nano_phase3_methodology.md`](nano_phase3_methodology.md)

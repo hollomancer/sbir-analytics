@@ -1,8 +1,8 @@
 # Nanotechnology SBIR/STTR Phase II → Phase III Transition: Methodology Note
 
 **Status:** Provisional — all figures subject to revision
-**Audience:** NSET Subcommittee methodology review
-**Repo branch:** `claude/nanotech-sbir-analysis`
+**Audience:** S&T policy leaders, methodology review
+**Repo branch:** `claude/tech-report-merge-status-2610d6`
 **Generated:** (see git log for date)
 **Confidence tags:** [HIGH] reproducible from data; [MED] depends on third-party data; [LOW] approximate/estimated; [UNVERIFIED] requires manual check against source document
 
@@ -16,8 +16,8 @@
 | USAspending Phase III prospect digest | Firm-level FPDS/FABS aggregates | Local CSV | Per-firm, not per-award; FPDS Phase III coding sparse outside DoD (GAO-24-106398) |
 | SEC EDGAR M&A signals | 8-K Items 1.01/2.01 | `sec_edgar_scan.jsonl` (35k firms, complete) | A subsequent scan wrote a summary showing 0 detections due to HTTP 500 errors — that summary file is not representative; the JSONL is the authoritative source and has 99.9% cohort coverage |
 | SEC Form D (high-confidence) | Regulation D capital raises | Local JSONL | High-confidence subset only; ~35% match rate for NSF cohort from prior analysis |
-| USPTO PatentsView CPC codes | B82Y/B82B patent classes | Local extract `data/processed/uspto/b82_patents.csv` (built 2026-07-11) | Assignee→firm linkage is exact normalized-name match; renamed/subsidiary firms missed |
-| NNI Table 5 (FY26 Supplement) | Agency nanotech SBIR/STTR totals | **UNVERIFIED reference** | Methodology not published; our classification will not reconcile exactly |
+| USPTO PatentsView CPC codes | B82Y/B82B patent classes | Local extract `data/processed/uspto/b82_patents.csv` (built 2026-07-12) | Assignee→firm linkage is exact normalized-name match; renamed/subsidiary firms missed |
+| Published external budget reference (FY26 Supplement) | Agency nanotech SBIR/STTR totals | **UNVERIFIED reference** | Methodology not published; our classification will not reconcile exactly |
 
 ---
 
@@ -44,12 +44,12 @@ nano-encapsul*, nanoencapsul*, sub-Xnm, angstrom-scale
 ```
 
 **Methodological note:** MEMS is borderline (micro-, not nano-scale); included because
-MEMS devices routinely involve nanoscale features and appear extensively in NNI reports.
-CNT as bare acronym may match non-nanotech contexts; flagged but retained. Exclusion of
-bare "nano" prevents matching "nanosecond" and "nanosat."
+MEMS devices routinely involve nanoscale features and appear extensively in published
+nanotechnology program reporting. CNT as bare acronym may match non-nanotech contexts;
+flagged but retained. Exclusion of bare "nano" prevents matching "nanosecond" and "nanosat."
 
 **Cohort size:** 2,849 Phase II awards (all years)
-**NNI window (FY2020–2023, 9 agencies):** 377 awards
+**External-reference window (FY2020–2023, 9 agencies):** 377 awards
 
 ---
 
@@ -79,7 +79,7 @@ term list but not in the keyword list, so carbon-fiber-only awards fall outside 
 
 ### 2C. USPTO CPC B82Y/B82B Cohort [MED confidence — name-match linkage]
 
-**Status:** EXECUTED — built from local PatentsView PVGPATDIS extract (2026-07-11).
+**Status:** EXECUTED — built from local PatentsView PVGPATDIS extract (2026-07-12).
 
 **What B82Y/B82B covers:**
 - B82Y: Specific uses or applications of nanostructures or nanotechnology (functional/application layer)
@@ -120,16 +120,17 @@ Keyword ∩ CPC Jaccard is 0.085, with 11% of CPC-cohort award IDs also in the k
 
 ---
 
-## 4. NNI Table 5 Reconciliation
+## 4. Published External Reference Reconciliation
 
-**Scope:** FY2020–FY2023, nine NNI-reporting agencies
-**Caveat [UNVERIFIED]:** NNI Table 5 reference figures are approximate public summary values,
-not extracted from the PDF. Methodology for OMB-identified classification not published.
-Our classification method differs; exact reconciliation is not expected.
+**Scope:** FY2020–FY2023, nine agencies covered by the reference
+**Caveat [UNVERIFIED]:** the external reference figures are approximate public summary
+values, not extracted from the source document. Methodology for the reference source's
+own agency classification is not published. Our classification method differs; exact
+reconciliation is not expected.
 
-### 4A. Keyword Cohort vs NNI Table 5
+### 4A. Keyword Cohort vs Published Reference
 
-| Agency | FY | Our cohort ($M) | NNI Table 5 ref ($M) [UNVERIFIED] | Delta ($M) |
+| Agency | FY | Our cohort ($M) | External reference ($M) [UNVERIFIED] | Delta ($M) |
 |---|---|---|---|---|
 | DOC/NIST | 2020 | 0.80 | 2.50 | -1.70 |
 | DOC/NIST | 2021 | 0.80 | 2.70 | -1.90 |
@@ -164,9 +165,9 @@ Our classification method differs; exact reconciliation is not expected.
 | USDA | 2022 | 1.30 | 4.50 | -3.20 |
 | USDA | 2023 | 0.00 | 5.00 | -5.00 |
 
-### 4B. CET Proxy Cohort vs NNI Table 5
+### 4B. CET Proxy Cohort vs Published Reference
 
-| Agency | FY | Our cohort ($M) | NNI Table 5 ref ($M) [UNVERIFIED] | Delta ($M) |
+| Agency | FY | Our cohort ($M) | External reference ($M) [UNVERIFIED] | Delta ($M) |
 |---|---|---|---|---|
 | DOC/NIST | 2020 | 0.00 | 2.50 | -2.50 |
 | DOC/NIST | 2021 | 0.40 | 2.70 | -2.30 |
@@ -202,8 +203,9 @@ Our classification method differs; exact reconciliation is not expected.
 | USDA | 2023 | 0.00 | 5.00 | -5.00 |
 
 **Methodological choice note [HIGH]:** We do not tune the keyword list or CET proxy to close
-the delta. The gap itself is informative: it represents awards NNI counts as nanotech that our
-text-based methods miss (e.g., awards with nanotech scope stated in solicitation topic, not abstract).
+the delta. The gap itself is informative: it represents awards the reference counts as
+nanotech that our text-based methods miss (e.g., awards with nanotech scope stated in
+solicitation topic, not abstract).
 
 ---
 
@@ -362,8 +364,9 @@ the following taxonomy classifies why transition status is indeterminate.
 2. **FPDS Phase III undercounting [HIGH].** GAO-24-106398 documents that FPDS `sbir_program` coding is
    sparse outside DoD. Absence of a Phase III-coded contract is not evidence of no transition.
 
-3. **NNI reconciliation is not expected to close [HIGH].** NNI uses agency+OMB identification methods
-   not published in the Supplement. Our text classification approach differs by design.
+3. **External reference reconciliation is not expected to close [HIGH].** The reference source
+   uses agency+OMB identification methods not published in its own supplement document. Our
+   text classification approach differs by design.
 
 4. **EDGAR scan data is usable; summary file is not [HIGH].** `sec_edgar_scan.jsonl` contains
    complete results for 34,451 firms (99.9% of nanotech cohort) with 7,548 having at least one

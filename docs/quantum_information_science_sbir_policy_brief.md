@@ -75,7 +75,7 @@ NSF is only six awards — too few for nanotech-style NSF vs DoD pathway splits.
 1. **Scope QIS SBIR honestly** — 137 awards, not “all quantum mentions.”
 2. **Do not demand one QIS transition rate** when channel data arrive; report channels separately with small-N warnings.
 3. **Restore shared signal artifacts** (prospect digest, Form D, M&A) before any outcome comparison to nanotech.
-4. **State the instrument** beside every count shown to NSET or agency principals.
+4. **State the instrument** beside every count shown to policy leaders or agency principals.
 
 ## Language to avoid (even in provisional form)
 

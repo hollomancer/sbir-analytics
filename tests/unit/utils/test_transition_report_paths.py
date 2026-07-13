@@ -50,9 +50,20 @@ def test_config_path():
     )
 
 
-def test_resolve_unflagged_is_legacy():
+def test_resolve_unflagged_uses_area_layout():
+    # Post-cutover: unflagged invocation defaults to the nanotechnology area
+    # layout, not the pre-cutover data/nano_* paths.
     args = SimpleNamespace(area="nanotechnology", legacy=False)
     p = resolve_area_paths(args, argv=["--refresh"])
+    assert p.legacy is False
+    assert p.area_id == "nanotechnology"
+    assert p.artifact("ws1_contract_evidence").name == "ws1_contract_evidence.csv"
+    assert "nanotechnology" in str(p.artifact("ws1_contract_evidence"))
+
+
+def test_resolve_explicit_legacy_opts_out():
+    args = SimpleNamespace(area="nanotechnology", legacy=True)
+    p = resolve_area_paths(args, argv=["--legacy"])
     assert p.legacy is True
     assert p.artifact("ws1_contract_evidence").name == "nano_ws1_contract_evidence.csv"
 

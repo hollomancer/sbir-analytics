@@ -271,6 +271,60 @@ def overlap_stats(a_ids: set[str], b_ids: set[str]) -> dict:
     }
 
 
+def external_reference_reconciliation(cohort: list[dict], cfg: dict) -> dict | None:
+    """Compare cohort dollar totals against an optional published external reference.
+
+    Most areas have no such reference — returns None unless the area config
+    declares an ``external_reference`` block (agency map + by-agency/FY dollar
+    table transcribed from a public budget summary). This is an approximate,
+    independent cross-check, not a second cohort-definition method: the
+    reference source's own agency-identification methodology is unpublished,
+    so exact reconciliation against this analysis's text-based classification
+    is not expected — the gap is informative, not an error to close.
+    """
+    ref = cfg.get("external_reference")
+    if not ref or not ref.get("by_agency_fy_usd"):
+        return None
+    agency_map: dict[str, str] = ref.get("agency_map") or {}
+    window = ref.get("window") or {}
+    start_fy, end_fy = window.get("start_fy"), window.get("end_fy")
+    if start_fy is None or end_fy is None:
+        return None
+
+    our_totals: dict[str, dict[int, float]] = {}
+    for row in cohort:
+        agency = row.get("agency", "")
+        short = agency_map.get(agency)
+        if not short:
+            continue
+        fy = row.get("award_year", 0)
+        if not (start_fy <= fy <= end_fy):
+            continue
+        bucket = our_totals.setdefault(short, {})
+        bucket[fy] = bucket.get(fy, 0.0) + float(row.get("award_amount") or 0.0)
+
+    rows = []
+    for short, fy_dict in sorted(ref["by_agency_fy_usd"].items()):
+        for fy in range(start_fy, end_fy + 1):
+            our_usd = our_totals.get(short, {}).get(fy, 0.0)
+            ref_usd = float(fy_dict.get(fy, 0.0) or 0.0)
+            rows.append(
+                {
+                    "agency": short,
+                    "fy": fy,
+                    "our_cohort_usd": round(our_usd, 2),
+                    "reference_usd": ref_usd,
+                    "delta_usd": round(our_usd - ref_usd, 2),
+                }
+            )
+    return {
+        "label": ref.get("label", "External reference"),
+        "note": ref.get("note", ""),
+        "window": window,
+        "rows": rows,
+    }
+
+
 def _norm_firm(company: str) -> str:
     """Firm identity key for unique-firm counts (mirror the findings-report grain)."""
     try:
@@ -421,6 +475,7 @@ def write_methodology_stub(
     stats: dict,
     signals_absent: list[str],
     channel_summary: dict | None,
+    external_reference: dict | None = None,
 ) -> None:
     j = stats.get("jaccard")
     c = stats.get("containment_a_in_b")
@@ -459,6 +514,42 @@ def write_methodology_stub(
         lines += ["## Transition channels (keyword cohort)", ""]
         for k, v in channel_summary.items():
             lines.append(f"- {k}: {v}")
+        lines.append("")
+    if external_reference:
+        method_a = external_reference["method_a"]
+        w = method_a["window"]
+        lines += [
+            "## External reference reconciliation",
+            "",
+            f"**{method_a['label']}** — {w['start_fy']}–{w['end_fy']}, "
+            f"{len({r['agency'] for r in method_a['rows']})} agencies",
+            "",
+            method_a["note"],
+            "",
+            "### Method A (keyword) vs reference",
+            "",
+            "| Agency | FY | Our cohort ($M) | Reference ($M) | Delta ($M) |",
+            "|---|---|---|---|---|",
+        ]
+        for r in method_a["rows"]:
+            lines.append(
+                f"| {r['agency']} | {r['fy']} | {r['our_cohort_usd'] / 1e6:.2f} | "
+                f"{r['reference_usd'] / 1e6:.2f} | {r['delta_usd'] / 1e6:+.2f} |"
+            )
+        method_b = external_reference["method_b"]
+        if method_b:
+            lines += [
+                "",
+                "### Method B (CET/taxonomy) vs reference",
+                "",
+                "| Agency | FY | Our cohort ($M) | Reference ($M) | Delta ($M) |",
+                "|---|---|---|---|---|",
+            ]
+            for r in method_b["rows"]:
+                lines.append(
+                    f"| {r['agency']} | {r['fy']} | {r['our_cohort_usd'] / 1e6:.2f} | "
+                    f"{r['reference_usd'] / 1e6:.2f} | {r['delta_usd'] / 1e6:+.2f} |"
+                )
         lines.append("")
     out.write_text("\n".join(lines), encoding="utf-8")
 
@@ -651,6 +742,15 @@ def main() -> int:
     cet_cohort = build_method_b_cohort(awards, compiled_b, src_b)
     print(f"  {len(cet_cohort):,} awards matched")
 
+    ext_ref_a = external_reference_reconciliation(kw_cohort, cfg)
+    ext_ref_b = external_reference_reconciliation(cet_cohort, cfg)
+    if ext_ref_a:
+        w = ext_ref_a["window"]
+        print(
+            f"External reference reconciliation ({w['start_fy']}–{w['end_fy']}, "
+            f"{len(cfg['external_reference']['agency_map'])} agencies): computed for Method A + Method B"
+        )
+
     a_ids = {r["award_id"] for r in kw_cohort if r.get("award_id")}
     b_ids = {r["award_id"] for r in cet_cohort if r.get("award_id")}
     stats = overlap_stats(a_ids, b_ids)
@@ -729,12 +829,16 @@ def main() -> int:
         "quantum_dot_well_excluded_count": qdot_excluded,
         "has_deficiency_class": bool(enriched)
         and "deficiency_class" in enriched[0],
+        "external_reference": (
+            {"method_a": ext_ref_a, "method_b": ext_ref_b} if ext_ref_a else None
+        ),
     }
     paths.artifact("overlap_summary").write_text(
         json.dumps(summary, indent=2) + "\n", encoding="utf-8"
     )
     write_methodology_stub(
-        cfg, paths.artifact("methodology_stub"), stats, absent, channel_summary
+        cfg, paths.artifact("methodology_stub"), stats, absent, channel_summary,
+        external_reference=summary["external_reference"],
     )
     print(f"Wrote {paths.report_dir}/")
     return 0
