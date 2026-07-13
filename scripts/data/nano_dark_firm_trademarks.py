@@ -12,19 +12,27 @@ so no inventor/PI signal exists here).
 
 Data currency: the 2023 vintage — filings after 2023 are invisible.
 
+Path convention (same as nano_dark_firm_liveness.py):
+  --area <id>   → data/reports/<id>/dark_firm_trademarks.csv
+  (no flag)     → data/nano_dark_firm_trademarks.csv  (legacy PR #428)
+
+The liveness input is area-scoped; the SBIR bulk CSV and USPTO trademark zips
+are shared global inputs and stay under data/.
+
 Inputs:
-  data/nano_dark_firm_liveness.csv                  — dark firm list + first award year
+  dark_firm_liveness.csv / nano_dark_firm_liveness.csv  — dark firm list + first award year
   data/raw/sbir/award_data.csv                      — firm states
   data/raw/uspto/trademarks/owner.csv.zip           — TRCFECO2/2023
   data/raw/uspto/trademarks/case_file.csv.zip       — TRCFECO2/2023
 
 Outputs:
-  data/nano_dark_firm_trademarks.csv — one row per dark firm
+  dark_firm_trademarks.csv — one row per dark firm
 
 Usage:
-  python scripts/data/nano_dark_firm_trademarks.py
+  python scripts/data/nano_dark_firm_trademarks.py [--area AREA] [--legacy]
 """
 
+import argparse
 import csv
 import importlib.util
 import io
@@ -40,6 +48,10 @@ TM = DATA / "raw/uspto/trademarks"
 
 sys.path.insert(0, str(REPO))
 from sbir_etl.utils.text_normalization import normalize_name  # noqa: E402
+from sbir_etl.utils.transition_report_paths import (  # noqa: E402
+    add_area_args,
+    resolve_area_paths,
+)
 
 _liv_spec = importlib.util.spec_from_file_location(
     "nano_liveness", Path(__file__).parent / "nano_dark_firm_liveness.py"
@@ -65,13 +77,18 @@ def csv_rows(zip_path: Path):
             yield idx, row
 
 
-def main() -> int:
-    liveness_csv = DATA / "nano_dark_firm_liveness.csv"
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    add_area_args(parser)
+    args = parser.parse_args(argv)
+    paths = resolve_area_paths(args, argv)
+
+    liveness_csv = paths.artifact("dark_firm_liveness")
     awards_csv = DATA / "raw/sbir/award_data.csv"
     owner_zip = TM / "owner.csv.zip"
     case_zip = TM / "case_file.csv.zip"
     for p, hint in {
-        liveness_csv: "run nano_dark_firm_liveness.py first",
+        liveness_csv: f"run nano_dark_firm_liveness.py --area {paths.area_id} first",
         awards_csv: "SBIR.gov bulk CSV expected",
         owner_zip: "download via download_uspto.py --product-file TRCFECO2/2023/owner.csv.zip "
                    f"--local {TM}",
@@ -81,6 +98,12 @@ def main() -> int:
         if not p.exists():
             print(f"ERROR: {p} not found — {hint}", file=sys.stderr)
             return 1
+
+    out_csv = paths.artifact("dark_firm_trademarks")
+    print(
+        f"area={paths.area_id}{', legacy' if paths.legacy else ''}  out={out_csv}",
+        file=sys.stderr,
+    )
 
     csv.field_size_limit(sys.maxsize)
     firms: dict[str, dict] = {}
@@ -129,7 +152,6 @@ def main() -> int:
                 (row[idx["mark_id_char"]] or "")[:60],
             )
 
-    out_csv = DATA / "nano_dark_firm_trademarks.csv"
     fields = ["company", "normalized_name", "bucket", "first_award_year", "tm_marks_n",
               "tm_registered_n", "tm_first_filing", "tm_last_filing", "tm_filed_post_award",
               "state_match", "name_generic", "match_confidence", "sample_marks"]
