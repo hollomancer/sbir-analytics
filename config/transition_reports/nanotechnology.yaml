@@ -70,6 +70,13 @@ cpc_prefixes:
   - B82Y
   - B82B
 
+# WS5c sector go-to-market registries applicable to this area (gates
+# nano_ws5c_sector_registries.py). Nanotech has a biomedical/HHS-funded slice,
+# so the clinical-trial and FDA 510(k) channels apply.
+sector_registries:
+  - clinical_trials  # ClinicalTrials.gov lead-sponsor
+  - fda_510k         # openFDA 510(k) applicant
+
 external_reference:
   name: NNI Table 5
   note: Hand-maintained in build_nano_cohort.py; not loaded by v1 CLI

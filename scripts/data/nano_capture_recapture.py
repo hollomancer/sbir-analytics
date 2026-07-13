@@ -37,14 +37,19 @@ each other? Sector-registry evidence (WS5c) is excluded from this second pass
 because it was only searched for 206 of the 1,019 firms (HHS-funded slice) —
 including it would confound "no evidence" with "never searched."
 
+Path convention (same as nano_form_d_temporal.py / nano_ws1):
+  --area <id>   → data/reports/<id>/capture_recapture[_darkfirms].csv
+  (no flag)     → data/nano_capture_recapture[_darkfirms].csv  (legacy PR #428)
+
 Outputs:
-  stdout summary + data/nano_capture_recapture.csv (per-firm channel matrix,
-  cohort-wide) + data/nano_capture_recapture_darkfirms.csv (dark-population pass)
+  stdout summary + capture_recapture.csv (per-firm channel matrix, cohort-wide)
+  + capture_recapture_darkfirms.csv (dark-population pass)
 
 Usage:
-  python scripts/data/nano_capture_recapture.py
+  python scripts/data/nano_capture_recapture.py [--area AREA] [--legacy]
 """
 
+import argparse
 import csv
 import sys
 from collections import Counter
@@ -52,18 +57,24 @@ from itertools import combinations
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
-DATA = REPO / "data"
+
+sys.path.insert(0, str(REPO))
+from sbir_etl.utils.transition_report_paths import (  # noqa: E402
+    ReportPaths,
+    add_area_args,
+    resolve_area_paths,
+)
 
 CHANNELS = ("fpds", "formd", "strong", "ma", "patent")
 
 
-def main() -> int:
+def main(paths: ReportPaths) -> int:
     inputs = {
-        "kw": DATA / "nano_cohort_keyword.csv",
-        "fd": DATA / "nano_form_d_post_phase2.csv",
-        "ws1": DATA / "nano_ws1_contract_evidence.csv",
-        "ws2": DATA / "nano_ws2_contract_evidence.csv",
-        "cpc": DATA / "nano_cohort_cpc.csv",
+        "kw": paths.artifact("cohort_keyword"),
+        "fd": paths.artifact("form_d_post_phase2"),
+        "ws1": paths.artifact("ws1_contract_evidence"),
+        "ws2": paths.artifact("ws2_contract_evidence"),
+        "cpc": paths.artifact("cohort_cpc"),
     }
     for p in inputs.values():
         if not p.exists():
@@ -113,7 +124,7 @@ def main() -> int:
     capture_counts = Counter(sum(h) for h in histories.values() if any(h))
     f1, f2 = capture_counts.get(1, 0), capture_counts.get(2, 0)
 
-    out_csv = DATA / "nano_capture_recapture.csv"
+    out_csv = paths.artifact("capture_recapture")
     with open(out_csv, "w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
         w.writerow(["company", *CHANNELS, "n_channels"])
@@ -167,15 +178,15 @@ def main() -> int:
 DARK_CHANNELS = ("patent", "trademark", "alias", "subaward")
 
 
-def run_dark_population_analysis() -> int:
+def run_dark_population_analysis(paths: ReportPaths) -> int:
     """Second, separate capture-recapture pass within the dark-firm population.
 
     See module docstring for why this is not comparable to run_cohort_analysis().
     """
-    liveness_csv = DATA / "nano_dark_firm_liveness.csv"
-    tm_csv = DATA / "nano_dark_firm_trademarks.csv"
-    alias_csv = DATA / "nano_alias_expanded_evidence.csv"
-    sub_csv = DATA / "nano_ws5a_subawards.csv"
+    liveness_csv = paths.artifact("dark_firm_liveness")
+    tm_csv = paths.artifact("dark_firm_trademarks")
+    alias_csv = paths.artifact("alias_expanded_evidence")
+    sub_csv = paths.artifact("ws5a_subawards")
     for p in (liveness_csv, tm_csv, alias_csv, sub_csv):
         if not p.exists():
             print(f"SKIP dark-population pass: {p.name} not found", file=sys.stderr)
@@ -206,7 +217,7 @@ def run_dark_population_analysis() -> int:
     f1, f2 = capture_counts.get(1, 0), capture_counts.get(2, 0)
     chao = s_obs + (f1 * f1) / (2 * f2) if f2 else float("inf")
 
-    out_csv = DATA / "nano_capture_recapture_darkfirms.csv"
+    out_csv = paths.artifact("capture_recapture_darkfirms")
     with open(out_csv, "w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
         w.writerow(["firm_normalized", *DARK_CHANNELS, "n_channels"])
@@ -242,6 +253,15 @@ def run_dark_population_analysis() -> int:
 
 
 if __name__ == "__main__":
-    rc1 = main()
-    rc2 = run_dark_population_analysis()
+    _parser = argparse.ArgumentParser(description=__doc__)
+    add_area_args(_parser)
+    _argv = sys.argv[1:]
+    _args = _parser.parse_args(_argv)
+    _paths = resolve_area_paths(_args, _argv)
+    print(
+        f"area={_paths.area_id}{', legacy' if _paths.legacy else ''}",
+        file=sys.stderr,
+    )
+    rc1 = main(_paths)
+    rc2 = run_dark_population_analysis(_paths)
     sys.exit(rc1 or rc2)

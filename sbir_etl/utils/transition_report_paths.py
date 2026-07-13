@@ -27,6 +27,8 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
+import yaml
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DATA = REPO_ROOT / "data"
 REPORTS = DATA / "reports"
@@ -105,6 +107,21 @@ class ReportPaths:
     @property
     def config_path(self) -> Path:
         return CONFIG_DIR / f"{self.area_id}.yaml"
+
+    def load_config(self) -> dict:
+        """Load the area YAML config (config/transition_reports/<area>.yaml).
+
+        Used by area-gated work streams (e.g. WS5c sector registries) to decide
+        whether they apply to the area at all.
+        """
+        if not self.config_path.exists():
+            raise FileNotFoundError(
+                f"No area config at {self.config_path}. "
+                f"Add config/transition_reports/{self.area_id}.yaml"
+            )
+        cfg = yaml.safe_load(self.config_path.read_text(encoding="utf-8")) or {}
+        cfg.setdefault("area_id", self.area_id)
+        return cfg
 
     def artifact(self, stem: str) -> Path:
         """Return path for a logical artifact stem (see ARTIFACT_STEMS)."""

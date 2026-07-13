@@ -33,3 +33,6 @@ keyword_pack:
   negative_patterns: []  # taxonomy negatives loaded via cet_id
 
 cpc_prefixes: []
+
+# No biomedical go-to-market pathway → WS5c sector registries do not apply.
+sector_registries: []

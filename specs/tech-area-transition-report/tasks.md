@@ -27,8 +27,17 @@
   - [x] WS2 `nano_ws2_resolve_no_uei.py` (`resolve_area_paths`)
   - [x] dark_firm_liveness / trademarks (`resolve_area_paths`; SBIR CSV, B82
         extract, USPTO zips stay global — only cohort input + outputs are area-scoped)
-- [ ] T15 Migrate WS5a, alias graph, alias-expanded; gate WS5c on YAML
-- [ ] T16 Migrate capture-recapture / survey_frame; nanotech `--legacy` cutover
+- [x] T15 Migrate WS5a, alias graph, alias-expanded; gate WS5c on YAML
+  - [x] `nano_ws5a_subawards.py`, `build_firm_alias_graph.py`,
+        `nano_alias_expanded_evidence.py` → `resolve_area_paths`
+  - [x] WS5c gated on area YAML `sector_registries:` list
+        (`ReportPaths.load_config()`); nanotech enables clinical_trials + fda_510k,
+        quantum/hypersonics declare `[]` → no-op
+- [~] T16 Migrate capture-recapture / survey_frame; nanotech `--legacy` cutover
+  - [x] `nano_capture_recapture.py`, `nano_survey_frame.py` → `resolve_area_paths`
+  - [ ] nanotech `--legacy` cutover — deliberate global default flip (unflagged
+        nano → `data/reports/nanotechnology/`); left as its own decision since
+        every migrated script currently keeps legacy-as-default
 
 ## Phase 2 — Follow-ups
 

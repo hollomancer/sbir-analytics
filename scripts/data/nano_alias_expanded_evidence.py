@@ -16,19 +16,26 @@ Evidence checked under each alias name (exact normalized match):
   patent     assignee on ≥1 patent in the PatentsView assignee table
   federal    ≥1 USAspending prime award (name search, cached)
 
+Path convention (same as nano_form_d_temporal.py / nano_ws1):
+  --area <id>   → data/reports/<id>/alias_expanded_evidence.csv
+  (no flag)     → data/nano_alias_expanded_evidence.csv  (legacy PR #428)
+
+The alias graph, liveness, trademark, and output CSVs are area-scoped; the USPTO
+zips and USAspending cache are shared global inputs under data/.
+
 Inputs:
-  data/processed/firm_aliases.csv                   — WS6a alias graph
-  data/nano_dark_firm_liveness.csv                  — dark firms + own-name evidence
-  data/nano_dark_firm_trademarks.csv                — own-name trademark evidence
+  firm_aliases.csv (area-scoped)                    — WS6a alias graph
+  dark_firm_liveness.csv (area-scoped)              — dark firms + own-name evidence
+  dark_firm_trademarks.csv (area-scoped)            — own-name trademark evidence
   data/raw/uspto/trademarks/{owner,case_file}.csv.zip
   data/raw/uspto/patentsview/g_assignee_disambiguated.tsv.zip
   USAspending API (cached: data/api_cache/usaspending_alias/)
 
 Outputs:
-  data/nano_alias_expanded_evidence.csv
+  alias_expanded_evidence.csv
 
 Usage:
-  python scripts/data/nano_alias_expanded_evidence.py [--no-federal]
+  python scripts/data/nano_alias_expanded_evidence.py [--area AREA] [--legacy] [--no-federal]
 """
 
 import argparse
@@ -46,6 +53,10 @@ DATA = REPO / "data"
 sys.path.insert(0, str(REPO))
 from sbir_etl.utils.firm_aliases import build_alias_index  # noqa: E402
 from sbir_etl.utils.text_normalization import normalize_name  # noqa: E402
+from sbir_etl.utils.transition_report_paths import (  # noqa: E402
+    add_area_args,
+    resolve_area_paths,
+)
 
 _ws2_spec = importlib.util.spec_from_file_location(
     "nano_ws2", Path(__file__).parent / "nano_ws2_resolve_no_uei.py"
@@ -77,20 +88,27 @@ def csv_rows(zip_path: Path, delimiter: str = ","):
             yield idx, row
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
+    add_area_args(parser)
     parser.add_argument("--no-federal", action="store_true",
                         help="Skip the USAspending alias check (offline only)")
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
+    paths = resolve_area_paths(args, argv)
 
     csv.field_size_limit(sys.maxsize)
-    alias_csv = DATA / "processed/firm_aliases.csv"
-    liveness_csv = DATA / "nano_dark_firm_liveness.csv"
-    tm_csv = DATA / "nano_dark_firm_trademarks.csv"
+    alias_csv = paths.artifact("firm_aliases")
+    liveness_csv = paths.artifact("dark_firm_liveness")
+    tm_csv = paths.artifact("dark_firm_trademarks")
     for p in (alias_csv, liveness_csv, tm_csv):
         if not p.exists():
             print(f"ERROR: {p} not found", file=sys.stderr)
             return 1
+    out_csv = paths.artifact("alias_expanded_evidence")
+    print(
+        f"area={paths.area_id}{', legacy' if paths.legacy else ''}  out={out_csv}",
+        file=sys.stderr,
+    )
 
     # Alias graph → index, plus per-alias provenance (source, relation).
     edges = list(csv.DictReader(open(alias_csv, newline="", encoding="utf-8")))
@@ -194,7 +212,6 @@ def main() -> int:
             "negative_under_own_name": newly,
         })
 
-    out_csv = DATA / "nano_alias_expanded_evidence.csv"
     with open(out_csv, "w", newline="", encoding="utf-8") as fo:
         w = csv.DictWriter(fo, fieldnames=list(out_rows[0].keys()) if out_rows else
                            ["firm_normalized", "company", "bucket", "alias_evidence",

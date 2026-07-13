@@ -24,3 +24,6 @@ keyword_pack:
     - '\bsupersonic\b'
 
 cpc_prefixes: []
+
+# No biomedical go-to-market pathway → WS5c sector registries do not apply.
+sector_registries: []

@@ -14,17 +14,26 @@ Matching is exact-normalized on the returned sponsor/applicant name (these name
 fields are messy; exact match is the conservative, precision-first bar). Alias
 expansion (WS6) is applied so successor names are also searched.
 
+Area gating: sector registries are pathway-specific and only apply to areas with
+a biomedical go-to-market channel. The area YAML declares which registries apply
+via a `sector_registries:` list (e.g. [clinical_trials, fda_510k]); if it is
+empty/absent the work stream is a no-op for that area.
+
+Path convention (same as nano_form_d_temporal.py / nano_ws1):
+  --area <id>   → data/reports/<id>/ws5c_sector_registries.csv
+  (no flag)     → data/nano_ws5c_sector_registries.csv  (legacy PR #428)
+
 Inputs:
-  data/nano_dark_firm_liveness.csv     — dark firms
-  data/nano_cohort_keyword.csv          — agency (biomed slice = HHS-funded)
-  data/processed/firm_aliases.csv       — alias expansion (optional)
+  dark_firm_liveness.csv (area-scoped)  — dark firms
+  cohort_keyword.csv (area-scoped)      — agency (biomed slice = HHS-funded)
+  firm_aliases.csv (area-scoped)        — alias expansion (optional)
   ClinicalTrials.gov v2 + openFDA APIs (cached: data/api_cache/sector_registries/)
 
 Outputs:
-  data/nano_ws5c_sector_registries.csv  — per biomed-firm registry evidence
+  ws5c_sector_registries.csv  — per biomed-firm registry evidence
 
 Usage:
-  python scripts/data/nano_ws5c_sector_registries.py [--refresh]
+  python scripts/data/nano_ws5c_sector_registries.py [--area AREA] [--legacy] [--refresh]
 """
 
 import argparse
@@ -44,6 +53,10 @@ HEADERS = {"User-Agent": "SBIR-Analytics/0.1.0"}
 
 sys.path.insert(0, str(REPO))
 from sbir_etl.utils.text_normalization import normalize_name  # noqa: E402
+from sbir_etl.utils.transition_report_paths import (  # noqa: E402
+    add_area_args,
+    resolve_area_paths,
+)
 
 
 def _norm(s: str) -> str:
@@ -117,16 +130,34 @@ def fda_510k_hits(name: str, targets: set[str], refresh: bool) -> list[dict]:
     return hits
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
+    add_area_args(parser)
     parser.add_argument("--refresh", action="store_true")
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
+    paths = resolve_area_paths(args, argv)
+
+    # Gate: which sector registries does this area declare?
+    registries = set(paths.load_config().get("sector_registries") or [])
+    if not registries:
+        print(
+            f"WS5c: area {paths.area_id} declares no sector_registries — "
+            "sector go-to-market channels do not apply; nothing to do.",
+            file=sys.stderr,
+        )
+        return 0
+    out_csv = paths.artifact("ws5c_sector_registries")
+    print(
+        f"area={paths.area_id}{', legacy' if paths.legacy else ''}  "
+        f"registries={sorted(registries)}  out={out_csv}",
+        file=sys.stderr,
+    )
 
     csv.field_size_limit(sys.maxsize)
     dark = {r["normalized_name"]: r for r in
-            csv.DictReader(open(DATA / "nano_dark_firm_liveness.csv", newline="", encoding="utf-8"))}
+            csv.DictReader(open(paths.artifact("dark_firm_liveness"), newline="", encoding="utf-8"))}
     biomed: set[str] = set()
-    for r in csv.DictReader(open(DATA / "nano_cohort_keyword.csv", newline="", encoding="utf-8")):
+    for r in csv.DictReader(open(paths.artifact("cohort_keyword"), newline="", encoding="utf-8")):
         f = _norm(r["company"])
         if f in dark and "Health" in r.get("agency", ""):
             biomed.add(f)
@@ -134,7 +165,7 @@ def main() -> int:
 
     # Alias expansion: each firm's search names = itself + aliases.
     aliases: dict[str, set[str]] = {}
-    ap = DATA / "processed/firm_aliases.csv"
+    ap = paths.artifact("firm_aliases")
     if ap.exists():
         for e in csv.DictReader(open(ap, newline="", encoding="utf-8")):
             for a, b in ((e["firm_normalized"], e["alias_normalized"]),
@@ -149,8 +180,10 @@ def main() -> int:
         search_names |= {n for n in search_norms if n != f}  # alias normals as queries
         ct_hits, fda_hits = [], []
         for nm in search_names:
-            ct_hits += clinicaltrials_sponsor_hits(nm, search_norms, args.refresh)
-            fda_hits += fda_510k_hits(nm, search_norms, args.refresh)
+            if "clinical_trials" in registries:
+                ct_hits += clinicaltrials_sponsor_hits(nm, search_norms, args.refresh)
+            if "fda_510k" in registries:
+                fda_hits += fda_510k_hits(nm, search_norms, args.refresh)
         # dedupe
         ct_hits = {h["nct"]: h for h in ct_hits}.values()
         fda_hits = {h["k_number"]: h for h in fda_hits}.values()
@@ -174,7 +207,6 @@ def main() -> int:
         if i % 50 == 0:
             print(f"  {i}/{len(biomed)}")
 
-    out_csv = DATA / "nano_ws5c_sector_registries.csv"
     with open(out_csv, "w", newline="", encoding="utf-8") as fo:
         cols = ["firm_normalized", "company", "bucket", "channels", "n_trials",
                 "n_510k", "trials", "clearances"]

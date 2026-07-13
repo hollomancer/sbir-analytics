@@ -79,3 +79,22 @@ def test_add_area_args_on_parser():
     ns = parser.parse_args(["--area", "hypersonics"])
     assert ns.area == "hypersonics"
     assert ns.legacy is False
+
+
+def test_load_config_returns_area_yaml():
+    cfg = ReportPaths.for_area("nanotechnology").load_config()
+    assert cfg["area_id"] == "nanotechnology"
+    # Nanotech enables the WS5c sector-registry gate (biomed slice).
+    assert set(cfg.get("sector_registries") or []) == {"clinical_trials", "fda_510k"}
+
+
+def test_load_config_gate_off_for_non_biomed_areas():
+    # Quantum / hypersonics have no biomedical go-to-market pathway → gate off.
+    for area in ("quantum_information_science", "hypersonics"):
+        cfg = ReportPaths.for_area(area).load_config()
+        assert (cfg.get("sector_registries") or []) == []
+
+
+def test_load_config_missing_area_raises():
+    with pytest.raises(FileNotFoundError):
+        ReportPaths.for_area("no_such_area").load_config()

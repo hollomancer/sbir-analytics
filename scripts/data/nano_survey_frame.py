@@ -13,20 +13,30 @@ Within-stratum simple random sampling with a FIXED SEED so the frame is
 reproducible; each sampled firm gets ranked replacement backups for
 unreachable cases.
 
-Inputs:  data/nano_dark_firm_liveness.csv
-Outputs: data/nano_survey_frame.csv
+Path convention (same as nano_form_d_temporal.py / nano_ws1):
+  --area <id>   → data/reports/<id>/survey_frame.csv
+  (no flag)     → data/nano_survey_frame.csv  (legacy PR #428)
+
+Inputs:  dark_firm_liveness.csv (area-scoped)
+Outputs: survey_frame.csv
 
 Usage:
-  python scripts/data/nano_survey_frame.py
+  python scripts/data/nano_survey_frame.py [--area AREA] [--legacy]
 """
 
+import argparse
 import csv
 import random
 import sys
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
-DATA = REPO / "data"
+
+sys.path.insert(0, str(REPO))
+from sbir_etl.utils.transition_report_paths import (  # noqa: E402
+    add_area_args,
+    resolve_area_paths,
+)
 
 SEED = 20260712
 ALLOCATION = {"S1_active_evidence": 20, "S2_holder_only": 20, "S3_dark_core": 35}
@@ -41,11 +51,25 @@ def stratum(row: dict) -> str:
     return "S3_dark_core"
 
 
-def main() -> int:
-    src = DATA / "nano_dark_firm_liveness.csv"
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    add_area_args(parser)
+    args = parser.parse_args(argv)
+    paths = resolve_area_paths(args, argv)
+
+    src = paths.artifact("dark_firm_liveness")
     if not src.exists():
-        print(f"ERROR: {src} not found — run nano_dark_firm_liveness.py first", file=sys.stderr)
+        print(
+            f"ERROR: {src} not found — "
+            f"run nano_dark_firm_liveness.py --area {paths.area_id} first",
+            file=sys.stderr,
+        )
         return 1
+    out_csv = paths.artifact("survey_frame")
+    print(
+        f"area={paths.area_id}{', legacy' if paths.legacy else ''}  out={out_csv}",
+        file=sys.stderr,
+    )
 
     csv.field_size_limit(sys.maxsize)
     firms = [r for r in csv.DictReader(open(src, newline="", encoding="utf-8"))
@@ -74,7 +98,6 @@ def main() -> int:
                 "any_latest_filing_year": r["any_latest_filing_year"],
             })
 
-    out_csv = DATA / "nano_survey_frame.csv"
     with open(out_csv, "w", newline="", encoding="utf-8") as f:
         w = csv.DictWriter(f, fieldnames=list(out_rows[0].keys()))
         w.writeheader()
