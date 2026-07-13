@@ -283,21 +283,32 @@ def _norm_firm(company: str) -> str:
 
 
 def dedupe_by_award_id(cohort: list[dict]) -> list[dict]:
-    """Drop duplicate award_id rows (keep first); rows with no award_id are kept.
+    """Drop true duplicate rows (keep first); rows with no award_id are kept.
 
-    SBIR.gov carries a handful of duplicate ``award_id`` rows per area. Overlap
-    stats already dedupe (they build ID sets); composition tables must too, or
-    dollar sums and agency counts double-count those rows (the row-vs-unique
-    inconsistency called out in the report evaluation).
+    ``award_id`` alone is not a unique key: SBIR.gov reuses the same base ID
+    across genuinely different awards — DOE Phase II continuations/renewals in
+    a later year, and cases where a different company (successor/awardee
+    change) carries the same contract number. Deduping on bare ``award_id``
+    silently drops real, distinct awards (verified against real data: 2 of 3
+    QIS "duplicates" and all 3 of 3 hypersonics "duplicates" were genuinely
+    different awards with different company/year/dollar values, not repeats).
+
+    Key on (award_id, company, award_year, award_amount) instead — a row is a
+    true duplicate only if all four agree. Overlap stats already dedupe on
+    unique award_id sets for Jaccard/containment (a different, coarser
+    question — "how many distinct IDs are in each method" — where the
+    same-ID-different-award cases don't matter); composition tables need this
+    finer key so dollar sums and agency counts don't drop real award dollars.
     """
-    seen: set[str] = set()
+    seen: set[tuple[str, str, str, str]] = set()
     out = []
     for r in cohort:
         aid = r.get("award_id") or ""
-        if aid and aid in seen:
+        key = (aid, r.get("company") or "", r.get("award_year") or "", r.get("award_amount") or "")
+        if aid and key in seen:
             continue
         if aid:
-            seen.add(aid)
+            seen.add(key)
         out.append(r)
     return out
 

@@ -83,17 +83,13 @@ positive is negated in context (e.g. "does not involve quantum information"). Re
 negation; the count is reported in `overlap_summary.json` and stdout so the false-positive class
 is quantified rather than silent.
 
-**Predicted effect on cohort sizes (needs re-run on `award_data.csv` to confirm — absent here):**
+**Confirmed effect on cohort sizes (2026-07-13, real `award_data.csv` run):**
 
-| Area | `soft_requires` | Veto reachable? | Predicted change |
+| Area | `soft_requires` | Veto reachable? | Result |
 |---|---|---|---|
-| `nanotechnology` | n/a (`soft_patterns: []`) | no | **2,849 unchanged** (no soft admits) |
-| `hypersonics` | `core_cooccur` | no (soft-only never admits) | **813 unchanged** by construction; `supersonic` stays a spot-check flag |
-| `quantum_information_science` | `title_or_multi` | **yes** | ≤ **138** — any of the 17 `soft_corroborated` admits that co-occur with a taxonomy negative now drop |
-
-**Action for next data run:** re-run `build_tech_area_cohort.py --area quantum_information_science`,
-read the new Method A size + `admitted_by`/`negation_spotcheck` from `overlap_summary.json`, and
-reconcile the QIS findings/brief numbers (138) against it before publishing.
+| `nanotechnology` | n/a (`soft_patterns: []`) | no | **2,849 unchanged** (no soft admits) — not re-run here, unaffected by construction |
+| `hypersonics` | `core_cooccur` | no (soft-only never admits) | **813 unchanged** by construction, confirmed; `supersonic` co-occurs with 76 Method A awards (spot-check flag, 0 pure-negative admissions) |
+| `quantum_information_science` | `title_or_multi` | **yes** | **138 unchanged** — the veto ran (5 soft/core awards co-occur with a negative) but 0 of the 17 `soft_corroborated` admits actually hit one in this data; the veto is real and tested, it just didn't trigger here. Method A stays 121 core + 17 soft_corroborated = 138 |
 
 Engine coverage: `tests/unit/scripts/test_build_tech_area_cohort.py` now exercises
 `resolve_method_a`, both soft-gating modes, the veto, `overlap_stats`, and `negation_spotcheck`.
@@ -110,23 +106,44 @@ overlap stats used **unique** IDs, a row-vs-unique inconsistency.
 **Change:**
 
 - `build_tech_area_cohort.py` now emits `data/reports/<area>/composition.json` via
-  `aggregate_composition()`, which **deduplicates by `award_id` first** (so composition is
-  unique-based, matching the overlap grain) and computes every headline composition figure.
+  `aggregate_composition()`, which **deduplicates first** (so composition is unique-award-based)
+  and computes every headline composition figure.
 - `scripts/data/verify_tech_area_figures.py --area <id>` recomputes composition from the cohort
   CSV and diffs it against `EXPECTED` tables transcribed from the published findings docs — the
-  generalized analogue of `nano_verify_report_figures.py`. It flags any mismatch, **including the
-  intentional 138-vs-135 / 813-vs-810 row-vs-unique gap** (the audit exists to surface that).
+  generalized analogue of `nano_verify_report_figures.py`.
 - Tests: `test_build_tech_area_cohort.py` (dedupe + `aggregate_composition`) and
   `test_verify_tech_area_figures.py` (diff logic: match, tolerance, mismatch, missing agency).
 
-**Runs in a data-bearing environment only** (cohort CSV is gitignored under `data/`). The pure
-diff/aggregation logic is unit-tested here on synthetic input; the real audit against
-`award_data.csv` is a pending step.
+**Bug found on the real data-bearing run (2026-07-13):** the original `dedupe_by_award_id` keyed
+on bare `award_id` alone. Checking the actual "duplicate" rows against real `award_data.csv`
+showed this was wrong, not just row-vs-unique noise: of QIS's 3 repeated `award_id` values, only
+1 was a true duplicate row (identical company/year/amount) — the other 2 were genuinely different
+awards (a DOE Phase II continuation in a later year; a successor-company change) sharing a base
+contract number, the same `award_id`-is-not-a-key trap documented for nanotech in
+[[fpds-piid-not-a-key]] / `docs/steering/data-quality.md`. Bare-ID dedup was silently dropping
+real awards. Of hypersonics' 3 repeated IDs, **none** were true duplicates (2 DOE continuations,
+1 same-year pair with different dollar amounts) — the predicted 813→810 gap does not hold at all
+once you check what's actually being dropped.
 
-**Action for next data run:** after `build_tech_area_cohort.py --area <id>`, run
-`verify_tech_area_figures.py --area <id>`, then reconcile the findings/brief prose to the
-deduplicated composition (expect the QIS/hypersonics totals to move 138→135 / 813→810, and QIS
-possibly lower still from the negative veto above).
+**Fix:** `dedupe_by_award_id` now keys on `(award_id, company, award_year, award_amount)` — a row
+is a true duplicate only if all four agree. Regression test added:
+`test_dedupe_keeps_same_award_id_different_award`.
+
+**Confirmed composition (2026-07-13, real `award_data.csv` run, post-fix):**
+
+| Area | Rows | True duplicates | Unique awards (composition basis) |
+|---|---:|---:|---:|
+| `quantum_information_science` | 138 | 1 | **137** |
+| `hypersonics` | 813 | 0 | **813** (unchanged) |
+
+`verify_tech_area_figures.py --area quantum_information_science` and `--area hypersonics` both
+report **ALL CHECKS PASSED** against the reconciled findings/brief docs. Hypersonics needed no
+prose changes at all — its published figures were already correct (no true duplicates to drop).
+QIS Finding 1/2 tables, program split, decade distribution, censoring, and firm concentration were
+updated to the 137-unique-award basis across both `quantum_information_science_sbir_transition_findings.md`
+and `quantum_information_science_sbir_policy_brief.md`. Method A's row-matching count (138) and the
+Method A/B overlap statistics (which compare bare `award_id` **sets**, 135 distinct values for QIS
+— a different, coarser question than "unique awards") are unaffected and still reported as before.
 
 ---
 
@@ -139,6 +156,8 @@ possibly lower still from the negative veto above).
 | Quantum precision pass | Done (203→138) |
 | Hypersonics TPS/Mach co-occurrence | Done (886→813) |
 | Nanotech ±5% of 2,849 | PASS (exact) |
+| Negative veto (data-bearing run) | Done — real-data confirmed: QIS 138 unchanged (veto ran, found 0 vetoable), hypersonics 813 unchanged by construction |
+| Composition dedup + figure audit (data-bearing run) | Done — bare-`award_id` dedup bug found and fixed (compound key); QIS 137 / hypersonics 813 unique awards confirmed; `verify_tech_area_figures.py` passes both areas; findings/brief docs reconciled |
 
 ---
 

@@ -122,9 +122,7 @@ def test_soft_in_title_admits():
 
 def test_soft_single_non_title_rejected():
     core, soft, neg = _qis_patterns()
-    awards = [
-        _award("C", "Generic widget", "This could help quantum computing someday.")
-    ]
+    awards = [_award("C", "Generic widget", "This could help quantum computing someday.")]
     out = mod.build_keyword_cohort(awards, core, soft, neg, "keyword_pack")
     assert out == []
 
@@ -230,9 +228,7 @@ def test_core_cooccur_admits_core_even_with_supersonic():
 def test_unknown_soft_requires_raises():
     core, soft, neg = _hyp_patterns()
     with pytest.raises(ValueError):
-        mod.build_keyword_cohort(
-            [], core, soft, neg, "keyword_pack", soft_requires="bogus"
-        )
+        mod.build_keyword_cohort([], core, soft, neg, "keyword_pack", soft_requires="bogus")
 
 
 # --------------------------------------------------------------------------- #
@@ -265,9 +261,7 @@ def test_overlap_stats_empty_is_none_not_crash():
 def test_negation_spotcheck_flags_negated_positive():
     core, soft, neg = _qis_patterns()
     # Admitted on core "quantum information" but the phrase is negated in context.
-    awards = [
-        _award("J", "Radar processor", "This system does not involve quantum information.")
-    ]
+    awards = [_award("J", "Radar processor", "This system does not involve quantum information.")]
     admitted = mod.build_keyword_cohort(awards, core, soft, neg, "keyword_pack")
     assert len(admitted) == 1  # regex admits it (can't read negation)
     result = mod.negation_spotcheck(admitted, core, soft)
@@ -321,6 +315,20 @@ def test_dedupe_drops_duplicate_award_id():
 def test_dedupe_keeps_rows_without_award_id():
     rows = [_comp_row("", "NASA", "X", "", 2019, 1, "SBIR")] * 2
     assert len(mod.dedupe_by_award_id(rows)) == 2  # empty id is not deduped
+
+
+def test_dedupe_keeps_same_award_id_different_award():
+    # DOE reuses award_id across a Phase II continuation/renewal (different
+    # year) and across a successor-company change (different company) —
+    # both are real, distinct awards and must not be dropped as duplicates.
+    rows = [
+        _comp_row("DE-1", "Department of Energy", "Acme Inc", "U1", 2019, 1_000_000, "SBIR"),
+        _comp_row("DE-1", "Department of Energy", "Acme Inc", "U1", 2021, 1_100_000, "SBIR"),
+        _comp_row("DE-2", "Department of Energy", "Acme Inc", "U1", 2020, 900_000, "SBIR"),
+        _comp_row("DE-2", "Department of Energy", "Successor Inc", "U9", 2020, 900_000, "SBIR"),
+    ]
+    out = mod.dedupe_by_award_id(rows)
+    assert len(out) == 4
 
 
 def test_aggregate_composition_full():

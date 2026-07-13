@@ -19,9 +19,14 @@ Usage:
   python scripts/data/verify_tech_area_figures.py --area quantum_information_science
 
 The EXPECTED tables below are transcribed from the published findings docs
-(2026-07-13). Where a doc used the raw row count (e.g. QIS 138) rather than the
-award_id-deduplicated count (135), this audit intentionally flags the gap — that
-row-vs-unique inconsistency is the point of the check, not a transcription error.
+(2026-07-13, post data-bearing reconciliation). Composition figures use
+award_id-deduplicated awards — but dedup keys on (award_id, company, award_year,
+award_amount), not bare award_id: SBIR.gov reuses award_id across genuinely
+different awards (DOE continuations, successor-company changes), and a bare-ID
+dedup silently drops real awards. Verified against real data: QIS has 1 true
+duplicate among 138 rows (137 unique awards); hypersonics has 0 true duplicates
+among 813 rows (813 unique awards unchanged). See `dedupe_by_award_id` in
+`build_tech_area_cohort.py` and `specs/tech-area-transition-report/validation.md`.
 """
 
 import argparse
@@ -47,34 +52,34 @@ aggregate_composition = _btac.aggregate_composition
 # first data-bearing run if a key comes back "missing".
 EXPECTED: dict[str, dict] = {
     "quantum_information_science": {
-        "totals_awards": 138,  # published row count; dedupe → 135 (audit flags this)
+        "totals_awards": 137,  # 138 rows, 1 true duplicate dropped
         "by_agency": {
-            "Department of Defense": (82, 59.4, 90.9, 51),
-            "Department of Energy": (32, 23.2, 39.9, 29),
-            "National Aeronautics and Space Administration": (13, 9.4, 9.9, 9),
-            "National Science Foundation": (6, 4.3, 4.9, 6),
+            "Department of Defense": (81, 59.1, 90.2, 50),
+            "Department of Energy": (32, 23.4, 39.9, 29),
+            "National Aeronautics and Space Administration": (13, 9.5, 9.9, 9),
+            "National Science Foundation": (6, 4.4, 4.9, 6),
             "Department of Commerce": (3, 2.2, 0.9, 3),
-            "Department of Health and Human Services": (2, 1.4, 3.4, 2),
+            "Department of Health and Human Services": (2, 1.5, 3.4, 2),
         },
-        "program": (81, 57, 41.0),  # SBIR, STTR, STTR%
-        "decade": {"1990s": 1, "2000s": 12, "2010s": 36, "2020s": 89},
-        "censoring": (97, 41),  # mature ≤2022, censored ≥2023
+        "program": (81, 56, 40.9),  # SBIR, STTR, STTR%
+        "decade": {"1990s": 1, "2000s": 12, "2010s": 35, "2020s": 89},
+        "censoring": (96, 41),  # mature ≤2022, censored ≥2023
         "no_uei": (4, 2.9),
-        "top10_share_pct": 38.0,
+        "top10_share_pct": 39.4,
     },
     "hypersonics": {
-        "totals_awards": 813,
+        "totals_awards": 813,  # 813 rows, 0 true duplicates (verified — see docstring)
         "by_agency": {
             "Department of Defense": (713, 87.7, 900.3, 319),
             "National Aeronautics and Space Administration": (87, 10.7, 54.4, 64),
             "Department of Energy": (12, 1.5, 12.3, 9),
             "National Science Foundation": (1, 0.1, 1.0, 1),
         },
-        "program": (682, 131, 16.0),
+        "program": (682, 131, 16.1),
         "decade": {"1980s": 20, "1990s": 67, "2000s": 136, "2010s": 188, "2020s": 402},
         "censoring": (558, 255),
         "no_uei": (68, 8.4),
-        "top10_share_pct": 24.0,
+        "top10_share_pct": 23.6,
     },
 }
 
