@@ -37,11 +37,23 @@
   - [x] `nano_capture_recapture.py`, `nano_survey_frame.py` → `resolve_area_paths`
   - [ ] nanotech `--legacy` cutover — deliberate global default flip (unflagged
         nano → `data/reports/nanotechnology/`); left as its own decision since
-        every migrated script currently keeps legacy-as-default
+        every migrated script currently keeps legacy-as-default. Cohort production
+        under the new layout is `build_tech_area_cohort.py --area nanotechnology`
+        (blocked on porting the hand-maintained NNI Method-B table from
+        `build_nano_cohort.py`)
 
 ## Phase 2 — Follow-ups
 
-- [ ] T6 Point remaining `nano_*` dark-majority scripts at `ReportPaths`
+- [x] T6 Point remaining `nano_*` dark-majority scripts at `ReportPaths`
+      — `nano_ws5b_sam_status`, `nano_subaward_leverage`,
+      `nano_dark_firm_maintenance_lapses`, `nano_ma_signal`,
+      `nano_prime_acquisitions`, `nano_survival_analysis`,
+      `nano_prime_edgar_filings`, `nano_verify_report_figures` migrated
+      (figures use `paths.analysis_dir`; added `prime_edgar_text`,
+      `prime_deal_terms`, `dark_firm_maintenance_lapses` stems).
+      `build_nano_cohort.py` intentionally NOT migrated — it is the legacy v0
+      cohort builder that `build_tech_area_cohort.py` replaces; migrating it would
+      create two builders both writing the area cohort.
 - [ ] T8 Optional Method C for quantum (`G06N10`) once CPC extract is generalized
 - [ ] T9 Dagster asset wrapper (only after CLI is stable across ≥3 areas)
 - [ ] T19 When digest / Form D / M&A exist: extend Q/H policy-brief headline tables with

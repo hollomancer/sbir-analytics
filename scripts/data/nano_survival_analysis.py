@@ -17,14 +17,19 @@ FPDS-coded Phase III and M&A signals carry no reliable per-award dates and
 are excluded — the curve therefore UNDERSTATES total observable signal and
 should be read for its time profile, not its plateau height.
 
+Path convention (same as nano_form_d_temporal.py / nano_ws1):
+  --area <id>   → data/reports/<id>/analysis/time_to_signal_km.png
+  (no flag)     → data/analysis/nano_time_to_signal_km.png  (legacy PR #428)
+
 Outputs:
-  data/analysis/nano_time_to_signal_km.png
+  analysis/time_to_signal_km.png
   stdout: S(t) at 2/3/5/7/10 years and matured-basis indeterminate shares
 
 Usage:
-  python scripts/data/nano_survival_analysis.py
+  python scripts/data/nano_survival_analysis.py [--area AREA] [--legacy]
 """
 
+import argparse
 import csv
 import sys
 from datetime import date
@@ -36,8 +41,13 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 REPO = Path(__file__).resolve().parents[2]
-DATA = REPO / "data"
 CUTOFF = date(2026, 7, 1)  # data currency of the underlying signal files
+
+sys.path.insert(0, str(REPO))
+from sbir_etl.utils.transition_report_paths import (  # noqa: E402
+    add_area_args,
+    resolve_area_paths,
+)
 
 
 def parse(s: str) -> date | None:
@@ -47,10 +57,15 @@ def parse(s: str) -> date | None:
         return None
 
 
-def main() -> int:
-    fd_csv = DATA / "nano_form_d_post_phase2.csv"
-    ws1_csv = DATA / "nano_ws1_contract_evidence.csv"
-    cpc_csv = DATA / "nano_cohort_cpc.csv"
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    add_area_args(parser)
+    args = parser.parse_args(argv)
+    paths = resolve_area_paths(args, argv)
+
+    fd_csv = paths.artifact("form_d_post_phase2")
+    ws1_csv = paths.artifact("ws1_contract_evidence")
+    cpc_csv = paths.artifact("cohort_cpc")
     for p, hint in {fd_csv: "run nano_form_d_temporal.py",
                     ws1_csv: "run nano_ws1_contract_evidence.py",
                     cpc_csv: "run build_nano_cohort.py"}.items():
@@ -154,7 +169,9 @@ def main() -> int:
         "censored at 2026-07",
         fontsize=10,
     )
-    out = DATA / "analysis/nano_time_to_signal_km.png"
+    out = paths.analysis_dir / (
+        "nano_time_to_signal_km.png" if paths.legacy else "time_to_signal_km.png"
+    )
     out.parent.mkdir(parents=True, exist_ok=True)
     fig.tight_layout()
     fig.savefig(out, dpi=150)

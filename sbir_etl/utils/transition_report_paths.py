@@ -56,6 +56,9 @@ ARTIFACT_STEMS = {
     "subaward_leverage": "subaward_leverage.csv",
     "ma_signal": "ma_signal.csv",
     "prime_acquisitions": "prime_acquisitions.csv",
+    "prime_edgar_text": "prime_edgar_text.jsonl",
+    "prime_deal_terms": "prime_deal_terms.csv",
+    "dark_firm_maintenance_lapses": "dark_firm_maintenance_lapses.csv",
     "overlap_summary": "overlap_summary.json",
     "composition": "composition.json",
     "methodology_stub": "methodology_stub.md",
@@ -83,6 +86,9 @@ LEGACY_NANO_STEMS = {
     "subaward_leverage": "nano_subaward_leverage.csv",
     "ma_signal": "nano_ma_signal.csv",
     "prime_acquisitions": "nano_prime_acquisitions.csv",
+    "prime_edgar_text": "nano_prime_edgar_text.jsonl",
+    "prime_deal_terms": "nano_prime_deal_terms.csv",
+    "dark_firm_maintenance_lapses": "nano_dark_firm_maintenance_lapses.csv",
 }
 
 

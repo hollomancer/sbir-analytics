@@ -18,17 +18,22 @@ Firms already named in Finding 2 (confirmed EDGAR-detected acquisitions) are
 flagged and excluded from "newly discovered" framing — their subaward evidence
 enriches an already-known story rather than illuminating a new one.
 
+Path convention (same as nano_form_d_temporal.py / nano_ws1):
+  --area <id>   → data/reports/<id>/subaward_leverage.csv
+  (no flag)     → data/nano_subaward_leverage.csv  (legacy PR #428)
+
 Inputs:
-  data/nano_ws5a_subawards.csv    — strong-tier firms + post-award subaward totals
-  data/raw/sbir/award_data.csv    — full per-firm SBIR award history
+  ws5a_subawards.csv (area-scoped)  — strong-tier firms + post-award subaward totals
+  data/raw/sbir/award_data.csv      — full per-firm SBIR award history (global)
 
 Outputs:
-  data/nano_subaward_leverage.csv
+  subaward_leverage.csv
 
 Usage:
-  python scripts/data/nano_subaward_leverage.py
+  python scripts/data/nano_subaward_leverage.py [--area AREA] [--legacy]
 """
 
+import argparse
 import csv
 import sys
 from pathlib import Path
@@ -38,6 +43,10 @@ DATA = REPO / "data"
 
 sys.path.insert(0, str(REPO))
 from sbir_etl.utils.text_normalization import normalize_name  # noqa: E402
+from sbir_etl.utils.transition_report_paths import (  # noqa: E402
+    add_area_args,
+    resolve_area_paths,
+)
 
 # Firms confirmed acquired in Finding 2 (docs/nanotech_sbir_transition_findings.md).
 # Subaward evidence for these enriches an already-known outcome, not a new one.
@@ -59,13 +68,19 @@ def _safe_float(v: str) -> float:
         return 0.0
 
 
-def main() -> int:
-    sub_csv = DATA / "nano_ws5a_subawards.csv"
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    add_area_args(parser)
+    args = parser.parse_args(argv)
+    paths = resolve_area_paths(args, argv)
+
+    sub_csv = paths.artifact("ws5a_subawards")
     awards_csv = DATA / "raw/sbir/award_data.csv"
     for p in (sub_csv, awards_csv):
         if not p.exists():
             print(f"ERROR: {p} not found", file=sys.stderr)
             return 1
+    out_csv = paths.artifact("subaward_leverage")
 
     csv.field_size_limit(sys.maxsize)
     strong = [r for r in csv.DictReader(open(sub_csv, newline="", encoding="utf-8"))
@@ -97,7 +112,6 @@ def main() -> int:
             "top_primes": r["top_primes"],
         })
 
-    out_csv = DATA / "nano_subaward_leverage.csv"
     with open(out_csv, "w", newline="", encoding="utf-8") as f:
         w = csv.DictWriter(f, fieldnames=list(out_rows[0].keys()))
         w.writeheader()

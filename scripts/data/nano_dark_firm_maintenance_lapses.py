@@ -29,22 +29,23 @@ corroborated) — this reuses that script's verified name-matching rather than
 re-deriving it, and keeps the assignee re-scan scoped to firms we already
 trust the identity match for.
 
+Path convention (same as nano_form_d_temporal.py / nano_ws1):
+  --area <id>   → data/reports/<id>/dark_firm_maintenance_lapses.csv
+  (no flag)     → data/nano_dark_firm_maintenance_lapses.csv  (legacy PR #428)
+
 Inputs:
-  data/nano_dark_firm_liveness.csv                    — high-confidence firm matches
-  data/nano_dark_firm_trademarks.csv                  — cross-reference channel
-  data/nano_alias_expanded_evidence.csv               — cross-reference channel
-  data/nano_ws5a_subawards.csv                        — cross-reference channel
-  data/nano_ws5c_sector_registries.csv                — cross-reference channel
-  data/raw/uspto/patentsview/g_assignee_disambiguated.tsv.zip
-  data/raw/uspto/maintenance_fees/MaintFeeEvents_20260707.zip
+  dark_firm_liveness.csv (area-scoped)                — high-confidence firm matches
+  data/raw/uspto/patentsview/g_assignee_disambiguated.tsv.zip  (global)
+  data/raw/uspto/maintenance_fees/MaintFeeEvents_20260707.zip  (global)
 
 Outputs:
-  data/nano_dark_firm_maintenance_lapses.csv          — one row per matched firm
+  dark_firm_maintenance_lapses.csv          — one row per matched firm
 
 Usage:
-  python scripts/data/nano_dark_firm_maintenance_lapses.py
+  python scripts/data/nano_dark_firm_maintenance_lapses.py [--area AREA] [--legacy]
 """
 
+import argparse
 import csv
 import importlib.util
 import io
@@ -61,6 +62,11 @@ MAINT_ZIP = DATA / "raw/uspto/maintenance_fees/MaintFeeEvents_20260707.zip"
 
 sys.path.insert(0, str(REPO))
 from sbir_etl.utils.text_normalization import normalize_name  # noqa: E402
+from sbir_etl.utils.transition_report_paths import (  # noqa: E402
+    ReportPaths,
+    add_area_args,
+    resolve_area_paths,
+)
 
 _liv_spec = importlib.util.spec_from_file_location(
     "nano_liveness", Path(__file__).parent / "nano_dark_firm_liveness.py"
@@ -78,9 +84,9 @@ def _norm(s: str) -> str:
     return normalize_name(s, remove_suffixes=True)
 
 
-def load_high_confidence_firms() -> dict[str, dict]:
+def load_high_confidence_firms(paths: ReportPaths) -> dict[str, dict]:
     """High-confidence any-class patent matches from the liveness check."""
-    path = DATA / "nano_dark_firm_liveness.csv"
+    path = paths.artifact("dark_firm_liveness")
     firms = {}
     for r in csv.DictReader(open(path, newline="", encoding="utf-8")):
         if r["match_confidence"] == "high":
@@ -163,7 +169,12 @@ def scan_maintenance_events(patent_ids: set[str]) -> dict[str, dict]:
     return result
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    add_area_args(parser)
+    args = parser.parse_args(argv)
+    paths = resolve_area_paths(args, argv)
+
     if not MAINT_ZIP.exists():
         print(f"ERROR: {MAINT_ZIP} not found — download via download_uspto.py "
               f"--product-file PTMNFEE2/MaintFeeEvents_20260707.zip --local {MAINT_ZIP.parent}",
@@ -171,7 +182,7 @@ def main() -> int:
         return 1
 
     print("Loading high-confidence dark-firm patent matches...")
-    firms = load_high_confidence_firms()
+    firms = load_high_confidence_firms(paths)
     print(f"  {len(firms):,} high-confidence firms")
 
     print("Re-scanning assignee table for full patent portfolios...")
@@ -217,7 +228,7 @@ def main() -> int:
             "portfolio_dormant": dormant,
         })
 
-    out_csv = DATA / "nano_dark_firm_maintenance_lapses.csv"
+    out_csv = paths.artifact("dark_firm_maintenance_lapses")
     with open(out_csv, "w", newline="", encoding="utf-8") as f:
         w = csv.DictWriter(f, fieldnames=list(out_rows[0].keys()))
         w.writeheader()
