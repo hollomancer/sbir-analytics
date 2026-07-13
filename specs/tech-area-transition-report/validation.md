@@ -95,8 +95,38 @@ is quantified rather than silent.
 read the new Method A size + `admitted_by`/`negation_spotcheck` from `overlap_summary.json`, and
 reconcile the QIS findings/brief numbers (138) against it before publishing.
 
-Engine coverage: `tests/unit/scripts/test_build_tech_area_cohort.py` (17 tests) now exercises
+Engine coverage: `tests/unit/scripts/test_build_tech_area_cohort.py` now exercises
 `resolve_method_a`, both soft-gating modes, the veto, `overlap_stats`, and `negation_spotcheck`.
+
+---
+
+## Reproducible composition + figure audit (2026-07-13)
+
+**Problem:** the Finding 1 / Finding 2 tables (agency×dollar×firms, program split, decade
+distribution, censoring, firm concentration, no-UEI) were hand-authored and had no automated
+derivation or check — and the reports anchored them to the raw **row** count (138 / 813) while
+overlap stats used **unique** IDs, a row-vs-unique inconsistency.
+
+**Change:**
+
+- `build_tech_area_cohort.py` now emits `data/reports/<area>/composition.json` via
+  `aggregate_composition()`, which **deduplicates by `award_id` first** (so composition is
+  unique-based, matching the overlap grain) and computes every headline composition figure.
+- `scripts/data/verify_tech_area_figures.py --area <id>` recomputes composition from the cohort
+  CSV and diffs it against `EXPECTED` tables transcribed from the published findings docs — the
+  generalized analogue of `nano_verify_report_figures.py`. It flags any mismatch, **including the
+  intentional 138-vs-135 / 813-vs-810 row-vs-unique gap** (the audit exists to surface that).
+- Tests: `test_build_tech_area_cohort.py` (dedupe + `aggregate_composition`) and
+  `test_verify_tech_area_figures.py` (diff logic: match, tolerance, mismatch, missing agency).
+
+**Runs in a data-bearing environment only** (cohort CSV is gitignored under `data/`). The pure
+diff/aggregation logic is unit-tested here on synthetic input; the real audit against
+`award_data.csv` is a pending step.
+
+**Action for next data run:** after `build_tech_area_cohort.py --area <id>`, run
+`verify_tech_area_figures.py --area <id>`, then reconcile the findings/brief prose to the
+deduplicated composition (expect the QIS/hypersonics totals to move 138→135 / 813→810, and QIS
+possibly lower still from the negative veto above).
 
 ---
 

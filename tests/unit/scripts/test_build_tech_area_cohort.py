@@ -281,3 +281,73 @@ def test_negation_spotcheck_ignores_plain_positive():
     admitted = mod.build_keyword_cohort(awards, core, soft, neg, "keyword_pack")
     result = mod.negation_spotcheck(admitted, core, soft)
     assert result["method_a_with_negated_positive"] == 0
+
+
+# --------------------------------------------------------------------------- #
+# dedupe_by_award_id + aggregate_composition (the composition emitter)
+# --------------------------------------------------------------------------- #
+
+
+def _comp_row(award_id, agency, company, uei, year, amount, program):
+    return {
+        "award_id": award_id,
+        "agency": agency,
+        "company": company,
+        "uei": uei,
+        "award_year": year,
+        "award_amount": amount,
+        "program": program,
+        "title": "t",
+        "abstract": "a",
+    }
+
+
+def _fixture_cohort():
+    return [
+        _comp_row("1", "Department of Defense", "Acme Inc", "U1", 2019, 1_000_000, "SBIR"),
+        _comp_row("2", "Department of Defense", "Acme Inc", "U1", 2021, 1_000_000, "STTR"),
+        _comp_row("3", "Department of Defense", "Beta LLC", "U2", 2023, 2_000_000, "SBIR"),
+        _comp_row("4", "NASA", "Gamma", "", 2015, 500_000, "SBIR"),
+        _comp_row("4", "NASA", "Gamma", "", 2015, 500_000, "SBIR"),  # dup award_id
+        _comp_row("5", "NASA", "Delta", "U4", 2009, 3_000_000, "STTR"),
+    ]
+
+
+def test_dedupe_drops_duplicate_award_id():
+    out = mod.dedupe_by_award_id(_fixture_cohort())
+    assert [r["award_id"] for r in out] == ["1", "2", "3", "4", "5"]
+
+
+def test_dedupe_keeps_rows_without_award_id():
+    rows = [_comp_row("", "NASA", "X", "", 2019, 1, "SBIR")] * 2
+    assert len(mod.dedupe_by_award_id(rows)) == 2  # empty id is not deduped
+
+
+def test_aggregate_composition_full():
+    comp = mod.aggregate_composition(_fixture_cohort())
+    assert comp["n_unique_awards"] == 5
+    assert comp["duplicate_award_id_rows"] == 1
+
+    dod = comp["by_agency"]["Department of Defense"]
+    assert dod["awards"] == 3
+    assert dod["share_pct"] == 60.0
+    assert dod["phase2_dollars_m"] == 4.0
+    assert dod["unique_firms"] == 2  # Acme (twice, same firm) + Beta
+
+    nasa = comp["by_agency"]["NASA"]
+    assert nasa["awards"] == 2
+    assert nasa["phase2_dollars_m"] == 3.5
+
+    assert comp["program_split"] == {"SBIR": 3, "STTR": 2, "sttr_pct": 40.0}
+    assert comp["by_decade"] == {"2000s": 1, "2010s": 2, "2020s": 2}
+    assert comp["censoring"]["mature_awards"] == 4
+    assert comp["censoring"]["censored_awards"] == 1
+    assert comp["entity_resolution"] == {"no_uei_awards": 1, "no_uei_pct": 20.0}
+    assert comp["firm_concentration"]["top10_award_share_pct"] == 100.0
+    assert comp["totals"] == {"awards": 5, "phase2_dollars_m": 7.5, "unique_firms": 4}
+
+
+def test_aggregate_composition_agency_sorted_desc():
+    comp = mod.aggregate_composition(_fixture_cohort())
+    counts = [v["awards"] for v in comp["by_agency"].values()]
+    assert counts == sorted(counts, reverse=True)

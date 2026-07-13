@@ -271,6 +271,121 @@ def overlap_stats(a_ids: set[str], b_ids: set[str]) -> dict:
     }
 
 
+def _norm_firm(company: str) -> str:
+    """Firm identity key for unique-firm counts (mirror the findings-report grain)."""
+    try:
+        sys.path.insert(0, str(REPO))
+        from sbir_etl.utils.text_normalization import normalize_name
+
+        return normalize_name(company, remove_suffixes=True) or ""
+    except Exception:
+        return (company or "").strip().upper()
+
+
+def dedupe_by_award_id(cohort: list[dict]) -> list[dict]:
+    """Drop duplicate award_id rows (keep first); rows with no award_id are kept.
+
+    SBIR.gov carries a handful of duplicate ``award_id`` rows per area. Overlap
+    stats already dedupe (they build ID sets); composition tables must too, or
+    dollar sums and agency counts double-count those rows (the row-vs-unique
+    inconsistency called out in the report evaluation).
+    """
+    seen: set[str] = set()
+    out = []
+    for r in cohort:
+        aid = r.get("award_id") or ""
+        if aid and aid in seen:
+            continue
+        if aid:
+            seen.add(aid)
+        out.append(r)
+    return out
+
+
+def aggregate_composition(cohort: list[dict], censor_year: int = 2023) -> dict:
+    """Recompute the Finding 1 / Finding 2 composition tables from the cohort.
+
+    Operates on award_id-deduplicated rows so agency counts, dollar sums, and firm
+    counts are unique-based (not row-based). Emits the agency mix, program split,
+    decade distribution, recency censoring, firm concentration, and no-UEI share —
+    the load-bearing numbers hand-authored into the findings reports today.
+    """
+    rows = dedupe_by_award_id(cohort)
+    n = len(rows)
+
+    by_agency: dict[str, dict] = {}
+    for r in rows:
+        a = r.get("agency", "") or "(unknown)"
+        bucket = by_agency.setdefault(
+            a, {"awards": 0, "phase2_dollars": 0.0, "_firms": set()}
+        )
+        bucket["awards"] += 1
+        bucket["phase2_dollars"] += float(r.get("award_amount") or 0.0)
+        bucket["_firms"].add(_norm_firm(r.get("company", "")))
+    agency_table = {
+        a: {
+            "awards": b["awards"],
+            "share_pct": round(100 * b["awards"] / n, 1) if n else 0.0,
+            "phase2_dollars_m": round(b["phase2_dollars"] / 1e6, 1),
+            "unique_firms": len(b["_firms"]),
+        }
+        for a, b in sorted(by_agency.items(), key=lambda kv: -kv[1]["awards"])
+    }
+
+    prog = Counter((r.get("program", "") or "").upper() for r in rows)
+    sbir_n, sttr_n = prog.get("SBIR", 0), prog.get("STTR", 0)
+
+    decades: Counter = Counter()
+    mature = censored = 0
+    for r in rows:
+        yr = int(r.get("award_year") or 0)
+        if yr:
+            decades[f"{(yr // 10) * 10}s"] += 1
+            if yr >= censor_year:
+                censored += 1
+            else:
+                mature += 1
+
+    firm_counts = Counter(_norm_firm(r.get("company", "")) for r in rows)
+    top10 = firm_counts.most_common(10)
+    top10_share = round(100 * sum(c for _, c in top10) / n, 1) if n else 0.0
+
+    no_uei = sum(1 for r in rows if not (r.get("uei") or "").strip())
+
+    return {
+        "n_unique_awards": n,
+        "n_rows_pre_dedupe": len(cohort),
+        "duplicate_award_id_rows": len(cohort) - n,
+        "totals": {
+            "awards": n,
+            "phase2_dollars_m": round(
+                sum(float(r.get("award_amount") or 0.0) for r in rows) / 1e6, 1
+            ),
+            "unique_firms": len({_norm_firm(r.get("company", "")) for r in rows}),
+        },
+        "by_agency": agency_table,
+        "program_split": {
+            "SBIR": sbir_n,
+            "STTR": sttr_n,
+            "sttr_pct": round(100 * sttr_n / n, 1) if n else 0.0,
+        },
+        "by_decade": dict(sorted(decades.items())),
+        "censoring": {
+            "censor_year": censor_year,
+            "mature_awards": mature,
+            "censored_awards": censored,
+        },
+        "firm_concentration": {
+            "top10_award_share_pct": top10_share,
+            "top_firms": [{"firm": f, "awards": c} for f, c in top10],
+        },
+        "entity_resolution": {
+            "no_uei_awards": no_uei,
+            "no_uei_pct": round(100 * no_uei / n, 1) if n else 0.0,
+        },
+    }
+
+
 def write_csv(rows: list[dict], path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     if not rows:
@@ -576,6 +691,18 @@ def main() -> int:
     paths.ensure_dirs()
     write_csv(enriched, paths.artifact("cohort_keyword"))
     write_csv(cet_cohort, paths.artifact("cohort_cet"))
+
+    composition = aggregate_composition(enriched)
+    paths.artifact("composition").write_text(
+        json.dumps(composition, indent=2) + "\n", encoding="utf-8"
+    )
+    if composition["duplicate_award_id_rows"]:
+        print(
+            f"Composition: {composition['n_unique_awards']:,} unique awards "
+            f"({composition['duplicate_award_id_rows']} duplicate award_id rows dropped)"
+        )
+    else:
+        print(f"Composition: {composition['n_unique_awards']:,} unique awards")
     summary = {
         "area_id": cfg["area_id"],
         "display_name": cfg["display_name"],

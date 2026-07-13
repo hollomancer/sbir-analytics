@@ -57,6 +57,7 @@ ARTIFACT_STEMS = {
     "ma_signal": "ma_signal.csv",
     "prime_acquisitions": "prime_acquisitions.csv",
     "overlap_summary": "overlap_summary.json",
+    "composition": "composition.json",
     "methodology_stub": "methodology_stub.md",
 }
 
