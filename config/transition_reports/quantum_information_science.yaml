@@ -32,7 +32,14 @@ keyword_pack:
   soft_requires: title_or_multi
   negative_patterns: []  # taxonomy negatives loaded via cet_id
 
-cpc_prefixes: []
+# Method C: CPC group G06N10 (quantum computing). G06N10 is a CPC *group*, so the
+# extract must match the cpc_group column (not cpc_subclass). Build via:
+#   python scripts/data/extract_b82_patents.py \
+#       --cpc-field cpc_group --cpc-prefixes G06N10 \
+#       --out data/processed/uspto/g06n10_patents.csv
+cpc_prefixes:
+  - G06N10
+cpc_patents_csv: data/processed/uspto/g06n10_patents.csv
 
 # No biomedical go-to-market pathway → WS5c sector registries do not apply.
 sector_registries: []

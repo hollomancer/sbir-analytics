@@ -71,7 +71,22 @@
       `build_nano_cohort.py` intentionally NOT migrated — it is the legacy v0
       cohort builder that `build_tech_area_cohort.py` replaces; migrating it would
       create two builders both writing the area cohort.
-- [ ] T8 Optional Method C for quantum (`G06N10`) once CPC extract is generalized
+- [x] T8 Method C for quantum (`G06N10`) — generalized the CPC extract + wired
+      Method C into `build_tech_area_cohort.py`.
+      - `extract_b82_patents.py` parameterized: `--cpc-prefixes` / `--cpc-field`
+        / `--out` (defaults reproduce the nanotech B82 extract exactly). Quantum
+        uses `--cpc-field cpc_group --cpc-prefixes G06N10` (G06N10 is a CPC group,
+        not a subclass).
+      - `build_cpc_cohort` / `load_cpc_assignees` ported from `build_nano_cohort`,
+        area-gated on a `cpc_patents_csv` config field; emits `cohort_cpc.csv`
+        (keeping the legacy `cpc_first_b82_*` column names for capture-recapture /
+        figure-verification compat) + a `method_c` block (size, A∩C, B∩C) in
+        `overlap_summary.json`. Absent extract → empty cohort, no side effects.
+      - Config: nanotech `cpc_patents_csv: …/b82_patents.csv`; quantum
+        `cpc_prefixes: [G06N10]` + `…/g06n10_patents.csv`; hypersonics unset.
+      - Unit-tested (CPC prefix predicate for B82 subclass vs G06N10 group;
+        Method-C assignee matching + absent-extract). Note: can't run the
+        extractor end-to-end here (needs the ~60M-row PatentsView CPC dump).
 - [x] T9 Dagster asset wrapper (CLI now stable across the 3 areas + cutover done)
       — `packages/sbir-analytics/sbir_analytics/assets/transition_report.py`: one
       `tech_area_cohort_<area>` asset + non-empty check per area (group

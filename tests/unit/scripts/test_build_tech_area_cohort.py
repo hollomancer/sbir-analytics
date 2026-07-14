@@ -421,3 +421,56 @@ def test_policy_brief_stub_tolerates_missing_blocks():
     md = mod.render_policy_brief_stub({"area_id": "x"}, {"signals_absent": []}, {})
     assert md.startswith("# x SBIR/STTR Phase II Outcomes")
     assert "n/a" in md
+
+
+# --- T8: Method C (CPC patent-assignee) cohort ---------------------------------
+
+_CPC_HEADER = [
+    "patent_id",
+    "grant_date",
+    "filing_date",
+    "assignee_organization",
+    "assignee_type",
+    "cpc_subclasses",
+    "patent_title",
+]
+
+
+def _write_cpc_csv(path, rows):
+    import csv as _csv
+
+    with open(path, "w", newline="", encoding="utf-8") as f:
+        w = _csv.writer(f)
+        w.writerow(_CPC_HEADER)
+        w.writerows(rows)
+
+
+def test_build_cpc_cohort_matches_by_normalized_assignee(tmp_path):
+    cpc = tmp_path / "g06n10_patents.csv"
+    _write_cpc_csv(
+        cpc,
+        [
+            ["11", "2021-03-01", "2019-06-01", "Acme Quantum LLC", "2", "G06N10/00", "Qubit"],
+            ["12", "2022-05-01", "2020-01-01", "Acme Quantum LLC", "2", "G06N10/40", "Gate"],
+            ["13", "2020-01-01", "2018-01-01", "Unrelated Corp", "2", "G06N10/00", "Other"],
+        ],
+    )
+    awards = [
+        {"award_id": "A1", "company": "Acme Quantum Inc"},  # normalizes to match
+        {"award_id": "A2", "company": "Nobody Systems"},  # no patent
+    ]
+    cohort = mod.build_cpc_cohort(awards, cpc)
+    assert [r["award_id"] for r in cohort] == ["A1"]
+    r = cohort[0]
+    assert r["cohort_cpc"] is True
+    assert r["cpc_b82_patent_count"] == 2  # legacy column name kept for compat
+    assert r["cpc_first_b82_grant"] == "2021-03-01"
+    assert r["cpc_first_b82_filing"] == "2019-06-01"
+    assert "G06N10/00" in r["cpc_subclasses"] and "G06N10/40" in r["cpc_subclasses"]
+
+
+def test_build_cpc_cohort_absent_extract_returns_empty(tmp_path):
+    # Absence of the extract is not absence of activity — empty, no side effects.
+    assert (
+        mod.build_cpc_cohort([{"award_id": "A1", "company": "X"}], tmp_path / "missing.csv") == []
+    )
