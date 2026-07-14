@@ -2810,7 +2810,7 @@ requires-dist = [
     { name = "plotly", marker = "extra == 'viz'", specifier = ">=5.18.0,<7.0.0" },
     { name = "pre-commit", marker = "extra == 'dev'", specifier = ">=3.5.0,<5.0.0" },
     { name = "psutil", marker = "extra == 'monitoring'", specifier = ">=5.9.0,<8.0.0" },
-    { name = "pyarrow", specifier = ">=14.0.2,<25.0.0" },
+    { name = "pyarrow", specifier = ">=14.0.2,<26.0.0" },
     { name = "pydantic", specifier = ">=2.8.0,<3.0.0" },
     { name = "pyreadstat", marker = "extra == 'uspto'", specifier = ">=1.1.4,<2.0.0" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=9.0.3,<10.0.0" },

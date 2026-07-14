@@ -24,6 +24,11 @@ class AnalysisKind(StrEnum):
     CET_PORTFOLIO = "cet_portfolio"
     TRANSITION_RATE = "transition_rate"
     FOLLOW_ON_MULTIPLIER = "follow_on_multiplier"
+    # One kind per tech-census area (same granularity as the kinds above --
+    # each represents one specific, periodically-refreshed analysis, not a
+    # parameterized family). Add one line here per new
+    # config/tech_census/<area>.yaml as areas are added.
+    TECH_CENSUS_DRONE_MANUFACTURING = "tech_census_drone_manufacturing"
 
 
 class SourceReference(BaseModel):
@@ -83,6 +88,7 @@ class FileSnapshotRepository:
             AnalysisKind.CET_PORTFOLIO: "cet_portfolio",
             AnalysisKind.TRANSITION_RATE: "transition_rate",
             AnalysisKind.FOLLOW_ON_MULTIPLIER: "follow_on_multiplier",
+            AnalysisKind.TECH_CENSUS_DRONE_MANUFACTURING: "tech_census_drone_manufacturing",
         }
         return self.root / directories[kind]
 

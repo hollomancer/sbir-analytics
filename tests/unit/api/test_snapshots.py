@@ -129,3 +129,81 @@ def test_openapi_remains_read_only(tmp_path: Path) -> None:
     assert all(
         not ({"post", "put", "patch", "delete"} & endpoints.keys()) for endpoints in operations
     )
+
+
+def test_tech_census_snapshot_is_servable_end_to_end(tmp_path: Path) -> None:
+    """A real ComputeTechCensusTool run, written as a snapshot, is servable, listable, and comparable."""
+
+    from fastapi.testclient import TestClient
+
+    from sbir_analytics.api.app import create_app
+    from sbir_analytics.tools.tech_census import ComputeTechCensusTool
+
+    def _award(title: str, year: int, amount: float) -> dict:
+        return {
+            "title": title,
+            "abstract": "",
+            "company": "Acme",
+            "agency": "Department of Defense",
+            "phase": "Phase II",
+            "award_year": year,
+            "award_amount": amount,
+        }
+
+    tool = ComputeTechCensusTool()
+    result_2025 = tool.run(
+        awards_df=pd.DataFrame(
+            [
+                _award("Drone battery hybridizer", 2025, 1_000_000.0),
+                _award("Drone gimbal payload system", 2025, 500_000.0),
+            ]
+        ),
+        area_id="drone_manufacturing",
+    )
+    result_2026 = tool.run(
+        awards_df=pd.DataFrame([_award("Drone propulsion system", 2026, 750_000.0)]),
+        area_id="drone_manufacturing",
+    )
+
+    write_snapshot(
+        tmp_path,
+        snapshot_from_tool_result(
+            AnalysisKind.TECH_CENSUS_DRONE_MANUFACTURING, "2025", result_2025
+        ),
+    )
+    write_snapshot(
+        tmp_path,
+        snapshot_from_tool_result(
+            AnalysisKind.TECH_CENSUS_DRONE_MANUFACTURING, "2026", result_2026
+        ),
+    )
+
+    app = create_app(api_token="secret", snapshot_repository=FileSnapshotRepository(tmp_path))
+    with TestClient(app) as client:
+        headers = {"Authorization": "Bearer secret"}
+
+        get_response = client.get(
+            "/v1/snapshots/tech_census_drone_manufacturing/2025", headers=headers
+        )
+        assert get_response.status_code == 200
+        assert get_response.json()["result"]["summary"]["grand_total"] == {
+            "n": 2,
+            "usd": 1_500_000.0,
+        }
+
+        list_response = client.get(
+            "/v1/snapshots",
+            params={"analysis_kind": "tech_census_drone_manufacturing"},
+            headers=headers,
+        )
+        assert list_response.status_code == 200
+        periods = {entry["period"] for entry in list_response.json()["data"]}
+        assert periods == {"2025", "2026"}
+
+        compare_response = client.get(
+            "/v1/snapshots/tech_census_drone_manufacturing/2025/compare/2026", headers=headers
+        )
+        assert compare_response.status_code == 200
+        # compare_snapshots only diffs top-level int/float result keys; "results"
+        # (list) and "summary" (dict) are both structured, so nothing qualifies.
+        assert compare_response.json()["numeric_deltas"] == {}

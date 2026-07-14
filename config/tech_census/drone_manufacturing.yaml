@@ -1,0 +1,127 @@
+area_id: drone_manufacturing
+display_name: Drone Manufacturing
+description: >-
+  Aerial unmanned systems (UAS/UAV) and purpose-built subsystems. "Drone" is
+  read as aerial only -- non-aerial unmanned systems (UGV ground robots,
+  UUV/USV maritime) are tracked separately under adjacent_nonaerial, not
+  included in the main count. Counter-UAS / counter-drone (detect-and-defeat
+  technology) is tracked separately under exclusions -- it is drone defeat,
+  not drone production. All SBIR/STTR phases are in scope (this is a
+  technology-relevance census, not a Phase II cohort for transition
+  analysis).
+
+gate:
+  # A term counts as a hit only if it appears in the award TITLE, or the
+  # TOTAL occurrence count across all gate terms in title+abstract is >= this
+  # value. Counting total occurrences (not distinct pattern names) matters:
+  # several gate patterns overlap on a single phrase (e.g. "unmanned aerial
+  # system" and "unmanned aerial" both match "unmanned aerial systems"), so a
+  # naive distinct-pattern-count rule is satisfiable by one incidental
+  # sentence. Calibrated against real award_data.csv: a hypersonic-
+  # interceptor award, a lunar-battery award, and a weather-forecasting-
+  # software award each had exactly 2 total occurrences from a single
+  # incidental mention; genuinely relevant awards ran well past that.
+  min_abstract_only_occurrences: 3
+  terms:
+    - '\bdrone[s]?\b'
+    - '\bUAV[s]?\b'
+    - '\bUAS\b'
+    - '\bsUAS\b'
+    - '\bunmanned aerial vehicle[s]?\b'
+    - '\bunmanned aerial system[s]?\b'
+    - '\bunmanned aircraft\b'
+    - '\bunmanned aerial\b'
+    - '\bquadcopter[s]?\b'
+    - '\bquadrotor[s]?\b'
+    - '\bhexacopter[s]?\b'
+    - '\bmulti-?rotor[s]?\b'
+    - '\btiltrotor (?:UAS|UAV|drone)\b'
+    - '\bmicro air vehicle[s]?\b'
+    - '\bMAV[s]?\b'
+    - '\bfixed-wing UAS\b'
+    - '\bnano-?drone[s]?\b'
+    - '\bremotely piloted aircraft\b'
+    - '\bloitering munition[s]?\b'
+    - '\bVTOL UAS\b'
+    - '\bUAS VTOL\b'
+
+# Gate-passing awards that represent an adjacent-but-distinct concept.
+# Tracked and reported separately, never silently dropped or merged into the
+# main count.
+exclusions:
+  - name: counter_uas
+    display_name: Counter-UAS / Counter-Drone
+    reason: Detect-and-defeat technology -- the opposite of manufacturing.
+    terms:
+      - '\bcounter-?UAS\b'
+      - '\bcUAS\b'
+      - '\bcounter-?drone[s]?\b'
+
+# Non-aerial unmanned systems that never reach the gate but are worth
+# tracking for context (not aerial drones, so not "drone manufacturing").
+adjacent_nonaerial:
+  - name: ugv
+    display_name: Unmanned Ground Vehicles
+    terms:
+      - '\bUGV[s]?\b'
+      - '\bunmanned ground vehicle[s]?\b'
+  - name: uuv
+    display_name: Unmanned Underwater Vehicles
+    terms:
+      - '\bUUV[s]?\b'
+      - '\bunmanned underwater vehicle[s]?\b'
+  - name: usv
+    display_name: Unmanned Surface Vehicles
+    terms:
+      - '\bUSV[s]?\b'
+      - '\bunmanned surface vehicle[s]?\b'
+
+# Priority-ordered technology subsets (most specific first). Each gate-
+# passing, non-excluded award gets exactly one subset via first match;
+# anything matching none of these falls into fallback_subset.
+subsets:
+  - name: Manufacturing Processes & Materials
+    terms:
+      - '\badditive manufactur\w*\b'
+      - '\b3D[- ]print\w*\b'
+      - '\brapid prototyp\w*\b'
+      - '\bcomposite (?:airframe|structure)s?\b'
+      - '\blow-?cost manufactur\w*\b'
+  - name: Propulsion & Power Systems
+    terms:
+      - '\bpropulsion\b'
+      - '\belectric propulsion\b'
+      - '\bhybrid-electric\b'
+      - '\bpropeller[s]?\b'
+      - '\bbattery\b'
+      - '\bbatteries\b'
+      - '\bmotor controller[s]?\b'
+      - '\bsmall (?:gas turbine|engine)[s]?\b'
+      - '\belectric motor[s]?\b'
+  - name: Autonomy, Guidance & Flight Control
+    terms:
+      - '\bautopilot\b'
+      - '\bautonomous flight\b'
+      - '\bswarm(?:ing)?\b'
+      - '\bsense[- ]and[- ]avoid\b'
+      - '\bobstacle avoidance\b'
+      - '\bBVLOS\b'
+      - '\bbeyond visual line of sight\b'
+      - '\bguidance,? navigation,? and control\b'
+      - '\bGNC\b'
+  - name: Sensors & Mission Payloads
+    terms:
+      - '\bgimbal[s]?\b'
+      - '\bpayload[s]?\b'
+      - '\bEO/?IR\b'
+      - '\bISR payload[s]?\b'
+      - '\bLIDAR\b'
+      - '\bLiDAR\b'
+  - name: Communications & Data Links
+    terms:
+      - '\bdata ?link[s]?\b'
+      - '\bcommand and control link[s]?\b'
+      - '\bground control station[s]?\b'
+      - '\banti-jam\b'
+
+fallback_subset: "Airframe & Platforms (General/Unclassified Subsystem)"
