@@ -257,6 +257,65 @@ def build_method_b_cohort(
     return cohort
 
 
+def load_cpc_assignees(path: Path) -> dict[str, dict]:
+    """CPC patent-assignee rows keyed by normalized organization name.
+
+    Returns ``{normalized_org: {orgs, patent_ids, grant_dates, filing_dates,
+    subclasses}}``; empty when the extract is absent (absence of data is not
+    absence of activity). Mirrors ``build_nano_cohort.load_b82_assignees``,
+    generalized to any CPC extract path (from ``extract_b82_patents.py``).
+    """
+    by_norm: dict[str, dict] = {}
+    if not path.exists():
+        return by_norm
+    with open(path, newline="", encoding="utf-8") as f:
+        for row in csv.DictReader(f):
+            norm = _norm_firm(row["assignee_organization"])
+            if not norm:
+                continue
+            rec = by_norm.setdefault(
+                norm,
+                {"orgs": set(), "patent_ids": set(), "grant_dates": [],
+                 "filing_dates": [], "subclasses": set()},
+            )
+            rec["orgs"].add(row["assignee_organization"])
+            rec["patent_ids"].add(row["patent_id"])
+            if row.get("grant_date"):
+                rec["grant_dates"].append(row["grant_date"])
+            if row.get("filing_date"):
+                rec["filing_dates"].append(row["filing_date"])
+            rec["subclasses"].update(s for s in (row.get("cpc_subclasses") or "").split("|") if s)
+    return by_norm
+
+
+def build_cpc_cohort(awards: list[dict], cpc_csv: Path) -> list[dict]:
+    """Method C: CPC-classified patent assignees matched to Phase II firm names.
+
+    Exact normalized-name match (same rule as ``build_nano_cohort.py``). Returns
+    ``[]`` when the CPC extract is absent. The emitted columns keep the historical
+    ``b82`` labels (``cpc_first_b82_grant`` / ``cpc_first_b82_filing`` /
+    ``cpc_b82_patent_count``) for backward compatibility with the dark-majority
+    consumers (capture-recapture, figure verification) regardless of area.
+    """
+    cpc = load_cpc_assignees(cpc_csv)
+    if not cpc:
+        return []
+    cohort = []
+    for aw in awards:
+        rec = cpc.get(_norm_firm(aw.get("company", "")))
+        if not rec:
+            continue
+        r = dict(aw)
+        r["cohort_cpc"] = True
+        r["cpc_matched_assignees"] = "|".join(sorted(rec["orgs"])[:3])
+        r["cpc_b82_patent_count"] = len(rec["patent_ids"])
+        r["cpc_first_b82_grant"] = min(rec["grant_dates"]) if rec["grant_dates"] else ""
+        r["cpc_first_b82_filing"] = min(rec["filing_dates"]) if rec["filing_dates"] else ""
+        r["cpc_subclasses"] = "|".join(sorted(rec["subclasses"]))
+        cohort.append(r)
+    return cohort
+
+
 def overlap_stats(a_ids: set[str], b_ids: set[str]) -> dict:
     inter = a_ids & b_ids
     union = a_ids | b_ids
@@ -554,6 +613,119 @@ def write_methodology_stub(
     out.write_text("\n".join(lines), encoding="utf-8")
 
 
+def render_policy_brief_stub(cfg: dict, summary: dict, composition: dict) -> str:
+    """Render a policy-leader-facing brief SCAFFOLD from cohort aggregates (T20).
+
+    Auto-generated skeleton per ``publication-format.md``: the headline table and
+    channel-status rows are derived from ``overlap_summary.json`` +
+    ``composition.json``; findings / takeaways / language sections are left as
+    TODO placeholders for a human or agent to complete. Never invents channel
+    rates — absent signal artifacts are reported as "Not computed", not zero.
+    """
+
+    def _n(v: object) -> str:
+        if v is None:
+            return "n/a"
+        return f"{v:,}" if isinstance(v, int) else str(v)
+
+    display = cfg.get("display_name") or cfg.get("area_id") or "Technology"
+    audience = cfg.get("audience") or "S&T policy leaders"
+    overlap = summary.get("overlap") or {}
+    totals = composition.get("totals") or {}
+    by_agency = composition.get("by_agency") or {}
+    program = composition.get("program_split") or {}
+    censoring = composition.get("censoring") or {}
+    ent = composition.get("entity_resolution") or {}
+    n_awards = composition.get("n_unique_awards") or 0
+
+    dollars = totals.get("phase2_dollars_m")
+    dollars_s = "n/a" if dollars is None else f"${dollars:,}M"
+    jaccard = overlap.get("jaccard")
+    jaccard_s = "n/a" if jaccard is None else f"{jaccard:.3f}"
+    # by_agency values are {"awards": n, ...} dicts already sorted desc by awards
+    # (aggregate_composition); tolerate a plain-int shape too.
+    def _awards(v: object) -> object:
+        return v.get("awards") if isinstance(v, dict) else v
+
+    top_agencies = list(by_agency.items())[:5]
+    agency_mix = ", ".join(f"{a} {_awards(v)}" for a, v in top_agencies) or "n/a"
+
+    lines = [
+        f"# {display} SBIR/STTR Phase II Outcomes: What Policy Leaders Can Safely Conclude",
+        "",
+        f"**Prepared for:** {audience}  ",
+        "**Status:** Provisional; bounded estimates, not final program rates  ",
+        "**Data through:** _TODO: fill explicit input vintages_  ",
+        "**Technical appendix:** `methodology_stub.md` (same directory)",
+        "",
+        "> Auto-generated scaffold from `build_tech_area_cohort.py` "
+        "(`overlap_summary.json` + `composition.json`). The headline table and "
+        "channel-status rows are data-derived; the findings, takeaways, and "
+        "language sections below are **placeholders to complete by hand** — do "
+        "not publish as-is.",
+        "",
+        "## Bottom line",
+        "",
+        "_TODO: one paragraph — what this cohort is, and what it is not._",
+        "",
+        "| Measure | Result | How to use it |",
+        "|---|---|---|",
+        f"| Phase II cohort (Method A keyword) | {_n(n_awards)} awards | "
+        "Cohort scope — not a transition count |",
+        f"| Unique firms | {_n(totals.get('unique_firms'))} | Firm-level denominator |",
+        f"| Phase II obligations | {dollars_s} | Federal R&D investment in scope |",
+        f"| Program split | {_n(program.get('SBIR'))} SBIR / {_n(program.get('STTR'))} STTR "
+        f"({_n(program.get('sttr_pct'))}% STTR) | Program-mix context |",
+        f"| Agency mix (top 5 by awards) | {agency_mix} | Funder concentration |",
+        f"| Method A∩B overlap | {_n(overlap.get('intersection_n'))} (Jaccard {jaccard_s}) | "
+        "Triangulation across cohort definitions |",
+        f"| Recency (post-{_n(censoring.get('censor_year'))}) | "
+        f"{_n(censoring.get('censored_awards'))} censored / {_n(censoring.get('mature_awards'))} "
+        "mature | Outcomes still developing for recent awards |",
+        f"| Entity-resolution gap | {_n(ent.get('no_uei_awards'))} awards without UEI "
+        f"({_n(ent.get('no_uei_pct'))}%) | Lower-bound caveat on firm-level joins |",
+        "",
+        "## Channel status",
+        "",
+    ]
+
+    signals_absent = summary.get("signals_absent") or []
+    if signals_absent:
+        lines += [
+            "Transition-signal artifacts absent this run — **Not computed (not zero).** "
+            "Each requires the next pipeline step before any rate claim:",
+            "",
+            "| Channel artifact | Status |",
+            "|---|---|",
+            *[f"| `{s}` | Not computed — not zero |" for s in signals_absent],
+            "",
+        ]
+    else:
+        lines += ["All expected transition-signal artifacts were present this run.", ""]
+
+    lines += [
+        "## Findings",
+        "",
+        "_TODO: one Fact block + Policy interpretation per evidence channel "
+        "(procurement, private capital, acquisition, patents, subawards — as "
+        "available). Lead with counts; keep methodology in the appendix._",
+        "",
+        "## What policy leaders should take away",
+        "",
+        "_TODO: 5–8 imperative, actionable items for agency reporting standards._",
+        "",
+        "## Language to avoid",
+        "",
+        "| Avoid | Use instead |",
+        "|---|---|",
+        '| "transition rate" | "observable evidence from channel X" |',
+        '| "did not commercialize" | "remain indeterminate after recovery checks applied" |',
+        '| "patents prove commercialization" | "commercialization-adjacent evidence" |',
+        "",
+    ]
+    return "\n".join(lines) + "\n"
+
+
 def signal_paths() -> dict[str, Path]:
     return {
         "prospect_digest": DATA / "processed" / "sbir_phase3" / "fy25_phase3_prospect_digest.csv",
@@ -742,6 +914,22 @@ def main() -> int:
     cet_cohort = build_method_b_cohort(awards, compiled_b, src_b)
     print(f"  {len(cet_cohort):,} awards matched")
 
+    # Method C (optional): CPC-classified patent assignees matched to firms.
+    # Configured per area via `cpc_patents_csv` (output of extract_b82_patents.py
+    # run for the area's `cpc_prefixes`, e.g. B82 for nanotech, G06N10 for QIS).
+    cpc_csv_cfg = cfg.get("cpc_patents_csv")
+    cpc_cohort: list[dict] = []
+    cpc_csv_path: Path | None = None
+    if cpc_csv_cfg:
+        cpc_csv_path = Path(cpc_csv_cfg)
+        if not cpc_csv_path.is_absolute():
+            cpc_csv_path = REPO / cpc_csv_path
+        cpc_cohort = build_cpc_cohort(awards, cpc_csv_path)
+        if cpc_cohort:
+            print(f"Method C (CPC): {len(cpc_cohort):,} awards matched from {cpc_csv_path.name}")
+        else:
+            print(f"Method C (CPC): extract absent ({cpc_csv_path}) — cohort_cpc empty")
+
     ext_ref_a = external_reference_reconciliation(kw_cohort, cfg)
     ext_ref_b = external_reference_reconciliation(cet_cohort, cfg)
     if ext_ref_a:
@@ -754,6 +942,17 @@ def main() -> int:
     a_ids = {r["award_id"] for r in kw_cohort if r.get("award_id")}
     b_ids = {r["award_id"] for r in cet_cohort if r.get("award_id")}
     stats = overlap_stats(a_ids, b_ids)
+
+    c_ids = {r["award_id"] for r in cpc_cohort if r.get("award_id")}
+    method_c = None
+    if cpc_csv_cfg:
+        method_c = {
+            "method_c_n": len(c_ids),
+            "a_intersect_c": len(a_ids & c_ids),
+            "b_intersect_c": len(b_ids & c_ids),
+            "cpc_extract": str(cpc_csv_path),
+            "extract_present": bool(cpc_csv_path and cpc_csv_path.exists()),
+        }
     if stats["jaccard"] is not None and stats["containment_a_in_b"] is not None:
         print(
             f"Overlap: ∩={stats['intersection_n']:,}  "
@@ -802,6 +1001,8 @@ def main() -> int:
     paths.ensure_dirs()
     write_csv(enriched, paths.artifact("cohort_keyword"))
     write_csv(cet_cohort, paths.artifact("cohort_cet"))
+    if cpc_csv_cfg:
+        write_csv(cpc_cohort, paths.artifact("cohort_cpc"))
 
     composition = aggregate_composition(enriched)
     paths.artifact("composition").write_text(
@@ -822,6 +1023,7 @@ def main() -> int:
         "method_a_source": src_a,
         "method_b_source": src_b,
         "overlap": stats,
+        "method_c": method_c,
         "signals_absent": absent,
         "channels": channel_summary,
         "spotcheck": spot,
@@ -839,6 +1041,9 @@ def main() -> int:
     write_methodology_stub(
         cfg, paths.artifact("methodology_stub"), stats, absent, channel_summary,
         external_reference=summary["external_reference"],
+    )
+    paths.artifact("policy_brief_stub").write_text(
+        render_policy_brief_stub(cfg, summary, composition), encoding="utf-8"
     )
     print(f"Wrote {paths.report_dir}/")
     return 0
