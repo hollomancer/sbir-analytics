@@ -1,8 +1,12 @@
 # Product 1 — Status-Denial Flags — Requirements
 
-> **Status:** Spec / design. **Buildable independent of the A3 benchmark gate** (entity-match
-> driven; no text-derivation inference). Largely a **tuning/labeling layer over the existing**
-> `phase_iii_retrospective_candidates` asset — not a new pipeline.
+> **Status:** Spec / design — **first result produced (M0a executed)**. A description-ground-truth
+> pass over DoD FY2016–2025 yields **141 status-denial flags** and an undercount of **14.7%** (of 962
+> contracts described "SBIR PHASE III", 141 lack the SR3/ST3 code) — **spot-verified 12/12** against
+> FPDS by PIID. This is a **lower bound** (description-matching finds only ~12% of coded Phase III);
+> the full inferential undercount over the 8,090-firm universe is still deferred. Buildable
+> independent of the A3 benchmark gate; entity-match driven. Reuses the existing
+> `phase_iii_retrospective_candidates` asset (join-key audit on PR #425).
 > Supports inventory question **B3** (Phase III undercount by agency; GAO-24-106398 [L14]) in
 > [docs/research-questions.md](../../docs/research-questions.md).
 
