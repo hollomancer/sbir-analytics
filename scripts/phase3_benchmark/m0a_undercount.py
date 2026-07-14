@@ -20,13 +20,17 @@ desc["gen_id"] = desc["generated_internal_id"].map(norm)
 desc["is_coded"] = desc["gen_id"].isin(coded_keys)
 flags = desc.loc[~desc["is_coded"]].copy()  # uncoded = status-denial flags (for review)
 flags = flags.rename(columns={"Award ID": "award_id", "Description": "description",
-                              "Awarding Sub Agency": "awarding_sub_agency", "Action Date": "action_date"})
+                              "Awarding Sub Agency": "awarding_sub_agency", "Action Date": "action_date",
+                              "Recipient Name": "firm", "Award Amount": "amount_usd"})
 flags["flag_reason"] = "described 'SBIR PHASE III'; no SR3/ST3 code on the award"
 flags["disposition"] = None  # nullable — human adjudication flows back as a label
-flags[["award_id", "gen_id", "awarding_sub_agency", "action_date", "description",
-       "flag_reason", "disposition"]].to_parquet(f"{REPO}/data/derived/m0a_status_denial_flags.parquet")
+flags["_amt"] = pd.to_numeric(flags.get("amount_usd"), errors="coerce")
+flags = flags.sort_values("_amt", ascending=False)  # review-priority order (largest $ first)
+flags[["award_id", "gen_id", "firm", "amount_usd", "awarding_sub_agency", "action_date",
+       "description", "flag_reason", "disposition"]].to_parquet(
+    f"{REPO}/data/derived/m0a_status_denial_flags.parquet")
 
-n = len(desc); u = len(flags)
+n = len(desc); u = len(flags); flagged_usd = float(flags["_amt"].sum())
 summary = {
     "window": "FY2016-2025 (SIGNED_DATE)", "agency": "DoD (dept 9700)",
     "coded_universe": {"transactions": 28264, "distinct_awards": int(len(coded)),
@@ -34,7 +38,9 @@ summary = {
     "description_phase3_set": n,
     "coded_of_description_set": int(desc["is_coded"].sum()),
     "uncoded_flags": u, "undercount_rate": round(u / n, 4),
-    "by_sub_agency": {k: {"total": int(v), "uncoded": int(flags["awarding_sub_agency"].eq(k).sum())}
+    "flagged_obligations_usd": round(flagged_usd, 0),
+    "by_sub_agency": {k: {"total": int(v), "uncoded": int(flags["awarding_sub_agency"].eq(k).sum()),
+                          "uncoded_usd": round(float(flags.loc[flags["awarding_sub_agency"].eq(k), "_amt"].sum()), 0)}
                       for k, v in desc.get("Awarding Sub Agency").value_counts().head(10).items()},
     "caveat": ("14.7% is a LOWER BOUND — measures only contracts whose description says 'SBIR PHASE "
                "III'. Non-obvious uncoded Phase III (dark undercount) needs Product 1 inferential flags. "

@@ -10,7 +10,8 @@ REPO = "/Users/hollomancer/projects/sbir-analytics"
 URL = "https://api.usaspending.gov/api/v2/search/spending_by_award/"
 UA = "sbir-analytics-research/1.0"
 FIELDS = ["Award ID", "Description", "Awarding Agency", "Awarding Sub Agency",
-          "Contract Award Type", "Action Date", "recipient_name"]
+          "Contract Award Type", "Action Date", "Start Date",
+          "Recipient Name", "Award Amount"]  # firm + $ for the enriched review queue
 
 def page(types, p):
     body = {"filters": {"award_type_codes": types,

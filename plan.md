@@ -186,3 +186,14 @@ Ran the hybrid: FPDS-ATOM coded pull + USAspending description ground-truth + co
   `m0a_undercount_summary.json`. Scripts: `scripts/phase3_benchmark/m0a_*.py`.
 - **Data note:** FY2025 coded awards (1,655) run high vs the trend (FY2024 = 907) — verify before
   citing per-FY; does not affect the description-set undercount.
+
+## M0a — enriched review queue ($ + firm)
+The 141 status-denial flags, enriched with recipient + obligations (100% populated), form the OII
+review queue (`data/derived/m0a_status_denial_flags.parquet`, priority-sorted by $):
+- **Total flagged obligations: $244.2M** (median $0.44M, max $37.2M).
+- By sub-agency: **Air Force $103.3M** (47), **Army $67.4M** (29), **Navy $37.1M** (48),
+  DCMA $30.2M (15), DLA $6.2M (2).
+- Top of queue: Amentum $37.2M (AF), Platform Systems $14.6M (Navy), Systems & Technology Research
+  $10.5M, Kutta $10.0M, Physical Optics $9.8M — all described "SBIR PHASE III", none SR3/ST3-coded.
+- **Spot-verified 12/12** against FPDS by PIID (all `research=NONE`) — the undercount is real, not a
+  join artifact. Flags are for human review; nullable `disposition` carries adjudication back as labels.
