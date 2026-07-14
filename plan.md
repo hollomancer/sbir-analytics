@@ -197,3 +197,23 @@ review queue (`data/derived/m0a_status_denial_flags.parquet`, priority-sorted by
   $10.5M, Kutta $10.0M, Physical Optics $9.8M — all described "SBIR PHASE III", none SR3/ST3-coded.
 - **Spot-verified 12/12** against FPDS by PIID (all `research=NONE`) — the undercount is real, not a
   join artifact. Flags are for human review; nullable `disposition` carries adjudication back as labels.
+
+## Dark undercount — progress + the tractable boundary
+Pushed the undercount beyond description-obvious in two layers:
+- **Grey layer (done):** broadening the ground truth to SBIR-anchored variants ("SBIR III",
+  "SBIR PHASE 3") grows the set 962→1,253 but adds only **+16 uncoded flags (141→157)**; rate
+  settles at **12.5%** ($295.5M). **The description-discoverable undercount is robust at
+  ~12.5–14.7%** regardless of phrase strictness — this is the citable number.
+- **Truly-dark layer (Phase III with neither the code nor any "SBIR/Phase III" text):** the
+  description-independent signal is the FPDS **sole-source statutory authority
+  `reasonNotCompeted = "AUTHORIZED BY STATUTE (FAR 6.302-5(a)(2)(i))"`** — present on coded SR3
+  records (with `extentCompeted=B`, `solicitationProcedures=SSS`). But this authority is not
+  SBIR-exclusive, and measuring it needs the firm universe. **Per-firm FPDS ATOM pulls are
+  infeasible at scale** (heavy firms are ~500–660 actions / ~1–2 min each → ~8,090 firms ≈ 130+
+  hours). So the truly-dark estimate requires either a **USAspending bulk universe pull +
+  inferential (transition-scorer) modeling**, or a **global FPDS pull by the 6.302-5 authority
+  code** (imprecise) — a dedicated next run, and inherently a **modeled** estimate, not a verified
+  count like the 12.5–14.7%.
+
+**Bottom line:** the verified, citable undercount is **~13% / $244–296M** (description-discoverable);
+the truly-dark layer is scoped but not sized, and is the one piece that still needs the big pull.
