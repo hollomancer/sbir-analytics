@@ -554,6 +554,119 @@ def write_methodology_stub(
     out.write_text("\n".join(lines), encoding="utf-8")
 
 
+def render_policy_brief_stub(cfg: dict, summary: dict, composition: dict) -> str:
+    """Render a policy-leader-facing brief SCAFFOLD from cohort aggregates (T20).
+
+    Auto-generated skeleton per ``publication-format.md``: the headline table and
+    channel-status rows are derived from ``overlap_summary.json`` +
+    ``composition.json``; findings / takeaways / language sections are left as
+    TODO placeholders for a human or agent to complete. Never invents channel
+    rates — absent signal artifacts are reported as "Not computed", not zero.
+    """
+
+    def _n(v: object) -> str:
+        if v is None:
+            return "n/a"
+        return f"{v:,}" if isinstance(v, int) else str(v)
+
+    display = cfg.get("display_name") or cfg.get("area_id") or "Technology"
+    audience = cfg.get("audience") or "S&T policy leaders"
+    overlap = summary.get("overlap") or {}
+    totals = composition.get("totals") or {}
+    by_agency = composition.get("by_agency") or {}
+    program = composition.get("program_split") or {}
+    censoring = composition.get("censoring") or {}
+    ent = composition.get("entity_resolution") or {}
+    n_awards = composition.get("n_unique_awards") or 0
+
+    dollars = totals.get("phase2_dollars_m")
+    dollars_s = "n/a" if dollars is None else f"${dollars:,}M"
+    jaccard = overlap.get("jaccard")
+    jaccard_s = "n/a" if jaccard is None else f"{jaccard:.3f}"
+    # by_agency values are {"awards": n, ...} dicts already sorted desc by awards
+    # (aggregate_composition); tolerate a plain-int shape too.
+    def _awards(v: object) -> object:
+        return v.get("awards") if isinstance(v, dict) else v
+
+    top_agencies = list(by_agency.items())[:5]
+    agency_mix = ", ".join(f"{a} {_awards(v)}" for a, v in top_agencies) or "n/a"
+
+    lines = [
+        f"# {display} SBIR/STTR Phase II Outcomes: What Policy Leaders Can Safely Conclude",
+        "",
+        f"**Prepared for:** {audience}  ",
+        "**Status:** Provisional; bounded estimates, not final program rates  ",
+        "**Data through:** _TODO: fill explicit input vintages_  ",
+        "**Technical appendix:** `methodology_stub.md` (same directory)",
+        "",
+        "> Auto-generated scaffold from `build_tech_area_cohort.py` "
+        "(`overlap_summary.json` + `composition.json`). The headline table and "
+        "channel-status rows are data-derived; the findings, takeaways, and "
+        "language sections below are **placeholders to complete by hand** — do "
+        "not publish as-is.",
+        "",
+        "## Bottom line",
+        "",
+        "_TODO: one paragraph — what this cohort is, and what it is not._",
+        "",
+        "| Measure | Result | How to use it |",
+        "|---|---|---|",
+        f"| Phase II cohort (Method A keyword) | {_n(n_awards)} awards | "
+        "Cohort scope — not a transition count |",
+        f"| Unique firms | {_n(totals.get('unique_firms'))} | Firm-level denominator |",
+        f"| Phase II obligations | {dollars_s} | Federal R&D investment in scope |",
+        f"| Program split | {_n(program.get('SBIR'))} SBIR / {_n(program.get('STTR'))} STTR "
+        f"({_n(program.get('sttr_pct'))}% STTR) | Program-mix context |",
+        f"| Agency mix (top 5 by awards) | {agency_mix} | Funder concentration |",
+        f"| Method A∩B overlap | {_n(overlap.get('intersection_n'))} (Jaccard {jaccard_s}) | "
+        "Triangulation across cohort definitions |",
+        f"| Recency (post-{_n(censoring.get('censor_year'))}) | "
+        f"{_n(censoring.get('censored_awards'))} censored / {_n(censoring.get('mature_awards'))} "
+        "mature | Outcomes still developing for recent awards |",
+        f"| Entity-resolution gap | {_n(ent.get('no_uei_awards'))} awards without UEI "
+        f"({_n(ent.get('no_uei_pct'))}%) | Lower-bound caveat on firm-level joins |",
+        "",
+        "## Channel status",
+        "",
+    ]
+
+    signals_absent = summary.get("signals_absent") or []
+    if signals_absent:
+        lines += [
+            "Transition-signal artifacts absent this run — **Not computed (not zero).** "
+            "Each requires the next pipeline step before any rate claim:",
+            "",
+            "| Channel artifact | Status |",
+            "|---|---|",
+            *[f"| `{s}` | Not computed — not zero |" for s in signals_absent],
+            "",
+        ]
+    else:
+        lines += ["All expected transition-signal artifacts were present this run.", ""]
+
+    lines += [
+        "## Findings",
+        "",
+        "_TODO: one Fact block + Policy interpretation per evidence channel "
+        "(procurement, private capital, acquisition, patents, subawards — as "
+        "available). Lead with counts; keep methodology in the appendix._",
+        "",
+        "## What policy leaders should take away",
+        "",
+        "_TODO: 5–8 imperative, actionable items for agency reporting standards._",
+        "",
+        "## Language to avoid",
+        "",
+        "| Avoid | Use instead |",
+        "|---|---|",
+        '| "transition rate" | "observable evidence from channel X" |',
+        '| "did not commercialize" | "remain indeterminate after recovery checks applied" |',
+        '| "patents prove commercialization" | "commercialization-adjacent evidence" |',
+        "",
+    ]
+    return "\n".join(lines) + "\n"
+
+
 def signal_paths() -> dict[str, Path]:
     return {
         "prospect_digest": DATA / "processed" / "sbir_phase3" / "fy25_phase3_prospect_digest.csv",
@@ -839,6 +952,9 @@ def main() -> int:
     write_methodology_stub(
         cfg, paths.artifact("methodology_stub"), stats, absent, channel_summary,
         external_reference=summary["external_reference"],
+    )
+    paths.artifact("policy_brief_stub").write_text(
+        render_policy_brief_stub(cfg, summary, composition), encoding="utf-8"
     )
     print(f"Wrote {paths.report_dir}/")
     return 0

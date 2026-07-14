@@ -83,5 +83,10 @@
 - [ ] T19 When digest / Form D / M&A exist: extend Q/H policy-brief headline tables with
       channel rows (`Measure | Result | How to use it`) + Policy interpretation blocks;
       hypersonics prioritizes WS1 + WS5a over Form D; quantum keeps small-N caveats
-- [ ] T20 Optional: `build_tech_area_cohort.py` emits `policy_brief_stub.md` from
-      `overlap_summary.json` + agency aggregates
+- [x] T20 `build_tech_area_cohort.py` emits `policy_brief_stub.md` from
+      `overlap_summary.json` + agency aggregates — pure `render_policy_brief_stub`
+      builds a policy-leader scaffold (headline table from composition, agency
+      mix, program split, recency, overlap; per-signal "Not computed — not zero"
+      channel-status rows; findings/takeaways/language left as TODO placeholders,
+      never fabricating channel rates). New `policy_brief_stub` ReportPaths stem;
+      unit-tested (signals absent/present + missing-block tolerance).

@@ -359,3 +359,65 @@ def test_aggregate_composition_agency_sorted_desc():
     comp = mod.aggregate_composition(_fixture_cohort())
     counts = [v["awards"] for v in comp["by_agency"].values()]
     assert counts == sorted(counts, reverse=True)
+
+
+# --- T20: policy_brief_stub emitter --------------------------------------------
+
+_CFG = {"area_id": "hypersonics", "display_name": "Hypersonics", "audience": "NSC staff"}
+
+
+def _summary(signals_absent):
+    return {
+        "area_id": "hypersonics",
+        "display_name": "Hypersonics",
+        "overlap": {"intersection_n": 12, "jaccard": 0.34, "method_b_n": 40},
+        "signals_absent": signals_absent,
+    }
+
+
+def _composition():
+    return {
+        "n_unique_awards": 300,
+        "totals": {"awards": 300, "phase2_dollars_m": 512.4, "unique_firms": 210},
+        "by_agency": {  # already sorted desc by awards (aggregate_composition shape)
+            "DoD": {"awards": 250, "phase2_dollars_m": 400.0, "unique_firms": 180},
+            "NASA": {"awards": 50, "phase2_dollars_m": 112.4, "unique_firms": 30},
+        },
+        "program_split": {"SBIR": 270, "STTR": 30, "sttr_pct": 10.0},
+        "censoring": {"censor_year": 2023, "mature_awards": 240, "censored_awards": 60},
+        "entity_resolution": {"no_uei_awards": 15, "no_uei_pct": 5.0},
+    }
+
+
+def test_policy_brief_stub_signals_absent_reports_not_computed():
+    md = mod.render_policy_brief_stub(
+        _CFG, _summary(["form_d_post_phase2", "ma_signal"]), _composition()
+    )
+    # Title + audience + provisional status from publication-format.md
+    assert md.startswith("# Hypersonics SBIR/STTR Phase II Outcomes")
+    assert "**Prepared for:** NSC staff" in md
+    assert "Provisional" in md
+    # Data-derived headline table
+    assert "| Phase II cohort (Method A keyword) | 300 awards |" in md
+    assert "DoD 250, NASA 50" in md
+    assert "$512.4M" in md
+    assert "Jaccard 0.340" in md
+    # Absent signals are Not computed — never zero
+    assert "`form_d_post_phase2` | Not computed — not zero" in md
+    assert "`ma_signal` | Not computed — not zero" in md
+    # Scaffold placeholders present, not published as-is
+    assert "_TODO" in md
+    assert "do not publish as-is" in md
+
+
+def test_policy_brief_stub_signals_present():
+    md = mod.render_policy_brief_stub(_CFG, _summary([]), _composition())
+    assert "All expected transition-signal artifacts were present this run." in md
+    assert "Not computed" not in md
+
+
+def test_policy_brief_stub_tolerates_missing_blocks():
+    # Minimal summary/composition must not raise; scalars degrade to n/a.
+    md = mod.render_policy_brief_stub({"area_id": "x"}, {"signals_absent": []}, {})
+    assert md.startswith("# x SBIR/STTR Phase II Outcomes")
+    assert "n/a" in md
