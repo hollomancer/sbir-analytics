@@ -186,12 +186,18 @@ def enrich_cohort_with_signals(
             ]
         )
 
-        # FPDS-deficiency taxonomy; clear when other channels are positive so
-        # dark-majority buckets aren't labeled "activity absent" for Form D+ firms.
+        # FPDS-deficiency taxonomy. classify_deficiency always runs when FPDS
+        # isn't coded — entity-resolution/insufficient-time/activity-absent are
+        # data-quality problems that hold regardless of whether some other
+        # channel also shows a signal; an earlier version short-circuited to a
+        # single "SUPPLEMENTED_BY_OTHER_CHANNEL" bucket whenever any positive
+        # signal existed, which silently reclassified awards out of all four
+        # other buckets and broke exact parity with build_nano_cohort.py's
+        # original classification (verified against real data: this priority
+        # order reproduces its published bucket counts bit-exactly; the
+        # short-circuited version did not).
         if r["sig_fpds_phase3_coded"]:
             r["deficiency_class"] = ""
-        elif r["sig_any_positive"]:
-            r["deficiency_class"] = "SUPPLEMENTED_BY_OTHER_CHANNEL"
         else:
             r["deficiency_class"] = classify_deficiency(r)
 

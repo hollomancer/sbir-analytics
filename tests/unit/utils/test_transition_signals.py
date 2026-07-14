@@ -15,7 +15,14 @@ def test_classify_insufficient_time():
     assert classify_deficiency(row) == "INSUFFICIENT_TIME"
 
 
-def test_enrich_supplemented_by_other_channel():
+def test_enrich_deficiency_class_ignores_other_positive_signals():
+    # A data-quality problem (not in the FPDS/obligation digest) holds even
+    # when some other channel (Form D here) shows a positive signal — the two
+    # questions are independent. This must reproduce build_nano_cohort.py's
+    # original classification exactly (verified against real nanotech data):
+    # a prior version of this function short-circuited to a single
+    # "SUPPLEMENTED_BY_OTHER_CHANNEL" bucket whenever any positive signal
+    # existed, which does not match.
     cohort = [
         {
             "uei": "U1",
@@ -24,11 +31,11 @@ def test_enrich_supplemented_by_other_channel():
             "award_year": 2015,
         }
     ]
-    digest = {}  # not in digest → would be FIRM_ACTIVITY_ABSENT
+    digest = {}  # not in digest → FIRM_ACTIVITY_ABSENT
     fd = {"ACME": {"form_d_total_raised": 1.0, "form_d_filing_count": 1, "form_d_latest_date": ""}}
     out = enrich_cohort_with_signals(cohort, digest, {}, fd)
     assert out[0]["sig_form_d_detected"] is True
-    assert out[0]["deficiency_class"] == "SUPPLEMENTED_BY_OTHER_CHANNEL"
+    assert out[0]["deficiency_class"] == "FIRM_ACTIVITY_ABSENT"
 
 
 def test_enrich_ma_requires_signal_count():

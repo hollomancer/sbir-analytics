@@ -180,7 +180,7 @@ update if material. Effort: S–M after WS6a.
 **Unscoped but noted:** patent maintenance-fee lapses (portfolio-wide lapse as a
 dormancy signal), Wayback-dated web presence (T9 upgrade), and the SBA/CCR access
 lever (the government already holds mandatory self-reported commercialization data;
-an NSET request for tabulation needs no new collection). These stay out of scope until
+a policy-leader request for tabulation needs no new collection). These stay out of scope until
 prioritized.
 
 ## Cross-cutting — bound what remains

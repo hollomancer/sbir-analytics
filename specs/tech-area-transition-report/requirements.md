@@ -8,7 +8,7 @@
 
 **Research question anchor:** B — technology-area Phase II→III commercialization pathways;
 C1 — CET-area portfolio composition
-**Answers for:** SBIR program managers, OSTP / NSET-style technology-area audiences, policy analysts
+**Answers for:** SBIR program managers, interagency technology-area coordination audiences, policy analysts
 **Complexity tier:** Descriptive → Relational
 
 ---
@@ -29,7 +29,7 @@ C1 — CET-area portfolio composition
 
 PR #428 demonstrated a reusable *pattern* for technology-area commercialization reporting on
 nanotechnology, but the implementation hardwires nanotech (`KEYWORD_PATTERNS`, B82 CPC,
-NNI Table 5, `nano_*` paths). The dark-majority-resolution spec already asserts the pattern
+the published external budget reference, `nano_*` paths). The dark-majority-resolution spec already asserts the pattern
 is technology-agnostic; that claim is unverified. Parameterizing cohort definition — and
 proving it on quantum (high contamination risk) and hypersonics (sparse / keyword-quality
 risk) — is the cheapest way to stop the pattern calcifying as a nanotech one-off.
@@ -125,7 +125,7 @@ dark-majority-resolution, so that parameterization work is not duplicated.
 - Full findings-narrative generation (§5D/§5E-style prose)
 - Dagster asset wiring
 - Dark-majority WS1–WS6 for every area
-- NNI-equivalent external reconciliation for quantum / hypersonics
+- Published external budget references for quantum / hypersonics (nanotech has one; the other two have none published)
 - Method C as a gate for test areas (may be empty)
 - Renaming or deleting the existing `nano_*` scripts (they remain the nanotech reference
   implementation until a follow-up migrates them onto this path)

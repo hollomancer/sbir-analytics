@@ -14,20 +14,28 @@ Temporal filter:
   when the acquisition became visible in filings. For mature awards this is
   a necessary (not sufficient) condition for post-Phase-II acquisition.
 
+Path convention (same as nano_form_d_temporal.py / nano_ws1):
+  --area <id>   → data/reports/<id>/prime_acquisitions.csv (+ analysis PNG)
+  (no flag)     → data/nano_prime_acquisitions.csv  (legacy PR #428)
+
+The keyword cohort, form-D anchors, CSV output, and figure are area-scoped; the
+SEC EDGAR scan and M&A enrichment JSONL inputs are shared global inputs.
+
 Inputs:
-  data/nano_cohort_keyword.csv          — 2,849 nanotech Phase II awards
-  data/sec_edgar_scan.jsonl             — full EDGAR scan, 35k firms
-  data/enriched_sbir_ma_events.jsonl    — M&A enrichment with confidence/acquirer
-  data/nano_form_d_post_phase2.csv      — phase_ii_end_date per award
+  cohort_keyword.csv (area-scoped)      — 2,849 nanotech Phase II awards
+  data/sec_edgar_scan.jsonl             — full EDGAR scan, 35k firms (global)
+  data/enriched_sbir_ma_events.jsonl    — M&A enrichment with confidence/acquirer (global)
+  form_d_post_phase2.csv (area-scoped)  — phase_ii_end_date per award
 
 Outputs:
-  data/nano_prime_acquisitions.csv      — award-grain rows with prime match
-  data/analysis/nano_prime_acquisitions.png
+  prime_acquisitions.csv      — award-grain rows with prime match
+  analysis/prime_acquisitions.png
 
 Usage:
-  python scripts/data/nano_prime_acquisitions.py
+  python scripts/data/nano_prime_acquisitions.py [--area AREA] [--legacy]
 """
 
+import argparse
 import csv
 import json
 import sys
@@ -41,8 +49,12 @@ import matplotlib.pyplot as plt
 
 REPO = Path(__file__).resolve().parents[2]
 DATA = REPO / "data"
-ANALYSIS_DIR = DATA / "analysis"
-ANALYSIS_DIR.mkdir(parents=True, exist_ok=True)
+
+sys.path.insert(0, str(REPO))
+from sbir_etl.utils.transition_report_paths import (  # noqa: E402
+    add_area_args,
+    resolve_area_paths,
+)
 
 # --- Prime acquirer registry ---
 # Maps exact SEC filer name (uppercase) → (category, short label)
@@ -197,16 +209,21 @@ def load_temporal_anchors(path: Path) -> dict[str, dict[str, str]]:
     return anchors
 
 
-def main() -> int:
-    cohort_csv = DATA / "nano_cohort_keyword.csv"
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    add_area_args(parser)
+    args = parser.parse_args(argv)
+    paths = resolve_area_paths(args, argv)
+
+    cohort_csv = paths.artifact("cohort_keyword")
     scan_jsonl  = DATA / "sec_edgar_scan.jsonl"
     enriched_jsonl = DATA / "enriched_sbir_ma_events.jsonl"
-    temporal_csv = DATA / "nano_form_d_post_phase2.csv"
+    temporal_csv = paths.artifact("form_d_post_phase2")
 
     # All four inputs are load-bearing: missing scan/enriched/temporal files would
     # otherwise yield empty indexes and a plausible-looking "0 matches" output.
     required_inputs = {
-        cohort_csv: "run scripts/data/build_nano_cohort.py first",
+        cohort_csv: f"run build_tech_area_cohort.py --area {paths.area_id} first",
         scan_jsonl: "SEC EDGAR scan output expected at this path",
         enriched_jsonl: "M&A enrichment output expected at this path",
         temporal_csv: "run scripts/data/nano_form_d_temporal.py first",
@@ -350,7 +367,7 @@ def main() -> int:
         return 0
 
     # Write output CSV
-    out_csv = DATA / "nano_prime_acquisitions.csv"
+    out_csv = paths.artifact("prime_acquisitions")
     fieldnames = list(results[0].keys())
     with open(out_csv, "w", newline="", encoding="utf-8") as f:
         w = csv.DictWriter(f, fieldnames=fieldnames)
@@ -486,7 +503,9 @@ def main() -> int:
         fontsize=11, fontweight="bold",
     )
     fig.tight_layout()
-    fig_path = ANALYSIS_DIR / "nano_prime_acquisitions.png"
+    fig_path = paths.analysis_dir / (
+        "nano_prime_acquisitions.png" if paths.legacy else "prime_acquisitions.png"
+    )
     fig.savefig(fig_path, dpi=150)
     plt.close(fig)
     print(f"Figure saved: {fig_path}")

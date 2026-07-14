@@ -20,18 +20,26 @@ Dead / degraded sources, documented not used:
   - TRCFECO2 owner_name_change: a coded transaction annotation, not a clean
     old→new name pair; reconstruction deferred (low expected marginal yield).
 
+Path convention (same as nano_form_d_temporal.py / nano_ws1):
+  --area <id>   → data/reports/<id>/firm_aliases.csv
+  (no flag)     → data/processed/firm_aliases.csv  (legacy PR #428)
+
+The cohort + dark-firm inputs and the alias output are area-scoped; the USPTO
+assignment zips and USAspending caches are shared global inputs under data/.
+
 Inputs:
-  data/nano_cohort_keyword.csv, data/nano_dark_firm_liveness.csv   — firm universe
+  cohort_keyword.csv + dark_firm_liveness.csv (area-scoped)          — firm universe
   data/raw/uspto/assignments/{assignor,assignee,assignment_conveyance}.csv.zip
   data/api_cache/usaspending_ws1/*.json, data/api_cache/usaspending_ws2/*.json
 
 Outputs:
-  data/processed/firm_aliases.csv   — one row per alias edge
+  firm_aliases.csv   — one row per alias edge
 
 Usage:
-  python scripts/data/build_firm_alias_graph.py
+  python scripts/data/build_firm_alias_graph.py [--area AREA] [--legacy]
 """
 
+import argparse
 import csv
 import io
 import json
@@ -51,6 +59,11 @@ from sbir_etl.utils.firm_aliases import (  # noqa: E402
     make_alias_edge,
 )
 from sbir_etl.utils.text_normalization import normalize_name  # noqa: E402
+from sbir_etl.utils.transition_report_paths import (  # noqa: E402
+    ReportPaths,
+    add_area_args,
+    resolve_area_paths,
+)
 
 
 def _norm(s: str) -> str:
@@ -67,13 +80,13 @@ def tsv_or_csv_rows(zip_path: Path):
             yield idx, row
 
 
-def load_firm_universe() -> set[str]:
+def load_firm_universe(paths: ReportPaths) -> set[str]:
     """Normalized names of every cohort + dark firm (the alias targets)."""
     norms: set[str] = set()
     csv.field_size_limit(sys.maxsize)
     for path, col in (
-        (DATA / "nano_cohort_keyword.csv", "company"),
-        (DATA / "nano_dark_firm_liveness.csv", "company"),
+        (paths.artifact("cohort_keyword"), "company"),
+        (paths.artifact("dark_firm_liveness"), "company"),
     ):
         if path.exists():
             for r in csv.DictReader(open(path, newline="", encoding="utf-8")):
@@ -164,9 +177,20 @@ def shared_uei_edges() -> list:
     return alias_edges_from_shared_uei(uei_names)
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    add_area_args(parser)
+    args = parser.parse_args(argv)
+    paths = resolve_area_paths(args, argv)
+
+    out_csv = paths.artifact("firm_aliases")
+    print(
+        f"area={paths.area_id}{', legacy' if paths.legacy else ''}  out={out_csv}",
+        file=sys.stderr,
+    )
+
     print("Loading firm universe...")
-    firms = load_firm_universe()
+    firms = load_firm_universe(paths)
     print(f"  {len(firms):,} normalized firm names")
 
     print("Building patent-assignment edges...")
@@ -191,7 +215,6 @@ def main() -> int:
         seen.add(key)
         out.append(e)
 
-    out_csv = DATA / "processed/firm_aliases.csv"
     out_csv.parent.mkdir(parents=True, exist_ok=True)
     with open(out_csv, "w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)

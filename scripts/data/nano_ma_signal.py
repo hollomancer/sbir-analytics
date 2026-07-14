@@ -10,14 +10,22 @@ The sec_edgar_scan.summary.json showing 0 results is from a separate, broken
 recent scan (39s, 500 errors throughout). The sec_edgar_scan.jsonl data is
 the usable record and has 99.9% coverage of the nanotech cohort.
 
+Path convention (same as nano_form_d_temporal.py / nano_ws1):
+  --area <id>   → data/reports/<id>/ma_signal.csv (+ analysis/ma_signal.png)
+  (no flag)     → data/nano_ma_signal.csv  (legacy PR #428)
+
+The keyword cohort, CSV output, and figure are area-scoped; the SEC EDGAR scan
+and M&A enrichment JSONL inputs are shared global inputs under data/.
+
 Outputs:
-  data/nano_ma_signal.csv            — per-award M&A signal (joins to keyword cohort)
-  data/analysis/nano_ma_signal.png   — breakdown by type and agency
+  ma_signal.csv            — per-award M&A signal (joins to keyword cohort)
+  analysis/ma_signal.png   — breakdown by type and agency
 
 Usage:
-  python scripts/data/nano_ma_signal.py
+  python scripts/data/nano_ma_signal.py [--area AREA] [--legacy]
 """
 
+import argparse
 import csv
 import json
 import sys
@@ -30,8 +38,12 @@ import matplotlib.pyplot as plt
 
 REPO = Path(__file__).resolve().parents[2]
 DATA = REPO / "data"
-ANALYSIS_DIR = DATA / "analysis"
-ANALYSIS_DIR.mkdir(parents=True, exist_ok=True)
+
+sys.path.insert(0, str(REPO))
+from sbir_etl.utils.transition_report_paths import (  # noqa: E402
+    add_area_args,
+    resolve_area_paths,
+)
 
 # Mention types that indicate M&A activity for the target firm.
 # Ordered roughly by specificity — ma_definitive is strongest.
@@ -153,15 +165,20 @@ def ma_signal_for_firm(name_upper: str, scan: dict, enriched: dict) -> dict:
     return result
 
 
-def main() -> int:
-    cohort_csv = DATA / "nano_cohort_keyword.csv"
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    add_area_args(parser)
+    args = parser.parse_args(argv)
+    paths = resolve_area_paths(args, argv)
+
+    cohort_csv = paths.artifact("cohort_keyword")
     scan_jsonl = DATA / "sec_edgar_scan.jsonl"
     enriched_jsonl = DATA / "enriched_sbir_ma_events.jsonl"
 
     # Missing scan/enriched files would yield empty indexes and a valid-looking
     # output CSV with zero signals — fail fast instead.
     required_inputs = {
-        cohort_csv: "run scripts/data/build_nano_cohort.py first",
+        cohort_csv: f"run build_tech_area_cohort.py --area {paths.area_id} first",
         scan_jsonl: "SEC EDGAR scan output expected at this path",
         enriched_jsonl: "M&A enrichment output expected at this path",
     }
@@ -192,7 +209,7 @@ def main() -> int:
         results.append(row)
 
     # Write output
-    out_csv = DATA / "nano_ma_signal.csv"
+    out_csv = paths.artifact("ma_signal")
     with open(out_csv, "w", newline="", encoding="utf-8") as f:
         w = csv.DictWriter(f, fieldnames=list(results[0].keys()))
         w.writeheader()
@@ -292,7 +309,7 @@ def main() -> int:
                  "(filtered to M&A mention types; noise types excluded)",
                  fontsize=11, fontweight="bold")
     fig.tight_layout()
-    fig_path = ANALYSIS_DIR / "nano_ma_signal.png"
+    fig_path = paths.analysis_dir / ("nano_ma_signal.png" if paths.legacy else "ma_signal.png")
     fig.savefig(fig_path, dpi=150)
     plt.close(fig)
     print(f"\nFigure saved: {fig_path}")

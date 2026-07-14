@@ -18,16 +18,20 @@ documented under-reporting; subaward coverage begins ~FY2011; sub-awardee names
 are prime-entered and dirtier than recipient names, so exact-normalized matching
 is conservative (precision over recall).
 
+Path convention (same as nano_form_d_temporal.py / nano_ws1):
+  --area <id>   → data/reports/<id>/ws5a_subawards.csv
+  (no flag)     → data/nano_ws5a_subawards.csv  (legacy PR #428)
+
 Inputs:
-  data/nano_dark_firm_liveness.csv        — dark firms + first award year
-  data/nano_form_d_post_phase2.csv         — phase_ii_end_date anchors (per award→firm)
+  dark_firm_liveness.csv / nano_dark_firm_liveness.csv    — dark firms + first award year
+  form_d_post_phase2.csv / nano_form_d_post_phase2.csv    — phase_ii_end_date anchors
   USAspending subaward API (cached: data/api_cache/usaspending_ws5a/)
 
 Outputs:
-  data/nano_ws5a_subawards.csv             — per-firm subaward evidence
+  ws5a_subawards.csv             — per-firm subaward evidence
 
 Usage:
-  python scripts/data/nano_ws5a_subawards.py [--refresh]
+  python scripts/data/nano_ws5a_subawards.py [--area AREA] [--legacy] [--refresh]
 """
 
 import argparse
@@ -47,6 +51,10 @@ CACHE = DATA / "api_cache/usaspending_ws5a"
 
 sys.path.insert(0, str(REPO))
 from sbir_etl.utils.text_normalization import normalize_name  # noqa: E402
+from sbir_etl.utils.transition_report_paths import (  # noqa: E402
+    add_area_args,
+    resolve_area_paths,
+)
 
 API = "https://api.usaspending.gov/api/v2/search/spending_by_award/"
 HEADERS = {"User-Agent": "SBIR-Analytics/0.1.0"}
@@ -110,18 +118,27 @@ def fetch_subawards(name: str, refresh: bool) -> list[dict]:
     return results
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
+    add_area_args(parser)
     parser.add_argument("--refresh", action="store_true")
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
+    paths = resolve_area_paths(args, argv)
 
-    liveness_csv = DATA / "nano_dark_firm_liveness.csv"
-    anchors_csv = DATA / "nano_form_d_post_phase2.csv"
-    for p, hint in {liveness_csv: "run nano_dark_firm_liveness.py first",
-                    anchors_csv: "run nano_form_d_temporal.py first"}.items():
+    liveness_csv = paths.artifact("dark_firm_liveness")
+    anchors_csv = paths.artifact("form_d_post_phase2")
+    for p, hint in {
+        liveness_csv: f"run nano_dark_firm_liveness.py --area {paths.area_id} first",
+        anchors_csv: "run nano_form_d_temporal.py first",
+    }.items():
         if not p.exists():
             print(f"ERROR: {p} not found — {hint}", file=sys.stderr)
             return 1
+    out_csv = paths.artifact("ws5a_subawards")
+    print(
+        f"area={paths.area_id}{', legacy' if paths.legacy else ''}  out={out_csv}",
+        file=sys.stderr,
+    )
 
     csv.field_size_limit(sys.maxsize)
     # Per-firm Phase II end anchor: earliest end date across the firm's awards.
@@ -173,7 +190,6 @@ def main() -> int:
         if i % 100 == 0:
             print(f"  {i}/{len(firms)}")
 
-    out_csv = DATA / "nano_ws5a_subawards.csv"
     with open(out_csv, "w", newline="", encoding="utf-8") as f:
         w = csv.DictWriter(f, fieldnames=list(out_rows[0].keys()))
         w.writeheader()

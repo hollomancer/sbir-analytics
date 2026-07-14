@@ -1,6 +1,6 @@
 # Hypersonics SBIR/STTR Phase II: Technical Findings (Provisional)
 
-**Role:** Technical appendix (not the NSET-facing default)  
+**Role:** Technical appendix (not the policy-leader-facing default)  
 **Policy brief (start here):** [`hypersonics_sbir_policy_brief.md`](hypersonics_sbir_policy_brief.md)  
 **Status:** Provisional — cohort and triangulation only; channel rates not computed  
 **Data through:** FY2025 SBIR.gov Phase II universe  
@@ -14,7 +14,7 @@
 
 "Hypersonic" in SBIR abstracts co-occurs with adjacent aerospace language — thermal protection systems (TPS), Mach numbers, and especially **supersonic** flight — that is necessary for hypersonic vehicles but also appears in unrelated aero work. A bare `hypersonic*` probe hits ~763 Phase II awards; expanding with ungated TPS/Mach language inflated the prior pack to 886. Requiring TPS/Mach to co-occur with core hypersonic/scramjet/boost-glide language lands at **813**, with **zero** Method A awards lacking a core match.
 
-Unlike nanotech (no authoritative NNI-style public table used here) or QIS (heavy quantum-dot contamination), the main precision risk for hypersonics is **aerospace adjacency**, not a different technology using the same token.
+Unlike nanotech (no published external budget reference used here) or QIS (heavy quantum-dot contamination), the main precision risk for hypersonics is **aerospace adjacency**, not a different technology using the same token.
 
 Commercialization measurement is dominated by the federal customer:
 
@@ -35,7 +35,7 @@ Commercialization measurement is dominated by the federal customer:
 
 Effect of the TPS/Mach rule: **886 → 813** (−73 TPS/Mach-only aerospace rows). All 813 are core-admitted; 51 also carry a TPS tag alongside hypersonic/scramjet language. Rows without hypersonic/scramjet/boost in matches: **0**. Pure-negative admissions: **0**. Spot-check: **76** Method A awards co-occur with the `supersonic` negative token (expected in hypersonic aero abstracts; not used as an automatic reject).
 
-SBIR.gov carries **3** duplicate `award_id` rows (813 rows → **810** unique IDs). Overlap uses unique IDs; headline Method A size matches validation (**813**).
+SBIR.gov reuses **3** `award_id` values in this cohort — all 3 are genuinely distinct awards (a DOE Phase II continuation in a later year, or two same-year line items with different dollar amounts), not duplicate rows; none are dropped. Composition (Finding 1/2) therefore uses all **813** awards. The Method A/B overlap statistics below compare **sets of award_id values** instead — a coarser, different count (810 distinct values, since a reused ID contributes once to a set) — headline Method A size matches validation (**813**).
 
 ### Method B — CET / taxonomy triangulation
 
@@ -160,7 +160,7 @@ Outputs: `data/reports/hypersonics/`. Remaining dark-majority scripts (liveness,
 
 - **Universe:** 68,077 Phase II awards from `data/raw/sbir/award_data.csv`.
 - **Outputs:** `data/reports/hypersonics/{cohort_keyword,cohort_cet}.csv`, `overlap_summary.json`, `methodology_stub.md` (under gitignored `/data/*`; regenerate via CLI).
-- **Duplicate award IDs:** 3 row-level duplicates; overlap uses unique IDs.
+- **Duplicate award IDs:** 3 `award_id` values are reused across 2 real awards each (DOE continuation / same-year separate line items) — verified none are true duplicate rows, so composition uses all 813 awards. Overlap statistics use the coarser 810-value award_id set.
 - **Soft-pattern rule:** `soft_requires: core_cooccur` — TPS/Mach never admit alone.
 - **Negative `\bsupersonic\b`:** Contamination flag; 76 co-occurrences in Method A (not auto-rejects).
 - **Signal enrichment:** All three artifacts absent → no channel rates.

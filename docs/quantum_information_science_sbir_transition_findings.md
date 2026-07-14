@@ -1,6 +1,6 @@
 # Quantum Information Science SBIR/STTR Phase II: Technical Findings (Provisional)
 
-**Role:** Technical appendix (not the NSET-facing default)  
+**Role:** Technical appendix (not the policy-leader-facing default)  
 **Policy brief (start here):** [`quantum_information_science_sbir_policy_brief.md`](quantum_information_science_sbir_policy_brief.md)  
 **Status:** Provisional — cohort and triangulation only; channel rates not computed  
 **Data through:** FY2025 SBIR.gov Phase II universe  
@@ -16,7 +16,7 @@ There is no single authoritative tag for "quantum information science" on SBIR.g
 
 Commercialization measurement faces the same dual-pathway problem as nanotech (FPDS procurement vs private capital), compounded by:
 
-1. **Small N** — 138 awards / 82 firms cannot support the agency×pathway crosstabs that nanotech's 2,849 awards allowed without large confidence intervals.
+1. **Small N** — 137 awards / 81 firms cannot support the agency×pathway crosstabs that nanotech's 2,849 awards allowed without large confidence intervals.
 2. **Young cohort** — nearly two-thirds of awards are 2020s; private-raise and acquisition windows of 2–7 years (nanotech Finding 1–2) have not elapsed for much of the population.
 3. **Missing shared signals in this run** — FPDS Phase III digest, Form D details, and EDGAR M&A enrichment were not available, so channel rates are withheld rather than imputed as zeros.
 
@@ -35,7 +35,7 @@ Patterns are split into **core** (any hit admits) and **soft** (title hit or ≥
 
 Taxonomy negatives (quantum dot, quantum well, quantum mechanics, …) are loaded via `cet_id: quantum_information_science`. Soft gating removed **65** abstract-only market-name-drop awards (203 → 138). Of the 138: **121** core-admitted, **17** soft-corroborated. Pure-negative admissions: **0**. Quantum-dot/well awards with no QIS positive (correctly excluded): **185**.
 
-SBIR.gov carries **3** duplicate `award_id` rows in this cohort (138 rows → **135** unique IDs). Overlap statistics below use unique IDs; headline Method A size matches the row count used in validation (**138**).
+SBIR.gov reuses `award_id` across genuinely different awards — a DOE Phase II continuation in a later year, or a successor-company change carrying the same contract number — not just true duplicate rows. Of the 138 Method A rows, exactly **1** is a true duplicate (identical company, year, and dollar amount) and **1** other award_id value covers 2 real, distinct awards; both distinctions were verified against the raw cohort rows before deciding what to drop. Two different figures follow from this, for two different purposes: the Method A/B overlap statistics below (Jaccard, containment) compare **sets of award_id values** — 135 distinct values, since a reused ID contributes once to a set regardless of how many real awards share it — while Finding 1/2's composition tables (agency mix, dollars, firms, decades) count **distinct awards** — **137**, dropping only the 1 true duplicate. Headline Method A size (the keyword-matching step's row count) is **138**.
 
 ### Method B — CET / taxonomy triangulation
 
@@ -63,23 +63,23 @@ Ten taxonomy terms for the `quantum_information_science` CET category produce **
 
 | Agency | QIS Phase II awards | Share | Phase II $ (M) | Unique firms |
 |--------|--------------------:|------:|---------------:|-------------:|
-| Department of Defense | 82 | 59.4% | 90.9 | 51 |
-| Department of Energy | 32 | 23.2% | 39.9 | 29 |
-| NASA | 13 | 9.4% | 9.9 | 9 |
-| National Science Foundation | 6 | 4.3% | 4.9 | 6 |
+| Department of Defense | 81 | 59.1% | 90.2 | 50 |
+| Department of Energy | 32 | 23.4% | 39.9 | 29 |
+| NASA | 13 | 9.5% | 9.9 | 9 |
+| National Science Foundation | 6 | 4.4% | 4.9 | 6 |
 | Department of Commerce | 3 | 2.2% | 0.9 | 3 |
-| HHS | 2 | 1.4% | 3.4 | 2 |
-| **Total** | **138** | **100%** | **~150** | **82** |
+| HHS | 2 | 1.5% | 3.4 | 2 |
+| **Total** | **137** | **100%** | **~149** | **81** |
 
-DoD + DOE account for **82.6%** of awards and **~87%** of Phase II dollars. NSF — the private-capital-heavy agency in the nanotech pathway split — is only six awards here. That composition predicts (but does not yet measure) a procurement-skewed commercialization profile once FPDS/Form D signals are restored: there is little NSF mass for a Form-D-dominant pathway of the kind seen in nanotech Finding 1.
+DoD + DOE account for **82.5%** of awards and **~87%** of Phase II dollars. NSF — the private-capital-heavy agency in the nanotech pathway split — is only six awards here. That composition predicts (but does not yet measure) a procurement-skewed commercialization profile once FPDS/Form D signals are restored: there is little NSF mass for a Form-D-dominant pathway of the kind seen in nanotech Finding 1.
 
-Program split: **81 SBIR / 57 STTR** (41% STTR — high relative to hypersonics, consistent with university-adjacent quantum hardware and algorithms work).
+Program split: **81 SBIR / 56 STTR** (40.9% STTR — high relative to hypersonics, consistent with university-adjacent quantum hardware and algorithms work).
 
 ---
 
 ## Finding 2: Concentration and Recency Shape What Can Be Learned
 
-**Firm concentration.** The top 10 firms account for **38%** of Method A awards. Leading award counts: AdvR (12), NuCrypt (9), Physical Sciences Inc. (7), Streamline Automation (5), ColdQuanta / Infleqtion (4), Hypres (4). Small-N pathway rates will be sensitive to a handful of multi-award firms; firm-level and award-level headlines should be reported side by side (as the nanotech report does).
+**Firm concentration.** The top 10 firms account for **39%** of Method A awards. Leading award counts: AdvR (12), NuCrypt (9), Physical Sciences Inc. (7), Streamline Automation (5), Qunnect (4), ColdQuanta / Infleqtion (4), Hypres (4). Small-N pathway rates will be sensitive to a handful of multi-award firms; firm-level and award-level headlines should be reported side by side (as the nanotech report does).
 
 **Temporal structure.**
 
@@ -87,10 +87,10 @@ Program split: **81 SBIR / 57 STTR** (41% STTR — high relative to hypersonics,
 |--------|-------:|
 | 1990s | 1 |
 | 2000s | 12 |
-| 2010s | 36 |
+| 2010s | 35 |
 | 2020s | 89 |
 
-**97** awards have award year ≤ 2022 (mature enough for a first look at follow-on activity); **41** are ≥ 2023 and should be treated as right-censored in any future survival analysis — not as commercialization failures.
+**96** awards have award year ≤ 2022 (mature enough for a first look at follow-on activity); **41** are ≥ 2023 and should be treated as right-censored in any future survival analysis — not as commercialization failures.
 
 **Entity resolution.** Only **4** awards (2.9%) lack a UEI — far below nanotech's ~23% no-UEI share of the indeterminate population. Identity resolution (WS2) is a smaller blocker here than for nanotech; the binding constraints are signal artifacts and calendar time.
 
@@ -157,7 +157,7 @@ None of these absences imply failed commercialization. They are instrument gaps.
 
 - **Universe:** 68,077 Phase II awards from `data/raw/sbir/award_data.csv`.
 - **Outputs:** `data/reports/quantum_information_science/{cohort_keyword,cohort_cet}.csv`, `overlap_summary.json`, `methodology_stub.md` (gitignored under `/data/*`; regenerate with the CLI above).
-- **Duplicate award IDs:** 3 row-level duplicates in Method A; overlap uses unique IDs.
+- **Duplicate award IDs:** of 3 repeated `award_id` values in Method A's 138 rows, 1 is a true duplicate row (dropped from composition, 137 unique awards) and 2 cover genuinely distinct awards (DOE continuation / successor-company cases, kept). Overlap statistics use the 135-value award_id set, which is a different, coarser count than "unique awards."
 - **Soft-pattern rule:** `soft_requires: title_or_multi` — see YAML and `validation.md`.
 - **Negatives:** Via CET taxonomy; pure-negative admissions = 0 in this run.
 - **Signal enrichment:** Attempted; all three artifacts absent → no channel rates.

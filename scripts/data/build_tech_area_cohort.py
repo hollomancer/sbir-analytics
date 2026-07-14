@@ -181,7 +181,18 @@ def build_keyword_cohort(
     source: str,
     soft_requires: str = "title_or_multi",
 ) -> list[dict]:
-    """Method A with optional soft-pattern corroboration.
+    """Method A with optional soft-pattern corroboration and a negative veto.
+
+    Admission:
+      - A core hit always admits. A specific, high-precision positive (qubit,
+        ``quantum information``, scramjet) is strong enough that a co-occurring
+        negative term does not veto it — e.g. a genuine qubit award that also
+        mentions ``quantum well`` in passing stays in.
+      - A soft-only award admits only when it clears ``soft_requires`` **and** no
+        negative pattern fires. Negatives veto soft-only admissions, which is where
+        market-name-drop contamination enters (a ``quantum computing`` title-drop
+        over a quantum-dot materials abstract). This is the load-bearing use of the
+        taxonomy / pack negatives; without it they are inert.
 
     soft_requires:
       - ``title_or_multi`` (default): soft-only admits if soft term is in the title
@@ -189,7 +200,6 @@ def build_keyword_cohort(
       - ``core_cooccur``: soft-only never admits; soft hits only tag awards that
         already matched a core pattern (hypersonics TPS/Mach rule).
     """
-    del negatives  # spot-checks use these; admission is positive-gated
     if soft_requires not in ("title_or_multi", "core_cooccur"):
         raise ValueError(f"unknown soft_requires={soft_requires!r}")
     cohort = []
@@ -203,11 +213,14 @@ def build_keyword_cohort(
             pos = core_hits + soft_hits
         elif soft_hits and soft_requires == "title_or_multi":
             soft_in_title = _collect_hits(title, soft)
-            if soft_in_title or len(set(soft_hits)) >= 2:
-                admitted_by = "soft_corroborated"
-                pos = soft_hits
-            else:
+            if not (soft_in_title or len(set(soft_hits)) >= 2):
                 continue
+            # Negative veto: a soft-only admit with a negative hit is contamination
+            # (market-name-drop over off-target work). Core admits are never vetoed.
+            if any(p.search(text) for p in negatives):
+                continue
+            admitted_by = "soft_corroborated"
+            pos = soft_hits
         else:
             # soft_requires == core_cooccur and no core → reject soft-only
             continue
@@ -258,6 +271,186 @@ def overlap_stats(a_ids: set[str], b_ids: set[str]) -> dict:
     }
 
 
+def external_reference_reconciliation(cohort: list[dict], cfg: dict) -> dict | None:
+    """Compare cohort dollar totals against an optional published external reference.
+
+    Most areas have no such reference — returns None unless the area config
+    declares an ``external_reference`` block (agency map + by-agency/FY dollar
+    table transcribed from a public budget summary). This is an approximate,
+    independent cross-check, not a second cohort-definition method: the
+    reference source's own agency-identification methodology is unpublished,
+    so exact reconciliation against this analysis's text-based classification
+    is not expected — the gap is informative, not an error to close.
+    """
+    ref = cfg.get("external_reference")
+    if not ref or not ref.get("by_agency_fy_usd"):
+        return None
+    agency_map: dict[str, str] = ref.get("agency_map") or {}
+    window = ref.get("window") or {}
+    start_fy, end_fy = window.get("start_fy"), window.get("end_fy")
+    if start_fy is None or end_fy is None:
+        return None
+
+    our_totals: dict[str, dict[int, float]] = {}
+    for row in cohort:
+        agency = row.get("agency", "")
+        short = agency_map.get(agency)
+        if not short:
+            continue
+        fy = row.get("award_year", 0)
+        if not (start_fy <= fy <= end_fy):
+            continue
+        bucket = our_totals.setdefault(short, {})
+        bucket[fy] = bucket.get(fy, 0.0) + float(row.get("award_amount") or 0.0)
+
+    rows = []
+    for short, fy_dict in sorted(ref["by_agency_fy_usd"].items()):
+        for fy in range(start_fy, end_fy + 1):
+            our_usd = our_totals.get(short, {}).get(fy, 0.0)
+            ref_usd = float(fy_dict.get(fy, 0.0) or 0.0)
+            rows.append(
+                {
+                    "agency": short,
+                    "fy": fy,
+                    "our_cohort_usd": round(our_usd, 2),
+                    "reference_usd": ref_usd,
+                    "delta_usd": round(our_usd - ref_usd, 2),
+                }
+            )
+    return {
+        "label": ref.get("label", "External reference"),
+        "note": ref.get("note", ""),
+        "window": window,
+        "rows": rows,
+    }
+
+
+def _norm_firm(company: str) -> str:
+    """Firm identity key for unique-firm counts (mirror the findings-report grain)."""
+    try:
+        sys.path.insert(0, str(REPO))
+        from sbir_etl.utils.text_normalization import normalize_name
+
+        return normalize_name(company, remove_suffixes=True) or ""
+    except Exception:
+        return (company or "").strip().upper()
+
+
+def dedupe_by_award_id(cohort: list[dict]) -> list[dict]:
+    """Drop true duplicate rows (keep first); rows with no award_id are kept.
+
+    ``award_id`` alone is not a unique key: SBIR.gov reuses the same base ID
+    across genuinely different awards — DOE Phase II continuations/renewals in
+    a later year, and cases where a different company (successor/awardee
+    change) carries the same contract number. Deduping on bare ``award_id``
+    silently drops real, distinct awards (verified against real data: 2 of 3
+    QIS "duplicates" and all 3 of 3 hypersonics "duplicates" were genuinely
+    different awards with different company/year/dollar values, not repeats).
+
+    Key on (award_id, company, award_year, award_amount) instead — a row is a
+    true duplicate only if all four agree. Overlap stats already dedupe on
+    unique award_id sets for Jaccard/containment (a different, coarser
+    question — "how many distinct IDs are in each method" — where the
+    same-ID-different-award cases don't matter); composition tables need this
+    finer key so dollar sums and agency counts don't drop real award dollars.
+    """
+    seen: set[tuple[str, str, str, str]] = set()
+    out = []
+    for r in cohort:
+        aid = r.get("award_id") or ""
+        key = (aid, r.get("company") or "", r.get("award_year") or "", r.get("award_amount") or "")
+        if aid and key in seen:
+            continue
+        if aid:
+            seen.add(key)
+        out.append(r)
+    return out
+
+
+def aggregate_composition(cohort: list[dict], censor_year: int = 2023) -> dict:
+    """Recompute the Finding 1 / Finding 2 composition tables from the cohort.
+
+    Operates on award_id-deduplicated rows so agency counts, dollar sums, and firm
+    counts are unique-based (not row-based). Emits the agency mix, program split,
+    decade distribution, recency censoring, firm concentration, and no-UEI share —
+    the load-bearing numbers hand-authored into the findings reports today.
+    """
+    rows = dedupe_by_award_id(cohort)
+    n = len(rows)
+
+    by_agency: dict[str, dict] = {}
+    for r in rows:
+        a = r.get("agency", "") or "(unknown)"
+        bucket = by_agency.setdefault(
+            a, {"awards": 0, "phase2_dollars": 0.0, "_firms": set()}
+        )
+        bucket["awards"] += 1
+        bucket["phase2_dollars"] += float(r.get("award_amount") or 0.0)
+        bucket["_firms"].add(_norm_firm(r.get("company", "")))
+    agency_table = {
+        a: {
+            "awards": b["awards"],
+            "share_pct": round(100 * b["awards"] / n, 1) if n else 0.0,
+            "phase2_dollars_m": round(b["phase2_dollars"] / 1e6, 1),
+            "unique_firms": len(b["_firms"]),
+        }
+        for a, b in sorted(by_agency.items(), key=lambda kv: -kv[1]["awards"])
+    }
+
+    prog = Counter((r.get("program", "") or "").upper() for r in rows)
+    sbir_n, sttr_n = prog.get("SBIR", 0), prog.get("STTR", 0)
+
+    decades: Counter = Counter()
+    mature = censored = 0
+    for r in rows:
+        yr = int(r.get("award_year") or 0)
+        if yr:
+            decades[f"{(yr // 10) * 10}s"] += 1
+            if yr >= censor_year:
+                censored += 1
+            else:
+                mature += 1
+
+    firm_counts = Counter(_norm_firm(r.get("company", "")) for r in rows)
+    top10 = firm_counts.most_common(10)
+    top10_share = round(100 * sum(c for _, c in top10) / n, 1) if n else 0.0
+
+    no_uei = sum(1 for r in rows if not (r.get("uei") or "").strip())
+
+    return {
+        "n_unique_awards": n,
+        "n_rows_pre_dedupe": len(cohort),
+        "duplicate_award_id_rows": len(cohort) - n,
+        "totals": {
+            "awards": n,
+            "phase2_dollars_m": round(
+                sum(float(r.get("award_amount") or 0.0) for r in rows) / 1e6, 1
+            ),
+            "unique_firms": len({_norm_firm(r.get("company", "")) for r in rows}),
+        },
+        "by_agency": agency_table,
+        "program_split": {
+            "SBIR": sbir_n,
+            "STTR": sttr_n,
+            "sttr_pct": round(100 * sttr_n / n, 1) if n else 0.0,
+        },
+        "by_decade": dict(sorted(decades.items())),
+        "censoring": {
+            "censor_year": censor_year,
+            "mature_awards": mature,
+            "censored_awards": censored,
+        },
+        "firm_concentration": {
+            "top10_award_share_pct": top10_share,
+            "top_firms": [{"firm": f, "awards": c} for f, c in top10],
+        },
+        "entity_resolution": {
+            "no_uei_awards": no_uei,
+            "no_uei_pct": round(100 * no_uei / n, 1) if n else 0.0,
+        },
+    }
+
+
 def write_csv(rows: list[dict], path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     if not rows:
@@ -282,6 +475,7 @@ def write_methodology_stub(
     stats: dict,
     signals_absent: list[str],
     channel_summary: dict | None,
+    external_reference: dict | None = None,
 ) -> None:
     j = stats.get("jaccard")
     c = stats.get("containment_a_in_b")
@@ -320,6 +514,42 @@ def write_methodology_stub(
         lines += ["## Transition channels (keyword cohort)", ""]
         for k, v in channel_summary.items():
             lines.append(f"- {k}: {v}")
+        lines.append("")
+    if external_reference:
+        method_a = external_reference["method_a"]
+        w = method_a["window"]
+        lines += [
+            "## External reference reconciliation",
+            "",
+            f"**{method_a['label']}** — {w['start_fy']}–{w['end_fy']}, "
+            f"{len({r['agency'] for r in method_a['rows']})} agencies",
+            "",
+            method_a["note"],
+            "",
+            "### Method A (keyword) vs reference",
+            "",
+            "| Agency | FY | Our cohort ($M) | Reference ($M) | Delta ($M) |",
+            "|---|---|---|---|---|",
+        ]
+        for r in method_a["rows"]:
+            lines.append(
+                f"| {r['agency']} | {r['fy']} | {r['our_cohort_usd'] / 1e6:.2f} | "
+                f"{r['reference_usd'] / 1e6:.2f} | {r['delta_usd'] / 1e6:+.2f} |"
+            )
+        method_b = external_reference["method_b"]
+        if method_b:
+            lines += [
+                "",
+                "### Method B (CET/taxonomy) vs reference",
+                "",
+                "| Agency | FY | Our cohort ($M) | Reference ($M) | Delta ($M) |",
+                "|---|---|---|---|---|",
+            ]
+            for r in method_b["rows"]:
+                lines.append(
+                    f"| {r['agency']} | {r['fy']} | {r['our_cohort_usd'] / 1e6:.2f} | "
+                    f"{r['reference_usd'] / 1e6:.2f} | {r['delta_usd'] / 1e6:+.2f} |"
+                )
         lines.append("")
     out.write_text("\n".join(lines), encoding="utf-8")
 
@@ -379,6 +609,70 @@ def contamination_spotcheck(
         "pure_negative_admissions": pure_neg_admitted,
         "admitted_by": dict(by),
         "sample": both[:sample],
+    }
+
+
+_NEGATORS = frozenset(
+    {
+        "no",
+        "not",
+        "without",
+        "non",
+        "neither",
+        "nor",
+        "lacks",
+        "lacking",
+        "absent",
+        "excludes",
+        "excluding",
+        "except",
+        "avoid",
+        "avoids",
+        "avoiding",
+        "rather",
+    }
+)
+_WORD_RE = re.compile(r"[a-zA-Z][a-zA-Z\-']*")
+
+
+def negation_spotcheck(
+    kw_cohort: list[dict],
+    core: list[re.Pattern],
+    soft: list[re.Pattern],
+    window: int = 4,
+    sample: int = 15,
+) -> dict:
+    """Flag admitted awards where a positive is negated in context.
+
+    Regex matching cannot read negation: ``does not involve quantum information``
+    still fires the ``quantum information`` positive. This does not change admission
+    (a diagnostic, not a veto); it quantifies a known false-positive class the
+    negative-cooccurrence spot-check misses. A positive match is flagged when a
+    negator token appears within ``window`` words immediately before it.
+    """
+    positives = core + soft
+    flagged = []
+    for r in kw_cohort:
+        text = " ".join([r["title"], r["abstract"]])
+        negated: list[str] = []
+        for pat in positives:
+            for m in pat.finditer(text):
+                pre_tokens = _WORD_RE.findall(text[: m.start()].lower())[-window:]
+                if any(tok in _NEGATORS for tok in pre_tokens):
+                    negated.append(m.group(0).lower())
+        if negated:
+            flagged.append(
+                {
+                    "award_id": r["award_id"],
+                    "company": r["company"],
+                    "admitted_by": r.get("admitted_by", ""),
+                    "negated_positive": sorted(set(negated))[:3],
+                    "title": r["title"][:120],
+                }
+            )
+    return {
+        "method_a_with_negated_positive": len(flagged),
+        "sample": flagged[:sample],
     }
 
 
@@ -448,6 +742,15 @@ def main() -> int:
     cet_cohort = build_method_b_cohort(awards, compiled_b, src_b)
     print(f"  {len(cet_cohort):,} awards matched")
 
+    ext_ref_a = external_reference_reconciliation(kw_cohort, cfg)
+    ext_ref_b = external_reference_reconciliation(cet_cohort, cfg)
+    if ext_ref_a:
+        w = ext_ref_a["window"]
+        print(
+            f"External reference reconciliation ({w['start_fy']}–{w['end_fy']}, "
+            f"{len(cfg['external_reference']['agency_map'])} agencies): computed for Method A + Method B"
+        )
+
     a_ids = {r["award_id"] for r in kw_cohort if r.get("award_id")}
     b_ids = {r["award_id"] for r in cet_cohort if r.get("award_id")}
     stats = overlap_stats(a_ids, b_ids)
@@ -479,6 +782,12 @@ def main() -> int:
         f"(pure-negative admissions={spot['pure_negative_admissions']})"
     )
 
+    negation = negation_spotcheck(enriched, core, soft)
+    print(
+        f"Negated-positive admissions in Method A (diagnostic, not vetoed): "
+        f"{negation['method_a_with_negated_positive']:,}"
+    )
+
     qdot_excluded = None
     if cfg.get("cet_id") == "quantum_information_science":
         qdot_excluded = quantum_dot_only_false_positives(awards, core, soft)
@@ -493,6 +802,18 @@ def main() -> int:
     paths.ensure_dirs()
     write_csv(enriched, paths.artifact("cohort_keyword"))
     write_csv(cet_cohort, paths.artifact("cohort_cet"))
+
+    composition = aggregate_composition(enriched)
+    paths.artifact("composition").write_text(
+        json.dumps(composition, indent=2) + "\n", encoding="utf-8"
+    )
+    if composition["duplicate_award_id_rows"]:
+        print(
+            f"Composition: {composition['n_unique_awards']:,} unique awards "
+            f"({composition['duplicate_award_id_rows']} duplicate award_id rows dropped)"
+        )
+    else:
+        print(f"Composition: {composition['n_unique_awards']:,} unique awards")
     summary = {
         "area_id": cfg["area_id"],
         "display_name": cfg["display_name"],
@@ -504,15 +825,20 @@ def main() -> int:
         "signals_absent": absent,
         "channels": channel_summary,
         "spotcheck": spot,
+        "negation_spotcheck": negation,
         "quantum_dot_well_excluded_count": qdot_excluded,
         "has_deficiency_class": bool(enriched)
         and "deficiency_class" in enriched[0],
+        "external_reference": (
+            {"method_a": ext_ref_a, "method_b": ext_ref_b} if ext_ref_a else None
+        ),
     }
     paths.artifact("overlap_summary").write_text(
         json.dumps(summary, indent=2) + "\n", encoding="utf-8"
     )
     write_methodology_stub(
-        cfg, paths.artifact("methodology_stub"), stats, absent, channel_summary
+        cfg, paths.artifact("methodology_stub"), stats, absent, channel_summary,
+        external_reference=summary["external_reference"],
     )
     print(f"Wrote {paths.report_dir}/")
     return 0

@@ -1,6 +1,5 @@
 area_id: nanotechnology
 display_name: Nanotechnology
-audience: NSET Subcommittee
 cet_id: null  # spans multiple CET areas; Method B uses method_b_terms below
 
 # Ported from scripts/data/build_nano_cohort.py KEYWORD_PATTERNS (PR #428)
@@ -70,6 +69,47 @@ cpc_prefixes:
   - B82Y
   - B82B
 
+# WS5c sector go-to-market registries applicable to this area (gates
+# nano_ws5c_sector_registries.py). Nanotech has a biomedical/HHS-funded slice,
+# so the clinical-trial and FDA 510(k) channels apply.
+sector_registries:
+  - clinical_trials  # ClinicalTrials.gov lead-sponsor
+  - fda_510k         # openFDA 510(k) applicant
+
+# Independent, hand-transcribed cross-check against a published federal budget
+# summary (agency nanotech SBIR/STTR obligations by fiscal year). Approximate
+# values only — not extracted line-by-line from the source document, and the
+# source's own agency-identification methodology is unpublished, so exact
+# reconciliation against our text-based cohort is not expected. Reported as an
+# unverified reference, not ground truth. Values in USD.
 external_reference:
-  name: NNI Table 5
-  note: Hand-maintained in build_nano_cohort.py; not loaded by v1 CLI
+  label: Published federal budget reference (unverified)
+  note: >-
+    Approximate values transcribed from a public agency budget summary, not
+    extracted from the source document line-by-line. The source's own
+    agency-identification methodology is unpublished, so this analysis's
+    text-based classification will not reconcile exactly against it — the gap
+    itself is informative, not an error to close.
+  window:
+    start_fy: 2020
+    end_fy: 2023
+  agency_map:
+    National Science Foundation: NSF
+    Department of Health and Human Services: NIH/DHHS
+    Department of Defense: DoD
+    Department of Energy: DOE
+    National Aeronautics and Space Administration: NASA
+    Department of Commerce: DOC/NIST
+    Environmental Protection Agency: EPA
+    Department of Agriculture: USDA
+    Department of Transportation: DOT
+  by_agency_fy_usd:
+    NSF: {2020: 43000000, 2021: 46000000, 2022: 48000000, 2023: 50000000}
+    NIH/DHHS: {2020: 70000000, 2021: 74000000, 2022: 77000000, 2023: 80000000}
+    DoD: {2020: 55000000, 2021: 58000000, 2022: 61000000, 2023: 65000000}
+    DOE: {2020: 12000000, 2021: 12500000, 2022: 13000000, 2023: 15000000}
+    NASA: {2020: 6500000, 2021: 7000000, 2022: 7500000, 2023: 8000000}
+    DOC/NIST: {2020: 2500000, 2021: 2700000, 2022: 2900000, 2023: 3000000}
+    EPA: {2020: 800000, 2021: 850000, 2022: 900000, 2023: 1000000}
+    USDA: {2020: 3500000, 2021: 4000000, 2022: 4500000, 2023: 5000000}
+    DOT: {2020: 2000000, 2021: 2200000, 2022: 2400000, 2023: 3000000}

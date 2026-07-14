@@ -18,17 +18,22 @@ CREDENTIAL: needs SAM_GOV_API_KEY (env or repo-root .env). SAM keys are tied to
 a SAM.gov login and cannot be self-issued; without one this script exits with a
 clear message and no partial output. Key lifecycle: ~60-day expiry.
 
+Path convention (same as nano_form_d_temporal.py / nano_ws1):
+  --area <id>   → data/reports/<id>/sam_status.csv
+  (no flag)     → data/nano_sam_status.csv  (legacy PR #428)
+
 Inputs:
-  data/nano_cohort_keyword.csv, data/nano_no_uei_resolution.csv
+  cohort_keyword.csv (area-scoped), no_uei_resolution.csv (area-scoped)
   SAM Entity API (cached: data/api_cache/sam_status/)
 
 Outputs:
-  data/nano_sam_status.csv
+  sam_status.csv
 
 Usage:
-  python scripts/data/nano_ws5b_sam_status.py
+  python scripts/data/nano_ws5b_sam_status.py [--area AREA] [--legacy]
 """
 
+import argparse
 import csv
 import json
 import os
@@ -43,6 +48,12 @@ DATA = REPO / "data"
 CACHE = DATA / "api_cache/sam_status"
 API = "https://api.sam.gov/entity-information/v3/entities"
 KEY_ENV = "SAM_GOV_API_KEY"
+
+sys.path.insert(0, str(REPO))
+from sbir_etl.utils.transition_report_paths import (  # noqa: E402
+    add_area_args,
+    resolve_area_paths,
+)
 
 
 def resolve_key() -> str | None:
@@ -96,7 +107,12 @@ def fetch_entity(uei: str, api_key: str) -> dict:
     return payload
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    add_area_args(parser)
+    args = parser.parse_args(argv)
+    paths = resolve_area_paths(args, argv)
+
     api_key = resolve_key()
     if not api_key:
         print(
@@ -110,11 +126,11 @@ def main() -> int:
 
     csv.field_size_limit(sys.maxsize)
     ueis: dict[str, str] = {}  # uei -> a company label
-    for r in csv.DictReader(open(DATA / "nano_cohort_keyword.csv", newline="", encoding="utf-8")):
+    for r in csv.DictReader(open(paths.artifact("cohort_keyword"), newline="", encoding="utf-8")):
         u = (r.get("uei") or "").strip()
         if u:
             ueis.setdefault(u, r["company"])
-    res_path = DATA / "nano_no_uei_resolution.csv"
+    res_path = paths.artifact("no_uei_resolution")
     if res_path.exists():
         for r in csv.DictReader(open(res_path, newline="", encoding="utf-8")):
             if r["resolution_confidence"] in ("high", "medium"):
@@ -141,7 +157,7 @@ def main() -> int:
         if i % 100 == 0:
             print(f"  {i}/{len(ueis)}")
 
-    out_csv = DATA / "nano_sam_status.csv"
+    out_csv = paths.artifact("sam_status")
     with open(out_csv, "w", newline="", encoding="utf-8") as f:
         w = csv.DictWriter(f, fieldnames=list(out_rows[0].keys()))
         w.writeheader()

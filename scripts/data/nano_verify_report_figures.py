@@ -9,21 +9,34 @@ This does not re-verify manually-researched figures with no local source
 against primary SEC filings directly, not derived from a script) but does
 check their internal arithmetic (value / cumulative SBIR = stated multiple).
 
+Path convention (same as nano_form_d_temporal.py / nano_ws1):
+  --area <id>   → reads data/reports/<id>/<stem>.csv
+  (no flag)     → reads data/nano_*.csv  (legacy PR #428)
+
+The report's expected values are nanotech-specific, so --area is mainly a
+forward-compat hook for after the nanotech legacy cutover.
+
 Usage:
-  python scripts/data/nano_verify_report_figures.py
+  python scripts/data/nano_verify_report_figures.py [--area AREA] [--legacy]
 """
 
+import argparse
 import csv
 import sys
 from collections import Counter
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
-DATA = REPO / "data"
 sys.path.insert(0, str(REPO))
+from sbir_etl.utils.transition_report_paths import (  # noqa: E402
+    ReportPaths,
+    add_area_args,
+    resolve_area_paths,
+)
 
 csv.field_size_limit(sys.maxsize)
 FAILS: list[str] = []
+PATHS: ReportPaths | None = None  # set in main(); load() resolves artifacts through it
 
 
 def check(label: str, actual, expected, tol=0.0):
@@ -35,14 +48,22 @@ def check(label: str, actual, expected, tol=0.0):
 
 
 def load(name: str) -> list[dict]:
-    return list(csv.DictReader(open(DATA / f"{name}.csv", newline="", encoding="utf-8")))
+    # Call sites pass legacy nano_* names; map to the logical artifact stem.
+    stem = name.removeprefix("nano_")
+    return list(csv.DictReader(open(PATHS.artifact(stem), newline="", encoding="utf-8")))
 
 
 def pct(n, d):
     return 100 * n / d if d else 0.0
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
+    global PATHS
+    parser = argparse.ArgumentParser(description=__doc__)
+    add_area_args(parser)
+    args = parser.parse_args(argv)
+    PATHS = resolve_area_paths(args, argv)
+
     print("=" * 78)
     print("SECTION: Summary / Cohort")
     print("=" * 78)

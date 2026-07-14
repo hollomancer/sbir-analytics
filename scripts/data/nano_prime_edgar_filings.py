@@ -13,12 +13,16 @@ Targets:
   each with a manually scoped EDGAR search window. The CSV is not read at
   runtime; edit TARGETS to add or rescope a deal.
 
+Path convention (same as nano_form_d_temporal.py / nano_ws1):
+  --area <id>   → data/reports/<id>/prime_edgar_text.jsonl (+ prime_deal_terms.csv)
+  (no flag)     → data/nano_prime_edgar_text.jsonl  (legacy PR #428)
+
 Outputs:
-  data/nano_prime_edgar_text.jsonl    — one record per filing fetched
-  data/nano_prime_deal_terms.csv      — extracted deal terms per acquisition
+  prime_edgar_text.jsonl    — one record per filing fetched
+  prime_deal_terms.csv      — extracted deal terms per acquisition
 
 Usage:
-  python scripts/data/nano_prime_edgar_filings.py [--contact-email EMAIL]
+  python scripts/data/nano_prime_edgar_filings.py [--area AREA] [--legacy] [--contact-email EMAIL]
 """
 
 import argparse
@@ -33,7 +37,12 @@ from urllib.request import Request, urlopen
 from urllib.error import HTTPError, URLError
 
 REPO = Path(__file__).resolve().parents[2]
-DATA = REPO / "data"
+
+sys.path.insert(0, str(REPO))
+from sbir_etl.utils.transition_report_paths import (  # noqa: E402
+    add_area_args,
+    resolve_area_paths,
+)
 
 EDGAR_EFTS = "https://efts.sec.gov/LATEST/search-index"
 EDGAR_ARCHIVES = "https://www.sec.gov/Archives/edgar/data"
@@ -300,13 +309,15 @@ def extract_deal_terms(firm: str, text: str) -> dict:
 def main() -> int:
     global UA
     parser = argparse.ArgumentParser(description=__doc__)
+    add_area_args(parser)
     parser.add_argument("--contact-email", default="conrad@hollomon.dev",
                         help="Email for SEC User-Agent")
     args = parser.parse_args()
+    paths = resolve_area_paths(args)
     UA = f"SBIR-Analytics/0.1.0 ({args.contact_email})"
 
-    out_jsonl = DATA / "nano_prime_edgar_text.jsonl"
-    out_csv = DATA / "nano_prime_deal_terms.csv"
+    out_jsonl = paths.artifact("prime_edgar_text")
+    out_csv = paths.artifact("prime_deal_terms")
 
     results: list[dict] = []
 

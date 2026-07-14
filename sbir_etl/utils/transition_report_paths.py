@@ -16,16 +16,19 @@ stay under ``data/`` and are shared across areas.
 
 Legacy nanotech layout
 ----------------------
-PR #428 wrote ``data/nano_*.csv``. ``ReportPaths.legacy_nano()`` maps the same
-logical stems onto those filenames so existing ``nano_*`` scripts can migrate
-incrementally via ``--area nanotechnology --legacy``.
+The nanotech cohort originally wrote ``data/nano_*.csv`` directly. As of the
+default cutover, unflagged invocation now uses the area layout
+(``data/reports/nanotechnology/``) like every other area. ``--legacy`` (or
+``ReportPaths.legacy_nano()``) opts back into the old ``data/nano_*`` paths —
+kept as an escape hatch, not the default.
 """
 
 from __future__ import annotations
 
-import sys
 from dataclasses import dataclass
 from pathlib import Path
+
+import yaml
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DATA = REPO_ROOT / "data"
@@ -54,7 +57,11 @@ ARTIFACT_STEMS = {
     "subaward_leverage": "subaward_leverage.csv",
     "ma_signal": "ma_signal.csv",
     "prime_acquisitions": "prime_acquisitions.csv",
+    "prime_edgar_text": "prime_edgar_text.jsonl",
+    "prime_deal_terms": "prime_deal_terms.csv",
+    "dark_firm_maintenance_lapses": "dark_firm_maintenance_lapses.csv",
     "overlap_summary": "overlap_summary.json",
+    "composition": "composition.json",
     "methodology_stub": "methodology_stub.md",
 }
 
@@ -80,6 +87,9 @@ LEGACY_NANO_STEMS = {
     "subaward_leverage": "nano_subaward_leverage.csv",
     "ma_signal": "nano_ma_signal.csv",
     "prime_acquisitions": "nano_prime_acquisitions.csv",
+    "prime_edgar_text": "nano_prime_edgar_text.jsonl",
+    "prime_deal_terms": "nano_prime_deal_terms.csv",
+    "dark_firm_maintenance_lapses": "nano_dark_firm_maintenance_lapses.csv",
 }
 
 
@@ -105,6 +115,21 @@ class ReportPaths:
     @property
     def config_path(self) -> Path:
         return CONFIG_DIR / f"{self.area_id}.yaml"
+
+    def load_config(self) -> dict:
+        """Load the area YAML config (config/transition_reports/<area>.yaml).
+
+        Used by area-gated work streams (e.g. WS5c sector registries) to decide
+        whether they apply to the area at all.
+        """
+        if not self.config_path.exists():
+            raise FileNotFoundError(
+                f"No area config at {self.config_path}. "
+                f"Add config/transition_reports/{self.area_id}.yaml"
+            )
+        cfg = yaml.safe_load(self.config_path.read_text(encoding="utf-8")) or {}
+        cfg.setdefault("area_id", self.area_id)
+        return cfg
 
     def artifact(self, stem: str) -> Path:
         """Return path for a logical artifact stem (see ARTIFACT_STEMS)."""
@@ -143,21 +168,26 @@ def add_area_args(parser) -> None:
     parser.add_argument(
         "--legacy",
         action="store_true",
-        help="Read/write PR #428 data/nano_*.csv paths (nanotechnology only)",
+        help="Read/write the pre-cutover data/nano_*.csv paths (nanotechnology only)",
     )
 
 
 def resolve_area_paths(args, argv: list[str] | None = None) -> ReportPaths:
     """Resolve ReportPaths from parsed args (Form D / WS1 / WS2 convention).
 
-    Unflagged ``nano_*.py`` invocation (no ``--area``) keeps PR #428
-    ``data/nano_*`` paths. Explicit ``--area X`` uses ``data/reports/X/``
-    unless ``--legacy`` is also set.
+    Default (unflagged, or explicit ``--area X``) uses the area layout
+    ``data/reports/<area_id>/``; unflagged invocation resolves to
+    ``area_id=nanotechnology`` via ``--area``'s own argparse default. Pass
+    ``--legacy`` to read/write the pre-cutover ``data/nano_*`` paths instead
+    (nanotechnology only) — an explicit opt-out, not the default.
+
+    ``argv`` is accepted for call-site consistency with earlier callers but is
+    no longer inspected: the legacy/area choice now depends only on
+    ``args.legacy``.
     """
-    argv = argv if argv is not None else sys.argv[1:]
-    area_flagged = any(a == "--area" or a.startswith("--area=") for a in argv)
-    legacy = bool(getattr(args, "legacy", False) or not area_flagged)
-    area_id = "nanotechnology" if legacy else args.area
+    del argv
+    legacy = bool(getattr(args, "legacy", False))
+    area_id = getattr(args, "area", None) or "nanotechnology"
     paths = ReportPaths.for_area(area_id, legacy=legacy)
     paths.ensure_dirs()
     return paths

@@ -1,14 +1,14 @@
 # Tech-Area Transition Report — Publication Format (policy leaders)
 
 **Status:** normative — **accepted** for all area reports  
-**Default NSET-facing deliverable:** `docs/<area>_sbir_policy_brief.md`  
+**Default policy-leader-facing deliverable:** `docs/<area>_sbir_policy_brief.md`  
 **Applies to:** policy briefs (required) + technical findings (appendix) + methodology stubs
 
 ## Two-layer model
 
 | Layer | Audience | File pattern | Content |
 |-------|----------|--------------|---------|
-| **Policy brief** (default) | S&T policy leaders, NSET reviewers | `docs/<area>_sbir_policy_brief.md` | Decisions, headline table, interpretations, language guardrails |
+| **Policy brief** (default) | S&T policy leaders | `docs/<area>_sbir_policy_brief.md` | Decisions, headline table, interpretations, language guardrails |
 | **Technical findings** | Analysts, reproducibility | `docs/<area>_sbir_transition_findings.md` | Full evidence, instrument detail, methodological notes |
 | **Appendix** | Implementers | `docs/<area>_phase3_methodology.md` or `data/reports/<area>/methodology_stub.md` | Cohort defs, matching rules, confidence tiers, CLI |
 

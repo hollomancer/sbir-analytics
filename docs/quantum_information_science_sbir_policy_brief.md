@@ -12,16 +12,18 @@
 
 Quantum information science (QIS) is a **small, young, and instrument-sensitive** slice of SBIR Phase II. Policy leaders can safely use the cohort counts and agency composition below for scoping and definitional discipline. **Do not** treat missing transition metrics as zero performance — shared signal artifacts were not loaded in this run.
 
-For **138** Phase II awards (Method A keyword pack, 0.20% of the 68,077-award universe):
+For **137** Phase II awards (Method A keyword pack, deduplicated; 0.20% of the 68,077-award universe):
 
 | Measure | Result | How to use it |
 |---|---:|---|
-| Method A cohort (keyword pack) | 138 awards, 82 firms, ~$150M | Primary defensible QIS count; state instrument in every headline |
+| Method A cohort (keyword pack) | 137 unique awards, 81 firms, ~$149M | Primary defensible QIS count; state instrument in every headline |
 | Share of all Phase II awards | 0.20% | Domain prevalence — not a filter error vs nanotech |
 | Method A ⊆ Method B (CET) | 87.4% containment | CET and keyword pack largely agree; inspect B-only residual |
-| DoD + DOE share of awards | 82.6% | Expect procurement-heavy outcomes once channels are computed |
+| DoD + DOE share of awards | 82.5% | Expect procurement-heavy outcomes once channels are computed |
 | Awards from 2023 onward | 41 (30%) | Right-censored — not commercialization failures |
 | FPDS / Form D / M&A channels | **Not computed** | Absent artifacts — do not report 0% |
+
+*The keyword-matching step itself flags 138 award rows; 1 is a true duplicate (dropped here), 1 other award_id is shared by two real, distinct awards (both kept). See the technical appendix for the row-vs-unique-award distinction.*
 
 **Policy interpretation.** QIS SBIR is too small and too recent for a single aggregate transition rate even after signals are restored. Future reporting should lead with channel-specific columns and explicit small-N caveats.
 
@@ -51,11 +53,11 @@ A naive `quantum` text probe hits ~1,100 Phase II awards; **185** are quantum-do
 
 | Agency | Awards | Share | Phase II $ (M) |
 |--------|-------:|------:|-----------------:|
-| Department of Defense | 82 | 59.4% | 90.9 |
-| Department of Energy | 32 | 23.2% | 39.9 |
-| NASA | 13 | 9.4% | 9.9 |
-| NSF | 6 | 4.3% | 4.9 |
-| Other | 5 | 3.6% | 5.3 |
+| Department of Defense | 81 | 59.1% | 90.2 |
+| Department of Energy | 32 | 23.4% | 39.9 |
+| NASA | 13 | 9.5% | 9.9 |
+| NSF | 6 | 4.4% | 4.9 |
+| Other | 5 | 3.6% | 4.3 |
 
 NSF is only six awards — too few for nanotech-style NSF vs DoD pathway splits. When channels exist, prioritize **FPDS + contract-level recovery (WS1)** over Form D for this cohort.
 
@@ -63,17 +65,17 @@ NSF is only six awards — too few for nanotech-style NSF vs DoD pathway splits.
 
 ## Finding 3: Recency and small N constrain what leaders can ask next
 
-- **64%** of awards are from the 2020s; **30%** are 2023+.
-- Top 10 firms = **38%** of awards — pathway statistics will be firm-sensitive.
+- **65%** of awards are from the 2020s; **30%** are 2023+.
+- Top 10 firms = **39%** of awards — pathway statistics will be firm-sensitive.
 
 **Policy interpretation.** Use **4–7 year evaluation windows** (per nanotech policy brief) and right-censor recent awards before any QIS dashboard goes to leaders.
 
 ## What policy leaders should take away (now)
 
-1. **Scope QIS SBIR honestly** — 138 awards, not “all quantum mentions.”
+1. **Scope QIS SBIR honestly** — 137 awards, not “all quantum mentions.”
 2. **Do not demand one QIS transition rate** when channel data arrive; report channels separately with small-N warnings.
 3. **Restore shared signal artifacts** (prospect digest, Form D, M&A) before any outcome comparison to nanotech.
-4. **State the instrument** beside every count shown to NSET or agency principals.
+4. **State the instrument** beside every count shown to policy leaders or agency principals.
 
 ## Language to avoid (even in provisional form)
 

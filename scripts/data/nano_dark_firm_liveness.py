@@ -27,8 +27,15 @@ check USPTO patent records for evidence the firm remained active:
 "Filed post-award" means the firm's latest matched filing year exceeds its
 first Phase II award year — activity evidence, not survival-to-present.
 
+Path convention (same as nano_form_d_temporal.py / nano_ws1):
+  --area <id>   → data/reports/<id>/dark_firm_liveness.csv
+  (no flag)     → data/nano_dark_firm_liveness.csv  (legacy PR #428)
+
+The cohort input is area-scoped; the SBIR bulk CSV, B82 extract, and USPTO
+PatentsView zips are shared global inputs and stay under data/.
+
 Inputs:
-  data/nano_cohort_keyword.csv                              — deficiency classes
+  cohort_keyword.csv / nano_cohort_keyword.csv             — deficiency classes
   data/raw/sbir/award_data.csv                              — firm states + PI names
   data/processed/uspto/b82_patents.csv                      — B82 extract
   data/raw/uspto/patentsview/g_assignee_disambiguated.tsv.zip
@@ -37,12 +44,13 @@ Inputs:
   data/raw/uspto/patentsview/g_inventor_disambiguated.tsv.zip
 
 Outputs:
-  data/nano_dark_firm_liveness.csv — one row per dark firm
+  dark_firm_liveness.csv — one row per dark firm
 
 Usage:
-  python scripts/data/nano_dark_firm_liveness.py
+  python scripts/data/nano_dark_firm_liveness.py [--area AREA] [--legacy]
 """
 
+import argparse
 import csv
 import io
 import sys
@@ -56,6 +64,10 @@ RAW = DATA / "raw/uspto/patentsview"
 
 sys.path.insert(0, str(REPO))
 from sbir_etl.utils.text_normalization import normalize_name  # noqa: E402
+from sbir_etl.utils.transition_report_paths import (  # noqa: E402
+    add_area_args,
+    resolve_area_paths,
+)
 
 DARK_BUCKETS = ("FIRM_ACTIVITY_ABSENT", "ENTITY_RESOLUTION_FAILURE")
 
@@ -114,8 +126,13 @@ def tsv_rows(zip_path: Path):
             yield idx, row
 
 
-def main() -> int:
-    cohort_csv = DATA / "nano_cohort_keyword.csv"
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    add_area_args(parser)
+    args = parser.parse_args(argv)
+    paths = resolve_area_paths(args, argv)
+
+    cohort_csv = paths.artifact("cohort_keyword")
     awards_csv = DATA / "raw/sbir/award_data.csv"
     b82_csv = DATA / "processed/uspto/b82_patents.csv"
     assignee_zip = RAW / "g_assignee_disambiguated.tsv.zip"
@@ -123,7 +140,7 @@ def main() -> int:
     location_zip = RAW / "g_location_disambiguated.tsv.zip"
     inventor_zip = RAW / "g_inventor_disambiguated.tsv.zip"
     required = {
-        cohort_csv: "run scripts/data/build_nano_cohort.py first",
+        cohort_csv: f"run build_tech_area_cohort.py --area {paths.area_id} first",
         awards_csv: "SBIR.gov bulk CSV expected at this path",
         b82_csv: "run scripts/data/extract_b82_patents.py first",
         assignee_zip: "download via download_uspto.py --table assignee --local " + str(RAW),
@@ -135,6 +152,12 @@ def main() -> int:
         if not p.exists():
             print(f"ERROR: {p} not found — {hint}", file=sys.stderr)
             return 1
+
+    out_csv = paths.artifact("dark_firm_liveness")
+    print(
+        f"area={paths.area_id}{', legacy' if paths.legacy else ''}  out={out_csv}",
+        file=sys.stderr,
+    )
 
     print("Loading dark-bucket firms from keyword cohort...")
     csv.field_size_limit(sys.maxsize)
@@ -256,7 +279,6 @@ def main() -> int:
             tier = "low"
         return state_match, pi_match, name_generic, tier
 
-    out_csv = DATA / "nano_dark_firm_liveness.csv"
     fields = ["company", "normalized_name", "name_tokens", "bucket", "awards_n",
               "first_award_year", "b82_patents_n", "b82_filed_post_award",
               "any_patents_n", "any_latest_filing_year", "any_filed_post_award",
