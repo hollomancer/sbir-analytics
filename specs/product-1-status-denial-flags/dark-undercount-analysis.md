@@ -87,9 +87,13 @@ Replacing the ~1,000 model with data requires the recipient contract universe + 
 - **Feasible:** per-firm `spending_by_award` over 8,090 UEIs (100/page). Heavy firms ~5–7 pages
   (Physical Sciences 664 contracts, Charles River 445); most firms 1–3. Estimated **~15,000–25,000
   requests, ~2–3 hours**, cached — yielding a ~200–400k-contract recipient universe.
-- **Potential ~10× cut:** pre-filter to non-competed contracts (the FPDS 6.302-5 signal maps to
-  USAspending's `extent_competed` / `other_than_full_and_open` columns) — worth confirming the filter
-  works before the full run.
+- **Sole-source pre-filter — tested, unsafe (do not use).** A non-competed
+  (`extent_competed_type_codes=[B,C,G]`) filter cuts per-firm volume ~10-40× (Physical Sciences
+  664→29, Charles River 445→11), but only **43% recall** on known Phase III (911 "SBIR PHASE III"
+  contracts → 395 survive): USAspending's `extent_competed` is heavily **null** (same gap as the
+  `research` field), and the filter drops the nulls — i.e. it discards most real Phase III. The
+  full per-firm pull (no competition pre-filter) is required; scope reduction must come from the
+  recipient list, not competition.
 
 ## Bottom line
 - **Visible:** 141 flags / $244M — verified, but ~1/8 of the story.
