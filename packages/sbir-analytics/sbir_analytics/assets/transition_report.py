@@ -22,6 +22,7 @@ emit metadata + checks rather than returning IO-managed frames.
 from __future__ import annotations
 
 import json
+import shlex
 import subprocess
 import sys
 from pathlib import Path
@@ -126,14 +127,17 @@ def _run_cohort_build(area_id: str, log: Any) -> Path:
     repo = _repo_root()
     script = repo / "scripts" / "data" / "build_tech_area_cohort.py"
     cmd = [sys.executable, str(script), "--area", area_id]
-    log.info(f"[tech_area_cohort] {' '.join(cmd)}")
+    log.info(f"[tech_area_cohort] {shlex.join(cmd)}")
     proc = subprocess.run(cmd, cwd=str(repo), capture_output=True, text=True)
     if proc.stdout:
-        log.info(proc.stdout[-4000:])
+        log.info(f"[tech_area_cohort:{area_id}] stdout tail:\n{proc.stdout[-4000:]}")
+    if proc.stderr:
+        log.info(f"[tech_area_cohort:{area_id}] stderr tail:\n{proc.stderr[-4000:]}")
     if proc.returncode != 0:
         raise RuntimeError(
-            f"build_tech_area_cohort.py failed for area={area_id} "
-            f"(exit {proc.returncode}):\n{proc.stderr[-4000:]}"
+            f"build_tech_area_cohort.py failed for area={area_id} (exit {proc.returncode}).\n"
+            f"stdout tail:\n{proc.stdout[-2000:]}\n"
+            f"stderr tail:\n{proc.stderr[-2000:]}"
         )
     return repo / "data" / "reports" / area_id
 
@@ -149,14 +153,18 @@ def _make_cohort_asset(area_id: str) -> Any:
             "artifacts under data/reports/<area>/."
         ),
     )
-    def _cohort(context: Any) -> Output:
+    # NOTE: `context` is intentionally left unannotated — Dagster rejects an
+    # explicit `Any` annotation on the context parameter.
+    def _cohort(context) -> Output:
         report_dir = _run_cohort_build(area_id, context.log)
         summary = _read_json(report_dir / "overlap_summary.json")
         composition = _read_json(report_dir / "composition.json")
         metrics = _cohort_metrics(summary, composition)
-        if not metrics["method_a_awards"]:
+        n = metrics["method_a_awards"]
+        if not n:
             raise RuntimeError(
-                f"tech_area_cohort_{area_id}: builder produced an empty cohort (method_a_awards=0)"
+                f"tech_area_cohort_{area_id}: builder produced an empty/invalid cohort "
+                f"(method_a_awards={n!r})"
             )
         metadata = {k: v for k, v in metrics.items() if v is not None}
         metadata["report_dir"] = str(report_dir)
@@ -170,7 +178,7 @@ def _make_cohort_check(area_id: str) -> Any:
         asset=f"tech_area_cohort_{area_id}",
         description="Cohort is non-empty and carries a deficiency_class column.",
     )
-    def _check(context: Any) -> AssetCheckResult:
+    def _check(context) -> AssetCheckResult:
         report_dir = _repo_root() / "data" / "reports" / area_id
         summ_path = report_dir / "overlap_summary.json"
         comp_path = report_dir / "composition.json"
@@ -198,14 +206,10 @@ def _make_cohort_check(area_id: str) -> Any:
     return _check
 
 
-# One asset + one non-empty check per area (explicit module globals so Dagster's
-# load_assets_from_modules / load_asset_checks_from_modules discover them).
-tech_area_cohort_nanotechnology = _make_cohort_asset("nanotechnology")
-tech_area_cohort_quantum_information_science = _make_cohort_asset("quantum_information_science")
-tech_area_cohort_hypersonics = _make_cohort_asset("hypersonics")
-
-tech_area_cohort_nanotechnology_nonempty = _make_cohort_check("nanotechnology")
-tech_area_cohort_quantum_information_science_nonempty = _make_cohort_check(
-    "quantum_information_science"
-)
-tech_area_cohort_hypersonics_nonempty = _make_cohort_check("hypersonics")
+# One asset + one non-empty check per area, generated from TECH_AREAS (single
+# source of truth). Bound to module globals so Dagster's load_assets_from_modules
+# / load_asset_checks_from_modules discover them.
+for _area in TECH_AREAS:
+    globals()[f"tech_area_cohort_{_area}"] = _make_cohort_asset(_area)
+    globals()[f"tech_area_cohort_{_area}_nonempty"] = _make_cohort_check(_area)
+del _area
