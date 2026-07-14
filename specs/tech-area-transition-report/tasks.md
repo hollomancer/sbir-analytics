@@ -72,7 +72,14 @@
       cohort builder that `build_tech_area_cohort.py` replaces; migrating it would
       create two builders both writing the area cohort.
 - [ ] T8 Optional Method C for quantum (`G06N10`) once CPC extract is generalized
-- [ ] T9 Dagster asset wrapper (only after CLI is stable across ≥3 areas)
+- [x] T9 Dagster asset wrapper (CLI now stable across the 3 areas + cutover done)
+      — `packages/sbir-analytics/sbir_analytics/assets/transition_report.py`: one
+      `tech_area_cohort_<area>` asset + non-empty check per area (group
+      `transition_reports`), auto-discovered by `load_assets_from_modules`. Each
+      asset shells out to `build_tech_area_cohort.py` (the bit-exact-verified
+      builder, left untouched) and surfaces cohort metrics from
+      `overlap_summary.json` + `composition.json` as Dagster metadata. Pure
+      `_cohort_metrics` helper unit-tested; module carries a Dagster import shim.
 - [ ] T19 When digest / Form D / M&A exist: extend Q/H policy-brief headline tables with
       channel rows (`Measure | Result | How to use it`) + Policy interpretation blocks;
       hypersonics prioritizes WS1 + WS5a over Form D; quantum keeps small-N caveats
