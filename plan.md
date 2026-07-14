@@ -168,3 +168,21 @@ Ran `scripts/phase3_benchmark/m0a_spike_fy2022.py` (one FY shard) to de-risk bef
 - **Refinement for the full run:** join on the FULL compound key (order PIID + parent PIID + agency),
   not order-PIID alone — a loose join biases toward false uncoded flags. The ~1/25 miss is a lower
   bound from the spike's per-UEI presence check, not the production compound join.
+
+## M0a — EXECUTED (full pull, FY2016–2025 DoD)
+Ran the hybrid: FPDS-ATOM coded pull + USAspending description ground-truth + compound-key join.
+- **Coded Phase III universe:** 28,264 SR3/ST3 transactions → **6,351 distinct coded awards** to
+  **1,487 DoD firms** (2,835 requests, ~45 min, cached). ~78% of transactions were mod/txn dups —
+  award-grain dedup essential.
+- **Undercount (first real number):** of **962** DoD contracts described "SBIR PHASE III", **141
+  (14.7%) lack the SR3/ST3 code** (strict == loose compound-key join). By sub-agency: Navy 19%,
+  DCMA 19%, Army 15%, Air Force 13%; MDA/DHA/DTRA 0%.
+- **A lower bound:** description-matching finds only ~12% of coded Phase III (792 of 6,351 coded
+  awards say "PHASE III"), so 14.7% counts only the *obvious* miscoded cases. The dark undercount
+  (Phase III with neither the phrase nor the code) needs Product 1 inferential flags over the full
+  8,090-firm universe — still deferred.
+- Outputs (gitignored): `m0a_coded_dod.parquet`, `m0a_desc_phase3_dod.parquet`,
+  **`m0a_status_denial_flags.parquet`** (the 141 uncoded flags, with nullable `disposition`),
+  `m0a_undercount_summary.json`. Scripts: `scripts/phase3_benchmark/m0a_*.py`.
+- **Data note:** FY2025 coded awards (1,655) run high vs the trend (FY2024 = 907) — verify before
+  citing per-FY; does not affect the description-set undercount.
