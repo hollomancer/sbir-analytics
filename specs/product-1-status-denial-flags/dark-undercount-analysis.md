@@ -95,6 +95,21 @@ Replacing the ~1,000 model with data requires the recipient contract universe + 
   full per-firm pull (no competition pre-filter) is required; scope reduction must come from the
   recipient list, not competition.
 
+## Every cheap shortcut has been tested and ruled out
+The dark layer cannot be scoped down; the full per-firm pull is the only remaining path. What was tried:
+
+| Shortcut | Idea | Result | Why it fails |
+|---|---|---|---|
+| USAspending `Research` field | Read the 10Q code from bulk USAspending | ❌ | Column exists but is **null** even for "SBIR PHASE III" descriptions (0/40) |
+| Description matching | Find Phase III by "SBIR PHASE III" text | ⚠️ partial | Only catches **~12% of coded** Phase III; misses the silent majority |
+| Bulk-all-DoD download | One big file, filter locally | ❌ | **36.5M** contracts FY2016–2025 |
+| Global FPDS authority pull | Query FAR 6.302-5 sole-source | ❌ | Authority **not SBIR-exclusive**; volume unbounded |
+| Per-firm FPDS ATOM | Pull each firm's contracts from FPDS | ❌ | ~1–2 min/firm → **~130 h** for 8,090 firms |
+| Sole-source pre-filter | `extent_competed=[B,C,G]` to cut ~10× | ❌ | **43% recall** — `extent_competed` is null-heavy, drops real Phase III |
+
+**Only path left:** per-firm USAspending `spending_by_award` over the 8,090 recipient UEIs
+(~15–25k requests, ~2–3 h), then inference. No further scoping is available.
+
 ## Bottom line
 - **Visible:** 141 flags / $244M — verified, but ~1/8 of the story.
 - **Dark:** ~1,000 (robust across stratifications, a floor) — the majority of the undercount, reachable
