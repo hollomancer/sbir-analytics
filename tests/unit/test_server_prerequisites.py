@@ -10,10 +10,17 @@ from pathlib import Path
 import pytest
 
 
-pytestmark = [pytest.mark.fast, pytest.mark.unit]
-
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = REPO_ROOT / "scripts" / "server" / "check-prerequisites.sh"
+
+pytestmark = [
+    pytest.mark.fast,
+    pytest.mark.unit,
+    pytest.mark.skipif(
+        not SCRIPT.is_file(),
+        reason="server prerequisite script not present in this environment",
+    ),
+]
 
 GOOD_ENV = """
 SERVER_LOOPBACK=127.0.0.1
@@ -52,7 +59,9 @@ def test_rejects_non_loopback_binding(tmp_path):
 
 def test_rejects_placeholder_neo4j_password(tmp_path):
     env_file = tmp_path / ".env.server"
-    env_file.write_text(GOOD_ENV.replace("NEO4J_PASSWORD=a-real-password", "NEO4J_PASSWORD=change_me"))
+    env_file.write_text(
+        GOOD_ENV.replace("NEO4J_PASSWORD=a-real-password", "NEO4J_PASSWORD=change_me")
+    )
     result = _run(env_file)
     assert result.returncode == 1
 
