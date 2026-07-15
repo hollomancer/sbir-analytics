@@ -39,6 +39,7 @@ class BenchmarkStatus(str, Enum):
     PASS = "pass"  # nosec B105 - enum value, not a credential
     FAIL = "fail"
     NOT_APPLICABLE = "not_applicable"
+    NOT_EVALUABLE = "not_evaluable"  # subject to the benchmark, but input data absent
 
 
 class ConsequenceType(str, Enum):
@@ -228,6 +229,10 @@ class BenchmarkEvaluationSummary:
     companies_failing_transition: int
     companies_failing_commercialization: int
 
+    # False when no commercialization data was supplied: subject companies are
+    # then NOT_EVALUABLE rather than FAIL (absence of evidence is not failure).
+    commercialization_data_supplied: bool = True
+
     transition_results: list[TransitionRateResult] = field(default_factory=list)
     commercialization_results: list[CommercializationRateResult] = field(default_factory=list)
     sensitivity_results: list[SensitivityResult] = field(default_factory=list)
@@ -247,6 +252,7 @@ class BenchmarkEvaluationSummary:
             "companies_subject_to_commercialization": self.companies_subject_to_commercialization,
             "companies_failing_transition": self.companies_failing_transition,
             "companies_failing_commercialization": self.companies_failing_commercialization,
+            "commercialization_data_supplied": self.commercialization_data_supplied,
             "transition_results": [r.to_dict() for r in self.transition_results],
             "commercialization_results": [r.to_dict() for r in self.commercialization_results],
             "sensitivity_results": [r.to_dict() for r in self.sensitivity_results],
