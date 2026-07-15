@@ -140,7 +140,7 @@ contract. "SBIR PHASE III" contract counts (FY2016–2025) and SR3-coded volume 
 | Agency | described contracts | SR3-coded | applies? |
 |---|--:|--:|---|
 | DoD | 911 | 66,450 | yes (this analysis) |
-| **NASA** | **202** | 6,130 | **yes — a real ~¼-scale case (v1.1)** |
+| **NASA** | **202** | 6,130 | **yes — measured, see below** |
 | DOE | 10 | 120 | negligible |
 | NIH (HHS) | 2 | 80 | no |
 | NSF | 2 | 1 | no |
@@ -149,6 +149,12 @@ NIH/NSF/DOE run SBIR on **grants**; their "Phase III" is private sales/investmen
 FPDS. Their invisibility is a **data-model gap** (activity outside federal contracting), not a coding
 gap — a different problem (Form D / sales / commercialization surveys), not this audit. **DoD + NASA
 ≈ the entire contract-based Phase III undercount.**
+
+**NASA measured (v1.1, FY2016–2025).** Coded universe 1,038 Phase III awards / 327 firms; described
+"SBIR PHASE III" 202 contracts; **undercount 16/202 = 7.9% ($27.9M)**; stratified dark ~73 → total
+NASA undercount ~89 (visible share 18%). **NASA codes ~2× better than DoD** (7.9% vs 14.7% uncoded,
+852 vs 5,530 silent), so its dark layer is proportionally small. Combined **DoD + NASA: ~168 confirmed
+flags (~$308M), ~1,073 modeled total.**
 
 ## Bottom line
 - **Confirmed / text-evidenced:** **152 flags (~$280M)** — verifiable, citable; text-based discovery
