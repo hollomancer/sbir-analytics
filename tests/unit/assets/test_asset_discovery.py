@@ -40,6 +40,20 @@ def test_iter_job_modules_discovers_job_packages():
     assert "sbir_analytics.assets.jobs.fiscal_returns_job" in module_names
 
 
+def test_iter_job_modules_skips_heavy_jobs_when_disabled(monkeypatch):
+    """Server discovery must not register jobs whose assets were gated out."""
+
+    monkeypatch.setenv("DAGSTER_LOAD_HEAVY_ASSETS", "false")
+
+    module_names = {module.__name__ for module in assets_pkg.iter_job_modules()}
+
+    assert "sbir_analytics.assets.jobs.transition_job" in module_names
+    assert "sbir_analytics.assets.jobs.fiscal_returns_job" not in module_names
+    assert "sbir_analytics.assets.jobs.cet_pipeline_job" not in module_names
+    assert "sbir_analytics.assets.jobs.modernbert_job" not in module_names
+    assert "sbir_analytics.assets.jobs.uspto_ai_job" not in module_names
+
+
 def test_iter_public_jobs_returns_job_definitions():
     """Public job iterator should yield Dagster JobDefinition objects."""
     from dagster._core.definitions.unresolved_asset_job_definition import (

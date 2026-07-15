@@ -49,12 +49,14 @@ jobs:
               - 'pyproject.toml'
               - 'uv.lock'
               - 'Dockerfile.python-base'
+              - '.github/workflows/build-images.yml'
             etl-code:
               - 'sbir_etl/**'
               - 'packages/**'
               - 'scripts/**'
               - 'config/**'
               - 'Dockerfile'
+              - '.github/workflows/build-images.yml'
 
   python-base:
     name: Build Python Base

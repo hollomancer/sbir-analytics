@@ -57,8 +57,12 @@ services:
       - server
     environment:
       - NEO4J_AUTH=${NEO4J_AUTH:-${NEO4J_USER:-neo4j}/${NEO4J_PASSWORD:?NEO4J_PASSWORD is required}}
+      # Export healthcheck-only credentials under a neutral prefix. The Neo4j
+      # entrypoint interprets arbitrary NEO4J_* variables as config settings.
+      - SBIR_SERVER_NEO4J_USER=${NEO4J_USER:-neo4j}
+      - SBIR_SERVER_NEO4J_PASSWORD=${NEO4J_PASSWORD:?NEO4J_PASSWORD is required}
       - NEO4J_ACCEPT_LICENSE_AGREEMENT=yes
-      - NEO4J_PLUGINS=${NEO4J_PLUGINS:-'["apoc"]'}
+      - 'NEO4J_PLUGINS=${NEO4J_PLUGINS:-["apoc"]}'
       - NEO4J_server_memory_heap_max__size=${NEO4J_server_memory_heap_max__size:-1G}
       - NEO4J_server_memory_heap_initial__size=${NEO4J_server_memory_heap_initial__size:-512M}
       - NEO4J_server_memory_pagecache_size=${NEO4J_server_memory_pagecache_size:-512M}
@@ -78,7 +82,7 @@ services:
     healthcheck:
       test:
         - "CMD-SHELL"
-        - "cypher-shell -u \"$${NEO4J_USER:-neo4j}\" -p \"$${NEO4J_PASSWORD}\" 'RETURN 1' >/dev/null 2>&1 || exit 1"
+        - "cypher-shell -u \"$${SBIR_SERVER_NEO4J_USER}\" -p \"$${SBIR_SERVER_NEO4J_PASSWORD}\" 'RETURN 1' >/dev/null 2>&1 || exit 1"
       interval: 15s
       timeout: 10s
       retries: 12
@@ -153,7 +157,8 @@ services:
       - server
     environment:
       <<: *server-environment
-      HEALTHCHECK_PORT: ${DAGSTER_PORT:-3000}
+      # Healthchecks run inside the container; DAGSTER_PORT is the host mapping.
+      HEALTHCHECK_PORT: "3000"
       HEALTHCHECK_PATH: ${DAGSTER_HEALTH_PATH:-/server_info}
     # Invoke the entrypoint so ENVIRONMENT=prod runs `dagster-webserver` (not
     # the dev auto-reload server). Do NOT set ENV_DAGSTER_CMD here.
@@ -201,7 +206,9 @@ services:
     container_name: ${DAGSTER_DAEMON_CONTAINER_NAME:-sbir-server-dagster-daemon}
     profiles:
       - server
-    environment: *server-environment
+    environment:
+      <<: *server-environment
+      DAGSTER_HOST: dagster-webserver
     command: ["sh", "/app/scripts/docker/entrypoint.sh", "dagster-daemon"]
     volumes:
       - ./config:/app/config:rw

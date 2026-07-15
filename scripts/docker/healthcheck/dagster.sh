@@ -15,10 +15,10 @@
 set -euo pipefail
 
 PORT="${HEALTHCHECK_PORT:-3000}"
-PATH="${HEALTHCHECK_PATH:-/server_info}"
+HEALTH_PATH="${HEALTHCHECK_PATH:-/server_info}"
 HOST="${HEALTHCHECK_HOST:-localhost}"
 
-URL="http://${HOST}:${PORT}${PATH}"
+URL="http://${HOST}:${PORT}${HEALTH_PATH}"
 
 if command -v curl >/dev/null 2>&1; then
     if curl -fsS --max-time 3 "$URL" >/dev/null 2>&1; then

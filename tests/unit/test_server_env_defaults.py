@@ -4,6 +4,7 @@ These guard the security-relevant defaults of the server profile: loopback-only
 bindings, the analytics API port, heavy-asset opt-out, and schedule gating.
 """
 
+import os
 from pathlib import Path
 
 import pytest
@@ -11,6 +12,8 @@ import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 ENV_EXAMPLE = REPO_ROOT / ".env.server.example"
+SERVER_COMPOSE = REPO_ROOT / "docker-compose.server.yml"
+WAIT_FOR_SERVICE = REPO_ROOT / "scripts" / "docker" / "wait-for-service.sh"
 
 # The runtime container only mounts select directories, so repo-root files like
 # .env.server.example are absent there. Skip rather than fail when it's missing.
@@ -77,3 +80,30 @@ def test_secret_placeholders_are_not_real_values():
     # The template must ship placeholders, never real credentials.
     assert env["NEO4J_PASSWORD"] == "change_me"
     assert "change_me" in env["SBIR_ANALYTICS_API_TOKEN"]
+
+
+def test_neo4j_healthcheck_receives_credentials_and_valid_plugin_json():
+    compose = SERVER_COMPOSE.read_text()
+
+    assert "SBIR_SERVER_NEO4J_USER=${NEO4J_USER:-neo4j}" in compose
+    assert "SBIR_SERVER_NEO4J_PASSWORD=${NEO4J_PASSWORD:?NEO4J_PASSWORD is required}" in compose
+    assert "$${SBIR_SERVER_NEO4J_PASSWORD}" in compose
+    assert "'NEO4J_PLUGINS=${NEO4J_PLUGINS:-[\"apoc\"]}'" in compose
+
+
+def test_dependency_wait_contract_matches_slim_server_image():
+    compose = SERVER_COMPOSE.read_text()
+    wait_script = WAIT_FOR_SERVICE.read_text()
+    dagster_healthcheck = (
+        REPO_ROOT / "scripts" / "docker" / "healthcheck" / "dagster.sh"
+    ).read_text()
+    daemon_healthcheck = (
+        REPO_ROOT / "scripts" / "docker" / "healthcheck" / "daemon.sh"
+    ).read_text()
+
+    assert os.access(WAIT_FOR_SERVICE, os.X_OK)
+    assert "DAGSTER_HOST: dagster-webserver" in compose
+    assert 'HEALTHCHECK_PORT: "3000"' in compose
+    assert "command -v python" in wait_script
+    assert 'HEALTH_PATH="${HEALTHCHECK_PATH:-/server_info}"' in dagster_healthcheck
+    assert "dagster-daemon liveness-check" in daemon_healthcheck

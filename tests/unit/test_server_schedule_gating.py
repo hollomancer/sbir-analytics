@@ -83,3 +83,15 @@ def test_daily_all_assets_running_by_default(monkeypatch):
     )
     daily = _schedule(defs, "daily_sbir_analytics")
     assert daily.default_status == DefaultScheduleStatus.RUNNING
+
+
+def test_server_definitions_resolve_without_heavy_assets(monkeypatch):
+    """Every registered server job must resolve against the gated asset graph."""
+
+    defs = _reload_definitions(monkeypatch, DAGSTER_LOAD_HEAVY_ASSETS="false")
+
+    defs.defs.get_repository_def().load_all_definitions()
+    assert "fiscal_returns_mvp_job" not in defs.auto_jobs
+    assert "cet_full_pipeline_job" not in defs.auto_jobs
+    assert "modernbert_job" not in defs.auto_jobs
+    assert "uspto_ai_extraction_job" not in defs.auto_jobs
