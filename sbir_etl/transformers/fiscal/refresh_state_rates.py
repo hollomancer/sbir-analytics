@@ -137,10 +137,11 @@ def parse_income_tax_table(text: str) -> dict[str, float]:
                 continue
             abbr = current_abbr
         else:
-            abbr = state_abbr_from_name(label)
-            if abbr is None:
+            parsed_abbr = state_abbr_from_name(label)
+            if parsed_abbr is None:
                 current_abbr = None
                 continue
+            abbr = parsed_abbr
             current_abbr = abbr
 
         parsed = _parse_percentages(rate_cell)
