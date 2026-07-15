@@ -5,6 +5,7 @@ import os
 from dagster import (
     AssetSelection,
     Definitions,
+    DefaultScheduleStatus,
     JobDefinition,
     ScheduleDefinition,
     SensorDefinition,
@@ -14,6 +15,17 @@ from dagster import (
 )
 
 from . import assets as assets_pkg
+
+
+def _schedule_status(env_var: str, *, default_running: bool) -> DefaultScheduleStatus:
+    """Resolve a schedule's default status from an environment toggle.
+
+    Server deployments gate schedules off by default so the always-on stack
+    never launches expensive materializations without an explicit opt-in.
+    """
+    raw = os.getenv(env_var, "true" if default_running else "false").strip().lower()
+    enabled = raw in ("true", "1", "yes", "on")
+    return DefaultScheduleStatus.RUNNING if enabled else DefaultScheduleStatus.STOPPED
 
 
 # Load all assets and checks from modules
@@ -52,7 +64,12 @@ etl_job = define_asset_job(
     description="Complete SBIR ETL pipeline execution",
 )
 
-# Define a schedule to run the job daily
+# Define a schedule to run the job daily.
+#
+# The heavy daily all-assets schedule is gated so the always-on server profile
+# does not launch it automatically. It defaults to RUNNING (unchanged behavior
+# for dev/local) unless SBIR_ETL__DAGSTER__SCHEDULES__DAILY_ALL_ASSETS_ENABLED
+# is set to a falsey value (the server template sets it to "false").
 daily_schedule = ScheduleDefinition(
     job=etl_job,
     cron_schedule=os.getenv(
@@ -60,6 +77,33 @@ daily_schedule = ScheduleDefinition(
     ),  # Default 02:00 UTC; override via SBIR_ETL__DAGSTER__SCHEDULES__ETL_JOB
     name="daily_sbir_analytics",
     description="Daily SBIR ETL pipeline execution",
+    default_status=_schedule_status(
+        "SBIR_ETL__DAGSTER__SCHEDULES__DAILY_ALL_ASSETS_ENABLED",
+        default_running=True,
+    ),
+)
+
+# Opt-in weekly core refresh for the server profile. It materializes the core
+# (non-heavy) assets currently loaded — heavy ML/fiscal/NLP modules are excluded
+# via DAGSTER_LOAD_HEAVY_ASSETS=false on the server. It stays STOPPED until an
+# operator confirms a manual run succeeds and flips the env toggle on.
+core_refresh_job = define_asset_job(
+    name="core_refresh_job",
+    selection=AssetSelection.all(),
+    description="Weekly refresh of core (non-heavy) SBIR assets",
+)
+
+weekly_core_refresh_schedule = ScheduleDefinition(
+    job=core_refresh_job,
+    cron_schedule=os.getenv(
+        "SBIR_ETL__DAGSTER__SCHEDULES__WEEKLY_CORE_REFRESH_JOB", "0 3 * * 0"
+    ),  # Default Sundays 03:00 UTC
+    name="weekly_core_refresh",
+    description="Weekly core asset refresh (server profile; disabled by default)",
+    default_status=_schedule_status(
+        "SBIR_ETL__DAGSTER__SCHEDULES__WEEKLY_CORE_REFRESH_ENABLED",
+        default_running=False,
+    ),
 )
 
 # Define CET drift job only if ML assets are available
@@ -77,7 +121,7 @@ if drift_asset_exists:
     )
 
 # Create schedules only for available jobs
-schedules = [daily_schedule]  # Always include daily schedule
+schedules = [daily_schedule, weekly_core_refresh_schedule]
 
 if cet_full_pipeline_job is not None:
     cet_full_pipeline_schedule = ScheduleDefinition(
@@ -103,6 +147,7 @@ all_sensors = _discover_sensors()
 # Aggregate jobs for repository registration
 job_definitions: list[JobDefinition] = [
     etl_job,  # type: ignore[list-item]
+    core_refresh_job,  # type: ignore[list-item]
 ]
 # Add conditional jobs if they exist
 if cet_drift_job is not None:

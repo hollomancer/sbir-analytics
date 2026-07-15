@@ -1,0 +1,257 @@
+# Tailscale-Only Mac mini Server Compose Configuration
+#
+# An ARM64-native, private server profile for a single always-on Mac mini.
+# It runs only the services needed to serve the graph and analytics:
+#   - neo4j              (private graph store; host port bound to loopback only)
+#   - analytics-api      (authenticated read-only API)
+#   - dagster-webserver  (orchestration UI, production mode)
+#   - dagster-daemon     (schedules/sensors)
+#
+# Security boundary:
+#   * Every host port is bound to 127.0.0.1 (SERVER_LOOPBACK). Nothing binds to
+#     0.0.0.0, so no service is reachable over the LAN.
+#   * Tailscale Serve is the ONLY ingress (tailnet-only HTTPS):
+#       443  -> Dagster (127.0.0.1:3000)
+#       8443 -> analytics API (127.0.0.1:8010)
+#     Neo4j is NEVER exposed through Tailscale.
+#   * Tailscale Funnel is prohibited (see docs/deployment/mac-mini-server.md).
+#
+# Usage:
+#   cp .env.server.example .env.server
+#   make server-check
+#   make server-up
+#
+# This file runs under an isolated Compose project (name: sbir-server) so it
+# never collides with the dev/ci stack in docker-compose.yml.
+
+name: sbir-server
+
+x-server-environment: &server-environment
+  ENVIRONMENT: ${ENVIRONMENT:-prod}
+  PYTHONPATH: /app
+  PYTHONUNBUFFERED: 1
+  SERVICE_STARTUP_TIMEOUT: ${SERVICE_STARTUP_TIMEOUT:-120}
+  # Neo4j connection settings (in-network; never exposed to the tailnet)
+  SBIR_ETL__NEO4J__HOST: ${SBIR_ETL__NEO4J__HOST:-neo4j}
+  SBIR_ETL__NEO4J__PORT: ${SBIR_ETL__NEO4J__PORT:-7687}
+  NEO4J_URI: ${NEO4J_URI:-bolt://neo4j:7687}
+  NEO4J_USER: ${NEO4J_USER:-neo4j}
+  NEO4J_PASSWORD: ${NEO4J_PASSWORD:?NEO4J_PASSWORD is required for the server profile}
+  # Heavy assets (ML, fiscal, USPTO NLP) stay off on the always-on server.
+  DAGSTER_LOAD_HEAVY_ASSETS: ${DAGSTER_LOAD_HEAVY_ASSETS:-false}
+  # Shared Dagster home so webserver and daemon read the same schedule state.
+  DAGSTER_HOME: /app/dagster_home
+  # Schedule gating (see packages/sbir-analytics/sbir_analytics/definitions.py).
+  SBIR_ETL__DAGSTER__SCHEDULES__DAILY_ALL_ASSETS_ENABLED: ${SBIR_ETL__DAGSTER__SCHEDULES__DAILY_ALL_ASSETS_ENABLED:-false}
+  SBIR_ETL__DAGSTER__SCHEDULES__WEEKLY_CORE_REFRESH_ENABLED: ${SBIR_ETL__DAGSTER__SCHEDULES__WEEKLY_CORE_REFRESH_ENABLED:-false}
+  SBIR_ETL__DAGSTER__SCHEDULES__WEEKLY_CORE_REFRESH_JOB: ${SBIR_ETL__DAGSTER__SCHEDULES__WEEKLY_CORE_REFRESH_JOB:-0 3 * * 0}
+
+services:
+  # ===========================================================================
+  # Neo4j graph database (private to the host and Compose network)
+  # ===========================================================================
+  neo4j:
+    image: neo4j:${NEO4J_VERSION:-5.20.0}
+    container_name: ${NEO4J_CONTAINER_NAME:-sbir-server-neo4j}
+    profiles:
+      - server
+    environment:
+      - NEO4J_AUTH=${NEO4J_AUTH:-${NEO4J_USER:-neo4j}/${NEO4J_PASSWORD:?NEO4J_PASSWORD is required}}
+      # Export healthcheck-only credentials under a neutral prefix. The Neo4j
+      # entrypoint interprets arbitrary NEO4J_* variables as config settings.
+      - SBIR_SERVER_NEO4J_USER=${NEO4J_USER:-neo4j}
+      - SBIR_SERVER_NEO4J_PASSWORD=${NEO4J_PASSWORD:?NEO4J_PASSWORD is required}
+      - NEO4J_ACCEPT_LICENSE_AGREEMENT=yes
+      - 'NEO4J_PLUGINS=${NEO4J_PLUGINS:-["apoc"]}'
+      - NEO4J_server_memory_heap_max__size=${NEO4J_server_memory_heap_max__size:-1G}
+      - NEO4J_server_memory_heap_initial__size=${NEO4J_server_memory_heap_initial__size:-512M}
+      - NEO4J_server_memory_pagecache_size=${NEO4J_server_memory_pagecache_size:-512M}
+      - NEO4J_db_logs_query_enabled=${NEO4J_db_logs_query_enabled:-OFF}
+    ports:
+      # Loopback-only. Neo4j is intentionally NOT exposed through Tailscale.
+      - "${SERVER_LOOPBACK:-127.0.0.1}:${NEO4J_HTTP_PORT:-7474}:7474"
+      - "${SERVER_LOOPBACK:-127.0.0.1}:${NEO4J_BOLT_PORT:-7687}:7687"
+    volumes:
+      - ${SERVER_NEO4J_DIR:-./data/neo4j}/data:/data
+      - ${SERVER_NEO4J_DIR:-./data/neo4j}/logs:/logs
+      - ${SERVER_NEO4J_DIR:-./data/neo4j}/import:/var/lib/neo4j/import
+      - ./config/neo4j/certs:/certs:ro
+      - ./config/neo4j/plugins:/plugins:rw
+    networks:
+      - sbir-server-network
+    healthcheck:
+      test:
+        - "CMD-SHELL"
+        - "cypher-shell -u \"$${SBIR_SERVER_NEO4J_USER}\" -p \"$${SBIR_SERVER_NEO4J_PASSWORD}\" 'RETURN 1' >/dev/null 2>&1 || exit 1"
+      interval: 15s
+      timeout: 10s
+      retries: 12
+      start_period: 40s
+    restart: ${SERVER_RESTART_POLICY:-unless-stopped}
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 1G
+
+  # ===========================================================================
+  # Read-only analytics API (bearer-token auth, defense in depth)
+  # ===========================================================================
+  analytics-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    image: ${IMAGE_NAME:-sbir-analytics}:${IMAGE_TAG:-local}
+    container_name: ${ANALYTICS_API_CONTAINER_NAME:-sbir-server-api}
+    profiles:
+      - server
+    environment:
+      <<: *server-environment
+      NEO4J_READ_USER: ${NEO4J_READ_USER:-${NEO4J_USER:-neo4j}}
+      NEO4J_READ_PASSWORD: ${NEO4J_READ_PASSWORD:-${NEO4J_PASSWORD}}
+      # The API refuses to serve (503) until a non-empty token is provided.
+      SBIR_ANALYTICS_API_TOKEN: ${SBIR_ANALYTICS_API_TOKEN:?SBIR_ANALYTICS_API_TOKEN is required for the server profile}
+      SBIR_ANALYTICS_API_HOST: "0.0.0.0"
+      SBIR_ANALYTICS_API_PORT: ${SBIR_ANALYTICS_API_PORT:-8010}
+      SBIR_ANALYTICS_SNAPSHOT_DIR: /app/reports/analytics_snapshots
+    command: ["python", "-m", "sbir_analytics.api"]
+    volumes:
+      - ${SERVER_REPORTS_DIR:-./reports}:/app/reports:ro
+    ports:
+      # Loopback-only; Tailscale Serve maps HTTPS 8443 -> 127.0.0.1:8010.
+      - "${SERVER_LOOPBACK:-127.0.0.1}:${SBIR_ANALYTICS_API_PORT:-8010}:${SBIR_ANALYTICS_API_PORT:-8010}"
+    depends_on:
+      neo4j:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - "CMD-SHELL"
+        - "curl -fsS --max-time 3 http://localhost:${SBIR_ANALYTICS_API_PORT:-8010}/health/ready >/dev/null 2>&1 || exit 1"
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    networks:
+      - sbir-server-network
+    restart: ${SERVER_RESTART_POLICY:-unless-stopped}
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
+
+  # ===========================================================================
+  # Dagster webserver (production mode via the existing entrypoint)
+  # ===========================================================================
+  dagster-webserver:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    image: ${IMAGE_NAME:-sbir-analytics}:${IMAGE_TAG:-local}
+    container_name: ${DAGSTER_WEBSERVER_CONTAINER_NAME:-sbir-server-dagster-web}
+    profiles:
+      - server
+    environment:
+      <<: *server-environment
+      # Healthchecks run inside the container; DAGSTER_PORT is the host mapping.
+      HEALTHCHECK_PORT: "3000"
+      HEALTHCHECK_PATH: ${DAGSTER_HEALTH_PATH:-/server_info}
+    # Invoke the entrypoint so ENVIRONMENT=prod runs `dagster-webserver` (not
+    # the dev auto-reload server). Do NOT set ENV_DAGSTER_CMD here.
+    command: ["sh", "/app/scripts/docker/entrypoint.sh", "dagster-webserver"]
+    volumes:
+      - ./config:/app/config:rw
+      - ${SERVER_REPORTS_DIR:-./reports}:/app/reports:rw
+      - ${SERVER_LOGS_DIR:-./logs}:/app/logs:rw
+      - ${SERVER_DATA_DIR:-./data}:/app/data:rw
+      - ${SERVER_ARTIFACTS_DIR:-./artifacts}:/app/artifacts:rw
+      - dagster_home:/app/dagster_home
+    ports:
+      # Loopback-only; Tailscale Serve maps HTTPS 443 -> 127.0.0.1:3000.
+      - "${SERVER_LOOPBACK:-127.0.0.1}:${DAGSTER_PORT:-3000}:3000"
+    depends_on:
+      neo4j:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - "CMD-SHELL"
+        - "/app/scripts/docker/healthcheck/dagster.sh"
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks:
+      - sbir-server-network
+    restart: ${SERVER_RESTART_POLICY:-unless-stopped}
+    deploy:
+      resources:
+        limits:
+          memory: 768M
+        reservations:
+          memory: 384M
+
+  # ===========================================================================
+  # Dagster daemon (schedules + sensors + run launcher)
+  # ===========================================================================
+  dagster-daemon:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    image: ${IMAGE_NAME:-sbir-analytics}:${IMAGE_TAG:-local}
+    container_name: ${DAGSTER_DAEMON_CONTAINER_NAME:-sbir-server-dagster-daemon}
+    profiles:
+      - server
+    environment:
+      <<: *server-environment
+      DAGSTER_HOST: dagster-webserver
+    command: ["sh", "/app/scripts/docker/entrypoint.sh", "dagster-daemon"]
+    volumes:
+      - ./config:/app/config:rw
+      - ${SERVER_REPORTS_DIR:-./reports}:/app/reports:rw
+      - ${SERVER_LOGS_DIR:-./logs}:/app/logs:rw
+      - ${SERVER_DATA_DIR:-./data}:/app/data:rw
+      - ${SERVER_ARTIFACTS_DIR:-./artifacts}:/app/artifacts:rw
+      - dagster_home:/app/dagster_home
+    depends_on:
+      neo4j:
+        condition: service_healthy
+      dagster-webserver:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - "CMD-SHELL"
+        - "/app/scripts/docker/healthcheck/daemon.sh"
+      interval: 20s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    networks:
+      - sbir-server-network
+    restart: ${SERVER_RESTART_POLICY:-unless-stopped}
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+        reservations:
+          memory: 1G
+
+# =============================================================================
+# Named volumes
+# =============================================================================
+volumes:
+  # Shared Dagster metadata (schedule ticks, run storage) across web + daemon.
+  dagster_home:
+    driver: local
+
+# =============================================================================
+# Networks
+# =============================================================================
+networks:
+  sbir-server-network:
+    name: sbir-server-network
+    driver: bridge

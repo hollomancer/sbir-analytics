@@ -49,12 +49,14 @@ jobs:
               - 'pyproject.toml'
               - 'uv.lock'
               - 'Dockerfile.python-base'
+              - '.github/workflows/build-images.yml'
             etl-code:
               - 'sbir_etl/**'
               - 'packages/**'
               - 'scripts/**'
               - 'config/**'
               - 'Dockerfile'
+              - '.github/workflows/build-images.yml'
 
   python-base:
     name: Build Python Base
@@ -74,6 +76,9 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      - name: Set up QEMU (arm64 emulation)
+        uses: docker/setup-qemu-action@v3
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
 
@@ -84,12 +89,13 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push python-base
+      - name: Build and push python-base (multi-arch)
         id: build
         uses: docker/build-push-action@v7
         with:
           context: .
           file: ./Dockerfile.python-base
+          platforms: linux/amd64,linux/arm64
           push: true
           tags: |
             ${{ env.REGISTRY }}/${{ env.REPO }}-python-base:latest
@@ -114,6 +120,9 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      - name: Set up QEMU (arm64 emulation)
+        uses: docker/setup-qemu-action@v3
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
 
@@ -124,11 +133,12 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push ETL image
+      - name: Build and push ETL image (multi-arch)
         uses: docker/build-push-action@v7
         with:
           context: .
           file: ./Dockerfile
+          platforms: linux/amd64,linux/arm64
           push: true
           tags: |
             ${{ env.REGISTRY }}/${{ env.REPO }}:latest

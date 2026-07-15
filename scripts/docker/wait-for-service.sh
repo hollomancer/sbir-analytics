@@ -149,7 +149,18 @@ check_tcp() {
     return 0
   fi
 
-  die "TCP check requires 'nc' or a shell with /dev/tcp support. Install netcat and retry."
+  # The application images always include Python, even when the slim base does
+  # not provide netcat and its POSIX shell does not implement /dev/tcp.
+  if command -v python >/dev/null 2>&1; then
+    if python -c \
+      'import socket, sys; socket.create_connection((sys.argv[1], int(sys.argv[2])), 3).close()' \
+      "$HOST" "$PORT" >/dev/null 2>&1; then
+      return 0
+    fi
+    return 1
+  fi
+
+  die "TCP check requires 'nc', Python, or a shell with /dev/tcp support."
 }
 
 check_http() {

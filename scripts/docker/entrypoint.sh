@@ -76,6 +76,13 @@ load_env() {
 _make_exec_prefix() {
   exec_prefix=""
   if [ "$(id -u)" = "0" ]; then
+    if ! id sbir >/dev/null 2>&1; then
+      # The lightweight runtime image does not currently create this account.
+      # Do not select runuser solely because the binary happens to exist.
+      log "Warning: sbir user is unavailable; continuing as root" >&2
+      printf '%s' "$exec_prefix"
+      return 0
+    fi
     # prefer gosu, then su-exec, then runuser, then sudo -u
     if command -v gosu >/dev/null 2>&1; then
       exec_prefix="gosu sbir"

@@ -9,13 +9,10 @@
 
 set -euo pipefail
 
-# Check if dagster-daemon process exists
-if pgrep -f "dagster-daemon" >/dev/null 2>&1; then
-    exit 0
-fi
-
-# Alternative: Check via ps
-if ps aux | grep -q '[d]agster-daemon'; then
+# Use Dagster's heartbeat-backed liveness check. The slim runtime image does
+# not include procps utilities such as pgrep or ps.
+if command -v dagster-daemon >/dev/null 2>&1 && \
+    dagster-daemon liveness-check >/dev/null 2>&1; then
     exit 0
 fi
 

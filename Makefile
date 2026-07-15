@@ -586,6 +586,83 @@ validate-config: ## Validate docker-compose.yml and .env files
 validate: lint test ## Run linting, type checking, and tests
 	@$(call success,All validation checks passed)
 
+# -----------------------------------------------------------------------------
+# Tailscale-only Mac mini server profile
+# -----------------------------------------------------------------------------
+
+SERVER_COMPOSE_FILE ?= docker-compose.server.yml
+SERVER_ENV_FILE     ?= .env.server
+SERVER_COMPOSE       = $(DOCKER_COMPOSE) -f $(SERVER_COMPOSE_FILE) --env-file $(SERVER_ENV_FILE)
+
+.PHONY: server-env-check
+server-env-check: ## Ensure .env.server exists
+	@set -euo pipefail; \
+	 if [ ! -f $(SERVER_ENV_FILE) ]; then \
+	   printf "$(RED)✖$(RESET) $(SERVER_ENV_FILE) not found. Copy .env.server.example → $(SERVER_ENV_FILE).\n"; \
+	   exit 1; \
+	 else \
+	   printf "$(GREEN)✔$(RESET) $(SERVER_ENV_FILE) found\n"; \
+	 fi
+
+.PHONY: server-check
+server-check: ## Validate server prerequisites (Docker, storage, ports, Tailscale, bindings)
+	@$(call info,Checking Tailscale-only server prerequisites)
+	$(call run,SERVER_ENV_FILE=$(SERVER_ENV_FILE) ./scripts/server/check-prerequisites.sh)
+
+.PHONY: server-up
+server-up: server-env-check ## Start the always-on server stack (profile=server)
+	@$(call info,Starting server stack (profile: server))
+	$(call run,$(SERVER_COMPOSE) --profile server up -d --build)
+	$(call run,$(SERVER_COMPOSE) --profile server ps)
+	@$(call success,Server stack ready (localhost-only; expose via 'make server-tailscale-up'))
+
+.PHONY: server-down
+server-down: server-env-check ## Stop the server stack (PRESERVES volumes/data)
+	@$(call info,Stopping server stack (data volumes preserved))
+	$(call run,$(SERVER_COMPOSE) --profile server down --remove-orphans)
+	@$(call success,Server stack stopped; volumes and bind-mounted data preserved)
+
+.PHONY: server-status
+server-status: server-env-check ## Show server stack status
+	@$(call info,Server stack status)
+	$(call run,$(SERVER_COMPOSE) --profile server ps)
+
+.PHONY: server-logs
+server-logs: server-env-check ## Tail server logs for SERVICE (default dagster-webserver)
+	@$(call info,Tailing server logs for service: $(SERVICE))
+	@$(SERVER_COMPOSE) --profile server logs -f --tail=200 $(SERVICE)
+
+.PHONY: server-backup
+server-backup: server-env-check ## Dump Neo4j to $(SERVER_BACKUP_DIR) (default ./backups)
+	@$(call info,Backing up Neo4j)
+	$(call run,SERVER_ENV_FILE=$(SERVER_ENV_FILE) COMPOSE_FILE=$(SERVER_COMPOSE_FILE) ./scripts/server/backup.sh)
+
+.PHONY: server-tailscale-up
+server-tailscale-up: server-env-check ## Configure persistent Tailscale Serve routes (443->Dagster, 8443->API)
+	@$(call info,Configuring Tailscale Serve routes)
+	$(call run,SERVER_ENV_FILE=$(SERVER_ENV_FILE) ./scripts/server/tailscale-serve.sh up)
+
+.PHONY: server-tailscale-status
+server-tailscale-status: ## Show Tailscale Serve configuration
+	@$(call info,Tailscale Serve status)
+	$(call run,./scripts/server/tailscale-serve.sh status)
+
+.PHONY: server-tailscale-down
+server-tailscale-down: server-env-check ## Remove ONLY the SBIR Tailscale Serve routes (443, 8443)
+	@$(call info,Removing SBIR Tailscale Serve routes)
+	$(call run,SERVER_ENV_FILE=$(SERVER_ENV_FILE) ./scripts/server/tailscale-serve.sh down)
+
+.PHONY: server-validate-config
+server-validate-config: server-env-check ## Validate docker-compose.server.yml
+	@$(call info,Validating $(SERVER_COMPOSE_FILE))
+	@set -euo pipefail; \
+	 if ! $(SERVER_COMPOSE) --profile server config >/dev/null 2>&1; then \
+	   $(call error,$(SERVER_COMPOSE_FILE) validation failed); \
+	   $(SERVER_COMPOSE) --profile server config; \
+	   exit 1; \
+	 fi; \
+	 $(call success,$(SERVER_COMPOSE_FILE) is valid)
+
 .PHONY: ci-local
 ci-local: ## Run CI checks locally (mimics GitHub Actions)
 	@$(call info,Running CI checks locally)

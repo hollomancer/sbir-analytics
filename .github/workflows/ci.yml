@@ -567,9 +567,12 @@ jobs:
       - name: Tag and push to registry
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
-          docker tag sbir-analytics:ci-${{ github.sha }} ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          # This smoke build is amd64-only (loaded into the local daemon).
+          # Do NOT push :latest here — build-images.yml publishes the
+          # multi-architecture (amd64 + arm64) :latest manifest, and a
+          # single-arch push would clobber it and break arm64 pulls on the
+          # Mac mini server. Push only the immutable per-commit SHA tag.
           docker tag sbir-analytics:ci-${{ github.sha }} ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
-          docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
           docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
 
       - name: Show built image

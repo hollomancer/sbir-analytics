@@ -28,6 +28,17 @@ HEAVY_ASSET_MODULES = {
     "sbir_analytics.assets.uspto.ai_extraction",  # spaCy, NLP processing
 }
 
+# Jobs whose selections depend on one or more heavy asset modules above.  Job
+# discovery must apply the same deployment gate as asset discovery; otherwise
+# Dagster tries to resolve selections for assets that were intentionally left
+# out of the server repository.
+HEAVY_JOB_MODULES = {
+    "sbir_analytics.assets.jobs.cet_pipeline_job",
+    "sbir_analytics.assets.jobs.fiscal_returns_job",
+    "sbir_analytics.assets.jobs.modernbert_job",
+    "sbir_analytics.assets.jobs.uspto_ai_job",
+}
+
 
 def _iter_modules(
     package: ModuleType,
@@ -100,8 +111,15 @@ def _job_module_names() -> tuple[str, ...]:
 
 
 def iter_job_modules() -> list[ModuleType]:
+    load_heavy = _should_load_heavy_assets()
     modules: list[ModuleType] = []
     for module_name in _job_module_names():
+        if not load_heavy and module_name in HEAVY_JOB_MODULES:
+            LOG.info(
+                "Skipping heavy job module (DAGSTER_LOAD_HEAVY_ASSETS=false): %s",
+                module_name,
+            )
+            continue
         module = _safe_import(module_name)
         if module:
             modules.append(module)
