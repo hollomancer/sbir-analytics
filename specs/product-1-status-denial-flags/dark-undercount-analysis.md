@@ -110,10 +110,53 @@ The dark layer cannot be scoped down; the full per-firm pull is the only remaini
 **Only path left:** per-firm USAspending `spending_by_award` over the 8,090 recipient UEIs
 (~15–25k requests, ~2–3 h), then inference. No further scoping is available.
 
+## Executed: the full recipient pull did not crack the dark layer
+We ran it — DoD contracts to **8,085/8,090** SBIR firms (FY2016–2025), a **95,103-contract** universe.
+
+| | Count |
+|---|---|
+| Recipient universe | 95,103 |
+| coded Phase III (matched) | 4,247 |
+| exact-described | 736 |
+| **neither (candidate pool)** | **90,792** |
+| full-text scan → SBIR+"Phase III" text | **+11 flags** ($35.9M) |
+| residual with no SBIR/Phase-III text | **76,299** |
+
+**Scanning all 90,792 candidate descriptions added only 11 flags** beyond the 141 — the exact-phrase
+API filter had already captured essentially all text-evidenced Phase III. Confirmed uncoded
+(text-evidenced) = **152 (~$280M)**. The remaining 76,299 carry no Phase III text; with USAspending
+competition null and text-similarity near-chance (the Product 2 benchmark), **no signal separates
+dark Phase III from ordinary contracts.** The pull *closes* the question rather than enumerating the
+layer: **the dark undercount is unenumerable from public data.**
+
+*(coded matched 4,247 of the 6,351-award coded set because the recipient frame is scoped to Phase II
+in FY2016–2025; coded firms whose Phase II predates 2016 fall outside the universe — a scope limit,
+not a join failure.)*
+
+## Agency scope — this is a DoD (and NASA) phenomenon
+The undercount is a **contract-coding** gap, so it only exists where Phase III *is* a federal
+contract. "SBIR PHASE III" contract counts (FY2016–2025) and SR3-coded volume by agency:
+
+| Agency | described contracts | SR3-coded | applies? |
+|---|--:|--:|---|
+| DoD | 911 | 66,450 | yes (this analysis) |
+| **NASA** | **202** | 6,130 | **yes — a real ~¼-scale case (v1.1)** |
+| DOE | 10 | 120 | negligible |
+| NIH (HHS) | 2 | 80 | no |
+| NSF | 2 | 1 | no |
+
+NIH/NSF/DOE run SBIR on **grants**; their "Phase III" is private sales/investment that never touches
+FPDS. Their invisibility is a **data-model gap** (activity outside federal contracting), not a coding
+gap — a different problem (Form D / sales / commercialization surveys), not this audit. **DoD + NASA
+≈ the entire contract-based Phase III undercount.**
+
 ## Bottom line
-- **Visible:** 141 flags / $244M — verified, but ~1/8 of the story.
-- **Dark:** ~1,000 (robust across stratifications, a floor) — the majority of the undercount, reachable
-  only by inference.
-- **For the report:** *"≥141 confirmed uncoded Phase III ($244M); coding-overlap analysis implies the
-  true undercount is ~8× larger (~1,100 awards), concentrated in contracts that identify as Phase III
-  by neither code nor description."*
+- **Confirmed / text-evidenced:** **152 flags (~$280M)** — verifiable, citable; text-based discovery
+  is now exhausted.
+- **Modeled dark:** ~1,000 (stratified floor) — the majority, and — after the full pull — **provably
+  unenumerable** from public data, estimable only by extrapolation.
+- **Agency scope:** DoD + NASA carry the entire contract-based undercount; NIH/NSF/DOE Phase III is
+  grant/commercial and outside FPDS entirely.
+- **For the report:** *"The coding-discoverable Phase III undercount is 152 awards (~$280M), verified.
+  Coding-overlap analysis implies the true figure is ~8× larger (~1,100 awards), but the excess is
+  structurally invisible to every public signal — it can be estimated, never enumerated."*
