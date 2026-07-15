@@ -7,7 +7,7 @@ This is a different question from build_tech_area_cohort.py's Phase II
 cohort work: no Method A/B overlap, no external-reference reconciliation, no
 transition-channel signals -- just "how many awards, and how many dollars,
 are relevant to this technology area, broken into technology subsets, by
-fiscal year." All SBIR/STTR phases are included.
+fiscal year." All phases in the profile's configured program scope are included.
 
 Usage:
   python scripts/data/build_tech_census.py --area drone_manufacturing
@@ -18,8 +18,10 @@ from __future__ import annotations
 
 import argparse
 import csv
+import hashlib
 import json
 import sys
+from datetime import UTC, datetime
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
@@ -32,6 +34,18 @@ from sbir_etl.utils.tech_census import (  # noqa: E402
     load_census_config,
     run_census,
 )
+
+
+def _sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        while chunk := handle.read(1024 * 1024):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _source_timestamp(path: Path) -> str:
+    return datetime.fromtimestamp(path.stat().st_mtime, UTC).isoformat()
 
 
 def main() -> int:
@@ -48,6 +62,24 @@ def main() -> int:
         default=3,
         help="Number of most-recent fiscal years to print individually (default 3)",
     )
+    parser.add_argument(
+        "--program",
+        dest="programs",
+        action="append",
+        choices=("SBIR", "STTR"),
+        help="Override configured program scope; repeat to select both",
+    )
+    parser.add_argument(
+        "--fiscal-year",
+        dest="fiscal_years",
+        action="append",
+        type=int,
+        help="Limit the report to a fiscal year; repeat for multiple years",
+    )
+    parser.add_argument(
+        "--data-vintage",
+        help="Optional source-data release/download vintage (not inferred from local file mtime)",
+    )
     args = parser.parse_args()
 
     awards_csv = Path(args.awards)
@@ -63,7 +95,13 @@ def main() -> int:
     awards = load_award_data_csv(awards_csv)
     print(f"  {len(awards):,} total awards")
 
-    result = run_census(awards, compiled)
+    selected_fys = sorted(set(args.fiscal_years or []))
+    reporting_awards = (
+        [award for award in awards if award.get("award_year") in selected_fys]
+        if selected_fys
+        else awards
+    )
+    result = run_census(reporting_awards, compiled, programs=args.programs)
     grand = result["grand_total"]
     print(f"\nIn-scope awards: {grand['n']:,}  (${grand['usd'] / 1e6:,.1f}M)")
     if result["exclusion_counts"]:
@@ -78,19 +116,28 @@ def main() -> int:
     years = sorted({r["year"] for r in result["classified_awards"] if r["year"]})
     if not years:
         print("\nNo in-scope awards found.")
-        return 0
-    current_fy = years[-1]
-    recent_fys = [current_fy - i for i in range(args.recent_fys)]
+    if selected_fys:
+        recent_fys = sorted(selected_fys, reverse=True)
+    elif years:
+        current_fy = years[-1]
+        recent_fys = [current_fy - i for i in range(args.recent_fys)]
+    else:
+        recent_fys = []
 
     print()
     print("=" * 100)
-    print(f"{compiled.display_name.upper()} -- SBIR/STTR AWARDS BY TECHNOLOGY SUBSET x FISCAL YEAR")
+    program_label = "/".join(result.get("programs", [])) or "ALL PROGRAM"
+    print(
+        f"{compiled.display_name.upper()} -- {program_label} AWARDS "
+        "BY TECHNOLOGY SUBSET x FISCAL YEAR"
+    )
     print("=" * 100)
     subset_names = [name for name, _ in compiled.subsets] + [compiled.fallback_subset]
+    aggregate_label = "SELECTED TOTAL" if selected_fys else "ALL-TIME"
     header = (
         f"{'Subset':<48}"
         + "".join(f"{'FY' + str(fy):>16}" for fy in recent_fys)
-        + f"{'ALL-TIME':>18}"
+        + f"{aggregate_label:>18}"
     )
     print(header)
     for subset in subset_names:
@@ -119,13 +166,36 @@ def main() -> int:
     out_dir.mkdir(parents=True, exist_ok=True)
 
     awards_csv_path = out_dir / "classified_awards.csv"
+    rows = result["classified_awards"]
+    preferred_columns = [
+        "company",
+        "title",
+        "agency",
+        "program",
+        "phase",
+        "year",
+        "amount",
+        "subset",
+        "scope_class",
+        "agency_tracking_number",
+        "contract",
+        "source_row",
+        "gate_evidence",
+        "physical_evidence",
+        "subset_evidence",
+        "scope_evidence",
+        "classification_source",
+        "override_reason",
+    ]
+    extra_columns = [key for row in rows for key in row if key not in preferred_columns]
+    cols = list(dict.fromkeys(preferred_columns + extra_columns))
     with open(awards_csv_path, "w", newline="", encoding="utf-8") as f:
-        cols = ["company", "title", "agency", "phase", "year", "amount", "subset"]
         w = csv.DictWriter(f, fieldnames=cols, extrasaction="ignore")
         w.writeheader()
-        w.writerows(result["classified_awards"])
+        w.writerows(rows)
 
     summary_path = out_dir / "summary.json"
+    source_timestamp = _source_timestamp(awards_csv)
     json_safe = {
         "area_id": result["area_id"],
         "display_name": result["display_name"],
@@ -135,6 +205,24 @@ def main() -> int:
         "by_fy_subset": {f"{fy}|{subset}": v for (fy, subset), v in result["by_fy_subset"].items()},
         "exclusion_counts": result["exclusion_counts"],
         "adjacent_counts": result["adjacent_counts"],
+        "program_exclusion_counts": result["program_exclusion_counts"],
+        "rejection_counts": result["rejection_counts"],
+        "config_version": result["config_version"],
+        "override_version": result["override_version"],
+        "programs": result["programs"],
+        "scope_totals": result["scope_totals"],
+        "reporting_window": {
+            "fiscal_years": selected_fys or None,
+            "programs": result["programs"],
+        },
+        "provenance": {
+            "source_path": str(awards_csv.resolve()),
+            "sha256": _sha256(awards_csv),
+            "source_timestamp": source_timestamp,
+            "data_vintage": args.data_vintage,
+            "source_row_count": len(awards),
+            "reporting_row_count": len(reporting_awards),
+        },
     }
     summary_path.write_text(json.dumps(json_safe, indent=2) + "\n", encoding="utf-8")
 

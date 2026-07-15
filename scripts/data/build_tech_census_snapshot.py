@@ -17,6 +17,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import hashlib
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
@@ -42,7 +43,20 @@ from sbir_analytics.tools.tech_census import ComputeTechCensusTool  # noqa: E402
 # config/tech_census/<area_id>.yaml as areas are added.
 _AREA_TO_KIND = {
     "drone_manufacturing": AnalysisKind.TECH_CENSUS_DRONE_MANUFACTURING,
+    "uas_relevance": AnalysisKind.TECH_CENSUS_UAS_RELEVANCE,
 }
+
+
+def _sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        while chunk := handle.read(1024 * 1024):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _source_timestamp(path: Path) -> str:
+    return datetime.fromtimestamp(path.stat().st_mtime, UTC).isoformat()
 
 
 def main() -> int:
@@ -50,7 +64,11 @@ def main() -> int:
     parser.add_argument(
         "--area", required=True, choices=sorted(_AREA_TO_KIND), help="tech-census area_id"
     )
-    parser.add_argument("--period", required=True, help="Snapshot period, e.g. 2026 or 2026-Q1")
+    parser.add_argument(
+        "--period",
+        required=True,
+        help="Snapshot identifier/as-of period, e.g. 2026 or 2026-Q1; not a data filter",
+    )
     parser.add_argument(
         "--awards",
         default=str(DATA / "raw" / "sbir" / "award_data.csv"),
@@ -64,6 +82,24 @@ def main() -> int:
     parser.add_argument(
         "--overwrite", action="store_true", help="Replace an existing snapshot for this period"
     )
+    parser.add_argument(
+        "--program",
+        dest="programs",
+        action="append",
+        choices=("SBIR", "STTR"),
+        help="Override configured program scope; repeat to select both",
+    )
+    parser.add_argument(
+        "--fiscal-year",
+        dest="fiscal_years",
+        action="append",
+        type=int,
+        help="Limit the reporting window to a fiscal year; repeat for multiple years",
+    )
+    parser.add_argument(
+        "--data-vintage",
+        help="Optional source-data release/download vintage (not inferred from local file mtime)",
+    )
     args = parser.parse_args()
 
     awards_csv = Path(args.awards)
@@ -76,12 +112,26 @@ def main() -> int:
     awards_df = pd.DataFrame(awards)
     print(f"  {len(awards_df):,} total awards")
 
+    source_timestamp = _source_timestamp(awards_csv)
     tool = ComputeTechCensusTool()
-    result = tool.run(awards_df=awards_df, area_id=args.area)
+    result = tool.run(
+        awards_df=awards_df,
+        area_id=args.area,
+        programs=args.programs,
+        fiscal_years=args.fiscal_years,
+        source_path=str(awards_csv.resolve()),
+        source_sha256=_sha256(awards_csv),
+        source_timestamp=source_timestamp,
+        data_vintage=args.data_vintage,
+    )
+    if result.metadata.warnings:
+        for warning in result.metadata.warnings:
+            print(f"ERROR: {warning}", file=sys.stderr)
+        print("ERROR: snapshot was not written because census validation failed", file=sys.stderr)
+        return 1
+
     grand = result.data["summary"]["grand_total"]
     print(f"Classified {grand['n']:,} in-scope awards (${grand['usd'] / 1e6:,.1f}M)")
-    for warning in result.metadata.warnings:
-        print(f"  warning: {warning}", file=sys.stderr)
 
     snapshot = snapshot_from_tool_result(
         _AREA_TO_KIND[args.area],

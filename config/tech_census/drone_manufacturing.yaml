@@ -1,26 +1,15 @@
 area_id: drone_manufacturing
+version: "2.0.0"
 display_name: Drone Manufacturing
 description: >-
-  Aerial unmanned systems (UAS/UAV) and purpose-built subsystems. "Drone" is
-  read as aerial only -- non-aerial unmanned systems (UGV ground robots,
-  UUV/USV maritime) are tracked separately under adjacent_nonaerial, not
-  included in the main count. Counter-UAS / counter-drone (detect-and-defeat
-  technology) is tracked separately under exclusions -- it is drone defeat,
-  not drone production. All SBIR/STTR phases are in scope (this is a
-  technology-relevance census, not a Phase II cohort for transition
-  analysis).
+  SBIR awards funding physical aerial-drone products, components, materials,
+  or manufacturing processes. Software-only, service, operational, generic
+  UAS-use, STTR, counter-UAS detection/defeat, and non-aerial systems are not
+  included. Use the uas_relevance profile for the broader UAS ecosystem.
+programs: [SBIR]
+overrides_file: drone_manufacturing_overrides.yaml
 
 gate:
-  # A term counts as a hit only if it appears in the award TITLE, or the
-  # TOTAL occurrence count across all gate terms in title+abstract is >= this
-  # value. Counting total occurrences (not distinct pattern names) matters:
-  # several gate patterns overlap on a single phrase (e.g. "unmanned aerial
-  # system" and "unmanned aerial" both match "unmanned aerial systems"), so a
-  # naive distinct-pattern-count rule is satisfiable by one incidental
-  # sentence. Calibrated against real award_data.csv: a hypersonic-
-  # interceptor award, a lunar-battery award, and a weather-forecasting-
-  # software award each had exactly 2 total occurrences from a single
-  # incidental mention; genuinely relevant awards ran well past that.
   min_abstract_only_occurrences: 3
   terms:
     - '\bdrone[s]?\b'
@@ -31,34 +20,201 @@ gate:
     - '\bunmanned aerial system[s]?\b'
     - '\bunmanned aircraft\b'
     - '\bunmanned aerial\b'
+    - '\buncrewed (?:aircraft|aerial vehicle|aerial system)s?\b'
+    - '\bremotely piloted aircraft\b'
     - '\bquadcopter[s]?\b'
     - '\bquadrotor[s]?\b'
     - '\bhexacopter[s]?\b'
     - '\bmulti-?rotor[s]?\b'
-    - '\btiltrotor (?:UAS|UAV|drone)\b'
     - '\bmicro air vehicle[s]?\b'
-    - '\bMAV[s]?\b'
-    - '\bfixed-wing UAS\b'
-    - '\bnano-?drone[s]?\b'
-    - '\bremotely piloted aircraft\b'
+    - '\bfixed-wing (?:UAS|UAV|drone)s?\b'
+    - '\b(?:VTOL|vertical take-?off and landing) (?:UAS|UAV|drone)s?\b'
     - '\bloitering munition[s]?\b'
-    - '\bVTOL UAS\b'
-    - '\bUAS VTOL\b'
+    - '\bone-way attack (?:aircraft|drone)s?\b'
+    - '\btarget drone[s]?\b'
+    - '\bloyal wingm[ae]n\b'
+    - '\bcollaborative combat aircraft\b'
+    - '\bCCA(?:s)?\b(?=[\s\S]{0,80}\b(?:aircraft|airframe|aerial|air vehicle|wing|flight|propulsion|avionics|autonom\w*|munition|air dominance)\b)'
+    - '\b(?:aircraft|airframe|aerial|air vehicle|wing|flight|propulsion|avionics|autonom\w*|munition|air dominance)\b[\s\S]{0,80}\bCCA(?:s)?\b'
+    - '\bautonomous collaborative platform[s]?\b'
+    - '\bACP\b(?=[\s\S]{0,80}\b(?:aircraft|airframe|aerial|air vehicle|wing|flight|propulsion|avionics|drone|UAS|UAV)\b)'
+    - '\b(?:aircraft|airframe|aerial|air vehicle|wing|flight|propulsion|avionics|drone|UAS|UAV)\b[\s\S]{0,80}\bACP\b'
+    - '\battritable (?:aircraft|airframe|platform)s?\b'
+    - '\bair-launched effect[s]?\b'
+    - '\bhigh[- ]altitude pseudo-?satellite[s]?\b'
+    - '\bhigh[- ]altitude platform (?:system|station)s?\b'
+    - '\bHAPS\b(?=[\s\S]{0,80}\b(?:high[- ]altitude|stratospher\w*|aircraft|aerial|flight|propulsion|payload|imaging|demonstrator)\b)'
+    - '\b(?:high[- ]altitude|stratospher\w*|aircraft|aerial|flight|propulsion|payload|imaging|demonstrator)\b[\s\S]{0,80}\bHAPS\b'
+    - '\bUCAV[s]?\b'
+    - '\bVTUAV[s]?\b'
+    - '\bTUAV[s]?\b'
 
-# Gate-passing awards that represent an adjacent-but-distinct concept.
-# Tracked and reported separately, never silently dropped or merged into the
-# main count.
+physical_gate:
+  title_term_always_passes: true
+  max_relationship_distance: 180
+  max_relevance_distance: 200
+  abstract_terms:
+    # Generic "aircraft" is useful in a funded-deliverable sentence, but is
+    # too broad to make a title physical by itself.
+    - '\baircraft\b'
+  title_terms:
+    # A UAS/UAV/drone named in the title normally denotes the funded physical
+    # platform. Explicit software/service/analysis titles are removed by the
+    # nonphysical_primary exclusion below.
+    - '\b(?:UAS|UAV|drone)s?\b'
+    - '\bunmanned aerial (?:vehicle|system)s?\b'
+    - '\bsensor[s]?\b'
+    - '\bradar[s]?\b'
+    - '\b(?:receiver|transmitter|transceiver)s?\b'
+  terms:
+    - '\b(?:unmanned|uncrewed) aircraft\b'
+    - '\bcollaborative combat aircraft\b'
+    - '\battritable aircraft\b'
+    - '\btarget drone[s]?\b'
+    - '\b(?:UAS|UAV|drone) (?:platform|system|vehicle|aircraft)s?\b'
+    - '\bair vehicle[s]?\b'
+    - '\bairframe[s]?\b'
+    - '\bfuselage[s]?\b'
+    - '\bwing[s]?\b'
+    - '\brotor[s]?\b'
+    - '\bpropeller[s]?\b'
+    - '\bpropulsion (?:system|unit)s?\b'
+    - '\bengine[s]?\b'
+    - '\bmotor[s]?\b'
+    - '\bactuator[s]?\b'
+    - '\bflight control computer[s]?\b'
+    - '\bavionics\b'
+    - '\bautopilot hardware\b'
+    - '\binertial measurement unit[s]?\b'
+    - '\bIMU[s]?\b'
+    - '\bGNSS receiver[s]?\b'
+    - '\bbatter(?:y|ies)\b'
+    - '\bfuel cell[s]?\b'
+    - '\bpower electronic[s]?\b'
+    - '\bthermal management\b'
+    - '\bdata ?link hardware\b'
+    - '\bradio[s]?\b'
+    - '\bantenna[s]?\b'
+    - '\bgimbal[s]?\b'
+    - '\bEO/?IR\b'
+    - '\bpayload hardware\b'
+    - '\bcomposite structure[s]?\b'
+    - '\bstructural component[s]?\b'
+    - '\bcoating[s]?\b'
+    - '\bprinted circuit board[s]?\b'
+    - '\bprototype (?:aircraft|vehicle|platform|system)s?\b'
+    - '\bmanufacturing (?:process|technology|method|tooling|cell|line)s?\b'
+    - '\bflight computer[s]?\b'
+    - '\bmission computer[s]?\b'
+    - '\b(?:power source|power system|powerplant|turbogenerator|generator)s?\b'
+    - '\b(?:launch|recovery) system[s]?\b'
+    - '\blanding gear\b'
+    - '\blauncher[s]?\b'
+    - '\bwinch\b'
+    - '\bhoist\b'
+    - '\bpod[s]?\b'
+    - '\bcamera[s]?\b'
+    - '\bimager[s]?\b'
+  relationship_terms:
+    - '\bdevelop(?:ed|ing|ment)?\b'
+    - '\bdesign(?:ed|ing)?\b'
+    - '\bfabricat(?:e|ed|ing|ion)\b'
+    - '\bmanufactur(?:e|ed|ing|able|ability)\b'
+    - '\bproduc(?:e|ed|ing|tion)\b'
+    - '\bbuild(?:ing|s|t)?\b'
+    - '\bprototype(?:d|s|ing)?\b'
+    - '\bintegrat(?:e|ed|ing|ion)\b'
+    - '\bassembl(?:e|ed|ing|y)\b'
+    - '\btest(?:ed|ing)?\b'
+    - '\bqualif(?:y|ied|ication)\b'
+    - '\bcoat(?:ed|s)?\b'
+    - '\bminiaturi[sz](?:e|ed|ing|ation)\b'
+    - '\brepair(?:ed|ing)?\b'
+
 exclusions:
   - name: counter_uas
-    display_name: Counter-UAS / Counter-Drone
-    reason: Detect-and-defeat technology -- the opposite of manufacturing.
+    display_name: Counter-UAS Detection or Defeat
+    reason: Detect/track/jam/defeat work is not manufacture of a drone.
     terms:
-      - '\bcounter-?UAS\b'
-      - '\bcUAS\b'
-      - '\bcounter-?drone[s]?\b'
+      - '\bcounter[- ]?(?:UAS|sUAS|UAV|drone)s?\b'
+      - '\bc[- ]?UAS\b'
+      - '\banti[- ]drone\b'
+      - '\b(?:UAS|UAV|drone) (?:detect|detection|counter|defen[cs]e|threat)\b'
+      - '\bdrone[- ]defen[cs]e\b'
+      - '\b(?:detect|track|identify|jam|defeat|neutralize) hostile (?:UAS|UAV|drone)s?\b'
+    unless_terms:
+      - '\binterceptor (?:UAS|UAV|drone|aircraft)s?\b'
+      - '\b(?:UAS|UAV|drone) interceptor[s]?\b'
+      - '\bkinetic interceptor drone[s]?\b'
+  - name: counter_uas
+    display_name: Counter-UAS Detection or Defeat
+    reason: The title makes detection/tracking/defeat of UAS the funded objective.
+    title_only: true
+    terms:
+      - '\b(?:UAS|UAV|drone)s?\b[\s\S]{0,80}\b(?:detect|track|identify|defeat|counter|threat)\w*\b'
+      - '\b(?:detect|track|identify|defeat|counter|threat)\w*\b[\s\S]{0,80}\b(?:UAS|UAV|drone)s?\b'
+    unless_terms:
+      - '\binterceptor (?:UAS|UAV|drone|aircraft)s?\b'
+      - '\b(?:UAS|UAV|drone) interceptor[s]?\b'
+  - name: nonphysical_primary
+    display_name: Software, Analysis, or Service-Led UAS Work
+    reason: The title identifies a nonphysical funded deliverable.
+    title_only: true
+    unless_title_only: true
+    terms:
+      - '\bsoftware\b'
+      - '\bdigital twin\b'
+      - '\bmachine learning\b'
+      - '\bartificial intelligence\b'
+      - '\bAI[- ](?:enabled|enhanced|driven|based)\b'
+      - '\balgorithm[s]?\b'
+      - '\banalysis\b'
+      - '\banalytic[s]?\b'
+      - '\bsimulation\b'
+      - '\bmission planning\b'
+      - '\bnavigation\b'
+      - '\btracking\b'
+      - '\bdetection\b'
+      - '\binspection\b'
+      - '\bmanagement\b'
+      - '\bservice[s]?\b'
+      - '\bframework\b'
+      - '\bsituational awareness\b'
+      - '\bmission planner\b'
+      - '\blocalization\b'
+      - '\bfeasibility stud(?:y|ies)\b'
+      - '\bcommunication[s]?\b'
+      - '\bdata transfer\b'
+      - '\bmonitoring\b'
+      - '\bdata collection\b'
+      - '\bremote[- ]sensing\b'
+      - '\bgeolocation\b'
+      - '\bcommand and control\b'
+      - '\bvoice control\b'
+      - '\bprotocol[s]?\b'
+      - '\boptimization\b'
+      - '\bvalidation\b'
+      - '\bdecision making\b'
+      - '\bteaming\b'
+      - '\bcoordination\b'
+      - '\bsensor fusion\b'
+    unless_terms:
+      # A generic hardware noun does not rescue a software-led title. The
+      # title must name an explicit physical deliverable or production action.
+      - '\b(?:airframes?|fuselages?|wings?|rotors?|propellers?|engines?|motors?|batter(?:y|ies)|avionics|flight computers?|mission computers?|radios?|antennas?|gimbals?|cameras?|imagers?|payloads?|sensors?|radars?|receivers?|transmitters?|transceivers?|navigation) (?:hardware|components?|assembl(?:y|ies)|prototypes?)\b'
+      - '\bmanufactur\w*\b'
+      - '\bfabricat\w*\b'
+      - '\bproduc(?:e|ed|ing|tion)\b'
+      - '\b3D[- ]print\w*\b'
+  - name: non_aerial_title
+    display_name: Non-Aerial Unmanned Systems
+    reason: The funded primary platform is ground, surface, or underwater.
+    title_only: true
+    terms:
+      - '\b(?:UGV|UUV|USV|AUV)s?\b'
+      - '\bunmanned (?:ground|underwater|surface) vehicle[s]?\b'
+      - '\bautonomous underwater vehicle[s]?\b'
 
-# Non-aerial unmanned systems that never reach the gate but are worth
-# tracking for context (not aerial drones, so not "drone manufacturing").
 adjacent_nonaerial:
   - name: ugv
     display_name: Unmanned Ground Vehicles
@@ -68,60 +224,72 @@ adjacent_nonaerial:
   - name: uuv
     display_name: Unmanned Underwater Vehicles
     terms:
-      - '\bUUV[s]?\b'
-      - '\bunmanned underwater vehicle[s]?\b'
+      - '\b(?:UUV|AUV)[s]?\b'
+      - '\b(?:unmanned|autonomous) underwater vehicle[s]?\b'
   - name: usv
     display_name: Unmanned Surface Vehicles
     terms:
       - '\bUSV[s]?\b'
       - '\bunmanned surface vehicle[s]?\b'
 
-# Priority-ordered technology subsets (most specific first). Each gate-
-# passing, non-excluded award gets exactly one subset via first match;
-# anything matching none of these falls into fallback_subset.
 subsets:
-  - name: Manufacturing Processes & Materials
+  - name: Airframes, Structures, Materials & Manufacturing
     terms:
+      - '\bairframe[s]?\b'
+      - '\bfuselage[s]?\b'
+      - '\bwing structure[s]?\b'
+      - '\bcomposite[s]?\b'
+      - '\bstructural component[s]?\b'
       - '\badditive manufactur\w*\b'
       - '\b3D[- ]print\w*\b'
-      - '\brapid prototyp\w*\b'
-      - '\bcomposite (?:airframe|structure)s?\b'
-      - '\blow-?cost manufactur\w*\b'
-  - name: Propulsion & Power Systems
+      - '\btooling\b'
+      - '\bcoating[s]?\b'
+  - name: Propulsion, Lift & Actuation
     terms:
       - '\bpropulsion\b'
-      - '\belectric propulsion\b'
-      - '\bhybrid-electric\b'
+      - '\bengine[s]?\b'
+      - '\bmotor[s]?\b'
       - '\bpropeller[s]?\b'
-      - '\bbattery\b'
-      - '\bbatteries\b'
-      - '\bmotor controller[s]?\b'
-      - '\bsmall (?:gas turbine|engine)[s]?\b'
-      - '\belectric motor[s]?\b'
-  - name: Autonomy, Guidance & Flight Control
+      - '\brotor[s]?\b'
+      - '\bactuator[s]?\b'
+      - '\bgearbox(?:es)?\b'
+  - name: Power, Energy Storage & Thermal
     terms:
-      - '\bautopilot\b'
-      - '\bautonomous flight\b'
-      - '\bswarm(?:ing)?\b'
-      - '\bsense[- ]and[- ]avoid\b'
-      - '\bobstacle avoidance\b'
-      - '\bBVLOS\b'
-      - '\bbeyond visual line of sight\b'
-      - '\bguidance,? navigation,? and control\b'
-      - '\bGNC\b'
-  - name: Sensors & Mission Payloads
+      - '\bbatter(?:y|ies)\b'
+      - '\bfuel cell[s]?\b'
+      - '\bpower electronic[s]?\b'
+      - '\benergy storage\b'
+      - '\bthermal management\b'
+      - '\bpower source[s]?\b'
+      - '\bpower system[s]?\b'
+      - '\bpowerplant[s]?\b'
+      - '\bturbogenerator[s]?\b'
+      - '\bgenerator[s]?\b'
+  - name: Avionics, Flight-Control & Navigation Hardware
     terms:
+      - '\bavionics\b'
+      - '\bflight control computer[s]?\b'
+      - '\bautopilot hardware\b'
+      - '\binertial measurement unit[s]?\b'
+      - '\bIMU[s]?\b'
+      - '\bGNSS receiver[s]?\b'
+      - '\bnavigation hardware\b'
+      - '\bflight computer[s]?\b'
+      - '\bmission computer[s]?\b'
+  - name: Communications, Data Links & Payload Hardware
+    terms:
+      - '\bdata ?link hardware\b'
+      - '\bradio[s]?\b'
+      - '\bantenna[s]?\b'
       - '\bgimbal[s]?\b'
-      - '\bpayload[s]?\b'
       - '\bEO/?IR\b'
-      - '\bISR payload[s]?\b'
-      - '\bLIDAR\b'
-      - '\bLiDAR\b'
-  - name: Communications & Data Links
-    terms:
-      - '\bdata ?link[s]?\b'
-      - '\bcommand and control link[s]?\b'
-      - '\bground control station[s]?\b'
-      - '\banti-jam\b'
+      - '\bpayload hardware\b'
+      - '\bprinted circuit board[s]?\b'
+      - '\bcamera[s]?\b'
+      - '\bimager[s]?\b'
+      - '\bsensor[s]?\b'
+      - '\bradar[s]?\b'
+      - '\b(?:receiver|transmitter|transceiver)s?\b'
 
-fallback_subset: "Airframe & Platforms (General/Unclassified Subsystem)"
+fallback_subset: Complete Platforms & Systems Integration
+fallback_scope_class: Physical Hardware & Manufacturing

@@ -29,6 +29,7 @@ class AnalysisKind(StrEnum):
     # parameterized family). Add one line here per new
     # config/tech_census/<area>.yaml as areas are added.
     TECH_CENSUS_DRONE_MANUFACTURING = "tech_census_drone_manufacturing"
+    TECH_CENSUS_UAS_RELEVANCE = "tech_census_uas_relevance"
 
 
 class SourceReference(BaseModel):
@@ -89,6 +90,7 @@ class FileSnapshotRepository:
             AnalysisKind.TRANSITION_RATE: "transition_rate",
             AnalysisKind.FOLLOW_ON_MULTIPLIER: "follow_on_multiplier",
             AnalysisKind.TECH_CENSUS_DRONE_MANUFACTURING: "tech_census_drone_manufacturing",
+            AnalysisKind.TECH_CENSUS_UAS_RELEVANCE: "tech_census_uas_relevance",
         }
         return self.root / directories[kind]
 
@@ -273,6 +275,24 @@ def write_snapshot(
     return target
 
 
+def _tech_census_signature(snapshot: AnalyticsSnapshot) -> dict[str, Any] | None:
+    if not isinstance(snapshot.result, dict):
+        return None
+    summary = snapshot.result.get("summary")
+    if not isinstance(summary, dict) or "area_id" not in summary:
+        return None
+    return {
+        key: summary.get(key)
+        for key in (
+            "area_id",
+            "config_version",
+            "override_version",
+            "programs",
+            "reporting_window",
+        )
+    }
+
+
 def compare_snapshots(baseline: AnalyticsSnapshot, comparison: AnalyticsSnapshot) -> dict[str, Any]:
     """Compare compatible snapshots without inventing domain-specific formulas."""
 
@@ -286,6 +306,12 @@ def compare_snapshots(baseline: AnalyticsSnapshot, comparison: AnalyticsSnapshot
         raise IncompatibleSnapshotsError("Methodology versions differ")
     if not isinstance(baseline.result, dict) or not isinstance(comparison.result, dict):
         raise IncompatibleSnapshotsError("Comparison requires object-shaped results")
+    baseline_signature = _tech_census_signature(baseline)
+    comparison_signature = _tech_census_signature(comparison)
+    if baseline_signature != comparison_signature and (
+        baseline_signature is not None or comparison_signature is not None
+    ):
+        raise IncompatibleSnapshotsError("Tech-census methodologies or reporting scopes differ")
 
     deltas: dict[str, float] = {}
     for key in baseline.result.keys() & comparison.result.keys():
