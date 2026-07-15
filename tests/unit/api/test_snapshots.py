@@ -10,8 +10,10 @@ import pytest
 from sbir_analytics.api.snapshots import (
     AnalysisKind,
     FileSnapshotRepository,
+    IncompatibleSnapshotsError,
     SnapshotMetadata,
     SnapshotStoreError,
+    compare_snapshots,
     snapshot_from_result,
     snapshot_from_tool_result,
     write_snapshot,
@@ -129,3 +131,125 @@ def test_openapi_remains_read_only(tmp_path: Path) -> None:
     assert all(
         not ({"post", "put", "patch", "delete"} & endpoints.keys()) for endpoints in operations
     )
+
+
+def test_tech_census_snapshot_is_servable_end_to_end(tmp_path: Path) -> None:
+    """A real ComputeTechCensusTool run, written as a snapshot, is servable, listable, and comparable."""
+
+    from fastapi.testclient import TestClient
+
+    from sbir_analytics.api.app import create_app
+    from sbir_analytics.tools.tech_census import ComputeTechCensusTool
+
+    def _award(title: str, year: int, amount: float) -> dict:
+        return {
+            "title": title,
+            "abstract": "",
+            "company": "Acme",
+            "agency": "Department of Defense",
+            "program": "SBIR",
+            "phase": "Phase II",
+            "award_year": year,
+            "award_amount": amount,
+            "agency_tracking_number": f"TRACK-{year}-{amount}",
+            "contract": f"CONTRACT-{year}-{amount}",
+            "source_row": 2,
+        }
+
+    tool = ComputeTechCensusTool()
+    result_2025 = tool.run(
+        awards_df=pd.DataFrame(
+            [
+                _award("Drone battery hybridizer", 2025, 1_000_000.0),
+                _award("Drone gimbal payload system", 2025, 500_000.0),
+            ]
+        ),
+        area_id="drone_manufacturing",
+    )
+    result_2026 = tool.run(
+        awards_df=pd.DataFrame([_award("Drone propulsion system", 2026, 750_000.0)]),
+        area_id="drone_manufacturing",
+    )
+
+    write_snapshot(
+        tmp_path,
+        snapshot_from_tool_result(
+            AnalysisKind.TECH_CENSUS_DRONE_MANUFACTURING, "2025", result_2025
+        ),
+    )
+    write_snapshot(
+        tmp_path,
+        snapshot_from_tool_result(
+            AnalysisKind.TECH_CENSUS_DRONE_MANUFACTURING, "2026", result_2026
+        ),
+    )
+
+    app = create_app(api_token="secret", snapshot_repository=FileSnapshotRepository(tmp_path))
+    with TestClient(app) as client:
+        headers = {"Authorization": "Bearer secret"}
+
+        get_response = client.get(
+            "/v1/snapshots/tech_census_drone_manufacturing/2025", headers=headers
+        )
+        assert get_response.status_code == 200
+        assert get_response.json()["result"]["summary"]["grand_total"] == {
+            "n": 2,
+            "usd": 1_500_000.0,
+        }
+
+        list_response = client.get(
+            "/v1/snapshots",
+            params={"analysis_kind": "tech_census_drone_manufacturing"},
+            headers=headers,
+        )
+        assert list_response.status_code == 200
+        periods = {entry["period"] for entry in list_response.json()["data"]}
+        assert periods == {"2025", "2026"}
+
+        compare_response = client.get(
+            "/v1/snapshots/tech_census_drone_manufacturing/2025/compare/2026", headers=headers
+        )
+        assert compare_response.status_code == 200
+        assert compare_response.json()["numeric_deltas"] == {
+            "award_count": -1,
+            "award_dollars": -750_000.0,
+        }
+
+
+def test_uas_relevance_snapshot_has_its_own_directory(tmp_path: Path) -> None:
+    repository = FileSnapshotRepository(tmp_path)
+    assert repository._directory(AnalysisKind.TECH_CENSUS_UAS_RELEVANCE).name == (
+        "tech_census_uas_relevance"
+    )
+
+
+@pytest.mark.parametrize(
+    ("field", "different_value"),
+    [
+        ("config_version", "2.1.0"),
+        ("override_version", "review-2"),
+        ("programs", ["STTR"]),
+        ("reporting_window", {"fiscal_years": [2025], "programs": ["SBIR"]}),
+    ],
+)
+def test_tech_census_comparison_rejects_different_methodology_or_scope(
+    field: str, different_value: object
+) -> None:
+    def _snapshot(period: str, **summary_overrides: object):
+        summary = {
+            "area_id": "drone_manufacturing",
+            "config_version": "2.0.0",
+            "override_version": "review-1",
+            "programs": ["SBIR"],
+            "reporting_window": {"fiscal_years": None, "programs": ["SBIR"]},
+        }
+        summary.update(summary_overrides)
+        return snapshot_from_result(
+            AnalysisKind.TECH_CENSUS_DRONE_MANUFACTURING,
+            period,
+            {"award_count": 1, "award_dollars": 1.0, "summary": summary},
+            metadata=SnapshotMetadata(tool_name="compute_tech_census", tool_version="2.0.0"),
+        )
+
+    with pytest.raises(IncompatibleSnapshotsError, match="methodologies or reporting scopes"):
+        compare_snapshots(_snapshot("2025"), _snapshot("2026", **{field: different_value}))
