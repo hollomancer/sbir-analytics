@@ -4,6 +4,30 @@
 > extrapolation pending the inferential pull. DoD, FY2016–2025.
 > Companion to [audit-piid-grain.md](./audit-piid-grain.md); supports **B3** (GAO-24-106398 [L14]).
 
+## Undercount statistics — the bottom line up front
+
+Contract-based SBIR Phase III undercount, FY2016–2025 (DoD + NASA = ~all of it):
+
+| | DoD | NASA | **Combined** |
+|---|--:|--:|--:|
+| Coded Phase III universe (awards) | 6,351 | 1,038 | **7,389** |
+| Described "SBIR PHASE III" contracts | 962 | 202 | 1,164 |
+| Visible undercount (uncoded ∩ described) | 141 | 16 | 157 |
+| **Undercount rate** | **14.7%** | **7.9%** | — |
+| + full-universe text scan | +11 | — | +11 |
+| **Confirmed / verifiable flags** | **152** | **16** | **168 (~$308M)** |
+| Modeled dark (unenumerable) | ~1,000 | ~73 | **~1,073** |
+| **Total undercount (modeled)** | ~1,150 | ~89 | **~1,240** |
+
+- **Confirmed:** 168 uncoded Phase III contracts, **~$308M** — spot-verified (DoD 12/12 vs FPDS), citable.
+- **Modeled total:** ~1,240 awards; the **~1,073 dark** portion is provably **unenumerable** from public
+  data (no code, no descriptive text, competition field null, text-similarity near-chance).
+- **Rates:** DoD 14.7%, NASA 7.9% (NASA codes ~2× better). Worst DoD strata: delivery orders 24%,
+  Navy/DCMA 19%.
+- **Scope:** NIH/NSF/DOE excluded — their Phase III is grant/commercial, outside FPDS entirely.
+
+---
+
 ## The problem in one sentence
 SBIR Phase III contracts are supposed to carry FPDS Element 10Q (`research` = SR3/ST3); many don't,
 and **the ones we can *find* missing the code are a small, unrepresentative slice of the ones that
