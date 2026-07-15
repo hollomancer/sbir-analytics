@@ -26,6 +26,9 @@ dependencies = [
     "rapidfuzz>=3.0.0,<4.0.0",
 ]
 
+[project.scripts]
+refresh-state-rates = "sbir_etl.transformers.fiscal.refresh_state_rates:main"
+
 [project.optional-dependencies]
 # UCC1 pilot — TLS-impersonating HTTP client for bizfileOnline (Imperva-fronted)
 ucc1-pilot = ["curl_cffi>=0.7.0,<1.0.0"]
