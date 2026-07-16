@@ -259,6 +259,7 @@ placeholder, never wired into the M&A pipeline, and was removed in PR #317.*
 ### E6. Continuous monitoring & rolling analytics (Tier 4, capstone)
 
 - What are current-quarter SBIR metrics and trends (weekly snapshots)? — [research-plan-alignment.md](research-plan-alignment.md), [../specs/weekly-awards-report-refactor/](../specs/weekly-awards-report-refactor/). Fills the gap between point-in-time NASEM reviews [L1][L3][L4][L5]. *(deps: E1–E5 + A–D pipelines)*
+- Can typed, optimized LM programs improve weekly award-narrative schema reliability, solicitation grounding, and operator cost beyond the current prompt and provider-native structured output? — [DSPy evaluation](decisions/dspy-evaluation.md), [prototype spec](../specs/dspy-weekly-awards-prototype/). *(deps: weekly-awards-report-refactor)*
 - How have transition rates, patent output, and fiscal returns changed quarter-over-quarter? *(deps: all)*
 - Which agencies are under-performing on transitions vs. historical baseline? *(deps: all)*
 
@@ -401,4 +402,3 @@ When this doc is reviewed next, the audit should cover:
 - CET taxonomy consistency: the canonical spine is the 21-area `NSTC-2025Q1` set (`config/cet/taxonomy.yaml`, validated by `taxonomy_loader.py`). Two divergent code-level taxonomies remain unreconciled — a 10-area transition-system set (`docs/transition/cet-integration.md`, code in transition CET inference) and a 19-area hardcoded reporting set (`sbir_etl/utils/reporting/analyzers/cet_analyzer.py`). Reconciling these to the 21-area spine is a code change with test/precision-benchmark risk and should be scoped separately.
 
 Update this footer with the new review date when the audit completes.
-
