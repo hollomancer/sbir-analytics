@@ -91,18 +91,31 @@ def award_key_series(df: pd.DataFrame) -> pd.Series:
     if df.empty:
         return pd.Series(index=df.index, dtype="object", name="_award_key")
 
+    complete_keys: dict[str, pd.Series] = {}
     for column in UNIQUE_AWARD_KEY_COLUMNS:
         if column not in df.columns:
             continue
         values = _normalized_series(df, column)
         nonempty = values.ne("")
         if nonempty.all():
-            return values.rename("_award_key")
+            complete_keys[column] = values
+            continue
         if nonempty.any():
             rows = list(df.index[~nonempty][:5])
             raise AwardIdentityError(
                 f"precomputed award key {column!r} is partial; missing at rows {rows}"
             )
+
+    if complete_keys:
+        normalized = pd.DataFrame(complete_keys, index=df.index)
+        conflicts = normalized.apply(lambda row: len(set(row)) > 1, axis=1)
+        if conflicts.any():
+            rows = list(df.index[conflicts][:5])
+            columns = tuple(complete_keys)
+            raise AwardIdentityError(
+                f"conflicting precomputed award key aliases {columns} at rows {rows}"
+            )
+        return normalized.iloc[:, 0].rename("_award_key")
 
     piid = _coalesce_required_component(df, PIID_COLUMNS, component="PIID")
     agency = _coalesce_required_component(

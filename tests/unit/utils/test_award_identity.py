@@ -38,6 +38,29 @@ def test_partial_precomputed_key_fails_instead_of_emitting_blank_identity():
         award_key_series(frame)
 
 
+def test_conflicting_complete_precomputed_key_aliases_fail():
+    frame = pd.DataFrame(
+        {
+            "contract_award_unique_key": ["CONT_AWD_1", "CONT_AWD_2"],
+            "generated_unique_award_id": ["cont_awd_1", "CONT_AWD_DIFFERENT"],
+        }
+    )
+
+    with pytest.raises(AwardIdentityError, match="conflicting precomputed award key aliases"):
+        award_key_series(frame)
+
+
+def test_matching_complete_precomputed_key_aliases_are_accepted():
+    frame = pd.DataFrame(
+        {
+            "contract_award_unique_key": ["CONT_AWD_1", " CONT_AWD_2 "],
+            "generated_unique_award_id": ["cont_awd_1", "cont_awd_2"],
+        }
+    )
+
+    assert award_key_series(frame).tolist() == ["CONT_AWD_1", "CONT_AWD_2"]
+
+
 def test_compound_key_distinguishes_repeated_order_piid_across_parent_idvs():
     frame = pd.DataFrame(
         {

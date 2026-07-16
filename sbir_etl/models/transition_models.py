@@ -211,6 +211,14 @@ class FederalContract(BaseModel):
     """
 
     contract_id: str = Field(..., description="Contract identifier (e.g., PIID).")
+    generated_unique_award_id: str | None = Field(
+        None,
+        description="Canonical USAspending award identifier across transaction rows.",
+    )
+    research: str | None = Field(
+        None,
+        description="FPDS SBIR/STTR indicator (Element 10Q) when supplied by the source.",
+    )
     agency: str | None = Field(None, description="Agency code or name (e.g., 'DOD', 'NASA').")
     sub_agency: str | None = Field(None, description="Sub-agency or office.")
     vendor_name: str | None = Field(None, description="Vendor name string as present on contract.")

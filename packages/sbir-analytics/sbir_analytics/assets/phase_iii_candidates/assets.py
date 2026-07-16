@@ -391,7 +391,14 @@ def _candidate_dataframe(candidates: list[PhaseIIICandidate]) -> pd.DataFrame:
 
 
 def _default_retrospective_loader(_context: Any) -> pd.DataFrame:
-    """Read FPDS contracts parquet from disk; returns empty frame when file is missing."""
+    """Read and normalize the extractor's persisted contract schema.
+
+    Older ``FederalContract.model_dump()`` parquets retained the canonical
+    USAspending award id only in ``metadata.award_id``. Promote that value
+    rather than treating the bare-PIID ``contract_id`` as unique. Element 10Q
+    is likewise promoted when a legacy producer retained it in metadata; old
+    extracts without it receive an explicit null ``research`` column.
+    """
 
     contracts_path = Path("data/transition/contracts_ingestion.parquet")
     if not contracts_path.exists():
@@ -399,7 +406,31 @@ def _default_retrospective_loader(_context: Any) -> pd.DataFrame:
     if not contracts_path.exists():
         return pd.DataFrame()
     try:
-        return pd.read_parquet(contracts_path)
+        contracts = pd.read_parquet(contracts_path)
+        metadata = contracts.get("metadata", pd.Series([None] * len(contracts)))
+
+        def _metadata_field(value: object, field: str) -> object:
+            return value.get(field) if isinstance(value, dict) else None
+
+        metadata_award_id = metadata.map(lambda value: _metadata_field(value, "award_id"))
+        metadata_research = metadata.map(lambda value: _metadata_field(value, "research"))
+
+        if "generated_unique_award_id" not in contracts.columns:
+            contracts["generated_unique_award_id"] = metadata_award_id
+        else:
+            missing_id = contracts["generated_unique_award_id"].isna() | contracts[
+                "generated_unique_award_id"
+            ].astype(str).str.strip().eq("")
+            contracts.loc[missing_id, "generated_unique_award_id"] = metadata_award_id[missing_id]
+
+        if "research" not in contracts.columns:
+            contracts["research"] = metadata_research
+        else:
+            missing_research = contracts["research"].isna() | contracts["research"].astype(
+                str
+            ).str.strip().eq("")
+            contracts.loc[missing_research, "research"] = metadata_research[missing_research]
+        return contracts
     except Exception as exc:  # pragma: no cover - defensive
         logger.warning("Failed to read contracts parquet at {}: {}", contracts_path, exc)
         return pd.DataFrame()

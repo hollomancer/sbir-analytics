@@ -367,6 +367,8 @@ class TestParseContractRow:
         contract = extractor._parse_contract_row(sample_contract_row_full)
 
         assert contract is not None
+        assert contract.generated_unique_award_id == "CONT_AWD_1234_9700_SPE4A924D0001"
+        assert contract.research is None
         assert "transaction_id" in contract.metadata
         assert "award_id" in contract.metadata
         assert "modification_number" in contract.metadata

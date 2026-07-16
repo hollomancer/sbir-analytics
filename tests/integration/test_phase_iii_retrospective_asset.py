@@ -30,9 +30,11 @@ from sbir_analytics.assets.phase_iii_candidates.assets import (
     EVIDENCE_OUTPUT_PATH,
     HIGH_THRESHOLD_RETROSPECTIVE,
     WEIGHTS_RETROSPECTIVE,
+    _default_retrospective_loader,
     build_candidate_asset,
 )
-from sbir_analytics.assets.phase_iii_candidates.pairing import pair_filter_s1
+from sbir_analytics.assets.phase_iii_candidates.pairing import _prepare_contracts, pair_filter_s1
+from sbir_etl.extractors.contract_extractor import ContractExtractor
 from sbir_etl.models.phase_iii_candidate import PhaseIIICandidate, SignalClass
 
 
@@ -327,3 +329,41 @@ def test_pair_filter_s1_excludes_already_coded_phase_iii():
     assert sum(1 for t in target_ids if t.startswith("C-LOW-")) == 30
     # Office is the finest agency match.
     assert (pairs["agency_match_level"] == "office").all()
+
+
+def test_default_loader_accepts_contract_extractor_model_dump(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    output_path = Path("data/transition/contracts_ingestion.parquet")
+    row = ["\\N"] * 103
+    row[0] = "TX-1"
+    row[1] = "CONT_AWD_PIID-1_9700_PARENT-1"
+    row[2] = "20240115"
+    row[3] = "A"
+    row[5] = "A"
+    row[7] = "Follow-on production"
+    row[9] = "EXAMPLE COMPANY"
+    row[11] = "9700"
+    row[12] = "DEPARTMENT OF DEFENSE"
+    row[14] = "DEPARTMENT OF THE NAVY"
+    row[28] = "PIID-1"
+    row[29] = "1000"
+    row[71] = "20240115"
+    row[96] = "UEI000000001"
+    row[99] = "NONE"
+    row[100] = "A"
+    row[101] = "9700"
+    row[102] = "PARENT-1"
+
+    extractor = ContractExtractor()
+    contract = extractor._parse_contract_row(row)
+    assert contract is not None
+    output_path.parent.mkdir(parents=True)
+    assert extractor._collect_and_write([contract], output_path) == 1
+
+    loaded = _default_retrospective_loader(None)
+    assert loaded.loc[0, "generated_unique_award_id"] == row[1]
+    assert "research" in loaded.columns
+    assert pd.isna(loaded.loc[0, "research"])
+    targets = _prepare_contracts(loaded)
+    assert targets.loc[0, "target_id"] == row[1]
+    assert targets.loc[0, "target_id"] != row[28]

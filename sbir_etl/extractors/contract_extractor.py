@@ -365,6 +365,7 @@ class ContractExtractor:
             contract_id_value = get_col(28, get_col(1, f"unknown_{row_data[0]}"))  # PIID (col 28)
             contract = FederalContract(
                 contract_id=contract_id_value,
+                generated_unique_award_id=get_col(1),
                 agency=get_col(12),  # awarding_agency_name
                 sub_agency=get_col(14),  # awarding_sub_tier_agency_name
                 vendor_name=get_col(9),  # recipient_name
