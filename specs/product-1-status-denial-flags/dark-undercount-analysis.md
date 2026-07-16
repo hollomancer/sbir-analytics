@@ -244,20 +244,43 @@ Phase III (true awardee known), TF-IDF cosine, true firm's abstract vs 20 random
 | **rich abstract** ↔ **rich solicitation** | **0.79** | rich target adds a little |
 
 **The query-side abstract (1,308-char median) does the work** — the near-chance null was a
-query-starvation artifact, not a property of semantic matching. Two structural walls remain, both
-measured, both making the 0.79 *easier than the operational task*:
-- **Coverage:** only **13% (9/70)** of sampled coded Phase III solicitations had retrievable rich
-  text (sam.gov) — sole-source Phase III has *no public solicitation*. Measured on the sole-source-
-  heavy coded set; coverage on *competed* transitions should be higher (**pending measurement 1**).
-- **Easy-vs-hard task:** 0.79 is *true-firm-vs-random-firms*; random firms are in unrelated fields.
-  The operational task is *which of a firm's OWN contracts is the transition* — every one is in the
-  firm's field, so the abstract matches them all similarly (**pending measurement 2**, same-firm
-  contrastive with ModernBERT embeddings).
+query-starvation artifact. But 0.79 is the *easy* task (true-firm-vs-random-firms; random firms are
+in unrelated fields). The **operational** task — *which of a firm's OWN contracts is the transition* —
+is much harder, and the follow-up measurements settle it:
 
-**Synthesis:** semantic-on-rich-text is the **primary** signal wherever solicitation text exists
-(the competed segment); PSC/NAICS domain-shift is the **structural fallback** for the ~87%
-sole-source dark segment that has no text to match at all. Complementary, not competing.
-(`scripts/phase3_benchmark/pc_rich_match.py`.)
+**Measurement 1 — retrospective solicitation-text coverage (sam.gov backend):** low and
+**recency-gated**, not competition-gated. ~0% before 2019, 15–42% for 2020–2025, **13% overall**.
+Competition status is *not* the lever (sole-source actually records a Sol# more often, 50% vs 17%);
+the sam.gov *search* backend simply purges archived opportunities.
+
+**Measurement 2 — same-firm contrastive, terse target (`pc_samefirm.py`, 768 firms / 4,009 true
+Phase III):** AUC **0.492** (median 0.500) — **pure chance**. With a terse (~44-char) description as
+the target, a firm's abstract cannot tell its Phase III from its routine contracts (all in the same
+technology).
+
+**Measurement 3 — same-firm contrastive, PSC/NAICS domain-shift (250 firms):** AUC **0.522** — also
+chance, and it **falsifies the domain-shift thesis**: coded Phase III is *more* R&D-coded than routine
+(P(production-like) 0.44 vs 0.62). SBIR Phase III is often R&D-services continuation, not
+manufacturing — so R&D→production doesn't separate it.
+
+**Neither terse text (0.492) nor structure (0.522) solves the operational discriminator.** The only
+lever with signal is a **rich target** — which measurement 1 said was 13%-covered… via the wrong
+source.
+
+### Retrospective rich text IS obtainable — GSA archived extracts (2026-07-16)
+`falextracts.s3.amazonaws.com/Contract Opportunities/Archived Data/FY{2015..2025}_archived_opportunities.csv`
+— public S3, **no API key**, reachable from this IP (bypasses the `api.sam.gov` gateway that 404s us;
+the sam.gov *search* backend is active-only). The `Description` column is **inline text, populated for
+76%** of notices (median 195 chars, p90 ~5,800). Join to our contracts by `Sol#`. This is **~76% vs
+the 13%** sam.gov-backend retrieval — it reopens rich-target retrospective matching. Effective
+coverage for transitions ≈ P(contract has a Sol#, ~33% coded) × P(Sol# posted publicly with text);
+never-posted sole-source stays absent, but competed transitions (the reframe's target) should land.
+
+**Synthesis:** the operational discriminator needs rich *target* text. Retrospectively that means the
+GSA archived extracts (join by Sol#); prospectively, live sam.gov solicitations (fully available).
+PSC/NAICS is *not* the fallback it was hoped to be. **Next decisive test:** `Sol# → archived
+Description` join, then re-run measurement 2 with rich targets — does it lift the same-firm
+discriminator off 0.49? (`scripts/phase3_benchmark/pc_rich_match.py`, `pc_samefirm.py`.)
 
 ## Bottom line
 - **Confirmed / text-evidenced:** **191 flags (~$365M)** — verifiable, citable (frozen frame
