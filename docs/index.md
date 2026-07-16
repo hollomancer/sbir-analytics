@@ -65,6 +65,14 @@ See [README](../README.md) for project context, research questions, and setup. T
 - Research notes: [`research/`](research/)
 - Getting started: [`getting-started/README.md`](getting-started/README.md)
 
+### Tech-area reports (provisional)
+
+Policy-leader deliverables produced by the [tech-area transition report](../specs/tech-area-transition-report/) workflow. All are marked provisional — figures are bounded estimates, not final program rates.
+
+- Nanotechnology: [policy brief](nanotech_sbir_policy_brief.md) · [findings](nanotech_sbir_transition_findings.md) · [methodology](nano_phase3_methodology.md)
+- Hypersonics: [policy brief](hypersonics_sbir_policy_brief.md) · [findings](hypersonics_sbir_transition_findings.md)
+- Quantum information science: [policy brief](quantum_information_science_sbir_policy_brief.md) · [findings](quantum_information_science_sbir_transition_findings.md)
+
 ## Conventions
 
 Docs follow the Diátaxis model (Tutorials, How-to guides, Explanations, References). Curated reference docs carry front-matter with Type, Owner, Last-Reviewed, and Status; many working notes and research docs do not yet. New reference docs should include front-matter, and backfilling it on existing docs is tracked as ongoing cleanup.
