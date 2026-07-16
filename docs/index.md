@@ -26,6 +26,7 @@ See [README](../README.md) for project context, research questions, and setup. T
 - Getting started: [`README.md`](../README.md)
 - Architecture overview: [`architecture/detailed-overview.md`](architecture/detailed-overview.md)
 - Shared tech stack: [`architecture/shared-tech-stack.md`](architecture/shared-tech-stack.md)
+- Pipelines, schedules & sensors: [`architecture/dagster-pipelines.md`](architecture/dagster-pipelines.md)
 
 ### Deployment (Optional Cloud Setup)
 
@@ -54,9 +55,9 @@ See [README](../README.md) for project context, research questions, and setup. T
 ### Subsystems & Domains
 
 - Transition detection: [`transition/README.md`](transition/README.md) — scoring, vendor matching, evidence bundles
-- ML / CET classification: [`ml/README.md`](ml/README.md)
-- Enrichment sources: [`enrichment/`](enrichment/) — SAM.gov, USASpending, enhanced matching
-- Data pipeline & refreshes: [`data/index.md`](data/index.md)
+- ML / CET classification: [`ml/README.md`](ml/README.md) — incl. [rule-engine tuning](ml/cet-rule-engine.md)
+- Enrichment sources: [`enrichment/`](enrichment/) — SAM.gov, USASpending, and the full [enricher catalog](enrichment/enricher-catalog.md) (credentials)
+- Data pipeline & refreshes: [`data/index.md`](data/index.md) — incl. [weekly awards report](data/weekly-awards-report.md), [capital events & UCC1](data/capital-events.md)
 - Fiscal analysis: [`fiscal/sbir-fiscal-pipeline-guide.md`](fiscal/sbir-fiscal-pipeline-guide.md)
 - OT consortium: [`ot-consortium/tiers.md`](ot-consortium/tiers.md)
 - Analytics API: [`api/README.md`](api/README.md) and [`architecture/private-analytics-api.md`](architecture/private-analytics-api.md)
