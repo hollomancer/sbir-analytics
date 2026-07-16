@@ -45,8 +45,18 @@ Deployment number **0.795** (≈ the 0.8 bar); conservative identity-free number
 
 **Temporal floor = award year (PoP start), by design.** A transition (a) can't predate the firm's
 earliest SBIR award year, and (b) *can* occur *during* an award's period of performance — so
-`after_first` uses the award year (start of PoP), which excludes (a) and permits (b). Possible
-refinement: use `Contract End Date` (PoP end) to sharpen `in_window`'s upper edge; the floor is correct.
+`after_first` uses the award year (start of PoP), which excludes (a) and permits (b).
+
+**Transition lag is LONG — no tight upper window (measured 2026-07-16).** Empirically, recovered
+transitions (n=215) have a **median lag of 18 years** from the firm's earliest SBIR award (p90=33, max=41;
+**55% exceed 15 years**). Long lags are the *norm*, not outliers — emerging/deep tech (materials, sensors,
+photonics, biotech) takes 10–20 yrs from Phase I/II research to a Phase III/production contract. So the
+`in_window = [first, last+6]` **6-year cap is wrong in principle** — it penalizes genuine long-horizon
+transitions. (At *firm* level it mostly didn't bite — 52% of transitions occur *while the firm still wins
+SBIR*, so notices land near the latest award — but at **award level** it would wrongly exclude a real 2005
+award → 2020 notice.) **Corrected design:** keep the floor (`after_first`), treat `gap` as a continuous/
+soft feature, impose **no tight upper bound**. Timing is not evidence against a transition — reviewers and
+features must judge **technical continuity**, not elapsed time.
 
 **Phase 3 — organizational + contract attrs, CURATED by ablation (`pc_fusion3.py`).** Tested marginal
 value on held-out folds; kept only what helps (dumping all 10 features = 0.797 < curated):

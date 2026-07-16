@@ -25,10 +25,15 @@ notice_text_snippet` | reviewer fields. The reviewer verifies the *linkage* (doe
 *that award's* work), not just firm-relatedness.
 
 **Finding (surfaced by the award linkage):** the firm-level ranker sometimes attaches a transition to a
-*weak/implausible* originating award — e.g., a 2005 Phase I → 2020 notice (15-yr gap), or mismatched tech.
-→ **Design refinement: match at the AWARD level** (specific abstract → notice), which both improves
-accuracy and yields a **per-award temporal gap** (the 15-yr gap becomes a discriminating feature instead
-of being hidden by firm-level aggregation). This is the "per-abstract max-sim" formulation, now clearly right.
+weak originating award — but the diagnostic must be **technical continuity, not elapsed time.** Empirically,
+transition lag is LONG — **median 18 years** from the firm's earliest SBIR award, 55% >15 yrs (n=215). A
+2005 award → 2020 notice is a *normal-length* transition (emerging/deep tech matures over 10–20 yrs), NOT
+implausible. So only *tech-mismatch* cases (e.g., XML-security award → airborne-relay notice) are suspect,
+not long-gap ones. **Reviewers must judge whether the event continues the award's WORK, ignoring the gap.**
+
+→ **Design refinement: match at the AWARD level** (specific abstract → notice), yielding a per-award gap as
+a *continuous/soft* feature with **no tight upper bound** (long lags are valid). Improves accuracy and makes
+every prediction an inherently verifiable award→event claim.
 
 ## Reviewer instructions
 For each surfaced notice, judge **from the text** whether it is genuinely **this firm's SBIR Phase III
