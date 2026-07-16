@@ -305,7 +305,33 @@ A real lift, unlike the same-firm test. Powering up to all **849** coded Phase I
   unreachable by any text signal. The 191 text-*evidenced* flags stay the citable number.
 - *Per-firm / narrowed lead triage* — base rate ~5–20% ⇒ **~0.8 AUC is useful**, metric = precision@K
   (the `phase-3-solicitation-alerts` ≥85% target), not global AUC. 0.665 (TF-IDF, no embeddings/topic)
-  is a floor; embeddings + topic text + signal stacking are the headroom toward ~0.8.
+  is a floor; embeddings + signal stacking are the headroom toward ~0.8.
+
+### Method decisions — retrieval ladder & infra (2026-07-16)
+**Archive-throttle attacks tried:** `curl` streaming gets S3-rate-limited to ~10 MB/min after heavy
+same-day use; **`aws s3 cp --no-sign-request` runs ~125 MB/min (~12×)** via multipart — this is the
+fix (full 849-solicitation recovery in ~70 min, not ~50 h). Fallback if a residential IP stays
+clamped: run the scan in **AWS CloudShell** (in-region `us-east-1`, line-rate, returns only the small
+`sol_desc` JSON). `api.sam.gov` stays 404 from our IP; sam.gov *search* backend is active-only; the
+`falextracts` archive is the retrospective source.
+
+**Retrieval ladder (agreed order, cheap→heavy):**
+1. **Sparse:** TF-IDF (done, 0.665 floor) → **BM25** (better-calibrated; catches exact program/part/PSC
+   tokens dense embeddings blur).
+2. **Dense:** **`nomic-ai/modernbert-embed-base`** — chosen for **8k-token context** (ingests full rich
+   abstracts ~1.3k / solicitations ~5.8k chars without truncation) and its nomic **task prefixes**
+   (`search_query:` / `search_document:`), which match the query→document retrieval framing. This is
+   the same model that scored 0.56 on *terse* input — the fair rematch on *rich* input.
+3. **Hybrid:** reciprocal-rank fusion of BM25 + dense (usually beats either in jargon-heavy domains).
+4. **Deferred (heavier, only if hybrid < ~0.8):** cross-encoder re-ranker on top-K (biggest precision@K
+   lever); contrastive **fine-tune on our ~849 (abstract→true-solicitation) pairs** (highest ceiling).
+
+**Model notes:** keep long-context only — skip ≤512-ctx models (MiniLM/e5-large/bge-large-v1.5) that
+re-truncate the rich text. Open alternatives to compare later: `gte-large-en-v1.5` (8k), `bge-m3`
+(8k, dense+sparse). API options (`voyage-3`, `text-embedding-3-large`, 8k+) are top-tier but send
+federal text to an external service — a conscious egress call, not a default. **Bigger levers than the
+model itself:** hard-negative calibration (same sub-agency + NAICS vs random) and query construction
+(per-abstract max-sim, not concatenation).
 
 ## Bottom line
 - **Confirmed / text-evidenced:** **191 flags (~$365M)** — verifiable, citable (frozen frame
