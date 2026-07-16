@@ -180,6 +180,53 @@ NASA undercount ~89 (visible share 18%). **NASA codes ~2× better than DoD** (7.
 852 vs 5,530 silent), so its dark layer is proportionally small. Combined **DoD + NASA: ~168 confirmed
 flags (~$308M), ~1,073 modeled total.**
 
+## Recovery attempts since the pull (all tested, all bounded)
+Two further signals were tried to recover the dark layer; both add to the ruled-out list:
+
+- **Topic-code lineage (NO-GO).** Hypothesis: a firm's own SBIR topic code, cited in a later
+  contract, marks a Phase III. Result: topic codes appear in 3.1% of dark descriptions, but 2,672
+  same-firm topic matches yielded **0** that are ≥2 years after the firm's Phase II under that topic
+  — the codes are artifacts of the SBIR *research award* (Phase I/II, same year), not provenance on a
+  Phase III descendant. Prior-PIID refs: 0.2%. Documented on branch `claude/phase3-topic-lineage`.
+- **Solicitation text (partial, coverage-capped).** Hypothesis: the follow-on contract's *solicitation*
+  text (rich RFP) reveals Phase III where the terse FPDS description can't. Source **works with no key**
+  via the sam.gov website backend (`sam.gov/api/prod/sgs/v1/search`), coverage back to 2010, and where
+  present the text *does* carry the signal (the "WHEELBANK ASSEMBLY" contract's solicitation says
+  "sole-source, SBIR Phase III"). **But coverage is the wall:** only ~19% of known Phase III have a
+  findable solicitation, ~12% have retrievable inline text, and **56% of Phase III are sole-source** —
+  non-competed, so no solicitation is posted. Direct-scan recall: 2%. Reaches ≤~12% of Phase III.
+
+**Root cause, restated:** the dark layer is dark *because it's non-competed* — sole-source to the SBIR
+developer under FAR 6.302-5 — which is precisely why it leaves no public text anywhere (no coded field,
+no descriptive contract text, no posted solicitation). Every text/tag/solicitation signal hits this
+same structural wall.
+
+## Reframe: transition detection (candidates, not counts) — the forward path
+Attribute-detection ("is this contract a Phase III?") is exhausted. The productive reframe is
+**transition detection**: connect a Phase I/II to a subsequent **non-Phase-I/II** government funding
+agreement that continues the same work. The Phase III *tag* is optional metadata, not the target.
+
+- **Working definition (per direction, 2026-07):** a transition = Phase I/II → a later government
+  funding agreement that is (a) *not itself* a Phase I/II SBIR award and (b) connected **strongly
+  enough** to the Phase I/II work. **Sole-source is supporting evidence, not required** — the
+  discriminator is strength-of-connection by *any* signal.
+- **Substrate already built:** the 95,103-contract recipient universe *is* the set of subsequent
+  agreements to Phase-I/II firms; the same-firm link is already made. The open problem is the
+  *discriminator* — ranking which of a firm's many later contracts genuinely continue its SBIR work.
+- **Connection-signal hierarchy (from this investigation):** explicit reference (rare, 0.2%); text /
+  semantic same-work (near-chance on descriptions, ~12% coverage on solicitations); sole-source
+  FAR 6.302-5 (strong but coded generic `OTH` in FPDS — 38.5k/yr DoD — and null in USAspending, so
+  extraction needs a ~380k-record pull); timing-after-completion + PSC/NAICS domain continuity
+  (supporting, broad alone).
+- **Output is different in kind:** ranked **candidates / leads with a measured precision** (the
+  `phase-3-solicitation-alerts` RETROSPECTIVE goal: ≥85% on a hand-audited sample), *not* a
+  spot-verifiable count like the 168 confirmed flags. This is the intended use of the audited
+  `phase_iii_retrospective_candidates` asset + transition scorer — which never had a contract source
+  until the 95k universe pull.
+- **Next step:** run the (join-key-fixed) transition scorer on the 95k universe → ranked candidate
+  pool → spot-check precision, before deciding whether the ~380k-record sole-source enrichment is worth
+  it.
+
 ## Bottom line
 - **Confirmed / text-evidenced:** **152 flags (~$280M)** — verifiable, citable; text-based discovery
   is now exhausted.
