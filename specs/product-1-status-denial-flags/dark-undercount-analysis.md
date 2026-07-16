@@ -331,7 +331,24 @@ re-truncate the rich text. Open alternatives to compare later: `gte-large-en-v1.
 (8k, dense+sparse). API options (`voyage-3`, `text-embedding-3-large`, 8k+) are top-tier but send
 federal text to an external service — a conscious egress call, not a default. **Bigger levers than the
 model itself:** hard-negative calibration (same sub-agency + NAICS vs random) and query construction
-(per-abstract max-sim, not concatenation).
+(per-abstract max-sim, not concatenation). Compute: **M5 Pro / 64 GB unified → MPS GPU** runs
+ModernBERT-Embed *and* Qwen3-4B/8B; the gate on bigger models is **N**, not hardware — at N≈100 the
+firm-clustered CI (±0.06) swamps any ModernBERT-vs-Qwen3 gap.
+
+**N target:** ~45 firms detects direction (rich>terse, >chance); **~90–100 firms is the decision zone**
+for the ~0.8 lead-tool bar (CI ±0.07); distinguishing embedders needs several hundred (unreachable
+retrospectively → model choice deprioritized). N = distinct *firms* (clustered), not sols/comparisons.
+
+**Recovering the sole-source majority via AWARD notices (2026-07-16).** Coded Phase III is sole-source-
+heavy and sole-source posts **no public solicitation** — so Sol#→archive recovers only ~13% (~110 of
+849 sols; the rest genuinely unposted). *But* sole-source **does** post an **Award Notice** (and often a
+**Special Notice / Intent-to-Sole-Source** + **J&A**, which describes the prior SBIR work). The archive
+includes these (its `Award$`/`Awardee`/`AwardNumber` columns only populate on award rows). So the
+recovery now joins on **two keys: Sol# ∪ AwardNumber(PIID)** — the PIID join reaches award notices for
+the sole-source contracts the solicitation join misses (~159 rich/yr in the FY2020 probe → a meaningful
+additive lift). Caveat to *measure, not assume*: award-notice `Description` mixes real requirement text
+(useful) with award boilerplate ("Firm X awarded $Y", useless) — so the recovery keeps notice `Type`
+and we report text-usefulness **by notice type** before trusting the added positives.
 
 ## Bottom line
 - **Confirmed / text-evidenced:** **191 flags (~$365M)** — verifiable, citable (frozen frame
