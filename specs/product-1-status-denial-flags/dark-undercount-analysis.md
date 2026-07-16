@@ -278,9 +278,34 @@ never-posted sole-source stays absent, but competed transitions (the reframe's t
 
 **Synthesis:** the operational discriminator needs rich *target* text. Retrospectively that means the
 GSA archived extracts (join by Sol#); prospectively, live sam.gov solicitations (fully available).
-PSC/NAICS is *not* the fallback it was hoped to be. **Next decisive test:** `Sol# → archived
-Description` join, then re-run measurement 2 with rich targets — does it lift the same-firm
-discriminator off 0.49? (`scripts/phase3_benchmark/pc_rich_match.py`, `pc_samefirm.py`.)
+PSC/NAICS is *not* the fallback it was hoped to be.
+
+### Rich-target results — same-firm blocked by coverage; rich-vs-rich promising (2026-07-16)
+Built the `Sol# → archived Description` join via a 120-firm FPDS per-vendor pull (`VENDOR_UEI:`),
+FY2016–2025 archive (`pc_decisive.py`).
+
+**Same-firm contrastive, rich vs terse** — *inconclusive, coverage-starved.* Rich archived text
+attaches to only **10% of contracts** and **5% of Phase III positives** (35% of contracts even carry
+a Sol#), so only **17 firms** get a rich-covered positive — too few to power a within-firm test. On
+the sample: terse FPDS requirement text AUC **0.565** (95% CI [0.514, 0.618], n=93) — a *weak but real*
+signal, above the USAspending-terse 0.492; the "rich-with-fallback" comparison was ~90% terse and thus
+uninformative. **Not a demonstrated null — a linkage wall:** the text exists (76% of notices) but
+can't be attached to enough of a firm's contracts.
+
+**Rich-vs-rich retrieval — the promising reframe** (`pc_rich_vs_rich.py`). Query = firm's rich
+abstract + award titles; target pool = rich solicitations; **escapes the linkage wall** (no rich text
+needed on routine contracts). For a known transition, does the firm's abstract retrieve *its* Phase III
+solicitation above **hard negatives = other firms' Phase III solicitations**? First cut (n=16, coverage-
+limited): AUC **0.665** vs terse **0.534**; true solicitation in **top-3 of 26 = 50%**, median rank 3.
+A real lift, unlike the same-firm test. Powering up to all **849** coded Phase III solicitations pending
+(blocked on archive S3 rate-limiting after heavy same-day use; `pc_recover849.py`, resumable).
+
+**How good is good enough (base-rate framing).** Output type sets the AUC bar:
+- *Universe-wide automated count* — dark base rate ~1% ⇒ 85% precision needs FPR ~0.1% ⇒ **AUC ≳0.95**,
+  unreachable by any text signal. The 191 text-*evidenced* flags stay the citable number.
+- *Per-firm / narrowed lead triage* — base rate ~5–20% ⇒ **~0.8 AUC is useful**, metric = precision@K
+  (the `phase-3-solicitation-alerts` ≥85% target), not global AUC. 0.665 (TF-IDF, no embeddings/topic)
+  is a floor; embeddings + topic text + signal stacking are the headroom toward ~0.8.
 
 ## Bottom line
 - **Confirmed / text-evidenced:** **191 flags (~$365M)** — verifiable, citable (frozen frame
