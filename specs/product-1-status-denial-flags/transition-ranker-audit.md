@@ -11,11 +11,24 @@ a clean top can beat 0.85-AUC with a muddy top on precision@K. The operational b
 `phase-3-solicitation-alerts` **≥85% precision** on flagged leads — measurable only by hand-audit.
 
 ## The sample
-`scripts/phase3_benchmark/pc_audit_sample.py` (seed 20260716) → 40 random firms, **out-of-fold** scored
-(each firm ranked by a fold's model that did **not** train on it — no optimism). For each firm, the
-ranker scores the full 273-notice Phase III pool; the **top-3** are surfaced → **120 review rows** in
-`data/derived/phase3_transition_leads_audit.csv` (gitignored). Columns: `firm_uei, firm_name, rank,
-model_score, firm_abstract_snippet, notice_type, notice_year, notice_text_snippet` + reviewer fields.
+`scripts/phase3_benchmark/pc_audit_sample.py` + `pc_audit_sample2.py` (seed 20260716) → 40 random firms,
+**out-of-fold** scored (each firm ranked by a fold's model that did **not** train on it — no optimism).
+For each firm, the ranker scores the full 273-notice Phase III pool; the **top-3** are surfaced → **120
+review rows** in `data/derived/phase3_transition_leads_audit.csv` (gitignored).
+
+**Each row is a concrete transition claim: a specific Phase I/II SBIR AWARD → the funding EVENT.** For
+each surfaced notice, the firm's originating award is attached — the award whose contract#/topic the
+notice *cites* (`id_xref`, 14/120), else max abstract similarity (106/120). Columns: `firm_name, rank,
+model_score, award_link_basis` | **SBIR side:** `sbir_phase, sbir_award_year, sbir_award_title,
+sbir_contract, sbir_topic, sbir_abstract_snippet` | **event side:** `notice_year, notice_type,
+notice_text_snippet` | reviewer fields. The reviewer verifies the *linkage* (does the event continue
+*that award's* work), not just firm-relatedness.
+
+**Finding (surfaced by the award linkage):** the firm-level ranker sometimes attaches a transition to a
+*weak/implausible* originating award — e.g., a 2005 Phase I → 2020 notice (15-yr gap), or mismatched tech.
+→ **Design refinement: match at the AWARD level** (specific abstract → notice), which both improves
+accuracy and yields a **per-award temporal gap** (the 15-yr gap becomes a discriminating feature instead
+of being hidden by firm-level aggregation). This is the "per-abstract max-sim" formulation, now clearly right.
 
 ## Reviewer instructions
 For each surfaced notice, judge **from the text** whether it is genuinely **this firm's SBIR Phase III
