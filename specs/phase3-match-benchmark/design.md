@@ -28,7 +28,10 @@ An order PIID such as `0001` is not globally unique. A complete precomputed
 award key is preferred; otherwise the benchmark requires awarding agency,
 nested parent-IDV PIID, and order PIID. `contract_id` is never promoted to a
 unique key by assumption. The shared collapse helper chooses the latest dated
-transaction and does not aggregate financial amounts.
+transaction and does not aggregate financial amounts. Pairing retains that
+representative row for text but uses the earliest transaction date for the
+award as the as-of boundary, so a later modification cannot admit a Phase II
+that postdates contract inception.
 
 ## Labels and time
 
@@ -40,7 +43,9 @@ future Phase II awards; a year-only award is treated as available at year end.
 ## Metrics
 
 The first baseline is token-set Jaccard similarity. ROC-AUC uses average ranks
-for ties and a seeded nonparametric bootstrap for its interval. Embeddings are
+for ties and a seeded nonparametric bootstrap over complete P1/N1 target blocks;
+unmatched positives are retained in the artifact and reported as coverage but
+excluded from AUC. Embeddings are
 deferred until this baseline can be reproduced and until they can use the
 repository's existing model boundary without adding an ad hoc dependency.
 

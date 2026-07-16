@@ -12,6 +12,7 @@ import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
 from collections.abc import Callable, Sequence
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -21,6 +22,22 @@ import pandas as pd
 FEED_URL = "https://www.fpds.gov/ezsearch/FEEDS/ATOM?FEEDNAME=PUBLIC"
 USER_AGENT = "sbir-analytics-research/1.0 (Phase III benchmark)"
 Fetch = Callable[[str], bytes]
+
+
+@dataclass(frozen=True)
+class _ParsedPage:
+    frame: pd.DataFrame
+    total_results: int | None
+    next_url: str | None
+    last_url: str | None
+
+
+@dataclass(frozen=True)
+class _PageRead:
+    payload: bytes
+    fetched_at: str
+    cache_hit: bool
+    cache_key: str
 
 FIELD_NAMES: tuple[str, ...] = (
     "PIID",
@@ -102,9 +119,7 @@ def parse_entry(entry: ET.Element, research_code: str) -> dict[str, str | None]:
     return record
 
 
-def parse_feed(page_xml: bytes | str, research_code: str) -> tuple[pd.DataFrame, int | None]:
-    """Parse an FPDS ATOM page into transaction rows and its reported total."""
-
+def _parse_page(page_xml: bytes | str, research_code: str) -> _ParsedPage:
     payload = page_xml.encode() if isinstance(page_xml, str) else page_xml
     root = ET.fromstring(payload)
     entries = [node for node in root.iter() if _local_name(node.tag) == "entry"]
@@ -115,7 +130,24 @@ def parse_feed(page_xml: bytes | str, research_code: str) -> tuple[pd.DataFrame,
     )
     total_text = _value(total_node)
     total = int(total_text) if total_text and total_text.isdigit() else None
-    return pd.DataFrame(rows), total
+    links = {
+        str(node.get("rel", "")).lower(): urllib.parse.urljoin(FEED_URL, str(node.get("href")))
+        for node in root.iter()
+        if _local_name(node.tag) == "link" and node.get("rel") and node.get("href")
+    }
+    return _ParsedPage(
+        frame=pd.DataFrame(rows),
+        total_results=total,
+        next_url=links.get("next"),
+        last_url=links.get("last"),
+    )
+
+
+def parse_feed(page_xml: bytes | str, research_code: str) -> tuple[pd.DataFrame, int | None]:
+    """Parse an FPDS ATOM page into transaction rows and its reported total."""
+
+    parsed = _parse_page(page_xml, research_code)
+    return parsed.frame, parsed.total_results
 
 
 def build_query_url(research_code: str, start: int) -> str:
@@ -131,14 +163,53 @@ def fetch_url(url: str) -> bytes:
         return response.read()
 
 
-def _read_page(url: str, cache_file: Path | None, fetcher: Fetch) -> bytes:
+def _read_page(
+    url: str,
+    cache_dir: Path | None,
+    fetcher: Fetch,
+    *,
+    fetched_at: str,
+) -> _PageRead:
+    cache_key = hashlib.sha256(url.encode()).hexdigest()
+    cache_file = cache_dir / f"{cache_key}.xml" if cache_dir else None
+    metadata_file = cache_dir / f"{cache_key}.json" if cache_dir else None
     if cache_file is not None and cache_file.exists():
-        return cache_file.read_bytes()
+        if metadata_file is None or not metadata_file.exists():
+            raise ValueError(f"cache metadata is missing for {cache_file}")
+        payload = cache_file.read_bytes()
+        metadata = json.loads(metadata_file.read_text())
+        payload_hash = hashlib.sha256(payload).hexdigest()
+        if metadata.get("url") != url or metadata.get("raw_sha256") != payload_hash:
+            raise ValueError(f"cache provenance mismatch for {cache_file}")
+        return _PageRead(
+            payload=payload,
+            fetched_at=str(metadata["fetched_at"]),
+            cache_hit=True,
+            cache_key=cache_key,
+        )
     payload = fetcher(url)
     if cache_file is not None:
         cache_file.parent.mkdir(parents=True, exist_ok=True)
         cache_file.write_bytes(payload)
-    return payload
+        assert metadata_file is not None
+        metadata_file.write_text(
+            json.dumps(
+                {
+                    "url": url,
+                    "raw_sha256": hashlib.sha256(payload).hexdigest(),
+                    "fetched_at": fetched_at,
+                },
+                indent=2,
+                sort_keys=True,
+            )
+            + "\n"
+        )
+    return _PageRead(
+        payload=payload,
+        fetched_at=fetched_at,
+        cache_hit=False,
+        cache_key=cache_key,
+    )
 
 
 def _field_completeness(frame: pd.DataFrame) -> dict[str, float]:
@@ -169,45 +240,67 @@ def pull_research_code(
         raise ValueError("pages must be at least 1")
 
     code = research_code.upper()
+    run_at = retrieved_at or datetime.now(UTC).isoformat()
     frames: list[pd.DataFrame] = []
     digest = hashlib.sha256()
     total_results: int | None = None
-    pages_retrieved = 0
+    page_provenance: list[dict[str, object]] = []
+    url = build_query_url(code, 0)
+    termination_reason = "page_limit_reached"
 
     for page_number in range(pages):
-        start = page_number * 10
-        url = build_query_url(code, start)
-        cache_file = cache_dir / f"page_{start:06d}.xml" if cache_dir else None
-        payload = _read_page(url, cache_file, fetcher)
-        digest.update(payload)
-        frame, page_total = parse_feed(payload, code)
+        page = _read_page(url, cache_dir, fetcher, fetched_at=run_at)
+        digest.update(page.payload)
+        parsed = _parse_page(page.payload, code)
+        frame, page_total = parsed.frame, parsed.total_results
         if total_results is None:
             total_results = page_total
-        if frame.empty:
-            break
-        frames.append(frame)
-        pages_retrieved += 1
+        if not frame.empty:
+            frames.append(frame)
+        page_provenance.append(
+            {
+                "page_number": page_number + 1,
+                "url": url,
+                "row_count": len(frame),
+                "raw_sha256": hashlib.sha256(page.payload).hexdigest(),
+                "fetched_at": page.fetched_at,
+                "cache_hit": page.cache_hit,
+                "cache_key": page.cache_key,
+                "next_url": parsed.next_url,
+                "last_url": parsed.last_url,
+            }
+        )
         if total_results is not None and sum(len(item) for item in frames) >= total_results:
+            termination_reason = "reported_total_reached"
             break
+        if frame.empty or parsed.next_url is None:
+            termination_reason = "feed_exhausted"
+            break
+        url = parsed.next_url
 
     rows = pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
-    retrieved = retrieved_at or datetime.now(UTC).isoformat()
-    retrieval_complete = total_results is not None and len(rows) >= total_results
+    retrieved = max(
+        (str(page["fetched_at"]) for page in page_provenance),
+        default=run_at,
+    )
+    retrieval_complete = termination_reason in {"reported_total_reached", "feed_exhausted"}
     manifest: dict[str, object] = {
         "query": f"RESEARCH:{code}",
         "feed_url": FEED_URL,
         "source_vintage": source_vintage,
         "retrieved_at": retrieved,
+        "run_at": run_at,
         "parameters": {"research_code": code, "pages_requested": pages},
-        "pages_retrieved": pages_retrieved,
+        "pages_retrieved": len(page_provenance),
         "reported_total_results": total_results,
         "row_count": len(rows),
         "raw_pages_sha256": digest.hexdigest(),
         "field_completeness": _field_completeness(rows),
         "retrieval_complete": retrieval_complete,
-        "completeness_note": (
-            "feed exhausted" if retrieval_complete else "bounded page limit or empty page reached"
-        ),
+        "termination_reason": termination_reason,
+        "completeness_note": termination_reason.replace("_", " "),
+        "cache_hits": sum(bool(page["cache_hit"]) for page in page_provenance),
+        "page_provenance": page_provenance,
     }
     return rows, manifest
 

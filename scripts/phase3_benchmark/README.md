@@ -31,19 +31,25 @@ python scripts/phase3_benchmark/build_pairs_and_score.py \
   --metrics-out data/derived/phase3_metrics.json
 ```
 
-The pull manifest captures the exact query, source vintage, retrieval time,
-page and row counts, raw-page hash, parameters, field completeness, and whether
-the bounded pull exhausted the reported feed. Generated data stays under
-`data/` and is not committed.
+The pull manifest captures the exact query, source vintage, run and page-capture
+times, per-page URLs and hashes, cache hits, field completeness, and the precise
+termination reason (`feed_exhausted`, `reported_total_reached`, or
+`page_limit_reached`). Cache entries are keyed and validated by canonical URL.
+Generated data stays under `data/` and is not committed.
 
 ## Interpretation guardrails
 
 - FPDS entries are transactions. The benchmark constructs an award-grade key
-  and selects one representative transaction before pairing.
+  and selects the latest representative transaction for text while retaining
+  the award's earliest transaction date as the temporal eligibility boundary.
 - A same-firm coded Phase III / earlier Phase II pair is a **proxy positive**,
   not proof that the contract derives from that award.
+- The Phase II input must retain its `Phase` column; the script filters explicit
+  Phase II rows and, when present, validates `Program` as SBIR or STTR.
 - A Phase II is eligible only when its date is on or before the Phase III
   action date. Year-only Phase II dates become December 31, conservatively
   excluding ambiguous same-year matches.
 - A lexical AUC is a separability diagnostic, not a production transition
-  classifier or an estimate of Phase III undercount.
+  classifier or an estimate of Phase III undercount. AUC and its bootstrap use
+  complete, matched P1/N1 target blocks; unmatched positives remain in the pair
+  artifact and are reported as coverage rather than treated as independent rows.
