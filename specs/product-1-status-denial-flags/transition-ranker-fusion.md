@@ -34,11 +34,19 @@ bigger lift (+0.022, bridges jargon/format variants); `after_first` is the stron
 query) = 0.669, still < TF-IDF — every neural text method loses even tested fairly.
 
 **Phase 2 — IDENTIFIER CROSS-REFERENCE.** High-precision, near-dispositive when present.
-- `id_xref` = notice text cites the firm's SBIR contract # (`Contract` col) or `Topic Code` or prior
-  solicitation # (exact regex, normalized).
-- Source: firm identifiers from award_data.csv; notice text = recovered `desc`.
+- `id_xref` = notice text cites the firm's SBIR contract # / `Topic Code` / solicitation # / tracking #
+  (exact normalized substring, len≥6). Source: firm identifiers from award_data.csv; notice = recovered `desc`.
 - **Framing caveat:** legit in *deployment* (we rank a *known* firm's candidates) but a form of leakage
   in the pure "which firm owns this notice" retrieval framing → **report with AND without it.**
+
+**RESULT (Phase 2, `pc_fusion2.py`):** `id_xref` fires on **20% of true notices, 0.2% of negatives**
+(high precision). `text+temporal` **0.779** → `+id_xref` **0.795** (top-1 44%→52%, top-3 58%→61%).
+Deployment number **0.795** (≈ the 0.8 bar); conservative identity-free number **0.779**.
+
+**Temporal floor = award year (PoP start), by design.** A transition (a) can't predate the firm's
+earliest SBIR award year, and (b) *can* occur *during* an award's period of performance — so
+`after_first` uses the award year (start of PoP), which excludes (a) and permits (b). Possible
+refinement: use `Contract End Date` (PoP end) to sharpen `in_window`'s upper edge; the floor is correct.
 
 **Later (not now):** organizational (`agency_match`, `naics_match` from FPDS XML), contract attrs
 (`notice_type` J&A>award, `sole_source` from FPDS `reasonNotCompeted`), and an optional second text
