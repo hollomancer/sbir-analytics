@@ -1,6 +1,6 @@
 # Phase III Topic-Lineage Recovery — Requirements
 
-> **Status:** Spec / design — **go/no-go availability spike pending** (Req 1). A same-firm
+> **Status:** **NO-GO — spike ran, signal is empty (see Spike result below).** A same-firm
 > structural-lineage attempt to recover uncoded Phase IIIs from the "dark" pool that text-semantic
 > methods provably cannot enumerate.
 > Supports inventory question **B3** (Phase III undercount by agency; GAO-24-106398 [L14]) in
@@ -67,3 +67,23 @@ dark pool measured first, so we don't build a matcher for a signal that isn't th
 - **Cross-firm** bypass detection (that is Product 2). This is *same-firm* undercount recovery.
 - Fuzzy abstract-to-description similarity as a primary signal (benchmarked near-chance).
 - Any claim that a match is a violation — candidates feed human review.
+
+
+## Spike result — NO-GO (Req 1 failed)
+Ran the availability spike on the 90,792-contract dark pool:
+- **Topic codes present but point the wrong way.** 3.1% of dark descriptions carry an SBIR topic
+  code — but **77%+ explicitly say Phase I/II**, and the residual is unlabeled Phase I/II SBIR
+  *research awards*, not Phase III follow-ons.
+- **Same-firm temporal lineage is empty.** 2,672 dark contracts cite the recipient firm's **own**
+  topic code — but **0** are ≥2 years after the firm's Phase II under that topic (regardless of
+  phase text). They are the SBIR award contracts themselves (same year), not later Phase III.
+- **Prior-PIID references: 0.2%** — also dead.
+
+**Why:** the topic code in an FPDS description is an artifact of the SBIR *research award* (Phase I/II),
+not a provenance tag on the Phase III descendant. Phase III follow-on contracts do not carry the
+originating topic code, so there is no lineage bridge to recover them from FPDS text.
+
+**Conclusion:** topic/PIID lineage recovers **0** uncoded Phase IIIs — the 7th ruled-out signal. It
+confirms (does not overturn) the [dark-undercount-analysis](../product-1-status-denial-flags/dark-undercount-analysis.md)
+finding that the dark layer is unenumerable from public data. **Recommend parking this PR** as a
+documented negative result. Do not build Tiers 1–3.
