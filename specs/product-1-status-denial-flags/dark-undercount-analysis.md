@@ -350,6 +350,39 @@ additive lift). Caveat to *measure, not assume*: award-notice `Description` mixe
 (useful) with award boilerplate ("Firm X awarded $Y", useless) — so the recovery keeps notice `Type`
 and we report text-usefulness **by notice type** before trusting the added positives.
 
+### RESULT — rich-vs-rich retrieval works (2026-07-16, `pc_recover_combined.py` + `pc_rich_final.py`)
+Combined recovery (Sol# ∪ PIID, FY2016–2025): **273 notices** — 114 solicitation-side + **159 award-side**
+(89 Award Notice, **58 J&A**, 32 Presolicitation, 28 Combined Synopsis, 23 Solicitation, 15 Sources
+Sought, 14 Special Notice). Award-side text is **74% useful** (requirement-bearing, not boilerplate);
+**J&A is 88% useful, ~5,950-char median** — the single richest query-target found (it opens "SBIR PHASE
+III JUSTIFICATION & APPROVAL…" and describes the prior-SBIR continuation). The PIID/award-notice join
+was the **N unlock**: 273 notices / **165 firms** (128 with abstracts), vs ~110/~80 solicitation-only.
+
+**Powered retrieval (TF-IDF, N=128 firms, hard negatives = other firms' Phase III notices, M=25):**
+
+| positive set | AUC | 95% CI | top-3 | med rank |
+|---|--:|---|--:|--:|
+| **All notices (TF-IDF)** | **0.751** | [0.698, 0.804] | 51% | 3 of 26 |
+| **Award-side (PIID/J&A), TF-IDF** | **0.780** | [0.714, 0.843] | 52% | 2 |
+| Solicitation-side, TF-IDF | 0.732 | [0.660, 0.801] | 44% | 5 |
+| All notices, **ModernBERT-Embed (dense, MPS)** | 0.653 | [0.607, 0.699] | 25% | 9 |
+| Terse (first 60 chars) | 0.577 | [0.521, 0.633] | 24% | 12 |
+
+- **Rich-vs-rich is real and significant:** 0.751 vs terse 0.577, **non-overlapping CIs**. Contrast the
+  *same-firm* task (terse 0.492, PSC/NAICS 0.522 — both chance): reframing to **retrieval** is what works.
+- **At the ~0.8 lead-tool bar with the sparse floor alone** (CI upper touches 0.804).
+- **Dense UNDERperformed sparse** (ModernBERT 0.653 < TF-IDF 0.751, near-non-overlapping): the signal is
+  **lexical/jargon** — specific technology terms, program names, part numbers shared between a firm's
+  abstract and its J&A — which TF-IDF rewards and dense mean-pooling *blurs*. Flips the earlier
+  "embeddings are headroom" assumption: **BM25 (not a bigger embedder) is the lever**, and Qwen3 would
+  likely blur the same jargon. A cross-encoder (joint encoding preserves exact matches) is the one dense
+  path still worth trying; bi-encoder dense is not.
+- **Award-notice recovery added the *best* positives** (0.780 > solicitations' 0.732): the sole-source
+  cases first written off as unrecoverable carry the *strongest* signal, via their J&As.
+- Arc: same-firm 0.49 (chance) → **rich-vs-rich retrieval 0.75** at real power. A viable per-firm
+  lead-ranking signal — *candidates with measured precision*, not a citable count (the base-rate wall
+  still caps universe-wide automated counts; 191 stays the citable number).
+
 ## Bottom line
 - **Confirmed / text-evidenced:** **191 flags (~$365M)** — verifiable, citable (frozen frame
   `frame_hash=c8769d3d6ad4`); text-based discovery is now exhausted.
