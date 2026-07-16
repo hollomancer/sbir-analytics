@@ -383,6 +383,18 @@ was the **N unlock**: 273 notices / **165 firms** (128 with abstracts), vs ~110/
   TF-IDF top-K. Bi-encoder dense and BM25 are dead ends here.
 - **Award-notice recovery added the *best* positives** (0.780 > solicitations' 0.732): the sole-source
   cases first written off as unrecoverable carry the *strongest* signal, via their J&As.
+
+**Robustness battery (`pc_robustness.py`) — the 0.751 mostly holds:**
+- **Not leakage (the key test):** scrub firm name / PI / city / SBIR-Phase-III-ID boilerplate from *both*
+  sides → **0.715** (only −0.036). Signal is genuine **technology-term overlap**, not the J&A naming the firm.
+- **Transition-specific, not domain identity:** same-agency hard negs **0.734**, same-NAICS-4 **0.728** — barely
+  below baseline. Distinguishes a firm's transition from other contracts *in its own program office / industry*.
+- **Stable:** 5 seeds mean 0.760 sd 0.005; M∈{10,25,50} → 0.751–0.764.
+- **Honest ceiling — top-1 confusability:** with the *hardest* (most TF-IDF-similar) negatives, the true
+  notice does **not** win (0.469 ≈ chance). There exist other-firm notices more similar than a firm's own.
+  So it's a **top-K triage ranker** (top-3 = 51%), **not a precise top-1 identifier** — set expectations
+  accordingly. Definitive number still needs a **precision@K hand-audit** (analogous to the 191-flag
+  `validation-plan.md`).
 - Arc: same-firm 0.49 (chance) → **rich-vs-rich retrieval 0.75** at real power. A viable per-firm
   lead-ranking signal — *candidates with measured precision*, not a citable count (the base-rate wall
   still caps universe-wide automated counts; 191 stays the citable number).
