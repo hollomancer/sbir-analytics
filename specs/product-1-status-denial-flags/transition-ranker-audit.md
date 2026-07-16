@@ -11,18 +11,18 @@ a clean top can beat 0.85-AUC with a muddy top on precision@K. The operational b
 `phase-3-solicitation-alerts` **≥85% precision** on flagged leads — measurable only by hand-audit.
 
 ## The sample
-`scripts/phase3_benchmark/pc_audit_sample.py` + `pc_audit_sample2.py` (seed 20260716) → 40 random firms,
-**out-of-fold** scored (each firm ranked by a fold's model that did **not** train on it — no optimism).
-For each firm, the ranker scores the full 273-notice Phase III pool; the **top-3** are surfaced → **120
-review rows** in `data/derived/phase3_transition_leads_audit.csv` (gitignored).
+`scripts/phase3_benchmark/pc_audit_sample3.py` (seed 20260716) → 40 random firms, ranked by the
+**deployable AWARD-LEVEL model (AUC 0.844)**, **out-of-fold** (each firm scored by a fold's model that
+did **not** train on it — no optimism). For each firm the ranker scores the full 273-notice pool; the
+**top-3** are surfaced → **120 review rows** in `data/derived/phase3_transition_leads_audit.csv` (gitignored).
 
-**Each row is a concrete transition claim: a specific Phase I/II SBIR AWARD → the funding EVENT.** For
-each surfaced notice, the firm's originating award is attached — the award whose contract#/topic the
-notice *cites* (`id_xref`, 14/120), else max abstract similarity (106/120). Columns: `firm_name, rank,
-model_score, award_link_basis` | **SBIR side:** `sbir_phase, sbir_award_year, sbir_award_title,
-sbir_contract, sbir_topic, sbir_abstract_snippet` | **event side:** `notice_year, notice_type,
-notice_text_snippet` | reviewer fields. The reviewer verifies the *linkage* (does the event continue
-*that award's* work), not just firm-relatedness.
+**Each row is a concrete transition claim: a specific Phase I/II SBIR AWARD → the funding EVENT** — the
+award the model matched (contract#/topic cited by the notice, `id_cited` 21/120, else max abstract sim
+99/120). Columns: `firm_name, rank, model_score, award_link` | **SBIR side:** `sbir_phase, sbir_award_year,
+sbir_award_title, sbir_contract, sbir_topic, sbir_abstract_snippet` | `gap_years` (per-award transition
+lag) | **event side:** `notice_year, notice_text_snippet` | reviewer fields. The reviewer verifies the
+*linkage* (does the event continue *that award's* work), judging **technical continuity, not the gap**.
+Pre-audit vs code labels: **precision@1 55%, recall@3 65%**.
 
 **Finding (surfaced by the award linkage):** the firm-level ranker sometimes attaches a transition to a
 weak originating award — but the diagnostic must be **technical continuity, not elapsed time.** True lag
