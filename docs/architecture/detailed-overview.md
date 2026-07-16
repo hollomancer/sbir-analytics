@@ -179,7 +179,7 @@ Assets are organized by **group_name** (extraction, validation, enrichment, tran
 
 5. NEO4J LOADING LAYER
    ├─ loaded_awards (Upsert Award nodes)
-   ├─ loaded_companies (Company nodes + enrichment)
+   ├─ loaded_organizations (Organization nodes + enrichment)
    ├─ loaded_cet_areas (CETArea nodes)
    ├─ loaded_award_cet_enrichment (CET properties)
    ├─ loaded_award_cet_relationships (APPLICABLE_TO edges)

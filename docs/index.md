@@ -2,7 +2,7 @@
 
 Type: Overview
 Owner: docs@project
-Last-Reviewed: 2025-11-21
+Last-Reviewed: 2026-07-16
 Status: active
 
 ---
@@ -51,9 +51,23 @@ See [README](../README.md) for project context, research questions, and setup. T
 - Decisions (ADRs): [`decisions/`](decisions/)
 - Specification System: [`specifications/README.md`](specifications/README.md)
 
+### Subsystems & Domains
+
+- Transition detection: [`transition/README.md`](transition/README.md) — scoring, vendor matching, evidence bundles
+- ML / CET classification: [`ml/README.md`](ml/README.md)
+- Enrichment sources: [`enrichment/`](enrichment/) — SAM.gov, USASpending, enhanced matching
+- Data pipeline & refreshes: [`data/index.md`](data/index.md)
+- Fiscal analysis: [`fiscal/sbir-fiscal-pipeline-guide.md`](fiscal/sbir-fiscal-pipeline-guide.md)
+- OT consortium: [`ot-consortium/tiers.md`](ot-consortium/tiers.md)
+- Analytics API: [`api/README.md`](api/README.md) and [`architecture/private-analytics-api.md`](architecture/private-analytics-api.md)
+- Query cookbook: [`queries/transition-queries.md`](queries/transition-queries.md)
+- Testing: [`testing/index.md`](testing/index.md)
+- Research notes: [`research/`](research/)
+- Getting started: [`getting-started/README.md`](getting-started/README.md)
+
 ## Conventions
 
-All docs use Diátaxis types: Tutorials, How-to guides, Explanations, References. Each file includes front-matter with Type, Owner, Last-Reviewed, and Status.
+Docs follow the Diátaxis model (Tutorials, How-to guides, Explanations, References). Curated reference docs carry front-matter with Type, Owner, Last-Reviewed, and Status; many working notes and research docs do not yet. New reference docs should include front-matter, and backfilling it on existing docs is tracked as ongoing cleanup.
 
 ## Governance
 

@@ -37,8 +37,9 @@ Canonical templates live in `pipeline-orchestration.md#asset-check-implementatio
 
 ```cypher
 UNWIND $batch AS row
-MERGE (c:Company {uei: row.uei})
-SET c.name = row.name,
+MERGE (c:Organization {uei: row.uei})
+SET c.organization_type = "COMPANY",
+    c.name = row.name,
     c.address = row.address,
     c.updated_at = datetime()
 ```
@@ -47,7 +48,7 @@ SET c.name = row.name,
 
 ```cypher
 MERGE (a:Award {award_id: $award_id})
-MERGE (c:Company {uei: $uei})
+MERGE (c:Organization {uei: $uei})
 MERGE (a)-[r:AWARDED_TO]->(c)
 SET r.confidence = $confidence,
     r.method = $method,
@@ -57,7 +58,7 @@ SET r.confidence = $confidence,
 ### Common Constraints
 
 ```cypher
-CREATE CONSTRAINT unique_company_uei ON (c:Company) ASSERT c.uei IS UNIQUE;
+CREATE CONSTRAINT unique_organization_uei ON (c:Organization) ASSERT c.uei IS UNIQUE;
 CREATE CONSTRAINT unique_award_id ON (a:Award) ASSERT a.award_id IS UNIQUE;
 CREATE CONSTRAINT unique_patent_grant_num ON (p:Patent) ASSERT p.grant_doc_num IS UNIQUE;
 ```
@@ -65,9 +66,9 @@ CREATE CONSTRAINT unique_patent_grant_num ON (p:Patent) ASSERT p.grant_doc_num I
 ### Performance Indexes
 
 ```cypher
-CREATE INDEX idx_company_name ON (c:Company) ON (c.name);
+CREATE INDEX idx_organization_name ON (c:Organization) ON (c.name);
 CREATE INDEX idx_award_date ON (a:Award) ON (a.award_date);
-CREATE FULLTEXT INDEX idx_company_name_fulltext ON (c:Company) FOR (c.name);
+CREATE FULLTEXT INDEX idx_organization_name_fulltext ON (c:Organization) FOR (c.name);
 ```
 
 ## Environment Variables Quick Setup

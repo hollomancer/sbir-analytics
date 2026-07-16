@@ -72,12 +72,12 @@ MATCH (a:Award {award_id: $award_id}), (cet:CETArea {cet_id: $cet_id})
 CREATE (a)-[:APPLICABLE_TO {score: $score, classification: $level}]->(cet)
 
 -- Company Enrichment (aggregated)
-MATCH (c:Company {company_id: $company_id})
+MATCH (c:Organization {organization_id: $organization_id})
 SET c.cet_specialization_profile = $company_profile,
     c.top_3_cet_areas = $top_3_cets
 
 -- Company-CET Relationships
-MATCH (c:Company {company_id: $company_id}), (cet:CETArea {cet_id: $cet_id})
+MATCH (c:Organization {organization_id: $organization_id}), (cet:CETArea {cet_id: $cet_id})
 CREATE (c)-[:SPECIALIZES_IN {score: $score, num_awards: $count}]->(cet)
 ```
 
@@ -278,7 +278,7 @@ MATCH (a:Award)-[r:APPLICABLE_TO]->(cet:CETArea)
 -- Properties: score, classification, evidence
 
 -- Company → CETArea (aggregated from award classifications)
-MATCH (c:Company)-[r:SPECIALIZES_IN]->(cet:CETArea)
+MATCH (c:Organization {organization_type: "COMPANY"})-[r:SPECIALIZES_IN]->(cet:CETArea)
 -- Properties: score (avg or max), num_awards, classification
 ```
 
@@ -632,7 +632,7 @@ print(df.describe())
 
 # Check Neo4j CET nodes
 uv run python << 'PYTHON'
-from sbir_etl.loaders.neo4j import Neo4jClient, Neo4jConfig
+from sbir_graph.loaders.neo4j import Neo4jClient, Neo4jConfig
 from sbir_etl.config.loader import get_config
 
 config = get_config()
