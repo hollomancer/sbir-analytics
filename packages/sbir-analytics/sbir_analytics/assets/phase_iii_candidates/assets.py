@@ -18,7 +18,7 @@ from sbir_etl.models.phase_iii_candidate import PhaseIIICandidate, SignalClass
 from sbir_etl.models.transition_models import CompetitionType, FederalContract
 from sbir_ml.transition.detection.scoring import TransitionScorer
 
-from .pairing import pair_filter_s1
+from .pairing import pair_filter_s1, pair_filter_s2, pair_filter_s3
 from .similarity import compute_topical_similarity
 
 try:
@@ -69,6 +69,27 @@ WEIGHTS_RETROSPECTIVE: dict[str, float] = {
 }
 
 HIGH_THRESHOLD_RETROSPECTIVE: float = 0.85
+HIGH_THRESHOLD_DIRECTED: float = 0.75
+HIGH_THRESHOLD_FOLLOWON: float = 0.60
+
+WEIGHTS_DIRECTED: dict[str, float] = {
+    "agency_continuity": 0.25,
+    "timing_proximity": 0.15,
+    "competition_type": 0.25,
+    "patent_signal": 0.0,
+    "cet_alignment": 0.0,
+    "text_similarity": 0.15,
+    "lineage_language": 0.20,
+}
+WEIGHTS_FOLLOWON: dict[str, float] = {
+    "agency_continuity": 0.20,
+    "timing_proximity": 0.15,
+    "competition_type": 0.05,
+    "patent_signal": 0.0,
+    "cet_alignment": 0.15,
+    "text_similarity": 0.45,
+    "lineage_language": 0.0,
+}
 
 
 _REQUIRED_WEIGHT_KEYS: frozenset[str] = frozenset(
@@ -98,6 +119,8 @@ def _validate_weights(name: str, weights: dict[str, float]) -> None:
 
 # Module-level guard — fail fast at import if the constants drift.
 _validate_weights("WEIGHTS_RETROSPECTIVE", WEIGHTS_RETROSPECTIVE)
+_validate_weights("WEIGHTS_DIRECTED", WEIGHTS_DIRECTED)
+_validate_weights("WEIGHTS_FOLLOWON", WEIGHTS_FOLLOWON)
 
 
 def _scorer_config(weights: dict[str, float]) -> dict[str, Any]:
@@ -175,6 +198,12 @@ def _coerce_competition_type(value: Any) -> CompetitionType | None:
         return None
     if s in _COMPETITION_CODE_MAP:
         return _COMPETITION_CODE_MAP[s]
+    if s in {"U", "S"}:
+        return CompetitionType.SOLE_SOURCE
+    if s == "P":
+        return CompetitionType.LIMITED
+    if s in {"O", "K", "R"}:
+        return CompetitionType.FULL_AND_OPEN
     if "SOLE" in s:
         return CompetitionType.SOLE_SOURCE
     if "FULL AND OPEN" in s:
@@ -390,6 +419,44 @@ def _candidate_dataframe(candidates: list[PhaseIIICandidate]) -> pd.DataFrame:
     return df
 
 
+def score_candidate_pairs(
+    pairs: pd.DataFrame,
+    *,
+    signal_class: SignalClass,
+    weights: dict[str, float],
+    high_threshold: float,
+) -> tuple[pd.DataFrame, list[dict[str, Any]]]:
+    """Score pre-filtered pairs without requiring Dagster."""
+
+    _validate_weights(signal_class.value, weights)
+    scorer = TransitionScorer(_scorer_config(weights))
+    target_type = "fpds_contract" if signal_class is SignalClass.RETROSPECTIVE else "opportunity"
+    candidates: list[PhaseIIICandidate] = []
+    evidence_records: list[dict[str, Any]] = []
+    for _, row in pairs.iterrows():
+        composite, subscores, topical = _score_pair(scorer, row)
+        prior_id = str(row.get("prior_award_id") or "")
+        target_id = str(row.get("target_id") or "")
+        if not prior_id or not target_id:
+            continue
+        cid = _candidate_id(signal_class, prior_id, target_id)
+        candidate = PhaseIIICandidate(
+            candidate_id=cid,
+            signal_class=signal_class,
+            prior_award_id=prior_id,
+            target_type=target_type,  # type: ignore[arg-type]
+            target_id=target_id,
+            candidate_score=composite,
+            is_high_confidence=composite >= high_threshold,
+            evidence_ref=cid,
+            **subscores,
+            generated_at=datetime.now(UTC),
+        )
+        candidates.append(candidate)
+        evidence_records.append(_evidence_bundle(candidate, row, topical))
+    return _candidate_dataframe(candidates), evidence_records
+
+
 def _default_retrospective_loader(_context: Any) -> pd.DataFrame:
     """Read and normalize the extractor's persisted contract schema.
 
@@ -436,6 +503,17 @@ def _default_retrospective_loader(_context: Any) -> pd.DataFrame:
         return pd.DataFrame()
 
 
+def _default_opportunity_loader(_context: Any) -> pd.DataFrame:
+    path = Path("data/raw/sam_gov_opportunities/opportunities.parquet")
+    if not path.exists():
+        return pd.DataFrame()
+    try:
+        return pd.read_parquet(path)
+    except Exception as exc:  # pragma: no cover - defensive
+        logger.warning("Failed to read SAM.gov opportunities at {}: {}", path, exc)
+        return pd.DataFrame()
+
+
 def build_candidate_asset(
     *,
     signal_class: SignalClass,
@@ -448,7 +526,6 @@ def build_candidate_asset(
     """Return a Dagster asset function for one signal-class materialization."""
 
     _validate_weights(asset_name, weights)
-    target_type = "fpds_contract" if signal_class is SignalClass.RETROSPECTIVE else "opportunity"
 
     @asset(
         name=asset_name,
@@ -472,40 +549,12 @@ def build_candidate_asset(
         log = getattr(context, "log", logger) if context is not None else logger
 
         pairs = pair_filter(priors, targets)
-        config = _scorer_config(weights)
-        scorer = TransitionScorer(config)
-
-        candidates: list[PhaseIIICandidate] = []
-        evidence_records: list[dict[str, Any]] = []
-        for _, row in pairs.iterrows():
-            composite, subscores, topical = _score_pair(scorer, row)
-            prior_id = str(row.get("prior_award_id") or "")
-            target_id = str(row.get("target_id") or "")
-            if not prior_id or not target_id:
-                continue
-            cid = _candidate_id(signal_class, prior_id, target_id)
-            candidate = PhaseIIICandidate(
-                candidate_id=cid,
-                signal_class=signal_class,
-                prior_award_id=prior_id,
-                target_type=target_type,  # type: ignore[arg-type]
-                target_id=target_id,
-                candidate_score=composite,
-                is_high_confidence=composite >= high_threshold,
-                evidence_ref=cid,
-                agency_continuity_score=subscores["agency_continuity_score"],
-                timing_proximity_score=subscores["timing_proximity_score"],
-                competition_type_score=subscores["competition_type_score"],
-                patent_signal_score=subscores["patent_signal_score"],
-                cet_alignment_score=subscores["cet_alignment_score"],
-                text_similarity_score=subscores["text_similarity_score"],
-                lineage_language_score=subscores["lineage_language_score"],
-                generated_at=datetime.now(UTC),
-            )
-            candidates.append(candidate)
-            evidence_records.append(_evidence_bundle(candidate, row, topical))
-
-        df = _candidate_dataframe(candidates)
+        df, evidence_records = score_candidate_pairs(
+            pairs,
+            signal_class=signal_class,
+            weights=weights,
+            high_threshold=high_threshold,
+        )
         _write_outputs(df, evidence_records, signal_class)
 
         high_count = int(df["is_high_confidence"].sum()) if not df.empty else 0
@@ -582,12 +631,37 @@ phase_iii_retrospective_candidates = build_candidate_asset(
     target_loader=_default_retrospective_loader,
 )
 
+phase_iii_directed_candidates = build_candidate_asset(
+    signal_class=SignalClass.DIRECTED,
+    pair_filter=pair_filter_s2,
+    weights=WEIGHTS_DIRECTED,
+    high_threshold=HIGH_THRESHOLD_DIRECTED,
+    asset_name="phase_iii_directed_candidates",
+    target_loader=_default_opportunity_loader,
+)
+
+phase_iii_followon_candidates = build_candidate_asset(
+    signal_class=SignalClass.FOLLOWON,
+    pair_filter=pair_filter_s3,
+    weights=WEIGHTS_FOLLOWON,
+    high_threshold=HIGH_THRESHOLD_FOLLOWON,
+    asset_name="phase_iii_followon_candidates",
+    target_loader=_default_opportunity_loader,
+)
+
 
 __all__ = [
     "CANDIDATES_OUTPUT_PATH",
     "EVIDENCE_OUTPUT_PATH",
     "HIGH_THRESHOLD_RETROSPECTIVE",
+    "HIGH_THRESHOLD_DIRECTED",
+    "HIGH_THRESHOLD_FOLLOWON",
+    "WEIGHTS_DIRECTED",
+    "WEIGHTS_FOLLOWON",
     "WEIGHTS_RETROSPECTIVE",
     "build_candidate_asset",
     "phase_iii_retrospective_candidates",
+    "phase_iii_directed_candidates",
+    "phase_iii_followon_candidates",
+    "score_candidate_pairs",
 ]

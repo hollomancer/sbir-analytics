@@ -1,13 +1,12 @@
 # Phase III Solicitation & Award Candidate Alerts — Tasks
 
-> **Status (2026-07-02):** Phases 1–2 (S1 retrospective reclassification) implemented and merged
+> **Status (2026-07-15):** Phases 1–2 (S1 retrospective reclassification) implemented and merged
 > (PRs #394, #410, #412) — models in `sbir_etl/models/phase_iii_candidate.py`, asset package in
 > `packages/sbir-analytics/sbir_analytics/assets/phase_iii_candidates/` (`assets.py`, `pairing.py`,
 > `similarity.py`), precision gate `scripts/phase_iii_precision_backtest.py` wired into
-> `.github/workflows/ci.yml`. Phases 3–5 (S2 directed notice alerts via the SAM.gov Opportunities
-> API, S3 competitive follow-on candidates, docs + sign-off) are not started — no
-> `sbir_etl/models/opportunity.py`, `sam_gov_opportunities` extractor/asset/config,
-> `pair_filter_s2`/`pair_filter_s3`, or `docs/phase-iii-candidates.md` exist yet.
+> `.github/workflows/ci.yml`. The public Opportunities model/extractor, S2/S3 pairing,
+> candidate assets, and monthly procurement-center report are now implemented. The Dagster
+> ingestion/config layer, production hand audits, and acceptance sign-off remain open.
 
 Ordered so each phase produces a standalone deliverable. S1 first (highest
 ROI, clearest precision benchmark, no new data source). S2 adds the
@@ -60,9 +59,9 @@ ship independently.
 
 ## Phase 3: S2 — directed / sole-source notice alerts
 
-- [ ] 3.1 Add `Opportunity` Pydantic model in
+- [x] 3.1 Add `Opportunity` Pydantic model in
       `sbir_etl/models/opportunity.py`.
-- [ ] 3.2 Create `SamGovOpportunitiesExtractor` in
+- [x] 3.2 Create `SamGovOpportunitiesExtractor` in
       `sbir_etl/extractors/sam_gov_opportunities.py`. Reuse the existing
       `BaseAsyncAPIClient` for rate-limiting, retry, and
       `X-Api-Key` auth. **Add** cursor-based pagination over
@@ -75,9 +74,9 @@ ship independently.
 - [ ] 3.4 Add `extraction.sam_gov_opportunities` config block in
       `config/base.yaml` with parquet path, S3 path, rate limit, API key
       env var.
-- [ ] 3.5 Implement `pair_filter_s2` in `pairing.py` (notice-type gate +
+- [x] 3.5 Implement `pair_filter_s2` in `pairing.py` (notice-type gate +
       UEI match, else agency + NAICS fallback).
-- [ ] 3.6 Instantiate `phase_iii_directed_candidates` from
+- [x] 3.6 Instantiate `phase_iii_directed_candidates` from
       `build_candidate_asset` with `WEIGHTS_DIRECTED` and
       `HIGH_THRESHOLD_DIRECTED = 0.75`.
 - [ ] 3.7 Integration test on fixture of synthetic SAM.gov notices
@@ -88,9 +87,9 @@ ship independently.
 
 ## Phase 4: S3 — competitive solicitation follow-on candidates
 
-- [ ] 4.1 Implement `pair_filter_s3` in `pairing.py` (solicitation
+- [x] 4.1 Implement `pair_filter_s3` in `pairing.py` (solicitation
       notice-type + NAICS/PSC overlap + token-Jaccard ≥ 0.10).
-- [ ] 4.2 Instantiate `phase_iii_followon_candidates` from
+- [x] 4.2 Instantiate `phase_iii_followon_candidates` from
       `build_candidate_asset` with `WEIGHTS_FOLLOWON` and
       `HIGH_THRESHOLD_FOLLOWON = 0.60`. Column naming uses "follow-on
       candidate", not "Phase III".
