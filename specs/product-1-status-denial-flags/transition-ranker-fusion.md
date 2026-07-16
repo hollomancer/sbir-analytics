@@ -48,10 +48,21 @@ earliest SBIR award year, and (b) *can* occur *during* an award's period of perf
 `after_first` uses the award year (start of PoP), which excludes (a) and permits (b). Possible
 refinement: use `Contract End Date` (PoP end) to sharpen `in_window`'s upper edge; the floor is correct.
 
-**Later (not now):** organizational (`agency_match`, `naics_match` from FPDS XML), contract attrs
-(`notice_type` J&A>award, `sole_source` from FPDS `reasonNotCompeted`), and an optional second text
-view `char_ngram_cos` (char 3–5 TF-IDF — bridges jargon/acronym/part-number formatting variants and
-J&A OCR/redaction noise; decorrelated from word-TF-IDF, used alongside it).
+**Phase 3 — organizational + contract attrs, CURATED by ablation (`pc_fusion3.py`).** Tested marginal
+value on held-out folds; kept only what helps (dumping all 10 features = 0.797 < curated):
+- `naics_match` (relational, leave-one-out) **+0.010 → 0.805** — the clean winner.
+- `notice_type` (J&A/solicitation/award ordinal) +0.005; combined **base+naics+notice_type = 0.809**.
+- `agency_match` **−0.006 (noise)** — DoD contracting-office code is a noisy routing artifact, not firm-
+  intrinsic (same firm routes through Navy/DLA/AF inconsistently); dropped.
+- `sole_source` **−0.007 (noise)** — non-relational (constant across candidates in retrieval framing); dropped.
+
+**Why NAICS helped:** it's a **text-orthogonal, firm-intrinsic** signature (industry/product class the CO
+assigns to the action, *not* from the description). Firms cluster in a few NAICS → reliable fingerprint;
+it disambiguates text-confusable notices (both "advanced sensors" but one 5417 R&D vs 3345 manufacturing)
+— exactly the confusability text alone can't resolve. Agency failed because it's a noisy routing artifact,
+not firm-intrinsic.
+
+**Optional later:** `char_ngram_cos` already in (Phase 1); other text views if desired.
 
 ## Model
 - **LightGBM, LambdaMART objective** (optimizes ranking/precision@K directly). Fallback: **logistic
