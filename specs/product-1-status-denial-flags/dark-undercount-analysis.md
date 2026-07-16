@@ -367,6 +367,7 @@ was the **N unlock**: 273 notices / **165 firms** (128 with abstracts), vs ~110/
 | Solicitation-side, TF-IDF | 0.732 | [0.660, 0.801] | 44% | 5 |
 | All notices, **ModernBERT-Embed (dense, MPS)** | 0.653 | [0.607, 0.699] | 25% | 9 |
 | All notices, **BM25** (best b) | 0.643 | — | — | — |
+| All notices, **cross-encoder** (bge-reranker-v2-m3) | 0.640 | [0.588, 0.691] | 32% | 8 |
 | Terse (first 60 chars) | 0.577 | [0.521, 0.633] | 24% | 12 |
 
 - **Rich-vs-rich is real and significant:** 0.751 vs terse 0.577, **non-overlapping CIs**. Contrast the
@@ -378,9 +379,12 @@ was the **N unlock**: 273 notices / **165 firms** (128 with abstracts), vs ~110/
   between a firm's abstract and its J&A). Dense mean-pooling *blurs* it; BM25 scores the query as a
   bag-of-terms (binary presence × IDF) and throws away the long abstract's query-side term weighting.
   TF-IDF cosine weights and normalizes both sides — the right similarity for long-query↔long-doc lexical
-  matching. **Implication:** a bigger embedder (Qwen3) would blur the same jargon; the *only* dense path
-  still worth trying is a **cross-encoder re-ranker** (joint encoding preserves exact overlap) on the
-  TF-IDF top-K. Bi-encoder dense and BM25 are dead ends here.
+  matching. **The cross-encoder (bge-reranker-v2-m3) also lost — 0.640.** So *every* neural/reweighting
+  method (dense 0.653, BM25 0.643, cross-encoder 0.640) underperforms plain TF-IDF cosine 0.751:
+  definitively, exact-lexical is the right tool and there is **no neural text-method headroom** here.
+  A bigger embedder (Qwen3) would blur the same jargon. The only remaining lever is **signal fusion /
+  learning-to-rank** — stacking TF-IDF with *orthogonal* features (timing-after-Phase-II, same-agency,
+  identifier cross-refs), not a better text model.
 - **Award-notice recovery added the *best* positives** (0.780 > solicitations' 0.732): the sole-source
   cases first written off as unrecoverable carry the *strongest* signal, via their J&As.
 
