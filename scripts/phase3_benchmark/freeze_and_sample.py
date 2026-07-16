@@ -51,7 +51,12 @@ ts = pd.DataFrame({"gen_id": ts["gen_id"].astype(str).str.upper(), "award_id": t
                    "sub_agency": ts["Awarding Sub Agency"], "description": ts["Description"],
                    "action_date": ts["Action Date"], "agency": "DoD", "layer": "dod_text_scan"})
 
-flags = pd.concat([dod, nasa, ts], ignore_index=True).drop_duplicates("gen_id").reset_index(drop=True)
+gr = pd.read_parquet(f"{REPO}/data/derived/m0a_grey_flags.parquet")
+gr = pd.DataFrame({"gen_id": gr["gen_id"].astype(str).str.upper(), "award_id": gr["award_id"],
+                   "firm": gr["firm"], "amount_usd": pd.to_numeric(gr["amount_usd"], errors="coerce"),
+                   "sub_agency": gr["sub_agency"], "description": gr["description"],
+                   "action_date": gr["action_date"], "agency": "DoD", "layer": "dod_grey_variant"})
+flags = pd.concat([dod, nasa, ts, gr], ignore_index=True).drop_duplicates("gen_id").reset_index(drop=True)
 flags["agency"] = flags["agency"].replace({"Department of Defense": "DoD", "National Aeronautics and Space Administration": "NASA"})
 flags["flag_id"] = flags["gen_id"].map(lambda g: "P3F-" + hashlib.sha1(g.encode()).hexdigest()[:10])
 flags["usaspending_url"] = "https://www.usaspending.gov/award/" + flags["gen_id"]

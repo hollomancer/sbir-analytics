@@ -15,11 +15,13 @@ Contract-based SBIR Phase III undercount, FY2016–2025 (DoD + NASA = ~all of it
 | Visible undercount (uncoded ∩ described) | 141 | 16 | 157 |
 | **Undercount rate** | **14.7%** | **7.9%** | — |
 | + full-universe text scan | +11 | — | +11 |
-| **Confirmed / verifiable flags** | **152** | **16** | **168 (~$308M)** |
+| + grey Phase III variants (spelled-out / "PH III" / "PHIII" / "PH3") | +23 | — | +23 |
+| **Confirmed / verifiable flags** | **175** | **16** | **191 (~$365M)** |
 | Modeled dark (unenumerable) | ~1,000 | ~73 | **~1,073** |
-| **Total undercount (modeled)** | ~1,150 | ~89 | **~1,240** |
+| **Total undercount (modeled)** | ~1,175 | ~89 | **~1,264** |
 
-- **Confirmed:** 168 uncoded Phase III contracts, **~$308M** — spot-verified (DoD 12/12 vs FPDS), citable.
+- **Confirmed:** 191 uncoded Phase III contracts, **~$365M** — spot-verified (DoD 12/12 vs FPDS), citable.
+  Frozen frame `frame_hash=c8769d3d6ad4` (141 exact-phrase + 11 text-scan + 23 grey-variant + 16 NASA).
 - **Modeled total:** ~1,240 awards; the **~1,073 dark** portion is provably **unenumerable** from public
   data (no code, no descriptive text, competition field null, text-similarity near-chance).
 - **Rates:** DoD 14.7%, NASA 7.9% (NASA codes ~2× better). Worst DoD strata: delivery orders 24%,
@@ -143,12 +145,14 @@ We ran it — DoD contracts to **8,085/8,090** SBIR firms (FY2016–2025), a **9
 | coded Phase III (matched) | 4,247 |
 | exact-described | 736 |
 | **neither (candidate pool)** | **90,792** |
-| full-text scan → SBIR+"Phase III" text | **+11 flags** ($35.9M) |
-| residual with no SBIR/Phase-III text | **76,299** |
+| full-text scan → SBIR+"Phase III" text (narrow) | **+11 flags** ($35.9M) |
+| grey variants → spelled-out / "PH III" / "PHIII" / "PH3" | **+23 flags** ($56.5M) |
+| residual with no SBIR/Phase-III text | **76,276** |
 
-**Scanning all 90,792 candidate descriptions added only 11 flags** beyond the 141 — the exact-phrase
-API filter had already captured essentially all text-evidenced Phase III. Confirmed uncoded
-(text-evidenced) = **152 (~$280M)**. The remaining 76,299 carry no Phase III text; with USAspending
+**Scanning all 90,792 candidate descriptions added 34 flags** beyond the 141 (11 narrow SBIR+"Phase III"
++ 23 broader grey variants) — the exact-phrase API filter had already captured most, but not all,
+text-evidenced Phase III. Confirmed DoD uncoded (text-evidenced) = **175 (~$337M)**; with NASA's 16,
+**191 (~$365M)** total. The remaining 76,276 carry no Phase III text; with USAspending
 competition null and text-similarity near-chance (the Product 2 benchmark), **no signal separates
 dark Phase III from ordinary contracts.** The pull *closes* the question rather than enumerating the
 layer: **the dark undercount is unenumerable from public data.**
@@ -177,8 +181,8 @@ gap — a different problem (Form D / sales / commercialization surveys), not th
 **NASA measured (v1.1, FY2016–2025).** Coded universe 1,038 Phase III awards / 327 firms; described
 "SBIR PHASE III" 202 contracts; **undercount 16/202 = 7.9% ($27.9M)**; stratified dark ~73 → total
 NASA undercount ~89 (visible share 18%). **NASA codes ~2× better than DoD** (7.9% vs 14.7% uncoded,
-852 vs 5,530 silent), so its dark layer is proportionally small. Combined **DoD + NASA: ~168 confirmed
-flags (~$308M), ~1,073 modeled total.**
+852 vs 5,530 silent), so its dark layer is proportionally small. Combined **DoD + NASA: 191 confirmed
+flags (~$365M), ~1,073 modeled total.**
 
 ## Recovery attempts since the pull (all tested, all bounded)
 Two further signals were tried to recover the dark layer; both add to the ruled-out list:
@@ -220,20 +224,21 @@ agreement that continues the same work. The Phase III *tag* is optional metadata
   (supporting, broad alone).
 - **Output is different in kind:** ranked **candidates / leads with a measured precision** (the
   `phase-3-solicitation-alerts` RETROSPECTIVE goal: ≥85% on a hand-audited sample), *not* a
-  spot-verifiable count like the 168 confirmed flags. This is the intended use of the audited
+  spot-verifiable count like the 191 confirmed flags. This is the intended use of the audited
   `phase_iii_retrospective_candidates` asset + transition scorer — which never had a contract source
   until the 95k universe pull.
 - **Next step:** run the (join-key-fixed) transition scorer on the 95k universe → ranked candidate
-  pool → spot-check precision, before deciding whether the ~380k-record sole-source enrichment is worth
-  it.
+  pool → spot-check precision. A PSC/NAICS **domain-shift discriminator** (R&D NAICS 5417* / PSC `A*`
+  → manufacturing/production) is being pulled as the lightweight alternative to the ~380k-record
+  sole-source enrichment, since terse descriptions alone can't separate truly-dark transitions.
 
 ## Bottom line
-- **Confirmed / text-evidenced:** **152 flags (~$280M)** — verifiable, citable; text-based discovery
-  is now exhausted.
+- **Confirmed / text-evidenced:** **191 flags (~$365M)** — verifiable, citable (frozen frame
+  `frame_hash=c8769d3d6ad4`); text-based discovery is now exhausted.
 - **Modeled dark:** ~1,000 (stratified floor) — the majority, and — after the full pull — **provably
   unenumerable** from public data, estimable only by extrapolation.
 - **Agency scope:** DoD + NASA carry the entire contract-based undercount; NIH/NSF/DOE Phase III is
   grant/commercial and outside FPDS entirely.
-- **For the report:** *"The coding-discoverable Phase III undercount is 152 awards (~$280M), verified.
-  Coding-overlap analysis implies the true figure is ~8× larger (~1,100 awards), but the excess is
+- **For the report:** *"The coding-discoverable Phase III undercount is 191 awards (~$365M), verified.
+  Coding-overlap analysis implies the true figure is ~7× larger (~1,260 awards), but the excess is
   structurally invisible to every public signal — it can be estimated, never enumerated."*
