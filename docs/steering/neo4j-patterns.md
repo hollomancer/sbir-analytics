@@ -223,8 +223,9 @@ Performance configuration and memory management details are covered in **[pipeli
 ### Node Property Validation
 
 ```cypher
-CREATE CONSTRAINT award_amount_positive ON (ft:FinancialTransaction) ASSERT ft.amount >= 0;
-CREATE CONSTRAINT patent_title_required ON (p:Patent) ASSERT p.title IS NOT NULL;
+CREATE CONSTRAINT patent_title_required IF NOT EXISTS FOR (p:Patent) REQUIRE p.title IS NOT NULL;
+-- Range/domain checks (e.g. award amount >= 0) are enforced in the ETL/asset-check
+-- layer, not via Neo4j constraints.
 ```
 
 ### Relationship Property Validation

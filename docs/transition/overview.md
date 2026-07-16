@@ -138,9 +138,9 @@ export SBIR_ETL__TRANSITION__DETECTION__CET_WEIGHT=0.15
 ### Find All Transitions for an Award
 
 ```cypher
-MATCH (a:Award {award_id: "SBIR-2020-PHASE-II-001"})
+MATCH (a:FinancialTransaction {transaction_type: "AWARD", award_id: "SBIR-2020-PHASE-II-001"})
   -[:TRANSITIONED_TO]->(t:Transition)
-  -[:RESULTED_IN]->(c:Contract)
+  -[:RESULTED_IN]->(c:FinancialTransaction {transaction_type: "CONTRACT"})
 RETURN a.award_id, c.contract_id, t.likelihood_score, t.confidence
 ORDER BY t.likelihood_score DESC
 ```
@@ -149,7 +149,7 @@ ORDER BY t.likelihood_score DESC
 
 ```cypher
 MATCH (t:Transition)-[:ENABLED_BY]->(p:Patent)
-  -[:RESULTED_IN]->(c:Contract)
+MATCH (t)-[:RESULTED_IN]->(c:FinancialTransaction {transaction_type: "CONTRACT"})
 WHERE t.confidence IN ["HIGH", "LIKELY"]
 RETURN t.transition_id, p.title, c.piid, t.likelihood_score
 ```
@@ -157,7 +157,7 @@ RETURN t.transition_id, p.title, c.piid, t.likelihood_score
 ### Transition Effectiveness by CET Area
 
 ```cypher
-MATCH (a:Award)-[:INVOLVES_TECHNOLOGY]->(cet:CETArea)
+MATCH (a:FinancialTransaction {transaction_type: "AWARD"})-[:APPLICABLE_TO]->(cet:CETArea)
   <-[:INVOLVES_TECHNOLOGY]-(t:Transition)
 WITH cet.name as cet_area,
      count(DISTINCT a) as total_awards,

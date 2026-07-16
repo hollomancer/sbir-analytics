@@ -679,16 +679,14 @@ times = analytics.compute_avg_time_to_transition_by_cet_area()
 
 ## Find all HIGH confidence transitions in AI & ML
 
-MATCH (a:Award)-[:INVOLVES_TECHNOLOGY]->(cet:CETArea {name: "AI & Machine Learning"})
-
-      -[]->(t:Transition {confidence: "HIGH"})
-
+MATCH (a:FinancialTransaction {transaction_type: "AWARD"})-[:APPLICABLE_TO]->(cet:CETArea {name: "AI & Machine Learning"})
+      <-[:INVOLVES_TECHNOLOGY]-(t:Transition {confidence: "HIGH"})
 RETURN a.award_id, a.topic, t.likelihood_score
 ORDER BY t.likelihood_score DESC
 
 ## Transition rate by CET area
 
-MATCH (a:Award)-[:INVOLVES_TECHNOLOGY]->(cet:CETArea)
+MATCH (a:FinancialTransaction {transaction_type: "AWARD"})-[:APPLICABLE_TO]->(cet:CETArea)
       <-[:INVOLVES_TECHNOLOGY]-(t:Transition)
 WITH cet.name as cet_area,
      count(DISTINCT a) as total_awards,
@@ -701,7 +699,7 @@ ORDER BY transition_rate_percent DESC
 
 ## Patent-backed transitions by CET area
 
-MATCH (a:Award)-[:INVOLVES_TECHNOLOGY]->(cet:CETArea)
+MATCH (a:FinancialTransaction {transaction_type: "AWARD"})-[:APPLICABLE_TO]->(cet:CETArea)
       <-[:INVOLVES_TECHNOLOGY]-(t:Transition)
 
       -[:ENABLED_BY]->(p:Patent)
