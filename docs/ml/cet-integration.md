@@ -61,14 +61,15 @@ Parquet DataFrame with columns:
 MERGE (cet:CETArea {cet_id: $cet_id})
 SET cet.name = $name, cet.keywords = $keywords, cet.taxonomy_version = $version
 
--- Award Enrichment Properties
-MATCH (a:Award {award_id: $award_id})
+-- Award Enrichment Properties (resolved by MATCH on award_id, never MERGE —
+-- the FinancialTransaction key is transaction_id, e.g. txn_award_<award_id>)
+MATCH (a:FinancialTransaction {transaction_type: "AWARD", award_id: $award_id})
 SET a.cet_primary = $primary_cet_id,
     a.cet_primary_score = $primary_score,
     a.cet_specialization_profile = $all_classifications
 
 -- Award-CET Relationships
-MATCH (a:Award {award_id: $award_id}), (cet:CETArea {cet_id: $cet_id})
+MATCH (a:FinancialTransaction {transaction_type: "AWARD", award_id: $award_id}), (cet:CETArea {cet_id: $cet_id})
 CREATE (a)-[:APPLICABLE_TO {score: $score, classification: $level}]->(cet)
 
 -- Company Enrichment (aggregated)
@@ -254,7 +255,7 @@ FOR (c:CETArea) ON (c.name)
 **Award Enrichment Properties**
 
 ```cypher
-MATCH (a:Award)
+MATCH (a:FinancialTransaction {transaction_type: "AWARD"})
 SET a.cet_primary = "artificial_intelligence",        -- Highest-scoring CET
     a.cet_primary_score = 0.82,                       -- Primary score
     a.cet_specialization_profile = {                  -- All classifications
@@ -274,7 +275,7 @@ SET a.cet_primary = "artificial_intelligence",        -- Highest-scoring CET
 
 ```cypher
 -- Award → CETArea (one-to-many; award applicable to multiple CET areas)
-MATCH (a:Award)-[r:APPLICABLE_TO]->(cet:CETArea)
+MATCH (a:FinancialTransaction {transaction_type: "AWARD"})-[r:APPLICABLE_TO]->(cet:CETArea)
 -- Properties: score, classification, evidence
 
 -- Company → CETArea (aggregated from award classifications)

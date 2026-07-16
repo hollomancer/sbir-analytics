@@ -35,21 +35,30 @@ Canonical templates live in `pipeline-orchestration.md#asset-check-implementatio
 
 ### Node Creation (Upsert)
 
+Organizations are keyed by the authoritative `organization_id` (e.g.
+`org_company_<id>`); `uei` is a regular indexed property, so MERGE on it would
+mint duplicates.
+
 ```cypher
 UNWIND $batch AS row
-MERGE (c:Organization {uei: row.uei})
-SET c.organization_type = "COMPANY",
-    c.name = row.name,
-    c.address = row.address,
-    c.updated_at = datetime()
+MERGE (o:Organization {organization_id: row.organization_id})
+SET o.organization_type = "COMPANY",
+    o.uei = row.uei,
+    o.name = row.name,
+    o.address = row.address,
+    o.updated_at = datetime()
 ```
 
 ### Relationship with Confidence
 
+SBIR awards are `:FinancialTransaction {transaction_type: 'AWARD'}` nodes (keyed
+by `transaction_id`) linked to the recipient `:Organization` via `:RECIPIENT_OF`.
+
 ```cypher
-MERGE (a:Award {award_id: $award_id})
-MERGE (c:Organization {uei: $uei})
-MERGE (a)-[r:AWARDED_TO]->(c)
+MERGE (a:FinancialTransaction {transaction_id: $transaction_id})
+  ON CREATE SET a.transaction_type = "AWARD", a.award_id = $award_id
+MERGE (o:Organization {organization_id: $organization_id})
+MERGE (a)-[r:RECIPIENT_OF]->(o)
 SET r.confidence = $confidence,
     r.method = $method,
     r.created_at = datetime()
@@ -58,17 +67,17 @@ SET r.confidence = $confidence,
 ### Common Constraints
 
 ```cypher
-CREATE CONSTRAINT unique_organization_uei ON (c:Organization) ASSERT c.uei IS UNIQUE;
-CREATE CONSTRAINT unique_award_id ON (a:Award) ASSERT a.award_id IS UNIQUE;
-CREATE CONSTRAINT unique_patent_grant_num ON (p:Patent) ASSERT p.grant_doc_num IS UNIQUE;
+CREATE CONSTRAINT IF NOT EXISTS FOR (o:Organization) REQUIRE o.organization_id IS UNIQUE;
+CREATE CONSTRAINT IF NOT EXISTS FOR (ft:FinancialTransaction) REQUIRE ft.transaction_id IS UNIQUE;
+CREATE CONSTRAINT IF NOT EXISTS FOR (p:Patent) REQUIRE p.grant_doc_num IS UNIQUE;
 ```
 
 ### Performance Indexes
 
 ```cypher
-CREATE INDEX idx_organization_name ON (c:Organization) ON (c.name);
-CREATE INDEX idx_award_date ON (a:Award) ON (a.award_date);
-CREATE FULLTEXT INDEX idx_organization_name_fulltext ON (c:Organization) FOR (c.name);
+CREATE INDEX organization_name IF NOT EXISTS FOR (o:Organization) ON (o.name);
+CREATE INDEX organization_uei IF NOT EXISTS FOR (o:Organization) ON (o.uei);
+CREATE INDEX financial_transaction_date IF NOT EXISTS FOR (ft:FinancialTransaction) ON (ft.transaction_date);
 ```
 
 ## Environment Variables Quick Setup
