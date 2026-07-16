@@ -107,6 +107,7 @@ def _build_fixture():
         contracts.append(
             {
                 "contract_id": f"C-pos-{i:03d}",
+                "contract_award_unique_key": f"C-POS-{i:03d}",
                 "vendor_uei": _make_uei(i),
                 "awarding_agency_name": "DEPARTMENT OF DEFENSE",
                 "awarding_sub_tier_agency_name": "DEPARTMENT OF THE NAVY",
@@ -129,6 +130,7 @@ def _build_fixture():
         contracts.append(
             {
                 "contract_id": f"C-coded-{i:03d}",
+                "contract_award_unique_key": f"C-CODED-{i:03d}",
                 "vendor_uei": _make_uei(i),
                 "awarding_agency_name": "DEPARTMENT OF DEFENSE",
                 "awarding_sub_tier_agency_name": "DEPARTMENT OF THE NAVY",
@@ -151,6 +153,7 @@ def _build_fixture():
         contracts.append(
             {
                 "contract_id": f"C-neg-{i:03d}",
+                "contract_award_unique_key": f"C-NEG-{i:03d}",
                 "vendor_uei": _make_uei(900 + i),  # not in priors
                 "awarding_agency_name": "GENERAL SERVICES ADMINISTRATION",
                 "awarding_sub_tier_agency_name": "FEDERAL ACQUISITION SERVICE",
@@ -174,6 +177,7 @@ def _build_fixture():
         contracts.append(
             {
                 "contract_id": f"C-low-{i:03d}",
+                "contract_award_unique_key": f"C-LOW-{i:03d}",
                 "vendor_uei": _make_uei(i),
                 "awarding_agency_name": "DEPARTMENT OF DEFENSE",
                 "awarding_sub_tier_agency_name": "DEPARTMENT OF THE NAVY",
@@ -208,8 +212,8 @@ def _patched_pair_filter(priors: pd.DataFrame, contracts: pd.DataFrame) -> pd.Da
     if pairs.empty or "target_cet" not in contracts.columns:
         return pairs
     cet_lookup = (
-        contracts.loc[:, ["contract_id", "target_cet"]]
-        .rename(columns={"contract_id": "target_id"})
+        contracts.loc[:, ["contract_award_unique_key", "target_cet"]]
+        .rename(columns={"contract_award_unique_key": "target_id"})
         .drop_duplicates(subset=["target_id"])
     )
     return pairs.merge(cet_lookup, on="target_id", how="left")
@@ -261,7 +265,7 @@ def test_phase_iii_retrospective_asset_materializes(tmp_path, monkeypatch):
     PhaseIIICandidate(**df.iloc[0].to_dict())
 
     # No coded contracts in output.
-    assert not df["target_id"].astype(str).str.startswith("C-coded-").any()
+    assert not df["target_id"].astype(str).str.startswith("C-CODED-").any()
 
     # Parquet was written and matches the dataframe.
     parquet_path = Path(tmp_path) / CANDIDATES_OUTPUT_PATH
@@ -295,7 +299,7 @@ def test_phase_iii_retrospective_asset_materializes(tmp_path, monkeypatch):
 
     # Precision gate: HIGH precision over the engineered positives must be
     # at or above the spec threshold of 0.85.
-    positives = df.loc[df["target_id"].astype(str).str.startswith("C-pos-")]
+    positives = df.loc[df["target_id"].astype(str).str.startswith("C-POS-")]
     assert len(positives) == 30
     high_positives = int(positives["is_high_confidence"].sum())
     precision = high_positives / len(positives)
@@ -305,7 +309,7 @@ def test_phase_iii_retrospective_asset_materializes(tmp_path, monkeypatch):
     )
 
     # Low-content same-vendor contracts should NOT be high-confidence.
-    low = df.loc[df["target_id"].astype(str).str.startswith("C-low-")]
+    low = df.loc[df["target_id"].astype(str).str.startswith("C-LOW-")]
     assert len(low) == 30
     assert int(low["is_high_confidence"].sum()) == 0
 
@@ -315,11 +319,11 @@ def test_pair_filter_s1_excludes_already_coded_phase_iii():
     pairs = pair_filter_s1(priors_df, contracts_df)
     assert not pairs.empty
     target_ids = pairs["target_id"].astype(str).tolist()
-    assert not any(t.startswith("C-coded-") for t in target_ids)
+    assert not any(t.startswith("C-CODED-") for t in target_ids)
     # Negatives (different vendor) are dropped by the UEI inner join.
-    assert not any(t.startswith("C-neg-") for t in target_ids)
+    assert not any(t.startswith("C-NEG-") for t in target_ids)
     # Both the positives and the low-content same-vendor contracts pass.
-    assert sum(1 for t in target_ids if t.startswith("C-pos-")) == 30
-    assert sum(1 for t in target_ids if t.startswith("C-low-")) == 30
+    assert sum(1 for t in target_ids if t.startswith("C-POS-")) == 30
+    assert sum(1 for t in target_ids if t.startswith("C-LOW-")) == 30
     # Office is the finest agency match.
     assert (pairs["agency_match_level"] == "office").all()
