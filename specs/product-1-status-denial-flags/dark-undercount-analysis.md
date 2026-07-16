@@ -366,17 +366,21 @@ was the **N unlock**: 273 notices / **165 firms** (128 with abstracts), vs ~110/
 | **Award-side (PIID/J&A), TF-IDF** | **0.780** | [0.714, 0.843] | 52% | 2 |
 | Solicitation-side, TF-IDF | 0.732 | [0.660, 0.801] | 44% | 5 |
 | All notices, **ModernBERT-Embed (dense, MPS)** | 0.653 | [0.607, 0.699] | 25% | 9 |
+| All notices, **BM25** (best b) | 0.643 | — | — | — |
 | Terse (first 60 chars) | 0.577 | [0.521, 0.633] | 24% | 12 |
 
 - **Rich-vs-rich is real and significant:** 0.751 vs terse 0.577, **non-overlapping CIs**. Contrast the
   *same-firm* task (terse 0.492, PSC/NAICS 0.522 — both chance): reframing to **retrieval** is what works.
 - **At the ~0.8 lead-tool bar with the sparse floor alone** (CI upper touches 0.804).
-- **Dense UNDERperformed sparse** (ModernBERT 0.653 < TF-IDF 0.751, near-non-overlapping): the signal is
-  **lexical/jargon** — specific technology terms, program names, part numbers shared between a firm's
-  abstract and its J&A — which TF-IDF rewards and dense mean-pooling *blurs*. Flips the earlier
-  "embeddings are headroom" assumption: **BM25 (not a bigger embedder) is the lever**, and Qwen3 would
-  likely blur the same jargon. A cross-encoder (joint encoding preserves exact matches) is the one dense
-  path still worth trying; bi-encoder dense is not.
+- **The ladder topped out at the cheapest rung — TF-IDF cosine 0.751 wins.** Dense (ModernBERT 0.653)
+  *and* BM25 (0.643, best of a b∈{0…0.75} sweep) both **underperform** it. Diagnosis: the signal is
+  symmetric, term-weighted, **jargon-exact lexical overlap** (tech terms, program/part numbers shared
+  between a firm's abstract and its J&A). Dense mean-pooling *blurs* it; BM25 scores the query as a
+  bag-of-terms (binary presence × IDF) and throws away the long abstract's query-side term weighting.
+  TF-IDF cosine weights and normalizes both sides — the right similarity for long-query↔long-doc lexical
+  matching. **Implication:** a bigger embedder (Qwen3) would blur the same jargon; the *only* dense path
+  still worth trying is a **cross-encoder re-ranker** (joint encoding preserves exact overlap) on the
+  TF-IDF top-K. Bi-encoder dense and BM25 are dead ends here.
 - **Award-notice recovery added the *best* positives** (0.780 > solicitations' 0.732): the sole-source
   cases first written off as unrecoverable carry the *strongest* signal, via their J&As.
 - Arc: same-firm 0.49 (chance) → **rich-vs-rich retrieval 0.75** at real power. A viable per-firm
