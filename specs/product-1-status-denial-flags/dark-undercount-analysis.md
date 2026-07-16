@@ -217,11 +217,11 @@ agreement that continues the same work. The Phase III *tag* is optional metadata
 - **Substrate already built:** the 95,103-contract recipient universe *is* the set of subsequent
   agreements to Phase-I/II firms; the same-firm link is already made. The open problem is the
   *discriminator* — ranking which of a firm's many later contracts genuinely continue its SBIR work.
-- **Connection-signal hierarchy (from this investigation):** explicit reference (rare, 0.2%); text /
-  semantic same-work (near-chance on descriptions, ~12% coverage on solicitations); sole-source
-  FAR 6.302-5 (strong but coded generic `OTH` in FPDS — 38.5k/yr DoD — and null in USAspending, so
-  extraction needs a ~380k-record pull); timing-after-completion + PSC/NAICS domain continuity
-  (supporting, broad alone).
+- **Connection-signal hierarchy (from this investigation):** explicit reference (rare, 0.2%);
+  **semantic same-work using the RICH abstract as the query** (measured below — the earlier
+  "near-chance" was a *terse-query* artifact); sole-source FAR 6.302-5 (strong but coded generic `OTH`
+  in FPDS — 38.5k/yr DoD — and null in USAspending, so extraction needs a ~380k-record pull);
+  timing-after-completion + PSC/NAICS domain continuity (supporting, broad alone).
 - **Output is different in kind:** ranked **candidates / leads with a measured precision** (the
   `phase-3-solicitation-alerts` RETROSPECTIVE goal: ≥85% on a hand-audited sample), *not* a
   spot-verifiable count like the 191 confirmed flags. This is the intended use of the audited
@@ -231,6 +231,33 @@ agreement that continues the same work. The Phase III *tag* is optional metadata
   pool → spot-check precision. A PSC/NAICS **domain-shift discriminator** (R&D NAICS 5417* / PSC `A*`
   → manufacturing/production) is being pulled as the lightweight alternative to the ~380k-record
   sole-source enrichment, since terse descriptions alone can't separate truly-dark transitions.
+
+### Rich-text semantic matching — measured (2026-07-15)
+The "semantic matching doesn't work" verdict was drawn from the **wrong substrate**: terse
+(~40-char) contract descriptions on *both* sides. Re-ran as a positive control on known coded
+Phase III (true awardee known), TF-IDF cosine, true firm's abstract vs 20 random firms per target:
+
+| pairing | AUC | note |
+|---|--:|---|
+| terse desc ↔ terse desc *(the old ModernBERT test)* | ~0.56 | near-chance |
+| **rich abstract** ↔ terse FPDS desc | **0.74** | query richness alone lifts it |
+| **rich abstract** ↔ **rich solicitation** | **0.79** | rich target adds a little |
+
+**The query-side abstract (1,308-char median) does the work** — the near-chance null was a
+query-starvation artifact, not a property of semantic matching. Two structural walls remain, both
+measured, both making the 0.79 *easier than the operational task*:
+- **Coverage:** only **13% (9/70)** of sampled coded Phase III solicitations had retrievable rich
+  text (sam.gov) — sole-source Phase III has *no public solicitation*. Measured on the sole-source-
+  heavy coded set; coverage on *competed* transitions should be higher (**pending measurement 1**).
+- **Easy-vs-hard task:** 0.79 is *true-firm-vs-random-firms*; random firms are in unrelated fields.
+  The operational task is *which of a firm's OWN contracts is the transition* — every one is in the
+  firm's field, so the abstract matches them all similarly (**pending measurement 2**, same-firm
+  contrastive with ModernBERT embeddings).
+
+**Synthesis:** semantic-on-rich-text is the **primary** signal wherever solicitation text exists
+(the competed segment); PSC/NAICS domain-shift is the **structural fallback** for the ~87%
+sole-source dark segment that has no text to match at all. Complementary, not competing.
+(`scripts/phase3_benchmark/pc_rich_match.py`.)
 
 ## Bottom line
 - **Confirmed / text-evidenced:** **191 flags (~$365M)** — verifiable, citable (frozen frame
