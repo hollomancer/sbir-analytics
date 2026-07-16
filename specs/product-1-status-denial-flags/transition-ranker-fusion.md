@@ -47,16 +47,23 @@ Deployment number **0.795** (≈ the 0.8 bar); conservative identity-free number
 earliest SBIR award year, and (b) *can* occur *during* an award's period of performance — so
 `after_first` uses the award year (start of PoP), which excludes (a) and permits (b).
 
-**Transition lag is LONG — no tight upper window (measured 2026-07-16).** Empirically, recovered
-transitions (n=215) have a **median lag of 18 years** from the firm's earliest SBIR award (p90=33, max=41;
-**55% exceed 15 years**). Long lags are the *norm*, not outliers — emerging/deep tech (materials, sensors,
-photonics, biotech) takes 10–20 yrs from Phase I/II research to a Phase III/production contract. So the
-`in_window = [first, last+6]` **6-year cap is wrong in principle** — it penalizes genuine long-horizon
-transitions. (At *firm* level it mostly didn't bite — 52% of transitions occur *while the firm still wins
-SBIR*, so notices land near the latest award — but at **award level** it would wrongly exclude a real 2005
-award → 2020 notice.) **Corrected design:** keep the floor (`after_first`), treat `gap` as a continuous/
-soft feature, impose **no tight upper bound**. Timing is not evidence against a transition — reviewers and
-features must judge **technical continuity**, not elapsed time.
+**Transition lag — measure from the ORIGINATING award, not the earliest (corrected 2026-07-16).** On the
+coded `SR3`/`ST3` Phase III (n=215, highest-confidence set), lag depends entirely on the reference award:
+from the firm's **earliest** award median **18y** (a misleading artifact — it measures firm SBIR longevity,
+not transition lag); from the **latest** median −1y; from the **originating** award (ID-cited, n=40, most
+reliable — 0% negative, the sanity check) **median ~6y, p75 11y, 50% >6y**. So the true typical lag is
+**~6 years, with a long tail into 15–20y** — *not* 18y (my earlier overstatement), but *not* short either.
+**Implication holds:** a tight `+6y window` still cuts ~half of real transitions, so keep the floor
+(`after_first`), a **continuous/soft `gap`**, and **no upper bound**. Long-horizon transitions (emerging/
+deep tech) are common; timing is not evidence against a transition — judge **technical continuity**. Only
+the **award-level / ID-cited** linkage measures the real lag; firm-level aggregation distorts it 3×.
+
+**RESULT — AWARD-LEVEL ranker (Option B, `pc_fusion_award.py`) beats firm-level.** Match = best Phase I/II
+AWARD → notice (per-abstract max-sim); text sim + soft `gap` computed against the specific originating award;
+no window. GroupKFold by firm: award-text **0.785** → +temporal **0.799** → full (**0.844**, 95% CI
+[0.800, 0.886], top-1 52% top-3 63%) — vs firm-level 0.809. `gap` coef ≈ −0.08 (barely penalizes long lags,
+as required). Award grain is more *correct* (inherently verifiable award→event claims, real per-award lag)
+**and** more *accurate* (+0.035). This is the deployable ranker.
 
 **Phase 3 — organizational + contract attrs, CURATED by ablation (`pc_fusion3.py`).** Tested marginal
 value on held-out folds; kept only what helps (dumping all 10 features = 0.797 < curated):
