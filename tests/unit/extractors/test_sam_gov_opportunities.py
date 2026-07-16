@@ -42,9 +42,13 @@ def test_paginates_without_partial_results():
         return httpx.Response(200, json={"totalRecords": 2, "opportunitiesData": rows})
 
     extractor = SamGovOpportunitiesExtractor(
-        api_key="test", page_size=1, http_client=httpx.Client(transport=httpx.MockTransport(handler))
+        api_key="test",
+        page_size=1,
+        http_client=httpx.Client(transport=httpx.MockTransport(handler)),
     )
-    rows = list(extractor.iter_raw_records(posted_from=date(2026, 6, 1), posted_to=date(2026, 6, 30)))
+    rows = list(
+        extractor.iter_raw_records(posted_from=date(2026, 6, 1), posted_to=date(2026, 6, 30))
+    )
     assert [row["noticeId"] for row in rows] == ["N-0", "N-1"]
 
 

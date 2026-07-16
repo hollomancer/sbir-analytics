@@ -41,7 +41,7 @@ jobs:
           echo "month=$MONTH" >> "$GITHUB_OUTPUT"
 
       - name: Restore prior public-award snapshot
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: data/snapshots/procurement_transition/latest_awards.csv
           key: procurement-transition-awards-${{ steps.period.outputs.month }}-${{ github.run_id }}

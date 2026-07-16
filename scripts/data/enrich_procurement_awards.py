@@ -42,13 +42,13 @@ def main() -> int:
         summaries[company] = lookup_company_federal_awards(
             company, str(row.get("uei") or "").strip() or None
         )
+    enriched_naics = {
+        company: summary.naics_codes[0]
+        for company, summary in summaries.items()
+        if summary and summary.naics_codes
+    }
     cohort["naics_code"] = cohort.apply(
-        lambda row: (
-            (summaries.get(str(row.get("company"))) or object()).naics_codes[0]
-            if summaries.get(str(row.get("company")))
-            and summaries[str(row.get("company"))].naics_codes
-            else row.get("naics_code")
-        ),
+        lambda row: enriched_naics.get(str(row.get("company")), row.get("naics_code")),
         axis=1,
     )
     cohort["federal_award_count"] = cohort["company"].map(

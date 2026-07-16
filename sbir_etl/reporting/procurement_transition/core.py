@@ -39,9 +39,24 @@ def normalize_awards(raw: pd.DataFrame) -> pd.DataFrame:
     if raw.empty:
         return pd.DataFrame(
             columns=[
-                "award_id", "company", "title", "agency", "branch", "phase", "program",
-                "award_date", "recorded_end_date", "uei", "amount", "abstract", "row_hash",
-                "naics_code", "psc_code", "office", "cet", "source_url",
+                "award_id",
+                "company",
+                "title",
+                "agency",
+                "branch",
+                "phase",
+                "program",
+                "award_date",
+                "recorded_end_date",
+                "uei",
+                "amount",
+                "abstract",
+                "row_hash",
+                "naics_code",
+                "psc_code",
+                "office",
+                "cet",
+                "source_url",
             ]
         )
     out = pd.DataFrame(index=raw.index)
@@ -61,9 +76,7 @@ def normalize_awards(raw: pd.DataFrame) -> pd.DataFrame:
     ).dt.date
     out["uei"] = _pick(raw, "UEI", "uei", "recipient_uei")
     out["amount"] = pd.to_numeric(
-        _pick(raw, "Award Amount", "amount")
-        .astype(str)
-        .str.replace(r"[$,]", "", regex=True),
+        _pick(raw, "Award Amount", "amount").astype(str).str.replace(r"[$,]", "", regex=True),
         errors="coerce",
     )
     out["abstract"] = _pick(raw, "Abstract", "abstract")
@@ -115,8 +128,11 @@ def build_award_cohorts(
         lambda value: bool(value and end < value <= horizon)
     )
     flags = [
-        "newly_observed", "changed_since_prior_report", "awarded_in_period",
-        "recent_recorded_end", "approaching_recorded_end",
+        "newly_observed",
+        "changed_since_prior_report",
+        "awarded_in_period",
+        "recent_recorded_end",
+        "approaching_recorded_end",
     ]
     return current.loc[current[flags].any(axis=1)].reset_index(drop=True)
 
@@ -163,9 +179,20 @@ class MonthlyReportBuilder:
             master = master.merge(awards, left_on="prior_award_id", right_on="award_id", how="left")
         if "target_id" in master and "notice_id" in opportunities:
             master = master.merge(
-                opportunities, left_on="target_id", right_on="notice_id", how="left", suffixes=("", "_opp")
+                opportunities,
+                left_on="target_id",
+                right_on="notice_id",
+                how="left",
+                suffixes=("", "_opp"),
             )
-        master["confidence_bucket"] = master.get("is_high_confidence", False).map(
+            # The award frame also emits a (usually null) source_url that would shadow
+            # the opportunity's own link; prefer the opportunity value for packets.
+            if "source_url_opp" in master.columns:
+                master["source_url"] = master["source_url_opp"].combine_first(
+                    master.get("source_url", pd.Series(index=master.index, dtype="object"))
+                )
+        confidence = master.get("is_high_confidence", pd.Series(False, index=master.index))
+        master["confidence_bucket"] = confidence.map(
             lambda value: "HIGH" if bool(value) else "WATCHLIST"
         )
         office = _pick(master, "office", "target_office")
@@ -179,32 +206,40 @@ class MonthlyReportBuilder:
 
     def _packet(self, center: str, rows: pd.DataFrame, awards: pd.DataFrame) -> str:
         lines = [
-            f"# Monthly Procurement Transition Packet — {center}", "",
-            f"**Reporting month:** {self.report_month}", "",
-            "> Recorded performance-period end dates do not verify technical completion.", "",
+            f"# Monthly Procurement Transition Packet — {center}",
+            "",
+            f"**Reporting month:** {self.report_month}",
+            "",
+            "> Recorded performance-period end dates do not verify technical completion.",
+            "",
         ]
         for signal, heading in (
             ("directed", "High-confidence directed Phase III candidates"),
             ("followon", "High-confidence competitive follow-on candidates"),
         ):
             subset = rows.loc[
-                (rows.get("signal_class", "") == signal)
-                & (rows["confidence_bucket"] == "HIGH")
+                (rows.get("signal_class", "") == signal) & (rows["confidence_bucket"] == "HIGH")
             ]
             lines += [f"## {heading}", ""]
             if subset.empty:
                 lines += ["None identified.", ""]
             for _, row in subset.iterrows():
-                label = "potential Phase III path" if signal == "directed" else "competitive relevance; not necessarily Phase III"
+                label = (
+                    "potential Phase III path"
+                    if signal == "directed"
+                    else "competitive relevance; not necessarily Phase III"
+                )
                 summary = self.summarizer(row.to_dict()) if self.summarizer else None
                 lines += [
-                    f"### {row.get('title_opp') or row.get('title') or row.get('target_id')}", "",
+                    f"### {row.get('title_opp') or row.get('title') or row.get('target_id')}",
+                    "",
                     f"- Company: {row.get('company') or 'Unknown'}",
                     f"- Prior award phase: {row.get('phase') or 'Unknown'}",
                     f"- Score: {float(row.get('candidate_score') or 0):.2f}",
                     f"- Interpretation: {label}",
                     f"- Response deadline: {row.get('response_deadline') or 'Not published'}",
-                    f"- Public source: {row.get('source_url') or row.get('ui_url') or 'Unavailable'}", "",
+                    f"- Public source: {row.get('source_url') or row.get('ui_url') or 'Unavailable'}",
+                    "",
                 ]
                 if summary:
                     lines += [f"- Evidence summary: {summary}", ""]
@@ -215,10 +250,17 @@ class MonthlyReportBuilder:
         else:
             lines += ["Lower-confidence candidates require analyst review before outreach.", ""]
             for _, row in watch.iterrows():
-                lines.append(f"- {row.get('title_opp') or row.get('target_id')} — score {float(row.get('candidate_score') or 0):.2f}")
+                lines.append(
+                    f"- {row.get('title_opp') or row.get('target_id')} — score {float(row.get('candidate_score') or 0):.2f}"
+                )
             lines.append("")
         if not awards.empty:
-            lines += ["## Award pipeline", "", "| Company | Phase | Awarded | Recorded end | Amount |", "|---|---|---|---|---:|"]
+            lines += [
+                "## Award pipeline",
+                "",
+                "| Company | Phase | Awarded | Recorded end | Amount |",
+                "|---|---|---|---|---:|",
+            ]
             for _, award in awards.iterrows():
                 lines.append(
                     f"| {award.get('company') or ''} | {award.get('phase') or ''} | "
@@ -226,7 +268,12 @@ class MonthlyReportBuilder:
                     f"{_money(award.get('amount'))} |"
                 )
             lines.append("")
-        lines += ["## Methodology", "", "Directed and competitive candidates are scored separately from public evidence. Non-SBIR awards and competitive relevance are not proof of statutory Phase III lineage.", ""]
+        lines += [
+            "## Methodology",
+            "",
+            "Directed and competitive candidates are scored separately from public evidence. Non-SBIR awards and competitive relevance are not proof of statutory Phase III lineage.",
+            "",
+        ]
         return "\n".join(lines)
 
     def write(
@@ -243,11 +290,15 @@ class MonthlyReportBuilder:
         master = self._master(award_cohorts, candidates, opportunities)
         master.to_csv(self.output_dir / "master_candidates.csv", index=False)
 
-        evidence: list[dict[str, Any]] = []
-        groups = {
-            str(center): rows.copy()
-            for center, rows in master.groupby("center_name", dropna=False)
-        } if not master.empty else {}
+        evidence: list[dict[Any, Any]] = []
+        groups = (
+            {
+                str(center): rows.copy()
+                for center, rows in master.groupby("center_name", dropna=False)
+            }
+            if not master.empty
+            else {}
+        )
         for center in award_cohorts.get("branch", pd.Series(dtype=str)).fillna(
             award_cohorts.get("agency", pd.Series(dtype=str))
         ):
@@ -268,7 +319,9 @@ class MonthlyReportBuilder:
                 )
                 evidence.extend(rows.to_dict(orient="records"))
         else:
-            markdown = self._packet("Unassigned", master.assign(confidence_bucket=[]), award_cohorts)
+            markdown = self._packet(
+                "Unassigned", master.assign(confidence_bucket=[]), award_cohorts
+            )
             (centers_dir / "unassigned.md").write_text(markdown, encoding="utf-8")
             (centers_dir / "unassigned.html").write_text(
                 "<!doctype html><meta charset='utf-8'><pre>" + html.escape(markdown) + "</pre>",
@@ -277,10 +330,14 @@ class MonthlyReportBuilder:
         with (self.output_dir / "evidence.ndjson").open("w", encoding="utf-8") as handle:
             for record in evidence:
                 handle.write(json.dumps(record, default=str) + "\n")
-        high = master.loc[master.get("confidence_bucket", "") == "HIGH"] if not master.empty else master
-        audit = high.sort_values(["signal_class", "candidate_id"], na_position="last").groupby(
-            "signal_class", group_keys=False
-        ).head(100) if not high.empty else high
+        high = master.loc[master["confidence_bucket"] == "HIGH"] if not master.empty else master
+        audit = (
+            high.sort_values(["signal_class", "candidate_id"], na_position="last")
+            .groupby("signal_class", group_keys=False)
+            .head(100)
+            if not high.empty
+            else high
+        )
         audit.to_csv(self.output_dir / "audit_sample.csv", index=False)
         manifest = {
             "report_month": self.report_month,
@@ -291,7 +348,9 @@ class MonthlyReportBuilder:
             "sources": source_manifest or {},
             "completion_semantics": "recorded performance-period end; technical completion unverified",
         }
-        (self.output_dir / "manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+        (self.output_dir / "manifest.json").write_text(
+            json.dumps(manifest, indent=2), encoding="utf-8"
+        )
         return self.output_dir
 
 

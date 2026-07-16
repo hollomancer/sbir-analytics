@@ -247,7 +247,9 @@ def pair_filter_s1(
 
 def _prepare_opportunities(opportunities: pd.DataFrame) -> pd.DataFrame:
     if opportunities.empty:
-        return pd.DataFrame(columns=[c for c in PAIR_OPPORTUNITY_COLUMNS if c.startswith("target_")])
+        return pd.DataFrame(
+            columns=[c for c in PAIR_OPPORTUNITY_COLUMNS if c.startswith("target_")]
+        )
     df = opportunities.copy()
 
     def _pick(*names: str) -> pd.Series:
@@ -288,7 +290,10 @@ def _prepare_opportunities(opportunities: pd.DataFrame) -> pd.DataFrame:
 def _with_pair_metadata(merged: pd.DataFrame) -> pd.DataFrame:
     if merged.empty:
         return pd.DataFrame(columns=PAIR_OPPORTUNITY_COLUMNS)
-    levels = merged.apply(lambda row: _agency_match_level(row, row), axis=1)
+    levels = merged.apply(  # type: ignore[call-overload]
+        lambda row: _agency_match_level(row, row),
+        axis=1,
+    )
     merged = merged.assign(agency_match_level=levels)
     merged = merged.loc[merged["agency_match_level"].notna()].copy()
     if merged.empty:
@@ -331,12 +336,15 @@ def pair_filter_s2(prior_awards: pd.DataFrame, opportunities: pd.DataFrame) -> p
         priors["_agency"] = priors["prior_agency"].map(_normalize)
         no_uei["_agency"] = no_uei["target_agency"].map(_normalize)
         fallback = priors.merge(no_uei, on="_agency", how="inner")
-        lineage = fallback["target_description"].fillna("").str.lower().map(
-            lambda text: any(term in text for term in _LINEAGE_TERMS)
+        lineage = (
+            fallback["target_description"]
+            .fillna("")
+            .str.lower()
+            .map(lambda text: any(term in text for term in _LINEAGE_TERMS))
         )
-        naics = fallback["prior_naics_code"].map(_normalize) == fallback[
-            "target_naics_code"
-        ].map(_normalize)
+        naics = fallback["prior_naics_code"].map(_normalize) == fallback["target_naics_code"].map(
+            _normalize
+        )
         missing_codes = (fallback["prior_naics_code"].map(_normalize) == "") | (
             fallback["target_naics_code"].map(_normalize) == ""
         )
@@ -361,7 +369,9 @@ def pair_filter_s3(prior_awards: pd.DataFrame, opportunities: pd.DataFrame) -> p
     ):
         left = priors.assign(_code=priors[prior_key].map(_normalize))
         right = targets.assign(_code=targets[target_key].map(_normalize))
-        parts.append(left.loc[left["_code"] != ""].merge(right.loc[right["_code"] != ""], on="_code"))
+        parts.append(
+            left.loc[left["_code"] != ""].merge(right.loc[right["_code"] != ""], on="_code")
+        )
     # SBIR.gov does not publish NAICS/PSC on every award. For those rows, use
     # agency as a bounded fallback and retain only pairs that pass topical similarity.
     missing = priors.loc[

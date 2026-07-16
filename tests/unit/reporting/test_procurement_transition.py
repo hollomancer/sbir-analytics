@@ -35,10 +35,28 @@ def test_monthly_cohorts_use_calendar_month_and_recorded_end():
 def test_writes_center_packet_and_manifest(tmp_path):
     cohorts = build_award_cohorts(_awards(), pd.DataFrame(), report_month="2026-06")
     candidates = pd.DataFrame(
-        [{"candidate_id": "C-1", "signal_class": "directed", "prior_award_id": "A-1", "target_id": "O-1", "candidate_score": 0.8, "is_high_confidence": True}]
+        [
+            {
+                "candidate_id": "C-1",
+                "signal_class": "directed",
+                "prior_award_id": "A-1",
+                "target_id": "O-1",
+                "candidate_score": 0.8,
+                "is_high_confidence": True,
+            }
+        ]
     )
     opportunities = pd.DataFrame(
-        [{"notice_id": "O-1", "title": "Navigation procurement", "office": "NAVAIR", "office_code": "NAVAIR", "response_deadline": "2026-08-01", "source_url": "https://sam.gov/opp/O-1"}]
+        [
+            {
+                "notice_id": "O-1",
+                "title": "Navigation procurement",
+                "office": "NAVAIR",
+                "office_code": "NAVAIR",
+                "response_deadline": "2026-08-01",
+                "source_url": "https://sam.gov/opp/O-1",
+            }
+        ]
     )
     output = MonthlyReportBuilder(report_month="2026-06", output_root=tmp_path).write(
         award_cohorts=cohorts, candidates=candidates, opportunities=opportunities

@@ -146,7 +146,9 @@ class SamGovOpportunitiesExtractor:
                 raise APIError("SAM.gov Opportunities response has invalid opportunitiesData")
             for row in rows:
                 if emitted >= self.max_records:
-                    raise APIError("SAM.gov opportunity record cap reached; refusing partial output")
+                    raise APIError(
+                        "SAM.gov opportunity record cap reached; refusing partial output"
+                    )
                 if isinstance(row, dict):
                     emitted += 1
                     yield row
@@ -168,7 +170,9 @@ class SamGovOpportunitiesExtractor:
             pass
         return _text(response.text)
 
-    def normalize_record(self, row: dict[str, Any], *, fetch_description: bool = False) -> Opportunity:
+    def normalize_record(
+        self, row: dict[str, Any], *, fetch_description: bool = False
+    ) -> Opportunity:
         type_name = _text(row.get("type")) or "Unknown"
         type_code = NOTICE_TYPE_CODES.get(type_name) or _text(row.get("typeCode"))
         path_names = (_text(row.get("fullParentPathName")) or "").split(".")
