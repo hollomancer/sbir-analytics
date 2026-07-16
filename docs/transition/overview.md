@@ -33,7 +33,7 @@ The system uses a multi-signal scoring approach:
    - 🎯 **Competition Type** - Sole source/limited competition indicates vendor targeting
    - 📜 **Patent Signal** - Patents filed indicate technology maturity
    - 🔬 **CET Alignment** - Same critical technology area shows focus consistency
-   - 🤝 **Vendor Match** - UEI/CAGE/DUNS exact match confirms same company
+   - 📝 **Text Similarity** - Award abstract vs. contract description overlap (optional; disabled by default)
 3. **Composite Scoring** - Weighted combination of all signals (0.0–1.0)
 4. **Confidence Classification** - HIGH (≥0.85), LIKELY (0.65–0.84), POSSIBLE (<0.65)
 5. **Evidence Generation** - Detailed justification for every detection
@@ -221,7 +221,12 @@ uv run pytest tests/unit/test_cet_signal_extractor.py -v  # 37 tests, 96% covera
 3. **Competition type** (weight: 0.20) - Sole source/limited competition
 4. **Patent signal** (weight: 0.15) - Patents filed; topic match
 5. **CET alignment** (weight: 0.10) - Same technology area
-6. **Vendor match** (weight: 0.10) - UEI/CAGE/DUNS confidence
+6. **Text similarity** (weight: 0.05, disabled by default) - Award/contract description overlap
+
+Vendor matching (UEI/CAGE/DUNS/fuzzy name) is an **eligibility gate** (step 1,
+"Vendor Resolution"), not a weighted scoring signal. See
+[scoring-guide.md](scoring-guide.md) for the authoritative weights and
+[vendor-matching.md](vendor-matching.md) for the resolution algorithm.
 
 ### Confidence Bands
 

@@ -517,7 +517,7 @@ transition:
   vendor_resolution:
     # Vendor resolution quality thresholds and fuzzy config
     min_rate: 0.60 # Minimum resolution rate (uei/duns/fuzzy)
-    fuzzy_threshold: 0.85 # RapidFuzz partial_ratio threshold for name_fuzzy
+    fuzzy_threshold: 0.85 # RapidFuzz token_sort_ratio threshold for name_fuzzy
 
 statistical_reporting:
   # Report generation settings
