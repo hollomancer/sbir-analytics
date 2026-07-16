@@ -18,12 +18,20 @@ text model fixes it (dense 0.653, BM25 0.643, cross-encoder 0.640 all lost). Fus
 signals orthogonal to text: same program office, timed after Phase II, cites the firm's topic code.
 
 ## Build order (per direction, 2026-07-16)
-**Phase 1 — TEMPORAL first.** Highest-value, lowest-leakage signal. A transition necessarily comes
-*after* the firm's Phase I/II. Kills the large class of confusables that predate the SBIR work.
-- `is_after` = notice/contract date ≥ firm's latest Phase I/II completion.
-- `time_gap` = months between (bucketed; transitions cluster ~1–6 yrs after).
-- Source: contract `signedDate` (FPDS XML, local) vs firm's latest `Award Year` (award_data.csv).
-- Deliverable of Phase 1: `tfidf_cos + temporal` vs `tfidf_cos` alone, GroupKFold precision@K + ablation.
+**Phase 1 — TEMPORAL first.** Highest-value, lowest-leakage signal. A transition comes *after* the
+firm's SBIR work. Anchor on the firm's **entire SBIR timeline (all Phase I *and* Phase II award years)**
+— NOT Phase II specifically — because a **Phase I can become a Phase III without ever being a Phase II**;
+anchoring on all award years captures Phase-I-origin transitions.
+- `after_first` = notice year ≥ firm's **earliest** SBIR award year (Phase I counts).
+- `gap` = notice year − firm's latest SBIR award year (signed).
+- `in_window` = notice year ∈ [firm's first SBIR year, last SBIR year + 6].
+- Source: contract `signedDate` (FPDS XML, local) vs firm's `Award Year`s (award_data.csv, all phases).
+
+**RESULT (Phase 1, `pc_fusion.py`, logistic LTR, GroupKFold by firm):**
+`word 0.751` → `word+char 0.773` → `word+char+temporal` **0.779** (top-3 51%→58%). Char n-gram was the
+bigger lift (+0.022, bridges jargon/format variants); `after_first` is the strong temporal feature
+(coef 0.76). Sanity: word-only reproduces the 0.751 TF-IDF baseline exactly. Fair cross-encoder (short
+query) = 0.669, still < TF-IDF — every neural text method loses even tested fairly.
 
 **Phase 2 — IDENTIFIER CROSS-REFERENCE.** High-precision, near-dispositive when present.
 - `id_xref` = notice text cites the firm's SBIR contract # (`Contract` col) or `Topic Code` or prior
