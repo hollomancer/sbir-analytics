@@ -63,3 +63,35 @@ program-wide, not DoD-only. Everything measured so far is DoD (baseline) plus a 
 - Test 1 (NASA diagnosis): small (measurement on data in hand + a targeted probe).
 - Test 2 (all-agency undercount): small–moderate (parameterized pulls already exist; manifested).
 - Tests 3–4 (ranker cross-agency): moderate–large (per-agency recovery pulls; #442 pipeline territory).
+
+## RESULTS — first cross-agency number (Test 3, DoD↔NASA)
+Substrate: the NASA TechPort non-SBIR-project pool from #456 (`nasa-techport.md`) supplies NASA-side
+targets keyed by firm UEI; DoD side is the SBIR award abstracts + the SR3/ST3-coded contract pool.
+
+**Cross-agency overlap (UEI join, data on disk):**
+
+| Crossover | N (any) | N (strict) | Clean? |
+|---|---:|---:|---|
+| DoD SBIR → NASA non-SBIR project | 310 | 72 | ✅ target genuinely non-SBIR |
+| NASA SBIR → DoD Phase III (SR3/ST3) | 308 | 3 | ❌ target pool *is* SBIR-coded |
+| Firms w/ coded Phase III at BOTH agencies | 88 | — | — |
+| Firms doing SBIR at BOTH DoD & NASA | 1,489 | — | context |
+
+**Cross-agency retrieval (DoD SBIR abstract → its NASA non-SBIR project, 25 same-register hard negatives,
+306 firms): AUC 0.828, top-1 45%, top-3 60%** [within-NASA 0.879 | within-DoD 0.844]. pos-sim median
+**0.066** — absolute cosine is tiny (agencies use different jargon registers) yet the *ranking* holds, so
+this is genuine cross-agency continuity, not firm co-occurrence (1,489 firms do both SBIR → co-occurrence
+alone would sit at 0.5). The softer top-1 (45% vs 59% within-NASA) is the empirical case for *fusion*:
+identity + temporal features (vocabulary-agnostic) recover the most exactly where cross-agency text is weakest.
+
+**Asymmetry / data block:** NASA→DoD collapses to 3 strict **not** because it's rare but because our DoD
+target pool is SR3/ST3-*coded* (SBIR by construction) — a firm in it did DoD SBIR by definition. Measuring
+NASA→DoD (and DoD-internal *uncoded* Phase III) needs a **DoD non-SBIR contract pool** (recipient-UEI-filtered
+USAspending/FPDS, excluding SBIR-coded), the DoD analogue of what TechPort is for NASA. That is the richest
+open avenue — but it is the base-rate wall in full force if scanned whole-universe (~1% prevalence → needs
+~0.95 AUC); the tractable framing is **per-firm/recipient-scoped** ranking (a firm's SBIR abstract → its own
+non-SBIR DoD contracts), which is the same retrieval frame that yields 0.828/0.844/0.879 and tames the base rate.
+
+**Gate before building the ranker:** the 72 strict DoD→NASA firms are a proxy ("DoD-SBIR firm doing a NASA
+project") that needs human confirmation (genuine transition vs unrelated NASA work) — fold ~10–15 into the
+precision@K manual-eval pass before investing in the DoD non-SBIR pull.
