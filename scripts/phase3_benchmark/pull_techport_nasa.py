@@ -89,9 +89,17 @@ def pull_sbir_projects(*, query: str = "SBIR", pace: float = 1.0, cache_dir: Pat
                        limit: int | None = None) -> tuple[list[dict], dict[str, object]]:
     """Search TechPort for SBIR/STTR projects and pull each (paced, cached). Returns records + manifest."""
     run_at = datetime.now(UTC).isoformat()
-    search = fetcher(f"{API}/projects/search?searchQuery={urllib.parse.quote(query)}")
-    listing = json.loads(search) if search else {}
-    ids = [p.get("projectId") for p in (listing.get("projects") or []) if isinstance(p, dict) and p.get("projectId")]
+    # search endpoint returns key "results" (not "projects"); under load it may 200-with-empty, so retry.
+    ids: list = []
+    search = b""
+    for search_attempt in range(8):
+        search = fetcher(f"{API}/projects/search?searchQuery={urllib.parse.quote(query)}") or b""
+        listing = json.loads(search) if search else {}
+        items = listing.get("results") or listing.get("projects") or []
+        ids = [p.get("projectId") for p in items if isinstance(p, dict) and p.get("projectId")]
+        if ids:
+            break
+        time.sleep(3 * (search_attempt + 1))
     if limit:
         ids = ids[:limit]
     records: list[dict] = []

@@ -29,14 +29,27 @@ manifested puller plus the pure link logic (`parse_project`, `link_firm`); fixtu
 4. Use the project description as rich text; run `transition_ranker.evaluate` (GroupKFold by firm) vs NASA
    firms' abstracts, with hard negatives = other NASA firms' projects.
 
-## FIRST-RUN GATE (must check before trusting the AUC)
-Confirm whether a TechPort SBIR project represents the **transition / Phase III** vs the **original Phase
-I/II**, via its `program` / phase / date fields:
-- If **transition-bearing** → the description is the ranker *target* text (direct NASA analogue of the DoD
-  J&A), and the NASA AUC is comparable to DoD's 0.844.
-- If it is the **original SBIR award** → it enriches the *query* side (redundant with the abstract), and
-  NASA transition detection needs a different target (e.g. NASA Phase III contract writeups, or infusion
-  records). Do not report a NASA AUC until this is resolved.
+## FIRST RUN — results (bounded 800-project pull)
+
+Puller bug found + fixed: the **search endpoint returns key `"results"`, not `"projects"`** (and 200-with-
+empty under load) — the puller now reads `results` and retries on empty. With that:
+
+- **Linkage SOLVED (the headline):** 800 projects → 609 with a firm org, **429 linked to an SBIR-firm UEI
+  (54%), 208 distinct firms** — the firm↔rich-text link the GSA archive could not make for NASA.
+- **Descriptions are distinct** from the firm abstract (cosine median 0.12, only 8% near-duplicate); 46%
+  carry transition/Phase-III language.
+- **First retrieval AUC 0.961** (firm abstract → its TechPort project vs 25 random firms), top-1 86%.
+
+**But 0.961 is NOT a transition-detection number** — it is the *easy* firm-linkage task (a firm's project
+is its own tech; negatives are random firms). It is the NASA analogue of DoD's *easy* ~0.79 "which firm",
+**not** the hard 0.844 (whose negatives were other firms' Phase III notices, same register). And the
+pulled projects look like the **SBIR award itself** (program "Small Business Innovation Research",
+2014-2017), not clearly Phase III.
+
+## STILL OPEN — a real NASA transition number
+Filter TechPort to **actual Phase III** targets (phase field / Phase-III language + later dates) and use
+**other firms' Phase III projects** as hard negatives — the true DoD-0.844 analogue. Until then: NASA
+**linkage is solved**; NASA **transition detection** is unmeasured but reachable via TechPort.
 
 ## Honest limits
 - **API throttling** — a full ~20k pull needs polite pacing + caching + retries; treat as a background run.
