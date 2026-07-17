@@ -216,23 +216,15 @@ uv run pytest tests/unit/test_cet_signal_extractor.py -v  # 37 tests, 96% covera
 
 ### Transition Scoring (6 independent signals)
 
-1. **Agency continuity** (weight: 0.25) - Same agency contracts
-2. **Timing proximity** (weight: 0.20) - 0–24 months after award
-3. **Competition type** (weight: 0.20) - Sole source/limited competition
-4. **Patent signal** (weight: 0.15) - Patents filed; topic match
-5. **CET alignment** (weight: 0.10) - Same technology area
-6. **Text similarity** (weight: 0.05, disabled by default) - Award/contract description overlap
+The composite score combines six signals — agency continuity, timing proximity,
+competition type, patent signal, CET alignment, and text similarity (disabled by
+default). Vendor matching (UEI/CAGE/DUNS/fuzzy name) is an **eligibility gate**
+(step 1, "Vendor Resolution"), not a weighted scoring signal.
 
-Vendor matching (UEI/CAGE/DUNS/fuzzy name) is an **eligibility gate** (step 1,
-"Vendor Resolution"), not a weighted scoring signal. See
-[scoring-guide.md](scoring-guide.md) for the authoritative weights and
-[vendor-matching.md](vendor-matching.md) for the resolution algorithm.
-
-### Confidence Bands
-
-- **HIGH**: score ≥ 0.85 (high precision, ~85%)
-- **LIKELY**: score 0.65–0.84 (balanced, ~75% precision)
-- **POSSIBLE**: score <0.65 (high recall, ~40% precision)
+Default weights, confidence bands (HIGH ≥0.85 / LIKELY 0.65–0.84 / POSSIBLE
+<0.65), and tuning guidance are maintained authoritatively in
+[scoring-guide.md](scoring-guide.md); the vendor-resolution algorithm is in
+[vendor-matching.md](vendor-matching.md).
 
 ## Implementation Status
 

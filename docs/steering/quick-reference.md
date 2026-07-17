@@ -33,52 +33,18 @@ Canonical templates live in `pipeline-orchestration.md#asset-check-implementatio
 
 ## Neo4j Patterns Quick Reference
 
-### Node Creation (Upsert)
+Full Cypher patterns — batch upserts, relationships, constraints, and indexes —
+live in [neo4j-patterns.md](neo4j-patterns.md). Key facts to keep in mind:
 
-Organizations are keyed by the authoritative `organization_id` (e.g.
-`org_company_<id>`); `uei` is a regular indexed property, so MERGE on it would
-mint duplicates.
-
-```cypher
-UNWIND $batch AS row
-MERGE (o:Organization {organization_id: row.organization_id})
-SET o.organization_type = "COMPANY",
-    o.uei = row.uei,
-    o.name = row.name,
-    o.address = row.address,
-    o.updated_at = datetime()
-```
-
-### Relationship with Confidence
-
-SBIR awards are `:FinancialTransaction {transaction_type: 'AWARD'}` nodes (keyed
-by `transaction_id`) linked to the recipient `:Organization` via `:RECIPIENT_OF`.
-
-```cypher
-MERGE (a:FinancialTransaction {transaction_id: $transaction_id})
-  ON CREATE SET a.transaction_type = "AWARD", a.award_id = $award_id
-MERGE (o:Organization {organization_id: $organization_id})
-MERGE (a)-[r:RECIPIENT_OF]->(o)
-SET r.confidence = $confidence,
-    r.method = $method,
-    r.created_at = datetime()
-```
-
-### Common Constraints
-
-```cypher
-CREATE CONSTRAINT IF NOT EXISTS FOR (o:Organization) REQUIRE o.organization_id IS UNIQUE;
-CREATE CONSTRAINT IF NOT EXISTS FOR (ft:FinancialTransaction) REQUIRE ft.transaction_id IS UNIQUE;
-CREATE CONSTRAINT IF NOT EXISTS FOR (p:Patent) REQUIRE p.grant_doc_num IS UNIQUE;
-```
-
-### Performance Indexes
-
-```cypher
-CREATE INDEX organization_name IF NOT EXISTS FOR (o:Organization) ON (o.name);
-CREATE INDEX organization_uei IF NOT EXISTS FOR (o:Organization) ON (o.uei);
-CREATE INDEX financial_transaction_date IF NOT EXISTS FOR (ft:FinancialTransaction) ON (ft.transaction_date);
-```
+- **Organizations** MERGE on the authoritative `organization_id` (e.g.
+  `org_company_<id>`); `uei` is an indexed property, not a merge key (merging on
+  it mints duplicates).
+- **SBIR awards** are `:FinancialTransaction {transaction_type: "AWARD"}` nodes
+  (keyed by `transaction_id`), linked to the recipient `:Organization` via
+  `:RECIPIENT_OF`.
+- **Constraints/indexes** use modern syntax:
+  `CREATE CONSTRAINT IF NOT EXISTS FOR (...) REQUIRE ...` /
+  `CREATE INDEX IF NOT EXISTS FOR (...) ON (...)`.
 
 ## Environment Variables Quick Setup
 
