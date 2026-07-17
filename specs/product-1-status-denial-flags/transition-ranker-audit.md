@@ -68,7 +68,16 @@ the deployment number:
 **Conclusion:** deploy as a **per-firm lead ranker** (analyst reviews each firm's top-K — viable), **not a
 universe-wide auto-flag** (base-rate wall). precision@K (this audit), not global precision, is the metric.
 
-## Scope / honest limits
+## Task B — independent-label replication (coverage-blocked)
+Goal: re-test the 0.844 on **description-flagged** Phase III (labeled by "SBIR PHASE III" *text*, not the
+SR3 code) + NASA cross-agency. Firm linkage solved for free (DoD PIID→UEI via `recipient_universe`: 756;
+NASA name→UEI: 194). But **archive recovery yielded only 19/895 notices** (DoD 19, NASA 0): the
+description-flagged set has **no Sol#** (PIID-only join runs ~3%, same rate as the coded set), and it's
+**largely uncoded** — the dark-ish population with fewer posted rich notices. So the independent-label
+replication is **under-covered** (19 ≪ the ~45 needed for direction) — itself a finding: the recoverable
+rich-text segment is narrow (coded + J&A-posted), and the broader description-flagged set hits the same
+linkage wall. Rescue path if needed: FPDS Sol# pull per desc PIID → add Sol# join (tripled the coded set).
+`pc_descB_recover.py`, `pc_fusion_descB.py`.
 - The candidate pool is the **273 recovered Phase III notices** (all real Phase III), so this measures
   **attribution precision** ("is this the *right firm's* transition") — a necessary condition — **not**
   discrimination of Phase III from a firm's *routine* contracts. A fuller deployment audit would add
