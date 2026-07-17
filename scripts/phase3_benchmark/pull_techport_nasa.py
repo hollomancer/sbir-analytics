@@ -46,11 +46,14 @@ def parse_project(project: dict) -> dict[str, object]:
     """Normalize a TechPort project into id / program / dates / firm orgs / description."""
     program = project.get("program") or {}
     program_title = program.get("title", "") if isinstance(program, dict) else str(program)
-    orgs: list[str] = [o.get("organizationName", "") for o in (project.get("otherOrganizations") or [])
-                       if isinstance(o, dict)]
-    lead = project.get("leadOrganization") or {}
-    if isinstance(lead, dict) and lead.get("organizationName"):
-        orgs.append(lead["organizationName"])
+    # search endpoint uses snake_case (organization_name); detail endpoint uses camelCase.
+    def _org_name(o: dict) -> str:
+        return o.get("organizationName") or o.get("organization_name") or ""
+    org_dicts = list(project.get("otherOrganizations") or [])
+    lead = project.get("leadOrganization")
+    if isinstance(lead, dict):
+        org_dicts.append(lead)
+    orgs: list[str] = [_org_name(o) for o in org_dicts if isinstance(o, dict) and _org_name(o)]
     firm_orgs = [o for o in orgs if o and not any(tok in o.upper() for tok in _NON_FIRM)]
     return {
         "project_id": project.get("projectId") or project.get("id"),

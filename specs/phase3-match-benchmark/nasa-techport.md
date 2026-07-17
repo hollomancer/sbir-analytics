@@ -83,3 +83,21 @@ pull needs the **`/api/organizations`** endpoint (firm → organizationId, confi
 per-organization project lookup. Build path: firm→orgId→projects, keep non-SBIR / higher-TRL / Phase-III
 projects as transition targets, run `transition_ranker.evaluate` with other firms' NASA projects as hard
 negatives. NASA transition detection is **reopened**, contingent on this endpoint work.
+
+## RESULT — NASA transition detection VIABLE (0.879), via the non-SBIR reframe
+Both reframes paid off. The full `/api/projects/search` response (one 104 MB call) carries every
+project's orgs + description + `phase` — no per-detail fetches — but uses **snake_case** keys
+(`organization_name`), which a camelCase parser silently drops (the earlier "0 firm links" bug).
+
+- **Phase field:** Phase I 8,068 / Phase II 3,254(+461) / **Phase III only 8** / `None` 8,244. A literal
+  Phase III target is a dead end; the **`None`-phase non-SBIR NASA program projects** are the transitions.
+- **10,132** projects link to a SBIR firm; **333 firms** have a non-SBIR NASA project (transition candidate).
+- **NASA transition retrieval AUC 0.879** (top-1 59%, top-3 73%): firm's SBIR abstract → its non-SBIR
+  NASA project, hard negatives = 25 **other firms'** non-SBIR NASA projects (same register) — the DoD-0.844
+  analogue. **Comparable to DoD.**
+
+**So NASA transition detection generalizes** — via TechPort's non-SBIR projects, not sam.gov. Honest caveat
+(same as DoD): "non-SBIR NASA project" is a *proxy* for transition; 0.879 confirms topical linkage of the
+firm's SBIR work to its NASA project, but Phase-III-specificity needs the same precision@K human audit.
+Method: parse the full search (snake_case), keep non-SBIR (`None`-phase, non-SBIR program) firm-linked
+projects as targets, run `transition_ranker.evaluate`-style retrieval with same-register hard negatives.
