@@ -593,6 +593,7 @@ validate: lint test ## Run linting, type checking, and tests
 SERVER_COMPOSE_FILE ?= docker-compose.server.yml
 SERVER_ENV_FILE     ?= .env.server
 SERVER_COMPOSE       = $(DOCKER_COMPOSE) -f $(SERVER_COMPOSE_FILE) --env-file $(SERVER_ENV_FILE)
+SERVER_PYTHON_BASE_IMAGE ?= ghcr.io/hollomancer/sbir-analytics-python-base:latest
 
 .PHONY: server-env-check
 server-env-check: ## Ensure .env.server exists
@@ -609,10 +610,21 @@ server-check: ## Validate server prerequisites (Docker, storage, ports, Tailscal
 	@$(call info,Checking Tailscale-only server prerequisites)
 	$(call run,SERVER_ENV_FILE=$(SERVER_ENV_FILE) ./scripts/server/check-prerequisites.sh)
 
+.PHONY: server-base-image
+server-base-image: server-check ## Pull the native Python base, or build it locally
+	@$(call info,Preparing the native Python base image)
+	@set -euo pipefail; \
+	 if docker pull $(SERVER_PYTHON_BASE_IMAGE); then \
+	   $(call success,Native Python base image is available); \
+	 else \
+	   $(call warn,Published base is unavailable for this architecture; building locally); \
+	   docker build -f Dockerfile.python-base -t $(SERVER_PYTHON_BASE_IMAGE) .; \
+	 fi
+
 .PHONY: server-up
-server-up: server-env-check ## Start the always-on server stack (profile=server)
+server-up: server-base-image ## Preflight and start the always-on server stack (profile=server)
 	@$(call info,Starting server stack (profile: server))
-	$(call run,$(SERVER_COMPOSE) --profile server up -d --build)
+	$(call run,$(SERVER_COMPOSE) --profile server up -d --build --wait --wait-timeout 300)
 	$(call run,$(SERVER_COMPOSE) --profile server ps)
 	@$(call success,Server stack ready (localhost-only; expose via 'make server-tailscale-up'))
 

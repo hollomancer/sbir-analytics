@@ -1,5 +1,6 @@
 """Dagster definitions for SBIR ETL pipeline."""
 
+import logging
 import os
 
 from dagster import (
@@ -13,8 +14,16 @@ from dagster import (
     load_asset_checks_from_modules,
     load_assets_from_modules,
 )
+from dagster._core.definitions.unresolved_asset_job_definition import (
+    UnresolvedAssetJobDefinition,
+)
+from dagster._core.errors import DagsterInvalidSubsetError
 
 from . import assets as assets_pkg
+
+
+LOG = logging.getLogger(__name__)
+DiscoveredJob = JobDefinition | UnresolvedAssetJobDefinition
 
 
 def _schedule_status(env_var: str, *, default_running: bool) -> DefaultScheduleStatus:
@@ -34,10 +43,20 @@ all_assets = load_assets_from_modules(asset_modules)
 all_asset_checks = load_asset_checks_from_modules(asset_modules)
 
 
-def _discover_jobs() -> dict[str, JobDefinition]:
+def _discover_jobs() -> dict[str, DiscoveredJob]:
     """Discover job definitions exposed under src.assets.jobs."""
 
-    return {job.name: job for job in assets_pkg.iter_public_jobs()}
+    jobs: dict[str, DiscoveredJob] = {}
+    load_heavy = assets_pkg.should_load_heavy_assets()
+    for job in assets_pkg.iter_public_jobs():
+        if not load_heavy and isinstance(job, UnresolvedAssetJobDefinition):
+            try:
+                job.selection.resolve(all_assets)
+            except DagsterInvalidSubsetError as exc:
+                LOG.info("Skipping job %s because its assets are not loaded: %s", job.name, exc)
+                continue
+        jobs[job.name] = job
+    return jobs
 
 
 def _discover_sensors() -> list[SensorDefinition]:
@@ -49,7 +68,7 @@ def _discover_sensors() -> list[SensorDefinition]:
 auto_jobs = _discover_jobs()
 
 
-def _get_job(name: str) -> JobDefinition | None:
+def _get_job(name: str) -> DiscoveredJob | None:
     """Retrieve a named job or return None if it is missing."""
     return auto_jobs.get(name)
 
@@ -145,13 +164,10 @@ if cet_drift_job is not None:
 all_sensors = _discover_sensors()
 
 # Aggregate jobs for repository registration
-job_definitions: list[JobDefinition] = [
-    etl_job,  # type: ignore[list-item]
-    core_refresh_job,  # type: ignore[list-item]
-]
+job_definitions: list[DiscoveredJob] = [etl_job, core_refresh_job]
 # Add conditional jobs if they exist
 if cet_drift_job is not None:
-    job_definitions.append(cet_drift_job)  # type: ignore[arg-type]
+    job_definitions.append(cet_drift_job)
 
 # Add auto-discovered jobs that aren't already in the list
 job_definitions.extend(job for job in auto_jobs.values() if job not in job_definitions)

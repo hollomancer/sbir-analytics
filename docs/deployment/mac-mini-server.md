@@ -6,12 +6,13 @@ tailnet — there is no public DNS, no port forwarding, and no LAN exposure.
 
 ## What runs here
 
-The `server` Compose profile (`docker-compose.server.yml`) runs exactly four
+The `server` Compose profile (`docker-compose.server.yml`) runs exactly five
 services:
 
 | Service | Purpose | Host bind | Tailnet ingress |
 |---------|---------|-----------|-----------------|
 | `neo4j` | Graph store | `127.0.0.1:7474` / `7687` | **none** (private) |
+| `dagster-code-server` | Shared Dagster code location | none | none |
 | `analytics-api` | Read-only API (bearer token) | `127.0.0.1:8010` | HTTPS `8443` |
 | `dagster-webserver` | Orchestration UI (prod mode) | `127.0.0.1:3000` | HTTPS `443` |
 | `dagster-daemon` | Schedules + sensors | — | none |
@@ -24,8 +25,8 @@ Heavy assets (ML/CET, fiscal, USPTO NLP) are **disabled** on the server
 
 - **Every host port binds to `127.0.0.1`.** Nothing listens on `0.0.0.0`, so
   the stack is invisible to other machines on the same LAN.
-  `make server-check` refuses to start if `SERVER_LOOPBACK` is anything other
-  than loopback.
+  Compose hardcodes this address; `make server-check` also rejects a legacy
+  `SERVER_LOOPBACK` value that is anything other than loopback.
 - **Tailscale Serve is the only ingress.** It provides tailnet-only HTTPS and
   terminates TLS automatically
   ([docs](https://tailscale.com/docs/features/tailscale-serve)):
@@ -95,12 +96,17 @@ With MagicDNS enabled the services are reachable at your node's DNS name:
 ```bash
 cp .env.server.example .env.server     # fill in NEO4J_PASSWORD + API token
 make server-check                      # docker, storage, ports, tailscale, bindings
-make server-up                         # localhost-only stack
+make server-up                         # repeats preflight, then starts localhost-only stack
 make server-tailscale-up               # expose via Tailscale Serve
 make server-status
 ```
 
 Generate the API token with `openssl rand -hex 32`.
+
+`make server-up` first pulls the published native Python base image. If GHCR
+does not yet have a manifest for the Mac's architecture, it builds
+`Dockerfile.python-base` locally and then continues. The first fallback build
+can take several minutes; later builds use the local image cache.
 
 ## Tailscale grant (least privilege)
 
@@ -142,6 +148,12 @@ over the tailnet.
 and all bind-mounted data. `make server-tailscale-down` removes **only** the
 443/8443 routes and never runs the destructive global
 `tailscale serve reset`.
+
+Neo4j Community Edition cannot create an online `neo4j-admin` dump. The backup
+helper therefore stops Neo4j briefly, writes the dump, and always attempts to
+restart it—even if the dump fails or the command is interrupted. API requests
+can fail during that short window. A completed dump is retained if restart
+fails so recovery work cannot erase the backup.
 
 ### Schedules
 

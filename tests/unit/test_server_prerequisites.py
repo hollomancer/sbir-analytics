@@ -13,14 +13,7 @@ import pytest
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = REPO_ROOT / "scripts" / "server" / "check-prerequisites.sh"
 
-pytestmark = [
-    pytest.mark.fast,
-    pytest.mark.unit,
-    pytest.mark.skipif(
-        not SCRIPT.is_file(),
-        reason="server prerequisite script not present in this environment",
-    ),
-]
+pytestmark = [pytest.mark.fast, pytest.mark.unit]
 
 GOOD_ENV = """
 SERVER_LOOPBACK=127.0.0.1
@@ -71,3 +64,28 @@ def test_rejects_missing_api_token(tmp_path):
     env_file.write_text("SERVER_LOOPBACK=127.0.0.1\nNEO4J_PASSWORD=a-real-password\n")
     result = _run(env_file)
     assert result.returncode == 1
+
+
+def test_env_file_is_parsed_as_data_not_executed(tmp_path):
+    marker = tmp_path / "executed"
+    env_file = tmp_path / ".env.server"
+    env_file.write_text(
+        GOOD_ENV
+        + f"DAGSTER_PORT=$(touch {marker})\n"
+        + "SBIR_ETL__DAGSTER__SCHEDULES__WEEKLY_CORE_REFRESH_JOB=15 3 * * *\n"
+    )
+
+    result = _run(env_file)
+
+    assert result.returncode != 0
+    assert not marker.exists()
+
+
+def test_rejects_duplicate_allowlisted_key(tmp_path):
+    env_file = tmp_path / ".env.server"
+    env_file.write_text(GOOD_ENV + "NEO4J_PASSWORD=change_me\n")
+
+    result = _run(env_file)
+
+    assert result.returncode != 0
+    assert "defined more than once" in (result.stdout + result.stderr)

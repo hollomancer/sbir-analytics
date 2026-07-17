@@ -327,6 +327,8 @@ services:
       # in the ci profile command (above) finds tests/. Without this, pytest
       # exits with code 5 ("no tests collected") and breaks Container Build.
       - ./tests:/app/tests:ro
+      # Repo-root server contract exercised by fast unit tests.
+      - ./.env.server.example:/app/.env.server.example:ro
       - ./config:/app/config:ro
       - ./scripts:/app/scripts:ro
     restart: "no"
