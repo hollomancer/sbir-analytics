@@ -54,6 +54,20 @@ wins** (a notice genuinely the firm's transition that the SR3 coding didn't attr
 - **MRR**; **human-vs-code-label agreement** (does the ranker surface transitions the coding missed?).
 - Pre-audit (vs code labels only): precision@1 **52%**, recall@3 **60%** — the human review is the truth.
 
+## Operating-point analysis (Task A, `pc_operating_point.py`, vs code labels)
+Out-of-fold scored EVERY firm×notice pair at realistic imbalance (**0.8% base rate**, 198 true / 25,344).
+As a **global auto-flagger** it hits the base-rate wall: AP 0.155; precision tops ~0.31 (score≥0.70);
+**precision ≥0.85 only at score=1.00, recall 0.04**. Two reasons this is a pessimistic LOWER bound, not
+the deployment number:
+1. **Measured vs the CODE labels, which undercount** (the project's premise). Confirmed label-missed wins
+   (e.g. INTELLISENSE, BENTHOS marked `Y` but `owner=OTHER`) count here as false positives → true
+   precision is higher; only the human audit reveals it.
+2. **Global threshold ≠ how we deploy.** The tool ranks **per firm** and shows **top-K**; there the
+   ranking floats the true one up (precision@1 55% vs code, not 0.8%). Per-firm top-K exploits the
+   ranking within a firm; a global threshold pools all firms and drowns in the base rate.
+**Conclusion:** deploy as a **per-firm lead ranker** (analyst reviews each firm's top-K — viable), **not a
+universe-wide auto-flag** (base-rate wall). precision@K (this audit), not global precision, is the metric.
+
 ## Scope / honest limits
 - The candidate pool is the **273 recovered Phase III notices** (all real Phase III), so this measures
   **attribution precision** ("is this the *right firm's* transition") — a necessary condition — **not**
