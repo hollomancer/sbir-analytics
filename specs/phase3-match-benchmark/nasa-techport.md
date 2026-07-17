@@ -46,10 +46,22 @@ is its own tech; negatives are random firms). It is the NASA analogue of DoD's *
 pulled projects look like the **SBIR award itself** (program "Small Business Innovation Research",
 2014-2017), not clearly Phase III.
 
-## STILL OPEN — a real NASA transition number
-Filter TechPort to **actual Phase III** targets (phase field / Phase-III language + later dates) and use
-**other firms' Phase III projects** as hard negatives — the true DoD-0.844 analogue. Until then: NASA
-**linkage is solved**; NASA **transition detection** is unmeasured but reachable via TechPort.
+## RESOLVED — TechPort is the original SBIR, not the transition target
+Checked whether TechPort can supply Phase III targets. It cannot at scale: project details have
+`trlBegin/trlCurrent/trlEnd` but **no phase field**, and of 400 sampled "SBIR" projects, **~51% name Phase
+I/II and only ~2% name Phase III**. TechPort's SBIR content is overwhelmingly the **original Phase I/II
+award**, so it enriches the **query side** (the firm's SBIR work) — it is **not** the Phase III target the
+DoD ranker matched against.
+
+**Conclusion — NASA transition detection is data-limited, not method-limited.** NASA's Phase III
+transitions have **no public rich text anywhere found**: not sam.gov (sole-source, unposted) and not
+TechPort (Phase I/II). Only the terse USAspending Phase III descriptions exist. DoD works because it posts
+rich Phase III J&As; NASA posts nothing firm-linkable for Phase III. So for NASA:
+- **Undercount** — works (16/202).
+- **Linkage** — solved via TechPort (54%, 208 firms).
+- **Transition detection (DoD-0.844 analogue)** — **not viable**; the target text does not exist publicly.
+Residual angle (unpursued): TechPort `trl*` progression + `technologyOutcomes`/`destinationType` are a
+*maturation* signal, a different formulation than Phase-I/II→Phase-III text matching.
 
 ## Honest limits
 - **API throttling** — a full ~20k pull needs polite pacing + caching + retries; treat as a background run.
