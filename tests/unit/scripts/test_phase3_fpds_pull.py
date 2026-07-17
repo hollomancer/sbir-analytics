@@ -14,14 +14,16 @@ from scripts.phase3_benchmark.pull_fpds_10q import (
 FIXTURE = Path("tests/fixtures/phase3_benchmark/fpds_atom_page.xml")
 
 
-def _live_shaped_page(piid: str, *, next_url: str | None = None, last_url: str | None = None) -> bytes:
+def _live_shaped_page(
+    piid: str, *, next_url: str | None = None, last_url: str | None = None
+) -> bytes:
     links = []
     if last_url:
         links.append(f'<link rel="last" href="{last_url.replace("&", "&amp;")}" />')
     if next_url:
         links.append(f'<link rel="next" href="{next_url.replace("&", "&amp;")}" />')
     return (
-        "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
+        '<?xml version="1.0" encoding="UTF-8"?>'
         '<feed xmlns="http://www.w3.org/2005/Atom" xmlns:fpds="https://www.fpds.gov/FPDS">'
         + "".join(links)
         + "<entry><content><fpds:award>"
