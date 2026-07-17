@@ -10,10 +10,14 @@ program-wide, not DoD-only. Everything measured so far is DoD (baseline) plus a 
 ## Agency tiers (they behave differently)
 
 1. **DoD** — baseline. Undercount 14.7%; ranker AUC 0.844. Done.
-2. **NASA (contract)** — undercount **reproduces (16/202, 7.9%)**, so the *count* generalizes. But the
-   ranker's archive **recovery returned ~0 NASA notices** — NASA PIIDs (`NNX…`, `80NSSC…`) did not appear
-   as `AwardNumber` in the GSA `falextracts` archive. **Open diagnosis:** is this a PIID-format mismatch,
-   a NASA-specific posting practice (NSPIRES / NASA SEWP vs sam.gov), or genuine non-coverage? First test.
+2. **NASA (contract)** — undercount **reproduces (16/202, 7.9%)**, so the *count* generalizes. The ranker's
+   archive **recovery returned ~0 NASA notices — now DIAGNOSED** (FY2020 probe): NASA is fully present in
+   the archive (2,861 rows, **94% with rich descriptions**), but NASA populates the **`AwardNumber` field
+   on only ~6%** of its notices (vs ~21% for DoD), and **0 of our 202 NASA Phase III PIIDs matched**. So
+   the DoD-style **PIID→AwardNumber** join has nothing to hit — **not** a format issue (`80…`/`NN…`
+   prefixes match) nor non-coverage (the rich text is there). **Fix:** join NASA on a key it *does* carry
+   — **Sol#** (FPDS pull, as in the DoD rescue) or **Awardee name**. NASA recovery is feasible; the "0" was
+   a wrong-join-key artifact, not a wall.
 3. **Other contract agencies (DHS, DOT, DOE-contracts, Commerce, …)** — FPDS-coded + USAspending-described,
    same `falextracts` archive (all agencies). The undercount pulls are already **agency-parameterized**
    (`--agency`), so extension is mechanical; recovery/ranker are **untested** cross-agency.
