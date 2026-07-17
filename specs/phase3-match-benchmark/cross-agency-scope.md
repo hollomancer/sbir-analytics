@@ -10,14 +10,17 @@ program-wide, not DoD-only. Everything measured so far is DoD (baseline) plus a 
 ## Agency tiers (they behave differently)
 
 1. **DoD** — baseline. Undercount 14.7%; ranker AUC 0.844. Done.
-2. **NASA (contract)** — undercount **reproduces (16/202, 7.9%)**, so the *count* generalizes. The ranker's
-   archive **recovery returned ~0 NASA notices — now DIAGNOSED** (FY2020 probe): NASA is fully present in
-   the archive (2,861 rows, **94% with rich descriptions**), but NASA populates the **`AwardNumber` field
-   on only ~6%** of its notices (vs ~21% for DoD), and **0 of our 202 NASA Phase III PIIDs matched**. So
-   the DoD-style **PIID→AwardNumber** join has nothing to hit — **not** a format issue (`80…`/`NN…`
-   prefixes match) nor non-coverage (the rich text is there). **Fix:** join NASA on a key it *does* carry
-   — **Sol#** (FPDS pull, as in the DoD rescue) or **Awardee name**. NASA recovery is feasible; the "0" was
-   a wrong-join-key artifact, not a wall.
+2. **NASA (contract) — ranker recovery does NOT generalize (tested, negative).** Undercount reproduces
+   (16/202, 7.9%) from USAspending, so the *count* generalizes. But the archive ranker does not: NASA is
+   present with 94% rich text, yet **every firm-link key is sparse and matched zero** of our NASA Phase III
+   firms — `AwardNumber` ~6%, **`Awardee` ~5%**, FPDS `solicitationID` ~2.5% (10 of 1,037 PIIDs). The rich
+   NASA text is **general solicitations/synopses, not the firm-specific award notices / J&As** that made
+   DoD work: NASA runs SBIR through NSPIRES and its Phase III is sole-source with almost no FPDS
+   solicitation trail, so it does not post firm-linkable award documents to sam.gov Contract Opportunities.
+   **Conclusion:** NASA transition detection needs a **NASA-specific source (NSPIRES / NASA award data)**,
+   not the GSA archive. (An earlier note called this a "wrong-join-key artifact, fixable" — the data
+   corrected that: all three keys fail.) This is the d8 hypothesis confirmed — **coverage/linkage
+   dominates per agency**: the archive ranker generalizes only to agencies that post J&As/award notices.
 3. **Other contract agencies (DHS, DOT, DOE-contracts, Commerce, …)** — FPDS-coded + USAspending-described,
    same `falextracts` archive (all agencies). The undercount pulls are already **agency-parameterized**
    (`--agency`), so extension is mechanical; recovery/ranker are **untested** cross-agency.
