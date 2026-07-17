@@ -76,8 +76,15 @@ description-flagged set has **no Sol#** (PIID-only join runs ~3%, same rate as t
 **largely uncoded** — the dark-ish population with fewer posted rich notices. So the independent-label
 replication is **under-covered** (19 ≪ the ~45 needed for direction) — itself a finding: the recoverable
 rich-text segment is narrow (coded + J&A-posted), and the broader description-flagged set hits the same
-linkage wall. Rescue path if needed: FPDS Sol# pull per desc PIID → add Sol# join (tripled the coded set).
-`pc_descB_recover.py`, `pc_fusion_descB.py`.
+linkage wall. FPDS Sol# rescue (option 1) pulled 125 sols but only lifted recovery 19→**26** (all DoD,
+NASA still 0) — the set is largely uncoded/dark, so it *is* the text-starved population.
+
+**Result (directional):** on the 26 (22 firms), independent-label AUC **0.859** 95%CI [0.762, 0.933] —
+point estimate ≈ the coded-label **0.844**, CI clears chance. So the ranker **replicates on positives
+labeled by description, not the SR3 code** — not a coding artifact. But underpowered (n=22, wide CI) and
+NASA-untestable (0 recovered). The coverage-block itself confirms the core thesis: recoverable rich text
+is the coded + J&A-posted segment; the broader (uncoded) Phase III population is structurally text-starved.
+(`pc_descB_recover2.py`, `pc_descB_solpull.py`, `pc_fusion_descB.py`.)
 - The candidate pool is the **273 recovered Phase III notices** (all real Phase III), so this measures
   **attribution precision** ("is this the *right firm's* transition") — a necessary condition — **not**
   discrimination of Phase III from a firm's *routine* contracts. A fuller deployment audit would add
