@@ -67,3 +67,19 @@ Residual angle (unpursued): TechPort `trl*` progression + `technologyOutcomes`/`
 - **API throttling** — a full ~20k pull needs polite pacing + caching + retries; treat as a background run.
 - **Org→UEI matching** is fuzzy name resolution; measure the link rate on the real pull.
 - Scope is **contract/portfolio transitions**; NASA grant/commercialization outcomes are a separate problem.
+
+## REOPENED — non-SBIR NASA projects are the transition target (correction)
+Two corrections that reopen NASA:
+1. **TechPort `searchQuery` does not filter** — it returns all ~20,036 projects for *any* term ("SBIR",
+   a firm name, or nonsense all return 20,036). So the earlier "SBIR-only, Phase I/II" read was on the
+   *whole* portfolio, not an SBIR subset — the "TechPort = original SBIR" conclusion above was too narrow.
+2. **The transition footprint is there:** ~54% of *all* NASA TechPort projects involve a firm matching an
+   SBIR company. SBIR firms are broadly present across NASA's mostly **non-SBIR** programs (Space
+   Technology Research, Center Innovation Fund, Advanced Air Vehicles…) — those non-SBIR projects, with
+   rich descriptions + `trl*` maturation data, are the **straight-NASA-award transitions** (per direction).
+
+**Blocker is the API, not the data.** `searchQuery`/`organization` params don't filter, so a *per-firm*
+pull needs the **`/api/organizations`** endpoint (firm → organizationId, confirmed 200) then a
+per-organization project lookup. Build path: firm→orgId→projects, keep non-SBIR / higher-TRL / Phase-III
+projects as transition targets, run `transition_ranker.evaluate` with other firms' NASA projects as hard
+negatives. NASA transition detection is **reopened**, contingent on this endpoint work.
