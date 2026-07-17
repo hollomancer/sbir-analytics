@@ -21,6 +21,17 @@ program-wide, not DoD-only. Everything measured so far is DoD (baseline) plus a 
    not the GSA archive. (An earlier note called this a "wrong-join-key artifact, fixable" — the data
    corrected that: all three keys fail.) This is the d8 hypothesis confirmed — **coverage/linkage
    dominates per agency**: the archive ranker generalizes only to agencies that post J&As/award notices.
+
+   **But NASA has its own source — TechPort (confirmed viable).** `techport.nasa.gov/api` is public and holds
+   **~20,036 SBIR/STTR projects**, ~95% of a sample carrying a **performing firm org + a rich project
+   description** — NASA's own portfolio, exactly where NASA "posts" its work. This replaces the sam.gov
+   archive for NASA: match TechPort project `organizations` → our SBIR firm UEIs (fuzzy name), use the
+   project `description` as firm-linkable rich text. Caveats for the build: (a) the API **rate-limits**
+   under rapid calls → needs a paced, cached, retried pull (like the GSA archive); (b) org-name→UEI needs
+   proper fuzzy matching; (c) verify whether a TechPort project represents the **transition/Phase III** vs
+   the original Phase I/II (the `program`/date fields help). So NASA is **not a dead end** — it needs a
+   TechPort-based recovery, not the GSA archive. Other non-sam.gov leads: NSPIRES (gated), `api.nasa.gov`
+   (keyed), NASA SBIR success stories.
 3. **Other contract agencies (DHS, DOT, DOE-contracts, Commerce, …)** — FPDS-coded + USAspending-described,
    same `falextracts` archive (all agencies). The undercount pulls are already **agency-parameterized**
    (`--agency`), so extension is mechanical; recovery/ranker are **untested** cross-agency.
