@@ -40,7 +40,7 @@ def test_link_firm_resolves_org_name_to_uei() -> None:
 def test_pull_sbir_projects_paces_and_emits_manifest() -> None:
     def fetcher(url: str) -> bytes:
         if "search" in url:
-            return json.dumps({"projects": [{"projectId": 12345}]}).encode()
+            return json.dumps({"results": [{"projectId": 12345}]}).encode()
         return json.dumps({"project": _PROJECT}).encode()
 
     records, manifest = pull_sbir_projects(pace=0.0, fetcher=fetcher, source_vintage="test")
