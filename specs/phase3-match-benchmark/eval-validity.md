@@ -67,18 +67,42 @@ subject is DoD. The count:
 - **DoD Phase II→III positives: 5,091 contracts across 974 firms — abundant, not scarce.**
 - **Target text (Phase III `desc`) is empty: median 43 chars, 87.5% below the 150-char floor, 12.5% usable.**
 
-The wall is not positive scarcity — it is that DoD does not write contract descriptions. This is the *same*
-empty field that produces the Phase III miscoding: **the reporting failure and the detection failure share
-one root cause.** A §638 mandate to populate the description field moves both. (The measurement is pointed at
-NASA only because NASA writes the text; the DoD number stands as the finding, not a gap to be closed with
-more modeling.)
+The wall is not positive scarcity — it is that DoD does not write contract descriptions.
+
+**Provenance caveat, up front (not in a limitations footnote):** those 5,091 positives are FPDS element-10Q
+**SR3/ST3-coded** (5,565 SR3 + 786 ST3). The eval population **is the coded population** — the *complement*
+of the claim, which is about the *uncoded* dark Phase III. So every within-DoD AUC below is an **upper bound
+on a population we cannot sample.** If minimal data entry correlated across fields, uncoded Phase IIIs would
+be even emptier and the detector would do worse in the wild.
+
+**The actual within-DoD number (not a NASA extrapolation), `dod_within_retrieval.py`:**
+- Rich Phase II abstract → Phase III `desc` target, metadata-hard negatives (same PSC + FY, different firm):
+  **AUC 0.714** on 968 firms (thin target, median 78 chars) — squarely the thin-target regime, as the NASA
+  step predicted. The rich-desc subset (≥515 chars, n=21) reaches 0.833. This is the number the memo needs;
+  the NASA work exists to establish the step-function that explains *why* it's 0.714 and not 0.87.
+
+**§638 drafting number — the floor is ~900, not 150.** DoD Phase III descriptions clearing each length:
+40c → 53.6%, 150c → 11.5%, 515c → 1.0%, **900c → 0.0%**. A 150-char mandate buys only the bottom of the step
+(~+0.04); the plateau (~0.89) needs **~900 chars of substantive technical scope, which 0% of DoD currently
+meet.** Lobby for the character count, not "a description."
+
+**Mechanism test — the two facts are NOT yet one mechanism.** Within coded Phase III, description emptiness
+does *not* correlate with sparsity in other fields: NAICS/PSC are ~always present (0% missing) regardless of
+description length; corr(desc-len, missing NAICS|IDV) = 0.01. So it is **not** generalized "sloppy CO data
+entry" — the structured/enforced fields are filled; only the free-text description is empty because it is an
+**unenforced optional field.** That reframes (and arguably strengthens) the §638 ask — *make the description
+mandatory like the codes already are* — but it means the "reporting failure and detection failure share one
+root cause" claim is **not proven at the contract level** (I cannot run the direct test — it needs the
+uncoded population's descriptions, the very thing I can't sample). State it as a strong hypothesis, not a
+finding.
 
 ### Reproducible scripts
 - `text_richness_2x2.py --negatives {random,metadata}` — the ablation; `longest_shared_word_run`,
   `paired_bootstrap` are the reuse + CI probes.
 - `auc_by_target_length.py` — the operating curve (step, not gradient).
 - `dod_transition_inventory.py` — the DoD positive count + description emptiness.
-- Pure cores tested in `tests/unit/scripts/test_eval_validity.py` (13 passed).
+- `dod_within_retrieval.py` — the real within-DoD AUC (0.714), the §638 floor table, the mechanism test.
+- Pure cores tested in `tests/unit/scripts/test_eval_validity.py` (14 passed).
 
 Not isolated here: the **model** and **task-framing** axes. #423's 0.56 sits *below* this 2×2's thin/thin
 0.655 — the residual ~0.10 is the model + classification→retrieval-framing change, which we did not separately
