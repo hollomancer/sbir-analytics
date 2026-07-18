@@ -111,6 +111,12 @@ be even emptier and the detector would do worse in the wild.
   **AUC 0.714** on 968 firms (thin target, median 78 chars) — squarely the thin-target regime, as the NASA
   step predicted. The rich-desc subset (≥515 chars, n=21) reaches 0.833. This is the number the memo needs;
   the NASA work exists to establish the step-function that explains *why* it's 0.714 and not 0.87.
+- **Dense does NOT rescue DoD (ModernBERT-Embed, same 968 firms):** all positives **0.659** — *worse* than
+  TF-IDF 0.714, because procurement boilerplate ("OFFICE FURNITURE") carries less meaning than a NASA title,
+  so the semantic model has nothing to read. But the rich-desc subset (≥515c, n=21) hits **0.945** (vs TF-IDF
+  0.833). **The decisive memo result:** *"we can't see DoD" is true on today's data AND it is a data-gap, not
+  a detection ceiling* — populate a substantive description and a dense model nails it (~0.66 → ~0.95). §638
+  payoff is proven, not asserted (caveat n=21, wide CI; direction unambiguous, matches the NASA step).
 
 **§638 drafting number — the floor is ~900, not 150.** DoD Phase III descriptions clearing each length:
 40c → 53.6%, 150c → 11.5%, 515c → 1.0%, **900c → 0.0%**. A 150-char mandate buys only the bottom of the step
