@@ -123,7 +123,11 @@ be even emptier and the detector would do worse in the wild.
   *lacks* it; see also coded-vs-uncoded and NASA-vs-DoD.) **Cut from the memo.**
 - **The sturdy finding is `thin ≠ thin`:** dense wins thin *NASA* (0.759 vs 0.658) but loses thin *DoD*
   (0.659 vs 0.714) — same model, same length, opposite result. Length was never the variable; **information
-  content was.** Length is a proxy that held within NASA and inverted across corpora.
+  content was.** Length is a proxy that held within NASA and inverted across corpora. *(Denominator check —
+  the same test that killed the DoD 0.945: the NASA finding passes. Its `desc≥150` inclusion filter keeps
+  **97%** of firm-linked projects, vs DoD's 1% at ≥515, and thin-vs-rich is title-vs-description on the SAME
+  projects — paired within-item, not a selected subpopulation. So the NASA result is representative; the DoD
+  0.945 was not.)*
 
 **§638 instrument — mandate a LINKAGE FIELD, not a character floor.** An earlier draft here argued for
 ~900 chars of description; that is Goodhart bait — mandate characters and you get characters. The data
