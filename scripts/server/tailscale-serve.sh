@@ -15,7 +15,6 @@ API_PORT="${SBIR_ANALYTICS_API_PORT:-8010}"
 DAGSTER_TARGET="http://127.0.0.1:${DAGSTER_PORT}"
 API_TARGET="http://127.0.0.1:${API_PORT}"
 STATE_HELPER="$SCRIPT_DIR/tailscale-route-state.py"
-MUTATION_PID=""
 MUTATION_OUTPUT=""
 LAST_MUTATION_OUTPUT=""
 PENDING_PORT=""
@@ -30,25 +29,8 @@ success() { printf "${GREEN}✓${NC} %s\n" "$1"; }
 warn()    { printf "${YELLOW}⚠${NC} %s\n" "$1"; }
 error()   { printf "${RED}✖${NC} %s\n" "$1" >&2; }
 
-stop_mutation() {
-  if [ -n "$MUTATION_PID" ] && kill -0 "$MUTATION_PID" 2>/dev/null; then
-    kill "$MUTATION_PID" 2>/dev/null || true
-    grace=0
-    while kill -0 "$MUTATION_PID" 2>/dev/null && [ "$grace" -lt 3 ]; do
-      sleep 1
-      grace=$((grace + 1))
-    done
-    if kill -0 "$MUTATION_PID" 2>/dev/null; then
-      kill -9 "$MUTATION_PID" 2>/dev/null || true
-    fi
-  fi
-  [ -z "$MUTATION_PID" ] || wait "$MUTATION_PID" 2>/dev/null || true
-}
-
 cleanup_mutation() {
-  stop_mutation
   [ -z "$MUTATION_OUTPUT" ] || rm -f "$MUTATION_OUTPUT"
-  MUTATION_PID=""
   MUTATION_OUTPUT=""
 }
 
@@ -101,31 +83,42 @@ run_tailscale_mutation() {
 
   LAST_MUTATION_OUTPUT=""
   MUTATION_OUTPUT=$(mktemp "${TMPDIR:-/tmp}/sbir-tailscale-serve.XXXXXX")
-  tailscale "$@" >"$MUTATION_OUTPUT" 2>&1 &
-  MUTATION_PID=$!
-  elapsed=0
-  while kill -0 "$MUTATION_PID" 2>/dev/null; do
-    if [ "$elapsed" -ge "$timeout" ]; then
-      stop_mutation
-      LAST_MUTATION_OUTPUT=$(cat "$MUTATION_OUTPUT")
-      [ -z "$LAST_MUTATION_OUTPUT" ] || printf '%s\n' "$LAST_MUTATION_OUTPUT" >&2
-      error "Tailscale Serve did not finish within ${timeout}s."
-      error "If HTTPS consent is pending, enable it using the URL above and rerun."
-      cleanup_mutation
-      return 124
-    fi
-    sleep 1
-    elapsed=$((elapsed + 1))
-  done
+  if python3 - "$timeout" "$MUTATION_OUTPUT" tailscale "$@" <<'PY'
+import subprocess
+import sys
 
-  if wait "$MUTATION_PID"; then
+timeout = int(sys.argv[1])
+output_path = sys.argv[2]
+command = sys.argv[3:]
+
+with open(output_path, "wb") as output:
+    try:
+        result = subprocess.run(
+            command,
+            stdout=output,
+            stderr=subprocess.STDOUT,
+            timeout=timeout,
+            check=False,
+        )
+    except subprocess.TimeoutExpired:
+        raise SystemExit(124)
+
+raise SystemExit(result.returncode)
+PY
+  then
     status=0
   else
     status=$?
   fi
   LAST_MUTATION_OUTPUT=$(cat "$MUTATION_OUTPUT")
   cleanup_mutation
-  [ -z "$LAST_MUTATION_OUTPUT" ] || printf '%s\n' "$LAST_MUTATION_OUTPUT"
+  if [ "$status" -eq 124 ]; then
+    [ -z "$LAST_MUTATION_OUTPUT" ] || printf '%s\n' "$LAST_MUTATION_OUTPUT" >&2
+    error "Tailscale Serve did not finish within ${timeout}s."
+    error "If HTTPS consent is pending, enable it using the URL above and rerun."
+  else
+    [ -z "$LAST_MUTATION_OUTPUT" ] || printf '%s\n' "$LAST_MUTATION_OUTPUT"
+  fi
   return "$status"
 }
 

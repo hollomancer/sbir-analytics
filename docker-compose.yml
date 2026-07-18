@@ -329,6 +329,12 @@ services:
       - ./tests:/app/tests:ro
       # Repo-root server contract exercised by fast unit tests.
       - ./.env.server.example:/app/.env.server.example:ro
+      - ./.github/workflows/build-images.yml:/app/.github/workflows/build-images.yml:ro
+      - ./Dockerfile:/app/Dockerfile:ro
+      - ./Makefile:/app/Makefile:ro
+      - ./docker-compose.server.yml:/app/docker-compose.server.yml:ro
+      - ./docker-compose.yml:/app/docker-compose.yml:ro
+      - ./workspace.server.yaml:/app/workspace.server.yaml:ro
       - ./config:/app/config:ro
       - ./scripts:/app/scripts:ro
     restart: "no"

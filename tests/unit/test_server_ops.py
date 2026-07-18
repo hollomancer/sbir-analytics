@@ -39,7 +39,7 @@ def _run_script(
         env.pop(key, None)
     env.update(
         {
-            "PATH": f"{bin_dir}:/usr/bin:/bin",
+            "PATH": f"{bin_dir}:{Path(sys.executable).parent}:/usr/bin:/bin",
             "SERVER_ENV_FILE": str(env_file),
         }
     )
