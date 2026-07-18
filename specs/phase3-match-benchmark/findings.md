@@ -45,3 +45,19 @@ All retained historical values and their exact status live in
 3. Adjudicate list precision and a population-aligned retrieval sample.
 4. Use threshold-specific TPR/FPR and prevalence for PPV; AUC alone cannot
    supply precision or a count.
+
+## Provisional research annexes (post-snapshot, ported 2026-07-18)
+
+Findings produced after this PR's consolidation snapshot, recorded under the same provisional semantics
+(nothing here is treated as reproduced by this PR):
+
+- `mse-dark-phase3.md` — dark-cell scenario analysis: stratified Chapman (sub-agency 1,007; contract-vehicle
+  1,205 — task orders miss 2.4× standalone), origination-year trend (miss worsening 5%→17% FY16→25), frame
+  size ~131k (random-probe validation base-rate-blocked), rank-then-stratify non-viability (≤4.4×), and the
+  **sibling enumeration**: 332 unflagged orders on high-purity Phase III vehicles = direct-observation dark
+  candidates (e.g., GATR antenna product buys, 185 coded siblings, no code).
+- `cross-agency-scope.md` — DoD→NASA cross-agency retrieval (0.828, 306 firms) and the NASA→DoD data block.
+- `dod-nonsbir-contract-pool.md` — recipient-scoped non-SBIR pool spec (gated).
+- `adjudication/` — the blind adjudication instrument (105 cases: 75 detector, 15 dark-cell existence-scan,
+  15 sibling high-purity), KEY, and frozen protocol. This is the human-precision gate this PR's decision
+  record requires before deployment.
