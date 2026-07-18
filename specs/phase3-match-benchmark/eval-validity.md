@@ -113,15 +113,26 @@ be even emptier and the detector would do worse in the wild.
   the NASA work exists to establish the step-function that explains *why* it's 0.714 and not 0.87.
 - **Dense does NOT rescue DoD (ModernBERT-Embed, same 968 firms):** all positives **0.659** — *worse* than
   TF-IDF 0.714, because procurement boilerplate ("OFFICE FURNITURE") carries less meaning than a NASA title,
-  so the semantic model has nothing to read. But the rich-desc subset (≥515c, n=21) hits **0.945** (vs TF-IDF
-  0.833). **The decisive memo result:** *"we can't see DoD" is true on today's data AND it is a data-gap, not
-  a detection ceiling* — populate a substantive description and a dense model nails it (~0.66 → ~0.95). §638
-  payoff is proven, not asserted (caveat n=21, wide CI; direction unambiguous, matches the NASA step).
+  so the semantic model has nothing to read.
+- **The 0.945 "rich-desc subset" is a SELECTION ARTIFACT — do not use it.** The ≥515-char subset (n=21) hits
+  0.945, but those 21 are not "the 947 with more text" — they are self-selected on *substance*: 81% R&D-PSC
+  (A*) vs 67.5% in the rest. Someone wrote 515+ chars *because* the work was substantive R&D, which is exactly
+  what matches a Phase II abstract. So 0.945 confounds "has a description" with "is the kind of contract worth
+  describing"; the counterfactual "mandate descriptions → 0.66 → 0.95" is unsupported. (This is the third
+  instance of the same error — evaluate on the population that *has* a property, generalize to the one that
+  *lacks* it; see also coded-vs-uncoded and NASA-vs-DoD.) **Cut from the memo.**
+- **The sturdy finding is `thin ≠ thin`:** dense wins thin *NASA* (0.759 vs 0.658) but loses thin *DoD*
+  (0.659 vs 0.714) — same model, same length, opposite result. Length was never the variable; **information
+  content was.** Length is a proxy that held within NASA and inverted across corpora.
 
-**§638 drafting number — the floor is ~900, not 150.** DoD Phase III descriptions clearing each length:
-40c → 53.6%, 150c → 11.5%, 515c → 1.0%, **900c → 0.0%**. A 150-char mandate buys only the bottom of the step
-(~+0.04); the plateau (~0.89) needs **~900 chars of substantive technical scope, which 0% of DoD currently
-meet.** Lobby for the character count, not "a description."
+**§638 instrument — mandate a LINKAGE FIELD, not a character floor.** An earlier draft here argued for
+~900 chars of description; that is Goodhart bait — mandate characters and you get characters. The data
+already shows the failure: the longest-description decile (4,111–18,791 chars) scores **0.834, *below* the
+923–1,635 bin's 0.910** — padding degrades, and DoD's default register is boilerplate, so a length mandate
+mass-produces filler. The correct ask is a **structured field: parent SBIR award ID on the Phase III
+contract record.** Detection → ~1.0, no NLP, no prose, no Goodhart — a pointer, not an essay; a smaller,
+cheaper, more passable ask. The detection work's honest role is to show the field is *needed*, not to be the
+detector. (The MSE dark-count exists precisely *because* this field is absent — it measures its cost.)
 
 **Mechanism test — the two facts are NOT yet one mechanism.** Within coded Phase III, description emptiness
 does *not* correlate with sparsity in other fields: NAICS/PSC are ~always present (0% missing) regardless of
@@ -166,11 +177,11 @@ Two flips, both consequential:
   "Text richness is a sufficient cause" holds **only under TF-IDF** — the scope caveat the review demanded
   was load-bearing.
 
-**This complicates the §638 story honestly:** a dense model is far more thin-text-robust, so "mandate longer
-descriptions" is not the only lever — "use embeddings" competes, and would lift thin-DoD detection toward
-~0.76 on its own. Caveat: the thin text here is *descriptive titles* ("Additive Manufacturing of Refractory
-Metal…"); DoD contract boilerplate ("OFFICE FURNITURE") carries even less meaning, so a dense model may not
-fully rescue it. The defensible ask pairs both: **a substantive description field _and_ a semantic model.**
+**This complicates any text-based §638 story:** a dense model is thin-text-robust on *NASA* titles (~0.76)
+but that did **not** transfer to DoD boilerplate (0.659 < 0.714 TF-IDF) — because the DoD "desc" is a
+procurement category label, not compressed meaning (`thin ≠ thin`). So neither "mandate longer descriptions"
+nor "use embeddings" is the right lever for DoD. The correct instrument is the **structured linkage field**
+(parent SBIR award ID) — see the §638 section below; text mandates are Goodhart-exposed and corpus-dependent.
 
 ## 2. The "median transition lag" is not a median
 
