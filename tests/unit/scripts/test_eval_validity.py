@@ -9,6 +9,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "scripts" / "phase3
 
 from auc_by_target_length import auc_by_length_decile, per_firm_auc  # noqa: E402
 from dod_transition_inventory import target_text_coverage  # noqa: E402
+from dod_within_retrieval import floor_coverage  # noqa: E402
 from text_richness_2x2 import (firm_retrieval_auc, longest_shared_word_run,  # noqa: E402
                                metadata_hard_negatives, normalize_name, paired_bootstrap,
                                random_negatives)
@@ -76,6 +77,12 @@ def test_paired_bootstrap_ci_brackets_mean_and_zero_for_null_effect():
     per_firm = np.array([0.01, -0.01, 0.02, -0.02, 0.0, 0.005, -0.005])  # centered near 0
     mean, lo, hi = paired_bootstrap(per_firm, n_boot=500)
     assert lo <= mean <= hi and lo < 0 < hi             # CI straddles 0 for a null effect
+
+
+def test_floor_coverage_thresholds():
+    lengths = np.array([40, 100, 200, 600, 1000])
+    cov = floor_coverage(lengths, (150, 900))
+    assert cov[150] == 60.0 and cov[900] == 20.0
 
 
 def test_target_text_coverage_flags_empty_descriptions():
