@@ -107,6 +107,34 @@ are wrong and we learn which.
 - **Gate 2:** adjudication precision on the three lists before publishing any point estimate.
 - Log-linear fitting is small (statsmodels/scipy); the authority-list construction + validation is the effort.
 
+## Frame size, the bounds, and why direct validation is base-rate-blocked (measured 2026-07-18)
+
+The **frame** = all un-flagged post-SBIR DoD contracts to the 8,064 DoD SBIR firms (a dark Phase III *must*
+live here: post-SBIR, to an SBIR firm, caught by neither signal, not the SBIR award itself). Uniform sample
+n=300 (USAspending recipient pulls, paginated; earlier runs failed on a pre-2007 `start_date` that returns a
+misleading HTTP 500 — the indexed window starts 2007-10-01):
+
+- **Frame ≈ 131,000 contracts** — 95% CI [71k, 202k]. Mean **16.3/firm**, median **0** (53% of SBIR firms have
+  zero un-flagged post-SBIR contracts; the frame is concentrated in an established-firm minority, max 599).
+
+This pins the **bounds on the dark cell**: `949 ≤ dark ≤ 131,000`. The lower bound (capture-recapture,
+list-overlap) is a real estimate; the upper bound is the *trivial* ceiling (every un-flagged contract being a
+Phase III — absurd). So the count is well-constrained below and barely constrained above: **total DoD Phase
+III ∈ [≥7,441, ~137,500]**, dark ∈ [949, 131,000] — two orders of magnitude wide on the high side.
+
+**Implied dark Y-rate for 949 = 949/131,000 = 0.7%.** This kills direct-sampling validation at small n: at a
+0.7% rate a 15-row dark-cell probe expects **0.1 hits** (P(0 hits | 949 true) ≈ 90%), so it cannot distinguish
+949 from 0 or from 3,000; observing ~5 hits needs **~700** hand-adjudicated rows. **The base-rate wall that
+blocked the detector also blocks the validation.** Capture-recapture stands alone (it infers from overlap, not
+sampling); the 15-row dark-cell stratum is demoted to an *existence scan*, not a count check.
+
+**To narrow the range** (the real open problem): the lower bound won't move without a clean independent 3rd
+signal (the feasibility gate found none). The productive path is **tightening the UPPER bound** — rank the
+131k frame with the *structural* (non-text) detector and estimate the Phase-III rate per score band via
+**stratified adjudication**, yielding a point estimate + CI instead of only the 949 floor. That is the one
+design that uses the detector for what it's good at (ranking to concentrate the base rate) rather than as a
+counter.
+
 ## Relation to PRs
 
 Extends the undercount work here on #454 (`undercount-award-grain.md`: 141 described-not-coded is exactly the
