@@ -135,6 +135,47 @@ signal (the feasibility gate found none). The productive path is **tightening th
 design that uses the detector for what it's good at (ranking to concentrate the base rate) rather than as a
 counter.
 
+## Heterogeneity-stratified capture-recapture (run 2026-07-18)
+
+Chapman per sub-agency stratum (labels normalized across lists — a naive string match fabricates phantom
+zero-overlap strata; 5/821 overlap pairs genuinely disagree on sub-agency across lists, immaterial):
+
+| stratum | n1 (coded) | n2 (desc) | overlap | dark | code-miss rate |
+|---|--:|--:|--:|--:|--:|
+| Air Force | 2,467 | 352 | 304 | 340 | 13.6% |
+| Navy | 1,642 | 253 | 205 | 335 | 18.9% |
+| DCMA | 607 | 77 | 58 | 177 | **24.4%** |
+| Army | 994 | 194 | 165 | 145 | 14.9% |
+| DLA / MDA / other | 641 | 86 | 84 | 10 | ~0–9% |
+| **Stratified sum** | | | | **1,007 [812–1,202]** | |
+
+- **The floor rises 949 → 1,007** — the direction heterogeneity theory predicts (pooled LP is biased low when
+  capture rates vary). Office-prefix stratification gives 733 as a weak-stratification sensitivity point; the
+  honest reporting band is **dark ≈ 950–1,200, floor ~1,000**.
+- **The miss rate is organizationally structured, not random:** DCMA 24% (administers others' awards — coding
+  context lost), Navy 19%, AF 14%, MDA ~0%. This targets the fix: the undercount concentrates where contract
+  *administration* is separated from the awarding program office.
+
+## Rank-then-stratify: evaluated and NOT currently viable (run 2026-07-18)
+
+Test: use coded Phase IIIs (n=5,282) as pretend-dark positives vs the 471-contract un-flagged pool; measure
+how much available *structural* features concentrate the 0.7% frame prevalence.
+
+- **Office lineage INVERTS** (LR 0.9×): un-flagged contracts match the firm's SBIR office *more* often (46.5%)
+  than Phase IIIs do (41.9%) — a firm's routine work stays at the office that knows it, while Phase III
+  production often moves to a *different* buying command. The presumed-best lineage feature is anti-signal.
+- Timing helps (65% vs 33% within [−2,+5] of last SBIR year) but combined LR is only **1.4×** → best band
+  prevalence ~**1.0%**, requiring **~3,000 hand labels for ~30 hits.** Not a feasible adjudication design.
+- Caveats: negatives are from 44 established firms (not the full frame); positives are coded P3 (the usual
+  has/lacks-property caution). But the effect sizes are nowhere near the ~30–50× concentration needed, so the
+  conclusion is robust to those.
+
+**Consequence: the upper bound cannot be cheaply tightened.** Remaining options, in order: (a) re-pull the
+frame sample with PSC/competition/amount fields and retest richer structural features (one bounded spike —
+sole-source + R&D-PSC is the last plausible concentrator); (b) accept the bounds as final for the memo — the
+defensible package is *"141 proven + dark ≈ 950–1,200 (stratified floor ~1,000), organizationally concentrated
+(DCMA/Navy)"* — and let the §638 linkage field be the fix rather than better detection.
+
 ## Relation to PRs
 
 Extends the undercount work here on #454 (`undercount-award-grain.md`: 141 described-not-coded is exactly the
