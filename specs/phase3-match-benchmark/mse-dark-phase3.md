@@ -281,6 +281,46 @@ order entry), plausibly usable as the MSE's third list (with its dependence on t
 modeled, not assumed away — both are text, but *different records*). A 3-source log-linear fit (code ×
 order-description × vehicle-declaration) is now buildable from data in hand.
 
+## 3-source fit RUN (2026-07-18, provisional): dark ≈ 1,500, range 500–2,400 across dependence structures
+
+Lists at award grain (compound (order,parent) keys): **A** = 10Q code (6,351), **B** = order-description
+(911 unique keys of 962 rows), **C** = child of a self-declared Phase III vehicle (1,090 orders on 149
+vehicles). Observed capture cells:
+
+| A code | B order-desc | C vehicle | n |
+|:--:|:--:|:--:|--:|
+| 1 | 1 | 1 | 159 |
+| 1 | 1 | 0 | 662 |
+| 1 | 0 | 1 | 638 |
+| 0 | 1 | 1 | 22 |
+| 1 | 0 | 0 | 4,892 |
+| 0 | 1 | 0 | 68 |
+| 0 | 0 | 1 | **271** |
+| observed union | | | **6,712** |
+
+(Sanity: A∩B = 821 ✓; list C adds 271 directly-observed units invisible to both order-level signals.)
+
+Log-linear Poisson, predicted 000 cell by dependence structure:
+
+| model | dark n000 | total N |
+|---|--:|--:|
+| independence | 1,154 | 7,866 |
+| [AB] | 1,860 | 8,572 |
+| [AC] | 468 | 7,180 |
+| [AB+AC] | 838 | 7,550 |
+| **[AB+BC] (best AIC, df≥1)** | **2,078 [1,794–2,372]** | 8,790 |
+| [AB+AC+BC] (all-pairwise, df=0) | **1,543 [915–2,745]** | 8,255 |
+
+**Reading:** the AB term is strongly AIC-favored — direct confirmation that code×description dependence is
+real and the 2-source 949 was biased low, exactly as the stratified floors (1,007/1,205) indicated. Across
+credible structures **dark ≈ 500–2,400**, headline **all-pairwise 1,543 [915–2,745]**, implying the code
+misses **~19–28%** of DoD Phase III (total N ≈ 7,200–8,800).
+
+**Sensitivities that adjudication will settle:** list-C precision < 1 (admin orders on declared vehicles
+inflate the 271 C-only cell → inflates N; the sibling stratum C091–C105 measures this); list-B false
+positives symmetric. The all-pairwise model has 0 df (an estimator, not a testable fit); [AB+BC] is the best
+*testable* model. All values provisional pending re-run through #458's estimator discipline.
+
 ## Relation to PRs
 
 Extends the undercount work here on #454 (`undercount-award-grain.md`: 141 described-not-coded is exactly the
