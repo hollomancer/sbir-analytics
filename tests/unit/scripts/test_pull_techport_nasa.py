@@ -17,8 +17,10 @@ _PROJECT = {
     "program": {"title": "Small Business Innovation Research/Small Business Technology Transfer"},
     "startDateString": "2018-01-01",
     "endDateString": "2020-12-31",
-    "leadOrganization": {"organizationName": "Langley Research Center"},
-    "otherOrganizations": [{"organizationName": "Acme Photonics, Inc."}],
+    "leadOrganization": {"organizationId": 1, "organizationName": "Langley Research Center"},
+    "otherOrganizations": [{"organizationId": 2, "organizationName": "Acme Photonics, Inc."}],
+    "phase": "Phase II",
+    "technologyReadinessLevel": {"begin": 3, "current": 5, "end": 6},
     "description": "Deployable membrane optics for spaceborne laser communication, matured toward flight.",
 }
 
@@ -28,13 +30,19 @@ def test_parse_project_extracts_firm_org_and_drops_nasa_center() -> None:
     assert rec["project_id"] == 12345
     assert rec["program"].startswith("Small Business")
     assert rec["firm_orgs"] == ["Acme Photonics, Inc."]  # NASA center excluded
+    assert rec["organizations"][0]["role"] == "lead"
+    assert rec["organizations"][1]["organization_id"] == 2
+    assert rec["phase"] == "Phase II"
+    assert rec["trl_current"] == 5
     assert len(rec["description"]) > 40
 
 
 def test_link_firm_resolves_org_name_to_uei() -> None:
     name_to_uei = {normalize_name("Acme Photonics, Inc."): "UEIACME01"}
-    assert link_firm(["Acme Photonics, Inc."], name_to_uei) == "UEIACME01"
-    assert link_firm(["Unknown Corp"], name_to_uei) is None
+    assert link_firm(["Acme Photonics, Inc."], name_to_uei)["uei"] == "UEIACME01"
+    assert link_firm(["Unknown Corp"], name_to_uei)["status"] == "unmatched"
+    ambiguous = {normalize_name("Acme Photonics, Inc."): {"UEI1", "UEI2"}}
+    assert link_firm(["Acme Photonics, Inc."], ambiguous)["status"] == "ambiguous"
 
 
 def test_pull_sbir_projects_paces_and_emits_manifest() -> None:
@@ -51,3 +59,16 @@ def test_pull_sbir_projects_paces_and_emits_manifest() -> None:
     assert manifest["throttled"] == 0
     assert manifest["retrieval_complete"] is True
     assert len(manifest["raw_sha256"]) == 64
+
+
+def test_limited_pull_is_not_reported_complete() -> None:
+    def fetcher(url: str) -> bytes:
+        if "search" in url:
+            return json.dumps({"results": [{"projectId": 12345}, {"projectId": 99999}]}).encode()
+        return json.dumps({"project": _PROJECT}).encode()
+
+    _, manifest = pull_sbir_projects(pace=0.0, fetcher=fetcher, limit=1)
+    assert manifest["total_search_hits"] == 2
+    assert manifest["selected_hits"] == 1
+    assert manifest["retrieval_limited"] is True
+    assert manifest["retrieval_complete"] is False

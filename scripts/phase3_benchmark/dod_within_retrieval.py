@@ -1,20 +1,14 @@
-"""The actual within-DoD retrieval number (not a NASA extrapolation), plus the §638 floor and mechanism test.
+"""Provisional DoD portfolio-linkage benchmark on coded Phase III contracts.
 
-Provenance caveat, stated first: the positive set (`m0a_coded_dod`, FPDS element-10Q SR3/ST3) IS the
-CODED population. The claim is about the UNCODED (dark) Phase III. So every AUC here is an **upper bound on
-the population we cannot sample** — if minimal data entry correlates across fields, uncoded Phase IIIs are
-even emptier and the detector does worse in the wild.
-
-Three DoD-native reads:
-  1. within-DoD retrieval: rich query (Phase II abstract) -> thin target (Phase III `desc`), metadata-hard
-     negatives (same PSC + FY, different firm). The real operating number.
-  2. §638 floor: what fraction of DoD Phase III descriptions clear each length threshold — the drafting number.
-  3. mechanism test: does description emptiness correlate with sparsity in OTHER fields (NAICS/PSC/IDV)?
-     If yes, one "minimal CO entry" cause; if no, the description is simply an unenforced optional field.
+The positive population is FPDS SR3/ST3 coded and therefore does not represent
+uncoded Phase III.  The metric is a same-register linkage proxy, not detector
+precision, recall, or a dark-contract count.
 """
 
+from __future__ import annotations
+
 import argparse
-import re
+import json
 from pathlib import Path
 
 import numpy as np
@@ -22,77 +16,172 @@ import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
+from retrieval_metrics import tie_corrected_auc, tie_rate
+
 
 def floor_coverage(lengths: np.ndarray, thresholds: tuple[int, ...]) -> dict[int, float]:
-    """Fraction of targets with description length >= each threshold. Pure — the §638 drafting table."""
+    """Fraction of targets with description length at least each threshold."""
     n = len(lengths)
-    return {t: (round(100 * float((lengths >= t).mean()), 1) if n else 0.0) for t in thresholds}
+    return {t: (round(100 * float((lengths >= t).mean()), 1) if n else 0.0)
+            for t in thresholds}
 
 
-def _year(value: object) -> int:
-    match = re.search(r"(20[0-2]\d)", str(value))
-    return int(match.group()) if match else -999
+def _dates(frame: pd.DataFrame, names: tuple[str, ...]) -> pd.Series:
+    parsed = [pd.to_datetime(frame[name], errors="coerce", utc=True)
+              for name in names if name in frame]
+    if not parsed:
+        return pd.Series(pd.NaT, index=frame.index, dtype="datetime64[ns, UTC]")
+    return pd.concat(parsed, axis=1).bfill(axis=1).iloc[:, 0]
 
 
-def within_dod_auc(p2_abstract: dict[str, str], targets: dict[str, dict],
-                   firms: list[str], seed: int = 0) -> float:
-    """Firm-clustered retrieval AUC, rich Phase II abstract -> Phase III desc, metadata-hard negatives."""
-    fy = np.array([_year(targets[u]["fy"]) for u in firms])
-    psc = np.array([str(targets[u]["psc"])[:4] for u in firms])
-    queries = [p2_abstract[u] for u in firms]
-    tgt_text = [str(targets[u]["desc"]) for u in firms]
-    matrix = TfidfVectorizer(stop_words="english", ngram_range=(1, 2), min_df=1).fit_transform(queries + tgt_text)
-    n = len(firms)
+def build_asof_pairs(awards: pd.DataFrame, coded: pd.DataFrame) -> pd.DataFrame:
+    """Return one row per coded target with only pre-target Phase II text.
+
+    Target description, FY, PSC, action date, and key are copied from the same
+    contract row.  No longest-description or firm-level target collapse occurs.
+    """
+    source = awards.copy()
+    source = source[(source["UEI"].astype(str).str.len() > 5)
+                    & (source["Agency"] == "Department of Defense")]
+    phase = source["Phase"].astype(str).str.upper()
+    source = source[phase.str.contains("II", na=False)
+                    & ~phase.str.contains("III", na=False)].copy()
+    source["phase_ii_date"] = _dates(
+        source, ("Proposal Award Date", "Award Date", "award_date")
+    )
+    if "Solicitation Year" in source:
+        year_end = pd.to_datetime(
+            source["Solicitation Year"].map(lambda value: f"{value}-12-31"),
+            errors="coerce",
+            utc=True,
+        )
+        source["phase_ii_date"] = source["phase_ii_date"].fillna(year_end)
+    source = source[source["phase_ii_date"].notna()
+                    & source["Abstract"].astype(str).str.strip().ne("")]
+    by_firm = {uei: group.sort_values("phase_ii_date")
+               for uei, group in source.groupby("UEI", sort=False)}
+
+    targets = coded.copy()
+    targets["target_date"] = _dates(
+        targets, ("signed", "signedDate", "action_date", "effectiveDate")
+    )
+    if "fy" in targets:
+        fy_end = pd.to_datetime(
+            pd.to_numeric(targets["fy"], errors="coerce").map(
+                lambda value: f"{int(value)}-09-30" if pd.notna(value) else None
+            ),
+            errors="coerce",
+            utc=True,
+        )
+        targets["target_date"] = targets["target_date"].fillna(fy_end)
+
+    rows: list[dict[str, object]] = []
+    for index, target in targets.iterrows():
+        uei = str(target.get("uei") or target.get("UEI") or "").strip()
+        target_date = target["target_date"]
+        history = by_firm.get(uei)
+        if not uei or history is None or pd.isna(target_date):
+            continue
+        eligible = history[history["phase_ii_date"] <= target_date]
+        if eligible.empty:
+            continue
+        prior = eligible.iloc[-1]
+        description = str(target.get("desc") or target.get("description") or "").strip()
+        if not description:
+            continue
+        source_fy = pd.to_numeric(pd.Series([target.get("fy")]), errors="coerce").iloc[0]
+        fiscal_year = (
+            int(source_fy) if pd.notna(source_fy)
+            else int(target_date.year + (1 if target_date.month >= 10 else 0))
+        )
+        rows.append({
+            "target_row": index,
+            "target_key": str(target.get("contract_award_unique_key")
+                              or target.get("unique_award_key")
+                              or target.get("award_key") or index),
+            "uei": uei,
+            "query": str(prior["Abstract"]),
+            "phase_ii_date": prior["phase_ii_date"],
+            "target_date": target_date,
+            "description": description,
+            "fy": fiscal_year,
+            "psc": str(target.get("psc") or target.get("productOrServiceCode") or "")[:4],
+        })
+    return pd.DataFrame(rows)
+
+
+def within_dod_auc(pairs: pd.DataFrame, *, seed: int = 0,
+                   min_pool: int = 8, n_neg: int = 25) -> dict[str, object]:
+    """Score coded targets against different-firm coded targets in the same register."""
+    required = {"uei", "query", "description", "fy", "psc"}
+    missing = sorted(required - set(pairs.columns))
+    if missing:
+        raise ValueError(f"pairs missing required columns: {missing}")
+    if len(pairs) < 2:
+        raise ValueError("retrieval evaluation requires at least two targets")
+
+    texts = pairs["query"].astype(str).tolist() + pairs["description"].astype(str).tolist()
+    matrix = TfidfVectorizer(
+        stop_words="english", ngram_range=(1, 2), min_df=1
+    ).fit_transform(texts)
+    n = len(pairs)
     sims = cosine_similarity(matrix[:n], matrix[n:])
     rng = np.random.RandomState(seed)
-    aucs = []
-    for i in range(n):
-        pool = [j for j in range(n) if j != i and psc[j] == psc[i] and abs(fy[j] - fy[i]) <= 1]
-        if len(pool) < 8:
-            pool = [j for j in range(n) if j != i]
-        neg = sims[i, rng.choice(pool, min(25, len(pool)), replace=False)]
-        aucs.append(float((sims[i, i] > neg).mean()))
-    return float(np.mean(aucs))
+    aucs: list[float] = []
+    ties: list[float] = []
+    tiers = {"exact_psc_year": 0, "same_psc_relaxed_year": 0, "excluded": 0}
+    for i, row in pairs.reset_index(drop=True).iterrows():
+        other = [j for j in range(n) if j != i and pairs.iloc[j]["uei"] != row["uei"]]
+        same_psc = [j for j in other if pairs.iloc[j]["psc"] == row["psc"] and row["psc"]]
+        exact = [j for j in same_psc if abs(int(pairs.iloc[j]["fy"]) - int(row["fy"])) <= 1]
+        if len(exact) >= min_pool:
+            pool = exact
+            tiers["exact_psc_year"] += 1
+        elif len(same_psc) >= min_pool:
+            pool = same_psc
+            tiers["same_psc_relaxed_year"] += 1
+        else:
+            tiers["excluded"] += 1
+            continue
+        chosen = rng.choice(pool, min(n_neg, len(pool)), replace=False)
+        negatives = sims[i, chosen]
+        aucs.append(tie_corrected_auc(float(sims[i, i]), negatives))
+        ties.append(tie_rate(float(sims[i, i]), negatives))
+    return {
+        "status": "provisional",
+        "label_semantics": "coded Phase III portfolio-linkage proxy",
+        "targets": n,
+        "evaluated_targets": len(aucs),
+        "negative_tier_counts": tiers,
+        "auc": float(np.mean(aucs)) if aucs else None,
+        "tie_rate": float(np.mean(ties)) if ties else None,
+    }
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--awards", type=Path, default=Path("data/raw/sbir/award_data.csv"))
     parser.add_argument("--coded", type=Path, default=Path("data/derived/m0a_coded_dod.parquet"))
+    parser.add_argument("--output", type=Path)
     args = parser.parse_args(argv)
-
-    coded = pd.read_parquet(args.coded)
-    print(f"PROVENANCE: positives are FPDS-coded {dict(coded['research'].value_counts())} "
-          f"— the eval population is the COMPLEMENT of the (uncoded) claim. Every AUC below is an upper bound.\n")
-
-    coded["dl"] = coded["desc"].astype(str).str.len()
-    print("§638 floor — DoD Phase III descriptions clearing each length (NASA step: 40c~0.66, 150c~0.81, 900c~0.89):")
-    for thr, pct in floor_coverage(coded["dl"].to_numpy(), (40, 150, 515, 900)).items():
-        print(f"  >= {thr:4d} chars: {pct}%")
-    print("  -> a 150-char mandate buys the bottom of the step; the plateau needs ~900 chars, which 0% now meet.\n")
-
-    short, rich = coded["dl"] < 50, coded["dl"] >= 150
-    print("mechanism test — missing OTHER fields by description length (is emptiness a common-cause of sloppiness?):")
-    for col in ("naics", "psc", "idv_piid"):
-        miss = coded[col].astype(str).str.strip().isin(["", "None", "nan", "0"])
-        print(f"  {col:9s} missing: short-desc {100 * miss[short].mean():.1f}%  rich-desc {100 * miss[rich].mean():.1f}%")
-    print("  -> NAICS/PSC ~always present (enforced); only the free-text description is empty. Not CO sloppiness"
-          " — an UNENFORCED optional field. §638 ask: make description mandatory like the codes already are.\n")
-
-    awards = pd.read_csv(args.awards, dtype=str, keep_default_na=False)
-    awards = awards[(awards["UEI"].str.len() > 5) & (awards["Agency"] == "Department of Defense")]
-    phase2 = awards[awards["Phase"].str.contains("II", na=False) & ~awards["Phase"].str.contains("III", na=False)]
-    p2_abstract = phase2.groupby("UEI")["Abstract"].apply(lambda s: " ".join(x for x in s if x)[:9000]).to_dict()
-    targets = coded.groupby("uei").agg(desc=("desc", lambda s: max(s, key=len)),
-                                       fy=("fy", "first"), psc=("psc", "first")).to_dict("index")
-    firms = [u for u in targets if u in p2_abstract and len(p2_abstract[u]) > 80]
-    lengths = np.array([len(str(targets[u]["desc"])) for u in firms])
-    print(f"WITHIN-DoD retrieval (rich Phase II abstract -> Phase III desc, metadata-hard neg) — the real number:")
-    print(f"  all positives (thin target, median {np.median(lengths):.0f}c): AUC "
-          f"{within_dod_auc(p2_abstract, targets, firms):.3f}  n={len(firms)}")
-    rich_firms = [u for u, ln in zip(firms, lengths) if ln >= 515]
-    if len(rich_firms) >= 10:
-        print(f"  rich-desc subset (>=515c): AUC {within_dod_auc(p2_abstract, targets, rich_firms):.3f}  n={len(rich_firms)}")
+    if not args.awards.exists() or not args.coded.exists():
+        result: dict[str, object] = {
+            "status": "blocked_missing_inputs",
+            "missing": [str(path) for path in (args.awards, args.coded) if not path.exists()],
+        }
+    else:
+        awards = pd.read_csv(args.awards, dtype=str, keep_default_na=False)
+        coded = pd.read_parquet(args.coded)
+        pairs = build_asof_pairs(awards, coded)
+        result = within_dod_auc(pairs)
+        result["description_floor_coverage"] = floor_coverage(
+            pairs["description"].str.len().to_numpy(), (40, 150, 515, 900)
+        )
+    payload = json.dumps(result, indent=2, default=str) + "\n"
+    if args.output:
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_text(payload)
+    print(payload, end="")
     return 0
 
 

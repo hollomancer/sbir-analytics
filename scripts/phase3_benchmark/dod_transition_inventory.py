@@ -1,10 +1,9 @@
-"""The binding constraint, quantified: DoD Phase II->III positives are ABUNDANT; their target text is EMPTY.
+"""Describe the coded DoD Phase III text available to Phase II firms.
 
 Every richness/negative experiment so far ran on NASA TechPort (rich descriptions). The memo's spine is DoD,
-which carries most program dollars. This counts the DoD Phase II->III positives available for a retrieval
-ranker AND characterizes their target text (the Phase III contract description), because the two together are
-the finding: the wall is not positive scarcity, it is that DoD does not write descriptions — the same
-emptiness that produces the Phase III miscoding. One §638 field mandate moves both.
+which carries most program dollars. Same-firm overlap is a proxy cohort, not
+verified technical lineage, and description sparsity is not proven to cause
+element-10Q miscoding.
 
 Positive = a firm holding both a DoD Phase II SBIR award (query side, has an abstract) and a coded DoD Phase
 III contract (target side, m0a_coded_dod). Target text = that contract's `desc`.
@@ -52,8 +51,7 @@ def main(argv: list[str] | None = None) -> int:
     cov = target_text_coverage(positives["desc"].astype(str).str.len().to_numpy(), args.floor)
     print(f"Target text = Phase III 'desc': median {cov['median_chars']:.0f} chars")
     print(f"  usable (>= {args.floor} chars): {cov['pct_usable']}%   below floor: {cov['pct_below_floor']}%")
-    print("\n  The positives are abundant; the descriptions are empty. The wall is the empty field, not the "
-          "count — the same root cause as the miscoding. (§638: mandate the description field.)")
+    print("\n  These are coded same-firm proxy targets. Description coverage is reported without a causal claim.")
     return 0
 
 

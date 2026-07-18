@@ -22,13 +22,32 @@ def _canned_page() -> bytes:
 def test_pull_described_dedupes_and_emits_provenance_manifest() -> None:
     frame, manifest = pull_described("Department of Defense", fetcher=lambda _body: _canned_page(),
                                      source_vintage="test")
-    # two award-type groups each return the same page -> deduped to 2 distinct awards
-    assert len(frame) == 2
-    assert manifest["row_count"] == 2
-    assert manifest["query"] == 'description="SBIR PHASE III"'
+    # Two signals x two award-type groups are independently manifested.
+    assert len(frame) == 8
+    assert manifest["row_count"] == 8
+    assert manifest["queries"]["SBIR"] == "SBIR PHASE III"
+    assert manifest["queries"]["STTR"] == "STTR PHASE III"
     assert manifest["grain"].startswith("award")
     assert manifest["retrieval_complete"] is True
-    assert manifest["termination_reason"] == "feed_exhausted"
+    assert set(manifest["query_termination"].values()) == {"feed_exhausted"}
     assert len(manifest["raw_pages_sha256"]) == 64  # sha256 hex digest of the raw payloads
     assert manifest["field_completeness"]["generated_internal_id"] == 1.0
-    assert manifest["pages_retrieved"] == 2  # one page per award-type group before exhaustion
+    assert manifest["pages_retrieved"] == 4
+
+
+def test_pull_completion_requires_every_query_to_exhaust() -> None:
+    calls = 0
+
+    def fetch(_body: bytes) -> bytes:
+        nonlocal calls
+        calls += 1
+        body = json.loads(_canned_page())
+        if calls == 1:
+            body["page_metadata"]["hasNext"] = True
+        return json.dumps(body).encode()
+
+    _, manifest = pull_described(
+        "Department of Defense", fetcher=fetch, max_pages=1, source_vintage="test"
+    )
+    assert manifest["retrieval_complete"] is False
+    assert "page_limit_reached" in manifest["query_termination"].values()

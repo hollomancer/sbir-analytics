@@ -1,10 +1,8 @@
-"""Model axis: is the text-richness gradient real, or a TF-IDF artifact? Run the 2x2 under a DENSE model.
+"""Optional dense-model version of the provisional field-substitution 2x2.
 
-The text_richness_2x2 ablation is entirely "under TF-IDF" — a lexical model that mechanically rewards term
-overlap, so more text = more match surface. This runs the identical 2x2 (same NASA firms, same seed-0 random
-negatives, same four text conditions) under ModernBERT-Embed and compares. The finding: the richness gradient
-is largely TF-IDF-specific — a dense model reads meaning from short text, so it starts far higher on thin
-text and the richness main effects nearly vanish. Consequences for the §638 story are in eval-validity.md.
+The script is retained for a future rerun on an identical persisted cohort.
+Historical dense values are not reproduced by this PR, and no model comparison
+is valid unless both implementations consume the same text and negative IDs.
 
 REQUIRES a torch + sentence-transformers environment (NOT the repo .venv — those deps are absent there):
     python -m venv .venv-torch && .venv-torch/bin/pip install torch sentence-transformers pandas scikit-learn
@@ -14,34 +12,13 @@ On Apple silicon it uses the MPS GPU. The pure retrieval logic mirrors text_rich
 
 import argparse
 import json
-import re
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
-_SUFFIX = re.compile(r"\b(INC|LLC|CORP|CORPORATION|CO|COMPANY|LTD|LP|LLP|THE|INCORPORATED|TECHNOLOGIES|"
-                     r"TECHNOLOGY|TECH|SYSTEMS)\b")
-
-
-def normalize_name(value: object) -> str:
-    text = re.sub(r"[^A-Z0-9 ]", " ", str(value).upper())
-    return re.sub(r"\s+", " ", _SUFFIX.sub(" ", text)).strip()
-
-
-def _firm_orgs(project: dict) -> list[str]:
-    orgs = list(project.get("otherOrganizations") or [])
-    lead = project.get("leadOrganization")
-    if isinstance(lead, dict):
-        orgs.append(lead)
-    return [o.get("organization_name") or o.get("organizationName") or "" for o in orgs
-            if isinstance(o, dict) and o.get("organization_type") == "Industry"]
-
-
-def _is_sbir(project: dict) -> bool:
-    program = project.get("program") or {}
-    title = program.get("title", "") if isinstance(program, dict) else str(program)
-    return "SMALL BUSINESS" in title.upper() or str(project.get("phase")) in ("1", "2", "2E", "2X", "2S", "3")
+from retrieval_metrics import tie_corrected_auc
+from text_richness_2x2 import _firm_orgs, _is_sbir, normalize_name
 
 
 def dense_auc(model, query_texts: list[str], target_texts: list[str],
@@ -54,7 +31,7 @@ def dense_auc(model, query_texts: list[str], target_texts: list[str],
     aucs, top1 = [], 0
     for i in range(n):
         neg = sims[i, neg_indices[i]]
-        aucs.append(float((sims[i, i] > neg).mean()))
+        aucs.append(tie_corrected_auc(float(sims[i, i]), neg))
         top1 += int((neg >= sims[i, i]).sum() == 0)
     return float(np.mean(aucs)), top1 / n
 
@@ -71,18 +48,20 @@ def main(argv: list[str] | None = None) -> int:
 
     awards = pd.read_csv(args.awards, dtype=str, keep_default_na=False)
     awards = awards[awards["UEI"].str.len() > 5]
-    name_to_uei: dict[str, str] = {}
-    for company, uei in zip(awards["Company"], awards["UEI"]):
+    name_to_ueis: dict[str, set[str]] = {}
+    for company, uei in zip(awards["Company"], awards["UEI"], strict=True):
         key = normalize_name(company)
         if len(key) > 4:
-            name_to_uei.setdefault(key, uei)
+            name_to_ueis.setdefault(key, set()).add(str(uei))
+    name_to_uei = {key: next(iter(ueis)) for key, ueis in name_to_ueis.items()
+                   if len(ueis) == 1}
     q_title = awards.groupby("UEI")["Award Title"].apply(lambda s: " ".join(x for x in s if x)[:2000]).to_dict()
     q_abstract = awards.groupby("UEI")["Abstract"].apply(lambda s: " ".join(x for x in s if x)[:8000]).to_dict()
 
     listing = json.loads(args.techport.read_text())
     projects = listing.get("results") or listing.get("projects") or listing
     rec: dict[str, dict] = {}
-    for project in projects:
+    for project in sorted(projects, key=lambda value: str(value.get("projectId") or value.get("id") or "")):
         if _is_sbir(project):
             continue
         description = str(project.get("description") or "")
@@ -90,7 +69,7 @@ def main(argv: list[str] | None = None) -> int:
             continue
         for org in _firm_orgs(project):
             uei = name_to_uei.get(normalize_name(org))
-            if uei and uei in q_abstract and len(description) > len(rec.get(uei, {}).get("desc", "")):
+            if uei and uei in q_abstract and uei not in rec:
                 rec[uei] = {"desc": description[:8000], "title": str(project.get("title", ""))}
     firms = [u for u in rec
              if len(q_abstract[u]) > 80 and len(q_title.get(u, "")) > 10 and len(rec[u]["title"]) > 10]
@@ -114,7 +93,7 @@ def main(argv: list[str] | None = None) -> int:
     rt, rr = cells["rich_query/thin_target"], cells["rich_query/rich_target"]
     print(f"\n  DENSE: target +{((tr - tt) + (rr - rt)) / 2:.3f}  query +{((rt - tt) + (rr - tr)) / 2:.3f}  "
           f"interaction {(rr - rt) - (tr - tt):+.3f}")
-    print("  [TF-IDF same firms/negs: target +0.139  query +0.076 — the richness gradient is TF-IDF-specific]")
+    print("  Compare only with a TF-IDF artifact regenerated on the identical persisted cohort and negatives.")
     return 0
 
 

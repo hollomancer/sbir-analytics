@@ -18,12 +18,13 @@ import re
 from collections.abc import Sequence
 
 import numpy as np
-import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.model_selection import GroupKFold
 from sklearn.preprocessing import StandardScaler
+
+from retrieval_metrics import tie_corrected_auc
 
 NOTICE_TYPE_ORDINAL: dict[str, float] = {
     "Justification and Approval (J&A)": 3.0,
@@ -95,7 +96,9 @@ def evaluate(features: np.ndarray, labels: np.ndarray, groups: np.ndarray,
                 continue
             true_score = scored[mask][lab == 1][0]
             neg_scores = scored[mask][lab == 0]
-            per_firm.setdefault(str(groups[test][mask][0]), []).append(float((true_score > neg_scores).mean()))
+            per_firm.setdefault(str(groups[test][mask][0]), []).append(
+                tie_corrected_auc(float(true_score), neg_scores)
+            )
             ranks.append(1 + int((neg_scores >= true_score).sum()))
     firm_auc = np.array([np.mean(v) for v in per_firm.values()])
     ranks_arr = np.array(ranks)

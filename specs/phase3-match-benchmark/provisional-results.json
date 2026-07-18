@@ -1,0 +1,53 @@
+{
+  "schema_version": "1",
+  "status": "provisional",
+  "reproduction_state": "blocked_missing_inputs",
+  "required_missing_inputs": [
+    "data/derived/m0a_coded_dod.parquet",
+    "data/derived/m0a_desc_phase3_dod.parquet",
+    "data/derived/m0a_coded_nasa.parquet",
+    "data/derived/m0a_desc_phase3_nasa.parquet",
+    "TechPort cached search response",
+    "GSA notice and pair frames"
+  ],
+  "claims": {
+    "dod_description_only_flags": {
+      "value": 141,
+      "denominator": 962,
+      "status": "legacy_unreproduced",
+      "semantics": "description-flagged contract awards absent from the SR3/ST3 code list; not adjudicated miscoding"
+    },
+    "nasa_description_only_flags": {
+      "value": 16,
+      "denominator": 202,
+      "status": "legacy_unreproduced",
+      "semantics": "description-flagged contract awards absent from the SR3/ST3 code list; not adjudicated miscoding"
+    },
+    "dark_independence_scenario": {
+      "value": 948.5766423357663,
+      "status": "arithmetic_reproduced_inputs_unverified",
+      "assumption": "two-list homogeneous independent capture (list odds ratio = 1)",
+      "cells": {"code_only": 5530, "description_only": 141, "overlap": 821}
+    },
+    "dark_frame_size": {
+      "value": 131000,
+      "status": "legacy_unreproduced",
+      "semantics": "preliminary sampled frame-size estimate; not a dark Phase III count"
+    },
+    "retrieval_auc": {
+      "status": "legacy_unreproduced_nonstandard_estimator",
+      "semantics": "portfolio/linkage proxy, not dark-Phase-III detector performance",
+      "historical_values": {
+        "dod_notices": 0.844,
+        "dod_coded_contracts": 0.714,
+        "nasa_same_agency": 0.879,
+        "dod_to_nasa": 0.828
+      }
+    },
+    "survival": {
+      "status": "legacy_unreproduced_wrong_event_date",
+      "historical_event_only_median_years": 9,
+      "semantics": "not a lower bound; corrected estimand is first observed Phase II to first later observed coded Phase III action"
+    }
+  }
+}

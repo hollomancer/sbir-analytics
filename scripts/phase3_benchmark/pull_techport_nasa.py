@@ -42,34 +42,74 @@ def normalize_name(value: object) -> str:
     return re.sub(r"\s+", " ", text).strip()
 
 
+def _organization(org: object, role: str) -> dict[str, object] | None:
+    if not isinstance(org, dict):
+        return None
+    name = org.get("organizationName") or org.get("organization_name") or org.get("name") or ""
+    if not name:
+        return None
+    return {
+        "organization_id": org.get("organizationId") or org.get("organization_id") or org.get("id"),
+        "name": str(name),
+        "type": org.get("organizationType") or org.get("organization_type") or org.get("type"),
+        "role": role,
+    }
+
+
 def parse_project(project: dict) -> dict[str, object]:
-    """Normalize a TechPort project into id / program / dates / firm orgs / description."""
+    """Normalize a project without discarding linkage or transition fields."""
     program = project.get("program") or {}
     program_title = program.get("title", "") if isinstance(program, dict) else str(program)
-    orgs: list[str] = [o.get("organizationName", "") for o in (project.get("otherOrganizations") or [])
-                       if isinstance(o, dict)]
-    lead = project.get("leadOrganization") or {}
-    if isinstance(lead, dict) and lead.get("organizationName"):
-        orgs.append(lead["organizationName"])
-    firm_orgs = [o for o in orgs if o and not any(tok in o.upper() for tok in _NON_FIRM)]
+    organizations = [
+        parsed
+        for org in (project.get("otherOrganizations") or project.get("other_organizations") or [])
+        if (parsed := _organization(org, "supporting")) is not None
+    ]
+    lead = project.get("leadOrganization") or project.get("lead_organization") or {}
+    if parsed_lead := _organization(lead, "lead"):
+        organizations.insert(0, parsed_lead)
+    firm_orgs = [
+        str(org["name"])
+        for org in organizations
+        if not any(tok in str(org["name"]).upper() for tok in _NON_FIRM)
+    ]
+    trl = project.get("technologyReadinessLevel") or project.get("technology_readiness_level") or {}
     return {
         "project_id": project.get("projectId") or project.get("id"),
         "title": project.get("title", ""),
         "program": program_title,
+        "phase": project.get("phase") or project.get("projectPhase") or project.get("project_phase"),
         "start": project.get("startDateString") or project.get("startDate"),
         "end": project.get("endDateString") or project.get("endDate"),
         "firm_orgs": firm_orgs,
+        "organizations": organizations,
+        "trl_begin": trl.get("begin") if isinstance(trl, dict) else None,
+        "trl_current": trl.get("current") if isinstance(trl, dict) else None,
+        "trl_end": trl.get("end") if isinstance(trl, dict) else None,
+        "outcomes": project.get("projectOutcomes") or project.get("project_outcomes")
+        or project.get("outcomes"),
+        "destination": project.get("destination") or project.get("primaryDestination"),
         "description": str(project.get("description", "")),
     }
 
 
-def link_firm(firm_orgs: list[str], name_to_uei: dict[str, str]) -> str | None:
-    """First firm org whose normalized name resolves to a known SBIR firm UEI."""
+def link_firm(
+    firm_orgs: list[str], name_to_ueis: dict[str, str | set[str]]
+) -> dict[str, object]:
+    """Resolve all organization matches and expose ambiguity instead of taking the first."""
+    matches: dict[str, set[str]] = {}
     for org in firm_orgs:
-        uei = name_to_uei.get(normalize_name(org))
-        if uei:
-            return uei
-    return None
+        values = name_to_ueis.get(normalize_name(org))
+        if values:
+            matches[org] = {values} if isinstance(values, str) else set(values)
+    ueis = sorted({uei for values in matches.values() for uei in values})
+    status = "unique" if len(ueis) == 1 else "ambiguous" if ueis else "unmatched"
+    return {
+        "status": status,
+        "uei": ueis[0] if len(ueis) == 1 else None,
+        "ueis": ueis,
+        "matched_orgs": sorted(matches),
+    }
 
 
 def _fetch(url: str, *, tries: int = 5, delay: float = 1.5) -> bytes | None:
@@ -100,7 +140,8 @@ def pull_sbir_projects(*, query: str = "SBIR", pace: float = 1.0, cache_dir: Pat
         if ids:
             break
         time.sleep(3 * (search_attempt + 1))
-    if limit:
+    total_search_hits = len(ids)
+    if limit is not None:
         ids = ids[:limit]
     records: list[dict] = []
     digest = hashlib.sha256(search or b"")
@@ -120,11 +161,13 @@ def pull_sbir_projects(*, query: str = "SBIR", pace: float = 1.0, cache_dir: Pat
         time.sleep(pace)
     manifest = {
         "query": query, "api": API, "source_vintage": source_vintage, "run_at": run_at,
-        "search_hits": len(ids), "projects_pulled": len(records), "throttled": throttled,
+        "search_hits": len(ids), "total_search_hits": total_search_hits,
+        "selected_hits": len(ids), "projects_pulled": len(records), "throttled": throttled,
         "raw_sha256": digest.hexdigest(),
         "with_firm_org": sum(bool(r["firm_orgs"]) for r in records),
         "with_rich_description": sum(len(r["description"]) > 120 for r in records),
-        "retrieval_complete": throttled == 0 and bool(ids),
+        "retrieval_limited": len(ids) < total_search_hits,
+        "retrieval_complete": throttled == 0 and bool(ids) and len(ids) == total_search_hits,
     }
     return records, manifest
 
