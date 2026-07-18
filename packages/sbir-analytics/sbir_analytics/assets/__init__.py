@@ -5,9 +5,9 @@ from __future__ import annotations
 import importlib
 import logging
 import os
-import pkgutil
 from collections.abc import Iterator, Sequence
 from functools import lru_cache
+from pathlib import Path
 from types import ModuleType
 from typing import TYPE_CHECKING
 
@@ -18,15 +18,15 @@ if TYPE_CHECKING:
 LOG = logging.getLogger(__name__)
 
 
-# Heavy modules that can be skipped in resource-constrained environments
-HEAVY_ASSET_MODULES = {
-    "sbir_analytics.assets.fiscal_assets",  # R dependencies, economic modeling
-    "sbir_analytics.assets.modernbert.embeddings",  # Sentence transformers, ML models, similarity
-    "sbir_analytics.assets.ml.cet_training",  # scikit-learn, model training
-    "sbir_analytics.assets.ml.cet_inference",  # Model inference
-    "sbir_analytics.assets.ml.cet_drift_detection",  # Statistical analysis
-    "sbir_analytics.assets.uspto.ai_extraction",  # spaCy, NLP processing
-}
+# Asset families excluded from resource-constrained environments. Prefixes are
+# used because several families span packages rather than a single module.
+HEAVY_ASSET_PREFIXES = (
+    "sbir_analytics.assets.cet",
+    "sbir_analytics.assets.fiscal_assets",
+    "sbir_analytics.assets.sbir_fiscal_impacts",
+    "sbir_analytics.assets.modernbert",
+    "sbir_analytics.assets.uspto.ai_extraction",
+)
 
 # Jobs whose selections depend on one or more heavy asset modules above.  Job
 # discovery must apply the same deployment gate as asset discovery; otherwise
@@ -47,11 +47,18 @@ def _iter_modules(
 ) -> Iterator[str]:
     """Yield fully qualified module names for a package tree."""
 
-    prefix = package.__name__ + "."
-    for module_info in pkgutil.walk_packages(package.__path__, prefix=prefix):
-        if any(module_info.name.startswith(skip) for skip in skip_prefixes):
-            continue
-        yield module_info.name
+    module_names: set[str] = set()
+    for package_path in package.__path__:
+        root = Path(package_path)
+        for module_path in root.rglob("*.py"):
+            if module_path.name == "__init__.py":
+                continue
+            relative = module_path.relative_to(root).with_suffix("")
+            module_name = f"{package.__name__}.{'.'.join(relative.parts)}"
+            if any(module_name.startswith(skip) for skip in skip_prefixes):
+                continue
+            module_names.add(module_name)
+    yield from sorted(module_names)
 
 
 def _safe_import(module_name: str) -> ModuleType | None:
@@ -64,7 +71,7 @@ def _safe_import(module_name: str) -> ModuleType | None:
         return None
 
 
-def _should_load_heavy_assets() -> bool:
+def should_load_heavy_assets() -> bool:
     """Check if heavy assets should be loaded based on environment."""
     # Load heavy assets by default (local/hybrid), skip in serverless mode
     env_value = os.getenv("DAGSTER_LOAD_HEAVY_ASSETS", "true").lower()
@@ -87,12 +94,15 @@ def iter_asset_modules() -> list[ModuleType]:
     Skips heavy asset modules in resource-constrained environments
     based on DAGSTER_LOAD_HEAVY_ASSETS environment variable.
     """
-    load_heavy = _should_load_heavy_assets()
+    load_heavy = should_load_heavy_assets()
 
     modules: list[ModuleType] = []
     for module_name in _asset_module_names():
         # Skip heavy modules if configured
-        if not load_heavy and module_name in HEAVY_ASSET_MODULES:
+        if not load_heavy and any(
+            module_name == prefix or module_name.startswith(f"{prefix}.")
+            for prefix in HEAVY_ASSET_PREFIXES
+        ):
             LOG.info(
                 "Skipping heavy asset module (DAGSTER_LOAD_HEAVY_ASSETS=false): %s", module_name
             )
@@ -111,7 +121,7 @@ def _job_module_names() -> tuple[str, ...]:
 
 
 def iter_job_modules() -> list[ModuleType]:
-    load_heavy = _should_load_heavy_assets()
+    load_heavy = should_load_heavy_assets()
     modules: list[ModuleType] = []
     for module_name in _job_module_names():
         if not load_heavy and module_name in HEAVY_JOB_MODULES:
@@ -175,4 +185,5 @@ __all__ = [
     "iter_sensor_modules",
     "iter_public_jobs",
     "iter_public_sensors",
+    "should_load_heavy_assets",
 ]

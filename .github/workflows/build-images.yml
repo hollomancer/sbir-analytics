@@ -11,6 +11,7 @@ on:
       - 'packages/**'
       - 'scripts/**'
       - 'config/**'
+      - 'workspace.server.yaml'
       - '.github/workflows/build-images.yml'
   schedule:
     # Weekly rebuild on Sunday at 4 AM UTC (after weekly tests at 2 AM)
@@ -49,12 +50,15 @@ jobs:
               - 'pyproject.toml'
               - 'uv.lock'
               - 'Dockerfile.python-base'
+              # A workflow-only change (such as adding arm64) must rebuild the
+              # base immediately after merge instead of waiting for Sunday.
               - '.github/workflows/build-images.yml'
             etl-code:
               - 'sbir_etl/**'
               - 'packages/**'
               - 'scripts/**'
               - 'config/**'
+              - 'workspace.server.yaml'
               - 'Dockerfile'
               - '.github/workflows/build-images.yml'
 

@@ -25,7 +25,7 @@
 #
 # Notes:
 # - This script is intentionally POSIX-sh compatible for maximum portability.
-# - It uses sbir-analytics/scripts/docker/wait-for-service.sh if present to perform health checks.
+# - It probes dependencies with nc when available and Python otherwise.
 # - The script will exec the final command so the process receives container signals.
 set -eu
 
@@ -102,42 +102,39 @@ _make_exec_prefix() {
   printf '%s' "$exec_prefix"
 }
 
-# Wait for the Neo4j service to be available using the included wait script if present.
+probe_tcp() {
+  host="$1"
+  port="$2"
+
+  if command -v nc >/dev/null 2>&1; then
+    nc -z "$host" "$port" >/dev/null 2>&1
+    return $?
+  fi
+
+  # Python is guaranteed by the application image and works under /bin/sh,
+  # unlike the non-portable /dev/tcp fallback.
+  if command -v python >/dev/null 2>&1; then
+    python -c \
+      'import socket, sys; sock = socket.create_connection((sys.argv[1], int(sys.argv[2])), timeout=2); sock.close()' \
+      "$host" "$port" >/dev/null 2>&1
+    return $?
+  fi
+
+  (exec 3<>"/dev/tcp/$host/$port") >/dev/null 2>&1
+}
+
+# Wait for the Neo4j service to accept TCP connections.
 wait_for_neo4j() {
   HOST="${SBIR_ETL__NEO4J__HOST:-${NEO4J_HOST:-neo4j}}"
   PORT="${SBIR_ETL__NEO4J__PORT:-${NEO4J_PORT:-7687}}"
   TIMEOUT="${SERVICE_STARTUP_TIMEOUT:-120}"
-  WAIT_SCRIPT="/app/scripts/docker/wait-for-service.sh"
-
-  if [ -x "$WAIT_SCRIPT" ]; then
-    log "Waiting for Neo4j at ${HOST}:${PORT} (timeout=${TIMEOUT}s)..."
-    # prefer TCP probe for bolt port
-    "$WAIT_SCRIPT" --host "$HOST" --port "$PORT" --proto tcp --timeout "$TIMEOUT" --interval 5 || {
-      log "Neo4j did not become available within ${TIMEOUT}s"
-      return 1
-    }
-    log "Neo4j is available"
-    return 0
-  fi
-
-  # Fallback: simple loop using nc or /dev/tcp
-  log "No wait script found; performing basic TCP probe for Neo4j at ${HOST}:${PORT}"
+  log "Waiting for Neo4j at ${HOST}:${PORT} (timeout=${TIMEOUT}s)..."
   start=$(date +%s)
   deadline=$((start + TIMEOUT))
   while [ "$(date +%s)" -le "$deadline" ]; do
-    if command -v nc >/dev/null 2>&1; then
-      if nc -z "$HOST" "$PORT" >/dev/null 2>&1; then
-        log "Neo4j available (nc)."
-        return 0
-      fi
-    else
-      # Try /dev/tcp if shell supports it
-      if (exec 3<>"/dev/tcp/$HOST/$PORT") >/dev/null 2>&1; then
-        exec 3<&- || true
-        exec 3>&- || true
-        log "Neo4j available (/dev/tcp)."
-        return 0
-      fi
+    if probe_tcp "$HOST" "$PORT"; then
+      log "Neo4j is available"
+      return 0
     fi
     log "Neo4j not ready yet; sleeping 5s..."
     sleep 5
@@ -173,7 +170,9 @@ wait_for_dagster_web() {
   start=$(date +%s)
   deadline=$((start + TIMEOUT))
   while [ "$(date +%s)" -le "$deadline" ]; do
-    code=$(curl -s -o /dev/null -w '%{http_code}' "http://${WEB_HOST}:${WEB_PORT}${HEALTH_PATH}" || echo 000)
+    code=$(curl -s -o /dev/null -w '%{http_code}' \
+      "http://${WEB_HOST}:${WEB_PORT}${HEALTH_PATH}" || true)
+    [ -n "$code" ] || code=000
     case "$code" in
       2*|3*)
         log "Dagster webserver responded with HTTP ${code}"
@@ -282,7 +281,13 @@ main() {
         log "Warning: Dagster webserver did not become healthy in time; proceeding anyway"
       fi
 
-      CMD="dagster-daemon run"
+      if [ -n "${ENV_DAGSTER_CMD-}" ]; then
+        CMD="${ENV_DAGSTER_CMD}"
+      elif [ -n "${DAGSTER_CMD-}" ]; then
+        CMD="${DAGSTER_CMD}"
+      else
+        CMD="dagster-daemon run"
+      fi
       log "Exec: ${EXEC_PREFIX} ${CMD}"
       if [ -n "$EXEC_PREFIX" ]; then
         eval "exec ${EXEC_PREFIX} sh -c '${CMD}'"

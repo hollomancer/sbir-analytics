@@ -14,17 +14,10 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 ENV_EXAMPLE = REPO_ROOT / ".env.server.example"
 SERVER_COMPOSE = REPO_ROOT / "docker-compose.server.yml"
 WAIT_FOR_SERVICE = REPO_ROOT / "scripts" / "docker" / "wait-for-service.sh"
+CI_COMPOSE = REPO_ROOT / "docker-compose.yml"
+BUILD_IMAGES_WORKFLOW = REPO_ROOT / ".github" / "workflows" / "build-images.yml"
 
-# The runtime container only mounts select directories, so repo-root files like
-# .env.server.example are absent there. Skip rather than fail when it's missing.
-pytestmark = [
-    pytest.mark.fast,
-    pytest.mark.unit,
-    pytest.mark.skipif(
-        not ENV_EXAMPLE.is_file(),
-        reason=".env.server.example not present in this environment",
-    ),
-]
+pytestmark = [pytest.mark.fast, pytest.mark.unit]
 
 
 def _parse_env(path: Path) -> dict[str, str]:
@@ -71,6 +64,7 @@ def test_storage_defaults_are_repo_local():
         "SERVER_LOGS_DIR",
         "SERVER_ARTIFACTS_DIR",
         "SERVER_NEO4J_DIR",
+        "SERVER_BACKUP_DIR",
     ):
         assert env[key].startswith("./"), f"{key} default should be repository-local"
 
@@ -107,3 +101,16 @@ def test_dependency_wait_contract_matches_slim_server_image():
     assert "command -v python" in wait_script
     assert 'HEALTH_PATH="${HEALTHCHECK_PATH:-/server_info}"' in dagster_healthcheck
     assert "dagster-daemon liveness-check" in daemon_healthcheck
+
+
+def test_ci_container_mounts_server_env_contract():
+    compose = CI_COMPOSE.read_text()
+    assert "./.env.server.example:/app/.env.server.example:ro" in compose
+
+
+def test_image_workflow_rebuilds_arm64_images_when_workflow_changes():
+    workflow = BUILD_IMAGES_WORKFLOW.read_text()
+    assert workflow.count("platforms: linux/amd64,linux/arm64") == 2
+    # One paths entry triggers the workflow and two filter entries ensure the
+    # base and ETL jobs actually run on the merge commit.
+    assert workflow.count("'.github/workflows/build-images.yml'") == 3
