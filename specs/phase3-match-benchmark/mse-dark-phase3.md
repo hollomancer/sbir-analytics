@@ -156,6 +156,37 @@ zero-overlap strata; 5/821 overlap pairs genuinely disagree on sub-agency across
   context lost), Navy 19%, AF 14%, MDA ~0%. This targets the fix: the undercount concentrates where contract
   *administration* is separated from the awarding program office.
 
+## What further stratification teaches (run 2026-07-18)
+
+**Contract vehicle — the cleanest and biggest axis** (encoded in the award key itself, so per-stratum
+overlaps sum to exactly 821; no cross-list assignment error possible):
+
+| vehicle | n1 | n2 | overlap | miss rate | dark |
+|---|--:|--:|--:|--:|--:|
+| standalone contract | 2,692 | 578 | 524 | **9.3%** | 223 |
+| task order under IDV | 3,659 | 384 | 297 | **22.6%** | 982 |
+| **sum** | | | | | **1,205** |
+
+The 10Q code is lost **at the order level under contract vehicles** — task orders miss 2.4× more than
+standalone contracts. This corroborates and sharpens the DCMA finding (24% miss): the undercount concentrates
+where award and administration separate. **Floor progression: pooled 949 → sub-agency 1,007 → vehicle 1,205**
+— each finer (valid) stratification raises the floor, exactly as heterogeneity predicts. Best defensible floor
+now **~1,200**.
+
+**Time trend — the miss rate is WORSENING.** Using origination-year bands parsed identically from the PIID on
+both lists (the naive version — coded transaction-FY vs desc origination-FY — puts the same contract in
+different bands and explodes the estimate; caught via the overlap-sum check, 561≠821):
+
+| origination band | miss rate | dark |
+|---|--:|--:|
+| pre-FY16 | 18.2% | 93 |
+| FY16–18 | 5.0% | 38 |
+| FY19–21 | 13.5% | 202 |
+| FY22–25 | **17.3%** | 490 |
+
+Coding compliance deteriorated ~3.5× from FY16-18 to FY22-25. The undercount is a *growing* problem, not a
+legacy one — directly relevant to the urgency of the linkage-field fix.
+
 ## Rank-then-stratify: evaluated and NOT currently viable (run 2026-07-18)
 
 Test: use coded Phase IIIs (n=5,282) as pretend-dark positives vs the 471-contract un-flagged pool; measure
@@ -170,11 +201,15 @@ how much available *structural* features concentrate the 0.7% frame prevalence.
   has/lacks-property caution). But the effect sizes are nowhere near the ~30–50× concentration needed, so the
   conclusion is robust to those.
 
-**Consequence: the upper bound cannot be cheaply tightened.** Remaining options, in order: (a) re-pull the
-frame sample with PSC/competition/amount fields and retest richer structural features (one bounded spike —
-sole-source + R&D-PSC is the last plausible concentrator); (b) accept the bounds as final for the memo — the
-defensible package is *"141 proven + dark ≈ 950–1,200 (stratified floor ~1,000), organizationally concentrated
-(DCMA/Navy)"* — and let the §638 linkage field be the fix rather than better detection.
+**Spike (a) RUN — richer features tested, verdict unchanged.** Re-pulled the pool with PSC (710 contracts,
+100% PSC coverage; `Type of Set Aside` is None throughout — dead end confirmed). R&D-PSC alone: LR 1.6×
+(P3 49.3% vs un-flagged 30.8%). Best combination (R&D-PSC + gap∈[−2,+5]): **LR 4.4×**, band ~8.9k contracts
+at **~3.0% prevalence → ~1,000 labels for 30 hits**, and the band captures only 29% of Phase IIIs (out-of-band
+dark would still need a model). Better than 1.4×, still not a feasible human adjudication design.
+**Final posture: accept the bounds** — *141 proven + dark ≈ 1,200–?* (vehicle-stratified floor), miss rate
+worsening (17.3% in FY22-25) and structurally concentrated (task orders 22.6%, DCMA 24%) — with the §638
+linkage field as the fix rather than better detection. (A future LLM-assisted screen of the ~8.9k band with
+human verification of hits could revisit this, but introduces its own validation loop.)
 
 ## Relation to PRs
 
