@@ -14,11 +14,27 @@ from typing import Any
 import pandas as pd
 
 
+_ANNOTATION_FIELDS = (
+    ("interest_alignment", "Mission-interest alignment"),
+    ("technology_ecosystem", "Technology ecosystem"),
+    ("potential_transition_lane", "Potential acquisition transition lane"),
+    ("alignment_rationale", "Alignment rationale"),
+)
+
+
 def _pick(df: pd.DataFrame, *names: str) -> pd.Series:
     for name in names:
         if name in df.columns:
             return df[name]
     return pd.Series([None] * len(df), index=df.index)
+
+
+def _coalesce(df: pd.DataFrame, *names: str) -> pd.Series:
+    result = pd.Series([None] * len(df), index=df.index, dtype="object")
+    for name in names:
+        if name in df.columns:
+            result = result.combine_first(df[name])
+    return result
 
 
 def _stable_award_id(row: pd.Series) -> str:
@@ -144,9 +160,17 @@ def _slug(value: Any) -> str:
 
 def _money(value: Any) -> str:
     try:
-        return f"${float(value):,.0f}"
+        number = float(value)
     except (TypeError, ValueError):
         return "N/A"
+    return "N/A" if pd.isna(number) else f"${number:,.0f}"
+
+
+def _display(value: Any) -> str | None:
+    if value is None or (not isinstance(value, (list, tuple, dict)) and pd.isna(value)):
+        return None
+    text = str(value).strip()
+    return text if text and text.lower() != "nan" else None
 
 
 class MonthlyReportBuilder:
@@ -195,22 +219,40 @@ class MonthlyReportBuilder:
         master["confidence_bucket"] = confidence.map(
             lambda value: "HIGH" if bool(value) else "WATCHLIST"
         )
-        office = _pick(master, "office", "target_office")
-        subtier = _pick(master, "sub_tier", "target_sub_agency")
-        agency = _pick(master, "agency_opp", "target_agency", "agency")
+        office = _coalesce(master, "office_opp", "target_office", "office")
+        subtier = _coalesce(master, "sub_tier_opp", "sub_tier", "target_sub_agency")
+        agency = _coalesce(master, "agency_opp", "target_agency", "agency")
         master["center_name"] = office.fillna(subtier).fillna(agency).fillna("Unassigned")
-        master["center_code"] = _pick(master, "office_code", "full_parent_path_code")
+        master["center_code"] = _coalesce(
+            master, "office_code_opp", "office_code", "full_parent_path_code"
+        )
         master["center_code"] = master["center_code"].fillna(master["center_name"].map(_slug))
         master["report_month"] = self.report_month
         return master
 
     def _packet(self, center: str, rows: pd.DataFrame, awards: pd.DataFrame) -> str:
+        confidence = rows.get("confidence_bucket", pd.Series(index=rows.index, dtype="object"))
+        high = rows.loc[confidence == "HIGH"]
+        high_signal = high.get("signal_class", pd.Series(index=high.index, dtype="object"))
+        watchlist_count = int((confidence == "WATCHLIST").sum())
+        award_total = pd.to_numeric(
+            awards.get("amount", pd.Series(dtype="float64")), errors="coerce"
+        ).sum(min_count=1)
         lines = [
             f"# Monthly Procurement Transition Packet — {center}",
             "",
             f"**Reporting month:** {self.report_month}",
             "",
             "> Recorded performance-period end dates do not verify technical completion.",
+            "",
+            "## Snapshot",
+            "",
+            f"- Award cohort: {len(awards):,} awards totaling {_money(award_total)}",
+            f"- Candidates: {len(rows):,} ({len(high):,} high-confidence; "
+            f"{watchlist_count:,} watchlist)",
+            "- High-confidence mix: "
+            f"{int((high_signal == 'directed').sum()):,} directed; "
+            f"{int((high_signal == 'followon').sum()):,} competitive follow-on",
             "",
         ]
         for signal, heading in (
@@ -230,17 +272,30 @@ class MonthlyReportBuilder:
                     else "competitive relevance; not necessarily Phase III"
                 )
                 summary = self.summarizer(row.to_dict()) if self.summarizer else None
+                title = (
+                    _display(row.get("title_opp"))
+                    or _display(row.get("title"))
+                    or _display(row.get("target_id"))
+                    or "Untitled candidate"
+                )
+                public_source = (
+                    _display(row.get("source_url")) or _display(row.get("ui_url")) or "Unavailable"
+                )
                 lines += [
-                    f"### {row.get('title_opp') or row.get('title') or row.get('target_id')}",
+                    f"### {title}",
                     "",
-                    f"- Company: {row.get('company') or 'Unknown'}",
-                    f"- Prior award phase: {row.get('phase') or 'Unknown'}",
+                    f"- Company: {_display(row.get('company')) or 'Unknown'}",
+                    f"- Prior award phase: {_display(row.get('phase')) or 'Unknown'}",
                     f"- Score: {float(row.get('candidate_score') or 0):.2f}",
                     f"- Interpretation: {label}",
-                    f"- Response deadline: {row.get('response_deadline') or 'Not published'}",
-                    f"- Public source: {row.get('source_url') or row.get('ui_url') or 'Unavailable'}",
-                    "",
+                    f"- Response deadline: "
+                    f"{_display(row.get('response_deadline')) or 'Not published'}",
+                    f"- Public source: {public_source}",
                 ]
+                for column, field_label in _ANNOTATION_FIELDS:
+                    if value := _display(row.get(column)):
+                        lines.append(f"- {field_label}: {value}")
+                lines.append("")
                 if summary:
                     lines += [f"- Evidence summary: {summary}", ""]
         lines += ["## Watchlist", ""]
@@ -253,6 +308,9 @@ class MonthlyReportBuilder:
                 lines.append(
                     f"- {row.get('title_opp') or row.get('target_id')} — score {float(row.get('candidate_score') or 0):.2f}"
                 )
+                for column, field_label in _ANNOTATION_FIELDS:
+                    if value := _display(row.get(column)):
+                        lines.append(f"  - {field_label}: {value}")
             lines.append("")
         if not awards.empty:
             lines += [
@@ -274,6 +332,11 @@ class MonthlyReportBuilder:
             "Directed and competitive candidates are scored separately from public evidence. Non-SBIR awards and competitive relevance are not proof of statutory Phase III lineage.",
             "",
         ]
+        if any(column in rows.columns for column, _label in _ANNOTATION_FIELDS):
+            lines += [
+                "Mission-interest, technology, and transition-lane labels are screening annotations; they do not establish a validated requirement, endorsement, or confirmed transition decision.",
+                "",
+            ]
         return "\n".join(lines)
 
     def write(
@@ -306,10 +369,17 @@ class MonthlyReportBuilder:
 
         if groups:
             for center, rows in groups.items():
+                linked_award_ids = set(
+                    rows.get("prior_award_id", pd.Series(dtype="object")).dropna().astype(str)
+                )
                 related_awards = award_cohorts.loc[
-                    (award_cohorts["agency"].fillna("") == str(center))
-                    | (award_cohorts["branch"].fillna("") == str(center))
+                    award_cohorts["award_id"].astype(str).isin(linked_award_ids)
                 ]
+                if related_awards.empty:
+                    related_awards = award_cohorts.loc[
+                        (award_cohorts["agency"].fillna("") == str(center))
+                        | (award_cohorts["branch"].fillna("") == str(center))
+                    ]
                 markdown = self._packet(str(center), rows, related_awards)
                 slug = _slug(rows.iloc[0].get("center_code") if not rows.empty else center)
                 (centers_dir / f"{slug}.md").write_text(markdown, encoding="utf-8")

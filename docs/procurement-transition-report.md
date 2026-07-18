@@ -15,6 +15,22 @@ The representative-facing output distinguishes two opportunity classes:
 Generated packets must retain public source links and keep lower-confidence
 watchlist entries separate from high-confidence candidates.
 
+## Example packet
+
+The
+[synthetic Army science and technology example](../examples/army_science_technology_report.md)
+shows a five-interest screening packet with award and candidate totals,
+high-confidence and watchlist sections, technology-ecosystem tags, and
+potential acquisition transition lanes. Its
+[README](../examples/README_ARMY_PROCUREMENT_TRANSITION.md) includes
+reproducible CSV inputs and the exact generation command.
+
+The optional candidate fields `interest_alignment`, `technology_ecosystem`,
+`potential_transition_lane`, and `alignment_rationale` are carried into the
+packet when an upstream screening step supplies them. These annotations are not
+evidence of a validated requirement, endorsement, or confirmed transition
+decision.
+
 ## Running the monthly pipeline
 
 Set `SAM_GOV_API_KEY` to a free public SAM.gov key, then run:

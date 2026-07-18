@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 
 import pandas as pd
 
@@ -62,6 +63,27 @@ def test_writes_center_packet_and_manifest(tmp_path):
         award_cohorts=cohorts, candidates=candidates, opportunities=opportunities
     )
     assert (output / "centers" / "navair.md").exists()
-    assert "potential Phase III path" in (output / "centers" / "navair.md").read_text()
+    packet = (output / "centers" / "navair.md").read_text()
+    assert "# Monthly Procurement Transition Packet — NAVAIR" in packet
+    assert "potential Phase III path" in packet
+    assert "| Drone Co | Phase II |" in packet
     assert (output / "master_candidates.csv").exists()
     assert json.loads((output / "manifest.json").read_text())["candidate_rows"] == 1
+
+
+def test_army_science_and_technology_example_matches_generated_packet(tmp_path):
+    examples = Path(__file__).resolve().parents[3] / "examples"
+    cohorts = build_award_cohorts(
+        pd.read_csv(examples / "army_science_technology_awards.csv"),
+        pd.DataFrame(),
+        report_month="2026-06",
+    )
+    output = MonthlyReportBuilder(report_month="2026-06", output_root=tmp_path).write(
+        award_cohorts=cohorts,
+        candidates=pd.read_csv(examples / "army_science_technology_candidates.csv"),
+        opportunities=pd.read_csv(examples / "army_science_technology_opportunities.csv"),
+    )
+
+    generated = (output / "centers" / "army-st-example.md").read_text()
+    expected = (examples / "army_science_technology_report.md").read_text()
+    assert generated == expected
