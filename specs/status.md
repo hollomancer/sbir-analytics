@@ -1,6 +1,6 @@
 # Specification Status Registry
 
-Reviewed: 2026-07-07
+Reviewed: 2026-07-16
 
 This registry is the cleanup checkpoint for top-level specs. It does not replace
 the requirements, design, or tasks files; it records whether a spec is a current
@@ -34,6 +34,10 @@ any gated or deferred spec back into active work.
 - **`data-imputation` — Gated backlog.** Foundational E4 work, but zero
   implementation. Start only when missing-field recovery becomes the next
   data-quality priority.
+- **`dspy-weekly-awards-prototype` — Active.** Documentation-only evaluation
+  plan for the E6 weekly award-narrative seam. No DSPy dependency or production
+  integration is authorized until the offline corpus, native structured-output
+  control, sealed decision gate, and prospective shadows pass.
 - **`follow-on-multiplier-validation` — Active.** Design-only follow-up to the
   completed multiplier asset. Still called out as an immediate research-plan
   gap.
