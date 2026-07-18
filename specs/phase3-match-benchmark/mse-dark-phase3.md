@@ -1,6 +1,7 @@
 # Quantifying dark Phase III: 3-source capture-recapture (multiple-systems estimation)
 
-Status: **spec — not built.** Turns the 2-source lower bound (~949) into a defensible point estimate + CI.
+Status: **feasibility gate RUN — no clean structured 3rd signal; MSE stays 2-source (~949 lower bound).**
+The 3-source design below is retained for the J&A sensitivity extension and the eventual linkage-field world.
 
 ## What this resolves
 
@@ -33,10 +34,23 @@ authority (15 U.S.C. §638). Build it from USAspending/FPDS `other_than_full_and
 GSA archive (the sole-source J&As cite "Phase III" + SBIR authority). It is **independent of both the 10Q
 code and the description text** — the property MSE needs.
 
-- **Feasibility gate (do first):** confirm FPDS exposes an SBIR/STTR-specific non-competed reason code and
-  measure its precision (does it flag non-SBIR sole-source too?). If the structured code is not SBIR-specific,
-  fall back to J&A-text authority (lower coverage, higher precision). If neither yields a clean high-precision
-  list, MSE stays 2-source (report 949 as a bound only).
+- **Feasibility gate — RUN 2026-07-17, result: no clean structured FPDS signal.** On 100 known DoD
+  "SBIR PHASE III" contracts (USAspending): `Type of Set Aside` is **None/`SBA` (generic "Small Business
+  Set-Aside — Total")** — *not* SBIR-specific, so it flags the entire small-business sole-source universe
+  (terrible precision). `extent_competed` is mixed (D "full & open after exclusion", F "competed under SAP")
+  with **no SBIR-specific non-competed reason**; `other_than_full_and_open` is unpopulated. The only
+  SBIR-Phase-III-specific FPDS field is the 10Q code itself (= list 1). **There is no independent second
+  structured FPDS signal.**
+- **Fallback — J&A text (partial).** The GSA-archive J&A notices (~273 notices / 165 firms, high-precision,
+  explicitly cite "SBIR Phase III") are independent of code and USAspending description. But two limits make
+  them unfit as a *headline*-carrying third list: (a) **low coverage** (~165 of ~1,487 Phase III firms), and
+  (b) **subtype skew** — J&As exist only for *sole-source* actions, so the list systematically misses
+  competed Phase IIIs (a reachability bias, not just thin sampling).
+- **Decision (per the gate's own rule): MSE stays 2-source; report ~949 as a defensible LOWER BOUND.** The
+  J&A list is worth adding only as a **sensitivity extension** (a 3-source fit on the sole-source stratum, to
+  probe the code×description dependence), NOT as the basis for a headline point estimate. The clean upgrade
+  path is the missing **linkage field** (`eval-validity.md`): if a parent-SBIR-award-ID were populated, there
+  would be no dark cell to estimate — the MSE quantifies the cost of its absence.
 
 ## Method
 
