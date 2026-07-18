@@ -192,18 +192,18 @@ Then query Neo4j:
 
 ```cypher
 // Verify companies were updated
-MATCH (c:Company)
+MATCH (c:Organization {organization_type: "COMPANY"})
 WHERE c.classification IS NOT NULL
 RETURN count(c) as categorized_companies;
 
 // Check classification distribution
-MATCH (c:Company)
+MATCH (c:Organization {organization_type: "COMPANY"})
 WHERE c.classification IS NOT NULL
 RETURN c.classification, count(c) as count
 ORDER BY count DESC;
 
 // Find high-value product companies
-MATCH (c:Company)
+MATCH (c:Organization {organization_type: "COMPANY"})
 WHERE c.classification = "Product-leaning"
   AND c.categorization_total_dollars > 1000000
 RETURN c.name, c.product_pct, c.categorization_total_dollars

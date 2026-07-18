@@ -872,6 +872,14 @@ sbir_etl/
 
 ### 7.2 Import Conventions
 
+> **Note:** The imports below are illustrative of the intended layering (shared
+> infrastructure vs. module-specific), not literal paths. Actual code is split
+> across the `sbir_etl` (core ETL), `sbir_graph` (Neo4j loaders, e.g.
+> `sbir_graph.loaders.neo4j.base.BaseNeo4jLoader`), and `sbir_ml` (ML/CET,
+> transition) packages; config loads via `sbir_etl.config.loader` and quality
+> models live in `sbir_etl.models.quality`. Verify the current import path in
+> the source before copying.
+
 ```python
 
 ## Shared infrastructure (always available)

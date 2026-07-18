@@ -33,42 +33,18 @@ Canonical templates live in `pipeline-orchestration.md#asset-check-implementatio
 
 ## Neo4j Patterns Quick Reference
 
-### Node Creation (Upsert)
+Full Cypher patterns — batch upserts, relationships, constraints, and indexes —
+live in [neo4j-patterns.md](neo4j-patterns.md). Key facts to keep in mind:
 
-```cypher
-UNWIND $batch AS row
-MERGE (c:Company {uei: row.uei})
-SET c.name = row.name,
-    c.address = row.address,
-    c.updated_at = datetime()
-```
-
-### Relationship with Confidence
-
-```cypher
-MERGE (a:Award {award_id: $award_id})
-MERGE (c:Company {uei: $uei})
-MERGE (a)-[r:AWARDED_TO]->(c)
-SET r.confidence = $confidence,
-    r.method = $method,
-    r.created_at = datetime()
-```
-
-### Common Constraints
-
-```cypher
-CREATE CONSTRAINT unique_company_uei ON (c:Company) ASSERT c.uei IS UNIQUE;
-CREATE CONSTRAINT unique_award_id ON (a:Award) ASSERT a.award_id IS UNIQUE;
-CREATE CONSTRAINT unique_patent_grant_num ON (p:Patent) ASSERT p.grant_doc_num IS UNIQUE;
-```
-
-### Performance Indexes
-
-```cypher
-CREATE INDEX idx_company_name ON (c:Company) ON (c.name);
-CREATE INDEX idx_award_date ON (a:Award) ON (a.award_date);
-CREATE FULLTEXT INDEX idx_company_name_fulltext ON (c:Company) FOR (c.name);
-```
+- **Organizations** MERGE on the authoritative `organization_id` (e.g.
+  `org_company_<id>`); `uei` is an indexed property, not a merge key (merging on
+  it mints duplicates).
+- **SBIR awards** are `:FinancialTransaction {transaction_type: "AWARD"}` nodes
+  (keyed by `transaction_id`), linked to the recipient `:Organization` via
+  `:RECIPIENT_OF`.
+- **Constraints/indexes** use modern syntax:
+  `CREATE CONSTRAINT IF NOT EXISTS FOR (...) REQUIRE ...` /
+  `CREATE INDEX IF NOT EXISTS FOR (...) ON (...)`.
 
 ## Environment Variables Quick Setup
 

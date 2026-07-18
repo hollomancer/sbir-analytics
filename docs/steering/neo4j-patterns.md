@@ -15,19 +15,25 @@ The system implements comprehensive Neo4j loading patterns for SBIR, patent, and
 
 ### Batch Node Creation
 
+Organizations are keyed by the authoritative `organization_id` (e.g.
+`org_company_<id>`); `uei` is a regular indexed property, so MERGE on it would
+mint duplicates.
+
 ```cypher
 UNWIND $batch AS row
-MERGE (c:Company {uei: row.uei})
-SET c.name = row.name,
-    c.address = row.address,
-    c.city = row.city,
-    c.state = row.state
+MERGE (o:Organization {organization_id: row.organization_id})
+SET o.organization_type = "COMPANY",
+    o.uei = row.uei,
+    o.name = row.name,
+    o.address = row.address,
+    o.city = row.city,
+    o.state = row.state
 ```
 
 ### Node Types and Labels
 
-- **Company**: SBIR award recipients with UEI/DUNS identifiers
-- **Award**: SBIR/STTR awards with funding and phase information
+- **Organization** (companies): SBIR award recipients with UEI/DUNS identifiers (`organization_type: "COMPANY"`), keyed by `organization_id`
+- **FinancialTransaction**: SBIR/STTR awards (`transaction_type: "AWARD"`) with funding and phase information, keyed by `transaction_id`
 - **Patent**: USPTO patents with grant numbers and metadata
 - **PatentAssignment**: Patent ownership transfer events
 - **Organization / Individual**: Patent assignees and assignors (unified entity labels)
@@ -40,7 +46,7 @@ SET c.name = row.name,
 Store time-based metadata on relationships:
 
 ```cypher
-(award:Award)-[:AWARDED_TO {award_date: date("2023-01-15")}]->(company:Company)
+(award:FinancialTransaction {transaction_type: "AWARD", transaction_date: date("2023-01-15")})-[:RECIPIENT_OF]->(org:Organization)
 (patent:Patent)-[:ASSIGNED_VIA {record_date: date("2023-06-20")}]->(assignment:PatentAssignment)
 ```
 
@@ -49,7 +55,7 @@ Store time-based metadata on relationships:
 Include confidence scores and evidence:
 
 ```cypher
-(award:Award)-[:FUNDED {
+(award:FinancialTransaction {transaction_type: "AWARD"})-[:FUNDED {
   confidence: 0.95,
   method: "exact_patent_num",
   evidence: ["Patent number match", "Company name match"]
@@ -69,26 +75,26 @@ Support parent-child structures:
 ### Unique Constraints
 
 ```cypher
-CREATE CONSTRAINT unique_company_uei ON (c:Company) ASSERT c.uei IS UNIQUE;
-CREATE CONSTRAINT unique_award_id ON (a:Award) ASSERT a.award_id IS UNIQUE;
-CREATE CONSTRAINT unique_patent_grant_num ON (p:Patent) ASSERT p.grant_doc_num IS UNIQUE;
-CREATE CONSTRAINT unique_assignment_rf_id ON (pa:PatentAssignment) ASSERT pa.rf_id IS UNIQUE;
+CREATE CONSTRAINT IF NOT EXISTS FOR (o:Organization) REQUIRE o.organization_id IS UNIQUE;
+CREATE CONSTRAINT IF NOT EXISTS FOR (ft:FinancialTransaction) REQUIRE ft.transaction_id IS UNIQUE;
+CREATE CONSTRAINT IF NOT EXISTS FOR (p:Patent) REQUIRE p.grant_doc_num IS UNIQUE;
+CREATE CONSTRAINT IF NOT EXISTS FOR (pa:PatentAssignment) REQUIRE pa.rf_id IS UNIQUE;
 ```
 
 ### Performance Indexes
 
 ```cypher
-CREATE INDEX idx_company_name ON (c:Company) ON (c.name);
-CREATE INDEX idx_award_date ON (a:Award) ON (a.award_date);
-CREATE INDEX idx_patent_title ON (p:Patent) ON (p.title);
-CREATE INDEX idx_assignment_date ON (pa:PatentAssignment) ON (pa.record_date);
+CREATE INDEX organization_name IF NOT EXISTS FOR (o:Organization) ON (o.name);
+CREATE INDEX financial_transaction_date IF NOT EXISTS FOR (ft:FinancialTransaction) ON (ft.transaction_date);
+CREATE INDEX patent_title IF NOT EXISTS FOR (p:Patent) ON (p.title);
+CREATE INDEX assignment_date IF NOT EXISTS FOR (pa:PatentAssignment) ON (pa.record_date);
 ```
 
 ### Full-Text Search Indexes
 
 ```cypher
-CREATE FULLTEXT INDEX idx_company_name_fulltext ON (c:Company) FOR (c.name);
-CREATE FULLTEXT INDEX idx_patent_title_fulltext ON (p:Patent) FOR (p.title);
+CREATE FULLTEXT INDEX organization_name_fulltext IF NOT EXISTS FOR (o:Organization) ON EACH [o.name];
+CREATE FULLTEXT INDEX patent_title_fulltext IF NOT EXISTS FOR (p:Patent) ON EACH [p.title];
 ```
 
 ## Transaction Management
@@ -121,7 +127,7 @@ def load_nodes_in_batches(data, batch_size=1000):
 ### Award-CET Relationships
 
 ```cypher
-(award:Award)-[:APPLICABLE_TO {
+(award:FinancialTransaction {transaction_type: "AWARD"})-[:APPLICABLE_TO {
   score: 85,
   classification: "High",
   primary: true,
@@ -138,7 +144,7 @@ def load_nodes_in_batches(data, batch_size=1000):
 ### Company Specialization
 
 ```cypher
-(company:Company)-[:SPECIALIZES_IN {
+(company:Organization)-[:SPECIALIZES_IN {
   award_count: 5,
   total_funding: 2500000,
   avg_score: 78,
@@ -162,7 +168,7 @@ def load_nodes_in_batches(data, batch_size=1000):
 (assignment:PatentAssignment)-[:ASSIGNED_TO {record_date: date("1999-07-29")}]->(assignee:Organization)
 
 // Current Ownership
-(company:Company)-[:OWNS {as_of_date: date("1999-07-29")}]->(patent:Patent)
+(company:Organization)-[:OWNS {as_of_date: date("1999-07-29")}]->(patent:Patent)
 ```
 
 ### Assignment Chain Queries
@@ -204,7 +210,7 @@ Performance configuration and memory management details are covered in **[pipeli
 
 ## Safety Checklist (Before Large Loads)
 
-- Create unique constraints first (Company.uei, Award.award_id, Patent.grant_doc_num).
+- Create unique constraints first (Organization.organization_id, FinancialTransaction.transaction_id, Patent.grant_doc_num).
 - Ensure indexes needed by MERGE patterns exist prior to loading.
 - Use UNWIND batches sized to avoid transaction timeouts (e.g., 1k–5k).
 - Enable deadlock retries, keep transactions short, and commit per batch.
@@ -217,8 +223,9 @@ Performance configuration and memory management details are covered in **[pipeli
 ### Node Property Validation
 
 ```cypher
-CREATE CONSTRAINT award_amount_positive ON (a:Award) ASSERT a.award_amount >= 0;
-CREATE CONSTRAINT patent_title_required ON (p:Patent) ASSERT p.title IS NOT NULL;
+CREATE CONSTRAINT patent_title_required IF NOT EXISTS FOR (p:Patent) REQUIRE p.title IS NOT NULL;
+-- Range/domain checks (e.g. award amount >= 0) are enforced in the ETL/asset-check
+-- layer, not via Neo4j constraints.
 ```
 
 ### Relationship Property Validation
@@ -234,12 +241,12 @@ CREATE CONSTRAINT patent_title_required ON (p:Patent) ASSERT p.title IS NOT NULL
 
 ```cypher
 // Total funding by CET area
-MATCH (a:Award)-[r:APPLICABLE_TO {primary: true}]->(cet:CETArea)
-WHERE a.award_date >= date("2020-01-01")
+MATCH (a:FinancialTransaction {transaction_type: "AWARD"})-[r:APPLICABLE_TO {primary: true}]->(cet:CETArea)
+WHERE a.transaction_date >= date("2020-01-01")
 RETURN
   cet.name AS technology_area,
   count(a) AS award_count,
-  sum(a.award_amount) AS total_funding,
+  sum(a.amount) AS total_funding,
   avg(r.score) AS avg_confidence
 ORDER BY total_funding DESC
 ```
@@ -248,13 +255,13 @@ ORDER BY total_funding DESC
 
 ```cypher
 // Awards that led to patents in same CET area
-MATCH (a:Award)-[:APPLICABLE_TO]->(award_cet:CETArea)
+MATCH (a:FinancialTransaction {transaction_type: "AWARD"})-[:APPLICABLE_TO]->(award_cet:CETArea)
 MATCH (a)-[:FUNDED]->(p:Patent)-[:APPLICABLE_TO]->(patent_cet:CETArea)
 WHERE award_cet = patent_cet
 RETURN
   award_cet.name AS technology_area,
   count(*) AS successful_transitions,
-  avg(a.award_amount) AS avg_award_amount
+  avg(a.amount) AS avg_award_amount
 ORDER BY successful_transitions DESC
 ```
 
@@ -262,7 +269,7 @@ ORDER BY successful_transitions DESC
 
 ```cypher
 // Companies with highest specialization in AI
-MATCH (c:Company)-[s:SPECIALIZES_IN]->(cet:CETArea {cet_id: "artificial_intelligence"})
+MATCH (c:Organization {organization_type: "COMPANY"})-[s:SPECIALIZES_IN]->(cet:CETArea {cet_id: "artificial_intelligence"})
 WHERE s.award_count >= 3
 RETURN
   c.name,
@@ -302,7 +309,7 @@ MATCH (p:Patent {grant_doc_num: $grant_doc_num})
 OPTIONAL MATCH (p)<-[old:OWNS]-()
 DELETE old
 WITH p
-MATCH (c:Company {uei: $new_owner_uei})
+MATCH (c:Organization {uei: $new_owner_uei})
 CREATE (c)-[:OWNS {as_of_date: $assignment_date}]->(p)
 ```
 
