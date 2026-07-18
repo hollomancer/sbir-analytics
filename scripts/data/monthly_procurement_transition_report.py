@@ -25,7 +25,15 @@ def main() -> int:
     parser.add_argument("--candidates", type=Path, required=True)
     parser.add_argument("--opportunities", type=Path, required=True)
     parser.add_argument("--output-root", type=Path, default=Path("reports/procurement_transition"))
-    parser.add_argument("--ai", action="store_true", help="Add cited summaries from supplied public evidence")
+    parser.add_argument(
+        "--ai", action="store_true", help="Add cited summaries from supplied public evidence"
+    )
+    parser.add_argument(
+        "--ai-max-summaries",
+        type=int,
+        default=10,
+        help="Maximum priority-lead comparisons sent to the optional AI summarizer",
+    )
     args = parser.parse_args()
 
     cohorts = build_award_cohorts(
@@ -34,7 +42,10 @@ def main() -> int:
     api_key = os.getenv("OPENAI_API_KEY", "")
     summarizer = build_public_evidence_summarizer(api_key) if args.ai and api_key else None
     output = MonthlyReportBuilder(
-        report_month=args.month, output_root=args.output_root, summarizer=summarizer
+        report_month=args.month,
+        output_root=args.output_root,
+        summarizer=summarizer,
+        max_summaries=args.ai_max_summaries,
     ).write(
         award_cohorts=cohorts,
         candidates=_read(args.candidates),

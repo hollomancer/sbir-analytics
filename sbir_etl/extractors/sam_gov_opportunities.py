@@ -8,6 +8,7 @@ import os
 from collections.abc import Iterator, Sequence
 from datetime import UTC, date, datetime
 from typing import Any
+from urllib.parse import urlsplit
 
 import httpx
 import pandas as pd
@@ -18,6 +19,7 @@ from sbir_etl.models.opportunity import Opportunity, OpportunityContact
 
 
 OPPORTUNITIES_URL = "https://api.sam.gov/opportunities/v2/search"
+_DESCRIPTION_HOSTS = frozenset({"api.sam.gov", "api-alpha.sam.gov"})
 NOTICE_TYPE_CODES = {
     "Justification (J&A)": "u",
     "Pre-solicitation": "p",
@@ -161,6 +163,23 @@ class SamGovOpportunitiesExtractor:
     def fetch_description(self, url: str | None) -> str | None:
         if not url or url.lower() == "null":
             return None
+        parsed = urlsplit(url)
+        try:
+            port = parsed.port
+        except ValueError:
+            port = -1
+        if (
+            parsed.scheme.lower() != "https"
+            or parsed.hostname not in _DESCRIPTION_HOSTS
+            or parsed.username is not None
+            or parsed.password is not None
+            or port not in {None, 443}
+        ):
+            raise APIError(
+                "SAM.gov description URL is outside the allowed host",
+                api_name="sam.gov",
+                endpoint=url,
+            )
         response = self._get(url, params={"api_key": self.api_key})
         try:
             value = response.json()

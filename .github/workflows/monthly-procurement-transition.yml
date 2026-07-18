@@ -75,6 +75,10 @@ jobs:
             --awards data/raw/sbir/award_data.csv \
             --output data/processed/procurement_award_cohort.parquet \
             "${PREVIOUS_ARGS[@]}"
+          uv run python scripts/data/hydrate_candidate_opportunity_descriptions.py \
+            --opportunities data/raw/sam_gov_opportunities/opportunities.parquet \
+            --awards data/processed/procurement_award_cohort.parquet \
+            --max-records 500
           uv run python scripts/data/build_phase_iii_opportunity_candidates.py \
             --month "$REPORT_MONTH" \
             --awards data/processed/procurement_award_cohort.parquet \
@@ -118,5 +122,6 @@ jobs:
             data/processed/procurement_award_cohort.parquet
             data/processed/procurement_award_cohort.coverage.json
             data/raw/sam_gov_opportunities/opportunities.parquet
+            data/raw/sam_gov_opportunities/opportunities.hydration.json
             data/raw/sam_gov_opportunities/raw.ndjson
             data/snapshots/procurement_transition/latest_awards.csv

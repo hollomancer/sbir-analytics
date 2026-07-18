@@ -65,3 +65,21 @@ def test_page_cap_raises_instead_of_returning_partial_data():
     )
     with pytest.raises(APIError, match="page cap"):
         list(extractor.iter_raw_records(posted_from=date(2026, 6, 1), posted_to=date(2026, 6, 30)))
+
+
+def test_description_fetch_rejects_non_sam_host_before_sending_api_key():
+    requested = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requested.append(request)
+        return httpx.Response(200, json={"description": "should not be reached"})
+
+    extractor = SamGovOpportunitiesExtractor(
+        api_key="secret-key",
+        http_client=httpx.Client(transport=httpx.MockTransport(handler)),
+    )
+
+    with pytest.raises(APIError, match="allowed host"):
+        extractor.fetch_description("https://attacker.example/noticedesc")
+
+    assert requested == []

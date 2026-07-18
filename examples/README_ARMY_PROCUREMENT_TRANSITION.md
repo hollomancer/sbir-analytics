@@ -6,6 +6,12 @@ opportunities, identifiers, dates, amounts, scores, and alignment judgments are
 synthetic. They demonstrate report structure only and must not be treated as
 live acquisition intelligence.
 
+Each lead is written for a procurement-center review: it places the funded
+award scope beside the synthetic solicitation need, states the technical
+connection to validate, explains why the pair was surfaced, and ends with a
+class-specific representative check. The score remains a secondary triage aid,
+not a probability or acquisition determination.
+
 The example uses three distinct public taxonomies so that a technology match is
 not confused with an acquisition decision:
 
