@@ -4,12 +4,20 @@ from __future__ import annotations
 
 import pandas as pd
 
+from sbir_etl.utils.award_identity import (
+    award_key_series,
+    collapse_transactions_to_award_grain,
+)
+
 # FPDS Element 10Q codes that mark a contract as already-coded Phase III.
 # Duplicated intentionally — avoids cross-package import for a five-element set.
 _PHASE_III_RESEARCH_CODES = frozenset({"SR3", "ST3"})
 
 # Tokens we accept as evidence that ``sbir_phase`` already says "Phase III".
 _PHASE_III_LABELS = frozenset({"PHASE III", "III", "3", "PHASE 3"})
+
+# If neither column exists, the already-coded exclusion cannot run safely.
+_CODED_STATUS_COLUMNS: tuple[str, ...] = ("research", "sbir_phase")
 
 
 PAIR_S1_COLUMNS: list[str] = [
@@ -124,14 +132,26 @@ def _prepare_contracts(contracts: pd.DataFrame) -> pd.DataFrame:
 
     df = contracts.copy()
 
-    # Compute "already coded" mask before column projection so we can read
-    # whichever raw column the input frame carries.
-    coded_mask = (
+    if not any(column in df.columns for column in _CODED_STATUS_COLUMNS):
+        raise ValueError(
+            "contracts frame carries no Phase III coding column "
+            f"(need one of {_CODED_STATUS_COLUMNS}); the already-coded exclusion cannot run"
+        )
+
+    # Code status is an award-level property. If any transaction is explicitly
+    # Phase III, exclude every transaction for that award.
+    df = df.assign(_award_key=award_key_series(df))
+    row_coded = (
         df.apply(_is_phase_iii_already_coded, axis=1) if len(df) else pd.Series([], dtype=bool)
     )
-    df = df.loc[~coded_mask].copy()
+    award_coded = row_coded.groupby(df["_award_key"], sort=False).transform("any")
+    df = df.loc[~award_coded].copy()
     if df.empty:
         return pd.DataFrame(columns=[c for c in PAIR_S1_COLUMNS if c.startswith("target_")])
+
+    # One representative row per award. The shared helper documents that this
+    # selects the latest transaction and does not aggregate financial fields.
+    df = collapse_transactions_to_award_grain(df, award_keys=df["_award_key"])
 
     def _pick(*names: str) -> pd.Series:
         for n in names:
@@ -141,7 +161,7 @@ def _prepare_contracts(contracts: pd.DataFrame) -> pd.DataFrame:
 
     out = pd.DataFrame(
         {
-            "target_id": _pick("contract_id", "piid", "generated_unique_award_id"),
+            "target_id": df["_award_key"],
             "target_recipient_uei": _pick("vendor_uei", "recipient_uei", "uei"),
             "target_agency": _pick("awarding_agency_name", "agency", "awarding_agency"),
             "target_sub_agency": _pick("awarding_sub_tier_agency_name", "sub_agency"),
