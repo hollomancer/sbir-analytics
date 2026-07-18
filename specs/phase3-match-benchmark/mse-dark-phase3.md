@@ -236,7 +236,9 @@ Phase III order sits among thousands of unrelated orders. Purity (coded/(coded+u
 | 10–30% | 40 | 440 |
 | <10% (general-purpose) | 76 | 25,428 (not credible candidates) |
 
-**High-purity (≥50%) frame: 155 vehicles, 332 unflagged siblings** — the credible direct-observation set.
+**High-purity (≥50%) frame: 155 vehicles, 332 unflagged siblings — 129 distinct holder firms, $861M
+obligated (median order $500k; ~$775M after excluding an FMS "Miscellaneous Foreign Contractors" attribution
+artifact).** For scale: 3.5× the described-undercount dollars (~$244M). The credible direct-observation set.
 Sample content: orders procuring the *product of the SBIR* (e.g., GATR inflatable satellite antenna systems,
 spares, and training under `W15QKN13D0099`, 185 coded siblings, adjacent order numbers, no code, no SBIR
 text). These are observed dark-Phase-III candidates, not model output — at plausibly high precision,
@@ -248,6 +250,36 @@ Implications if adjudication confirms: (a) a few hundred of the ~1,205 stratifie
 (rank-then-stratify failed at ≤4.4×; this frame is ~50–90% prevalence by construction), and (c) the
 mechanism is pinned — the code is dropped **order-by-order on vehicles whose Phase III character is
 documented by their own siblings**.
+
+## The fully-dark layer: self-declared Phase III vehicles (run 2026-07-18, provisional)
+
+The sibling census finds vehicles only *via their coded orders* — so a vehicle with zero coded orders is
+invisible to it. Probing the 141's parents found 9 such vehicles, **5 of which declare "SBIR PHASE III" in
+their own vehicle-level description** while zero orders carry the code. That exposed an unused capture
+signal: we had searched *order* descriptions but never *vehicle* descriptions.
+
+**Systematic pull (IDV award types, description "SBIR PHASE III", DoD):**
+
+| | vehicles | of which |
+|---|--:|---|
+| Self-declared Phase III IDVs | **149** | |
+| — hosting ≥1 coded order | 110 | consistent with the sibling census |
+| — hosting ZERO coded orders (**fully dark to the code**) | **39** | 39 distinct firms |
+
+**26% of self-declared Phase III vehicles are entirely invisible to the 10Q code** — matching the task-order
+(22.6%) and DCMA (24%) miss rates. Children census of the 39: 132 orders — 87 order-text-flagged, **45
+unflagged ($53.2M)** — invisible to BOTH order-level signals, captured only by the vehicle's own description
+(e.g. HTX Labs `FA302023D0006` "SBIR PHASE III IDIQ", 8 unflagged orders $14.1M).
+
+**Combined direct observation: ~377 unflagged orders / ~$914M** (332/$861M high-purity sibling frame +
+45/$53M fully-dark layer), before adjudication.
+
+**REVISES the feasibility gate: a third capture list exists.** The gate searched *order-level* FPDS
+competition/set-aside fields and found none — but "order under a self-declared Phase III **vehicle**" is a
+structured, high-precision capture rule entered by a different actor at a different moment (vehicle award vs
+order entry), plausibly usable as the MSE's third list (with its dependence on the description list
+modeled, not assumed away — both are text, but *different records*). A 3-source log-linear fit (code ×
+order-description × vehicle-declaration) is now buildable from data in hand.
 
 ## Relation to PRs
 
