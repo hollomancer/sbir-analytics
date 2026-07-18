@@ -19,6 +19,7 @@ Inputs: data/raw/sbir/award_data.csv and a cached TechPort search JSON (see pull
 """
 
 import argparse
+import difflib
 import json
 import re
 from pathlib import Path
@@ -27,6 +28,30 @@ import numpy as np
 import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
+
+
+def longest_shared_word_run(x: str, y: str, cap: int = 400) -> int:
+    """Longest contiguous shared word run — the text-reuse / plagiarism probe. Pure.
+
+    If positive (query, own target) pairs share far longer runs than negatives, TF-IDF is detecting copied
+    strings, not technical relatedness (a fragile result). Equal distributions mean distributed vocabulary.
+    """
+    xt, yt = x.lower().split()[:cap], y.lower().split()[:cap]
+    return difflib.SequenceMatcher(None, xt, yt, autojunk=False).find_longest_match(
+        0, len(xt), 0, len(yt)).size
+
+
+def paired_bootstrap(per_firm: np.ndarray, n_boot: int = 2000,
+                     seed: int = 1) -> tuple[float, float, float]:
+    """Firm-clustered bootstrap of a per-firm statistic → (mean, 2.5%, 97.5%). Pure.
+
+    Used on the paired per-firm difference of main effects (random vs metadata negatives): because the same
+    firms appear in both conditions, correlated errors cancel and the CI on the difference is tight.
+    """
+    rng = np.random.RandomState(seed)
+    n = len(per_firm)
+    means = [per_firm[rng.choice(n, n, replace=True)].mean() for _ in range(n_boot)]
+    return float(per_firm.mean()), float(np.percentile(means, 2.5)), float(np.percentile(means, 97.5))
 
 _SUFFIX = re.compile(r"\b(INC|LLC|CORP|CORPORATION|CO|COMPANY|LTD|LP|LLP|THE|INCORPORATED|TECHNOLOGIES|"
                      r"TECHNOLOGY|TECH|SYSTEMS)\b")

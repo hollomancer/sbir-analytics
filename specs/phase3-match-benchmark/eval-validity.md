@@ -61,25 +61,55 @@ different firm), so the **absolute** AUCs are optimistic; only the **deltas** ar
 negatives are the right upgrade before any absolute number ships.
 
 **Built and run** (`--negatives metadata`: same NASA TX taxonomy area + year ±2, different firm — the
-NAICS-analogue; true-hard for 310/375 firms):
+NAICS-analogue; true-hard for 310/375 firms). **This is a robustness check under harder negatives, NOT an
+artifact refutation** — the similarity-mining artifact was dead on arrival last turn (negatives are
+`rng.choice`, seed-fixed, never mined), so no experiment was needed for it. All four cells, both regimes:
 
-| | random neg | metadata-hard neg |
-|---|--:|--:|
-| thin/thin | 0.655 | 0.618 |
-| rich/rich | 0.872 | **0.816** |
-| **target main effect** | +0.138 | **+0.136** |
-| query main effect | +0.080 | +0.062 |
-| interaction | −0.069 | −0.057 |
+| cell | random | metadata-hard | metadata, 310 true-hard only |
+|---|--:|--:|--:|
+| thin_query / thin_target | 0.658 | 0.618 | 0.610 |
+| thin_query / rich_target | 0.829 | 0.783 | 0.770 |
+| rich_query / thin_target | 0.766 | 0.710 | 0.688 |
+| rich_query / rich_target | 0.872 | 0.815 | 0.796 |
+| **target main effect** | +0.139 | +0.135 | **+0.134** |
+| query main effect | +0.076 | +0.062 | **+0.052** |
+| interaction | −0.066 | −0.059 | −0.053 |
 
-**The target-richness effect is robust to negative construction (+0.138 → +0.136).** The feared artifact
-would have collapsed it under proper hard negatives; it didn't — so the finding is real. What moves is the
-*absolute* level: random negatives were ~0.05 optimistic (rich/rich 0.872 → **0.816**). Trustworthy absolute:
-rich/rich ≈ **0.82** under metadata-hard negatives; DoD production (thin target) sits below that.
+- **Target richness is robust to negative *difficulty*** — +0.139 → +0.134 (clean 310). Firm-clustered
+  **paired bootstrap** of the difference (same 375 firms in both conditions, so correlated errors cancel):
+  Δtarget = **+0.004, 95% CI [−0.008, +0.016]** — straddles 0, so "essentially unchanged" is defensible, not
+  eyeballed.
+- **The query effect moved, and I under-flagged it.** +0.080 → +0.062 (all) → **+0.052** on the clean 310 —
+  down ~30%. The controllable, shippable lever is worth **+0.052**, not +0.080. Still free; quote the honest
+  number. (The 65 fallback firms — rare TX × thin year, still on random negatives — carried an inflated query
+  effect of +0.114; the target effect held there too, so de-blending only cost the query number.)
+- **Absolute level:** random negatives were ~0.06–0.08 optimistic (rich/rich 0.872 → **0.796** on clean 310).
+  Trustworthy absolute rich/rich ≈ **0.80**.
+- **Text-reuse ruled out.** Longest contiguous shared word-run, positive (query, own target) vs negative
+  pairs: median **2 vs 2**, ≥8-word runs **1% vs 0%**. Positives do not share copied spans that negatives
+  lack — the signal is distributed technical vocabulary, not plagiarism, so it is *not* the fragile
+  string-overlap result and should survive an embedding model / rewrite. (Caveat retained: TX areas are
+  coarse; a finer taxonomy control could still lower the absolute a little.)
+
+### The binding constraint (DoD) — the spine
+`scripts/phase3_benchmark/dod_transition_inventory.py`. Everything above ran on NASA (rich text). The memo's
+subject is DoD. The count:
+
+- **DoD Phase II→III positives: 5,091 contracts across 974 firms — abundant, not scarce.**
+- **Target text (Phase III `desc`) is empty: median 43 chars, 87.5% below the 150-char floor, 12.5% usable.**
+
+The wall is not positive scarcity — it is that DoD does not write contract descriptions. This is the *same*
+empty field that produces the Phase III miscoding: **the reporting failure and the detection failure share
+one root cause.** A §638 mandate to populate the description field moves both. (The measurement is pointed at
+NASA only because NASA writes the text; the DoD number stands as the finding, not a gap to be closed with
+more modeling.)
 
 ### Reproducible scripts
-- `text_richness_2x2.py --negatives {random,metadata}` — the ablation under both negative regimes.
-- `auc_by_target_length.py` — the operating curve (AUC by target-length decile; the step-function evidence).
-- Pure cores tested in `tests/unit/scripts/test_eval_validity.py` (10 passed).
+- `text_richness_2x2.py --negatives {random,metadata}` — the ablation; `longest_shared_word_run`,
+  `paired_bootstrap` are the reuse + CI probes.
+- `auc_by_target_length.py` — the operating curve (step, not gradient).
+- `dod_transition_inventory.py` — the DoD positive count + description emptiness.
+- Pure cores tested in `tests/unit/scripts/test_eval_validity.py` (13 passed).
 
 Not isolated here: the **model** and **task-framing** axes. #423's 0.56 sits *below* this 2×2's thin/thin
 0.655 — the residual ~0.10 is the model + classification→retrieval-framing change, which we did not separately

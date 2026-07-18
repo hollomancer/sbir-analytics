@@ -8,8 +8,10 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "scripts" / "phase3_benchmark"))
 
 from auc_by_target_length import auc_by_length_decile, per_firm_auc  # noqa: E402
-from text_richness_2x2 import (firm_retrieval_auc, metadata_hard_negatives,  # noqa: E402
-                               normalize_name, random_negatives)
+from dod_transition_inventory import target_text_coverage  # noqa: E402
+from text_richness_2x2 import (firm_retrieval_auc, longest_shared_word_run,  # noqa: E402
+                               metadata_hard_negatives, normalize_name, paired_bootstrap,
+                               random_negatives)
 from transition_survival import kaplan_meier, survival_at  # noqa: E402
 
 
@@ -60,6 +62,26 @@ def test_per_firm_auc_returns_one_score_per_firm():
     t = [f"widget {i} zzz{i}" for i in range(5)]
     scores = per_firm_auc(q, t, random_negatives(5, 4))
     assert scores.shape == (5,) and scores.max() <= 1.0
+
+
+def test_longest_shared_word_run_detects_copied_span():
+    a = "the quick brown fox jumps over the lazy dog near the river bank"
+    copied = "unrelated intro the quick brown fox jumps over the lazy dog trailing"
+    disjoint = "completely different words with nothing at all in common here today"
+    assert longest_shared_word_run(a, copied) >= 8       # 8-word copied run detected
+    assert longest_shared_word_run(a, disjoint) <= 2     # no meaningful shared run
+
+
+def test_paired_bootstrap_ci_brackets_mean_and_zero_for_null_effect():
+    per_firm = np.array([0.01, -0.01, 0.02, -0.02, 0.0, 0.005, -0.005])  # centered near 0
+    mean, lo, hi = paired_bootstrap(per_firm, n_boot=500)
+    assert lo <= mean <= hi and lo < 0 < hi             # CI straddles 0 for a null effect
+
+
+def test_target_text_coverage_flags_empty_descriptions():
+    lengths = np.array([40, 42, 30, 200, 500])           # 3 of 5 below the 150 floor
+    cov = target_text_coverage(lengths, floor=150)
+    assert cov["n"] == 5 and cov["pct_below_floor"] == 60.0 and cov["pct_usable"] == 40.0
 
 
 def test_kaplan_meier_all_events_no_censoring():
