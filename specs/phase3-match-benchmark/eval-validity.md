@@ -60,6 +60,27 @@ side: random-within-register negatives are *easier* than metadata-hard negatives
 different firm), so the **absolute** AUCs are optimistic; only the **deltas** are trustworthy. Metadata-hard
 negatives are the right upgrade before any absolute number ships.
 
+**Built and run** (`--negatives metadata`: same NASA TX taxonomy area + year ±2, different firm — the
+NAICS-analogue; true-hard for 310/375 firms):
+
+| | random neg | metadata-hard neg |
+|---|--:|--:|
+| thin/thin | 0.655 | 0.618 |
+| rich/rich | 0.872 | **0.816** |
+| **target main effect** | +0.138 | **+0.136** |
+| query main effect | +0.080 | +0.062 |
+| interaction | −0.069 | −0.057 |
+
+**The target-richness effect is robust to negative construction (+0.138 → +0.136).** The feared artifact
+would have collapsed it under proper hard negatives; it didn't — so the finding is real. What moves is the
+*absolute* level: random negatives were ~0.05 optimistic (rich/rich 0.872 → **0.816**). Trustworthy absolute:
+rich/rich ≈ **0.82** under metadata-hard negatives; DoD production (thin target) sits below that.
+
+### Reproducible scripts
+- `text_richness_2x2.py --negatives {random,metadata}` — the ablation under both negative regimes.
+- `auc_by_target_length.py` — the operating curve (AUC by target-length decile; the step-function evidence).
+- Pure cores tested in `tests/unit/scripts/test_eval_validity.py` (10 passed).
+
 Not isolated here: the **model** and **task-framing** axes. #423's 0.56 sits *below* this 2×2's thin/thin
 0.655 — the residual ~0.10 is the model + classification→retrieval-framing change, which we did not separately
 control (the dense model is not installed in any environment on this machine). Defensible summary: *of the
