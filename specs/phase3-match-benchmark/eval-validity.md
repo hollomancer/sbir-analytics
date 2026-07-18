@@ -102,13 +102,38 @@ finding.
 - `auc_by_target_length.py` — the operating curve (step, not gradient).
 - `dod_transition_inventory.py` — the DoD positive count + description emptiness.
 - `dod_within_retrieval.py` — the real within-DoD AUC (0.714), the §638 floor table, the mechanism test.
+- `dense_vs_sparse_2x2.py` — the model axis (ModernBERT-Embed vs TF-IDF; requires a torch venv, not repo .venv).
 - Pure cores tested in `tests/unit/scripts/test_eval_validity.py` (14 passed).
 
-Not isolated here: the **model** and **task-framing** axes. #423's 0.56 sits *below* this 2×2's thin/thin
-0.655 — the residual ~0.10 is the model + classification→retrieval-framing change, which we did not separately
-control (the dense model is not installed in any environment on this machine). Defensible summary: *of the
-~0.31 total move, ~0.22 is text richness (isolated, model constant); ~0.10 is model + task framing (not
-separately isolated).*
+### The model axis — now run (`dense_vs_sparse_2x2.py`, ModernBERT-Embed on MPS)
+The richness gradient is **TF-IDF-specific.** Identical NASA firms + seed-0 negatives, under ModernBERT-Embed:
+
+| cell | TF-IDF | ModernBERT-Embed |
+|---|--:|--:|
+| thin/thin | 0.658 | **0.759** |
+| thin/rich | 0.829 | 0.831 |
+| rich/thin | 0.766 | 0.757 |
+| rich/rich | **0.872** | 0.806 |
+| target main effect | +0.139 | **+0.060** |
+| query main effect | +0.076 | **−0.013** |
+
+Two flips, both consequential:
+- **On thin text the dense model wins (0.759 vs 0.658)** — it reads meaning from a ~40-char title where the
+  lexical model has nothing to overlap. So #423's 0.56 was **not** "dense models fail on thin text"
+  (ModernBERT gets 0.76 on thin titles here); it was the classification framing / even-thinner agreement
+  text. The model swap was never the villain.
+- **On rich text the sparse model wins (0.872 vs 0.806)** — jargon-lexical overlap dominates when text is
+  abundant (the earlier "sparse beats dense" result). So the two models are complementary: dense for thin,
+  sparse for rich.
+- **The richness main effects nearly vanish under dense** (target +0.139 → +0.060; query +0.076 → −0.013).
+  "Text richness is a sufficient cause" holds **only under TF-IDF** — the scope caveat the review demanded
+  was load-bearing.
+
+**This complicates the §638 story honestly:** a dense model is far more thin-text-robust, so "mandate longer
+descriptions" is not the only lever — "use embeddings" competes, and would lift thin-DoD detection toward
+~0.76 on its own. Caveat: the thin text here is *descriptive titles* ("Additive Manufacturing of Refractory
+Metal…"); DoD contract boilerplate ("OFFICE FURNITURE") carries even less meaning, so a dense model may not
+fully rescue it. The defensible ask pairs both: **a substantive description field _and_ a semantic model.**
 
 ## 2. The "median transition lag" is not a median
 
