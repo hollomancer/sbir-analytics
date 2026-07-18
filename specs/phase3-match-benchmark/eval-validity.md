@@ -19,15 +19,46 @@ volume per side (query: award *titles* vs *abstracts*; target: NASA project *tit
 | **query = thin (title)** | 0.655 | 0.827 |
 | **query = rich (abstract)** | 0.769 | 0.872 |
 
-**Text richness alone moves AUC 0.655 → 0.872 (+0.22) with the model held constant.** So the
-ModernBERT→TF-IDF swap is *explanatorily unnecessary* — text is a sufficient cause, which is exactly what we
-predicted before seeing the result (an informal pre-registration; predicting the direction ≠ isolating the
-cause, which this now does). Two honest corrections to the earlier story:
+**Do not read the corner-to-corner +0.22 — it's the diagonal, the least actionable summary.** The factorial
+decomposition (all figures **under TF-IDF**):
 
-- **Thin/thin is 0.655, not 0.5.** Thin text is *weaker*, not empty — "the embedding was fine, the text was
-  empty" overstated it. Titles carry real signal.
-- **Target richness (+0.17) dominates query richness (+0.11).** The follow-on notice/description text is where
-  the discriminative content lives.
+| Effect | Computation | Value |
+|---|---|--:|
+| Target richness (main) | avg[(.827−.655), (.872−.769)] | **+0.138** |
+| Query richness (main) | avg[(.769−.655), (.872−.827)] | **+0.080** |
+| Interaction | .103 − .172 | **−0.069** (sub-additive) |
+
+Text richness is a *sufficient* cause (the ModernBERT→TF-IDF swap is explanatorily unnecessary), as
+predicted before the result. But three sharper reads:
+
+- **Thin/thin is 0.655, not 0.5** — thin text is *weaker*, not empty; "the embedding was fine, the text was
+  empty" overstated it.
+- **The two levers are asymmetric in what we control.** Target richness (+0.138) does ~1.7× the work of query
+  richness (+0.080), **and it is exogenous** — contracting officers write the contract description, many write
+  nothing. The lever we control (query = our own SBIR abstracts) is the weak one: a free, shippable +0.080.
+  The +0.22 headline implies a reachable 0.872 we **cannot reach by choice.**
+- **Negative interaction** — the levers are partially redundant; with a rich target, going rich on the query
+  buys only +0.045.
+
+### The operating curve is a step, not a gradient
+AUC by target-description-length decile (rich/rich cell, n=377, under TF-IDF) is **flat within the rich range**
+(Pearson r=0.04): 0.81 at 171–515 chars, saturating ~0.87–0.91 above ~900 chars. The gain is a **threshold**,
+not a ramp — titles (~40 chars) → 0.655; descriptions >150 chars → ~0.81; then flat. (This also softens the
+"TF-IDF mechanically rewards length" worry: length stops helping once past the threshold.)
+
+**Production sits below the step.** DoD's USAspending `desc` is median **42 chars, 88% under 150** — DoD
+targets are in title-length territory (~0.65–0.81), **not** the saturated 0.87. Detection degrades exactly
+where descriptions are empty — the *same* root cause as Phase III miscoding. Mandating the description field
+(a §638 mechanism) would move both the reporting failure and the detection failure at once.
+
+### Negative provenance (the real threat to the table — checked)
+The 2×2 negatives are `rng.choice(others)`: **uniformly random within the same register** (all non-SBIR NASA
+projects), **seed-fixed so the identical negative set is used across all four cells**, and **never
+similarity-mined under any representation.** So the artifact of "hard negatives mined under thin text separate
+trivially under rich text" **cannot apply** — the cross-cell deltas are clean by construction. Honest flip
+side: random-within-register negatives are *easier* than metadata-hard negatives (same agency/year/NAICS,
+different firm), so the **absolute** AUCs are optimistic; only the **deltas** are trustworthy. Metadata-hard
+negatives are the right upgrade before any absolute number ships.
 
 Not isolated here: the **model** and **task-framing** axes. #423's 0.56 sits *below* this 2×2's thin/thin
 0.655 — the residual ~0.10 is the model + classification→retrieval-framing change, which we did not separately
@@ -58,9 +89,10 @@ transition is unobservable (left truncation). (a) uses all entrants (sees long l
 ## What this changes
 
 The defensible sentences replace the tempting ones:
-- ~~"we fixed the ranker, AUC went 0.5→0.85"~~ → "the ranker is uninformative on thin text and informative on
-  rich; text richness (+0.22, model constant) is a sufficient cause; ~0.10 of the historical move is
-  model+framing we did not isolate."
+- ~~"we fixed the ranker, AUC went 0.5→0.85"~~ → "under TF-IDF, text richness is sufficient; the *exogenous*
+  target-description effect (+0.138) dominates the controllable query effect (+0.080); DoD descriptions sit
+  below the richness threshold, so real DoD operating AUC is ~0.65–0.81, not 0.87. Absolute values await
+  metadata-hard negatives; only cross-cell deltas are trustworthy today."
 - ~~"median transition lag ~6–9y"~~ → "unconditional median undefined (13% ever transition); conditional lag
   ≥9y, right-censored."
 
