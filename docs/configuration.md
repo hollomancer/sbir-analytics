@@ -46,8 +46,16 @@ Schemas are defined in `sbir_etl/config/schemas/` (`data.py`, `domain.py`, `pipe
   - [Enrichment](#enrichment-configuration)
   - [Pipeline Orchestration](#pipeline-orchestration-configuration)
   - [Neo4j](#neo4j-configuration)
+  - [Analytics API & Read-Only Neo4j](#analytics-api--read-only-neo4j)
   - [ModernBert](#modernbert-configuration)
   - [CET Classification](#cet-classification-configuration)
+  - [Organization Deduplication](#organization-deduplication-configuration)
+  - [Company Categorization](#company-categorization-configuration)
+  - [Transition Detection](#transition-detection-configuration)
+  - [Statistical Reporting](#statistical-reporting-configuration)
+  - [Fiscal Analysis](#fiscal-analysis-configuration)
+  - [OT Consortium](#ot-consortium-configuration)
+  - [CLI](#cli-configuration)
 - [Environment Variable Overrides](#environment-variable-overrides)
 - [Docker Deployment](#docker-deployment)
 - [Troubleshooting](#troubleshooting)
@@ -506,13 +514,61 @@ neo4j:
 
 Schema: `Neo4jConfig` in `sbir_etl/config/schemas/data.py`.
 
+### Analytics API & Read-Only Neo4j
+
+The private analytics API (`sbir-analytics-api`) is configured entirely by
+environment variables, not YAML. See
+[private-analytics-api.md](architecture/private-analytics-api.md) for the endpoint
+reference.
+
+| Env var | Default | Purpose |
+|---------|---------|---------|
+| `SBIR_ANALYTICS_API_TOKEN` | *(empty)* | Bearer token required by all `/v1/*` routes. Empty → API returns `503` (auth not configured). |
+| `SBIR_ANALYTICS_API_HOST` | `0.0.0.0` | uvicorn bind host. |
+| `SBIR_ANALYTICS_API_PORT` | `8000` | uvicorn listen port. |
+| `SBIR_ANALYTICS_SNAPSHOT_DIR` | `reports/analytics_snapshots` | Filesystem root for snapshot JSON (mounted read-only in the container). |
+| `SBIR_ANALYTICS_QUERY_TIMEOUT_SECONDS` | `10` | Per-query Neo4j timeout (seconds). |
+| `SBIR_ANALYTICS_PIPELINE_RUN_ID` | *(none)* | Stamped into every response's `provenance.pipeline_run_id`. |
+| `NEO4J_READ_USER` | falls back to `NEO4J_USER`, then `neo4j` | Read-only Neo4j username. Deployments should use a read-only account. |
+| `NEO4J_READ_PASSWORD` | falls back to `NEO4J_PASSWORD` | Read-only Neo4j password. |
+
+The API also reads `NEO4J_URI` and `NEO4J_DATABASE` (shared with the loaders).
+
 ### ModernBert Configuration
 
 ModernBert embedding/similarity settings live under `ml.modernbert`. Notable fields: `use_local` (API vs local inference), `api` (token env, batch size, QPS, retries), `local` (model name, device), `text` (max length, award/patent fields), `similarity_threshold`, `top_k`, and coverage thresholds. See `config/base.yaml` and the ML domain schema in `sbir_etl/config/schemas/domain.py`.
 
 ### CET Classification Configuration
 
-CET taxonomy and classifier settings live under the `cet` section: `taxonomy` (version, file, hierarchy), `classification.vectorizer` (TF-IDF n-grams, max features), `feature_selection`, `classifier`, `calibration`, and `scoring.bands` (high/medium/low). See `config/base.yaml` and `sbir_etl/config/schemas/domain.py`.
+CET taxonomy and classifier settings live under the `cet` section: `taxonomy` (version, file, hierarchy), `classification.vectorizer` (TF-IDF n-grams, max features), `feature_selection`, `classifier`, `calibration`, and `scoring.bands` (high/medium/low). See `config/base.yaml` and `sbir_etl/config/schemas/domain.py`. The rule-engine layer (agency/branch priors, context-keyword boosts) is configured separately in `config/cet/classification.yaml`.
+
+### Organization Deduplication Configuration
+
+Pre-load fuzzy matching / MERGE behavior under `organization_deduplication`: `high_threshold` (90 — auto-merge) and `low_threshold` (75 — flag for review), `merge_on_uei` / `merge_on_duns` (true), `track_merge_history` (true), plus `enhanced_matching` toggles (`enable_phonetic_matching`, `enable_jaro_winkler`, `enable_enhanced_abbreviations`).
+
+### Company Categorization Configuration
+
+Product/service/R&D classification under `company_categorization`: `product_leaning_pct` / `service_leaning_pct` / `rd_leaning_pct` (51.0 each), `psc_family_diversity_threshold` (6 → "Mixed"), award-count confidence cutoffs (`low_max_awards` 2, `medium_max_awards` 5), batching (`batch_size` 100, `parallel_workers` 4), and USASpending lookup settings (`usaspending_table_name`, `usaspending_timeout_seconds`, `usaspending_retry_attempts`).
+
+### Transition Detection Configuration
+
+Quality gates under `transition` (scoring *weights* live in `config/transition/detection.yaml`, not here). Key blocks: `contracts` (coverage gates — `date_coverage_min` 0.90, `ident_coverage_min` 0.60, `sample_size_min/max`, `enforce_sample_size`), `analytics.score_threshold` (0.60 — min score counted as a transition) with optional CI gates `min_award_rate` / `min_company_rate`, `detections.min_valid_rate` (0.99), and `vendor_resolution` (`min_rate` 0.60, `fuzzy_threshold` 0.85 — RapidFuzz `token_sort_ratio`).
+
+### Statistical Reporting Configuration
+
+Report generation under `statistical_reporting`: `generation` (enabled, `formats` html/json/markdown/executive, `output_directory`), per-module toggles (`modules.{sbir_enrichment,patent_analysis,cet_classification,transition_detection}`), `insights` (anomaly detection, recommendations, success stories), format-specific options, `cicd` (GitHub Actions artifact upload + PR comments), and `quality_thresholds` (completeness/enrichment warning & error levels).
+
+### Fiscal Analysis Configuration
+
+Fiscal-return / input-output modeling under `fiscal_analysis`: `base_year` (2023), `inflation_source`, `naics_to_bea` crosswalk (version, paths, `min_confidence_threshold`, hierarchical 6→4→3→2-digit fallback), `tax_parameters` (individual income, payroll, corporate, excise rates), `sensitivity_parameters` (Monte-Carlo `num_scenarios`, `random_seed`, uncertainty ranges, confidence intervals), `quality_thresholds`, `performance` (chunking, workers, memory/timeout), and `output` (formats, `output_directory`).
+
+### OT Consortium Configuration
+
+Phase III OT-consortium verification tiering under `ot_consortium`: `cmf_registry_path` (consortium member registry CSV), `claims_path` (null by default; set — or `SBIR_ETL__OT_CONSORTIUM__CLAIMS_PATH` — to switch the tiering asset into audit mode over a firm-reported covered-sales file), `unknown_vendor_min_obligation` (1,000,000.0), and `fpds_reporting_lag_days` (90).
+
+### CLI Configuration
+
+Terminal UI settings under `cli`: `theme` (default/dark/light), refresh rates (`progress_refresh_rate`, `dashboard_refresh_rate`), `max_table_rows` (50), `truncate_long_text`, `show_timestamps`, `api_timeout_seconds` (30), `max_concurrent_operations` (4), and `cache_metrics_seconds` (60).
 
 ## Docker Deployment
 

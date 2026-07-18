@@ -91,10 +91,13 @@ The Transition Detection Algorithm is a multi-signal scoring system that identif
    - 9-digit unique business identifier
    - Legacy system, less common in modern data
 
-4. **Fuzzy Name Matching** - Fallback, variable confidence (0.65-0.85)
-   - RapidFuzz token_set_ratio algorithm
+4. **Fuzzy Name Matching** - Fallback, variable confidence (0.80-0.90)
+   - RapidFuzz `token_sort_ratio` algorithm (`difflib` fallback if RapidFuzz absent)
    - Normalized company names (uppercase, special char removal)
-   - Configurable thresholds for primary (0.85) and secondary (0.70) matches
+   - Configurable thresholds — library defaults: primary 0.90, secondary 0.80
+     (the Dagster `enriched_vendor_resolution` asset overrides the primary to
+     0.85 via `SBIR_ETL__TRANSITION__FUZZY__THRESHOLD`). See
+     [vendor-matching.md](vendor-matching.md) for the authoritative algorithm.
 
 **Confidence Tracking**: Each resolved vendor match includes a confidence score reflecting the match method quality.
 

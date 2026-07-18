@@ -2,7 +2,7 @@
 
 Type: Overview
 Owner: docs@project
-Last-Reviewed: 2025-11-21
+Last-Reviewed: 2026-07-16
 Status: active
 
 ---
@@ -26,6 +26,7 @@ See [README](../README.md) for project context, research questions, and setup. T
 - Getting started: [`README.md`](../README.md)
 - Architecture overview: [`architecture/detailed-overview.md`](architecture/detailed-overview.md)
 - Shared tech stack: [`architecture/shared-tech-stack.md`](architecture/shared-tech-stack.md)
+- Pipelines, schedules & sensors: [`architecture/dagster-pipelines.md`](architecture/dagster-pipelines.md)
 
 ### Deployment (Optional Cloud Setup)
 
@@ -51,9 +52,31 @@ See [README](../README.md) for project context, research questions, and setup. T
 - Decisions (ADRs): [`decisions/`](decisions/)
 - Specification System: [`specifications/README.md`](specifications/README.md)
 
+### Subsystems & Domains
+
+- Transition detection: [`transition/README.md`](transition/README.md) — scoring, vendor matching, evidence bundles
+- ML / CET classification: [`ml/README.md`](ml/README.md) — incl. [rule-engine tuning](ml/cet-rule-engine.md)
+- Enrichment sources: [`enrichment/`](enrichment/) — SAM.gov, USASpending, and the full [enricher catalog](enrichment/enricher-catalog.md) (credentials)
+- Data pipeline & refreshes: [`data/index.md`](data/index.md) — incl. [weekly awards report](data/weekly-awards-report.md), [capital events & UCC1](data/capital-events.md)
+- Fiscal analysis: [`fiscal/sbir-fiscal-pipeline-guide.md`](fiscal/sbir-fiscal-pipeline-guide.md)
+- OT consortium: [`ot-consortium/tiers.md`](ot-consortium/tiers.md)
+- Analytics API: [`api/README.md`](api/README.md) and [`architecture/private-analytics-api.md`](architecture/private-analytics-api.md)
+- Query cookbook: [`queries/transition-queries.md`](queries/transition-queries.md)
+- Testing: [`testing/index.md`](testing/index.md)
+- Research notes: [`research/`](research/)
+- Getting started: [`getting-started/README.md`](getting-started/README.md)
+
+### Tech-area reports (provisional)
+
+Policy-leader deliverables produced by the [tech-area transition report](../specs/tech-area-transition-report/) workflow. All are marked provisional — figures are bounded estimates, not final program rates.
+
+- Nanotechnology: [policy brief](nanotech_sbir_policy_brief.md) · [findings](nanotech_sbir_transition_findings.md) · [methodology](nano_phase3_methodology.md)
+- Hypersonics: [policy brief](hypersonics_sbir_policy_brief.md) · [findings](hypersonics_sbir_transition_findings.md)
+- Quantum information science: [policy brief](quantum_information_science_sbir_policy_brief.md) · [findings](quantum_information_science_sbir_transition_findings.md)
+
 ## Conventions
 
-All docs use Diátaxis types: Tutorials, How-to guides, Explanations, References. Each file includes front-matter with Type, Owner, Last-Reviewed, and Status.
+Docs follow the Diátaxis model (Tutorials, How-to guides, Explanations, References). Curated reference docs carry front-matter with Type, Owner, Last-Reviewed, and Status; many working notes and research docs do not yet. New reference docs should include front-matter, and backfilling it on existing docs is tracked as ongoing cleanup.
 
 ## Governance
 
