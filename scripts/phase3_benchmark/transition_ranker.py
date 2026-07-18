@@ -53,7 +53,10 @@ def temporal_features(notice_year: int | None, firm_award_years: Sequence[int]) 
     years = [y for y in firm_award_years if y is not None]
     if notice_year is None or not years:
         return {"gap": 0.0, "after_first": 0.5}
-    return {"gap": float(notice_year - max(years)), "after_first": 1.0 if notice_year >= min(years) else 0.0}
+    return {
+        "gap": float(notice_year - max(years)),
+        "after_first": 1.0 if notice_year >= min(years) else 0.0,
+    }
 
 
 def id_xref(notice_text: str, firm_identifiers: set[str]) -> float:
@@ -67,19 +70,26 @@ def notice_type_ordinal(base_type: str) -> float:
     return NOTICE_TYPE_ORDINAL.get(base_type, 0.0)
 
 
-def award_similarity(query_texts: Sequence[str], notice_texts: Sequence[str],
-                     analyzer: str = "word") -> np.ndarray:
+def award_similarity(
+    query_texts: Sequence[str], notice_texts: Sequence[str], analyzer: str = "word"
+) -> np.ndarray:
     """Max abstract↔notice TF-IDF cosine per (query, notice). word (1,2)-grams or char_wb (3,5)."""
     ngram = (1, 2) if analyzer == "word" else (3, 5)
     stop = {"stop_words": "english"} if analyzer == "word" else {}
     vec = TfidfVectorizer(analyzer=analyzer, ngram_range=ngram, min_df=1, **stop)
     matrix = vec.fit_transform(list(query_texts) + list(notice_texts))
-    q, n = matrix[: len(query_texts)], matrix[len(query_texts):]
+    q, n = matrix[: len(query_texts)], matrix[len(query_texts) :]
     return cosine_similarity(q, n)
 
 
-def evaluate(features: np.ndarray, labels: np.ndarray, groups: np.ndarray,
-             owners: np.ndarray, n_splits: int = 5, seed: int = 20260716) -> dict[str, float]:
+def evaluate(
+    features: np.ndarray,
+    labels: np.ndarray,
+    groups: np.ndarray,
+    owners: np.ndarray,
+    n_splits: int = 5,
+    seed: int = 20260716,
+) -> dict[str, float]:
     """GroupKFold-BY-FIRM logistic LTR; firm-clustered retrieval AUC + top-K. `owners` groups the rows
     of one candidate set (one true + hard negatives). No firm appears in train and test."""
     per_firm: dict[str, list[float]] = {}
@@ -87,7 +97,9 @@ def evaluate(features: np.ndarray, labels: np.ndarray, groups: np.ndarray,
     gkf = GroupKFold(n_splits=min(n_splits, len(set(groups))))
     for train, test in gkf.split(features, labels, groups):
         scaler = StandardScaler().fit(features[train])
-        model = LogisticRegression(max_iter=1000).fit(scaler.transform(features[train]), labels[train])
+        model = LogisticRegression(max_iter=1000).fit(
+            scaler.transform(features[train]), labels[train]
+        )
         scored = model.predict_proba(scaler.transform(features[test]))[:, 1]
         for owner in np.unique(owners[test]):
             mask = owners[test] == owner
@@ -102,8 +114,14 @@ def evaluate(features: np.ndarray, labels: np.ndarray, groups: np.ndarray,
             ranks.append(1 + int((neg_scores >= true_score).sum()))
     firm_auc = np.array([np.mean(v) for v in per_firm.values()])
     ranks_arr = np.array(ranks)
-    boot = [np.random.default_rng(k).choice(firm_auc, len(firm_auc), replace=True).mean()
-            for k in range(2000)] if len(firm_auc) > 1 else [float("nan")]
+    boot = (
+        [
+            np.random.default_rng(k).choice(firm_auc, len(firm_auc), replace=True).mean()
+            for k in range(2000)
+        ]
+        if len(firm_auc) > 1
+        else [float("nan")]
+    )
     return {
         "firms": len(firm_auc),
         "auc": round(float(firm_auc.mean()), 3),
@@ -114,5 +132,11 @@ def evaluate(features: np.ndarray, labels: np.ndarray, groups: np.ndarray,
     }
 
 
-__all__ = ["temporal_features", "id_xref", "notice_type_ordinal", "award_similarity", "evaluate",
-           "NOTICE_TYPE_ORDINAL"]
+__all__ = [
+    "temporal_features",
+    "id_xref",
+    "notice_type_ordinal",
+    "award_similarity",
+    "evaluate",
+    "NOTICE_TYPE_ORDINAL",
+]

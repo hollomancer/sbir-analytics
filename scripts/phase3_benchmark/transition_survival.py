@@ -39,24 +39,33 @@ def survival_at(curve: dict[int, float], t: int) -> float:
 
 def build_cohort_frames(awards: pd.DataFrame, coded: pd.DataFrame) -> pd.DataFrame:
     """Build one firm-level row using the earliest valid post-entry coded action."""
-    awards = awards[(awards["UEI"].str.len() > 5) &
-                    (awards["Agency"] == "Department of Defense")].copy()
+    awards = awards[
+        (awards["UEI"].str.len() > 5) & (awards["Agency"] == "Department of Defense")
+    ].copy()
     phase = awards["Phase"].astype(str).str.upper()
-    awards = awards[phase.str.contains("II", na=False)
-                    & ~phase.str.contains("III", na=False)].copy()
+    awards = awards[
+        phase.str.contains("II", na=False) & ~phase.str.contains("III", na=False)
+    ].copy()
     year = awards["Proposal Award Date"].map(_year)
     awards["ay"] = year.fillna(pd.to_numeric(awards["Solicitation Year"], errors="coerce"))
     awards = awards[(awards["ay"] >= 1983) & (awards["ay"] <= OBS_END)]
     entry = awards.groupby("UEI")["ay"].min().astype(int)
 
-    date_columns = [name for name in ("signed", "signedDate", "action_date", "effectiveDate")
-                    if name in coded]
+    date_columns = [
+        name for name in ("signed", "signedDate", "action_date", "effectiveDate") if name in coded
+    ]
     if not date_columns:
-        raise ValueError("coded frame requires an action-date column; FY-only modification rows are invalid")
-    parsed = pd.concat(
-        [pd.to_datetime(coded[name], errors="coerce", utc=True) for name in date_columns],
-        axis=1,
-    ).bfill(axis=1).iloc[:, 0]
+        raise ValueError(
+            "coded frame requires an action-date column; FY-only modification rows are invalid"
+        )
+    parsed = (
+        pd.concat(
+            [pd.to_datetime(coded[name], errors="coerce", utc=True) for name in date_columns],
+            axis=1,
+        )
+        .bfill(axis=1)
+        .iloc[:, 0]
+    )
     events = coded.assign(_event_year=parsed.dt.year).dropna(subset=["_event_year"])
     events_by_firm: dict[object, list[int]] = {
         uei: sorted(int(year) for year in group["_event_year"])
@@ -69,8 +78,9 @@ def build_cohort_frames(awards: pd.DataFrame, coded: pd.DataFrame) -> pd.DataFra
         for uei, entry_year in cohort["entry"].items()
     ]
     cohort["is_event"] = cohort["event_yr"].notna()
-    cohort["lag"] = np.where(cohort["is_event"], cohort["event_yr"] - cohort["entry"],
-                             OBS_END - cohort["entry"])
+    cohort["lag"] = np.where(
+        cohort["is_event"], cohort["event_yr"] - cohort["entry"], OBS_END - cohort["entry"]
+    )
     return cohort[cohort["lag"] >= 0]
 
 
@@ -99,17 +109,23 @@ def main(argv: list[str] | None = None) -> int:
     cohort = build_cohort(args.awards, args.coded)
 
     n, events = len(cohort), int(cohort["is_event"].sum())
-    print(f"DoD Phase II cohort: {n} firms | observed coded Phase III: {events} ({100 * events / n:.0f}%) | "
-          f"censored: {n - events}\n")
+    print(
+        f"DoD Phase II cohort: {n} firms | observed coded Phase III: {events} ({100 * events / n:.0f}%) | "
+        f"censored: {n - events}\n"
+    )
     conditional = cohort.loc[cohort["is_event"], "lag"]
     print("(a) Descriptive event-only lag (not a population bound):")
-    print(f"    n={len(conditional)}  median {conditional.median():.0f}y  mean {conditional.mean():.1f}y "
-          "— conditional on an observed coded event\n")
+    print(
+        f"    n={len(conditional)}  median {conditional.median():.0f}y  mean {conditional.mean():.1f}y "
+        "— conditional on an observed coded event\n"
+    )
 
     clean = cohort[cohort["entry"] >= 2016]
     curve = kaplan_meier(clean["lag"].to_numpy(), clean["is_event"].to_numpy())
-    print(f"(b) Kaplan-Meier, first observed DoD Phase II 2016+, n={len(clean)}, "
-          f"events={int(clean['is_event'].sum())}):")
+    print(
+        f"(b) Kaplan-Meier, first observed DoD Phase II 2016+, n={len(clean)}, "
+        f"events={int(clean['is_event'].sum())}):"
+    )
     for t in (2, 3, 5, 7):
         if any(k >= t for k in curve):
             print(f"    transitioned by year {t}: {100 * (1 - survival_at(curve, t)):.1f}%")
@@ -119,14 +135,20 @@ def main(argv: list[str] | None = None) -> int:
     print("\n  This curve does not identify true Phase III latency or a never-transition fraction.")
     if args.output:
         args.output.parent.mkdir(parents=True, exist_ok=True)
-        args.output.write_text(json.dumps({
-            "status": "provisional",
-            "estimand": "first observed DoD Phase II to first later observed coded Phase III action",
-            "firms": n,
-            "events": events,
-            "median": verdict,
-            "warnings": ["coded events only", "same-firm proxy; lineage unverified"],
-        }, indent=2) + "\n")
+        args.output.write_text(
+            json.dumps(
+                {
+                    "status": "provisional",
+                    "estimand": "first observed DoD Phase II to first later observed coded Phase III action",
+                    "firms": n,
+                    "events": events,
+                    "median": verdict,
+                    "warnings": ["coded events only", "same-firm proxy; lineage unverified"],
+                },
+                indent=2,
+            )
+            + "\n"
+        )
     return 0
 
 

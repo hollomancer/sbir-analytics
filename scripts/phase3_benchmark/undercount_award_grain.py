@@ -39,8 +39,10 @@ def reconstruct_coded_award_key(frame: pd.DataFrame) -> pd.Series:
 
 def authoritative_coded_keys(frame: pd.DataFrame) -> pd.Series:
     """Return native keys and fail if reconstruction disagrees where available."""
-    column = next((name for name in ("contract_award_unique_key", "contractAwardUniqueKey")
-                   if name in frame), None)
+    column = next(
+        (name for name in ("contract_award_unique_key", "contractAwardUniqueKey") if name in frame),
+        None,
+    )
     if column is None:
         raise ValueError("coded frame lacks native contractAwardUniqueKey coverage")
     native = frame[column].map(_norm)
@@ -89,8 +91,9 @@ def _stats(coded_keys: set[str], described_keys: set[str]) -> dict[str, int | fl
 def undercount(coded: pd.DataFrame, described: pd.DataFrame) -> dict[str, object]:
     """Compute unadjudicated description-only flags by SBIR/STTR stratum."""
     native = authoritative_coded_keys(coded)
-    research_column = next((name for name in ("research", "_research_code", "code")
-                            if name in coded), None)
+    research_column = next(
+        (name for name in ("research", "_research_code", "code") if name in coded), None
+    )
     if research_column is None:
         raise ValueError("coded frame lacks SR3/ST3 research-code stratum")
     strata: dict[str, dict[str, int | float]] = {}

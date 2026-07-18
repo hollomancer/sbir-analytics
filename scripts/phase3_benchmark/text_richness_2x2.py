@@ -41,12 +41,16 @@ def longest_shared_word_run(x: str, y: str, cap: int = 400) -> int:
     strings, not technical relatedness (a fragile result). Equal distributions mean distributed vocabulary.
     """
     xt, yt = x.lower().split()[:cap], y.lower().split()[:cap]
-    return difflib.SequenceMatcher(None, xt, yt, autojunk=False).find_longest_match(
-        0, len(xt), 0, len(yt)).size
+    return (
+        difflib.SequenceMatcher(None, xt, yt, autojunk=False)
+        .find_longest_match(0, len(xt), 0, len(yt))
+        .size
+    )
 
 
-def paired_bootstrap(per_firm: np.ndarray, n_boot: int = 2000,
-                     seed: int = 1) -> tuple[float, float, float]:
+def paired_bootstrap(
+    per_firm: np.ndarray, n_boot: int = 2000, seed: int = 1
+) -> tuple[float, float, float]:
     """Firm-clustered bootstrap of a per-firm statistic → (mean, 2.5%, 97.5%). Pure.
 
     Used on the paired per-firm difference of main effects (random vs metadata negatives): because the same
@@ -55,10 +59,17 @@ def paired_bootstrap(per_firm: np.ndarray, n_boot: int = 2000,
     rng = np.random.RandomState(seed)
     n = len(per_firm)
     means = [per_firm[rng.choice(n, n, replace=True)].mean() for _ in range(n_boot)]
-    return float(per_firm.mean()), float(np.percentile(means, 2.5)), float(np.percentile(means, 97.5))
+    return (
+        float(per_firm.mean()),
+        float(np.percentile(means, 2.5)),
+        float(np.percentile(means, 97.5)),
+    )
 
-_SUFFIX = re.compile(r"\b(INC|LLC|CORP|CORPORATION|CO|COMPANY|LTD|LP|LLP|THE|INCORPORATED|TECHNOLOGIES|"
-                     r"TECHNOLOGY|TECH|SYSTEMS)\b")
+
+_SUFFIX = re.compile(
+    r"\b(INC|LLC|CORP|CORPORATION|CO|COMPANY|LTD|LP|LLP|THE|INCORPORATED|TECHNOLOGIES|"
+    r"TECHNOLOGY|TECH|SYSTEMS)\b"
+)
 
 
 def normalize_name(value: object) -> str:
@@ -124,16 +135,18 @@ def metadata_hard_negatives(
     return negatives, tiers["exact_tx_year"]
 
 
-def firm_retrieval_auc(query_texts: list[str], target_texts: list[str],
-                       neg_indices: dict[int, np.ndarray], *,
-                       vectorizer: TfidfVectorizer | None = None) -> tuple[float, float]:
+def firm_retrieval_auc(
+    query_texts: list[str],
+    target_texts: list[str],
+    neg_indices: dict[int, np.ndarray],
+    *,
+    vectorizer: TfidfVectorizer | None = None,
+) -> tuple[float, float]:
     """Firm-clustered retrieval AUC + top-1 under a FIXED negative set (identical across text conditions).
 
     AUC = mean over firms of P(sim(i, own target) > sim(i, negative target)). Model = TF-IDF, held constant.
     """
-    vec = vectorizer or TfidfVectorizer(
-        stop_words="english", ngram_range=(1, 2), min_df=2
-    )
+    vec = vectorizer or TfidfVectorizer(stop_words="english", ngram_range=(1, 2), min_df=2)
     texts = list(query_texts) + list(target_texts)
     matrix = vec.transform(texts) if vectorizer is not None else vec.fit_transform(texts)
     n = len(query_texts)
@@ -163,7 +176,18 @@ def _is_sbir(project: dict) -> bool:
     phase = re.sub(r"[^A-Z0-9]", "", str(project.get("phase", "")).upper())
     phase = phase.removeprefix("PHASE")
     return "SMALL BUSINESS" in title.upper() or phase in {
-        "1", "I", "2", "II", "2E", "IIE", "2X", "IIX", "2S", "IIS", "3", "III"
+        "1",
+        "I",
+        "2",
+        "II",
+        "2E",
+        "IIE",
+        "2X",
+        "IIX",
+        "2S",
+        "IIS",
+        "3",
+        "III",
     }
 
 
@@ -194,8 +218,9 @@ def _asof_texts(
     return values
 
 
-def run(award_csv: Path, techport_json: Path, *, negatives: str = "random",
-        n_neg: int = 25) -> dict[str, object]:
+def run(
+    award_csv: Path, techport_json: Path, *, negatives: str = "random", n_neg: int = 25
+) -> dict[str, object]:
     awards = pd.read_csv(award_csv, dtype=str, keep_default_na=False)
     awards = awards[awards["UEI"].str.len() > 5]
     name_to_ueis: dict[str, set[str]] = {}
@@ -203,12 +228,13 @@ def run(award_csv: Path, techport_json: Path, *, negatives: str = "random",
         key = normalize_name(company)
         if len(key) > 4:
             name_to_ueis.setdefault(key, set()).add(str(uei))
-    name_to_uei = {key: next(iter(ueis)) for key, ueis in name_to_ueis.items()
-                   if len(ueis) == 1}
+    name_to_uei = {key: next(iter(ueis)) for key, ueis in name_to_ueis.items() if len(ueis) == 1}
     listing = json.loads(techport_json.read_text())
     projects = listing.get("results") or listing.get("projects") or listing
     rec: dict[str, dict] = {}
-    for project in sorted(projects, key=lambda value: str(value.get("projectId") or value.get("id") or "")):
+    for project in sorted(
+        projects, key=lambda value: str(value.get("projectId") or value.get("id") or "")
+    ):
         if _is_sbir(project):
             continue
         description = str(project.get("description") or "")
@@ -222,13 +248,18 @@ def run(award_csv: Path, techport_json: Path, *, negatives: str = "random",
                 utc=True,
             )
             if uei and uei not in rec and pd.notna(target_date):
-                rec[uei] = {"desc": description, "title": str(project.get("title", "")),
-                            "yr": int(target_date.year), "target_date": target_date,
-                            "tx": _tx_area(project),
-                            "project_id": project.get("projectId") or project.get("id")}
+                rec[uei] = {
+                    "desc": description,
+                    "title": str(project.get("title", "")),
+                    "yr": int(target_date.year),
+                    "target_date": target_date,
+                    "tx": _tx_area(project),
+                    "project_id": project.get("projectId") or project.get("id"),
+                }
     phase = awards["Phase"].astype(str).str.upper()
-    phase2 = awards[phase.str.contains("II", na=False)
-                    & ~phase.str.contains("III", na=False)].copy()
+    phase2 = awards[
+        phase.str.contains("II", na=False) & ~phase.str.contains("III", na=False)
+    ].copy()
     award_dates = pd.to_datetime(phase2["Proposal Award Date"], errors="coerce", utc=True)
     if "Solicitation Year" in phase2:
         year_end = pd.to_datetime(
@@ -241,16 +272,18 @@ def run(award_csv: Path, techport_json: Path, *, negatives: str = "random",
 
     q_title = _asof_texts(phase2, rec, "Award Title", 2000)
     q_abstract = _asof_texts(phase2, rec, "Abstract", 9000)
-    firms = [u for u in rec
-             if len(q_abstract.get(u, "")) > 80 and len(q_title.get(u, "")) > 10
-             and len(rec[u]["title"]) > 10]
+    firms = [
+        u
+        for u in rec
+        if len(q_abstract.get(u, "")) > 80
+        and len(q_title.get(u, "")) > 10
+        and len(rec[u]["title"]) > 10
+    ]
 
     if negatives == "metadata":
         years = np.array([rec[u]["yr"] for u in firms])
         tx_areas = np.array([rec[u]["tx"] for u in firms])
-        neg_indices, tier_counts = metadata_hard_negatives_with_tiers(
-            years, tx_areas, n_neg
-        )
+        neg_indices, tier_counts = metadata_hard_negatives_with_tiers(years, tx_areas, n_neg)
     else:
         neg_indices = random_negatives(len(firms), n_neg)
         tier_counts = {"random": len(firms)}
@@ -276,16 +309,19 @@ def run(award_csv: Path, techport_json: Path, *, negatives: str = "random",
             vectorizer=vectorizer,
         )
 
-    return {"status": "provisional",
-            "label_semantics": "firm-linked NASA portfolio proxy",
-            "warnings": ["not a Phase III detector benchmark", "exact-name-linked selected cohort"],
-            "firms": len(firms), "negatives": negatives,
-            "negative_tier_counts": tier_counts,
-            "true_hard_neg_firms": tier_counts.get("exact_tx_year", 0),
-            "thin_query/thin_target": cell(q_title, t_title),
-            "thin_query/rich_target": cell(q_title, t_desc),
-            "rich_query/thin_target": cell(q_abstract, t_title),
-            "rich_query/rich_target": cell(q_abstract, t_desc)}
+    return {
+        "status": "provisional",
+        "label_semantics": "firm-linked NASA portfolio proxy",
+        "warnings": ["not a Phase III detector benchmark", "exact-name-linked selected cohort"],
+        "firms": len(firms),
+        "negatives": negatives,
+        "negative_tier_counts": tier_counts,
+        "true_hard_neg_firms": tier_counts.get("exact_tx_year", 0),
+        "thin_query/thin_target": cell(q_title, t_title),
+        "thin_query/rich_target": cell(q_title, t_desc),
+        "rich_query/thin_target": cell(q_abstract, t_title),
+        "rich_query/rich_target": cell(q_abstract, t_desc),
+    }
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -308,10 +344,16 @@ def main(argv: list[str] | None = None) -> int:
     if args.output:
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(json.dumps(result, indent=2) + "\n")
-    print(f"firms (fixed across all cells): {result['firms']}   model = TF-IDF   "
-          f"negatives = {result['negatives']} (true-hard for {result['true_hard_neg_firms']})\n")
-    cell_names = ("thin_query/thin_target", "thin_query/rich_target",
-                  "rich_query/thin_target", "rich_query/rich_target")
+    print(
+        f"firms (fixed across all cells): {result['firms']}   model = TF-IDF   "
+        f"negatives = {result['negatives']} (true-hard for {result['true_hard_neg_firms']})\n"
+    )
+    cell_names = (
+        "thin_query/thin_target",
+        "thin_query/rich_target",
+        "rich_query/thin_target",
+        "rich_query/rich_target",
+    )
     cells = {name: cast(tuple[float, float], result[name]) for name in cell_names}
     for cell_name, (auc, top1) in cells.items():
         print(f"  {cell_name:24s} AUC {auc:.3f}  top1 {100 * top1:.0f}%")
@@ -319,9 +361,11 @@ def main(argv: list[str] | None = None) -> int:
     tr = cells["thin_query/rich_target"][0]
     rt = cells["rich_query/thin_target"][0]
     rr = cells["rich_query/rich_target"][0]
-    print(f"\n  target main effect (avg): +{((tr - tt) + (rr - rt)) / 2:.3f}   "
-          f"query main effect (avg): +{((rt - tt) + (rr - tr)) / 2:.3f}   "
-          f"interaction: {(rr - rt) - (tr - tt):.3f}")
+    print(
+        f"\n  target main effect (avg): +{((tr - tt) + (rr - rt)) / 2:.3f}   "
+        f"query main effect (avg): +{((rt - tt) + (rr - tr)) / 2:.3f}   "
+        f"interaction: {(rr - rt) - (tr - tt):.3f}"
+    )
     return 0
 
 

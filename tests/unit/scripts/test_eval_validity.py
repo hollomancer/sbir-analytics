@@ -13,10 +13,16 @@ from auc_by_target_length import auc_by_length_decile, per_firm_auc  # noqa: E40
 from dod_transition_inventory import target_text_coverage  # noqa: E402
 from dod_within_retrieval import build_asof_pairs, floor_coverage, within_dod_auc  # noqa: E402
 from retrieval_metrics import tie_corrected_auc  # noqa: E402
-from text_richness_2x2 import (_asof_texts, _is_sbir, firm_retrieval_auc,  # noqa: E402
-                               longest_shared_word_run,
-                               metadata_hard_negatives, normalize_name, paired_bootstrap,
-                               random_negatives)
+from text_richness_2x2 import (
+    _asof_texts,
+    _is_sbir,
+    firm_retrieval_auc,  # noqa: E402
+    longest_shared_word_run,
+    metadata_hard_negatives,
+    normalize_name,
+    paired_bootstrap,
+    random_negatives,
+)
 from transition_survival import build_cohort_frames, kaplan_meier, survival_at  # noqa: E402
 
 
@@ -30,12 +36,20 @@ def test_nasa_textual_phase_is_not_admitted_as_transition_target():
 
 
 def test_nasa_asof_comparison_uses_full_date_not_calendar_year():
-    phase2 = pd.DataFrame([
-        {"UEI": "U1", "_award_date": pd.Timestamp("2020-01-01", tz="UTC"),
-         "Abstract": "eligible"},
-        {"UEI": "U1", "_award_date": pd.Timestamp("2020-12-01", tz="UTC"),
-         "Abstract": "future same year"},
-    ])
+    phase2 = pd.DataFrame(
+        [
+            {
+                "UEI": "U1",
+                "_award_date": pd.Timestamp("2020-01-01", tz="UTC"),
+                "Abstract": "eligible",
+            },
+            {
+                "UEI": "U1",
+                "_award_date": pd.Timestamp("2020-12-01", tz="UTC"),
+                "Abstract": "future same year",
+            },
+        ]
+    )
     targets = {"U1": {"target_date": pd.Timestamp("2020-06-01", tz="UTC")}}
     assert _asof_texts(phase2, targets, "Abstract", 100)["U1"] == "eligible"
 
@@ -60,8 +74,10 @@ def test_retrieval_auc_assigns_half_credit_to_ties():
 def test_random_negatives_exclude_self_and_are_fixed_by_seed():
     a = random_negatives(10, 4, seed=1)
     b = random_negatives(10, 4, seed=1)
-    assert all(i not in a[i] for i in a)                      # never picks self
-    assert all(np.array_equal(a[i], b[i]) for i in a)         # same seed -> identical set (stable across cells)
+    assert all(i not in a[i] for i in a)  # never picks self
+    assert all(
+        np.array_equal(a[i], b[i]) for i in a
+    )  # same seed -> identical set (stable across cells)
 
 
 def test_metadata_hard_negatives_prefer_same_tx_area():
@@ -69,13 +85,13 @@ def test_metadata_hard_negatives_prefer_same_tx_area():
     years = np.array([2020, 2020, 2021, 2019, 2020])
     tx = np.array(["TXA", "TXA", "TXA", "TXA", "TXB"])
     negs, hard = metadata_hard_negatives(years, tx, n_neg=3, min_pool=3)
-    assert 4 not in negs[0]                                   # the off-area firm is excluded from firm 0's pool
+    assert 4 not in negs[0]  # the off-area firm is excluded from firm 0's pool
     assert hard >= 1
 
 
 def test_metadata_hard_negatives_fall_back_to_random_when_pool_tiny():
     years = np.array([2020, 2020, 2020])
-    tx = np.array(["TXA", "TXB", "TXC"])                      # no firm shares an area -> fallback
+    tx = np.array(["TXA", "TXB", "TXC"])  # no firm shares an area -> fallback
     negs, hard = metadata_hard_negatives(years, tx, n_neg=2, min_pool=2)
     assert hard == 0 and all(len(negs[i]) == 2 for i in negs)
 
@@ -99,14 +115,14 @@ def test_longest_shared_word_run_detects_copied_span():
     a = "the quick brown fox jumps over the lazy dog near the river bank"
     copied = "unrelated intro the quick brown fox jumps over the lazy dog trailing"
     disjoint = "completely different words with nothing at all in common here today"
-    assert longest_shared_word_run(a, copied) >= 8       # 8-word copied run detected
-    assert longest_shared_word_run(a, disjoint) <= 2     # no meaningful shared run
+    assert longest_shared_word_run(a, copied) >= 8  # 8-word copied run detected
+    assert longest_shared_word_run(a, disjoint) <= 2  # no meaningful shared run
 
 
 def test_paired_bootstrap_ci_brackets_mean_and_zero_for_null_effect():
     per_firm = np.array([0.01, -0.01, 0.02, -0.02, 0.0, 0.005, -0.005])  # centered near 0
     mean, lo, hi = paired_bootstrap(per_firm, n_boot=500)
-    assert lo <= mean <= hi and lo < 0 < hi             # CI straddles 0 for a null effect
+    assert lo <= mean <= hi and lo < 0 < hi  # CI straddles 0 for a null effect
 
 
 def test_floor_coverage_thresholds():
@@ -116,21 +132,46 @@ def test_floor_coverage_thresholds():
 
 
 def test_dod_pairs_are_asof_and_keep_same_target_row_metadata():
-    awards = pd.DataFrame([
-        {"UEI": "UEI000001", "Agency": "Department of Defense", "Phase": "Phase II",
-         "Proposal Award Date": "2020-01-01", "Solicitation Year": "2020",
-         "Abstract": "eligible prior abstract"},
-        {"UEI": "UEI000001", "Agency": "Department of Defense", "Phase": "Phase II",
-         "Proposal Award Date": "2023-01-01", "Solicitation Year": "2023",
-         "Abstract": "future leaked abstract"},
-    ])
-    coded = pd.DataFrame([
-        {"uei": "UEI000001", "signed": "2021-10-01", "fy": "2022",
-         "desc": "short target", "psc": "A111", "contract_award_unique_key": "K1"},
-        {"uei": "UEI000001", "signed": "2022-05-01", "fy": "2022",
-         "desc": "a much longer target row",
-         "psc": "B222", "contract_award_unique_key": "K2"},
-    ])
+    awards = pd.DataFrame(
+        [
+            {
+                "UEI": "UEI000001",
+                "Agency": "Department of Defense",
+                "Phase": "Phase II",
+                "Proposal Award Date": "2020-01-01",
+                "Solicitation Year": "2020",
+                "Abstract": "eligible prior abstract",
+            },
+            {
+                "UEI": "UEI000001",
+                "Agency": "Department of Defense",
+                "Phase": "Phase II",
+                "Proposal Award Date": "2023-01-01",
+                "Solicitation Year": "2023",
+                "Abstract": "future leaked abstract",
+            },
+        ]
+    )
+    coded = pd.DataFrame(
+        [
+            {
+                "uei": "UEI000001",
+                "signed": "2021-10-01",
+                "fy": "2022",
+                "desc": "short target",
+                "psc": "A111",
+                "contract_award_unique_key": "K1",
+            },
+            {
+                "uei": "UEI000001",
+                "signed": "2022-05-01",
+                "fy": "2022",
+                "desc": "a much longer target row",
+                "psc": "B222",
+                "contract_award_unique_key": "K2",
+            },
+        ]
+    )
     pairs = build_asof_pairs(awards, coded)
     assert list(pairs["query"]) == ["eligible prior abstract", "eligible prior abstract"]
     assert list(pairs["target_key"]) == ["K1", "K2"]
@@ -140,18 +181,25 @@ def test_dod_pairs_are_asof_and_keep_same_target_row_metadata():
 
 
 def test_dod_auc_excludes_targets_without_hard_pool_instead_of_random_fallback():
-    pairs = pd.DataFrame([
-        {"uei": f"U{i}", "query": f"query {i}", "description": f"target {i}",
-         "fy": 2020, "psc": f"P{i}"}
-        for i in range(4)
-    ])
+    pairs = pd.DataFrame(
+        [
+            {
+                "uei": f"U{i}",
+                "query": f"query {i}",
+                "description": f"target {i}",
+                "fy": 2020,
+                "psc": f"P{i}",
+            }
+            for i in range(4)
+        ]
+    )
     result = within_dod_auc(pairs, min_pool=2)
     assert result["evaluated_targets"] == 0
     assert result["negative_tier_counts"]["excluded"] == 4
 
 
 def test_target_text_coverage_flags_empty_descriptions():
-    lengths = np.array([40, 42, 30, 200, 500])           # 3 of 5 below the 150 floor
+    lengths = np.array([40, 42, 30, 200, 500])  # 3 of 5 below the 150 floor
     cov = target_text_coverage(lengths, floor=150)
     assert cov["n"] == 5 and cov["pct_below_floor"] == 60.0 and cov["pct_usable"] == 40.0
 
@@ -172,16 +220,30 @@ def test_survival_at_uses_last_known_step():
 
 
 def test_survival_uses_phase_ii_and_first_valid_post_entry_action():
-    awards = pd.DataFrame([
-        {"UEI": "UEI000001", "Agency": "Department of Defense", "Phase": "Phase I",
-         "Proposal Award Date": "2017-01-01", "Solicitation Year": "2017"},
-        {"UEI": "UEI000001", "Agency": "Department of Defense", "Phase": "Phase II",
-         "Proposal Award Date": "2020-01-01", "Solicitation Year": "2020"},
-    ])
-    coded = pd.DataFrame([
-        {"uei": "UEI000001", "signed": "2019-01-01"},
-        {"uei": "UEI000001", "signed": "2022-01-01"},
-    ])
+    awards = pd.DataFrame(
+        [
+            {
+                "UEI": "UEI000001",
+                "Agency": "Department of Defense",
+                "Phase": "Phase I",
+                "Proposal Award Date": "2017-01-01",
+                "Solicitation Year": "2017",
+            },
+            {
+                "UEI": "UEI000001",
+                "Agency": "Department of Defense",
+                "Phase": "Phase II",
+                "Proposal Award Date": "2020-01-01",
+                "Solicitation Year": "2020",
+            },
+        ]
+    )
+    coded = pd.DataFrame(
+        [
+            {"uei": "UEI000001", "signed": "2019-01-01"},
+            {"uei": "UEI000001", "signed": "2022-01-01"},
+        ]
+    )
     cohort = build_cohort_frames(awards, coded)
     assert cohort.loc["UEI000001", "entry"] == 2020
     assert cohort.loc["UEI000001", "event_yr"] == 2022

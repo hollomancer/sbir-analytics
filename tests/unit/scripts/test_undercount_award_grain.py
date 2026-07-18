@@ -14,30 +14,59 @@ from scripts.phase3_benchmark.undercount_award_grain import (
 
 
 def _coded() -> pd.DataFrame:
-    return pd.DataFrame([
-        {"order_piid": "P1", "order_agency": "9700", "idv_piid": "", "idv_agency": "",
-         "contract_award_unique_key": "CONT_AWD_P1_9700_-NONE-_-NONE-", "research": "SR3"},
-        {"order_piid": "P2", "order_agency": "9700", "idv_piid": "IDV1", "idv_agency": "9700",
-         "contract_award_unique_key": "CONT_AWD_P2_9700_IDV1_9700", "research": "ST3"},
-    ])
+    return pd.DataFrame(
+        [
+            {
+                "order_piid": "P1",
+                "order_agency": "9700",
+                "idv_piid": "",
+                "idv_agency": "",
+                "contract_award_unique_key": "CONT_AWD_P1_9700_-NONE-_-NONE-",
+                "research": "SR3",
+            },
+            {
+                "order_piid": "P2",
+                "order_agency": "9700",
+                "idv_piid": "IDV1",
+                "idv_agency": "9700",
+                "contract_award_unique_key": "CONT_AWD_P2_9700_IDV1_9700",
+                "research": "ST3",
+            },
+        ]
+    )
 
 
 def _described() -> pd.DataFrame:
-    return pd.DataFrame([
-        {"generated_internal_id": "CONT_AWD_P1_9700_-NONE-_-NONE-",
-         "description_signal": "SBIR", "award_type_group": "contract"},
-        {"generated_internal_id": "CONT_AWD_P3_9700_-NONE-_-NONE-",
-         "description_signal": "SBIR", "award_type_group": "contract"},
-        {"generated_internal_id": "CONT_AWD_P2_9700_IDV1_9700",
-         "description_signal": "STTR", "award_type_group": "contract"},
-        {"generated_internal_id": "CONT_IDV_V1_9700_-NONE-_-NONE-",
-         "description_signal": "SBIR", "award_type_group": "idv"},
-    ])
+    return pd.DataFrame(
+        [
+            {
+                "generated_internal_id": "CONT_AWD_P1_9700_-NONE-_-NONE-",
+                "description_signal": "SBIR",
+                "award_type_group": "contract",
+            },
+            {
+                "generated_internal_id": "CONT_AWD_P3_9700_-NONE-_-NONE-",
+                "description_signal": "SBIR",
+                "award_type_group": "contract",
+            },
+            {
+                "generated_internal_id": "CONT_AWD_P2_9700_IDV1_9700",
+                "description_signal": "STTR",
+                "award_type_group": "contract",
+            },
+            {
+                "generated_internal_id": "CONT_IDV_V1_9700_-NONE-_-NONE-",
+                "description_signal": "SBIR",
+                "award_type_group": "idv",
+            },
+        ]
+    )
 
 
 def test_native_key_is_authoritative_and_reconstruction_is_validation_only() -> None:
     assert list(authoritative_coded_keys(_coded())) == [
-        "CONT_AWD_P1_9700_-NONE-_-NONE-", "CONT_AWD_P2_9700_IDV1_9700"
+        "CONT_AWD_P1_9700_-NONE-_-NONE-",
+        "CONT_AWD_P2_9700_IDV1_9700",
     ]
     assert reconstruct_coded_award_key(_coded()).iloc[0].startswith("CONT_AWD_P1")
     broken = _coded()

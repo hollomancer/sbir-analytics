@@ -8,20 +8,29 @@ from scripts.phase3_benchmark.pull_described_phase3 import pull_described
 
 
 def _canned_page() -> bytes:
-    return json.dumps({
-        "results": [
-            {"generated_internal_id": "CONT_AWD_P1_9700_-NONE-_-NONE-", "Award ID": "P1",
-             "Description": "SBIR PHASE III widget"},
-            {"generated_internal_id": "CONT_AWD_P2_9700_-NONE-_-NONE-", "Award ID": "P2",
-             "Description": "SBIR PHASE III gadget"},
-        ],
-        "page_metadata": {"hasNext": False},
-    }).encode()
+    return json.dumps(
+        {
+            "results": [
+                {
+                    "generated_internal_id": "CONT_AWD_P1_9700_-NONE-_-NONE-",
+                    "Award ID": "P1",
+                    "Description": "SBIR PHASE III widget",
+                },
+                {
+                    "generated_internal_id": "CONT_AWD_P2_9700_-NONE-_-NONE-",
+                    "Award ID": "P2",
+                    "Description": "SBIR PHASE III gadget",
+                },
+            ],
+            "page_metadata": {"hasNext": False},
+        }
+    ).encode()
 
 
 def test_pull_described_dedupes_and_emits_provenance_manifest() -> None:
-    frame, manifest = pull_described("Department of Defense", fetcher=lambda _body: _canned_page(),
-                                     source_vintage="test")
+    frame, manifest = pull_described(
+        "Department of Defense", fetcher=lambda _body: _canned_page(), source_vintage="test"
+    )
     # Two signals x two award-type groups are independently manifested.
     assert len(frame) == 8
     assert manifest["row_count"] == 8

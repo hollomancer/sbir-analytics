@@ -21,22 +21,29 @@ def target_text_coverage(lengths: np.ndarray, floor: int = 150) -> dict[str, flo
     n = len(lengths)
     if n == 0:
         return {"n": 0, "median_chars": 0.0, "pct_usable": 0.0, "pct_below_floor": 0.0}
-    return {"n": int(n), "median_chars": float(np.median(lengths)),
-            "pct_usable": round(100 * float((lengths >= floor).mean()), 1),
-            "pct_below_floor": round(100 * float((lengths < floor).mean()), 1)}
+    return {
+        "n": int(n),
+        "median_chars": float(np.median(lengths)),
+        "pct_usable": round(100 * float((lengths >= floor).mean()), 1),
+        "pct_below_floor": round(100 * float((lengths < floor).mean()), 1),
+    }
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--awards", type=Path, default=Path("data/raw/sbir/award_data.csv"))
     parser.add_argument("--coded", type=Path, default=Path("data/derived/m0a_coded_dod.parquet"))
-    parser.add_argument("--floor", type=int, default=150, help="min target chars for the rich-text regime")
+    parser.add_argument(
+        "--floor", type=int, default=150, help="min target chars for the rich-text regime"
+    )
     args = parser.parse_args(argv)
 
     awards = pd.read_csv(args.awards, dtype=str, keep_default_na=False)
     awards = awards[(awards["UEI"].str.len() > 5) & (awards["Agency"] == "Department of Defense")]
-    phase2 = awards[awards["Phase"].str.contains("II", na=False)
-                    & ~awards["Phase"].str.contains("III", na=False)]
+    phase2 = awards[
+        awards["Phase"].str.contains("II", na=False)
+        & ~awards["Phase"].str.contains("III", na=False)
+    ]
     p2_firms = set(phase2["UEI"])
 
     coded = pd.read_parquet(args.coded)
@@ -44,14 +51,20 @@ def main(argv: list[str] | None = None) -> int:
     positive_firms = p2_firms & p3_firms
     positives = coded[coded["uei"].isin(positive_firms)]
 
-    print(f"DoD Phase II SBIR firms: {len(p2_firms)}  |  coded DoD Phase III firms: {len(p3_firms)}")
+    print(
+        f"DoD Phase II SBIR firms: {len(p2_firms)}  |  coded DoD Phase III firms: {len(p3_firms)}"
+    )
     print(f"POSITIVE firms (both Phase II and Phase III): {len(positive_firms)}")
     print(f"POSITIVE Phase III contracts (linkable to a Phase II of same firm): {len(positives)}\n")
 
     cov = target_text_coverage(positives["desc"].astype(str).str.len().to_numpy(), args.floor)
     print(f"Target text = Phase III 'desc': median {cov['median_chars']:.0f} chars")
-    print(f"  usable (>= {args.floor} chars): {cov['pct_usable']}%   below floor: {cov['pct_below_floor']}%")
-    print("\n  These are coded same-firm proxy targets. Description coverage is reported without a causal claim.")
+    print(
+        f"  usable (>= {args.floor} chars): {cov['pct_usable']}%   below floor: {cov['pct_below_floor']}%"
+    )
+    print(
+        "\n  These are coded same-firm proxy targets. Description coverage is reported without a causal claim."
+    )
     return 0
 
 

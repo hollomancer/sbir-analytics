@@ -31,8 +31,23 @@ from pathlib import Path
 
 API = "https://techport.nasa.gov/api"
 Fetch = Callable[[str], bytes | None]
-_SUFFIXES = ("INC", "LLC", "CORP", "CORPORATION", "CO", "COMPANY", "LTD", "LP", "LLP", "THE",
-             "INCORPORATED", "TECHNOLOGIES", "TECHNOLOGY", "TECH", "SYSTEMS")
+_SUFFIXES = (
+    "INC",
+    "LLC",
+    "CORP",
+    "CORPORATION",
+    "CO",
+    "COMPANY",
+    "LTD",
+    "LP",
+    "LLP",
+    "THE",
+    "INCORPORATED",
+    "TECHNOLOGIES",
+    "TECHNOLOGY",
+    "TECH",
+    "SYSTEMS",
+)
 _NON_FIRM = ("CENTER", "UNIVERS", "INSTITUTE", "LABORATORY", "NASA")
 
 
@@ -78,7 +93,9 @@ def parse_project(project: dict) -> dict[str, object]:
         "project_id": project.get("projectId") or project.get("id"),
         "title": project.get("title", ""),
         "program": program_title,
-        "phase": project.get("phase") or project.get("projectPhase") or project.get("project_phase"),
+        "phase": project.get("phase")
+        or project.get("projectPhase")
+        or project.get("project_phase"),
         "start": project.get("startDateString") or project.get("startDate"),
         "end": project.get("endDateString") or project.get("endDate"),
         "firm_orgs": firm_orgs,
@@ -86,16 +103,15 @@ def parse_project(project: dict) -> dict[str, object]:
         "trl_begin": trl.get("begin") if isinstance(trl, dict) else None,
         "trl_current": trl.get("current") if isinstance(trl, dict) else None,
         "trl_end": trl.get("end") if isinstance(trl, dict) else None,
-        "outcomes": project.get("projectOutcomes") or project.get("project_outcomes")
+        "outcomes": project.get("projectOutcomes")
+        or project.get("project_outcomes")
         or project.get("outcomes"),
         "destination": project.get("destination") or project.get("primaryDestination"),
         "description": str(project.get("description", "")),
     }
 
 
-def link_firm(
-    firm_orgs: list[str], name_to_ueis: dict[str, str | set[str]]
-) -> dict[str, object]:
+def link_firm(firm_orgs: list[str], name_to_ueis: dict[str, str | set[str]]) -> dict[str, object]:
     """Resolve all organization matches and expose ambiguity instead of taking the first."""
     matches: dict[str, set[str]] = {}
     for org in firm_orgs:
@@ -115,8 +131,9 @@ def link_firm(
 def _fetch(url: str, *, tries: int = 5, delay: float = 1.5) -> bytes | None:
     for attempt in range(tries):
         try:
-            request = urllib.request.Request(url, headers={"User-Agent": "sbir-phase3/1.0",
-                                                            "Accept": "application/json"})
+            request = urllib.request.Request(
+                url, headers={"User-Agent": "sbir-phase3/1.0", "Accept": "application/json"}
+            )
             with urllib.request.urlopen(request, timeout=40) as response:
                 return response.read()
         except Exception:
@@ -124,9 +141,15 @@ def _fetch(url: str, *, tries: int = 5, delay: float = 1.5) -> bytes | None:
     return None
 
 
-def pull_sbir_projects(*, query: str = "SBIR", pace: float = 1.0, cache_dir: Path | None = None,
-                       fetcher: Fetch = _fetch, source_vintage: str = "unknown",
-                       limit: int | None = None) -> tuple[list[dict], dict[str, object]]:
+def pull_sbir_projects(
+    *,
+    query: str = "SBIR",
+    pace: float = 1.0,
+    cache_dir: Path | None = None,
+    fetcher: Fetch = _fetch,
+    source_vintage: str = "unknown",
+    limit: int | None = None,
+) -> tuple[list[dict], dict[str, object]]:
     """Search TechPort for SBIR/STTR projects and pull each (paced, cached). Returns records + manifest."""
     run_at = datetime.now(UTC).isoformat()
     # search endpoint returns key "results" (not "projects"); under load it may 200-with-empty, so retry.
@@ -148,7 +171,11 @@ def pull_sbir_projects(*, query: str = "SBIR", pace: float = 1.0, cache_dir: Pat
     throttled = 0
     for project_id in ids:
         cached = cache_dir / f"{project_id}.json" if cache_dir else None
-        payload = cached.read_bytes() if (cached and cached.exists()) else fetcher(f"{API}/projects/{project_id}")
+        payload = (
+            cached.read_bytes()
+            if (cached and cached.exists())
+            else fetcher(f"{API}/projects/{project_id}")
+        )
         if payload is None:
             throttled += 1
             continue
@@ -160,9 +187,15 @@ def pull_sbir_projects(*, query: str = "SBIR", pace: float = 1.0, cache_dir: Pat
         records.append(parse_project(body.get("project", body)))
         time.sleep(pace)
     manifest = {
-        "query": query, "api": API, "source_vintage": source_vintage, "run_at": run_at,
-        "search_hits": len(ids), "total_search_hits": total_search_hits,
-        "selected_hits": len(ids), "projects_pulled": len(records), "throttled": throttled,
+        "query": query,
+        "api": API,
+        "source_vintage": source_vintage,
+        "run_at": run_at,
+        "search_hits": len(ids),
+        "total_search_hits": total_search_hits,
+        "selected_hits": len(ids),
+        "projects_pulled": len(records),
+        "throttled": throttled,
         "raw_sha256": digest.hexdigest(),
         "with_firm_org": sum(bool(r["firm_orgs"]) for r in records),
         "with_rich_description": sum(len(r["description"]) > 120 for r in records),
@@ -180,7 +213,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--limit", type=int, default=None)
     parser.add_argument("--out", type=Path, default=None)
     args = parser.parse_args(argv)
-    records, manifest = pull_sbir_projects(query=args.query, pace=args.pace, cache_dir=args.cache, limit=args.limit)
+    records, manifest = pull_sbir_projects(
+        query=args.query, pace=args.pace, cache_dir=args.cache, limit=args.limit
+    )
     if args.out:
         args.out.parent.mkdir(parents=True, exist_ok=True)
         args.out.write_text(json.dumps(records, indent=2))

@@ -14,8 +14,14 @@ import pandas as pd
 
 ENDPOINT = "https://api.usaspending.gov/api/v2/search/spending_by_award/"
 FIELDS = [
-    "Award ID", "Description", "Recipient Name", "Award Amount", "Awarding Agency",
-    "Awarding Sub Agency", "Action Date", "Contract Award Type",
+    "Award ID",
+    "Description",
+    "Recipient Name",
+    "Award Amount",
+    "Awarding Agency",
+    "Awarding Sub Agency",
+    "Action Date",
+    "Contract Award Type",
 ]
 AWARD_TYPE_GROUPS = {
     "contract": ["A", "B", "C", "D"],
@@ -36,27 +42,33 @@ def _post(body: bytes) -> bytes:
         return response.read()
 
 
-def _request_body(agency: str, award_types: list[str], phrase: str, page: int,
-                  start_date: str, end_date: str) -> bytes:
-    return json.dumps({
-        "filters": {
-            "award_type_codes": award_types,
-            "time_period": [{"start_date": start_date, "end_date": end_date}],
-            "description": phrase,
-            "agencies": [{"type": "awarding", "tier": "toptier", "name": agency}],
-        },
-        "fields": FIELDS,
-        "limit": 100,
-        "page": page,
-    }).encode()
+def _request_body(
+    agency: str, award_types: list[str], phrase: str, page: int, start_date: str, end_date: str
+) -> bytes:
+    return json.dumps(
+        {
+            "filters": {
+                "award_type_codes": award_types,
+                "time_period": [{"start_date": start_date, "end_date": end_date}],
+                "description": phrase,
+                "agencies": [{"type": "awarding", "tier": "toptier", "name": agency}],
+            },
+            "fields": FIELDS,
+            "limit": 100,
+            "page": page,
+        }
+    ).encode()
 
 
 def _field_completeness(frame: pd.DataFrame) -> dict[str, float]:
     if frame.empty:
         return dict.fromkeys(REQUIRED_COMPLETENESS_FIELDS, 0.0)
     return {
-        field: (round(float(frame[field].fillna("").astype(str).str.strip().ne("").mean()), 6)
-                if field in frame else 0.0)
+        field: (
+            round(float(frame[field].fillna("").astype(str).str.strip().ne("").mean()), 6)
+            if field in frame
+            else 0.0
+        )
         for field in REQUIRED_COMPLETENESS_FIELDS
     }
 
@@ -93,13 +105,15 @@ def pull_described(
                     rows["award_type_group"] = group
                     frames.append(rows)
                 has_next = bool(parsed.get("page_metadata", {}).get("hasNext"))
-                pages.append({
-                    "query_id": query_id,
-                    "page": page,
-                    "row_count": len(rows),
-                    "raw_sha256": hashlib.sha256(payload).hexdigest(),
-                    "has_next": has_next,
-                })
+                pages.append(
+                    {
+                        "query_id": query_id,
+                        "page": page,
+                        "row_count": len(rows),
+                        "raw_sha256": hashlib.sha256(payload).hexdigest(),
+                        "has_next": has_next,
+                    }
+                )
                 if not has_next:
                     termination = "feed_exhausted"
                     break
@@ -128,9 +142,11 @@ def pull_described(
         "pages_retrieved": len(pages),
         "row_count": int(len(frame)),
         "contract_rows": int(frame["award_type_group"].eq("contract").sum())
-        if len(frame) and "award_type_group" in frame else 0,
+        if len(frame) and "award_type_group" in frame
+        else 0,
         "idv_rows": int(frame["award_type_group"].eq("idv").sum())
-        if len(frame) and "award_type_group" in frame else 0,
+        if len(frame) and "award_type_group" in frame
+        else 0,
         "grain": "award (USAspending generated_internal_id); contract and IDV strata separate",
         "raw_pages_sha256": digest.hexdigest(),
         "field_completeness": _field_completeness(frame),
@@ -154,8 +170,11 @@ def main(argv: list[str] | None = None) -> int:
     if args.manifest:
         args.manifest.parent.mkdir(parents=True, exist_ok=True)
         args.manifest.write_text(json.dumps(manifest, indent=2) + "\n")
-    print(json.dumps({key: value for key, value in manifest.items()
-                      if key != "page_provenance"}, indent=2))
+    print(
+        json.dumps(
+            {key: value for key, value in manifest.items() if key != "page_provenance"}, indent=2
+        )
+    )
     return 0
 
 

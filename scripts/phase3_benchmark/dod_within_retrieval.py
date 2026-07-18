@@ -22,13 +22,13 @@ from retrieval_metrics import tie_corrected_auc, tie_rate
 def floor_coverage(lengths: np.ndarray, thresholds: tuple[int, ...]) -> dict[int, float]:
     """Fraction of targets with description length at least each threshold."""
     n = len(lengths)
-    return {t: (round(100 * float((lengths >= t).mean()), 1) if n else 0.0)
-            for t in thresholds}
+    return {t: (round(100 * float((lengths >= t).mean()), 1) if n else 0.0) for t in thresholds}
 
 
 def _dates(frame: pd.DataFrame, names: tuple[str, ...]) -> pd.Series:
-    parsed = [pd.to_datetime(frame[name], errors="coerce", utc=True)
-              for name in names if name in frame]
+    parsed = [
+        pd.to_datetime(frame[name], errors="coerce", utc=True) for name in names if name in frame
+    ]
     if not parsed:
         return pd.Series(pd.NaT, index=frame.index, dtype="datetime64[ns, UTC]")
     return pd.concat(parsed, axis=1).bfill(axis=1).iloc[:, 0]
@@ -41,14 +41,14 @@ def build_asof_pairs(awards: pd.DataFrame, coded: pd.DataFrame) -> pd.DataFrame:
     contract row.  No longest-description or firm-level target collapse occurs.
     """
     source = awards.copy()
-    source = source[(source["UEI"].astype(str).str.len() > 5)
-                    & (source["Agency"] == "Department of Defense")]
+    source = source[
+        (source["UEI"].astype(str).str.len() > 5) & (source["Agency"] == "Department of Defense")
+    ]
     phase = source["Phase"].astype(str).str.upper()
-    source = source[phase.str.contains("II", na=False)
-                    & ~phase.str.contains("III", na=False)].copy()
-    source["phase_ii_date"] = _dates(
-        source, ("Proposal Award Date", "Award Date", "award_date")
-    )
+    source = source[
+        phase.str.contains("II", na=False) & ~phase.str.contains("III", na=False)
+    ].copy()
+    source["phase_ii_date"] = _dates(source, ("Proposal Award Date", "Award Date", "award_date"))
     if "Solicitation Year" in source:
         year_end = pd.to_datetime(
             source["Solicitation Year"].map(lambda value: f"{value}-12-31"),
@@ -56,10 +56,12 @@ def build_asof_pairs(awards: pd.DataFrame, coded: pd.DataFrame) -> pd.DataFrame:
             utc=True,
         )
         source["phase_ii_date"] = source["phase_ii_date"].fillna(year_end)
-    source = source[source["phase_ii_date"].notna()
-                    & source["Abstract"].astype(str).str.strip().ne("")]
-    by_firm = {uei: group.sort_values("phase_ii_date")
-               for uei, group in source.groupby("UEI", sort=False)}
+    source = source[
+        source["phase_ii_date"].notna() & source["Abstract"].astype(str).str.strip().ne("")
+    ]
+    by_firm = {
+        uei: group.sort_values("phase_ii_date") for uei, group in source.groupby("UEI", sort=False)
+    }
 
     targets = coded.copy()
     targets["target_date"] = _dates(
@@ -91,27 +93,34 @@ def build_asof_pairs(awards: pd.DataFrame, coded: pd.DataFrame) -> pd.DataFrame:
             continue
         source_fy = pd.to_numeric(pd.Series([target.get("fy")]), errors="coerce").iloc[0]
         fiscal_year = (
-            int(source_fy) if pd.notna(source_fy)
+            int(source_fy)
+            if pd.notna(source_fy)
             else int(target_date.year + (1 if target_date.month >= 10 else 0))
         )
-        rows.append({
-            "target_row": index,
-            "target_key": str(target.get("contract_award_unique_key")
-                              or target.get("unique_award_key")
-                              or target.get("award_key") or index),
-            "uei": uei,
-            "query": str(prior["Abstract"]),
-            "phase_ii_date": prior["phase_ii_date"],
-            "target_date": target_date,
-            "description": description,
-            "fy": fiscal_year,
-            "psc": str(target.get("psc") or target.get("productOrServiceCode") or "")[:4],
-        })
+        rows.append(
+            {
+                "target_row": index,
+                "target_key": str(
+                    target.get("contract_award_unique_key")
+                    or target.get("unique_award_key")
+                    or target.get("award_key")
+                    or index
+                ),
+                "uei": uei,
+                "query": str(prior["Abstract"]),
+                "phase_ii_date": prior["phase_ii_date"],
+                "target_date": target_date,
+                "description": description,
+                "fy": fiscal_year,
+                "psc": str(target.get("psc") or target.get("productOrServiceCode") or "")[:4],
+            }
+        )
     return pd.DataFrame(rows)
 
 
-def within_dod_auc(pairs: pd.DataFrame, *, seed: int = 0,
-                   min_pool: int = 8, n_neg: int = 25) -> dict[str, object]:
+def within_dod_auc(
+    pairs: pd.DataFrame, *, seed: int = 0, min_pool: int = 8, n_neg: int = 25
+) -> dict[str, object]:
     """Score coded targets against different-firm coded targets in the same register."""
     required = {"uei", "query", "description", "fy", "psc"}
     missing = sorted(required - set(pairs.columns))
@@ -121,9 +130,9 @@ def within_dod_auc(pairs: pd.DataFrame, *, seed: int = 0,
         raise ValueError("retrieval evaluation requires at least two targets")
 
     texts = pairs["query"].astype(str).tolist() + pairs["description"].astype(str).tolist()
-    matrix = TfidfVectorizer(
-        stop_words="english", ngram_range=(1, 2), min_df=1
-    ).fit_transform(texts)
+    matrix = TfidfVectorizer(stop_words="english", ngram_range=(1, 2), min_df=1).fit_transform(
+        texts
+    )
     n = len(pairs)
     sims = cosine_similarity(matrix[:n], matrix[n:])
     rng = np.random.RandomState(seed)

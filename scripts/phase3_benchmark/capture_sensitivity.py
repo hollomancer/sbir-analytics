@@ -9,10 +9,13 @@ from collections.abc import Sequence
 from pathlib import Path
 
 
-def chapman_independence(code_total: int, description_total: int,
-                         overlap: int) -> dict[str, float | str]:
+def chapman_independence(
+    code_total: int, description_total: int, overlap: int
+) -> dict[str, float | str]:
     """Chapman total/dark scenario and Wald CI under homogeneous independence."""
-    if min(code_total, description_total, overlap) < 0 or overlap > min(code_total, description_total):
+    if min(code_total, description_total, overlap) < 0 or overlap > min(
+        code_total, description_total
+    ):
         raise ValueError("invalid two-list counts")
     if overlap == 0:
         raise ValueError("Chapman scenario requires a nonzero overlap")
@@ -36,8 +39,9 @@ def chapman_independence(code_total: int, description_total: int,
     }
 
 
-def odds_ratio_dark(code_only: int, description_only: int, overlap: int,
-                    odds_ratio: float) -> float:
+def odds_ratio_dark(
+    code_only: int, description_only: int, overlap: int, odds_ratio: float
+) -> float:
     """Implied missing cell for a specified 2x2 list odds ratio."""
     if overlap <= 0 or odds_ratio < 0 or min(code_only, description_only) < 0:
         raise ValueError("invalid sensitivity inputs")
@@ -57,12 +61,13 @@ def capture_sensitivity(
     description_total = description_only + overlap
     return {
         "status": "provisional",
-        "cells": {"code_only": code_only, "description_only": description_only,
-                  "overlap": overlap},
+        "cells": {"code_only": code_only, "description_only": description_only, "overlap": overlap},
         "chapman_or1_scenario": chapman_independence(code_total, description_total, overlap),
         "odds_ratio_sensitivity": [
-            {"list_odds_ratio": value,
-             "dark": odds_ratio_dark(code_only, description_only, overlap, value)}
+            {
+                "list_odds_ratio": value,
+                "dark": odds_ratio_dark(code_only, description_only, overlap, value),
+            }
             for value in odds_ratios
         ],
         "description_false_positive_sensitivity": [
