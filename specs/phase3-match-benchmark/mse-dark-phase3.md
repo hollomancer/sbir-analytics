@@ -342,6 +342,30 @@ is not "government can't code Phase III" — it is specifically the **order-unde
 where that structure is used and absent where it isn't. This is the mechanism claim surviving an
 out-of-sample test.
 
+## Scope note: everything here is AWARDING-agency-scoped (probe 2026-07-18)
+
+Every list in this analysis filters on **awarding** agency (contracting office), not **funding** agency:
+the coded frame is keyed by contracting department (9700), and all USAspending pulls use
+`{"type": "awarding"}`. Probe of the described list under the two scopes:
+
+| described "SBIR PHASE III" contracts | awarding-scoped | funding-scoped |
+|---|--:|--:|
+| DoD | 911 | **1,101 (+21%)** |
+| NASA | 202 | 202 (identical) |
+
+- **~190 described Phase III contracts are DoD-funded but awarded by another agency** (assisted
+  acquisitions — GSA, Interior AQD, etc.) and are **entirely outside our frame**: not in the coded list, the
+  described list, the vehicle census, or the MSE universe. Every DoD number here (141/$245M miscoded,
+  dark ≈1,543, $914M observed, 19–28% miss) is a statement about *awarded-by-DoD* Phase III only, and is a
+  **floor** with respect to DoD-funded activity.
+- Assisted acquisition is the *maximal* form of the award/administration separation that drives the miss
+  gradient (same-office standalone 9.3% → task order 22.6% → DCMA-administered 24.4% → other-agency-awarded:
+  unmeasured, plausibly worst). Measuring it requires pulling the non-DoD-awarded / DoD-funded frame — a
+  bounded follow-on.
+- **NASA is again the control:** 202 = 202 — NASA awards its own Phase III, so its numbers are complete on
+  this axis while DoD's are not. Attribution semantics: our "DoD Phase III" = awarded-by-DoD regardless of
+  funder (a NASA-funded, DoD-awarded order would land in the DoD frame).
+
 ## Relation to PRs
 
 Extends the undercount work here on #454 (`undercount-award-grain.md`: 141 described-not-coded is exactly the
