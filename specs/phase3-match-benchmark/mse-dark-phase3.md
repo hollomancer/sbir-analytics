@@ -321,6 +321,27 @@ inflate the 271 C-only cell → inflates N; the sibling stratum C091–C105 meas
 positives symmetric. The all-pairwise model has 0 df (an estimator, not a testable fit); [AB+BC] is the best
 *testable* model. All values provisional pending re-run through #458's estimator discipline.
 
+## NASA: same dependence bias, OPPOSITE mechanism (run 2026-07-18, provisional) — the control group
+
+Running the identical probes on NASA (coded 1,038 / described 202 / overlap 186):
+
+- **Pooled 2-source: dark ≈ 73, miss 7.9%** — about half DoD's rate. With AB dependence (unmeasurable here,
+  see below) the true value is somewhat above 73, same direction as DoD.
+- **Vehicle stratification REVERSES:** under-IDV miss **0.0%** (12/12 described vehicle-orders also coded)
+  vs standalone **8.4%**. NASA's miss lives in standalone contracts; its vehicle orders are cleanly coded.
+- **The vehicle channel barely exists at NASA:** 25% of coded orders under IDVs (vs DoD 58%); only **6**
+  self-declared Phase III vehicles (vs DoD 149), 3 with zero coded orders; list C = 40 orders, C-only = 16
+  (small direct-observation set: Barron, Sunpower, Fiber Materials, Bally Ribbon vehicles).
+- **3-source fit is underpowered for NASA** — the within-C window has a zero cell (B∩C̄∩A̅... B-only-C = 0),
+  so the AB odds ratio is degenerate (n=40). Do not fit; report the 2-source ≈73 with the dependence caveat.
+
+**Why this strengthens the DoD story:** NASA is the natural control. Where the award/administration
+separation and Phase-III-vehicle structure are absent (no DCMA analogue, few dedicated vehicles, centralized
+contracting), the order-level miss rate halves and the vehicle-mediated loss goes to ~zero. The DoD failure
+is not "government can't code Phase III" — it is specifically the **order-under-vehicle handoff**, present
+where that structure is used and absent where it isn't. This is the mechanism claim surviving an
+out-of-sample test.
+
 ## Relation to PRs
 
 Extends the undercount work here on #454 (`undercount-award-grain.md`: 141 described-not-coded is exactly the
