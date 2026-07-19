@@ -366,6 +366,29 @@ the coded frame is keyed by contracting department (9700), and all USAspending p
   this axis while DoD's are not. Attribution semantics: our "DoD Phase III" = awarded-by-DoD regardless of
   funder (a NASA-funded, DoD-awarded order would land in the DoD frame).
 
+## The GSA AAS channel (probe 2026-07-18, provisional): ~$1.8B outside every frame
+
+Direct answer to "is GSA missing from the query": **yes, entirely.** The assisted-acquisition channel is
+almost all GSA (DoD-funded described Phase III: 911 DoD-awarded + **187 GSA-awarded** + 3 Interior = 1,101):
+
+| GSA-awarded described "SBIR PHASE III" (FY16–25) | |
+|---|--:|
+| contracts | **189** ($1.81B) |
+| DoD-funded | 187 (**$1.77B**) |
+| 10Q code on sampled records | 0/10 `research=None` (full-189 check running) |
+
+GSA COs have no institutional stake in the funder's SBIR code, so ~0% coding is structurally expected. If it
+holds, this is **~$1.8B of text-provable Phase III with zero code — 7× the DoD-awarded miscoded layer
+($245M)** — and the largest single missed-dollars pool identified. Consistent with this repo's earlier
+finding that GSA peaked at ~64% of a Phase III segment in FY21 before shifting direct-to-DoD (~3.5% FY25).
+
+Extends the miss gradient to its endpoint: same-office 9.3% → task order 22.6% → DCMA 24.4% →
+**other-agency-awarded ~100% uncoded**. The gradient is now measured end-to-end: coding fidelity decays
+monotonically with organizational distance from the SBIR-awarding office.
+
+Not yet measured: GSA-awarded Phase III with *no* description flag (the GSA dark layer — would need the GSA
+vehicle census / firm-linkage pass); the described $1.8B is itself a floor for the channel.
+
 ## Relation to PRs
 
 Extends the undercount work here on #454 (`undercount-award-grain.md`: 141 described-not-coded is exactly the
