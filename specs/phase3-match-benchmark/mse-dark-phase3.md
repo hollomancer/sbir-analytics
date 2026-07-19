@@ -375,12 +375,13 @@ almost all GSA (DoD-funded described Phase III: 911 DoD-awarded + **187 GSA-awar
 |---|--:|
 | contracts | **189** ($1.81B) |
 | DoD-funded | 187 (**$1.77B**) |
-| 10Q code on sampled records | 0/10 `research=None` (full-189 check running) |
+| 10Q code, FULL census | **0/189 — `research=None` on every record** |
 
-GSA COs have no institutional stake in the funder's SBIR code, so ~0% coding is structurally expected. If it
-holds, this is **~$1.8B of text-provable Phase III with zero code — 7× the DoD-awarded miscoded layer
-($245M)** — and the largest single missed-dollars pool identified. Consistent with this repo's earlier
-finding that GSA peaked at ~64% of a Phase III segment in FY21 before shifting direct-to-DoD (~3.5% FY25).
+GSA COs have no institutional stake in the funder's SBIR code — and the full census confirms it:
+**0% coding across all 189 records. $1.8B of text-provable Phase III with zero code — 7× the DoD-awarded
+miscoded layer ($245M)** — the largest single missed-dollars pool identified. Start-year curve matches this
+repo's earlier GSA-peak finding exactly: 2020: 29 → **2021: 50 (peak)** → 2022: 40 → 2023: 39 → 2024: 9 →
+2025: 7 (the direct-to-DoD shift).
 
 Extends the miss gradient to its endpoint: same-office 9.3% → task order 22.6% → DCMA 24.4% →
 **other-agency-awarded ~100% uncoded**. The gradient is now measured end-to-end: coding fidelity decays
