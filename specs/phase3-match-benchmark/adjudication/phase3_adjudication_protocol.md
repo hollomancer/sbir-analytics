@@ -56,6 +56,12 @@ the transition judgment), and `evidence_notes` (what decided it).
   labels). No model scores exist for these; judge tech continuity exactly as elsewhere. Note the firm shown
   is the VEHICLE holder's dominant coded vendor — verify same-firm as usual.
 
+- **GSA-channel stratum (C106–C115, appended 2026-07-19)** — described "SBIR PHASE III" contracts
+  **awarded by GSA AAS, DoD-funded** (the assisted-acquisition channel: $1.77B, 0/189 carry the 10Q code).
+  These are text-flagged (like the miscoded 141) but from a different awarding pipeline with rich FEDSIM
+  descriptions — expected to adjudicate easily. Their Y-rate = precision of the described list in the GSA
+  channel, which underwrites the $1.77B figure. Same append-only blinding note as the sibling stratum.
+
 ## Blinding (rule #1)
 `model_score`, `rank`, `link_evidence`, `stratum`, and `data_flag` are removed from the sheet. Judge on the
 text and dates. **Residual caveat:** the sheet still shows the model's *chosen* best-match award
