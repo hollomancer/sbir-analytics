@@ -114,3 +114,15 @@ C112,,LINQUEST CORPORATION,gsa_channel,,,"GSA-awarded, DoD-funded, piid 47QFLA21
 C113,,"DEFENSE UNICORNS, INC.",gsa_channel,,,"GSA-awarded, DoD-funded, piid 47QFCA22F0052",,,,1
 C114,,"KBR WYLE SERVICES, LLC",gsa_channel,,,"GSA-awarded, DoD-funded, piid 47QFLA25F0069",,,,1
 C115,,202 GROUP LLC,gsa_channel,,,"GSA-awarded, DoD-funded, piid 47QFCA20C0013",,,,1
+C116,,SOLID STATE SCIENTIFIC CORPORATION,list_c_only,,,self-declared idv FA872615D0004,,,,1
+C117,,"FIRESTORM LABS, INC.",list_c_only,,,self-declared idv FA873025DB001,,,,1
+C118,,"GATR TECHNOLOGIES, INC.",list_c_only,,,self-declared idv W15QKN13D0099,,,,1
+C119,,CRITICAL COMMUNICATIONS CONTROLS &amp; INSTRUMENTS LLC,list_c_only,,,self-declared idv N6833522G0035,,,,1
+C120,,METRON INCORPORATED,list_c_only,,,self-declared idv N6600117D5202,,,,1
+C121,,"LOUKUS TECHNOLOGIES, INC.",list_c_only,,,self-declared idv W911QX25DA005,,,,1
+C122,,"MODUS OPERANDI, INC.",list_c_only,,,self-declared idv W15P7T11DH241,,,,1
+C123,,SOLVUS GLOBAL LLC,list_c_only,,,self-declared idv W911QX25DA001,,,,1
+C124,,"MONKTON, INC.",list_c_only,,,self-declared idv FA259520D0001,,,,1
+C125,,"ADVANCED ACOUSTIC CONCEPTS, INC.",list_c_only,,,self-declared idv N6833509D0095,no_firm_phase2_link,,,1
+C126,,OMNI FED LLC,list_c_only,,,self-declared idv FA228024G0004,,,,1
+C127,,ELECTRODYNAMICS ASSOCIATES INC,list_c_only,,,self-declared idv FA865008D2815,,,,1

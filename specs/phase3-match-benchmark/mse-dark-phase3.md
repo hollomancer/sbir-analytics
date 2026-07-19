@@ -19,7 +19,7 @@ the method a census uses to estimate its own undercount and epidemiology uses fo
 **Already computed (2-source, Lincoln-Petersen/Chapman):** code (6,351) × description (962), overlap 821 →
 total ≈ 7,441, **dark ≈ 949 [95% CI 767–1,130]**. But two-source *assumes the signals are independent*, and
 they are positively correlated (a CO who codes SR3 also writes "SBIR PHASE III"), which inflates the overlap
-and **underestimates** the total — so **949 is a lower bound, not an estimate.** A third list breaks this: it
+and **underestimates** the total — so **949 is a scenario figure, not an estimate.** A third list breaks this: it
 lets a log-linear model *estimate* the dependence instead of assuming it away.
 
 ## The three capture lists
@@ -50,7 +50,7 @@ code and the description text** — the property MSE needs.
   them unfit as a *headline*-carrying third list: (a) **low coverage** (~165 of ~1,487 Phase III firms), and
   (b) **subtype skew** — J&As exist only for *sole-source* actions, so the list systematically misses
   competed Phase IIIs (a reachability bias, not just thin sampling).
-- **Decision (per the gate's own rule): MSE stays 2-source; report ~949 as a defensible LOWER BOUND.** The
+- **Decision (per the gate's own rule): MSE stays 2-source; report ~949 as a defensible independence-scenario figure.** The
   J&A list is worth adding only as a **sensitivity extension** (a 3-source fit on the sole-source stratum, to
   probe the code×description dependence), NOT as the basis for a headline point estimate. The clean upgrade
   path is the missing **linkage field** (`eval-validity.md`): if a parent-SBIR-award-ID were populated, there
@@ -69,7 +69,7 @@ code and the description text** — the property MSE needs.
 4. **Model selection + sensitivity:** fit the independence model and each 2-way-interaction model; report the
    **range** across plausible models by AIC/BIC, not a single point.
 5. **Chao (1987) lower-bound estimator** alongside — heterogeneity-robust, gives a defensible floor whatever
-   the dependence structure. Report `[Chao lower bound, log-linear point estimate, CI]`.
+   the dependence structure. Report `[Chao scenario figure, log-linear point estimate, CI]`.
 6. **CIs** via the log-linear asymptotic covariance or a nonparametric bootstrap over contracts.
 
 ## Assumptions & failure modes (the honest core)
@@ -121,7 +121,7 @@ misleading HTTP 500 — the indexed window starts 2007-10-01):
 - **Frame ≈ 131,000 contracts** — 95% CI [71k, 202k]. Mean **16.3/firm**, median **0** (53% of SBIR firms have
   zero un-flagged post-SBIR contracts; the frame is concentrated in an established-firm minority, max 599).
 
-This pins the **bounds on the dark cell**: `949 ≤ dark ≤ 131,000`. The lower bound (capture-recapture,
+This pins the **bounds on the dark cell**: `949 ≤ dark ≤ 131,000`. The scenario figure (capture-recapture,
 list-overlap) is a real estimate; the upper bound is the *trivial* ceiling (every un-flagged contract being a
 Phase III — absurd). So the count is well-constrained below and barely constrained above: **total DoD Phase
 III ∈ [≥7,441, ~137,500]**, dark ∈ [949, 131,000] — two orders of magnitude wide on the high side.
@@ -132,10 +132,10 @@ III ∈ [≥7,441, ~137,500]**, dark ∈ [949, 131,000] — two orders of magnit
 blocked the detector also blocks the validation.** Capture-recapture stands alone (it infers from overlap, not
 sampling); the 15-row dark-cell stratum is demoted to an *existence scan*, not a count check.
 
-**To narrow the range** (the real open problem): the lower bound won't move without a clean independent 3rd
+**To narrow the range** (the real open problem): the scenario figure won't move without a clean independent 3rd
 signal (the feasibility gate found none). The productive path is **tightening the UPPER bound** — rank the
 131k frame with the *structural* (non-text) detector and estimate the Phase-III rate per score band via
-**stratified adjudication**, yielding a point estimate + CI instead of only the 949 floor. That is the one
+**stratified adjudication**, yielding a point estimate + CI instead of only the 949 independence scenario. That is the one
 design that uses the detector for what it's good at (ranking to concentrate the base rate) rather than as a
 counter.
 
@@ -153,9 +153,9 @@ zero-overlap strata; 5/821 overlap pairs genuinely disagree on sub-agency across
 | DLA / MDA / other | 641 | 86 | 84 | 10 | ~0–9% |
 | **Stratified sum** | | | | **1,007 [812–1,202]** | |
 
-- **The floor rises 949 → 1,007** — the direction heterogeneity theory predicts (pooled LP is biased low when
+- **The scenario estimate rises 949 → 1,007** — the direction heterogeneity theory predicts (pooled LP is biased low when
   capture rates vary). Office-prefix stratification gives 733 as a weak-stratification sensitivity point; the
-  honest reporting band is **dark ≈ 950–1,200, floor ~1,000**.
+  honest reporting band is **dark ≈ 950–1,200, scenario ~1,000**.
 - **The miss rate is organizationally structured, not random:** DCMA 24% (administers others' awards — coding
   context lost), Navy 19%, AF 14%, MDA ~0%. This targets the fix: the undercount concentrates where contract
   *administration* is separated from the awarding program office.
@@ -173,9 +173,9 @@ overlaps sum to exactly 821; no cross-list assignment error possible):
 
 The 10Q code is lost **at the order level under contract vehicles** — task orders miss 2.4× more than
 standalone contracts. This corroborates and sharpens the DCMA finding (24% miss): the undercount concentrates
-where award and administration separate. **Floor progression: pooled 949 → sub-agency 1,007 → vehicle 1,205**
-— each finer (valid) stratification raises the floor, exactly as heterogeneity predicts. Best defensible floor
-now **~1,200**.
+where award and administration separate. **Independence-scenario progression: pooled 949 → sub-agency 1,007 → vehicle 1,205** — each finer (valid)
+stratification raises the scenario estimate, consistent with heterogeneous capture. These are scenario
+figures, not bounds.
 
 **Time trend — the miss rate is WORSENING.** Using origination-year bands parsed identically from the PIID on
 both lists (the naive version — coded transaction-FY vs desc origination-FY — puts the same contract in
@@ -210,7 +210,7 @@ how much available *structural* features concentrate the 0.7% frame prevalence.
 (P3 49.3% vs un-flagged 30.8%). Best combination (R&D-PSC + gap∈[−2,+5]): **LR 4.4×**, band ~8.9k contracts
 at **~3.0% prevalence → ~1,000 labels for 30 hits**, and the band captures only 29% of Phase IIIs (out-of-band
 dark would still need a model). Better than 1.4×, still not a feasible human adjudication design.
-**Final posture: accept the bounds** — *141 proven + dark ≈ 1,200–?* (vehicle-stratified floor), miss rate
+**Final posture: accept the scenario range** — *141 description-only flags + dark scenarios ≈ 380–1,380 (structure-stratified)*, miss rate
 worsening (17.3% in FY22-25) and structurally concentrated (task orders 22.6%, DCMA 24%) — with the §638
 linkage field as the fix rather than better detection. (A future LLM-assisted screen of the ~8.9k band with
 human verification of hits could revisit this, but introduces its own validation loop.)
@@ -281,47 +281,40 @@ order entry), plausibly usable as the MSE's third list (with its dependence on t
 modeled, not assumed away — both are text, but *different records*). A 3-source log-linear fit (code ×
 order-description × vehicle-declaration) is now buildable from data in hand.
 
-## 3-source fit RUN (2026-07-18, provisional): dark ≈ 1,500, range 500–2,400 across dependence structures
+## Structure-stratified multi-list fit (CORRECTED per PR review, 2026-07-19)
 
-Lists at award grain (compound (order,parent) keys): **A** = 10Q code (6,351), **B** = order-description
-(911 unique keys of 962 rows), **C** = child of a self-declared Phase III vehicle (1,090 orders on 149
-vehicles). Observed capture cells:
+The initial pooled 3-list fit was **misspecified**: list C (child of a self-declared Phase III vehicle) is
+structurally unreachable for standalone contracts, so pooling both structures in one homogeneous ABC model is
+unidentified for the stated population. Corrected per review: **standalone contracts fit as a 2-list A×B
+stratum; task orders as the 3-list ABC stratum; dark cells summed; CI by block bootstrap (task orders
+resampled by parent vehicle, standalone iid).** Committed as `scripts/phase3_benchmark/vehicle_mse.py`
+(pure cores unit-tested; frozen inputs + SHA-256 manifest under `specs/phase3-match-benchmark/inputs/`;
+machine-readable output `inputs/vehicle_mse_result.json`).
 
-| A code | B order-desc | C vehicle | n |
-|:--:|:--:|:--:|--:|
-| 1 | 1 | 1 | 159 |
-| 1 | 1 | 0 | 662 |
-| 1 | 0 | 1 | 638 |
-| 0 | 1 | 1 | 22 |
-| 1 | 0 | 0 | 4,892 |
-| 0 | 1 | 0 | 68 |
-| 0 | 0 | 1 | **271** |
-| observed union | | | **6,712** |
+Standalone stratum: n1=2,692, n2=578, m=524 → Chapman dark ≈ 223 (independence scenario for this stratum).
+Task-order cells: ABC 159 / AB 138 / AC 638 / BC 22 / A 2,724 / B 14 / C 271.
 
-(Sanity: A∩B = 821 ✓; list C adds 271 directly-observed units invisible to both order-level signals.)
+| model (task-order stratum) | total dark (s+TO) | total N | **code-miss rate** |
+|---|--:|--:|--:|
+| independence | 997 | 7,709 | 17.6% |
+| [AB] | 1,175 | 7,887 | 19.5% |
+| [AC] | 382 | 7,094 | 10.5% |
+| [BC] | 1,117 | 7,829 | 18.9% |
+| [AB+AC] | 395 | 7,107 | 10.6% |
+| [AB+BC] | **1,380** | 8,092 | 21.5% |
+| [AC+BC] | 499 | 7,211 | 11.9% |
+| all-pairwise | 1,071 | 7,783 | 18.4% |
 
-Log-linear Poisson, predicted 000 cell by dependence structure:
+- **Model-scenario range: dark ≈ 380–1,380; code-miss ≈ 10.5–21.5%** (each rate computed within its own
+  model — the earlier "19–28%" combined endpoints across models and is retracted).
+- **Vehicle-block bootstrap**: [AB+BC] 95% CI **[850, 2,485]**; the all-pairwise (saturated) model is
+  *unstable under cluster resampling* (CI to ~19k) — a genuine fragility the unit-level bootstrap hid.
+- **None of these is a bound.** Every figure is a model scenario conditional on list precision (esp. C,
+  unadjudicated), homogeneous within-stratum capture, closed population, and reachability. Positive AB
+  dependence is AIC-supported, which *suggests* independence-scenario figures err low, but unknown list
+  false-positives push the other way — report scenarios with sensitivity, never bounds.
 
-| model | dark n000 | total N |
-|---|--:|--:|
-| independence | 1,154 | 7,866 |
-| [AB] | 1,860 | 8,572 |
-| [AC] | 468 | 7,180 |
-| [AB+AC] | 838 | 7,550 |
-| **[AB+BC] (best AIC, df≥1)** | **2,078 [1,794–2,372]** | 8,790 |
-| [AB+AC+BC] (all-pairwise, df=0) | **1,543 [915–2,745]** | 8,255 |
-
-**Reading:** the AB term is strongly AIC-favored — direct confirmation that code×description dependence is
-real and the 2-source 949 was biased low, exactly as the stratified floors (1,007/1,205) indicated. Across
-credible structures **dark ≈ 500–2,400**, headline **all-pairwise 1,543 [915–2,745]**, implying the code
-misses **~19–28%** of DoD Phase III (total N ≈ 7,200–8,800).
-
-**Sensitivities that adjudication will settle:** list-C precision < 1 (admin orders on declared vehicles
-inflate the 271 C-only cell → inflates N; the sibling stratum C091–C105 measures this); list-B false
-positives symmetric. The all-pairwise model has 0 df (an estimator, not a testable fit); [AB+BC] is the best
-*testable* model. All values provisional pending re-run through #458's estimator discipline.
-
-## NASA: same dependence bias, OPPOSITE mechanism (run 2026-07-18, provisional) — the control group
+## NASA: same dependence caveat, opposite pattern (run 2026-07-18, provisional) — a negative-control comparator
 
 Running the identical probes on NASA (coded 1,038 / described 202 / overlap 186):
 
@@ -335,12 +328,12 @@ Running the identical probes on NASA (coded 1,038 / described 202 / overlap 186)
 - **3-source fit is underpowered for NASA** — the within-C window has a zero cell (B∩C̄∩A̅... B-only-C = 0),
   so the AB odds ratio is degenerate (n=40). Do not fit; report the 2-source ≈73 with the dependence caveat.
 
-**Why this strengthens the DoD story:** NASA is the natural control. Where the award/administration
-separation and Phase-III-vehicle structure are absent (no DCMA analogue, few dedicated vehicles, centralized
-contracting), the order-level miss rate halves and the vehicle-mediated loss goes to ~zero. The DoD failure
-is not "government can't code Phase III" — it is specifically the **order-under-vehicle handoff**, present
-where that structure is used and absent where it isn't. This is the mechanism claim surviving an
-out-of-sample test.
+**Interpretive status (narrowed per PR review):** NASA is a *descriptive negative-control comparator*, not
+a causal control — agency, contract mix, years, firm composition, and coding process all differ without
+matching. The pattern is *consistent with* the order-under-vehicle handoff mechanism (and the
+within-vehicle-status comparison — standalone 9.3% vs 8.4% — is partially standardized), but it does not
+confirm it out-of-sample. A matched/standardized comparison (by contract type, year, vehicle status) would be
+required for a causal claim.
 
 ## Scope note: everything here is AWARDING-agency-scoped (probe 2026-07-18)
 

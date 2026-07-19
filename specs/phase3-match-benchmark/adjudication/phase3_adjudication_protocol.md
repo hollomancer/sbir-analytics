@@ -3,7 +3,8 @@
 Written **before** labeling, so the rule doesn't drift toward the model. Frozen 2026-07-17.
 
 ## Files
-- `specs/phase3-match-benchmark/adjudication/phase3_adjudication_blind.csv` — **90 cases** (regenerated 2026-07-18, reshuffled, new case_ids),
+- `specs/phase3-match-benchmark/adjudication/phase3_adjudication_blind.csv` — **127 cases** (75 detector, 15
+  dark-cell, 15 sibling, 10 GSA firm-linked, 12 list-C; appended strata are knowably-blocked, see below),
   **scores stripped**. Label these.
 - `specs/phase3-match-benchmark/adjudication/phase3_adjudication_KEY.csv` — case_id → model_score / rank / link_evidence / stratum / prior label. **Do not open until labeling is done.**
 - `specs/phase3-match-benchmark/adjudication/phase3_transition_leads_audit_v2.csv` — the score-visible source (your original 71 labels live here; treat as *provisional/anchored*).
@@ -59,8 +60,17 @@ the transition judgment), and `evidence_notes` (what decided it).
 - **GSA-channel stratum (C106–C115, appended 2026-07-19)** — described "SBIR PHASE III" contracts
   **awarded by GSA AAS, DoD-funded** (the assisted-acquisition channel: $1.77B, 0/189 carry the 10Q code).
   These are text-flagged (like the miscoded 141) but from a different awarding pipeline with rich FEDSIM
-  descriptions — expected to adjudicate easily. Their Y-rate = precision of the described list in the GSA
-  channel, which underwrites the $1.77B figure. Same append-only blinding note as the sibling stratum.
+  descriptions — expected to adjudicate easily. **Scope (narrowed per PR review):** these 10 are the
+  firm-linked, one-per-firm subset (69 of 189 records firm-link); their Y-rate estimates precision of
+  *firm-linked GSA leads only* — it does NOT underwrite the full $1.77B, which would need a random,
+  dollar-weighted sample of all 189 with Phase-III status adjudicated separately from specific SBIR lineage.
+  Same append-only blinding note as the sibling stratum.
+
+- **list-C stratum (C116–C127, appended 2026-07-19)** — a random, vehicle-clustered sample from the **C-only** orders (271 vs the exact-phrase B list; 136 after
+  also screening broader SBIR/Phase text — the sample draws from those 136, the conservative subset) (on *self-declared* Phase III vehicles, unflagged by code and order-text). This — not the
+  sibling stratum — measures **list-C precision** for the capture model in `vehicle_mse.py` (the sibling
+  stratum samples a different rule: high coded-purity vehicles). Firm shown = the vehicle's dominant coded
+  vendor where available, else the declared recipient; judge Phase III status first, lineage second.
 
 ## Blinding (rule #1)
 `model_score`, `rank`, `link_evidence`, `stratum`, and `data_flag` are removed from the sheet. Judge on the
@@ -81,7 +91,7 @@ After labeling, joining to the KEY gives two independent numbers:
   time, no model can be meaningfully scored above ~92% agreement. That ceiling is the point.
 
 ## What this produces (the trust artifact)
-Precision, recall, Unknown rate, and self-agreement — per stratum (`dod_identity`, `dod_textonly`,
+**Selected-lead precision** (NOT population recall — detector cases are top-ranked leads and the random dark-cell rows are an existence scan, so recall over the dark population is not identified by this design), Unknown rate, and self-agreement — per stratum (`dod_identity`, `dod_textonly`,
 `cross_agency_dod_nasa`). The README line *"entity resolution is probabilistic and will include false
 positives"* becomes a sentence with numbers in it. The cross-agency 15 specifically gate whether we build
 the DoD non-SBIR puller.
