@@ -1,0 +1,102 @@
+{
+  "schema_version": "1",
+  "status": "provisional",
+  "reproduction_state": "blocked_missing_inputs",
+  "required_missing_inputs": [
+    "data/derived/m0a_coded_dod.parquet",
+    "data/derived/m0a_desc_phase3_dod.parquet",
+    "data/derived/m0a_coded_nasa.parquet",
+    "data/derived/m0a_desc_phase3_nasa.parquet",
+    "TechPort cached search response",
+    "GSA notice and pair frames"
+  ],
+  "claims": {
+    "dod_description_only_flags": {
+      "value": 141,
+      "denominator": 962,
+      "status": "legacy_unreproduced",
+      "semantics": "description-flagged contract awards absent from the SR3/ST3 code list; not adjudicated miscoding"
+    },
+    "nasa_description_only_flags": {
+      "value": 16,
+      "denominator": 202,
+      "status": "legacy_unreproduced",
+      "semantics": "description-flagged contract awards absent from the SR3/ST3 code list; not adjudicated miscoding"
+    },
+    "dark_independence_scenario": {
+      "value": 948.5766423357663,
+      "status": "arithmetic_reproduced_inputs_unverified",
+      "assumption": "two-list homogeneous independent capture (list odds ratio = 1)",
+      "cells": {
+        "code_only": 5530,
+        "description_only": 141,
+        "overlap": 821
+      }
+    },
+    "dark_frame_size": {
+      "value": 131000,
+      "status": "legacy_unreproduced",
+      "semantics": "preliminary sampled frame-size estimate; not a dark Phase III count"
+    },
+    "retrieval_auc": {
+      "status": "legacy_unreproduced_nonstandard_estimator",
+      "semantics": "portfolio/linkage proxy, not dark-Phase-III detector performance",
+      "historical_values": {
+        "dod_notices": 0.844,
+        "dod_coded_contracts": 0.714,
+        "nasa_same_agency": 0.879,
+        "dod_to_nasa": 0.828
+      }
+    },
+    "survival": {
+      "status": "legacy_unreproduced_wrong_event_date",
+      "historical_event_only_median_years": 9,
+      "semantics": "not a lower bound; corrected estimand is first observed Phase II to first later observed coded Phase III action"
+    },
+    "dark_structure_stratified_models": {
+      "status": "arithmetic_reproduced_inputs_unverified",
+      "script": "scripts/phase3_benchmark/vehicle_mse.py",
+      "inputs_manifest": "specs/phase3-match-benchmark/inputs/vehicle_mse_result.json",
+      "semantics": "standalone AB-Chapman + task-order ABC log-linear, dark cells summed; model scenarios, NOT bounds; list-C precision unadjudicated",
+      "dark_by_model": {
+        "independence": 997,
+        "AB": 1175,
+        "AC": 382,
+        "BC": 1117,
+        "AB+AC": 395,
+        "AB+BC": 1380,
+        "AC+BC": 499,
+        "AB+AC+BC": 1071
+      },
+      "code_miss_rate_by_model_pct": {
+        "min": 10.5,
+        "max": 21.5
+      },
+      "ab_bc_vehicle_block_bootstrap_ci": [
+        850,
+        2485
+      ]
+    },
+    "gsa_awarded_described_phase3": {
+      "status": "arithmetic_reproduced_inputs_unverified",
+      "value": 189,
+      "dollars": 1806071875,
+      "dod_funded": 187,
+      "dod_funded_dollars": 1774039785,
+      "coded_10q": "0 of 189 (research=None, full census via award details)",
+      "semantics": "described 'SBIR PHASE III', awarding=GSA FY16-25; text-flagged, unadjudicated; awarding-scope gap"
+    },
+    "self_declared_phase3_vehicles_dod": {
+      "status": "arithmetic_reproduced_inputs_unverified",
+      "value": 149,
+      "zero_coded_orders": 39,
+      "children_of_zero_coded": {
+        "orders": 132,
+        "order_text_flagged": 87,
+        "unflagged": 45,
+        "unflagged_dollars": 53150992
+      },
+      "semantics": "IDV award types with description 'SBIR PHASE III', awarding=DoD; vehicle-level capture list"
+    }
+  }
+}

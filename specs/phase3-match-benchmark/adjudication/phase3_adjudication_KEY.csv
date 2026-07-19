@@ -1,0 +1,128 @@
+case_id,src_row,firm_name,stratum,rank,model_score,link_evidence,data_flag,prior_label_SCORE_VISIBLE,is_recheck,is_new_blind
+C001,25,"3 Phoenix, Inc.",dod_textonly,2,0.247,absim 0.15,,N,1,
+C002,59,FIRST RF CORPORATION,dod_textonly,3,0.119,absim 0.14,,,,1
+C003,54,"ADAPTIVE METHODS, INC.",dod_textonly,1,0.354,absim 0.22,,,,1
+C004,93,"FUSE INTEGRATION, INC.",dod_identity,1,0.385,absim 0.17,,Y,1,
+C005,42,EOSPACE INC.,dod_identity,1,0.991,id_cited,,,,1
+C006,69,NAVMAR APPLIED SCIENCES CORP,dod_identity,1,0.886,id_cited,,,,1
+C007,,"CLARK-MXR, INC.",dark_cell_unflagged,,,,,,,1
+C008,34,"TURNAROUND FACTOR, INC.",dod_textonly,2,0.378,absim 0.20,,,,1
+C009,57,FIRST RF CORPORATION,dod_identity,1,0.79,id_cited,,,,1
+C010,55,"ADAPTIVE METHODS, INC.",dod_textonly,2,0.236,absim 0.17,,,,1
+C011,126,"ZetrOZ Systems, LLC",cross_agency_dod_nasa,1,0.102,absim 0.10,match_award_postdates_candidate,,,1
+C012,36,"COHERENT TECHNICAL SERVICES, INC.",dod_identity,1,1.0,id_cited,,,,1
+C013,,"Correlated Solutions, Inc.",dark_cell_unflagged,,,,,,,1
+C014,38,"COHERENT TECHNICAL SERVICES, INC.",dod_textonly,3,0.838,absim 0.29,,,,1
+C015,73,RDA INC.,dod_identity,2,0.998,id_cited,,,,1
+C016,127,Brandywine Photonics LLC,cross_agency_dod_nasa,1,0.101,absim 0.10,match_award_postdates_candidate,,,1
+C017,56,"ADAPTIVE METHODS, INC.",dod_textonly,3,0.152,absim 0.15,,,,1
+C018,79,Form Fit and Function LLC ,dod_textonly,2,0.344,absim 0.21,,,,1
+C019,120,Care Weather Technologies,cross_agency_dod_nasa,1,0.37,absim 0.37,,,,1
+C020,74,RDA INC.,dod_identity,3,0.997,id_cited,,,,1
+C021,43,EOSPACE INC.,dod_textonly,2,0.263,absim 0.22,,,,1
+C022,50,APTIMA INC,dod_textonly,3,0.303,absim 0.20,,,,1
+C023,,"QUASAR FEDERAL SYSTEMS, INC.",dark_cell_unflagged,,,,,,,1
+C024,46,MIKEL INC,dod_textonly,2,0.285,absim 0.16,,,,1
+C025,108,NOKOMIS INC,dod_textonly,1,0.291,absim 0.17,,Unknown,1,
+C026,35,"TURNAROUND FACTOR, INC.",dod_textonly,3,0.375,absim 0.21,match_postdates_notice,,,1
+C027,,"CMSOFT, INC.",dark_cell_unflagged,,,,,,,1
+C028,53,"TECHNICAL DATA ANALYSIS, INC.",dod_textonly,3,0.097,absim 0.13,match_postdates_notice,,,1
+C029,124,Zeno Power Systems,cross_agency_dod_nasa,1,0.118,absim 0.12,,,,1
+C030,128,Triad Semiconductor,cross_agency_dod_nasa,1,0.096,absim 0.10,,,,1
+C031,49,APTIMA INC,dod_textonly,2,0.318,absim 0.19,match_postdates_notice,,,1
+C032,,"COHERENT TECHNICAL SERVICES, INC.",dark_cell_unflagged,,,,,,,1
+C033,75,"VRC Metal Systems, LLC",dod_textonly,1,0.919,absim 0.35,,,,1
+C034,92,"Electro Standards Laboratory, Inc.",dod_textonly,3,0.068,absim 0.12,,N,1,
+C035,134,"Rocket Lab USA, Inc.",cross_agency_dod_nasa,1,0.078,absim 0.08,,,,1
+C036,67,BIHRLE APPLIED RESEARCH INC,dod_textonly,2,0.075,absim 0.11,,,,1
+C037,77,"VRC Metal Systems, LLC",dod_textonly,3,0.068,absim 0.09,,,,1
+C038,121,CorePower Magnetics,cross_agency_dod_nasa,1,0.286,absim 0.29,,,,1
+C039,72,RDA INC.,dod_identity,1,1.0,id_cited,,,,1
+C040,129,Phase Four LLC,cross_agency_dod_nasa,1,0.084,absim 0.08,match_award_postdates_candidate,,,1
+C041,30,SQUISHY ROBOTICS INC,dod_textonly,1,0.049,absim 0.06,,N,1,
+C042,1,INTELLISENSE SYSTEMS INC,dod_identity,2,0.999,id_cited,,Unknown,1,
+C043,,"SEACORP, LLC",dark_cell_unflagged,,,,,,,1
+C044,66,BIHRLE APPLIED RESEARCH INC,dod_identity,1,0.915,id_cited,,,,1
+C045,,"TeraMetrix, LLC",dark_cell_unflagged,,,,,,,1
+C046,122,Ambrosia Space Manufacturing Corporation,cross_agency_dod_nasa,1,0.153,absim 0.15,,,,1
+C047,41,NEUROWAVE SYSTEMS INC,dod_textonly,3,0.03,absim 0.03,,,,1
+C048,132,"Generation Orbit Launch Services, Inc.",cross_agency_dod_nasa,1,0.083,absim 0.08,match_award_postdates_candidate,,,1
+C049,32,SQUISHY ROBOTICS INC,dod_textonly,3,0.041,absim 0.05,,,,1
+C050,,"SIGNATURE RESEARCH, INC.",dark_cell_unflagged,,,,,,,1
+C051,39,NEUROWAVE SYSTEMS INC,dod_identity,1,0.976,absim 0.38,,,,1
+C052,80,Form Fit and Function LLC ,dod_textonly,3,0.13,absim 0.14,match_postdates_notice,,,1
+C053,51,"TECHNICAL DATA ANALYSIS, INC.",dod_identity,1,0.787,id_cited,match_postdates_notice,,,1
+C054,123,"Fracture Analysis Consultants, Inc",cross_agency_dod_nasa,1,0.124,absim 0.12,,,,1
+C055,13,GS ENGINEERING INC,dod_identity,2,0.412,absim 0.20,,Unknown,1,
+C056,63,"Learntowin, Inc.",dod_textonly,1,0.155,absim 0.12,,,,1
+C057,27,"BASECONNECT, LLC",dod_textonly,1,0.081,absim 0.08,,N,1,
+C058,,"THERMOANALYTICS, INC.",dark_cell_unflagged,,,,,,,1
+C059,48,APTIMA INC,dod_textonly,1,0.725,absim 0.27,,,,1
+C060,78,Form Fit and Function LLC ,dod_identity,1,0.483,absim 0.22,,,,1
+C061,,"FIDELITY COMTECH, INC.",dark_cell_unflagged,,,,,,,1
+C062,65,"Learntowin, Inc.",dod_textonly,3,0.097,absim 0.11,,,,1
+C063,45,MIKEL INC,dod_textonly,1,0.322,absim 0.17,,,,1
+C064,125,Coherent,cross_agency_dod_nasa,1,0.11,absim 0.11,,,,1
+C065,40,NEUROWAVE SYSTEMS INC,dod_textonly,2,0.057,absim 0.10,match_postdates_notice,,,1
+C066,131,Specialty Materials,cross_agency_dod_nasa,1,0.083,absim 0.08,match_award_postdates_candidate,,,1
+C067,47,MIKEL INC,dod_textonly,3,0.115,absim 0.12,,,,1
+C068,,Radiometrics Corporation,dark_cell_unflagged,,,,,,,1
+C069,,COMPOSITES AUTOMATION LLC,dark_cell_unflagged,,,,,,,1
+C070,58,FIRST RF CORPORATION,dod_textonly,2,0.128,absim 0.13,,,,1
+C071,62,"Athena Gtx, Inc.",dod_identity,3,0.033,absim 0.05,,,,1
+C072,52,"TECHNICAL DATA ANALYSIS, INC.",dod_textonly,2,0.159,absim 0.12,match_postdates_notice,,,1
+C073,64,"Learntowin, Inc.",dod_identity,2,0.105,absim 0.11,,,,1
+C074,17,PIASECKI AIRCRAFT CORP,dod_textonly,3,0.084,absim 0.09,,N,1,
+C075,111,"PHASE FOUR, INC.",dod_identity,1,0.031,absim 0.04,,Unknown,1,
+C076,133,Nanocomp Technologies,cross_agency_dod_nasa,1,0.082,absim 0.08,,,,1
+C077,,"PANERATECH, INC.",dark_cell_unflagged,,,,,,,1
+C078,70,NAVMAR APPLIED SCIENCES CORP,dod_textonly,2,0.171,absim 0.18,,,,1
+C079,,ADVANCED SILICON CARBIDE MATERIALS LLC,dark_cell_unflagged,,,,,,,1
+C080,130,Scigenesis,cross_agency_dod_nasa,1,0.084,absim 0.08,,,,1
+C081,37,"COHERENT TECHNICAL SERVICES, INC.",dod_identity,2,0.995,id_cited,,,,1
+C082,33,"TURNAROUND FACTOR, INC.",dod_identity,1,0.484,absim 0.22,,,,1
+C083,102,EASEALERT LLC,dod_identity,1,0.444,absim 0.20,,Unknown,1,
+C084,71,NAVMAR APPLIED SCIENCES CORP,dod_textonly,3,0.161,absim 0.18,,,,1
+C085,,SMART INFORMATION FLOW TECHNOLOGIES LLC,dark_cell_unflagged,,,,,,,1
+C086,60,"Athena Gtx, Inc.",dod_textonly,1,0.197,absim 0.16,,,,1
+C087,76,"VRC Metal Systems, LLC",dod_identity,2,0.119,absim 0.11,match_postdates_notice,,,1
+C088,61,"Athena Gtx, Inc.",dod_textonly,2,0.034,absim 0.05,,,,1
+C089,44,EOSPACE INC.,dod_identity,3,0.102,absim 0.10,match_postdates_notice,,,1
+C090,68,BIHRLE APPLIED RESEARCH INC,dod_textonly,3,0.068,absim 0.07,,,,1
+C091,,MIDE TECHNOLOGY CORPORATION,sibling_high_purity,,,idv N6449821D0001 (5 coded sibs),,,,1
+C092,,KENNON PRODUCTS INC,sibling_high_purity,,,idv N6833513G0017 (1 coded sibs),,,,1
+C093,,"GATR TECHNOLOGIES, INC.",sibling_high_purity,,,idv W15QKN13D0099 (185 coded sibs),,,,1
+C094,,"DISCOVERY MACHINE, INC.",sibling_high_purity,,,idv FA300221G0073 (4 coded sibs),,,,1
+C095,,"NETBIO, INC.",sibling_high_purity,,,idv H9222214D0012 (4 coded sibs),,,,1
+C096,,IMAGINE ONE TECHNOLOGY &amp; MANAGEMENT LTD,sibling_high_purity,,,idv N6523612D3885 (9 coded sibs),,,,1
+C097,,LINQUEST CORPORATION,sibling_high_purity,,,idv FA254421D0001 (14 coded sibs),,,,1
+C098,,"GATR TECHNOLOGIES, INC.",sibling_high_purity,,,idv W15QKN13D0099 (185 coded sibs),,,,1
+C099,,"INNOVATIVE DEFENSE TECHNOLOGIES, LLC",sibling_high_purity,,,idv N0002417G4115 (33 coded sibs),,,,1
+C100,,"ASK SAGE, INC.",sibling_high_purity,,,idv W9128Z25DA001 (30 coded sibs),,,,1
+C101,,IMAGINE ONE TECHNOLOGY &amp; MANAGEMENT LTD,sibling_high_purity,,,idv N6523612D3885 (9 coded sibs),,,,1
+C102,,"ADVANCED CERAMICS RESEARCH, IN",sibling_high_purity,,,idv N0001403D0247 (4 coded sibs),,,,1
+C103,,"EDAPTIVE COMPUTING, INC.",sibling_high_purity,,,idv FA865014D1724 (6 coded sibs),,,,1
+C104,,RISE8 INC,sibling_high_purity,,,idv FA873023DB004 (9 coded sibs),,,,1
+C105,,"DARK WOLF SOLUTIONS, LLC",sibling_high_purity,,,idv FA701420A0002 (34 coded sibs),,,,1
+C106,,ARMAMENTS RESEARCH COMPANY INC.,gsa_channel,,,"GSA-awarded, DoD-funded, piid 47QFLA21F0155",,,,1
+C107,,"ILLUMINATION WORKS, LLC",gsa_channel,,,"GSA-awarded, DoD-funded, piid 47QFLA23F0102",,,,1
+C108,,SEHLKE CONSULTING LLC,gsa_channel,,,"GSA-awarded, DoD-funded, piid 47QFLA21F0086",,,,1
+C109,,APTIMA INC,gsa_channel,,,"GSA-awarded, DoD-funded, piid 47QFLA24F0112",,,,1
+C110,,"IST RESEARCH, LLC",gsa_channel,,,"GSA-awarded, DoD-funded, piid 47QFCA23F0021",,,,1
+C111,,"SABEL SYSTEMS TECHNOLOGY SOLUTIONS, LLC",gsa_channel,,,"GSA-awarded, DoD-funded, piid 47QFLA21F0166",,,,1
+C112,,LINQUEST CORPORATION,gsa_channel,,,"GSA-awarded, DoD-funded, piid 47QFLA21F0221",,,,1
+C113,,"DEFENSE UNICORNS, INC.",gsa_channel,,,"GSA-awarded, DoD-funded, piid 47QFCA22F0052",,,,1
+C114,,"KBR WYLE SERVICES, LLC",gsa_channel,,,"GSA-awarded, DoD-funded, piid 47QFLA25F0069",,,,1
+C115,,202 GROUP LLC,gsa_channel,,,"GSA-awarded, DoD-funded, piid 47QFCA20C0013",,,,1
+C116,,SOLID STATE SCIENTIFIC CORPORATION,list_c_only,,,self-declared idv FA872615D0004,,,,1
+C117,,"FIRESTORM LABS, INC.",list_c_only,,,self-declared idv FA873025DB001,,,,1
+C118,,"GATR TECHNOLOGIES, INC.",list_c_only,,,self-declared idv W15QKN13D0099,,,,1
+C119,,CRITICAL COMMUNICATIONS CONTROLS &amp; INSTRUMENTS LLC,list_c_only,,,self-declared idv N6833522G0035,,,,1
+C120,,METRON INCORPORATED,list_c_only,,,self-declared idv N6600117D5202,,,,1
+C121,,"LOUKUS TECHNOLOGIES, INC.",list_c_only,,,self-declared idv W911QX25DA005,,,,1
+C122,,"MODUS OPERANDI, INC.",list_c_only,,,self-declared idv W15P7T11DH241,,,,1
+C123,,SOLVUS GLOBAL LLC,list_c_only,,,self-declared idv W911QX25DA001,,,,1
+C124,,"MONKTON, INC.",list_c_only,,,self-declared idv FA259520D0001,,,,1
+C125,,"ADVANCED ACOUSTIC CONCEPTS, INC.",list_c_only,,,self-declared idv N6833509D0095,no_firm_phase2_link,,,1
+C126,,OMNI FED LLC,list_c_only,,,self-declared idv FA228024G0004,,,,1
+C127,,ELECTRODYNAMICS ASSOCIATES INC,list_c_only,,,self-declared idv FA865008D2815,,,,1
