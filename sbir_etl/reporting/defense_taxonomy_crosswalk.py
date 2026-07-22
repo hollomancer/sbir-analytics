@@ -141,13 +141,9 @@ def load_defense_crosswalk(
                 if target in seen:
                     raise ValueError(f"duplicate {key} target {target!r} for {cet_id}")
                 if strength not in strengths or not rationale:
-                    raise ValueError(
-                        f"{cet_id}.{key}.{target} needs valid strength and rationale"
-                    )
+                    raise ValueError(f"{cet_id}.{key}.{target} needs valid strength and rationale")
                 seen.add(target)
-                clean_rows.append(
-                    {"target": target, "strength": strength, "rationale": rationale}
-                )
+                clean_rows.append({"target": target, "strength": strength, "rationale": rationale})
             target_mappings[key] = tuple(clean_rows)
         normalized[cet_id] = target_mappings
 

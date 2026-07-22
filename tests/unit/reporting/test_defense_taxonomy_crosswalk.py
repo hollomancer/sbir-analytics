@@ -29,9 +29,7 @@ def test_representative_direct_and_partial_mappings() -> None:
     assert crosswalk.targets_for("hypersonics", "dod_cta14") == ["hypersonics"]
     assert crosswalk.targets_for("hypersonics", "dod_sc8") == ["kinetic_capabilities"]
     assert crosswalk.targets_for("advanced_nuclear_energy_systems", "dod_cta14") == []
-    renewable = crosswalk.mapping_details(
-        "renewable_energy_generation_and_storage", "dod_sc8"
-    )
+    renewable = crosswalk.mapping_details("renewable_energy_generation_and_storage", "dod_sc8")
     assert renewable[0]["target"] == "energy_storage_and_batteries"
     assert renewable[0]["strength"] == "partial"
 

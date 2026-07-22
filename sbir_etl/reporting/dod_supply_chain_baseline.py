@@ -103,13 +103,19 @@ def _federal_fiscal_years(awards: pd.DataFrame) -> pd.Series:
 
 
 def _dod_mask(awards: pd.DataFrame) -> pd.Series:
-    agency_code = _first_column(
-        awards, ("awarding_agency_code", "agency_code", "funding_agency_code")
-    ).fillna("").astype(str).str.strip()
+    agency_code = (
+        _first_column(awards, ("awarding_agency_code", "agency_code", "funding_agency_code"))
+        .fillna("")
+        .astype(str)
+        .str.strip()
+    )
     code_match = agency_code.str.match(r"^(9700|97)$", na=False)
-    agency = _first_column(
-        awards, ("agency", "awarding_agency_name", "funding_agency_name")
-    ).fillna("").astype(str).str.upper()
+    agency = (
+        _first_column(awards, ("agency", "awarding_agency_name", "funding_agency_name"))
+        .fillna("")
+        .astype(str)
+        .str.upper()
+    )
     name_match = agency.str.contains(
         r"\bDOD\b|\bDEPARTMENT OF DEFENSE\b|\bDEFENSE DEPARTMENT\b", regex=True, na=False
     )
@@ -126,9 +132,9 @@ def _identity_frame(awards: pd.DataFrame) -> pd.DataFrame:
     cage = _first_column(awards, ("company_cage", "cage", "cage_code", "vendor_cage")).map(
         _clean_identifier
     )
-    duns = _first_column(
-        awards, ("company_duns", "duns", "recipient_duns", "vendor_duns")
-    ).map(_clean_identifier)
+    duns = _first_column(awards, ("company_duns", "duns", "recipient_duns", "vendor_duns")).map(
+        _clean_identifier
+    )
     names = _first_column(awards, ("company_name", "company", "recipient_name", "vendor_name"))
 
     rows: list[dict[str, object]] = []
@@ -144,11 +150,7 @@ def _identity_frame(awards: pd.DataFrame) -> pd.DataFrame:
             ("name", normalized_name.upper() if normalized_name else None),
         )
         method, identifier = next(
-            (
-                (m, v)
-                for m, v in candidates
-                if v is not None and not pd.isna(v) and str(v).strip()
-            ),
+            ((m, v) for m, v in candidates if v is not None and not pd.isna(v) and str(v).strip()),
             ("unresolved", None),
         )
         rows.append(
@@ -156,7 +158,11 @@ def _identity_frame(awards: pd.DataFrame) -> pd.DataFrame:
                 "organization_id": f"{method}:{identifier}" if identifier else None,
                 "organization_name": None if pd.isna(raw_name) else str(raw_name).strip(),
                 "identity_method": method,
-                "identity_confidence": 1.0 if method != "name" and identifier else 0.5 if identifier else 0.0,
+                "identity_confidence": 1.0
+                if method != "name" and identifier
+                else 0.5
+                if identifier
+                else 0.0,
                 "exact_identity": method in {"canonical", "uei", "cage", "duns"},
             }
         )
@@ -294,9 +300,7 @@ def build_award_facts(
     ).map(_clean_identifier)
     facts["naics_2digit"] = facts["naics_code"].map(lambda value: value[:2] if value else None)
     facts["state"] = _first_column(cohort, ("state", "company_state", "recipient_state"))
-    facts["congressional_district"] = _first_column(
-        cohort, ("congressional_district", "district")
-    )
+    facts["congressional_district"] = _first_column(cohort, ("congressional_district", "district"))
     facts["first_observed_fy"] = facts.groupby("organization_id")["fiscal_year"].transform("min")
     facts["first_observed_entrant"] = facts["fiscal_year"] == facts["first_observed_fy"]
     return facts[FACT_COLUMNS].sort_values(["fiscal_year", "award_id"]).reset_index(drop=True)
@@ -323,9 +327,7 @@ def _wilson(successes: int, total: int) -> tuple[float | None, float | None]:
     return max(0.0, center - margin), min(1.0, center + margin)
 
 
-def _transition_summary(
-    group: pd.DataFrame, survival: pd.DataFrame | None
-) -> dict[str, object]:
+def _transition_summary(group: pd.DataFrame, survival: pd.DataFrame | None) -> dict[str, object]:
     empty = {
         "transition_status": "not_computed",
         "transition_eligible": 0,
@@ -375,9 +377,12 @@ def _period_groups(facts: pd.DataFrame, latest_fy: int, window_years: int):
     for fy in sorted(facts["fiscal_year"].unique()):
         yield "annual", int(fy), int(fy), facts.loc[facts["fiscal_year"] == fy]
     start = latest_fy - window_years + 1
-    yield "latest_complete_window", start, latest_fy, facts.loc[
-        facts["fiscal_year"].between(start, latest_fy)
-    ]
+    yield (
+        "latest_complete_window",
+        start,
+        latest_fy,
+        facts.loc[facts["fiscal_year"].between(start, latest_fy)],
+    )
 
 
 def _ordered_tag_union(values: pd.Series) -> list[str]:
@@ -401,7 +406,11 @@ def build_cet_metrics(
                 award_count=("award_id", "nunique"),
                 award_dollars=("award_amount", "sum"),
             )
-            dollars = float(group["award_amount"].sum(min_count=1)) if group["award_amount"].notna().any() else 0.0
+            dollars = (
+                float(group["award_amount"].sum(min_count=1))
+                if group["award_amount"].notna().any()
+                else 0.0
+            )
             dollar_hhi = _hhi(firm["award_dollars"])
             count_hhi = _hhi(firm["award_count"])
             exact_group = group.loc[group["exact_identity"]]
@@ -421,9 +430,11 @@ def build_cet_metrics(
             entrant_rows = group["organization_id"].isin(entrant_ids)
             distinct_firms = int(resolved_group["organization_id"].nunique())
             states = group.loc[group["state"].notna()].groupby("state")["award_amount"].sum()
-            districts = group.loc[group["congressional_district"].notna()].groupby(
-                "congressional_district"
-            )["award_amount"].sum()
+            districts = (
+                group.loc[group["congressional_district"].notna()]
+                .groupby("congressional_district")["award_amount"]
+                .sum()
+            )
             transition = _transition_summary(group, survival)
             records.append(
                 {
@@ -454,9 +465,7 @@ def build_cet_metrics(
                         (group["identity_method"] == "unresolved").mean()
                     ),
                     "exact_identity_award_count": int(exact_group["award_id"].nunique()),
-                    "exact_identity_distinct_firms": int(
-                        exact_group["organization_id"].nunique()
-                    ),
+                    "exact_identity_distinct_firms": int(exact_group["organization_id"].nunique()),
                     "exact_identity_award_dollars": float(
                         exact_group["award_amount"].sum(min_count=1)
                     )
@@ -464,7 +473,9 @@ def build_cet_metrics(
                     else 0.0,
                     "exact_identity_dollar_hhi": _hhi(exact_firm["award_dollars"]),
                     "entrant_firms": len(entrant_ids),
-                    "entrant_firm_share": len(entrant_ids) / distinct_firms if distinct_firms else None,
+                    "entrant_firm_share": len(entrant_ids) / distinct_firms
+                    if distinct_firms
+                    else None,
                     "entrant_dollars": float(group.loc[entrant_rows, "award_amount"].sum()),
                     "entrant_dollar_share": (
                         float(group.loc[entrant_rows, "award_amount"].sum()) / dollars
@@ -478,7 +489,9 @@ def build_cet_metrics(
     metrics = pd.DataFrame(records)
     if metrics.empty:
         return metrics
-    for _, indexes in metrics.groupby(["period_type", "period_start_fy", "period_end_fy"]).groups.items():
+    for _, indexes in metrics.groupby(
+        ["period_type", "period_start_fy", "period_end_fy"]
+    ).groups.items():
         subset = metrics.loc[indexes]
         eligible = subset.dropna(subset=["transition_rate_5yr", "entrant_firm_share"])
         if eligible.empty:
@@ -541,9 +554,11 @@ def build_firm_flags(facts: pd.DataFrame, *, latest_fy: int, window_years: int =
                     "dominant_firm": dominant,
                 }
             )
-    return pd.DataFrame(records).sort_values(
-        ["cet_area", "firm_rank"]
-    ).reset_index(drop=True) if records else pd.DataFrame()
+    return (
+        pd.DataFrame(records).sort_values(["cet_area", "firm_rank"]).reset_index(drop=True)
+        if records
+        else pd.DataFrame()
+    )
 
 
 def build_baseline(
@@ -596,7 +611,9 @@ def build_baseline(
         "award_fact_rows": len(facts),
         "metric_rows": len(metrics),
         "firm_flag_rows": len(flags),
-        "transition_status": "computed" if survival is not None and not survival.empty else "not_computed",
+        "transition_status": "computed"
+        if survival is not None and not survival.empty
+        else "not_computed",
         "entrant_definition": "first observed DoD SBIR/STTR award in the retained FY2012+ corpus; left-censored",
         "identity_policy": (
             "canonical organization ID, then UEI, CAGE, DUNS, normalized name; "

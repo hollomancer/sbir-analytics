@@ -67,13 +67,43 @@ def _awards() -> pd.DataFrame:
 def _classifications() -> pd.DataFrame:
     return pd.DataFrame(
         [
-            {"award_id": "A1", "primary_cet": "artificial_intelligence", "primary_score": 80.0, "taxonomy_version": "NSTC-2025Q1"},
+            {
+                "award_id": "A1",
+                "primary_cet": "artificial_intelligence",
+                "primary_score": 80.0,
+                "taxonomy_version": "NSTC-2025Q1",
+            },
             # Duplicate classification must not double-count award dollars.
-            {"award_id": "A1", "primary_cet": "quantum_information_science", "primary_score": 70.0, "taxonomy_version": "NSTC-2025Q1"},
-            {"award_id": "A2", "primary_cet": "artificial_intelligence", "primary_score": 60.0, "taxonomy_version": "NSTC-2025Q1"},
-            {"award_id": "A3", "primary_cet": "artificial_intelligence", "primary_score": 40.0, "taxonomy_version": "NSTC-2025Q1"},
-            {"award_id": "A4", "primary_cet": "space_technologies_and_systems", "primary_score": 90.0, "taxonomy_version": "NSTC-2025Q1"},
-            {"award_id": "A5", "primary_cet": "artificial_intelligence", "primary_score": 90.0, "taxonomy_version": "NSTC-2025Q1"},
+            {
+                "award_id": "A1",
+                "primary_cet": "quantum_information_science",
+                "primary_score": 70.0,
+                "taxonomy_version": "NSTC-2025Q1",
+            },
+            {
+                "award_id": "A2",
+                "primary_cet": "artificial_intelligence",
+                "primary_score": 60.0,
+                "taxonomy_version": "NSTC-2025Q1",
+            },
+            {
+                "award_id": "A3",
+                "primary_cet": "artificial_intelligence",
+                "primary_score": 40.0,
+                "taxonomy_version": "NSTC-2025Q1",
+            },
+            {
+                "award_id": "A4",
+                "primary_cet": "space_technologies_and_systems",
+                "primary_score": 90.0,
+                "taxonomy_version": "NSTC-2025Q1",
+            },
+            {
+                "award_id": "A5",
+                "primary_cet": "artificial_intelligence",
+                "primary_score": 90.0,
+                "taxonomy_version": "NSTC-2025Q1",
+            },
         ]
     )
 
