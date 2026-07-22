@@ -16,6 +16,10 @@ from typing import Any
 
 import pandas as pd
 
+from sbir_etl.reporting.defense_taxonomy_crosswalk import (
+    DefenseTaxonomyCrosswalk,
+    load_defense_crosswalk,
+)
 from sbir_etl.utils.text_normalization import normalize_company_name
 
 
@@ -30,6 +34,8 @@ FACT_COLUMNS = [
     "cet_area",
     "cet_score",
     "taxonomy_version",
+    "dod_cta14",
+    "dod_sc8",
     "award_amount",
     "phase",
     "dod_component",
@@ -185,6 +191,7 @@ def build_award_facts(
     min_fiscal_year: int = 2012,
     min_cet_score: float = 40.0,
     expected_taxonomy_version: str = CANONICAL_TAXONOMY_VERSION,
+    defense_crosswalk: DefenseTaxonomyCrosswalk | None = None,
 ) -> pd.DataFrame:
     """Build one non-duplicated fact row per classified DoD award."""
 
@@ -205,6 +212,12 @@ def build_award_facts(
     )
     if not cet_col or not score_col:
         raise ValueError("classifications must contain primary CET and score columns")
+    crosswalk = defense_crosswalk or load_defense_crosswalk()
+    if crosswalk.source_taxonomy != expected_taxonomy_version:
+        raise ValueError(
+            f"defense crosswalk expects {crosswalk.source_taxonomy!r}, not "
+            f"{expected_taxonomy_version!r}"
+        )
 
     cohort = awards.loc[_dod_mask(awards)].copy()
     cohort["fiscal_year"] = _federal_fiscal_years(cohort)
@@ -262,6 +275,12 @@ def build_award_facts(
     ):
         facts[column] = cohort[column]
     facts["taxonomy_version"] = cohort.get("taxonomy_version")
+    facts["dod_cta14"] = facts["cet_area"].map(
+        lambda cet_id: crosswalk.targets_for(str(cet_id), "dod_cta14")
+    )
+    facts["dod_sc8"] = facts["cet_area"].map(
+        lambda cet_id: crosswalk.targets_for(str(cet_id), "dod_sc8")
+    )
     facts["award_amount"] = pd.to_numeric(
         _first_column(cohort, ("award_amount", "Award Amount", "obligation_amount")),
         errors="coerce",
@@ -361,6 +380,10 @@ def _period_groups(facts: pd.DataFrame, latest_fy: int, window_years: int):
     ]
 
 
+def _ordered_tag_union(values: pd.Series) -> list[str]:
+    return sorted({tag for tags in values for tag in tags})
+
+
 def build_cet_metrics(
     facts: pd.DataFrame,
     *,
@@ -408,6 +431,8 @@ def build_cet_metrics(
                     "period_start_fy": start_fy,
                     "period_end_fy": end_fy,
                     "cet_area": cet_area,
+                    "dod_cta14": _ordered_tag_union(group["dod_cta14"]),
+                    "dod_sc8": _ordered_tag_union(group["dod_sc8"]),
                     "award_count": int(group["award_id"].nunique()),
                     "distinct_firms": distinct_firms,
                     "award_dollars": dollars,
@@ -531,11 +556,13 @@ def build_baseline(
     min_cet_score: float = 40.0,
     window_years: int = 5,
     expected_taxonomy_version: str = CANONICAL_TAXONOMY_VERSION,
+    crosswalk_path: Path | None = None,
 ) -> DoDSupplyChainBaseline:
     """Build all public interfaces for the DoD-only baseline."""
 
     cutoff = as_of or datetime.now(UTC).date()
     last_fy = latest_complete_fiscal_year(cutoff)
+    defense_crosswalk = load_defense_crosswalk(crosswalk_path=crosswalk_path)
     facts = build_award_facts(
         awards,
         classifications,
@@ -543,6 +570,7 @@ def build_baseline(
         min_fiscal_year=min_fiscal_year,
         min_cet_score=min_cet_score,
         expected_taxonomy_version=expected_taxonomy_version,
+        defense_crosswalk=defense_crosswalk,
     )
     metrics = build_cet_metrics(
         facts, latest_fy=last_fy, survival=survival, window_years=window_years
@@ -562,6 +590,9 @@ def build_baseline(
         "minimum_primary_cet_score": min_cet_score,
         "expected_taxonomy_version": expected_taxonomy_version,
         "taxonomy_versions": taxonomy_versions,
+        "defense_crosswalk_version": defense_crosswalk.version,
+        "defense_crosswalk_source": str(defense_crosswalk.source_path),
+        "defense_target_versions": defense_crosswalk.target_versions,
         "award_fact_rows": len(facts),
         "metric_rows": len(metrics),
         "firm_flag_rows": len(flags),
