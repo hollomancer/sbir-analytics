@@ -60,6 +60,12 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--min-fiscal-year", type=int, default=2012)
     parser.add_argument("--min-cet-score", type=float, default=40.0)
     parser.add_argument("--window-years", type=int, default=5)
+    parser.add_argument(
+        "--crosswalk",
+        type=Path,
+        default=None,
+        help="Optional versioned defense crosswalk YAML; defaults to config/cet.",
+    )
     return parser
 
 
@@ -76,6 +82,7 @@ def main() -> int:
         min_fiscal_year=args.min_fiscal_year,
         min_cet_score=args.min_cet_score,
         window_years=args.window_years,
+        crosswalk_path=args.crosswalk,
     )
     paths = write_baseline_outputs(result, args.output_dir)
     print(f"Wrote {len(result.award_facts):,} award facts and {len(result.cet_metrics):,} metrics")

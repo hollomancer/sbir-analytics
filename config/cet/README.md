@@ -23,6 +23,20 @@ ML model hyperparameters and classification settings:
 - Confidence thresholds (High: ≥70, Medium: 40-69, Low: <40)
 - Evidence extraction parameters
 
+### defense_crosswalk.yaml
+
+Defines a cited, versioned many-to-many policy crosswalk from the canonical
+21-area `NSTC-2025Q1` taxonomy to:
+
+- `DOD-CTA-14-2022` — the frozen 14 DoD Critical Technology Areas.
+- `DOD-SC-8-2022` — the four focus areas plus four strategic enablers from
+  *Securing Defense-Critical Supply Chains* (2022).
+
+`DOD-SC-8-2022` is a repository label, not an official “NDIS-8” taxonomy.
+Each mapping records `direct`, `partial`, or `enabling` strength and a short
+rationale. The supply-chain baseline validates complete CET coverage and
+target referential integrity before producing results.
+
 ## Usage
 
 Configuration files are loaded by the `TaxonomyLoader` in `src/ml/config/taxonomy_loader.py`.

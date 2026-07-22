@@ -67,13 +67,13 @@ def _awards() -> pd.DataFrame:
 def _classifications() -> pd.DataFrame:
     return pd.DataFrame(
         [
-            {"award_id": "A1", "primary_cet": "ai", "primary_score": 80.0, "taxonomy_version": "NSTC-2025Q1"},
+            {"award_id": "A1", "primary_cet": "artificial_intelligence", "primary_score": 80.0, "taxonomy_version": "NSTC-2025Q1"},
             # Duplicate classification must not double-count award dollars.
-            {"award_id": "A1", "primary_cet": "quantum", "primary_score": 70.0, "taxonomy_version": "NSTC-2025Q1"},
-            {"award_id": "A2", "primary_cet": "ai", "primary_score": 60.0, "taxonomy_version": "NSTC-2025Q1"},
-            {"award_id": "A3", "primary_cet": "ai", "primary_score": 40.0, "taxonomy_version": "NSTC-2025Q1"},
-            {"award_id": "A4", "primary_cet": "space", "primary_score": 90.0, "taxonomy_version": "NSTC-2025Q1"},
-            {"award_id": "A5", "primary_cet": "ai", "primary_score": 90.0, "taxonomy_version": "NSTC-2025Q1"},
+            {"award_id": "A1", "primary_cet": "quantum_information_science", "primary_score": 70.0, "taxonomy_version": "NSTC-2025Q1"},
+            {"award_id": "A2", "primary_cet": "artificial_intelligence", "primary_score": 60.0, "taxonomy_version": "NSTC-2025Q1"},
+            {"award_id": "A3", "primary_cet": "artificial_intelligence", "primary_score": 40.0, "taxonomy_version": "NSTC-2025Q1"},
+            {"award_id": "A4", "primary_cet": "space_technologies_and_systems", "primary_score": 90.0, "taxonomy_version": "NSTC-2025Q1"},
+            {"award_id": "A5", "primary_cet": "artificial_intelligence", "primary_score": 90.0, "taxonomy_version": "NSTC-2025Q1"},
         ]
     )
 
@@ -101,7 +101,7 @@ def test_builds_dod_facts_and_latest_window_metrics_without_double_counting() ->
 
     latest = result.cet_metrics.loc[
         (result.cet_metrics["period_type"] == "latest_complete_window")
-        & (result.cet_metrics["cet_area"] == "ai")
+        & (result.cet_metrics["cet_area"] == "artificial_intelligence")
     ].iloc[0]
     assert latest["period_start_fy"] == 2021
     assert latest["award_count"] == 2
@@ -118,6 +118,9 @@ def test_builds_dod_facts_and_latest_window_metrics_without_double_counting() ->
     assert latest["transition_rate_5yr"] == pytest.approx(1.0)
     assert latest["transition_ci95_low"] < latest["transition_ci95_high"]
     assert latest["acp10_screening_flag"]
+    assert latest["dod_cta14"] == ["trusted_ai_and_autonomy"]
+    assert latest["dod_sc8"] == ["cyber_posture"]
+    assert result.metadata["defense_crosswalk_version"] == "DOD-CROSSWALK-2026Q3"
 
 
 def test_missing_transition_is_not_zero_and_missingness_is_reported() -> None:
