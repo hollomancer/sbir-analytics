@@ -167,6 +167,15 @@ def test_missing_transition_is_not_zero_and_missingness_is_reported() -> None:
     assert latest["missing_district_share"] == pytest.approx(0.5)
 
 
+def test_classifier_method_version_is_recorded() -> None:
+    classifications = _classifications()
+    classifications["classifier_version"] = "CET-RULES-2026Q3"
+
+    result = build_baseline(_awards(), classifications, as_of=date(2026, 7, 20))
+
+    assert result.metadata["classifier_versions"] == ["CET-RULES-2026Q3"]
+
+
 def test_required_inputs_fail_loudly() -> None:
     with pytest.raises(ValueError, match="awards are required"):
         build_baseline(pd.DataFrame(), _classifications(), as_of=date(2026, 7, 20))

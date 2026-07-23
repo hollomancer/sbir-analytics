@@ -37,6 +37,18 @@ Each mapping records `direct`, `partial`, or `enabling` strength and a short
 rationale. The supply-chain baseline validates complete CET coverage and
 target referential integrity before producing results.
 
+### local_rule_classifier.yaml
+
+Defines the deterministic `CET-RULES-2026Q3` screening method used by local
+research builds when the trained CET model is unavailable. It scores explicit
+taxonomy-keyword evidence across award titles, topic codes, and abstracts,
+applies taxonomy negative-keyword penalties, and leaves records unclassified
+when evidence is insufficient.
+
+This classifier is intentionally versioned separately from the canonical
+`NSTC-2025Q1` taxonomy. It is an auditable fallback method and does not claim
+the accuracy or calibration of the missing trained production model.
+
 ## Usage
 
 Configuration files are loaded by the `TaxonomyLoader` in `src/ml/config/taxonomy_loader.py`.
