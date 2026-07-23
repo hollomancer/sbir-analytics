@@ -1,0 +1,266 @@
+review_id,award_id,sample_stratum,population_stratum_size,sample_stratum_size,sample_weight,classifier_decision,primary_cet,primary_score,score_band,evidence,classifier_version
+CETVAL-0001,D2S-0008_W31P4Q-20-C-0046,classified:advanced_computing:high_70_plus,43,2,21.5,classified,advanced_computing,83.0,high_70_plus,"[{'keyword': 'distributed computing', 'source': 'title', 'weight': 4.0}]",CET-RULES-2026Q3
+CETVAL-0002,D2S-0053_140D0423C0071,classified:artificial_intelligence:high_70_plus,1769,2,884.5,classified,artificial_intelligence,95.0,high_70_plus,"[{'keyword': 'artificial intelligence', 'source': 'abstract', 'weight': 2.0}
+ {'keyword': 'deep learning', 'source': 'abstract', 'weight': 2.0}
+ {'keyword': 'machine learning', 'source': 'abstract', 'weight': 2.0}]",CET-RULES-2026Q3
+CETVAL-0003,F2D-6681_FA2394-23-C-B047,unclassified:Air Force:Phase II,3242,4,810.5,unclassified,,,unclassified,[],CET-RULES-2026Q3
+CETVAL-0004,F241-0004-0385_FA8651-24-P-B017,classified:trusted_ai_and_autonomy:medium_55_69,11,3,3.6666666666666665,classified,trusted_ai_and_autonomy,59.0,medium_55_69,"[{'keyword': 'ai robustness', 'source': 'abstract', 'weight': 2.0}]",CET-RULES-2026Q3
+CETVAL-0005,FX237-PCSO1-0850_FA8649-24-P-0292,classified:biotechnologies:high_70_plus,14,2,7.0,classified,biotechnologies,74.0,high_70_plus,"[{'keyword': 'genetic engineering', 'source': 'abstract', 'weight': 2.0}
+ {'keyword': 'biotechnology', 'source': 'abstract', 'weight': 1.25}]",CET-RULES-2026Q3
+CETVAL-0006,O254-P001-0315_W519TC25P0037,unclassified:Office of the Secretary of Defense:Phase I,68,3,22.666666666666668,unclassified,,,unclassified,[],CET-RULES-2026Q3
+CETVAL-0007,A234-P017-1349_W51701-25-C-A009,classified:advanced_computing:high_70_plus,43,2,21.5,classified,advanced_computing,83.0,high_70_plus,"[{'keyword': 'edge computing', 'source': 'title', 'weight': 4.0}]",CET-RULES-2026Q3
+CETVAL-0008,FX235-CSO1-1508_FA8649-24-P-0618,classified:artificial_intelligence:screening_50_54,64,2,32.0,classified,artificial_intelligence,54.2,screening_50_54,"[{'keyword': 'ai', 'source': 'title', 'weight': 0.8}
+ {'keyword': 'ml', 'source': 'title', 'weight': 0.8}]",CET-RULES-2026Q3
+CETVAL-0009,F20A-T004-0034_FA8750-20-P-1716,classified:quantum_information_science:high_70_plus,90,2,45.0,classified,quantum_information_science,95.0,high_70_plus,"[{'keyword': 'quantum networks', 'source': 'title', 'weight': 4.0}
+ {'keyword': 'quantum information', 'source': 'abstract', 'weight': 2.0}]",CET-RULES-2026Q3
+CETVAL-0010,F141-229-0877_FA9101-14-M-0004,classified:hypersonics:high_70_plus,422,2,211.0,classified,hypersonics,80.0,high_70_plus,"[{'keyword': 'hypersonic', 'source': 'title', 'weight': 2.5}
+ {'keyword': 'supersonic', 'source': 'abstract', 'weight': 1.25}]",CET-RULES-2026Q3
+CETVAL-0011,F2D-18993_FA8649-25-P-0506,classified:advanced_nuclear_energy_systems:high_70_plus,2,2,1.0,classified,advanced_nuclear_energy_systems,83.0,high_70_plus,"[{'keyword': 'nuclear energy', 'source': 'abstract', 'weight': 2.0}
+ {'keyword': 'nuclear power', 'source': 'abstract', 'weight': 2.0}]",CET-RULES-2026Q3
+CETVAL-0012,F121-139-1862_FA8650-12-M-1420,classified:human_machine_interfaces:medium_55_69,309,2,154.5,classified,human_machine_interfaces,59.0,medium_55_69,"[{'keyword': 'augmented reality', 'source': 'abstract', 'weight': 2.0}]",CET-RULES-2026Q3
+CETVAL-0013,SCO213-001-0024_HQ003422P0114,unclassified:Strategic Capabilities Office:Phase I,6,3,2.0,unclassified,,,unclassified,[],CET-RULES-2026Q3
+CETVAL-0014,N151-033-0444_N00024-15-P-4505,unclassified:Navy:Phase I,3604,3,1201.3333333333333,unclassified,,,unclassified,[],CET-RULES-2026Q3
+CETVAL-0015,F121-043-2040_FA8750-13-C-0145,classified:integrated_network_systems_of_systems:screening_50_54,244,2,122.0,classified,integrated_network_systems_of_systems,50.0,screening_50_54,"[{'keyword': 'c4isr', 'source': 'abstract', 'weight': 1.25}]",CET-RULES-2026Q3
+CETVAL-0016,N251-065-1049_N68335-25-C-0365,classified:trusted_ai_and_autonomy:medium_55_69,11,3,3.6666666666666665,classified,trusted_ai_and_autonomy,59.0,medium_55_69,"[{'keyword': 'explainable ai', 'source': 'abstract', 'weight': 2.0}]",CET-RULES-2026Q3
+CETVAL-0017,NGA-P2-21-23_HM047621C0075,unclassified:National Geospatial-Intelligence Agency:Phase II,28,3,9.333333333333334,unclassified,,,unclassified,[],CET-RULES-2026Q3
+CETVAL-0018,A2-8067_W56KGU-20-C-0035,classified:artificial_intelligence:medium_55_69,1655,2,827.5,classified,artificial_intelligence,59.0,medium_55_69,"[{'keyword': 'machine learning', 'source': 'abstract', 'weight': 2.0}]",CET-RULES-2026Q3
+CETVAL-0019,D2-1624_W31P4Q-19-C-0008,classified:advanced_engineering_materials:medium_55_69,510,2,255.0,classified,advanced_engineering_materials,65.0,medium_55_69,"[{'keyword': 'graphene', 'source': 'title', 'weight': 2.5}]",CET-RULES-2026Q3
+CETVAL-0020,T20B-001-0007_HDTR121P0006,classified:advanced_nuclear_energy_systems:high_70_plus,2,2,1.0,classified,advanced_nuclear_energy_systems,83.0,high_70_plus,"[{'keyword': 'nuclear power', 'source': 'abstract', 'weight': 2.0}
+ {'keyword': 'nuclear reactor', 'source': 'abstract', 'weight': 2.0}]",CET-RULES-2026Q3
+CETVAL-0021,C161-004-0070_W911QY-16-P-0240,unclassified:Office for Chemical and Biological Defense:Phase I,176,3,58.666666666666664,unclassified,,,unclassified,[],CET-RULES-2026Q3
+CETVAL-0022,F13A-T07-0035_FA9550-14-C-0008,classified:directed_energy:medium_55_69,395,2,197.5,classified,directed_energy,59.0,medium_55_69,"[{'keyword': 'particle beam', 'source': 'abstract', 'weight': 2.0}]",CET-RULES-2026Q3
+CETVAL-0023,D2-2051_140D6318C0054,classified:biotechnologies:high_70_plus,14,2,7.0,classified,biotechnologies,89.0,high_70_plus,"[{'keyword': 'crispr', 'source': 'title', 'weight': 2.5}
+ {'keyword': 'gene editing', 'source': 'abstract', 'weight': 2.0}]",CET-RULES-2026Q3
+CETVAL-0024,D2-2725_140D0423C0007,unclassified:Defense Advanced Research Projects Agency:Phase II,531,3,177.0,unclassified,,,unclassified,[],CET-RULES-2026Q3
+CETVAL-0025,N17A-015-0090_N00253-17-C-0028,classified:advanced_and_networked_sensing_and_signature_management:high_70_plus,162,2,81.0,classified,advanced_and_networked_sensing_and_signature_management,95.0,high_70_plus,"[{'keyword': 'acoustic sensing', 'source': 'title', 'weight': 4.0}
+ {'keyword': 'sensor fusion', 'source': 'abstract', 'weight': 2.0}]",CET-RULES-2026Q3
+CETVAL-0026,T222-005-0005_FA8601-25-P-0082,classified:integrated_network_systems_of_systems:high_70_plus,94,2,47.0,classified,integrated_network_systems_of_systems,89.0,high_70_plus,"[{'keyword': 'joint all-domain', 'source': 'abstract', 'weight': 2.0}
+ {'keyword': 'interoperability', 'source': 'abstract', 'weight': 1.25}
+ {'keyword': 'jadc2', 'source': 'abstract', 'weight': 1.25}]",CET-RULES-2026Q3
+CETVAL-0027,A171-092-1569_W56KGY-17-C-0017,classified:advanced_computing:screening_50_54,15,2,7.5,classified,advanced_computing,50.0,screening_50_54,"[{'keyword': 'supercomputing', 'source': 'abstract', 'weight': 1.25}]",CET-RULES-2026Q3
+CETVAL-0028,F19B-001-0086_FA8649-19-P-A436,classified:advanced_gas_turbine_engine_technologies:screening_50_54,690,2,345.0,classified,advanced_gas_turbine_engine_technologies,50.0,screening_50_54,"[{'keyword': 'propulsion', 'source': 'abstract', 'weight': 1.25}]",CET-RULES-2026Q3
+CETVAL-0029,T2-0416_HDTRA121C0004,unclassified:Defense Threat Reduction Agency:Phase II,74,3,24.666666666666668,unclassified,,,unclassified,[],CET-RULES-2026Q3
+CETVAL-0030,O21C-007-0057_W911NF-22-P-0028,unclassified:Office of the Secretary of Defense:Phase I,68,3,22.666666666666668,unclassified,,,unclassified,[],CET-RULES-2026Q3
+CETVAL-0031,A2-7694_W911NF-19-C-0074,classified:renewable_energy_generation_and_storage:high_70_plus,237,2,118.5,classified,renewable_energy_generation_and_storage,83.0,high_70_plus,"[{'keyword': 'energy storage', 'source': 'title', 'weight': 4.0}]",CET-RULES-2026Q3
+CETVAL-0032,A2-7821_W56KGU-19-C-0053,unclassified:Army:Phase II,1505,4,376.25,unclassified,,,unclassified,[],CET-RULES-2026Q3
+CETVAL-0033,N132-090-0859_N68335-14-C-0052,unclassified:Navy:Phase I,3604,3,1201.3333333333333,unclassified,,,unclassified,[],CET-RULES-2026Q3
+CETVAL-0034,O2D-0237_FA860425CB044,classified:trusted_ai_and_autonomy:medium_55_69,11,3,3.6666666666666665,classified,trusted_ai_and_autonomy,59.0,medium_55_69,"[{'keyword': 'explainable ai', 'source': 'abstract', 'weight': 2.0}]",CET-RULES-2026Q3
+CETVAL-0035,N132-115-0518_N00024-14-P-4029,classified:advanced_nuclear_energy_systems:medium_55_69,30,4,7.5,classified,advanced_nuclear_energy_systems,59.0,medium_55_69,"[{'keyword': 'nuclear reactor', 'source': 'abstract', 'weight': 2.0}]",CET-RULES-2026Q3
+CETVAL-0036,FX224-OCSO1-1002_FA8649-23-P-0190,classified:biotechnologies:medium_55_69,25,2,12.5,classified,biotechnologies,59.0,medium_55_69,"[{'keyword': 'synthetic biology', 'source': 'abstract', 'weight': 2.0}]",CET-RULES-2026Q3
+CETVAL-0037,D12A-004-0009_W31P4Q-12-C-0206,unclassified:Defense Advanced Research Projects Agency:Phase I,454,3,151.33333333333334,unclassified,,,unclassified,[],CET-RULES-2026Q3
+CETVAL-0038,C171-004-0007_W911SR-17-C-0049,unclassified:Office for Chemical and Biological Defense:Phase I,176,3,58.666666666666664,unclassified,,,unclassified,[],CET-RULES-2026Q3
+CETVAL-0039,F171-116-1242_FA8650-18-C-1722,classified:semiconductors_and_microelectronics:medium_55_69,473,2,236.5,classified,semiconductors_and_microelectronics,65.0,medium_55_69,"[{'keyword': 'silicon', 'source': 'title', 'weight': 2.5}]",CET-RULES-2026Q3
+CETVAL-0040,N18A-020-0181_N68335-18-C-0414,classified:autonomous_systems:high_70_plus,180,2,90.0,classified,autonomous_systems,83.0,high_70_plus,"[{'keyword': 'autonomous navigation', 'source': 'title', 'weight': 4.0}]",CET-RULES-2026Q3
+CETVAL-0041,B2-1973_HQ0147-14-C-7002,unclassified:Missile Defense Agency:Phase II,391,3,130.33333333333334,unclassified,,,unclassified,[],CET-RULES-2026Q3
+CETVAL-0042,A224-022-0484_W5170123C0029,classified:trusted_ai_and_autonomy:high_70_plus,15,3,5.0,classified,trusted_ai_and_autonomy,83.0,high_70_plus,"[{'keyword': 'explainable ai', 'source': 'title', 'weight': 4.0}]",CET-RULES-2026Q3
+CETVAL-0043,F203-001-0177_FA8656-21-C-0109,unclassified:Air Force:Phase II,3242,4,810.5,unclassified,,,unclassified,[],CET-RULES-2026Q3
+CETVAL-0044,N251-022-1176_N68936-25-C-0032,classified:advanced_nuclear_energy_systems:medium_55_69,30,4,7.5,classified,advanced_nuclear_energy_systems,59.0,medium_55_69,"[{'keyword': 'advanced reactor', 'source': 'abstract', 'weight': 2.0}]",CET-RULES-2026Q3
+CETVAL-0045,B2-1994_HQ0147-14-C-7024,classified:communication_and_networking_technologies:screening_50_54,39,2,19.5,classified,communication_and_networking_technologies,50.0,screening_50_54,"[{'keyword': 'telecommunications', 'source': 'abstract', 'weight': 1.25}]",CET-RULES-2026Q3
+CETVAL-0046,S2-0188_H92222-14-C-0020,unclassified:Special Operations Command:Phase II,158,3,52.666666666666664,unclassified,,,unclassified,[],CET-RULES-2026Q3
+CETVAL-0047,JD131-003-002_W911QX-13-C-0028,unclassified:Defense Advanced Research Projects Agency:Phase I,454,3,151.33333333333334,unclassified,,,unclassified,[],CET-RULES-2026Q3
+CETVAL-0048,N161-004-0113_N68335-18-C-0090,unclassified:Navy:Phase II,2175,3,725.0,unclassified,,,unclassified,[],CET-RULES-2026Q3
+CETVAL-0049,F24D-T001-0008_FA2391-25-P-B002,classified:advanced_gas_turbine_engine_technologies:screening_50_54,690,2,345.0,classified,advanced_gas_turbine_engine_technologies,50.0,screening_50_54,"[{'keyword': 'propulsion', 'source': 'abstract', 'weight': 1.25}]",CET-RULES-2026Q3
+CETVAL-0050,A112-070-0144_W911W6-12-C-0005,unclassified:Army:Phase I,2188,4,547.0,unclassified,,,unclassified,[],CET-RULES-2026Q3
+CETVAL-0051,O2-1518_W56KGU-14-C-0054,unclassified:Office of the Secretary of Defense:Phase II,67,3,22.333333333333332,unclassified,,,unclassified,[],CET-RULES-2026Q3
+CETVAL-0052,12-2D9_H94003-13-C-1302,unclassified:Defense Microelectronics Activity:Phase II,10,3,3.3333333333333335,unclassified,,,unclassified,[],CET-RULES-2026Q3
+CETVAL-0053,O153-001-0035_FA8650-16-M-1724,unclassified:Office of the Secretary of Defense:Phase I,68,3,22.666666666666668,unclassified,,,unclassified,[],CET-RULES-2026Q3
+CETVAL-0054,FX23D-TCSO1-0246_FA8649-23-P-0891,classified:quantum_information_science:screening_50_54,3,2,1.5,classified,quantum_information_science,50.0,screening_50_54,"[{'keyword': 'qubits', 'source': 'abstract', 'weight': 1.25}]",CET-RULES-2026Q3
+CETVAL-0055,A202-117-0424_W56KGU-21-C-0026,classified:communication_and_networking_technologies:high_70_plus,144,2,72.0,classified,communication_and_networking_technologies,83.0,high_70_plus,"[{'keyword': 'satellite communications', 'source': 'title', 'weight': 4.0}]",CET-RULES-2026Q3
+CETVAL-0056,F224-0008-0150_FA2384-25-C-B030,classified:human_machine_interfaces:high_70_plus,372,2,186.0,classified,human_machine_interfaces,83.0,high_70_plus,"[{'keyword': 'augmented reality', 'source': 'title', 'weight': 4.0}]",CET-RULES-2026Q3
+CETVAL-0057,N141-026-0643_N00024-14-P-4508,unclassified:unknown:Phase I,16,3,5.333333333333333,unclassified,,,unclassified,[],CET-RULES-2026Q3
+CETVAL-0058,N121-039-0339_N68335-12-C-0273,classified:advanced_gas_turbine_engine_technologies:high_70_plus,391,2,195.5,classified,advanced_gas_turbine_engine_technologies,83.0,high_70_plus,"[{'keyword': 'gas turbine', 'source': 'title', 'weight': 4.0}]",CET-RULES-2026Q3
+CETVAL-0059,FX224-OCSO1-1147_FA8649-23-P-0160,unclassified:Air Force:Phase I,4505,4,1126.25,unclassified,,,unclassified,[],CET-RULES-2026Q3
+CETVAL-0060,O2D-0206_FA860425CB102,classified:trusted_ai_and_autonomy:high_70_plus,15,3,5.0,classified,trusted_ai_and_autonomy,83.0,high_70_plus,"[{'keyword': 'ai assurance', 'source': 'title', 'weight': 4.0}]",CET-RULES-2026Q3
+CETVAL-0061,F2D-7424_FA2401-23-9-0021,classified:financial_technologies:medium_55_69,41,2,20.5,classified,financial_technologies,59.0,medium_55_69,"[{'keyword': 'distributed ledger', 'source': 'abstract', 'weight': 2.0}]",CET-RULES-2026Q3
+CETVAL-0062,A2-5924_W909MY-15-C-0032,classified:semiconductors_and_microelectronics:high_70_plus,286,2,143.0,classified,semiconductors_and_microelectronics,83.0,high_70_plus,"[{'keyword': 'integrated circuit', 'source': 'title', 'weight': 4.0}]",CET-RULES-2026Q3
+CETVAL-0063,B162-006-0031_HQ0147-17-C-7201,classified:integrated_network_systems_of_systems:high_70_plus,94,2,47.0,classified,integrated_network_systems_of_systems,83.0,high_70_plus,"[{'keyword': 'system of systems', 'source': 'title', 'weight': 4.0}]",CET-RULES-2026Q3
+CETVAL-0064,N152-116-0670_N00014-16-P-1017,classified:directed_energy:screening_50_54,25,2,12.5,classified,directed_energy,53.0,screening_50_54,"[{'keyword': 'hpm', 'source': 'title', 'weight': 1.5}]",CET-RULES-2026Q3
+CETVAL-0065,N19A-012-0177_N68335-19-C-0538,classified:integrated_sensing_and_cyber:medium_55_69,68,3,22.666666666666668,classified,integrated_sensing_and_cyber,59.0,medium_55_69,"[{'keyword': 'cyber situational awareness', 'source': 'abstract', 'weight': 2.0}]",CET-RULES-2026Q3
+CETVAL-0066,O2-1468_W911NF-14-C-0140,classified:integrated_sensing_and_cyber:high_70_plus,34,3,11.333333333333334,classified,integrated_sensing_and_cyber,83.0,high_70_plus,"[{'keyword': 'cyber situational awareness', 'source': 'title', 'weight': 4.0}]",CET-RULES-2026Q3
+CETVAL-0067,F071-291-1753_FA9453-12-C-0006,unclassified:unknown:Phase II,6,3,2.0,unclassified,,,unclassified,[],CET-RULES-2026Q3
+CETVAL-0068,O221-001-0077_HM047622C0049,unclassified:National Geospatial-Intelligence Agency:Phase I,28,3,9.333333333333334,unclassified,,,unclassified,[],CET-RULES-2026Q3
+CETVAL-0069,F191-041-0058_FA9101-19-P-0090,classified:hypersonics:medium_55_69,300,2,150.0,classified,hypersonics,65.0,medium_55_69,"[{'keyword': 'hypersonic', 'source': 'title', 'weight': 2.5}]",CET-RULES-2026Q3
+CETVAL-0070,A201-022-1480_W911NF-20-P-0063,classified:advanced_engineering_materials:screening_50_54,98,2,49.0,classified,advanced_engineering_materials,50.0,screening_50_54,"[{'keyword': 'nanomaterials', 'source': 'abstract', 'weight': 1.25}]",CET-RULES-2026Q3
+CETVAL-0071,N22A-T025-0101_N68335-22-C-0274,classified:advanced_and_networked_sensing_and_signature_management:screening_50_54,1162,2,581.0,classified,advanced_and_networked_sensing_and_signature_management,50.0,screening_50_54,"[{'keyword': 'radar', 'source': 'abstract', 'weight': 1.25}]",CET-RULES-2026Q3
+CETVAL-0072,F12B-T09-0054_FA9453-13-M-0059,classified:advanced_nuclear_energy_systems:medium_55_69,30,4,7.5,classified,advanced_nuclear_energy_systems,59.0,medium_55_69,"[{'keyword': 'nuclear energy', 'source': 'abstract', 'weight': 2.0}]",CET-RULES-2026Q3
+CETVAL-0073,F16A-T02-0069_FA9550-17-P-0004,classified:hypersonics:screening_50_54,191,2,95.5,classified,hypersonics,50.0,screening_50_54,"[{'keyword': 'hypersonic', 'source': 'abstract', 'weight': 1.25}]",CET-RULES-2026Q3
+CETVAL-0074,L2-0141_SP4701-19-C-0067,unclassified:Defense Logistics Agency:Phase II,152,3,50.666666666666664,unclassified,,,unclassified,[],CET-RULES-2026Q3
+CETVAL-0075,O112-H19-3055_N00014-12-M-0106,unclassified:Defense Health Agency:Phase I,582,3,194.0,unclassified,,,unclassified,[],CET-RULES-2026Q3
+CETVAL-0076,SCO2D-0011_HQ003421C0031,unclassified:Strategic Capabilities Office:Phase II,17,3,5.666666666666667,unclassified,,,unclassified,[],CET-RULES-2026Q3
+CETVAL-0077,N202-123-0582_N68335-22-C-0195,classified:renewable_energy_generation_and_storage:medium_55_69,399,2,199.5,classified,renewable_energy_generation_and_storage,65.0,medium_55_69,"[{'keyword': 'photovoltaic', 'source': 'title', 'weight': 2.5}]",CET-RULES-2026Q3
+CETVAL-0078,FX192-SO1-0535_FA86492099109,classified:biotechnologies:screening_50_54,29,2,14.5,classified,biotechnologies,50.0,screening_50_54,"[{'keyword': 'biotechnology', 'source': 'abstract', 'weight': 1.25}]",CET-RULES-2026Q3
+CETVAL-0079,F141-106-2346_FA8818-14-M-0028,classified:space_technologies_and_systems:medium_55_69,636,2,318.0,classified,space_technologies_and_systems,65.0,medium_55_69,"[{'keyword': 'satellite', 'source': 'abstract', 'weight': 1.25}
+ {'keyword': 'spacecraft', 'source': 'abstract', 'weight': 1.25}]",CET-RULES-2026Q3
+CETVAL-0080,F183-006-0322_FA3002-19-P-A154,classified:human_machine_interfaces:screening_50_54,24,2,12.0,classified,human_machine_interfaces,54.2,screening_50_54,"[{'keyword': 'ar', 'source': 'title', 'weight': 0.8}
+ {'keyword': 'vr', 'source': 'title', 'weight': 0.8}]",CET-RULES-2026Q3
+CETVAL-0081,A141-032-0190_W56KGU-14-C-0006,unclassified:Army:Phase I,2188,4,547.0,unclassified,,,unclassified,[],CET-RULES-2026Q3
+CETVAL-0082,L2-0323_SP4701-21-C-0035,unclassified:Defense Logistics Agency:Phase II,152,3,50.666666666666664,unclassified,,,unclassified,[],CET-RULES-2026Q3
+CETVAL-0083,14-4B5_HQ0727-14-C-1410,unclassified:Defense Microelectronics Activity:Phase II,10,3,3.3333333333333335,unclassified,,,unclassified,[],CET-RULES-2026Q3
+CETVAL-0084,SCO2-0006_HQ003420C0120,unclassified:Strategic Capabilities Office:Phase II,17,3,5.666666666666667,unclassified,,,unclassified,[],CET-RULES-2026Q3
+CETVAL-0085,F103-008-1580_FA8650-12-C-3209,classified:autonomous_systems:medium_55_69,350,2,175.0,classified,autonomous_systems,59.0,medium_55_69,"[{'keyword': 'autonomous systems', 'source': 'abstract', 'weight': 2.0}]",CET-RULES-2026Q3
+CETVAL-0086,F14A-T02-0248_FA9550-15-C-0026,unclassified:unknown:Phase I,16,3,5.333333333333333,unclassified,,,unclassified,[],CET-RULES-2026Q3
+CETVAL-0087,A161-041-0600_W909MY-16-P-0018,classified:human_machine_interfaces:high_70_plus,372,2,186.0,classified,human_machine_interfaces,87.8,high_70_plus,"[{'keyword': 'augmented reality', 'source': 'title', 'weight': 4.0}
+ {'keyword': 'ar', 'source': 'abstract', 'weight': 0.4}]",CET-RULES-2026Q3
+CETVAL-0088,F151-012-0855_FA9451-15-M-0521,classified:directed_energy:medium_55_69,395,2,197.5,classified,directed_energy,59.0,medium_55_69,"[{'keyword': 'directed energy', 'source': 'abstract', 'weight': 2.0}]",CET-RULES-2026Q3
+CETVAL-0089,F244-0004-0107_FA7014-25-P-0022,classified:financial_technologies:screening_50_54,42,2,21.0,classified,financial_technologies,50.0,screening_50_54,"[{'keyword': 'blockchain', 'source': 'abstract', 'weight': 1.25}]",CET-RULES-2026Q3
+CETVAL-0090,L183-004-0158_SP4701-19-P-0023,unclassified:Defense Logistics Agency:Phase I,244,3,81.33333333333333,unclassified,,,unclassified,[],CET-RULES-2026Q3
+CETVAL-0091,F192-001-0722_FA8649-19-P-A316,classified:space_technologies_and_systems:high_70_plus,394,2,197.0,classified,space_technologies_and_systems,74.0,high_70_plus,"[{'keyword': 'space situational awareness', 'source': 'abstract', 'weight': 2.0}
+ {'keyword': 'satellite', 'source': 'abstract', 'weight': 1.25}]",CET-RULES-2026Q3
+CETVAL-0092,D21T-29-0060_140D0422C0011,classified:advanced_engineering_materials:screening_50_54,98,2,49.0,classified,advanced_engineering_materials,50.0,screening_50_54,"[{'keyword': 'graphene', 'source': 'abstract', 'weight': 1.25}]",CET-RULES-2026Q3
+CETVAL-0093,F151-149-1695_FA8650-15-M-1914,classified:space_technologies_and_systems:screening_50_54,739,2,369.5,classified,space_technologies_and_systems,50.0,screening_50_54,"[{'keyword': 'satellite', 'source': 'abstract', 'weight': 1.25}]",CET-RULES-2026Q3
+CETVAL-0094,N151-048-0429_N00024-15-P-4569,classified:renewable_energy_generation_and_storage:high_70_plus,237,2,118.5,classified,renewable_energy_generation_and_storage,95.0,high_70_plus,"[{'keyword': 'solid state battery', 'source': 'title', 'weight': 4.0}
+ {'keyword': 'energy storage', 'source': 'abstract', 'weight': 2.0}]",CET-RULES-2026Q3
+CETVAL-0095,N102-128-1157_N68335-12-C-0127,unclassified:unknown:Phase II,6,3,2.0,unclassified,,,unclassified,[],CET-RULES-2026Q3
+CETVAL-0096,F112-140-1317_FA8650-13-C-1505,unclassified:Air Force:Phase II,3242,4,810.5,unclassified,,,unclassified,[],CET-RULES-2026Q3
+CETVAL-0097,16-6B5_HQ0727-16-P-1615,unclassified:Defense Microelectronics Activity:Phase I,27,3,9.0,unclassified,,,unclassified,[],CET-RULES-2026Q3
+CETVAL-0098,O2D-0073_HM047622C0075,unclassified:National Geospatial-Intelligence Agency:Phase II,28,3,9.333333333333334,unclassified,,,unclassified,[],CET-RULES-2026Q3
+CETVAL-0099,A2-5355_W15P7T-13-C-A006,classified:advanced_and_networked_sensing_and_signature_management:medium_55_69,1022,2,511.0,classified,advanced_and_networked_sensing_and_signature_management,65.0,medium_55_69,"[{'keyword': 'radar', 'source': 'title', 'weight': 2.5}]",CET-RULES-2026Q3
+CETVAL-0100,T2-0219_HDTRA1-15-C-0005,unclassified:Defense Threat Reduction Agency:Phase II,74,3,24.666666666666668,unclassified,,,unclassified,[],CET-RULES-2026Q3
+CETVAL-0101,N112-089-0827_N68335-12-C-0086,classified:semiconductors_and_microelectronics:screening_50_54,507,2,253.5,classified,semiconductors_and_microelectronics,50.0,screening_50_54,"[{'keyword': 'semiconductor', 'source': 'abstract', 'weight': 1.25}]",CET-RULES-2026Q3
+CETVAL-0102,O2-1241_W81XWH-11-C-0059,unclassified:Defense Health Agency:Phase II,449,3,149.66666666666666,unclassified,,,unclassified,[],CET-RULES-2026Q3
+CETVAL-0103,N202-093-0448_N68335-22-C-0153,unclassified:Navy:Phase II,2175,3,725.0,unclassified,,,unclassified,[],CET-RULES-2026Q3
+CETVAL-0104,O11B-T04-1005_FA8750-12-C-0149,unclassified:unknown:Phase I,16,3,5.333333333333333,unclassified,,,unclassified,[],CET-RULES-2026Q3
+CETVAL-0105,A18B-012-0160_W911NF-19-P-0013,classified:semiconductors_and_microelectronics:screening_50_54,507,2,253.5,classified,semiconductors_and_microelectronics,50.0,screening_50_54,"[{'keyword': 'semiconductor', 'source': 'abstract', 'weight': 1.25}]",CET-RULES-2026Q3
+CETVAL-0106,L2-0289_SP4701-20-C-0054,unclassified:Defense Logistics Agency:Phase II,152,3,50.666666666666664,unclassified,,,unclassified,[],CET-RULES-2026Q3
+CETVAL-0107,F20A-T003-0001_FA8750-20-P-1700,classified:advanced_computing:medium_55_69,153,2,76.5,classified,advanced_computing,59.0,medium_55_69,"[{'keyword': 'quantum computing', 'source': 'abstract', 'weight': 2.0}]",CET-RULES-2026Q3
+CETVAL-0108,FX247-PCSO1-0150_FA8649-25-P-0222,classified:autonomous_systems:medium_55_69,350,2,175.0,classified,autonomous_systems,65.0,medium_55_69,"[{'keyword': 'drone', 'source': 'title', 'weight': 2.5}]",CET-RULES-2026Q3
+CETVAL-0109,O234-P002-0120_HY023324PE010,unclassified:Strategic Capabilities Office:Phase I,6,3,2.0,unclassified,,,unclassified,[],CET-RULES-2026Q3
+CETVAL-0110,FX235-CSO1-1856_FA8649-23-P-0810,classified:artificial_intelligence:high_70_plus,1769,2,884.5,classified,artificial_intelligence,92.6,high_70_plus,"[{'keyword': 'artificial intelligence', 'source': 'title', 'weight': 4.0}
+ {'keyword': 'ai', 'source': 'title', 'weight': 0.8}]",CET-RULES-2026Q3
+CETVAL-0111,B132-026-0576_HQ0147-14-C-7868,classified:hypersonics:medium_55_69,300,2,150.0,classified,hypersonics,65.0,medium_55_69,"[{'keyword': 'hypersonic', 'source': 'title', 'weight': 2.5}]",CET-RULES-2026Q3
+CETVAL-0112,A20B-T003-0002_W911NF-21-P-0005,classified:renewable_energy_generation_and_storage:medium_55_69,399,2,199.5,classified,renewable_energy_generation_and_storage,59.0,medium_55_69,"[{'keyword': 'fuel cells', 'source': 'abstract', 'weight': 2.0}]",CET-RULES-2026Q3
+CETVAL-0113,B2-2128_HQ0147-15-C-7402,classified:advanced_and_networked_sensing_and_signature_management:medium_55_69,1022,2,511.0,classified,advanced_and_networked_sensing_and_signature_management,59.0,medium_55_69,"[{'keyword': 'sensor fusion', 'source': 'abstract', 'weight': 2.0}]",CET-RULES-2026Q3
+CETVAL-0114,N193-A03-0297_N68335-20-F-0557,unclassified:Navy:Phase II,2175,3,725.0,unclassified,,,unclassified,[],CET-RULES-2026Q3
+CETVAL-0115,F24A-T006-0092_FA2541-25-P-B036,classified:quantum_information_science:medium_55_69,36,2,18.0,classified,quantum_information_science,59.0,medium_55_69,"[{'keyword': 'quantum information', 'source': 'abstract', 'weight': 2.0}]",CET-RULES-2026Q3
+CETVAL-0116,F221-0033-0509_FA8684-24-C-B016,classified:advanced_computing:screening_50_54,15,2,7.5,classified,advanced_computing,50.0,screening_50_54,"[{'keyword': 'supercomputing', 'source': 'abstract', 'weight': 1.25}]",CET-RULES-2026Q3
+CETVAL-0117,D224-15-0156_W912CG23P0002,unclassified:Defense Advanced Research Projects Agency:Phase I,454,3,151.33333333333334,unclassified,,,unclassified,[],CET-RULES-2026Q3
+CETVAL-0118,F241-0015-0760_FA2541-25-P-B046,classified:communication_and_networking_technologies:medium_55_69,320,2,160.0,classified,communication_and_networking_technologies,59.0,medium_55_69,"[{'keyword': 'satellite communications', 'source': 'abstract', 'weight': 2.0}]",CET-RULES-2026Q3
+CETVAL-0119,D2D-0584_140D0424C0015,unclassified:Defense Advanced Research Projects Agency:Phase II,531,3,177.0,unclassified,,,unclassified,[],CET-RULES-2026Q3
+CETVAL-0120,T19B-001-0001_HDTRA120P0020,unclassified:Defense Threat Reduction Agency:Phase I,135,3,45.0,unclassified,,,unclassified,[],CET-RULES-2026Q3
+CETVAL-0121,SDA2D-0024_HQ08502290007,unclassified:Space Development Agency:Phase II,11,3,3.6666666666666665,unclassified,,,unclassified,[],CET-RULES-2026Q3
+CETVAL-0122,C233-002-0096_W911SR-24-C-0027,classified:advanced_manufacturing:medium_55_69,713,2,356.5,classified,advanced_manufacturing,59.0,medium_55_69,"[{'keyword': 'additive manufacturing', 'source': 'abstract', 'weight': 2.0}]",CET-RULES-2026Q3
+CETVAL-0123,A2-5142_W15QKN-13-C-0005,unclassified:unknown:Phase II,6,3,2.0,unclassified,,,unclassified,[],CET-RULES-2026Q3
+CETVAL-0124,S151-006-0082_H92222-15-P-0051,unclassified:Special Operations Command:Phase I,197,3,65.66666666666667,unclassified,,,unclassified,[],CET-RULES-2026Q3
+CETVAL-0125,F141-144-0683_FA8651-16-C-0178,classified:autonomous_systems:screening_50_54,209,2,104.5,classified,autonomous_systems,50.0,screening_50_54,"[{'keyword': 'self-driving', 'source': 'abstract', 'weight': 1.25}]",CET-RULES-2026Q3
+CETVAL-0126,F17A-029-0052_FA8650-19-C-1738,classified:advanced_engineering_materials:medium_55_69,510,2,255.0,classified,advanced_engineering_materials,59.0,medium_55_69,"[{'keyword': 'composite materials', 'source': 'abstract', 'weight': 2.0}]",CET-RULES-2026Q3
+CETVAL-0127,D2D-0389_HR0011-23-9-0050,unclassified:Defense Advanced Research Projects Agency:Phase II,531,3,177.0,unclassified,,,unclassified,[],CET-RULES-2026Q3
+CETVAL-0128,NGA-P1-19-13_HM047619C0071,unclassified:National Geospatial-Intelligence Agency:Phase I,28,3,9.333333333333334,unclassified,,,unclassified,[],CET-RULES-2026Q3
+CETVAL-0129,L183-010-0129_SP4701-19-P-0036,unclassified:Defense Logistics Agency:Phase I,244,3,81.33333333333333,unclassified,,,unclassified,[],CET-RULES-2026Q3
+CETVAL-0130,S244-002-0061_H9240524P0015,unclassified:Special Operations Command:Phase I,197,3,65.66666666666667,unclassified,,,unclassified,[],CET-RULES-2026Q3
+CETVAL-0131,FX211-CSO1-0284_FA8649-22-P-0626,classified:advanced_and_networked_sensing_and_signature_management:screening_50_54,1162,2,581.0,classified,advanced_and_networked_sensing_and_signature_management,50.0,screening_50_54,"[{'keyword': 'lidar', 'source': 'abstract', 'weight': 1.25}]",CET-RULES-2026Q3
+CETVAL-0132,S2-0636_H9240521C0008,unclassified:Special Operations Command:Phase II,158,3,52.666666666666664,unclassified,,,unclassified,[],CET-RULES-2026Q3
+CETVAL-0133,FX235-CSO1-1375_FA8649-24-P-0615,classified:trusted_ai_and_autonomy:high_70_plus,15,3,5.0,classified,trusted_ai_and_autonomy,83.0,high_70_plus,"[{'keyword': 'explainable ai', 'source': 'abstract', 'weight': 2.0}
+ {'keyword': 'trustworthy ai', 'source': 'abstract', 'weight': 2.0}]",CET-RULES-2026Q3
+CETVAL-0134,FX20A-TCSO1-0015_FA8649-20-P-0538,classified:semiconductors_and_microelectronics:high_70_plus,286,2,143.0,classified,semiconductors_and_microelectronics,95.0,high_70_plus,"[{'keyword': 'integrated circuit', 'source': 'title', 'weight': 4.0}
+ {'keyword': 'semiconductor', 'source': 'abstract', 'weight': 1.25}]",CET-RULES-2026Q3
+CETVAL-0135,F233-0001-0637_FA2401-24-9-0025,unclassified:Space Development Agency:Phase I,7,3,2.3333333333333335,unclassified,,,unclassified,[],CET-RULES-2026Q3
+CETVAL-0136,L171-002-0176_SP4701-18-P-0013,unclassified:Defense Logistics Agency:Phase I,244,3,81.33333333333333,unclassified,,,unclassified,[],CET-RULES-2026Q3
+CETVAL-0137,A202-125-0308_W911SR21C0014,unclassified:Army:Phase I,2188,4,547.0,unclassified,,,unclassified,[],CET-RULES-2026Q3
+CETVAL-0138,H171-007-0142_W81XWH-17-C-0119,unclassified:Defense Health Agency:Phase I,582,3,194.0,unclassified,,,unclassified,[],CET-RULES-2026Q3
+CETVAL-0139,F2D-7271_FA2401-23-9-0028,unclassified:Space Development Agency:Phase II,11,3,3.6666666666666665,unclassified,,,unclassified,[],CET-RULES-2026Q3
+CETVAL-0140,A14A-007-0178_W911NF-14-P-0025,classified:advanced_engineering_materials:high_70_plus,213,2,106.5,classified,advanced_engineering_materials,83.0,high_70_plus,"[{'keyword': 'advanced materials', 'source': 'abstract', 'weight': 2.0}
+ {'keyword': 'composite materials', 'source': 'abstract', 'weight': 2.0}]",CET-RULES-2026Q3
+CETVAL-0141,SCO2D-0076_HQ003422C0101,unclassified:Strategic Capabilities Office:Phase II,17,3,5.666666666666667,unclassified,,,unclassified,[],CET-RULES-2026Q3
+CETVAL-0142,F19A-008-0068_FA9451-19-P-0668,unclassified:Air Force:Phase I,4505,4,1126.25,unclassified,,,unclassified,[],CET-RULES-2026Q3
+CETVAL-0143,B142-017-0419_HQ0147-15-C-7126,classified:communication_and_networking_technologies:screening_50_54,39,2,19.5,classified,communication_and_networking_technologies,50.0,screening_50_54,"[{'keyword': 'telecommunications', 'source': 'abstract', 'weight': 1.25}]",CET-RULES-2026Q3
+CETVAL-0144,FX21B-TCSO1-0204_FA8649-22-P-1168,classified:quantum_information_science:screening_50_54,3,2,1.5,classified,quantum_information_science,50.0,screening_50_54,"[{'keyword': 'qubits', 'source': 'abstract', 'weight': 1.25}]",CET-RULES-2026Q3
+CETVAL-0145,O2-1390_FA8650-14-C-1706,unclassified:Office of the Secretary of Defense:Phase II,67,3,22.333333333333332,unclassified,,,unclassified,[],CET-RULES-2026Q3
+CETVAL-0146,O234-P002-0402_HQ003424P0150,unclassified:Strategic Capabilities Office:Phase I,6,3,2.0,unclassified,,,unclassified,[],CET-RULES-2026Q3
+CETVAL-0147,FX20D-TCSO1-0228_FA8649-21-P-0234,classified:advanced_manufacturing:medium_55_69,713,2,356.5,classified,advanced_manufacturing,59.0,medium_55_69,"[{'keyword': 'additive manufacturing', 'source': 'abstract', 'weight': 2.0}]",CET-RULES-2026Q3
+CETVAL-0148,B112-034-0187_HQ0147-12-C-7909,unclassified:Missile Defense Agency:Phase I,546,3,182.0,unclassified,,,unclassified,[],CET-RULES-2026Q3
+CETVAL-0149,T162-004-0096_HDTRA1-17-P-0010,unclassified:Defense Threat Reduction Agency:Phase I,135,3,45.0,unclassified,,,unclassified,[],CET-RULES-2026Q3
+CETVAL-0150,F2D-7183_FA8649-23-P-0485,unclassified:Air Force:Phase II,3242,4,810.5,unclassified,,,unclassified,[],CET-RULES-2026Q3
+CETVAL-0151,N111-080-0995a_N00014-16-C-1028,classified:directed_energy:high_70_plus,334,2,167.0,classified,directed_energy,92.0,high_70_plus,"[{'keyword': 'directed energy', 'source': 'title', 'weight': 4.0}
+ {'keyword': 'hpm', 'source': 'abstract', 'weight': 0.75}]",CET-RULES-2026Q3
+CETVAL-0152,F131-006-2126_FA8650-13-M-2368,classified:advanced_nuclear_energy_systems:medium_55_69,30,4,7.5,classified,advanced_nuclear_energy_systems,59.0,medium_55_69,"[{'keyword': 'nuclear power', 'source': 'abstract', 'weight': 2.0}]",CET-RULES-2026Q3
+CETVAL-0153,H251-002-0028_HT9425-25-P-0055,unclassified:Defense Health Agency:Phase I,582,3,194.0,unclassified,,,unclassified,[],CET-RULES-2026Q3
+CETVAL-0154,N231-065-0460_N68335-23-C-0297,classified:advanced_manufacturing:screening_50_54,1016,2,508.0,classified,advanced_manufacturing,50.0,screening_50_54,"[{'keyword': 'fabrication', 'source': 'abstract', 'weight': 1.25}]",CET-RULES-2026Q3
+CETVAL-0155,F231-0011-0024_FA2486-25-P-B003,classified:integrated_network_systems_of_systems:medium_55_69,250,2,125.0,classified,integrated_network_systems_of_systems,59.0,medium_55_69,"[{'keyword': 'integrated systems', 'source': 'abstract', 'weight': 2.0}]",CET-RULES-2026Q3
+CETVAL-0156,F233-0025-0083_FA9451-24-P-X007,classified:directed_energy:high_70_plus,334,2,167.0,classified,directed_energy,95.0,high_70_plus,"[{'keyword': 'directed energy', 'source': 'title', 'weight': 4.0}
+ {'keyword': 'laser weapon', 'source': 'abstract', 'weight': 2.0}]",CET-RULES-2026Q3
+CETVAL-0157,A2-10660_W51701-25-C-A259,classified:advanced_computing:medium_55_69,153,2,76.5,classified,advanced_computing,59.0,medium_55_69,"[{'keyword': 'edge computing', 'source': 'abstract', 'weight': 2.0}]",CET-RULES-2026Q3
+CETVAL-0158,T2-0438_HDTRA222C0001,unclassified:Defense Threat Reduction Agency:Phase II,74,3,24.666666666666668,unclassified,,,unclassified,[],CET-RULES-2026Q3
+CETVAL-0159,A2-5702_W911QY-15-C-0012,classified:renewable_energy_generation_and_storage:screening_50_54,37,2,18.5,classified,renewable_energy_generation_and_storage,50.0,screening_50_54,"[{'keyword': 'photovoltaic', 'source': 'abstract', 'weight': 1.25}]",CET-RULES-2026Q3
+CETVAL-0160,A092-099-0256_FA9453-16-C-0429,classified:quantum_information_science:medium_55_69,36,2,18.0,classified,quantum_information_science,59.0,medium_55_69,"[{'keyword': 'quantum sensing', 'source': 'abstract', 'weight': 2.0}]",CET-RULES-2026Q3
+CETVAL-0161,A2D-1388_W51701-24-C-0170,classified:semiconductors_and_microelectronics:medium_55_69,473,2,236.5,classified,semiconductors_and_microelectronics,65.0,medium_55_69,"[{'keyword': 'silicon', 'source': 'title', 'weight': 2.5}]",CET-RULES-2026Q3
+CETVAL-0162,FX212-CSO1-1173_FA8649-22-P-0470,classified:financial_technologies:medium_55_69,41,2,20.5,classified,financial_technologies,65.0,medium_55_69,"[{'keyword': 'blockchain', 'source': 'title', 'weight': 2.5}]",CET-RULES-2026Q3
+CETVAL-0163,C152-004-0097_HDTRA1-16-P-0059,unclassified:Office for Chemical and Biological Defense:Phase I,176,3,58.666666666666664,unclassified,,,unclassified,[],CET-RULES-2026Q3
+CETVAL-0164,F2D-0183_FA8571-24-C-0030,classified:integrated_network_systems_of_systems:screening_50_54,244,2,122.0,classified,integrated_network_systems_of_systems,50.0,screening_50_54,"[{'keyword': 'c4isr', 'source': 'abstract', 'weight': 1.25}]",CET-RULES-2026Q3
+CETVAL-0165,SDA224-001-0052_HQ085022C0028,unclassified:Space Development Agency:Phase I,7,3,2.3333333333333335,unclassified,,,unclassified,[],CET-RULES-2026Q3
+CETVAL-0166,C2-0564_W911QY-20-C-0022,unclassified:Office for Chemical and Biological Defense:Phase II,128,3,42.666666666666664,unclassified,,,unclassified,[],CET-RULES-2026Q3
+CETVAL-0167,F212-0010-0299_FA8650-22-P-2307,classified:advanced_gas_turbine_engine_technologies:high_70_plus,391,2,195.5,classified,advanced_gas_turbine_engine_technologies,89.0,high_70_plus,"[{'keyword': 'gas turbine', 'source': 'abstract', 'weight': 2.0}
+ {'keyword': 'combustion', 'source': 'abstract', 'weight': 1.25}
+ {'keyword': 'propulsion', 'source': 'abstract', 'weight': 1.25}]",CET-RULES-2026Q3
+CETVAL-0168,F191-010-1812_FA8629-20-C-5009,classified:space_technologies_and_systems:screening_50_54,739,2,369.5,classified,space_technologies_and_systems,50.0,screening_50_54,"[{'keyword': 'satellite', 'source': 'abstract', 'weight': 1.25}]",CET-RULES-2026Q3
+CETVAL-0169,F11B-T03-0055_FA9453-12-M-0081,classified:communication_and_networking_technologies:medium_55_69,320,2,160.0,classified,communication_and_networking_technologies,59.0,medium_55_69,"[{'keyword': 'satellite communications', 'source': 'abstract', 'weight': 2.0}]",CET-RULES-2026Q3
+CETVAL-0170,N15A-022-0028_N00014-15-P-1182,classified:integrated_sensing_and_cyber:medium_55_69,68,3,22.666666666666668,classified,integrated_sensing_and_cyber,59.0,medium_55_69,"[{'keyword': 'cyber physical systems', 'source': 'abstract', 'weight': 2.0}]",CET-RULES-2026Q3
+CETVAL-0171,F112-053-2216_FA9453-12-M-0019,classified:integrated_sensing_and_cyber:high_70_plus,34,3,11.333333333333334,classified,integrated_sensing_and_cyber,83.0,high_70_plus,"[{'keyword': 'cyber situational awareness', 'source': 'abstract', 'weight': 2.0}
+ {'keyword': 'integrated cyber', 'source': 'abstract', 'weight': 2.0}]",CET-RULES-2026Q3
+CETVAL-0172,N251-068-1073_N64267-25-C-7458,classified:financial_technologies:high_70_plus,36,2,18.0,classified,financial_technologies,89.0,high_70_plus,"[{'keyword': 'blockchain', 'source': 'title', 'weight': 2.5}
+ {'keyword': 'smart contracts', 'source': 'abstract', 'weight': 2.0}]",CET-RULES-2026Q3
+CETVAL-0173,A2-8198_W56HZV-21-C-0025,classified:advanced_manufacturing:screening_50_54,1016,2,508.0,classified,advanced_manufacturing,50.0,screening_50_54,"[{'keyword': 'fabrication', 'source': 'abstract', 'weight': 1.25}]",CET-RULES-2026Q3
+CETVAL-0174,D18C-001-0062_140D6319C0040,classified:biotechnologies:screening_50_54,29,2,14.5,classified,biotechnologies,50.0,screening_50_54,"[{'keyword': 'crispr', 'source': 'abstract', 'weight': 1.25}]",CET-RULES-2026Q3
+CETVAL-0175,B2-1893_HQ0147-13-C-7205,unclassified:Missile Defense Agency:Phase II,391,3,130.33333333333334,unclassified,,,unclassified,[],CET-RULES-2026Q3
+CETVAL-0176,S2D-0093_H92405219P011,classified:integrated_sensing_and_cyber:high_70_plus,34,3,11.333333333333334,classified,integrated_sensing_and_cyber,83.0,high_70_plus,"[{'keyword': 'integrated cyber', 'source': 'title', 'weight': 4.0}]",CET-RULES-2026Q3
+CETVAL-0177,A18B-007-0243_W911NF-19-P-0009,unclassified:Army:Phase I,2188,4,547.0,unclassified,,,unclassified,[],CET-RULES-2026Q3
+CETVAL-0178,SDA215-01-0007_HQ0850-22-C-0012,unclassified:Space Development Agency:Phase I,7,3,2.3333333333333335,unclassified,,,unclassified,[],CET-RULES-2026Q3
+CETVAL-0179,L2S-0006_SP4701-22-C-0010,classified:financial_technologies:screening_50_54,42,2,21.0,classified,financial_technologies,50.0,screening_50_54,"[{'keyword': 'blockchain', 'source': 'abstract', 'weight': 1.25}]",CET-RULES-2026Q3
+CETVAL-0180,F2-8118_FA8650-15-C-2631,classified:autonomous_systems:screening_50_54,209,2,104.5,classified,autonomous_systems,53.0,screening_50_54,"[{'keyword': 'uav', 'source': 'title', 'weight': 1.5}]",CET-RULES-2026Q3
+CETVAL-0181,N141-080-0493_N68335-14-C-0230,unclassified:Navy:Phase I,3604,3,1201.3333333333333,unclassified,,,unclassified,[],CET-RULES-2026Q3
+CETVAL-0182,F183-028-0091_FA9300-19-P-1014,classified:hypersonics:screening_50_54,191,2,95.5,classified,hypersonics,50.0,screening_50_54,"[{'keyword': 'hypersonic', 'source': 'abstract', 'weight': 1.25}]",CET-RULES-2026Q3
+CETVAL-0183,A20B-T009-0076_W911NF-21-P-0003,classified:quantum_information_science:high_70_plus,90,2,45.0,classified,quantum_information_science,83.0,high_70_plus,"[{'keyword': 'quantum sensing', 'source': 'title', 'weight': 4.0}]",CET-RULES-2026Q3
+CETVAL-0184,L202-001-0234_SP4701-21-P-0032,classified:advanced_manufacturing:high_70_plus,863,2,431.5,classified,advanced_manufacturing,83.0,high_70_plus,"[{'keyword': 'additive manufacturing', 'source': 'abstract', 'weight': 2.0}
+ {'keyword': 'manufacturing process', 'source': 'abstract', 'weight': 2.0}]",CET-RULES-2026Q3
+CETVAL-0185,L222-007-0032_SP4701-22-P-0095,classified:advanced_manufacturing:high_70_plus,863,2,431.5,classified,advanced_manufacturing,74.0,high_70_plus,"[{'keyword': 'additive manufacturing', 'source': 'abstract', 'weight': 2.0}
+ {'keyword': 'fabrication', 'source': 'abstract', 'weight': 1.25}]",CET-RULES-2026Q3
+CETVAL-0186,F2D-4390_FA3002-24-F-0107,classified:artificial_intelligence:medium_55_69,1655,2,827.5,classified,artificial_intelligence,63.8,medium_55_69,"[{'keyword': 'artificial intelligence', 'source': 'abstract', 'weight': 2.0}
+ {'keyword': 'ai', 'source': 'abstract', 'weight': 0.4}]",CET-RULES-2026Q3
+CETVAL-0187,A2-6994_W9113M-18-C-0007,unclassified:Army:Phase II,1505,4,376.25,unclassified,,,unclassified,[],CET-RULES-2026Q3
+CETVAL-0188,N242-075-0091_N68335-25-C-0561,classified:hypersonics:high_70_plus,422,2,211.0,classified,hypersonics,95.0,high_70_plus,"[{'keyword': 'hypersonic vehicle', 'source': 'title', 'weight': 4.0}
+ {'keyword': 'hypersonic', 'source': 'title', 'weight': 2.5}
+ {'keyword': 'hypersonic flight', 'source': 'abstract', 'weight': 2.0}]",CET-RULES-2026Q3
+CETVAL-0189,J201-CSO1-7338_FA8649-20-P-0632,classified:financial_technologies:high_70_plus,36,2,18.0,classified,financial_technologies,74.0,high_70_plus,"[{'keyword': 'distributed ledger', 'source': 'abstract', 'weight': 2.0}
+ {'keyword': 'blockchain', 'source': 'abstract', 'weight': 1.25}]",CET-RULES-2026Q3
+CETVAL-0190,B2S-0055_HQ0860-23-C-7162,unclassified:Missile Defense Agency:Phase II,391,3,130.33333333333334,unclassified,,,unclassified,[],CET-RULES-2026Q3
+CETVAL-0191,B13B-010-0058_HQ0147-14-C-7901,unclassified:Missile Defense Agency:Phase I,546,3,182.0,unclassified,,,unclassified,[],CET-RULES-2026Q3
+CETVAL-0192,H2-0622_W81XWH21C0076,unclassified:Defense Health Agency:Phase II,449,3,149.66666666666666,unclassified,,,unclassified,[],CET-RULES-2026Q3
+CETVAL-0193,H161-008-0052_W81XWH-16-C-0149,classified:integrated_network_systems_of_systems:medium_55_69,250,2,125.0,classified,integrated_network_systems_of_systems,59.0,medium_55_69,"[{'keyword': 'system of systems', 'source': 'abstract', 'weight': 2.0}]",CET-RULES-2026Q3
+CETVAL-0194,A2-6050_W81XWH-16-C-0013#4e7edbd0e10b,unclassified:Defense Health Agency:Phase II,449,3,149.66666666666666,unclassified,,,unclassified,[],CET-RULES-2026Q3
+CETVAL-0195,C2-0375_W9132T-14-C-0010,unclassified:Office for Chemical and Biological Defense:Phase II,128,3,42.666666666666664,unclassified,,,unclassified,[],CET-RULES-2026Q3
+CETVAL-0196,J201-CSO1-7312_FA8649-20-P-0952,classified:human_machine_interfaces:screening_50_54,24,2,12.0,classified,human_machine_interfaces,54.2,screening_50_54,"[{'keyword': 'ar', 'source': 'title', 'weight': 0.8}
+ {'keyword': 'vr', 'source': 'title', 'weight': 0.8}]",CET-RULES-2026Q3
+CETVAL-0197,C2-0557_W911-QY-20-C0028,unclassified:Office for Chemical and Biological Defense:Phase II,128,3,42.666666666666664,unclassified,,,unclassified,[],CET-RULES-2026Q3
+CETVAL-0198,A132-076-0117_W9132T-14-C-0003,classified:renewable_energy_generation_and_storage:screening_50_54,37,2,18.5,classified,renewable_energy_generation_and_storage,50.0,screening_50_54,"[{'keyword': 'photovoltaic', 'source': 'abstract', 'weight': 1.25}]",CET-RULES-2026Q3
+CETVAL-0199,FX21S-TCSO1-0318_FA8750-22-C-1033,classified:artificial_intelligence:screening_50_54,64,2,32.0,classified,artificial_intelligence,54.2,screening_50_54,"[{'keyword': 'ai', 'source': 'title', 'weight': 0.8}
+ {'keyword': 'ml', 'source': 'title', 'weight': 0.8}]",CET-RULES-2026Q3
+CETVAL-0200,B221-002-0195_HQ0860-22-C-7825,unclassified:Missile Defense Agency:Phase I,546,3,182.0,unclassified,,,unclassified,[],CET-RULES-2026Q3
+CETVAL-0201,N172-108-0502_N68936-18-C-0007,classified:advanced_and_networked_sensing_and_signature_management:high_70_plus,162,2,81.0,classified,advanced_and_networked_sensing_and_signature_management,95.0,high_70_plus,"[{'keyword': 'lidar', 'source': 'title', 'weight': 2.5}
+ {'keyword': 'radar', 'source': 'title', 'weight': 2.5}]",CET-RULES-2026Q3
+CETVAL-0202,N13A-002-0207_N68335-15-C-0373,classified:advanced_gas_turbine_engine_technologies:medium_55_69,466,2,233.0,classified,advanced_gas_turbine_engine_technologies,59.0,medium_55_69,"[{'keyword': 'gas turbine', 'source': 'abstract', 'weight': 2.0}]",CET-RULES-2026Q3
+CETVAL-0203,F2D-3507_FA2401-24-9-0075,unclassified:Space Development Agency:Phase II,11,3,3.6666666666666665,unclassified,,,unclassified,[],CET-RULES-2026Q3
+CETVAL-0204,F13A-T02-0162_FA9453-14-M-0004,classified:space_technologies_and_systems:high_70_plus,394,2,197.0,classified,space_technologies_and_systems,74.0,high_70_plus,"[{'keyword': 'space situational awareness', 'source': 'abstract', 'weight': 2.0}
+ {'keyword': 'satellite', 'source': 'abstract', 'weight': 1.25}]",CET-RULES-2026Q3
+CETVAL-0205,A2-5307_W911QX-13-C-0065,unclassified:Army:Phase II,1505,4,376.25,unclassified,,,unclassified,[],CET-RULES-2026Q3
+CETVAL-0206,N153-128-0164_M67854-17-C-6509,classified:human_machine_interfaces:medium_55_69,309,2,154.5,classified,human_machine_interfaces,59.0,medium_55_69,"[{'keyword': 'augmented reality', 'source': 'abstract', 'weight': 2.0}]",CET-RULES-2026Q3
+CETVAL-0207,S2-0267_H92222-16-C-0026,unclassified:Special Operations Command:Phase II,158,3,52.666666666666664,unclassified,,,unclassified,[],CET-RULES-2026Q3
+CETVAL-0208,N121-008-1018_N68936-12-C-0198,classified:directed_energy:screening_50_54,25,2,12.5,classified,directed_energy,53.0,screening_50_54,"[{'keyword': 'hpm', 'source': 'title', 'weight': 1.5}]",CET-RULES-2026Q3
+CETVAL-0209,FX247-PCSO1-1200_FA8649-25-P-0098,classified:autonomous_systems:high_70_plus,180,2,90.0,classified,autonomous_systems,74.0,high_70_plus,"[{'keyword': 'autonomous systems', 'source': 'abstract', 'weight': 2.0}
+ {'keyword': 'drone', 'source': 'abstract', 'weight': 1.25}]",CET-RULES-2026Q3
+CETVAL-0210,O21C-006-0045_W911NF-23-C-0028,unclassified:Office of the Secretary of Defense:Phase II,67,3,22.333333333333332,unclassified,,,unclassified,[],CET-RULES-2026Q3
+CETVAL-0211,20-0D0_HQ072720C0005,unclassified:Defense Microelectronics Activity:Phase II,10,3,3.3333333333333335,unclassified,,,unclassified,[],CET-RULES-2026Q3
+CETVAL-0212,FX20D-TCSO1-0379_FA8649-21-P-0175,classified:advanced_engineering_materials:high_70_plus,213,2,106.5,classified,advanced_engineering_materials,83.0,high_70_plus,"[{'keyword': 'advanced materials', 'source': 'abstract', 'weight': 2.0}
+ {'keyword': 'carbon fiber', 'source': 'abstract', 'weight': 2.0}]",CET-RULES-2026Q3
+CETVAL-0213,A2-5336_W15P7T-13-C-A304,unclassified:Army:Phase II,1505,4,376.25,unclassified,,,unclassified,[],CET-RULES-2026Q3
+CETVAL-0214,20-0J5_HQ072720P0029,unclassified:Defense Microelectronics Activity:Phase I,27,3,9.0,unclassified,,,unclassified,[],CET-RULES-2026Q3
+CETVAL-0215,F2-8669_FA8650-16-C-1716,classified:space_technologies_and_systems:medium_55_69,636,2,318.0,classified,space_technologies_and_systems,65.0,medium_55_69,"[{'keyword': 'satellite', 'source': 'title', 'weight': 2.5}]",CET-RULES-2026Q3
+CETVAL-0216,FX211-CSO1-1145_FA8649-21-P-1150,unclassified:Air Force:Phase I,4505,4,1126.25,unclassified,,,unclassified,[],CET-RULES-2026Q3
+CETVAL-0217,NGA-P2-20-03_HM047620C0018,unclassified:National Geospatial-Intelligence Agency:Phase II,28,3,9.333333333333334,unclassified,,,unclassified,[],CET-RULES-2026Q3
+CETVAL-0218,24-4C5_HQ072724P0002,unclassified:Defense Microelectronics Activity:Phase I,27,3,9.0,unclassified,,,unclassified,[],CET-RULES-2026Q3
+CETVAL-0219,NGA-P1-20-11_HM047620C0043,unclassified:National Geospatial-Intelligence Agency:Phase I,28,3,9.333333333333334,unclassified,,,unclassified,[],CET-RULES-2026Q3
+CETVAL-0220,FX20D-TCSO1-0074_FA8649-21-P-0061,unclassified:Air Force:Phase I,4505,4,1126.25,unclassified,,,unclassified,[],CET-RULES-2026Q3
+CETVAL-0221,S173-001-0089_H92222-18-P-0015,unclassified:Special Operations Command:Phase I,197,3,65.66666666666667,unclassified,,,unclassified,[],CET-RULES-2026Q3
+CETVAL-0222,D122-001-0139_W31P4Q-13-C-0063,classified:biotechnologies:medium_55_69,25,2,12.5,classified,biotechnologies,59.0,medium_55_69,"[{'keyword': 'synthetic biology', 'source': 'abstract', 'weight': 2.0}]",CET-RULES-2026Q3
+CETVAL-0223,T172-008-0029_HDTRA118P0020,unclassified:Defense Threat Reduction Agency:Phase I,135,3,45.0,unclassified,,,unclassified,[],CET-RULES-2026Q3
+CETVAL-0224,F2D-2374_FA8649-21-P-1578,classified:integrated_sensing_and_cyber:medium_55_69,68,3,22.666666666666668,classified,integrated_sensing_and_cyber,59.0,medium_55_69,"[{'keyword': 'cyber operations', 'source': 'abstract', 'weight': 2.0}]",CET-RULES-2026Q3
+CETVAL-0225,F173-011-0143_FA8651-18-P-0006,classified:communication_and_networking_technologies:high_70_plus,144,2,72.0,classified,communication_and_networking_technologies,83.0,high_70_plus,"[{'keyword': 'mobile networks', 'source': 'title', 'weight': 4.0}]",CET-RULES-2026Q3
+CETVAL-0226,FX20D-TCSO1-0397_FA8649-21-P-0195,classified:advanced_gas_turbine_engine_technologies:medium_55_69,466,2,233.0,classified,advanced_gas_turbine_engine_technologies,65.0,medium_55_69,"[{'keyword': 'propulsion', 'source': 'title', 'weight': 2.5}]",CET-RULES-2026Q3
