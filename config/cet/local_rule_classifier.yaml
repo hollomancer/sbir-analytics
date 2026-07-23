@@ -1,0 +1,25 @@
+version: "CET-RULES-2026Q3"
+taxonomy_version: "NSTC-2025Q1"
+description: >-
+  Deterministic keyword-evidence classifier for local research builds when the
+  trained CET model is unavailable. This is a screening method, not a replacement
+  accuracy claim for the production classifier.
+
+minimum_raw_score: 1.25
+minimum_output_score: 40.0
+base_output_score: 35.0
+raw_score_multiplier: 12.0
+maximum_output_score: 95.0
+negative_keyword_multiplier: 0.5
+max_supporting_cets: 3
+
+field_weights:
+  title: 2.0
+  topic_code: 1.5
+  abstract: 1.0
+
+keyword_specificity:
+  multiword: 2.0
+  long_single_word: 1.25
+  short_single_word: 0.75
+  abbreviation: 0.4

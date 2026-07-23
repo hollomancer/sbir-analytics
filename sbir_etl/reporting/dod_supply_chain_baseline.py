@@ -592,6 +592,11 @@ def build_baseline(
     )
     flags = build_firm_flags(facts, latest_fy=last_fy, window_years=window_years)
     taxonomy_versions = sorted(facts["taxonomy_version"].dropna().astype(str).unique())
+    classifier_versions = (
+        sorted(classifications["classifier_version"].dropna().astype(str).unique())
+        if "classifier_version" in classifications.columns
+        else []
+    )
     metadata = {
         "scope": "DoD SBIR/STTR awardee industrial-base concentration",
         "exclusions": [
@@ -605,6 +610,7 @@ def build_baseline(
         "minimum_primary_cet_score": min_cet_score,
         "expected_taxonomy_version": expected_taxonomy_version,
         "taxonomy_versions": taxonomy_versions,
+        "classifier_versions": classifier_versions,
         "defense_crosswalk_version": defense_crosswalk.version,
         "defense_crosswalk_source": str(defense_crosswalk.source_path),
         "defense_target_versions": defense_crosswalk.target_versions,
