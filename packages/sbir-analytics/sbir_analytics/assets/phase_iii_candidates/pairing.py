@@ -9,6 +9,8 @@ from sbir_etl.utils.award_identity import (
     collapse_transactions_to_award_grain,
 )
 
+from .similarity import compute_topical_similarity
+
 # FPDS Element 10Q codes that mark a contract as already-coded Phase III.
 # Duplicated intentionally — avoids cross-package import for a five-element set.
 _PHASE_III_RESEARCH_CODES = frozenset({"SR3", "ST3"})
@@ -45,6 +47,27 @@ PAIR_S1_COLUMNS: list[str] = [
     "target_obligated_amount",
     "agency_match_level",
 ]
+
+PAIR_OPPORTUNITY_COLUMNS: list[str] = PAIR_S1_COLUMNS + [
+    "target_notice_type",
+    "target_response_deadline",
+    "target_source_url",
+    "target_active",
+    "topical_similarity",
+]
+
+DIRECTED_NOTICE_TYPES = frozenset({"u", "s", "p"})
+FOLLOWON_NOTICE_TYPES = frozenset({"o", "k", "r", "p"})
+_LINEAGE_TERMS = (
+    "phase iii",
+    "phase 3",
+    "derives from",
+    "prototype transition",
+    "follow-on production",
+    "continuation of",
+    "sole source",
+    "notice of intent",
+)
 
 
 def _normalize(value: object) -> str:
@@ -222,7 +245,156 @@ def pair_filter_s1(
     return merged.loc[:, PAIR_S1_COLUMNS].reset_index(drop=True)
 
 
+def _prepare_opportunities(opportunities: pd.DataFrame) -> pd.DataFrame:
+    if opportunities.empty:
+        return pd.DataFrame(
+            columns=[c for c in PAIR_OPPORTUNITY_COLUMNS if c.startswith("target_")]
+        )
+    df = opportunities.copy()
+
+    def _pick(*names: str) -> pd.Series:
+        for name in names:
+            if name in df.columns:
+                return df[name]
+        return pd.Series([None] * len(df), index=df.index)
+
+    out = pd.DataFrame(
+        {
+            "target_id": _pick("notice_id", "noticeId"),
+            "target_recipient_uei": _pick("awardee_uei", "ueiSAM"),
+            "target_agency": _pick("agency", "department"),
+            "target_sub_agency": _pick("sub_tier", "subTier"),
+            "target_office": _pick("office"),
+            "target_naics_code": _pick("naics_code", "naicsCode"),
+            "target_psc_code": _pick("psc_code", "classification_code"),
+            "target_description": _pick("description", "title"),
+            "target_action_date": _pick("posted_date", "postedDate"),
+            "target_competition_type": _pick("notice_type_code", "notice_type"),
+            "target_obligated_amount": pd.Series([None] * len(df), index=df.index),
+            "target_notice_type": _pick("notice_type_code", "notice_type"),
+            "target_response_deadline": _pick("response_deadline", "responseDeadLine"),
+            "target_source_url": _pick("source_url", "ui_url", "uiLink"),
+            "target_active": _pick("active"),
+        }
+    )
+    out["target_notice_type"] = out["target_notice_type"].map(_normalize).str.lower()
+    active = out["target_active"].map(
+        lambda value: value is True or _normalize(value) in {"YES", "TRUE", "1", "ACTIVE"}
+    )
+    deadline = pd.to_datetime(out["target_response_deadline"], errors="coerce", utc=True)
+    today = pd.Timestamp.now(tz="UTC").normalize()
+    live_deadline = deadline.isna() | (deadline >= today)
+    return out.loc[active & live_deadline & out["target_id"].notna()].reset_index(drop=True)
+
+
+def _with_pair_metadata(merged: pd.DataFrame) -> pd.DataFrame:
+    if merged.empty:
+        return pd.DataFrame(columns=PAIR_OPPORTUNITY_COLUMNS)
+    levels = merged.apply(  # type: ignore[call-overload]
+        lambda row: _agency_match_level(row, row),
+        axis=1,
+    )
+    merged = merged.assign(agency_match_level=levels)
+    merged = merged.loc[merged["agency_match_level"].notna()].copy()
+    if merged.empty:
+        return pd.DataFrame(columns=PAIR_OPPORTUNITY_COLUMNS)
+    merged["topical_similarity"] = merged.apply(
+        lambda row: compute_topical_similarity(
+            {
+                "naics_code": row.get("prior_naics_code"),
+                "psc_code": row.get("prior_psc_code"),
+                "title": row.get("prior_title"),
+                "abstract": row.get("prior_abstract"),
+            },
+            {
+                "naics_code": row.get("target_naics_code"),
+                "psc_code": row.get("target_psc_code"),
+                "description": row.get("target_description"),
+            },
+        ),
+        axis=1,
+    )
+    return merged.loc[:, PAIR_OPPORTUNITY_COLUMNS].reset_index(drop=True)
+
+
+def pair_filter_s2(prior_awards: pd.DataFrame, opportunities: pd.DataFrame) -> pd.DataFrame:
+    """Directed candidates: active u/s/p notices with UEI or strong lineage fallback."""
+
+    priors = _prepare_priors(prior_awards)
+    targets = _prepare_opportunities(opportunities)
+    targets = targets.loc[targets["target_notice_type"].isin(DIRECTED_NOTICE_TYPES)].copy()
+    if priors.empty or targets.empty:
+        return pd.DataFrame(columns=PAIR_OPPORTUNITY_COLUMNS)
+
+    priors["_uei"] = priors["prior_recipient_uei"].map(_normalize)
+    targets["_uei"] = targets["target_recipient_uei"].map(_normalize)
+    exact = priors.merge(targets.loc[targets["_uei"] != ""], on="_uei", how="inner")
+
+    no_uei = targets.loc[targets["_uei"] == ""].copy()
+    fallback = pd.DataFrame()
+    if not no_uei.empty:
+        priors["_agency"] = priors["prior_agency"].map(_normalize)
+        no_uei["_agency"] = no_uei["target_agency"].map(_normalize)
+        fallback = priors.merge(no_uei, on="_agency", how="inner")
+        lineage = (
+            fallback["target_description"]
+            .fillna("")
+            .str.lower()
+            .map(lambda text: any(term in text for term in _LINEAGE_TERMS))
+        )
+        naics = fallback["prior_naics_code"].map(_normalize) == fallback["target_naics_code"].map(
+            _normalize
+        )
+        missing_codes = (fallback["prior_naics_code"].map(_normalize) == "") | (
+            fallback["target_naics_code"].map(_normalize) == ""
+        )
+        fallback = fallback.loc[lineage & (naics | missing_codes)].copy()
+    merged = pd.concat([exact, fallback], ignore_index=True, sort=False)
+    return _with_pair_metadata(merged.drop_duplicates(["prior_award_id", "target_id"]))
+
+
+def pair_filter_s3(prior_awards: pd.DataFrame, opportunities: pd.DataFrame) -> pd.DataFrame:
+    """Competitive follow-on candidates gated by codes and topical similarity."""
+
+    priors = _prepare_priors(prior_awards)
+    targets = _prepare_opportunities(opportunities)
+    targets = targets.loc[targets["target_notice_type"].isin(FOLLOWON_NOTICE_TYPES)].copy()
+    if priors.empty or targets.empty:
+        return pd.DataFrame(columns=PAIR_OPPORTUNITY_COLUMNS)
+
+    parts: list[pd.DataFrame] = []
+    for prior_key, target_key in (
+        ("prior_naics_code", "target_naics_code"),
+        ("prior_psc_code", "target_psc_code"),
+    ):
+        left = priors.assign(_code=priors[prior_key].map(_normalize))
+        right = targets.assign(_code=targets[target_key].map(_normalize))
+        parts.append(
+            left.loc[left["_code"] != ""].merge(right.loc[right["_code"] != ""], on="_code")
+        )
+    # SBIR.gov does not publish NAICS/PSC on every award. For those rows, use
+    # agency as a bounded fallback and retain only pairs that pass topical similarity.
+    missing = priors.loc[
+        (priors["prior_naics_code"].map(_normalize) == "")
+        & (priors["prior_psc_code"].map(_normalize) == "")
+    ].copy()
+    if not missing.empty:
+        missing["_agency"] = missing["prior_agency"].map(_normalize)
+        by_agency = targets.assign(_agency=targets["target_agency"].map(_normalize))
+        parts.append(missing.loc[missing["_agency"] != ""].merge(by_agency, on="_agency"))
+    merged = pd.concat(parts, ignore_index=True, sort=False).drop_duplicates(
+        ["prior_award_id", "target_id"]
+    )
+    paired = _with_pair_metadata(merged)
+    return paired.loc[paired["topical_similarity"] >= 0.10].reset_index(drop=True)
+
+
 __all__ = [
+    "DIRECTED_NOTICE_TYPES",
+    "FOLLOWON_NOTICE_TYPES",
+    "PAIR_OPPORTUNITY_COLUMNS",
     "PAIR_S1_COLUMNS",
     "pair_filter_s1",
+    "pair_filter_s2",
+    "pair_filter_s3",
 ]
