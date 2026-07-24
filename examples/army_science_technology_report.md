@@ -4,25 +4,30 @@
 
 > Use this packet to route leads for human review. Recorded performance-period end dates do not verify technical completion, and screening results do not prove Phase III eligibility.
 
+## How to read this packet
+
+- **Possible direct-award path**: public records suggest the government may award this work directly and tie it to a prior SBIR/STTR award. Confirm that connection before acting.
+- **Open competition with overlap**: a competitive notice whose subject overlaps a recent SBIR/STTR award. Overlap alone is not a Phase III claim.
+- **Priority lead**: passed more automated screening checks. **Needs more evidence**: has a stated gap that a person must resolve first.
+- Phase III work derives from, extends, or completes work funded by a prior SBIR/STTR award. For each lead, ask: does the funded work satisfy the solicitation need as written?
+
 ## Snapshot
 
-- Award cohort: 5 awards totaling $5,750,000
-- Priority leads: 4 (3 possible directed paths; 1 competitive opportunity)
+- Awards in this packet: 5 (new, changed, or ending soon), totaling $5,750,000
+- Priority leads: 4 (3 possible direct-award paths; 1 overlapping open competition)
 - Needs more evidence before routing: 1
 
 ## Representative action queue
 
-- Validate SBIR/STTR lineage and technical fit for 3 possible directed paths.
-- Assess technical fit and acquisition strategy for 1 competitive opportunity.
-- Hold 1 watchlist lead until the stated evidence gaps are resolved.
+- Confirm the SBIR/STTR connection and technical fit for 3 possible direct-award paths.
+- Assess technical fit and acquisition strategy for 1 overlapping open competition.
+- Resolve the stated evidence gaps on 1 lead before routing.
 
-## Potential directed paths — validate lineage
+## Possible direct-award paths — confirm the SBIR/STTR connection
 
 ### Robotic breach reconnaissance integration
 
-**Disposition:** Potential directed Phase III path — validate lineage
-
-**Review question:** Does the SBIR/STTR-funded capability below satisfy the solicitation need as written?
+**Disposition:** Potential directed Phase III path — confirm the SBIR/STTR connection
 
 **Response deadline:** August 15, 2026
 **Suggested routing:** Maneuver Ground · All Arms Maneuver
@@ -41,27 +46,30 @@
 
 #### Technical connection to validate
 
+What the public records show:
+
+- The award and the solicitation share technical terms: autonomous, ground, obstacles, breach.
+- Both records carry NAICS code 541715.
+- Both records carry product/service code AC13.
+
 **Analyst screening note:** The award funded autonomous ground mobility and obstacle sensing; the solicitation asks to integrate those functions into a breach-reconnaissance system. A representative still needs to validate lineage and interfaces.
 
 #### Why this was surfaced
 
-- Screening path: Directed-opportunity screen
+- Screening path: Direct-award screen — public records tie the notice to prior SBIR/STTR work
 - Mission interest: All Arms Maneuver
 - Technology tags: Autonomy; Artificial Intelligence/Machine Learning; Sensors
-- Ranking signals: agency continuity, topical similarity across codes and text, matching NAICS codes, matching product/service codes
-- Screening rank: Priority lead; composite 0.87. This is a triage rank, not a probability.
+- Screening result: Priority lead — passed 2 of 3 automated screening checks. The rank orders leads for review; it is not a probability.
 
 #### Representative check
 
-Confirm that the solicitation derives from, extends, or uses the cited SBIR/STTR-funded work, and that the funded capability covers the stated need. The screening score does not establish statutory Phase III lineage.
+Confirm that the solicitation derives from, extends, or completes the cited SBIR/STTR-funded work, and that the funded capability covers the stated need. The screening result does not establish that connection on its own.
 
 **Source records:** Not supplied in this input
 
 ### Resilient tactical network and assured PNT integration
 
-**Disposition:** Potential directed Phase III path — validate lineage
-
-**Review question:** Does the SBIR/STTR-funded capability below satisfy the solicitation need as written?
+**Disposition:** Potential directed Phase III path — confirm the SBIR/STTR connection
 
 **Response deadline:** August 22, 2026
 **Suggested routing:** Command and Control and Counter Command and Control · Command and Control (C2) and Counter C2
@@ -80,27 +88,30 @@ Confirm that the solicitation derives from, extends, or uses the cited SBIR/STTR
 
 #### Technical connection to validate
 
+What the public records show:
+
+- The award and the solicitation share technical terms: resilient, tactical, mesh, network, assured, positioning.
+- Both records carry NAICS code 541715.
+- Both records carry product/service code AC13.
+
 **Analyst screening note:** The award funded resilient communications and positioning; the solicitation asks for a tactical mesh prototype with assured PNT under jamming. A representative still needs to validate performance thresholds and lineage.
 
 #### Why this was surfaced
 
-- Screening path: Directed-opportunity screen
+- Screening path: Direct-award screen — public records tie the notice to prior SBIR/STTR work
 - Mission interest: Command and Control (C2) and Counter C2
 - Technology tags: Network Technologies; Position, Navigation, and Timing; Electronic Warfare
-- Ranking signals: agency continuity, topical similarity across codes and text, matching NAICS codes, matching product/service codes
-- Screening rank: Priority lead; composite 0.84. This is a triage rank, not a probability.
+- Screening result: Priority lead — passed 2 of 3 automated screening checks. The rank orders leads for review; it is not a probability.
 
 #### Representative check
 
-Confirm that the solicitation derives from, extends, or uses the cited SBIR/STTR-funded work, and that the funded capability covers the stated need. The screening score does not establish statutory Phase III lineage.
+Confirm that the solicitation derives from, extends, or completes the cited SBIR/STTR-funded work, and that the funded capability covers the stated need. The screening result does not establish that connection on its own.
 
 **Source records:** Not supplied in this input
 
 ### Autonomous contested-logistics and forward-repair pilot
 
-**Disposition:** Potential directed Phase III path — validate lineage
-
-**Review question:** Does the SBIR/STTR-funded capability below satisfy the solicitation need as written?
+**Disposition:** Potential directed Phase III path — confirm the SBIR/STTR connection
 
 **Response deadline:** August 29, 2026
 **Suggested routing:** Agile Sustainment and Ammo · Adaptive Sustainment
@@ -119,29 +130,32 @@ Confirm that the solicitation derives from, extends, or uses the cited SBIR/STTR
 
 #### Technical connection to validate
 
+What the public records show:
+
+- The award and the solicitation share technical terms: autonomous, resupply, additive, repair, contested, logistics.
+- Both records carry NAICS code 541715.
+- Both records carry product/service code AC13.
+
 **Analyst screening note:** The award funded autonomous material movement and additive repair; the solicitation asks to combine both in a contested-logistics pilot. A representative still needs to validate scale and lineage.
 
 #### Why this was surfaced
 
-- Screening path: Directed-opportunity screen
+- Screening path: Direct-award screen — public records tie the notice to prior SBIR/STTR work
 - Mission interest: Adaptive Sustainment
 - Technology tags: Autonomy; Advanced Materials and Manufacturing; Power
-- Ranking signals: agency continuity, topical similarity across codes and text, matching NAICS codes, matching product/service codes
-- Screening rank: Priority lead; composite 0.79. This is a triage rank, not a probability.
+- Screening result: Priority lead — passed 2 of 3 automated screening checks. The rank orders leads for review; it is not a probability.
 
 #### Representative check
 
-Confirm that the solicitation derives from, extends, or uses the cited SBIR/STTR-funded work, and that the funded capability covers the stated need. The screening score does not establish statutory Phase III lineage.
+Confirm that the solicitation derives from, extends, or completes the cited SBIR/STTR-funded work, and that the funded capability covers the stated need. The screening result does not establish that connection on its own.
 
 **Source records:** Not supplied in this input
 
-## Competitive opportunities with technical overlap
+## Open competitions that overlap recent SBIR/STTR work
 
 ### Multispectral formation-protection materials demonstration
 
-**Disposition:** Competitive opportunity with technical overlap
-
-**Review question:** Does the SBIR/STTR-funded capability below satisfy the solicitation need as written?
+**Disposition:** Open competition with technical overlap
 
 **Response deadline:** September 5, 2026
 **Suggested routing:** Layered Protection and CBRND · Formation Based Layer Protection
@@ -160,19 +174,24 @@ Confirm that the solicitation derives from, extends, or uses the cited SBIR/STTR
 
 #### Technical connection to validate
 
+What the public records show:
+
+- The award and the solicitation share technical terms: materials, visual, infrared, radio, frequency, signatures.
+- Both records carry NAICS code 541713.
+- Both records carry product/service code AC13.
+
 **Analyst screening note:** The award funded multispectral signature-management materials; the solicitation asks for a field demonstration across the same signature bands. A representative still needs to assess platform fit and competition requirements.
 
 #### Why this was surfaced
 
-- Screening path: Competitive follow-on screen
+- Screening path: Open-competition screen — the notice overlaps recent SBIR/STTR work
 - Mission interest: Formation Based Layer Protection
 - Technology tags: Advanced Materials and Manufacturing; Sensors
-- Ranking signals: agency continuity, topical similarity across codes and text, matching NAICS codes, matching product/service codes
-- Screening rank: Priority lead; composite 0.72. This is a triage rank, not a probability.
+- Screening result: Priority lead — passed 2 of 3 automated screening checks. The rank orders leads for review; it is not a probability.
 
 #### Representative check
 
-Assess the technical fit, acquisition strategy, and competition requirements. Topical overlap alone does not make a competitive opportunity a Phase III path.
+Assess the technical fit, acquisition strategy, and competition requirements. Topic overlap alone does not make a competitive opportunity a Phase III path.
 
 **Source records:** Not supplied in this input
 
@@ -183,8 +202,6 @@ These leads receive the same evidence review as priority leads, but should not b
 ### Collaborative counter-swarm sensing demonstration
 
 **Disposition:** Needs more evidence before routing
-
-**Review question:** Does the SBIR/STTR-funded capability below satisfy the solicitation need as written?
 
 **Response deadline:** September 12, 2026
 **Suggested routing:** Fires; Layered Protection and CBRND · Cross Domain Fires
@@ -203,34 +220,41 @@ These leads receive the same evidence review as priority leads, but should not b
 
 #### Technical connection to validate
 
+What the public records show:
+
+- The award and the solicitation share technical terms: distributed, decision, uncrewed.
+- Both records carry NAICS code 541715.
+- Both records carry product/service code AC12.
+
 **Analyst screening note:** The award funded distributed sensing and decision support; the solicitation asks for detection and prioritization of multiple uncrewed aerial threats. The topical link is plausible but the Phase I maturity and competitive path need more evidence.
 
 #### Why this was surfaced
 
-- Screening path: Competitive follow-on screen
+- Screening path: Open-competition screen — the notice overlaps recent SBIR/STTR work
 - Mission interest: Cross Domain Fires
 - Technology tags: Artificial Intelligence/Machine Learning; Autonomy; Sensors; Weapons Systems
-- Ranking signals: agency continuity, topical similarity across codes and text, matching NAICS codes, matching product/service codes
-- Screening rank: Evidence watchlist; composite 0.57. This is a triage rank, not a probability.
+- Screening result: Needs more evidence — passed 2 of 3 automated screening checks. The rank orders leads for review; it is not a probability.
 
 #### Representative check
 
-Assess the technical fit, acquisition strategy, and competition requirements. Topical overlap alone does not make a competitive opportunity a Phase III path.
+Assess the technical fit, acquisition strategy, and competition requirements. Topic overlap alone does not make a competitive opportunity a Phase III path.
 
 **Source records:** Not supplied in this input
 
 ## Award pipeline
 
-| Award work | Company | Phase | Awarded | Recorded end | Amount |
-|---|---|---|---|---|---:|
-| Autonomous robotic breach reconnaissance | Illustrative Terrain Robotics LLC | Phase II | 2026-06-08 | 2026-11-30 | $1,800,000 |
-| Assured PNT for resilient tactical mesh networks | Illustrative Resilient Networks Inc. | Phase II | 2025-10-14 | 2026-09-30 | $1,250,000 |
-| Multispectral signature-management materials | Illustrative Signature Materials Corp. | Phase II | 2026-06-21 | 2026-12-15 | $1,500,000 |
-| Autonomous resupply and forward repair | Illustrative Expeditionary Logistics Systems LLC | Phase II | 2025-08-01 | 2026-07-31 | $900,000 |
-| Collaborative counter-swarm sensing | Illustrative Counter-Swarm Analytics Inc. | Phase I | 2026-06-17 | 2026-12-20 | $300,000 |
+These awards are new, changed, or close to their recorded end date. An approaching end date is the moment to ask whether a follow-on need exists.
+
+| Award work | Company | Phase | Awarded | Recorded end | Amount | Why listed |
+|---|---|---|---|---|---:|---|
+| Autonomous resupply and forward repair | Illustrative Expeditionary Logistics Systems LLC | Phase II | 2025-08-01 | 2026-07-31 | $900,000 | Recorded end date is coming up; First appearance in this data |
+| Assured PNT for resilient tactical mesh networks | Illustrative Resilient Networks Inc. | Phase II | 2025-10-14 | 2026-09-30 | $1,250,000 | Recorded end date is coming up; First appearance in this data |
+| Autonomous robotic breach reconnaissance | Illustrative Terrain Robotics LLC | Phase II | 2026-06-08 | 2026-11-30 | $1,800,000 | Newly awarded this month; Recorded end date is coming up |
+| Multispectral signature-management materials | Illustrative Signature Materials Corp. | Phase II | 2026-06-21 | 2026-12-15 | $1,500,000 | Newly awarded this month; Recorded end date is coming up |
+| Collaborative counter-swarm sensing | Illustrative Counter-Swarm Analytics Inc. | Phase I | 2026-06-17 | 2026-12-20 | $300,000 | Newly awarded this month; Recorded end date is coming up |
 
 ## Methodology and limits
 
-Directed and competitive candidates are ranked separately from public evidence. A composite score is a triage aid, not a probability or eligibility decision. Non-SBIR awards and competitive relevance do not prove statutory Phase III lineage.
+Direct-award and open-competition leads are screened and ranked separately, from public records only. A screening rank orders leads for human review. It is not a probability, an eligibility decision, or proof of a statutory Phase III connection.
 
-Mission-interest, technology, and transition-lane labels are screening annotations; they do not establish a validated requirement, endorsement, or confirmed transition decision.
+Mission-interest, technology, and transition-lane labels are working notes from screening. They do not establish a validated requirement, an endorsement, or a confirmed transition decision.

@@ -17,10 +17,37 @@ watchlist entries separate from high-confidence candidates.
 
 Every lead uses the same representative-facing evidence card: what the award
 funded, what the solicitation asks for, the technical connection to validate,
-why the pair was surfaced, and a class-specific representative check. Scores
-are shown only as triage ranks; they are not probabilities or acquisition
-determinations. A missing solicitation description is called out explicitly
-instead of treating its title as a detailed statement of need.
+why the pair was surfaced, and a class-specific representative check. The
+connection section always includes deterministic "what the public records
+show" facts derived from the merged row — a same-firm UEI match, quoted
+continuation phrases found in the notice text (for example "sole source" or
+"Phase III"), shared technical terms between the award abstract and the
+solicitation description, and shared NAICS/PSC codes or organization names.
+These facts appear with or without the optional AI summary, so a
+deterministic run still connects each firm and abstract to the solicitation
+requirement. Numeric scores stay in `master_candidates.csv` and
+`audit_sample.csv`; the packet reports only how many automated screening
+checks a lead passed. A missing solicitation description is called out
+explicitly instead of treating its title as a detailed statement of need.
+
+Each packet opens with a "How to read this packet" section defining the two
+opportunity classes, the priority labels, and the statutory Phase III test
+("derives from, extends, or completes"), so the packet stands alone without
+this documentation. The award pipeline table states why each award is listed
+(newly awarded, changed, or approaching its recorded end date) and sorts the
+nearest end dates first. The `.html` packet is rendered as readable HTML, not
+raw markdown.
+
+## Plain-language check
+
+Report generation runs a deterministic plain-language check over every packet
+and writes `plain_language.json` next to the packets. The check flags internal
+vocabulary that should not reach representatives (for example "cohort",
+"composite score", "watchlist") with suggested replacements, and sentences
+longer than 30 words. Quoted public records — blockquotes and table rows — are
+excluded, since the pipeline cannot rewrite source material. The manifest
+records `plain_language_passed` and `plain_language_findings`; findings do not
+block generation, but review them before distributing a packet.
 
 ## Example packet
 

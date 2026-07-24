@@ -14,6 +14,8 @@ from urllib.parse import quote, urlsplit
 
 import pandas as pd
 
+from .plain_language import check_plain_language
+
 
 _ANNOTATION_FIELDS = (
     ("interest_alignment", "Mission-interest alignment"),
@@ -241,6 +243,280 @@ def _date_label(value: Any) -> str | None:
     return f"{parsed.strftime('%B')} {parsed.day}, {parsed.year}"
 
 
+# Phrases quoted verbatim when they appear in a notice; agencies use this
+# wording when procured work continues a prior award. Kept aligned with the
+# pairing module's _LINEAGE_TERMS (duplicated intentionally — sbir_etl must
+# not import from the analytics package).
+_CONTINUATION_PHRASES = (
+    "phase iii",
+    "phase 3",
+    "derives from",
+    "prototype transition",
+    "follow-on production",
+    "continuation of",
+    "sole source",
+    "notice of intent",
+)
+
+# Words too generic to count as shared technical vocabulary between an award
+# abstract and a solicitation description.
+_GENERIC_TERMS = frozenset(
+    "the and for with that this from into will shall must may can could would should have has had "
+    "are was were been being its their them they when where which while within without under over "
+    "between across during each both all any also than then other others such using use used uses "
+    "provide provides provided providing support supports supporting seek seeks seeking new non "
+    "per via not but own government agency solicitation award awards contract system systems "
+    "technology technologies capability capabilities solution solutions program phase sbir sttr "
+    "work effort development develop demonstration demonstrate demonstrated prototype requirement "
+    "requirements integration integrate design designs".split()
+)
+
+_TERM_RE = re.compile(r"[A-Za-z0-9]+")
+
+_SUBSCORE_COLUMNS = (
+    "agency_continuity_score",
+    "timing_proximity_score",
+    "competition_type_score",
+    "patent_signal_score",
+    "cet_alignment_score",
+    "text_similarity_score",
+    "lineage_language_score",
+)
+
+_COHORT_REASONS: tuple[tuple[str, str], ...] = (
+    ("awarded_in_period", "Newly awarded this month"),
+    ("recent_recorded_end", "Recorded end date fell this month"),
+    ("approaching_recorded_end", "Recorded end date is coming up"),
+    ("changed_since_prior_report", "Record changed since the last report"),
+    ("newly_observed", "First appearance in this data"),
+)
+
+
+def _term_key(token: str) -> str:
+    if len(token) > 4 and token.endswith("s") and not token.endswith("ss"):
+        return token[:-1]
+    return token
+
+
+def _shared_terms(award_text: str | None, notice_text: str | None, limit: int = 8) -> list[str]:
+    """Content words appearing in both texts, in notice order, plural-insensitive."""
+
+    if not award_text or not notice_text:
+        return []
+    award_keys = {
+        _term_key(token.lower())
+        for token in _TERM_RE.findall(award_text)
+        if len(token) > 3 and not token.isdigit() and token.lower() not in _GENERIC_TERMS
+    }
+    shared: list[str] = []
+    seen: set[str] = set()
+    for token in _TERM_RE.findall(notice_text):
+        lowered = token.lower()
+        if len(lowered) <= 3 or lowered.isdigit() or lowered in _GENERIC_TERMS:
+            continue
+        key = _term_key(lowered)
+        if key in award_keys and key not in seen:
+            seen.add(key)
+            shared.append(lowered)
+            if len(shared) >= limit:
+                break
+    return shared
+
+
+def _quoted_phrases(notice_text: str | None) -> list[str]:
+    if not notice_text:
+        return []
+    lowered = notice_text.lower()
+    return [phrase for phrase in _CONTINUATION_PHRASES if phrase in lowered][:3]
+
+
+def _screening_checks(row: pd.Series) -> tuple[int, int]:
+    """Return ``(checks_passed, checks_recorded)`` from whichever subscores are present."""
+
+    passed = total = 0
+    for column in _SUBSCORE_COLUMNS:
+        value = _number(row.get(column))
+        if value is None:
+            continue
+        total += 1
+        if value > 0:
+            passed += 1
+    return passed, total
+
+
+def _connection_facts(
+    row: pd.Series, award_text: str | None, opportunity_description: str | None
+) -> list[str]:
+    """Plain-language facts from the public records that tie the pair together."""
+
+    facts: list[str] = []
+    award_uei = _display(_first_value(row.get("uei"), row.get("prior_recipient_uei")))
+    notice_uei = _display(_first_value(row.get("awardee_uei"), row.get("target_recipient_uei")))
+    if award_uei and notice_uei and award_uei.upper() == notice_uei.upper():
+        facts.append(
+            "The notice names the SBIR/STTR awardee directly "
+            f"(UEI {_markdown_text(award_uei, limit=40)})."
+        )
+    phrases = _quoted_phrases(opportunity_description)
+    if phrases:
+        quoted = f"“{phrases[0]}”"
+        if len(phrases) > 1:
+            quoted = ", ".join(f"“{p}”" for p in phrases[:-1]) + f" and “{phrases[-1]}”"
+        label = "phrase" if len(phrases) == 1 else "phrases"
+        facts.append(
+            f"The notice text contains the {label} {quoted} — wording agencies use when "
+            "work continues a prior award."
+        )
+    terms = _shared_terms(award_text, opportunity_description)
+    if len(terms) >= 2:
+        facts.append(
+            "The award and the solicitation share technical terms: "
+            + ", ".join(_markdown_text(term, limit=40) for term in terms)
+            + "."
+        )
+    naics = _display(row.get("award_naics_code"))
+    if naics and _same_text(naics, row.get("opportunity_naics_code")):
+        facts.append(f"Both records carry NAICS code {_markdown_text(naics, limit=20)}.")
+    psc = _display(row.get("award_psc_code"))
+    if psc and _same_text(psc, row.get("opportunity_psc_code")):
+        facts.append(f"Both records carry product/service code {_markdown_text(psc, limit=20)}.")
+    for award_field, opportunity_field, label in (
+        ("award_office", "opportunity_office", "office"),
+        ("award_branch", "opportunity_sub_tier", "sub-agency"),
+        ("award_agency", "opportunity_agency", "agency"),
+    ):
+        value = _display(row.get(award_field))
+        if value and _same_text(value, row.get(opportunity_field)):
+            facts.append(f"Both fall under the same {label}: {_markdown_text(value, limit=120)}.")
+            break
+    return facts
+
+
+def _why_listed(row: pd.Series) -> str:
+    reasons = [label for column, label in _COHORT_REASONS if _as_bool(row.get(column))]
+    if "Newly awarded this month" in reasons and "First appearance in this data" in reasons:
+        reasons.remove("First appearance in this data")
+    return "; ".join(reasons) if reasons else "In the current data set"
+
+
+_INLINE_MARKDOWN = re.compile(r"\*\*(.+?)\*\*|\[([^\]]+)\]\((https?://[^)\s]+)\)")
+_ESCAPED_MARKDOWN_CHAR = re.compile(r"\\([\\`*_\[\]{}#|])")
+_BARE_AMPERSAND = re.compile(r"&(?!lt;|gt;|amp;)")
+_TABLE_SEPARATOR_CELL = re.compile(r"^:?-{3,}:?$")
+_UNESCAPED_PIPE = re.compile(r"(?<!\\)\|")
+
+_HTML_STYLE = (
+    "body{font-family:-apple-system,'Segoe UI',Roboto,Arial,sans-serif;line-height:1.5;"
+    "max-width:52rem;margin:2rem auto;padding:0 1rem;color:#1a1a1a}"
+    "table{border-collapse:collapse;margin:1rem 0}"
+    "th,td{border:1px solid #8a8a8a;padding:0.3rem 0.6rem;text-align:left;"
+    "vertical-align:top}"
+    "blockquote{border-left:4px solid #9a9a9a;background:#f4f4f4;margin:0.75rem 0;"
+    "padding:0.5rem 0.75rem}"
+    "h1{font-size:1.6rem}h2{font-size:1.3rem;border-bottom:1px solid #ccc;"
+    "padding-bottom:0.2rem}h3{font-size:1.15rem}h4{font-size:1rem}"
+)
+
+
+def _html_text(value: str) -> str:
+    """Unescape packet-markdown escapes; keep the entities inserted upstream."""
+
+    text = _ESCAPED_MARKDOWN_CHAR.sub(r"\1", value)
+    return _BARE_AMPERSAND.sub("&amp;", text)
+
+
+def _html_inline(value: str) -> str:
+    parts: list[str] = []
+    position = 0
+    for match in _INLINE_MARKDOWN.finditer(value):
+        parts.append(_html_text(value[position : match.start()]))
+        if match.group(1) is not None:
+            parts.append(f"<strong>{_html_text(match.group(1))}</strong>")
+        else:
+            href = html.escape(match.group(3), quote=True)
+            parts.append(f'<a href="{href}">{_html_text(match.group(2))}</a>')
+        position = match.end()
+    parts.append(_html_text(value[position:]))
+    return "".join(parts)
+
+
+def _html_table(rows: list[str]) -> str:
+    parsed: list[list[str]] = []
+    for raw in rows:
+        cells = [cell.strip() for cell in _UNESCAPED_PIPE.split(raw.strip().strip("|"))]
+        if cells and all(_TABLE_SEPARATOR_CELL.match(cell) for cell in cells):
+            continue
+        parsed.append(cells)
+    if not parsed:
+        return ""
+    header, *data = parsed
+    out = ["<table>", "<tr>" + "".join(f"<th>{_html_inline(c)}</th>" for c in header) + "</tr>"]
+    for cells in data:
+        out.append("<tr>" + "".join(f"<td>{_html_inline(c)}</td>" for c in cells) + "</tr>")
+    out.append("</table>")
+    return "".join(out)
+
+
+def _markdown_to_html(markdown: str) -> str:
+    """Render the packet's fixed markdown grammar as a readable HTML document."""
+
+    lines = markdown.split("\n")
+    body: list[str] = []
+    title = "Monthly Procurement Transition Packet"
+    index = 0
+    total = len(lines)
+    while index < total:
+        line = lines[index]
+        if not line.strip():
+            index += 1
+            continue
+        heading = re.match(r"(#{1,4}) (.*)", line)
+        if heading:
+            level = len(heading.group(1))
+            if level == 1:
+                title = _html_text(heading.group(2))
+            body.append(f"<h{level}>{_html_inline(heading.group(2))}</h{level}>")
+            index += 1
+            continue
+        if line.startswith(">"):
+            quote: list[str] = []
+            while index < total and lines[index].startswith(">"):
+                quote.append(lines[index].lstrip(">").strip())
+                index += 1
+            body.append("<blockquote><p>" + _html_inline(" ".join(quote)) + "</p></blockquote>")
+            continue
+        if line.startswith("- "):
+            items: list[str] = []
+            while index < total and lines[index].startswith("- "):
+                items.append(f"<li>{_html_inline(lines[index][2:])}</li>")
+                index += 1
+            body.append("<ul>" + "".join(items) + "</ul>")
+            continue
+        if line.startswith("|"):
+            rows: list[str] = []
+            while index < total and lines[index].startswith("|"):
+                rows.append(lines[index])
+                index += 1
+            body.append(_html_table(rows))
+            continue
+        paragraph: list[str] = []
+        while (
+            index < total
+            and lines[index].strip()
+            and not lines[index].startswith(("#", ">", "- ", "|"))
+        ):
+            paragraph.append(_html_inline(lines[index]))
+            index += 1
+        body.append("<p>" + "<br>".join(paragraph) + "</p>")
+    return (
+        '<!doctype html><html lang="en"><head><meta charset="utf-8">'
+        '<meta name="viewport" content="width=device-width, initial-scale=1">'
+        f"<title>{title}</title><style>{_HTML_STYLE}</style></head><body>"
+        + "".join(body)
+        + "</body></html>"
+    )
+
+
 class MonthlyReportBuilder:
     """Join normalized public evidence and write auditable center packets."""
 
@@ -358,9 +634,9 @@ class MonthlyReportBuilder:
         if confidence == "WATCHLIST":
             disposition = "Needs more evidence before routing"
         elif signal == "directed":
-            disposition = "Potential directed Phase III path — validate lineage"
+            disposition = "Potential directed Phase III path — confirm the SBIR/STTR connection"
         else:
-            disposition = "Competitive opportunity with technical overlap"
+            disposition = "Open competition with technical overlap"
 
         deadline = _markdown_text(
             _date_label(
@@ -397,13 +673,20 @@ class MonthlyReportBuilder:
         if amount != "N/A":
             award_details.append(amount)
 
+        award_text = " ".join(
+            part
+            for part in (
+                _display(_first_value(row.get("award_title"), row.get("prior_title"))),
+                award_abstract,
+            )
+            if part
+        )
+        facts = _connection_facts(row, award_text or None, opportunity_description)
+
         lines = [
             f"### {opportunity_title}",
             "",
             f"**Disposition:** {disposition}",
-            "",
-            "**Review question:** Does the SBIR/STTR-funded capability below satisfy the "
-            "solicitation need as written?",
             "",
             f"**Response deadline:** {deadline}",
         ]
@@ -436,11 +719,15 @@ class MonthlyReportBuilder:
                 "",
             ]
         lines += ["#### Technical connection to validate", ""]
+        if facts:
+            lines += ["What the public records show:", ""]
+            lines += [f"- {fact}" for fact in facts]
+            lines.append("")
         if summary:
             lines += [f"**Evidence-bounded comparison:** {_markdown_text(summary)}", ""]
         if rationale:
             lines += [f"**Analyst screening note:** {_markdown_text(rationale)}", ""]
-        if not summary and not rationale:
+        if not facts and not summary and not rationale:
             lines += [
                 "The screening process surfaced this pair, but no written technical comparison "
                 "is available. Compare the award abstract with the solicitation's performance "
@@ -450,49 +737,38 @@ class MonthlyReportBuilder:
 
         lines += ["#### Why this was surfaced", ""]
         screening_path = (
-            "Directed-opportunity screen"
+            "Direct-award screen — public records tie the notice to prior SBIR/STTR work"
             if signal == "directed"
-            else "Competitive follow-on screen"
+            else "Open-competition screen — the notice overlaps recent SBIR/STTR work"
         )
         lines.append(f"- Screening path: {screening_path}")
         if interest:
             lines.append(f"- Mission interest: {_markdown_text(interest, limit=180)}")
         if technology := _display(row.get("technology_ecosystem")):
             lines.append(f"- Technology tags: {_markdown_text(technology, limit=220)}")
-
-        ranking_signals = []
-        for column, label in (
-            ("agency_continuity_score", "agency continuity"),
-            ("text_similarity_score", "topical similarity across codes and text"),
-            ("lineage_language_score", "lineage language in the notice"),
-            ("cet_alignment_score", "critical-technology alignment"),
-        ):
-            if (_number(row.get(column)) or 0) > 0:
-                ranking_signals.append(label)
-        if _same_text(row.get("award_naics_code"), row.get("opportunity_naics_code")):
-            ranking_signals.append("matching NAICS codes")
-        if _same_text(row.get("award_psc_code"), row.get("opportunity_psc_code")):
-            ranking_signals.append("matching product/service codes")
-        if ranking_signals:
-            lines.append(f"- Ranking signals: {', '.join(ranking_signals)}")
-        score = _number(row.get("candidate_score"))
-        rank = "Priority lead" if confidence == "HIGH" else "Evidence watchlist"
-        score_text = f"; composite {score:.2f}" if score is not None else ""
+        checks_passed, checks_total = _screening_checks(row)
+        rank = "Priority lead" if confidence == "HIGH" else "Needs more evidence"
+        checks_text = (
+            f" — passed {checks_passed} of {checks_total} automated screening checks"
+            if checks_total
+            else ""
+        )
         lines.append(
-            f"- Screening rank: {rank}{score_text}. This is a triage rank, not a probability."
+            f"- Screening result: {rank}{checks_text}. The rank orders leads for review; "
+            "it is not a probability."
         )
 
         lines += ["", "#### Representative check", ""]
         if signal == "directed":
             lines.append(
-                "Confirm that the solicitation derives from, extends, or uses the cited "
+                "Confirm that the solicitation derives from, extends, or completes the cited "
                 "SBIR/STTR-funded work, and that the funded capability covers the stated need. "
-                "The screening score does not establish statutory Phase III lineage."
+                "The screening result does not establish that connection on its own."
             )
         else:
             lines.append(
                 "Assess the technical fit, acquisition strategy, and competition requirements. "
-                "Topical overlap alone does not make a competitive opportunity a Phase III path."
+                "Topic overlap alone does not make a competitive opportunity a Phase III path."
             )
 
         award_url = _safe_url(
@@ -524,7 +800,7 @@ class MonthlyReportBuilder:
         followon_count = int((high_signal == "followon").sum())
         watchlist_count = int((confidence == "WATCHLIST").sum())
         directed_label = "path" if directed_count == 1 else "paths"
-        followon_label = "opportunity" if followon_count == 1 else "opportunities"
+        followon_label = "competition" if followon_count == 1 else "competitions"
         watchlist_label = "lead" if watchlist_count == 1 else "leads"
         award_total = pd.to_numeric(
             awards.get("amount", pd.Series(dtype="float64")), errors="coerce"
@@ -538,27 +814,40 @@ class MonthlyReportBuilder:
             "end dates do not verify technical completion, and screening results do not prove "
             "Phase III eligibility.",
             "",
+            "## How to read this packet",
+            "",
+            "- **Possible direct-award path**: public records suggest the government may award "
+            "this work directly and tie it to a prior SBIR/STTR award. Confirm that connection "
+            "before acting.",
+            "- **Open competition with overlap**: a competitive notice whose subject overlaps a "
+            "recent SBIR/STTR award. Overlap alone is not a Phase III claim.",
+            "- **Priority lead**: passed more automated screening checks. "
+            "**Needs more evidence**: has a stated gap that a person must resolve first.",
+            "- Phase III work derives from, extends, or completes work funded by a prior "
+            "SBIR/STTR award. For each lead, ask: does the funded work satisfy the "
+            "solicitation need as written?",
+            "",
             "## Snapshot",
             "",
-            f"- Award cohort: {len(awards):,} awards totaling {_money(award_total)}",
-            f"- Priority leads: {len(high):,} ({directed_count:,} possible directed "
-            f"{directed_label}; {followon_count:,} competitive {followon_label})",
+            f"- Awards in this packet: {len(awards):,} (new, changed, or ending soon), "
+            f"totaling {_money(award_total)}",
+            f"- Priority leads: {len(high):,} ({directed_count:,} possible direct-award "
+            f"{directed_label}; {followon_count:,} overlapping open {followon_label})",
             f"- Needs more evidence before routing: {watchlist_count:,}",
             "",
             "## Representative action queue",
             "",
-            f"- Validate SBIR/STTR lineage and technical fit for {directed_count:,} possible "
-            f"directed {directed_label}.",
+            f"- Confirm the SBIR/STTR connection and technical fit for {directed_count:,} "
+            f"possible direct-award {directed_label}.",
             f"- Assess technical fit and acquisition strategy for {followon_count:,} "
-            f"competitive {followon_label}.",
-            f"- Hold {watchlist_count:,} watchlist {watchlist_label} until the stated evidence "
-            "gaps are "
-            "resolved.",
+            f"overlapping open {followon_label}.",
+            f"- Resolve the stated evidence gaps on {watchlist_count:,} {watchlist_label} "
+            "before routing.",
             "",
         ]
         for signal, heading in (
-            ("directed", "Potential directed paths — validate lineage"),
-            ("followon", "Competitive opportunities with technical overlap"),
+            ("directed", "Possible direct-award paths — confirm the SBIR/STTR connection"),
+            ("followon", "Open competitions that overlap recent SBIR/STTR work"),
         ):
             subset = rows.loc[(signals == signal) & (confidence == "HIGH")]
             if not subset.empty:
@@ -591,35 +880,42 @@ class MonthlyReportBuilder:
                 lines += self._candidate_card(row)
 
         if not awards.empty:
+            table = awards.assign(
+                _sort_end=pd.to_datetime(_pick(awards, "recorded_end_date"), errors="coerce")
+            ).sort_values("_sort_end", na_position="last", kind="stable")
             lines += [
                 "## Award pipeline",
                 "",
-                "| Award work | Company | Phase | Awarded | Recorded end | Amount |",
-                "|---|---|---|---|---|---:|",
+                "These awards are new, changed, or close to their recorded end date. An "
+                "approaching end date is the moment to ask whether a follow-on need exists.",
+                "",
+                "| Award work | Company | Phase | Awarded | Recorded end | Amount | Why listed |",
+                "|---|---|---|---|---|---:|---|",
             ]
-            for _, award in awards.iterrows():
+            for _, award in table.iterrows():
                 lines.append(
                     f"| {_markdown_text(award.get('title'), default='', limit=100)} | "
                     f"{_markdown_text(award.get('company'), default='', limit=80)} | "
                     f"{_markdown_text(award.get('phase'), default='', limit=30)} | "
                     f"{_markdown_text(award.get('award_date'), default='', limit=30)} | "
                     f"{_markdown_text(award.get('recorded_end_date'), default='', limit=30)} | "
-                    f"{_money(award.get('amount'))} |"
+                    f"{_money(award.get('amount'))} | "
+                    f"{_why_listed(award)} |"
                 )
             lines.append("")
         lines += [
             "## Methodology and limits",
             "",
-            "Directed and competitive candidates are ranked separately from public evidence. "
-            "A composite score is a triage aid, not a probability or eligibility decision. "
-            "Non-SBIR awards and competitive relevance do not prove statutory Phase III lineage.",
+            "Direct-award and open-competition leads are screened and ranked separately, from "
+            "public records only. A screening rank orders leads for human review. It is not a "
+            "probability, an eligibility decision, or proof of a statutory Phase III connection.",
             "",
         ]
         if any(column in rows.columns for column, _label in _ANNOTATION_FIELDS):
             lines += [
-                "Mission-interest, technology, and transition-lane labels are screening "
-                "annotations; they do not establish a validated requirement, endorsement, or "
-                "confirmed transition decision.",
+                "Mission-interest, technology, and transition-lane labels are working notes "
+                "from screening. They do not establish a validated requirement, an endorsement, "
+                "or a confirmed transition decision.",
                 "",
             ]
         return "\n".join(lines)
@@ -640,6 +936,7 @@ class MonthlyReportBuilder:
         master.to_csv(self.output_dir / "master_candidates.csv", index=False)
 
         evidence: list[dict[Any, Any]] = []
+        language_results: dict[str, dict[str, Any]] = {}
         groups = (
             {
                 str(center): rows.copy()
@@ -670,9 +967,9 @@ class MonthlyReportBuilder:
                 slug = _slug(rows.iloc[0].get("center_code") if not rows.empty else center)
                 (centers_dir / f"{slug}.md").write_text(markdown, encoding="utf-8")
                 (centers_dir / f"{slug}.html").write_text(
-                    "<!doctype html><meta charset='utf-8'><pre>" + html.escape(markdown) + "</pre>",
-                    encoding="utf-8",
+                    _markdown_to_html(markdown), encoding="utf-8"
                 )
+                language_results[slug] = check_plain_language(markdown)
                 evidence.extend(rows.to_dict(orient="records"))
         else:
             markdown = self._packet(
@@ -680,9 +977,9 @@ class MonthlyReportBuilder:
             )
             (centers_dir / "unassigned.md").write_text(markdown, encoding="utf-8")
             (centers_dir / "unassigned.html").write_text(
-                "<!doctype html><meta charset='utf-8'><pre>" + html.escape(markdown) + "</pre>",
-                encoding="utf-8",
+                _markdown_to_html(markdown), encoding="utf-8"
             )
+            language_results["unassigned"] = check_plain_language(markdown)
         with (self.output_dir / "evidence.ndjson").open("w", encoding="utf-8") as handle:
             for record in evidence:
                 handle.write(json.dumps(record, default=str) + "\n")
@@ -695,6 +992,11 @@ class MonthlyReportBuilder:
             else high
         )
         audit.to_csv(self.output_dir / "audit_sample.csv", index=False)
+        language_passed = all(result["passed"] for result in language_results.values())
+        (self.output_dir / "plain_language.json").write_text(
+            json.dumps({"passed": language_passed, "centers": language_results}, indent=2),
+            encoding="utf-8",
+        )
         manifest = {
             "report_month": self.report_month,
             "generated_at": datetime.now(UTC).isoformat(),
@@ -703,6 +1005,11 @@ class MonthlyReportBuilder:
             "high_confidence_rows": len(high),
             "ai_summary_attempts": self._summary_attempts,
             "ai_summary_limit": self.max_summaries if self.summarizer else 0,
+            "plain_language_passed": language_passed,
+            "plain_language_findings": sum(
+                len(result["jargon"]) + len(result["long_sentences"])
+                for result in language_results.values()
+            ),
             "sources": source_manifest or {},
             "completion_semantics": "recorded performance-period end; technical completion unverified",
         }

@@ -68,15 +68,21 @@ def test_writes_center_packet_and_manifest(tmp_path):
     assert (output / "centers" / "navair.md").exists()
     packet = (output / "centers" / "navair.md").read_text()
     assert "# Monthly Procurement Transition Packet — NAVAIR" in packet
+    assert "## How to read this packet" in packet
+    assert "derives from, extends, or completes" in packet
     assert "Potential directed Phase III path" in packet
     assert "#### What the award funded" in packet
     assert "Navigation software that fuses onboard sensors" in packet
     assert "#### What the solicitation asks for" in packet
     assert "Integrate autonomous navigation" in packet
     assert "#### Technical connection to validate" in packet
+    assert "What the public records show:" in packet
+    assert "share technical terms: autonomous, navigation" in packet
     assert "[SBIR/STTR award record](https://www.sbir.gov/award/A-1)" in packet
     assert "[SAM.gov solicitation](https://sam.gov/opp/O-1)" in packet
     assert "| Autonomous navigation | Drone Co | Phase II |" in packet
+    assert "| Why listed |" in packet
+    assert "Newly awarded this month" in packet
     assert (output / "master_candidates.csv").exists()
     assert {
         "award_title",
@@ -86,7 +92,20 @@ def test_writes_center_packet_and_manifest(tmp_path):
         "opportunity_description",
         "opportunity_source_url",
     }.issubset(pd.read_csv(output / "master_candidates.csv").columns)
-    assert json.loads((output / "manifest.json").read_text())["candidate_rows"] == 1
+    manifest = json.loads((output / "manifest.json").read_text())
+    assert manifest["candidate_rows"] == 1
+    assert manifest["plain_language_passed"] is True
+    assert manifest["plain_language_findings"] == 0
+    language = json.loads((output / "plain_language.json").read_text())
+    assert language["passed"] is True
+    assert language["centers"]["navair"]["jargon"] == []
+
+    rendered = (output / "centers" / "navair.html").read_text()
+    assert "<h1>Monthly Procurement Transition Packet — NAVAIR</h1>" in rendered
+    assert "<table>" in rendered
+    assert '<a href="https://sam.gov/opp/O-1">SAM.gov solicitation</a>' in rendered
+    assert "**" not in rendered
+    assert "<pre>" not in rendered
 
 
 def test_missing_descriptions_and_unsafe_public_fields_are_explicit(tmp_path):
@@ -133,6 +152,54 @@ def test_missing_descriptions_and_unsafe_public_fields_are_explicit(tmp_path):
     assert "[integration](javascript:" not in packet
     assert "**Source records:** Not supplied in this input" in packet
     assert "Sensor fusion \\| autonomous control" in packet
+
+    rendered = (output / "centers" / "navair.html").read_text()
+    assert "<script>" not in rendered
+    assert 'href="javascript:' not in rendered
+    assert "<a " not in rendered  # no link survives when every URL is unsafe
+    assert "Sensor fusion | autonomous control" in rendered
+
+
+def test_connection_facts_surface_same_firm_and_continuation_phrases(tmp_path):
+    cohorts = build_award_cohorts(_awards(), pd.DataFrame(), report_month="2026-06")
+    candidates = pd.DataFrame(
+        [
+            {
+                "candidate_id": "C-1",
+                "signal_class": "directed",
+                "prior_award_id": "A-1",
+                "target_id": "O-1",
+                "candidate_score": 0.9,
+                "is_high_confidence": True,
+                "agency_continuity_score": 0.25,
+                "text_similarity_score": 0.0,
+                "lineage_language_score": 0.2,
+            }
+        ]
+    )
+    opportunities = pd.DataFrame(
+        [
+            {
+                "notice_id": "O-1",
+                "title": "Navigation follow-on production",
+                "description": (
+                    "Notice of intent to sole source follow-on production of the "
+                    "autonomous navigation capability."
+                ),
+                "office": "NAVAIR",
+                "awardee_uei": "UEI000000001",
+            }
+        ]
+    )
+    output = MonthlyReportBuilder(report_month="2026-06", output_root=tmp_path).write(
+        award_cohorts=cohorts, candidates=candidates, opportunities=opportunities
+    )
+    packet = (output / "centers" / "navair.md").read_text()
+    assert "The notice names the SBIR/STTR awardee directly (UEI UEI000000001)." in packet
+    assert "“follow-on production”, “sole source” and “notice of intent”" in packet
+    assert "passed 2 of 3 automated screening checks" in packet
+    assert "composite" not in packet.lower()
+    assert json.loads((output / "plain_language.json").read_text())["passed"] is True
 
 
 def test_optional_summaries_are_bounded_and_prioritize_high_scores(tmp_path):
