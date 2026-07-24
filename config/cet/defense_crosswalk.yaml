@@ -1,0 +1,317 @@
+version: "DOD-CROSSWALK-2026Q3"
+source_taxonomy: "NSTC-2025Q1"
+last_reviewed: "2026-07-22"
+description: >-
+  Analyst crosswalk from the repository's canonical 21-area CET taxonomy to
+  the frozen 2022 DoD Critical Technology Areas and the eight-part framework
+  in DoD's 2022 Securing Defense-Critical Supply Chains report. DOD-SC-8-2022
+  is a repository label, not an official NDIS taxonomy.
+
+authoritative_sources:
+  dod_cta14:
+    version: "DOD-CTA-14-2022"
+    title: "FY24 Investment Strategy for the Office of Strategic Capital, Appendix A"
+    url: "https://media.defense.gov/2024/Mar/09/2003409961/-1/-1/0/FY24-INVESTMENT-STRATEGY-FOR-THE-OFFICE-OF-STRATEGIC-CAPITAL-DISTRIBUTION-STATEMENT-A-%20APPROVED-FOR-PUBLIC-RELEASE.PDF"
+    note: >-
+      Frozen 14-area taxonomy used by the 2022 National Defense Science and
+      Technology Strategy and reproduced by OSC. It is versioned because DoD
+      web materials now also describe a newer six-area prioritization.
+  dod_sc8:
+    version: "DOD-SC-8-2022"
+    title: "Securing Defense-Critical Supply Chains"
+    url: "https://media.defense.gov/2022/Feb/24/2002944158/-1/-1/1/DOD-EO14017-Report-Securing-Defense-Critical-Supply-Chains.pdf"
+    note: >-
+      Four focus areas plus four strategic enablers from the 2022 report.
+      This must not be called NDIS-8; the 2024 NDIS has four strategic priorities.
+
+mapping_strengths:
+  direct: "The CET definition substantially matches the target definition."
+  partial: "Only a material subset of the CET maps to the target."
+  enabling: "The CET enables the target but is not equivalent to it."
+
+target_taxonomies:
+  dod_cta14:
+    - id: "advanced_computing_and_software"
+      name: "Advanced Computing and Software"
+    - id: "advanced_materials"
+      name: "Advanced Materials"
+    - id: "biotechnology"
+      name: "Biotechnology"
+    - id: "directed_energy"
+      name: "Directed Energy"
+    - id: "renewable_energy_generation_and_storage"
+      name: "Renewable Energy Generation and Storage"
+    - id: "future_generation_wireless_technology"
+      name: "Future Generation Wireless Technology (FutureG)"
+    - id: "human_machine_interfaces"
+      name: "Human-Machine Interfaces"
+    - id: "hypersonics"
+      name: "Hypersonics"
+    - id: "integrated_network_systems_of_systems"
+      name: "Integrated Network Systems-of-Systems"
+    - id: "integrated_sensing_and_cyber"
+      name: "Integrated Sensing and Cyber"
+    - id: "microelectronics"
+      name: "Microelectronics"
+    - id: "quantum_science"
+      name: "Quantum Science"
+    - id: "space_technology"
+      name: "Space Technology"
+    - id: "trusted_ai_and_autonomy"
+      name: "Trusted AI and Autonomy"
+  dod_sc8:
+    - id: "kinetic_capabilities"
+      name: "Kinetic Capabilities"
+      kind: "focus_area"
+    - id: "energy_storage_and_batteries"
+      name: "Energy Storage and Batteries"
+      kind: "focus_area"
+    - id: "castings_and_forgings"
+      name: "Castings and Forgings"
+      kind: "focus_area"
+    - id: "microelectronics"
+      name: "Microelectronics"
+      kind: "focus_area"
+    - id: "workforce"
+      name: "Workforce"
+      kind: "strategic_enabler"
+      not_derivable_from_cet: true
+    - id: "cyber_posture"
+      name: "Cyber Posture"
+      kind: "strategic_enabler"
+    - id: "manufacturing"
+      name: "Manufacturing"
+      kind: "strategic_enabler"
+    - id: "small_business"
+      name: "Small Business"
+      kind: "strategic_enabler"
+      not_derivable_from_cet: true
+
+mappings:
+  - cet_id: "advanced_computing"
+    dod_cta14:
+      - target: "advanced_computing_and_software"
+        strength: "direct"
+        rationale: "Both cover advanced computing architectures, processing, and software."
+    dod_sc8:
+      - target: "cyber_posture"
+        strength: "enabling"
+        rationale: "Advanced computing and software enable cyber defense but are not cyber posture."
+
+  - cet_id: "advanced_engineering_materials"
+    dod_cta14:
+      - target: "advanced_materials"
+        strength: "direct"
+        rationale: "The areas share novel structural, functional, and engineered materials."
+    dod_sc8:
+      - target: "castings_and_forgings"
+        strength: "partial"
+        rationale: "Only materials used in high-intensity forming and tooling map to this focus area."
+      - target: "manufacturing"
+        strength: "enabling"
+        rationale: "Advanced materials enable production processes and manufacturability."
+
+  - cet_id: "advanced_gas_turbine_engine_technologies"
+    dod_cta14: []
+    dod_sc8:
+      - target: "kinetic_capabilities"
+        strength: "enabling"
+        rationale: "Propulsion technologies enable missiles and other kinetic platforms."
+      - target: "manufacturing"
+        strength: "enabling"
+        rationale: "Turbine production depends on specialized manufacturing capability."
+
+  - cet_id: "advanced_manufacturing"
+    dod_cta14:
+      - target: "advanced_materials"
+        strength: "enabling"
+        rationale: "Advanced manufacturing enables fabrication and scaling of advanced materials."
+    dod_sc8:
+      - target: "manufacturing"
+        strength: "direct"
+        rationale: "The CET directly covers advanced and additive manufacturing processes."
+      - target: "castings_and_forgings"
+        strength: "partial"
+        rationale: "Casting, forging, and associated tooling are a subset of manufacturing."
+
+  - cet_id: "advanced_and_networked_sensing_and_signature_management"
+    dod_cta14:
+      - target: "integrated_sensing_and_cyber"
+        strength: "direct"
+        rationale: "Networked sensing and sensor fusion substantially overlap integrated sensing."
+    dod_sc8:
+      - target: "kinetic_capabilities"
+        strength: "enabling"
+        rationale: "Sensing and signature management enable targeting and survivability."
+      - target: "cyber_posture"
+        strength: "enabling"
+        rationale: "Networked sensors require secure cyber-physical integration."
+
+  - cet_id: "advanced_nuclear_energy_systems"
+    dod_cta14: []
+    dod_sc8:
+      - target: "manufacturing"
+        strength: "enabling"
+        rationale: "Advanced reactors depend on specialized nuclear manufacturing capacity."
+
+  - cet_id: "artificial_intelligence"
+    dod_cta14:
+      - target: "trusted_ai_and_autonomy"
+        strength: "partial"
+        rationale: "General AI maps only where trust, assurance, or autonomous behavior is material."
+    dod_sc8:
+      - target: "cyber_posture"
+        strength: "enabling"
+        rationale: "AI supports cyber analysis and defense but is not itself cyber posture."
+
+  - cet_id: "autonomous_systems"
+    dod_cta14:
+      - target: "trusted_ai_and_autonomy"
+        strength: "direct"
+        rationale: "Autonomous platforms and control systems are core to trusted autonomy."
+    dod_sc8:
+      - target: "kinetic_capabilities"
+        strength: "enabling"
+        rationale: "Autonomous platforms can enable kinetic missions and delivery systems."
+
+  - cet_id: "biotechnologies"
+    dod_cta14:
+      - target: "biotechnology"
+        strength: "direct"
+        rationale: "The biotechnology definitions substantially coincide."
+    dod_sc8:
+      - target: "manufacturing"
+        strength: "partial"
+        rationale: "Biomanufacturing is a subset of the CET and a manufacturing enabler."
+
+  - cet_id: "communication_and_networking_technologies"
+    dod_cta14:
+      - target: "future_generation_wireless_technology"
+        strength: "partial"
+        rationale: "The wireless subset maps directly; optical and satellite networking are broader."
+      - target: "integrated_network_systems_of_systems"
+        strength: "enabling"
+        rationale: "Communications infrastructure enables interconnected mission systems."
+    dod_sc8:
+      - target: "cyber_posture"
+        strength: "enabling"
+        rationale: "Secure networking is a foundational element of industrial cyber posture."
+
+  - cet_id: "directed_energy"
+    dod_cta14:
+      - target: "directed_energy"
+        strength: "direct"
+        rationale: "The areas are equivalent."
+    dod_sc8:
+      - target: "kinetic_capabilities"
+        strength: "direct"
+        rationale: "The 2022 focus area explicitly includes directed-energy weapons."
+
+  - cet_id: "financial_technologies"
+    dod_cta14:
+      - target: "advanced_computing_and_software"
+        strength: "enabling"
+        rationale: "Fintech depends on advanced software but is not a named DoD CTA."
+    dod_sc8:
+      - target: "cyber_posture"
+        strength: "enabling"
+        rationale: "Secure financial infrastructure contributes to economic and cyber resilience."
+
+  - cet_id: "human_machine_interfaces"
+    dod_cta14:
+      - target: "human_machine_interfaces"
+        strength: "direct"
+        rationale: "The areas are equivalent."
+    dod_sc8:
+      - target: "kinetic_capabilities"
+        strength: "enabling"
+        rationale: "Human-machine teaming enables operation of kinetic and autonomous systems."
+
+  - cet_id: "hypersonics"
+    dod_cta14:
+      - target: "hypersonics"
+        strength: "direct"
+        rationale: "The areas are equivalent."
+    dod_sc8:
+      - target: "kinetic_capabilities"
+        strength: "direct"
+        rationale: "The 2022 report explicitly includes hypersonic weapons."
+
+  - cet_id: "integrated_sensing_and_cyber"
+    dod_cta14:
+      - target: "integrated_sensing_and_cyber"
+        strength: "direct"
+        rationale: "The areas are equivalent."
+    dod_sc8:
+      - target: "cyber_posture"
+        strength: "direct"
+        rationale: "Cyber operations and cyber-physical sensing directly support cyber posture."
+      - target: "kinetic_capabilities"
+        strength: "enabling"
+        rationale: "Integrated sensing supports targeting and defensive kinetic systems."
+
+  - cet_id: "quantum_information_science"
+    dod_cta14:
+      - target: "quantum_science"
+        strength: "direct"
+        rationale: "Quantum computing, sensing, networking, and communications fall within quantum science."
+    dod_sc8:
+      - target: "cyber_posture"
+        strength: "partial"
+        rationale: "Quantum communications and cryptography map; other quantum subfields do not."
+
+  - cet_id: "renewable_energy_generation_and_storage"
+    dod_cta14:
+      - target: "renewable_energy_generation_and_storage"
+        strength: "direct"
+        rationale: "The areas are equivalent."
+    dod_sc8:
+      - target: "energy_storage_and_batteries"
+        strength: "partial"
+        rationale: "Battery and storage work maps directly; generation-only work does not."
+
+  - cet_id: "semiconductors_and_microelectronics"
+    dod_cta14:
+      - target: "microelectronics"
+        strength: "direct"
+        rationale: "The areas substantially coincide."
+    dod_sc8:
+      - target: "microelectronics"
+        strength: "direct"
+        rationale: "The 2022 focus area covers state-of-practice and state-of-art microelectronics."
+      - target: "manufacturing"
+        strength: "partial"
+        rationale: "Semiconductor fabrication and packaging are manufacturing subsets."
+
+  - cet_id: "space_technologies_and_systems"
+    dod_cta14:
+      - target: "space_technology"
+        strength: "direct"
+        rationale: "The areas substantially coincide."
+    dod_sc8:
+      - target: "kinetic_capabilities"
+        strength: "enabling"
+        rationale: "Some space sensing, communications, and navigation enable kinetic missions."
+
+  - cet_id: "trusted_ai_and_autonomy"
+    dod_cta14:
+      - target: "trusted_ai_and_autonomy"
+        strength: "direct"
+        rationale: "The areas are equivalent."
+    dod_sc8:
+      - target: "cyber_posture"
+        strength: "enabling"
+        rationale: "Trusted AI can support cyber defense and system assurance."
+
+  - cet_id: "integrated_network_systems_of_systems"
+    dod_cta14:
+      - target: "integrated_network_systems_of_systems"
+        strength: "direct"
+        rationale: "The areas are equivalent."
+    dod_sc8:
+      - target: "cyber_posture"
+        strength: "enabling"
+        rationale: "Networked mission systems require resilient cyber posture."
+      - target: "kinetic_capabilities"
+        strength: "enabling"
+        rationale: "Integrated command-and-control networks enable kinetic operations."
