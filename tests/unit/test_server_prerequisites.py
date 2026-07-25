@@ -89,3 +89,30 @@ def test_rejects_duplicate_allowlisted_key(tmp_path):
 
     assert result.returncode != 0
     assert "defined more than once" in (result.stdout + result.stderr)
+
+
+def test_missing_env_in_full_mode_reports_summary_without_undefined_helpers(tmp_path):
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    for command in ("docker", "tailscale"):
+        executable = bin_dir / command
+        executable.write_text("#!/bin/sh\nexit 1\n")
+        executable.chmod(0o755)
+
+    missing_env = tmp_path / ".env.server"
+    result = subprocess.run(
+        ["sh", str(SCRIPT)],
+        cwd=tmp_path,
+        env={
+            "SERVER_ENV_FILE": str(missing_env),
+            "PATH": f"{bin_dir}:/usr/bin:/bin",
+        },
+        capture_output=True,
+        text=True,
+    )
+
+    output = result.stdout + result.stderr
+    assert result.returncode == 1
+    assert f"{missing_env} not found" in output
+    assert "error(s)" in output
+    assert "path_has_active_external_volume: not found" not in output

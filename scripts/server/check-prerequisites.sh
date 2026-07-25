@@ -50,10 +50,11 @@ error()   { printf "${RED}✖${NC} %s\n" "$1"; errors=$((errors + 1)); }
 ENV_FILE="${SERVER_ENV_FILE:-.env.server}"
 COMPOSE_FILE="${SERVER_COMPOSE_FILE:-docker-compose.server.yml}"
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+# Helpers are required by the full preflight even when the env file is absent.
+# shellcheck source=scripts/server/env-file.sh
+. "$SCRIPT_DIR/env-file.sh"
 if [ -f "$ENV_FILE" ]; then
   info "Loading environment from $ENV_FILE"
-  # shellcheck source=scripts/server/env-file.sh
-  . "$SCRIPT_DIR/env-file.sh"
   for key in \
     SERVER_LOOPBACK NEO4J_PASSWORD SBIR_ANALYTICS_API_TOKEN \
     SERVER_DATA_DIR SERVER_REPORTS_DIR SERVER_LOGS_DIR \
