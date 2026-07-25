@@ -2,48 +2,17 @@
 
 from __future__ import annotations
 
-import re
 from collections.abc import Iterable
 from typing import Any
+
+from sbir_etl.utils.procurement_text import tokenize_technical_text
+
 
 DEFAULT_WEIGHTS: dict[str, float] = {
     "naics": 0.30,
     "psc": 0.20,
     "jaccard": 0.50,
 }
-
-_TOKEN_RE = re.compile(r"[A-Za-z0-9]+")
-
-# Stop words intentionally narrow — we want genuine content tokens to drive
-# Jaccard, but "the"/"of"/"and" noise distorts short-description overlap.
-_STOPWORDS: frozenset[str] = frozenset(
-    {
-        "a",
-        "an",
-        "the",
-        "of",
-        "and",
-        "or",
-        "for",
-        "to",
-        "in",
-        "on",
-        "at",
-        "with",
-        "by",
-        "is",
-        "are",
-        "be",
-        "as",
-        "this",
-        "that",
-        "these",
-        "those",
-        "from",
-        "we",
-        "our",
-    }
-)
 
 
 def _normalize_code(value: Any) -> str | None:
@@ -63,13 +32,6 @@ def _code_similarity(prior: Any, target: Any) -> float:
     if a is None or b is None:
         return 0.0
     return 1.0 if a == b else 0.0
-
-
-def _tokenize(text: str | None) -> set[str]:
-    if not text:
-        return set()
-    tokens = {m.group(0).lower() for m in _TOKEN_RE.finditer(text)}
-    return {t for t in tokens if t not in _STOPWORDS and len(t) > 2}
 
 
 def _jaccard(a: Iterable[str], b: Iterable[str]) -> float:
@@ -95,8 +57,10 @@ def compute_topical_similarity(
     naics_sim = _code_similarity(prior_award.get("naics_code"), target.get("naics_code"))
     psc_sim = _code_similarity(prior_award.get("psc_code"), target.get("psc_code"))
 
-    prior_tokens = _tokenize(prior_award.get("title")) | _tokenize(prior_award.get("abstract"))
-    target_tokens = _tokenize(target.get("description"))
+    prior_tokens = tokenize_technical_text(prior_award.get("title")) | tokenize_technical_text(
+        prior_award.get("abstract")
+    )
+    target_tokens = tokenize_technical_text(target.get("description"))
     jaccard = _jaccard(prior_tokens, target_tokens)
 
     score = (

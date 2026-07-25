@@ -8,6 +8,7 @@ from sbir_etl.utils.award_identity import (
     award_key_series,
     collapse_transactions_to_award_grain,
 )
+from sbir_etl.utils.procurement_text import DIRECTED_LINEAGE_TERMS
 
 from .similarity import compute_topical_similarity
 
@@ -58,16 +59,6 @@ PAIR_OPPORTUNITY_COLUMNS: list[str] = PAIR_S1_COLUMNS + [
 
 DIRECTED_NOTICE_TYPES = frozenset({"u", "s", "p"})
 FOLLOWON_NOTICE_TYPES = frozenset({"o", "k", "r", "p"})
-_LINEAGE_TERMS = (
-    "phase iii",
-    "phase 3",
-    "derives from",
-    "prototype transition",
-    "follow-on production",
-    "continuation of",
-    "sole source",
-    "notice of intent",
-)
 
 
 def _normalize(value: object) -> str:
@@ -340,7 +331,7 @@ def pair_filter_s2(prior_awards: pd.DataFrame, opportunities: pd.DataFrame) -> p
             fallback["target_description"]
             .fillna("")
             .str.lower()
-            .map(lambda text: any(term in text for term in _LINEAGE_TERMS))
+            .map(lambda text: any(term in text for term in DIRECTED_LINEAGE_TERMS))
         )
         naics = fallback["prior_naics_code"].map(_normalize) == fallback["target_naics_code"].map(
             _normalize

@@ -7,6 +7,7 @@ stopwords.
 
 from __future__ import annotations
 
+import pandas as pd
 import pytest
 
 from sbir_analytics.assets.phase_iii_candidates.similarity import (
@@ -138,6 +139,11 @@ class TestAdversarialNegatives:
 
     def test_empty_inputs_yield_zero(self):
         assert compute_topical_similarity({}, {}) == 0.0
+
+    def test_nullable_pandas_text_yields_zero(self):
+        prior = {"title": pd.NA, "abstract": float("nan")}
+        target = {"description": pd.NA}
+        assert compute_topical_similarity(prior, target) == 0.0
 
     def test_score_is_bounded(self):
         prior = {

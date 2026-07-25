@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Score directed and competitive opportunity candidates for all SBIR phases."""
+"""Score directed and competitive opportunities for the monthly SBIR award cohort."""
 
 import argparse
 import json
@@ -40,8 +40,12 @@ def main() -> int:
     parser.add_argument("--previous-awards", type=Path)
     parser.add_argument("--month", required=True)
     parser.add_argument("--opportunities", type=Path, required=True)
-    parser.add_argument("--output", type=Path, default=Path("data/processed/phase_iii_candidates.parquet"))
-    parser.add_argument("--evidence", type=Path, default=Path("data/processed/phase_iii_evidence.ndjson"))
+    parser.add_argument(
+        "--output", type=Path, default=Path("data/processed/phase_iii_candidates.parquet")
+    )
+    parser.add_argument(
+        "--evidence", type=Path, default=Path("data/processed/phase_iii_evidence.ndjson")
+    )
     args = parser.parse_args()
 
     current = _read(args.awards)
