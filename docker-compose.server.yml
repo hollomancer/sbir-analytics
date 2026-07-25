@@ -3,13 +3,14 @@
 # An ARM64-native, private server profile for a single always-on Mac mini.
 # It runs only the services needed to serve the graph and analytics:
 #   - neo4j              (private graph store; host port bound to loopback only)
+#   - dagster-code-server (shared internal Dagster code location)
 #   - analytics-api      (authenticated read-only API)
 #   - dagster-webserver  (orchestration UI, production mode)
 #   - dagster-daemon     (schedules/sensors)
 #
 # Security boundary:
-#   * Every host port is bound to 127.0.0.1 (SERVER_LOOPBACK). Nothing binds to
-#     0.0.0.0, so no service is reachable over the LAN.
+#   * Every host port is hardcoded to 127.0.0.1. Nothing binds to 0.0.0.0, so
+#     no service is reachable over the LAN.
 #   * Tailscale Serve is the ONLY ingress (tailnet-only HTTPS):
 #       443  -> Dagster (127.0.0.1:3000)
 #       8443 -> analytics API (127.0.0.1:8010)
@@ -69,14 +70,13 @@ services:
       - NEO4J_db_logs_query_enabled=${NEO4J_db_logs_query_enabled:-OFF}
     ports:
       # Loopback-only. Neo4j is intentionally NOT exposed through Tailscale.
-      - "${SERVER_LOOPBACK:-127.0.0.1}:${NEO4J_HTTP_PORT:-7474}:7474"
-      - "${SERVER_LOOPBACK:-127.0.0.1}:${NEO4J_BOLT_PORT:-7687}:7687"
+      - "127.0.0.1:${NEO4J_HTTP_PORT:-7474}:7474"
+      - "127.0.0.1:${NEO4J_BOLT_PORT:-7687}:7687"
     volumes:
       - ${SERVER_NEO4J_DIR:-./data/neo4j}/data:/data
       - ${SERVER_NEO4J_DIR:-./data/neo4j}/logs:/logs
       - ${SERVER_NEO4J_DIR:-./data/neo4j}/import:/var/lib/neo4j/import
-      - ./config/neo4j/certs:/certs:ro
-      - ./config/neo4j/plugins:/plugins:rw
+      - neo4j_plugins:/plugins
     networks:
       - sbir-server-network
     healthcheck:
@@ -92,6 +92,70 @@ services:
       resources:
         limits:
           memory: 2G
+        reservations:
+          memory: 1G
+
+  # ===========================================================================
+  # Dagster code location (internal gRPC; never published to the host)
+  # ===========================================================================
+  dagster-code-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    image: ${IMAGE_NAME:-sbir-analytics}:${IMAGE_TAG:-local}
+    container_name: ${DAGSTER_CODE_SERVER_CONTAINER_NAME:-sbir-server-dagster-code}
+    profiles:
+      - server
+    environment: *server-environment
+    command:
+      - dagster
+      - api
+      - grpc
+      - --host
+      - 0.0.0.0
+      - --port
+      - "4000"
+      - --module-name
+      - sbir_analytics.definitions
+      - --location-name
+      - sbir-analytics-production
+    volumes:
+      - ./config:/app/config:rw
+      - ${SERVER_REPORTS_DIR:-./reports}:/app/reports:rw
+      - ${SERVER_LOGS_DIR:-./logs}:/app/logs:rw
+      - ${SERVER_DATA_DIR:-./data}:/app/data:rw
+      - ${SERVER_ARTIFACTS_DIR:-./artifacts}:/app/artifacts:rw
+      - dagster_home:/app/dagster_home
+    expose:
+      - "4000"
+    depends_on:
+      neo4j:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - dagster
+        - api
+        - grpc-health-check
+        - --host
+        - localhost
+        - --port
+        - "4000"
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks:
+      - sbir-server-network
+    restart: ${SERVER_RESTART_POLICY:-unless-stopped}
+    deploy:
+      resources:
+        limits:
+          # DefaultRunLauncher starts ETL subprocesses through this gRPC
+          # server, so the execution budget belongs here rather than on the
+          # lightweight daemon.
+          memory: 3G
         reservations:
           memory: 1G
 
@@ -121,7 +185,7 @@ services:
       - ${SERVER_REPORTS_DIR:-./reports}:/app/reports:ro
     ports:
       # Loopback-only; Tailscale Serve maps HTTPS 8443 -> 127.0.0.1:8010.
-      - "${SERVER_LOOPBACK:-127.0.0.1}:${SBIR_ANALYTICS_API_PORT:-8010}:${SBIR_ANALYTICS_API_PORT:-8010}"
+      - "127.0.0.1:${SBIR_ANALYTICS_API_PORT:-8010}:${SBIR_ANALYTICS_API_PORT:-8010}"
     depends_on:
       neo4j:
         condition: service_healthy
@@ -160,8 +224,9 @@ services:
       # Healthchecks run inside the container; DAGSTER_PORT is the host mapping.
       HEALTHCHECK_PORT: "3000"
       HEALTHCHECK_PATH: ${DAGSTER_HEALTH_PATH:-/server_info}
-    # Invoke the entrypoint so ENVIRONMENT=prod runs `dagster-webserver` (not
-    # the dev auto-reload server). Do NOT set ENV_DAGSTER_CMD here.
+      ENV_DAGSTER_CMD: dagster-webserver -h 0.0.0.0 -p 3000 -w /app/workspace.server.yaml
+    # The entrypoint performs dependency checks, then uses the explicit
+    # production command above to connect to the shared code location.
     command: ["sh", "/app/scripts/docker/entrypoint.sh", "dagster-webserver"]
     volumes:
       - ./config:/app/config:rw
@@ -172,9 +237,11 @@ services:
       - dagster_home:/app/dagster_home
     ports:
       # Loopback-only; Tailscale Serve maps HTTPS 443 -> 127.0.0.1:3000.
-      - "${SERVER_LOOPBACK:-127.0.0.1}:${DAGSTER_PORT:-3000}:3000"
+      - "127.0.0.1:${DAGSTER_PORT:-3000}:3000"
     depends_on:
       neo4j:
+        condition: service_healthy
+      dagster-code-server:
         condition: service_healthy
     healthcheck:
       test:
@@ -208,7 +275,12 @@ services:
       - server
     environment:
       <<: *server-environment
+      # The daemon runs in a separate container; localhost would point back to
+      # itself and make the startup gate wait for the full timeout.
       DAGSTER_HOST: dagster-webserver
+      HEALTHCHECK_PORT: 3000
+      HEALTHCHECK_PATH: ${DAGSTER_HEALTH_PATH:-/server_info}
+      ENV_DAGSTER_CMD: dagster-daemon run -w /app/workspace.server.yaml
     command: ["sh", "/app/scripts/docker/entrypoint.sh", "dagster-daemon"]
     volumes:
       - ./config:/app/config:rw
@@ -219,6 +291,8 @@ services:
       - dagster_home:/app/dagster_home
     depends_on:
       neo4j:
+        condition: service_healthy
+      dagster-code-server:
         condition: service_healthy
       dagster-webserver:
         condition: service_healthy
@@ -236,9 +310,9 @@ services:
     deploy:
       resources:
         limits:
-          memory: 4G
+          memory: 768M
         reservations:
-          memory: 1G
+          memory: 384M
 
 # =============================================================================
 # Named volumes
@@ -246,6 +320,8 @@ services:
 volumes:
   # Shared Dagster metadata (schedule ticks, run storage) across web + daemon.
   dagster_home:
+    driver: local
+  neo4j_plugins:
     driver: local
 
 # =============================================================================

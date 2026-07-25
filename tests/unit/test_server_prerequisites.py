@@ -13,14 +13,7 @@ import pytest
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = REPO_ROOT / "scripts" / "server" / "check-prerequisites.sh"
 
-pytestmark = [
-    pytest.mark.fast,
-    pytest.mark.unit,
-    pytest.mark.skipif(
-        not SCRIPT.is_file(),
-        reason="server prerequisite script not present in this environment",
-    ),
-]
+pytestmark = [pytest.mark.fast, pytest.mark.unit]
 
 GOOD_ENV = """
 SERVER_LOOPBACK=127.0.0.1
@@ -71,3 +64,55 @@ def test_rejects_missing_api_token(tmp_path):
     env_file.write_text("SERVER_LOOPBACK=127.0.0.1\nNEO4J_PASSWORD=a-real-password\n")
     result = _run(env_file)
     assert result.returncode == 1
+
+
+def test_env_file_is_parsed_as_data_not_executed(tmp_path):
+    marker = tmp_path / "executed"
+    env_file = tmp_path / ".env.server"
+    env_file.write_text(
+        GOOD_ENV
+        + f"DAGSTER_PORT=$(touch {marker})\n"
+        + "SBIR_ETL__DAGSTER__SCHEDULES__WEEKLY_CORE_REFRESH_JOB=15 3 * * *\n"
+    )
+
+    result = _run(env_file)
+
+    assert result.returncode != 0
+    assert not marker.exists()
+
+
+def test_rejects_duplicate_allowlisted_key(tmp_path):
+    env_file = tmp_path / ".env.server"
+    env_file.write_text(GOOD_ENV + "NEO4J_PASSWORD=change_me\n")
+
+    result = _run(env_file)
+
+    assert result.returncode != 0
+    assert "defined more than once" in (result.stdout + result.stderr)
+
+
+def test_missing_env_in_full_mode_reports_summary_without_undefined_helpers(tmp_path):
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    for command in ("docker", "tailscale"):
+        executable = bin_dir / command
+        executable.write_text("#!/bin/sh\nexit 1\n")
+        executable.chmod(0o755)
+
+    missing_env = tmp_path / ".env.server"
+    result = subprocess.run(
+        ["sh", str(SCRIPT)],
+        cwd=tmp_path,
+        env={
+            "SERVER_ENV_FILE": str(missing_env),
+            "PATH": f"{bin_dir}:/usr/bin:/bin",
+        },
+        capture_output=True,
+        text=True,
+    )
+
+    output = result.stdout + result.stderr
+    assert result.returncode == 1
+    assert f"{missing_env} not found" in output
+    assert "error(s)" in output
+    assert "path_has_active_external_volume: not found" not in output
