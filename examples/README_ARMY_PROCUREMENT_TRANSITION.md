@@ -6,11 +6,15 @@ opportunities, identifiers, dates, amounts, scores, and alignment judgments are
 synthetic. They demonstrate report structure only and must not be treated as
 live acquisition intelligence.
 
-Each lead is written for a procurement-center review: it places the funded
-award scope beside the synthetic solicitation need, states the technical
-connection to validate, explains why the pair was surfaced, and ends with a
-class-specific representative check. The score remains a secondary triage aid,
-not a probability or acquisition determination.
+The packet leads with a bottom line, then groups every lead under the awardee it
+belongs to: each awardee section states the funded award scope once, then lists
+every open procurement that awardee is relevant to — possible direct-award paths
+first, then competitive follow-ons, each ordered by soonest response deadline.
+Weaker matches are kept under the awardee rather than dropped, and an awardee
+with no matched procurement is still listed. Every procurement states the
+technical connection to validate, explains why it was surfaced, and ends with a
+representative check. The score remains a secondary triage aid, not a
+probability or acquisition determination.
 
 The example uses three distinct public taxonomies so that a technology match is
 not confused with an acquisition decision:

@@ -431,6 +431,94 @@ def _sort_awards_for_packet(awards: pd.DataFrame) -> pd.DataFrame:
     )
 
 
+def _response_deadline_ts(row: pd.Series) -> pd.Timestamp | None:
+    text = _display(
+        _first_value(row.get("opportunity_response_deadline"), row.get("target_response_deadline"))
+    )
+    if text is None:
+        return None
+    parsed = pd.to_datetime(text, errors="coerce", utc=True)
+    return None if pd.isna(parsed) else parsed
+
+
+_NO_DEADLINE_SORT_KEY = (1 << 63) - 1
+
+
+def _deadline_sort_key(row: pd.Series) -> int:
+    parsed = _response_deadline_ts(row)
+    return int(parsed.value) if parsed is not None else _NO_DEADLINE_SORT_KEY
+
+
+def group_candidates_by_awardee(rows: pd.DataFrame, awards: pd.DataFrame) -> list[dict[str, Any]]:
+    """Group scored candidate pairs under each awardee, ordered for the packet.
+
+    Each awardee becomes one section listing every open procurement it is relevant
+    to. Directed (possible direct-award) matches precede competitive ones, each
+    sorted by soonest response deadline. Below-threshold matches are kept in a
+    per-awardee ``watchlist`` rather than dropped. Awardees with no matched
+    procurement are still emitted so the representative sees the whole cohort.
+    """
+
+    signals = rows.get("signal_class", pd.Series(index=rows.index, dtype="object"))
+    confidence = rows.get("confidence_bucket", pd.Series(index=rows.index, dtype="object"))
+    award_ids = (
+        rows.get("prior_award_id", pd.Series(index=rows.index, dtype="object")).astype(str)
+        if not rows.empty
+        else pd.Series(dtype="object")
+    )
+
+    def _entries(mask: pd.Series) -> list[pd.Series]:
+        subset = rows.loc[mask]
+        return sorted(
+            (row for _, row in subset.iterrows()),
+            key=lambda row: (
+                _deadline_sort_key(row),
+                str(_first_value(row.get("opportunity_title"), row.get("target_id")) or ""),
+            ),
+        )
+
+    ordered_awards = _sort_awards_for_packet(awards) if not awards.empty else awards
+    groups: list[dict[str, Any]] = []
+    for _, award in ordered_awards.iterrows():
+        award_id = str(award.get("award_id"))
+        same = (
+            award_ids == award_id
+            if not rows.empty
+            else pd.Series(False, index=rows.index, dtype=bool)
+        )
+        high = same & (confidence == "HIGH")
+        directed = _entries(high & (signals == "directed"))
+        competitive = _entries(high & (signals == "followon"))
+        watchlist = _entries(same & (confidence == "WATCHLIST"))
+        deadline_keys = [
+            _deadline_sort_key(entry) for entry in (*directed, *competitive, *watchlist)
+        ]
+        groups.append(
+            {
+                "award_id": award_id,
+                "award": award,
+                "directed": directed,
+                "competitive": competitive,
+                "watchlist": watchlist,
+                "has_directed": bool(directed),
+                "earliest_deadline": min(deadline_keys) if deadline_keys else _NO_DEADLINE_SORT_KEY,
+            }
+        )
+
+    def _amount_value(group: dict[str, Any]) -> float:
+        number = _number(group["award"].get("amount"))
+        return number if number is not None else -1.0
+
+    groups.sort(
+        key=lambda group: (
+            not group["has_directed"],
+            group["earliest_deadline"],
+            -_amount_value(group),
+        )
+    )
+    return groups
+
+
 def _packet_html(markdown: str, *, title: str) -> str:
     body = (
         MarkdownIt("commonmark", {"html": False, "breaks": True, "linkify": False})
@@ -482,6 +570,7 @@ class MonthlyReportBuilder:
         self.summarizer = summarizer
         self.max_summaries = max_summaries
         self._summary_attempts = 0
+        self._summary_targets: set[str] = set()
 
     def _master(
         self,
@@ -559,17 +648,57 @@ class MonthlyReportBuilder:
         master["report_month"] = self.report_month
         return master
 
-    def _candidate_card(self, row: pd.Series) -> list[str]:
+    def _select_summary_targets(self, master: pd.DataFrame) -> set[str]:
+        """Pick which HIGH candidates spend the bounded AI-summary budget.
+
+        Render order is deadline-driven, so summary allocation is chosen up front
+        by candidate score to keep the limited budget on the strongest leads.
+        """
+
+        if self.summarizer is None or master.empty or self.max_summaries <= 0:
+            return set()
+        high = master.loc[master.get("confidence_bucket") == "HIGH"]
+        if high.empty:
+            return set()
+
+        def _has_text(row: pd.Series) -> bool:
+            award_abstract = _display(
+                _first_value(row.get("award_abstract"), row.get("prior_abstract"))
+            )
+            description = _display(
+                _first_value(row.get("opportunity_description"), row.get("target_description"))
+            )
+            return bool(award_abstract and description)
+
+        eligible = high.loc[high.apply(_has_text, axis=1)]
+        if eligible.empty:
+            return set()
+        ranked = eligible.assign(
+            _summary_sort_score=pd.to_numeric(
+                eligible.get("candidate_score", pd.Series(index=eligible.index, dtype="float64")),
+                errors="coerce",
+            ).fillna(-1.0)
+        ).sort_values("_summary_sort_score", ascending=False, kind="stable")
+        return {
+            str(_display(value))
+            for value in ranked.get("candidate_id", pd.Series(dtype="object")).head(
+                self.max_summaries
+            )
+            if _display(value) is not None
+        }
+
+    def _procurement_entry(self, row: pd.Series) -> list[str]:
+        """Render one procurement a given awardee is relevant to.
+
+        The awardee's funded scope is stated once in the awardee header, so this
+        entry leads with the solicitation ask and the evidence to validate.
+        """
+
         signal = _display(row.get("signal_class")) or "unknown"
         confidence = _display(row.get("confidence_bucket")) or "WATCHLIST"
         opportunity_title = _markdown_text(
             _first_value(row.get("opportunity_title"), row.get("target_id")),
             default="Untitled opportunity",
-            limit=180,
-        )
-        award_title = _markdown_text(
-            _first_value(row.get("award_title"), row.get("prior_title")),
-            default="Award title unavailable",
             limit=180,
         )
         award_abstract = _display(
@@ -609,6 +738,7 @@ class MonthlyReportBuilder:
             and confidence == "HIGH"
             and award_abstract
             and opportunity_description
+            and str(_display(row.get("candidate_id"))) in self._summary_targets
             and self._summary_attempts < self.max_summaries
         ):
             self._summary_attempts += 1
@@ -620,44 +750,16 @@ class MonthlyReportBuilder:
             opportunity_description=opportunity_description,
         )
 
-        amount = _money(row.get("amount"))
-        award_details = [
-            _markdown_text(row.get("company"), default="Company unavailable", limit=120),
-            _markdown_text(row.get("phase"), default="Phase unavailable", limit=40),
-        ]
-        if amount != "N/A":
-            award_details.append(amount)
-
         lines = [
-            f"### {opportunity_title}",
+            f"#### {opportunity_title}",
             "",
-            f"**Disposition:** {disposition}",
-            "",
-            "**Review question:** Does the SBIR/STTR-funded capability below satisfy the "
-            "solicitation need as written?",
-            "",
-            f"**Response deadline:** {deadline}",
+            f"**Disposition:** {disposition} — responses due {deadline}",
         ]
         if routing:
             lines.append(f"**Suggested routing:** {routing}")
         if solicitation_number:
             lines.append(f"**Solicitation:** {_markdown_text(solicitation_number, limit=100)}")
-        lines += [
-            "",
-            "#### What the award funded",
-            "",
-            f"**{award_title}** — {' · '.join(award_details)}",
-            "",
-        ]
-        if award_abstract:
-            lines += [f"> {_markdown_text(award_abstract)}", ""]
-        else:
-            lines += [
-                "> The award abstract was not available in the supplied SBIR/STTR data. "
-                "Review the award record before routing.",
-                "",
-            ]
-        lines += ["#### What the solicitation asks for", "", f"**{opportunity_title}**", ""]
+        lines += ["", "**What the solicitation asks for**", ""]
         if opportunity_description:
             lines += [f"> {_markdown_text(opportunity_description)}", ""]
         else:
@@ -666,7 +768,7 @@ class MonthlyReportBuilder:
                 "record and review the statement of need before routing.",
                 "",
             ]
-        lines += ["#### Technical connection to validate", ""]
+        lines += ["**Technical connection to validate**", ""]
         if public_facts:
             lines += [
                 f"**Public-field comparison:** "
@@ -685,7 +787,7 @@ class MonthlyReportBuilder:
         if rationale:
             lines += [f"**Analyst screening note:** {_markdown_text(rationale)}", ""]
 
-        lines += ["#### Why this was surfaced", ""]
+        lines += ["**Why this was surfaced**", ""]
         candidate_type = (
             "Possible directed path" if signal == "directed" else "Competitive follow-on"
         )
@@ -702,7 +804,7 @@ class MonthlyReportBuilder:
             "eligibility decision."
         )
 
-        lines += ["", "#### Representative check", ""]
+        lines += ["", "**Representative check**", ""]
         if signal == "directed":
             lines.append(
                 "Confirm that the solicitation derives from, extends, or completes the cited "
@@ -715,9 +817,6 @@ class MonthlyReportBuilder:
                 "Topical overlap alone does not make a competitive opportunity a Phase III path."
             )
 
-        award_url = _safe_url(
-            _first_value(row.get("award_source_url"), row.get("prior_source_url"))
-        )
         opportunity_url = _safe_url(
             _first_value(
                 row.get("opportunity_source_url"),
@@ -726,29 +825,82 @@ class MonthlyReportBuilder:
                 row.get("opportunity_description_url"),
             )
         )
-        source_links = []
-        if award_url:
-            source_links.append(f"[SBIR/STTR award record]({award_url})")
-        if opportunity_url:
-            source_links.append(f"[SAM.gov solicitation]({opportunity_url})")
-        source_text = " · ".join(source_links) if source_links else "Not supplied in this input"
+        source_text = (
+            f"[SAM.gov solicitation]({opportunity_url})"
+            if opportunity_url
+            else "Not supplied in this input"
+        )
         lines += ["", f"**Source records:** {source_text}", ""]
         return lines
 
+    def _awardee_section(self, group: dict[str, Any]) -> list[str]:
+        """Render one awardee header plus every procurement it is relevant to."""
+
+        award = group["award"]
+        company = _markdown_text(award.get("company"), default="Company unavailable", limit=120)
+        award_title = _markdown_text(
+            _first_value(award.get("title"), award.get("award_title")),
+            default="Award title unavailable",
+            limit=180,
+        )
+        details = [_markdown_text(award.get("phase"), default="Phase unavailable", limit=40)]
+        amount = _money(award.get("amount"))
+        if amount != "N/A":
+            details.append(amount)
+        details.append(_markdown_text(_award_why_listed(award), limit=180))
+        award_abstract = _display(_first_value(award.get("abstract"), award.get("award_abstract")))
+        award_url = _safe_url(_first_value(award.get("source_url"), award.get("award_source_url")))
+
+        lines = [
+            f"### {company} — {award_title}",
+            "",
+            f"**Award:** {' · '.join(details)}",
+            "",
+        ]
+        if award_abstract:
+            lines += [f"> {_markdown_text(award_abstract)}", ""]
+        if award_url:
+            lines += [f"**Award record:** [SBIR/STTR award record]({award_url})", ""]
+
+        directed = group["directed"]
+        competitive = group["competitive"]
+        watchlist = group["watchlist"]
+        if directed or competitive:
+            lines += ["**Relevant open procurements**", ""]
+            for entry in (*directed, *competitive):
+                lines += self._procurement_entry(entry)
+        else:
+            lines += ["_No open procurements matched this month._", ""]
+        if watchlist:
+            lines += ["**Weaker matches — need more evidence before routing**", ""]
+            for entry in watchlist:
+                lines += self._procurement_entry(entry)
+        return lines
+
     def _packet(self, center: str, rows: pd.DataFrame, awards: pd.DataFrame) -> str:
-        confidence = rows.get("confidence_bucket", pd.Series(index=rows.index, dtype="object"))
-        signals = rows.get("signal_class", pd.Series(index=rows.index, dtype="object"))
-        high = rows.loc[confidence == "HIGH"]
-        high_signal = signals.loc[high.index]
-        directed_count = int((high_signal == "directed").sum())
-        followon_count = int((high_signal == "followon").sum())
-        watchlist_count = int((confidence == "WATCHLIST").sum())
-        directed_label = "path" if directed_count == 1 else "paths"
-        followon_label = "opportunity" if followon_count == 1 else "opportunities"
-        watchlist_label = "lead" if watchlist_count == 1 else "leads"
-        award_total = pd.to_numeric(
-            awards.get("amount", pd.Series(dtype="float64")), errors="coerce"
-        ).sum(min_count=1)
+        groups = group_candidates_by_awardee(rows, awards)
+        directed_total = sum(len(group["directed"]) for group in groups)
+        competitive_total = sum(len(group["competitive"]) for group in groups)
+        relevant_total = directed_total + competitive_total
+        awardee_total = len(groups)
+        held_total = sum(
+            1 for group in groups if not group["directed"] and not group["competitive"]
+        )
+
+        most_urgent = None
+        for group in groups:
+            for entry in (*group["directed"], *group["competitive"]):
+                key = _deadline_sort_key(entry)
+                if most_urgent is None or key < most_urgent[0]:
+                    most_urgent = (key, group["award"], entry)
+
+        awardee_label = "awardee" if awardee_total == 1 else "awardees"
+        procurement_label = "procurement" if relevant_total == 1 else "procurements"
+        directed_clause = (
+            f"{directed_total:,} could support a direct award"
+            if directed_total
+            else "none yet cleared for a direct award"
+        )
         lines = [
             f"# Monthly Procurement Transition Packet — {_markdown_text(center, limit=160)}",
             "",
@@ -758,72 +910,52 @@ class MonthlyReportBuilder:
             "end dates do not verify technical completion, and screening results do not prove "
             "Phase III eligibility.",
             "",
-            "## How to read this packet",
+            "## Bottom line",
             "",
-            "- A potential directed path is a government notice that may support a direct award "
-            "and has public evidence pointing back to SBIR/STTR-funded work; it is not a Phase III "
-            "determination.",
-            "- A competitive follow-on is an open competition whose subject overlaps an award; "
-            "topical overlap alone does not make it Phase III.",
-            "- A Priority lead passed enough screening checks to review first, but still requires "
-            "human validation.",
-            "- Needs more evidence before routing means the public connection is incomplete or "
-            "weak and should be held from representative routing.",
-            "- For any Phase III path, confirm that the proposed work derives from, extends, or "
-            "completes the prior SBIR/STTR-funded work.",
+            f"- {awardee_total:,} {awardee_label} with {relevant_total:,} relevant open "
+            f"{procurement_label} ({directed_clause}).",
+        ]
+        if most_urgent is not None:
+            urgent_company = _markdown_text(
+                most_urgent[1].get("company"), default="an awardee", limit=120
+            )
+            urgent_title = _markdown_text(
+                _first_value(
+                    most_urgent[2].get("opportunity_title"), most_urgent[2].get("target_id")
+                ),
+                default="an open procurement",
+                limit=180,
+            )
+            urgent_deadline = _markdown_text(
+                _date_label(
+                    _first_value(
+                        most_urgent[2].get("opportunity_response_deadline"),
+                        most_urgent[2].get("target_response_deadline"),
+                    )
+                ),
+                default="date not published",
+                limit=80,
+            )
+            lines.append(
+                f"- Most urgent: {urgent_company} — {urgent_title}, responses due "
+                f"{urgent_deadline}."
+            )
+        lines += [
+            f"- Hold: {held_total:,} of {awardee_total:,} {awardee_label} have only weaker "
+            "matches or no matched procurement this month.",
             "",
-            "## Snapshot",
+            'For any lead, confirm the new work "derives from, extends, or completes" the '
+            "awardee's prior SBIR/STTR-funded work before anything moves. A match here is a "
+            "starting point for review, not a decision.",
             "",
-            f"- Awards in this packet: {len(awards):,} (new, changed, recently ended, or ending "
-            f"soon), totaling {_money(award_total)}",
-            f"- Priority leads: {len(high):,} ({directed_count:,} possible directed "
-            f"{directed_label}; {followon_count:,} competitive {followon_label})",
-            f"- Needs more evidence before routing: {watchlist_count:,}",
-            "",
-            "## Representative action queue",
-            "",
-            f"- Validate SBIR/STTR lineage and technical fit for {directed_count:,} possible "
-            f"directed {directed_label}.",
-            f"- Assess technical fit and acquisition strategy for {followon_count:,} "
-            f"competitive {followon_label}.",
-            f"- Hold {watchlist_count:,} watchlist {watchlist_label} until the stated evidence "
-            "gaps are "
-            "resolved.",
+            "## Awardees and their relevant procurements",
             "",
         ]
-        for signal, heading in (
-            ("directed", "Potential directed paths — validate lineage"),
-            ("followon", "Competitive opportunities with technical overlap"),
-        ):
-            subset = rows.loc[(signals == signal) & (confidence == "HIGH")]
-            if not subset.empty:
-                subset = subset.assign(
-                    _report_sort_score=pd.to_numeric(
-                        subset.get(
-                            "candidate_score",
-                            pd.Series(index=subset.index, dtype="float64"),
-                        ),
-                        errors="coerce",
-                    ).fillna(-1.0)
-                ).sort_values("_report_sort_score", ascending=False, kind="stable")
-            lines += [f"## {heading}", ""]
-            if subset.empty:
-                lines += ["None identified.", ""]
-            for _, row in subset.iterrows():
-                lines += self._candidate_card(row)
-
-        lines += ["## Needs more evidence before routing", ""]
-        watch = rows.loc[confidence == "WATCHLIST"]
-        if watch.empty:
-            lines += ["None identified.", ""]
+        if groups:
+            for group in groups:
+                lines += self._awardee_section(group)
         else:
-            lines += [
-                "These leads receive the same evidence review as priority leads, but should not "
-                "be routed until a representative resolves the missing or weak connection.",
-                "",
-            ]
-            for _, row in watch.iterrows():
-                lines += self._candidate_card(row)
+            lines += ["No awardees matched the monthly screen.", ""]
 
         if not awards.empty:
             packet_awards = _sort_awards_for_packet(awards)
@@ -875,6 +1007,7 @@ class MonthlyReportBuilder:
         centers_dir.mkdir(exist_ok=True)
         self._summary_attempts = 0
         master = self._master(award_cohorts, candidates, opportunities)
+        self._summary_targets = self._select_summary_targets(master)
         master.to_csv(self.output_dir / "master_candidates.csv", index=False)
 
         evidence: list[dict[Any, Any]] = []
@@ -956,4 +1089,9 @@ class MonthlyReportBuilder:
         return self.output_dir
 
 
-__all__ = ["MonthlyReportBuilder", "build_award_cohorts", "normalize_awards"]
+__all__ = [
+    "MonthlyReportBuilder",
+    "build_award_cohorts",
+    "group_candidates_by_awardee",
+    "normalize_awards",
+]

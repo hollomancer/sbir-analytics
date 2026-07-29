@@ -4,7 +4,11 @@ from pathlib import Path
 
 import pandas as pd
 
-from sbir_etl.reporting.procurement_transition import MonthlyReportBuilder, build_award_cohorts
+from sbir_etl.reporting.procurement_transition import (
+    MonthlyReportBuilder,
+    build_award_cohorts,
+    group_candidates_by_awardee,
+)
 
 
 class _HTMLProbe(HTMLParser):
@@ -94,11 +98,11 @@ def test_writes_center_packet_and_manifest(tmp_path):
     packet = (output / "centers" / "navair.md").read_text()
     assert "# Monthly Procurement Transition Packet — NAVAIR" in packet
     assert "Potential directed Phase III path" in packet
-    assert "#### What the award funded" in packet
+    assert "### Drone Co — Autonomous navigation" in packet
     assert "Navigation software that fuses onboard sensors" in packet
-    assert "#### What the solicitation asks for" in packet
+    assert "**What the solicitation asks for**" in packet
     assert "integrate autonomous navigation" in packet
-    assert "#### Technical connection to validate" in packet
+    assert "**Technical connection to validate**" in packet
     assert "The notice names the SBIR/STTR awardee (UEI UEI000000001)." in packet
     assert "The award and notice list the same agency (DEFENSE)." in packet
     assert "The notice text contains “Phase III” and “sole source”." in packet
@@ -110,10 +114,11 @@ def test_writes_center_packet_and_manifest(tmp_path):
     assert "topical similarity across codes and text" not in packet
     assert "critical-technology alignment" not in packet
     assert "composite 0.80" not in packet
-    assert "## How to read this packet" in packet
+    assert "## Bottom line" in packet
+    assert "## Awardees and their relevant procurements" in packet
+    assert "relevant open procurement" in packet
     assert "derives from, extends, or completes" in packet
     assert "derives from, extends, or uses" not in packet
-    assert "- Awards in this packet:" in packet
     assert "- Award cohort:" not in packet
     assert "[SBIR/STTR award record](https://www.sbir.gov/award/A-1)" in packet
     assert "[SAM.gov solicitation](https://sam.gov/opp/O-1)" in packet
@@ -134,7 +139,7 @@ def test_writes_center_packet_and_manifest(tmp_path):
     probe.feed(html_packet)
     assert {"h1", "h2", "strong", "blockquote", "ul", "table", "a"}.issubset(probe.tags)
     assert "pre" not in probe.tags
-    assert "## Snapshot" not in html_packet
+    assert "## Bottom line" not in html_packet
     assert "**Disposition:**" not in html_packet
     assert "https://www.sbir.gov/award/A-1" in probe.hrefs
     assert "https://sam.gov/opp/O-1" in probe.hrefs
@@ -439,3 +444,132 @@ def test_army_science_and_technology_example_matches_generated_packet(tmp_path):
     generated = (output / "centers" / "army-st-example.md").read_text()
     expected = (examples / "army_science_technology_report.md").read_text()
     assert generated == expected
+
+
+def _grouping_rows(records: list[dict]) -> pd.DataFrame:
+    columns = {
+        "prior_award_id",
+        "signal_class",
+        "confidence_bucket",
+        "candidate_score",
+        "opportunity_response_deadline",
+        "opportunity_title",
+    }
+    return pd.DataFrame([{column: record.get(column) for column in columns} for record in records])
+
+
+def test_group_orders_directed_before_competitive_then_by_deadline():
+    awards = pd.DataFrame([{"award_id": "A", "amount": 1_000}])
+    rows = _grouping_rows(
+        [
+            {
+                "prior_award_id": "A",
+                "signal_class": "followon",
+                "confidence_bucket": "HIGH",
+                "opportunity_title": "Competitive early",
+                "opportunity_response_deadline": "2026-07-01",
+            },
+            {
+                "prior_award_id": "A",
+                "signal_class": "directed",
+                "confidence_bucket": "HIGH",
+                "opportunity_title": "Directed later",
+                "opportunity_response_deadline": "2026-09-03",
+            },
+            {
+                "prior_award_id": "A",
+                "signal_class": "directed",
+                "confidence_bucket": "HIGH",
+                "opportunity_title": "Directed sooner",
+                "opportunity_response_deadline": "2026-08-15",
+            },
+        ]
+    )
+
+    groups = group_candidates_by_awardee(rows, awards)
+
+    assert len(groups) == 1
+    group = groups[0]
+    # Directed sorted by soonest deadline, regardless of the earlier competitive deadline.
+    assert [entry["opportunity_title"] for entry in group["directed"]] == [
+        "Directed sooner",
+        "Directed later",
+    ]
+    assert [entry["opportunity_title"] for entry in group["competitive"]] == ["Competitive early"]
+    assert group["has_directed"] is True
+
+
+def test_group_orders_awardees_directed_first_then_deadline_then_amount():
+    awards = pd.DataFrame(
+        [
+            {"award_id": "A", "amount": 100},
+            {"award_id": "B", "amount": 500},
+            {"award_id": "C", "amount": 300},
+        ]
+    )
+    rows = _grouping_rows(
+        [
+            {
+                "prior_award_id": "A",
+                "signal_class": "directed",
+                "confidence_bucket": "HIGH",
+                "opportunity_title": "A directed",
+                "opportunity_response_deadline": "2026-09-01",
+            },
+            {
+                "prior_award_id": "B",
+                "signal_class": "followon",
+                "confidence_bucket": "HIGH",
+                "opportunity_title": "B competitive",
+                "opportunity_response_deadline": "2026-08-01",
+            },
+            {
+                "prior_award_id": "C",
+                "signal_class": "directed",
+                "confidence_bucket": "HIGH",
+                "opportunity_title": "C directed",
+                "opportunity_response_deadline": "2026-08-15",
+            },
+        ]
+    )
+
+    groups = group_candidates_by_awardee(rows, awards)
+
+    # Directed-having awardees first (C sooner than A), then the competitive-only awardee B.
+    assert [group["award_id"] for group in groups] == ["C", "A", "B"]
+
+
+def test_group_keeps_below_threshold_matches_as_watchlist():
+    awards = pd.DataFrame([{"award_id": "A", "amount": 100}])
+    rows = _grouping_rows(
+        [
+            {
+                "prior_award_id": "A",
+                "signal_class": "followon",
+                "confidence_bucket": "WATCHLIST",
+                "opportunity_title": "Weak match",
+                "opportunity_response_deadline": "2026-09-01",
+            }
+        ]
+    )
+
+    groups = group_candidates_by_awardee(rows, awards)
+
+    assert len(groups) == 1
+    group = groups[0]
+    assert group["directed"] == []
+    assert group["competitive"] == []
+    assert [entry["opportunity_title"] for entry in group["watchlist"]] == ["Weak match"]
+    assert group["has_directed"] is False
+
+
+def test_group_emits_awardee_with_no_matched_procurement():
+    awards = pd.DataFrame([{"award_id": "A", "amount": 100}])
+    groups = group_candidates_by_awardee(pd.DataFrame(), awards)
+
+    assert len(groups) == 1
+    group = groups[0]
+    assert group["award_id"] == "A"
+    assert group["directed"] == []
+    assert group["competitive"] == []
+    assert group["watchlist"] == []

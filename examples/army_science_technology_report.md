@@ -4,56 +4,40 @@
 
 > Use this packet to route leads for human review. Recorded performance-period end dates do not verify technical completion, and screening results do not prove Phase III eligibility.
 
-## How to read this packet
+## Bottom line
 
-- A potential directed path is a government notice that may support a direct award and has public evidence pointing back to SBIR/STTR-funded work; it is not a Phase III determination.
-- A competitive follow-on is an open competition whose subject overlaps an award; topical overlap alone does not make it Phase III.
-- A Priority lead passed enough screening checks to review first, but still requires human validation.
-- Needs more evidence before routing means the public connection is incomplete or weak and should be held from representative routing.
-- For any Phase III path, confirm that the proposed work derives from, extends, or completes the prior SBIR/STTR-funded work.
+- 5 awardees with 6 relevant open procurements (4 could support a direct award).
+- Most urgent: Illustrative Terrain Robotics LLC — Robotic breach reconnaissance integration, responses due August 15, 2026.
+- Hold: 1 of 5 awardees have only weaker matches or no matched procurement this month.
 
-## Snapshot
+For any lead, confirm the new work "derives from, extends, or completes" the awardee's prior SBIR/STTR-funded work before anything moves. A match here is a starting point for review, not a decision.
 
-- Awards in this packet: 5 (new, changed, recently ended, or ending soon), totaling $5,750,000
-- Priority leads: 4 (3 possible directed paths; 1 competitive opportunity)
-- Needs more evidence before routing: 1
+## Awardees and their relevant procurements
 
-## Representative action queue
+### Illustrative Terrain Robotics LLC — Autonomous robotic breach reconnaissance
 
-- Validate SBIR/STTR lineage and technical fit for 3 possible directed paths.
-- Assess technical fit and acquisition strategy for 1 competitive opportunity.
-- Hold 1 watchlist lead until the stated evidence gaps are resolved.
-
-## Potential directed paths — validate lineage
-
-### Robotic breach reconnaissance integration
-
-**Disposition:** Potential directed Phase III path — validate lineage
-
-**Review question:** Does the SBIR/STTR-funded capability below satisfy the solicitation need as written?
-
-**Response deadline:** August 15, 2026
-**Suggested routing:** Maneuver Ground · All Arms Maneuver
-
-#### What the award funded
-
-**Autonomous robotic breach reconnaissance** — Illustrative Terrain Robotics LLC · Phase II · $1,800,000
+**Award:** Phase II · $1,800,000 · Newly awarded this month; Recorded end date is within 6 months (2026-11-30)
 
 > Autonomous ground mobility and sensing for obstacle characterization.
 
-#### What the solicitation asks for
+**Relevant open procurements**
 
-**Robotic breach reconnaissance integration**
+#### Robotic breach reconnaissance integration
+
+**Disposition:** Potential directed Phase III path — validate lineage — responses due August 15, 2026
+**Suggested routing:** Maneuver Ground · All Arms Maneuver
+
+**What the solicitation asks for**
 
 > The Army seeks integration and demonstration of autonomous ground vehicles that map obstacles, fuse electro-optical and lidar data, and share breach-lane information with maneuver formations.
 
-#### Technical connection to validate
+**Technical connection to validate**
 
 **Public-field comparison:** Both texts mention autonomous, breach, and ground. Both records list NAICS code 541715. Both records list product/service code (PSC) AC13.
 
 **Analyst screening note:** The award funded autonomous ground mobility and obstacle sensing; the solicitation asks to integrate those functions into a breach-reconnaissance system. A representative still needs to validate lineage and interfaces.
 
-#### Why this was surfaced
+**Why this was surfaced**
 
 - Candidate type: Possible directed path
 - Mission interest: All Arms Maneuver
@@ -63,40 +47,99 @@
 - Both records list product/service code (PSC) AC13.
 - Screening rank: Priority lead. This is a triage rank, not a probability or eligibility decision.
 
-#### Representative check
+**Representative check**
 
 Confirm that the solicitation derives from, extends, or completes the cited SBIR/STTR-funded work, and that the funded capability covers the stated need. The screening rank does not establish statutory Phase III lineage.
 
 **Source records:** Not supplied in this input
 
-### Resilient tactical network and assured PNT integration
+#### Counter-mine autonomy demonstration
 
-**Disposition:** Potential directed Phase III path — validate lineage
+**Disposition:** Potential directed Phase III path — validate lineage — responses due September 3, 2026
+**Suggested routing:** Maneuver Ground · All Arms Maneuver
 
-**Review question:** Does the SBIR/STTR-funded capability below satisfy the solicitation need as written?
+**What the solicitation asks for**
 
-**Response deadline:** August 22, 2026
-**Suggested routing:** Command and Control and Counter Command and Control · Command and Control (C2) and Counter C2
+> The Army seeks a sole-source demonstration that extends an existing autonomous ground-robot capability to detect and map buried mines along breach lanes.
 
-#### What the award funded
+**Technical connection to validate**
 
-**Assured PNT for resilient tactical mesh networks** — Illustrative Resilient Networks Inc. · Phase II · $1,250,000
+**Public-field comparison:** The notice text contains “extends”. Both texts mention autonomous, breach, and ground. Both records list NAICS code 541715. Both records list product/service code (PSC) AC13.
+
+**Analyst screening note:** The award funded autonomous ground mobility and obstacle sensing; this notice extends it to buried-mine detection along breach lanes. A representative still needs to validate lineage and interfaces.
+
+**Why this was surfaced**
+
+- Candidate type: Possible directed path
+- Mission interest: All Arms Maneuver
+- Technology tags: Autonomy; Sensors
+- The notice text contains “extends”.
+- Both texts mention autonomous, breach, and ground.
+- Both records list NAICS code 541715.
+- Both records list product/service code (PSC) AC13.
+- Screening rank: Priority lead. This is a triage rank, not a probability or eligibility decision.
+
+**Representative check**
+
+Confirm that the solicitation derives from, extends, or completes the cited SBIR/STTR-funded work, and that the funded capability covers the stated need. The screening rank does not establish statutory Phase III lineage.
+
+**Source records:** Not supplied in this input
+
+#### Electro-optical obstacle-mapping sensor follow-on
+
+**Disposition:** Competitive opportunity with technical overlap — responses due October 1, 2026
+**Suggested routing:** Maneuver Ground · All Arms Maneuver
+
+**What the solicitation asks for**
+
+> The Army seeks competitive proposals for electro-optical and lidar sensor packages that map obstacles and share terrain data with autonomous ground robots.
+
+**Technical connection to validate**
+
+**Public-field comparison:** Both texts mention autonomous and ground. Both records list NAICS code 541715. Both records list product/service code (PSC) AC13.
+
+**Analyst screening note:** The award funded autonomous obstacle sensing; this competitive notice seeks the electro-optical and lidar sensor package that feeds it. Assess platform fit and competition requirements.
+
+**Why this was surfaced**
+
+- Candidate type: Competitive follow-on
+- Mission interest: All Arms Maneuver
+- Technology tags: Autonomy; Sensors
+- Both texts mention autonomous and ground.
+- Both records list NAICS code 541715.
+- Both records list product/service code (PSC) AC13.
+- Screening rank: Priority lead. This is a triage rank, not a probability or eligibility decision.
+
+**Representative check**
+
+Assess the technical fit, acquisition strategy, and competition requirements. Topical overlap alone does not make a competitive opportunity a Phase III path.
+
+**Source records:** Not supplied in this input
+
+### Illustrative Resilient Networks Inc. — Assured PNT for resilient tactical mesh networks
+
+**Award:** Phase II · $1,250,000 · Newly observed in the current source; Recorded end date is within 6 months (2026-09-30)
 
 > Resilient communications and positioning in contested electromagnetic environments.
 
-#### What the solicitation asks for
+**Relevant open procurements**
 
-**Resilient tactical network and assured PNT integration**
+#### Resilient tactical network and assured PNT integration
+
+**Disposition:** Potential directed Phase III path — validate lineage — responses due August 22, 2026
+**Suggested routing:** Command and Control and Counter Command and Control · Command and Control (C2) and Counter C2
+
+**What the solicitation asks for**
 
 > The Army seeks a resilient tactical mesh-network prototype with assured positioning, navigation, and timing under jamming and intermittent connectivity.
 
-#### Technical connection to validate
+**Technical connection to validate**
 
 **Public-field comparison:** Both texts mention assured, mesh, positioning, resilient, and tactical. Both records list NAICS code 541715. Both records list product/service code (PSC) AC13.
 
 **Analyst screening note:** The award funded resilient communications and positioning; the solicitation asks for a tactical mesh prototype with assured PNT under jamming. A representative still needs to validate performance thresholds and lineage.
 
-#### Why this was surfaced
+**Why this was surfaced**
 
 - Candidate type: Possible directed path
 - Mission interest: Command and Control (C2) and Counter C2
@@ -106,40 +149,36 @@ Confirm that the solicitation derives from, extends, or completes the cited SBIR
 - Both records list product/service code (PSC) AC13.
 - Screening rank: Priority lead. This is a triage rank, not a probability or eligibility decision.
 
-#### Representative check
+**Representative check**
 
 Confirm that the solicitation derives from, extends, or completes the cited SBIR/STTR-funded work, and that the funded capability covers the stated need. The screening rank does not establish statutory Phase III lineage.
 
 **Source records:** Not supplied in this input
 
-### Autonomous contested-logistics and forward-repair pilot
+### Illustrative Expeditionary Logistics Systems LLC — Autonomous resupply and forward repair
 
-**Disposition:** Potential directed Phase III path — validate lineage
-
-**Review question:** Does the SBIR/STTR-funded capability below satisfy the solicitation need as written?
-
-**Response deadline:** August 29, 2026
-**Suggested routing:** Agile Sustainment and Ammo · Adaptive Sustainment
-
-#### What the award funded
-
-**Autonomous resupply and forward repair** — Illustrative Expeditionary Logistics Systems LLC · Phase II · $900,000
+**Award:** Phase II · $900,000 · Newly observed in the current source; Recorded end date is within 6 months (2026-07-31)
 
 > Autonomous material movement and additive repair for contested logistics.
 
-#### What the solicitation asks for
+**Relevant open procurements**
 
-**Autonomous contested-logistics and forward-repair pilot**
+#### Autonomous contested-logistics and forward-repair pilot
+
+**Disposition:** Potential directed Phase III path — validate lineage — responses due August 29, 2026
+**Suggested routing:** Agile Sustainment and Ammo · Adaptive Sustainment
+
+**What the solicitation asks for**
 
 > The Army seeks a pilot that combines autonomous last-mile resupply with deployable additive repair for dispersed units in contested logistics environments.
 
-#### Technical connection to validate
+**Technical connection to validate**
 
 **Public-field comparison:** Both texts mention additive, autonomous, contested, logistics, repair, and resupply. Both records list NAICS code 541715. Both records list product/service code (PSC) AC13.
 
 **Analyst screening note:** The award funded autonomous material movement and additive repair; the solicitation asks to combine both in a contested-logistics pilot. A representative still needs to validate scale and lineage.
 
-#### Why this was surfaced
+**Why this was surfaced**
 
 - Candidate type: Possible directed path
 - Mission interest: Adaptive Sustainment
@@ -149,42 +188,36 @@ Confirm that the solicitation derives from, extends, or completes the cited SBIR
 - Both records list product/service code (PSC) AC13.
 - Screening rank: Priority lead. This is a triage rank, not a probability or eligibility decision.
 
-#### Representative check
+**Representative check**
 
 Confirm that the solicitation derives from, extends, or completes the cited SBIR/STTR-funded work, and that the funded capability covers the stated need. The screening rank does not establish statutory Phase III lineage.
 
 **Source records:** Not supplied in this input
 
-## Competitive opportunities with technical overlap
+### Illustrative Signature Materials Corp. — Multispectral signature-management materials
 
-### Multispectral formation-protection materials demonstration
-
-**Disposition:** Competitive opportunity with technical overlap
-
-**Review question:** Does the SBIR/STTR-funded capability below satisfy the solicitation need as written?
-
-**Response deadline:** September 5, 2026
-**Suggested routing:** Layered Protection and CBRND · Formation Based Layer Protection
-
-#### What the award funded
-
-**Multispectral signature-management materials** — Illustrative Signature Materials Corp. · Phase II · $1,500,000
+**Award:** Phase II · $1,500,000 · Newly awarded this month; Recorded end date is within 6 months (2026-12-15)
 
 > Adaptive materials for reduced visual infrared and radio-frequency signatures.
 
-#### What the solicitation asks for
+**Relevant open procurements**
 
-**Multispectral formation-protection materials demonstration**
+#### Multispectral formation-protection materials demonstration
+
+**Disposition:** Competitive opportunity with technical overlap — responses due September 5, 2026
+**Suggested routing:** Layered Protection and CBRND · Formation Based Layer Protection
+
+**What the solicitation asks for**
 
 > The Army seeks field demonstration of lightweight materials that reduce visual, infrared, and radio-frequency signatures without impairing vehicle operation.
 
-#### Technical connection to validate
+**Technical connection to validate**
 
 **Public-field comparison:** Both texts mention frequency, infrared, materials, radio, signatures, and visual. Both records list NAICS code 541713. Both records list product/service code (PSC) AC13.
 
 **Analyst screening note:** The award funded multispectral signature-management materials; the solicitation asks for a field demonstration across the same signature bands. A representative still needs to assess platform fit and competition requirements.
 
-#### Why this was surfaced
+**Why this was surfaced**
 
 - Candidate type: Competitive follow-on
 - Mission interest: Formation Based Layer Protection
@@ -194,44 +227,38 @@ Confirm that the solicitation derives from, extends, or completes the cited SBIR
 - Both records list product/service code (PSC) AC13.
 - Screening rank: Priority lead. This is a triage rank, not a probability or eligibility decision.
 
-#### Representative check
+**Representative check**
 
 Assess the technical fit, acquisition strategy, and competition requirements. Topical overlap alone does not make a competitive opportunity a Phase III path.
 
 **Source records:** Not supplied in this input
 
-## Needs more evidence before routing
+### Illustrative Counter-Swarm Analytics Inc. — Collaborative counter-swarm sensing
 
-These leads receive the same evidence review as priority leads, but should not be routed until a representative resolves the missing or weak connection.
-
-### Collaborative counter-swarm sensing demonstration
-
-**Disposition:** Needs more evidence before routing
-
-**Review question:** Does the SBIR/STTR-funded capability below satisfy the solicitation need as written?
-
-**Response deadline:** September 12, 2026
-**Suggested routing:** Fires; Layered Protection and CBRND · Cross Domain Fires
-
-#### What the award funded
-
-**Collaborative counter-swarm sensing** — Illustrative Counter-Swarm Analytics Inc. · Phase I · $300,000
+**Award:** Phase I · $300,000 · Newly awarded this month; Recorded end date is within 6 months (2026-12-20)
 
 > Distributed sensing and decision support for counter-uncrewed systems.
 
-#### What the solicitation asks for
+_No open procurements matched this month._
 
-**Collaborative counter-swarm sensing demonstration**
+**Weaker matches — need more evidence before routing**
+
+#### Collaborative counter-swarm sensing demonstration
+
+**Disposition:** Needs more evidence before routing — responses due September 12, 2026
+**Suggested routing:** Fires; Layered Protection and CBRND · Cross Domain Fires
+
+**What the solicitation asks for**
 
 > The Army seeks a competitive demonstration of distributed sensors and decision support that detect, classify, and prioritize multiple uncrewed aerial threats.
 
-#### Technical connection to validate
+**Technical connection to validate**
 
 **Public-field comparison:** Both texts mention decision, distributed, support, and uncrewed. Both records list NAICS code 541715. Both records list product/service code (PSC) AC12.
 
 **Analyst screening note:** The award funded distributed sensing and decision support; the solicitation asks for detection and prioritization of multiple uncrewed aerial threats. The topical link is plausible but the Phase I maturity and competitive path need more evidence.
 
-#### Why this was surfaced
+**Why this was surfaced**
 
 - Candidate type: Competitive follow-on
 - Mission interest: Cross Domain Fires
@@ -241,7 +268,7 @@ These leads receive the same evidence review as priority leads, but should not b
 - Both records list product/service code (PSC) AC12.
 - Screening rank: Evidence watchlist. This is a triage rank, not a probability or eligibility decision.
 
-#### Representative check
+**Representative check**
 
 Assess the technical fit, acquisition strategy, and competition requirements. Topical overlap alone does not make a competitive opportunity a Phase III path.
 
