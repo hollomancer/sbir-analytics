@@ -1,0 +1,131 @@
+# Awardee-First Procurement Transition Packet — Design
+
+**Date:** 2026-07-29
+**Status:** Approved (design), pending implementation
+**Branch:** `feat/awardee-first-procurement-packet` (built on PR #464 branch, which contains all of PR #450)
+
+## Problem
+
+The monthly procurement-transition packet (for SBA Procurement Center Representatives)
+today renders **one section per matched pair** and leads with methodology. Two issues:
+
+1. **Not awardee-first.** A PCR thinks in terms of "which awardees do I own, and what
+   can each of them win next?" The current packet scatters an awardee across the report
+   and only shows its single best match, so the rep cannot see the full set of open
+   procurements a given awardee is relevant to.
+2. **No bottom line.** The report opens with a "how to read" glossary instead of the
+   answer (how many leads, which is most urgent, what to hold).
+
+## Goal
+
+Reshape the packet so each **awardee** is the unit. For every transitioning awardee,
+list **every** open procurement it is relevant to — direct-award-possible first, then
+competitive, soonest deadline first — under a BLUF header.
+
+## Scope
+
+**In scope (rendering only):**
+- New pure helper `group_candidates_by_awardee` in
+  `sbir_etl/reporting/procurement_transition/core.py`.
+- Rework the markdown section builder to iterate awardee groups. HTML is derived from
+  the markdown via `MarkdownIt`, so it follows automatically.
+- BLUF header block.
+- Regenerated `examples/army_science_technology_report.md` golden file.
+- Unit tests for the grouping helper.
+
+**Out of scope (unchanged):**
+- `pairing.py`, `assets.py`, `similarity.py`, scoring weights/thresholds. The scored
+  candidate frame is already award×opportunity many-to-many with a per-row score and
+  HIGH flag; weaker matches already exist as non-HIGH rows and are simply hidden today.
+- `phase_iii_candidates.parquet` schema (the pair-grained audit ledger stays as-is).
+- Any new solicitation source or threshold relaxation.
+
+## Design
+
+### Data flow
+
+```
+scored candidates (award × opportunity rows, each with score + is_high)
+        │
+        ▼
+group_candidates_by_awardee(scored_df, awards_df)  ── pure, testable
+        │   → list[AwardeeGroup]
+        ▼
+render_markdown_packet(groups, month)  ── section per awardee
+        │
+        ▼
+MarkdownIt → sanitized HTML   (existing path, unchanged)
+```
+
+### `AwardeeGroup` shape
+
+A plain dataclass (or dict) per awardee:
+
+- `award_id`, `company`, `award_title`, `phase`, `amount`, `abstract`
+- `award_why_listed` (reuses existing `_award_why_listed`)
+- `directed`: list of procurement matches, tier = direct-award-possible
+- `competitive`: list of procurement matches, tier = competitive follow-on
+- `watchlist`: below-threshold matches (kept, not dropped)
+- each procurement match carries: title, notice type, response deadline,
+  evidence facts (reuses existing `_public_field_facts`), source url
+
+### Ordering rules
+
+**Awardees:**
+1. Awardees with ≥1 directed (direct-award-possible) match first.
+2. Then by soonest procurement response deadline (min over the awardee's matches).
+3. Then by award amount descending.
+
+**Procurements within an awardee:**
+1. Directed before competitive.
+2. Soonest response deadline first.
+3. Below-threshold matches demoted to a per-awardee "weaker — needs more evidence"
+   sub-list (not removed).
+
+### BLUF header
+
+```
+## Bottom line
+- N awardees with M relevant open procurements (X could support a direct award).
+- Most urgent: <awardee> — <procurement>, responses due <date>.
+- Hold: <count> awardees have only weaker matches or none.
+
+For any lead, confirm the new work "derives from, extends, or completes" the awardee's
+prior SBIR/STTR work before anything moves. A match here is a starting point, not a decision.
+```
+
+The statutory test appears **once**, in the BLUF, and is not repeated per section.
+
+### Edge cases
+
+- **Awardee with zero matched procurements:** still listed, with
+  "No open procurements matched this month." The rep sees the whole transitioning cohort.
+- **Awardee with only watchlist matches:** listed under a "Hold — weaker evidence" grouping.
+- **Empty packet (no awardees):** existing empty-state behavior preserved.
+
+## Testing
+
+Unit tests (`tests/unit/reporting/test_procurement_transition.py` additions):
+1. Directed-before-competitive ordering within an awardee.
+2. Soonest-deadline ordering of procurements.
+3. Awardee ordering (directed-first, then deadline, then amount).
+4. Below-threshold match demoted to watchlist, not dropped.
+5. Zero-match awardee still emitted.
+
+Plus regenerate `examples/army_science_technology_report.md` and assert the renderer
+reproduces it (golden test) so future drift is caught.
+
+## Rejected alternatives
+
+- **Inline grouping in the string builder** — loses unit testability of the ordering rules.
+- **Push grouping into the parquet asset** — that frame is the pair-grained audit ledger;
+  reshaping it would break the audit CSVs. Keep grouping in the presentation layer.
+- **Relax thresholds / add sources** — a different concern (match coverage), not this
+  reshape. Deferred.
+
+## Consolidation
+
+This branch is built on `codex/pr450-address-comments` (PR #464), which already contains
+all of `agent/monthly-procurement-transition-report` (PR #450). A single PR against `main`
+will therefore carry all three bodies of work. PRs #450 and #464 will be closed with a
+pointer to the consolidated PR.
