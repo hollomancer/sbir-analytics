@@ -6,7 +6,14 @@ opportunities, identifiers, dates, amounts, scores, and alignment judgments are
 synthetic. They demonstrate report structure only and must not be treated as
 live acquisition intelligence.
 
-The packet leads with a bottom line, then groups every lead under the awardee it
+The packet leads with a bottom line, then a **Potential transition paths** table
+that illustrates, one row per path, what each awardee built (in plain language),
+an open procurement it could feed, why they connect, and the response deadline.
+The plain-language "what they built" summary is a deterministic first-sentence
+trim by default; wiring an optional `abstract_simplifier` upgrades it to genuine
+plain language without changing the deterministic fallback.
+
+Below the table, the packet groups every lead under the awardee it
 belongs to: each awardee section states the funded award scope once, then lists
 every open procurement that awardee is relevant to — possible direct-award paths
 first, then competitive follow-ons, each ordered by soonest response deadline.

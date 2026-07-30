@@ -431,6 +431,21 @@ def _sort_awards_for_packet(awards: pd.DataFrame) -> pd.DataFrame:
     )
 
 
+def _plain_abstract(value: Any, *, limit: int = 200) -> str | None:
+    """Deterministically shorten an award abstract to its leading sentence.
+
+    This is the always-available fallback; an optional ``abstract_simplifier``
+    hook may replace it with genuine plain language when a model is wired in.
+    """
+
+    text = _display(value)
+    if text is None:
+        return None
+    collapsed = re.sub(r"\s+", " ", text).strip()
+    first_sentence = re.split(r"(?<=[.!?])\s+", collapsed)[0]
+    return _markdown_text(first_sentence, default="", limit=limit) or None
+
+
 def _response_deadline_ts(row: pd.Series) -> pd.Timestamp | None:
     text = _display(
         _first_value(row.get("opportunity_response_deadline"), row.get("target_response_deadline"))
@@ -561,6 +576,7 @@ class MonthlyReportBuilder:
         output_root: Path | str,
         summarizer: Callable[[dict[str, Any]], str | None] | None = None,
         max_summaries: int = 10,
+        abstract_simplifier: Callable[[str], str | None] | None = None,
     ) -> None:
         _month_bounds(report_month)
         if max_summaries < 0:
@@ -569,6 +585,7 @@ class MonthlyReportBuilder:
         self.output_dir = Path(output_root) / report_month
         self.summarizer = summarizer
         self.max_summaries = max_summaries
+        self.abstract_simplifier = abstract_simplifier
         self._summary_attempts = 0
         self._summary_targets: set[str] = set()
 
@@ -877,6 +894,91 @@ class MonthlyReportBuilder:
                 lines += self._procurement_entry(entry)
         return lines
 
+    def _plain_award_summary(self, award: pd.Series) -> str:
+        """Plain-language 'what they built': AI upgrade if wired, else first sentence."""
+
+        text = _display(_first_value(award.get("abstract"), award.get("award_abstract")))
+        if text is None:
+            return "Not supplied"
+        if self.abstract_simplifier is not None:
+            try:
+                simplified = self.abstract_simplifier(text)
+            except Exception:  # optional hook must never break the deterministic packet
+                simplified = None
+            plain = _markdown_text(simplified, default="", limit=200) if simplified else None
+            if plain:
+                return plain
+        return _plain_abstract(text) or "Not supplied"
+
+    def _why_it_connects(self, row: pd.Series) -> str:
+        """Compact, deterministic reason the awardee and procurement connect."""
+
+        award_abstract = _display(
+            _first_value(row.get("award_abstract"), row.get("prior_abstract"))
+        )
+        opportunity_description = _display(
+            _first_value(row.get("opportunity_description"), row.get("target_description"))
+        )
+        facts = _public_field_facts(
+            row,
+            award_abstract=award_abstract,
+            opportunity_description=opportunity_description,
+        )
+        if not facts:
+            return "No shared public fields — compare the source records."
+        return _markdown_text(" ".join(facts[:3]), default="", limit=220) or "See lead detail."
+
+    def _transition_paths_table(self, groups: list[dict[str, Any]]) -> list[str]:
+        """At-a-glance transition paths: what each awardee built → what it could feed next."""
+
+        lines = [
+            "## Potential transition paths",
+            "",
+            "> Each row is one path to validate: what the awardee built, an open procurement "
+            "it could feed, why they connect, and the response deadline. Plain-language "
+            "summaries are review aids, not eligibility determinations.",
+            "",
+            "| Awardee | What they built | Possible next procurement | Why it connects "
+            "| Respond by |",
+            "|---|---|---|---|---|",
+        ]
+        for group in groups:
+            award = group["award"]
+            company = _markdown_text(award.get("company"), default="Company unavailable", limit=120)
+            built = self._plain_award_summary(award)
+            paths = [(entry, "direct-award") for entry in group["directed"]]
+            paths += [(entry, "competitive") for entry in group["competitive"]]
+            if not paths:
+                end_date = _display(award.get("recorded_end_date"))
+                note = f"ends {end_date}" if end_date else "no recorded end date"
+                lines.append(f"| {company} | {built} | — no matched procurement | — | {note} |")
+                continue
+            for index, (entry, path_label) in enumerate(paths):
+                procurement = _markdown_text(
+                    _first_value(entry.get("opportunity_title"), entry.get("target_id")),
+                    default="Untitled opportunity",
+                    limit=140,
+                )
+                deadline = _markdown_text(
+                    _date_label(
+                        _first_value(
+                            entry.get("opportunity_response_deadline"),
+                            entry.get("target_response_deadline"),
+                        )
+                    ),
+                    default="Not published",
+                    limit=60,
+                )
+                why = self._why_it_connects(entry)
+                awardee_cell = company if index == 0 else ""
+                built_cell = built if index == 0 else ""
+                lines.append(
+                    f"| {awardee_cell} | {built_cell} | {procurement} ({path_label}) | "
+                    f"{why} | {deadline} |"
+                )
+        lines.append("")
+        return lines
+
     def _packet(self, center: str, rows: pd.DataFrame, awards: pd.DataFrame) -> str:
         groups = group_candidates_by_awardee(rows, awards)
         directed_total = sum(len(group["directed"]) for group in groups)
@@ -948,9 +1050,9 @@ class MonthlyReportBuilder:
             "awardee's prior SBIR/STTR-funded work before anything moves. A match here is a "
             "starting point for review, not a decision.",
             "",
-            "## Awardees and their relevant procurements",
-            "",
         ]
+        lines += self._transition_paths_table(groups)
+        lines += ["## Awardees and their relevant procurements", ""]
         if groups:
             for group in groups:
                 lines += self._awardee_section(group)

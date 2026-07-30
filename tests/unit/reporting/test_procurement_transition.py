@@ -573,3 +573,82 @@ def test_group_emits_awardee_with_no_matched_procurement():
     assert group["directed"] == []
     assert group["competitive"] == []
     assert group["watchlist"] == []
+
+
+def _transition_packet(tmp_path, *, abstract_simplifier=None) -> str:
+    cohorts = build_award_cohorts(_awards(), pd.DataFrame(), report_month="2026-06")
+    candidates = pd.DataFrame(
+        [
+            {
+                "candidate_id": "C-1",
+                "signal_class": "directed",
+                "prior_award_id": "A-1",
+                "target_id": "O-1",
+                "candidate_score": 0.8,
+                "is_high_confidence": True,
+            }
+        ]
+    )
+    opportunities = pd.DataFrame(
+        [
+            {
+                "notice_id": "O-1",
+                "title": "Navigation procurement",
+                "description": "Integrate autonomous navigation into an unmanned aircraft.",
+                "office": "NAVAIR",
+                "response_deadline": "2026-08-01",
+                "naics_code": "541715",
+                "psc_code": "AC13",
+            }
+        ]
+    )
+    output = MonthlyReportBuilder(
+        report_month="2026-06",
+        output_root=tmp_path,
+        abstract_simplifier=abstract_simplifier,
+    ).write(
+        award_cohorts=cohorts,
+        candidates=candidates,
+        opportunities=opportunities,
+    )
+    return (output / "centers" / "navair.md").read_text()
+
+
+def test_transition_paths_table_shows_deterministic_plain_summary(tmp_path):
+    packet = _transition_packet(tmp_path)
+
+    assert "## Potential transition paths" in packet
+    assert "| Awardee | What they built | Possible next procurement |" in packet
+    # Deterministic default: the leading sentence of the real abstract, no AI.
+    assert "Navigation software that fuses onboard sensors for autonomous flight." in packet
+    assert "Navigation procurement (direct-award)" in packet
+    assert "Both records list NAICS code 541715." in packet
+
+
+def test_transition_paths_table_uses_ai_upgrade_when_provided(tmp_path):
+    packet = _transition_packet(
+        tmp_path,
+        abstract_simplifier=lambda text: "Software that flies a drone by itself.",
+    )
+
+    # The AI-plain summary drives the transition-paths table cell...
+    table = packet.split("## Awardees")[0]
+    assert "Software that flies a drone by itself." in table
+    assert "Navigation software that fuses onboard sensors" not in table
+    # ...while the detailed awardee section still shows the real abstract as evidence.
+    detail = packet.split("## Awardees")[1]
+    assert "Navigation software that fuses onboard sensors" in detail
+
+
+def test_transition_paths_table_marks_awardee_without_a_path(tmp_path):
+    awards = _awards(end_date="2026-08-31")
+    cohorts = build_award_cohorts(awards, pd.DataFrame(), report_month="2026-06")
+    output = MonthlyReportBuilder(report_month="2026-06", output_root=tmp_path).write(
+        award_cohorts=cohorts,
+        candidates=pd.DataFrame(),
+        opportunities=pd.DataFrame(),
+    )
+    packet = (output / "centers" / "navy.md").read_text()
+
+    assert "— no matched procurement" in packet
+    assert "ends 2026-08-31" in packet

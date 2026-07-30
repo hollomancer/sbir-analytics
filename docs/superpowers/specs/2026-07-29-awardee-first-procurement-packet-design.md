@@ -103,6 +103,29 @@ The statutory test appears **once**, in the BLUF, and is not repeated per sectio
 - **Awardee with only watchlist matches:** listed under a "Hold — weaker evidence" grouping.
 - **Empty packet (no awardees):** existing empty-state behavior preserved.
 
+## Addendum — Potential transition paths table (2026-07-29)
+
+Follow-on to the awardee-first reshape, same PR. Adds a headline
+`## Potential transition paths` table placed after the Bottom line and before the
+detailed awardee sections. One row per awardee→procurement path, illustrating the
+transition: **awardee · what they built (plain) · possible next procurement (with
+path type) · why it connects · respond-by**.
+
+- **Plain "what they built":** deterministic leading-sentence trim (`_plain_abstract`)
+  by default; an optional `abstract_simplifier: Callable[[str], str | None]`
+  constructor hook upgrades the table cell to genuine plain language when wired to a
+  model. Deterministic-by-default is preserved — no key, no behavior change. The
+  detailed awardee section still shows the full real abstract as evidence; only the
+  table cell is simplified.
+- **Why it connects:** compacted reuse of `_public_field_facts` (shared NAICS/PSC,
+  overlapping terms, lineage phrases).
+- **Multi-path awardees:** company + built cells shown once, blank on following rows.
+- **Zero-path awardees:** one row marked "— no matched procurement · ends <date>",
+  folding in the award-pipeline's end-date value.
+
+Rendering-only; no scoring/pairing/schema change. The standalone award-pipeline
+table is retained.
+
 ## Testing
 
 Unit tests (`tests/unit/reporting/test_procurement_transition.py` additions):

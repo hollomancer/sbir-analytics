@@ -12,6 +12,20 @@
 
 For any lead, confirm the new work "derives from, extends, or completes" the awardee's prior SBIR/STTR-funded work before anything moves. A match here is a starting point for review, not a decision.
 
+## Potential transition paths
+
+> Each row is one path to validate: what the awardee built, an open procurement it could feed, why they connect, and the response deadline. Plain-language summaries are review aids, not eligibility determinations.
+
+| Awardee | What they built | Possible next procurement | Why it connects | Respond by |
+|---|---|---|---|---|
+| Illustrative Terrain Robotics LLC | Autonomous ground mobility and sensing for obstacle characterization. | Robotic breach reconnaissance integration (direct-award) | Both texts mention autonomous, breach, and ground. Both records list NAICS code 541715. Both records list product/service code (PSC) AC13. | August 15, 2026 |
+|  |  | Counter-mine autonomy demonstration (direct-award) | The notice text contains “extends”. Both texts mention autonomous, breach, and ground. Both records list NAICS code 541715. | September 3, 2026 |
+|  |  | Electro-optical obstacle-mapping sensor follow-on (competitive) | Both texts mention autonomous and ground. Both records list NAICS code 541715. Both records list product/service code (PSC) AC13. | October 1, 2026 |
+| Illustrative Resilient Networks Inc. | Resilient communications and positioning in contested electromagnetic environments. | Resilient tactical network and assured PNT integration (direct-award) | Both texts mention assured, mesh, positioning, resilient, and tactical. Both records list NAICS code 541715. Both records list product/service code (PSC) AC13. | August 22, 2026 |
+| Illustrative Expeditionary Logistics Systems LLC | Autonomous material movement and additive repair for contested logistics. | Autonomous contested-logistics and forward-repair pilot (direct-award) | Both texts mention additive, autonomous, contested, logistics, repair, and resupply. Both records list NAICS code 541715. Both records list product/service code (PSC) AC13. | August 29, 2026 |
+| Illustrative Signature Materials Corp. | Adaptive materials for reduced visual infrared and radio-frequency signatures. | Multispectral formation-protection materials demonstration (competitive) | Both texts mention frequency, infrared, materials, radio, signatures, and visual. Both records list NAICS code 541713. Both records list product/service code (PSC) AC13. | September 5, 2026 |
+| Illustrative Counter-Swarm Analytics Inc. | Distributed sensing and decision support for counter-uncrewed systems. | — no matched procurement | — | ends 2026-12-20 |
+
 ## Awardees and their relevant procurements
 
 ### Illustrative Terrain Robotics LLC — Autonomous robotic breach reconnaissance
