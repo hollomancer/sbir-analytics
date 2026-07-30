@@ -147,6 +147,25 @@ replaced. The packet is now: **Bottom line → Potential transition paths (table
 
 Rendering-only; no scoring/pairing/schema change.
 
+## Addendum — evidence-specific Validate + Built-on context (2026-07-29)
+
+Same PR. Two refinements to the path blocks:
+
+- **`**Built on:**`** — each block now opens with the awardee's plain-language
+  funded scope (`_plain_award_summary`), so the block carries its own technology
+  context instead of relying on the table above.
+- **Evidence-specific `**Validate:**`** — replaces the constant boilerplate
+  (which was tautologically always true) with `_validate_line(row, signal)`,
+  derived from the actual public fields: whether the notice names the awardee's
+  UEI, the finest shared org level (office > organization > agency), and any
+  lineage phrase present. Directed and competitive paths get different guidance;
+  the always-true "a screening rank does not establish lineage" disclaimer is
+  dropped from every row (it remains once in Methodology). Shared UEI/org logic
+  is factored into `_notice_names_awardee` / `_matching_organization` and reused
+  by `_public_field_facts` to avoid drift.
+
+Deterministic; no scoring/pairing/schema change.
+
 ## Testing
 
 Unit tests (`tests/unit/reporting/test_procurement_transition.py` additions):

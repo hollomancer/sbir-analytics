@@ -9,6 +9,7 @@ from sbir_etl.reporting.procurement_transition import (
     build_award_cohorts,
     group_candidates_by_awardee,
 )
+from sbir_etl.reporting.procurement_transition.core import _validate_line
 
 
 class _HTMLProbe(HTMLParser):
@@ -641,6 +642,53 @@ def test_transition_paths_table_deterministic_without_ai(tmp_path):
 
     # No simplifier: the leading sentence of the real abstract, verbatim.
     assert "Navigation software that fuses onboard sensors for autonomous flight." in packet
+
+
+def test_path_detail_includes_built_on_context(tmp_path):
+    packet = _transition_packet(tmp_path)
+
+    assert "**Built on:** Navigation software that fuses onboard sensors" in packet
+
+
+def test_validate_line_cites_lineage_phrase_when_present():
+    row = pd.Series(
+        {
+            "opportunity_description": "This Phase III sole source effort extends the prior work.",
+        }
+    )
+    line = _validate_line(row, "directed")
+
+    assert "derives from, extends, or completes" in line
+    assert "“Phase III”" in line
+    assert "statement of work" in line
+
+
+def test_validate_line_flags_named_awardee_uei():
+    row = pd.Series(
+        {
+            "award_uei": "UEI000000001",
+            "opportunity_awardee_uei": "UEI000000001",
+            "opportunity_description": "Integrate the capability into a prototype.",
+        }
+    )
+    line = _validate_line(row, "directed")
+
+    assert "names the awardee's UEI" in line
+
+
+def test_validate_line_flags_missing_link_when_no_shared_fields():
+    row = pd.Series({"opportunity_description": "Integrate the capability into a prototype."})
+    line = _validate_line(row, "directed")
+
+    assert "no same-firm or same-office link" in line
+
+
+def test_validate_line_marks_competitive_as_open_competition():
+    row = pd.Series({"opportunity_description": "Open competition for a new sensor."})
+    line = _validate_line(row, "followon")
+
+    assert "open competition, not a directed award" in line
+    assert "derives from, extends, or completes" not in line
 
 
 def test_transition_paths_table_marks_awardee_without_a_path(tmp_path):

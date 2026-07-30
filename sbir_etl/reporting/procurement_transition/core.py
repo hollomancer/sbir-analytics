@@ -6,7 +6,7 @@ import hashlib
 import html
 import json
 import re
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import Any
@@ -297,7 +297,9 @@ def _human_list(values: list[str]) -> str:
     return f"{', '.join(values[:-1])}, and {values[-1]}"
 
 
-def _matching_organization_fact(row: pd.Series) -> str | None:
+def _matching_organization(row: pd.Series) -> tuple[str, str] | None:
+    """Finest org level (office > organization > agency) shared by award and notice."""
+
     for award_field, opportunity_fields, label in (
         ("award_office", ("opportunity_office", "target_office"), "office"),
         ("award_branch", ("opportunity_sub_tier", "target_sub_agency"), "organization"),
@@ -308,8 +310,92 @@ def _matching_organization_fact(row: pd.Series) -> str | None:
             _first_value(*(row.get(name) for name in opportunity_fields))
         )
         if award_value and opportunity_value and _same_text(award_value, opportunity_value):
-            return f"The award and notice list the same {label} ({award_value})."
+            return label, award_value
     return None
+
+
+def _matching_organization_fact(row: pd.Series) -> str | None:
+    match = _matching_organization(row)
+    if match is None:
+        return None
+    label, value = match
+    return f"The award and notice list the same {label} ({value})."
+
+
+def _notice_names_awardee(row: pd.Series) -> bool:
+    """True iff the notice carries the awardee's own UEI (a strong lineage signal)."""
+
+    award_uei = _normalized_identifier(
+        _first_value(row.get("award_uei"), row.get("uei"), row.get("recipient_uei"))
+    )
+    opportunity_uei = _normalized_identifier(
+        _first_value(
+            row.get("opportunity_awardee_uei"),
+            row.get("awardee_uei"),
+            row.get("ueiSAM"),
+            row.get("target_recipient_uei"),
+        )
+    )
+    return bool(award_uei and award_uei == opportunity_uei)
+
+
+def _lineage_labels(phrases: Iterable[str]) -> list[str]:
+    return [
+        "Phase III" if phrase == "phase iii" else "Phase 3" if phrase == "phase 3" else phrase
+        for phrase in phrases
+    ]
+
+
+def _validate_line(row: pd.Series, signal: str) -> str:
+    """Path-specific validation step derived from the actual public evidence."""
+
+    opportunity_description = _display(
+        _first_value(row.get("opportunity_description"), row.get("target_description"))
+    )
+    lineage = _lineage_labels(find_lineage_phrases(opportunity_description))
+    lineage_clause = (
+        f" The notice text says {_human_list([f'“{label}”' for label in lineage])} — read the "
+        "statement of work to confirm it extends this awardee's effort, not a generic capability."
+        if lineage
+        else ""
+    )
+
+    if signal != "directed":
+        return (
+            "Assess technical fit, acquisition strategy, and competition requirements — this is "
+            "an open competition, not a directed award." + lineage_clause
+        )
+
+    parts = [
+        "Confirm the work derives from, extends, or completes this awardee's prior "
+        "SBIR/STTR-funded effort and covers the stated need."
+    ]
+    if lineage_clause:
+        parts.append(lineage_clause.strip())
+    if _notice_names_awardee(row):
+        parts.append(
+            "The notice names the awardee's UEI, a strong lineage signal — verify it refers to "
+            "this award."
+        )
+    else:
+        match = _matching_organization(row)
+        level = match[0] if match else None
+        if level == "office":
+            parts.append(
+                "It shares the prior award's buying office, a strong continuity signal — confirm "
+                "the effort continues that work."
+            )
+        elif level in ("organization", "agency"):
+            parts.append(
+                f"It matches only at the {level} level — confirm the buying office actually "
+                "funded the prior effort."
+            )
+        else:
+            parts.append(
+                "The public fields show no same-firm or same-office link — confirm the buying "
+                "office funded the prior effort before treating this as directed."
+            )
+    return " ".join(parts)
 
 
 def _public_field_facts(
@@ -321,27 +407,18 @@ def _public_field_facts(
     """Describe deterministic, reader-verifiable links in the merged public fields."""
 
     facts: list[str] = []
-    award_uei = _first_value(row.get("award_uei"), row.get("uei"), row.get("recipient_uei"))
-    opportunity_uei = _first_value(
-        row.get("opportunity_awardee_uei"),
-        row.get("awardee_uei"),
-        row.get("ueiSAM"),
-        row.get("target_recipient_uei"),
-    )
-    normalized_award_uei = _normalized_identifier(award_uei)
-    if normalized_award_uei and normalized_award_uei == _normalized_identifier(opportunity_uei):
-        facts.append(f"The notice names the SBIR/STTR awardee (UEI {normalized_award_uei}).")
+    if _notice_names_awardee(row):
+        award_uei = _normalized_identifier(
+            _first_value(row.get("award_uei"), row.get("uei"), row.get("recipient_uei"))
+        )
+        facts.append(f"The notice names the SBIR/STTR awardee (UEI {award_uei}).")
 
     if organization_fact := _matching_organization_fact(row):
         facts.append(organization_fact)
 
     lineage_phrases = find_lineage_phrases(opportunity_description)
     if lineage_phrases:
-        labels = [
-            "Phase III" if phrase == "phase iii" else "Phase 3" if phrase == "phase 3" else phrase
-            for phrase in lineage_phrases
-        ]
-        quoted = [f"“{label}”" for label in labels]
+        quoted = [f"“{label}”" for label in _lineage_labels(lineage_phrases)]
         facts.append(f"The notice text contains {_human_list(quoted)}.")
 
     award_text = " ".join(
@@ -750,7 +827,11 @@ class MonthlyReportBuilder:
             self._summary_attempts += 1
             summary = self.summarizer(entry.to_dict())
 
-        lines = [f"### {company} → {procurement} — {kind}, respond by {deadline}", ""]
+        lines = [
+            f"### {company} → {procurement} — {kind}, respond by {deadline}",
+            "",
+            f"**Built on:** {self._plain_award_summary(award)}",
+        ]
         if opportunity_description:
             lines.append(f"**Asks for:** {_markdown_text(opportunity_description, limit=360)}")
         else:
@@ -773,17 +854,7 @@ class MonthlyReportBuilder:
             lines.append(f"**Analyst note:** {_markdown_text(rationale, limit=360)}")
         if summary:
             lines.append(f"**Evidence-bounded comparison:** {_markdown_text(summary, limit=360)}")
-        if signal == "directed":
-            lines.append(
-                "**Validate:** confirm the work derives from, extends, or completes the prior "
-                "SBIR/STTR-funded effort and covers the stated need. A screening rank does not "
-                "establish statutory Phase III lineage."
-            )
-        else:
-            lines.append(
-                "**Validate:** assess technical fit, acquisition strategy, and competition "
-                "requirements. Topical overlap alone does not make this a Phase III path."
-            )
+        lines.append(f"**Validate:** {_markdown_text(_validate_line(entry, signal), limit=500)}")
         award_url = _safe_url(
             _first_value(entry.get("award_source_url"), entry.get("prior_source_url"))
         )
