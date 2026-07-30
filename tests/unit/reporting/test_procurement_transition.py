@@ -97,12 +97,11 @@ def test_writes_center_packet_and_manifest(tmp_path):
     assert (output / "centers" / "navair.md").exists()
     packet = (output / "centers" / "navair.md").read_text()
     assert "# Monthly Procurement Transition Packet — NAVAIR" in packet
-    assert "Potential directed Phase III path" in packet
-    assert "### Drone Co — Autonomous navigation" in packet
+    assert "### Drone Co → Navigation procurement — direct-award" in packet
     assert "Navigation software that fuses onboard sensors" in packet
-    assert "**What the solicitation asks for**" in packet
+    assert "**Asks for:**" in packet
     assert "integrate autonomous navigation" in packet
-    assert "**Technical connection to validate**" in packet
+    assert "**Why it connects:**" in packet
     assert "The notice names the SBIR/STTR awardee (UEI UEI000000001)." in packet
     assert "The award and notice list the same agency (DEFENSE)." in packet
     assert "The notice text contains “Phase III” and “sole source”." in packet
@@ -115,7 +114,8 @@ def test_writes_center_packet_and_manifest(tmp_path):
     assert "critical-technology alignment" not in packet
     assert "composite 0.80" not in packet
     assert "## Bottom line" in packet
-    assert "## Awardees and their relevant procurements" in packet
+    assert "## Potential transition paths" in packet
+    assert "## Path details" in packet
     assert "relevant open procurement" in packet
     assert "derives from, extends, or completes" in packet
     assert "derives from, extends, or uses" not in packet
@@ -182,12 +182,12 @@ def test_missing_descriptions_and_unsafe_public_fields_are_explicit(tmp_path):
     )
     packet = (output / "centers" / "navair.md").read_text()
 
-    assert "Needs more evidence before routing" in packet
+    assert "needs more evidence" in packet
     assert "Detailed solicitation text was not retrieved" in packet
     assert "&lt;script&gt;" in packet
     assert "<script>" not in packet
     assert "[integration](javascript:" not in packet
-    assert "**Source records:** Not supplied in this input" in packet
+    assert "**Sources:** Not supplied in this input" in packet
     assert "C\\# sensor fusion \\| autonomous control" in packet
 
     html_packet = (output / "centers" / "navair.html").read_text()
@@ -225,7 +225,7 @@ def test_candidates_without_confidence_default_to_watchlist(tmp_path):
 
     master = pd.read_csv(output / "master_candidates.csv")
     assert master.loc[0, "confidence_bucket"] == "WATCHLIST"
-    assert "Needs more evidence before routing" in (output / "centers" / "navair.md").read_text()
+    assert "needs more evidence" in (output / "centers" / "navair.md").read_text()
 
 
 def test_missing_center_is_routed_to_unassigned(tmp_path):
@@ -631,13 +631,16 @@ def test_transition_paths_table_uses_ai_upgrade_when_provided(tmp_path):
         abstract_simplifier=lambda text: "Software that flies a drone by itself.",
     )
 
-    # The AI-plain summary drives the transition-paths table cell...
-    table = packet.split("## Awardees")[0]
-    assert "Software that flies a drone by itself." in table
-    assert "Navigation software that fuses onboard sensors" not in table
-    # ...while the detailed awardee section still shows the real abstract as evidence.
-    detail = packet.split("## Awardees")[1]
-    assert "Navigation software that fuses onboard sensors" in detail
+    # The AI-plain summary drives the 'what they built' cell; the raw abstract is dropped.
+    assert "Software that flies a drone by itself." in packet
+    assert "Navigation software that fuses onboard sensors" not in packet
+
+
+def test_transition_paths_table_deterministic_without_ai(tmp_path):
+    packet = _transition_packet(tmp_path)
+
+    # No simplifier: the leading sentence of the real abstract, verbatim.
+    assert "Navigation software that fuses onboard sensors for autonomous flight." in packet
 
 
 def test_transition_paths_table_marks_awardee_without_a_path(tmp_path):

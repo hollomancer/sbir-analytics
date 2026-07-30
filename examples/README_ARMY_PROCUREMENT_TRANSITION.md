@@ -6,21 +6,23 @@ opportunities, identifiers, dates, amounts, scores, and alignment judgments are
 synthetic. They demonstrate report structure only and must not be treated as
 live acquisition intelligence.
 
-The packet leads with a bottom line, then a **Potential transition paths** table
-that illustrates, one row per path, what each awardee built (in plain language),
-an open procurement it could feed, why they connect, and the response deadline.
+The packet is built from a bottom line and two tables, then a compact narrative:
+
+1. **Bottom line** — awardee count, relevant procurements, the most-urgent
+   deadline, and how many awardees are on hold.
+2. **Potential transition paths** — one row per path: what each awardee built
+   (plain language), an open procurement it could feed, why they connect, and
+   the response deadline. Direct-award paths first, then competitive, then
+   weaker "needs more evidence" matches; ordered by soonest deadline.
+3. **Award pipeline** — the month's award cohort with recorded end dates.
+4. **Path details** — one compact block per path: the solicitation ask, why it
+   connects, what to validate, and the source records.
+
 The plain-language "what they built" summary is a deterministic first-sentence
 trim by default; wiring an optional `abstract_simplifier` upgrades it to genuine
-plain language without changing the deterministic fallback.
-
-Below the table, the packet groups every lead under the awardee it
-belongs to: each awardee section states the funded award scope once, then lists
-every open procurement that awardee is relevant to — possible direct-award paths
-first, then competitive follow-ons, each ordered by soonest response deadline.
-Weaker matches are kept under the awardee rather than dropped, and an awardee
-with no matched procurement is still listed. Every procurement states the
-technical connection to validate, explains why it was surfaced, and ends with a
-representative check. The score remains a secondary triage aid, not a
+plain language without changing the deterministic fallback. Weaker matches are
+kept (tagged "needs more evidence"), and an awardee with no matched procurement
+still appears in both tables. The score remains a secondary triage aid, not a
 probability or acquisition determination.
 
 The example uses three distinct public taxonomies so that a technology match is

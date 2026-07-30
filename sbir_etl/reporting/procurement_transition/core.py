@@ -704,194 +704,130 @@ class MonthlyReportBuilder:
             if _display(value) is not None
         }
 
-    def _procurement_entry(self, row: pd.Series) -> list[str]:
-        """Render one procurement a given awardee is relevant to.
+    def _path_detail(self, award: pd.Series, entry: pd.Series, kind: str) -> list[str]:
+        """One compact narrative block per awardee→procurement path.
 
-        The awardee's funded scope is stated once in the awardee header, so this
-        entry leads with the solicitation ask and the evidence to validate.
+        ``kind`` is the plain path label ("direct-award", "competitive", or
+        "needs more evidence"). Keeps the solicitation ask, the connection, the
+        validate-this action, and source links; drops the heavy per-lead card.
         """
 
-        signal = _display(row.get("signal_class")) or "unknown"
-        confidence = _display(row.get("confidence_bucket")) or "WATCHLIST"
-        opportunity_title = _markdown_text(
-            _first_value(row.get("opportunity_title"), row.get("target_id")),
+        company = _markdown_text(award.get("company"), default="An awardee", limit=120)
+        procurement = _markdown_text(
+            _first_value(entry.get("opportunity_title"), entry.get("target_id")),
             default="Untitled opportunity",
-            limit=180,
+            limit=160,
         )
-        award_abstract = _display(
-            _first_value(row.get("award_abstract"), row.get("prior_abstract"))
-        )
-        opportunity_description = _display(
-            _first_value(row.get("opportunity_description"), row.get("target_description"))
-        )
-        if _same_text(opportunity_description, row.get("opportunity_title")):
-            opportunity_description = None
-
-        if confidence == "WATCHLIST":
-            disposition = "Needs more evidence before routing"
-        elif signal == "directed":
-            disposition = "Potential directed Phase III path — validate lineage"
-        else:
-            disposition = "Competitive opportunity with technical overlap"
-
         deadline = _markdown_text(
             _date_label(
                 _first_value(
-                    row.get("opportunity_response_deadline"), row.get("target_response_deadline")
+                    entry.get("opportunity_response_deadline"),
+                    entry.get("target_response_deadline"),
                 )
             ),
-            default="Not published",
+            default="date not published",
             limit=80,
         )
-        transition_lane = _display(row.get("potential_transition_lane"))
-        interest = _display(row.get("interest_alignment"))
-        routing = " · ".join(
-            _markdown_text(value, limit=160) for value in (transition_lane, interest) if value
+        award_abstract = _display(
+            _first_value(entry.get("award_abstract"), entry.get("prior_abstract"))
         )
-        solicitation_number = _display(row.get("solicitation_number"))
+        opportunity_description = _display(
+            _first_value(entry.get("opportunity_description"), entry.get("target_description"))
+        )
+        if _same_text(opportunity_description, entry.get("opportunity_title")):
+            opportunity_description = None
+
+        signal = _display(entry.get("signal_class")) or "unknown"
         summary = None
         if (
             self.summarizer
-            and confidence == "HIGH"
+            and _display(entry.get("confidence_bucket")) == "HIGH"
             and award_abstract
             and opportunity_description
-            and str(_display(row.get("candidate_id"))) in self._summary_targets
+            and str(_display(entry.get("candidate_id"))) in self._summary_targets
             and self._summary_attempts < self.max_summaries
         ):
             self._summary_attempts += 1
-            summary = self.summarizer(row.to_dict())
-        rationale = _display(row.get("alignment_rationale"))
-        public_facts = _public_field_facts(
-            row,
+            summary = self.summarizer(entry.to_dict())
+
+        lines = [f"### {company} → {procurement} — {kind}, respond by {deadline}", ""]
+        if opportunity_description:
+            lines.append(f"**Asks for:** {_markdown_text(opportunity_description, limit=360)}")
+        else:
+            lines.append(
+                "**Asks for:** Detailed solicitation text was not retrieved. Open the SAM.gov "
+                "source record and review the statement of need before routing."
+            )
+        facts = _public_field_facts(
+            entry,
             award_abstract=award_abstract,
             opportunity_description=opportunity_description,
         )
-
-        lines = [
-            f"#### {opportunity_title}",
-            "",
-            f"**Disposition:** {disposition} — responses due {deadline}",
-        ]
-        if routing:
-            lines.append(f"**Suggested routing:** {routing}")
-        if solicitation_number:
-            lines.append(f"**Solicitation:** {_markdown_text(solicitation_number, limit=100)}")
-        lines += ["", "**What the solicitation asks for**", ""]
-        if opportunity_description:
-            lines += [f"> {_markdown_text(opportunity_description)}", ""]
+        if facts:
+            lines.append(f"**Why it connects:** {_markdown_text(' '.join(facts), limit=500)}")
         else:
-            lines += [
-                "> Detailed solicitation text was not retrieved. Open the SAM.gov source "
-                "record and review the statement of need before routing.",
-                "",
-            ]
-        lines += ["**Technical connection to validate**", ""]
-        if public_facts:
-            lines += [
-                f"**Public-field comparison:** "
-                f"{_markdown_text(' '.join(public_facts), limit=1_200)}",
-                "",
-            ]
-        else:
-            lines += [
-                "**Public-field comparison:** The supplied public fields expose no same-firm "
-                "identifier, shared lineage phrase, shared technical term, or matching "
-                "acquisition code. Compare the full source records before routing.",
-                "",
-            ]
+            lines.append(
+                "**Why it connects:** No shared public fields — compare the source records."
+            )
+        if rationale := _display(entry.get("alignment_rationale")):
+            lines.append(f"**Analyst note:** {_markdown_text(rationale, limit=360)}")
         if summary:
-            lines += [f"**Evidence-bounded comparison:** {_markdown_text(summary)}", ""]
-        if rationale:
-            lines += [f"**Analyst screening note:** {_markdown_text(rationale)}", ""]
-
-        lines += ["**Why this was surfaced**", ""]
-        candidate_type = (
-            "Possible directed path" if signal == "directed" else "Competitive follow-on"
-        )
-        lines.append(f"- Candidate type: {candidate_type}")
-        if interest:
-            lines.append(f"- Mission interest: {_markdown_text(interest, limit=180)}")
-        if technology := _display(row.get("technology_ecosystem")):
-            lines.append(f"- Technology tags: {_markdown_text(technology, limit=220)}")
-        for fact in public_facts:
-            lines.append(f"- {_markdown_text(fact, limit=320)}")
-        rank = "Priority lead" if confidence == "HIGH" else "Evidence watchlist"
-        lines.append(
-            f"- Screening rank: {rank}. This is a triage rank, not a probability or "
-            "eligibility decision."
-        )
-
-        lines += ["", "**Representative check**", ""]
+            lines.append(f"**Evidence-bounded comparison:** {_markdown_text(summary, limit=360)}")
         if signal == "directed":
             lines.append(
-                "Confirm that the solicitation derives from, extends, or completes the cited "
-                "SBIR/STTR-funded work, and that the funded capability covers the stated need. "
-                "The screening rank does not establish statutory Phase III lineage."
+                "**Validate:** confirm the work derives from, extends, or completes the prior "
+                "SBIR/STTR-funded effort and covers the stated need. A screening rank does not "
+                "establish statutory Phase III lineage."
             )
         else:
             lines.append(
-                "Assess the technical fit, acquisition strategy, and competition requirements. "
-                "Topical overlap alone does not make a competitive opportunity a Phase III path."
+                "**Validate:** assess technical fit, acquisition strategy, and competition "
+                "requirements. Topical overlap alone does not make this a Phase III path."
             )
-
+        award_url = _safe_url(
+            _first_value(entry.get("award_source_url"), entry.get("prior_source_url"))
+        )
         opportunity_url = _safe_url(
             _first_value(
-                row.get("opportunity_source_url"),
-                row.get("opportunity_ui_url"),
-                row.get("target_source_url"),
-                row.get("opportunity_description_url"),
+                entry.get("opportunity_source_url"),
+                entry.get("opportunity_ui_url"),
+                entry.get("target_source_url"),
+                entry.get("opportunity_description_url"),
             )
         )
-        source_text = (
-            f"[SAM.gov solicitation]({opportunity_url})"
-            if opportunity_url
-            else "Not supplied in this input"
-        )
-        lines += ["", f"**Source records:** {source_text}", ""]
+        source_links = []
+        if award_url:
+            source_links.append(f"[SBIR/STTR award record]({award_url})")
+        if opportunity_url:
+            source_links.append(f"[SAM.gov solicitation]({opportunity_url})")
+        source_text = " · ".join(source_links) if source_links else "Not supplied in this input"
+        lines += [f"**Sources:** {source_text}", ""]
         return lines
 
-    def _awardee_section(self, group: dict[str, Any]) -> list[str]:
-        """Render one awardee header plus every procurement it is relevant to."""
-
-        award = group["award"]
-        company = _markdown_text(award.get("company"), default="Company unavailable", limit=120)
-        award_title = _markdown_text(
-            _first_value(award.get("title"), award.get("award_title")),
-            default="Award title unavailable",
-            limit=180,
-        )
-        details = [_markdown_text(award.get("phase"), default="Phase unavailable", limit=40)]
-        amount = _money(award.get("amount"))
-        if amount != "N/A":
-            details.append(amount)
-        details.append(_markdown_text(_award_why_listed(award), limit=180))
-        award_abstract = _display(_first_value(award.get("abstract"), award.get("award_abstract")))
-        award_url = _safe_url(_first_value(award.get("source_url"), award.get("award_source_url")))
+    def _path_details_section(self, groups: list[dict[str, Any]]) -> list[str]:
+        """Compact narrative for each path, replacing the heavy per-lead cards."""
 
         lines = [
-            f"### {company} — {award_title}",
+            "## Path details",
             "",
-            f"**Award:** {' · '.join(details)}",
+            "One block per path — the solicitation ask, why it connects, what to validate, "
+            "and the source records. Ordered to match the transition-paths table above.",
             "",
         ]
-        if award_abstract:
-            lines += [f"> {_markdown_text(award_abstract)}", ""]
-        if award_url:
-            lines += [f"**Award record:** [SBIR/STTR award record]({award_url})", ""]
-
-        directed = group["directed"]
-        competitive = group["competitive"]
-        watchlist = group["watchlist"]
-        if directed or competitive:
-            lines += ["**Relevant open procurements**", ""]
-            for entry in (*directed, *competitive):
-                lines += self._procurement_entry(entry)
-        else:
-            lines += ["_No open procurements matched this month._", ""]
-        if watchlist:
-            lines += ["**Weaker matches — need more evidence before routing**", ""]
-            for entry in watchlist:
-                lines += self._procurement_entry(entry)
+        emitted = False
+        for group in groups:
+            award = group["award"]
+            for entry in group["directed"]:
+                lines += self._path_detail(award, entry, "direct-award")
+                emitted = True
+            for entry in group["competitive"]:
+                lines += self._path_detail(award, entry, "competitive")
+                emitted = True
+            for entry in group["watchlist"]:
+                lines += self._path_detail(award, entry, "needs more evidence")
+                emitted = True
+        if not emitted:
+            lines += ["No paths to detail this month.", ""]
         return lines
 
     def _plain_award_summary(self, award: pd.Series) -> str:
@@ -948,6 +884,7 @@ class MonthlyReportBuilder:
             built = self._plain_award_summary(award)
             paths = [(entry, "direct-award") for entry in group["directed"]]
             paths += [(entry, "competitive") for entry in group["competitive"]]
+            paths += [(entry, "needs more evidence") for entry in group["watchlist"]]
             if not paths:
                 end_date = _display(award.get("recorded_end_date"))
                 note = f"ends {end_date}" if end_date else "no recorded end date"
@@ -1052,12 +989,6 @@ class MonthlyReportBuilder:
             "",
         ]
         lines += self._transition_paths_table(groups)
-        lines += ["## Awardees and their relevant procurements", ""]
-        if groups:
-            for group in groups:
-                lines += self._awardee_section(group)
-        else:
-            lines += ["No awardees matched the monthly screen.", ""]
 
         if not awards.empty:
             packet_awards = _sort_awards_for_packet(awards)
@@ -1078,6 +1009,9 @@ class MonthlyReportBuilder:
                     f"{_markdown_text(_award_why_listed(award), default='', limit=180)} |"
                 )
             lines.append("")
+
+        lines += self._path_details_section(groups)
+
         lines += [
             "## Methodology and limits",
             "",

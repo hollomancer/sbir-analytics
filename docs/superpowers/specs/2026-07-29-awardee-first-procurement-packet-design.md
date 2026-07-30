@@ -126,6 +126,27 @@ path type) · why it connects · respond-by**.
 Rendering-only; no scoring/pairing/schema change. The standalone award-pipeline
 table is retained.
 
+## Addendum — collapse the body to tables + compact path blocks (2026-07-29)
+
+Same PR. The verbose per-awardee sections (heavy six-subsection cards) are
+replaced. The packet is now: **Bottom line → Potential transition paths (table)
+→ Award pipeline (table) → Path details → Methodology.**
+
+- **Path details** (`_path_details_section` / `_path_detail`) emits one compact
+  block per path (`### <company> → <procurement> — <kind>, respond by <date>`)
+  with four lines: **Asks for**, **Why it connects**, **Analyst note** (if any),
+  **Validate**, plus **Sources**. `<kind>` is `direct-award` / `competitive` /
+  `needs more evidence`. The optional AI comparison summary still renders here,
+  gated by the score-ranked budget.
+- The transition-paths table now includes watchlist rows tagged
+  `(needs more evidence)`; only awardees with no match at all show
+  "— no matched procurement · ends <date>".
+- The full award abstract is dropped from the body; its leading sentence lives
+  in the table's "what they built" cell and the full record is one click away via
+  **Sources**. Cuts the synthetic example from ~291 to ~103 lines.
+
+Rendering-only; no scoring/pairing/schema change.
+
 ## Testing
 
 Unit tests (`tests/unit/reporting/test_procurement_transition.py` additions):
