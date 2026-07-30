@@ -18,7 +18,7 @@ For any lead, confirm the new work "derives from, extends, or completes" the awa
 
 | Awardee | What they built | Possible next procurement | Why it connects | Respond by |
 |---|---|---|---|---|
-| Illustrative Terrain Robotics LLC | Autonomous ground mobility and sensing for obstacle characterization. | Robotic breach reconnaissance integration (direct-award) | Both texts mention autonomous, breach, and ground. Both records list NAICS code 541715. Both records list product/service code (PSC) AC13. | August 15, 2026 |
+| Illustrative Terrain Robotics LLC | Autonomous ground mobility and sensing for obstacle characterization. | Robotic breach reconnaissance integration (direct-award) | The notice names the SBIR/STTR awardee (UEI TERRAIN00001). Both texts mention autonomous, breach, and ground. Both records list NAICS code 541715. | August 15, 2026 |
 |  |  | Counter-mine autonomy demonstration (direct-award) | The notice text contains “extends”. Both texts mention autonomous, breach, and ground. Both records list NAICS code 541715. | September 3, 2026 |
 |  |  | Electro-optical obstacle-mapping sensor follow-on (competitive) | Both texts mention autonomous and ground. Both records list NAICS code 541715. Both records list product/service code (PSC) AC13. | October 1, 2026 |
 | Illustrative Resilient Networks Inc. | Resilient communications and positioning in contested electromagnetic environments. | Resilient tactical network and assured PNT integration (direct-award) | Both texts mention assured, mesh, positioning, resilient, and tactical. Both records list NAICS code 541715. Both records list product/service code (PSC) AC13. | August 22, 2026 |
@@ -44,9 +44,9 @@ One block per path — the solicitation ask, why it connects, what to validate, 
 
 **Built on:** Autonomous ground mobility and sensing for obstacle characterization.
 **Asks for:** The Army seeks integration and demonstration of autonomous ground vehicles that map obstacles, fuse electro-optical and lidar data, and share breach-lane information with maneuver formations.
-**Why it connects:** Both texts mention autonomous, breach, and ground. Both records list NAICS code 541715. Both records list product/service code (PSC) AC13.
+**Why it connects:** The notice names the SBIR/STTR awardee (UEI TERRAIN00001). Both texts mention autonomous, breach, and ground. Both records list NAICS code 541715. Both records list product/service code (PSC) AC13.
 **Analyst note:** The award funded autonomous ground mobility and obstacle sensing; the solicitation asks to integrate those functions into a breach-reconnaissance system. A representative still needs to validate lineage and interfaces.
-**Validate:** Confirm the work derives from, extends, or completes this awardee's prior SBIR/STTR-funded effort and covers the stated need. The public fields show no same-firm or same-office link — confirm the buying office funded the prior effort before treating this as directed.
+**Validate:** Confirm the work derives from, extends, or completes this awardee's prior SBIR/STTR-funded effort and covers the stated need. The notice names the awardee's UEI, a strong lineage signal — verify it refers to this award.
 **Sources:** Not supplied in this input
 
 ### Illustrative Terrain Robotics LLC → Counter-mine autonomy demonstration — direct-award, respond by September 3, 2026
