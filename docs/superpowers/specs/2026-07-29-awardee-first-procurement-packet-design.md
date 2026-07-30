@@ -166,6 +166,26 @@ Same PR. Two refinements to the path blocks:
 
 Deterministic; no scoring/pairing/schema change.
 
+## Addendum — exclude notices that already name the awardee (2026-07-29)
+
+Same PR. Domain correction: a SAM.gov *solicitation* does not name a specific
+firm's UEI — only **award notices** and **sole-source justifications (J&A)** do,
+and in both the agency has already decided. Such a pairing is therefore not a
+forward transition path a representative would route.
+
+- `group_candidates_by_awardee` now filters out any pairing where
+  `_notice_names_awardee(row)` is true (the single chokepoint feeding both the
+  table and Path details). The master audit ledger keeps every row — the
+  exclusion is presentation-only.
+- The "names the awardee's UEI → strong signal" branch is removed from
+  `_validate_line` (unreachable once such rows are excluded). The remaining
+  strength signal is the shared org level (office > organization > agency) plus
+  lineage language.
+- Fixture: the earlier contrived UEI-on-a-solicitation demo is reverted; the
+  notices now carry `agency = "DEPARTMENT OF THE ARMY"`, so the example
+  realistically exercises the **agency-level** match branch alongside the
+  "extends" lineage branch.
+
 ## Testing
 
 Unit tests (`tests/unit/reporting/test_procurement_transition.py` additions):

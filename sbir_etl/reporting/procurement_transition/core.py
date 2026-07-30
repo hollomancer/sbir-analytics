@@ -372,29 +372,23 @@ def _validate_line(row: pd.Series, signal: str) -> str:
     ]
     if lineage_clause:
         parts.append(lineage_clause.strip())
-    if _notice_names_awardee(row):
+    match = _matching_organization(row)
+    level = match[0] if match else None
+    if level == "office":
         parts.append(
-            "The notice names the awardee's UEI, a strong lineage signal — verify it refers to "
-            "this award."
+            "It shares the prior award's buying office, a strong continuity signal — confirm "
+            "the effort continues that work."
+        )
+    elif level in ("organization", "agency"):
+        parts.append(
+            f"It matches only at the {level} level — confirm the buying office actually funded "
+            "the prior effort."
         )
     else:
-        match = _matching_organization(row)
-        level = match[0] if match else None
-        if level == "office":
-            parts.append(
-                "It shares the prior award's buying office, a strong continuity signal — confirm "
-                "the effort continues that work."
-            )
-        elif level in ("organization", "agency"):
-            parts.append(
-                f"It matches only at the {level} level — confirm the buying office actually "
-                "funded the prior effort."
-            )
-        else:
-            parts.append(
-                "The public fields show no same-firm or same-office link — confirm the buying "
-                "office funded the prior effort before treating this as directed."
-            )
+        parts.append(
+            "The public fields show no same-firm or same-office link — confirm the buying "
+            "office funded the prior effort before treating this as directed."
+        )
     return " ".join(parts)
 
 
@@ -549,7 +543,15 @@ def group_candidates_by_awardee(rows: pd.DataFrame, awards: pd.DataFrame) -> lis
     sorted by soonest response deadline. Below-threshold matches are kept in a
     per-awardee ``watchlist`` rather than dropped. Awardees with no matched
     procurement are still emitted so the representative sees the whole cohort.
+
+    Notices that already name the awardee's UEI (award notices, sole-source
+    justifications) are excluded: the agency has already decided, so these are not
+    forward transition paths for a representative to route. They remain in the
+    master audit ledger — the exclusion is presentation-only.
     """
+
+    if not rows.empty:
+        rows = rows.loc[~rows.apply(_notice_names_awardee, axis=1)].reset_index(drop=True)
 
     signals = rows.get("signal_class", pd.Series(index=rows.index, dtype="object"))
     confidence = rows.get("confidence_bucket", pd.Series(index=rows.index, dtype="object"))

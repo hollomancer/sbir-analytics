@@ -84,7 +84,6 @@ def test_writes_center_packet_and_manifest(tmp_path):
                     "This Phase III sole source notice will integrate autonomous navigation "
                     "into an unmanned aircraft prototype."
                 ),
-                "awardee_uei": "UEI000000001",
                 "agency": "DEFENSE",
                 "naics_code": "541715",
                 "psc_code": "AC13",
@@ -103,7 +102,6 @@ def test_writes_center_packet_and_manifest(tmp_path):
     assert "**Asks for:**" in packet
     assert "integrate autonomous navigation" in packet
     assert "**Why it connects:**" in packet
-    assert "The notice names the SBIR/STTR awardee (UEI UEI000000001)." in packet
     assert "The award and notice list the same agency (DEFENSE)." in packet
     assert "The notice text contains “Phase III” and “sole source”." in packet
     assert "Both texts mention autonomous and navigation." in packet
@@ -663,17 +661,34 @@ def test_validate_line_cites_lineage_phrase_when_present():
     assert "statement of work" in line
 
 
-def test_validate_line_flags_named_awardee_uei():
-    row = pd.Series(
-        {
-            "award_uei": "UEI000000001",
-            "opportunity_awardee_uei": "UEI000000001",
-            "opportunity_description": "Integrate the capability into a prototype.",
-        }
+def test_group_excludes_notice_that_names_the_awardee():
+    # A notice carrying the awardee's own UEI is an award/J&A — the decision is
+    # already made, so it is not a forward transition path and must be dropped.
+    awards = pd.DataFrame([{"award_id": "A", "amount": 100}])
+    rows = pd.DataFrame(
+        [
+            {
+                "prior_award_id": "A",
+                "signal_class": "directed",
+                "confidence_bucket": "HIGH",
+                "opportunity_title": "Already-awarded notice",
+                "award_uei": "UEI000000001",
+                "opportunity_awardee_uei": "UEI000000001",
+            },
+            {
+                "prior_award_id": "A",
+                "signal_class": "directed",
+                "confidence_bucket": "HIGH",
+                "opportunity_title": "Genuine forward solicitation",
+                "opportunity_awardee_uei": None,
+            },
+        ]
     )
-    line = _validate_line(row, "directed")
 
-    assert "names the awardee's UEI" in line
+    groups = group_candidates_by_awardee(rows, awards)
+
+    titles = [entry["opportunity_title"] for entry in groups[0]["directed"]]
+    assert titles == ["Genuine forward solicitation"]
 
 
 def test_validate_line_flags_missing_link_when_no_shared_fields():
