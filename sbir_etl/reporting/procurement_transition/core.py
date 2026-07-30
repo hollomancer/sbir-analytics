@@ -15,7 +15,13 @@ from urllib.parse import quote, urlsplit
 import pandas as pd
 from markdown_it import MarkdownIt
 
-from sbir_etl.utils.procurement_text import find_lineage_phrases, tokenize_technical_text
+from sbir_etl.reporting.procurement_transition.cet_vocabulary import cet_agreement_fact
+from sbir_etl.utils.procurement_text import (
+    extract_connection_sentences,
+    find_lineage_phrases,
+    shared_technical_phrases,
+    tokenize_technical_text,
+)
 
 
 _ANNOTATION_FIELDS = (
@@ -423,11 +429,19 @@ def _public_field_facts(
         )
         if text
     )
-    shared_terms = sorted(
-        tokenize_technical_text(award_text) & tokenize_technical_text(opportunity_description)
-    )[:8]
-    if shared_terms:
-        facts.append(f"Both texts mention {_human_list(shared_terms)}.")
+    phrases = shared_technical_phrases(award_text, opportunity_description)
+    if phrases:
+        quoted = [f"“{phrase}”" for phrase in phrases]
+        facts.append(f"Both describe {_human_list(quoted)}.")
+    else:
+        shared_terms = sorted(
+            tokenize_technical_text(award_text) & tokenize_technical_text(opportunity_description)
+        )[:8]
+        if shared_terms:
+            facts.append(f"Both texts mention {_human_list(shared_terms)}.")
+
+    if cet_fact := cet_agreement_fact(row.get("cet"), opportunity_description):
+        facts.append(cet_fact)
 
     for award_field, opportunity_fields, code_type, label in (
         (
@@ -852,6 +866,22 @@ class MonthlyReportBuilder:
             lines.append(
                 "**Why it connects:** No shared public fields — compare the source records."
             )
+        if connection := extract_connection_sentences(award_abstract, opportunity_description):
+            award_sentence, opportunity_sentence = connection
+            # Quote the solicitation side only when it narrows a longer description;
+            # a single-sentence ask is already shown verbatim above.
+            if _same_text(opportunity_sentence, opportunity_description):
+                lines.append(
+                    f"**Connection:** Beyond its summary, the award describes "
+                    f"“{_markdown_text(award_sentence, limit=240)}” — directly matching the "
+                    "ask above."
+                )
+            else:
+                lines.append(
+                    f"**Connection:** The award describes "
+                    f"“{_markdown_text(award_sentence, limit=240)}” — the solicitation "
+                    f"specifically asks for “{_markdown_text(opportunity_sentence, limit=240)}”"
+                )
         if rationale := _display(entry.get("alignment_rationale")):
             lines.append(f"**Analyst note:** {_markdown_text(rationale, limit=360)}")
         if summary:

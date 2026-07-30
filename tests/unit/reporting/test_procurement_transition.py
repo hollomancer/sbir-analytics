@@ -104,7 +104,7 @@ def test_writes_center_packet_and_manifest(tmp_path):
     assert "**Why it connects:**" in packet
     assert "The award and notice list the same agency (DEFENSE)." in packet
     assert "The notice text contains “Phase III” and “sole source”." in packet
-    assert "Both texts mention autonomous and navigation." in packet
+    assert "Both describe “autonomous navigation”." in packet
     assert "Both records list NAICS code 541715." in packet
     assert "Both records list product/service code (PSC) AC13." in packet
     assert "no written technical comparison is available" not in packet
@@ -646,6 +646,61 @@ def test_path_detail_includes_built_on_context(tmp_path):
     packet = _transition_packet(tmp_path)
 
     assert "**Built on:** Navigation software that fuses onboard sensors" in packet
+
+
+def test_path_detail_surfaces_connection_sentence_and_shared_phrases(tmp_path):
+    awards = _awards()
+    awards.loc[0, "Abstract"] = (
+        "Navigation software for small aircraft. The system can fuse onboard radar and "
+        "electro-optical sensors to track terrain during autonomous flight. Flight logs "
+        "are archived for post-mission analysis."
+    )
+    awards.loc[0, "CET"] = "Autonomous Systems"
+    cohorts = build_award_cohorts(awards, pd.DataFrame(), report_month="2026-06")
+    candidates = pd.DataFrame(
+        [
+            {
+                "candidate_id": "C-1",
+                "signal_class": "directed",
+                "prior_award_id": "A-1",
+                "target_id": "O-1",
+                "candidate_score": 0.8,
+                "is_high_confidence": True,
+            }
+        ]
+    )
+    opportunities = pd.DataFrame(
+        [
+            {
+                "notice_id": "O-1",
+                "title": "Navigation integration",
+                "description": (
+                    "The Navy requires a prototype that can fuse onboard radar and "
+                    "electro-optical sensors to track terrain, supporting autonomous "
+                    "navigation for unmanned aircraft."
+                ),
+                "office": "NAVAIR",
+                "response_deadline": "2026-08-01",
+            }
+        ]
+    )
+
+    output = MonthlyReportBuilder(report_month="2026-06", output_root=tmp_path).write(
+        award_cohorts=cohorts,
+        candidates=candidates,
+        opportunities=opportunities,
+    )
+    packet = (output / "centers" / "navair.md").read_text()
+
+    # Connection quotes the buried claim, not the abstract's leading sentence.
+    assert "**Connection:**" in packet
+    assert "The system can fuse onboard radar" in packet
+    # Multi-word phrases replace single-token soup.
+    assert "Both describe" in packet
+    assert "“electro-optical sensors”" in packet
+    # CET agreement from the award label + notice vocabulary.
+    assert "Both fall in the Autonomous Systems critical-technology area" in packet
+    assert "“autonomous navigation”" in packet
 
 
 def test_validate_line_cites_lineage_phrase_when_present():

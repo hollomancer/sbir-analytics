@@ -16,7 +16,10 @@ The packet is built from a bottom line and two tables, then a compact narrative:
    weaker "needs more evidence" matches; ordered by soonest deadline.
 3. **Award pipeline** — the month's award cohort with recorded end dates.
 4. **Path details** — one compact block per path: the solicitation ask, why it
-   connects, what to validate, and the source records.
+   connects (shared multi-word technical phrases, a quoted connection-sentence
+   pair from the two texts, and critical-technology-area agreement, all
+   deterministic and reader-verifiable), what to validate, and the source
+   records.
 
 The plain-language "what they built" summary is a deterministic first-sentence
 trim by default; wiring an optional `abstract_simplifier` upgrades it to genuine
