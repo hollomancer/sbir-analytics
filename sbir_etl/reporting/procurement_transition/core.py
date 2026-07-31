@@ -17,8 +17,10 @@ from markdown_it import MarkdownIt
 
 from sbir_etl.reporting.procurement_transition.cet_vocabulary import cet_agreement_fact
 from sbir_etl.utils.procurement_text import (
+    document_token_frequencies,
     extract_connection_sentences,
     find_lineage_phrases,
+    rank_phrases_by_rarity,
     shared_technical_phrases,
     tokenize_technical_text,
 )
@@ -403,8 +405,13 @@ def _public_field_facts(
     *,
     award_abstract: str | None,
     opportunity_description: str | None,
+    token_doc_freq: dict[str, int] | None = None,
 ) -> list[str]:
-    """Describe deterministic, reader-verifiable links in the merged public fields."""
+    """Describe deterministic, reader-verifiable links in the merged public fields.
+
+    ``token_doc_freq`` (document frequencies over the run's corpus) re-ranks the
+    shared phrases rarest-first so distinctive jargon leads the evidence.
+    """
 
     facts: list[str] = []
     if _notice_names_awardee(row):
@@ -431,6 +438,8 @@ def _public_field_facts(
     )
     phrases = shared_technical_phrases(award_text, opportunity_description)
     if phrases:
+        if token_doc_freq:
+            phrases = rank_phrases_by_rarity(phrases, token_doc_freq)
         quoted = [f"“{phrase}”" for phrase in phrases]
         facts.append(f"Both describe {_human_list(quoted)}.")
     else:
@@ -681,6 +690,7 @@ class MonthlyReportBuilder:
         self.abstract_simplifier = abstract_simplifier
         self._summary_attempts = 0
         self._summary_targets: set[str] = set()
+        self._token_doc_freq: dict[str, int] = {}
 
     def _master(
         self,
@@ -859,6 +869,7 @@ class MonthlyReportBuilder:
             entry,
             award_abstract=award_abstract,
             opportunity_description=opportunity_description,
+            token_doc_freq=self._token_doc_freq,
         )
         if facts:
             lines.append(f"**Why it connects:** {_markdown_text(' '.join(facts), limit=500)}")
@@ -962,6 +973,7 @@ class MonthlyReportBuilder:
             row,
             award_abstract=award_abstract,
             opportunity_description=opportunity_description,
+            token_doc_freq=self._token_doc_freq,
         )
         if not facts:
             return "No shared public fields — compare the source records."
@@ -1147,6 +1159,11 @@ class MonthlyReportBuilder:
         self._summary_attempts = 0
         master = self._master(award_cohorts, candidates, opportunities)
         self._summary_targets = self._select_summary_targets(master)
+        corpus = [
+            *award_cohorts.get("abstract", pd.Series(dtype="object")).tolist(),
+            *opportunities.get("description", pd.Series(dtype="object")).tolist(),
+        ]
+        self._token_doc_freq = document_token_frequencies(corpus)
         master.to_csv(self.output_dir / "master_candidates.csv", index=False)
 
         evidence: list[dict[Any, Any]] = []

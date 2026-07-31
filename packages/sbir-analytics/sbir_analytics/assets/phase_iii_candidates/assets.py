@@ -19,7 +19,7 @@ from sbir_etl.models.transition_models import CompetitionType, FederalContract
 from sbir_ml.transition.detection.scoring import TransitionScorer
 
 from .pairing import pair_filter_s1, pair_filter_s2, pair_filter_s3
-from .similarity import compute_topical_similarity
+from .similarity import compute_text_similarity_batch, compute_topical_similarity
 
 try:
     from dagster import (
@@ -266,8 +266,16 @@ def _row_to_cet_data(row: pd.Series) -> dict[str, Any] | None:
     return {"award_cet": prior_cet, "contract_cet": target_cet}
 
 
-def _score_pair(scorer: TransitionScorer, row: pd.Series) -> tuple[float, dict[str, float], float]:
-    """Return ``(composite_score, per_signal_subscores, topical_similarity)`` for one candidate row."""
+def _score_pair(
+    scorer: TransitionScorer,
+    row: pd.Series,
+    text_similarity: float | None = None,
+) -> tuple[float, dict[str, float], float]:
+    """Return ``(composite_score, per_signal_subscores, topical_similarity)`` for one candidate row.
+
+    ``text_similarity`` is the corpus-fitted TF-IDF cosine from the batch path;
+    when absent it is computed for this pair alone (degenerate two-text idf).
+    """
 
     award_data = _row_to_award_data(row)
     contract = _row_to_federal_contract(row)
@@ -290,7 +298,7 @@ def _score_pair(scorer: TransitionScorer, row: pd.Series) -> tuple[float, dict[s
         "psc_code": row.get("target_psc_code"),
         "description": row.get("target_description"),
     }
-    topical = compute_topical_similarity(prior, target)
+    topical = compute_topical_similarity(prior, target, text_similarity=text_similarity)
     text_score = scorer.score_text_similarity(topical)
 
     description = row.get("target_description")
@@ -433,8 +441,12 @@ def score_candidate_pairs(
     target_type = "fpds_contract" if signal_class is SignalClass.RETROSPECTIVE else "opportunity"
     candidates: list[PhaseIIICandidate] = []
     evidence_records: list[dict[str, Any]] = []
-    for _, row in pairs.iterrows():
-        composite, subscores, topical = _score_pair(scorer, row)
+    # Corpus-fitted TF-IDF over the whole frame — idf reflects this run, not one pair.
+    text_similarities = compute_text_similarity_batch(pairs)
+    for position, (_, row) in enumerate(pairs.iterrows()):
+        composite, subscores, topical = _score_pair(
+            scorer, row, text_similarity=text_similarities[position]
+        )
         prior_id = str(row.get("prior_award_id") or "")
         target_id = str(row.get("target_id") or "")
         if not prior_id or not target_id:

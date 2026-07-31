@@ -82,12 +82,67 @@ canonical taxonomy names. Regenerate the golden example.
 Unchanged: the optional summarizer ("Evidence-bounded comparison") remains the
 polish layer; the three deterministic pieces stand alone without a key.
 
-## Out of scope (Phase 2, deferred)
+## Phase 2 — TF-IDF signal upgrade (approved 2026-07-30)
 
-- TF-IDF cosine replacing Jaccard in `compute_topical_similarity` /
-  `score_text_similarity`, gated on the ≥85% retrospective precision backtest.
-- ModernBERT embeddings (stays behind the existing spec rule).
-- Any threshold or pairing change.
+**Decision basis (measured, not assumed).** The transition-ranker benchmark
+(commit `2bc346a6`, frozen pairs `phase3_match_benchmark_pairs.parquet`) settled
+the "beyond word matching" question for this domain: sparse TF-IDF cosine 0.751
+beat every neural method (ModernBERT-Embed 0.653, BM25 0.643, cross-encoder
+0.669) — the connective signal is exact-lexical jargon, which dense embeddings
+blur. Embeddings are therefore **rejected** for this task, with numbers.
+
+**Validation run for this change (2026-07-30, repo venv):**
+
+| Substrate | n | Jaccard AUC | word TF-IDF (1,2) | char_wb (3,5) | 0.6/0.4 blend |
+|---|--:|--:|--:|--:|--:|
+| All pairs (median desc 42 chars — terse-FPDS wall) | 723 | 0.555 | 0.571 | 0.565 | 0.574 |
+| Rich descriptions ≥150 chars (proxy for SAM.gov notices) | 141 | 0.651 | **0.710** | 0.634 | 0.673 |
+| Rich ≥300 | 133 | 0.644 | **0.708** | 0.646 | 0.684 |
+| Rich ≥500 | 129 | 0.648 | **0.710** | 0.656 | 0.696 |
+
+- Terse-text near-chance replicates the known M0a finding — the packet's S2/S3
+  targets are rich notice descriptions, so the rich subsets are the honest proxy.
+- **Word-only TF-IDF (1,2)-grams wins**; the char blend drags the text score.
+  Char-n-grams belong as a separate fusion feature (as in the 0.844 ranker), not
+  mixed into the text component.
+- **Scale:** word TF-IDF sits on the same scale as Jaccard (pos p90 = 0.028 for
+  both; neg p95 0.014 vs 0.023) — composite candidate scores shift ≲0.002, so
+  `HIGH_THRESHOLD_DIRECTED` / `FOLLOWON` are **unchanged by measurement**, not
+  neglect. S2/S3 precision remains governed by the human audit CSV (there is no
+  automated S2/S3 ground truth).
+- **RETROSPECTIVE (S1) is in this code path** — `score_candidate_pairs` →
+  `_score_pair` → `compute_topical_similarity` scores all three classes, with
+  S1 text weight 0.10. Measured shift bound on the terse-FPDS substrate
+  (n=723): |tfidf−jaccard| median 0.000 / p95 0.021 → S1 composite shift
+  median 0.000 / p95 0.001 / max 0.010 against the 0.85 HIGH threshold.
+  Negligible and quantified; the release-time precision backtest remains the
+  hard gate.
+
+**Changes:**
+
+1. `packages/sbir-ml/sbir_ml/transition/detection/text_similarity.py` — port of
+   the ranker's `award_similarity` core: corpus-fitted word (1,2)-gram TF-IDF
+   with English stopwords, exposing a full similarity matrix and a paired
+   (row-aligned) diagonal. sklearn is already an sbir-ml dependency.
+2. `similarity.py` — `compute_topical_similarity_batch(pairs_df)` computes the
+   text component for the whole run at once (TF-IDF fitted over all prior-award
+   texts + all notice texts in the frame); weights unchanged
+   (NAICS .30 / PSC .20 / text .50). The per-pair
+   `compute_topical_similarity` remains as a batch-of-one wrapper (degenerate
+   idf; production uses the batch path).
+3. `_with_pair_metadata` switches from per-row apply to the batch computation.
+4. Explanation tie-in: shared phrases in "Why it connects" are re-ranked by
+   corpus rarity (document frequency over the run's abstracts + notice
+   descriptions, pure-Python in `procurement_text.rank_phrases_by_rarity`) so
+   distinctive jargon leads the list. sbir_etl stays sklearn-free.
+
+## Out of scope
+
+- ModernBERT embeddings (rejected on measurement — see table above).
+- Weight/threshold retuning beyond the scale check (needs the human-audit
+  precision loop, not an offline proxy).
+- Char-n-gram and structural fusion features beyond what TransitionScorer
+  already scores (a future increment, guarded by the same benchmark harness).
 
 ## Testing
 

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import re
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
 from typing import Any
 
 import pandas as pd
@@ -201,6 +201,44 @@ def shared_technical_phrases(
     return [" ".join(gram) for gram in selected[:max_phrases]]
 
 
+def document_token_frequencies(texts: Iterable[Any]) -> dict[str, int]:
+    """Document frequency per content token across a corpus of texts.
+
+    Uses the phrase tokenizer (hyphenated terms whole) so frequencies line up
+    with the tokens inside :func:`shared_technical_phrases` output.
+    """
+
+    frequencies: dict[str, int] = {}
+    for text in texts:
+        for token in set(_ordered_tokens(text)):
+            if token in _STOPWORDS or len(token) <= 2:
+                continue
+            frequencies[token] = frequencies.get(token, 0) + 1
+    return frequencies
+
+
+def rank_phrases_by_rarity(
+    phrases: Sequence[str],
+    doc_frequencies: dict[str, int],
+) -> list[str]:
+    """Order phrases rarest-first: a phrase is as rare as its rarest content token.
+
+    Distinctive jargon ("breach-lane") outranks common technical words
+    ("ground") so the most identifying evidence leads the list. Stable: ties
+    keep the input order. Unknown tokens count as unseen (rarest).
+    """
+
+    def rarity(indexed: tuple[int, str]) -> tuple[int, int]:
+        index, phrase = indexed
+        tokens = [
+            token for token in phrase.lower().split() if token not in _STOPWORDS and len(token) > 2
+        ]
+        rarest = min((doc_frequencies.get(token, 0) for token in tokens), default=0)
+        return (rarest, index)
+
+    return [phrase for _, phrase in sorted(enumerate(phrases), key=rarity)]
+
+
 def find_lineage_phrases(
     text: Any,
     *,
@@ -222,8 +260,10 @@ __all__ = [
     "DIRECTED_LINEAGE_TERMS",
     "PUBLIC_LINEAGE_PHRASES",
     "SCORING_LINEAGE_PHRASES",
+    "document_token_frequencies",
     "extract_connection_sentences",
     "find_lineage_phrases",
+    "rank_phrases_by_rarity",
     "shared_technical_phrases",
     "split_sentences",
     "tokenize_technical_text",

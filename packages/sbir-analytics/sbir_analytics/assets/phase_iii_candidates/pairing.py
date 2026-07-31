@@ -10,7 +10,7 @@ from sbir_etl.utils.award_identity import (
 )
 from sbir_etl.utils.procurement_text import DIRECTED_LINEAGE_TERMS
 
-from .similarity import compute_topical_similarity
+from .similarity import compute_text_similarity_batch, compute_topical_similarity
 
 # FPDS Element 10Q codes that mark a contract as already-coded Phase III.
 # Duplicated intentionally — avoids cross-package import for a five-element set.
@@ -289,22 +289,22 @@ def _with_pair_metadata(merged: pd.DataFrame) -> pd.DataFrame:
     merged = merged.loc[merged["agency_match_level"].notna()].copy()
     if merged.empty:
         return pd.DataFrame(columns=PAIR_OPPORTUNITY_COLUMNS)
-    merged["topical_similarity"] = merged.apply(
-        lambda row: compute_topical_similarity(
+    # One corpus-fitted TF-IDF pass over the whole frame, then combine with codes per row.
+    text_similarities = compute_text_similarity_batch(merged)
+    merged["topical_similarity"] = [
+        compute_topical_similarity(
             {
                 "naics_code": row.get("prior_naics_code"),
                 "psc_code": row.get("prior_psc_code"),
-                "title": row.get("prior_title"),
-                "abstract": row.get("prior_abstract"),
             },
             {
                 "naics_code": row.get("target_naics_code"),
                 "psc_code": row.get("target_psc_code"),
-                "description": row.get("target_description"),
             },
-        ),
-        axis=1,
-    )
+            text_similarity=text_similarity,
+        )
+        for (_, row), text_similarity in zip(merged.iterrows(), text_similarities, strict=True)
+    ]
     return merged.loc[:, PAIR_OPPORTUNITY_COLUMNS].reset_index(drop=True)
 
 
