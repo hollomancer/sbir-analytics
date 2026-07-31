@@ -746,6 +746,23 @@ def test_group_excludes_notice_that_names_the_awardee():
     assert titles == ["Genuine forward solicitation"]
 
 
+def test_validate_line_leads_with_cited_award_number():
+    row = pd.Series(
+        {
+            "prior_award_id": "N00014-20-C-0055",
+            "opportunity_description": (
+                "Sole source continuation of work under contract N00014-20-C-0055."
+            ),
+        }
+    )
+    line = _validate_line(row, "directed")
+
+    assert "cites the awardee's SBIR award number (N00014-20-C-0055)" in line
+    assert "strongest forward lineage signal" in line
+    # The weaker org-level guidance is superseded, not appended.
+    assert "confirm the buying office" not in line
+
+
 def test_validate_line_flags_missing_link_when_no_shared_fields():
     row = pd.Series({"opportunity_description": "Integrate the capability into a prototype."})
     line = _validate_line(row, "directed")

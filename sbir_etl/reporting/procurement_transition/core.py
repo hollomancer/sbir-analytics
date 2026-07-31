@@ -330,6 +330,29 @@ def _matching_organization_fact(row: pd.Series) -> str | None:
     return f"The award and notice list the same {label} ({value})."
 
 
+def _cited_award_identifier(row: pd.Series) -> str | None:
+    """The awardee's SBIR award/contract number, iff the notice text cites it.
+
+    A J&A or directed notice citing the prior award's own number is the
+    strongest forward lineage evidence a reader can verify. Identifiers under
+    6 normalized characters are ignored (false-hit prone).
+    """
+
+    award_id = _display(_first_value(row.get("award_id"), row.get("prior_award_id")))
+    if award_id is None:
+        return None
+    needle = re.sub(r"[^A-Z0-9]+", "", award_id.upper())
+    if len(needle) < 6:
+        return None
+    notice_text = _display(
+        _first_value(row.get("opportunity_description"), row.get("target_description"))
+    )
+    if notice_text is None:
+        return None
+    haystack = re.sub(r"[^A-Z0-9]+", "", notice_text.upper())
+    return award_id if needle in haystack else None
+
+
 def _notice_names_awardee(row: pd.Series) -> bool:
     """True iff the notice carries the awardee's own UEI (a strong lineage signal)."""
 
@@ -380,6 +403,12 @@ def _validate_line(row: pd.Series, signal: str) -> str:
     ]
     if lineage_clause:
         parts.append(lineage_clause.strip())
+    if cited := _cited_award_identifier(row):
+        parts.append(
+            f"The notice cites the awardee's SBIR award number ({cited}) — the strongest "
+            "forward lineage signal; verify the citation refers to this award and effort."
+        )
+        return " ".join(parts)
     match = _matching_organization(row)
     level = match[0] if match else None
     if level == "office":
@@ -414,6 +443,9 @@ def _public_field_facts(
     """
 
     facts: list[str] = []
+    if cited := _cited_award_identifier(row):
+        facts.append(f"The notice cites the awardee's SBIR award number ({cited}).")
+
     if _notice_names_awardee(row):
         award_uei = _normalized_identifier(
             _first_value(row.get("award_uei"), row.get("uei"), row.get("recipient_uei"))

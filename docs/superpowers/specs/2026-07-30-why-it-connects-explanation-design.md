@@ -136,13 +136,39 @@ blur. Embeddings are therefore **rejected** for this task, with numbers.
    descriptions, pure-Python in `procurement_text.rank_phrases_by_rarity`) so
    distinctive jargon leads the list. sbir_etl stays sklearn-free.
 
+## Phase 3 — smarter candidate selection, minimal set (approved 2026-07-31)
+
+Two features from the ranker's fusion ladder that are self-evidently right and
+require no refit data:
+
+1. **Identifier cross-ref** (`sbir_ml.transition.detection.ranking_features.id_xref`,
+   ported from the ranker core; ladder gain 0.779 → 0.795). The notice text
+   cites the firm's own SBIR contract/topic/tracking number.
+   - Scored: new `id_xref_score` subscore — DIRECTED weight 0.10 (redistributed
+     from agency 0.25→0.20 and competition 0.25→0.20), FOLLOWON 0.05 (from text
+     0.45→0.40), **RETROSPECTIVE 0.0** so the ≥0.85 precision gate is
+     bit-identical by construction (asserted in tests).
+   - Evidence: leading "Why it connects" fact — *"The notice cites the
+     awardee's SBIR award number (…)"* — and the strongest Validate branch,
+     superseding the org-level guidance.
+2. **Temporal sanity gate** (ranker `after_first` floor): a notice posted
+   before the prior award began cannot be its follow-on — dropped in
+   `_with_pair_metadata` (S2/S3 only). Null dates on either side stay neutral;
+   `prior_award_date` added to the pair projection.
+
+**Deferred, with reasons:**
+- **Full LR fusion (0.844)** — blocked on the #442 recovered-notice dataset;
+  the ported `evaluate()` harness can fit + freeze coefficients when it lands.
+- **Char-n-gram channel** — measurably dragged on the in-tree substrate.
+- **Notice-type ordinal** — the curation lesson (kitchen-sink 0.797 < curated
+  0.844) argues against guessing its weight without refit data; the DIRECTED
+  pair filter already restricts notice types.
+
 ## Out of scope
 
 - ModernBERT embeddings (rejected on measurement — see table above).
 - Weight/threshold retuning beyond the scale check (needs the human-audit
   precision loop, not an offline proxy).
-- Char-n-gram and structural fusion features beyond what TransitionScorer
-  already scores (a future increment, guarded by the same benchmark harness).
 
 ## Testing
 

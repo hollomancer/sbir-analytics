@@ -33,6 +33,7 @@ PAIR_S1_COLUMNS: list[str] = [
     "prior_psc_code",
     "prior_title",
     "prior_abstract",
+    "prior_award_date",
     "prior_period_of_performance_end",
     "prior_cet",
     "target_id",
@@ -128,6 +129,7 @@ def _prepare_priors(prior_awards: pd.DataFrame) -> pd.DataFrame:
             "prior_psc_code": _col("psc_code"),
             "prior_title": _col("title"),
             "prior_abstract": _col("abstract"),
+            "prior_award_date": _col("award_date"),
             "prior_period_of_performance_end": _col("period_of_performance_end"),
             "prior_cet": _col("cet"),
         }
@@ -287,6 +289,15 @@ def _with_pair_metadata(merged: pd.DataFrame) -> pd.DataFrame:
     )
     merged = merged.assign(agency_match_level=levels)
     merged = merged.loc[merged["agency_match_level"].notna()].copy()
+    if merged.empty:
+        return pd.DataFrame(columns=PAIR_OPPORTUNITY_COLUMNS)
+    # Temporal sanity: a notice posted before the prior award began cannot be its
+    # follow-on (transition-ranker "after_first" floor). Unknown dates on either
+    # side stay neutral — no false exclusions on missing data.
+    posted = pd.to_datetime(merged["target_action_date"], errors="coerce", utc=True)
+    awarded = pd.to_datetime(merged["prior_award_date"], errors="coerce", utc=True)
+    impossible = posted.notna() & awarded.notna() & (posted < awarded)
+    merged = merged.loc[~impossible].copy()
     if merged.empty:
         return pd.DataFrame(columns=PAIR_OPPORTUNITY_COLUMNS)
     # One corpus-fitted TF-IDF pass over the whole frame, then combine with codes per row.

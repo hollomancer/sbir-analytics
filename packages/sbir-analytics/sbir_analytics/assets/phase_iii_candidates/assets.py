@@ -17,6 +17,7 @@ from loguru import logger
 from sbir_etl.models.phase_iii_candidate import PhaseIIICandidate, SignalClass
 from sbir_etl.models.transition_models import CompetitionType, FederalContract
 from sbir_ml.transition.detection.scoring import TransitionScorer
+from sbir_ml.transition.detection.ranking_features import id_xref
 
 from .pairing import pair_filter_s1, pair_filter_s2, pair_filter_s3
 from .similarity import compute_text_similarity_batch, compute_topical_similarity
@@ -66,6 +67,9 @@ WEIGHTS_RETROSPECTIVE: dict[str, float] = {
     "cet_alignment": 0.15,
     "text_similarity": 0.10,
     "lineage_language": 0.10,
+    # Terse FPDS descriptions cannot cite identifiers; zero weight keeps the
+    # RETROSPECTIVE composite — and its >=0.85 precision gate — bit-identical.
+    "id_xref": 0.0,
 }
 
 HIGH_THRESHOLD_RETROSPECTIVE: float = 0.85
@@ -73,13 +77,16 @@ HIGH_THRESHOLD_DIRECTED: float = 0.75
 HIGH_THRESHOLD_FOLLOWON: float = 0.60
 
 WEIGHTS_DIRECTED: dict[str, float] = {
-    "agency_continuity": 0.25,
+    "agency_continuity": 0.20,
     "timing_proximity": 0.15,
-    "competition_type": 0.25,
+    "competition_type": 0.20,
     "patent_signal": 0.0,
     "cet_alignment": 0.0,
     "text_similarity": 0.15,
     "lineage_language": 0.20,
+    # Notice cites the firm's SBIR contract/topic/tracking number —
+    # near-dispositive (transition-ranker fusion ladder, 0.779 -> 0.795).
+    "id_xref": 0.10,
 }
 WEIGHTS_FOLLOWON: dict[str, float] = {
     "agency_continuity": 0.20,
@@ -87,8 +94,9 @@ WEIGHTS_FOLLOWON: dict[str, float] = {
     "competition_type": 0.05,
     "patent_signal": 0.0,
     "cet_alignment": 0.15,
-    "text_similarity": 0.45,
+    "text_similarity": 0.40,
     "lineage_language": 0.0,
+    "id_xref": 0.05,
 }
 
 
@@ -101,6 +109,7 @@ _REQUIRED_WEIGHT_KEYS: frozenset[str] = frozenset(
         "cet_alignment",
         "text_similarity",
         "lineage_language",
+        "id_xref",
     }
 )
 
@@ -270,6 +279,7 @@ def _score_pair(
     scorer: TransitionScorer,
     row: pd.Series,
     text_similarity: float | None = None,
+    id_xref_weight: float = 0.0,
 ) -> tuple[float, dict[str, float], float]:
     """Return ``(composite_score, per_signal_subscores, topical_similarity)`` for one candidate row.
 
@@ -317,6 +327,8 @@ def _score_pair(
         "cet_alignment_score": float(cet.cet_alignment_score),
         "text_similarity_score": float(text_score),
         "lineage_language_score": float(lineage_score),
+        # Notice cites the firm's SBIR identifier — near-dispositive when present.
+        "id_xref_score": float(id_xref_weight * id_xref(desc_str, [row.get("prior_award_id")])),
     }
     composite = min(1.0, sum(subscores.values()))
     return composite, subscores, float(topical)
@@ -445,7 +457,10 @@ def score_candidate_pairs(
     text_similarities = compute_text_similarity_batch(pairs)
     for position, (_, row) in enumerate(pairs.iterrows()):
         composite, subscores, topical = _score_pair(
-            scorer, row, text_similarity=text_similarities[position]
+            scorer,
+            row,
+            text_similarity=text_similarities[position],
+            id_xref_weight=weights["id_xref"],
         )
         prior_id = str(row.get("prior_award_id") or "")
         target_id = str(row.get("target_id") or "")
