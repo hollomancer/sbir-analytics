@@ -19,6 +19,22 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
 
+def _clean(texts: Sequence[str]) -> list[str]:
+    return ["" if text is None else str(text) for text in texts]
+
+
+def _fit_corpus(queries: list[str], targets: list[str], analyzer: str):
+    """Fit one TF-IDF space over queries + targets; None when the corpus is empty."""
+
+    ngram = (1, 2) if analyzer == "word" else (3, 5)
+    stop = {"stop_words": "english"} if analyzer == "word" else {}
+    vectorizer = TfidfVectorizer(analyzer=analyzer, ngram_range=ngram, min_df=1, **stop)
+    try:
+        return vectorizer.fit_transform(queries + targets)
+    except ValueError:  # corpus reduces to nothing but stopwords
+        return None
+
+
 def tfidf_cosine_matrix(
     query_texts: Sequence[str],
     target_texts: Sequence[str],
@@ -29,18 +45,18 @@ def tfidf_cosine_matrix(
 
     ``word`` uses (1,2)-grams with English stopwords; ``char_wb`` uses
     (3,5)-grams. Empty inputs yield a zero matrix of the right shape.
+
+    This materializes a dense ``len(queries) × len(targets)`` matrix — for
+    row-aligned pair scoring use :func:`paired_tfidf_cosine`, which never
+    forms the cross product.
     """
 
-    queries = ["" if text is None else str(text) for text in query_texts]
-    targets = ["" if text is None else str(text) for text in target_texts]
+    queries = _clean(query_texts)
+    targets = _clean(target_texts)
     if not queries or not targets or not any(queries) or not any(targets):
         return np.zeros((len(queries), len(targets)))
-    ngram = (1, 2) if analyzer == "word" else (3, 5)
-    stop = {"stop_words": "english"} if analyzer == "word" else {}
-    vectorizer = TfidfVectorizer(analyzer=analyzer, ngram_range=ngram, min_df=1, **stop)
-    try:
-        matrix = vectorizer.fit_transform(queries + targets)
-    except ValueError:  # corpus reduces to nothing but stopwords
+    matrix = _fit_corpus(queries, targets, analyzer)
+    if matrix is None:
         return np.zeros((len(queries), len(targets)))
     return cosine_similarity(matrix[: len(queries)], matrix[len(queries) :])
 
@@ -54,15 +70,27 @@ def paired_tfidf_cosine(
     """Row-aligned TF-IDF cosine for (query[i], target[i]) pairs.
 
     The vectorizer is fitted over the full corpus (all queries + all targets),
-    so idf reflects the run, but only the diagonal pairings are scored.
+    so idf reflects the run, but only the aligned pairings are scored. The
+    paired cosines are read straight off the sparse rows — the dense ``N × N``
+    cross-product is never built, so memory stays linear in the pair count.
     """
 
     if len(query_texts) != len(target_texts):
         raise ValueError("query_texts and target_texts must be the same length")
     if not query_texts:
         return np.zeros(0)
-    matrix = tfidf_cosine_matrix(query_texts, target_texts, analyzer=analyzer)
-    return np.asarray([matrix[i, i] for i in range(len(query_texts))])
+    queries = _clean(query_texts)
+    targets = _clean(target_texts)
+    if not any(queries) or not any(targets):
+        return np.zeros(len(queries))
+    matrix = _fit_corpus(queries, targets, analyzer)
+    if matrix is None:
+        return np.zeros(len(queries))
+    count = len(queries)
+    # TfidfVectorizer L2-normalizes each row, so the row-wise dot product of a
+    # query row with its target row is exactly that pair's cosine similarity.
+    paired = matrix[:count].multiply(matrix[count:]).sum(axis=1)
+    return np.asarray(paired).ravel()
 
 
 __all__ = ["paired_tfidf_cosine", "tfidf_cosine_matrix"]

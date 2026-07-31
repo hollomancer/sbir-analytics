@@ -58,15 +58,32 @@ PAIR_OPPORTUNITY_COLUMNS: list[str] = PAIR_S1_COLUMNS + [
     "topical_similarity",
 ]
 
-DIRECTED_NOTICE_TYPES = frozenset({"u", "s", "p"})
+# SAM.gov notice-type codes, partitioned so every notice lands in exactly one
+# corpus. Directed = the agency has named an intended recipient or its intent to
+# award without full competition (Justification/J&A ``u``, Special Notice ``s``,
+# Award Notice ``a``). Follow-on = the agency is soliciting competitively
+# (Solicitation ``o``, Combined Synopsis ``k``, Sources Sought ``r``,
+# Pre-solicitation ``p`` — a forthcoming competitive action, not a directed one).
+# Disjointness is asserted below: overlapping sets would let one notice become
+# two contradictory candidates for the same prior award, rendered and counted twice.
+DIRECTED_NOTICE_TYPES = frozenset({"u", "s", "a"})
 FOLLOWON_NOTICE_TYPES = frozenset({"o", "k", "r", "p"})
+
+if DIRECTED_NOTICE_TYPES & FOLLOWON_NOTICE_TYPES:  # pragma: no cover - import guard
+    raise ValueError(
+        "DIRECTED_NOTICE_TYPES and FOLLOWON_NOTICE_TYPES must be disjoint; overlap: "
+        f"{sorted(DIRECTED_NOTICE_TYPES & FOLLOWON_NOTICE_TYPES)}"
+    )
+
+# ``str()`` of a pandas null renders as text — treat those spellings as missing.
+_MISSING_TOKENS = frozenset({"", "NAN", "NAT", "NONE", "NULL", "<NA>"})
 
 
 def _normalize(value: object) -> str:
     if value is None:
         return ""
     s = str(value).strip().upper()
-    return "" if s in {"", "NAN", "NONE"} else s
+    return "" if s in _MISSING_TOKENS else s
 
 
 def _is_phase_iii_already_coded(row: pd.Series) -> bool:
@@ -134,10 +151,10 @@ def _prepare_priors(prior_awards: pd.DataFrame) -> pd.DataFrame:
             "prior_cet": _col("cet"),
         }
     )
-    # UEI is the join gate — drop priors without one.
-    out = out.loc[out["prior_recipient_uei"].astype(str).str.strip() != ""].copy()
-    out = out.loc[out["prior_recipient_uei"].notna()].reset_index(drop=True)
-    return out
+    # UEI is the join gate for S1 and the S2 exact path only — those apply it on
+    # their own join keys. Do not drop UEI-null priors here: S3 pairs on
+    # NAICS/PSC/text, so a rich prior without a UEI is still a valid follow-on prior.
+    return out.reset_index(drop=True)
 
 
 def _prepare_contracts(contracts: pd.DataFrame) -> pd.DataFrame:
@@ -277,10 +294,22 @@ def _prepare_opportunities(opportunities: pd.DataFrame) -> pd.DataFrame:
     deadline = pd.to_datetime(out["target_response_deadline"], errors="coerce", utc=True)
     today = pd.Timestamp.now(tz="UTC").normalize()
     live_deadline = deadline.isna() | (deadline >= today)
-    return out.loc[active & live_deadline & out["target_id"].notna()].reset_index(drop=True)
+    # A blank notice id is not an identifier: such rows collide with each other on
+    # dedupe and render as a candidate nobody can look up. Require a real value.
+    has_id = out["target_id"].map(_normalize) != ""
+    return out.loc[active & live_deadline & has_id].reset_index(drop=True)
 
 
 def _with_pair_metadata(merged: pd.DataFrame) -> pd.DataFrame:
+    """Annotate opportunity pairs with agency level, temporal sanity, and topicality.
+
+    The agency level is recorded as *evidence*, not applied as a gate: the
+    structural gate is signal-class specific and already lives in each filter's
+    join keys (exact UEI for S2, exact NAICS/PSC for S3, agency only on the
+    bounded fallback paths). Gating here would drop cross-agency exact-identity
+    and exact-code matches, which are the strongest signals the pipeline has.
+    """
+
     if merged.empty:
         return pd.DataFrame(columns=PAIR_OPPORTUNITY_COLUMNS)
     levels = merged.apply(  # type: ignore[call-overload]
@@ -288,9 +317,6 @@ def _with_pair_metadata(merged: pd.DataFrame) -> pd.DataFrame:
         axis=1,
     )
     merged = merged.assign(agency_match_level=levels)
-    merged = merged.loc[merged["agency_match_level"].notna()].copy()
-    if merged.empty:
-        return pd.DataFrame(columns=PAIR_OPPORTUNITY_COLUMNS)
     # Temporal sanity: a notice posted before the prior award began cannot be its
     # follow-on (transition-ranker "after_first" floor). Unknown dates on either
     # side stay neutral — no false exclusions on missing data.

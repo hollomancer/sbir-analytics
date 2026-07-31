@@ -209,3 +209,23 @@ class TestAdversarialNegatives:
         target = {"naics_code": "541715", "psc_code": None, "description": "y"}
         score = compute_topical_similarity(prior, target, text_similarity=1.0)
         assert score == pytest.approx(DEFAULT_WEIGHTS["naics"] + DEFAULT_WEIGHTS["text"], abs=1e-6)
+
+
+def test_missing_codes_do_not_count_as_agreement():
+    import pandas as pd
+
+    from sbir_analytics.assets.phase_iii_candidates.similarity import normalize_code
+
+    for missing in (None, float("nan"), pd.NA, pd.NaT, "", "  ", "N/A"):
+        assert normalize_code(missing) is None
+
+    # Two missing codes must contribute nothing — otherwise unrelated text clears
+    # the 0.10 S3 topical gate on absence alone.
+    assert (
+        compute_topical_similarity(
+            {"naics_code": pd.NA, "psc_code": float("nan"), "title": "alpha"},
+            {"naics_code": pd.NA, "psc_code": float("nan"), "description": "beta"},
+            text_similarity=0.0,
+        )
+        == 0.0
+    )

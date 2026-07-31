@@ -11,8 +11,12 @@ from sbir_etl.enrichers.company_enrichment import lookup_company_federal_awards
 from sbir_etl.reporting.procurement_transition import build_award_cohorts
 
 
-def _read(path: Path | None) -> pd.DataFrame:
+def _read(path: Path | None, *, required: bool = False) -> pd.DataFrame:
+    """Load a tabular input; required inputs fail closed rather than yielding no rows."""
+
     if path is None or not path.exists():
+        if required:
+            raise FileNotFoundError(f"required input not found: {path}")
         return pd.DataFrame()
     return pd.read_parquet(path) if path.suffix == ".parquet" else pd.read_csv(path)
 
@@ -22,12 +26,14 @@ def main() -> int:
     parser.add_argument("--month", required=True)
     parser.add_argument("--awards", type=Path, required=True)
     parser.add_argument("--previous-awards", type=Path)
-    parser.add_argument("--output", type=Path, default=Path("data/processed/procurement_award_cohort.parquet"))
+    parser.add_argument(
+        "--output", type=Path, default=Path("data/processed/procurement_award_cohort.parquet")
+    )
     parser.add_argument("--max-companies", type=int, default=100)
     args = parser.parse_args()
 
     cohort = build_award_cohorts(
-        _read(args.awards), _read(args.previous_awards), report_month=args.month
+        _read(args.awards, required=True), _read(args.previous_awards), report_month=args.month
     )
     prioritized = cohort.assign(
         _phase_ii=cohort["phase"].fillna("").str.upper().str.contains("II").astype(int),
@@ -47,22 +53,30 @@ def main() -> int:
         for company, summary in summaries.items()
         if summary and summary.naics_codes
     }
-    cohort["naics_code"] = cohort.apply(
-        lambda row: enriched_naics.get(str(row.get("company")), row.get("naics_code")),
-        axis=1,
+    companies_by_row = cohort["company"].astype(str)
+    # Vectorized map + combine_first: the enriched NAICS wins where we looked the
+    # company up, the cohort's own code stays everywhere else.
+    cohort["naics_code"] = companies_by_row.map(enriched_naics).combine_first(cohort["naics_code"])
+    cohort["federal_award_count"] = (
+        companies_by_row.map(
+            {company: summary.total_awards for company, summary in summaries.items() if summary}
+        )
+        .fillna(0)
+        .astype(int)
     )
-    cohort["federal_award_count"] = cohort["company"].map(
-        lambda company: summaries.get(str(company)).total_awards
-        if summaries.get(str(company))
-        else 0
+    cohort["possible_followon_count"] = (
+        companies_by_row.map(
+            {
+                company: summary.non_sbir_award_count
+                for company, summary in summaries.items()
+                if summary
+            }
+        )
+        .fillna(0)
+        .astype(int)
     )
-    cohort["possible_followon_count"] = cohort["company"].map(
-        lambda company: summaries.get(str(company)).non_sbir_award_count
-        if summaries.get(str(company))
-        else 0
-    )
-    cohort["usaspending_enriched"] = cohort["company"].map(
-        lambda company: bool(summaries.get(str(company)))
+    cohort["usaspending_enriched"] = companies_by_row.isin(
+        {company for company, summary in summaries.items() if summary}
     )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     cohort.to_parquet(args.output, index=False)

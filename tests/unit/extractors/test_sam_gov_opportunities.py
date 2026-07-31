@@ -83,3 +83,27 @@ def test_description_fetch_rejects_non_sam_host_before_sending_api_key():
         extractor.fetch_description("https://attacker.example/noticedesc")
 
     assert requested == []
+
+
+def test_description_fetch_preserves_the_notice_id_query():
+    requested: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requested.append(request)
+        return httpx.Response(200, json={"description": "Full solicitation text"})
+
+    extractor = SamGovOpportunitiesExtractor(
+        api_key="secret-key",
+        http_client=httpx.Client(transport=httpx.MockTransport(handler)),
+    )
+
+    description = extractor.fetch_description(
+        "https://api.sam.gov/prod/opportunity/v1/api/noticedesc?noticeid=abc123"
+    )
+
+    assert description == "Full solicitation text"
+    # Passing params to HTTPX replaces the URL query, so the notice id has to be
+    # merged in — without it the API cannot resolve which description to return.
+    params = requested[0].url.params
+    assert params["noticeid"] == "abc123"
+    assert params["api_key"] == "secret-key"

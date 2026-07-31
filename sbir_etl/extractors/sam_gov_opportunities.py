@@ -8,7 +8,7 @@ import os
 from collections.abc import Iterator, Sequence
 from datetime import UTC, date, datetime
 from typing import Any
-from urllib.parse import urlsplit
+from urllib.parse import parse_qsl, urlsplit
 
 import httpx
 import pandas as pd
@@ -180,7 +180,11 @@ class SamGovOpportunitiesExtractor:
                 api_name="sam.gov",
                 endpoint=url,
             )
-        response = self._get(url, params={"api_key": self.api_key})
+        # Description links are query-based (``…/noticedesc?noticeid=…``) and HTTPX
+        # *replaces* the URL's query with ``params``. Merge, so the notice id survives.
+        params: dict[str, Any] = dict(parse_qsl(parsed.query, keep_blank_values=True))
+        params["api_key"] = self.api_key
+        response = self._get(url, params=params)
         try:
             value = response.json()
             if isinstance(value, dict):

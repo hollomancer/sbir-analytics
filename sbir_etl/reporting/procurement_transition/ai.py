@@ -11,6 +11,12 @@ from sbir_etl.enrichers.openai_client import OpenAIClient
 
 
 _CITATION = re.compile(r"\[(SAM|SBIR|USASPENDING)\]")
+_SENTENCE_BOUNDARY = re.compile(r"(?<=[.!?])\s+")
+
+# The packet renders the validated summary verbatim, so validation and display
+# share one limit — truncating after validation could cut a sentence's citation
+# off and present uncited text as evidence-bounded.
+MAX_SUMMARY_CHARS = 600
 
 
 def _first(row: dict[str, Any], *names: str) -> Any:
@@ -28,14 +34,49 @@ def _bounded(value: Any, max_chars: int) -> Any:
     return text if len(text) <= max_chars else f"{text[: max_chars - 1].rstrip()}…"
 
 
-def validate_cited_summary(value: str | None) -> str | None:
-    """Accept only short summaries whose substantive sentences cite supplied evidence."""
+def _sentences(text: str) -> list[str]:
+    """Split into sentences, keeping a trailing citation with the claim it supports.
 
-    if not value or len(value) > 1200:
+    "…prototypes. [SAM]" is one cited sentence, not a claim followed by an
+    uncited fragment.
+    """
+
+    parts = [part for part in _SENTENCE_BOUNDARY.split(text) if part.strip()]
+    merged: list[str] = []
+    for part in parts:
+        if merged and not _is_substantive(part):
+            merged[-1] = f"{merged[-1]} {part}"
+            continue
+        merged.append(part)
+    return merged
+
+
+def _is_substantive(sentence: str) -> bool:
+    """True when a sentence asserts something beyond its own citation markers."""
+
+    return len(re.sub(r"[^0-9A-Za-z]+", "", _CITATION.sub("", sentence))) >= 3
+
+
+def validate_cited_summary(value: str | None, *, max_chars: int = MAX_SUMMARY_CHARS) -> str | None:
+    """Accept only short summaries where *every* substantive sentence is cited.
+
+    Counting citations against a sentence total is not enough: two citations in
+    one sentence would license an uncited claim in the next. Each sentence must
+    carry its own ``[SAM]``/``[SBIR]``/``[USASPENDING]`` marker.
+    """
+
+    if not value:
         return None
-    sentence_count = max(1, len(re.findall(r"[.!?](?=\s|$)", value)))
-    citation_count = len(_CITATION.findall(value))
-    return value.strip() if citation_count >= sentence_count else None
+    text = value.strip()
+    if not text or len(text) > max_chars:
+        return None
+    sentences = _sentences(text)
+    if not sentences:
+        return None
+    for sentence in sentences:
+        if _is_substantive(sentence) and not _CITATION.search(sentence):
+            return None
+    return text
 
 
 def build_public_evidence_summarizer(api_key: str) -> Callable[[dict[str, Any]], str | None]:
@@ -71,7 +112,8 @@ def build_public_evidence_summarizer(api_key: str) -> Callable[[dict[str, Any]],
             "for. Identify the specific technical overlap and the principal point a procurement "
             "representative must still verify. Do not infer completion or statutory Phase III "
             "status. Write at most two sentences and end every sentence with [SBIR], [SAM], or "
-            "both, matching the evidence used.",
+            "both, matching the evidence used. Keep the whole reply under "
+            f"{MAX_SUMMARY_CHARS} characters.",
             json.dumps(evidence, default=str),
             temperature=0.0,
         )
@@ -80,4 +122,4 @@ def build_public_evidence_summarizer(api_key: str) -> Callable[[dict[str, Any]],
     return summarize
 
 
-__all__ = ["build_public_evidence_summarizer", "validate_cited_summary"]
+__all__ = ["MAX_SUMMARY_CHARS", "build_public_evidence_summarizer", "validate_cited_summary"]

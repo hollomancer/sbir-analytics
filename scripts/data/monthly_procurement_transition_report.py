@@ -11,8 +11,17 @@ from sbir_etl.reporting.procurement_transition import MonthlyReportBuilder, buil
 from sbir_etl.reporting.procurement_transition.ai import build_public_evidence_summarizer
 
 
-def _read(path: Path | None) -> pd.DataFrame:
+def _read(path: Path | None, *, required: bool = False) -> pd.DataFrame:
+    """Load a tabular input.
+
+    Required inputs fail closed: a typo or a missing upstream artifact must not
+    exit zero with a plausible zero-lead packet. Only the optional previous
+    snapshot degrades to an empty frame.
+    """
+
     if path is None or not path.exists():
+        if required:
+            raise FileNotFoundError(f"required input not found: {path}")
         return pd.DataFrame()
     return pd.read_parquet(path) if path.suffix == ".parquet" else pd.read_csv(path)
 
@@ -37,7 +46,7 @@ def main() -> int:
     args = parser.parse_args()
 
     cohorts = build_award_cohorts(
-        _read(args.awards), _read(args.previous_awards), report_month=args.month
+        _read(args.awards, required=True), _read(args.previous_awards), report_month=args.month
     )
     api_key = os.getenv("OPENAI_API_KEY", "")
     summarizer = build_public_evidence_summarizer(api_key) if args.ai and api_key else None
@@ -48,8 +57,8 @@ def main() -> int:
         max_summaries=args.ai_max_summaries,
     ).write(
         award_cohorts=cohorts,
-        candidates=_read(args.candidates),
-        opportunities=_read(args.opportunities),
+        candidates=_read(args.candidates, required=True),
+        opportunities=_read(args.opportunities, required=True),
         source_manifest={
             "awards": str(args.awards),
             "previous_awards": str(args.previous_awards) if args.previous_awards else None,

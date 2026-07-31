@@ -44,3 +44,32 @@ def test_paired_requires_aligned_lengths():
     with pytest.raises(ValueError):
         paired_tfidf_cosine(["a"], ["b", "c"])
     assert paired_tfidf_cosine([], []).shape == (0,)
+
+
+def test_paired_never_materializes_the_cross_product():
+    """The paired path must stay linear in pair count, not N x N.
+
+    At production pair counts a dense cross-product is hundreds of MB, so guard
+    that ``cosine_similarity`` (the dense path) is not on this code path at all.
+    """
+
+    import sbir_ml.transition.detection.text_similarity as module
+
+    def _fail(*_args, **_kwargs):  # pragma: no cover - only runs on regression
+        raise AssertionError("paired_tfidf_cosine must not build the dense cosine matrix")
+
+    original = module.cosine_similarity
+    module.cosine_similarity = _fail
+    try:
+        paired = paired_tfidf_cosine(
+            ["scramjet combustor liner"] * 3, ["scramjet combustor demonstration"] * 3
+        )
+    finally:
+        module.cosine_similarity = original
+    assert paired.shape == (3,)
+    assert (paired > 0).all()
+
+
+def test_paired_handles_empty_and_stopword_only_corpora():
+    assert not paired_tfidf_cosine(["", None], ["", None]).any()  # type: ignore[list-item]
+    assert not paired_tfidf_cosine(["the of and"], ["the of and"]).any()

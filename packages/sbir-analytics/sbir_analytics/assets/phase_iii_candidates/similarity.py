@@ -24,20 +24,30 @@ DEFAULT_WEIGHTS: dict[str, float] = {
 }
 
 
-def _normalize_code(value: Any) -> str | None:
+# ``str(nan)`` / ``str(pd.NA)`` / ``str(pd.NaT)`` render as text, so a raw
+# string comparison would score two *missing* codes as an exact match.
+_MISSING_CODE_TOKENS = frozenset({"", "NAN", "NAT", "NONE", "NULL", "NA", "N/A", "<NA>"})
+
+
+def normalize_code(value: Any) -> str | None:
     """Return a trimmed, uppercase code string, or None if missing/blank."""
 
     if value is None:
         return None
+    try:
+        if bool(pd.isna(value)):
+            return None
+    except (TypeError, ValueError):
+        pass
     s = str(value).strip().upper()
-    return s or None
+    return None if s in _MISSING_CODE_TOKENS else s
 
 
 def _code_similarity(prior: Any, target: Any) -> float:
     """1.0 on exact match, 0.0 otherwise (including when either side is missing)."""
 
-    a = _normalize_code(prior)
-    b = _normalize_code(target)
+    a = normalize_code(prior)
+    b = normalize_code(target)
     if a is None or b is None:
         return 0.0
     return 1.0 if a == b else 0.0
@@ -121,6 +131,7 @@ def compute_topical_similarity(
 
 __all__ = [
     "DEFAULT_WEIGHTS",
+    "normalize_code",
     "compute_text_similarity_batch",
     "compute_topical_similarity",
 ]

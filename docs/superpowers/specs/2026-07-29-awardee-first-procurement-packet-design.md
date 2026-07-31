@@ -59,9 +59,13 @@ MarkdownIt → sanitized HTML   (existing path, unchanged)
 
 ### `AwardeeGroup` shape
 
-A plain dataclass (or dict) per awardee:
+A plain dataclass (or dict) per awardee — keyed by *firm* identity (UEI, else
+normalized company name), so a firm holding several cohort awards is one
+section and a procurement it reaches through more than one of them is listed
+once:
 
-- `award_id`, `company`, `award_title`, `phase`, `amount`, `abstract`
+- `award_id` (the representative award), `award_ids` (all of the firm's cohort
+  awards), `company`, `award_title`, `phase`, `amount`, `abstract`
 - `award_why_listed` (reuses existing `_award_why_listed`)
 - `directed`: list of procurement matches, tier = direct-award-possible
 - `competitive`: list of procurement matches, tier = competitive follow-on

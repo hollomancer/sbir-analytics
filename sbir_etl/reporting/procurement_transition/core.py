@@ -5,7 +5,9 @@ from __future__ import annotations
 import hashlib
 import html
 import json
+import math
 import re
+import shutil
 from collections.abc import Callable, Iterable
 from datetime import UTC, date, datetime
 from pathlib import Path
@@ -15,6 +17,7 @@ from urllib.parse import quote, urlsplit
 import pandas as pd
 from markdown_it import MarkdownIt
 
+from sbir_etl.reporting.procurement_transition.ai import MAX_SUMMARY_CHARS
 from sbir_etl.reporting.procurement_transition.cet_vocabulary import cet_agreement_fact
 from sbir_etl.utils.procurement_text import (
     document_token_frequencies,
@@ -49,16 +52,54 @@ def _coalesce(df: pd.DataFrame, *names: str) -> pd.Series:
     return result
 
 
-def _stable_award_id(row: pd.Series) -> str:
+# Fields that together identify one award. The public SBIR.gov snapshot reuses
+# Agency Tracking Numbers across tens of thousands of distinct award rows, so a
+# bare tracking number is a *firm/topic* key, not an award key: collapsing on it
+# makes unchanged rows look changed and silently merges distinct awards.
+_AWARD_GRAIN_FIELDS = (
+    "Company",
+    "Agency",
+    "Branch",
+    "Phase",
+    "Program",
+    "Proposal Award Date",
+    "Contract End Date",
+    "Award Title",
+    "Award Amount",
+)
+
+
+def _natural_award_id(row: pd.Series) -> str | None:
     for name in ("Agency Tracking Number", "Contract", "award_id"):
-        value = row.get(name)
-        if value is not None and str(value).strip() not in {"", "nan"}:
-            return str(value).strip()
-    material = "|".join(
-        _display(row.get(name)) or ""
-        for name in ("Company", "Agency", "Phase", "Proposal Award Date", "Award Title")
-    )
+        # ``_display`` rejects the nan/NaT/None/<NA> spellings ``str()`` would keep.
+        if (value := _display(row.get(name))) is not None:
+            return value
+    return None
+
+
+def _stable_award_id(row: pd.Series) -> str:
+    natural = _natural_award_id(row)
+    if natural is not None:
+        return natural
+    material = "|".join(_display(row.get(name)) or "" for name in _AWARD_GRAIN_FIELDS)
     return "sbir-" + hashlib.sha256(material.encode()).hexdigest()[:20]
+
+
+def _award_grain_key(row: pd.Series) -> str:
+    """Identity of one *award*, not one firm/topic.
+
+    ``award_id`` stays the natural identifier so it keeps joining to the
+    candidate frame, but it is not award-grain on its own — hence this separate
+    key for snapshot comparison.
+    """
+
+    material = "|".join(
+        [
+            _natural_award_id(row) or "",
+            *(_display(row.get(name)) or "" for name in _AWARD_GRAIN_FIELDS),
+        ]
+    )
+    return hashlib.sha256(material.encode()).hexdigest()[:24]
 
 
 def normalize_awards(raw: pd.DataFrame) -> pd.DataFrame:
@@ -68,6 +109,7 @@ def normalize_awards(raw: pd.DataFrame) -> pd.DataFrame:
         return pd.DataFrame(
             columns=[
                 "award_id",
+                "award_key",
                 "company",
                 "title",
                 "agency",
@@ -89,6 +131,7 @@ def normalize_awards(raw: pd.DataFrame) -> pd.DataFrame:
         )
     out = pd.DataFrame(index=raw.index)
     out["award_id"] = raw.apply(_stable_award_id, axis=1)
+    out["award_key"] = raw.apply(_award_grain_key, axis=1)
     out["company"] = _pick(raw, "Company", "company", "recipient_name")
     out["title"] = _pick(raw, "Award Title", "title")
     out["agency"] = _pick(raw, "Agency", "agency")
@@ -139,13 +182,26 @@ def build_award_cohorts(
     )
     start, end = _month_bounds(report_month)
     horizon = (pd.Timestamp(end) + pd.Timedelta(days=approaching_days)).date()
-    prior_hash = dict(zip(prior.get("award_id", []), prior.get("row_hash", []), strict=False))
-    current["newly_observed"] = ~current["award_id"].isin(prior.get("award_id", []))
-    current["changed_since_prior_report"] = current.apply(
-        lambda row: row["award_id"] in prior_hash
-        and prior_hash[row["award_id"]] != row["row_hash"],
-        axis=1,
-    )
+
+    # Diff on the compound award-grain key, never on the bare tracking number:
+    # the public snapshot reuses tracking numbers across tens of thousands of
+    # distinct awards, and collapsing them marks unchanged rows as changed. The
+    # value is a *set* of hashes so residual duplicates still compare correctly.
+    def _keys(frame: pd.DataFrame) -> pd.Series:
+        if "award_key" in frame.columns:
+            return frame["award_key"].astype(str)
+        return frame.get("award_id", pd.Series(dtype="object")).astype(str)
+
+    prior_hashes: dict[str, set[str]] = {}
+    if not prior.empty:
+        for key, row_hash in zip(_keys(prior), prior.get("row_hash", []), strict=False):
+            prior_hashes.setdefault(key, set()).add(str(row_hash))
+    current_keys = _keys(current)
+    current["newly_observed"] = ~current_keys.isin(prior_hashes)
+    current["changed_since_prior_report"] = [
+        key in prior_hashes and str(row_hash) not in prior_hashes[key]
+        for key, row_hash in zip(current_keys, current["row_hash"], strict=True)
+    ]
     current["awarded_in_period"] = current["award_date"].map(
         lambda value: bool(value and start <= value <= end)
     )
@@ -590,11 +646,27 @@ def _deadline_sort_key(row: pd.Series) -> int:
     return int(parsed.value) if parsed is not None else _NO_DEADLINE_SORT_KEY
 
 
+def _awardee_key(award: pd.Series) -> str:
+    """Identity of the *firm*, not the award row: UEI, else normalized company name."""
+
+    if uei := _normalized_identifier(_first_value(award.get("uei"), award.get("award_uei"))):
+        return f"uei:{uei}"
+    if company := _display(award.get("company")):
+        return "company:" + re.sub(r"\W+", " ", company.lower()).strip()
+    return f"award:{award.get('award_id')}"
+
+
+def _procurement_key(row: pd.Series) -> str | None:
+    return _display(_first_value(row.get("target_id"), row.get("opportunity_title")))
+
+
 def group_candidates_by_awardee(rows: pd.DataFrame, awards: pd.DataFrame) -> list[dict[str, Any]]:
     """Group scored candidate pairs under each awardee, ordered for the packet.
 
-    Each awardee becomes one section listing every open procurement it is relevant
-    to. Directed (possible direct-award) matches precede competitive ones, each
+    Awardees are consolidated by firm identity (UEI, else normalized company
+    name), so a firm holding several awards in the cohort is one section, and a
+    procurement it is relevant to through more than one award appears once.
+    Directed (possible direct-award) matches precede competitive ones, each
     sorted by soonest response deadline. Below-threshold matches are kept in a
     per-awardee ``watchlist`` rather than dropped. Awardees with no matched
     procurement are still emitted so the representative sees the whole cohort.
@@ -616,36 +688,55 @@ def group_candidates_by_awardee(rows: pd.DataFrame, awards: pd.DataFrame) -> lis
         else pd.Series(dtype="object")
     )
 
-    def _entries(mask: pd.Series) -> list[pd.Series]:
+    def _entries(mask: pd.Series, seen: set[str]) -> list[pd.Series]:
         subset = rows.loc[mask]
-        return sorted(
+        ordered = sorted(
             (row for _, row in subset.iterrows()),
             key=lambda row: (
                 _deadline_sort_key(row),
                 str(_first_value(row.get("opportunity_title"), row.get("target_id")) or ""),
             ),
         )
+        unique: list[pd.Series] = []
+        for row in ordered:
+            key = _procurement_key(row)
+            if key is not None:
+                if key in seen:
+                    continue
+                seen.add(key)
+            unique.append(row)
+        return unique
 
     ordered_awards = _sort_awards_for_packet(awards) if not awards.empty else awards
-    groups: list[dict[str, Any]] = []
+    by_awardee: dict[str, list[pd.Series]] = {}
     for _, award in ordered_awards.iterrows():
-        award_id = str(award.get("award_id"))
+        by_awardee.setdefault(_awardee_key(award), []).append(award)
+
+    groups: list[dict[str, Any]] = []
+    for awardee_awards in by_awardee.values():
+        # The first award is the packet-order representative (_sort_awards_for_packet
+        # already puts the most time-sensitive award of the firm first).
+        primary = awardee_awards[0]
+        ids = [str(award.get("award_id")) for award in awardee_awards]
         same = (
-            award_ids == award_id
+            award_ids.isin(ids)
             if not rows.empty
             else pd.Series(False, index=rows.index, dtype=bool)
         )
         high = same & (confidence == "HIGH")
-        directed = _entries(high & (signals == "directed"))
-        competitive = _entries(high & (signals == "followon"))
-        watchlist = _entries(same & (confidence == "WATCHLIST"))
+        seen: set[str] = set()
+        directed = _entries(high & (signals == "directed"), seen)
+        competitive = _entries(high & (signals == "followon"), seen)
+        watchlist = _entries(same & (confidence == "WATCHLIST"), seen)
         deadline_keys = [
             _deadline_sort_key(entry) for entry in (*directed, *competitive, *watchlist)
         ]
         groups.append(
             {
-                "award_id": award_id,
-                "award": award,
+                "award_id": str(primary.get("award_id")),
+                "award_ids": ids,
+                "award": primary,
+                "awards": awardee_awards,
                 "directed": directed,
                 "competitive": competitive,
                 "watchlist": watchlist,
@@ -666,6 +757,55 @@ def group_candidates_by_awardee(rows: pd.DataFrame, awards: pd.DataFrame) -> lis
         )
     )
     return groups
+
+
+_FORMULA_LEADS = ("=", "+", "-", "@", "\t", "\r")
+
+
+def _spreadsheet_safe(value: Any) -> Any:
+    """Neutralize a leading formula trigger in a presentation CSV cell.
+
+    SBIR.gov and SAM.gov text is external input; a cell opening with ``=``,
+    ``+``, ``-`` or ``@`` is evaluated as a formula when the CSV is opened in a
+    spreadsheet, and quoting does not prevent it. Raw, unprefixed values remain
+    available in ``evidence.ndjson``.
+    """
+
+    if not isinstance(value, str) or not value.startswith(_FORMULA_LEADS):
+        return value
+    return "'" + value
+
+
+def _spreadsheet_safe_frame(frame: pd.DataFrame) -> pd.DataFrame:
+    if frame.empty:
+        return frame
+    return frame.map(_spreadsheet_safe)
+
+
+def _json_safe(value: Any) -> Any:
+    """Coerce a record value into standards-compliant JSON.
+
+    ``json.dumps(default=str)`` still emits the non-standard ``NaN`` token for
+    float nulls, which strict parsers reject — normalize every pandas null to
+    ``None`` and stringify what remains.
+    """
+
+    if value is None:
+        return None
+    if isinstance(value, float):
+        return None if math.isnan(value) or math.isinf(value) else value
+    if isinstance(value, (bool, int)):
+        return value
+    if isinstance(value, (list, tuple)):
+        return [_json_safe(item) for item in value]
+    if isinstance(value, dict):
+        return {str(key): _json_safe(item) for key, item in value.items()}
+    try:
+        if bool(pd.isna(value)):
+            return None
+    except (TypeError, ValueError):
+        pass
+    return str(value)
 
 
 def _packet_html(markdown: str, *, title: str) -> str:
@@ -928,7 +1068,12 @@ class MonthlyReportBuilder:
         if rationale := _display(entry.get("alignment_rationale")):
             lines.append(f"**Analyst note:** {_markdown_text(rationale, limit=360)}")
         if summary:
-            lines.append(f"**Evidence-bounded comparison:** {_markdown_text(summary, limit=360)}")
+            # Render at the validator's own limit — truncating a validated summary
+            # could cut a sentence's citation off and present it as uncited.
+            lines.append(
+                f"**Evidence-bounded comparison:** "
+                f"{_markdown_text(summary, limit=MAX_SUMMARY_CHARS)}"
+            )
         lines.append(f"**Validate:** {_markdown_text(_validate_line(entry, signal), limit=500)}")
         award_url = _safe_url(
             _first_value(entry.get("award_source_url"), entry.get("prior_source_url"))
@@ -1186,8 +1331,13 @@ class MonthlyReportBuilder:
         source_manifest: dict[str, Any] | None = None,
     ) -> Path:
         self.output_dir.mkdir(parents=True, exist_ok=True)
-        centers_dir = self.output_dir / "centers"
-        centers_dir.mkdir(exist_ok=True)
+        # Render into a staging directory and swap it in, so rerunning a month with
+        # a changed center set cannot leave a withdrawn center's packet behind as
+        # apparently-current output.
+        centers_dir = self.output_dir / ".centers.staging"
+        if centers_dir.exists():
+            shutil.rmtree(centers_dir)
+        centers_dir.mkdir(parents=True)
         self._summary_attempts = 0
         master = self._master(award_cohorts, candidates, opportunities)
         self._summary_targets = self._select_summary_targets(master)
@@ -1196,7 +1346,9 @@ class MonthlyReportBuilder:
             *opportunities.get("description", pd.Series(dtype="object")).tolist(),
         ]
         self._token_doc_freq = document_token_frequencies(corpus)
-        master.to_csv(self.output_dir / "master_candidates.csv", index=False)
+        _spreadsheet_safe_frame(master).to_csv(
+            self.output_dir / "master_candidates.csv", index=False
+        )
 
         evidence: list[dict[Any, Any]] = []
         groups = (
@@ -1212,19 +1364,31 @@ class MonthlyReportBuilder:
         ):
             groups.setdefault(_display(center) or "Unassigned", master.iloc[0:0].copy())
 
+        # Center membership is the union of (a) awards linked to that center by a
+        # candidate and (b) the center's own unlinked cohort awards. Computing the
+        # linked set across every center first keeps a matched award out of a second
+        # center's packet, where it would be listed as "no matched procurement",
+        # while still emitting every awardee at a center that has any match.
+        linked_by_center = {
+            center: set(rows.get("prior_award_id", pd.Series(dtype="object")).dropna().astype(str))
+            for center, rows in groups.items()
+        }
+        linked_anywhere = set().union(*linked_by_center.values()) if linked_by_center else set()
+        cohort_award_ids = award_cohorts.get(
+            "award_id", pd.Series(dtype="object", index=award_cohorts.index)
+        ).astype(str)
+
         if groups:
             for center, rows in groups.items():
-                linked_award_ids = set(
-                    rows.get("prior_award_id", pd.Series(dtype="object")).dropna().astype(str)
+                at_center = (
+                    award_cohorts.get("agency", pd.Series(dtype="object")).fillna("") == str(center)
+                ) | (
+                    award_cohorts.get("branch", pd.Series(dtype="object")).fillna("") == str(center)
                 )
                 related_awards = award_cohorts.loc[
-                    award_cohorts["award_id"].astype(str).isin(linked_award_ids)
+                    cohort_award_ids.isin(linked_by_center[center])
+                    | (at_center & ~cohort_award_ids.isin(linked_anywhere))
                 ]
-                if related_awards.empty:
-                    related_awards = award_cohorts.loc[
-                        (award_cohorts["agency"].fillna("") == str(center))
-                        | (award_cohorts["branch"].fillna("") == str(center))
-                    ]
                 markdown = self._packet(str(center), rows, related_awards)
                 slug = _slug(rows.iloc[0].get("center_code") if not rows.empty else center)
                 (centers_dir / f"{slug}.md").write_text(markdown, encoding="utf-8")
@@ -1248,9 +1412,21 @@ class MonthlyReportBuilder:
                 ),
                 encoding="utf-8",
             )
+        # Swap the freshly rendered centers in, replacing the month's prior output.
+        final_centers_dir = self.output_dir / "centers"
+        if final_centers_dir.exists():
+            shutil.rmtree(final_centers_dir)
+        centers_dir.rename(final_centers_dir)
+
         with (self.output_dir / "evidence.ndjson").open("w", encoding="utf-8") as handle:
             for record in evidence:
-                handle.write(json.dumps(record, default=str) + "\n")
+                handle.write(
+                    json.dumps(
+                        {str(key): _json_safe(value) for key, value in record.items()},
+                        allow_nan=False,
+                    )
+                    + "\n"
+                )
         high = master.loc[master["confidence_bucket"] == "HIGH"] if not master.empty else master
         audit = (
             high.sort_values(["signal_class", "candidate_id"], na_position="last")
@@ -1259,7 +1435,7 @@ class MonthlyReportBuilder:
             if not high.empty
             else high
         )
-        audit.to_csv(self.output_dir / "audit_sample.csv", index=False)
+        _spreadsheet_safe_frame(audit).to_csv(self.output_dir / "audit_sample.csv", index=False)
         manifest = {
             "report_month": self.report_month,
             "generated_at": datetime.now(UTC).isoformat(),
