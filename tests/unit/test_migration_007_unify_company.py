@@ -9,7 +9,9 @@ import pytest
 pytestmark = pytest.mark.fast
 
 # The migration module name begins with a digit, so import it dynamically.
-_module = importlib.import_module("migrations.versions.007_unify_company_into_organization")
+_module = importlib.import_module(
+    "sbir_graph.migrations.versions.007_unify_company_into_organization"
+)
 UnifyCompanyIntoOrganization = _module.UnifyCompanyIntoOrganization
 
 
@@ -56,6 +58,19 @@ def test_upgrade_rehomes_then_drops_legacy_schema():
     # The enrichment indexes must be re-homed onto :Organization.
     assert any("org_classification_idx" in s and ":Organization" in s for s in statements)
     assert any("org_sec_cik_idx" in s and ":Organization" in s for s in statements)
+
+
+def test_upgrade_propagates_schema_failure():
+    """A partially completed data migration cannot be reported as successful."""
+    migration = UnifyCompanyIntoOrganization()
+    driver, session = _mock_driver_with_session()
+    orphan_result = MagicMock()
+    orphan_result.single.return_value = {"n": 0}
+    session.run.side_effect = [orphan_result, RuntimeError("schema failure")]
+    session.execute_write.return_value = {"rehomed": 0}
+
+    with pytest.raises(RuntimeError, match="schema failure"):
+        migration.upgrade(driver)
 
 
 def test_rehome_batch_preserves_identity_and_drops_company_id():

@@ -8,14 +8,22 @@ established), and data quality scores for patent records.
 from typing import Any
 
 import pandas as pd
-from loguru import logger
 
-from sbir_etl.models.quality import ChangesSummary, DataHygieneMetrics, ModuleReport
+from sbir_etl.models.quality import ChangesSummary, DataHygieneMetrics
 from sbir_etl.utils.reporting.analyzers.base_analyzer import AnalysisInsight, ModuleAnalyzer
 
 
 class PatentAnalysisAnalyzer(ModuleAnalyzer):
     """Analyzer for patent validation and loading operations."""
+
+    stage = "load"
+    primary_data_key = "patent_df"
+    processing_keys = ("validation_results", "valid_records", "invalid_records")
+    duration_data_key = "loading_results"
+    analysis_label = "Patent"
+    start_analysis_label = "patent"
+    missing_data_warning = "No patent DataFrame provided for analysis"
+    missing_data_error = "No patent DataFrame available"
 
     def __init__(self, config: dict[str, Any] | None = None):
         """Initialize patent analysis analyzer.
@@ -50,66 +58,6 @@ class PatentAnalysisAnalyzer(ModuleAnalyzer):
         # (org_patent_*) and :Individual (ind_patent_*) nodes, not :PatentEntity/:Company.
         self.node_types = ["Patent", "PatentAssignment", "Organization", "Individual"]
         self.relationship_types = ["ASSIGNED_VIA", "ASSIGNED_FROM", "ASSIGNED_TO", "OWNS"]
-
-    def analyze(self, module_data: dict[str, Any]) -> ModuleReport:
-        """Analyze patent data and generate comprehensive report.
-
-        Args:
-            module_data: Dictionary containing:
-                - patent_df: Patent DataFrame
-                - validation_results: Patent validation results
-                - loading_results: Neo4j loading results
-                - neo4j_stats: Neo4j database statistics
-                - run_context: Pipeline run context
-
-        Returns:
-            ModuleReport with patent analysis results
-        """
-        logger.info("Starting patent analysis")
-
-        patent_df = module_data.get("patent_df")
-        validation_results = module_data.get("validation_results", {})
-        loading_results = module_data.get("loading_results", {})
-        neo4j_stats = module_data.get("neo4j_stats", {})
-        run_context = module_data.get("run_context", {})
-
-        if patent_df is None:
-            logger.warning("No patent DataFrame provided for analysis")
-            return self._create_empty_report(run_context)
-
-        # Calculate key metrics
-        key_metrics = self.get_key_metrics(module_data)
-
-        # Generate insights
-        insights = self.generate_insights(module_data)
-
-        # Calculate data hygiene metrics
-        data_hygiene = self._calculate_data_hygiene(patent_df, validation_results)
-
-        # Calculate changes summary (for loading operations)
-        changes_summary = self._calculate_changes_summary(loading_results, neo4j_stats)
-
-        # Extract processing metrics
-        total_records = len(patent_df) if patent_df is not None else 0
-        records_processed = validation_results.get("valid_records", total_records)
-        records_failed = validation_results.get("invalid_records", 0)
-        duration_seconds = loading_results.get("duration_seconds", 0.0)
-
-        # Create module report
-        report = self.create_module_report(
-            run_id=run_context.get("run_id", "unknown"),
-            stage="load",
-            total_records=total_records,
-            records_processed=records_processed,
-            records_failed=records_failed,
-            duration_seconds=duration_seconds,
-            module_metrics=key_metrics,
-            data_hygiene=data_hygiene,
-            changes_summary=changes_summary,
-        )
-
-        logger.info(f"Patent analysis complete: {len(insights)} insights generated")
-        return report
 
     def get_key_metrics(self, module_data: dict[str, Any]) -> dict[str, Any]:
         """Extract key metrics from patent analysis data.
@@ -657,21 +605,14 @@ class PatentAnalysisAnalyzer(ModuleAnalyzer):
             enrichment_sources={"neo4j_loading": total_operations},
         )
 
-    def _create_empty_report(self, run_context: dict[str, Any]) -> ModuleReport:
-        """Create an empty report when no data is available.
+    def _calculate_report_data_hygiene(self, module_data: dict[str, Any]) -> DataHygieneMetrics:
+        """Calculate hygiene from patents and validation results."""
+        return self._calculate_data_hygiene(
+            module_data[self.primary_data_key], module_data.get("validation_results", {})
+        )
 
-        Args:
-            run_context: Pipeline run context
-
-        Returns:
-            Empty ModuleReport
-        """
-        return self.create_module_report(
-            run_id=run_context.get("run_id", "unknown"),
-            stage="load",
-            total_records=0,
-            records_processed=0,
-            records_failed=0,
-            duration_seconds=0.0,
-            module_metrics={"error": "No patent DataFrame available"},
+    def _calculate_report_changes_summary(self, module_data: dict[str, Any]) -> ChangesSummary:
+        """Calculate graph changes from loading results and Neo4j statistics."""
+        return self._calculate_changes_summary(
+            module_data.get("loading_results", {}), module_data.get("neo4j_stats", {})
         )

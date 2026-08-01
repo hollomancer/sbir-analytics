@@ -3,38 +3,21 @@
 import aws_cdk as cdk
 from aws_cdk.assertions import Match, Template
 
-from stacks.batch import BatchStack
+from stacks.batch import BatchStack, VpcConfig
 from stacks.foundation import FoundationStack
 
 ENV = cdk.Environment(account="123456789012", region="us-east-2")
 
-# Minimal default-VPC context so Vpc.from_lookup doesn't hit AWS during synthesis
-VPC_CONTEXT = {
-    "vpc-provider:account=123456789012:filter.isDefault=true:region=us-east-2:returnAsymmetricSubnets=true": {
-        "vpcId": "vpc-12345",
-        "vpcCidrBlock": "172.31.0.0/16",
-        "ownerAccountId": "123456789012",
-        "availabilityZones": [],
-        "subnetGroups": [
-            {
-                "name": "Public",
-                "type": "Public",
-                "subnets": [
-                    {
-                        "subnetId": "subnet-aaa",
-                        "cidr": "172.31.0.0/20",
-                        "availabilityZone": "us-east-2a",
-                        "routeTableId": "rtb-aaa",
-                    }
-                ],
-            }
-        ],
-    }
-}
+TEST_VPC = VpcConfig(
+    vpc_id="vpc-00000000000000000",
+    availability_zones=("us-east-2a",),
+    public_subnet_ids=("subnet-00000000000000000",),
+    public_subnet_route_table_ids=("rtb-00000000000000000",),
+)
 
 
 def _template() -> Template:
-    app = cdk.App(context=VPC_CONTEXT)
+    app = cdk.App()
     foundation = FoundationStack(app, "TestFoundation", env=ENV)
     batch = BatchStack(
         app,
@@ -42,6 +25,7 @@ def _template() -> Template:
         env=ENV,
         bucket=foundation.bucket,
         neo4j_secret=foundation.neo4j_secret,
+        vpc_config=TEST_VPC,
     )
     return Template.from_stack(batch)
 
@@ -86,9 +70,9 @@ def test_job_queue_name_and_spot_preference():
     )
 
 
-def test_four_job_definitions():
+def test_five_job_definitions():
     template = _template()
-    template.resource_count_is("AWS::Batch::JobDefinition", 4)
+    template.resource_count_is("AWS::Batch::JobDefinition", 5)
 
 
 def test_usaspending_job_has_ephemeral_storage():
@@ -97,9 +81,7 @@ def test_usaspending_job_has_ephemeral_storage():
         "AWS::Batch::JobDefinition",
         {
             "JobDefinitionName": "sbir-analytics-usaspending-extract",
-            "ContainerProperties": Match.object_like(
-                {"EphemeralStorage": {"SizeInGiB": 200}}
-            ),
+            "ContainerProperties": Match.object_like({"EphemeralStorage": {"SizeInGiB": 200}}),
         },
     )
 

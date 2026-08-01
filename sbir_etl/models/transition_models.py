@@ -211,13 +211,26 @@ class FederalContract(BaseModel):
     """
 
     contract_id: str = Field(..., description="Contract identifier (e.g., PIID).")
+    piid: str | None = Field(
+        None,
+        description=(
+            "Bare source PIID passed through from rpt.transaction_search for audit and "
+            "exact reconciliation; never replaced with the generated award identifier."
+        ),
+    )
+    transaction_unique_id: str | None = Field(
+        None,
+        description=(
+            "Stable USAspending transaction identifier passed through from "
+            "rpt.transaction_search; never inferred from PIID or row position."
+        ),
+    )
     generated_unique_award_id: str | None = Field(
         None,
-        description="Canonical USAspending award identifier across transaction rows.",
-    )
-    research: str | None = Field(
-        None,
-        description="FPDS SBIR/STTR indicator (Element 10Q) when supplied by the source.",
+        description=(
+            "USAspending generated unique award identifier passed through from "
+            "rpt.transaction_search; the canonical contract-level grouping key."
+        ),
     )
     agency: str | None = Field(None, description="Agency code or name (e.g., 'DOD', 'NASA').")
     sub_agency: str | None = Field(None, description="Sub-agency or office.")
@@ -264,6 +277,21 @@ class FederalContract(BaseModel):
     contract_award_type: str | None = Field(
         None,
         description="Contract award type code from USAspending (e.g., 'A', 'B', 'IDV-A').",
+    )
+    research: str | None = Field(
+        None,
+        description=(
+            "Raw FPDS research code supplied by USAspending (for example SR1 or ST3); "
+            "not derived or recoded."
+        ),
+    )
+    naics_code: str | None = Field(
+        None,
+        description="Raw transaction-level NAICS code supplied by USAspending.",
+    )
+    product_or_service_code: str | None = Field(
+        None,
+        description="Raw transaction-level product or service code supplied by USAspending.",
     )
     matched_vendor: VendorMatch | None = Field(
         None, description="Vendor match result to canonical entity."

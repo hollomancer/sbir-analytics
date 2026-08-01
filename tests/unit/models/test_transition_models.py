@@ -482,6 +482,25 @@ class TestFederalContract:
         assert contract.parent_contract_agency == "DOD"
         assert contract.contract_award_type == "B"
 
+    def test_federal_contract_preserves_raw_usaspending_provenance_fields(self):
+        """Census inputs remain top-level source values, not metadata or derived labels."""
+        contract = FederalContract(
+            contract_id="W911NF20C0001",
+            transaction_unique_id="CONT_AW_123_TX_4",
+            generated_unique_award_id="CONT_AW_123",
+            research="SR3",
+            naics_code="541715",
+            product_or_service_code="AC13",
+        )
+
+        dumped = contract.model_dump()
+        assert dumped["transaction_unique_id"] == "CONT_AW_123_TX_4"
+        assert dumped["generated_unique_award_id"] == "CONT_AW_123"
+        assert dumped["research"] == "SR3"
+        assert dumped["naics_code"] == "541715"
+        assert dumped["product_or_service_code"] == "AC13"
+        assert "sbir_phase" not in dumped
+
 
 class TestTransition:
     """Tests for Transition model."""

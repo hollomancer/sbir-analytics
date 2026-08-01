@@ -7,26 +7,140 @@ large USAspending dataset to manageable size.
 
 Usage:
     # Extract from a locally-extracted subset dump
-    python scripts/extract_federal_contracts.py --subset
+    python scripts/archive/extract_federal_contracts.py --subset
 
     # Extract from a locally-extracted full dump
-    python scripts/extract_federal_contracts.py --full
+    python scripts/archive/extract_federal_contracts.py --full
 
-    # Stream one table member straight from the remote USAspending .zip over HTTP
-    # range — no full ~217GB download, nothing staged on local disk (needs the
-    # 'streaming' extra: uv sync --extra streaming). The transaction_normalized
-    # member is auto-detected from the zip's layout; pass --member to override.
-    python scripts/extract_federal_contracts.py \\
+    # Stream the schema-verified FPDS transaction-search member straight from a
+    # remote USAspending .zip over HTTP range — no full ~217GB download, nothing
+    # staged on local disk (needs the 'streaming' extra: uv sync --extra streaming).
+    python scripts/archive/extract_federal_contracts.py \\
         --remote-zip https://files.usaspending.gov/database_download/usaspending-db-subset_20240101.zip
 """
 
 import argparse
+import hashlib
+import json
+from collections.abc import Mapping
+from datetime import UTC, datetime
 from pathlib import Path
 
 from loguru import logger
 
 from sbir_etl.config.loader import get_config
 from sbir_etl.extractors.contract_extractor import ContractExtractor
+
+
+SOURCE_PROVENANCE_VERSION = 1
+SOURCE_PROVENANCE_KEYS = frozenset(
+    {
+        "canonical_table",
+        "physical_table",
+        "member",
+        "ordered_columns_sha256",
+        "column_count",
+        "toc_sha256",
+        "vendor_filter_sha256",
+        "output_sha256",
+        "provenance_version",
+    }
+)
+
+
+def _file_sha256(path: Path) -> str:
+    """Hash a provenance input without loading it into memory."""
+
+    digest = hashlib.sha256()
+    with path.open("rb") as file:
+        for chunk in iter(lambda: file.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _valid_sha256(value: object) -> bool:
+    return bool(
+        isinstance(value, str)
+        and len(value) == 64
+        and all(character in "0123456789abcdef" for character in value.lower())
+    )
+
+
+def write_contract_provenance_checks(
+    *,
+    extractor: ContractExtractor,
+    output_file: Path,
+    vendor_filter_file: Path,
+    expected_vendor_filter_sha256: str,
+    total_rows: int,
+    source: Mapping[str, str],
+) -> Path:
+    """Atomically bind an extracted parquet to its verified source inputs."""
+
+    output_file = Path(output_file)
+    vendor_filter_file = Path(vendor_filter_file)
+    current_vendor_sha256 = _file_sha256(vendor_filter_file)
+    if current_vendor_sha256 != expected_vendor_filter_sha256:
+        raise RuntimeError(
+            "Vendor filter changed during contract extraction; refusing to write provenance"
+        )
+
+    provenance: dict[str, object] = dict(extractor.source_provenance)
+    provenance.update(
+        {
+            "vendor_filter_sha256": current_vendor_sha256,
+            "output_sha256": _file_sha256(output_file),
+            "provenance_version": SOURCE_PROVENANCE_VERSION,
+        }
+    )
+    missing = sorted(SOURCE_PROVENANCE_KEYS - set(provenance))
+    if missing:
+        raise RuntimeError(f"Verified contract provenance is missing fields: {missing}")
+    if provenance.get("canonical_table") != "rpt.transaction_search":
+        raise RuntimeError("Verified contract provenance has the wrong canonical table")
+    if provenance.get("physical_table") not in {
+        "rpt.transaction_search",
+        "rpt.transaction_search_fpds",
+    }:
+        raise RuntimeError("Verified contract provenance has the wrong physical table")
+    member = provenance.get("member")
+    if not isinstance(member, str) or not member.endswith(".dat.gz"):
+        raise RuntimeError("Verified contract provenance has an invalid archive member")
+    column_count = provenance.get("column_count")
+    if not isinstance(column_count, int) or isinstance(column_count, bool) or column_count <= 0:
+        raise RuntimeError("Verified contract provenance has an invalid column count")
+    for key in (
+        "ordered_columns_sha256",
+        "toc_sha256",
+        "vendor_filter_sha256",
+        "output_sha256",
+    ):
+        if not _valid_sha256(provenance.get(key)):
+            raise RuntimeError(f"Verified contract provenance has an invalid {key}")
+
+    checks_path = output_file.with_suffix(".checks.json")
+    checks = {
+        "ok": True,
+        "generated_at": datetime.now(UTC).isoformat(),
+        "total_rows": total_rows,
+        "extraction_stats": dict(extractor.stats),
+        "source_provenance": provenance,
+        "source": {
+            **source,
+            "vendor_filter_path": str(vendor_filter_file),
+        },
+    }
+    checks_path.parent.mkdir(parents=True, exist_ok=True)
+    temporary_path = checks_path.with_name(f".{checks_path.name}.tmp")
+    try:
+        temporary_path.write_text(
+            json.dumps(checks, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+        temporary_path.replace(checks_path)
+    finally:
+        temporary_path.unlink(missing_ok=True)
+    return checks_path
 
 
 def main():
@@ -44,7 +158,8 @@ def main():
         help=(
             "Stream one member from a remote USAspending database .zip over HTTP range "
             "(no full download). Requires the 'streaming' extra; the member streamed is "
-            "set by --member (defaults to the transaction_normalized table)."
+            "resolved from the archive TOC and verified as the FPDS transaction-search "
+            "table."
         ),
     )
     parser.add_argument(
@@ -52,9 +167,9 @@ def main():
         type=str,
         default=None,
         help=(
-            "Override the .dat.gz member inside --remote-zip to stream. "
-            "When omitted, the transaction_normalized member is auto-detected by "
-            "sniffing the zip's .dat.gz layouts (per-table OIDs vary between dumps)."
+            "Optional expected .dat.gz member inside --remote-zip. The value must match "
+            "the unique FPDS transaction-search member resolved from the archive TOC; "
+            "a mismatch fails closed."
         ),
     )
 
@@ -66,8 +181,9 @@ def main():
     vendor_filter_file = config.paths.resolve_path("transition_vendor_filters")
     if not vendor_filter_file.exists():
         logger.error(f"Vendor filter file not found: {vendor_filter_file}")
-        logger.info("Run: python scripts/extract_sbir_vendors.py")
+        logger.info("Run: python scripts/archive/extract_sbir_vendors.py")
         return
+    vendor_filter_sha256 = _file_sha256(vendor_filter_file)
 
     # Remote-zip streaming path: no local dump required.
     if args.remote_zip:
@@ -77,7 +193,7 @@ def main():
             vendor_filter_file=vendor_filter_file,
             batch_size=10000,
         )
-        member_label = args.member or "(auto-detect)"
+        member_label = args.member or "(resolve from archive TOC)"
         logger.info(f"Streaming member {member_label} from {args.remote_zip}")
         logger.info(f"Output will be saved to {output_file}")
         try:
@@ -86,7 +202,16 @@ def main():
                 member_name=args.member,
                 output_file=output_file,
             )
+            checks_path = write_contract_provenance_checks(
+                extractor=extractor,
+                output_file=output_file,
+                vendor_filter_file=vendor_filter_file,
+                expected_vendor_filter_sha256=vendor_filter_sha256,
+                total_rows=num_contracts,
+                source={"remote_zip": args.remote_zip},
+            )
             logger.success(f"Extraction complete! {num_contracts:,} contracts extracted")
+            logger.success(f"Provenance checks saved to {checks_path}")
         except Exception as e:
             logger.error(f"Remote-zip extraction failed: {e}")
             raise
@@ -135,7 +260,17 @@ def main():
             output_file=output_file,
         )
 
+        checks_path = write_contract_provenance_checks(
+            extractor=extractor,
+            output_file=output_file,
+            vendor_filter_file=vendor_filter_file,
+            expected_vendor_filter_sha256=vendor_filter_sha256,
+            total_rows=num_contracts,
+            source={"dump_dir": str(dump_dir)},
+        )
+
         logger.success(f"Extraction complete! {num_contracts:,} contracts extracted")
+        logger.success(f"Provenance checks saved to {checks_path}")
 
     except Exception as e:
         logger.error(f"Extraction failed: {e}")

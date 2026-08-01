@@ -1,6 +1,6 @@
 """Add indexes for Organization deduplication."""
 
-from migrations.base import Migration
+from sbir_graph.migrations.base import Migration
 from neo4j import Driver
 
 
@@ -22,12 +22,7 @@ class AddOrganizationDeduplicationIndexes(Migration):
 
         with driver.session() as session:
             for stmt in statements:
-                try:
-                    session.run(stmt)
-                except Exception as e:
-                    from loguru import logger
-
-                    logger.debug(f"Index may already exist: {e}")
+                session.run(stmt)
 
     def downgrade(self, driver: Driver) -> None:
         """Remove deduplication indexes."""
@@ -39,7 +34,4 @@ class AddOrganizationDeduplicationIndexes(Migration):
 
         with driver.session() as session:
             for stmt in statements:
-                try:
-                    session.run(stmt)
-                except Exception:
-                    pass
+                session.run(stmt)

@@ -27,9 +27,9 @@ COPY packages/sbir-graph/sbir_graph/ /app/sbir_graph/
 COPY packages/sbir-ml/sbir_ml/ /app/sbir_ml/
 COPY scripts/ /app/scripts/
 COPY config/ /app/config/
+COPY specs/phase-iii-census/ /app/specs/phase-iii-census/
 COPY workspace.server.yaml /app/workspace.server.yaml
 COPY data/reference/ /app/data/reference/
-COPY migrations/ /app/migrations/
 COPY pyproject.toml /app/
 
 ENV PYTHONPATH=/app
