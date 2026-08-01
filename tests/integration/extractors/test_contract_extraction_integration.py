@@ -1,532 +1,504 @@
-"""Integration tests for ContractExtractor.
+"""Integration tests for schema-verified USAspending contract extraction.
 
-Tests cover end-to-end extraction scenarios:
-- Streaming from .dat.gz files
-- Full extract_from_dump pipeline
-- Statistics tracking across large batches
-- Parquet output validation
-- Parent/child relationship tracking
+The fixtures model the COPY order declared by a PostgreSQL directory archive.
+They intentionally avoid positional assumptions from historical dump snapshots.
 """
 
 import datetime
 import gzip
 import json
+import shutil
+from pathlib import Path
 
 import pandas as pd
 import pytest
 
 from sbir_analytics.assets.transition.contracts import normalize_contract_columns
-from sbir_etl.extractors.contract_extractor import ContractExtractor
+from sbir_etl.extractors.contract_extractor import (
+    ArchiveSchemaError,
+    ContractExtractor,
+    SourceDataError,
+)
 
 
 pytestmark = pytest.mark.integration
 
+SOURCE_MEMBER = "8123.dat.gz"
+COPY_COLUMNS = (
+    # Deliberately unlike any historic physical order: parsing must be by name.
+    "recipient_name",
+    "research",
+    "transaction_unique_id",
+    "federal_action_obligation",
+    "generated_unique_award_id",
+    "is_fpds",
+    "product_or_service_code",
+    "recipient_unique_id",
+    "action_date",
+    "naics_code",
+    "awarding_subtier_agency_name",
+    "recipient_uei",
+    "awarding_toptier_agency_name",
+    "extent_competed",
+    "piid",
+    "period_of_performance_start_date",
+    "period_of_performance_current_end_date",
+    "contract_award_type",
+    "referenced_idv_agency_iden",
+    "referenced_idv_piid",
+)
+TOC_TEXT = "8123; 0 999 TABLE DATA rpt transaction_search usaspending\n"
+SCHEMA_SQL = "CREATE TABLE rpt.transaction_search (is_fpds boolean);\n"
+COPY_SQL = f"COPY rpt.transaction_search ({', '.join(COPY_COLUMNS)}) FROM stdin;\n\\.\n"
+
+
+def _transaction_row(**overrides: str) -> dict[str, str]:
+    row = {
+        "recipient_name": "TEST CONTRACTOR ONE",
+        "research": "SR3",
+        "transaction_unique_id": "TX-DEFAULT",
+        "federal_action_obligation": "100000.00",
+        "generated_unique_award_id": "CONT_AWD_DEFAULT",
+        "is_fpds": "t",
+        "product_or_service_code": "AC12",
+        "recipient_unique_id": "TEST12345678",
+        "action_date": "20230115",
+        "naics_code": "541715",
+        "awarding_subtier_agency_name": "Department of the Air Force",
+        "recipient_uei": "TEST12345678",
+        "awarding_toptier_agency_name": "Department of Defense",
+        "extent_competed": "FULL",
+        "piid": "CONT001",
+        "period_of_performance_start_date": "20230115",
+        "period_of_performance_current_end_date": "20240115",
+        "contract_award_type": "A",
+        "referenced_idv_agency_iden": r"\N",
+        "referenced_idv_piid": r"\N",
+    }
+    row.update(overrides)
+    return row
+
+
+def _copy_line(row: dict[str, str]) -> str:
+    return "\t".join(row.get(column, r"\N") for column in COPY_COLUMNS)
+
 
 @pytest.fixture
-def sample_dat_gz_file(tmp_path):
-    """Create a sample .dat.gz file with test contract data."""
+def sample_dat_gz_file(tmp_path: Path) -> Path:
+    """Create named transaction-search rows in the declared COPY order."""
     data_file = tmp_path / "test_contracts.dat.gz"
-
-    # Create sample rows (tab-delimited)
-    rows = []
-
-    # Row 1: Valid contract matching filter
-    row1 = ["\\N"] * 103
-    row1[0] = "1001"  # transaction_id
-    row1[1] = "CONT_AWD_TEST_001"
-    row1[2] = "20230115"  # action_date
-    row1[3] = "A"  # type (contract)
-    row1[5] = "A"  # award_type_code
-    row1[9] = "TEST CONTRACTOR ONE"  # recipient_name
-    row1[10] = "TEST123456789"  # recipient_unique_id
-    row1[12] = "Department of Defense"
-    row1[28] = "CONT001"  # piid
-    row1[29] = "100000.00"  # obligation
-    row1[96] = "TEST123456789"  # recipient_uei
-    row1[99] = "FULL"  # extent_competed
-    rows.append("\t".join(row1))
-
-    # Row 2: Grant (should be filtered out)
-    row2 = ["\\N"] * 103
-    row2[0] = "1002"
-    row2[1] = "GRANT_AWD_TEST_001"
-    row2[2] = "20230120"
-    row2[3] = "C"  # type (grant - NOT a contract)
-    row2[5] = "02"
-    row2[9] = "GRANT RECIPIENT"
-    row2[96] = "GRANT123456789"
-    row2[29] = "50000.00"
-    rows.append("\t".join(row2))
-
-    # Row 3: IDV parent contract
-    row3 = ["\\N"] * 103
-    row3[0] = "1003"
-    row3[1] = "IDV_PARENT_TEST_001"
-    row3[2] = "20230125"
-    row3[3] = "B"  # type (IDV)
-    row3[5] = "IDV-A"
-    row3[9] = "TEST CONTRACTOR TWO"
-    row3[10] = "TEST987654321"
-    row3[28] = "IDV001"  # piid
-    row3[29] = "5000000.00"
-    row3[96] = "TEST987654321"
-    row3[99] = "FULL"
-    row3[100] = "IDV-A"  # contract_award_type
-    rows.append("\t".join(row3))
-
-    # Row 4: Child task order referencing IDV parent
-    row4 = ["\\N"] * 103
-    row4[0] = "1004"
-    row4[1] = "TASK_ORDER_TEST_001"
-    row4[2] = "20230201"
-    row4[3] = "A"
-    row4[5] = "A"
-    row4[9] = "TEST CONTRACTOR TWO"
-    row4[10] = "TEST987654321"
-    row4[28] = "TASK001"  # piid
-    row4[29] = "250000.00"
-    row4[96] = "TEST987654321"
-    row4[99] = "CDO"  # Competitive Delivery Order
-    row4[100] = "A"
-    row4[101] = "9700"  # referenced_idv_agency_iden
-    row4[102] = "IDV001"  # referenced_idv_piid (parent)
-    rows.append("\t".join(row4))
-
-    # Row 5: Contract with deobligation (negative amount)
-    row5 = ["\\N"] * 103
-    row5[0] = "1005"
-    row5[1] = "DEOBLIG_TEST_001"
-    row5[2] = "20230210"
-    row5[3] = "A"
-    row5[5] = "A"
-    row5[9] = "TEST CONTRACTOR THREE"
-    row5[10] = "TEST111222333"
-    row5[28] = "DEOB001"
-    row5[29] = "-25000.00"  # Negative amount
-    row5[96] = "TEST111222333"
-    rows.append("\t".join(row5))
-
-    # Row 6: Contract not matching filter
-    row6 = ["\\N"] * 103
-    row6[0] = "1006"
-    row6[1] = "NOMATCH_TEST_001"
-    row6[2] = "20230215"
-    row6[3] = "A"
-    row6[5] = "A"
-    row6[9] = "DIFFERENT CONTRACTOR"
-    row6[10] = "NOMATCH000000"  # Won't match filter
-    row6[28] = "NOMAT001"
-    row6[29] = "10000.00"
-    row6[96] = "NOMATCH000000"
-    rows.append("\t".join(row6))
-
-    # Write compressed file
-    with gzip.open(data_file, "wt", encoding="utf-8") as f:
+    rows = [
+        _transaction_row(
+            transaction_unique_id="TX-1001",
+            generated_unique_award_id="CONT_AWD_TEST_001",
+            piid="CONT001",
+        ),
+        # Assistance row in the parent table: row-gated by is_fpds.
+        _transaction_row(
+            transaction_unique_id="TX-1002",
+            generated_unique_award_id="ASST_AWD_TEST_001",
+            is_fpds="f",
+            recipient_name="GRANT RECIPIENT",
+            recipient_uei="GRANT1234567",
+            recipient_unique_id="GRANT1234567",
+            federal_action_obligation="50000.00",
+            piid="GRANT001",
+        ),
+        _transaction_row(
+            transaction_unique_id="TX-1003",
+            generated_unique_award_id="IDV_PARENT_TEST_001",
+            action_date="20230125",
+            recipient_name="TEST CONTRACTOR TWO",
+            recipient_uei="TEST98765432",
+            recipient_unique_id="TEST98765432",
+            federal_action_obligation="5000000.00",
+            piid="IDV001",
+            contract_award_type="IDV-A",
+        ),
+        _transaction_row(
+            transaction_unique_id="TX-1004",
+            generated_unique_award_id="TASK_ORDER_TEST_001",
+            action_date="20230201",
+            recipient_name="TEST CONTRACTOR TWO",
+            recipient_uei="TEST98765432",
+            recipient_unique_id="TEST98765432",
+            federal_action_obligation="250000.00",
+            piid="TASK001",
+            extent_competed="CDO",
+            referenced_idv_agency_iden="9700",
+            referenced_idv_piid="IDV001",
+        ),
+        _transaction_row(
+            transaction_unique_id="TX-1005",
+            generated_unique_award_id="DEOBLIG_TEST_001",
+            action_date="20230210",
+            recipient_name="TEST CONTRACTOR THREE",
+            recipient_uei="TEST11122233",
+            recipient_unique_id="TEST11122233",
+            federal_action_obligation="-25000.00",
+            piid="DEOB001",
+        ),
+        _transaction_row(
+            transaction_unique_id="TX-1006",
+            generated_unique_award_id="NOMATCH_TEST_001",
+            action_date="20230215",
+            recipient_name="DIFFERENT CONTRACTOR",
+            recipient_uei="NOMATCH00000",
+            recipient_unique_id="NOMATCH00000",
+            federal_action_obligation="10000.00",
+            piid="NOMAT001",
+        ),
+    ]
+    with gzip.open(data_file, "wt", encoding="utf-8") as file:
         for row in rows:
-            f.write(row + "\n")
-
+            file.write(_copy_line(row) + "\n")
     return data_file
 
 
 @pytest.fixture
-def vendor_filter_file(tmp_path):
-    """Create vendor filter file for integration tests."""
-    filter_data = {
-        "uei": ["TEST123456789", "TEST987654321", "TEST111222333"],
-        "duns": [],
-        "company_names": ["TEST CONTRACTOR ONE", "TEST CONTRACTOR TWO"],
-    }
+def vendor_filter_file(tmp_path: Path) -> Path:
     filter_file = tmp_path / "integration_filters.json"
-    with open(filter_file, "w") as f:
-        json.dump(filter_data, f)
+    filter_file.write_text(
+        json.dumps(
+            {
+                "uei": ["TEST12345678", "TEST98765432", "TEST11122233"],
+                "duns": [],
+                "company_names": ["TEST CONTRACTOR ONE", "TEST CONTRACTOR TWO"],
+            }
+        )
+    )
     return filter_file
 
 
-class TestContractExtractorStreaming:
-    """Tests for streaming data extraction from .dat.gz files."""
+@pytest.fixture
+def verified_pg_restore(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Make archive inspection return an explicit parent-table COPY contract."""
 
-    def test_stream_dat_gz_file(self, sample_dat_gz_file, vendor_filter_file):
-        """Test streaming and parsing a .dat.gz file."""
+    def fake_pg_restore(dump_dir: Path, *arguments: str) -> str:
+        if "--list" in arguments:
+            return TOC_TEXT
+        if "--schema-only" in arguments:
+            return SCHEMA_SQL
+        if "--data-only" in arguments:
+            # _restore_copy_statement must construct an empty selected member.
+            assert (dump_dir / SOURCE_MEMBER).is_file()
+            return COPY_SQL
+        raise AssertionError(f"Unexpected pg_restore arguments: {arguments!r}")
+
+    monkeypatch.setattr(ContractExtractor, "_run_pg_restore", staticmethod(fake_pg_restore))
+
+
+def _install_verified_archive(dump_dir: Path, source_file: Path) -> None:
+    dump_dir.mkdir()
+    (dump_dir / "toc.dat").write_bytes(b"fixture archive metadata")
+    shutil.copy(source_file, dump_dir / SOURCE_MEMBER)
+
+
+class TestContractExtractorStreaming:
+    def test_stream_dat_gz_file(self, sample_dat_gz_file, vendor_filter_file) -> None:
         extractor = ContractExtractor(vendor_filter_file=vendor_filter_file)
 
-        contracts = list(extractor.stream_dat_gz_file(sample_dat_gz_file))
+        contracts = list(
+            extractor.stream_dat_gz_file(
+                sample_dat_gz_file,
+                COPY_COLUMNS,
+                fpds_only=False,
+            )
+        )
 
-        # Should extract 4 contracts (1, 3, 4, 5):
-        # - Row 1: Valid contract, matches filter
-        # - Row 2: Grant (filtered out)
-        # - Row 3: IDV parent, matches filter
-        # - Row 4: Task order, matches filter
-        # - Row 5: Deobligation, matches filter
-        # - Row 6: Valid contract, but doesn't match filter
         assert len(contracts) == 4
-
-        # Verify first contract
         assert contracts[0].contract_id == "CONT001"
         assert contracts[0].vendor_name == "TEST CONTRACTOR ONE"
+        assert contracts[0].vendor_uei == "TEST12345678"
         assert contracts[0].obligation_amount == 100000.00
         assert contracts[0].is_deobligation is False
 
-        # Verify IDV parent
-        idv_contract = next(c for c in contracts if c.contract_id == "IDV001")
+        idv_contract = next(contract for contract in contracts if contract.contract_id == "IDV001")
         assert idv_contract.metadata["parent_relationship_type"] == "idv_parent"
 
-        # Verify child task order
-        task_contract = next(c for c in contracts if c.contract_id == "TASK001")
+        task_contract = next(
+            contract for contract in contracts if contract.contract_id == "TASK001"
+        )
         assert task_contract.parent_contract_id == "IDV001"
         assert task_contract.metadata["parent_relationship_type"] == "child_of_idv"
 
-        # Verify deobligation
-        deob_contract = next(c for c in contracts if c.contract_id == "DEOB001")
-        assert deob_contract.obligation_amount == -25000.00
-        assert deob_contract.is_deobligation is True
+        deobligation = next(contract for contract in contracts if contract.contract_id == "DEOB001")
+        assert deobligation.obligation_amount == -25000.00
+        assert deobligation.is_deobligation is True
 
-    def test_stream_without_vendor_filter(self, sample_dat_gz_file):
-        """Test streaming without vendor filter (accepts all)."""
-        extractor = ContractExtractor(vendor_filter_file=None)
+    def test_stream_without_vendor_filter(self, sample_dat_gz_file) -> None:
+        contracts = list(
+            ContractExtractor().stream_dat_gz_file(
+                sample_dat_gz_file,
+                COPY_COLUMNS,
+                fpds_only=False,
+            )
+        )
 
-        contracts = list(extractor.stream_dat_gz_file(sample_dat_gz_file))
-
-        # Without filter, should get all valid contracts (not grants)
-        # Rows 1, 3, 4, 5, 6 are contracts (row 2 is grant)
         assert len(contracts) == 5
 
-    def test_stream_statistics_tracking(self, sample_dat_gz_file, vendor_filter_file):
-        """Test that statistics are properly tracked during streaming."""
+    def test_stream_statistics_tracking(self, sample_dat_gz_file, vendor_filter_file) -> None:
         extractor = ContractExtractor(vendor_filter_file=vendor_filter_file)
 
-        list(extractor.stream_dat_gz_file(sample_dat_gz_file))
+        list(extractor.stream_dat_gz_file(sample_dat_gz_file, COPY_COLUMNS, fpds_only=False))
 
-        # Verify statistics
-        assert extractor.stats["records_scanned"] == 6  # Total rows processed
-        assert extractor.stats["contracts_found"] >= 5  # Contracts (not grants)
-        assert extractor.stats["vendor_matches"] == 4  # Matching filter
-        assert extractor.stats["records_extracted"] == 4  # Successfully parsed
+        assert extractor.stats["records_scanned"] == 6
+        assert extractor.stats["contracts_found"] == 5
+        assert extractor.stats["vendor_matches"] == 4
+        assert extractor.stats["records_extracted"] == 4
 
-    def test_stream_parent_child_tracking(self, sample_dat_gz_file, vendor_filter_file):
-        """Test parent/child relationship tracking."""
+    def test_stream_parent_child_tracking(self, sample_dat_gz_file, vendor_filter_file) -> None:
         extractor = ContractExtractor(vendor_filter_file=vendor_filter_file)
 
-        list(extractor.stream_dat_gz_file(sample_dat_gz_file))
+        list(extractor.stream_dat_gz_file(sample_dat_gz_file, COPY_COLUMNS, fpds_only=False))
 
-        # Verify relationship statistics
-        assert extractor.stats["parent_relationships"] == 1  # One child→parent link
-        assert extractor.stats["child_relationships"] == 1  # One child contract
-        assert extractor.stats["idv_parents"] == 1  # One IDV parent
-
-        # Verify ID tracking
+        assert extractor.stats["parent_relationships"] == 1
+        assert extractor.stats["child_relationships"] == 1
+        assert extractor.stats["idv_parents"] == 1
         assert "IDV001" in extractor._parent_ids_seen
         assert "IDV001" in extractor._idv_parent_ids_seen
 
 
 class TestExtractFromDump:
-    """Tests for complete extract_from_dump pipeline."""
-
-    def test_extract_from_dump_end_to_end(self, tmp_path, sample_dat_gz_file, vendor_filter_file):
-        """Test complete extraction pipeline with Parquet output."""
+    def test_extract_from_dump_end_to_end(
+        self,
+        tmp_path,
+        sample_dat_gz_file,
+        vendor_filter_file,
+        verified_pg_restore,
+    ) -> None:
         output_file = tmp_path / "output" / "contracts.parquet"
-
-        extractor = ContractExtractor(
-            vendor_filter_file=vendor_filter_file,
-            batch_size=2,  # Small batch for testing
-        )
-
-        # Move sample file to dump_dir structure
         dump_dir = tmp_path / "dump"
-        dump_dir.mkdir()
-        target_file = dump_dir / "test_data.dat.gz"
-        import shutil
+        _install_verified_archive(dump_dir, sample_dat_gz_file)
+        extractor = ContractExtractor(vendor_filter_file=vendor_filter_file, batch_size=2)
 
-        shutil.copy(sample_dat_gz_file, target_file)
-
-        # Extract
         count = extractor.extract_from_dump(
             dump_dir=dump_dir,
             output_file=output_file,
-            table_files=["test_data.dat.gz"],
+            table_files=[SOURCE_MEMBER],
         )
 
-        # Verify count
         assert count == 4
+        assert extractor.source_provenance["canonical_table"] == "rpt.transaction_search"
+        assert extractor.source_provenance["physical_table"] == "rpt.transaction_search"
+        assert extractor.source_provenance["member"] == SOURCE_MEMBER
+        assert extractor.source_provenance["column_count"] == len(COPY_COLUMNS)
+        assert len(str(extractor.source_provenance["ordered_columns_sha256"])) == 64
 
-        # Verify output file exists
-        assert output_file.exists()
+        frame = pd.read_parquet(output_file)
+        assert len(frame) == 4
+        assert {"contract_id", "vendor_name", "obligation_amount"}.issubset(frame.columns)
+        assert set(frame["contract_id"]) == {"CONT001", "IDV001", "TASK001", "DEOB001"}
 
-        # Load and verify Parquet
-        df = pd.read_parquet(output_file)
-        assert len(df) == 4
-        assert "contract_id" in df.columns
-        assert "vendor_name" in df.columns
-        assert "obligation_amount" in df.columns
-
-        # Verify data integrity
-        assert "CONT001" in df["contract_id"].values
-        assert "IDV001" in df["contract_id"].values
-        assert "TASK001" in df["contract_id"].values
-        assert "DEOB001" in df["contract_id"].values
-
-    def test_extract_from_dump_statistics(self, tmp_path, sample_dat_gz_file, vendor_filter_file):
-        """Test statistics reporting after extraction."""
-        output_file = tmp_path / "output" / "stats_test.parquet"
+    def test_extract_from_dump_statistics(
+        self,
+        tmp_path,
+        sample_dat_gz_file,
+        vendor_filter_file,
+        verified_pg_restore,
+    ) -> None:
         dump_dir = tmp_path / "dump"
-        dump_dir.mkdir()
-
-        import shutil
-
-        target_file = dump_dir / "stats_data.dat.gz"
-        shutil.copy(sample_dat_gz_file, target_file)
-
+        _install_verified_archive(dump_dir, sample_dat_gz_file)
         extractor = ContractExtractor(vendor_filter_file=vendor_filter_file)
-        extractor.extract_from_dump(
-            dump_dir=dump_dir,
-            output_file=output_file,
-            table_files=["stats_data.dat.gz"],
-        )
 
-        # Verify final statistics
+        extractor.extract_from_dump(dump_dir, tmp_path / "stats.parquet")
+
         assert extractor.stats["records_scanned"] == 6
         assert extractor.stats["records_extracted"] == 4
         assert extractor.stats["unique_parent_ids"] == 1
         assert extractor.stats["unique_idv_parents"] == 1
 
     def test_extract_from_dump_batch_processing(
-        self, tmp_path, sample_dat_gz_file, vendor_filter_file
-    ):
-        """Test batch processing with small batch size."""
-        output_file = tmp_path / "output" / "batch_test.parquet"
+        self,
+        tmp_path,
+        sample_dat_gz_file,
+        vendor_filter_file,
+        verified_pg_restore,
+    ) -> None:
         dump_dir = tmp_path / "dump"
-        dump_dir.mkdir()
-
-        import shutil
-
-        target_file = dump_dir / "batch_data.dat.gz"
-        shutil.copy(sample_dat_gz_file, target_file)
-
-        # Use batch_size=1 to force multiple batches
+        output_file = tmp_path / "batch.parquet"
+        _install_verified_archive(dump_dir, sample_dat_gz_file)
         extractor = ContractExtractor(vendor_filter_file=vendor_filter_file, batch_size=1)
-        count = extractor.extract_from_dump(
-            dump_dir=dump_dir,
-            output_file=output_file,
-            table_files=["batch_data.dat.gz"],
-        )
+
+        count = extractor.extract_from_dump(dump_dir, output_file)
 
         assert count == 4
+        assert len(pd.read_parquet(output_file)) == 4
 
-        # Verify output is still correct despite batching
-        df = pd.read_parquet(output_file)
-        assert len(df) == 4
-
-    def test_extract_from_dump_no_files(self, tmp_path, vendor_filter_file):
-        """Test handling of empty dump directory."""
+    def test_extract_from_dump_no_toc(self, tmp_path, vendor_filter_file) -> None:
         dump_dir = tmp_path / "empty_dump"
         dump_dir.mkdir()
-        output_file = tmp_path / "output" / "empty.parquet"
 
-        extractor = ContractExtractor(vendor_filter_file=vendor_filter_file)
-
-        with pytest.raises(FileNotFoundError):
-            extractor.extract_from_dump(
-                dump_dir=dump_dir,
-                output_file=output_file,
+        with pytest.raises(ArchiveSchemaError, match="no toc.dat"):
+            ContractExtractor(vendor_filter_file=vendor_filter_file).extract_from_dump(
+                dump_dir,
+                tmp_path / "empty.parquet",
             )
 
-    def test_extract_from_dump_auto_selects_largest(
-        self, tmp_path, sample_dat_gz_file, vendor_filter_file
-    ):
-        """Test that extract_from_dump auto-selects largest file."""
+    def test_extract_from_dump_selects_toc_member_not_largest(
+        self,
+        tmp_path,
+        sample_dat_gz_file,
+        vendor_filter_file,
+        verified_pg_restore,
+    ) -> None:
         dump_dir = tmp_path / "dump"
-        dump_dir.mkdir()
-        output_file = tmp_path / "output" / "auto_select.parquet"
-
-        import shutil
-
-        # Create two files, one larger
-        file1 = dump_dir / "small.dat.gz"
-        file2 = dump_dir / "large.dat.gz"
-
-        # Copy sample to both
-        shutil.copy(sample_dat_gz_file, file1)
-        shutil.copy(sample_dat_gz_file, file2)
-
-        # Make file2 larger by appending data
-        with gzip.open(file2, "at", encoding="utf-8") as f:
-            f.write("\t".join(["\\N"] * 103) + "\n")  # Add extra row
-
-        # Don't specify table_files, should auto-select largest
+        _install_verified_archive(dump_dir, sample_dat_gz_file)
+        unrelated = dump_dir / "9999.dat.gz"
+        shutil.copy(sample_dat_gz_file, unrelated)
+        with gzip.open(unrelated, "at", encoding="utf-8") as file:
+            file.write(_copy_line(_transaction_row(transaction_unique_id="TX-EXTRA")) + "\n")
         extractor = ContractExtractor(vendor_filter_file=vendor_filter_file)
-        extractor.extract_from_dump(
-            dump_dir=dump_dir,
-            output_file=output_file,
-        )
 
-        # Should have selected large.dat.gz (7 rows instead of 6)
-        assert extractor.stats["records_scanned"] == 7
+        extractor.extract_from_dump(dump_dir, tmp_path / "toc-selected.parquet")
+
+        assert extractor.source_provenance["member"] == SOURCE_MEMBER
+        assert extractor.stats["records_scanned"] == 6
 
 
 class TestActionDateEndToEnd:
-    """End-to-end: the true transaction action_date survives extract→parquet→bridge.
-
-    Drives the real pipeline (``extract_from_dump`` writes Parquet, then
-    ``normalize_contract_columns`` maps it to the sample schema) on a row where the
-    transaction action_date (column 2) deliberately differs from the
-    period-of-performance start (column 71), proving action_date is carried as the
-    true obligating-action date — not the start_date proxy the bridge used before.
-    """
-
-    @pytest.fixture
-    def action_date_dat_gz_file(self, tmp_path):
-        """A single contract whose action_date (col 2) ≠ start_date (col 71)."""
-        data_file = tmp_path / "action_date.dat.gz"
-
-        row = ["\\N"] * 103
-        row[0] = "5001"  # transaction_id
-        row[1] = "CONT_AWD_ACTION_DATE_001"
-        row[2] = "20221101"  # action_date — the obligating-action date
-        row[3] = "A"  # type (contract)
-        row[5] = "A"  # award_type_code
-        row[9] = "TEST CONTRACTOR ONE"  # recipient_name
-        row[10] = "TEST123456789"  # recipient_unique_id
-        row[12] = "Department of Defense"
-        row[28] = "ACT001"  # piid
-        row[29] = "100000.00"  # obligation
-        row[71] = "20230801"  # period_of_performance_start_date — later, distinct
-        row[96] = "TEST123456789"  # recipient_uei
-        row[99] = "FULL"  # extent_competed
-
-        with gzip.open(data_file, "wt", encoding="utf-8") as f:
-            f.write("\t".join(row) + "\n")
-
-        return data_file
-
     def test_true_action_date_survives_extract_and_bridge(
-        self, tmp_path, action_date_dat_gz_file, vendor_filter_file
-    ):
-        output_file = tmp_path / "output" / "action_date.parquet"
-        dump_dir = tmp_path / "dump"
-        dump_dir.mkdir()
-
-        import shutil
-
-        target_file = dump_dir / "action_date.dat.gz"
-        shutil.copy(action_date_dat_gz_file, target_file)
-
-        extractor = ContractExtractor(vendor_filter_file=vendor_filter_file)
-        count = extractor.extract_from_dump(
-            dump_dir=dump_dir,
-            output_file=output_file,
-            table_files=["action_date.dat.gz"],
+        self,
+        tmp_path,
+        vendor_filter_file,
+        verified_pg_restore,
+    ) -> None:
+        data_file = tmp_path / "action_date.dat.gz"
+        row = _transaction_row(
+            transaction_unique_id="TX-5001",
+            generated_unique_award_id="CONT_AWD_ACTION_DATE_001",
+            piid="ACT001",
+            action_date="20221101",
+            period_of_performance_start_date="20230801",
         )
+        with gzip.open(data_file, "wt", encoding="utf-8") as file:
+            file.write(_copy_line(row) + "\n")
+        dump_dir = tmp_path / "dump"
+        _install_verified_archive(dump_dir, data_file)
+
+        output_file = tmp_path / "action-date.parquet"
+        count = ContractExtractor(vendor_filter_file=vendor_filter_file).extract_from_dump(
+            dump_dir,
+            output_file,
+        )
+
         assert count == 1
-
-        # Read the extractor's real Parquet output and run the sample bridge on it.
-        df = normalize_contract_columns(pd.read_parquet(output_file))
-        r = df.iloc[0]
-
-        assert r["contract_id"] == "ACT001"
-        # action_date is the transaction action_date (col 2), NOT the PoP start (col 71).
-        assert pd.Timestamp(r["action_date"]).date() == datetime.date(2022, 11, 1)
-        assert pd.Timestamp(r["start_date"]).date() == datetime.date(2023, 8, 1)
-        # The bridge no longer overwrites action_date with start_date.
-        assert r["action_date"] != r["start_date"]
+        normalized = normalize_contract_columns(pd.read_parquet(output_file)).iloc[0]
+        assert normalized["contract_id"] == "ACT001"
+        assert pd.Timestamp(normalized["action_date"]).date() == datetime.date(2022, 11, 1)
+        assert pd.Timestamp(normalized["start_date"]).date() == datetime.date(2023, 8, 1)
+        assert normalized["action_date"] != normalized["start_date"]
 
 
 class TestContractExtractorEdgeCasesIntegration:
-    """Integration tests for edge cases."""
-
-    def test_empty_dat_gz_file(self, tmp_path, vendor_filter_file):
-        """Test handling of empty .dat.gz file."""
+    def test_empty_dat_gz_file(self, tmp_path, vendor_filter_file) -> None:
         empty_file = tmp_path / "empty.dat.gz"
         with gzip.open(empty_file, "wt", encoding="utf-8"):
-            pass  # Write nothing
-
+            pass
         extractor = ContractExtractor(vendor_filter_file=vendor_filter_file)
-        contracts = list(extractor.stream_dat_gz_file(empty_file))
 
-        assert len(contracts) == 0
+        contracts = list(extractor.stream_dat_gz_file(empty_file, COPY_COLUMNS, fpds_only=False))
+
+        assert contracts == []
         assert extractor.stats["records_scanned"] == 0
 
-    def test_malformed_rows_skipped(self, tmp_path, vendor_filter_file):
-        """Test that malformed rows are skipped gracefully."""
+    def test_malformed_row_fails_closed(self, tmp_path, vendor_filter_file) -> None:
         malformed_file = tmp_path / "malformed.dat.gz"
-
-        with gzip.open(malformed_file, "wt", encoding="utf-8") as f:
-            # Valid row
-            row1 = ["\\N"] * 103
-            row1[0] = "2001"
-            row1[2] = "20230101"
-            row1[3] = "A"
-            row1[5] = "A"
-            row1[9] = "VALID CONTRACTOR"
-            row1[10] = "TEST123456789"  # recipient_unique_id
-            row1[28] = "VALID001"
-            row1[29] = "1000.00"
-            row1[96] = "TEST123456789"
-            f.write("\t".join(row1) + "\n")
-
-            # Malformed row (missing columns)
-            f.write("bad\tdata\n")
-
-            # Another valid row
-            row3 = ["\\N"] * 103
-            row3[0] = "2003"
-            row3[2] = "20230103"
-            row3[3] = "A"
-            row3[5] = "A"
-            row3[9] = "ANOTHER CONTRACTOR"
-            row3[10] = "TEST123456789"  # recipient_unique_id
-            row3[28] = "VALID002"
-            row3[29] = "2000.00"
-            row3[96] = "TEST123456789"
-            f.write("\t".join(row3) + "\n")
+        with gzip.open(malformed_file, "wt", encoding="utf-8") as file:
+            file.write(
+                _copy_line(
+                    _transaction_row(
+                        transaction_unique_id="TX-2001",
+                        generated_unique_award_id="CONT_AWD_2001",
+                        piid="VALID001",
+                    )
+                )
+                + "\n"
+            )
+            file.write("bad\tdata\n")
 
         extractor = ContractExtractor(vendor_filter_file=vendor_filter_file)
-        contracts = list(extractor.stream_dat_gz_file(malformed_file))
 
-        # Should get 2 valid contracts, skipping malformed row
-        assert len(contracts) == 2
-        assert extractor.stats["records_scanned"] == 3
+        with pytest.raises(SourceDataError, match="COPY declares"):
+            list(
+                extractor.stream_dat_gz_file(
+                    malformed_file,
+                    COPY_COLUMNS,
+                    fpds_only=False,
+                )
+            )
 
-    def test_large_batch_accumulation(self, tmp_path, vendor_filter_file):
-        """Test that batches accumulate correctly for large datasets."""
-        large_file = tmp_path / "large.dat.gz"
+        assert extractor.stats["records_scanned"] == 2
+        assert extractor.stats["records_extracted"] == 1
 
-        # Create file with 25 valid contracts
-        with gzip.open(large_file, "wt", encoding="utf-8") as f:
-            for i in range(25):
-                row = ["\\N"] * 103
-                row[0] = str(3000 + i)
-                row[2] = "20230101"
-                row[3] = "A"
-                row[5] = "A"
-                row[9] = f"CONTRACTOR {i}"
-                row[10] = "TEST123456789"  # recipient_unique_id
-                row[28] = f"BATCH{i:03d}"
-                row[29] = f"{1000.00 * (i + 1)}"
-                row[96] = "TEST123456789"
-                f.write("\t".join(row) + "\n")
+    def test_matched_row_without_stable_transaction_key_fails_closed(
+        self,
+        tmp_path,
+        vendor_filter_file,
+    ) -> None:
+        data_file = tmp_path / "missing-key.dat.gz"
+        with gzip.open(data_file, "wt", encoding="utf-8") as file:
+            file.write(_copy_line(_transaction_row(transaction_unique_id=r"\N")) + "\n")
 
-        output_file = tmp_path / "large_output.parquet"
-        dump_dir = tmp_path / "dump"
-        dump_dir.mkdir()
+        with pytest.raises(SourceDataError, match="transaction_unique_id"):
+            list(
+                ContractExtractor(vendor_filter_file=vendor_filter_file).stream_dat_gz_file(
+                    data_file,
+                    COPY_COLUMNS,
+                    fpds_only=False,
+                )
+            )
 
-        import shutil
+    def test_malformed_obligation_remains_null(self, tmp_path, vendor_filter_file) -> None:
+        data_file = tmp_path / "malformed-obligation.dat.gz"
+        with gzip.open(data_file, "wt", encoding="utf-8") as file:
+            file.write(
+                _copy_line(_transaction_row(federal_action_obligation="not-a-number")) + "\n"
+            )
 
-        target_file = dump_dir / "large.dat.gz"
-        shutil.copy(large_file, target_file)
-
-        # Use batch_size=10 to test batching
-        extractor = ContractExtractor(vendor_filter_file=vendor_filter_file, batch_size=10)
-        count = extractor.extract_from_dump(
-            dump_dir=dump_dir,
-            output_file=output_file,
-            table_files=["large.dat.gz"],
+        contracts = list(
+            ContractExtractor(vendor_filter_file=vendor_filter_file).stream_dat_gz_file(
+                data_file,
+                COPY_COLUMNS,
+                fpds_only=False,
+            )
         )
 
+        assert contracts[0].obligation_amount is None
+        assert contracts[0].is_deobligation is False
+
+    def test_large_batch_accumulation(
+        self,
+        tmp_path,
+        vendor_filter_file,
+        verified_pg_restore,
+    ) -> None:
+        data_file = tmp_path / "large.dat.gz"
+        with gzip.open(data_file, "wt", encoding="utf-8") as file:
+            for index in range(25):
+                file.write(
+                    _copy_line(
+                        _transaction_row(
+                            transaction_unique_id=f"TX-{3000 + index}",
+                            generated_unique_award_id=f"CONT_AWD_{3000 + index}",
+                            recipient_name=f"CONTRACTOR {index}",
+                            piid=f"BATCH{index:03d}",
+                            federal_action_obligation=str(1000.00 * (index + 1)),
+                        )
+                    )
+                    + "\n"
+                )
+        dump_dir = tmp_path / "dump"
+        _install_verified_archive(dump_dir, data_file)
+        output_file = tmp_path / "large.parquet"
+
+        count = ContractExtractor(
+            vendor_filter_file=vendor_filter_file,
+            batch_size=10,
+        ).extract_from_dump(dump_dir, output_file)
+
         assert count == 25
-
-        # Verify all contracts in output
-        df = pd.read_parquet(output_file)
-        assert len(df) == 25
-
-        # Verify data integrity
-        assert df["obligation_amount"].min() == 1000.00
-        assert df["obligation_amount"].max() == 25000.00
+        frame = pd.read_parquet(output_file)
+        assert len(frame) == 25
+        assert frame["obligation_amount"].min() == 1000.00
+        assert frame["obligation_amount"].max() == 25000.00
