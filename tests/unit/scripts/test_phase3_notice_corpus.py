@@ -176,3 +176,44 @@ def test_frame_hash_is_order_independent():
 
 def test_load_filtered_notices_empty_dir(tmp_path):
     assert load_filtered_notices(tmp_path).empty
+
+
+def test_build_corpus_award_grain_uses_per_notice_abstract():
+    # Award grain: each notice carries its own cited-award abstract; all
+    # citation-attributed rows are positives (no seed, no high-precision filter).
+    notices = pd.DataFrame(
+        [
+            {
+                **dict.fromkeys(KEEP_COLUMNS, ""),
+                "NoticeId": "n1",
+                "Office": "NAVAIR",
+                "Sub-Tier": "ONR",
+                "BaseType": "Justification and Approval (J&A)",
+                "Description": "J&A one",
+                "firm": "Acme Photonics",
+                "query_abstract": "specific award one abstract " * 4,
+                "match_rule": "citation",
+            },
+            {
+                **dict.fromkeys(KEEP_COLUMNS, ""),
+                "NoticeId": "n2",
+                "Office": "NAVAIR",
+                "Sub-Tier": "ONR",
+                "BaseType": "Justification and Approval (J&A)",
+                "Description": "J&A two",
+                "firm": "Beta Systems",
+                "query_abstract": "specific award two abstract " * 4,
+                "match_rule": "citation",
+            },
+        ]
+    )
+    corpus = build_corpus(notices, pd.DataFrame(), per_row_abstract=True)
+
+    acme = corpus.loc[(corpus["firm_name"] == "Acme Photonics") & (corpus["label"] == 1)].iloc[0]
+    # Query is the notice's OWN cited-award abstract, not a firm lookup.
+    assert acme["query_abstract"].startswith("specific award one abstract")
+    assert acme["label_channel"] == "citation"
+    # Beta's same-office J&A is Acme's hard negative, still carrying Acme's abstract.
+    neg = corpus.loc[(corpus["owner"] == acme["owner"]) & (corpus["label"] == 0)].iloc[0]
+    assert neg["notice_id"] == "n2"
+    assert neg["query_abstract"].startswith("specific award one abstract")

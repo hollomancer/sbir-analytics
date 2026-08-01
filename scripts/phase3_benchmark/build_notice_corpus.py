@@ -42,10 +42,10 @@ CORPUS_COLUMNS: tuple[str, ...] = (
 )
 
 
-def load_filtered_notices(archive_dir: Path) -> pd.DataFrame:
-    """Concatenate every firm-tagged ``FY*_filtered.parquet`` under the archive dir."""
+def load_filtered_notices(archive_dir: Path, pattern: str = "FY*_filtered.parquet") -> pd.DataFrame:
+    """Concatenate every per-FY notice parquet matching ``pattern`` under the dir."""
 
-    parts = sorted(archive_dir.glob("FY*_filtered.parquet"))
+    parts = sorted(archive_dir.glob(pattern))
     if not parts:
         return pd.DataFrame(columns=[*KEEP_COLUMNS, "firm", "match_rule"])
     return pd.concat((pd.read_parquet(part) for part in parts), ignore_index=True)
@@ -86,31 +86,40 @@ def build_corpus(
     *,
     negatives_per_positive: int = 5,
     high_precision_only: bool = True,
+    per_row_abstract: bool = False,
 ) -> pd.DataFrame:
     """One row per (attributed notice, candidate); same-office diff-firm hard negatives.
 
     ``high_precision_only`` keeps as positives only J&A notices or awardee/PIID
-    attributions — the subset that reproduces the study within its CI.
+    attributions — the firm-grain subset that reproduces the study within its CI.
+    ``per_row_abstract`` (award grain) uses each notice's own ``query_abstract``
+    column — the specific cited award's abstract — and treats every
+    citation-attributed row as a positive (the PIID citation is dispositive).
     """
 
     if notices.empty:
         return pd.DataFrame(columns=CORPUS_COLUMNS)
-    abstracts = _abstract_by_name(seed)
     notices = notices.copy()
     notices["name_key"] = notices["firm"].map(normalize_firm_name)
     notices["office_key"] = notices["Office"].map(normalize_key)
     notices["agency_key"] = notices["Sub-Tier"].map(normalize_key)
 
-    # Positives: each attributed notice whose firm has a query abstract.
-    positives = notices.loc[notices["name_key"].isin(abstracts)]
-    if high_precision_only:
-        positives = positives.loc[_is_high_precision(positives)]
+    if per_row_abstract:
+        positives = notices.loc[notices["query_abstract"].astype(str).str.len() > 50]
+    else:
+        abstracts = _abstract_by_name(seed)
+        positives = notices.loc[notices["name_key"].isin(abstracts)]
+        if high_precision_only:
+            positives = positives.loc[_is_high_precision(positives)]
     positives = positives.reset_index(drop=True)
     rows: list[dict[str, object]] = []
 
     for _, positive in positives.iterrows():
         name_key = str(positive["name_key"])
-        abstract, channel = abstracts[name_key]
+        if per_row_abstract:
+            abstract, channel = str(positive["query_abstract"]), "citation"
+        else:
+            abstract, channel = abstracts[name_key]
         owner_firm = str(positive["firm"])
         owner = f"{name_key}:{positive['NoticeId']}"
 
@@ -224,15 +233,25 @@ def main() -> int:
         action="store_true",
         help="Keep every attributed positive, not just the high-precision subset.",
     )
+    parser.add_argument(
+        "--award-grain",
+        action="store_true",
+        help="Consume FY*_award_grain.parquet with per-notice cited-award abstracts.",
+    )
     args = parser.parse_args()
 
-    notices = load_filtered_notices(args.archive_dir)
-    seed = pd.read_parquet(args.seed)
+    if args.award_grain:
+        notices = load_filtered_notices(args.archive_dir, pattern="FY*_award_grain.parquet")
+        seed = pd.DataFrame()
+    else:
+        notices = load_filtered_notices(args.archive_dir)
+        seed = pd.read_parquet(args.seed)
     corpus = build_corpus(
         notices,
         seed,
         negatives_per_positive=args.negatives_per_positive,
         high_precision_only=not args.all_attributions,
+        per_row_abstract=args.award_grain,
     )
     corpus_path = write_corpus(
         corpus, args.output_dir, sources=[str(args.archive_dir), str(args.seed)]
