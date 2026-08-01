@@ -50,6 +50,16 @@ class JobConfig:
         return self.log_prefix or self.name.split("-")[-1]
 
 
+@dataclass(frozen=True)
+class VpcConfig:
+    """Attributes for importing a VPC without an AWS environment lookup."""
+
+    vpc_id: str
+    availability_zones: tuple[str, ...]
+    public_subnet_ids: tuple[str, ...]
+    public_subnet_route_table_ids: tuple[str, ...]
+
+
 _DAGSTER_ENV = [
     {"name": "DAGSTER_LOAD_HEAVY_ASSETS", "value": "true"},
     {"name": "DAGSTER_HOME", "value": "/tmp/dagster_home"},
@@ -156,6 +166,7 @@ class BatchStack(Stack):
         construct_id: str,
         bucket: s3.IBucket,
         neo4j_secret: secretsmanager.ISecret,
+        vpc_config: VpcConfig | None = None,
         **kwargs,
     ) -> None:
         super().__init__(scope, construct_id, **kwargs)
@@ -168,7 +179,17 @@ class BatchStack(Stack):
             removal_policy=RemovalPolicy.DESTROY,
         )
 
-        vpc = ec2.Vpc.from_lookup(self, "VPC", is_default=True)
+        if vpc_config is None:
+            vpc = ec2.Vpc.from_lookup(self, "VPC", is_default=True)
+        else:
+            vpc = ec2.Vpc.from_vpc_attributes(
+                self,
+                "VPC",
+                vpc_id=vpc_config.vpc_id,
+                availability_zones=list(vpc_config.availability_zones),
+                public_subnet_ids=list(vpc_config.public_subnet_ids),
+                public_subnet_route_table_ids=list(vpc_config.public_subnet_route_table_ids),
+            )
 
         security_group = ec2.SecurityGroup(
             self,

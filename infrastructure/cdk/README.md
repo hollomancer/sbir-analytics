@@ -51,6 +51,11 @@ The account is taken from `CDK_DEFAULT_ACCOUNT` and the region from
 `--context notification_email=you@example.com` to subscribe an address to its
 SNS job notifications.
 
+CI synthesizes `validation_app.py`, which imports syntactically valid placeholder
+VPC attributes so template validation remains credential-free. Production synth
+and deploy commands continue to use `app.py` and look up the account's default
+VPC; do not deploy the validation app.
+
 ## Outputs
 
 - `FoundationStack`: `BucketName`, `BucketArn`, `GitHubActionsRoleArn`
