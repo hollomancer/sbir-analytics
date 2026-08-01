@@ -660,6 +660,53 @@ def _procurement_key(row: pd.Series) -> str | None:
     return _display(_first_value(row.get("target_id"), row.get("opportunity_title")))
 
 
+def _attach_fusion_scores(rows: pd.DataFrame) -> pd.DataFrame:
+    """Attach a ``fusion_score`` column from the frozen award-grain ranker.
+
+    Scores the whole run at once (run-fitted TF-IDF). Falls back to all-zero —
+    which leaves ordering to the soonest-deadline key — if the coefficients or a
+    dependency are unavailable, so the packet never fails on scoring.
+    """
+
+    try:
+        from sbir_ml.transition.detection.fusion_scoring import score_pairs_with_fusion
+    except Exception:  # sbir-ml optional at render time
+        rows["fusion_score"] = 0.0
+        return rows
+
+    award_texts = [
+        " ".join(
+            part
+            for part in (
+                _display(_first_value(row.get("award_title"), row.get("prior_title"))),
+                _display(_first_value(row.get("award_abstract"), row.get("prior_abstract"))),
+            )
+            if part
+        )
+        for _, row in rows.iterrows()
+    ]
+    target_texts = [
+        _display(_first_value(row.get("opportunity_description"), row.get("target_description")))
+        or ""
+        for _, row in rows.iterrows()
+    ]
+    naics = [
+        _first_value(row.get("opportunity_naics_code"), row.get("target_naics_code"))
+        for _, row in rows.iterrows()
+    ]
+    notice_types = [
+        _first_value(row.get("opportunity_notice_type"), row.get("target_notice_type"))
+        for _, row in rows.iterrows()
+    ]
+    try:
+        scores = score_pairs_with_fusion(award_texts, target_texts, naics, notice_types)
+    except Exception:
+        scores = [0.0] * len(rows)
+    rows = rows.copy()
+    rows["fusion_score"] = scores
+    return rows
+
+
 def group_candidates_by_awardee(rows: pd.DataFrame, awards: pd.DataFrame) -> list[dict[str, Any]]:
     """Group scored candidate pairs under each awardee, ordered for the packet.
 
@@ -679,6 +726,7 @@ def group_candidates_by_awardee(rows: pd.DataFrame, awards: pd.DataFrame) -> lis
 
     if not rows.empty:
         rows = rows.loc[~rows.apply(_notice_names_awardee, axis=1)].reset_index(drop=True)
+        rows = _attach_fusion_scores(rows)
 
     signals = rows.get("signal_class", pd.Series(index=rows.index, dtype="object"))
     confidence = rows.get("confidence_bucket", pd.Series(index=rows.index, dtype="object"))
@@ -690,9 +738,12 @@ def group_candidates_by_awardee(rows: pd.DataFrame, awards: pd.DataFrame) -> lis
 
     def _entries(mask: pd.Series, seen: set[str]) -> list[pd.Series]:
         subset = rows.loc[mask]
+        # Rank a firm's procurements by the frozen fusion ranker (its validated
+        # per-firm-lead use), most promising first; soonest deadline breaks ties.
         ordered = sorted(
             (row for _, row in subset.iterrows()),
             key=lambda row: (
+                -float(row.get("fusion_score") or 0.0),
                 _deadline_sort_key(row),
                 str(_first_value(row.get("opportunity_title"), row.get("target_id")) or ""),
             ),
