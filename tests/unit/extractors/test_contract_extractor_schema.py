@@ -302,7 +302,7 @@ def test_zero_matches_atomically_replace_stale_output(tmp_path, monkeypatch) -> 
     assert observed["path"] != output
 
 
-def test_multiple_batches_preserve_one_shot_schema_and_row_order(
+def test_multiple_batches_preserve_one_shot_schema_nulls_and_row_order(
     tmp_path, sample_child_contract_row
 ) -> None:
     first = FederalContract(
@@ -332,10 +332,12 @@ def test_multiple_batches_preserve_one_shot_schema_and_row_order(
     )
     assert schema.field("metadata").type == pq.read_schema(legacy_output).field("metadata").type
     assert pq.ParquetFile(output).metadata.num_row_groups == 2
-    assert pd.read_parquet(output)["contract_id"].tolist() == [
+    written = pd.read_parquet(output)
+    assert written["contract_id"].tolist() == [
         "NULL-FIRST",
         second.contract_id,
     ]
+    assert written.loc[0, ["vendor_name", "vendor_uei", "research"]].isna().all()
 
 
 def test_multiple_batch_failure_keeps_stale_output_and_removes_temp(tmp_path) -> None:

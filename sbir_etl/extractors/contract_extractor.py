@@ -1293,10 +1293,8 @@ class ContractExtractor:
                         f"{unexpected}"
                     )
             frame = pd.DataFrame.from_records(rows, columns=columns)
-            # The runtime's ``str`` dtype keeps missing values missing and
-            # reproduces the string type emitted by the former one-shot write.
-            for column in string_columns:
-                frame[column] = frame[column].astype("str")
+            # The explicit Arrow schema below supplies the runtime's one-shot
+            # string width without coercing missing values through Python ``str``.
             frame["obligation_amount"] = pd.to_numeric(
                 frame["obligation_amount"], errors="coerce"
             ).astype("float64")
