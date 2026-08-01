@@ -33,7 +33,7 @@ x-common-environment: &common-environment
 x-dev-environment: &dev-environment
   <<: *common-environment
   ENVIRONMENT: "dev"
-  SBIR_ETL__PIPELINE__ENVIRONMENT: "development"
+  SBIR_ETL__PIPELINE__ENVIRONMENT: "dev"
   NEO4J_USER: "${NEO4J_USER:-neo4j}"
   NEO4J_PASSWORD: "${NEO4J_PASSWORD:-test}"
 
