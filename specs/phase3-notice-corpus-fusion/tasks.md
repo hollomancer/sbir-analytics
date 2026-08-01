@@ -19,11 +19,15 @@ Emit `data/derived/phase3_notice_corpus.parquet` + `phase3_notice_corpus.manifes
 (source URIs, pull dates, join rules, counts, frame hash; both label channels).
 → verify: manifest hash stable across two runs from the frozen raw pulls.
 
-## T4 — Refit the fusion ladder
-`transition_ranker.evaluate` (GroupKFold-by-firm) over the frozen corpus:
-text-only → +char → +temporal → +id_xref → +NAICS/notice-type (curated).
-Include the char-channel re-test (SHOULD, requirements §8).
-→ verify: final AUC within [0.800, 0.886]; ladder table committed to the spec dir.
+## T4 — Refit the fusion ladder — DONE (see findings.md)
+`scripts/phase3_benchmark/transition_ranker.py:evaluate` (ported from commit
+`2bc346a6` into this branch; GroupKFold-by-firm) over the frozen corpus, driven
+by `refit_fusion.py`: text-only → +char → +temporal → +id_xref →
++NAICS/notice-type (curated), incl. the char-channel re-test (requirements §8).
+→ result: full corpus **0.784**, high-precision subset **0.699** — both below
+the published CI [0.800, 0.886], so the CI gate correctly refused to freeze
+coefficients. Diagnosis (firm-grain vs award-grain) and the next lever in
+`findings.md`.
 
 ## T5 — Freeze coefficients
 Versioned artifact in `sbir-ml` (weights, scaler params, feature order,

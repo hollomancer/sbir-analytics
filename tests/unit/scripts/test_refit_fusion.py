@@ -28,7 +28,7 @@ def _corpus() -> pd.DataFrame:
                 "label": 1,
             }
         )
-        for neg in range(2):
+        for _neg in range(2):
             rows.append(
                 {
                     "name_key": f"FIRM{firm}",
