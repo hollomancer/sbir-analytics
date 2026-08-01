@@ -576,7 +576,7 @@ def test_unify_reconciles_only_exact_normalized_source_ids():
 
 
 @pytest.mark.parametrize("taxonomy_column", ["naics_code", "psc_code"])
-def test_unify_rejects_conflicting_supplemental_taxonomy(taxonomy_column):
+def test_unify_rejects_multiple_supplemental_rows_before_taxonomy_merge(taxonomy_column):
     from sbir_analytics.assets.phase_transition.phase_ii import (
         PhaseIIInputError,
         _prepare_contract_rows,
@@ -617,7 +617,7 @@ def test_unify_rejects_conflicting_supplemental_taxonomy(taxonomy_column):
         )
     )
 
-    with pytest.raises(PhaseIIInputError, match=f"conflicting {taxonomy_column}"):
+    with pytest.raises(PhaseIIInputError, match="one-to-one reconciliation"):
         _unify(federal, supplemental)
 
 
@@ -720,31 +720,22 @@ def test_unify_preserves_federal_taxonomy_when_normalized_values_match(
 
     missing_federal = federal.copy()
     missing_federal.loc[:, taxonomy_column] = None
-    supplemental_variants = [
-        {
-            "award_id": "SBIR-1",
-            "contract": "PIID-1",
-            "phase": "II",
-            taxonomy_column: supplemental_value,
-        },
-        {
-            "award_id": "SBIR-2",
-            "contract": "PIID-1",
-            "phase": "II",
-            taxonomy_column: f" {supplemental_value.lower()} ",
-        },
-    ]
-    forward = _unify(
+    filled = _unify(
         missing_federal,
-        _prepare_sbir_gov_rows(pd.DataFrame(supplemental_variants)),
+        _prepare_sbir_gov_rows(
+            pd.DataFrame(
+                [
+                    {
+                        "award_id": "SBIR-1",
+                        "contract": "PIID-1",
+                        "phase": "II",
+                        taxonomy_column: f" {supplemental_value.lower()} ",
+                    }
+                ]
+            )
+        ),
     )
-    reverse = _unify(
-        missing_federal,
-        _prepare_sbir_gov_rows(pd.DataFrame(list(reversed(supplemental_variants)))),
-    )
-
-    pd.testing.assert_frame_equal(forward, reverse)
-    assert forward.iloc[0][taxonomy_column] == supplemental_value.strip().upper()
+    assert filled.iloc[0][taxonomy_column] == supplemental_value.strip().upper()
 
 
 def test_unify_stops_on_cross_agency_piid_ambiguity():
@@ -792,7 +783,50 @@ def test_unify_stops_on_cross_agency_piid_ambiguity():
         )
     )
 
-    with pytest.raises(PhaseIIInputError, match="ambiguously matches"):
+    with pytest.raises(PhaseIIInputError, match="one-to-one reconciliation"):
+        _unify(federal, supplemental)
+
+
+def test_unify_stops_when_one_federal_key_matches_multiple_sbir_source_rows():
+    from sbir_analytics.assets.phase_transition.phase_ii import (
+        PhaseIIInputError,
+        _prepare_contract_rows,
+        _prepare_sbir_gov_rows,
+        _unify,
+    )
+
+    federal = _prepare_contract_rows(
+        pd.DataFrame(
+            [
+                {
+                    "piid": "SHARED-PIID",
+                    "generated_unique_award_id": "CONT_AWD_SHARED",
+                    "transaction_unique_id": "TX-SHARED",
+                    "research": "SR2",
+                }
+            ]
+        )
+    )
+    supplemental = _prepare_sbir_gov_rows(
+        pd.DataFrame(
+            [
+                {
+                    "award_id": "SBIRGOV:SHARED-PIID:" + "a" * 64,
+                    "source_award_id": "SHARED-PIID",
+                    "source_row_sha256": "a" * 64,
+                    "phase": "II",
+                },
+                {
+                    "award_id": "SBIRGOV:SHARED-PIID:" + "b" * 64,
+                    "source_award_id": "SHARED-PIID",
+                    "source_row_sha256": "b" * 64,
+                    "phase": "II",
+                },
+            ]
+        )
+    )
+
+    with pytest.raises(PhaseIIInputError, match="one-to-one reconciliation"):
         _unify(federal, supplemental)
 
 
@@ -986,6 +1020,9 @@ def test_validated_phase_ii_awards_runs_on_empty_inputs(tmp_path, monkeypatch):
 
     out = validated_phase_ii_awards(context=build_asset_context())
     assert out.value.empty
+    output_path = tmp_path / "data/processed/phase_ii_awards.parquet"
+    assert output_path.exists()
+    assert pd.read_parquet(output_path).empty
     checks_path = tmp_path / "data/processed/phase_ii_awards.checks.json"
     assert checks_path.exists()
     import json
@@ -993,3 +1030,44 @@ def test_validated_phase_ii_awards_runs_on_empty_inputs(tmp_path, monkeypatch):
     payload = json.loads(checks_path.read_text())
     assert payload["total_rows"] == 0
     assert payload["inputs"]["contracts_exists"] is False
+
+
+def test_validated_phase_ii_awards_preserves_existing_output_when_write_fails(
+    tmp_path, monkeypatch
+):
+    monkeypatch.chdir(tmp_path)
+    from dagster import build_asset_context
+
+    from sbir_analytics.assets.phase_transition import validated_phase_ii_awards
+
+    output_path = tmp_path / "data/processed/phase_ii_awards.parquet"
+    output_path.parent.mkdir(parents=True)
+    output_path.write_bytes(b"previous-complete-artifact")
+
+    def fail_write(*_args, **_kwargs):
+        raise RuntimeError("simulated parquet failure")
+
+    monkeypatch.setattr(pd.DataFrame, "to_parquet", fail_write)
+    with pytest.raises(RuntimeError, match="simulated parquet failure"):
+        validated_phase_ii_awards(context=build_asset_context())
+
+    assert output_path.read_bytes() == b"previous-complete-artifact"
+    assert not list(output_path.parent.glob(".phase_ii_awards.parquet.*.tmp.parquet"))
+
+
+def test_validated_phase_ii_awards_rejects_non_object_source_manifest(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    from dagster import build_asset_context
+
+    from sbir_analytics.assets.phase_transition.phase_ii import (
+        PhaseIIInputError,
+        validated_phase_ii_awards,
+    )
+
+    sbir_path = tmp_path / "data/processed/enriched_sbir_awards.parquet"
+    sbir_path.parent.mkdir(parents=True)
+    pd.DataFrame([{"award_id": "A", "phase": "II"}]).to_parquet(sbir_path, index=False)
+    sbir_path.with_suffix(".checks.json").write_text("[]", encoding="utf-8")
+
+    with pytest.raises(PhaseIIInputError, match="must be a JSON object"):
+        validated_phase_ii_awards(context=build_asset_context())

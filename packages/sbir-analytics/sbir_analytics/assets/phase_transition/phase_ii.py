@@ -21,11 +21,22 @@ Input parquet locations (overridable via env):
 
 from __future__ import annotations
 
+import json
+import os
+import tempfile
 from pathlib import Path
 from typing import Any
 
 import pandas as pd
 
+from sbir_etl.utils.data.file_io import write_json_atomic
+
+from .sbir_gov_source import (
+    SbirGovSourceError,
+    ordered_columns_sha256,
+    sha256_file,
+    verify_sbir_gov_materialization,
+)
 from .utils import (
     MetadataValue,
     Output,
@@ -38,7 +49,6 @@ from .utils import (
     normalize_duns,
     normalize_uei,
     now_utc_iso,
-    write_json,
 )
 
 
@@ -60,6 +70,7 @@ class PhaseIIInputError(ValueError):
 PHASE_II_COLUMNS: list[str] = [
     "award_id",
     "source_award_id",
+    "source_row_sha256",
     "representative_transaction_id",
     "source_transaction_count",
     "recipient_uei",
@@ -220,6 +231,7 @@ def _prepare_contract_rows(contracts: pd.DataFrame) -> pd.DataFrame:
         {
             "award_id": award_key,
             "source_award_id": source_award_key,
+            "source_row_sha256": None,
             "representative_transaction_id": transaction_key,
             "source_transaction_count": 1,
             "recipient_uei": _pick("vendor_uei", "recipient_uei", "uei").map(normalize_uei),
@@ -327,12 +339,16 @@ def _prepare_sbir_gov_rows(sbir_awards: pd.DataFrame) -> pd.DataFrame:
                 return df[name]
         return pd.Series([None] * len(df), index=df.index)
 
+    if "source_award_id" in df.columns:
+        source_award_id = df["source_award_id"].copy()
+    else:
+        source_award_id = _coalesce_columns(df, "contract", "agency_tracking_number", "award_id")
+
     out = pd.DataFrame(
         {
             "award_id": _pick("award_id"),
-            "source_award_id": _coalesce_columns(
-                df, "contract", "agency_tracking_number", "award_id"
-            ),
+            "source_award_id": source_award_id,
+            "source_row_sha256": _pick("source_row_sha256"),
             "representative_transaction_id": None,
             "source_transaction_count": None,
             "recipient_uei": df.get("company_uei", pd.Series([None] * len(df))).map(normalize_uei),
@@ -398,13 +414,14 @@ def _unify(contract_phase_ii: pd.DataFrame, sbir_gov_phase_ii: pd.DataFrame) -> 
     for source_key in shared_source_keys:
         federal_indexes = list(federal.index[federal_source_keys.eq(source_key)])
         supplemental_indexes = list(supplemental.index[supplemental_source_keys.eq(source_key)])
-        if len(federal_indexes) != 1:
+        if len(federal_indexes) != 1 or len(supplemental_indexes) != 1:
             generated_ids = sorted(
                 federal.loc[federal_indexes, "award_id"].map(_normalize_source_key)
             )
             raise PhaseIIInputError(
-                f"SBIR.gov source award {source_key} ambiguously matches generated awards: "
-                f"{generated_ids}"
+                f"SBIR.gov source award {source_key} requires one-to-one reconciliation; "
+                f"found {len(federal_indexes)} federal rows {generated_ids} and "
+                f"{len(supplemental_indexes)} supplemental rows"
             )
 
         federal_index = federal_indexes[0]
@@ -453,6 +470,23 @@ def _agency_coverage(df: pd.DataFrame) -> dict[str, int]:
     return {k: int(v) for k, v in counts.to_dict().items()}
 
 
+def _write_parquet_atomic(frame: pd.DataFrame, output_path: Path) -> None:
+    """Replace a parquet only after a complete same-directory write succeeds."""
+
+    ensure_parent_dir(output_path)
+    descriptor, temporary_name = tempfile.mkstemp(
+        prefix=f".{output_path.name}.", suffix=".tmp.parquet", dir=output_path.parent
+    )
+    os.close(descriptor)
+    temporary = Path(temporary_name)
+    try:
+        frame.to_parquet(temporary, index=False)
+        temporary.replace(output_path)
+    finally:
+        if temporary.exists():
+            temporary.unlink()
+
+
 @asset(
     name="validated_phase_ii_awards",
     group_name="validation",
@@ -486,13 +520,28 @@ def validated_phase_ii_awards(context=None) -> Output[pd.DataFrame]:
     if sbir_awards is None:
         sbir_awards = pd.DataFrame()
 
+    sbir_input_provenance: dict[str, Any] | None = None
+    sbir_checks_path = sbir_awards_path.with_suffix(".checks.json")
+    if not sbir_awards.empty and sbir_checks_path.is_file():
+        try:
+            candidate_manifest = json.loads(sbir_checks_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            raise PhaseIIInputError(f"SBIR.gov provenance manifest is unreadable: {exc}") from exc
+        if not isinstance(candidate_manifest, dict):
+            raise PhaseIIInputError("SBIR.gov provenance manifest must be a JSON object")
+        if candidate_manifest.get("schema_version") == "phase-transition-sbir-input-v2":
+            try:
+                sbir_input_provenance = verify_sbir_gov_materialization(
+                    sbir_awards_path, sbir_awards
+                )
+            except SbirGovSourceError as exc:
+                raise PhaseIIInputError(str(exc)) from exc
+
     contract_phase_ii = _prepare_contract_rows(contracts)
     sbir_gov_phase_ii = _prepare_sbir_gov_rows(sbir_awards)
     unified = _unify(contract_phase_ii, sbir_gov_phase_ii)
 
-    ensure_parent_dir(output_path)
-    if not unified.empty:
-        unified.to_parquet(output_path, index=False)
+    _write_parquet_atomic(unified, output_path)
 
     uei_cov = float(unified["recipient_uei"].notna().mean()) if not unified.empty else 0.0
     duns_cov = float(unified["recipient_duns"].notna().mean()) if not unified.empty else 0.0
@@ -508,6 +557,7 @@ def validated_phase_ii_awards(context=None) -> Output[pd.DataFrame]:
     }
     sources_dict: dict[str, int] = {str(k): int(v) for k, v in source_counts.items()}
     checks: dict[str, Any] = {
+        "schema_version": "phase-ii-awards-v2",
         "ok": True,
         "generated_at": now_utc_iso(),
         "total_rows": int(len(unified)),
@@ -518,11 +568,22 @@ def validated_phase_ii_awards(context=None) -> Output[pd.DataFrame]:
             "contracts_path": str(contracts_path),
             "sbir_awards_path": str(sbir_awards_path),
             "contracts_exists": contracts_path.exists(),
+            "contracts_sha256": sha256_file(contracts_path) if contracts_path.is_file() else None,
             "sbir_awards_exists": sbir_awards_path.exists(),
+            "sbir_awards_v2_verified": sbir_input_provenance is not None,
+            "sbir_awards_v2": sbir_input_provenance,
+        },
+        "output": {
+            "path": str(output_path),
+            "exists": output_path.is_file(),
+            "rows": int(len(unified)),
+            "ordered_columns": list(unified.columns),
+            "ordered_columns_sha256": ordered_columns_sha256(list(unified.columns)),
+            "sha256": sha256_file(output_path) if output_path.is_file() else None,
         },
     }
     checks_path = output_path.with_suffix(".checks.json")
-    write_json(checks_path, checks)
+    write_json_atomic(checks_path, checks)
 
     metadata: dict[str, Any] = {
         "rows": int(len(unified)),

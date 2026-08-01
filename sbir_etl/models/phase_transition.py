@@ -31,12 +31,17 @@ class PhaseIIAward(BaseModel):
         ...,
         description=(
             "Normalized USAspending generated award identifier for federal rows; "
-            "source award identifier for unmatched SBIR.gov rows."
+            "original SBIR.gov source identifier when unique within phase, otherwise a "
+            "full deterministic SBIRGOV source-row surrogate."
         ),
     )
     source_award_id: str | None = Field(
         None,
         description="Source PIID, contract, or tracking identifier retained for exact audit reconciliation.",
+    )
+    source_row_sha256: str | None = Field(
+        None,
+        description=("Full deterministic SBIR.gov source-row fingerprint; null for federal rows."),
     )
     representative_transaction_id: str | None = Field(
         None,

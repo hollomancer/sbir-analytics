@@ -113,6 +113,40 @@ def test_contract_loader_requires_matching_source_manifest(tmp_path: Path, monke
         census_assets._load_contracts()
 
 
+def test_census_prior_provenance_fails_closed_without_dedicated_v2_source(
+    tmp_path: Path, monkeypatch
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.delenv(census_assets.SBIR_AWARDS_ENV, raising=False)
+
+    with pytest.raises(CensusInputError, match="requires the dedicated v2 SBIR.gov source"):
+        census_assets._verify_phase_ii_provenance(
+            _prior_source(), Path("missing-contracts.parquet")
+        )
+
+
+def test_census_prior_provenance_rejects_non_object_phase_ii_manifest(
+    tmp_path: Path, monkeypatch
+) -> None:
+    sbir_path = tmp_path / "sbir.parquet"
+    phase_ii_path = tmp_path / "phase_ii.parquet"
+    sbir_path.write_bytes(b"synthetic")
+    phase_ii_path.with_suffix(".checks.json").write_text("[]", encoding="utf-8")
+    monkeypatch.setenv(census_assets.SBIR_AWARDS_ENV, str(sbir_path))
+    monkeypatch.setenv(census_assets.PHASE_II_OUTPUT_ENV, str(phase_ii_path))
+    monkeypatch.setattr(census_assets.pd, "read_parquet", lambda _path: pd.DataFrame())
+    monkeypatch.setattr(
+        census_assets,
+        "verify_sbir_gov_materialization",
+        lambda _path, _frame: {"output": {"sha256": "a" * 64}},
+    )
+
+    with pytest.raises(CensusInputError, match="must be a JSON object"):
+        census_assets._verify_phase_ii_provenance(
+            _prior_source(), Path("synthetic-contracts.parquet")
+        )
+
+
 def test_asset_writes_exactly_two_parquet_tables_without_headline_metadata(
     tmp_path: Path, monkeypatch
 ) -> None:
@@ -125,6 +159,14 @@ def test_asset_writes_exactly_two_parquet_tables_without_headline_metadata(
         census_assets,
         "_load_contracts",
         lambda: (contracts, Path("synthetic/contracts.parquet")),
+    )
+    monkeypatch.setattr(
+        census_assets,
+        "_verify_phase_ii_provenance",
+        lambda _priors, _contracts_path: (
+            Path("synthetic/phase_iii_census_sbir_awards.parquet"),
+            Path("synthetic/phase_ii_awards.parquet"),
+        ),
     )
     monkeypatch.setenv(census_assets.DATA_CUT_ENV, "2025-12-31")
 
@@ -147,12 +189,14 @@ def test_asset_writes_exactly_two_parquet_tables_without_headline_metadata(
         "dropoff_path",
         "sensitivity_path",
         "contracts_path",
+        "sbir_awards_path",
+        "phase_ii_awards_path",
         "census_data_cut_date",
         "frozen_spec_commit",
         "ordered_clauses",
         "reproducibility",
     }
-    assert census_assets.FROZEN_SPEC_COMMIT == ("577e6c34bf68a41a016b6ac4f495729eeecc2abf")
+    assert census_assets.FROZEN_SPEC_COMMIT == ("6d81874eaf6345abb32d116bfef40f8838a97bb4")
     assert not any(
         token in key.lower()
         for key in metadata_keys
