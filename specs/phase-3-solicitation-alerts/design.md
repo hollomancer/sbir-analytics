@@ -128,9 +128,14 @@ validated_phase_ii_awards (existing) ----> |   prior_award_universe      |
    - `phase_iii_directed_candidates` (S2)
    - `phase_iii_followon_candidates` (S3)
 
-   All three write rows to the same `phase_iii_candidates.parquet` with
-   distinguishing `signal_class`. Factory-generated assets are standard
-   Dagster pattern; this is not an abstraction for its own sake.
+   Each writes only its own `phase_iii_candidates_<signal_class>.parquet`
+   and `phase_iii_evidence_<signal_class>.ndjson`; the three have no
+   ordering dependency between them, so sharing a read-modify-write file
+   would be last-writer-wins. A dependent `phase_iii_candidates` asset
+   concatenates them into the canonical `phase_iii_candidates.parquet` /
+   `phase_iii_evidence.ndjson` — one writer per artifact. Factory-generated
+   assets are standard Dagster pattern; this is not an abstraction for its
+   own sake.
 
 6. **Pair filters** — three module-level functions in
    `packages/sbir-analytics/sbir_analytics/assets/phase_iii_candidates/pairing.py`:
@@ -232,10 +237,13 @@ ledger, no asset check, no dagster.materialize() gated on an HR process.
 
 ### Output formats
 
+- `phase_iii_candidates_<signal_class>.parquet` /
+  `phase_iii_evidence_<signal_class>.ndjson` — per-class outputs, one
+  writer each.
 - `phase_iii_candidates.parquet` — canonical row store (all three
-  signal classes).
+  signal classes), written only by the combining asset.
 - `phase_iii_evidence.ndjson` — per-candidate evidence bundles mirroring
-  `transitions_evidence.ndjson` shape.
+  `transitions_evidence.ndjson` shape, written only by the combining asset.
 - `reports/phase_iii/audit/*.csv` — hand-audit precision tracking.
 - `reports/phase_iii/backtest.json` — output of the precision backtest
   script (latest run).

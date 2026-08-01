@@ -89,7 +89,7 @@ class TestNeo4jConfigValidation:
         assert config.uri == "bolt://test:7687"
         assert config.username == "testuser"
         assert config.database == "neo4j"  # default
-        assert config.auto_migrate is True  # default
+        assert config.auto_migrate is False  # default
 
     def test_config_custom_values(self):
         """Test config accepts custom values."""

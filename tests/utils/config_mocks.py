@@ -56,9 +56,9 @@ def create_mock_pipeline_config(**overrides: Any) -> PipelineConfig:
             "environment": "test",
         },
         "paths": {
-            "data_dir": "data",
-            "cache_dir": "data/cache",
-            "reports_dir": "reports",
+            "data_root": "data",
+            "raw_data": "data/raw",
+            "scripts_output": "data/scripts_output",
         },
         "enrichment": {
             "usaspending_api": {

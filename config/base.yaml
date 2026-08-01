@@ -21,10 +21,6 @@ paths:
   # USAspending database dumps
   usaspending_dump_dir: "data/usaspending"
   usaspending_dump_file: "data/usaspending/usaspending-db-test_recipient_lookup.zip"
-  # S3 path for USAspending database dumps (overrides local path if S3 is configured)
-  # Format: s3://bucket-name/raw/usaspending/database/YYYY-MM-DD/filename.zip
-  usaspending_dump_s3_path: "s3://sbir-etl-prod-data/raw/usaspending/database/latest/usaspending-db-subset.zip"
-
   # Transition detection outputs
   transition_contracts_output: "data/transition/contracts_ingestion.parquet"
   # Optional s3:// URL to upload the extracted contracts parquet to after writing
@@ -517,7 +513,7 @@ transition:
   vendor_resolution:
     # Vendor resolution quality thresholds and fuzzy config
     min_rate: 0.60 # Minimum resolution rate (uei/duns/fuzzy)
-    fuzzy_threshold: 0.85 # RapidFuzz partial_ratio threshold for name_fuzzy
+    fuzzy_threshold: 0.85 # RapidFuzz token_sort_ratio threshold for name_fuzzy
 
 statistical_reporting:
   # Report generation settings

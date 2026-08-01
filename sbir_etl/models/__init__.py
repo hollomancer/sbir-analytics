@@ -16,6 +16,7 @@ _LAZY_BY_MODULE: dict[str, tuple[str, ...]] = {
     ),
     "sbir_etl.models.company": ("Company", "CompanyMatch", "RawCompany"),
     "sbir_etl.models.organization": ("Organization", "OrganizationMatch"),
+    "sbir_etl.models.opportunity": ("Opportunity", "OpportunityContact"),
     "sbir_etl.models.patent": ("Patent", "PatentCitation", "RawPatent"),
     "sbir_etl.models.phase_iii_candidate": ("PhaseIIICandidate", "SignalClass"),
     "sbir_etl.models.researcher": ("Researcher", "RawResearcher"),

@@ -823,7 +823,7 @@ Evidence bundles are persisted as newline-delimited JSON:
 Evidence bundles are stored as JSON on relationship properties:
 
 ```cypher
-MATCH (a:Award)-[t:TRANSITIONED_TO]->(c:Contract)
+MATCH (a:FinancialTransaction {transaction_type: "AWARD"})-[t:TRANSITIONED_TO]->(trans:Transition)
 WHERE t.transition_id = "trans_a1b2c3d4e5f6"
 RETURN t.evidence_bundle
 ```

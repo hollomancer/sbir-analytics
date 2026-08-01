@@ -85,13 +85,19 @@ def test_daily_all_assets_running_by_default(monkeypatch):
     assert daily.default_status == DefaultScheduleStatus.RUNNING
 
 
-def test_server_definitions_resolve_without_heavy_assets(monkeypatch):
-    """Every registered server job must resolve against the gated asset graph."""
+@pytest.mark.parametrize(
+    ("load_heavy", "heavy_jobs_present"),
+    [("false", False), ("true", True)],
+)
+def test_definitions_are_loadable_with_matching_jobs(monkeypatch, load_heavy, heavy_jobs_present):
+    defs = _reload_definitions(monkeypatch, DAGSTER_LOAD_HEAVY_ASSETS=load_heavy)
 
-    defs = _reload_definitions(monkeypatch, DAGSTER_LOAD_HEAVY_ASSETS="false")
-
-    defs.defs.get_repository_def().load_all_definitions()
-    assert "fiscal_returns_mvp_job" not in defs.auto_jobs
-    assert "cet_full_pipeline_job" not in defs.auto_jobs
-    assert "modernbert_job" not in defs.auto_jobs
-    assert "uspto_ai_extraction_job" not in defs.auto_jobs
+    dagster.Definitions.validate_loadable(defs.defs)
+    job_names = set(defs.auto_jobs)
+    for job_name in (
+        "cet_full_pipeline_job",
+        "fiscal_returns_mvp_job",
+        "modernbert_job",
+        "uspto_ai_extraction_job",
+    ):
+        assert (job_name in job_names) is heavy_jobs_present

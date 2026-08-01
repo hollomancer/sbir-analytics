@@ -27,12 +27,16 @@ import pytest
 
 from sbir_analytics.assets.phase_iii_candidates.assets import (
     CANDIDATES_OUTPUT_PATH,
-    EVIDENCE_OUTPUT_PATH,
     HIGH_THRESHOLD_RETROSPECTIVE,
     WEIGHTS_RETROSPECTIVE,
+    _default_retrospective_loader,
     build_candidate_asset,
+    candidates_path_for,
+    combine_candidate_outputs,
+    evidence_path_for,
 )
-from sbir_analytics.assets.phase_iii_candidates.pairing import pair_filter_s1
+from sbir_analytics.assets.phase_iii_candidates.pairing import _prepare_contracts, pair_filter_s1
+from sbir_etl.extractors.contract_extractor import ContractExtractor
 from sbir_etl.models.phase_iii_candidate import PhaseIIICandidate, SignalClass
 
 
@@ -107,6 +111,7 @@ def _build_fixture():
         contracts.append(
             {
                 "contract_id": f"C-pos-{i:03d}",
+                "contract_award_unique_key": f"C-POS-{i:03d}",
                 "vendor_uei": _make_uei(i),
                 "awarding_agency_name": "DEPARTMENT OF DEFENSE",
                 "awarding_sub_tier_agency_name": "DEPARTMENT OF THE NAVY",
@@ -129,6 +134,7 @@ def _build_fixture():
         contracts.append(
             {
                 "contract_id": f"C-coded-{i:03d}",
+                "contract_award_unique_key": f"C-CODED-{i:03d}",
                 "vendor_uei": _make_uei(i),
                 "awarding_agency_name": "DEPARTMENT OF DEFENSE",
                 "awarding_sub_tier_agency_name": "DEPARTMENT OF THE NAVY",
@@ -151,6 +157,7 @@ def _build_fixture():
         contracts.append(
             {
                 "contract_id": f"C-neg-{i:03d}",
+                "contract_award_unique_key": f"C-NEG-{i:03d}",
                 "vendor_uei": _make_uei(900 + i),  # not in priors
                 "awarding_agency_name": "GENERAL SERVICES ADMINISTRATION",
                 "awarding_sub_tier_agency_name": "FEDERAL ACQUISITION SERVICE",
@@ -174,6 +181,7 @@ def _build_fixture():
         contracts.append(
             {
                 "contract_id": f"C-low-{i:03d}",
+                "contract_award_unique_key": f"C-LOW-{i:03d}",
                 "vendor_uei": _make_uei(i),
                 "awarding_agency_name": "DEPARTMENT OF DEFENSE",
                 "awarding_sub_tier_agency_name": "DEPARTMENT OF THE NAVY",
@@ -208,8 +216,8 @@ def _patched_pair_filter(priors: pd.DataFrame, contracts: pd.DataFrame) -> pd.Da
     if pairs.empty or "target_cet" not in contracts.columns:
         return pairs
     cet_lookup = (
-        contracts.loc[:, ["contract_id", "target_cet"]]
-        .rename(columns={"contract_id": "target_id"})
+        contracts.loc[:, ["contract_award_unique_key", "target_cet"]]
+        .rename(columns={"contract_award_unique_key": "target_id"})
         .drop_duplicates(subset=["target_id"])
     )
     return pairs.merge(cet_lookup, on="target_id", how="left")
@@ -261,17 +269,25 @@ def test_phase_iii_retrospective_asset_materializes(tmp_path, monkeypatch):
     PhaseIIICandidate(**df.iloc[0].to_dict())
 
     # No coded contracts in output.
-    assert not df["target_id"].astype(str).str.startswith("C-coded-").any()
+    assert not df["target_id"].astype(str).str.startswith("C-CODED-").any()
 
-    # Parquet was written and matches the dataframe.
-    parquet_path = Path(tmp_path) / CANDIDATES_OUTPUT_PATH
+    # Each signal-class asset owns exactly one parquet — the shared combined
+    # file is written only by the dependent ``phase_iii_candidates`` asset, so
+    # this materialization writes the per-class path, not the combined one.
+    parquet_path = Path(tmp_path) / candidates_path_for(SignalClass.RETROSPECTIVE)
     assert parquet_path.exists(), f"missing parquet at {parquet_path}"
     parquet_df = pd.read_parquet(parquet_path)
     assert len(parquet_df) == len(df)
     assert (parquet_df["signal_class"] == SignalClass.RETROSPECTIVE.value).all()
 
+    # The combining asset rolls the per-class output into the shared ledger.
+    combined = combine_candidate_outputs()
+    combined_path = Path(tmp_path) / CANDIDATES_OUTPUT_PATH
+    assert combined_path.exists(), f"missing combined parquet at {combined_path}"
+    assert len(combined) == len(df)
+
     # Evidence NDJSON: one line per candidate, with the documented key shape.
-    evidence_path = Path(tmp_path) / EVIDENCE_OUTPUT_PATH
+    evidence_path = Path(tmp_path) / evidence_path_for(SignalClass.RETROSPECTIVE)
     assert evidence_path.exists(), f"missing evidence file at {evidence_path}"
     lines = evidence_path.read_text(encoding="utf-8").strip().splitlines()
     assert len(lines) == len(df)
@@ -295,7 +311,7 @@ def test_phase_iii_retrospective_asset_materializes(tmp_path, monkeypatch):
 
     # Precision gate: HIGH precision over the engineered positives must be
     # at or above the spec threshold of 0.85.
-    positives = df.loc[df["target_id"].astype(str).str.startswith("C-pos-")]
+    positives = df.loc[df["target_id"].astype(str).str.startswith("C-POS-")]
     assert len(positives) == 30
     high_positives = int(positives["is_high_confidence"].sum())
     precision = high_positives / len(positives)
@@ -305,7 +321,7 @@ def test_phase_iii_retrospective_asset_materializes(tmp_path, monkeypatch):
     )
 
     # Low-content same-vendor contracts should NOT be high-confidence.
-    low = df.loc[df["target_id"].astype(str).str.startswith("C-low-")]
+    low = df.loc[df["target_id"].astype(str).str.startswith("C-LOW-")]
     assert len(low) == 30
     assert int(low["is_high_confidence"].sum()) == 0
 
@@ -315,11 +331,47 @@ def test_pair_filter_s1_excludes_already_coded_phase_iii():
     pairs = pair_filter_s1(priors_df, contracts_df)
     assert not pairs.empty
     target_ids = pairs["target_id"].astype(str).tolist()
-    assert not any(t.startswith("C-coded-") for t in target_ids)
+    assert not any(t.startswith("C-CODED-") for t in target_ids)
     # Negatives (different vendor) are dropped by the UEI inner join.
-    assert not any(t.startswith("C-neg-") for t in target_ids)
+    assert not any(t.startswith("C-NEG-") for t in target_ids)
     # Both the positives and the low-content same-vendor contracts pass.
-    assert sum(1 for t in target_ids if t.startswith("C-pos-")) == 30
-    assert sum(1 for t in target_ids if t.startswith("C-low-")) == 30
+    assert sum(1 for t in target_ids if t.startswith("C-POS-")) == 30
+    assert sum(1 for t in target_ids if t.startswith("C-LOW-")) == 30
     # Office is the finest agency match.
     assert (pairs["agency_match_level"] == "office").all()
+
+
+def test_default_loader_accepts_contract_extractor_model_dump(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    output_path = Path("data/transition/contracts_ingestion.parquet")
+    row = {
+        "transaction_unique_id": "TX-1",
+        "generated_unique_award_id": "CONT_AWD_PIID-1_9700_PARENT-1",
+        "action_date": "20240115",
+        "contract_award_type": "A",
+        "transaction_description": "Follow-on production",
+        "recipient_name": "EXAMPLE COMPANY",
+        "awarding_toptier_agency_name": "DEPARTMENT OF DEFENSE",
+        "awarding_subtier_agency_name": "DEPARTMENT OF THE NAVY",
+        "piid": "PIID-1",
+        "federal_action_obligation": "1000",
+        "period_of_performance_start_date": "20240115",
+        "recipient_uei": "UEI000000001",
+        "extent_competed": "NONE",
+        "referenced_idv_agency_iden": "9700",
+        "referenced_idv_piid": "PARENT-1",
+    }
+
+    extractor = ContractExtractor()
+    contract = extractor._parse_contract_row(row)
+    assert contract is not None
+    output_path.parent.mkdir(parents=True)
+    assert extractor._collect_and_write([contract], output_path) == 1
+
+    loaded = _default_retrospective_loader(None)
+    assert loaded.loc[0, "generated_unique_award_id"] == row["generated_unique_award_id"]
+    assert "research" in loaded.columns
+    assert pd.isna(loaded.loc[0, "research"])
+    targets = _prepare_contracts(loaded)
+    assert targets.loc[0, "target_id"] == row["generated_unique_award_id"]
+    assert targets.loc[0, "target_id"] != row["piid"]

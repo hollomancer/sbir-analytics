@@ -1,5 +1,8 @@
 """Tests for automatic asset/job/sensor discovery helpers."""
 
+import os
+import subprocess
+import sys
 import types
 
 import pytest
@@ -19,6 +22,7 @@ def test_iter_asset_modules_discovers_expected_packages():
 
     module_names = {module.__name__ for module in modules}
     assert "sbir_analytics.assets.sbir_ingestion" in module_names
+    assert "sbir_analytics.assets.phase_iii_census.assets" in module_names
     assert "sbir_analytics.assets.uspto.extraction" in module_names
     assert "sbir_analytics.assets.transition.detections" in module_names
     # Jobs/sensors should be excluded
@@ -71,3 +75,37 @@ def test_iter_public_sensors_returns_sensor_definitions():
 
     sensors = assets_pkg.iter_public_sensors()
     assert all(isinstance(sensor, SensorDefinition) for sensor in sensors)
+
+
+def test_light_mode_does_not_import_heavy_asset_families():
+    code = """
+import sys
+from dagster import Definitions
+import sbir_analytics.definitions as definitions
+
+Definitions.validate_loadable(definitions.defs)
+blocked = (
+    "sbir_analytics.assets.cet",
+    "sbir_analytics.assets.fiscal_assets",
+    "sbir_analytics.assets.sbir_fiscal_impacts",
+    "sbir_analytics.assets.modernbert",
+    "sbir_analytics.assets.uspto.ai_extraction",
+)
+leaked = sorted(
+    name
+    for name in sys.modules
+    if any(name == prefix or name.startswith(prefix + ".") for prefix in blocked)
+)
+assert not leaked, leaked
+"""
+    env = os.environ.copy()
+    env["DAGSTER_LOAD_HEAVY_ASSETS"] = "false"
+
+    result = subprocess.run(
+        [sys.executable, "-c", code],
+        env=env,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr

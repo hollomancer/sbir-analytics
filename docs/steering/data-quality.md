@@ -82,6 +82,24 @@ The quality framework above governs the Dagster pipeline (`sbir_etl`). The one-o
 - **Hand-typed, non-reproducible figures are the highest-risk category.** The one error with no backing script at all (Finding 2's acquisition-timing paragraph — a median and an outlier example, asserted directly in prose) was also the most wrong: not a rounding slip but the wrong firm identified as the outlier. A number nobody can rerun is a number nobody re-verifies. Prefer computing every reportable figure in a script, even a throwaway one; if a figure must be asserted by hand (e.g. reasoning about a small hand-curated table), say so explicitly in the text so it gets extra scrutiny during review.
 - **Build the audit script alongside the report, not after.** `nano_verify_report_figures.py` recomputes every load-bearing number in the report from source and diffs it against the value actually printed in the markdown. Keep this pattern for any new findings report (the quantum/hypersonics generalization is a natural next user) — rerun it whenever an upstream script or source CSV changes, not just once at publication.
 
+## Contract Award Identity and Grain
+
+- **A PIID is not an award key.** Order PIIDs such as `0001` repeat under different
+  parent IDVs, and legacy PIIDs can repeat across agencies. Prefer a complete
+  precomputed key such as `contract_award_unique_key`. Otherwise require a
+  non-null compound of awarding agency, parent-IDV identifier, and PIID.
+- **Partial keys fail loudly.** A key column being present is insufficient: every
+  row must contain all required identity components, and conflicting alias
+  columns are an error. `contract_id` is not presumed unique because several
+  ingestion paths use it for a bare PIID.
+- **Declare transaction versus award grain.** FPDS/USAspending inputs commonly
+  contain modifications. Use `sbir_etl.utils.award_identity` to construct the
+  award key and collapse representative rows explicitly. Its latest-transaction
+  policy does not aggregate financial amounts.
+- **Aggregate status before collapsing.** A coded Phase III value on any
+  transaction makes the whole award coded. Filtering individual transactions
+  first can leave uncoded modifications behind and manufacture false candidates.
+
 ## Related Documents
 
 - **[configuration.md](../configuration.md)** - Complete quality configuration examples

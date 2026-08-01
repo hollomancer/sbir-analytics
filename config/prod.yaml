@@ -16,19 +16,7 @@
 
 pipeline:
   name: "sbir-analytics"
-  version: "1.0.0"
   environment: "production"
-
-paths:
-  # Adjust these if your deployment uses different mount points
-  root: "."
-  data_dir: "data"
-  raw_dir: "data/raw"
-  processed_dir: "data/processed"
-  loaded_dir: "data/loaded"
-  artifacts_dir: "artifacts"
-  reports_dir: "reports"
-  logs_dir: "logs"
 
 logging:
   level: "INFO"        # INFO for prod; use DEBUG temporarily for incident investigation
@@ -171,7 +159,6 @@ loading:
     uri_env_var: "NEO4J_URI"
     user_env_var: "NEO4J_USER"
     password_env_var: "NEO4J_PASSWORD"  # pragma: allowlist secret
-    database: "${NEO4J_DATABASE:-neo4j}"    # Optional override via environment variable
     output_dir: "data/loaded/neo4j"
     load_success_threshold: 0.995
     create_indexes: true

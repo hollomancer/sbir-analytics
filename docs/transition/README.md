@@ -119,12 +119,11 @@ Signals are organized into categories:
 
 ### Confidence Scoring
 
-Transitions are scored on confidence levels:
+Transitions are scored on confidence levels (see [scoring-guide.md](scoring-guide.md) for the authoritative thresholds and precision/recall):
 
-- **High Confidence** (>0.75) - Multiple strong signals with corroboration
-- **Medium Confidence** (0.50-0.75) - Clear signals with some corroboration
-- **Low Confidence** (0.25-0.50) - Limited signals or weak evidence
-- **Tentative** (<0.25) - Minimal evidence, requires review
+- **HIGH** (≥0.85) - ~90% precision; executive reporting, high-confidence findings
+- **LIKELY** (0.65–0.84) - ~75% precision; general analysis, stakeholder review
+- **POSSIBLE** (<0.65) - ~40% precision; research, hypothesis generation
 
 ## Implementation Guides
 

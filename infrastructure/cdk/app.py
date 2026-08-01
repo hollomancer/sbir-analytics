@@ -5,24 +5,31 @@ import os
 
 import aws_cdk as cdk
 
-from stacks.batch import BatchStack
+from stacks.batch import BatchStack, VpcConfig
 from stacks.foundation import FoundationStack
 
-app = cdk.App()
 
-env = cdk.Environment(
-    account=os.environ.get("CDK_DEFAULT_ACCOUNT"),
-    region=os.environ.get("CDK_DEFAULT_REGION", "us-east-2"),
-)
+def build_app(*, batch_vpc_config: VpcConfig | None = None) -> cdk.App:
+    """Build the CDK app, optionally importing explicit VPC attributes."""
+    app = cdk.App()
 
-foundation = FoundationStack(app, "sbir-analytics-foundation", env=env)
+    env = cdk.Environment(
+        account=os.environ.get("CDK_DEFAULT_ACCOUNT"),
+        region=os.environ.get("CDK_DEFAULT_REGION", "us-east-2"),
+    )
 
-BatchStack(
-    app,
-    "sbir-analytics-batch",
-    env=env,
-    bucket=foundation.bucket,
-    neo4j_secret=foundation.neo4j_secret,
-)
+    foundation = FoundationStack(app, "sbir-analytics-foundation", env=env)
 
-app.synth()
+    BatchStack(
+        app,
+        "sbir-analytics-batch",
+        env=env,
+        bucket=foundation.bucket,
+        neo4j_secret=foundation.neo4j_secret,
+        vpc_config=batch_vpc_config,
+    )
+    return app
+
+
+if __name__ == "__main__":
+    build_app().synth()
