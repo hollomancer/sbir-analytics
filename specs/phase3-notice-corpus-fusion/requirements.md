@@ -1,6 +1,11 @@
 # Phase III Notice Corpus & Fusion Ranker — Requirements
 
-> **Status:** Draft spec. No implementation.
+> **Status:** Implemented (T1–T7 done — see `tasks.md`). This branch ships a production
+> scoring path: coefficients are frozen at
+> `packages/sbir-ml/sbir_ml/transition/detection/fusion_coefficients.json` and the monthly
+> procurement packet consumes them, which **changes packet ordering** (strongest match
+> first, deadline as tie-break). Two requirements were superseded rather than satisfied —
+> see "Superseded by the award-grain pivot" below.
 > Supports inventory questions **B2 / B3 / E1** in [docs/research-questions.md](../../docs/research-questions.md).
 
 **Research question anchor:** B2 (did SBIR research transition to a federal contract), B3 (transition latency), E1 (Phase III identification)
@@ -18,6 +23,27 @@
 > monthly packet's DIRECTED/FOLLOWON scoring consumes them behind the benchmark
 > harness gate; the RETROSPECTIVE ≥0.85 precision gate is demonstrably unchanged;
 > and a precision@K hand-audit sample ([K] rows) is emitted for human adjudication.
+
+---
+
+## Superseded by the award-grain pivot
+
+The firm-grain corpus these requirements were written against failed to reproduce the
+study (text AUC 0.575). `findings.md` documents the pivot to **award grain** — attributing
+each notice to the specific prior award its J&A cites — which reproduced it at 0.847,
+within the published CI. Two requirements did not survive that pivot, and are recorded
+here rather than quietly dropped:
+
+- **Requirement 2 (stratum column).** The shipped corpus has no `stratum` column. Award-grain
+  rows are formed by a single citation rule, so the firm-grain strata it was meant to carry
+  no longer partition anything. Cost: none identified; the strata were a firm-grain construct.
+- **Requirement 3 (two label channels).** The shipped corpus has **one** channel —
+  `citation` (138 positives; `corpus.manifest.json`). The FPDS-coded (`SR3`/`ST3`) primary and
+  the description-labeled replication set were both firm-grain constructions and neither was
+  built. **Cost: the independent-replication check on the label is gone.** The reproduction
+  therefore rests on a single labeling rule, and the 0.847 has no second-channel corroboration.
+  Restoring it means labeling award-grain rows a second way — the natural candidate is
+  description-matching on the notice text — and is not done here.
 
 ---
 
@@ -60,11 +86,12 @@ because its **training substrate is not in the repo**:
    one row per (firm award, notice) with award text, notice text, notice type,
    dates, identifiers, label, and stratum; plus a JSON manifest recording source
    URIs, pull dates, join rules, row counts, and a frame hash.
-3. **SHALL** carry two label channels, mirroring the study: FPDS-coded positives
+3. ~~**SHALL** carry two label channels, mirroring the study: FPDS-coded positives
    (`SR3`/`ST3`) as the primary, and description-labeled positives as the
-   independent replication set.
+   independent replication set.~~ **Superseded** — see below.
 4. **SHALL** refit the fusion with the already-ported harness
-   (`transition_ranker.evaluate`, GroupKFold **by firm**), reporting the ladder
+   (`evaluate` in `scripts/phase3_benchmark/transition_ranker.py`, GroupKFold **by firm**),
+   reporting the ladder
    (text-only → +each feature) against the published 0.844 [0.800, 0.886].
    A refit outside the CI blocks coefficient freezing and triggers investigation
    (archive drift is the expected cause — see risks).

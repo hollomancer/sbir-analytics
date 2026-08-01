@@ -790,3 +790,158 @@ def test_transition_paths_table_marks_awardee_without_a_path(tmp_path):
 
     assert "— no matched procurement" in packet
     assert "ends 2026-08-31" in packet
+
+
+def _fusion_rows(records: list[dict]) -> pd.DataFrame:
+    """Grouping rows that also carry the text/metadata the fusion ranker scores."""
+
+    columns = {
+        "prior_award_id",
+        "signal_class",
+        "confidence_bucket",
+        "candidate_score",
+        "opportunity_response_deadline",
+        "opportunity_title",
+        "opportunity_description",
+        "opportunity_naics_code",
+        "opportunity_notice_type",
+        "award_title",
+        "award_abstract",
+        "company",
+    }
+    return pd.DataFrame([{column: record.get(column) for column in columns} for record in records])
+
+
+_HYPERSONIC_ABSTRACT = (
+    "Ablative thermal protection coating for hypersonic leading edges, using a "
+    "ceramic matrix composite substrate with an ultra high temperature oxide layer."
+)
+
+
+def _fusion_record(**overrides: object) -> dict:
+    record = {
+        "prior_award_id": "A",
+        "signal_class": "followon",
+        "confidence_bucket": "HIGH",
+        "company": "Acme Aerospace",
+        "award_title": "Hypersonic leading-edge thermal protection",
+        "award_abstract": _HYPERSONIC_ABSTRACT,
+        "opportunity_naics_code": "336412",
+        "opportunity_notice_type": "Solicitation",
+    }
+    record.update(overrides)
+    return record
+
+
+def test_group_ranks_by_fusion_score_ahead_of_deadline():
+    """The packet is a strongest-match-first queue, not a calendar.
+
+    A far-deadline procurement whose text matches the award closely outranks a
+    soon-closing one that does not. This is the behaviour change the ranker
+    introduced — the pre-ranker contract was deadline order.
+    """
+
+    awards = pd.DataFrame([{"award_id": "A", "amount": 1_000}])
+    rows = _fusion_rows(
+        [
+            _fusion_record(
+                opportunity_title="Soon but unrelated",
+                opportunity_response_deadline="2026-07-01",
+                opportunity_description=(
+                    "Janitorial and grounds maintenance services for administrative "
+                    "office buildings, including custodial supplies and landscaping."
+                ),
+            ),
+            _fusion_record(
+                opportunity_title="Later but matching",
+                opportunity_response_deadline="2026-12-01",
+                opportunity_description=(
+                    "Ultra high temperature ceramic matrix composite ablative coating "
+                    "for hypersonic vehicle leading edges and thermal protection."
+                ),
+            ),
+        ]
+    )
+
+    groups = group_candidates_by_awardee(rows, awards)
+
+    assert len(groups) == 1
+    entries = groups[0]["competitive"]
+    assert [entry["opportunity_title"] for entry in entries] == [
+        "Later but matching",
+        "Soon but unrelated",
+    ]
+
+
+def test_group_ranks_watchlist_by_fusion_score_too():
+    """Watchlist ordering changed with the ranker as well, not just directed/competitive."""
+
+    awards = pd.DataFrame([{"award_id": "A", "amount": 1_000}])
+    rows = _fusion_rows(
+        [
+            _fusion_record(
+                confidence_bucket="WATCHLIST",
+                opportunity_title="Soon but unrelated",
+                opportunity_response_deadline="2026-07-01",
+                opportunity_description=(
+                    "Janitorial and grounds maintenance services for administrative "
+                    "office buildings, including custodial supplies and landscaping."
+                ),
+            ),
+            _fusion_record(
+                confidence_bucket="WATCHLIST",
+                opportunity_title="Later but matching",
+                opportunity_response_deadline="2026-12-01",
+                opportunity_description=(
+                    "Ultra high temperature ceramic matrix composite ablative coating "
+                    "for hypersonic vehicle leading edges and thermal protection."
+                ),
+            ),
+        ]
+    )
+
+    groups = group_candidates_by_awardee(rows, awards)
+
+    assert [entry["opportunity_title"] for entry in groups[0]["watchlist"]] == [
+        "Later but matching",
+        "Soon but unrelated",
+    ]
+
+
+def test_group_falls_back_to_deadline_order_when_ranker_unavailable(monkeypatch, caplog):
+    """An unavailable ranker must be visible, not a silent reversion to deadline order."""
+
+    import sbir_ml.transition.detection.fusion_scoring as fusion_scoring
+
+    def _boom(*args: object, **kwargs: object) -> list[float]:
+        raise RuntimeError("coefficients missing")
+
+    monkeypatch.setattr(fusion_scoring, "score_pairs_with_fusion", _boom)
+
+    awards = pd.DataFrame([{"award_id": "A", "amount": 1_000}])
+    rows = _fusion_rows(
+        [
+            _fusion_record(
+                opportunity_title="Later but matching",
+                opportunity_response_deadline="2026-12-01",
+                opportunity_description=(
+                    "Ultra high temperature ceramic matrix composite ablative coating "
+                    "for hypersonic vehicle leading edges and thermal protection."
+                ),
+            ),
+            _fusion_record(
+                opportunity_title="Soon but unrelated",
+                opportunity_response_deadline="2026-07-01",
+                opportunity_description="Janitorial and grounds maintenance services.",
+            ),
+        ]
+    )
+
+    with caplog.at_level("WARNING"):
+        groups = group_candidates_by_awardee(rows, awards)
+
+    assert [entry["opportunity_title"] for entry in groups[0]["competitive"]] == [
+        "Soon but unrelated",
+        "Later but matching",
+    ]
+    assert any("Fusion ranking unavailable" in record.message for record in caplog.records)

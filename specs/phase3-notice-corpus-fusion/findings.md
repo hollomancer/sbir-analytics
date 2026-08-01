@@ -26,13 +26,35 @@ was inflated ~0.07 by firm-name/PIID identity tokens shared between abstract and
 J&A. Scrubbing them (the study's own robustness step, applied in `build_features`)
 gives 0.847 — matching the study's 0.844. The J&A does not copy the abstract
 (median 19% content-word overlap), so the residual signal is genuine technical
-matching. **precision@1 = 0.681** (rank-1 is the true transition for 94/138 firms;
-audit sample in `reports/phase_iii/audit/`).
+matching.
+
+**precision@1 — read the held-out number, not the in-sample one.** `freeze_coefficients`
+fits the scaler and logistic on 100% of the corpus (the right choice for a deployment
+artifact), and `emit_audit_sample.build_audit` then scores that same corpus, so the
+**0.681** it reports (rank-1 is the true transition for 94 of 138 award-grain positives;
+audit sample in `reports/phase_iii/audit/`) is **in-sample** and not comparable to the
+cross-validated AUC beside it. The honest held-out analogue is the ladder's final-stage
+out-of-fold **top1 = 0.674** (`refit_ladder.json`, GroupKFold by firm) — quote that when
+precision@1 is compared to anything. The two are close, which is itself reassuring, but
+only 0.674 carries a generalization claim.
 
 The ladder shape matches the study: text dominates, char adds ~0.03, NAICS/
 notice-type the final lift; temporal and id_xref are degenerate on this corpus
 (no award years; award-grain rows use the `citation` rule, so `id_cited` is 0)
 and documented as such.
+
+### Artifacts as shipped
+
+- Recovery + refit scripts: `scripts/phase3_benchmark/{notice_matching,make_join_seed,
+  pull_gsa_archive,build_notice_corpus,award_grain,recover_award_grain,transition_ranker,
+  refit_fusion,emit_audit_sample}.py`
+- **Coefficients frozen and committed:**
+  `packages/sbir-ml/sbir_ml/transition/detection/fusion_coefficients.json`, carrying corpus
+  frame hash `4c4064f0…` — the award-grain corpus (828 rows, 138 positives, 101 firms;
+  `corpus.manifest.json`). The superseded firm-grain frame hash `6388d446…` appears only in
+  the section below.
+- Committed alongside: `corpus.manifest.json`, `refit_ladder.json`, this findings doc.
+- Corpus parquet itself stays local (`data/*` gitignored); regenerable from the scripts.
 
 ---
 
@@ -95,11 +117,13 @@ at once. Expected to move the refit toward the published 0.844.
 Secondary: max-cosine over *all* the firm's abstracts (the study's
 "max abstract↔notice") rather than the single longest.
 
-## Artifacts
+### Artifacts of the superseded firm-grain attempt
 
 - Scripts: `scripts/phase3_benchmark/{notice_matching,make_join_seed,
   pull_gsa_archive,build_notice_corpus,transition_ranker,refit_fusion}.py`
 - Corpus (local, `/data/*` gitignored): `data/derived/phase3_notice_corpus.parquet`
   + manifest (frame hash `6388d446…`); regenerable from the committed scripts.
-- Committed: `corpus.manifest.json`, `refit_ladder.json`, this findings doc.
-- **No coefficients frozen** — the CI gate held.
+- **No coefficients were frozen from this attempt** — the CI gate held.
+
+*(Scoped to the firm-grain attempt above. For what the branch actually ships, see
+"Artifacts as shipped" at the top of this document.)*

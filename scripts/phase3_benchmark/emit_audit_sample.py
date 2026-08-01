@@ -68,12 +68,19 @@ def main() -> int:
     args.output.parent.mkdir(parents=True, exist_ok=True)
     audit.to_csv(args.output, index=False)
 
-    # precision@1: fraction of firms whose rank-1 candidate is the true notice.
-    firms = audit["owner"].nunique()
+    # precision@1: fraction of *owners* (cited prior awards — the award grain, NOT
+    # firms; 138 owners span 101 firms) whose rank-1 candidate is the true notice.
+    #
+    # IN-SAMPLE: the coefficients were fit on this same corpus, so this number
+    # carries no generalization claim. The held-out analogue is the ladder's
+    # final-stage out-of-fold top1 in refit_ladder.json.
+    owners = audit["owner"].nunique()
     top1_true = int(((audit["rank"] == 1) & (audit["label"] == 1)).sum())
-    print(f"audit: {len(audit)} rows across {firms} firms -> {args.output}")
+    print(f"audit: {len(audit)} rows across {owners} award-grain owners -> {args.output}")
     print(
-        f"precision@1 (rank-1 is the true transition): {top1_true}/{firms} = {top1_true / firms:.3f}"
+        f"precision@1 IN-SAMPLE (rank-1 is the true transition): "
+        f"{top1_true}/{owners} = {top1_true / owners:.3f} "
+        f"— compare against refit_ladder.json out-of-fold top1, not against the CV AUC"
     )
     return 0
 

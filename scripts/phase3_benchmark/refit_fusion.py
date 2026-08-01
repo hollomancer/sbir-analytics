@@ -156,7 +156,7 @@ def main() -> int:
             f"(firms {stage['firms']})"
         )
     final = ladder[-1]
-    final_auc = float(str(final["auc"]))
+    final_auc = float(final["auc"])  # type: ignore[arg-type]
     within_ci = PUBLISHED_CI[0] <= final_auc <= PUBLISHED_CI[1]
     print(f"final AUC {final['auc']} within published CI {PUBLISHED_CI}: {within_ci}")
 
