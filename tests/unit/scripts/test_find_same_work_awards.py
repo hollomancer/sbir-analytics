@@ -456,3 +456,77 @@ def test_minimum_strong_drops_review_pairs():
         minimum_tier="strong",
     )
     assert pairs.empty
+
+
+def test_name_state_bridged_pair_is_not_reported_as_high_confidence():
+    """A name+state bridge to an identifier is name-based evidence, not identifier evidence.
+
+    Row 2 carries no usable identifier and is attached to the UEI-backed firm by
+    normalized name+state. Paired against row 1 — same firm by UEI, but a
+    different name+state key — it matches on neither UEI, DUNS, nor an identical
+    name+state, so it lands on the bridge branch. That evidence is name-based and
+    must not be reported at the confidence of a shared UEI.
+    """
+
+    rows = [
+        _award(),
+        _award(
+            Agency="National Aeronautics and Space Administration",
+            State="MD",
+            **{"Agency Tracking Number": "TRACK-2"},
+        ),
+        _award(
+            Agency="Department of Energy",
+            UEI="",
+            Duns="",
+            **{"Agency Tracking Number": "TRACK-3"},
+        ),
+    ]
+    prepared = _prepare(rows)
+    assert prepared.loc[2, "_firm_key_method"] == "name_state_to_id"
+    assert prepared["_firm_key"].nunique() == 1
+
+    pairs = mod.find_same_work_pairs(prepared, config=mod.MatchConfig(workers=1))
+    bridged = pairs.loc[(pairs["_left_index"] == 1) & (pairs["_right_index"] == 2)]
+    assert len(bridged) == 1
+    assert bridged.iloc[0]["firm_match_basis"] == "name_state_bridge"
+    assert bridged.iloc[0]["firm_match_confidence"] == "medium"
+
+
+def test_shared_uei_pair_is_still_high_confidence():
+    rows = [
+        _award(),
+        _award(
+            Agency="National Aeronautics and Space Administration",
+            **{"Agency Tracking Number": "TRACK-2"},
+        ),
+    ]
+    pairs = mod.find_same_work_pairs(_prepare(rows), config=mod.MatchConfig(workers=1))
+    pair = pairs.iloc[0]
+    assert pair["firm_match_basis"] == "uei_exact"
+    assert pair["firm_match_confidence"] == "high"
+
+
+def test_non_range_index_frame_is_rejected_rather_than_mismatching_rows():
+    """Positional and label lookups are mixed; a filtered frame would silently disagree."""
+
+    import pytest
+
+    rows = [
+        _award(),
+        _award(
+            Agency="National Aeronautics and Space Administration",
+            **{"Agency Tracking Number": "TRACK-2"},
+        ),
+        _award(Agency="Department of Energy", **{"Agency Tracking Number": "TRACK-3"}),
+    ]
+    prepared = _prepare(rows)
+    # Dropping the *first* row leaves labels [1, 2] — positions 0 and 1.
+    filtered = prepared.loc[prepared["Agency"] != "Department of Defense"]
+    assert list(filtered.index) == [1, 2]
+
+    with pytest.raises(ValueError, match="RangeIndex"):
+        mod.find_same_work_pairs(filtered, config=mod.MatchConfig(workers=1))
+
+    # The same rows, re-indexed, are accepted.
+    assert len(mod.find_same_work_pairs(filtered.reset_index(drop=True))) == 1

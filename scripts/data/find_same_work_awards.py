@@ -353,6 +353,16 @@ def _pair_scope(left: pd.Series, right: pd.Series) -> tuple[bool, bool]:
 
 
 def _identity_basis(left: pd.Series, right: pd.Series) -> tuple[str, str]:
+    """Why these two rows are the same firm, and how much to trust it.
+
+    The trailing case covers pairs joined through :func:`assign_firm_keys`'s
+    bridges rather than by a shared identifier or an identical name+state. Those
+    bridges are not equally strong, so they do not share a confidence: a
+    DUNS→UEI bridge is identifier-backed, while a name+state→identifier bridge
+    rests on a normalized company name and is no stronger than the
+    ``name_state_exact`` case above it.
+    """
+
     if left["_valid_uei"] and left["_valid_uei"] == right["_valid_uei"]:
         return "uei_exact", "high"
     if (
@@ -364,6 +374,8 @@ def _identity_basis(left: pd.Series, right: pd.Series) -> tuple[str, str]:
         return "duns_exact", "high"
     if left["_name_state_key"] == right["_name_state_key"]:
         return "name_state_exact", "medium"
+    if "name_state_to_id" in {left["_firm_key_method"], right["_firm_key_method"]}:
+        return "name_state_bridge", "medium"
     return "id_bridge", "high"
 
 
@@ -542,11 +554,25 @@ def find_same_work_pairs(
     config: MatchConfig | None = None,
     minimum_tier: str = "review",
 ) -> pd.DataFrame:
-    """Return all candidate pairs meeting the configured audit rule."""
+    """Return all candidate pairs meeting the configured audit rule.
+
+    ``prepared_awards`` must carry a default ``RangeIndex`` — the output of
+    :func:`prepare_awards`. This function mixes positional access (``.to_numpy``
+    lookups, ``groupby(...).indices``) with label access (``.loc``), which agree
+    only when label equals position. Passing a sliced or filtered frame without
+    ``reset_index(drop=True)`` would otherwise mismatch rows silently, so it is
+    rejected here rather than producing wrong pairs.
+    """
 
     config = config or MatchConfig()
     if minimum_tier not in TIER_RANK:
         raise ValueError(f"unknown minimum tier: {minimum_tier}")
+    if not prepared_awards.index.equals(pd.RangeIndex(len(prepared_awards))):
+        raise ValueError(
+            "prepared_awards must have a default RangeIndex (call prepare_awards, or "
+            "reset_index(drop=True) after filtering) — positional and label lookups are "
+            "mixed here and would silently disagree"
+        )
 
     pairs: list[dict[str, Any]] = []
     minimum_rank = TIER_RANK[minimum_tier]
@@ -759,6 +785,17 @@ def find_same_work_pairs(
 
 
 def _row_fingerprint(row: pd.Series, source_columns: list[str]) -> str:
+    """Content hash of one source row, including its position in the export.
+
+    ``_source_record_number`` is the row's 1-based position in the input CSV, and
+    it is part of the hash because the export contains genuinely identical rows
+    that must stay distinguishable. The consequence: record, pair, and cluster
+    IDs are stable **for a given export**, not across re-downloads. If SBIR.gov
+    reorders rows or inserts an earlier one, every downstream ID shifts, so these
+    IDs must not be used to join one run's output to another's — compare on the
+    source columns instead.
+    """
+
     payload = json.dumps(
         {
             "source_record_number": int(row["_source_record_number"]),
