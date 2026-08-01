@@ -109,6 +109,8 @@ class TestParseContractRow:
         contract = ContractExtractor()._parse_contract_row(sample_contract_row_full)
 
         assert contract.contract_id == "SPE4A924D0001"
+        assert contract.piid == "SPE4A924D0001"
+        assert contract.model_dump()["piid"] == "SPE4A924D0001"
         assert contract.transaction_unique_id == "TX-12345678"
         assert contract.generated_unique_award_id == "CONT_AWD_1234_9700_SPE4A924D0001"
         assert contract.agency == "Department of Defense"

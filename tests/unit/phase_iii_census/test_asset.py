@@ -152,7 +152,7 @@ def test_asset_writes_exactly_two_parquet_tables_without_headline_metadata(
         "ordered_clauses",
         "reproducibility",
     }
-    assert census_assets.FROZEN_SPEC_COMMIT == ("76008c173d8b8fd712a942d86c361e410ff95bc8")
+    assert census_assets.FROZEN_SPEC_COMMIT == ("577e6c34bf68a41a016b6ac4f495729eeecc2abf")
     assert not any(
         token in key.lower()
         for key in metadata_keys

@@ -7,8 +7,8 @@ Combines three Phase II populations:
   explicit ``sbir_phase`` column).
 - **Grants**: USAspending assistance rows where ``sbir_phase`` is "Phase II".
 - **SBIR.gov reconciliation**: used to recover ``phase == "II"`` rows whose
-  federal-system coding is missing — joined to raw FPDS/USAspending records
-  on ``award_id`` / ``agency_tracking_number`` / identifier overlap.
+  federal-system coding is missing. Supplemental rows reconcile only through
+  exact normalized source identifiers after federal transactions are collapsed.
 
 Input parquet locations (overridable via env):
 
@@ -49,11 +49,19 @@ DEFAULT_OUTPUT_PATH = "data/processed/phase_ii_awards.parquet"
 # FPDS Element 10Q codes that encode SBIR/STTR phase.
 # https://www.fpdsng.com documentation: SR1/ST1=Phase I, SR2/ST2=Phase II, SR3/ST3=Phase III.
 _FPDS_PHASE_II_CODES = frozenset({"SR2", "ST2"})
+_NULL_KEY_TOKENS = frozenset({"", "<NA>", "NAN", "NONE", "NULL", r"\N"})
+
+
+class PhaseIIInputError(ValueError):
+    """Raised when Phase II source grain cannot be made deterministic."""
 
 
 # Canonical columns on the unified Phase II frame.
 PHASE_II_COLUMNS: list[str] = [
     "award_id",
+    "source_award_id",
+    "representative_transaction_id",
+    "source_transaction_count",
     "recipient_uei",
     "recipient_duns",
     "recipient_name",
@@ -68,6 +76,32 @@ PHASE_II_COLUMNS: list[str] = [
     "source",
     "phase_coding_reconciled",
 ]
+
+
+def _normalize_source_key(value: Any) -> str:
+    if value is None or value is pd.NA or value is pd.NaT:
+        return ""
+    try:
+        if pd.isna(value):
+            return ""
+    except (TypeError, ValueError):
+        pass
+    normalized = str(value).strip().upper()
+    return "" if normalized in _NULL_KEY_TOKENS else normalized
+
+
+def _coalesce_columns(df: pd.DataFrame, *names: str) -> pd.Series:
+    """Take the first nonblank named source value per row in fixed order."""
+
+    result = pd.Series([None] * len(df), index=df.index, dtype="object")
+    for name in names:
+        if name not in df.columns:
+            continue
+        source = df[name]
+        missing = result.map(_normalize_source_key).eq("")
+        usable = source.map(_normalize_source_key).ne("")
+        result.loc[missing & usable] = source.loc[missing & usable]
+    return result
 
 
 def _normalize_phase_label(v: Any) -> str | None:
@@ -139,11 +173,11 @@ def _is_assistance_row(row: pd.Series) -> bool:
 
 
 def _prepare_contract_rows(contracts: pd.DataFrame) -> pd.DataFrame:
-    """Extract Phase II rows from the raw contracts/assistance frame.
+    """Collapse Phase II-coded federal transactions to stable generated awards.
 
-    The raw contracts parquet blends procurement and assistance rows (see
-    ``sbir_etl/extractors/README.md``). We split them into ``fpds_contract``
-    vs ``usaspending_assistance`` after phase classification.
+    The representative transaction is the greatest valid action-date / stable
+    transaction-id tuple. Its current performance end is used as recorded; an older
+    maximum is never substituted.
     """
 
     if contracts.empty:
@@ -155,30 +189,60 @@ def _prepare_contract_rows(contracts: pd.DataFrame) -> pd.DataFrame:
     if df.empty:
         return pd.DataFrame(columns=PHASE_II_COLUMNS)
 
-    # Column aliasing — contract parquet varies slightly across extractors.
+    for required in ("generated_unique_award_id", "transaction_unique_id"):
+        if required not in df.columns:
+            raise PhaseIIInputError(
+                f"Phase II federal source is missing required stable key column: {required}"
+            )
+
     def _pick(*names: str) -> pd.Series:
         for n in names:
             if n in df.columns:
                 return df[n]
         return pd.Series([None] * len(df), index=df.index)
 
+    award_key = df["generated_unique_award_id"].map(_normalize_source_key)
+    transaction_key = df["transaction_unique_id"].map(_normalize_source_key)
+    if award_key.eq("").any():
+        raise PhaseIIInputError(
+            "Every Phase II-coded federal transaction must have generated_unique_award_id"
+        )
+    if transaction_key.eq("").any():
+        raise PhaseIIInputError(
+            "Every Phase II-coded federal transaction must have transaction_unique_id"
+        )
+
+    action_timestamp = coerce_date_series(_pick("action_date"))
+    source_award_key = _pick("piid").map(_normalize_source_key)
+    source_award_key = source_award_key.where(source_award_key.ne(""), None)
+
     out = pd.DataFrame(
         {
-            "award_id": _pick("contract_id", "piid", "generated_unique_award_id"),
+            "award_id": award_key,
+            "source_award_id": source_award_key,
+            "representative_transaction_id": transaction_key,
+            "source_transaction_count": 1,
             "recipient_uei": _pick("vendor_uei", "recipient_uei", "uei").map(normalize_uei),
             "recipient_duns": _pick("vendor_duns", "recipient_duns", "duns").map(normalize_duns),
             "recipient_name": _pick("vendor_name", "recipient_name"),
-            "agency": _pick("awarding_agency_name", "agency", "awarding_agency"),
-            "sub_agency": _pick("awarding_sub_tier_agency_name", "sub_agency"),
+            "agency": _pick(
+                "awarding_toptier_agency_name",
+                "awarding_agency_name",
+                "agency",
+                "awarding_agency",
+            ),
+            "sub_agency": _pick(
+                "awarding_subtier_agency_name",
+                "awarding_sub_tier_agency_name",
+                "sub_agency",
+            ),
             "naics_code": _pick("naics_code", "naics"),
             "psc_code": _pick("psc_code", "product_or_service_code"),
             "award_amount": pd.to_numeric(
                 _pick("federal_action_obligation", "obligation_amount", "obligated_amount"),
                 errors="coerce",
             ),
-            "award_date": coerce_date_series(
-                _pick("action_date", "award_date", "start_date")
-            ).dt.date,
+            "award_date": action_timestamp.dt.date,
             "period_of_performance_start": coerce_date_series(
                 _pick("period_of_performance_start_date", "start_date", "pop_start_date")
             ).dt.date,
@@ -192,7 +256,58 @@ def _prepare_contract_rows(contracts: pd.DataFrame) -> pd.DataFrame:
         axis=1,
     )
     out["phase_coding_reconciled"] = False
-    return out.reset_index(drop=True)
+    out["_action_timestamp"] = action_timestamp
+    out["_transaction_key"] = transaction_key
+    out["_research_code"] = _pick("research").map(_normalize_source_key)
+    out["_sbir_phase_label"] = _pick("sbir_phase").map(_normalize_source_key)
+
+    # Exact duplicate source rows do not constitute additional transactions. A stable
+    # transaction id attached to two different projected payloads is not resolvable.
+    out = out.drop_duplicates().reset_index(drop=True)
+    if out["_transaction_key"].duplicated(keep=False).any():
+        conflicts = sorted(
+            out.loc[out["_transaction_key"].duplicated(keep=False), "_transaction_key"].unique()
+        )
+        raise PhaseIIInputError(
+            f"Stable Phase II transaction identifiers map to conflicting source values: {conflicts}"
+        )
+
+    awards: list[pd.Series] = []
+    for generated_award_id, group in out.groupby("award_id", sort=True, dropna=False):
+        source_ids = {key for key in group["source_award_id"].map(_normalize_source_key) if key}
+        if len(source_ids) > 1:
+            raise PhaseIIInputError(
+                f"Generated Phase II award {generated_award_id} maps to conflicting PIIDs: "
+                f"{sorted(source_ids)}"
+            )
+        source_types = set(group["source"].dropna().astype(str))
+        if len(source_types) > 1:
+            raise PhaseIIInputError(
+                f"Generated Phase II award {generated_award_id} crosses source types: "
+                f"{sorted(source_types)}"
+            )
+
+        ordered = group.assign(
+            _has_action=group["_action_timestamp"].notna().astype(int)
+        ).sort_values(
+            ["_has_action", "_action_timestamp", "_transaction_key"],
+            kind="stable",
+            na_position="first",
+        )
+        representative = ordered.iloc[-1].copy()
+        valid_actions = group["_action_timestamp"].dropna()
+        representative["award_date"] = (
+            valid_actions.min().date() if not valid_actions.empty else None
+        )
+        amounts = pd.to_numeric(group["award_amount"], errors="coerce")
+        signed_total = amounts.sum(min_count=1)
+        representative["award_amount"] = None if pd.isna(signed_total) else float(signed_total)
+        representative["source_transaction_count"] = int(len(group))
+        if source_ids:
+            representative["source_award_id"] = sorted(source_ids)[0]
+        awards.append(representative)
+
+    return pd.DataFrame(awards).loc[:, PHASE_II_COLUMNS].reset_index(drop=True)
 
 
 def _prepare_sbir_gov_rows(sbir_awards: pd.DataFrame) -> pd.DataFrame:
@@ -202,7 +317,7 @@ def _prepare_sbir_gov_rows(sbir_awards: pd.DataFrame) -> pd.DataFrame:
         return pd.DataFrame(columns=PHASE_II_COLUMNS)
     phase = sbir_awards.get("phase", pd.Series([None] * len(sbir_awards)))
     phase_norm = phase.map(_normalize_phase_label)
-    df = sbir_awards.loc[phase_norm == "II"].copy()
+    df = sbir_awards.loc[phase_norm == "II"].copy().reset_index(drop=True)
     if df.empty:
         return pd.DataFrame(columns=PHASE_II_COLUMNS)
 
@@ -214,7 +329,12 @@ def _prepare_sbir_gov_rows(sbir_awards: pd.DataFrame) -> pd.DataFrame:
 
     out = pd.DataFrame(
         {
-            "award_id": df.get("award_id"),
+            "award_id": _pick("award_id"),
+            "source_award_id": _coalesce_columns(
+                df, "contract", "agency_tracking_number", "award_id"
+            ),
+            "representative_transaction_id": None,
+            "source_transaction_count": None,
             "recipient_uei": df.get("company_uei", pd.Series([None] * len(df))).map(normalize_uei),
             "recipient_duns": df.get("company_duns", pd.Series([None] * len(df))).map(
                 normalize_duns
@@ -238,43 +358,92 @@ def _prepare_sbir_gov_rows(sbir_awards: pd.DataFrame) -> pd.DataFrame:
             "phase_coding_reconciled": True,
         }
     )
-    return out.reset_index(drop=True)
+    if out["award_id"].map(_normalize_source_key).eq("").any():
+        raise PhaseIIInputError("Every Phase II SBIR.gov row must have a stable award_id")
+    return out.drop_duplicates().reset_index(drop=True)
 
 
 def _unify(contract_phase_ii: pd.DataFrame, sbir_gov_phase_ii: pd.DataFrame) -> pd.DataFrame:
-    """Stack, deduplicate on ``award_id`` preferring federal-system rows.
+    """Reconcile SBIR.gov rows to generated federal awards without PIID guessing."""
 
-    When the same ``award_id`` appears in both federal-system and SBIR.gov
-    populations we keep the federal row (authoritative dates) and mark
-    ``phase_coding_reconciled=False``.
-    """
-
-    frames = [f for f in (contract_phase_ii, sbir_gov_phase_ii) if not f.empty]
-    if not frames:
+    if contract_phase_ii.empty and sbir_gov_phase_ii.empty:
         return pd.DataFrame(columns=PHASE_II_COLUMNS)
 
+    federal = contract_phase_ii.loc[:, PHASE_II_COLUMNS].copy().reset_index(drop=True)
+    supplemental = sbir_gov_phase_ii.loc[:, PHASE_II_COLUMNS].copy().reset_index(drop=True)
+    supplemental = supplemental.drop_duplicates().reset_index(drop=True)
+
+    if not supplemental.empty:
+        supplemental_award_keys = supplemental["award_id"].map(_normalize_source_key)
+        if supplemental_award_keys.duplicated(keep=False).any():
+            conflicts = sorted(
+                supplemental_award_keys[supplemental_award_keys.duplicated()].unique()
+            )
+            raise PhaseIIInputError(
+                f"Conflicting duplicate SBIR.gov Phase II award ids: {conflicts}"
+            )
+
+    federal_source_keys = (
+        federal["source_award_id"].map(_normalize_source_key)
+        if not federal.empty
+        else pd.Series(dtype="object")
+    )
+    supplemental_source_keys = (
+        supplemental["source_award_id"].map(_normalize_source_key)
+        if not supplemental.empty
+        else pd.Series(dtype="object")
+    )
+    drop_supplemental: set[int] = set()
+    shared_source_keys = sorted((set(federal_source_keys) & set(supplemental_source_keys)) - {""})
+    for source_key in shared_source_keys:
+        federal_indexes = list(federal.index[federal_source_keys.eq(source_key)])
+        supplemental_indexes = list(supplemental.index[supplemental_source_keys.eq(source_key)])
+        if len(federal_indexes) != 1:
+            generated_ids = sorted(
+                federal.loc[federal_indexes, "award_id"].map(_normalize_source_key)
+            )
+            raise PhaseIIInputError(
+                f"SBIR.gov source award {source_key} ambiguously matches generated awards: "
+                f"{generated_ids}"
+            )
+
+        federal_index = federal_indexes[0]
+        for column in ("naics_code", "psc_code"):
+            candidates = supplemental.loc[supplemental_indexes, column]
+            supplemental_normalized = {
+                normalized for value in candidates if (normalized := _normalize_source_key(value))
+            }
+            federal_value = federal.at[federal_index, column]
+            federal_normalized = _normalize_source_key(federal_value)
+            observed_values = set(supplemental_normalized)
+            if federal_normalized:
+                observed_values.add(federal_normalized)
+            if len(observed_values) > 1:
+                raise PhaseIIInputError(
+                    f"SBIR.gov source award {source_key} has conflicting {column}: "
+                    f"{sorted(observed_values)}"
+                )
+            if not federal_normalized and supplemental_normalized:
+                federal.at[federal_index, column] = next(iter(supplemental_normalized))
+        drop_supplemental.update(supplemental_indexes)
+
+    if drop_supplemental:
+        supplemental = supplemental.drop(index=sorted(drop_supplemental))
+    frames = [frame for frame in (federal, supplemental) if not frame.empty]
     stacked = pd.concat(frames, ignore_index=True, sort=False)
-    # Sort so federal-system rows (non-reconciled) come first for drop_duplicates.
-    stacked = stacked.sort_values("phase_coding_reconciled", kind="stable")
+    canonical_keys = stacked["award_id"].map(_normalize_source_key)
+    if canonical_keys.eq("").any():
+        raise PhaseIIInputError("Unified Phase II rows must have a stable canonical award_id")
+    if canonical_keys.duplicated(keep=False).any():
+        conflicts = sorted(canonical_keys[canonical_keys.duplicated()].unique())
+        raise PhaseIIInputError(f"Canonical Phase II award ids are not unique: {conflicts}")
 
-    # Preserve the preferred federal row wholesale, but fill its newly added
-    # taxonomy fields from the already-reconciled duplicate when the federal
-    # source is blank. This uses the same award-id reconciliation boundary; it
-    # does not add another join or infer a code.
-    for column in ("naics_code", "psc_code"):
-        normalized = stacked[column].astype("string").str.strip()
-        usable = normalized.notna() & normalized.ne("")
-        award_present = stacked["award_id"].notna()
-        fallback = (
-            stacked.loc[usable & award_present, ["award_id", column]]
-            .drop_duplicates(subset=["award_id"], keep="first")
-            .set_index("award_id")[column]
-        )
-        missing = ~usable & award_present
-        stacked.loc[missing, column] = stacked.loc[missing, "award_id"].map(fallback)
-
-    stacked = stacked.drop_duplicates(subset=["award_id"], keep="first")
-    return stacked[PHASE_II_COLUMNS].reset_index(drop=True)
+    return (
+        stacked.assign(_award_key=canonical_keys)
+        .sort_values("_award_key", kind="stable")
+        .loc[:, PHASE_II_COLUMNS]
+        .reset_index(drop=True)
+    )
 
 
 def _agency_coverage(df: pd.DataFrame) -> dict[str, int]:
@@ -378,6 +547,7 @@ def validated_phase_ii_awards(context=None) -> Output[pd.DataFrame]:
 
 __all__ = [
     "PHASE_II_COLUMNS",
+    "PhaseIIInputError",
     "validated_phase_ii_awards",
     "_prepare_contract_rows",
     "_prepare_sbir_gov_rows",

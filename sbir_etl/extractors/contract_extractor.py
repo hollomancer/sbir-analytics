@@ -27,6 +27,7 @@ FPDS_RELATION = "rpt.transaction_search_fpds"
 REQUIRED_SOURCE_COLUMNS = frozenset(
     {
         "is_fpds",
+        "piid",
         "transaction_unique_id",
         "generated_unique_award_id",
         "action_date",
@@ -401,6 +402,7 @@ class ContractExtractor:
         extent_competed = row.get("extent_competed")
         contract = FederalContract(
             contract_id=row.get("piid") or award_id,
+            piid=row.get("piid"),
             transaction_unique_id=transaction_id,
             generated_unique_award_id=award_id,
             agency=row.get("awarding_toptier_agency_name"),

@@ -20,6 +20,7 @@ pytestmark = pytest.mark.fast
 REQUIRED_COLUMNS = (
     "transaction_unique_id",
     "is_fpds",
+    "piid",
     "research",
     "generated_unique_award_id",
     "product_or_service_code",
@@ -33,7 +34,6 @@ REQUIRED_COLUMNS = (
     "federal_action_obligation",
 )
 OPTIONAL_COLUMNS = (
-    "piid",
     "period_of_performance_start_date",
     "period_of_performance_current_end_date",
     "transaction_description",
@@ -115,9 +115,10 @@ def test_resolver_accepts_partition_root_copy_target() -> None:
     assert source.columns == COLUMNS
 
 
-def test_resolver_rejects_missing_provenance_column() -> None:
-    columns = tuple(column for column in COLUMNS if column != "research")
-    with pytest.raises(ArchiveSchemaError, match="research"):
+@pytest.mark.parametrize("missing_column", ["piid", "research"])
+def test_resolver_rejects_missing_provenance_column(missing_column: str) -> None:
+    columns = tuple(column for column in COLUMNS if column != missing_column)
+    with pytest.raises(ArchiveSchemaError, match=missing_column):
         _resolve_source(
             _toc(("9247", "transaction_search_fpds")),
             _schema_sql(),
@@ -153,6 +154,7 @@ def test_named_parser_preserves_signed_obligation_and_raw_codes() -> None:
 
     assert len(contracts) == 1
     contract = contracts[0]
+    assert contract.piid == "PIID-1"
     assert contract.transaction_unique_id == "TX-1"
     assert contract.generated_unique_award_id == "CONT_AWD_1"
     assert contract.obligation_amount == -1250.50

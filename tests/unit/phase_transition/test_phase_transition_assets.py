@@ -24,6 +24,9 @@ def _contracts_fixture() -> pd.DataFrame:
             # Phase II contract (SR2)
             {
                 "contract_id": "C_II_1",
+                "piid": "C_II_1",
+                "generated_unique_award_id": "C_II_1",
+                "transaction_unique_id": "TX-C_II_1",
                 "vendor_uei": "AAAAAAAAAAAA",
                 "vendor_duns": "123456789",
                 "vendor_name": "Foo Inc",
@@ -36,6 +39,8 @@ def _contracts_fixture() -> pd.DataFrame:
             # Phase III contract (SR3)
             {
                 "contract_id": "C_III_1",
+                "generated_unique_award_id": "C_III_1",
+                "transaction_unique_id": "TX-C_III_1",
                 "vendor_uei": "AAAAAAAAAAAA",
                 "vendor_duns": "123456789",
                 "vendor_name": "Foo Inc",
@@ -48,6 +53,9 @@ def _contracts_fixture() -> pd.DataFrame:
             # Phase II contract for a different firm that never transitions (censored)
             {
                 "contract_id": "C_II_2",
+                "piid": "C_II_2",
+                "generated_unique_award_id": "C_II_2",
+                "transaction_unique_id": "TX-C_II_2",
                 "vendor_uei": "BBBBBBBBBBBB",
                 "vendor_duns": "222333444",
                 "vendor_name": "Bar LLC",
@@ -60,6 +68,8 @@ def _contracts_fixture() -> pd.DataFrame:
             # Unrelated contract (no SBIR flag) — must be ignored.
             {
                 "contract_id": "C_NON_SBIR",
+                "generated_unique_award_id": "C_NON_SBIR",
+                "transaction_unique_id": "TX-C_NON_SBIR",
                 "vendor_uei": "CCCCCCCCCCCC",
                 "vendor_duns": "555666777",
                 "vendor_name": "Baz Corp",
@@ -73,6 +83,9 @@ def _contracts_fixture() -> pd.DataFrame:
             # firm D ends 2024-01-01 but Phase III occurred 2023-09-01.
             {
                 "contract_id": "C_II_3",
+                "piid": "C_II_3",
+                "generated_unique_award_id": "C_II_3",
+                "transaction_unique_id": "TX-C_II_3",
                 "vendor_uei": "DDDDDDDDDDDD",
                 "vendor_duns": "888999000",
                 "vendor_name": "Qux Labs",
@@ -84,6 +97,8 @@ def _contracts_fixture() -> pd.DataFrame:
             },
             {
                 "contract_id": "C_III_2",
+                "generated_unique_award_id": "C_III_2",
+                "transaction_unique_id": "TX-C_III_2",
                 "vendor_uei": "DDDDDDDDDDDD",
                 "vendor_duns": "888999000",
                 "vendor_name": "Qux Labs",
@@ -96,6 +111,9 @@ def _contracts_fixture() -> pd.DataFrame:
             # Phase III with only DUNS (no UEI) — exercises the DUNS-crosswalk fallback.
             {
                 "contract_id": "C_II_4",
+                "piid": "C_II_4",
+                "generated_unique_award_id": "C_II_4",
+                "transaction_unique_id": "TX-C_II_4",
                 "vendor_uei": "EEEEEEEEEEEE",
                 "vendor_duns": "777666555",
                 "vendor_name": "OldFirm",
@@ -107,6 +125,8 @@ def _contracts_fixture() -> pd.DataFrame:
             },
             {
                 "contract_id": "C_III_3",
+                "generated_unique_award_id": "C_III_3",
+                "transaction_unique_id": "TX-C_III_3",
                 "vendor_uei": None,
                 "vendor_duns": "777666555",
                 "vendor_name": "OldFirm",
@@ -134,6 +154,9 @@ def test_prepare_contract_rows_picks_only_phase_ii():
     assert foo["recipient_duns"] == "123456789"
     assert foo["source"] == "fpds_contract"
     assert bool(foo["phase_coding_reconciled"]) is False
+    assert foo["source_award_id"] == "C_II_1"
+    assert foo["representative_transaction_id"] == "TX-C_II_1"
+    assert foo["source_transaction_count"] == 1
 
 
 @pytest.mark.parametrize(
@@ -148,6 +171,8 @@ def test_prepare_contract_rows_passes_through_taxonomy_aliases(naics_column, psc
 
     row = {
         "contract_id": "C_II_TAXONOMY",
+        "generated_unique_award_id": "GEN-TAXONOMY",
+        "transaction_unique_id": "TX-TAXONOMY",
         "vendor_uei": "AAAAAAAAAAAA",
         "research": "SR2",
         naics_column: "541715",
@@ -220,6 +245,22 @@ def test_sbir_gov_reconciliation_carries_reconciled_flag():
     assert df.iloc[0]["psc_code"] == "AC12"
 
 
+def test_prepare_sbir_gov_rows_resets_filtered_index_for_minimal_phase_ii_row():
+    from sbir_analytics.assets.phase_transition.phase_ii import _prepare_sbir_gov_rows
+
+    awards = pd.DataFrame(
+        [
+            {"award_id": "PHASE-I", "phase": "I"},
+            {"award_id": "PHASE-II", "phase": "II"},
+        ]
+    )
+
+    result = _prepare_sbir_gov_rows(awards)
+
+    assert len(result) == 1
+    assert result.iloc[0]["award_id"] == "PHASE-II"
+
+
 def test_unify_fills_only_missing_federal_taxonomy_from_reconciled_duplicate():
     from sbir_analytics.assets.phase_transition.phase_ii import (
         _prepare_contract_rows,
@@ -232,6 +273,9 @@ def test_unify_fills_only_missing_federal_taxonomy_from_reconciled_duplicate():
             [
                 {
                     "contract_id": "SHARED-AWARD",
+                    "piid": "SHARED-AWARD",
+                    "generated_unique_award_id": "CONT_AWD_GENERATED_SHARED",
+                    "transaction_unique_id": "TX-SHARED-AWARD",
                     "vendor_uei": "AAAAAAAAAAAA",
                     "research": "SR2",
                     "action_date": "2020-01-01",
@@ -250,7 +294,7 @@ def test_unify_fills_only_missing_federal_taxonomy_from_reconciled_duplicate():
                     "company_uei": "AAAAAAAAAAAA",
                     "phase": "II",
                     "naics_code": "541715",
-                    "psc_code": "SBIR-PSC",
+                    "psc_code": " federal-psc ",
                 }
             ]
         )
@@ -258,10 +302,498 @@ def test_unify_fills_only_missing_federal_taxonomy_from_reconciled_duplicate():
 
     result = _unify(federal, reconciled).iloc[0]
 
+    assert result["award_id"] == "CONT_AWD_GENERATED_SHARED"
+    assert result["source_award_id"] == "SHARED-AWARD"
     assert result["source"] == "fpds_contract"
     assert result["period_of_performance_end"] == date(2022, 1, 1)
     assert result["naics_code"] == "541715"
     assert result["psc_code"] == "FEDERAL-PSC"
+
+
+def test_prepare_contract_rows_uses_latest_snapshot_not_maximum_end_and_is_order_stable():
+    from sbir_analytics.assets.phase_transition.phase_ii import _prepare_contract_rows
+
+    rows = [
+        {
+            "contract_id": "SAME-PIID",
+            "piid": "SAME-PIID",
+            "generated_unique_award_id": " cont_awd_stable ",
+            "transaction_unique_id": "TX-001",
+            "vendor_uei": "AAAAAAAAAAAA",
+            "awarding_toptier_agency_name": "DOD",
+            "research": "SR2",
+            "action_date": "2020-01-01",
+            "period_of_performance_current_end_date": "2025-12-31",
+            "naics_code": "OLD",
+            "product_or_service_code": "OLD-PSC",
+            "federal_action_obligation": 100,
+        },
+        {
+            "contract_id": "SAME-PIID",
+            "piid": "SAME-PIID",
+            "generated_unique_award_id": "CONT_AWD_STABLE",
+            "transaction_unique_id": "TX-002",
+            "vendor_uei": "AAAAAAAAAAAA",
+            "awarding_toptier_agency_name": "DOD",
+            "research": "SR2",
+            "action_date": "2022-01-01",
+            "period_of_performance_current_end_date": "2024-12-31",
+            "naics_code": "NEW",
+            "product_or_service_code": "NEW-PSC",
+            "federal_action_obligation": -10,
+        },
+    ]
+
+    forward = _prepare_contract_rows(pd.DataFrame(rows))
+    reverse = _prepare_contract_rows(pd.DataFrame(list(reversed(rows))))
+
+    pd.testing.assert_frame_equal(forward, reverse)
+    award = forward.iloc[0]
+    assert award["award_id"] == "CONT_AWD_STABLE"
+    assert award["representative_transaction_id"] == "TX-002"
+    assert award["source_transaction_count"] == 2
+    assert award["award_date"] == date(2020, 1, 1)
+    assert award["period_of_performance_end"] == date(2024, 12, 31)
+    assert award["naics_code"] == "NEW"
+    assert award["psc_code"] == "NEW-PSC"
+    assert award["award_amount"] == 90
+
+
+def test_prepare_contract_rows_breaks_same_date_ties_by_transaction_id():
+    from sbir_analytics.assets.phase_transition.phase_ii import _prepare_contract_rows
+
+    rows = [
+        {
+            "contract_id": "SAME-PIID",
+            "piid": "SAME-PIID",
+            "generated_unique_award_id": "CONT_AWD_SAME_DATE",
+            "transaction_unique_id": "tx-a",
+            "vendor_uei": "AAAAAAAAAAAA",
+            "research": "SR2",
+            "action_date": "2022-01-01",
+            "period_of_performance_current_end_date": "2025-01-01",
+        },
+        {
+            "contract_id": "SAME-PIID",
+            "piid": "SAME-PIID",
+            "generated_unique_award_id": "CONT_AWD_SAME_DATE",
+            "transaction_unique_id": "TX-Z",
+            "vendor_uei": "AAAAAAAAAAAA",
+            "research": "SR2",
+            "action_date": "2022-01-01",
+            "period_of_performance_current_end_date": "2024-01-01",
+        },
+    ]
+
+    forward = _prepare_contract_rows(pd.DataFrame(rows))
+    reverse = _prepare_contract_rows(pd.DataFrame(list(reversed(rows))))
+
+    pd.testing.assert_frame_equal(forward, reverse)
+    award = forward.iloc[0]
+    assert award["representative_transaction_id"] == "TX-Z"
+    assert award["period_of_performance_end"] == date(2024, 1, 1)
+
+
+def test_prepare_contract_rows_never_substitutes_contract_id_for_missing_piid():
+    from sbir_analytics.assets.phase_transition.phase_ii import (
+        _prepare_contract_rows,
+        _prepare_sbir_gov_rows,
+        _unify,
+    )
+
+    federal = _prepare_contract_rows(
+        pd.DataFrame(
+            [
+                {
+                    "contract_id": "CONT_AWD_1",
+                    "generated_unique_award_id": "CONT_AWD_1",
+                    "transaction_unique_id": "TX-1",
+                    "vendor_uei": "AAAAAAAAAAAA",
+                    "research": "SR2",
+                }
+            ]
+        )
+    )
+
+    result = federal.iloc[0]
+    assert result["award_id"] == "CONT_AWD_1"
+    assert pd.isna(result["source_award_id"])
+
+    supplemental = _prepare_sbir_gov_rows(
+        pd.DataFrame(
+            [
+                {
+                    "award_id": "SBIR-1",
+                    "contract": "CONT_AWD_1",
+                    "phase": "II",
+                }
+            ]
+        )
+    )
+    unified = _unify(federal, supplemental)
+
+    assert set(unified["award_id"]) == {"CONT_AWD_1", "SBIR-1"}
+
+
+def test_prepare_contract_rows_rejects_conflicting_transaction_payloads():
+    from sbir_analytics.assets.phase_transition.phase_ii import (
+        PhaseIIInputError,
+        _prepare_contract_rows,
+    )
+
+    base = {
+        "contract_id": "PIID-1",
+        "piid": "PIID-1",
+        "generated_unique_award_id": "CONT_AWD_1",
+        "transaction_unique_id": "TX-1",
+        "vendor_uei": "AAAAAAAAAAAA",
+        "research": "SR2",
+        "action_date": "2022-01-01",
+    }
+    rows = [
+        {**base, "period_of_performance_current_end_date": "2024-01-01"},
+        {**base, "period_of_performance_current_end_date": "2025-01-01"},
+    ]
+
+    with pytest.raises(PhaseIIInputError, match="conflicting source values.*TX-1"):
+        _prepare_contract_rows(pd.DataFrame(rows))
+
+
+def test_prepare_contract_rows_rejects_conflicting_phase_codes_for_one_transaction():
+    from sbir_analytics.assets.phase_transition.phase_ii import (
+        PhaseIIInputError,
+        _prepare_contract_rows,
+    )
+
+    base = {
+        "contract_id": "PIID-1",
+        "piid": "PIID-1",
+        "generated_unique_award_id": "CONT_AWD_1",
+        "transaction_unique_id": "TX-1",
+        "vendor_uei": "AAAAAAAAAAAA",
+        "action_date": "2022-01-01",
+    }
+
+    with pytest.raises(PhaseIIInputError, match="conflicting source values.*TX-1"):
+        _prepare_contract_rows(
+            pd.DataFrame([{**base, "research": "SR2"}, {**base, "research": "ST2"}])
+        )
+
+
+@pytest.mark.parametrize("missing_key", ["generated_unique_award_id", "transaction_unique_id"])
+def test_prepare_contract_rows_requires_stable_federal_keys(missing_key):
+    from sbir_analytics.assets.phase_transition.phase_ii import (
+        PhaseIIInputError,
+        _prepare_contract_rows,
+    )
+
+    row = {
+        "contract_id": "PIID-1",
+        "generated_unique_award_id": "CONT_AWD_1",
+        "transaction_unique_id": "TX-1",
+        "vendor_uei": "AAAAAAAAAAAA",
+        "research": "SR2",
+    }
+    row.pop(missing_key)
+
+    with pytest.raises(PhaseIIInputError, match=missing_key):
+        _prepare_contract_rows(pd.DataFrame([row]))
+
+
+@pytest.mark.parametrize(
+    ("contract", "agency_tracking_number", "expected"),
+    [
+        ("CONTRACT-ID", "TRACKING-ID", "CONTRACT-ID"),
+        (r"\N", "TRACKING-ID", "TRACKING-ID"),
+        (None, None, "SBIR-ID"),
+    ],
+)
+def test_prepare_sbir_gov_rows_uses_frozen_source_id_priority(
+    contract, agency_tracking_number, expected
+):
+    from sbir_analytics.assets.phase_transition.phase_ii import _prepare_sbir_gov_rows
+
+    result = _prepare_sbir_gov_rows(
+        pd.DataFrame(
+            [
+                {
+                    "award_id": "SBIR-ID",
+                    "contract": contract,
+                    "agency_tracking_number": agency_tracking_number,
+                    "phase": "II",
+                }
+            ]
+        )
+    ).iloc[0]
+
+    assert result["source_award_id"] == expected
+
+
+def test_unify_reconciles_only_exact_normalized_source_ids():
+    from sbir_analytics.assets.phase_transition.phase_ii import (
+        _prepare_contract_rows,
+        _prepare_sbir_gov_rows,
+        _unify,
+    )
+
+    federal = _prepare_contract_rows(
+        pd.DataFrame(
+            [
+                {
+                    "contract_id": "PIID-EXACT",
+                    "piid": "PIID-EXACT",
+                    "generated_unique_award_id": "CONT_AWD_EXACT",
+                    "transaction_unique_id": "TX-EXACT",
+                    "vendor_uei": "AAAAAAAAAAAA",
+                    "research": "SR2",
+                }
+            ]
+        )
+    )
+    supplemental = _prepare_sbir_gov_rows(
+        pd.DataFrame(
+            [
+                {
+                    "award_id": "SBIR-EXACT",
+                    "contract": " piid-exact ",
+                    "company_uei": "AAAAAAAAAAAA",
+                    "phase": "II",
+                },
+                {
+                    "award_id": "SBIR-NONMATCH",
+                    "contract": "PIID-OTHER",
+                    "company_uei": "AAAAAAAAAAAA",
+                    "phase": "II",
+                },
+            ]
+        )
+    )
+
+    result = _unify(federal, supplemental)
+
+    assert set(result["award_id"]) == {"CONT_AWD_EXACT", "SBIR-NONMATCH"}
+    assert result.loc[result["award_id"] == "CONT_AWD_EXACT", "source"].item() == "fpds_contract"
+
+
+@pytest.mark.parametrize("taxonomy_column", ["naics_code", "psc_code"])
+def test_unify_rejects_conflicting_supplemental_taxonomy(taxonomy_column):
+    from sbir_analytics.assets.phase_transition.phase_ii import (
+        PhaseIIInputError,
+        _prepare_contract_rows,
+        _prepare_sbir_gov_rows,
+        _unify,
+    )
+
+    federal = _prepare_contract_rows(
+        pd.DataFrame(
+            [
+                {
+                    "contract_id": "PIID-1",
+                    "piid": "PIID-1",
+                    "generated_unique_award_id": "CONT_AWD_1",
+                    "transaction_unique_id": "TX-1",
+                    "vendor_uei": "AAAAAAAAAAAA",
+                    "research": "SR2",
+                }
+            ]
+        )
+    )
+    supplemental = _prepare_sbir_gov_rows(
+        pd.DataFrame(
+            [
+                {
+                    "award_id": "SBIR-1",
+                    "contract": "PIID-1",
+                    "phase": "II",
+                    taxonomy_column: "VALUE-A",
+                },
+                {
+                    "award_id": "SBIR-2",
+                    "contract": "PIID-1",
+                    "phase": "II",
+                    taxonomy_column: "VALUE-B",
+                },
+            ]
+        )
+    )
+
+    with pytest.raises(PhaseIIInputError, match=f"conflicting {taxonomy_column}"):
+        _unify(federal, supplemental)
+
+
+@pytest.mark.parametrize(
+    ("taxonomy_column", "federal_value", "supplemental_value"),
+    [
+        ("naics_code", "541715", "541713"),
+        ("psc_code", "AC12", "AC13"),
+    ],
+)
+def test_unify_rejects_federal_supplemental_taxonomy_mismatch(
+    taxonomy_column, federal_value, supplemental_value
+):
+    from sbir_analytics.assets.phase_transition.phase_ii import (
+        PhaseIIInputError,
+        _prepare_contract_rows,
+        _prepare_sbir_gov_rows,
+        _unify,
+    )
+
+    federal = _prepare_contract_rows(
+        pd.DataFrame(
+            [
+                {
+                    "piid": "PIID-1",
+                    "generated_unique_award_id": "CONT_AWD_1",
+                    "transaction_unique_id": "TX-1",
+                    "vendor_uei": "AAAAAAAAAAAA",
+                    "research": "SR2",
+                    taxonomy_column: federal_value,
+                }
+            ]
+        )
+    )
+    supplemental = _prepare_sbir_gov_rows(
+        pd.DataFrame(
+            [
+                {
+                    "award_id": "SBIR-1",
+                    "contract": "PIID-1",
+                    "phase": "II",
+                    taxonomy_column: supplemental_value,
+                }
+            ]
+        )
+    )
+
+    with pytest.raises(PhaseIIInputError, match=f"conflicting {taxonomy_column}"):
+        _unify(federal, supplemental)
+
+
+@pytest.mark.parametrize(
+    ("taxonomy_column", "federal_value", "supplemental_value"),
+    [
+        ("naics_code", " 541715 ", "541715"),
+        ("psc_code", " ac12 ", "AC12"),
+    ],
+)
+def test_unify_preserves_federal_taxonomy_when_normalized_values_match(
+    taxonomy_column, federal_value, supplemental_value
+):
+    from sbir_analytics.assets.phase_transition.phase_ii import (
+        _prepare_contract_rows,
+        _prepare_sbir_gov_rows,
+        _unify,
+    )
+
+    federal = _prepare_contract_rows(
+        pd.DataFrame(
+            [
+                {
+                    "piid": "PIID-1",
+                    "generated_unique_award_id": "CONT_AWD_1",
+                    "transaction_unique_id": "TX-1",
+                    "vendor_uei": "AAAAAAAAAAAA",
+                    "research": "SR2",
+                    taxonomy_column: federal_value,
+                }
+            ]
+        )
+    )
+    supplemental = _prepare_sbir_gov_rows(
+        pd.DataFrame(
+            [
+                {
+                    "award_id": "SBIR-1",
+                    "contract": "PIID-1",
+                    "phase": "II",
+                    taxonomy_column: supplemental_value,
+                }
+            ]
+        )
+    )
+
+    result = _unify(federal, supplemental)
+
+    assert len(result) == 1
+    assert result.iloc[0]["source"] == "fpds_contract"
+    assert result.iloc[0][taxonomy_column] == federal_value
+
+    missing_federal = federal.copy()
+    missing_federal.loc[:, taxonomy_column] = None
+    supplemental_variants = [
+        {
+            "award_id": "SBIR-1",
+            "contract": "PIID-1",
+            "phase": "II",
+            taxonomy_column: supplemental_value,
+        },
+        {
+            "award_id": "SBIR-2",
+            "contract": "PIID-1",
+            "phase": "II",
+            taxonomy_column: f" {supplemental_value.lower()} ",
+        },
+    ]
+    forward = _unify(
+        missing_federal,
+        _prepare_sbir_gov_rows(pd.DataFrame(supplemental_variants)),
+    )
+    reverse = _unify(
+        missing_federal,
+        _prepare_sbir_gov_rows(pd.DataFrame(list(reversed(supplemental_variants)))),
+    )
+
+    pd.testing.assert_frame_equal(forward, reverse)
+    assert forward.iloc[0][taxonomy_column] == supplemental_value.strip().upper()
+
+
+def test_unify_stops_on_cross_agency_piid_ambiguity():
+    from sbir_analytics.assets.phase_transition.phase_ii import (
+        PhaseIIInputError,
+        _prepare_contract_rows,
+        _prepare_sbir_gov_rows,
+        _unify,
+    )
+
+    federal = _prepare_contract_rows(
+        pd.DataFrame(
+            [
+                {
+                    "contract_id": "DUPLICATE-PIID",
+                    "piid": "DUPLICATE-PIID",
+                    "generated_unique_award_id": "CONT_AWD_AGENCY_A",
+                    "transaction_unique_id": "TX-A",
+                    "vendor_uei": "AAAAAAAAAAAA",
+                    "agency": "AGENCY A",
+                    "research": "SR2",
+                },
+                {
+                    "contract_id": "DUPLICATE-PIID",
+                    "piid": "DUPLICATE-PIID",
+                    "generated_unique_award_id": "CONT_AWD_AGENCY_B",
+                    "transaction_unique_id": "TX-B",
+                    "vendor_uei": "AAAAAAAAAAAA",
+                    "agency": "AGENCY B",
+                    "research": "SR2",
+                },
+            ]
+        )
+    )
+    supplemental = _prepare_sbir_gov_rows(
+        pd.DataFrame(
+            [
+                {
+                    "award_id": "SBIR-1",
+                    "contract": "DUPLICATE-PIID",
+                    "company_uei": "AAAAAAAAAAAA",
+                    "phase": "II",
+                }
+            ]
+        )
+    )
+
+    with pytest.raises(PhaseIIInputError, match="ambiguously matches"):
+        _unify(federal, supplemental)
 
 
 # -- pair + survival helpers --------------------------------------------------
@@ -372,6 +904,9 @@ def test_pydantic_contracts_round_trip_valid_rows():
 
     phase_ii = PhaseIIAward(
         award_id="SBIR-1",
+        source_award_id="PIID-1",
+        representative_transaction_id="TX-1",
+        source_transaction_count=1,
         recipient_uei="AAAAAAAAAAAA",
         recipient_duns="123456789",
         recipient_name="Firm",

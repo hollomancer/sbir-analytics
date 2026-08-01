@@ -54,7 +54,7 @@ SENSITIVITY_OUTPUT_PATH = Path("data/processed/phase_iii_census_sensitivity.parq
 CONTRACTS_PRIMARY_PATH = Path("data/transition/contracts_ingestion.parquet")
 CONTRACTS_FALLBACK_PATH = Path("data/processed/contracts_ingestion.parquet")
 DATA_CUT_ENV = "SBIR_ETL__PHASE_III_CENSUS__DATA_CUT_DATE"
-FROZEN_SPEC_COMMIT = "76008c173d8b8fd712a942d86c361e410ff95bc8"
+FROZEN_SPEC_COMMIT = "577e6c34bf68a41a016b6ac4f495729eeecc2abf"
 
 
 def parse_census_data_cut_date(raw: str | None = None) -> date:

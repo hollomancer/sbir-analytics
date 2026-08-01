@@ -39,10 +39,11 @@ from .utils import (
 
 # These are source-provenance fields, not optional conveniences.  A cached parquet
 # created by the former positional extractor cannot support the label-free census
-# unless all five are present as top-level columns.  Null values are valid source
+# unless all required fields are present as top-level columns. Null values are valid source
 # values; column absence is what invalidates the cache.
 RAW_CONTRACT_PROVENANCE_COLUMNS = frozenset(
     {
+        "piid",
         "transaction_unique_id",
         "generated_unique_award_id",
         "research",

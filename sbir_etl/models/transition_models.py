@@ -211,6 +211,13 @@ class FederalContract(BaseModel):
     """
 
     contract_id: str = Field(..., description="Contract identifier (e.g., PIID).")
+    piid: str | None = Field(
+        None,
+        description=(
+            "Bare source PIID passed through from rpt.transaction_search for audit and "
+            "exact reconciliation; never replaced with the generated award identifier."
+        ),
+    )
     transaction_unique_id: str | None = Field(
         None,
         description=(

@@ -152,11 +152,11 @@ placeholder, never wired into the M&A pipeline, and was removed in PR #317.*
 - How many exact-UEI, post-completion contract actions survive a pre-registered,
   label-free uncoded-follow-on proxy, and how do the audit counts change across its
   frozen clauses and agency/window cells? —
-  [../specs/phase-iii-census/](../specs/phase-iii-census/). **[Implementation complete,
-  materialization paused — the canonical contract producer now exposes schema-verified
-  FPDS coding, NAICS/PSC, stable-key, and source-provenance fields; inherited Phase II
-  award-key and completion-date grain must be frozen before any count, and the result
-  remains a proxy rather than proof of statutory Phase III]** *(deps: ER, ID, NAICS/PSC)*
+  [../specs/phase-iii-census/](../specs/phase-iii-census/). **[Answerable now, moderate
+  confidence — implementation and source/grain validation are complete, including
+  schema-verified FPDS fields and deterministic generated-award Phase II collapse;
+  production tables have not yet been materialized, and the result remains a proxy
+  rather than proof of statutory Phase III]** *(deps: ER, ID, NAICS/PSC)*
 - Which SBIR-funded companies transitioned research into federal procurements? — [transition/detection-algorithm.md](transition/detection-algorithm.md). *(deps: ER, ID)*
 - What is the average time from award to transition by technology area? *(deps: ER, ID, CET)*
 - Which SBIR awards transitioned with patent backing, and what share of transitions are patent-enabled? Related to Lerner [L10] and Howell [L11]. *(deps: ER, ID, PATLINK)*
@@ -170,10 +170,10 @@ placeholder, never wired into the M&A pipeline, and was removed in PR #317.*
 - How much undercount exists in Phase III coding by agency? Corroborated by GAO [L14]
   and NASEM [L1][L3]. Phase III solicitation monitoring:
   [../specs/phase-3-solicitation-alerts/](../specs/phase-3-solicitation-alerts/).
-  **[Research target — the deterministic Phase 1 audit tables are implemented but
-  materialization is paused for a pre-count Phase II grain decision; matched negative
-  controls and labeled validation are still required before interpreting the proxy as
-  undercount]** *(deps: ID)*
+  **[Partially answerable now — the deterministic Phase 1 audit implementation and its
+  source/grain validation are complete, but production tables have not yet been
+  materialized; matched negative controls and labeled validation are still required
+  before interpreting the proxy as undercount]** *(deps: ID)*
 - How does company categorization relate to transition likelihood? Baseline: Link & Scott commercialization-probability econometrics [L12]. *(deps: ER, ID)*
 - Which Phase II awardees subject to §638(qq)(3) Increased Performance Standards meet the **statutory Commercialization Benchmark** (sales + private investment over the 10-FY covered period ÷ SBIR funding ≥ specified ratio)? Pub. L. 117-183 SBIR/STTR Extension Act of 2022 §638(qq)(3). Implementation on main: `scripts/run_benchmark.py` (evaluate / sensitivity / company-level CLI) backed by `sbir_etl/models/benchmark_models.py`, with tests in `tests/unit/test_benchmark_evaluator.py`. Spec: [../specs/archive/completed-features/commercialization-benchmark/](../specs/archive/completed-features/commercialization-benchmark/). Additional per-firm audit infrastructure and a more comprehensive methodology doc exist as local-only / uncommitted work — see "Output products" section below for the in-progress status. *(deps: ER, ID, transitions, SEC EDGAR)*
 
@@ -237,7 +237,11 @@ placeholder, never wired into the M&A pipeline, and was removed in PR #317.*
 
 - Which federal awards are SBIR/STTR vs. non-SBIR, and with what confidence? Three-tier classifier (FPDS research field 1.0 → ALN 0.8–1.0 → description parsing 0.5–0.7) — [sbir-identification-methodology.md](sbir-identification-methodology.md), [../specs/archive/completed-features/sbir-identification/](../specs/archive/completed-features/sbir-identification/). CRS [L15], GAO [L14]. *(deps: —)*
 - What are false-positive rates for shared-ALN grant identification (e.g., NIH ~20%)? *(deps: ID)*
-- How does SBIR.gov data reconcile with federal USAspending/FPDS records? GAO [L14] and NASEM [L1][L3] flag tracking-data limits. *(deps: —)*
+- How does SBIR.gov data reconcile with federal USAspending/FPDS records? GAO [L14] and
+  NASEM [L1][L3] flag tracking-data limits. **[Partially answerable now — Phase II
+  federal transactions collapse on generated award IDs and reconcile to SBIR.gov only
+  through exact normalized raw PIID/source identifiers, with ambiguity and taxonomy
+  conflict failures; broader cross-source completeness remains unvalidated]** *(deps: —)*
 
 ### E2. Entity resolution (foundation, Tier 1–2)
 

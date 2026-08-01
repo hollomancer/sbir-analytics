@@ -15,6 +15,7 @@ def _provenance_complete_contracts() -> pd.DataFrame:
     return pd.DataFrame(
         {
             "contract_id": ["c1"],
+            "piid": ["PIID-1"],
             "action_date": ["2023-01-01"],
             "transaction_unique_id": ["tx-1"],
             "generated_unique_award_id": ["award-1"],
@@ -73,6 +74,17 @@ def test_source_provenance_status_detects_input_drift() -> None:
 
     assert status["complete"] is False
     assert "vendor_filter_sha256" in status["mismatches"]
+
+
+def test_contract_provenance_requires_raw_piid() -> None:
+    from sbir_analytics.assets.transition.contracts import contract_provenance_status
+
+    complete_columns = set(_provenance_complete_contracts().columns)
+
+    assert contract_provenance_status(complete_columns)["complete"] is True
+    without_piid = contract_provenance_status(complete_columns - {"piid"})
+    assert without_piid["complete"] is False
+    assert without_piid["missing_columns"] == ["piid"]
 
 
 def _config_with_paths(tmp_path: Path, *, vendor_s3: str = "", dump_s3: str = ""):
