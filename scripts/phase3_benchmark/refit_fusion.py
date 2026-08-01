@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -44,12 +45,39 @@ LADDER: tuple[tuple[str, tuple[str, ...]], ...] = (
 )
 PUBLISHED_CI = (0.800, 0.886)
 
+_PIID_RE = re.compile(r"\b[A-Z0-9]{4,6}[- ]?\d{2}[- ]?[A-Z][- ]?\d{3,4}\b", re.IGNORECASE)
+
+
+def _scrub_identity(notice_text: str, firm_name: str) -> str:
+    """Remove the cited PIID and the firm's own name words from the notice text.
+
+    Text similarity should reward *technical* overlap, not the notice naming the
+    firm or citing the contract number it was attributed by — both are identity
+    leakage (the study applied the same scrub as its robustness floor). Scrubbing
+    the target side is enough: any residual identity token in the query abstract
+    then has nothing to match.
+    """
+
+    scrubbed = _PIID_RE.sub(" ", notice_text)
+    for word in re.findall(r"[A-Za-z]{4,}", firm_name):
+        scrubbed = re.sub(rf"\b{re.escape(word)}\b", " ", scrubbed, flags=re.IGNORECASE)
+    return scrubbed
+
 
 def build_features(corpus: pd.DataFrame) -> pd.DataFrame:
-    """Compute the fusion feature columns for every corpus row."""
+    """Compute the fusion feature columns for every corpus row.
+
+    Text features use identity-scrubbed notice text (PIID + firm name removed),
+    so the reported AUC reflects technical matching rather than the notice
+    naming the firm — the leakage-controlled number the study freezes on.
+    """
 
     abstracts = corpus["query_abstract"].astype(str).tolist()
-    notices = corpus["notice_text"].astype(str).tolist()
+    firms = corpus["firm_name"] if "firm_name" in corpus else pd.Series([""] * len(corpus))
+    notices = [
+        _scrub_identity(str(text), str(firm))
+        for text, firm in zip(corpus["notice_text"], firms, strict=True)
+    ]
     word = np.diagonal(award_similarity(abstracts, notices, analyzer="word"))
     char = np.diagonal(award_similarity(abstracts, notices, analyzer="char_wb"))
 

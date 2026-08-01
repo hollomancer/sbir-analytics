@@ -4,12 +4,12 @@
     "features": [
       "tfidf_word"
     ],
-    "firms": 56,
-    "auc": 0.575,
-    "ci_low": 0.473,
-    "ci_high": 0.669,
-    "top1": 0.351,
-    "top3": 0.613
+    "firms": 101,
+    "auc": 0.802,
+    "ci_low": 0.735,
+    "ci_high": 0.864,
+    "top1": 0.659,
+    "top3": 0.775
   },
   {
     "stage": "+char",
@@ -17,12 +17,12 @@
       "tfidf_word",
       "tfidf_char"
     ],
-    "firms": 56,
-    "auc": 0.614,
-    "ci_low": 0.525,
-    "ci_high": 0.701,
-    "top1": 0.378,
-    "top3": 0.613
+    "firms": 101,
+    "auc": 0.835,
+    "ci_low": 0.775,
+    "ci_high": 0.888,
+    "top1": 0.652,
+    "top3": 0.804
   },
   {
     "stage": "+temporal",
@@ -31,12 +31,12 @@
       "tfidf_char",
       "after_first"
     ],
-    "firms": 56,
-    "auc": 0.614,
-    "ci_low": 0.525,
-    "ci_high": 0.701,
-    "top1": 0.378,
-    "top3": 0.613
+    "firms": 101,
+    "auc": 0.835,
+    "ci_low": 0.775,
+    "ci_high": 0.888,
+    "top1": 0.652,
+    "top3": 0.804
   },
   {
     "stage": "+id_xref",
@@ -46,12 +46,12 @@
       "after_first",
       "id_cited"
     ],
-    "firms": 56,
-    "auc": 0.634,
-    "ci_low": 0.544,
-    "ci_high": 0.723,
-    "top1": 0.396,
-    "top3": 0.604
+    "firms": 101,
+    "auc": 0.835,
+    "ci_low": 0.775,
+    "ci_high": 0.888,
+    "top1": 0.652,
+    "top3": 0.804
   },
   {
     "stage": "+naics_ntype",
@@ -63,11 +63,11 @@
       "naics_len",
       "notice_type"
     ],
-    "firms": 56,
-    "auc": 0.699,
-    "ci_low": 0.614,
-    "ci_high": 0.777,
-    "top1": 0.486,
-    "top3": 0.658
+    "firms": 101,
+    "auc": 0.847,
+    "ci_low": 0.792,
+    "ci_high": 0.898,
+    "top1": 0.674,
+    "top3": 0.848
   }
 ]

@@ -1,9 +1,42 @@
 # Notice-corpus recovery & fusion refit — findings
 
-**Status:** Pipeline reproduced end-to-end against the live GSA archive. The
-published fusion AUC **0.844 [0.800, 0.886] was NOT reproduced within CI**; the
-CI gate correctly refused to freeze coefficients. The gap is diagnosed and the
-remaining lever is identified (award-grain linkage). No coefficients frozen.
+**Status: REPRODUCED.** Award-grain linkage lands at leakage-scrubbed AUC
+**0.847 [0.792, 0.898]**, within the published CI **[0.800, 0.886]** — the CI
+gate passed and coefficients are frozen
+(`packages/sbir-ml/.../fusion_coefficients.json`, hash-validated loader in
+`fusion_model.py`). The firm-grain corpus (below) did **not** reproduce it; the
+difference is exactly the documented lever.
+
+## Update — award-grain reproduces the study (2026-08-01)
+
+Attributing each notice to the **specific prior award its J&A cites** (dispositive
+PIID, `award_grain.py`) and querying with **that award's** abstract fixed all
+three firm-grain problems at once (rich text + clean attribution + award grain).
+Recovery: **138 award-grain positives across 101 firms**, median J&A ~2k chars,
+44/53 J&As cite a resolvable PIID.
+
+| Corpus | text AUC | final AUC | vs CI [0.800, 0.886] |
+|---|--:|--:|:--|
+| Firm-grain (longest abstract, name attribution) | 0.575 | 0.699–0.784 | below — failed |
+| Award-grain, **raw** | 0.882 | 0.920 | *above* — suspicious |
+| Award-grain, **identity-scrubbed** | 0.802 | **0.847** | within — reproduced ✓ |
+
+**Leakage control (kept skeptical of the too-good raw 0.920):** the raw number
+was inflated ~0.07 by firm-name/PIID identity tokens shared between abstract and
+J&A. Scrubbing them (the study's own robustness step, applied in `build_features`)
+gives 0.847 — matching the study's 0.844. The J&A does not copy the abstract
+(median 19% content-word overlap), so the residual signal is genuine technical
+matching. **precision@1 = 0.681** (rank-1 is the true transition for 94/138 firms;
+audit sample in `reports/phase_iii/audit/`).
+
+The ladder shape matches the study: text dominates, char adds ~0.03, NAICS/
+notice-type the final lift; temporal and id_xref are degenerate on this corpus
+(no award years; award-grain rows use the `citation` rule, so `id_cited` is 0)
+and documented as such.
+
+---
+
+## Superseded — firm-grain attempt (why 0.844 first failed)
 
 ## What was built and verified
 
