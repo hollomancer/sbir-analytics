@@ -101,6 +101,8 @@ def _load_contracts() -> tuple[pd.DataFrame, Path]:
         checks = json.loads(checks_path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
         raise CensusInputError(f"Contract provenance manifest is unreadable: {exc}") from exc
+    if not isinstance(checks, Mapping):
+        raise CensusInputError("Contract provenance manifest must be a JSON object")
     source = checks.get("source_provenance")
     if not isinstance(source, Mapping):
         raise CensusInputError("Contract provenance manifest has no source_provenance record")
@@ -127,7 +129,11 @@ def _load_contracts() -> tuple[pd.DataFrame, Path]:
         "rpt.transaction_search_fpds",
     }:
         raise CensusInputError("Contract source is not the verified FPDS transaction relation")
-    if source.get("provenance_version") != 1:
+    if (
+        not isinstance(source.get("provenance_version"), int)
+        or isinstance(source["provenance_version"], bool)
+        or source["provenance_version"] != 1
+    ):
         raise CensusInputError("Contract provenance manifest uses an unsupported version")
     member = source.get("member")
     if not isinstance(member, str) or not member.endswith(".dat.gz"):

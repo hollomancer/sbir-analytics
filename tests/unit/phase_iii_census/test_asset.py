@@ -101,6 +101,11 @@ def test_contract_loader_requires_matching_source_manifest(tmp_path: Path, monke
     pd.testing.assert_frame_equal(loaded, _contract_source())
 
     manifest_path = contracts_path.with_suffix(".checks.json")
+    manifest_path.write_text("[]", encoding="utf-8")
+    with pytest.raises(CensusInputError, match="must be a JSON object"):
+        census_assets._load_contracts()
+
+    _write_contract_manifest(contracts_path)
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     manifest["source_provenance"]["provenance_version"] = 0
     manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
