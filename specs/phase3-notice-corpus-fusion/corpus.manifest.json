@@ -1,0 +1,27 @@
+{
+  "generated_at": "2026-08-01T15:04:48.631085+00:00",
+  "rows": 828,
+  "positives": 138,
+  "firms": 101,
+  "label_channels": {
+    "citation": 138
+  },
+  "match_rules": {
+    "citation": 138
+  },
+  "notice_type_counts": {
+    "Justification and Approval (J&A)": 53,
+    "Award Notice": 47,
+    "Presolicitation": 21,
+    "Solicitation": 7,
+    "Special Notice": 5,
+    "Combined Synopsis/Solicitation": 3,
+    "Sources Sought": 2
+  },
+  "notice_text_median_chars": 1954,
+  "frame_hash": "4c4064f04d04ca2f0c4c96e50ce3be8b6169bfd7ff3d4c51b2a6c804782a7b84",
+  "sources": [
+    "/tmp/gsa_award_grain",
+    "data/derived/phase3_firm_seed.parquet"
+  ]
+}

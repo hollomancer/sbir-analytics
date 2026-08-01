@@ -1,6 +1,6 @@
 # Specification Status Registry
 
-Reviewed: 2026-07-07
+Reviewed: 2026-08-01
 
 This registry is the cleanup checkpoint for top-level specs. It does not replace
 the requirements, design, or tasks files; it records whether a spec is a current
@@ -34,6 +34,13 @@ any gated or deferred spec back into active work.
 - **`data-imputation` — Gated backlog.** Foundational E4 work, but zero
   implementation. Start only when missing-field recovery becomes the next
   data-quality priority.
+- **`dspy-weekly-awards-prototype` — Gated backlog.** Documentation-only
+  evaluation plan for the E6 weekly award-narrative seam. Do not begin Stage 0
+  until a named owner, two labelers, an independent sealed-label custodian, and
+  an API-spend approver are recorded; SBIR.gov identity reuse and its equality
+  test are accepted; and weekly-report refactor T2.3 plus the injected,
+  typed-return work in T3.2 are complete. Offline, full-context, and shadow
+  gates still precede any production integration.
 - **`follow-on-multiplier-validation` — Active.** Design-only follow-up to the
   completed multiplier asset. Still called out as an immediate research-plan
   gap.

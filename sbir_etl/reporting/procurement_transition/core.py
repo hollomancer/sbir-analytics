@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import html
 import json
+import logging
 import math
 import re
 import shutil
@@ -28,6 +29,8 @@ from sbir_etl.utils.procurement_text import (
     tokenize_technical_text,
 )
 
+
+logger = logging.getLogger(__name__)
 
 _ANNOTATION_FIELDS = (
     ("interest_alignment", "Mission-interest alignment"),
@@ -660,14 +663,90 @@ def _procurement_key(row: pd.Series) -> str | None:
     return _display(_first_value(row.get("target_id"), row.get("opportunity_title")))
 
 
+def _attach_fusion_scores(rows: pd.DataFrame) -> pd.DataFrame:
+    """Attach ``fusion_score`` and ``fusion_ranked`` from the frozen award-grain ranker.
+
+    Scores the whole run at once (run-fitted TF-IDF), so only within-run ordering
+    is meaningful. If the coefficients or a dependency are unavailable the packet
+    still renders: every score falls back to zero and ``fusion_ranked`` is False,
+    which leaves ordering to the soonest-deadline key. Because ``fusion_score`` is
+    the primary sort key, that fallback silently reverts the packet to deadline
+    order — so it is logged, and ``fusion_ranked`` lets the report header tell a
+    ranked packet from an unranked one.
+    """
+
+    def _unranked(frame: pd.DataFrame, reason: str) -> pd.DataFrame:
+        logger.warning(
+            "Fusion ranking unavailable (%s); packet falls back to deadline order", reason
+        )
+        frame = frame.copy()
+        frame["fusion_score"] = 0.0
+        frame["fusion_ranked"] = False
+        return frame
+
+    try:
+        from sbir_ml.transition.detection.fusion_scoring import score_pairs_with_fusion
+    except Exception as exc:  # sbir-ml optional at render time
+        return _unranked(rows, f"sbir-ml unavailable: {exc}")
+
+    award_texts: list[str] = []
+    target_texts: list[str] = []
+    naics: list[Any] = []
+    notice_types: list[Any] = []
+    firm_names: list[Any] = []
+    for _, row in rows.iterrows():
+        award_texts.append(
+            " ".join(
+                part
+                for part in (
+                    _display(_first_value(row.get("award_title"), row.get("prior_title"))),
+                    _display(_first_value(row.get("award_abstract"), row.get("prior_abstract"))),
+                )
+                if part
+            )
+        )
+        target_texts.append(
+            _display(
+                _first_value(row.get("opportunity_description"), row.get("target_description"))
+            )
+            or ""
+        )
+        naics.append(_first_value(row.get("opportunity_naics_code"), row.get("target_naics_code")))
+        notice_types.append(
+            _first_value(row.get("opportunity_notice_type"), row.get("target_notice_type"))
+        )
+        firm_names.append(
+            _first_value(row.get("company"), row.get("award_company"), row.get("recipient_name"))
+        )
+
+    try:
+        scores = score_pairs_with_fusion(
+            award_texts, target_texts, naics, notice_types, firm_names=firm_names
+        )
+    except Exception as exc:
+        return _unranked(rows, f"scoring failed: {exc}")
+
+    rows = rows.copy()
+    rows["fusion_score"] = scores
+    rows["fusion_ranked"] = True
+    return rows
+
+
 def group_candidates_by_awardee(rows: pd.DataFrame, awards: pd.DataFrame) -> list[dict[str, Any]]:
     """Group scored candidate pairs under each awardee, ordered for the packet.
 
     Awardees are consolidated by firm identity (UEI, else normalized company
     name), so a firm holding several awards in the cohort is one section, and a
     procurement it is relevant to through more than one award appears once.
-    Directed (possible direct-award) matches precede competitive ones, each
-    sorted by soonest response deadline. Below-threshold matches are kept in a
+    Directed (possible direct-award) matches precede competitive ones. Within
+    each of those lists — and within ``watchlist`` — procurements are ordered by
+    **descending fusion score**, the ranker's validated per-firm-lead use, with
+    soonest response deadline as the tie-break. Ranking by score deliberately
+    demotes deadline: a procurement closing sooner can sit below a
+    stronger-matching one that closes later, so the packet is a
+    strongest-match-first queue, not a calendar. When the ranker is unavailable
+    every score is zero and the order falls back to deadline (see
+    :func:`_attach_fusion_scores`). Below-threshold matches are kept in a
     per-awardee ``watchlist`` rather than dropped. Awardees with no matched
     procurement are still emitted so the representative sees the whole cohort.
 
@@ -679,6 +758,7 @@ def group_candidates_by_awardee(rows: pd.DataFrame, awards: pd.DataFrame) -> lis
 
     if not rows.empty:
         rows = rows.loc[~rows.apply(_notice_names_awardee, axis=1)].reset_index(drop=True)
+        rows = _attach_fusion_scores(rows)
 
     signals = rows.get("signal_class", pd.Series(index=rows.index, dtype="object"))
     confidence = rows.get("confidence_bucket", pd.Series(index=rows.index, dtype="object"))
@@ -690,9 +770,12 @@ def group_candidates_by_awardee(rows: pd.DataFrame, awards: pd.DataFrame) -> lis
 
     def _entries(mask: pd.Series, seen: set[str]) -> list[pd.Series]:
         subset = rows.loc[mask]
+        # Rank a firm's procurements by the frozen fusion ranker (its validated
+        # per-firm-lead use), most promising first; soonest deadline breaks ties.
         ordered = sorted(
             (row for _, row in subset.iterrows()),
             key=lambda row: (
+                -float(row.get("fusion_score") or 0.0),
                 _deadline_sort_key(row),
                 str(_first_value(row.get("opportunity_title"), row.get("target_id")) or ""),
             ),
