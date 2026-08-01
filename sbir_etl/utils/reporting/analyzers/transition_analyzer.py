@@ -8,14 +8,22 @@ and identifying high-impact transition examples for success stories.
 from typing import Any
 
 import pandas as pd
-from loguru import logger
 
-from sbir_etl.models.quality import ChangesSummary, DataHygieneMetrics, ModuleReport
+from sbir_etl.models.quality import ChangesSummary, DataHygieneMetrics
 from sbir_etl.utils.reporting.analyzers.base_analyzer import AnalysisInsight, ModuleAnalyzer
 
 
 class TransitionDetectionAnalyzer(ModuleAnalyzer):
     """Analyzer for transition detection operations and commercialization success."""
+
+    stage = "detect"
+    primary_data_key = "transitions_df"
+    total_data_key = "awards_df"
+    processing_keys = ("detection_results", "awards_processed", "detection_failed")
+    analysis_label = "Transition detection"
+    start_analysis_label = "transition detection"
+    missing_data_warning = "No transitions DataFrame provided for analysis"
+    missing_data_error = "No transitions DataFrame available"
 
     def __init__(self, config: dict[str, Any] | None = None):
         """Initialize transition detection analyzer.
@@ -50,64 +58,6 @@ class TransitionDetectionAnalyzer(ModuleAnalyzer):
             "research",
             "other",
         ]
-
-    def analyze(self, module_data: dict[str, Any]) -> ModuleReport:
-        """Analyze transition detection data and generate comprehensive report.
-
-        Args:
-            module_data: Dictionary containing:
-                - transitions_df: DataFrame with detected transitions
-                - awards_df: Original awards DataFrame
-                - detection_results: Detection operation results
-                - run_context: Pipeline run context
-
-        Returns:
-            ModuleReport with transition detection analysis
-        """
-        logger.info("Starting transition detection analysis")
-
-        transitions_df = module_data.get("transitions_df")
-        awards_df = module_data.get("awards_df")
-        detection_results = module_data.get("detection_results", {})
-        run_context = module_data.get("run_context", {})
-
-        if transitions_df is None:
-            logger.warning("No transitions DataFrame provided for analysis")
-            return self._create_empty_report(run_context)
-
-        # Calculate key metrics
-        key_metrics = self.get_key_metrics(module_data)
-
-        # Generate insights
-        insights = self.generate_insights(module_data)
-
-        # Calculate data hygiene metrics
-        data_hygiene = self._calculate_data_hygiene(transitions_df, awards_df)
-
-        # Calculate changes summary
-        changes_summary = self._calculate_changes_summary(transitions_df, awards_df)
-
-        # Extract processing metrics
-        total_records = len(awards_df) if awards_df is not None else 0
-        records_processed = detection_results.get("awards_processed", total_records)
-        records_failed = detection_results.get("detection_failed", 0)
-        duration_seconds = detection_results.get("duration_seconds", 0.0)
-
-        # Create module report
-        report = self.create_module_report(
-            run_id=run_context.get("run_id", "unknown"),
-            stage="detect",
-            total_records=total_records,
-            records_processed=records_processed,
-            records_failed=records_failed,
-            duration_seconds=duration_seconds,
-            module_metrics=key_metrics,
-            data_hygiene=data_hygiene,
-            changes_summary=changes_summary,
-        )
-
-        logger.info(f"Transition detection analysis complete: {len(insights)} insights generated")
-        return report
 
     def get_key_metrics(self, module_data: dict[str, Any]) -> dict[str, Any]:
         """Extract key metrics from transition detection data.
@@ -757,21 +707,14 @@ class TransitionDetectionAnalyzer(ModuleAnalyzer):
             enrichment_sources={"transition_detection": total_transitions},
         )
 
-    def _create_empty_report(self, run_context: dict[str, Any]) -> ModuleReport:
-        """Create an empty report when no data is available.
+    def _calculate_report_data_hygiene(self, module_data: dict[str, Any]) -> DataHygieneMetrics:
+        """Calculate hygiene from transitions and their award population."""
+        return self._calculate_data_hygiene(
+            module_data[self.primary_data_key], module_data.get("awards_df")
+        )
 
-        Args:
-            run_context: Pipeline run context
-
-        Returns:
-            Empty ModuleReport
-        """
-        return self.create_module_report(
-            run_id=run_context.get("run_id", "unknown"),
-            stage="detect",
-            total_records=0,
-            records_processed=0,
-            records_failed=0,
-            duration_seconds=0.0,
-            module_metrics={"error": "No transitions DataFrame available"},
+    def _calculate_report_changes_summary(self, module_data: dict[str, Any]) -> ChangesSummary:
+        """Calculate transition changes against the award population."""
+        return self._calculate_changes_summary(
+            module_data[self.primary_data_key], module_data.get("awards_df")
         )

@@ -4,9 +4,10 @@ from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import Any
 
+from loguru import logger
 from pydantic import BaseModel
 
-from sbir_etl.models.quality import ModuleReport
+from sbir_etl.models.quality import ChangesSummary, DataHygieneMetrics, ModuleReport
 
 
 class AnalysisInsight(BaseModel):
@@ -25,6 +26,16 @@ class AnalysisInsight(BaseModel):
 class ModuleAnalyzer(ABC):
     """Base class for module-specific statistical analyzers."""
 
+    stage = ""
+    primary_data_key = ""
+    total_data_key: str | None = None
+    processing_keys = ("", "", "")
+    duration_data_key: str | None = None
+    analysis_label = ""
+    start_analysis_label: str | None = None
+    missing_data_warning = ""
+    missing_data_error = ""
+
     def __init__(self, module_name: str, config: dict[str, Any] | None = None):
         """Initialize the analyzer.
 
@@ -36,9 +47,8 @@ class ModuleAnalyzer(ABC):
         self.config = config or {}
         self.insights: list[AnalysisInsight] = []
 
-    @abstractmethod
     def analyze(self, module_data: dict[str, Any]) -> ModuleReport:
-        """Analyze module data and generate a comprehensive report.
+        """Run the shared analyzer lifecycle around domain-specific calculations.
 
         Args:
             module_data: Module-specific data to analyze
@@ -46,7 +56,82 @@ class ModuleAnalyzer(ABC):
         Returns:
             ModuleReport with analysis results
         """
-        pass
+        start_label = self.start_analysis_label or self.analysis_label
+        logger.info(f"Starting {start_label} analysis")
+
+        primary_data = module_data.get(self.primary_data_key)
+        run_context = module_data.get("run_context", {})
+
+        if primary_data is None:
+            logger.warning(self.missing_data_warning)
+            return self._create_empty_report(run_context)
+
+        key_metrics = self.get_key_metrics(module_data)
+        insights = self.generate_insights(module_data)
+        data_hygiene = self._calculate_report_data_hygiene(module_data)
+        changes_summary = self._calculate_report_changes_summary(module_data)
+
+        total_records = self._get_total_records(module_data)
+        records_processed, records_failed, duration_seconds = self._get_processing_metrics(
+            module_data, total_records
+        )
+
+        report = self.create_module_report(
+            run_id=run_context.get("run_id", "unknown"),
+            stage=self.stage,
+            total_records=total_records,
+            records_processed=records_processed,
+            records_failed=records_failed,
+            duration_seconds=duration_seconds,
+            module_metrics=key_metrics,
+            data_hygiene=data_hygiene,
+            changes_summary=changes_summary,
+        )
+
+        logger.info(f"{self.analysis_label} analysis complete: {len(insights)} insights generated")
+        return report
+
+    def _get_total_records(self, module_data: dict[str, Any]) -> int:
+        """Return the domain's report denominator."""
+        total_data = module_data.get(self.total_data_key or self.primary_data_key)
+        return len(total_data) if total_data is not None else 0
+
+    def _get_processing_metrics(
+        self, module_data: dict[str, Any], total_records: int
+    ) -> tuple[int, int, float]:
+        """Read shared processing counts while preserving domain-specific keys."""
+        results_key, processed_key, failed_key = self.processing_keys
+        processing_results = module_data.get(results_key, {})
+        duration_results = module_data.get(self.duration_data_key or results_key, {})
+        return (
+            processing_results.get(processed_key, total_records),
+            processing_results.get(failed_key, 0),
+            duration_results.get("duration_seconds", 0.0),
+        )
+
+    def _calculate_report_data_hygiene(
+        self, module_data: dict[str, Any]
+    ) -> DataHygieneMetrics | None:
+        """Calculate domain-specific hygiene for the shared lifecycle."""
+        raise NotImplementedError
+
+    def _calculate_report_changes_summary(
+        self, module_data: dict[str, Any]
+    ) -> ChangesSummary | None:
+        """Calculate domain-specific changes for the shared lifecycle."""
+        raise NotImplementedError
+
+    def _create_empty_report(self, run_context: dict[str, Any]) -> ModuleReport:
+        """Create a standardized report when the primary input is missing."""
+        return self.create_module_report(
+            run_id=run_context.get("run_id", "unknown"),
+            stage=self.stage,
+            total_records=0,
+            records_processed=0,
+            records_failed=0,
+            duration_seconds=0.0,
+            module_metrics={"error": self.missing_data_error},
+        )
 
     @abstractmethod
     def get_key_metrics(self, module_data: dict[str, Any]) -> dict[str, Any]:
