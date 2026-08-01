@@ -51,6 +51,7 @@ jobs:
       docker: ${{ steps.detect.outputs.docker }}
       workflows: ${{ steps.detect.outputs.workflows }}
       infrastructure: ${{ steps.detect.outputs.infrastructure }}
+      s3: ${{ steps.detect.outputs.s3 }}
       docs-only: ${{ steps.detect.outputs.docs-only }}
     steps:
       - uses: actions/checkout@v7
@@ -94,6 +95,12 @@ jobs:
               - '.github/actions/**'
             infrastructure:
               - 'infrastructure/cdk/**'
+            s3:
+              - 'sbir_etl/utils/cloud_storage.py'
+              - 'tests/integration/test_s3_operations.py'
+              - 'tests/conftest.py'
+              - '.github/workflows/ci.yml'
+              - '.github/actions/detect-changes/**'
 
   code-quality:
     name: Code Quality (Lint + Type Check)
@@ -1043,27 +1050,49 @@ jobs:
 
   test-s3-integration:
     name: S3 Integration Tests
-    needs: [detect-changes, test]
+    needs: [detect-changes]
     if: |
-      needs.detect-changes.outputs.docs-only != 'true' &&
-      !contains(github.event.pull_request.labels.*.name, 'skip-cloud-tests')
+      !contains(github.event.pull_request.labels.*.name, 'skip-cloud-tests') &&
+      (
+        github.event_name == 'workflow_dispatch' ||
+        (
+          needs.detect-changes.outputs.docs-only != 'true' &&
+          needs.detect-changes.outputs.s3 == 'true'
+        )
+      )
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
       id-token: write
       contents: read
+    outputs:
+      tests-ran: ${{ steps.s3-tests.outcome == 'success' }}
     steps:
-      - uses: actions/checkout@v7
+      - name: Check AWS test role configuration
+        id: aws-role
+        env:
+          AWS_TEST_ROLE_ARN: ${{ secrets.AWS_TEST_ROLE_ARN }}
+        run: |
+          if [ -n "$AWS_TEST_ROLE_ARN" ]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::AWS_TEST_ROLE_ARN is unavailable; skipping S3 integration tests"
+          fi
 
       - name: Configure AWS credentials
-        continue-on-error: true
+        if: steps.aws-role.outputs.available == 'true'
         id: aws-creds
         uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: ${{ secrets.AWS_TEST_ROLE_ARN }}
           aws-region: us-east-2
 
+      - uses: actions/checkout@v7
+        if: steps.aws-creds.outcome == 'success'
+
       - name: Setup Python and UV
+        if: steps.aws-creds.outcome == 'success'
         uses: ./.github/actions/setup-python-uv
         with:
           python-version: ${{ env.PYTHON_VERSION }}
@@ -1071,6 +1100,7 @@ jobs:
           cache-venv: "true"
 
       - name: Run S3 integration tests
+        id: s3-tests
         if: steps.aws-creds.outcome == 'success'
         env:
           TEST_S3_BUCKET: sbir-analytics-test
@@ -1078,10 +1108,16 @@ jobs:
           uv run pytest tests/integration/test_s3_operations.py -v -m s3
 
       - name: Skip S3 tests (no credentials)
-        if: steps.aws-creds.outcome != 'success'
+        if: |
+          always() &&
+          (steps.aws-role.outputs.available != 'true' || steps.aws-creds.outcome != 'success')
         run: |
-          echo "⚠️ AWS credentials not available, skipping S3 integration tests"
-          echo "This is expected for external PRs"
+          if [ "${{ steps.aws-role.outputs.available }}" != "true" ]; then
+            echo "⚠️ AWS_TEST_ROLE_ARN is unavailable; S3 integration tests were skipped"
+            echo "This is expected for external pull requests"
+          else
+            echo "⚠️ AWS credential configuration failed; S3 integration tests were skipped"
+          fi
 
   ci-summary:
     name: CI Summary
@@ -1114,7 +1150,11 @@ jobs:
           fi
 
           if [ "${{ needs.test-s3-integration.result }}" != "skipped" ]; then
-            echo "| ☁️ S3 Integration | ${{ needs.test-s3-integration.result == 'success' && '✅' || '❌' }} ${{ needs.test-s3-integration.result }} |" >> $GITHUB_STEP_SUMMARY
+            if [ "${{ needs.test-s3-integration.result }}" = "success" ] && [ "${{ needs.test-s3-integration.outputs.tests-ran }}" != "true" ]; then
+              echo "| ☁️ S3 Integration | ⏭️ skipped (AWS credentials unavailable) |" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "| ☁️ S3 Integration | ${{ needs.test-s3-integration.result == 'success' && '✅' || '❌' }} ${{ needs.test-s3-integration.result }} |" >> $GITHUB_STEP_SUMMARY
+            fi
           fi
 
           if [ "${{ needs.e2e-docker.result }}" != "skipped" ]; then
