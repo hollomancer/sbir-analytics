@@ -1,28 +1,38 @@
 ---
 Type: Reference
 Owner: docs@project
-Last-Reviewed: 2025-01-XX
+Last-Reviewed: 2026-08-01
 Status: active
 
 ---
 
 # Neo4j Migrations
 
-This directory contains Neo4j schema migrations managed using a custom migration system.
+Neo4j schema and data migrations are packaged with `sbir-graph` and managed using a custom
+migration system.
 
 ## Overview
 
-Migrations are versioned Python files that define schema changes (constraints, indexes) and data migrations. They are automatically applied when `Neo4jClient` is initialized (if `auto_migrate=True`), or can be run manually via CLI.
+Migrations are versioned Python files that define schema changes (constraints and indexes) and
+data migrations. They are automatically applied when `Neo4jClient` is initialized with
+`auto_migrate=True`, or can be run manually through the repository CLI wrapper. Because the
+migration package is part of the `sbir-graph` distribution, the same definitions are available in
+checkout, container, and installed-package environments.
 
 ## Migration Files
 
-Migrations are located in `migrations/versions/` and follow the naming pattern:
+Migrations are located in
+`packages/sbir-graph/sbir_graph/migrations/versions/` and follow the naming pattern:
 
 - `001_initial_schema.py` - Initial constraints and indexes
 - `002_add_organization_deduplication_indexes.py` - Indexes for deduplication
 - `003_merge_existing_duplicate_organizations.py` - One-time data cleanup
 - `004_vector_indexes.py` - Vector/cross-reference indexes
-- `005_drop_lightrag_vector_indexes.py` - Drop LightRAG-era vector indexes (award_embedding, patent_embedding)
+- `005_drop_lightrag_vector_indexes.py` - Drop LightRAG-era vector indexes
+  (`award_embedding`, `patent_embedding`)
+- `006_unify_award_into_financial_transaction.py` - Unify legacy Award nodes into
+  FinancialTransaction
+- `007_unify_company_into_organization.py` - Unify legacy Company nodes into Organization
 
 ## Running Migrations
 
@@ -31,6 +41,13 @@ Migrations are located in `migrations/versions/` and follow the naming pattern:
 Migrations run automatically when `Neo4jClient` is initialized if `auto_migrate=True` (default).
 
 ### Manual CLI
+
+Install `sbir-graph` (or the full `sbir-analytics` package) before using the repository CLI
+wrapper:
+
+```bash
+pip install sbir-graph
+```
 
 ```bash
 # Upgrade to latest
@@ -60,15 +77,16 @@ Environment variables:
 
 ## Creating New Migrations
 
-1. Create a new file in `migrations/versions/`:
+1. Create a new file in `packages/sbir-graph/sbir_graph/migrations/versions/`:
 
    ```python
-   from migrations.base import Migration
    from neo4j import Driver
+   from sbir_graph.migrations.base import Migration
+
 
    class MyNewMigration(Migration):
        def __init__(self):
-           super().__init__("004", "Description of migration")
+           super().__init__("008", "Description of migration")
 
        def upgrade(self, driver: Driver) -> None:
            """Apply migration."""
@@ -81,7 +99,7 @@ Environment variables:
                session.run("DROP INDEX ...")
    ```
 
-2. Use version numbers sequentially (004, 005, etc.)
+2. Use version numbers sequentially (`008` is next at the time of writing)
 3. Implement both `upgrade()` and `downgrade()` methods
 4. Use `IF NOT EXISTS` / `IF EXISTS` clauses for idempotency
 

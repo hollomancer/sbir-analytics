@@ -6,8 +6,8 @@ from typing import Any
 from loguru import logger
 from neo4j import Driver  # type: ignore[attr-defined]
 
-from migrations.base import Migration
-from migrations.config import MIGRATIONS_DIR, TRACKING_ID, TRACKING_LABEL
+from sbir_graph.migrations.base import Migration
+from sbir_graph.migrations.config import MIGRATIONS_DIR, TRACKING_ID, TRACKING_LABEL
 
 
 class MigrationRunner:
@@ -77,7 +77,7 @@ class MigrationRunner:
             if file_path.name == "__init__.py":
                 continue
 
-            module_name = f"migrations.versions.{file_path.stem}"
+            module_name = f"sbir_graph.migrations.versions.{file_path.stem}"
             try:
                 module = importlib.import_module(module_name)
                 # Find Migration subclass

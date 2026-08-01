@@ -9,7 +9,9 @@ import pytest
 pytestmark = pytest.mark.fast
 
 # The migration module name begins with a digit, so import it dynamically.
-_module = importlib.import_module("migrations.versions.007_unify_company_into_organization")
+_module = importlib.import_module(
+    "sbir_graph.migrations.versions.007_unify_company_into_organization"
+)
 UnifyCompanyIntoOrganization = _module.UnifyCompanyIntoOrganization
 
 

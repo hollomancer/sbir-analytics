@@ -1,6 +1,6 @@
 """Initial Neo4j schema constraints and indexes."""
 
-from migrations.base import Migration
+from sbir_graph.migrations.base import Migration
 from neo4j import Driver
 
 

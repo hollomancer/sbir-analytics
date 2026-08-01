@@ -36,7 +36,6 @@ COPY packages/sbir-ml/sbir_ml/ /app/sbir_ml/
 COPY config/ /app/config/
 COPY data/reference/ /app/data/reference/
 COPY scripts/ /app/scripts/
-COPY migrations/ /app/migrations/
 COPY pyproject.toml /app/
 
 ENV PYTHONPATH=/app

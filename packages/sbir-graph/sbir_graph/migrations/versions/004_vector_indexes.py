@@ -1,6 +1,6 @@
 """Vector indexes for cross-reference support."""
 
-from migrations.base import Migration
+from sbir_graph.migrations.base import Migration
 from neo4j import Driver  # type: ignore[attr-defined]
 
 

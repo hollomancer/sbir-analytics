@@ -30,7 +30,7 @@ dry-run before applying to a live database.
 """
 
 from loguru import logger
-from migrations.base import Migration
+from sbir_graph.migrations.base import Migration
 from neo4j import Driver  # type: ignore[attr-defined]
 
 # Batch size for the re-home loop (number of :Company nodes processed per write tx).

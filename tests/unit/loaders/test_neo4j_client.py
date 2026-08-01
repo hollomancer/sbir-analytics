@@ -115,6 +115,22 @@ class TestLoadMetrics:
 class TestNeo4jClientInitialization:
     """Tests for Neo4jClient initialization and driver management."""
 
+    @patch("sbir_graph.migrations.runner.MigrationRunner")
+    @patch("sbir_graph.loaders.neo4j.client.GraphDatabase.driver")
+    def test_auto_migrate_uses_packaged_runner(
+        self, mock_graph_database, mock_runner_class, neo4j_config, mock_driver
+    ):
+        """The default migration path resolves from the installed sbir_graph package."""
+        neo4j_config.auto_migrate = True
+        mock_graph_database.return_value = mock_driver
+        mock_runner = mock_runner_class.return_value
+
+        client = Neo4jClient(neo4j_config)
+
+        mock_runner_class.assert_called_once_with(mock_driver)
+        mock_runner.upgrade.assert_called_once_with()
+        assert client._driver is mock_driver
+
     def test_init_creates_config(self, neo4j_config):
         """Test client initialization stores config."""
         neo4j_config.auto_migrate = False  # Disable auto-migration for lazy init test

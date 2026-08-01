@@ -29,7 +29,6 @@ COPY scripts/ /app/scripts/
 COPY config/ /app/config/
 COPY workspace.server.yaml /app/workspace.server.yaml
 COPY data/reference/ /app/data/reference/
-COPY migrations/ /app/migrations/
 COPY pyproject.toml /app/
 
 ENV PYTHONPATH=/app

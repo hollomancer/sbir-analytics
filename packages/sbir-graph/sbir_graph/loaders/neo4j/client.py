@@ -94,7 +94,7 @@ class Neo4jClient:
         # Run migrations automatically if enabled
         if config.auto_migrate:
             try:
-                from migrations.runner import MigrationRunner
+                from sbir_graph.migrations.runner import MigrationRunner
 
                 runner = MigrationRunner(self.driver)
                 runner.upgrade()
@@ -142,7 +142,7 @@ class Neo4jClient:
         """Create unique constraints for entity primary keys.
 
         DEPRECATED: Use Neo4j Migrations instead. This method is kept for backward compatibility.
-        See migrations/versions/001_initial_schema.py for current schema definitions.
+        See sbir_graph/migrations/versions/001_initial_schema.py for current schema definitions.
         """
         constraints = [
             # Legacy constraints (kept for backward compatibility)
@@ -169,8 +169,8 @@ class Neo4jClient:
         """Create indexes for frequently queried properties.
 
         DEPRECATED: Use Neo4j Migrations instead. This method is kept for backward compatibility.
-        See migrations/versions/001_initial_schema.py and 002_add_organization_deduplication_indexes.py
-        for current index definitions.
+        See sbir_graph/migrations/versions/001_initial_schema.py and
+        002_add_organization_deduplication_indexes.py for current index definitions.
         """
         indexes = [
             # Legacy indexes (kept for backward compatibility)

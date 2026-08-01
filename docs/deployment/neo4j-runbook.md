@@ -237,7 +237,7 @@ Troubleshooting checklist
 4. Migration failures:
    - Check migration logs in Neo4j client initialization
    - Run `python scripts/neo4j/migrate.py history` to see applied migrations
-   - Check `migrations/versions/` for migration definitions
+   - Check `packages/sbir-graph/sbir_graph/migrations/versions/` for migration definitions
    - See `docs/migrations.md` for troubleshooting
 5. Slow imports or OOM:
    - Increase `server.memory.heap.max_size` and `server.memory.pagecache.size` in `config/neo4j/neo4j.conf` and restart.
