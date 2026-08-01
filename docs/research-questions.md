@@ -223,7 +223,11 @@ placeholder, never wired into the M&A pipeline, and was removed in PR #317.*
 
 - Which federal awards are SBIR/STTR vs. non-SBIR, and with what confidence? Three-tier classifier (FPDS research field 1.0 → ALN 0.8–1.0 → description parsing 0.5–0.7) — [sbir-identification-methodology.md](sbir-identification-methodology.md), [../specs/archive/completed-features/sbir-identification/](../specs/archive/completed-features/sbir-identification/). CRS [L15], GAO [L14]. *(deps: —)*
 - What are false-positive rates for shared-ALN grant identification (e.g., NIH ~20%)? *(deps: ID)*
-- How does SBIR.gov data reconcile with federal USAspending/FPDS records? GAO [L14] and NASEM [L1][L3] flag tracking-data limits. *(deps: —)*
+- How does SBIR.gov data reconcile with federal USAspending/FPDS records? GAO [L14] and
+  NASEM [L1][L3] flag tracking-data limits. **[Partially answerable now — Phase II
+  federal transactions collapse on generated award IDs and reconcile to SBIR.gov only
+  through exact normalized raw PIID/source identifiers, with ambiguity and taxonomy
+  conflict failures; broader cross-source completeness remains unvalidated]** *(deps: —)*
 
 ### E2. Entity resolution (foundation, Tier 1–2)
 
