@@ -4,7 +4,10 @@ NOTE: do NOT add ``from __future__ import annotations`` — it breaks Dagster ru
 context validation in this repository.
 """
 
+import hashlib
+import json
 import os
+from collections.abc import Mapping
 from datetime import date
 from pathlib import Path
 from typing import Any
@@ -51,7 +54,7 @@ SENSITIVITY_OUTPUT_PATH = Path("data/processed/phase_iii_census_sensitivity.parq
 CONTRACTS_PRIMARY_PATH = Path("data/transition/contracts_ingestion.parquet")
 CONTRACTS_FALLBACK_PATH = Path("data/processed/contracts_ingestion.parquet")
 DATA_CUT_ENV = "SBIR_ETL__PHASE_III_CENSUS__DATA_CUT_DATE"
-FROZEN_SPEC_COMMIT = "989d9155c60e227ff2f921d3495e251a4246dda3"
+FROZEN_SPEC_COMMIT = "76008c173d8b8fd712a942d86c361e410ff95bc8"
 
 
 def parse_census_data_cut_date(raw: str | None = None) -> date:
@@ -80,6 +83,68 @@ def _load_contracts() -> tuple[pd.DataFrame, Path]:
         path = CONTRACTS_FALLBACK_PATH
     if not path.exists():
         return pd.DataFrame(), path
+    checks_path = path.with_suffix(".checks.json")
+    if not checks_path.is_file():
+        raise CensusInputError(
+            f"Contract source at {path} has no provenance manifest at {checks_path}"
+        )
+    try:
+        checks = json.loads(checks_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise CensusInputError(f"Contract provenance manifest is unreadable: {exc}") from exc
+    source = checks.get("source_provenance")
+    if not isinstance(source, Mapping):
+        raise CensusInputError("Contract provenance manifest has no source_provenance record")
+    required = {
+        "canonical_table",
+        "physical_table",
+        "member",
+        "ordered_columns_sha256",
+        "column_count",
+        "toc_sha256",
+        "vendor_filter_sha256",
+        "output_sha256",
+        "provenance_version",
+    }
+    missing = sorted(required - set(source))
+    if missing:
+        raise CensusInputError(
+            f"Contract provenance manifest is missing required fields: {missing}"
+        )
+    if source.get("canonical_table") != "rpt.transaction_search":
+        raise CensusInputError("Contract source is not the canonical transaction_search table")
+    if source.get("physical_table") not in {
+        "rpt.transaction_search",
+        "rpt.transaction_search_fpds",
+    }:
+        raise CensusInputError("Contract source is not the verified FPDS transaction relation")
+    if source.get("provenance_version") != 1:
+        raise CensusInputError("Contract provenance manifest uses an unsupported version")
+    member = source.get("member")
+    if not isinstance(member, str) or not member.endswith(".dat.gz"):
+        raise CensusInputError("Contract provenance manifest has an invalid archive member")
+    column_count = source.get("column_count")
+    if not isinstance(column_count, int) or isinstance(column_count, bool) or column_count <= 0:
+        raise CensusInputError("Contract provenance manifest has an invalid column count")
+    for key in (
+        "ordered_columns_sha256",
+        "toc_sha256",
+        "vendor_filter_sha256",
+        "output_sha256",
+    ):
+        value = source.get(key)
+        if (
+            not isinstance(value, str)
+            or len(value) != 64
+            or any(character not in "0123456789abcdef" for character in value.lower())
+        ):
+            raise CensusInputError(f"Contract provenance manifest has an invalid {key} fingerprint")
+    digest = hashlib.sha256()
+    with path.open("rb") as file:
+        for chunk in iter(lambda: file.read(1024 * 1024), b""):
+            digest.update(chunk)
+    if source.get("output_sha256") != digest.hexdigest():
+        raise CensusInputError("Contract parquet checksum does not match its provenance manifest")
     try:
         return pd.read_parquet(path), path
     except Exception as exc:  # pragma: no cover - defensive I/O boundary

@@ -153,9 +153,10 @@ placeholder, never wired into the M&A pipeline, and was removed in PR #317.*
   label-free uncoded-follow-on proxy, and how do the audit counts change across its
   frozen clauses and agency/window cells? —
   [../specs/phase-iii-census/](../specs/phase-iii-census/). **[Implementation complete,
-  materialization blocked — the canonical contract producer does not yet expose the
-  required FPDS coding and NAICS/PSC fields with verified provenance; the result will
-  remain a proxy rather than proof of statutory Phase III]** *(deps: ER, ID, NAICS/PSC)*
+  materialization paused — the canonical contract producer now exposes schema-verified
+  FPDS coding, NAICS/PSC, stable-key, and source-provenance fields; inherited Phase II
+  award-key and completion-date grain must be frozen before any count, and the result
+  remains a proxy rather than proof of statutory Phase III]** *(deps: ER, ID, NAICS/PSC)*
 - Which SBIR-funded companies transitioned research into federal procurements? — [transition/detection-algorithm.md](transition/detection-algorithm.md). *(deps: ER, ID)*
 - What is the average time from award to transition by technology area? *(deps: ER, ID, CET)*
 - Which SBIR awards transitioned with patent backing, and what share of transitions are patent-enabled? Related to Lerner [L10] and Howell [L11]. *(deps: ER, ID, PATLINK)*
@@ -170,8 +171,9 @@ placeholder, never wired into the M&A pipeline, and was removed in PR #317.*
   and NASEM [L1][L3]. Phase III solicitation monitoring:
   [../specs/phase-3-solicitation-alerts/](../specs/phase-3-solicitation-alerts/).
   **[Research target — the deterministic Phase 1 audit tables are implemented but
-  source-field provenance blocks materialization; matched negative controls and labeled
-  validation are still required before interpreting the proxy as undercount]** *(deps: ID)*
+  materialization is paused for a pre-count Phase II grain decision; matched negative
+  controls and labeled validation are still required before interpreting the proxy as
+  undercount]** *(deps: ID)*
 - How does company categorization relate to transition likelihood? Baseline: Link & Scott commercialization-probability econometrics [L12]. *(deps: ER, ID)*
 - Which Phase II awardees subject to §638(qq)(3) Increased Performance Standards meet the **statutory Commercialization Benchmark** (sales + private investment over the 10-FY covered period ÷ SBIR funding ≥ specified ratio)? Pub. L. 117-183 SBIR/STTR Extension Act of 2022 §638(qq)(3). Implementation on main: `scripts/run_benchmark.py` (evaluate / sensitivity / company-level CLI) backed by `sbir_etl/models/benchmark_models.py`, with tests in `tests/unit/test_benchmark_evaluator.py`. Spec: [../specs/archive/completed-features/commercialization-benchmark/](../specs/archive/completed-features/commercialization-benchmark/). Additional per-firm audit infrastructure and a more comprehensive methodology doc exist as local-only / uncommitted work — see "Output products" section below for the in-progress status. *(deps: ER, ID, transitions, SEC EDGAR)*
 

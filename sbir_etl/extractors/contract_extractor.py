@@ -1,84 +1,185 @@
-"""
-Federal Contracts Extractor from USAspending PostgreSQL dumps.
+"""Federal contract extraction from schema-verified USAspending dumps.
 
-This module provides streaming extraction of federal contract data from
-USAspending.gov PostgreSQL dump files (.dat.gz format), with vendor-based
-filtering to extract only contracts relevant to SBIR awardees.
-
-The extractor processes the transaction_normalized table, which contains
-all federal spending transactions including contracts, grants, loans, etc.
-We filter specifically for contract transactions (type code 'contract').
+The production path reads ``rpt.transaction_search`` (or its FPDS partition).
+The archive TOC identifies the changing data-member id, while pg_restore's
+explicit COPY list supplies the serialized column order.
 """
 
 import gzip
+import hashlib
 import io
 import json
-from collections.abc import Iterable, Iterator
-from pathlib import Path
+import re
+import shutil
+import subprocess
+import tempfile
+from collections.abc import Iterable, Iterator, Mapping, Sequence
+from dataclasses import dataclass, replace
+from pathlib import Path, PurePosixPath
 
 import pandas as pd
 from loguru import logger
-from pydantic import ValidationError
-
 from sbir_etl.models.transition_models import CompetitionType, FederalContract
 
 
-# USAspending transaction_normalized column mapping
-# Based on actual .dat.gz file structure observed from subset database
-# File 5530.dat.gz contains the transaction_normalized table
-#
-# IMPORTANT: The transaction_normalized table contains BOTH procurement contracts
-# and assistance/grants. Type codes 'A' and 'B' include both categories.
-# Procurement-specific fields (CAGE, extent_competed) may not be present in
-# all records, especially assistance/grant transactions.
-USASPENDING_COLUMNS = {
-    # Core identifiers
-    "transaction_id": 0,
-    "generated_unique_award_id": 1,
-    "action_date": 2,  # Format: YYYYMMDD
-    "type": 3,  # 'A'=Contract, 'B'=IDV Contract, 'C'=Grant, 'D'=Direct Payment
-    "action_type": 4,  # New, Revision, etc.
-    "award_type_code": 5,
-    "action_type_description": 6,
-    # Award description
-    "award_description": 7,
-    "modification_number": 8,
-    "recipient_name": 9,  # Vendor name
-    "recipient_unique_id": 10,  # UEI or DUNS (older records) - legacy format
-    # Agency info
-    "awarding_agency_code": 11,
-    "awarding_agency_name": 12,
-    "awarding_sub_tier_agency_code": 13,
-    "awarding_sub_tier_agency_name": 14,
-    "awarding_toptier_agency_code": 15,
-    "awarding_toptier_agency_name": 16,
-    # Business categories
-    "business_categories": 17,  # Array of categories (e.g., {higher_education,...})
-    # Identifiers
-    "piid": 28,  # Procurement Instrument ID
-    "federal_action_obligation": 29,  # Contract amount
-    # Funding agency
-    "funding_agency_code": 31,
-    "funding_agency_name": 32,
-    "funding_sub_tier_agency_code": 33,
-    "funding_sub_tier_agency_name": 34,
-    # Location
-    "recipient_state_code": 63,  # State abbreviation (e.g., 'NY', 'CA')
-    "recipient_state_name": 64,  # State full name
-    # Performance period
-    "period_of_performance_current_end_date": 70,  # Format: YYYYMMDD
-    "period_of_performance_start_date": 71,  # Format: YYYYMMDD
-    # Additional identifiers
-    "recipient_uei": 96,  # UEI in 12-character format (newer, preferred)
-    "parent_uei": 97,  # Parent organization UEI
-    # Procurement-specific fields (may be NULL for assistance/grants)
-    "cage_code": 98,  # CAGE code (procurement contracts only)
-    "extent_competed": 99,  # Competition type: A&A, CDO, NDO, FSS, etc.
-    "contract_award_type": 100,  # Contract type: A, B, C, D (IDV, BPA, etc.)
-    "referenced_idv_agency_iden": 101,  # Parent IDV identifier
-    "referenced_idv_piid": 102,  # Parent IDV PIID
-    # Note: These fields may be NULL (\N) for assistance/grant transactions
-}
+CANONICAL_RELATION = "rpt.transaction_search"
+FPDS_RELATION = "rpt.transaction_search_fpds"
+REQUIRED_SOURCE_COLUMNS = frozenset(
+    {
+        "is_fpds",
+        "transaction_unique_id",
+        "generated_unique_award_id",
+        "action_date",
+        "federal_action_obligation",
+        "recipient_uei",
+        "recipient_name",
+        "awarding_toptier_agency_name",
+        "awarding_subtier_agency_name",
+        "extent_competed",
+        "research",
+        "naics_code",
+        "product_or_service_code",
+    }
+)
+
+
+class ArchiveSchemaError(RuntimeError):
+    """The dump cannot prove the required USAspending source schema."""
+
+
+class SourceDataError(RuntimeError):
+    """A serialized source row violates a fail-closed extraction invariant."""
+
+
+@dataclass(frozen=True)
+class TransactionSource:
+    member_name: str
+    columns: tuple[str, ...]
+    relation: str
+    fpds_only: bool
+
+
+@dataclass(frozen=True)
+class _TableEntry:
+    dump_id: str
+    schema: str
+    table: str
+
+
+_TABLE_DATA_RE = re.compile(
+    r"^\s*(\d+);\s+\d+\s+\d+\s+TABLE DATA\s+(\S+)\s+(\S+)(?:\s+|$)",
+    re.IGNORECASE,
+)
+_COPY_RE = re.compile(
+    r'COPY\s+(?:ONLY\s+)?(?P<schema>"?[\w]+"?)\.(?P<table>"?[\w]+"?)\s*'
+    r"\((?P<columns>.*?)\)\s+FROM\s+stdin\s*;",
+    re.IGNORECASE | re.DOTALL,
+)
+
+
+def _unquote(value: str) -> str:
+    return value.strip().strip('"').replace('""', '"')
+
+
+def _select_table_entry(toc_text: str, schema_sql: str) -> tuple[_TableEntry, bool]:
+    entries: list[_TableEntry] = []
+    for line in toc_text.splitlines():
+        if match := _TABLE_DATA_RE.match(line):
+            entries.append(_TableEntry(match[1], _unquote(match[2]), _unquote(match[3])))
+
+    leaves = [
+        entry
+        for entry in entries
+        if entry.schema == "rpt" and entry.table == "transaction_search_fpds"
+    ]
+    parents = [
+        entry for entry in entries if entry.schema == "rpt" and entry.table == "transaction_search"
+    ]
+    if len(leaves) > 1:
+        raise ArchiveSchemaError(f"Expected one {FPDS_RELATION} TABLE DATA entry")
+
+    normalized_schema = re.sub(r"\s+", " ", schema_sql.replace('"', "")).lower()
+    if "create table rpt.transaction_search (" not in normalized_schema:
+        raise ArchiveSchemaError(f"Archive schema does not define {CANONICAL_RELATION}")
+    if leaves:
+        partition_pattern = (
+            r"(?:partition of rpt\.transaction_search|attach partition "
+            r"rpt\.transaction_search_fpds).*?for values in\s*\(\s*"
+            r"(?:true|'true'|'t')\s*\)"
+        )
+        if not re.search(partition_pattern, normalized_schema):
+            raise ArchiveSchemaError(
+                f"Archive schema does not prove {FPDS_RELATION} is the TRUE FPDS partition"
+            )
+        return leaves[0], True
+    if len(parents) != 1:
+        raise ArchiveSchemaError(
+            f"Expected one {FPDS_RELATION} or {CANONICAL_RELATION} TABLE DATA entry"
+        )
+    return parents[0], False
+
+
+def _resolve_source(toc_text: str, schema_sql: str, copy_sql: str) -> TransactionSource:
+    entry, fpds_only = _select_table_entry(toc_text, schema_sql)
+    matches = list(_COPY_RE.finditer(copy_sql))
+    if len(matches) != 1:
+        raise ArchiveSchemaError(f"Expected one explicit COPY column list; found {len(matches)}")
+    copy_match = matches[0]
+    copy_schema = _unquote(copy_match["schema"])
+    copy_table = _unquote(copy_match["table"])
+    allowed_tables = {entry.table}
+    if fpds_only:
+        # pg_restore may route a leaf through its partition root.
+        allowed_tables.add("transaction_search")
+    if copy_schema != "rpt" or copy_table not in allowed_tables:
+        raise ArchiveSchemaError(
+            f"TABLE DATA for {entry.schema}.{entry.table} produced unexpected "
+            f"COPY target {copy_schema}.{copy_table}"
+        )
+
+    columns = tuple(_unquote(item) for item in copy_match["columns"].split(","))
+    if not columns or any(not column or re.search(r"\s", column) for column in columns):
+        raise ArchiveSchemaError("COPY list contains an invalid column identifier")
+    if len(columns) != len(set(columns)):
+        raise ArchiveSchemaError("COPY list contains duplicate columns")
+    if missing := sorted(REQUIRED_SOURCE_COLUMNS.difference(columns)):
+        raise ArchiveSchemaError(
+            f"{CANONICAL_RELATION} is missing required columns: {', '.join(missing)}"
+        )
+    return TransactionSource(
+        member_name=f"{entry.dump_id}.dat.gz",
+        columns=columns,
+        relation=f"{entry.schema}.{entry.table}",
+        fpds_only=fpds_only,
+    )
+
+
+def _copy_value(value: str) -> str | None:
+    """Decode the COPY escapes relevant to projected text fields."""
+    if value == r"\N":
+        return None
+    return re.sub(
+        r"\\([bfnrtv\\])",
+        lambda match: {
+            "b": "\b",
+            "f": "\f",
+            "n": "\n",
+            "r": "\r",
+            "t": "\t",
+            "v": "\v",
+            "\\": "\\",
+        }[match[1]],
+        value,
+    )
+
+
+def _pg_bool(value: str | None) -> bool:
+    normalized = value.strip().lower() if value is not None else ""
+    if normalized in {"t", "true", "1"}:
+        return True
+    if normalized in {"f", "false", "0"}:
+        return False
+    raise SourceDataError(f"Invalid or NULL is_fpds value: {value!r}")
 
 
 class ContractExtractor:
@@ -132,6 +233,7 @@ class ContractExtractor:
         }
         self._parent_ids_seen: set[str] = set()
         self._idv_parent_ids_seen: set[str] = set()
+        self.source_provenance: dict[str, str | int] = {}
 
     def _load_vendor_filters(self, filter_file: Path | None) -> dict[str, set[str]]:
         """Load vendor filter sets from JSON file."""
@@ -196,7 +298,7 @@ class ContractExtractor:
         # Default to False for safety (only include confirmed contracts)
         return False
 
-    def _parse_competition_type(self, extent_competed: str) -> CompetitionType:
+    def _parse_competition_type(self, extent_competed: str | None) -> CompetitionType:
         """
         Parse USAspending extent_competed field to CompetitionType enum.
 
@@ -232,192 +334,146 @@ class ContractExtractor:
 
         return CompetitionType.OTHER
 
-    def _matches_vendor_filter(self, row_data: list[str]) -> bool:
-        """
-        Check if transaction matches SBIR vendor filters.
-
-        Args:
-            row_data: List of column values from tab-delimited row
-
-        Returns:
-            True if vendor matches any filter
-        """
-        if not self.vendor_filters["uei"] and not self.vendor_filters["duns"]:
-            # No filters loaded, accept all
+    def _matches_vendor_filter(self, row: Mapping[str, str | None]) -> bool:
+        """Return whether a named transaction row matches the vendor frame."""
+        if not any(self.vendor_filters.values()):
             return True
+        uei = row.get("recipient_uei")
+        if uei and uei.strip() in self.vendor_filters["uei"]:
+            return True
+        legacy_id = row.get("recipient_unique_id")
+        if legacy_id and legacy_id.strip() in (
+            self.vendor_filters["uei"] | self.vendor_filters["duns"]
+        ):
+            return True
+        name = row.get("recipient_name")
+        return bool(name and name.strip().upper() in self.vendor_filters["company_names"])
 
+    def _parse_contract_row(self, row: Mapping[str, str | None]) -> FederalContract:
+        """Build a FederalContract using source field names, never fixed indexes."""
+        from sbir_etl.utils.date_utils import parse_date
+
+        transaction_id = row.get("transaction_unique_id")
+        award_id = row.get("generated_unique_award_id")
+        if not transaction_id or not award_id:
+            missing = "transaction_unique_id" if not transaction_id else "generated_unique_award_id"
+            raise SourceDataError(f"Matched FPDS row is missing {missing}")
+
+        action_date = parse_date(row.get("action_date"), allow_8digit=True, strict=False)
+        start_date = parse_date(
+            row.get("period_of_performance_start_date"), allow_8digit=True, strict=False
+        )
+        end_date = parse_date(
+            row.get("period_of_performance_current_end_date"), allow_8digit=True, strict=False
+        )
+        start_date = start_date or action_date
+        obligation_text = row.get("federal_action_obligation")
         try:
-            # Check UEI/DUNS in column 10 (recipient_unique_id)
-            # This column contains UEI for newer records, DUNS for older records
-            if len(row_data) > 10:
-                unique_id = row_data[10].strip() if row_data[10] else ""
-                if unique_id and unique_id != "\\N":
-                    # Try matching as UEI first
-                    if unique_id in self.vendor_filters["uei"]:
-                        return True
-                    # Try matching as DUNS
-                    if unique_id in self.vendor_filters["duns"]:
-                        return True
+            obligation = float(obligation_text) if obligation_text else None
+        except (TypeError, ValueError):
+            obligation = None
 
-            # Fallback: check company name (fuzzy matching would be expensive)
-            if len(row_data) > 9:
-                company_name = row_data[9].strip().upper() if row_data[9] else ""
-                if company_name and company_name in self.vendor_filters["company_names"]:
-                    return True
+        recipient_uei = row.get("recipient_uei")
+        legacy_id = row.get("recipient_unique_id")
+        vendor_uei = recipient_uei if recipient_uei and len(recipient_uei) == 12 else None
+        if not vendor_uei and legacy_id and len(legacy_id) == 12:
+            vendor_uei = legacy_id
+        vendor_duns = (
+            legacy_id if legacy_id and len(legacy_id) == 9 and legacy_id.isdigit() else None
+        )
 
-        except (IndexError, AttributeError):
-            pass
+        parent_id = row.get("parent_award_id") or row.get("referenced_idv_piid")
+        parent_agency = row.get("referenced_idv_agency_iden")
+        award_type = row.get("contract_award_type")
+        relationship_type = "standalone"
+        if parent_id:
+            relationship_type = "child_of_idv"
+            self.stats["parent_relationships"] += 1
+            self.stats["child_relationships"] += 1
+            self._parent_ids_seen.add(parent_id)
+        elif award_type and (
+            award_type.strip().upper().startswith("IDV")
+            or award_type.strip().upper() in {"BPA", "BOA", "IDIQ"}
+        ):
+            relationship_type = "idv_parent"
+            self.stats["idv_parents"] += 1
 
-        return False
-
-    def _parse_contract_row(self, row_data: list[str]) -> FederalContract | None:
-        """
-        Parse tab-delimited row into FederalContract model.
-
-        Args:
-            row_data: List of column values
-
-        Returns:
-            FederalContract instance or None if parsing fails
-        """
-        try:
-            # Helper to safely get column value
-            def get_col(idx: int, default: str | None = None) -> str | None:
-                try:
-                    val = (
-                        row_data[idx].strip() if idx < len(row_data) and row_data[idx] else default
-                    )
-                    return val if val and val != "\\N" else default
-                except (IndexError, AttributeError):
-                    return default
-
-            # Parse competition type from extent_competed field
-            extent_competed = get_col(99)  # Column 99: extent_competed
-            competition_type = (
-                self._parse_competition_type(extent_competed)
-                if extent_competed
-                else CompetitionType.OTHER
-            )
-
-            # Parse dates using centralized utility with 8-digit format support
-            from sbir_etl.utils.date_utils import parse_date
-
-            action_date = parse_date(get_col(2), allow_8digit=True, strict=False)
-            start_date = parse_date(
-                get_col(71), allow_8digit=True, strict=False
-            )  # period_of_performance_start_date
-            end_date = parse_date(
-                get_col(70), allow_8digit=True, strict=False
-            )  # period_of_performance_current_end_date
-
-            # Fallback to action_date if start_date missing
-            if not start_date:
-                start_date = action_date
-
-            # Parse amount
-            obligation_str = get_col(29, "0")  # Column 29 is federal_action_obligation
-            try:
-                obligation_amount = float(obligation_str) if obligation_str else 0.0
-            except (ValueError, TypeError):
-                obligation_amount = 0.0
-
-            # Get vendor identifiers
-            # Priority: column 96 (12-char UEI) > column 10 (legacy UEI/DUNS)
-            uei_primary = get_col(96)  # Preferred 12-character UEI format
-            recipient_id_legacy = get_col(10)  # Legacy format (UEI or DUNS)
-            parent_uei = get_col(97)  # Parent organization UEI
-            cage_code = get_col(98)  # CAGE code (procurement contracts only)
-
-            # Determine best UEI/DUNS values
-            vendor_uei = None
-            vendor_duns = None
-
-            if uei_primary and len(uei_primary) == 12:
-                vendor_uei = uei_primary
-            elif recipient_id_legacy:
-                if len(recipient_id_legacy) == 12:
-                    vendor_uei = recipient_id_legacy
-                elif len(recipient_id_legacy) == 9 and recipient_id_legacy.isdigit():
-                    vendor_duns = recipient_id_legacy
-
-            # Get parent contract/IDV information for handling relationships
-            parent_idv_piid = get_col(102)  # Referenced IDV PIID
-            contract_award_type = get_col(100)  # Contract type (A, B, C, D, IDV-*)
-            parent_idv_agency = get_col(101)  # Referenced IDV agency identifier
-
-            relationship_type = "standalone"
-            if parent_idv_piid:
-                relationship_type = "child_of_idv"
-                self.stats["parent_relationships"] += 1
-                self.stats["child_relationships"] += 1
-                self._parent_ids_seen.add(parent_idv_piid)
-            elif contract_award_type:
-                award_type_normalized = contract_award_type.strip().upper()
-                if award_type_normalized.startswith("IDV") or award_type_normalized in {
-                    "BPA",
-                    "BOA",
-                    "IDIQ",
-                }:
-                    relationship_type = "idv_parent"
-                    self.stats["idv_parents"] += 1
-
-            # Create FederalContract
-            contract_id_value = get_col(28, get_col(1, f"unknown_{row_data[0]}"))  # PIID (col 28)
-            contract = FederalContract(
-                contract_id=contract_id_value,
-                agency=get_col(12),  # awarding_agency_name
-                sub_agency=get_col(14),  # awarding_sub_tier_agency_name
-                vendor_name=get_col(9),  # recipient_name
-                vendor_uei=vendor_uei,
-                vendor_cage=cage_code,  # CAGE code from column 98
-                vendor_duns=vendor_duns,
-                action_date=action_date,  # transaction action_date (column 2)
-                start_date=start_date,
-                end_date=end_date,
-                obligation_amount=obligation_amount,
-                is_deobligation=(obligation_amount < 0),  # Flag negative amounts
-                competition_type=competition_type,
-                description=get_col(7),  # award_description
-                parent_contract_id=parent_idv_piid,
-                parent_contract_agency=parent_idv_agency,
-                contract_award_type=contract_award_type,
-                metadata={
-                    "transaction_id": get_col(0),
-                    "award_id": get_col(1),
-                    "modification_number": get_col(8),
-                    "action_date": action_date.isoformat() if action_date else None,
-                    "funding_agency": get_col(32),
-                    "parent_uei": parent_uei,
-                    "recipient_state": get_col(63),  # State code
-                    "business_categories": get_col(17),  # Business type categories
-                    "extent_competed": extent_competed,  # Raw competition field
-                    "contract_award_type": contract_award_type,  # Contract type
-                    "parent_idv_piid": parent_idv_piid,  # Parent IDV for task orders
-                    "referenced_idv_agency": parent_idv_agency,
-                    "parent_relationship_type": relationship_type,
-                },
-            )
-            if relationship_type == "idv_parent" and contract.contract_id:
-                self._idv_parent_ids_seen.add(contract.contract_id)
-
-            return contract
-
-        except (ValidationError, Exception) as e:
-            logger.debug(f"Failed to parse contract row: {e}")
-            return None
+        extent_competed = row.get("extent_competed")
+        contract = FederalContract(
+            contract_id=row.get("piid") or award_id,
+            transaction_unique_id=transaction_id,
+            generated_unique_award_id=award_id,
+            agency=row.get("awarding_toptier_agency_name"),
+            sub_agency=row.get("awarding_subtier_agency_name"),
+            vendor_name=row.get("recipient_name"),
+            vendor_uei=vendor_uei,
+            vendor_cage=row.get("cage_code"),
+            vendor_duns=vendor_duns,
+            action_date=action_date,
+            start_date=start_date,
+            end_date=end_date,
+            obligation_amount=obligation,
+            is_deobligation=obligation is not None and obligation < 0,
+            competition_type=self._parse_competition_type(extent_competed),
+            description=row.get("transaction_description"),
+            parent_contract_id=parent_id,
+            parent_contract_agency=parent_agency,
+            contract_award_type=award_type,
+            research=row.get("research"),
+            naics_code=row.get("naics_code"),
+            product_or_service_code=row.get("product_or_service_code"),
+            metadata={
+                "transaction_id": transaction_id,
+                "award_id": award_id,
+                "modification_number": row.get("modification_number"),
+                "action_date": action_date.isoformat() if action_date else None,
+                "funding_agency": row.get("funding_toptier_agency_name"),
+                "parent_uei": row.get("parent_uei"),
+                "recipient_state": row.get("recipient_location_state_code"),
+                "business_categories": row.get("business_categories"),
+                "extent_competed": extent_competed,
+                "contract_award_type": award_type,
+                "parent_idv_piid": parent_id,
+                "referenced_idv_agency": parent_agency,
+                "parent_relationship_type": relationship_type,
+                "research": row.get("research"),
+                "naics_code": row.get("naics_code"),
+                "product_or_service_code": row.get("product_or_service_code"),
+            },
+        )
+        if relationship_type == "idv_parent":
+            self._idv_parent_ids_seen.add(contract.contract_id)
+        return contract
 
     def _parse_lines(
         self,
         lines: Iterable[str],
-        source_name: str = "stream",
+        source_name: str,
+        columns: Sequence[str],
+        *,
+        fpds_only: bool,
     ) -> Iterator[FederalContract]:
-        """Parse tab-delimited transaction_normalized lines into FederalContracts.
-
-        Transport-agnostic core shared by the local-file and remote-stream readers:
-        it consumes any iterable of text lines (a gzip file handle, a decompressed
-        remote member, a test fixture) and applies the same type / vendor filtering
-        and row parsing.
-        """
+        """Parse rows with a name-to-index projection derived from the COPY list."""
+        if missing := sorted(REQUIRED_SOURCE_COLUMNS.difference(columns)):
+            raise ArchiveSchemaError(f"Verified source columns missing: {', '.join(missing)}")
+        projected_names = REQUIRED_SOURCE_COLUMNS | {
+            "recipient_unique_id",
+            "piid",
+            "period_of_performance_start_date",
+            "period_of_performance_current_end_date",
+            "cage_code",
+            "parent_award_id",
+            "referenced_idv_piid",
+            "referenced_idv_agency_iden",
+            "contract_award_type",
+            "transaction_description",
+            "modification_number",
+            "funding_toptier_agency_name",
+            "parent_uei",
+            "recipient_location_state_code",
+            "business_categories",
+        }
+        indexes = {name: index for index, name in enumerate(columns) if name in projected_names}
         for line_num, line in enumerate(lines, 1):
             self.stats["records_scanned"] += 1
 
@@ -428,119 +484,163 @@ class ContractExtractor:
                     f"found {self.stats['records_extracted']} contracts"
                 )
 
-            # Split tab-delimited row
-            row_data = line.strip().split("\t")
-
-            # Check if it's a contract type (columns 4 and 6)
-            if len(row_data) > 5:
-                type_code = row_data[3]  # Column 4: type
-                award_type_code = row_data[5]  # Column 6: award_type_code
-                if not self._is_contract_type(type_code, award_type_code):
-                    continue
-
-                self.stats["contracts_found"] += 1
-
-            # Check vendor filter
-            if not self._matches_vendor_filter(row_data):
+            values = line.rstrip("\r\n").split("\t")
+            if len(values) != len(columns):
+                raise SourceDataError(
+                    f"{source_name} row {line_num} has {len(values)} fields; "
+                    f"COPY declares {len(columns)}"
+                )
+            row = {name: _copy_value(values[index]) for name, index in indexes.items()}
+            is_fpds = _pg_bool(row["is_fpds"])
+            if fpds_only and not is_fpds:
+                raise SourceDataError(f"Non-FPDS row found in {FPDS_RELATION}")
+            if not is_fpds:
                 continue
-
+            self.stats["contracts_found"] += 1
+            if not self._matches_vendor_filter(row):
+                continue
             self.stats["vendor_matches"] += 1
+            contract = self._parse_contract_row(row)
+            self.stats["records_extracted"] += 1
+            yield contract
 
-            # Parse into FederalContract
-            contract = self._parse_contract_row(row_data)
-            if contract:
-                self.stats["records_extracted"] += 1
-                yield contract
+    @staticmethod
+    def _run_pg_restore(dump_dir: Path, *arguments: str) -> str:
+        executable = shutil.which("pg_restore")
+        if executable is None:
+            raise ArchiveSchemaError(
+                "pg_restore is required to verify the USAspending dump; "
+                "refusing positional extraction"
+            )
+        try:
+            result = subprocess.run(
+                [executable, *arguments, str(dump_dir)],
+                check=True,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+            )
+        except subprocess.CalledProcessError as error:
+            detail = error.stderr.strip() or error.stdout.strip() or str(error)
+            raise ArchiveSchemaError(
+                f"pg_restore could not inspect {dump_dir}: {detail}"
+            ) from error
+        return result.stdout
+
+    @classmethod
+    def _restore_copy_statement(cls, toc_file: Path, entry: _TableEntry) -> str:
+        """Render COPY metadata against an empty selected member, never source rows."""
+        with tempfile.TemporaryDirectory(prefix="usaspending-copy-") as temp_name:
+            archive_dir = Path(temp_name) / "archive"
+            archive_dir.mkdir()
+            shutil.copyfile(toc_file, archive_dir / "toc.dat")
+            with gzip.open(archive_dir / f"{entry.dump_id}.dat.gz", "wb"):
+                pass
+            return cls._run_pg_restore(
+                archive_dir,
+                "--data-only",
+                f"--schema={entry.schema}",
+                f"--table={entry.table}",
+                "--strict-names",
+                "--file=-",
+            )
+
+    @staticmethod
+    def _provenance(source: TransactionSource) -> dict[str, str | int]:
+        serialized = json.dumps(source.columns, separators=(",", ":"))
+        return {
+            "canonical_table": CANONICAL_RELATION,
+            "physical_table": source.relation,
+            "member": source.member_name,
+            "ordered_columns_sha256": hashlib.sha256(serialized.encode()).hexdigest(),
+            "column_count": len(source.columns),
+        }
+
+    @classmethod
+    def _resolve_local_source(cls, dump_dir: Path) -> TransactionSource:
+        toc_file = dump_dir / "toc.dat"
+        if not toc_file.is_file():
+            raise ArchiveSchemaError(f"USAspending directory archive has no toc.dat: {dump_dir}")
+        toc_text = cls._run_pg_restore(dump_dir, "--list")
+        schema_sql = cls._run_pg_restore(dump_dir, "--schema-only", "--file=-")
+        entry, _ = _select_table_entry(toc_text, schema_sql)
+        copy_sql = cls._restore_copy_statement(toc_file, entry)
+        source = _resolve_source(toc_text, schema_sql, copy_sql)
+        if not (dump_dir / source.member_name).is_file():
+            raise ArchiveSchemaError(
+                f"TOC selected {source.relation}, but {source.member_name} is absent"
+            )
+        return source
+
+    @classmethod
+    def _resolve_remote_source(cls, zip_url: str) -> TransactionSource:
+        try:
+            from remotezip import RemoteZip
+        except ImportError as error:  # pragma: no cover - import guard
+            raise ImportError(
+                "Remote zip streaming requires the optional 'streaming' extra "
+                "(uv sync --extra streaming / pip install 'sbir-etl[streaming]')."
+            ) from error
+
+        with RemoteZip(zip_url) as remote_zip:
+            names = [info.filename for info in remote_zip.infolist()]
+            toc_members = [name for name in names if PurePosixPath(name).name == "toc.dat"]
+            if len(toc_members) != 1:
+                raise ArchiveSchemaError(
+                    f"Remote archive must contain exactly one toc.dat; found {len(toc_members)}"
+                )
+            toc_member = toc_members[0]
+            with tempfile.TemporaryDirectory(prefix="usaspending-toc-") as temp_name:
+                archive_dir = Path(temp_name) / "archive"
+                archive_dir.mkdir()
+                with (
+                    remote_zip.open(toc_member) as source_file,
+                    open(archive_dir / "toc.dat", "wb") as target_file,
+                ):
+                    shutil.copyfileobj(source_file, target_file)
+                toc_text = cls._run_pg_restore(archive_dir, "--list")
+                schema_sql = cls._run_pg_restore(archive_dir, "--schema-only", "--file=-")
+                entry, _ = _select_table_entry(toc_text, schema_sql)
+                copy_sql = cls._restore_copy_statement(archive_dir / "toc.dat", entry)
+                source = _resolve_source(toc_text, schema_sql, copy_sql)
+
+            member = str(PurePosixPath(toc_member).parent / source.member_name)
+            if member not in names:
+                raise ArchiveSchemaError(f"TOC selected {source.relation}, but {member} is absent")
+            return replace(source, member_name=member)
 
     def stream_dat_gz_file(
         self,
         dat_file: Path,
+        columns: Sequence[str],
+        *,
+        fpds_only: bool,
     ) -> Iterator[FederalContract]:
-        """
-        Stream and parse a single local .dat.gz file.
-
-        Args:
-            dat_file: Path to .dat.gz file
-
-        Yields:
-            FederalContract instances that match vendor filters
-        """
+        """Stream a local member using its verified COPY column order."""
         logger.info(f"Processing {dat_file.name}...")
         with gzip.open(dat_file, "rt", encoding="utf-8", errors="replace") as f:
-            yield from self._parse_lines(f, dat_file.name)
+            yield from self._parse_lines(f, dat_file.name, columns, fpds_only=fpds_only)
         logger.info(
             f"Completed {dat_file.name}: {self.stats['records_extracted']} contracts extracted"
         )
 
-    @staticmethod
-    def find_transaction_member(zip_url: str) -> str:
-        """Probe a remote USAspending DB zip for the transaction_normalized member.
-
-        The dump's per-table file id (e.g. ``5530.dat.gz``) is a PostgreSQL OID and
-        varies between dumps. Open each ``.dat.gz`` (largest first), read one row,
-        and return the first member whose layout matches the
-        ``transaction_normalized`` signature: ≥100 tab-separated columns, col[2] is
-        an 8-digit YYYYMMDD action_date, and col[3] is one of {A, B, C, D, \\N}.
-
-        Raises:
-            ImportError: if ``remotezip`` (the ``streaming`` extra) is not installed.
-            RuntimeError: if no member matches the signature.
-        """
-        try:
-            from remotezip import RemoteZip
-        except ImportError as e:  # pragma: no cover - exercised via import guard
-            raise ImportError(
-                "Remote zip streaming requires the optional 'streaming' extra "
-                "(uv sync --extra streaming / pip install 'sbir-etl[streaming]')."
-            ) from e
-
-        valid_type_codes = {"A", "B", "C", "D", "\\N"}
-
-        with RemoteZip(zip_url) as remote_zip:
-            members = sorted(
-                (i for i in remote_zip.infolist() if i.filename.endswith(".dat.gz")),
-                key=lambda i: -i.file_size,
-            )
-            for info in members:
-                try:
-                    with (
-                        remote_zip.open(info.filename) as raw,
-                        gzip.GzipFile(fileobj=raw) as gz,
-                    ):
-                        first = gz.readline()
-                except Exception as exc:  # pragma: no cover - defensive
-                    logger.debug(f"Skipping {info.filename}: {exc}")
-                    continue
-                if not first:
-                    continue
-                cols = first.decode("utf-8", errors="replace").rstrip("\n").split("\t")
-                if len(cols) < 100:
-                    continue
-                col2, col3 = cols[2], cols[3]
-                if len(col2) != 8 or not col2.isdigit():
-                    continue
-                if col3 not in valid_type_codes:
-                    continue
-                logger.info(
-                    f"Auto-detected transaction member: {info.filename} "
-                    f"(ncols={len(cols)}, action_date={col2}, type={col3!r})"
-                )
-                return info.filename
-
-        raise RuntimeError(
-            f"No .dat.gz member in {zip_url} matched the transaction_normalized "
-            "signature (≥100 cols, 8-digit col[2], col[3] in A/B/C/D/\\N)."
-        )
+    @classmethod
+    def find_transaction_member(cls, zip_url: str) -> str:
+        """Return the member selected from archive-owned TOC and COPY metadata."""
+        return cls._resolve_remote_source(zip_url).member_name
 
     def stream_remote_zip_member(
         self,
         zip_url: str,
         member_name: str,
+        columns: Sequence[str],
+        *,
+        fpds_only: bool,
     ) -> Iterator[FederalContract]:
         """Stream-parse one ``.dat.gz`` member directly from a remote ``.zip``.
 
         Uses HTTP Range requests (via ``remotezip``) to read **only** the bytes of
-        ``member_name`` (e.g. the ``transaction_normalized`` table) out of the
+        verified ``transaction_search`` member out of the
         USAspending database zip — never downloading the full ~217GB archive, and
         without staging it on local disk. The member is itself gzip-compressed
         (``.dat.gz``), so it is decompressed on the fly as bytes arrive.
@@ -572,7 +672,7 @@ class ContractExtractor:
             gzip.GzipFile(fileobj=member) as gz,
             io.TextIOWrapper(gz, encoding="utf-8", errors="replace") as text,
         ):
-            yield from self._parse_lines(text, member_name)
+            yield from self._parse_lines(text, member_name, columns, fpds_only=fpds_only)
         logger.info(
             f"Completed streaming {member_name}: "
             f"{self.stats['records_extracted']} contracts extracted"
@@ -590,7 +690,7 @@ class ContractExtractor:
         Args:
             dump_dir: Path to pruned_data_store_api_dump directory
             output_file: Path to output Parquet file
-            table_files: Specific .dat.gz files to process (default: largest file)
+            table_files: Optional configured member; it must match the TOC result.
 
         Returns:
             Number of contracts extracted
@@ -599,25 +699,21 @@ class ContractExtractor:
         if not dump_dir.exists():
             raise FileNotFoundError(f"Dump directory not found: {dump_dir}")
 
-        # Find data files
-        if not table_files:
-            # Find largest .dat.gz file (likely transaction_normalized)
-            dat_files = sorted(
-                dump_dir.glob("*.dat.gz"), key=lambda f: f.stat().st_size, reverse=True
+        source = self._resolve_local_source(dump_dir)
+        self.source_provenance = self._provenance(source)
+        if table_files is not None and [Path(name).name for name in table_files] != [
+            source.member_name
+        ]:
+            raise ArchiveSchemaError(
+                f"Configured table_files {table_files!r} do not match TOC-selected "
+                f"member {source.member_name!r}"
             )
-            if not dat_files:
-                raise FileNotFoundError(f"No .dat.gz files found in {dump_dir}")
-            table_files = [dat_files[0].name]  # Use only the largest file
-            logger.info(
-                f"Auto-selected largest file: {table_files[0]} ({dat_files[0].stat().st_size / 1e9:.1f} GB)"
-            )
-
-        # Scan each table file (streaming) and write the filtered contracts.
-        def _stream_all() -> Iterator[FederalContract]:
-            for table_file in table_files:
-                yield from self.stream_dat_gz_file(dump_dir / table_file)
-
-        return self._collect_and_write(_stream_all(), output_file)
+        contracts = self.stream_dat_gz_file(
+            dump_dir / source.member_name,
+            source.columns,
+            fpds_only=source.fpds_only,
+        )
+        return self._collect_and_write(contracts, output_file)
 
     def extract_from_remote_zip(
         self,
@@ -627,26 +723,32 @@ class ContractExtractor:
     ) -> int:
         """Extract SBIR-relevant contracts by streaming one member from a remote zip.
 
-        The remote counterpart to :meth:`extract_from_dump`: streams ``member_name``
-        (the ``transaction_normalized`` ``.dat.gz``) straight from ``zip_url`` over
-        HTTP range, applies the same vendor/type filtering, and writes the filtered
-        Parquet. No full ~217GB download and nothing staged on local disk.
+        The remote counterpart to :meth:`extract_from_dump`: verifies the archive
+        TOC and COPY metadata, then streams only the selected FPDS member.
 
         Args:
             zip_url: ``https://`` URL of the USAspending database zip.
-            member_name: Path of the ``.dat.gz`` member inside the zip. If ``None``,
-                :meth:`find_transaction_member` probes the zip and picks the member
-                whose layout matches transaction_normalized.
+            member_name: Optional configured member; it must match the TOC result.
             output_file: Parquet output path.
 
         Returns:
             Number of contracts extracted.
         """
-        output_file = Path(output_file)
-        if member_name is None:
-            member_name = self.find_transaction_member(zip_url)
+        source = self._resolve_remote_source(zip_url)
+        self.source_provenance = self._provenance(source)
+        if member_name is not None and member_name != source.member_name:
+            raise ArchiveSchemaError(
+                f"Requested member {member_name!r} does not match TOC-selected "
+                f"member {source.member_name!r}"
+            )
         return self._collect_and_write(
-            self.stream_remote_zip_member(zip_url, member_name), output_file
+            self.stream_remote_zip_member(
+                zip_url,
+                source.member_name,
+                source.columns,
+                fpds_only=source.fpds_only,
+            ),
+            Path(output_file),
         )
 
     def _collect_and_write(
@@ -667,15 +769,28 @@ class ContractExtractor:
             if len(rows) % self.batch_size == 0:
                 logger.info(f"Accumulated {len(rows):,} matched contracts")
 
-        if rows:
-            logger.info(f"Writing {len(rows):,} contracts to {output_file}")
-            from sbir_etl.utils.data.file_io import save_dataframe_parquet
+        from sbir_etl.utils.data.file_io import save_dataframe_parquet
 
-            df = pd.DataFrame(rows)
-            save_dataframe_parquet(df, output_file, index=False, compression="snappy")
+        output_file = Path(output_file)
+        df = (
+            pd.DataFrame(rows) if rows else pd.DataFrame(columns=list(FederalContract.model_fields))
+        )
+        temp_file = output_file.with_name(f".{output_file.stem}.tmp{output_file.suffix}")
+        try:
+            save_dataframe_parquet(
+                df,
+                temp_file,
+                index=False,
+                compression="snappy",
+                fallback_to_ndjson=False,
+            )
+            temp_file.replace(output_file)
+        finally:
+            temp_file.unlink(missing_ok=True)
+        if rows:
             logger.success(f"Contracts saved to {output_file}")
         else:
-            logger.warning("No contracts extracted")
+            logger.warning(f"Wrote empty contracts artifact to replace stale output: {output_file}")
 
         # Log statistics
         self.stats["unique_parent_ids"] = len(self._parent_ids_seen)
@@ -690,4 +805,4 @@ class ContractExtractor:
         return len(rows)
 
 
-__all__ = ["ContractExtractor"]
+__all__ = ["ArchiveSchemaError", "ContractExtractor", "SourceDataError", "TransactionSource"]

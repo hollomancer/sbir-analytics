@@ -1,194 +1,109 @@
 # Federal Contracts Extractor
 
-This module extracts federal contract data from USAspending.gov PostgreSQL database dumps for SBIR Phase III transition detection.
+`ContractExtractor` streams federal procurement transactions from a USAspending
+PostgreSQL directory archive and retains rows matching the configured SBIR vendor frame.
+It produces the canonical `FederalContract` parquet used by transition assets.
 
-## Overview
+## Authoritative source
 
-The `ContractExtractor` processes the `transaction_normalized` table from USAspending dumps, filtering for:
+The contract source is `rpt.transaction_search_fpds`, the `is_fpds = TRUE` physical
+partition of `rpt.transaction_search`. If an older archive stores data on the unpartitioned
+parent, the extractor reads the parent and applies the same `is_fpds` gate row by row. It
+never scans the FABS assistance partition.
 
-1. **Contract transactions only** (type codes 'A' and 'B')
-2. **SBIR vendor matches** (by UEI, DUNS, or company name)
+USAspending's official data dictionary maps:
 
-## Key Features
+- `research_code` to `transaction_fpds.research`, with `SR1`/`SR2`/`SR3` and
+  `ST1`/`ST2`/`ST3` values;
+- `naics_code` to `transaction_fpds.naics`; and
+- `product_or_service_code` to `transaction_fpds.product_or_service_code`.
 
-- **Streaming processing**: Memory-efficient handling of 200GB+ database dumps
-- **Vendor filtering**: Only extracts contracts for ~37K SBIR awardees
-- **Batch processing**: Configurable batch size (default 10K records)
-- **Deobligation handling**: Preserves negative obligation amounts (see ADR-001)
+See the [USAspending data dictionary](https://api.usaspending.gov/api/v2/references/data_dictionary/)
+and the official
+[`TransactionSearch` model](https://github.com/fedspendingtransparency/usaspending-api/blob/master/usaspending_api/search/models/transaction_search.py).
 
-## USAspending Data Structure
+## Schema verification
 
-### Transaction Types
+PostgreSQL directory-archive member numbers change between snapshots. The extractor does
+not guess a member from file size, row shape, a historical number, or Django model order.
+It instead:
 
-The `type` field (column 4, index 3) in transaction_normalized:
+1. runs `pg_restore --list` against `toc.dat` and resolves the unique FPDS `TABLE DATA`
+   entry;
+2. verifies the FPDS partition relationship from archive schema metadata;
+3. obtains the exact serialized field order from the archive's explicit `COPY (...)`
+   statement using a metadata-only restore; and
+4. validates all required fields before reading any transaction rows.
 
-- `'A'` - Contract (procurement) ✓ **WE EXTRACT THIS**
-- `'B'` - IDV Contract (Indefinite Delivery Vehicle) ✓ **WE EXTRACT THIS**
-- `'C'` - Grant (NOT a contract)
-- `'D'` - Direct Payment (NOT a contract)
-- `'02'-'11'` - Financial assistance (grants, loans, insurance)
+Row width is checked against the verified `COPY` list. A schema mismatch, missing member,
+ambiguous table entry, malformed FPDS gate, or missing stable key fails extraction. There
+is no positional fallback.
 
-### Column Mapping
+`pg_restore` is therefore a runtime prerequisite. Debian images install it through
+`postgresql-client`. On macOS with Homebrew's keg-only `libpq`, add
+`$(brew --prefix libpq)/bin` to `PATH`.
 
-Based on observed structure of file `5530.dat.gz`:
+## Preserved census fields
 
-| Column | Field | Notes |
-|--------|-------|-------|
-| 0 | transaction_id | Unique transaction ID |
-| 1 | generated_unique_award_id | Award identifier |
-| 2 | action_date | Format: YYYYMMDD |
-| 3 | **type** | **'A'=Contract/Assistance, 'B'=IDV/Coop Agreement** |
-| 4 | action_type | New, Revision, Continuation, etc. |
-| 9 | recipient_name | Vendor name |
-| 10 | recipient_unique_id | Legacy UEI (12 chars) or DUNS (9 digits) |
-| 12 | awarding_agency_name | Agency |
-| 14 | awarding_sub_tier_agency_name | Sub-agency |
-| 17 | business_categories | Array (e.g., {higher_education,...}) |
-| 28 | piid | Procurement Instrument ID |
-| 29 | federal_action_obligation | **Amount (can be negative)** |
-| 63 | recipient_state_code | State abbreviation (NY, CA, etc.) |
-| 64 | recipient_state_name | State full name |
-| 70 | period_of_performance_current_end_date | End date (YYYYMMDD) |
-| 71 | period_of_performance_start_date | Start date (YYYYMMDD) |
-| 96 | **recipient_uei** | **Preferred 12-char UEI format** |
-| 97 | parent_uei | Parent organization UEI |
+The parquet carries these source values at top level:
 
-## Negative Obligation Amounts
+- `transaction_unique_id` — stable transaction key;
+- `generated_unique_award_id` — stable contract grouping key;
+- `research` — raw FPDS research code;
+- `naics_code` — raw transaction NAICS;
+- `product_or_service_code` — raw transaction PSC; and
+- signed `obligation_amount`, including genuine zeroes and deobligations.
 
-**Important**: The `obligation_amount` field can be negative, representing deobligations (contract reductions).
-
-- **Frequency**: ~0.03% of contract transactions
-- **Meaning**: Contract modifications that reduce obligated funds
-- **Handling**: Preserved as negative values; `is_deobligation=True` flag set
-
-See [ADR-001: Allow Negative Obligation Amounts](../../docs/decisions/ADR-001-negative-obligations.md) for the decision rationale.
-
-### Working with Deobligations
-
-```python
-
-## Example: Get all contract activity (including deobligations)
-
-all_contracts = extractor.extract_from_dump(...)
-
-## Example: Filter positive obligations only
-
-positive_contracts = [c for c in contracts if not c.is_deobligation]
-
-## Example: Calculate net contract value
-
-net_value = sum(c.obligation_amount for c in contracts)
-
-## Example: Get contract count regardless of modifications
-
-contract_count = len(contracts)
-```
+No `sbir_phase` value is inferred from `research`. Missing or malformed obligations remain
+null so downstream census validation can fail explicitly; they are never converted to
+zero.
 
 ## Usage
 
-### Basic Extraction
-
 ```python
 from pathlib import Path
+
 from sbir_etl.extractors.contract_extractor import ContractExtractor
 
-## Initialize with vendor filters
-
 extractor = ContractExtractor(
-    vendor_filter_file=Path("sbir_vendor_filters.json"),
-    batch_size=10000
+    vendor_filter_file=Path("data/transition/sbir_vendor_filters.json"),
+    batch_size=10_000,
 )
-
-## Extract from dump
-
-num_contracts = extractor.extract_from_dump(
-    dump_dir=Path("/path/to/pruned_data_store_api_dump"),
-    output_file=Path("contracts.parquet"),
-    table_files=["5530.dat.gz"]  # transaction_normalized table
+rows = extractor.extract_from_dump(
+    dump_dir=Path("data/transition/pruned_data_store_api_dump"),
+    output_file=Path("data/transition/contracts_ingestion.parquet"),
 )
-
-print(f"Extracted {num_contracts} contracts")
+print(rows)
+print(extractor.source_provenance)
 ```
 
-### Vendor Filter Format
+When `table_files` is configured for selective S3 synchronization, it must name exactly
+the member resolved from the archive TOC. A mismatch fails instead of silently reading a
+different table.
+
+## Vendor frame
+
+The filter JSON supports UEI, legacy DUNS, and exact normalized company names:
 
 ```json
 {
-  "uei": ["UEI1234567890", "UEI9876543210"],
-  "duns": ["123456789", "987654321"],
-  "company_names": ["ACME CORPORATION", "TECH INNOVATIONS INC"]
+  "uei": ["UEI123456789"],
+  "duns": ["123456789"],
+  "company_names": ["ACME CORPORATION"]
 }
 ```
 
-## Performance
+UEI is preferred. Name matching remains an ingestion compatibility fallback; the Phase III
+census pair universe itself is still an exact normalized UEI join.
 
-On external SSD (USB 3.0):
+## Output and cache integrity
 
-- **Processing speed**: ~100,000 records/second
-- **Subset (17GB)**: ~2-3 minutes for full extraction
-- **Full database (200GB)**: ~30-40 minutes (estimated)
+Writes are atomic, including an empty schema-bearing parquet when no vendors match, so a
+refresh cannot retain stale rows. The Dagster producer records the table/member, ordered
+column fingerprint, dump-TOC fingerprint, vendor-frame fingerprint, and parquet checksum
+in the adjacent checks manifest. Cache reuse requires those values to match.
 
-## Output Format
-
-Parquet file with columns:
-
-- contract_id (str)
-- agency (str)
-- sub_agency (str)
-- vendor_name (str)
-- vendor_uei (str)
-- vendor_cage (str)
-- vendor_duns (str)
-- start_date (date)
-- end_date (date)
-- obligation_amount (float) - **Can be negative**
-- is_deobligation (bool) - **True if negative**
-- competition_type (str)
-- description (str)
-- metadata (json)
-
-## Known Limitations
-
-### 1. **Mixed Transaction Types**
-
-The `transaction_normalized` table contains **BOTH** procurement contracts AND assistance/grants, even though they share the same type codes ('A', 'B'). This means:
-
-- Type 'A' = Both procurement contracts AND assistance agreements
-- Type 'B' = Both IDV contracts AND cooperative agreements
-
-**Impact**: Procurement-specific fields (CAGE code, extent_competed) are **NOT present** in assistance records. The data structure varies depending on whether it's a true procurement contract or an assistance transaction.
-
-### 2. **CAGE codes**
-
-Not available in the `transaction_normalized` table. CAGE codes exist in procurement-specific tables but are not included in this mixed transaction table.
-
-**Workaround**: Using UEI (column 96) as primary vendor identifier, which is more universal.
-
-### 3. **Competition type (extent_competed)**
-
-Not available in `transaction_normalized` for assistance records. Competition type is procurement-specific and only exists for true procurement contracts.
-
-**Workaround**: Defaulting to `CompetitionType.OTHER` for all records. Future work could join with procurement-specific tables to get this field.
-
-### 4. **Modification chains**
-
-Not linking modifications to base contracts. Each transaction is treated independently.
-
-**Future Work**: Could aggregate by PIID to calculate net contract values across all modifications.
-
-### 5. **Data Quality**
-
-Some records have:
-
-- PII masking (individual recipients)
-- Missing or null fields
-- Inconsistent vendor identifier formats
-
-**Mitigation**: Robust parsing with fallbacks and validation.
-
-## Related Files
-
-- **Model**: `src/models/transition_models.py` - `FederalContract` class
-- **Tests**: `tests/unit/test_contract_extractor.py`
-- **Decision Records**: `docs/decisions/ADR-001-negative-obligations.md`
-- **Task Plan**: `tasks.md` - Task 5: Federal Contracts Ingestion
+Negative obligations are preserved according to
+[ADR-001](../../docs/decisions/ADR-001-negative-obligations.md). Transactions remain at
+their source grain; this extractor does not aggregate modification chains or infer Phase
+III status.

@@ -7,16 +7,15 @@ large USAspending dataset to manageable size.
 
 Usage:
     # Extract from a locally-extracted subset dump
-    python scripts/extract_federal_contracts.py --subset
+    python scripts/archive/extract_federal_contracts.py --subset
 
     # Extract from a locally-extracted full dump
-    python scripts/extract_federal_contracts.py --full
+    python scripts/archive/extract_federal_contracts.py --full
 
-    # Stream one table member straight from the remote USAspending .zip over HTTP
-    # range — no full ~217GB download, nothing staged on local disk (needs the
-    # 'streaming' extra: uv sync --extra streaming). The transaction_normalized
-    # member is auto-detected from the zip's layout; pass --member to override.
-    python scripts/extract_federal_contracts.py \\
+    # Stream the schema-verified FPDS transaction-search member straight from a
+    # remote USAspending .zip over HTTP range — no full ~217GB download, nothing
+    # staged on local disk (needs the 'streaming' extra: uv sync --extra streaming).
+    python scripts/archive/extract_federal_contracts.py \\
         --remote-zip https://files.usaspending.gov/database_download/usaspending-db-subset_20240101.zip
 """
 
@@ -44,7 +43,8 @@ def main():
         help=(
             "Stream one member from a remote USAspending database .zip over HTTP range "
             "(no full download). Requires the 'streaming' extra; the member streamed is "
-            "set by --member (defaults to the transaction_normalized table)."
+            "resolved from the archive TOC and verified as the FPDS transaction-search "
+            "table."
         ),
     )
     parser.add_argument(
@@ -52,9 +52,9 @@ def main():
         type=str,
         default=None,
         help=(
-            "Override the .dat.gz member inside --remote-zip to stream. "
-            "When omitted, the transaction_normalized member is auto-detected by "
-            "sniffing the zip's .dat.gz layouts (per-table OIDs vary between dumps)."
+            "Optional expected .dat.gz member inside --remote-zip. The value must match "
+            "the unique FPDS transaction-search member resolved from the archive TOC; "
+            "a mismatch fails closed."
         ),
     )
 
@@ -66,7 +66,7 @@ def main():
     vendor_filter_file = config.paths.resolve_path("transition_vendor_filters")
     if not vendor_filter_file.exists():
         logger.error(f"Vendor filter file not found: {vendor_filter_file}")
-        logger.info("Run: python scripts/extract_sbir_vendors.py")
+        logger.info("Run: python scripts/archive/extract_sbir_vendors.py")
         return
 
     # Remote-zip streaming path: no local dump required.
@@ -77,7 +77,7 @@ def main():
             vendor_filter_file=vendor_filter_file,
             batch_size=10000,
         )
-        member_label = args.member or "(auto-detect)"
+        member_label = args.member or "(resolve from archive TOC)"
         logger.info(f"Streaming member {member_label} from {args.remote_zip}")
         logger.info(f"Output will be saved to {output_file}")
         try:

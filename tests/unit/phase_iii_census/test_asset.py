@@ -1,3 +1,5 @@
+import hashlib
+import json
 from pathlib import Path
 
 import pandas as pd
@@ -55,6 +57,23 @@ def _contract_source() -> pd.DataFrame:
     )
 
 
+def _write_contract_manifest(path: Path) -> None:
+    provenance = {
+        "canonical_table": "rpt.transaction_search",
+        "physical_table": "rpt.transaction_search_fpds",
+        "member": "9247.dat.gz",
+        "ordered_columns_sha256": "a" * 64,
+        "column_count": 300,
+        "toc_sha256": "b" * 64,
+        "vendor_filter_sha256": "c" * 64,
+        "output_sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+        "provenance_version": 1,
+    }
+    path.with_suffix(".checks.json").write_text(
+        json.dumps({"source_provenance": provenance}), encoding="utf-8"
+    )
+
+
 def test_data_cut_parser_requires_explicit_canonical_iso_date(monkeypatch) -> None:
     monkeypatch.delenv(census_assets.DATA_CUT_ENV, raising=False)
 
@@ -65,6 +84,33 @@ def test_data_cut_parser_requires_explicit_canonical_iso_date(monkeypatch) -> No
     for invalid in ("", "20251231", "2025-W01-1", "2025-12-31T00:00:00", "2025-02-29"):
         with pytest.raises(CensusInputError, match="ISO YYYY-MM-DD"):
             census_assets.parse_census_data_cut_date(invalid)
+
+
+def test_contract_loader_requires_matching_source_manifest(tmp_path: Path, monkeypatch) -> None:
+    contracts_path = tmp_path / "contracts.parquet"
+    _contract_source().to_parquet(contracts_path)
+    monkeypatch.setattr(census_assets, "CONTRACTS_PRIMARY_PATH", contracts_path)
+    monkeypatch.setattr(census_assets, "CONTRACTS_FALLBACK_PATH", tmp_path / "missing.parquet")
+
+    with pytest.raises(CensusInputError, match="no provenance manifest"):
+        census_assets._load_contracts()
+
+    _write_contract_manifest(contracts_path)
+    loaded, source_path = census_assets._load_contracts()
+    assert source_path == contracts_path
+    pd.testing.assert_frame_equal(loaded, _contract_source())
+
+    manifest_path = contracts_path.with_suffix(".checks.json")
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest["source_provenance"]["provenance_version"] = 0
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+    with pytest.raises(CensusInputError, match="unsupported version"):
+        census_assets._load_contracts()
+
+    _write_contract_manifest(contracts_path)
+    contracts_path.write_bytes(contracts_path.read_bytes() + b"tampered")
+    with pytest.raises(CensusInputError, match="checksum"):
+        census_assets._load_contracts()
 
 
 def test_asset_writes_exactly_two_parquet_tables_without_headline_metadata(
@@ -106,6 +152,7 @@ def test_asset_writes_exactly_two_parquet_tables_without_headline_metadata(
         "ordered_clauses",
         "reproducibility",
     }
+    assert census_assets.FROZEN_SPEC_COMMIT == ("76008c173d8b8fd712a942d86c361e410ff95bc8")
     assert not any(
         token in key.lower()
         for key in metadata_keys

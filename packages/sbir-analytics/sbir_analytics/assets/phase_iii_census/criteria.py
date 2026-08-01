@@ -75,11 +75,34 @@ REQUIRED_PRIOR_SOURCE_COLUMNS = frozenset(
     }
 )
 
-# The coding columns must exist even when every value is genuinely null. Their
-# absence cannot be made indistinguishable from "not affirmatively coded."
-REQUIRED_TARGET_SOURCE_COLUMNS = frozenset({"research", "sbir_phase"})
+# USAspending's authoritative FPDS coding field must exist even when every value is
+# genuinely null. ``sbir_phase`` is optional supplemental evidence and is checked by
+# the pair criteria when genuinely supplied, but is never required or synthesized.
+REQUIRED_TARGET_SOURCE_COLUMNS = frozenset({"research"})
 TARGET_NAICS_SOURCE_COLUMNS = frozenset({"naics_code", "naics"})
 TARGET_PSC_SOURCE_COLUMNS = frozenset({"psc_code", "product_or_service_code"})
+REQUIRED_TARGET_SOURCE_ALIASES: dict[str, frozenset[str]] = {
+    "contract identifier": frozenset({"contract_id", "piid", "generated_unique_award_id"}),
+    "recipient UEI": frozenset({"vendor_uei", "recipient_uei", "uei"}),
+    "top-tier agency": frozenset(
+        {
+            "awarding_toptier_agency_name",
+            "awarding_agency_name",
+            "agency",
+            "awarding_agency",
+        }
+    ),
+    "sub-tier agency": frozenset(
+        {"awarding_subtier_agency_name", "awarding_sub_tier_agency_name", "sub_agency"}
+    ),
+    "action date": frozenset({"action_date", "award_date"}),
+    "competition type": frozenset({"extent_competed", "competition_type", "type_of_set_aside"}),
+    "obligated amount": frozenset(
+        {"federal_action_obligation", "obligated_amount", "obligation_amount"}
+    ),
+    "stable transaction identifier": frozenset({"transaction_unique_id"}),
+    "generated award identifier": frozenset({"generated_unique_award_id", "unique_award_key"}),
+}
 
 PHASE_I_II_RESEARCH_CODES = frozenset({"SR1", "SR2", "ST1", "ST2"})
 PHASE_III_RESEARCH_CODES = frozenset({"SR3", "ST3"})
@@ -111,7 +134,7 @@ _TARGET_TRANSACTION_INVARIANTS = [
 
 def _normalize_text(series: pd.Series) -> pd.Series:
     normalized = series.astype("string").str.strip().str.upper()
-    return normalized.mask(normalized.isin(["", "NAN", "NONE", "NULL", "<NA>"]))
+    return normalized.mask(normalized.isin(["", "NAN", "NONE", "NULL", "<NA>", r"\N"]))
 
 
 def _normalized_key(series: pd.Series) -> pd.Series:
@@ -151,6 +174,17 @@ def validate_source_columns(prior_awards: pd.DataFrame, contracts: pd.DataFrame)
         raise CensusInputError(
             "Contract source has no PSC column (expected one of "
             f"{sorted(TARGET_PSC_SOURCE_COLUMNS)})"
+        )
+
+    missing_alias_groups = {
+        label: sorted(aliases)
+        for label, aliases in REQUIRED_TARGET_SOURCE_ALIASES.items()
+        if not aliases.intersection(contracts.columns)
+    }
+    if missing_alias_groups:
+        raise CensusInputError(
+            "Contract source is missing required target field groups; absent source "
+            f"fields cannot produce a publishable zero: {missing_alias_groups}"
         )
 
 

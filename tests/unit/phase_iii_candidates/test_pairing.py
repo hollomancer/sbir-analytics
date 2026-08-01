@@ -180,3 +180,12 @@ def test_pair_builders_return_their_declared_empty_schemas() -> None:
 
     assert list(build_uei_pairs(empty, empty).columns) == PAIR_COLUMNS
     assert list(pair_filter_s1(empty, empty).columns) == PAIR_S1_COLUMNS
+
+
+def test_postgres_copy_null_uei_never_enters_the_pair_universe() -> None:
+    priors = pd.DataFrame([_prior(recipient_uei=r"\N")])
+    contracts = pd.DataFrame([_contract(vendor_uei=r"\N")])
+
+    pairs = build_uei_pairs(priors, contracts)
+
+    assert pairs.empty

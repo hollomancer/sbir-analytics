@@ -59,7 +59,7 @@ def _normalize(value: object) -> str:
     if isinstance(value, float) and pd.isna(value):
         return ""
     s = str(value).strip().upper()
-    return "" if s in {"", "<NA>", "NAN", "NONE", "NULL"} else s
+    return "" if s in {"", "<NA>", "NAN", "NONE", "NULL", r"\N"} else s
 
 
 def _is_phase_iii_already_coded(row: pd.Series) -> bool:
@@ -198,8 +198,17 @@ def _prepare_contracts(contracts: pd.DataFrame) -> pd.DataFrame:
         {
             "target_id": _pick("contract_id", "piid", "generated_unique_award_id"),
             "target_recipient_uei": _pick("vendor_uei", "recipient_uei", "uei"),
-            "target_agency": _pick("awarding_agency_name", "agency", "awarding_agency"),
-            "target_sub_agency": _pick("awarding_sub_tier_agency_name", "sub_agency"),
+            "target_agency": _pick(
+                "awarding_toptier_agency_name",
+                "awarding_agency_name",
+                "agency",
+                "awarding_agency",
+            ),
+            "target_sub_agency": _pick(
+                "awarding_subtier_agency_name",
+                "awarding_sub_tier_agency_name",
+                "sub_agency",
+            ),
             "target_office": _pick("awarding_office_name", "office"),
             "target_naics_code": _pick("naics_code", "naics"),
             "target_psc_code": _pick("psc_code", "product_or_service_code"),

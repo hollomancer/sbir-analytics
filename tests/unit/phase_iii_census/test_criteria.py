@@ -70,6 +70,15 @@ def _prior_source(**overrides: object) -> pd.DataFrame:
 
 def _contract_source(**overrides: object) -> pd.DataFrame:
     row: dict[str, object] = {
+        "contract_id": "PIID-1",
+        "vendor_uei": "UEI-1",
+        "agency": "DEPARTMENT A",
+        "sub_agency": "COMPONENT A",
+        "action_date": "2021-01-01",
+        "competition_type": "FULL_AND_OPEN",
+        "obligation_amount": 100,
+        "transaction_unique_id": "TRANSACTION-1",
+        "generated_unique_award_id": "GENERATED-AWARD-1",
         "research": None,
         "sbir_phase": None,
         "naics_code": "541715",
@@ -143,7 +152,7 @@ def test_phase_iii_code_clause_is_affirmative_only(
     assert bool(criterion_not_phase_iii_coded(pairs, CUT).iloc[0]) is expected
 
 
-def test_null_code_values_pass_but_absent_source_columns_fail() -> None:
+def test_null_research_values_pass_but_absent_research_column_fails() -> None:
     pairs = pd.DataFrame([_pair(target_research=None, target_sbir_phase=pd.NA)])
     contracts = _contract_source(research=None, sbir_phase=pd.NA)
 
@@ -151,9 +160,36 @@ def test_null_code_values_pass_but_absent_source_columns_fail() -> None:
     assert criterion_not_phase_i_or_ii_coded(pairs, CUT).all()
     assert criterion_not_phase_iii_coded(pairs, CUT).all()
 
-    for missing_column in ("research", "sbir_phase"):
-        with pytest.raises(CensusInputError, match="missing required coding columns"):
-            validate_source_columns(_prior_source(), contracts.drop(columns=missing_column))
+    with pytest.raises(CensusInputError, match="missing required coding columns"):
+        validate_source_columns(_prior_source(), contracts.drop(columns="research"))
+
+
+def test_sbir_phase_is_optional_supplemental_source_evidence() -> None:
+    contracts = _contract_source().drop(columns="sbir_phase")
+
+    validate_source_columns(_prior_source(), contracts)
+
+
+@pytest.mark.parametrize(
+    "missing_column",
+    [
+        "vendor_uei",
+        "agency",
+        "sub_agency",
+        "action_date",
+        "competition_type",
+        "obligation_amount",
+        "transaction_unique_id",
+        "generated_unique_award_id",
+    ],
+)
+def test_missing_target_source_group_cannot_publish_a_false_zero(
+    missing_column: str,
+) -> None:
+    contracts = _contract_source().drop(columns=missing_column)
+
+    with pytest.raises(CensusInputError, match="cannot produce a publishable zero"):
+        validate_source_columns(_prior_source(), contracts)
 
 
 @pytest.mark.parametrize(
@@ -163,6 +199,7 @@ def test_null_code_values_pass_but_absent_source_columns_fail() -> None:
         ("541715", "999999", " ac13 ", "AC13", True),
         ("5417", "541715", "AC", "AC13", False),
         (None, None, None, None, False),
+        (r"\N", r"\N", r"\N", r"\N", False),
         ("541715", "541714", "AC13", "AC14", False),
     ],
 )
@@ -279,12 +316,21 @@ def test_pair_validation_rejects_missing_stable_key_columns(missing_column: str)
 
 
 @pytest.mark.parametrize("key_column", ["target_transaction_id", "target_contract_key"])
+@pytest.mark.parametrize("missing_value", ["", r"\N"])
 def test_pair_validation_rejects_blank_stable_keys_even_when_piid_is_present(
     key_column: str,
+    missing_value: str,
 ) -> None:
-    pairs = pd.DataFrame([_pair(**{key_column: "", "target_id": "PIID-IS-NOT-A-KEY"})])
+    pairs = pd.DataFrame([_pair(**{key_column: missing_value, "target_id": "PIID-IS-NOT-A-KEY"})])
 
     with pytest.raises(CensusInputError, match="stable transaction|generated award key"):
+        validate_pair_frame(pairs)
+
+
+def test_pair_validation_rejects_postgres_copy_null_uei() -> None:
+    pairs = pd.DataFrame([_pair(prior_recipient_uei=r"\N", target_recipient_uei=r"\N")])
+
+    with pytest.raises(CensusInputError, match="exact-UEI gate"):
         validate_pair_frame(pairs)
 
 
