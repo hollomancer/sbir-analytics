@@ -26,6 +26,7 @@ env:
   NEO4J_USERNAME: "neo4j"  # Default Neo4j username for test containers
   NEO4J_PASSWORD: "password"  # pragma: allowlist secret
   DEFAULT_TIMEOUT: 30  # Default job timeout in minutes
+  SBIR_ETL__PIPELINE__ENVIRONMENT: test
   # Performance test configuration
   PERFORMANCE_SAMPLE_SIZE: "500"  # Sample size for performance regression tests
   PERFORMANCE_BASELINE_CACHE_KEY: "benchmark-baseline-main"  # Cache key for performance baseline

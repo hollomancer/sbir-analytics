@@ -13,7 +13,7 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 # ---------------------------------------------------------------------------
@@ -350,6 +350,8 @@ class CompanyCategorizationConfig(BaseModel):
 
 class PathsConfig(BaseModel):
     """File system paths configuration with environment variable expansion."""
+
+    model_config = ConfigDict(extra="forbid")
 
     data_root: str = Field(
         default="data", description="Root data directory (relative to project root)"
