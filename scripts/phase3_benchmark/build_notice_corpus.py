@@ -1,15 +1,12 @@
 #!/usr/bin/env python3
-"""Assemble the frozen Phase III notice corpus from the recovered archive pulls.
+"""Assemble the frozen Phase III notice corpus from firm-attributed archive pulls.
 
-Joins the seed PIIDs to their recovered GSA notices (rich Description / J&A
-text), attaches each firm's Phase I/II abstract as the retrieval query, and
-builds same-office hard-negative candidate sets — mirroring the transition-ranker
-study ("diff-firm SAME contracting office"). Output is one row per
-(firm-award, candidate-notice) with the structural features the fusion ladder
-consumes, plus a provenance manifest with a frame hash.
-
-Research utility (specs/phase3-notice-corpus-fusion), fully offline given the
-filtered archive pulls, the join seed, and a firm→abstract lookup.
+The archive pull (``pull_gsa_archive``) already attributed each SBIR-mentioning
+notice to a seed firm. This step attaches each firm's Phase I/II abstract as the
+retrieval query, builds same-office diff-firm hard-negative candidate sets
+(mirroring the transition-ranker study), and freezes the corpus with a
+provenance manifest and frame hash. Fully offline given the filtered pulls and
+the firm seed.
 """
 
 from __future__ import annotations
@@ -18,20 +15,19 @@ import argparse
 import hashlib
 import json
 from collections.abc import Sequence
-from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
 
 import pandas as pd
 
-from scripts.phase3_benchmark.pull_gsa_archive import KEEP_COLUMNS, normalize_key
+from scripts.phase3_benchmark.notice_matching import normalize_firm_name, normalize_key
+from scripts.phase3_benchmark.pull_gsa_archive import KEEP_COLUMNS
 
 
 CORPUS_COLUMNS: tuple[str, ...] = (
     "candidate_id",
-    "firm_uei",
     "firm_name",
-    "award_piid",
+    "name_key",
     "notice_id",
     "office",
     "query_abstract",
@@ -40,7 +36,6 @@ CORPUS_COLUMNS: tuple[str, ...] = (
     "posted_date",
     "naics_code",
     "match_rule",
-    "id_cited",
     "label",
     "label_channel",
     "owner",
@@ -48,134 +43,94 @@ CORPUS_COLUMNS: tuple[str, ...] = (
 
 
 def load_filtered_notices(archive_dir: Path) -> pd.DataFrame:
-    """Concatenate every ``FY*_filtered.parquet`` under the archive dir."""
+    """Concatenate every firm-tagged ``FY*_filtered.parquet`` under the archive dir."""
 
     parts = sorted(archive_dir.glob("FY*_filtered.parquet"))
     if not parts:
-        return pd.DataFrame(columns=[*KEEP_COLUMNS, "match_rule"])
-    frame = pd.concat((pd.read_parquet(part) for part in parts), ignore_index=True)
-    frame["award_key"] = frame["AwardNumber"].map(normalize_key)
-    frame["sol_key"] = frame["Sol#"].map(normalize_key)
-    return frame
+        return pd.DataFrame(columns=[*KEEP_COLUMNS, "firm", "match_rule"])
+    return pd.concat((pd.read_parquet(part) for part in parts), ignore_index=True)
 
 
-def _abstract_lookup(abstracts: pd.DataFrame) -> dict[str, str]:
-    lookup: dict[str, str] = {}
-    for _, row in abstracts.iterrows():
-        text = str(row.get("abstract") or "").strip()
-        if not text:
+def _abstract_by_name(seed: pd.DataFrame) -> dict[str, tuple[str, str]]:
+    """name_key → (query_abstract, label_channel) for firms with a usable abstract."""
+
+    lookup: dict[str, tuple[str, str]] = {}
+    for _, row in seed.iterrows():
+        abstract = str(row.get("abstract") or "")
+        if len(abstract) <= 50:
             continue
-        for key_col in ("uei", "firm"):
-            key = normalize_key(row.get(key_col))
-            if len(key) >= 4:
-                lookup.setdefault(key, text)
+        name_key = str(row.get("name_key") or "")
+        if name_key:
+            lookup.setdefault(name_key, (abstract, str(row.get("label_channel") or "description")))
     return lookup
 
 
-def _match_notice(seed_row: pd.Series, notices: pd.DataFrame) -> pd.Series | None:
-    piid = seed_row["piid_key"]
-    hit = notices.loc[notices["award_key"] == piid]
-    if hit.empty:
-        hit = notices.loc[notices["sol_key"] == piid]
-    if hit.empty:
-        # text_citation rows: the PIID appears inside the description.
-        cite = notices.loc[notices["match_rule"] == "text_citation"]
-        mask = cite["Description"].map(lambda d: piid in normalize_key(d))
-        hit = cite.loc[mask]
-    if hit.empty:
-        return None
-    # Prefer the richest description when a PIID maps to several notices.
-    return hit.loc[hit["Description"].str.len().idxmax()]
-
-
-@dataclass
-class _Positive:
-    firm_uei: str
-    firm_name: str
-    award_piid: str
-    query_abstract: str
-    label_channel: str
-    notice: pd.Series
-    office: str = field(default="")
-
-
 def build_corpus(
-    seed: pd.DataFrame,
     notices: pd.DataFrame,
-    abstracts: pd.DataFrame,
+    seed: pd.DataFrame,
     *,
     negatives_per_positive: int = 5,
 ) -> pd.DataFrame:
-    """One row per (firm-award, candidate-notice); same-office hard negatives."""
+    """One row per (attributed notice, candidate); same-office diff-firm hard negatives."""
 
-    lookup = _abstract_lookup(abstracts)
+    if notices.empty:
+        return pd.DataFrame(columns=CORPUS_COLUMNS)
+    abstracts = _abstract_by_name(seed)
+    notices = notices.copy()
+    notices["name_key"] = notices["firm"].map(normalize_firm_name)
+    notices["office_key"] = notices["Office"].map(normalize_key)
+
+    # Positives: each attributed notice whose firm has a query abstract.
+    positives = notices.loc[notices["name_key"].isin(abstracts)].reset_index(drop=True)
     rows: list[dict[str, object]] = []
-    positives: list[_Positive] = []
 
-    for _, seed_row in seed.iterrows():
-        notice = _match_notice(seed_row, notices)
-        if notice is None:
-            continue
-        firm_key = normalize_key(seed_row.get("firm"))
-        abstract = lookup.get(firm_key) or lookup.get(seed_row["piid_key"], "")
-        if not abstract:
-            continue
-        positives.append(
-            _Positive(
-                firm_uei=firm_key,
-                firm_name=str(seed_row.get("firm") or ""),
-                award_piid=str(seed_row["piid_key"]),
-                query_abstract=abstract,
-                label_channel=str(seed_row.get("label_channel", "description")),
-                notice=notice,
-                office=str(notice.get("Office") or ""),
-            )
-        )
+    for _, positive in positives.iterrows():
+        name_key = str(positive["name_key"])
+        abstract, channel = abstracts[name_key]
+        owner_firm = str(positive["firm"])
+        owner = f"{name_key}:{positive['NoticeId']}"
 
-    for positive in positives:
-
-        def _emit(cand_notice: pd.Series, label: int, current: _Positive = positive) -> None:
-            owner = f"{current.firm_uei}:{current.award_piid}"
-            rows.append(
-                {
-                    "candidate_id": hashlib.sha256(
-                        f"{owner}|{cand_notice.get('NoticeId')}|{label}".encode()
-                    ).hexdigest()[:20],
-                    "firm_uei": current.firm_uei,
-                    "firm_name": current.firm_name,
-                    "award_piid": current.award_piid,
-                    "notice_id": str(cand_notice.get("NoticeId") or ""),
-                    "office": str(cand_notice.get("Office") or ""),
-                    "query_abstract": current.query_abstract,
-                    "notice_text": str(cand_notice.get("Description") or ""),
-                    "notice_type": str(
-                        cand_notice.get("BaseType") or cand_notice.get("Type") or ""
-                    ),
-                    "posted_date": str(cand_notice.get("PostedDate") or ""),
-                    "naics_code": str(cand_notice.get("NaicsCode") or ""),
-                    "match_rule": str(cand_notice.get("match_rule") or ""),
-                    "id_cited": int(
-                        current.award_piid in normalize_key(cand_notice.get("Description"))
-                    ),
-                    "label": label,
-                    "label_channel": current.label_channel,
-                    "owner": owner,
-                }
-            )
-
-        _emit(positive.notice, 1)
-        # Hard negatives = other firms' recovered notices in the SAME office
-        # (mirrors the study's "diff-firm SAME contracting office"). Drawn from
-        # the positives pool so firm identity is known; deterministic order.
-        negatives = [
-            other
-            for other in positives
-            if other.office == positive.office and other.firm_uei != positive.firm_uei
+        rows.append(_corpus_row(owner, owner_firm, name_key, positive, abstract, channel, 1))
+        # Hard negatives: other firms' attributed notices in the SAME office.
+        pool = positives.loc[
+            (positives["office_key"] == positive["office_key"])
+            & (positives["name_key"] != name_key)
         ]
-        for other in negatives[:negatives_per_positive]:
-            _emit(other.notice, 0)
+        for _, negative in pool.head(negatives_per_positive).iterrows():
+            rows.append(_corpus_row(owner, owner_firm, name_key, negative, abstract, channel, 0))
 
     return pd.DataFrame(rows, columns=CORPUS_COLUMNS)
+
+
+def _corpus_row(
+    owner: str,
+    owner_firm: str,
+    name_key: str,
+    candidate: pd.Series,
+    query_abstract: str,
+    label_channel: str,
+    label: int,
+) -> dict[str, object]:
+    """Build one corpus row; firm/abstract identify the OWNER, notice_* the candidate."""
+
+    return {
+        "candidate_id": hashlib.sha256(
+            f"{owner}|{candidate['NoticeId']}|{label}".encode()
+        ).hexdigest()[:20],
+        "firm_name": owner_firm,
+        "name_key": name_key,
+        "notice_id": str(candidate.get("NoticeId") or ""),
+        "office": str(candidate.get("Office") or ""),
+        "query_abstract": query_abstract,
+        "notice_text": str(candidate.get("Description") or ""),
+        "notice_type": str(candidate.get("BaseType") or candidate.get("Type") or ""),
+        "posted_date": str(candidate.get("PostedDate") or ""),
+        "naics_code": str(candidate.get("NaicsCode") or ""),
+        "match_rule": str(candidate.get("match_rule") or ""),
+        "label": label,
+        "label_channel": label_channel,
+        "owner": owner,
+    }
 
 
 def frame_hash(frame: pd.DataFrame) -> str:
@@ -192,10 +147,13 @@ def write_corpus(corpus: pd.DataFrame, output_dir: Path, sources: Sequence[str])
         "generated_at": datetime.now(UTC).isoformat(),
         "rows": len(corpus),
         "positives": int(len(positives)),
-        "firms": int(positives["firm_uei"].nunique()),
+        "firms": int(positives["name_key"].nunique()) if len(positives) else 0,
         "label_channels": positives["label_channel"].value_counts().to_dict(),
         "match_rules": positives["match_rule"].value_counts().to_dict(),
-        "id_cited_positives": int(positives["id_cited"].sum()),
+        "notice_type_counts": positives["notice_type"].value_counts().to_dict(),
+        "notice_text_median_chars": (
+            int(positives["notice_text"].str.len().median()) if len(positives) else 0
+        ),
         "frame_hash": frame_hash(corpus),
         "sources": list(sources),
     }
@@ -207,30 +165,17 @@ def write_corpus(corpus: pd.DataFrame, output_dir: Path, sources: Sequence[str])
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        "--seed", type=Path, default=Path("data/derived/phase3_notice_join_seed.parquet")
-    )
     parser.add_argument("--archive-dir", type=Path, default=Path("data/raw/gsa_falextracts"))
-    parser.add_argument(
-        "--abstracts",
-        type=Path,
-        default=Path("data/derived/phase3_match_benchmark_pairs.parquet"),
-        help="Firm→abstract source (needs uei/firm + abstract columns).",
-    )
+    parser.add_argument("--seed", type=Path, default=Path("data/derived/phase3_firm_seed.parquet"))
     parser.add_argument("--output-dir", type=Path, default=Path("data/derived"))
     parser.add_argument("--negatives-per-positive", type=int, default=5)
     args = parser.parse_args()
 
-    seed = pd.read_parquet(args.seed)
     notices = load_filtered_notices(args.archive_dir)
-    abstracts = pd.read_parquet(args.abstracts)
-    corpus = build_corpus(
-        seed, notices, abstracts, negatives_per_positive=args.negatives_per_positive
-    )
+    seed = pd.read_parquet(args.seed)
+    corpus = build_corpus(notices, seed, negatives_per_positive=args.negatives_per_positive)
     corpus_path = write_corpus(
-        corpus,
-        args.output_dir,
-        sources=[str(args.seed), str(args.archive_dir), str(args.abstracts)],
+        corpus, args.output_dir, sources=[str(args.archive_dir), str(args.seed)]
     )
     positives = int((corpus["label"] == 1).sum())
     print(f"corpus: {len(corpus)} rows, {positives} positives -> {corpus_path}")
