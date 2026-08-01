@@ -7,8 +7,8 @@
 
 ## Executive readout
 
-The classified FY2021–FY2025 portfolio contains **8,549 awards**
-and **$6.39B** across 21 CET areas. Artificial Intelligence
+The classified FY2021–FY2025 portfolio contains **8,563 awards**
+and **$6.40B** across 21 CET areas. Artificial Intelligence
 is the largest classified area by dollars at **$1.43B**
 (22.4% of the window).
 
@@ -18,7 +18,7 @@ top-firm share 38.0%). This is a screening signal, not evidence
 of a sole-source physical dependency. Small portfolios can rank highly because a few
 awards account for a large share of their dollars.
 
-The current classifier assigned a CET to **47.2%** of the 41,118
+The current classifier assigned a CET to **47.2%** of the 41,115
 candidate DoD awards. Consequently, comparisons describe the rule-classified
 subset. They should not be generalized to the unclassified half until validation quantifies
 false-negative and area-specific coverage bias.
@@ -27,9 +27,9 @@ false-negative and area-specific coverage bias.
 
 | DoD component | Award dollars | Portfolio share | Classified awards |
 | --- | --- | --- | --- |
-| Air Force | $3.05B | 47.8% | 4009 |
-| Navy | $1.16B | 18.2% | 1983 |
-| Army | $743.9M | 11.6% | 940 |
+| Air Force | $3.05B | 47.7% | 4009 |
+| Navy | $1.17B | 18.3% | 1998 |
+| Army | $742.3M | 11.6% | 939 |
 | Missile Defense Agency | $379.9M | 5.9% | 431 |
 | Defense Advanced Research Projects Agency | $375.2M | 5.9% | 264 |
 | Space Development Agency | $147.6M | 2.3% | 78 |
@@ -47,14 +47,14 @@ false-negative and area-specific coverage bias.
 
 | CET area | Award dollars | Portfolio share | Awards | Observed firms |
 | --- | --- | --- | --- | --- |
-| Artificial Intelligence | $1.43B | 22.4% | 2153 | 1014 |
-| Space Technologies And Systems | $863.5M | 13.5% | 808 | 440 |
-| Advanced Manufacturing | $689.4M | 10.8% | 1036 | 520 |
-| Advanced And Networked Sensing And Signature Management | $570.2M | 8.9% | 733 | 390 |
+| Artificial Intelligence | $1.43B | 22.4% | 2154 | 1015 |
+| Space Technologies And Systems | $861.9M | 13.5% | 808 | 439 |
+| Advanced Manufacturing | $689.6M | 10.8% | 1038 | 521 |
+| Advanced And Networked Sensing And Signature Management | $573.3M | 9.0% | 740 | 391 |
 | Hypersonics | $443.4M | 6.9% | 534 | 204 |
-| Advanced Gas Turbine Engine Technologies | $399.0M | 6.2% | 534 | 273 |
-| Semiconductors And Microelectronics | $344.8M | 5.4% | 458 | 243 |
-| Integrated Network Systems Of Systems | $281.9M | 4.4% | 262 | 203 |
+| Advanced Gas Turbine Engine Technologies | $399.8M | 6.3% | 536 | 274 |
+| Semiconductors And Microelectronics | $344.9M | 5.4% | 459 | 244 |
+| Integrated Network Systems Of Systems | $283.2M | 4.4% | 265 | 205 |
 | Autonomous Systems | $261.0M | 4.1% | 385 | 268 |
 | Human Machine Interfaces | $230.4M | 3.6% | 334 | 174 |
 
@@ -69,9 +69,9 @@ false-negative and area-specific coverage bias.
 | Integrated Sensing And Cyber | 0.061 | 14.9% | 30.0% | 48 | 39 |
 | Quantum Information Science | 0.051 | 12.3% | 28.3% | 58 | 46 |
 | Advanced Computing | 0.025 | 6.7% | 14.4% | 88 | 78 |
-| Semiconductors And Microelectronics | 0.022 | 12.4% | 17.1% | 458 | 243 |
+| Semiconductors And Microelectronics | 0.022 | 12.4% | 17.1% | 459 | 244 |
 | Directed Energy | 0.022 | 9.6% | 17.0% | 288 | 142 |
-| Space Technologies And Systems | 0.021 | 7.7% | 20.7% | 808 | 440 |
+| Space Technologies And Systems | 0.021 | 7.7% | 20.8% | 808 | 439 |
 
 HHI is calculated from observed award dollars by resolved or normalized firm identity.
 It measures concentration inside this SBIR award corpus; it does not measure subcontractor,
@@ -86,11 +86,11 @@ bill-of-material, import, mineral, or production dependency.
 | Quantum Information Science | 0.181 | 58 | 46 |
 | Integrated Sensing And Cyber | 0.172 | 48 | 39 |
 | Biotechnologies | 0.155 | 27 | 22 |
-| Trusted Ai And Autonomy | 0.152 | 22 | 20 |
-| Space Technologies And Systems | 0.150 | 808 | 440 |
+| Space Technologies And Systems | 0.153 | 808 | 439 |
 | Autonomous Systems | 0.139 | 385 | 268 |
 | Hypersonics | 0.133 | 534 | 204 |
-| Advanced Gas Turbine Engine Technologies | 0.121 | 534 | 273 |
+| Trusted Ai And Autonomy | 0.127 | 22 | 20 |
+| Advanced Gas Turbine Engine Technologies | 0.120 | 536 | 274 |
 
 State HHI is a screen for geographic narrowness in award dollars. It does not establish
 where production occurs, and headquarters or award addresses may differ from performance
@@ -101,15 +101,15 @@ locations.
 | CET area | Entrant firm share | Observed firms | Awards |
 | --- | --- | --- | --- |
 | Trusted Ai And Autonomy | 70.0% | 20 | 22 |
-| Biotechnologies | 68.2% | 22 | 27 |
-| Integrated Sensing And Cyber | 66.7% | 39 | 48 |
-| Renewable Energy Generation And Storage | 60.0% | 150 | 251 |
-| Autonomous Systems | 59.3% | 268 | 385 |
-| Artificial Intelligence | 59.3% | 1014 | 2153 |
-| Integrated Network Systems Of Systems | 58.6% | 203 | 262 |
-| Advanced Nuclear Energy Systems | 58.3% | 12 | 15 |
-| Space Technologies And Systems | 55.9% | 440 | 808 |
-| Advanced Computing | 53.8% | 78 | 88 |
+| Renewable Energy Generation And Storage | 55.3% | 150 | 251 |
+| Biotechnologies | 54.5% | 22 | 27 |
+| Integrated Sensing And Cyber | 53.8% | 39 | 48 |
+| Autonomous Systems | 51.5% | 268 | 385 |
+| Artificial Intelligence | 51.0% | 1015 | 2154 |
+| Space Technologies And Systems | 50.1% | 439 | 808 |
+| Advanced Computing | 50.0% | 78 | 88 |
+| Financial Technologies | 50.0% | 46 | 69 |
+| Communication And Networking Technologies | 47.2% | 123 | 173 |
 
 An entrant is a firm's first observed DoD SBIR/STTR award in the retained FY2012+
 corpus. The measure is left-censored: firms active before FY2012 can be misidentified
@@ -122,16 +122,16 @@ as entrants when their first retained award occurs later.
 | DoD-14 area | Mapped CET areas | Associated dollars | Associated share |
 | --- | --- | --- | --- |
 | Trusted Ai And Autonomy | 3 | $1.71B | 26.7% |
-| Space Technology | 1 | $863.5M | 13.5% |
-| Advanced Materials | 2 | $847.4M | 13.3% |
-| Integrated Sensing And Cyber | 2 | $599.6M | 9.4% |
+| Space Technology | 1 | $861.9M | 13.5% |
+| Advanced Materials | 2 | $847.7M | 13.3% |
+| Integrated Sensing And Cyber | 2 | $602.7M | 9.4% |
 | Hypersonics | 1 | $443.4M | 6.9% |
-| Integrated Network Systems Of Systems | 2 | $425.8M | 6.7% |
-| Microelectronics | 1 | $344.8M | 5.4% |
+| Integrated Network Systems Of Systems | 2 | $426.8M | 6.7% |
+| Microelectronics | 1 | $344.9M | 5.4% |
 | Human Machine Interfaces | 1 | $230.4M | 3.6% |
 | Directed Energy | 1 | $176.3M | 2.8% |
 | Renewable Energy Generation And Storage | 1 | $154.6M | 2.4% |
-| Future Generation Wireless Technology | 1 | $144.0M | 2.3% |
+| Future Generation Wireless Technology | 1 | $143.6M | 2.2% |
 | Advanced Computing And Software | 2 | $120.2M | 1.9% |
 | Quantum Science | 1 | $41.5M | 0.6% |
 | Biotechnology | 1 | $15.9M | 0.2% |
@@ -140,11 +140,11 @@ as entrants when their first retained award occurs later.
 
 | Repository target | Mapped CET areas | Associated dollars | Associated share |
 | --- | --- | --- | --- |
-| Kinetic Capabilities | 9 | $3.26B | 50.9% |
-| Cyber Posture | 9 | $2.63B | 41.2% |
+| Kinetic Capabilities | 9 | $3.26B | 51.0% |
+| Cyber Posture | 9 | $2.64B | 41.3% |
 | Manufacturing | 6 | $1.63B | 25.5% |
-| Castings And Forgings | 2 | $847.4M | 13.3% |
-| Microelectronics | 1 | $344.8M | 5.4% |
+| Castings And Forgings | 2 | $847.7M | 13.3% |
+| Microelectronics | 1 | $344.9M | 5.4% |
 | Energy Storage And Batteries | 1 | $154.6M | 2.4% |
 
 These are many-to-many contextual overlays. Dollar amounts are repeated when a CET maps to
@@ -158,18 +158,18 @@ repository label derived from the 2022 report, not an official NDIS taxonomy.
 | --- | --- | --- |
 | 2012 | 1177 | $410.5M |
 | 2013 | 1066 | $402.8M |
-| 2014 | 949 | $388.7M |
+| 2014 | 948 | $388.6M |
 | 2015 | 1014 | $484.7M |
 | 2016 | 949 | $454.3M |
 | 2017 | 1115 | $589.3M |
 | 2018 | 979 | $482.2M |
-| 2019 | 1668 | $940.5M |
+| 2019 | 1669 | $940.6M |
 | 2020 | 1911 | $882.6M |
 | 2021 | 1688 | $770.7M |
-| 2022 | 1641 | $1.14B |
-| 2023 | 1466 | $1.02B |
-| 2024 | 1961 | $1.67B |
-| 2025 | 1793 | $1.80B |
+| 2022 | 1640 | $1.13B |
+| 2023 | 1465 | $1.02B |
+| 2024 | 1966 | $1.67B |
+| 2025 | 1804 | $1.80B |
 
 Changes over time can reflect classification coverage, award-record timing, and incomplete
 identity resolution as well as true portfolio change. The table is descriptive and is not
@@ -196,11 +196,11 @@ an estimate of causal program effects.
 ## Data quality and reproducibility
 
 - Source: public SBIR.gov bulk award CSV.
-- Source SHA-256: `1c4c8b7d7b0928021699722c43bae97d8e2d79d2723857179e7a160255e573db`.
+- Source SHA-256: `73d646fc6883ed93b36d19518b0d9442a9ebae94c5b49ad5a7fcd6d3c2b872dd`.
 - Taxonomy: `NSTC-2025Q1`.
 - Classifier: `CET-RULES-2026Q3`.
-- Classified award facts: 19,377.
-- Classification coverage: 47.159%.
+- Classified award facts: 19,391.
+- Classification coverage: 47.197%.
 - Minimum retained primary-CET score: 40.0.
 - Identity policy: canonical organization ID, then UEI, CAGE, DUNS, normalized name; unresolved awards remain in award totals but are excluded from firm denominators.
 - Crosswalk version: DOD-CROSSWALK-2026Q3.

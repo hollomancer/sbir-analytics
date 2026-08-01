@@ -17,8 +17,9 @@ from sbir_etl.reporting.local_cet_classifier import load_local_cet_rule_classifi
 
 
 DEFAULT_SOURCE = Path("data/raw/sbir/award_data.csv")
-DEFAULT_AWARDS_OUTPUT = Path("data/processed/enriched_sbir_awards.parquet")
-DEFAULT_CLASSIFICATIONS_OUTPUT = Path("data/processed/cet_award_classifications.parquet")
+DEFAULT_RESEARCH_OUTPUT_DIR = Path("data/processed/dod_supply_chain_research_inputs")
+DEFAULT_AWARDS_OUTPUT = DEFAULT_RESEARCH_OUTPUT_DIR / "sbir_gov_awards.parquet"
+DEFAULT_CLASSIFICATIONS_OUTPUT = DEFAULT_RESEARCH_OUTPUT_DIR / "local_cet_classifications.parquet"
 
 
 def parse_args() -> argparse.Namespace:

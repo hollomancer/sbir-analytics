@@ -189,6 +189,18 @@ def _parse_boolean(value: object) -> bool | None:
     raise ValueError(f"unsupported event_observed value: {value!r}")
 
 
+def _representative_organization_name(values: pd.Series) -> str | None:
+    """Choose a deterministic display name without splitting a stable firm ID."""
+
+    names = [str(value).strip() for value in values if not _is_missing_scalar(value)]
+    names = [name for name in names if name]
+    if not names:
+        return None
+    counts = pd.Series(names, dtype="object").value_counts()
+    most_common = counts.loc[counts == counts.max()].index.astype(str)
+    return min(most_common, key=lambda name: (name.casefold(), name))
+
+
 def build_award_facts(
     awards: pd.DataFrame,
     classifications: pd.DataFrame,
@@ -236,6 +248,18 @@ def build_award_facts(
         sample = sorted(duplicate_awards.astype(str).unique())[:5]
         raise ValueError(f"duplicate DoD award_id rows would double-count dollars: {sample}")
 
+    # Entrant status is defined against the complete retained DoD award history,
+    # not only the subset that receives a qualifying CET classification.  Resolve
+    # identity and freeze the first observed year before the classification join.
+    identity = _identity_frame(cohort)
+    for column in identity:
+        cohort[column] = identity[column].to_numpy()
+    unresolved = cohort["organization_id"].isna()
+    cohort.loc[unresolved, "organization_id"] = cohort.loc[unresolved, "award_id"].map(
+        lambda value: f"award:{value}"
+    )
+    cohort["_first_observed_fy"] = cohort.groupby("organization_id")["fiscal_year"].transform("min")
+
     cls = classifications.copy()
     cls["_cet_score"] = pd.to_numeric(cls[score_col], errors="coerce")
     cls = cls.loc[cls[cet_col].notna() & (cls["_cet_score"] >= min_cet_score)].copy()
@@ -258,14 +282,6 @@ def build_award_facts(
     cohort = cohort.merge(cls[keep], on="award_id", how="inner", validate="many_to_one")
     if cohort.empty:
         raise ValueError("no DoD awards have a qualifying primary CET classification")
-
-    identity = _identity_frame(cohort)
-    for column in identity:
-        cohort[column] = identity[column].to_numpy()
-    unresolved = cohort["organization_id"].isna()
-    cohort.loc[unresolved, "organization_id"] = cohort.loc[unresolved, "award_id"].map(
-        lambda value: f"award:{value}"
-    )
 
     facts = pd.DataFrame(index=cohort.index)
     facts["award_id"] = cohort["award_id"].astype(str)
@@ -301,7 +317,7 @@ def build_award_facts(
     facts["naics_2digit"] = facts["naics_code"].map(lambda value: value[:2] if value else None)
     facts["state"] = _first_column(cohort, ("state", "company_state", "recipient_state"))
     facts["congressional_district"] = _first_column(cohort, ("congressional_district", "district"))
-    facts["first_observed_fy"] = facts.groupby("organization_id")["fiscal_year"].transform("min")
+    facts["first_observed_fy"] = cohort["_first_observed_fy"].astype(int)
     facts["first_observed_entrant"] = facts["fiscal_year"] == facts["first_observed_fy"]
     return facts[FACT_COLUMNS].sort_values(["fiscal_year", "award_id"]).reset_index(drop=True)
 
@@ -520,10 +536,15 @@ def build_firm_flags(facts: pd.DataFrame, *, latest_fy: int, window_years: int =
     for cet_area, group in window.groupby("cet_area", sort=True):
         resolved_group = group.loc[group["identity_method"] != "unresolved"]
         aggregates = (
-            resolved_group.groupby(
-                ["organization_id", "organization_name", "identity_method"], dropna=False
+            resolved_group.groupby(["organization_id", "identity_method"], dropna=False)
+            .agg(
+                organization_name=(
+                    "organization_name",
+                    _representative_organization_name,
+                ),
+                award_count=("award_id", "nunique"),
+                award_dollars=("award_amount", "sum"),
             )
-            .agg(award_count=("award_id", "nunique"), award_dollars=("award_amount", "sum"))
             .reset_index()
             .sort_values(["award_dollars", "organization_id"], ascending=[False, True])
         )

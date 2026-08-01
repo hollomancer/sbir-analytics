@@ -2,7 +2,22 @@ from pathlib import Path
 
 import pandas as pd
 
-from scripts.data.build_local_dod_research_inputs import build_local_awards
+from scripts.data.build_local_dod_research_inputs import (
+    DEFAULT_AWARDS_OUTPUT,
+    DEFAULT_CLASSIFICATIONS_OUTPUT,
+    build_local_awards,
+)
+
+
+def test_local_research_defaults_cannot_overwrite_canonical_pipeline_artifacts() -> None:
+    assert DEFAULT_AWARDS_OUTPUT == Path(
+        "data/processed/dod_supply_chain_research_inputs/sbir_gov_awards.parquet"
+    )
+    assert DEFAULT_CLASSIFICATIONS_OUTPUT == Path(
+        "data/processed/dod_supply_chain_research_inputs/local_cet_classifications.parquet"
+    )
+    assert DEFAULT_AWARDS_OUTPUT.name != "enriched_sbir_awards.parquet"
+    assert DEFAULT_CLASSIFICATIONS_OUTPUT.name != "cet_award_classifications.parquet"
 
 
 def test_local_awards_drop_exact_duplicates_and_fingerprint_id_collisions(

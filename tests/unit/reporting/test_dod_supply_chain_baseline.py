@@ -5,6 +5,7 @@ import pytest
 
 from sbir_etl.reporting.dod_supply_chain_baseline import (
     build_baseline,
+    build_firm_flags,
     latest_complete_fiscal_year,
     write_baseline_outputs,
 )
@@ -174,6 +175,63 @@ def test_classifier_method_version_is_recorded() -> None:
     result = build_baseline(_awards(), classifications, as_of=date(2026, 7, 20))
 
     assert result.metadata["classifier_versions"] == ["CET-RULES-2026Q3"]
+
+
+def test_entrant_year_uses_unclassified_dod_history() -> None:
+    awards = _awards()
+    earlier = pd.DataFrame(
+        [
+            {
+                "award_id": "A0",
+                "agency": "DOD",
+                "fiscal_year": 2018,
+                "company_name": "Acme Incorporated",
+                "uei": "UEI-1",
+                "award_amount": 50.0,
+                "phase": "I",
+            }
+        ]
+    )
+    awards = pd.concat([earlier, awards], ignore_index=True)
+
+    result = build_baseline(awards, _classifications(), as_of=date(2026, 7, 20))
+
+    acme = result.award_facts.loc[result.award_facts["organization_id"] == "uei:UEI-1"]
+    assert set(acme["first_observed_fy"]) == {2018}
+    assert not acme["first_observed_entrant"].any()
+
+
+def test_firm_flags_do_not_split_name_variants_for_one_stable_id() -> None:
+    facts = pd.DataFrame(
+        [
+            {
+                "award_id": "A1",
+                "fiscal_year": 2024,
+                "cet_area": "artificial_intelligence",
+                "organization_id": "uei:UEI-1",
+                "organization_name": "Acme, Inc.",
+                "identity_method": "uei",
+                "award_amount": 100.0,
+            },
+            {
+                "award_id": "A2",
+                "fiscal_year": 2025,
+                "cet_area": "artificial_intelligence",
+                "organization_id": "uei:UEI-1",
+                "organization_name": "Acme Inc",
+                "identity_method": "uei",
+                "award_amount": 300.0,
+            },
+        ]
+    )
+
+    flags = build_firm_flags(facts, latest_fy=2025)
+
+    assert len(flags) == 1
+    assert flags.loc[0, "organization_id"] == "uei:UEI-1"
+    assert flags.loc[0, "award_count"] == 2
+    assert flags.loc[0, "award_dollars"] == pytest.approx(400.0)
+    assert flags.loc[0, "base_firm_count"] == 1
 
 
 def test_required_inputs_fail_loudly() -> None:
