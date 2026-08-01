@@ -1,16 +1,13 @@
-"""Pair-filter functions for Phase III candidate signal classes."""
+"""Shared UEI pair construction and Phase III candidate filters."""
 
 from __future__ import annotations
 
+from collections.abc import Mapping
+
 import pandas as pd
 
-from sbir_etl.utils.award_identity import (
-    award_key_series,
-    collapse_transactions_to_award_grain,
-)
+from sbir_etl.utils.award_identity import award_key_series
 from sbir_etl.utils.procurement_text import DIRECTED_LINEAGE_TERMS
-
-from .similarity import compute_text_similarity_batch, compute_topical_similarity
 
 # FPDS Element 10Q codes that mark a contract as already-coded Phase III.
 # Duplicated intentionally — avoids cross-package import for a five-element set.
@@ -50,6 +47,18 @@ PAIR_S1_COLUMNS: list[str] = [
     "agency_match_level",
 ]
 
+# Transaction-grain schema shared by the weighted retrospective path and the
+# label-free census.  ``pair_filter_s1`` projects back to ``PAIR_S1_COLUMNS`` so
+# its existing public contract remains unchanged.
+PAIR_COLUMNS: list[str] = [
+    *PAIR_S1_COLUMNS[:-1],
+    "target_research",
+    "target_sbir_phase",
+    "target_transaction_id",
+    "target_contract_key",
+    "agency_match_level",
+]
+
 PAIR_OPPORTUNITY_COLUMNS: list[str] = PAIR_S1_COLUMNS + [
     "target_notice_type",
     "target_response_deadline",
@@ -80,20 +89,24 @@ _MISSING_TOKENS = frozenset({"", "NAN", "NAT", "NONE", "NULL", "<NA>"})
 
 
 def _normalize(value: object) -> str:
-    if value is None:
+    if value is None or value is pd.NA or value is pd.NaT:
+        return ""
+    if isinstance(value, float) and pd.isna(value):
         return ""
     s = str(value).strip().upper()
-    return "" if s in _MISSING_TOKENS else s
+    return "" if s in _MISSING_TOKENS or s == r"\N" else s
 
 
 def _is_phase_iii_already_coded(row: pd.Series) -> bool:
     """True iff a contract row already carries explicit Phase III coding."""
 
-    research = row.get("research") if "research" in row else None
+    research = row.get("target_research") if "target_research" in row else row.get("research")
     if isinstance(research, str) and research.strip().upper() in _PHASE_III_RESEARCH_CODES:
         return True
 
-    sbir_phase = row.get("sbir_phase") if "sbir_phase" in row else None
+    sbir_phase = (
+        row.get("target_sbir_phase") if "target_sbir_phase" in row else row.get("sbir_phase")
+    )
     if sbir_phase is not None:
         label = _normalize(sbir_phase)
         if label in _PHASE_III_LABELS:
@@ -157,47 +170,86 @@ def _prepare_priors(prior_awards: pd.DataFrame) -> pd.DataFrame:
     return out.reset_index(drop=True)
 
 
-def _prepare_contracts(contracts: pd.DataFrame) -> pd.DataFrame:
-    """Project & rename contracts frame to canonical ``target_*`` columns; excludes coded Phase III rows."""
+def _metadata_field(df: pd.DataFrame, *names: str) -> pd.Series:
+    """Return the first nonblank metadata value per row for ``names``."""
+
+    if "metadata" not in df.columns:
+        return pd.Series([None] * len(df), index=df.index, dtype="object")
+
+    def _get(value: object) -> object:
+        if not isinstance(value, Mapping):
+            return None
+        for name in names:
+            candidate = value.get(name)
+            if _normalize(candidate):
+                return candidate
+        return None
+
+    return df["metadata"].map(_get)
+
+
+def _coalesce_fields(
+    df: pd.DataFrame,
+    *fields: str,
+    fallback: pd.Series | None = None,
+) -> pd.Series:
+    """Coalesce fields per row, treating blank/null-like strings as absent."""
+
+    result = pd.Series([None] * len(df), index=df.index, dtype="object")
+    for field in fields:
+        if field not in df.columns:
+            continue
+        source = df[field]
+        take = result.map(_normalize).eq("") & source.map(_normalize).ne("")
+        result.loc[take] = source.loc[take]
+    if fallback is not None:
+        take = result.map(_normalize).eq("") & fallback.map(_normalize).ne("")
+        result.loc[take] = fallback.loc[take]
+    return result
+
+
+def _prepare_contract_transactions(contracts: pd.DataFrame) -> pd.DataFrame:
+    """Project source transactions without applying a census or scoring gate."""
 
     if contracts.empty:
-        return pd.DataFrame(columns=[c for c in PAIR_S1_COLUMNS if c.startswith("target_")])
+        return pd.DataFrame(columns=[c for c in PAIR_COLUMNS if c.startswith("target_")])
 
     df = contracts.copy()
-
     if not any(column in df.columns for column in _CODED_STATUS_COLUMNS):
         raise ValueError(
             "contracts frame carries no Phase III coding column "
             f"(need one of {_CODED_STATUS_COLUMNS}); the already-coded exclusion cannot run"
         )
 
-    # Code status is an award-level property. If any transaction is explicitly
-    # Phase III, exclude every transaction for that award.
-    df = df.assign(_award_key=award_key_series(df))
-    row_coded = (
-        df.apply(_is_phase_iii_already_coded, axis=1) if len(df) else pd.Series([], dtype=bool)
-    )
-    award_coded = row_coded.groupby(df["_award_key"], sort=False).transform("any")
-    df = df.loc[~award_coded].copy()
-    if df.empty:
-        return pd.DataFrame(columns=[c for c in PAIR_S1_COLUMNS if c.startswith("target_")])
-
-    # One representative row per award. The shared helper documents that this
-    # selects the latest transaction and does not aggregate financial fields.
-    df = collapse_transactions_to_award_grain(df, award_keys=df["_award_key"])
+    # The USAspending-generated award key is preferred; the shared identity
+    # helper fails closed on partial or ambiguous identifiers and otherwise
+    # derives the same agency + parent-IDV + PIID key used by legacy S1.
+    contract_keys = award_key_series(df)
 
     def _pick(*names: str) -> pd.Series:
-        for n in names:
-            if n in df.columns:
-                return df[n]
+        for name in names:
+            if name in df.columns:
+                return df[name]
         return pd.Series([None] * len(df), index=df.index)
 
+    metadata_transaction_id = _metadata_field(df, "transaction_unique_id", "transaction_id")
     out = pd.DataFrame(
         {
-            "target_id": df["_award_key"],
+            # Preserve the historical transaction-facing identifier here. S1
+            # restores its award-grain target_id after its legacy collapse.
+            "target_id": _pick("contract_id", "piid", "generated_unique_award_id"),
             "target_recipient_uei": _pick("vendor_uei", "recipient_uei", "uei"),
-            "target_agency": _pick("awarding_agency_name", "agency", "awarding_agency"),
-            "target_sub_agency": _pick("awarding_sub_tier_agency_name", "sub_agency"),
+            "target_agency": _pick(
+                "awarding_toptier_agency_name",
+                "awarding_agency_name",
+                "agency",
+                "awarding_agency",
+            ),
+            "target_sub_agency": _pick(
+                "awarding_subtier_agency_name",
+                "awarding_sub_tier_agency_name",
+                "sub_agency",
+            ),
             "target_office": _pick("awarding_office_name", "office"),
             "target_naics_code": _pick("naics_code", "naics"),
             "target_psc_code": _pick("psc_code", "product_or_service_code"),
@@ -211,48 +263,168 @@ def _prepare_contracts(contracts: pd.DataFrame) -> pd.DataFrame:
             "target_obligated_amount": _pick(
                 "federal_action_obligation", "obligated_amount", "obligation_amount"
             ),
+            # ``research`` is the authoritative FPDS Element 10Q field. The
+            # optional phase label remains supplemental rather than replacing it.
+            "target_research": _pick("research"),
+            "target_sbir_phase": _pick("sbir_phase"),
+            "target_transaction_id": _coalesce_fields(
+                df,
+                "transaction_unique_id",
+                "transaction_id",
+                fallback=metadata_transaction_id,
+            ),
+            "target_contract_key": contract_keys,
         }
     )
-    out = out.loc[out["target_recipient_uei"].astype(str).str.strip() != ""].copy()
-    out = out.loc[out["target_recipient_uei"].notna()].reset_index(drop=True)
-    return out
+    return out.reset_index(drop=True)
+
+
+def _legacy_s1_target_transactions(transactions: pd.DataFrame) -> pd.DataFrame:
+    """Apply current S1's award-level coded exclusion and latest-row policy."""
+
+    if transactions.empty:
+        return transactions.copy()
+
+    coded = transactions.apply(_is_phase_iii_already_coded, axis=1)
+    award_coded = coded.groupby(transactions["target_contract_key"], sort=False).transform("any")
+    eligible = transactions.loc[~award_coded].copy()
+    if eligible.empty:
+        return eligible
+
+    # Keep the latest transaction exactly as the legacy source-grain helper
+    # does. This is row selection, not financial aggregation.
+    sort_date = pd.to_datetime(eligible["target_action_date"], errors="coerce", utc=True)
+    eligible = (
+        eligible.assign(_award_sort_date=sort_date)
+        .sort_values("_award_sort_date", kind="mergesort", na_position="first")
+        .drop_duplicates("target_contract_key", keep="last")
+        .drop(columns="_award_sort_date")
+    )
+    eligible["target_id"] = eligible["target_contract_key"]
+    valid_uei = eligible["target_recipient_uei"].map(_normalize).ne("")
+    return eligible.loc[valid_uei].reset_index(drop=True)
+
+
+def _legacy_s1_targets(transactions: pd.DataFrame) -> pd.DataFrame:
+    target_columns = [c for c in PAIR_S1_COLUMNS if c.startswith("target_")]
+    eligible = _legacy_s1_target_transactions(transactions)
+    return eligible.loc[:, target_columns].reset_index(drop=True)
+
+
+def _target_transaction_signatures(frame: pd.DataFrame) -> pd.Series:
+    """Build internal row signatures for matching the legacy-selected transaction."""
+
+    columns = [
+        column for column in PAIR_COLUMNS if column.startswith("target_") and column != "target_id"
+    ]
+    return frame.loc[:, columns].apply(
+        lambda row: tuple(_normalize(value) for value in row),
+        axis=1,
+    )
+
+
+def _prepare_contracts(contracts: pd.DataFrame) -> pd.DataFrame:
+    """Prepare the legacy S1 award-grain target frame.
+
+    Kept as a compatibility seam for callers and tests; the neutral census
+    boundary is :func:`build_uei_pairs` below.
+    """
+
+    return _legacy_s1_targets(_prepare_contract_transactions(contracts))
+
+
+def build_uei_pairs(
+    prior_awards: pd.DataFrame,
+    contracts: pd.DataFrame,
+) -> pd.DataFrame:
+    """Build normalized, nonblank exact-UEI pairs at target-transaction grain.
+
+    This shared boundary applies no coded-status or agency gate. It carries the
+    source transaction and award identifiers plus every field needed by either
+    the label-free criteria or legacy S1.
+    """
+
+    priors = _prepare_priors(prior_awards)
+    targets = _prepare_contract_transactions(contracts)
+    if priors.empty or targets.empty:
+        return pd.DataFrame(columns=PAIR_COLUMNS)
+
+    priors = priors.assign(_uei=priors["prior_recipient_uei"].map(_normalize))
+    targets = targets.assign(_uei=targets["target_recipient_uei"].map(_normalize))
+    priors = priors.loc[priors["_uei"] != ""].copy()
+    targets = targets.loc[targets["_uei"] != ""].copy()
+    if priors.empty or targets.empty:
+        return pd.DataFrame(columns=PAIR_COLUMNS)
+
+    merged = priors.merge(targets, on="_uei", how="inner", suffixes=("", "_t"))
+    if merged.empty:
+        return pd.DataFrame(columns=PAIR_COLUMNS)
+
+    levels = merged.apply(  # type: ignore[call-overload]
+        lambda row: _agency_match_level(row, row),
+        axis=1,
+    )
+    merged = merged.assign(agency_match_level=levels).drop(columns="_uei")
+    return merged.loc[:, PAIR_COLUMNS].reset_index(drop=True)
 
 
 def pair_filter_s1(
     prior_awards: pd.DataFrame,
     contracts: pd.DataFrame,
 ) -> pd.DataFrame:
-    """S1 retrospective filter: UEI inner-join + hierarchical agency gate; excludes coded Phase III."""
+    """S1 retrospective filter with its unchanged award-grain gates and schema."""
 
-    priors = _prepare_priors(prior_awards)
-    targets = _prepare_contracts(contracts)
-    if priors.empty or targets.empty:
+    pairs = build_uei_pairs(prior_awards, contracts)
+    if pairs.empty:
         return pd.DataFrame(columns=PAIR_S1_COLUMNS)
 
-    # Normalize the join key so case/whitespace differences don't drop pairs.
-    priors = priors.assign(_uei=priors["prior_recipient_uei"].map(_normalize))
-    targets = targets.assign(_uei=targets["target_recipient_uei"].map(_normalize))
-    priors = priors.loc[priors["_uei"] != ""].copy()
-    targets = targets.loc[targets["_uei"] != ""].copy()
-    if priors.empty or targets.empty:
+    # Compute coded status and latest-transaction selection on the complete
+    # contract frame, as current S1 did before dropping blank UEIs or joining.
+    # The signature then selects that exact transaction from the delegated pair
+    # universe without changing the census's transaction-grain representation.
+    selected_targets = _legacy_s1_target_transactions(_prepare_contract_transactions(contracts))
+    if selected_targets.empty:
         return pd.DataFrame(columns=PAIR_S1_COLUMNS)
 
-    merged = priors.merge(targets, on="_uei", how="inner", suffixes=("", "_t"))
-    if merged.empty:
-        return pd.DataFrame(columns=PAIR_S1_COLUMNS)
-
-    # Apply the hierarchical agency gate row-wise.
-    levels = merged.apply(  # type: ignore[call-overload]
-        lambda r: _agency_match_level(r, r),
-        axis=1,
+    allowed = set(
+        zip(
+            selected_targets["target_contract_key"].map(_normalize),
+            _target_transaction_signatures(selected_targets),
+            strict=True,
+        )
     )
-    merged = merged.assign(agency_match_level=levels)
-    merged = merged.loc[merged["agency_match_level"].notna()].copy()
-    if merged.empty:
+    pair_keys = list(
+        zip(
+            pairs["target_contract_key"].map(_normalize),
+            _target_transaction_signatures(pairs),
+            strict=True,
+        )
+    )
+    eligible = pairs.loc[[key in allowed for key in pair_keys]].copy()
+    if eligible.empty:
         return pd.DataFrame(columns=PAIR_S1_COLUMNS)
 
-    merged = merged.drop(columns=["_uei"])
-    return merged.loc[:, PAIR_S1_COLUMNS].reset_index(drop=True)
+    # The transaction-grain universe intentionally retains duplicate source
+    # rows so census validation can fail on them. Legacy S1, however, emitted
+    # exactly one selected row per prior × award after its grain collapse.
+    eligible = eligible.drop_duplicates(
+        ["prior_award_id", "target_contract_key"],
+        keep="last",
+    )
+
+    target_order = {
+        _normalize(key): order for order, key in enumerate(selected_targets["target_contract_key"])
+    }
+    eligible["target_id"] = eligible["target_contract_key"]
+    eligible = eligible.loc[eligible["agency_match_level"].notna()].copy()
+    if eligible.empty:
+        return pd.DataFrame(columns=PAIR_S1_COLUMNS)
+
+    eligible = eligible.assign(
+        _prior_order=pd.factorize(eligible["prior_award_id"], sort=False)[0],
+        _target_order=eligible["target_contract_key"].map(_normalize).map(target_order),
+    ).sort_values(["_prior_order", "_target_order"], kind="mergesort")
+    return eligible.loc[:, PAIR_S1_COLUMNS].reset_index(drop=True)
 
 
 def _prepare_opportunities(opportunities: pd.DataFrame) -> pd.DataFrame:
@@ -312,6 +484,11 @@ def _with_pair_metadata(merged: pd.DataFrame) -> pd.DataFrame:
 
     if merged.empty:
         return pd.DataFrame(columns=PAIR_OPPORTUNITY_COLUMNS)
+
+    # Keep the scoring-only text dependency off the neutral census import path.
+    # S2/S3 still execute the same implementation when opportunity pairing runs.
+    from .similarity import compute_text_similarity_batch, compute_topical_similarity
+
     levels = merged.apply(  # type: ignore[call-overload]
         lambda row: _agency_match_level(row, row),
         axis=1,
@@ -420,8 +597,10 @@ def pair_filter_s3(prior_awards: pd.DataFrame, opportunities: pd.DataFrame) -> p
 __all__ = [
     "DIRECTED_NOTICE_TYPES",
     "FOLLOWON_NOTICE_TYPES",
+    "PAIR_COLUMNS",
     "PAIR_OPPORTUNITY_COLUMNS",
     "PAIR_S1_COLUMNS",
+    "build_uei_pairs",
     "pair_filter_s1",
     "pair_filter_s2",
     "pair_filter_s3",

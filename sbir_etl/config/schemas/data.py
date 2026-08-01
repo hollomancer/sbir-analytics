@@ -13,7 +13,7 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 # ---------------------------------------------------------------------------
@@ -166,7 +166,6 @@ class Neo4jConfig(BaseModel):
     transaction_timeout_seconds: int = 300
     retry_on_deadlock: bool = True
     max_deadlock_retries: int = 3
-    auto_migrate: bool = True
 
 
 class ExtractionConfig(BaseModel):
@@ -350,6 +349,8 @@ class CompanyCategorizationConfig(BaseModel):
 
 class PathsConfig(BaseModel):
     """File system paths configuration with environment variable expansion."""
+
+    model_config = ConfigDict(extra="forbid")
 
     data_root: str = Field(
         default="data", description="Root data directory (relative to project root)"
