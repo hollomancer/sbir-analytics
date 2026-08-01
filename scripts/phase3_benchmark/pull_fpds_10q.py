@@ -39,6 +39,7 @@ class _PageRead:
     cache_hit: bool
     cache_key: str
 
+
 FIELD_NAMES: tuple[str, ...] = (
     "PIID",
     "UEI",
