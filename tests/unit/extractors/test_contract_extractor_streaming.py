@@ -1,6 +1,7 @@
 """Offline tests for schema-verified remote contract streaming."""
 
 import gzip
+import hashlib
 import io
 import sys
 import types
@@ -19,6 +20,8 @@ from sbir_etl.extractors.contract_extractor import (
 
 
 pytestmark = pytest.mark.fast
+
+_TOC_BYTES = b"archive-owned-toc"
 
 
 def _row_text(
@@ -83,6 +86,7 @@ def _source(columns: Sequence[str]) -> TransactionSource:
         columns=tuple(columns),
         relation="rpt.transaction_search_fpds",
         fpds_only=True,
+        toc_sha256=hashlib.sha256(_TOC_BYTES).hexdigest(),
     )
 
 
@@ -194,6 +198,7 @@ def test_extract_from_remote_zip_resolves_then_writes(
     assert output.read_bytes() == b"verified-parquet"
     assert extractor.source_provenance["physical_table"] == source.relation
     assert extractor.source_provenance["member"] == source.member_name
+    assert extractor.source_provenance["toc_sha256"] == source.toc_sha256
 
 
 def test_remote_resolution_uses_toc_selected_member_not_file_size(
@@ -201,7 +206,7 @@ def test_remote_resolution_uses_toc_selected_member_not_file_size(
     contract_copy_columns,
 ) -> None:
     members = {
-        "archive/toc.dat": b"archive-owned-toc",
+        "archive/toc.dat": _TOC_BYTES,
         "archive/9247.dat.gz": gzip.compress(b""),
         # Deliberately larger: selection must come from metadata, never size/sniffing.
         "archive/9999.dat.gz": b"x" * 10000,

@@ -58,6 +58,7 @@ class TransactionSource:
     columns: tuple[str, ...]
     relation: str
     fpds_only: bool
+    toc_sha256: str | None = None
 
 
 @dataclass(frozen=True)
@@ -80,6 +81,16 @@ _COPY_RE = re.compile(
 
 def _unquote(value: str) -> str:
     return value.strip().strip('"').replace('""', '"')
+
+
+def _file_sha256(path: Path) -> str:
+    """Hash an archive input without loading it into memory."""
+
+    digest = hashlib.sha256()
+    with path.open("rb") as file:
+        for chunk in iter(lambda: file.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
 
 
 def _select_table_entry(toc_text: str, schema_sql: str) -> tuple[_TableEntry, bool]:
@@ -549,6 +560,13 @@ class ContractExtractor:
 
     @staticmethod
     def _provenance(source: TransactionSource) -> dict[str, str | int]:
+        toc_sha256 = source.toc_sha256
+        if (
+            not isinstance(toc_sha256, str)
+            or len(toc_sha256) != 64
+            or any(character not in "0123456789abcdef" for character in toc_sha256.lower())
+        ):
+            raise ArchiveSchemaError("Resolved source has no valid toc.dat fingerprint")
         serialized = json.dumps(source.columns, separators=(",", ":"))
         return {
             "canonical_table": CANONICAL_RELATION,
@@ -556,6 +574,7 @@ class ContractExtractor:
             "member": source.member_name,
             "ordered_columns_sha256": hashlib.sha256(serialized.encode()).hexdigest(),
             "column_count": len(source.columns),
+            "toc_sha256": toc_sha256,
         }
 
     @classmethod
@@ -567,7 +586,10 @@ class ContractExtractor:
         schema_sql = cls._run_pg_restore(dump_dir, "--schema-only", "--file=-")
         entry, _ = _select_table_entry(toc_text, schema_sql)
         copy_sql = cls._restore_copy_statement(toc_file, entry)
-        source = _resolve_source(toc_text, schema_sql, copy_sql)
+        source = replace(
+            _resolve_source(toc_text, schema_sql, copy_sql),
+            toc_sha256=_file_sha256(toc_file),
+        )
         if not (dump_dir / source.member_name).is_file():
             raise ArchiveSchemaError(
                 f"TOC selected {source.relation}, but {source.member_name} is absent"
@@ -604,7 +626,10 @@ class ContractExtractor:
                 schema_sql = cls._run_pg_restore(archive_dir, "--schema-only", "--file=-")
                 entry, _ = _select_table_entry(toc_text, schema_sql)
                 copy_sql = cls._restore_copy_statement(archive_dir / "toc.dat", entry)
-                source = _resolve_source(toc_text, schema_sql, copy_sql)
+                source = replace(
+                    _resolve_source(toc_text, schema_sql, copy_sql),
+                    toc_sha256=_file_sha256(archive_dir / "toc.dat"),
+                )
 
             member = str(PurePosixPath(toc_member).parent / source.member_name)
             if member not in names:

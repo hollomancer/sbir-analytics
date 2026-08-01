@@ -1,6 +1,7 @@
 """Fail-closed schema and named-row tests for USAspending contract extraction."""
 
 import gzip
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -268,6 +269,7 @@ def test_provenance_is_machine_readable_and_stable() -> None:
         _copy_sql(),
     )
 
+    source = replace(source, toc_sha256="b" * 64)
     provenance = ContractExtractor._provenance(source)
 
     assert provenance["canonical_table"] == "rpt.transaction_search"
@@ -275,6 +277,7 @@ def test_provenance_is_machine_readable_and_stable() -> None:
     assert provenance["member"] == "9247.dat.gz"
     assert provenance["column_count"] == len(COLUMNS)
     assert len(str(provenance["ordered_columns_sha256"])) == 64
+    assert provenance["toc_sha256"] == "b" * 64
 
 
 def test_zero_matches_atomically_replace_stale_output(tmp_path, monkeypatch) -> None:
