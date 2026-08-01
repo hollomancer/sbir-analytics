@@ -39,7 +39,10 @@ def test_remote_checks_are_accepted_by_census_loader(tmp_path, monkeypatch) -> N
     vendor_filter = tmp_path / "sbir_vendor_filters.json"
     vendor_filter.write_text('{"uei": ["ABC123456789"]}', encoding="utf-8")
     vendor_sha256 = extract_federal_contracts._file_sha256(vendor_filter)
-    extractor = SimpleNamespace(source_provenance=_source_provenance())
+    extractor = SimpleNamespace(
+        source_provenance=_source_provenance(),
+        stats={"invalid_performance_periods": 2},
+    )
 
     checks_path = extract_federal_contracts.write_contract_provenance_checks(
         extractor=extractor,
@@ -57,6 +60,7 @@ def test_remote_checks_are_accepted_by_census_loader(tmp_path, monkeypatch) -> N
         extract_federal_contracts._file_sha256(output)
     )
     assert checks["source"]["remote_zip"].startswith("https://files.usaspending.gov/")
+    assert checks["extraction_stats"]["invalid_performance_periods"] == 2
 
     monkeypatch.setattr(census_assets, "CONTRACTS_PRIMARY_PATH", output)
     monkeypatch.setattr(census_assets, "CONTRACTS_FALLBACK_PATH", tmp_path / "missing.parquet")
@@ -76,7 +80,7 @@ def test_checks_refuse_vendor_filter_changed_during_extraction(tmp_path) -> None
 
     with pytest.raises(RuntimeError, match="changed during contract extraction"):
         extract_federal_contracts.write_contract_provenance_checks(
-            extractor=SimpleNamespace(source_provenance=_source_provenance()),
+            extractor=SimpleNamespace(source_provenance=_source_provenance(), stats={}),
             output_file=output,
             vendor_filter_file=vendor_filter,
             expected_vendor_filter_sha256=original_sha256,
@@ -97,7 +101,7 @@ def test_checks_require_archive_toc_fingerprint(tmp_path) -> None:
 
     with pytest.raises(RuntimeError, match=r"missing fields: \['toc_sha256'\]"):
         extract_federal_contracts.write_contract_provenance_checks(
-            extractor=SimpleNamespace(source_provenance=source_provenance),
+            extractor=SimpleNamespace(source_provenance=source_provenance, stats={}),
             output_file=output,
             vendor_filter_file=vendor_filter,
             expected_vendor_filter_sha256=extract_federal_contracts._file_sha256(vendor_filter),

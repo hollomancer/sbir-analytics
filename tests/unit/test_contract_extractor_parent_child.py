@@ -1,5 +1,7 @@
 """Focused parent/child classification tests for named contract rows."""
 
+from datetime import date
+
 import pytest
 
 from sbir_etl.extractors.contract_extractor import ContractExtractor
@@ -104,3 +106,54 @@ def test_explicit_parent_award_id_takes_precedence(
     assert contract.parent_contract_id == "GENERATED-IDV-AWARD-ID"
     assert contract.metadata["parent_idv_piid"] == "GENERATED-IDV-AWARD-ID"
     assert extractor._parent_ids_seen == {"GENERATED-IDV-AWARD-ID"}
+
+
+def test_end_before_start_is_suppressed_and_audited(extractor: ContractExtractor) -> None:
+    row = _base_contract_row()
+    row.update(
+        {
+            "period_of_performance_start_date": "20250315",
+            "period_of_performance_current_end_date": "20240201",
+        }
+    )
+
+    contract = extractor._parse_contract_row(row)
+
+    assert contract.start_date == date(2025, 3, 15)
+    assert contract.end_date is None
+    assert contract.action_date == date(2024, 1, 15)
+    assert contract.metadata["source_period_of_performance_start_date"] == "20250315"
+    assert contract.metadata["source_period_of_performance_current_end_date"] == "20240201"
+    assert contract.metadata["end_date_suppressed_before_effective_start"] is True
+    assert extractor.stats["invalid_performance_periods"] == 1
+
+
+def test_end_before_action_fallback_is_suppressed_and_audited(
+    extractor: ContractExtractor,
+) -> None:
+    row = _base_contract_row()
+    row.update(
+        {
+            "action_date": "20250315",
+            "period_of_performance_start_date": None,
+            "period_of_performance_current_end_date": "20240201",
+        }
+    )
+
+    contract = extractor._parse_contract_row(row)
+
+    assert contract.start_date == date(2025, 3, 15)
+    assert contract.end_date is None
+    assert contract.metadata["source_period_of_performance_start_date"] is None
+    assert contract.metadata["source_period_of_performance_current_end_date"] == "20240201"
+    assert contract.metadata["end_date_suppressed_before_effective_start"] is True
+    assert extractor.stats["invalid_performance_periods"] == 1
+
+
+def test_valid_date_range_is_unchanged(extractor: ContractExtractor) -> None:
+    contract = extractor._parse_contract_row(_base_contract_row())
+
+    assert contract.start_date == date(2024, 2, 1)
+    assert contract.end_date == date(2025, 3, 15)
+    assert contract.metadata["end_date_suppressed_before_effective_start"] is False
+    assert extractor.stats["invalid_performance_periods"] == 0

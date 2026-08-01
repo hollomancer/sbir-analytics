@@ -128,6 +128,7 @@ def test_parse_lines_filters_non_fpds_and_unmatched_vendors(
         "contracts_found": 2,
         "vendor_matches": 1,
         "records_extracted": 1,
+        "invalid_performance_periods": 0,
         "parent_relationships": 0,
         "child_relationships": 0,
         "idv_parents": 0,

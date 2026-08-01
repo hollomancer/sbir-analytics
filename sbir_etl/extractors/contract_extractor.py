@@ -237,6 +237,7 @@ class ContractExtractor:
             "contracts_found": 0,
             "vendor_matches": 0,
             "records_extracted": 0,
+            "invalid_performance_periods": 0,
             "parent_relationships": 0,
             "child_relationships": 0,
             "idv_parents": 0,
@@ -372,13 +373,21 @@ class ContractExtractor:
             raise SourceDataError(f"Matched FPDS row is missing {missing}")
 
         action_date = parse_date(row.get("action_date"), allow_8digit=True, strict=False)
-        start_date = parse_date(
+        source_start_date = parse_date(
             row.get("period_of_performance_start_date"), allow_8digit=True, strict=False
         )
-        end_date = parse_date(
+        source_end_date = parse_date(
             row.get("period_of_performance_current_end_date"), allow_8digit=True, strict=False
         )
-        start_date = start_date or action_date
+        start_date = source_start_date or action_date
+        end_date = source_end_date
+        end_date_suppressed = bool(start_date and end_date and end_date < start_date)
+        if end_date_suppressed:
+            # Preserve the transaction and census-relevant action fields. The source
+            # end date cannot satisfy FederalContract's range invariant, so retain it
+            # verbatim in metadata and expose the normalization in extraction stats.
+            self.stats["invalid_performance_periods"] += 1
+            end_date = None
         obligation_text = row.get("federal_action_obligation")
         try:
             obligation = float(obligation_text) if obligation_text else None
@@ -440,6 +449,13 @@ class ContractExtractor:
                 "award_id": award_id,
                 "modification_number": row.get("modification_number"),
                 "action_date": action_date.isoformat() if action_date else None,
+                "source_period_of_performance_start_date": row.get(
+                    "period_of_performance_start_date"
+                ),
+                "source_period_of_performance_current_end_date": row.get(
+                    "period_of_performance_current_end_date"
+                ),
+                "end_date_suppressed_before_effective_start": end_date_suppressed,
                 "funding_agency": row.get("funding_toptier_agency_name"),
                 "parent_uei": row.get("parent_uei"),
                 "recipient_state": row.get("recipient_location_state_code"),

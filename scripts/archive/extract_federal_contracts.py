@@ -123,6 +123,7 @@ def write_contract_provenance_checks(
         "ok": True,
         "generated_at": datetime.now(UTC).isoformat(),
         "total_rows": total_rows,
+        "extraction_stats": dict(extractor.stats),
         "source_provenance": provenance,
         "source": {
             **source,
