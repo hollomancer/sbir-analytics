@@ -1,16 +1,19 @@
 """Unit tests for the topical-similarity helper (Phase III candidate spec §1.3).
 
 Includes adversarial negatives that verify the feature bag does not credit
-spurious topical matches when codes disagree or token overlap collapses to
-stopwords.
+spurious topical matches when codes disagree or text overlap collapses to
+stopwords. The text channel is corpus-fitted TF-IDF cosine (Phase 2 of the
+why-it-connects design), not token Jaccard.
 """
 
 from __future__ import annotations
 
+import pandas as pd
 import pytest
 
 from sbir_analytics.assets.phase_iii_candidates.similarity import (
     DEFAULT_WEIGHTS,
+    compute_text_similarity_batch,
     compute_topical_similarity,
 )
 
@@ -19,7 +22,7 @@ pytestmark = pytest.mark.fast
 
 
 class TestCodeAgreement:
-    def test_exact_naics_and_psc_match_with_strong_jaccard(self):
+    def test_exact_naics_and_psc_match_with_strong_text(self):
         prior = {
             "naics_code": "541715",
             "psc_code": "AJ11",
@@ -32,7 +35,7 @@ class TestCodeAgreement:
             "description": "Autonomous UAV navigation with reinforcement learning pipeline.",
         }
         score = compute_topical_similarity(prior, target)
-        # NAICS + PSC contribute 0.30 + 0.20 = 0.50; Jaccard high.
+        # NAICS + PSC contribute 0.30 + 0.20 = 0.50; text cosine is high.
         assert score > 0.7
 
     def test_naics_mismatch_drops_contribution(self):
@@ -48,7 +51,7 @@ class TestCodeAgreement:
             "description": "UAV navigation obstacle avoidance",
         }
         score = compute_topical_similarity(prior, target)
-        # Jaccard + PSC contribute; NAICS explicitly mismatches.
+        # Text + PSC contribute; NAICS explicitly mismatches.
         assert 0.4 <= score <= 0.9
         # Removing the PSC too should drop further.
         target_no_psc = {**target, "psc_code": None}
@@ -58,12 +61,12 @@ class TestCodeAgreement:
         prior = {"naics_code": None, "psc_code": None, "title": "a b c", "abstract": "d e f"}
         target = {"naics_code": None, "psc_code": None, "description": "a b c d e f"}
         score = compute_topical_similarity(prior, target)
-        # Only Jaccard contributes; tokens <= 2 chars are filtered so all drop.
+        # Only text contributes; single-character tokens are dropped by the vectorizer.
         assert score == 0.0
 
 
-class TestJaccardChannel:
-    def test_identical_descriptions_high_jaccard(self):
+class TestTextChannel:
+    def test_identical_texts_saturate_the_text_weight(self):
         prior = {
             "naics_code": None,
             "psc_code": None,
@@ -79,7 +82,8 @@ class TestJaccardChannel:
             ),
         }
         score = compute_topical_similarity(prior, target)
-        assert score == pytest.approx(DEFAULT_WEIGHTS["jaccard"], abs=1e-6)
+        # Identical text on both sides -> cosine 1.0 -> exactly the text weight.
+        assert score == pytest.approx(DEFAULT_WEIGHTS["text"], abs=1e-6)
 
     def test_stopword_only_overlap_does_not_credit(self):
         prior = {
@@ -94,10 +98,10 @@ class TestJaccardChannel:
             "description": "the of and for to in on at with by",
         }
         score = compute_topical_similarity(prior, target)
-        # Stopwords are filtered, so Jaccard is 0.
+        # English stopwords are removed, so the text cosine is 0.
         assert score == 0.0
 
-    def test_totally_different_descriptions_low_jaccard(self):
+    def test_totally_different_descriptions_score_zero(self):
         prior = {
             "naics_code": None,
             "psc_code": None,
@@ -112,13 +116,45 @@ class TestJaccardChannel:
         score = compute_topical_similarity(prior, target)
         assert score == 0.0
 
+    def test_batch_idf_downweights_corpus_common_terms(self):
+        """Corpus-fitted idf: a match on a run-ubiquitous word counts less than rare jargon."""
+
+        pairs = pd.DataFrame(
+            [
+                # Every row mentions "system"; only this pair shares rare jargon too.
+                {
+                    "prior_title": "scramjet combustor system",
+                    "prior_abstract": None,
+                    "target_description": "scramjet combustor demonstration system",
+                },
+                # This pair shares only the ubiquitous word.
+                {
+                    "prior_title": "logistics resupply system",
+                    "prior_abstract": None,
+                    "target_description": "oncology enrollment system",
+                },
+                {
+                    "prior_title": "sensor system",
+                    "prior_abstract": None,
+                    "target_description": "radar system",
+                },
+            ]
+        )
+        sims = compute_text_similarity_batch(pairs)
+        assert len(sims) == 3
+        assert sims[0] > sims[1]  # rare-jargon match beats common-word-only match
+        assert all(0.0 <= value <= 1.0 for value in sims)
+
+    def test_batch_empty_frame_returns_empty(self):
+        assert compute_text_similarity_batch(pd.DataFrame()) == []
+
 
 class TestAdversarialNegatives:
     def test_naics_match_but_no_token_overlap(self):
         """NAICS-matching projects with different subject matter.
 
         NAICS 541715 covers a large R&D swath. Same code, wildly different
-        projects. The NAICS channel should still credit; Jaccard and PSC
+        projects. The NAICS channel should still credit; text and PSC
         should not.
         """
         prior = {
@@ -138,6 +174,11 @@ class TestAdversarialNegatives:
 
     def test_empty_inputs_yield_zero(self):
         assert compute_topical_similarity({}, {}) == 0.0
+
+    def test_nullable_pandas_text_yields_zero(self):
+        prior = {"title": pd.NA, "abstract": float("nan")}
+        target = {"description": pd.NA}
+        assert compute_topical_similarity(prior, target) == 0.0
 
     def test_score_is_bounded(self):
         prior = {
@@ -159,6 +200,32 @@ class TestAdversarialNegatives:
         prior = {"naics_code": "A", "psc_code": "A", "title": "alpha", "abstract": "alpha"}
         target = {"naics_code": "A", "psc_code": "A", "description": "alpha"}
         score = compute_topical_similarity(
-            prior, target, weights={"naics": 1.0, "psc": 1.0, "jaccard": 1.0}
+            prior, target, weights={"naics": 1.0, "psc": 1.0, "text": 1.0}
         )
         assert score == 1.0
+
+    def test_precomputed_text_similarity_bypasses_fit(self):
+        prior = {"naics_code": "541715", "psc_code": None, "title": "x", "abstract": None}
+        target = {"naics_code": "541715", "psc_code": None, "description": "y"}
+        score = compute_topical_similarity(prior, target, text_similarity=1.0)
+        assert score == pytest.approx(DEFAULT_WEIGHTS["naics"] + DEFAULT_WEIGHTS["text"], abs=1e-6)
+
+
+def test_missing_codes_do_not_count_as_agreement():
+    import pandas as pd
+
+    from sbir_analytics.assets.phase_iii_candidates.similarity import normalize_code
+
+    for missing in (None, float("nan"), pd.NA, pd.NaT, "", "  ", "N/A"):
+        assert normalize_code(missing) is None
+
+    # Two missing codes must contribute nothing — otherwise unrelated text clears
+    # the 0.10 S3 topical gate on absence alone.
+    assert (
+        compute_topical_similarity(
+            {"naics_code": pd.NA, "psc_code": float("nan"), "title": "alpha"},
+            {"naics_code": pd.NA, "psc_code": float("nan"), "description": "beta"},
+            text_similarity=0.0,
+        )
+        == 0.0
+    )
