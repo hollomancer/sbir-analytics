@@ -19,12 +19,7 @@ class VectorIndexes(Migration):
 
         with driver.session() as session:
             for stmt in statements:
-                try:
-                    session.run(stmt)
-                except Exception as e:
-                    from loguru import logger
-
-                    logger.debug(f"Schema statement may already exist: {e}")
+                session.run(stmt)
 
     def downgrade(self, driver: Driver) -> None:
         """Remove cross-reference indexes."""
@@ -34,7 +29,4 @@ class VectorIndexes(Migration):
 
         with driver.session() as session:
             for stmt in statements:
-                try:
-                    session.run(stmt)
-                except Exception:
-                    pass
+                session.run(stmt)

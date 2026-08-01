@@ -81,10 +81,7 @@ class UnifyAwardIntoFinancialTransaction(Migration):
                 "DROP INDEX award_date IF EXISTS",
                 "DROP INDEX award_topic_code IF EXISTS",
             ):
-                try:
-                    session.run(stmt)
-                except Exception as e:  # pragma: no cover - defensive
-                    logger.debug("Legacy schema drop statement skipped: {} ({})", stmt, e)
+                session.run(stmt)
 
     @staticmethod
     def _rehome_batch(tx) -> dict:  # type: ignore[no-untyped-def]
@@ -158,7 +155,4 @@ class UnifyAwardIntoFinancialTransaction(Migration):
         )
         with driver.session() as session:
             for stmt in statements:
-                try:
-                    session.run(stmt)
-                except Exception as e:  # pragma: no cover - defensive
-                    logger.debug("Legacy schema recreate statement skipped: {} ({})", stmt, e)
+                session.run(stmt)

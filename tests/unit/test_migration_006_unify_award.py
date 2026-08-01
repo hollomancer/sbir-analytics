@@ -59,6 +59,19 @@ def test_upgrade_rehomes_then_drops_legacy_schema():
     assert any("DROP INDEX award_topic_code" in s for s in drop_statements)
 
 
+def test_upgrade_propagates_legacy_schema_failure():
+    """A partially completed data migration cannot be reported as successful."""
+    migration = UnifyAwardIntoFinancialTransaction()
+    driver, session = _mock_driver_with_session()
+    orphan_result = MagicMock()
+    orphan_result.single.return_value = {"n": 0}
+    session.run.side_effect = [orphan_result, RuntimeError("schema failure")]
+    session.execute_write.return_value = {"rehomed": 0}
+
+    with pytest.raises(RuntimeError, match="schema failure"):
+        migration.upgrade(driver)
+
+
 def test_downgrade_recreates_legacy_schema():
     migration = UnifyAwardIntoFinancialTransaction()
     driver, session = _mock_driver_with_session()

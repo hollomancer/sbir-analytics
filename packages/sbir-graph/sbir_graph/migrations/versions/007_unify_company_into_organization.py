@@ -111,10 +111,7 @@ class UnifyCompanyIntoOrganization(Migration):
 
             # 3. Drop legacy :Company constraint/indexes; create :Organization enrichment indexes.
             for stmt in (*_LEGACY_COMPANY_SCHEMA, *_ORGANIZATION_ENRICHMENT_INDEXES):
-                try:
-                    session.run(stmt)
-                except Exception as e:  # pragma: no cover - defensive
-                    logger.debug("Schema statement skipped: {} ({})", stmt, e)
+                session.run(stmt)
 
     @staticmethod
     def _rehome_batch(tx) -> dict:  # type: ignore[no-untyped-def]
@@ -188,7 +185,4 @@ class UnifyCompanyIntoOrganization(Migration):
         )
         with driver.session() as session:
             for stmt in statements:
-                try:
-                    session.run(stmt)
-                except Exception as e:  # pragma: no cover - defensive
-                    logger.debug("Legacy schema recreate statement skipped: {} ({})", stmt, e)
+                session.run(stmt)

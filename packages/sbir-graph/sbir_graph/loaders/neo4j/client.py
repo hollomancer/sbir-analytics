@@ -26,7 +26,7 @@ class Neo4jConfig(BaseModel):
     password: str
     database: str = "neo4j"
     batch_size: int = 5000  # Increased for UNWIND performance
-    auto_migrate: bool = True  # Automatically run migrations on client initialization
+    auto_migrate: bool = False  # Require an explicit migration step by default
 
 
 @dataclass
@@ -91,7 +91,7 @@ class Neo4jClient:
         self._driver: Driver | None = None
         logger.info(f"Neo4j client initialized for {config.uri}")
 
-        # Run migrations automatically if enabled
+        # Auto-migration is an explicit opt-in because migrations may rewrite graph data.
         if config.auto_migrate:
             try:
                 from sbir_graph.migrations.runner import MigrationRunner
@@ -99,9 +99,10 @@ class Neo4jClient:
                 runner = MigrationRunner(self.driver)
                 runner.upgrade()
                 logger.info("Neo4j migrations completed")
-            except Exception as e:
-                logger.warning(f"Failed to run migrations: {e}")
-                # Don't fail initialization if migrations fail
+            except Exception:
+                logger.exception("Neo4j auto-migration failed; client initialization aborted")
+                self.close()
+                raise
 
     @property
     def driver(self) -> Driver:

@@ -14,10 +14,10 @@ migration system.
 ## Overview
 
 Migrations are versioned Python files that define schema changes (constraints and indexes) and
-data migrations. They are automatically applied when `Neo4jClient` is initialized with
-`auto_migrate=True`, or can be run manually through the repository CLI wrapper. Because the
-migration package is part of the `sbir-graph` distribution, the same definitions are available in
-checkout, container, and installed-package environments.
+data migrations. Normal `Neo4jClient` construction does not apply them: `auto_migrate` defaults to
+`False`, so an operator must run the repository CLI wrapper. Because the migration package is part
+of the `sbir-graph` distribution, the same definitions are available in checkout, container, and
+installed-package environments.
 
 ## Migration Files
 
@@ -36,11 +36,7 @@ Migrations are located in
 
 ## Running Migrations
 
-### Automatic (Default)
-
-Migrations run automatically when `Neo4jClient` is initialized if `auto_migrate=True` (default).
-
-### Manual CLI
+### Manual CLI (Default)
 
 Install `sbir-graph` (or the full `sbir-analytics` package) before using the repository CLI
 wrapper:
@@ -50,24 +46,39 @@ pip install sbir-graph
 ```
 
 ```bash
-# Upgrade to latest
-python scripts/neo4j/migrate.py upgrade
-
-# Upgrade to specific version
-python scripts/neo4j/migrate.py upgrade --target 002
-
 # Check current version
 python scripts/neo4j/migrate.py current
 
 # View migration history
 python scripts/neo4j/migrate.py history
 
-# Downgrade to specific version
-python scripts/neo4j/migrate.py downgrade --target 001
-
-# Dry run (preview changes)
+# Preview pending migrations without applying them
 python scripts/neo4j/migrate.py upgrade --dry-run
+
+# Upgrade to latest after reviewing the plan
+python scripts/neo4j/migrate.py upgrade
+
+# Upgrade to a specific version
+python scripts/neo4j/migrate.py upgrade --target 002
+
+# Downgrade to a specific version
+python scripts/neo4j/migrate.py downgrade --target 001
 ```
+
+Before upgrading a production graph, take and verify a backup using the procedure in the
+[Neo4j operations runbook](deployment/neo4j-runbook.md). Review data migrations particularly
+carefully: 003 merges duplicate organizations, 006 re-homes legacy `Award` nodes into
+`FinancialTransaction`, and 007 re-homes legacy `Company` nodes into `Organization`.
+
+Migration discovery, module import, and execution are fail-closed. A failure exits the command
+without marking the failed migration as applied; correct the problem before retrying.
+
+### Automatic (Opt-in)
+
+Direct `sbir_graph` callers may explicitly construct `Neo4jConfig(auto_migrate=True)` in managed
+environments where client construction is the intended migration gate. The same fail-closed
+behavior applies: a discovery or execution failure aborts `Neo4jClient` initialization instead of
+leaving the application running against a partially migrated graph.
 
 Environment variables:
 

@@ -145,8 +145,11 @@ NEO4J_PASSWORD=<admin_password> ./scripts/neo4j/bootstrap_users.sh --ingest-user
 
 Schema bootstrap
 
-- Migrations run automatically when `Neo4jClient` is initialized (if `auto_migrate=True`, which is the default).
-- To run migrations manually:
+- Migrations do not run during normal `Neo4jClient` initialization (`auto_migrate=False` by
+  default). Production migrations are an explicit operator step.
+- Take and verify a backup before applying data migrations. Versions 003, 006, and 007 merge or
+  re-home existing graph nodes; see the migration descriptions in `docs/migrations.md`.
+- Use this rollout sequence:
 
 ```bash
 # Check current version
@@ -155,13 +158,17 @@ python scripts/neo4j/migrate.py current
 # View migration history
 python scripts/neo4j/migrate.py history
 
-# Upgrade to latest
-NEO4J_PASSWORD=<admin_password> python scripts/neo4j/migrate.py upgrade
+# Preview the pending migration plan
+NEO4J_PASSWORD=<admin_password> python scripts/neo4j/migrate.py upgrade --dry-run
 
-# Dry-run (preview changes)
-python scripts/neo4j/migrate.py upgrade --dry-run
+# After reviewing the plan and verifying the backup, upgrade to latest
+NEO4J_PASSWORD=<admin_password> python scripts/neo4j/migrate.py upgrade
 ```
 
+- Migration discovery, import, and execution failures stop the command. Do not start application
+  workloads until the explicit upgrade succeeds.
+- Direct `sbir_graph` clients may set `Neo4jConfig(auto_migrate=True)` as an explicit opt-in for
+  managed deployments; failures then abort client initialization.
 - See `docs/migrations.md` for detailed migration documentation.
 
 Backup & restore
