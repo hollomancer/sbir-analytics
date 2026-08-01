@@ -39,8 +39,8 @@ _LEGACY_ENVIRONMENT_VARIABLE = "SBIR_ETL_ENV"
 
 def _normalize_environment_profile(environment: str) -> str:
     """Return the config-file profile for a user-facing environment name."""
-    requested = environment.strip()
-    return _ENVIRONMENT_PROFILE_ALIASES.get(requested.lower(), requested)
+    requested = environment.strip().lower()
+    return _ENVIRONMENT_PROFILE_ALIASES.get(requested, requested)
 
 
 def _canonical_environment_name(environment: str) -> str:

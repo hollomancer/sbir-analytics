@@ -12,11 +12,16 @@
 #
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 
 import pytest
 from loguru import logger
+
+# Keep local pytest runs on the same profile selected by CI. Tests that exercise
+# profile selection override or remove this value with ``monkeypatch``.
+os.environ["SBIR_ETL__PIPELINE__ENVIRONMENT"] = "test"
 
 
 def _find_repo_root(start: Path | None = None) -> Path:

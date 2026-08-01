@@ -217,7 +217,22 @@ The path resolver automatically:
 
 ## Environment Variable Overrides
 
-Any configuration value can be overridden at runtime with an environment variable that mirrors the YAML path. The override applies after YAML files are merged and before Pydantic validation.
+Configuration values can generally be overridden at runtime with an environment variable that mirrors the YAML path. The override applies after YAML files are merged and before Pydantic validation.
+
+### Profile Selection
+
+`SBIR_ETL__PIPELINE__ENVIRONMENT` is the exception to the generic override behavior: it
+selects which environment profile is merged and is not reapplied as a
+`pipeline.environment` value. Selection uses this precedence order:
+
+1. The explicit `get_config(environment="...")` argument
+2. `SBIR_ETL__PIPELINE__ENVIRONMENT`
+3. The legacy `SBIR_ETL_ENV` variable
+4. `development` by default
+
+`development`/`dev` load `dev.yaml`, `production`/`prod` load `prod.yaml`, and `test`
+loads `test.yaml`. Custom profile names are normalized to lowercase and load the matching
+`<profile>.yaml` file when it exists.
 
 ### Override Format
 

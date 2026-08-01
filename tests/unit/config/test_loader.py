@@ -120,7 +120,8 @@ class TestEnvironmentSelection:
             ("prod", "prod"),
             ("production", "prod"),
             ("test", "test"),
-            ("QA-Blue", "QA-Blue"),
+            ("QA-Blue", "qa-blue"),
+            ("  Staging  ", "staging"),
         ],
     )
     def test_normalize_environment_profile(self, environment, expected):
@@ -134,7 +135,8 @@ class TestEnvironmentSelection:
             ("prod", "production"),
             ("production", "production"),
             ("test", "test"),
-            ("QA-Blue", "QA-Blue"),
+            ("QA-Blue", "qa-blue"),
+            ("  Staging  ", "staging"),
         ],
     )
     def test_canonical_environment_name(self, environment, expected):
@@ -374,13 +376,13 @@ class TestLoadConfigFromFiles:
             # Should still load base config without error
             assert result["logging"]["level"] == "INFO"
 
-    def test_custom_environment_loads_matching_profile(self):
-        """Custom profiles retain the historical <environment>.yaml behavior."""
+    def test_custom_environment_selection_is_case_insensitive(self):
+        """Custom profile names are normalized before resolving their YAML file."""
         with tempfile.TemporaryDirectory() as tmpdir:
             config_dir = Path(tmpdir)
             with open(config_dir / "base.yaml", "w") as f:
                 yaml.dump({"logging": {"level": "INFO"}}, f)
-            with open(config_dir / "QA-Blue.yaml", "w") as f:
+            with open(config_dir / "qa-blue.yaml", "w") as f:
                 yaml.dump({"logging": {"level": "WARNING"}}, f)
 
             result = load_config_from_files(
