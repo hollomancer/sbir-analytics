@@ -10,8 +10,11 @@ import yaml
 
 from sbir_etl.config.loader import (
     _apply_env_overrides,
+    _canonical_environment_name,
     _convert_env_value,
     _deep_merge_dicts,
+    _normalize_environment_profile,
+    _selected_environment,
     get_config,
     load_config_from_files,
     reload_config,
@@ -32,7 +35,14 @@ def clear_config_cache(monkeypatch):
     These tests assert on the configured defaults, so the env vars need
     to be cleared for the assertions to be meaningful.
     """
-    for var in ("NEO4J_URI", "NEO4J_USER", "NEO4J_USERNAME", "NEO4J_PASSWORD"):
+    for var in (
+        "NEO4J_URI",
+        "NEO4J_USER",
+        "NEO4J_USERNAME",
+        "NEO4J_PASSWORD",
+        "SBIR_ETL_ENV",
+        "SBIR_ETL__PIPELINE__ENVIRONMENT",
+    ):
         monkeypatch.delenv(var, raising=False)
     get_config.cache_clear()
     yield
@@ -97,6 +107,57 @@ class TestDeepMergeDicts:
         override = {"b": {"d": 3}}
         _deep_merge_dicts(base, override)
         assert base == {"a": 1, "b": {"c": 2}}  # Base unchanged
+
+
+class TestEnvironmentSelection:
+    """Tests for canonical environment selection and profile aliases."""
+
+    @pytest.mark.parametrize(
+        ("environment", "expected"),
+        [
+            ("dev", "dev"),
+            ("development", "dev"),
+            ("prod", "prod"),
+            ("production", "prod"),
+            ("test", "test"),
+            ("QA-Blue", "qa-blue"),
+            ("  Staging  ", "staging"),
+        ],
+    )
+    def test_normalize_environment_profile(self, environment, expected):
+        assert _normalize_environment_profile(environment) == expected
+
+    @pytest.mark.parametrize(
+        ("environment", "expected"),
+        [
+            ("dev", "development"),
+            ("development", "development"),
+            ("prod", "production"),
+            ("production", "production"),
+            ("test", "test"),
+            ("QA-Blue", "qa-blue"),
+            ("  Staging  ", "staging"),
+        ],
+    )
+    def test_canonical_environment_name(self, environment, expected):
+        assert _canonical_environment_name(environment) == expected
+
+    def test_explicit_environment_has_highest_precedence(self, monkeypatch):
+        monkeypatch.setenv("SBIR_ETL__PIPELINE__ENVIRONMENT", "production")
+        monkeypatch.setenv("SBIR_ETL_ENV", "prod")
+
+        assert _selected_environment("development") == "development"
+
+    def test_canonical_environment_variable_precedes_legacy(self, monkeypatch):
+        monkeypatch.setenv("SBIR_ETL__PIPELINE__ENVIRONMENT", "production")
+        monkeypatch.setenv("SBIR_ETL_ENV", "dev")
+
+        assert _selected_environment(None) == "production"
+
+    def test_legacy_environment_variable_remains_a_fallback(self, monkeypatch):
+        monkeypatch.setenv("SBIR_ETL_ENV", "prod")
+
+        assert _selected_environment(None) == "prod"
 
 
 class TestConvertEnvValue:
@@ -208,6 +269,14 @@ class TestApplyEnvOverrides:
         assert config["key"] == "original"  # Original unchanged
         assert result["key"] == "modified"
 
+    def test_apply_does_not_reapply_environment_selector(self, monkeypatch):
+        """Profile selection is control data, not a generic pipeline override."""
+        monkeypatch.setenv("SBIR_ETL__PIPELINE__ENVIRONMENT", "production")
+
+        result = _apply_env_overrides({"pipeline": {"environment": "development"}})
+
+        assert result["pipeline"]["environment"] == "development"
+
 
 class TestLoadConfigFromFiles:
     """Tests for load_config_from_files function."""
@@ -239,7 +308,7 @@ class TestLoadConfigFromFiles:
         with tempfile.TemporaryDirectory() as tmpdir:
             config_dir = Path(tmpdir)
             base_file = config_dir / "base.yaml"
-            prod_file = config_dir / "production.yaml"
+            prod_file = config_dir / "prod.yaml"
 
             with open(base_file, "w") as f:
                 yaml.dump(base_content, f)
@@ -254,6 +323,23 @@ class TestLoadConfigFromFiles:
 
             assert result["logging"]["level"] == "ERROR"
             assert result["feature"]["enabled"] is True
+
+    def test_development_alias_loads_dev_profile(self):
+        """Long environment names resolve to the repository's short profile filenames."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config_dir = Path(tmpdir)
+            with open(config_dir / "base.yaml", "w") as f:
+                yaml.dump({"logging": {"level": "INFO"}}, f)
+            with open(config_dir / "dev.yaml", "w") as f:
+                yaml.dump({"logging": {"level": "DEBUG"}}, f)
+
+            result = load_config_from_files(
+                base_path=Path.cwd(),
+                environment="development",
+                config_dir=config_dir,
+            )
+
+            assert result["logging"]["level"] == "DEBUG"
 
     def test_load_missing_base_file_raises_error(self):
         """Test loading with missing base.yaml raises ConfigurationError."""
@@ -280,15 +366,32 @@ class TestLoadConfigFromFiles:
             with open(base_file, "w") as f:
                 yaml.dump(base_content, f)
 
-            # Request 'development' environment but file doesn't exist
+            # Request a custom environment whose optional file does not exist.
             result = load_config_from_files(
                 base_path=Path.cwd(),
-                environment="development",
+                environment="staging",
                 config_dir=config_dir,
             )
 
             # Should still load base config without error
             assert result["logging"]["level"] == "INFO"
+
+    def test_custom_environment_selection_is_case_insensitive(self):
+        """Custom profile names are normalized before resolving their YAML file."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config_dir = Path(tmpdir)
+            with open(config_dir / "base.yaml", "w") as f:
+                yaml.dump({"logging": {"level": "INFO"}}, f)
+            with open(config_dir / "qa-blue.yaml", "w") as f:
+                yaml.dump({"logging": {"level": "WARNING"}}, f)
+
+            result = load_config_from_files(
+                base_path=Path.cwd(),
+                environment="QA-Blue",
+                config_dir=config_dir,
+            )
+
+            assert result["logging"]["level"] == "WARNING"
 
     def test_load_invalid_yaml_raises_error(self):
         """Test loading invalid YAML raises ConfigurationError."""

@@ -9,7 +9,9 @@ import pytest
 pytestmark = pytest.mark.fast
 
 # The migration module name begins with a digit, so import it dynamically.
-_module = importlib.import_module("migrations.versions.006_unify_award_into_financial_transaction")
+_module = importlib.import_module(
+    "sbir_graph.migrations.versions.006_unify_award_into_financial_transaction"
+)
 UnifyAwardIntoFinancialTransaction = _module.UnifyAwardIntoFinancialTransaction
 
 
@@ -55,6 +57,19 @@ def test_upgrade_rehomes_then_drops_legacy_schema():
     assert any("DROP CONSTRAINT award_id" in s for s in drop_statements)
     assert any("DROP INDEX award_date" in s for s in drop_statements)
     assert any("DROP INDEX award_topic_code" in s for s in drop_statements)
+
+
+def test_upgrade_propagates_legacy_schema_failure():
+    """A partially completed data migration cannot be reported as successful."""
+    migration = UnifyAwardIntoFinancialTransaction()
+    driver, session = _mock_driver_with_session()
+    orphan_result = MagicMock()
+    orphan_result.single.return_value = {"n": 0}
+    session.run.side_effect = [orphan_result, RuntimeError("schema failure")]
+    session.execute_write.return_value = {"rehomed": 0}
+
+    with pytest.raises(RuntimeError, match="schema failure"):
+        migration.upgrade(driver)
 
 
 def test_downgrade_recreates_legacy_schema():

@@ -722,6 +722,11 @@ class TestPathsConfig:
         assert config.data_root == "/custom/data"
         assert config.raw_data == "/custom/data/raw"
 
+    def test_unknown_path_keys_are_rejected(self):
+        """Misspelled or legacy path keys must not be silently ignored."""
+        with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
+            PathsConfig(processed_dir="data/processed")
+
     def test_resolve_path_with_default_project_root(self):
         """Test resolve_path with default project root."""
         config = PathsConfig(data_root="data")

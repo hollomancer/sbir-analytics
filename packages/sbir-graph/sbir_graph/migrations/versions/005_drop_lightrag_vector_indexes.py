@@ -6,7 +6,7 @@ and Patent nodes (if any) are preserved — only the index definitions are
 dropped.
 """
 
-from migrations.base import Migration
+from sbir_graph.migrations.base import Migration
 from neo4j import Driver  # type: ignore[attr-defined]
 
 

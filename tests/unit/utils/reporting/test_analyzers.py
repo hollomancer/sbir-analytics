@@ -27,6 +27,19 @@ from sbir_etl.utils.reporting.analyzers.transition_analyzer import TransitionDet
 pytestmark = pytest.mark.fast
 
 
+def _stable_report_dump(report: ModuleReport) -> dict[str, Any]:
+    """Return the deterministic portion of a module report."""
+    return report.model_dump(exclude={"timestamp"})
+
+
+def _stub_domain_analysis(monkeypatch: pytest.MonkeyPatch, analyzer: ModuleAnalyzer) -> None:
+    """Isolate shared lifecycle behavior from domain calculations."""
+    monkeypatch.setattr(analyzer, "get_key_metrics", lambda _module_data: {"stub_metric": 1})
+    monkeypatch.setattr(analyzer, "generate_insights", lambda _module_data: [])
+    monkeypatch.setattr(analyzer, "_calculate_data_hygiene", lambda *_args: None)
+    monkeypatch.setattr(analyzer, "_calculate_changes_summary", lambda *_args: None)
+
+
 # =============================================================================
 # Base Analyzer Tests
 # =============================================================================
@@ -35,8 +48,15 @@ pytestmark = pytest.mark.fast
 class ConcreteAnalyzer(ModuleAnalyzer):
     """Concrete implementation of ModuleAnalyzer for testing."""
 
+    stage = "test"
+    primary_data_key = "records"
+    processing_keys = ("processing", "processed", "failed")
+    analysis_label = "Test"
+    missing_data_warning = "No test data"
+    missing_data_error = "No test data available"
+
     def analyze(self, module_data: dict[str, Any]) -> ModuleReport:
-        """Implement abstract analyze method."""
+        """Return a simple report for base utility tests."""
         return self.create_module_report(
             run_id="test_run",
             stage="test",
@@ -55,9 +75,24 @@ class ConcreteAnalyzer(ModuleAnalyzer):
         """Implement abstract generate_insights method."""
         return []
 
+    def _calculate_report_data_hygiene(self, module_data: dict[str, Any]) -> None:
+        """Unused: this stub overrides the shared lifecycle in ``analyze``."""
+        return None
+
+    def _calculate_report_changes_summary(self, module_data: dict[str, Any]) -> None:
+        """Unused: this stub overrides the shared lifecycle in ``analyze``."""
+        return None
+
 
 class TestModuleAnalyzer:
     """Tests for the base ModuleAnalyzer class."""
+
+    def test_domain_lifecycle_hooks_are_required(self):
+        """Require subclasses to implement both domain lifecycle hooks."""
+        assert {
+            "_calculate_report_data_hygiene",
+            "_calculate_report_changes_summary",
+        } <= ModuleAnalyzer.__abstractmethods__
 
     def test_initialization(self):
         """Test analyzer initialization with module name and config."""
@@ -292,6 +327,239 @@ class TestModuleAnalyzer:
 
 
 # =============================================================================
+# Shared Analyzer Lifecycle Characterization
+# =============================================================================
+
+
+class TestAnalyzerLifecycleCharacterization:
+    """Pin behavior shared by all concrete analyzers before lifecycle consolidation."""
+
+    def test_shared_lifecycle_preserves_calculation_order(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        analyzer = SbirEnrichmentAnalyzer()
+        calls: list[str] = []
+        monkeypatch.setattr(
+            analyzer,
+            "get_key_metrics",
+            lambda _module_data: calls.append("metrics") or {},
+        )
+        monkeypatch.setattr(
+            analyzer,
+            "generate_insights",
+            lambda _module_data: calls.append("insights") or [],
+        )
+        monkeypatch.setattr(
+            analyzer,
+            "_calculate_report_data_hygiene",
+            lambda _module_data: calls.append("hygiene") or None,
+        )
+        monkeypatch.setattr(
+            analyzer,
+            "_calculate_report_changes_summary",
+            lambda _module_data: calls.append("changes") or None,
+        )
+        monkeypatch.setattr(
+            analyzer,
+            "_get_total_records",
+            lambda _module_data: calls.append("total") or 1,
+        )
+        monkeypatch.setattr(
+            analyzer,
+            "_get_processing_metrics",
+            lambda _module_data, _total: calls.append("processing") or (1, 0, 0.0),
+        )
+
+        analyzer.analyze({"enriched_df": pd.DataFrame({"award_id": [1]})})
+
+        assert calls == ["metrics", "insights", "hygiene", "changes", "total", "processing"]
+
+    def test_missing_primary_data_short_circuits_calculations(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        analyzer = SbirEnrichmentAnalyzer()
+
+        def fail_if_called(*_args, **_kwargs):
+            raise AssertionError("domain calculation should not run without primary data")
+
+        for method_name in (
+            "get_key_metrics",
+            "generate_insights",
+            "_calculate_report_data_hygiene",
+            "_calculate_report_changes_summary",
+            "_get_total_records",
+            "_get_processing_metrics",
+        ):
+            monkeypatch.setattr(analyzer, method_name, fail_if_called)
+
+        report = analyzer.analyze({"enriched_df": None})
+
+        assert report.module_metrics == {"error": "No enriched DataFrame available"}
+
+    @pytest.mark.parametrize(
+        ("analyzer_cls", "primary_key", "module_name", "stage", "error_message"),
+        [
+            (
+                SbirEnrichmentAnalyzer,
+                "enriched_df",
+                "sbir_enrichment",
+                "enrich",
+                "No enriched DataFrame available",
+            ),
+            (
+                CetClassificationAnalyzer,
+                "classified_df",
+                "cet_classification",
+                "transform",
+                "No classified DataFrame available",
+            ),
+            (
+                PatentAnalysisAnalyzer,
+                "patent_df",
+                "patent_analysis",
+                "load",
+                "No patent DataFrame available",
+            ),
+            (
+                TransitionDetectionAnalyzer,
+                "transitions_df",
+                "transition_detection",
+                "detect",
+                "No transitions DataFrame available",
+            ),
+        ],
+    )
+    def test_missing_primary_data_returns_exact_empty_report(
+        self,
+        analyzer_cls,
+        primary_key: str,
+        module_name: str,
+        stage: str,
+        error_message: str,
+    ):
+        analyzer = analyzer_cls()
+
+        report = analyzer.analyze(
+            {primary_key: None, "run_context": {"run_id": "missing-primary-run"}}
+        )
+
+        assert _stable_report_dump(report) == {
+            "module_name": module_name,
+            "run_id": "missing-primary-run",
+            "stage": stage,
+            "total_records": 0,
+            "records_processed": 0,
+            "records_failed": 0,
+            "success_rate": 0.0,
+            "duration_seconds": 0.0,
+            "throughput_records_per_second": 0.0,
+            "data_hygiene": None,
+            "changes_summary": None,
+            "module_metrics": {"error": error_message},
+        }
+
+    @pytest.mark.parametrize(
+        ("analyzer_cls", "primary_key", "module_name", "stage", "total_records"),
+        [
+            (SbirEnrichmentAnalyzer, "enriched_df", "sbir_enrichment", "enrich", 1),
+            (CetClassificationAnalyzer, "classified_df", "cet_classification", "transform", 1),
+            (PatentAnalysisAnalyzer, "patent_df", "patent_analysis", "load", 1),
+            (
+                TransitionDetectionAnalyzer,
+                "transitions_df",
+                "transition_detection",
+                "detect",
+                3,
+            ),
+        ],
+    )
+    def test_processing_metrics_default_to_successful_primary_population(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        analyzer_cls,
+        primary_key: str,
+        module_name: str,
+        stage: str,
+        total_records: int,
+    ):
+        analyzer = analyzer_cls()
+        _stub_domain_analysis(monkeypatch, analyzer)
+        module_data = {
+            primary_key: pd.DataFrame({"record_id": [1]}),
+            "run_context": {"run_id": "defaults-run"},
+        }
+        if analyzer_cls is TransitionDetectionAnalyzer:
+            module_data["awards_df"] = pd.DataFrame({"award_id": [1, 2, 3]})
+
+        report = analyzer.analyze(module_data)
+
+        assert _stable_report_dump(report) == {
+            "module_name": module_name,
+            "run_id": "defaults-run",
+            "stage": stage,
+            "total_records": total_records,
+            "records_processed": total_records,
+            "records_failed": 0,
+            "success_rate": 1.0,
+            "duration_seconds": 0.0,
+            "throughput_records_per_second": 0.0,
+            "data_hygiene": None,
+            "changes_summary": None,
+            "module_metrics": {"stub_metric": 1},
+        }
+
+    @pytest.mark.parametrize(
+        ("analyzer_cls", "primary_key", "module_name", "stage", "total_records"),
+        [
+            (SbirEnrichmentAnalyzer, "enriched_df", "sbir_enrichment", "enrich", 0),
+            (CetClassificationAnalyzer, "classified_df", "cet_classification", "transform", 0),
+            (PatentAnalysisAnalyzer, "patent_df", "patent_analysis", "load", 0),
+            (
+                TransitionDetectionAnalyzer,
+                "transitions_df",
+                "transition_detection",
+                "detect",
+                2,
+            ),
+        ],
+    )
+    def test_empty_dataframe_is_analyzed_instead_of_treated_as_missing(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        analyzer_cls,
+        primary_key: str,
+        module_name: str,
+        stage: str,
+        total_records: int,
+    ):
+        analyzer = analyzer_cls()
+        _stub_domain_analysis(monkeypatch, analyzer)
+        module_data = {
+            primary_key: pd.DataFrame({"record_id": pd.Series(dtype=int)}),
+            "run_context": {"run_id": "empty-dataframe-run"},
+        }
+        if analyzer_cls is TransitionDetectionAnalyzer:
+            module_data["awards_df"] = pd.DataFrame({"award_id": [1, 2]})
+
+        report = analyzer.analyze(module_data)
+
+        assert _stable_report_dump(report) == {
+            "module_name": module_name,
+            "run_id": "empty-dataframe-run",
+            "stage": stage,
+            "total_records": total_records,
+            "records_processed": total_records,
+            "records_failed": 0,
+            "success_rate": 1.0 if total_records else 0.0,
+            "duration_seconds": 0.0,
+            "throughput_records_per_second": 0.0,
+            "data_hygiene": None,
+            "changes_summary": None,
+            "module_metrics": {"stub_metric": 1},
+        }
+
+
+# =============================================================================
 # CET Classification Analyzer Tests
 # =============================================================================
 
@@ -445,12 +713,29 @@ class TestCetClassificationAnalyzer:
             "run_context": {"run_id": "test_run_123"},
         }
 
+        expected_report = analyzer.create_module_report(
+            run_id="test_run_123",
+            stage="transform",
+            total_records=5,
+            records_processed=4,
+            records_failed=1,
+            duration_seconds=5.0,
+            module_metrics=analyzer.get_key_metrics(module_data),
+            data_hygiene=analyzer._calculate_data_hygiene(
+                sample_classified_df, module_data["classification_results"]
+            ),
+            changes_summary=analyzer._calculate_changes_summary(
+                sample_classified_df, module_data["classification_results"]
+            ),
+        )
+
         report = analyzer.analyze(module_data)
 
         assert isinstance(report, ModuleReport)
         assert report.module_name == "cet_classification"
         assert report.run_id == "test_run_123"
         assert report.total_records == 5
+        assert _stable_report_dump(report) == _stable_report_dump(expected_report)
 
     def test_analyze_with_no_data(self):
         """Test analysis with no data."""
@@ -615,12 +900,53 @@ class TestPatentAnalysisAnalyzer:
             "run_context": {"run_id": "patent_run_123"},
         }
 
+        expected_report = analyzer.create_module_report(
+            run_id="patent_run_123",
+            stage="load",
+            total_records=5,
+            records_processed=5,
+            records_failed=0,
+            duration_seconds=10.0,
+            module_metrics=analyzer.get_key_metrics(module_data),
+            data_hygiene=analyzer._calculate_data_hygiene(
+                sample_patent_df, module_data["validation_results"]
+            ),
+            changes_summary=analyzer._calculate_changes_summary(
+                module_data["loading_results"], module_data["neo4j_stats"]
+            ),
+        )
+
         report = analyzer.analyze(module_data)
 
         assert isinstance(report, ModuleReport)
         assert report.module_name == "patent_analysis"
         assert report.run_id == "patent_run_123"
         assert report.stage == "load"
+        assert _stable_report_dump(report) == _stable_report_dump(expected_report)
+
+    def test_analyze_uses_validation_counts_and_loading_duration(self, sample_patent_df):
+        """Patent processing counts and duration intentionally come from different sources."""
+        analyzer = PatentAnalysisAnalyzer()
+        module_data = {
+            "patent_df": sample_patent_df,
+            "validation_results": {"valid_records": 3, "invalid_records": 2},
+            "loading_results": {
+                "records_processed": 99,
+                "records_failed": 98,
+                "duration_seconds": 4.0,
+            },
+            "neo4j_stats": {},
+            "run_context": {"run_id": "patent-split-sources"},
+        }
+
+        report = analyzer.analyze(module_data)
+
+        assert report.total_records == 5
+        assert report.records_processed == 3
+        assert report.records_failed == 2
+        assert report.success_rate == 0.6
+        assert report.duration_seconds == 4.0
+        assert report.throughput_records_per_second == 0.75
 
 
 # =============================================================================
@@ -748,11 +1074,26 @@ class TestSbirEnrichmentAnalyzer:
             "run_context": {"run_id": "sbir_run_123"},
         }
 
+        expected_report = analyzer.create_module_report(
+            run_id="sbir_run_123",
+            stage="enrich",
+            total_records=5,
+            records_processed=5,
+            records_failed=0,
+            duration_seconds=8.0,
+            module_metrics=analyzer.get_key_metrics(module_data),
+            data_hygiene=analyzer._calculate_data_hygiene(sample_enriched_df, sample_original_df),
+            changes_summary=analyzer._calculate_changes_summary(
+                sample_enriched_df, sample_original_df
+            ),
+        )
+
         report = analyzer.analyze(module_data)
 
         assert isinstance(report, ModuleReport)
         assert report.module_name == "sbir_enrichment"
         assert report.stage == "enrich"
+        assert _stable_report_dump(report) == _stable_report_dump(expected_report)
 
 
 # =============================================================================
@@ -878,9 +1219,30 @@ class TestTransitionDetectionAnalyzer:
             "run_context": {"run_id": "transition_run_123"},
         }
 
+        expected_report = analyzer.create_module_report(
+            run_id="transition_run_123",
+            stage="detect",
+            total_records=100,
+            records_processed=100,
+            records_failed=0,
+            duration_seconds=20.0,
+            module_metrics=analyzer.get_key_metrics(module_data),
+            data_hygiene=analyzer._calculate_data_hygiene(sample_transitions_df, sample_awards_df),
+            changes_summary=analyzer._calculate_changes_summary(
+                sample_transitions_df, sample_awards_df
+            ),
+        )
+
         report = analyzer.analyze(module_data)
 
         assert isinstance(report, ModuleReport)
         assert report.module_name == "transition_detection"
         assert report.stage == "detect"
         assert report.total_records == 100
+        assert report.records_processed == 100
+        assert report.changes_summary is not None
+        assert report.changes_summary.total_records == 100
+        assert report.changes_summary.records_modified == 5
+        assert report.changes_summary.records_unchanged == 95
+        assert report.changes_summary.modification_rate == 0.05
+        assert _stable_report_dump(report) == _stable_report_dump(expected_report)

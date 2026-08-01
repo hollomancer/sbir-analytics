@@ -53,7 +53,7 @@ Prefer `SBIR_ETL__...` overrides that mirror YAML structure. See details in `../
 Example:
 
 ```bash
-export SBIR_ETL_ENV=dev
+export SBIR_ETL__PIPELINE__ENVIRONMENT=development
 export SBIR_ETL__NEO4J__URI="bolt://localhost:7687"
 export SBIR_ETL__PIPELINE__CHUNK_SIZE=20000
 ```

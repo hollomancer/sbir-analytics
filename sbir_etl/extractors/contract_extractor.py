@@ -1252,8 +1252,19 @@ class ContractExtractor:
                 pa.field("transaction_id", pa.string()),
             ]
         )
+        # Match the string type produced by the legacy one-shot Pandas writer in
+        # the current runtime. Pandas 2 emits Arrow ``string`` for these object
+        # columns, while Pandas 3's default ``str`` dtype emits ``large_string``.
+        one_shot_string_type = (
+            pa.Table.from_pandas(
+                pd.DataFrame({"value": [""]}),
+                preserve_index=False,
+            )
+            .schema.field("value")
+            .type
+        )
         field_types = {
-            **{column: pa.large_string() for column in string_columns},
+            **dict.fromkeys(string_columns, one_shot_string_type),
             "action_date": pa.date32(),
             "start_date": pa.date32(),
             "end_date": pa.date32(),
@@ -1282,10 +1293,8 @@ class ContractExtractor:
                         f"{unexpected}"
                     )
             frame = pd.DataFrame.from_records(rows, columns=columns)
-            # Pandas 3's nullable ``str`` dtype keeps missing values missing and
-            # reproduces the large_string type emitted by the former one-shot write.
-            for column in string_columns:
-                frame[column] = frame[column].astype("str")
+            # The explicit Arrow schema below supplies the runtime's one-shot
+            # string width without coercing missing values through Python ``str``.
             frame["obligation_amount"] = pd.to_numeric(
                 frame["obligation_amount"], errors="coerce"
             ).astype("float64")

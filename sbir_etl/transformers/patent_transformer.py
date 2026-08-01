@@ -32,6 +32,8 @@ from typing import Any
 
 from loguru import logger
 
+from sbir_etl.utils.identifiers import normalize_uspto_identifier
+
 
 # Try to use rapidfuzz for fuzzy matching; fallback to difflib
 try:
@@ -107,16 +109,7 @@ class PatentAssignmentTransformer:
     # ------------------------
     # Normalization helpers
     # ------------------------
-    @staticmethod
-    def _normalize_identifier(val: Any | None) -> str | None:
-        if val is None:
-            return None
-        s = str(val).strip()
-        if not s:
-            return None
-        # remove non-alphanumeric (retain dashes/underscores)
-        s = re.sub(r"[^\w\-]", "", s)
-        return s.upper()
+    _normalize_identifier = staticmethod(normalize_uspto_identifier)
 
     @staticmethod
     def _normalize_name(name: Any | None) -> str | None:

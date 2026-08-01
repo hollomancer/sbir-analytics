@@ -344,25 +344,23 @@ def test_pair_filter_s1_excludes_already_coded_phase_iii():
 def test_default_loader_accepts_contract_extractor_model_dump(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     output_path = Path("data/transition/contracts_ingestion.parquet")
-    row = ["\\N"] * 103
-    row[0] = "TX-1"
-    row[1] = "CONT_AWD_PIID-1_9700_PARENT-1"
-    row[2] = "20240115"
-    row[3] = "A"
-    row[5] = "A"
-    row[7] = "Follow-on production"
-    row[9] = "EXAMPLE COMPANY"
-    row[11] = "9700"
-    row[12] = "DEPARTMENT OF DEFENSE"
-    row[14] = "DEPARTMENT OF THE NAVY"
-    row[28] = "PIID-1"
-    row[29] = "1000"
-    row[71] = "20240115"
-    row[96] = "UEI000000001"
-    row[99] = "NONE"
-    row[100] = "A"
-    row[101] = "9700"
-    row[102] = "PARENT-1"
+    row = {
+        "transaction_unique_id": "TX-1",
+        "generated_unique_award_id": "CONT_AWD_PIID-1_9700_PARENT-1",
+        "action_date": "20240115",
+        "contract_award_type": "A",
+        "transaction_description": "Follow-on production",
+        "recipient_name": "EXAMPLE COMPANY",
+        "awarding_toptier_agency_name": "DEPARTMENT OF DEFENSE",
+        "awarding_subtier_agency_name": "DEPARTMENT OF THE NAVY",
+        "piid": "PIID-1",
+        "federal_action_obligation": "1000",
+        "period_of_performance_start_date": "20240115",
+        "recipient_uei": "UEI000000001",
+        "extent_competed": "NONE",
+        "referenced_idv_agency_iden": "9700",
+        "referenced_idv_piid": "PARENT-1",
+    }
 
     extractor = ContractExtractor()
     contract = extractor._parse_contract_row(row)
@@ -371,9 +369,9 @@ def test_default_loader_accepts_contract_extractor_model_dump(tmp_path, monkeypa
     assert extractor._collect_and_write([contract], output_path) == 1
 
     loaded = _default_retrospective_loader(None)
-    assert loaded.loc[0, "generated_unique_award_id"] == row[1]
+    assert loaded.loc[0, "generated_unique_award_id"] == row["generated_unique_award_id"]
     assert "research" in loaded.columns
     assert pd.isna(loaded.loc[0, "research"])
     targets = _prepare_contracts(loaded)
-    assert targets.loc[0, "target_id"] == row[1]
-    assert targets.loc[0, "target_id"] != row[28]
+    assert targets.loc[0, "target_id"] == row["generated_unique_award_id"]
+    assert targets.loc[0, "target_id"] != row["piid"]

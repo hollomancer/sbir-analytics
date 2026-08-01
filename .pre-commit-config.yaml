@@ -22,7 +22,7 @@ repos:
   # Type checking (matches blocking CI scope: sbir_etl only)
   # CI equivalent: mypy sbir_etl
   # Note: mypy is configured in pyproject.toml with exclude patterns for
-  # scripts/, tests/, examples/, and migrations/ to match this scope
+  # scripts/, tests/, and examples/ to match this scope
   - repo: https://github.com/pre-commit/mirrors-mypy
     rev: v1.18.2
     hooks:
