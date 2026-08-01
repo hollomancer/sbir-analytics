@@ -6,8 +6,8 @@ from typing import Any
 from loguru import logger
 from neo4j import Driver  # type: ignore[attr-defined]
 
-from migrations.base import Migration
-from migrations.config import MIGRATIONS_DIR, TRACKING_ID, TRACKING_LABEL
+from sbir_graph.migrations.base import Migration
+from sbir_graph.migrations.config import MIGRATIONS_DIR, TRACKING_ID, TRACKING_LABEL
 
 
 class MigrationRunner:
@@ -73,20 +73,32 @@ class MigrationRunner:
         migrations = []
 
         # Get all Python files in versions directory
-        for file_path in sorted(self.migrations_dir.glob("*.py")):
-            if file_path.name == "__init__.py":
-                continue
+        migration_files = [
+            path for path in sorted(self.migrations_dir.glob("*.py")) if path.name != "__init__.py"
+        ]
+        if not migration_files:
+            raise RuntimeError(f"No migration files found in {self.migrations_dir}")
 
-            module_name = f"migrations.versions.{file_path.stem}"
+        for file_path in migration_files:
+            module_name = f"sbir_graph.migrations.versions.{file_path.stem}"
             try:
                 module = importlib.import_module(module_name)
-                # Find Migration subclass
-                for attr_name in dir(module):
-                    attr = getattr(module, attr_name)
-                    if isinstance(attr, type) and issubclass(attr, Migration) and attr != Migration:
-                        migrations.append(attr())  # type: ignore[call-arg]
-            except Exception as e:
-                logger.warning(f"Failed to load migration from {file_path}: {e}")
+            except Exception as exc:
+                raise RuntimeError(f"Failed to load migration from {file_path}") from exc
+
+            migration_classes = [
+                attr
+                for attr_name in dir(module)
+                if isinstance((attr := getattr(module, attr_name)), type)
+                and issubclass(attr, Migration)
+                and attr != Migration
+            ]
+            if len(migration_classes) != 1:
+                raise RuntimeError(
+                    f"Expected exactly one migration class in {file_path}, "
+                    f"found {len(migration_classes)}"
+                )
+            migrations.append(migration_classes[0]())  # type: ignore[call-arg]
 
         # Sort by version
         migrations.sort(key=lambda m: m.version)
@@ -94,7 +106,8 @@ class MigrationRunner:
 
     def upgrade(self, target_version: str | None = None, dry_run: bool = False) -> None:
         """Apply pending migrations."""
-        self.ensure_migration_tracking()
+        if not dry_run:
+            self.ensure_migration_tracking()
         applied = self.get_applied_migrations()
         migrations = self.discover_migrations()
 
@@ -126,7 +139,8 @@ class MigrationRunner:
 
     def downgrade(self, target_version: str, dry_run: bool = False) -> None:
         """Rollback migrations."""
-        self.ensure_migration_tracking()
+        if not dry_run:
+            self.ensure_migration_tracking()
         applied = self.get_applied_migrations()
         migrations = self.discover_migrations()
 

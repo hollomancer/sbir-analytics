@@ -141,7 +141,6 @@ exclude = [
     "scripts/",
     "tests/",
     "examples/",
-    "migrations/",
 ]
 warn_return_any = false
 warn_unused_configs = true
