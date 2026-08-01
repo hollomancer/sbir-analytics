@@ -6,6 +6,15 @@ leakage-scrubbed AUC 0.847 [0.792, 0.898], reproducing the study's 0.844 within
 CI. Production scores with these constants — it never fits — and the loader
 refuses a coefficient set whose corpus hash does not match the caller's
 expectation, so scores can never silently drift from the corpus they were fit on.
+
+That guarantee only holds when a caller actually states its expectation.
+:data:`FROZEN_CORPUS_FRAME_HASH` is that expectation, pinned in code so the
+production path can arm the check without reading anything outside the installed
+package. It is the frame hash of the award-grain corpus the shipped coefficients
+were fit on, and `tests/unit/transition/detection/test_fusion_model.py` asserts
+it still matches both the coefficients file and the committed provenance record
+(`specs/phase3-notice-corpus-fusion/corpus.manifest.json`) — the corpus parquet
+itself is gitignored, so the manifest is the only in-repo witness to what was fit.
 """
 
 from __future__ import annotations
@@ -18,6 +27,11 @@ from pathlib import Path
 
 
 DEFAULT_COEFFICIENTS_PATH = Path(__file__).with_name("fusion_coefficients.json")
+
+#: Frame hash of the award-grain notice corpus the shipped coefficients were fit
+#: on (828 rows, 138 positives, 101 firms). Changing the coefficients without
+#: changing this constant is the drift this pin exists to stop.
+FROZEN_CORPUS_FRAME_HASH = "4c4064f04d04ca2f0c4c96e50ce3be8b6169bfd7ff3d4c51b2a6c804782a7b84"
 
 
 @dataclass(frozen=True)
@@ -72,4 +86,8 @@ def load_fusion_coefficients(
     )
 
 
-__all__ = ["FusionCoefficients", "load_fusion_coefficients"]
+__all__ = [
+    "FROZEN_CORPUS_FRAME_HASH",
+    "FusionCoefficients",
+    "load_fusion_coefficients",
+]
