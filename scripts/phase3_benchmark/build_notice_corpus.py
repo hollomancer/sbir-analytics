@@ -133,9 +133,9 @@ def build_corpus(
         )
 
     for positive in positives:
-        owner = f"{positive.firm_uei}:{positive.award_piid}"
 
         def _emit(cand_notice: pd.Series, label: int, current: _Positive = positive) -> None:
+            owner = f"{current.firm_uei}:{current.award_piid}"
             rows.append(
                 {
                     "candidate_id": hashlib.sha256(
