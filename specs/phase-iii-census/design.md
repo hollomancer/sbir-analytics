@@ -1,18 +1,20 @@
 # Label-free Phase III Census and Negative Controls — Phase 0 Design
 
-**Status:** Phase 0 approved; **criteria frozen**. The target-code provenance amendment
-below was approved before source extraction changed and before any result was materialized.
-The Phase 1 software path is implemented and fixture-verified; production materialization
-remains blocked until the amended source contract passes validation.
+**Status:** Phase 0 approved; **criteria frozen**. The target-code provenance and Phase II
+award-grain amendments below were approved before any result was materialized. The Phase 1
+census and target-source paths are implemented and fixture-verified; production
+materialization remains blocked until the approved prior-grain contract is implemented and
+verified.
 **Design date:** 2026-07-31.
 **Approval date:** 2026-08-01.
 **Provenance-amendment approval date:** 2026-08-01.
+**Prior-grain amendment approval date:** 2026-08-01.
 **Research-question anchors:** B2 (federal-procurement transition), B3 (Phase II → III
 latency and coding undercount), and E1 (SBIR/STTR identification) in
 [`docs/research-questions.md`](../../docs/research-questions.md).
 **Answerability label after Phase 1 implementation:** **[Implementation complete,
-materialization blocked — canonical target coding and taxonomy fields are not yet
-available with verified provenance]**.
+materialization paused — canonical target fields now have verified provenance; the
+approved Phase II award-grain correction must pass validation before any count]**.
 
 No census, sample count, coverage count, drop-off count, or sensitivity result was
 computed while writing this note.
@@ -320,6 +322,53 @@ defines `research_code` and maps it to `transaction_fpds.research`, including th
 fabricated from `research`; a genuine supplemental phase field is still checked if another
 source actually supplies one. No inclusion code set, ladder clause, sensitivity cell, or
 estimand changed.
+
+### Approved Phase II award-grain amendment
+
+A pre-materialization integrity review found that federal Phase II rows were keyed by
+bare PIID before `generated_unique_award_id` and that repeated transaction rows were
+reduced by input order. That could collapse equal PIIDs from different agencies and make
+the recorded completion date depend on archive row order. The repository owner approved
+correcting this source grain before any count. This amendment changes neither a census
+clause nor the estimand; it makes “Phase II award” deterministic at the already-approved
+award × target-transaction pair grain.
+
+Federal-system Phase II rows are frozen to this exact construction:
+
+1. Every Phase II-coded federal transaction must have nonblank
+   `generated_unique_award_id` and `transaction_unique_id`; absence is a source error,
+   not permission to fall back to PIID or row position.
+2. The canonical prior `award_id` is normalized `generated_unique_award_id`. Bare PIID is
+   retained separately as `source_award_id` for audit and exact reconciliation only.
+3. Transactions for one generated award are ordered by: a valid parsed `action_date`
+   after a missing date, then parsed `action_date`, then normalized
+   `transaction_unique_id`. The greatest row is the deterministic representative. A
+   transaction identifier associated with conflicting source values fails validation.
+4. Recipient identifiers/name, agency fields, NAICS, PSC, performance-period start and
+   performance-period end come from that representative transaction. In particular,
+   `period_of_performance_end` is the latest transaction's recorded *current* end date;
+   it is not the maximum historical end date and is not filled from an older action.
+5. `award_date` is the earliest valid action date for the generated award, and
+   `award_amount` is the signed sum of its Phase II-coded action obligations. The output
+   records the representative transaction identifier and number of source transactions.
+
+SBIR.gov rows keep their source `award_id`. For reconciliation, their audit
+`source_award_id` is the first nonblank value in the fixed order `contract`,
+`agency_tracking_number`, then `award_id`. After federal transactions are collapsed,
+SBIR.gov and federal rows may reconcile only on exact normalized `source_award_id`:
+
+- no federal match leaves the SBIR.gov row as its own prior award;
+- exactly one federal match preserves the federal generated key and authoritative
+  federal dates, fills only missing NAICS/PSC from nonconflicting SBIR.gov values, and
+  removes the supplemental duplicate; and
+- more than one federal match, or conflicting nonnull supplemental taxonomy for one
+  federal award, stops materialization instead of selecting by row order, agency-name
+  similarity, or another heuristic.
+
+This upstream correction changes identifiers supplied to every consumer of
+`validated_phase_ii_awards`, including the existing retrospective candidate path. That
+effect was disclosed before approval. It does not modify the scoring asset, scorer,
+weights, thresholds, target filters, or the shared exact-UEI pair builder.
 
 After approval, any further criterion change requires a new spec revision and a new
 freeze before rerunning. An observed count, control overlap, balance statistic, or
