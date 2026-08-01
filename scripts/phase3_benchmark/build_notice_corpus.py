@@ -18,6 +18,7 @@ import argparse
 import hashlib
 import json
 from collections.abc import Sequence
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -87,6 +88,17 @@ def _match_notice(seed_row: pd.Series, notices: pd.DataFrame) -> pd.Series | Non
     return hit.loc[hit["Description"].str.len().idxmax()]
 
 
+@dataclass
+class _Positive:
+    firm_uei: str
+    firm_name: str
+    award_piid: str
+    query_abstract: str
+    label_channel: str
+    notice: pd.Series
+    office: str = field(default="")
+
+
 def build_corpus(
     seed: pd.DataFrame,
     notices: pd.DataFrame,
@@ -98,7 +110,7 @@ def build_corpus(
 
     lookup = _abstract_lookup(abstracts)
     rows: list[dict[str, object]] = []
-    positives: list[dict[str, object]] = []
+    positives: list[_Positive] = []
 
     for _, seed_row in seed.iterrows():
         notice = _match_notice(seed_row, notices)
@@ -109,36 +121,32 @@ def build_corpus(
         if not abstract:
             continue
         positives.append(
-            {
-                "firm_uei": firm_key,
-                "firm_name": str(seed_row.get("firm") or ""),
-                "award_piid": seed_row["piid_key"],
-                "query_abstract": abstract,
-                "label_channel": seed_row.get("label_channel", "description"),
-                "_notice": notice,
-            }
+            _Positive(
+                firm_uei=firm_key,
+                firm_name=str(seed_row.get("firm") or ""),
+                award_piid=str(seed_row["piid_key"]),
+                query_abstract=abstract,
+                label_channel=str(seed_row.get("label_channel", "description")),
+                notice=notice,
+                office=str(notice.get("Office") or ""),
+            )
         )
 
     for positive in positives:
-        positive["_office"] = str(positive["_notice"].get("Office") or "")
+        owner = f"{positive.firm_uei}:{positive.award_piid}"
 
-    for positive in positives:
-        notice = positive["_notice"]
-        office = positive["_office"]
-        owner = f"{positive['firm_uei']}:{positive['award_piid']}"
-
-        def _emit(cand_notice: pd.Series, label: int) -> None:
+        def _emit(cand_notice: pd.Series, label: int, current: _Positive = positive) -> None:
             rows.append(
                 {
                     "candidate_id": hashlib.sha256(
                         f"{owner}|{cand_notice.get('NoticeId')}|{label}".encode()
                     ).hexdigest()[:20],
-                    "firm_uei": positive["firm_uei"],
-                    "firm_name": positive["firm_name"],
-                    "award_piid": positive["award_piid"],
+                    "firm_uei": current.firm_uei,
+                    "firm_name": current.firm_name,
+                    "award_piid": current.award_piid,
                     "notice_id": str(cand_notice.get("NoticeId") or ""),
                     "office": str(cand_notice.get("Office") or ""),
-                    "query_abstract": positive["query_abstract"],
+                    "query_abstract": current.query_abstract,
                     "notice_text": str(cand_notice.get("Description") or ""),
                     "notice_type": str(
                         cand_notice.get("BaseType") or cand_notice.get("Type") or ""
@@ -147,25 +155,25 @@ def build_corpus(
                     "naics_code": str(cand_notice.get("NaicsCode") or ""),
                     "match_rule": str(cand_notice.get("match_rule") or ""),
                     "id_cited": int(
-                        positive["award_piid"] in normalize_key(cand_notice.get("Description"))
+                        current.award_piid in normalize_key(cand_notice.get("Description"))
                     ),
                     "label": label,
-                    "label_channel": positive["label_channel"],
+                    "label_channel": current.label_channel,
                     "owner": owner,
                 }
             )
 
-        _emit(notice, 1)
+        _emit(positive.notice, 1)
         # Hard negatives = other firms' recovered notices in the SAME office
         # (mirrors the study's "diff-firm SAME contracting office"). Drawn from
         # the positives pool so firm identity is known; deterministic order.
         negatives = [
             other
             for other in positives
-            if other["_office"] == office and other["firm_uei"] != positive["firm_uei"]
+            if other.office == positive.office and other.firm_uei != positive.firm_uei
         ]
         for other in negatives[:negatives_per_positive]:
-            _emit(other["_notice"], 0)
+            _emit(other.notice, 0)
 
     return pd.DataFrame(rows, columns=CORPUS_COLUMNS)
 
