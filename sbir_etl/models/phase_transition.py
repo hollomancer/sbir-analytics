@@ -33,6 +33,8 @@ class PhaseIIAward(BaseModel):
     recipient_name: str | None = Field(None, description="Firm name at time of award.")
     agency: str | None = Field(None, description="Awarding agency (top-tier).")
     sub_agency: str | None = Field(None, description="Awarding sub-agency / branch.")
+    naics_code: str | None = Field(None, description="Source-reported NAICS code, if known.")
+    psc_code: str | None = Field(None, description="Source-reported PSC code, if known.")
     award_amount: float | None = Field(None, description="Obligated amount in USD.")
     award_date: date | None = Field(None, description="Award action date.")
     period_of_performance_start: date | None = Field(

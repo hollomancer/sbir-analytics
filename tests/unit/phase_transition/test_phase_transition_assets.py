@@ -136,6 +136,30 @@ def test_prepare_contract_rows_picks_only_phase_ii():
     assert bool(foo["phase_coding_reconciled"]) is False
 
 
+@pytest.mark.parametrize(
+    ("naics_column", "psc_column"),
+    [
+        ("naics_code", "psc_code"),
+        ("naics", "product_or_service_code"),
+    ],
+)
+def test_prepare_contract_rows_passes_through_taxonomy_aliases(naics_column, psc_column):
+    from sbir_analytics.assets.phase_transition.phase_ii import _prepare_contract_rows
+
+    row = {
+        "contract_id": "C_II_TAXONOMY",
+        "vendor_uei": "AAAAAAAAAAAA",
+        "research": "SR2",
+        naics_column: "541715",
+        psc_column: "AC12",
+    }
+
+    result = _prepare_contract_rows(pd.DataFrame([row])).iloc[0]
+
+    assert result["naics_code"] == "541715"
+    assert result["psc_code"] == "AC12"
+
+
 def test_prepare_phase_iii_rows_excludes_assistance_and_other_phases():
     from sbir_analytics.assets.phase_transition.phase_iii import _prepare_phase_iii_rows
 
@@ -176,6 +200,8 @@ def test_sbir_gov_reconciliation_carries_reconciled_flag():
                 "contract_start_date": date(2021, 2, 1),
                 "contract_end_date": date(2023, 2, 1),
                 "phase": "II",
+                "naics": "541715",
+                "product_or_service_code": "AC12",
             },
             # Phase I row should be excluded.
             {
@@ -190,6 +216,52 @@ def test_sbir_gov_reconciliation_carries_reconciled_flag():
     assert list(df["award_id"]) == ["SBIR-1"]
     assert bool(df.iloc[0]["phase_coding_reconciled"]) is True
     assert df.iloc[0]["source"] == "sbir_gov"
+    assert df.iloc[0]["naics_code"] == "541715"
+    assert df.iloc[0]["psc_code"] == "AC12"
+
+
+def test_unify_fills_only_missing_federal_taxonomy_from_reconciled_duplicate():
+    from sbir_analytics.assets.phase_transition.phase_ii import (
+        _prepare_contract_rows,
+        _prepare_sbir_gov_rows,
+        _unify,
+    )
+
+    federal = _prepare_contract_rows(
+        pd.DataFrame(
+            [
+                {
+                    "contract_id": "SHARED-AWARD",
+                    "vendor_uei": "AAAAAAAAAAAA",
+                    "research": "SR2",
+                    "action_date": "2020-01-01",
+                    "period_of_performance_current_end_date": "2022-01-01",
+                    "naics_code": None,
+                    "psc_code": "FEDERAL-PSC",
+                }
+            ]
+        )
+    )
+    reconciled = _prepare_sbir_gov_rows(
+        pd.DataFrame(
+            [
+                {
+                    "award_id": "SHARED-AWARD",
+                    "company_uei": "AAAAAAAAAAAA",
+                    "phase": "II",
+                    "naics_code": "541715",
+                    "psc_code": "SBIR-PSC",
+                }
+            ]
+        )
+    )
+
+    result = _unify(federal, reconciled).iloc[0]
+
+    assert result["source"] == "fpds_contract"
+    assert result["period_of_performance_end"] == date(2022, 1, 1)
+    assert result["naics_code"] == "541715"
+    assert result["psc_code"] == "FEDERAL-PSC"
 
 
 # -- pair + survival helpers --------------------------------------------------
@@ -298,13 +370,15 @@ def test_pydantic_contracts_round_trip_valid_rows():
         PhaseTransitionSurvival,
     )
 
-    PhaseIIAward(
+    phase_ii = PhaseIIAward(
         award_id="SBIR-1",
         recipient_uei="AAAAAAAAAAAA",
         recipient_duns="123456789",
         recipient_name="Firm",
         agency="DOD",
         sub_agency="AF",
+        naics_code="541715",
+        psc_code="AC12",
         award_amount=500_000,
         award_date=date(2020, 1, 1),
         period_of_performance_start=date(2020, 1, 1),
@@ -312,6 +386,8 @@ def test_pydantic_contracts_round_trip_valid_rows():
         source="fpds_contract",
         phase_coding_reconciled=False,
     )
+    assert phase_ii.naics_code == "541715"
+    assert phase_ii.psc_code == "AC12"
     PhaseIIIContract(
         contract_id="C_III",
         recipient_uei="AAAAAAAAAAAA",

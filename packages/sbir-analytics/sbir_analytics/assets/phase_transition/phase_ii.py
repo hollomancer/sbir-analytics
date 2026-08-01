@@ -59,6 +59,8 @@ PHASE_II_COLUMNS: list[str] = [
     "recipient_name",
     "agency",
     "sub_agency",
+    "naics_code",
+    "psc_code",
     "award_amount",
     "award_date",
     "period_of_performance_start",
@@ -168,6 +170,8 @@ def _prepare_contract_rows(contracts: pd.DataFrame) -> pd.DataFrame:
             "recipient_name": _pick("vendor_name", "recipient_name"),
             "agency": _pick("awarding_agency_name", "agency", "awarding_agency"),
             "sub_agency": _pick("awarding_sub_tier_agency_name", "sub_agency"),
+            "naics_code": _pick("naics_code", "naics"),
+            "psc_code": _pick("psc_code", "product_or_service_code"),
             "award_amount": pd.to_numeric(
                 _pick("federal_action_obligation", "obligation_amount", "obligated_amount"),
                 errors="coerce",
@@ -202,6 +206,12 @@ def _prepare_sbir_gov_rows(sbir_awards: pd.DataFrame) -> pd.DataFrame:
     if df.empty:
         return pd.DataFrame(columns=PHASE_II_COLUMNS)
 
+    def _pick(*names: str) -> pd.Series:
+        for name in names:
+            if name in df.columns:
+                return df[name]
+        return pd.Series([None] * len(df), index=df.index)
+
     out = pd.DataFrame(
         {
             "award_id": df.get("award_id"),
@@ -212,6 +222,8 @@ def _prepare_sbir_gov_rows(sbir_awards: pd.DataFrame) -> pd.DataFrame:
             "recipient_name": df.get("company_name"),
             "agency": df.get("agency"),
             "sub_agency": df.get("branch"),
+            "naics_code": _pick("naics_code", "naics"),
+            "psc_code": _pick("psc_code", "product_or_service_code"),
             "award_amount": pd.to_numeric(
                 df.get("award_amount", pd.Series(dtype=object)), errors="coerce"
             ),
@@ -244,6 +256,23 @@ def _unify(contract_phase_ii: pd.DataFrame, sbir_gov_phase_ii: pd.DataFrame) -> 
     stacked = pd.concat(frames, ignore_index=True, sort=False)
     # Sort so federal-system rows (non-reconciled) come first for drop_duplicates.
     stacked = stacked.sort_values("phase_coding_reconciled", kind="stable")
+
+    # Preserve the preferred federal row wholesale, but fill its newly added
+    # taxonomy fields from the already-reconciled duplicate when the federal
+    # source is blank. This uses the same award-id reconciliation boundary; it
+    # does not add another join or infer a code.
+    for column in ("naics_code", "psc_code"):
+        normalized = stacked[column].astype("string").str.strip()
+        usable = normalized.notna() & normalized.ne("")
+        award_present = stacked["award_id"].notna()
+        fallback = (
+            stacked.loc[usable & award_present, ["award_id", column]]
+            .drop_duplicates(subset=["award_id"], keep="first")
+            .set_index("award_id")[column]
+        )
+        missing = ~usable & award_present
+        stacked.loc[missing, column] = stacked.loc[missing, "award_id"].map(fallback)
+
     stacked = stacked.drop_duplicates(subset=["award_id"], keep="first")
     return stacked[PHASE_II_COLUMNS].reset_index(drop=True)
 

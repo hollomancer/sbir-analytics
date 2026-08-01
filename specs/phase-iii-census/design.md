@@ -1,13 +1,16 @@
 # Label-free Phase III Census and Negative Controls — Phase 0 Design
 
-**Status:** Phase 0 approved; **criteria frozen**. Phase 1 implementation has not started.
+**Status:** Phase 0 approved; **criteria frozen**. The Phase 1 software path is
+implemented and fixture-verified; production materialization is blocked on source-field
+provenance.
 **Design date:** 2026-07-31.
 **Approval date:** 2026-08-01.
 **Research-question anchors:** B2 (federal-procurement transition), B3 (Phase II → III
 latency and coding undercount), and E1 (SBIR/STTR identification) in
 [`docs/research-questions.md`](../../docs/research-questions.md).
-**Answerability label after Phase 0:** **[Research target — scoped; criteria frozen,
-implementation not started]**.
+**Answerability label after Phase 1 implementation:** **[Implementation complete,
+materialization blocked — canonical target coding and taxonomy fields are not yet
+available with verified provenance]**.
 
 No census, sample count, coverage count, drop-off count, or sensitivity result was
 computed while writing this note.
@@ -222,7 +225,7 @@ transaction can pair to several Phase II awards. Therefore:
 These rules prevent pair fan-out from multiplying dollars and prevent PIID-level
 deduplication from dropping modifications.
 
-## Phase 1 artifact contract (design only)
+## Phase 1 artifact contract
 
 After criteria approval, one additive Dagster asset named `phase_iii_census` will emit
 two tables under the existing processed-data convention:
@@ -298,9 +301,9 @@ all five decisions below:
 5. **Control pseudo-index:** copy each matched SBIR firm's Phase II index rows to its 1–3
    controls while replacing only the UEI consumed by the shared pair builder.
 
-The design note is currently uncommitted, so a freeze commit hash cannot yet be recorded.
-Phase 1 may be implemented only when requested, and no census may be materialized until a
-commit contains this frozen text and its hash is added here.
+The frozen criteria were committed as `989d9155c60e227ff2f921d3495e251a4246dda3` before
+Phase 1 implementation began. No census may be materialized from a source that fails the
+field-provenance and key checks above.
 
 After approval, any criterion change requires a new spec revision and a new freeze before
 rerunning. An observed count, control overlap, balance statistic, or placebo result is

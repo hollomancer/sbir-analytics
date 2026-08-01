@@ -1,6 +1,8 @@
-"""Pair-filter functions for Phase III candidate signal classes."""
+"""Shared UEI pair construction and Phase III candidate filters."""
 
 from __future__ import annotations
+
+from collections.abc import Mapping
 
 import pandas as pd
 
@@ -38,22 +40,38 @@ PAIR_S1_COLUMNS: list[str] = [
     "agency_match_level",
 ]
 
+# The shared, pre-gate schema.  ``pair_filter_s1`` deliberately projects back
+# to ``PAIR_S1_COLUMNS`` so the existing weighted candidate path keeps its
+# exact public shape.
+PAIR_COLUMNS: list[str] = [
+    *PAIR_S1_COLUMNS[:-1],
+    "target_research",
+    "target_sbir_phase",
+    "target_transaction_id",
+    "target_contract_key",
+    "agency_match_level",
+]
+
 
 def _normalize(value: object) -> str:
-    if value is None:
+    if value is None or value is pd.NA or value is pd.NaT:
+        return ""
+    if isinstance(value, float) and pd.isna(value):
         return ""
     s = str(value).strip().upper()
-    return "" if s in {"", "NAN", "NONE"} else s
+    return "" if s in {"", "<NA>", "NAN", "NONE", "NULL"} else s
 
 
 def _is_phase_iii_already_coded(row: pd.Series) -> bool:
     """True iff a contract row already carries explicit Phase III coding."""
 
-    research = row.get("research") if "research" in row else None
+    research = row.get("target_research") if "target_research" in row else row.get("research")
     if isinstance(research, str) and research.strip().upper() in _PHASE_III_RESEARCH_CODES:
         return True
 
-    sbir_phase = row.get("sbir_phase") if "sbir_phase" in row else None
+    sbir_phase = (
+        row.get("target_sbir_phase") if "target_sbir_phase" in row else row.get("sbir_phase")
+    )
     if sbir_phase is not None:
         label = _normalize(sbir_phase)
         if label in _PHASE_III_LABELS:
@@ -116,28 +134,65 @@ def _prepare_priors(prior_awards: pd.DataFrame) -> pd.DataFrame:
     return out
 
 
+def _metadata_field(df: pd.DataFrame, *names: str) -> pd.Series:
+    """Return the first present metadata value per row for ``names``.
+
+    ``ContractExtractor`` persists the USAspending transaction id and generated
+    unique award id in its top-level ``metadata`` struct.  Reading those values
+    is field pass-through; no identifier is inferred or synthesized here.
+    """
+
+    if "metadata" not in df.columns:
+        return pd.Series([None] * len(df), index=df.index, dtype="object")
+
+    def _get(value: object) -> object:
+        if not isinstance(value, Mapping):
+            return None
+        for name in names:
+            candidate = value.get(name)
+            if candidate is not None and _normalize(candidate):
+                return candidate
+        return None
+
+    return df["metadata"].map(_get)
+
+
+def _coalesce_fields(
+    df: pd.DataFrame, *fields: str, fallback: pd.Series | None = None
+) -> pd.Series:
+    """Coalesce identifier fields per row, treating blank/null-like strings as absent."""
+
+    out = pd.Series([None] * len(df), index=df.index, dtype="object")
+    for field in fields:
+        if field not in df.columns:
+            continue
+        source = df[field]
+        missing = out.map(_normalize).eq("")
+        usable = source.map(_normalize).ne("")
+        out.loc[missing & usable] = source.loc[missing & usable]
+    if fallback is not None:
+        missing = out.map(_normalize).eq("")
+        usable = fallback.map(_normalize).ne("")
+        out.loc[missing & usable] = fallback.loc[missing & usable]
+    return out
+
+
 def _prepare_contracts(contracts: pd.DataFrame) -> pd.DataFrame:
-    """Project & rename contracts frame to canonical ``target_*`` columns; excludes coded Phase III rows."""
+    """Project and rename contracts to the shared canonical ``target_*`` schema."""
 
     if contracts.empty:
-        return pd.DataFrame(columns=[c for c in PAIR_S1_COLUMNS if c.startswith("target_")])
+        return pd.DataFrame(columns=[c for c in PAIR_COLUMNS if c.startswith("target_")])
 
     df = contracts.copy()
-
-    # Compute "already coded" mask before column projection so we can read
-    # whichever raw column the input frame carries.
-    coded_mask = (
-        df.apply(_is_phase_iii_already_coded, axis=1) if len(df) else pd.Series([], dtype=bool)
-    )
-    df = df.loc[~coded_mask].copy()
-    if df.empty:
-        return pd.DataFrame(columns=[c for c in PAIR_S1_COLUMNS if c.startswith("target_")])
 
     def _pick(*names: str) -> pd.Series:
         for n in names:
             if n in df.columns:
                 return df[n]
         return pd.Series([None] * len(df), index=df.index)
+
+    metadata_transaction_id = _metadata_field(df, "transaction_unique_id", "transaction_id")
+    metadata_contract_key = _metadata_field(df, "generated_unique_award_id", "award_id")
 
     out = pd.DataFrame(
         {
@@ -158,6 +213,20 @@ def _prepare_contracts(contracts: pd.DataFrame) -> pd.DataFrame:
             "target_obligated_amount": _pick(
                 "federal_action_obligation", "obligated_amount", "obligation_amount"
             ),
+            "target_research": _pick("research"),
+            "target_sbir_phase": _pick("sbir_phase"),
+            "target_transaction_id": _coalesce_fields(
+                df,
+                "transaction_unique_id",
+                "transaction_id",
+                fallback=metadata_transaction_id,
+            ),
+            "target_contract_key": _coalesce_fields(
+                df,
+                "generated_unique_award_id",
+                "unique_award_key",
+                fallback=metadata_contract_key,
+            ),
         }
     )
     out = out.loc[out["target_recipient_uei"].astype(str).str.strip() != ""].copy()
@@ -165,16 +234,20 @@ def _prepare_contracts(contracts: pd.DataFrame) -> pd.DataFrame:
     return out
 
 
-def pair_filter_s1(
+def build_uei_pairs(
     prior_awards: pd.DataFrame,
     contracts: pd.DataFrame,
 ) -> pd.DataFrame:
-    """S1 retrospective filter: UEI inner-join + hierarchical agency gate; excludes coded Phase III."""
+    """Build the normalized, nonblank, exact-UEI pair universe without filtering it.
+
+    This is the shared boundary for the legacy scoring path and label-free
+    census.  It intentionally performs no agency or SBIR/STTR-code gate.
+    """
 
     priors = _prepare_priors(prior_awards)
     targets = _prepare_contracts(contracts)
     if priors.empty or targets.empty:
-        return pd.DataFrame(columns=PAIR_S1_COLUMNS)
+        return pd.DataFrame(columns=PAIR_COLUMNS)
 
     # Normalize the join key so case/whitespace differences don't drop pairs.
     priors = priors.assign(_uei=priors["prior_recipient_uei"].map(_normalize))
@@ -182,27 +255,43 @@ def pair_filter_s1(
     priors = priors.loc[priors["_uei"] != ""].copy()
     targets = targets.loc[targets["_uei"] != ""].copy()
     if priors.empty or targets.empty:
-        return pd.DataFrame(columns=PAIR_S1_COLUMNS)
+        return pd.DataFrame(columns=PAIR_COLUMNS)
 
     merged = priors.merge(targets, on="_uei", how="inner", suffixes=("", "_t"))
     if merged.empty:
-        return pd.DataFrame(columns=PAIR_S1_COLUMNS)
+        return pd.DataFrame(columns=PAIR_COLUMNS)
 
-    # Apply the hierarchical agency gate row-wise.
+    # Describe the finest observed match, but retain cross-agency pairs as null.
     levels = merged.apply(  # type: ignore[call-overload]
         lambda r: _agency_match_level(r, r),
         axis=1,
     )
     merged = merged.assign(agency_match_level=levels)
-    merged = merged.loc[merged["agency_match_level"].notna()].copy()
+    merged = merged.drop(columns=["_uei"])
+    return merged.loc[:, PAIR_COLUMNS].reset_index(drop=True)
+
+
+def pair_filter_s1(
+    prior_awards: pd.DataFrame,
+    contracts: pd.DataFrame,
+) -> pd.DataFrame:
+    """S1 retrospective filter: legacy coded-status and hierarchical agency gates."""
+
+    pairs = build_uei_pairs(prior_awards, contracts)
+    if pairs.empty:
+        return pd.DataFrame(columns=PAIR_S1_COLUMNS)
+
+    coded_mask = pairs.apply(_is_phase_iii_already_coded, axis=1)
+    merged = pairs.loc[~coded_mask & pairs["agency_match_level"].notna()].copy()
     if merged.empty:
         return pd.DataFrame(columns=PAIR_S1_COLUMNS)
 
-    merged = merged.drop(columns=["_uei"])
     return merged.loc[:, PAIR_S1_COLUMNS].reset_index(drop=True)
 
 
 __all__ = [
+    "PAIR_COLUMNS",
     "PAIR_S1_COLUMNS",
+    "build_uei_pairs",
     "pair_filter_s1",
 ]

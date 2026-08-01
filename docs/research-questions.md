@@ -149,6 +149,13 @@ placeholder, never wired into the M&A pipeline, and was removed in PR #317.*
 ### B2. Relational (Tier 2)
 
 - Did this SBIR-funded research result in a federal contract? — [transition/overview.md](transition/overview.md), [../specs/archive/completed-features/transition_detection/](../specs/archive/completed-features/transition_detection/). Baselines: NASEM DoD [L1][L2]; Link & Scott ~50% commercialization probability [L12]; NASEM program reviews [L3][L4][L6]. *(deps: ER, ID)*
+- How many exact-UEI, post-completion contract actions survive a pre-registered,
+  label-free uncoded-follow-on proxy, and how do the audit counts change across its
+  frozen clauses and agency/window cells? —
+  [../specs/phase-iii-census/](../specs/phase-iii-census/). **[Implementation complete,
+  materialization blocked — the canonical contract producer does not yet expose the
+  required FPDS coding and NAICS/PSC fields with verified provenance; the result will
+  remain a proxy rather than proof of statutory Phase III]** *(deps: ER, ID, NAICS/PSC)*
 - Which SBIR-funded companies transitioned research into federal procurements? — [transition/detection-algorithm.md](transition/detection-algorithm.md). *(deps: ER, ID)*
 - What is the average time from award to transition by technology area? *(deps: ER, ID, CET)*
 - Which SBIR awards transitioned with patent backing, and what share of transitions are patent-enabled? Related to Lerner [L10] and Howell [L11]. *(deps: ER, ID, PATLINK)*
@@ -159,7 +166,12 @@ placeholder, never wired into the M&A pipeline, and was removed in PR #317.*
 - Phase II → III survival probability by agency, firm size, and vintage. *(deps: ER, ID)*
 - Does Phase II → III latency vary by technology area? *(deps: ER, ID, CET)*
 - Transition effectiveness rate by CET area, agency, and firm size — compare to Link & Scott [L12] and NASEM [L1][L3][L4]. *(deps: ER, ID, CET)*
-- How much undercount exists in Phase III coding by agency? Corroborated by GAO [L14] and NASEM [L1][L3]. Phase III solicitation monitoring: [../specs/phase-3-solicitation-alerts/](../specs/phase-3-solicitation-alerts/). *(deps: ID)*
+- How much undercount exists in Phase III coding by agency? Corroborated by GAO [L14]
+  and NASEM [L1][L3]. Phase III solicitation monitoring:
+  [../specs/phase-3-solicitation-alerts/](../specs/phase-3-solicitation-alerts/).
+  **[Research target — the deterministic Phase 1 audit tables are implemented but
+  source-field provenance blocks materialization; matched negative controls and labeled
+  validation are still required before interpreting the proxy as undercount]** *(deps: ID)*
 - How does company categorization relate to transition likelihood? Baseline: Link & Scott commercialization-probability econometrics [L12]. *(deps: ER, ID)*
 - Which Phase II awardees subject to §638(qq)(3) Increased Performance Standards meet the **statutory Commercialization Benchmark** (sales + private investment over the 10-FY covered period ÷ SBIR funding ≥ specified ratio)? Pub. L. 117-183 SBIR/STTR Extension Act of 2022 §638(qq)(3). Implementation on main: `scripts/run_benchmark.py` (evaluate / sensitivity / company-level CLI) backed by `sbir_etl/models/benchmark_models.py`, with tests in `tests/unit/test_benchmark_evaluator.py`. Spec: [../specs/archive/completed-features/commercialization-benchmark/](../specs/archive/completed-features/commercialization-benchmark/). Additional per-firm audit infrastructure and a more comprehensive methodology doc exist as local-only / uncommitted work — see "Output products" section below for the in-progress status. *(deps: ER, ID, transitions, SEC EDGAR)*
 
@@ -401,4 +413,3 @@ When this doc is reviewed next, the audit should cover:
 - CET taxonomy consistency: the canonical spine is the 21-area `NSTC-2025Q1` set (`config/cet/taxonomy.yaml`, validated by `taxonomy_loader.py`). Two divergent code-level taxonomies remain unreconciled — a 10-area transition-system set (`docs/transition/cet-integration.md`, code in transition CET inference) and a 19-area hardcoded reporting set (`sbir_etl/utils/reporting/analyzers/cet_analyzer.py`). Reconciling these to the 21-area spine is a code change with test/precision-benchmark risk and should be scoped separately.
 
 Update this footer with the new review date when the audit completes.
-
