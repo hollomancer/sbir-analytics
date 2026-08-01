@@ -1,10 +1,28 @@
-"""Canonical identifier normalizers for UEI, DUNS, and CAGE codes."""
+"""Canonical domain identifier normalizers."""
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from sbir_etl.utils.coercion import _blank
+
+
+def normalize_uspto_identifier(value: Any) -> str | None:
+    """Normalize an identifier carried by a USPTO record.
+
+    This preserves the permissive USPTO ingestion contract: trim surrounding
+    whitespace, remove characters other than Unicode word characters and
+    hyphens, and uppercase the result. It does not validate identifier type or
+    length; use the UEI, DUNS, and CAGE normalizers below when validation is
+    required.
+    """
+    if value is None:
+        return None
+    normalized = str(value).strip()
+    if not normalized:
+        return None
+    return re.sub(r"[^\w\-]", "", normalized).upper()
 
 
 def normalize_uei(v: Any) -> str | None:

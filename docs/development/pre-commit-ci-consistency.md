@@ -45,7 +45,7 @@ All tools are configured to run on consistent scopes:
 |------|------------|----------|---------------|-------|
 | **Ruff** (lint) | `packages/` `sbir_etl/` `tests/` | `packages/` `sbir_etl/` `tests/` | `.pre-commit-config.yaml` + `pyproject.toml` | Code style and import ordering |
 | **Ruff** (format) | `packages/` `sbir_etl/` `tests/` | `packages/` `sbir_etl/` `tests/` | `.pre-commit-config.yaml` + `pyproject.toml` | Format check (not auto-fix in CI) |
-| **MyPy** (types) | `packages/` `sbir_etl/` only | `packages/` `sbir_etl/` only | `.pre-commit-config.yaml` + `pyproject.toml` | Excludes: `scripts/`, `tests/`, `examples/`, `migrations/` |
+| **MyPy** (types) | `packages/` `sbir_etl/` only | `packages/` `sbir_etl/` only | `.pre-commit-config.yaml` + `pyproject.toml` | Excludes: `scripts/`, `tests/`, `examples/` |
 | **Bandit** (security) | `packages/` `sbir_etl/` only | `packages/` `sbir_etl/` only | `.pre-commit-config.yaml` + `pyproject.toml` | Security scanning |
 | **Standard hooks** | All files | N/A | `.pre-commit-config.yaml` | YAML validation, EOL, trailing whitespace (local only) |
 | **Detect-secrets** | All files* | N/A | `.pre-commit-config.yaml` | Secret detection (local best practice) |
@@ -56,7 +56,7 @@ All tools are configured to run on consistent scopes:
 
 **Why `packages/` and `sbir_etl/` only for MyPy and Bandit?**
 
-- Tests, scripts, examples, and migrations are not production code
+- Tests, scripts, and examples are not production code
 - These files often use different patterns and are lower priority
 - Focusing on production packages ensures production code quality
 
@@ -383,7 +383,6 @@ exclude = [
     "scripts/",
     "tests/",
     "examples/",
-    "migrations/",
 ]
 ```
 

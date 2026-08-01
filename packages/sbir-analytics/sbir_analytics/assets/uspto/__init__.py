@@ -36,16 +36,21 @@ Exported Assets:
 
 from __future__ import annotations
 
+from .. import should_load_heavy_assets
+
+
 # AI Extraction module
-from .ai_extraction import (
-    enriched_uspto_ai_patent_join,
-    raw_uspto_ai_extract,
-    raw_uspto_ai_human_sample,
-    raw_uspto_ai_human_sample_extraction,
-    raw_uspto_ai_predictions,
-    uspto_ai_deduplicate,
-    validated_uspto_ai_cache_stats,
-)
+_LOAD_HEAVY_ASSETS = should_load_heavy_assets()
+if _LOAD_HEAVY_ASSETS:
+    from .ai_extraction import (
+        enriched_uspto_ai_patent_join as enriched_uspto_ai_patent_join,
+        raw_uspto_ai_extract as raw_uspto_ai_extract,
+        raw_uspto_ai_human_sample as raw_uspto_ai_human_sample,
+        raw_uspto_ai_human_sample_extraction as raw_uspto_ai_human_sample_extraction,
+        raw_uspto_ai_predictions as raw_uspto_ai_predictions,
+        uspto_ai_deduplicate as uspto_ai_deduplicate,
+        validated_uspto_ai_cache_stats as validated_uspto_ai_cache_stats,
+    )
 
 # Extraction module
 from .extraction import (
@@ -140,14 +145,6 @@ __all__ = [
     "patent_load_success_rate",
     "assignment_load_success_rate",
     "patent_relationship_cardinality",
-    # AI Extraction
-    "raw_uspto_ai_extract",
-    "uspto_ai_deduplicate",
-    "raw_uspto_ai_human_sample_extraction",
-    "raw_uspto_ai_predictions",
-    "validated_uspto_ai_cache_stats",
-    "raw_uspto_ai_human_sample",
-    "enriched_uspto_ai_patent_join",
     # Backward compatibility aliases
     "neo4j_patents",
     "neo4j_patent_assignments",
@@ -161,3 +158,16 @@ __all__ = [
     "AssetIn",
     "MetadataValue",
 ]
+
+if _LOAD_HEAVY_ASSETS:
+    __all__.extend(
+        [
+            "raw_uspto_ai_extract",
+            "uspto_ai_deduplicate",
+            "raw_uspto_ai_human_sample_extraction",
+            "raw_uspto_ai_predictions",
+            "validated_uspto_ai_cache_stats",
+            "raw_uspto_ai_human_sample",
+            "enriched_uspto_ai_patent_join",
+        ]
+    )

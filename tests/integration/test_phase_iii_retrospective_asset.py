@@ -27,11 +27,13 @@ import pytest
 
 from sbir_analytics.assets.phase_iii_candidates.assets import (
     CANDIDATES_OUTPUT_PATH,
-    EVIDENCE_OUTPUT_PATH,
     HIGH_THRESHOLD_RETROSPECTIVE,
     WEIGHTS_RETROSPECTIVE,
     _default_retrospective_loader,
     build_candidate_asset,
+    candidates_path_for,
+    combine_candidate_outputs,
+    evidence_path_for,
 )
 from sbir_analytics.assets.phase_iii_candidates.pairing import _prepare_contracts, pair_filter_s1
 from sbir_etl.extractors.contract_extractor import ContractExtractor
@@ -269,15 +271,23 @@ def test_phase_iii_retrospective_asset_materializes(tmp_path, monkeypatch):
     # No coded contracts in output.
     assert not df["target_id"].astype(str).str.startswith("C-CODED-").any()
 
-    # Parquet was written and matches the dataframe.
-    parquet_path = Path(tmp_path) / CANDIDATES_OUTPUT_PATH
+    # Each signal-class asset owns exactly one parquet — the shared combined
+    # file is written only by the dependent ``phase_iii_candidates`` asset, so
+    # this materialization writes the per-class path, not the combined one.
+    parquet_path = Path(tmp_path) / candidates_path_for(SignalClass.RETROSPECTIVE)
     assert parquet_path.exists(), f"missing parquet at {parquet_path}"
     parquet_df = pd.read_parquet(parquet_path)
     assert len(parquet_df) == len(df)
     assert (parquet_df["signal_class"] == SignalClass.RETROSPECTIVE.value).all()
 
+    # The combining asset rolls the per-class output into the shared ledger.
+    combined = combine_candidate_outputs()
+    combined_path = Path(tmp_path) / CANDIDATES_OUTPUT_PATH
+    assert combined_path.exists(), f"missing combined parquet at {combined_path}"
+    assert len(combined) == len(df)
+
     # Evidence NDJSON: one line per candidate, with the documented key shape.
-    evidence_path = Path(tmp_path) / EVIDENCE_OUTPUT_PATH
+    evidence_path = Path(tmp_path) / evidence_path_for(SignalClass.RETROSPECTIVE)
     assert evidence_path.exists(), f"missing evidence file at {evidence_path}"
     lines = evidence_path.read_text(encoding="utf-8").strip().splitlines()
     assert len(lines) == len(df)
@@ -334,25 +344,23 @@ def test_pair_filter_s1_excludes_already_coded_phase_iii():
 def test_default_loader_accepts_contract_extractor_model_dump(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     output_path = Path("data/transition/contracts_ingestion.parquet")
-    row = ["\\N"] * 103
-    row[0] = "TX-1"
-    row[1] = "CONT_AWD_PIID-1_9700_PARENT-1"
-    row[2] = "20240115"
-    row[3] = "A"
-    row[5] = "A"
-    row[7] = "Follow-on production"
-    row[9] = "EXAMPLE COMPANY"
-    row[11] = "9700"
-    row[12] = "DEPARTMENT OF DEFENSE"
-    row[14] = "DEPARTMENT OF THE NAVY"
-    row[28] = "PIID-1"
-    row[29] = "1000"
-    row[71] = "20240115"
-    row[96] = "UEI000000001"
-    row[99] = "NONE"
-    row[100] = "A"
-    row[101] = "9700"
-    row[102] = "PARENT-1"
+    row = {
+        "transaction_unique_id": "TX-1",
+        "generated_unique_award_id": "CONT_AWD_PIID-1_9700_PARENT-1",
+        "action_date": "20240115",
+        "contract_award_type": "A",
+        "transaction_description": "Follow-on production",
+        "recipient_name": "EXAMPLE COMPANY",
+        "awarding_toptier_agency_name": "DEPARTMENT OF DEFENSE",
+        "awarding_subtier_agency_name": "DEPARTMENT OF THE NAVY",
+        "piid": "PIID-1",
+        "federal_action_obligation": "1000",
+        "period_of_performance_start_date": "20240115",
+        "recipient_uei": "UEI000000001",
+        "extent_competed": "NONE",
+        "referenced_idv_agency_iden": "9700",
+        "referenced_idv_piid": "PARENT-1",
+    }
 
     extractor = ContractExtractor()
     contract = extractor._parse_contract_row(row)
@@ -361,9 +369,9 @@ def test_default_loader_accepts_contract_extractor_model_dump(tmp_path, monkeypa
     assert extractor._collect_and_write([contract], output_path) == 1
 
     loaded = _default_retrospective_loader(None)
-    assert loaded.loc[0, "generated_unique_award_id"] == row[1]
+    assert loaded.loc[0, "generated_unique_award_id"] == row["generated_unique_award_id"]
     assert "research" in loaded.columns
     assert pd.isna(loaded.loc[0, "research"])
     targets = _prepare_contracts(loaded)
-    assert targets.loc[0, "target_id"] == row[1]
-    assert targets.loc[0, "target_id"] != row[28]
+    assert targets.loc[0, "target_id"] == row["generated_unique_award_id"]
+    assert targets.loc[0, "target_id"] != row["piid"]

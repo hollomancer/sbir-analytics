@@ -1,0 +1,127 @@
+name: Monthly Procurement Transition Report
+
+on:
+  schedule:
+    - cron: "0 13 2 * *"
+  workflow_dispatch:
+    inputs:
+      month:
+        description: "Reporting month (YYYY-MM); blank uses previous calendar month"
+        required: false
+        default: ""
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: monthly-procurement-transition
+  cancel-in-progress: true
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      SAM_GOV_API_KEY: ${{ secrets.SAM_GOV_API_KEY }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: ./.github/actions/setup-python-uv
+        with:
+          install-dev-deps: "true"
+
+      - name: Resolve reporting month
+        id: period
+        env:
+          REQUESTED_MONTH: ${{ inputs.month }}
+        run: |
+          MONTH=$(python -c "import datetime,os; requested=os.environ.get('REQUESTED_MONTH','').strip(); today=datetime.date.today(); first=today.replace(day=1); previous=(first-datetime.timedelta(days=1)).strftime('%Y-%m'); print(requested or previous)")
+          echo "month=$MONTH" >> "$GITHUB_OUTPUT"
+
+      - name: Restore prior public-award snapshot
+        uses: actions/cache@v6
+        with:
+          path: data/snapshots/procurement_transition/latest_awards.csv
+          key: procurement-transition-awards-${{ steps.period.outputs.month }}-${{ github.run_id }}
+          restore-keys: |
+            procurement-transition-awards-
+
+      - name: Download current public data
+        run: |
+          set -euo pipefail
+          mkdir -p data/raw/sbir data/snapshots/procurement_transition
+          if [ -s data/snapshots/procurement_transition/latest_awards.csv ]; then
+            cp data/snapshots/procurement_transition/latest_awards.csv data/snapshots/procurement_transition/previous_awards.csv
+          fi
+          curl --fail --retry 3 --location \
+            https://data.www.sbir.gov/mod_awarddatapublic/award_data.csv \
+            --output data/raw/sbir/award_data.csv
+          cp data/raw/sbir/award_data.csv data/snapshots/procurement_transition/latest_awards.csv
+          uv run python scripts/data/download_sam_opportunities.py --without-descriptions
+
+      - name: Build opportunity candidates and center packets
+        env:
+          REPORT_MONTH: ${{ steps.period.outputs.month }}
+        run: |
+          set -euo pipefail
+          PREVIOUS_ARGS=()
+          if [ -s data/snapshots/procurement_transition/previous_awards.csv ]; then
+            PREVIOUS_ARGS=(--previous-awards data/snapshots/procurement_transition/previous_awards.csv)
+          fi
+          uv run python scripts/data/enrich_procurement_awards.py \
+            --month "$REPORT_MONTH" \
+            --awards data/raw/sbir/award_data.csv \
+            --output data/processed/procurement_award_cohort.parquet \
+            "${PREVIOUS_ARGS[@]}"
+          uv run python scripts/data/hydrate_candidate_opportunity_descriptions.py \
+            --opportunities data/raw/sam_gov_opportunities/opportunities.parquet \
+            --awards data/processed/procurement_award_cohort.parquet \
+            --max-records 500
+          uv run python scripts/data/build_phase_iii_opportunity_candidates.py \
+            --month "$REPORT_MONTH" \
+            --awards data/processed/procurement_award_cohort.parquet \
+            --opportunities data/raw/sam_gov_opportunities/opportunities.parquet \
+            "${PREVIOUS_ARGS[@]}"
+          uv run python scripts/data/monthly_procurement_transition_report.py \
+            --month "$REPORT_MONTH" \
+            --awards data/processed/procurement_award_cohort.parquet \
+            --candidates data/processed/phase_iii_candidates.parquet \
+            --opportunities data/raw/sam_gov_opportunities/opportunities.parquet \
+            --ai \
+            "${PREVIOUS_ARGS[@]}"
+
+      - name: Summarize
+        if: always()
+        env:
+          REPORT_MONTH: ${{ steps.period.outputs.month }}
+        run: |
+          MANIFEST="reports/procurement_transition/${REPORT_MONTH}/manifest.json"
+          if [ -f "$MANIFEST" ]; then
+            echo "## Monthly Procurement Transition Report" >> "$GITHUB_STEP_SUMMARY"
+            echo '```json' >> "$GITHUB_STEP_SUMMARY"
+            python -m json.tool "$MANIFEST" >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+            echo "Representative distribution remains gated on the 85% hand-audited precision requirement." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "No representative-facing report was generated." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload report and evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: procurement-transition-${{ steps.period.outputs.month }}-${{ github.run_id }}
+          retention-days: 90
+          if-no-files-found: warn
+          path: |
+            reports/procurement_transition/${{ steps.period.outputs.month }}/
+            data/processed/phase_iii_candidates.parquet
+            data/processed/phase_iii_evidence.ndjson
+            data/processed/procurement_award_cohort.parquet
+            data/processed/procurement_award_cohort.coverage.json
+            data/raw/sam_gov_opportunities/opportunities.parquet
+            data/raw/sam_gov_opportunities/opportunities.hydration.json
+            data/raw/sam_gov_opportunities/raw.ndjson
+            data/snapshots/procurement_transition/latest_awards.csv
