@@ -21,8 +21,7 @@ pip install sbir-etl
 | Package | What You Get |
 |---------|-------------|
 | `sbir-etl` | ETL library — extractors, enrichers, transformers, models, config |
-| `sbir-etl[pipeline]` | + Dagster orchestration (assets, jobs, sensors) |
-| `sbir-etl[cloud]` | + AWS S3 storage (boto3, cloudpathlib) |
-| `sbir-etl[ml]` | + ML/NLP (scikit-learn, spacy, huggingface) |
-| `sbir-etl[neo4j]` | + Neo4j graph database loader |
-| **`sbir-analytics`** | **All of the above** + `sbir_analytics.lambda` |
+| `sbir-etl[cloud,uspto,monitoring]` | ETL integrations used by the pipeline |
+| `sbir-ml[nlp]` | ML/NLP models and enrichment |
+| `sbir-graph` | Neo4j loaders, queries, and packaged migrations |
+| **`sbir-analytics`** | **All of the above** + orchestration and deployment modules |

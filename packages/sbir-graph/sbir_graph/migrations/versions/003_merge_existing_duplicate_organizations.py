@@ -1,6 +1,6 @@
 """Merge existing duplicate Organization nodes."""
 
-from migrations.base import Migration
+from sbir_graph.migrations.base import Migration
 from neo4j import Driver
 
 

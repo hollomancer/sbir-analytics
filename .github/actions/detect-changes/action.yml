@@ -32,6 +32,9 @@ outputs:
   infrastructure:
     description: Whether infrastructure/CDK files changed
     value: ${{ steps.filter.outputs.infrastructure }}
+  s3:
+    description: Whether S3 integration-related files changed
+    value: ${{ steps.filter.outputs.s3 }}
 
 runs:
   using: composite

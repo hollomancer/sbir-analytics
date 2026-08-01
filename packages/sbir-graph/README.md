@@ -10,11 +10,11 @@ documented in [`docs/schemas/neo4j.md`](../../docs/schemas/neo4j.md) and
 
 ## Installation
 
-Installed automatically with the Neo4j extra or the full pipeline:
+Install the graph package directly, or install the full analytics pipeline that depends on it:
 
 ```bash
-pip install "sbir-etl[neo4j]"   # ETL library + this package
-pip install sbir-analytics       # full pipeline (includes [neo4j])
+pip install sbir-graph       # graph loaders, Neo4j client, and packaged migrations
+pip install sbir-analytics   # full pipeline; installs sbir-graph as a dependency
 ```
 
 Depends on `neo4j>=5.20`, `pydantic`, `pandas`, `loguru`.
@@ -25,6 +25,7 @@ Depends on `neo4j>=5.20`, `pydantic`, `pandas`, `loguru`.
 |--------|---------|
 | `sbir_graph.loaders.neo4j.client` — `Neo4jClient`, `Neo4jConfig` | Connection + batched MERGE upserts |
 | `sbir_graph.loaders.neo4j.base` — `BaseNeo4jLoader`, `BaseLoaderConfig` | Base class for all loaders |
+| `sbir_graph.migrations.runner` — `MigrationRunner` | Packaged schema/data migration runner |
 | `sbir_graph.loaders.neo4j.organizations` | Organization nodes (companies, agencies) |
 | `sbir_graph.loaders.neo4j.cet` / `patent_cet` | CET area nodes + `APPLICABLE_TO` / `SPECIALIZES_IN` enrichment |
 | `sbir_graph.loaders.neo4j.transitions` | Transition nodes + `TRANSITIONED_TO` / `RESULTED_IN` / `ENABLED_BY` / `INVOLVES_TECHNOLOGY` edges |

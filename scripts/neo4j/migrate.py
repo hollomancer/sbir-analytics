@@ -6,13 +6,13 @@ import os
 import sys
 from pathlib import Path
 
-# Add project root to path
+# Support running this script directly from a source checkout.
 project_root = Path(__file__).parent.parent.parent
-sys.path.insert(0, str(project_root))
+sys.path.insert(0, str(project_root / "packages" / "sbir-graph"))
 
 from neo4j import GraphDatabase
 
-from migrations.runner import MigrationRunner
+from sbir_graph.migrations.runner import MigrationRunner
 
 
 def main():

@@ -9,14 +9,20 @@ across CET taxonomy areas.
 from typing import Any
 
 import pandas as pd
-from loguru import logger
 
-from sbir_etl.models.quality import ChangesSummary, DataHygieneMetrics, ModuleReport
+from sbir_etl.models.quality import ChangesSummary, DataHygieneMetrics
 from sbir_etl.utils.reporting.analyzers.base_analyzer import AnalysisInsight, ModuleAnalyzer
 
 
 class CetClassificationAnalyzer(ModuleAnalyzer):
     """Analyzer for CET classification operations and taxonomy coverage."""
+
+    stage = "transform"
+    primary_data_key = "classified_df"
+    processing_keys = ("classification_results", "classified_records", "failed_records")
+    analysis_label = "CET classification"
+    missing_data_warning = "No classified DataFrame provided for CET analysis"
+    missing_data_error = "No classified DataFrame available"
 
     def __init__(self, config: dict[str, Any] | None = None):
         """Initialize CET classification analyzer.
@@ -64,64 +70,6 @@ class CetClassificationAnalyzer(ModuleAnalyzer):
 
         # Classification confidence bands
         self.confidence_bands = {"high": (70, 100), "medium": (40, 69), "low": (0, 39)}
-
-    def analyze(self, module_data: dict[str, Any]) -> ModuleReport:
-        """Analyze CET classification data and generate comprehensive report.
-
-        Args:
-            module_data: Dictionary containing:
-                - classified_df: CET classified DataFrame
-                - classification_results: Classification operation results
-                - taxonomy_data: CET taxonomy information
-                - run_context: Pipeline run context
-
-        Returns:
-            ModuleReport with CET classification analysis
-        """
-        logger.info("Starting CET classification analysis")
-
-        classified_df = module_data.get("classified_df")
-        classification_results = module_data.get("classification_results", {})
-        module_data.get("taxonomy_data", {})
-        run_context = module_data.get("run_context", {})
-
-        if classified_df is None:
-            logger.warning("No classified DataFrame provided for CET analysis")
-            return self._create_empty_report(run_context)
-
-        # Calculate key metrics
-        key_metrics = self.get_key_metrics(module_data)
-
-        # Generate insights
-        insights = self.generate_insights(module_data)
-
-        # Calculate data hygiene metrics
-        data_hygiene = self._calculate_data_hygiene(classified_df, classification_results)
-
-        # Calculate changes summary
-        changes_summary = self._calculate_changes_summary(classified_df, classification_results)
-
-        # Extract processing metrics
-        total_records = len(classified_df) if classified_df is not None else 0
-        records_processed = classification_results.get("classified_records", total_records)
-        records_failed = classification_results.get("failed_records", 0)
-        duration_seconds = classification_results.get("duration_seconds", 0.0)
-
-        # Create module report
-        report = self.create_module_report(
-            run_id=run_context.get("run_id", "unknown"),
-            stage="transform",
-            total_records=total_records,
-            records_processed=records_processed,
-            records_failed=records_failed,
-            duration_seconds=duration_seconds,
-            module_metrics=key_metrics,
-            data_hygiene=data_hygiene,
-            changes_summary=changes_summary,
-        )
-
-        logger.info(f"CET classification analysis complete: {len(insights)} insights generated")
-        return report
 
     def get_key_metrics(self, module_data: dict[str, Any]) -> dict[str, Any]:
         """Extract key metrics from CET classification data.
@@ -729,21 +677,14 @@ class CetClassificationAnalyzer(ModuleAnalyzer):
             enrichment_sources={"cet_classification": classified_records},
         )
 
-    def _create_empty_report(self, run_context: dict[str, Any]) -> ModuleReport:
-        """Create an empty report when no data is available.
+    def _calculate_report_data_hygiene(self, module_data: dict[str, Any]) -> DataHygieneMetrics:
+        """Calculate hygiene from classifications and their results."""
+        return self._calculate_data_hygiene(
+            module_data[self.primary_data_key], module_data.get("classification_results", {})
+        )
 
-        Args:
-            run_context: Pipeline run context
-
-        Returns:
-            Empty ModuleReport
-        """
-        return self.create_module_report(
-            run_id=run_context.get("run_id", "unknown"),
-            stage="transform",
-            total_records=0,
-            records_processed=0,
-            records_failed=0,
-            duration_seconds=0.0,
-            module_metrics={"error": "No classified DataFrame available"},
+    def _calculate_report_changes_summary(self, module_data: dict[str, Any]) -> ChangesSummary:
+        """Calculate classification changes for the shared lifecycle."""
+        return self._calculate_changes_summary(
+            module_data[self.primary_data_key], module_data.get("classification_results", {})
         )
