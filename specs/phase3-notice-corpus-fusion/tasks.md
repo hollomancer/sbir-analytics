@@ -29,16 +29,16 @@ the published CI [0.800, 0.886], so the CI gate correctly refused to freeze
 coefficients. Diagnosis (firm-grain vs award-grain) and the next lever in
 `findings.md`.
 
-## T5 — Freeze coefficients
+## T5 — Freeze coefficients — DONE
 Versioned artifact in `sbir-ml` (weights, scaler params, feature order,
 corpus manifest hash). Loader validates the hash and never fits.
 → verify: round-trip test; mismatched-hash load refuses.
 
-## T6 — Precision@K audit sample
+## T6 — Precision@K audit sample — DONE
 Top-K per firm from the refit ranker → `reports/phase_iii/audit/`.
 → verify: file emitted with K rows per firm; format matches the audit-CSV convention.
 
-## T7 — Packet integration (rebase on #466)
+## T7 — Packet integration — DONE (rebase on #466)
 Fused score for DIRECTED/FOLLOWON selection behind existing weight validation;
 scale-shift measurement before any threshold change.
 → verify: RETROSPECTIVE composite bit-identical (test); shift documented.
