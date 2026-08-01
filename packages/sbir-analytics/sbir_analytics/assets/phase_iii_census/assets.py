@@ -95,7 +95,21 @@ PHASE_II_OUTPUT_ENV = "SBIR_ETL__PHASE_TRANSITION__PHASE_II_OUTPUT_PATH"
 FROZEN_SPEC_REVISION = "phase-0-r4"
 FROZEN_SPEC_RELATIVE_PATH = Path("specs/phase-iii-census/design.md")
 AMENDMENTS_LOG_RELATIVE_PATH = Path("specs/phase-iii-census/amendments.md")
-_REPOSITORY_ROOT = Path(__file__).resolve().parents[5]
+
+
+def _find_resource_root() -> Path:
+    """Find the checkout or container root that holds the frozen census inputs."""
+
+    for root in Path(__file__).resolve().parents:
+        if all(
+            (root / relative_path).is_file()
+            for relative_path in (FROZEN_SPEC_RELATIVE_PATH, AMENDMENTS_LOG_RELATIVE_PATH)
+        ):
+            return root
+    raise RuntimeError("Phase III census frozen specification files are not installed")
+
+
+_REPOSITORY_ROOT = _find_resource_root()
 FROZEN_SPEC_PATH = _REPOSITORY_ROOT / FROZEN_SPEC_RELATIVE_PATH
 AMENDMENTS_LOG_PATH = _REPOSITORY_ROOT / AMENDMENTS_LOG_RELATIVE_PATH
 FROZEN_SPEC_SHA256 = "b1cce1e75af840f13223ecfc543b6d801e63cc3329f65f7c0a5b9037c0e9fc48"
