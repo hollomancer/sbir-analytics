@@ -68,6 +68,14 @@ class ConcreteAnalyzer(ModuleAnalyzer):
         """Implement abstract generate_insights method."""
         return []
 
+    def _calculate_report_data_hygiene(self, module_data: dict[str, Any]) -> None:
+        """Unused: this stub overrides the shared lifecycle in ``analyze``."""
+        return None
+
+    def _calculate_report_changes_summary(self, module_data: dict[str, Any]) -> None:
+        """Unused: this stub overrides the shared lifecycle in ``analyze``."""
+        return None
+
 
 class TestModuleAnalyzer:
     """Tests for the base ModuleAnalyzer class."""

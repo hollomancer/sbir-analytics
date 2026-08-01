@@ -109,17 +109,17 @@ class ModuleAnalyzer(ABC):
             duration_results.get("duration_seconds", 0.0),
         )
 
+    @abstractmethod
     def _calculate_report_data_hygiene(
         self, module_data: dict[str, Any]
     ) -> DataHygieneMetrics | None:
         """Calculate domain-specific hygiene for the shared lifecycle."""
-        raise NotImplementedError
 
+    @abstractmethod
     def _calculate_report_changes_summary(
         self, module_data: dict[str, Any]
     ) -> ChangesSummary | None:
         """Calculate domain-specific changes for the shared lifecycle."""
-        raise NotImplementedError
 
     def _create_empty_report(self, run_context: dict[str, Any]) -> ModuleReport:
         """Create a standardized report when the primary input is missing."""
