@@ -48,8 +48,15 @@ def _stub_domain_analysis(monkeypatch: pytest.MonkeyPatch, analyzer: ModuleAnaly
 class ConcreteAnalyzer(ModuleAnalyzer):
     """Concrete implementation of ModuleAnalyzer for testing."""
 
+    stage = "test"
+    primary_data_key = "records"
+    processing_keys = ("processing", "processed", "failed")
+    analysis_label = "Test"
+    missing_data_warning = "No test data"
+    missing_data_error = "No test data available"
+
     def analyze(self, module_data: dict[str, Any]) -> ModuleReport:
-        """Implement abstract analyze method."""
+        """Return a simple report for base utility tests."""
         return self.create_module_report(
             run_id="test_run",
             stage="test",
@@ -79,6 +86,13 @@ class ConcreteAnalyzer(ModuleAnalyzer):
 
 class TestModuleAnalyzer:
     """Tests for the base ModuleAnalyzer class."""
+
+    def test_domain_lifecycle_hooks_are_required(self):
+        """Require subclasses to implement both domain lifecycle hooks."""
+        assert {
+            "_calculate_report_data_hygiene",
+            "_calculate_report_changes_summary",
+        } <= ModuleAnalyzer.__abstractmethods__
 
     def test_initialization(self):
         """Test analyzer initialization with module name and config."""

@@ -2,7 +2,7 @@
 
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import Any
+from typing import Any, ClassVar
 
 from loguru import logger
 from pydantic import BaseModel
@@ -26,15 +26,15 @@ class AnalysisInsight(BaseModel):
 class ModuleAnalyzer(ABC):
     """Base class for module-specific statistical analyzers."""
 
-    stage = ""
-    primary_data_key = ""
-    total_data_key: str | None = None
-    processing_keys = ("", "", "")
-    duration_data_key: str | None = None
-    analysis_label = ""
-    start_analysis_label: str | None = None
-    missing_data_warning = ""
-    missing_data_error = ""
+    stage: ClassVar[str]
+    primary_data_key: ClassVar[str]
+    total_data_key: ClassVar[str | None] = None
+    processing_keys: ClassVar[tuple[str, str, str]]
+    duration_data_key: ClassVar[str | None] = None
+    analysis_label: ClassVar[str]
+    start_analysis_label: ClassVar[str | None] = None
+    missing_data_warning: ClassVar[str]
+    missing_data_error: ClassVar[str]
 
     def __init__(self, module_name: str, config: dict[str, Any] | None = None):
         """Initialize the analyzer.
