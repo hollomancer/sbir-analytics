@@ -8,8 +8,16 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "scripts" / "phase3_benchmark"))
 
-from vehicle_mse import (CELL_ORDER, block_bootstrap_ci, build_units, chapman,  # noqa: E402
-                         coded_key, described_key, loglinear_dark, stratified_dark)
+from vehicle_mse import (
+    CELL_ORDER,
+    block_bootstrap_ci,
+    build_units,
+    chapman,  # noqa: E402
+    coded_key,
+    described_key,
+    loglinear_dark,
+    stratified_dark,
+)
 
 
 def test_described_key_parses_award_and_parent():
@@ -29,7 +37,7 @@ def test_build_units_respects_structural_zero():
     c = {("O2", "V1"), ("O3", "V1")}
     units = build_units(a, b, c)
     stand = units[units["standalone"]]
-    assert not stand["c"].any()                      # standalone can never be C-captured
+    assert not stand["c"].any()  # standalone can never be C-captured
     assert len(units) == 3
 
 
@@ -66,7 +74,7 @@ def test_stratified_dark_sums_both_strata():
                 rows.append({"parent": f"V{v}", "a": a, "b": b, "c": c, "standalone": False})
     units = pd.DataFrame(rows)
     fitted = stratified_dark(units, [])
-    true_dark = 1000 * 0.4 * 0.7 + 1000 * 0.4 * 0.7 * 0.6   # unobserved in each stratum
+    true_dark = 1000 * 0.4 * 0.7 + 1000 * 0.4 * 0.7 * 0.6  # unobserved in each stratum
     assert abs(fitted["dark_total"] - true_dark) / true_dark < 0.30  # loose: sampling noise
     lo, hi = block_bootstrap_ci(units, [], n_boot=60)
     assert lo < fitted["dark_total"] < hi

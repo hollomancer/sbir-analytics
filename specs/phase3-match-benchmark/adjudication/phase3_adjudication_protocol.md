@@ -16,7 +16,9 @@ transition of *this firm's SBIR-funded technology*? Apply the same rule to every
 
 ## The strata (hidden in the KEY — you can't tell which is which while labeling)
 - **detector candidates** (60 DoD notices + 15 cross-agency NASA projects) — top-ranked by the model. Labeling
-  these gives the detector's **precision/recall**.
+  these gives the detector's **selected-lead precision**. It does *not* give recall: these are the model's own
+  top-ranked leads, so the design never observes the positives the model failed to rank (see "What this
+  produces" below).
 - **dark-cell probe** (15 `dod_contract` rows) — a RANDOM sample of DoD contracts to SBIR firms that are
   **post-SBIR, un-flagged by both signals** (no SR3/ST3 code, no "SBIR PHASE III" text, not the SBIR award
   itself). **Purpose (reset 2026-07-18): an EXISTENCE SCAN + label-noise contribution — NOT a count-check.**
@@ -80,8 +82,9 @@ text and dates. **Residual caveat:** the sheet still shows the model's *chosen* 
 want maximal rigor, ask me for the variant that shows the firm's full award list instead of the model's pick.)
 
 ## Freeze & threshold (rule #2)
-This 75-case set is frozen. Do **not** tune any score cutoff using these labels — a set used to pick a
-threshold is training data, not a test set. Precision/recall get computed *after* labels are joined to the KEY.
+This 127-case set is frozen. Do **not** tune any score cutoff using these labels — a set used to pick a
+threshold is training data, not a test set. Selected-lead precision gets computed *after* labels are joined to
+the KEY.
 
 ## Self-agreement (rule #5)
 11 of the 75 are **blind re-adjudications** of pairs you already labeled score-visible (you can't tell which).
