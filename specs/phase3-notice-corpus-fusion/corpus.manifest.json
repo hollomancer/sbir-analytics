@@ -1,0 +1,26 @@
+{
+  "generated_at": "2026-08-01T02:34:49.935717+00:00",
+  "rows": 666,
+  "positives": 111,
+  "firms": 56,
+  "label_channels": {
+    "description": 111
+  },
+  "match_rules": {
+    "name_in_awardee": 61,
+    "name_in_desc": 49,
+    "piid_cite": 1
+  },
+  "notice_type_counts": {
+    "Award Notice": 52,
+    "Justification and Approval (J&A)": 51,
+    "Solicitation": 7,
+    "Justification": 1
+  },
+  "notice_text_median_chars": 413,
+  "frame_hash": "6388d446c95c17346be2a59cf648f4ae22c2ef7bc984694e16ed240fd02168db",
+  "sources": [
+    "/tmp/gsa_full",
+    "/tmp/firm_seed.parquet"
+  ]
+}

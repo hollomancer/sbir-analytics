@@ -105,19 +105,21 @@ def _notices() -> pd.DataFrame:
     return pd.DataFrame(
         [
             {
-                **{c: "" for c in KEEP_COLUMNS},
+                **dict.fromkeys(KEEP_COLUMNS, ""),
                 "NoticeId": "n1",
                 "Office": "NAVAIR",
-                "BaseType": "Special Notice",
+                "Sub-Tier": "ONR",
+                "BaseType": "Justification and Approval (J&A)",
                 "Description": "CRA J&A text",
                 "firm": "Charles River Analytics, Inc.",
                 "match_rule": "name_in_desc",
             },
             {
-                **{c: "" for c in KEEP_COLUMNS},
+                **dict.fromkeys(KEEP_COLUMNS, ""),
                 "NoticeId": "n2",
                 "Office": "NAVAIR",
-                "BaseType": "Solicitation",
+                "Sub-Tier": "ONR",
+                "BaseType": "Award Notice",
                 "Description": "MZA solicitation text",
                 "firm": "MZA Associates Corporation",
                 "match_rule": "name_in_awardee",
@@ -140,6 +142,26 @@ def test_build_corpus_pairs_abstract_with_notice_and_same_office_negative():
     assert list(negatives["notice_id"]) == ["n2"]
     assert negatives.iloc[0]["query_abstract"] == "A" * 80
     assert "MZA solicitation" in negatives.iloc[0]["notice_text"]
+
+
+def test_high_precision_filter_drops_generic_name_in_desc():
+    # A non-J&A solicitation attributed only by name-in-description is dropped by
+    # default (the contaminated rule); an awardee/J&A attribution is kept.
+    notices = _notices().copy()
+    notices.loc[len(notices)] = {
+        **dict.fromkeys(KEEP_COLUMNS, ""),
+        "NoticeId": "n3",
+        "Office": "RDECOM",
+        "Sub-Tier": "ARMY",
+        "BaseType": "Solicitation",
+        "Description": "generic SBIR BAA",
+        "firm": "MZA Associates Corporation",
+        "match_rule": "name_in_desc",
+    }
+    default = build_corpus(notices, _seed())
+    kept = build_corpus(notices, _seed(), high_precision_only=False)
+    assert "n3" not in set(default.loc[default["label"] == 1, "notice_id"])
+    assert "n3" in set(kept.loc[kept["label"] == 1, "notice_id"])
 
 
 def test_build_corpus_skips_firms_without_abstract():

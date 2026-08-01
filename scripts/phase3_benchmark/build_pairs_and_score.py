@@ -83,9 +83,7 @@ def _prepare_phase_ii(frame: pd.DataFrame) -> pd.DataFrame:
 
     prepared = pd.DataFrame(
         {
-            "phase_ii_award_id": _column(
-                source, "award_id", "Award ID", "Agency Tracking Number"
-            ),
+            "phase_ii_award_id": _column(source, "award_id", "Award ID", "Agency Tracking Number"),
             "uei": _column(source, "recipient_uei", "UEI"),
             "company": _column(source, "company_name", "Company", required=False),
             "abstract": _column(source, "abstract", "Abstract"),
@@ -107,10 +105,7 @@ def _transaction_dates(frame: pd.DataFrame) -> pd.Series:
             f"missing Phase III transaction date; need one of {PHASE_III_DATE_COLUMNS}"
         )
     parsed = pd.DataFrame(
-        {
-            name: pd.to_datetime(frame[name], errors="coerce", utc=True)
-            for name in available
-        },
+        {name: pd.to_datetime(frame[name], errors="coerce", utc=True) for name in available},
         index=frame.index,
     )
     return parsed.bfill(axis=1).iloc[:, 0]

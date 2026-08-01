@@ -65,13 +65,33 @@ def _abstract_by_name(seed: pd.DataFrame) -> dict[str, tuple[str, str]]:
     return lookup
 
 
+def _is_high_precision(notices: pd.DataFrame) -> pd.Series:
+    """Positives we trust: J&A notice text, or an awardee/PIID attribution.
+
+    The precision spot-check found ``name_in_desc`` on non-J&A notices
+    contaminated by firms whose name is a common word ("throughput") or SBIR
+    boilerplate (REI Systems operates the DoD submission portal, so its name is
+    in every BAA). Those false positives both mislabel the corpus and drag the
+    refit below its CI (0.784 full vs 0.821 high-precision).
+    """
+
+    is_jna = notices["BaseType"].str.contains("Justification", case=False, na=False)
+    strong_rule = notices["match_rule"].isin(["name_in_awardee", "piid_cite"])
+    return is_jna | strong_rule
+
+
 def build_corpus(
     notices: pd.DataFrame,
     seed: pd.DataFrame,
     *,
     negatives_per_positive: int = 5,
+    high_precision_only: bool = True,
 ) -> pd.DataFrame:
-    """One row per (attributed notice, candidate); same-office diff-firm hard negatives."""
+    """One row per (attributed notice, candidate); same-office diff-firm hard negatives.
+
+    ``high_precision_only`` keeps as positives only J&A notices or awardee/PIID
+    attributions — the subset that reproduces the study within its CI.
+    """
 
     if notices.empty:
         return pd.DataFrame(columns=CORPUS_COLUMNS)
@@ -79,9 +99,13 @@ def build_corpus(
     notices = notices.copy()
     notices["name_key"] = notices["firm"].map(normalize_firm_name)
     notices["office_key"] = notices["Office"].map(normalize_key)
+    notices["agency_key"] = notices["Sub-Tier"].map(normalize_key)
 
     # Positives: each attributed notice whose firm has a query abstract.
-    positives = notices.loc[notices["name_key"].isin(abstracts)].reset_index(drop=True)
+    positives = notices.loc[notices["name_key"].isin(abstracts)]
+    if high_precision_only:
+        positives = positives.loc[_is_high_precision(positives)]
+    positives = positives.reset_index(drop=True)
     rows: list[dict[str, object]] = []
 
     for _, positive in positives.iterrows():
@@ -91,15 +115,41 @@ def build_corpus(
         owner = f"{name_key}:{positive['NoticeId']}"
 
         rows.append(_corpus_row(owner, owner_firm, name_key, positive, abstract, channel, 1))
-        # Hard negatives: other firms' attributed notices in the SAME office.
-        pool = positives.loc[
-            (positives["office_key"] == positive["office_key"])
-            & (positives["name_key"] != name_key)
-        ]
-        for _, negative in pool.head(negatives_per_positive).iterrows():
+        for negative in _select_negatives(positive, positives, negatives_per_positive):
             rows.append(_corpus_row(owner, owner_firm, name_key, negative, abstract, channel, 0))
 
     return pd.DataFrame(rows, columns=CORPUS_COLUMNS)
+
+
+def _select_negatives(positive: pd.Series, positives: pd.DataFrame, count: int) -> list[pd.Series]:
+    """Diff-firm negatives, hardest first: same office → same agency → any.
+
+    Every positive gets ``count`` negatives so its candidate set is scorable;
+    the fallback preserves hardness order (same-office is the study's hard
+    negative) rather than leaving singleton-office firms without negatives.
+    """
+
+    other = positives.loc[positives["name_key"] != positive["name_key"]]
+    same_office = other.loc[other["office_key"] == positive["office_key"]]
+    same_agency = other.loc[
+        (other["agency_key"] == positive["agency_key"])
+        & (other["office_key"] != positive["office_key"])
+    ]
+    rest = other.loc[
+        (other["office_key"] != positive["office_key"])
+        & (other["agency_key"] != positive["agency_key"])
+    ]
+    selected: list[pd.Series] = []
+    seen: set[str] = set()
+    for tier in (same_office, same_agency, rest):
+        for _, candidate in tier.iterrows():
+            if len(selected) >= count:
+                return selected
+            if candidate["name_key"] in seen:
+                continue  # one negative per other-firm keeps the set diverse
+            seen.add(str(candidate["name_key"]))
+            selected.append(candidate)
+    return selected
 
 
 def _corpus_row(
@@ -169,11 +219,21 @@ def main() -> int:
     parser.add_argument("--seed", type=Path, default=Path("data/derived/phase3_firm_seed.parquet"))
     parser.add_argument("--output-dir", type=Path, default=Path("data/derived"))
     parser.add_argument("--negatives-per-positive", type=int, default=5)
+    parser.add_argument(
+        "--all-attributions",
+        action="store_true",
+        help="Keep every attributed positive, not just the high-precision subset.",
+    )
     args = parser.parse_args()
 
     notices = load_filtered_notices(args.archive_dir)
     seed = pd.read_parquet(args.seed)
-    corpus = build_corpus(notices, seed, negatives_per_positive=args.negatives_per_positive)
+    corpus = build_corpus(
+        notices,
+        seed,
+        negatives_per_positive=args.negatives_per_positive,
+        high_precision_only=not args.all_attributions,
+    )
     corpus_path = write_corpus(
         corpus, args.output_dir, sources=[str(args.archive_dir), str(args.seed)]
     )
