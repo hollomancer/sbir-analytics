@@ -21,6 +21,43 @@ from ..exceptions import ConfigurationError
 from .schemas import PipelineConfig
 
 
+_ENVIRONMENT_PROFILE_ALIASES = {
+    "dev": "dev",
+    "development": "dev",
+    "prod": "prod",
+    "production": "prod",
+    "test": "test",
+}
+_CANONICAL_ENVIRONMENT_NAMES = {
+    "dev": "development",
+    "prod": "production",
+    "test": "test",
+}
+_ENVIRONMENT_VARIABLE = "SBIR_ETL__PIPELINE__ENVIRONMENT"
+_LEGACY_ENVIRONMENT_VARIABLE = "SBIR_ETL_ENV"
+
+
+def _normalize_environment_profile(environment: str) -> str:
+    """Return the config-file profile for a user-facing environment name."""
+    requested = environment.strip()
+    return _ENVIRONMENT_PROFILE_ALIASES.get(requested.lower(), requested)
+
+
+def _canonical_environment_name(environment: str) -> str:
+    """Return stable runtime metadata for a selected environment profile."""
+    profile = _normalize_environment_profile(environment)
+    return _CANONICAL_ENVIRONMENT_NAMES.get(profile, profile)
+
+
+def _selected_environment(environment: str | None) -> str:
+    """Resolve explicit, canonical, and legacy environment selectors in precedence order."""
+    if environment is not None:
+        return environment
+    return (
+        os.getenv(_ENVIRONMENT_VARIABLE) or os.getenv(_LEGACY_ENVIRONMENT_VARIABLE) or "development"
+    )
+
+
 def _deep_merge_dicts(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]:
     """Deep merge two dictionaries, with override taking precedence."""
     result = base.copy()
@@ -62,6 +99,8 @@ def _apply_env_overrides(config_dict: dict[str, Any], prefix: str = "SBIR_ETL") 
     result = config_dict.copy()
 
     for env_key, env_value in os.environ.items():
+        if env_key == _ENVIRONMENT_VARIABLE:
+            continue
         if not env_key.startswith(f"{prefix}__"):
             continue
 
@@ -87,8 +126,9 @@ def load_config_from_files(
     """Load configuration from YAML files with environment-specific overrides.
 
     This is intentionally a thin function: it only loads `base.yaml` and merges
-    an optional `<environment>.yaml` on top of it. It does NOT inject defaults or
-    map legacy keys; those behaviors belong to `get_config()`.
+    an optional normalized profile (for example, `development` -> `dev.yaml`) on
+    top of it. It does NOT inject defaults or map legacy keys; those behaviors
+    belong to `get_config()`.
     """
     if config_dir is None:
         config_dir = Path("config")
@@ -113,7 +153,8 @@ def load_config_from_files(
         ) from e
 
     if environment:
-        env_file = Path(config_dir) / f"{environment}.yaml"
+        environment_profile = _normalize_environment_profile(environment)
+        env_file = Path(config_dir) / f"{environment_profile}.yaml"
         if env_file.exists():
             try:
                 with open(env_file, encoding="utf-8") as f:
@@ -146,13 +187,17 @@ def get_config(
     - Validate and return a PipelineConfig instance
     """
     try:
-        # Determine environment name
-        if environment is None:
-            environment = os.getenv("SBIR_ETL__PIPELINE__ENVIRONMENT", "development")
+        # Resolve the requested name once, then use its normalized profile for
+        # both file selection and environment-dependent runtime defaults.
+        environment = _selected_environment(environment)
+        environment_profile = _normalize_environment_profile(environment)
 
         # Load merged files
         config_dict = load_config_from_files(
             base_path=Path.cwd(), environment=environment, config_dir=config_dir
+        )
+        config_dict.setdefault("pipeline", {})["environment"] = _canonical_environment_name(
+            environment
         )
 
         # Backwards-compatibility: if config uses `loading: { neo4j: ... }` map it
@@ -174,7 +219,7 @@ def get_config(
         if explicit_uri:
             default_uri = explicit_uri
         else:
-            if environment and environment.lower() in ("prod", "production"):
+            if environment_profile == "prod":
                 default_uri = "bolt://prod-neo4j:7687"
             else:
                 default_uri = "bolt://localhost:7687"

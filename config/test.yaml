@@ -1,5 +1,5 @@
 # Test/CI environment configuration
-# This file is loaded when ENVIRONMENT=test
+# This file is loaded when SBIR_ETL__PIPELINE__ENVIRONMENT=test
 # Optimized for CI testing with Docker Neo4j
 
 pipeline:

@@ -29,6 +29,7 @@ name: sbir-server
 
 x-server-environment: &server-environment
   ENVIRONMENT: ${ENVIRONMENT:-prod}
+  SBIR_ETL__PIPELINE__ENVIRONMENT: ${ENVIRONMENT:-production}
   PYTHONPATH: /app
   PYTHONUNBUFFERED: 1
   SERVICE_STARTUP_TIMEOUT: ${SERVICE_STARTUP_TIMEOUT:-120}

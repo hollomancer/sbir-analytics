@@ -93,7 +93,7 @@ config = get_config()
 
 ## Access configuration values
 
-neo4j_uri = os.getenv(config.neo4j.uri_env_var)
+neo4j_uri = config.neo4j.uri
 batch_size = config.neo4j.batch_size
 quality_threshold = config.data_quality.completeness["company_name"]
 ```
@@ -102,9 +102,14 @@ quality_threshold = config.data_quality.completeness["company_name"]
 
 The environment is determined by:
 
-1. Explicit parameter to `get_config(environment="prod")`
+1. Explicit parameter to `get_config(environment="production")`
 2. `SBIR_ETL__PIPELINE__ENVIRONMENT` environment variable
-3. Defaults to `"development"`
+3. Legacy `SBIR_ETL_ENV` compatibility fallback
+4. Defaults to `"development"`
+
+Both `development`/`dev` and `production`/`prod` select the corresponding
+`dev.yaml` and `prod.yaml` profile. New integrations should use only the canonical
+`SBIR_ETL__PIPELINE__ENVIRONMENT` selector.
 
 ## Containerized Environments
 
