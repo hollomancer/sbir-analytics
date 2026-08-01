@@ -115,6 +115,40 @@ stronger — gold standard than blind-adjudicating the ranker's own output.
 | Narrative sources omit contract identifiers | manual resolution; drop unresolved cases with a logged reason |
 | Small N → wide CIs | target ~60–80; report CIs, don't over-claim on 20 |
 
+## Addendum — collection clarifications (2026-08-01)
+
+Four constraints from the first collection pass; they refine the set, not the goal.
+
+1. **Procurement, not commercial (v1 scope).** These are Phase III *procurement*
+   transitions — a government follow-on **contract/purchase** — which is what the
+   ranker and FPDS can validate. Commercial transitions (M&A exits, spinoffs,
+   consumer-market commercialization — e.g. NASA Spinoff cases Aspen Aerogels /
+   Photobit, DOE Office-of-Science exits) are **collected but tagged
+   `transition_type=commercial` and out of scope for the v1 classifier**. Add a
+   `transition_type` field (`procurement` | `commercial` | `mixed`); score only
+   procurement. Agencies do not always draw this line, so it is classified per
+   case on read.
+2. **Balance the set — do not let one branch/tech skew the detector.** The first
+   pass is ~70% Navy (173 of ~250), and within Navy heavily NAVSEA/NAVAIR/ONR.
+   A precision number off that measures "Navy acoustic/EW/training" performance,
+   not the detector's. **SHALL** tag every case with `agency`, `command`, and a
+   `tech_domain`, **cap the Navy share** (down-sample, stratified across commands
+   and tech domains, to rough parity with the pooled non-Navy procurement set),
+   and **report precision split by agency and by tech_domain** so no single
+   branch drives the headline. Deliberately collect more non-Navy procurement
+   (Army/AF/NASA sources the agents flagged as unmined) to widen balance.
+3. **Transition-contract resolution.** Prior-award resolution is solved
+   (firm→award 140/142 = 98.6% via `resolve_firm_awards`). The *transition*
+   contract# is the remaining identifier: on the Navy per-story PDFs
+   (`navysbir.com/success/docs/*.pdf`, curl-accessible), and otherwise resolvable
+   from FPDS/USAspending by firm UEI + Phase III window. NASA/Army/AF pages give a
+   program name + dollar value, not a contract#, so those resolve via FPDS.
+4. **Marquee is the dominant stratum.** Nearly all collected cases are marketed
+   wins (`stratum=marquee`), often $10M–$500M. Per the selection-bias guard, the
+   marquee precision is a **ceiling**; the set must be supplemented with `hard`
+   cases (transitions known from non-marketing evidence) before the number is
+   trusted as representative.
+
 ## Verification plan
 
 1. Source catalog produced → verify: ≥ 2 agencies, record shapes documented.
