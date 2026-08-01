@@ -120,6 +120,23 @@ def _arm_labels(n: int) -> list[str]:
     return ["control" if index % 2 else "sbir" for index in range(n)]
 
 
+def _with_arm_columns() -> pd.DataFrame:
+    """Pairs carrying every arm spelling a leak might reach for.
+
+    Both a boolean ``is_control`` and the string-labelled ``arm``/``treatment_group``,
+    so a branch on any one of them is caught. Shared by the ladder and sensitivity
+    tests: covering only one column in one of them would leave the other free to branch
+    on the two it omits.
+    """
+
+    pairs = _mixed_arm_pairs()
+    labels = _arm_labels(len(pairs))
+    pairs["is_control"] = [label == "control" for label in labels]
+    pairs["arm"] = labels
+    pairs["treatment_group"] = labels
+    return pairs
+
+
 def test_adding_arm_columns_cannot_change_the_ladder():
     """Behavioural: the ladder must be bit-identical with and without arm columns.
 
@@ -128,16 +145,9 @@ def test_adding_arm_columns_cannot_change_the_ladder():
     function of the pair fields, and arm membership is not one of them.
     """
 
-    baseline_pairs = _mixed_arm_pairs()
-    baseline = build_dropoff_ladder(baseline_pairs, CUT)
+    baseline = build_dropoff_ladder(_mixed_arm_pairs(), CUT)
 
-    labelled = _mixed_arm_pairs()
-    labels = _arm_labels(len(labelled))
-    labelled["is_control"] = [label == "control" for label in labels]
-    labelled["arm"] = labels
-    labelled["treatment_group"] = labels
-
-    pd.testing.assert_frame_equal(build_dropoff_ladder(labelled, CUT), baseline)
+    pd.testing.assert_frame_equal(build_dropoff_ladder(_with_arm_columns(), CUT), baseline)
 
     # The ladder must also not survive by accident because every arm got the same answer:
     # the fixture has to actually discriminate, or this test proves nothing.
@@ -149,10 +159,7 @@ def test_adding_arm_columns_cannot_change_the_sensitivity_grid():
 
     baseline = build_sensitivity_grid(_mixed_arm_pairs(), CUT)
 
-    labelled = _mixed_arm_pairs()
-    labelled["is_control"] = _arm_labels(len(labelled))
-
-    pd.testing.assert_frame_equal(build_sensitivity_grid(labelled, CUT), baseline)
+    pd.testing.assert_frame_equal(build_sensitivity_grid(_with_arm_columns(), CUT), baseline)
 
 
 def test_flipping_arm_labels_cannot_change_which_rows_survive():
