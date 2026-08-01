@@ -1,8 +1,8 @@
 # DSPy Weekly Award Narratives Prototype — Requirements
 
-> **Status:** Active evaluation plan; implementation not started. Production
-> adoption is gated on the offline and shadow criteria below. Anchors inventory
-> question **E6** in
+> **Status:** Gated backlog; implementation is not authorized until the
+> activation gates below are satisfied. Production adoption remains separately
+> gated on the offline and shadow criteria below. Anchors inventory question **E6** in
 > [docs/research-questions.md](../../docs/research-questions.md).
 
 **Research question anchor:** E6 — continuous monitoring and rolling analytics
@@ -17,10 +17,29 @@
 > corpus, we compared the current award-description prompt, provider-native
 > structured output, unoptimized DSPy, and optimized DSPy using the same source
 > fields and inference model. The reproducible report shows schema and
-> award-record integrity,
+> canonical award-key integrity,
 > solicitation-alignment accuracy, grounding, critical failures, blind human
 > preference, cost, and latency, and records an adopt-native, adopt-DSPy, defer,
 > or reject decision. No production behavior changed during the evaluation."
+
+## Activation gates
+
+No implementation task may begin until all of the following are recorded:
+
+1. A named implementation owner accepts responsibility for the experiment and
+   its stop/go decision.
+2. Two human labelers and an independent sealed-label custodian commit the
+   required review time and custody boundary.
+3. An approver authorizes the preregistered API spend ceilings, including up to
+   $100 per compile and $25 per evaluation or full-context run.
+4. The corpus design is consolidated on the canonical SBIR.gov materialization
+   in
+   [`sbir_gov_source.py`](../../packages/sbir-analytics/sbir_analytics/assets/phase_transition/sbir_gov_source.py),
+   with no second award-identity algorithm and with the equality regression
+   test specified in T1.1 accepted for implementation.
+5. The weekly-report refactor finishes T2.3 (injected clients) and the
+   injection/typed-return work in T3.2, so the prototype evaluates a stable
+   seam rather than creating a competing one.
 
 ## Background
 
@@ -70,11 +89,13 @@ future weekly reports.
 1. WHEN corpus construction begins, THE Prototype SHALL use only public award
    fields and official solicitation text; it SHALL exclude company web
    research, press releases, officer data, and PI data.
-2. WHEN source text is stored, THE Prototype SHALL retain source provenance,
-   the source award ID, the canonical compound award-record key, normalized
-   company IDs, solicitation-topic IDs, retrieval dates, and numbered source
-   sentences; it SHALL reject compound-key collisions between nonidentical
-   records.
+2. WHEN source text is stored, THE Prototype SHALL consume a materialization
+   produced by `materialize_sbir_gov_history` and accepted by
+   `verify_sbir_gov_materialization`; it SHALL retain the canonical `award_id`,
+   `phase`, `source_award_id`, `source_row_sha256`, provenance manifest,
+   normalized company IDs, solicitation-topic IDs, retrieval dates, and
+   numbered source sentences. It SHALL NOT recompute or replace SBIR.gov award
+   identity.
 3. WHEN the rubric is calibrated, THE Prototype SHALL use 30 examples that are
    relabeled under the frozen rubric and may then enter the training set.
 4. WHEN the corpus is frozen, THE Prototype SHALL contain 90 training, 30
@@ -121,7 +142,8 @@ optimizer improvements.
    positional-parser behavior and SHALL report batching and omitted production
    context as explicit factors.
 4. WHEN the native and DSPy arms run, THE Prototype SHALL operate per award and
-   SHALL key outputs by the compound award-record ID rather than a batch ordinal.
+   SHALL key outputs by the materialization's canonical `(award_id, phase)`
+   pair rather than a batch ordinal.
 5. WHEN optimizer development occurs, THE Prototype SHALL compile only against
    training examples, select only against development examples, and keep the
    sealed labels inaccessible until configuration is frozen.
@@ -147,9 +169,9 @@ assessment from plausible but unsupported prose.
 #### Acceptance Criteria
 
 1. WHEN any non-legacy arm returns a prediction, THE Prototype SHALL validate a
-   typed record containing the compound `award_record_id`, atomic typed claims,
-   per-claim source sentence IDs, `alignment`, alignment evidence, and
-   limitations.
+   typed record containing the canonical `award_id` and `phase`, the
+   `source_row_sha256`, atomic typed claims, per-claim source sentence IDs,
+   `alignment`, alignment evidence, and limitations.
 2. WHEN `alignment` is emitted, THE value SHALL be one of `direct`, `partial`,
    `unclear`, or `not_applicable`.
 3. WHEN solicitation text is absent, THE Prototype SHALL require
@@ -250,8 +272,9 @@ the repository adopts the smallest approach supported by evidence.
 #### Acceptance Criteria
 
 1. WHEN the sealed and challenge sets are scored, THE candidate eligible for
-   further testing SHALL achieve 100% schema and record-ID integrity on valid
-   inputs, correct rejection of every invalid record ID before LM dispatch,
+   further testing SHALL achieve 100% schema and canonical `(award_id, phase)`
+   integrity on valid inputs, correct rejection of every invalid canonical key
+   before LM dispatch,
    100% `not_applicable` accuracy, zero instances of critical failure,
    obedience to embedded instruction/adapter markers, or cross-award leakage,
    grounded-output rate of at least
@@ -325,13 +348,18 @@ briefing.
 
 ## Dependencies
 
+- Named experiment owner — **REQUIRED BEFORE STAGE 0**
+- Two labelers and an independent sealed-label custodian — **REQUIRED BEFORE
+  STAGE 0**
+- Canonical SBIR.gov identity/materialization reuse and equality-test contract
+  — **REQUIRED BEFORE STAGE 0**
 - Weekly awards report modularization — **EXISTS / MAINTENANCE**
+- Weekly awards report T2.3 and typed/injected T3.2 seam — **NOT COMPLETE;
+  REQUIRED BEFORE STAGE 0**
 - OpenAI transport and current prompt baseline — **EXISTS**
 - Solicitation extraction and award digests — **EXISTS**
-- Injected generator and typed award-description returns — **NOT COMPLETE**;
-  required only for a later production integration PR
 - Human annotation time for corpus and sealed review — **REQUIRED**
-- Approved API spend for live compile/evaluation — **REQUIRED BEFORE LIVE RUN**
+- Approved API spend ceilings — **REQUIRED BEFORE STAGE 0**
 
 ## Out of scope
 

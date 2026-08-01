@@ -1,6 +1,8 @@
 # DSPy Weekly Award Narratives Prototype — Design
 
-**Status:** Proposed implementation design; production adoption deferred.
+**Status:** Gated backlog design; implementation is not authorized until the
+activation gates in [requirements.md](requirements.md#activation-gates) pass.
+Production adoption is deferred.
 **Date:** 2026-07-16.
 **Evaluation:**
 [`docs/decisions/dspy-evaluation.md`](../../docs/decisions/dspy-evaluation.md).
@@ -16,6 +18,16 @@ without changing the production weekly report during the experiment.
 The prototype produces a reproducible decision artifact, not a production
 framework migration. `adopt-native`, `defer`, and `reject` are equally valid
 outcomes alongside `adopt-DSPy`.
+
+## Activation boundary
+
+This design is ready for future evaluation planning, not implementation. It
+remains gated until a named owner, two labelers, an independent sealed-label
+custodian, and an API-spend approver are recorded; the corpus is committed to
+the canonical SBIR.gov materialization and its equality regression test; and
+the weekly-report refactor completes injected clients (T2.3) plus the
+injected, typed award-description return seam in T3.2. Passing these gates
+authorizes Stage 0 only. It does not authorize live calls or production use.
 
 ## Design principles
 
@@ -161,32 +173,30 @@ which is already a core dependency. Only the validation script imports DSPy.
 
 ## Record identity
 
-Bare SBIR.gov identifiers are not unique. The repository has verified that the
-same base ID can identify distinct awards and therefore deduplicates on
-`(award_id, company, award_year, award_amount)` in
-[`build_tech_area_cohort.py`](../../scripts/data/build_tech_area_cohort.py).
+The prototype does not define another SBIR.gov identity algorithm. Its corpus
+builder consumes the deterministic history produced by
+[`materialize_sbir_gov_history`](../../packages/sbir-analytics/sbir_analytics/assets/phase_transition/sbir_gov_source.py)
+and fails closed unless `verify_sbir_gov_materialization` accepts both the
+parquet and its provenance manifest.
 
-The prototype follows that contract:
-
-1. `source_award_id` is the trimmed Contract value, falling back to Agency
-   Tracking Number.
-2. `award_record_key` contains `source_award_id`, canonical source company
-   string, award year, and normalized decimal award amount.
-3. `award_record_id` is the full SHA-256 of a canonical JSON serialization of
-   those four components; the components remain in the record for audit.
-4. Rows without a source award ID are excluded from the evidence-bearing
-   corpus and may appear only as expected-rejection challenge cases.
-5. Exact duplicate keys are deduplicated; a hash collision or a shared key with
-   nonidentical source fields stops corpus construction.
+That materialization already owns source-grain behavior: it reads the ordered
+42-field SBIR.gov schema, collapses exact source-row duplicates, retains
+`source_award_id`, fingerprints each retained row as `source_row_sha256`, and
+creates a deterministic `award_id` surrogate for blank or colliding base IDs.
+The canonical record key is `(award_id, phase)`. The evaluation copies
+`award_id`, `phase`, `source_award_id`, and `source_row_sha256` without
+normalizing, hashing, or deduplicating them again. A rejected materialization,
+a duplicate canonical key, or any projection that changes those four fields
+stops corpus construction before an LM call.
 
 The separate split-group company ID uses UEI, then DUNS, then normalized
 company name plus state. The solicitation group ID namespaces solicitation and
-topic code by agency.
+topic code by agency. Those are leakage-group identifiers, not award identity.
 
 ## Typed contracts
 
-The design uses stable award-record IDs and sentence-level evidence instead of
-batch ordinals. The illustrative contract is:
+The design uses the materialization's stable award keys and sentence-level
+evidence instead of batch ordinals. The illustrative contract is:
 
 ```python
 from enum import StrEnum
@@ -219,16 +229,19 @@ class EvidenceLinkedClaim(BaseModel):
 
 
 class AwardDescriptionInput(BaseModel):
-    award_record_id: str
+    award_id: str
+    phase: str
+    source_row_sha256: str
     company_id: str
     title: str
     agency: str
-    phase: str
     source_sentences: list[SourceSentence]
 
 
 class AwardDescriptionOutput(BaseModel):
-    award_record_id: str
+    award_id: str
+    phase: str
+    source_row_sha256: str
     claims: list[EvidenceLinkedClaim]
     alignment: Alignment
     alignment_rationale: str | None
@@ -237,7 +250,7 @@ class AwardDescriptionOutput(BaseModel):
 ```
 
 `SourceSentence.field` is restricted by validation to the approved award and
-solicitation fields. Each sentence ID is namespaced by `award_record_id`, so
+solicitation fields. Each sentence ID is namespaced by `source_row_sha256`, so
 evidence from another record cannot validate accidentally. Each claim carries
 its own evidence list; a flat citation bag is not accepted. Sentence existence
 and ownership are deterministic integrity checks, not proof that a sentence
@@ -253,7 +266,7 @@ and both DSPy arms, keeping prose assembly outside the comparison.
 
 Approved initial fields are:
 
-- Compound award-record key and source award ID.
+- Canonical `award_id`, `phase`, `source_award_id`, and source-row fingerprint.
 - Company name, UEI/DUNS when available, state, award amount, and award date.
 - Award title and abstract, agency, program, phase, and contract number.
 - Solicitation number, topic code, title, and description when present.
@@ -364,8 +377,8 @@ Metrics stay separate rather than being hidden inside one weighted headline.
 ### Deterministic integrity
 
 - Schema-valid prediction rate.
-- Exactly one prediction for every requested compound award-record ID.
-- Duplicate, missing, foreign, or malformed award-record IDs.
+- Exactly one prediction for every requested canonical `(award_id, phase)` key.
+- Duplicate, missing, foreign, or malformed canonical keys.
 - Evidence sentence existence and same-award ownership.
 - Correct `not_applicable` behavior when solicitation text is missing.
 - Retry and fallback count.
@@ -553,6 +566,8 @@ Hermetic tests use synthetic fixtures and fake predictions; they make no live
 API calls. They cover:
 
 - Contract and dataset validation.
+- Exact equality between corpus identity/provenance fields and a direct
+  canonical SBIR.gov materialization, including blank and colliding source IDs.
 - Sentence numbering and evidence ownership.
 - Deterministic grouped/time-aware splitting and leakage detection.
 - Renderer behavior for every alignment class.

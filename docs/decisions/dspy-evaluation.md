@@ -9,10 +9,13 @@ Status: prototype-recommended
 
 ## Recommendation
 
-Proceed with a bounded, offline prototype of DSPy for the weekly report's
-award-description and solicitation-alignment stage. Defer production adoption
-until the prototype demonstrates that DSPy adds measurable quality or cost
-value beyond provider-native structured output.
+Retain a bounded, offline prototype of DSPy for the weekly report's
+award-description and solicitation-alignment stage as a gated backlog item.
+Begin implementation only after the owner, reviewer/custodian, spend, canonical
+SBIR.gov identity, and weekly-report seam gates in the governing specification
+are satisfied. Defer production adoption until the prototype demonstrates that
+DSPy adds measurable quality or cost value beyond provider-native structured
+output.
 
 This is not a recommendation to introduce DSPy across the ETL pipeline, add it
 to core dependencies, replace the existing OpenAI web-search client, build a
@@ -65,7 +68,7 @@ or worth its cost.
 
 | DSPy capability | Fit | Reason |
 |---|---|---|
-| Typed award-description output | High | Replaces positional JSON with a collision-checked compound award-record ID, enum alignment, and claim-level evidence references |
+| Typed award-description output | High | Replaces positional JSON with the verified materialization's canonical `(award_id, phase)` key, enum alignment, and claim-level evidence references |
 | Offline prompt/demo optimization | Potentially high | Weekly repetition can amortize compile cost, provided a trustworthy labeled corpus exists |
 | Evaluation and metric plumbing | High | The repository has no semantic regression harness for this stage today |
 | Provider abstraction | Medium | Useful for experiments, but not a reason to replace the existing web-search client |
@@ -153,7 +156,7 @@ evaluation outcome.
 |---|---|
 | Optimizer overfits or games the metric | Freeze train/development/sealed splits; keep primary metrics deterministic or human-labeled; never optimize on the sealed set |
 | Native schema benefits are mistaken for DSPy benefits | Include provider-native structured output as an independent control |
-| Cross-award contamination from batch ordinals | Use the repository's compound award-record key, reject collisions, and treat any swap or leak as a critical failure |
+| Cross-award contamination from batch ordinals | Reuse the verified SBIR.gov materialization's canonical `(award_id, phase)` key and treat any swap or leak as a critical failure |
 | Unsupported claims | Require source-sentence references, validate references deterministically, and manually review atomic claims |
 | Instructions embedded in source text | Treat abstracts and solicitations as untrusted delimited data; include adversarial challenge cases; provide no tools or retrieval |
 | Sensitive content enters caches or traces | Exclude PI/diligence data; disable DSPy memory, disk, and LM request caches for scored runs; do not log raw prompts or completions in CI |

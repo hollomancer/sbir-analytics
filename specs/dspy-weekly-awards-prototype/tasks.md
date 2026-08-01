@@ -1,11 +1,34 @@
 # DSPy Weekly Award Narratives Prototype — Tasks
 
-> **Status:** Planned. This documentation PR defines the experiment only. No
-> DSPy dependency, corpus, live call, or production integration has been added.
+> **Status:** Gated backlog. This documentation PR defines the experiment only.
+> No implementation task is authorized until Stage G passes; no DSPy
+> dependency, corpus, live call, or production integration has been added.
 
 Tasks are sequenced so each stage can stop the experiment without leaving a
 partial production architecture. Each implementation stage should land in a
 separate PR where practical.
+
+## Stage G — Activate the backlog item
+
+- [ ] **G0.1 Record accountable people.** Name the implementation owner, two
+      human labelers, and an independent sealed-label custodian; record their
+      accepted responsibilities and available review time.
+      - Verify: the activation record names every role and the custodian's
+        access boundary.
+- [ ] **G0.2 Approve bounded spend.** Name the approver and record approval for
+      the preregistered compile, evaluation, and full-context ceilings.
+      - Verify: the activation record includes the approved dollar ceilings;
+        absent approval leaves every live-call task blocked.
+- [ ] **G0.3 Finish the weekly-report seam.** Complete T2.3 and the
+      injection/typed-return work in T3.2 of the weekly-awards-report-refactor.
+      - Verify: the canonical weekly award-description generator accepts an
+        injected client, returns the typed contract, and its focused tests pass.
+- [ ] **G0.4 Accept the canonical identity boundary.** Confirm that the corpus
+      consumes the verified SBIR.gov materialization and that T1.1's equality
+      regression test is part of the implementation plan. Do not introduce a
+      second award-key function.
+      - Verify: an activation review links the canonical implementation and
+        records all four G0 tasks as passed before T0.1 begins.
 
 ## Stage 0 — Freeze the experiment contract
 
@@ -26,12 +49,13 @@ separate PR where practical.
       - Verify: `uv sync --extra dspy-eval --frozen` succeeds and ordinary
         `uv sync --frozen` does not install DSPy.
       - _Requirements: R5_
-- [ ] **T0.3 Add dependency-free contracts and rendering.** Implement stable
-      compound award-record identity, input/output Pydantic models, alignment
+- [ ] **T0.3 Add dependency-free contracts and rendering.** Reuse the canonical
+      `(award_id, phase)` record key, implement input/output Pydantic models, alignment
       and claim-kind `StrEnum` values, atomic claims with per-claim evidence,
       evidence ownership validation, and the deterministic renderer.
-      - Verify: unit tests cover all alignment values, missing solicitation,
-        foreign evidence IDs, and stable rendering.
+      - Verify: unit tests cover exact passthrough of `award_id`, `phase`, and
+        `source_row_sha256`, all alignment values, missing solicitation, foreign
+        evidence IDs, and stable rendering.
       - _Requirements: R3_
 - [ ] **T0.4 Add the standalone evaluation CLI skeleton.** Parse explicit model,
       adapter, optimizer, seed, global concurrency, retry, call, time, spend,
@@ -45,12 +69,21 @@ separate PR where practical.
 
 ## Stage 1 — Build and validate the gold corpus
 
-- [ ] **T1.1 Implement source normalization.** Export only approved public
-      award and solicitation fields, attach provenance, generate stable
-      compound award-record/company/topic IDs, reject nonidentical key
-      collisions, and number source sentences deterministically.
-      - Verify: repeated exports from the same input have identical IDs and
-        dataset hashes; tests reject unsupported source fields.
+- [ ] **T1.1 Project the verified canonical source.** Read the history produced
+      by `materialize_sbir_gov_history`, require
+      `verify_sbir_gov_materialization` to pass, export only approved public
+      award and solicitation fields, preserve canonical `award_id`, `phase`,
+      `source_award_id`, and `source_row_sha256` values exactly, attach the
+      provenance manifest, generate only company/topic leakage-group IDs, and
+      number source sentences deterministically. Do not normalize, hash, or
+      deduplicate award identity again.
+      - Verify: a contract regression test runs the corpus projection and the
+        canonical materializer over the same fixture and asserts exact equality
+        of all four identity/provenance columns for every retained row. The
+        fixture includes an exact duplicate, cross-phase base-ID reuse,
+        same-phase colliding IDs, and a blank source ID. Tests also reject an
+        unverifiable manifest, unsupported fields, duplicate canonical keys,
+        and any mutated identity field.
       - _Requirements: R1, R3, R5_
 - [ ] **T1.2 Write the annotation guide.** Define alignment classes, material
       claim, required fact, grounding, critical failure, and adjudication with
@@ -68,7 +101,7 @@ separate PR where practical.
       at least 60 sealed, and 20 challenge examples, with dual review and
       adjudication at the required rates and a hard temporal cutoff.
       - Verify: schema, count, class-balance, temporal boundary, company/topic
-        leakage, compound-key collision, duplicate, provenance, and hash checks
+        leakage, canonical-key equality, duplicate, provenance, and hash checks
         all pass.
       - _Requirements: R1_
 - [ ] **T1.5 Place the initial holdout in custody.** Commit evaluation inputs and IDs only;
