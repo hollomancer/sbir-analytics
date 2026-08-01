@@ -1,14 +1,15 @@
 # Label-free Phase III Census and Negative Controls — Phase 0 Design
 
-**Status:** Phase 0 approved; **criteria frozen**. The target-code provenance and Phase II
-award-grain amendments below were approved before any result was materialized. The Phase 1
-census and target-source paths are implemented and fixture-verified; production
-materialization remains blocked until the approved prior-grain contract is implemented and
-verified.
+**Status:** Phase 0 approved; **criteria frozen**. The target-code provenance, federal
+Phase II award-grain, and SBIR.gov source-row-grain amendments below were approved before
+any result was materialized. The Phase 1 census and target-source paths are implemented and
+fixture-verified; production materialization remains blocked until the approved prior-grain
+contracts are implemented and verified.
 **Design date:** 2026-07-31.
 **Approval date:** 2026-08-01.
 **Provenance-amendment approval date:** 2026-08-01.
 **Prior-grain amendment approval date:** 2026-08-01.
+**SBIR.gov source-row-grain amendment approval date:** 2026-08-01.
 **Research-question anchors:** B2 (federal-procurement transition), B3 (Phase II → III
 latency and coding undercount), and E1 (SBIR/STTR identification) in
 [`docs/research-questions.md`](../../docs/research-questions.md).
@@ -369,6 +370,76 @@ This upstream correction changes identifiers supplied to every consumer of
 `validated_phase_ii_awards`, including the existing retrospective candidate path. That
 effect was disclosed before approval. It does not modify the scoring asset, scorer,
 weights, thresholds, target filters, or the shared exact-UEI pair builder.
+
+### Approved SBIR.gov source-row-grain amendment
+
+A pre-materialization check of the full SBIR.gov history found that the legacy validated
+input removed rows by input order when `award_id + phase` repeated. In the source snapshot,
+distinct Phase II records can share that key, including records for different firms and
+work. It also found the normalized identifier collision `NAVY38356`: one Phase II record is
+for ARGON ENGINEERING ASSOC., INC. and has no UEI, while the other is for ALPHATECH, INC.
+and has UEI `KM4XFJ7CJSY8`. Exact-UEI gating makes the Argon record unable to enter the
+current census pair universe, but that downstream fact cannot justify silently deleting a
+source award: source-grain validation occurs before the join, the record remains relevant
+to source completeness and other consumers, and a future corrected UEI could make it
+pair-eligible.
+
+The repository owner therefore approved this exact SBIR.gov source-row construction before
+any count:
+
+1. Read all 42 SBIR.gov CSV fields as source strings in the CSV's declared header order.
+   Collapse rows only when all 42 parsed source-field values are identical. No
+   `award_id + phase`, recipient, title, or other partial-key deduplication is permitted.
+2. For each retained row, define the base source identifier as the first nonblank value in
+   fixed order: `Contract`, then `Agency Tracking Number`. This aligns with the already
+   approved `source_award_id` reconciliation order. Blank and null-like values use the
+   existing source-key semantics: trim, uppercase, and treat `""`, `<NA>`, `NAN`, `NONE`,
+   `NULL`, and `\\N` as null.
+3. Partition retained rows by `(normalized base identifier, normalized phase label)`, where
+   the phase label uses the existing `I`/`II`/`III` normalization. This is the minimal
+   correction to the legacy `[award_id, phase]` grain: normal Phase I/Phase II reuse of one
+   source identifier does not by itself trigger a surrogate. If the normalized base is
+   nonblank and its base-plus-phase tuple occurs exactly once, canonical `award_id` is the
+   original, unmodified base source string.
+4. If the normalized base is blank or its base-plus-phase tuple occurs more than once,
+   canonical `award_id` is exactly:
+
+   ```text
+   SBIRGOV:<MISSING-or-normalized-base>:<source-row-sha256>
+   ```
+
+   `source-row-sha256` is the complete 64-lowercase-hex SHA-256 of the UTF-8 encoding of a
+   JSON array containing the 42 parsed source-field values in declared CSV header order.
+   Serialization uses `ensure_ascii=False` and `separators=(",", ":")`; a parsed null is
+   JSON `null`. Values receive no case or whitespace normalization before hashing. The
+   digest is never truncated.
+5. Retain the original base value separately as `source_award_id` and the digest as
+   `source_row_sha256`. A generated canonical identifier is a deterministic source-row
+   surrogate, not an inferred award match or entity resolution.
+6. The materialization manifest records the ordered 42-column list, its SHA-256, the input
+   file SHA-256 and byte size, raw/retained/exact-duplicate counts, blank-base count,
+   collision-group and collision-row counts, generated-ID count, output SHA-256, and the
+   fingerprint serialization contract. A missing field, duplicate generated canonical ID,
+   or manifest/output checksum mismatch stops materialization.
+7. The full-history source is materialized at the census-dedicated default path
+   `data/processed/phase_iii_census_sbir_awards.parquet`; it does not overwrite the shared
+   legacy `enriched_sbir_awards.parquet`. A census run selects this path through the
+   existing `SBIR_ETL__PHASE_TRANSITION__SBIR_AWARDS_PATH` override (or another explicitly
+   selected v2 artifact satisfying the identical manifest contract). The general Phase II
+   asset retains legacy input compatibility outside the census, but the census fails closed
+   unless its selected SBIR source and the materialized prior frame have verified v2
+   provenance.
+
+The earlier exact reconciliation rule is correspondingly strict at both grains. A shared
+normalized `source_award_id` reconciles only when it identifies exactly one collapsed
+federal award and exactly one retained SBIR.gov row. Multiplicity on either side stops
+materialization with `PhaseIIInputError`; no row may be selected or dropped by order, UEI,
+DUNS, recipient name, or another heuristic.
+
+This amendment adds no threshold, score, heuristic match, source join, or learned model.
+It changes no census criterion or sensitivity cell. It replaces only the legacy
+input-order source-row deletion and makes the complete SBIR.gov input reproducible at its
+observable record grain.
 
 After approval, any further criterion change requires a new spec revision and a new
 freeze before rerunning. An observed count, control overlap, balance statistic, or
