@@ -55,7 +55,7 @@ Description: "Thermal management materials for hypersonic flight"
 The CET area is extracted from SBIR award metadata:
 
 ```python
-from sbir_etl.transition.features.cet_analyzer import CETSignalExtractor
+from sbir_ml.transition.features.cet_analyzer import CETSignalExtractor
 
 extractor = CETSignalExtractor()
 award_cet = extractor.extract_award_cet(award_record)
@@ -100,7 +100,7 @@ Federal contracts are not explicitly classified into CET areas. The transition d
 The inference algorithm uses precompiled regex patterns for efficiency:
 
 ```python
-from sbir_etl.transition.features.cet_analyzer import CETSignalExtractor
+from sbir_ml.transition.features.cet_analyzer import CETSignalExtractor
 
 extractor = CETSignalExtractor()
 cet_area, confidence = extractor.infer_contract_cet(contract_description)
@@ -210,7 +210,7 @@ CET alignment measures whether the SBIR award and federal contract are working i
 ### Calculation Logic
 
 ```python
-from sbir_etl.transition.features.cet_analyzer import CETSignalExtractor
+from sbir_ml.transition.features.cet_analyzer import CETSignalExtractor
 
 extractor = CETSignalExtractor()
 
@@ -442,8 +442,8 @@ cet_inference:
 ### Example 1: CET-Aligned Transition
 
 ```python
-from sbir_etl.transition.features.cet_analyzer import CETSignalExtractor
-from sbir_etl.transition.detection.scoring import TransitionScorer
+from sbir_ml.transition.features.cet_analyzer import CETSignalExtractor
+from sbir_ml.transition.detection.scoring import TransitionScorer
 
 ## Initialize
 
@@ -581,7 +581,7 @@ cet_signal = extractor.extract_signal(
 Query all transitions by CET area to see which technologies show strongest commercialization:
 
 ```python
-from sbir_etl.transition.analysis.analytics import TransitionAnalytics
+from sbir_ml.transition.analysis.analytics import TransitionAnalytics
 
 analytics = TransitionAnalytics(transitions_df, awards_df)
 
@@ -679,16 +679,14 @@ times = analytics.compute_avg_time_to_transition_by_cet_area()
 
 ## Find all HIGH confidence transitions in AI & ML
 
-MATCH (a:Award)-[:INVOLVES_TECHNOLOGY]->(cet:CETArea {name: "AI & Machine Learning"})
-
-      -[]->(t:Transition {confidence: "HIGH"})
-
+MATCH (a:FinancialTransaction {transaction_type: "AWARD"})-[:APPLICABLE_TO]->(cet:CETArea {name: "AI & Machine Learning"})
+      <-[:INVOLVES_TECHNOLOGY]-(t:Transition {confidence: "HIGH"})
 RETURN a.award_id, a.topic, t.likelihood_score
 ORDER BY t.likelihood_score DESC
 
 ## Transition rate by CET area
 
-MATCH (a:Award)-[:INVOLVES_TECHNOLOGY]->(cet:CETArea)
+MATCH (a:FinancialTransaction {transaction_type: "AWARD"})-[:APPLICABLE_TO]->(cet:CETArea)
       <-[:INVOLVES_TECHNOLOGY]-(t:Transition)
 WITH cet.name as cet_area,
      count(DISTINCT a) as total_awards,
@@ -701,7 +699,7 @@ ORDER BY transition_rate_percent DESC
 
 ## Patent-backed transitions by CET area
 
-MATCH (a:Award)-[:INVOLVES_TECHNOLOGY]->(cet:CETArea)
+MATCH (a:FinancialTransaction {transaction_type: "AWARD"})-[:APPLICABLE_TO]->(cet:CETArea)
       <-[:INVOLVES_TECHNOLOGY]-(t:Transition)
 
       -[:ENABLED_BY]->(p:Patent)

@@ -9,6 +9,7 @@ Two ML systems: CET classification (predicts applicability to 21 NSTC critical &
 | [cet-integration.md](cet-integration.md) | Award classifier: data flow, model architecture, Neo4j schema, quality checks, scenarios |
 | [cet-classifier.md](cet-classifier.md) | Patent classifier: feature extraction, vectorizers, training/inference flow |
 | [cet-award-training-data.md](cet-award-training-data.md) | Training data: sources, labeling, quality |
+| [cet-rule-engine.md](cet-rule-engine.md) | Rule-engine layer: negative keywords, context rules, agency/branch priors (YAML tuning) |
 
 **Run award classification:**
 

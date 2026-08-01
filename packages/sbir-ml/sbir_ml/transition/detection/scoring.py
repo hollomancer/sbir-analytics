@@ -20,31 +20,11 @@ from typing import Any
 
 from loguru import logger
 
-# Phase III lineage language — signals proximity to Phase III, not a violation.
-_PHASE_III_LINEAGE_PHRASES: tuple[str, ...] = (
-    "phase iii",
-    "phase 3",
-    "derives from",
-    "extends",
-    "completes",
-    "prototype transition",
-    "follow-on production",
-    "continuation of",
-)
-
-# Data-rights vocabulary that co-occurs with Phase III deliverable language.
-_DATA_RIGHTS_LINEAGE_PHRASES: tuple[str, ...] = (
-    "technical data package",
-    "interface control document",
-    "source code",
-    "government purpose rights",
-    "unlimited rights",
-)
+from sbir_etl.utils.procurement_text import SCORING_LINEAGE_PHRASES
 
 # Word-boundary matchers around each phrase, matched case-insensitively.
 _LINEAGE_PATTERNS: tuple[re.Pattern[str], ...] = tuple(
-    re.compile(r"\b" + re.escape(p) + r"\b", re.IGNORECASE)
-    for p in (*_PHASE_III_LINEAGE_PHRASES, *_DATA_RIGHTS_LINEAGE_PHRASES)
+    re.compile(r"\b" + re.escape(p) + r"\b", re.IGNORECASE) for p in SCORING_LINEAGE_PHRASES
 )
 
 

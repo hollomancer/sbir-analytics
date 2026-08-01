@@ -1,15 +1,20 @@
 #!/usr/bin/env python3
 """
-Extract USPTO CPC B82Y/B82B (nanotechnology) patents with assignees and dates.
+Extract USPTO CPC patents with assignees and dates, filtered to a CPC range.
 
-Streams the PatentsView PVGPATDIS zip archives without extracting them,
-filters ~60M CPC rows to the B82 subclasses, and joins assignee organizations
-and grant dates for the matched patents. Output feeds Method C of the
-nanotech cohort analysis (build_nano_cohort.py).
+Streams the PatentsView PVGPATDIS zip archives without extracting them, filters
+~60M CPC rows to the requested CPC prefixes, and joins assignee organizations
+and grant dates for the matched patents. Output feeds Method C of the tech-area
+cohort analysis (build_tech_area_cohort.py).
 
-CPC scope:
-  B82B — nanostructures formed by manipulation of individual atoms/molecules
-  B82Y — specific uses or applications of nanostructures
+Defaults reproduce the original nanotech B82 extract exactly (subclass field,
+``B82`` prefix, ``b82_patents.csv``). Other tech areas parameterize the CPC
+range — e.g. quantum information science (G06N10, a CPC *group* rather than a
+subclass) via ``--cpc-field cpc_group --cpc-prefixes G06N10``.
+
+CPC prefix levels:
+  B82B / B82Y — nanostructures + their applications (matched at the subclass level)
+  G06N10      — quantum computing (matched at the group level, cpc_group column)
 
 Inputs (download via: python scripts/data/download_uspto.py --dataset patentsview
         --table {cpc,assignee,patent,application} --local data/raw/uspto/patentsview):
@@ -19,12 +24,16 @@ Inputs (download via: python scripts/data/download_uspto.py --dataset patentsvie
   data/raw/uspto/patentsview/g_application.tsv.zip   — filing dates (capability-vs-outcome timing)
 
 Outputs:
-  data/processed/uspto/b82_patents.csv — one row per (patent, org assignee)
+  <--out> (default data/processed/uspto/b82_patents.csv) — one row per (patent, org assignee)
 
 Usage:
-  python scripts/data/extract_b82_patents.py
+  python scripts/data/extract_b82_patents.py            # nanotech B82 (default)
+  python scripts/data/extract_b82_patents.py \\
+      --cpc-field cpc_group --cpc-prefixes G06N10 \\
+      --out data/processed/uspto/g06n10_patents.csv     # quantum G06N10
 """
 
+import argparse
 import csv
 import io
 import sys
@@ -36,7 +45,10 @@ REPO = Path(__file__).resolve().parents[2]
 RAW = REPO / "data/raw/uspto/patentsview"
 OUT_CSV = REPO / "data/processed/uspto/b82_patents.csv"
 
-B82_SUBCLASS_PREFIX = "B82"
+
+def cpc_matches(symbol: str, prefixes: tuple[str, ...]) -> bool:
+    """True if the CPC symbol starts with any requested prefix."""
+    return any(symbol.startswith(p) for p in prefixes)
 
 
 def tsv_rows(zip_path: Path):
@@ -51,32 +63,54 @@ def tsv_rows(zip_path: Path):
             yield idx, row
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--cpc-prefixes", nargs="+", default=["B82"],
+        help="CPC symbol prefixes to keep (default: B82 = nanotech B82B/B82Y)",
+    )
+    parser.add_argument(
+        "--cpc-field", default="cpc_subclass",
+        help="g_cpc_current column to prefix-match (default: cpc_subclass; "
+             "use cpc_group for group-level ranges like G06N10)",
+    )
+    parser.add_argument(
+        "--out", type=Path, default=OUT_CSV,
+        help=f"Output CSV path (default: {OUT_CSV})",
+    )
+    parser.add_argument(
+        "--raw", type=Path, default=RAW,
+        help=f"PatentsView raw dir (default: {RAW})",
+    )
+    args = parser.parse_args(argv)
+    prefixes = tuple(args.cpc_prefixes)
+    label = "/".join(prefixes)
+
     required = {
-        "cpc": RAW / "g_cpc_current.tsv.zip",
-        "assignee": RAW / "g_assignee_disambiguated.tsv.zip",
-        "patent": RAW / "g_patent.tsv.zip",
-        "application": RAW / "g_application.tsv.zip",
+        "cpc": args.raw / "g_cpc_current.tsv.zip",
+        "assignee": args.raw / "g_assignee_disambiguated.tsv.zip",
+        "patent": args.raw / "g_patent.tsv.zip",
+        "application": args.raw / "g_application.tsv.zip",
     }
     for table, p in required.items():
         if not p.exists():
             print(
                 f"ERROR: {p} not found — run scripts/data/download_uspto.py "
-                f"--dataset patentsview --table {table} --local {RAW}",
+                f"--dataset patentsview --table {table} --local {args.raw}",
                 file=sys.stderr,
             )
             return 1
 
-    print("Pass 1/4: scanning g_cpc_current for B82 subclasses...")
+    print(f"Pass 1/4: scanning g_cpc_current[{args.cpc_field}] for {label}...")
     subclasses: dict[str, set[str]] = defaultdict(set)
     rows_seen = 0
     for idx, row in tsv_rows(required["cpc"]):
         rows_seen += 1
-        sub = row[idx["cpc_subclass"]]
-        if sub.startswith(B82_SUBCLASS_PREFIX):
+        sub = row[idx[args.cpc_field]]
+        if cpc_matches(sub, prefixes):
             subclasses[row[idx["patent_id"]]].add(sub)
     b82_ids = set(subclasses)
-    print(f"  {rows_seen:,} CPC rows scanned; {len(b82_ids):,} unique B82 patents")
+    print(f"  {rows_seen:,} CPC rows scanned; {len(b82_ids):,} unique {label} patents")
 
     print("Pass 2/4: joining assignee organizations...")
     org_rows: dict[str, list[tuple[str, str]]] = defaultdict(list)  # patent_id → [(org, type)]
@@ -100,7 +134,7 @@ def main() -> int:
         pid = row[idx["patent_id"]]
         if pid in b82_ids:
             meta[pid] = (row[idx["patent_date"]], row[idx["patent_title"]][:120])
-    print(f"  {len(meta):,} B82 patents matched in g_patent")
+    print(f"  {len(meta):,} {label} patents matched in g_patent")
 
     print("Pass 4/4: joining filing dates...")
     filing: dict[str, str] = {}
@@ -111,11 +145,11 @@ def main() -> int:
             # g_application contains typo'd dates (e.g. year 1074); keep plausible only
             if len(fd) == 10 and "1900" <= fd[:4] <= "2030":
                 filing[pid] = fd
-    print(f"  {len(filing):,} B82 patents with plausible filing dates")
+    print(f"  {len(filing):,} {label} patents with plausible filing dates")
 
-    OUT_CSV.parent.mkdir(parents=True, exist_ok=True)
+    args.out.parent.mkdir(parents=True, exist_ok=True)
     n_out = 0
-    with open(OUT_CSV, "w", newline="", encoding="utf-8") as f:
+    with open(args.out, "w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
         w.writerow(
             ["patent_id", "grant_date", "filing_date", "assignee_organization", "assignee_type",
@@ -129,14 +163,14 @@ def main() -> int:
                      "|".join(sorted(subclasses[pid])), title]
                 )
                 n_out += 1
-    print(f"  Written: {OUT_CSV} ({n_out:,} patent-assignee rows)")
+    print(f"  Written: {args.out} ({n_out:,} patent-assignee rows)")
 
     unique_orgs = {org.upper() for rows in org_rows.values() for org, _ in rows}
     print()
     print("=" * 60)
-    print("B82 EXTRACTION SUMMARY")
+    print(f"{label} CPC EXTRACTION SUMMARY")
     print("=" * 60)
-    print(f"Unique B82 patents:                  {len(b82_ids):,}")
+    print(f"Unique {label} patents:              {len(b82_ids):,}")
     print(f"  with organization assignee:        {len(org_rows):,}")
     print(f"  individual-only / unassigned:      {len(individual_only):,}")
     print(f"Unique assignee organizations:       {len(unique_orgs):,}")

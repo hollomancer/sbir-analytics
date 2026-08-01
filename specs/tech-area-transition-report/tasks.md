@@ -71,10 +71,37 @@
       `build_nano_cohort.py` intentionally NOT migrated — it is the legacy v0
       cohort builder that `build_tech_area_cohort.py` replaces; migrating it would
       create two builders both writing the area cohort.
-- [ ] T8 Optional Method C for quantum (`G06N10`) once CPC extract is generalized
-- [ ] T9 Dagster asset wrapper (only after CLI is stable across ≥3 areas)
+- [x] T8 Method C for quantum (`G06N10`) — generalized the CPC extract + wired
+      Method C into `build_tech_area_cohort.py`.
+      - `extract_b82_patents.py` parameterized: `--cpc-prefixes` / `--cpc-field`
+        / `--out` (defaults reproduce the nanotech B82 extract exactly). Quantum
+        uses `--cpc-field cpc_group --cpc-prefixes G06N10` (G06N10 is a CPC group,
+        not a subclass).
+      - `build_cpc_cohort` / `load_cpc_assignees` ported from `build_nano_cohort`,
+        area-gated on a `cpc_patents_csv` config field; emits `cohort_cpc.csv`
+        (keeping the legacy `cpc_first_b82_*` column names for capture-recapture /
+        figure-verification compat) + a `method_c` block (size, A∩C, B∩C) in
+        `overlap_summary.json`. Absent extract → empty cohort, no side effects.
+      - Config: nanotech `cpc_patents_csv: …/b82_patents.csv`; quantum
+        `cpc_prefixes: [G06N10]` + `…/g06n10_patents.csv`; hypersonics unset.
+      - Unit-tested (CPC prefix predicate for B82 subclass vs G06N10 group;
+        Method-C assignee matching + absent-extract). Note: can't run the
+        extractor end-to-end here (needs the ~60M-row PatentsView CPC dump).
+- [x] T9 Dagster asset wrapper (CLI now stable across the 3 areas + cutover done)
+      — `packages/sbir-analytics/sbir_analytics/assets/transition_report.py`: one
+      `tech_area_cohort_<area>` asset + non-empty check per area (group
+      `transition_reports`), auto-discovered by `load_assets_from_modules`. Each
+      asset shells out to `build_tech_area_cohort.py` (the bit-exact-verified
+      builder, left untouched) and surfaces cohort metrics from
+      `overlap_summary.json` + `composition.json` as Dagster metadata. Pure
+      `_cohort_metrics` helper unit-tested; module carries a Dagster import shim.
 - [ ] T19 When digest / Form D / M&A exist: extend Q/H policy-brief headline tables with
       channel rows (`Measure | Result | How to use it`) + Policy interpretation blocks;
       hypersonics prioritizes WS1 + WS5a over Form D; quantum keeps small-N caveats
-- [ ] T20 Optional: `build_tech_area_cohort.py` emits `policy_brief_stub.md` from
-      `overlap_summary.json` + agency aggregates
+- [x] T20 `build_tech_area_cohort.py` emits `policy_brief_stub.md` from
+      `overlap_summary.json` + agency aggregates — pure `render_policy_brief_stub`
+      builds a policy-leader scaffold (headline table from composition, agency
+      mix, program split, recency, overlap; per-signal "Not computed — not zero"
+      channel-status rows; findings/takeaways/language left as TODO placeholders,
+      never fabricating channel rates). New `policy_brief_stub` ReportPaths stem;
+      unit-tested (signals absent/present + missing-block tolerance).

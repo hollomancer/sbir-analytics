@@ -522,7 +522,7 @@ export SBIR_ETL__VENDOR_RESOLUTION__CACHE_ENABLED=true
 ### VendorResolver Class
 
 ```python
-from sbir_etl.transition.features.vendor_resolver import VendorResolver
+from sbir_ml.transition.features.vendor_resolver import VendorResolver
 
 ## Initialize
 

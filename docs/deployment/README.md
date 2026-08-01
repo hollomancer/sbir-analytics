@@ -17,6 +17,7 @@ This directory documents the current experimental deployment path for the SBIR E
 |------|-----|
 | Run the pipeline locally, iterate on code | [Docker guide](../development/docker.md) — `make docker-up-dev` |
 | Run a one-off job without Docker | [Getting started](../getting-started/README.md) — `make dev` + Dagster UI |
+| Private always-on server on a Mac mini (tailnet-only) | [Mac mini server](mac-mini-server.md) — `make server-up` |
 | Scheduled/automated runs (personal cloud) | GitHub Actions — see Quick Start below |
 | Heavy ML or fiscal jobs that need more RAM | [AWS Batch](aws-batch-analysis-jobs.md) |
 | Reproduce the author's optional cloud setup | [AWS Deployment](aws-deployment.md) |

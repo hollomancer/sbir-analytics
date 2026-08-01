@@ -1,11 +1,9 @@
 # Requirements — State & Local Tax Rate Reference Data
 
-> **Status:** Requirements 1 + 2 implemented in PR #402 — the CSV reference file
-> (`data/reference/tax/state_effective_rates.csv`) and a CSV-backed
-> `StateRateProvider(csv_path=..., year=...)` constructor are now in place, with
-> the hardcoded `_STATE_RATES_2024` dict retained as a backwards-compatible
-> default. Requirement 3 (annual `refresh-state-rates` CLI) is deferred to a
-> follow-up PR.
+> **Status:** Requirements 1–3 implemented across PRs #402, #400, and the follow-up
+> refresh CLI PR. The CSV reference file, CSV-backed `StateRateProvider`, BEA NIPA
+> parquet cache, and `uv run refresh-state-rates` are in place. Remaining fiscal-tax
+> work is tracked in `tasks.md` (validation / calibration phase).
 >
 > Required by **Phase 3** of [../fiscal-tax-impact-v2.md](../fiscal-tax-impact-v2.md).
 > Anchors inventory questions **D2** and **D3** in
@@ -95,14 +93,12 @@ without reading source code.
    `default_state_rate_provider()`, which loads `DEFAULT_CSV_PATH` when the file
    exists and otherwise falls back to `_STATE_RATES_2024`.
 
-### Requirement 3 — Annual refresh CLI (**deferred to follow-up**)
+### Requirement 3 — Annual refresh CLI
 
-> **Status:** Out of scope for this PR. Requirements 1 + 2 (CSV reference file +
-> CSV-loading `StateRateProvider`) ship the year-aware substrate; the data file
-> is hand-updated annually for now. A `refresh-state-rates` CLI that automates
-> fetching Tax Foundation / Census ASGF tables is logged below for a follow-up
-> PR — the Tax Foundation site changes layout year-over-year and parser
-> stability is its own work-item.
+> **Status:** Implemented via `uv run refresh-state-rates`. Downloads Tax Foundation
+> income and sales tables with `--fetch`, or accepts a curated `--rates-json` bundle
+> when the site layout changes. Property rates are carried forward from the prior
+> CSV year (Census ASGF refresh remains manual).
 
 #### Acceptance Criteria
 

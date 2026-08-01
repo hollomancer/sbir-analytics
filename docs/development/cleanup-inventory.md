@@ -74,9 +74,6 @@ These are concrete drift examples found during the review:
   Ruff.
 - `pytest-shard` is installed and documented, but current CI workflows do not
   run shard matrices.
-- Steering quick-reference Cypher still uses legacy `:Company` / `:Award`
-  examples while schema docs describe `:Organization` /
-  `:FinancialTransaction`.
 - `.pre-commit-config.yaml` comments reference a nonexistent
   `.github/workflows/static-analysis.yml`.
 - `docs/research-questions.md` says `docs/commercialization-benchmark-methodology.md`

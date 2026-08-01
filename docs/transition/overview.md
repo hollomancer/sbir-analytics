@@ -33,7 +33,7 @@ The system uses a multi-signal scoring approach:
    - 🎯 **Competition Type** - Sole source/limited competition indicates vendor targeting
    - 📜 **Patent Signal** - Patents filed indicate technology maturity
    - 🔬 **CET Alignment** - Same critical technology area shows focus consistency
-   - 🤝 **Vendor Match** - UEI/CAGE/DUNS exact match confirms same company
+   - 📝 **Text Similarity** - Award abstract vs. contract description overlap (optional; disabled by default)
 3. **Composite Scoring** - Weighted combination of all signals (0.0–1.0)
 4. **Confidence Classification** - HIGH (≥0.85), LIKELY (0.65–0.84), POSSIBLE (<0.65)
 5. **Evidence Generation** - Detailed justification for every detection
@@ -138,9 +138,9 @@ export SBIR_ETL__TRANSITION__DETECTION__CET_WEIGHT=0.15
 ### Find All Transitions for an Award
 
 ```cypher
-MATCH (a:Award {award_id: "SBIR-2020-PHASE-II-001"})
+MATCH (a:FinancialTransaction {transaction_type: "AWARD", award_id: "SBIR-2020-PHASE-II-001"})
   -[:TRANSITIONED_TO]->(t:Transition)
-  -[:RESULTED_IN]->(c:Contract)
+  -[:RESULTED_IN]->(c:FinancialTransaction {transaction_type: "CONTRACT"})
 RETURN a.award_id, c.contract_id, t.likelihood_score, t.confidence
 ORDER BY t.likelihood_score DESC
 ```
@@ -149,7 +149,7 @@ ORDER BY t.likelihood_score DESC
 
 ```cypher
 MATCH (t:Transition)-[:ENABLED_BY]->(p:Patent)
-  -[:RESULTED_IN]->(c:Contract)
+MATCH (t)-[:RESULTED_IN]->(c:FinancialTransaction {transaction_type: "CONTRACT"})
 WHERE t.confidence IN ["HIGH", "LIKELY"]
 RETURN t.transition_id, p.title, c.piid, t.likelihood_score
 ```
@@ -157,7 +157,7 @@ RETURN t.transition_id, p.title, c.piid, t.likelihood_score
 ### Transition Effectiveness by CET Area
 
 ```cypher
-MATCH (a:Award)-[:INVOLVES_TECHNOLOGY]->(cet:CETArea)
+MATCH (a:FinancialTransaction {transaction_type: "AWARD"})-[:APPLICABLE_TO]->(cet:CETArea)
   <-[:INVOLVES_TECHNOLOGY]-(t:Transition)
 WITH cet.name as cet_area,
      count(DISTINCT a) as total_awards,
@@ -216,18 +216,15 @@ uv run pytest tests/unit/test_cet_signal_extractor.py -v  # 37 tests, 96% covera
 
 ### Transition Scoring (6 independent signals)
 
-1. **Agency continuity** (weight: 0.25) - Same agency contracts
-2. **Timing proximity** (weight: 0.20) - 0–24 months after award
-3. **Competition type** (weight: 0.20) - Sole source/limited competition
-4. **Patent signal** (weight: 0.15) - Patents filed; topic match
-5. **CET alignment** (weight: 0.10) - Same technology area
-6. **Vendor match** (weight: 0.10) - UEI/CAGE/DUNS confidence
+The composite score combines six signals — agency continuity, timing proximity,
+competition type, patent signal, CET alignment, and text similarity (disabled by
+default). Vendor matching (UEI/CAGE/DUNS/fuzzy name) is an **eligibility gate**
+(step 1, "Vendor Resolution"), not a weighted scoring signal.
 
-### Confidence Bands
-
-- **HIGH**: score ≥ 0.85 (high precision, ~85%)
-- **LIKELY**: score 0.65–0.84 (balanced, ~75% precision)
-- **POSSIBLE**: score <0.65 (high recall, ~40% precision)
+Default weights, confidence bands (HIGH ≥0.85 / LIKELY 0.65–0.84 / POSSIBLE
+<0.65), and tuning guidance are maintained authoritatively in
+[scoring-guide.md](scoring-guide.md); the vendor-resolution algorithm is in
+[vendor-matching.md](vendor-matching.md).
 
 ## Implementation Status
 

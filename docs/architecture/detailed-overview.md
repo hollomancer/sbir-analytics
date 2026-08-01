@@ -178,15 +178,17 @@ Assets are organized by **group_name** (extraction, validation, enrichment, tran
    └─ fiscal_tax_estimates (ROI calculations)
 
 5. NEO4J LOADING LAYER
-   ├─ loaded_awards (Upsert Award nodes)
-   ├─ loaded_companies (Company nodes + enrichment)
-   ├─ loaded_cet_areas (CETArea nodes)
-   ├─ loaded_award_cet_enrichment (CET properties)
-   ├─ loaded_award_cet_relationships (APPLICABLE_TO edges)
-   ├─ loaded_patents (Patent nodes)
-   ├─ loaded_patent_assignments (Chain relationships)
-   └─ loaded_transitions (Transition nodes + evidence)
+   ├─ neo4j_sbir_awards (FinancialTransaction AWARD + Organization nodes, RECIPIENT_OF edges)
+   ├─ neo4j_company_categorization (Organization categorization properties)
+   ├─ CETArea nodes + APPLICABLE_TO / SPECIALIZES_IN enrichment (CET loaders)
+   ├─ Patent nodes + assignment-chain relationships (patent loaders)
+   └─ Transition nodes + evidence (transition loaders)
 ```
+
+> Names ending in `_awards`/`_categorization` are literal Dagster asset keys;
+> the remaining loading rows are grouped by loader and are descriptive rather
+> than one-to-one asset keys. SBIR awards are stored as
+> `:FinancialTransaction {transaction_type: "AWARD"}` (not `:Award`).
 
 ### 2.3 Key Data Transformations
 

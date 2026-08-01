@@ -338,7 +338,7 @@ aws stepfunctions start-execution \
 
 ## Related Documentation
 
-- [GitHub Actions](README.md) - Primary deployment method
+- [Deployment overview](README.md) - Entry point / choose-your-path hub
+- [GitHub Actions ML](github-actions-ml.md) - Primary path for ETL + ML jobs
+- [AWS Batch Jobs](aws-batch-analysis-jobs.md) - Heavy ML/fiscal jobs (live path)
 - [Docker Guide](../development/docker.md) - Local development
-- [AWS Serverless Guide](aws-deployment.md) - Detailed Lambda setup (archived)
-- [AWS Batch Setup](aws-deployment.md) - Detailed Batch setup (archived)

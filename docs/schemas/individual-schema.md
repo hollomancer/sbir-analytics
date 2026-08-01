@@ -199,7 +199,7 @@ ORDER BY assignment_count DESC
 ### Find Researchers Working on Awards
 
 ```cypher
-MATCH (i:Individual {individual_type: "RESEARCHER"})-[:PARTICIPATED_IN]->(a:Award)
+MATCH (i:Individual {individual_type: "RESEARCHER"})-[:PARTICIPATED_IN]->(a:FinancialTransaction {transaction_type: "AWARD"})
 RETURN i.name, count(a) as award_count
 ORDER BY award_count DESC
 ```
