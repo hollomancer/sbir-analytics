@@ -9,10 +9,12 @@ import gzip
 import hashlib
 import io
 import json
+import os
 import re
 import shutil
 import subprocess
 import tempfile
+import threading
 from collections.abc import Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass, replace
 from pathlib import Path, PurePosixPath
@@ -42,6 +44,167 @@ REQUIRED_SOURCE_COLUMNS = frozenset(
         "product_or_service_code",
     }
 )
+
+
+# POSIX awk program used only as a conservative first pass over remote COPY rows.
+# Every emitted row is parsed and matched again by Python; this program exists to
+# keep the tens of millions of obvious non-matches out of Python's per-row loop.
+_AWK_VENDOR_PREFILTER = r"""
+BEGIN {
+    FS = "\t"
+    OFS = "\t"
+    progress_marker = sprintf("%c", 30) "SBIR_PREFILTER_PROGRESS"
+}
+
+function fail(message) {
+    print message > error_file
+    close(error_file)
+    failed = 1
+    exit 65
+}
+
+function pgdecode(value, result, position, character, escaped) {
+    if (value == "\\N") {
+        return ""
+    }
+    if (!index(value, "\\")) {
+        return value
+    }
+    result = ""
+    for (position = 1; position <= length(value); position++) {
+        character = substr(value, position, 1)
+        if (character == "\\" && position < length(value)) {
+            escaped = substr(value, position + 1, 1)
+            if (escaped == "b") {
+                result = result sprintf("%c", 8)
+                position++
+            } else if (escaped == "f") {
+                result = result sprintf("%c", 12)
+                position++
+            } else if (escaped == "n") {
+                result = result "\n"
+                position++
+            } else if (escaped == "r") {
+                result = result "\r"
+                position++
+            } else if (escaped == "t") {
+                result = result "\t"
+                position++
+            } else if (escaped == "v") {
+                result = result sprintf("%c", 11)
+                position++
+            } else if (escaped == "\\") {
+                result = result "\\"
+                position++
+            } else {
+                result = result character
+            }
+        } else {
+            result = result character
+        }
+    }
+    return result
+}
+
+function stripped(value) {
+    sub(/^[[:space:]]+/, "", value)
+    sub(/[[:space:]]+$/, "", value)
+    return value
+}
+
+FILENAME == uei_file {
+    uei[$0] = 1
+    legacy[$0] = 1
+    next
+}
+
+FILENAME == duns_file {
+    legacy[$0] = 1
+    next
+}
+
+FILENAME == name_file {
+    company_name[$0] = 1
+    next
+}
+
+FILENAME != "-" {
+    fail("prefilter received an unexpected input file")
+}
+
+{
+    scanned++
+    if (scanned % 100000 == 0) {
+        print progress_marker, scanned, contracts
+        fflush()
+    }
+    if (NF != expected_fields) {
+        fail("row " scanned " has " NF " fields; COPY declares " expected_fields)
+    }
+
+    # Python strips CR/LF from the serialized record before splitting. awk has
+    # already consumed LF; remove any remaining CR from the final field.
+    sub(/\r+$/, "", $NF)
+
+    fpds_value = tolower(stripped(pgdecode($(fpds_index))))
+    if (fpds_value == "t" || fpds_value == "true" || fpds_value == "1") {
+        is_fpds = 1
+    } else if (fpds_value == "f" || fpds_value == "false" || fpds_value == "0") {
+        is_fpds = 0
+    } else {
+        fail("row " scanned " has invalid or NULL is_fpds")
+    }
+    if (fpds_only && !is_fpds) {
+        fail("row " scanned " is non-FPDS in the FPDS partition")
+    }
+    if (!is_fpds) {
+        next
+    }
+    contracts++
+
+    raw_uei = $(uei_index)
+    raw_legacy = legacy_index ? $(legacy_index) : "\\N"
+    raw_name = $(name_index)
+
+    # With LC_ALL=C, a non-ASCII byte cannot be normalized exactly like Python's
+    # Unicode strip/upper operations. Emit such rows conservatively so Python
+    # makes the authoritative decision and the prefilter cannot cause a miss.
+    if (raw_uei ~ /[^ -~]/ || raw_legacy ~ /[^ -~]/ || raw_name ~ /[^ -~]/) {
+        print $0
+        emitted++
+        next
+    }
+
+    decoded_uei = pgdecode(raw_uei)
+    decoded_legacy = pgdecode(raw_legacy)
+    decoded_name = pgdecode(raw_name)
+    normalized_uei = stripped(decoded_uei)
+    normalized_legacy = stripped(decoded_legacy)
+    normalized_name = toupper(stripped(decoded_name))
+    matched = 0
+    if (length(decoded_uei) && (normalized_uei in uei)) {
+        matched = 1
+    }
+    if (length(decoded_legacy) && (normalized_legacy in legacy)) {
+        matched = 1
+    }
+    if (length(decoded_name) && (normalized_name in company_name)) {
+        matched = 1
+    }
+    if (matched) {
+        print $0
+        emitted++
+    }
+}
+
+END {
+    printf "%d\t%d\t%d\n", scanned, contracts, emitted > stats_file
+    close(stats_file)
+    if (failed) {
+        exit 65
+    }
+}
+"""
 
 
 class ArchiveSchemaError(RuntimeError):
@@ -667,6 +830,217 @@ class ContractExtractor:
             f"Completed {dat_file.name}: {self.stats['records_extracted']} contracts extracted"
         )
 
+    def _awk_prefilter_path(self) -> str | None:
+        """Return awk when it can conservatively represent the loaded vendor frame."""
+        awk_path = next(
+            (path for executable in ("mawk", "gawk", "awk") if (path := shutil.which(executable))),
+            None,
+        )
+        if awk_path is None or not any(self.vendor_filters.values()):
+            return None
+
+        # The prefilter runs in the C locale. Non-ASCII or record-separator values
+        # fall back to Python so Unicode normalization and map serialization retain
+        # exactly the established matching semantics.
+        for values in self.vendor_filters.values():
+            for value in values:
+                if not isinstance(value, str):
+                    return None
+                try:
+                    value.encode("ascii")
+                except UnicodeEncodeError:
+                    return None
+                if "\n" in value or "\0" in value:
+                    return None
+        return awk_path
+
+    @staticmethod
+    def _write_awk_map(path: Path, values: set[str]) -> None:
+        """Write one exact map key per record, including an empty key if present."""
+        content = "\n".join(sorted(values))
+        if values:
+            content += "\n"
+        path.write_text(content, encoding="ascii")
+
+    def _awk_prefilter_lines(
+        self,
+        source: gzip.GzipFile,
+        source_name: str,
+        columns: Sequence[str],
+        *,
+        fpds_only: bool,
+        awk_path: str,
+    ) -> Iterator[str]:
+        """Yield conservative vendor candidates from a validated external awk scan."""
+        column_indexes = {name: index + 1 for index, name in enumerate(columns)}
+        required_prefilter_columns = {"is_fpds", "recipient_uei", "recipient_name"}
+        if missing := sorted(required_prefilter_columns.difference(column_indexes)):
+            raise ArchiveSchemaError(
+                f"Verified source columns missing for vendor prefilter: {', '.join(missing)}"
+            )
+
+        with tempfile.TemporaryDirectory(prefix="contract-vendor-prefilter-") as temp_name:
+            temp_dir = Path(temp_name)
+            program_file = temp_dir / "prefilter.awk"
+            uei_file = temp_dir / "uei.txt"
+            duns_file = temp_dir / "duns.txt"
+            name_file = temp_dir / "company_names.txt"
+            stats_file = temp_dir / "stats.txt"
+            error_file = temp_dir / "validation-error.txt"
+            stderr_file = temp_dir / "awk-stderr.txt"
+
+            program_file.write_text(_AWK_VENDOR_PREFILTER, encoding="ascii")
+            self._write_awk_map(uei_file, self.vendor_filters["uei"])
+            self._write_awk_map(duns_file, self.vendor_filters["duns"])
+            self._write_awk_map(name_file, self.vendor_filters["company_names"])
+
+            command = [
+                awk_path,
+                "-v",
+                f"uei_file={uei_file}",
+                "-v",
+                f"duns_file={duns_file}",
+                "-v",
+                f"name_file={name_file}",
+                "-v",
+                f"stats_file={stats_file}",
+                "-v",
+                f"error_file={error_file}",
+                "-v",
+                f"expected_fields={len(columns)}",
+                "-v",
+                f"fpds_index={column_indexes['is_fpds']}",
+                "-v",
+                f"uei_index={column_indexes['recipient_uei']}",
+                "-v",
+                f"legacy_index={column_indexes.get('recipient_unique_id', 0)}",
+                "-v",
+                f"name_index={column_indexes['recipient_name']}",
+                "-v",
+                f"fpds_only={int(fpds_only)}",
+                "-f",
+                str(program_file),
+                str(uei_file),
+                str(duns_file),
+                str(name_file),
+                "-",
+            ]
+            environment = os.environ.copy()
+            environment["LC_ALL"] = "C"
+            feed_errors: list[BaseException] = []
+            candidate_count = 0
+            completed = False
+
+            with stderr_file.open("wb") as awk_stderr:
+                process = subprocess.Popen(
+                    command,
+                    stdin=subprocess.PIPE,
+                    stdout=subprocess.PIPE,
+                    stderr=awk_stderr,
+                    env=environment,
+                )
+                assert process.stdin is not None
+                assert process.stdout is not None
+                process_stdin = process.stdin
+                process_stdout = process.stdout
+
+                def feed_source() -> None:
+                    try:
+                        shutil.copyfileobj(source, process_stdin, length=1024 * 1024)
+                    except BrokenPipeError:
+                        # The process status and validation error below carry the
+                        # authoritative failure when awk closes its input early.
+                        pass
+                    except BaseException as error:  # pragma: no cover - rare I/O failure
+                        feed_errors.append(error)
+                    finally:
+                        try:
+                            process_stdin.close()
+                        except BrokenPipeError:
+                            pass
+
+                feeder = threading.Thread(
+                    target=feed_source,
+                    daemon=True,
+                    name="contract-awk-prefilter-input",
+                )
+                feeder.start()
+                try:
+                    with io.TextIOWrapper(
+                        process_stdout,
+                        encoding="utf-8",
+                        errors="replace",
+                    ) as candidates:
+                        for line in candidates:
+                            progress = line.rstrip("\r\n").split("\t")
+                            if len(progress) == 3 and progress[0] == (
+                                "\x1eSBIR_PREFILTER_PROGRESS"
+                            ):
+                                logger.info(
+                                    f"  [{source_name}] processed {int(progress[1]):,} records, "
+                                    f"found {self.stats['records_extracted']} contracts"
+                                )
+                                continue
+                            candidate_count += 1
+                            yield line
+
+                    feeder.join()
+                    return_code = process.wait()
+                    if feed_errors:
+                        raise SourceDataError(
+                            f"Could not stream {source_name} into the vendor prefilter"
+                        ) from feed_errors[0]
+                    parsed_stats: tuple[int, int, int] | None = None
+                    if stats_file.is_file():
+                        stats_values = stats_file.read_text(encoding="ascii").strip().split("\t")
+                        try:
+                            scanned, contracts, emitted = (int(value) for value in stats_values)
+                        except (TypeError, ValueError):
+                            pass
+                        else:
+                            if (
+                                len(stats_values) == 3
+                                and min(scanned, contracts, emitted) >= 0
+                                and scanned >= contracts
+                                and contracts >= emitted
+                                and emitted == candidate_count
+                            ):
+                                parsed_stats = scanned, contracts, emitted
+
+                    if parsed_stats is not None:
+                        scanned, contracts, emitted = parsed_stats
+                        # _parse_lines has already counted every emitted FPDS
+                        # candidate. Add only rows awk safely discarded, including
+                        # rows observed before a fail-closed validation error.
+                        self.stats["records_scanned"] += scanned - emitted
+                        self.stats["contracts_found"] += contracts - emitted
+                    if return_code != 0:
+                        validation_detail = (
+                            error_file.read_text(encoding="utf-8", errors="replace").strip()
+                            if error_file.is_file()
+                            else ""
+                        )
+                        stderr_detail = stderr_file.read_text(
+                            encoding="utf-8", errors="replace"
+                        ).strip()
+                        detail = validation_detail or stderr_detail or f"exit status {return_code}"
+                        raise SourceDataError(
+                            f"Vendor prefilter failed closed for {source_name}: {detail}"
+                        )
+                    if parsed_stats is None:
+                        raise SourceDataError(
+                            f"Vendor prefilter produced inconsistent scan statistics for {source_name}"
+                        )
+                    completed = True
+                finally:
+                    if not completed and process.poll() is None:
+                        process.terminate()
+                    if feeder.is_alive():
+                        source.close()
+                        feeder.join()
+                    if process.poll() is None:
+                        process.wait()
+
     @classmethod
     def find_transaction_member(cls, zip_url: str) -> str:
         """Return the member selected from archive-owned TOC and COPY metadata."""
@@ -713,9 +1087,34 @@ class ContractExtractor:
             remote_zip.open(member_name) as member,
             # `member` yields the gzip-compressed .dat.gz bytes; decompress streaming.
             gzip.GzipFile(fileobj=member) as gz,
-            io.TextIOWrapper(gz, encoding="utf-8", errors="replace") as text,
         ):
-            yield from self._parse_lines(text, member_name, columns, fpds_only=fpds_only)
+            awk_path = self._awk_prefilter_path()
+            if awk_path is None:
+                with io.TextIOWrapper(gz, encoding="utf-8", errors="replace") as text:
+                    yield from self._parse_lines(
+                        text,
+                        member_name,
+                        columns,
+                        fpds_only=fpds_only,
+                    )
+            else:
+                logger.info(
+                    f"Prefiltering {member_name} with {awk_path}; "
+                    "Python will revalidate every emitted vendor candidate"
+                )
+                candidates = self._awk_prefilter_lines(
+                    gz,
+                    member_name,
+                    columns,
+                    fpds_only=fpds_only,
+                    awk_path=awk_path,
+                )
+                yield from self._parse_lines(
+                    candidates,
+                    member_name,
+                    columns,
+                    fpds_only=fpds_only,
+                )
         logger.info(
             f"Completed streaming {member_name}: "
             f"{self.stats['records_extracted']} contracts extracted"
@@ -799,38 +1198,180 @@ class ContractExtractor:
         contracts: Iterable[FederalContract],
         output_file: Path,
     ) -> int:
-        """Materialize matched contracts, write Parquet, log stats. Returns row count.
-
-        The source table is *scanned* streaming (line by line); only the matched,
-        vendor-filtered contracts accumulate here — a tiny fraction of the input — so
-        holding them in memory before a single Parquet write is safe even for the
-        full dump.
-        """
-        rows: list[dict] = []
-        for contract in contracts:
-            rows.append(contract.model_dump())
-            if len(rows) % self.batch_size == 0:
-                logger.info(f"Accumulated {len(rows):,} matched contracts")
+        """Write matched contracts atomically with bounded batches in memory."""
+        import pyarrow as pa
+        import pyarrow.parquet as pq
 
         from sbir_etl.utils.data.file_io import save_dataframe_parquet
 
+        if self.batch_size <= 0:
+            raise ValueError("batch_size must be greater than zero")
+
         output_file = Path(output_file)
-        df = (
-            pd.DataFrame(rows) if rows else pd.DataFrame(columns=list(FederalContract.model_fields))
+        columns = list(FederalContract.model_fields)
+        string_columns = [
+            "contract_id",
+            "piid",
+            "transaction_unique_id",
+            "generated_unique_award_id",
+            "agency",
+            "sub_agency",
+            "vendor_name",
+            "vendor_uei",
+            "vendor_cage",
+            "vendor_duns",
+            "competition_type",
+            "description",
+            "parent_contract_id",
+            "parent_contract_agency",
+            "contract_award_type",
+            "research",
+            "naics_code",
+            "product_or_service_code",
+        ]
+        metadata_type = pa.struct(
+            [
+                pa.field("action_date", pa.string()),
+                pa.field("award_id", pa.string()),
+                pa.field("business_categories", pa.string()),
+                pa.field("contract_award_type", pa.string()),
+                pa.field("end_date_suppressed_before_effective_start", pa.bool_()),
+                pa.field("extent_competed", pa.string()),
+                pa.field("funding_agency", pa.string()),
+                pa.field("modification_number", pa.string()),
+                pa.field("naics_code", pa.string()),
+                pa.field("parent_idv_piid", pa.string()),
+                pa.field("parent_relationship_type", pa.string()),
+                pa.field("parent_uei", pa.string()),
+                pa.field("product_or_service_code", pa.string()),
+                pa.field("recipient_state", pa.string()),
+                pa.field("referenced_idv_agency", pa.string()),
+                pa.field("research", pa.string()),
+                pa.field("source_period_of_performance_current_end_date", pa.string()),
+                pa.field("source_period_of_performance_start_date", pa.string()),
+                pa.field("transaction_id", pa.string()),
+            ]
         )
+        field_types = {
+            **{column: pa.large_string() for column in string_columns},
+            "action_date": pa.date32(),
+            "start_date": pa.date32(),
+            "end_date": pa.date32(),
+            "obligation_amount": pa.float64(),
+            "is_deobligation": pa.bool_(),
+            # The raw extractor never resolves vendors; the existing one-shot output
+            # therefore has a null-typed placeholder for this downstream field.
+            "matched_vendor": pa.null(),
+            "metadata": metadata_type,
+        }
+        schema = pa.schema([pa.field(column, field_types[column]) for column in columns])
+        metadata_fields = {field.name for field in metadata_type}
+
+        def normalized_frame(rows: list[dict[str, object]]) -> pd.DataFrame:
+            for row in rows:
+                if row.get("matched_vendor") is not None:
+                    raise SourceDataError(
+                        "Raw contract extraction cannot serialize a resolved matched_vendor"
+                    )
+                metadata = row.get("metadata")
+                if not isinstance(metadata, Mapping):
+                    raise SourceDataError("Raw contract metadata must be a mapping")
+                if unexpected := sorted(set(metadata) - metadata_fields):
+                    raise SourceDataError(
+                        "Raw contract metadata has fields outside the verified Parquet schema: "
+                        f"{unexpected}"
+                    )
+            frame = pd.DataFrame.from_records(rows, columns=columns)
+            # Pandas 3's nullable ``str`` dtype keeps missing values missing and
+            # reproduces the large_string type emitted by the former one-shot write.
+            for column in string_columns:
+                frame[column] = frame[column].astype("str")
+            frame["obligation_amount"] = pd.to_numeric(
+                frame["obligation_amount"], errors="coerce"
+            ).astype("float64")
+            frame["is_deobligation"] = frame["is_deobligation"].astype("bool")
+            return frame
+
+        contract_iterator = iter(contracts)
+
+        def next_batch(first: FederalContract | None = None) -> list[dict[str, object]]:
+            rows = [] if first is None else [first.model_dump()]
+            for _ in range(self.batch_size - len(rows)):
+                try:
+                    contract = next(contract_iterator)
+                except StopIteration:
+                    break
+                rows.append(contract.model_dump())
+            return rows
+
+        first_rows = next_batch()
         temp_file = output_file.with_name(f".{output_file.stem}.tmp{output_file.suffix}")
+        output_file.parent.mkdir(parents=True, exist_ok=True)
+        row_count = 0
+        writer: pq.ParquetWriter | None = None
         try:
-            save_dataframe_parquet(
-                df,
-                temp_file,
-                index=False,
-                compression="snappy",
-                fallback_to_ndjson=False,
-            )
+            if not first_rows:
+                save_dataframe_parquet(
+                    pd.DataFrame(columns=columns),
+                    temp_file,
+                    index=False,
+                    compression="snappy",
+                    fallback_to_ndjson=False,
+                )
+            else:
+                try:
+                    lookahead = next(contract_iterator)
+                except StopIteration:
+                    # A single bounded batch follows the exact legacy one-shot path.
+                    save_dataframe_parquet(
+                        pd.DataFrame.from_records(first_rows, columns=columns),
+                        temp_file,
+                        index=False,
+                        compression="snappy",
+                        fallback_to_ndjson=False,
+                    )
+                    row_count = len(first_rows)
+                else:
+                    first_frame = normalized_frame(first_rows)
+                    first_table = pa.Table.from_pandas(
+                        first_frame,
+                        schema=schema,
+                        preserve_index=False,
+                        safe=True,
+                    )
+                    # Use the pandas metadata generated from the normalized frame so
+                    # readers see the same logical types as the one-shot artifact.
+                    writer = pq.ParquetWriter(
+                        temp_file,
+                        first_table.schema,
+                        compression="snappy",
+                    )
+                    writer.write_table(first_table)
+                    row_count = len(first_rows)
+                    logger.info(f"Wrote {row_count:,} matched contracts")
+
+                    rows = next_batch(lookahead)
+                    while rows:
+                        table = pa.Table.from_pandas(
+                            normalized_frame(rows),
+                            schema=first_table.schema,
+                            preserve_index=False,
+                            safe=True,
+                        )
+                        writer.write_table(table)
+                        row_count += len(rows)
+                        logger.info(f"Wrote {row_count:,} matched contracts")
+                        rows = next_batch()
+                    writer.close()
+                    writer = None
             temp_file.replace(output_file)
         finally:
-            temp_file.unlink(missing_ok=True)
-        if rows:
+            try:
+                if writer is not None:
+                    writer.close()
+            finally:
+                temp_file.unlink(missing_ok=True)
+        if row_count:
             logger.success(f"Contracts saved to {output_file}")
         else:
             logger.warning(f"Wrote empty contracts artifact to replace stale output: {output_file}")
@@ -845,7 +1386,7 @@ class ContractExtractor:
             logger.info(f"  {key}: {value:,}")
         logger.info("=" * 60)
 
-        return len(rows)
+        return row_count
 
 
 __all__ = ["ArchiveSchemaError", "ContractExtractor", "SourceDataError", "TransactionSource"]

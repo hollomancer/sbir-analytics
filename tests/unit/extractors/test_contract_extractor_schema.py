@@ -4,6 +4,8 @@ import gzip
 from dataclasses import replace
 from pathlib import Path
 
+import pandas as pd
+import pyarrow.parquet as pq
 import pytest
 
 from sbir_etl.extractors.contract_extractor import (
@@ -298,3 +300,80 @@ def test_zero_matches_atomically_replace_stale_output(tmp_path, monkeypatch) -> 
     assert output.read_bytes() == b"fresh-empty-parquet"
     assert observed["columns"] == tuple(FederalContract.model_fields)
     assert observed["path"] != output
+
+
+def test_multiple_batches_preserve_one_shot_schema_and_row_order(
+    tmp_path, sample_child_contract_row
+) -> None:
+    first = FederalContract(
+        contract_id="NULL-FIRST",
+        transaction_unique_id="TX-NULL-FIRST",
+        generated_unique_award_id="CONT_AWD_NULL_FIRST",
+    )
+    extractor = ContractExtractor(batch_size=1)
+    second = extractor._parse_contract_row(sample_child_contract_row)
+    contracts = [first, second]
+    output = tmp_path / "contracts.parquet"
+    legacy_output = tmp_path / "legacy-one-shot.parquet"
+    pd.DataFrame([contract.model_dump() for contract in contracts]).to_parquet(
+        legacy_output,
+        index=False,
+        compression="snappy",
+    )
+
+    count = extractor._collect_and_write(iter(contracts), output)
+
+    assert count == 2
+    assert pq.read_schema(output).equals(pq.read_schema(legacy_output))
+    schema = pq.read_schema(output)
+    assert (
+        schema.field("matched_vendor").type
+        == pq.read_schema(legacy_output).field("matched_vendor").type
+    )
+    assert schema.field("metadata").type == pq.read_schema(legacy_output).field("metadata").type
+    assert pq.ParquetFile(output).metadata.num_row_groups == 2
+    assert pd.read_parquet(output)["contract_id"].tolist() == [
+        "NULL-FIRST",
+        second.contract_id,
+    ]
+
+
+def test_multiple_batch_failure_keeps_stale_output_and_removes_temp(tmp_path) -> None:
+    output = tmp_path / "contracts.parquet"
+    output.write_bytes(b"stale")
+    contract = FederalContract(
+        contract_id="C1",
+        transaction_unique_id="TX-1",
+        generated_unique_award_id="CONT_AWD_1",
+    )
+
+    def contracts():
+        yield contract
+        yield contract.model_copy(update={"contract_id": "C2"})
+        raise RuntimeError("source stream failed")
+
+    with pytest.raises(RuntimeError, match="source stream failed"):
+        ContractExtractor(batch_size=1)._collect_and_write(contracts(), output)
+
+    assert output.read_bytes() == b"stale"
+    assert not (tmp_path / ".contracts.tmp.parquet").exists()
+
+
+def test_multiple_batches_fail_instead_of_dropping_unknown_metadata(tmp_path) -> None:
+    output = tmp_path / "contracts.parquet"
+    output.write_bytes(b"stale")
+    contract = FederalContract(
+        contract_id="C1",
+        transaction_unique_id="TX-1",
+        generated_unique_award_id="CONT_AWD_1",
+        metadata={"future_audit_field": "must not disappear"},
+    )
+
+    with pytest.raises(SourceDataError, match="outside the verified Parquet schema"):
+        ContractExtractor(batch_size=1)._collect_and_write(
+            [contract, contract.model_copy(update={"contract_id": "C2"})],
+            output,
+        )
+
+    assert output.read_bytes() == b"stale"
+    assert not (tmp_path / ".contracts.tmp.parquet").exists()
