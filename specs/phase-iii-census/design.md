@@ -1,10 +1,12 @@
 # Label-free Phase III Census and Negative Controls — Phase 0 Design
 
-**Status:** Phase 0 approved; **criteria frozen**. The Phase 1 software path is
-implemented and fixture-verified; production materialization is blocked on source-field
-provenance.
+**Status:** Phase 0 approved; **criteria frozen**. The target-code provenance amendment
+below was approved before source extraction changed and before any result was materialized.
+The Phase 1 software path is implemented and fixture-verified; production materialization
+remains blocked until the amended source contract passes validation.
 **Design date:** 2026-07-31.
 **Approval date:** 2026-08-01.
+**Provenance-amendment approval date:** 2026-08-01.
 **Research-question anchors:** B2 (federal-procurement transition), B3 (Phase II → III
 latency and coding undercount), and E1 (SBIR/STTR identification) in
 [`docs/research-questions.md`](../../docs/research-questions.md).
@@ -109,10 +111,12 @@ Phase 1 therefore requires an additive shared boundary in `pairing.py`:
 2. Existing `pair_filter_s1` delegates to that builder and then applies its existing
    coded-status and agency gates, preserving scoring behavior.
 3. The census calls the same builder and applies the frozen clauses itself.
-4. The source projection must carry `target_research`, `target_sbir_phase`, a stable
+4. The source projection must carry authoritative `target_research`, a stable
    `target_transaction_id`, a stable `target_contract_key` (prefer the USAspending
-   generated unique award identifier over bare PIID), and populated NAICS/PSC fields
-   when the source has them. This is field pass-through, not a new join.
+   generated unique award identifier over bare PIID), and populated NAICS/PSC fields.
+   A genuine source `target_sbir_phase` may be carried as supplemental evidence, but it
+   is optional and must never be synthesized from `research`. This is field pass-through,
+   not a new join.
 
 `phase_iii_candidates/assets.py`, `TransitionScorer`, and
 `packages/sbir-ml/sbir_ml/transition/detection/` remain untouched. If the required source
@@ -130,8 +134,8 @@ not the wall-clock time at which code happens to run.
 |---:|---|---|---|---|
 | 1 | The prior Phase II has an observable end date at the data cut. | This defines the mature, date-evaluable cohort for B3's post-completion question. It is **not** a statutory Phase III condition: § 638(r)(1) permits Phase III during Phase II. | `prior_period_of_performance_end` parses to a date and `prior_period_of_performance_end <= census_data_cut_date`. | **Keep only for the narrower post-completion estimand; approval required.** Do not describe a populated date as proof that work actually completed. |
 | 2 | The target action occurs after the recorded Phase II end. | This is a conservative temporal ordering rule for the post-completion estimand, not the legal definition. The repo intentionally preserves negative Phase II→III latency because overlapping Phase III can be valid ([latency note](../../docs/phase-transition-latency.md#3-negative-latencies-are-real)). | `target_action_date` parses to a date and `prior_period_of_performance_end < target_action_date <= census_data_cut_date`. | **Keep only for the narrower estimand; approval required.** It excludes legally valid during-Phase-II work. |
-| 3 | The target is not affirmatively coded as SBIR/STTR Phase I or II. | Section 638(r)(2) requires non-SBIR/non-STTR funding. A null code is only “not affirmatively coded,” not proof of funding source. | `target_research NOT IN {SR1, SR2, ST1, ST2}` and normalized `target_sbir_phase NOT IN {PHASE I, I, 1, PHASE 1, PHASE II, II, 2, PHASE 2}`. Null values pass; an absent source column fails the asset. | **Add and keep.** The proposed SR3/ST3-only rule did not enforce the statutory non-SBIR funding condition. |
-| 4 | The target is not already coded Phase III. | The estimand is the uncoded-candidate/undercount proxy supported by NRC [L2], not the total Phase III universe. Code absence is not Phase III evidence. | `target_research NOT IN {SR3, ST3}` and normalized `target_sbir_phase NOT IN {PHASE III, III, 3, PHASE 3}`. Null values pass; an absent source column fails the asset. | **Keep as a scope restriction.** It is not a substantive Phase III criterion. |
+| 3 | The target is not affirmatively coded as SBIR/STTR Phase I or II. | Section 638(r)(2) requires non-SBIR/non-STTR funding. A null code is only “not affirmatively coded,” not proof of funding source. | Required `target_research NOT IN {SR1, SR2, ST1, ST2}` and, only when a genuine `target_sbir_phase` source column exists, normalized `target_sbir_phase NOT IN {PHASE I, I, 1, PHASE 1, PHASE II, II, 2, PHASE 2}`. Null values pass; an absent `research` source column fails the asset. | **Add and keep.** The proposed SR3/ST3-only rule did not enforce the statutory non-SBIR funding condition. |
+| 4 | The target is not already coded Phase III. | The estimand is the uncoded-candidate/undercount proxy supported by NRC [L2], not the total Phase III universe. Code absence is not Phase III evidence. | Required `target_research NOT IN {SR3, ST3}` and, only when a genuine `target_sbir_phase` source column exists, normalized `target_sbir_phase NOT IN {PHASE III, III, 3, PHASE 3}`. Null values pass; an absent `research` source column fails the asset. | **Keep as a scope restriction.** It is not a substantive Phase III criterion. |
 | 5 | At least one exact administrative scope code agrees across the prior and target. | Section 638(e)(4)(C) requires work that derives from, extends, or completes the prior effort. Exact code agreement is a transparent label-free proxy for that otherwise unobserved lineage; it is not proof of derivation. | `(prior_naics_code and target_naics_code are nonnull and normalize(prior_naics_code) == normalize(target_naics_code)) OR (prior_psc_code and target_psc_code are nonnull and normalize(prior_psc_code) == normalize(target_psc_code))`. | **Add, but approval required.** Exact equality can miss legitimate R&D-to-production code changes. No prefix, distance, similarity, or learned rule is allowed. |
 | — | Same agency or department. | No cited authority makes agency continuity necessary; § 638(r)(1) expressly permits another agency, and assisted acquisition can separate the awarding vehicle from the customer. | Removed from the core rule. Exact sensitivity comparisons are specified below. | **Cut as a defining criterion; retain only as the required sensitivity dimension.** |
 | — | Not full-and-open / target is sole-source or limited. | Section 638(r)(4) authorizes sole-source awards but does not require them. Competitive awards can still be Phase III; “limited” has no independent statutory Phase III status. The existing repo guidance likewise notes that full-and-open awards can represent commercialization ([scoring guide](../../docs/transition/scoring-guide.md#caveats)). | No competition field decides inclusion. `target_competition_type` remains an audit column only. | **Cut.** Retaining it would redefine the estimand as a procurement-method subset, not a Phase III proxy. |
@@ -305,6 +309,18 @@ The frozen criteria were committed as `989d9155c60e227ff2f921d3495e251a4246dda3`
 Phase 1 implementation began. No census may be materialized from a source that fails the
 field-provenance and key checks above.
 
-After approval, any criterion change requires a new spec revision and a new freeze before
-rerunning. An observed count, control overlap, balance statistic, or placebo result is
-never a justification for changing a clause.
+### Approved target-code provenance amendment
+
+Before any census materialization, the repository owner approved making USAspending's
+authoritative `research` field required and a separate `sbir_phase` field optional. The
+[official USAspending data dictionary](https://api.usaspending.gov/api/v2/references/data_dictionary/)
+defines `research_code` and maps it to `transaction_fpds.research`, including the complete
+`SR1`/`SR2`/`SR3` and `ST1`/`ST2`/`ST3` domains. It does not define a separate
+`sbir_phase` source field. The amendment prevents a redundant phase label from being
+fabricated from `research`; a genuine supplemental phase field is still checked if another
+source actually supplies one. No inclusion code set, ladder clause, sensitivity cell, or
+estimand changed.
+
+After approval, any further criterion change requires a new spec revision and a new
+freeze before rerunning. An observed count, control overlap, balance statistic, or
+placebo result is never a justification for changing a clause.
