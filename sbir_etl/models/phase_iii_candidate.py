@@ -54,6 +54,7 @@ class PhaseIIICandidate(BaseModel):
     cet_alignment_score: float = Field(0.0, ge=0.0, le=1.0)
     text_similarity_score: float = Field(0.0, ge=0.0, le=1.0)
     lineage_language_score: float = Field(0.0, ge=0.0, le=1.0)
+    id_xref_score: float = Field(0.0, ge=0.0, le=1.0)
 
     generated_at: datetime = Field(
         default_factory=lambda: datetime.now(UTC), description="When the row was produced."
