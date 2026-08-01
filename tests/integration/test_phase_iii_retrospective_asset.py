@@ -27,11 +27,13 @@ import pytest
 
 from sbir_analytics.assets.phase_iii_candidates.assets import (
     CANDIDATES_OUTPUT_PATH,
-    EVIDENCE_OUTPUT_PATH,
     HIGH_THRESHOLD_RETROSPECTIVE,
     WEIGHTS_RETROSPECTIVE,
     _default_retrospective_loader,
     build_candidate_asset,
+    candidates_path_for,
+    combine_candidate_outputs,
+    evidence_path_for,
 )
 from sbir_analytics.assets.phase_iii_candidates.pairing import _prepare_contracts, pair_filter_s1
 from sbir_etl.extractors.contract_extractor import ContractExtractor
@@ -269,15 +271,23 @@ def test_phase_iii_retrospective_asset_materializes(tmp_path, monkeypatch):
     # No coded contracts in output.
     assert not df["target_id"].astype(str).str.startswith("C-CODED-").any()
 
-    # Parquet was written and matches the dataframe.
-    parquet_path = Path(tmp_path) / CANDIDATES_OUTPUT_PATH
+    # Each signal-class asset owns exactly one parquet — the shared combined
+    # file is written only by the dependent ``phase_iii_candidates`` asset, so
+    # this materialization writes the per-class path, not the combined one.
+    parquet_path = Path(tmp_path) / candidates_path_for(SignalClass.RETROSPECTIVE)
     assert parquet_path.exists(), f"missing parquet at {parquet_path}"
     parquet_df = pd.read_parquet(parquet_path)
     assert len(parquet_df) == len(df)
     assert (parquet_df["signal_class"] == SignalClass.RETROSPECTIVE.value).all()
 
+    # The combining asset rolls the per-class output into the shared ledger.
+    combined = combine_candidate_outputs()
+    combined_path = Path(tmp_path) / CANDIDATES_OUTPUT_PATH
+    assert combined_path.exists(), f"missing combined parquet at {combined_path}"
+    assert len(combined) == len(df)
+
     # Evidence NDJSON: one line per candidate, with the documented key shape.
-    evidence_path = Path(tmp_path) / EVIDENCE_OUTPUT_PATH
+    evidence_path = Path(tmp_path) / evidence_path_for(SignalClass.RETROSPECTIVE)
     assert evidence_path.exists(), f"missing evidence file at {evidence_path}"
     lines = evidence_path.read_text(encoding="utf-8").strip().splitlines()
     assert len(lines) == len(df)
