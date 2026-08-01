@@ -22,6 +22,7 @@ def test_iter_asset_modules_discovers_expected_packages():
 
     module_names = {module.__name__ for module in modules}
     assert "sbir_analytics.assets.sbir_ingestion" in module_names
+    assert "sbir_analytics.assets.phase_iii_census.assets" in module_names
     assert "sbir_analytics.assets.uspto.extraction" in module_names
     assert "sbir_analytics.assets.transition.detections" in module_names
     # Jobs/sensors should be excluded
