@@ -46,8 +46,8 @@ class CompanyNameMetric(StrEnum):
     """Supported similarity algorithms; every result is scaled to 0..1."""
 
     RATIO = "ratio"
-    TOKEN_SET = "token-set"
-    TOKEN_SORT = "token-sort"
+    TOKEN_SET = "token-set"  # nosec B105 - matching algorithm name, not a credential
+    TOKEN_SORT = "token-sort"  # nosec B105 - matching algorithm name, not a credential
     JARO_WINKLER = "jaro-winkler"
 
 

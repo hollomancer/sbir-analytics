@@ -240,7 +240,11 @@ def _to_date(value: Any):
 
 
 def _candidate_id(signal_class: SignalClass, prior_identity: str, target_id: str) -> str:
-    h = hashlib.sha1(f"{signal_class.value}|{prior_identity}|{target_id}".encode())
+    # Content hash for a short deterministic id, not a security primitive:
+    # usedforsecurity=False states that so the digest choice is not read as one.
+    h = hashlib.sha1(  # noqa: S324
+        f"{signal_class.value}|{prior_identity}|{target_id}".encode(), usedforsecurity=False
+    )
     return f"{signal_class.value}-{h.hexdigest()[:16]}"
 
 

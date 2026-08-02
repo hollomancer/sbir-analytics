@@ -6,33 +6,42 @@ Tracking stub. Three checks that ran in the retired `weekly.yml` and now run
 Grouped because they share a shape: they check the repository, not the data, so
 they want a host cron or a pre-commit hook rather than a Dagster job.
 
-## 1. Nightly security scan — highest priority
+## 1. Nightly security scan — DONE, as a parallel CI job
 
 Was `weekly.yml` · `security-scan`, cron `0 3 * * *`.
 
-The only item from the whole migration with **no fallback at all** — bandit and
-detect-secrets are not pre-commit hooks, so the repo currently has no automated
-security scanning.
+**Implemented here as a CI job rather than a host cron.** The stub originally
+proposed host cron on the reasoning that it scans source, not data. That still
+holds, but it misses the cheaper option: the scan is ~37s (bandit 10.7s,
+detect-secrets 25.8s) and the CI critical path is the slowest test shard at
+~65s, so a parallel `security` job costs **a runner and no wall-clock**. It also
+gates pre-merge rather than telling you the morning after.
 
-Measured cost: bandit 10.7s + detect-secrets 25.8s ≈ **37s**. No runtime reason
-to defer.
+It is a separate job, not extra steps in `quality`. `quality` runs ~35-39s;
+adding 37s to it would push it past the shards and make it the new critical
+path. Parallel, it hides underneath.
 
-**It fails today.** `bandit -r sbir_etl packages -c pyproject.toml` exits 1:
+Blocking on purpose — a non-blocking version would reproduce the state this
+exists to fix.
 
-| Severity | Finding | Location |
-|---|---|---|
-| High / High | `B324` weak SHA1 | `assets/phase_iii_candidates/assets.py:243` |
-| Medium | `B104` bind all interfaces | `api/__main__.py:11` |
-| Low ×2 | `B105` hardcoded password | `identity/company_names.py:49-50` |
+**The four findings that made this red are fixed**, not suppressed wholesale:
 
-- [ ] Triage the four findings. The two Low hits look like false positives —
-      `token-set` / `token-sort` are token-matching algorithm names, not
-      credentials. The SHA1 is probably a content hash wanting
-      `usedforsecurity=False`.
-- [ ] **Fix them before wiring the cron.** A gate that fails on its first run
-      gets muted, which is how the previous scan came to be ignored.
-- [ ] Host cron running both commands, output to a dated file
-- [ ] Verify by planting a known finding and confirming it reaches a human
+| Finding | Resolution |
+|---|---|
+| `B324` SHA1 in `phase_iii_candidates/assets.py` | Real fix: `usedforsecurity=False`. It is a content hash for a short deterministic id, not a security primitive. |
+| `B104` bind-all in `api/__main__.py` | False positive in this architecture. Binding `0.0.0.0` *inside a container* is required to accept from the compose network; the boundary is the host publish, which compose pins to `127.0.0.1` and `server-check` enforces. Suppressed with that rationale. |
+| `B105` ×2 in `identity/company_names.py` | False positives. `token-set` / `token-sort` are matching-algorithm names in a StrEnum, not credentials. Suppressed with rationale. |
+
+`bandit -r sbir_etl packages -c pyproject.toml` now exits 0 with "No issues
+identified."
+
+### Still open
+
+- [ ] Nothing scans on a schedule — this gates PRs and `main`, but a dependency
+      advisory published after a merge will not surface until the next push.
+      Dependabot covers the dependency half; decide whether that is enough or
+      whether a periodic scan is still wanted somewhere off-Actions.
+- [ ] Verify by planting a known finding and confirming the job fails
 
 ## 2. Markdown lint
 
