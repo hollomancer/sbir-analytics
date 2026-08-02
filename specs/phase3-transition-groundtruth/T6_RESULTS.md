@@ -54,25 +54,52 @@ Proxy-label baseline (T5) p@1 = **0.681**. Delta = headline p@1 minus baseline.
 |---|---|---|---|---|
 | hard | 45 | 0.467 (0.333, 0.622) | 0.556 (0.422, 0.689) | 0.588 (0.473, 0.704) |
 
-## Path B — notice retrieval (faithful anchor, Navy-limited)
+## Path B — notice retrieval (RETIRED — not an independent validation)
 
 | set | n | p@1 [95% CI] | p@3 [95% CI] | MRR [95% CI] |
 |---|---|---|---|---|
 | notice corpus (GT firms) | 22 | 0.773 (0.591, 0.909) | 0.955 (0.864, 1.0) | 0.848 (0.727, 0.947) |
 
-N=22 firms, 91% Navy — an anchor, not a headline. Each firm's true notice competes only against its own candidate notices (per-firm ranking).
+**Retired after review — do not cite this as a ground-truth result.** Three fatal
+problems, only realized once run:
 
-## Triangulation — the A<->B gap
+1. **It scores proxy labels, not our independent labels.** The 22 firms overlap the
+   frozen notice corpus, whose `label=1` notice is the *pipeline's own* attribution.
+   There is no contract->notice mapping to confirm that positive is the transition we
+   independently established by PIID. So Path B re-runs the circular proxy eval this
+   spec exists to escape — on a 22-firm slice.
+2. **91% Navy (20/22)** — it re-imports the exact skew the collection effort removed.
+3. **No new information** — it reproduces the earlier corpus scan (Navy word-TF-IDF
+   p@1 ~0.84) that FINDINGS.md already recorded.
 
-Path A p@1 0.467 vs Path B p@1 0.773 (gap -0.306). Path A ranks *contract descriptions*; Path B ranks *solicitation/notice text* — the structure the model was fit on. The gap is the contract->notice transfer caveat, measured on overlapping firms. Path A's larger decoy realism (cross-firm, same-agency) and Path B's fit-faithful text pull in opposite directions; read them together, not as one number.
+The 0.773 is kept here only for transparency; it is a Navy-proxy consistency number,
+not evidence about the balanced independent set.
+
+## The notice-grained validation gap (future work)
+
+A *legitimate* notice-grained test — does the ranker retrieve a firm's independently
+known transition from a pool of real solicitation/J&A notices — is **not achievable
+with current data**: it needs a PIID -> archive-notice mapping we do not have (Phase III
+sole-source awards frequently have no competing solicitation notice at all). This is a
+documented limitation, not a result. Closing it needs either a contract->notice linkage
+effort or forward-collection on open solicitations (which is separately out of scope).
 
 ## Go / no-go
 
 **Read: DEADLINE-PRIMARY.**
 
-- Fusion should NOT solely order the review packet: headline p@1 0.467 [0.333, 0.622] vs the 0.681 proxy baseline and 0.100 random.
-- Neither path validates forward / open-solicitation use: both rank a *retrospective* candidate set where the true transition is present by construction.
-- The hard-decoy variant (firm's own contracts) is the honest stress case; when it collapses, fusion is separating firms, not contracts — keep deadline signals primary.
+- Fusion should NOT solely order the review packet: the balanced independent headline
+  (Path A) p@1 0.467 [0.333, 0.622] sits below the 0.681 proxy baseline (well above
+  0.100 random). It reliably surfaces the transition in the top 3 (p@3 0.556) — use it
+  as a top-3 surfacing aid alongside deadline ordering, not as the sole orderer, and not
+  as a gate.
+- The weak cells are the sparse-description ones (DLA/logistics 0.214, thin-desc 0.291)
+  — the empty-field wall on the candidate side, a structural data limit, not a ranker bug.
+- Path A does not validate forward / open-solicitation use: it ranks a *retrospective*
+  candidate set where the true transition is present by construction.
+- The hard-decoy variant (firm's own contracts) is the honest stress case; p@1 collapses
+  to 0.333 while p@3 holds at 0.833 — fusion separates a firm's contracts into a top-3
+  band but cannot pick the exact one. Keep deadline signals primary.
 
 ## Dropped / unscorable cases
 
