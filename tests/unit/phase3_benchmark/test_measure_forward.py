@@ -1,6 +1,5 @@
 """Tests for the forward-measurement helpers."""
 
-import numpy as np
 
 from scripts.phase3_benchmark.measure_forward import (
     firm_from_row,
@@ -18,7 +17,13 @@ def test_normalize_strips_suffix():
 def test_firm_from_row_prefers_awardee_then_parses():
     assert firm_from_row({"Awardee": "PROGENY SYSTEMS CORP"}) == "PROGENY SYSTEMS CORP"
     parsed = firm_from_row(
-        {"Awardee": "", "Description": "USDA intends to award ... to Synoptos, Inc., 1900 Campus Dr"}
+        {
+            "Awardee": "",
+            "Description": (
+                "The USDA intends to award a non-competitive sole source contract through "
+                "the SBIR Program to Synoptos, Inc., 1900 Campus Commons Dr, Reston VA"
+            ),
+        }
     )
     assert parsed == "Synoptos, Inc."
 
