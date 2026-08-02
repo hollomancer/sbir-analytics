@@ -16,7 +16,6 @@ human can spot-check the fuzzy ones.
 from __future__ import annotations
 
 import argparse
-import re
 from dataclasses import dataclass, field
 from functools import lru_cache
 from pathlib import Path
@@ -24,22 +23,13 @@ from pathlib import Path
 import pandas as pd
 from rapidfuzz import fuzz, process
 
-
-_SUFFIX_RE = re.compile(
-    r"\b(INC|INCORPORATED|LLC|L\.?L\.?C|CORP|CORPORATION|CO|COMPANY|LTD|LP|LLP|PC|PLLC)\b\.?",
-    re.IGNORECASE,
-)
-_NON_ALNUM = re.compile(r"[^A-Z0-9 ]")
+from sbir_etl.utils.text_normalization import firm_key
 
 FUZZY_THRESHOLD = 88.0
 
-
-def normalize_name(name: object) -> str:
-    """Uppercase, drop legal suffixes and punctuation, collapse whitespace."""
-
-    text = _SUFFIX_RE.sub(" ", str(name or "").upper())
-    text = _NON_ALNUM.sub(" ", text)
-    return " ".join(text.split())
+# Canonical firm-match key lives in sbir_etl.utils.text_normalization (`firm_key`);
+# re-exported here as ``normalize_name`` for existing callers of this module.
+normalize_name = firm_key
 
 
 @dataclass

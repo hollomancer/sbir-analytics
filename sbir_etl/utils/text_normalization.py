@@ -114,6 +114,24 @@ def normalize_company_name(name: str | None) -> str:
     return normalize_name(name, remove_suffixes=False)
 
 
+def firm_key(name: str | None) -> str:
+    """Canonical firm-match key: suffix-stripped, punctuation-normalized name.
+
+    The single definition for "normalize a firm/company name into a match key" used by
+    the Phase III transition work (firm→award resolution, notice→firm attribution). Equal
+    to ``normalize_name(name, remove_suffixes=True)``; empirically resolve-decision-
+    equivalent (200/200 on award_data) to the earlier ad-hoc uppercase variants, differing
+    only in case. Prefer this over re-deriving a normalizer inline.
+
+    Examples:
+        >>> firm_key("Acme Photonics, Inc.")
+        'acme photonics'
+        >>> firm_key("Progeny Systems Corp.")
+        'progeny systems'
+    """
+    return normalize_name(name, remove_suffixes=True)
+
+
 def pluralize_col_key(col: str) -> str:
     """Convert a column name to a pluralized dict key.
 

@@ -13,7 +13,7 @@ _K = {"cw": 2.21, "cc": -0.71, "mw": 0.028, "mc": 0.204, "sw": 0.039, "sc": 0.13
 
 
 def test_normalize_and_buckets():
-    assert normalize_name("Acme Photonics, Inc.") == "ACME PHOTONICS"
+    assert normalize_name("Acme Photonics, Inc.") == "acme photonics"
     assert firm_bucket("Department of Defense", "Navy") == "NAVY"
     assert firm_bucket("Department of Health and Human Services", "") == "HHS"
     assert notice_bucket("DEPT OF DEFENSE", "DEPT OF THE ARMY") == "ARMY"

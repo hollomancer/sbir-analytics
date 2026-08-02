@@ -49,8 +49,8 @@ def award_csv(tmp_path):
 
 
 def test_normalize_name_strips_suffix_and_punctuation():
-    assert normalize_name("Acme Photonics, Inc.") == "ACME PHOTONICS"
-    assert normalize_name("ACME PHOTONICS INC") == "ACME PHOTONICS"
+    assert normalize_name("Acme Photonics, Inc.") == "acme photonics"
+    assert normalize_name("ACME PHOTONICS INC") == "acme photonics"
 
 
 def test_exact_match_collects_all_of_a_firms_awards(award_csv):
@@ -65,7 +65,7 @@ def test_fuzzy_does_not_confuse_distinct_firms(award_csv):
     # "Acme Photonics Corporation" -> Acme Photonics, never Acme Robotics.
     r = resolve_firm("Acme Photonics Corporation", award_csv)
     assert r.matched_company is not None
-    assert "PHOTONICS" in normalize_name(r.matched_company)
+    assert "photonics" in normalize_name(r.matched_company)
     assert "N00014-20-C-0055" in r.contracts
 
 

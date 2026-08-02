@@ -371,3 +371,15 @@ class TestPluralizeColKey:
         """Single character works."""
         assert pluralize_col_key("x") == "xs"
         assert pluralize_col_key("y") == "ies"
+
+
+def test_firm_key_canonical_match_key():
+    """firm_key is the suffix-stripped, lowercase canonical firm-match key."""
+    from sbir_etl.utils.text_normalization import firm_key
+
+    assert firm_key("Acme Photonics, Inc.") == "acme photonics"
+    assert firm_key("Progeny Systems Corp.") == "progeny systems"
+    assert firm_key("HumanIT Solutions, LLC") == "humanit solutions"
+    # suffix variants collapse to the same key
+    assert firm_key("Synoptos, Inc.") == firm_key("SYNOPTOS INCORPORATED")
+    assert firm_key(None) == ""
