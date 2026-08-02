@@ -176,7 +176,7 @@ class TestDownloadLocal:
 
     def test_partial_file_resumes_with_range_header(self, tmp_path, availability):
         dest = tmp_path / "usaspending-db_20260101.zip"
-        dest.write_bytes(BODY[:1000])
+        (tmp_path / "usaspending-db_20260101.zip.part").write_bytes(BODY[:1000])
 
         session = MagicMock()
         session.get.return_value = _mock_response(BODY[1000:], status=206)
@@ -194,7 +194,7 @@ class TestDownloadLocal:
 
     def test_server_ignoring_range_restarts_cleanly(self, tmp_path, availability):
         dest = tmp_path / "usaspending-db_20260101.zip"
-        dest.write_bytes(b"stale" * 200)
+        (tmp_path / "usaspending-db_20260101.zip.part").write_bytes(b"stale" * 200)
 
         # Range was requested but the server answered 200 with the whole body.
         session = MagicMock()
@@ -311,3 +311,36 @@ class TestDiscoverySignature:
         # An autospec mock raises TypeError on an argument the real function
         # does not accept, so this asserts the call site matches the signature.
         autospec.assert_called_once_with(database_type="full")
+
+
+class TestPartialIsNotDiscoverable:
+    """An in-progress download must not be selectable as a finished dump."""
+
+    def test_incomplete_download_leaves_no_final_name(self, tmp_path):
+        from scripts.usaspending.download_database import download_local
+
+        session = MagicMock()
+        session.get.return_value = _mock_response(BODY[:100])
+
+        with (
+            patch(
+                "scripts.usaspending.download_database.check_file_availability",
+                return_value={"available": True, "content_length": len(BODY)},
+            ),
+            patch("requests.Session", return_value=session),
+            patch("shutil.disk_usage", return_value=Usage(10**9, 0, 10**9)),
+        ):
+            with pytest.raises(OSError):
+                download_local(tmp_path, source_url=URL)
+
+        assert not (tmp_path / "usaspending-db_20260101.zip").exists()
+        assert (tmp_path / "usaspending-db_20260101.zip.part").exists()
+
+    def test_partial_is_invisible_to_dump_discovery(self, tmp_path):
+        from sbir_etl.utils.cloud_storage import find_latest_usaspending_dump
+
+        d = tmp_path / "usaspending"
+        d.mkdir(parents=True)
+        (d / "usaspending-db_20260101.zip.part").write_bytes(b"partial")
+
+        assert find_latest_usaspending_dump(tmp_path, "full") is None

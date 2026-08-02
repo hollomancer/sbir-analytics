@@ -136,10 +136,7 @@ def check_free_space(dest_dir: Path, required_bytes: int, multiplier: float = 1.
             f"{usage.free / 1024**3:.1f} GB free, need ~{needed / 1024**3:.1f} GB "
             f"({required_bytes / 1024**3:.1f} GB dump x {multiplier})"
         )
-    print(
-        f"Disk space OK: {usage.free / 1024**3:.1f} GB free, "
-        f"need ~{needed / 1024**3:.1f} GB"
-    )
+    print(f"Disk space OK: {usage.free / 1024**3:.1f} GB free, need ~{needed / 1024**3:.1f} GB")
 
 
 def download_local(
@@ -154,12 +151,18 @@ def download_local(
 
     Uses HTTP Range requests to continue a partial file rather than restarting,
     with progress checkpointed to a sidecar so a killed run resumes cheaply.
+
+    The download accumulates in a ``.part`` file and is renamed to the final
+    name only after its size is verified. ``find_latest_usaspending_dump``
+    rglobs the final names, so writing straight to one would let an in-progress
+    or abandoned download be selected and handed to pg_restore.
     """
     source_url = resolve_source_url(database_type, date_str, source_url)
     filename = source_url.rsplit("/", 1)[-1]
 
     dest_dir.mkdir(parents=True, exist_ok=True)
     dest_path = dest_dir / filename
+    part_path = dest_path.with_suffix(dest_path.suffix + ".part")
     checkpoint_path = get_checkpoint_path(dest_path)
 
     availability = check_file_availability(source_url)
@@ -180,14 +183,15 @@ def download_local(
 
     if force_refresh:
         dest_path.unlink(missing_ok=True)
+        part_path.unlink(missing_ok=True)
         clear_local_checkpoint(checkpoint_path)
 
-    resume_from = dest_path.stat().st_size if dest_path.is_file() else 0
+    resume_from = part_path.stat().st_size if part_path.is_file() else 0
     checkpoint = load_local_checkpoint(checkpoint_path)
     if checkpoint and checkpoint.get("source_url") != source_url:
         # Checkpoint belongs to a different dump; start over rather than splice.
         print("Checkpoint is for a different source URL - restarting download")
-        dest_path.unlink(missing_ok=True)
+        part_path.unlink(missing_ok=True)
         resume_from = 0
 
     check_free_space(dest_dir, max(total_bytes - resume_from, 0))
@@ -201,9 +205,7 @@ def download_local(
     session.mount(
         "https://",
         HTTPAdapter(
-            max_retries=Retry(
-                total=5, backoff_factor=2, status_forcelist=[429, 500, 502, 503, 504]
-            )
+            max_retries=Retry(total=5, backoff_factor=2, status_forcelist=[429, 500, 502, 503, 504])
         ),
     )
 
@@ -217,11 +219,11 @@ def download_local(
         # A server ignoring Range returns 200 with the whole body; restart cleanly.
         if resume_from and response.status_code == 200:
             print("Server ignored Range request - restarting from byte 0")
-            dest_path.unlink(missing_ok=True)
+            part_path.unlink(missing_ok=True)
             resume_from = downloaded = 0
 
         mode = "ab" if resume_from else "wb"
-        with open(dest_path, mode) as fh:
+        with open(part_path, mode) as fh:
             for chunk in response.iter_content(chunk_size=chunk_size):
                 if not chunk:
                     continue
@@ -237,13 +239,15 @@ def download_local(
                     )
     print()
 
-    actual = dest_path.stat().st_size
+    actual = part_path.stat().st_size
     if total_bytes and actual != total_bytes:
         raise OSError(
             f"Download incomplete: {actual:,} bytes on disk, expected {total_bytes:,}. "
             f"Re-run to resume from the checkpoint."
         )
 
+    # Only now is the file safe to discover.
+    part_path.replace(dest_path)
     clear_local_checkpoint(checkpoint_path)
     elapsed = time.time() - start
     print(f"Downloaded {actual / 1024**3:.2f} GB in {elapsed / 60:.1f} min")
