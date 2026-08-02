@@ -221,35 +221,30 @@ jobs:
       # The old split was 5,254 tests in unit-fast against 2 in unit-slow, so
       # it provisioned a whole runner for two tests while one leg carried the
       # entire suite. Shards cover exactly the same tests, just balanced.
-      # Coverage runs on shard 0 only: it costs ~33% wall clock (measured 64s
-      # vs 48s on 4 cores) and one shard is enough to produce the report.
+      # Every shard writes a coverage report. Codecov merges the five reports,
+      # preserving whole-suite coverage while retaining parallel test execution.
       matrix:
         suite:
           - name: unit-shard-0
             path: tests/unit/
             args: "--num-shards=4 --shard-id=0"
             needs_neo4j: false
-            coverage: true
           - name: unit-shard-1
             path: tests/unit/
             args: "--num-shards=4 --shard-id=1"
             needs_neo4j: false
-            coverage: false
           - name: unit-shard-2
             path: tests/unit/
             args: "--num-shards=4 --shard-id=2"
             needs_neo4j: false
-            coverage: false
           - name: unit-shard-3
             path: tests/unit/
             args: "--num-shards=4 --shard-id=3"
             needs_neo4j: false
-            coverage: false
           - name: integration
             path: tests/integration/
             args: '-m "integration and not slow"'
             needs_neo4j: true
-            coverage: true
 
     steps:
       - uses: actions/checkout@v7
@@ -286,13 +281,13 @@ jobs:
         run: |
           # -v already comes from addopts in pyproject.toml; repeating it here
           # emitted a second verbose line per test through the xdist workers.
-          COV=""
-          if [ "${{ matrix.suite.coverage }}" = "true" ]; then
-            COV="--cov=sbir_etl --cov=packages/sbir-analytics/sbir_analytics --cov=packages/sbir-ml/sbir_ml --cov=packages/sbir-graph/sbir_graph --cov-report=xml --cov-report=term"
-          else
-            COV="--no-cov"
-          fi
-          uv run pytest ${{ matrix.suite.path }} ${{ matrix.suite.args }} $COV \
+          uv run pytest ${{ matrix.suite.path }} ${{ matrix.suite.args }} \
+            --cov=sbir_etl \
+            --cov=packages/sbir-analytics/sbir_analytics \
+            --cov=packages/sbir-ml/sbir_ml \
+            --cov=packages/sbir-graph/sbir_graph \
+            --cov-report=xml \
+            --cov-report=term \
             --junitxml=test-results-${{ matrix.suite.name }}.xml
 
       - name: Stop Neo4j service
@@ -302,7 +297,7 @@ jobs:
           container-name: test-neo4j
 
       - name: Upload coverage
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && hashFiles('coverage.xml') != '' }}
         uses: codecov/codecov-action@v7
         with:
           files: ./coverage.xml
@@ -336,10 +331,7 @@ jobs:
 
       - name: Aggregate test results
         run: |
-          cat > /tmp/test_summary.md << 'EOF'
-          ## 🧪 Test Results Summary
-
-          EOF
+          : > /tmp/test_failures.md
 
           TOTAL_PASSED=0
           TOTAL_FAILED=0
@@ -362,23 +354,32 @@ jobs:
               TOTAL_SKIPPED=$((TOTAL_SKIPPED + SKIPPED))
 
               if [ "$FAILED" -gt 0 ]; then
-                echo "### ❌ ${suite} Failures" >> /tmp/test_summary.md
-                echo "" >> /tmp/test_summary.md
+                echo "### ❌ ${suite} Failures" >> /tmp/test_failures.md
+                echo "" >> /tmp/test_failures.md
                 # Extract failure messages from JUnit XML
                 grep -oP '<failure[^>]*message="\K[^"]+' "$XML_FILE" | head -5 | while read msg; do
-                  echo "- $msg" >> /tmp/test_summary.md
+                  echo "- $msg" >> /tmp/test_failures.md
                 done
-                echo "" >> /tmp/test_summary.md
+                echo "" >> /tmp/test_failures.md
               fi
             fi
           done
 
-          # Add summary at top
-          sed -i "3i **Total:** $TOTAL_PASSED ✅ passed, $TOTAL_FAILED ❌ failed, $TOTAL_SKIPPED ⏭️ skipped\n" /tmp/test_summary.md
-
           if [ "$TOTAL_FAILED" -eq 0 ]; then
-            sed -i "3i ### ✅ All Tests Passed!\n" /tmp/test_summary.md
+            STATUS="### ✅ All Tests Passed!"
+          else
+            STATUS="### ❌ Test Failures Detected"
           fi
+
+          {
+            echo "## 🧪 Test Results Summary"
+            echo ""
+            echo "$STATUS"
+            echo ""
+            echo "**Total:** $TOTAL_PASSED ✅ passed, $TOTAL_FAILED ❌ failed, $TOTAL_SKIPPED ⏭️ skipped"
+            echo ""
+            cat /tmp/test_failures.md
+          } > /tmp/test_summary.md
 
       - name: Comment PR
         uses: actions/github-script@v9

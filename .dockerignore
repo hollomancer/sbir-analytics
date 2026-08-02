@@ -85,12 +85,14 @@ test-results*.json
 # OpenSpec
 openspec/
 
-# Specs (only frozen Phase III census inputs are needed in container)
+# Specs (only frozen runtime provenance inputs are needed in container)
 specs/*
 !specs/phase-iii-census/
 specs/phase-iii-census/*
 !specs/phase-iii-census/design.md
 !specs/phase-iii-census/amendments.md
+!specs/phase3-notice-corpus-fusion/
+!specs/phase3-notice-corpus-fusion/**
 
 # Archive (not needed in container)
 archive/
