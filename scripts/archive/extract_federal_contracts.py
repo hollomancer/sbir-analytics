@@ -30,6 +30,11 @@ from loguru import logger
 
 from sbir_etl.config.loader import get_config
 from sbir_etl.extractors.contract_extractor import ContractExtractor
+from sbir_etl.extractors.usaspending_award_archive import (
+    AWARD_ARCHIVE_PROVENANCE_VERSION,
+    AWARD_ARCHIVE_SOURCE_KIND,
+    AwardArchiveContractExtractor,
+)
 
 
 SOURCE_PROVENANCE_VERSION = 1
@@ -41,6 +46,23 @@ SOURCE_PROVENANCE_KEYS = frozenset(
         "ordered_columns_sha256",
         "column_count",
         "toc_sha256",
+        "vendor_filter_sha256",
+        "output_sha256",
+        "provenance_version",
+    }
+)
+AWARD_ARCHIVE_PROVENANCE_KEYS = frozenset(
+    {
+        "source_kind",
+        "canonical_table",
+        "physical_table",
+        "archive_file",
+        "archive_sha256",
+        "archive_size_bytes",
+        "member_count",
+        "member_manifest_sha256",
+        "ordered_columns_sha256",
+        "column_count",
         "vendor_filter_sha256",
         "output_sha256",
         "provenance_version",
@@ -90,31 +112,57 @@ def write_contract_provenance_checks(
         {
             "vendor_filter_sha256": current_vendor_sha256,
             "output_sha256": _file_sha256(output_file),
-            "provenance_version": SOURCE_PROVENANCE_VERSION,
         }
     )
-    missing = sorted(SOURCE_PROVENANCE_KEYS - set(provenance))
+    source_kind = provenance.get("source_kind", "database_dump")
+    if source_kind == AWARD_ARCHIVE_SOURCE_KIND:
+        required_keys = AWARD_ARCHIVE_PROVENANCE_KEYS
+        expected_version = AWARD_ARCHIVE_PROVENANCE_VERSION
+        expected_table = "award_data_archive.contracts_full"
+    else:
+        required_keys = SOURCE_PROVENANCE_KEYS
+        expected_version = SOURCE_PROVENANCE_VERSION
+        expected_table = "rpt.transaction_search"
+        provenance["provenance_version"] = SOURCE_PROVENANCE_VERSION
+
+    missing = sorted(required_keys - set(provenance))
     if missing:
         raise RuntimeError(f"Verified contract provenance is missing fields: {missing}")
-    if provenance.get("canonical_table") != "rpt.transaction_search":
+    if provenance.get("provenance_version") != expected_version:
+        raise RuntimeError("Verified contract provenance has the wrong version")
+    if provenance.get("canonical_table") != expected_table:
         raise RuntimeError("Verified contract provenance has the wrong canonical table")
-    if provenance.get("physical_table") not in {
-        "rpt.transaction_search",
-        "rpt.transaction_search_fpds",
-    }:
-        raise RuntimeError("Verified contract provenance has the wrong physical table")
-    member = provenance.get("member")
-    if not isinstance(member, str) or not member.endswith(".dat.gz"):
-        raise RuntimeError("Verified contract provenance has an invalid archive member")
+    if source_kind == AWARD_ARCHIVE_SOURCE_KIND:
+        if provenance.get("physical_table") != expected_table:
+            raise RuntimeError("Verified contract provenance has the wrong physical table")
+        archive_file = provenance.get("archive_file")
+        if not isinstance(archive_file, str) or not archive_file.endswith(".zip"):
+            raise RuntimeError("Verified contract provenance has an invalid archive file")
+    else:
+        if provenance.get("physical_table") not in {
+            "rpt.transaction_search",
+            "rpt.transaction_search_fpds",
+        }:
+            raise RuntimeError("Verified contract provenance has the wrong physical table")
+        member = provenance.get("member")
+        if not isinstance(member, str) or not member.endswith(".dat.gz"):
+            raise RuntimeError("Verified contract provenance has an invalid archive member")
     column_count = provenance.get("column_count")
     if not isinstance(column_count, int) or isinstance(column_count, bool) or column_count <= 0:
         raise RuntimeError("Verified contract provenance has an invalid column count")
     for key in (
         "ordered_columns_sha256",
-        "toc_sha256",
         "vendor_filter_sha256",
         "output_sha256",
     ):
+        if not _valid_sha256(provenance.get(key)):
+            raise RuntimeError(f"Verified contract provenance has an invalid {key}")
+    source_hash_keys = (
+        ("archive_sha256", "member_manifest_sha256")
+        if source_kind == AWARD_ARCHIVE_SOURCE_KIND
+        else ("toc_sha256",)
+    )
+    for key in source_hash_keys:
         if not _valid_sha256(provenance.get(key)):
             raise RuntimeError(f"Verified contract provenance has an invalid {key}")
 
@@ -163,6 +211,14 @@ def main():
         ),
     )
     parser.add_argument(
+        "--award-archive",
+        type=Path,
+        help=(
+            "Stream a local USAspending Contracts_Full Award Data Archive ZIP, "
+            "filtering to the configured SBIR vendor frame."
+        ),
+    )
+    parser.add_argument(
         "--member",
         type=str,
         default=None,
@@ -174,6 +230,15 @@ def main():
     )
 
     args = parser.parse_args()
+    selected_modes = sum(
+        bool(value)
+        for value in (args.subset, args.full, args.dump_dir, args.remote_zip, args.award_archive)
+    )
+    if selected_modes != 1:
+        parser.error(
+            "select exactly one source: --subset, --full, --dump-dir, --remote-zip, "
+            "or --award-archive"
+        )
 
     # Load configuration for default paths
     config = get_config()
@@ -184,6 +249,27 @@ def main():
         logger.info("Run: python scripts/archive/extract_sbir_vendors.py")
         return
     vendor_filter_sha256 = _file_sha256(vendor_filter_file)
+
+    if args.award_archive:
+        output_file = args.output or config.paths.resolve_path("transition_contracts_output")
+        extractor = AwardArchiveContractExtractor(
+            vendor_filter_file=vendor_filter_file,
+            batch_size=10000,
+        )
+        logger.info(f"Streaming USAspending award archive {args.award_archive}")
+        logger.info(f"Output will be saved to {output_file}")
+        num_contracts = extractor.extract_from_archive(args.award_archive, output_file)
+        checks_path = write_contract_provenance_checks(
+            extractor=extractor,
+            output_file=output_file,
+            vendor_filter_file=vendor_filter_file,
+            expected_vendor_filter_sha256=vendor_filter_sha256,
+            total_rows=num_contracts,
+            source={"award_archive": str(args.award_archive)},
+        )
+        logger.success(f"Extraction complete! {num_contracts:,} contracts extracted")
+        logger.success(f"Provenance checks saved to {checks_path}")
+        return
 
     # Remote-zip streaming path: no local dump required.
     if args.remote_zip:

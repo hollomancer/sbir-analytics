@@ -375,6 +375,14 @@ class PathsConfig(BaseModel):
             "fresh/ephemeral env). Empty = local only."
         ),
     )
+    transition_award_archive_dir: str = Field(
+        default="data/raw/usaspending/award_archive",
+        description=(
+            "Directory containing public USAspending Contracts_Full Award Data "
+            "Archive ZIPs. The newest archive is used only when the explicit "
+            "USE_AWARD_ARCHIVE runtime flag is enabled."
+        ),
+    )
     transition_dump_dir: str = Field(
         default="data/transition/pruned_data_store_api_dump",
         description="Transition API dump directory (local path)",

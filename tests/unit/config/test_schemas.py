@@ -710,6 +710,7 @@ class TestPathsConfig:
         assert config.transition_contracts_output == "data/transition/contracts_ingestion.parquet"
         # S3 sourcing is opt-in: empty by default (local only).
         assert config.transition_vendor_filters_s3_path == ""
+        assert config.transition_award_archive_dir == "data/raw/usaspending/award_archive"
         assert config.transition_dump_s3_prefix == ""
         assert config.transition_contracts_output_s3_path == ""
 

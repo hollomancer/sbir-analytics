@@ -163,6 +163,46 @@ fails so recovery work cannot erase the backup.
   `SBIR_ETL__DAGSTER__SCHEDULES__WEEKLY_CORE_REFRESH_ENABLED=true` — do this
   only after a manual run of `core_refresh_job` succeeds.
 
+### Bounded USAspending contract refresh
+
+USAspending's public Award Data Archive does not require a login. Its
+`Contracts_Full` ZIPs are much smaller than the complete PostgreSQL database,
+but expand to several CSV members, so they must be streamed and filtered rather
+than loaded into Pandas as a whole.
+
+Run these commands from the deployment checkout. They write only below the
+SSD-backed `/app/data` mount:
+
+```bash
+# Build the complete vendor frame from the current SBIR.gov source in bounded chunks.
+docker exec sbir-server-dagster-code python \
+  scripts/archive/extract_sbir_vendors.py \
+  --awards-file /app/data/raw/sbir/award_data.csv \
+  --output /app/data/transition/sbir_vendor_filters.json
+
+# Discover and atomically download the current public fiscal-year archive.
+# A .part file is retained for HTTP Range resume after interruption.
+docker exec sbir-server-dagster-code python \
+  scripts/usaspending/download_award_archive.py \
+  --fiscal-year 2026 --type contracts
+```
+
+Set
+`SBIR_ETL__TRANSITION__CONTRACTS__USE_AWARD_ARCHIVE=true` in `.env.server`
+and run `make server-up` to recreate the code service with that explicit source
+choice. Then materialize **only** `raw_contracts` from Dagster. The asset uses
+the newest ZIP under
+`data/raw/usaspending/award_archive/`, scans every CSV member in bounded Arrow
+batches, filters to the SBIR UEI/DUNS/name frame, and atomically replaces
+`data/transition/contracts_ingestion.parquet`. It fails closed on an empty
+vendor frame, schema drift, incomplete downloads, or provenance mismatch.
+The opt-in is intentionally false by default because one fiscal-year archive is
+narrower than the full USAspending database source.
+
+Do not run `core_refresh_job` or `sbir_weekly_refresh_job` as a substitute for
+this targeted refresh. Keep schedules stopped until the targeted artifact and
+its `.checks.json` sidecar have been reviewed.
+
 ## Recovery
 
 - **After reboot:** OrbStack and Tailscale start at login; containers use
@@ -191,9 +231,11 @@ bearer token) succeed, while Neo4j remains unreachable over the tailnet.
 ## Workload placement
 
 - **Local, always-on:** API, Neo4j, Dagster, snapshots, DuckDB, core analytics.
+- **Local, on-demand:** public USAspending Contracts_Full download and bounded
+  SBIR-vendor filtering into Parquet.
 - **Local, on-demand (PR 2):** CET/scikit-learn and bounded USPTO NLP.
-- **Managed batch:** full USAspending extraction, fiscal analysis, and large
-  transition jobs via S3 + AWS Batch/Fargate
+- **Managed batch:** complete USAspending database extraction, fiscal analysis,
+  and unfiltered transition jobs via S3 + AWS Batch/Fargate
   ([docs](https://docs.aws.amazon.com/batch/latest/userguide/fargate.html)).
 - **Managed inference / vector search:** Hugging Face Inference Providers plus
   Qdrant Cloud, replacing exhaustive award-by-patent similarity in later PRs.

@@ -76,6 +76,43 @@ def test_source_provenance_status_detects_input_drift() -> None:
     assert "vendor_filter_sha256" in status["mismatches"]
 
 
+def test_source_provenance_status_accepts_bound_award_archive(tmp_path) -> None:
+    from sbir_analytics.assets.transition.contracts import source_provenance_status
+    from sbir_etl.extractors.usaspending_award_archive import (
+        AWARD_ARCHIVE_PROVENANCE_VERSION,
+        AWARD_ARCHIVE_SOURCE_KIND,
+    )
+
+    archive = tmp_path / "FY2026_All_Contracts_Full_20260706.zip"
+    archive.write_bytes(b"archive")
+    provenance = {
+        "source_kind": AWARD_ARCHIVE_SOURCE_KIND,
+        "canonical_table": "award_data_archive.contracts_full",
+        "physical_table": "award_data_archive.contracts_full",
+        "archive_file": archive.name,
+        "archive_sha256": "a" * 64,
+        "archive_size_bytes": archive.stat().st_size,
+        "member_count": 4,
+        "member_manifest_sha256": "b" * 64,
+        "ordered_columns_sha256": "c" * 64,
+        "column_count": 297,
+        "vendor_filter_sha256": "d" * 64,
+        "output_sha256": "e" * 64,
+        "provenance_version": AWARD_ARCHIVE_PROVENANCE_VERSION,
+    }
+
+    status = source_provenance_status(
+        provenance,
+        archive_sha256="a" * 64,
+        archive_file=archive,
+        vendor_filter_sha256="d" * 64,
+        output_sha256="e" * 64,
+    )
+
+    assert status["complete"] is True
+    assert status["source_kind"] == AWARD_ARCHIVE_SOURCE_KIND
+
+
 def test_contract_provenance_requires_raw_piid() -> None:
     from sbir_analytics.assets.transition.contracts import contract_provenance_status
 
@@ -95,10 +132,12 @@ def _config_with_paths(tmp_path: Path, *, vendor_s3: str = "", dump_s3: str = ""
     """
     out = tmp_path / "contracts.parquet"
     dump = tmp_path / "dump"  # absent
+    archive_dir = tmp_path / "award_archive"  # absent
     vendor = tmp_path / "sbir_vendor_filters.json"
 
     resolved = {
         "transition_contracts_output": out,
+        "transition_award_archive_dir": archive_dir,
         "transition_dump_dir": dump,
         "transition_vendor_filters": vendor,
     }
@@ -187,6 +226,7 @@ def test_output_uploaded_to_s3_when_configured(mock_get_config, mock_upload, tmp
 
     resolved = {
         "transition_contracts_output": out,
+        "transition_award_archive_dir": tmp_path / "award_archive",
         "transition_dump_dir": dump,
         "transition_vendor_filters": vendor,
     }
@@ -221,6 +261,7 @@ def test_stale_cached_parquet_forces_reextraction_and_surfaces_provenance(
 
     resolved = {
         "transition_contracts_output": out,
+        "transition_award_archive_dir": tmp_path / "award_archive",
         "transition_dump_dir": dump,
         "transition_vendor_filters": vendor,
     }
@@ -270,6 +311,7 @@ def test_reextracted_output_without_provenance_fails_explicitly(
 
     resolved = {
         "transition_contracts_output": out,
+        "transition_award_archive_dir": tmp_path / "award_archive",
         "transition_dump_dir": dump,
         "transition_vendor_filters": vendor,
     }
@@ -288,3 +330,67 @@ def test_reextracted_output_without_provenance_fails_explicitly(
         raw_contracts(ContextMocks.context_with_logging())
 
     extractor.extract_from_dump.assert_called_once()
+
+
+@patch("sbir_analytics.assets.transition.contracts.AwardArchiveContractExtractor")
+@patch("sbir_analytics.assets.transition.contracts.get_config")
+def test_award_archive_takes_precedence_without_database_dump(
+    mock_get_config, mock_archive_extractor_cls, tmp_path, monkeypatch
+):
+    from sbir_analytics.assets.transition.contracts import _file_sha256, raw_contracts
+    from sbir_etl.extractors.usaspending_award_archive import (
+        AWARD_ARCHIVE_PROVENANCE_VERSION,
+        AWARD_ARCHIVE_SOURCE_KIND,
+    )
+
+    output = tmp_path / "contracts.parquet"
+    archive_dir = tmp_path / "award_archive"
+    archive_dir.mkdir()
+    archive = archive_dir / "FY2026_All_Contracts_Full_20260706.zip"
+    archive.write_bytes(b"archive fixture")
+    vendor = tmp_path / "sbir_vendor_filters.json"
+    vendor.write_text('{"uei": ["ABC123456789"], "duns": [], "company_names": []}')
+    dump = tmp_path / "missing-dump"
+    resolved = {
+        "transition_contracts_output": output,
+        "transition_award_archive_dir": archive_dir,
+        "transition_dump_dir": dump,
+        "transition_vendor_filters": vendor,
+    }
+    config = MagicMock()
+    config.paths.resolve_path.side_effect = lambda key: resolved[key]
+    config.paths.transition_vendor_filters_s3_path = ""
+    config.paths.transition_dump_s3_prefix = ""
+    config.paths.transition_contracts_output_s3_path = ""
+    mock_get_config.return_value = config
+    monkeypatch.setenv("SBIR_ETL__TRANSITION__CONTRACTS__USE_AWARD_ARCHIVE", "true")
+
+    extractor = mock_archive_extractor_cls.return_value
+    extractor.stats = {"records_scanned": 2}
+    extractor.source_provenance = {
+        "source_kind": AWARD_ARCHIVE_SOURCE_KIND,
+        "canonical_table": "award_data_archive.contracts_full",
+        "physical_table": "award_data_archive.contracts_full",
+        "archive_file": archive.name,
+        "archive_sha256": _file_sha256(archive),
+        "archive_size_bytes": archive.stat().st_size,
+        "member_count": 1,
+        "member_manifest_sha256": "b" * 64,
+        "ordered_columns_sha256": "c" * 64,
+        "column_count": 297,
+        "provenance_version": AWARD_ARCHIVE_PROVENANCE_VERSION,
+    }
+
+    def extract_archive(*, archive_file, output_file):
+        assert archive_file == archive
+        _provenance_complete_contracts().to_parquet(output_file)
+        return 1
+
+    extractor.extract_from_archive.side_effect = extract_archive
+
+    raw_contracts(ContextMocks.context_with_logging())
+
+    extractor.extract_from_archive.assert_called_once()
+    checks = json.loads(output.with_suffix(".checks.json").read_text())
+    assert checks["source_provenance"]["source_kind"] == AWARD_ARCHIVE_SOURCE_KIND
+    assert checks["source"]["dump_dir"] is None
