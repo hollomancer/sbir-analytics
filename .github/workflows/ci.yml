@@ -234,12 +234,13 @@ jobs:
         if: failure()
         run: docker logs test-neo4j --tail 100 || true
 
-  docker-changes:
-    name: Detect Docker Changes
+  detect-changes:
+    name: Detect File Changes
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
       docker: ${{ steps.filter.outputs.docker }}
+      setup: ${{ steps.filter.outputs.setup }}
     steps:
       - uses: actions/checkout@v7
       - uses: dorny/paths-filter@v4
@@ -254,11 +255,19 @@ jobs:
             docker:
               - 'Dockerfile*'
               - '.dockerignore'
+            # uv.lock and pyproject.toml stay out of the docker filter (#507:
+            # the Dockerfile never reads them) but belong here, because
+            # setup_dev.sh runs `uv sync` and a lockfile change can genuinely
+            # break it.
+            setup:
+              - 'scripts/setup_dev.sh'
+              - 'uv.lock'
+              - 'pyproject.toml'
 
   docker:
     name: Docker Build and Smoke Test
-    needs: [docker-changes]
-    if: needs.docker-changes.outputs.docker == 'true'
+    needs: [detect-changes]
+    if: needs.detect-changes.outputs.docker == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -285,4 +294,22 @@ jobs:
 
       - name: Smoke test the entrypoint
         run: docker run --rm sbir-analytics:ci-${{ github.sha }} dagster --version
+
+  verify-setup-script:
+    name: Verify Developer Setup Script
+    needs: [detect-changes]
+    if: needs.detect-changes.outputs.setup == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Run setup script
+        run: bash scripts/setup_dev.sh
+
+      # Reproduce the original ci.yml assertions: venv activates, pydantic imports.
+      - name: Assert venv activates and pydantic imports
+        run: |
+          source .venv/bin/activate
+          python -c "import pydantic"
 

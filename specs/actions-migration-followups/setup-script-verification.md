@@ -1,6 +1,7 @@
 # Verify the developer setup path
 
-Tracking stub. Nothing here is implemented yet.
+**Resolved.** Option 1 implemented in `ci.yml` — see the `detect-changes` /
+`verify-setup-script` jobs.
 
 `scripts/setup_dev.sh` was checked by `ci.yml` · `verify-setup-script` until
 GitHub Actions was rescoped to tests only. Nothing verifies it now, so the
@@ -10,20 +11,13 @@ exercises daily, because everyone already has a working environment.
 The old job ran the script on a clean runner, then confirmed the venv activated
 and `pydantic` imported.
 
-## Scope
+## Decision
 
-- [ ] Decide where this belongs. It is genuinely a *test* — "does a clean
-      checkout produce a working environment" — but it needs a clean machine,
-      which is the one thing local runs never have.
-- [ ] Options, roughly in order of preference:
-  - A path-filtered CI job gated on `scripts/setup_dev.sh`, `pyproject.toml`,
-    `uv.lock` — same shape as the `docker` job, near-zero cost, fires exactly
-    when the setup path can break
-  - A documented manual check in the contributing guide
-  - Nothing, and accept the rot
-- [ ] If CI: reuse the `docker-changes` filter pattern rather than adding a
-      second detect job
-- [ ] Keep the original assertions — venv activates, `pydantic` imports
+Option 1 chosen: a path-filtered CI job gated on `scripts/setup_dev.sh`,
+`pyproject.toml`, and `uv.lock`, sharing the existing `detect-changes` filter
+job (renamed from `docker-changes`). Near-zero cost on PRs that don't touch
+those paths; fires exactly when the setup path can break. Original assertions
+kept: venv activates, `pydantic` imports.
 
 ## Related
 
