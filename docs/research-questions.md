@@ -104,6 +104,8 @@ today from what is still a research target.
 committees, OSTP, congressional science / small-business committees, CSIS-style
 industrial-base analysts.*
 
+<a id="the-master-question-industrial-capability-vs-vulnerability"></a>
+
 **Master question:** Across the CET areas, where does SBIR/STTR build domestic
 industrial capability that strengthens the defense industrial base, and where
 are awardees exposed to adversary ownership/control or capability concentration
@@ -142,13 +144,16 @@ perspective, see [F. Capital formation & entrepreneurial finance](#f-capital-for
   In each CET area, how many distinct firms hold awards, how much award money do
   they hold, and how much of that money is concentrated in a few of them —
   measured by **HHI** (the Herfindahl-Hirschman Index, the standard antitrust
-  measure of market concentration; higher means fewer, larger players) and broken
-  out by NAICS sector and by geography (state, congressional district)?
-  Many independent firms in an area means a healthy supplier base. Few firms
-  means a choke point. It is the same number read two ways, and the second
-  reading also flags areas whose suppliers are clustered in one part of the
-  country. GAO's program-wide Phase II HHI of ~11 [L14] is the diffuse baseline
-  that area-level concentration is measured against.
+  measure of market concentration; higher means award dollars are concentrated
+  among fewer or larger firms) and broken out by NAICS sector and by geography
+  (state, congressional district)?
+  More independent awardees suggest a broader in-program supplier base. Fewer
+  awardees and a higher HHI flag potential concentration for review; these
+  award-data signals do not by themselves establish supplier health or a
+  physical choke point. The geographic view also flags areas whose suppliers
+  are clustered in one part of the country. GAO's program-wide Phase II HHI of
+  ~11 [L14] is the diffuse baseline that area-level concentration is measured
+  against.
   **Status:** Answerable now for the classified DoD subset.
   *Deps: CET, ER, NAICS · Refs: [L14], [L16], [L29] · Spec: [dod_supply_chain_initial_analysis.md](research/dod_supply_chain_initial_analysis.md) (reproducible baseline and its limitations)*
 
@@ -379,6 +384,8 @@ NASEM calls this quantity the *leverage ratio*.
 > `packages/sbir-analytics/sbir_analytics/assets/ma_detection.py` stub was a
 > placeholder, never wired into the M&A pipeline, and was removed in PR #317.
 
+<a id="out-of-scope--physical--sub-tier-supply-chain-data-the-project-does-not-ingest"></a>
+
 ### Out of scope — physical & sub-tier supply chain
 
 *These choke-point questions are **not answerable** with award-type data and are
@@ -511,8 +518,11 @@ statutory goal is Phase III commercialization.*
   *Deps: ER, ID · Refs: [L14] · Spec: [phase-transition-latency.md](phase-transition-latency.md)*
 
 - **Phase II → III survival probability**
-  What share of Phase II awardees go on to win Phase III work, and how does that
-  share vary by agency, firm size, and award vintage?
+  What is the probability that a Phase II awardee wins Phase III work within a
+  defined follow-up period, and how does it vary by agency, firm size, and award
+  vintage?
+  Awardees whose follow-up period is not yet complete are still under observation
+  (*right-censored*), not counted as failures.
   *Deps: ER, ID*
 
 - **Latency by technology area**
@@ -759,6 +769,8 @@ Foundational — most questions in A–D depend on work here.*
   Which awards have missing or null critical fields (amount, dates, recipient)?
   *Deps: none*
 
+<a id="e4-data-imputation-tier-23-spec-merged-via-pr-277-implementation-not-yet-started"></a>
+
 ### E4. Data imputation (Tier 2–3)
 
 *Spec merged via PR #277; implementation not yet started.*
@@ -792,6 +804,8 @@ Foundational — most questions in A–D depend on work here.*
   Which downstream consumers (Neo4j, CET, transition detection) should use raw
   versus effective values?
   *Deps: IMP*
+
+<a id="e5-external-data-source-evaluation-tier-2-branch-claudeprocurement-data-sources-eval"></a>
 
 ### E5. External data source evaluation (Tier 2)
 
