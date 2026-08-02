@@ -349,7 +349,7 @@ def main():
     vendor_filter_file = config.paths.resolve_path("transition_vendor_filters")
     if not vendor_filter_file.exists():
         logger.error(f"Vendor filter file not found: {vendor_filter_file}")
-        logger.info("Run: python scripts/archive/extract_sbir_vendors.py")
+        logger.info("Run: python scripts/usaspending/extract_sbir_vendors.py")
         return
     vendor_filter_sha256 = _file_sha256(vendor_filter_file)
 

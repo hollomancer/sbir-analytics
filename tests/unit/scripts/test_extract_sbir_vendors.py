@@ -8,7 +8,7 @@ import pandas as pd
 import pytest
 
 
-SCRIPT_PATH = Path(__file__).parents[4] / "scripts" / "archive" / "extract_sbir_vendors.py"
+SCRIPT_PATH = Path(__file__).parents[3] / "scripts" / "usaspending" / "extract_sbir_vendors.py"
 _SPEC = importlib.util.spec_from_file_location("extract_sbir_vendors", SCRIPT_PATH)
 assert _SPEC and _SPEC.loader
 extract_sbir_vendors = importlib.util.module_from_spec(_SPEC)

@@ -31,6 +31,7 @@ from sbir_etl.utils.procurement_text import (
 
 
 logger = logging.getLogger(__name__)
+FusionScorer = Callable[..., list[float]]
 
 _AWARD_KEY_VERSION = "sbir-source-v2"
 
@@ -822,7 +823,10 @@ def _procurement_key(row: pd.Series) -> str | None:
     return _display(_first_value(row.get("target_id"), row.get("opportunity_title")))
 
 
-def _attach_fusion_scores(rows: pd.DataFrame) -> pd.DataFrame:
+def _attach_fusion_scores(
+    rows: pd.DataFrame,
+    fusion_scorer: FusionScorer | None,
+) -> pd.DataFrame:
     """Attach ``fusion_score`` and ``fusion_ranked`` from the frozen award-grain ranker.
 
     Scores the whole run at once (run-fitted TF-IDF), so only within-run ordering
@@ -843,10 +847,8 @@ def _attach_fusion_scores(rows: pd.DataFrame) -> pd.DataFrame:
         frame["fusion_ranked"] = False
         return frame
 
-    try:
-        from sbir_ml.transition.detection.fusion_scoring import score_pairs_with_fusion
-    except Exception as exc:  # sbir-ml optional at render time
-        return _unranked(rows, f"sbir-ml unavailable: {exc}")
+    if fusion_scorer is None:
+        return _unranked(rows, "no fusion scorer was configured")
 
     award_texts: list[str] = []
     target_texts: list[str] = []
@@ -879,7 +881,7 @@ def _attach_fusion_scores(rows: pd.DataFrame) -> pd.DataFrame:
         )
 
     try:
-        scores = score_pairs_with_fusion(
+        scores = fusion_scorer(
             award_texts, target_texts, naics, notice_types, firm_names=firm_names
         )
     except Exception as exc:
@@ -891,7 +893,12 @@ def _attach_fusion_scores(rows: pd.DataFrame) -> pd.DataFrame:
     return rows
 
 
-def group_candidates_by_awardee(rows: pd.DataFrame, awards: pd.DataFrame) -> list[dict[str, Any]]:
+def group_candidates_by_awardee(
+    rows: pd.DataFrame,
+    awards: pd.DataFrame,
+    *,
+    fusion_scorer: FusionScorer | None,
+) -> list[dict[str, Any]]:
     """Group scored candidate pairs under each awardee, ordered for the packet.
 
     Awardees are consolidated by firm identity (UEI, else normalized company
@@ -917,7 +924,7 @@ def group_candidates_by_awardee(rows: pd.DataFrame, awards: pd.DataFrame) -> lis
 
     if not rows.empty:
         rows = rows.loc[~rows.apply(_notice_names_awardee, axis=1)].reset_index(drop=True)
-        rows = _attach_fusion_scores(rows)
+        rows = _attach_fusion_scores(rows, fusion_scorer)
 
     signals = rows.get("signal_class", pd.Series(index=rows.index, dtype="object"))
     confidence = rows.get("confidence_bucket", pd.Series(index=rows.index, dtype="object"))
@@ -1115,6 +1122,7 @@ class MonthlyReportBuilder:
         summarizer: Callable[[dict[str, Any]], str | None] | None = None,
         max_summaries: int = 10,
         abstract_simplifier: Callable[[str], str | None] | None = None,
+        fusion_scorer: FusionScorer | None,
     ) -> None:
         _month_bounds(report_month)
         if max_summaries < 0:
@@ -1124,6 +1132,7 @@ class MonthlyReportBuilder:
         self.summarizer = summarizer
         self.max_summaries = max_summaries
         self.abstract_simplifier = abstract_simplifier
+        self.fusion_scorer = fusion_scorer
         self._summary_attempts = 0
         self._summary_targets: set[str] = set()
         self._token_doc_freq: dict[str, int] = {}
@@ -1530,7 +1539,11 @@ class MonthlyReportBuilder:
         return lines
 
     def _packet(self, center: str, rows: pd.DataFrame, awards: pd.DataFrame) -> str:
-        groups = group_candidates_by_awardee(rows, awards)
+        groups = group_candidates_by_awardee(
+            rows,
+            awards,
+            fusion_scorer=self.fusion_scorer,
+        )
         directed_total = sum(len(group["directed"]) for group in groups)
         competitive_total = sum(len(group["competitive"]) for group in groups)
         relevant_total = directed_total + competitive_total

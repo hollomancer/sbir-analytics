@@ -13,8 +13,8 @@ Archived 2026-07-02 as part of the scripts/ triage:
   Their published outputs live in `docs/research/`.
 - `validation/` — manual spot-check validators referenced only by archived
   docs.
-- Top level — `extract_federal_contracts.py` / `extract_sbir_vendors.py`
-  (superseded extraction paths), `run_cet_drift.py` (superseded by the
+- Top level — `extract_federal_contracts.py` (superseded extraction path),
+  `run_cet_drift.py` (superseded by the
   `validated_cet_drift_detection` Dagster asset), `run_transition.py`
   (superseded by `transition_mvp_job` / `transition_full_job`),
   `run_full_enrichment.py`, `pipeline_status.py`, `pipeline_metrics.py`

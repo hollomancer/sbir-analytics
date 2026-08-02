@@ -37,6 +37,7 @@ COPY scripts/ /app/scripts/
 COPY config/ /app/config/
 COPY specs/phase-iii-census/ /app/specs/phase-iii-census/
 COPY specs/phase3-notice-corpus-fusion/ /app/specs/phase3-notice-corpus-fusion/
+COPY studies/phase-iii-census/ /app/studies/phase-iii-census/
 COPY workspace.server.yaml /app/workspace.server.yaml
 COPY data/reference/ /app/data/reference/
 COPY pyproject.toml /app/

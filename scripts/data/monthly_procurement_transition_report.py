@@ -9,6 +9,7 @@ import pandas as pd
 
 from sbir_etl.reporting.procurement_transition import MonthlyReportBuilder, build_award_cohorts
 from sbir_etl.reporting.procurement_transition.ai import build_public_evidence_summarizer
+from sbir_ml.transition.detection.fusion_scoring import score_pairs_with_fusion
 
 
 def _read(path: Path | None, *, required: bool = False) -> pd.DataFrame:
@@ -55,6 +56,7 @@ def main() -> int:
         output_root=args.output_root,
         summarizer=summarizer,
         max_summaries=args.ai_max_summaries,
+        fusion_scorer=score_pairs_with_fusion,
     ).write(
         award_cohorts=cohorts,
         candidates=_read(args.candidates, required=True),

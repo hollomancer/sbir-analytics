@@ -169,9 +169,9 @@ def test_missing_identifiers_do_not_become_the_literal_na_token():
 
 def _write(tmp_path, awards: pd.DataFrame, candidates: pd.DataFrame, opportunities) -> object:
     cohorts = build_award_cohorts(awards, pd.DataFrame(), report_month="2026-06")
-    return MonthlyReportBuilder(report_month="2026-06", output_root=tmp_path).write(
-        award_cohorts=cohorts, candidates=candidates, opportunities=opportunities
-    )
+    return MonthlyReportBuilder(
+        report_month="2026-06", output_root=tmp_path, fusion_scorer=None
+    ).write(award_cohorts=cohorts, candidates=candidates, opportunities=opportunities)
 
 
 def _candidates() -> pd.DataFrame:
@@ -267,7 +267,7 @@ def test_awardee_with_several_awards_is_one_section():
         ]
     )
 
-    groups = group_candidates_by_awardee(rows, awards)
+    groups = group_candidates_by_awardee(rows, awards, fusion_scorer=None)
 
     # One firm, one section — and the procurement it reaches through two awards
     # is listed once.
@@ -290,7 +290,7 @@ def test_direct_grouping_resolves_unique_legacy_id_against_keyed_award():
         ]
     )
 
-    groups = group_candidates_by_awardee(rows, awards)
+    groups = group_candidates_by_awardee(rows, awards, fusion_scorer=None)
 
     assert len(groups) == 1
     assert len(groups[0]["directed"]) == 1
@@ -312,7 +312,7 @@ def test_direct_grouping_rejects_ambiguous_legacy_id():
     )
 
     with pytest.raises(ValueError, match="unique award-grain"):
-        group_candidates_by_awardee(rows, awards)
+        group_candidates_by_awardee(rows, awards, fusion_scorer=None)
 
 
 def test_unmatched_awardees_at_a_matched_center_are_still_listed(tmp_path):
@@ -378,7 +378,9 @@ def test_legacy_ambiguity_is_preserved_after_monthly_cohort_filter(tmp_path):
     assert len(cohorts) == 1
     assert cohorts.loc[0, "public_id_award_count"] == 2
     with pytest.raises(ValueError, match="legacy prior_award_id is ambiguous"):
-        MonthlyReportBuilder(report_month="2026-06", output_root=tmp_path).write(
+        MonthlyReportBuilder(
+            report_month="2026-06", output_root=tmp_path, fusion_scorer=None
+        ).write(
             award_cohorts=cohorts,
             candidates=_candidates(),
             opportunities=_opportunities(),
@@ -420,7 +422,9 @@ def test_report_supports_safe_mixed_key_rollout(tmp_path):
         ignore_index=True,
     )
 
-    output = MonthlyReportBuilder(report_month="2026-06", output_root=tmp_path).write(
+    output = MonthlyReportBuilder(
+        report_month="2026-06", output_root=tmp_path, fusion_scorer=None
+    ).write(
         award_cohorts=cohorts,
         candidates=candidates,
         opportunities=opportunities,
@@ -455,7 +459,9 @@ def test_path_renders_the_award_that_produced_the_candidate(tmp_path):
     award_b_key = cohorts.loc[cohorts["title"] == "Navigation integration", "award_key"].item()
     candidates = _candidates().assign(prior_award_key=award_b_key)
 
-    output = MonthlyReportBuilder(report_month="2026-06", output_root=tmp_path).write(
+    output = MonthlyReportBuilder(
+        report_month="2026-06", output_root=tmp_path, fusion_scorer=None
+    ).write(
         award_cohorts=cohorts,
         candidates=candidates,
         opportunities=_opportunities(),

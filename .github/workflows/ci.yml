@@ -101,8 +101,11 @@ jobs:
       - name: Run MyPy type checker
         run: uv run python -m mypy sbir_etl
 
-      - name: Run repository hygiene guards
-        run: uv run python scripts/ci/check_removed_src_references.py
+      - name: Run architecture and repository hygiene guards
+        run: |
+          uv run python scripts/ci/check_architecture_boundaries.py
+          uv run python scripts/ci/check_removed_src_references.py
+          uv run python scripts/ci/validate_study_manifests.py
 
   package-type-checks:
     name: Package MyPy - ${{ matrix.package.name }}

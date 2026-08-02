@@ -200,6 +200,13 @@ lint: ## Run linting and type checking
 	$(call run,uv run ruff check .)
 	$(call run,uv run mypy sbir_etl/)
 
+.PHONY: lint-boundaries
+lint-boundaries: ## Enforce package and archive dependency boundaries
+	@$(call info,Checking architecture boundaries)
+	$(call run,uv run python scripts/ci/check_architecture_boundaries.py)
+	$(call run,uv run python scripts/ci/check_removed_src_references.py)
+	$(call run,uv run python scripts/ci/validate_study_manifests.py)
+
 .PHONY: format
 format: ## Format code
 	@$(call info,Formatting code)

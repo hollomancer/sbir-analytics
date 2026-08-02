@@ -7,8 +7,8 @@ Outputs vendor identifiers (UEI, DUNS, company names) to be used for filtering
 the 200GB USAspending dataset to only SBIR-relevant contracts.
 
 Usage:
-    python scripts/archive/extract_sbir_vendors.py
-    python scripts/archive/extract_sbir_vendors.py --awards-file data/raw/sbir/award_data.csv
+    python scripts/usaspending/extract_sbir_vendors.py
+    python scripts/usaspending/extract_sbir_vendors.py --awards-file data/raw/sbir/award_data.csv
 """
 
 import argparse

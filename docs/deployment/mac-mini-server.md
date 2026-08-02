@@ -209,7 +209,7 @@ SSD-backed `/app/data` mount:
 ```bash
 # Build the complete vendor frame from the current SBIR.gov source in bounded chunks.
 docker exec sbir-server-dagster-code python \
-  scripts/archive/extract_sbir_vendors.py \
+  scripts/usaspending/extract_sbir_vendors.py \
   --awards-file /app/data/raw/sbir/award_data.csv \
   --output /app/data/transition/sbir_vendor_filters.json
 
