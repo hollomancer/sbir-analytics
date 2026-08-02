@@ -14,7 +14,8 @@
 
 > The fusion ranker is re-scored on the **frozen #481 independent ground-truth set**
 > (`score_t6.py`, same 45-case headline + strata) after (a) candidate text is enriched
-> from real sources and (b) description-independent features are added. **Done when the
+> from **leakage-safe, contract-intrinsic** sources only and (b) description-independent
+> features are added. **Done when the
 > sparse-description cells lift measurably** — the target is **DLA/logistics and
 > thin-description p@1 rising toward the rich-text band (~0.6)** — **without regressing
 > rich-text cells**, with the lift reported per-domain with bootstrap CIs and compared to
@@ -33,28 +34,47 @@ thin descriptions **0.29**. The two highest-leverage fixes T7 identified are bot
 **data, not the model**: give the matcher real words, and add signals that survive empty
 text. This spec does exactly those two.
 
-## The trap this spec must not fall into
+## The two traps this spec must not fall into
 
-**The enrichment sources may be as empty as what they replace.** J&A documents,
-solicitation notices, and topic text only help if they *exist and are retrievable* for
-these specific contracts — and Phase III sole-source awards frequently have no competing
-solicitation at all. **Mitigation:** T1 is a cheap **source-coverage inventory** that
-measures, per enrichment source, what fraction of the 45 scored contracts (and the wider
-census) it can actually enrich — before any assembler is built. This mirrors the step-0
-coverage check that saved effort in #481.
+1. **The enrichment sources may be as empty as what they replace.** J&A documents,
+   solicitation notices, and topic text only help if they *exist and are retrievable*
+   for these specific contracts — and Phase III sole-source awards frequently have no
+   competing solicitation at all. **Mitigation:** T1 is a cheap **source-coverage
+   inventory** measuring, per source, what fraction of the 45 scored contracts (and the
+   census) it can enrich *on the sparse cells specifically* — before any assembler is
+   built. Mirrors the step-0 coverage check that saved effort in #481.
+
+2. **Content leakage — the load-bearing trap.** The richest source (the firm's prior
+   **SBIR topic description**) can only be attached to a contract by going *through the
+   firm→contract link — the very thing the ranker predicts*. Enriching only the *true*
+   contract with the firm's own topic text (while the decoys get nothing) plants the
+   answer in the candidate and inflates precision for a fake reason. This is distinct
+   from identity-token leakage (firm name / PIID) — it is **content** leakage, and the
+   `_scrub_identity` scrub does **not** catch it. **Mitigation:** every source is
+   classified **contract-intrinsic** (derivable from the contract alone — its own title,
+   PSC/NAICS, its own *referenced* solicitation/topic number as recorded on the contract)
+   vs **firm-linked** (pulled via the answer). **Only contract-intrinsic sources may feed
+   the assembler.** Faithfulness test: in real packet use the ranker sees only
+   `(firm abstract) × (open solicitation)` — any enrichment that would be unavailable at
+   that moment is leakage, full stop.
 
 ## Scope
 
 ### In scope
 
-1. **SHALL** inventory candidate-text enrichment sources and measure per-source coverage
-   over the T6 scored set + the Phase III census: prior-award **SBIR topic description**
-   (via `Topic Code` on the resolved prior award), **PSC/NAICS descriptions**, contract
-   **Award Title**, and any **solicitation/J&A notice text** already in the recovered
-   corpus. No new external scraping unless a source is both high-coverage and cheap.
-2. **SHALL** build a deterministic **`enriched_text`** assembler per contract from the
-   available high-coverage sources, with provenance flags (which sources contributed),
-   feeding the existing fusion text-similarity path in place of the bare FPDS description.
+1. **SHALL** inventory candidate-text enrichment sources and, per source, measure both
+   **(a) coverage** — what fraction of the 45 scored contracts (and the census) it
+   enriches, reported *on the sparse cells specifically* — and **(b) leakage-safety** —
+   classify each as **contract-intrinsic** (title, PSC/NAICS, the contract's own
+   *referenced* solicitation/topic number) or **firm-linked** (prior-award topic pulled
+   through the firm→contract link). Sources evaluated: SBIR topic description, PSC/NAICS
+   descriptions, contract Award Title, recovered solicitation/J&A notice text. No new
+   external scraping unless a source is high-coverage, cheap, **and contract-intrinsic**.
+2. **SHALL** build a deterministic **`enriched_text`** assembler from **only the
+   contract-intrinsic, leakage-safe** high-coverage sources, with provenance flags
+   (which sources contributed), feeding the existing fusion text-similarity path in place
+   of the bare FPDS description. Firm-linked sources are **excluded from the assembler**
+   regardless of how rich they are.
 3. **SHALL** add **description-independent features** — firm prior-award lineage,
    agency/topic continuity, timing gap (SBIR→transition), NAICS ancestry — as additional
    fusion inputs that carry signal when text is empty.
@@ -83,7 +103,9 @@ coverage check that saved effort in #481.
 | Risk | Mitigation |
 |---|---|
 | Enrichment sources as empty as FPDS descriptions | T1 coverage gate before building; stop if low |
-| Enriched text re-introduces firm-identity leakage | re-run the `_scrub_identity` scrub; re-check the raw→scrubbed delta |
+| **Content leakage** — firm-linked text plants the answer in the candidate | T1 classifies every source contract-intrinsic vs firm-linked; **only intrinsic feeds the assembler**; the `_scrub_identity` scrub does NOT catch this |
+| Identity-token leakage (firm name / PIID) in enriched text | re-run the `_scrub_identity` scrub; re-check the raw→scrubbed delta |
+| A source looks safe but is only populated for already-rich cells | T1 reports coverage on the sparse cells specifically, not on average |
 | Non-text features overfit the small 45-case set | held-out reporting; treat lift as directional, widen the set if promising |
 | Lift in sparse cells regresses rich-text cells | report per-domain before/after; require no rich-text regression |
 
