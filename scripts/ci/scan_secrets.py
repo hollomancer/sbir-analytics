@@ -19,6 +19,12 @@ import tempfile
 from pathlib import Path
 
 
+# CodeQL's py/clear-text-logging-sensitive-data flags the status messages below
+# because SECRET_PATTERNS entries ("NEO4J_PASSWORD", "AWS_SECRET_ACCESS_KEY", ...)
+# reach a print(). Those are pattern *names* declared in this file, not values, so
+# the matching sites carry an inline suppression. Matched content is never printed
+# — see _match_locations.
+
 # Patterns to scan for (common secret patterns)
 SECRET_PATTERNS = [
     "NEO4J_PASSWORD",
@@ -65,6 +71,34 @@ def run_command(cmd: list[str], check: bool = True) -> subprocess.CompletedProce
     """Run a shell command and return the result."""
     result = subprocess.run(cmd, capture_output=True, text=True, check=check)
     return result
+
+
+def _match_locations(grep_lines: list[str]) -> list[str]:
+    """Reduce ``grep -RInZ`` output to ``path:lineno`` locations.
+
+    grep emits ``path\\0lineno:content``, so echoing it verbatim would publish a
+    matched secret's value into the CI log. The location is the actionable part;
+    the value is not.
+
+    The ``-Z`` flag is what makes this unambiguous. Without it grep emits
+    ``path:lineno:content`` and the split is guesswork in both directions: a
+    colon may appear in the path (POSIX permits it) *and* in the matched
+    content (``AWS_SECRET_ACCESS_KEY=a:b:c``). Splitting from the left loses
+    the line number for a colon-bearing path; splitting from the right leaks
+    part of the secret, which is the failure this function exists to prevent.
+    A NUL terminator after the filename removes the ambiguity entirely.
+    """
+    locations = []
+    for line in grep_lines:
+        path, sep, remainder = line.partition("\0")
+        if not sep:
+            # No NUL: not grep -Z output. Emit nothing beyond the raw field so
+            # a format change cannot silently start leaking content.
+            locations.append(line.partition(":")[0])
+            continue
+        lineno = remainder.partition(":")[0]
+        locations.append(f"{path}:{lineno}" if lineno else path)
+    return locations
 
 
 def scan_with_detect_secrets(baseline_path: Path | None = None) -> tuple[int, str]:
@@ -221,11 +255,11 @@ def scan_patterns() -> tuple[int, str]:
         try:
             if is_regex:
                 # Use -P for Perl regex
-                cmd = ["grep", "-RInP", pattern] + exclude_args + ["."]
+                cmd = ["grep", "-RInPZ", pattern] + exclude_args + ["."]
                 result = run_command(cmd, check=False)
             else:
                 # Regular string match
-                cmd = ["grep", "-RIn", pattern] + exclude_args + ["."]
+                cmd = ["grep", "-RInZ", pattern] + exclude_args + ["."]
                 result = run_command(cmd, check=False)
 
             if result.returncode == 0 and result.stdout:
@@ -241,8 +275,8 @@ def scan_patterns() -> tuple[int, str]:
                     found_secrets = True
                     patterns_found.append(pattern)
                     print(f"Pattern '{pattern}' found in:")
-                    for line in lines[:5]:  # Show first 5 matches
-                        print(f"  {line}")
+                    for location in _match_locations(lines)[:5]:  # Show first 5 matches
+                        print(f"  {location}")
 
         except FileNotFoundError:
             return (1, "grep not found")
@@ -290,6 +324,7 @@ def main() -> int:
             exit_code = precommit_exit
             if precommit_exit == 1:
                 # Hard failure - new secrets found
+                # codeql[py/clear-text-logging-sensitive-data]: status text only
                 print(f"ERROR: {precommit_msg}", file=sys.stderr)
                 # Also print stdout/stderr for debugging
                 return exit_code
@@ -300,6 +335,7 @@ def main() -> int:
         if detect_exit != 0:
             exit_code = detect_exit
             if detect_exit == 1:
+                # codeql[py/clear-text-logging-sensitive-data]: status text only
                 print(f"ERROR: {detect_msg}", file=sys.stderr)
                 # Run detect-secrets with verbose output to show what was found
                 print("\nRunning detect-secrets scan to show detected secrets:", file=sys.stderr)
@@ -332,11 +368,13 @@ def main() -> int:
 
     # Print summary
     for msg in messages:
+        # codeql[py/clear-text-logging-sensitive-data]: pattern names, not values
         print(msg)
 
     if exit_code == 0:
         print("✓ Secret scan completed successfully")
     else:
+        # codeql[py/clear-text-logging-sensitive-data]: exit code only
         print(f"✗ Secret scan failed with exit code {exit_code}", file=sys.stderr)
 
     return exit_code
