@@ -92,7 +92,7 @@ PHASE_II_AWARDS_PATH = Path("data/processed/phase_ii_awards.parquet")
 DATA_CUT_ENV = "SBIR_ETL__PHASE_III_CENSUS__DATA_CUT_DATE"
 SBIR_AWARDS_ENV = "SBIR_ETL__PHASE_TRANSITION__SBIR_AWARDS_PATH"
 PHASE_II_OUTPUT_ENV = "SBIR_ETL__PHASE_TRANSITION__PHASE_II_OUTPUT_PATH"
-FROZEN_SPEC_REVISION = "phase-0-r5"
+FROZEN_SPEC_REVISION = "phase-0-r7"
 FROZEN_SPEC_RELATIVE_PATH = Path("specs/phase-iii-census/design.md")
 AMENDMENTS_LOG_RELATIVE_PATH = Path("specs/phase-iii-census/amendments.md")
 
@@ -112,8 +112,8 @@ def _find_resource_root() -> Path:
 _REPOSITORY_ROOT = _find_resource_root()
 FROZEN_SPEC_PATH = _REPOSITORY_ROOT / FROZEN_SPEC_RELATIVE_PATH
 AMENDMENTS_LOG_PATH = _REPOSITORY_ROOT / AMENDMENTS_LOG_RELATIVE_PATH
-FROZEN_SPEC_SHA256 = "d18734e92dc9951f2b3bd4ae74ba47b024a6f126d2d0a3e7b77b4e2646ef54d7"
-AMENDMENTS_LOG_SHA256 = "df668302853dbf6f2fe6ef34e467f2f5f0606021958847fb1883fedcfb77ba51"
+FROZEN_SPEC_SHA256 = "33b5918026fe2f98e3fa693afbe498653a328274adec03a5c827bf2ac0df6df9"
+AMENDMENTS_LOG_SHA256 = "24ead99679a4e6948b3704e1375a2f9f7ba1e2b426273d490d87156efd21e5ab"
 
 
 def _verified_raw_digest(path: Path, expected_sha256: str, *, label: str) -> str:
@@ -253,6 +253,19 @@ def _load_contracts() -> tuple[pd.DataFrame, Path]:
         raise CensusInputError(f"Failed to read contract source at {path}: {exc}") from exc
 
 
+def _assert_prior_frames_equal(persisted: pd.DataFrame, in_memory: pd.DataFrame) -> None:
+    """Compare exact values after canonicalizing only dtype-specific missing values."""
+
+    persisted_comparable = persisted.astype(object).where(persisted.notna(), None)
+    in_memory_comparable = in_memory.astype(object).where(in_memory.notna(), None)
+    pd.testing.assert_frame_equal(
+        persisted_comparable.reset_index(drop=True),
+        in_memory_comparable.reset_index(drop=True),
+        check_dtype=False,
+        check_exact=True,
+    )
+
+
 def _verify_phase_ii_provenance(priors: pd.DataFrame, contracts_path: Path) -> tuple[Path, Path]:
     """Require the census-dedicated v2 source and its exact persisted prior frame."""
 
@@ -322,11 +335,10 @@ def _verify_phase_ii_provenance(priors: pd.DataFrame, contracts_path: Path) -> t
         raise CensusInputError("Phase II prior frame shape does not match its manifest")
     try:
         persisted_priors = pd.read_parquet(phase_ii_path)
-        pd.testing.assert_frame_equal(
-            persisted_priors.reset_index(drop=True),
-            priors.reset_index(drop=True),
-            check_dtype=False,
-        )
+        # Parquet round-trips object-backed missing values as dtype-specific nulls.
+        # Canonicalize only missing representations; all nonmissing values, row order,
+        # and column order must still match exactly.
+        _assert_prior_frames_equal(persisted_priors, priors)
     except (OSError, AssertionError) as exc:
         raise CensusInputError("Phase II prior frame differs from its persisted artifact") from exc
     return selected_sbir, phase_ii_path

@@ -90,7 +90,7 @@ def test_frozen_spec_verification_hashes_exact_raw_bytes() -> None:
     record = census_assets.verify_frozen_spec()
 
     assert record == {
-        "revision": "phase-0-r5",
+        "revision": "phase-0-r7",
         "spec_path": "specs/phase-iii-census/design.md",
         "spec_sha256": census_assets.FROZEN_SPEC_SHA256,
         "amendments_path": "specs/phase-iii-census/amendments.md",
@@ -198,6 +198,41 @@ def test_census_prior_provenance_rejects_non_object_phase_ii_manifest(
         census_assets._verify_phase_ii_provenance(
             _prior_source(), Path("synthetic-contracts.parquet")
         )
+
+
+def test_prior_frame_comparison_accepts_only_parquet_null_representation_changes() -> None:
+    persisted = pd.DataFrame(
+        {
+            "source_row_sha256": pd.Series(["a" * 64, None], dtype="string[pyarrow]"),
+            "source_transaction_count": pd.Series([1.0, float("nan")], dtype="float64"),
+        }
+    )
+    in_memory = pd.DataFrame(
+        {
+            "source_row_sha256": ["a" * 64, float("nan")],
+            "source_transaction_count": [1, None],
+        },
+        dtype=object,
+    )
+
+    census_assets._assert_prior_frames_equal(persisted, in_memory)
+
+    substantive_changes = []
+
+    changed_value = in_memory.copy()
+    changed_value.loc[0, "source_transaction_count"] = 1.0000001
+    substantive_changes.append(changed_value)
+    substantive_changes.append(in_memory.iloc[::-1].reset_index(drop=True))
+    substantive_changes.append(in_memory.iloc[:, ::-1])
+
+    for changed in substantive_changes:
+        with pytest.raises(AssertionError):
+            census_assets._assert_prior_frames_equal(persisted, changed)
+
+    changed_text = in_memory.copy()
+    changed_text.loc[0, "source_row_sha256"] = "b" * 64
+    with pytest.raises(AssertionError):
+        census_assets._assert_prior_frames_equal(persisted, changed_text)
 
 
 def test_asset_writes_exactly_two_parquet_tables_without_headline_metadata(

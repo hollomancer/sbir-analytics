@@ -101,6 +101,18 @@ def _normalize_source_key(value: Any) -> str:
     return "" if normalized in _NULL_KEY_TOKENS else normalized
 
 
+def _normalize_taxonomy_value(value: Any) -> str:
+    """Normalize a NAICS or PSC value for comparison and for exact-key fill.
+
+    Deliberately separate from `_normalize_source_key` despite the identical body:
+    that function normalizes award identity, and a change made for PIID matching must
+    not silently alter which taxonomy values are judged conflicting or what gets
+    persisted into `naics_code`/`psc_code`.
+    """
+
+    return _normalize_source_key(value)
+
+
 def _coalesce_columns(df: pd.DataFrame, *names: str) -> pd.Series:
     """Take the first nonblank named source value per row in fixed order."""
 
@@ -380,7 +392,7 @@ def _prepare_sbir_gov_rows(sbir_awards: pd.DataFrame) -> pd.DataFrame:
 
 
 def _unify(contract_phase_ii: pd.DataFrame, sbir_gov_phase_ii: pd.DataFrame) -> pd.DataFrame:
-    """Reconcile SBIR.gov rows to generated federal awards without PIID guessing."""
+    """Reconcile all exact-key SBIR.gov rows to unique generated federal awards."""
 
     if contract_phase_ii.empty and sbir_gov_phase_ii.empty:
         return pd.DataFrame(columns=PHASE_II_COLUMNS)
@@ -414,12 +426,12 @@ def _unify(contract_phase_ii: pd.DataFrame, sbir_gov_phase_ii: pd.DataFrame) -> 
     for source_key in shared_source_keys:
         federal_indexes = list(federal.index[federal_source_keys.eq(source_key)])
         supplemental_indexes = list(supplemental.index[supplemental_source_keys.eq(source_key)])
-        if len(federal_indexes) != 1 or len(supplemental_indexes) != 1:
+        if len(federal_indexes) != 1:
             generated_ids = sorted(
                 federal.loc[federal_indexes, "award_id"].map(_normalize_source_key)
             )
             raise PhaseIIInputError(
-                f"SBIR.gov source award {source_key} requires one-to-one reconciliation; "
+                f"SBIR.gov source award {source_key} requires exactly one federal match; "
                 f"found {len(federal_indexes)} federal rows {generated_ids} and "
                 f"{len(supplemental_indexes)} supplemental rows"
             )
@@ -428,10 +440,12 @@ def _unify(contract_phase_ii: pd.DataFrame, sbir_gov_phase_ii: pd.DataFrame) -> 
         for column in ("naics_code", "psc_code"):
             candidates = supplemental.loc[supplemental_indexes, column]
             supplemental_normalized = {
-                normalized for value in candidates if (normalized := _normalize_source_key(value))
+                normalized
+                for value in candidates
+                if (normalized := _normalize_taxonomy_value(value))
             }
             federal_value = federal.at[federal_index, column]
-            federal_normalized = _normalize_source_key(federal_value)
+            federal_normalized = _normalize_taxonomy_value(federal_value)
             observed_values = set(supplemental_normalized)
             if federal_normalized:
                 observed_values.add(federal_normalized)
