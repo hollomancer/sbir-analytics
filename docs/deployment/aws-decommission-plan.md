@@ -23,34 +23,43 @@ the mini before the workflow can be deleted.
 
 ## Sequencing constraints
 
-Two ordering rules prevent a data-loss gap:
+Only two ordering rules are load-bearing:
 
-1. **Phase 0 (drain) precedes Phase 3.** Once S3 read paths are stripped, nothing
-   in the repo can reach the bucket.
-2. **Phase 2 (rehost ingestion) precedes Phase 4's deletion of
+1. **Phase 2 (rehost ingestion) precedes Phase 4's deletion of
    `data-refresh.yml`.** Deleting the workflow first leaves no refresh path at all.
+2. **Phase 0 (drain) precedes Phase 6 (bucket teardown)**, and only for the
+   non-reproducible history identified below.
 
-Phase 1 is independent of both and can land immediately.
+Phases 1, 2, 3, and 5 are all independent of the drain. In particular **Phase 2
+does not depend on Phase 0** — it is additive, reads no S3, and can proceed in
+parallel. Phase 3 does not either: draining runs through `aws s3 cp`, not repo
+code. The only thing Phase 3 costs is that `find_latest_*` encodes the S3 key
+layout, and git history preserves that.
 
-## Phase 0 — Drain S3 to the SSD
+## Phase 0 — Preserve the non-reproducible history
 
-**Status: blocked on operator action. The bucket is live.**
+**Status: operator action. The bucket is live.**
 
-Copy current objects from `s3://sbir-etl-prod-data/` to
-`/Volumes/SSDmini/sbir-analytics/data/`, preserving the prefix layout:
+Most of `s3://sbir-etl-prod-data/` is a **cache, not a system of record.** Once
+Phase 2 lands, the mini fetches from the original upstreams, so `raw/sam_gov/`,
+`raw/usaspending/`, `raw/uspto/`, `raw/transition/`, and everything derived under
+`enriched/` and `processed/sbir/` are re-fetchable or re-computable. Copying them
+is optional insurance.
 
-| S3 prefix | SSD destination |
-|---|---|
-| `raw/awards/` | `data/raw/sbir/` |
-| `raw/sam_gov/` | `data/raw/sam_gov/` |
-| `raw/usaspending/` | `data/raw/usaspending/` |
-| `raw/uspto/` | `data/raw/uspto/` |
-| `raw/transition/` | `data/transition/` |
-| `processed/`, `enriched/` | `data/processed/` |
+Two prefixes hold dated history that **cannot** be rebuilt:
 
-Verify: the SSD tree holds the newest object from each prefix, and byte sizes
-match `aws s3 ls --recursive` output. Confirm free space on the SSD before
-starting — the USAspending prefix is the large one.
+| S3 prefix | Why it is irreplaceable | SSD destination |
+|---|---|---|
+| `raw/awards/{YYYY-MM-DD}/award_data.csv` | A vintage series of SBIR.gov snapshots, each carrying a `sha256` in object metadata (`download_sbir.py:74`). SBIR.gov serves only the current file; past vintages do not exist upstream. | `data/raw/sbir/history/` |
+| `processed/phase_transition/{YYYY-MM-DD}/` | Dated analysis outputs (`monthly-analysis.yml:360`). Recomputable only if the matching input vintage survives, which depends on the row above. | `data/processed/phase_transition/history/` |
+
+Treat the dated keys under `raw/usaspending/recipient_lookup/` and
+`naics_lookup/` as probably irreplaceable as well — confirm what USAspending
+retains upstream before assuming either way.
+
+Verify: every dated key under the two prefixes above exists on the SSD with
+matching byte size. This is a small copy, not a multi-gigabyte haul; the bulk
+caches do not need to move.
 
 ## Phase 1 — Delete the AWS control plane
 
