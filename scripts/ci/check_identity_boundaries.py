@@ -15,6 +15,9 @@ REVIEWED_DIRECT_SCORER_FILES = frozenset(
         "sbir_etl/transformers/patent_transformer.py",
         # Form D confidence compares principal-investigator and related-person names.
         "sbir_etl/enrichers/sec_edgar/form_d_scoring.py",
+        # Same-work detector scores award titles and abstracts, not company
+        # identity; its firm names already go through normalize_name.
+        "scripts/data/find_same_work_awards.py",
         # Contract tests compare shared adapters with the upstream scorer implementation.
         "tests/unit/identity/test_company_names.py",
     }
