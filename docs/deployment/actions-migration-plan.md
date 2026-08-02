@@ -142,6 +142,14 @@ migration is trying to avoid.
 Lookback defaults to 7 days, overridable with
 `SBIR_ETL__REPORTS__WEEKLY_AWARDS_DAYS` for a backfill.
 
+**Executed, not just unit-tested.** Running the job for real surfaced an
+undeclared prerequisite: it resolves the SBIR awards CSV from disk and fails
+with `FileNotFoundError` when no vintage exists. The crons already order this
+correctly — `weekly_sbir_awards_download` at Monday 09:00 UTC, the report at
+12:00 — but both default to STOPPED, so enabling the report alone fails every
+week. Recorded in the runbook. The failure was loud and wrote no partial
+report, which is the error handling behaving as designed.
+
 **Remaining operator step:** run it by hand on the host, confirm the report
 matches a recent Actions artifact for the same window, then set
 `SBIR_ETL__DAGSTER__SCHEDULES__WEEKLY_AWARDS_REPORT_ENABLED=true`.

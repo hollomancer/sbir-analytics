@@ -314,6 +314,12 @@ Before enabling:
   `SBIR_ETL__REPORTS__WEEKLY_AWARDS_DAYS` for a backfill.
 - The job fails if the script writes nothing, so an empty report is a loud
   failure rather than a silent success.
+- **It depends on `weekly_sbir_awards_download`.** The report resolves the SBIR
+  awards CSV locally and fails with `FileNotFoundError: Could not resolve SBIR
+  awards CSV` when no vintage is present and the download is unreachable —
+  confirmed by executing the job. The crons already order this correctly
+  (download Monday 09:00 UTC, report Monday 12:00 UTC), but enabling the report
+  *without* also enabling `weekly_sbir_awards_download` will fail every week.
 
 ### Heavy assets
 
