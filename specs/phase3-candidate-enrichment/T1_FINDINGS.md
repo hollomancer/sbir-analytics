@@ -47,16 +47,30 @@ where it matters.
 **No leakage-safe source both covers the sparse cells and discriminates.** GO condition
 not met → **STOP T2.**
 
-## What survives (two expensive text options — flagged, not adopted)
+## Spike (ran the deeper-FPDS + solicitation check — both dead ends)
 
-1. **Deeper FPDS field pull** — the universe carries only the terse transaction
-   description. A fuller FPDS/USASpending pull *might* expose richer intrinsic text
-   (requirement descriptions, CLIN text). Uncertain; test coverage before building.
-2. **J&A justification documents** — real prose, intrinsic — but retrieval for
-   sole-source Phase III is uncertain and would be external scraping. Only if #1 fails
-   and coverage looks real.
+Fetched the **full USASpending award record** (`/api/v2/awards/`) for 12 sparse GT
+contracts (DLA/MDA/DHA/DTRA/SOCOM), live API:
 
-Neither is the primary path. Both are optional spikes.
+1. **Deeper award text — dead end.** The API `description` is *identical* to our cached
+   terse one (14–40 chars). The only field ≥80 chars anywhere in the record is
+   `naics_description` = "RESEARCH AND DEVELOPMENT IN THE PHYSICAL, ENGINEERING, AND LIFE
+   SCIENCES" — the generic 541715 label, **the same string on all 12**. No richer
+   intrinsic contract text exists at the award level.
+2. **Contract solicitation — dead end (the pointer is missing).** The solicitation *is* a
+   rich source, but `solicitation_identifier` is populated on **1 of 12 (~8%)** — FPDS
+   does not record which solicitation these Phase III awards were let under (most are
+   SBIR set-aside "full-and-open after exclusion of sources" or sole-source). The one
+   with an ID (`HDTRA111R0026`) would need a separate, uncertain 2011-era SAM.gov pull.
+   Reaching a solicitation any *other* way routes through the firm's prior SBIR topic —
+   which is **leakage** and is the *wrong* solicitation (the Phase I/II topic, trivially
+   similar to the firm's own abstract). Intrinsic + rich + covered: not achievable.
+
+**J&A justification documents** — the remaining theoretical prose source — would be
+external scraping with the same missing-pointer problem (no captured solicitation/J&A
+reference on the contract). Not pursued.
+
+**Spike verdict: STOP confirmed on both the award-text and solicitation angles.**
 
 ## Decision → pivot to T3
 
