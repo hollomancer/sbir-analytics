@@ -12,23 +12,25 @@ estimand: >-
   proxies under every preregistered time-window and agency-continuity cell.
 frozen_artifacts:
   - path: specs/phase-iii-census/design.md
-    sha256: b1cce1e75af840f13223ecfc543b6d801e63cc3329f65f7c0a5b9037c0e9fc48
+    sha256: 33b5918026fe2f98e3fa693afbe498653a328274adec03a5c827bf2ac0df6df9
   - path: specs/phase-iii-census/amendments.md
-    sha256: f9cdf80cf94c75e2e4475ca6f736e2e0fab27a8e8d19650a7841b11b17801605
+    sha256: 24ead99679a4e6948b3704e1375a2f9f7ba1e2b426273d490d87156efd21e5ab
 implementation:
   - path: packages/sbir-analytics/sbir_analytics/assets/phase_iii_census/assets.py
     symbol: phase_iii_census
 identity_policy:
   strategy: exact normalized UEI only; no name or DUNS fallback
-  version: phase-0-r4
+  version: phase-0-r7
   negative_evidence_allowed: false
 materialization:
-  allowed: false
-  blockers:
-    - Phase 2 negative-control eligibility is unresolved.
+  allowed: true
+  blockers: []
 permitted_claims:
   - The estimand, criteria, and implementation are frozen and fixture-verified.
 limitations:
-  - No production census count may be materialized or quoted while the gate is closed.
+  - Production materialization is authorized, but results remain non-citable until the
+    complete audit tables and blocking post-write checks pass.
+  - Negative-control and placebo evidence is unresolved; no headline cell or statutory
+    Phase III interpretation is authorized.
   - Exact UEI matching misses acquisitions, successors, and UEI changes.
   - An uncoded lineage proxy is not proof of a statutory Phase III award.

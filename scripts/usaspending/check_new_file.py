@@ -8,7 +8,6 @@ This script checks the source URL to see if a new file is available by:
 
 Usage:
     # Auto-discover latest available file (recommended)
-    python check_new_file.py --database-type full --s3-bucket sbir-etl-production-data
 
     # Check specific date
     python check_new_file.py --database-type full --date 20251106
@@ -35,8 +34,6 @@ USASPENDING_DOWNLOADS = {
 
 def check_file_availability(
     source_url: str,
-    s3_bucket: str = None,
-    s3_key: str = None,
 ) -> dict:
     """Check if a new file is available at the source URL.
 
@@ -46,14 +43,12 @@ def check_file_availability(
             - last_modified: datetime - Last-Modified header from source
             - content_length: int - file size in bytes
             - is_new: bool - whether this is newer than S3 version
-            - s3_last_modified: datetime - Last-Modified from S3 (if exists)
     """
     result = {
         "available": False,
         "last_modified": None,
         "content_length": None,
         "is_new": False,
-        "s3_last_modified": None,
         "source_url": source_url,
     }
 
@@ -91,139 +86,28 @@ def check_file_availability(
         result["error"] = str(e)
         return result
 
-    # Compare with S3 if bucket and key provided
-    if s3_bucket and s3_key:
-        try:
-            import boto3
-        except ImportError:
-            print("boto3 not installed — skipping S3 comparison", file=sys.stderr)
-            return result
-
-        s3_client = boto3.client("s3")
-        try:
-            s3_obj = s3_client.head_object(Bucket=s3_bucket, Key=s3_key)
-            s3_last_modified = s3_obj["LastModified"]
-            s3_size = s3_obj.get("ContentLength", 0)
-            result["s3_last_modified"] = s3_last_modified
-            result["s3_content_length"] = s3_size
-
-            # Check if S3 file is incomplete (size mismatch)
-            if result["content_length"] and s3_size:
-                if result["content_length"] != s3_size:
-                    # S3 file is incomplete or different - treat as new
-                    result["is_new"] = True
-                    result["size_mismatch"] = True
-                    result["expected_size"] = result["content_length"]
-                    result["actual_size"] = s3_size
-                    return result
-
-            # Check if source file is newer by date
-            if result["last_modified"]:
-                result["is_new"] = result["last_modified"] > s3_last_modified
-
-        except s3_client.exceptions.ClientError as e:
-            # File doesn't exist in S3, so it's new
-            if e.response["Error"]["Code"] == "404":
-                result["is_new"] = True
-            else:
-                result["s3_error"] = str(e)
-
     return result
-
-
-def find_latest_file_in_s3(s3_bucket: str, database_type: str) -> dict | None:
-    """Find the most recent file in S3 for a given database type.
-
-    Returns:
-        dict with s3_key, last_modified, and date_str of the latest file, or None
-        (when no file is found, on S3 errors, or when ``boto3`` is not installed).
-    """
-    try:
-        import boto3
-    except ImportError:
-        print("boto3 not installed — skipping S3 lookup", file=sys.stderr)
-        return None
-
-    s3_client = boto3.client("s3")
-    prefix = "raw/usaspending/database/"
-
-    try:
-        # List all files in the database directory
-        paginator = s3_client.get_paginator("list_objects_v2")
-        latest_file = None
-        latest_date = None
-        latest_date_str = None
-
-        for page in paginator.paginate(Bucket=s3_bucket, Prefix=prefix):
-            for obj in page.get("Contents", []):
-                key = obj["Key"]
-                # Check if this matches the database type
-                if database_type == "full" and "usaspending-db_" in key:
-                    # Extract date from filename: usaspending-db_YYYYMMDD.zip
-                    match = re.search(r"usaspending-db_(\d{8})\.zip", key)
-                    if match:
-                        file_date_str = match.group(1)
-                        if latest_date is None or obj["LastModified"] > latest_date:
-                            latest_file = key
-                            latest_date = obj["LastModified"]
-                            latest_date_str = file_date_str
-                elif database_type == "test" and "usaspending-db-subset_" in key:
-                    # Extract date from filename: usaspending-db-subset_YYYYMMDD.zip
-                    match = re.search(r"usaspending-db-subset_(\d{8})\.zip", key)
-                    if match:
-                        file_date_str = match.group(1)
-                        if latest_date is None or obj["LastModified"] > latest_date:
-                            latest_file = key
-                            latest_date = obj["LastModified"]
-                            latest_date_str = file_date_str
-
-        if latest_file:
-            return {
-                "s3_key": latest_file,
-                "last_modified": latest_date,
-                "date_str": latest_date_str,
-            }
-        return None
-
-    except Exception as e:
-        print(f"Error finding latest file in S3: {e}", file=sys.stderr)
-        return None
 
 
 def find_latest_available_file(
     database_type: str,
-    s3_bucket: str = None,
     max_months_back: int = 3,
 ) -> dict:
     """
     Find the latest available file by checking recent dates.
 
     Strategy:
-    1. Check S3 for latest file date (if available) - start from there
-    2. Try current month and previous months (checking 1st, 6th, 15th of each month)
-    3. Return the first available file found (newest first)
+    1. Try current month and previous months (checking 1st, 6th, 15th of each month)
+    2. Return the first available file found (newest first)
 
     Args:
         database_type: "full" or "test"
-        s3_bucket: S3 bucket to check for existing files
         max_months_back: Maximum number of months to check backwards
 
     Returns:
         dict with source_url, date_str, and availability info, or None
     """
-    # Get starting date - use S3 latest date if available, otherwise current date
     start_date = datetime.now(UTC)
-    if s3_bucket:
-        latest_s3 = find_latest_file_in_s3(s3_bucket, database_type)
-        if latest_s3 and latest_s3.get("date_str"):
-            # Start from S3 date and check forward (in case newer file available)
-            try:
-                s3_date = datetime.strptime(latest_s3["date_str"], "%Y%m%d")
-                s3_date = s3_date.replace(tzinfo=UTC)
-                # Check from S3 date forward, then backwards
-                start_date = max(start_date, s3_date + timedelta(days=1))
-            except (ValueError, TypeError):
-                pass
 
     url_template = USASPENDING_DOWNLOADS[database_type]
 
@@ -283,11 +167,6 @@ def main():
         description="Check if a new USAspending database file is available"
     )
     parser.add_argument(
-        "--s3-bucket",
-        default=os.environ.get("S3_BUCKET", "sbir-etl-production-data"),
-        help="S3 bucket name",
-    )
-    parser.add_argument(
         "--database-type",
         choices=["full", "test"],
         default=os.environ.get("DATABASE_TYPE", "full"),
@@ -302,12 +181,6 @@ def main():
         "--source-url",
         default=os.environ.get("SOURCE_URL"),
         help="Override source URL (optional)",
-    )
-    parser.add_argument(
-        "--compare-with-s3",
-        action="store_true",
-        default=True,
-        help="Compare with existing S3 files (default: True)",
     )
     parser.add_argument(
         "--json",
@@ -327,10 +200,7 @@ def main():
         else:
             # Auto-discover latest available file
             print("No date specified - searching for latest available file...", file=sys.stderr)
-            latest_file = find_latest_available_file(
-                database_type=args.database_type,
-                s3_bucket=args.s3_bucket if args.compare_with_s3 else None,
-            )
+            latest_file = find_latest_available_file(database_type=args.database_type)
 
             if not latest_file:
                 error_msg = (
@@ -361,19 +231,7 @@ def main():
         source_url = args.source_url
         date_str = None
 
-    # Find latest S3 file if comparing
-    s3_key = None
-    if args.compare_with_s3:
-        latest_s3 = find_latest_file_in_s3(args.s3_bucket, args.database_type)
-        if latest_s3:
-            s3_key = latest_s3["s3_key"]
-
-    # Check file availability
-    result = check_file_availability(
-        source_url=source_url,
-        s3_bucket=args.s3_bucket if args.compare_with_s3 else None,
-        s3_key=s3_key,
-    )
+    result = check_file_availability(source_url=source_url)
 
     # Output result
     if args.json:
@@ -383,8 +241,6 @@ def main():
         json_result = result.copy()
         if json_result.get("last_modified"):
             json_result["last_modified"] = json_result["last_modified"].isoformat()
-        if json_result.get("s3_last_modified"):
-            json_result["s3_last_modified"] = json_result["s3_last_modified"].isoformat()
 
         print(json.dumps(json_result, indent=2))
     else:
@@ -397,8 +253,6 @@ def main():
         if result.get("content_length"):
             size_gb = result["content_length"] / 1024 / 1024 / 1024
             print(f"Size: {result['content_length']:,} bytes ({size_gb:.2f} GB)")
-        if result.get("s3_last_modified"):
-            print(f"S3 Last Modified: {result['s3_last_modified']}")
         print(f"Is New: {result['is_new']}")
 
     # Exit code: 0 if new file available, 1 if not

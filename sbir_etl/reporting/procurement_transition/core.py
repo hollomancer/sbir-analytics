@@ -897,7 +897,7 @@ def group_candidates_by_awardee(
     rows: pd.DataFrame,
     awards: pd.DataFrame,
     *,
-    fusion_scorer: FusionScorer | None = None,
+    fusion_scorer: FusionScorer | None,
 ) -> list[dict[str, Any]]:
     """Group scored candidate pairs under each awardee, ordered for the packet.
 
@@ -1122,7 +1122,7 @@ class MonthlyReportBuilder:
         summarizer: Callable[[dict[str, Any]], str | None] | None = None,
         max_summaries: int = 10,
         abstract_simplifier: Callable[[str], str | None] | None = None,
-        fusion_scorer: FusionScorer | None = None,
+        fusion_scorer: FusionScorer | None,
     ) -> None:
         _month_bounds(report_month)
         if max_summaries < 0:

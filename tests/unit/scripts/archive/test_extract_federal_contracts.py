@@ -104,6 +104,41 @@ def test_checks_require_archive_toc_fingerprint(tmp_path) -> None:
     assert not output.with_suffix(".checks.json").exists()
 
 
+def test_award_archive_checks_preserve_archive_provenance(tmp_path) -> None:
+    output = tmp_path / "contracts_ingestion.parquet"
+    pd.DataFrame({"contract_id": ["contract-1"]}).to_parquet(output)
+    vendor_filter = tmp_path / "sbir_vendor_filters.json"
+    vendor_filter.write_text('{"uei": ["ABC123456789"]}', encoding="utf-8")
+    archive_provenance = {
+        "source_kind": extract_federal_contracts.AWARD_ARCHIVE_SOURCE_KIND,
+        "canonical_table": "award_data_archive.contracts_full",
+        "physical_table": "award_data_archive.contracts_full",
+        "archive_file": "FY2026_All_Contracts_Full_20260706.zip",
+        "archive_sha256": "a" * 64,
+        "archive_size_bytes": 100,
+        "member_count": 4,
+        "member_manifest_sha256": "b" * 64,
+        "ordered_columns_sha256": "c" * 64,
+        "column_count": 297,
+        "provenance_version": extract_federal_contracts.AWARD_ARCHIVE_PROVENANCE_VERSION,
+    }
+
+    checks_path = extract_federal_contracts.write_contract_provenance_checks(
+        extractor=SimpleNamespace(source_provenance=archive_provenance, stats={}),
+        output_file=output,
+        vendor_filter_file=vendor_filter,
+        expected_vendor_filter_sha256=extract_federal_contracts._file_sha256(vendor_filter),
+        total_rows=1,
+        source={"award_archive": archive_provenance["archive_file"]},
+    )
+
+    checks = json.loads(checks_path.read_text(encoding="utf-8"))
+    provenance = checks["source_provenance"]
+    assert set(provenance) == extract_federal_contracts.AWARD_ARCHIVE_PROVENANCE_KEYS
+    assert provenance["provenance_version"] == 2
+    assert provenance["archive_sha256"] == "a" * 64
+
+
 def test_sequential_remote_member_sha_does_not_require_parallel_fields(tmp_path) -> None:
     output = tmp_path / "contracts_ingestion.parquet"
     pd.DataFrame({"contract_id": ["contract-1"]}).to_parquet(output)

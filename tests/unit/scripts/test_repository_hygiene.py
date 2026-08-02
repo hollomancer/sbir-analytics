@@ -88,6 +88,18 @@ def test_archive_guard_checks_deployment_docs_but_allows_research_history(tmp_pa
     assert violations[0].path == "docs/deployment/server.md"
 
 
+def test_archive_guard_ignores_identity_guard_self_reference(tmp_path: Path):
+    identity_guard = _write(
+        tmp_path,
+        "scripts/ci/check_identity_boundaries.py",
+        'EXCLUDED = ("scripts/archive/", "tests/unit/scripts/archive/")\n',
+    )
+
+    violations = hygiene.scan_archive_references([identity_guard], root=tmp_path)
+
+    assert violations == []
+
+
 def test_removed_src_guard_scans_automation_paths(tmp_path: Path):
     workflow = _write(
         tmp_path,

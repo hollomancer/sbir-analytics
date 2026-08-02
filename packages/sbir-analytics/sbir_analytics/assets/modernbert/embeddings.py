@@ -154,7 +154,7 @@ def modernbert_embeddings_patents(
     """
     Generate ModernBert embeddings for USPTO patents.
 
-    Loads patent data from transformed_patents JSONL file or S3 PatentsView data.
+    Loads patent data from a transformed_patents JSONL file or the local PatentsView archive.
 
     Args:
         transformed_patents: Transformed patents metadata dict (contains output_path)
@@ -165,8 +165,6 @@ def modernbert_embeddings_patents(
     import json
     import tempfile
     import zipfile
-
-    import boto3
 
     config = get_config()
 
@@ -190,45 +188,40 @@ def modernbert_embeddings_patents(
             patents_df = pd.DataFrame(patents)
             context.log.info(f"Loaded {len(patents_df)} patents from JSONL")
 
-    # If no JSONL data, try loading from S3 PatentsView data
+    # If no JSONL data, fall back to the PatentsView archive on local disk.
     if patents_df is None or len(patents_df) == 0:
-        context.log.info("No transformed patents found, loading from S3 PatentsView")
+        context.log.info("No transformed patents found, loading local PatentsView archive")
         from sbir_etl.extractors.uspto_extractor import USPTOExtractor
-        from sbir_etl.utils.cloud_storage import get_s3_bucket_from_env
+        from sbir_etl.utils.cloud_storage import get_data_root
 
-        bucket = get_s3_bucket_from_env()
-        if not bucket:
-            raise ValueError("S3 bucket not configured. Set SBIR_ANALYTICS_S3_BUCKET env var.")
+        # Match the two known PatentsView archive names only. A broad
+        # patent*.zip glob both misses the direct downloader's g_patent.tsv.zip
+        # and can select the unrelated patent_assignments.zip.
+        uspto_root = get_data_root() / "raw" / "uspto"
+        patentsview_names = ("patentsview_patent.zip", "g_patent.tsv.zip")
+        archives = sorted(
+            path for path in uspto_root.rglob("*.zip") if path.name in patentsview_names
+        )
+        if not archives:
+            raise FileNotFoundError(
+                f"No PatentsView archive found under {uspto_root}. Expected one of "
+                f"{', '.join(patentsview_names)}; run uspto_download_job first."
+            )
+        local_zip = archives[-1]
+        context.log.info(f"Loading from {local_zip}")
 
-        # Default to latest PatentsView patent data
-        s3_url = f"s3://{bucket}/raw/uspto/patentsview/2025-11-18/patent.zip"
-        context.log.info(f"Loading from S3: {s3_url}")
-
-        # Download and extract
         temp_dir = Path(tempfile.gettempdir()) / "sbir-analytics-modernbert"
-        temp_dir.mkdir(parents=True, exist_ok=True)
-        local_zip = temp_dir / "patentsview.zip"
-
-        s3 = boto3.client("s3")
-        parts = s3_url.replace("s3://", "").split("/", 1)
-        s3_bucket = parts[0]
-        s3_key = parts[1] if len(parts) > 1 else ""
-        s3.download_file(s3_bucket, s3_key, str(local_zip))
-
-        # Extract if ZIP
         extract_dir = temp_dir / "extracted"
         extract_dir.mkdir(parents=True, exist_ok=True)
         with zipfile.ZipFile(local_zip, "r") as zip_ref:
             zip_ref.extractall(extract_dir)
 
-        # Use USPTO extractor to load data
         extractor = USPTOExtractor(input_dir=extract_dir)
         files = extractor.discover_files()
 
         if not files:
             raise FileNotFoundError(f"No USPTO files found in {extract_dir}")
 
-        # Load data
         all_rows = []
         for file_path in files:
             context.log.info(f"Loading from {file_path.name}")
@@ -240,7 +233,7 @@ def modernbert_embeddings_patents(
                 break
 
         patents_df = pd.DataFrame(all_rows)
-        context.log.info(f"Loaded {len(patents_df)} patents from S3")
+        context.log.info(f"Loaded {len(patents_df)} patents from {local_zip.name}")
 
     if patents_df is None or len(patents_df) == 0:
         raise ValueError("No patent data available for embedding generation")

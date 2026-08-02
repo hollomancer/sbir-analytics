@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pandas as pd
 import pytest
+import yaml
 from dagster import AssetCheckResult, Output, build_asset_context
 
 from sbir_analytics.assets.phase_iii_census import assets as census_assets
@@ -90,7 +91,7 @@ def test_frozen_spec_verification_hashes_exact_raw_bytes() -> None:
     record = census_assets.verify_frozen_spec()
 
     assert record == {
-        "revision": "phase-0-r4",
+        "revision": "phase-0-r7",
         "spec_path": "specs/phase-iii-census/design.md",
         "spec_sha256": census_assets.FROZEN_SPEC_SHA256,
         "amendments_path": "specs/phase-iii-census/amendments.md",
@@ -102,6 +103,41 @@ def test_frozen_spec_verification_hashes_exact_raw_bytes() -> None:
     assert hashlib.sha256(census_assets.AMENDMENTS_LOG_PATH.read_bytes()).hexdigest() == (
         census_assets.AMENDMENTS_LOG_SHA256
     )
+
+
+def test_materialization_gate_matches_authorized_repository_manifest() -> None:
+    assert census_assets.verify_materialization_gate() == {
+        "study_id": "phase-iii-census",
+        "evidence_status": "reproducible",
+        "materialization_allowed": True,
+        "manifest_path": "studies/phase-iii-census/study.yaml",
+    }
+
+
+def test_closed_materialization_gate_stops_before_loading_sources(
+    tmp_path: Path, monkeypatch
+) -> None:
+    manifest = yaml.safe_load(census_assets.STUDY_MANIFEST_PATH.read_text(encoding="utf-8"))
+    manifest["materialization"] = {
+        "allowed": False,
+        "blockers": ["Negative-control eligibility is unresolved."],
+    }
+    manifest_path = tmp_path / "study.yaml"
+    manifest_path.write_text(yaml.safe_dump(manifest), encoding="utf-8")
+    loader_called = False
+
+    def unexpected_loader():
+        nonlocal loader_called
+        loader_called = True
+        raise AssertionError("source loader must not run while the study gate is closed")
+
+    monkeypatch.setattr(census_assets, "STUDY_MANIFEST_PATH", manifest_path)
+    monkeypatch.setattr(census_assets, "_load_contracts", unexpected_loader)
+
+    with pytest.raises(CensusInputError, match="materialization blocked.*Negative-control"):
+        census_assets.phase_iii_census(build_asset_context(), _prior_source())
+
+    assert not loader_called
 
 
 def test_asset_fails_on_spec_mismatch_before_loading_any_source(
@@ -200,6 +236,41 @@ def test_census_prior_provenance_rejects_non_object_phase_ii_manifest(
         )
 
 
+def test_prior_frame_comparison_accepts_only_parquet_null_representation_changes() -> None:
+    persisted = pd.DataFrame(
+        {
+            "source_row_sha256": pd.Series(["a" * 64, None], dtype="string[pyarrow]"),
+            "source_transaction_count": pd.Series([1.0, float("nan")], dtype="float64"),
+        }
+    )
+    in_memory = pd.DataFrame(
+        {
+            "source_row_sha256": ["a" * 64, float("nan")],
+            "source_transaction_count": [1, None],
+        },
+        dtype=object,
+    )
+
+    census_assets._assert_prior_frames_equal(persisted, in_memory)
+
+    substantive_changes = []
+
+    changed_value = in_memory.copy()
+    changed_value.loc[0, "source_transaction_count"] = 1.0000001
+    substantive_changes.append(changed_value)
+    substantive_changes.append(in_memory.iloc[::-1].reset_index(drop=True))
+    substantive_changes.append(in_memory.iloc[:, ::-1])
+
+    for changed in substantive_changes:
+        with pytest.raises(AssertionError):
+            census_assets._assert_prior_frames_equal(persisted, changed)
+
+    changed_text = in_memory.copy()
+    changed_text.loc[0, "source_row_sha256"] = "b" * 64
+    with pytest.raises(AssertionError):
+        census_assets._assert_prior_frames_equal(persisted, changed_text)
+
+
 def test_asset_writes_exactly_two_parquet_tables_without_headline_metadata(
     tmp_path: Path, monkeypatch
 ) -> None:
@@ -250,6 +321,9 @@ def test_asset_writes_exactly_two_parquet_tables_without_headline_metadata(
         "frozen_spec_revision",
         "amendments_log_path",
         "amendments_log_sha256",
+        "study_manifest_path",
+        "study_evidence_status",
+        "study_materialization_allowed",
         "ordered_clauses",
         "reproducibility",
     }

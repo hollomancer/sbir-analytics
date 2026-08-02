@@ -1,12 +1,15 @@
 # Label-free Phase III Census and Negative Controls — Phase 0 Design
 
 **Status:** Phase 0 approved; **criteria frozen**. The target-code provenance, federal
-Phase II award-grain, and SBIR.gov source-row-grain amendments below were approved before
-any result was materialized. The source layer and prior-grain implementation now live in a
-separate prerequisite change. The Phase 1 census is implemented and fixture-verified;
-production census materialization is deliberately paused until the Phase 2 negative-control
-eligibility problem is resolved, so no census count is quoted before its validation design
-can run.
+Phase II award-grain, SBIR.gov source-row-grain, and exact-key multi-supplemental
+reconciliation amendments below were approved before any result was materialized. The
+source layer and prior-grain implementation now live in a separate prerequisite change.
+The Phase 1 census is implemented and fixture-verified;
+on 2026-08-02, the repository owner superseded only the prior sequencing pause and
+authorized attempting production materialization subject to the existing post-write
+one-factor sensitivity check. Unresolved negative-control and placebo questions remain
+deferred; this change does not authorize a headline cell or interpretation as validated
+Phase III.
 **Design date:** 2026-07-31.
 **Approval date:** 2026-08-01.
 **Provenance-amendment approval date:** 2026-08-01.
@@ -15,9 +18,10 @@ can run.
 **Research-question anchors:** B2 (federal-procurement transition), B3 (Phase II → III
 latency and coding undercount), and E1 (SBIR/STTR identification) in
 [`docs/research-questions.md`](../../docs/research-questions.md).
-**Answerability label after Phase 1 implementation:** **[Implementation complete,
-materialization paused — source and prior-grain prerequisites are separated; negative-
-control eligibility must be resolved before any census count is materialized or quoted]**.
+**Answerability label after Phase 1 implementation:** **[Phase 1 implementation complete;
+production materialization authorized but not yet verified — report only the complete audit
+tables, and do not interpret the proxy as discriminative or statutory Phase III until
+negative-control and placebo evidence exists]**.
 
 No census, sample count, coverage count, drop-off count, or sensitivity result was
 computed while writing this note.
@@ -402,13 +406,22 @@ SBIR.gov rows keep their source `award_id`. For reconciliation, their audit
 `agency_tracking_number`, then `award_id`. After federal transactions are collapsed,
 SBIR.gov and federal rows may reconcile only on exact normalized `source_award_id`:
 
-- no federal match leaves the SBIR.gov row as its own prior award;
-- exactly one federal match preserves the federal generated key and authoritative
-  federal dates, fills only missing NAICS/PSC from nonconflicting SBIR.gov values, and
-  removes the supplemental duplicate; and
+- no federal match leaves every distinct retained SBIR.gov row as its own prior award;
+- exactly one federal match reconciles every retained SBIR.gov row sharing that exact key
+  into the federal award. The federal generated key and every authoritative federal field
+  are preserved. For NAICS and PSC separately, normalized nonblank values are unioned
+  across the federal row and all exact-key supplementals; more than one value stops
+  materialization, while one unanimous supplemental value may fill only a missing federal
+  value. Every reconciled supplemental is then removed without selecting a row or using
+  input order; and
 - more than one federal match, or conflicting nonnull supplemental taxonomy for one
   federal award, stops materialization instead of selecting by row order, agency-name
   similarity, or another heuristic.
+
+The multi-supplemental rule above supersedes the earlier singular-duplicate
+implementation. Supplemental recipient, date, amount, agency, title, and contact fields
+do not overwrite or validate the exact-key federal award; reconciliation uses them neither
+as identity heuristics nor as tie-breakers.
 
 This upstream correction changes identifiers supplied to every consumer of
 `validated_phase_ii_awards`, including the existing retrospective candidate path. That
@@ -474,11 +487,13 @@ any count:
    unless its selected SBIR source and the materialized prior frame have verified v2
    provenance.
 
-The earlier exact reconciliation rule is correspondingly strict at both grains. A shared
-normalized `source_award_id` reconciles only when it identifies exactly one collapsed
-federal award and exactly one retained SBIR.gov row. Multiplicity on either side stops
-materialization with `PhaseIIInputError`; no row may be selected or dropped by order, UEI,
-DUNS, recipient name, or another heuristic.
+The exact reconciliation rule is correspondingly strict at the federal-award grain. A
+shared normalized `source_award_id` reconciles only when it identifies exactly one
+collapsed federal award. One or more retained SBIR.gov rows may share that key; all are
+reconciled together under the unanimous-taxonomy rule above, without selecting a row or
+using UEI, DUNS, recipient name, or another heuristic. Multiplicity of collapsed federal
+awards, or conflicting nonblank NAICS/PSC values across the federal and supplemental
+rows, stops materialization with `PhaseIIInputError`.
 
 This amendment adds no threshold, score, heuristic match, source join, or learned model.
 It changes no census criterion or sensitivity cell. It replaces only the legacy

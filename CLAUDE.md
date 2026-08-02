@@ -12,6 +12,9 @@ Architectural patterns and technical docs live in `docs/steering/`. Feature spec
 
 Before any deployment, server operation, or live Dagster materialization, read
 [the Mac mini runbook](docs/deployment/mac-mini-server.md#live-instance-on-this-mac-mini).
+On the live host, also read the ignored
+`docs/deployment/mac-mini-status.local.md` file when it exists; current
+materialization state belongs there, not in tracked documentation.
 The only live checkout is `/Users/conradhollomon/projects/sbir-analytics-server`;
 never operate the live stack from the development checkout. Preserve
 `.env.server`, `/Volumes/SSDmini/sbir-analytics`, and the Docker `dagster_home`

@@ -1,10 +1,8 @@
 """Pin the production composition root for fusion ranking.
 
-`fusion_scorer` defaults to None, and an unset scorer degrades the report to
-deadline order with only a WARNING — a complete, plausible-looking packet that was
-never ranked. Exactly one production call site binds the real scorer, so that single
-keyword argument is the whole difference between a ranked report and an unranked one.
-These tests fail if it is dropped.
+`fusion_scorer` is required explicitly because None degrades the report to deadline
+order with only a WARNING — a complete, plausible-looking packet that was never ranked.
+Exactly one production call site binds the real scorer, so these tests pin that binding.
 """
 
 import ast

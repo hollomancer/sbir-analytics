@@ -40,9 +40,14 @@ def test_census_import_and_freeze_verification_work_in_shallow_container_layout(
         REPOSITORY_ROOT / "packages/sbir-analytics/sbir_analytics",
         install_root / "sbir_analytics",
     )
+    shutil.copytree(REPOSITORY_ROOT / "sbir_etl", install_root / "sbir_etl")
     shutil.copytree(
         REPOSITORY_ROOT / "specs/phase-iii-census",
         install_root / "specs/phase-iii-census",
+    )
+    shutil.copytree(
+        REPOSITORY_ROOT / "studies/phase-iii-census",
+        install_root / "studies/phase-iii-census",
     )
     script = """
 import sys
@@ -53,9 +58,11 @@ install_root = Path(sys.argv[1]).resolve()
 assert Path(assets.__file__).resolve().is_relative_to(install_root)
 assert assets.FROZEN_SPEC_PATH == install_root / "specs/phase-iii-census/design.md"
 assert assets.AMENDMENTS_LOG_PATH == install_root / "specs/phase-iii-census/amendments.md"
+assert assets.STUDY_MANIFEST_PATH == install_root / "studies/phase-iii-census/study.yaml"
 record = assets.verify_frozen_spec()
 assert record["spec_sha256"] == assets.FROZEN_SPEC_SHA256
 assert record["amendments_sha256"] == assets.AMENDMENTS_LOG_SHA256
+assert assets.verify_materialization_gate()["materialization_allowed"] is True
 """
     env = os.environ.copy()
     env["PYTHONPATH"] = str(install_root)
@@ -71,8 +78,11 @@ assert record["amendments_sha256"] == assets.AMENDMENTS_LOG_SHA256
 
     assert result.returncode == 0, result.stderr or result.stdout
     docker_copy = "COPY specs/phase-iii-census/ /app/specs/phase-iii-census/"
+    study_copy = "COPY studies/phase-iii-census/ /app/studies/phase-iii-census/"
     for dockerfile in (REPOSITORY_ROOT / "Dockerfile", REPOSITORY_ROOT / "Dockerfile.full"):
-        assert docker_copy in dockerfile.read_text(encoding="utf-8")
+        docker_text = dockerfile.read_text(encoding="utf-8")
+        assert docker_copy in docker_text
+        assert study_copy in docker_text
     dockerignore = (REPOSITORY_ROOT / ".dockerignore").read_text(encoding="utf-8")
     assert "!specs/phase-iii-census/design.md" in dockerignore
     assert "!specs/phase-iii-census/amendments.md" in dockerignore

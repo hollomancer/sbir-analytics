@@ -92,9 +92,9 @@ def test_writes_center_packet_and_manifest(tmp_path):
             }
         ]
     )
-    output = MonthlyReportBuilder(report_month="2026-06", output_root=tmp_path).write(
-        award_cohorts=cohorts, candidates=candidates, opportunities=opportunities
-    )
+    output = MonthlyReportBuilder(
+        report_month="2026-06", output_root=tmp_path, fusion_scorer=None
+    ).write(award_cohorts=cohorts, candidates=candidates, opportunities=opportunities)
     assert (output / "centers" / "navair.md").exists()
     packet = (output / "centers" / "navair.md").read_text()
     assert "# Monthly Procurement Transition Packet — NAVAIR" in packet
@@ -175,7 +175,9 @@ def test_missing_descriptions_and_unsafe_public_fields_are_explicit(tmp_path):
         ]
     )
 
-    output = MonthlyReportBuilder(report_month="2026-06", output_root=tmp_path).write(
+    output = MonthlyReportBuilder(
+        report_month="2026-06", output_root=tmp_path, fusion_scorer=None
+    ).write(
         award_cohorts=cohorts,
         candidates=candidates,
         opportunities=opportunities,
@@ -217,7 +219,9 @@ def test_candidates_without_confidence_default_to_watchlist(tmp_path):
         [{"notice_id": "O-1", "title": "Navigation procurement", "office": "NAVAIR"}]
     )
 
-    output = MonthlyReportBuilder(report_month="2026-06", output_root=tmp_path).write(
+    output = MonthlyReportBuilder(
+        report_month="2026-06", output_root=tmp_path, fusion_scorer=None
+    ).write(
         award_cohorts=cohorts,
         candidates=candidates,
         opportunities=opportunities,
@@ -233,7 +237,9 @@ def test_missing_center_is_routed_to_unassigned(tmp_path):
     awards.loc[0, ["Agency", "Branch"]] = pd.NA
     cohorts = build_award_cohorts(awards, pd.DataFrame(), report_month="2026-06")
 
-    output = MonthlyReportBuilder(report_month="2026-06", output_root=tmp_path).write(
+    output = MonthlyReportBuilder(
+        report_month="2026-06", output_root=tmp_path, fusion_scorer=None
+    ).write(
         award_cohorts=cohorts,
         candidates=pd.DataFrame(),
         opportunities=pd.DataFrame(),
@@ -282,7 +288,9 @@ def test_placeholder_values_are_not_rendered_as_public_evidence(tmp_path):
         ]
     )
 
-    output = MonthlyReportBuilder(report_month="2026-06", output_root=tmp_path).write(
+    output = MonthlyReportBuilder(
+        report_month="2026-06", output_root=tmp_path, fusion_scorer=None
+    ).write(
         award_cohorts=cohorts,
         candidates=candidates,
         opportunities=opportunities,
@@ -349,7 +357,9 @@ def test_award_pipeline_explains_inclusion_and_prioritizes_end_dates(tmp_path):
         ]
     )
 
-    output = MonthlyReportBuilder(report_month="2026-06", output_root=tmp_path).write(
+    output = MonthlyReportBuilder(
+        report_month="2026-06", output_root=tmp_path, fusion_scorer=None
+    ).write(
         award_cohorts=awards,
         candidates=pd.DataFrame(),
         opportunities=pd.DataFrame(),
@@ -416,6 +426,7 @@ def test_optional_summaries_are_bounded_and_prioritize_high_scores(tmp_path):
         output_root=tmp_path,
         summarizer=summarize,
         max_summaries=1,
+        fusion_scorer=None,
     ).write(
         award_cohorts=cohorts,
         candidates=candidates,
@@ -435,7 +446,9 @@ def test_army_science_and_technology_example_matches_generated_packet(tmp_path):
         pd.DataFrame(),
         report_month="2026-06",
     )
-    output = MonthlyReportBuilder(report_month="2026-06", output_root=tmp_path).write(
+    output = MonthlyReportBuilder(
+        report_month="2026-06", output_root=tmp_path, fusion_scorer=None
+    ).write(
         award_cohorts=cohorts,
         candidates=pd.read_csv(examples / "army_science_technology_candidates.csv"),
         opportunities=pd.read_csv(examples / "army_science_technology_opportunities.csv"),
@@ -486,7 +499,7 @@ def test_group_orders_directed_before_competitive_then_by_deadline():
         ]
     )
 
-    groups = group_candidates_by_awardee(rows, awards)
+    groups = group_candidates_by_awardee(rows, awards, fusion_scorer=None)
 
     assert len(groups) == 1
     group = groups[0]
@@ -533,7 +546,7 @@ def test_group_orders_awardees_directed_first_then_deadline_then_amount():
         ]
     )
 
-    groups = group_candidates_by_awardee(rows, awards)
+    groups = group_candidates_by_awardee(rows, awards, fusion_scorer=None)
 
     # Directed-having awardees first (C sooner than A), then the competitive-only awardee B.
     assert [group["award_id"] for group in groups] == ["C", "A", "B"]
@@ -553,7 +566,7 @@ def test_group_keeps_below_threshold_matches_as_watchlist():
         ]
     )
 
-    groups = group_candidates_by_awardee(rows, awards)
+    groups = group_candidates_by_awardee(rows, awards, fusion_scorer=None)
 
     assert len(groups) == 1
     group = groups[0]
@@ -565,7 +578,7 @@ def test_group_keeps_below_threshold_matches_as_watchlist():
 
 def test_group_emits_awardee_with_no_matched_procurement():
     awards = pd.DataFrame([{"award_id": "A", "amount": 100}])
-    groups = group_candidates_by_awardee(pd.DataFrame(), awards)
+    groups = group_candidates_by_awardee(pd.DataFrame(), awards, fusion_scorer=None)
 
     assert len(groups) == 1
     group = groups[0]
@@ -606,6 +619,7 @@ def _transition_packet(tmp_path, *, abstract_simplifier=None) -> str:
         report_month="2026-06",
         output_root=tmp_path,
         abstract_simplifier=abstract_simplifier,
+        fusion_scorer=None,
     ).write(
         award_cohorts=cohorts,
         candidates=candidates,
@@ -686,7 +700,9 @@ def test_path_detail_surfaces_connection_sentence_and_shared_phrases(tmp_path):
         ]
     )
 
-    output = MonthlyReportBuilder(report_month="2026-06", output_root=tmp_path).write(
+    output = MonthlyReportBuilder(
+        report_month="2026-06", output_root=tmp_path, fusion_scorer=None
+    ).write(
         award_cohorts=cohorts,
         candidates=candidates,
         opportunities=opportunities,
@@ -741,7 +757,7 @@ def test_group_excludes_notice_that_names_the_awardee():
         ]
     )
 
-    groups = group_candidates_by_awardee(rows, awards)
+    groups = group_candidates_by_awardee(rows, awards, fusion_scorer=None)
 
     titles = [entry["opportunity_title"] for entry in groups[0]["directed"]]
     assert titles == ["Genuine forward solicitation"]
@@ -782,7 +798,9 @@ def test_validate_line_marks_competitive_as_open_competition():
 def test_transition_paths_table_marks_awardee_without_a_path(tmp_path):
     awards = _awards(end_date="2026-08-31")
     cohorts = build_award_cohorts(awards, pd.DataFrame(), report_month="2026-06")
-    output = MonthlyReportBuilder(report_month="2026-06", output_root=tmp_path).write(
+    output = MonthlyReportBuilder(
+        report_month="2026-06", output_root=tmp_path, fusion_scorer=None
+    ).write(
         award_cohorts=cohorts,
         candidates=pd.DataFrame(),
         opportunities=pd.DataFrame(),

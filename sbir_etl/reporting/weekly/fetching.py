@@ -47,7 +47,6 @@ def fetch_weekly_awards(
     extractor = SbirDuckDBExtractor(
         csv_path=source.path,
         duckdb_path=":memory:",
-        use_s3_first=False,  # we already resolved the path
     )
     extractor.import_csv()
 
@@ -164,7 +163,6 @@ def _resolve_shared_extractor(
     extractor = SbirDuckDBExtractor(
         csv_path=source.path,
         duckdb_path=":memory:",
-        use_s3_first=False,
     )
     extractor.import_csv()
     table = extractor._table_identifier

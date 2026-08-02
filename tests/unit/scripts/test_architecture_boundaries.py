@@ -57,3 +57,14 @@ def test_packages_cannot_import_scripts(tmp_path: Path) -> None:
 
 def test_current_repository_obeys_architecture_boundaries() -> None:
     assert boundaries.scan_repository() == []
+
+
+def test_script_import_exception_is_exact(tmp_path: Path) -> None:
+    source_root = tmp_path / "packages/sbir-analytics/sbir_analytics"
+    module = source_root / "assets/jobs/source_downloads.py"
+    module.parent.mkdir(parents=True)
+    module.write_text("from scripts.data.unapproved import run\n", encoding="utf-8")
+
+    violations = boundaries.scan_package("sbir_analytics", source_root, repository_root=tmp_path)
+
+    assert [violation.imported_module for violation in violations] == ["scripts.data.unapproved"]

@@ -39,14 +39,36 @@ x-server-environment: &server-environment
   NEO4J_URI: ${NEO4J_URI:-bolt://neo4j:7687}
   NEO4J_USER: ${NEO4J_USER:-neo4j}
   NEO4J_PASSWORD: ${NEO4J_PASSWORD:?NEO4J_PASSWORD is required for the server profile}
-  # Heavy assets (ML, fiscal, USPTO NLP) stay off on the always-on server.
-  DAGSTER_LOAD_HEAVY_ASSETS: ${DAGSTER_LOAD_HEAVY_ASSETS:-false}
+  # Heavy assets (ML, fiscal, USPTO NLP) are loaded so they can be run by hand;
+  # nothing schedules them. See .env.server.example for the capacity caveat.
+  DAGSTER_LOAD_HEAVY_ASSETS: ${DAGSTER_LOAD_HEAVY_ASSETS:-true}
   # Shared Dagster home so webserver and daemon read the same schedule state.
   DAGSTER_HOME: /app/dagster_home
   # Schedule gating (see packages/sbir-analytics/sbir_analytics/definitions.py).
   SBIR_ETL__DAGSTER__SCHEDULES__DAILY_ALL_ASSETS_ENABLED: ${SBIR_ETL__DAGSTER__SCHEDULES__DAILY_ALL_ASSETS_ENABLED:-false}
   SBIR_ETL__DAGSTER__SCHEDULES__WEEKLY_CORE_REFRESH_ENABLED: ${SBIR_ETL__DAGSTER__SCHEDULES__WEEKLY_CORE_REFRESH_ENABLED:-false}
   SBIR_ETL__DAGSTER__SCHEDULES__WEEKLY_CORE_REFRESH_JOB: ${SBIR_ETL__DAGSTER__SCHEDULES__WEEKLY_CORE_REFRESH_JOB:-0 3 * * 0}
+  # Explicit opt-in: a single fiscal-year archive is narrower than the full DB.
+  SBIR_ETL__TRANSITION__CONTRACTS__USE_AWARD_ARCHIVE: ${SBIR_ETL__TRANSITION__CONTRACTS__USE_AWARD_ARCHIVE:-false}
+  # Source-download schedules. --env-file only supplies Compose interpolation,
+  # so every variable the code reads must be mapped explicitly here or it never
+  # reaches the container.
+  SBIR_ETL__DAGSTER__SCHEDULES__WEEKLY_SBIR_AWARDS_DOWNLOAD_ENABLED: ${SBIR_ETL__DAGSTER__SCHEDULES__WEEKLY_SBIR_AWARDS_DOWNLOAD_ENABLED:-false}
+  SBIR_ETL__DAGSTER__SCHEDULES__MONTHLY_SAM_GOV_DOWNLOAD_ENABLED: ${SBIR_ETL__DAGSTER__SCHEDULES__MONTHLY_SAM_GOV_DOWNLOAD_ENABLED:-false}
+  SBIR_ETL__DAGSTER__SCHEDULES__MONTHLY_USASPENDING_DOWNLOAD_ENABLED: ${SBIR_ETL__DAGSTER__SCHEDULES__MONTHLY_USASPENDING_DOWNLOAD_ENABLED:-false}
+  SBIR_ETL__DAGSTER__SCHEDULES__MONTHLY_USPTO_DOWNLOAD_ENABLED: ${SBIR_ETL__DAGSTER__SCHEDULES__MONTHLY_USPTO_DOWNLOAD_ENABLED:-false}
+  SBIR_ETL__DAGSTER__SCHEDULES__MONTHLY_PHASE_TRANSITION_ENABLED: ${SBIR_ETL__DAGSTER__SCHEDULES__MONTHLY_PHASE_TRANSITION_ENABLED:-false}
+  # Pipeline-chaining sensors.
+  SBIR_ETL__DAGSTER__SENSORS__SBIR_PIPELINE_AFTER_DOWNLOAD_ENABLED: ${SBIR_ETL__DAGSTER__SENSORS__SBIR_PIPELINE_AFTER_DOWNLOAD_ENABLED:-false}
+  SBIR_ETL__DAGSTER__SENSORS__USPTO_PIPELINE_AFTER_DOWNLOAD_ENABLED: ${SBIR_ETL__DAGSTER__SENSORS__USPTO_PIPELINE_AFTER_DOWNLOAD_ENABLED:-false}
+  SBIR_ETL__DAGSTER__SENSORS__USASPENDING_PIPELINE_AFTER_DOWNLOAD_ENABLED: ${SBIR_ETL__DAGSTER__SENSORS__USASPENDING_PIPELINE_AFTER_DOWNLOAD_ENABLED:-false}
+  SBIR_ETL__DAGSTER__SENSORS__PHASE_TRANSITION_ARCHIVE_AFTER_ANALYSIS_ENABLED: ${SBIR_ETL__DAGSTER__SENSORS__PHASE_TRANSITION_ARCHIVE_AFTER_ANALYSIS_ENABLED:-false}
+  # Downloader credentials. Empty by default so the jobs fail with their own
+  # actionable message rather than a Compose interpolation error.
+  SAM_GOV_API_KEY: ${SAM_GOV_API_KEY:-}
+  USPTO_ODP_API_KEY: ${USPTO_ODP_API_KEY:-}
+  # Data root for downloads; the server profile points this at the SSD.
+  SBIR_ETL__PATHS__DATA_ROOT: ${SBIR_ETL__PATHS__DATA_ROOT:-/app/data}
 
 services:
   # ===========================================================================

@@ -21,6 +21,7 @@ from sbir_analytics.assets.phase_transition.sbir_gov_source import (
     sha256_file,
     verify_sbir_gov_materialization,
 )
+from sbir_etl.quality.study_manifest import load_study_manifest
 
 from .criteria import (
     CensusInputError,
@@ -92,9 +93,10 @@ PHASE_II_AWARDS_PATH = Path("data/processed/phase_ii_awards.parquet")
 DATA_CUT_ENV = "SBIR_ETL__PHASE_III_CENSUS__DATA_CUT_DATE"
 SBIR_AWARDS_ENV = "SBIR_ETL__PHASE_TRANSITION__SBIR_AWARDS_PATH"
 PHASE_II_OUTPUT_ENV = "SBIR_ETL__PHASE_TRANSITION__PHASE_II_OUTPUT_PATH"
-FROZEN_SPEC_REVISION = "phase-0-r4"
+FROZEN_SPEC_REVISION = "phase-0-r7"
 FROZEN_SPEC_RELATIVE_PATH = Path("specs/phase-iii-census/design.md")
 AMENDMENTS_LOG_RELATIVE_PATH = Path("specs/phase-iii-census/amendments.md")
+STUDY_MANIFEST_RELATIVE_PATH = Path("studies/phase-iii-census/study.yaml")
 
 
 def _find_resource_root() -> Path:
@@ -103,7 +105,11 @@ def _find_resource_root() -> Path:
     for root in Path(__file__).resolve().parents:
         if all(
             (root / relative_path).is_file()
-            for relative_path in (FROZEN_SPEC_RELATIVE_PATH, AMENDMENTS_LOG_RELATIVE_PATH)
+            for relative_path in (
+                FROZEN_SPEC_RELATIVE_PATH,
+                AMENDMENTS_LOG_RELATIVE_PATH,
+                STUDY_MANIFEST_RELATIVE_PATH,
+            )
         ):
             return root
     raise RuntimeError("Phase III census frozen specification files are not installed")
@@ -112,8 +118,33 @@ def _find_resource_root() -> Path:
 _REPOSITORY_ROOT = _find_resource_root()
 FROZEN_SPEC_PATH = _REPOSITORY_ROOT / FROZEN_SPEC_RELATIVE_PATH
 AMENDMENTS_LOG_PATH = _REPOSITORY_ROOT / AMENDMENTS_LOG_RELATIVE_PATH
-FROZEN_SPEC_SHA256 = "b1cce1e75af840f13223ecfc543b6d801e63cc3329f65f7c0a5b9037c0e9fc48"
-AMENDMENTS_LOG_SHA256 = "f9cdf80cf94c75e2e4475ca6f736e2e0fab27a8e8d19650a7841b11b17801605"
+STUDY_MANIFEST_PATH = _REPOSITORY_ROOT / STUDY_MANIFEST_RELATIVE_PATH
+FROZEN_SPEC_SHA256 = "33b5918026fe2f98e3fa693afbe498653a328274adec03a5c827bf2ac0df6df9"
+AMENDMENTS_LOG_SHA256 = "24ead99679a4e6948b3704e1375a2f9f7ba1e2b426273d490d87156efd21e5ab"
+
+
+def verify_materialization_gate() -> dict[str, Any]:
+    """Fail closed when the study contract does not authorize materialization."""
+
+    try:
+        manifest = load_study_manifest(STUDY_MANIFEST_PATH)
+    except (OSError, ValueError) as exc:
+        raise CensusInputError(
+            f"Phase III census study manifest is missing or invalid at {STUDY_MANIFEST_PATH}: {exc}"
+        ) from exc
+    if manifest.study_id != "phase-iii-census":
+        raise CensusInputError(
+            f"Phase III census study manifest has an unexpected study_id: {manifest.study_id}"
+        )
+    if not manifest.materialization.allowed:
+        blockers = "; ".join(manifest.materialization.blockers)
+        raise CensusInputError(f"Phase III census materialization blocked: {blockers}")
+    return {
+        "study_id": manifest.study_id,
+        "evidence_status": manifest.evidence_status.value,
+        "materialization_allowed": True,
+        "manifest_path": STUDY_MANIFEST_RELATIVE_PATH.as_posix(),
+    }
 
 
 def _verified_raw_digest(path: Path, expected_sha256: str, *, label: str) -> str:
@@ -253,6 +284,19 @@ def _load_contracts() -> tuple[pd.DataFrame, Path]:
         raise CensusInputError(f"Failed to read contract source at {path}: {exc}") from exc
 
 
+def _assert_prior_frames_equal(persisted: pd.DataFrame, in_memory: pd.DataFrame) -> None:
+    """Compare exact values after canonicalizing only dtype-specific missing values."""
+
+    persisted_comparable = persisted.astype(object).where(persisted.notna(), None)
+    in_memory_comparable = in_memory.astype(object).where(in_memory.notna(), None)
+    pd.testing.assert_frame_equal(
+        persisted_comparable.reset_index(drop=True),
+        in_memory_comparable.reset_index(drop=True),
+        check_dtype=False,
+        check_exact=True,
+    )
+
+
 def _verify_phase_ii_provenance(priors: pd.DataFrame, contracts_path: Path) -> tuple[Path, Path]:
     """Require the census-dedicated v2 source and its exact persisted prior frame."""
 
@@ -322,11 +366,10 @@ def _verify_phase_ii_provenance(priors: pd.DataFrame, contracts_path: Path) -> t
         raise CensusInputError("Phase II prior frame shape does not match its manifest")
     try:
         persisted_priors = pd.read_parquet(phase_ii_path)
-        pd.testing.assert_frame_equal(
-            persisted_priors.reset_index(drop=True),
-            priors.reset_index(drop=True),
-            check_dtype=False,
-        )
+        # Parquet round-trips object-backed missing values as dtype-specific nulls.
+        # Canonicalize only missing representations; all nonmissing values, row order,
+        # and column order must still match exactly.
+        _assert_prior_frames_equal(persisted_priors, priors)
     except (OSError, AssertionError) as exc:
         raise CensusInputError("Phase II prior frame differs from its persisted artifact") from exc
     return selected_sbir, phase_ii_path
@@ -348,6 +391,7 @@ def phase_iii_census(
 ):
     """Build and persist the two frozen Phase 1 audit tables."""
 
+    gate_record = verify_materialization_gate()
     freeze_record = verify_frozen_spec()
     priors = validated_phase_ii_awards
     if priors is None:
@@ -378,6 +422,9 @@ def phase_iii_census(
         "frozen_spec_revision": freeze_record["revision"],
         "amendments_log_path": freeze_record["amendments_path"],
         "amendments_log_sha256": freeze_record["amendments_sha256"],
+        "study_manifest_path": gate_record["manifest_path"],
+        "study_evidence_status": gate_record["evidence_status"],
+        "study_materialization_allowed": gate_record["materialization_allowed"],
         "ordered_clauses": MetadataValue.json(ordered_clause_metadata()),
         "reproducibility": MetadataValue.json(
             {"stochastic": False, "seed": None, "data_cut_date": data_cut.isoformat()}
@@ -455,7 +502,10 @@ __all__ = [
     "FROZEN_SPEC_SHA256",
     "SENSITIVITY_OUTPUT_PATH",
     "SBIR_AWARDS_ENV",
+    "STUDY_MANIFEST_PATH",
+    "STUDY_MANIFEST_RELATIVE_PATH",
     "parse_census_data_cut_date",
+    "verify_materialization_gate",
     "phase_iii_census",
     "phase_iii_census_one_factor_sensitivity",
     "verify_frozen_spec",

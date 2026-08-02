@@ -9,7 +9,11 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class EvidenceStatus(StrEnum):
-    """The review and reproducibility level reached by a study."""
+    """The review and reproducibility level reached by a study.
+
+    This epistemic status is independent of operational materialization authorization.
+    A reproducible study may have an open or closed materialization gate.
+    """
 
     EXPLORATORY = "exploratory"
     REPRODUCIBLE = "reproducible"
@@ -58,6 +62,8 @@ class MaterializationGate(BaseModel):
     def require_blocker_when_closed(self) -> "MaterializationGate":
         if not self.allowed and not self.blockers:
             raise ValueError("a closed materialization gate must name at least one blocker")
+        if self.allowed and self.blockers:
+            raise ValueError("an open materialization gate cannot name blockers")
         return self
 
 

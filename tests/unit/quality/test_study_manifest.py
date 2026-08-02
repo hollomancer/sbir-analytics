@@ -65,6 +65,15 @@ def test_closed_materialization_gate_requires_a_blocker(tmp_path: Path) -> None:
         load_study_manifest(path)
 
 
+def test_open_materialization_gate_rejects_stale_blockers(tmp_path: Path) -> None:
+    raw = _manifest("a" * 64)
+    raw["materialization"] = {"allowed": True, "blockers": ["Stale blocker."]}
+    path = _write(tmp_path, "example-study/study.yaml", yaml.safe_dump(raw))
+
+    with pytest.raises(ValidationError, match="open materialization gate cannot name blockers"):
+        load_study_manifest(path)
+
+
 def test_manifest_reference_validation_checks_hash_and_symbol(tmp_path: Path) -> None:
     artifact = _write(tmp_path, "specs/example.md", "frozen design\n")
     _write(tmp_path, "sbir_etl/example.py", "def run_study():\n    return None\n")

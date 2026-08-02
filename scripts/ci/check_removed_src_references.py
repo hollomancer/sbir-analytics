@@ -15,6 +15,7 @@ AUTOMATION_PREFIXES = (".github/", "scripts/", "sbir_etl/", "packages/", "tests/
 SCANNED_FILES = {"Makefile", ".pre-commit-config.yaml"}
 EXCLUDED_HISTORICAL_DOCUMENTS = {"docs/decisions/ADR-002-etl-library-extraction.md"}
 EXCLUDED_SCAN_FILES = {
+    "scripts/ci/check_identity_boundaries.py",
     "tests/unit/scripts/test_repository_hygiene.py",
 }
 REMOVED_SRC_PATTERNS = (

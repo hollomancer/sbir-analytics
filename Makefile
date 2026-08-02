@@ -194,11 +194,6 @@ test-modernbert: ## Test ModernBert pipeline
 	@$(call info,Testing ModernBert pipeline)
 	$(call run,uv run pytest tests/functional/test_pipelines.py::TestModernBertPipeline -v)
 
-.PHONY: test-s3
-test-s3: ## Test S3 integration (requires AWS credentials)
-	@$(call info,Testing S3 integration)
-	$(call run,uv run pytest tests/integration/test_s3_operations.py -v -m s3)
-
 .PHONY: lint
 lint: ## Run linting and type checking
 	@$(call info,Running linting and type checking)
@@ -244,19 +239,9 @@ notebook: install-ml ## Start Jupyter Lab for ML analysis (Cloud-Native)
 	$(call run,uv run --group notebooks jupyter lab --notebook-dir=notebooks)
 
 .PHONY: setup-ml
-setup-ml: env-check ## Configure environment for ML (Cloud + HF)
+setup-ml: env-check ## Configure environment for ML (HuggingFace)
 	@$(call info,Configuring ML environment)
-	@$(call info,This will enable S3 usage and prompt for HuggingFace Token.)
-	@if ! grep -q "SBIR_ETL__EXTRACTION__SBIR__USE_S3_FIRST" .env; then \
-		echo "SBIR_ETL__EXTRACTION__SBIR__USE_S3_FIRST=true" >> .env; \
-		echo "SBIR_ETL__EXTRACTION__SAM_GOV__USE_S3_FIRST=true" >> .env; \
-		$(call success,Added cloud configuration to .env); \
-	else \
-		sed -e 's/SBIR_ETL__EXTRACTION__SBIR__USE_S3_FIRST=false/SBIR_ETL__EXTRACTION__SBIR__USE_S3_FIRST=true/' \
-			-e 's/SBIR_ETL__EXTRACTION__SAM_GOV__USE_S3_FIRST=false/SBIR_ETL__EXTRACTION__SAM_GOV__USE_S3_FIRST=true/' \
-			.env > .env.tmp && mv .env.tmp .env; \
-		$(call success,Updated .env to use S3); \
-	fi
+	@$(call info,This will prompt for a HuggingFace Token.)
 	@if ! grep -q "HF_TOKEN" .env; then \
 		echo "HF_TOKEN=" >> .env; \
 		$(call warn,Added HF_TOKEN to .env. Please edit it to add your HuggingFace token.); \
@@ -270,31 +255,9 @@ sample-data: ## Generate sample data for local development
 	$(call run,uv run python scripts/dev/generate_sample_data.py)
 
 .PHONY: setup-local
-setup-local: env-check ## Configure environment for local development (no cloud)
+setup-local: env-check ## Configure environment for local development
 	@$(call info,Configuring local environment)
-	@if ! grep -q "SBIR_ETL__EXTRACTION__SBIR__USE_S3_FIRST" .env; then \
-		echo "SBIR_ETL__EXTRACTION__SBIR__USE_S3_FIRST=false" >> .env; \
-		echo "SBIR_ETL__EXTRACTION__SAM_GOV__USE_S3_FIRST=false" >> .env; \
-		$(call success,Added local configuration to .env); \
-	else \
-		$(call warn,Local configuration already present in .env); \
-	fi
 	@$(call info,You can now generate sample data with: make sample-data)
-
-.PHONY: setup-cloud
-setup-cloud: env-check ## Configure environment for cloud development
-	@$(call info,Configuring cloud environment)
-	@$(call info,This will enable S3 usage. Ensure you have AWS credentials configured.)
-	@if ! grep -q "SBIR_ETL__EXTRACTION__SBIR__USE_S3_FIRST" .env; then \
-		echo "SBIR_ETL__EXTRACTION__SBIR__USE_S3_FIRST=true" >> .env; \
-		echo "SBIR_ETL__EXTRACTION__SAM_GOV__USE_S3_FIRST=true" >> .env; \
-		$(call success,Added cloud configuration to .env); \
-	else \
-		sed -e 's/SBIR_ETL__EXTRACTION__SBIR__USE_S3_FIRST=false/SBIR_ETL__EXTRACTION__SBIR__USE_S3_FIRST=true/' \
-			-e 's/SBIR_ETL__EXTRACTION__SAM_GOV__USE_S3_FIRST=false/SBIR_ETL__EXTRACTION__SAM_GOV__USE_S3_FIRST=true/' \
-			.env > .env.tmp && mv .env.tmp .env; \
-		$(call success,Updated .env to use S3); \
-	fi
 
 # -----------------------------------------------------------------------------
 # Build + publish

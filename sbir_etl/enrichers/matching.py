@@ -13,104 +13,17 @@ from __future__ import annotations
 
 from typing import Any
 
+from sbir_etl.identity import (
+    ENHANCED_ABBREVIATIONS,
+    SUFFIX_TOKENS as SUFFIX_TOKENS,
+    rapidfuzz_jaro_winkler_100,
+)
+
 
 try:
     import jellyfish
 except ImportError:  # pragma: no cover
     jellyfish = None  # type: ignore
-
-try:
-    from rapidfuzz.distance import JaroWinkler
-except ImportError:  # pragma: no cover
-    JaroWinkler = None  # type: ignore
-
-
-# Business-entity suffix tokens removed during name normalization.
-SUFFIX_TOKENS: frozenset[str] = frozenset(
-    {
-        "inc",
-        "incorporated",
-        "llc",
-        "l.l.c",
-        "l l c",
-        "ltd",
-        "limited",
-        "corp",
-        "corporation",
-        "co",
-        "lp",
-        "llp",
-        "company",
-        "the",
-    }
-)
-
-# Enhanced abbreviation dictionary for company name normalization
-ENHANCED_ABBREVIATIONS = {
-    # Technology terms
-    "technologies": "tech",
-    "technology": "tech",
-    "systems": "sys",
-    "system": "sys",
-    "solutions": "sol",
-    "solution": "sol",
-    "software": "sw",
-    "engineering": "eng",
-    "engineer": "eng",
-    "development": "dev",
-    "developer": "dev",
-    "advanced": "adv",
-    "international": "intl",
-    # Aerospace & Defense
-    "aerospace": "aero",
-    "aeronautical": "aero",
-    "defense": "def",
-    "defence": "def",
-    "military": "mil",
-    # Research & Science
-    "research": "res",
-    "laboratory": "lab",
-    "laboratories": "lab",
-    "scientific": "sci",
-    "science": "sci",
-    # Industry-specific
-    "biotechnology": "biotech",
-    "pharmaceutical": "pharma",
-    "pharmaceuticals": "pharma",
-    "manufacturing": "mfg",
-    "manufacture": "mfg",
-    "medical": "med",
-    "communications": "comm",
-    "communication": "comm",
-    "telecommunications": "telecom",
-    # Business terms
-    "associates": "assoc",
-    "associate": "assoc",
-    "consulting": "consult",
-    "consultants": "consult",
-    "services": "svc",
-    "service": "svc",
-    "enterprises": "ent",
-    "enterprise": "ent",
-    "industries": "ind",
-    "industry": "ind",
-    "management": "mgmt",
-    # Directional
-    "north": "n",
-    "south": "s",
-    "east": "e",
-    "west": "w",
-    "northeast": "ne",
-    "northwest": "nw",
-    "southeast": "se",
-    "southwest": "sw",
-    # Common words
-    "america": "amer",
-    "american": "amer",
-    "united": "utd",
-    "group": "grp",
-    "national": "natl",
-}
 
 
 def get_phonetic_code(name: str, algorithm: str = "metaphone") -> str | None:
@@ -203,13 +116,15 @@ def jaro_winkler_similarity(name1: str, name2: str, prefix_weight: float = 0.1) 
         >>> jaro_winkler_similarity("Boeing Systems", "Boeing Solutions")
         > 85.0  # High due to matching "Boeing" prefix
     """
-    if not JaroWinkler or not name1 or not name2:
+    if not name1 or not name2:
         return 0.0
 
     try:
-        # JaroWinkler.similarity returns 0.0-1.0, scale to 0-100
-        score = JaroWinkler.similarity(str(name1), str(name2), prefix_weight=prefix_weight)
-        return score * 100.0
+        return rapidfuzz_jaro_winkler_100(
+            name1,
+            name2,
+            prefix_weight=prefix_weight,
+        )
     except Exception:  # pragma: no cover
         return 0.0
 

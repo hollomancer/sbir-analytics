@@ -53,3 +53,13 @@ Generated data stays under `data/` and is not committed.
   classifier or an estimate of Phase III undercount. AUC and its bootstrap use
   complete, matched P1/N1 target blocks; unmatched positives remain in the pair
   artifact and are reported as coverage rather than treated as independent rows.
+- Pairwise retrieval AUC assigns ties one-half credit. Imported evaluator paths
+  share this implementation; historical PR values used a different tie rule and
+  remain provisional until rerun.
+- Empirical commands with missing gitignored inputs emit
+  `status=blocked_missing_inputs`; they do not imply successful reproduction.
+- Description-only counts are unadjudicated flags. Capture-recapture output is
+  an OR-indexed sensitivity analysis, with Chapman reported only as the OR=1
+  homogeneous-independence scenario.
+- TechPort is a NASA project portfolio, not a Phase III register. Organization
+  roles and ambiguous firm links remain explicit.
