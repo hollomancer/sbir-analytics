@@ -302,6 +302,11 @@ class VendorCrosswalk:
     ) -> tuple[CrosswalkRecord, float] | None:
         """
         Find best matching canonical record by name. Returns (record, score) or None.
+
+        A name that identifies more than one canonical record is ambiguous and returns
+        None. The shared vendor key deliberately joins spelling variants, so distinct
+        identifier-backed records can share a key; resolving that by index position
+        would select a record by insertion order.
         """
         if not name:
             return None
@@ -311,17 +316,17 @@ class VendorCrosswalk:
         # exact match
         cids = self._name_index.get(norm)
         if cids:
-            return self.records[cids[0]], 1.0
+            return (self.records[cids[0]], 1.0) if len(cids) == 1 else None
         # fuzzy choose best across canonical names
         best_score = 0.0
-        best_cid = None
+        best_cids: list[str] = []
         for canon_name, cid_list in self._name_index.items():
             score = _fuzzy_score(norm, canon_name)
             if score > best_score:
                 best_score = score
-                best_cid = cid_list[0]
-        if best_score >= fuzzy_threshold and best_cid:
-            return self.records[best_cid], best_score
+                best_cids = cid_list
+        if best_score >= fuzzy_threshold and len(best_cids) == 1:
+            return self.records[best_cids[0]], best_score
         return None
 
     def find_by_any(
@@ -374,8 +379,9 @@ class VendorCrosswalk:
             return False
         rec = self.records[canonical_id]
         alias_name_norm = _clean_display_name(alias_name) or alias_name
-        # avoid duplicates
-        if any(a.name == alias_name_norm for a in rec.aliases):
+        alias_key = _normalize_name(alias_name)
+        # avoid duplicates on the matching key, not on display text
+        if any(_normalize_name(a.name) == alias_key for a in rec.aliases):
             return True
         ad = AliasRecord(
             name=alias_name_norm,
@@ -385,9 +391,10 @@ class VendorCrosswalk:
         )
         rec.aliases.append(ad)
         # update name index
-        alias_key = _normalize_name(alias_name_norm)
         if alias_key:
-            self._name_index.setdefault(alias_key, []).append(canonical_id)
+            indexed = self._name_index.setdefault(alias_key, [])
+            if canonical_id not in indexed:
+                indexed.append(canonical_id)
         logger.info("Added alias '%s' to %s", alias_name, canonical_id)
         return True
 
