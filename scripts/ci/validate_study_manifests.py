@@ -24,12 +24,23 @@ def _repository_path(relative: str, repository_root: Path) -> Path:
 
 
 def _module_symbols(path: Path) -> set[str]:
+    """Collect module-level symbol names an implementation reference may name.
+
+    Covers definitions and module-level bindings, so an asset built by a factory
+    (`census = build_asset(...)`) is not reported as a missing implementation merely
+    because it is an assignment rather than a `def`.
+    """
+
     tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
-    return {
-        node.name
-        for node in tree.body
-        if isinstance(node, (ast.AsyncFunctionDef, ast.ClassDef, ast.FunctionDef))
-    }
+    names: set[str] = set()
+    for node in tree.body:
+        if isinstance(node, (ast.AsyncFunctionDef, ast.ClassDef, ast.FunctionDef)):
+            names.add(node.name)
+        elif isinstance(node, ast.Assign):
+            names.update(target.id for target in node.targets if isinstance(target, ast.Name))
+        elif isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
+            names.add(node.target.id)
+    return names
 
 
 def validate_manifest_references(

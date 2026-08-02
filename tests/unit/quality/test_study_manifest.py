@@ -86,6 +86,45 @@ def test_manifest_reference_validation_checks_hash_and_symbol(tmp_path: Path) ->
     assert any("symbol 'missing' is missing" in error for error in errors)
 
 
+@pytest.mark.parametrize(
+    "module_source",
+    [
+        "def run_study():\n    return None\n",
+        "async def run_study():\n    return None\n",
+        "class run_study:\n    pass\n",
+        "from factory import build\n\nrun_study = build('census')\n",
+        "from factory import Asset, build\n\nrun_study: Asset = build('census')\n",
+        "import dagster\n\n@dagster.asset\ndef run_study():\n    return None\n",
+    ],
+    ids=["def", "async_def", "class", "assign", "annotated_assign", "decorated"],
+)
+def test_implementation_symbol_accepts_every_module_level_binding_form(
+    tmp_path: Path, module_source: str
+) -> None:
+    """A factory-built or annotated asset is present, not a missing implementation."""
+
+    artifact = _write(tmp_path, "specs/example.md", "frozen design\n")
+    _write(tmp_path, "sbir_etl/example.py", module_source)
+    raw = _manifest(hashlib.sha256(artifact.read_bytes()).hexdigest())
+    manifest_path = _write(tmp_path, "studies/example-study/study.yaml", yaml.safe_dump(raw))
+
+    assert validate_manifest_file(manifest_path, repository_root=tmp_path) == []
+
+
+def test_implementation_symbol_still_rejects_names_bound_only_inside_a_function(
+    tmp_path: Path,
+) -> None:
+    artifact = _write(tmp_path, "specs/example.md", "frozen design\n")
+    _write(
+        tmp_path, "sbir_etl/example.py", "def outer():\n    run_study = 1\n    return run_study\n"
+    )
+    raw = _manifest(hashlib.sha256(artifact.read_bytes()).hexdigest())
+    manifest_path = _write(tmp_path, "studies/example-study/study.yaml", yaml.safe_dump(raw))
+
+    errors = validate_manifest_file(manifest_path, repository_root=tmp_path)
+    assert any("symbol 'run_study' is missing" in error for error in errors)
+
+
 def test_repository_study_manifests_are_valid() -> None:
     repository_root = Path(__file__).resolve().parents[3]
     manifests = sorted((repository_root / "studies").glob("*/study.yaml"))
