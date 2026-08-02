@@ -34,12 +34,15 @@ Scripts to resolve firm→UEI (`award_data.csv`) and transition→contract#
 (USAspending/FPDS), reusing #467 recovery where possible. Unit-tested on fixtures.
 → verify: fixture tests pass; unresolved cases surface a clear reason, not a crash.
 
-## T6 — Retrieval test + scoring
+## T6 — Retrieval test + scoring — DONE
 For each resolved case, build the candidate pool from the recovered corpus and
 score the frozen ranker (`fusion_scoring`): precision@1/@3, MRR, bootstrap CIs,
 split by stratum and provenance. Reuse the #467 audit/scoring plumbing.
 → verify: results table committed to the spec dir; independent-only number stated;
   compared to proxy 0.68@1.
+→ DONE: `scripts/phase3_groundtruth/score_t6.py` + `T6_RESULTS.md`. Path A (contract
+  ranking) headline p@1 0.467 [0.333, 0.622], n=45; Path B (notice anchor) p@1 0.773,
+  n=22 (91% Navy). Read: deadline-primary — Path A is below the 0.681 proxy baseline.
 
 ## T7 — Decision memo
 Write the go/no-go: does the externally-grounded precision justify letting fusion
