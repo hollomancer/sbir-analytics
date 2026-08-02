@@ -130,14 +130,15 @@ def score_pairs_with_fusion(
     identity-scrubbed and both cosines are inflated relative to the fit.
 
     The corpus-hash check is **armed by default**: the loaded coefficients must
-    have been fit on :data:`~fusion_model.FROZEN_CORPUS_FRAME_HASH`. Pass
-    ``expected_corpus_hash=None`` to score with a deliberately different
-    coefficient set (a refit under evaluation, or a test fixture) — that is the
-    only way to opt out, so a swapped file cannot pass unnoticed.
+    declare :data:`~fusion_model.FROZEN_CORPUS_FRAME_HASH`. Pass
+    ``expected_corpus_hash=None`` to score with a coefficient set that declares
+    a different corpus (a refit under evaluation, or a test fixture). This is an
+    explicit opt-out from the metadata check; the hash does not authenticate the
+    coefficient values or the feature-extraction implementation.
 
     Raises :class:`ValueError` if the sequences disagree in length, if the loaded
-    coefficients were fit on a different corpus, or if they put non-zero weight on
-    a placeholder feature (see :data:`PLACEHOLDER_FEATURES`).
+    coefficients declare a different corpus, or if they put non-zero weight on a
+    placeholder feature (see :data:`PLACEHOLDER_FEATURES`).
     """
 
     n = len(award_texts)

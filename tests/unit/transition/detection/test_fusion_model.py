@@ -71,12 +71,12 @@ def test_score_handles_zero_variance_feature_without_dividing_by_zero():
 
 
 def test_frozen_hash_matches_the_shipped_coefficients():
-    """The pinned hash must describe the coefficients that actually ship.
+    """The pinned hash must match the declaration in the artifact that ships.
 
     Without this, `FROZEN_CORPUS_FRAME_HASH` could drift from the file it guards
     and the armed check in `score_pairs_with_fusion` would reject the repo's own
     coefficients — or, worse, a swapped file could be accompanied by an updated
-    constant and pass silently.
+    constant and pass this metadata check.
     """
 
     shipped = json.loads(DEFAULT_COEFFICIENTS_PATH.read_text(encoding="utf-8"))
@@ -84,13 +84,13 @@ def test_frozen_hash_matches_the_shipped_coefficients():
 
 
 def test_frozen_hash_matches_the_committed_provenance_record():
-    """The pin must agree with the only in-repo witness to what was fit.
+    """The pin must agree with the only in-repo witness to the corpus metadata.
 
     The corpus parquet is gitignored (`*.parquet`), so `corpus.manifest.json` is
-    the sole committed record of the frame the coefficients were fit on. If the
-    coefficients are ever refit, this test fails until the manifest is updated
-    too — which is the point: the artifact and its provenance move together or
-    not at all.
+    the sole committed record of the frame named by the artifact. If a refit
+    declares a new corpus, this test fails until the pin and manifest are updated
+    too — which is the point: the three corpus-hash declarations move together or
+    not at all. This does not authenticate the coefficient values.
     """
 
     repo_root = Path(__file__).resolve().parents[4]
@@ -101,15 +101,15 @@ def test_frozen_hash_matches_the_committed_provenance_record():
     assert manifest["frame_hash"] == FROZEN_CORPUS_FRAME_HASH
 
 
-def test_production_scoring_refuses_coefficients_from_another_corpus(tmp_path):
-    """The armed guard must actually reject a swapped coefficient set."""
+def test_production_scoring_refuses_artifact_declaring_another_corpus(tmp_path):
+    """The armed guard must reject an artifact declaring another corpus."""
 
     from sbir_ml.transition.detection.fusion_scoring import score_pairs_with_fusion
 
     shipped = json.loads(DEFAULT_COEFFICIENTS_PATH.read_text(encoding="utf-8"))
-    impostor = dict(shipped, corpus_frame_hash="0" * 64)
+    mismatched = dict(shipped, corpus_frame_hash="0" * 64)
     path = tmp_path / "fusion_coefficients.json"
-    path.write_text(json.dumps(impostor), encoding="utf-8")
+    path.write_text(json.dumps(mismatched), encoding="utf-8")
 
     with pytest.raises(ValueError, match="different corpus"):
         score_pairs_with_fusion(
