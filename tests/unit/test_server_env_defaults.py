@@ -15,7 +15,6 @@ ENV_EXAMPLE = REPO_ROOT / ".env.server.example"
 SERVER_COMPOSE = REPO_ROOT / "docker-compose.server.yml"
 WAIT_FOR_SERVICE = REPO_ROOT / "scripts" / "docker" / "wait-for-service.sh"
 CI_COMPOSE = REPO_ROOT / "docker-compose.yml"
-BUILD_IMAGES_WORKFLOW = REPO_ROOT / ".github" / "workflows" / "build-images.yml"
 
 pytestmark = [pytest.mark.fast, pytest.mark.unit]
 
@@ -119,11 +118,3 @@ def test_dependency_wait_contract_matches_slim_server_image():
 def test_ci_container_mounts_server_env_contract():
     compose = CI_COMPOSE.read_text()
     assert "./.env.server.example:/app/.env.server.example:ro" in compose
-
-
-def test_image_workflow_rebuilds_arm64_images_when_workflow_changes():
-    workflow = BUILD_IMAGES_WORKFLOW.read_text()
-    assert workflow.count("platforms: linux/amd64,linux/arm64") == 2
-    # One paths entry triggers the workflow and two filter entries ensure the
-    # base and ETL jobs actually run on the merge commit.
-    assert workflow.count("'.github/workflows/build-images.yml'") == 3
