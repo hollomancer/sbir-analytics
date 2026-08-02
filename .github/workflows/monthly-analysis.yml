@@ -37,7 +37,6 @@ on:
         type: choice
         options:
           - sbir-gov
-          - s3
       usaspending_source:
         description: "USAspending data source"
         required: false
@@ -45,19 +44,12 @@ on:
         type: choice
         options:
           - api
-          - s3
           - skip
       data_cut_date:
         description: "Right-censoring date (YYYY-MM-DD). Leave blank for today."
         required: false
         default: ""
         type: string
-      skip_upstream_download:
-        description: "Skip S3 download of upstream parquet files"
-        required: false
-        default: false
-        type: boolean
-
 permissions:
   id-token: write
   contents: read
@@ -67,9 +59,6 @@ concurrency:
   group: monthly-analysis
   cancel-in-progress: true
 
-env:
-  AWS_REGION: us-east-2
-  S3_BUCKET: sbir-etl-prod-data
   PYTHON_VERSION: "3.11"
   SKIP_NEO4J_LOADING: "true"
 
@@ -91,13 +80,6 @@ jobs:
         uses: ./.github/actions/setup-python-uv
         with:
           install-dev-deps: "false"
-
-      - name: Configure AWS credentials
-        if: inputs.sbir_source == 's3' || inputs.usaspending_source == 's3'
-        uses: aws-actions/configure-aws-credentials@v6
-        with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
 
       - name: Set parameters
         id: params
@@ -121,14 +103,10 @@ jobs:
       - name: Run benchmark analysis
         run: |
           SOURCE_FLAG=""
-          if [ "${{ steps.params.outputs.sbir_source }}" = "s3" ]; then
-            SOURCE_FLAG="--s3 --s3-bucket ${{ env.S3_BUCKET }}"
-          fi
 
           USA_FLAG=""
           case "${{ steps.params.outputs.usaspending_source }}" in
             api)  USA_FLAG="--usaspending-api" ;;
-            s3)   USA_FLAG="--usaspending-s3 --s3-bucket ${{ env.S3_BUCKET }}" ;;
             skip) USA_FLAG="" ;;
           esac
 
@@ -213,41 +191,6 @@ jobs:
         password: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - uses: actions/checkout@v7
-
-      - name: Configure AWS credentials
-        if: inputs.skip_upstream_download != true
-        uses: aws-actions/configure-aws-credentials@v6
-        with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Install AWS CLI
-        if: inputs.skip_upstream_download != true
-        run: pip install awscli && aws --version
-
-      - name: Download upstream parquet files from S3
-        if: inputs.skip_upstream_download != true
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p data/transition data/processed
-
-          CONTRACTS_KEY="processed/transition/contracts_ingestion.parquet"
-          AWARDS_KEY="processed/sbir/enriched_sbir_awards.parquet"
-
-          if aws s3api head-object --bucket "${S3_BUCKET}" --key "${CONTRACTS_KEY}" >/dev/null 2>&1; then
-            aws s3 cp "s3://${S3_BUCKET}/${CONTRACTS_KEY}" data/transition/contracts_ingestion.parquet
-            echo "Contracts parquet downloaded"
-          else
-            echo "No contracts parquet in S3 at s3://${S3_BUCKET}/${CONTRACTS_KEY} — asset will produce empty frame"
-          fi
-
-          if aws s3api head-object --bucket "${S3_BUCKET}" --key "${AWARDS_KEY}" >/dev/null 2>&1; then
-            aws s3 cp "s3://${S3_BUCKET}/${AWARDS_KEY}" data/processed/enriched_sbir_awards.parquet
-            echo "Enriched SBIR awards parquet downloaded"
-          else
-            echo "No SBIR awards parquet in S3 at s3://${S3_BUCKET}/${AWARDS_KEY} — reconciliation layer will be empty"
-          fi
 
       - name: Materialize phase_transition assets
         env:
@@ -351,25 +294,3 @@ jobs:
             data/processed/phase_transition_survival.parquet
             data/processed/phase_transition_survival.checks.json
             reports/phase_transition/phase_transition_report.json
-
-      - name: Publish outputs to S3
-        if: success() && inputs.skip_upstream_download != true
-        shell: bash
-        run: |
-          set -euo pipefail
-          RUN_PREFIX="processed/phase_transition/$(date -u +%Y-%m-%d)"
-          for f in \
-            data/processed/phase_ii_awards.parquet \
-            data/processed/phase_ii_awards.checks.json \
-            data/processed/phase_iii_contracts.parquet \
-            data/processed/phase_iii_contracts.checks.json \
-            data/processed/phase_ii_iii_pairs.parquet \
-            data/processed/phase_ii_iii_pairs.checks.json \
-            data/processed/phase_transition_survival.parquet \
-            data/processed/phase_transition_survival.checks.json \
-            reports/phase_transition/phase_transition_report.json; do
-            if [ -f "$f" ]; then
-              aws s3 cp "$f" "s3://${S3_BUCKET}/${RUN_PREFIX}/$(basename "$f")"
-            fi
-          done
-          echo "Published outputs to s3://${S3_BUCKET}/${RUN_PREFIX}/" >> "$GITHUB_STEP_SUMMARY"

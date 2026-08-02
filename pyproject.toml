@@ -218,12 +218,10 @@ markers = [
     "neo4j: tests requiring real Neo4j connection (not mocked)",
     "requires_s3: tests requiring S3 access",
     "requires_api: tests requiring external API access",
-    "requires_aws: tests requiring AWS credentials",
     "requires_neo4j: tests requiring Neo4j driver",
     "requires_bea_api: tests requiring BEA API key",
     "requires_hf: tests requiring HuggingFace token",
     "requires_ml: tests requiring ML dependencies",
-    "s3: tests requiring S3 access",
 ]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
