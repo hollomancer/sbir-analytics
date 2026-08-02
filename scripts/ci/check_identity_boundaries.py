@@ -36,8 +36,14 @@ def _uses_direct_rapidfuzz_scorer(node: ast.AST) -> bool:
         if node.module == "rapidfuzz" and any(alias.name == "fuzz" for alias in node.names):
             return True
         return bool(node.module and node.module.startswith("rapidfuzz.distance"))
+    # ``import rapidfuzz`` reaches fuzz and distance through attribute access, so
+    # it bypasses the guard unless the bare package import is flagged too.
+    # ``rapidfuzz.process`` stays allowed for the same reason ``from rapidfuzz
+    # import process`` does: it drives the search while the scorer is supplied
+    # from ``sbir_etl.identity``.
     return isinstance(node, ast.Import) and any(
-        alias.name in {"rapidfuzz.fuzz", "rapidfuzz.distance"} for alias in node.names
+        alias.name == "rapidfuzz" or alias.name.startswith(("rapidfuzz.fuzz", "rapidfuzz.distance"))
+        for alias in node.names
     )
 
 
