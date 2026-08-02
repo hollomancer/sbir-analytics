@@ -380,7 +380,7 @@ def _prepare_sbir_gov_rows(sbir_awards: pd.DataFrame) -> pd.DataFrame:
 
 
 def _unify(contract_phase_ii: pd.DataFrame, sbir_gov_phase_ii: pd.DataFrame) -> pd.DataFrame:
-    """Reconcile SBIR.gov rows to generated federal awards without PIID guessing."""
+    """Reconcile all exact-key SBIR.gov rows to unique generated federal awards."""
 
     if contract_phase_ii.empty and sbir_gov_phase_ii.empty:
         return pd.DataFrame(columns=PHASE_II_COLUMNS)
@@ -414,12 +414,12 @@ def _unify(contract_phase_ii: pd.DataFrame, sbir_gov_phase_ii: pd.DataFrame) -> 
     for source_key in shared_source_keys:
         federal_indexes = list(federal.index[federal_source_keys.eq(source_key)])
         supplemental_indexes = list(supplemental.index[supplemental_source_keys.eq(source_key)])
-        if len(federal_indexes) != 1 or len(supplemental_indexes) != 1:
+        if len(federal_indexes) != 1:
             generated_ids = sorted(
                 federal.loc[federal_indexes, "award_id"].map(_normalize_source_key)
             )
             raise PhaseIIInputError(
-                f"SBIR.gov source award {source_key} requires one-to-one reconciliation; "
+                f"SBIR.gov source award {source_key} requires exactly one federal match; "
                 f"found {len(federal_indexes)} federal rows {generated_ids} and "
                 f"{len(supplemental_indexes)} supplemental rows"
             )
