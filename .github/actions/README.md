@@ -21,16 +21,20 @@ Sets up Python with UV package manager and installs dependencies.
   with:
     python-version: "3.11"          # Optional, default: "3.11"
     install-dev-deps: "true"        # Optional, default: "true"
-    cache-venv: "true"              # Optional, default: "true"
-    cache-pytest: "false"           # Optional, default: "false"
-    install-pyreadstat: "false"     # Optional, default: "false"
+    cache-mypy: "false"             # Optional, default: "false"
 ```
 
 **Features:**
 
 - Installs UV package manager
-- Caches virtual environment and pytest cache
-- Optionally installs pyreadstat for Stata file support
+- Caches the UV package cache (`~/.cache/uv`), from which `uv sync` hardlinks
+  the virtual environment in about 0.2s
+- Optionally caches `.mypy_cache` for the job that runs mypy
+
+**Not cached, deliberately:** `.venv` itself. Restoring a ~300 MB venv tarball
+costs far more than the 0.2s rebuild, and `uv sync` had to run afterwards
+regardless. There is also no separate pyreadstat install — `uv sync --extra
+stack-dev` already resolves it through the `uspto` extra.
 
 ---
 

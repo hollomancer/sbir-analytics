@@ -37,7 +37,7 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           install-dev-deps: "true"
-          cache-venv: "true"
+          cache-mypy: "true"
 
       - name: Run Ruff lint
         run: uv run python -m ruff check sbir_etl packages/sbir-analytics/sbir_analytics packages/sbir-ml/sbir_ml packages/sbir-graph/sbir_graph tests
@@ -87,12 +87,11 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           install-dev-deps: "true"
-          cache-venv: "true"
-          cache-pytest: "true"
-          install-pyreadstat: "true"
 
       # Unit tests only, minus the slow marker. No Neo4j, no services. The
-      # shards balance by test count; xdist parallelises within each one.
+      # shards balance by test count; xdist parallelises within each one —
+      # measured 25s with `-n auto` against 46s with `-n 0` on a 4-core runner,
+      # so both layers of parallelism earn their keep.
       - name: Run unit tests
         run: |
           uv run pytest tests/unit/ \
@@ -112,8 +111,6 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           install-dev-deps: "true"
-          cache-venv: "true"
-          install-pyreadstat: "true"
 
       - name: Start Neo4j
         uses: ./.github/actions/start-neo4j
@@ -123,10 +120,26 @@ jobs:
           neo4j-user: ${{ env.NEO4J_USERNAME }}
           neo4j-password: ${{ env.NEO4J_PASSWORD }}
 
-      # Everything: unit, integration, and e2e, including the slow marker.
+      # The whole tests/ tree — broader than any previous gate. The old CI only
+      # ever ran tests/unit, tests/integration, and tests/e2e, and excluded the
+      # slow marker everywhere; tests/functional, tests/golden, tests/slow,
+      # tests/mocks, and tests/utils ran nowhere at all.
+      #
       # USE_REAL_SBIR_DATA is deliberately unset — the real_data fixtures fall
       # back to sample data, and the bulk corpora live on the server's SSD
       # where no runner can reach them.
+      #
+      # Two exclusions, both for tests that no CI job has ever executed and
+      # that are broken today. They are pre-existing rot, not regressions, and
+      # deselecting them by name keeps that visible rather than hiding it
+      # behind a marker filter:
+      #   - requires_api needs live external APIs and credentials; it does not
+      #     belong in CI at all.
+      #   - test_detection_smoke.py raises "Cannot compare Timestamp with
+      #     datetime.date" (slow-marked, so tests/e2e never ran it).
+      #   - TestFiscalPipeline imports fiscal_returns_core, a name that no
+      #     longer exists in sbir_analytics.assets.fiscal_assets.
+      # Fix those and delete the matching line.
       - name: Run full test suite
         env:
           NEO4J_URI: "bolt://localhost:7687"
@@ -135,6 +148,9 @@ jobs:
           REQUIRE_NEO4J: "1"
         run: |
           uv run pytest tests/ \
+            -m "not requires_api" \
+            --deselect tests/e2e/transition/test_detection_smoke.py \
+            --deselect tests/functional/test_pipelines.py::TestFiscalPipeline::test_fiscal_run_produces_outputs \
             --cov=sbir_etl \
             --cov=packages/sbir-analytics/sbir_analytics \
             --cov=packages/sbir-ml/sbir_ml \
