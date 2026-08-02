@@ -30,7 +30,33 @@ grants + $33M contracts** of follow-on footprint, absent from the FPDS contract 
 (Columbia Power $19M; NIH-biotech follow-ons: MABVAX, Exemplar Genetics). "Non-SBIR" =
 description without SBIR/STTR — a loose gate; T2 tightens with UEI-exact + Phase-II proximity.
 
-## T1 (§638-J&A) + T4 (OT) — BLOCKED / deprioritized (ran off-sandbox 2026-08-01)
+## T1 — RESURRECTED via the SAM bulk extract (not the API)
+
+The personal-key API is quota-blocked, BUT the **SAM Contract Opportunities bulk CSV extracts
+are reachable from the hosted env** (served from `s3.amazonaws.com/falextracts/` via
+`sam.gov/api/prod/fileextractservices` — NOT the blocked `api.sam.gov`), **no key, no quota**.
+
+- Files: `datagov/ContractOpportunitiesFullCSV.csv` + annual archives **FY2000–FY2025**
+  (~0.9–1.3 GB/yr). Object GET works (HTTP 206) even though bucket-list is 403.
+- **47 columns incl. `Description` (full BODY TEXT), `Title`, `Awardee`, `AwardNumber`,
+  `Award$`, `Sol#`, `NaicsCode`, `Office`, `Type`, `PostedDate`.**
+- **Live test:** streamed FY2023 (1.3 GB) here and grep'd → **66 notices self-labeling as
+  SBIR Phase III / §638**, e.g. *"Intent to Award Sole Source, SBIR Phase III Contract,
+  Solar Powered Tent System"*, *"Notice of Sole Source Award - Air Force SBIR/STTR program"*.
+  Each row has awardee + award# + description in-line.
+
+**This is the self-labeling ground-truth source that the API couldn't deliver.** ~66/recent
+year × ~8 SBIR-era years ≈ several hundred machine-extractable, self-labeled, independent
+Phase III positives (with firm + contract#) — a potential upgrade to the #481 hand-collected
+293. **T1 is viable; the extractor is the next build** (parse bulk CSVs across years → firm,
+contract#, description, agency for every SBIR-Phase-III-self-labeled notice).
+
+## T4 (OT) — still blocked
+
+OT awards live only in the Contract Awards API (needs a system account; rate-limited on the
+first call). Not in the opportunities bulk extract. Deprioritized.
+
+## (superseded) T1 §638-J&A via personal-key API — blocked (kept for the record)
 
 `sam_probe.sh` run from a normal network (api.sam.gov reachable there, HTTP 200, key valid).
 Outcome kills both as personal-key API tasks:
