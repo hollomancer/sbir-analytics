@@ -58,8 +58,9 @@ def _fake_remotezip_module(members: Mapping[str, bytes]) -> types.ModuleType:
         def infolist(self) -> list[_Info]:
             return [_Info(name) for name in members]
 
-        def open(self, member_name: str) -> io.BytesIO:
-            return io.BytesIO(members[member_name])
+        def open(self, member_name: str | _Info) -> io.BytesIO:
+            name = member_name if isinstance(member_name, str) else member_name.filename
+            return io.BytesIO(members[name])
 
     module.RemoteZip = _FakeRemoteZip  # type: ignore[attr-defined]
     return module
@@ -146,11 +147,12 @@ def test_stream_remote_zip_member_streams_verified_named_rows(
 ) -> None:
     member_name = "archive/9247.dat.gz"
     payload = _row_text([sample_contract_row_full], contract_copy_columns).encode()
+    compressed_payload = gzip.compress(payload)
     extractor = ContractExtractor(vendor_filter_file=sample_vendor_filters)
 
     with patch.dict(
         sys.modules,
-        {"remotezip": _fake_remotezip_module({member_name: gzip.compress(payload)})},
+        {"remotezip": _fake_remotezip_module({member_name: compressed_payload})},
     ):
         contracts = list(
             extractor.stream_remote_zip_member(
@@ -163,6 +165,10 @@ def test_stream_remote_zip_member_streams_verified_named_rows(
 
     assert [contract.contract_id for contract in contracts] == ["SPE4A924D0001"]
     assert contracts[0].vendor_uei == "ABC123456789"  # pragma: allowlist secret
+    assert (
+        extractor.source_provenance["member_sha256"]
+        == hashlib.sha256(compressed_payload).hexdigest()
+    )
 
 
 def test_remote_awk_prefilter_preserves_full_scan_statistics(
@@ -290,6 +296,62 @@ def test_remote_awk_prefilter_fails_closed_on_malformed_row(
     assert extractor.stats["contracts_found"] == 1
 
 
+def test_remote_awk_prefilter_accepts_exact_copy_trailer_without_counting_it(
+    sample_vendor_filters,
+    sample_contract_row_full,
+    contract_copy_columns,
+) -> None:
+    member_name = "archive/9247.dat.gz"
+    row = _row_text([sample_contract_row_full], contract_copy_columns)
+    payload = f"{row}\n\\.\n\n\n".encode()
+    extractor = ContractExtractor(vendor_filter_file=sample_vendor_filters)
+
+    with patch.dict(
+        sys.modules,
+        {"remotezip": _fake_remotezip_module({member_name: gzip.compress(payload)})},
+    ):
+        contracts = list(
+            extractor.stream_remote_zip_member(
+                "https://example.test/archive.zip",
+                member_name,
+                contract_copy_columns,
+                fpds_only=True,
+            )
+        )
+
+    assert len(contracts) == 1
+    assert extractor.stats["records_scanned"] == 1
+
+
+def test_remote_awk_prefilter_rejects_nonempty_data_after_copy_terminator(
+    sample_vendor_filters,
+    sample_contract_row_full,
+    contract_copy_columns,
+) -> None:
+    member_name = "archive/9247.dat.gz"
+    row = _row_text([sample_contract_row_full], contract_copy_columns)
+    payload = f"{row}\n\\.\n{row}\n".encode()
+    extractor = ContractExtractor(vendor_filter_file=sample_vendor_filters)
+
+    with (
+        patch.dict(
+            sys.modules,
+            {"remotezip": _fake_remotezip_module({member_name: gzip.compress(payload)})},
+        ),
+        pytest.raises(SourceDataError, match="non-empty data after COPY terminator"),
+    ):
+        list(
+            extractor.stream_remote_zip_member(
+                "https://example.test/archive.zip",
+                member_name,
+                contract_copy_columns,
+                fpds_only=True,
+            )
+        )
+
+    assert extractor.stats["records_scanned"] == 1
+
+
 def test_remote_awk_prefilter_fails_closed_on_non_fpds_partition_row(
     sample_vendor_filters,
     sample_grant_row,
@@ -389,6 +451,8 @@ def test_extract_from_remote_zip_resolves_then_writes(
     sample_contract_row_full,
     contract_copy_columns,
 ) -> None:
+    from sbir_etl.utils.data import file_io
+
     source = _source(contract_copy_columns)
     payload = _row_text([sample_contract_row_full], contract_copy_columns).encode()
     output = tmp_path / "contracts.parquet"
@@ -399,7 +463,8 @@ def test_extract_from_remote_zip_resolves_then_writes(
         classmethod(lambda cls, url: source),
     )
     monkeypatch.setattr(
-        "sbir_etl.utils.data.file_io.save_dataframe_parquet",
+        file_io,
+        "save_dataframe_parquet",
         lambda frame, path, **kwargs: path.write_bytes(b"verified-parquet"),
     )
     extractor = ContractExtractor(vendor_filter_file=sample_vendor_filters)
@@ -419,6 +484,81 @@ def test_extract_from_remote_zip_resolves_then_writes(
     assert extractor.source_provenance["physical_table"] == source.relation
     assert extractor.source_provenance["member"] == source.member_name
     assert extractor.source_provenance["toc_sha256"] == source.toc_sha256
+
+
+def test_parallel_prefetch_failure_cannot_replace_existing_output(
+    tmp_path,
+    monkeypatch,
+    sample_vendor_filters,
+    sample_contract_row_full,
+    contract_copy_columns,
+) -> None:
+    from sbir_etl.extractors import parallel_range_reader
+    from sbir_etl.extractors.parallel_range_reader import ParallelRangeValidationError
+
+    source = _source(contract_copy_columns)
+    output = tmp_path / "contracts.parquet"
+    output.write_bytes(b"existing-parquet")
+    extractor = ContractExtractor(vendor_filter_file=sample_vendor_filters)
+    contract = extractor._parse_contract_row(sample_contract_row_full)
+
+    class _RangeFile:
+        canonical_url = "https://canonical.example.test/archive.zip"
+        replica_urls = ("https://replica.example.test/archive.zip",)
+        chunk_size = 8
+        workers = 2
+
+        def validate_pending(self) -> None:
+            raise ParallelRangeValidationError("invalid unused lookahead")
+
+    class _Info:
+        filename = source.member_name
+        CRC = 0x12345678
+        compress_size = 20
+        file_size = 20
+
+    class _RemoteZip:
+        range_file = _RangeFile()
+        identity = types.SimpleNamespace(etag='"etag"', total_bytes=100)
+
+        def __init__(self, canonical_url, replica_urls) -> None:
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc) -> Literal[False]:
+            return False
+
+        def infolist(self):
+            return [_Info()]
+
+        def enable_parallel_prefetch(self) -> None:
+            pass
+
+    monkeypatch.setattr(parallel_range_reader, "ValidatedParallelRemoteZip", _RemoteZip)
+    monkeypatch.setattr(
+        ContractExtractor,
+        "_resolve_remote_source_from_archive",
+        classmethod(lambda cls, archive: source),
+    )
+    monkeypatch.setattr(
+        extractor,
+        "_stream_remote_archive_member",
+        lambda *args, **kwargs: iter([contract]),
+    )
+
+    with pytest.raises(ParallelRangeValidationError, match="unused lookahead"):
+        extractor.extract_from_remote_zip(
+            "https://canonical.example.test/archive.zip",
+            member_name=None,
+            output_file=output,
+            parallel_range=True,
+            replica_urls=["https://replica.example.test/archive.zip"],
+        )
+
+    assert output.read_bytes() == b"existing-parquet"
+    assert not output.with_suffix(".checks.json").exists()
 
 
 def test_remote_resolution_uses_toc_selected_member_not_file_size(
@@ -469,6 +609,41 @@ def test_remote_resolution_requires_exactly_one_toc() -> None:
     with patch.dict(sys.modules, {"remotezip": _fake_remotezip_module(members)}):
         with pytest.raises(ArchiveSchemaError, match="exactly one toc.dat"):
             ContractExtractor._resolve_remote_source("https://example.test/archive.zip")
+
+
+def test_remote_resolution_requires_exactly_one_toc_selected_member(
+    monkeypatch,
+    contract_copy_columns,
+) -> None:
+    class _Info:
+        def __init__(self, filename: str) -> None:
+            self.filename = filename
+
+    class _Archive:
+        def infolist(self):
+            return [
+                _Info("archive/toc.dat"),
+                _Info("archive/9247.dat.gz"),
+                _Info("archive/9247.dat.gz"),
+            ]
+
+        def open(self, info):
+            assert info.filename == "archive/toc.dat"
+            return io.BytesIO(_TOC_BYTES)
+
+    def fake_pg_restore(dump_dir: Path, *arguments: str) -> str:
+        if "--list" in arguments:
+            return _toc()
+        if "--schema-only" in arguments:
+            return _schema(contract_copy_columns)
+        if "--data-only" in arguments:
+            return _copy(contract_copy_columns)
+        raise AssertionError(f"Unexpected pg_restore arguments: {arguments!r}")
+
+    monkeypatch.setattr(ContractExtractor, "_run_pg_restore", staticmethod(fake_pg_restore))
+
+    with pytest.raises(ArchiveSchemaError, match="expected exactly one archive/9247.dat.gz"):
+        ContractExtractor._resolve_remote_source_from_archive(_Archive())
 
 
 def test_configured_remote_member_must_match_verified_metadata(
