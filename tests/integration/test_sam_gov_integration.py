@@ -79,12 +79,11 @@ class TestSAMGovExtractorIntegration:
         # Create extractor with mock config
         with patch("sbir_etl.extractors.sam_gov.get_config") as mock_config:
             mock_config.return_value.extraction.sam_gov.parquet_path = str(sample_sam_gov_parquet)
-            mock_config.return_value.extraction.sam_gov.use_s3_first = False
 
             extractor = SAMGovExtractor()
 
             # Load parquet
-            df = extractor.load_parquet(parquet_path=sample_sam_gov_parquet, use_s3_first=False)
+            df = extractor.load_parquet(parquet_path=sample_sam_gov_parquet)
 
             # Verify data loaded
             assert len(df) == 5
@@ -112,10 +111,9 @@ class TestSAMGovExtractorIntegration:
         """Test handling of multiple NAICS codes in naics_code_string."""
         with patch("sbir_etl.extractors.sam_gov.get_config") as mock_config:
             mock_config.return_value.extraction.sam_gov.parquet_path = str(sample_sam_gov_parquet)
-            mock_config.return_value.extraction.sam_gov.use_s3_first = False
 
             extractor = SAMGovExtractor()
-            df = extractor.load_parquet(parquet_path=sample_sam_gov_parquet, use_s3_first=False)
+            df = extractor.load_parquet(parquet_path=sample_sam_gov_parquet)
 
             # Check entity with multiple NAICS codes
             entity = extractor.get_entity_by_uei(df, "DEF987654321")
@@ -143,7 +141,6 @@ class TestSAMGovAssetIntegration:
 
         with patch("sbir_analytics.assets.sam_gov_ingestion.get_config") as mock_config:
             mock_config.return_value.extraction.sam_gov.parquet_path = str(sample_sam_gov_parquet)
-            mock_config.return_value.extraction.sam_gov.use_s3_first = False
             mock_config.return_value.s3 = {}
 
             # Mock SAMGovExtractor to return our test data
@@ -182,7 +179,6 @@ class TestSAMGovAssetIntegration:
         # Mock config with non-existent file
         with patch("sbir_analytics.assets.sam_gov_ingestion.get_config") as mock_config:
             mock_config.return_value.extraction.sam_gov.parquet_path = "/nonexistent/file.parquet"
-            mock_config.return_value.extraction.sam_gov.use_s3_first = False
             mock_config.return_value.s3 = {}
 
             # Mock Path.exists to return False
