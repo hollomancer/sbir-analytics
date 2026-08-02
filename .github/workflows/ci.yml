@@ -175,3 +175,58 @@ jobs:
       - name: Neo4j logs on failure
         if: failure()
         run: docker logs test-neo4j --tail 100 || true
+
+  docker-changes:
+    name: Detect Docker Changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      docker: ${{ steps.filter.outputs.docker }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dorny/paths-filter@v4
+        id: filter
+        with:
+          filters: |
+            docker:
+              - 'Dockerfile*'
+              - 'docker-compose*.yml'
+              - '.dockerignore'
+              - 'uv.lock'
+              - 'pyproject.toml'
+
+  docker:
+    name: Docker Build and Smoke Test
+    needs: [docker-changes]
+    if: needs.docker-changes.outputs.docker == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      # amd64 only, on the runner's native architecture. The question this job
+      # answers is "does the image still build and start", and arm64 emulation
+      # roughly triples the time without changing the answer. The mini builds
+      # its own arm64 images; see docs/deployment/actions-migration-plan.md.
+      - name: Build the ETL image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: Dockerfile
+          push: false
+          load: true
+          tags: sbir-analytics:ci-${{ github.sha }}
+          build-args: WITH_R=false
+          cache-from: type=gha,scope=docker-ci
+          cache-to: type=gha,mode=max,scope=docker-ci
+
+      - name: Smoke test the entrypoint
+        run: docker run --rm sbir-analytics:ci-${{ github.sha }} dagster --version
+
+      - name: Validate compose files
+        run: |
+          docker compose -f docker-compose.yml config -q
+          docker compose -f docker-compose.server.yml --env-file .env.server.example config -q

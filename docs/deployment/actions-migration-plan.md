@@ -28,12 +28,13 @@ ones; each of the migrations below is a straightforward application.
 `packages/sbir-analytics/sbir_analytics/definitions.py` as
 `(job_name, schedule_name, default_cron, label)`. The loop below it builds a
 `ScheduleDefinition` with env-var overrides
-(`SBIR_ETL__DAGSTER__SCHEDULES__<NAME>_CRON` and `…_ENABLED`) and
+(`SBIR_ETL__DAGSTER__SCHEDULES__<NAME>_CRON` and
+`SBIR_ETL__DAGSTER__SCHEDULES__<NAME>_ENABLED`) and
 `default_status` **stopped**. Keep that default: the runbook requires an
 operator to confirm a manual run on the host before enabling.
 
 **Wrapping a script as a job** follows
-`assets/jobs/phase_transition_archive.py` — an `@op` that `subprocess.run`s the
+`packages/sbir-analytics/sbir_analytics/assets/jobs/phase_transition_archive.py` — an `@op` that `subprocess.run`s the
 script, logs the stderr tail and raises on a non-zero exit, composed into a
 `@job`. None of the five scripts below are wrapped in Dagster yet, so each needs
 this.
@@ -41,8 +42,8 @@ this.
 **Durable output** matters more than it did. Every retired workflow uploaded
 GitHub artifacts with 7–90 day retention, and those expire. The phase-transition
 archive already solves this by writing dated directories under
-`<data_root>/processed/…/history/<date>/`. Each migration needs an equivalent
-or its output series is lost.
+`<data_root>/processed/phase_transition/history/<date>/`. Each migration needs
+an equivalent or its output series is lost.
 
 **Document each schedule** in a runbook table in `mac-mini-server.md`, matching
 the existing "Source-data downloads" and "Monthly analysis" sections.
@@ -59,7 +60,8 @@ sit dead: broken, and nothing said so. Decide on a notification path (Dagster
 run-failure sensor → email/Slack/ntfy) **before** migrating, not after.
 
 **Secrets move to `.env.server`.** `OPENAI_API_KEY` and `SAM_GOV_API_KEY` are
-needed by items 2, 3, and 4. Once migrated, delete the now-unused repository
+needed by items 2 and 4. Item 3 needs none — the USAspending API is
+unauthenticated. Once migrated, delete the now-unused repository
 secrets in GitHub settings — `NEO4J_USER`, `NEO4J_PASSWORD`, `S3_BUCKET`, and
 `AWS_ROLE_ARN` have no remaining consumer.
 
@@ -202,7 +204,7 @@ Two simplifications the move makes available:
 This is the most complex of the five. Given it has never produced output, treat
 it as new work with a reference implementation rather than as a port.
 
-### 5. Docker image generation — where infra actually gets tested
+### 5. Docker image generation — build validation DONE, publishing optional
 
 | | |
 |---|---|
@@ -215,7 +217,7 @@ together, because they were never the same thing.
 
 **Publishing is genuinely optional.** `make server-up` falls back to building
 `Dockerfile.python-base` locally when GHCR has no manifest for the Mac's
-architecture (`mac-mini-server.md:139`), and the server compose profile builds
+architecture (see [Bring-up](mac-mini-server.md#bring-up)), and the server compose profile builds
 its app images locally with a `:local` tag rather than pulling. Nothing is
 broken today; a first build just takes several minutes. The amd64 half of the
 multi-arch manifest existed to serve CI, which no longer builds images — so if
@@ -228,7 +230,7 @@ anywhere, nothing checks that `Dockerfile`, `Dockerfile.python-base`,
 discovered at deploy time on the mini, which is the worst place to find it.
 `tests/` cannot cover this: the ETL image is what the tests would run *inside*.
 
-Recommended: a **path-filtered `docker` job in `ci.yml`**, gated on
+**Implemented in this PR:** a **path-filtered `docker` job in `ci.yml`**, gated on
 `Dockerfile*`, `docker-compose*.yml`, `.dockerignore`, `uv.lock` and
 `pyproject.toml`. It costs nothing on a typical PR — it does not run at all —
 and fires exactly when a change could break the build. Scope it to build and
@@ -270,8 +272,8 @@ Recorded so these are not resurrected by accident.
 4. **Monthly benchmark** — diagnose the 60-second success first.
 5. **Monthly procurement transition** — diagnose the download failure first;
    largest scope.
-6. **Docker image generation** — restore build validation as a path-filtered
-   CI job; publishing stays optional.
+6. ~~**Docker image generation**~~ — build validation restored as a
+   path-filtered CI job. Publishing stays optional and unscheduled.
 
 Steps 2 and 3 are independent and can proceed in parallel. Steps 4 and 5 both
 start with a diagnosis that can happen before any code is written.
