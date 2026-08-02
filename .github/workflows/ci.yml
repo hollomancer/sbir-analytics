@@ -8,9 +8,7 @@ permissions:
 
 on:
   workflow_call:  # Allow other workflows to call this CI workflow
-  pull_request:
-    branches-ignore: []
-    # Run on any PR to any branch
+  pull_request:  # Run on any PR to any branch
   push:
     branches: [main, develop]
   workflow_dispatch:
@@ -173,26 +171,41 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - name: Validate workflow YAML syntax
+      # This job previously only ran yaml.safe_load over each workflow, which
+      # accepts anything well-formed as YAML. That let two fatal schema errors
+      # reach main on 2026-08-02 — a step left with an empty `env:` (parses as
+      # null, rejected by Actions as an invalid workflow file) in both
+      # monthly-analysis.yml and weekly.yml. GitHub refuses to run an invalid
+      # workflow at all, so weekly.yml silently stopped running entirely while
+      # every push logged a zero-second failed run. actionlint validates against
+      # the real workflow schema and catches exactly that class of error.
+      - name: Validate workflows with actionlint
+        env:
+          ACTIONLINT_VERSION: "1.7.12"
         run: |
-          echo "## 🔍 Workflow Validation" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-
-          ERRORS=0
-          for f in .github/workflows/*.yml; do
-            if python3 -c "import yaml; yaml.safe_load(open('$f'))" 2>/dev/null; then
-              echo "✅ $f" >> $GITHUB_STEP_SUMMARY
+          set -euo pipefail
+          bash <(curl -fsSL "https://raw.githubusercontent.com/rhysd/actionlint/v${ACTIONLINT_VERSION}/scripts/download-actionlint.bash") \
+            "$ACTIONLINT_VERSION" >/dev/null
+          # shellcheck/pyflakes integration is off: this gate is about workflow
+          # schema validity, not style of the embedded shell.
+          # actionlint exits non-zero on findings; capture them first so the
+          # step summary is still written, then fail on the last line.
+          ./actionlint -oneline -shellcheck= -pyflakes= > /tmp/actionlint.txt || true
+          cat /tmp/actionlint.txt
+          {
+            echo "## 🔍 Workflow Validation"
+            echo ""
+            if [ -s /tmp/actionlint.txt ]; then
+              echo "❌ actionlint reported problems:"
+              echo ""
+              echo '```'
+              cat /tmp/actionlint.txt
+              echo '```'
             else
-              echo "❌ $f - Invalid YAML" >> $GITHUB_STEP_SUMMARY
-              ERRORS=$((ERRORS + 1))
+              echo "✅ All workflows valid"
             fi
-          done
-
-          if [ $ERRORS -gt 0 ]; then
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "**$ERRORS workflow(s) have invalid YAML**" >> $GITHUB_STEP_SUMMARY
-            exit 1
-          fi
+          } >> "$GITHUB_STEP_SUMMARY"
+          [ ! -s /tmp/actionlint.txt ]
 
       - name: Check for common workflow issues
         run: |

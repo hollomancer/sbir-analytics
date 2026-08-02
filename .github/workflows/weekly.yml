@@ -505,7 +505,6 @@ jobs:
         run: make sample-data
 
       - name: Verify Pipeline with Local Data
-        env:
         run: uv run pytest -m "not real_data and not slow" tests/unit/extractors/
 
   verify-ml-workflow:
