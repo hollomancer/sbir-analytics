@@ -76,6 +76,31 @@ def _fetch() -> tuple[bytes, str]:
     return b"".join(chunks), hasher.hexdigest()
 
 
+def _atomic_write(path: Path, data: bytes) -> None:
+    """Write bytes via a temp file and rename, so readers never see a partial."""
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    tmp.write_bytes(data)
+    tmp.replace(path)
+
+
+def _atomic_write_text(path: Path, text: str) -> None:
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    tmp.write_text(text)
+    tmp.replace(path)
+
+
+def _metadata_json(file_hash: str, size: int) -> str:
+    return json.dumps(
+        {
+            "source_url": SBIR_AWARDS_URL,
+            "sha256": file_hash,
+            "downloaded_at": datetime.now(UTC).isoformat(),
+            "size": size,
+        },
+        indent=2,
+    )
+
+
 def find_latest_vintage(history_dir: Path) -> Path | None:
     """Return the newest dated vintage directory, or None if there are none."""
     if not history_dir.is_dir():
@@ -111,10 +136,19 @@ def download_sbir_awards(dest: Path) -> dict:
     previous, latest_vintage = _previous_hash(history_dir)
 
     if previous and previous == file_hash:
+        # The vintage matches, but the canonical file discovery prefers may be
+        # missing or truncated. Repair it from the fetched bytes before
+        # reporting no change, or every rerun would keep returning unchanged
+        # while discovery keeps serving a bad file.
+        canonical = dest / CSV_NAME
+        if not canonical.is_file() or canonical.stat().st_size != len(data):
+            print(f"⚠️  Canonical {canonical} missing or truncated; repairing from fetch")
+            _atomic_write(canonical, data)
+            _atomic_write_text(dest / META_NAME, _metadata_json(file_hash, len(data)))
         print(f"✅ No changes detected (hash matches {latest_vintage})")
         return {
             "changed": False,
-            "path": str(dest / CSV_NAME),
+            "path": str(canonical),
             "vintage": str(latest_vintage),
             "sha256": file_hash,
         }
@@ -131,13 +165,13 @@ def download_sbir_awards(dest: Path) -> dict:
     }
 
     vintage_csv = vintage_dir / CSV_NAME
-    vintage_csv.write_bytes(data)
-    (vintage_dir / META_NAME).write_text(json.dumps(metadata, indent=2))
+    _atomic_write(vintage_csv, data)
+    _atomic_write_text(vintage_dir / META_NAME, json.dumps(metadata, indent=2))
 
     # The canonical path the extractors read (config: extraction.sbir.csv_path).
     canonical = dest / CSV_NAME
-    canonical.write_bytes(data)
-    (dest / META_NAME).write_text(json.dumps(metadata, indent=2))
+    _atomic_write(canonical, data)
+    _atomic_write_text(dest / META_NAME, json.dumps(metadata, indent=2))
 
     print(f"✅ Wrote {len(data) / 1024 / 1024:.1f} MB to {canonical}")
     print(f"   Vintage: {vintage_csv}")

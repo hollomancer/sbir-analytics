@@ -47,11 +47,14 @@ class TestWriteLocal:
         assert meta["partial"] is False
         assert meta["downloaded_at"]
 
-    def test_partial_name_is_flagged_in_sidecar(self, tmp_path):
+    def test_partial_name_is_flagged_in_its_own_sidecar(self, tmp_path):
+        # The sidecar is named after the parquet it describes, so a partial
+        # write cannot clobber the canonical dataset's metadata.
         _write_local(_frame(5), tmp_path, name=PARQUET_NAME_PARTIAL)
 
-        meta = json.loads((tmp_path / META_NAME).read_text())
+        meta = json.loads((tmp_path / "sam_entity_records_partial.meta.json").read_text())
         assert meta["partial"] is True
+        assert not (tmp_path / META_NAME).exists()
 
     def test_partial_write_does_not_touch_canonical(self, tmp_path):
         canonical = _write_local(_frame(60), tmp_path)
@@ -83,3 +86,25 @@ class TestPartialThreshold:
 
     def test_names_are_distinct(self):
         assert PARQUET_NAME != PARQUET_NAME_PARTIAL
+
+
+class TestPartialSidecarIsolation:
+    """A partial write must not overwrite canonical metadata."""
+
+    def test_partial_does_not_replace_canonical_sidecar(self, tmp_path):
+        _write_local(_frame(60), tmp_path)
+        canonical_meta = json.loads((tmp_path / "sam_entity_records.meta.json").read_text())
+
+        _write_local(_frame(5), tmp_path, name=PARQUET_NAME_PARTIAL)
+
+        after = json.loads((tmp_path / "sam_entity_records.meta.json").read_text())
+        assert after == canonical_meta
+        assert after["row_count"] == 60
+        assert after["partial"] is False
+
+    def test_partial_writes_its_own_sidecar(self, tmp_path):
+        _write_local(_frame(5), tmp_path, name=PARQUET_NAME_PARTIAL)
+
+        meta = json.loads((tmp_path / "sam_entity_records_partial.meta.json").read_text())
+        assert meta["row_count"] == 5
+        assert meta["partial"] is True

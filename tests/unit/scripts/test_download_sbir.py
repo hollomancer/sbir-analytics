@@ -134,3 +134,36 @@ class TestFindLatestVintage:
             (d / CSV_NAME).write_bytes(CSV_A)
 
         assert find_latest_vintage(history).name == "2026-03-05"
+
+
+class TestCanonicalRepair:
+    """An unchanged upstream must still repair a bad canonical file."""
+
+    def test_missing_canonical_is_recreated(self, tmp_path, fake_fetch):
+        _set(fake_fetch, CSV_A)
+        download_sbir_awards(tmp_path)
+        (tmp_path / CSV_NAME).unlink()
+
+        result = download_sbir_awards(tmp_path)
+
+        assert result["changed"] is False
+        assert (tmp_path / CSV_NAME).read_bytes() == CSV_A
+
+    def test_truncated_canonical_is_repaired(self, tmp_path, fake_fetch):
+        _set(fake_fetch, CSV_A)
+        download_sbir_awards(tmp_path)
+        (tmp_path / CSV_NAME).write_bytes(CSV_A[:3])
+
+        result = download_sbir_awards(tmp_path)
+
+        assert result["changed"] is False
+        assert (tmp_path / CSV_NAME).read_bytes() == CSV_A
+
+    def test_intact_canonical_is_left_alone(self, tmp_path, fake_fetch):
+        _set(fake_fetch, CSV_A)
+        download_sbir_awards(tmp_path)
+
+        result = download_sbir_awards(tmp_path)
+
+        assert result["changed"] is False
+        assert (tmp_path / CSV_NAME).read_bytes() == CSV_A

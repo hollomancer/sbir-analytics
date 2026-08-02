@@ -194,11 +194,18 @@ def modernbert_embeddings_patents(
         from sbir_etl.extractors.uspto_extractor import USPTOExtractor
         from sbir_etl.utils.cloud_storage import get_data_root
 
-        archives = sorted((get_data_root() / "raw" / "uspto").rglob("patent*.zip"))
+        # Match the two known PatentsView archive names only. A broad
+        # patent*.zip glob both misses the direct downloader's g_patent.tsv.zip
+        # and can select the unrelated patent_assignments.zip.
+        uspto_root = get_data_root() / "raw" / "uspto"
+        patentsview_names = ("patentsview_patent.zip", "g_patent.tsv.zip")
+        archives = sorted(
+            path for path in uspto_root.rglob("*.zip") if path.name in patentsview_names
+        )
         if not archives:
             raise FileNotFoundError(
-                f"No PatentsView archive found under {get_data_root() / 'raw' / 'uspto'}. "
-                f"Run the uspto_download_job first."
+                f"No PatentsView archive found under {uspto_root}. Expected one of "
+                f"{', '.join(patentsview_names)}; run uspto_download_job first."
             )
         local_zip = archives[-1]
         context.log.info(f"Loading from {local_zip}")

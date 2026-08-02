@@ -95,23 +95,57 @@ if _usaspending_pipeline is not None:
         description="Run USAspending enrichment after a successful dump download",
     )
     def usaspending_pipeline_after_download(context):
+        # status="skipped" means the dump on disk already matched upstream;
+        # re-running enrichment on identical input is hours of wasted work.
+        if _download_was_unchanged(context):
+            return SkipReason("USAspending dump unchanged; skipping enrichment run")
         return RunRequest(run_key=context.dagster_run.run_id)
 
 
-def _download_was_unchanged(context) -> bool:
-    """True when the monitored download reported no upstream change."""
+def _unwrap(value):
+    """Unwrap a Dagster MetadataValue to its plain Python value."""
+    return getattr(value, "value", value)
+
+
+def _download_metadata(context) -> dict:
+    """Collect metadata the monitored download op attached to its output.
+
+    ``context.add_output_metadata`` on a plain op emits a STEP_OUTPUT event
+    carrying ``StepOutputData.metadata``; it is not an asset materialization.
+    Reading only ``materialization.metadata`` therefore found nothing and every
+    run fell through as "changed". Both shapes are checked so this keeps
+    working if an op is later converted to an asset.
+    """
+    collected: dict = {}
     try:
         records = context.instance.all_logs(context.dagster_run.run_id)
     except Exception:
-        return False
+        return collected
     for record in records:
         event = getattr(record, "dagster_event", None)
         data = getattr(event, "event_specific_data", None) if event else None
-        metadata = getattr(getattr(data, "materialization", None), "metadata", None)
-        if metadata and "changed" in metadata:
-            value = metadata["changed"]
-            return getattr(value, "value", value) is False
-    return False
+        if data is None:
+            continue
+        for metadata in (
+            getattr(data, "metadata", None),
+            getattr(getattr(data, "materialization", None), "metadata", None),
+        ):
+            if metadata:
+                collected.update(metadata)
+    return collected
+
+
+def _download_was_unchanged(context) -> bool:
+    """True when the monitored download reported no new upstream data.
+
+    Covers both signals the download ops emit: ``changed=False`` from the SBIR
+    downloader and ``status="skipped"`` from the USAspending downloader, which
+    reports that the dump on disk already matches upstream.
+    """
+    metadata = _download_metadata(context)
+    if "changed" in metadata and _unwrap(metadata["changed"]) is False:
+        return True
+    return "status" in metadata and _unwrap(metadata["status"]) == "skipped"
 
 
 if _phase_transition is not None and _pt_archive is not None:

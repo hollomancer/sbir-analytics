@@ -143,3 +143,75 @@ class TestHtmlShellGuard:
         f.write_bytes(b"PK\x03\x04" + b"\x00" * MIN_PLAUSIBLE_DOWNLOAD_BYTES)
 
         _guard_html_shell(f)  # must not raise
+
+
+class TestAssignmentArchiveHandoff:
+    """Downstream USPTO assets discover .csv, not .csv.zip."""
+
+    def test_archives_are_extracted_in_place(self, tmp_path):
+        import zipfile
+
+        from dagster import build_op_context
+
+        from sbir_analytics.assets.jobs.source_downloads import _extract_assignment_archives
+
+        archive = tmp_path / "assignment.csv.zip"
+        with zipfile.ZipFile(archive, "w") as zf:
+            zf.writestr("assignment.csv", "rf_id,x\n1,2\n")
+
+        extracted = _extract_assignment_archives(build_op_context(), tmp_path)
+
+        assert extracted == ["assignment.csv"]
+        assert (tmp_path / "assignment.csv").read_text().startswith("rf_id")
+
+    def test_no_archives_is_not_an_error(self, tmp_path):
+        from dagster import build_op_context
+
+        from sbir_analytics.assets.jobs.source_downloads import _extract_assignment_archives
+
+        assert _extract_assignment_archives(build_op_context(), tmp_path) == []
+
+
+class TestUnchangedDetection:
+    """The sensor guard reads step-output metadata, not materializations."""
+
+    def _ctx(self, metadata):
+        from unittest.mock import MagicMock
+
+        event = MagicMock()
+        event.event_specific_data.metadata = metadata
+        event.event_specific_data.materialization = None
+        record = MagicMock()
+        record.dagster_event = event
+        ctx = MagicMock()
+        ctx.instance.all_logs.return_value = [record]
+        ctx.dagster_run.run_id = "r1"
+        return ctx
+
+    def test_changed_false_is_detected(self):
+        from sbir_analytics.assets.sensors.source_download_chaining import (
+            _download_was_unchanged,
+        )
+
+        assert _download_was_unchanged(self._ctx({"changed": False})) is True
+
+    def test_changed_true_runs_pipeline(self):
+        from sbir_analytics.assets.sensors.source_download_chaining import (
+            _download_was_unchanged,
+        )
+
+        assert _download_was_unchanged(self._ctx({"changed": True})) is False
+
+    def test_usaspending_skipped_is_detected(self):
+        from sbir_analytics.assets.sensors.source_download_chaining import (
+            _download_was_unchanged,
+        )
+
+        assert _download_was_unchanged(self._ctx({"status": "skipped"})) is True
+
+    def test_usaspending_success_runs_pipeline(self):
+        from sbir_analytics.assets.sensors.source_download_chaining import (
+            _download_was_unchanged,
+        )
+
+        assert _download_was_unchanged(self._ctx({"status": "success"})) is False

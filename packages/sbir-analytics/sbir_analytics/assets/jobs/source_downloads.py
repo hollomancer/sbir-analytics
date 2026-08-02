@@ -126,6 +126,33 @@ def _guard_html_shell(path: Path) -> None:
         raise ValueError(f"USPTO download implausibly small ({size} bytes): {path}")
 
 
+def _extract_assignment_archives(context: OpExecutionContext, assignment_dir: Path) -> list[str]:
+    """Extract the downloaded .csv.zip archives so downstream assets see them.
+
+    The raw USPTO assets discover .csv/.dta/.parquet, so a directory of
+    .csv.zip archives is invisible to them. Each archive is extracted to a
+    temporary directory and moved into place, so a failure part-way never
+    leaves a truncated .csv where a complete one is expected.
+    """
+    import tempfile
+    import zipfile
+
+    extracted: list[str] = []
+    for archive in sorted(assignment_dir.glob("*.zip")):
+        with (
+            zipfile.ZipFile(archive) as zf,
+            tempfile.TemporaryDirectory(dir=assignment_dir) as staging,
+        ):
+            zf.extractall(staging)
+            for member in Path(staging).rglob("*"):
+                if not member.is_file():
+                    continue
+                member.replace(assignment_dir / member.name)
+                extracted.append(member.name)
+    context.log.info(f"Extracted {len(extracted)} assignment file(s) from archives")
+    return extracted
+
+
 @op
 def download_uspto_op(context: OpExecutionContext) -> dict:
     """Fetch the three USPTO datasets the pipeline consumes.
@@ -179,8 +206,22 @@ def download_uspto_op(context: OpExecutionContext) -> dict:
     from scripts.data.download_uspto_browser import download_assignments
 
     context.log.info("Downloading patent assignments via browser automation")
-    assignment_results = asyncio.run(download_assignments(output_dir=dest_dir / "assignments"))
-    results["assignments"] = {"files": assignment_results}
+    assignment_dir = dest_dir / "assignments"
+    assignment_results = asyncio.run(download_assignments(output_dir=assignment_dir))
+
+    # download_assignments records per-file failures instead of raising, so the
+    # op would otherwise succeed with a partial assignment set.
+    failed = [r for r in assignment_results if r.get("error")]
+    if failed:
+        raise RuntimeError(
+            "USPTO assignment download failed for "
+            + ", ".join(f"{r.get('file')}: {r['error']}" for r in failed)
+        )
+    if not assignment_results:
+        raise RuntimeError("USPTO assignment download produced no files")
+
+    extracted = _extract_assignment_archives(context, assignment_dir)
+    results["assignments"] = {"files": assignment_results, "extracted": extracted}
 
     context.add_output_metadata(
         {

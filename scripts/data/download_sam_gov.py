@@ -518,7 +518,9 @@ def _write_local(df: pd.DataFrame, dest: Path, *, name: str = PARQUET_NAME) -> P
         "downloaded_at": datetime.now(UTC).isoformat(),
         "partial": name == PARQUET_NAME_PARTIAL,
     }
-    (dest / META_NAME).write_text(json.dumps(metadata, indent=2))
+    # Sidecar is named after the parquet it describes: a partial write must
+    # not replace the canonical dataset's row count and provenance.
+    (dest / f"{path.stem}.meta.json").write_text(json.dumps(metadata, indent=2))
 
     print(f"✅ Wrote: {path.stat().st_size / 1024 / 1024:.1f} MB, {len(df):,} entities")
     return path
