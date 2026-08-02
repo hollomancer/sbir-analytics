@@ -20,20 +20,26 @@ Award Title, recovered solicitation/J&A notice text.
   firm-linked). **GO** only if ≥1 contract-intrinsic source meaningfully covers the sparse
   cells; else **STOP** and redirect to T3 (non-text features) / verified negatives.
 
-## T2 — `enriched_text` assembler
-Deterministic function: contract → enriched text field from **only the contract-intrinsic,
-leakage-safe** sources T1 cleared, with provenance flags (which sources contributed).
-Firm-linked sources are excluded by construction. Identity-scrubbed (reuse
-`_scrub_identity`) on top. Unit-tested on fixtures — including a test that asserts no
-firm-linked text can enter the assembler.
-→ verify: fixture tests pass; provenance flags correct; scrub applied; leakage-guard test
-  proves firm-linked sources are rejected.
+## T2 — `enriched_text` assembler — SHELVED by T1
+**T1 outcome: STOP.** No leakage-safe source both covers the sparse cells and
+discriminates (PSC/NAICS share 92% within DLA; the rich SBIR-topic source is firm-linked
+leakage; the intrinsic topic-citation signal is 0% on sparse cells; notice text is 4%).
+The assembler is shelved unless an optional spike (deeper FPDS field pull, or J&A document
+retrieval) shows real leakage-safe discriminating coverage — see `T1_FINDINGS.md`.
+→ verify (only if un-shelved): fixture tests pass; leakage-guard test proves firm-linked
+  sources are rejected.
 
-## T3 — Description-independent features
+## T3 — Description-independent features (NOW THE PRIMARY LEVER per T1)
 Add firm prior-award lineage, agency/topic continuity, timing gap, NAICS ancestry as
 fusion inputs. Extend the feature vector; keep `fusion_coefficients.json` frozen unless
 T4 justifies a re-fit (held-out fold).
-→ verify: features computed for all scored cases; no NaNs; leakage scrub re-checked.
+**Each feature MUST pass the packet-time leakage test:** computable from
+`(firm abstract) × (open solicitation)` alone — e.g. agency continuity, NAICS ancestry
+between the firm's SBIR NAICS and the solicitation NAICS, timing gap, prior-award count —
+**not** derived from knowing the transition happened. Audit each feature against this
+before including it.
+→ verify: features computed for all scored cases; no NaNs; each feature has a written
+  packet-time-availability justification; leakage scrub re-checked.
 
 ## T4 — Re-score on the frozen #481 set
 Run `score_t6.py` with enriched text + new features. Report p@1/@3/MRR per domain and
