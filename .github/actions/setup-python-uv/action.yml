@@ -14,6 +14,14 @@ inputs:
       latter pulling in dagster). When "false", runs `uv sync --no-dev`.
     required: false
     default: "true"
+  save-uv-cache:
+    description: |
+      Whether this job writes the ~/.cache/uv cache back. Exactly one job per
+      workflow should set this. Every job computes the same cache key, so
+      leaving them all to save means N jobs spend ~9s each packing an identical
+      ~1.1 GB cache and N-1 of those writes are discarded as duplicate keys.
+    required: false
+    default: "false"
   cache-mypy:
     description: |
       Whether to cache .mypy_cache. Only the job that runs mypy wants this;
@@ -67,8 +75,9 @@ runs:
     # far cheaper than downloading and extracting a ~300 MB venv tarball, and
     # `uv sync` had to run afterwards anyway. Caching ~/.cache/uv below is what
     # actually makes that 0.2s possible; keep that one.
-    - name: Cache UV cache directory
-      uses: actions/cache@v5
+    - name: Restore UV cache directory
+      id: uv-cache
+      uses: actions/cache/restore@v5
       with:
         path: |
           ~/.cache/uv
@@ -104,3 +113,14 @@ runs:
           uv sync --no-dev
         fi
       shell: bash
+
+    # Only the designated job writes the cache back; see save-uv-cache. Skipped
+    # entirely on an exact-key hit, since there would be nothing new to store.
+    - name: Save UV cache directory
+      if: inputs.save-uv-cache == 'true' && steps.uv-cache.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v5
+      with:
+        path: |
+          ~/.cache/uv
+          ~/.local/share/uv
+        key: uv-cache-${{ runner.os }}-${{ inputs.python-version }}-${{ hashFiles('**/uv.lock', '**/pyproject.toml') }}

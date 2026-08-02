@@ -26,18 +26,20 @@ This directory documents the deployment path for the SBIR ETL project. The repos
 Everything runs on one always-on Mac mini; GitHub Actions is CI only.
 
 1. **Mac mini (Dagster)** — source downloads, ETL pipelines, Neo4j, the read-only API
-2. **GitHub Actions** — lint, typecheck, tests, container image builds. No data plane.
+2. **GitHub Actions** — lint, typecheck, tests. No data plane, no scheduled work, no image publishing.
 3. **Docker (development)** — local development and testing
 
 The AWS data plane (S3, Batch, Lambda, Step Functions) was retired; see the
-[AWS decommission plan](aws-decommission-plan.md).
+[AWS decommission plan](aws-decommission-plan.md). The scheduled workloads that
+remained in GitHub Actions after that are moving to the mini too; see the
+[Actions migration plan](actions-migration-plan.md).
 
 ## Architecture
 
 ```text
 ┌─────────────────────────────────────────────────────────────┐
 │                    GitHub Actions (CI only)                  │
-│     lint · typecheck · tests (Neo4j containers) · images     │
+│          lint · typecheck · tests (Neo4j containers)         │
 └─────────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────────┐
@@ -85,6 +87,7 @@ own crons, so they run only when there is fresh input.
 |-------|-------------|
 | [Mac mini server](mac-mini-server.md) | Tailnet-only always-on deployment |
 | [AWS decommission plan](aws-decommission-plan.md) | Retiring the AWS data plane |
+| [Actions migration plan](actions-migration-plan.md) | Moving the last scheduled workloads off GitHub Actions |
 | [Docker](../development/docker.md) | Local development setup |
 | [Neo4j Runbook](neo4j-runbook.md) | Neo4j operations |
 

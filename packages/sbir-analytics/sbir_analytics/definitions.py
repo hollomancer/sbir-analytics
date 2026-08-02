@@ -188,6 +188,16 @@ _HOST_SCHEDULES = (
         "0 14 1 * *",
         "Phase II->III transition latency analysis",
     ),
+    # Carried from the retired weekly.yml weekly-awards-report job, keeping its
+    # Monday 12:00 UTC slot. Needs OPENAI_API_KEY and SAM_GOV_API_KEY in
+    # .env.server; without them the script degrades to a non-AI report rather
+    # than failing.
+    (
+        "weekly_awards_report_job",
+        "weekly_awards_report",
+        "0 12 * * 1",
+        "Weekly SBIR awards report",
+    ),
 )
 
 source_download_schedules = []

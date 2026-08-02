@@ -38,6 +38,9 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
           install-dev-deps: "true"
           cache-mypy: "true"
+          # Single writer for the shared ~/.cache/uv. This is the shortest job,
+          # so the ~9s save lands off the critical path instead of on all five.
+          save-uv-cache: "true"
 
       - name: Run Ruff lint
         run: uv run python -m ruff check sbir_etl packages/sbir-analytics/sbir_analytics packages/sbir-ml/sbir_ml packages/sbir-graph/sbir_graph tests
@@ -78,7 +81,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [0, 1, 2, 3]
+        shard: [1, 2, 3, 4]
     steps:
       - uses: actions/checkout@v7
 
@@ -88,15 +91,25 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
           install-dev-deps: "true"
 
-      # Unit tests only, minus the slow marker. No Neo4j, no services. The
-      # shards balance by test count; xdist parallelises within each one —
-      # measured 25s with `-n auto` against 46s with `-n 0` on a 4-core runner,
-      # so both layers of parallelism earn their keep.
+      # Unit tests only, minus the slow marker. No Neo4j, no services.
+      #
+      # Split by recorded duration rather than by test-ID hash. pytest-shard
+      # balanced counts, which left one shard reliably drawing the slow tests —
+      # shards finished at 60/61/71/77s and the whole run waited on the last.
+      # .test_durations is regenerated with `pytest --store-durations -n0`
+      # (serially: under xdist the per-test timings include worker wait and are
+      # not usable for balancing). Unknown tests get the average, so the file
+      # going slightly stale degrades balance rather than breaking the run.
+      #
+      # xdist still parallelises within each group: measured 25s with `-n auto`
+      # against 46s with `-n 0` on a 4-core runner, so both layers earn keep.
       - name: Run unit tests
         run: |
           uv run pytest tests/unit/ \
             -m "not slow" \
-            --num-shards=4 --shard-id=${{ matrix.shard }}
+            --splits 4 --group ${{ matrix.shard }} \
+            --splitting-algorithm least_duration \
+            --durations-path .test_durations
 
   test-full:
     name: Full Tests
@@ -175,3 +188,58 @@ jobs:
       - name: Neo4j logs on failure
         if: failure()
         run: docker logs test-neo4j --tail 100 || true
+
+  docker-changes:
+    name: Detect Docker Changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      docker: ${{ steps.filter.outputs.docker }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dorny/paths-filter@v4
+        id: filter
+        with:
+          filters: |
+            docker:
+              - 'Dockerfile*'
+              - 'docker-compose*.yml'
+              - '.dockerignore'
+              - 'uv.lock'
+              - 'pyproject.toml'
+
+  docker:
+    name: Docker Build and Smoke Test
+    needs: [docker-changes]
+    if: needs.docker-changes.outputs.docker == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      # amd64 only, on the runner's native architecture. The question this job
+      # answers is "does the image still build and start", and arm64 emulation
+      # roughly triples the time without changing the answer. The mini builds
+      # its own arm64 images; see docs/deployment/actions-migration-plan.md.
+      - name: Build the ETL image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: Dockerfile
+          push: false
+          load: true
+          tags: sbir-analytics:ci-${{ github.sha }}
+          build-args: WITH_R=false
+          cache-from: type=gha,scope=docker-ci
+          cache-to: type=gha,mode=max,scope=docker-ci
+
+      - name: Smoke test the entrypoint
+        run: docker run --rm sbir-analytics:ci-${{ github.sha }} dagster --version
+
+      - name: Validate compose files
+        run: |
+          docker compose -f docker-compose.yml config -q
+          docker compose -f docker-compose.server.yml --env-file .env.server.example config -q
