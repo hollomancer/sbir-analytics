@@ -9,7 +9,7 @@ from pathlib import Path
 import pandas as pd
 from loguru import logger
 
-from ..utils.cloud_storage import get_s3_bucket_from_env, is_s3_path, resolve_data_path
+from ..utils.cloud_storage import find_latest_sbir_awards, resolve_data_path
 from ..utils.data.duckdb_client import DuckDBClient
 
 
@@ -24,7 +24,6 @@ class SbirDuckDBExtractor:
     - 60% lower memory usage via columnar storage
     - SQL-based filtering before loading to pandas
     - Easy enrichment joins with USAspending data later
-    - Direct S3 reads via httpfs (no temp downloads) when enabled
     """
 
     def __init__(
@@ -32,52 +31,26 @@ class SbirDuckDBExtractor:
         csv_path: Path | str,
         duckdb_path: str = ":memory:",
         table_name: str = "sbir_awards",
-        csv_path_s3: str | None = None,
-        use_s3_first: bool = True,
-        enable_httpfs: bool = False,
-        s3_region: str | None = None,
     ):
         """
         Initialize SBIR DuckDB extractor.
 
         Args:
-            csv_path: Local path to SBIR CSV file (fallback)
+            csv_path: Path to the SBIR CSV file
             duckdb_path: Path to DuckDB database (":memory:" for in-memory)
             table_name: Name for DuckDB table
-            csv_path_s3: S3 URL for CSV (optional, auto-built from csv_path if bucket set)
-            use_s3_first: If True, try S3 first, fallback to local
-            enable_httpfs: If True, use DuckDB httpfs for direct S3 reads (no temp download)
-            s3_region: AWS region for httpfs S3 access
         """
-        # Build S3 path if bucket is configured
-        if csv_path_s3 is None:
-            bucket = get_s3_bucket_from_env()
-            if bucket and use_s3_first:
-                # Try to find latest SBIR awards file in S3
-                from ..utils.cloud_storage import find_latest_sbir_awards
-
-                csv_path_s3 = find_latest_sbir_awards(bucket)
-                if csv_path_s3 is None:
-                    raise FileNotFoundError(
-                        f"S3-first mode enabled but no SBIR awards found in s3://{bucket}/raw/awards/"
-                    )
-
-        # When httpfs is enabled, pass S3 URL directly to DuckDB (skip download)
-        if enable_httpfs and csv_path_s3 and is_s3_path(csv_path_s3):
-            self.csv_path: Path | str = csv_path_s3
-        else:
-            # Resolve path with S3-first, local fallback (downloads to temp)
-            self.csv_path = resolve_data_path(
-                cloud_path=csv_path_s3 or csv_path,
-                local_fallback=Path(csv_path) if not use_s3_first else None,
-                prefer_local=not use_s3_first,
-            )
+        # Fall back to the newest file under the data root when the configured
+        # path is absent, so a vintage still resolves after a manual cleanup.
+        discovered = find_latest_sbir_awards()
+        self.csv_path: Path | str = resolve_data_path(
+            csv_path,
+            local_fallback=Path(discovered) if discovered else None,
+        )
 
         self.table_name = table_name
         self.duckdb_client = DuckDBClient(
             database_path=duckdb_path,
-            enable_httpfs=enable_httpfs,
-            s3_region=s3_region,
         )
         self._table_identifier = self.duckdb_client.escape_identifier(table_name)
         self._imported = False
@@ -87,8 +60,6 @@ class SbirDuckDBExtractor:
             csv_path=str(self.csv_path),
             duckdb_path=duckdb_path,
             table_name=table_name,
-            s3_enabled=csv_path_s3 is not None,
-            httpfs_enabled=enable_httpfs,
         )
 
     def import_csv(
@@ -127,27 +98,13 @@ class SbirDuckDBExtractor:
         if use_incremental is not None:
             incremental = bool(use_incremental)
 
-        _using_s3 = is_s3_path(self.csv_path)
-
-        if _using_s3:
-            # S3 paths are validated at read time by DuckDB httpfs.
-            # Force native DuckDB import — pandas chunking and fallback
-            # modes require a local file and will fail on s3:// URLs.
-            if incremental:
-                logger.warning(
-                    "Incremental mode not supported for S3 paths; using native DuckDB import"
-                )
-                incremental = False
-        elif not Path(self.csv_path).exists():
+        if not Path(self.csv_path).exists():
             raise FileNotFoundError(f"CSV file not found: {self.csv_path}")
 
         # Record extraction start timestamp (UTC)
         extraction_start = datetime.now(UTC).isoformat()
 
-        # Get file size (MB) — unavailable for S3 paths read via httpfs
-        file_size_mb = 0.0
-        if not _using_s3:
-            file_size_mb = Path(self.csv_path).stat().st_size / (1024 * 1024)
+        file_size_mb = Path(self.csv_path).stat().st_size / (1024 * 1024)
 
         start_time = time.time()
 
@@ -199,11 +156,8 @@ class SbirDuckDBExtractor:
                         discovered_columns.append(str(c))
 
                 # If native import appears to be wrong, try pandas-based import as fallback.
-                # Skip fallback for S3 paths — pandas can't read s3:// URLs directly.
                 expected_column_count = 42
-                if not _using_s3 and (
-                    row_count_check == 0 or len(discovered_columns) != expected_column_count
-                ):
+                if row_count_check == 0 or len(discovered_columns) != expected_column_count:
                     logger.warning(
                         "Native DuckDB CSV import produced unexpected results; trying pandas fallback",
                         row_count=row_count_check,

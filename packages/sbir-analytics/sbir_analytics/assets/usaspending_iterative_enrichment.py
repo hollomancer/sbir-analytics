@@ -5,7 +5,6 @@ will be evaluated in Phase 2+.
 """
 
 import asyncio
-import tempfile
 from typing import Any
 
 import pandas as pd
@@ -72,32 +71,20 @@ def usaspending_freshness_ledger(context: AssetExecutionContext) -> Output[pd.Da
     )
 
 
-def _load_enriched_awards_from_s3(context: AssetExecutionContext) -> pd.DataFrame | None:
-    """Load enriched SBIR awards from S3 if available."""
-    import os
+def _load_enriched_awards(context: AssetExecutionContext) -> pd.DataFrame | None:
+    """Load enriched SBIR awards written by sbir_usaspending_enrichment."""
+    from sbir_etl.utils.cloud_storage import get_data_root
 
+    src = get_data_root() / "processed" / "enriched" / "sbir_awards.parquet"
+    if not src.is_file():
+        context.log.info(f"No enriched awards at {src}")
+        return None
     try:
-        import boto3
-
-        bucket = os.environ.get("S3_BUCKET", "sbir-etl-production-data")
-        key = "enriched/sbir_awards.parquet"
-
-        s3 = boto3.client("s3")
-        # Check if file exists
-        try:
-            s3.head_object(Bucket=bucket, Key=key)
-        except s3.exceptions.ClientError:
-            context.log.info(f"No enriched data found at s3://{bucket}/{key}")
-            return None
-
-        # Download and read
-        with tempfile.NamedTemporaryFile(suffix=".parquet", delete=True) as tmp:
-            s3.download_file(bucket, key, tmp.name)
-            df = pd.read_parquet(tmp.name)
-        context.log.info(f"Loaded {len(df)} enriched awards from S3")
+        df = pd.read_parquet(src)
+        context.log.info(f"Loaded {len(df)} enriched awards from {src}")
         return df
     except Exception as e:
-        context.log.warning(f"Failed to load enriched data from S3: {e}")
+        context.log.warning(f"Failed to load enriched awards from {src}: {e}")
         return None
 
 
@@ -122,7 +109,7 @@ def stale_usaspending_awards(
         DataFrame of stale awards with enrichment identifiers
     """
     # Load enriched awards from S3
-    enriched_sbir_awards = _load_enriched_awards_from_s3(context)
+    enriched_sbir_awards = _load_enriched_awards(context)
     if enriched_sbir_awards is None or enriched_sbir_awards.empty:
         context.log.info("No enriched awards available - nothing to refresh")
         return Output(

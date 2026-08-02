@@ -1,7 +1,6 @@
 """Dagster assets for SBIR data ingestion pipeline."""
 
 import json
-import os
 from pathlib import Path
 from typing import Any
 
@@ -153,31 +152,18 @@ def _apply_quality_filters(
     return df, audit
 
 
-def _save_to_s3(df: pd.DataFrame, s3_key: str, context: AssetExecutionContext) -> str | None:
-    """Save DataFrame to S3 as parquet. Returns S3 URI or None if not configured."""
-    bucket = os.getenv("S3_BUCKET")
-    if not bucket:
-        context.log.info("S3_BUCKET not set, skipping S3 persistence")
-        return None
+def _save_parquet(df: pd.DataFrame, rel_key: str, context: AssetExecutionContext) -> str | None:
+    """Persist a frame under the data root for downstream assets to pick up."""
+    from sbir_etl.utils.cloud_storage import get_data_root
 
     try:
-        import boto3
-        import io
-
-        # Convert to parquet in memory
-        buffer = io.BytesIO()
-        df.to_parquet(buffer, index=False)
-        buffer.seek(0)
-
-        # Upload to S3
-        s3 = boto3.client("s3", region_name=os.getenv("AWS_REGION", "us-east-2"))
-        s3.put_object(Bucket=bucket, Key=s3_key, Body=buffer.getvalue())
-
-        s3_uri = f"s3://{bucket}/{s3_key}"
-        context.log.info(f"Saved to S3: {s3_uri}")
-        return s3_uri
+        dest = get_data_root() / "processed" / rel_key
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        df.to_parquet(dest, index=False)
+        context.log.info(f"Saved {len(df)} rows to {dest}")
+        return str(dest)
     except Exception as e:
-        context.log.warning(f"Failed to save to S3: {e}")
+        context.log.warning(f"Failed to save {rel_key}: {e}")
         return None
 
 
@@ -211,8 +197,6 @@ def raw_sbir_awards(context: AssetExecutionContext) -> Output[pd.DataFrame]:
         csv_path=sbir_config.csv_path,
         duckdb_path=sbir_config.database_path,
         table_name=sbir_config.table_name,
-        csv_path_s3=sbir_config.csv_path_s3,
-        use_s3_first=sbir_config.use_s3_first,
     )
 
     # Import CSV to DuckDB with performance monitoring
@@ -315,7 +299,7 @@ def raw_sbir_awards(context: AssetExecutionContext) -> Output[pd.DataFrame]:
 
     # Stamp data source provenance on every record
     # Prefer the original S3 URL over the resolved temp/cache path
-    stamp_provenance(df, "sbir.gov", str(sbir_config.csv_path_s3 or extractor.csv_path))
+    stamp_provenance(df, "sbir.gov", str(extractor.csv_path))
 
     # Update metadata to reflect normalized columns
     metadata["normalized_columns"] = MetadataValue.json(list(df.columns))
@@ -387,8 +371,8 @@ def validated_sbir_awards(
         },
     )
 
-    # Save to S3 for downstream processing (e.g., Neo4j loading in GitHub Actions)
-    s3_uri = _save_to_s3(validated_df, "validated/sbir_awards.parquet", context)
+    # Persist for downstream processing (e.g. Neo4j loading)
+    s3_uri = _save_parquet(validated_df, "validated/sbir_awards.parquet", context)
 
     # Build audit summary for metadata (strip sample indices for serialization —
     # keep counts and step names so Dagster UI shows a concise trail)

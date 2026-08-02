@@ -4,6 +4,48 @@ A private, always-on deployment of SBIR Analytics on a single Apple-silicon
 Mac mini. The stack is ARM64-native and reachable **only** over your Tailscale
 tailnet — there is no public DNS, no port forwarding, and no LAN exposure.
 
+## Live instance on this Mac mini
+
+This machine hosts the live SBIR Analytics deployment.
+
+- **Deployment checkout:** `/Users/conradhollomon/projects/sbir-analytics-server`
+- **Development checkout:** `/Users/conradhollomon/projects/sbir-analytics` —
+  never operate the live stack from here.
+- **Installed baseline as of 2026-08-02:** tag `0.1`, commit `054bd862`. Always
+  verify the deployment checkout with `git status --short` and
+  `git describe --tags --always --dirty`; do not infer the live version from
+  another checkout or from the image tag.
+- **Persistent application data:** `/Volumes/SSDmini/sbir-analytics`
+- **Local secrets:** `.env.server` in the deployment checkout. It is ignored,
+  mode `0600`, and must never be printed, committed, or replaced.
+- **Dagster metadata:** the Docker `dagster_home` named volume. Preserve it
+  alongside SSD data; never use `docker compose down -v`.
+- **Ingress:** Tailscale Serve over tailnet-only HTTPS. Tailscale Funnel,
+  public port exposure, and LAN exposure are prohibited.
+
+Run every `make server-*` command and shell-driven live materialization from
+the clean deployment checkout. Use the documented Make targets; do not run
+`git clean`, destructive resets, or hand-written Compose teardown commands
+there. Treat materialization as a live-data mutation: confirm the SSD is
+mounted and the stack is healthy first. Keep schedules disabled until their
+jobs have completed successfully by hand with the inputs available on this
+host.
+
+### Materialized state as of 2026-08-02
+
+- The current SBIR.gov source is
+  `/Volumes/SSDmini/sbir-analytics/data/raw/sbir/award_data.csv`, data vintage
+  `2026-08-01`, containing 219,503 award records.
+- The API serves the full-source snapshot
+  `tech_census_drone_manufacturing/2026-Q3` (2,241 in-scope awards).
+- Neo4j contains a bounded validation seed from the first 25,000 source
+  records, materialized by Dagster run
+  `70e7d2f8-2a90-453f-a2a9-ae9bd4abc9c2`. This produced 24,794 validated rows
+  and 22,566 unique `FinancialTransaction` nodes. It is not a full-universe
+  graph and must not be represented as one.
+- Broad schedules remain disabled. `sbir_weekly_refresh_job` still requires
+  SAM.gov and USAspending bulk inputs that are not installed on this host.
+
 ## What runs here
 
 The `server` Compose profile (`docker-compose.server.yml`) runs exactly five
@@ -17,9 +59,10 @@ services:
 | `dagster-webserver` | Orchestration UI (prod mode) | `127.0.0.1:3000` | HTTPS `443` |
 | `dagster-daemon` | Schedules + sensors | — | none |
 
-Heavy assets (ML/CET, fiscal, USPTO NLP) are **disabled** on the server
-(`DAGSTER_LOAD_HEAVY_ASSETS=false`). See
-[Workload placement](#workload-placement).
+Heavy assets (ML/CET, fiscal, USPTO NLP) are **loaded but never scheduled**
+(`DAGSTER_LOAD_HEAVY_ASSETS=true`), so they can be run by hand on this host now
+that AWS Batch is gone. See [Heavy assets](#heavy-assets) for the capacity
+caveat and [Workload placement](#workload-placement).
 
 ## Security boundary
 
@@ -162,6 +205,75 @@ fails so recovery work cannot erase the backup.
 - A `weekly_core_refresh` schedule exists but stays **STOPPED** until you flip
   `SBIR_ETL__DAGSTER__SCHEDULES__WEEKLY_CORE_REFRESH_ENABLED=true` — do this
   only after a manual run of `core_refresh_job` succeeds.
+
+### Source-data downloads
+
+This host fetches upstream data itself; GitHub Actions no longer stages it.
+Four download jobs carry the cron times the retired `data-refresh.yml` used:
+
+| Schedule | Job | Cron (UTC) | Enable with |
+|---|---|---|---|
+| `weekly_sbir_awards_download` | `sbir_awards_download_job` | `0 9 * * 1` | `…__WEEKLY_SBIR_AWARDS_DOWNLOAD_ENABLED=true` |
+| `monthly_sam_gov_download` | `sam_gov_download_job` | `0 3 15 * *` | `…__MONTHLY_SAM_GOV_DOWNLOAD_ENABLED=true` |
+| `monthly_usaspending_download` | `usaspending_download_job` | `0 2 6 * *` | `…__MONTHLY_USASPENDING_DOWNLOAD_ENABLED=true` |
+| `monthly_uspto_download` | `uspto_download_job` | `0 9 1 * *` | `…__MONTHLY_USPTO_DOWNLOAD_ENABLED=true` |
+
+Env vars are prefixed `SBIR_ETL__DAGSTER__SCHEDULES__`; a matching
+`…_CRON` variable overrides the time. All four default to **STOPPED** — run
+each by hand first, then enable.
+
+Before enabling, note:
+
+- **SAM.gov** needs `SAM_GOV_API_KEY` in `.env.server`. Keys expire roughly
+  every 60 days, so a failure here usually means rotate the key.
+- **USAspending** is the long pole. The dump is large and the job may run for
+  hours. It checks free space before downloading and resumes from a sidecar
+  checkpoint next to the partial file, so an interrupted run is re-runnable
+  rather than restarted. Confirm SSD headroom first.
+- **USPTO** needs `USPTO_ODP_API_KEY` and a working Playwright/Chromium install.
+  Anonymous downloads from data.uspto.gov ended 2026-06-18 and now return an
+  HTML shell with HTTP 200, so the job fetches PatentsView and AI patents
+  through the ODP mint flow and assignments through browser automation. A
+  size/HTML guard fails the run rather than saving an error page as data.
+- Downloads land under `SBIR_ETL__PATHS__DATA_ROOT`, which the server profile
+  points at the SSD.
+
+### Pipeline chaining
+
+The retired `etl-pipeline.yml` ran the SBIR, USAspending, and USPTO pipelines on
+a weekly cron. Instead of blind crons, run-status sensors fire each pipeline
+when its download job succeeds, so a pipeline only runs when there is fresh
+input:
+
+| Sensor | Runs | After |
+|---|---|---|
+| `sbir_pipeline_after_download` | `sbir_weekly_refresh_job` | `sbir_awards_download_job` |
+| `uspto_pipeline_after_download` | `uspto_validation_job` | `uspto_download_job` |
+| `usaspending_pipeline_after_download` | `usaspending_iterative_enrichment_job` | `usaspending_download_job` |
+
+All default to **STOPPED**; enable with
+`SBIR_ETL__DAGSTER__SENSORS__<NAME>_ENABLED=true` after a manual pipeline run
+succeeds. The SBIR sensor skips when the download reported no upstream change,
+so an unchanged CSV does not trigger hours of re-enrichment.
+
+### Monthly analysis
+
+`monthly_phase_transition` (1st of the month, 14:00 UTC) runs
+`phase_transition_latency_job`, and a sensor archives its outputs to
+`<data_root>/processed/phase_transition/history/<date>/` afterwards. That dated
+series replaces what the retired workflow published to S3; GitHub artifacts
+expire, so this is now the only durable copy. Enable with
+`SBIR_ETL__DAGSTER__SCHEDULES__MONTHLY_PHASE_TRANSITION_ENABLED=true` and
+`SBIR_ETL__DAGSTER__SENSORS__PHASE_TRANSITION_ARCHIVE_AFTER_ANALYSIS_ENABLED=true`.
+
+### Heavy assets
+
+`DAGSTER_LOAD_HEAVY_ASSETS` now defaults to **true**, so CET, fiscal,
+modernbert, and USPTO AI extraction jobs load and can be triggered by hand.
+**Nothing schedules them.** They previously ran on AWS Batch with more headroom
+than this host has, and `dagster-code-server` is capped at 3G. Measure runtime
+and memory on a manual run before automating any of them; set the variable back
+to `false` if the code server starts hitting its limit.
 
 ## Recovery
 

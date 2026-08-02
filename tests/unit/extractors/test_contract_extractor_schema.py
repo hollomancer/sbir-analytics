@@ -215,6 +215,26 @@ def test_row_width_must_match_copy_list() -> None:
         list(extractor._parse_lines(["too\tshort"], "bad.dat.gz", COLUMNS, fpds_only=True))
 
 
+def test_named_parser_accepts_exact_copy_trailer_without_counting_it() -> None:
+    extractor = ContractExtractor()
+    lines = [_line(_row()), "\\.\n", "\n", "\n"]
+
+    contracts = list(extractor._parse_lines(lines, "fixture.dat.gz", COLUMNS, fpds_only=True))
+
+    assert len(contracts) == 1
+    assert extractor.stats["records_scanned"] == 1
+
+
+def test_named_parser_rejects_nonempty_data_after_copy_terminator() -> None:
+    extractor = ContractExtractor()
+    lines = [_line(_row()), "\\.\n", _line(_row(transaction_unique_id="TX-2"))]
+
+    with pytest.raises(SourceDataError, match="non-empty data after COPY terminator"):
+        list(extractor._parse_lines(lines, "fixture.dat.gz", COLUMNS, fpds_only=True))
+
+    assert extractor.stats["records_scanned"] == 1
+
+
 def test_matched_row_requires_both_stable_keys() -> None:
     extractor = ContractExtractor()
     with pytest.raises(SourceDataError, match="transaction_unique_id"):

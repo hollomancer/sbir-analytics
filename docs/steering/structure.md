@@ -69,6 +69,9 @@ docs/
 
 ## Code Organization Principles
 
+Company-name normalization and similarity belong in `sbir_etl/identity`; callers select
+an explicit versioned profile. See [company-identity.md](company-identity.md).
+
 ### Separation of Concerns
 
 - **Single responsibility**: Each module has one clear purpose
@@ -120,5 +123,6 @@ from sbir_etl.models.sbir_award import SbirAward
 - **[product.md](product.md)** - Project overview and business context
 - **[tech.md](tech.md)** - Technology stack and development tools
 - **[pipeline-orchestration.md](pipeline-orchestration.md)** - Dagster asset organization patterns
+- **[company-identity.md](company-identity.md)** - Versioned company identity policies
 - **[configuration.md](../configuration.md)** - Configuration management examples
 - **[quick-reference.md](quick-reference.md)** - Common commands and development setup

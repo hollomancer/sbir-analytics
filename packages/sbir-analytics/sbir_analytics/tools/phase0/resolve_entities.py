@@ -21,29 +21,24 @@ output quality for everything downstream.
 from __future__ import annotations
 
 import hashlib
-import re
 from typing import Any
 
 import pandas as pd
 from loguru import logger
 
+from sbir_etl.identity import (
+    CompanyNameProfile,
+    normalize_company_name,
+    rapidfuzz_token_set_100,
+)
+
 from ..base import BaseTool, DataSourceRef, ToolMetadata, ToolResult
 
 
 def _normalize_name(name: str | None) -> str:
-    """Normalize company name for matching."""
-    if not name:
-        return ""
-    s = str(name).upper().strip()
-    # Remove common suffixes
-    for suffix in [" INC", " LLC", " LP", " LLP", " CORP", " CO", " LTD", " PLC"]:
-        if s.endswith(suffix):
-            s = s[: -len(suffix)]
-    s = s.rstrip(",. ")
-    # Collapse whitespace and remove punctuation
-    s = re.sub(r"[^A-Z0-9\s]", "", s)
-    s = re.sub(r"\s+", " ", s).strip()
-    return s
+    """Compatibility shim for the versioned Phase 0 identity policy."""
+
+    return normalize_company_name(name, profile=CompanyNameProfile.ENTITY_RESOLUTION_V1)
 
 
 def _generate_canonical_id(name: str, uei: str | None = None) -> str:
@@ -246,7 +241,10 @@ class ResolveEntitiesTool(BaseTool):
         flagged_for_review = 0
         if unmatched_sbir and entities:
             try:
-                from rapidfuzz import fuzz
+                from rapidfuzz import process
+
+                if process is None:  # pragma: no cover - import contract guard
+                    raise ImportError
 
                 canonical_names = [(e["canonical_name"], i) for i, e in enumerate(entities)]
                 name_list = [n for n, _ in canonical_names]
@@ -260,7 +258,7 @@ class ResolveEntitiesTool(BaseTool):
                     best_score = 0.0
                     best_idx = -1
                     for i, ref_name in enumerate(name_list):
-                        score = fuzz.token_set_ratio(norm, _normalize_name(ref_name))
+                        score = rapidfuzz_token_set_100(norm, _normalize_name(ref_name))
                         if score > best_score:
                             best_score = score
                             best_idx = i

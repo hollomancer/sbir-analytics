@@ -102,13 +102,33 @@ daily_schedule = ScheduleDefinition(
     ),
 )
 
+
 # Opt-in weekly core refresh for the server profile. It materializes the core
-# (non-heavy) assets currently loaded — heavy ML/fiscal/NLP modules are excluded
-# via DAGSTER_LOAD_HEAVY_ASSETS=false on the server. It stays STOPPED until an
+# (non-heavy) assets. The selection excludes heavy modules explicitly rather
+# than relying on DAGSTER_LOAD_HEAVY_ASSETS=false to keep them unloaded: heavy
+# assets are now loaded so they can be run by hand, so an AssetSelection.all()
+# here would quietly make "core" mean everything. It stays STOPPED until an
 # operator confirms a manual run succeeds and flips the env toggle on.
+def _heavy_asset_keys() -> set:
+    """Asset keys belonging to the heavy ML/fiscal/NLP modules."""
+    heavy_modules = [
+        module
+        for module in asset_modules
+        if module.__name__.startswith(assets_pkg.HEAVY_ASSET_PREFIXES)
+    ]
+    if not heavy_modules:
+        return set()
+    return {asset.key for asset in load_assets_from_modules(heavy_modules) if hasattr(asset, "key")}
+
+
+_heavy_keys = _heavy_asset_keys()
 core_refresh_job = define_asset_job(
     name="core_refresh_job",
-    selection=AssetSelection.all(),
+    selection=(
+        AssetSelection.all() - AssetSelection.assets(*_heavy_keys)
+        if _heavy_keys
+        else AssetSelection.all()
+    ),
     description="Weekly refresh of core (non-heavy) SBIR assets",
 )
 
@@ -139,8 +159,61 @@ if drift_asset_exists:
         description="Run CET drift detection asset",
     )
 
+# Source-data download schedules. These replace data-refresh.yml, whose cron
+# times they inherit, now that the server fetches upstream data itself rather
+# than consuming a copy staged by GitHub Actions.
+#
+# All four default to STOPPED: the runbook requires an operator to confirm a
+# manual run succeeds on the host before enabling a schedule, and SAM.gov and
+# USAspending additionally need credentials and disk headroom in place.
+_HOST_SCHEDULES = (
+    (
+        "sbir_awards_download_job",
+        "weekly_sbir_awards_download",
+        "0 9 * * 1",
+        "SBIR awards download",
+    ),
+    ("sam_gov_download_job", "monthly_sam_gov_download", "0 3 15 * *", "SAM.gov entities download"),
+    (
+        "usaspending_download_job",
+        "monthly_usaspending_download",
+        "0 2 6 * *",
+        "USAspending dump download",
+    ),
+    ("uspto_download_job", "monthly_uspto_download", "0 9 1 * *", "USPTO datasets download"),
+    # Carried from the retired monthly-analysis.yml phase-transition job.
+    (
+        "phase_transition_latency_job",
+        "monthly_phase_transition",
+        "0 14 1 * *",
+        "Phase II->III transition latency analysis",
+    ),
+)
+
+source_download_schedules = []
+for _job_name, _schedule_name, _default_cron, _label in _HOST_SCHEDULES:
+    _discovered = _get_job(_job_name)
+    if _discovered is None:
+        LOG.warning("Job %s not discovered; skipping schedule", _job_name)
+        continue
+    _env_suffix = _schedule_name.upper()
+    source_download_schedules.append(
+        ScheduleDefinition(
+            job=_discovered,
+            cron_schedule=os.getenv(
+                f"SBIR_ETL__DAGSTER__SCHEDULES__{_env_suffix}_CRON", _default_cron
+            ),
+            name=_schedule_name,
+            description=f"Scheduled {_label} on this host",
+            default_status=_schedule_status(
+                f"SBIR_ETL__DAGSTER__SCHEDULES__{_env_suffix}_ENABLED",
+                default_running=False,
+            ),
+        )
+    )
+
 # Create schedules only for available jobs
-schedules = [daily_schedule, weekly_core_refresh_schedule]
+schedules = [daily_schedule, weekly_core_refresh_schedule, *source_download_schedules]
 
 if cet_full_pipeline_job is not None:
     cet_full_pipeline_schedule = ScheduleDefinition(

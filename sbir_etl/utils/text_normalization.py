@@ -12,8 +12,8 @@ Key Features:
 
 from __future__ import annotations
 
-import re
-import unicodedata
+from sbir_etl.identity import CompanyNameProfile
+from sbir_etl.identity import normalize_company_name as _normalize_company_name
 
 
 def normalize_name(
@@ -49,53 +49,20 @@ def normalize_name(
         >>> normalize_name("Advanced Technologies", apply_abbreviations=True)
         'adv tech'
     """
-    if not name:
-        return ""
-
-    s = str(name).strip().lower()
-
-    # Apply Unicode NFKD normalization and strip combining characters (accents).
-    # This turns "Café" → "cafe", "naïve" → "naive", "ñ" → "n", etc.
-    s = unicodedata.normalize("NFKD", s)
-    s = "".join(ch for ch in s if not unicodedata.combining(ch))
-
-    # Replace punctuation with spaces
-    s = re.sub(r"[^\w\s]", " ", s)
-
-    if remove_suffixes:
-        # Remove all common business suffixes (usaspending_enricher behavior)
-        s = re.sub(
-            r"\b(incorporated|incorporation|inc|corp|corporation|llc|llp|lp|ltd|limited"
-            r"|plc|liability|partnership|co|company)\b",
-            "",
-            s,
-        )
-    else:
-        # Normalize suffixes to standard forms (company_fuzzy_matcher behavior)
-        s = re.sub(r"\b(incorporated|incorporation)\b", "inc", s)
-        s = re.sub(r"\b(company|co)\b", "company", s)
-        s = re.sub(r"\b(limited|ltd)\b", "ltd", s)
-
-    # Apply abbreviations if requested
+    selected_abbreviations = abbreviations
     if apply_abbreviations:
-        if abbreviations is None:
-            # Import here to avoid circular dependency
-            try:
-                from sbir_etl.enrichers.matching import ENHANCED_ABBREVIATIONS
+        if selected_abbreviations is None:
+            from sbir_etl.identity import ENHANCED_ABBREVIATIONS
 
-                abbreviations = ENHANCED_ABBREVIATIONS
-            except ImportError:  # pragma: no cover
-                abbreviations = {}
-
-        if abbreviations:
-            tokens = s.split()
-            normalized_tokens = [abbreviations.get(token, token) for token in tokens]
-            s = " ".join(normalized_tokens)
-
-    # Collapse whitespace
-    s = re.sub(r"\s+", " ", s).strip()
-
-    return s
+            selected_abbreviations = ENHANCED_ABBREVIATIONS
+    else:
+        selected_abbreviations = None
+    profile = CompanyNameProfile.RECIPIENT_V1 if remove_suffixes else CompanyNameProfile.MATCHING_V1
+    return _normalize_company_name(
+        name,
+        profile=profile,
+        abbreviations=selected_abbreviations,
+    )
 
 
 # Backward-compatible aliases for existing code

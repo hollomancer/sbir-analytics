@@ -201,3 +201,53 @@ def test_followon_keeps_rich_prior_without_uei():
 def test_blank_notice_id_is_not_paired():
     opportunities = pd.DataFrame([_opportunity(notice_id="   ", awardee_uei="UEI000000001")])
     assert pair_filter_s2(_priors(), opportunities).empty
+
+
+def test_followon_pairing_preserves_awards_that_share_a_public_id():
+    priors = pd.concat(
+        [
+            _priors().assign(award_key="award-key-1"),
+            _priors().assign(award_key="award-key-2", title="Navigation integration"),
+        ],
+        ignore_index=True,
+    )
+    opportunities = pd.DataFrame(
+        [
+            _opportunity(
+                notice_type_code="o",
+                naics_code="541715",
+                psc_code="AJ11",
+                description="Autonomous aircraft navigation prototype transition",
+            )
+        ]
+    )
+
+    pairs = pair_filter_s3(priors, opportunities)
+
+    assert set(pairs["prior_award_key"]) == {"award-key-1", "award-key-2"}
+    assert len(pairs) == 2
+
+
+def test_followon_pairing_keeps_separate_legacy_public_ids():
+    priors = pd.concat(
+        [
+            _priors(),
+            _priors().assign(award_id="A-2", title="Navigation integration"),
+        ],
+        ignore_index=True,
+    )
+    opportunities = pd.DataFrame(
+        [
+            _opportunity(
+                notice_type_code="o",
+                naics_code="541715",
+                psc_code="AJ11",
+                description="Autonomous aircraft navigation prototype transition",
+            )
+        ]
+    )
+
+    pairs = pair_filter_s3(priors, opportunities)
+
+    assert set(pairs["prior_award_id"]) == {"A-1", "A-2"}
+    assert pairs["prior_award_key"].isna().all()
