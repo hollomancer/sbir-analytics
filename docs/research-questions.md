@@ -28,9 +28,21 @@ Each question is written in a fixed shape:
   Deps / Refs / Spec: what it needs, what it benchmarks against, where it is specified.
 ```
 
+The **title**, **question**, and **Status** slots are written for an outside
+reader — a congressional staffer or program officer who arrived from
+[Where to start, by audience](#where-to-start-by-audience). Keep them in plain
+language. The *Deps*, *Spec*, and implementation notes are for maintainers and
+may use pipeline shorthand freely.
+
 **Status** appears only where answerability is contested or partial. A question
 with no status line has no special caveat attached — check the linked spec and
 the *Spec* slot to see whether it is built.
+
+**Lower-bound proxy** marks a question whose answer can only ever undercount.
+It appears wherever we detect ownership or capital through public filings: SEC
+EDGAR shows disclosed, structured ownership and disclosed private capital, so
+anything held privately or beneath a corporate layer is invisible to us. A
+"zero" on such a question means *we found none*, never *there are none*.
 
 **Spec** links point at spec directories and design docs. A `(PR #…)` tag means
 the work landed in that pull request. A `(branch: …)` tag means it is in
@@ -126,20 +138,24 @@ perspective, see [F. Capital formation & entrepreneurial finance](#f-capital-for
   DLA), phase, and vintage?
   *Deps: none · Refs: [L18]*
 
-- **Capability density & choke-point concentration map** (cap/vuln) (A-CP1 concentration map, A-CP2 supplier-base thickness, A-CP3 geographic distribution)
-  For each CET area, how many distinct awardees are there, how much award volume
-  do they hold, and how concentrated is that volume (awardee **HHI**) across
-  NAICS sector and geography (state, congressional district)?
-  High density reads as capability. The same HHI inverted is the choke-point
-  concentration map, flagging single- and thin-supplier clusters and
-  geographically narrow bases. GAO's program-wide Phase II HHI of ~11 [L14] is
-  the diffuse baseline that area-level concentration is measured against.
+- **Supplier base size and concentration per CET area** (cap/vuln) (A-CP1 concentration map, A-CP2 supplier-base thickness, A-CP3 geographic distribution)
+  In each CET area, how many distinct firms hold awards, how much award money do
+  they hold, and how much of that money is concentrated in a few of them —
+  measured by **HHI** (the Herfindahl-Hirschman Index, the standard antitrust
+  measure of market concentration; higher means fewer, larger players) and broken
+  out by NAICS sector and by geography (state, congressional district)?
+  Many independent firms in an area means a healthy supplier base. Few firms
+  means a choke point. It is the same number read two ways, and the second
+  reading also flags areas whose suppliers are clustered in one part of the
+  country. GAO's program-wide Phase II HHI of ~11 [L14] is the diffuse baseline
+  that area-level concentration is measured against.
   **Status:** Answerable now for the classified DoD subset.
   *Deps: CET, ER, NAICS · Refs: [L14], [L16], [L29] · Spec: [dod_supply_chain_initial_analysis.md](research/dod_supply_chain_initial_analysis.md) (reproducible baseline and its limitations)*
 
-- **Whitespace** (cap)
-  Which CET subfields show DoD demand signals but sparse SBIR coverage?
-  Surfaced via semantic search over award and solicitation text.
+- **Coverage gaps** (cap) (house shorthand: *whitespace*)
+  Which CET subfields does DoD appear to want work in, but few SBIR awards
+  cover?
+  Found by semantic search over award and solicitation text.
   **Status:** Answerable now.
   *Deps: CET*
 
@@ -153,8 +169,7 @@ perspective, see [F. Capital formation & entrepreneurial finance](#f-capital-for
   What share of awardees — and of award dollars — in each CET area sit under
   disclosed foreign ownership, control, or influence, when screened against the
   eight Pub. L. 119-83 restricted-entity lists?
-  *Lower-bound proxy:* EDGAR Exhibit 21 / 8-K plus entity resolution detect only
-  disclosed, structured ownership — not private beneficial ownership.
+  *Lower-bound proxy* — ownership is read from EDGAR Exhibit 21 and 8-K filings.
   **Status:** Answerable now for the SEC-filer subset; the private majority needs
   data acquisition.
   *Deps: ER, SEC EDGAR, M&A signals · Refs: [L26] (screening lists), [L30] (foreign-supplier dependence), [L17] (foreign-acquisition risk)*
@@ -173,10 +188,10 @@ perspective, see [F. Capital formation & entrepreneurial finance](#f-capital-for
   historically incomplete [L14].
   *Deps: ER, ID, CET, transitions · Refs: [L1], [L14] · Spec: [../specs/ot-consortium-subaward-attribution/](../specs/ot-consortium-subaward-attribution/) (FFATA/FSRS sub-award T1 recovery)*
 
-- **Awardee-as-IP-chokepoint** (cap/vuln) (A-CP6)
+- **Awardees that control the key patents** (cap/vuln) (A-CP6)
   Within a CET area, do patent assignment chains (`ASSIGNED_VIA/FROM/TO`) show a
-  small number of awardees as the dominant source of enabling IP flowing to
-  primes — i.e. a knowledge-supply-chain choke point?
+  handful of awardees supplying most of the patents that primes go on to rely on
+  — a choke point in knowledge rather than in manufacturing?
   Builds on the [C2](#c2-relational-tier-2) patent-linkage work. The
   citation-centrality "who-depends-on-whom" variant needs patent-citation edge
   ingestion; a `PatentCitation` model exists but citations are not yet graph
@@ -192,19 +207,21 @@ perspective, see [F. Capital formation & entrepreneurial finance](#f-capital-for
   due-diligence data.
   *Deps: ER*
 
-- **Concentration vs. transition-thinness** (vuln) (A-CP5)
-  Do the most concentrated (thin-base) CET areas also show the thinnest Phase
-  II→III transition pipelines — concentrated *and* failing to graduate?
+- **Concentrated areas that also fail to graduate firms** (vuln) (A-CP5)
+  Do the CET areas served by the fewest firms also have the fewest firms
+  reaching Phase III — few suppliers *and* no pipeline replacing them?
   *Caveat:* the FPDS Phase III undercount [L14] bounds confidence.
   **Status:** Research target — not yet scoped.
   *Deps: ER, ID, CET, transitions · Refs: [L14]*
 
 - **New-entrant vs. repeat-winner mix per CET area** (vuln) (A-CP7)
-  What share of awards in each CET area go to first-time versus repeat winners,
-  as a read on entrant-pipeline health and graduation?
-  The DoD classified-subset baseline now reports first-observed entrants against
-  the complete retained FY2012+ DoD award history; pre-FY2012 activity remains
-  left-censored.
+  What share of awards in each CET area go to first-time winners versus repeat
+  winners — that is, are new firms still entering the program, and do they go on
+  to win again?
+  The DoD classified-subset baseline reports first-observed entrants against the
+  complete retained FY2012+ DoD award history. It cannot see earlier activity, so
+  a firm that first won in 2009 can still look like a new entrant
+  (*left-censoring*).
   **Status:** Partially answerable for the classified DoD subset.
   *Deps: ER, ID, CET · Refs: [L32] · Spec: [dod_supply_chain_initial_analysis.md](research/dod_supply_chain_initial_analysis.md)*
 
@@ -241,32 +258,33 @@ NASEM calls this quantity the *leverage ratio*.
 
 #### Concentration & choke-point inference
 
-- **Concentration-as-fragility** (vuln)
-  Where single-firm or thin-base dominance exists within a CET cluster, does it
-  read as risk rather than capability? Has the base for a given area thinned or
-  thickened over time, and which sole-supplier firms would — if acquired or lost
-  — remove a capability with no in-program substitute?
-  This is the [A1](#a1-descriptive-tier-1) HHI inverted, including
-  geographically narrow bases.
+- **When concentration becomes fragility** (vuln)
+  Where one firm or a handful of firms dominate a CET area, should that be read
+  as risk rather than as strength? Has the number of firms serving an area grown
+  or shrunk over time, and which single-supplier firms would — if acquired or
+  lost — take a capability with them that no other firm in the program can
+  supply?
+  Same measure as [A1](#a1-descriptive-tier-1), read for risk instead of health,
+  and including areas whose suppliers sit in one part of the country.
   *Caveat:* the DoD classified-subset baseline supports concentration screening
   but not physical sole-source conclusions.
   **Status:** Answerable now for the classified DoD subset.
   *Deps: ER, CET · Spec: [dod_supply_chain_initial_analysis.md](research/dod_supply_chain_initial_analysis.md)*
 
-- **Composite fragility per CET area** (vuln) (A-CP10)
-  Which CET areas are concentrated, failing to graduate, *and* starved of new
-  entrants at once?
-  Combines concentration (A-CP1/A-CP2), geographic narrowness (A-CP3),
-  transition-thinness (A-CP5), and new-entrant deficit (A-CP7) into a per-area
-  fragility judgment.
+- **Areas fragile on every measure at once** (vuln) (A-CP10)
+  Which CET areas are served by few firms, graduating few of them to Phase III,
+  *and* attracting few new entrants — all at the same time?
+  Combines few suppliers (A-CP1/A-CP2), suppliers clustered in one region
+  (A-CP3), few firms reaching Phase III (A-CP5), and few new entrants (A-CP7)
+  into a single per-area judgment.
   **Status:** Research target — not yet scoped.
   *Deps: CET, ER, ID, NAICS, transitions · Refs: [L28], [L30]*
 
 - **Program leverage at choke points** (vuln) (A-CP11)
-  When the DoD follow-on multiplier and the private-to-SBIR leverage ratio
-  ([F3](#f3-inferential-tier-3)) are sliced to choke-point firms, does thin-base
-  concentration coincide with low or with high leverage?
-  *Lower-bound proxy:* EDGAR captures only disclosed private capital.
+  Narrow the DoD follow-on multiplier and the private-to-SBIR leverage ratio
+  ([F3](#f3-inferential-tier-3)) to firms at choke points: do the areas with the
+  fewest suppliers attract more follow-on money per SBIR dollar, or less?
+  *Lower-bound proxy.*
   *Anchor:* the verifiable DoD SBIR Fast Track match of up to four SBIR dollars
   per outside-investor dollar [L33]. NSF's reported portfolio leverage carries a
   `[TODO: verify NSF primary source for the ~18:1 figure]` — found only in trade
@@ -275,12 +293,11 @@ NASEM calls this quantity the *leverage ratio*.
   **Status:** Research target — not yet scoped.
   *Deps: ER, ID, SEC EDGAR, CET · Refs: [L33]*
 
-- **Foreign-acquisition-pathway inference** (vuln) (A-CP12)
-  From disclosed ownership structure and M&A signals, which choke-point firms
-  sit on a plausible foreign-acquisition pathway when screened against the
-  restricted-entity lists?
-  *Lower-bound proxy:* only disclosed/structured ownership and M&A signals are
-  detectable, not private beneficial ownership.
+- **Firms on a plausible path to foreign acquisition** (vuln) (A-CP12)
+  Judging from disclosed ownership structure and past M&A activity, which
+  choke-point firms look like plausible foreign acquisition targets when screened
+  against the restricted-entity lists?
+  *Lower-bound proxy.*
   **Status:** Research target — not yet scoped.
   *Deps: ER, SEC EDGAR, M&A signals, CET · Refs: [L26], [L30]*
 
@@ -310,11 +327,10 @@ NASEM calls this quantity the *leverage ratio*.
 
 #### Choke-point monitoring & prediction
 
-- **Acquisition-erosion of thin bases** (vuln) (A-CP8)
-  Do M&A events remove sole- or dominant-supplier firms from already-thin CET
-  bases, eroding capability through consolidation?
-  *Lower-bound proxy:* the foreign-acquisition component detects only disclosed
-  ownership.
+- **Acquisitions that thin an already-small supplier base** (vuln) (A-CP8)
+  Do acquisitions pull sole or dominant suppliers out of CET areas that already
+  had few firms, so that consolidation costs the program a capability?
+  *Lower-bound proxy* for the foreign-acquisition component.
   **Status:** Research target — not yet scoped.
   *Deps: ER, M&A signals, CET · Refs: [L31] (defense-sector consolidation), [L17] (foreign-acquisition risk)*
 
@@ -330,24 +346,22 @@ NASEM calls this quantity the *leverage ratio*.
   Which CET areas — and which individual sole- or dominant-supplier firms within
   them — would, if acquired or lost, remove a capability with no in-program
   substitute?
-  A composite, forward-looking watchlist fusing every signal above:
-  concentration (A-CP1/A-CP2), geographic narrowness (A-CP3), FOCI (A-CP4),
-  transition-thinness (A-CP5), IP-flow position (A-CP6), new-entrant deficit
-  (A-CP7), acquisition-erosion (A-CP8), UCC-1 distress (A-CP9), and composite
-  fragility (A-CP10).
-  *Lower-bound proxy:* the FOCI and foreign-acquisition inputs detect only
-  disclosed ownership.
+  A forward-looking watchlist combining every signal above: few suppliers
+  (A-CP1/A-CP2), suppliers clustered in one region (A-CP3), foreign ownership
+  (A-CP4), few firms reaching Phase III (A-CP5), position in the IP chain
+  (A-CP6), few new entrants (A-CP7), acquisitions thinning the base (A-CP8),
+  secured-debt distress (A-CP9), and the combined per-area judgment (A-CP10).
+  *Lower-bound proxy* for the foreign-ownership and foreign-acquisition inputs.
   **Status:** Research target — flagship; not yet scoped or implemented.
   *Deps: CET, ER, ID, transitions, M&A signals, UCC-1, SEC EDGAR · Refs: [L28] (NDIS supply-chain resilience), [L31] (priority sectors), [L30] (sub-tier-visibility gap)*
 
-- **Predictive erosion / early warning** (vuln) (A-CP14)
-  What is the forward probability that a given choke-point firm exits — through
-  M&A or financial distress — within a set horizon?
+- **Early warning before a supplier is lost** (vuln) (A-CP14)
+  How likely is a given choke-point firm to disappear — through acquisition or
+  financial failure — within the next few years?
   Feeds the continuous-monitoring loop
-  ([E6](#e6-continuous-monitoring--rolling-analytics-tier-4-capstone)) so a
-  fragility flag is raised before the capability is lost.
-  *Lower-bound proxy:* the foreign-acquisition component detects only disclosed
-  ownership.
+  ([E6](#e6-continuous-monitoring--rolling-analytics-tier-4-capstone)) so the
+  flag is raised while the capability can still be preserved.
+  *Lower-bound proxy* for the foreign-acquisition component.
   **Status:** Research target — not yet scoped.
   *Deps: ER, M&A signals, UCC-1, CET, transitions · Refs: [L30], [L31]*
 
@@ -460,15 +474,17 @@ statutory goal is Phase III commercialization.*
   Did this SBIR-funded research result in a federal contract?
   *Deps: ER, ID · Refs: [L1], [L2] (NASEM DoD), [L12] (Link & Scott, ~50% commercialization probability), [L3], [L4], [L6] (NASEM program reviews) · Spec: [transition/overview.md](transition/overview.md), [../specs/archive/completed-features/transition_detection/](../specs/archive/completed-features/transition_detection/)*
 
-- **Uncoded-follow-on proxy census**
-  How many exact-UEI, post-completion contract actions survive a pre-registered,
-  label-free uncoded-follow-on proxy, and how do the audit counts change across
-  its frozen clauses and agency/window cells?
-  **Status:** Implementation complete, materialization paused — the criteria are
-  frozen and the schema-verified source layer is a separately reviewed
-  prerequisite. Production tables and matched controls have not been
-  materialized, and the result remains a proxy rather than proof of statutory
-  Phase III.
+- **Follow-on contracts that were never labelled Phase III**
+  When a firm wins a federal contract after its SBIR award ends — the same firm
+  by exact UEI, with no Phase III label required — how many of those contracts
+  hold up as likely follow-on work? And how does that count shift as we vary the
+  matching rules, the agency, and the time window?
+  *Method:* the matching rules were written down and frozen before the counts
+  were run, so the result cannot be tuned after the fact.
+  **Status:** Built, but not yet run in production. The production tables and the
+  matched comparison group have not been created, and the schema-verified source
+  layer it depends on is under separate review. Until then the count is a
+  plausible proxy, not proof of statutory Phase III.
   *Deps: ER, ID, NAICS/PSC · Spec: [../specs/phase-iii-census/](../specs/phase-iii-census/)*
 
 - **Research-to-procurement transitions**
@@ -495,8 +511,8 @@ statutory goal is Phase III commercialization.*
   *Deps: ER, ID · Refs: [L14] · Spec: [phase-transition-latency.md](phase-transition-latency.md)*
 
 - **Phase II → III survival probability**
-  What is the Phase II → III survival probability by agency, firm size, and
-  vintage?
+  What share of Phase II awardees go on to win Phase III work, and how does that
+  share vary by agency, firm size, and award vintage?
   *Deps: ER, ID*
 
 - **Latency by technology area**
@@ -504,22 +520,24 @@ statutory goal is Phase III commercialization.*
   *Deps: ER, ID, CET*
 
 - **Transition effectiveness rate**
-  What is the transition effectiveness rate by CET area, agency, and firm size?
+  What share of awards reach a federal contract, broken out by CET area, agency,
+  and firm size — and how does that compare to the published baselines?
   *Deps: ER, ID, CET · Refs: [L12], [L1], [L3], [L4]*
 
-- **Phase III coding undercount**
-  How much undercount exists in Phase III coding, by agency?
+- **How much Phase III work goes unrecorded**
+  How many Phase III contracts does each agency fail to code as Phase III?
   Corroborated by GAO [L14] and NASEM [L1], [L3]. The protocol depends on
-  award-grade identity/grain (issue #447 / PR #449); production source lifecycle
-  belongs to issue #442.
-  **Status:** Partially answerable — the deterministic audit and its source/grain
-  validation are implemented in separate stacked changes, but production tables
-  have not been materialized. Matched negative controls and labeled validation
-  are still required before interpreting the proxy as undercount.
+  award-grade identity and record granularity (issue #447 / PR #449); production
+  source lifecycle belongs to issue #442.
+  **Status:** Partially answerable. The audit and its source/granularity checks
+  are built, across two separate changes, but have not been run in production.
+  Before the gap can be called an undercount, it still needs a matched comparison
+  group and a hand-labelled sample to check the result against.
   *Deps: ID · Refs: [L14], [L1], [L3] · Spec: [../specs/phase3-match-benchmark/](../specs/phase3-match-benchmark/) (protocol and current evidence limits), [../specs/phase-3-solicitation-alerts/](../specs/phase-3-solicitation-alerts/) (solicitation monitoring)*
 
 - **Categorization vs. transition likelihood**
-  How does company categorization relate to transition likelihood?
+  Are product firms, service firms, or mixed-mode firms (as categorized in
+  [B1](#b1-descriptive-tier-1)) more likely to reach a federal contract?
   *Deps: ER, ID · Refs: [L12]*
 
 - **Statutory Commercialization Benchmark**
@@ -698,10 +716,11 @@ Foundational — most questions in A–D depend on work here.*
 
 - **SBIR.gov ↔ USAspending/FPDS reconciliation**
   How does SBIR.gov data reconcile with federal USAspending/FPDS records?
-  **Status:** Partially answerable now — Phase II federal transactions collapse
-  on generated award IDs and reconcile to SBIR.gov only through exact normalized
-  raw PIID/source identifiers, with ambiguity and taxonomy-conflict failures.
-  Broader cross-source completeness remains unvalidated.
+  **Status:** Partially answerable. Federal Phase II transactions are grouped
+  under generated award IDs, so they match SBIR.gov only where a raw PIID or
+  source identifier matches exactly after normalization. Some records match more
+  than one award, and some disagree on how the award is categorized. Coverage
+  beyond that exact-match path has not been validated.
   *Deps: none · Refs: [L14], [L1], [L3] (tracking-data limits)*
 
 ### E2. Entity resolution (foundation, Tier 1–2)
@@ -847,8 +866,9 @@ the NVCA Yearbook [L25] — rather than NASEM and GAO.
   *Deps: ER, SEC EDGAR · Spec: [../specs/archive/completed-features/form-d-pipeline/](../specs/archive/completed-features/form-d-pipeline/) (PR #286 merged)*
 
 - **Debt vs. equity composition**
-  What is the debt-versus-equity composition and offering fill rate of SBIR-firm
-  Form D filings?
+  In SBIR-firm Form D filings, how much of the money raised is debt versus
+  equity, and what share of each announced offering actually sells (the fill
+  rate)?
   *Deps: ER, SEC EDGAR · Spec: (PR #286 merged)*
 
 - **Secured-debt activity**
@@ -1081,7 +1101,36 @@ so Section A opens on questions rather than on ten lines of framing. Converted
 the dependency-tag glossary to a table and added a
 [How to read this document](#how-to-read-this-document) key. **No questions,
 citations, status labels, `A-CP#` identifiers, PR/branch tags, or spec links
-were added, removed, or changed in substance** — this pass is presentation only.
+were added, removed, or changed in substance** — that pass was presentation only.
+
+A second pass then rewrote the wording of the **title**, **question**, and
+**Status** slots in plain language, per the rule now stated in
+[How to read this document](#how-to-read-this-document). Three kinds of change:
+
+1. **House shorthand translated.** The thick/thin/dense metaphor family
+   (*capability density*, *supplier-base thickness*, *transition-thinness*,
+   *thin bases*) and the nominalized compounds (*Concentration-as-fragility*,
+   *Acquisition-erosion*, *Predictive erosion*) were invented here and could not
+   be looked up by an outside reader; they now say how many firms there are and
+   what is happening to them. *Whitespace* became *Coverage gaps*, keeping the
+   house term parenthetically.
+2. **Pipeline vocabulary removed from audience-facing slots.** *Materialized* /
+   *materialization* is Dagster's word for "computed and stored" and read as
+   hedging in a Status line; it is now "built" / "run in production". Same for
+   *stacked changes* and *grain*. The maintainer-facing implementation notes keep
+   the original vocabulary.
+3. **Terms of art kept, but glossed.** HHI, left-censoring, survival
+   probability, fill rate, and crowd-in/crowd-out are the correct words and were
+   not replaced — they gained a short in-line gloss on first use. *Lower-bound
+   proxy* is now defined once in the reading key and used bare thereafter,
+   instead of six slightly different restatements.
+
+The heaviest rewrite is B2's follow-on census question, which previously stacked
+five invented modifiers before its verb; its methodology terms
+(*pre-registered*, *frozen criteria*) moved to a *Method* line, where they answer
+a reviewer's concern rather than blocking a scanner's.
+
+**No question changed meaning, and no status label changed what it asserts.**
 
 **Prior review:** 2026-06-27 — **consolidated Section A** into a single
 complexity-tier ladder (A1 Descriptive → A4 Risk/monitoring/prediction)
