@@ -4,7 +4,12 @@
 > off-sandbox SAM.gov keyed call. Exploratory spike numbers from 2026-08-01 are in
 > `requirements.md`; these tasks turn them into credibly-attributed results.
 
-## T1 — §638-J&A self-labeling spike (HIGHEST VALUE; needs off-sandbox SAM key)
+## T1 — §638-J&A self-labeling spike — BLOCKED/DEPRIORITIZED (see SPIKE_RESULTS.md)
+Ran off-sandbox: notice populations tiny (award notices 1,734/yr, J&As ~5/yr, 0 §638 hits),
+and a personal-key **daily quota** (~15 calls) makes body-mining infeasible. Needs a SAM
+**system account** or the free bulk extract to pursue — modest expected payoff either way.
+
+### (original) — §638-J&A self-labeling spike (HIGHEST VALUE; needs off-sandbox SAM key)
 Retrieve a sample of Justification & Approval notices (Get Opportunities API, `ptype=u`)
 that cite 15 U.S.C. §638 / "SBIR Phase III". Confirm the narrative is machine-retrievable
 (inline vs attachment). Assess as a self-labeling Phase III positive: sample precision vs

@@ -30,8 +30,24 @@ grants + $33M contracts** of follow-on footprint, absent from the FPDS contract 
 (Columbia Power $19M; NIH-biotech follow-ons: MABVAX, Exemplar Genetics). "Non-SBIR" =
 description without SBIR/STTR — a loose gate; T2 tightens with UEI-exact + Phase-II proximity.
 
-## Not testable here (SAM-only → `sam_probe.sh`, off-sandbox)
+## T1 (§638-J&A) + T4 (OT) — BLOCKED / deprioritized (ran off-sandbox 2026-08-01)
 
-- **T1 §638-J&A** (self-labeling positives) and **T4 OT awards** — api.sam.gov is IP-blocked
-  from the hosted sandbox (confirmed: persists with the bash sandbox disabled). Run the probe
-  script from a normal network.
+`sam_probe.sh` run from a normal network (api.sam.gov reachable there, HTTP 200, key valid).
+Outcome kills both as personal-key API tasks:
+
+- **Notice populations are tiny:** ptype=a (award notices) = **1,734** and ptype=u (J&A) =
+  **~5** for all of 2024. Even unthrottled, §638-via-notices is a thin vein. First-pass J&A
+  grep found **0** §638/SBIR citations in the 5 J&As.
+- **Personal-key daily quota is far too small for body-mining:** ~15 calls exhausted it —
+  `900804 "Message throttled out", nextAccessTime 2026-Aug-03 00:00 UTC` (a **daily** cap).
+  Mining hundreds of per-notice description bodies is infeasible on this key.
+- **Contract Awards API (OT) rate-limited on the first call** — effectively needs a **federal
+  system account**, not a personal key.
+
+**Decision: deprioritize T1/T4.** They would require a SAM **system account** (higher quota)
+or the **free bulk Contract Opportunities extract** (no API quota) — and even then §638-notice
+volume is modest. Not worth chasing on a personal key. The coverage story stands on the
+rate-limit-free channels below.
+
+`scripts/transition_coverage/sam_probe.sh` (v2: reachability + ptype census + award-notice
+§638 grep + OT schema dump) is retained for anyone with a system-account key.
