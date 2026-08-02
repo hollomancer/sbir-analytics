@@ -23,12 +23,20 @@ Breadth (# primes) is the transition signature to use, not raw dollars. Still an
 approximation (name-token match, not UEI-exact; timing gate, not tech-matched) — T3 in
 `tasks.md` tightens to UEI-exact + SBIR-derivation for the production version.
 
-## Cross-validation of the self-labeled set vs #481 + detector check (FY2020–2024)
+## Full-sweep consolidated set + cross-validation vs #481 (FY2015–2025)
 
-**Self-label precision: 11/11** award-class awardees resolve to a real SBIR firm with prior
-awards (Progeny 309 SBIRs, Daniel H Wagner 228, Design Interactive 113…) — the "SBIR Phase III"
-self-label is trustworthy. **Agreement: 2 firms (Progeny, Daniel H Wagner) appear in BOTH SAM
-and the #481 hand-collected set** (independent methods converging); **9 are net-new**.
+`consolidate_selflabeled.py` over all 11 years → committed artifacts in `collected/`:
+- **66 firm-named positives** (55 award + 11 intent — intent recovered via Description
+  firm-parsing, `firm_from_notice`), **59/66 (89%) resolve to a real SBIR firm** (self-label
+  precision), **18 agree with #481** (independent methods converging → confidence),
+  **48 net-new** (expands #481's 293 by ~16%).
+- **130 Sources Sought** forward-opportunity records (`..._forward_feed.csv`) — addresses
+  #481's open forward-validation gap.
+
+**Detector check (FY2020–24 pilot, n=21):** frozen detector on the rich notice text scored
+p@1 0.429 / p@3 0.714 — indistinguishable from the 0.467 baseline. **The set improves the
+LABELS, not the detector's score** (notice text is FAR procurement boilerplate, not
+abstract-matching tech content).
 
 **Does it improve the detector as-is? No evidence.** Frozen detector (word-TFIDF dominant
 signal) on the rich self-labeled notices: **p@1 0.429, p@3 0.714 (n=21)** — indistinguishable
