@@ -42,7 +42,7 @@ GRAY   := \033[90m
 info = if [ "$(QUIET)" != "1" ]; then printf "$(BLUE)➤$(RESET) %s\n" "$(1)"; fi
 success = if [ "$(QUIET)" != "1" ]; then printf "$(GREEN)✔$(RESET) %s\n" "$(1)"; fi
 warn = if [ "$(QUIET)" != "1" ]; then printf "$(YELLOW)⚠$(RESET) %s\n" "$(1)"; fi
-error = if [ "$(QUIET)" != "1" ]; then printf "$(RED)✖$(RESET) %s\n" "$(1)"; fi
+failure = if [ "$(QUIET)" != "1" ]; then printf "$(RED)✖$(RESET) %s\n" "$(1)"; fi
 print-cmd = if [ "$(QUIET)" != "1" ]; then printf "$(GRAY)$$ %s$(RESET)\n" "$(strip $(1))"; fi
 
 define run
@@ -119,7 +119,7 @@ docker-verify: env-check ## Verify Docker setup is working correctly
 	    cypher-shell -u $${NEO4J_USER:-neo4j} -p $${NEO4J_PASSWORD:-test} 'RETURN 1' >/dev/null 2>&1; then \
 	   $(call success,Neo4j is accessible at bolt://localhost:7687); \
 	 else \
-	   $(call error,Neo4j is not accessible); \
+	   $(call failure,Neo4j is not accessible); \
 	   $(call warn,Check logs with: make docker-logs SERVICE=neo4j); \
 	   exit 1; \
 	 fi; \
@@ -127,7 +127,7 @@ docker-verify: env-check ## Verify Docker setup is working correctly
 	 if curl -fsS --max-time 3 http://localhost:3000/server_info >/dev/null 2>&1; then \
 	   $(call success,Dagster UI is accessible at http://localhost:3000); \
 	 else \
-	   $(call error,Dagster UI is not accessible); \
+	   $(call failure,Dagster UI is not accessible); \
 	   $(call warn,Check logs with: make docker-logs SERVICE=dagster-webserver); \
 	   exit 1; \
 	 fi; \
@@ -386,7 +386,7 @@ docker-test: env-check ## Run containerised CI tests (profile=ci)
 	 if [ $$STATUS -eq 0 ]; then \
 	   $(call success,Tests passed); \
 	 else \
-	   $(call error,Tests failed (exit $$STATUS)); \
+	   $(call failure,Tests failed (exit $$STATUS)); \
 	   $(call warn,View logs with: make docker-logs SERVICE=app); \
 	 fi; \
 	 exit $$STATUS
@@ -400,7 +400,7 @@ docker-e2e: env-check ## Run full end-to-end test suite (profile=ci)
 	 if ! $(COMPOSE) --profile ci up --build --abort-on-container-exit neo4j app 2>&1; then STATUS=$$?; fi; \
 	 if [ "$(QUIET)" != "1" ]; then printf "$(BLUE)➤$(RESET) E2E tests completed with exit code %s\n" "$$STATUS"; fi; \
 	 if [ $$STATUS -ne 0 ]; then \
-	   $(call error,E2E tests failed with exit code $$STATUS); \
+	   $(call failure,E2E tests failed with exit code $$STATUS); \
 	   $(call info,Showing recent logs from failed containers...); \
 	   $(COMPOSE) --profile ci logs --tail=50 app 2>&1 || true; \
 	   $(COMPOSE) --profile ci logs --tail=20 neo4j 2>&1 || true; \
@@ -479,7 +479,7 @@ neo4j-check: env-check ## Run the Neo4j health check
 	    cypher-shell -u $${NEO4J_USER:-neo4j} -p $${NEO4J_PASSWORD:-password} 'RETURN 1' >/dev/null 2>&1; then \
 	   $(call success,Neo4j responded successfully); \
 	 else \
-	   $(call error,Neo4j health check failed); \
+	   $(call failure,Neo4j health check failed); \
 	  exit 1; \
 	 fi
 
@@ -566,7 +566,7 @@ validate-config: ## Validate docker-compose.yml and .env files
 	@$(call info,Validating docker-compose.yml)
 	@set -euo pipefail; \
 	 if ! $(COMPOSE) config >/dev/null 2>&1; then \
-	   $(call error,docker-compose.yml validation failed); \
+	   $(call failure,docker-compose.yml validation failed); \
 	   $(COMPOSE) config; \
 	   exit 1; \
 	 fi; \
@@ -669,7 +669,7 @@ server-validate-config: server-env-check ## Validate docker-compose.server.yml
 	@$(call info,Validating $(SERVER_COMPOSE_FILE))
 	@set -euo pipefail; \
 	 if ! $(SERVER_COMPOSE) --profile server config >/dev/null 2>&1; then \
-	   $(call error,$(SERVER_COMPOSE_FILE) validation failed); \
+	   $(call failure,$(SERVER_COMPOSE_FILE) validation failed); \
 	   $(SERVER_COMPOSE) --profile server config; \
 	   exit 1; \
 	 fi; \
@@ -684,7 +684,7 @@ ci-local: ## Run CI checks locally (mimics GitHub Actions)
 	 if command -v python3 >/dev/null 2>&1; then \
 	   python3 scripts/ci/scan_secrets.py || exit_code=$$?; \
 	   if [ "$${exit_code:-0}" != "0" ]; then \
-	     $(call error,Secret scan failed); \
+	     $(call failure,Secret scan failed); \
 	     exit $$exit_code; \
 	   fi; \
 	 else \

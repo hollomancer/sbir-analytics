@@ -133,6 +133,20 @@ FILENAME != "-" {
 }
 
 {
+    source_line++
+    record = $0
+    sub(/\r+$/, "", record)
+    if (copy_terminated) {
+        if (record != "") {
+            fail("line " source_line " contains non-empty data after COPY terminator")
+        }
+        next
+    }
+    if (record == "\\.") {
+        copy_terminated = 1
+        next
+    }
+
     scanned++
     if (scanned % 100000 == 0) {
         print progress_marker, scanned, contracts
@@ -213,6 +227,26 @@ class ArchiveSchemaError(RuntimeError):
 
 class SourceDataError(RuntimeError):
     """A serialized source row violates a fail-closed extraction invariant."""
+
+
+class _DigestingReader:
+    """Hash every serialized member byte consumed by the gzip reader."""
+
+    def __init__(self, source: object) -> None:
+        self.source = source
+        self.digest = hashlib.sha256()
+        self.bytes_read = 0
+
+    def read(self, size: int = -1) -> bytes:
+        data = self.source.read(size)  # type: ignore[attr-defined]
+        self.digest.update(data)
+        self.bytes_read += len(data)
+        return data
+
+    def seek(self, offset: int) -> object:
+        if offset != self.bytes_read:
+            raise OSError("Digesting ZIP member reader cannot seek across hashed bytes")
+        return self.source.seek(offset)  # type: ignore[attr-defined]
 
 
 @dataclass(frozen=True)
@@ -409,7 +443,7 @@ class ContractExtractor:
         }
         self._parent_ids_seen: set[str] = set()
         self._idv_parent_ids_seen: set[str] = set()
-        self.source_provenance: dict[str, str | int] = {}
+        self.source_provenance: dict[str, object] = {}
 
     def _load_vendor_filters(self, filter_file: Path | None) -> dict[str, set[str]]:
         """Load vendor filter sets from JSON file."""
@@ -666,7 +700,20 @@ class ContractExtractor:
             "business_categories",
         }
         indexes = {name: index for index, name in enumerate(columns) if name in projected_names}
+        copy_terminated = False
         for line_num, line in enumerate(lines, 1):
+            serialized = line.rstrip("\r\n")
+            if copy_terminated:
+                if serialized:
+                    raise SourceDataError(
+                        f"{source_name} line {line_num} contains non-empty data "
+                        "after COPY terminator"
+                    )
+                continue
+            if serialized == r"\.":
+                copy_terminated = True
+                continue
+
             self.stats["records_scanned"] += 1
 
             # Progress logging
@@ -676,7 +723,7 @@ class ContractExtractor:
                     f"found {self.stats['records_extracted']} contracts"
                 )
 
-            values = line.rstrip("\r\n").split("\t")
+            values = serialized.split("\t")
             if len(values) != len(columns):
                 raise SourceDataError(
                     f"{source_name} row {line_num} has {len(values)} fields; "
@@ -738,7 +785,7 @@ class ContractExtractor:
             )
 
     @staticmethod
-    def _provenance(source: TransactionSource) -> dict[str, str | int]:
+    def _provenance(source: TransactionSource) -> dict[str, object]:
         toc_sha256 = source.toc_sha256
         if (
             not isinstance(toc_sha256, str)
@@ -786,34 +833,44 @@ class ContractExtractor:
             ) from error
 
         with RemoteZip(zip_url) as remote_zip:
-            names = [info.filename for info in remote_zip.infolist()]
-            toc_members = [name for name in names if PurePosixPath(name).name == "toc.dat"]
-            if len(toc_members) != 1:
-                raise ArchiveSchemaError(
-                    f"Remote archive must contain exactly one toc.dat; found {len(toc_members)}"
-                )
-            toc_member = toc_members[0]
-            with tempfile.TemporaryDirectory(prefix="usaspending-toc-") as temp_name:
-                archive_dir = Path(temp_name) / "archive"
-                archive_dir.mkdir()
-                with (
-                    remote_zip.open(toc_member) as source_file,
-                    open(archive_dir / "toc.dat", "wb") as target_file,
-                ):
-                    shutil.copyfileobj(source_file, target_file)
-                toc_text = cls._run_pg_restore(archive_dir, "--list")
-                schema_sql = cls._run_pg_restore(archive_dir, "--schema-only", "--file=-")
-                entry, _ = _select_table_entry(toc_text, schema_sql)
-                copy_sql = cls._restore_copy_statement(archive_dir / "toc.dat", entry)
-                source = replace(
-                    _resolve_source(toc_text, schema_sql, copy_sql),
-                    toc_sha256=_file_sha256(archive_dir / "toc.dat"),
-                )
+            return cls._resolve_remote_source_from_archive(remote_zip)
 
-            member = str(PurePosixPath(toc_member).parent / source.member_name)
-            if member not in names:
-                raise ArchiveSchemaError(f"TOC selected {source.relation}, but {member} is absent")
-            return replace(source, member_name=member)
+    @classmethod
+    def _resolve_remote_source_from_archive(cls, remote_zip: object) -> TransactionSource:
+        """Resolve TOC/schema metadata from the exact archive instance later streamed."""
+
+        infos = remote_zip.infolist()  # type: ignore[attr-defined]
+        toc_infos = [info for info in infos if PurePosixPath(info.filename).name == "toc.dat"]
+        if len(toc_infos) != 1:
+            raise ArchiveSchemaError(
+                f"Remote archive must contain exactly one toc.dat; found {len(toc_infos)}"
+            )
+        toc_info = toc_infos[0]
+        with tempfile.TemporaryDirectory(prefix="usaspending-toc-") as temp_name:
+            archive_dir = Path(temp_name) / "archive"
+            archive_dir.mkdir()
+            with (
+                remote_zip.open(toc_info) as source_file,  # type: ignore[attr-defined]
+                open(archive_dir / "toc.dat", "wb") as target_file,
+            ):
+                shutil.copyfileobj(source_file, target_file)
+            toc_text = cls._run_pg_restore(archive_dir, "--list")
+            schema_sql = cls._run_pg_restore(archive_dir, "--schema-only", "--file=-")
+            entry, _ = _select_table_entry(toc_text, schema_sql)
+            copy_sql = cls._restore_copy_statement(archive_dir / "toc.dat", entry)
+            source = replace(
+                _resolve_source(toc_text, schema_sql, copy_sql),
+                toc_sha256=_file_sha256(archive_dir / "toc.dat"),
+            )
+
+        member = str(PurePosixPath(toc_info.filename).parent / source.member_name)
+        member_infos = [info for info in infos if info.filename == member]
+        if len(member_infos) != 1:
+            raise ArchiveSchemaError(
+                f"TOC selected {source.relation}, but expected exactly one {member}; "
+                f"found {len(member_infos)}"
+            )
+        return replace(source, member_name=member)
 
     def stream_dat_gz_file(
         self,
@@ -1082,39 +1139,79 @@ class ContractExtractor:
             ) from e
 
         logger.info(f"Streaming member {member_name} from {zip_url} (HTTP range)")
-        with (
-            RemoteZip(zip_url) as remote_zip,
-            remote_zip.open(member_name) as member,
+        with RemoteZip(zip_url) as remote_zip:
+            yield from self._stream_remote_archive_member(
+                remote_zip,
+                member_name,
+                columns,
+                fpds_only=fpds_only,
+            )
+
+    def _stream_remote_archive_member(
+        self,
+        remote_zip: object,
+        member_name: str,
+        columns: Sequence[str],
+        *,
+        fpds_only: bool,
+    ) -> Iterator[FederalContract]:
+        """Stream one unique ZipInfo through outer ZIP CRC, inner gzip, then parsing."""
+
+        member_infos = [
+            info
+            for info in remote_zip.infolist()  # type: ignore[attr-defined]
+            if info.filename == member_name
+        ]
+        if len(member_infos) != 1:
+            raise ArchiveSchemaError(
+                f"Remote archive must contain exactly one selected member {member_name}; "
+                f"found {len(member_infos)}"
+            )
+        member_info = member_infos[0]
+        with remote_zip.open(member_info) as member:  # type: ignore[attr-defined]
+            digesting_member = _DigestingReader(member)
             # `member` yields the gzip-compressed .dat.gz bytes; decompress streaming.
-            gzip.GzipFile(fileobj=member) as gz,
-        ):
-            awk_path = self._awk_prefilter_path()
-            if awk_path is None:
-                with io.TextIOWrapper(gz, encoding="utf-8", errors="replace") as text:
+            with gzip.GzipFile(fileobj=digesting_member) as gz:
+                awk_path = self._awk_prefilter_path()
+                if awk_path is None:
+                    with io.TextIOWrapper(gz, encoding="utf-8", errors="replace") as text:
+                        yield from self._parse_lines(
+                            text,
+                            member_name,
+                            columns,
+                            fpds_only=fpds_only,
+                        )
+                else:
+                    logger.info(
+                        f"Prefiltering {member_name} with {awk_path}; "
+                        "Python will revalidate every emitted vendor candidate"
+                    )
+                    candidates = self._awk_prefilter_lines(
+                        gz,
+                        member_name,
+                        columns,
+                        fpds_only=fpds_only,
+                        awk_path=awk_path,
+                    )
                     yield from self._parse_lines(
-                        text,
+                        candidates,
                         member_name,
                         columns,
                         fpds_only=fpds_only,
                     )
-            else:
-                logger.info(
-                    f"Prefiltering {member_name} with {awk_path}; "
-                    "Python will revalidate every emitted vendor candidate"
+
+            # Successful parsing must consume the selected ZipExtFile to EOF.
+            # That final read makes stdlib zipfile compare its full CRC32 rather
+            # than treating close() as proof of integrity.
+            while digesting_member.read(1024 * 1024):
+                pass
+            member_size = int(member_info.file_size)
+            if digesting_member.bytes_read != member_size or member.tell() != member_size:
+                raise SourceDataError(
+                    f"Selected ZIP member {member_name} did not reach its verified EOF"
                 )
-                candidates = self._awk_prefilter_lines(
-                    gz,
-                    member_name,
-                    columns,
-                    fpds_only=fpds_only,
-                    awk_path=awk_path,
-                )
-                yield from self._parse_lines(
-                    candidates,
-                    member_name,
-                    columns,
-                    fpds_only=fpds_only,
-                )
+            self.source_provenance["member_sha256"] = digesting_member.digest.hexdigest()
+
         logger.info(
             f"Completed streaming {member_name}: "
             f"{self.stats['records_extracted']} contracts extracted"
@@ -1162,6 +1259,9 @@ class ContractExtractor:
         zip_url: str,
         member_name: str | None,
         output_file: Path,
+        *,
+        parallel_range: bool = False,
+        replica_urls: Sequence[str] = (),
     ) -> int:
         """Extract SBIR-relevant contracts by streaming one member from a remote zip.
 
@@ -1176,22 +1276,75 @@ class ContractExtractor:
         Returns:
             Number of contracts extracted.
         """
-        source = self._resolve_remote_source(zip_url)
-        self.source_provenance = self._provenance(source)
-        if member_name is not None and member_name != source.member_name:
-            raise ArchiveSchemaError(
-                f"Requested member {member_name!r} does not match TOC-selected "
-                f"member {source.member_name!r}"
+        if replica_urls and not parallel_range:
+            raise ValueError("Explicit remote ZIP replicas require parallel_range=True")
+        if not parallel_range:
+            source = self._resolve_remote_source(zip_url)
+            self.source_provenance = self._provenance(source)
+            if member_name is not None and member_name != source.member_name:
+                raise ArchiveSchemaError(
+                    f"Requested member {member_name!r} does not match TOC-selected "
+                    f"member {source.member_name!r}"
+                )
+            return self._collect_and_write(
+                self.stream_remote_zip_member(
+                    zip_url,
+                    source.member_name,
+                    source.columns,
+                    fpds_only=source.fpds_only,
+                ),
+                Path(output_file),
             )
-        return self._collect_and_write(
-            self.stream_remote_zip_member(
-                zip_url,
+
+        from sbir_etl.extractors.parallel_range_reader import ValidatedParallelRemoteZip
+
+        with ValidatedParallelRemoteZip(zip_url, replica_urls) as remote_zip:
+            source = self._resolve_remote_source_from_archive(remote_zip)
+            self.source_provenance = self._provenance(source)
+            if member_name is not None and member_name != source.member_name:
+                raise ArchiveSchemaError(
+                    f"Requested member {member_name!r} does not match TOC-selected "
+                    f"member {source.member_name!r}"
+                )
+            member_infos = [
+                info for info in remote_zip.infolist() if info.filename == source.member_name
+            ]
+            if len(member_infos) != 1:  # pragma: no cover - resolver invariant
+                raise ArchiveSchemaError(
+                    f"Expected one selected member {source.member_name}; found {len(member_infos)}"
+                )
+            member_info = member_infos[0]
+            self.source_provenance.update(
+                {
+                    "archive_url": remote_zip.range_file.canonical_url,
+                    "archive_replica_urls": list(remote_zip.range_file.replica_urls),
+                    "archive_etag": remote_zip.identity.etag,
+                    "archive_total_bytes": remote_zip.identity.total_bytes,
+                    "member_crc32": f"{member_info.CRC:08x}",
+                    "member_compressed_bytes": member_info.compress_size,
+                    "member_uncompressed_bytes": member_info.file_size,
+                    "range_chunk_bytes": remote_zip.range_file.chunk_size,
+                    "range_workers": remote_zip.range_file.workers,
+                }
+            )
+            remote_zip.enable_parallel_prefetch()
+            contracts = self._stream_remote_archive_member(
+                remote_zip,
                 source.member_name,
                 source.columns,
                 fpds_only=source.fpds_only,
-            ),
-            Path(output_file),
-        )
+            )
+
+            def verified_contracts() -> Iterator[FederalContract]:
+                yield from contracts
+                # Run before iterator exhaustion so _collect_and_write cannot
+                # atomically publish output while a scheduled range is invalid.
+                remote_zip.range_file.validate_pending()
+
+            return self._collect_and_write(
+                verified_contracts(),
+                Path(output_file),
+            )
 
     def _collect_and_write(
         self,

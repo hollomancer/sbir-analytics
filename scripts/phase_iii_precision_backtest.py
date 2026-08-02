@@ -67,6 +67,7 @@ def _build_pair_row(prior: pd.Series, contract: pd.Series) -> pd.Series:
 
     data = {
         "prior_award_id": prior.get("prior_award_id"),
+        "prior_award_key": prior.get("prior_award_key"),
         "prior_recipient_uei": prior.get("prior_recipient_uei"),
         "prior_agency": prior.get("prior_agency"),
         "prior_sub_agency": prior.get("prior_sub_agency"),

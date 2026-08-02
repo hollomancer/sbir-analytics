@@ -25,6 +25,7 @@ import json
 from collections.abc import Mapping
 from datetime import UTC, datetime
 from pathlib import Path
+from urllib.parse import urlsplit
 
 from loguru import logger
 
@@ -68,6 +69,19 @@ AWARD_ARCHIVE_PROVENANCE_KEYS = frozenset(
         "provenance_version",
     }
 )
+PARALLEL_SOURCE_PROVENANCE_KEYS = frozenset(
+    {
+        "archive_url",
+        "archive_replica_urls",
+        "archive_etag",
+        "archive_total_bytes",
+        "member_crc32",
+        "member_compressed_bytes",
+        "member_uncompressed_bytes",
+        "range_chunk_bytes",
+        "range_workers",
+    }
+)
 
 
 def _file_sha256(path: Path) -> str:
@@ -88,6 +102,23 @@ def _valid_sha256(value: object) -> bool:
     )
 
 
+def _valid_positive_int(value: object) -> bool:
+    return isinstance(value, int) and not isinstance(value, bool) and value > 0
+
+
+def _valid_https_url(value: object) -> bool:
+    if not isinstance(value, str):
+        return False
+    parsed = urlsplit(value)
+    return bool(
+        parsed.scheme == "https"
+        and parsed.hostname
+        and parsed.username is None
+        and parsed.password is None
+        and not parsed.fragment
+    )
+
+
 def write_contract_provenance_checks(
     *,
     extractor: ContractExtractor,
@@ -95,7 +126,7 @@ def write_contract_provenance_checks(
     vendor_filter_file: Path,
     expected_vendor_filter_sha256: str,
     total_rows: int,
-    source: Mapping[str, str],
+    source: Mapping[str, object],
 ) -> Path:
     """Atomically bind an extracted parquet to its verified source inputs."""
 
@@ -165,6 +196,55 @@ def write_contract_provenance_checks(
     for key in source_hash_keys:
         if not _valid_sha256(provenance.get(key)):
             raise RuntimeError(f"Verified contract provenance has an invalid {key}")
+    member_sha256 = provenance.get("member_sha256")
+    if member_sha256 is not None and not _valid_sha256(member_sha256):
+        raise RuntimeError("Verified contract provenance has an invalid member_sha256")
+
+    parallel_fields = PARALLEL_SOURCE_PROVENANCE_KEYS.intersection(provenance)
+    if parallel_fields:
+        required_parallel = PARALLEL_SOURCE_PROVENANCE_KEYS | {"member_sha256"}
+        if missing_parallel := sorted(required_parallel - set(provenance)):
+            raise RuntimeError(
+                f"Verified parallel-range provenance is missing fields: {missing_parallel}"
+            )
+        archive_etag = provenance["archive_etag"]
+        if (
+            not isinstance(archive_etag, str)
+            or not archive_etag.startswith('"')
+            or not archive_etag.endswith('"')
+            or archive_etag.lower().startswith("w/")
+        ):
+            raise RuntimeError("Verified parallel-range provenance has an invalid archive ETag")
+        positive_int_fields = (
+            "archive_total_bytes",
+            "member_uncompressed_bytes",
+            "range_chunk_bytes",
+        )
+        if any(not _valid_positive_int(provenance[field]) for field in positive_int_fields):
+            raise RuntimeError("Verified parallel-range provenance has an invalid byte size")
+        compressed_bytes = provenance["member_compressed_bytes"]
+        if (
+            not isinstance(compressed_bytes, int)
+            or isinstance(compressed_bytes, bool)
+            or compressed_bytes < 0
+        ):
+            raise RuntimeError("Verified parallel-range provenance has an invalid member size")
+        workers = provenance["range_workers"]
+        if not isinstance(workers, int) or isinstance(workers, bool) or not 1 <= workers <= 4:
+            raise RuntimeError("Verified parallel-range provenance has an invalid worker count")
+        member_crc32 = provenance["member_crc32"]
+        if (
+            not isinstance(member_crc32, str)
+            or len(member_crc32) != 8
+            or any(character not in "0123456789abcdef" for character in member_crc32.lower())
+        ):
+            raise RuntimeError("Verified parallel-range provenance has an invalid member CRC32")
+        archive_url = provenance["archive_url"]
+        replicas = provenance["archive_replica_urls"]
+        if not _valid_https_url(archive_url):
+            raise RuntimeError("Verified parallel-range provenance has an invalid archive URL")
+        if not isinstance(replicas, list) or any(not _valid_https_url(url) for url in replicas):
+            raise RuntimeError("Verified parallel-range provenance has invalid replica URLs")
 
     checks_path = output_file.with_suffix(".checks.json")
     checks = {
@@ -228,6 +308,25 @@ def main():
             "a mismatch fails closed."
         ),
     )
+    parser.add_argument(
+        "--parallel-range",
+        action="store_true",
+        help=(
+            "Read the selected remote ZIP member through four bounded, fully validated "
+            "parallel HTTP ranges. Archive metadata and payload share one strong ETag identity."
+        ),
+    )
+    parser.add_argument(
+        "--parallel-range-replica",
+        action="append",
+        default=[],
+        metavar="HTTPS_URL",
+        help=(
+            "Explicit byte-identical replica used by --parallel-range after its strong ETag "
+            "and total size match --remote-zip. Repeat for multiple replicas; URLs are never "
+            "derived heuristically."
+        ),
+    )
 
     args = parser.parse_args()
     selected_modes = sum(
@@ -239,6 +338,10 @@ def main():
             "select exactly one source: --subset, --full, --dump-dir, --remote-zip, "
             "or --award-archive"
         )
+    if args.parallel_range and not args.remote_zip:
+        parser.error("--parallel-range requires --remote-zip")
+    if args.parallel_range_replica and not args.parallel_range:
+        parser.error("--parallel-range-replica requires --parallel-range")
 
     # Load configuration for default paths
     config = get_config()
@@ -287,6 +390,8 @@ def main():
                 zip_url=args.remote_zip,
                 member_name=args.member,
                 output_file=output_file,
+                parallel_range=args.parallel_range,
+                replica_urls=args.parallel_range_replica,
             )
             checks_path = write_contract_provenance_checks(
                 extractor=extractor,
@@ -294,7 +399,11 @@ def main():
                 vendor_filter_file=vendor_filter_file,
                 expected_vendor_filter_sha256=vendor_filter_sha256,
                 total_rows=num_contracts,
-                source={"remote_zip": args.remote_zip},
+                source={
+                    "remote_zip": args.remote_zip,
+                    "parallel_range": args.parallel_range,
+                    "parallel_range_replicas": args.parallel_range_replica,
+                },
             )
             logger.success(f"Extraction complete! {num_contracts:,} contracts extracted")
             logger.success(f"Provenance checks saved to {checks_path}")

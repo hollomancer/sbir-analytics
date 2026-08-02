@@ -4,6 +4,48 @@ A private, always-on deployment of SBIR Analytics on a single Apple-silicon
 Mac mini. The stack is ARM64-native and reachable **only** over your Tailscale
 tailnet — there is no public DNS, no port forwarding, and no LAN exposure.
 
+## Live instance on this Mac mini
+
+This machine hosts the live SBIR Analytics deployment.
+
+- **Deployment checkout:** `/Users/conradhollomon/projects/sbir-analytics-server`
+- **Development checkout:** `/Users/conradhollomon/projects/sbir-analytics` —
+  never operate the live stack from here.
+- **Installed baseline as of 2026-08-02:** tag `0.1`, commit `054bd862`. Always
+  verify the deployment checkout with `git status --short` and
+  `git describe --tags --always --dirty`; do not infer the live version from
+  another checkout or from the image tag.
+- **Persistent application data:** `/Volumes/SSDmini/sbir-analytics`
+- **Local secrets:** `.env.server` in the deployment checkout. It is ignored,
+  mode `0600`, and must never be printed, committed, or replaced.
+- **Dagster metadata:** the Docker `dagster_home` named volume. Preserve it
+  alongside SSD data; never use `docker compose down -v`.
+- **Ingress:** Tailscale Serve over tailnet-only HTTPS. Tailscale Funnel,
+  public port exposure, and LAN exposure are prohibited.
+
+Run every `make server-*` command and shell-driven live materialization from
+the clean deployment checkout. Use the documented Make targets; do not run
+`git clean`, destructive resets, or hand-written Compose teardown commands
+there. Treat materialization as a live-data mutation: confirm the SSD is
+mounted and the stack is healthy first. Keep schedules disabled until their
+jobs have completed successfully by hand with the inputs available on this
+host.
+
+### Materialized state as of 2026-08-02
+
+- The current SBIR.gov source is
+  `/Volumes/SSDmini/sbir-analytics/data/raw/sbir/award_data.csv`, data vintage
+  `2026-08-01`, containing 219,503 award records.
+- The API serves the full-source snapshot
+  `tech_census_drone_manufacturing/2026-Q3` (2,241 in-scope awards).
+- Neo4j contains a bounded validation seed from the first 25,000 source
+  records, materialized by Dagster run
+  `70e7d2f8-2a90-453f-a2a9-ae9bd4abc9c2`. This produced 24,794 validated rows
+  and 22,566 unique `FinancialTransaction` nodes. It is not a full-universe
+  graph and must not be represented as one.
+- Broad schedules remain disabled. `sbir_weekly_refresh_job` still requires
+  SAM.gov and USAspending bulk inputs that are not installed on this host.
+
 ## What runs here
 
 The `server` Compose profile (`docker-compose.server.yml`) runs exactly five
