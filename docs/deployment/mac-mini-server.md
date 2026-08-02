@@ -235,6 +235,7 @@ narrower than the full USAspending database source.
 Do not run `core_refresh_job` or `sbir_weekly_refresh_job` as a substitute for
 this targeted refresh. Keep schedules stopped until the targeted artifact and
 its `.checks.json` sidecar have been reviewed.
+
 ### Source-data downloads
 
 This host fetches upstream data itself; GitHub Actions no longer stages it.
@@ -294,6 +295,25 @@ series replaces what the retired workflow published to S3; GitHub artifacts
 expire, so this is now the only durable copy. Enable with
 `SBIR_ETL__DAGSTER__SCHEDULES__MONTHLY_PHASE_TRANSITION_ENABLED=true` and
 `SBIR_ETL__DAGSTER__SENSORS__PHASE_TRANSITION_ARCHIVE_AFTER_ANALYSIS_ENABLED=true`.
+
+### Weekly awards report
+
+`weekly_awards_report` (Monday 12:00 UTC) runs `weekly_awards_report_job`,
+carrying the slot the retired `weekly.yml` job used. Each run writes
+`<data_root>/reports/weekly_awards/<date>/weekly-awards.md`; the workflow only
+kept a 30-day artifact, so this is now the durable copy. Enable with
+`SBIR_ETL__DAGSTER__SCHEDULES__WEEKLY_AWARDS_REPORT_ENABLED=true`.
+
+Before enabling:
+
+- `OPENAI_API_KEY` and `SAM_GOV_API_KEY` belong in `.env.server`. Without them
+  the script still produces a report, just without AI summaries or SAM.gov
+  enrichment — it degrades rather than failing, so check the output rather than
+  the exit code.
+- The lookback defaults to 7 days. Override with
+  `SBIR_ETL__REPORTS__WEEKLY_AWARDS_DAYS` for a backfill.
+- The job fails if the script writes nothing, so an empty report is a loud
+  failure rather than a silent success.
 
 ### Heavy assets
 

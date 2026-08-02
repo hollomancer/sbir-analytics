@@ -79,6 +79,7 @@ Ordered by priority, which is not the order of difficulty.
 | Cron | `0 3 * * *` |
 | Runs | `bandit -r sbir_etl packages -c pyproject.toml`, then `detect-secrets scan --baseline .secrets.baseline` |
 | Secrets | none |
+| Measured cost | **~37s of scan** — bandit 10.7s, detect-secrets 25.8s |
 | Target | **host cron**, not Dagster |
 
 First because it is the only item with **no fallback at all**. Bandit and
@@ -93,28 +94,55 @@ dated file is the whole job. Adding them to `.pre-commit-config.yaml` as a
 manual-stage hook is a reasonable complement but not a substitute — nothing
 guarantees a hook runs.
 
-Verify: introduce a known finding (a hardcoded test credential on a scratch
-branch), confirm the scan reports it and the failure reaches you.
+**It is cheap.** Measured on the current tree: bandit 10.7s, detect-secrets
+25.8s, so about 37 seconds of actual work. A nightly cron costs nothing; there
+is no argument for deferring this one on runtime grounds.
 
-### 2. Weekly awards report
+**It fails today.** `bandit -r sbir_etl packages -c pyproject.toml` currently
+exits 1 with four findings — one High/High:
+
+| Severity | Finding | Location |
+|---|---|---|
+| High / High | `B324` weak SHA1 hash | `assets/phase_iii_candidates/assets.py:243` |
+| Medium | `B104` bind to all interfaces | `api/__main__.py:11` |
+| Low ×2 | `B105` hardcoded password (`token-set`, `token-sort`) | `identity/company_names.py:49-50` |
+
+The two Low hits look like false positives — they are algorithm names for a
+token-matching strategy, not credentials. The B324 SHA1 is likely a content
+hash rather than a security primitive and probably wants
+`usedforsecurity=False`. Trivial to resolve, but resolve them *before* wiring
+the cron, or the first run fails and gets muted, which is how the previous
+scan ended up ignored.
+
+Verify: after fixing, introduce a known finding (a hardcoded test credential on
+a scratch branch), confirm the scan reports it and the failure reaches you.
+
+### 2. Weekly awards report — DONE
 
 | | |
 |---|---|
 | Was | `weekly.yml` · `weekly-awards-report` job |
-| Cron | `0 12 * * 1` (Monday) |
-| Runs | `scripts/data/weekly_awards_report.py --days 7 --output reports/weekly-awards.md` |
-| Secrets | `OPENAI_API_KEY`, `SAM_GOV_API_KEY` |
-| Output | job summary + 30-day artifact |
-| Target | Dagster job + schedule |
+| Now | `weekly_awards_report_job` / `weekly_awards_report` schedule, Monday 12:00 UTC |
+| Secrets | `OPENAI_API_KEY`, `SAM_GOV_API_KEY` in `.env.server` |
+| Output | `<data_root>/reports/weekly_awards/<date>/weekly-awards.md` |
 
-The simplest data migration and a good first exercise of the pattern: one
-script, one flag, no chaining. Wrap as `weekly_awards_report_job`, schedule as
-`weekly_awards_report`, and write the markdown to
-`<data_root>/reports/weekly_awards/<date>/weekly-awards.md` so the weekly series
-accumulates instead of expiring.
+Migrated in this PR, and the first exercise of the pattern end to end: one op
+shelling out to `scripts/data/weekly_awards_report.py`, one `@job`, one
+`_HOST_SCHEDULES` entry inheriting the workflow's Monday 12:00 UTC slot,
+default **STOPPED**.
 
-Verify: run the job by hand on the host, confirm the report matches a recent
-Actions artifact for the same lookback window, then enable the schedule.
+The report now lands in a dated directory instead of a 30-day artifact, so the
+weekly series accumulates. The op treats an exit-0 run that wrote nothing as a
+failure: the script can succeed while producing no report, and trusting its
+exit code would reproduce exactly the silent-rot failure mode this whole
+migration is trying to avoid.
+
+Lookback defaults to 7 days, overridable with
+`SBIR_ETL__REPORTS__WEEKLY_AWARDS_DAYS` for a backfill.
+
+**Remaining operator step:** run it by hand on the host, confirm the report
+matches a recent Actions artifact for the same window, then set
+`SBIR_ETL__DAGSTER__SCHEDULES__WEEKLY_AWARDS_REPORT_ENABLED=true`.
 
 ### 3. Monthly benchmark evaluation — diagnose before porting
 
@@ -174,25 +202,51 @@ Two simplifications the move makes available:
 This is the most complex of the five. Given it has never produced output, treat
 it as new work with a reference implementation rather than as a port.
 
-### 5. Weekly image rebuild — lowest priority
+### 5. Docker image generation — where infra actually gets tested
 
 | | |
 |---|---|
-| Was | `build-images.yml` |
-| Cron | `0 4 * * 0` (Sunday) plus push-path triggers |
-| Built | `python-base` (amd64 + arm64), `etl`, `full` → GHCR |
-| Target | host cron, or nothing |
+| Was | `build-images.yml` (Sunday 04:00 + push paths) and `ci.yml`'s container-build-test |
+| Built | `python-base` (amd64 + arm64), `etl`, `full` → GHCR; plus a compose smoke test |
+| Target | **split**: a path-filtered CI job for validation, the mini for the images it runs |
 
-Last because it already degrades gracefully. `make server-up` falls back to
-building `Dockerfile.python-base` locally when GHCR has no manifest for the
-Mac's architecture (`mac-mini-server.md:139`), and the server compose profile
-builds its app images locally with a `:local` tag rather than pulling. Nothing
-is broken today; a first build just takes several minutes.
+These two concerns got deleted together, and they should not be restored
+together, because they were never the same thing.
 
-If you want the weekly refresh back, a host cron doing an arm64-only local
-build is enough — the amd64 half of the multi-arch manifest existed to serve
-CI, which no longer builds images. Accepting on-demand rebuilds when
-dependencies change is also a defensible answer.
+**Publishing is genuinely optional.** `make server-up` falls back to building
+`Dockerfile.python-base` locally when GHCR has no manifest for the Mac's
+architecture (`mac-mini-server.md:139`), and the server compose profile builds
+its app images locally with a `:local` tag rather than pulling. Nothing is
+broken today; a first build just takes several minutes. The amd64 half of the
+multi-arch manifest existed to serve CI, which no longer builds images — so if
+the weekly refresh comes back at all, an arm64-only local build on the mini is
+enough.
+
+**Validation is not optional, and is currently missing.** With no image build
+anywhere, nothing checks that `Dockerfile`, `Dockerfile.python-base`,
+`Dockerfile.full`, or the compose files still work. A broken Dockerfile is now
+discovered at deploy time on the mini, which is the worst place to find it.
+`tests/` cannot cover this: the ETL image is what the tests would run *inside*.
+
+Recommended: a **path-filtered `docker` job in `ci.yml`**, gated on
+`Dockerfile*`, `docker-compose*.yml`, `.dockerignore`, `uv.lock` and
+`pyproject.toml`. It costs nothing on a typical PR — it does not run at all —
+and fires exactly when a change could break the build. Scope it to build and
+smoke-test, not publish:
+
+- `docker build` the ETL image (amd64, the runner's native arch — the point is
+  catching a broken Dockerfile, and arm64 emulation triples the time for no
+  extra signal)
+- run `dagster --version` in it, the smoke test the old job used
+- `docker compose --profile ci config -q` to validate the compose files
+
+That is roughly a 5–10 minute job that runs on a handful of PRs a month. It
+keeps the "GitHub Actions is tests only" line honest — it is a test, of the
+build — without restoring a 20-minute job on every merge.
+
+The alternative, building on the mini via cron, catches the same breakage but
+only after it lands on `main`, and only on arm64. Worth doing *as well* if you
+want the arm64 path covered, but it is not a substitute for a pre-merge gate.
 
 ## Deliberately not migrated
 
@@ -212,11 +266,12 @@ Recorded so these are not resurrected by accident.
 1. **Failure notification** (cross-cutting) — without it every step below can
    fail silently.
 2. **Security scan** — the only true gap; cheapest to close.
-3. **Weekly awards report** — simplest, proves the pattern end to end.
+3. ~~**Weekly awards report**~~ — done; only the operator enable step remains.
 4. **Monthly benchmark** — diagnose the 60-second success first.
 5. **Monthly procurement transition** — diagnose the download failure first;
    largest scope.
-6. **Image rebuild** — optional; a working fallback already exists.
+6. **Docker image generation** — restore build validation as a path-filtered
+   CI job; publishing stays optional.
 
 Steps 2 and 3 are independent and can proceed in parallel. Steps 4 and 5 both
 start with a diagnosis that can happen before any code is written.
