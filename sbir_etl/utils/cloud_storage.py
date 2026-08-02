@@ -146,7 +146,16 @@ def find_latest_sam_gov_parquet(root: Path | None = None) -> str | None:
     if canonical.is_file():
         return str(canonical)
 
-    dated = _newest(list(base.glob("sam_entity_records_*.parquet")))
+    # A short paginated fallback writes sam_entity_records_partial.parquet;
+    # it must never become the enrichment source on a host with no canonical
+    # file, which would defeat the downloader's overwrite guard.
+    dated = _newest(
+        [
+            path
+            for path in base.glob("sam_entity_records_*.parquet")
+            if path.name != "sam_entity_records_partial.parquet"
+        ]
+    )
     if dated is not None:
         logger.info(f"Found SAM.gov parquet: {dated}")
         return str(dated)

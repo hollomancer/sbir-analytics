@@ -287,3 +287,27 @@ class TestDownloadLocal:
         ):
             with pytest.raises(OSError, match="Insufficient disk space"):
                 download_local(tmp_path, source_url=URL)
+
+
+class TestDiscoverySignature:
+    """Guards the call into check_new_file against signature drift.
+
+    `find_latest_available_file` lost its `s3_bucket` parameter when the AWS
+    paths were removed; the call site kept passing it, so the no-date path
+    raised TypeError before any download started.
+    """
+
+    def test_no_date_path_calls_current_signature(self):
+        from unittest.mock import create_autospec
+
+        import scripts.usaspending.check_new_file as check_new_file
+
+        autospec = create_autospec(check_new_file.find_latest_available_file)
+        autospec.return_value = {"source_url": URL}
+
+        with patch("scripts.usaspending.download_database.find_latest_available_file", autospec):
+            assert resolve_source_url(database_type="full") == URL
+
+        # An autospec mock raises TypeError on an argument the real function
+        # does not accept, so this asserts the call site matches the signature.
+        autospec.assert_called_once_with(database_type="full")

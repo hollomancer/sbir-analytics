@@ -65,7 +65,7 @@ def download_sam_gov_op(context: OpExecutionContext) -> dict:
             "https://sam.gov -> Account -> API Keys and add it to .env.server."
         )
 
-    df: pd.DataFrame = _download_bulk_extract(api_key)
+    df: pd.DataFrame | None = _download_bulk_extract(api_key)
     if df is None or df.empty:
         raise ValueError("SAM.gov returned no entity records")
 

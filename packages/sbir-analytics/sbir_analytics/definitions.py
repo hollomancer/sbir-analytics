@@ -102,13 +102,33 @@ daily_schedule = ScheduleDefinition(
     ),
 )
 
+
 # Opt-in weekly core refresh for the server profile. It materializes the core
-# (non-heavy) assets currently loaded — heavy ML/fiscal/NLP modules are excluded
-# via DAGSTER_LOAD_HEAVY_ASSETS=false on the server. It stays STOPPED until an
+# (non-heavy) assets. The selection excludes heavy modules explicitly rather
+# than relying on DAGSTER_LOAD_HEAVY_ASSETS=false to keep them unloaded: heavy
+# assets are now loaded so they can be run by hand, so an AssetSelection.all()
+# here would quietly make "core" mean everything. It stays STOPPED until an
 # operator confirms a manual run succeeds and flips the env toggle on.
+def _heavy_asset_keys() -> set:
+    """Asset keys belonging to the heavy ML/fiscal/NLP modules."""
+    heavy_modules = [
+        module
+        for module in asset_modules
+        if module.__name__.startswith(assets_pkg.HEAVY_ASSET_PREFIXES)
+    ]
+    if not heavy_modules:
+        return set()
+    return {asset.key for asset in load_assets_from_modules(heavy_modules) if hasattr(asset, "key")}
+
+
+_heavy_keys = _heavy_asset_keys()
 core_refresh_job = define_asset_job(
     name="core_refresh_job",
-    selection=AssetSelection.all(),
+    selection=(
+        AssetSelection.all() - AssetSelection.assets(*_heavy_keys)
+        if _heavy_keys
+        else AssetSelection.all()
+    ),
     description="Weekly refresh of core (non-heavy) SBIR assets",
 )
 

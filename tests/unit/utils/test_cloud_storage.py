@@ -263,3 +263,23 @@ class TestResolveSbirAwardsCsv:
         monkeypatch.setenv(DATA_ROOT_ENV, str(tmp_path))
 
         assert resolve_sbir_awards_csv().vintage_date is None
+
+
+class TestSamGovPartialIsNotDiscoverable:
+    """A partial extract must never become the enrichment source."""
+
+    def test_partial_only_directory_yields_no_source(self, tmp_path):
+        base = tmp_path / "raw" / "sam_gov"
+        base.mkdir(parents=True)
+        (base / "sam_entity_records_partial.parquet").write_text("short")
+
+        assert find_latest_sam_gov_parquet(tmp_path) is None
+
+    def test_partial_does_not_shadow_dated_complete_extract(self, tmp_path):
+        base = tmp_path / "raw" / "sam_gov"
+        base.mkdir(parents=True)
+        (base / "sam_entity_records_partial.parquet").write_text("short")
+        dated = base / "sam_entity_records_20260101.parquet"
+        dated.write_text("full")
+
+        assert find_latest_sam_gov_parquet(tmp_path) == str(dated)

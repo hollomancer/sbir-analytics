@@ -65,7 +65,7 @@ def resolve_source_url(
         )
 
     print("No date specified - searching for latest available file...")
-    latest_file = find_latest_available_file(database_type=database_type, s3_bucket=None)
+    latest_file = find_latest_available_file(database_type=database_type)
     if not latest_file:
         raise FileNotFoundError(
             f"No available {database_type} database file found in recent months.\n"

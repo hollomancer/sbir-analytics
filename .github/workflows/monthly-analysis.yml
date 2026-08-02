@@ -51,6 +51,7 @@ concurrency:
   group: monthly-analysis
   cancel-in-progress: true
 
+env:
   PYTHON_VERSION: "3.11"
   SKIP_NEO4J_LOADING: "true"
 
