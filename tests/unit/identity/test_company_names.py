@@ -36,6 +36,7 @@ from sbir_etl.identity import (
         (CompanyNameProfile.ENTITY_RESOLUTION_V1, "O'Brien & Associates Inc", "OBRIEN ASSOCIATES"),
         (CompanyNameProfile.GROUNDTRUTH_V1, "Acme Photonics, L.L.C.", "ACME PHOTONICS"),
         (CompanyNameProfile.VENDOR_CROSSWALK_V1, "Acme, Inc.", "Acme  Inc"),
+        (CompanyNameProfile.VENDOR_KEY_V1, "Acme & Corporation", "acme and corp"),
         (CompanyNameProfile.VENDOR_RESOLVER_V1, "Acme & Corporation", "acme and corp"),
         (CompanyNameProfile.FORM_D_JOIN_V1, "  Acme   Corp ", "ACME CORP"),
         (CompanyNameProfile.UCC_V1, "Advanced Materials Corporation", "adv materials"),
@@ -86,6 +87,19 @@ def test_organization_key_removes_only_trailing_legal_designators(
 def test_all_profiles_return_empty_for_blank_values(blank: object) -> None:
     for profile in CompanyNameProfile:
         assert normalize_company_name(blank, profile=profile) == ""
+
+
+def test_vendor_key_preserves_resolver_compatibility() -> None:
+    names = ["Acme Corporation", "Acme, Corp.", "Acme & Company", "Acme/LLC"]
+
+    for name in names:
+        assert normalize_company_name(
+            name,
+            profile=CompanyNameProfile.VENDOR_KEY_V1,
+        ) == normalize_company_name(
+            name,
+            profile=CompanyNameProfile.VENDOR_RESOLVER_V1,
+        )
 
 
 def test_similarity_treats_pandas_missing_value_as_blank() -> None:

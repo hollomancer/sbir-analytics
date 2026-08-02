@@ -31,6 +31,12 @@ linkage. It folds case and accents, normalizes punctuation, and removes recogniz
 designators only at the end of a name. Removing designator-like words from the middle of
 a name creates false collisions (for example, `PC Photonics` with `Photonics, Inc.`).
 
+`vendor-key-v1` is the durable transition-vendor key. It preserves legal designators but
+canonicalizes common long and short forms (`Corporation`/`Corp`, `Company`/`Co`, and
+`Limited`/`Ltd`) because vendor records use those distinctions as matching evidence while
+still needing spelling variants to share an index entry. Persisted canonical and alias
+names remain display text; they are never replaced by the lowercase matching key.
+
 The initial consumer-named profiles remain available as compatibility policies so
 migration cannot silently change research outputs:
 
@@ -40,8 +46,8 @@ migration cannot silently change research outputs:
 | `recipient-v1` | legacy USAspending recipient normalization |
 | `entity-resolution-v1` | Phase 0 cross-source resolver |
 | `groundtruth-v1` | legacy Phase III success-story normalization |
-| `vendor-crosswalk-v1` | transition vendor crosswalk persistence |
-| `vendor-resolver-v1` | transition vendor resolver |
+| `vendor-crosswalk-v1` | transition crosswalk display cleanup only; never a match key |
+| `vendor-resolver-v1` | legacy transition resolver key; equivalent to `vendor-key-v1` |
 | `form-d-join-v1` | agency/private-capital join keys |
 | `ucc-v1` | UCC debtor matching |
 | `sec-edgar-v1` | SEC company lookup and mention filtering |
@@ -70,6 +76,21 @@ ground-truth profile, it adds the `Coherent Photonics` legal-name variants and r
 the false `PC Photonics` / `Photonics, Inc.` collision. Relative to the ranking profile,
 it removes its broad `CORP\w*` behavior, which created false collisions among unrelated
 names beginning with `Corp...`.
+
+### Second consolidation audit
+
+The transition vendor crosswalk and resolver now use `vendor-key-v1` for all name indices,
+exact comparisons, and fuzzy-match inputs. Crosswalk persistence continues to retain
+cleaned human-readable canonical and alias names, so an identity key cannot overwrite
+source-facing display text.
+
+The legacy crosswalk and shared vendor keys were compared over the same 34,464 distinct
+awardee names and pinned `award_data.csv` SHA-256 used in the first audit. The shared key
+reduces 34,459 legacy crosswalk partitions to 34,424 vendor-key partitions. All 35 newly
+joined groups were reviewed. They consist exclusively of case, punctuation, ampersand,
+or canonical legal-designator variants; no ambiguous firms were joined. Examples include
+`Planetary Systems Corp.` / `PLANETARY SYSTEMS CORPORATION`, `Alme & Associates` /
+`Alme and Associates`, and `I. C. Gomes...` / `I.C. Gomes...`.
 
 Person-name matching, grant-number matching, and storage-only display cleanup are separate
 domains and do not use company-name profiles merely because their old helper was also

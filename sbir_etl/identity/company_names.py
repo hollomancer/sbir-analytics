@@ -32,6 +32,7 @@ class CompanyNameProfile(StrEnum):
     ENTITY_RESOLUTION_V1 = "entity-resolution-v1"
     GROUNDTRUTH_V1 = "groundtruth-v1"
     VENDOR_CROSSWALK_V1 = "vendor-crosswalk-v1"
+    VENDOR_KEY_V1 = "vendor-key-v1"
     VENDOR_RESOLVER_V1 = "vendor-resolver-v1"
     FORM_D_JOIN_V1 = "form-d-join-v1"
     UCC_V1 = "ucc-v1"
@@ -263,7 +264,10 @@ def normalize_company_name(
         return (
             text.replace(",", " ").replace(".", " ").replace("/", " ").replace("&", " AND ").strip()
         )
-    if profile is CompanyNameProfile.VENDOR_RESOLVER_V1:
+    if profile in {
+        CompanyNameProfile.VENDOR_KEY_V1,
+        CompanyNameProfile.VENDOR_RESOLVER_V1,
+    }:
         text = " ".join(text.strip().split())
         text = text.replace(",", " ").replace(".", " ").replace("/", " ").replace("&", " AND ")
         aliases = {

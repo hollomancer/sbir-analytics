@@ -133,7 +133,7 @@ class VendorResolver:
         """Normalize company names for indexing and exact comparisons."""
         if name is None:
             return ""  # type: ignore[unreachable]
-        return normalize_company_name(name, profile=CompanyNameProfile.VENDOR_RESOLVER_V1)
+        return normalize_company_name(name, profile=CompanyNameProfile.VENDOR_KEY_V1)
 
     def _load_records(self, records: Iterable[VendorRecord]) -> None:
         """Populate indices from the provided VendorRecord iterable."""

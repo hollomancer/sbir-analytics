@@ -70,6 +70,14 @@ def _normalize_identifier(val: str | None) -> str | None:
 
 
 def _normalize_name(name: str | None) -> str | None:
+    """Build the shared transition-vendor key used for matching and indexing."""
+    if name is None:
+        return None
+    return normalize_company_name(name, profile=CompanyNameProfile.VENDOR_KEY_V1)
+
+
+def _clean_display_name(name: str | None) -> str | None:
+    """Clean persisted display text without turning it into an identity key."""
     if name is None:
         return None
     return normalize_company_name(name, profile=CompanyNameProfile.VENDOR_CROSSWALK_V1)
@@ -130,12 +138,12 @@ class CrosswalkRecord:
         return d
 
     def normalize(self) -> None:
-        self.canonical_name = _normalize_name(self.canonical_name) or self.canonical_name
+        self.canonical_name = _clean_display_name(self.canonical_name) or self.canonical_name
         self.uei = _normalize_identifier(self.uei)
         self.cage = _normalize_identifier(self.cage)
         self.duns = _normalize_identifier(self.duns)
         for a in self.aliases:
-            a.name = _normalize_name(a.name) or a.name
+            a.name = _clean_display_name(a.name) or a.name
 
 
 # ---------------------------------------------------------------------------
@@ -240,7 +248,7 @@ class VendorCrosswalk:
         # If canonical name differs, keep existing canonical_name but add alias
         if _normalize_name(base.canonical_name) != _normalize_name(rec.canonical_name):
             # add rec canonical name as alias if not present
-            alias_name = _normalize_name(rec.canonical_name) or rec.canonical_name
+            alias_name = _clean_display_name(rec.canonical_name) or rec.canonical_name
             if alias_name and alias_name not in existing_alias_names:
                 base.aliases.append(AliasRecord(name=alias_name, note="merged-canonical"))
         logger.info("Merged record %s into %s", rec.canonical_id, canonical_id)
@@ -365,7 +373,7 @@ class VendorCrosswalk:
         if canonical_id not in self.records:
             return False
         rec = self.records[canonical_id]
-        alias_name_norm = _normalize_name(alias_name) or alias_name
+        alias_name_norm = _clean_display_name(alias_name) or alias_name
         # avoid duplicates
         if any(a.name == alias_name_norm for a in rec.aliases):
             return True
@@ -377,7 +385,9 @@ class VendorCrosswalk:
         )
         rec.aliases.append(ad)
         # update name index
-        self._name_index.setdefault(alias_name_norm, []).append(canonical_id)
+        alias_key = _normalize_name(alias_name_norm)
+        if alias_key:
+            self._name_index.setdefault(alias_key, []).append(canonical_id)
         logger.info("Added alias '%s' to %s", alias_name, canonical_id)
         return True
 

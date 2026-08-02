@@ -64,10 +64,10 @@ class TestUtilityFunctions:
     @pytest.mark.parametrize(
         "input_val,expected",
         [
-            ("  Acme   Corporation  ", "Acme Corporation"),
-            ("Acme\n\tCorporation", "Acme Corporation"),
-            ("Acme, Inc.", "Acme  Inc"),
-            ("Acme/Corp", "Acme Corp"),
+            ("  Acme   Corporation  ", "acme corp"),
+            ("Acme\n\tCorporation", "acme corp"),
+            ("Acme, Inc.", "acme inc"),
+            ("Acme/Corp", "acme corp"),
             (None, None),
         ],
         ids=["whitespace", "newline_tab", "comma_dot", "slash", "none"],
@@ -272,8 +272,8 @@ class TestAddOrMerge:
 
         cw.add_or_merge(record)
 
-        assert "Acme Corporation" in cw._name_index
-        assert "co-123" in cw._name_index["Acme Corporation"]
+        assert "acme corp" in cw._name_index
+        assert "co-123" in cw._name_index["acme corp"]
 
     def test_merge_by_uei_match(self):
         """Test merging records with matching UEI."""
@@ -469,6 +469,19 @@ class TestLookupMethods:
         assert result[0].canonical_id == "co-123"
         assert result[1] == 1.0  # Perfect score
 
+    def test_find_by_name_uses_shared_vendor_key(self):
+        """Legal-designator and punctuation variants are exact matches."""
+        cw = VendorCrosswalk()
+        record = CrosswalkRecord(canonical_id="co-123", canonical_name="Acme Corporation")
+        cw.add_or_merge(record)
+
+        result = cw.find_by_name("ACME, CORP.")
+
+        assert result is not None
+        assert result[0].canonical_id == "co-123"
+        assert result[1] == 1.0
+        assert result[0].canonical_name == "Acme Corporation"
+
     def test_find_by_name_fuzzy_match(self):
         """Test finding by name with fuzzy matching."""
         cw = VendorCrosswalk()
@@ -636,8 +649,8 @@ class TestAliasHandling:
         cw.add_alias("co-123", "Acme Inc")
 
         # Should be findable by alias name
-        assert "Acme Inc" in cw._name_index
-        assert "co-123" in cw._name_index["Acme Inc"]
+        assert "acme inc" in cw._name_index
+        assert "co-123" in cw._name_index["acme inc"]
 
 
 class TestAcquisitionHandling:
@@ -895,8 +908,9 @@ class TestEdgeCases:
         cw.add_or_merge(record1)
         cw.add_or_merge(record2)
 
-        # Both normalize to "Acme  Corp"
+        # Both share the matching key while retaining separate identifier-backed records.
         assert len(cw.records) == 2
+        assert cw._name_index["acme corp"] == ["co-1", "co-2"]
 
     def test_jsonl_with_empty_lines(self):
         """Test loading JSONL handles empty lines."""
