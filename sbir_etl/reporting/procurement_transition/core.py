@@ -32,6 +32,8 @@ from sbir_etl.utils.procurement_text import (
 
 logger = logging.getLogger(__name__)
 
+_AWARD_KEY_VERSION = "sbir-source-v2"
+
 _ANNOTATION_FIELDS = (
     ("interest_alignment", "Mission-interest alignment"),
     ("technology_ecosystem", "Technology ecosystem"),
@@ -55,53 +57,100 @@ def _coalesce(df: pd.DataFrame, *names: str) -> pd.Series:
     return result
 
 
-# Fields that together identify one award. The public SBIR.gov snapshot reuses
-# Agency Tracking Numbers across tens of thousands of distinct award rows, so a
-# bare tracking number is a *firm/topic* key, not an award key: collapsing on it
-# makes unchanged rows look changed and silently merges distinct awards.
-_AWARD_GRAIN_FIELDS = (
-    "Company",
-    "Agency",
-    "Branch",
-    "Phase",
-    "Program",
-    "Proposal Award Date",
-    "Contract End Date",
-    "Award Title",
-    "Award Amount",
+# Stable source fields used to identify one award. Mutable report content such
+# as title, abstract, amount, and recorded end date deliberately stays out of
+# this key; changes to those fields belong in ``row_hash``.
+_AWARD_KEY_FIELDS = (
+    ("Agency Tracking Number", "agency_tracking_number"),
+    ("Contract", "contract_number"),
+    ("Agency", "agency"),
+    ("Branch", "branch", "sub_agency"),
+    ("Phase", "phase"),
+    ("Program", "program"),
+    ("Proposal Award Date", "award_date"),
+    ("Solicitation Number", "solicitation_number"),
 )
 
 
-def _natural_award_id(row: pd.Series) -> str | None:
-    for name in ("Agency Tracking Number", "Contract", "award_id"):
-        # ``_display`` rejects the nan/NaT/None/<NA> spellings ``str()`` would keep.
+def _row_value(row: pd.Series, *names: str) -> str | None:
+    for name in names:
         if (value := _display(row.get(name))) is not None:
             return value
     return None
+
+
+def _identity_component(value: Any) -> str:
+    return re.sub(r"\s+", " ", _display(value) or "").strip().upper()
+
+
+def _award_key_field_value(row: pd.Series, names: tuple[str, ...]) -> str | None:
+    value = _row_value(row, *names)
+    if names[0] != "Proposal Award Date" or value is None:
+        return value
+    text = value.strip()
+    match = re.match(r"^(\d{4})[-/](\d{1,2})[-/](\d{1,2})(?:\D|$)", text)
+    parts: tuple[str, str, str] | None
+    if match is None:
+        match = re.match(r"^(\d{1,2})/(\d{1,2})/(\d{4})(?:\D|$)", text)
+        parts = (match.group(3), match.group(1), match.group(2)) if match else None
+    else:
+        parts = (match.group(1), match.group(2), match.group(3))
+    if parts is None:
+        return value
+    try:
+        year, month, day = (int(part) for part in parts)
+        return date(year, month, day).isoformat()
+    except ValueError:
+        return value
+
+
+def _natural_award_id(row: pd.Series) -> str | None:
+    # Preserve the report's existing public lineage identifier for readable
+    # output and legacy candidate files. It is never used as award grain: the
+    # separate ``award_key`` owns joins, deduplication, and candidate identity.
+    return _row_value(
+        row,
+        "Agency Tracking Number",
+        "agency_tracking_number",
+        "Contract",
+        "contract_number",
+        "award_id",
+    )
 
 
 def _stable_award_id(row: pd.Series) -> str:
     natural = _natural_award_id(row)
     if natural is not None:
         return natural
-    material = "|".join(_display(row.get(name)) or "" for name in _AWARD_GRAIN_FIELDS)
-    return "sbir-" + hashlib.sha256(material.encode()).hexdigest()[:20]
+    return "sbir-" + _award_grain_key(row)[:20]
 
 
 def _award_grain_key(row: pd.Series) -> str:
     """Identity of one *award*, not one firm/topic.
 
-    ``award_id`` stays the natural identifier so it keeps joining to the
-    candidate frame, but it is not award-grain on its own — hence this separate
-    key for snapshot comparison.
+    ``award_id`` stays the natural identifier for readable lineage. It is not
+    award-grain on its own, so joins, deduplication, and snapshot comparison use
+    this separate stable source compound.
     """
 
-    material = "|".join(
-        [
-            _natural_award_id(row) or "",
-            *(_display(row.get(name)) or "" for name in _AWARD_GRAIN_FIELDS),
-        ]
+    if existing := _row_value(row, "award_key"):
+        if _row_value(row, "award_key_version") != _AWARD_KEY_VERSION:
+            raise ValueError(
+                "pre-migration award_key cannot be reused; regenerate identity from raw awards"
+            )
+        return existing
+
+    recipient = (
+        _row_value(row, "UEI", "uei", "recipient_uei")
+        or _row_value(row, "Duns", "duns", "recipient_duns")
+        or _row_value(row, "Company", "company", "recipient_name")
     )
+    components = (
+        "sbir",
+        recipient,
+        *(_award_key_field_value(row, names) for names in _AWARD_KEY_FIELDS),
+    )
+    material = "|".join(_identity_component(value) for value in components)
     return hashlib.sha256(material.encode()).hexdigest()[:24]
 
 
@@ -113,6 +162,9 @@ def normalize_awards(raw: pd.DataFrame) -> pd.DataFrame:
             columns=[
                 "award_id",
                 "award_key",
+                "award_key_version",
+                "agency_tracking_number",
+                "contract_number",
                 "company",
                 "title",
                 "agency",
@@ -125,16 +177,24 @@ def normalize_awards(raw: pd.DataFrame) -> pd.DataFrame:
                 "amount",
                 "abstract",
                 "row_hash",
+                "source_edition_count",
+                "source_edition_variants",
+                "public_id_award_count",
                 "naics_code",
                 "psc_code",
                 "office",
                 "cet",
                 "source_url",
+                "solicitation_number",
+                "topic_code",
             ]
         )
     out = pd.DataFrame(index=raw.index)
     out["award_id"] = raw.apply(_stable_award_id, axis=1)
     out["award_key"] = raw.apply(_award_grain_key, axis=1)
+    out["award_key_version"] = _AWARD_KEY_VERSION
+    out["agency_tracking_number"] = _pick(raw, "Agency Tracking Number", "agency_tracking_number")
+    out["contract_number"] = _pick(raw, "Contract", "contract_number")
     out["company"] = _pick(raw, "Company", "company", "recipient_name")
     out["title"] = _pick(raw, "Award Title", "title")
     out["agency"] = _pick(raw, "Agency", "agency")
@@ -159,8 +219,39 @@ def normalize_awards(raw: pd.DataFrame) -> pd.DataFrame:
     out["office"] = _pick(raw, "Office", "office", "awarding_office_name")
     out["cet"] = _pick(raw, "CET", "cet")
     out["source_url"] = _pick(raw, "source_url", "SBIR URL")
-    material = out.fillna("").astype(str).agg("|".join, axis=1)
+    out["solicitation_number"] = _pick(raw, "Solicitation Number", "solicitation_number")
+    out["topic_code"] = _pick(raw, "Topic Code", "topic_code")
+    material = out.astype("string").fillna("").agg("|".join, axis=1)
     out["row_hash"] = material.map(lambda value: hashlib.sha256(value.encode()).hexdigest())
+
+    # SBIR.gov sometimes publishes several editions of the same stable award
+    # (typically revised amount/end-date records). Treat them as revisions, not
+    # distinct awards, and retain the most current-looking public edition.
+    edition_counts = out.groupby("award_key")["award_key"].transform("size")
+    edition_variants = out.groupby("award_key")["row_hash"].transform("nunique")
+    out["source_edition_count"] = edition_counts
+    out["source_edition_variants"] = edition_variants
+    duplicate_editions = edition_counts.gt(1)
+    if duplicate_editions.any():
+        logger.warning(
+            "Collapsing %d SBIR source rows across %d stable award keys",
+            int(duplicate_editions.sum()),
+            int(out.loc[duplicate_editions, "award_key"].nunique()),
+        )
+        out = (
+            out.assign(
+                _end_sort=pd.to_datetime(out["recorded_end_date"], errors="coerce"),
+                _amount_sort=pd.to_numeric(out["amount"], errors="coerce"),
+            )
+            .sort_values(
+                ["award_key", "_end_sort", "_amount_sort", "row_hash"],
+                kind="stable",
+                na_position="first",
+            )
+            .drop_duplicates("award_key", keep="last")
+            .drop(columns=["_end_sort", "_amount_sort"])
+        )
+    out["public_id_award_count"] = out.groupby("award_id")["award_key"].transform("nunique")
     return out.reset_index(drop=True)
 
 
@@ -177,14 +268,31 @@ def build_award_cohorts(
     report_month: str,
     approaching_days: int = 180,
 ) -> pd.DataFrame:
-    current = normalize_awards(current) if "row_hash" not in current.columns else current.copy()
-    prior = (
-        normalize_awards(previous)
-        if previous is not None and "row_hash" not in previous.columns
-        else (previous.copy() if previous is not None else pd.DataFrame())
-    )
+    def _prepare(frame: pd.DataFrame | None, *, label: str) -> pd.DataFrame:
+        if frame is None or frame.empty:
+            return pd.DataFrame() if frame is None else frame.copy()
+        if "row_hash" not in frame.columns:
+            return normalize_awards(frame)
+        versions = frame.get("award_key_version", pd.Series(pd.NA, index=frame.index))
+        if not versions.eq(_AWARD_KEY_VERSION).all():
+            raise ValueError(
+                f"{label} uses a pre-migration award key; regenerate it from raw awards"
+            )
+        return frame.copy()
+
+    current = _prepare(current, label="current award snapshot")
+    prior = _prepare(previous, label="previous award snapshot")
     start, end = _month_bounds(report_month)
     horizon = (pd.Timestamp(end) + pd.Timedelta(days=approaching_days)).date()
+
+    def _between(value: Any, lower: date, upper: date, *, include_lower: bool = True) -> bool:
+        if value is None or bool(pd.isna(value)):
+            return False
+        parsed = value if isinstance(value, date) else pd.to_datetime(value, errors="coerce")
+        if pd.isna(parsed):
+            return False
+        comparable = parsed.date() if isinstance(parsed, datetime) else parsed
+        return lower <= comparable <= upper if include_lower else lower < comparable <= upper
 
     # Diff on the compound award-grain key, never on the bare tracking number:
     # the public snapshot reuses tracking numbers across tens of thousands of
@@ -206,13 +314,13 @@ def build_award_cohorts(
         for key, row_hash in zip(current_keys, current["row_hash"], strict=True)
     ]
     current["awarded_in_period"] = current["award_date"].map(
-        lambda value: bool(value and start <= value <= end)
+        lambda value: _between(value, start, end)
     )
     current["recent_recorded_end"] = current["recorded_end_date"].map(
-        lambda value: bool(value and start <= value <= end)
+        lambda value: _between(value, start, end)
     )
     current["approaching_recorded_end"] = current["recorded_end_date"].map(
-        lambda value: bool(value and end < value <= horizon)
+        lambda value: _between(value, end, horizon, include_lower=False)
     )
     flags = [
         "newly_observed",
@@ -397,19 +505,27 @@ def _cited_award_identifier(row: pd.Series) -> str | None:
     6 normalized characters are ignored (false-hit prone).
     """
 
-    award_id = _display(_first_value(row.get("award_id"), row.get("prior_award_id")))
-    if award_id is None:
-        return None
-    needle = re.sub(r"[^A-Z0-9]+", "", award_id.upper())
-    if len(needle) < 6:
-        return None
     notice_text = _display(
         _first_value(row.get("opportunity_description"), row.get("target_description"))
     )
     if notice_text is None:
         return None
     haystack = re.sub(r"[^A-Z0-9]+", "", notice_text.upper())
-    return award_id if needle in haystack else None
+    for value in (
+        row.get("award_contract_number"),
+        row.get("prior_contract_number"),
+        row.get("award_agency_tracking_number"),
+        row.get("prior_agency_tracking_number"),
+        row.get("award_id"),
+        row.get("prior_award_id"),
+    ):
+        award_id = _display(value)
+        if award_id is None:
+            continue
+        needle = re.sub(r"[^A-Z0-9]+", "", award_id.upper())
+        if len(needle) >= 6 and needle in haystack:
+            return award_id
+    return None
 
 
 def _notice_names_awardee(row: pd.Series) -> bool:
@@ -659,6 +775,49 @@ def _awardee_key(award: pd.Series) -> str:
     return f"award:{award.get('award_id')}"
 
 
+def _award_identity(row: pd.Series, *, candidate: bool = False) -> str:
+    names = (
+        ("_report_award_key", "prior_award_key", "award_key", "prior_award_id")
+        if candidate
+        else ("award_key", "award_id")
+    )
+    value = _first_value(*(row.get(name) for name in names))
+    return _display(value) or ""
+
+
+def _ambiguous_public_award_ids(awards: pd.DataFrame) -> set[str]:
+    if "award_id" not in awards:
+        return set()
+    public_ids = awards["award_id"].map(_display)
+    source_counts = pd.to_numeric(
+        awards.get("public_id_award_count", pd.Series(1, index=awards.index)),
+        errors="coerce",
+    ).fillna(1)
+    ambiguous = public_ids.duplicated(keep=False) | source_counts.gt(1)
+    return {value for value in public_ids.loc[ambiguous] if value is not None}
+
+
+def _award_for_entry(group: dict[str, Any], entry: pd.Series) -> pd.Series:
+    """Resolve the award actually associated with a candidate path."""
+
+    identity = _award_identity(entry, candidate=True)
+    matches = [award for award in group["awards"] if _award_identity(award) == identity]
+    if len(matches) == 1:
+        return matches[0]
+
+    # Legacy direct callers may provide only a public id. The report join has
+    # already rejected ambiguity, so a unique match remains safe here.
+    prior_id = _display(entry.get("prior_award_id"))
+    legacy_matches = [
+        award
+        for award in group["awards"]
+        if prior_id is not None and _display(award.get("award_id")) == prior_id
+    ]
+    if len(legacy_matches) == 1:
+        return legacy_matches[0]
+    raise ValueError("candidate path does not resolve to one award-grain record")
+
+
 def _procurement_key(row: pd.Series) -> str | None:
     return _display(_first_value(row.get("target_id"), row.get("opportunity_title")))
 
@@ -762,11 +921,26 @@ def group_candidates_by_awardee(rows: pd.DataFrame, awards: pd.DataFrame) -> lis
 
     signals = rows.get("signal_class", pd.Series(index=rows.index, dtype="object"))
     confidence = rows.get("confidence_bucket", pd.Series(index=rows.index, dtype="object"))
-    award_ids = (
-        rows.get("prior_award_id", pd.Series(index=rows.index, dtype="object")).astype(str)
-        if not rows.empty
-        else pd.Series(dtype="object")
+    candidate_award_keys = _coalesce(rows, "_report_award_key", "prior_award_key", "award_key").map(
+        _display
     )
+    candidate_public_ids = rows.get(
+        "prior_award_id", pd.Series(None, index=rows.index, dtype="object")
+    ).map(_display)
+    ambiguous_public_ids = _ambiguous_public_award_ids(awards)
+    available_award_keys = {
+        _award_identity(award) for _, award in awards.iterrows() if _award_identity(award)
+    }
+    available_public_ids = {
+        value for value in awards.get("award_id", pd.Series(dtype="object")).map(_display) if value
+    }
+    resolved = candidate_award_keys.isin(available_award_keys) | (
+        candidate_award_keys.isna()
+        & candidate_public_ids.isin(available_public_ids)
+        & ~candidate_public_ids.isin(ambiguous_public_ids)
+    )
+    if not resolved.all():
+        raise ValueError("candidate rows do not resolve to unique award-grain records")
 
     def _entries(mask: pd.Series, seen: set[str]) -> list[pd.Series]:
         subset = rows.loc[mask]
@@ -801,8 +975,14 @@ def group_candidates_by_awardee(rows: pd.DataFrame, awards: pd.DataFrame) -> lis
         # already puts the most time-sensitive award of the firm first).
         primary = awardee_awards[0]
         ids = [str(award.get("award_id")) for award in awardee_awards]
+        keys = [_award_identity(award) for award in awardee_awards]
         same = (
-            award_ids.isin(ids)
+            candidate_award_keys.isin(keys)
+            | (
+                candidate_award_keys.isna()
+                & candidate_public_ids.isin(ids)
+                & ~candidate_public_ids.isin(ambiguous_public_ids)
+            )
             if not rows.empty
             else pd.Series(False, index=rows.index, dtype=bool)
         )
@@ -818,6 +998,7 @@ def group_candidates_by_awardee(rows: pd.DataFrame, awards: pd.DataFrame) -> lis
             {
                 "award_id": str(primary.get("award_id")),
                 "award_ids": ids,
+                "award_keys": keys,
                 "award": primary,
                 "awards": awardee_awards,
                 "directed": directed,
@@ -970,13 +1151,62 @@ class MonthlyReportBuilder:
                     "naics_code": "award_naics_code",
                     "psc_code": "award_psc_code",
                     "source_url": "award_source_url",
+                    "agency_tracking_number": "award_agency_tracking_number",
+                    "contract_number": "award_contract_number",
                 }
             )
-            master = master.merge(
-                award_fields,
-                left_on="prior_award_id",
-                right_on="award_id",
-                how="left",
+            prior_keys = master.get(
+                "prior_award_key", pd.Series([None] * len(master), index=master.index)
+            ).map(_display)
+            keyed = prior_keys.notna()
+            master = master.assign(_candidate_order=range(len(master)))
+            joined: list[pd.DataFrame] = []
+            if keyed.any():
+                if "award_key" not in award_fields:
+                    raise ValueError("award-keyed candidates require award_key on every award")
+                joined.append(
+                    master.loc[keyed].merge(
+                        award_fields,
+                        left_on="prior_award_key",
+                        right_on="award_key",
+                        how="left",
+                        validate="many_to_one",
+                    )
+                )
+            if (~keyed).any():
+                # Backward compatibility for hand-authored candidate rows. A
+                # reused public id is ambiguous and must fail rather than fan out.
+                legacy = master.loc[~keyed]
+                candidate_ids = set(legacy["prior_award_id"].map(_display).dropna())
+                ambiguous_ids = sorted(_ambiguous_public_award_ids(award_fields) & candidate_ids)
+                if ambiguous_ids:
+                    preview = ", ".join(ambiguous_ids[:5])
+                    raise ValueError(
+                        "legacy prior_award_id is ambiguous; regenerate candidates with "
+                        f"prior_award_key (examples: {preview})"
+                    )
+                joined.append(
+                    legacy.merge(
+                        award_fields,
+                        left_on="prior_award_id",
+                        right_on="award_id",
+                        how="left",
+                        validate="many_to_one",
+                    )
+                )
+            master = (
+                pd.concat(joined, ignore_index=True, sort=False)
+                .sort_values("_candidate_order", kind="stable")
+                .drop(columns="_candidate_order")
+                .reset_index(drop=True)
+            )
+            missing_awards = master["award_id"].map(_display).isna()
+            if missing_awards.any():
+                missing = _coalesce(master.loc[missing_awards], "prior_award_key", "prior_award_id")
+                preview = ", ".join(str(value) for value in missing.head(5))
+                raise ValueError(f"candidate rows reference missing awards: {preview}")
+            master["_report_award_key"] = _coalesce(
+                master, "award_key", "prior_award_key", "award_id", "prior_award_id"
             )
         if "target_id" in master and "notice_id" in opportunities:
             opportunity_fields = opportunities.rename(
@@ -1190,15 +1420,16 @@ class MonthlyReportBuilder:
         ]
         emitted = False
         for group in groups:
-            award = group["award"]
             for entry in group["directed"]:
-                lines += self._path_detail(award, entry, "direct-award")
+                lines += self._path_detail(_award_for_entry(group, entry), entry, "direct-award")
                 emitted = True
             for entry in group["competitive"]:
-                lines += self._path_detail(award, entry, "competitive")
+                lines += self._path_detail(_award_for_entry(group, entry), entry, "competitive")
                 emitted = True
             for entry in group["watchlist"]:
-                lines += self._path_detail(award, entry, "needs more evidence")
+                lines += self._path_detail(
+                    _award_for_entry(group, entry), entry, "needs more evidence"
+                )
                 emitted = True
         if not emitted:
             lines += ["No paths to detail this month.", ""]
@@ -1254,18 +1485,24 @@ class MonthlyReportBuilder:
             "|---|---|---|---|---|",
         ]
         for group in groups:
-            award = group["award"]
-            company = _markdown_text(award.get("company"), default="Company unavailable", limit=120)
-            built = self._plain_award_summary(award)
+            primary = group["award"]
+            company = _markdown_text(
+                primary.get("company"), default="Company unavailable", limit=120
+            )
             paths = [(entry, "direct-award") for entry in group["directed"]]
             paths += [(entry, "competitive") for entry in group["competitive"]]
             paths += [(entry, "needs more evidence") for entry in group["watchlist"]]
             if not paths:
-                end_date = _display(award.get("recorded_end_date"))
+                built = self._plain_award_summary(primary)
+                end_date = _display(primary.get("recorded_end_date"))
                 note = f"ends {end_date}" if end_date else "no recorded end date"
                 lines.append(f"| {company} | {built} | — no matched procurement | — | {note} |")
                 continue
+            prior_award_identity: str | None = None
             for index, (entry, path_label) in enumerate(paths):
+                award = _award_for_entry(group, entry)
+                award_identity = _award_identity(award)
+                built = self._plain_award_summary(award)
                 procurement = _markdown_text(
                     _first_value(entry.get("opportunity_title"), entry.get("target_id")),
                     default="Untitled opportunity",
@@ -1283,11 +1520,12 @@ class MonthlyReportBuilder:
                 )
                 why = self._why_it_connects(entry)
                 awardee_cell = company if index == 0 else ""
-                built_cell = built if index == 0 else ""
+                built_cell = built if award_identity != prior_award_identity else ""
                 lines.append(
                     f"| {awardee_cell} | {built_cell} | {procurement} ({path_label}) | "
                     f"{why} | {deadline} |"
                 )
+                prior_award_identity = award_identity
         lines.append("")
         return lines
 
@@ -1453,13 +1691,19 @@ class MonthlyReportBuilder:
         # center's packet, where it would be listed as "no matched procurement",
         # while still emitting every awardee at a center that has any match.
         linked_by_center = {
-            center: set(rows.get("prior_award_id", pd.Series(dtype="object")).dropna().astype(str))
+            center: {
+                value
+                for value in _coalesce(
+                    rows, "_report_award_key", "prior_award_key", "prior_award_id"
+                ).map(_display)
+                if value is not None
+            }
             for center, rows in groups.items()
         }
         linked_anywhere = set().union(*linked_by_center.values()) if linked_by_center else set()
-        cohort_award_ids = award_cohorts.get(
-            "award_id", pd.Series(dtype="object", index=award_cohorts.index)
-        ).astype(str)
+        cohort_award_ids = _coalesce(award_cohorts, "award_key", "award_id").map(
+            lambda value: _display(value) or ""
+        )
 
         if groups:
             for center, rows in groups.items():

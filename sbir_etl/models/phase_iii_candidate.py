@@ -30,6 +30,13 @@ class PhaseIIICandidate(BaseModel):
     prior_award_id: str = Field(
         ..., description="Upstream Phase I/II award id the candidate is scored against."
     )
+    prior_award_key: str | None = Field(
+        None,
+        description=(
+            "Award-grain identity used for joins and deduplication. Legacy rows may omit it "
+            "only when prior_award_id is unambiguous."
+        ),
+    )
     target_type: TargetType = Field(
         ..., description="Corpus the target came from: FPDS contract or SAM.gov opportunity."
     )

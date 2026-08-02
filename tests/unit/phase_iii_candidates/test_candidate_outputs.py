@@ -68,6 +68,58 @@ def test_evidence_records_only_observed_match_keys_and_every_subscore():
     assert record["score"] == pytest.approx(sum(record["subscores"].values()))
 
 
+def test_candidate_identity_uses_award_grain_key():
+    pairs = pd.concat(
+        [
+            _pairs().assign(prior_award_key="award-key-1"),
+            _pairs().assign(prior_award_key="award-key-2"),
+        ],
+        ignore_index=True,
+    )
+
+    candidates, evidence = score_candidate_pairs(
+        pairs,
+        signal_class=SignalClass.FOLLOWON,
+        weights=WEIGHTS_FOLLOWON,
+        high_threshold=HIGH_THRESHOLD_FOLLOWON,
+    )
+
+    assert candidates["candidate_id"].nunique() == 2
+    assert set(candidates["prior_award_key"]) == {"award-key-1", "award-key-2"}
+    assert {record["award_key"] for record in evidence} == {"award-key-1", "award-key-2"}
+
+
+def test_legacy_scoring_does_not_promote_public_id_to_award_key():
+    candidates, evidence = score_candidate_pairs(
+        _pairs(),
+        signal_class=SignalClass.FOLLOWON,
+        weights=WEIGHTS_FOLLOWON,
+        high_threshold=HIGH_THRESHOLD_FOLLOWON,
+    )
+
+    assert pd.isna(candidates.loc[0, "prior_award_key"])
+    assert evidence[0]["award_key"] is None
+
+
+def test_candidate_identity_namespaces_keys_from_legacy_public_ids():
+    pairs = pd.concat(
+        [
+            _pairs().assign(prior_award_id="PUBLIC-1", prior_award_key="A-1"),
+            _pairs(),
+        ],
+        ignore_index=True,
+    )
+
+    candidates, _ = score_candidate_pairs(
+        pairs,
+        signal_class=SignalClass.FOLLOWON,
+        weights=WEIGHTS_FOLLOWON,
+        high_threshold=HIGH_THRESHOLD_FOLLOWON,
+    )
+
+    assert candidates["candidate_id"].nunique() == 2
+
+
 def test_each_signal_class_owns_its_own_artifacts(isolated_outputs):
     directed, directed_evidence = score_candidate_pairs(
         _pairs(),
@@ -131,3 +183,56 @@ def test_enrich_prior_awards_adds_the_fields_the_phase_ii_contract_lacks():
     assert enriched.loc[0, "naics_code"] == "541715"
     assert enriched.loc[0, "cet"] == "Autonomy"
     assert len(enriched) == len(priors)
+
+
+def test_enrich_prior_awards_uses_award_key_when_public_ids_are_reused():
+    priors = pd.DataFrame(
+        [
+            {"award_id": "A-1", "award_key": "key-1"},
+            {"award_id": "A-1", "award_key": "key-2"},
+        ]
+    )
+    detail = pd.DataFrame(
+        [
+            {"award_id": "A-1", "award_key": "key-1", "award_title": "Radar hardware"},
+            {"award_id": "A-1", "award_key": "key-2", "award_title": "Navigation software"},
+        ]
+    )
+
+    enriched = enrich_prior_awards(priors, detail)
+
+    assert enriched["title"].tolist() == ["Radar hardware", "Navigation software"]
+
+
+def test_enrich_prior_awards_skips_ambiguous_legacy_details():
+    priors = pd.DataFrame([{"award_id": "A-1"}])
+    detail = pd.DataFrame(
+        [
+            {"award_id": "A-1", "award_title": "Radar hardware"},
+            {"award_id": "A-1", "award_title": "Navigation software"},
+        ]
+    )
+
+    enriched = enrich_prior_awards(priors, detail)
+
+    assert pd.isna(enriched.loc[0, "title"])
+
+
+def test_enrich_prior_awards_uses_unique_public_id_during_key_rollout():
+    priors = pd.DataFrame([{"award_id": "A-1", "award_key": "key-1"}])
+    legacy_detail = pd.DataFrame([{"award_id": "A-1", "award_title": "Autonomous navigation"}])
+
+    enriched = enrich_prior_awards(priors, legacy_detail)
+
+    assert enriched.loc[0, "title"] == "Autonomous navigation"
+
+
+def test_enrich_prior_awards_rejects_explicit_key_conflicts():
+    priors = pd.DataFrame([{"award_id": "A-1", "award_key": "key-1"}])
+    conflicting_detail = pd.DataFrame(
+        [{"award_id": "A-1", "award_key": "key-2", "award_title": "Wrong technology"}]
+    )
+
+    enriched = enrich_prior_awards(priors, conflicting_detail)
+
+    assert pd.isna(enriched.loc[0, "title"])
