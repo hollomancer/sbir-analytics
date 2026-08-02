@@ -22,6 +22,11 @@ This machine hosts the live SBIR Analytics deployment.
   alongside SSD data; never use `docker compose down -v`.
 - **Ingress:** Tailscale Serve over tailnet-only HTTPS. Tailscale Funnel,
   public port exposure, and LAN exposure are prohibited.
+- **Current host state:** record data vintages, materialized subsets, Dagster
+  run IDs, and temporary blockers in
+  `docs/deployment/mac-mini-status.local.md`. That file is intentionally
+  ignored; tracked documentation describes the operating contract, not a
+  point-in-time snapshot of this machine.
 
 Run every `make server-*` command and shell-driven live materialization from
 the clean deployment checkout. Use the documented Make targets; do not run
@@ -30,21 +35,6 @@ there. Treat materialization as a live-data mutation: confirm the SSD is
 mounted and the stack is healthy first. Keep schedules disabled until their
 jobs have completed successfully by hand with the inputs available on this
 host.
-
-### Materialized state as of 2026-08-02
-
-- The current SBIR.gov source is
-  `/Volumes/SSDmini/sbir-analytics/data/raw/sbir/award_data.csv`, data vintage
-  `2026-08-01`, containing 219,503 award records.
-- The API serves the full-source snapshot
-  `tech_census_drone_manufacturing/2026-Q3` (2,241 in-scope awards).
-- Neo4j contains a bounded validation seed from the first 25,000 source
-  records, materialized by Dagster run
-  `70e7d2f8-2a90-453f-a2a9-ae9bd4abc9c2`. This produced 24,794 validated rows
-  and 22,566 unique `FinancialTransaction` nodes. It is not a full-universe
-  graph and must not be represented as one.
-- Broad schedules remain disabled. `sbir_weekly_refresh_job` still requires
-  SAM.gov and USAspending bulk inputs that are not installed on this host.
 
 ## What runs here
 
