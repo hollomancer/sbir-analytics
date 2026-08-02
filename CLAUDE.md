@@ -8,6 +8,15 @@ Graph-based ETL: SBIR awards → Neo4j. Dagster orchestration, DuckDB processing
 
 Architectural patterns and technical docs live in `docs/steering/`. Feature specs live in `specs/`.
 
+## Live deployment
+
+Before any deployment, server operation, or live Dagster materialization, read
+[the Mac mini runbook](docs/deployment/mac-mini-server.md#live-instance-on-this-mac-mini).
+The only live checkout is `/Users/conradhollomon/projects/sbir-analytics-server`;
+never operate the live stack from the development checkout. Preserve
+`.env.server`, `/Volumes/SSDmini/sbir-analytics`, and the Docker `dagster_home`
+volume. Ingress must remain Tailscale Serve only; never enable Funnel.
+
 ## Agents
 
 Custom agents in `.claude/agents/`:
