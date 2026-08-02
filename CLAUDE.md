@@ -1,12 +1,9 @@
 # Claude Code Instructions
 
-## Project
-
-Graph-based ETL: SBIR awards → Neo4j. Dagster orchestration, DuckDB processing, Docker deployment.
-
-**Intent / north star:** [docs/research-questions.md](docs/research-questions.md) is the canonical inventory of what this repo exists to answer. Use it to judge whether a proposed change serves a real question vs. adds incidental scope.
-
-Architectural patterns and technical docs live in `docs/steering/`. Feature specs live in `specs/`.
+**Read [AGENTS.md](AGENTS.md) first.** It holds the project overview, key
+directories, commands, testing conventions, code standards, principles, and
+scope discipline that apply to every agent working in this repo. This file adds
+only the Claude-specific layer.
 
 ## Agents
 
@@ -28,51 +25,12 @@ For **bug fixes**: skip to test-fixer or quality-sweep directly.
 |-------|----------|
 | `/review-spec [spec-name\|all]` | Review spec relevance against codebase |
 
-## Key Directories
+## Reminders that bite most often
 
-```text
-sbir_etl/                 # Core ETL library (extractors, enrichers, transformers, validators, models, config, quality, utils)
-packages/
-  sbir-analytics/         # Dagster assets, jobs, sensors
-  sbir-graph/             # Neo4j loaders
-  sbir-ml/                # ML models (CET, transition detection)
-config/base.yaml          # Thresholds, paths, performance settings
-```
+All of these are in AGENTS.md, but they cause the most rework:
 
-## Common Patterns
-
-- **Monitoring:** Use `sbir_etl.utils` decorators and `AlertCollector`
-- **CI:** Edit `.github/workflows/*.yml`, upload artifacts to `reports/`
-- **Tests:** Place in `tests/unit|integration|e2e/`, run `pytest -v --cov=sbir_etl`
-- **Neo4j:** Modify `packages/sbir-graph/sbir_graph/loaders/`, use MERGE operations
-
-## Testing
-
-```bash
-pytest tests/unit/           # Fast unit tests
-pytest -m integration        # Integration tests
-pytest -n auto               # Parallel execution
-```
-
-Transition scoring changes must maintain ≥85% precision benchmark.
-
-## Code Standards
-
-- Line length: 100
-- Target: Python 3.11
-- Ruff rules: E, W, F, I, B, C4, UP
-- Use `StrEnum` not `str, Enum`
-- Use `datetime.UTC` not `timezone.utc`
-- Do NOT use `from __future__ import annotations` in Dagster asset files — it breaks runtime context type validation
-
-## Principles
-
-- **Simplicity First**: Simplest change that solves the problem. No speculative abstractions, no "flexibility" that wasn't requested. If 200 lines could be 50, rewrite it. Ask: "Would a senior engineer say this is overcomplicated?"
-- **No Laziness**: Root causes, not temporary fixes. Senior developer standards.
-- **Surgical Changes**: Only touch what the task requires. Don't "improve" adjacent code. Match existing style. If your changes orphan imports/variables, remove them — but don't remove pre-existing dead code unless asked. Every changed line should trace to the request.
-- **Verify Before Done**: Prove it works — run tests, check logs, demonstrate correctness. Transform tasks into verifiable goals:
-
-```
-1. [Step] → verify: [check]
-2. [Step] → verify: [check]
-```
+- Run `make lint`, not hand-rolled `ruff`/`mypy` paths. Checking `sbir_etl/`
+  alone covers 205 of 783 files and will pass while CI fails.
+- No `from __future__ import annotations` in Dagster asset files. It breaks
+  runtime context type validation, and nothing lints for it.
+- Transition scoring changes must hold the ≥85% precision benchmark.

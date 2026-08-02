@@ -23,6 +23,56 @@ Each milestone produces an analytical output that (a) replicates or exceeds a sp
 
 **Causal inference disclaimer:** This pipeline does portfolio characterization, outcomes linkage, and fiscal estimation. It does NOT do impact evaluation in the counterfactual sense.
 
+## Crosswalk: policy areas (A–F) ↔ milestones (M1–M5)
+
+This repo carries two framings of the same work, and they were previously
+maintained independently. [docs/research-questions.md](research-questions.md)
+organizes by **policy area** (A–F) — who the answer serves. This document
+organizes by **delivery milestone** (M1–M5) — what gets built, in what order.
+Neither supersedes the other: research-questions.md is the north star for
+*whether a question is worth answering*, this document is the plan for
+*what to build next*.
+
+| Policy area | Milestone | Notes |
+|-------------|-----------|-------|
+| **A1–A2** capability lens (CET concentration map, DIB integration) | M3 + M1 | Depends on M3's classifier for CET areas and M1's transition linkage |
+| **A2** awardee-as-IP-chokepoint (A-CP6) | M2 ext | Uses the patent assignment chains built for M2 |
+| **A3** DoD follow-on funding multiplier | **M1** | The flagship M1 output |
+| **A1/A3/A4** vulnerability & choke-point set (A-CP1–A-CP14) | **none** | See "Areas without a milestone" below |
+| **B1–B4** transitions, commercialization, Phase III | **M1** | Transition detection is the M1 linkage |
+| **C1** cross-agency portfolio composition | **M3** | |
+| **C2** patent-to-award linkage | **M2** | Built |
+| **C3** marginal cost per patent, spillover multiplier | **M2** | The missing analytical layer |
+| **D1–D3** economic & fiscal impact | **M4** | Substantially complete |
+| **E1–E2** SBIR identification, entity resolution | foundation | Prerequisite for M1, M2, M4; no milestone of its own |
+| **E3–E5** data quality, imputation, source evaluation | foundation | Same — enabling work, not a milestone deliverable |
+| **E6** continuous monitoring, rolling analytics | **M5** | |
+| **F1–F4** capital formation & entrepreneurial finance | **none** | See below |
+
+### Areas without a milestone
+
+Two substantial bodies of work in the question inventory have no home in
+M1–M5. Both have merged implementation behind them, so this is a gap in the
+plan rather than in the code:
+
+- **F. Capital formation & entrepreneurial finance** — Form D pipeline, UCC-1
+  secured-debt analysis, the unified capital-event timeline, M&A exit rates,
+  private-to-SBIR leverage, NVCA baseline comparison. M4's linkage table
+  gestures at this ("revenue, employment, VC, acquisitions") as *inputs* to
+  fiscal estimation, but Section F has since grown into an analytical program
+  with its own literature (Lerner, Howell, Kortum & Lerner, NVCA) and its own
+  published outputs under `docs/research/`.
+- **A's vulnerability lens** — the choke-point set A-CP1–A-CP14, including the
+  flagship A-CP13 fragility watchlist. Grounded in Pub. L. 119-83 and the DoD
+  NDIS. Most of it is still a research target, but the DoD classified-subset
+  baseline is built and reported.
+
+**This needs a decision, not a default.** Either these become M6/M7, or the
+plan states explicitly that they are pursued outside the milestone structure.
+Until that is resolved, scope reviews should treat "serves a documented A–F
+question" as sufficient justification on its own — do not reject F-area or
+choke-point work merely for lacking a milestone number.
+
 ## Milestone → Codebase Status
 
 ### M1: DOD Follow-on Funding Multiplier Replication — SUBSTANTIALLY BUILT

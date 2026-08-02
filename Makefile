@@ -199,17 +199,27 @@ test-s3: ## Test S3 integration (requires AWS credentials)
 	@$(call info,Testing S3 integration)
 	$(call run,uv run pytest tests/integration/test_s3_operations.py -v -m s3)
 
+# Paths CI lints and type-checks. Keep in sync with .github/workflows/ci.yml
+# (jobs: `Run Ruff lint` / `Run Ruff format check` / `package-type-checks`).
+LINT_PATHS := sbir_etl packages/sbir-analytics/sbir_analytics packages/sbir-ml/sbir_ml packages/sbir-graph/sbir_graph tests
+
 .PHONY: lint
-lint: ## Run linting and type checking
+lint: ## Run linting and type checking (same paths as CI)
 	@$(call info,Running linting and type checking)
-	$(call run,uv run ruff check .)
-	$(call run,uv run mypy sbir_etl/)
+	$(call run,uv run ruff check $(LINT_PATHS))
+	$(call run,uv run ruff format --check $(LINT_PATHS))
+	$(call run,uv run mypy sbir_etl)
+	$(call run,uv run mypy packages/sbir-graph/sbir_graph)
+	@$(call info,Non-blocking package type checks (CI allows these to fail))
+	-$(call run,uv run mypy packages/sbir-analytics/sbir_analytics)
+	-$(call run,uv run mypy packages/sbir-ml/sbir_ml)
+	$(call run,uv run python scripts/ci/check_removed_src_references.py)
 
 .PHONY: format
 format: ## Format code
 	@$(call info,Formatting code)
-	$(call run,uv run ruff format .)
-	$(call run,uv run ruff check --fix .)
+	$(call run,uv run ruff format $(LINT_PATHS))
+	$(call run,uv run ruff check --fix $(LINT_PATHS))
 
 .PHONY: dev
 dev: ## Run Dagster dev server locally
