@@ -72,6 +72,21 @@ reference on the contract). Not pursued.
 
 **Spike verdict: STOP confirmed on both the award-text and solicitation angles.**
 
+## Population insight (why the solicitation source is structurally unavailable)
+
+A solicitation pointer lives on **competed** procurement actions; a canonical Phase III is
+sole-source (SBIR-derived, no re-competition), so it has none. Measured across 35 GT
+contracts: **sole-source 0% pointer**, SBIR-set-aside 17%, overall 17%. The deeper
+consequence: our ground-truth set was built by matching the **"SBIR PHASE III" marker**,
+so it is the *marked, mostly-sole-source* population — which is exactly the population that
+**lacks** a solicitation. The solicitation-rich transitions are the **competed / unmarked
+(dark)** ones, which a text-marker label method structurally excludes. So the two
+populations — *text-rich* and *text-labelable* — are nearly disjoint. Enrichment cannot be
+rescued for the marked set, and the unmarked/dark set is a **separate detection target**
+needing a different label source (solicitation→award genealogy), not text enrichment.
+This bounds the deadline-primary verdict to the *marked* Phase III population validated in
+#481.
+
 ## Decision → pivot to T3
 
 The primary lever is **description-independent lineage features (T3)**, not text.
