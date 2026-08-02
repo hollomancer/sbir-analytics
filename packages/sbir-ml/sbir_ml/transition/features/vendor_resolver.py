@@ -38,6 +38,7 @@ from typing import Any
 
 from loguru import logger
 
+from sbir_etl.identity import CompanyNameProfile, normalize_company_name
 from sbir_ml.transition.features.vendor_crosswalk import _fuzzy_score as _crosswalk_fuzzy_score
 
 
@@ -132,26 +133,7 @@ class VendorResolver:
         """Normalize company names for indexing and exact comparisons."""
         if name is None:
             return ""  # type: ignore[unreachable]
-        # Basic normalization: uppercase, trim, collapse whitespace, strip punctuation-ish chars
-        n = " ".join(name.strip().split())
-        n = n.replace(",", " ").replace(".", " ").replace("/", " ").replace("&", " AND ")
-        n = n.lower()
-        # Normalize common business suffix variants so "corp" vs "corporation" etc. compare closely.
-        replacements = {
-            "incorporated": "inc",
-            "inc": "inc",
-            "corporation": "corp",
-            "corp": "corp",
-            "company": "co",
-            "co": "co",
-            "limited": "ltd",
-            "ltd": "ltd",
-            "llc": "llc",
-            "llp": "llp",
-        }
-        tokens = n.split()
-        normalized_tokens = [replacements.get(tok, tok) for tok in tokens]
-        return " ".join(normalized_tokens)
+        return normalize_company_name(name, profile=CompanyNameProfile.VENDOR_RESOLVER_V1)
 
     def _load_records(self, records: Iterable[VendorRecord]) -> None:
         """Populate indices from the provided VendorRecord iterable."""
