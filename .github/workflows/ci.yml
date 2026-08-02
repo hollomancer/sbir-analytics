@@ -50,7 +50,6 @@ jobs:
       transition: ${{ steps.detect.outputs.transition }}
       docker: ${{ steps.detect.outputs.docker }}
       workflows: ${{ steps.detect.outputs.workflows }}
-      infrastructure: ${{ steps.detect.outputs.infrastructure }}
       s3: ${{ steps.detect.outputs.s3 }}
       docs-only: ${{ steps.detect.outputs.docs-only }}
     steps:
@@ -93,8 +92,6 @@ jobs:
             workflows:
               - '.github/workflows/**'
               - '.github/actions/**'
-            infrastructure:
-              - 'infrastructure/cdk/**'
             s3:
               - 'sbir_etl/utils/cloud_storage.py'
               - 'tests/integration/test_s3_operations.py'
@@ -227,58 +224,6 @@ jobs:
           # Check for hardcoded secrets (basic check)
           if grep -rE "(password|secret|token)\s*[:=]\s*['\"][^$]" .github/workflows/ --include="*.yml" | grep -v "pragma: allowlist"; then
             echo "::error::Potential hardcoded secrets found in workflows"
-            exit 1
-          fi
-
-  infrastructure-validate:
-    name: Validate CDK Infrastructure
-    needs: [detect-changes]
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    # validation_app.py injects placeholder VPC attributes, so synthesis is
-    # deterministic and credential-free. Validate every push, but avoid adding
-    # this job to unrelated pull requests.
-    if: |
-      needs.detect-changes.outputs.docs-only != 'true' &&
-      (github.event_name != 'pull_request' || needs.detect-changes.outputs.infrastructure == 'true')
-    steps:
-      - uses: actions/checkout@v7
-
-      - name: Setup Python
-        uses: actions/setup-python@v7
-        with:
-          python-version: "3.11"
-
-      - name: Setup Node.js (for CDK CLI)
-        uses: actions/setup-node@v7
-        with:
-          node-version: "22"
-
-      - name: Install CDK dependencies
-        working-directory: infrastructure/cdk
-        run: |
-          python -m venv .venv
-          source .venv/bin/activate
-          pip install -r requirements.txt
-          npm install -g aws-cdk
-
-      - name: CDK Synth (validate templates)
-        working-directory: infrastructure/cdk
-        env:
-          CDK_DEFAULT_ACCOUNT: "123456789012"
-          CDK_DEFAULT_REGION: "us-east-2"
-        run: |
-          source .venv/bin/activate
-          echo "## 🏗️ CDK Validation" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-
-          # Use explicit placeholder VPC attributes instead of an account
-          # lookup. Production deploys continue to use app.py and the real
-          # default-VPC lookup.
-          if cdk synth --app "python validation_app.py" --quiet 2>&1; then
-            echo "✅ CDK synth successful" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "❌ CDK synth failed" >> $GITHUB_STEP_SUMMARY
             exit 1
           fi
 
@@ -1121,7 +1066,7 @@ jobs:
 
   ci-summary:
     name: CI Summary
-    needs: [detect-changes, code-quality, verify-setup-script, infrastructure-validate, test, container-build-test, performance-check, e2e-docker, transition-mvp, test-s3-integration]
+    needs: [detect-changes, code-quality, verify-setup-script, test, container-build-test, performance-check, e2e-docker, transition-mvp, test-s3-integration]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -1137,7 +1082,6 @@ jobs:
           echo "| 🔍 Detect Changes | ${{ needs.detect-changes.result == 'success' && '✅' || '❌' }} ${{ needs.detect-changes.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| 🧹 Code Quality | ${{ needs.code-quality.result == 'success' && '✅' || needs.code-quality.result == 'skipped' && '⏭️' || '❌' }} ${{ needs.code-quality.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| ✅ Verify Setup | ${{ needs.verify-setup-script.result == 'success' && '✅' || needs.verify-setup-script.result == 'skipped' && '⏭️' || '❌' }} ${{ needs.verify-setup-script.result }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| 🏗️ CDK Infrastructure | ${{ needs.infrastructure-validate.result == 'success' && '✅' || needs.infrastructure-validate.result == 'skipped' && '⏭️' || '❌' }} ${{ needs.infrastructure-validate.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| 🧪 Tests (3 suites) | ${{ needs.test.result == 'success' && '✅' || needs.test.result == 'skipped' && '⏭️' || '❌' }} ${{ needs.test.result }} |" >> $GITHUB_STEP_SUMMARY
 
           # Conditional jobs
@@ -1168,7 +1112,6 @@ jobs:
       - name: Check for failures
         if: |
           needs.code-quality.result == 'failure' ||
-          needs.infrastructure-validate.result == 'failure' ||
           needs.test.result == 'failure' ||
           needs.container-build-test.result == 'failure' ||
           needs.performance-check.result == 'failure' ||

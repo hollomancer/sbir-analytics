@@ -29,9 +29,6 @@ outputs:
   workflows:
     description: Whether GitHub Actions workflow files changed
     value: ${{ steps.filter.outputs.workflows }}
-  infrastructure:
-    description: Whether infrastructure/CDK files changed
-    value: ${{ steps.filter.outputs.infrastructure }}
   s3:
     description: Whether S3 integration-related files changed
     value: ${{ steps.filter.outputs.s3 }}

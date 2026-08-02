@@ -18,9 +18,8 @@ This directory documents the current experimental deployment path for the SBIR E
 | Run the pipeline locally, iterate on code | [Docker guide](../development/docker.md) — `make docker-up-dev` |
 | Run a one-off job without Docker | [Getting started](../getting-started/README.md) — `make dev` + Dagster UI |
 | Private always-on server on a Mac mini (tailnet-only) | [Mac mini server](mac-mini-server.md) — `make server-up` |
-| Scheduled/automated runs (personal cloud) | GitHub Actions — see Quick Start below |
-| Heavy ML or fiscal jobs that need more RAM | [AWS Batch](aws-batch-analysis-jobs.md) |
-| Reproduce the author's optional cloud setup | [AWS Deployment](aws-deployment.md) |
+| Scheduled/automated runs | Dagster schedules on the Mac mini — see [Mac mini server](mac-mini-server.md) |
+| Heavy ML or fiscal jobs that need more RAM | Run on the Mac mini with `DAGSTER_LOAD_HEAVY_ASSETS=true` |
 
 ## Deployment Overview
 
@@ -79,8 +78,8 @@ The documented approach can use GitHub Actions for orchestration with optional A
 
 | Guide | Description |
 |-------|-------------|
-| [AWS Deployment](aws-deployment.md) | Lambda, Step Functions, S3 setup |
-| [AWS Batch Jobs](aws-batch-analysis-jobs.md) | Heavy ML/fiscal analysis jobs |
+| [Mac mini server](mac-mini-server.md) | Tailnet-only always-on deployment |
+| [AWS decommission plan](aws-decommission-plan.md) | Retiring the AWS data plane |
 | [Docker](../development/docker.md) | Local development setup |
 | [Neo4j Runbook](neo4j-runbook.md) | Neo4j operations |
 | [GitHub Actions ML](github-actions-ml.md) | ML job configuration |
