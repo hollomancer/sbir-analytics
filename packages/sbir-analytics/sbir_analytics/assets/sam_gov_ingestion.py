@@ -15,10 +15,7 @@ from dagster import AssetExecutionContext, MetadataValue, Output, asset
 from sbir_etl.config.loader import get_config
 from sbir_etl.exceptions import ExtractionError
 from sbir_etl.extractors.sam_gov import SAMGovExtractor
-from sbir_etl.utils.cloud_storage import (
-    find_latest_sam_gov_parquet,
-    get_s3_bucket_from_env,
-)
+from sbir_etl.utils.cloud_storage import find_latest_sam_gov_parquet
 
 from ._ingestion_utils import _resolve_tiered_path, stamp_provenance
 
@@ -30,21 +27,17 @@ def _import_sam_gov_entities(
     Helper to import SAM.gov entities with parquet-first, API-fallback strategy.
 
     Priority:
-    1. Try S3 parquet file (primary)
-    2. Try local parquet file (fallback)
+    1. Try the configured local parquet file
+    2. Try discovery under the data root
     3. Fall back to API if parquet fails
     4. Fail if all sources fail
     """
     config = get_config()
     sam_config = config.extraction.sam_gov
-    s3_bucket = get_s3_bucket_from_env()
-
-    parquet_path, s3_parquet_url = _resolve_tiered_path(
+    parquet_path, discovered_parquet = _resolve_tiered_path(
         context,
-        s3_finder=lambda b: find_latest_sam_gov_parquet(bucket=b),
+        discover=find_latest_sam_gov_parquet,
         local_path_getter=lambda: Path(sam_config.parquet_path),
-        s3_bucket=s3_bucket,
-        use_s3=sam_config.use_s3_first,
         label="SAM.gov parquet",
     )
 
@@ -57,7 +50,7 @@ def _import_sam_gov_entities(
             "Starting SAM.gov entity extraction from parquet",
             extra={
                 "parquet_path": str(parquet_path),
-                "source": "S3_parquet" if s3_parquet_url else "local_parquet",
+                "source": "discovered_parquet" if discovered_parquet else "local_parquet",
             },
         )
 
@@ -65,7 +58,6 @@ def _import_sam_gov_entities(
             extractor = SAMGovExtractor()
             df = extractor.load_parquet(
                 parquet_path,
-                use_s3_first=False,
                 columns=SAMGovExtractor.ENRICHMENT_COLUMNS,
             )
             parquet_success = True
@@ -89,7 +81,7 @@ def _import_sam_gov_entities(
                 component="assets.sam_gov_ingestion",
                 operation="import_entities",
                 details={
-                    "s3_attempted": s3_bucket is not None,
+                    "discovery_attempted": discovered_parquet is not None,
                     "parquet_path_attempted": str(parquet_path) if parquet_path else None,
                     "local_path_attempted": sam_config.parquet_path,
                 },
@@ -112,7 +104,7 @@ def _import_sam_gov_entities(
             details={
                 "parquet_path": str(parquet_path) if parquet_path else None,
                 "local_path": sam_config.parquet_path,
-                "s3_bucket": s3_bucket,
+                "discovered_parquet": discovered_parquet,
             },
         )
 
@@ -126,7 +118,7 @@ def _import_sam_gov_entities(
     )
 
     # Stamp data source provenance on every record
-    stamp_provenance(df, "sam.gov", str(s3_parquet_url or parquet_path))
+    stamp_provenance(df, "sam.gov", str(discovered_parquet or parquet_path))
 
     # Create metadata
     metadata: dict[str, Any] = {
@@ -157,7 +149,7 @@ def raw_sam_gov_entities(context: AssetExecutionContext) -> Output[pd.DataFrame]
     Load SAM.gov entity records from parquet file.
 
     Data Source Priority:
-    1. PRIMARY: S3 parquet file (if configured and use_s3_first=True)
+    1. PRIMARY: local parquet file, then discovery under the data root
     2. FALLBACK: Local parquet file (from config.extraction.sam_gov.parquet_path)
     3. FAIL: If parquet unavailable (API fallback not implemented for bulk data)
 

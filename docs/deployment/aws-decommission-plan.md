@@ -121,6 +121,8 @@ schedule is enabled, per the runbook.
 
 ## Phase 3 — Strip S3 from library code
 
+**Status: done.** cloud_storage.py is local-only (709 -> 271 lines).
+
 `sbir_etl/utils/cloud_storage.py` (709 lines) has 16 non-test import sites, so
 keep the function names and gut the S3 branches rather than deleting the module
 and touching every caller.
@@ -157,6 +159,8 @@ the SSD.
 
 ## Phase 4 — Rescope CI to containers and tests
 
+**Status: done.** Seven workflows became five.
+
 GitHub Actions becomes lint, typecheck, test, and image build only.
 
 - **Delete** `.github/workflows/data-refresh.yml` (802 lines) and
@@ -179,6 +183,8 @@ actions, and `build-images.yml`. That layer is already correctly scoped.
 
 ## Phase 5 — Tests
 
+**Status: done.**
+
 Delete outright:
 
 - `tests/integration/test_s3_operations.py` (200 lines, real boto3 against a live
@@ -197,6 +203,10 @@ Verify: `pytest -v --cov=sbir_etl` green; no skips attributable to missing AWS
 credentials.
 
 ## Phase 6 — Dependencies and teardown
+
+**Status: blocked on Phase 0.** boto3 is retained because the opt-in S3 mirror
+paths in scripts/ still use it; both go together once the bucket is drained
+and torn down.
 
 - Drop `boto3` (`pyproject.toml:41`), `boto3-stubs[s3]` (line 67), `s3path`, and
   any `pip install awscli` steps.

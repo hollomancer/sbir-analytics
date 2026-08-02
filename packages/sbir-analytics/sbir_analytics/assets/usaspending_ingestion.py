@@ -18,7 +18,6 @@ from sbir_etl.exceptions import ExtractionError, FileSystemError
 from sbir_etl.extractors.usaspending import DuckDBUSAspendingExtractor
 from sbir_etl.utils.cloud_storage import (
     find_latest_usaspending_dump,
-    get_s3_bucket_from_env,
     resolve_data_path,
 )
 
@@ -35,21 +34,18 @@ def _import_usaspending_table(
     Helper to import a USAspending table with S3-first, API-fallback strategy.
 
     Priority:
-    1. Try S3 database dump (primary)
-    2. Fall back to API if S3 fails
+    1. Try the configured local dump, then discovery under the data root
+    2. Fall back to API if no dump is available
     3. Fail if both fail
     """
     config = get_config()
-    s3_bucket = get_s3_bucket_from_env()
-
-    dump_path, s3_dump_url = _resolve_tiered_path(
+    dump_path, discovered_dump = _resolve_tiered_path(
         context,
-        s3_finder=lambda b: (
-            find_latest_usaspending_dump(bucket=b, database_type="test")
-            or find_latest_usaspending_dump(bucket=b, database_type="full")
+        discover=lambda: (
+            find_latest_usaspending_dump(database_type="test")
+            or find_latest_usaspending_dump(database_type="full")
         ),
         local_path_getter=lambda: config.paths.resolve_path("usaspending_dump_file"),
-        s3_bucket=s3_bucket,
         label="USAspending dump",
     )
 
@@ -63,7 +59,7 @@ def _import_usaspending_table(
             extra={
                 "dump_path": str(dump_path),
                 "duckdb_path": config.duckdb.database_path,
-                "source": "S3_dump" if s3_dump_url else "local_dump",
+                "source": "S3_dump" if discovered_dump else "local_dump",
             },
         )
 
@@ -92,7 +88,7 @@ def _import_usaspending_table(
                 operation="import_table",
                 details={
                     "table_name": table_name,
-                    "s3_attempted": s3_bucket is not None,
+                    "discovery_attempted": discovered_dump is not None,
                     "dump_path_attempted": str(dump_path) if dump_path else None,
                 },
             )
@@ -114,7 +110,7 @@ def _import_usaspending_table(
             details={
                 "dump_path": str(dump_path) if dump_path else None,
                 "table_name": table_name,
-                "s3_bucket": s3_bucket,
+                "discovered_dump": discovered_dump,
             },
         )
 
@@ -166,13 +162,12 @@ def raw_usaspending_recipients(context: AssetExecutionContext) -> Output[pd.Data
     """
     from sbir_etl.utils.cloud_storage import find_latest_recipient_lookup_parquet
 
-    s3_bucket = get_s3_bucket_from_env()
     df = None
     parquet_url = None
 
     # PRIORITY 1: Try parquet extract (fast, ~500MB)
-    if s3_bucket:
-        parquet_url = find_latest_recipient_lookup_parquet(bucket=s3_bucket)
+    if True:
+        parquet_url = find_latest_recipient_lookup_parquet()
         if parquet_url:
             try:
                 context.log.info(f"Loading recipient_lookup from parquet: {parquet_url}")

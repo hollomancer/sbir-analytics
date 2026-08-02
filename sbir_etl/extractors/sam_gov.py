@@ -13,7 +13,7 @@ import pandas as pd
 from loguru import logger
 
 from ..config.loader import get_config
-from ..utils.cloud_storage import get_s3_bucket_from_env, resolve_data_path
+from ..utils.cloud_storage import find_latest_sam_gov_parquet, resolve_data_path
 
 
 class SAMGovExtractor:
@@ -46,15 +46,13 @@ class SAMGovExtractor:
         self,
         parquet_path: Path | str | None = None,
         *,
-        use_s3_first: bool | None = None,
         columns: list[str] | None = None,
     ) -> pd.DataFrame:
         """
         Load SAM.gov entity records from parquet file.
 
         Args:
-            parquet_path: Path to parquet file (local or S3 URL). If None, uses config.
-            use_s3_first: Whether to try S3 first. If None, uses config setting.
+            parquet_path: Path to parquet file. If None, uses config.
             columns: Specific columns to load (reduces memory). If None, loads all columns.
                      Use SAMGovExtractor.ENRICHMENT_COLUMNS for standard enrichment.
 
@@ -67,34 +65,16 @@ class SAMGovExtractor:
         if parquet_path is None:
             parquet_path = self.sam_config.parquet_path
 
-        if use_s3_first is None:
-            use_s3_first = self.sam_config.use_s3_first
-
-        # Build S3 path if configured
-        s3_url = None
-        if use_s3_first:
-            s3_bucket = get_s3_bucket_from_env()
-            if s3_bucket:
-                # Try to find latest in S3
-                from ..utils.cloud_storage import find_latest_sam_gov_parquet
-
-                s3_url = find_latest_sam_gov_parquet(bucket=s3_bucket)
-                if s3_url:
-                    logger.info(f"Found SAM.gov parquet in S3: {s3_url}")
-
-        # Resolve path (handles S3 download if needed)
+        # Fall back to discovery under the data root when the configured path
+        # is absent, so a dated parquet still resolves.
         resolved_path: Path | None = None
-        if s3_url:
-            try:
-                resolved_path = resolve_data_path(
-                    s3_url,
-                    local_fallback=Path(parquet_path) if parquet_path else None,
-                )
-                logger.info(f"Using S3 file: {s3_url} -> {resolved_path}")
-            except Exception as e:
-                logger.warning(f"S3 resolution failed: {e}, falling back to local")
-                resolved_path = Path(parquet_path) if parquet_path else None
-        else:
+        try:
+            discovered = find_latest_sam_gov_parquet()
+            resolved_path = resolve_data_path(
+                parquet_path or "",
+                local_fallback=Path(discovered) if discovered else None,
+            )
+        except FileNotFoundError:
             resolved_path = Path(parquet_path) if parquet_path else None
 
         if not resolved_path or not resolved_path.exists():

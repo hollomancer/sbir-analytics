@@ -211,8 +211,6 @@ def raw_sbir_awards(context: AssetExecutionContext) -> Output[pd.DataFrame]:
         csv_path=sbir_config.csv_path,
         duckdb_path=sbir_config.database_path,
         table_name=sbir_config.table_name,
-        csv_path_s3=sbir_config.csv_path_s3,
-        use_s3_first=sbir_config.use_s3_first,
     )
 
     # Import CSV to DuckDB with performance monitoring
@@ -315,7 +313,7 @@ def raw_sbir_awards(context: AssetExecutionContext) -> Output[pd.DataFrame]:
 
     # Stamp data source provenance on every record
     # Prefer the original S3 URL over the resolved temp/cache path
-    stamp_provenance(df, "sbir.gov", str(sbir_config.csv_path_s3 or extractor.csv_path))
+    stamp_provenance(df, "sbir.gov", str(extractor.csv_path))
 
     # Update metadata to reflect normalized columns
     metadata["normalized_columns"] = MetadataValue.json(list(df.columns))

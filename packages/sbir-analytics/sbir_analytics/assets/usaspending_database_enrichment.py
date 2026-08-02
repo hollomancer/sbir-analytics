@@ -20,7 +20,7 @@ from sbir_etl.models.sbir_identification import (
     EXCLUSIVE_SBIR_ALNS,
     SBIR_RESEARCH_CODES,
 )
-from sbir_etl.utils.cloud_storage import find_latest_usaspending_dump, get_s3_bucket_from_env
+from sbir_etl.utils.cloud_storage import find_latest_usaspending_dump, get_data_root
 
 
 def _table_has_column(
@@ -117,17 +117,9 @@ def _find_sbir_gov_bulk_file() -> Path | None:
     1. S3 path: ``raw/sbir_gov/awards.json``
     2. Local path: ``data/raw/sbir_gov/awards.json``
     """
-    from sbir_etl.utils.cloud_storage import resolve_data_path
-
-    s3_bucket = get_s3_bucket_from_env()
-    if s3_bucket:
-        s3_path = f"s3://{s3_bucket}/raw/sbir_gov/awards.json"
-        try:
-            resolved = resolve_data_path(s3_path)
-            if resolved.exists():
-                return resolved
-        except Exception:
-            pass
+    discovered = get_data_root() / "raw" / "sbir_gov" / "awards.json"
+    if discovered.exists():
+        return discovered
 
     local = Path("data/raw/sbir_gov/awards.json")
     if local.exists():
@@ -256,27 +248,17 @@ def sbir_relevant_usaspending_transactions(
     """
     config = get_config()
 
-    # PRIMARY: Get dump file path from S3 (required)
-    s3_bucket = get_s3_bucket_from_env()
-
-    if not s3_bucket:
-        raise ExtractionError(
-            "S3 bucket not configured. Set S3_BUCKET or SBIR_ANALYTICS_S3_BUCKET env var.",
-            component="assets.usaspending_database_enrichment",
-            operation="resolve_dump_path",
-            details={"env_checked": ["S3_BUCKET", "SBIR_ANALYTICS_S3_BUCKET"]},
-        )
-
-    # Find the latest dump file in S3
-    # Format: raw/usaspending/database/YYYY-MM-DD/usaspending-db_YYYYMMDD.zip
+    # Find the latest dump under the data root.
     # Prefer test database for faster processing, fallback to full
-    dump_path = find_latest_usaspending_dump(
-        bucket=s3_bucket, database_type="test"
-    ) or find_latest_usaspending_dump(bucket=s3_bucket, database_type="full")
+    dump_path = find_latest_usaspending_dump(database_type="test") or find_latest_usaspending_dump(
+        database_type="full"
+    )
 
     if not dump_path:
         # FALLBACK: Try API if S3 dump not available
-        context.log.warning("No S3 dump found. Attempting API fallback (limited functionality)...")
+        context.log.warning(
+            "No local dump found. Attempting API fallback (limited functionality)..."
+        )
         # Note: API fallback would need custom implementation for transaction queries
         # For now, fail with clear error
         raise ExtractionError(
@@ -286,13 +268,12 @@ def sbir_relevant_usaspending_transactions(
             component="assets.usaspending_database_enrichment",
             operation="resolve_dump_path",
             details={
-                "s3_bucket": s3_bucket,
-                "s3_prefix": "raw/usaspending/database/",
+                "search_root": str(get_data_root() / "usaspending"),
                 "database_types_checked": ["test", "full"],
             },
         )
 
-    context.log.info(f"Using latest S3 dump (PRIMARY): {dump_path}")
+    context.log.info(f"Using latest local dump (PRIMARY): {dump_path}")
 
     context.log.info(
         "Extracting SBIR-relevant transactions from USAspending dump",
@@ -519,31 +500,21 @@ def sbir_company_usaspending_recipients(
     """
     config = get_config()
 
-    # PRIMARY: Get dump file path from S3 (required)
-    s3_bucket = get_s3_bucket_from_env()
-
-    if not s3_bucket:
-        raise ExtractionError(
-            "S3 bucket not configured. Set S3_BUCKET or SBIR_ANALYTICS_S3_BUCKET env var.",
-            component="assets.usaspending_database_enrichment",
-            operation="resolve_dump_path",
-        )
-
-    # Find the latest dump file in S3
-    dump_path = find_latest_usaspending_dump(
-        bucket=s3_bucket, database_type="test"
-    ) or find_latest_usaspending_dump(bucket=s3_bucket, database_type="full")
+    # Find the latest dump under the data root
+    dump_path = find_latest_usaspending_dump(database_type="test") or find_latest_usaspending_dump(
+        database_type="full"
+    )
 
     if not dump_path:
         raise ExtractionError(
-            "USAspending database dump not found in S3. "
-            "S3 dump is required for recipient lookup queries.",
+            "USAspending database dump not found. "
+            "A local dump is required for recipient lookup queries.",
             component="assets.usaspending_database_enrichment",
             operation="resolve_dump_path",
-            details={"s3_bucket": s3_bucket},
+            details={"search_root": str(get_data_root() / "usaspending")},
         )
 
-    context.log.info(f"Using latest S3 dump (PRIMARY): {dump_path}")
+    context.log.info(f"Using latest local dump (PRIMARY): {dump_path}")
 
     context.log.info("Extracting recipients for SBIR companies")
 
@@ -642,24 +613,16 @@ def sbir_grant_transactions(
     """
     config = get_config()
 
-    s3_bucket = get_s3_bucket_from_env()
-    if not s3_bucket:
-        raise ExtractionError(
-            "S3 bucket not configured.",
-            component="assets.usaspending_database_enrichment",
-            operation="sbir_grants",
-        )
-
-    dump_path = find_latest_usaspending_dump(
-        bucket=s3_bucket, database_type="test"
-    ) or find_latest_usaspending_dump(bucket=s3_bucket, database_type="full")
+    dump_path = find_latest_usaspending_dump(database_type="test") or find_latest_usaspending_dump(
+        database_type="full"
+    )
 
     if not dump_path:
         raise ExtractionError(
             "USAspending database dump not found in S3.",
             component="assets.usaspending_database_enrichment",
             operation="sbir_grants",
-            details={"s3_bucket": s3_bucket},
+            details={"search_root": str(get_data_root() / "usaspending")},
         )
 
     context.log.info(f"Extracting SBIR grants from dump: {dump_path}")

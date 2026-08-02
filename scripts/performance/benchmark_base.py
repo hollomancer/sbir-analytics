@@ -45,7 +45,6 @@ def load_sample_data(sample_size: int | None = None) -> tuple[pd.DataFrame, int]
             csv_path=sbir_config.csv_path,
             duckdb_path=":memory:",
             table_name="sbir_awards",
-            use_s3_first=sbir_config.use_s3_first,
         )
         import_metadata = extractor.import_csv()
         total_records = import_metadata["row_count"]
