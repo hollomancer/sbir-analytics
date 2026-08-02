@@ -4,9 +4,11 @@
 Phase II award-grain, and SBIR.gov source-row-grain amendments below were approved before
 any result was materialized. The source layer and prior-grain implementation now live in a
 separate prerequisite change. The Phase 1 census is implemented and fixture-verified;
-production census materialization is deliberately paused until the Phase 2 negative-control
-eligibility problem is resolved, so no census count is quoted before its validation design
-can run.
+on 2026-08-02, the repository owner superseded only the prior sequencing pause and
+authorized attempting production materialization subject to the existing post-write
+one-factor sensitivity check. Unresolved negative-control and placebo questions remain
+deferred; this change does not authorize a headline cell or interpretation as validated
+Phase III.
 **Design date:** 2026-07-31.
 **Approval date:** 2026-08-01.
 **Provenance-amendment approval date:** 2026-08-01.
@@ -15,9 +17,10 @@ can run.
 **Research-question anchors:** B2 (federal-procurement transition), B3 (Phase II → III
 latency and coding undercount), and E1 (SBIR/STTR identification) in
 [`docs/research-questions.md`](../../docs/research-questions.md).
-**Answerability label after Phase 1 implementation:** **[Implementation complete,
-materialization paused — source and prior-grain prerequisites are separated; negative-
-control eligibility must be resolved before any census count is materialized or quoted]**.
+**Answerability label after Phase 1 implementation:** **[Phase 1 implementation complete;
+production materialization authorized but not yet verified — report only the complete audit
+tables, and do not interpret the proxy as discriminative or statutory Phase III until
+negative-control and placebo evidence exists]**.
 
 No census, sample count, coverage count, drop-off count, or sensitivity result was
 computed while writing this note.

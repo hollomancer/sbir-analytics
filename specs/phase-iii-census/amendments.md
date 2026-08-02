@@ -77,3 +77,23 @@ files before materialization.
   six-cell sensitivity result, negative-control result, or placebo result had been
   materialized or seen. The amendment was prompted by design review of the freeze and the
   nested grid, not by an outcome.
+
+## Revision 5 — Phase 1 materialization sequencing
+
+- **Approved:** 2026-08-02.
+- **Git-history anchor:** The commit that first adds Revision 5 to this file is the
+  approval-record anchor; its identifier is intentionally not embedded in the content it
+  hashes.
+- **Reason:** The repository owner approved materializing the frozen Phase 1 census now
+  while deferring unresolved negative-control, matching, balance, control-reporting, and
+  placebo questions as explicit later questions. This replaces the process pause recorded
+  in the design status; it does not authorize selecting or quoting a headline cell or
+  treating proxy survivors as validated Phase III.
+- **Criteria impact:** None. No inclusion clause, clause order, sensitivity cell, window
+  endpoint, agency predicate, estimand, output metric, source field, join, or diagnostic
+  rule changed. Phase 2 and Phase 3 remain gated by their unresolved questions.
+- **Visibility at approval and recording:** At owner approval, source/provenance validation
+  and implementation/CI status were visible. When this approval was memorialized,
+  February source-extraction progress was also visible. No exact-UEI pair count,
+  cumulative drop-off count, six-cell sensitivity result, negative-control result, or
+  placebo result had been materialized or seen.
