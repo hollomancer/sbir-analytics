@@ -18,7 +18,7 @@ def test_download_script_help():
     )
 
     assert result.returncode == 0
-    assert "Download USPTO data to S3" in result.stdout
+    assert "Download USPTO data to a local directory" in result.stdout
     assert "--dataset" in result.stdout
     assert "patentsview" in result.stdout
     assert "assignments" in result.stdout

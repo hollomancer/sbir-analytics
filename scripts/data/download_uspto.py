@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
-"""Download USPTO data files to S3 or a local directory.
+"""Download USPTO data files to a local directory.
 
-Replaces the Lambda function with a script that runs on GitHub Actions
-(S3 mode) or a laptop (--local mode).
+Writes locally by default; uploads to S3 only when a bucket is given
+explicitly (or S3_BUCKET is set). The local file is always kept — S3 is a
+mirror, not the destination.
 
 Usage:
-    python scripts/data/download_uspto.py --dataset patentsview --table cpc --local data/raw/uspto/patentsview
-    python scripts/data/download_uspto.py --dataset patentsview --table patent   # streams to S3
+    python scripts/data/download_uspto.py --dataset patentsview --table cpc
+    python scripts/data/download_uspto.py --dataset patentsview --table patent --local /Volumes/SSDmini/sbir-analytics/data/raw/uspto
     python scripts/data/download_uspto.py --dataset assignments
     python scripts/data/download_uspto.py --dataset ai_patents
 
@@ -48,6 +49,7 @@ REPO = Path(__file__).resolve().parents[2]
 # Files are served via a mint-then-download flow (see module docstring); the
 # relational tables below belong to the PVGPATDIS bulk product.
 ODP_FILES_API = "https://api.uspto.gov/api/v1/datasets/products/files"
+DEFAULT_LOCAL_DIR = "data/raw/uspto"
 PATENTSVIEW_PRODUCT = "PVGPATDIS"  # PatentsView Granted Patent Disambiguated Data
 API_KEY_ENV_VAR = "USPTO_ODP_API_KEY"
 PATENTSVIEW_TABLES = {
@@ -290,11 +292,11 @@ def upload_to_s3(local_path: Path, s3_bucket: str, s3_key: str, source_url: str,
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Download USPTO data to S3 or a local directory",
+        description="Download USPTO data to a local directory",
         epilog="""
 Examples:
-  python scripts/data/download_uspto.py --dataset patentsview --table cpc --local data/raw/uspto/patentsview
-  python scripts/data/download_uspto.py --dataset patentsview --table patent
+  python scripts/data/download_uspto.py --dataset patentsview --table cpc
+  python scripts/data/download_uspto.py --dataset patentsview --table patent --local /Volumes/SSDmini/sbir-analytics/data/raw/uspto
   python scripts/data/download_uspto.py --dataset assignments
   python scripts/data/download_uspto.py --dataset patentsview --table assignee --s3-bucket my-bucket
         """,
@@ -318,14 +320,14 @@ Examples:
     )
     parser.add_argument(
         "--s3-bucket",
-        default=os.environ.get("S3_BUCKET", "sbir-etl-production-data"),
-        help="S3 bucket name (default: %(default)s)",
+        default=os.environ.get("S3_BUCKET"),
+        help="Also upload to this S3 bucket (optional; omit for local-only)",
     )
     parser.add_argument(
         "--local",
         metavar="DIR",
-        help="Write the file to this local directory instead of uploading to S3 "
-        "(no AWS credentials or boto3 needed)",
+        default=os.environ.get("USPTO_RAW_DIR", DEFAULT_LOCAL_DIR),
+        help=f"Directory to write the file into (default: {DEFAULT_LOCAL_DIR})",
     )
     parser.add_argument(
         "--api-key",
@@ -341,7 +343,9 @@ Examples:
     print(f"🚀 USPTO Data Download")
     print(f"   Dataset: {args.dataset}")
     print(f"   Date: {date_str}")
-    print(f"   Destination: {args.local if args.local else f's3://{args.s3_bucket}'}")
+    print(f"   Destination: {args.local}")
+    if args.s3_bucket:
+        print(f"   Mirroring to: s3://{args.s3_bucket}")
     print()
 
     try:
@@ -384,10 +388,9 @@ Examples:
             s3_key = f"raw/uspto/ai_patents/{date_str}/{filename}"
             print(f"   Format: CSV (2023 release, updated Jan 8, 2025)")
 
-        if args.local:
-            dest_path = Path(args.local) / filename
-        else:
-            dest_path = Path(f"/tmp/uspto_download_{os.getpid()}.zip")
+        dest_dir = Path(args.local)
+        dest_dir.mkdir(parents=True, exist_ok=True)
+        dest_path = dest_dir / filename
 
         print()
         if product_file:
@@ -398,17 +401,16 @@ Examples:
             result = stream_download(source_url, dest_path, session)
 
         upload_time = None
-        if not args.local:
+        if args.s3_bucket:
+            # The local file is the deliverable and is kept; S3 is only a mirror.
             upload_time = upload_to_s3(dest_path, args.s3_bucket, s3_key, source_url, result["sha256"])
-            dest_path.unlink(missing_ok=True)
 
         print()
         print("=" * 60)
         print("✅ Download Complete")
         print("=" * 60)
-        if args.local:
-            print(f"Local File: {dest_path}")
-        else:
+        print(f"Local File: {dest_path}")
+        if args.s3_bucket:
             print(f"S3 Location: s3://{args.s3_bucket}/{s3_key}")
         print(f"File Size: {result['size'] / 1024 / 1024:.1f} MB")
         print(f"SHA256: {result['sha256']}")

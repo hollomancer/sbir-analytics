@@ -139,8 +139,44 @@ if drift_asset_exists:
         description="Run CET drift detection asset",
     )
 
+# Source-data download schedules. These replace data-refresh.yml, whose cron
+# times they inherit, now that the server fetches upstream data itself rather
+# than consuming a copy staged by GitHub Actions.
+#
+# All four default to STOPPED: the runbook requires an operator to confirm a
+# manual run succeeds on the host before enabling a schedule, and SAM.gov and
+# USAspending additionally need credentials and disk headroom in place.
+_SOURCE_DOWNLOAD_SCHEDULES = (
+    ("sbir_awards_download_job", "weekly_sbir_awards_download", "0 9 * * 1", "SBIR awards"),
+    ("sam_gov_download_job", "monthly_sam_gov_download", "0 3 15 * *", "SAM.gov entities"),
+    ("usaspending_download_job", "monthly_usaspending_download", "0 2 6 * *", "USAspending dump"),
+    ("uspto_download_job", "monthly_uspto_download", "0 9 1 * *", "USPTO assignments"),
+)
+
+source_download_schedules = []
+for _job_name, _schedule_name, _default_cron, _label in _SOURCE_DOWNLOAD_SCHEDULES:
+    _discovered = _get_job(_job_name)
+    if _discovered is None:
+        LOG.warning("Source download job %s not discovered; skipping schedule", _job_name)
+        continue
+    _env_suffix = _schedule_name.upper()
+    source_download_schedules.append(
+        ScheduleDefinition(
+            job=_discovered,
+            cron_schedule=os.getenv(
+                f"SBIR_ETL__DAGSTER__SCHEDULES__{_env_suffix}_CRON", _default_cron
+            ),
+            name=_schedule_name,
+            description=f"Scheduled download of {_label} to local storage",
+            default_status=_schedule_status(
+                f"SBIR_ETL__DAGSTER__SCHEDULES__{_env_suffix}_ENABLED",
+                default_running=False,
+            ),
+        )
+    )
+
 # Create schedules only for available jobs
-schedules = [daily_schedule, weekly_core_refresh_schedule]
+schedules = [daily_schedule, weekly_core_refresh_schedule, *source_download_schedules]
 
 if cet_full_pipeline_job is not None:
     cet_full_pipeline_schedule = ScheduleDefinition(

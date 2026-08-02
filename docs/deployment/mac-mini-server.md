@@ -205,6 +205,33 @@ fails so recovery work cannot erase the backup.
   `SBIR_ETL__DAGSTER__SCHEDULES__WEEKLY_CORE_REFRESH_ENABLED=true` — do this
   only after a manual run of `core_refresh_job` succeeds.
 
+### Source-data downloads
+
+This host fetches upstream data itself; GitHub Actions no longer stages it.
+Four download jobs carry the cron times the retired `data-refresh.yml` used:
+
+| Schedule | Job | Cron (UTC) | Enable with |
+|---|---|---|---|
+| `weekly_sbir_awards_download` | `sbir_awards_download_job` | `0 9 * * 1` | `…__WEEKLY_SBIR_AWARDS_DOWNLOAD_ENABLED=true` |
+| `monthly_sam_gov_download` | `sam_gov_download_job` | `0 3 15 * *` | `…__MONTHLY_SAM_GOV_DOWNLOAD_ENABLED=true` |
+| `monthly_usaspending_download` | `usaspending_download_job` | `0 2 6 * *` | `…__MONTHLY_USASPENDING_DOWNLOAD_ENABLED=true` |
+| `monthly_uspto_download` | `uspto_download_job` | `0 9 1 * *` | `…__MONTHLY_USPTO_DOWNLOAD_ENABLED=true` |
+
+Env vars are prefixed `SBIR_ETL__DAGSTER__SCHEDULES__`; a matching
+`…_CRON` variable overrides the time. All four default to **STOPPED** — run
+each by hand first, then enable.
+
+Before enabling, note:
+
+- **SAM.gov** needs `SAM_GOV_API_KEY` in `.env.server`. Keys expire roughly
+  every 60 days, so a failure here usually means rotate the key.
+- **USAspending** is the long pole. The dump is large and the job may run for
+  hours. It checks free space before downloading and resumes from a sidecar
+  checkpoint next to the partial file, so an interrupted run is re-runnable
+  rather than restarted. Confirm SSD headroom first.
+- Downloads land under `SBIR_ETL__PATHS__DATA_ROOT`, which the server profile
+  points at the SSD.
+
 ## Recovery
 
 - **After reboot:** OrbStack and Tailscale start at login; containers use

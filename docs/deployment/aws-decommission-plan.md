@@ -86,6 +86,10 @@ Verify: `rg -i 'cdk|aws-actions|batch submit-job'` returns nothing; CI green.
 
 ## Phase 2 — Rehost ingestion on the mini
 
+**Status: done.** All four downloaders write locally by default and four Dagster
+schedules carry `data-refresh.yml`'s cron times. See
+[Source-data downloads](mac-mini-server.md#source-data-downloads).
+
 The substantive work. Convert the four download scripts to local-first output and
 drive them from the Dagster daemon already running in the server profile.
 
