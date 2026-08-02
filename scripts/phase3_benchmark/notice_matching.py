@@ -19,9 +19,9 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
+from sbir_etl.identity import CompanyNameProfile, normalize_company_name
 
 _NKEY_RE = re.compile(r"[^A-Z0-9]")
-_SUFFIX_RE = re.compile(r"\b(INC|INCORPORATED|LLC|CORP|CORPORATION|CO|COMPANY|LTD|LP)\b\.?", re.I)
 
 # Minimum lengths guard against short, ambiguous keys matching by chance.
 MIN_NAME_KEY = 8
@@ -37,7 +37,7 @@ def normalize_key(value: object) -> str:
 def normalize_firm_name(name: object) -> str:
     """Normalize a firm name for matching: drop legal suffixes, then keyify."""
 
-    return normalize_key(_SUFFIX_RE.sub("", str(name or "")))
+    return normalize_company_name(name, profile=CompanyNameProfile.NOTICE_KEY_V1)
 
 
 @dataclass(frozen=True)

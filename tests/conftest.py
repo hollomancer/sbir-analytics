@@ -430,24 +430,6 @@ def hf_token():
     return token
 
 
-# AWS Fixtures
-# ============
-
-
-@pytest.fixture
-def aws_credentials():
-    """Fixture that skips if AWS credentials not available."""
-    import os
-
-    if not os.getenv("AWS_ACCESS_KEY_ID"):
-        pytest.skip("AWS credentials required (set AWS_ACCESS_KEY_ID)")
-    return {
-        "access_key": os.getenv("AWS_ACCESS_KEY_ID"),
-        "secret_key": os.getenv("AWS_SECRET_ACCESS_KEY"),
-        "region": os.getenv("AWS_DEFAULT_REGION", "us-east-2"),
-    }
-
-
 # Data Generator Fixtures
 # =======================
 

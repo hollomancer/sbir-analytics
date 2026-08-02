@@ -1,352 +1,285 @@
-"""Unit tests for cloud storage utilities."""
+"""Unit tests for local data-file discovery and resolution.
 
-import os
-from datetime import datetime, timedelta, UTC
+Formerly covered S3-first resolution; the module now locates files under the
+configured data root (see docs/deployment/aws-decommission-plan.md).
+"""
+
+import json
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from unittest.mock import MagicMock, patch
 
 import pytest
 
-pytestmark = pytest.mark.fast
-
 from sbir_etl.utils.cloud_storage import (
+    DATA_ROOT_ENV,
     SbirAwardsSource,
-    build_s3_path,
     check_sbir_data_freshness,
-    get_s3_bucket_from_env,
+    find_latest_recipient_lookup_parquet,
+    find_latest_sam_gov_parquet,
+    find_latest_sbir_awards,
+    find_latest_usaspending_dump,
+    get_data_root,
     resolve_data_path,
-    sync_s3_prefix_to_dir,
-    upload_file_to_s3,
+    resolve_sbir_awards_csv,
 )
 
 
-class TestSyncS3PrefixToDir:
-    """Tests for sync_s3_prefix_to_dir (selective prefix download)."""
+class TestGetDataRoot:
+    def test_defaults_to_data(self, monkeypatch):
+        monkeypatch.delenv(DATA_ROOT_ENV, raising=False)
+        assert get_data_root() == Path("data")
 
-    def _client_with(self, keys):
-        client = MagicMock()
-        paginator = MagicMock()
-        client.get_paginator.return_value = paginator
-        paginator.paginate.return_value = [{"Contents": [{"Key": k} for k in keys]}]
-        return client
-
-    def test_downloads_only_included_basenames(self, tmp_path):
-        client = self._client_with(
-            [
-                "raw/transition/dump/toc.dat",
-                "raw/transition/dump/a.dat.gz",
-                "raw/transition/dump/b.dat.gz",
-            ]
-        )
-        with patch("boto3.client", return_value=client):
-            dest = sync_s3_prefix_to_dir(
-                "s3://bucket/raw/transition/dump/",
-                tmp_path / "dump",
-                include=["toc.dat", "a.dat.gz"],
-            )
-
-        assert dest == tmp_path / "dump"
-        downloaded_keys = {c.args[1] for c in client.download_file.call_args_list}
-        assert downloaded_keys == {
-            "raw/transition/dump/toc.dat",
-            "raw/transition/dump/a.dat.gz",
-        }
-        assert client.download_file.call_count == 2  # b.dat.gz skipped
-
-    def test_downloads_all_when_include_none(self, tmp_path):
-        client = self._client_with(["p/toc.dat", "p/a.dat.gz", "p/b.dat.gz"])
-        with patch("boto3.client", return_value=client):
-            sync_s3_prefix_to_dir("s3://bucket/p/", tmp_path / "d", include=None)
-        assert client.download_file.call_count == 3
-
-    def test_raises_on_non_s3_prefix(self, tmp_path):
-        with pytest.raises(ValueError):
-            sync_s3_prefix_to_dir("/local/dir", tmp_path / "d")
-
-    def test_raises_when_no_objects_match(self, tmp_path):
-        client = self._client_with(["p/toc.dat", "p/a.dat.gz"])
-        with patch("boto3.client", return_value=client):
-            with pytest.raises(FileNotFoundError):
-                sync_s3_prefix_to_dir("s3://bucket/p/", tmp_path / "d", include=["nope.dat.gz"])
-
-    def test_missing_requested_basename_raises_without_side_effects(self, tmp_path):
-        """If any requested file is absent, raise before creating dir or downloading."""
-        client = self._client_with(["p/toc.dat", "p/a.dat.gz"])
-        dest = tmp_path / "d"
-        with patch("boto3.client", return_value=client):
-            with pytest.raises(FileNotFoundError):
-                sync_s3_prefix_to_dir(
-                    "s3://bucket/p/", dest, include=["toc.dat", "a.dat.gz", "missing.dat.gz"]
-                )
-        # No partial sync: nothing downloaded and no directory left behind.
-        client.download_file.assert_not_called()
-        assert not dest.exists()
-
-    def test_raises_on_empty_bucket(self, tmp_path):
-        with pytest.raises(ValueError):
-            sync_s3_prefix_to_dir("s3:///raw/dump/", tmp_path / "d")
-
-    def test_normalizes_prefix_trailing_slash(self, tmp_path):
-        """A prefix without a trailing slash is normalized so siblings can't match."""
-        client = self._client_with(["raw/dump/toc.dat"])
-        with patch("boto3.client", return_value=client):
-            sync_s3_prefix_to_dir("s3://bucket/raw/dump", tmp_path / "d", include=["toc.dat"])
-        _, kwargs = client.get_paginator.return_value.paginate.call_args
-        assert kwargs["Prefix"] == "raw/dump/"
-
-
-class TestUploadFileToS3:
-    """Tests for upload_file_to_s3."""
-
-    def test_uploads_local_file(self, tmp_path):
-        local = tmp_path / "out.parquet"
-        local.write_bytes(b"data")
-        client = MagicMock()
-        with patch("boto3.client", return_value=client):
-            url = upload_file_to_s3(local, "s3://bucket/raw/out.parquet")
-        assert url == "s3://bucket/raw/out.parquet"
-        client.upload_file.assert_called_once_with(str(local), "bucket", "raw/out.parquet")
-
-    def test_raises_on_non_s3_url(self, tmp_path):
-        local = tmp_path / "out.parquet"
-        local.write_bytes(b"data")
-        with pytest.raises(ValueError):
-            upload_file_to_s3(local, "/local/out.parquet")
-
-    def test_raises_when_local_missing(self, tmp_path):
-        with pytest.raises(FileNotFoundError):
-            upload_file_to_s3(tmp_path / "missing.parquet", "s3://bucket/out.parquet")
-
-    def test_raises_when_no_object_key(self, tmp_path):
-        local = tmp_path / "out.parquet"
-        local.write_bytes(b"data")
-        with pytest.raises(ValueError):
-            upload_file_to_s3(local, "s3://bucket")
+    def test_honours_env_override(self, monkeypatch):
+        monkeypatch.setenv(DATA_ROOT_ENV, "/Volumes/SSDmini/sbir-analytics/data")
+        assert get_data_root() == Path("/Volumes/SSDmini/sbir-analytics/data")
 
 
 class TestResolveDataPath:
-    """Tests for resolve_data_path function."""
+    def test_returns_existing_path(self, tmp_path):
+        f = tmp_path / "a.csv"
+        f.write_text("x")
+        assert resolve_data_path(f) == f
 
-    def test_resolve_local_path_exists(self, tmp_path):
-        """Test resolve_data_path with existing local path."""
-        test_file = tmp_path / "test.txt"
-        test_file.write_text("test content")
+    def test_falls_back_when_primary_missing(self, tmp_path):
+        fallback = tmp_path / "fallback.csv"
+        fallback.write_text("x")
+        assert resolve_data_path(tmp_path / "missing.csv", local_fallback=fallback) == fallback
 
-        result = resolve_data_path(test_file)
+    def test_prefer_local_wins_over_existing_primary(self, tmp_path):
+        primary = tmp_path / "primary.csv"
+        primary.write_text("p")
+        fallback = tmp_path / "fallback.csv"
+        fallback.write_text("f")
 
-        assert result == test_file
-        assert result.exists()
-
-    def test_resolve_local_path_with_fallback(self, tmp_path):
-        """Test resolve_data_path uses fallback when main path doesn't exist."""
-        main_path = tmp_path / "nonexistent.txt"
-        fallback = tmp_path / "fallback.txt"
-        fallback.write_text("fallback content")
-
-        result = resolve_data_path(main_path, local_fallback=fallback)
+        result = resolve_data_path(primary, local_fallback=fallback, prefer_local=True)
 
         assert result == fallback
 
-    def test_resolve_local_path_raises_when_not_found(self, tmp_path):
-        """Test resolve_data_path raises when neither path exists."""
-        main_path = tmp_path / "nonexistent.txt"
-        fallback = tmp_path / "also_nonexistent.txt"
+    def test_prefer_local_ignored_when_fallback_missing(self, tmp_path):
+        primary = tmp_path / "primary.csv"
+        primary.write_text("p")
 
-        with pytest.raises(FileNotFoundError):
-            resolve_data_path(main_path, local_fallback=fallback)
+        result = resolve_data_path(primary, local_fallback=tmp_path / "nope.csv", prefer_local=True)
 
-    def test_resolve_prefer_local(self, tmp_path):
-        """Test resolve_data_path prefers local when prefer_local=True."""
-        local_file = tmp_path / "local.txt"
-        local_file.write_text("local content")
+        assert result == primary
 
-        with patch("sbir_etl.utils.cloud_storage.S3Path") as mock_s3:
-            result = resolve_data_path(
-                "s3://bucket/path.txt", local_fallback=local_file, prefer_local=True
-            )
+    def test_raises_when_nothing_exists(self, tmp_path):
+        with pytest.raises(FileNotFoundError, match="File not found"):
+            resolve_data_path(tmp_path / "a.csv", local_fallback=tmp_path / "b.csv")
 
-            assert result == local_file
-            mock_s3.assert_not_called()
-
-    @patch("sbir_etl.utils.cloud_storage.S3Path")
-    def test_resolve_s3_path_exists(self, mock_s3_path_class, tmp_path):
-        """Test resolve_data_path with existing S3 path."""
-        mock_s3_path = MagicMock()
-        mock_s3_path.exists.return_value = True
-        mock_s3_path.name = "test.txt"
-        mock_s3_path_class.return_value = mock_s3_path
-
-        with patch("sbir_etl.utils.cloud_storage._download_s3_to_temp") as mock_download:
-            mock_download.return_value = tmp_path / "downloaded.txt"
-
-            result = resolve_data_path("s3://bucket/path.txt")
-
-            assert result == tmp_path / "downloaded.txt"
-            mock_s3_path_class.assert_called_once_with("s3://bucket/path.txt")
-
-    @patch("sbir_etl.utils.cloud_storage.S3Path")
-    def test_resolve_s3_path_fallback_to_local(self, mock_s3_path_class, tmp_path):
-        """Test resolve_data_path falls back to local when S3 fails."""
-        mock_s3_path = MagicMock()
-        mock_s3_path.exists.side_effect = Exception("S3 error")
-        mock_s3_path_class.return_value = mock_s3_path
-
-        local_fallback = tmp_path / "fallback.txt"
-        local_fallback.write_text("fallback")
-
-        result = resolve_data_path("s3://bucket/path.txt", local_fallback=local_fallback)
-
-        assert result == local_fallback
-
-    @patch("sbir_etl.utils.cloud_storage.S3Path")
-    def test_resolve_s3_path_raises_when_both_fail(self, mock_s3_path_class):
-        """Test resolve_data_path raises when both S3 and local fail."""
-        mock_s3_path = MagicMock()
-        mock_s3_path.exists.side_effect = Exception("S3 error")
-        mock_s3_path_class.return_value = mock_s3_path
-
-        local_fallback = Path("/nonexistent/fallback.txt")
-
-        with pytest.raises(FileNotFoundError):
-            resolve_data_path("s3://bucket/path.txt", local_fallback=local_fallback)
+    def test_accepts_string_path(self, tmp_path):
+        f = tmp_path / "a.csv"
+        f.write_text("x")
+        assert resolve_data_path(str(f)) == f
 
 
-class TestGetS3BucketFromEnv:
-    """Tests for get_s3_bucket_from_env function."""
+class TestFindLatestSbirAwards:
+    def test_prefers_canonical(self, tmp_path):
+        base = tmp_path / "raw" / "sbir"
+        base.mkdir(parents=True)
+        (base / "award_data.csv").write_text("canonical")
+        vintage = base / "history" / "2026-01-01"
+        vintage.mkdir(parents=True)
+        (vintage / "award_data.csv").write_text("old")
 
-    def test_get_s3_bucket_from_env_primary(self):
-        """Test get_s3_bucket_from_env gets primary env var."""
-        with patch.dict(os.environ, {"SBIR_ANALYTICS_S3_BUCKET": "test-bucket-primary"}):
-            result = get_s3_bucket_from_env()
+        assert find_latest_sbir_awards(tmp_path) == str(base / "award_data.csv")
 
-            assert result == "test-bucket-primary"
+    def test_falls_back_to_newest_vintage(self, tmp_path):
+        history = tmp_path / "raw" / "sbir" / "history"
+        for date in ("2026-01-01", "2026-03-05", "2026-02-09"):
+            d = history / date
+            d.mkdir(parents=True)
+            (d / "award_data.csv").write_text("x")
 
-    def test_get_s3_bucket_from_env_fallback(self):
-        """Test get_s3_bucket_from_env falls back to S3_BUCKET."""
-        with patch.dict(os.environ, {"S3_BUCKET": "test-bucket-fallback"}, clear=True):
-            result = get_s3_bucket_from_env()
+        found = find_latest_sbir_awards(tmp_path)
 
-            assert result == "test-bucket-fallback"
+        assert found == str(history / "2026-03-05" / "award_data.csv")
 
-    def test_get_s3_bucket_from_env_primary_precedence(self):
-        """Test get_s3_bucket_from_env prefers primary over fallback."""
-        with patch.dict(
-            os.environ,
-            {
-                "SBIR_ANALYTICS_S3_BUCKET": "primary",
-                "S3_BUCKET": "fallback",
-            },
-        ):
-            result = get_s3_bucket_from_env()
+    def test_ignores_vintage_without_csv(self, tmp_path):
+        (tmp_path / "raw" / "sbir" / "history" / "2026-01-01").mkdir(parents=True)
+        assert find_latest_sbir_awards(tmp_path) is None
 
-            assert result == "primary"
-
-    def test_get_s3_bucket_from_env_none(self):
-        """Test get_s3_bucket_from_env returns None when not set."""
-        with patch.dict(os.environ, {}, clear=True):
-            result = get_s3_bucket_from_env()
-
-            assert result is None
+    def test_returns_none_when_absent(self, tmp_path):
+        assert find_latest_sbir_awards(tmp_path) is None
 
 
-class TestBuildS3Path:
-    """Tests for build_s3_path function."""
+class TestFindLatestUsaspendingDump:
+    def test_finds_full_dump(self, tmp_path):
+        d = tmp_path / "usaspending"
+        d.mkdir(parents=True)
+        dump = d / "usaspending-db_20260101.zip"
+        dump.write_text("x")
 
-    def test_build_s3_path_with_bucket(self):
-        """Test build_s3_path with explicit bucket."""
-        result = build_s3_path("data/raw/file.csv", bucket="my-bucket")
+        assert find_latest_usaspending_dump(tmp_path, "full") == str(dump)
 
-        assert result == "s3://my-bucket/data/raw/file.csv"
+    def test_finds_subset_dump_for_test_type(self, tmp_path):
+        d = tmp_path / "usaspending"
+        d.mkdir(parents=True)
+        subset = d / "usaspending-db-subset_20260101.zip"
+        subset.write_text("x")
 
-    def test_build_s3_path_with_env_bucket(self):
-        """Test build_s3_path uses env var when bucket not provided."""
-        with patch(
-            "sbir_etl.utils.cloud_storage.get_s3_bucket_from_env", return_value="env-bucket"
-        ):
-            result = build_s3_path("data/raw/file.csv")
+        assert find_latest_usaspending_dump(tmp_path, "test") == str(subset)
 
-            assert result == "s3://env-bucket/data/raw/file.csv"
+    def test_full_does_not_match_subset(self, tmp_path):
+        d = tmp_path / "usaspending"
+        d.mkdir(parents=True)
+        (d / "usaspending-db-subset_20260101.zip").write_text("x")
 
-    def test_build_s3_path_removes_leading_slash(self):
-        """Test build_s3_path removes leading slash from path."""
-        result = build_s3_path("/data/raw/file.csv", bucket="my-bucket")
+        assert find_latest_usaspending_dump(tmp_path, "full") is None
 
-        assert result == "s3://my-bucket/data/raw/file.csv"
+    def test_searches_nested_directories(self, tmp_path):
+        nested = tmp_path / "usaspending" / "2026-01-01"
+        nested.mkdir(parents=True)
+        dump = nested / "usaspending-db_20260101.zip"
+        dump.write_text("x")
 
-    def test_build_s3_path_raises_when_no_bucket(self):
-        """Test build_s3_path raises when no bucket configured."""
-        with patch("sbir_etl.utils.cloud_storage.get_s3_bucket_from_env", return_value=None):
-            with pytest.raises(ValueError, match="S3 bucket not configured"):
-                build_s3_path("data/raw/file.csv")
+        assert find_latest_usaspending_dump(tmp_path, "full") == str(dump)
+
+    def test_unknown_type_returns_none(self, tmp_path):
+        assert find_latest_usaspending_dump(tmp_path, "bogus") is None
+
+    def test_returns_none_when_absent(self, tmp_path):
+        assert find_latest_usaspending_dump(tmp_path, "full") is None
 
 
-# ==================== Freshness Checking Tests ====================
+class TestFindLatestSamGovParquet:
+    def test_prefers_canonical_over_partial(self, tmp_path):
+        base = tmp_path / "raw" / "sam_gov"
+        base.mkdir(parents=True)
+        canonical = base / "sam_entity_records.parquet"
+        canonical.write_text("full")
+        (base / "sam_entity_records_20260101.parquet").write_text("dated")
+
+        assert find_latest_sam_gov_parquet(tmp_path) == str(canonical)
+
+    def test_falls_back_to_dated(self, tmp_path):
+        base = tmp_path / "raw" / "sam_gov"
+        base.mkdir(parents=True)
+        dated = base / "sam_entity_records_20260101.parquet"
+        dated.write_text("x")
+
+        assert find_latest_sam_gov_parquet(tmp_path) == str(dated)
+
+    def test_returns_none_when_absent(self, tmp_path):
+        assert find_latest_sam_gov_parquet(tmp_path) is None
+
+
+class TestFindLatestRecipientLookup:
+    def test_finds_parquet(self, tmp_path):
+        d = tmp_path / "raw" / "usaspending" / "recipient_lookup" / "2026-01-01"
+        d.mkdir(parents=True)
+        f = d / "recipient_lookup.parquet"
+        f.write_text("x")
+
+        assert find_latest_recipient_lookup_parquet(tmp_path) == str(f)
+
+    def test_returns_none_when_absent(self, tmp_path):
+        assert find_latest_recipient_lookup_parquet(tmp_path) is None
 
 
 class TestCheckSbirDataFreshness:
-    """Tests for check_sbir_data_freshness function."""
-
-    def _recent_date(self, days_ago: int = 1) -> str:
-        # Use noon UTC to avoid midnight-boundary flakiness
-        ref = datetime.now(UTC).replace(hour=12, minute=0, second=0, microsecond=0)
-        return (ref - timedelta(days=days_ago)).strftime("%Y-%m-%d")
+    @staticmethod
+    def _recent_date(days_ago: int) -> str:
+        return (datetime.now(UTC) - timedelta(days=days_ago)).strftime("%Y-%m-%d")
 
     def test_fresh_data_no_warnings(self):
         source = SbirAwardsSource(
-            path=Path("/tmp/test.csv"), origin="s3", s3_key_date=self._recent_date(2)
+            path=Path("/tmp/test.csv"), origin="vintage", vintage_date=self._recent_date(2)
         )
-        warnings = check_sbir_data_freshness(source, self._recent_date(2), days=7)
-        assert warnings == []
+        assert check_sbir_data_freshness(source, self._recent_date(2), days=7) == []
 
-    def test_stale_s3_key_date(self):
+    def test_stale_vintage_warns(self):
         source = SbirAwardsSource(
-            path=Path("/tmp/test.csv"), origin="s3", s3_key_date=self._recent_date(30)
+            path=Path("/tmp/test.csv"), origin="vintage", vintage_date=self._recent_date(30)
         )
+
         warnings = check_sbir_data_freshness(source, self._recent_date(1), days=7)
-        assert len(warnings) == 1
-        assert "S3 data is" in warnings[0]
 
-    def test_stale_max_award_date(self):
+        assert len(warnings) == 1
+        assert "Local data is" in warnings[0]
+
+    def test_no_vintage_date_skips_that_check(self):
         source = SbirAwardsSource(path=Path("/tmp/test.csv"), origin="download")
-        warnings = check_sbir_data_freshness(source, self._recent_date(30), days=7)
-        assert len(warnings) == 1
-        assert "Most recent award" in warnings[0]
 
-    def test_both_stale(self):
-        source = SbirAwardsSource(
-            path=Path("/tmp/test.csv"), origin="s3", s3_key_date=self._recent_date(30)
-        )
         warnings = check_sbir_data_freshness(source, self._recent_date(30), days=7)
+
+        assert all("Local data is" not in w for w in warnings)
+
+    def test_stale_award_data_warns(self):
+        source = SbirAwardsSource(
+            path=Path("/tmp/test.csv"), origin="vintage", vintage_date=self._recent_date(1)
+        )
+
+        warnings = check_sbir_data_freshness(source, self._recent_date(60), days=7)
+
+        assert any("Most recent award in data" in w for w in warnings)
+
+    def test_both_stale_yields_two_warnings(self):
+        source = SbirAwardsSource(
+            path=Path("/tmp/test.csv"), origin="vintage", vintage_date=self._recent_date(30)
+        )
+
+        warnings = check_sbir_data_freshness(source, self._recent_date(60), days=7)
+
         assert len(warnings) == 2
 
-    def test_no_s3_key_date_skips_check(self):
-        source = SbirAwardsSource(path=Path("/tmp/test.csv"), origin="download")
-        warnings = check_sbir_data_freshness(source, self._recent_date(1), days=7)
-        assert warnings == []
-
-    def test_no_max_award_date_skips_check(self):
+    def test_missing_max_award_date_skips_that_check(self):
         source = SbirAwardsSource(
-            path=Path("/tmp/test.csv"), origin="s3", s3_key_date=self._recent_date(1)
+            path=Path("/tmp/test.csv"), origin="vintage", vintage_date=self._recent_date(1)
         )
-        warnings = check_sbir_data_freshness(source, None, days=7)
-        assert warnings == []
+        assert check_sbir_data_freshness(source, None, days=7) == []
 
-    def test_custom_slack_days(self):
-        source = SbirAwardsSource(
-            path=Path("/tmp/test.csv"), origin="s3", s3_key_date=self._recent_date(12)
+
+class TestResolveSbirAwardsCsv:
+    def test_uses_canonical_and_reads_sidecar_date(self, tmp_path, monkeypatch):
+        base = tmp_path / "raw" / "sbir"
+        base.mkdir(parents=True)
+        (base / "award_data.csv").write_text("x")
+        (base / "award_data.meta.json").write_text(
+            json.dumps({"downloaded_at": "2026-08-02T12:00:00+00:00"})
         )
-        # Default slack is 3, so 12 days > 7+3=10 → stale
-        warnings_default = check_sbir_data_freshness(source, None, days=7)
-        assert len(warnings_default) == 1
+        monkeypatch.setenv(DATA_ROOT_ENV, str(tmp_path))
 
-        # With slack=10, 12 days < 7+10=17 → fresh
-        warnings_custom = check_sbir_data_freshness(source, None, days=7, s3_slack_days=10)
-        assert warnings_custom == []
+        source = resolve_sbir_awards_csv()
 
-    def test_edge_case_exactly_at_threshold(self):
-        # days=7, slack=3 → threshold=10; age=10 → NOT stale (> not >=)
-        source = SbirAwardsSource(
-            path=Path("/tmp/test.csv"), origin="s3", s3_key_date=self._recent_date(10)
-        )
-        warnings = check_sbir_data_freshness(source, None, days=7)
-        assert warnings == []
+        assert source.origin == "local"
+        assert source.vintage_date == "2026-08-02"
+
+    def test_vintage_date_comes_from_path(self, tmp_path, monkeypatch):
+        d = tmp_path / "raw" / "sbir" / "history" / "2026-07-01"
+        d.mkdir(parents=True)
+        (d / "award_data.csv").write_text("x")
+        monkeypatch.setenv(DATA_ROOT_ENV, str(tmp_path))
+
+        source = resolve_sbir_awards_csv()
+
+        assert source.origin == "vintage"
+        assert source.vintage_date == "2026-07-01"
+
+    def test_missing_sidecar_leaves_date_none(self, tmp_path, monkeypatch):
+        base = tmp_path / "raw" / "sbir"
+        base.mkdir(parents=True)
+        (base / "award_data.csv").write_text("x")
+        monkeypatch.setenv(DATA_ROOT_ENV, str(tmp_path))
+
+        assert resolve_sbir_awards_csv().vintage_date is None
+
+
+class TestSamGovPartialIsNotDiscoverable:
+    """A partial extract must never become the enrichment source."""
+
+    def test_partial_only_directory_yields_no_source(self, tmp_path):
+        base = tmp_path / "raw" / "sam_gov"
+        base.mkdir(parents=True)
+        (base / "sam_entity_records_partial.parquet").write_text("short")
+
+        assert find_latest_sam_gov_parquet(tmp_path) is None
+
+    def test_partial_does_not_shadow_dated_complete_extract(self, tmp_path):
+        base = tmp_path / "raw" / "sam_gov"
+        base.mkdir(parents=True)
+        (base / "sam_entity_records_partial.parquet").write_text("short")
+        dated = base / "sam_entity_records_20260101.parquet"
+        dated.write_text("full")
+
+        assert find_latest_sam_gov_parquet(tmp_path) == str(dated)

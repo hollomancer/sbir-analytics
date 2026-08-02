@@ -29,11 +29,17 @@ import re
 from collections.abc import Iterable
 from dataclasses import asdict, dataclass, field
 from datetime import date, datetime
-from difflib import SequenceMatcher
 from pathlib import Path
 from uuid import uuid4
 
 from loguru import logger
+
+from sbir_etl.identity import (
+    CompanyNameMetric,
+    CompanyNameProfile,
+    company_name_similarity,
+    normalize_company_name,
+)
 
 
 # Optional dependencies
@@ -46,14 +52,6 @@ try:
     import duckdb
 except Exception:
     duckdb = None  # type: ignore
-
-try:
-    from rapidfuzz import fuzz
-
-    _RAPIDFUZZ_AVAILABLE = True
-except Exception:
-    fuzz = None  # type: ignore
-    _RAPIDFUZZ_AVAILABLE = False
 
 # ---------------------------------------------------------------------------
 # Utilities
@@ -74,23 +72,11 @@ def _normalize_identifier(val: str | None) -> str | None:
 def _normalize_name(name: str | None) -> str | None:
     if name is None:
         return None
-    s = " ".join(str(name).strip().split())
-    s = s.replace(",", " ").replace(".", " ").replace("/", " ").replace("&", " AND ")
-    return s.strip()
+    return normalize_company_name(name, profile=CompanyNameProfile.VENDOR_CROSSWALK_V1)
 
 
 def _fuzzy_score(a: str, b: str) -> float:
-    if not a or not b:
-        return 0.0
-    if _RAPIDFUZZ_AVAILABLE:
-        try:
-            return float(fuzz.token_sort_ratio(a, b) / 100.0)
-        except Exception:
-            pass
-    try:
-        return float(SequenceMatcher(None, a, b).ratio())
-    except Exception:
-        return 0.0
+    return company_name_similarity(a, b, metric=CompanyNameMetric.TOKEN_SORT)
 
 
 def _iso_date(val: str | date | datetime | None) -> str | None:

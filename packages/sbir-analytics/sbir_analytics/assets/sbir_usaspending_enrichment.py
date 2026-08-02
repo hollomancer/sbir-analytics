@@ -1,6 +1,5 @@
 """Dagster assets for SBIR-USAspending enrichment pipeline."""
 
-import os
 from pathlib import Path
 from typing import Any
 
@@ -454,33 +453,22 @@ def enriched_sbir_awards(
             metadata.update(enrichment_metrics["progress"])
 
     # Persist to S3 for cross-job asset sharing
-    _persist_enriched_awards_to_s3(enriched_df, context)
+    _persist_enriched_awards(enriched_df, context)
 
     return Output(value=enriched_df, metadata=metadata)
 
 
-def _persist_enriched_awards_to_s3(df: pd.DataFrame, context: AssetExecutionContext) -> None:
-    """Persist enriched awards to S3 for cross-job consumption."""
-    import tempfile
-
-    bucket = os.environ.get("S3_BUCKET")
-    if not bucket:
-        context.log.info("S3_BUCKET not set, skipping S3 persistence")
-        return
+def _persist_enriched_awards(df: pd.DataFrame, context: AssetExecutionContext) -> None:
+    """Write enriched awards where usaspending_iterative_enrichment reads them."""
+    from sbir_etl.utils.cloud_storage import get_data_root
 
     try:
-        import boto3
-
-        s3 = boto3.client("s3")
-        key = "enriched/sbir_awards.parquet"
-
-        with tempfile.NamedTemporaryFile(suffix=".parquet", delete=True) as tmp:
-            df.to_parquet(tmp.name, index=False)
-            s3.upload_file(tmp.name, bucket, key)
-
-        context.log.info(f"Persisted {len(df)} enriched awards to s3://{bucket}/{key}")
+        dest = get_data_root() / "processed" / "enriched" / "sbir_awards.parquet"
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        df.to_parquet(dest, index=False)
+        context.log.info(f"Persisted {len(df)} enriched awards to {dest}")
     except Exception as e:
-        context.log.warning(f"Failed to persist enriched awards to S3: {e}")
+        context.log.warning(f"Failed to persist enriched awards: {e}")
 
 
 def _should_use_chunked_processing(

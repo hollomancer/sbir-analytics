@@ -105,33 +105,24 @@ class TestImportSAMGovEntitiesHelper:
             else:
                 assert result.metadata["row_count"] == 2
 
-    @patch("sbir_analytics.assets.sam_gov_ingestion.get_s3_bucket_from_env")
     @patch("sbir_analytics.assets.sam_gov_ingestion.find_latest_sam_gov_parquet")
-    @patch("sbir_analytics.assets._ingestion_utils.resolve_data_path")
     @patch("sbir_analytics.assets.sam_gov_ingestion.SAMGovExtractor")
     @patch("sbir_analytics.assets.sam_gov_ingestion.get_config")
-    def test_import_from_s3_parquet(
+    def test_import_from_discovered_parquet(
         self,
         mock_get_config,
         mock_extractor_class,
-        mock_resolve_path,
         mock_find_latest,
-        mock_get_s3_bucket,
         mock_context,
         mock_config,
         sample_parquet_file,
         sample_sam_gov_df,
     ):
-        """Test importing SAM.gov entities from S3 parquet file."""
-        # Setup mocks
+        """Discovery under the data root supplies the parquet when config path is absent."""
         mock_get_config.return_value = mock_config
-        mock_get_s3_bucket.return_value = "test-bucket"
-        mock_config.extraction.sam_gov.use_s3_first = True
-
-        # Mock S3 file discovery and resolution
-        s3_url = "s3://test-bucket/raw/sam_gov/sam_entity_records.parquet"
-        mock_find_latest.return_value = s3_url
-        mock_resolve_path.return_value = sample_parquet_file
+        # Configured path does not exist, so discovery is what resolves it.
+        mock_config.extraction.sam_gov.parquet_path = "/nonexistent/sam.parquet"
+        mock_find_latest.return_value = str(sample_parquet_file)
 
         mock_extractor = MagicMock()
         mock_extractor.load_parquet.return_value = sample_sam_gov_df
@@ -146,8 +137,7 @@ class TestImportSAMGovEntitiesHelper:
         assert len(result.value) == 2
 
         # Verify S3 methods were called
-        mock_find_latest.assert_called_once_with(bucket="test-bucket")
-        mock_resolve_path.assert_called_once_with(s3_url)
+        mock_find_latest.assert_called_once_with()
 
     @patch("sbir_analytics.assets.sam_gov_ingestion.get_config")
     def test_import_fails_when_no_file_available(self, mock_get_config, mock_context, mock_config):

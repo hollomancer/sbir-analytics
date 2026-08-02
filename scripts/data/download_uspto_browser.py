@@ -7,7 +7,6 @@ download process.
 
 Usage:
     python scripts/data/download_uspto_browser.py --dataset assignments
-    python scripts/data/download_uspto_browser.py --dataset assignments --upload-s3
 
 Requirements:
     pip install playwright
@@ -103,16 +102,12 @@ async def download_file(page, url: str, output_path: Path, timeout_minutes: int 
 async def download_assignments(
     output_dir: Path,
     files: list[str] | None = None,
-    upload_s3: bool = False,
-    s3_bucket: str | None = None,
 ) -> list[dict]:
     """Download USPTO assignment files.
 
     Args:
         output_dir: Directory to save downloaded files
         files: List of files to download (default: all core files)
-        upload_s3: Whether to upload to S3 after download
-        s3_bucket: S3 bucket name for upload
 
     Returns:
         List of download results
@@ -163,31 +158,6 @@ async def download_assignments(
                     timeout_minutes=max(30, file_info["size_mb"] // 10),
                 )
                 results.append({"file": file_key, **result})
-
-                # Upload to S3 if requested
-                if upload_s3 and s3_bucket:
-                    import boto3
-
-                    date_str = datetime.now(UTC).strftime("%Y-%m-%d")
-                    s3_key = f"raw/uspto/assignments/{date_str}/{file_key}.csv.zip"
-
-                    print(f"📤 Uploading to s3://{s3_bucket}/{s3_key}")
-                    s3 = boto3.client("s3")
-                    s3.upload_file(
-                        str(output_path),
-                        s3_bucket,
-                        s3_key,
-                        ExtraArgs={
-                            "ContentType": "application/zip",
-                            "Metadata": {
-                                "sha256": result["sha256"],
-                                "source": "uspto-open-data-portal",
-                                "downloaded_at": datetime.now(UTC).isoformat(),
-                            },
-                        },
-                    )
-                    print(f"✅ Uploaded to S3")
-
             except Exception as e:
                 print(f"❌ Failed to download {file_key}: {e}")
                 results.append({"file": file_key, "error": str(e)})
@@ -220,24 +190,12 @@ def main():
         default=Path("/tmp/uspto_downloads"),
         help="Output directory for downloads",
     )
-    parser.add_argument(
-        "--upload-s3",
-        action="store_true",
-        help="Upload downloaded files to S3",
-    )
-    parser.add_argument(
-        "--s3-bucket",
-        default=os.environ.get("S3_BUCKET", "sbir-etl-production-data"),
-        help="S3 bucket for upload",
-    )
 
     args = parser.parse_args()
 
     print("🚀 USPTO Browser Download")
     print(f"   Dataset: {args.dataset}")
     print(f"   Output: {args.output_dir}")
-    if args.upload_s3:
-        print(f"   S3 Bucket: {args.s3_bucket}")
     print()
 
     try:
@@ -245,8 +203,6 @@ def main():
             download_assignments(
                 output_dir=args.output_dir,
                 files=args.files,
-                upload_s3=args.upload_s3,
-                s3_bucket=args.s3_bucket,
             )
         )
 
