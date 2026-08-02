@@ -26,6 +26,7 @@ except ImportError:  # pragma: no cover - supported dependency-light fallback
 class CompanyNameProfile(StrEnum):
     """Named, versioned normalization behavior used by live consumers."""
 
+    ORGANIZATION_KEY_V1 = "organization-key-v1"
     MATCHING_V1 = "matching-v1"
     RECIPIENT_V1 = "recipient-v1"
     ENTITY_RESOLUTION_V1 = "entity-resolution-v1"
@@ -143,6 +144,37 @@ _SEC_SUFFIX = re.compile(
     r",?\s*(Inc\.?|Corp\.?|LLC|Ltd\.?|Co\.?|L\.?P\.?|/DE|/NV|/MD|CORP|INC)$",
     re.IGNORECASE,
 )
+_DOTTED_DESIGNATORS = (
+    (re.compile(r"\bp\s*\.\s*l\s*\.\s*l\s*\.\s*c\s*\.?", re.IGNORECASE), "pllc"),
+    (re.compile(r"\bl\s*\.\s*l\s*\.\s*c\s*\.?", re.IGNORECASE), "llc"),
+    (re.compile(r"\bl\s*\.\s*l\s*\.\s*p\s*\.?", re.IGNORECASE), "llp"),
+    (re.compile(r"\bl\s*\.\s*p\s*\.?", re.IGNORECASE), "lp"),
+    (re.compile(r"\bp\s*\.\s*c\s*\.?", re.IGNORECASE), "pc"),
+)
+_TRAILING_DESIGNATOR_PHRASES = (
+    ("professional", "limited", "liability", "company"),
+    ("limited", "liability", "company"),
+    ("limited", "liability", "partnership"),
+)
+_TRAILING_DESIGNATORS = frozenset(
+    {
+        "co",
+        "company",
+        "corp",
+        "corporation",
+        "inc",
+        "incorporated",
+        "incorporation",
+        "llc",
+        "llp",
+        "lp",
+        "ltd",
+        "limited",
+        "pc",
+        "plc",
+        "pllc",
+    }
+)
 
 
 def _matching_v1(
@@ -171,6 +203,32 @@ def _matching_v1(
     return " ".join(text.split())
 
 
+def _organization_key_v1(value: Any) -> str:
+    """Build a comparison key by removing only trailing legal designators."""
+    text = unicodedata.normalize("NFKD", str(value).strip().lower())
+    text = "".join(ch for ch in text if not unicodedata.combining(ch))
+    for pattern, replacement in _DOTTED_DESIGNATORS:
+        text = pattern.sub(replacement, text)
+    tokens = re.sub(r"[^a-z0-9\s]", " ", text).split()
+    while len(tokens) > 1:
+        phrase = next(
+            (
+                candidate
+                for candidate in _TRAILING_DESIGNATOR_PHRASES
+                if len(tokens) > len(candidate) and tuple(tokens[-len(candidate) :]) == candidate
+            ),
+            None,
+        )
+        if phrase is not None:
+            del tokens[-len(phrase) :]
+            continue
+        if tokens[-1] in _TRAILING_DESIGNATORS:
+            tokens.pop()
+            continue
+        break
+    return " ".join(tokens).upper()
+
+
 def normalize_company_name(
     value: Any,
     *,
@@ -181,6 +239,8 @@ def normalize_company_name(
 
     if _blank(value):
         return ""
+    if profile is CompanyNameProfile.ORGANIZATION_KEY_V1:
+        return _organization_key_v1(value)
     if profile is CompanyNameProfile.MATCHING_V1:
         return _matching_v1(value, remove_suffixes=False, abbreviations=abbreviations)
     if profile is CompanyNameProfile.RECIPIENT_V1:

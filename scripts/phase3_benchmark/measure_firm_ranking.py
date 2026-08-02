@@ -33,7 +33,7 @@ from sbir_etl.identity import CompanyNameProfile, normalize_company_name
 
 
 def normalize_name(s: object) -> str:
-    return normalize_company_name(s, profile=CompanyNameProfile.PHASE3_RANKING_V1)
+    return normalize_company_name(s, profile=CompanyNameProfile.ORGANIZATION_KEY_V1)
 
 
 def firm_bucket(agency: str, branch: str) -> str:

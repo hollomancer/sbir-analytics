@@ -33,9 +33,9 @@ FUZZY_THRESHOLD = 88.0
 
 
 def normalize_name(name: object) -> str:
-    """Compatibility shim for the frozen ground-truth identity policy."""
+    """Normalize firms with the shared suffixless organization policy."""
 
-    return normalize_company_name(name, profile=CompanyNameProfile.GROUNDTRUTH_V1)
+    return normalize_company_name(name, profile=CompanyNameProfile.ORGANIZATION_KEY_V1)
 
 
 @dataclass

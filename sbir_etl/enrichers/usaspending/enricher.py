@@ -22,8 +22,11 @@ import json
 
 import pandas as pd
 
-from ...utils.text_normalization import normalize_recipient_name
-from sbir_etl.identity import rapidfuzz_token_set_100
+from sbir_etl.identity import (
+    CompanyNameProfile,
+    normalize_company_name,
+    rapidfuzz_token_set_100,
+)
 
 
 try:
@@ -31,6 +34,10 @@ try:
 except ImportError:
     # Fallback to simple string matching if rapidfuzz not available
     process = None  # type: ignore[assignment, no-redef]
+
+
+def _normalize_recipient_name(name: str) -> str:
+    return normalize_company_name(name, profile=CompanyNameProfile.ORGANIZATION_KEY_V1)
 
 
 def enrich_sbir_with_usaspending(
@@ -91,9 +98,11 @@ def enrich_sbir_with_usaspending(
                 break
 
     # Add normalized names
-    sbir["_norm_name"] = sbir[sbir_company_col].fillna("").astype(str).map(normalize_recipient_name)
+    sbir["_norm_name"] = (
+        sbir[sbir_company_col].fillna("").astype(str).map(_normalize_recipient_name)
+    )
     recipients["_norm_name"] = (
-        recipients[recipient_name_col].fillna("").astype(str).map(normalize_recipient_name)
+        recipients[recipient_name_col].fillna("").astype(str).map(_normalize_recipient_name)
     )
 
     # Build indexes for exact matching

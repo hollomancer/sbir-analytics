@@ -23,6 +23,11 @@ from sbir_etl.identity import (
     ("profile", "raw", "expected"),
     [
         (
+            CompanyNameProfile.ORGANIZATION_KEY_V1,
+            "Café Technologies, L.L.C.",
+            "CAFE TECHNOLOGIES",
+        ),
+        (
             CompanyNameProfile.MATCHING_V1,
             "Café Technologies, Incorporated",
             "cafe technologies inc",
@@ -56,6 +61,25 @@ def test_matching_profile_accepts_explicit_abbreviation_dictionary() -> None:
     )
 
     assert normalized == "adv tech inc"
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        ("Coherent Photonics, Limited Liability Company", "COHERENT PHOTONICS"),
+        ("Pelletized Straw, L.L.C.", "PELLETIZED STRAW"),
+        ("Acme Corp Inc LLC", "ACME"),
+        ("Acme LLC Limited Liability Company", "ACME"),
+        ("PC Photonics", "PC PHOTONICS"),
+        ("AEROPLAS CORP. INTERNATIONAL", "AEROPLAS CORP INTERNATIONAL"),
+        ("Corptech, Inc.", "CORPTECH"),
+    ],
+)
+def test_organization_key_removes_only_trailing_legal_designators(
+    raw: str,
+    expected: str,
+) -> None:
+    assert normalize_company_name(raw, profile=CompanyNameProfile.ORGANIZATION_KEY_V1) == expected
 
 
 @pytest.mark.parametrize("blank", [None, "", "   ", float("nan")])
