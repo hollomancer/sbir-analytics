@@ -35,6 +35,7 @@ from pathlib import Path
 
 from sbir_ml.transition.detection.fusion_model import (
     DEFAULT_COEFFICIENTS_PATH,
+    FROZEN_CORPUS_FRAME_HASH,
     FusionCoefficients,
     load_fusion_coefficients,
 )
@@ -120,6 +121,7 @@ def score_pairs_with_fusion(
     *,
     firm_names: Sequence[object] | None = None,
     coefficients_path: str | Path = DEFAULT_COEFFICIENTS_PATH,
+    expected_corpus_hash: str | None = FROZEN_CORPUS_FRAME_HASH,
 ) -> list[float]:
     """Frozen-fusion score per (award, target) pair, TF-IDF fitted over the run.
 
@@ -127,9 +129,16 @@ def score_pairs_with_fusion(
     is optional but should be supplied: without it the target text is not
     identity-scrubbed and both cosines are inflated relative to the fit.
 
-    Raises :class:`ValueError` if the sequences disagree in length, or if the
-    loaded coefficients put non-zero weight on a placeholder feature (see
-    :data:`PLACEHOLDER_FEATURES`).
+    The corpus-hash check is **armed by default**: the loaded coefficients must
+    declare :data:`~fusion_model.FROZEN_CORPUS_FRAME_HASH`. Pass
+    ``expected_corpus_hash=None`` to score with a coefficient set that declares
+    a different corpus (a refit under evaluation, or a test fixture). This is an
+    explicit opt-out from the metadata check; the hash does not authenticate the
+    coefficient values or the feature-extraction implementation.
+
+    Raises :class:`ValueError` if the sequences disagree in length, if the loaded
+    coefficients declare a different corpus, or if they put non-zero weight on a
+    placeholder feature (see :data:`PLACEHOLDER_FEATURES`).
     """
 
     n = len(award_texts)
@@ -140,7 +149,7 @@ def score_pairs_with_fusion(
     if n == 0:
         return []
 
-    model = load_fusion_coefficients(coefficients_path)
+    model = load_fusion_coefficients(coefficients_path, expected_corpus_hash=expected_corpus_hash)
     neutral = _placeholder_values(model)
 
     names = ["" for _ in range(n)] if firm_names is None else [str(v or "") for v in firm_names]

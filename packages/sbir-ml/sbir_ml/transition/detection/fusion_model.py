@@ -4,8 +4,18 @@ The award-grain transition-ranker fusion was refit and frozen offline
 (``fusion_coefficients.json``; specs/phase3-notice-corpus-fusion) at
 leakage-scrubbed AUC 0.847 [0.792, 0.898], reproducing the study's 0.844 within
 CI. Production scores with these constants — it never fits — and the loader
-refuses a coefficient set whose corpus hash does not match the caller's
-expectation, so scores can never silently drift from the corpus they were fit on.
+refuses a coefficient set whose declared corpus hash does not match the caller's
+expectation. This is a metadata-consistency check: it does not authenticate the
+coefficient values or prove that they were produced from the declared corpus.
+
+That check only runs when a caller actually states its expectation.
+:data:`FROZEN_CORPUS_FRAME_HASH` is that expectation, pinned in code so the
+production path can arm the check without reading anything outside the installed
+package. It is the corpus frame hash declared by the shipped coefficients, and
+`tests/unit/transition/detection/test_fusion_model.py` asserts that the same hash
+appears in the coefficients file and the committed provenance record
+(`specs/phase3-notice-corpus-fusion/corpus.manifest.json`). The corpus parquet is
+gitignored, so the manifest is the only in-repo witness to that corpus's contents.
 """
 
 from __future__ import annotations
@@ -18,6 +28,11 @@ from pathlib import Path
 
 
 DEFAULT_COEFFICIENTS_PATH = Path(__file__).with_name("fusion_coefficients.json")
+
+#: Frame hash declared for the award-grain notice corpus used by the shipped fit
+#: (828 rows, 138 positives, 101 firms). The pin rejects coefficient artifacts
+#: that declare a different corpus; it does not authenticate coefficient values.
+FROZEN_CORPUS_FRAME_HASH = "4c4064f04d04ca2f0c4c96e50ce3be8b6169bfd7ff3d4c51b2a6c804782a7b84"
 
 
 @dataclass(frozen=True)
@@ -53,13 +68,13 @@ def load_fusion_coefficients(
     *,
     expected_corpus_hash: str | None = None,
 ) -> FusionCoefficients:
-    """Load frozen coefficients; refuse a corpus-hash mismatch."""
+    """Load frozen coefficients; refuse a declared corpus-hash mismatch."""
 
     data = json.loads(Path(path).read_text(encoding="utf-8"))
     corpus_hash = str(data["corpus_frame_hash"])
     if expected_corpus_hash is not None and corpus_hash != expected_corpus_hash:
         raise ValueError(
-            "fusion coefficients were fit on a different corpus "
+            "fusion coefficients declare a different corpus "
             f"(embedded {corpus_hash!r} != expected {expected_corpus_hash!r})"
         )
     return FusionCoefficients(
@@ -72,4 +87,8 @@ def load_fusion_coefficients(
     )
 
 
-__all__ = ["FusionCoefficients", "load_fusion_coefficients"]
+__all__ = [
+    "FROZEN_CORPUS_FRAME_HASH",
+    "FusionCoefficients",
+    "load_fusion_coefficients",
+]
