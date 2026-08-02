@@ -10,6 +10,7 @@ from sbir_etl.reporting.procurement_transition import (
     group_candidates_by_awardee,
 )
 from sbir_etl.reporting.procurement_transition.core import _validate_line
+from sbir_ml.transition.detection.fusion_scoring import score_pairs_with_fusion
 
 
 class _HTMLProbe(HTMLParser):
@@ -863,7 +864,11 @@ def test_group_ranks_by_fusion_score_ahead_of_deadline():
         ]
     )
 
-    groups = group_candidates_by_awardee(rows, awards)
+    groups = group_candidates_by_awardee(
+        rows,
+        awards,
+        fusion_scorer=score_pairs_with_fusion,
+    )
 
     assert len(groups) == 1
     entries = groups[0]["competitive"]
@@ -900,7 +905,11 @@ def test_group_ranks_watchlist_by_fusion_score_too():
         ]
     )
 
-    groups = group_candidates_by_awardee(rows, awards)
+    groups = group_candidates_by_awardee(
+        rows,
+        awards,
+        fusion_scorer=score_pairs_with_fusion,
+    )
 
     assert [entry["opportunity_title"] for entry in groups[0]["watchlist"]] == [
         "Later but matching",
@@ -908,15 +917,11 @@ def test_group_ranks_watchlist_by_fusion_score_too():
     ]
 
 
-def test_group_falls_back_to_deadline_order_when_ranker_unavailable(monkeypatch, caplog):
+def test_group_falls_back_to_deadline_order_when_ranker_unavailable(caplog):
     """An unavailable ranker must be visible, not a silent reversion to deadline order."""
-
-    import sbir_ml.transition.detection.fusion_scoring as fusion_scoring
 
     def _boom(*args: object, **kwargs: object) -> list[float]:
         raise RuntimeError("coefficients missing")
-
-    monkeypatch.setattr(fusion_scoring, "score_pairs_with_fusion", _boom)
 
     awards = pd.DataFrame([{"award_id": "A", "amount": 1_000}])
     rows = _fusion_rows(
@@ -938,7 +943,7 @@ def test_group_falls_back_to_deadline_order_when_ranker_unavailable(monkeypatch,
     )
 
     with caplog.at_level("WARNING"):
-        groups = group_candidates_by_awardee(rows, awards)
+        groups = group_candidates_by_awardee(rows, awards, fusion_scorer=_boom)
 
     assert [entry["opportunity_title"] for entry in groups[0]["competitive"]] == [
         "Soon but unrelated",

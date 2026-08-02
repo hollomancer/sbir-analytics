@@ -70,6 +70,24 @@ def test_archive_guard_ignores_archive_scripts_and_flags_live_references(tmp_pat
     assert violations[0].path == "sbir_etl/example.py"
 
 
+def test_archive_guard_checks_deployment_docs_but_allows_research_history(tmp_path: Path):
+    runbook = _write(
+        tmp_path,
+        "docs/deployment/server.md",
+        "Run `python scripts/archive/data/old.py` on the live server.\n",
+    )
+    research_note = _write(
+        tmp_path,
+        "docs/research/example.md",
+        "The original analysis used `scripts/archive/data/old.py`.\n",
+    )
+
+    violations = hygiene.scan_archive_references([runbook, research_note], root=tmp_path)
+
+    assert len(violations) == 1
+    assert violations[0].path == "docs/deployment/server.md"
+
+
 def test_removed_src_guard_scans_automation_paths(tmp_path: Path):
     workflow = _write(
         tmp_path,

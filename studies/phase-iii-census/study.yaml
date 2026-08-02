@@ -1,0 +1,34 @@
+schema_version: 1
+study_id: phase-iii-census
+title: Label-free Phase III census and negative controls
+evidence_status: reproducible
+research_questions:
+  - B2
+  - B3
+  - E1
+estimand: >-
+  Among exact-UEI Phase II award and federal prime contract action pairs in the
+  retrospective source universe, estimate uncoded post-completion follow-on procurement
+  proxies under every preregistered time-window and agency-continuity cell.
+frozen_artifacts:
+  - path: specs/phase-iii-census/design.md
+    sha256: b1cce1e75af840f13223ecfc543b6d801e63cc3329f65f7c0a5b9037c0e9fc48
+  - path: specs/phase-iii-census/amendments.md
+    sha256: f9cdf80cf94c75e2e4475ca6f736e2e0fab27a8e8d19650a7841b11b17801605
+implementation:
+  - path: packages/sbir-analytics/sbir_analytics/assets/phase_iii_census/assets.py
+    symbol: phase_iii_census
+identity_policy:
+  strategy: exact normalized UEI only; no name or DUNS fallback
+  version: phase-0-r4
+  negative_evidence_allowed: false
+materialization:
+  allowed: false
+  blockers:
+    - Phase 2 negative-control eligibility is unresolved.
+permitted_claims:
+  - The estimand, criteria, and implementation are frozen and fixture-verified.
+limitations:
+  - No production census count may be materialized or quoted while the gate is closed.
+  - Exact UEI matching misses acquisitions, successors, and UEI changes.
+  - An uncoded lineage proxy is not proof of a statutory Phase III award.
