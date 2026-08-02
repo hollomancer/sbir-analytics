@@ -175,7 +175,7 @@ class Award(BaseModel):
         None, description="Original data source system (e.g., 'sbir.gov', 'usaspending', 'sam.gov')"
     )
     data_source_url: str | None = Field(
-        None, description="URL or path of the source file (e.g., S3 URI, local CSV path)"
+        None, description="URL or path of the source file (e.g., local CSV path)"
     )
     ingested_at: datetime | None = Field(
         None, description="UTC timestamp when this record was ingested into the pipeline"

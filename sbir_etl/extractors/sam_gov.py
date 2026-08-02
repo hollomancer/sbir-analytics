@@ -1,7 +1,7 @@
 """SAM.gov data extractor for parquet files.
 
 This module provides functionality to extract SAM.gov entity data from parquet files.
-Supports both local and S3-stored parquet files with automatic path resolution.
+Reads parquet files from local disk, with discovery under the data root.
 """
 
 from __future__ import annotations

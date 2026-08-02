@@ -1,8 +1,8 @@
 """Dagster assets for USAspending data ingestion pipeline.
 
 Data Source Priority:
-1. PRIMARY: S3 database dump (from EC2 automation workflow)
-2. FALLBACK: USAspending API (if S3 unavailable)
+1. PRIMARY: local database dump (from usaspending_download_job)
+2. FALLBACK: USAspending API (if no dump is available)
 3. FAIL: If both sources fail
 """
 
@@ -31,7 +31,7 @@ def _import_usaspending_table(
     table_name: str,
 ) -> Output[pd.DataFrame]:
     """
-    Helper to import a USAspending table with S3-first, API-fallback strategy.
+    Helper to import a USAspending table with local-dump, API-fallback strategy.
 
     Priority:
     1. Try the configured local dump, then discovery under the data root
@@ -59,28 +59,28 @@ def _import_usaspending_table(
             extra={
                 "dump_path": str(dump_path),
                 "duckdb_path": config.duckdb.database_path,
-                "source": "S3_dump" if discovered_dump else "local_dump",
+                "source": "discovered_dump" if discovered_dump else "local_dump",
             },
         )
 
         try:
             dump_success = extractor.import_postgres_dump(dump_path, table_name)
             if dump_success:
-                context.log.info(f"Successfully imported {log_label} from S3 dump")
+                context.log.info(f"Successfully imported {log_label} from local dump")
         except Exception as e:
             context.log.warning(f"Dump import failed: {e}")
             dump_success = False
 
     # FALLBACK: If dump failed, try API (for recipient_lookup only)
     if not dump_success and table_name == "raw_usaspending_recipients":
-        context.log.warning("S3 dump unavailable, falling back to USAspending API (FALLBACK)")
+        context.log.warning("No local dump available, falling back to USAspending API (FALLBACK)")
         try:
             # Note: API fallback would need to be implemented to fetch recipients
             # from sbir_etl.enrichers.usaspending import USAspendingAPIClient
             # Note: API fallback would need to be implemented to fetch recipients
             # For now, we'll raise an error to indicate API fallback is needed
             context.log.error(
-                "API fallback not yet implemented for bulk recipient data. S3 dump is required."
+                "API fallback not yet implemented for bulk recipient data. A local dump is required."
             )
             raise ExtractionError(
                 "USAspending data unavailable: S3 dump failed and API fallback not implemented for bulk data",

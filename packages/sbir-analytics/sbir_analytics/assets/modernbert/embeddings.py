@@ -154,7 +154,7 @@ def modernbert_embeddings_patents(
     """
     Generate ModernBert embeddings for USPTO patents.
 
-    Loads patent data from transformed_patents JSONL file or S3 PatentsView data.
+    Loads patent data from a transformed_patents JSONL file or the local PatentsView archive.
 
     Args:
         transformed_patents: Transformed patents metadata dict (contains output_path)

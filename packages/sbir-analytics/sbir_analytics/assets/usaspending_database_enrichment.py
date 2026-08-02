@@ -1,6 +1,6 @@
 """Dagster assets for USAspending database dump enrichment.
 
-This module processes USAspending PostgreSQL database dumps stored in S3
+This module processes USAspending PostgreSQL database dumps stored on local disk
 to extract and enrich SBIR award data with transaction-level details.
 """
 
@@ -93,7 +93,7 @@ def _build_sbir_gov_index(
     except Exception as e:
         context.log.warning(f"SBIR.gov API unavailable ({e}) — trying bulk fallback")
 
-    # --- Attempt 2: Bulk download file from S3 or local ---
+    # --- Attempt 2: Bulk download file from local disk ---
     bulk_path = _find_sbir_gov_bulk_file()
     if bulk_path:
         try:
@@ -114,7 +114,7 @@ def _find_sbir_gov_bulk_file() -> Path | None:
     """Locate a SBIR.gov bulk awards JSON file.
 
     Checks:
-    1. S3 path: ``raw/sbir_gov/awards.json``
+    1. Data root: ``raw/sbir_gov/awards.json``
     2. Local path: ``data/raw/sbir_gov/awards.json``
     """
     discovered = get_data_root() / "raw" / "sbir_gov" / "awards.json"
@@ -233,7 +233,7 @@ def sbir_relevant_usaspending_transactions(
     Extract SBIR-relevant transactions from USAspending database dump.
 
     This asset:
-    1. Loads the USAspending database dump from S3 (or local fallback)
+    1. Loads the USAspending database dump from local disk
     2. Filters transactions for SBIR-relevant agencies and programs
     3. Extracts transaction details for SBIR companies
     4. Returns enriched transaction data for Neo4j loading
@@ -255,15 +255,15 @@ def sbir_relevant_usaspending_transactions(
     )
 
     if not dump_path:
-        # FALLBACK: Try API if S3 dump not available
+        # FALLBACK: Try API if no local dump is available
         context.log.warning(
             "No local dump found. Attempting API fallback (limited functionality)..."
         )
         # Note: API fallback would need custom implementation for transaction queries
         # For now, fail with clear error
         raise ExtractionError(
-            "USAspending database dump not found in S3. "
-            "S3 dump is required for transaction-level queries. "
+            "USAspending database dump not found. "
+            "A local dump is required for transaction-level queries. "
             "API fallback is not available for this operation.",
             component="assets.usaspending_database_enrichment",
             operation="resolve_dump_path",
@@ -619,7 +619,7 @@ def sbir_grant_transactions(
 
     if not dump_path:
         raise ExtractionError(
-            "USAspending database dump not found in S3.",
+            "USAspending database dump not found.",
             component="assets.usaspending_database_enrichment",
             operation="sbir_grants",
             details={"search_root": str(get_data_root() / "usaspending")},

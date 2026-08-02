@@ -1,7 +1,7 @@
 """Dagster assets for SAM.gov data ingestion pipeline.
 
 Data Source Priority:
-1. PRIMARY: Parquet file (S3 or local)
+1. PRIMARY: Parquet file (local, then discovery)
 2. FALLBACK: SAM.gov API (if parquet unavailable)
 3. FAIL: If both sources fail
 """
