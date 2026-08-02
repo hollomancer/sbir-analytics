@@ -7,8 +7,8 @@ count may be released as a validated result until evidence-backed
 negative-control and placebo artifacts exist.
 
 If you hit this while running the fast lane locally (`pytest -x` aborts the whole
-suite here), deselect it:
-``pytest --deselect tests/unit/phase_iii_negative_controls``.
+suite here), deselect this sentinel node only:
+``pytest --deselect tests/unit/phase_iii_negative_controls/test_release_gate.py::test_negative_controls_and_placebo_release_gate_is_closed``.
 
 **This branch is not intended to merge while the gate is closed.** ``unit-fast``
 is a required check, so merging would turn `main` red for every unrelated PR in
@@ -16,10 +16,9 @@ the repo, and the design doc forecloses the usual escapes — removing, skipping
 or xfailing the sentinel is not a resolution. The PR stays a draft until the gate
 can close.
 
-The one design requirement a test could pin *today*, with none of the blocked
-data — that the census filter takes no arm/label argument — belongs on `main` as a
-real green test rather than here. See the design doc's "Arm-blind evaluation"
-requirement.
+The green fixture tests beside this sentinel cover only the approved pure mechanics.
+They do not establish source provenance, matching quality, balance, or an empirical
+result and therefore cannot close this gate.
 """
 
 import pytest
@@ -30,6 +29,7 @@ pytestmark = pytest.mark.fast
 
 def test_negative_controls_and_placebo_release_gate_is_closed() -> None:
     pytest.fail(
-        "Release gate intentionally closed: replace this sentinel only with "
-        "evidence-backed tests after both negative-control and placebo artifacts exist."
+        "Release gate intentionally closed: replace this sentinel only after real, "
+        "provenance-backed negative-control and fixed-seed placebo artifacts exist; "
+        "pure helper tests are not release evidence."
     )
