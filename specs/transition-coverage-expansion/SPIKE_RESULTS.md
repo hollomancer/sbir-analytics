@@ -23,6 +23,21 @@ Breadth (# primes) is the transition signature to use, not raw dollars. Still an
 approximation (name-token match, not UEI-exact; timing gate, not tech-matched) — T3 in
 `tasks.md` tightens to UEI-exact + SBIR-derivation for the production version.
 
+## Cross-validation of the self-labeled set vs #481 + detector check (FY2020–2024)
+
+**Self-label precision: 11/11** award-class awardees resolve to a real SBIR firm with prior
+awards (Progeny 309 SBIRs, Daniel H Wagner 228, Design Interactive 113…) — the "SBIR Phase III"
+self-label is trustworthy. **Agreement: 2 firms (Progeny, Daniel H Wagner) appear in BOTH SAM
+and the #481 hand-collected set** (independent methods converging); **9 are net-new**.
+
+**Does it improve the detector as-is? No evidence.** Frozen detector (word-TFIDF dominant
+signal) on the rich self-labeled notices: **p@1 0.429, p@3 0.714 (n=21)** — indistinguishable
+from the 0.467 baseline. The same-firm rich-vs-terse head-to-head was impossible (0 SAM award#s
+matched `phase3_universe`). Root cause: the notice Descriptions are long but mostly **FAR
+procurement boilerplate**, not tech content that matches the abstract — length ≠ discriminating
+text, and decoys share the boilerplate. **Value is in the LABELS (validated + expanded ground
+truth), not a detector lift.**
+
 ## T2 — Grants/assistance channel
 
 Across 35 civilian SBIR firms (NIH/NSF/DOE/USDA, first P2 ≥ 2010): **~$69M non-SBIR federal
