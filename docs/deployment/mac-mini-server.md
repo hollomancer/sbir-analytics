@@ -59,9 +59,10 @@ services:
 | `dagster-webserver` | Orchestration UI (prod mode) | `127.0.0.1:3000` | HTTPS `443` |
 | `dagster-daemon` | Schedules + sensors | — | none |
 
-Heavy assets (ML/CET, fiscal, USPTO NLP) are **disabled** on the server
-(`DAGSTER_LOAD_HEAVY_ASSETS=false`). See
-[Workload placement](#workload-placement).
+Heavy assets (ML/CET, fiscal, USPTO NLP) are **loaded but never scheduled**
+(`DAGSTER_LOAD_HEAVY_ASSETS=true`), so they can be run by hand on this host now
+that AWS Batch is gone. See [Heavy assets](#heavy-assets) for the capacity
+caveat and [Workload placement](#workload-placement).
 
 ## Security boundary
 
@@ -229,8 +230,40 @@ Before enabling, note:
   hours. It checks free space before downloading and resumes from a sidecar
   checkpoint next to the partial file, so an interrupted run is re-runnable
   rather than restarted. Confirm SSD headroom first.
+- **USPTO** needs `USPTO_ODP_API_KEY` and a working Playwright/Chromium install.
+  Anonymous downloads from data.uspto.gov ended 2026-06-18 and now return an
+  HTML shell with HTTP 200, so the job fetches PatentsView and AI patents
+  through the ODP mint flow and assignments through browser automation. A
+  size/HTML guard fails the run rather than saving an error page as data.
 - Downloads land under `SBIR_ETL__PATHS__DATA_ROOT`, which the server profile
   points at the SSD.
+
+### Pipeline chaining
+
+The retired `etl-pipeline.yml` ran the SBIR, USAspending, and USPTO pipelines on
+a weekly cron. Instead of blind crons, run-status sensors fire each pipeline
+when its download job succeeds, so a pipeline only runs when there is fresh
+input:
+
+| Sensor | Runs | After |
+|---|---|---|
+| `sbir_pipeline_after_download` | `sbir_weekly_refresh_job` | `sbir_awards_download_job` |
+| `uspto_pipeline_after_download` | `uspto_validation_job` | `uspto_download_job` |
+| `usaspending_pipeline_after_download` | `usaspending_iterative_enrichment_job` | `usaspending_download_job` |
+
+All default to **STOPPED**; enable with
+`SBIR_ETL__DAGSTER__SENSORS__<NAME>_ENABLED=true` after a manual pipeline run
+succeeds. The SBIR sensor skips when the download reported no upstream change,
+so an unchanged CSV does not trigger hours of re-enrichment.
+
+### Heavy assets
+
+`DAGSTER_LOAD_HEAVY_ASSETS` now defaults to **true**, so CET, fiscal,
+modernbert, and USPTO AI extraction jobs load and can be triggered by hand.
+**Nothing schedules them.** They previously ran on AWS Batch with more headroom
+than this host has, and `dagster-code-server` is capped at 3G. Measure runtime
+and memory on a manual run before automating any of them; set the variable back
+to `false` if the code server starts hitting its limit.
 
 ## Recovery
 

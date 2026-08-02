@@ -81,3 +81,65 @@ class TestSamGovOpGuards:
         monkeypatch.delenv("SAM_GOV_API_KEY", raising=False)
         with pytest.raises(ValueError, match="SAM_GOV_API_KEY"):
             download_sam_gov_op(build_op_context())
+
+
+EXPECTED_SENSORS = {
+    "sbir_pipeline_after_download",
+    "uspto_pipeline_after_download",
+    "usaspending_pipeline_after_download",
+}
+
+
+class TestPipelineChaining:
+    """Sensors that replace etl-pipeline.yml's weekly pipeline runs."""
+
+    @pytest.fixture(scope="class")
+    def sensors(self):
+        from sbir_analytics.definitions import all_sensors
+
+        return {s.name: s for s in all_sensors}
+
+    @pytest.mark.parametrize("name", sorted(EXPECTED_SENSORS))
+    def test_sensor_registered(self, sensors, name):
+        assert name in sensors
+
+    @pytest.mark.parametrize("name", sorted(EXPECTED_SENSORS))
+    def test_defaults_to_stopped(self, sensors, name):
+        from dagster import DefaultSensorStatus
+
+        assert sensors[name].default_status is DefaultSensorStatus.STOPPED
+
+
+class TestHtmlShellGuard:
+    """USPTO serves an HTML shell with HTTP 200 to unauthenticated clients."""
+
+    def test_rejects_html_masquerading_as_data(self, tmp_path):
+        from sbir_analytics.assets.jobs.source_downloads import _guard_html_shell
+
+        f = tmp_path / "patent.zip"
+        f.write_bytes(b"<!DOCTYPE html>\n<html><body>Sign in</body></html>")
+
+        with pytest.raises(ValueError, match="HTML page rather than data"):
+            _guard_html_shell(f)
+
+        assert not f.exists()  # the bad file is removed, not left to poison a run
+
+    def test_rejects_implausibly_small_binary(self, tmp_path):
+        from sbir_analytics.assets.jobs.source_downloads import _guard_html_shell
+
+        f = tmp_path / "patent.zip"
+        f.write_bytes(b"PK\x03\x04short")
+
+        with pytest.raises(ValueError, match="implausibly small"):
+            _guard_html_shell(f)
+
+    def test_accepts_plausible_download(self, tmp_path):
+        from sbir_analytics.assets.jobs.source_downloads import (
+            MIN_PLAUSIBLE_DOWNLOAD_BYTES,
+            _guard_html_shell,
+        )
+
+        f = tmp_path / "patent.zip"
+        f.write_bytes(b"PK\x03\x04" + b"\x00" * MIN_PLAUSIBLE_DOWNLOAD_BYTES)
+
+        _guard_html_shell(f)  # must not raise

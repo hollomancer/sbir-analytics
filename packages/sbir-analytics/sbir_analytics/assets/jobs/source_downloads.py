@@ -103,25 +103,93 @@ def download_usaspending_op(context: OpExecutionContext) -> dict:
     return result
 
 
+MIN_PLAUSIBLE_DOWNLOAD_BYTES = 1024 * 1024
+
+
+def _guard_html_shell(path: Path) -> None:
+    """Reject an HTML error page saved under a data filename.
+
+    Anonymous downloads from data.uspto.gov ended 2026-06-18 and now return a
+    small HTML shell with HTTP 200 rather than the file, so a plain stream
+    download succeeds while writing garbage. Fail loudly instead.
+    """
+    size = path.stat().st_size
+    if size < MIN_PLAUSIBLE_DOWNLOAD_BYTES:
+        head = path.read_bytes()[:512].lstrip().lower()
+        if head.startswith(b"<!doctype html") or head.startswith(b"<html"):
+            path.unlink(missing_ok=True)
+            raise ValueError(
+                f"USPTO returned an HTML page rather than data for {path.name}. "
+                f"The endpoint requires an API key (USPTO_ODP_API_KEY) or the "
+                f"browser download path."
+            )
+        raise ValueError(f"USPTO download implausibly small ({size} bytes): {path}")
+
+
 @op
 def download_uspto_op(context: OpExecutionContext) -> dict:
-    """Fetch the USPTO patent assignments dataset."""
+    """Fetch the three USPTO datasets the pipeline consumes.
+
+    Mirrors what the retired data-refresh.yml workflow fetched:
+    PatentsView ``patent``, the AI patents dataset, and patent assignments.
+    Assignments go through browser automation because the USPTO portal no
+    longer serves them to a plain HTTP client.
+    """
+    import asyncio
+
     from scripts.data.download_uspto import (
-        USPTO_ASSIGNMENT_URL,
+        PATENTSVIEW_PRODUCT,
+        PATENTSVIEW_TABLES,
+        USPTO_AI_PATENT_URL,
         create_session_with_retries,
+        download_odp_file,
         stream_download,
     )
 
     dest_dir = _data_root() / "raw" / "uspto"
     dest_dir.mkdir(parents=True, exist_ok=True)
-    dest_path = dest_dir / "patent_assignments.zip"
 
-    result = stream_download(USPTO_ASSIGNMENT_URL, dest_path, create_session_with_retries())
-    context.log.info(f"USPTO: {dest_path} ({result['size'] / 1024 / 1024:.1f} MB)")
-    context.add_output_metadata(
-        {"path": str(dest_path), "size": result["size"], "sha256": result["sha256"]}
+    api_key = os.environ.get("USPTO_ODP_API_KEY", "")
+    results: dict[str, dict] = {}
+    session = create_session_with_retries()
+
+    # 1: PatentsView patent table, via the ODP presigned-URL mint flow.
+    if not api_key:
+        raise ValueError(
+            "USPTO_ODP_API_KEY is not set. PatentsView downloads have required a "
+            "key since 2026-06-18; add it to .env.server."
+        )
+
+    pv_dest = dest_dir / "patentsview_patent.zip"
+    context.log.info("Downloading PatentsView patent table")
+    results["patentsview_patent"] = download_odp_file(
+        f"{PATENTSVIEW_PRODUCT}/{PATENTSVIEW_TABLES['patent']}", api_key, pv_dest, session
     )
-    return {"path": str(dest_path), **result}
+    _guard_html_shell(pv_dest)
+    results["patentsview_patent"]["path"] = str(pv_dest)
+
+    # 2: AI patents, served from a direct URL rather than the ODP product API.
+    ai_dest = dest_dir / "ai_patent_dataset.zip"
+    context.log.info("Downloading AI patents dataset")
+    results["ai_patents"] = stream_download(USPTO_AI_PATENT_URL, ai_dest, session)
+    _guard_html_shell(ai_dest)
+    results["ai_patents"]["path"] = str(ai_dest)
+
+    # 3: assignments, which need a real browser session.
+    from scripts.data.download_uspto_browser import download_assignments
+
+    context.log.info("Downloading patent assignments via browser automation")
+    assignment_results = asyncio.run(download_assignments(output_dir=dest_dir / "assignments"))
+    results["assignments"] = {"files": assignment_results}
+
+    context.add_output_metadata(
+        {
+            "datasets": list(results),
+            "assignment_files": len(assignment_results),
+            "dest_dir": str(dest_dir),
+        }
+    )
+    return results
 
 
 @job(
