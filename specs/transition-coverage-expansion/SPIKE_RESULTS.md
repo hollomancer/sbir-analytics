@@ -46,6 +46,36 @@ procurement boilerplate**, not tech content that matches the abstract — length
 text, and decoys share the boilerplate. **Value is in the LABELS (validated + expanded ground
 truth), not a detector lift.**
 
+## Does rich text lift the detector? (grant-abstract + NOFO investigation, 2026-08-02)
+
+Tests whether the ~0.467 contract-ranking ceiling is the detector or the *text*. Same frozen
+fusion (word+char TF-IDF, frozen coefficients), different candidate substrate:
+
+| candidate text (all vs SBIR abstract) | p@1 | note |
+|---|---|---|
+| terse FPDS contract (T6) | 0.467 | government-written, terse |
+| boilerplate SAM notice | 0.429 | government-written, boilerplate |
+| **firm's follow-on grant abstract** | **0.806–0.966** | **INFLATED — self-authored** |
+| government-written NOFO (fair test) | — | blocked (see below) |
+
+- **The grant-abstract lift is a mirage of self-authorship.** Grant "descriptions" are the
+  firm's *own* project proposals; matching a firm's SBIR abstract to its own later abstract is
+  near-tautological (same author/PI/tech terms; survives firm-name scrub because the tech
+  vocabulary carries it; the score *rose* with harder same-agency decoys — the tell). NOT the
+  packet's real job (abstract × government-written open solicitation).
+- **The fair NOFO test was blocked structurally.** grants.gov has rich NOFO text and USASpending
+  carries the NOFO number (RevBio→PAR-20-130), but (a) the grant→NOFO link is sparsely populated
+  (same coverage wall as contract→solicitation) and (b) NOFOs are *program-level* (PAR-20-130 =
+  broad NIH parent announcement funding hundreds of grants) = generic, not firm-specific. No
+  clean number obtained (sparse link + USASpending session throttling).
+
+**Conclusion — the ceiling is data-structural, not the model.** Every government-written substrate
+is terse (contracts 0.47), boilerplate (notices 0.43), or broad-program (NOFOs generic); none is
+firm-specific *and* rich. The only firm-specific rich text is self-authored (unusable for forward
+discovery). So **~0.47 is the detector's real forward ceiling — no accessible text substrate lifts
+it.** Deadline-primary stands. (Loose end: an actual NOFO precision number, on a non-throttled
+session — expected ~0.47.)
+
 ## T2 — Grants/assistance channel
 
 Across 35 civilian SBIR firms (NIH/NSF/DOE/USDA, first P2 ≥ 2010): **~$69M non-SBIR federal
