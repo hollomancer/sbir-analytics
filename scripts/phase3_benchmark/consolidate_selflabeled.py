@@ -17,11 +17,44 @@ from __future__ import annotations
 
 import argparse
 import glob
+import re
 from pathlib import Path
 
 import pandas as pd
 
 from scripts.phase3_benchmark.extract_phase3_selflabeled import classify_notice
+
+# Pre-award intent notices leave ``Awardee`` blank but name the firm in the
+# Description: "...intends to award ... to <FIRM>, <street-number> <address>".
+# Anchor on the street address ("<FIRM>, <digits> <word>") rather than an
+# award keyword, so a stray "competition to award" earlier doesn't hijack the
+# match; the optional legal-suffix segment keeps an internal comma ("Synoptos, Inc.").
+_AWARD_TO = re.compile(
+    r"\bto\s+([A-Za-z][^,]{1,60}(?:,\s*(?:inc|l\.?l\.?c|llc|corp\w*|co|company|ltd|lp)\.?)?)"
+    r",\s+\d{1,6}\s",
+    re.IGNORECASE,
+)
+# Fallback: "Notice of Intent to Sole-Source - <FIRM>" in the Title.
+_TITLE_FIRM = re.compile(r"sole[\s-]*source\s*[-:]\s*(.+?)\s*$", re.IGNORECASE)
+
+
+def firm_from_notice(row: dict) -> str:
+    """Best firm name for a notice: Awardee, else parsed from Description/Title."""
+
+    awardee = str(row.get("Awardee") or "").strip()
+    if len(awardee) > 3:
+        return awardee
+    match = _AWARD_TO.search(str(row.get("Description") or ""))
+    if match:
+        firm = match.group(1).strip(" ,-\t")  # keep a trailing "Inc." period
+        if 3 < len(firm) < 70 and "sbir" not in firm.lower():
+            return firm
+    match = _TITLE_FIRM.search(str(row.get("Title") or ""))
+    if match:
+        firm = match.group(1).strip()
+        if 3 < len(firm) < 50 and not re.search(r"sbir|phase|program|contract", firm, re.IGNORECASE):
+            return firm
+    return ""
 
 
 def _resolvers(award_csv: str):
@@ -46,7 +79,7 @@ def consolidate(parquet_dir: Path, collected_glob: str, award_csv: str, out_dir:
     gt_firms = {normalize_name(f) for f in gt["firm"] if f.strip()}
 
     pos = sl[sl["notice_class"].isin(["award", "intent_sole_source"])].copy()
-    pos["firm"] = pos["Awardee"].fillna("").astype(str).str.strip()
+    pos["firm"] = pos.apply(lambda r: firm_from_notice(r.to_dict()), axis=1)
     pos = pos[pos["firm"].str.len() > 3].drop_duplicates(subset=["firm", "AwardNumber", "NoticeId"])
 
     records = []
