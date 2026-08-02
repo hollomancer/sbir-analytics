@@ -62,6 +62,18 @@ jobs:
       # That is not hypothetical: on 2026-08-02 a step left with an empty
       # `env:` (parses as null, which Actions rejects) took weekly.yml out of
       # service for hours. yaml.safe_load accepts that; actionlint does not.
+      # Compose validation needs no image and takes about a second, so it
+      # lives here rather than behind the docker job's build. That also means
+      # it now runs on every PR instead of only when a Docker path changed.
+
+      # Compose validation needs no image and takes about a second, so it
+      # lives here rather than behind the docker job's build. That also means
+      # it now runs on every PR instead of only when a Docker path changed.
+      - name: Validate compose files
+        run: |
+          docker compose -f docker-compose.yml config -q
+          docker compose -f docker-compose.server.yml --env-file .env.server.example config -q
+
       - name: Validate this workflow with actionlint
         env:
           ACTIONLINT_VERSION: "1.7.12"
@@ -201,12 +213,14 @@ jobs:
         id: filter
         with:
           filters: |
+            # Only what can actually break the image build. The Dockerfile
+            # pip-installs pinned versions and never reads uv.lock, so a
+            # lockfile bump cannot affect it — including uv.lock here meant
+            # every dependabot PR paid a ~2m30s build for nothing. Compose
+            # files are gone too: they are validated in `quality` for free.
             docker:
               - 'Dockerfile*'
-              - 'docker-compose*.yml'
               - '.dockerignore'
-              - 'uv.lock'
-              - 'pyproject.toml'
 
   docker:
     name: Docker Build and Smoke Test
@@ -239,7 +253,3 @@ jobs:
       - name: Smoke test the entrypoint
         run: docker run --rm sbir-analytics:ci-${{ github.sha }} dagster --version
 
-      - name: Validate compose files
-        run: |
-          docker compose -f docker-compose.yml config -q
-          docker compose -f docker-compose.server.yml --env-file .env.server.example config -q
