@@ -1,7 +1,6 @@
 """The census filter must not be able to tell the SBIR arm from the control arm.
 
-The negative-control design (`specs/phase-iii-negative-controls/design.md`, and the
-frozen downstream invariants in `specs/phase-iii-census/design.md`) runs *the same*
+The frozen downstream invariants in `specs/phase-iii-census/design.md` run *the same*
 criteria over two arms: SBIR firms, and matched non-SBIR controls carrying a copied
 pseudo-index. The whole evidentiary value of that comparison rests on the filter being
 unable to distinguish them. A filter that can branch on arm membership will produce
@@ -13,9 +12,10 @@ That property holds today by construction and by nothing else. These tests make 
 by enforcement. They need none of the data the negative-control and placebo work is
 blocked on: they run against synthetic pairs and the criteria module's own source.
 
-The behavioural test below is the one that matters — it does not care what an arm column
-is *named*, only that adding one cannot change the output. The two structural tests are
-cheaper tripwires that fail closer to the mistake.
+The behavioural tests below are the ones that matter: they exercise conventional arm
+columns plus a deliberately innocuous spelling, and assert that adding or flipping them
+cannot change the output. The three structural tests are cheaper tripwires that fail
+closer to the mistake.
 """
 
 import ast
@@ -120,34 +120,39 @@ def _arm_labels(n: int) -> list[str]:
     return ["control" if index % 2 else "sbir" for index in range(n)]
 
 
-def _with_arm_columns() -> pd.DataFrame:
-    """Pairs carrying every arm spelling a leak might reach for.
+def _with_arm_columns(*, reverse: bool = False) -> pd.DataFrame:
+    """Pairs carrying conventional and deliberately innocuous arm spellings.
 
-    Both a boolean ``is_control`` and the string-labelled ``arm``/``treatment_group``,
-    so a branch on any one of them is caught. Shared by the ladder and sensitivity
-    tests: covering only one column in one of them would leave the other free to branch
-    on the two it omits.
+    A boolean ``is_control`` and string-labelled ``arm``/``treatment_group`` columns
+    exercise the obvious spellings. ``cohort_flag`` proves that both execution paths are
+    checked behaviourally rather than relying only on the lexical tripwires. Shared by
+    the ladder and sensitivity tests so neither path can cover fewer spellings.
     """
 
     pairs = _mixed_arm_pairs()
     labels = _arm_labels(len(pairs))
+    if reverse:
+        labels = ["sbir" if label == "control" else "control" for label in labels]
     pairs["is_control"] = [label == "control" for label in labels]
     pairs["arm"] = labels
     pairs["treatment_group"] = labels
+    pairs["cohort_flag"] = labels
     return pairs
 
 
 def test_adding_arm_columns_cannot_change_the_ladder():
     """Behavioural: the ladder must be bit-identical with and without arm columns.
 
-    This is the test that actually enforces the design requirement. It makes no
-    assumption about how a leak would be spelled — only that the filter's output is a
-    function of the pair fields, and arm membership is not one of them.
+    This test exercises both conventional and innocuous arm-column spellings. The
+    filter's output must remain a function of the pair fields, not arm membership.
     """
 
     baseline = build_dropoff_ladder(_mixed_arm_pairs(), CUT)
 
     pd.testing.assert_frame_equal(build_dropoff_ladder(_with_arm_columns(), CUT), baseline)
+    pd.testing.assert_frame_equal(
+        build_dropoff_ladder(_with_arm_columns(reverse=True), CUT), baseline
+    )
 
     # The ladder must also not survive by accident because every arm got the same answer:
     # the fixture has to actually discriminate, or this test proves nothing.
@@ -160,25 +165,23 @@ def test_adding_arm_columns_cannot_change_the_sensitivity_grid():
     baseline = build_sensitivity_grid(_mixed_arm_pairs(), CUT)
 
     pd.testing.assert_frame_equal(build_sensitivity_grid(_with_arm_columns(), CUT), baseline)
+    pd.testing.assert_frame_equal(
+        build_sensitivity_grid(_with_arm_columns(reverse=True), CUT), baseline
+    )
 
 
 def test_flipping_arm_labels_cannot_change_which_rows_survive():
     """Same rows, opposite arms: every clause must keep the identical survivor set.
 
-    Deliberately uses ``cohort_flag`` rather than an obvious name. The lexical scans
-    below would never flag that identifier, so this test is what stands between the repo
-    and a value-level leak wearing an innocuous name — verified by mutation: a
+    Includes ``cohort_flag`` alongside the obvious names. The lexical scans below would
+    never flag that identifier, so this test is what stands between the repo and a
+    value-level leak wearing an innocuous name — verified by mutation: a
     ``result & pairs["cohort_flag"].ne("control")`` injected into the lineage clause
     fails here and passes both source scans.
     """
 
-    sbir_first = _mixed_arm_pairs()
-    sbir_first["cohort_flag"] = _arm_labels(len(sbir_first))
-
-    control_first = _mixed_arm_pairs()
-    control_first["cohort_flag"] = [
-        "sbir" if label == "control" else "control" for label in _arm_labels(len(control_first))
-    ]
+    sbir_first = _with_arm_columns()
+    control_first = _with_arm_columns(reverse=True)
 
     for (left_id, _, left), (right_id, _, right) in zip(
         apply_core_clauses(sbir_first, CUT),
@@ -216,13 +219,19 @@ def test_criteria_functions_take_no_arm_argument():
 
 
 def test_core_clause_predicates_keep_the_frozen_two_argument_signature():
-    """Every frozen clause takes exactly ``(pairs, data_cut_date)`` — nothing else."""
+    """Every frozen clause takes two required positional arguments — nothing else."""
 
     for clause in CORE_CLAUSES:
-        parameters = list(inspect.signature(clause.predicate).parameters)
-        assert len(parameters) == 2, (
-            f"clause {clause.clause_id!r} takes {parameters}; the frozen signature is "
-            "(pairs, data_cut_date) and a third argument is where arm membership gets in"
+        signature = inspect.signature(clause.predicate)
+        parameters = list(signature.parameters.values())
+        valid = len(parameters) == 2 and all(
+            parameter.kind is inspect.Parameter.POSITIONAL_OR_KEYWORD
+            and parameter.default is inspect.Parameter.empty
+            for parameter in parameters
+        )
+        assert valid, (
+            f"clause {clause.clause_id!r} takes {signature}; expected exactly two "
+            "required positional parameters"
         )
 
 
