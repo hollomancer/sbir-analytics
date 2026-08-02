@@ -129,3 +129,24 @@ files before materialization.
   federal record remains authoritative. No exact-UEI pair count, cumulative drop-off
   count, six-cell sensitivity result, negative-control result, or placebo result had been
   materialized or seen.
+
+## Revision 7 — Reconciliation-text consistency correction
+
+- **Authority:** The repository owner's 2026-08-02 approval of Revision 6; this revision
+  records no new policy choice.
+- **Git-history anchor:** The commit that first adds Revision 7 to this file is the
+  correction-record anchor; its identifier is intentionally not embedded in the content
+  it hashes.
+- **Reason:** The required post-implementation quality sweep found that the approved
+  multi-supplemental rule was stated in the Phase II construction section and Revision 6
+  log, while a later paragraph retained the superseded one-supplemental multiplicity stop.
+  The stale paragraph is replaced so the frozen design states one rule consistently.
+- **Criteria and source-rule impact:** None. The text now repeats the already-approved
+  Revision 6 rule: exactly one federal match may reconcile one or more exact-key
+  supplementals together under unanimous NAICS/PSC validation; multiple federal matches
+  or taxonomy conflicts fail closed. No inclusion clause, pair universe, threshold,
+  score, model, sensitivity cell, output metric, or implementation behavior changes.
+- **Visibility at correction:** Source/provenance validation, the failed Phase II run,
+  the full exact-key reconciliation audit, and passing focused implementation tests were
+  visible. No exact-UEI pair count, cumulative drop-off count, six-cell sensitivity
+  result, negative-control result, or placebo result had been materialized or seen.

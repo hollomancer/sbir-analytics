@@ -487,11 +487,13 @@ any count:
    unless its selected SBIR source and the materialized prior frame have verified v2
    provenance.
 
-The earlier exact reconciliation rule is correspondingly strict at both grains. A shared
-normalized `source_award_id` reconciles only when it identifies exactly one collapsed
-federal award and exactly one retained SBIR.gov row. Multiplicity on either side stops
-materialization with `PhaseIIInputError`; no row may be selected or dropped by order, UEI,
-DUNS, recipient name, or another heuristic.
+The exact reconciliation rule is correspondingly strict at the federal-award grain. A
+shared normalized `source_award_id` reconciles only when it identifies exactly one
+collapsed federal award. One or more retained SBIR.gov rows may share that key; all are
+reconciled together under the unanimous-taxonomy rule above, without selecting a row or
+using UEI, DUNS, recipient name, or another heuristic. Multiplicity of collapsed federal
+awards, or conflicting nonblank NAICS/PSC values across the federal and supplemental
+rows, stops materialization with `PhaseIIInputError`.
 
 This amendment adds no threshold, score, heuristic match, source join, or learned model.
 It changes no census criterion or sensitivity cell. It replaces only the legacy
