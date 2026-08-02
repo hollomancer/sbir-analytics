@@ -1,7 +1,23 @@
 # T7 — Decision Memo: Can the fusion ranker order the procurement packet?
 
-**Decision: NO — deadline-primary. Use fusion as a top-3 surfacing aid, not the sole
-orderer and not a gate.** Evidence below, in plain language first.
+> **SUPERSEDING NOTE (2026-08-02) — two reframes since this memo:**
+> 1. **Wrong ranking task.** This memo's 0.467 is *contract-ranking* (rank a firm's terse
+>    transition contract among decoys) — the hardest, least-representative framing. The
+>    packet's real job is **firm-ranking** (rank firms for an opportunity; candidates are rich
+>    abstracts), measured in **#484 T3** at 0.54–0.71 with non-text lineage features. So the
+>    "deadline-primary" verdict rests on the wrong task and should be **revisited** against a
+>    production firm-ranking number.
+> 2. **Wrong lens for the north star.** More fundamentally, precision@K is a *ranking* metric
+>    that serves the PCR packet — a derived recommendation tool. The canonical research
+>    questions this work anchors to (**B2** did-it-transition; **B3** rates / latency /
+>    **Phase III undercount**; **A2/A3** transition-rate / follow-on-multiplier) need a
+>    transition **classifier** scored on **precision *and recall* (the ≥85% benchmark) + an
+>    undercount estimate** — not precision@K. The recall/undercount lever is the coverage work
+>    in **#485** (subaward / grants / self-labeled). This validation is still valid *for the
+>    packet*; it does not answer B2/B3/A2/A3.
+>
+> What still stands unchanged: the **293-firm ground-truth set**, the leakage-scrub, and the
+> selection-bias / provenance discipline — all valid inputs to any framing.
 
 ---
 
