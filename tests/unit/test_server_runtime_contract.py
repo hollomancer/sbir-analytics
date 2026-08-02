@@ -64,6 +64,29 @@ def test_dagster_execution_memory_belongs_to_code_server():
     assert "memory: 768M" in daemon
 
 
+def test_server_validate_config_does_not_expand_failure_path(tmp_path):
+    env_file = tmp_path / ".env.server"
+    env_file.write_text("# validation fixture\n")
+
+    result = subprocess.run(
+        [
+            "make",
+            "--no-print-directory",
+            "server-validate-config",
+            f"SERVER_ENV_FILE={env_file}",
+            f"SERVER_COMPOSE_FILE={SERVER_COMPOSE}",
+            "DOCKER_COMPOSE=true",
+            "QUIET=1",
+        ],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+        timeout=15,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
 def test_dagster_healthcheck_preserves_path_and_calls_configured_url(tmp_path):
     calls = tmp_path / "curl-calls"
     fake_curl = tmp_path / "curl"
