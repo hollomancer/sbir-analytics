@@ -43,21 +43,10 @@ identified."
       whether a periodic scan is still wanted somewhere off-Actions.
 - [ ] Verify by planting a known finding and confirming the job fails
 
-## 2. Markdown lint
+## 2. Markdown lint — done
 
 Was `weekly.yml` · `markdown-lint` (markdownlint-cli2 with `.markdownlint.yaml`).
 
-- [ ] Add as a **pre-commit hook**, not CI — it is a formatting check and
-      belongs where formatting checks already live
-- [ ] Keep the existing ignores (archive, specs/archive, reports, venvs,
-      node_modules)
-
-## 3. Neo4j schema dry-run
-
-Was `weekly.yml` · `neo4j-smoke`: build the runtime image, start Neo4j, run
-`scripts/neo4j/apply_schema.py --dry-run`.
-
-- [ ] Decide whether this is worth automating at all. The mini runs a real
-      Neo4j continuously, so a dry-run against a throwaway container is weaker
-      evidence than the live stack already provides.
-- [ ] If yes: host cron or a documented manual step in the Neo4j runbook
+- [x] Added as a **pre-commit hook** in `.pre-commit-config.yaml` (markdownlint-cli2
+      v0.18.1). Existing `ignoreGlobs` in `.markdownlint.yaml` cover archive,
+      specs/archive, reports, and virtual-environment directories.
