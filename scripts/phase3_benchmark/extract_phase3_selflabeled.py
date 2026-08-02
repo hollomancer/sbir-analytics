@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import io
 import json
 import re
 from collections.abc import Callable
@@ -89,7 +90,7 @@ def extract_year(
     year: int,
     output_dir: Path,
     *,
-    opener: Callable[[str], object] = _default_opener,
+    opener: Callable[[str], io.TextIOWrapper] = _default_opener,
 ) -> dict[str, object]:
     """Stream one fiscal year, keep self-labeled Phase III notices, write parquet + CSV."""
 
