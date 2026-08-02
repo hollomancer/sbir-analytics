@@ -23,6 +23,7 @@ paths:
   usaspending_dump_file: "data/usaspending/usaspending-db-test_recipient_lookup.zip"
   # Transition detection outputs
   transition_contracts_output: "data/transition/contracts_ingestion.parquet"
+  transition_award_archive_dir: "data/raw/usaspending/award_archive"
   transition_dump_dir: "data/transition/pruned_data_store_api_dump"
   transition_vendor_filters: "data/transition/sbir_vendor_filters.json"
 

@@ -7,9 +7,11 @@ Outputs vendor identifiers (UEI, DUNS, company names) to be used for filtering
 the 200GB USAspending dataset to only SBIR-relevant contracts.
 
 Usage:
-    poetry run python scripts/extract_sbir_vendors.py
+    python scripts/archive/extract_sbir_vendors.py
+    python scripts/archive/extract_sbir_vendors.py --awards-file data/raw/sbir/award_data.csv
 """
 
+import argparse
 import json
 from pathlib import Path
 
@@ -42,50 +44,51 @@ def extract_vendors(
     """
     logger.info(f"Reading SBIR awards from {awards_file}")
 
-    # Read awards data
-    df = pd.read_csv(awards_file, low_memory=False)
-    logger.info(f"Loaded {len(df):,} awards")
-
     # Extract vendor identifiers
-    vendors = {
+    vendors: dict[str, set[str]] = {
         "uei": set(),
         "duns": set(),
         "company_names": set(),
     }
 
-    # Extract UEI (Unique Entity Identifier)
-    if "UEI" in df.columns:
-        uei_values = df["UEI"].dropna().astype(str).str.strip()
-        uei_values = uei_values[uei_values != ""]
-        vendors["uei"] = set(uei_values.unique())
-        logger.info(f"Found {len(vendors['uei']):,} unique UEI values")
+    header = pd.read_csv(awards_file, nrows=0).columns
+    columns = [column for column in ("UEI", "Duns", "Company") if column in header]
+    if not columns:
+        raise ValueError("SBIR awards CSV has none of the vendor columns: UEI, Duns, Company")
 
-    # Extract DUNS
-    if "Duns" in df.columns:
-        duns_values = df["Duns"].dropna().astype(str).str.strip()
-        duns_values = duns_values[duns_values != ""]
-        vendors["duns"] = set(duns_values.unique())
-        logger.info(f"Found {len(vendors['duns']):,} unique DUNS values")
-
-    # Extract company names (for fuzzy matching fallback)
-    if "Company" in df.columns:
-        company_values = df["Company"].dropna().astype(str).str.strip()
-        company_values = company_values[company_values != ""]
-        # Normalize company names (uppercase)
-        vendors["company_names"] = {name.upper() for name in company_values.unique()}
-        logger.info(f"Found {len(vendors['company_names']):,} unique company names")
+    total_awards = 0
+    for chunk in pd.read_csv(
+        awards_file,
+        usecols=columns,
+        dtype="string",
+        chunksize=100_000,
+        low_memory=False,
+    ):
+        total_awards += len(chunk)
+        for column, key in (("UEI", "uei"), ("Duns", "duns")):
+            if column in chunk:
+                values = chunk[column].dropna().str.strip()
+                vendors[key].update(values[values != ""].tolist())
+        if "Company" in chunk:
+            names = chunk["Company"].dropna().str.strip()
+            vendors["company_names"].update(name.upper() for name in names[names != ""].tolist())
+    logger.info(f"Loaded {total_awards:,} awards")
+    logger.info(f"Found {len(vendors['uei']):,} unique UEI values")
+    logger.info(f"Found {len(vendors['duns']):,} unique DUNS values")
+    logger.info(f"Found {len(vendors['company_names']):,} unique company names")
 
     # Prepare JSON-serializable output
+    stats = {
+        "total_awards": total_awards,
+        "unique_uei": len(vendors["uei"]),
+        "unique_duns": len(vendors["duns"]),
+        "unique_companies": len(vendors["company_names"]),
+    }
     output_data = {
         "uei": sorted(vendors["uei"]),
         "duns": sorted(vendors["duns"]),
-        "company_names": sorted(vendors["company_names"])[:1000],  # Limit names for file size
-        "stats": {
-            "total_awards": len(df),
-            "unique_uei": len(vendors["uei"]),
-            "unique_duns": len(vendors["duns"]),
-            "unique_companies": len(vendors["company_names"]),
-        },
+        "company_names": sorted(vendors["company_names"]),
+        "stats": stats,
     }
 
     # Write to file
@@ -98,13 +101,18 @@ def extract_vendors(
     logger.success(f"Vendor filter file created: {output_file}")
     logger.info(f"Total unique vendors: {len(vendors['uei']) + len(vendors['duns']):,}")
 
-    return output_data["stats"]
+    return stats
 
 
 def main():
     """Main execution."""
+    parser = argparse.ArgumentParser(description="Build the SBIR vendor filter")
+    parser.add_argument("--awards-file", type=Path)
+    parser.add_argument("--output", type=Path)
+    args = parser.parse_args()
+
     # Paths
-    project_root = Path(__file__).parent.parent
+    project_root = Path(__file__).resolve().parents[2]
     awards_file = project_root / "data" / "raw" / "sbir" / "award_data.csv"
 
     # Determine paths from config if available (output + awards input)
@@ -116,6 +124,9 @@ def main():
             awards_file = project_root / config.extraction.sbir.csv_path
         except Exception:
             pass  # Fall back to default
+
+    awards_file = args.awards_file or awards_file
+    output_file = args.output or output_file
 
     # Check if awards file exists
     if not awards_file.exists():

@@ -48,6 +48,8 @@ x-server-environment: &server-environment
   SBIR_ETL__DAGSTER__SCHEDULES__DAILY_ALL_ASSETS_ENABLED: ${SBIR_ETL__DAGSTER__SCHEDULES__DAILY_ALL_ASSETS_ENABLED:-false}
   SBIR_ETL__DAGSTER__SCHEDULES__WEEKLY_CORE_REFRESH_ENABLED: ${SBIR_ETL__DAGSTER__SCHEDULES__WEEKLY_CORE_REFRESH_ENABLED:-false}
   SBIR_ETL__DAGSTER__SCHEDULES__WEEKLY_CORE_REFRESH_JOB: ${SBIR_ETL__DAGSTER__SCHEDULES__WEEKLY_CORE_REFRESH_JOB:-0 3 * * 0}
+  # Explicit opt-in: a single fiscal-year archive is narrower than the full DB.
+  SBIR_ETL__TRANSITION__CONTRACTS__USE_AWARD_ARCHIVE: ${SBIR_ETL__TRANSITION__CONTRACTS__USE_AWARD_ARCHIVE:-false}
   # Source-download schedules. --env-file only supplies Compose interpolation,
   # so every variable the code reads must be mapped explicitly here or it never
   # reaches the container.

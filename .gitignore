@@ -195,6 +195,9 @@ dagster_home/
 docker/*.local.*
 docker-compose.override.yml
 
+# Host-specific Mac mini deployment state (procedures stay in the runbook)
+/docs/deployment/mac-mini-status.local.md
+
 # Poetry backups
 poetry.lock.bak
 
@@ -229,4 +232,3 @@ results.csv
 
 # Playwright MCP browser-automation traces (local debugging only)
 .playwright-mcp/
-

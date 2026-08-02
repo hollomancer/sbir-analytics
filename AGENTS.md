@@ -8,6 +8,9 @@ coding agents; tool-specific agent definitions may differ by runtime.
 
 Before any deployment, server operation, or live Dagster materialization, read
 [the Mac mini runbook](docs/deployment/mac-mini-server.md#live-instance-on-this-mac-mini).
+On the live host, also read `docs/deployment/mac-mini-status.local.md` when it
+exists. That ignored file is the source of truth for current materialization
+state; never copy its host-specific contents into tracked documentation.
 
 - The only live checkout is `/Users/conradhollomon/projects/sbir-analytics-server`.
   Never operate the live stack from the development checkout.
