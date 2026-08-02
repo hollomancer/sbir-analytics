@@ -47,9 +47,7 @@ jobs:
       pull-requests: read
     outputs:
       performance: ${{ steps.detect.outputs.performance }}
-      transition: ${{ steps.detect.outputs.transition }}
       docker: ${{ steps.detect.outputs.docker }}
-      workflows: ${{ steps.detect.outputs.workflows }}
       docs-only: ${{ steps.detect.outputs.docs-only }}
     steps:
       - uses: actions/checkout@v7
@@ -72,25 +70,11 @@ jobs:
               - 'scripts/performance/benchmark_enrichment.py'
               - 'scripts/performance/detect_performance_regression.py'
               - 'config/base.yaml'
-            transition:
-              - 'packages/sbir-analytics/sbir_analytics/assets/phase_transition/**'
-              - 'packages/sbir-analytics/sbir_analytics/assets/jobs/phase_transition_job.py'
-              - 'packages/sbir-ml/sbir_ml/transition/**'
-              - 'tests/e2e/transition/**'
-              - 'tests/integration/test_transition_*.py'
-              - 'docs/transition/**'
-              - 'packages/sbir-analytics/sbir_analytics/assets/phase_iii_candidates/**'
-              - 'packages/sbir-ml/sbir_ml/transition/detection/scoring.py'
-              - 'scripts/phase_iii_precision_backtest.py'
-              - 'tests/integration/test_phase_iii_retrospective_asset.py'
             docker:
               - 'Dockerfile*'
               - 'docker-compose*.yml'
               - '.dockerignore'
               - 'docker/**'
-            workflows:
-              - '.github/workflows/**'
-              - '.github/actions/**'
 
   code-quality:
     name: Code Quality (Lint + Type Check)
@@ -233,15 +217,29 @@ jobs:
 
     strategy:
       fail-fast: false
+      # Unit tests are sharded by count rather than split on the slow marker.
+      # The old split was 5,254 tests in unit-fast against 2 in unit-slow, so
+      # it provisioned a whole runner for two tests while one leg carried the
+      # entire suite. Shards cover exactly the same tests, just balanced.
+      # Every shard writes a coverage report. Codecov merges the five reports,
+      # preserving whole-suite coverage while retaining parallel test execution.
       matrix:
         suite:
-          - name: unit-fast
+          - name: unit-shard-0
             path: tests/unit/
-            args: '-m "not slow and not integration"'
+            args: "--num-shards=4 --shard-id=0"
             needs_neo4j: false
-          - name: unit-slow
+          - name: unit-shard-1
             path: tests/unit/
-            args: '-m "slow and not integration"'
+            args: "--num-shards=4 --shard-id=1"
+            needs_neo4j: false
+          - name: unit-shard-2
+            path: tests/unit/
+            args: "--num-shards=4 --shard-id=2"
+            needs_neo4j: false
+          - name: unit-shard-3
+            path: tests/unit/
+            args: "--num-shards=4 --shard-id=3"
             needs_neo4j: false
           - name: integration
             path: tests/integration/
@@ -281,9 +279,16 @@ jobs:
           NEO4J_PASSWORD: ${{ env.NEO4J_PASSWORD }}
           REQUIRE_NEO4J: ${{ matrix.suite.needs_neo4j && '1' || '' }}
         run: |
+          # -v already comes from addopts in pyproject.toml; repeating it here
+          # emitted a second verbose line per test through the xdist workers.
           uv run pytest ${{ matrix.suite.path }} ${{ matrix.suite.args }} \
-            --cov=sbir_etl --cov=packages/sbir-analytics/sbir_analytics --cov=packages/sbir-ml/sbir_ml --cov=packages/sbir-graph/sbir_graph --cov-report=xml --cov-report=term \
-            --junitxml=test-results-${{ matrix.suite.name }}.xml -v
+            --cov=sbir_etl \
+            --cov=packages/sbir-analytics/sbir_analytics \
+            --cov=packages/sbir-ml/sbir_ml \
+            --cov=packages/sbir-graph/sbir_graph \
+            --cov-report=xml \
+            --cov-report=term \
+            --junitxml=test-results-${{ matrix.suite.name }}.xml
 
       - name: Stop Neo4j service
         if: always() && matrix.suite.needs_neo4j
@@ -292,7 +297,7 @@ jobs:
           container-name: test-neo4j
 
       - name: Upload coverage
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && hashFiles('coverage.xml') != '' }}
         uses: codecov/codecov-action@v7
         with:
           files: ./coverage.xml
@@ -326,16 +331,13 @@ jobs:
 
       - name: Aggregate test results
         run: |
-          cat > /tmp/test_summary.md << 'EOF'
-          ## 🧪 Test Results Summary
-
-          EOF
+          : > /tmp/test_failures.md
 
           TOTAL_PASSED=0
           TOTAL_FAILED=0
           TOTAL_SKIPPED=0
 
-          for suite in unit-fast unit-slow integration; do
+          for suite in unit-shard-0 unit-shard-1 unit-shard-2 unit-shard-3 integration; do
             XML_FILE="test-results/test-results-${suite}/test-results-${suite}.xml"
             if [ -f "$XML_FILE" ]; then
               # Parse JUnit XML for test counts
@@ -352,23 +354,32 @@ jobs:
               TOTAL_SKIPPED=$((TOTAL_SKIPPED + SKIPPED))
 
               if [ "$FAILED" -gt 0 ]; then
-                echo "### ❌ ${suite} Failures" >> /tmp/test_summary.md
-                echo "" >> /tmp/test_summary.md
+                echo "### ❌ ${suite} Failures" >> /tmp/test_failures.md
+                echo "" >> /tmp/test_failures.md
                 # Extract failure messages from JUnit XML
                 grep -oP '<failure[^>]*message="\K[^"]+' "$XML_FILE" | head -5 | while read msg; do
-                  echo "- $msg" >> /tmp/test_summary.md
+                  echo "- $msg" >> /tmp/test_failures.md
                 done
-                echo "" >> /tmp/test_summary.md
+                echo "" >> /tmp/test_failures.md
               fi
             fi
           done
 
-          # Add summary at top
-          sed -i "3i **Total:** $TOTAL_PASSED ✅ passed, $TOTAL_FAILED ❌ failed, $TOTAL_SKIPPED ⏭️ skipped\n" /tmp/test_summary.md
-
           if [ "$TOTAL_FAILED" -eq 0 ]; then
-            sed -i "3i ### ✅ All Tests Passed!\n" /tmp/test_summary.md
+            STATUS="### ✅ All Tests Passed!"
+          else
+            STATUS="### ❌ Test Failures Detected"
           fi
+
+          {
+            echo "## 🧪 Test Results Summary"
+            echo ""
+            echo "$STATUS"
+            echo ""
+            echo "**Total:** $TOTAL_PASSED ✅ passed, $TOTAL_FAILED ❌ failed, $TOTAL_SKIPPED ⏭️ skipped"
+            echo ""
+            cat /tmp/test_failures.md
+          } > /tmp/test_summary.md
 
       - name: Comment PR
         uses: actions/github-script@v9
