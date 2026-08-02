@@ -43,6 +43,7 @@ import pandas as pd
 
 from ..exceptions import ValidationError
 from ..utils.text_normalization import normalize_name
+from sbir_etl.identity import rapidfuzz_jaro_winkler_100, rapidfuzz_token_set_100
 
 
 def _set_award_match(
@@ -69,8 +70,7 @@ def _set_award_match(
 
 
 try:
-    from rapidfuzz import fuzz, process
-    from rapidfuzz.distance import JaroWinkler
+    from rapidfuzz import process
 except Exception as e:  # pragma: no cover - defensive runtime behavior
     raise ImportError(
         "rapidfuzz is required for the company enricher. Install via `pip install rapidfuzz`."
@@ -229,7 +229,7 @@ def enrich_awards_with_companies(
     high_threshold: int = 90,
     low_threshold: int = 75,
     top_k: int = 3,
-    scorer=fuzz.token_set_ratio,
+    scorer=rapidfuzz_token_set_100,
     return_candidates: bool = False,
     enhanced_config: dict[str, Any] | None = None,
 ) -> pd.DataFrame:
@@ -510,7 +510,12 @@ def enrich_awards_with_companies(
             def jw_scorer(
                 s1: str, s2: str, prefix_weight: float = prefix_weight_val, **kwargs: Any
             ) -> float:
-                return JaroWinkler.similarity(s1, s2, prefix_weight=prefix_weight) * 100.0
+                return rapidfuzz_jaro_winkler_100(
+                    s1,
+                    s2,
+                    prefix_weight=prefix_weight,
+                    **kwargs,
+                )
 
             active_scorer = jw_scorer
 

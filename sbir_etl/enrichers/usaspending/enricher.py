@@ -23,16 +23,13 @@ import json
 import pandas as pd
 
 from ...utils.text_normalization import normalize_recipient_name
+from sbir_etl.identity import rapidfuzz_token_set_100
 
 
 try:
-    from rapidfuzz import fuzz, process
-
-    _rapidfuzz_available = True
+    from rapidfuzz import process
 except ImportError:
     # Fallback to simple string matching if rapidfuzz not available
-    _rapidfuzz_available = False
-    fuzz = None  # type: ignore[assignment, no-redef]
     process = None  # type: ignore[assignment, no-redef]
 
 
@@ -156,14 +153,14 @@ def enrich_sbir_with_usaspending(
     # Only process rows that don't have exact matches
     unmatched_mask = sbir["_usaspending_recipient_idx"].isna()
     for idx, row in sbir[unmatched_mask].iterrows():
-        if fuzz and process:
+        if process:
             norm_name = row.get("_norm_name", "")
             if norm_name:
                 # Get candidate recipients (simple approach: all for now, could add blocking)
                 choices = recipients["_norm_name"].to_dict()
 
                 results = process.extract(
-                    norm_name, choices, scorer=fuzz.token_set_ratio, limit=top_k
+                    norm_name, choices, scorer=rapidfuzz_token_set_100, limit=top_k
                 )
 
                 candidates = []

@@ -16,30 +16,26 @@ human can spot-check the fuzzy ones.
 from __future__ import annotations
 
 import argparse
-import re
 from dataclasses import dataclass, field
 from functools import lru_cache
 from pathlib import Path
 
 import pandas as pd
-from rapidfuzz import fuzz, process
+from rapidfuzz import process
 
-
-_SUFFIX_RE = re.compile(
-    r"\b(INC|INCORPORATED|LLC|L\.?L\.?C|CORP|CORPORATION|CO|COMPANY|LTD|LP|LLP|PC|PLLC)\b\.?",
-    re.IGNORECASE,
+from sbir_etl.identity import (
+    CompanyNameProfile,
+    normalize_company_name,
+    rapidfuzz_token_set_100,
 )
-_NON_ALNUM = re.compile(r"[^A-Z0-9 ]")
 
 FUZZY_THRESHOLD = 88.0
 
 
 def normalize_name(name: object) -> str:
-    """Uppercase, drop legal suffixes and punctuation, collapse whitespace."""
+    """Compatibility shim for the frozen ground-truth identity policy."""
 
-    text = _SUFFIX_RE.sub(" ", str(name or "").upper())
-    text = _NON_ALNUM.sub(" ", text)
-    return " ".join(text.split())
+    return normalize_company_name(name, profile=CompanyNameProfile.GROUNDTRUTH_V1)
 
 
 @dataclass
@@ -97,7 +93,7 @@ def resolve_firm(
 
     # Fuzzy: score the query against the distinct known name keys.
     choices = awards["name_key"].dropna().unique().tolist()
-    best = process.extractOne(key, choices, scorer=fuzz.token_set_ratio)
+    best = process.extractOne(key, choices, scorer=rapidfuzz_token_set_100)
     if best is not None and best[1] >= threshold:
         matched_key = best[0]
         rows = awards.loc[awards["name_key"] == matched_key]
