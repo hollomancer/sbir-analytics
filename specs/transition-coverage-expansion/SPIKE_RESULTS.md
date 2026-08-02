@@ -1,5 +1,15 @@
 # Coverage-Expansion Spike Results (USASpending-testable channels)
 
+> **USE-CASE NOTE (2026-08-02).** Re-checked against the north star (`docs/research-questions.md`):
+> this coverage work is the **best-aligned** part of the transition effort with the canonical
+> questions. Finding transitions the FPDS-only pipeline misses (subaward, grants, OT, self-labeled)
+> is exactly **B3's "how much undercount exists in Phase III coding"** and feeds **B2** (did-it-
+> transition) and **A2/A3** (transition-rate / follow-on-multiplier) — all **classification /
+> measurement** questions whose key metric is **recall** (are we finding all the transitions?).
+> That is the primary target, not the precision@K ranking numbers elsewhere in this thread. The
+> "does rich text lift the detector" section below is a *ranking*-metric aside (superseded by the
+> firm-ranking reframe in #484); it does not bear on the coverage/undercount value, which stands.
+
 Testable-now channels executed against USASpending (SAM-only channels §638-J&A / OT await
 off-sandbox execution via `scripts/transition_coverage/sam_probe.sh`).
 
