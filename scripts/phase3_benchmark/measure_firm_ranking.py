@@ -29,12 +29,11 @@ import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
-_SUFFIX = re.compile(r"\b(INC|LLC|CORP\w*|CO|COMPANY|LTD|LP|LLP|PC|PLLC|INCORPORATED)\b\.?", re.I)
-_NON_ALNUM = re.compile(r"[^A-Z0-9 ]")
+from sbir_etl.identity import CompanyNameProfile, normalize_company_name
 
 
 def normalize_name(s: object) -> str:
-    return " ".join(_NON_ALNUM.sub(" ", _SUFFIX.sub(" ", str(s or "").upper())).split())
+    return normalize_company_name(s, profile=CompanyNameProfile.ORGANIZATION_KEY_V1)
 
 
 def firm_bucket(agency: str, branch: str) -> str:

@@ -13,7 +13,13 @@ from typing import Any
 
 import pandas as pd
 from loguru import logger
-from rapidfuzz import fuzz
+
+from sbir_etl.identity import (
+    CompanyNameMetric,
+    CompanyNameProfile,
+    company_name_similarity,
+    normalize_company_name,
+)
 
 from ...models.sec_edgar import (
     CompanyEdgarProfile,
@@ -163,11 +169,6 @@ _FORM_TYPE_LABELS: dict[str, str] = {
     "SC 13G": "ownership_passive",
     "SC 13G/A": "ownership_passive",
 }
-
-_CORP_SUFFIX = re.compile(
-    r",?\s*(Inc\.?|Corp\.?|LLC|Ltd\.?|Co\.?|L\.?P\.?|/DE|/NV|/MD|CORP|INC)$",
-    re.IGNORECASE,
-)
 
 # Keyword regexes for surrounding-text context classification, ordered by priority.
 _MENTION_CONTEXT_PATTERNS: list[tuple[re.Pattern[str], str]] = [
@@ -353,7 +354,10 @@ async def _extract_mention_context(
 
     match = re.search(re.escape(company_name), text, re.IGNORECASE)
     if not match:
-        clean_name = _CORP_SUFFIX.sub("", company_name).strip()
+        clean_name = normalize_company_name(
+            company_name,
+            profile=CompanyNameProfile.SEC_EDGAR_TRAILING_V1,
+        )
         if len(clean_name) >= 5:
             match = re.search(re.escape(clean_name), text, re.IGNORECASE)
     if not match:
@@ -397,8 +401,14 @@ def _is_noise(filer_name: str, target_name: str, sics: list[str]) -> bool:
         if any(sic in r for r in _NOISE_SIC_RANGES):
             return True
 
-    target_clean = _CORP_SUFFIX.sub("", target_name).strip().upper()
-    filer_clean = _CORP_SUFFIX.sub("", filer_name).strip().upper()
+    target_clean = normalize_company_name(
+        target_name,
+        profile=CompanyNameProfile.SEC_EDGAR_TRAILING_V1,
+    )
+    filer_clean = normalize_company_name(
+        filer_name,
+        profile=CompanyNameProfile.SEC_EDGAR_TRAILING_V1,
+    )
     return (
         target_clean in filer_clean
         and filer_clean != target_clean
@@ -429,7 +439,15 @@ async def _search_filing_mentions_filtered(
         filer_name = mention.get("filer_name", "")
         if not filer_name:
             continue
-        if fuzz.token_set_ratio(company_name.upper(), filer_name.upper()) >= name_match_threshold:
+        if (
+            company_name_similarity(
+                company_name.upper(),
+                filer_name.upper(),
+                metric=CompanyNameMetric.TOKEN_SET,
+            )
+            * 100.0
+            >= name_match_threshold
+        ):
             continue  # self-filing
         if _is_noise(filer_name, company_name, mention.get("sics", [])):
             continue
@@ -524,7 +542,14 @@ async def _search_form_d_filings(
         entity_name = result.get("entity_name", "")
         if not entity_name:
             continue
-        score = fuzz.token_set_ratio(company_name.upper(), entity_name.upper())
+        score = (
+            company_name_similarity(
+                company_name.upper(),
+                entity_name.upper(),
+                metric=CompanyNameMetric.TOKEN_SET,
+            )
+            * 100.0
+        )
         if score < match_threshold:
             continue
         filing_date_str = result.get("file_date")
@@ -592,14 +617,9 @@ _GENERIC_WORDS = frozenset(
 
 
 def _clean_company_name(name: str) -> str:
-    """Iteratively strip corporate suffixes (handles 'QUALCOMM INC/DE')."""
-    upper = name.strip().upper()
-    for _ in range(3):
-        cleaned = _CORP_SUFFIX.sub("", upper).strip()
-        if cleaned == upper:
-            break
-        upper = cleaned
-    return upper
+    """Compatibility shim for the versioned SEC EDGAR company-name policy."""
+
+    return normalize_company_name(name, profile=CompanyNameProfile.SEC_EDGAR_V1)
 
 
 def _distinctive_words(cleaned_name: str) -> set[str]:
@@ -639,9 +659,20 @@ async def _resolve_cik(
             continue
         entity_clean = _clean_company_name(entity_name)
 
-        score = max(
-            fuzz.token_set_ratio(query_clean, entity_clean),
-            fuzz.ratio(query_clean, entity_clean),
+        score = (
+            max(
+                company_name_similarity(
+                    query_clean,
+                    entity_clean,
+                    metric=CompanyNameMetric.TOKEN_SET,
+                ),
+                company_name_similarity(
+                    query_clean,
+                    entity_clean,
+                    metric=CompanyNameMetric.RATIO,
+                ),
+            )
+            * 100.0
         )
         if score < threshold:
             continue
