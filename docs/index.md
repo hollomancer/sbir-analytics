@@ -28,10 +28,10 @@ See [README](../README.md) for project context, research questions, and setup. T
 - Shared tech stack: [`architecture/shared-tech-stack.md`](architecture/shared-tech-stack.md)
 - Pipelines, schedules & sensors: [`architecture/dagster-pipelines.md`](architecture/dagster-pipelines.md)
 
-### Deployment (Optional Cloud Setup)
+### Deployment
 
-- **[Experimental deployment path](deployment/README.md)** - GitHub Actions orchestration notes
-- **[AWS Infrastructure](deployment/aws-deployment.md)** - Optional Lambda + S3 + Step Functions setup
+- **[Mac mini server](deployment/mac-mini-server.md)** - Tailnet-only always-on deployment
+- **[Deployment overview](deployment/README.md)** - Choosing a deployment path
 - [Docker guide](development/docker.md) - Containers for local development, CI, and testing
 
 ### Development Guides

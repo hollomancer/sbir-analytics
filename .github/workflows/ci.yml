@@ -50,8 +50,6 @@ jobs:
       transition: ${{ steps.detect.outputs.transition }}
       docker: ${{ steps.detect.outputs.docker }}
       workflows: ${{ steps.detect.outputs.workflows }}
-      infrastructure: ${{ steps.detect.outputs.infrastructure }}
-      s3: ${{ steps.detect.outputs.s3 }}
       docs-only: ${{ steps.detect.outputs.docs-only }}
     steps:
       - uses: actions/checkout@v7
@@ -93,14 +91,6 @@ jobs:
             workflows:
               - '.github/workflows/**'
               - '.github/actions/**'
-            infrastructure:
-              - 'infrastructure/cdk/**'
-            s3:
-              - 'sbir_etl/utils/cloud_storage.py'
-              - 'tests/integration/test_s3_operations.py'
-              - 'tests/conftest.py'
-              - '.github/workflows/ci.yml'
-              - '.github/actions/detect-changes/**'
 
   code-quality:
     name: Code Quality (Lint + Type Check)
@@ -227,58 +217,6 @@ jobs:
           # Check for hardcoded secrets (basic check)
           if grep -rE "(password|secret|token)\s*[:=]\s*['\"][^$]" .github/workflows/ --include="*.yml" | grep -v "pragma: allowlist"; then
             echo "::error::Potential hardcoded secrets found in workflows"
-            exit 1
-          fi
-
-  infrastructure-validate:
-    name: Validate CDK Infrastructure
-    needs: [detect-changes]
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    # validation_app.py injects placeholder VPC attributes, so synthesis is
-    # deterministic and credential-free. Validate every push, but avoid adding
-    # this job to unrelated pull requests.
-    if: |
-      needs.detect-changes.outputs.docs-only != 'true' &&
-      (github.event_name != 'pull_request' || needs.detect-changes.outputs.infrastructure == 'true')
-    steps:
-      - uses: actions/checkout@v7
-
-      - name: Setup Python
-        uses: actions/setup-python@v7
-        with:
-          python-version: "3.11"
-
-      - name: Setup Node.js (for CDK CLI)
-        uses: actions/setup-node@v7
-        with:
-          node-version: "22"
-
-      - name: Install CDK dependencies
-        working-directory: infrastructure/cdk
-        run: |
-          python -m venv .venv
-          source .venv/bin/activate
-          pip install -r requirements.txt
-          npm install -g aws-cdk
-
-      - name: CDK Synth (validate templates)
-        working-directory: infrastructure/cdk
-        env:
-          CDK_DEFAULT_ACCOUNT: "123456789012"
-          CDK_DEFAULT_REGION: "us-east-2"
-        run: |
-          source .venv/bin/activate
-          echo "## 🏗️ CDK Validation" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-
-          # Use explicit placeholder VPC attributes instead of an account
-          # lookup. Production deploys continue to use app.py and the real
-          # default-VPC lookup.
-          if cdk synth --app "python validation_app.py" --quiet 2>&1; then
-            echo "✅ CDK synth successful" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "❌ CDK synth failed" >> $GITHUB_STEP_SUMMARY
             exit 1
           fi
 
@@ -597,28 +535,14 @@ jobs:
     timeout-minutes: 20
     continue-on-error: true  # Don't block PRs on performance checks
     permissions:
-      id-token: write        # For OIDC authentication to AWS
       contents: read         # For checking out code
       pull-requests: write   # For posting PR comments
       checks: write          # For creating check runs
-    env:
-      AWS_REGION: us-east-2
-      S3_BUCKET: sbir-etl-prod-data
-      SBIR_ANALYTICS_S3_BUCKET: sbir-etl-prod-data
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
         with:
           fetch-depth: 0
-
-      - name: Configure AWS credentials
-        id: aws-credentials
-        continue-on-error: true  # Optional: Falls back to local data if AWS not configured
-        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
-        uses: ./.github/actions/setup-aws-credentials
-        with:
-          role-arn: ${{ secrets.AWS_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
 
       - name: Setup Python and UV
         uses: ./.github/actions/setup-python-uv
@@ -650,37 +574,13 @@ jobs:
             echo "⚠ No baseline found - this is first run or cache miss"
           fi
 
-      - name: Check if AWS credentials are available
-        id: check_aws
-        run: |
-          # Check if AWS credentials step succeeded AND credentials actually work
-          if [ "${{ steps.aws-credentials.outcome }}" == "success" ]; then
-            # Verify credentials are actually usable
-            if aws sts get-caller-identity >/dev/null 2>&1; then
-              echo "aws_available=true" >> $GITHUB_OUTPUT
-              echo "✓ AWS credentials configured and verified"
-            else
-              echo "aws_available=false" >> $GITHUB_OUTPUT
-              echo "⚠️  AWS credentials step succeeded but credentials not usable"
-            fi
-          else
-            echo "aws_available=false" >> $GITHUB_OUTPUT
-            echo "⚠️  AWS credentials step did not succeed (outcome: ${{ steps.aws-credentials.outcome }})"
-          fi
-
       - name: Prepare test data for benchmark
-        if: steps.check_aws.outputs.aws_available == 'true'
         run: |
-          # Use test fixture if S3 data not available
           mkdir -p data/raw/sbir
-          if ! aws s3 ls s3://${{ env.S3_BUCKET }}/data/raw/sbir/award_data.csv >/dev/null 2>&1; then
-            echo "⚠️  S3 data not available, using test fixture"
-            cp tests/fixtures/sbir_sample.csv data/raw/sbir/award_data.csv
-          fi
+          cp tests/fixtures/sbir_sample.csv data/raw/sbir/award_data.csv
 
       - name: Run Performance Regression Detection
         id: regression
-        if: steps.check_aws.outputs.aws_available == 'true'
         continue-on-error: true
         run: |
           mkdir -p reports/benchmarks
@@ -952,8 +852,8 @@ jobs:
     name: Run Transition MVP (shim) and gate on validation summary
     needs: [detect-changes]
     # The transition pipeline needs bulk SBIR/SAM/USAspending data that is
-    # gitignored and only reachable from S3 with AWS credentials. Neither PRs
-    # nor `push` events on this repo have credentials configured yet, so the
+    # gitignored and now lives only on the server's SSD, which CI runners
+    # cannot reach, so the
     # `make transition-run` step always fails with
     # `FileNotFoundError: ... /storage/enriched_sbir_awards`. Restrict to
     # `workflow_dispatch` where an operator can inject credentials. (A nightly
@@ -1048,80 +948,9 @@ jobs:
           if-no-files-found: warn
           retention-days: ${{ env.DEFAULT_RETENTION_DAYS }}
 
-  test-s3-integration:
-    name: S3 Integration Tests
-    needs: [detect-changes]
-    if: |
-      !contains(github.event.pull_request.labels.*.name, 'skip-cloud-tests') &&
-      (
-        github.event_name == 'workflow_dispatch' ||
-        (
-          needs.detect-changes.outputs.docs-only != 'true' &&
-          needs.detect-changes.outputs.s3 == 'true'
-        )
-      )
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    permissions:
-      id-token: write
-      contents: read
-    outputs:
-      tests-ran: ${{ steps.s3-tests.outcome == 'success' }}
-    steps:
-      - name: Check AWS test role configuration
-        id: aws-role
-        env:
-          AWS_TEST_ROLE_ARN: ${{ secrets.AWS_TEST_ROLE_ARN }}
-        run: |
-          if [ -n "$AWS_TEST_ROLE_ARN" ]; then
-            echo "available=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "available=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::AWS_TEST_ROLE_ARN is unavailable; skipping S3 integration tests"
-          fi
-
-      - name: Configure AWS credentials
-        if: steps.aws-role.outputs.available == 'true'
-        id: aws-creds
-        uses: aws-actions/configure-aws-credentials@v6
-        with:
-          role-to-assume: ${{ secrets.AWS_TEST_ROLE_ARN }}
-          aws-region: us-east-2
-
-      - uses: actions/checkout@v7
-        if: steps.aws-creds.outcome == 'success'
-
-      - name: Setup Python and UV
-        if: steps.aws-creds.outcome == 'success'
-        uses: ./.github/actions/setup-python-uv
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-          install-dev-deps: "true"
-          cache-venv: "true"
-
-      - name: Run S3 integration tests
-        id: s3-tests
-        if: steps.aws-creds.outcome == 'success'
-        env:
-          TEST_S3_BUCKET: sbir-analytics-test
-        run: |
-          uv run pytest tests/integration/test_s3_operations.py -v -m s3
-
-      - name: Skip S3 tests (no credentials)
-        if: |
-          always() &&
-          (steps.aws-role.outputs.available != 'true' || steps.aws-creds.outcome != 'success')
-        run: |
-          if [ "${{ steps.aws-role.outputs.available }}" != "true" ]; then
-            echo "⚠️ AWS_TEST_ROLE_ARN is unavailable; S3 integration tests were skipped"
-            echo "This is expected for external pull requests"
-          else
-            echo "⚠️ AWS credential configuration failed; S3 integration tests were skipped"
-          fi
-
   ci-summary:
     name: CI Summary
-    needs: [detect-changes, code-quality, verify-setup-script, infrastructure-validate, test, container-build-test, performance-check, e2e-docker, transition-mvp, test-s3-integration]
+    needs: [detect-changes, code-quality, verify-setup-script, test, container-build-test, performance-check, e2e-docker, transition-mvp]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -1137,7 +966,6 @@ jobs:
           echo "| 🔍 Detect Changes | ${{ needs.detect-changes.result == 'success' && '✅' || '❌' }} ${{ needs.detect-changes.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| 🧹 Code Quality | ${{ needs.code-quality.result == 'success' && '✅' || needs.code-quality.result == 'skipped' && '⏭️' || '❌' }} ${{ needs.code-quality.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| ✅ Verify Setup | ${{ needs.verify-setup-script.result == 'success' && '✅' || needs.verify-setup-script.result == 'skipped' && '⏭️' || '❌' }} ${{ needs.verify-setup-script.result }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| 🏗️ CDK Infrastructure | ${{ needs.infrastructure-validate.result == 'success' && '✅' || needs.infrastructure-validate.result == 'skipped' && '⏭️' || '❌' }} ${{ needs.infrastructure-validate.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| 🧪 Tests (3 suites) | ${{ needs.test.result == 'success' && '✅' || needs.test.result == 'skipped' && '⏭️' || '❌' }} ${{ needs.test.result }} |" >> $GITHUB_STEP_SUMMARY
 
           # Conditional jobs
@@ -1147,14 +975,6 @@ jobs:
 
           if [ "${{ needs.performance-check.result }}" != "skipped" ]; then
             echo "| ⚡ Performance Check | ${{ needs.performance-check.result == 'success' && '✅' || '❌' }} ${{ needs.performance-check.result }} |" >> $GITHUB_STEP_SUMMARY
-          fi
-
-          if [ "${{ needs.test-s3-integration.result }}" != "skipped" ]; then
-            if [ "${{ needs.test-s3-integration.result }}" = "success" ] && [ "${{ needs.test-s3-integration.outputs.tests-ran }}" != "true" ]; then
-              echo "| ☁️ S3 Integration | ⏭️ skipped (AWS credentials unavailable) |" >> $GITHUB_STEP_SUMMARY
-            else
-              echo "| ☁️ S3 Integration | ${{ needs.test-s3-integration.result == 'success' && '✅' || '❌' }} ${{ needs.test-s3-integration.result }} |" >> $GITHUB_STEP_SUMMARY
-            fi
           fi
 
           if [ "${{ needs.e2e-docker.result }}" != "skipped" ]; then
@@ -1168,11 +988,9 @@ jobs:
       - name: Check for failures
         if: |
           needs.code-quality.result == 'failure' ||
-          needs.infrastructure-validate.result == 'failure' ||
           needs.test.result == 'failure' ||
           needs.container-build-test.result == 'failure' ||
           needs.performance-check.result == 'failure' ||
-          needs.test-s3-integration.result == 'failure' ||
           needs.e2e-docker.result == 'failure' ||
           needs.transition-mvp.result == 'failure'
         run: |

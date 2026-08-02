@@ -2,7 +2,7 @@
 
 Supports two data sources:
 
-1. **Parquet file** — from a prior :class:`ContractExtractor` run or S3 dump.
+1. **Parquet file** — from a prior :class:`ContractExtractor` run or a local dump.
 2. **USAspending API** — live queries against ``api.usaspending.gov/api/v2``
    using UEIs extracted from the SBIR awards DataFrame.
 

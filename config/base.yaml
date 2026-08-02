@@ -23,19 +23,8 @@ paths:
   usaspending_dump_file: "data/usaspending/usaspending-db-test_recipient_lookup.zip"
   # Transition detection outputs
   transition_contracts_output: "data/transition/contracts_ingestion.parquet"
-  # Optional s3:// URL to upload the extracted contracts parquet to after writing
-  # it locally (cross-run reuse). Empty = local only.
-  transition_contracts_output_s3_path: ""
   transition_dump_dir: "data/transition/pruned_data_store_api_dump"
-  # Optional s3:// prefix holding the dump objects (.dat.gz + toc.dat). When set,
-  # the transition contracts asset syncs only the needed table file(s) + toc.dat
-  # into transition_dump_dir (selective; avoids the full ~17GB dump). Empty = local.
-  # Format: s3://bucket-name/raw/transition/pruned_data_store_api_dump/
-  transition_dump_s3_prefix: ""
   transition_vendor_filters: "data/transition/sbir_vendor_filters.json"
-  # Optional s3:// URL for the vendor-filter JSON (S3-first, local fallback).
-  # Empty = local only. Format: s3://bucket-name/path/to/sbir_vendor_filters.json
-  transition_vendor_filters_s3_path: ""
 
   # Scripts output
   scripts_output: "data/scripts_output"
@@ -266,8 +255,6 @@ extraction:
   sbir:
     # SBIR CSV configuration
     csv_path: "data/raw/sbir/award_data.csv"  # Local fallback path
-    csv_path_s3: null  # Auto-built from csv_path if SBIR_ANALYTICS_S3_BUCKET is set
-    use_s3_first: false  # Try S3 first, fallback to local csv_path
     duckdb:
       database_path: ":memory:" # Use in-memory database (or path for persistent)
       table_name: "sbir_awards"
@@ -284,8 +271,6 @@ extraction:
   sam_gov:
     # SAM.gov parquet file configuration
     parquet_path: "data/raw/sam_gov/sam_entity_records.parquet"  # Local fallback path
-    parquet_path_s3: null  # Auto-built from parquet_path if SBIR_ANALYTICS_S3_BUCKET is set
-    use_s3_first: false  # Try S3 first, fallback to local parquet_path
     batch_size: 10000 # Chunk size for processing
 
   uspto:
@@ -320,7 +305,6 @@ extraction:
         base_url: "https://data.uspto.gov/download"
         schedule: "monthly"  # GitHub Actions cron: 0 9 1 * * (1st of month, 9 AM UTC)
         tables: ["patent", "assignee", "inventor"]  # Which tables to download
-        s3_prefix: "raw/uspto/patentsview"
         # All tables use .tsv.zip format with g_ prefix (e.g., g_patent.tsv.zip)
 
       # Patent Assignment Dataset (patent transfers and assignments)
@@ -334,7 +318,6 @@ extraction:
         format: "csv"  # Options: csv (1.78 GB), dta (1.56 GB)
         release_year: 2023  # Latest release as of Dec 2024
         schedule: "monthly"  # Check for updates monthly
-        s3_prefix: "raw/uspto/assignments"
         # Note: Individual files also available (assignment.csv.zip, assignor.csv.zip, etc.)
 
       # Artificial Intelligence Patent Dataset
@@ -348,7 +331,6 @@ extraction:
         format: "csv"  # 2023 uses CSV (764 MB), 2020 used TSV (1.02 GB)
         release_year: 2023  # Latest release as of Dec 2024 (updated Jan 8, 2025)
         schedule: "quarterly"  # Updated less frequently than other datasets
-        s3_prefix: "raw/uspto/ai_patents"
         # Contains AI predictions for 15.4M patent documents (1976-2023)
 
 validation:
@@ -484,10 +466,8 @@ duckdb:
   enable_object_cache: true
   enable_query_profiler: false
 
-  # S3 direct reads via httpfs extension (skips temp downloads)
   # Requires IAM credentials available via env vars or instance profile
   enable_httpfs: false  # Set true or SBIR_ETL__DUCKDB__ENABLE_HTTPFS=true
-  s3_region: "us-east-2"
 
 transition:
   # Transition detection & analytics configuration

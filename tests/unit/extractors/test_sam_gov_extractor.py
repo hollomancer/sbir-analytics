@@ -85,9 +85,7 @@ class TestParquetLoading:
 
     def test_load_parquet_local(self, extractor_with_mock_config, sample_parquet_file):
         """Test loading parquet from local file."""
-        df = extractor_with_mock_config.load_parquet(
-            parquet_path=sample_parquet_file, use_s3_first=False
-        )
+        df = extractor_with_mock_config.load_parquet(parquet_path=sample_parquet_file)
 
         assert isinstance(df, pd.DataFrame)
         assert len(df) == 3
@@ -98,9 +96,7 @@ class TestParquetLoading:
     def test_load_parquet_file_not_found(self, extractor_with_mock_config):
         """Test loading non-existent parquet file raises error."""
         with pytest.raises(FileNotFoundError):
-            extractor_with_mock_config.load_parquet(
-                parquet_path="/nonexistent/file.parquet", use_s3_first=False
-            )
+            extractor_with_mock_config.load_parquet(parquet_path="/nonexistent/file.parquet")
 
     @pytest.mark.skip(reason="Requires large local data file - only available locally")
     def test_load_parquet_s3_first(
@@ -126,7 +122,7 @@ class TestParquetLoading:
                 mock_read_parquet.return_value = sample_df
 
                 # Don't provide parquet_path so it uses S3
-                df = extractor_with_mock_config.load_parquet(parquet_path=None, use_s3_first=True)
+                df = extractor_with_mock_config.load_parquet(parquet_path=None)
 
                 assert isinstance(df, pd.DataFrame)
                 assert len(df) == 3

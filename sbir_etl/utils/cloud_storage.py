@@ -1,572 +1,167 @@
-"""Cloud storage utilities with S3-first and local fallback support."""
+"""Local data-file discovery and resolution.
+
+Formerly an S3-first resolver. The server now stores all source data on local
+disk (see docs/deployment/aws-decommission-plan.md), so these helpers locate
+files under the configured data root instead.
+
+The module and its public function names are unchanged because many call sites
+import from here; only the storage backend changed.
+"""
 
 from __future__ import annotations
 
 import os
-import tempfile
-from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
 
 from loguru import logger
 
-try:
-    from cloudpathlib import S3Path
-except ImportError:
-    S3Path = None  # type: ignore[assignment, misc]
+DATA_ROOT_ENV = "SBIR_ETL__PATHS__DATA_ROOT"
+DEFAULT_DATA_ROOT = "data"
 
 
-def is_s3_path(path: str | Path) -> bool:
-    """Check if a path is an S3 URL."""
-    return str(path).startswith("s3://")
+def get_data_root() -> Path:
+    """Root directory for all source data, overridable per deployment."""
+    return Path(os.getenv(DATA_ROOT_ENV, DEFAULT_DATA_ROOT))
 
 
 def resolve_data_path(
-    cloud_path: str | Path,
+    path: str | Path,
     local_fallback: Path | None = None,
     prefer_local: bool = False,
 ) -> Path:
-    """
-    Resolve data file path with S3-first and local fallback.
-
-    Strategy:
-    1. If prefer_local=True and local_fallback exists → use local
-    2. If cloud_path is S3 URL → try S3 first, fallback to local
-    3. If cloud_path is local path → use local (no cloud check)
-    4. If S3 fails → fallback to local
+    """Resolve a data file path, falling back to *local_fallback* if needed.
 
     Args:
-        cloud_path: S3 URL (s3://bucket/path) or local path
-        local_fallback: Local path to use if S3 unavailable
-        prefer_local: If True, prefer local even if S3 available
+        path: Path to the desired file.
+        local_fallback: Alternative path to use when *path* does not exist.
+        prefer_local: Check *local_fallback* before *path*.
 
     Returns:
-        Path object pointing to accessible file
+        Path to an existing file.
 
     Raises:
-        FileNotFoundError: If neither S3 nor local file exists
+        FileNotFoundError: If neither path exists.
     """
-    # Convert to Path for local, CloudPath for S3
-    cloud_str = str(cloud_path)
-
-    # If prefer_local and local exists, use it
     if prefer_local and local_fallback and local_fallback.exists():
         logger.debug(f"Using local file (prefer_local=True): {local_fallback}")
         return local_fallback
 
-    # Check if it's an S3 URL
-    is_s3 = cloud_str.startswith("s3://")
+    primary = Path(path)
+    if primary.exists():
+        return primary
 
-    if is_s3:
-        if S3Path is None:
-            raise ImportError("S3 support requires the 'cloud' extra: pip install sbir-etl[cloud]")
-        # Try S3 first
-        try:
-            s3_path = S3Path(cloud_str)
-            if s3_path.exists():
-                logger.info(f"Using S3 file: {cloud_str}")
-                # Download to temp location for DuckDB/pandas to read
-                # DuckDB doesn't support S3 URLs directly, so we download
-                return _download_s3_to_temp(s3_path)
-        except Exception as e:
-            logger.warning(f"S3 access failed ({e}), falling back to local")
+    if local_fallback and local_fallback.exists():
+        logger.info(f"Using local fallback: {local_fallback}")
+        return local_fallback
 
-        # Fallback to local
-        if local_fallback and local_fallback.exists():
-            logger.info(f"Using local fallback: {local_fallback}")
-            return local_fallback
+    raise FileNotFoundError(f"File not found: {primary}")
 
-        raise FileNotFoundError(
-            f"Neither S3 ({cloud_str}) nor local ({local_fallback}) file exists"
-        )
-    else:
-        # Local path - use directly
-        local_path = Path(cloud_str)
-        if local_path.exists():
-            return local_path
 
-        # Try local_fallback if provided
-        if local_fallback and local_fallback.exists():
-            logger.info(f"Using local fallback: {local_fallback}")
-            return local_fallback
-
-        raise FileNotFoundError(f"Local file not found: {local_path}")
-
-
-_S3_CACHE_DIR = Path(tempfile.gettempdir()) / "sbir-analytics-s3-cache"
-
-
-def _get_float_env(var_name: str, default: float) -> float:
-    """Read a float environment variable, falling back to *default* if invalid."""
-    raw = os.getenv(var_name)
-    if raw is None:
-        return default
-    try:
-        return float(raw)
-    except (TypeError, ValueError):
-        logger.warning(f"Invalid value for {var_name}={raw!r}; using default {default}")
-        return default
-
-
-# Cache limits (configurable via env vars)
-_S3_CACHE_MAX_SIZE_GB = _get_float_env("SBIR_ETL_S3_CACHE_MAX_GB", 50.0)
-_S3_CACHE_TTL_HOURS = _get_float_env("SBIR_ETL_S3_CACHE_TTL_HOURS", 24.0)
-
-
-def _download_s3_to_temp(s3_path: S3Path) -> Path:
-    """Download S3 file to temporary location for local access."""
-    _S3_CACHE_DIR.mkdir(parents=True, exist_ok=True)
-
-    # Use full S3 path as filename hash to avoid collisions
-    import hashlib
-
-    path_hash = hashlib.md5(str(s3_path).encode(), usedforsecurity=False).hexdigest()[:8]  # noqa: S324
-    local_file = _S3_CACHE_DIR / f"{path_hash}_{s3_path.name}"
-
-    # Download if not cached or stale (TTL check)
-    if local_file.exists():
-        import time
-
-        age_hours = (time.time() - local_file.stat().st_mtime) / 3600
-        if age_hours > _S3_CACHE_TTL_HOURS:
-            logger.info(f"Cache expired ({age_hours:.1f}h > {_S3_CACHE_TTL_HOURS}h): {local_file}")
-            local_file.unlink()
-
-    if not local_file.exists():
-        logger.info(f"Downloading {s3_path} to {local_file}")
-        s3_path.download_to(local_file)
-        logger.debug(
-            f"Downloaded {s3_path.name} ({local_file.stat().st_size / 1024 / 1024:.2f} MB)"
-        )
-    else:
-        logger.debug(f"Using cached S3 file: {local_file}")
-
-    return local_file
-
-
-def sync_s3_prefix_to_dir(
-    s3_prefix: str,
-    dest_dir: str | Path,
-    include: Iterable[str] | None = None,
-) -> Path:
-    """Download objects under an S3 prefix into a local directory.
-
-    Selective by design: when ``include`` is provided, only objects whose basename
-    is in ``include`` are downloaded; otherwise every object under the prefix is
-    pulled. This lets callers fetch just the table file(s) they need from a large
-    multi-file dump (e.g. the ~17GB transition ``pruned_data_store_api_dump``)
-    instead of the whole prefix.
-
-    Args:
-        s3_prefix: ``s3://bucket/prefix/`` URL to list under.
-        dest_dir: Local directory to populate (created if missing).
-        include: Optional basenames to restrict the download (e.g. ``["toc.dat",
-            "best.dat.gz"]``). ``None`` downloads every object under the prefix.
-
-    Returns:
-        The local ``dest_dir`` path.
-
-    Raises:
-        ValueError: if ``s3_prefix`` is not an ``s3://`` URL or has no bucket.
-        FileNotFoundError: if no matching objects were found, or — when ``include``
-            is given — any requested basename is missing under the prefix.
-
-    Resolves the full object list and validates it *before* creating ``dest_dir`` or
-    downloading anything, so a missing requested file never leaves a populated-looking
-    but incomplete directory behind.
-    """
-    import boto3
-
-    if not is_s3_path(s3_prefix):
-        raise ValueError(f"Not an S3 prefix: {s3_prefix}")
-
-    bucket, _, prefix = str(s3_prefix)[len("s3://") :].partition("/")
-    if not bucket:
-        raise ValueError(f"S3 prefix missing bucket: {s3_prefix}")
-    # Normalize the prefix to end with '/' so string-based listing can't match
-    # sibling keys (e.g. ".../dump" otherwise also matching ".../dump2/...").
-    if prefix and not prefix.endswith("/"):
-        prefix += "/"
-
-    include_set = set(include) if include is not None else None
-
-    s3_client = boto3.client("s3")
-    paginator = s3_client.get_paginator("list_objects_v2")
-
-    # First pass: resolve the objects to download (no side effects yet).
-    to_download: list[tuple[str, str]] = []  # (key, basename)
-    for page in paginator.paginate(Bucket=bucket, Prefix=prefix):
-        for obj in page.get("Contents", []):
-            key = obj["Key"]
-            name = key.rsplit("/", 1)[-1]
-            if not name:  # skip "directory" placeholder keys
-                continue
-            if include_set is not None and name not in include_set:
-                continue
-            to_download.append((key, name))
-
-    # When specific basenames were requested, require all of them up front so a
-    # partial sync can't pass a later dump_dir.exists() check and fail confusingly.
-    if include_set is not None:
-        missing = include_set - {name for _, name in to_download}
-        if missing:
-            raise FileNotFoundError(
-                f"Missing required object(s) under {s3_prefix}: {sorted(missing)}"
-            )
-
-    if not to_download:
-        raise FileNotFoundError(f"No objects found under {s3_prefix} (include={include})")
-
-    # Only now create the destination and download.
-    dest = Path(dest_dir)
-    dest.mkdir(parents=True, exist_ok=True)
-    for key, name in to_download:
-        target = dest / name
-        logger.info(f"Downloading s3://{bucket}/{key} -> {target}")
-        s3_client.download_file(bucket, key, str(target))
-
-    logger.info(f"Synced {len(to_download)} object(s) from {s3_prefix} to {dest}")
-    return dest
-
-
-def upload_file_to_s3(local_path: str | Path, s3_url: str) -> str:
-    """Upload a single local file to an ``s3://`` URL.
-
-    The write-side counterpart to ``resolve_data_path`` — lets an asset persist a
-    produced artifact (e.g. ``contracts_ingestion.parquet``) back to S3 for
-    cross-run reuse in a fresh/ephemeral environment.
-
-    Args:
-        local_path: Local file to upload.
-        s3_url: Destination ``s3://bucket/key`` URL.
-
-    Returns:
-        The destination ``s3_url``.
-
-    Raises:
-        ValueError: if ``s3_url`` is not an ``s3://`` URL or carries no key.
-        FileNotFoundError: if ``local_path`` does not exist.
-    """
-    import boto3
-
-    if not is_s3_path(s3_url):
-        raise ValueError(f"Not an S3 URL: {s3_url}")
-
-    local = Path(local_path)
-    if not local.exists():
-        raise FileNotFoundError(f"Local file not found: {local}")
-
-    bucket, _, key = str(s3_url)[len("s3://") :].partition("/")
-    if not key:
-        raise ValueError(f"S3 URL missing object key: {s3_url}")
-
-    boto3.client("s3").upload_file(str(local), bucket, key)
-    logger.info(f"Uploaded {local} -> {s3_url}")
-    return s3_url
-
-
-def cleanup_s3_cache(
-    max_size_gb: float | None = None,
-    max_age_hours: float | None = None,
-) -> int:
-    """Remove stale or excess files from the S3 download cache.
-
-    Eviction strategy: oldest files first (by modification time).
-
-    Args:
-        max_size_gb: Maximum cache size in GB. Defaults to SBIR_ETL_S3_CACHE_MAX_GB env (50).
-        max_age_hours: Remove files older than this. Defaults to SBIR_ETL_S3_CACHE_TTL_HOURS env (24).
-
-    Returns:
-        Number of files removed.
-    """
-    import time
-
-    max_size = (max_size_gb if max_size_gb is not None else _S3_CACHE_MAX_SIZE_GB) * 1024**3
-    max_age = (max_age_hours if max_age_hours is not None else _S3_CACHE_TTL_HOURS) * 3600
-    now = time.time()
-    removed = 0
-
-    if not _S3_CACHE_DIR.exists():
-        return 0
-
-    # Pass 1: remove files older than TTL
-    files = sorted(_S3_CACHE_DIR.iterdir(), key=lambda f: f.stat().st_mtime)
-    for f in files:
-        if f.is_file() and (now - f.stat().st_mtime) > max_age:
-            f.unlink()
-            removed += 1
-
-    # Pass 2: evict oldest files if total size still exceeds limit
-    files = sorted(_S3_CACHE_DIR.iterdir(), key=lambda f: f.stat().st_mtime)
-    total_size = sum(f.stat().st_size for f in files if f.is_file())
-    for f in files:
-        if total_size <= max_size:
-            break
-        if f.is_file():
-            total_size -= f.stat().st_size
-            f.unlink()
-            removed += 1
-
-    if removed:
-        logger.info(f"S3 cache cleanup: removed {removed} files")
-    return removed
-
-
-def get_s3_bucket_from_env() -> str | None:
-    """Get S3 bucket name from environment variable."""
-    return os.getenv("SBIR_ANALYTICS_S3_BUCKET") or os.getenv("S3_BUCKET")
-
-
-def build_s3_path(relative_path: str, bucket: str | None = None) -> str:
-    """
-    Build S3 URL from relative path.
-
-    Args:
-        relative_path: Relative path (e.g., "data/raw/sbir/awards_data.csv")
-        bucket: S3 bucket name (defaults to env var)
-
-    Returns:
-        S3 URL (e.g., "s3://bucket-name/data/raw/sbir/awards_data.csv")
-    """
-    bucket = bucket or get_s3_bucket_from_env()
-    if not bucket:
-        raise ValueError("S3 bucket not configured. Set SBIR_ANALYTICS_S3_BUCKET env var.")
-
-    # Remove leading slash if present
-    relative_path = relative_path.lstrip("/")
-    return f"s3://{bucket}/{relative_path}"
-
-
-def find_latest_sbir_awards(bucket: str | None = None, prefix: str = "raw/awards/") -> str | None:
-    """
-    Find the latest SBIR awards CSV file in S3.
-
-    Args:
-        bucket: S3 bucket name
-        prefix: S3 prefix to search
-
-    Returns:
-        S3 URL of latest file, or None if not found
-    """
-    import boto3
-
-    bucket = bucket or get_s3_bucket_from_env()
-    if not bucket:
+def _newest(paths: list[Path]) -> Path | None:
+    """Newest path by modification time, or None when nothing exists."""
+    existing = [p for p in paths if p.is_file()]
+    if not existing:
         return None
+    return max(existing, key=lambda p: p.stat().st_mtime)
 
-    try:
-        s3 = boto3.client("s3")
-        continuation_token: str | None = None
-        latest_obj: dict[str, Any] | None = None
 
-        while True:
-            list_kwargs: dict[str, Any] = {"Bucket": bucket, "Prefix": prefix, "MaxKeys": 1000}
-            if continuation_token:
-                list_kwargs["ContinuationToken"] = continuation_token
+def find_latest_sbir_awards(root: Path | None = None) -> str | None:
+    """Find the most recent SBIR awards CSV.
 
-            response = s3.list_objects_v2(**list_kwargs)
-            for obj in response.get("Contents", []):
-                if not obj["Key"].endswith("award_data.csv"):
-                    continue
-                obj_dict = dict(obj)  # Cast to dict for type checker
-                if latest_obj is None or obj_dict["LastModified"] > latest_obj["LastModified"]:
-                    latest_obj = obj_dict
+    Prefers the canonical ``award_data.csv`` and falls back to the newest dated
+    vintage under ``history/`` (see docs/data/awards-refresh.md).
+    """
+    base = (root or get_data_root()) / "raw" / "sbir"
 
-            if not response.get("IsTruncated"):
-                break
-            continuation_token = response.get("NextContinuationToken")
+    canonical = base / "award_data.csv"
+    if canonical.is_file():
+        return str(canonical)
 
-        if latest_obj is None:
-            return None
+    vintages = sorted(
+        (d for d in (base / "history").glob("*") if (d / "award_data.csv").is_file()),
+        key=lambda d: d.name,
+    )
+    if vintages:
+        latest = vintages[-1] / "award_data.csv"
+        logger.info(f"Using SBIR awards vintage: {latest}")
+        return str(latest)
 
-        return f"s3://{bucket}/{latest_obj['Key']}"
-
-    except Exception as e:
-        logger.warning(f"Failed to find latest SBIR awards in S3: {e}")
-        return None
+    logger.warning(f"No SBIR awards CSV found under {base}")
+    return None
 
 
 def find_latest_usaspending_dump(
-    bucket: str | None = None,
+    root: Path | None = None,
     database_type: str = "full",
-    prefix: str = "raw/usaspending/database/",
 ) -> str | None:
-    """
-    Find the latest USAspending database dump file in S3.
-
-    Searches for files matching the pattern:
-    - Full: raw/usaspending/database/YYYY-MM-DD/usaspending-db_YYYYMMDD.zip
-    - Test: raw/usaspending/database/YYYY-MM-DD/usaspending-db-subset_YYYYMMDD.zip
+    """Find the most recent USAspending database dump.
 
     Args:
-        bucket: S3 bucket name (defaults to env var)
-        database_type: "full" or "test"
-        prefix: S3 prefix to search under
-
-    Returns:
-        S3 URL of the latest file, or None if not found
+        root: Data root; defaults to the configured data root.
+        database_type: ``"full"`` or ``"test"`` (the subset dump).
     """
-    import boto3
-
-    bucket = bucket or get_s3_bucket_from_env()
-    if not bucket:
-        logger.warning("S3 bucket not configured, cannot find latest dump")
-        return None
-
-    s3_client = boto3.client("s3")
-
-    # Determine file pattern
     if database_type == "full":
-        pattern = "usaspending-db_"
+        pattern = "usaspending-db_*.zip"
     elif database_type == "test":
-        pattern = "usaspending-db-subset_"
+        pattern = "usaspending-db-subset_*.zip"
     else:
         logger.warning(f"Unknown database_type: {database_type}")
         return None
 
-    try:
-        # List all files in the database directory
-        paginator = s3_client.get_paginator("list_objects_v2")
-        latest_file = None
-        latest_date = None
-
-        for page in paginator.paginate(Bucket=bucket, Prefix=prefix):
-            for obj in page.get("Contents", []):
-                key = obj["Key"]
-                # Check if this matches the database type pattern
-                if pattern in key and key.endswith(".zip"):
-                    if latest_date is None or obj["LastModified"] > latest_date:
-                        latest_file = key
-                        latest_date = obj["LastModified"]
-
-        if latest_file:
-            s3_url = f"s3://{bucket}/{latest_file}"
-            logger.info(
-                f"Found latest USAspending {database_type} dump: {s3_url} (modified: {latest_date})"
-            )
-            return s3_url
-
-        logger.warning(f"No USAspending {database_type} dump found in s3://{bucket}/{prefix}")
+    base = (root or get_data_root()) / "usaspending"
+    latest = _newest(list(base.rglob(pattern)))
+    if latest is None:
+        logger.warning(f"No USAspending {database_type} dump found under {base}")
         return None
 
-    except Exception as e:
-        logger.error(f"Error finding latest USAspending dump: {e}")
-        return None
+    logger.info(f"Found latest USAspending {database_type} dump: {latest}")
+    return str(latest)
 
 
-def find_latest_recipient_lookup_parquet(
-    bucket: str | None = None,
-    prefix: str = "raw/usaspending/recipient_lookup/",
-) -> str | None:
+def find_latest_recipient_lookup_parquet(root: Path | None = None) -> str | None:
+    """Find the most recent recipient_lookup parquet.
+
+    This is the extracted recipient data rather than the full dump.
     """
-    Find the latest recipient_lookup parquet file in S3.
+    base = (root or get_data_root()) / "raw" / "usaspending" / "recipient_lookup"
+    latest = _newest(list(base.rglob("*.parquet")))
+    if latest is None:
+        logger.warning(f"No recipient_lookup parquet found under {base}")
+        return None
 
-    This is the extracted recipient data (~500MB) instead of the full 217GB dump.
+    logger.info(f"Found latest recipient_lookup parquet: {latest}")
+    return str(latest)
 
-    Args:
-        bucket: S3 bucket name (defaults to env var)
-        prefix: S3 prefix to search under
 
-    Returns:
-        S3 URL of the latest parquet file, or None if not found
+def find_latest_sam_gov_parquet(root: Path | None = None) -> str | None:
+    """Find the most recent SAM.gov entity parquet.
+
+    Prefers the canonical file over the partial one that a short paginated
+    fallback writes, so an incomplete dataset never shadows a full one.
     """
-    import boto3
+    base = (root or get_data_root()) / "raw" / "sam_gov"
 
-    bucket = bucket or get_s3_bucket_from_env()
-    if not bucket:
-        logger.warning("S3 bucket not configured, cannot find recipient_lookup parquet")
-        return None
+    canonical = base / "sam_entity_records.parquet"
+    if canonical.is_file():
+        return str(canonical)
 
-    s3_client = boto3.client("s3")
+    # A short paginated fallback writes sam_entity_records_partial.parquet;
+    # it must never become the enrichment source on a host with no canonical
+    # file, which would defeat the downloader's overwrite guard.
+    dated = _newest(
+        [
+            path
+            for path in base.glob("sam_entity_records_*.parquet")
+            if path.name != "sam_entity_records_partial.parquet"
+        ]
+    )
+    if dated is not None:
+        logger.info(f"Found SAM.gov parquet: {dated}")
+        return str(dated)
 
-    try:
-        paginator = s3_client.get_paginator("list_objects_v2")
-        latest_file = None
-        latest_date = None
-
-        for page in paginator.paginate(Bucket=bucket, Prefix=prefix):
-            for obj in page.get("Contents", []):
-                key = obj["Key"]
-                if key.endswith(".parquet"):
-                    if latest_date is None or obj["LastModified"] > latest_date:
-                        latest_file = key
-                        latest_date = obj["LastModified"]
-
-        if latest_file:
-            s3_url = f"s3://{bucket}/{latest_file}"
-            logger.info(
-                f"Found latest recipient_lookup parquet: {s3_url} (modified: {latest_date})"
-            )
-            return s3_url
-
-        logger.warning(f"No recipient_lookup parquet found in s3://{bucket}/{prefix}")
-        return None
-
-    except Exception as e:
-        logger.error(f"Error finding recipient_lookup parquet: {e}")
-        return None
-
-
-def find_latest_sam_gov_parquet(
-    bucket: str | None = None,
-    prefix: str = "raw/sam_gov/",
-) -> str | None:
-    """
-    Find the latest SAM.gov parquet file in S3.
-
-    Searches for files matching the pattern:
-    - Static: raw/sam_gov/sam_entity_records.parquet
-    - Dated: raw/sam_gov/sam_entity_records_YYYYMMDD.parquet
-
-    Args:
-        bucket: S3 bucket name (defaults to env var)
-        prefix: S3 prefix to search under
-
-    Returns:
-        S3 URL of the latest file, or None if not found
-    """
-    import boto3
-
-    bucket = bucket or get_s3_bucket_from_env()
-    if not bucket:
-        logger.warning("S3 bucket not configured, cannot find latest SAM.gov parquet")
-        return None
-
-    s3_client = boto3.client("s3")
-
-    try:
-        # List all files in the SAM.gov directory
-        paginator = s3_client.get_paginator("list_objects_v2")
-        latest_file = None
-        latest_date = None
-
-        for page in paginator.paginate(Bucket=bucket, Prefix=prefix):
-            for obj in page.get("Contents", []):
-                key = obj["Key"]
-                # Check if this matches the SAM.gov parquet pattern
-                if "sam_entity_records" in key and key.endswith(".parquet"):
-                    if latest_date is None or obj["LastModified"] > latest_date:
-                        latest_file = key
-                        latest_date = obj["LastModified"]
-
-        if latest_file:
-            s3_url = f"s3://{bucket}/{latest_file}"
-            logger.info(f"Found latest SAM.gov parquet: {s3_url} (modified: {latest_date})")
-            return s3_url
-
-        logger.warning(f"No SAM.gov parquet found in s3://{bucket}/{prefix}")
-        return None
-
-    except Exception as e:
-        logger.error(f"Error finding latest SAM.gov parquet: {e}")
-        return None
-
-
-# ---------------------------------------------------------------------------
-# SBIR awards CSV source resolution and freshness checking
-# ---------------------------------------------------------------------------
+    logger.warning(f"No SAM.gov parquet found under {base}")
+    return None
 
 
 @dataclass
@@ -574,64 +169,60 @@ class SbirAwardsSource:
     """Metadata about a resolved SBIR awards CSV source."""
 
     path: Path
-    origin: str  # "s3", "download", or "local"
-    s3_key_date: str | None = None
+    origin: str  # "local", "vintage", or "download"
+    vintage_date: str | None = None
+
+
+def _sidecar_date(csv_path: Path) -> str | None:
+    """Read the download date from a CSV's ``.meta.json`` sidecar, if present."""
+    import json
+
+    sidecar = csv_path.with_name(csv_path.stem + ".meta.json")
+    if not sidecar.is_file():
+        return None
+    try:
+        downloaded = json.loads(sidecar.read_text()).get("downloaded_at", "")
+        return downloaded[:10] or None
+    except (OSError, json.JSONDecodeError):
+        return None
 
 
 def resolve_sbir_awards_csv(
     download_url: str = "https://data.www.sbir.gov/mod_awarddatapublic/award_data.csv",
     local_path: Path | None = None,
 ) -> SbirAwardsSource:
-    """Resolve the SBIR awards CSV: S3 first, then download, then local.
+    """Resolve the SBIR awards CSV: local first, then download.
 
     Resolution order:
-    1. S3 bucket (if ``SBIR_ANALYTICS_S3_BUCKET`` is set and contains a CSV)
+    1. The canonical CSV or newest vintage under the data root
     2. Direct HTTP download from *download_url*
-    3. *local_path* if provided and exists (e.g. a previously cached copy)
-
-    Args:
-        download_url: URL to download CSV from if S3 is unavailable.
-        local_path: Optional local path to try as last resort.
-
-    Returns:
-        :class:`SbirAwardsSource` with the resolved path and origin metadata.
+    3. *local_path* if provided and it exists
 
     Raises:
         FileNotFoundError: If no source could be resolved.
     """
     import re
+    import tempfile
 
     import httpx
 
-    # 1. Try S3
-    bucket = get_s3_bucket_from_env()
-    if bucket:
-        try:
-            s3_url = find_latest_sbir_awards(bucket)
-        except (ImportError, ModuleNotFoundError) as e:
-            logger.warning(f"S3 lookup unavailable (missing cloud dependencies): {e}")
-            s3_url = None
-        if s3_url:
-            logger.info(f"Using S3-cached CSV: {s3_url}")
-            date_match = re.search(r"raw/awards/(\d{4}-\d{2}-\d{2})/", s3_url)
-            key_date = date_match.group(1) if date_match else None
-            # Download S3 object to a local temp file so downstream code
-            # (DuckDB, pandas) can read it without special S3 handling.
-            local_path_resolved = resolve_data_path(s3_url)
-            return SbirAwardsSource(path=local_path_resolved, origin="s3", s3_key_date=key_date)
+    found = find_latest_sbir_awards()
+    if found:
+        path = Path(found)
+        date_match = re.search(r"history/(\d{4}-\d{2}-\d{2})/", found)
+        if date_match:
+            return SbirAwardsSource(path=path, origin="vintage", vintage_date=date_match.group(1))
+        # The canonical file carries its date in a sidecar rather than its path.
+        return SbirAwardsSource(path=path, origin="local", vintage_date=_sidecar_date(path))
 
-    # 2. Download from URL
-    logger.info(f"S3 not available; downloading from {download_url}")
+    logger.info(f"No local CSV available; downloading from {download_url}")
     try:
         with httpx.Client(timeout=600, follow_redirects=True) as client:
             response = client.get(download_url)
             response.raise_for_status()
 
         with tempfile.NamedTemporaryFile(
-            mode="wb",
-            suffix=".csv",
-            prefix="sbir_awards_",
-            delete=False,
+            mode="wb", suffix=".csv", prefix="sbir_awards_", delete=False
         ) as tmp_file:
             tmp_file.write(response.content)
             tmp = Path(tmp_file.name)
@@ -641,14 +232,13 @@ def resolve_sbir_awards_csv(
     except Exception as e:
         logger.warning(f"Download failed: {e}")
 
-    # 3. Local fallback
     if local_path and local_path.exists():
         logger.info(f"Using local fallback: {local_path}")
         return SbirAwardsSource(path=local_path, origin="local")
 
     raise FileNotFoundError(
-        f"Could not resolve SBIR awards CSV from S3, download ({download_url}), "
-        f"or local ({local_path})"
+        f"Could not resolve SBIR awards CSV locally, by download ({download_url}), "
+        f"or at {local_path}"
     )
 
 
@@ -657,41 +247,41 @@ def check_sbir_data_freshness(
     max_award_date: str | None,
     days: int,
     *,
-    s3_slack_days: int = 3,
+    vintage_slack_days: int = 3,
     data_slack_days: int = 14,
 ) -> list[str]:
     """Check whether SBIR bulk data is fresh enough for a reporting window.
 
     Runs two independent checks:
-    1. **S3 key date** — was the data-refresh workflow recent?
+    1. **Vintage date** — did the scheduled download job run recently?
     2. **Max award date in data** — is the underlying SBIR.gov dataset current?
 
     Args:
-        source: Resolved data source with optional S3 key date.
+        source: Resolved data source with an optional vintage date.
         max_award_date: The most recent ``Proposal Award Date`` in the dataset.
         days: The reporting window in days (e.g. 7 for weekly).
-        s3_slack_days: Allowed slack beyond *days* for S3 key date.
+        vintage_slack_days: Allowed slack beyond *days* for the vintage date.
         data_slack_days: Allowed slack beyond *days* for max award date.
 
     Returns:
         List of warning strings (empty if data is fresh).
     """
-    from datetime import datetime, UTC
+    from datetime import UTC, datetime
 
     from .date_utils import parse_date
 
     warnings: list[str] = []
     now = datetime.now(UTC).replace(tzinfo=None)
 
-    if source.s3_key_date:
-        key_dt = parse_date(source.s3_key_date)
+    if source.vintage_date:
+        key_dt = parse_date(source.vintage_date)
         if key_dt:
             key_datetime = datetime(key_dt.year, key_dt.month, key_dt.day)
             age_days = (now - key_datetime).days
-            if age_days > days + s3_slack_days:
+            if age_days > days + vintage_slack_days:
                 warnings.append(
-                    f"S3 data is {age_days} days old (key date: {source.s3_key_date}). "
-                    f"The data-refresh workflow may have failed."
+                    f"Local data is {age_days} days old (vintage: {source.vintage_date}). "
+                    f"The scheduled download job may have failed."
                 )
 
     if max_award_date:

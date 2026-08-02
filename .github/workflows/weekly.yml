@@ -345,7 +345,6 @@ jobs:
           DAYS: ${{ github.event.inputs.days || '7' }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           SAM_GOV_API_KEY: ${{ secrets.SAM_GOV_API_KEY }}
-          S3_BUCKET: ${{ secrets.S3_BUCKET || '' }}
         run: |
           mkdir -p reports
           uv run --frozen python scripts/data/weekly_awards_report.py \
@@ -507,8 +506,6 @@ jobs:
 
       - name: Verify Pipeline with Local Data
         env:
-          SBIR_ETL__EXTRACTION__SBIR__USE_S3_FIRST: "false"
-          SBIR_ETL__EXTRACTION__SAM_GOV__USE_S3_FIRST: "false"
         run: uv run pytest -m "not real_data and not slow" tests/unit/extractors/
 
   verify-ml-workflow:
