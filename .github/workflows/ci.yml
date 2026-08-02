@@ -47,9 +47,7 @@ jobs:
       pull-requests: read
     outputs:
       performance: ${{ steps.detect.outputs.performance }}
-      transition: ${{ steps.detect.outputs.transition }}
       docker: ${{ steps.detect.outputs.docker }}
-      workflows: ${{ steps.detect.outputs.workflows }}
       docs-only: ${{ steps.detect.outputs.docs-only }}
     steps:
       - uses: actions/checkout@v7
@@ -72,25 +70,11 @@ jobs:
               - 'scripts/performance/benchmark_enrichment.py'
               - 'scripts/performance/detect_performance_regression.py'
               - 'config/base.yaml'
-            transition:
-              - 'packages/sbir-analytics/sbir_analytics/assets/phase_transition/**'
-              - 'packages/sbir-analytics/sbir_analytics/assets/jobs/phase_transition_job.py'
-              - 'packages/sbir-ml/sbir_ml/transition/**'
-              - 'tests/e2e/transition/**'
-              - 'tests/integration/test_transition_*.py'
-              - 'docs/transition/**'
-              - 'packages/sbir-analytics/sbir_analytics/assets/phase_iii_candidates/**'
-              - 'packages/sbir-ml/sbir_ml/transition/detection/scoring.py'
-              - 'scripts/phase_iii_precision_backtest.py'
-              - 'tests/integration/test_phase_iii_retrospective_asset.py'
             docker:
               - 'Dockerfile*'
               - 'docker-compose*.yml'
               - '.dockerignore'
               - 'docker/**'
-            workflows:
-              - '.github/workflows/**'
-              - '.github/actions/**'
 
   code-quality:
     name: Code Quality (Lint + Type Check)
@@ -233,20 +217,39 @@ jobs:
 
     strategy:
       fail-fast: false
+      # Unit tests are sharded by count rather than split on the slow marker.
+      # The old split was 5,254 tests in unit-fast against 2 in unit-slow, so
+      # it provisioned a whole runner for two tests while one leg carried the
+      # entire suite. Shards cover exactly the same tests, just balanced.
+      # Coverage runs on shard 0 only: it costs ~33% wall clock (measured 64s
+      # vs 48s on 4 cores) and one shard is enough to produce the report.
       matrix:
         suite:
-          - name: unit-fast
+          - name: unit-shard-0
             path: tests/unit/
-            args: '-m "not slow and not integration"'
+            args: "--num-shards=4 --shard-id=0"
             needs_neo4j: false
-          - name: unit-slow
+            coverage: true
+          - name: unit-shard-1
             path: tests/unit/
-            args: '-m "slow and not integration"'
+            args: "--num-shards=4 --shard-id=1"
             needs_neo4j: false
+            coverage: false
+          - name: unit-shard-2
+            path: tests/unit/
+            args: "--num-shards=4 --shard-id=2"
+            needs_neo4j: false
+            coverage: false
+          - name: unit-shard-3
+            path: tests/unit/
+            args: "--num-shards=4 --shard-id=3"
+            needs_neo4j: false
+            coverage: false
           - name: integration
             path: tests/integration/
             args: '-m "integration and not slow"'
             needs_neo4j: true
+            coverage: true
 
     steps:
       - uses: actions/checkout@v7
@@ -281,9 +284,16 @@ jobs:
           NEO4J_PASSWORD: ${{ env.NEO4J_PASSWORD }}
           REQUIRE_NEO4J: ${{ matrix.suite.needs_neo4j && '1' || '' }}
         run: |
-          uv run pytest ${{ matrix.suite.path }} ${{ matrix.suite.args }} \
-            --cov=sbir_etl --cov=packages/sbir-analytics/sbir_analytics --cov=packages/sbir-ml/sbir_ml --cov=packages/sbir-graph/sbir_graph --cov-report=xml --cov-report=term \
-            --junitxml=test-results-${{ matrix.suite.name }}.xml -v
+          # -v already comes from addopts in pyproject.toml; repeating it here
+          # emitted a second verbose line per test through the xdist workers.
+          COV=""
+          if [ "${{ matrix.suite.coverage }}" = "true" ]; then
+            COV="--cov=sbir_etl --cov=packages/sbir-analytics/sbir_analytics --cov=packages/sbir-ml/sbir_ml --cov=packages/sbir-graph/sbir_graph --cov-report=xml --cov-report=term"
+          else
+            COV="--no-cov"
+          fi
+          uv run pytest ${{ matrix.suite.path }} ${{ matrix.suite.args }} $COV \
+            --junitxml=test-results-${{ matrix.suite.name }}.xml
 
       - name: Stop Neo4j service
         if: always() && matrix.suite.needs_neo4j
@@ -335,7 +345,7 @@ jobs:
           TOTAL_FAILED=0
           TOTAL_SKIPPED=0
 
-          for suite in unit-fast unit-slow integration; do
+          for suite in unit-shard-0 unit-shard-1 unit-shard-2 unit-shard-3 integration; do
             XML_FILE="test-results/test-results-${suite}/test-results-${suite}.xml"
             if [ -f "$XML_FILE" ]; then
               # Parse JUnit XML for test counts
