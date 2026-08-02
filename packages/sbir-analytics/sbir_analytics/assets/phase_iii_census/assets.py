@@ -253,6 +253,19 @@ def _load_contracts() -> tuple[pd.DataFrame, Path]:
         raise CensusInputError(f"Failed to read contract source at {path}: {exc}") from exc
 
 
+def _assert_prior_frames_equal(persisted: pd.DataFrame, in_memory: pd.DataFrame) -> None:
+    """Compare exact values after canonicalizing only dtype-specific missing values."""
+
+    persisted_comparable = persisted.astype(object).where(persisted.notna(), None)
+    in_memory_comparable = in_memory.astype(object).where(in_memory.notna(), None)
+    pd.testing.assert_frame_equal(
+        persisted_comparable.reset_index(drop=True),
+        in_memory_comparable.reset_index(drop=True),
+        check_dtype=False,
+        check_exact=True,
+    )
+
+
 def _verify_phase_ii_provenance(priors: pd.DataFrame, contracts_path: Path) -> tuple[Path, Path]:
     """Require the census-dedicated v2 source and its exact persisted prior frame."""
 
@@ -322,11 +335,10 @@ def _verify_phase_ii_provenance(priors: pd.DataFrame, contracts_path: Path) -> t
         raise CensusInputError("Phase II prior frame shape does not match its manifest")
     try:
         persisted_priors = pd.read_parquet(phase_ii_path)
-        pd.testing.assert_frame_equal(
-            persisted_priors.reset_index(drop=True),
-            priors.reset_index(drop=True),
-            check_dtype=False,
-        )
+        # Parquet round-trips object-backed missing values as dtype-specific nulls.
+        # Canonicalize only missing representations; all nonmissing values, row order,
+        # and column order must still match exactly.
+        _assert_prior_frames_equal(persisted_priors, priors)
     except (OSError, AssertionError) as exc:
         raise CensusInputError("Phase II prior frame differs from its persisted artifact") from exc
     return selected_sbir, phase_ii_path
