@@ -1,4 +1,20 @@
-# Forward-Representative Measurement of the Frozen Phase III Detector
+# Abstract→Notice Candidate-Substrate Control (superseded as "forward" by #484 A)
+
+> **CORRECTION (2026-08-02).** This was framed as the "forward" measurement, but it is
+> **abstract → notice**, not the packet's forward task. It keeps the *contract-ranking
+> orientation* (query = firm abstract; candidate = the firm's transition **award/intent
+> notice** text; rank the true notice among decoy notices). The packet's real forward job is
+> **firm-ranking** (query = opportunity; candidates = rich firm abstracts), measured in
+> **#484 (Lever A)** at 0.54–0.71 — materially higher. So the honest scope of this result is
+> narrow: *a notice is no richer a **candidate** than a contract (both ~0.47)*. It does NOT
+> measure the forward packet task. Two residual caveats: the candidates here are **award/intent
+> notices**, not open **Sources Sought** solicitations (the packet's literal forward input); and
+> the true forward task (rank firms vs an open solicitation) is still unlabeled — Sources Sought
+> don't name a firm. See #484 `T3_RESULTS.md` for the actual forward/firm-ranking measurement.
+
+---
+
+# (original) Forward-Representative Measurement of the Frozen Phase III Detector
 
 **Question:** the T6 number (~0.467) is the *retrospective* task — rank a past transition
 *contract* (terse FPDS text) among decoys. The packet's real job is *forward* — rank a firm
