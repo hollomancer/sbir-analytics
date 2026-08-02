@@ -32,4 +32,7 @@ def test_parses_firm_from_modification_clause():
 
 
 def test_returns_blank_when_no_firm():
-    assert firm_from_notice({"Awardee": "", "Description": "Solar Powered Tent System", "Title": ""}) == ""
+    assert (
+        firm_from_notice({"Awardee": "", "Description": "Solar Powered Tent System", "Title": ""})
+        == ""
+    )
