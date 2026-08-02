@@ -1,9 +1,7 @@
 #!/usr/bin/env python3
 """Download USPTO data files to a local directory.
 
-Writes locally by default; uploads to S3 only when a bucket is given
-explicitly (or S3_BUCKET is set). The local file is always kept — S3 is a
-mirror, not the destination.
+Writes to a local directory under the data root.
 
 Usage:
     python scripts/data/download_uspto.py --dataset patentsview --table cpc
@@ -264,32 +262,6 @@ def _stream_response_to_file(response: requests.Response, dest_path: Path) -> di
     }
 
 
-def upload_to_s3(local_path: Path, s3_bucket: str, s3_key: str, source_url: str, sha256: str) -> float:
-    """Upload a downloaded file to S3. Returns upload time in seconds."""
-    import boto3  # Lazy: --local mode must work without boto3/AWS credentials
-
-    print(f"📤 Uploading to s3://{s3_bucket}/{s3_key}")
-    upload_start = time.time()
-    s3 = boto3.client("s3")
-    s3.upload_file(
-        str(local_path),
-        s3_bucket,
-        s3_key,
-        ExtraArgs={
-            "ContentType": "application/zip",
-            "Metadata": {
-                "source_url": source_url[:1024],
-                "sha256": sha256,
-                "downloaded_at": datetime.now(UTC).isoformat(),
-                "user_agent": USER_AGENT,
-            },
-        },
-    )
-    upload_elapsed = time.time() - upload_start
-    print(f"✅ Uploaded in {upload_elapsed:.1f}s")
-    return upload_elapsed
-
-
 def main():
     parser = argparse.ArgumentParser(
         description="Download USPTO data to a local directory",
@@ -298,7 +270,6 @@ Examples:
   python scripts/data/download_uspto.py --dataset patentsview --table cpc
   python scripts/data/download_uspto.py --dataset patentsview --table patent --local /Volumes/SSDmini/sbir-analytics/data/raw/uspto
   python scripts/data/download_uspto.py --dataset assignments
-  python scripts/data/download_uspto.py --dataset patentsview --table assignee --s3-bucket my-bucket
         """,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -317,11 +288,6 @@ Examples:
         "--table",
         help="PatentsView table name (for patentsview dataset). Valid: %(choices)s",
         choices=list(PATENTSVIEW_TABLES.keys()),
-    )
-    parser.add_argument(
-        "--s3-bucket",
-        default=os.environ.get("S3_BUCKET"),
-        help="Also upload to this S3 bucket (optional; omit for local-only)",
     )
     parser.add_argument(
         "--local",
@@ -344,8 +310,6 @@ Examples:
     print(f"   Dataset: {args.dataset}")
     print(f"   Date: {date_str}")
     print(f"   Destination: {args.local}")
-    if args.s3_bucket:
-        print(f"   Mirroring to: s3://{args.s3_bucket}")
     print()
 
     try:
@@ -401,17 +365,12 @@ Examples:
             result = stream_download(source_url, dest_path, session)
 
         upload_time = None
-        if args.s3_bucket:
-            # The local file is the deliverable and is kept; S3 is only a mirror.
-            upload_time = upload_to_s3(dest_path, args.s3_bucket, s3_key, source_url, result["sha256"])
 
         print()
         print("=" * 60)
         print("✅ Download Complete")
         print("=" * 60)
         print(f"Local File: {dest_path}")
-        if args.s3_bucket:
-            print(f"S3 Location: s3://{args.s3_bucket}/{s3_key}")
         print(f"File Size: {result['size'] / 1024 / 1024:.1f} MB")
         print(f"SHA256: {result['sha256']}")
         print(f"Download Time: {result['download_time_seconds']:.1f}s")

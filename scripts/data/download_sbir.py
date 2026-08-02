@@ -9,7 +9,6 @@ timestamp for each vintage; the sha256 drives change detection.
 Usage:
     python scripts/data/download_sbir.py
     python scripts/data/download_sbir.py --dest /Volumes/SSDmini/sbir-analytics/data/raw/sbir
-    python scripts/data/download_sbir.py --s3-bucket my-bucket  # also upload
 """
 
 import argparse
@@ -100,11 +99,11 @@ def _previous_hash(history_dir: Path) -> tuple[str, Path | None]:
         return "", latest
 
 
-def download_sbir_awards(dest: Path, s3_bucket: str | None = None) -> dict:
+def download_sbir_awards(dest: Path) -> dict:
     """Download the awards CSV to ``dest``, keeping a dated vintage under history/.
 
-    Uploads to S3 as well when ``s3_bucket`` is set. Returns a result dict whose
-    ``changed`` flag is False when the download matches the newest vintage.
+    Returns a result dict whose ``changed`` flag is False when the download
+    matches the newest vintage.
     """
     data, file_hash = _fetch()
 
@@ -144,40 +143,13 @@ def download_sbir_awards(dest: Path, s3_bucket: str | None = None) -> dict:
     print(f"   Vintage: {vintage_csv}")
     print(f"   SHA256:  {file_hash[:16]}...")
 
-    result = {
+    return {
         "changed": True,
         "path": str(canonical),
         "vintage": str(vintage_dir),
         "size": len(data),
         "sha256": file_hash,
     }
-
-    if s3_bucket:
-        result.update(_upload_to_s3(data, file_hash, s3_bucket, date_str, metadata))
-
-    return result
-
-
-def _upload_to_s3(
-    data: bytes, file_hash: str, s3_bucket: str, date_str: str, metadata: dict
-) -> dict:
-    """Mirror the download to S3. Retained until the AWS data plane is retired."""
-    import boto3
-
-    s3_key = f"raw/awards/{date_str}/{CSV_NAME}"
-    print(f"📤 Uploading to s3://{s3_bucket}/{s3_key}")
-    boto3.client("s3").put_object(
-        Bucket=s3_bucket,
-        Key=s3_key,
-        Body=data,
-        ContentType="text/csv",
-        Metadata={
-            "source_url": metadata["source_url"],
-            "sha256": file_hash,
-            "downloaded_at": metadata["downloaded_at"],
-        },
-    )
-    return {"s3_bucket": s3_bucket, "s3_key": s3_key}
 
 
 def main():
@@ -187,15 +159,10 @@ def main():
         default=os.environ.get("SBIR_RAW_DIR", DEFAULT_DEST),
         help=f"Directory to write {CSV_NAME} and history/ into (default: {DEFAULT_DEST})",
     )
-    parser.add_argument(
-        "--s3-bucket",
-        default=os.environ.get("S3_BUCKET"),
-        help="Also upload to this S3 bucket (optional; omit for local-only)",
-    )
     args = parser.parse_args()
 
     try:
-        result = download_sbir_awards(Path(args.dest), args.s3_bucket)
+        result = download_sbir_awards(Path(args.dest))
 
         if result["changed"]:
             print(f"\n✅ New data: {result['path']}")

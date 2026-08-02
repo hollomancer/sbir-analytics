@@ -134,35 +134,3 @@ class TestFindLatestVintage:
             (d / CSV_NAME).write_bytes(CSV_A)
 
         assert find_latest_vintage(history).name == "2026-03-05"
-
-
-class TestS3Mirror:
-    def test_local_only_by_default(self, tmp_path, fake_fetch):
-        _set(fake_fetch, CSV_A)
-
-        with patch("scripts.data.download_sbir._upload_to_s3") as upload:
-            result = download_sbir_awards(tmp_path)
-
-        upload.assert_not_called()
-        assert "s3_key" not in result
-
-    def test_uploads_when_bucket_given(self, tmp_path, fake_fetch):
-        _set(fake_fetch, CSV_A)
-
-        with patch("scripts.data.download_sbir._upload_to_s3") as upload:
-            upload.return_value = {"s3_bucket": "b", "s3_key": "k"}
-            result = download_sbir_awards(tmp_path, s3_bucket="b")
-
-        upload.assert_called_once()
-        assert result["s3_key"] == "k"
-
-    def test_no_upload_when_unchanged(self, tmp_path, fake_fetch):
-        _set(fake_fetch, CSV_A)
-        with patch("scripts.data.download_sbir._upload_to_s3"):
-            download_sbir_awards(tmp_path, s3_bucket="b")
-
-        with patch("scripts.data.download_sbir._upload_to_s3") as upload:
-            result = download_sbir_awards(tmp_path, s3_bucket="b")
-
-        upload.assert_not_called()
-        assert result["changed"] is False

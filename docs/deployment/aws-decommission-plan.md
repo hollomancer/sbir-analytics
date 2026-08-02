@@ -204,9 +204,10 @@ credentials.
 
 ## Phase 6 — Dependencies and teardown
 
-**Status: blocked on Phase 0.** boto3 is retained because the opt-in S3 mirror
-paths in scripts/ still use it; both go together once the bucket is drained
-and torn down.
+**Status: code side done.** boto3, boto3-stubs, and cloudpathlib are dropped and
+no S3 code remains. The remaining work is operator-only: the Phase 0 copy of the
+dated history, then tearing down the bucket, the OIDC role, the Batch queue, and
+the AWS_ROLE_ARN secret.
 
 - Drop `boto3` (`pyproject.toml:41`), `boto3-stubs[s3]` (line 67), `s3path`, and
   any `pip install awscli` steps.

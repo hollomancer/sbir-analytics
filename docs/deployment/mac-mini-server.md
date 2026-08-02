@@ -256,6 +256,16 @@ All default to **STOPPED**; enable with
 succeeds. The SBIR sensor skips when the download reported no upstream change,
 so an unchanged CSV does not trigger hours of re-enrichment.
 
+### Monthly analysis
+
+`monthly_phase_transition` (1st of the month, 14:00 UTC) runs
+`phase_transition_latency_job`, and a sensor archives its outputs to
+`<data_root>/processed/phase_transition/history/<date>/` afterwards. That dated
+series replaces what the retired workflow published to S3; GitHub artifacts
+expire, so this is now the only durable copy. Enable with
+`SBIR_ETL__DAGSTER__SCHEDULES__MONTHLY_PHASE_TRANSITION_ENABLED=true` and
+`SBIR_ETL__DAGSTER__SENSORS__PHASE_TRANSITION_ARCHIVE_AFTER_ANALYSIS_ENABLED=true`.
+
 ### Heavy assets
 
 `DAGSTER_LOAD_HEAVY_ASSETS` now defaults to **true**, so CET, fiscal,

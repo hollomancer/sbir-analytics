@@ -1,10 +1,8 @@
 #!/usr/bin/env python3
 """Download SAM.gov entity data to a local directory as parquet.
 
-Writes locally by default; uploads to S3 only when a bucket is given
-explicitly (or S3_BUCKET is set). Both destinations honour the same
-partial-vs-canonical guard, so a short paginated fallback never overwrites a
-full dataset.
+A short paginated fallback is written under a separate name so it never
+overwrites a full dataset.
 
 Download strategy (in order):
   1. Bulk extract API (/data-services/v1/extracts) — single ZIP download of
@@ -14,7 +12,7 @@ Download strategy (in order):
 
 Exit codes:
     0  Success
-    1  General failure (network, S3, parse error)
+    1  General failure (network, parse error)
     2  API key problem — expired, invalid, or missing. CI should treat
        exit code 2 as "rotate the key" rather than a transient failure.
     3  Daily rate limit exceeded — retry after midnight UTC.
@@ -29,13 +27,11 @@ API key lifecycle:
 Usage:
     python scripts/data/download_sam_gov.py
     python scripts/data/download_sam_gov.py --dest /Volumes/SSDmini/sbir-analytics/data/raw/sam_gov
-    python scripts/data/download_sam_gov.py --s3-bucket my-bucket   # also upload
     python scripts/data/download_sam_gov.py --dry-run
 
 Environment:
     SAM_GOV_API_KEY  SAM.gov API key (required)
     SAM_GOV_RAW_DIR  Local output directory (overridden by --dest)
-    S3_BUCKET        S3 bucket name (overridden by --s3-bucket)
 """
 
 import argparse
@@ -63,8 +59,6 @@ print = partial(print, flush=True)  # noqa: A001
 
 EXTRACTS_URL = "https://api.sam.gov/data-services/v1/extracts"
 ENTITY_API_URL = "https://api.sam.gov/entity-information/v3/entities"
-S3_KEY = "raw/sam_gov/sam_entity_records.parquet"
-S3_KEY_PARTIAL = "raw/sam_gov/sam_entity_records_partial.parquet"
 MIN_CANONICAL_ROW_COUNT = 50_000
 
 DEFAULT_DEST = "data/raw/sam_gov"
@@ -530,31 +524,6 @@ def _write_local(df: pd.DataFrame, dest: Path, *, name: str = PARQUET_NAME) -> P
     return path
 
 
-def _upload_to_s3(df: pd.DataFrame, bucket: str, *, s3_key: str = S3_KEY) -> None:
-    """Write DataFrame to parquet and upload to S3."""
-    print(f"\n📤 Uploading {len(df):,} rows to s3://{bucket}/{s3_key}")
-    buf = io.BytesIO()
-    df.to_parquet(buf, index=False, engine="pyarrow")
-    buf.seek(0)
-    size_mb = buf.getbuffer().nbytes / 1024 / 1024
-
-    import boto3
-
-    s3 = boto3.client("s3")
-    s3.put_object(
-        Bucket=bucket,
-        Key=s3_key,
-        Body=buf,
-        ContentType="application/octet-stream",
-        Metadata={
-            "source": "api.sam.gov",
-            "row_count": str(len(df)),
-            "downloaded_at": datetime.now(UTC).isoformat(),
-        },
-    )
-    print(f"✅ Uploaded: {size_mb:.1f} MB, {len(df):,} entities")
-
-
 # ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
@@ -564,9 +533,6 @@ def main() -> None:
     parser.add_argument("--dest",
                         default=os.environ.get("SAM_GOV_RAW_DIR", DEFAULT_DEST),
                         help=f"Directory to write the parquet into (default: {DEFAULT_DEST})")
-    parser.add_argument("--s3-bucket",
-                        default=os.environ.get("S3_BUCKET"),
-                        help="Also upload to this S3 bucket (optional; omit for local-only)")
     parser.add_argument("--dry-run", action="store_true",
                         help="Download and parse only — skip writing output")
     parser.add_argument("--strategy", type=int, choices=[1, 2, 3], default=None,
@@ -630,12 +596,6 @@ def main() -> None:
                 name=PARQUET_NAME_PARTIAL if partial_result else PARQUET_NAME,
             )
 
-            if args.s3_bucket:
-                _upload_to_s3(
-                    df,
-                    args.s3_bucket,
-                    s3_key=S3_KEY_PARTIAL if partial_result else S3_KEY,
-                )
 
     except APIKeyError as exc:
         print(f"\n{'='*60}", file=sys.stderr)

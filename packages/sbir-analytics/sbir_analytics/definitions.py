@@ -146,18 +146,35 @@ if drift_asset_exists:
 # All four default to STOPPED: the runbook requires an operator to confirm a
 # manual run succeeds on the host before enabling a schedule, and SAM.gov and
 # USAspending additionally need credentials and disk headroom in place.
-_SOURCE_DOWNLOAD_SCHEDULES = (
-    ("sbir_awards_download_job", "weekly_sbir_awards_download", "0 9 * * 1", "SBIR awards"),
-    ("sam_gov_download_job", "monthly_sam_gov_download", "0 3 15 * *", "SAM.gov entities"),
-    ("usaspending_download_job", "monthly_usaspending_download", "0 2 6 * *", "USAspending dump"),
-    ("uspto_download_job", "monthly_uspto_download", "0 9 1 * *", "USPTO assignments"),
+_HOST_SCHEDULES = (
+    (
+        "sbir_awards_download_job",
+        "weekly_sbir_awards_download",
+        "0 9 * * 1",
+        "SBIR awards download",
+    ),
+    ("sam_gov_download_job", "monthly_sam_gov_download", "0 3 15 * *", "SAM.gov entities download"),
+    (
+        "usaspending_download_job",
+        "monthly_usaspending_download",
+        "0 2 6 * *",
+        "USAspending dump download",
+    ),
+    ("uspto_download_job", "monthly_uspto_download", "0 9 1 * *", "USPTO datasets download"),
+    # Carried from the retired monthly-analysis.yml phase-transition job.
+    (
+        "phase_transition_latency_job",
+        "monthly_phase_transition",
+        "0 14 1 * *",
+        "Phase II->III transition latency analysis",
+    ),
 )
 
 source_download_schedules = []
-for _job_name, _schedule_name, _default_cron, _label in _SOURCE_DOWNLOAD_SCHEDULES:
+for _job_name, _schedule_name, _default_cron, _label in _HOST_SCHEDULES:
     _discovered = _get_job(_job_name)
     if _discovered is None:
-        LOG.warning("Source download job %s not discovered; skipping schedule", _job_name)
+        LOG.warning("Job %s not discovered; skipping schedule", _job_name)
         continue
     _env_suffix = _schedule_name.upper()
     source_download_schedules.append(
@@ -167,7 +184,7 @@ for _job_name, _schedule_name, _default_cron, _label in _SOURCE_DOWNLOAD_SCHEDUL
                 f"SBIR_ETL__DAGSTER__SCHEDULES__{_env_suffix}_CRON", _default_cron
             ),
             name=_schedule_name,
-            description=f"Scheduled download of {_label} to local storage",
+            description=f"Scheduled {_label} on this host",
             default_status=_schedule_status(
                 f"SBIR_ETL__DAGSTER__SCHEDULES__{_env_suffix}_ENABLED",
                 default_running=False,

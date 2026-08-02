@@ -45,6 +45,8 @@ def _pipeline_job(name: str):
     return None
 
 
+_phase_transition = _pipeline_job("phase_transition_latency_job")
+_pt_archive = _pipeline_job("phase_transition_archive_job")
 _sbir_pipeline = _pipeline_job("sbir_weekly_refresh_job")
 _uspto_pipeline = _pipeline_job("uspto_validation_job")
 _usaspending_pipeline = _pipeline_job("usaspending_iterative_enrichment_job")
@@ -110,3 +112,17 @@ def _download_was_unchanged(context) -> bool:
             value = metadata["changed"]
             return getattr(value, "value", value) is False
     return False
+
+
+if _phase_transition is not None and _pt_archive is not None:
+
+    @run_status_sensor(
+        run_status=DagsterRunStatus.SUCCESS,
+        monitored_jobs=[_phase_transition],
+        request_job=_pt_archive,
+        name="phase_transition_archive_after_analysis",
+        default_status=_sensor_status("phase_transition_archive_after_analysis"),
+        description="Archive phase-transition outputs to a dated directory after each run",
+    )
+    def phase_transition_archive_after_analysis(context):
+        return RunRequest(run_key=context.dagster_run.run_id)
