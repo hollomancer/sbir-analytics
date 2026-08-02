@@ -46,8 +46,8 @@ DEFAULT_DEST = "data/usaspending"
 
 def resolve_source_url(
     database_type: str = "full",
-    date_str: str = None,
-    source_url: str = None,
+    date_str: str | None = None,
+    source_url: str | None = None,
 ) -> str:
     """Resolve the dump URL, auto-discovering the latest file when no date is given."""
     if source_url:
@@ -145,8 +145,8 @@ def check_free_space(dest_dir: Path, required_bytes: int, multiplier: float = 1.
 def download_local(
     dest_dir: Path,
     database_type: str = "full",
-    date_str: str = None,
-    source_url: str = None,
+    date_str: str | None = None,
+    source_url: str | None = None,
     force_refresh: bool = False,
     chunk_size: int = 8 * 1024 * 1024,
 ) -> dict:

@@ -50,7 +50,7 @@ Two prefixes hold dated history that **cannot** be rebuilt:
 
 | S3 prefix | Why it is irreplaceable | SSD destination |
 |---|---|---|
-| `raw/awards/{YYYY-MM-DD}/award_data.csv` | A vintage series of SBIR.gov snapshots, each carrying a `sha256` in object metadata (`download_sbir.py:74`). SBIR.gov serves only the current file; past vintages do not exist upstream. | `data/raw/sbir/history/` |
+| `raw/awards/{YYYY-MM-DD}/award_data.csv` | A vintage series of SBIR.gov snapshots, each carrying a `sha256` in object metadata written by the former `_upload_to_s3()` path in `scripts/data/download_sbir.py`. SBIR.gov serves only the current file; past vintages do not exist upstream. | `data/raw/sbir/history/` |
 | `processed/phase_transition/{YYYY-MM-DD}/` | Dated analysis outputs (`monthly-analysis.yml:360`). Recomputable only if the matching input vintage survives, which depends on the row above. | `data/processed/phase_transition/history/` |
 
 Treat the dated keys under `raw/usaspending/recipient_lookup/` and
