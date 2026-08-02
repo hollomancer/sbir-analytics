@@ -45,11 +45,30 @@ are reachable from the hosted env** (served from `s3.amazonaws.com/falextracts/`
   Solar Powered Tent System"*, *"Notice of Sole Source Award - Air Force SBIR/STTR program"*.
   Each row has awardee + award# + description in-line.
 
-**This is the self-labeling ground-truth source that the API couldn't deliver.** ~66/recent
-year × ~8 SBIR-era years ≈ several hundred machine-extractable, self-labeled, independent
-Phase III positives (with firm + contract#) — a potential upgrade to the #481 hand-collected
-293. **T1 is viable; the extractor is the next build** (parse bulk CSVs across years → firm,
-contract#, description, agency for every SBIR-Phase-III-self-labeled notice).
+**Built:** `scripts/phase3_benchmark/extract_phase3_selflabeled.py` (reuses
+`pull_gsa_archive`'s streaming/columns; swaps seed-attribution for a self-label regex;
+tested, ruff-clean).
+
+**Actual yield (FY2023+FY2024), classified by `notice_class` — richer than first written:**
+the extractor tags each self-labeled notice, and the pre-award notices are *signal*, not noise:
+
+| class | FY23+24 | what it is |
+|---|---|---|
+| `award` | 12 | confirmed Phase III (firm + contract#) — **retrospective positive** |
+| `intent_sole_source` | 15 | pre-award intent *naming the firm* — **near-certain forward positive** |
+| `sources_sought` | 43 | open Phase III need — **forward-opportunity feed (the packet's real input)** |
+| `other` | 26 | self-labeled but no firm/award |
+
+- **Firm-named positives = award + intent = 27 over 2 yrs (~13–14/yr) → ~100–130 across SBIR-era
+  years** — e.g. Advanced Strategic Insight `W50S6N-23-P-0011`; North Star Scientific "Phase III
+  Basic Ordering Agreement"; Progeny Systems `N6134023C0007`. (Corrects an earlier award-only
+  "~6/yr" undercount — the intent-to-sole-source notices are firm-named positives too.)
+- **Sources Sought = a forward Phase III opportunity feed** — directly addresses the
+  forward/open-solicitation validation gap #481 left explicitly open.
+
+**Value (right-sized):** a **self-labeled, SAM-sourced, provenance-diverse** independent set —
+~100–130 firm-named positives (cross-validation complement to #481's 293) **plus** a standing
+forward-opportunity feed. Run the full sweep with `--years 2015 … 2025`.
 
 ## T4 (OT) — still blocked
 
