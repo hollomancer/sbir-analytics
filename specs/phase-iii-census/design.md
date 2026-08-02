@@ -1,9 +1,10 @@
 # Label-free Phase III Census and Negative Controls — Phase 0 Design
 
 **Status:** Phase 0 approved; **criteria frozen**. The target-code provenance, federal
-Phase II award-grain, and SBIR.gov source-row-grain amendments below were approved before
-any result was materialized. The source layer and prior-grain implementation now live in a
-separate prerequisite change. The Phase 1 census is implemented and fixture-verified;
+Phase II award-grain, SBIR.gov source-row-grain, and exact-key multi-supplemental
+reconciliation amendments below were approved before any result was materialized. The
+source layer and prior-grain implementation now live in a separate prerequisite change.
+The Phase 1 census is implemented and fixture-verified;
 on 2026-08-02, the repository owner superseded only the prior sequencing pause and
 authorized attempting production materialization subject to the existing post-write
 one-factor sensitivity check. Unresolved negative-control and placebo questions remain
@@ -405,13 +406,22 @@ SBIR.gov rows keep their source `award_id`. For reconciliation, their audit
 `agency_tracking_number`, then `award_id`. After federal transactions are collapsed,
 SBIR.gov and federal rows may reconcile only on exact normalized `source_award_id`:
 
-- no federal match leaves the SBIR.gov row as its own prior award;
-- exactly one federal match preserves the federal generated key and authoritative
-  federal dates, fills only missing NAICS/PSC from nonconflicting SBIR.gov values, and
-  removes the supplemental duplicate; and
+- no federal match leaves every distinct retained SBIR.gov row as its own prior award;
+- exactly one federal match reconciles every retained SBIR.gov row sharing that exact key
+  into the federal award. The federal generated key and every authoritative federal field
+  are preserved. For NAICS and PSC separately, normalized nonblank values are unioned
+  across the federal row and all exact-key supplementals; more than one value stops
+  materialization, while one unanimous supplemental value may fill only a missing federal
+  value. Every reconciled supplemental is then removed without selecting a row or using
+  input order; and
 - more than one federal match, or conflicting nonnull supplemental taxonomy for one
   federal award, stops materialization instead of selecting by row order, agency-name
   similarity, or another heuristic.
+
+The multi-supplemental rule above supersedes the earlier singular-duplicate
+implementation. Supplemental recipient, date, amount, agency, title, and contact fields
+do not overwrite or validate the exact-key federal award; reconciliation uses them neither
+as identity heuristics nor as tie-breakers.
 
 This upstream correction changes identifiers supplied to every consumer of
 `validated_phase_ii_awards`, including the existing retrospective candidate path. That

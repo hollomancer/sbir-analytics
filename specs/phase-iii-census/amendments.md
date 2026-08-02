@@ -97,3 +97,35 @@ files before materialization.
   February source-extraction progress was also visible. No exact-UEI pair count,
   cumulative drop-off count, six-cell sensitivity result, negative-control result, or
   placebo result had been materialized or seen.
+
+## Revision 6 — Exact-key multi-supplemental reconciliation
+
+- **Approved:** 2026-08-02.
+- **Git-history anchor:** The commit that first adds Revision 6 to this file is the
+  approval-record anchor; its identifier is intentionally not embedded in the content it
+  hashes.
+- **Reason:** Production Phase II validation stopped on exact source key
+  `140D0420C0002`, which has one federal generated award and two distinct retained
+  SBIR.gov supplemental rows. The earlier singular-duplicate implementation made any
+  supplemental multiplicity fatal even when the federal match was unique and taxonomy
+  was nonconflicting. The repository owner approved reconciling every exact-key
+  supplemental into the unique federal award without selecting a supplemental row.
+- **Source-rule impact:** This supersedes the one-supplemental multiplicity stop. With no
+  federal match, every distinct supplemental remains its own prior. With more than one
+  federal match, materialization stops. With exactly one federal match, all exact-key
+  supplementals are consumed together: every authoritative federal field is preserved,
+  normalized nonblank NAICS and PSC values must be unanimous across federal and
+  supplemental rows, only a missing federal taxonomy value may be filled, and every
+  matched supplemental is removed without row-order dependence.
+- **Criteria impact:** None. No exact-UEI pair universe, inclusion clause, clause order,
+  sensitivity cell, window endpoint, agency predicate, estimand, output metric, cutoff,
+  source field, or diagnostic rule changed. No scorer, weight, similarity rule, or model
+  is introduced.
+- **Visibility at approval:** Source/provenance validation, the failed Phase II run, and a
+  full exact-key reconciliation audit were visible. The audit found 4,881 one-to-one
+  shared keys and 19 one-federal/two-supplemental keys, with no multiple-federal key and
+  no NAICS/PSC conflict. Supplemental non-taxonomy differences, including recipient
+  identifiers, were visible but do not participate in the approved exact-key rule; the
+  federal record remains authoritative. No exact-UEI pair count, cumulative drop-off
+  count, six-cell sensitivity result, negative-control result, or placebo result had been
+  materialized or seen.
