@@ -638,7 +638,7 @@ server-backup: server-env-check ## Dump Neo4j to $(SERVER_BACKUP_DIR) (default .
 	$(call run,SERVER_ENV_FILE=$(SERVER_ENV_FILE) COMPOSE_FILE=$(SERVER_COMPOSE_FILE) ./scripts/server/backup.sh)
 
 .PHONY: server-tailscale-up
-server-tailscale-up: server-env-check ## Configure persistent Tailscale Serve routes (443->Dagster, 8443->API)
+server-tailscale-up: server-env-check ## Configure persistent Tailscale Serve routes
 	@$(call info,Configuring Tailscale Serve routes)
 	$(call run,SERVER_ENV_FILE=$(SERVER_ENV_FILE) ./scripts/server/tailscale-serve.sh up)
 
@@ -648,7 +648,7 @@ server-tailscale-status: ## Show Tailscale Serve configuration
 	$(call run,./scripts/server/tailscale-serve.sh status)
 
 .PHONY: server-tailscale-down
-server-tailscale-down: server-env-check ## Remove ONLY the SBIR Tailscale Serve routes (443, 8443)
+server-tailscale-down: server-env-check ## Remove ONLY the managed SBIR Tailscale Serve routes
 	@$(call info,Removing SBIR Tailscale Serve routes)
 	$(call run,SERVER_ENV_FILE=$(SERVER_ENV_FILE) ./scripts/server/tailscale-serve.sh down)
 

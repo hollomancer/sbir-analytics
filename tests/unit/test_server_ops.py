@@ -35,6 +35,9 @@ def _run_script(
         "DAGSTER_PORT",
         "SBIR_ANALYTICS_API_PORT",
         "NEO4J_DATABASE",
+        "NEO4J_BOLT_PORT",
+        "NEO4J_TAILNET_BOLT_ENABLED",
+        "NEO4J_TAILNET_BOLT_PORT",
     ):
         env.pop(key, None)
     env.update(
@@ -227,15 +230,19 @@ def _install_fake_tailscale(bin_dir: Path) -> None:
             print(state_path.read_text())
             raise SystemExit(0)
 
-        port_arg = next(item for item in args if item.startswith("--https="))
+        port_arg = next(
+            item
+            for item in args
+            if item.startswith("--https=") or item.startswith("--tls-terminated-tcp=")
+        )
         port = port_arg.split("=", 1)[1]
+        tls_tcp = port_arg.startswith("--tls-terminated-tcp=")
         if port == "443" and os.environ.get("HANG_443") == "1" and "off" not in args:
             print("Serve is not enabled on your tailnet: https://example.test/consent", flush=True)
             time.sleep(60)
         if port == "8443" and os.environ.get("FAIL_8443") == "1" and "off" not in args:
             print("forced failure", file=sys.stderr)
             raise SystemExit(8)
-
         state = json.loads(state_path.read_text())
         host_key = f"node.test.ts.net:{port}"
         if "off" in args:
@@ -244,14 +251,27 @@ def _install_fake_tailscale(bin_dir: Path) -> None:
             state.get("AllowFunnel", {}).pop(host_key, None)
         else:
             target = args[-1]
-            state.setdefault("TCP", {})[port] = {"HTTPS": True}
-            state.setdefault("Web", {})[host_key] = {
-                "Handlers": {"/": {"Proxy": target}}
-            }
+            if tls_tcp:
+                state.setdefault("TCP", {})[port] = {
+                    "TCPForward": target.removeprefix("tcp://"),
+                    "TerminateTLS": "node.test.ts.net",
+                }
+            else:
+                state.setdefault("TCP", {})[port] = {"HTTPS": True}
+                state.setdefault("Web", {})[host_key] = {
+                    "Handlers": {"/": {"Proxy": target}}
+                }
         state_path.write_text(json.dumps(state))
         if (
             port == "8443"
             and os.environ.get("APPLY_THEN_FAIL_8443") == "1"
+            and "off" not in args
+        ):
+            print("forced late failure", file=sys.stderr)
+            raise SystemExit(8)
+        if (
+            port == "17687"
+            and os.environ.get("APPLY_THEN_FAIL_NEO4J") == "1"
             and "off" not in args
         ):
             print("forced late failure", file=sys.stderr)
@@ -268,6 +288,17 @@ def _serve_state(port: str, target: str) -> dict[str, object]:
     }
 
 
+def _tls_tcp_state(port: str, target: str) -> dict[str, object]:
+    return {
+        "TCP": {
+            port: {
+                "TCPForward": target,
+                "TerminateTLS": "node.test.ts.net",
+            }
+        }
+    }
+
+
 def _run_tailscale(
     tmp_path: Path,
     command: str,
@@ -275,6 +306,8 @@ def _run_tailscale(
     *,
     fail_8443: bool = False,
     apply_then_fail_8443: bool = False,
+    apply_then_fail_neo4j: bool = False,
+    neo4j_enabled: bool = True,
     hang_443: bool = False,
 ) -> tuple[subprocess.CompletedProcess[str], dict[str, object], list[list[str]]]:
     bin_dir = tmp_path / "bin"
@@ -284,12 +317,20 @@ def _run_tailscale(
     state_file.write_text(json.dumps(state))
     call_log = tmp_path / "tailscale-calls"
     env_file = tmp_path / ".env.server"
-    env_file.write_text("DAGSTER_PORT=3000\nSBIR_ANALYTICS_API_PORT=8010\n")
+    env_file.write_text(
+        "DAGSTER_PORT=3000\n"
+        "SBIR_ANALYTICS_API_PORT=8010\n"
+        "NEO4J_BOLT_PORT=7687\n"
+        f"NEO4J_TAILNET_BOLT_ENABLED={'true' if neo4j_enabled else 'false'}\n"
+        "NEO4J_TAILNET_BOLT_PORT=17687\n"
+    )
     extra = {"CALL_LOG": str(call_log), "STATE_FILE": str(state_file)}
     if fail_8443:
         extra["FAIL_8443"] = "1"
     if apply_then_fail_8443:
         extra["APPLY_THEN_FAIL_8443"] = "1"
+    if apply_then_fail_neo4j:
+        extra["APPLY_THEN_FAIL_NEO4J"] = "1"
     if hang_443:
         extra["HANG_443"] = "1"
         extra["TAILSCALE_SERVE_TIMEOUT"] = "1"
@@ -366,6 +407,79 @@ def test_tailscale_up_rolls_back_route_applied_before_cli_failure(tmp_path):
 
     assert result.returncode != 0
     assert state.get("TCP", {}) == {}
+    assert any("--https=8443" in call and "off" in call for call in calls)
+    assert any("--https=443" in call and "off" in call for call in calls)
+
+
+def test_tailscale_up_configures_tls_neo4j_route(tmp_path):
+    result, state, calls = _run_tailscale(tmp_path, "up", {})
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert state["TCP"]["17687"] == {
+        "TCPForward": "127.0.0.1:7687",
+        "TerminateTLS": "node.test.ts.net",
+    }
+    assert any(
+        "--tls-terminated-tcp=17687" in call and "tcp://127.0.0.1:7687" in call and "--bg" in call
+        for call in calls
+    )
+    assert "bolt+s://node.test.ts.net:17687" in result.stdout
+
+
+def test_tailscale_up_leaves_neo4j_private_when_opt_in_is_disabled(tmp_path):
+    result, state, calls = _run_tailscale(tmp_path, "up", {}, neo4j_enabled=False)
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "17687" not in state["TCP"]
+    assert not any("--tls-terminated-tcp=17687" in call for call in calls)
+    assert "Neo4j tailnet access is disabled" in result.stdout
+
+
+def test_tailscale_up_removes_owned_neo4j_route_when_opt_in_is_disabled(tmp_path):
+    result, state, calls = _run_tailscale(
+        tmp_path,
+        "up",
+        _tls_tcp_state("17687", "127.0.0.1:7687"),
+        neo4j_enabled=False,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "17687" not in state["TCP"]
+    assert any("--tls-terminated-tcp=17687" in call and "off" in call for call in calls)
+
+
+def test_tailscale_down_removes_owned_tls_neo4j_route(tmp_path):
+    result, state, calls = _run_tailscale(
+        tmp_path,
+        "down",
+        _tls_tcp_state("17687", "127.0.0.1:7687"),
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert state.get("TCP", {}) == {}
+    assert any("--tls-terminated-tcp=17687" in call and "off" in call for call in calls)
+
+
+def test_tailscale_up_refuses_foreign_neo4j_route(tmp_path):
+    original = _tls_tcp_state("17687", "127.0.0.1:9999")
+    result, state, calls = _run_tailscale(tmp_path, "up", original)
+
+    assert result.returncode != 0
+    assert state == original
+    assert not any("off" in call for call in calls)
+
+
+def test_tailscale_up_rolls_back_all_routes_after_late_neo4j_failure(tmp_path):
+    result, state, calls = _run_tailscale(
+        tmp_path,
+        "up",
+        {},
+        apply_then_fail_neo4j=True,
+    )
+
+    assert result.returncode != 0
+    assert state.get("TCP", {}) == {}
+    assert any("--tls-terminated-tcp=17687" in call and "off" in call for call in calls)
     assert any("--https=8443" in call and "off" in call for call in calls)
     assert any("--https=443" in call and "off" in call for call in calls)
 

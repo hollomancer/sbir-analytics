@@ -46,8 +46,9 @@ materialization state belongs there, not in tracked documentation.
 The only live checkout is `/Users/conradhollomon/projects/sbir-analytics-server`;
 never operate the live stack from the development checkout. Preserve
 `.env.server`, `/Volumes/SSDmini/sbir-analytics`, and the Docker `dagster_home`
-volume. Ingress must remain Tailscale Serve over tailnet-only HTTPS; never enable
-Funnel and never expose server ports to the LAN or public internet.
+volume. Ingress must remain Tailscale Serve over tailnet-only HTTPS or explicitly
+enabled TLS-terminated TCP; never enable Funnel and never expose server ports to
+the LAN or public internet.
 
 Treat materialization as a live-data mutation: confirm the SSD is mounted, the
 deployment checkout is clean, and the stack is healthy before running one. Keep
