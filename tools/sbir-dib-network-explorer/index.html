@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Explore identifier-verified SBIR awardee relationships to DoD prime families."
+    />
+    <title>SBIR → DIB Network Explorer</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="app-header">
+      <div>
+        <p class="eyebrow">Observed defense supply network</p>
+        <h1>SBIR <span aria-hidden="true">→</span><span class="sr-only">to</span> DIB Explorer</h1>
+      </div>
+      <div class="scope-badges" aria-label="Network scope">
+        <span>Verified identifiers</span>
+        <span>Tier 1 primes</span>
+        <span>Tier 2 awardees</span>
+      </div>
+    </header>
+
+    <main>
+      <section class="toolbar" aria-label="Graph controls">
+        <form id="search-form" class="search-control" role="search">
+          <label for="node-search">Find a supplier or prime</label>
+          <div class="search-row">
+            <input
+              id="node-search"
+              name="node-search"
+              type="search"
+              list="node-options"
+              autocomplete="off"
+              placeholder="Type an organization name"
+            />
+            <datalist id="node-options"></datalist>
+            <button type="submit">Find</button>
+          </div>
+        </form>
+
+        <label class="select-control" for="minimum-years">
+          Minimum persistence
+          <select id="minimum-years">
+            <option value="1">1 fiscal year</option>
+            <option value="2">2 fiscal years</option>
+            <option value="3" selected>3 fiscal years</option>
+            <option value="4">4 fiscal years</option>
+            <option value="5">5 fiscal years</option>
+          </select>
+        </label>
+
+        <label class="select-control" for="graph-density">
+          Display
+          <select id="graph-density">
+            <option value="overview" selected>Overview</option>
+            <option value="expanded">Expanded</option>
+            <option value="all">All filtered edges</option>
+          </select>
+        </label>
+
+        <div class="checkbox-group" aria-label="Supplier filters">
+          <label class="checkbox-control" for="nsf-only">
+            <input id="nsf-only" type="checkbox" />
+            NSF SBIR awardees only
+          </label>
+          <label class="checkbox-control" for="critical-only">
+            <input id="critical-only" type="checkbox" />
+            CET supply-chain screen only
+          </label>
+        </div>
+
+        <button id="reset-view" class="secondary-button" type="button">Reset view</button>
+      </section>
+
+      <section class="network-summary" aria-live="polite">
+        <p id="visible-summary">Loading network…</p>
+        <div class="legend" aria-label="Graph legend">
+          <span><i class="legend-node prime-node"></i>Tier 1 prime family</span>
+          <span><i class="legend-node supplier-node"></i>Tier 2 SBIR awardee</span>
+          <span><i class="legend-node nsf-node"></i>NSF SBIR awardee</span>
+          <span><i class="legend-node critical-node"></i>CET supply-chain review candidate</span>
+          <span><i class="legend-line"></i>Observed subcontract relationship</span>
+        </div>
+      </section>
+
+      <section class="workspace">
+        <div id="graph-shell" class="graph-shell">
+          <canvas
+            id="network-canvas"
+            role="img"
+            aria-label="Interactive network graph of SBIR awardees and DoD prime families"
+          ></canvas>
+          <div id="graph-tooltip" class="graph-tooltip" hidden></div>
+          <div id="graph-message" class="graph-message" hidden></div>
+          <p class="graph-help">Scroll to zoom · drag the background to pan · select a node for details</p>
+        </div>
+
+        <aside id="detail-panel" class="detail-panel" aria-live="polite">
+          <div id="empty-detail" class="empty-detail">
+            <p class="eyebrow">Relationship review</p>
+            <h2>Select an organization</h2>
+            <p>
+              Choose a node to inspect observed amounts, persistence, customer exposure,
+              NSF award history, and neighboring organizations.
+            </p>
+          </div>
+          <div id="selected-detail" hidden>
+            <div class="detail-heading">
+              <div>
+                <p id="detail-tier" class="eyebrow"></p>
+                <h2 id="detail-name"></h2>
+              </div>
+              <button id="focus-node" class="secondary-button" type="button">Focus neighborhood</button>
+            </div>
+            <p id="detail-id" class="organization-id"></p>
+            <dl id="detail-metrics" class="detail-metrics"></dl>
+            <div id="screening-block" class="screening-block" hidden>
+              <h3>Supplier evidence screens</h3>
+              <p id="screening-status"></p>
+            </div>
+            <h3>Observed relationships</h3>
+            <div id="relationship-list" class="relationship-list"></div>
+          </div>
+        </aside>
+      </section>
+
+      <section class="guardrail" aria-label="Interpretation guardrail">
+        <strong>Interpretation boundary:</strong>
+        <span id="guardrail-text">
+          A reported subcontract is an observed relationship, not proof of dependency.
+        </span>
+      </section>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>

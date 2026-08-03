@@ -188,6 +188,22 @@ perspective, see [F. Capital formation & entrepreneurial finance](#f-capital-for
   Do firms show higher transition rates within the same awarding agency?
   *Deps: ER, ID*
 
+- **Observed SBIR-to-prime supply network** (cap/vuln)
+  Which SBIR awardees are
+  reported as first-tier subcontractors to DoD primes, which prime families act
+  as integration hubs, and which supplier-to-prime relationships persist across
+  fiscal years? USAspending/SAM.gov first-tier subawards support exact-UEI/DUNS
+  edges and reported amounts; name-only matches remain candidates. In DIB tier
+  language the DoD prime is Tier 1 and the reported subcontractor is Tier 2.
+  The initial NSF lens resolves specific NSF SBIR awards to verified suppliers,
+  screens award text against the versioned CET classifier, and applies the cited
+  defense-supply-chain crosswalk to prioritize manual review. It does not infer
+  that the NSF-funded work was used on a subcontract or that the supplier is
+  critical or irreplaceable.
+  **Status:** Initial implementation — public-data lower bound; not a BoM or
+  dependency claim.
+  *Deps: ER, USAspending subawards*
+
 - **DIB integration** (cap)
   What is the Phase II→III transition rate per CET area via FPDS, and how do
   SAM.gov subaward links connect awardees to prime contractors?
@@ -389,19 +405,20 @@ NASEM calls this quantity the *leverage ratio*.
 
 <a id="out-of-scope--physical--sub-tier-supply-chain-data-the-project-does-not-ingest"></a>
 
-### Out of scope — physical & sub-tier supply chain
+### Out of scope — physical & deeper-tier supply chain
 
-*These choke-point questions are **not answerable** with award-type data and are
-**not research targets** for this pipeline. Each needs bill-of-materials,
-customs, contractual country-of-origin, or sub-tier supplier data the pipeline
-does not ingest. They are listed for visibility, stated explicitly rather than
-graded as metrics. GAO-25-107283 [L30] documents exactly this
-sub-tier-visibility gap.*
+*Reported first-tier subcontract relationships are now an A2 research target.
+The questions below remain outside that boundary: they require bill-of-materials,
+customs, contractual country-of-origin, production, or supplier-to-supplier data
+that federal first-tier subaward records do not expose. They are listed for
+visibility, stated explicitly rather than graded as metrics. GAO-25-107283 [L30]
+documents this deeper visibility gap.*
 
 - **Physical input chokepoints** — dependence on contested physical inputs (rare
   earths, castings, advanced chips, APIs); sole-source inputs, foreign-content
   percentages, and surge capacity.
-- **Tiered BoM / supplier-tier maps** — sub-tier (Tier 2/3/N) supplier-dependency
+- **Tiered BoM / deeper supplier-tier maps** — Tier 3/N relationships below a
+  reported first-tier subcontractor, and Tier 2/3/N bill-of-material dependency
   mapping for a CET capability.
 - **Critical-mineral dependency** — exposure of a CET area to contested minerals
   and materials (rare earths, gallium, etc.).
