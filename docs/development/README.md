@@ -27,7 +27,9 @@ Use this page as a router; commands and rules have one canonical owner.
 - [Spec Workflow Guide](spec-workflow-guide.md) - Using specifications
 - [Architecture overview](../architecture/detailed-overview.md) - Package and deployment boundaries
 - [Steering documents](../steering/) - Durable identity, evidence, orchestration, and quality rules
-- `make docs-check` - Documentation links, anchors, stale commands, and spec-registry coverage
+- `make docs-check` - Repository hygiene guard: documentation links and anchors, stale
+  paths and commands, spec-registry coverage, and references to removed `src/` modules or
+  archived scripts (so a failure here is not always a documentation problem)
 
 ---
 

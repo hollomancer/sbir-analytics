@@ -30,7 +30,7 @@ def test_live_doc_stale_content_scans_all_non_archived_docs(tmp_path: Path):
     assert violations[0].path == "docs/transition/example.md"
 
 
-def test_live_doc_link_audit_resolves_relative_links(tmp_path: Path):
+def test_scan_missing_doc_links_resolves_relative_links(tmp_path: Path):
     source = _write(
         tmp_path,
         "docs/development/example.md",
@@ -45,7 +45,7 @@ def test_live_doc_link_audit_resolves_relative_links(tmp_path: Path):
     assert violations[0].path == "docs/development/example.md"
 
 
-def test_live_doc_link_audit_validates_file_and_same_page_anchors(tmp_path: Path):
+def test_scan_missing_doc_links_validates_file_and_same_page_anchors(tmp_path: Path):
     source = _write(
         tmp_path,
         "docs/development/example.md",
