@@ -2,6 +2,8 @@
 
 import hashlib
 import json
+import time
+import urllib.error
 import urllib.request
 from collections.abc import Callable, Iterator, Sequence
 from datetime import UTC, datetime
@@ -84,14 +86,32 @@ class NIHReporterExtractor:
 
     @staticmethod
     def _request(payload: dict[str, Any]) -> bytes:
-        request = urllib.request.Request(
-            NIH_REPORTER_ENDPOINT,
-            data=json.dumps(payload, separators=(",", ":")).encode(),
-            headers={"Accept": "application/json", "Content-Type": "application/json"},
-            method="POST",
-        )
-        with urllib.request.urlopen(request, timeout=180) as response:  # noqa: S310
-            return response.read()
+        body = json.dumps(payload, separators=(",", ":")).encode()
+        last_error: BaseException | None = None
+        for attempt in range(3):
+            request = urllib.request.Request(
+                NIH_REPORTER_ENDPOINT,
+                data=body,
+                headers={
+                    "Accept": "application/json",
+                    "Content-Type": "application/json",
+                },
+                method="POST",
+            )
+            try:
+                with urllib.request.urlopen(request, timeout=180) as response:  # noqa: S310
+                    return response.read()
+            except urllib.error.HTTPError as error:
+                if error.code not in {408, 425, 429, 500, 502, 503, 504}:
+                    raise IdentityRecoveryError(
+                        f"NIH RePORTER request failed with HTTP {error.code}"
+                    ) from error
+                last_error = error
+            except urllib.error.URLError as error:
+                last_error = error
+            if attempt < 2:
+                time.sleep(2**attempt)
+        raise IdentityRecoveryError("NIH RePORTER request failed after retries") from last_error
 
     def _page(
         self,
