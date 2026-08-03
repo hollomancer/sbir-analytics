@@ -20,6 +20,8 @@ implementation:
     symbol: phase_iii_census
   - path: scripts/data/build_phase_iii_control_matches.py
     symbol: run
+  - path: scripts/data/build_phase_iii_control_outcomes.py
+    symbol: run
 identity_policy:
   strategy: exact normalized UEI only; no name or DUNS fallback
   version: phase-0-r14
@@ -31,10 +33,11 @@ permitted_claims:
   - The estimand, criteria, and implementation are frozen and fixture-verified.
   - The complete February cumulative ladder and all six sensitivity cells were
     materialized from provenance-verified inputs, and the blocking one-factor check passed.
+  - Within the exact-match common-support subset, the frozen criteria produce different
+    full-set clearing proportions but substantially overlapping firm distributions.
 limitations:
-  - Negative-control outcome, placebo, and labeled-validation evidence is unresolved; no
-    headline cell, discrimination claim, undercount claim, or statutory Phase III
-    interpretation is authorized.
+  - Placebo and labeled-validation evidence is unresolved; no headline census cell,
+    undercount claim, or statutory Phase III interpretation is authorized.
   - Negative-control inference is restricted to the frozen exact-match common-support
     subset and does not generalize to unmatched Phase II firms.
   - Exact UEI matching misses acquisitions, successors, and UEI changes.
