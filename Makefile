@@ -150,8 +150,13 @@ docker-verify: env-check ## Verify Docker setup is working correctly
 # -----------------------------------------------------------------------------
 
 .PHONY: install
-install: ## Install dependencies with uv
-	@$(call info,Installing dependencies)
+install: ## Install the full local development stack with uv
+	@$(call info,Installing the full local development stack)
+	$(call run,uv sync --extra stack-dev)
+
+.PHONY: install-core
+install-core: ## Install only the reusable sbir-etl library dependencies
+	@$(call info,Installing core sbir-etl dependencies)
 	$(call run,uv sync)
 
 .PHONY: test

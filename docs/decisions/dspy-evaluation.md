@@ -53,7 +53,8 @@ recurring production LM workflow with a narrow output purpose:
   Responses API web-search path.
 - [`WeeklyAwardsReportBuilder`](../../sbir_etl/reporting/weekly/orchestrator.py)
   runs synopsis and award descriptions in a thread pool as part of a pipeline
-  with a 720-second internal timeout and a 15-minute GitHub Actions job limit.
+  with a 720-second internal timeout. The recurring job now runs through
+  Dagster on the Mac mini; GitHub Actions is CI only.
 - The weekly report golden test runs with `--no-ai`; current OpenAI client tests
   exercise transport behavior, not semantic accuracy or grounding.
 - The existing weekly-report refactor still tracks injected LM dependencies and

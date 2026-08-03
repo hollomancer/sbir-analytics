@@ -1,135 +1,86 @@
-# Data Enrichment Patterns
+---
+Type: Steering
+Owner: engineering@project
+Last-Reviewed: 2026-08-03
+Status: active
+---
 
-## Overview
+# Enrichment Patterns
 
-The system implements a multi-source enrichment strategy with documented fallback chains to maximize data coverage. This document focuses on the hierarchical enrichment strategy, confidence scoring, and evidence tracking patterns.
+Enrichment adds source-backed fields to an existing record. It must preserve the original value,
+the source and vintage, the matching method, and enough evidence to audit why the new value was
+accepted.
 
-## Core Concepts
-
-### Hierarchical Enrichment Strategy
+## Required flow
 
 ```text
-Primary Source (Highest Quality)
-    ↓ Success? → Continue
-    ↓ Fail? → Fallback
-Secondary Source (Good Quality)
-    ↓ Success? → Continue
-    ↓ Fail? → Fallback
-Tertiary Source (Acceptable Quality)
-    ↓ Success? → Continue
-    ↓ Fail? → Fallback
-Rule-Based Default (Lowest Quality)
-    ↓
-Log Enrichment Path & Confidence Score
+validate source record
+        │
+        ▼
+resolve canonical identity ──▶ query or join source ──▶ normalize candidate
+        │                                                │
+        └──────────────────────▶ score and retain evidence
+                                                         │
+                                                         ▼
+                                              apply source-specific gate
 ```
 
-### Confidence Scoring
+The order and thresholds are source-specific. SAM.gov UEI recovery, USAspending contract linkage,
+NAICS inference, SEC/Form D matching, and patent assignment matching do not share a universal
+nine-step hierarchy.
 
-| Level | Range | Sources | Use Case |
-|-------|-------|---------|----------|
-| **High** | ≥0.80 | Exact matches, API lookups | Production ready |
-| **Medium** | 0.60-0.79 | Fuzzy matches, validated proximity | Review recommended |
-| **Low** | <0.60 | Agency defaults, sector fallbacks | Manual review required |
+## Identity boundary
 
-## Implementation Patterns
+Company-name normalization and similarity live in `sbir_etl/identity/`. An enricher selects an
+explicit versioned `CompanyNameProfile`; it must not introduce a parallel RapidFuzz scorer or
+unnamed normalization routine. Prefer stable identifiers such as UEI, CAGE, accession number,
+patent identifier, or complete award key before fuzzy names.
 
-### NAICS Code Enrichment Example
+See the [company identity contract](company-identity.md).
 
-### 9-Step Enrichment Workflow
+## Confidence
 
-1. **Original SBIR data** (confidence: 0.95) - Use if valid
-2. **USAspending.gov API** (confidence: 0.90) - Match by UEI/contract ID
-3. **SAM.gov API** (confidence: 0.85) - Match by company DUNS/UEI
-4. **Fuzzy name matching** (confidence: 0.65-0.80) - Company name similarity
-5. **Proximity filtering** (confidence: varies) - Geographic validation
-6. **Agency defaults** (confidence: 0.50) - DOD → manufacturing, NIH → biotech
-7. **Sector fallback** (confidence: 0.30) - Default to "5415" R&D services
+A confidence value is meaningful only with its method and calibration population. A `0.9` exact
+identifier match is not interchangeable with a `0.9` model probability or fuzzy-name score.
 
-### Source Tracking and Auditability
+Store at least:
 
-**Enrichment Metadata** - Every enriched field includes:
+- normalized and raw source identity;
+- method/profile name and version;
+- score and applicable threshold;
+- source record identifier and vintage;
+- ambiguity or competing candidates;
+- whether the field is observed, derived, or imputed.
 
-- Source of enrichment (e.g., "usaspending_api", "sam_gov_api", "fuzzy_match")
-- Confidence score (0.0-1.0)
-- Enrichment timestamp
-- Method-specific metadata (similarity scores, API response details)
+Downstream consumers should gate on the named method/profile contract, not a context-free global
+confidence band.
 
-### Enrichment Result Structure
+## Source-specific strategy
 
-```python
-@dataclass
-class EnrichmentResult:
-    field_name: str
-    enriched_value: Any
-    original_value: Any
-    confidence: float
-    source: EnrichmentSource
-    metadata: dict
-    timestamp: datetime
-```
+Use the narrowest reliable path for each source:
 
-### Rate Limiting and API Management
+1. deterministic source identifiers;
+2. authoritative crosswalks with provenance;
+3. exact normalized identity under a declared profile;
+4. fuzzy or model-based candidates with ambiguity handling;
+5. unresolved rather than an unsafe forced match.
 
-### Rate Limiting
+Cache external responses only when the cache key includes the request identity and the response
+retains retrieval time/source version. Rate limits and unavailable APIs should produce explicit
+partial coverage, not silent empty matches.
 
-- Configurable rate limits per API source
-- Exponential backoff for transient failures
-- Batch processing where supported by APIs
-- Request throttling to stay within limits
+## Orchestration boundary
 
-### Retry Logic
+Reusable retrieval and matching logic belongs in `sbir_etl`; Dagster assets own dependencies,
+materialization metadata, retries, and asset checks. Enrichers should remain usable outside Dagster
+and should not read configuration files directly—use `sbir_etl.config.loader.get_config()` or
+injected settings.
 
-- Transient error detection (503, timeout)
-- Exponential backoff strategy
-- Maximum retry attempts per source
-- Fallback to next source after max retries
+## Verification
 
-### Evidence-Based Enrichment
+Test exact, fuzzy, ambiguous, missing, stale-cache, and source-failure cases. Report coverage by
+method and source vintage. When enrichment affects transition scoring or reportable findings, run
+the subsystem benchmark and follow the [data-quality](data-quality.md) and
+[epistemic-tier](epistemic-tiers.md) contracts.
 
-**Supporting Evidence** - Each enrichment decision includes:
-
-- Match method (exact, fuzzy, proximity)
-- Similarity scores for fuzzy matches
-- API response metadata
-- Validation checks performed
-
-### Manual Review Support
-
-- Low-confidence enrichments flagged for review
-- Evidence presented for manual validation
-- Accept/reject workflows for questionable matches
-- Audit trail of manual decisions
-
-## Configuration
-
-Enrichment sources, fallback rules, and quality thresholds are configured in YAML. See **[configuration.md](../configuration.md)** for complete configuration examples including:
-
-- Enrichment source configuration with priorities
-- Batch processing settings
-- Confidence thresholds
-- Quality gates and success rate targets
-- Agency default mappings
-- Fallback rules
-
-## Best Practices
-
-### Enrichment Strategy Design
-
-- **Hierarchical fallback**: Order sources by quality and confidence
-- **Confidence scoring**: Transparent scoring for all enrichment decisions
-- **Evidence tracking**: Maintain audit trail for all enrichment decisions
-- **Quality gates**: Enforce minimum success rates and confidence levels
-
-### API Management
-
-- **Rate limiting**: Respect API limits and implement backoff strategies
-- **Batch processing**: Optimize API usage with batching where possible
-- **Error handling**: Graceful degradation with fallback sources
-- **Monitoring**: Track API performance and success rates
-
-## Related Documents
-
-- **[configuration.md](../configuration.md)** - Complete enrichment configuration examples
-- **[pipeline-orchestration.md](pipeline-orchestration.md)** - Performance monitoring and asset integration
-- **[data-quality.md](data-quality.md)** - Quality validation for enriched data
-- **[quick-reference.md](quick-reference.md)** - Confidence levels and configuration quick lookup
+Current keys and thresholds are owned by [configuration](../configuration.md), not this guide.

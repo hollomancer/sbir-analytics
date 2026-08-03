@@ -73,7 +73,7 @@ def _safe_import(module_name: str) -> ModuleType | None:
 
 def should_load_heavy_assets() -> bool:
     """Check if heavy assets should be loaded based on environment."""
-    # Load heavy assets by default (local/hybrid), skip in serverless mode
+    # Load heavy assets by default; operators can disable them for constrained hosts.
     env_value = os.getenv("DAGSTER_LOAD_HEAVY_ASSETS", "true").lower()
     return env_value in ("true", "1", "yes")
 

@@ -1,107 +1,74 @@
-# Data Quality Standards
+---
+Type: Steering
+Owner: engineering@project
+Last-Reviewed: 2026-08-03
+Status: active
+---
 
-## Overview
+# Data Quality Contract
 
-The system implements comprehensive data quality validation at every pipeline stage with configurable thresholds and severity-based actions. This document focuses on the quality framework, validation methods, and quality dimensions.
+Data quality means that an artifact is faithful to its declared source, grain, identity rules, and
+validation contract. It does not, by itself, make a research interpretation valid or citable.
 
-## Core Concepts
+## Sources of truth
 
-### Quality Dimensions
+- Threshold values live in `config/base.yaml` and subsystem configuration, not prose.
+- Reusable validators live in `sbir_etl/validators/` and `sbir_etl/quality/`.
+- Runtime metrics and alerts live in `sbir_etl/utils/monitoring/`.
+- Dagster asset checks own materialization gates and observed metadata.
+- Study validation and permitted claims live in `studies/<study-id>/study.yaml`.
 
-| Dimension | Definition | Validation Method | Target |
-|-----------|------------|-------------------|--------|
-| **Completeness** | Required fields populated | Not null checks, coverage % | ≥95% |
-| **Uniqueness** | No duplicate records | Primary key constraints | 100% |
-| **Validity** | Values within expected ranges | Type checks, regex, enums | ≥98% |
-| **Consistency** | Data agrees across sources | Cross-reference validation | ≥90% |
-| **Accuracy** | Data matches source of truth | Sample manual verification | ≥95% |
-| **Timeliness** | Data is current and fresh | Timestamp checks | Daily updates |
+## Required properties
 
-### Severity-Based Actions
+Every maintained pipeline output should declare:
 
-- **ERROR**: Block pipeline execution, prevent downstream processing
-- **WARNING**: Log issue but continue processing
-- **INFO**: Log for informational purposes only
+1. **Source and vintage:** where the input came from and when it was captured.
+2. **Grain:** what one row represents.
+3. **Identity:** the complete key and normalization profile.
+4. **Transformation:** the code/configuration version that produced it.
+5. **Checks:** observed counts, failure reasons, and whether a failed check blocks downstream work.
 
-## Implementation Patterns
+Avoid copying numeric thresholds into documentation. Link to configuration and record the observed
+value in the materialization or study output.
 
-### Schema Validation
+## Severity and failure behavior
 
-- Required columns present
-- Correct data types
-- Primary key uniqueness
-- Value range validation
+- **Blocking:** schema loss, ambiguous identity, incomplete key components, corrupted inputs, or a
+  failed study/materialization gate. Stop before publishing downstream output.
+- **Warning:** a known coverage limitation that still leaves the declared estimand valid. Continue
+  only while recording the limitation and affected count.
+- **Informational:** descriptive runtime or distribution metadata with no pass/fail consequence.
 
-### Data Quality Checks
+Graceful degradation is appropriate only when the output contract says the missing information is
+optional. It must not silently change the population or estimand.
 
-- Completeness percentage calculation
-- Duplicate detection and reporting
-- Value range validation
-- Cross-reference consistency
+## Contract-award identity and grain
 
-### Quality Reporting
+- A PIID is not necessarily an award key; order PIIDs repeat under different parent IDVs and across
+  agencies.
+- Prefer `contract_award_unique_key`. Otherwise require a complete compound of awarding agency,
+  parent-IDV identifier, and PIID.
+- USAspending/FPDS inputs commonly contain modifications. Declare transaction versus award grain
+  and use `sbir_etl.utils.award_identity` to collapse rows deliberately.
+- Aggregate award-level status before selecting a representative transaction. Filtering first can
+  manufacture false uncoded candidates.
 
-- Detailed quality reports with issue type, severity, affected record counts
-- Sample IDs for manual investigation
-- Coverage metrics for key fields
-- Historical quality trend tracking
+## Research-output checks
 
-## Configuration
+For reportable figures:
 
-Quality thresholds and validation rules are configured in YAML. See **[configuration.md](../configuration.md)** for complete configuration examples including:
+- regenerate every downstream artifact after changing a producer;
+- verify that joins use the intended population, not merely compatible column names;
+- compute load-bearing figures in code rather than typing them into prose;
+- build an independent audit that recomputes figures from frozen inputs;
+- treat missing public evidence as a measurement limit rather than a negative outcome.
 
-- Completeness requirements by field
-- Uniqueness constraints
-- Validity ranges and limits
-- Quality gate thresholds
-- Severity-based action configuration
+Promotion beyond exploratory use follows the [epistemic tiers](epistemic-tiers.md) and
+[study-contract](../../studies/README.md) requirements.
 
-## Best Practices
+## Related references
 
-### Quality Framework Design
-
-- **Configurable thresholds**: All quality rules externalized to configuration
-- **Severity-based actions**: Different responses based on issue severity
-- **Comprehensive reporting**: Detailed quality reports with actionable information
-- **Historical tracking**: Quality trends over time for regression detection
-
-### Quality Validation Strategy
-
-- **Early validation**: Catch issues as early as possible in the pipeline
-- **Incremental validation**: Validate data at each pipeline stage
-- **Contextual validation**: Different validation rules for different data types
-- **Graceful degradation**: Continue processing when possible, log failures
-
-## Standalone Analysis Script & Report Accuracy
-
-The quality framework above governs the Dagster pipeline (`sbir_etl`). The one-off `scripts/data/*.py` analysis scripts that produce findings reports (e.g. `docs/nanotech_sbir_transition_findings.md`) sit outside it and need their own discipline — a full figure-by-figure audit of the nanotech report (105 checks, `scripts/data/nano_verify_report_figures.py`) surfaced three real errors, all from the same handful of failure modes:
-
-- **A fixed generator doesn't fix its already-written output.** Patching a bug in a script that writes a CSV does nothing to CSVs it already wrote — every downstream consumer (including report prose typed by hand) keeps reading the stale file until someone reruns the generator. This produced two of the three errors found (Form D dollar stats in Finding 1, and a survival-analysis split in Policy #2 that consumed the same stale CSV through a second script). Tell: an output file's mtime predates the last fix to the script that writes it. Fix: after patching a data-generating script, regenerate every artifact it produces, not just the one you were debugging.
-- **An `*_id` column is not necessarily a unique key.** SBIR `award_id` repeats across different-year continuation awards from the same agency (confirmed for DOE), the same trap as [[fpds-piid-not-a-key]] for FPDS PIIDs. Bare-ID set operations (`{r["award_id"] for r in rows}`) silently under- or over-count. Use a compound key (`award_id` + `company` + `award_year`, or whatever the source actually guarantees is unique) and dedupe explicitly before treating row count as entity count.
-- **Match the population, not just the column names.** A script computed a firm's "first Phase II award year" by joining against a *different, more narrowly-scoped* cohort file than the one the statistic was actually about, because both files happened to have compatible `company`/`award_year` columns. The join ran without error and produced a plausible-looking but wrong number. When a stat is defined over population X, source every input for it from X's own data — a column with the same name in a sibling file may carry a different, incompatible population underneath.
-- **Hand-typed, non-reproducible figures are the highest-risk category.** The one error with no backing script at all (Finding 2's acquisition-timing paragraph — a median and an outlier example, asserted directly in prose) was also the most wrong: not a rounding slip but the wrong firm identified as the outlier. A number nobody can rerun is a number nobody re-verifies. Prefer computing every reportable figure in a script, even a throwaway one; if a figure must be asserted by hand (e.g. reasoning about a small hand-curated table), say so explicitly in the text so it gets extra scrutiny during review.
-- **Build the audit script alongside the report, not after.** `nano_verify_report_figures.py` recomputes every load-bearing number in the report from source and diffs it against the value actually printed in the markdown. Keep this pattern for any new findings report (the quantum/hypersonics generalization is a natural next user) — rerun it whenever an upstream script or source CSV changes, not just once at publication.
-
-## Contract Award Identity and Grain
-
-- **A PIID is not an award key.** Order PIIDs such as `0001` repeat under different
-  parent IDVs, and legacy PIIDs can repeat across agencies. Prefer a complete
-  precomputed key such as `contract_award_unique_key`. Otherwise require a
-  non-null compound of awarding agency, parent-IDV identifier, and PIID.
-- **Partial keys fail loudly.** A key column being present is insufficient: every
-  row must contain all required identity components, and conflicting alias
-  columns are an error. `contract_id` is not presumed unique because several
-  ingestion paths use it for a bare PIID.
-- **Declare transaction versus award grain.** FPDS/USAspending inputs commonly
-  contain modifications. Use `sbir_etl.utils.award_identity` to construct the
-  award key and collapse representative rows explicitly. Its latest-transaction
-  policy does not aggregate financial amounts.
-- **Aggregate status before collapsing.** A coded Phase III value on any
-  transaction makes the whole award coded. Filtering individual transactions
-  first can leave uncoded modifications behind and manufacture false candidates.
-
-## Related Documents
-
-- **[configuration.md](../configuration.md)** - Complete quality configuration examples
-- **[pipeline-orchestration.md](pipeline-orchestration.md)** - Asset check implementation patterns
-- **[quick-reference.md](quick-reference.md)** - Quality thresholds quick lookup
+- [Configuration](../configuration.md)
+- [Pipeline orchestration](pipeline-orchestration.md)
+- [Testing index](../testing/index.md)
+- [Study contracts](../../studies/README.md)

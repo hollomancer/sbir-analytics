@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 
 import pandas as pd
 
@@ -351,36 +351,75 @@ def _prepare_contracts(contracts: pd.DataFrame) -> pd.DataFrame:
 def build_uei_pairs(
     prior_awards: pd.DataFrame,
     contracts: pd.DataFrame,
+    *,
+    columns: Sequence[str] | None = None,
 ) -> pd.DataFrame:
     """Build normalized, nonblank exact-UEI pairs at target-transaction grain.
 
     This shared boundary applies no coded-status or agency gate. It carries the
     source transaction and award identifiers plus every field needed by either
-    the label-free criteria or legacy S1.
+    the label-free criteria or legacy S1. Callers may project the shared schema
+    before the merge; omitting columns never changes the pair universe.
     """
+
+    output_columns = list(PAIR_COLUMNS if columns is None else columns)
+    unknown_columns = sorted(set(output_columns) - set(PAIR_COLUMNS))
+    if unknown_columns or len(output_columns) != len(set(output_columns)):
+        raise ValueError(
+            "Requested pair columns must be unique members of PAIR_COLUMNS; "
+            f"unknown={unknown_columns}"
+        )
 
     priors = _prepare_priors(prior_awards)
     targets = _prepare_contract_transactions(contracts)
     if priors.empty or targets.empty:
-        return pd.DataFrame(columns=PAIR_COLUMNS)
+        return pd.DataFrame(columns=output_columns)
 
     priors = priors.assign(_uei=priors["prior_recipient_uei"].map(_normalize))
     targets = targets.assign(_uei=targets["target_recipient_uei"].map(_normalize))
     priors = priors.loc[priors["_uei"] != ""].copy()
     targets = targets.loc[targets["_uei"] != ""].copy()
     if priors.empty or targets.empty:
-        return pd.DataFrame(columns=PAIR_COLUMNS)
+        return pd.DataFrame(columns=output_columns)
 
-    merged = priors.merge(targets, on="_uei", how="inner", suffixes=("", "_t"))
-    if merged.empty:
-        return pd.DataFrame(columns=PAIR_COLUMNS)
+    merge_columns = set(output_columns)
+    if "agency_match_level" in merge_columns:
+        merge_columns.update(
+            {
+                "prior_agency",
+                "prior_sub_agency",
+                "prior_office",
+                "target_agency",
+                "target_sub_agency",
+                "target_office",
+            }
+        )
+    prior_columns = [
+        column for column in priors.columns if column == "_uei" or column in merge_columns
+    ]
+    target_columns = [
+        column for column in targets.columns if column == "_uei" or column in merge_columns
+    ]
 
-    levels = merged.apply(  # type: ignore[call-overload]
-        lambda row: _agency_match_level(row, row),
-        axis=1,
+    merged = priors.loc[:, prior_columns].merge(
+        targets.loc[:, target_columns], on="_uei", how="inner", suffixes=("", "_t")
     )
-    merged = merged.assign(agency_match_level=levels).drop(columns="_uei")
-    return merged.loc[:, PAIR_COLUMNS].reset_index(drop=True)
+    if merged.empty:
+        return pd.DataFrame(columns=output_columns)
+
+    if "agency_match_level" in output_columns:
+        levels = pd.Series(None, index=merged.index, dtype="object")
+        for level, prior_column, target_column in (
+            ("agency", "prior_agency", "target_agency"),
+            ("sub_tier", "prior_sub_agency", "target_sub_agency"),
+            ("office", "prior_office", "target_office"),
+        ):
+            prior_values = merged[prior_column].map(_normalize)
+            target_values = merged[target_column].map(_normalize)
+            matches = prior_values.ne("") & target_values.ne("") & prior_values.eq(target_values)
+            levels.loc[matches] = level
+        merged["agency_match_level"] = levels
+    return merged.loc[:, output_columns].reset_index(drop=True)
 
 
 def pair_filter_s1(

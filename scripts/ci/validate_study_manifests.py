@@ -7,6 +7,7 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
+from sbir_etl.exceptions import ConfigurationError
 from sbir_etl.quality.study_manifest import StudyManifest, load_study_manifest
 
 
@@ -103,7 +104,7 @@ def validate_manifest_file(
 
     try:
         manifest = load_study_manifest(path)
-    except (OSError, ValueError, ValidationError) as exc:
+    except (OSError, ValueError, ValidationError, ConfigurationError) as exc:
         return [f"invalid manifest: {exc}"]
     return validate_manifest_references(
         manifest,

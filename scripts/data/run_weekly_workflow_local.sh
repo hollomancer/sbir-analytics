@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Local test script for weekly SBIR awards refresh workflow
-# Mimics .github/workflows/weekly-award-data-refresh.yml
+# Legacy local validation helper for an SBIR awards refresh.
+# The live download is now sbir_awards_download_job on the Mac mini; this script
+# remains useful for an explicit download-and-validation rehearsal in a dev checkout.
 
 set -euo pipefail
 
@@ -20,7 +21,7 @@ NEO4J_PASSWORD="${NEO4J_PASSWORD:-neo4j}"
 NEO4J_DATABASE="${NEO4J_DATABASE:-neo4j}"
 
 echo "======================================"
-echo "Weekly SBIR Awards Refresh - Local Run"
+echo "SBIR Awards Refresh Validation - Local Run"
 echo "======================================"
 echo ""
 echo "Configuration:"
@@ -67,7 +68,7 @@ if ! command -v uv &> /dev/null; then
 fi
 
 echo "==> Step 4: Installing project dependencies..."
-uv sync
+uv sync --extra stack-dev
 echo "✓ Dependencies installed"
 echo ""
 
@@ -99,7 +100,6 @@ echo ""
 echo "==> Step 7: Running integration tests..."
 SBIR_E2E_AWARD_CSV="$DATA_PATH" uv run pytest \
   tests/integration/test_sbir_ingestion_assets.py \
-  tests/integration/test_sbir_enrichment_pipeline.py \
   --maxfail=1 --disable-warnings -q
 echo "✓ Integration tests passed"
 echo ""

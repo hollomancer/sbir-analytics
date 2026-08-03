@@ -1,4 +1,8 @@
-# Research Plan Alignment
+# Research Plan Alignment (Historical Snapshot)
+
+> This point-in-time milestone map is archived. Use the canonical
+> [research-question inventory](../../research-questions.md) for scope and
+> [`specs/status.md`](../../../specs/status.md) for implementation lifecycle.
 
 Maps the [SBIR Analytics Research Plan](# "Obsidian: SBIR Analytics Research Plan — Summary") milestones to codebase components, specs, and remaining work.
 
@@ -55,7 +59,7 @@ Each milestone produces an analytical output that (a) replicates or exceeds a sp
 | Patent transformer | Built | `sbir_etl/transformers/patent_transformer.py` |
 | Patent-award fuzzy matching | Built | `PatentAssignmentTransformer` with rapidfuzz |
 | Patent analyzer (transition) | Built | `packages/sbir-ml/sbir_ml/transition/features/patent_analyzer.py` |
-| USPTO Lambda downloads | Done (spec archived) | `specs/archive/completed-features/uspto-lambda-downloads/` |
+| USPTO server downloads | Built | `packages/sbir-analytics/sbir_analytics/assets/jobs/source_downloads.py` |
 | USPTO data validators | Built | `sbir_etl/quality/uspto_validators.py` |
 | **Marginal cost per patent** | **Missing** | Needs: cost calculator linking award amounts to patent counts |
 | **Citation network/spillover** | **Missing** | Needs: citation graph builder, spillover multiplier computation |
@@ -149,4 +153,6 @@ Audit completed 2026-03-13 (statuses re-verified 2026-07-02). Status: **ready fo
 - [x] **Entity resolution:** Hybrid 6-step pipeline: UEI exact → DUNS exact → CAGE code → Name+State+NAICS deterministic → rapidfuzz (75-90 thresholds) → LLM tiebreaker. 85%+ deterministic match rate. Gold set calibration. Confidence scoring (1.0 deterministic, 0.5-0.95 fuzzy). (`packages/sbir-analytics/sbir_analytics/tools/phase0/resolve_entities.py`, 376 lines)
 - [x] **Classifier state:** CET classifier trained on 21 NSTC Critical & Emerging Technology categories. TF-IDF + keyword boosting + logistic regression with probability calibration. Production-ready with ≥60% high-confidence target. Full training pipeline in `packages/sbir-analytics/sbir_analytics/assets/cet/training.py`.
 - [x] **FPDS data:** Pulled via USAspending PostgreSQL dump streaming. Linked to entities via vendor crosswalk. Refresh: daily (FPDS), monthly (USAspending bulk). Follow-on contract analytics now live in `packages/sbir-analytics/sbir_analytics/assets/follow_on_multiplier/`; the unused legacy DuckDB implementation was removed in the 2026-07 repo cleanup. (`packages/sbir-analytics/sbir_analytics/tools/phase0/extract_fpds_contracts.py`)
-- [x] **Infrastructure:** CDK stacks defined (Storage → Security → Batch). 6+ GitHub Actions workflows active (CI, data-refresh, ML jobs, nightly security). Docker + Dagster orchestration. Deployment status to AWS uncertain — verify before M5 operationalization.
+- [x] **Infrastructure:** Docker Compose and Dagster run on the Mac mini with local SSD storage;
+  GitHub Actions is CI only. The earlier CDK, Batch, S3, and data-refresh workflow infrastructure
+  has been retired.

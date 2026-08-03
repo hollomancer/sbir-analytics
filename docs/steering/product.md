@@ -1,41 +1,42 @@
-# Product Overview
+---
+Type: Steering
+Owner: research@project
+Last-Reviewed: 2026-08-03
+Status: active
+---
 
-## SBIR analytics
+# Product Scope
 
-A robust ETL (Extract, Transform, Load) pipeline for processing SBIR (Small Business Innovation Research) program data into a Neo4j graph database for analysis and visualization.
+SBIR Analytics is research infrastructure for studying how public R&D awards connect to national
+security relevance, procurement transitions, innovation outputs, economic and fiscal effects,
+regional ecosystems, and private capital formation.
 
-### Core Purpose
+The [research-question inventory](../research-questions.md) is the canonical definition of scope:
 
-The federal government provides vast amounts of data on innovation and government funding, but this data is spread across multiple sources and formats. This project provides a unified and enriched view of the SBIR ecosystem by:
+- **A — National security and strategic technology**
+- **B — Commercialization and procurement transition**
+- **C — Innovation outputs and spillovers**
+- **D — Economic and fiscal effects**
+- **E — Ecosystems, operations, and monitoring**
+- **F — Capital formation and financing pathways**
 
-- **Connecting disparate data sources**: Integrating SBIR awards, USAspending contracts, USPTO patents, and other publicly available data
-- **Building a knowledge graph**: Structuring data in Neo4j to reveal complex relationships
-- **Enabling powerful analysis**: Supporting queries that trace funding, track technology transitions, and analyze patent ownership chains
+This document does not maintain award counts, source coverage, milestones, or answerability status;
+those change with data cuts and belong in the question inventory and study manifests.
 
-### Key Features
+## Product principles
 
-- **Five-stage ETL pipeline**: Extract → Validate → Enrich → Transform → Load
-- **Dagster orchestration**: Asset-based pipeline with dependency management and observability
-- **DuckDB processing**: Efficient querying of CSV and PostgreSQL dump data
-- **Neo4j graph database**: Patent chains, award relationships, technology transition tracking
-- **Quality gates**: Configurable thresholds enforce data quality throughout the pipeline
-- **CET (Critical and Emerging Technologies) classification**: Automated classification of SBIR awards into CET areas
-- **Fiscal returns analysis**: Economic impact modeling and ROI calculation for SBIR program evaluation
+1. Build from a research question backward to the minimum data and machinery needed.
+2. Preserve source provenance, entity-resolution evidence, and uncertainty.
+3. Separate what is computable from what is validated and externally citable.
+4. Prefer reproducible datasets and study contracts over one-off dashboards or claims.
+5. Treat missing public signals as measurement limits, not proof that an outcome did not occur.
 
-### Data Sources
+## Out of scope by default
 
-- **SBIR Awards**: ~533,000 awards from SBIR.gov (1983–present)
-- **USAspending**: PostgreSQL database dump for award enrichment and transaction tracking
-- **USPTO Patents**: Patent Assignment Dataset for ownership chains and SBIR-funded patent tracking
+- General-purpose data platforms without a current research consumer.
+- Public production services or internet-facing infrastructure.
+- Headline causal or policy claims without an evidence-tier study contract.
+- New graph entities, ML systems, or external services justified only by possible future use.
 
-### Business Value
-
-Enables analysis of technology transition from research to commercialization, patent ownership patterns, and the effectiveness of government innovation funding programs. The fiscal returns analysis capability provides quantitative ROI assessment of SBIR investments through economic impact modeling and federal tax receipt estimation.
-
-## Related Documents
-
-- **[structure.md](structure.md)** - Project organization and architectural patterns
-- **[tech.md](tech.md)** - Technology stack and development tools
-- **[pipeline-orchestration.md](pipeline-orchestration.md)** - Five-stage ETL pipeline implementation
-- **[data-quality.md](data-quality.md)** - Quality gates and validation framework
-- **[neo4j-patterns.md](neo4j-patterns.md)** - Graph database modeling for SBIR ecosystem
+See the [epistemic tiers](epistemic-tiers.md) and [study contracts](../../studies/README.md) for the
+boundary between exploratory computation and supportable findings.

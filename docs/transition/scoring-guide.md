@@ -1,5 +1,8 @@
 # Transition Detection Scoring Guide
 
+> **Scope:** This guide covers the configurable `sbir_ml.transition` scorer. The current Dagster
+> scoring asset does not invoke every signal described here; see the [current overview](overview.md).
+
 ## Overview
 
 The Transition Detection Algorithm combines six independent signals with configurable weights to produce a composite likelihood score. This guide explains how scoring works, how to interpret scores, and how to tune weights and thresholds for your use case.

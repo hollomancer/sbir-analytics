@@ -2,10 +2,14 @@
 Type: Reference
 Owner: devops@project
 Last-Reviewed: 2026-07-07
-Status: active
+Status: archived
 ---
 
-# Cleanup Inventory
+# Cleanup Inventory (Historical Snapshot)
+
+> This inventory captured an earlier repository state and is not an active
+> source of truth. Use the current development, testing, deployment, and spec
+> indexes instead.
 
 This inventory tracks codebase simplification work: live specs, stale docs,
 archived scripts, test drift, and CI drift. It is not a feature spec. Use it as

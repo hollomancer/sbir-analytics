@@ -28,13 +28,13 @@ Exit codes:
   2 -> Missing or unreadable inputs / invalid arguments
 
 Examples:
-  poetry run python scripts/transition_mvp_gate.py
-  poetry run python scripts/transition_mvp_gate.py --summary reports/validation/transition_mvp.json
-  poetry run python scripts/transition_mvp_gate.py --force-compute \
+  uv run python scripts/transition/transition_mvp_gate.py
+  uv run python scripts/transition/transition_mvp_gate.py --summary reports/validation/transition_mvp.json
+  uv run python scripts/transition/transition_mvp_gate.py --force-compute \
       --contracts-checks data/processed/contracts_sample.checks.json \
       --vendor-checks data/processed/vendor_resolution.checks.json \
       --evidence-checks data/processed/transitions_evidence.checks.json
-  poetry run python scripts/transition_mvp_gate.py --check-only  # Simple gate check (like transition_mvp_gate_check.py)
+  uv run python scripts/transition/transition_mvp_gate.py --check-only
 """
 
 from __future__ import annotations

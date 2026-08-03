@@ -65,8 +65,9 @@ python scripts/neo4j/migrate.py upgrade --target 002
 python scripts/neo4j/migrate.py downgrade --target 001
 ```
 
-Before upgrading a production graph, take and verify a backup using the procedure in the
-[Neo4j operations runbook](deployment/neo4j-runbook.md). Review data migrations particularly
+Before upgrading the live graph, take and verify a backup using `make server-backup` from the live
+checkout as described in the [Mac mini runbook](deployment/mac-mini-server.md#day-2-operations).
+Review data migrations particularly
 carefully: 003 merges duplicate organizations, 006 re-homes legacy `Award` nodes into
 `FinancialTransaction`, and 007 re-homes legacy `Company` nodes into `Organization`.
 

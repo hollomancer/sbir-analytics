@@ -61,4 +61,4 @@ patent-side CET recall; keys must match taxonomy IDs.
 
 - [CET classifier](cet-classifier.md)
 - [CET integration](cet-integration.md)
-- [CET award training data](cet-award-training-data.md)
+- [CET classification overview](cet-integration.md#training-data-limitation)

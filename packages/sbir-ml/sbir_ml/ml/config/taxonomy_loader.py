@@ -7,10 +7,10 @@ Loads YAML configuration files and validates them against Pydantic schemas.
 from pathlib import Path
 from typing import Any
 
-import yaml
 from loguru import logger
 from pydantic import BaseModel, Field, field_validator
 
+from sbir_etl.config.yaml_io import read_yaml_mapping
 from sbir_etl.exceptions import FileSystemError
 from sbir_etl.models.cet_models import CETArea
 
@@ -125,13 +125,13 @@ class TaxonomyLoader:
             TaxonomyConfig: Validated taxonomy configuration
 
         Raises:
-            FileNotFoundError: If taxonomy.yaml doesn't exist
-            ValueError: If taxonomy fails validation
+            FileSystemError: If taxonomy.yaml doesn't exist
+            ConfigurationError: If taxonomy.yaml is empty, malformed, or not a mapping
+            ValidationError: If taxonomy fails schema validation
         """
         logger.info("Loading CET taxonomy", extra={"file": str(self.taxonomy_path)})
 
-        with open(self.taxonomy_path) as f:
-            raw_config = yaml.safe_load(f)
+        raw_config = read_yaml_mapping(self.taxonomy_path, description="CET taxonomy")
 
         # Convert cet_areas dict entries to CETArea objects
         cet_areas_raw = raw_config.get("cet_areas", [])
@@ -241,13 +241,15 @@ class TaxonomyLoader:
             ClassificationConfig: Validated classification configuration
 
         Raises:
-            FileNotFoundError: If classification.yaml doesn't exist
-            ValueError: If configuration fails validation
+            FileSystemError: If classification.yaml doesn't exist
+            ConfigurationError: If classification.yaml is empty, malformed, or not a mapping
+            ValidationError: If configuration fails schema validation
         """
         logger.info("Loading classification config", extra={"file": str(self.classification_path)})
 
-        with open(self.classification_path) as f:
-            raw_config = yaml.safe_load(f)
+        raw_config = read_yaml_mapping(
+            self.classification_path, description="classification config"
+        )
 
         config = ClassificationConfig(**raw_config)
 

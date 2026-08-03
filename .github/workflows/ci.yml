@@ -56,6 +56,11 @@ jobs:
           uv run python scripts/ci/check_architecture_boundaries.py
           uv run python scripts/ci/check_removed_src_references.py
           uv run python scripts/ci/validate_study_manifests.py
+          # Guards the company-identity primitive: a direct RapidFuzz scorer
+          # outside sbir_etl.identity is a second, unnamed implementation of
+          # the similarity contract. Previously exercised only by its own unit
+          # test, which caught accidents but not drift.
+          uv run python scripts/ci/check_identity_boundaries.py
 
       # This file is now the only workflow in the repository, so an invalid
       # ci.yml means CI silently stops running with nothing left to notice.
@@ -279,7 +284,7 @@ jobs:
       # amd64 only, on the runner's native architecture. The question this job
       # answers is "does the image still build and start", and arm64 emulation
       # roughly triples the time without changing the answer. The mini builds
-      # its own arm64 images; see docs/deployment/actions-migration-plan.md.
+      # its own arm64 images; see docs/deployment/mac-mini-server.md.
       - name: Build the ETL image
         uses: docker/build-push-action@v7
         with:
@@ -321,4 +326,3 @@ jobs:
         run: |
           source .venv/bin/activate
           python -c "import pydantic"
-

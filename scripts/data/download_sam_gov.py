@@ -21,8 +21,7 @@ API key lifecycle:
     SAM.gov keys expire every ~60 days. Rotating the key:
       1. Log in at https://sam.gov → Account → API Keys
       2. Generate a new key
-      3. Update the GitHub secret:
-         gh secret set SAM_GOV_API_KEY --body "SAM-xxxx" --repo <owner/repo>
+      3. Update SAM_GOV_API_KEY in the deployment host's .env.server file.
 
 Usage:
     python scripts/data/download_sam_gov.py
@@ -162,8 +161,7 @@ def _check_api_key_response(resp: requests.Response, context: str) -> None:
             f"SAM.gov API key EXPIRED during: {context}\n"
             "  1. Log in at https://sam.gov → Account → API Keys\n"
             "  2. Generate a new key\n"
-            "  3. Update the GitHub secret:\n"
-            "     gh secret set SAM_GOV_API_KEY --body 'SAM-xxxx' --repo hollomancer/sbir-analytics"
+            "  3. Update SAM_GOV_API_KEY in the deployment host's .env.server file."
         )
     elif any(kw in message for kw in ("invalid", "not found", "unrecognized")):
         raise APIKeyError(
@@ -297,12 +295,12 @@ def _download_entity_extract(api_key: str) -> pd.DataFrame | None:
             download_url = urls[0].replace("REPLACE_WITH_API_KEY", api_key)
 
     if not download_url:
-        print(f"⚠️  No download URL found in response")
+        print("⚠️  No download URL found in response")
         print(f"   Content-Type: {resp.headers.get('content-type', 'unknown')}")
         print(f"   Preview: {text[:300]}")
         return None
 
-    print(f"   Got download URL, polling for file readiness...")
+    print("   Got download URL, polling for file readiness...")
 
     # Poll for file
     for attempt in range(1, EXTRACT_POLL_MAX + 1):
@@ -331,7 +329,7 @@ def _download_entity_extract(api_key: str) -> pd.DataFrame | None:
                 pass
 
         # Got a real file
-        print(f"   File ready!")
+        print("   File ready!")
         buf = io.BytesIO()
         for chunk in dl_resp.iter_content(chunk_size=4 * 1024 * 1024):
             buf.write(chunk)

@@ -53,23 +53,55 @@ For each item, answer these questions:
 - Does this produce an analytical output that replicates or exceeds a NASEM claim?
 - Is this building awards infrastructure (duplicative) or outcomes infrastructure (novel)?
 
+### 5. Tier
+Read `docs/steering/epistemic-tiers.md` first. Every change targets one tier:
+`primitives`, `pipelines`, `evidence`, or `exploratory`.
+
+- What tier does this claim? If the spec doesn't say, it is `exploratory` — hold
+  it to that and say so.
+- Does the work match the tier's contract, in both directions?
+  - **Under-built**: claims `evidence` without all four items (frozen spec, SHA
+    enforcement, blocking asset checks, declared estimand). This is the
+    dangerous direction — a citable claim resting on uncontracted work.
+  - **Over-built**: `exploratory` work carrying tests, abstractions, and
+    config it will never need. This is most of the waste you'll find.
+- Is this a **silent promotion**? Exploratory code acquiring importers,
+  becoming a dependency, or having its numbers quoted — without the promotion
+  being done as explicit work with the new contract satisfied. Flag it as
+  `PROMOTION` regardless of how good the code is.
+- If it claims `primitives`: does an implementation of this concept already
+  exist? A second unnamed implementation of an existing primitive is a defect,
+  not a feature. A new *named, versioned* behavior on an existing primitive's
+  interface is fine.
+
+Tier and milestone are orthogonal. A change can serve M2 and still be
+mis-tiered, and mis-tiering is the more expensive error — it is what makes
+cleanup cost grow without bound as questions accumulate.
+
 ## How to Run a Review
 
 1. Read the spec or code being reviewed
-2. Read `docs/research-plan-alignment.md` for milestone context
-3. Check existing code — does something already handle this?
-4. Produce your assessment using the output format below
+2. Read `docs/steering/epistemic-tiers.md` for the tier contracts
+3. Read `docs/research-plan-alignment.md` for milestone context
+4. Check existing code — does something already handle this?
+5. Produce your assessment using the output format below
 
 ## Output Format
 
 ```
 ## Scope Guard Assessment: [spec-name or description]
 
-### Verdict: [PROCEED / TRIM / DEFER / REJECT]
+### Verdict: [PROCEED / TRIM / DEFER / RETIER / REJECT]
 
 ### Milestone Alignment
 - Primary: [M1/M2/M3/M4/M5 or NONE]
 - Justification: [one sentence]
+
+### Tier
+- Claimed: [primitives/pipelines/evidence/exploratory, or UNSTATED]
+- Correct: [tier]
+- Contract: [MET / UNDER-BUILT / OVER-BUILT] [what's missing or excessive]
+- Silent promotion: [NO / YES — what is being promoted without the contract]
 
 ### Necessity Check
 - [PASS/CONCERN] [explanation]
@@ -90,8 +122,11 @@ For each item, answer these questions:
 
 ## Verdicts
 
-- **PROCEED** — Aligned, necessary, appropriately scoped. Go build it.
+- **PROCEED** — Aligned, necessary, appropriately scoped, correctly tiered. Go build it.
 - **TRIM** — Right direction but over-scoped. Cut the identified tasks/features, then proceed.
+- **RETIER** — The work is wanted, but the tier is wrong. Either meet the claimed
+  tier's contract or restate the work at the tier it actually occupies. Use this
+  when the code is fine and only its epistemic status is misrepresented.
 - **DEFER** — Not wrong, but not now. Other milestones should come first.
 - **REJECT** — Doesn't serve the research plan. Don't build it.
 
@@ -104,3 +139,13 @@ For each item, answer these questions:
 - **Defensive coding against impossible states** — Validation at internal boundaries
 - **"Nice to have" features in specs** — Tasks that don't have a gate condition dependency
 - **Duplicating awards-layer work** — Building entity storage/tracking that SAM.gov already does
+- **Citable claim on uncontracted work** — A number headed for a memo, a briefing,
+  or `research-questions.md` as "answerable", produced by something missing any of
+  the four `evidence` contract items
+- **Second implementation of a primitive** — A new normalizer, matcher, config
+  reader, or schema validator alongside one that exists. Check `sbir_etl/identity/`
+  and `sbir_etl/config/loader.py` before accepting one.
+- **Production hardening in `exploratory`** — Retry logic, abstraction layers, and
+  config surfaces on code that answers one question once
+- **A script becoming infrastructure** — Anything under `scripts/` acquiring
+  importers from `sbir_etl/` or `packages/`
