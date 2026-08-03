@@ -158,6 +158,8 @@ def test_any_exact_fpds_sbir_sttr_code_conservatively_excludes_candidate() -> No
     assert result.iloc[0].eligibility_status == "confirmed_sbir"
     assert result.iloc[0].matched_fpds_sbir_sttr_ueis == ("CANDIDATE020",)
     assert result.iloc[0].exclusion_reasons == ("fpds_sbir_sttr_code_intersection",)
+    reasons = summarize_sam_exclusion_reasons(result).set_index("exclusion_reason")
+    assert reasons.loc["fpds_sbir_sttr_code_intersection", "candidate_firms"] == 1
 
 
 def test_non_sbir_research_code_does_not_change_eligibility() -> None:
@@ -183,6 +185,8 @@ def test_exact_phase_ii_uei_conservatively_excludes_candidate() -> None:
     assert result.iloc[0].eligibility_status == "confirmed_sbir"
     assert result.iloc[0].matched_phase_ii_ueis == ("CANDIDATE022",)
     assert result.iloc[0].exclusion_reasons == ("phase_ii_uei_intersection",)
+    reasons = summarize_sam_exclusion_reasons(result).set_index("exclusion_reason")
+    assert reasons.loc["phase_ii_uei_intersection", "candidate_firms"] == 1
 
 
 def test_identity_link_without_provenance_fails_closed() -> None:
@@ -388,4 +392,6 @@ def test_status_and_reason_summaries_include_zero_count_categories() -> None:
         "unresolved_name_state_collision": 1,
         "unresolved_address_zip_collision": 0,
         "missing_comparable_name_state_key": 0,
+        "phase_ii_uei_intersection": 0,
+        "fpds_sbir_sttr_code_intersection": 0,
     }

@@ -75,6 +75,8 @@ _REASON_ORDER = (
     "unresolved_name_state_collision",
     "unresolved_address_zip_collision",
     "missing_comparable_name_state_key",
+    "phase_ii_uei_intersection",
+    "fpds_sbir_sttr_code_intersection",
 )
 _FEDERAL_SBIR_STTR_CODES = frozenset({"SR1", "SR2", "SR3", "ST1", "ST2", "ST3"})
 
