@@ -29,9 +29,9 @@ be explained in one place so the instructions do not drift apart.
 - [Architecture overview](../architecture/detailed-overview.md) - Package and deployment boundaries
 - [Steering documents](../steering/) - Project rules for identity matching, evidence,
   pipelines, and data quality
-- `make docs-check` - Check links, section links, old commands, the spec list, and
-  references to removed code or archived scripts. A failure may come from code or
-  configuration, not only from documentation.
+- `make docs-check` - Check links, section links, agent-file copies, old commands,
+  the spec list, and references to removed code or archived scripts. A failure may
+  come from code or configuration, not only from documentation.
 
 ---
 

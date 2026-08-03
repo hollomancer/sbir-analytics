@@ -15,6 +15,8 @@ from urllib.parse import unquote
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 AUTOMATION_PREFIXES = (".github/", "scripts/", "sbir_etl/", "packages/", "tests/")
 SCANNED_FILES = {"Makefile", ".pre-commit-config.yaml"}
+AGENT_DOCUMENTATION_FILES = {"AGENTS.md", "CLAUDE.md"}
+AGENT_DOCUMENTATION_PREFIXES = (".claude/", ".agents/")
 EXCLUDED_HISTORICAL_DOCUMENTS = {"docs/decisions/ADR-002-etl-library-extraction.md"}
 EXCLUDED_SCAN_FILES = {
     "scripts/ci/check_identity_boundaries.py",
@@ -56,6 +58,10 @@ MARKDOWN_REFERENCE_LINK_RE = re.compile(r"^\s*\[[^\]]+\]:\s*(\S+)")
 MARKDOWN_HEADING_RE = re.compile(r"^ {0,3}#{1,6}\s+(.+?)\s*#*\s*$")
 MARKDOWN_EXPLICIT_ANCHOR_RE = re.compile(r'<a\s+(?:[^>]*?\s)?(?:id|name)=["\']([^"\']+)["\']', re.I)
 SPEC_STATUS_ENTRY_RE = re.compile(r"^- \*\*`([^`]+)`\s+—", re.MULTILINE)
+CODEX_AGENT_NAME_RE = re.compile(r'^name\s*=\s*"([^"]+)"\s*$', re.MULTILINE)
+CODEX_AGENT_INSTRUCTIONS_RE = re.compile(
+    r'^developer_instructions\s*=\s*"""(.*?)"""\s*$', re.MULTILINE | re.DOTALL
+)
 
 
 @dataclass(frozen=True)
@@ -111,15 +117,18 @@ def _is_live_doc_file(relative: str) -> bool:
         return False
     if relative.startswith(("docs/archive/", "specs/archive/")):
         return False
-    if relative.startswith("docs/"):
+    if relative in AGENT_DOCUMENTATION_FILES:
+        return True
+    if relative.startswith((*AGENT_DOCUMENTATION_PREFIXES, "docs/")):
         return True
     return relative.startswith("specs/")
 
 
 def _is_documentation_file(relative: str) -> bool:
     """Return whether a tracked Markdown file belongs to project documentation."""
-    return relative == "README.md" or (
-        relative.endswith(".md") and relative.startswith(("docs/", "specs/"))
+    return relative in {*AGENT_DOCUMENTATION_FILES, "README.md"} or (
+        relative.endswith(".md")
+        and relative.startswith((*AGENT_DOCUMENTATION_PREFIXES, "docs/", "specs/"))
     )
 
 
@@ -354,6 +363,91 @@ def scan_spec_registry(*, root: Path = REPOSITORY_ROOT) -> list[Violation]:
     return violations
 
 
+def scan_agent_definition_routes(*, root: Path = REPOSITORY_ROOT) -> list[Violation]:
+    """Keep Codex wrappers and shared agent/skill instructions synchronized."""
+    claude_agents = root / ".claude" / "agents"
+    codex_agents = root / ".Codex" / "agents"
+    markdown_names = {path.stem for path in claude_agents.glob("*.md")}
+    toml_names = {path.stem for path in codex_agents.glob("*.toml")}
+    violations: list[Violation] = []
+
+    for name in sorted(markdown_names - toml_names):
+        violations.append(
+            Violation(
+                f".Codex/agents/{name}.toml",
+                1,
+                f"missing Codex wrapper for shared agent role: {name}",
+                name,
+            )
+        )
+    for name in sorted(toml_names - markdown_names):
+        violations.append(
+            Violation(
+                f".Codex/agents/{name}.toml",
+                1,
+                f"Codex wrapper has no shared agent role: {name}",
+                name,
+            )
+        )
+
+    for name in sorted(markdown_names & toml_names):
+        wrapper_path = codex_agents / f"{name}.toml"
+        try:
+            wrapper_text = wrapper_path.read_text(encoding="utf-8")
+        except OSError as error:
+            violations.append(
+                Violation(
+                    _relative_to_repository(wrapper_path, root),
+                    1,
+                    f"invalid Codex agent wrapper: {error}",
+                    name,
+                )
+            )
+            continue
+        name_match = CODEX_AGENT_NAME_RE.search(wrapper_text)
+        instructions_match = CODEX_AGENT_INSTRUCTIONS_RE.search(wrapper_text)
+        instructions = instructions_match.group(1) if instructions_match else ""
+        expected_role = f".claude/agents/{name}.md"
+        if name_match is None or name_match.group(1) != name or expected_role not in instructions:
+            violations.append(
+                Violation(
+                    _relative_to_repository(wrapper_path, root),
+                    1,
+                    f"Codex wrapper must route {name} to {expected_role}",
+                    instructions,
+                )
+            )
+
+    claude_skills = root / ".claude" / "skills"
+    shared_skills = root / ".agents" / "skills"
+    skill_names = {path.parent.name for path in claude_skills.glob("*/SKILL.md")} | {
+        path.parent.name for path in shared_skills.glob("*/SKILL.md")
+    }
+    for name in sorted(skill_names):
+        claude_skill = claude_skills / name / "SKILL.md"
+        shared_skill = shared_skills / name / "SKILL.md"
+        if not claude_skill.exists() or not shared_skill.exists():
+            missing = shared_skill if not shared_skill.exists() else claude_skill
+            violations.append(
+                Violation(
+                    _relative_to_repository(missing, root),
+                    1,
+                    f"missing mirrored agent skill: {name}",
+                    name,
+                )
+            )
+        elif claude_skill.read_text(encoding="utf-8") != shared_skill.read_text(encoding="utf-8"):
+            violations.append(
+                Violation(
+                    _relative_to_repository(shared_skill, root),
+                    1,
+                    f"agent skill differs from .claude copy: {name}",
+                    name,
+                )
+            )
+    return violations
+
+
 def _print_section(title: str, violations: list[Violation]) -> None:
     if not violations:
         return
@@ -382,6 +476,10 @@ def main() -> int:
         (
             "The specification status registry is incomplete:",
             scan_spec_registry(),
+        ),
+        (
+            "Agent definitions or skill copies are out of sync:",
+            scan_agent_definition_routes(),
         ),
         (
             "Operational files reference archived scripts:",

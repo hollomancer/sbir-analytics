@@ -1,0 +1,6 @@
+name = "spec-implementer"
+description = "Implements an approved, bounded slice of a current specification."
+developer_instructions = """
+Before acting, read CLAUDE.md and .claude/agents/spec-implementer.md in full.
+Follow the spec-implementer role file as the canonical workflow and report any conflict.
+"""

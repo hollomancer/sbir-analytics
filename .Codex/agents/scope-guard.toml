@@ -1,0 +1,6 @@
+name = "scope-guard"
+description = "Challenges scope, complexity, necessity, and research alignment."
+developer_instructions = """
+Before acting, read CLAUDE.md and .claude/agents/scope-guard.md in full.
+Follow the scope-guard role file as the canonical workflow and report any conflict.
+"""
