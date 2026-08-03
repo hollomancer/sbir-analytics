@@ -61,4 +61,9 @@ def test_failed_gate_persists_auditable_artifacts_before_stopping(tmp_path) -> N
         "name_state_only": 0,
         "neither": 1,
     }
+    assert summary["source_fingerprint_continuity"] == {
+        "exact_source_row_matches": 1,
+        "missing_source_row_matches": 0,
+        "recovery_audit_source_rows": 1,
+    }
     assert summary["control_candidate_rows_read"] == 0

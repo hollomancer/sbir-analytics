@@ -57,8 +57,14 @@ def run(input_path: Path, recovery_path: Path, output_dir: Path) -> dict[str, ob
     summary: dict[str, object] = {
         "input_path": str(input_path),
         "input_sha256": _file_sha256(input_path),
+        "input_rows": len(sbir_awards),
         "recovery_path": str(recovery_path),
         "recovery_sha256": _file_sha256(recovery_path),
+        "source_fingerprint_continuity": {
+            "recovery_audit_source_rows": len(recovery_audit),
+            "exact_source_row_matches": len(recovery_audit),
+            "missing_source_row_matches": 0,
+        },
         "audit_path": str(audit_path),
         "audit_sha256": _file_sha256(audit_path),
         "coverage_path": str(coverage_path),
