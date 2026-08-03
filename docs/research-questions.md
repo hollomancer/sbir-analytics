@@ -488,11 +488,14 @@ statutory goal is Phase III commercialization.*
   matching rules, the agency, and the time window?
   *Method:* the matching rules were written down and frozen before the counts
   were run, so the result cannot be tuned after the fact.
-  **Status:** Built, but not yet run in production. The production tables and the
-  matched comparison group have not been created, and the schema-verified source
-  layer it depends on is under separate review. Until then the count is a
-  plausible proxy, not proof of statutory Phase III.
-  *Deps: ER, ID, NAICS/PSC · Spec: [../specs/phase-iii-census/](../specs/phase-iii-census/)*
+  **Status:** Answerable now for the frozen audit estimand. The complete
+  cumulative ladder and all six pre-specified agency/window cells were
+  materialized from provenance-verified February inputs, and the blocking
+  one-factor sensitivity check passed. No cell is a headline result. The matched
+  comparison group and placebo test remain unresolved, so the tables are an
+  uncoded follow-on proxy, not proof of statutory Phase III or evidence that the
+  criteria discriminate.
+  *Deps: ER, ID, NAICS/PSC · Spec: [../specs/phase-iii-census/](../specs/phase-iii-census/) · Audit: [February 2026 data-cut materialization](../studies/phase-iii-census/materialization-2026-02-06.md)*
 
 - **Research-to-procurement transitions**
   Which SBIR-funded companies transitioned research into federal procurements?
@@ -539,11 +542,12 @@ statutory goal is Phase III commercialization.*
   Corroborated by GAO [L14] and NASEM [L1], [L3]. The protocol depends on
   award-grade identity and record granularity (issue #447 / PR #449); production
   source lifecycle belongs to issue #442.
-  **Status:** Partially answerable. The audit and its source/granularity checks
-  are built, across two separate changes, but have not been run in production.
-  Before the gap can be called an undercount, it still needs a matched comparison
-  group and a hand-labelled sample to check the result against.
-  *Deps: ID · Refs: [L14], [L1], [L3] · Spec: [../specs/phase3-match-benchmark/](../specs/phase3-match-benchmark/) (protocol and current evidence limits), [../specs/phase-3-solicitation-alerts/](../specs/phase-3-solicitation-alerts/) (solicitation monitoring)*
+  **Status:** Partially answerable. The complete deterministic census tables and
+  one-factor sensitivity diagnostic were materialized from provenance-verified
+  February inputs. Before the proxy can be called an undercount, it still needs
+  matched negative controls, the placebo test, and a hand-labelled sample to
+  check the result against.
+  *Deps: ID · Refs: [L14], [L1], [L3] · Audit: [February 2026 data-cut census materialization](../studies/phase-iii-census/materialization-2026-02-06.md) · Spec: [../specs/phase3-match-benchmark/](../specs/phase3-match-benchmark/) (protocol and current evidence limits), [../specs/phase-3-solicitation-alerts/](../specs/phase-3-solicitation-alerts/) (solicitation monitoring)*
 
 - **Categorization vs. transition likelihood**
   Are product firms, service firms, or mixed-mode firms (as categorized in
@@ -726,11 +730,11 @@ Foundational — most questions in A–D depend on work here.*
 
 - **SBIR.gov ↔ USAspending/FPDS reconciliation**
   How does SBIR.gov data reconcile with federal USAspending/FPDS records?
-  **Status:** Partially answerable. Federal Phase II transactions are grouped
-  under generated award IDs, so they match SBIR.gov only where a raw PIID or
-  source identifier matches exactly after normalization. Some records match more
-  than one award, and some disagree on how the award is categorized. Coverage
-  beyond that exact-match path has not been validated.
+  **Status:** Partially answerable. The census input path verified the complete
+  available SBIR.gov v2 snapshot and the generated-award Phase II collapse
+  against the selected February USAspending/FPDS snapshot. It reconciles only
+  exact normalized raw PIID/source identifiers and fails closed on ambiguity or
+  taxonomy conflict; broader cross-source completeness remains unvalidated.
   *Deps: none · Refs: [L14], [L1], [L3] (tracking-data limits)*
 
 ### E2. Entity resolution (foundation, Tier 1–2)
