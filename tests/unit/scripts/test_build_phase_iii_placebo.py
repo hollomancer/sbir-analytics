@@ -220,7 +220,7 @@ def test_run_fails_before_input_reads_or_writes_when_freeze_is_invalid(
     )
 
     with pytest.raises(CensusInputError, match="frozen spec mismatch"):
-        MODULE.run(tmp_path)
+        MODULE.run(tmp_path, owner_approved=True)
     assert not list(tmp_path.iterdir())
 
 
@@ -254,5 +254,25 @@ def test_run_stops_before_census_or_writes_when_phase_i_provenance_fails(
     )
 
     with pytest.raises(CensusInputError, match="provenance mismatch"):
-        MODULE.run(tmp_path / "outputs")
+        MODULE.run(tmp_path / "outputs", owner_approved=True)
     assert not (tmp_path / "outputs").exists()
+
+
+def test_run_requires_explicit_owner_approval_before_any_read_or_write(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        MODULE,
+        "verify_frozen_spec",
+        lambda: pytest.fail("freeze read happened before the owner-approval gate"),
+    )
+    monkeypatch.setattr(
+        MODULE,
+        "_write_parquet_atomic",
+        lambda *_args, **_kwargs: pytest.fail("artifact write happened before owner approval"),
+    )
+
+    with pytest.raises(CensusInputError, match="production materialization remains blocked"):
+        MODULE.run(tmp_path)
+    assert not list(tmp_path.iterdir())

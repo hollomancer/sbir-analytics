@@ -224,12 +224,18 @@ def _build_output_frames(
     return frames, placebo.assignment.mapping_sha256
 
 
-def run(output_dir: Path) -> dict[str, Any]:
+def run(output_dir: Path, *, owner_approved: bool = False) -> dict[str, Any]:
     """Build the R15 artifacts from the exact verified Phase I source universe.
 
     Calling this function for production is the first placebo run and requires the
     separate repository-owner approval recorded by the R15 process gate.
     """
+
+    if not owner_approved:
+        raise CensusInputError(
+            "Phase 3 production materialization remains blocked: pass owner_approved=True "
+            "only after the repository owner separately approves the first placebo run"
+        )
 
     freeze = verify_frozen_spec()
     phase_ii_path = Path(os.getenv(PHASE_II_OUTPUT_ENV) or PHASE_II_AWARDS_PATH)
@@ -265,6 +271,7 @@ def run(output_dir: Path) -> dict[str, Any]:
         "headline_cell_selected": False,
         "similarity_threshold_applied": False,
         "first_production_run_requires_separate_owner_approval": True,
+        "owner_approval_asserted_at_invocation": True,
         "shared_pair_builder": "phase_iii_candidates.pairing.build_uei_pairs",
         "shared_table_builder": "phase_iii_census.criteria.build_census_tables",
         "freeze": freeze,
@@ -317,8 +324,19 @@ def main() -> None:
         type=Path,
         default=Path("data/processed/phase_iii_placebo"),
     )
+    parser.add_argument(
+        "--owner-approved",
+        action="store_true",
+        help="Assert that the repository owner separately approved the first production run.",
+    )
     args = parser.parse_args()
-    print(json.dumps(run(args.output_dir), indent=2, sort_keys=True))
+    print(
+        json.dumps(
+            run(args.output_dir, owner_approved=args.owner_approved),
+            indent=2,
+            sort_keys=True,
+        )
+    )
 
 
 if __name__ == "__main__":
