@@ -364,3 +364,39 @@ files before materialization.
   table, balance table, and their counts were visible. Phase 1 census results were already
   visible. No treated or control criteria-count distribution, overlap coefficient,
   full-criteria clearing rate, risk ratio, or placebo result had been computed or seen.
+
+## Revision 15 — Full-census cross-firm placebo
+
+- **Approved:** 2026-08-03.
+- **Git-history anchor:** The commit that first adds Revision 15 to this file is the
+  approval-record anchor; its identifier is intentionally not embedded in the content it
+  hashes.
+- **Population and grain:** Apply the placebo to the complete Phase 1 exact-UEI SBIR Phase
+  II census pair universe, excluding STTR under the existing source rule and without
+  restricting to the Phase 2 matched subset or to nonnull dates. Assign dates at unique
+  normalized `prior_award_id` grain and fan them back without changing pair order,
+  fanout, or any non-date field.
+- **Assignment:** With seed `20260801`, randomly order firms and awards within firms, then
+  cyclically shift the donor sequence by the largest firm award count. Every recipient
+  award must receive a donor from a different firm. Preserve the complete award-level date
+  multiset, including nulls. This cyclic construction is not a uniform draw over every
+  possible derangement, and identical recipient/donor date values are allowed.
+- **Audit and execution:** Persist recipient and donor award/firm identifiers, original
+  and permuted dates, a null-safe value-change indicator, the seed, and a mapping digest.
+  Run actual and placebo frames once each through `build_census_tables`, after frozen-spec
+  and Phase 1 provenance verification.
+- **Comparison:** Emit the full actual and placebo drop-off and sensitivity tables plus
+  like-for-like `actual_minus_placebo` and `actual_to_placebo_ratio` comparisons for every
+  metric. A zero placebo denominator produces an explicitly undefined ratio. Signed-dollar
+  ratios are descriptive only. Add no similarity cutoff, pass/fail checkpoint, preferred
+  cell, headline result, or inferential test.
+- **Criteria and Phase 2 impact:** None. No census clause, sensitivity cell, source join,
+  negative-control population, matching rule, firm outcome, score, model, or numeric
+  inclusion threshold changes.
+- **Execution gate:** Implementation and fixture testing are approved. Production placebo
+  materialization remains blocked until the repository owner separately approves the
+  first run.
+- **Visibility at approval:** The Phase 1 tables and Phase 2 outcomes were visible. Phase
+  2 showed 176/712 SBIR firms and 121/1,029 controls clearing the full set, risk ratio
+  2.102145, and overlap coefficient 0.852906. No placebo assignment, count, comparison
+  table, or result had been computed or seen.

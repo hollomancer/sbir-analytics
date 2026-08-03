@@ -10,9 +10,10 @@ balance table, negative-control result, or placebo result existed, the repositor
 approved replacing the unavailable employee-count band with the government-defined
 first-contract business-size class specified below. The owner subsequently ruled out the
 SBA Company Registry and approved the exact award-key recovery and fail-closed eligibility
-protocol below before any control frame or outcome existed. Unresolved source coverage and
-placebo questions remain gated; this change does not authorize a headline cell or
-interpretation as validated Phase III.
+protocol below before any control frame or outcome existed. Phase 2 was subsequently
+materialized. After those results were visible, but before any placebo result existed, the
+repository owner approved the exact Phase 3 placebo contract below. This change does not
+authorize a headline cell or interpretation as validated Phase III.
 **Design date:** 2026-07-31.
 **Approval date:** 2026-08-01.
 **Provenance-amendment approval date:** 2026-08-01.
@@ -384,6 +385,53 @@ The repository owner approved this grain on 2026-08-03 after seeing the eligibil
 coverage, exact-match, and balance tables, but before any treated or control criteria
 distribution, overlap coefficient, full-criteria clearing rate, or placebo result had
 been computed or seen.
+
+### Approved Phase 3 full-census placebo
+
+The placebo applies to the complete Phase 1 census pair universe: the frozen exact-UEI
+SBIR Phase II award-to-contract pairs, not the Phase 2 matched common-support subset. It
+does not include STTR awards and does not exclude awards whose
+`prior_period_of_performance_end` is null. The unique placebo unit is the normalized,
+nonblank `prior_award_id`; every such award must map to exactly one normalized,
+nonblank `prior_recipient_uei` and one completion-date value, including null.
+
+Using NumPy's fixed random seed `20260801`, order normalized firms randomly, randomly
+order awards within each firm, concatenate those firm blocks, and cyclically shift the
+donor-award sequence by the largest number of awards owned by any one firm. The
+materializer must stop if fewer than two firms exist, one firm owns more than half of all
+unique awards, or the resulting assignment contains a same-firm donor. This randomized
+cyclic group derangement is reproducible but is not a uniform draw over all possible
+derangements.
+
+Each recipient award receives its donor award's completion date. The assignment must
+preserve the complete unique-award date multiset, including nulls, and must be fanned back
+to every original pair without changing pair count, row order, award-to-pair fanout, or
+any non-date field. A different-firm donor may have the same date value as the recipient;
+this is valid and must be reported by a null-safe `date_value_changed` indicator rather
+than prevented. The persisted assignment audit contains recipient award and firm, donor
+award and firm, original date, permuted date, that indicator, the fixed seed, and a stable
+mapping SHA-256 digest.
+
+Build the complete actual drop-off and six-cell sensitivity tables once from the original
+pair frame and the complete placebo tables once from the permuted frame, using the shared
+memory-safe `build_census_tables` path for each frame. Join like-for-like stages and cells
+to emit side-by-side actual and placebo values for every reported metric, their
+`actual_minus_placebo` difference, and their `actual_to_placebo_ratio`. A zero placebo
+denominator makes the ratio explicitly undefined, including when both values are zero.
+Obligated-dollar ratios are descriptive only because dollar totals may be signed. No
+similarity threshold, pass/fail rule, preferred cell, headline number, inferential test,
+or criterion change follows from the comparison.
+
+Before materialization, verify the frozen specification and exact Phase 1 source
+provenance. Record all input and output digests, the seed, and the assignment digest.
+Implementation and fixture testing do not authorize production materialization; the
+first placebo run requires a separate owner approval.
+
+The repository owner approved this procedure on 2026-08-03 after the Phase 1 tables and
+the Phase 2 results were visible. The visible Phase 2 full-set clearing figures were
+176/712 for SBIR firms and 121/1,029 for controls (risk ratio 2.102145), with overlap
+coefficient 0.852906. No placebo assignment, count, comparison table, or result had been
+computed or seen.
 
 ### Approved first-contract business-size matching covariate
 

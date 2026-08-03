@@ -90,7 +90,7 @@ def test_frozen_spec_verification_hashes_exact_raw_bytes() -> None:
     record = census_assets.verify_frozen_spec()
 
     assert record == {
-        "revision": "phase-0-r14",
+        "revision": "phase-0-r15",
         "spec_path": "specs/phase-iii-census/design.md",
         "spec_sha256": census_assets.FROZEN_SPEC_SHA256,
         "amendments_path": "specs/phase-iii-census/amendments.md",
