@@ -55,7 +55,7 @@ Each milestone produces an analytical output that (a) replicates or exceeds a sp
 | Patent transformer | Built | `sbir_etl/transformers/patent_transformer.py` |
 | Patent-award fuzzy matching | Built | `PatentAssignmentTransformer` with rapidfuzz |
 | Patent analyzer (transition) | Built | `packages/sbir-ml/sbir_ml/transition/features/patent_analyzer.py` |
-| USPTO Lambda downloads | Done (spec archived) | `specs/archive/completed-features/uspto-lambda-downloads/` |
+| USPTO server downloads | Built | `packages/sbir-analytics/sbir_analytics/assets/jobs/source_downloads.py` |
 | USPTO data validators | Built | `sbir_etl/quality/uspto_validators.py` |
 | **Marginal cost per patent** | **Missing** | Needs: cost calculator linking award amounts to patent counts |
 | **Citation network/spillover** | **Missing** | Needs: citation graph builder, spillover multiplier computation |

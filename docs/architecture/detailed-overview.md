@@ -18,9 +18,8 @@ not part of the live architecture.
 
 The AWS material that earlier revisions of this document described as the
 deployment path (Step Functions orchestration, an S3 data lake, EC2-hosted
-Neo4j) is not the live architecture. Lambda handlers survive under the
-top-level `lambda/` directory; the CDK `infrastructure/` tree that older
-revisions referenced is not in the repository.
+Neo4j) is not the live architecture. The former top-level `lambda/` and CDK
+`infrastructure/` trees are no longer in the repository.
 
 ---
 
@@ -72,9 +71,8 @@ sbir-analytics/
 ├── notebooks/                     # Exploratory Jupyter notebooks
 ├── scripts/                       # One-off analysis, data, validation, CI, Docker, and operational scripts
 ├── studies/                       # Written analytical studies
-├── lambda/                        # Lambda handlers and dependency layers (not the live path)
 ├── tests/                         # Unit, integration, functional, e2e, slow, and validation tests
-├── .github/workflows/             # CI/CD and scheduled workflow definitions
+├── .github/workflows/             # Test-only CI workflow
 ├── workspace.yaml                 # Dagster workspace entry point (loads sbir_analytics.definitions)
 └── docker-compose.yml             # Local dev/test services
 ```

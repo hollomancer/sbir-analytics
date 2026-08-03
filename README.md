@@ -94,7 +94,6 @@ examples/              Standalone demo scripts
 notebooks/             Exploratory Jupyter notebooks
 scripts/               One-off analysis and operational scripts
 studies/                Reproducible analytical studies and evidence artifacts
-lambda/                 Legacy Lambda handlers (not part of the live deployment)
 ```
 
 The live deployment is an always-on Mac mini running Docker Compose behind
