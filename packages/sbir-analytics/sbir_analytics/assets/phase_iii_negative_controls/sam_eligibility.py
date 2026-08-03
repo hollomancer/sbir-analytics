@@ -410,6 +410,49 @@ def exclude_fpds_coded_awardees(
     return result
 
 
+def exclude_phase_ii_awardees(
+    eligibility: pd.DataFrame,
+    phase_ii_awards: pd.DataFrame,
+) -> pd.DataFrame:
+    """Confirm any candidate intersecting the provenance-verified Phase II UEI frame."""
+
+    _require_columns(
+        eligibility,
+        ("eligibility_status", "exclusion_reasons", "candidate_ueis"),
+        label="eligibility table",
+    )
+    _require_columns(phase_ii_awards, ("recipient_uei",), label="Phase II award frame")
+    phase_ii_ueis = {
+        uei for value in phase_ii_awards["recipient_uei"] if (uei := normalize_uei(value))
+    }
+    result = eligibility.copy()
+    matched_values: list[tuple[str, ...]] = []
+    statuses: list[str] = []
+    reasons: list[tuple[str, ...]] = []
+    for row in result.itertuples(index=False):
+        matched = tuple(
+            sorted(
+                {
+                    uei
+                    for value in _values(row.candidate_ueis)
+                    if (uei := normalize_uei(value)) and uei in phase_ii_ueis
+                }
+            )
+        )
+        current_reasons = tuple(_text(value) for value in _values(row.exclusion_reasons))
+        if matched and "phase_ii_uei_intersection" not in current_reasons:
+            current_reasons = (*current_reasons, "phase_ii_uei_intersection")
+        statuses.append(
+            EligibilityStatus.CONFIRMED_SBIR.value if matched else _text(row.eligibility_status)
+        )
+        reasons.append(current_reasons)
+        matched_values.append(matched)
+    result["eligibility_status"] = statuses
+    result["exclusion_reasons"] = reasons
+    result["matched_phase_ii_ueis"] = matched_values
+    return result
+
+
 def summarize_sam_eligibility(eligibility: pd.DataFrame) -> pd.DataFrame:
     """Return all three frozen statuses, including zero-count categories."""
 

@@ -16,7 +16,7 @@ SPEC.loader.exec_module(module)
 
 def test_vendor_filter_contains_only_exact_control_and_phase_ii_ueis(tmp_path: Path) -> None:
     eligibility_path = tmp_path / "eligibility.parquet"
-    sbir_path = tmp_path / "sbir.parquet"
+    phase_ii_path = tmp_path / "phase_ii.parquet"
     output_path = tmp_path / "filters.json"
     pd.DataFrame(
         {
@@ -40,13 +40,18 @@ def test_vendor_filter_contains_only_exact_control_and_phase_ii_ueis(tmp_path: P
         }
     ).to_parquet(eligibility_path, index=False)
     pd.DataFrame(
+        {"recipient_uei": ["TREATEDUEI01", None, "TREATEDUEI02", "TREATEDUEI01"]}
+    ).to_parquet(phase_ii_path, index=False)
+    module._write_json_atomic(
+        phase_ii_path.with_suffix(".checks.json"),
         {
-            "phase": ["Phase II", "Phase I", "II"],
-            "company_uei": ["TREATEDUEI01", "IGNORETHIS01", "TREATEDUEI02"],
-        }
-    ).to_parquet(sbir_path, index=False)
+            "schema_version": "phase-ii-awards-v2",
+            "ok": True,
+            "output": {"sha256": module._file_sha256(phase_ii_path)},
+        },
+    )
 
-    result = module.run(eligibility_path, sbir_path, output_path)
+    result = module.run(eligibility_path, phase_ii_path, output_path)
 
     filters = json.loads(output_path.read_text())
     assert filters == {

@@ -34,12 +34,6 @@ def _values(value: Any) -> tuple[Any, ...]:
     return tuple(converted) if isinstance(converted, list) else ()
 
 
-def _phase_two(value: Any) -> bool:
-    if value is None or value is pd.NA:
-        return False
-    return str(value).strip().upper() in {"II", "PHASE II"}
-
-
 def _write_json_atomic(path: Path, payload: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     descriptor, temporary_name = tempfile.mkstemp(
@@ -54,7 +48,24 @@ def _write_json_atomic(path: Path, payload: dict[str, Any]) -> None:
         Path(temporary_name).unlink(missing_ok=True)
 
 
-def run(eligibility_path: Path, sbir_path: Path, output_path: Path) -> dict[str, Any]:
+def _verify_phase_ii(path: Path) -> None:
+    checks_path = path.with_suffix(".checks.json")
+    try:
+        checks = json.loads(checks_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ValueError(f"Phase II provenance is missing or unreadable: {exc}") from exc
+    output = checks.get("output") if isinstance(checks, dict) else None
+    if (
+        not isinstance(checks, dict)
+        or checks.get("ok") is not True
+        or checks.get("schema_version") != "phase-ii-awards-v2"
+        or not isinstance(output, dict)
+        or output.get("sha256") != _file_sha256(path)
+    ):
+        raise ValueError("Phase II source is not a verified phase-ii-awards-v2 artifact")
+
+
+def run(eligibility_path: Path, phase_ii_path: Path, output_path: Path) -> dict[str, Any]:
     """Write an exact-UEI-only vendor filter and a provenance sidecar."""
 
     eligibility = pd.read_parquet(eligibility_path)
@@ -62,7 +73,8 @@ def run(eligibility_path: Path, sbir_path: Path, output_path: Path) -> dict[str,
     required_eligibility = {"eligibility_status", "candidate_ueis"}
     if missing := sorted(required_eligibility - set(eligibility.columns)):
         raise ValueError(f"eligibility table is missing required columns: {missing}")
-    sbir = pd.read_parquet(sbir_path, columns=["phase", "company_uei"])
+    _verify_phase_ii(phase_ii_path)
+    phase_ii = pd.read_parquet(phase_ii_path, columns=["recipient_uei"])
 
     eligible = eligibility.loc[
         eligibility["eligibility_status"].eq(EligibilityStatus.ELIGIBLE_SCREENED_NEGATIVE.value)
@@ -73,11 +85,7 @@ def run(eligibility_path: Path, sbir_path: Path, output_path: Path) -> dict[str,
         for value in _values(values)
         if (uei := normalize_uei(value))
     }
-    treated_ueis = {
-        uei
-        for row in sbir.itertuples(index=False)
-        if _phase_two(row.phase) and (uei := normalize_uei(row.company_uei))
-    }
+    treated_ueis = {uei for value in phase_ii["recipient_uei"] if (uei := normalize_uei(value))}
     all_ueis = sorted(control_ueis | treated_ueis)
     if not control_ueis or not treated_ueis:
         raise ValueError(
@@ -96,8 +104,8 @@ def run(eligibility_path: Path, sbir_path: Path, output_path: Path) -> dict[str,
         "inputs": {
             "eligibility_path": str(eligibility_path),
             "eligibility_sha256": _file_sha256(eligibility_path),
-            "sbir_path": str(sbir_path),
-            "sbir_sha256": _file_sha256(sbir_path),
+            "phase_ii_path": str(phase_ii_path),
+            "phase_ii_sha256": _file_sha256(phase_ii_path),
         },
         "counts": {
             "eligible_control_envelopes": int(len(eligible)),
@@ -127,9 +135,9 @@ def main() -> None:
         ),
     )
     parser.add_argument(
-        "--sbir",
+        "--phase-ii",
         type=Path,
-        default=Path("data/processed/phase_iii_census_sbir_awards.parquet"),
+        default=Path("data/processed/phase_ii_awards.parquet"),
     )
     parser.add_argument(
         "--output",
@@ -139,7 +147,7 @@ def main() -> None:
         ),
     )
     args = parser.parse_args()
-    print(json.dumps(run(args.eligibility, args.sbir, args.output), indent=2, sort_keys=True))
+    print(json.dumps(run(args.eligibility, args.phase_ii, args.output), indent=2, sort_keys=True))
 
 
 if __name__ == "__main__":

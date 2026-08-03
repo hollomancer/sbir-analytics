@@ -22,6 +22,7 @@ from sbir_analytics.assets.phase_iii_negative_controls import (
     build_treated_firm_frame,
     exact_match_controls,
     exclude_fpds_coded_awardees,
+    exclude_phase_ii_awardees,
     require_covariate_balance,
     require_reliable_sam_eligibility,
     summarize_covariate_coverage,
@@ -201,7 +202,8 @@ def run(
     phase_ii = pd.read_parquet(phase_ii_path, columns=["recipient_uei"])
     first_contract_rows, coded_awardees = _load_pre_outcome_contract_rows(contracts_path)
 
-    eligibility = exclude_fpds_coded_awardees(initial_eligibility, coded_awardees)
+    eligibility = exclude_phase_ii_awardees(initial_eligibility, phase_ii)
+    eligibility = exclude_fpds_coded_awardees(eligibility, coded_awardees)
     require_reliable_sam_eligibility(eligibility)
     treated_firms = build_treated_firm_frame(phase_ii)
     control_firms = build_control_firm_frame(eligibility)
@@ -262,6 +264,9 @@ def run(
         "counts": {
             "fpds_coded_candidate_firms": int(
                 eligibility["matched_fpds_sbir_sttr_ueis"].map(bool).sum()
+            ),
+            "phase_ii_intersecting_candidate_firms": int(
+                eligibility["matched_phase_ii_ueis"].map(bool).sum()
             ),
             "treated_firms": len(treated_covariates),
             "match_eligible_treated_firms": int(treated_covariates["match_eligible"].sum()),

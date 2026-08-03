@@ -8,6 +8,7 @@ from sbir_analytics.assets.phase_iii_negative_controls import (
     IdentityRecoveryError,
     build_sam_eligibility_table,
     exclude_fpds_coded_awardees,
+    exclude_phase_ii_awardees,
     require_reliable_sam_eligibility,
     sam_eligibility_gate,
     summarize_sam_eligibility,
@@ -169,6 +170,19 @@ def test_non_sbir_research_code_does_not_change_eligibility() -> None:
 
     assert result.iloc[0].eligibility_status == "eligible_screened_negative"
     assert result.iloc[0].matched_fpds_sbir_sttr_ueis == ()
+
+
+def test_exact_phase_ii_uei_conservatively_excludes_candidate() -> None:
+    eligibility = _build(pd.DataFrame([_sam_row("CANDIDATE022")]))
+
+    result = exclude_phase_ii_awardees(
+        eligibility,
+        pd.DataFrame({"recipient_uei": ["candidate022", None]}),
+    )
+
+    assert result.iloc[0].eligibility_status == "confirmed_sbir"
+    assert result.iloc[0].matched_phase_ii_ueis == ("CANDIDATE022",)
+    assert result.iloc[0].exclusion_reasons == ("phase_ii_uei_intersection",)
 
 
 def test_identity_link_without_provenance_fails_closed() -> None:
