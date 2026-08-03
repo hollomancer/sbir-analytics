@@ -264,3 +264,38 @@ files before materialization.
   unresolved source rows, the SAM control frame, all eligibility classifications, the
   matched set, balance statistics, negative-control outcomes, and placebo results had not
   been computed or seen.
+
+## Revision 12 — Comparable-key requirement for control candidates
+
+- **Approved:** 2026-08-03.
+- **Git-history anchor:** The commit that first adds Revision 12 to this file is the
+  approval-record anchor; its identifier is intentionally not embedded in the content it
+  hashes.
+- **Reason:** The first SAM eligibility materialization correctly stopped before matching
+  because some otherwise-negative candidate envelopes could not be compared to unresolved
+  SBIR/STTR source rows. Every one of the 33,062 unresolved source rows has a complete
+  normalized company-name-plus-state key; 32,952 also have an address-plus-ZIP key and 110
+  have the name key only. A candidate without a name-plus-state key therefore cannot be
+  screened against the complete unresolved set, even when it has an address-plus-ZIP key.
+- **Eligibility-rule impact:** Exact UEI/DUNS intersection continues to take precedence and
+  classifies a candidate as `confirmed_sbir`. Among candidates without such an intersection,
+  a missing complete normalized legal-or-DBA-name-plus-state key now classifies the envelope
+  as `indeterminate_possible_sbir` with exclusion reason
+  `missing_comparable_name_state_key`. Exact name-plus-state and address-plus-five-digit-ZIP
+  collisions remain quarantine-only checks. Only candidates with a complete name-plus-state
+  key and no resolved-identifier intersection or unresolved exact-key collision may be
+  `eligible_screened_negative`. The pre-matching gate requires zero screened-negative
+  envelopes without that comparable name-plus-state key. There is no allowable missing
+  share, imputation, score, or percentage threshold.
+- **Criteria and matching impact:** None. This amendment excludes unscreenable candidates
+  before matching; it does not change the Phase 1 census, pair universe, inclusion clauses,
+  sensitivity cells, matching covariates, control ratio, balance rule, placebo procedure,
+  or common outcome-filter path.
+- **Visibility at approval:** The SAM source contained 895,429 registration records and the
+  pre-amendment eligibility table contained 887,308 candidate identity envelopes: 12,286
+  `confirmed_sbir`, 226 collision-based `indeterminate_possible_sbir`, and 874,796
+  provisional `eligible_screened_negative`. Of those provisional negatives, 29,692 lacked
+  a name-plus-state key: 22,372 lacked both collision-key families and 7,320 had only an
+  address-plus-ZIP key. Phase 1 audit tables and census results were already visible. No
+  control match, balance statistic, negative-control criteria distribution, overlap
+  coefficient, full-criteria ratio, or placebo result had been computed or seen.

@@ -223,10 +223,35 @@ def test_blank_alias_components_never_match() -> None:
 
     result = _build(sam)
 
-    assert result.iloc[0].eligibility_status == "eligible_screened_negative"
+    assert result.iloc[0].eligibility_status == "indeterminate_possible_sbir"
+    assert result.iloc[0].exclusion_reasons == ("missing_comparable_name_state_key",)
     assert result.iloc[0].name_state_keys == ()
     assert result.iloc[0].address_zip_keys == ()
-    assert sam_eligibility_gate(result)["passed"] is False
+    assert sam_eligibility_gate(result)["passed"] is True
+    require_reliable_sam_eligibility(result)
+
+
+def test_address_only_candidate_is_indeterminate_without_comparable_name_key() -> None:
+    sam = pd.DataFrame([_sam_row("CANDIDATE018", legal_name="", state="")])
+
+    result = _build(sam)
+
+    assert result.iloc[0].eligibility_status == "indeterminate_possible_sbir"
+    assert result.iloc[0].name_state_keys == ()
+    assert result.iloc[0].address_zip_keys == ("1 OTHER WAY|20001",)
+    assert result.iloc[0].exclusion_reasons == ("missing_comparable_name_state_key",)
+
+
+def test_gate_rejects_screened_negative_without_comparable_name_key() -> None:
+    result = _build(
+        pd.DataFrame([_sam_row("CANDIDATE019", legal_name="", line_1="", state="", zip_code="")])
+    )
+    result.loc[0, "eligibility_status"] = "eligible_screened_negative"
+
+    gate = sam_eligibility_gate(result)
+
+    assert gate["passed"] is False
+    assert gate["screened_negative_firms_without_comparable_name_state_key"] == 1
     with pytest.raises(IdentityRecoveryError, match="eligibility is unreliable"):
         require_reliable_sam_eligibility(result)
 
@@ -319,4 +344,5 @@ def test_status_and_reason_summaries_include_zero_count_categories() -> None:
         "resolved_duns_intersection": 0,
         "unresolved_name_state_collision": 1,
         "unresolved_address_zip_collision": 0,
+        "missing_comparable_name_state_key": 0,
     }

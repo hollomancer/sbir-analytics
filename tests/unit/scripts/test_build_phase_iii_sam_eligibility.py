@@ -3,16 +3,14 @@
 import json
 
 import pandas as pd
-import pytest
 
-from sbir_analytics.assets.phase_iii_negative_controls import IdentityRecoveryError
 from scripts.data.build_phase_iii_sam_eligibility import run
 
 
 def _write_inputs(tmp_path, *, reliable: bool):
     sam = pd.DataFrame(
         {
-            "unique_entity_id": ["DIRECTUEI001"],
+            "unique_entity_id": ["DIRECTUEI001" if reliable else "CANDIDATE001"],
             "duns_number": [None],
             "cage_code": ["A1B2C"],
             "legal_business_name": ["Exact Candidate LLC" if reliable else ""],
@@ -82,20 +80,25 @@ def test_run_writes_all_three_statuses_and_provenance(tmp_path) -> None:
     assert "outcome_rows_read" not in persisted
 
 
-def test_run_writes_audit_artifacts_before_failing_reliability_gate(tmp_path) -> None:
+def test_run_excludes_unscreenable_candidate_before_matching(tmp_path) -> None:
     paths = _write_inputs(tmp_path, reliable=False)
     output_dir = tmp_path / "output"
 
-    with pytest.raises(IdentityRecoveryError, match="eligibility is unreliable"):
-        run(
-            paths["sam"],
-            paths["source"],
-            paths["recovery"],
-            paths["quarantine"],
-            output_dir,
-        )
+    summary = run(
+        paths["sam"],
+        paths["source"],
+        paths["recovery"],
+        paths["quarantine"],
+        output_dir,
+    )
 
     assert (output_dir / "phase_iii_sam_eligibility.parquet").is_file()
+    eligibility = pd.read_parquet(output_dir / "phase_iii_sam_eligibility.parquet")
+    assert eligibility.iloc[0].eligibility_status == "indeterminate_possible_sbir"
+    assert eligibility.iloc[0].exclusion_reasons.tolist() == ["missing_comparable_name_state_key"]
     persisted = json.loads((output_dir / "phase_iii_sam_eligibility.json").read_text())
-    assert persisted["gate"]["passed"] is False
+    assert summary["gate"]["passed"] is True
+    assert persisted["gate"]["passed"] is True
     assert persisted["gate"]["candidate_firms_without_quarantine_key"] == 1
+    assert persisted["gate"]["candidate_firms_without_comparable_name_state_key"] == 1
+    assert persisted["gate"]["screened_negative_firms_without_comparable_name_state_key"] == 0

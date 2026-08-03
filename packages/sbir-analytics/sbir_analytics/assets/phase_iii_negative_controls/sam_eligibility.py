@@ -74,6 +74,7 @@ _REASON_ORDER = (
     "resolved_duns_intersection",
     "unresolved_name_state_collision",
     "unresolved_address_zip_collision",
+    "missing_comparable_name_state_key",
 )
 
 
@@ -313,6 +314,8 @@ def build_sam_eligibility_table(
         matched_duns = tuple(sorted(set(duns_values) & resolved_duns))
         matched_names = tuple(sorted(set(name_keys) & unresolved_name_state))
         matched_addresses = tuple(sorted(set(address_keys) & unresolved_address_zip))
+        confirmed_sbir = bool(matched_ueis or matched_duns)
+        missing_comparable_key = not confirmed_sbir and not name_keys
         reasons = tuple(
             reason
             for reason, matched in (
@@ -320,12 +323,13 @@ def build_sam_eligibility_table(
                 (_REASON_ORDER[1], matched_duns),
                 (_REASON_ORDER[2], matched_names),
                 (_REASON_ORDER[3], matched_addresses),
+                (_REASON_ORDER[4], missing_comparable_key),
             )
             if matched
         )
-        if matched_ueis or matched_duns:
+        if confirmed_sbir:
             status = EligibilityStatus.CONFIRMED_SBIR
-        elif matched_names or matched_addresses:
+        elif missing_comparable_key or matched_names or matched_addresses:
             status = EligibilityStatus.INDETERMINATE_POSSIBLE_SBIR
         else:
             status = EligibilityStatus.ELIGIBLE_SCREENED_NEGATIVE
@@ -389,7 +393,7 @@ def summarize_sam_exclusion_reasons(eligibility: pd.DataFrame) -> pd.DataFrame:
 
 
 def sam_eligibility_gate(eligibility: pd.DataFrame) -> dict[str, int | bool]:
-    """Report the zero-tolerance candidate-key reliability gate."""
+    """Require every screened-negative candidate to have the comparable key."""
 
     required = (
         "eligibility_status",
@@ -406,11 +410,22 @@ def sam_eligibility_gate(eligibility: pd.DataFrame) -> dict[str, int | bool]:
         not _values(row.name_state_keys) and not _values(row.address_zip_keys)
         for row in eligibility.itertuples(index=False)
     )
+    missing_name_state_keys = eligibility["name_state_keys"].map(_values).map(len).eq(0)
+    screened_negative = eligibility["eligibility_status"].eq(
+        EligibilityStatus.ELIGIBLE_SCREENED_NEGATIVE.value
+    )
+    screened_negative_without_comparable_key = int(
+        (screened_negative & missing_name_state_keys).sum()
+    )
     return {
-        "passed": missing_quarantine_keys == 0,
+        "passed": screened_negative_without_comparable_key == 0,
         "candidate_source_rows": int(eligibility["sam_source_rows"].sum()),
         "candidate_firms": int(len(eligibility)),
         "candidate_firms_without_quarantine_key": int(missing_quarantine_keys),
+        "candidate_firms_without_comparable_name_state_key": int(missing_name_state_keys.sum()),
+        "screened_negative_firms_without_comparable_name_state_key": (
+            screened_negative_without_comparable_key
+        ),
         "candidate_firms_with_multiple_ueis": int(eligibility["multiple_ueis"].sum()),
         "candidate_firms_with_multiple_duns": int(eligibility["multiple_duns"].sum()),
         "candidate_firms_with_multiple_cages": int(eligibility["multiple_cages"].sum()),
@@ -418,12 +433,13 @@ def sam_eligibility_gate(eligibility: pd.DataFrame) -> dict[str, int | bool]:
 
 
 def require_reliable_sam_eligibility(eligibility: pd.DataFrame) -> None:
-    """Stop before matching when a candidate cannot be screened by either exact key."""
+    """Stop before matching if a screened negative lacks the universal exact key."""
 
     gate = sam_eligibility_gate(eligibility)
     if not gate["passed"]:
         raise IdentityRecoveryError(
             "SAM eligibility is unreliable: "
-            f"{gate['candidate_firms_without_quarantine_key']} candidate identity envelopes "
-            "lack both an exact name-plus-state key and an exact address-plus-ZIP key"
+            f"{gate['screened_negative_firms_without_comparable_name_state_key']} "
+            "screened-negative candidate identity envelopes lack the exact "
+            "name-plus-state key required to compare against every unresolved SBIR source row"
         )
