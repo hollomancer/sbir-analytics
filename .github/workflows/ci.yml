@@ -304,6 +304,15 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      # setup_dev.sh invokes `python3.11` by name (line 20), not `python3`, so
+      # it depends on that exact interpreter being on PATH. ubuntu-latest
+      # happens to ship it today, but the image contents drift and the script
+      # would start failing for a reason unrelated to the change under test.
+      # Pin it explicitly.
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+
       - name: Run setup script
         run: bash scripts/setup_dev.sh
 
