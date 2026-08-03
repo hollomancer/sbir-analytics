@@ -1,10 +1,16 @@
 # Restore the unautomated repo checks
 
-Tracking stub. Three checks that ran in the retired `weekly.yml` and now run
-**nowhere**. None is in pre-commit. Nothing here is implemented yet.
+Two checks that ran in the retired `weekly.yml` and now run **nowhere**.
+Neither is in pre-commit.
 
 Grouped because they share a shape: they check the repository, not the data, so
-they want a host cron or a pre-commit hook rather than a Dagster job.
+they want a pre-commit hook or a CI job rather than a Dagster job.
+
+The Neo4j schema dry-run (`weekly.yml` · `neo4j-smoke`) was a third candidate
+and is **dropped, not deferred**. The mini runs a real Neo4j continuously, so a
+`--dry-run` against a throwaway container is weaker evidence than the live stack
+already provides. It is not coming back; do not re-add it from the workflow
+history.
 
 ## 1. Nightly security scan — DONE, as a parallel CI job
 
@@ -63,13 +69,3 @@ had been broken and unnoticed, so nobody found out.
       The retired job worked around this with CLI flags.
 - [ ] If it goes ahead: pre-commit, not CI — it is a formatting check and
       belongs where formatting checks live
-
-## 3. Neo4j schema dry-run
-
-Was `weekly.yml` · `neo4j-smoke`: build the runtime image, start Neo4j, run
-`scripts/neo4j/apply_schema.py --dry-run`.
-
-- [ ] Decide whether this is worth automating at all. The mini runs a real
-      Neo4j continuously, so a dry-run against a throwaway container is weaker
-      evidence than the live stack already provides.
-- [ ] If yes: host cron or a documented manual step in the Neo4j runbook
