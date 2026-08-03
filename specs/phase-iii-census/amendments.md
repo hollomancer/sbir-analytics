@@ -229,3 +229,38 @@ files before materialization.
   fields were visible. No SAM control frame, eligibility classification, recovered
   identifier table, matched set, balance statistic, negative-control distribution,
   overlap coefficient, full-criteria ratio, or placebo result had been computed or seen.
+
+## Revision 11 — Complete unresolved-award quarantine-key gate
+
+- **Approved:** 2026-08-03.
+- **Git-history anchor:** The commit that first adds Revision 11 to this file is the
+  approval-record anchor; its identifier is intentionally not embedded in the content it
+  hashes.
+- **Reason:** Exact authoritative award-key recovery need not resolve every identifier-poor
+  SBIR/STTR award if every remaining unresolved source row can still conservatively
+  quarantine candidate controls through at least one already-approved exact collision key.
+  The repository owner approved measuring that completeness directly instead of requiring
+  an unsupported percentage-resolution target.
+- **Pre-outcome gate:** For every source row whose final recovery status is not
+  `resolved_authoritative`, the audit must report whether it has a complete normalized
+  company-name-plus-state key, a complete normalized address-plus-five-digit-ZIP key, both,
+  or neither. A row has a usable name key only when both the company name and state are
+  nonblank after the frozen normalization. A row has a usable address key only when at
+  least one address line and a valid five-digit ZIP are nonblank after the frozen
+  normalization. The address component concatenates nonblank `address1` and `address2` in
+  source order with one space after component normalization. A ZIP value is valid only as
+  five digits or five digits followed by an optional hyphen or space and four digits; the
+  key retains the first five digits. Any unresolved row in the `neither` category stops
+  the study before a control candidate is classified, matched, or evaluated. There is no
+  allowable missing share and no percentage threshold.
+- **Eligibility and recovery impact:** None. Names and addresses remain quarantine-only
+  comparisons and never resolve an award to an entity. Exact authoritative award-key
+  adapters may reduce the unresolved set, but cannot compensate statistically for a row
+  that lacks both quarantine key families.
+- **Criteria and matching impact:** None. No census pair universe, inclusion clause,
+  sensitivity cell, matching covariate, score, model, or numeric cutoff changes.
+- **Visibility at approval:** The exact-identifier recovery coverage from USAspending,
+  NIH RePORTER, and the NSF Awards API was visible. Quarantine-key availability for the
+  unresolved source rows, the SAM control frame, all eligibility classifications, the
+  matched set, balance statistics, negative-control outcomes, and placebo results had not
+  been computed or seen.
