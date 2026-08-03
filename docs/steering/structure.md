@@ -2,6 +2,12 @@
 
 For the full directory tree and pipeline architecture, see [architecture/detailed-overview.md](../architecture/detailed-overview.md). This document covers the developer-facing conventions: directory layout, naming rules, and code organization principles.
 
+The conventions below organize code by **technical role** — extractors,
+enrichers, transformers, loaders. That axis is orthogonal to
+[epistemic tiers](epistemic-tiers.md), which govern what an artifact can be
+trusted to support and what it costs to maintain. A module's directory tells you
+what it does; its tier tells you how much weight it carries. Both apply.
+
 ## Directory Conventions
 
 ### Configuration Files

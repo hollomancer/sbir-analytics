@@ -34,9 +34,31 @@ You are a test diagnostician and fixer for the SBIR Analytics project. Your job 
 - Neo4j fixture teardown issues (use `cleanup_test_data` fixture)
 - Async test issues (use `@pytest.mark.asyncio` or `asyncio_mode = "auto"`)
 
+## Coverage Expectations by Tier
+
+Read `docs/steering/epistemic-tiers.md`. Coverage targets differ by tier, and
+chasing uniform coverage is wasted effort:
+
+- **`primitives`** (`sbir_etl/identity/`, `config/`, `models/`) — comprehensive.
+  Every named behavior version needs a test pinning it. This is where gaps are
+  worth hunting.
+- **`pipelines`** — cover the contracts and the failure modes, not every branch.
+- **`evidence`** (Phase III census) — asset checks are the real gate and they must
+  **block**, not warn. A check downgraded to a warning is a broken test even if
+  the suite is green. Treat pinned hashes and manifest assertions as the
+  specification: if code and hash disagree, the hash is right until a human says
+  otherwise.
+- **`exploratory`** (`scripts/`) — no coverage obligation. Don't add tests here to
+  raise a number.
+
 ## Rules
 
 - Never disable or skip a test unless it's truly irrelevant
 - Don't weaken assertions just to make tests pass
 - If source code changed, tests should reflect the new behavior
 - Add comments explaining non-obvious test logic
+- **Never fix a failing test by weakening a tier contract.** Turning a blocking
+  asset check into a warning, loosening a pinned hash, or relaxing an identity
+  profile assertion is a contract change, not a test fix — stop and report it.
+- `tests/unit/scripts/test_identity_boundaries.py` guards the identity primitive.
+  If it fails, something forked the primitive — fix the caller, not the guard.
