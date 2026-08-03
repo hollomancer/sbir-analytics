@@ -2,7 +2,8 @@
 
 ## Executive Summary
 
-**sbir-analytics** is an experimental ETL (Extract, Transform, Load) research pipeline for linking Small Business Innovation Research (SBIR) program data to commercialization signals in a Neo4j graph database. It orchestrates multi-source data ingestion, transformations, and exploratory analysis workflows through Dagster asset definitions. As described in the README, this is a personal side project rather than production software; the architecture below describes the current documented approach, including an optional cloud setup.
+**sbir-analytics** is an experimental ETL (Extract, Transform, Load) research pipeline for linking Small Business Innovation Research (SBIR) program data to commercialization signals in a Neo4j graph database. It orchestrates multi-source data ingestion, transformations, and exploratory analysis workflows through Dagster asset definitions. As described in the README, this is a personal side project rather than production software; the architecture below describes the current documented approach. Historical AWS deployment material remains in the repository but is
+not part of the live architecture.
 
 **Key Characteristics:**
 
