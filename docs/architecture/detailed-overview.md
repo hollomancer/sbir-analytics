@@ -473,9 +473,11 @@ Each detected transition carries a likelihood score (0.0–1.0), confidence band
 
 ---
 
-## 6. Technology Stack & Integration Points
+## 6. Historical AWS Architecture (Archived Reference)
 
-### 6.1 Core Technologies
+### 6.1 Historical Technologies
+
+This section preserves the earlier AWS deployment notes as historical context. It does not describe the live deployment; the current stack is Docker Compose on the Mac mini, as summarized above and documented in the deployment runbook.
 
 | Component | Technology | Purpose |
 |-----------|-----------|---------|
@@ -495,7 +497,7 @@ Each detected transition carries a likelihood score (0.0–1.0), confidence band
 | **Testing** | Pytest + Pytest-Cov | Unit/integration/E2E tests |
 | **Local Development** | Docker + Docker Compose | Local dev/test environment |
 
-### 6.2 Data Flow Connections (Optional Cloud Architecture)
+### 6.2 Historical AWS Data Flow
 
 ```
 ┌─────────────────────────────────────────┐
@@ -559,10 +561,10 @@ Each detected transition carries a likelihood score (0.0–1.0), confidence band
 │   (Queryable Knowledge Graph)           │
 └─────────────────────────────────────────┘
 
-Local Development Alternative:
-- S3 → Local filesystem fallback (data/ directory)
-- Neo4j EC2 → Docker Neo4j (docker-compose.yml)
-- GitHub Actions → Local Dagster (dagster dev)
+Current deployment instead:
+- Docker Compose → local filesystem and attached SSD
+- Neo4j 5.x → Docker Neo4j on the live host
+- Dagster assets/jobs/schedules → the host stack; GitHub Actions → CI
 ```
 
 ### 6.3 Neo4j Integration
