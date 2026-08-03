@@ -92,7 +92,7 @@ services:
       - NEO4J_server_memory_pagecache_size=${NEO4J_server_memory_pagecache_size:-512M}
       - NEO4J_db_logs_query_enabled=${NEO4J_db_logs_query_enabled:-OFF}
     ports:
-      # Loopback-only. Neo4j is intentionally NOT exposed through Tailscale.
+      # Loopback-only. Remote Bolt is available only through the opt-in Tailscale TLS route.
       - "127.0.0.1:${NEO4J_HTTP_PORT:-7474}:7474"
       - "127.0.0.1:${NEO4J_BOLT_PORT:-7687}:7687"
     volumes:

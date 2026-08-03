@@ -84,6 +84,23 @@ neo4j_tailnet_enabled() {
   esac
 }
 
+validate_neo4j_tailnet_port() {
+  case "$NEO4J_TAILNET_BOLT_PORT" in
+    ''|*[!0-9]*|??????*)
+      error "NEO4J_TAILNET_BOLT_PORT must be an integer between 1 and 65535."
+      exit 2
+      ;;
+  esac
+  if [ "$NEO4J_TAILNET_BOLT_PORT" -lt 1 ] || [ "$NEO4J_TAILNET_BOLT_PORT" -gt 65535 ]; then
+    error "NEO4J_TAILNET_BOLT_PORT must be an integer between 1 and 65535."
+    exit 2
+  fi
+  if [ "$NEO4J_TAILNET_BOLT_PORT" -eq 443 ] || [ "$NEO4J_TAILNET_BOLT_PORT" -eq 8443 ]; then
+    error "NEO4J_TAILNET_BOLT_PORT must not conflict with managed Serve ports 443 or 8443."
+    exit 2
+  fi
+}
+
 tailscale_dns_name() {
   tailscale status --json 2>/dev/null | python3 -c '
 import json, sys
@@ -270,6 +287,7 @@ rollback_transaction() {
 
 cmd_up() {
   require_tailscale
+  validate_neo4j_tailnet_port
   NEO4J_TLS_HOST=$(tailscale_dns_name || true)
   if [ -z "$NEO4J_TLS_HOST" ]; then
     error "Could not determine this node's Tailscale DNS name for Neo4j TLS."
@@ -325,6 +343,7 @@ cmd_up() {
   if [ "$state_neo4j" = "disabled" ]; then
     info "Neo4j tailnet access is disabled in $ENV_FILE."
   elif [ "$state_neo4j" = "free" ]; then
+    warn "Confirm the group:sbir-neo4j-operators Tailscale grant is active before exposing Bolt."
     info "Configuring TLS/TCP $NEO4J_TAILNET_BOLT_PORT -> $NEO4J_TARGET..."
     configure_neo4j_route "$NEO4J_TAILNET_BOLT_PORT" "$NEO4J_TARGET" "$NEO4J_TLS_HOST" || exit 1
   else
@@ -348,6 +367,7 @@ cmd_status() {
 
 cmd_down() {
   require_tailscale
+  validate_neo4j_tailnet_port
   NEO4J_TLS_HOST=$(tailscale_dns_name || true)
   if [ -z "$NEO4J_TLS_HOST" ]; then
     error "Could not determine this node's Tailscale DNS name for Neo4j TLS."

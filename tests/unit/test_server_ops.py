@@ -308,6 +308,7 @@ def _run_tailscale(
     apply_then_fail_8443: bool = False,
     apply_then_fail_neo4j: bool = False,
     neo4j_enabled: bool = True,
+    neo4j_tailnet_port: str = "17687",
     hang_443: bool = False,
 ) -> tuple[subprocess.CompletedProcess[str], dict[str, object], list[list[str]]]:
     bin_dir = tmp_path / "bin"
@@ -322,7 +323,7 @@ def _run_tailscale(
         "SBIR_ANALYTICS_API_PORT=8010\n"
         "NEO4J_BOLT_PORT=7687\n"
         f"NEO4J_TAILNET_BOLT_ENABLED={'true' if neo4j_enabled else 'false'}\n"
-        "NEO4J_TAILNET_BOLT_PORT=17687\n"
+        f"NEO4J_TAILNET_BOLT_PORT={neo4j_tailnet_port}\n"
     )
     extra = {"CALL_LOG": str(call_log), "STATE_FILE": str(state_file)}
     if fail_8443:
@@ -376,6 +377,34 @@ def test_tailscale_down_refuses_funnel_enabled_route(tmp_path):
     assert not any("off" in call for call in calls)
 
 
+def test_tailscale_down_refuses_funnel_enabled_neo4j_route(tmp_path):
+    original = _tls_tcp_state("17687", "127.0.0.1:7687")
+    original["AllowFunnel"] = {"node.test.ts.net:17687": True}
+
+    result, state, calls = _run_tailscale(tmp_path, "down", original)
+
+    assert result.returncode != 0
+    assert state == original
+    assert not any("off" in call for call in calls)
+
+
+@pytest.mark.parametrize("port", ["not-a-port", "0", "65536", "443", "8443"])
+def test_tailscale_up_rejects_invalid_neo4j_port_without_mutation(tmp_path, port):
+    original = _serve_state("443", "http://127.0.0.1:3000")
+
+    result, state, calls = _run_tailscale(
+        tmp_path,
+        "up",
+        original,
+        neo4j_tailnet_port=port,
+    )
+
+    assert result.returncode == 2
+    assert state == original
+    assert "NEO4J_TAILNET_BOLT_PORT" in result.stderr
+    assert not any(call[:1] == ["serve"] for call in calls)
+
+
 def test_tailscale_up_rolls_back_new_route_if_second_fails(tmp_path):
     result, state, calls = _run_tailscale(tmp_path, "up", {}, fail_8443=True)
 
@@ -424,6 +453,7 @@ def test_tailscale_up_configures_tls_neo4j_route(tmp_path):
         for call in calls
     )
     assert "bolt+s://node.test.ts.net:17687" in result.stdout
+    assert "group:sbir-neo4j-operators" in result.stdout
 
 
 def test_tailscale_up_leaves_neo4j_private_when_opt_in_is_disabled(tmp_path):
