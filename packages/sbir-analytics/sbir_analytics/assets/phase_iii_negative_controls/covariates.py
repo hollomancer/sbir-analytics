@@ -114,7 +114,7 @@ def _normalize_firm_frame(firms: pd.DataFrame) -> pd.DataFrame:
     records: list[dict[str, Any]] = []
     seen_firm_ids: set[str] = set()
     owned_ueis: dict[str, str] = {}
-    for row in firms.loc[:, FIRM_FRAME_COLUMNS].itertuples(index=False):
+    for row in firms.loc[:, list(FIRM_FRAME_COLUMNS)].itertuples(index=False):
         firm_id = _text(row.firm_id)
         ueis = tuple(
             sorted({uei for value in _values(row.firm_ueis) if (uei := normalize_uei(value))})
@@ -169,7 +169,7 @@ def _sam_indexes(sam_entities: pd.DataFrame) -> tuple[dict[str, set[str]], dict[
     _require_columns(sam_entities, SAM_COLUMNS, label="SAM entity frame")
     naics_by_uei: dict[str, set[str]] = defaultdict(set)
     state_by_uei: dict[str, set[str]] = defaultdict(set)
-    for row in sam_entities.loc[:, SAM_COLUMNS].itertuples(index=False):
+    for row in sam_entities.loc[:, list(SAM_COLUMNS)].itertuples(index=False):
         uei = normalize_uei(row.unique_entity_id)
         if not uei:
             continue
@@ -185,7 +185,7 @@ def _contract_index(contracts: pd.DataFrame) -> dict[str, list[dict[str, Any]]]:
     rows_by_uei: dict[str, list[dict[str, Any]]] = defaultdict(list)
     action_dates = pd.to_datetime(contracts["action_date"], errors="coerce")
     for row, action_date in zip(
-        contracts.loc[:, CONTRACT_COLUMNS].itertuples(index=False),
+        contracts.loc[:, list(CONTRACT_COLUMNS)].itertuples(index=False),
         action_dates,
         strict=True,
     ):
@@ -227,14 +227,16 @@ def build_firm_covariates(
     naics_by_uei, state_by_uei = _sam_indexes(sam_entities)
     contracts_by_uei = _contract_index(contracts)
     records: list[dict[str, Any]] = []
-    for firm in normalized_firms.itertuples(index=False):
+    for firm in normalized_firms.to_dict(orient="records"):
+        firm_id = str(firm["firm_id"])
+        firm_ueis = tuple(str(value) for value in _values(firm["firm_ueis"]))
         naics, naics_status = _unanimous(
-            {value for uei in firm.firm_ueis for value in naics_by_uei.get(uei, set())}
+            {value for uei in firm_ueis for value in naics_by_uei.get(uei, set())}
         )
         state, state_status = _unanimous(
-            {value for uei in firm.firm_ueis for value in state_by_uei.get(uei, set())}
+            {value for uei in firm_ueis for value in state_by_uei.get(uei, set())}
         )
-        contract_rows = [row for uei in firm.firm_ueis for row in contracts_by_uei.get(uei, [])]
+        contract_rows = [row for uei in firm_ueis for row in contracts_by_uei.get(uei, [])]
         first_date = min((row["action_date"] for row in contract_rows), default=None)
         first_rows = [row for row in contract_rows if row["action_date"] == first_date]
         psc_family, psc_status = _unanimous(
@@ -263,8 +265,8 @@ def build_firm_covariates(
         )
         records.append(
             {
-                "firm_id": firm.firm_id,
-                "firm_ueis": firm.firm_ueis,
+                "firm_id": firm_id,
+                "firm_ueis": firm_ueis,
                 "primary_naics": naics or None,
                 "first_contract_business_size": size_class or None,
                 "state": state or None,

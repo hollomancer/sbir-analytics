@@ -22,7 +22,7 @@ def _require_matchable(frame: pd.DataFrame, *, label: str) -> pd.DataFrame:
     if frame["firm_id"].astype(str).duplicated().any():
         raise CovariateInputError(f"{label}.firm_id must be unique")
     matchable = frame.loc[frame["match_eligible"].eq(True)].copy()  # noqa: E712
-    if matchable.loc[:, MATCH_COVARIATES].isna().any(axis=None):
+    if matchable.loc[:, list(MATCH_COVARIATES)].isna().any(axis=None):
         raise CovariateInputError(f"{label} marks a row match-eligible with a missing covariate")
     return matchable.sort_values("firm_id", kind="stable").reset_index(drop=True)
 
@@ -115,8 +115,8 @@ def summarize_matching(treated: pd.DataFrame, pairs: pd.DataFrame) -> pd.DataFra
 
 
 def _smd(treated: pd.Series, controls: pd.Series) -> float:
-    treated_numeric = pd.to_numeric(treated, errors="raise").astype(float)
-    control_numeric = pd.to_numeric(controls, errors="raise").astype(float)
+    treated_numeric: Any = pd.to_numeric(treated, errors="raise").astype(float)
+    control_numeric: Any = pd.to_numeric(controls, errors="raise").astype(float)
     difference = float(treated_numeric.mean() - control_numeric.mean())
     pooled_variance = float((treated_numeric.var(ddof=1) + control_numeric.var(ddof=1)) / 2)
     if math.isclose(difference, 0.0, abs_tol=1e-15):
