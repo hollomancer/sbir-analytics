@@ -51,10 +51,10 @@ def download_sam_gov_op(context: OpExecutionContext) -> dict:
     import pandas as pd
 
     from scripts.data.download_sam_gov import (
-        MIN_CANONICAL_ROW_COUNT,
         PARQUET_NAME,
         PARQUET_NAME_PARTIAL,
         _download_bulk_extract,
+        _is_partial_result,
         _write_local,
     )
 
@@ -65,16 +65,14 @@ def download_sam_gov_op(context: OpExecutionContext) -> dict:
             "https://sam.gov -> Account -> API Keys and add it to .env.server."
         )
 
-    df: pd.DataFrame | None = _download_bulk_extract(api_key)
+    # Strategy 1 is the keyless public monthly bulk extract, and it is the only
+    # source the script treats as canonical. A non-None result here therefore
+    # came from strategy 1; anything else returns None rather than a short frame.
+    df: pd.DataFrame | None = _download_bulk_extract()
     if df is None or df.empty:
         raise ValueError("SAM.gov returned no entity records")
 
-    partial = len(df) < MIN_CANONICAL_ROW_COUNT
-    if partial:
-        context.log.warning(
-            f"Only {len(df):,} rows (below {MIN_CANONICAL_ROW_COUNT:,}); "
-            f"writing as partial so the canonical dataset is not overwritten"
-        )
+    partial = _is_partial_result(1)
 
     path = _write_local(
         df,
