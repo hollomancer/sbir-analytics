@@ -326,8 +326,12 @@ def run(
         "stochastic": False,
         "placebo_invoked": False,
         "scoring_invoked": False,
-        "shared_pair_builder": "phase_iii_candidates.pairing.build_uei_pairs",
-        "shared_outcome_evaluator": "phase_iii_negative_controls.evaluate_firm_outcomes",
+        "shared_pair_builder": (
+            "sbir_analytics.assets.phase_iii_candidates.pairing.build_uei_pairs"
+        ),
+        "shared_outcome_evaluator": (
+            "sbir_analytics.assets.phase_iii_negative_controls.evaluate_firm_outcomes"
+        ),
         "firm_outcome": "distinct target_contract_key values with at least one surviving pair",
         "freeze": freeze,
         "inputs": {

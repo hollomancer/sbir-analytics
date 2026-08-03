@@ -22,7 +22,7 @@ III. The placebo test and hand-labelled validation remain unresolved.
 | Frozen revision | `phase-0-r14` |
 | Frozen design SHA-256 | `ef5da718f76a8904f5c61da3494af46a7e05428618bcdf96bb1201c489384841` |
 | Amendment-log SHA-256 | `02fb5593c4621af227b8ae62ff23cbcaf61d009f4822a6af7bcacd8d540664e6` |
-| Outcome code commit | `f3224f90` |
+| Outcome code commit | `f3224f90d62a5386c0d0fbd145eb4b17008c7366` |
 | Stochastic execution | `false` |
 | Scoring path invoked | `false` |
 | Placebo invoked | `false` |
