@@ -51,6 +51,16 @@ jobs:
       - name: Run MyPy type checker
         run: uv run python -m mypy sbir_etl packages/sbir-graph/sbir_graph
 
+      # Importing and validating the complete graph catches duplicate asset
+      # keys, unresolved jobs, invalid partition mappings, and missing
+      # resources. In-process validation takes about a second once the
+      # environment is installed, so keep it on every PR instead of hiding it
+      # in the slower integration lane.
+      - name: Validate Dagster definitions
+        run: |
+          uv run python -c \
+            "from dagster import Definitions; from sbir_analytics.definitions import defs; Definitions.validate_loadable(defs)"
+
       - name: Run architecture, documentation, and repository hygiene guards
         run: |
           uv run python scripts/ci/check_architecture_boundaries.py
@@ -239,12 +249,59 @@ jobs:
         if: failure()
         run: docker logs test-neo4j --tail 100 || true
 
+  test-integration:
+    name: Neo4j Integration Tests
+    needs: [detect-changes]
+    if: |
+      github.event_name == 'pull_request' &&
+      needs.detect-changes.outputs.integration == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Setup Python and UV
+        uses: ./.github/actions/setup-python-uv
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          install-dev-deps: "true"
+
+      - name: Start Neo4j
+        uses: ./.github/actions/start-neo4j
+        with:
+          container-name: test-neo4j
+          neo4j-image: ${{ env.NEO4J_IMAGE }}
+          neo4j-user: ${{ env.NEO4J_USERNAME }}
+          neo4j-password: ${{ env.NEO4J_PASSWORD }}
+
+      # This lane runs alongside the four unit shards. It is conditional on
+      # graph/storage changes so ordinary asset and documentation PRs do not
+      # pay the container startup cost.
+      - name: Run integration tests
+        env:
+          NEO4J_URI: "bolt://localhost:7687"
+          NEO4J_USER: ${{ env.NEO4J_USERNAME }}
+          NEO4J_PASSWORD: ${{ env.NEO4J_PASSWORD }}
+          REQUIRE_NEO4J: "1"
+        run: uv run pytest tests/integration/ -m "integration and not slow"
+
+      - name: Neo4j logs on failure
+        if: failure()
+        run: docker logs test-neo4j --tail 100 || true
+
+      - name: Stop Neo4j
+        if: always()
+        uses: ./.github/actions/stop-neo4j
+        with:
+          container-name: test-neo4j
+
   detect-changes:
     name: Detect File Changes
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
       docker: ${{ steps.filter.outputs.docker }}
+      integration: ${{ steps.filter.outputs.integration }}
       setup: ${{ steps.filter.outputs.setup }}
     steps:
       - uses: actions/checkout@v7
@@ -260,6 +317,19 @@ jobs:
             docker:
               - 'Dockerfile*'
               - '.dockerignore'
+            # Run the real Neo4j contract only when graph persistence or its
+            # test harness changes. The full suite still runs after merge.
+            integration:
+              - 'packages/sbir-graph/**'
+              - 'packages/sbir-analytics/sbir_analytics/assets/sbir_neo4j_loading.py'
+              - 'packages/sbir-analytics/sbir_analytics/assets/transition/loading.py'
+              - 'packages/sbir-analytics/sbir_analytics/assets/uspto/loading.py'
+              - 'tests/integration/**'
+              - 'tests/conftest.py'
+              - 'tests/conftest_shared.py'
+              - 'tests/neo4j_service.py'
+              - 'pyproject.toml'
+              - 'uv.lock'
             # uv.lock and pyproject.toml stay out of the docker filter (#507:
             # the Dockerfile never reads them) but belong here, because
             # setup_dev.sh runs `uv sync` and a lockfile change can genuinely
@@ -297,8 +367,13 @@ jobs:
           cache-from: type=gha,scope=docker-ci
           cache-to: type=gha,mode=max,scope=docker-ci
 
-      - name: Smoke test the entrypoint
-        run: docker run --rm sbir-analytics:ci-${{ github.sha }} dagster --version
+      - name: Smoke test the entrypoint and Dagster definitions
+        run: |
+          docker run --rm sbir-analytics:ci-${{ github.sha }} dagster --version
+          docker run --rm \
+            -e SBIR_ETL__PIPELINE__ENVIRONMENT=test \
+            sbir-analytics:ci-${{ github.sha }} \
+            dagster definitions validate -m sbir_analytics.definitions
 
   verify-setup-script:
     name: Verify Developer Setup Script
