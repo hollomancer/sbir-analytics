@@ -79,9 +79,12 @@ All four of these are required. There is no partial admission:
 4. **Declared estimand** — a written statement of what quantity is being
    estimated, and what would make the estimate wrong.
 
-Reference implementation: the Phase III census
+Reference implementation for the required machinery: the Phase III census
 (`specs/phase-iii-census/`, `packages/sbir-analytics/sbir_analytics/assets/phase_iii_census/`).
-Anything proposed for this tier should be compared against it directly.
+Its frozen specification, SHA enforcement, declared estimand, and blocking
+asset check are the pattern to compare against directly. The census itself is
+currently `reproducible`, not citable: its study manifest keeps results
+non-citable until complete audit tables and post-write checks have passed.
 
 Entering this tier is meant to be expensive and visibly so. The correct default
 answer to "should this be evidence-tier?" is no.
@@ -94,12 +97,23 @@ Everything else.
 |---|---|
 | **Contract** | Labeled non-citable. That is the whole contract. |
 | **Permitted** | No tests, no interface stability, no cleanup, going stale |
-| **Forbidden** | Being depended on by any other tier; producing numbers that leave the repository without relabeling |
+| **Forbidden** | Being depended on by any other tier, except an approved temporary migration bridge; producing numbers that leave the repository without relabeling |
 
 Most of `scripts/` belongs here and there is no shame in it. Exploratory work
 answering a question once is the normal mode of research. The failure is not
 writing it — it is leaving it indistinguishable from work that earned a stronger
 claim.
+
+#### Temporary migration bridges
+
+An approved dependency from a package into `scripts/` is a migration bridge,
+not a fifth tier and not an implicit promotion of the script. It must be named
+in the architecture guard, limited to a compatibility wrapper, and have a
+removal condition: move the implementation behind a package API while retaining
+the CLI as an entry point. No new bridge may be added without those conditions,
+and an `evidence` artifact may not depend on one. See
+[structure.md](structure.md#transitional-script-dependencies) for the current
+bridge.
 
 ## Classifying an artifact
 
@@ -148,16 +162,20 @@ What already holds:
   `packages/`, zero outbound.
 - `sbir_etl/identity/` meets the `primitives` contract, with a boundary checker
   at `scripts/ci/check_identity_boundaries.py`.
-- The Phase III census meets the `evidence` contract.
+- The Phase III census implements the evidence-tier mechanisms: frozen
+  artifacts, SHA enforcement, a declared estimand, and a blocking asset check.
 
 What does not:
 
-- The identity boundary checker runs in no workflow or hook — only in
-  `tests/unit/scripts/test_identity_boundaries.py`.
-- Configuration has 15 `yaml.safe_load` sites outside
-  `sbir_etl/config/loader.py`.
+- The identity boundary checker is enforced by the CI quality job, but no
+  tier-declaration check exists yet.
+- Nine direct `yaml.safe_load` call sites remain outside the configuration
+  loader and the shared strict-mapping reader; several intentionally use
+  permissive empty-file behavior.
 - `scripts/` carries analytical weight from `phase3_groundtruth/` and
   `validation/` with no contract at all.
+- No existing specs, assets, or modules declare one of these four tiers, so the
+  declaration rule is not yet observable or mechanically enforced.
 
 The first useful step is labeling, not moving directories. Directory
 reorganization is the last step, and optional.

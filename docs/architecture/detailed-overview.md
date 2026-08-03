@@ -718,9 +718,13 @@ the `evidence/` boundary is that it is expensive to cross and visibly so; the
 point of `exploratory/` is that useful throwaway work gets a home where its
 status is legible instead of being laundered by proximity to rigorous work.
 
-The Phase III census already meets the `evidence/` bar
-(`specs/phase-iii-census/`, `packages/sbir-analytics/sbir_analytics/assets/phase_iii_census/`).
-It is the reference implementation for what that tier requires.
+The Phase III census
+(`specs/phase-iii-census/`, `packages/sbir-analytics/sbir_analytics/assets/phase_iii_census/`)
+is the reference implementation for the evidence-tier machinery: frozen
+artifacts, SHA enforcement, a declared estimand, and a blocking asset check.
+Its study manifest currently classifies it as `reproducible`, not citable; it
+does not enter the `evidence/` tier until complete audit tables and post-write
+checks make its results citable.
 
 ### 10.3 Shared primitives: status
 
@@ -749,16 +753,14 @@ Two gaps remain, and they are narrower than "consolidate the primitive":
    for the census control frame?" now has an answer: a named, versioned
    profile. That answer is not written down anywhere a reader of the census
    would find it. It belongs in the census spec, next to the estimand.
-2. **The boundary checker is not wired into CI.** It is exercised by
-   `tests/unit/scripts/test_identity_boundaries.py` and nothing else — it
-   appears in no workflow, Makefile target, or pre-commit hook. A guard that
-   runs only when someone runs its unit test is a guard against accidents,
-   not against drift.
+2. **The boundary checker is wired into CI.** The quality job runs
+   `scripts/ci/check_identity_boundaries.py`, so direct scorer drift fails the
+   normal PR check as well as its unit test.
 
-Configuration has the same shape of problem, unaddressed: 15 separate
-`yaml.safe_load` call sites across `sbir_etl/` and `packages/`, alongside the
-merge-and-validate path in `sbir_etl/config/loader.py` that is supposed to be
-the way configuration gets read.
+Configuration has a narrower remaining problem: nine direct `yaml.safe_load`
+call sites remain outside `sbir_etl/config/loader.py` and the shared strict
+mapping reader. Several intentionally accept an empty file as an empty mapping;
+they are not duplicates of pipeline configuration resolution.
 
 ### 10.4 `scripts/` is an unbounded annex
 
@@ -777,6 +779,13 @@ Under §10.2 this resolves without a mass migration: most of `scripts/` is
 already `exploratory/` and only needs to be labeled as such. The subtrees
 carrying analytical weight get promoted to `pipelines/` or `evidence/` and
 acquire the corresponding contract.
+
+The source-download jobs are a documented temporary exception: package wrappers
+currently import five download CLIs from `scripts/`. This is a migration bridge,
+not an implicit promotion of the scripts; the implementation must move behind a
+package API before the exception can be removed. The architecture guard names
+the exact allowed imports, and evidence-tier artifacts may not depend on this
+bridge.
 
 ### 10.5 What this is not
 
