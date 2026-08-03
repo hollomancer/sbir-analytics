@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import tempfile
 from pathlib import Path
 from typing import Any
@@ -134,8 +135,13 @@ def _normalize_phase_label(v: Any) -> str | None:
         return None
     s = str(v).strip().upper()
     if s.startswith("PHASE "):
-        s = s.replace("PHASE ", "")
-    return s if s in {"I", "II", "III"} else None
+        compact = s.removeprefix("PHASE ").strip()
+        if compact in {"I", "II", "III"}:
+            return compact
+    if s in {"I", "II", "III"}:
+        return s
+    match = re.search(r"\bPHASE\s+(III|II|I)\b", s)
+    return match.group(1) if match else None
 
 
 def _classify_contract_phase(row: pd.Series) -> str | None:
@@ -149,6 +155,9 @@ def _classify_contract_phase(row: pd.Series) -> str | None:
             return "II"
         if code in {"SR3", "ST3"}:
             return "III"
+        descriptive_phase = _normalize_phase_label(code)
+        if descriptive_phase is not None:
+            return descriptive_phase
 
     # 2) Explicit sbir_phase column (set by some extractors, e.g. the
     #    company_categorization enricher that parses phase from descriptions).

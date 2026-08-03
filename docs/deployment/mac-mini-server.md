@@ -11,8 +11,8 @@ This machine hosts the live SBIR Analytics deployment.
 - **Deployment checkout:** `/Users/conradhollomon/projects/sbir-analytics-server`
 - **Development checkout:** `/Users/conradhollomon/projects/sbir-analytics` —
   never operate the live stack from here.
-- **Installed baseline as of 2026-08-02:** tag `0.1`, commit `054bd862`. Always
-  verify the deployment checkout with `git status --short` and
+- **Installed version:** record it in `mac-mini-status.local.md`. Always verify
+  the deployment checkout with `git status --short` and
   `git describe --tags --always --dirty`; do not infer the live version from
   another checkout or from the image tag.
 - **Persistent application data:** `/Volumes/SSDmini/sbir-analytics`
@@ -258,6 +258,30 @@ fails so recovery work cannot erase the backup.
 - A `weekly_core_refresh` schedule exists but stays **STOPPED** until you flip
   `SBIR_ETL__DAGSTER__SCHEDULES__WEEKLY_CORE_REFRESH_ENABLED=true` — do this
   only after a manual run of `core_refresh_job` succeeds.
+
+### Rollout verification gates
+
+Treat Dagster completion as an execution signal, not proof that an output is
+research-ready. Before enabling any schedule or sensor, record the run ID,
+input vintage, output path, row grain, cardinality, and semantic checks in
+`mac-mini-status.local.md`. In particular:
+
+- Compare source rows at their declared grain with the corresponding Neo4j
+  nodes. The SBIR award grain is `award_id` plus phase; duplicate
+  `FinancialTransaction.transaction_id` values must fail before graph mutation.
+- For phase progressions, require zero `FOLLOWS` self-loops and verify that the
+  stored endpoint phases match the intended progression.
+- For weekly reports, verify every included award date falls within both ends
+  of the reported window. A successful report process with future-dated rows is
+  a failed rollout gate.
+- For transition inputs, compare phase-coded raw rows with validated outputs.
+  Award Data Archive `research` values may be descriptive labels rather than
+  compact `SR2`/`SR3` or `ST2`/`ST3` codes; a successful zero-row output is not
+  sufficient when coded source rows exist.
+
+Back up Neo4j immediately before a first full load. If a semantic gate fails,
+keep schedules and sensors stopped, retain a forensic dump if useful, and
+restore the pre-load dump before serving the graph as canonical.
 
 ### Bounded USAspending contract refresh
 
