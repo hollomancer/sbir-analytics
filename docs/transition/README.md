@@ -178,7 +178,8 @@ Transition detection configuration:
 - **Coverage** - Detects transitions for ~60% of mature awards
 - **Processing Time** - ~2-3 minutes per 1000 awards
 
-For historical validation reports, see `docs/archive/transition/status-reports/`.
+The repository does not retain historical validation status reports; the
+archived transition guides document the prior implementation context.
 
 ## Research and Development
 

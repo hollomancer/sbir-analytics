@@ -23,7 +23,6 @@ REMOVED_SRC_PATTERNS = (
     re.compile(r"\bsrc\.definitions(?:_ml)?\b"),
     re.compile(r"(?:^|[\s'\"(=:/])src/[A-Za-z0-9_.*?/-]+"),
 )
-LIVE_DOC_DIR_PREFIXES = ("docs/steering/", "docs/development/", "docs/testing/")
 LIVE_DOC_STALE_PATTERNS = (
     (
         re.compile(r"--cov=src(?:\b|/)"),
@@ -105,9 +104,7 @@ def _is_live_doc_file(relative: str) -> bool:
         return False
     if relative.startswith(("docs/archive/", "specs/archive/")):
         return False
-    if relative.startswith(LIVE_DOC_DIR_PREFIXES):
-        return True
-    if relative.startswith("docs/") and relative.count("/") == 1:
+    if relative.startswith("docs/"):
         return True
     return relative.startswith("specs/")
 
