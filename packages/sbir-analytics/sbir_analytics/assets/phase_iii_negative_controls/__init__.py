@@ -28,6 +28,12 @@ from .outcomes import (
     compare_firm_outcomes,
     evaluate_firm_outcomes,
 )
+from .placebo import (
+    PLACEBO_SEED,
+    PlaceboInputError,
+    build_placebo_census_tables,
+    permute_prior_end_dates_across_firms,
+)
 from .quarantine import (
     QuarantineKeyCoverage,
     build_unresolved_quarantine_key_audit,
@@ -72,6 +78,8 @@ __all__ = [
     "FREQUENCY_COLUMNS",
     "FirmOutcomeComparison",
     "FirmOutcomeTables",
+    "PLACEBO_SEED",
+    "PlaceboInputError",
     "QuarantineKeyCoverage",
     "build_nih_official_keys",
     "build_nih_sbir_attempts",
@@ -90,6 +98,7 @@ __all__ = [
     "exact_match_controls",
     "compare_firm_outcomes",
     "evaluate_firm_outcomes",
+    "build_placebo_census_tables",
     "quarantine_key_gate",
     "reconcile_award_identity_attempts",
     "require_complete_unresolved_quarantine_keys",
@@ -97,6 +106,7 @@ __all__ = [
     "require_reliable_sam_eligibility",
     "sam_eligibility_gate",
     "require_covariate_balance",
+    "permute_prior_end_dates_across_firms",
     "summarize_quarantine_key_coverage",
     "summarize_sam_eligibility",
     "summarize_sam_exclusion_reasons",
