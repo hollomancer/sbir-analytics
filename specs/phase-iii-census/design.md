@@ -328,6 +328,27 @@ control discrimination; not validated true Phase III status.”
 Detailed matching, balance, and placebo interfaces belong in the post-approval
 requirements/design update. They cannot alter the criteria frozen here.
 
+### Approved matched-common-support negative-control estimand
+
+Among exact-UEI Phase II firms with complete, nonconflicting values for all five frozen
+matching covariates and at least one screened-negative SAM control matching exactly on
+those covariates, compare the distributions of frozen criteria-met counts, their overlap,
+and the proportion of firms clearing the complete criteria set under the shared
+pseudo-index risk-set construction.
+
+This estimand is conditional on observed common support. It does not validate or estimate
+discrimination for unmatched Phase II firms, and it does not change the Phase 1 census
+estimand or any census clause. The matched subset's cardinality is an output of the frozen
+eligibility and exact-matching rules, not a new inclusion threshold. Every Phase 2 report
+must display the full pre-outcome coverage and match-count tables beside the arm results.
+
+The repository owner approved this restriction on 2026-08-03 after seeing the eligibility,
+covariate-coverage, exact-match, and balance tables recorded in
+[`control-matching-audit-2026-08-03.md`](../../studies/phase-iii-census/control-matching-audit-2026-08-03.md),
+but before any arm criteria distribution, overlap coefficient, full-criteria ratio, or
+placebo result existed. A later broader analysis requires a prospective amendment or new
+study and cannot be presented as the preregistered negative-control result.
+
 ### Approved first-contract business-size matching covariate
 
 Public SAM entity data does not supply the employee-count measure needed for the originally

@@ -118,3 +118,10 @@ Before Phase 2 outcome construction, the repository owner must decide whether th
 matched frame's coverage is adequate for the intended negative-control inference. Any
 revision to matching covariates or exactness would require a prospective amendment with a
 reason that does not inspect arm outcomes.
+
+### Review disposition
+
+On 2026-08-03, before any arm outcome existed, the repository owner approved proceeding
+with the clean restricted test and limiting the negative-control inference to the matched
+common-support subset. Revision 13 records that decision. Exact matching remains unchanged;
+the approval does not extrapolate the result to unmatched Phase II firms.
