@@ -76,6 +76,7 @@ _REASON_ORDER = (
     "unresolved_address_zip_collision",
     "missing_comparable_name_state_key",
 )
+_FEDERAL_SBIR_STTR_CODES = frozenset({"SR1", "SR2", "SR3", "ST1", "ST2", "ST3"})
 
 
 def _text(value: Any) -> str:
@@ -356,6 +357,57 @@ def build_sam_eligibility_table(
             }
         )
     return pd.DataFrame.from_records(records)
+
+
+def exclude_fpds_coded_awardees(
+    eligibility: pd.DataFrame,
+    contracts: pd.DataFrame,
+) -> pd.DataFrame:
+    """Conservatively confirm exact-UEI firms carrying any FPDS SBIR/STTR code.
+
+    This is an eligibility screen across the complete extracted contract history,
+    not a Phase III census outcome. It runs before covariates or matching and treats
+    all six Phase I–III SBIR/STTR research codes identically.
+    """
+
+    _require_columns(
+        eligibility,
+        ("eligibility_status", "exclusion_reasons", "candidate_ueis"),
+        label="eligibility table",
+    )
+    _require_columns(contracts, ("vendor_uei", "research"), label="FPDS contract frame")
+    coded_ueis = {
+        uei
+        for row in contracts.loc[:, ["vendor_uei", "research"]].itertuples(index=False)
+        if _text(row.research).upper() in _FEDERAL_SBIR_STTR_CODES
+        and (uei := normalize_uei(row.vendor_uei))
+    }
+    result = eligibility.copy()
+    matched_values: list[tuple[str, ...]] = []
+    statuses: list[str] = []
+    reasons: list[tuple[str, ...]] = []
+    for row in result.itertuples(index=False):
+        matched = tuple(
+            sorted(
+                {
+                    uei
+                    for value in _values(row.candidate_ueis)
+                    if (uei := normalize_uei(value)) and uei in coded_ueis
+                }
+            )
+        )
+        current_reasons = tuple(_text(value) for value in _values(row.exclusion_reasons))
+        if matched and "fpds_sbir_sttr_code_intersection" not in current_reasons:
+            current_reasons = (*current_reasons, "fpds_sbir_sttr_code_intersection")
+        statuses.append(
+            EligibilityStatus.CONFIRMED_SBIR.value if matched else _text(row.eligibility_status)
+        )
+        reasons.append(current_reasons)
+        matched_values.append(matched)
+    result["eligibility_status"] = statuses
+    result["exclusion_reasons"] = reasons
+    result["matched_fpds_sbir_sttr_ueis"] = matched_values
+    return result
 
 
 def summarize_sam_eligibility(eligibility: pd.DataFrame) -> pd.DataFrame:
