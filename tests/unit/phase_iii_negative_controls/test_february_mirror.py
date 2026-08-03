@@ -91,10 +91,8 @@ def test_schema_resolution_pins_table_and_ordered_columns(
 def test_python_recheck_requires_exact_agency_and_key() -> None:
     extractor = FebruaryAwardSearchExtractor(_attempts(), pin=_pin())
     rows = [
-        "1\tASST-1\tFA-12-34\t\\N\t\\N\t123456789\tUEI000000001\t"
-        "Department of Defense\n",
-        "2\tASST-2\tFA-12-34\t\\N\t\\N\t987654321\tUEI000000002\t"
-        "Department of Energy\n",
+        "1\tASST-1\tFA-12-34\t\\N\t\\N\t123456789\tUEI000000001\tDepartment of Defense\n",
+        "2\tASST-2\tFA-12-34\t\\N\t\\N\t987654321\tUEI000000002\tDepartment of Energy\n",
     ]
 
     result = list(extractor._parse_candidates(iter(rows), _COLUMNS))

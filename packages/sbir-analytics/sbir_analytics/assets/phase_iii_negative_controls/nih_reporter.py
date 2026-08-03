@@ -64,9 +64,7 @@ class NIHReporterExtractor:
         selected = attempts.loc[attempts["adapter"].isin(_NIH_ADAPTERS)].copy()
         if selected.empty:
             raise IdentityRecoveryError("No NIH exact-key attempts were supplied")
-        selected["query_key"] = selected["source_award_key"].map(
-            canonicalize_nih_query_key
-        )
+        selected["query_key"] = selected["source_award_key"].map(canonicalize_nih_query_key)
         selected = selected.loc[selected["query_key"].notna()]
         if selected.empty:
             raise IdentityRecoveryError("NIH attempts contain no usable project query keys")
@@ -99,7 +97,9 @@ class NIHReporterExtractor:
                 method="POST",
             )
             try:
-                with urllib.request.urlopen(request, timeout=180) as response:  # noqa: S310
+                # The request URL is the fixed official HTTPS endpoint above; callers
+                # can replace the requester but cannot supply a URL to this method.
+                with urllib.request.urlopen(request, timeout=180) as response:  # nosec B310
                     return response.read()
             except urllib.error.HTTPError as error:
                 if error.code not in {408, 425, 429, 500, 502, 503, 504}:
@@ -160,10 +160,7 @@ class NIHReporterExtractor:
             sorted(
                 {
                     str(value).strip()
-                    for value in (
-                        organization.get("org_ueis")
-                        or [organization.get("primary_uei")]
-                    )
+                    for value in (organization.get("org_ueis") or [organization.get("primary_uei")])
                     if value is not None and str(value).strip()
                 }
             )
@@ -173,8 +170,7 @@ class NIHReporterExtractor:
                 {
                     str(value).strip()
                     for value in (
-                        organization.get("org_duns")
-                        or [organization.get("primary_duns")]
+                        organization.get("org_duns") or [organization.get("primary_duns")]
                     )
                     if value is not None and str(value).strip()
                 }

@@ -32,12 +32,10 @@ from .source_keys import (
 
 AWARD_SEARCH_RELATION = "rpt.award_search"
 FEBRUARY_2026_ARCHIVE_URL = (
-    "https://ia601503.us.archive.org/19/items/gov_backup_niema/"
-    "usaspending-db_20260206.zip"
+    "https://ia601503.us.archive.org/19/items/gov_backup_niema/usaspending-db_20260206.zip"
 )
 FEBRUARY_2026_REPLICA_URLS = (
-    "https://ia801503.us.archive.org/19/items/gov_backup_niema/"
-    "usaspending-db_20260206.zip",
+    "https://ia801503.us.archive.org/19/items/gov_backup_niema/usaspending-db_20260206.zip",
 )
 
 _REQUIRED_COLUMNS = frozenset(
@@ -319,9 +317,7 @@ class FebruaryAwardSearchExtractor:
     def _resolve_source(cls, toc_file: Path, pin: AwardSearchMirrorPin) -> AwardSearchSource:
         toc_digest = _file_sha256(toc_file)
         if toc_digest != pin.toc_sha256:
-            raise ArchiveSchemaError(
-                f"February mirror toc.dat digest mismatch: {toc_digest}"
-            )
+            raise ArchiveSchemaError(f"February mirror toc.dat digest mismatch: {toc_digest}")
         with tempfile.TemporaryDirectory(prefix="award-search-schema-") as temp_name:
             archive_dir = Path(temp_name)
             shutil.copyfile(toc_file, archive_dir / "toc.dat")
@@ -333,8 +329,7 @@ class FebruaryAwardSearchExtractor:
                         entries.append(match[1])
             if entries != [pin.dump_id]:
                 raise ArchiveSchemaError(
-                    f"Expected one pinned {AWARD_SEARCH_RELATION} TABLE DATA entry; "
-                    f"found {entries}"
+                    f"Expected one pinned {AWARD_SEARCH_RELATION} TABLE DATA entry; found {entries}"
                 )
             with gzip.open(archive_dir / f"{pin.dump_id}.dat.gz", "wb"):
                 pass
@@ -558,9 +553,7 @@ class FebruaryAwardSearchExtractor:
                         raise SourceDataError(
                             "Award-key prefilter produced inconsistent scan statistics"
                         )
-                    self.stats["records_scanned"], self.stats["prefilter_matches"] = (
-                        parsed_stats
-                    )
+                    self.stats["records_scanned"], self.stats["prefilter_matches"] = parsed_stats
                     completed = True
                 finally:
                     if not completed and process.poll() is None:

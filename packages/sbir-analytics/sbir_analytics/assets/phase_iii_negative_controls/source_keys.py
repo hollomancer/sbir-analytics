@@ -272,9 +272,7 @@ def build_nih_sbir_attempts(sbir_awards: pd.DataFrame) -> pd.DataFrame:
             if award_key is None:
                 continue
             if year is None:
-                raise IdentityRecoveryError(
-                    "NIH project recovery requires a four-digit award year"
-                )
+                raise IdentityRecoveryError("NIH project recovery requires a four-digit award year")
             for adapter in (NIH_PROJECT_ADAPTER, NIH_CORE_PROJECT_ADAPTER):
                 records.append(
                     _attempt_record(
@@ -326,9 +324,7 @@ def build_nih_official_keys(
         year = canonicalize_year(row.fiscal_year)
         record_id = _text(row.official_record_id)
         if year is None or not record_id:
-            raise IdentityRecoveryError(
-                "Every NIH project must have fiscal_year and record ID"
-            )
+            raise IdentityRecoveryError("Every NIH project must have fiscal_year and record ID")
         for adapter, source_column in (
             (NIH_PROJECT_ADAPTER, "project_num"),
             (NIH_CORE_PROJECT_ADAPTER, "core_project_num"),
@@ -339,9 +335,7 @@ def build_nih_official_keys(
             records.append(
                 {
                     "adapter": adapter,
-                    "agency_key": canonicalize_agency(
-                        "Department of Health and Human Services"
-                    ),
+                    "agency_key": canonicalize_agency("Department of Health and Human Services"),
                     "award_year_key": year,
                     "canonical_award_key": award_key,
                     "official_record_id": record_id,

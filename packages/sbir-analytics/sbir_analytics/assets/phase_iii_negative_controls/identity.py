@@ -235,17 +235,12 @@ def _resolved_attempt_identity(
         if ueis and duns_values:
             for uei in ueis:
                 for duns in duns_values:
-                    identifier_rows.append(
-                        {"recipient_uei": uei, "recipient_duns": duns}
-                    )
+                    identifier_rows.append({"recipient_uei": uei, "recipient_duns": duns})
         elif ueis:
-            identifier_rows.extend(
-                {"recipient_uei": uei, "recipient_duns": None} for uei in ueis
-            )
+            identifier_rows.extend({"recipient_uei": uei, "recipient_duns": None} for uei in ueis)
         else:
             identifier_rows.extend(
-                {"recipient_uei": None, "recipient_duns": duns}
-                for duns in duns_values
+                {"recipient_uei": None, "recipient_duns": duns} for duns in duns_values
             )
     return _classify_identifiers(pd.DataFrame.from_records(identifier_rows))
 
@@ -269,9 +264,7 @@ def reconcile_award_identity_attempts(attempt_audits: pd.DataFrame) -> pd.DataFr
         label="identity attempt audit",
     )
     valid_statuses = {status.value for status in RecoveryStatus}
-    invalid_statuses = sorted(
-        set(attempt_audits["recovery_status"].map(_text)) - valid_statuses
-    )
+    invalid_statuses = sorted(set(attempt_audits["recovery_status"].map(_text)) - valid_statuses)
     if invalid_statuses:
         raise IdentityRecoveryError(
             f"identity attempt audit contains invalid statuses: {invalid_statuses}"
@@ -284,8 +277,7 @@ def reconcile_award_identity_attempts(attempt_audits: pd.DataFrame) -> pd.DataFr
     ):
         statuses = set(attempts["recovery_status"].map(_text))
         resolved = attempts.loc[
-            attempts["recovery_status"].map(_text)
-            == RecoveryStatus.RESOLVED_AUTHORITATIVE.value
+            attempts["recovery_status"].map(_text) == RecoveryStatus.RESOLVED_AUTHORITATIVE.value
         ]
 
         if RecoveryStatus.UNRESOLVED_CONFLICT.value in statuses:
@@ -311,11 +303,7 @@ def reconcile_award_identity_attempts(attempt_audits: pd.DataFrame) -> pd.DataFr
         def combined_tuple(frame: pd.DataFrame, column: str) -> tuple[str, ...]:
             return tuple(
                 sorted(
-                    {
-                        item
-                        for value in frame[column]
-                        for item in _tuple_values(value, label=column)
-                    }
+                    {item for value in frame[column] for item in _tuple_values(value, label=column)}
                 )
             )
 
@@ -328,12 +316,8 @@ def reconcile_award_identity_attempts(attempt_audits: pd.DataFrame) -> pd.DataFr
                 "attempted_adapters": tuple(sorted(set(attempts["adapter"].map(_text)))),
                 "attempt_statuses": tuple(sorted(statuses)),
                 "official_record_ids": combined_tuple(attempts, "official_record_ids"),
-                "official_source_digests": combined_tuple(
-                    attempts, "official_source_digests"
-                ),
-                "official_snapshot_dates": combined_tuple(
-                    attempts, "official_snapshot_dates"
-                ),
+                "official_source_digests": combined_tuple(attempts, "official_source_digests"),
+                "official_snapshot_dates": combined_tuple(attempts, "official_snapshot_dates"),
             }
         )
 
