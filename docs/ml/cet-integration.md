@@ -47,7 +47,7 @@ the definitions in Dagster rather than relying on a copied asset list when chang
 Run the complete job only after installing the full stack and providing its local inputs:
 
 ```bash
-uv run dagster job execute -m sbir_analytics.definitions -j cet_full_pipeline_job
+make cet-run
 ```
 
 Heavy CET assets are not scheduled by default on the Mac mini. Follow the

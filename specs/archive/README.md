@@ -1,48 +1,21 @@
 # Archived Specifications
 
-This directory contains completed specifications that have been fully implemented and integrated into the codebase.
+Archived specifications preserve implementation history and rationale. They are
+provenance, not current commands or architecture guidance. Start with the
+[status registry](../status.md) and [specification workflow](../../docs/development/spec-workflow-guide.md)
+before reviving any archived work.
 
-## Completed Specifications
+## Categories
 
-### SBIR Fiscal Returns Analysis (sbir-fiscal-returns-analysis/)
-**Completed:** November 2025
-**Status:** ✅ Fully Implemented
+| Directory | Meaning |
+| --- | --- |
+| [`completed-features/`](completed-features/) | Delivered feature specifications and completion records |
+| [`completed-migrations/`](completed-migrations/) | Finished repository or workflow migrations |
+| [`superseded/`](superseded/) | Designs replaced by a different approach or intentionally dropped |
 
-A comprehensive fiscal returns analysis system that calculates the return on investment (ROI) of SBIR program funding by estimating federal tax receipts generated from economic impacts.
+Other directories are historical snapshots retained for context. Their paths,
+commands, dependencies, and task states may describe the repository at the time
+they were written. Use current documentation under `docs/` to operate the system.
 
-**Key Features:**
-- Multi-stage ETL pipeline with data preparation, economic modeling, and tax calculation
-- Integration with StateIO/USEEIO economic models via R interface
-- Sensitivity analysis and uncertainty quantification
-- Comprehensive audit trails and quality gates
-- 13 Dagster assets with full test coverage
-
-**Implementation Highlights:**
-- Complete pipeline: `src/assets/fiscal_assets.py` (13 assets, 7 asset checks)
-- Core transformers: `src/transformers/fiscal_*.py` (6 components)
-- Data enrichers: `src/enrichers/fiscal_*.py` (3 services)
-- Job definitions: `src/assets/jobs/fiscal_returns_job.py` (3 variants)
-- Test coverage: 10 test files (unit, integration, validation)
-- Configuration: `config/base.yaml` fiscal_analysis section
-
-**Usage:**
-```bash
-# Run MVP pipeline (core functionality)
-dagster job execute -f src/definitions.py -j fiscal_returns_mvp_job
-
-# Run full pipeline with sensitivity analysis
-dagster job execute -f src/definitions.py -j fiscal_returns_full_job
-```
-
-**Documentation:**
-- Requirements: Comprehensive EARS-compliant requirements with 9 user stories
-- Design: Detailed architecture with economic modeling approach
-- Implementation: Complete task breakdown with all 9 major tasks completed
-
-This specification demonstrates the full spec-driven development workflow from requirements gathering through design to complete implementation and testing.
-
-## Superseded Specifications
-
-See `superseded/README.md` for specs that were archived because they were replaced or deferred:
-- **mcp_interface** — Superseded by `mcp_agent_tools` (2026-03-12)
-- **web_search_enrichment** — Deferred, no implementation built (2026-03-12)
+When archiving a spec, add a completion or supersession record, update
+`specs/status.md`, and repair inbound links in the same change.

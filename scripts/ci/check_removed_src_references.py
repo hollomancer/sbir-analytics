@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+from collections import Counter
 from dataclasses import dataclass
 import re
 import subprocess
@@ -51,8 +52,10 @@ ARCHIVE_REFERENCE_PATTERNS = (
     re.compile(r"scripts\.archive(?:\.|\b)"),
 )
 MARKDOWN_LINK_RE = re.compile(r"!?\[[^\]]+\]\(([^)]+)\)")
+MARKDOWN_REFERENCE_LINK_RE = re.compile(r"^\s*\[[^\]]+\]:\s*(\S+)")
 MARKDOWN_HEADING_RE = re.compile(r"^ {0,3}#{1,6}\s+(.+?)\s*#*\s*$")
 MARKDOWN_EXPLICIT_ANCHOR_RE = re.compile(r'<a\s+(?:[^>]*?\s)?(?:id|name)=["\']([^"\']+)["\']', re.I)
+SPEC_STATUS_ENTRY_RE = re.compile(r"^- \*\*`([^`]+)`\s+—", re.MULTILINE)
 
 
 @dataclass(frozen=True)
@@ -83,7 +86,8 @@ def tracked_files() -> list[Path]:
         capture_output=True,
         text=True,
     )
-    return [REPOSITORY_ROOT / relative for relative in result.stdout.splitlines()]
+    paths = [REPOSITORY_ROOT / relative for relative in result.stdout.splitlines()]
+    return [path for path in paths if path.exists()]
 
 
 def __file_relative__() -> str:
@@ -110,6 +114,13 @@ def _is_live_doc_file(relative: str) -> bool:
     if relative.startswith("docs/"):
         return True
     return relative.startswith("specs/")
+
+
+def _is_documentation_file(relative: str) -> bool:
+    """Return whether a tracked Markdown file belongs to project documentation."""
+    return relative == "README.md" or (
+        relative.endswith(".md") and relative.startswith(("docs/", "specs/"))
+    )
 
 
 def _is_archive_guard_file(relative: str) -> bool:
@@ -243,21 +254,22 @@ def _markdown_anchors(path: Path) -> set[str]:
     return anchors
 
 
-def scan_missing_live_doc_links(
-    paths: list[Path], *, root: Path = REPOSITORY_ROOT
-) -> list[Violation]:
-    """Find local Markdown links or fragments in live docs/specs that point nowhere."""
+def scan_missing_doc_links(paths: list[Path], *, root: Path = REPOSITORY_ROOT) -> list[Violation]:
+    """Find local Markdown links or fragments in project docs that point nowhere."""
     violations: list[Violation] = []
     anchors_by_path: dict[Path, set[str]] = {}
-    live_docs = [path for path in paths if _is_live_doc_file(_relative_to_repository(path, root))]
-    for path in live_docs:
+    docs = [path for path in paths if _is_documentation_file(_relative_to_repository(path, root))]
+    for path in docs:
         lines = _read_text_lines(path)
         if lines is None:
             continue
         relative = _relative_to_repository(path, root)
         for line_number, line in enumerate(lines, 1):
-            for match in MARKDOWN_LINK_RE.finditer(line):
-                target = _extract_markdown_link_target(match.group(1))
+            raw_targets = [match.group(1) for match in MARKDOWN_LINK_RE.finditer(line)]
+            if reference_match := MARKDOWN_REFERENCE_LINK_RE.match(line):
+                raw_targets.append(reference_match.group(1))
+            for raw_target in raw_targets:
+                target = _extract_markdown_link_target(raw_target)
                 if _is_external_link(target):
                     continue
                 resolved = _resolve_markdown_target(path, target, root)
@@ -289,6 +301,59 @@ def scan_missing_live_doc_links(
     return violations
 
 
+def scan_spec_registry(*, root: Path = REPOSITORY_ROOT) -> list[Violation]:
+    """Require every top-level feature spec to appear exactly once in the status registry."""
+    specs_root = root / "specs"
+    registry_path = specs_root / "status.md"
+    if not registry_path.exists():
+        return [Violation("specs/status.md", 1, "missing specification status registry", "")]
+
+    tracked_specs = {
+        path.name
+        for path in specs_root.iterdir()
+        if (path.is_dir() and path.name != "archive")
+        or (
+            path.is_file()
+            and path.suffix == ".md"
+            and path.name not in {"REQUIREMENTS_TEMPLATE.md", "status.md"}
+        )
+    }
+    registry_text = registry_path.read_text(encoding="utf-8")
+    registered_entries = SPEC_STATUS_ENTRY_RE.findall(registry_text)
+    registered_specs = set(registered_entries)
+
+    violations: list[Violation] = []
+    for name in sorted(tracked_specs - registered_specs):
+        violations.append(
+            Violation(
+                "specs/status.md",
+                1,
+                f"top-level spec is missing from status registry: {name}",
+                name,
+            )
+        )
+    for name in sorted(registered_specs - tracked_specs):
+        violations.append(
+            Violation(
+                "specs/status.md",
+                1,
+                f"status registry references a missing top-level spec: {name}",
+                name,
+            )
+        )
+    for name, count in sorted(Counter(registered_entries).items()):
+        if count > 1:
+            violations.append(
+                Violation(
+                    "specs/status.md",
+                    1,
+                    f"status registry contains duplicate entries for: {name}",
+                    name,
+                )
+            )
+    return violations
+
+
 def _print_section(title: str, violations: list[Violation]) -> None:
     if not violations:
         return
@@ -311,8 +376,12 @@ def main() -> int:
             scan_live_doc_stale_content(paths),
         ),
         (
-            "Missing local Markdown links were found in live docs/specs:",
-            scan_missing_live_doc_links(paths),
+            "Missing local Markdown links were found in project documentation:",
+            scan_missing_doc_links(paths),
+        ),
+        (
+            "The specification status registry is incomplete:",
+            scan_spec_registry(),
         ),
         (
             "Operational files reference archived scripts:",

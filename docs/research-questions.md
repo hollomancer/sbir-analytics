@@ -565,9 +565,9 @@ statutory goal is Phase III commercialization.*
   Implementation on `main`: `scripts/run_benchmark.py` (evaluate / sensitivity /
   company-level CLI) backed by `sbir_etl/models/benchmark_models.py`, with tests
   in `tests/unit/test_benchmark_evaluator.py`.
-  *Caveat:* additional per-firm audit infrastructure and a fuller methodology doc
-  exist as local-only, uncommitted work — see
-  [Output products](#commercialization-benchmark-methodology-in-progress-not-yet-committed).
+  *Caveat:* the fuller methodology is committed, but its additional per-firm audit
+  infrastructure and FY2026 audited cohort remain local-only — see
+  [Output products](#commercialization-benchmark-methodology-committed-audit-harness-remains-local).
   *Deps: ER, ID, transitions, SEC EDGAR · Spec: [../specs/archive/completed-features/commercialization-benchmark/](../specs/archive/completed-features/commercialization-benchmark/)*
 
 ### B4. Predictive (Tier 4)
@@ -1022,15 +1022,14 @@ program-wide private-capital leverage.
 **Pulls from:** F1 (Form D profile), F3 (private-to-SBIR leverage), A1/A4
 (DoD-specific firm-health and acquisition decomposition).
 
-### Commercialization-benchmark methodology (in progress, not yet committed)
+### Commercialization-benchmark methodology (committed; audit harness remains local)
 
 **Audience:** SBA program oversight, statutory compliance reviewers, GAO.
 
-**Format:** `docs/commercialization-benchmark-methodology.md` — locally present
-but **not committed** to the repo. Documents the §638(qq)(3) statutory
-framework, the FY2026 evaluation methodology, the data-source provenance
-(FPDS/USAspending contracts, SEC Form D investment, SBIR.gov FABS grants), and
-the per-firm audit protocol.
+**Format:** [Commercialization benchmark methodology](commercialization-benchmark-methodology.md)
+is committed and documents the §638(qq)(3) statutory framework, FY2026 evaluation
+method, data-source provenance (FPDS/USAspending contracts, SEC Form D investment,
+and SBIR.gov FABS grants), and per-firm audit protocol.
 
 The methodology doc pairs with a per-firm audit harness
 (`scripts/archive/data/run_commercialization_benchmark.py` and
@@ -1040,8 +1039,9 @@ counterpart on `main` is `scripts/run_benchmark.py` plus
 `sbir_etl/models/benchmark_models.py`, which implements the same statutory
 framework through a different CLI shape.
 
-**The methodology doc and audit harness should be committed once stabilized** —
-the untracked status is itself a coverage gap worth closing.
+The methodology is reviewable, but the local audit harness and FY2026 audited
+cohort are still not reproducible from `main`. Migrating that harness into the
+maintained CLI remains the coverage gap.
 
 **Pulls from:** B3 (transition effectiveness and the §638(qq) benchmark
 question), F1 (Form D investment signal), F2 (NVCA-baseline comparison).

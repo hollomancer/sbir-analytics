@@ -10,11 +10,10 @@ Two ML systems: CET classification (predicts applicability to 21 NSTC critical &
 | [cet-classifier.md](cet-classifier.md) | Patent classifier: feature extraction, vectorizers, training/inference flow |
 | [cet-rule-engine.md](cet-rule-engine.md) | Rule-engine layer: negative keywords, context rules, agency/branch priors (YAML tuning) |
 
-**Run award classification:**
+**Run the complete CET pipeline:**
 
 ```bash
-dagster asset materialize -m sbir_analytics.definitions --select ml/enriched_cet_award_classifications
-dagster job execute -m sbir_analytics.definitions -j cet_full_pipeline_job
+make cet-run
 ```
 
 ## ModernBert Embeddings
@@ -23,12 +22,14 @@ dagster job execute -m sbir_analytics.definitions -j cet_full_pipeline_job
 |-----|---------|
 | [modernbert.md](modernbert.md) | Full guide: inference modes, config, Dagster assets, optimization, troubleshooting |
 
-**Run embeddings:**
+**Run the complete embeddings pipeline:**
 
 ```bash
-dagster asset materialize -m sbir_analytics.definitions --select "modernbert*"
-dagster job execute -m sbir_analytics.definitions -j modernbert_job
+make modernbert-run
 ```
+
+The Make targets own the Dagster module and job names. Use the subsystem guides
+only when materializing a narrower asset selection.
 
 ## Configuration
 

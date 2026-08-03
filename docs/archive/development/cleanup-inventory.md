@@ -14,7 +14,7 @@ Status: archived
 This inventory tracks codebase simplification work: live specs, stale docs,
 archived scripts, test drift, and CI drift. It is not a feature spec. Use it as
 the starting point for cleanup PRs, and use
-[`docs/research-questions.md`](../research-questions.md) as the scope gate.
+[`docs/research-questions.md`](../../research-questions.md) as the scope gate.
 
 ## Cleanup Rules
 

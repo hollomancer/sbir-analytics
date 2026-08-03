@@ -212,6 +212,11 @@ lint-boundaries: ## Enforce package and archive dependency boundaries
 	$(call run,uv run python scripts/ci/check_removed_src_references.py)
 	$(call run,uv run python scripts/ci/validate_study_manifests.py)
 
+.PHONY: docs-check
+docs-check: ## Check documentation links, anchors, stale commands, and spec registration
+	@$(call info,Checking documentation integrity)
+	$(call run,uv run python scripts/ci/check_removed_src_references.py)
+
 .PHONY: format
 format: ## Format code
 	@$(call info,Formatting code)

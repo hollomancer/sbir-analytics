@@ -1,8 +1,8 @@
 # Requirements — SBIR/STTR Award Identification
 
 > **Status:** Implemented on `main`. Classifier: `sbir_etl/extractors/sbir_classifier.py`.
-> Methodology: [`docs/sbir-identification-methodology.md`](../../docs/sbir-identification-methodology.md).
-> Supports inventory question **E1** in [docs/research-questions.md](../../docs/research-questions.md).
+> Methodology: [`docs/sbir-identification-methodology.md`](../../../../docs/sbir-identification-methodology.md).
+> Supports inventory question **E1** in [docs/research-questions.md](../../../../docs/research-questions.md).
 
 **Research question anchor:** E1 — which federal awards are SBIR/STTR vs. non-SBIR, and with what confidence?
 **Answers for:** pipeline engineers, SBA oversight analysts

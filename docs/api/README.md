@@ -47,12 +47,12 @@ packages/sbir-ml/sbir_ml/
 - `sbir_etl.transformers` - Business logic transformations
 - `sbir_graph.loaders` - Neo4j graph loading
 
-## Generating Docs
+## Generated documentation
 
-```bash
-# Generate API documentation
-uv run pdoc sbir_etl/ -o docs/api/generated/
-```
+The repository does not currently publish or commit generated API documentation.
+This page is the maintained code map; source modules and their tests are the API
+reference. If a generated site becomes useful, add its generator to a documented
+dependency group and expose it through a Make target before documenting the command.
 
 ## Related
 

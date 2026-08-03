@@ -4,7 +4,7 @@
 > `sbir_etl/models/benchmark_models.py`. Evaluator:
 > `packages/sbir-ml/sbir_ml/transition/analysis/benchmark_evaluator.py`.
 > Tests: `tests/unit/test_benchmark_evaluator.py`.
-> Supports inventory question **B3** in [docs/research-questions.md](../../docs/research-questions.md).
+> Supports inventory question **B3** in [docs/research-questions.md](../../../../docs/research-questions.md).
 
 **Research question anchor:** B3 — which Phase II awardees subject to §638(qq)(3)
 Increased Performance Standards meet the statutory Commercialization Benchmark?

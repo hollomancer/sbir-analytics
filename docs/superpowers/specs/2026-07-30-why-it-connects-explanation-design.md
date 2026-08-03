@@ -1,8 +1,8 @@
 # "Why it connects" — Anchored Evidence Narrative (Phase 1)
 
 **Date:** 2026-07-30
-**Status:** Approved (design), Phase 1 only
-**Branch:** `feat/awardee-first-procurement-packet` (PR #466)
+**Status:** Implemented; retained as the Phase 1/2 design record
+**Original branch:** `feat/awardee-first-procurement-packet` (PR #466 and follow-up phases)
 
 ## Problem
 

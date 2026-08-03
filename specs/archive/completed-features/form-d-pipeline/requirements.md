@@ -1,8 +1,8 @@
 # Requirements — Form D Private Capital Pipeline
 
 > **Status:** Implemented on `main`. PR #286 merged. Methodology commit `f65abb89`.
-> Canonical analysis: [`docs/research/sbir-form-d-fundraising-analysis.md`](../../docs/research/sbir-form-d-fundraising-analysis.md).
-> Supports inventory questions **F1** and **F3** in [docs/research-questions.md](../../docs/research-questions.md).
+> Canonical analysis: [`docs/research/sbir-form-d-fundraising-analysis.md`](../../../../docs/research/sbir-form-d-fundraising-analysis.md).
+> Supports inventory questions **F1** and **F3** in [docs/research-questions.md](../../../../docs/research-questions.md).
 
 **Research question anchor:** F1 (Form D fundraising profile of SBIR awardees), F3 (private-to-SBIR leverage ratio)
 **Answers for:** entrepreneurial finance researchers, defense industrial base analysts

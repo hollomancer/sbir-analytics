@@ -20,12 +20,14 @@ Use this page as a router; commands and rules have one canonical owner.
 
 - [Exception Handling](exception-handling.md) - Custom exception hierarchy and patterns
 - [Logging Standards](logging-standards.md) - When to use logger vs console.print
+- [Pre-commit and CI consistency](pre-commit-ci-consistency.md) - What runs locally and in CI
 
 ## Planning and architecture
 
 - [Spec Workflow Guide](spec-workflow-guide.md) - Using specifications
 - [Architecture overview](../architecture/detailed-overview.md) - Package and deployment boundaries
 - [Steering documents](../steering/) - Durable identity, evidence, orchestration, and quality rules
+- `make docs-check` - Documentation links, anchors, stale commands, and spec-registry coverage
 
 ---
 
