@@ -680,6 +680,11 @@ Everything above section 9 describes the current state. This section describes
 where the architecture is headed and why. It is a direction of travel, not an
 account of the repository as it stands.
 
+The tier contracts are maintained canonically in
+[steering/epistemic-tiers.md](../steering/epistemic-tiers.md), which is what the
+agents in `.claude/agents/` read. This section gives the architectural rationale;
+that document gives the operative rules. Where they disagree, it wins.
+
 ### 10.1 The problem this solves
 
 The organizing axis of the current layout is technical role — extract, enrich,

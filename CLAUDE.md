@@ -8,6 +8,34 @@ Graph-based ETL: SBIR awards → Neo4j. Dagster orchestration, DuckDB processing
 
 Architectural patterns and technical docs live in `docs/steering/`. Feature specs live in `specs/`.
 
+## Epistemic tiers
+
+Every artifact sits in one tier, which fixes what it costs to maintain and how
+much weight it can carry. Full contracts:
+[docs/steering/epistemic-tiers.md](docs/steering/epistemic-tiers.md).
+
+| Tier | Contract | Where today |
+|------|----------|-------------|
+| `primitives` | One implementation per concept, versioned behavior, comprehensive tests | `sbir_etl/identity/`, `sbir_etl/config/`, `sbir_etl/models/` |
+| `pipelines` | Deterministic, reproducible from a declared data cut, no inference | `sbir_etl/`, `packages/` |
+| `evidence` | Frozen spec + SHA enforcement + blocking asset checks + declared estimand — all four | Phase III census |
+| `exploratory` | Labeled non-citable. Nothing else required. | most of `scripts/` |
+
+Three rules:
+
+- **Declare the tier.** Specs state their target tier in `requirements.md`; new
+  assets and modules state theirs. Unstated means `exploratory`.
+- **Build to the tier, not above it.** Exploratory code getting tests and
+  abstractions is the most common form of waste here. Untended `scripts/` is the
+  design working, not a backlog.
+- **Promotion is explicit work.** Nothing moves up by being useful, by gaining
+  importers, or by having its numbers quoted. A number cannot be cited, or a
+  research question marked answerable, on exploratory-tier work.
+
+Reuse primitives rather than forking them: company-name normalization and
+similarity go through `sbir_etl.identity` (add a named profile if you need new
+behavior); config goes through `sbir_etl/config/loader.py`.
+
 ## Live deployment
 
 Before any deployment, server operation, or live Dagster materialization, read
@@ -33,6 +61,11 @@ Custom agents in `.claude/agents/`:
 
 For **spec work**: scope-guard → spec-implementer → test-fixer → quality-sweep.
 For **bug fixes**: skip to test-fixer or quality-sweep directly.
+
+Each agent reads the tier from the spec and holds to it: `scope-guard` checks the
+declared tier against the contract and can return `RETIER`, `spec-implementer`
+builds to the tier and refuses silent promotion, `test-fixer` and `quality-sweep`
+scale coverage and cleanup effort by tier rather than uniformly.
 
 ## Skills
 

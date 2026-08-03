@@ -4,6 +4,17 @@ Read [CLAUDE.md](CLAUDE.md) for the repository's project conventions, testing
 requirements, code standards, and scope rules. Those instructions apply to all
 coding agents; tool-specific agent definitions may differ by runtime.
 
+## Epistemic tiers
+
+Before implementing anything, establish which tier the work targets —
+`primitives`, `pipelines`, `evidence`, or `exploratory`. The contracts are in
+[docs/steering/epistemic-tiers.md](docs/steering/epistemic-tiers.md) and summarized
+in CLAUDE.md.
+
+Build to the declared tier and no higher. Unstated tier means `exploratory`.
+Promotion between tiers is explicit work that satisfies the destination contract —
+never a side effect of code becoming useful or gaining callers.
+
 ## Live deployment
 
 Before any deployment, server operation, or live Dagster materialization, read
