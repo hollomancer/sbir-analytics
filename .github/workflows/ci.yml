@@ -85,6 +85,39 @@ jobs:
           # schema validity, not the style of the embedded shell.
           ./actionlint -oneline -shellcheck= -pyflakes=
 
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # detect-secrets compares against the committed baseline; a shallow
+          # clone is enough, but the baseline scan walks the working tree.
+          fetch-depth: 0
+
+      - name: Setup Python and UV
+        uses: ./.github/actions/setup-python-uv
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          install-dev-deps: "true"
+
+      # Runs alongside the test shards rather than inside `quality`. Measured at
+      # ~37s of scan (bandit 10.7s, detect-secrets 25.8s) plus setup, which
+      # finishes well inside the ~65s the slowest test shard takes — so it costs
+      # a runner and no wall-clock. Folding it into `quality` would instead push
+      # that job past the shards and become the new critical path.
+      - name: Run Bandit
+        run: uv run python -m bandit -r sbir_etl packages -c pyproject.toml
+
+      # Blocking on purpose. This job exists because bandit and detect-secrets
+      # ran nowhere after weekly.yml was retired; a non-blocking version would
+      # reproduce the state it is meant to fix.
+      - name: Run detect-secrets
+        run: |
+          uv pip install detect-secrets
+          uv run detect-secrets scan --baseline .secrets.baseline
+
   test-fast:
     name: Fast Tests (${{ matrix.shard }}/4)
     if: github.event_name == 'pull_request'
