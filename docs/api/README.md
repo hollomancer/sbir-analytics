@@ -1,6 +1,6 @@
-# API Reference
+# Code Reference
 
-Code documentation for the SBIR ETL pipeline.
+Use this page to find the main parts of the SBIR data pipeline.
 
 ## Module Structure
 
@@ -49,10 +49,9 @@ packages/sbir-ml/sbir_ml/
 
 ## Generated documentation
 
-The repository does not currently publish or commit generated API documentation.
-This page is the maintained code map; source modules and their tests are the API
-reference. If a generated site becomes useful, add its generator to a documented
-dependency group and expose it through a Make target before documenting the command.
+We do not publish generated API documentation. Use this page as a map, then read
+the source code and tests for details. If we add generated documentation later,
+its tool and Make command should be part of the repository first.
 
 ## Related
 

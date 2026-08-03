@@ -1,21 +1,20 @@
 # Archived Specifications
 
-Archived specifications preserve implementation history and rationale. They are
-provenance, not current commands or architecture guidance. Start with the
-[status registry](../status.md) and [specification workflow](../../docs/development/spec-workflow-guide.md)
-before reviving any archived work.
+These old specifications explain what was built and why. Do not use their commands
+or design notes as current instructions. Before restarting old work, check the
+[status list](../status.md) and [specification workflow](../../docs/development/spec-workflow-guide.md).
 
 ## Categories
 
 | Directory | Meaning |
 | --- | --- |
-| [`completed-features/`](completed-features/) | Delivered feature specifications and completion records |
-| [`completed-migrations/`](completed-migrations/) | Finished repository or workflow migrations |
-| [`superseded/`](superseded/) | Designs replaced by a different approach or intentionally dropped |
+| [`completed-features/`](completed-features/) | Features that were delivered, with records of their completion |
+| [`completed-migrations/`](completed-migrations/) | Finished changes to the repository or development process |
+| [`superseded/`](superseded/) | Designs that were replaced or intentionally dropped |
 
-Other directories are historical snapshots retained for context. Their paths,
-commands, dependencies, and task states may describe the repository at the time
-they were written. Use current documentation under `docs/` to operate the system.
+The other directories are old snapshots kept for context. Their paths, commands,
+dependencies, and task lists may no longer be correct. Use the current guides in
+`docs/` when running the system.
 
 When archiving a spec, add a completion or supersession record, update
 `specs/status.md`, and repair inbound links in the same change.
