@@ -1,6 +1,7 @@
 """Exact SAM identity envelopes and fail-closed SBIR eligibility screening."""
 
 import hashlib
+import re
 from collections import Counter
 from collections.abc import Iterable
 from enum import StrEnum
@@ -50,8 +51,23 @@ _SBIR_SOURCE_REQUIRED = frozenset({"source_row_sha256", "uei", "duns"})
 _RECOVERY_REQUIRED = frozenset(
     {"source_row_sha256", "recovery_status", "resolved_ueis", "resolved_duns"}
 )
-_QUARANTINE_REQUIRED = frozenset({"source_row_sha256", "name_state_key", "address_zip_key"})
+_QUARANTINE_REQUIRED = frozenset(
+    {
+        "source_row_sha256",
+        "name_state_key",
+        "address_zip_key",
+        # Also required by require_complete_unresolved_quarantine_keys, which this
+        # module calls; declaring them here fails closed at the boundary instead
+        # of surfacing schema drift as a less direct error deeper in the gate.
+        "coverage_category",
+        "has_name_state_key",
+        "has_address_zip_key",
+    }
+)
 _NULL_TEXT = frozenset({"", "<NA>", "NAN", "NAT", "NONE", "NULL", r"\N"})
+# Same strict form the quarantine audit enforces, so a malformed fingerprint
+# cannot pass this screen and silently fail to intersect there.
+_FINGERPRINT_PATTERN = re.compile(r"^[0-9a-f]{64}$")
 _STATUS_ORDER = tuple(status.value for status in EligibilityStatus)
 _REASON_ORDER = (
     "resolved_uei_intersection",
@@ -81,8 +97,12 @@ def _require_columns(frame: pd.DataFrame, required: Iterable[str], *, label: str
 
 def _require_unique_fingerprints(frame: pd.DataFrame, *, label: str) -> pd.Series:
     fingerprints = frame["source_row_sha256"].map(_text).str.lower()
-    if fingerprints.eq("").any() or fingerprints.duplicated().any():
-        raise IdentityRecoveryError(f"{label}.source_row_sha256 values must be nonblank and unique")
+    if not fingerprints.map(lambda value: bool(_FINGERPRINT_PATTERN.fullmatch(value))).all():
+        raise IdentityRecoveryError(
+            f"{label}.source_row_sha256 must contain complete lowercase SHA-256 values"
+        )
+    if fingerprints.duplicated().any():
+        raise IdentityRecoveryError(f"{label}.source_row_sha256 values must be unique")
     return fingerprints
 
 

@@ -238,6 +238,41 @@ def test_source_schema_drift_fails_closed() -> None:
         _build(sam)
 
 
+def test_malformed_source_row_fingerprint_fails_closed() -> None:
+    """A truncated fingerprint must raise, not screen as a distinct source row.
+
+    The quarantine audit enforces the strict lowercase 64-hex form, so anything
+    looser here would pass this screen and then fail to intersect there — the
+    silent direction, which drops a real SBIR row out of the exclusion sets.
+    """
+
+    source, recovery, quarantine = _sbir_inputs()
+    source.loc[0, "source_row_sha256"] = "abc123"
+
+    with pytest.raises(IdentityRecoveryError, match="complete lowercase SHA-256"):
+        build_sam_eligibility_table(
+            pd.DataFrame([_sam_row("CANDIDATE015")]),
+            source,
+            recovery,
+            quarantine,
+        )
+
+
+def test_quarantine_schema_drift_fails_closed_at_the_boundary() -> None:
+    """Columns the downstream gate needs are declared here, not discovered late."""
+
+    source, recovery, quarantine = _sbir_inputs()
+    quarantine = quarantine.drop(columns="coverage_category")
+
+    with pytest.raises(IdentityRecoveryError, match="coverage_category"):
+        build_sam_eligibility_table(
+            pd.DataFrame([_sam_row("CANDIDATE016")]),
+            source,
+            recovery,
+            quarantine,
+        )
+
+
 def test_recovery_must_cover_exact_identifier_poor_source_set() -> None:
     source, recovery, quarantine = _sbir_inputs()
     recovery = recovery.iloc[:-1]
