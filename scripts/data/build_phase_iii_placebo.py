@@ -246,7 +246,7 @@ def run(output_dir: Path, *, owner_approved: bool = False) -> dict[str, Any]:
     contracts, contracts_path = _load_contracts()
     sbir_awards_path, verified_phase_ii_path = _verify_phase_ii_provenance(priors, contracts_path)
     if verified_phase_ii_path.resolve() != phase_ii_path.resolve():
-        raise CensusInputError("loaded Phase II path differs from verified Phase I provenance")
+        raise CensusInputError("loaded Phase II path differs from verified Phase II provenance")
 
     data_cut = parse_census_data_cut_date()
     validate_source_columns(priors, contracts)
