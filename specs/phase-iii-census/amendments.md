@@ -330,3 +330,37 @@ files before materialization.
   every retained-pair covariate level had absolute SMD 0. No arm criteria-met distribution,
   overlap coefficient, full-criteria ratio, control outcome, or placebo result had been
   computed or seen.
+
+## Revision 14 — Phase 2 firm-outcome grain
+
+- **Approved:** 2026-08-03.
+- **Git-history anchor:** The commit that first adds Revision 14 to this file is the
+  approval-record anchor; its identifier is intentionally not embedded in the content it
+  hashes.
+- **Reason:** The original handoff required full distributions of criteria-met counts per
+  firm but did not resolve whether Phase II rows, target transactions, or target contracts
+  supplied the counting grain. The repository owner approved distinct target contracts as
+  the primary firm outcome so multiple real or copied Phase II index rows cannot inflate a
+  firm's result.
+- **Outcome definition:** At the inherited universe and every cumulative clause, count the
+  distinct nonblank `target_contract_key` values with at least one surviving pair for each
+  matched firm, retaining zero-outcome firms. Treated firms use their normalized exact UEI;
+  controls use the matched SAM identity envelope across all of its exact UEIs. Emit the
+  complete arm-by-stage frequency distributions. Retain surviving-pair and distinct-target-
+  transaction counts as audit fields only.
+- **Comparison definition:** Compute the overlap coefficient from the normalized final-
+  clause contract-count distributions. Clearing the complete set means a nonzero final-
+  clause contract count. Report both arm numerators, denominators, and proportions, plus
+  the explicitly directed SBIR/control risk ratio; record the ratio as undefined if the
+  control proportion is zero.
+- **Arm-blindness:** Invoke one pure evaluator for each pair frame using only pair fields,
+  an exact UEI-to-firm mapping, the complete firm risk set, and the frozen data-cut date.
+  Attach arm labels only to returned tables. No outcome filter may inspect or branch on an
+  arm label.
+- **Criteria and matching impact:** None. No Phase 1 census estimand, pair universe,
+  inclusion clause, sensitivity cell, matching covariate, exactness rule, balance rule,
+  pseudo-index construction, score, model, or numeric cutoff changes.
+- **Visibility at approval:** The eligibility table, covariate-coverage table, exact-match
+  table, balance table, and their counts were visible. Phase 1 census results were already
+  visible. No treated or control criteria-count distribution, overlap coefficient,
+  full-criteria clearing rate, risk ratio, or placebo result had been computed or seen.

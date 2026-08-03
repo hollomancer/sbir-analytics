@@ -349,6 +349,42 @@ but before any arm criteria distribution, overlap coefficient, full-criteria rat
 placebo result existed. A later broader analysis requires a prospective amendment or new
 study and cannot be presented as the preregistered negative-control result.
 
+### Approved Phase 2 firm-outcome grain
+
+For the treated arm, a firm is the normalized exact UEI in the matched frame. For the
+control arm, a firm is the matched SAM identity envelope and all exact UEIs assigned to
+that envelope contribute to the same firm outcome. Every matched firm remains in every
+cumulative-stage distribution, including firms with zero surviving contracts.
+
+At the inherited pair universe and after each frozen cumulative clause, a firm's primary
+outcome is the number of distinct nonblank `target_contract_key` values for which at least
+one pair survives. Multiple Phase II index rows, copied pseudo-index rows, transactions,
+or pair rows cannot multiply the same contract within a firm. The report emits the full
+frequency distribution by arm and cumulative stage: `contracts_surviving` and the number
+and proportion of firms at that value. It also retains per-firm surviving-pair and
+distinct-transaction counts as audit columns, but those audit grains do not replace the
+contract outcome.
+
+The overlap coefficient is computed only from the two normalized final-clause
+distinct-contract frequency distributions as the sum, across every observed contract
+count including zero, of the smaller arm proportion. A firm clears the complete criteria
+set exactly when it has at least one final-clause distinct contract. The report gives each
+arm's numerator, denominator, and clearing proportion, plus an explicitly directed
+SBIR/control risk ratio. If the control clearing proportion is zero, the ratio is recorded
+as undefined rather than infinite. Presence of one surviving contract is the logical
+definition of a nonzero firm outcome, not a tunable inclusion threshold.
+
+The treated and control pair frames are both passed to the same pure evaluator, which
+receives pair fields, the UEI-to-firm mapping, the complete firm risk set, and the frozen
+data-cut date. Arm labels are attached only after evaluation. The evaluator cannot inspect
+an arm flag or branch on control status. Pre-outcome coverage, matching-count, and balance
+tables are copied into or referenced by the Phase 2 report beside these outcomes.
+
+The repository owner approved this grain on 2026-08-03 after seeing the eligibility,
+coverage, exact-match, and balance tables, but before any treated or control criteria
+distribution, overlap coefficient, full-criteria clearing rate, or placebo result had
+been computed or seen.
+
 ### Approved first-contract business-size matching covariate
 
 Public SAM entity data does not supply the employee-count measure needed for the originally
