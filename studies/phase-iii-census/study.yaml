@@ -12,15 +12,17 @@ estimand: >-
   proxies under every preregistered time-window and agency-continuity cell.
 frozen_artifacts:
   - path: specs/phase-iii-census/design.md
-    sha256: c61d690b0e6e20caf6651b7233d9074b99641de5cc1d4b1e3679ab5b8a58c49f
+    sha256: e493ac80dfc2959548ec19459352f9df0d20367a89b5f35aed37c9c48f5f25be
   - path: specs/phase-iii-census/amendments.md
-    sha256: 8f364cb9c832d01e032d253050a00d4b2aaffbaa97b17f46877fe2e917191514
+    sha256: 27e5763ccecec82e890a421eef42a33fdbc36f3e06d543e7bf67cc80829eebc7
 implementation:
   - path: packages/sbir-analytics/sbir_analytics/assets/phase_iii_census/assets.py
     symbol: phase_iii_census
+  - path: scripts/data/build_phase_iii_control_matches.py
+    symbol: run
 identity_policy:
   strategy: exact normalized UEI only; no name or DUNS fallback
-  version: phase-0-r12
+  version: phase-0-r13
   negative_evidence_allowed: false
 materialization:
   allowed: true
@@ -30,8 +32,10 @@ permitted_claims:
   - The complete February cumulative ladder and all six sensitivity cells were
     materialized from provenance-verified inputs, and the blocking one-factor check passed.
 limitations:
-  - Negative-control, placebo, and labeled-validation evidence is unresolved; no headline
-    cell, discrimination claim, undercount claim, or statutory Phase III interpretation is
-    authorized.
+  - Negative-control outcome, placebo, and labeled-validation evidence is unresolved; no
+    headline cell, discrimination claim, undercount claim, or statutory Phase III
+    interpretation is authorized.
+  - Negative-control inference is restricted to the frozen exact-match common-support
+    subset and does not generalize to unmatched Phase II firms.
   - Exact UEI matching misses acquisitions, successors, and UEI changes.
   - An uncoded lineage proxy is not proof of a statutory Phase III award.

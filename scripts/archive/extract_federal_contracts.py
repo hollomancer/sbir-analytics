@@ -281,6 +281,14 @@ def main():
     parser.add_argument("--dump-dir", type=Path, help="Custom dump directory path")
     parser.add_argument("--output", type=Path, help="Custom output file path")
     parser.add_argument(
+        "--vendor-filter",
+        type=Path,
+        help=(
+            "Override the configured vendor-filter JSON. The exact file digest is "
+            "recorded in the output provenance manifest."
+        ),
+    )
+    parser.add_argument(
         "--remote-zip",
         type=str,
         help=(
@@ -346,7 +354,9 @@ def main():
     # Load configuration for default paths
     config = get_config()
 
-    vendor_filter_file = config.paths.resolve_path("transition_vendor_filters")
+    vendor_filter_file = args.vendor_filter or config.paths.resolve_path(
+        "transition_vendor_filters"
+    )
     if not vendor_filter_file.exists():
         logger.error(f"Vendor filter file not found: {vendor_filter_file}")
         logger.info("Run: python scripts/usaspending/extract_sbir_vendors.py")

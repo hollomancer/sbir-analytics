@@ -299,3 +299,34 @@ files before materialization.
   address-plus-ZIP key. Phase 1 audit tables and census results were already visible. No
   control match, balance statistic, negative-control criteria distribution, overlap
   coefficient, full-criteria ratio, or placebo result had been computed or seen.
+
+## Revision 13 — Matched-common-support negative-control estimand
+
+- **Approved:** 2026-08-03.
+- **Git-history anchor:** The commit that first adds Revision 13 to this file is the
+  approval-record anchor; its identifier is intentionally not embedded in the content it
+  hashes.
+- **Reason:** Exact matching produced a clean but limited common-support frame. The
+  repository owner approved running the defensible restricted test first rather than
+  weakening exact matching or extrapolating its result to unmatched firms.
+- **Negative-control estimand impact:** The Phase 2 inference is restricted to exact-UEI
+  Phase II firms with complete, nonconflicting values for all five frozen matching
+  covariates and at least one screened-negative control matching exactly on those
+  covariates. Reports compare the full criteria-count distributions, their overlap, and
+  the proportion clearing the complete criteria set only within that matched frame. They
+  must display the pre-outcome coverage and matching tables beside the results.
+- **Criteria and matching impact:** None. No Phase 1 census estimand, pair universe,
+  inclusion clause, clause order, sensitivity cell, matching covariate, exactness rule,
+  control ratio, balance rule, pseudo-index construction, score, model, or numeric cutoff
+  changes. The matched frame's size remains an output of the frozen rules, not a threshold.
+- **Interpretation boundary:** A separating result supports discrimination only within the
+  matched common-support subset and cannot validate the full census. Substantial arm
+  overlap remains evidence that the criteria fail to discriminate within a tightly
+  balanced comparison. Any broader or relaxed analysis is a prospectively amended or
+  separate study, not the preregistered result.
+- **Visibility at approval:** The final eligibility table contained 843,777 screened-negative
+  controls. All five covariates were usable for 5,539 of 12,042 treated firms and 167,616
+  controls. Exact matching retained 712 treated firms and 1,029 treated-control pairs;
+  every retained-pair covariate level had absolute SMD 0. No arm criteria-met distribution,
+  overlap coefficient, full-criteria ratio, control outcome, or placebo result had been
+  computed or seen.

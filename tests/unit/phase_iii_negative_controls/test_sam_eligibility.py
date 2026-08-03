@@ -7,6 +7,8 @@ from sbir_analytics.assets.phase_iii_negative_controls.sam_eligibility import _D
 from sbir_analytics.assets.phase_iii_negative_controls import (
     IdentityRecoveryError,
     build_sam_eligibility_table,
+    exclude_fpds_coded_awardees,
+    exclude_phase_ii_awardees,
     require_reliable_sam_eligibility,
     sam_eligibility_gate,
     summarize_sam_eligibility,
@@ -140,6 +142,51 @@ def test_disconnected_identifier_does_not_join_candidate() -> None:
     result = _build(sam, links=links)
 
     assert result.iloc[0].eligibility_status == "eligible_screened_negative"
+
+
+def test_any_exact_fpds_sbir_sttr_code_conservatively_excludes_candidate() -> None:
+    eligibility = _build(pd.DataFrame([_sam_row("CANDIDATE020")]))
+    contracts = pd.DataFrame(
+        {
+            "vendor_uei": ["CANDIDATE020", "CANDIDATE020", "UNRELATED001"],
+            "research": ["sr2", None, "ST3"],
+        }
+    )
+
+    result = exclude_fpds_coded_awardees(eligibility, contracts)
+
+    assert result.iloc[0].eligibility_status == "confirmed_sbir"
+    assert result.iloc[0].matched_fpds_sbir_sttr_ueis == ("CANDIDATE020",)
+    assert result.iloc[0].exclusion_reasons == ("fpds_sbir_sttr_code_intersection",)
+    reasons = summarize_sam_exclusion_reasons(result).set_index("exclusion_reason")
+    assert reasons.loc["fpds_sbir_sttr_code_intersection", "candidate_firms"] == 1
+
+
+def test_non_sbir_research_code_does_not_change_eligibility() -> None:
+    eligibility = _build(pd.DataFrame([_sam_row("CANDIDATE021")]))
+
+    result = exclude_fpds_coded_awardees(
+        eligibility,
+        pd.DataFrame({"vendor_uei": ["CANDIDATE021"], "research": ["RD"]}),
+    )
+
+    assert result.iloc[0].eligibility_status == "eligible_screened_negative"
+    assert result.iloc[0].matched_fpds_sbir_sttr_ueis == ()
+
+
+def test_exact_phase_ii_uei_conservatively_excludes_candidate() -> None:
+    eligibility = _build(pd.DataFrame([_sam_row("CANDIDATE022")]))
+
+    result = exclude_phase_ii_awardees(
+        eligibility,
+        pd.DataFrame({"recipient_uei": ["candidate022", None]}),
+    )
+
+    assert result.iloc[0].eligibility_status == "confirmed_sbir"
+    assert result.iloc[0].matched_phase_ii_ueis == ("CANDIDATE022",)
+    assert result.iloc[0].exclusion_reasons == ("phase_ii_uei_intersection",)
+    reasons = summarize_sam_exclusion_reasons(result).set_index("exclusion_reason")
+    assert reasons.loc["phase_ii_uei_intersection", "candidate_firms"] == 1
 
 
 def test_identity_link_without_provenance_fails_closed() -> None:
@@ -345,4 +392,6 @@ def test_status_and_reason_summaries_include_zero_count_categories() -> None:
         "unresolved_name_state_collision": 1,
         "unresolved_address_zip_collision": 0,
         "missing_comparable_name_state_key": 0,
+        "phase_ii_uei_intersection": 0,
+        "fpds_sbir_sttr_code_intersection": 0,
     }
