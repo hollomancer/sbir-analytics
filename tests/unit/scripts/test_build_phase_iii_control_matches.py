@@ -97,4 +97,8 @@ def test_loader_exposes_only_earliest_rows_but_screens_codes_across_history(tmp_
             "product_or_service_code": "R425",
         },
     ]
+    assert earliest["metadata"].tolist() == [
+        {"business_categories": "{small_business}"},
+        {"business_categories": "{small_business}"},
+    ]
     assert coded.to_dict(orient="records") == [{"vendor_uei": "CONTROLUEI01", "research": "SR2"}]

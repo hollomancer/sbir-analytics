@@ -143,29 +143,33 @@ def _load_pre_outcome_contract_rows(path: Path) -> tuple[pd.DataFrame, pd.DataFr
             raise ValueError(f"February contract parquet is missing required columns: {missing}")
         first_rows = connection.execute(
             """
-            WITH source AS (
+            WITH first_dates AS (
                 SELECT
                     upper(trim(vendor_uei)) AS vendor_uei,
-                    CAST(action_date AS DATE) AS action_date,
-                    product_or_service_code,
-                    metadata
+                    min(CAST(action_date AS DATE)) AS first_action_date
                 FROM read_parquet(?)
                 WHERE vendor_uei IS NOT NULL AND action_date IS NOT NULL
-            ),
-            first_dates AS (
-                SELECT vendor_uei, min(action_date) AS first_action_date
-                FROM source
                 GROUP BY vendor_uei
             )
-            SELECT source.*
-            FROM source
+            SELECT
+                upper(trim(source.vendor_uei)) AS vendor_uei,
+                CAST(source.action_date AS DATE) AS action_date,
+                source.product_or_service_code,
+                struct_pack(
+                    business_categories := source.metadata.business_categories
+                ) AS metadata
+            FROM read_parquet(?) AS source
             INNER JOIN first_dates
-                ON source.vendor_uei = first_dates.vendor_uei
-                AND source.action_date = first_dates.first_action_date
-            ORDER BY source.vendor_uei, source.product_or_service_code
+                ON upper(trim(source.vendor_uei)) = first_dates.vendor_uei
+                AND CAST(source.action_date AS DATE) = first_dates.first_action_date
             """,
-            [str(path)],
+            [str(path), str(path)],
         ).df()
+        first_rows = first_rows.sort_values(
+            ["vendor_uei", "product_or_service_code"],
+            kind="stable",
+            na_position="last",
+        ).reset_index(drop=True)
         placeholders = ", ".join("?" for _ in FPDS_SBIR_STTR_CODES)
         coded = connection.execute(
             f"""
