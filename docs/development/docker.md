@@ -352,8 +352,11 @@ cache-from: |
 cache-to: type=gha,mode=max,scope=ci
 ```
 
-See `scripts/ci/build_container.sh` and `.github/workflows/build-images.yml` for the real
-build pipeline.
+See `scripts/ci/build_container.sh` for the build pipeline. Images are no longer
+published from GitHub Actions — the Mac mini builds them locally (see
+[`../deployment/mac-mini-server.md`](../deployment/mac-mini-server.md)), falling
+back to a local `Dockerfile.python-base` build when GHCR has no manifest for its
+architecture.
 
 ### Monitoring Image Size
 

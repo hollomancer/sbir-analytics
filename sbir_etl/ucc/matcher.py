@@ -27,11 +27,11 @@ import re
 import sys
 from pathlib import Path
 
-from sbir_etl.enrichers.matching import (  # noqa: E402
-    ENHANCED_ABBREVIATIONS,
-    SUFFIX_TOKENS,
-    apply_enhanced_abbreviations,
-    jaro_winkler_similarity,
+from sbir_etl.identity import (  # noqa: E402
+    CompanyNameMetric,
+    CompanyNameProfile,
+    company_name_similarity,
+    normalize_company_name,
 )
 
 from sbir_etl.ucc._common import data_path
@@ -87,13 +87,9 @@ _ENTITY_INDICATORS = {
 
 
 def normalize_name(name: str) -> str:
-    """Lowercase, strip punctuation, expand abbreviations, drop suffix tokens."""
-    if not name:
-        return ""
-    n = re.sub(r"[^a-z0-9 ]+", " ", name.lower())
-    n = apply_enhanced_abbreviations(n, ENHANCED_ABBREVIATIONS)
-    tokens = [t for t in n.split() if t not in SUFFIX_TOKENS]
-    return " ".join(tokens).strip()
+    """Compatibility shim for the versioned UCC company-name policy."""
+
+    return normalize_company_name(name, profile=CompanyNameProfile.UCC_V1)
 
 
 def classify_match(name_a: str, name_b: str) -> tuple[str, float]:
@@ -108,7 +104,7 @@ def classify_match(name_a: str, name_b: str) -> tuple[str, float]:
         return ("drop", 0.0)
     if a == b:
         return ("high", 1.0)
-    score = jaro_winkler_similarity(a, b) / 100.0
+    score = company_name_similarity(a, b, metric=CompanyNameMetric.JARO_WINKLER)
     if score >= TIER_MEDIUM_THRESHOLD:
         return ("medium", score)
     if score >= TIER_LOW_THRESHOLD:

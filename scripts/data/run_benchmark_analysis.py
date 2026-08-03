@@ -12,7 +12,6 @@ Usage:
     python scripts/data/run_benchmark_analysis.py --local data/raw/sbir/award_data.csv
 
     # Pull from S3 instead of sbir.gov
-    python scripts/data/run_benchmark_analysis.py --s3
 
     # Customize FY and margins
     python scripts/data/run_benchmark_analysis.py --fy 2026 --margin-awards 5 --margin-ratio 0.05
@@ -24,7 +23,6 @@ Usage:
     python scripts/data/run_benchmark_analysis.py --usaspending-api
 
     # Pull USAspending recipient_lookup Parquet from S3 (fastest option)
-    python scripts/data/run_benchmark_analysis.py --usaspending-s3
 """
 
 import argparse
@@ -80,64 +78,6 @@ def download_from_sbir_gov(dest: Path) -> Path:
                 print(f"  {downloaded / size * 100:.0f}%", end="\r")
 
     print(f"\nSaved to {dest}")
-    return dest
-
-
-def download_from_s3(dest: Path, bucket: str = "sbir-etl-production-data") -> Path:
-    """Download latest SBIR awards CSV from S3."""
-    import boto3
-
-    s3 = boto3.client("s3")
-    print(f"Listing award files in s3://{bucket}/raw/awards/...")
-
-    response = s3.list_objects_v2(Bucket=bucket, Prefix="raw/awards/")
-    if not response.get("Contents"):
-        print("No award files found in S3.", file=sys.stderr)
-        sys.exit(1)
-
-    latest = sorted(response["Contents"], key=lambda x: x["LastModified"])[-1]
-    s3_key = latest["Key"]
-    print(f"Latest: s3://{bucket}/{s3_key} ({latest['Size'] / 1024 / 1024:.1f} MB)")
-
-    dest.parent.mkdir(parents=True, exist_ok=True)
-    s3.download_file(bucket, s3_key, str(dest))
-    print(f"Downloaded to {dest}")
-    return dest
-
-
-def download_usaspending_from_s3(
-    dest: Path,
-    bucket: str = "sbir-etl-production-data",
-    prefix: str = "raw/usaspending/recipient_lookup/",
-) -> Path:
-    """Download latest USAspending recipient_lookup Parquet from S3."""
-    import boto3
-
-    s3 = boto3.client("s3")
-    print(f"Listing USAspending files in s3://{bucket}/{prefix}...")
-
-    response = s3.list_objects_v2(Bucket=bucket, Prefix=prefix)
-    if not response.get("Contents"):
-        print(f"No USAspending files found at s3://{bucket}/{prefix}", file=sys.stderr)
-        sys.exit(1)
-
-    # Find the latest Parquet file
-    parquet_files = [
-        obj for obj in response["Contents"]
-        if obj["Key"].endswith(".parquet")
-    ]
-    if not parquet_files:
-        # Fall back to any file
-        parquet_files = response["Contents"]
-
-    latest = sorted(parquet_files, key=lambda x: x["LastModified"])[-1]
-    s3_key = latest["Key"]
-    size_mb = latest["Size"] / 1024 / 1024
-    print(f"Latest: s3://{bucket}/{s3_key} ({size_mb:.1f} MB)")
-
-    dest.parent.mkdir(parents=True, exist_ok=True)
-    s3.download_file(bucket, s3_key, str(dest))
-    print(f"Downloaded to {dest}")
     return dest
 
 
@@ -398,14 +338,6 @@ def main():
         help="Path to existing local awards CSV/Parquet (skip download)"
     )
     parser.add_argument(
-        "--s3", action="store_true",
-        help="Pull from S3 instead of sbir.gov"
-    )
-    parser.add_argument(
-        "--s3-bucket", default=os.environ.get("S3_BUCKET", "sbir-etl-production-data"),
-        help="S3 bucket name (default: sbir-etl-production-data)"
-    )
-    parser.add_argument(
         "--fy", type=int, default=2026,
         help="Evaluation fiscal year (default: 2026)"
     )
@@ -425,15 +357,6 @@ def main():
         "--usaspending-api", action="store_true",
         help="Fetch commercialization data live from api.usaspending.gov"
     )
-    parser.add_argument(
-        "--usaspending-s3", action="store_true",
-        help="Pull USAspending recipient_lookup Parquet from S3"
-    )
-    parser.add_argument(
-        "--usaspending-s3-prefix",
-        default="raw/usaspending/recipient_lookup/",
-        help="S3 prefix for USAspending data (default: raw/usaspending/recipient_lookup/)"
-    )
     args = parser.parse_args()
 
     dest = Path("data/raw/sbir/award_data.csv")
@@ -444,21 +367,13 @@ def main():
             sys.exit(1)
         awards_path = args.local
         sbir_source = f"local:{args.local}"
-    elif args.s3:
-        awards_path = download_from_s3(dest, args.s3_bucket)
-        sbir_source = f"s3://{args.s3_bucket}"
     else:
         awards_path = download_from_sbir_gov(dest)
         sbir_source = SBIR_AWARDS_CSV_URL
 
     usaspending_path = None
     usaspending_api = args.usaspending_api
-    if args.usaspending_s3:
-        usa_dest = Path("data/usaspending/recipient_lookup.parquet")
-        usaspending_path = download_usaspending_from_s3(
-            usa_dest, args.s3_bucket, args.usaspending_s3_prefix,
-        )
-    elif args.usaspending:
+    if args.usaspending:
         if not args.usaspending.exists():
             print(f"USAspending file not found: {args.usaspending}", file=sys.stderr)
             sys.exit(1)

@@ -239,8 +239,12 @@ def _to_date(value: Any):
     return ts.date()
 
 
-def _candidate_id(signal_class: SignalClass, prior_award_id: str, target_id: str) -> str:
-    h = hashlib.sha1(f"{signal_class.value}|{prior_award_id}|{target_id}".encode())
+def _candidate_id(signal_class: SignalClass, prior_identity: str, target_id: str) -> str:
+    # Content hash for a short deterministic id, not a security primitive:
+    # usedforsecurity=False states that so the digest choice is not read as one.
+    h = hashlib.sha1(  # noqa: S324
+        f"{signal_class.value}|{prior_identity}|{target_id}".encode(), usedforsecurity=False
+    )
     return f"{signal_class.value}-{h.hexdigest()[:16]}"
 
 
@@ -375,6 +379,7 @@ def _evidence_bundle(
         "candidate_id": candidate.candidate_id,
         "signal_class": candidate.signal_class.value,
         "award_id": candidate.prior_award_id,
+        "award_key": candidate.prior_award_key,
         "contract_id": candidate.target_id,
         "target_type": candidate.target_type,
         "score": candidate.candidate_score,
@@ -428,10 +433,15 @@ def _iso_or_none(value: Any) -> str | None:
 
 
 def _str_or_none(value: Any) -> str | None:
-    if value is None or (isinstance(value, float) and pd.isna(value)):
+    if value is None:
         return None
+    try:
+        if bool(pd.isna(value)):
+            return None
+    except (TypeError, ValueError):
+        pass
     s = str(value).strip()
-    return s or None
+    return None if not s or s.upper() in {"NAN", "NAT", "NONE", "NULL", "<NA>", r"\N"} else s
 
 
 def _float_or_none(value: Any) -> float | None:
@@ -450,6 +460,7 @@ def _candidate_dataframe(candidates: list[PhaseIIICandidate]) -> pd.DataFrame:
                 "candidate_id",
                 "signal_class",
                 "prior_award_id",
+                "prior_award_key",
                 "target_type",
                 "target_id",
                 "candidate_score",
@@ -494,15 +505,18 @@ def score_candidate_pairs(
             text_similarity=text_similarities[position],
             id_xref_weight=weights["id_xref"],
         )
-        prior_id = str(row.get("prior_award_id") or "")
-        target_id = str(row.get("target_id") or "")
+        prior_id = _str_or_none(row.get("prior_award_id"))
+        prior_key = _str_or_none(row.get("prior_award_key"))
+        target_id = _str_or_none(row.get("target_id"))
         if not prior_id or not target_id:
             continue
-        cid = _candidate_id(signal_class, prior_id, target_id)
+        prior_identity = f"key:{prior_key}" if prior_key else f"id:{prior_id}"
+        cid = _candidate_id(signal_class, prior_identity, target_id)
         candidate = PhaseIIICandidate(
             candidate_id=cid,
             signal_class=signal_class,
             prior_award_id=prior_id,
+            prior_award_key=prior_key,
             target_type=target_type,  # type: ignore[arg-type]
             target_id=target_id,
             candidate_score=composite,
@@ -578,7 +592,7 @@ _PRIOR_DETAIL_FIELDS: dict[str, tuple[str, ...]] = {
 
 
 def enrich_prior_awards(priors: pd.DataFrame, detail: pd.DataFrame) -> pd.DataFrame:
-    """Join the descriptive award fields the Phase II contract lacks, by ``award_id``.
+    """Join descriptive fields by award grain, with a guarded public-id fallback.
 
     Left join — priors without a detail row keep their (null) values, and the
     frame's row grain is unchanged. Existing non-null values always win.
@@ -587,25 +601,84 @@ def enrich_prior_awards(priors: pd.DataFrame, detail: pd.DataFrame) -> pd.DataFr
     if priors.empty or detail.empty or "award_id" not in priors or "award_id" not in detail:
         return priors
 
-    projected = pd.DataFrame({"award_id": detail["award_id"].astype(str)})
+    def _normalized(frame: pd.DataFrame, column: str) -> pd.Series:
+        values = (
+            frame.get(column, pd.Series(pd.NA, index=frame.index, dtype="string"))
+            .astype("string")
+            .str.strip()
+            .str.upper()
+        )
+        return values.mask(values.isin(["", "NAN", "NAT", "NONE", "<NA>", r"\N"]))
+
+    prior_ids = _normalized(priors, "award_id")
+    detail_ids = _normalized(detail, "award_id")
+    prior_keys = _normalized(priors, "award_key")
+    detail_keys = _normalized(detail, "award_key")
+    shared_keys = set(prior_keys.dropna()) & set(detail_keys.dropna())
+    safe_public_ids = set(prior_ids.value_counts().loc[lambda count: count == 1].index) & set(
+        detail_ids.value_counts().loc[lambda count: count == 1].index
+    )
+    prior_safe = prior_ids.isin(safe_public_ids)
+    detail_safe = detail_ids.isin(safe_public_ids)
+    rollout_keys = pd.DataFrame(
+        {
+            "prior": pd.Series(
+                prior_keys.loc[prior_safe].array,
+                index=prior_ids.loc[prior_safe].array,
+            ),
+            "detail": pd.Series(
+                detail_keys.loc[detail_safe].array,
+                index=detail_ids.loc[detail_safe].array,
+            ),
+        }
+    )
+    conflicts = (
+        rollout_keys["prior"].notna()
+        & rollout_keys["detail"].notna()
+        & rollout_keys["prior"].ne(rollout_keys["detail"])
+    )
+    conflicting_public_ids = set(rollout_keys.index[conflicts])
+    if conflicting_public_ids:
+        logger.warning(
+            "Skipping descriptive enrichment for {} conflicting award keys",
+            len(conflicting_public_ids),
+        )
+        safe_public_ids -= conflicting_public_ids
+
+    def _identity(keys: pd.Series, public_ids: pd.Series) -> pd.Series:
+        identities = pd.Series(pd.NA, index=public_ids.index, dtype="string")
+        keyed = keys.isin(shared_keys)
+        identities.loc[keyed] = "key:" + keys.loc[keyed]
+        public = ~keyed & public_ids.isin(safe_public_ids)
+        identities.loc[public] = "id:" + public_ids.loc[public]
+        return identities
+
+    projected = pd.DataFrame({"_award_identity": _identity(detail_keys, detail_ids)})
     for canonical, sources in _PRIOR_DETAIL_FIELDS.items():
         for source in sources:
             if source in detail.columns:
                 projected[canonical] = detail[source]
                 break
-    projected = projected.drop_duplicates(subset=["award_id"], keep="first")
+    projected = projected.loc[projected["_award_identity"].notna()]
+    ambiguous = projected["_award_identity"].duplicated(keep=False)
+    if ambiguous.any():
+        logger.warning(
+            "Skipping descriptive enrichment for {} ambiguous award identities",
+            projected.loc[ambiguous, "_award_identity"].nunique(),
+        )
+        projected = projected.loc[~ambiguous]
     if len(projected.columns) == 1:
         return priors
 
     out = priors.copy()
-    merged = out.assign(_award_key=out["award_id"].astype(str)).merge(
-        projected.rename(columns={"award_id": "_award_key"}),
-        on="_award_key",
+    merged = out.assign(_award_identity=_identity(prior_keys, prior_ids)).merge(
+        projected,
+        on="_award_identity",
         how="left",
         suffixes=("", "_detail"),
     )
     for canonical in projected.columns:
-        if canonical == "award_id":
+        if canonical == "_award_identity":
             continue
         detail_column = f"{canonical}_detail" if f"{canonical}_detail" in merged else canonical
         if canonical in out.columns and detail_column != canonical:
@@ -613,7 +686,7 @@ def enrich_prior_awards(priors: pd.DataFrame, detail: pd.DataFrame) -> pd.DataFr
         elif detail_column != canonical:
             merged[canonical] = merged[detail_column]
     drop = [column for column in merged.columns if column.endswith("_detail")]
-    return merged.drop(columns=[*drop, "_award_key"])
+    return merged.drop(columns=[*drop, "_award_identity"])
 
 
 def _default_prior_detail_loader(_context: Any) -> pd.DataFrame:

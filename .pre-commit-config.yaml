@@ -50,24 +50,25 @@ repos:
         pass_filenames: false
         always_run: true
 
-# Security scanning (bandit and detect-secrets) moved to nightly CI only
+# Security scanning (bandit and detect-secrets) is NOT automated anywhere. It
+# ran in weekly.yml's security-scan job until that workflow was retired, and it
+# is not a pre-commit hook. Run it by hand, or schedule it off GitHub Actions:
 # Run manually with: uv run bandit -r sbir_etl packages/sbir-analytics/sbir_analytics packages/sbir-ml/sbir_ml packages/sbir-graph/sbir_graph -c pyproject.toml
 # Run manually with: uv run detect-secrets scan --baseline .secrets.baseline
 
 # Configuration notes for maintainers:
 #
 # SCOPE ALIGNMENT WITH CI:
-#   This pre-commit configuration is designed to match the CI checks in
-#   .github/workflows/ci.yml (code-quality, package-type-checks jobs) and
-#   .github/workflows/weekly.yml (security-scan job). All tools run on
-#   the same paths to ensure consistency between local and CI environments.
+#   This pre-commit configuration is designed to match the checks in
+#   .github/workflows/ci.yml (the `quality` job), which is the only workflow
+#   left. Both run on the same paths so local and CI results agree.
 #
 #   Tool Scope Mapping:
 #   - Ruff (lint/format): all production package roots and tests
-#   - MyPy (type check):  sbir_etl/      [matches blocking CI check]
-#   - Bandit (security):  all production package roots
+#   - MyPy (type check):  sbir_etl/      [CI also checks sbir-graph]
+#   - Bandit (security):  all production package roots  [manual only]
 #   - Standard hooks:     all files       [good practice, not in CI]
-#   - Detect-secrets:     all files       [best practice, not in CI]
+#   - Detect-secrets:     all files       [manual only]
 #
 # SETUP:
 #   Install pre-commit:

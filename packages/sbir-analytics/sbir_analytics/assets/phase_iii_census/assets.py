@@ -21,6 +21,8 @@ from sbir_analytics.assets.phase_transition.sbir_gov_source import (
     sha256_file,
     verify_sbir_gov_materialization,
 )
+from sbir_etl.exceptions import ConfigurationError
+from sbir_etl.quality.study_manifest import load_study_manifest
 
 from .criteria import (
     CensusInputError,
@@ -116,6 +118,8 @@ CENSUS_CONTRACT_COLUMNS = (
 if set(CENSUS_PAIR_COLUMNS) != REQUIRED_PAIR_COLUMNS:  # pragma: no cover - import guard
     raise RuntimeError("Shared pair schema cannot supply every frozen census-required field")
 
+STUDY_MANIFEST_RELATIVE_PATH = Path("studies/phase-iii-census/study.yaml")
+
 
 def _find_resource_root() -> Path:
     """Find the checkout or container root that holds the frozen census inputs."""
@@ -123,7 +127,11 @@ def _find_resource_root() -> Path:
     for root in Path(__file__).resolve().parents:
         if all(
             (root / relative_path).is_file()
-            for relative_path in (FROZEN_SPEC_RELATIVE_PATH, AMENDMENTS_LOG_RELATIVE_PATH)
+            for relative_path in (
+                FROZEN_SPEC_RELATIVE_PATH,
+                AMENDMENTS_LOG_RELATIVE_PATH,
+                STUDY_MANIFEST_RELATIVE_PATH,
+            )
         ):
             return root
     raise RuntimeError("Phase III census frozen specification files are not installed")
@@ -132,8 +140,33 @@ def _find_resource_root() -> Path:
 _REPOSITORY_ROOT = _find_resource_root()
 FROZEN_SPEC_PATH = _REPOSITORY_ROOT / FROZEN_SPEC_RELATIVE_PATH
 AMENDMENTS_LOG_PATH = _REPOSITORY_ROOT / AMENDMENTS_LOG_RELATIVE_PATH
+STUDY_MANIFEST_PATH = _REPOSITORY_ROOT / STUDY_MANIFEST_RELATIVE_PATH
 FROZEN_SPEC_SHA256 = "91b84c67e51a36a56b9d11d1afe997bc9b7de7cef090de12c24619116b6351ff"
 AMENDMENTS_LOG_SHA256 = "6168c6e2a685a3b89fa93eae86976d14798d5e6c67f7a8721b764384081ce74c"
+
+
+def verify_materialization_gate() -> dict[str, Any]:
+    """Fail closed when the study contract does not authorize materialization."""
+
+    try:
+        manifest = load_study_manifest(STUDY_MANIFEST_PATH)
+    except (OSError, ValueError, ConfigurationError) as exc:
+        raise CensusInputError(
+            f"Phase III census study manifest is missing or invalid at {STUDY_MANIFEST_PATH}: {exc}"
+        ) from exc
+    if manifest.study_id != "phase-iii-census":
+        raise CensusInputError(
+            f"Phase III census study manifest has an unexpected study_id: {manifest.study_id}"
+        )
+    if not manifest.materialization.allowed:
+        blockers = "; ".join(manifest.materialization.blockers)
+        raise CensusInputError(f"Phase III census materialization blocked: {blockers}")
+    return {
+        "study_id": manifest.study_id,
+        "evidence_status": manifest.evidence_status.value,
+        "materialization_allowed": True,
+        "manifest_path": STUDY_MANIFEST_RELATIVE_PATH.as_posix(),
+    }
 
 
 def _verified_raw_digest(path: Path, expected_sha256: str, *, label: str) -> str:
@@ -380,6 +413,7 @@ def phase_iii_census(
 ):
     """Build and persist the two frozen Phase 1 audit tables."""
 
+    gate_record = verify_materialization_gate()
     freeze_record = verify_frozen_spec()
     priors = validated_phase_ii_awards
     if priors is None:
@@ -409,6 +443,9 @@ def phase_iii_census(
         "frozen_spec_revision": freeze_record["revision"],
         "amendments_log_path": freeze_record["amendments_path"],
         "amendments_log_sha256": freeze_record["amendments_sha256"],
+        "study_manifest_path": gate_record["manifest_path"],
+        "study_evidence_status": gate_record["evidence_status"],
+        "study_materialization_allowed": gate_record["materialization_allowed"],
         "ordered_clauses": MetadataValue.json(ordered_clause_metadata()),
         "reproducibility": MetadataValue.json(
             {"stochastic": False, "seed": None, "data_cut_date": data_cut.isoformat()}
@@ -486,7 +523,10 @@ __all__ = [
     "FROZEN_SPEC_SHA256",
     "SENSITIVITY_OUTPUT_PATH",
     "SBIR_AWARDS_ENV",
+    "STUDY_MANIFEST_PATH",
+    "STUDY_MANIFEST_RELATIVE_PATH",
     "parse_census_data_cut_date",
+    "verify_materialization_gate",
     "phase_iii_census",
     "phase_iii_census_one_factor_sensitivity",
     "verify_frozen_spec",

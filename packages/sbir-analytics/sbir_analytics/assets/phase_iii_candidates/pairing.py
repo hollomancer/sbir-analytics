@@ -22,6 +22,7 @@ _CODED_STATUS_COLUMNS: tuple[str, ...] = ("research", "sbir_phase")
 
 PAIR_S1_COLUMNS: list[str] = [
     "prior_award_id",
+    "prior_award_key",
     "prior_recipient_uei",
     "prior_agency",
     "prior_sub_agency",
@@ -48,8 +49,8 @@ PAIR_S1_COLUMNS: list[str] = [
 ]
 
 # Transaction-grain schema shared by the weighted retrospective path and the
-# label-free census.  ``pair_filter_s1`` projects back to ``PAIR_S1_COLUMNS`` so
-# its existing public contract remains unchanged.
+# label-free census. ``pair_filter_s1`` projects back to the declared
+# ``PAIR_S1_COLUMNS`` contract after its internal grain checks.
 PAIR_COLUMNS: list[str] = [
     *PAIR_S1_COLUMNS[:-1],
     "target_research",
@@ -95,6 +96,14 @@ def _normalize(value: object) -> str:
         return ""
     s = str(value).strip().upper()
     return "" if s in _MISSING_TOKENS or s == r"\N" else s
+
+
+def _prior_identity(df: pd.DataFrame) -> pd.Series:
+    """Internal grain key without promoting a legacy public id to ``award_key``."""
+
+    public_ids = df.get("prior_award_id", pd.Series(None, index=df.index)).map(_normalize)
+    award_keys = df.get("prior_award_key", pd.Series(None, index=df.index)).map(_normalize)
+    return ("key:" + award_keys).where(award_keys.ne(""), "id:" + public_ids)
 
 
 def _is_phase_iii_already_coded(row: pd.Series) -> bool:
@@ -148,9 +157,15 @@ def _prepare_priors(prior_awards: pd.DataFrame) -> pd.DataFrame:
             return df[name]
         return pd.Series([default] * len(df), index=df.index)
 
+    award_ids = _col("award_id")
+    award_keys = _col("award_key")
+    award_keys = award_keys.where(award_keys.map(_normalize).ne(""), None)
     out = pd.DataFrame(
         {
-            "prior_award_id": _col("award_id"),
+            "prior_award_id": award_ids,
+            # Preserve absence on legacy inputs. Internal pairing can use the
+            # public id, but downstream reports must not mistake it for a true key.
+            "prior_award_key": award_keys,
             "prior_recipient_uei": _col("recipient_uei"),
             "prior_agency": _col("agency"),
             "prior_sub_agency": _col("sub_agency"),
@@ -446,9 +461,8 @@ def pair_filter_s1(
     # The transaction-grain universe intentionally retains duplicate source
     # rows so census validation can fail on them. Legacy S1, however, emitted
     # exactly one selected row per prior × award after its grain collapse.
-    eligible = eligible.drop_duplicates(
-        ["prior_award_id", "target_contract_key"],
-        keep="last",
+    eligible = eligible.assign(_prior_identity=_prior_identity(eligible)).drop_duplicates(
+        ["_prior_identity", "target_contract_key"], keep="last"
     )
 
     target_order = {
@@ -460,7 +474,7 @@ def pair_filter_s1(
         return pd.DataFrame(columns=PAIR_S1_COLUMNS)
 
     eligible = eligible.assign(
-        _prior_order=pd.factorize(eligible["prior_award_id"], sort=False)[0],
+        _prior_order=pd.factorize(eligible["_prior_identity"], sort=False)[0],
         _target_order=eligible["target_contract_key"].map(_normalize).map(target_order),
     ).sort_values(["_prior_order", "_target_order"], kind="mergesort")
     return eligible.loc[:, PAIR_S1_COLUMNS].reset_index(drop=True)
@@ -594,7 +608,10 @@ def pair_filter_s2(prior_awards: pd.DataFrame, opportunities: pd.DataFrame) -> p
         )
         fallback = fallback.loc[lineage & (naics | missing_codes)].copy()
     merged = pd.concat([exact, fallback], ignore_index=True, sort=False)
-    return _with_pair_metadata(merged.drop_duplicates(["prior_award_id", "target_id"]))
+    merged = merged.assign(_prior_identity=_prior_identity(merged)).drop_duplicates(
+        ["_prior_identity", "target_id"]
+    )
+    return _with_pair_metadata(merged.drop(columns="_prior_identity"))
 
 
 def pair_filter_s3(prior_awards: pd.DataFrame, opportunities: pd.DataFrame) -> pd.DataFrame:
@@ -626,9 +643,11 @@ def pair_filter_s3(prior_awards: pd.DataFrame, opportunities: pd.DataFrame) -> p
         missing["_agency"] = missing["prior_agency"].map(_normalize)
         by_agency = targets.assign(_agency=targets["target_agency"].map(_normalize))
         parts.append(missing.loc[missing["_agency"] != ""].merge(by_agency, on="_agency"))
-    merged = pd.concat(parts, ignore_index=True, sort=False).drop_duplicates(
-        ["prior_award_id", "target_id"]
+    merged = pd.concat(parts, ignore_index=True, sort=False)
+    merged = merged.assign(_prior_identity=_prior_identity(merged)).drop_duplicates(
+        ["_prior_identity", "target_id"]
     )
+    merged = merged.drop(columns="_prior_identity")
     paired = _with_pair_metadata(merged)
     return paired.loc[paired["topical_similarity"] >= 0.10].reset_index(drop=True)
 

@@ -24,10 +24,12 @@ This guide centralizes performance and data quality practices.
 
 ## CI
 
-- CI checks in `.github/workflows/ci.yml`
-- Scheduled tests, smoke checks, and security scans in `.github/workflows/weekly.yml`
-
-Ensure PRs that change performance-sensitive paths update baselines/thresholds when appropriate.
+- CI checks in `.github/workflows/ci.yml` — the only workflow. Lint, types, and
+  guards run on every PR alongside the fast unit suite; the full suite runs on
+  `main`.
+- Scheduled work (data refresh, reporting, security scans, image builds) does
+  not run in GitHub Actions. See
+  [`../deployment/mac-mini-server.md`](../deployment/mac-mini-server.md).
 
 ## Related Documentation
 

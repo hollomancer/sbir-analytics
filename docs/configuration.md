@@ -175,6 +175,7 @@ paths:
 
   # Transition detection outputs
   transition_contracts_output: "data/transition/contracts_ingestion.parquet"
+  transition_award_archive_dir: "data/raw/usaspending/award_archive"
   transition_dump_dir: "data/transition/pruned_data_store_api_dump"
   transition_vendor_filters: "data/transition/sbir_vendor_filters.json"
 
@@ -203,7 +204,9 @@ The path resolver automatically:
 ├── data/
 │   ├── raw/
 │   │   ├── sbir/
-│   │   └── uspto/
+│   │   ├── uspto/
+│   │   └── usaspending/
+│   │       └── award_archive/
 │   ├── usaspending/
 │   │   └── usaspending-db_20251006.zip
 │   ├── transition/
@@ -696,7 +699,12 @@ from loguru import logger
 config = get_config()
 
 # Log all resolved paths
-for key in ["usaspending_dump_file", "transition_contracts_output", "transition_vendor_filters"]:
+for key in [
+    "usaspending_dump_file",
+    "transition_award_archive_dir",
+    "transition_contracts_output",
+    "transition_vendor_filters",
+]:
     try:
         path = config.paths.resolve_path(key)
         logger.info(f"{key}: {path}")

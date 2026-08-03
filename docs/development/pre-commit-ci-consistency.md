@@ -25,15 +25,21 @@ This document defines the **single source of truth** for code quality tools and 
 Local pre-commit hook            Runs in CI as
 ─────────────────────            ──────────────
 Standard file checks       →     (local only)
-Ruff (lint/format)         →     ci.yml · code-quality job
-MyPy (types)               →     ci.yml · code-quality job (sbir_etl)
-                                 ci.yml · package-type-checks job (packages)
-Bandit (security)          →     weekly.yml · security-scan job
-Detect-secrets             →     weekly.yml · security-scan job (detect-secrets scan)
-(no local hook)            →     ci.yml · workflow-lint job
+Ruff (lint/format)         →     ci.yml · quality job
+MyPy (types)               →     ci.yml · quality job (sbir_etl + sbir-graph)
+Bandit (security)          →     (nowhere — manual only)
+Detect-secrets             →     (nowhere — manual only)
+(no local hook)            →     ci.yml · quality job (actionlint)
 ```
 
-**Key Principle:** Pre-commit hooks define what developers must fix locally. CI runs the same Ruff + MyPy + (removed-src) gates as the `code-quality` job, with per-package MyPy and tests as additional jobs. Bandit and Detect-secrets currently run only as pre-commit hooks locally, not as standalone CI jobs.
+**Key Principle:** Pre-commit hooks define what developers must fix locally. CI
+runs the same Ruff + MyPy gates in its single `quality` job, alongside the
+architecture guards and actionlint.
+
+**Gap:** Bandit and Detect-secrets are not automated anywhere. They ran in
+`weekly.yml`'s `security-scan` job until GitHub Actions was rescoped to tests
+only, and they are not pre-commit hooks. Run them by hand or schedule them
+outside Actions — see the commands at the foot of `.pre-commit-config.yaml`.
 
 ---
 
@@ -247,9 +253,9 @@ Tool versions are pinned in:
 | Tool versions | `.pre-commit-config.yaml` | `.pre-commit-config.yaml` | Identical |
 | Ruff scope | `.pre-commit-config.yaml` | `ci.yml` | Both: all production roots plus `tests` |
 | Ruff config | `pyproject.toml` | `pyproject.toml` | Identical |
-| MyPy scope | `pyproject.toml` + `.pre-commit-config.yaml` | `ci.yml` | Local: `sbir_etl`. CI: `sbir_etl` (code-quality) **plus** per-package MyPy for `sbir-analytics`, `sbir-ml`, `sbir-graph` (package-type-checks job) |
+| MyPy scope | `pyproject.toml` + `.pre-commit-config.yaml` | `ci.yml` | Local: `sbir_etl`. CI: `sbir_etl` **plus** `sbir-graph`, both in the `quality` job |
 | MyPy config | `pyproject.toml` | `pyproject.toml` | Identical |
-| Bandit scope | `.pre-commit-config.yaml` | `weekly.yml` security-scan job | Scheduled security scan for production roots |
+| Bandit scope | `.pre-commit-config.yaml` | not run in CI | Manual only since the security-scan job was retired |
 | Bandit config | `pyproject.toml` | `pyproject.toml` | Identical |
 
 ---

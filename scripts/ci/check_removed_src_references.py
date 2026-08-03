@@ -15,6 +15,7 @@ AUTOMATION_PREFIXES = (".github/", "scripts/", "sbir_etl/", "packages/", "tests/
 SCANNED_FILES = {"Makefile", ".pre-commit-config.yaml"}
 EXCLUDED_HISTORICAL_DOCUMENTS = {"docs/decisions/ADR-002-etl-library-extraction.md"}
 EXCLUDED_SCAN_FILES = {
+    "scripts/ci/check_identity_boundaries.py",
     "tests/unit/scripts/test_repository_hygiene.py",
 }
 REMOVED_SRC_PATTERNS = (
@@ -41,9 +42,7 @@ LIVE_DOC_STALE_PATTERNS = (
         "Poetry command in live docs",
     ),
     (
-        re.compile(
-            r"(?:^|[\s'\"(=:/])(?:python\s+-m\s+)?black\s+(?:--|[A-Za-z0-9_.-]+)"
-        ),
+        re.compile(r"(?:^|[\s'\"(=:/])(?:python\s+-m\s+)?black\s+(?:--|[A-Za-z0-9_.-]+)"),
         "Black command in live docs",
     ),
 )
@@ -118,7 +117,9 @@ def _is_archive_guard_file(relative: str) -> bool:
         return False
     if relative.startswith(("scripts/archive/", "tests/unit/scripts/archive/")):
         return False
-    return relative in SCANNED_FILES or relative.startswith(AUTOMATION_PREFIXES)
+    return relative in SCANNED_FILES or relative.startswith(
+        (*AUTOMATION_PREFIXES, "docs/deployment/")
+    )
 
 
 def _read_text_lines(path: Path) -> list[str] | None:
@@ -170,7 +171,7 @@ def scan_live_doc_stale_content(
 
 
 def scan_archive_references(paths: list[Path], *, root: Path = REPOSITORY_ROOT) -> list[Violation]:
-    """Find live-code references to archived scripts."""
+    """Find operational references to archived scripts."""
     guard_files = [
         path for path in paths if _is_archive_guard_file(_relative_to_repository(path, root))
     ]
@@ -178,7 +179,7 @@ def scan_archive_references(paths: list[Path], *, root: Path = REPOSITORY_ROOT) 
         guard_files,
         root=root,
         patterns=tuple(
-            (pattern, "live code references scripts/archive")
+            (pattern, "operational file references scripts/archive")
             for pattern in ARCHIVE_REFERENCE_PATTERNS
         ),
     )
@@ -261,7 +262,7 @@ def main() -> int:
             scan_missing_live_doc_links(paths),
         ),
         (
-            "Live code references archived scripts:",
+            "Operational files reference archived scripts:",
             scan_archive_references(paths),
         ),
     ]

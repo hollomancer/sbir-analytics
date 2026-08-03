@@ -15,7 +15,6 @@ ENV_EXAMPLE = REPO_ROOT / ".env.server.example"
 SERVER_COMPOSE = REPO_ROOT / "docker-compose.server.yml"
 WAIT_FOR_SERVICE = REPO_ROOT / "scripts" / "docker" / "wait-for-service.sh"
 CI_COMPOSE = REPO_ROOT / "docker-compose.yml"
-BUILD_IMAGES_WORKFLOW = REPO_ROOT / ".github" / "workflows" / "build-images.yml"
 
 pytestmark = [pytest.mark.fast, pytest.mark.unit]
 
@@ -45,15 +44,28 @@ def test_api_port_is_8010():
     assert env["SBIR_ANALYTICS_API_PORT"] == "8010"
 
 
-def test_heavy_assets_disabled_by_default():
+def test_heavy_assets_loaded_but_not_scheduled():
+    # Heavy jobs must be runnable by hand now that AWS Batch is gone, but the
+    # always-on host must never launch one on its own.
     env = _parse_env(ENV_EXAMPLE)
-    assert env["DAGSTER_LOAD_HEAVY_ASSETS"] == "false"
+    assert env["DAGSTER_LOAD_HEAVY_ASSETS"] == "true"
+    assert env["SBIR_ETL__DAGSTER__SCHEDULES__DAILY_ALL_ASSETS_ENABLED"] == "false"
 
 
 def test_schedules_gated_off_by_default():
     env = _parse_env(ENV_EXAMPLE)
     assert env["SBIR_ETL__DAGSTER__SCHEDULES__DAILY_ALL_ASSETS_ENABLED"] == "false"
     assert env["SBIR_ETL__DAGSTER__SCHEDULES__WEEKLY_CORE_REFRESH_ENABLED"] == "false"
+
+
+def test_pipeline_chaining_sensors_gated_off_by_default():
+    env = _parse_env(ENV_EXAMPLE)
+    for name in (
+        "SBIR_PIPELINE_AFTER_DOWNLOAD",
+        "USPTO_PIPELINE_AFTER_DOWNLOAD",
+        "USASPENDING_PIPELINE_AFTER_DOWNLOAD",
+    ):
+        assert env[f"SBIR_ETL__DAGSTER__SENSORS__{name}_ENABLED"] == "false"
 
 
 def test_storage_defaults_are_repo_local():
@@ -106,11 +118,3 @@ def test_dependency_wait_contract_matches_slim_server_image():
 def test_ci_container_mounts_server_env_contract():
     compose = CI_COMPOSE.read_text()
     assert "./.env.server.example:/app/.env.server.example:ro" in compose
-
-
-def test_image_workflow_rebuilds_arm64_images_when_workflow_changes():
-    workflow = BUILD_IMAGES_WORKFLOW.read_text()
-    assert workflow.count("platforms: linux/amd64,linux/arm64") == 2
-    # One paths entry triggers the workflow and two filter entries ensure the
-    # base and ETL jobs actually run on the merge commit.
-    assert workflow.count("'.github/workflows/build-images.yml'") == 3

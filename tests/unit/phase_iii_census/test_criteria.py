@@ -353,6 +353,28 @@ def test_pair_validation_rejects_duplicate_prior_transaction_composite() -> None
         validate_pair_frame(pairs)
 
 
+def test_pair_validation_uses_award_grain_key_for_reused_public_ids() -> None:
+    pairs = pd.DataFrame(
+        [
+            _pair(prior_award_id="SHARED", prior_award_key="award-key-1"),
+            _pair(prior_award_id="SHARED", prior_award_key="award-key-2"),
+        ]
+    )
+
+    validate_pair_frame(pairs)
+
+
+def test_pair_validation_namespaces_key_from_legacy_public_id() -> None:
+    pairs = pd.DataFrame(
+        [
+            _pair(prior_award_id="PUBLIC-1", prior_award_key="SHARED"),
+            _pair(prior_award_id="SHARED", prior_award_key=pd.NA),
+        ]
+    )
+
+    validate_pair_frame(pairs)
+
+
 @pytest.mark.parametrize(
     "overrides",
     [

@@ -29,11 +29,17 @@ import re
 from collections.abc import Iterable
 from dataclasses import asdict, dataclass, field
 from datetime import date, datetime
-from difflib import SequenceMatcher
 from pathlib import Path
 from uuid import uuid4
 
 from loguru import logger
+
+from sbir_etl.identity import (
+    CompanyNameMetric,
+    CompanyNameProfile,
+    company_name_similarity,
+    normalize_company_name,
+)
 
 
 # Optional dependencies
@@ -46,14 +52,6 @@ try:
     import duckdb
 except Exception:
     duckdb = None  # type: ignore
-
-try:
-    from rapidfuzz import fuzz
-
-    _RAPIDFUZZ_AVAILABLE = True
-except Exception:
-    fuzz = None  # type: ignore
-    _RAPIDFUZZ_AVAILABLE = False
 
 # ---------------------------------------------------------------------------
 # Utilities
@@ -72,25 +70,21 @@ def _normalize_identifier(val: str | None) -> str | None:
 
 
 def _normalize_name(name: str | None) -> str | None:
+    """Build the shared transition-vendor key used for matching and indexing."""
     if name is None:
         return None
-    s = " ".join(str(name).strip().split())
-    s = s.replace(",", " ").replace(".", " ").replace("/", " ").replace("&", " AND ")
-    return s.strip()
+    return normalize_company_name(name, profile=CompanyNameProfile.VENDOR_KEY_V1)
+
+
+def _clean_display_name(name: str | None) -> str | None:
+    """Clean persisted display text without turning it into an identity key."""
+    if name is None:
+        return None
+    return normalize_company_name(name, profile=CompanyNameProfile.VENDOR_CROSSWALK_V1)
 
 
 def _fuzzy_score(a: str, b: str) -> float:
-    if not a or not b:
-        return 0.0
-    if _RAPIDFUZZ_AVAILABLE:
-        try:
-            return float(fuzz.token_sort_ratio(a, b) / 100.0)
-        except Exception:
-            pass
-    try:
-        return float(SequenceMatcher(None, a, b).ratio())
-    except Exception:
-        return 0.0
+    return company_name_similarity(a, b, metric=CompanyNameMetric.TOKEN_SORT)
 
 
 def _iso_date(val: str | date | datetime | None) -> str | None:
@@ -144,12 +138,12 @@ class CrosswalkRecord:
         return d
 
     def normalize(self) -> None:
-        self.canonical_name = _normalize_name(self.canonical_name) or self.canonical_name
+        self.canonical_name = _clean_display_name(self.canonical_name) or self.canonical_name
         self.uei = _normalize_identifier(self.uei)
         self.cage = _normalize_identifier(self.cage)
         self.duns = _normalize_identifier(self.duns)
         for a in self.aliases:
-            a.name = _normalize_name(a.name) or a.name
+            a.name = _clean_display_name(a.name) or a.name
 
 
 # ---------------------------------------------------------------------------
@@ -254,7 +248,7 @@ class VendorCrosswalk:
         # If canonical name differs, keep existing canonical_name but add alias
         if _normalize_name(base.canonical_name) != _normalize_name(rec.canonical_name):
             # add rec canonical name as alias if not present
-            alias_name = _normalize_name(rec.canonical_name) or rec.canonical_name
+            alias_name = _clean_display_name(rec.canonical_name) or rec.canonical_name
             if alias_name and alias_name not in existing_alias_names:
                 base.aliases.append(AliasRecord(name=alias_name, note="merged-canonical"))
         logger.info("Merged record %s into %s", rec.canonical_id, canonical_id)
@@ -308,6 +302,11 @@ class VendorCrosswalk:
     ) -> tuple[CrosswalkRecord, float] | None:
         """
         Find best matching canonical record by name. Returns (record, score) or None.
+
+        A name that identifies more than one canonical record is ambiguous and returns
+        None. The shared vendor key deliberately joins spelling variants, so distinct
+        identifier-backed records can share a key; resolving that by index position
+        would select a record by insertion order.
         """
         if not name:
             return None
@@ -317,17 +316,17 @@ class VendorCrosswalk:
         # exact match
         cids = self._name_index.get(norm)
         if cids:
-            return self.records[cids[0]], 1.0
+            return (self.records[cids[0]], 1.0) if len(cids) == 1 else None
         # fuzzy choose best across canonical names
         best_score = 0.0
-        best_cid = None
+        best_cids: list[str] = []
         for canon_name, cid_list in self._name_index.items():
             score = _fuzzy_score(norm, canon_name)
             if score > best_score:
                 best_score = score
-                best_cid = cid_list[0]
-        if best_score >= fuzzy_threshold and best_cid:
-            return self.records[best_cid], best_score
+                best_cids = cid_list
+        if best_score >= fuzzy_threshold and len(best_cids) == 1:
+            return self.records[best_cids[0]], best_score
         return None
 
     def find_by_any(
@@ -379,9 +378,10 @@ class VendorCrosswalk:
         if canonical_id not in self.records:
             return False
         rec = self.records[canonical_id]
-        alias_name_norm = _normalize_name(alias_name) or alias_name
-        # avoid duplicates
-        if any(a.name == alias_name_norm for a in rec.aliases):
+        alias_name_norm = _clean_display_name(alias_name) or alias_name
+        alias_key = _normalize_name(alias_name)
+        # avoid duplicates on the matching key, not on display text
+        if any(_normalize_name(a.name) == alias_key for a in rec.aliases):
             return True
         ad = AliasRecord(
             name=alias_name_norm,
@@ -391,7 +391,10 @@ class VendorCrosswalk:
         )
         rec.aliases.append(ad)
         # update name index
-        self._name_index.setdefault(alias_name_norm, []).append(canonical_id)
+        if alias_key:
+            indexed = self._name_index.setdefault(alias_key, [])
+            if canonical_id not in indexed:
+                indexed.append(canonical_id)
         logger.info("Added alias '%s' to %s", alias_name, canonical_id)
         return True
 

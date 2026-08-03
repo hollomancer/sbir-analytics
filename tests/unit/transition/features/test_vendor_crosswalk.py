@@ -64,10 +64,10 @@ class TestUtilityFunctions:
     @pytest.mark.parametrize(
         "input_val,expected",
         [
-            ("  Acme   Corporation  ", "Acme Corporation"),
-            ("Acme\n\tCorporation", "Acme Corporation"),
-            ("Acme, Inc.", "Acme  Inc"),
-            ("Acme/Corp", "Acme Corp"),
+            ("  Acme   Corporation  ", "acme corp"),
+            ("Acme\n\tCorporation", "acme corp"),
+            ("Acme, Inc.", "acme inc"),
+            ("Acme/Corp", "acme corp"),
             (None, None),
         ],
         ids=["whitespace", "newline_tab", "comma_dot", "slash", "none"],
@@ -272,8 +272,8 @@ class TestAddOrMerge:
 
         cw.add_or_merge(record)
 
-        assert "Acme Corporation" in cw._name_index
-        assert "co-123" in cw._name_index["Acme Corporation"]
+        assert "acme corp" in cw._name_index
+        assert "co-123" in cw._name_index["acme corp"]
 
     def test_merge_by_uei_match(self):
         """Test merging records with matching UEI."""
@@ -469,6 +469,38 @@ class TestLookupMethods:
         assert result[0].canonical_id == "co-123"
         assert result[1] == 1.0  # Perfect score
 
+    def test_find_by_name_uses_shared_vendor_key(self):
+        """Legal-designator and punctuation variants are exact matches."""
+        cw = VendorCrosswalk()
+        record = CrosswalkRecord(canonical_id="co-123", canonical_name="Acme Corporation")
+        cw.add_or_merge(record)
+
+        result = cw.find_by_name("ACME, CORP.")
+
+        assert result is not None
+        assert result[0].canonical_id == "co-123"
+        assert result[1] == 1.0
+        assert result[0].canonical_name == "Acme Corporation"
+
+    def test_find_by_name_returns_none_when_key_matches_two_records(self):
+        """An ambiguous vendor key is not resolved by index position."""
+        cw = VendorCrosswalk()
+        cw.add_or_merge(
+            CrosswalkRecord(
+                canonical_id="co-1", canonical_name="Acme Corporation", uei="AAAAAAAAAAAA"
+            )
+        )
+        cw.add_or_merge(
+            CrosswalkRecord(canonical_id="co-2", canonical_name="Acme, Corp.", uei="BBBBBBBBBBBB")
+        )
+
+        assert cw._name_index["acme corp"] == ["co-1", "co-2"]
+        assert cw.find_by_name("Acme Corporation") is None
+        assert cw.find_by_name("ACME CORP") is None
+        assert cw.find_by_any(name="Acme Corporation", fuzzy_threshold=0.7) is None
+        # Identifier lookups are unaffected by name ambiguity.
+        assert cw.find_by_uei("AAAAAAAAAAAA").canonical_id == "co-1"
+
     def test_find_by_name_fuzzy_match(self):
         """Test finding by name with fuzzy matching."""
         cw = VendorCrosswalk()
@@ -636,8 +668,44 @@ class TestAliasHandling:
         cw.add_alias("co-123", "Acme Inc")
 
         # Should be findable by alias name
-        assert "Acme Inc" in cw._name_index
-        assert "co-123" in cw._name_index["Acme Inc"]
+        assert "acme inc" in cw._name_index
+        assert "co-123" in cw._name_index["acme inc"]
+
+    def test_add_alias_deduplicates_display_variants_of_one_key(self):
+        """Variants sharing a vendor key add one alias and one index entry."""
+        cw = VendorCrosswalk()
+        cw.add_or_merge(CrosswalkRecord(canonical_id="co-123", canonical_name="Acme Corporation"))
+
+        assert cw.add_alias("co-123", "Acme Inc") is True
+        assert cw.add_alias("co-123", "ACME, INC.") is True
+        assert cw.add_alias("co-123", "Acme Incorporated") is True
+
+        assert [a.name for a in cw.records["co-123"].aliases] == ["Acme Inc"]
+        assert cw._name_index["acme inc"] == ["co-123"]
+        assert cw.find_by_name("Acme Inc")[0].canonical_id == "co-123"
+
+
+class TestVendorKeyIndexing:
+    """The display profile must never change which records share a matching key."""
+
+    @pytest.mark.parametrize(
+        "name",
+        [
+            "Acme Corporation",
+            "Acme, Corp.",
+            "Alme & Associates",
+            "I. C. Gomes Consulting, L.L.C.",
+            "PC Photonics/Inc",
+            "Planetary Systems Corp.",
+        ],
+    )
+    def test_display_cleanup_does_not_change_the_matching_key(self, name):
+        from sbir_ml.transition.features.vendor_crosswalk import (
+            _clean_display_name,
+            _normalize_name,
+        )
+
+        assert _normalize_name(_clean_display_name(name)) == _normalize_name(name)
 
 
 class TestAcquisitionHandling:
@@ -895,8 +963,9 @@ class TestEdgeCases:
         cw.add_or_merge(record1)
         cw.add_or_merge(record2)
 
-        # Both normalize to "Acme  Corp"
+        # Both share the matching key while retaining separate identifier-backed records.
         assert len(cw.records) == 2
+        assert cw._name_index["acme corp"] == ["co-1", "co-2"]
 
     def test_jsonl_with_empty_lines(self):
         """Test loading JSONL handles empty lines."""

@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pandas as pd
 import pytest
+import yaml
 from dagster import AssetCheckResult, Output, build_asset_context
 
 from sbir_analytics.assets.phase_iii_census import assets as census_assets
@@ -101,6 +102,41 @@ def test_frozen_spec_verification_hashes_exact_raw_bytes() -> None:
     assert hashlib.sha256(census_assets.AMENDMENTS_LOG_PATH.read_bytes()).hexdigest() == (
         census_assets.AMENDMENTS_LOG_SHA256
     )
+
+
+def test_materialization_gate_matches_authorized_repository_manifest() -> None:
+    assert census_assets.verify_materialization_gate() == {
+        "study_id": "phase-iii-census",
+        "evidence_status": "reproducible",
+        "materialization_allowed": True,
+        "manifest_path": "studies/phase-iii-census/study.yaml",
+    }
+
+
+def test_closed_materialization_gate_stops_before_loading_sources(
+    tmp_path: Path, monkeypatch
+) -> None:
+    manifest = yaml.safe_load(census_assets.STUDY_MANIFEST_PATH.read_text(encoding="utf-8"))
+    manifest["materialization"] = {
+        "allowed": False,
+        "blockers": ["Negative-control eligibility is unresolved."],
+    }
+    manifest_path = tmp_path / "study.yaml"
+    manifest_path.write_text(yaml.safe_dump(manifest), encoding="utf-8")
+    loader_called = False
+
+    def unexpected_loader():
+        nonlocal loader_called
+        loader_called = True
+        raise AssertionError("source loader must not run while the study gate is closed")
+
+    monkeypatch.setattr(census_assets, "STUDY_MANIFEST_PATH", manifest_path)
+    monkeypatch.setattr(census_assets, "_load_contracts", unexpected_loader)
+
+    with pytest.raises(CensusInputError, match="materialization blocked.*Negative-control"):
+        census_assets.phase_iii_census(build_asset_context(), _prior_source())
+
+    assert not loader_called
 
 
 def test_asset_fails_on_spec_mismatch_before_loading_any_source(
@@ -300,6 +336,9 @@ def test_asset_writes_exactly_two_parquet_tables_without_headline_metadata(
         "frozen_spec_revision",
         "amendments_log_path",
         "amendments_log_sha256",
+        "study_manifest_path",
+        "study_evidence_status",
+        "study_materialization_allowed",
         "ordered_clauses",
         "reproducibility",
     }

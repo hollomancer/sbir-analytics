@@ -2,7 +2,7 @@
 
 This module provides functionality to extract USAspending data from compressed PostgreSQL dumps using DuckDB.
 Supports both direct DuckDB postgres_scanner access and pg_restore streaming for removable media workflows.
-Supports S3-stored dumps with automatic download and caching.
+Reads dumps from local disk.
 """
 
 import subprocess
@@ -15,7 +15,6 @@ import pandas as pd
 
 from ..config.loader import get_config
 from ..utils.logging_config import log_with_context
-from ..utils.cloud_storage import resolve_data_path
 
 # USAspending recipient_lookup table schema (from Django model)
 # https://github.com/fedspendingtransparency/usaspending-api/blob/master/usaspending_api/recipient/models.py
@@ -102,19 +101,13 @@ class DuckDBUSAspendingExtractor:
 
         Args:
             dump_file: Path to the PostgreSQL dump file (supports .zip, .gz, .sql)
-                      Can be local path or S3 URL (s3://bucket/path)
             table_name: Name for the imported table
 
         Returns:
             True if import successful, False otherwise
         """
         with log_with_context(stage="extract", run_id="usaspending_import") as logger:
-            # Resolve S3 path if needed
-            if isinstance(dump_file, str) and dump_file.startswith("s3://"):
-                logger.info(f"Resolving S3 dump file: {dump_file}")
-                dump_file = resolve_data_path(dump_file)
-            else:
-                dump_file = Path(dump_file)
+            dump_file = Path(dump_file)
 
             logger.info(f"Importing PostgreSQL dump from {dump_file}")
 

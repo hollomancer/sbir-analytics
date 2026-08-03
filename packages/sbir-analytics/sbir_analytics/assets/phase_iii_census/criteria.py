@@ -252,7 +252,11 @@ def validate_pair_frame(pairs: pd.DataFrame) -> None:
 
     transaction_key = _normalized_key(pairs["target_transaction_id"])
     contract_key = _normalized_key(pairs["target_contract_key"])
-    prior_key = _normalized_key(pairs["prior_award_id"])
+    prior_award_key = _normalized_key(
+        pairs.get("prior_award_key", pd.Series(pd.NA, index=pairs.index))
+    )
+    prior_public_id = _normalized_key(pairs["prior_award_id"])
+    prior_key = ("KEY:" + prior_award_key).where(prior_award_key.notna(), "ID:" + prior_public_id)
     prior_uei = _normalized_key(pairs["prior_recipient_uei"])
     target_uei = _normalized_key(pairs["target_recipient_uei"])
 

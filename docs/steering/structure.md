@@ -2,6 +2,12 @@
 
 For the full directory tree and pipeline architecture, see [architecture/detailed-overview.md](../architecture/detailed-overview.md). This document covers the developer-facing conventions: directory layout, naming rules, and code organization principles.
 
+The conventions below organize code by **technical role** — extractors,
+enrichers, transformers, loaders. That axis is orthogonal to
+[epistemic tiers](epistemic-tiers.md), which govern what an artifact can be
+trusted to support and what it costs to maintain. A module's directory tells you
+what it does; its tier tells you how much weight it carries. Both apply.
+
 ## Directory Conventions
 
 ### Configuration Files
@@ -69,6 +75,25 @@ docs/
 
 ## Code Organization Principles
 
+Company-name normalization and similarity belong in `sbir_etl/identity`; callers select
+an explicit versioned profile. See [company-identity.md](company-identity.md).
+
+### Study Evidence Contracts
+
+Externally citable studies declare a versioned contract in `studies/<study-id>/study.yaml`.
+The evidence status records epistemic maturity (`exploratory` through `citable`), while the
+materialization gate independently records whether production outputs may currently run.
+A reproducible study may therefore have either an open or closed gate. Operational assets
+must enforce their gate before reading sources or writing outputs; CI separately verifies
+the manifest schema, frozen-artifact hashes, and implementation references.
+
+### Transitional Script Dependencies
+
+First-party packages may not add dependencies on `scripts/`. The architecture guard carries
+one exact, temporary exception for the server source-download jobs, which wrap five existing
+download CLIs. Those implementations should move behind a package API; the CLI modules can
+then remain as compatibility entry points and the exception can be removed.
+
 ### Separation of Concerns
 
 - **Single responsibility**: Each module has one clear purpose
@@ -120,5 +145,6 @@ from sbir_etl.models.sbir_award import SbirAward
 - **[product.md](product.md)** - Project overview and business context
 - **[tech.md](tech.md)** - Technology stack and development tools
 - **[pipeline-orchestration.md](pipeline-orchestration.md)** - Dagster asset organization patterns
+- **[company-identity.md](company-identity.md)** - Versioned company identity policies
 - **[configuration.md](../configuration.md)** - Configuration management examples
 - **[quick-reference.md](quick-reference.md)** - Common commands and development setup

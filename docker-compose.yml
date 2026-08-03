@@ -333,7 +333,6 @@ services:
       - ./tests:/app/tests:ro
       # Repo-root server contract exercised by fast unit tests.
       - ./.env.server.example:/app/.env.server.example:ro
-      - ./.github/workflows/build-images.yml:/app/.github/workflows/build-images.yml:ro
       - ./Dockerfile:/app/Dockerfile:ro
       - ./Makefile:/app/Makefile:ro
       - ./docker-compose.server.yml:/app/docker-compose.server.yml:ro

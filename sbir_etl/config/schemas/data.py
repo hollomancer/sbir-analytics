@@ -69,13 +69,6 @@ class SbirDuckDBConfig(BaseModel):
         default="data/raw/sbir/awards_data.csv",
         description="Path to SBIR CSV file (local fallback path)",
     )
-    csv_path_s3: str | None = Field(
-        default=None,
-        description="S3 URL for SBIR CSV (auto-built from csv_path if bucket configured)",
-    )
-    use_s3_first: bool = Field(
-        default=True, description="If True, try S3 first, fallback to local csv_path"
-    )
     database_path: str = Field(
         default=":memory:", description="DuckDB database path (:memory: for in-memory)"
     )
@@ -90,13 +83,6 @@ class SamGovConfig(BaseModel):
     parquet_path: str = Field(
         default="data/raw/sam_gov/sam_entity_records.parquet",
         description="Path to SAM.gov parquet file (local fallback path)",
-    )
-    parquet_path_s3: str | None = Field(
-        default=None,
-        description="S3 URL for SAM.gov parquet (auto-built from parquet_path if bucket configured)",
-    )
-    use_s3_first: bool = Field(
-        default=True, description="If True, try S3 first, fallback to local parquet_path"
     )
     batch_size: int = Field(default=10000, description="Batch size for chunked processing")
 
@@ -225,14 +211,6 @@ class DuckDBConfig(BaseModel):
     threads: int = 4
     enable_object_cache: bool = True
     enable_query_profiler: bool = False
-    enable_httpfs: bool = Field(
-        default=False,
-        description="Enable httpfs extension for direct S3 reads (skips temp downloads)",
-    )
-    s3_region: str = Field(
-        default="us-east-2",
-        description="AWS region for httpfs S3 access",
-    )
 
 
 # ---------------------------------------------------------------------------
@@ -367,38 +345,21 @@ class PathsConfig(BaseModel):
         default="data/transition/contracts_ingestion.parquet",
         description="Transition contracts output file (local path)",
     )
-    transition_contracts_output_s3_path: str = Field(
-        default="",
+    transition_award_archive_dir: str = Field(
+        default="data/raw/usaspending/award_archive",
         description=(
-            "Optional s3:// URL to upload the extracted contracts parquet to after "
-            "the transition contracts asset writes it locally (cross-run reuse in a "
-            "fresh/ephemeral env). Empty = local only."
+            "Directory containing public USAspending Contracts_Full Award Data "
+            "Archive ZIPs. The newest archive is used only when the explicit "
+            "USE_AWARD_ARCHIVE runtime flag is enabled."
         ),
     )
     transition_dump_dir: str = Field(
         default="data/transition/pruned_data_store_api_dump",
         description="Transition API dump directory (local path)",
     )
-    transition_dump_s3_prefix: str = Field(
-        default="",
-        description=(
-            "Optional s3:// prefix holding the transition dump objects "
-            "(.dat.gz files + toc.dat). When set, the transition contracts asset "
-            "syncs only the needed table file(s) + toc.dat into transition_dump_dir "
-            "(selective; avoids pulling the full ~17GB dump). Empty = local only."
-        ),
-    )
     transition_vendor_filters: str = Field(
         default="data/transition/sbir_vendor_filters.json",
         description="SBIR vendor filters file (local path)",
-    )
-    transition_vendor_filters_s3_path: str = Field(
-        default="",
-        description=(
-            "Optional s3:// URL for the SBIR vendor filters JSON. When set, the "
-            "transition contracts asset resolves it S3-first and falls back to the "
-            "local transition_vendor_filters path. Empty = local only."
-        ),
     )
     scripts_output: str = Field(
         default="data/scripts_output", description="Scripts output directory"

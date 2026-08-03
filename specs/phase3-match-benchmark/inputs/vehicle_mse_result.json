@@ -1,0 +1,92 @@
+{
+  "inputs": {
+    "/Users/hollomancer/projects/sbir-analytics/data/derived/m0a_coded_dod.parquet": "42207a95a341e4b3256c3223514b56a5071341a0e2050d4078000564f8ce3120",
+    "/Users/hollomancer/projects/sbir-analytics/data/derived/m0a_desc_phase3_dod.parquet": "e803b5fd083072f489f65ead8bcc22e5744117b1f6ac05989d26674f3ea26175",
+    "specs/phase3-match-benchmark/inputs/vehicle149_children.json": "7b8cfa0a128612dc2d86bd796c4ef9831a276bc7a332656c124a192f98094ffc"
+  },
+  "n_units_observed": 6712,
+  "standalone_cells": {
+    "n1": 2692,
+    "n2": 578,
+    "m": 524
+  },
+  "task_order_cells": {
+    "ABC": 159,
+    "AB": 138,
+    "AC": 638,
+    "BC": 22,
+    "A": 2724,
+    "B": 14,
+    "C": 271
+  },
+  "models": {
+    "independence": {
+      "dark_standalone": 223.0,
+      "dark_task_order": 773.7,
+      "dark_total": 996.7,
+      "aic_task_order": -49387.6,
+      "total_N": 7709.0,
+      "code_miss_rate": 17.6
+    },
+    "AB": {
+      "dark_standalone": 223.0,
+      "dark_task_order": 951.6,
+      "dark_total": 1174.6,
+      "aic_task_order": -49426.0,
+      "total_N": 7887.0,
+      "code_miss_rate": 19.5
+    },
+    "AC": {
+      "dark_standalone": 223.0,
+      "dark_task_order": 159.4,
+      "dark_total": 382.4,
+      "aic_task_order": -49451.4,
+      "total_N": 7094.0,
+      "code_miss_rate": 10.5
+    },
+    "BC": {
+      "dark_standalone": 223.0,
+      "dark_task_order": 894.4,
+      "dark_total": 1117.4,
+      "aic_task_order": -49555.8,
+      "total_N": 7829.0,
+      "code_miss_rate": 18.9
+    },
+    "AB+AC": {
+      "dark_standalone": 223.0,
+      "dark_task_order": 172.5,
+      "dark_total": 395.4,
+      "aic_task_order": -49449.6,
+      "total_N": 7107.0,
+      "code_miss_rate": 10.6
+    },
+    "AB+BC": {
+      "dark_standalone": 223.0,
+      "dark_task_order": 1157.1,
+      "dark_total": 1380.1,
+      "aic_task_order": -49607.1,
+      "total_N": 8092.0,
+      "code_miss_rate": 21.5
+    },
+    "AC+BC": {
+      "dark_standalone": 223.0,
+      "dark_task_order": 276.3,
+      "dark_total": 499.3,
+      "aic_task_order": -49580.5,
+      "total_N": 7211.0,
+      "code_miss_rate": 11.9
+    },
+    "AB+AC+BC": {
+      "dark_standalone": 223.0,
+      "dark_task_order": 848.4,
+      "dark_total": 1071.4,
+      "aic_task_order": -49605.8,
+      "total_N": 7783.0,
+      "code_miss_rate": 18.4
+    }
+  },
+  "ab_bc_block_bootstrap_ci": [
+    850.0,
+    2485.0
+  ]
+}

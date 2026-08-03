@@ -101,6 +101,18 @@ def _normalize_source_key(value: Any) -> str:
     return "" if normalized in _NULL_KEY_TOKENS else normalized
 
 
+def _normalize_taxonomy_value(value: Any) -> str:
+    """Normalize a NAICS or PSC value for comparison and for exact-key fill.
+
+    Deliberately separate from `_normalize_source_key` despite the identical body:
+    that function normalizes award identity, and a change made for PIID matching must
+    not silently alter which taxonomy values are judged conflicting or what gets
+    persisted into `naics_code`/`psc_code`.
+    """
+
+    return _normalize_source_key(value)
+
+
 def _coalesce_columns(df: pd.DataFrame, *names: str) -> pd.Series:
     """Take the first nonblank named source value per row in fixed order."""
 
@@ -428,10 +440,12 @@ def _unify(contract_phase_ii: pd.DataFrame, sbir_gov_phase_ii: pd.DataFrame) -> 
         for column in ("naics_code", "psc_code"):
             candidates = supplemental.loc[supplemental_indexes, column]
             supplemental_normalized = {
-                normalized for value in candidates if (normalized := _normalize_source_key(value))
+                normalized
+                for value in candidates
+                if (normalized := _normalize_taxonomy_value(value))
             }
             federal_value = federal.at[federal_index, column]
-            federal_normalized = _normalize_source_key(federal_value)
+            federal_normalized = _normalize_taxonomy_value(federal_value)
             observed_values = set(supplemental_normalized)
             if federal_normalized:
                 observed_values.add(federal_normalized)
