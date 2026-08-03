@@ -131,16 +131,18 @@ NAICS codes (6-digit industry codes) are mapped to BEA Summary-level I-O sectors
 | 54xxxx | 54 | Professional, scientific, technical services |
 | 62xxxx | 62 | Health care and social assistance |
 
-See `sbir_etl/transformers/naics_bea_mapper.py` for complete mapping.
+See `sbir_etl/enrichers/fiscal_bea_mapper.py` and
+`config/fiscal/naics_bea_mappings.yaml` for the current mapping implementation
+and fallback concordance.
 
 ### Custom Concordance
 
 To use a custom NAICS-BEA concordance:
 
 ```python
-from sbir_etl.transformers.naics_bea_mapper import NAICSBEAMapper
+from sbir_etl.enrichers.fiscal_bea_mapper import NAICSToBEAMapper
 
-mapper = NAICSBEAMapper(concordance_path="/path/to/concordance.csv")
+mapper = NAICSToBEAMapper(config={"fallback_path": "/path/to/concordance.yaml"})
 calculator = SBIRFiscalImpactCalculator(naics_mapper=mapper)
 ```
 

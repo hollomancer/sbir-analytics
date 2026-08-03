@@ -362,7 +362,7 @@ reproducible — not a spec or a research target.
 3. **Close together (5 min):** the continuous-monitoring pitch (E6) — this
    isn't a one-time study, it's infrastructure that can produce
    quarter-over-quarter snapshots between NASEM's four-year review cycles.
-   See `docs/research-plan-alignment.md`, milestone M5.
+   See the current [research-question inventory](../research-questions.md), section E6.
 
 ### Rehearsing the live commands
 
@@ -380,6 +380,6 @@ error if either is missing. Do not use
 - Full research-question inventory and audience map:
   [research-questions.md](../research-questions.md)
 - Milestone-by-milestone build status vs. the underlying research plan:
-  [research-plan-alignment.md](../research-plan-alignment.md)
+  [research-question inventory](../research-questions.md)
 - Plain-English methodology explainer to leave behind:
   [sec-edgar-for-policy-makers.md](sec-edgar-for-policy-makers.md)

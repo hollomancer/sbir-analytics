@@ -18,19 +18,19 @@ Usage:
     # Test with a different CSV file:
     uv run python scripts/validation/categorization_validation.py --dataset path/to/companies.csv
     uv run python scripts/validation/categorization_validation.py -d path/to/companies.csv
-    poetry run python tests/validation/test_categorization_validation.py --csv path/to/companies.csv
+    uv run python scripts/validation/categorization_validation.py --csv path/to/companies.csv
 
     # Test specific company by UEI
-    poetry run python tests/validation/test_categorization_validation.py --uei ABC123DEF456
+    uv run python scripts/validation/categorization_validation.py --uei ABC123DEF456
 
     # Export results to CSV
-    poetry run python tests/validation/test_categorization_validation.py --output results.csv
+    uv run python scripts/validation/categorization_validation.py --output results.csv
 
     # Generate detailed markdown report
-    poetry run python tests/validation/test_categorization_validation.py --markdown-report report.md
+    uv run python scripts/validation/categorization_validation.py --markdown-report report.md
 
     # Load to Neo4j after categorization
-    poetry run python tests/validation/test_categorization_validation.py --load-neo4j
+    uv run python scripts/validation/categorization_validation.py --load-neo4j
 """
 
 import argparse

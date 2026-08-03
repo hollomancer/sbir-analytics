@@ -140,7 +140,7 @@ Every processed record includes provenance metadata:
 ### 2.1 Architecture Overview
 
 ```
-USAspending DB Dump (S3)
+USAspending DB Dump (local data root)
         │
         ▼
   ┌─────────────┐
@@ -399,13 +399,13 @@ the change.
 | SBIR.gov API down | Falls back to bulk download file |
 | SBIR.gov API + bulk both fail | Graceful: grants retain `shared` confidence, heuristic contracts lack confirmation; metadata: `sbir_gov_status: unavailable` |
 | DuckDB import fails | Raises `ExtractionError` with component/operation context |
-| S3 bucket not configured | Raises `ExtractionError` immediately |
+| Local USAspending dump missing | Raises `ExtractionError` immediately |
 
 ### 2.8 Process Flow Diagram
 
 ```mermaid
 flowchart TD
-    S3["S3: USAspending DB Dump"] --> IMPORT["Import into DuckDB"]
+    DUMP["Local USAspending DB Dump"] --> IMPORT["Import into DuckDB"]
     SBIRGOV["SBIR.gov Awards API"] --> XREF
 
     IMPORT --> FPDS["Contract Path<br/><i>sbir_relevant_usaspending_transactions</i>"]

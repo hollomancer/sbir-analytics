@@ -60,5 +60,5 @@ header.
 
 **Launch**: console script `sbir-analytics-api` (`sbir_analytics.api.__main__:main`) runs
 uvicorn on `SBIR_ANALYTICS_API_HOST` (default `0.0.0.0`) / `SBIR_ANALYTICS_API_PORT`
-(default `8000`). See [configuration](../configuration.md#analytics-api--read-only-neo4j) for
+(default `8000`). See [configuration](../configuration.md) for
 the full env-var list.

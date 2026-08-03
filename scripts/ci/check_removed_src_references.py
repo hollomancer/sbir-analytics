@@ -6,6 +6,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import re
 import subprocess
+import unicodedata
 from pathlib import Path
 from urllib.parse import unquote
 
@@ -50,6 +51,8 @@ ARCHIVE_REFERENCE_PATTERNS = (
     re.compile(r"scripts\.archive(?:\.|\b)"),
 )
 MARKDOWN_LINK_RE = re.compile(r"!?\[[^\]]+\]\(([^)]+)\)")
+MARKDOWN_HEADING_RE = re.compile(r"^ {0,3}#{1,6}\s+(.+?)\s*#*\s*$")
+MARKDOWN_EXPLICIT_ANCHOR_RE = re.compile(r'<a\s+(?:[^>]*?\s)?(?:id|name)=["\']([^"\']+)["\']', re.I)
 
 
 @dataclass(frozen=True)
@@ -189,29 +192,63 @@ def _extract_markdown_link_target(raw_target: str) -> str:
     return target.split(maxsplit=1)[0]
 
 
-def _is_external_or_anchor_link(target: str) -> bool:
+def _is_external_link(target: str) -> bool:
     lower = target.lower()
-    return (
-        not target
-        or target.startswith("#")
-        or lower.startswith(("http://", "https://", "mailto:", "tel:", "app://"))
-    )
+    return not target or lower.startswith(("http://", "https://", "mailto:", "tel:", "app://"))
 
 
 def _resolve_markdown_target(source_path: Path, target: str, root: Path) -> Path | None:
     normalized = unquote(target).split("#", 1)[0].split("?", 1)[0]
     if not normalized:
-        return None
+        return source_path
     if normalized.startswith("/"):
         return root / normalized.lstrip("/")
     return source_path.parent / normalized
 
 
+def _github_heading_slug(heading: str) -> str:
+    """Return the stable subset of GitHub's heading-slug behavior used by repository docs."""
+    text = re.sub(r"<[^>]+>", "", heading)
+    text = re.sub(r"!?\[([^\]]+)\]\([^)]+\)", r"\1", text)
+    text = text.replace("`", "").replace("*", "").replace("~", "")
+    characters: list[str] = []
+    for character in text.strip().lower():
+        category = unicodedata.category(character)
+        if character in {"-", "_"} or character.isspace() or category[0] in {"L", "N"}:
+            characters.append(character)
+    # GitHub replaces each whitespace character rather than collapsing a run;
+    # punctuation between two spaces therefore produces a double hyphen.
+    return re.sub(r"\s", "-", "".join(characters))
+
+
+def _markdown_anchors(path: Path) -> set[str]:
+    """Collect generated heading anchors and explicit HTML anchors from one Markdown file."""
+    lines = _read_text_lines(path)
+    if lines is None:
+        return set()
+    anchors: set[str] = set()
+    slug_counts: dict[str, int] = {}
+    for line in lines:
+        for explicit in MARKDOWN_EXPLICIT_ANCHOR_RE.findall(line):
+            anchors.add(unquote(explicit))
+        heading_match = MARKDOWN_HEADING_RE.match(line)
+        if heading_match is None:
+            continue
+        base_slug = _github_heading_slug(heading_match.group(1))
+        if not base_slug:
+            continue
+        duplicate_index = slug_counts.get(base_slug, 0)
+        slug_counts[base_slug] = duplicate_index + 1
+        anchors.add(base_slug if duplicate_index == 0 else f"{base_slug}-{duplicate_index}")
+    return anchors
+
+
 def scan_missing_live_doc_links(
     paths: list[Path], *, root: Path = REPOSITORY_ROOT
 ) -> list[Violation]:
-    """Find local Markdown links in live docs/specs that point nowhere."""
+    """Find local Markdown links or fragments in live docs/specs that point nowhere."""
     violations: list[Violation] = []
+    anchors_by_path: dict[Path, set[str]] = {}
     live_docs = [path for path in paths if _is_live_doc_file(_relative_to_repository(path, root))]
     for path in live_docs:
         lines = _read_text_lines(path)
@@ -221,13 +258,32 @@ def scan_missing_live_doc_links(
         for line_number, line in enumerate(lines, 1):
             for match in MARKDOWN_LINK_RE.finditer(line):
                 target = _extract_markdown_link_target(match.group(1))
-                if _is_external_or_anchor_link(target):
+                if _is_external_link(target):
                     continue
                 resolved = _resolve_markdown_target(path, target, root)
                 if resolved is not None and not resolved.exists():
                     violations.append(
                         Violation(
                             relative, line_number, f"missing local Markdown link {target}", line
+                        )
+                    )
+                    continue
+                fragment = (
+                    unquote(target.split("#", 1)[1].split("?", 1)[0]) if "#" in target else ""
+                )
+                if not fragment or resolved is None or resolved.suffix.lower() != ".md":
+                    continue
+                resolved_path = resolved.resolve()
+                anchors = anchors_by_path.setdefault(
+                    resolved_path, _markdown_anchors(resolved_path)
+                )
+                if fragment not in anchors:
+                    violations.append(
+                        Violation(
+                            relative,
+                            line_number,
+                            f"missing Markdown anchor #{fragment} in {target.split('#', 1)[0] or relative}",
+                            line,
                         )
                     )
     return violations

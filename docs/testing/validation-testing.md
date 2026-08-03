@@ -1,391 +1,92 @@
-# Validation Testing Guide - 200 Sample Companies
+# Company Categorization Validation
 
-Quick guide for testing the company categorization system against the high-volume SBIR companies validation dataset.
+**Type**: Operator Guide
 
-## Dataset
+**Owner**: Engineering Team
 
-**Location:** `data/raw/sbir/over-100-awards-company_search_1763075384.csv`
+**Last-Reviewed**: 2026-08-03
 
-**Description:** 200+ companies with >100 SBIR awards each (high-volume contractors)
+**Status**: Active
 
-**Columns:**
+`scripts/validation/categorization_validation.py` is an operator-facing validation CLI for running
+contract-based company categorization over a company CSV. It is not a pytest test module.
 
-- `UEI`: Company UEI
-- `Company Name`: Company name
-- `SBIR Awards`: Number of SBIR awards received
-- Additional metadata
-
----
-
-## Quick Start Testing
-
-### 1. Test First 10 Companies (Fastest - ~2 minutes)
+## Setup
 
 ```bash
-uv run python tests/validation/test_categorization_validation.py --limit 10
+make install
 ```
 
-**Expected Output:**
+By default the command looks for the validation dataset named in `--help`, retrieves contracts from
+the configured DuckDB database, and falls back to the USAspending API when local data is unavailable.
+Use `--dataset` for an explicit input and verify any API credentials before a large run.
 
-```
-Loading validation dataset from: data/raw/sbir/over-100-awards-company_search_1763075384.csv
-Loaded 200+ companies from validation dataset
-Processing first 10 companies
+## Common runs
 
-[1/10] Processing: Acme Technologies (UEI: ABC123, SBIR Awards: 150)
-  Retrieved 45 USAspending contracts
-  Contract breakdown: 30 Product, 10 Service, 5 R&D
-  Result: Product-leaning (66.7% Product, 33.3% Service) - High confidence
-
-...
-
-================================================================================
-CATEGORIZATION SUMMARY
-================================================================================
-
-Total companies processed: 10
-Companies with contracts: 8
-Companies without contracts: 2
-
-Classification Distribution:
-  Product-leaning: 5 (50.0%)
-  Service-leaning: 2 (20.0%)
-  Mixed: 1 (10.0%)
-  Uncertain: 2 (20.0%)
-...
-```
-
-### 2. Test Specific Company by UEI
+Start with a small sample:
 
 ```bash
-uv run python tests/validation/test_categorization_validation.py --uei ABC123DEF456
+uv run python scripts/validation/categorization_validation.py --dataset companies.csv --limit 10
 ```
 
-Shows detailed analysis for a single company.
-
-### 3. Test All Companies + Export Results
+Run the entire input and save both machine-readable and narrative output:
 
 ```bash
-uv run python tests/validation/test_categorization_validation.py --output validation_results.csv
+uv run python scripts/validation/categorization_validation.py \
+  --dataset companies.csv \
+  --output reports/categorization-results.csv \
+  --markdown-report reports/categorization-validation.md
 ```
 
-Processes all 200+ companies and exports to CSV (~20-30 minutes).
-
-### 4. Test and Load to Neo4j
+Inspect one company or request detailed contract justifications:
 
 ```bash
-uv run python tests/validation/test_categorization_validation.py --limit 20 --load-neo4j
+uv run python scripts/validation/categorization_validation.py --dataset companies.csv --uei UEI_VALUE
+uv run python scripts/validation/categorization_validation.py --dataset companies.csv --detailed
 ```
 
-Tests 20 companies and loads results to Neo4j.
-
----
-
-## Step-by-Step Testing Process
-
-### Step 1: Verify Prerequisites
+Force API retrieval and use bounded concurrency:
 
 ```bash
-# 1. Check validation dataset exists
-ls -lh data/raw/sbir/over-100-awards-company_search_1763075384.csv
-
-# 2. Check DuckDB database exists (with USAspending data)
-ls -lh data/processed/sbir.duckdb
-
-# 3. Verify dependencies installed
-uv sync
+uv run python scripts/validation/categorization_validation.py \
+  --dataset companies.csv --use-api --max-workers 3
 ```
 
-**If validation dataset is missing:**
-The dataset should be at `data/raw/sbir/over-100-awards-company_search_1763075384.csv` per the spec.
+`--use-api` disables DuckDB rather than merely preferring the API. Respect USAspending rate limits;
+the CLI recommends three to five workers at most.
 
-**If USAspending data is missing:**
-You'll need to load USAspending database dump first. See main README for instructions.
+## Options
 
-### Step 2: Run Initial Test (10 companies)
+| Option | Purpose |
+| --- | --- |
+| `--dataset`, `-d`, `--csv` | Input company CSV |
+| `--limit N` | Process at most `N` companies |
+| `--uei VALUE` | Process one UEI |
+| `--output PATH` | Write result rows as CSV |
+| `--markdown-report PATH` | Write a detailed Markdown report |
+| `--detailed` | Print contract-level justifications |
+| `--use-api` | Disable DuckDB and retrieve from USAspending API only |
+| `--max-workers N` | Parallel API workers; defaults to one |
+| `--load-neo4j` | Load completed categorizations into Neo4j |
+| `--verbose` | Enable debug logging |
+
+Run `uv run python scripts/validation/categorization_validation.py --help` for the authoritative
+option list.
+
+## Neo4j loading
+
+`--load-neo4j` is write-producing and requires a reachable Neo4j instance and valid credentials.
+Do not point an exploratory validation run at the live database. Before any live operation, use the
+[Mac mini runbook](../deployment/mac-mini-server.md#live-instance-on-this-mac-mini).
+
+## Automated coverage
+
+The categorization implementation is covered separately by:
 
 ```bash
-uv run python tests/validation/test_categorization_validation.py --limit 10 --verbose
+uv run pytest tests/unit/transformers/test_company_categorization.py -v
+uv run pytest tests/integration/test_company_categorization_client_injection.py -v
+uv run pytest tests/validation/test_categorization_quick.py -v
 ```
 
-This will:
-
-- ✓ Load validation dataset
-- ✓ Process first 10 companies
-- ✓ Retrieve USAspending contracts for each
-- ✓ Classify contracts (Product/Service/R&D)
-- ✓ Aggregate to company level
-- ✓ Print detailed summary
-
-**Review the output** to verify:
-
-- Contract retrieval is working
-- Classifications look reasonable
-- Confidence levels are appropriate
-
-### Step 3: Spot-Check Results
-
-Look for companies you know and verify classifications make sense:
-
-```bash
-# Example: Check a specific aerospace company
-uv run python tests/validation/test_categorization_validation.py --uei <KNOWN_UEI>
-```
-
-**Manual validation checklist:**
-
-- [ ] Product companies have high % numeric PSCs (1000-9999)
-- [ ] Service companies have high % alphabetic PSCs (R, S, etc.)
-- [ ] Mixed companies have diverse PSC families (>6)
-- [ ] Confidence levels match award counts (Low <=2, Medium 2-5, High >5)
-
-### Step 4: Run Full Validation
-
-```bash
-uv run python tests/validation/test_categorization_validation.py --output full_validation.csv
-```
-
-**This will take 20-30 minutes** depending on database size and network.
-
-### Step 5: Analyze Results
-
-```bash
-# Open CSV in Excel/LibreOffice or analyze with pandas
-uv run python
-```
-
-```python
->>> import pandas as pd
->>> results = pd.read_csv("full_validation.csv")
-
->>> # Classification distribution
->>> results['classification'].value_counts()
-Product-leaning    85
-Service-leaning    65
-Mixed             35
-Uncertain         15
-
->>> # Average metrics by classification
->>> results.groupby('classification')[['product_pct', 'service_pct', 'award_count']].mean()
-
->>> # High-confidence classifications
->>> high_conf = results[results['confidence'] == 'High']
->>> len(high_conf)
-120
-
->>> # Companies with insufficient data
->>> uncertain = results[results['classification'] == 'Uncertain']
->>> uncertain[['company_name', 'award_count', 'override_reason']]
-```
-
-### Step 6: Load to Neo4j (Optional)
-
-```bash
-# Test with small batch first
-uv run python tests/validation/test_categorization_validation.py --limit 20 --load-neo4j
-
-# If successful, load all
-uv run python tests/validation/test_categorization_validation.py --load-neo4j --output full_results.csv
-```
-
-Then query Neo4j:
-
-```cypher
-// Verify companies were updated
-MATCH (c:Organization {organization_type: "COMPANY"})
-WHERE c.classification IS NOT NULL
-RETURN count(c) as categorized_companies;
-
-// Check classification distribution
-MATCH (c:Organization {organization_type: "COMPANY"})
-WHERE c.classification IS NOT NULL
-RETURN c.classification, count(c) as count
-ORDER BY count DESC;
-
-// Find high-value product companies
-MATCH (c:Organization {organization_type: "COMPANY"})
-WHERE c.classification = "Product-leaning"
-  AND c.categorization_total_dollars > 1000000
-RETURN c.name, c.product_pct, c.categorization_total_dollars
-ORDER BY c.categorization_total_dollars DESC
-LIMIT 10;
-```
-
----
-
-## Interpreting Results
-
-### Expected Distribution
-
-For the high-volume SBIR company dataset (>100 awards each), expect:
-
-**Classification:**
-
-- ~40-50% Product-leaning (companies selling physical products/systems)
-- ~30-40% Service-leaning (consulting, R&D services, studies)
-- ~10-20% Mixed (integrators, diverse portfolios)
-- ~5-10% Uncertain (insufficient USAspending data)
-
-**Confidence:**
-
-- ~60-70% High confidence (>5 USAspending contracts)
-- ~20-30% Medium confidence (2-5 contracts)
-- ~10% Low confidence (<=2 contracts)
-
-### Red Flags to Investigate
-
-❌ **High Uncertain rate (>20%)**:
-
-- Check USAspending database is loaded correctly
-- Verify UEI matching is working
-
-❌ **Low confidence rate too high (>25%)**:
-
-- These are high-volume SBIR companies, most should have many USAspending contracts
-- Check database query logic
-
-❌ **All companies same classification**:
-
-- Logic error in classifier
-- Check PSC code handling
-
-✓ **Good signs:**
-
-- Mix of all classifications
-- Confidence correlates with award count
-- Results match manual spot-checks
-
----
-
-## Sample Companies to Spot-Check
-
-Here are some well-known SBIR companies you can use for manual validation:
-
-**Aerospace/Defense (expect Product-leaning):**
-
-- Physical Systems Inc.
-- Orbital ATK
-- Ball Aerospace
-
-**R&D Services (expect Service-leaning):**
-
-- Booz Allen Hamilton
-- MITRE Corporation
-- Leidos
-
-**Mixed:**
-
-- General Dynamics
-- Raytheon
-- Lockheed Martin (might be Product or Mixed)
-
-Find their UEIs in the dataset and test:
-
-```bash
-uv run python tests/validation/test_categorization_validation.py --uei <THEIR_UEI>
-```
-
----
-
-## Troubleshooting
-
-### "Validation dataset not found"
-
-```bash
-# Check file exists
-ls data/raw/sbir/over-100-awards-company_search_1763075384.csv
-
-# If missing, check alternative locations
-find data -name "*over-100-awards*"
-```
-
-### "No USAspending contracts found" for all companies
-
-**Cause:** USAspending database not loaded or table name mismatch
-
-**Fix:**
-
-```bash
-# Check config
-uv run python -c "from sbir_etl.config.loader import get_config; print(get_config().extraction.usaspending)"
-
-# Verify table exists in DuckDB
-uv run python -c "
-import duckdb
-conn = duckdb.connect('data/processed/sbir.duckdb')
-print(conn.execute('SHOW TABLES').fetchall())
-conn.close()
-"
-```
-
-### Script crashes with memory error
-
-**Fix:** Use smaller batches or increase system memory
-
-```bash
-# Process in chunks of 50
-for i in 0 50 100 150; do
-    uv run python tests/validation/test_categorization_validation.py \
-        --limit 50 \
-        --output results_chunk_$i.csv
-done
-
-# Combine results
-uv run python -c "
-import pandas as pd
-import glob
-chunks = [pd.read_csv(f) for f in sorted(glob.glob('results_chunk_*.csv'))]
-pd.concat(chunks).to_csv('full_results.csv', index=False)
-"
-```
-
----
-
-## Next Steps After Validation
-
-1. **Review Classification Distribution**
-   - Does it match expectations for SBIR contractors?
-   - Are confidence levels appropriate?
-
-2. **Manual Spot-Checks**
-   - Pick 10-20 companies you know
-   - Verify classifications match their actual business
-
-3. **Adjust Thresholds (if needed)**
-   - Edit `config/base.yaml`:
-
-     ```yaml
-     company_categorization:
-       product_leaning_pct: 51.0  # Adjust threshold
-       psc_family_diversity_threshold: 6  # Adjust diversity limit
-     ```
-
-4. **Run Full Pipeline in Dagster**
-
-   ```bash
-   uv run dagster dev
-   # Materialize: enriched_sbir_companies_with_categorization
-   # Review asset checks
-   ```
-
-5. **Load to Neo4j for Analysis**
-
-   ```bash
-   # After validation looks good
-   uv run python tests/validation/test_categorization_validation.py --load-neo4j
-   ```
-
----
-
-## Success Criteria
-
-✅ **Validation passes if:**
-
-- Classification distribution is reasonable (not all one type)
-- Confidence levels correlate with award counts
-- Spot-checks match known company types
-- <20% Uncertain rate
-- >50% High confidence rate
-- Neo4j load success rate >95%
-
-Once validation passes, the system is ready for production use!
+See [Categorization Testing](categorization-testing.md) for the intent of each layer.

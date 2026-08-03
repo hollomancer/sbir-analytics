@@ -1,789 +1,171 @@
 # Configuration Reference
 
 **Type**: Reference
+
 **Owner**: Engineering Team
-**Last-Updated**: 2025-11-05
+
+**Last-Reviewed**: 2026-08-03
+
 **Status**: Active
 
-## Overview
+The pipeline loads YAML from `config/`, applies environment-variable overrides, and validates
+the result with Pydantic models in `sbir_etl/config/schemas/`. The schemas and YAML files are the
+source of truth for fields, defaults, and validation constraints.
 
-The SBIR ETL pipeline is configuration-driven. Settings live in YAML files under `config/`, are validated by Pydantic schemas in `sbir_etl/config/schemas/`, and can be overridden at runtime with environment variables. The same mechanism covers file system paths (local or AWS S3) and every other pipeline section (data quality, enrichment, pipeline orchestration, performance, Neo4j, ModernBert, CET).
+## Load order
 
-This document is the canonical configuration reference: paths first, then the remaining sections, then the shared override mechanics.
+`sbir_etl.config.loader.get_config()` builds the effective configuration in this order:
 
-### Three-layer configuration system
+1. Load `config/base.yaml`.
+2. Deep-merge the selected profile, when present: `dev.yaml`, `test.yaml`, or `prod.yaml`.
+3. Map the legacy `loading.neo4j` block to the runtime `neo4j` section.
+4. Add runtime defaults for Neo4j, logging, and monitoring.
+5. Apply `SBIR_ETL__...` environment overrides.
+6. Validate and return a `PipelineConfig`.
 
-```text
-Layer 1: YAML Files (config/)
-    ↓
-Layer 2: Pydantic Validation (sbir_etl/config/schemas/)
-    ↓
-Layer 3: Runtime Configuration with Environment Overrides
-```
+Later layers take precedence.
 
-### Configuration files structure
+## Selecting a profile
 
-```text
-config/
-├── base.yaml              # Default settings (version controlled)
-├── dev.yaml               # Development overrides
-├── prod.yaml              # Production settings
-├── cet/                   # CET-specific configurations
-└── envs/                  # Environment-specific configs
-```
+Profile selection uses this precedence:
 
-Schemas are defined in `sbir_etl/config/schemas/` (`data.py`, `domain.py`, `pipeline.py`) and loaded/merged by `sbir_etl/config/loader.py`. Treat those files — not this doc — as the source of truth for defaults and validation bounds; the YAML examples below are illustrative.
-
-## Table of Contents
-
-- [Cloud Storage (AWS S3)](#cloud-storage-aws-s3)
-- [Configuration Structure](#configuration-structure)
-- [Default Paths](#default-paths)
-- [Path Resolution](#path-resolution)
-- [Validation](#validation)
-- [Configuration Sections](#configuration-sections)
-  - [Data Quality](#data-quality-configuration)
-  - [Enrichment](#enrichment-configuration)
-  - [Pipeline Orchestration](#pipeline-orchestration-configuration)
-  - [Neo4j](#neo4j-configuration)
-  - [Analytics API & Read-Only Neo4j](#analytics-api--read-only-neo4j)
-  - [ModernBert](#modernbert-configuration)
-  - [CET Classification](#cet-classification-configuration)
-  - [Organization Deduplication](#organization-deduplication-configuration)
-  - [Company Categorization](#company-categorization-configuration)
-  - [Transition Detection](#transition-detection-configuration)
-  - [Statistical Reporting](#statistical-reporting-configuration)
-  - [Fiscal Analysis](#fiscal-analysis-configuration)
-  - [OT Consortium](#ot-consortium-configuration)
-  - [CLI](#cli-configuration)
-- [Environment Variable Overrides](#environment-variable-overrides)
-- [Docker Deployment](#docker-deployment)
-- [Troubleshooting](#troubleshooting)
-
-## Cloud Storage (AWS S3)
-
-### S3 Path Support
-
-The pipeline supports AWS S3 paths for the optional cloud deployment path:
-
-```yaml
-paths:
-  # S3 paths (optional cloud setup)
-  data_root: "s3://sbir-analytics-data-prod"
-  raw_data: "s3://sbir-analytics-data-prod/raw"
-  usaspending_dump_file: "s3://sbir-analytics-data-prod/usaspending/dump.zip"
-
-  # Local paths (development)
-  # data_root: "data"
-  # raw_data: "data/raw"
-```
-
-### S3 Configuration
-
-Enable S3 storage via environment variables:
-
-```bash
-# Optional cloud setup (S3)
-export SBIR_ETL_USE_S3=true
-export SBIR_ETL_S3_BUCKET=sbir-analytics-data-prod
-export AWS_REGION=us-east-1
-
-# Development (local filesystem)
-export SBIR_ETL_USE_S3=false
-```
-
-### S3 Path Resolution
-
-The path resolver automatically handles S3 paths:
-
-```python
-from sbir_etl.config.loader import get_config
-
-config = get_config()
-
-# Resolves to S3 path if USE_S3=true
-# Resolves to local path if USE_S3=false
-dump_file = config.paths.resolve_path("usaspending_dump_file")
-
-# Examples:
-# S3:    s3://sbir-analytics-data-prod/usaspending/dump.zip
-# Local: /home/user/sbir-analytics/data/usaspending/dump.zip
-```
-
-### S3 Access Patterns
-
-```python
-import boto3
-from sbir_etl.utils.s3 import get_s3_client, s3_file_exists, download_from_s3
-
-# Check if S3 file exists
-if s3_file_exists("s3://bucket/key.parquet"):
-    # Download to local temp file
-    local_path = download_from_s3("s3://bucket/key.parquet", "/tmp/key.parquet")
-
-# Upload to S3
-upload_to_s3("/tmp/output.parquet", "s3://bucket/output.parquet")
-
-# Stream from S3 with pandas
-import pandas as pd
-df = pd.read_parquet("s3://bucket/data.parquet")  # DuckDB supports this too!
-```
-
-### S3 + DuckDB Integration
-
-DuckDB can directly query S3 files:
-
-```python
-import duckdb
-
-# Load AWS credentials
-duckdb.sql("""
-    INSTALL httpfs;
-    LOAD httpfs;
-    SET s3_region='us-east-1';
-""")
-
-# Query S3 CSV directly
-df = duckdb.sql("""
-    SELECT * FROM read_csv_auto('s3://sbir-analytics-data-prod/raw/sbir_awards.csv')
-    WHERE award_amount > 100000
-""").df()
-```
-
-### S3 Best Practices
-
-1. **Use S3 for larger or repeatable cloud runs** - Scalable, durable, managed
-2. **Use local filesystem for development** - Faster iteration, no AWS costs
-3. **Store credentials securely** - Use AWS Secrets Manager or IAM roles
-4. **Enable versioning** - Protect against accidental deletions
-5. **Use lifecycle policies** - Archive old data to S3 Glacier
-6. **Monitor costs** - Use S3 analytics to track storage and transfer costs
-
-## Configuration Structure
-
-Path configuration is defined in `config/base.yaml` under the `paths` section:
-
-```yaml
-paths:
-  # Root data directory
-  data_root: "data"
-  raw_data: "data/raw"
-
-  # USAspending database dumps
-  usaspending_dump_dir: "data/usaspending"
-  usaspending_dump_file: "data/usaspending/usaspending-db_20251006.zip"
-
-  # Transition detection outputs
-  transition_contracts_output: "data/transition/contracts_ingestion.parquet"
-  transition_award_archive_dir: "data/raw/usaspending/award_archive"
-  transition_dump_dir: "data/transition/pruned_data_store_api_dump"
-  transition_vendor_filters: "data/transition/sbir_vendor_filters.json"
-
-  # Scripts output
-  scripts_output: "data/scripts_output"
-```
-
-## Default Paths
-
-### Relative vs Absolute Paths
-
-- **Relative paths** (default): Paths are relative to the project root directory
-- **Absolute paths**: Can be specified for deployment environments
-
-The path resolver automatically:
-
-1. Expands environment variables (`$HOME`, `$USER`, etc.)
-2. Expands tilde `~` for home directory
-3. Converts relative paths to absolute based on project root
-4. Resolves symbolic links
-
-### Default Directory Structure
-
-```text
-/home/user/sbir-analytics/
-├── data/
-│   ├── raw/
-│   │   ├── sbir/
-│   │   ├── uspto/
-│   │   └── usaspending/
-│   │       └── award_archive/
-│   ├── usaspending/
-│   │   └── usaspending-db_20251006.zip
-│   ├── transition/
-│   │   ├── contracts_ingestion.parquet
-│   │   ├── pruned_data_store_api_dump/
-│   │   └── sbir_vendor_filters.json
-│   └── scripts_output/
-├── reports/
-└── logs/
-```
-
-## Environment Variable Overrides
-
-Configuration values can generally be overridden at runtime with an environment variable that mirrors the YAML path. The override applies after YAML files are merged and before Pydantic validation.
-
-### Profile Selection
-
-`SBIR_ETL__PIPELINE__ENVIRONMENT` is the exception to the generic override behavior: it
-selects which environment profile is merged and is not reapplied as a
-`pipeline.environment` value. Selection uses this precedence order:
-
-1. The explicit `get_config(environment="...")` argument
+1. `get_config(environment="...")`
 2. `SBIR_ETL__PIPELINE__ENVIRONMENT`
-3. The legacy `SBIR_ETL_ENV` variable
-4. `development` by default
+3. Legacy `SBIR_ETL_ENV`
+4. `development`
 
-`development`/`dev` load `dev.yaml`, `production`/`prod` load `prod.yaml`, and `test`
-loads `test.yaml`. Custom profile names are normalized to lowercase and load the matching
-`<profile>.yaml` file when it exists.
-
-### Override Format
-
-```text
-SBIR_ETL__SECTION__SUBSECTION__KEY=value
-```
-
-Convert each YAML key segment to uppercase, join with double underscores, and prefix with `SBIR_ETL__`:
+The aliases `development`/`dev` and `production`/`prod` select `dev.yaml` and `prod.yaml`,
+respectively. `test` selects `test.yaml`. A custom name selects `config/<name>.yaml` if that file
+exists; otherwise only `base.yaml` is loaded.
 
 ```bash
-export SBIR_ETL__DATA_QUALITY__MAX_DUPLICATE_RATE=0.05
-export SBIR_ETL__ENRICHMENT__BATCH_SIZE=200
-export SBIR_ETL__NEO4J__URI="bolt://localhost:7687"
-export SBIR_ETL__PIPELINE__CHUNK_SIZE=5000
-export SBIR_ETL__PERFORMANCE__PARALLEL_THREADS=8
-export SBIR_ETL__CET__CLASSIFICATION__MAX_FEATURES=75000
-export SBIR_ETL__ML__MODERNBERT__USE_LOCAL=true
+export SBIR_ETL__PIPELINE__ENVIRONMENT=test
+uv run python -c 'from sbir_etl.config import get_config; print(get_config().pipeline.environment)'
 ```
 
-### Path Overrides
+## Environment overrides
 
-Path values follow the same convention under the `PATHS` section:
+Use double underscores to mirror a YAML path:
 
 ```bash
-# YAML: paths.data_root
-export SBIR_ETL__PATHS__DATA_ROOT=/mnt/data
-
-# YAML: paths.usaspending_dump_file
-export SBIR_ETL__PATHS__USASPENDING_DUMP_FILE=/mnt/dumps/usaspending.zip
-
-# YAML: paths.transition_contracts_output
-export SBIR_ETL__PATHS__TRANSITION_CONTRACTS_OUTPUT=/mnt/output/contracts.parquet
+export SBIR_ETL__PATHS__DATA_ROOT=/Volumes/SSDmini/sbir-analytics
+export SBIR_ETL__LOGGING__LEVEL=DEBUG
+export SBIR_ETL__ENRICHMENT__PERFORMANCE__CHUNK_SIZE=10000
 ```
 
-### Override Model and Secret Mapping
+Override names are case-insensitive after the `SBIR_ETL__` prefix. Values are converted to
+booleans, integers, or floats when possible; all other values remain strings. Complex list or map
+overrides should be expressed in a profile YAML file instead.
 
-There are two complementary layers for runtime configuration:
+`SBIR_ETL__PIPELINE__ENVIRONMENT` selects the profile and is not reapplied as a generic override.
 
-- **`SBIR_ETL__...` overrides**: env vars that mirror the YAML structure and directly override loaded config values.
-- **Secret mapping**: some sections (e.g., `neo4j`) reference raw env var *names* such as `NEO4J_URI`, `NEO4J_USER`, and `NEO4J_PASSWORD`. The YAML keys (e.g., `uri_env_var`) specify which raw environment variables to read.
+### Neo4j secrets and connection settings
 
-You can either set raw secrets:
+The loader also supports these direct variables:
 
 ```bash
-export NEO4J_URI="bolt://localhost:7687"
-export NEO4J_USER="neo4j"
-export NEO4J_PASSWORD="dev_password"  # pragma: allowlist secret
+export NEO4J_URI=bolt://localhost:7687
+export NEO4J_USER=neo4j
+export NEO4J_PASSWORD='local-password'
+export NEO4J_DATABASE=neo4j
 ```
 
-Or override resolved values directly via `SBIR_ETL` overrides:
+Keep secrets out of committed YAML. The live server uses `.env.server`; preserve that file and
+follow the [Mac mini runbook](deployment/mac-mini-server.md) before any live operation.
 
-```bash
-export SBIR_ETL__NEO4J__URI="bolt://localhost:7687"
-export SBIR_ETL__NEO4J__PASSWORD="dev_password"  # pragma: allowlist secret
-```
-
-Prefer `SBIR_ETL` overrides in development/CI for clarity and portability; use raw env secrets where infrastructure already manages them.
-
-### Common Deployment Examples
-
-#### Development Environment
-
-```bash
-# Use local project paths (default behavior - no overrides needed)
-cd /home/user/sbir-analytics
-uv run dagster dev
-```
-
-#### Cloud or Server Environment (Mounted Volumes)
-
-```bash
-# Override paths to use mounted volumes
-export SBIR_ETL__PATHS__DATA_ROOT=/mnt/data
-export SBIR_ETL__PATHS__USASPENDING_DUMP_FILE=/mnt/dumps/usaspending-db_latest.zip
-export SBIR_ETL__PATHS__TRANSITION_DUMP_DIR=/mnt/transition/api_dump
-
-uv run dagster dev
-```
-
-#### Docker Deployment
-
-```bash
-# Set environment variables in docker-compose.yml or .env file
-docker-compose up -d
-```
-
-See [Docker Deployment](#docker-deployment) section for details.
-
-## Path Resolution
-
-### Using Paths in Code
-
-The `PathsConfig` class provides a `resolve_path()` method for resolving configured paths:
+## Using configuration in Python
 
 ```python
 from sbir_etl.config.loader import get_config
 
-# Load configuration
 config = get_config()
-
-# Resolve a path
-dump_file = config.paths.resolve_path("usaspending_dump_file")
-print(dump_file)  # /home/user/sbir-analytics/data/usaspending/usaspending-db_20251006.zip
-
-# Optionally create parent directories
-output_path = config.paths.resolve_path(
-    "transition_contracts_output",
-    create_parent=True  # Creates parent dirs if they don't exist
-)
+print(config.pipeline.environment)
+print(config.enrichment.performance.chunk_size)
+print(config.neo4j.uri)
 ```
 
-### Path Resolution Order
-
-When resolving paths, the system checks in this order:
-
-1. **Environment variables** (`SBIR_ETL__PATHS__*`)
-2. **Environment-specific config** (`config/prod.yaml`, `config/dev.yaml`)
-3. **Base config** (`config/base.yaml`)
-4. **Default values** (hardcoded in `PathsConfig` schema)
-
-## Validation
-
-### Automatic Validation
-
-The pipeline includes automatic path validation that runs on startup:
-
-```python
-from sbir_etl.utils.path_validator import validate_paths_on_startup
-
-# Validate paths before starting pipeline
-if not validate_paths_on_startup(create_missing_dirs=True):
-    raise SystemExit("Path validation failed")
-```
-
-### Validation Behavior
-
-The validator checks:
-
-- ✅ **Directory paths exist** or can be created
-- ✅ **Parent directories exist** for file paths
-- ✅ **Paths are accessible** (read/write permissions)
-- ⚠️ **Files may not exist yet** (output files are created during pipeline execution)
-
-### Validation Modes
-
-```python
-# Strict validation (fail if any files don't exist)
-validate_paths_on_startup(
-    create_missing_dirs=False,
-    require_files_exist=True
-)
-
-# Lenient validation (create dirs, allow missing files)
-validate_paths_on_startup(
-    create_missing_dirs=True,
-    require_files_exist=False  # Default
-)
-```
-
-### Manual Validation
-
-You can manually validate paths using the `PathValidator` class:
+`get_config()` is cached. Tests or long-running processes that change environment variables must
+clear the cache before reloading:
 
 ```python
 from sbir_etl.config.loader import get_config
-from sbir_etl.utils.path_validator import PathValidator
 
+get_config.cache_clear()
 config = get_config()
-validator = PathValidator(config.paths)
-
-# Validate all configured paths
-success = validator.validate_all_paths(create_missing_dirs=True)
-
-if not success:
-    # Print detailed error report
-    validator.print_validation_summary()
-    # Get list of errors
-    errors = validator.get_validation_errors()
 ```
 
-## Configuration Sections
+## Paths
 
-Beyond paths, the pipeline exposes the following YAML sections in `config/base.yaml`. The examples below are illustrative; the authoritative defaults and validation bounds live in the Pydantic schemas under `sbir_etl/config/schemas/` (data quality, extraction, validation, Neo4j, DuckDB, logging, etc. in `data.py`; CET / ModernBert / enrichment / pipeline domain models in `domain.py` and `pipeline.py`).
-
-### Data Quality Configuration
-
-```yaml
-data_quality:
-  # SBIR-specific validation thresholds
-  sbir_awards:
-    pass_rate_threshold: 0.95      # 95% of records must pass validation
-    completeness_threshold: 0.90   # 90% completeness for individual fields
-    uniqueness_threshold: 0.99     # 99% unique Contract IDs (allows phase progressions)
-
-  # Completeness requirements (fraction of non-null values required)
-  completeness:
-    award_id: 1.00          # 100% required
-    company_name: 0.95      # 95% required
-    award_amount: 0.90      # 90% required
-    award_date: 0.95        # 95% required
-    program: 0.98           # 98% required
-
-  # Uniqueness requirements (no duplicates allowed)
-  uniqueness:
-    award_id: 1.00          # No duplicate award IDs
-
-  # Value range validation
-  validity:
-    award_amount_min: 0.0
-    award_amount_max: 5000000.0   # $5M max SBIR award
-    award_year_min: 1983          # SBIR program start
-    award_year_max: 2030          # Future limit
-
-  # Enrichment success rates
-  enrichment:
-    sam_gov_success_rate: 0.85      # 85% of companies should enrich successfully
-    usaspending_match_rate: 0.70    # 70% of awards should match USAspending data
-```
-
-Schema: `DataQualityConfig` in `sbir_etl/config/schemas/data.py`.
-
-### Enrichment Configuration
-
-Enrichment sources, fallback chain, batch processing, and confidence thresholds are configured under the `enrichment` section. See `config/base.yaml` for the full block and the enrichment domain schema in `sbir_etl/config/schemas/domain.py` for fields and bounds. Key elements:
-
-- **Source priority chain**: `original_data` → `usaspending_api` → `sam_gov_api` → `fuzzy_match`, each with `enabled`, `priority`, and `confidence`.
-- **Batch processing**: `batch_size`, `max_retries`, `timeout_seconds`, `rate_limit_per_second`.
-- **Confidence thresholds**: `high` / `medium` / `low` bands.
-- **Quality targets**: `min_success_rate`, `min_high_confidence`, `max_fallback_rate`.
-- **Fallback rules**: agency/sector default NAICS mappings.
-
-### Pipeline Orchestration Configuration
-
-```yaml
-pipeline:
-  chunk_size: 10000              # Records per processing chunk
-  memory_threshold_mb: 2048      # Memory pressure threshold
-  timeout_seconds: 300           # Processing timeout per chunk
-  enable_incremental: true       # Support incremental processing
-
-  asset_execution:
-    max_retries: 3
-    retry_delay_seconds: 5
-    enable_parallel: true
-    max_parallel_assets: 4
-
-performance:
-  batch_size: 1000              # Neo4j batch size
-  parallel_threads: 4           # Parallel processing threads
-  retry_attempts: 3             # Retry failed operations
-  backoff_strategy: exponential # Retry backoff strategy
-
-  memory_monitoring:
-    enabled: true
-    warning_threshold_mb: 1500
-    critical_threshold_mb: 2000
-
-  thresholds:
-    duration_warning_seconds: 5.0
-    memory_delta_warning_mb: 500.0
-    memory_pressure_warn_percent: 80.0
-    memory_pressure_critical_percent: 95.0
-```
-
-Schemas: pipeline/performance models in `sbir_etl/config/schemas/pipeline.py`.
-
-### Neo4j Configuration
-
-```yaml
-neo4j:
-  # Secret mapping — names of the raw env vars to read for connection secrets
-  uri_env_var: "NEO4J_URI"
-  user_env_var: "NEO4J_USER"
-  password_env_var: "NEO4J_PASSWORD"  # pragma: allowlist secret
-
-  loading:
-    batch_size: 1000
-    parallel_threads: 4
-    transaction_timeout_seconds: 300
-    retry_on_deadlock: true
-    max_deadlock_retries: 3
-
-  performance:
-    create_indexes: true
-    create_constraints: true
-    batch_operations: true
-    enable_query_cache: true
-
-  quality:
-    load_success_threshold: 0.99   # 99% success rate required
-    max_constraint_violations: 10
-    enable_data_validation: true
-```
-
-Schema: `Neo4jConfig` in `sbir_etl/config/schemas/data.py`.
-
-### Analytics API & Read-Only Neo4j
-
-The private analytics API (`sbir-analytics-api`) is configured entirely by
-environment variables, not YAML. See
-[private-analytics-api.md](architecture/private-analytics-api.md) for the endpoint
-reference.
-
-| Env var | Default | Purpose |
-|---------|---------|---------|
-| `SBIR_ANALYTICS_API_TOKEN` | *(empty)* | Bearer token required by all `/v1/*` routes. Empty → API returns `503` (auth not configured). |
-| `SBIR_ANALYTICS_API_HOST` | `0.0.0.0` | uvicorn bind host. |
-| `SBIR_ANALYTICS_API_PORT` | `8000` | uvicorn listen port. |
-| `SBIR_ANALYTICS_SNAPSHOT_DIR` | `reports/analytics_snapshots` | Filesystem root for snapshot JSON (mounted read-only in the container). |
-| `SBIR_ANALYTICS_QUERY_TIMEOUT_SECONDS` | `10` | Per-query Neo4j timeout (seconds). |
-| `SBIR_ANALYTICS_PIPELINE_RUN_ID` | *(none)* | Stamped into every response's `provenance.pipeline_run_id`. |
-| `NEO4J_READ_USER` | falls back to `NEO4J_USER`, then `neo4j` | Read-only Neo4j username. Deployments should use a read-only account. |
-| `NEO4J_READ_PASSWORD` | falls back to `NEO4J_PASSWORD` | Read-only Neo4j password. |
-
-The API also reads `NEO4J_URI` and `NEO4J_DATABASE` (shared with the loaders).
-
-### ModernBert Configuration
-
-ModernBert embedding/similarity settings live under `ml.modernbert`. Notable fields: `use_local` (API vs local inference), `api` (token env, batch size, QPS, retries), `local` (model name, device), `text` (max length, award/patent fields), `similarity_threshold`, `top_k`, and coverage thresholds. See `config/base.yaml` and the ML domain schema in `sbir_etl/config/schemas/domain.py`.
-
-### CET Classification Configuration
-
-CET taxonomy and classifier settings live under the `cet` section: `taxonomy` (version, file, hierarchy), `classification.vectorizer` (TF-IDF n-grams, max features), `feature_selection`, `classifier`, `calibration`, and `scoring.bands` (high/medium/low). See `config/base.yaml` and `sbir_etl/config/schemas/domain.py`. The rule-engine layer (agency/branch priors, context-keyword boosts) is configured separately in `config/cet/classification.yaml`.
-
-### Organization Deduplication Configuration
-
-Pre-load fuzzy matching / MERGE behavior under `organization_deduplication`: `high_threshold` (90 — auto-merge) and `low_threshold` (75 — flag for review), `merge_on_uei` / `merge_on_duns` (true), `track_merge_history` (true), plus `enhanced_matching` toggles (`enable_phonetic_matching`, `enable_jaro_winkler`, `enable_enhanced_abbreviations`).
-
-### Company Categorization Configuration
-
-Product/service/R&D classification under `company_categorization`: `product_leaning_pct` / `service_leaning_pct` / `rd_leaning_pct` (51.0 each), `psc_family_diversity_threshold` (6 → "Mixed"), award-count confidence cutoffs (`low_max_awards` 2, `medium_max_awards` 5), batching (`batch_size` 100, `parallel_workers` 4), and USASpending lookup settings (`usaspending_table_name`, `usaspending_timeout_seconds`, `usaspending_retry_attempts`).
-
-### Transition Detection Configuration
-
-Quality gates under `transition` (scoring *weights* live in `config/transition/detection.yaml`, not here). Key blocks: `contracts` (coverage gates — `date_coverage_min` 0.90, `ident_coverage_min` 0.60, `sample_size_min/max`, `enforce_sample_size`), `analytics.score_threshold` (0.60 — min score counted as a transition) with optional CI gates `min_award_rate` / `min_company_rate`, `detections.min_valid_rate` (0.99), and `vendor_resolution` (`min_rate` 0.60, `fuzzy_threshold` 0.85 — RapidFuzz `token_sort_ratio`).
-
-### Statistical Reporting Configuration
-
-Report generation under `statistical_reporting`: `generation` (enabled, `formats` html/json/markdown/executive, `output_directory`), per-module toggles (`modules.{sbir_enrichment,patent_analysis,cet_classification,transition_detection}`), `insights` (anomaly detection, recommendations, success stories), format-specific options, `cicd` (GitHub Actions artifact upload + PR comments), and `quality_thresholds` (completeness/enrichment warning & error levels).
-
-### Fiscal Analysis Configuration
-
-Fiscal-return / input-output modeling under `fiscal_analysis`: `base_year` (2023), `inflation_source`, `naics_to_bea` crosswalk (version, paths, `min_confidence_threshold`, hierarchical 6→4→3→2-digit fallback), `tax_parameters` (individual income, payroll, corporate, excise rates), `sensitivity_parameters` (Monte-Carlo `num_scenarios`, `random_seed`, uncertainty ranges, confidence intervals), `quality_thresholds`, `performance` (chunking, workers, memory/timeout), and `output` (formats, `output_directory`).
-
-### OT Consortium Configuration
-
-Phase III OT-consortium verification tiering under `ot_consortium`: `cmf_registry_path` (consortium member registry CSV), `claims_path` (null by default; set — or `SBIR_ETL__OT_CONSORTIUM__CLAIMS_PATH` — to switch the tiering asset into audit mode over a firm-reported covered-sales file), `unknown_vendor_min_obligation` (1,000,000.0), and `fpds_reporting_lag_days` (90).
-
-### CLI Configuration
-
-Terminal UI settings under `cli`: `theme` (default/dark/light), refresh rates (`progress_refresh_rate`, `dashboard_refresh_rate`), `max_table_rows` (50), `truncate_long_text`, `show_timestamps`, `api_timeout_seconds` (30), `max_concurrent_operations` (4), and `cache_metrics_seconds` (60).
-
-## Docker Deployment
-
-### Docker Compose Configuration
-
-Mount volumes for data directories in `docker-compose.yml`:
-
-```yaml
-services:
-  dagster:
-    image: sbir-analytics:latest
-    volumes:
-      # Mount data directory
-      - /mnt/data:/app/data
-      # Mount logs directory
-      - /mnt/logs:/app/logs
-    environment:
-      # Override paths if needed
-      - SBIR_ETL__PATHS__DATA_ROOT=/app/data
-      - SBIR_ETL__PATHS__USASPENDING_DUMP_FILE=/app/data/usaspending/dump.zip
-```
-
-### Best Practices for Docker
-
-1. **Use absolute paths** in environment variables for clarity
-2. **Mount volumes** for data persistence
-3. **Set proper permissions** on mounted volumes
-4. **Use named volumes** for logs and temporary files
-
-```yaml
-volumes:
-  data:
-    driver: local
-    driver_opts:
-      type: none
-      device: /mnt/sbir-data
-      o: bind
-```
-
-## Troubleshooting
-
-### Common Issues
-
-#### Issue: "Path validation failed"
-
-**Symptom**: Pipeline fails to start with path validation errors
-
-**Solutions**:
-
-1. Check that data directories exist:
-
-   ```bash
-   mkdir -p data/usaspending data/transition data/scripts_output
-   ```
-
-2. Verify environment variables are set correctly:
-
-   ```bash
-   echo $SBIR_ETL__PATHS__DATA_ROOT
-   ```
-
-3. Check file permissions:
-
-   ```bash
-   chmod -R 755 data/
-   ```
-
-#### Issue: "Parent directory doesn't exist"
-
-**Symptom**: Error creating output files
-
-**Solution**: Enable automatic directory creation:
-
-```python
-validate_paths_on_startup(create_missing_dirs=True)
-```
-
-#### Issue: "Path is a directory, expected file"
-
-**Symptom**: Path resolves to directory instead of file
-
-**Solution**: Check configuration - ensure path includes filename:
-
-```yaml
-# ❌ Wrong
-usaspending_dump_file: "data/usaspending"
-
-# ✅ Correct
-usaspending_dump_file: "data/usaspending/dump.zip"
-```
-
-#### Issue: Hardcoded paths in error messages
-
-**Symptom**: Seeing references to `/Volumes/X10 Pro/` in logs
-
-**Solution**: This indicates old code is still using hardcoded paths. Check:
-
-1. All source files have been updated to use `config.paths.resolve_path()`
-2. No scripts are using old hardcoded defaults
-3. Clear any cached Python bytecode: `find . -type d -name __pycache__ -exec rm -rf {} +`
-
-### Debugging Path Resolution
-
-Add logging to see resolved paths:
+Paths are configured under `paths` and resolve relative to the current project root by default:
 
 ```python
 from sbir_etl.config.loader import get_config
-from loguru import logger
 
 config = get_config()
-
-# Log all resolved paths
-for key in [
-    "usaspending_dump_file",
-    "transition_award_archive_dir",
-    "transition_contracts_output",
-    "transition_vendor_filters",
-]:
-    try:
-        path = config.paths.resolve_path(key)
-        logger.info(f"{key}: {path}")
-    except Exception as e:
-        logger.error(f"Failed to resolve {key}: {e}")
+raw_data = config.paths.resolve_path("raw_data")
+output = config.paths.resolve_path("scripts_output", create_parent=True)
 ```
 
-### Getting Help
+`resolve_path()` expands shell environment variables and `~`, accepts absolute paths, and can
+create the resolved path's parent directory. Pipeline storage is local filesystem storage; the
+live deployment mounts `/Volumes/SSDmini/sbir-analytics` into the containers.
 
-If you encounter path-related issues:
+## Main sections
 
-1. **Check logs**: Look for `FileSystemError` exceptions with detailed context
-2. **Verify configuration**: Review `config/base.yaml` and environment variables
-3. **Run validation**: Use `PathValidator` to get detailed error report
-4. **Check permissions**: Ensure user has read/write access to paths
-5. **Report issues**: Include error messages, configuration, and environment details
+The root `PipelineConfig` currently exposes:
 
-## Migration Guide
+| Section | Purpose |
+| --- | --- |
+| `pipeline` | Name, version, and selected environment |
+| `paths` | Raw data, USAspending dumps, transition artifacts, and script outputs |
+| `data_quality` | Completeness, validity, uniqueness, and enrichment quality gates |
+| `enrichment` | API clients, matching, retries, caching, and performance controls |
+| `enrichment_refresh` | Incremental refresh cadence, state, and freshness metrics |
+| `extraction` | SBIR and USAspending extraction settings |
+| `validation` / `transformation` | Record validation and transformation behavior |
+| `neo4j` | Graph connection, database, batching, and concurrency |
+| `logging` / `metrics` | Structured logs and runtime metrics |
+| `duckdb` | Local analytical database settings |
+| `company_categorization` | Contract-based company categorization |
+| `statistical_reporting` | Statistical report generation |
+| `fiscal_analysis` | Fiscal returns and BEA mappings |
+| `ml` | ModernBERT, embeddings, and related model settings |
+| `ot_consortium` | OT consortium verification and tiering |
+| `cli` | Command-line defaults |
 
-If you're upgrading from a version with hardcoded paths:
+Some specialized configuration lives in domain directories such as `config/cet/`,
+`config/fiscal/`, `config/transition/`, and `config/ml/`. Those files are loaded by their owning
+components rather than automatically merged into `PipelineConfig`.
 
-### Step 1: Review Current Paths
+## Docker Compose
 
-Check your current data locations:
+`.env`, `.env.server`, and Compose `environment:` blocks configure containers. They do not form an
+additional loader layer by themselves: a value must be passed into the container process before
+`get_config()` can see it.
+
+Use the Make targets for local containers:
 
 ```bash
-# Find all data files
-find . -name "*.parquet" -o -name "*.json" -o -name "*.zip" | grep -v node_modules
+make docker-up-dev
+make docker-test
+make docker-down
 ```
 
-### Step 2: Configure Paths
+See [Docker development](development/docker.md) for local workflows and the
+[Mac mini runbook](deployment/mac-mini-server.md) for the live instance.
 
-Add paths to your environment-specific config or set environment variables:
+## Adding a setting
+
+1. Add the field to the appropriate Pydantic model in `sbir_etl/config/schemas/`.
+2. Add its default to `config/base.yaml` when a shared default is appropriate.
+3. Add only real environment differences to `dev.yaml`, `test.yaml`, or `prod.yaml`.
+4. Add or update configuration tests.
+5. Update this reference when the setting changes an operator-facing workflow.
+
+Run focused configuration tests before committing:
 
 ```bash
-# Option A: Update config/prod.yaml
-echo "paths:
-  usaspending_dump_file: /your/actual/path/dump.zip
-  transition_dump_dir: /your/actual/path/api_dump
-" >> config/prod.yaml
-
-# Option B: Set environment variables
-export SBIR_ETL__PATHS__USASPENDING_DUMP_FILE=/your/actual/path/dump.zip
+uv run pytest tests/unit/config/ -v
 ```
 
-### Step 3: Test Configuration
-
-Run validation to ensure paths are correct:
-
-```python
-from sbir_etl.utils.path_validator import validate_paths_on_startup
-
-validate_paths_on_startup(create_missing_dirs=True)
-```
-
-### Step 4: Update Scripts
-
-Any custom scripts should use configuration instead of hardcoded paths:
-
-```python
-# OLD
-output_file = Path("/Volumes/X10 Pro/data/output.parquet")
-
-# NEW
-from sbir_etl.config.loader import get_config
-config = get_config()
-output_file = config.paths.resolve_path("transition_contracts_output")
-```
-
-## Related Documentation
-
-- Config schemas: `sbir_etl/config/schemas/` (`data.py`, `domain.py`, `pipeline.py`)
-- Config loader: `sbir_etl/config/loader.py`
-- [Configuration Overview](index.md)
-- [Docker Guide](development/docker.md)
-- [Exception Handling](development/exception-handling.md)
-
-## Change Log
-
-| Date | Version | Changes |
-|------|---------|---------|
-| 2025-11-05 | 1.0 | Initial path configuration system |
+For a compact directory-level overview, see [`config/README.md`](../config/README.md).

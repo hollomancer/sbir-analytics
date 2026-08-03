@@ -24,7 +24,7 @@ Each question is written in a fixed shape:
 - **Short title** (lens tags, legacy IDs)
   The question itself, as a question.
   Caveat — a stated limit on what the answer can support, when one applies.
-  Status: whether we can answer it today.
+  Status: whether it is computable, validated, or citable today.
   Deps / Refs / Spec: what it needs, what it benchmarks against, where it is specified.
 ```
 
@@ -34,9 +34,12 @@ reader — a congressional staffer or program officer who arrived from
 language. The *Deps*, *Spec*, and implementation notes are for maintainers and
 may use pipeline shorthand freely.
 
-**Status** appears only where answerability is contested or partial. A question
-with no status line has no special caveat attached — check the linked spec and
-the *Spec* slot to see whether it is built.
+**Status** appears where implementation or evidence maturity needs explanation.
+`Computable` means the repository can produce a bounded result; it does not mean
+the interpretation is validated or externally citable. `Validated` and
+`citable` require a matching [study contract](../studies/README.md) at that
+status. A question with no status line is an inventory target, not an implicit
+claim that it is implemented.
 
 **Lower-bound proxy** marks a question whose answer can only ever undercount.
 It appears wherever we detect ownership or capital through public filings: SEC
@@ -44,9 +47,9 @@ EDGAR shows disclosed, structured ownership and disclosed private capital, so
 anything held privately or beneath a corporate layer is invisible to us. A
 "zero" on such a question means *we found none*, never *there are none*.
 
-**Spec** links point at spec directories and design docs. A `(PR #…)` tag means
-the work landed in that pull request. A `(branch: …)` tag means it is in
-progress on a feature branch and **not** yet merged to `main`.
+**Spec** links point at tracked spec directories and design documents. A
+`(PR #…)` tag records where work landed. Unmerged branch-only proposals are not
+treated as current specs; retain them in git history or a dated research note.
 
 **Refs** are public studies and statutes, cited as `[L#]` and listed under
 [Prior literature & benchmarks](#prior-literature--benchmarks).
@@ -154,14 +157,14 @@ perspective, see [F. Capital formation & entrepreneurial finance](#f-capital-for
   are clustered in one part of the country. GAO's program-wide Phase II HHI of
   ~11 [L14] is the diffuse baseline that area-level concentration is measured
   against.
-  **Status:** Answerable now for the classified DoD subset.
+  **Status:** Computable for the classified DoD subset; not yet backed by a citable study manifest.
   *Deps: CET, ER, NAICS · Refs: [L14], [L16], [L29] · Spec: [dod_supply_chain_initial_analysis.md](research/dod_supply_chain_initial_analysis.md) (reproducible baseline and its limitations)*
 
 - **Coverage gaps** (cap) (house shorthand: *whitespace*)
   Which CET subfields does DoD appear to want work in, but few SBIR awards
   cover?
   Found by semantic search over award and solicitation text.
-  **Status:** Answerable now.
+  **Status:** Computable as an exploratory analysis; not yet validated or citable.
   *Deps: CET*
 
 - **Capital formation / firm health per CET area** (cap)
@@ -175,7 +178,7 @@ perspective, see [F. Capital formation & entrepreneurial finance](#f-capital-for
   disclosed foreign ownership, control, or influence, when screened against the
   eight Pub. L. 119-83 restricted-entity lists?
   *Lower-bound proxy* — ownership is read from EDGAR Exhibit 21 and 8-K filings.
-  **Status:** Answerable now for the SEC-filer subset; the private majority needs
+  **Status:** Computable for the SEC-filer subset; the private majority needs
   data acquisition.
   *Deps: ER, SEC EDGAR, M&A signals · Refs: [L26] (screening lists), [L30] (foreign-supplier dependence), [L17] (foreign-acquisition risk)*
 
@@ -189,7 +192,7 @@ perspective, see [F. Capital formation & entrepreneurial finance](#f-capital-for
   What is the Phase II→III transition rate per CET area via FPDS, and how do
   SAM.gov subaward links connect awardees to prime contractors?
   Aligns with NASEM's "knowledge transfer to primes" finding [L1].
-  **Status:** Answerable now, moderate confidence — FPDS Phase III tagging is
+  **Status:** Computable with moderate confidence — FPDS Phase III tagging is
   historically incomplete [L14].
   *Deps: ER, ID, CET, transitions · Refs: [L1], [L14] · Spec: [../specs/ot-consortium-subaward-attribution/](../specs/ot-consortium-subaward-attribution/) (FFATA/FSRS sub-award T1 recovery)*
 
@@ -227,7 +230,7 @@ perspective, see [F. Capital formation & entrepreneurial finance](#f-capital-for
   complete retained FY2012+ DoD award history. It cannot see earlier activity, so
   a firm that first won in 2009 can still look like a new entrant
   (*left-censoring*).
-  **Status:** Partially answerable for the classified DoD subset.
+  **Status:** Partially computable for the classified DoD subset.
   *Deps: ER, ID, CET · Refs: [L32] · Spec: [dod_supply_chain_initial_analysis.md](research/dod_supply_chain_initial_analysis.md)*
 
 *The SBIR-vs-non-SBIR identification question and the underlying patent-to-award
@@ -273,7 +276,7 @@ NASEM calls this quantity the *leverage ratio*.
   and including areas whose suppliers sit in one part of the country.
   *Caveat:* the DoD classified-subset baseline supports concentration screening
   but not physical sole-source conclusions.
-  **Status:** Answerable now for the classified DoD subset.
+  **Status:** Computable for the classified DoD subset; not yet backed by a citable study manifest.
   *Deps: ER, CET · Spec: [dod_supply_chain_initial_analysis.md](research/dod_supply_chain_initial_analysis.md)*
 
 - **Areas fragile on every measure at once** (vuln) (A-CP10)
@@ -488,7 +491,7 @@ statutory goal is Phase III commercialization.*
   matching rules, the agency, and the time window?
   *Method:* the matching rules were written down and frozen before the counts
   were run, so the result cannot be tuned after the fact.
-  **Status:** Answerable now for the frozen audit estimand. The complete
+  **Status:** Reproducible, but not validated or citable, for the frozen audit estimand. The complete
   cumulative ladder and all six pre-specified agency/window cells were
   materialized from provenance-verified February inputs, and the blocking
   one-factor sensitivity check passed. No cell is a headline result. The matched
@@ -542,7 +545,7 @@ statutory goal is Phase III commercialization.*
   Corroborated by GAO [L14] and NASEM [L1], [L3]. The protocol depends on
   award-grade identity and record granularity (issue #447 / PR #449); production
   source lifecycle belongs to issue #442.
-  **Status:** Partially answerable. The complete deterministic census tables and
+  **Status:** Partially computable. The complete deterministic census tables and
   one-factor sensitivity diagnostic were materialized from provenance-verified
   February inputs. Before the proxy can be called an undercount, it still needs
   matched negative controls, the placebo test, and a hand-labelled sample to
@@ -730,7 +733,7 @@ Foundational — most questions in A–D depend on work here.*
 
 - **SBIR.gov ↔ USAspending/FPDS reconciliation**
   How does SBIR.gov data reconcile with federal USAspending/FPDS records?
-  **Status:** Partially answerable. The census input path verified the complete
+  **Status:** Partially computable. The census input path verified the complete
   available SBIR.gov v2 snapshot and the generated-award Phase II collapse
   against the selected February USAspending/FPDS snapshot. It reconciles only
   exact normalized raw PIID/source identifiers and fails closed on ambiguity or
@@ -809,15 +812,14 @@ Foundational — most questions in A–D depend on work here.*
   versus effective values?
   *Deps: IMP*
 
-<a id="e5-external-data-source-evaluation-tier-2-branch-claudeprocurement-data-sources-eval"></a>
-
 ### E5. External data source evaluation (Tier 2)
 
-*(branch: `claude/procurement-data-sources-eval`)*
+**Status:** Research agenda. The earlier branch-only evaluation was not merged;
+the questions remain useful, but there is no active umbrella spec.
 
 - **SAM.gov Entity Extracts for UEI backfill**
   Does SAM.gov Entity Extracts materially improve UEI backfill recall?
-  *Deps: ER · Spec: `specs/procurement-data-sources-eval/` (branch)*
+  *Deps: ER*
 
 - **SAM.gov Opportunities API vs. scraping**
   Does the SAM.gov Opportunities API replace agency-page scraping for
@@ -840,14 +842,14 @@ Foundational — most questions in A–D depend on work here.*
 - **Third-party procurement clients**
   Should we adopt third-party procurement-tools clients such as
   `makegov/procurement-tools` or `tandemgov/fpds`?
-  *Deps: none · Spec: `docs/decisions/procurement-tools-evaluation.md` (branch)*
+  *Deps: none*
 
 ### E6. Continuous monitoring & rolling analytics (Tier 4, capstone)
 
 - **Current-quarter metrics**
   What are the current-quarter SBIR metrics and trends, on weekly snapshots?
   Fills the gap between point-in-time NASEM reviews.
-  *Deps: E1–E5 plus the A–D pipelines · Refs: [L1], [L3], [L4], [L5] · Spec: [research-plan-alignment.md](research-plan-alignment.md), [../specs/weekly-awards-report-refactor/](../specs/weekly-awards-report-refactor/)*
+  *Deps: E1–E5 plus the A–D pipelines · Refs: [L1], [L3], [L4], [L5] · Spec: [../specs/weekly-awards-report-refactor/](../specs/weekly-awards-report-refactor/)*
 
 - **Typed LM programs for weekly narratives**
   Can typed, optimized LM programs improve weekly award-narrative schema
@@ -1109,67 +1111,11 @@ Public studies this inventory draws from or benchmarks against.
 
 ## Maintenance
 
-**Last reviewed:** 2026-08-02 — **readability pass.** Reformatted every question
-into a fixed shape (title → question → caveat → status → deps/refs/spec),
-rewrote noun-phrase entries as actual questions, and broke multi-clause
-sentences apart. Moved the Section A framing material (CET spine, statutory
-grounding, scope-consolidation history) from the section preamble into
-[Section A framing notes](#section-a-framing-notes) at the end of the section,
-so Section A opens on questions rather than on ten lines of framing. Converted
-the dependency-tag glossary to a table and added a
-[How to read this document](#how-to-read-this-document) key. **No questions,
-citations, status labels, `A-CP#` identifiers, PR/branch tags, or spec links
-were added, removed, or changed in substance** — that pass was presentation only.
+**Last reviewed:** 2026-08-03. Status vocabulary now distinguishes computable,
+validated, and citable work; unmerged branch-only references were removed. Git
+history preserves earlier editorial and section-consolidation notes.
 
-A second pass then rewrote the wording of the **title**, **question**, and
-**Status** slots in plain language, per the rule now stated in
-[How to read this document](#how-to-read-this-document). Three kinds of change:
-
-1. **House shorthand translated.** The thick/thin/dense metaphor family
-   (*capability density*, *supplier-base thickness*, *transition-thinness*,
-   *thin bases*) and the nominalized compounds (*Concentration-as-fragility*,
-   *Acquisition-erosion*, *Predictive erosion*) were invented here and could not
-   be looked up by an outside reader; they now say how many firms there are and
-   what is happening to them. *Whitespace* became *Coverage gaps*, keeping the
-   house term parenthetically.
-2. **Pipeline vocabulary removed from audience-facing slots.** *Materialized* /
-   *materialization* is Dagster's word for "computed and stored" and read as
-   hedging in a Status line; it is now "built" / "run in production". Same for
-   *stacked changes* and *grain*. The maintainer-facing implementation notes keep
-   the original vocabulary.
-3. **Terms of art kept, but glossed.** HHI, left-censoring, survival
-   probability, fill rate, and crowd-in/crowd-out are the correct words and were
-   not replaced — they gained a short in-line gloss on first use. *Lower-bound
-   proxy* is now defined once in the reading key and used bare thereafter,
-   instead of six slightly different restatements.
-
-The heaviest rewrite is B2's follow-on census question, which previously stacked
-five invented modifiers before its verb; its methodology terms
-(*pre-registered*, *frozen criteria*) moved to a *Method* line, where they answer
-a reviewer's concern rather than blocking a scanner's.
-
-**No question changed meaning, and no status label changed what it asserts.**
-
-**Prior review:** 2026-06-27 — **consolidated Section A** into a single
-complexity-tier ladder (A1 Descriptive → A4 Risk/monitoring/prediction)
-following a holistic overlap/redundancy review. This collapsed the three
-previously-coexisting sub-structures (the Axis A / Axis B "capability vs.
-vulnerability" split, the separately-tiered "Supporting DIB questions," and the
-interleaved A-CP1–A-CP9 choke-point extensions) and folded in the former
-**Section G** (Industrial-base resilience), removed as a standalone policy area
-because its audience and content fully overlapped Section A. Each question now
-appears once at its highest tier; the capability/vulnerability distinction is
-preserved as inline **(cap)** / **(vuln)** tags and per-question answerability
-labels; the choke-point questions retain their `A-CP#` identifiers so prior
-references resolve. Fixes the prior `A1–A4` / `B1–B4` label collision (Axis B's
-`B1–B4` had clashed with Section B). The out-of-scope physical / sub-tier
-supply-chain questions (former B4 plus Section G's G3 list) are merged into one
-**Out of scope** appendix at the end of Section A. De-duplicated the foundational
-SBIR-identification and patent-flow bullets out of Section A (they live at E1 /
-C2). No questions were dropped and no citations changed.
-
-**Open `[TODO: verify]` items from the choke-point set** (resolve before relying
-on the figures):
+Open source-verification items:
 
 - **A-CP11 / NSF ~18:1 portfolio leverage** — the ~18:1 private-to-public figure
   was found only in trade press, not confirmed against an NSF publication (NSF
@@ -1182,14 +1128,11 @@ on the figures):
   `[TODO: verify A3 4:1 attribution against NASEM source]` before the next
   citation audit relies on it.
 
-**Next audit should cover:**
+The next audit should verify:
 
 - All `(PR #…)` references resolve to merged or otherwise tracked PRs
   (closed-without-merge PRs need explicit successor links — PR #311 → #321 was
   the prior failure mode).
-- All `(branch: …)` tags point at branches that still exist on origin
-  (`claude/sbir-data-imputation-strategy` was the prior failure mode — branch
-  deleted, work landed under a different name).
 - Internal links to `../specs/` and `docs/` directories resolve.
 - Each *Deps* slot accurately reflects current pipeline structure (M&A signals
   are script-driven, not orchestrated — flagged in the implementation note under
@@ -1204,5 +1147,3 @@ on the figures):
   (`sbir_etl/utils/reporting/analyzers/cet_analyzer.py`). Reconciling these to
   the 21-area spine is a code change with test/precision-benchmark risk and
   should be scoped separately.
-
-Update this footer with the new review date when the audit completes.

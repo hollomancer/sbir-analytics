@@ -48,7 +48,7 @@ This guide covers the integration of ModernBERT-Embed into the SBIR analytics pi
 
 2. **`modernbert_embeddings_patents`**
    - Generates embeddings for USPTO patents
-   - Input: `transformed_patents` metadata (loads from JSONL or S3)
+   - Input: `transformed_patents` metadata (loads from JSONL or the local PatentsView archive)
    - Output: DataFrame with `patent_id`, `embedding`, metadata
    - Text fields: title, abstract
 

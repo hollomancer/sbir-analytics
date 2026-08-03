@@ -284,7 +284,7 @@ jobs:
       # amd64 only, on the runner's native architecture. The question this job
       # answers is "does the image still build and start", and arm64 emulation
       # roughly triples the time without changing the answer. The mini builds
-      # its own arm64 images; see docs/deployment/actions-migration-plan.md.
+      # its own arm64 images; see docs/deployment/mac-mini-server.md.
       - name: Build the ETL image
         uses: docker/build-push-action@v7
         with:
@@ -326,4 +326,3 @@ jobs:
         run: |
           source .venv/bin/activate
           python -c "import pydantic"
-

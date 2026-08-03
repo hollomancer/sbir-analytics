@@ -127,7 +127,7 @@ volumes:
 
 ci:
   # CI-specific knobs used by workflows or helper scripts.
-  workflow_file: ".github/workflows/container-ci.yml"
+  workflow_file: ".github/workflows/ci.yml"
   build_script: "scripts/ci/build_container.sh"
   test_profile: "ci"  # Use --profile ci with consolidated docker-compose.yml
   smoke_test_cmd: "dagster --version"
