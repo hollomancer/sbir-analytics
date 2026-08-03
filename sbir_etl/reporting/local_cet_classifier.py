@@ -8,7 +8,8 @@ from pathlib import Path
 from typing import Any
 
 import pandas as pd
-import yaml
+
+from ..config.yaml_io import read_yaml_mapping
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -128,8 +129,8 @@ def load_local_cet_rule_classifier(
 ) -> LocalCETRuleClassifier:
     """Load and validate the local classifier and canonical taxonomy."""
 
-    taxonomy = yaml.safe_load(taxonomy_path.read_text(encoding="utf-8"))
-    config = yaml.safe_load(config_path.read_text(encoding="utf-8"))
+    taxonomy = read_yaml_mapping(taxonomy_path, description="CET taxonomy")
+    config = read_yaml_mapping(config_path, description="local rule classifier config")
     if taxonomy.get("version") != config.get("taxonomy_version"):
         raise ValueError(
             f"classifier expects taxonomy {config.get('taxonomy_version')!r}, "

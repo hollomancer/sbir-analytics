@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from sbir_etl.exceptions import FileSystemError
+from sbir_etl.exceptions import ConfigurationError, FileSystemError
 from sbir_ml.ml.config.taxonomy_loader import ClassificationConfig, TaxonomyConfig, TaxonomyLoader
 
 
@@ -96,6 +96,35 @@ analytics: {}
 
         with pytest.raises(FileSystemError, match="Classification config not found"):
             TaxonomyLoader(config_dir=cet_dir)
+
+    def test_empty_taxonomy_file_reports_the_file(self, tmp_path: Path) -> None:
+        """An empty taxonomy previously failed as AttributeError on None.get()."""
+        cet_dir = tmp_path / "cet"
+        cet_dir.mkdir()
+        (cet_dir / "taxonomy.yaml").write_text("", encoding="utf-8")
+        (cet_dir / "classification.yaml").write_text("model_version: v1.0.0\n", encoding="utf-8")
+
+        with pytest.raises(ConfigurationError, match="CET taxonomy is empty"):
+            TaxonomyLoader(config_dir=cet_dir).load_taxonomy()
+
+    def test_non_mapping_taxonomy_file_reports_the_file(self, tmp_path: Path) -> None:
+        cet_dir = tmp_path / "cet"
+        cet_dir.mkdir()
+        (cet_dir / "taxonomy.yaml").write_text("- not-a-mapping\n", encoding="utf-8")
+        (cet_dir / "classification.yaml").write_text("model_version: v1.0.0\n", encoding="utf-8")
+
+        with pytest.raises(ConfigurationError, match="must hold a mapping"):
+            TaxonomyLoader(config_dir=cet_dir).load_taxonomy()
+
+    def test_empty_classification_file_reports_the_file(self, tmp_path: Path) -> None:
+        """An empty classification config previously failed as TypeError on **None."""
+        cet_dir = tmp_path / "cet"
+        cet_dir.mkdir()
+        (cet_dir / "taxonomy.yaml").write_text("version: v1.0.0\n", encoding="utf-8")
+        (cet_dir / "classification.yaml").write_text("", encoding="utf-8")
+
+        with pytest.raises(ConfigurationError, match="classification config is empty"):
+            TaxonomyLoader(config_dir=cet_dir).load_classification_config()
 
     def test_load_taxonomy(self) -> None:
         """Test loading the real taxonomy configuration."""

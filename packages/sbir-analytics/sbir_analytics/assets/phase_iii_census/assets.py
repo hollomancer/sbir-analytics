@@ -21,6 +21,7 @@ from sbir_analytics.assets.phase_transition.sbir_gov_source import (
     sha256_file,
     verify_sbir_gov_materialization,
 )
+from sbir_etl.exceptions import ConfigurationError
 from sbir_etl.quality.study_manifest import load_study_manifest
 
 from .criteria import (
@@ -128,7 +129,7 @@ def verify_materialization_gate() -> dict[str, Any]:
 
     try:
         manifest = load_study_manifest(STUDY_MANIFEST_PATH)
-    except (OSError, ValueError) as exc:
+    except (OSError, ValueError, ConfigurationError) as exc:
         raise CensusInputError(
             f"Phase III census study manifest is missing or invalid at {STUDY_MANIFEST_PATH}: {exc}"
         ) from exc

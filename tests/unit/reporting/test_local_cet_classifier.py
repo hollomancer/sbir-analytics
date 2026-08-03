@@ -4,6 +4,7 @@ import pandas as pd
 import pytest
 import yaml
 
+from sbir_etl.exceptions import ConfigurationError
 from sbir_etl.reporting.local_cet_classifier import load_local_cet_rule_classifier
 
 
@@ -68,3 +69,24 @@ def test_loader_rejects_taxonomy_version_mismatch(tmp_path: Path) -> None:
 
     with pytest.raises(ValueError, match="expects taxonomy"):
         load_local_cet_rule_classifier(config_path=config_path)
+
+
+def test_empty_taxonomy_reports_the_file(tmp_path: Path) -> None:
+    """An empty taxonomy previously failed as AttributeError on None.get()."""
+    taxonomy = tmp_path / "taxonomy.yaml"
+    taxonomy.write_text("", encoding="utf-8")
+    config = tmp_path / "config.yaml"
+    config.write_text(yaml.safe_dump({"taxonomy_version": "v1"}), encoding="utf-8")
+
+    with pytest.raises(ConfigurationError, match="CET taxonomy is empty"):
+        load_local_cet_rule_classifier(taxonomy_path=taxonomy, config_path=config)
+
+
+def test_non_mapping_classifier_config_reports_the_file(tmp_path: Path) -> None:
+    taxonomy = tmp_path / "taxonomy.yaml"
+    taxonomy.write_text(yaml.safe_dump({"version": "v1", "cet_areas": []}), encoding="utf-8")
+    config = tmp_path / "config.yaml"
+    config.write_text("- not-a-mapping\n", encoding="utf-8")
+
+    with pytest.raises(ConfigurationError, match="must hold a mapping"):
+        load_local_cet_rule_classifier(taxonomy_path=taxonomy, config_path=config)
