@@ -27,10 +27,11 @@ materialization:
   blockers: []
 permitted_claims:
   - The estimand, criteria, and implementation are frozen and fixture-verified.
+  - The complete February cumulative ladder and all six sensitivity cells were
+    materialized from provenance-verified inputs, and the blocking one-factor check passed.
 limitations:
-  - Production materialization is authorized, but results remain non-citable until the
-    complete audit tables and blocking post-write checks pass.
-  - Negative-control and placebo evidence is unresolved; no headline cell or statutory
-    Phase III interpretation is authorized.
+  - Negative-control, placebo, and labeled-validation evidence is unresolved; no headline
+    cell, discrimination claim, undercount claim, or statutory Phase III interpretation is
+    authorized.
   - Exact UEI matching misses acquisitions, successors, and UEI changes.
   - An uncoded lineage proxy is not proof of a statutory Phase III award.
