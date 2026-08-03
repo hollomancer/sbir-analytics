@@ -7,7 +7,7 @@ Every inclusion decision is one of the clauses frozen in
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from datetime import date
 
@@ -401,32 +401,46 @@ def _summarize(pairs: pd.DataFrame) -> dict[str, int | float]:
     }
 
 
+def _iter_core_clause_survivors(
+    pairs: pd.DataFrame, data_cut_date: date
+) -> Iterator[tuple[str, str, pd.DataFrame]]:
+    """Yield cumulative survivor frames without retaining every stage in memory."""
+
+    validate_pair_frame(pairs)
+    _cut_timestamp(data_cut_date)
+
+    current = pairs
+    yield (
+        "all_exact_uei_pairs",
+        "All inherited normalized exact-UEI pairs",
+        current,
+    )
+    for clause in CORE_CLAUSES:
+        mask = clause.predicate(current, data_cut_date).fillna(False).astype(bool)
+        current = current.loc[mask].copy()
+        yield clause.clause_id, clause.label, current
+
+
 def apply_core_clauses(
     pairs: pd.DataFrame, data_cut_date: date
 ) -> list[tuple[str, str, pd.DataFrame]]:
     """Return the inherited universe plus each frozen cumulative survivor frame."""
 
-    validate_pair_frame(pairs)
-    _cut_timestamp(data_cut_date)
-
-    current = pairs.copy()
-    stages = [
-        (
-            "all_exact_uei_pairs",
-            "All inherited normalized exact-UEI pairs",
-            current.reset_index(drop=True),
-        )
+    return [
+        (clause_id, label, survivors.reset_index(drop=True))
+        for clause_id, label, survivors in _iter_core_clause_survivors(pairs, data_cut_date)
     ]
-    for clause in CORE_CLAUSES:
-        mask = clause.predicate(current, data_cut_date).fillna(False).astype(bool)
-        current = current.loc[mask].copy()
-        stages.append((clause.clause_id, clause.label, current.reset_index(drop=True)))
-    return stages
 
 
-def build_dropoff_ladder(pairs: pd.DataFrame, data_cut_date: date) -> pd.DataFrame:
+def _build_dropoff_and_full_survivors(
+    pairs: pd.DataFrame, data_cut_date: date
+) -> tuple[pd.DataFrame, pd.DataFrame]:
     rows: list[dict[str, object]] = []
-    for order, (clause_id, label, survivors) in enumerate(apply_core_clauses(pairs, data_cut_date)):
+    full = pd.DataFrame(columns=pairs.columns)
+    for order, (clause_id, label, survivors) in enumerate(
+        _iter_core_clause_survivors(pairs, data_cut_date)
+    ):
+        full = survivors
         rows.append(
             {
                 "step_order": order,
@@ -435,7 +449,11 @@ def build_dropoff_ladder(pairs: pd.DataFrame, data_cut_date: date) -> pd.DataFra
                 **_summarize(survivors),
             }
         )
-    return pd.DataFrame(rows)
+    return pd.DataFrame(rows), full
+
+
+def build_dropoff_ladder(pairs: pd.DataFrame, data_cut_date: date) -> pd.DataFrame:
+    return _build_dropoff_and_full_survivors(pairs, data_cut_date)[0]
 
 
 def _same_department(pairs: pd.DataFrame) -> pd.Series:
@@ -459,10 +477,9 @@ def _within_calendar_years(pairs: pd.DataFrame, years: int) -> pd.Series:
     return target_date.le(anniversary)
 
 
-def build_sensitivity_grid(pairs: pd.DataFrame, data_cut_date: date) -> pd.DataFrame:
-    """Build all six frozen time-window × agency-continuity cells."""
+def _build_sensitivity_grid_from_full(full: pd.DataFrame) -> pd.DataFrame:
+    """Build the frozen grid from rows that already cleared every core clause."""
 
-    full = apply_core_clauses(pairs, data_cut_date)[-1][2]
     rows: list[dict[str, object]] = []
     windows: tuple[tuple[str, int | None], ...] = (("none", None), ("5y", 5), ("10y", 10))
     agencies: tuple[tuple[str, Callable[[pd.DataFrame], pd.Series]], ...] = (
@@ -489,6 +506,22 @@ def build_sensitivity_grid(pairs: pd.DataFrame, data_cut_date: date) -> pd.DataF
             )
 
     return pd.DataFrame(rows)
+
+
+def build_sensitivity_grid(pairs: pd.DataFrame, data_cut_date: date) -> pd.DataFrame:
+    """Build all six frozen time-window × agency-continuity cells."""
+
+    _, full = _build_dropoff_and_full_survivors(pairs, data_cut_date)
+    return _build_sensitivity_grid_from_full(full)
+
+
+def build_census_tables(
+    pairs: pd.DataFrame, data_cut_date: date
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Build both audit tables from one validated cumulative survivor pass."""
+
+    dropoff, full = _build_dropoff_and_full_survivors(pairs, data_cut_date)
+    return dropoff, _build_sensitivity_grid_from_full(full)
 
 
 @dataclass(frozen=True)

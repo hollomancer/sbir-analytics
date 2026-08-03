@@ -12,15 +12,15 @@ estimand: >-
   proxies under every preregistered time-window and agency-continuity cell.
 frozen_artifacts:
   - path: specs/phase-iii-census/design.md
-    sha256: 33b5918026fe2f98e3fa693afbe498653a328274adec03a5c827bf2ac0df6df9
+    sha256: 91b84c67e51a36a56b9d11d1afe997bc9b7de7cef090de12c24619116b6351ff
   - path: specs/phase-iii-census/amendments.md
-    sha256: 24ead99679a4e6948b3704e1375a2f9f7ba1e2b426273d490d87156efd21e5ab
+    sha256: 6168c6e2a685a3b89fa93eae86976d14798d5e6c67f7a8721b764384081ce74c
 implementation:
   - path: packages/sbir-analytics/sbir_analytics/assets/phase_iii_census/assets.py
     symbol: phase_iii_census
 identity_policy:
   strategy: exact normalized UEI only; no name or DUNS fallback
-  version: phase-0-r7
+  version: phase-0-r8
   negative_evidence_allowed: false
 materialization:
   allowed: true

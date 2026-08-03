@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import pandas as pd
+import pytest
 
 from sbir_analytics.assets import phase_iii_candidates as candidates_package
 from sbir_analytics.assets.phase_iii_candidates.pairing import (
@@ -112,6 +113,76 @@ def test_build_uei_pairs_is_only_a_normalized_nonblank_uei_gate() -> None:
     assert pd.isna(pairs.loc[1, "agency_match_level"])
 
 
+def test_build_uei_pairs_projection_is_exact_subset_of_shared_pair_table() -> None:
+    priors = pd.DataFrame([_prior(), _prior(award_id="P-2")])
+    contracts = pd.DataFrame(
+        [
+            _contract(),
+            _contract(
+                contract_id="CROSS-AGENCY",
+                transaction_unique_id="TX-2",
+                awarding_agency_name="NATIONAL SCIENCE FOUNDATION",
+                awarding_sub_tier_agency_name="NSF",
+                awarding_office_name="OFFICE OF THE DIRECTOR",
+            ),
+        ]
+    )
+    columns = [
+        "prior_award_id",
+        "prior_recipient_uei",
+        "prior_agency",
+        "target_id",
+        "target_recipient_uei",
+        "target_agency",
+        "target_transaction_id",
+        "agency_match_level",
+    ]
+
+    full = build_uei_pairs(priors, contracts)
+    explicit_full = build_uei_pairs(priors, contracts, columns=PAIR_COLUMNS)
+    projected = build_uei_pairs(priors, contracts, columns=columns)
+
+    pd.testing.assert_frame_equal(full, explicit_full)
+    pd.testing.assert_frame_equal(projected, full.loc[:, columns])
+
+
+def test_build_uei_pairs_preserves_hierarchy_match_precedence() -> None:
+    contracts = pd.DataFrame(
+        [
+            _contract(
+                contract_id="AGENCY",
+                transaction_unique_id="TX-AGENCY",
+                awarding_sub_tier_agency_name="OTHER COMPONENT",
+                awarding_office_name="OTHER OFFICE",
+            ),
+            _contract(
+                contract_id="SUB-TIER",
+                transaction_unique_id="TX-SUB-TIER",
+                awarding_agency_name="OTHER DEPARTMENT",
+                awarding_office_name="OTHER OFFICE",
+            ),
+            _contract(
+                contract_id="OFFICE",
+                transaction_unique_id="TX-OFFICE",
+                awarding_agency_name="OTHER DEPARTMENT",
+                awarding_sub_tier_agency_name="OTHER COMPONENT",
+            ),
+            _contract(
+                contract_id="NONE",
+                transaction_unique_id="TX-NONE",
+                awarding_agency_name="OTHER DEPARTMENT",
+                awarding_sub_tier_agency_name="OTHER COMPONENT",
+                awarding_office_name="OTHER OFFICE",
+            ),
+        ]
+    )
+
+    pairs = build_uei_pairs(pd.DataFrame([_prior()]), contracts)
+
+    assert pairs["agency_match_level"].tolist()[:3] == ["agency", "sub_tier", "office"]
+    assert pd.isna(pairs.loc[3, "agency_match_level"])
+
+
 def test_build_uei_pairs_projects_stable_ids_with_documented_precedence() -> None:
     priors = pd.DataFrame([_prior()])
     contracts = pd.DataFrame(
@@ -194,9 +265,21 @@ def test_pair_filter_s1_preserves_legacy_coded_and_agency_gates_and_schema() -> 
 
 def test_pair_builders_return_their_declared_empty_schemas() -> None:
     empty = pd.DataFrame()
+    projected_columns = ["target_id", "agency_match_level"]
 
     assert list(build_uei_pairs(empty, empty).columns) == PAIR_COLUMNS
+    assert list(build_uei_pairs(empty, empty, columns=projected_columns).columns) == (
+        projected_columns
+    )
     assert list(pair_filter_s1(empty, empty).columns) == PAIR_S1_COLUMNS
+
+
+def test_build_uei_pairs_rejects_invalid_projection_schemas() -> None:
+    empty = pd.DataFrame()
+
+    for columns in (["not_a_pair_field"], ["target_id", "target_id"]):
+        with pytest.raises(ValueError, match="unique members of PAIR_COLUMNS"):
+            build_uei_pairs(empty, empty, columns=columns)
 
 
 def test_postgres_copy_null_uei_never_enters_the_pair_universe() -> None:

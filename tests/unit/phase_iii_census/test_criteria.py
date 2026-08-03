@@ -6,6 +6,7 @@ import pytest
 from sbir_analytics.assets.phase_iii_census.criteria import (
     CensusInputError,
     apply_core_clauses,
+    build_census_tables,
     build_dropoff_ladder,
     build_sensitivity_diagnostics,
     build_sensitivity_grid,
@@ -262,6 +263,18 @@ def test_dropoff_ladder_applies_the_frozen_clauses_cumulatively_in_order() -> No
         "exact_naics_or_psc_lineage",
     ]
     assert ladder["surviving_pairs"].tolist() == [6, 5, 4, 3, 2, 1]
+
+    combined_dropoff, combined_sensitivity = build_census_tables(pairs, CUT)
+    pd.testing.assert_frame_equal(combined_dropoff, ladder)
+    pd.testing.assert_frame_equal(combined_sensitivity, build_sensitivity_grid(pairs, CUT))
+
+    empty_pairs = pairs.iloc[0:0]
+    empty_dropoff, empty_sensitivity = build_census_tables(empty_pairs, CUT)
+    pd.testing.assert_frame_equal(empty_dropoff, build_dropoff_ladder(empty_pairs, CUT))
+    pd.testing.assert_frame_equal(
+        empty_sensitivity,
+        build_sensitivity_grid(empty_pairs, CUT),
+    )
 
 
 def test_metrics_keep_signed_obligations_and_dedupe_transaction_pair_fanout() -> None:
