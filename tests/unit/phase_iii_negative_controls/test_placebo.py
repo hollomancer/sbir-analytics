@@ -96,6 +96,28 @@ def test_assignment_is_fixed_cross_firm_and_preserves_pairs(pairs: pd.DataFrame)
         first.audit["original_prior_end"]
     )
 
+    # The audit must identify the actual donor, not merely a different firm and a
+    # date drawn from the overall marginal distribution.
+    original_by_award = first.audit.set_index("recipient_award_id")[
+        ["recipient_firm_uei", "original_prior_end"]
+    ]
+    for row in first.audit.itertuples(index=False):
+        donor = original_by_award.loc[row.donor_award_id]
+        assert donor["recipient_firm_uei"] == row.donor_firm_uei
+        assert (pd.isna(donor["original_prior_end"]) and pd.isna(row.permuted_prior_end)) or (
+            donor["original_prior_end"] == row.permuted_prior_end
+        )
+
+    permuted_by_award = first.audit.set_index("recipient_award_id")["permuted_prior_end"]
+    expected_fanback = pairs["prior_award_id"].map(permuted_by_award)
+    pd.testing.assert_series_equal(
+        first.permuted_pairs["prior_period_of_performance_end"],
+        expected_fanback,
+        check_names=False,
+    )
+    assert len(first.audit) == pairs["prior_award_id"].nunique()
+    assert first.audit["original_prior_end"].isna().sum() == 2
+
 
 def test_identical_cross_firm_dates_are_valid_and_reported_unchanged() -> None:
     identical = pd.DataFrame(
@@ -126,12 +148,42 @@ def test_identical_cross_firm_dates_are_valid_and_reported_unchanged() -> None:
     )
 
 
+def test_cross_firm_null_to_null_assignment_is_reported_unchanged() -> None:
+    all_null = pd.DataFrame(
+        [
+            _pair(1, 1, None, firm="FIRM-A"),
+            _pair(2, 2, pd.NaT, firm="FIRM-B"),
+        ]
+    )
+
+    assignment = build_placebo_assignment(all_null)
+
+    assert assignment.audit["recipient_firm_uei"].ne(assignment.audit["donor_firm_uei"]).all()
+    assert assignment.audit["original_prior_end"].isna().all()
+    assert assignment.audit["permuted_prior_end"].isna().all()
+    assert assignment.audit["date_value_changed"].eq(False).all()
+    assert assignment.permuted_pairs["prior_period_of_performance_end"].isna().all()
+
+
 def test_mapping_is_independent_of_pair_row_order(pairs: pd.DataFrame) -> None:
     baseline = build_placebo_assignment(pairs)
     reordered = build_placebo_assignment(pairs.sample(frac=1, random_state=17))
 
     assert reordered.mapping_sha256 == baseline.mapping_sha256
     pd.testing.assert_frame_equal(reordered.audit, baseline.audit)
+
+
+def test_placebo_preserves_nondefault_pair_index_and_order(pairs: pd.DataFrame) -> None:
+    nondefault = pairs.iloc[[4, 0, 6, 2, 1, 5, 3]].copy()
+    nondefault.index = [90, 10, 70, 30, 20, 60, 40]
+
+    assignment = build_placebo_assignment(nondefault)
+
+    assert assignment.permuted_pairs.index.tolist() == nondefault.index.tolist()
+    pd.testing.assert_frame_equal(
+        assignment.permuted_pairs.drop(columns="prior_period_of_performance_end"),
+        nondefault.drop(columns="prior_period_of_performance_end"),
+    )
 
 
 @pytest.mark.parametrize(
@@ -167,6 +219,11 @@ def test_placebo_rejects_conflicting_award_values(pairs: pd.DataFrame) -> None:
         build_placebo_assignment(conflicting_firm)
 
 
+def test_placebo_rejects_missing_required_columns(pairs: pd.DataFrame) -> None:
+    with pytest.raises(PlaceboInputError, match="missing required columns"):
+        build_placebo_assignment(pairs.drop(columns="prior_award_id"))
+
+
 @pytest.mark.parametrize(
     "firm_values",
     [
@@ -183,6 +240,21 @@ def test_placebo_fails_when_cross_firm_derangement_is_impossible(firm_values) ->
 
     with pytest.raises(PlaceboInputError, match="requires at least two|permutation is impossible"):
         build_placebo_assignment(impossible)
+
+
+def test_placebo_allows_largest_firm_to_own_exactly_half_of_awards() -> None:
+    feasible = pd.DataFrame(
+        [
+            _pair(1, 1, "2020-01-01", firm="FIRM-A"),
+            _pair(2, 2, "2020-01-02", firm="FIRM-A"),
+            _pair(3, 3, "2020-01-03", firm="FIRM-B"),
+            _pair(4, 4, "2020-01-04", firm="FIRM-B"),
+        ]
+    )
+
+    assignment = build_placebo_assignment(feasible)
+
+    assert assignment.audit["recipient_firm_uei"].ne(assignment.audit["donor_firm_uei"]).all()
 
 
 def test_compatibility_permutation_returns_assignment_frame(pairs: pd.DataFrame) -> None:
