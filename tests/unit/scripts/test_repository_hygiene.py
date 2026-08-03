@@ -92,6 +92,54 @@ def test_doc_link_audit_checks_reference_style_links(tmp_path: Path):
     assert violations[0].message == "missing local Markdown link missing.md"
 
 
+def test_doc_link_audit_includes_agent_guidance(tmp_path: Path):
+    claude = _write(tmp_path, "CLAUDE.md", "[missing](docs/missing.md)\n")
+    role = _write(
+        tmp_path,
+        ".claude/agents/example.md",
+        "[missing](../../docs/missing.md)\n",
+    )
+
+    violations = hygiene.scan_missing_doc_links([claude, role], root=tmp_path)
+
+    assert [violation.path for violation in violations] == [
+        "CLAUDE.md",
+        ".claude/agents/example.md",
+    ]
+
+
+def test_agent_definition_routes_accept_shared_roles_and_matching_skills(tmp_path: Path):
+    _write(tmp_path, ".claude/agents/scope-guard.md", "# Scope guard\n")
+    _write(
+        tmp_path,
+        ".Codex/agents/scope-guard.toml",
+        'name = "scope-guard"\n'
+        'developer_instructions = """\n'
+        "Read .claude/agents/scope-guard.md\n"
+        '"""\n',
+    )
+    skill = "---\nname: review-spec\n---\n\nReview specs.\n"
+    _write(tmp_path, ".claude/skills/review-spec/SKILL.md", skill)
+    _write(tmp_path, ".agents/skills/review-spec/SKILL.md", skill)
+
+    violations = hygiene.scan_agent_definition_routes(root=tmp_path)
+
+    assert violations == []
+
+
+def test_agent_definition_routes_detect_missing_wrappers_and_skill_drift(tmp_path: Path):
+    _write(tmp_path, ".claude/agents/scope-guard.md", "# Scope guard\n")
+    _write(tmp_path, ".claude/skills/review-spec/SKILL.md", "canonical\n")
+    _write(tmp_path, ".agents/skills/review-spec/SKILL.md", "stale\n")
+
+    violations = hygiene.scan_agent_definition_routes(root=tmp_path)
+
+    assert [violation.message for violation in violations] == [
+        "missing Codex wrapper for shared agent role: scope-guard",
+        "agent skill differs from .claude copy: review-spec",
+    ]
+
+
 def test_spec_registry_requires_each_top_level_spec(tmp_path: Path):
     _write(
         tmp_path,

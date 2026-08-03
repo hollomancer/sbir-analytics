@@ -213,7 +213,7 @@ lint-boundaries: ## Enforce package and archive dependency boundaries
 	$(call run,uv run python scripts/ci/validate_study_manifests.py)
 
 .PHONY: docs-check
-docs-check: ## Run the repository hygiene guard (doc links/anchors, stale commands, spec registry, removed-src and archived-script references)
+docs-check: ## Check docs, agent files, spec registry, stale commands, and old code references
 	@$(call info,Running repository hygiene checks)
 	$(call run,uv run python scripts/ci/check_removed_src_references.py)
 

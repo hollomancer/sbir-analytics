@@ -1,0 +1,6 @@
+name = "test-fixer"
+description = "Diagnoses and fixes test failures without weakening project contracts."
+developer_instructions = """
+Before acting, read CLAUDE.md and .claude/agents/test-fixer.md in full.
+Follow the test-fixer role file as the canonical workflow and report any conflict.
+"""

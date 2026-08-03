@@ -1,0 +1,6 @@
+name = "quality-sweep"
+description = "Runs a focused quality sweep for the requested scope."
+developer_instructions = """
+Before acting, read CLAUDE.md and .claude/agents/quality-sweep.md in full.
+Follow the quality-sweep role file as the canonical workflow and report any conflict.
+"""

@@ -6,8 +6,9 @@ canonically somewhere else, so there is nothing here to drift out of sync.
 **Read [CLAUDE.md](CLAUDE.md) first.** It is the canonical source for project
 conventions, epistemic tiers, testing requirements, code standards, scope rules,
 and the live-deployment constraints. Those instructions apply to all coding
-agents regardless of runtime; only the tool-specific agent definitions in
-`.claude/agents/` vary.
+agents regardless of runtime. The full role instructions live in
+`.claude/agents/`; the tracked `.Codex/agents/` files are small wrappers that
+point Codex agents to those same role instructions.
 
 Then, depending on the work:
 
@@ -15,7 +16,7 @@ Then, depending on the work:
 |---|---|
 | Anything at all | [CLAUDE.md](CLAUDE.md) |
 | Deployment, server operations, or live Dagster materialization | [the Mac mini runbook](docs/deployment/mac-mini-server.md#live-instance-on-this-mac-mini) — **before** acting, not after — plus the live-deployment section of CLAUDE.md |
-| Implementing a spec | [docs/steering/epistemic-tiers.md](docs/steering/epistemic-tiers.md) for the tier contract, then the spec directory in `specs/` |
+| Implementing a spec | [the status registry](specs/status.md), [the spec workflow](docs/development/spec-workflow-guide.md), [the tier contract](docs/steering/epistemic-tiers.md), then the spec directory in `specs/` |
 | Judging whether work is in scope | [docs/research-questions.md](docs/research-questions.md) |
 | Architecture context | [docs/architecture/detailed-overview.md](docs/architecture/detailed-overview.md), patterns in `docs/steering/` |
 

@@ -7,6 +7,9 @@ Graph-based ETL: SBIR awards → Neo4j. Dagster orchestration, DuckDB processing
 **Intent / north star:** [docs/research-questions.md](docs/research-questions.md) is the canonical inventory of what this repo exists to answer. Use it to judge whether a proposed change serves a real question vs. adds incidental scope.
 
 Architectural patterns and technical docs live in `docs/steering/`. Feature specs live in `specs/`.
+Before implementing a spec, check `specs/status.md` and follow
+`docs/development/spec-workflow-guide.md`; a directory can be gated, deferred, or
+an archive candidate even when it still has unchecked tasks.
 
 ## Epistemic tiers
 
@@ -56,7 +59,9 @@ inputs available on this host.
 
 ## Agents
 
-Custom agents in `.claude/agents/`:
+Full role instructions live in `.claude/agents/`. The `.Codex/agents/` files
+route Codex agents to the same instructions so the two runtimes do not maintain
+separate copies.
 
 | Agent | When to Use | Model |
 |-------|-------------|-------|
@@ -75,6 +80,9 @@ scale coverage and cleanup effort by tier rather than uniformly.
 
 ## Skills
 
+Shared skill instructions live under both `.claude/skills/` and `.agents/skills/`
+for runtime discovery. `make docs-check` requires the copies to match.
+
 | Skill | Use Case |
 |-------|----------|
 | `/review-spec [spec-name\|all]` | Review spec relevance against codebase |
@@ -88,21 +96,24 @@ packages/
   sbir-graph/             # Neo4j loaders
   sbir-ml/                # ML models (CET, transition detection)
 config/base.yaml          # Thresholds, paths, performance settings
+studies/                  # Versioned contracts for reproducible and citable research
 ```
 
 ## Common Patterns
 
 - **Monitoring:** Use `sbir_etl.utils` decorators and `AlertCollector`
 - **CI:** Edit `.github/workflows/*.yml`, upload artifacts to `reports/`
-- **Tests:** Place in `tests/unit|integration|e2e/`, run `pytest -v --cov=sbir_etl`
+- **Tests:** Place in `tests/unit|integration|e2e/`; use the Make targets or `uv run pytest`
 - **Neo4j:** Modify `packages/sbir-graph/sbir_graph/loaders/`, use MERGE operations
 
 ## Testing
 
 ```bash
-pytest tests/unit/           # Fast unit tests
-pytest -m integration        # Integration tests
-pytest -n auto               # Parallel execution
+make test-unit                         # Unit tests
+uv run pytest -m integration           # Integration tests
+uv run pytest -n auto                  # Parallel execution
+make lint-boundaries                   # Architecture, identity, and study guards
+make docs-check                        # Links, stale commands, and repository hygiene
 ```
 
 Transition scoring changes must maintain ≥85% precision benchmark.
@@ -114,7 +125,11 @@ Transition scoring changes must maintain ≥85% precision benchmark.
 - Ruff rules: E, W, F, I, B, C4, UP
 - Use `StrEnum` not `str, Enum`
 - Use `datetime.UTC` not `timezone.utc`
-- Do NOT use `from __future__ import annotations` in Dagster asset files — it breaks runtime context type validation
+- Do not postpone annotations on a Dagster-decorated function whose context type
+  Dagster must inspect at runtime. Follow the local pattern in
+  `phase_iii_census/assets.py`, `phase_iii_candidates/assets.py`, and
+  `agency_private_capital/asset.py`. Other asset helpers may use
+  `from __future__ import annotations`.
 
 ## Principles
 
