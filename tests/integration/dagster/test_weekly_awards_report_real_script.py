@@ -14,6 +14,10 @@ specifically would make this flaky on whichever runner disagrees.
 What must hold in *both* worlds is the contract the op exists to enforce: the
 job never reports success without having written a report. That is the failure
 mode that let a broken weekly.yml sit unnoticed, and it is what this pins.
+
+The failure branch is pinned too, or the test would assert nothing at all on the
+runner that takes it: the run may only fail *the way unavailable data fails*,
+after the script has actually been invoked.
 """
 
 import pytest
@@ -31,12 +35,7 @@ def test_job_never_succeeds_without_producing_a_report(tmp_path, monkeypatch):
     monkeypatch.setenv("SKIP_SBIR_API", "1")
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
 
-    try:
-        result = mod.weekly_awards_report_job.execute_in_process(raise_on_error=False)
-    except Exception:
-        # A raised failure is an acceptable outcome; the invariant below only
-        # constrains the success case.
-        return
+    result = mod.weekly_awards_report_job.execute_in_process(raise_on_error=False)
 
     if result.success:
         written = list((tmp_path / "reports" / "weekly_awards").glob("*/weekly-awards.md"))
@@ -45,3 +44,21 @@ def test_job_never_succeeds_without_producing_a_report(tmp_path, monkeypatch):
             "empty result as a failure"
         )
         assert written[0].stat().st_size > 0
+        return
+
+    # Failure is a legitimate outcome, but only the *specific* failure of the
+    # script running and finding no data. Accepting any failure would make this
+    # test vacuous on the runner where it fails: an import error, a config
+    # regression or a broken job graph would pass just as quietly. Both messages
+    # below are raised by the op after the subprocess returned, so either one
+    # proves the real script was reached.
+    failure = result.failure_data_for_node("generate_weekly_awards_report_op")
+    assert failure is not None, (
+        "job failed before reaching the report op — the failure is in the job "
+        "graph or op setup, not in unavailable data"
+    )
+    rendered = failure.error.to_string()
+    assert (
+        "weekly_awards_report.py failed with exit code" in rendered
+        or "Report script wrote no report to" in rendered
+    ), f"job failed before running the report script:\n{rendered}"
