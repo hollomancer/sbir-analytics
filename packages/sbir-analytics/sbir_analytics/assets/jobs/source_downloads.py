@@ -43,46 +43,26 @@ def download_sbir_awards_op(context: OpExecutionContext) -> dict:
 
 @op
 def download_sam_gov_op(context: OpExecutionContext) -> dict:
-    """Fetch SAM.gov entity records as parquet.
-
-    Requires SAM_GOV_API_KEY. Keys expire roughly every 60 days, so a failure
-    here is usually a rotation prompt rather than a transient error.
-    """
+    """Fetch the keyless, structurally validated SAM Public V2 snapshot."""
     import pandas as pd
 
     from scripts.data.download_sam_gov import (
-        MIN_CANONICAL_ROW_COUNT,
         PARQUET_NAME,
-        PARQUET_NAME_PARTIAL,
         _download_bulk_extract,
         _write_local,
     )
 
-    api_key = os.environ.get("SAM_GOV_API_KEY", "")
-    if not api_key:
-        raise ValueError(
-            "SAM_GOV_API_KEY is not set. Obtain a key from "
-            "https://sam.gov -> Account -> API Keys and add it to .env.server."
-        )
-
-    df: pd.DataFrame | None = _download_bulk_extract(api_key)
+    df: pd.DataFrame | None = _download_bulk_extract()
     if df is None or df.empty:
-        raise ValueError("SAM.gov returned no entity records")
-
-    partial = len(df) < MIN_CANONICAL_ROW_COUNT
-    if partial:
-        context.log.warning(
-            f"Only {len(df):,} rows (below {MIN_CANONICAL_ROW_COUNT:,}); "
-            f"writing as partial so the canonical dataset is not overwritten"
-        )
+        raise ValueError("SAM.gov Public V2 bulk download returned no validated entity records")
 
     path = _write_local(
         df,
         _data_root() / "raw" / "sam_gov",
-        name=PARQUET_NAME_PARTIAL if partial else PARQUET_NAME,
+        name=PARQUET_NAME,
     )
-    context.add_output_metadata({"rows": len(df), "path": str(path), "partial": partial})
-    return {"rows": len(df), "path": str(path), "partial": partial}
+    context.add_output_metadata({"rows": len(df), "path": str(path), "partial": False})
+    return {"rows": len(df), "path": str(path), "partial": False}
 
 
 @op

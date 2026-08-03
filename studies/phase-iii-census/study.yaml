@@ -14,13 +14,13 @@ frozen_artifacts:
   - path: specs/phase-iii-census/design.md
     sha256: c61d690b0e6e20caf6651b7233d9074b99641de5cc1d4b1e3679ab5b8a58c49f
   - path: specs/phase-iii-census/amendments.md
-    sha256: 5048ea2915f184c9f1301ffdae079e63700f3835ebf38ac839d3217a5f98e3f4
+    sha256: 8f364cb9c832d01e032d253050a00d4b2aaffbaa97b17f46877fe2e917191514
 implementation:
   - path: packages/sbir-analytics/sbir_analytics/assets/phase_iii_census/assets.py
     symbol: phase_iii_census
 identity_policy:
   strategy: exact normalized UEI only; no name or DUNS fallback
-  version: phase-0-r11
+  version: phase-0-r12
   negative_evidence_allowed: false
 materialization:
   allowed: true

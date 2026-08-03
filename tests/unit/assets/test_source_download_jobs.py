@@ -72,15 +72,30 @@ class TestDataRoot:
         assert str(_data_root()) == "/Volumes/SSDmini/sbir-analytics/data"
 
 
-class TestSamGovOpGuards:
-    def test_missing_api_key_raises(self, monkeypatch):
+class TestSamGovOp:
+    def test_keyless_bulk_writes_canonical_snapshot(self, monkeypatch, tmp_path):
+        import pandas as pd
         from dagster import build_op_context
 
-        from sbir_analytics.assets.jobs.source_downloads import download_sam_gov_op
+        from scripts.data import download_sam_gov as download_module
+        from sbir_analytics.assets.jobs.source_downloads import (
+            DATA_ROOT_ENV,
+            download_sam_gov_op,
+        )
 
         monkeypatch.delenv("SAM_GOV_API_KEY", raising=False)
-        with pytest.raises(ValueError, match="SAM_GOV_API_KEY"):
-            download_sam_gov_op(build_op_context())
+        monkeypatch.setenv(DATA_ROOT_ENV, str(tmp_path))
+        frame = pd.DataFrame({"unique_entity_id": ["CANDIDATE001"]})
+        monkeypatch.setattr(download_module, "_download_bulk_extract", lambda: frame)
+
+        result = download_sam_gov_op(build_op_context())
+
+        assert result == {
+            "rows": 1,
+            "path": str(tmp_path / "raw/sam_gov/sam_entity_records.parquet"),
+            "partial": False,
+        }
+        assert (tmp_path / "raw/sam_gov/sam_entity_records.parquet").is_file()
 
 
 EXPECTED_SENSORS = {
