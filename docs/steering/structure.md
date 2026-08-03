@@ -91,8 +91,10 @@ the manifest schema, frozen-artifact hashes, and implementation references.
 
 First-party packages may not add dependencies on `scripts/`. The architecture guard carries
 one exact, temporary exception for the server source-download jobs, which wrap five existing
-download CLIs. Those implementations should move behind a package API; the CLI modules can
-then remain as compatibility entry points and the exception can be removed.
+download CLIs. This is a migration bridge, not a fifth epistemic tier or an implicit
+promotion of those scripts: it is limited to compatibility wrappers, must not be used by an
+evidence-tier artifact, and is removed when the implementations move behind a package API.
+The CLI modules can then remain as compatibility entry points.
 
 ### Separation of Concerns
 
