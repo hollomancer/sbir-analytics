@@ -308,11 +308,27 @@ def compare_firm_outcomes(
         clearing[label] = (numerator, denominator, float(proportion))
 
         final_distribution = distribution.loc[distribution["clause_id"].eq(final_clause)]
+        if final_distribution.empty:
+            raise CensusInputError(f"{label} outcomes have no final frequency distribution")
         if final_distribution["contracts_surviving"].duplicated().any():
             raise CensusInputError(f"{label} final distribution contains duplicate counts")
-        final_pmfs[label] = final_distribution.set_index("contracts_surviving")[
+        expected_firms = final_counts["distinct_contracts"].value_counts().sort_index()
+        observed_firms = final_distribution.set_index("contracts_surviving")["firms"].sort_index()
+        observed_proportions = final_distribution.set_index("contracts_surviving")[
             "firm_proportion"
-        ].astype(float)
+        ].sort_index()
+        expected_proportions = expected_firms / denominator
+        observed_firm_values = pd.to_numeric(observed_firms, errors="coerce")
+        observed_proportion_values = pd.to_numeric(observed_proportions, errors="coerce")
+        if (
+            not observed_firms.index.equals(expected_firms.index)
+            or observed_firm_values.isna().any()
+            or not observed_firm_values.eq(expected_firms).all()
+            or observed_proportion_values.isna().any()
+            or not observed_proportion_values.sub(expected_proportions).abs().le(1e-12).all()
+        ):
+            raise CensusInputError(f"{label} final distribution does not match firm counts")
+        final_pmfs[label] = observed_proportion_values.astype(float)
 
     support = final_pmfs["sbir"].index.union(final_pmfs["control"].index)
     sbir_pmf = final_pmfs["sbir"].reindex(support, fill_value=0.0)

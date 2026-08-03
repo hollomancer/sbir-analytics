@@ -43,6 +43,29 @@ MATCHING_ARTIFACTS = {
     "matching_summary": "phase_iii_matching_summary.parquet",
     "balance": "phase_iii_balance.parquet",
 }
+MATCHING_REQUIRED_COLUMNS = {
+    "treated_covariates": {"firm_id", "firm_ueis"},
+    "control_covariates": {"firm_id", "firm_ueis"},
+    "coverage": {
+        "arm",
+        "covariate",
+        "observed_firms",
+        "missing_firms",
+        "conflict_firms",
+        "total_firms",
+    },
+    "matches": {"treated_firm_id", "control_firm_id", "control_slot"},
+    "matching_summary": {"matched_control_count", "treated_firms"},
+    "balance": {
+        "covariate",
+        "level",
+        "treated_value",
+        "control_value",
+        "standardized_mean_difference",
+        "absolute_smd",
+        "flagged_above_0_1",
+    },
+}
 OUTPUT_NAMES = {
     "firm_counts": "phase_iii_negative_control_firm_counts.parquet",
     "distributions": "phase_iii_negative_control_distributions.parquet",
@@ -100,10 +123,25 @@ def _write_json_atomic(payload: dict[str, Any], path: Path) -> None:
 def _verified_artifact(path: Path, record: Any, *, label: str) -> dict[str, Any]:
     if not isinstance(record, Mapping):
         raise CensusInputError(f"matching manifest has no {label} artifact record")
-    digest = _file_sha256(path)
+    rows = record.get("rows")
+    if not isinstance(rows, int) or isinstance(rows, bool) or rows < 0:
+        raise CensusInputError(f"matching manifest has an invalid {label} row count")
+    try:
+        digest = _file_sha256(path)
+    except OSError as exc:
+        raise CensusInputError(f"matching artifact {label} is unreadable at {path}: {exc}") from exc
     if record.get("sha256") != digest:
         raise CensusInputError(f"{label} SHA-256 differs from the matching manifest")
-    return {"path": str(path), "sha256": digest, "rows": record.get("rows")}
+    return {"path": str(path), "sha256": digest, "rows": rows}
+
+
+def _parquet_columns(path: Path) -> set[str]:
+    connection = duckdb.connect()
+    try:
+        schema = connection.execute("SELECT name FROM parquet_schema(?)", [str(path)]).df()
+    finally:
+        connection.close()
+    return set(schema["name"])
 
 
 def _load_matching_inputs(
@@ -114,6 +152,8 @@ def _load_matching_inputs(
         manifest.get("schema_version") != "phase-iii-control-matching-v1"
         or manifest.get("balance_passed") is not True
         or manifest.get("pre_outcome_only") is not True
+        or manifest.get("census_filter_invoked") is not False
+        or manifest.get("stochastic") is not False
     ):
         raise CensusInputError("control-matching manifest does not authorize outcome inputs")
     artifact_records = manifest.get("artifacts")
@@ -125,12 +165,17 @@ def _load_matching_inputs(
     for label, filename in MATCHING_ARTIFACTS.items():
         path = matching_dir / filename
         provenance[label] = _verified_artifact(path, artifact_records.get(label), label=label)
+        if missing := sorted(MATCHING_REQUIRED_COLUMNS[label] - _parquet_columns(path)):
+            raise CensusInputError(f"{label} artifact is missing required columns: {missing}")
         columns = (
             ["firm_id", "firm_ueis"]
             if label in {"treated_covariates", "control_covariates"}
             else None
         )
-        frames[label] = pd.read_parquet(path, columns=columns)
+        frame = pd.read_parquet(path, columns=columns)
+        if len(frame) != provenance[label]["rows"]:
+            raise CensusInputError(f"{label} row count differs from the matching manifest")
+        frames[label] = frame
     require_covariate_balance(frames["balance"])
     return frames, manifest, provenance
 

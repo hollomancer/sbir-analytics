@@ -8,6 +8,7 @@ import pytest
 
 from sbir_analytics.assets.phase_iii_census.criteria import CORE_CLAUSES, CensusInputError
 from sbir_analytics.assets.phase_iii_negative_controls import (
+    FirmOutcomeTables,
     build_control_pseudo_priors,
     build_uei_firm_mapping,
     compare_firm_outcomes,
@@ -123,6 +124,36 @@ def test_evaluator_aggregates_every_exact_uei_in_a_firm_envelope() -> None:
     ].iloc[0].tolist() == [2, 2, 2]
 
 
+def test_evaluator_cumulative_clause_counts_are_monotonic() -> None:
+    outcomes = _evaluate(
+        [
+            _pair(1, UEI_A),
+            _pair(
+                2,
+                UEI_A,
+                prior_period_of_performance_end="2026-01-01",
+                target_action_date="2026-02-01",
+            ),
+            _pair(3, UEI_A, target_action_date="2020-12-31"),
+            _pair(4, UEI_A, target_research="SR1"),
+            _pair(5, UEI_A, target_research="SR3"),
+            _pair(6, UEI_A, target_naics_code="999999", target_psc_code="ZZ99"),
+        ],
+        _mapping((UEI_A, "FIRM-A")),
+        ["FIRM-A"],
+    )
+
+    counts = outcomes.firm_counts.sort_values("step_order")
+    assert counts["distinct_contracts"].tolist() == [6, 5, 4, 3, 2, 1]
+    assert (
+        counts[["surviving_pairs", "distinct_transactions", "distinct_contracts"]]
+        .diff()
+        .iloc[1:]
+        .le(0)
+        .all(axis=None)
+    )
+
+
 def test_comparison_reports_final_overlap_clearing_counts_and_directed_risk_ratio() -> None:
     sbir = _evaluate(
         [
@@ -173,6 +204,58 @@ def test_comparison_records_null_ratio_when_control_clearing_proportion_is_zero(
     assert final["control_clearing_proportion"] == 0.0
     assert final["sbir_clearing_proportion"] == 1.0
     assert final["sbir_control_risk_ratio"] is None
+
+
+def test_comparison_rejects_empty_or_inconsistent_final_frequency_distribution() -> None:
+    outcomes = _evaluate(
+        [_pair(1, UEI_A)],
+        _mapping((UEI_A, "FIRM-A")),
+        ["FIRM-A"],
+    )
+    without_final = outcomes.frequency_distribution.loc[
+        ~outcomes.frequency_distribution["clause_id"].eq(CORE_CLAUSES[-1].clause_id)
+    ]
+
+    with pytest.raises(CensusInputError, match="no final frequency distribution"):
+        compare_firm_outcomes(
+            FirmOutcomeTables(outcomes.firm_counts, without_final),
+            outcomes,
+        )
+
+    inconsistent = outcomes.frequency_distribution.copy()
+    inconsistent.loc[
+        inconsistent["clause_id"].eq(CORE_CLAUSES[-1].clause_id), "firm_proportion"
+    ] = 0.5
+    with pytest.raises(CensusInputError, match="does not match firm counts"):
+        compare_firm_outcomes(
+            FirmOutcomeTables(outcomes.firm_counts, inconsistent),
+            outcomes,
+        )
+
+    inconsistent["firm_proportion"] = inconsistent["firm_proportion"].astype(object)
+    inconsistent.loc[
+        inconsistent["clause_id"].eq(CORE_CLAUSES[-1].clause_id), "firm_proportion"
+    ] = "not-a-number"
+    with pytest.raises(CensusInputError, match="does not match firm counts"):
+        compare_firm_outcomes(
+            FirmOutcomeTables(outcomes.firm_counts, inconsistent),
+            outcomes,
+        )
+
+
+def test_comparison_rejects_an_empty_arm() -> None:
+    outcomes = _evaluate(
+        [_pair(1, UEI_A)],
+        _mapping((UEI_A, "FIRM-A")),
+        ["FIRM-A"],
+    )
+    empty = FirmOutcomeTables(
+        outcomes.firm_counts.iloc[0:0],
+        outcomes.frequency_distribution.iloc[0:0],
+    )
+
+    with pytest.raises(CensusInputError, match="one final row per firm"):
+        compare_firm_outcomes(empty, outcomes)
 
 
 def test_evaluator_rejects_nonunique_mapping_and_inexact_risk_set() -> None:
