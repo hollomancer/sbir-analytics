@@ -41,11 +41,24 @@ def _write_parquet(frame: pd.DataFrame, path: Path) -> None:
 
 
 def _identifier_poor_hhs_rows(sbir_awards: pd.DataFrame) -> pd.DataFrame:
+    required = {
+        "source_row_sha256",
+        "agency",
+        "contract",
+        "agency_tracking_number",
+        "Award Year",
+        "uei",
+        "duns",
+    }
+    if missing := sorted(required - set(sbir_awards.columns)):
+        raise ValueError(f"SBIR award artifact is missing columns: {missing}")
     usable_uei = sbir_awards["uei"].map(normalize_uei).notna()
     usable_duns = sbir_awards["duns"].map(normalize_duns).notna()
     selected = sbir_awards.loc[
         ~usable_uei & ~usable_duns & sbir_awards["agency"].eq(HHS_AGENCY)
     ].copy()
+    if selected["source_row_sha256"].duplicated().any():
+        raise ValueError("Identifier-poor HHS SBIR source-row fingerprints are not unique")
     return selected.rename(columns={"Award Year": "award_year"})
 
 
@@ -91,9 +104,9 @@ def _publish_combined_audit(
         sort=False,
     )
     recovery_audit = reconcile_award_identity_attempts(combined_attempt_audit)
-    source_context = sbir_awards[
-        ["source_row_sha256", "agency", "Award Year"]
-    ].rename(columns={"Award Year": "award_year"})
+    source_context = sbir_awards[["source_row_sha256", "agency", "Award Year"]].rename(
+        columns={"Award Year": "award_year"}
+    )
     recovery_audit = recovery_audit.merge(
         source_context,
         on="source_row_sha256",
@@ -184,13 +197,10 @@ def rebuild_from_retained_sources(
     """Rebuild the combined audit without repeating completed source requests."""
 
     sbir_awards = pd.read_parquet(input_path)
+    _identifier_poor_hhs_rows(sbir_awards)
     attempts = pd.read_parquet(output_dir / "phase_iii_identity_nih_attempts.parquet")
-    official_projects = pd.read_parquet(
-        output_dir / "phase_iii_identity_nih_projects.parquet"
-    )
-    nih_attempt_audit = pd.read_parquet(
-        output_dir / "phase_iii_identity_nih_attempt_audit.parquet"
-    )
+    official_projects = pd.read_parquet(output_dir / "phase_iii_identity_nih_projects.parquet")
+    nih_attempt_audit = pd.read_parquet(output_dir / "phase_iii_identity_nih_attempt_audit.parquet")
     response_bundle_path = output_dir / "phase_iii_identity_nih_responses.zip"
     response_digests: list[str] = []
     with zipfile.ZipFile(response_bundle_path) as archive:
@@ -203,9 +213,7 @@ def rebuild_from_retained_sources(
         json.dumps(response_digests, separators=(",", ":")).encode()
     ).hexdigest()
     audit_digests = {
-        str(item)
-        for values in nih_attempt_audit["official_source_digests"]
-        for item in values
+        str(item) for values in nih_attempt_audit["official_source_digests"] for item in values
     }
     if audit_digests and audit_digests != {source_digest}:
         raise ValueError("Retained NIH attempt audit has a different source digest")
@@ -214,11 +222,7 @@ def rebuild_from_retained_sources(
         json.dumps(query_keys, separators=(",", ":")).encode()
     ).hexdigest()
     snapshot_dates = sorted(
-        {
-            str(item)
-            for values in nih_attempt_audit["official_snapshot_dates"]
-            for item in values
-        }
+        {str(item) for values in nih_attempt_audit["official_snapshot_dates"] for item in values}
     )
     return _publish_combined_audit(
         input_path=input_path,
@@ -253,8 +257,7 @@ def main() -> None:
         "--usa-attempt-audit",
         type=Path,
         default=Path(
-            "data/processed/phase_iii_identity/"
-            "phase_iii_identity_usaspending_attempt_audit.parquet"
+            "data/processed/phase_iii_identity/phase_iii_identity_usaspending_attempt_audit.parquet"
         ),
     )
     parser.add_argument(
