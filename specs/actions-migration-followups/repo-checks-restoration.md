@@ -43,14 +43,26 @@ identified."
       whether a periodic scan is still wanted somewhere off-Actions.
 - [ ] Verify by planting a known finding and confirming the job fails
 
-## 2. Markdown lint
+## 2. Markdown lint — blocked on 718 pre-existing violations
 
 Was `weekly.yml` · `markdown-lint` (markdownlint-cli2 with `.markdownlint.yaml`).
 
-- [ ] Add as a **pre-commit hook**, not CI — it is a formatting check and
-      belongs where formatting checks already live
-- [ ] Keep the existing ignores (archive, specs/archive, reports, venvs,
-      node_modules)
+Attempted in 7b3e34d and reverted. Running markdownlint-cli2 over the tree
+surfaces **718 violations across 624 files** — 447 under `specs/`, 156 under
+`docs/`, 20 under `config/` — none of which fall in the old job's ignore set.
+The retired job would have failed on these too; it lived in `weekly.yml`, which
+had been broken and unnoticed, so nobody found out.
+
+- [ ] Decide whether ~700 formatting fixes are worth making. If not, this stays
+      off rather than being wired up non-blocking.
+- [ ] **Do not auto-fix `tests/fixtures/weekly_awards_report/golden.md`.** It
+      trips MD047 (no trailing newline), but it is a golden fixture whose exact
+      bytes are the assertion — reformatting it breaks the test it backs.
+- [ ] Note `.markdownlint.yaml` uses `ignoreGlobs`, which markdownlint-cli2 does
+      not read; its ignores belong in a `.markdownlint-cli2.yaml` `ignores` key.
+      The retired job worked around this with CLI flags.
+- [ ] If it goes ahead: pre-commit, not CI — it is a formatting check and
+      belongs where formatting checks live
 
 ## 3. Neo4j schema dry-run
 
