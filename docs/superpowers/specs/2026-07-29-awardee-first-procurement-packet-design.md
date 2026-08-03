@@ -1,8 +1,8 @@
 # Awardee-First Procurement Transition Packet — Design
 
 **Date:** 2026-07-29
-**Status:** Approved (design), pending implementation
-**Branch:** `feat/awardee-first-procurement-packet` (built on PR #464 branch, which contains all of PR #450)
+**Status:** Implemented; retained as the design record
+**Original branch:** `feat/awardee-first-procurement-packet` (merged through PR #466 follow-ups)
 
 ## Problem
 

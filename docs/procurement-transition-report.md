@@ -75,8 +75,9 @@ limits the detail requests, the job keeps the descriptions already retrieved,
 records the partial coverage, and continues with explicit missing-text labels.
 
 Pass the preceding public award snapshot with `--previous-awards` to distinguish
-new and changed records. The scheduled workflow restores that snapshot from the
-prior monthly run and retains the report and evidence artifacts for 90 days.
+new and changed records. No GitHub Actions workflow schedules this pipeline; an
+operator or future Mac mini Dagster job must preserve and supply that snapshot
+explicitly. Record any retention policy with the job that owns the materialization.
 When `OPENAI_API_KEY` is absent, `--ai` degrades to deterministic packet text.
 AI receives only retrieved public fields, is invoked only when both technical
 texts are available, and is capped at 10 priority leads by default. It cannot
@@ -86,3 +87,8 @@ change candidate scores, and uncited output is discarded. Use
 Representative distribution remains a human-controlled step. The generated
 `audit_sample.csv` supports the required hand audit; each HIGH signal class must
 reach at least 85% precision before its main packet section is distributed.
+
+Related implemented design records:
+
+- [Awardee-first packet design](superpowers/specs/2026-07-29-awardee-first-procurement-packet-design.md)
+- [Anchored “why it connects” design](superpowers/specs/2026-07-30-why-it-connects-explanation-design.md)

@@ -49,17 +49,33 @@ Use these before quoting a result or starting a feature from an old spec.
 
 - [Data sources](data/index.md)
 - [Dagster pipelines](architecture/dagster-pipelines.md)
+- [Asset naming](architecture/asset-naming-standards.md)
+- [Private analytics API](architecture/private-analytics-api.md)
+- [DuckDB CET analysis](architecture/duckdb-cet-analysis.md)
 - [Transition detection](transition/README.md)
 - [Machine learning](ml/README.md)
 - [Fiscal pipeline](fiscal/sbir-fiscal-pipeline-guide.md)
 - [Neo4j schema](schemas/neo4j.md)
+- [Other Transaction consortium tiers](ot-consortium/tiers.md)
 - [Statistical reporting utility](guides/statistical-reporting.md)
 - [API](api/README.md)
 
+## Durable engineering contracts
+
+- [Company identity](steering/company-identity.md)
+- [Data quality](steering/data-quality.md)
+- [Enrichment patterns](steering/enrichment-patterns.md)
+- [Pipeline orchestration](steering/pipeline-orchestration.md)
+- [Neo4j patterns](steering/neo4j-patterns.md)
+- [Repository structure](steering/structure.md) and [technology choices](steering/tech.md)
+- [Glossary](steering/glossary.md)
+- [ML methodology review](steering/ml-methodology-review.md)
+
 ## Research outputs
 
-Detailed methods and dated analyses live under [`docs/research/`](research/). Technology-area
-briefs pair an audience-facing summary with technical findings:
+Use the [research-output index](research/README.md) to map analyses to research questions,
+evidence posture, and data cuts. Technology-area briefs pair an audience-facing summary with
+technical findings:
 
 - [Nanotechnology brief](nanotech_sbir_policy_brief.md) and
   [technical findings](nanotech_sbir_transition_findings.md)

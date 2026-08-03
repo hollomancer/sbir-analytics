@@ -12,8 +12,8 @@ fast unit tests on PRs, the full suite on `main`.
 which deletes the workflows described here. Until that merges, the workflows
 still exist (though `weekly.yml` has been in an invalid state and not running).
 
-See [the Mac mini runbook](mac-mini-server.md) for the target host, and
-[the AWS decommission plan](aws-decommission-plan.md) for the earlier phase that
+See [the Mac mini runbook](../../deployment/mac-mini-server.md) for the target host, and
+[the AWS decommission plan](../../deployment/aws-decommission-plan.md) for the earlier phase that
 moved ingestion off Actions. This plan finishes that job.
 
 ## What is already done
@@ -229,7 +229,7 @@ together, because they were never the same thing.
 
 **Publishing is genuinely optional.** `make server-up` falls back to building
 `Dockerfile.python-base` locally when GHCR has no manifest for the Mac's
-architecture (see [Bring-up](mac-mini-server.md#bring-up)), and the server compose profile builds
+architecture (see [Bring-up](../../deployment/mac-mini-server.md#bring-up)), and the server compose profile builds
 its app images locally with a `:local` tag rather than pulling. Nothing is
 broken today; a first build just takes several minutes. The amd64 half of the
 multi-arch manifest existed to serve CI, which no longer builds images — so if

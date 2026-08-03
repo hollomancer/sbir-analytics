@@ -103,6 +103,8 @@ vintages, and failure reasons rather than relying on static numbers in documenta
 
 Related references:
 
+- [Weekly awards report](weekly-awards-report.md)
+- [SBIR weekly ingestion checks](sbir-weekly-checks.md)
 - [Data quality contract](../steering/data-quality.md)
 - [Configuration](../configuration.md)
 - [SBIR awards columns](sbir_awards_columns.json)

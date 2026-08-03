@@ -7,7 +7,8 @@ Status: active
 
 # Development Documentation
 
-Use this page as a router; commands and rules have one canonical owner.
+Use this page to find the current development guides. Each command or rule should
+be explained in one place so the instructions do not drift apart.
 
 ## Start here
 
@@ -20,12 +21,17 @@ Use this page as a router; commands and rules have one canonical owner.
 
 - [Exception Handling](exception-handling.md) - Custom exception hierarchy and patterns
 - [Logging Standards](logging-standards.md) - When to use logger vs console.print
+- [Pre-commit and CI consistency](pre-commit-ci-consistency.md) - What runs locally and in CI
 
 ## Planning and architecture
 
 - [Spec Workflow Guide](spec-workflow-guide.md) - Using specifications
 - [Architecture overview](../architecture/detailed-overview.md) - Package and deployment boundaries
-- [Steering documents](../steering/) - Durable identity, evidence, orchestration, and quality rules
+- [Steering documents](../steering/) - Project rules for identity matching, evidence,
+  pipelines, and data quality
+- `make docs-check` - Check links, section links, old commands, the spec list, and
+  references to removed code or archived scripts. A failure may come from code or
+  configuration, not only from documentation.
 
 ---
 

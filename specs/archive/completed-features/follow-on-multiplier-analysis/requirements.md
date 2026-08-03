@@ -1,7 +1,7 @@
 # Follow-on Funding Multiplier Analysis — Requirements
 
-> **Status:** Implemented in this PR — see the [specification validation, semantics, execution guide, and requirement map](../../docs/follow-on-multiplier-analysis.md).
-> Anchors inventory question **A3** in [docs/research-questions.md](../../docs/research-questions.md).
+> **Status:** Implemented in this PR — see the [specification validation, semantics, execution guide, and requirement map](../../../../docs/follow-on-multiplier-analysis.md).
+> Anchors inventory question **A3** in [docs/research-questions.md](../../../../docs/research-questions.md).
 >
 > NASEM's reviews of DoD SBIR call this quantity the *leverage ratio*. This codebase
 > uses *follow-on funding multiplier* for the same calculation to avoid the debt

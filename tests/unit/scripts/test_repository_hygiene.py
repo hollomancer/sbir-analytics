@@ -30,7 +30,7 @@ def test_live_doc_stale_content_scans_all_non_archived_docs(tmp_path: Path):
     assert violations[0].path == "docs/transition/example.md"
 
 
-def test_live_doc_link_audit_resolves_relative_links(tmp_path: Path):
+def test_scan_missing_doc_links_resolves_relative_links(tmp_path: Path):
     source = _write(
         tmp_path,
         "docs/development/example.md",
@@ -38,14 +38,14 @@ def test_live_doc_link_audit_resolves_relative_links(tmp_path: Path):
     )
     target = _write(tmp_path, "docs/target.md", "ok\n")
 
-    violations = hygiene.scan_missing_live_doc_links([source, target], root=tmp_path)
+    violations = hygiene.scan_missing_doc_links([source, target], root=tmp_path)
 
     assert len(violations) == 1
     assert violations[0].message == "missing local Markdown link ../missing.md"
     assert violations[0].path == "docs/development/example.md"
 
 
-def test_live_doc_link_audit_validates_file_and_same_page_anchors(tmp_path: Path):
+def test_scan_missing_doc_links_validates_file_and_same_page_anchors(tmp_path: Path):
     source = _write(
         tmp_path,
         "docs/development/example.md",
@@ -64,11 +64,54 @@ def test_live_doc_link_audit_validates_file_and_same_page_anchors(tmp_path: Path
         '<a id="stable-id"></a>\n',
     )
 
-    violations = hygiene.scan_missing_live_doc_links([source, target], root=tmp_path)
+    violations = hygiene.scan_missing_doc_links([source, target], root=tmp_path)
 
     assert len(violations) == 1
     assert violations[0].message == "missing Markdown anchor #old-heading in ../target.md"
     assert hygiene._github_heading_slug("Research & development") == "research--development"
+
+
+def test_doc_link_audit_includes_archived_docs_and_root_readme(tmp_path: Path):
+    readme = _write(tmp_path, "README.md", "[missing](docs/missing.md)\n")
+    archive = _write(tmp_path, "docs/archive/example.md", "[missing](../missing.md)\n")
+
+    violations = hygiene.scan_missing_doc_links([readme, archive], root=tmp_path)
+
+    assert [violation.path for violation in violations] == [
+        "README.md",
+        "docs/archive/example.md",
+    ]
+
+
+def test_doc_link_audit_checks_reference_style_links(tmp_path: Path):
+    source = _write(tmp_path, "docs/example.md", "[details]: missing.md\n")
+
+    violations = hygiene.scan_missing_doc_links([source], root=tmp_path)
+
+    assert len(violations) == 1
+    assert violations[0].message == "missing local Markdown link missing.md"
+
+
+def test_spec_registry_requires_each_top_level_spec(tmp_path: Path):
+    _write(
+        tmp_path,
+        "specs/status.md",
+        "- **`registered` — Active.** Current work.\n"
+        "- **`missing-on-disk` — Deferred.** Historical entry.\n",
+    )
+    _write(tmp_path, "specs/registered/tasks.md", "# Tasks\n")
+    _write(tmp_path, "specs/unregistered/requirements.md", "# Requirements\n")
+    _write(tmp_path, "specs/standalone.md", "# Standalone spec\n")
+    _write(tmp_path, "specs/REQUIREMENTS_TEMPLATE.md", "# Template\n")
+    _write(tmp_path, "specs/archive/old/tasks.md", "# Old\n")
+
+    violations = hygiene.scan_spec_registry(root=tmp_path)
+
+    assert [violation.message for violation in violations] == [
+        "top-level spec is missing from status registry: standalone.md",
+        "top-level spec is missing from status registry: unregistered",
+        "status registry references a missing top-level spec: missing-on-disk",
+    ]
 
 
 def test_archive_guard_ignores_archive_scripts_and_flags_live_references(tmp_path: Path):
