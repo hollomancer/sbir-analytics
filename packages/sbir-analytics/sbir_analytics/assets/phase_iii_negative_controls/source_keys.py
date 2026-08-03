@@ -120,6 +120,7 @@ def canonicalize_year(value: Any) -> str | None:
 def _attempt_record(
     source_row_sha256: str,
     source_key_field: str,
+    source_award_key: str,
     adapter: str,
     agency_key: str,
     award_year_key: str,
@@ -139,6 +140,7 @@ def _attempt_record(
         "source_row_sha256": source_row_sha256,
         "recovery_attempt_id": hashlib.sha256(serialized.encode()).hexdigest(),
         "source_key_field": source_key_field,
+        "source_award_key": source_award_key,
         "adapter": adapter,
         "agency_key": agency_key,
         "award_year_key": award_year_key,
@@ -169,6 +171,7 @@ def build_usaspending_sbir_attempts(sbir_awards: pd.DataFrame) -> pd.DataFrame:
                         _attempt_record(
                             fingerprint,
                             source_field,
+                            _text(source_value),
                             adapter,
                             agency,
                             ANY_YEAR,
@@ -182,6 +185,7 @@ def build_usaspending_sbir_attempts(sbir_awards: pd.DataFrame) -> pd.DataFrame:
             "source_row_sha256",
             "recovery_attempt_id",
             "source_key_field",
+            "source_award_key",
             "adapter",
             "agency_key",
             "award_year_key",
@@ -276,6 +280,7 @@ def build_nih_sbir_attempts(sbir_awards: pd.DataFrame) -> pd.DataFrame:
                     _attempt_record(
                         fingerprint,
                         source_field,
+                        _text(getattr(row, source_field)),
                         adapter,
                         agency,
                         year,
@@ -289,6 +294,7 @@ def build_nih_sbir_attempts(sbir_awards: pd.DataFrame) -> pd.DataFrame:
             "source_row_sha256",
             "recovery_attempt_id",
             "source_key_field",
+            "source_award_key",
             "adapter",
             "agency_key",
             "award_year_key",
