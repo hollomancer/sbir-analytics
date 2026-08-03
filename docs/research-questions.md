@@ -405,7 +405,7 @@ NASEM calls this quantity the *leverage ratio*.
 
 <a id="out-of-scope--physical--sub-tier-supply-chain-data-the-project-does-not-ingest"></a>
 
-### Out of scope — physical & deeper-tier supply chain
+### Out of scope — physical & sub-tier supply chain
 
 *Reported first-tier subcontract relationships are now an A2 research target.
 The questions below remain outside that boundary: they require bill-of-materials,
