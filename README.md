@@ -13,7 +13,7 @@ understand what happens after a small business wins an SBIR award.
   academic literature, and what data could plausibly answer them.
 - This is built with substantial help from AI agents. Much of the
   implementation was generated and iterated with Claude and Codex. I
-  directed the design and validated the analysis, but this code defintely
+  directed the design and validated the analysis, but this code definitely
   isn't professional-grade engineering. This is a **personal side project,
   not production software.** PRs welcome!
 - Recommend newcomers read **[docs/research-questions.md](docs/research-questions.md)**, 
@@ -93,12 +93,13 @@ specs/                 Per-feature design notes
 examples/              Standalone demo scripts
 notebooks/             Exploratory Jupyter notebooks
 scripts/               One-off analysis and operational scripts
-infrastructure/        AWS CDK deployment (my personal cloud setup; optional)
+studies/                Reproducible analytical studies and evidence artifacts
+lambda/                 Legacy Lambda handlers (not part of the live deployment)
 ```
 
-Directories such as `.github/`, `infrastructure/`, deployment docs, and E2E
-testing docs reflect experiments in making the project more runnable and
-maintainable - we're definitely a long way from production-grade infrastructure.
+The live deployment is an always-on Mac mini running Docker Compose behind
+Tailscale. GitHub Actions is CI-only; the former AWS data plane has been retired.
+See the [deployment overview](docs/deployment/README.md) for the current model.
 
 ## Suggested reading path
 
@@ -127,11 +128,13 @@ need a flat list, run `uv export`.)
 ```bash
 git clone https://github.com/hollomancer/sbir-analytics
 cd sbir-analytics
-make install        # install dependencies with uv
+make install        # install the full local stack with uv
 make dev            # start the Dagster UI at http://localhost:3000
 ```
 
-`make help` lists every available target. Most data sources need an API key or a
+`make install-core` installs only the reusable `sbir_etl` library dependencies;
+it does not install Dagster or the application packages. `make help` lists every
+available target. Most data sources need an API key or a
 local bulk download; copy `.env.example` to `.env` and fill in what you have.
 A local Neo4j instance is required to materialize the graph — `docker compose --profile dev up`
 brings one up along with the supporting services. See

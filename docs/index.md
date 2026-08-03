@@ -81,4 +81,5 @@ Docs follow the Diátaxis model (Tutorials, How-to guides, Explanations, Referen
 ## Governance
 
 - Code changes that affect architecture, data contracts, or performance must update relevant docs/specs in the same PR.
-- Each doc declares an owner and should be reviewed at least quarterly.
+- Curated reference docs declare an owner and should be reviewed at least quarterly.
+  Working notes should add that metadata when they are promoted into maintained reference material.

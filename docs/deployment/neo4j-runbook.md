@@ -254,7 +254,8 @@ Operational notes & best practices
 
 - For heavy or production workloads, prefer dedicated Neo4j service deployment (clustered or enterprise) outside local docker-compose. Use the compose paths for development/testing only.
 - Keep `config/neo4j/neo4j.conf` under version control as a template (no secrets) and document environment-specific overrides.
-- Automate backups on schedule (cron or CI scheduled job) and secure backup storage (S3, encrypted storage, etc.).
+- Run backups on the Mac mini with `make server-backup` and protect the resulting local backup
+  directory according to the server runbook.
 - Regularly test restore procedures in a staging environment to ensure backups are valid.
 
 CI considerations
@@ -270,8 +271,4 @@ Where to look in the repo
 - Makefile neo4j wrappers: `Makefile` (search `neo4j-` targets)
 - General containerization and runbook: `docs/development/docker.md`
 
-If you'd like, I can next:
-
-- Implement automated CI job for scheduled backups (uploading to a configured S3 bucket).
-- Migrations are versioned and tracked in Neo4j. See `docs/migrations.md` for details.
-- Add example TLS configuration and an integration test that validates TLS-enabled Bolt connections.
+Migrations are versioned and tracked in Neo4j. See `docs/migrations.md` for details.

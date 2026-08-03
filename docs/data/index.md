@@ -1,234 +1,91 @@
 ---
 Type: Overview
 Owner: docs@project
-Last-Reviewed: 2025-11-21
+Last-Reviewed: 2026-08-03
 Status: active
 ---
 
 # Data Sources Overview
 
-> **Operational data caveat.** No SBIR/STTR award data is committed to this repository. Commands and scripts referenced in this section can support local development once you provide `.env` values and small/local inputs, but full dataset reproduction requires downloading the source/bulk datasets yourself, supplying API credentials, and running supporting services such as Neo4j; reproducing the analyses end-to-end is non-trivial.
+No SBIR/STTR award data is committed to this repository. Full reproduction requires downloading
+the public source datasets, supplying API credentials where required, and provisioning local disk
+and services such as Neo4j.
 
+The live data plane runs on the Mac mini. Source-download jobs write to the local data root on the
+attached SSD; GitHub Actions is CI only. All source schedules default to stopped until a manual run
+succeeds on that host.
 
-This section provides comprehensive documentation for all data sources used in the SBIR Analytics pipeline.
+## Primary sources
 
-## Primary Data Sources
+| Source | Purpose | Local entry point | Default schedule |
+| --- | --- | --- | --- |
+| SBIR.gov awards | Core awards, firms, topics, phases, and funding | `scripts/data/download_sbir.py` / `sbir_awards_download_job` | Mondays 09:00 UTC, stopped |
+| USAspending | Recipient and federal transaction/contract evidence | `scripts/usaspending/download_database.py` / `usaspending_download_job` | Monthly on day 6 at 02:00 UTC, stopped |
+| SAM.gov entities | UEI, CAGE, NAICS, registration, and address enrichment | `scripts/data/download_sam_gov.py` / `sam_gov_download_job` | Monthly on day 15 at 03:00 UTC, stopped |
+| USPTO | PatentsView grants, assignments, and AI patent indicators | `scripts/data/download_uspto.py` / `uspto_download_job` | Monthly on day 1 at 09:00 UTC, stopped |
 
-### SBIR Awards Data
+Schedule times are defaults from `sbir_analytics/definitions.py` and can be overridden with the
+corresponding `SBIR_ETL__DAGSTER__SCHEDULES__...` variables. Follow the
+[Mac mini runbook](../deployment/mac-mini-server.md#source-data-downloads) before enabling or
+triggering any live download.
 
-**Source:** [SBIR.gov](https://www.sbir.gov/)
+## Storage layout
 
-- **Format:** CSV
-- **Update Cadence:** Weekly (monitored)
-- **Endpoint:** `https://data.www.sbir.gov/mod_awarddatapublic/award_data.csv`
-- **Asset:** `raw_sbir_awards`
-- **Documentation:** See [SBIR Weekly Checks](sbir-weekly-checks.md) for monitoring procedures
-
-**Key Fields:**
-
-- Award ID, company name, agency, phase, funding amount
-- Research topics, abstract, personnel information
-- Geographic data (state, congressional district)
-
-### USAspending Data
-
-**Source:** [USAspending.gov](https://www.usaspending.gov/)
-
-- **Format:** PostgreSQL dump (bulk data) + REST API (enrichment)
-- **Update Cadence:** Daily (API), Weekly (bulk data)
-- **Purpose:** Enrich SBIR awards with additional transaction details
-- **Assets:**
-  - `raw_usaspending_recipients`
-  - `raw_usaspending_transactions`
-  - `usaspending_iterative_enrichment`
-
-**Enrichment Data:**
-
-- Recipient details (DUNS, UEI, address)
-- Transaction obligations and outlays
-- Contract and grant information
-- Parent organization relationships
-
-**Related Documentation:**
-
-- [USAspending Iterative Refresh](../enrichment/usaspending-iterative-refresh.md)
-
-### USPTO Patent Data
-
-**Source:** [USPTO PatentsView](https://patentsview.org/) + [USPTO Bulk Data](https://bulkdata.uspto.gov/)
-
-- **Formats:** CSV, TSV (ZIP compressed), Stata (.dta)
-- **Update Cadence:** Monthly (automated via GitHub Actions on 1st at 9 AM UTC)
-- **Purpose:** Link patents to SBIR-funded research
-- **Assets:** `raw_uspto_patents`, `raw_uspto_assignments`
-
-**Data Types:**
-
-- Patent grants and applications (PatentsView)
-- Inventor and assignee information
-- Patent assignments and ownership transfers (10.5M assignments since 1970)
-- Technology classification codes (CPC)
-- AI-related patents dataset (15.4M documents, 1976-2023)
-
-**Latest Releases (verified Dec 2024):**
-
-- Patent Assignments: 2023 release (1.78 GB CSV)
-- AI Patents: 2023 release (764 MB CSV, updated Jan 8, 2025)
-- PatentsView: Updated quarterly
-
-**Download Process:**
-
-- **Script:** `scripts/data/download_uspto.py`
-- **Workflow:** `.github/workflows/data-refresh.yml`
-- **Retry Logic:** 3 attempts with exponential backoff (2, 4, 8 seconds)
-- **User-Agent:** `SBIR-Analytics/1.0 (GitHub Actions)`
-- **Verification:** SHA-256 hash computed and stored in S3 metadata
-
-**S3 Storage Structure:**
+The root comes from `SBIR_ETL__PATHS__DATA_ROOT`; the live profile maps it to the SSD.
 
 ```text
-raw/uspto/
-├── patentsview/{YYYY-MM-DD}/
-│   ├── patent.zip              # ~217 MB
-│   ├── assignee.zip
-│   ├── inventor.zip
-│   └── cpc.zip
-├── assignments/{YYYY-MM-DD}/
-│   └── patent_assignments.zip  # ~1.78 GB
-└── ai_patents/{YYYY-MM-DD}/
-    └── ai_patent_dataset.zip   # ~764 MB
-```
-
-**Metadata Stored:**
-
-- `source_url`: Original download URL
-- `sha256`: File integrity hash
-- `downloaded_at`: ISO 8601 timestamp
-- `user_agent`: Download client identifier
-
-**Troubleshooting:**
-
-- **Timeout errors:** Files are large (up to 1.78 GB), timeout set to 300s
-- **404 errors:** URLs verified Dec 2024, check USPTO website for updates
-- **Network errors:** Automatic retry with exponential backoff
-- **S3 upload failures:** Check AWS credentials and bucket permissions
-
-**Related Documentation:**
-
-- [USPTO Data Refresh Process](uspto-data-refresh.md) - Automated download workflow
-- [USPTO Patents (source, fields, graph mapping)](../schemas/uspto-patents.md)
-
-## External API Services
-
-### SAM.gov Entity API
-
-**Purpose:** Company registration and entity information
-
-- **Rate Limit:** 60 requests/minute
-- **Authentication:** API key required
-- **Use Case:** Validate company information and DUNS/UEI identifiers
-
-### PatentsView API
-
-**Purpose:** Patent search and retrieval
-
-- **Rate Limit:** 60 requests/minute
-- **Caching:** 24-hour TTL
-- **Use Case:** Real-time patent lookups and research
-
-## Data Refresh Schedules
-
-| Data Source | Refresh Cadence | Automation | Documentation |
-|-------------|-----------------|------------|---------------|
-| SBIR Awards | Weekly | AWS Step Functions | [Awards Refresh](awards-refresh.md) |
-| USAspending API | Daily | Dagster sensor | [Iterative Refresh](../enrichment/usaspending-iterative-refresh.md) |
-| USPTO Patents | Monthly | GitHub Actions | [USPTO Data Refresh](uspto-data-refresh.md) |
-| SAM.gov | On-demand | API calls | N/A |
-
-See [SBIR Weekly Checks](sbir-weekly-checks.md) for monitoring and validation procedures.
-
-## Data Quality
-
-### Quality Thresholds
-
-**SBIR Awards:**
-
-- Pass rate: ≥95%
-- Completeness: ≥90%
-- Uniqueness: ≥99%
-
-**Enrichment:**
-
-- SAM.gov success rate: ≥85%
-- USAspending match rate: ≥70%
-- Regression threshold: ≤5%
-
-**Related Documentation:**
-
-- [Quality Assurance Guide](../guides/quality-assurance.md)
-- [Validation Testing](../testing/validation-testing.md)
-
-## Data Storage
-
-### Production Storage
-
-- **Primary:** AWS S3 (`sbir-etl-production-data` bucket)
-- **Graph Database:** Neo4j (EC2)
-- **Processing:** DuckDB (in-memory or local)
-
-**S3 Structure:**
-
-```text
-s3://sbir-etl-production-data/
+<data_root>/
 ├── raw/
-│   ├── awards/           # SBIR CSV downloads
-│   ├── uspto/
-│   │   ├── patentsview/  # Patent grants
-│   │   ├── assignments/  # Ownership transfers
-│   │   └── ai_patents/   # AI-related patents
-│   └── usaspending/      # Transaction dumps
-├── transformed/          # Normalized data
-└── artifacts/            # Processed outputs
+│   ├── sbir/
+│   ├── sam_gov/
+│   ├── usaspending/
+│   └── uspto/
+├── usaspending/
+├── transformed/
+├── processed/
+├── transition/
+├── reports/
+└── state/
 ```
 
-### Development Storage
+Exact subpaths are owned by the downloader or asset that writes them. Do not assume an S3 handoff:
+the AWS data plane was retired and the supported pipeline storage is the local filesystem.
 
-- **Local:** `data/` directory (gitignored)
-- **Graph Database:** Neo4j Docker container
-- **Processing:** DuckDB local or in-memory
+## Source notes
 
-**Setup:** `docker compose --profile dev up neo4j -d`
+### SBIR awards
 
-## Data Dictionaries
+The downloader keeps a canonical `raw/sbir/award_data.csv`, metadata, and dated history vintages so
+upstream snapshots remain reproducible. See [Awards Refresh](awards-refresh.md).
 
-Detailed field-level documentation:
+### USAspending
 
-- [USPTO Patents (source, fields, graph mapping)](../schemas/uspto-patents.md)
-- [Transition Fields Dictionary](dictionaries/transition-fields-dictionary.md)
+Bulk PostgreSQL dumps support large local joins and transition analysis; the REST API supports
+targeted and iterative enrichment. Large downloads are resumable and need substantial free space.
+See [USAspending Iterative Refresh](../enrichment/usaspending-iterative-refresh.md).
 
-## Schema Documentation
+### SAM.gov
 
-Graph database schemas and entity relationships:
+`SAM_GOV_API_KEY` is required for the entity download. The downloader prefers bulk extracts and
+protects the canonical parquet from being overwritten by a small paginated fallback. Keys expire
+periodically; treat authentication failures as rotation prompts. See
+[SAM.gov Integration](../enrichment/sam-gov-integration.md).
 
-- [Neo4j Schema Overview](../schemas/neo4j.md)
+### USPTO
+
+`USPTO_ODP_API_KEY` is required for PatentsView bulk files. The Dagster job also downloads the AI
+patent dataset and uses browser automation for assignment archives because the portal no longer
+serves them to a plain HTTP client. See [USPTO Data Refresh](uspto-data-refresh.md).
+
+## Quality controls
+
+Shared thresholds live in `config/base.yaml`, including SBIR completeness/uniqueness gates and
+enrichment match-rate expectations. Asset checks and validators should emit observed counts, source
+vintages, and failure reasons rather than relying on static numbers in documentation.
+
+Related references:
+
+- [Quality Assurance](../guides/quality-assurance.md)
+- [Configuration](../configuration.md)
+- [SBIR awards columns](sbir_awards_columns.json)
 - [USPTO Patents Schema](../schemas/uspto-patents.md)
-
-## Congressional District Analysis
-
-For geographic analysis and funding impact assessment:
-
-## Related Resources
-
-- **Configuration:** [`config/base.yaml`](../../config/base.yaml) contains all data source configurations
-- **Extractors:** [`sbir_etl/extractors/`](../../sbir_etl/extractors/) implements data extraction logic
-- **Enrichers:** [`sbir_etl/enrichers/`](../../sbir_etl/enrichers/) implements API enrichment
-- **Architecture:** [Detailed Overview](../architecture/detailed-overview.md)
-
-## Getting Help
-
-For questions about data sources or data quality issues:
-
-1. Check the relevant data dictionary or schema documentation
-2. Review the [Quality Assurance Guide](../guides/quality-assurance.md)
-3. Consult the [Testing Documentation](../testing/index.md) for validation procedures
-4. Open an issue on GitHub with the `data-quality` label

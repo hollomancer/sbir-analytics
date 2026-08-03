@@ -5,19 +5,21 @@ enriched with LLM-written synopses, company/PI diligence, and web research.
 Code lives in `sbir_etl/reporting/weekly/`; the entry point is
 `scripts/data/weekly_awards_report.py`.
 
-> Not to be confused with `scripts/data/run_weekly_workflow_local.sh`, which is a
-> separate **data-refresh** workflow (download → validate → profile → optional
-> Neo4j load) mirroring `.github/workflows/weekly-award-data-refresh.yml`. It does
-> not generate this report.
+> `scripts/data/run_weekly_workflow_local.sh` is a legacy local validation helper. It does not
+> generate this report and does not mirror a current GitHub Actions workflow.
+
+On the live host this report is wrapped by the Dagster `weekly_awards_report_job`. Its
+`weekly_awards_report` schedule defaults to Mondays at 12:00 UTC and is stopped until explicitly
+enabled after a successful manual run.
 
 ## Run it
 
 ```bash
 # Full report (last 7 days) to a file
-OPENAI_API_KEY=sk-... python scripts/data/weekly_awards_report.py --output weekly.md
+OPENAI_API_KEY=sk-... uv run python scripts/data/weekly_awards_report.py --output weekly.md
 
 # No LLM calls at all (fast, deterministic)
-python scripts/data/weekly_awards_report.py --no-ai --output weekly.md
+uv run python scripts/data/weekly_awards_report.py --no-ai --output weekly.md
 ```
 
 ## Arguments
@@ -51,6 +53,10 @@ press-wire feeds) improve diligence but degrade gracefully — see the
 
 ## Input / output
 
-- **Input:** the SBIR bulk awards CSV (from S3 if configured, else `data.www.sbir.gov`),
-  filtered to the look-back window.
+- **Input:** the newest local SBIR awards CSV when available, otherwise a direct SBIR.gov bulk
+  download, filtered to the look-back window.
 - **Output:** a single Markdown document written to `--output` (or stdout).
+
+Live reports are written under `<data_root>/reports/weekly_awards/<report-date>/`. See the
+[Mac mini runbook](../deployment/mac-mini-server.md#scheduled-analysis-and-reporting) before
+operating the live job.
