@@ -150,3 +150,28 @@ files before materialization.
   the full exact-key reconciliation audit, and passing focused implementation tests were
   visible. No exact-UEI pair count, cumulative drop-off count, six-cell sensitivity
   result, negative-control result, or placebo result had been materialized or seen.
+
+## Revision 8 — Memory-safe execution equivalence
+
+- **Authority:** The repository owner's approval of the frozen Phase 1 criteria and
+  instruction to finish extraction; this revision records no new policy choice.
+- **Git-history anchor:** The commit that first adds Revision 8 to this file is the
+  execution-record anchor; its identifier is intentionally not embedded in the content it
+  hashes.
+- **Reason:** The first full census attempt failed before pair construction because the
+  in-memory prior differed from its parquet only as `NaN` versus `None`; an exact
+  null-canonical comparison fixed that fail-closed guard. The next attempt and a
+  full-width read-only probe were then killed during exact-UEI pair expansion. A fixed
+  projection of already-required source and pair fields, plus one validated cumulative
+  survivor pass for both tables, completes the identical computation within memory.
+- **Criteria and pair-universe impact:** None. The shared builder still performs the same
+  normalized nonblank exact-UEI inner join at prior-award × target-transaction grain and
+  retains its default full schema for the weighted path. The census receives every frozen
+  required pair field. No inclusion clause, clause order, predicate, agency/window cell,
+  metric, cutoff, score, model, or estimand changes.
+- **Visibility at recording:** The validated Phase II parquet and two failed census run
+  records were visible; neither failed run wrote a census artifact. A final read-only
+  production-equivalent probe computed both in-memory audit tables and asserted only that
+  each had its pre-specified six rows. No metric value was printed, inspected, quoted, or
+  selected, and no census parquet existed when this revision was recorded. No
+  negative-control or placebo result existed.

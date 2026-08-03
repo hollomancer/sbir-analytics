@@ -360,6 +360,31 @@ Git history supplies the immutable prior versions. Materialization records and v
 the current design and amendment-log byte digests, so the freeze is an executable input
 contract rather than an unchecked commit label.
 
+### Approved execution-equivalence amendment
+
+The February source frame exceeded available memory when the census loaded nested and
+scoring-only columns, expanded the full-width shared pair table, and independently repeated
+global validation and the cumulative filter for each output. Phase 1 therefore uses the
+same shared `build_uei_pairs` implementation with an explicit output projection; the
+builder's default full schema for the weighted path is unchanged.
+
+The census contract-source projection is pinned to these extracted fields:
+`contract_id`, `piid`, `transaction_unique_id`, `generated_unique_award_id`, `agency`,
+`sub_agency`, `vendor_uei`, `action_date`, `obligation_amount`, `competition_type`,
+`description`, `research`, `naics_code`, and `product_or_service_code`. A missing field
+stops loading. The pair projection is exactly the frozen census-required subset of the
+shared pair schema: it preserves the same normalized nonblank UEI inner join, prior-award
+and target-transaction grain, identifiers, agency fields, dates, competition and coding
+fields, NAICS/PSC fields, signed obligation, and `agency_match_level`. Scoring-only text,
+office, CET, and other unused columns are omitted before the merge rather than after it.
+
+Both audit artifacts are derived from one global pair validation and one cumulative clause
+pass. The final cumulative survivor frame feeds all six sensitivity cells. Public
+single-table builders retain the same outputs, and a combined builder is tested against
+them. This changes no row, predicate, clause order, metric definition, sensitivity cell,
+join key, threshold, or estimand; it only avoids materializing unused columns and repeated
+intermediate frames.
+
 ### Approved target-code provenance amendment
 
 Before any census materialization, the repository owner approved making USAspending's
