@@ -15,7 +15,7 @@ from typing import Any
 import pandas as pd
 from loguru import logger
 
-from sbir_analytics.assets.phase_iii_candidates.pairing import build_uei_pairs
+from sbir_analytics.assets.phase_iii_candidates.pairing import PAIR_COLUMNS, build_uei_pairs
 from sbir_analytics.assets.phase_transition.sbir_gov_source import (
     SbirGovSourceError,
     sha256_file,
@@ -24,9 +24,9 @@ from sbir_analytics.assets.phase_transition.sbir_gov_source import (
 
 from .criteria import (
     CensusInputError,
-    build_dropoff_ladder,
+    REQUIRED_PAIR_COLUMNS,
+    build_census_tables,
     build_sensitivity_diagnostics,
-    build_sensitivity_grid,
     ordered_clause_metadata,
     validate_source_columns,
 )
@@ -92,9 +92,29 @@ PHASE_II_AWARDS_PATH = Path("data/processed/phase_ii_awards.parquet")
 DATA_CUT_ENV = "SBIR_ETL__PHASE_III_CENSUS__DATA_CUT_DATE"
 SBIR_AWARDS_ENV = "SBIR_ETL__PHASE_TRANSITION__SBIR_AWARDS_PATH"
 PHASE_II_OUTPUT_ENV = "SBIR_ETL__PHASE_TRANSITION__PHASE_II_OUTPUT_PATH"
-FROZEN_SPEC_REVISION = "phase-0-r7"
+FROZEN_SPEC_REVISION = "phase-0-r8"
 FROZEN_SPEC_RELATIVE_PATH = Path("specs/phase-iii-census/design.md")
 AMENDMENTS_LOG_RELATIVE_PATH = Path("specs/phase-iii-census/amendments.md")
+CENSUS_PAIR_COLUMNS = tuple(column for column in PAIR_COLUMNS if column in REQUIRED_PAIR_COLUMNS)
+CENSUS_CONTRACT_COLUMNS = (
+    "contract_id",
+    "piid",
+    "transaction_unique_id",
+    "generated_unique_award_id",
+    "agency",
+    "sub_agency",
+    "vendor_uei",
+    "action_date",
+    "obligation_amount",
+    "competition_type",
+    "description",
+    "research",
+    "naics_code",
+    "product_or_service_code",
+)
+
+if set(CENSUS_PAIR_COLUMNS) != REQUIRED_PAIR_COLUMNS:  # pragma: no cover - import guard
+    raise RuntimeError("Shared pair schema cannot supply every frozen census-required field")
 
 
 def _find_resource_root() -> Path:
@@ -112,8 +132,8 @@ def _find_resource_root() -> Path:
 _REPOSITORY_ROOT = _find_resource_root()
 FROZEN_SPEC_PATH = _REPOSITORY_ROOT / FROZEN_SPEC_RELATIVE_PATH
 AMENDMENTS_LOG_PATH = _REPOSITORY_ROOT / AMENDMENTS_LOG_RELATIVE_PATH
-FROZEN_SPEC_SHA256 = "33b5918026fe2f98e3fa693afbe498653a328274adec03a5c827bf2ac0df6df9"
-AMENDMENTS_LOG_SHA256 = "24ead99679a4e6948b3704e1375a2f9f7ba1e2b426273d490d87156efd21e5ab"
+FROZEN_SPEC_SHA256 = "91b84c67e51a36a56b9d11d1afe997bc9b7de7cef090de12c24619116b6351ff"
+AMENDMENTS_LOG_SHA256 = "6168c6e2a685a3b89fa93eae86976d14798d5e6c67f7a8721b764384081ce74c"
 
 
 def _verified_raw_digest(path: Path, expected_sha256: str, *, label: str) -> str:
@@ -248,7 +268,7 @@ def _load_contracts() -> tuple[pd.DataFrame, Path]:
     if source.get("output_sha256") != digest.hexdigest():
         raise CensusInputError("Contract parquet checksum does not match its provenance manifest")
     try:
-        return pd.read_parquet(path), path
+        return pd.read_parquet(path, columns=list(CENSUS_CONTRACT_COLUMNS)), path
     except Exception as exc:  # pragma: no cover - defensive I/O boundary
         raise CensusInputError(f"Failed to read contract source at {path}: {exc}") from exc
 
@@ -370,9 +390,8 @@ def phase_iii_census(
     log = getattr(context, "log", logger) if context is not None else logger
 
     validate_source_columns(priors, contracts)
-    pairs = build_uei_pairs(priors, contracts)
-    dropoff = build_dropoff_ladder(pairs, data_cut)
-    sensitivity = build_sensitivity_grid(pairs, data_cut)
+    pairs = build_uei_pairs(priors, contracts, columns=CENSUS_PAIR_COLUMNS)
+    dropoff, sensitivity = build_census_tables(pairs, data_cut)
 
     DROP_OFF_OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
     dropoff.to_parquet(DROP_OFF_OUTPUT_PATH, index=False)

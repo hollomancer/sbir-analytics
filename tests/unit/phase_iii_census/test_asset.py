@@ -39,19 +39,18 @@ def _contract_source() -> pd.DataFrame:
             {
                 "contract_id": "PIID-1",
                 "vendor_uei": "UEI-1",
-                "awarding_agency_name": "DEPARTMENT A",
-                "awarding_sub_tier_agency_name": "COMPONENT A",
-                "awarding_office_name": "OFFICE A",
+                "agency": "DEPARTMENT A",
+                "sub_agency": "COMPONENT A",
                 "naics_code": "541715",
-                "psc_code": "AC13",
-                "transaction_description": "Follow-on work",
+                "product_or_service_code": "AC13",
+                "description": "Follow-on work",
                 "action_date": "2021-01-01",
-                "extent_competed": "FULL AND OPEN COMPETITION",
-                "federal_action_obligation": -25,
+                "competition_type": "FULL AND OPEN COMPETITION",
+                "obligation_amount": -25,
                 "research": None,
-                "sbir_phase": None,
                 "transaction_unique_id": "TRANSACTION-1",
                 "generated_unique_award_id": "GENERATED-AWARD-1",
+                "piid": "PIID-1",
             }
         ]
     )
@@ -90,7 +89,7 @@ def test_frozen_spec_verification_hashes_exact_raw_bytes() -> None:
     record = census_assets.verify_frozen_spec()
 
     assert record == {
-        "revision": "phase-0-r7",
+        "revision": "phase-0-r8",
         "spec_path": "specs/phase-iii-census/design.md",
         "spec_sha256": census_assets.FROZEN_SPEC_SHA256,
         "amendments_path": "specs/phase-iii-census/amendments.md",
@@ -146,7 +145,10 @@ def test_contract_loader_requires_matching_source_manifest(tmp_path: Path, monke
     _write_contract_manifest(contracts_path)
     loaded, source_path = census_assets._load_contracts()
     assert source_path == contracts_path
-    pd.testing.assert_frame_equal(loaded, _contract_source())
+    pd.testing.assert_frame_equal(
+        loaded,
+        _contract_source().loc[:, list(census_assets.CENSUS_CONTRACT_COLUMNS)],
+    )
 
     manifest_path = contracts_path.with_suffix(".checks.json")
     manifest_path.write_text("[]", encoding="utf-8")
@@ -163,6 +165,19 @@ def test_contract_loader_requires_matching_source_manifest(tmp_path: Path, monke
     _write_contract_manifest(contracts_path)
     contracts_path.write_bytes(contracts_path.read_bytes() + b"tampered")
     with pytest.raises(CensusInputError, match="checksum"):
+        census_assets._load_contracts()
+
+
+def test_contract_loader_fails_closed_on_projected_schema_drift(
+    tmp_path: Path, monkeypatch
+) -> None:
+    contracts_path = tmp_path / "contracts.parquet"
+    _contract_source().drop(columns="product_or_service_code").to_parquet(contracts_path)
+    _write_contract_manifest(contracts_path)
+    monkeypatch.setattr(census_assets, "CONTRACTS_PRIMARY_PATH", contracts_path)
+    monkeypatch.setattr(census_assets, "CONTRACTS_FALLBACK_PATH", tmp_path / "missing.parquet")
+
+    with pytest.raises(CensusInputError, match="Failed to read contract source"):
         census_assets._load_contracts()
 
 
