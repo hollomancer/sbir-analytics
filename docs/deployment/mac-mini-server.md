@@ -136,10 +136,27 @@ make server-status
 
 Generate the API token with `openssl rand -hex 32`.
 
-`make server-up` first pulls the published native Python base image. If GHCR
-does not yet have a manifest for the Mac's architecture, it builds
-`Dockerfile.python-base` locally and then continues. The first fallback build
-can take several minutes; later builds use the local image cache.
+`make server-up` builds the native Python base image from
+`Dockerfile.python-base` before starting the stack. The first build takes
+several minutes; later builds reuse Docker's layer cache and are quick unless
+the base's inputs actually changed.
+
+It no longer pulls the published image first. Nothing republishes
+`ghcr.io/hollomancer/sbir-analytics-python-base:latest` since the image-build
+workflow was retired, so preferring the pull pinned this host to a base that
+will never be refreshed again.
+
+To force a full refresh — including the upstream image the base builds `FROM`,
+which is how OS and interpreter security updates arrive — use:
+
+```bash
+make server-rebuild     # rebuilds base + app images, then restarts the stack
+docker image prune      # reclaim the superseded layers
+```
+
+`server-rebuild` recreates containers, so **any in-flight Dagster run is
+killed**. Check `make server-status` for active runs before using it, and
+prefer a quiet window.
 
 ## Tailscale grant (least privilege)
 
