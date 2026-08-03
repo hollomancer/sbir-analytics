@@ -20,7 +20,7 @@ This machine hosts the live SBIR Analytics deployment.
   mode `0600`, and must never be printed, committed, or replaced.
 - **Dagster metadata:** the Docker `dagster_home` named volume. Preserve it
   alongside SSD data; never use `docker compose down -v`.
-- **Ingress:** Tailscale Serve over tailnet-only HTTPS. Tailscale Funnel,
+- **Ingress:** Tailscale Serve over tailnet-only HTTPS/TLS. Tailscale Funnel,
   public port exposure, and LAN exposure are prohibited.
 - **Current host state:** record data vintages, materialized subsets, Dagster
   run IDs, and temporary blockers in
@@ -43,7 +43,7 @@ services:
 
 | Service | Purpose | Host bind | Tailnet ingress |
 |---------|---------|-----------|-----------------|
-| `neo4j` | Graph store | `127.0.0.1:7474` / `7687` | **none** (private) |
+| `neo4j` | Graph store | `127.0.0.1:7474` / `7687` | TLS Bolt `17687` (opt-in) |
 | `dagster-code-server` | Shared Dagster code location | none | none |
 | `analytics-api` | Read-only API (bearer token) | `127.0.0.1:8010` | HTTPS `8443` |
 | `dagster-webserver` | Orchestration UI (prod mode) | `127.0.0.1:3000` | HTTPS `443` |
@@ -60,13 +60,15 @@ caveat and [Workload placement](#workload-placement).
   the stack is invisible to other machines on the same LAN.
   Compose hardcodes this address; `make server-check` also rejects a legacy
   `SERVER_LOOPBACK` value that is anything other than loopback.
-- **Tailscale Serve is the only ingress.** It provides tailnet-only HTTPS and
-  terminates TLS automatically
+- **Tailscale Serve is the only ingress.** It provides tailnet-only HTTPS/TCP
+  and terminates TLS automatically
   ([docs](https://tailscale.com/docs/features/tailscale-serve)):
   - `https://<host>/` → Dagster (`127.0.0.1:3000`)
   - `https://<host>:8443/` → analytics API (`127.0.0.1:8010`)
-- **Neo4j is never served over Tailscale.** It stays private to the host and
-  the Compose network.
+  - `bolt+s://<host>:17687` → Neo4j Bolt (`127.0.0.1:7687`, opt-in)
+- **Neo4j remains loopback-only at the host boundary.** Tailscale Serve is the
+  sole proxy to Bolt, and a separate least-privilege grant restricts that route
+  to trusted operators. Neo4j Browser's HTTP port `7474` is never served.
 - **Tailscale Funnel is prohibited.** The helper never enables Funnel; the
   services must never be reachable from the public internet.
 - **Defense in depth.** The API keeps its bearer-token auth even behind
@@ -113,7 +115,8 @@ make server-tailscale-status
 ```
 
 `--bg` keeps the routes active after Tailscale or the device restarts. Setup
-**refuses to replace** an existing route on port 443 or 8443.
+**refuses to replace** an existing route on port 443, 8443, or an enabled
+17687 route. Neo4j tailnet access defaults to disabled.
 
 ### 4. MagicDNS URLs
 
@@ -121,6 +124,7 @@ With MagicDNS enabled the services are reachable at your node's DNS name:
 
 - Dagster: `https://<node>.<tailnet>.ts.net/`
 - API: `https://<node>.<tailnet>.ts.net:8443/` (send `Authorization: Bearer <token>`)
+- Neo4j: `bolt+s://<node>.<tailnet>.ts.net:17687` (trusted operators only)
 
 `make server-tailscale-up` prints the exact URLs for this node.
 
@@ -160,9 +164,9 @@ prefer a quiet window.
 
 ## Tailscale grant (least privilege)
 
-Restrict who can reach the server. Tag the Mac mini `tag:sbir-server` and grant
-only selected users/groups access to `tcp:443` and `tcp:8443`. Grants are the
-recommended current policy mechanism
+Restrict who can reach the server. Tag the Mac mini `tag:sbir-server`, grant
+analysts access to the web services, and grant Neo4j separately to trusted
+operators. Grants are the recommended current policy mechanism
 ([docs](https://tailscale.com/docs/reference/syntax/grants)). Apply this from
 the admin console manually:
 
@@ -173,6 +177,11 @@ the admin console manually:
       "src": ["group:sbir-analysts"],
       "dst": ["tag:sbir-server"],
       "ip":  ["tcp:443", "tcp:8443"]
+    },
+    {
+      "src": ["group:sbir-neo4j-operators"],
+      "dst": ["tag:sbir-server"],
+      "ip":  ["tcp:17687"]
     }
   ],
   "tagOwners": {
@@ -181,8 +190,45 @@ the admin console manually:
 }
 ```
 
-Neo4j's ports (7474/7687) are deliberately absent — they are never reachable
-over the tailnet.
+Define `group:sbir-neo4j-operators` in the same policy, or replace it with the
+exact operator login email for a single-user grant.
+
+Neo4j's host ports (`7474`/`7687`) remain absent. Operators reach only the
+TLS-terminated Serve port `17687`; no grant should expose Browser HTTP or the
+loopback Bolt port directly.
+
+Apply the operator grant before enabling the route. Then set this in the live
+`.env.server` and rerun `make server-tailscale-up`:
+
+```dotenv
+NEO4J_TAILNET_BOLT_ENABLED=true
+NEO4J_TAILNET_BOLT_PORT=17687
+```
+
+Leave the flag false unless direct operator access is actively required.
+
+## iPhone graph access
+
+Install Tailscale and
+[PocketGraph](https://apps.apple.com/us/app/pocketgraph/id1604368926) on the
+iPhone. Sign in to the tailnet as a member of `group:sbir-neo4j-operators`,
+enable the route only after its grant is active, then configure PocketGraph
+with:
+
+```text
+Protocol: bolt+s
+Host: <node>.<tailnet>.ts.net
+Port: 17687
+Database: neo4j
+Username: neo4j
+Password: <current rotated Neo4j password>
+```
+
+PocketGraph is a third-party client and can execute arbitrary Cypher. The
+Community Edition deployment does not provide the repository's API-level
+read-only guard for this direct connection, so restrict the grant and
+credentials to trusted operators. Do not configure `7474`, use `bolt://`, or
+enable Funnel.
 
 ## Day-2 operations
 
@@ -196,7 +242,7 @@ over the tailnet.
 
 `make server-down` stops containers but **preserves** the `dagster_home` volume
 and all bind-mounted data. `make server-tailscale-down` removes **only** the
-443/8443 routes and never runs the destructive global
+443/8443/17687 routes and never runs the destructive global
 `tailscale serve reset`.
 
 Neo4j Community Edition cannot create an online `neo4j-admin` dump. The backup
@@ -369,8 +415,9 @@ curl -m 5 http://<mac-lan-ip>:3000/        # fails
 curl -m 5 http://<mac-lan-ip>:8010/health  # fails
 ```
 
-From a Tailscale device with the grant, Dagster (443) and the API (8443, with a
-bearer token) succeed, while Neo4j remains unreachable over the tailnet.
+From a Tailscale analyst device, Dagster (443) and the API (8443, with a bearer
+token) succeed while Neo4j remains unreachable. From a trusted operator device,
+TLS Bolt succeeds on 17687; direct connections to 7474/7687 remain unreachable.
 
 ## Workload placement
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Classify ownership of one Tailscale Serve HTTPS route."""
+"""Classify ownership of one Tailscale Serve route."""
 
 import json
 import sys
@@ -21,7 +21,7 @@ def _references_port(value: Any, port: str) -> bool:
     return False
 
 
-def classify(config: dict[str, Any], port: str, target: str) -> str:
+def classify(config: dict[str, Any], port: str, target: str, tls_host: str | None = None) -> str:
     tcp = config.get("TCP", {})
     web = config.get("Web", {})
     funnel = config.get("AllowFunnel", {})
@@ -34,14 +34,22 @@ def classify(config: dict[str, Any], port: str, target: str) -> str:
     funnel_entries = {key: value for key, value in funnel.items() if _matches_port(str(key), port)}
     foreground_uses_port = _references_port(foreground, port)
 
-    expected_handlers = {"Handlers": {"/": {"Proxy": target}}}
-    owned = (
-        tcp_entry == {"HTTPS": True}
-        and len(web_entries) == 1
-        and next(iter(web_entries.values())) == expected_handlers
-        and not any(bool(value) for value in funnel_entries.values())
-        and not foreground_uses_port
-    )
+    if tls_host is None:
+        expected_handlers = {"Handlers": {"/": {"Proxy": target}}}
+        owned = (
+            tcp_entry == {"HTTPS": True}
+            and len(web_entries) == 1
+            and next(iter(web_entries.values())) == expected_handlers
+            and not any(bool(value) for value in funnel_entries.values())
+            and not foreground_uses_port
+        )
+    else:
+        owned = (
+            tcp_entry == {"TCPForward": target, "TerminateTLS": tls_host}
+            and not web_entries
+            and not any(bool(value) for value in funnel_entries.values())
+            and not foreground_uses_port
+        )
     if owned:
         return "owned"
 
@@ -51,8 +59,8 @@ def classify(config: dict[str, Any], port: str, target: str) -> str:
 
 
 def main() -> int:
-    if len(sys.argv) != 3:
-        print("usage: tailscale-route-state.py PORT TARGET", file=sys.stderr)
+    if len(sys.argv) not in (3, 4):
+        print("usage: tailscale-route-state.py PORT TARGET [TLS_HOST]", file=sys.stderr)
         return 2
     try:
         config = json.load(sys.stdin)
@@ -62,7 +70,8 @@ def main() -> int:
     if not isinstance(config, dict):
         print("invalid Tailscale Serve JSON: expected an object", file=sys.stderr)
         return 2
-    print(classify(config, sys.argv[1], sys.argv[2]))
+    tls_host = sys.argv[3] if len(sys.argv) == 4 else None
+    print(classify(config, sys.argv[1], sys.argv[2], tls_host))
     return 0
 
 
