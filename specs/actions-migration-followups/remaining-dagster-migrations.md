@@ -1,7 +1,7 @@
 # Remaining Dagster migrations
 
 Tracking stub. Finishes the Dagster half of
-[the Actions migration plan](../../docs/deployment/actions-migration-plan.md); nothing
+[the archived Actions migration plan](../../docs/archive/deployment/actions-migration-plan.md); nothing
 here is implemented yet.
 
 ## 1. Weekly awards report — enable it
