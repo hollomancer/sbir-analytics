@@ -8,12 +8,18 @@
 
 - **Data Sources**: SBIR.gov awards, USAspending contracts, USPTO patents, transition detection
 - **Processing**: DuckDB (extraction), Pandas/Python (transformation), Neo4j (graph storage)
-- **Orchestration**: GitHub Actions and optional AWS Step Functions for documented repeatable runs
-- **Compute**: GitHub Actions runners, with optional AWS Lambda functions for cloud experiments
-- **Storage**: Local filesystem for development, with optional AWS S3 data lake paths
-- **Database**: Neo4j via Docker for local development, with optional EC2-hosted Neo4j notes
-- **Deployment**: Docker for local development, plus an experimental GitHub Actions + AWS + Neo4j EC2 deployment path
-- **Tech Stack**: Python 3.11/3.12, Neo4j 5.x, AWS Lambda, S3, DuckDB, Pandas, Pydantic, scikit-learn
+- **Orchestration**: Dagster assets, jobs, schedules, and sensors; GitHub Actions for CI
+- **Compute**: The operator's own hardware — a Mac mini running the Docker Compose stack; GitHub Actions runners for CI
+- **Storage**: Local filesystem and an attached SSD volume
+- **Database**: Neo4j 5.x in Docker, both locally and on the live host
+- **Deployment**: Docker Compose. See [the Mac mini runbook](../deployment/mac-mini-server.md) for the live stack
+- **Tech Stack**: Python 3.11/3.12, Neo4j 5.x, DuckDB, Pandas, Pydantic, scikit-learn, FastAPI
+
+The AWS material that earlier revisions of this document described as the
+deployment path (Step Functions orchestration, an S3 data lake, EC2-hosted
+Neo4j) is not the live architecture. Lambda handlers survive under the
+top-level `lambda/` directory; the CDK `infrastructure/` tree that older
+revisions referenced is not in the repository.
 
 ---
 
@@ -44,8 +50,8 @@ sbir-analytics/
 │   │       ├── assets/jobs/       # Dagster job definitions
 │   │       ├── assets/sensors/    # Dagster sensors
 │   │       ├── clients/           # Orchestration-layer clients
-│   │       ├── lambda/            # Lambda entry points/helpers
-│   │       ├── tools/             # Analysis tool modules
+│   │       ├── api/               # FastAPI private analytics service (read-only Neo4j)
+│   │       ├── tools/             # Analysis tool modules (mission_a/b/c, phase0, tech_census)
 │   │       └── definitions.py     # Dagster repository root
 │   │
 │   ├── sbir-graph/                # Neo4j graph loading and graph query utilities
@@ -64,7 +70,8 @@ sbir-analytics/
 ├── examples/                      # Standalone demonstration scripts
 ├── notebooks/                     # Exploratory Jupyter notebooks
 ├── scripts/                       # One-off analysis, data, validation, CI, Docker, and operational scripts
-├── infrastructure/                # AWS CDK deployment resources
+├── studies/                       # Written analytical studies
+├── lambda/                        # Lambda handlers and dependency layers (not the live path)
 ├── tests/                         # Unit, integration, functional, e2e, slow, and validation tests
 ├── .github/workflows/             # CI/CD and scheduled workflow definitions
 ├── workspace.yaml                 # Dagster workspace entry point (loads sbir_analytics.definitions)
@@ -87,6 +94,30 @@ and validators are under `sbir_etl/extractors/` and `sbir_etl/validators/`.
 | `Dockerfile` | Multi-stage Docker build |
 | `docker-compose.yml` | Local dev/test services (Dagster, Neo4j) |
 | `Makefile` | Development commands (docker-build, docker-up-dev, etc.) |
+
+### 1.3 Layering and Dependency Direction
+
+The `sbir_etl/` library is the foundation layer; the three `packages/` are
+application layers built on top of it. The dependency graph is acyclic and
+measurably one-directional:
+
+| Edge | Count |
+|------|-------|
+| `packages/*` → `sbir_etl` | 141 import statements |
+| `sbir_etl` → `packages/*` | 0 |
+| `scripts/*` → `sbir_etl` | 75 files |
+
+Counts are from the working tree and will drift; re-measure rather than
+trusting them. The property that matters is the zero: `sbir_etl` imports
+nothing from `packages/`, including under `TYPE_CHECKING` and in deferred
+function-local imports. The layering is real, not aspirational.
+
+The repository tree understates this. `sbir_etl/` sits at the root as a bare
+directory while the three layers that depend on it sit one level down under
+`packages/`, so a reader meeting the tree first reads all four as peers.
+Relocating `sbir_etl/` to `packages/sbir-etl/` would make the layout say what
+the import graph already enforces. That move is mechanical — a path change and
+a `[tool.uv.sources]` entry, no logic — and is not yet scheduled.
 
 ---
 
@@ -640,6 +671,112 @@ Located in `docs/decisions/`:
 - **CET Classification**: ≥60% high-confidence (score ≥70)
 - **Transition Detection**: Evidence completeness ≥80%
 - **Neo4j Loading**: ≥99% successful node/relationship creation
+
+---
+
+## 10. Target Architecture: Tiering by Epistemic Status
+
+Everything above section 9 describes the current state. This section describes
+where the architecture is headed and why. It is a direction of travel, not an
+account of the repository as it stands.
+
+### 10.1 The problem this solves
+
+The organizing axis of the current layout is technical role — extract, enrich,
+transform, load. That axis is stable and the layering along it is clean (§1.3).
+It is not, however, the axis on which the work actually varies.
+
+What varies is **how much epistemic weight an artifact can carry**. The
+Phase III census is specified in a frozen design note, pins its input file by
+SHA-256, records a materialization manifest with column-list and output
+hashes, and declares its estimand. A cohort-builder written in an afternoon to
+answer one question does none of that. Both currently present as ordinary
+repository contents, discovered the same way, with the same apparent authority.
+
+A reader cannot tell them apart from the tree. That — not the import graph —
+is the failure mode this repository will actually hand someone.
+
+### 10.2 The four tiers
+
+| Tier | Contents | Contract |
+|------|----------|----------|
+| **`primitives/`** | Identity resolution, config loading, schemas | One implementation each. Heavily tested. Depends on nothing; everything depends on it. |
+| **`pipelines/`** | Extraction and materialization | Deterministic and reproducible, pinned to a declared data cut. No inference. |
+| **`evidence/`** | Artifacts citable outside the repository | Frozen spec, SHA enforcement, blocking asset checks, declared estimand. Nothing enters without all four. |
+| **`exploratory/`** | Everything else | Explicitly labeled non-citable. Scripts live here without apology. |
+
+The tiers are an admission-control mechanism, not a filing system. The point of
+the `evidence/` boundary is that it is expensive to cross and visibly so; the
+point of `exploratory/` is that useful throwaway work gets a home where its
+status is legible instead of being laundered by proximity to rigorous work.
+
+The Phase III census already meets the `evidence/` bar
+(`specs/phase-iii-census/`, `packages/sbir-analytics/sbir_analytics/assets/phase_iii_census/`).
+It is the reference implementation for what that tier requires.
+
+### 10.3 Shared primitives: status
+
+Company-name normalization and similarity scoring were, at one point,
+independently implemented across roughly nine live locations. That
+consolidation has largely landed and the current state is better than the
+folk history suggests:
+
+- `sbir_etl/identity/` exposes a single similarity contract
+  (`company_name_similarity`, 0..1) over versioned, named policies
+  (`CompanyNameProfile`).
+- Every live caller previously listed as a separate implementation now routes
+  through it — the SEC EDGAR enricher, the USAspending enricher, the UCC
+  matcher, `company_fuzzy_matcher`, `text_normalization`, the Form D asset
+  inputs, `tools/phase0/resolve_entities`, the vendor crosswalk and resolver,
+  and the phase3 groundtruth scripts.
+- `scripts/ci/check_identity_boundaries.py` walks the AST for direct
+  `rapidfuzz` scorer imports outside an explicit reviewed-file allowlist.
+
+Two gaps remain, and they are narrower than "consolidate the primitive":
+
+1. **The profiles preserve divergent recall by design.** They are
+   compatibility policies — the module's own docstring is explicit that this
+   is not a claim that all name-matching should behave identically. So the
+   question "which normalization decides a firm never received an SBIR award,
+   for the census control frame?" now has an answer: a named, versioned
+   profile. That answer is not written down anywhere a reader of the census
+   would find it. It belongs in the census spec, next to the estimand.
+2. **The boundary checker is not wired into CI.** It is exercised by
+   `tests/unit/scripts/test_identity_boundaries.py` and nothing else — it
+   appears in no workflow, Makefile target, or pre-commit hook. A guard that
+   runs only when someone runs its unit test is a guard against accidents,
+   not against drift.
+
+Configuration has the same shape of problem, unaddressed: 15 separate
+`yaml.safe_load` call sites across `sbir_etl/` and `packages/`, alongside the
+merge-and-validate path in `sbir_etl/config/loader.py` that is supposed to be
+the way configuration gets read.
+
+### 10.4 `scripts/` is an unbounded annex
+
+`scripts/` is 42,867 lines of Python across 15 subtrees — larger than any
+single package under `packages/` (`sbir-analytics` is 32,101), though smaller
+than `sbir_etl` itself (59,902). 75 of its files import `sbir_etl`, and a
+43-file `archive/` subtree is still tracked on `main`.
+
+The concern is not size, it is that `scripts/phase3_groundtruth/` and
+`scripts/validation/` are doing real analytical duty from a directory with no
+tests, no interface contract, and no review expectation. Work that answers a
+research question durably has been accumulating in the one place structured
+for work that does not.
+
+Under §10.2 this resolves without a mass migration: most of `scripts/` is
+already `exploratory/` and only needs to be labeled as such. The subtrees
+carrying analytical weight get promoted to `pipelines/` or `evidence/` and
+acquire the corresponding contract.
+
+### 10.5 What this is not
+
+This is not a package reshuffle, and the sequencing matters. The
+`sbir_etl/` → `packages/sbir-etl/` relocation (§1.3) is cosmetic and cheap.
+The tiering is neither, and it delivers value before any directory moves: the
+first useful step is writing down which existing artifacts meet the
+`evidence/` bar and which do not.
 
 ---
 
