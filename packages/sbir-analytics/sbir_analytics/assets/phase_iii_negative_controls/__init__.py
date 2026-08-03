@@ -15,6 +15,14 @@ from .quarantine import (
     require_complete_unresolved_quarantine_keys,
     summarize_quarantine_key_coverage,
 )
+from .sam_eligibility import (
+    EligibilityStatus,
+    build_sam_eligibility_table,
+    require_reliable_sam_eligibility,
+    sam_eligibility_gate,
+    summarize_sam_eligibility,
+    summarize_sam_exclusion_reasons,
+)
 from .source_keys import (
     build_nih_official_keys,
     build_nih_sbir_attempts,
@@ -24,6 +32,7 @@ from .source_keys import (
 
 __all__ = [
     "IdentityRecoveryError",
+    "EligibilityStatus",
     "RecoveryStatus",
     "FebruaryAwardSearchExtractor",
     "NIHReporterExtractor",
@@ -33,9 +42,14 @@ __all__ = [
     "build_usaspending_official_keys",
     "build_usaspending_sbir_attempts",
     "build_unresolved_quarantine_key_audit",
+    "build_sam_eligibility_table",
     "quarantine_key_gate",
     "reconcile_award_identity_attempts",
     "require_complete_unresolved_quarantine_keys",
     "resolve_award_identities",
+    "require_reliable_sam_eligibility",
+    "sam_eligibility_gate",
     "summarize_quarantine_key_coverage",
+    "summarize_sam_eligibility",
+    "summarize_sam_exclusion_reasons",
 ]

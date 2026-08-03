@@ -14,6 +14,8 @@ from scripts.data.download_sam_gov import (
     MIN_CANONICAL_ROW_COUNT,
     PARQUET_NAME,
     PARQUET_NAME_PARTIAL,
+    REQUIRED_COLUMNS,
+    _normalise_chunk,
     _write_local,
 )
 
@@ -108,3 +110,23 @@ class TestPartialSidecarIsolation:
         meta = json.loads((tmp_path / "sam_entity_records_partial.meta.json").read_text())
         assert meta["row_count"] == 5
         assert meta["partial"] is True
+
+
+def test_normalise_chunk_preserves_frozen_eligibility_address_fields() -> None:
+    source = pd.DataFrame(
+        {
+            "UEI": ["CANDIDATE001"],
+            "PHYSICAL ADDRESS LINE 1": ["10 Exact Road"],
+            "PHYSICAL ADDRESS LINE 2": ["Suite 2"],
+            "PHYSICAL ADDRESS STATE OR PROVINCE": ["VA"],
+            "PHYSICAL ADDRESS ZIP POSTAL CODE": ["22030"],
+        }
+    )
+
+    result = _normalise_chunk(source)
+
+    assert list(result.columns) == REQUIRED_COLUMNS
+    assert result.loc[0, "physical_address_line_1"] == "10 Exact Road"
+    assert result.loc[0, "physical_address_line_2"] == "Suite 2"
+    assert result.loc[0, "physical_address_state"] == "VA"
+    assert result.loc[0, "physical_address_zip_postal_code"] == "22030"
