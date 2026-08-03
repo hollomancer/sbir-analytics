@@ -277,3 +277,23 @@ def test_reconciliation_quarantines_resolution_with_identifierless_match() -> No
     result = reconcile_award_identity_attempts(attempts)
 
     assert result.loc[0, "recovery_status"] == RecoveryStatus.UNRESOLVED_CONFLICT
+
+
+def test_reconciliation_accepts_parquet_list_round_trip(tmp_path) -> None:
+    attempts = pd.DataFrame(
+        [
+            _attempt_audit(
+                "usaspending_piid",
+                RecoveryStatus.RESOLVED_AUTHORITATIVE,
+                ueis=("UEI000000001",),
+                duns_values=("123456789",),
+            )
+        ]
+    )
+    path = tmp_path / "attempts.parquet"
+    attempts.to_parquet(path, index=False)
+
+    result = reconcile_award_identity_attempts(pd.read_parquet(path))
+
+    assert result.loc[0, "recovery_status"] == RecoveryStatus.RESOLVED_AUTHORITATIVE
+    assert result.loc[0, "resolved_ueis"] == ("UEI000000001",)

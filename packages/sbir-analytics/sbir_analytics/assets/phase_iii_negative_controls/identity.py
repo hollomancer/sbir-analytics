@@ -210,9 +210,17 @@ def resolve_award_identities(
 
 
 def _tuple_values(value: Any, *, label: str) -> tuple[str, ...]:
-    if not isinstance(value, tuple):
-        raise IdentityRecoveryError(f"{label} must contain tuples")
-    return tuple(_text(item) for item in value if _text(item))
+    if isinstance(value, tuple):
+        items = value
+    elif isinstance(value, list):
+        items = tuple(value)
+    else:
+        tolist = getattr(value, "tolist", None)
+        converted = tolist() if callable(tolist) else None
+        if not isinstance(converted, list):
+            raise IdentityRecoveryError(f"{label} must contain ordered arrays")
+        items = tuple(converted)
+    return tuple(_text(item) for item in items if _text(item))
 
 
 def _resolved_attempt_identity(
