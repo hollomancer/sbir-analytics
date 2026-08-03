@@ -356,8 +356,8 @@ MemoryError: Unable to allocate array
 ## References
 
 - [SAM.gov Entity Information API](https://open.gsa.gov/api/entity-api/)
-- [Cloud Storage Utilities](../sbir_etl/utils/cloud_storage.py)
-- [Configuration Schema](../sbir_etl/config/schemas/data.py)
+- [Cloud Storage Utilities](../../sbir_etl/utils/cloud_storage.py)
+- [Configuration Schema](../../sbir_etl/config/schemas/data.py)
 
 ## Changelog
 

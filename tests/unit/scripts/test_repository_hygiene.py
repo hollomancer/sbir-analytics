@@ -10,10 +10,10 @@ def _write(root: Path, relative: str, text: str) -> Path:
     return path
 
 
-def test_live_doc_stale_content_scans_live_docs_only(tmp_path: Path):
+def test_live_doc_stale_content_scans_all_non_archived_docs(tmp_path: Path):
     live_doc = _write(
         tmp_path,
-        "docs/development/example.md",
+        "docs/transition/example.md",
         "Run `poetry run old-task` and inspect `src/assets/example.py`.\n",
     )
     archive_doc = _write(
@@ -27,6 +27,7 @@ def test_live_doc_stale_content_scans_live_docs_only(tmp_path: Path):
     assert [violation.message for violation in violations] == [
         "removed source-root file path",
     ]
+    assert violations[0].path == "docs/transition/example.md"
 
 
 def test_live_doc_link_audit_resolves_relative_links(tmp_path: Path):
