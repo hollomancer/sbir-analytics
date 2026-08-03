@@ -4,8 +4,9 @@ from enum import StrEnum
 from pathlib import Path
 from typing import Literal
 
-import yaml
 from pydantic import BaseModel, ConfigDict, Field, model_validator
+
+from ..config.yaml_io import read_yaml_mapping
 
 
 class EvidenceStatus(StrEnum):
@@ -89,9 +90,7 @@ class StudyManifest(BaseModel):
 def load_study_manifest(path: Path) -> StudyManifest:
     """Load and validate a study manifest from YAML."""
 
-    raw = yaml.safe_load(path.read_text(encoding="utf-8"))
-    if not isinstance(raw, dict):
-        raise ValueError(f"study manifest must contain a YAML mapping: {path}")
+    raw = read_yaml_mapping(path, description="study manifest")
     return StudyManifest.model_validate(raw)
 
 

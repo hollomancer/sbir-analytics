@@ -4,9 +4,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
 
-import yaml
+from ..config.yaml_io import read_yaml_mapping
 
 
 DEFAULT_CROSSWALK_PATH = (
@@ -47,17 +46,8 @@ class DefenseTaxonomyCrosswalk:
         return [dict(mapping) for mapping in entry[target_taxonomy]]
 
 
-def _load_yaml(path: Path) -> dict[str, Any]:
-    if not path.exists():
-        raise FileNotFoundError(f"taxonomy configuration does not exist: {path}")
-    payload = yaml.safe_load(path.read_text(encoding="utf-8"))
-    if not isinstance(payload, dict):
-        raise ValueError(f"taxonomy configuration must be a mapping: {path}")
-    return payload
-
-
 def _canonical_ids(taxonomy_path: Path) -> tuple[str, set[str]]:
-    payload = _load_yaml(taxonomy_path)
+    payload = read_yaml_mapping(taxonomy_path, description="CET taxonomy")
     version = str(payload.get("version") or "")
     areas = payload.get("cet_areas")
     if not version or not isinstance(areas, list):
@@ -76,7 +66,7 @@ def load_defense_crosswalk(
 
     source_path = crosswalk_path or DEFAULT_CROSSWALK_PATH
     canonical_path = taxonomy_path or DEFAULT_TAXONOMY_PATH
-    payload = _load_yaml(source_path)
+    payload = read_yaml_mapping(source_path, description="defense crosswalk")
     canonical_version, canonical_ids = _canonical_ids(canonical_path)
 
     version = str(payload.get("version") or "")
