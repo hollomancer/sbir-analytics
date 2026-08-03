@@ -491,14 +491,14 @@ statutory goal is Phase III commercialization.*
   matching rules, the agency, and the time window?
   *Method:* the matching rules were written down and frozen before the counts
   were run, so the result cannot be tuned after the fact.
-  **Status:** Reproducible, but not validated or citable, for the frozen audit estimand. The complete
-  cumulative ladder and all six pre-specified agency/window cells were
-  materialized from provenance-verified February inputs, and the blocking
-  one-factor sensitivity check passed. No cell is a headline result. The matched
-  comparison group and placebo test remain unresolved, so the tables are an
-  uncoded follow-on proxy, not proof of statutory Phase III or evidence that the
-  criteria discriminate.
-  *Deps: ER, ID, NAICS/PSC · Spec: [../specs/phase-iii-census/](../specs/phase-iii-census/) · Audit: [February 2026 data-cut materialization](../studies/phase-iii-census/materialization-2026-02-06.md)*
+  **Status:** Reproducible, but not validated or citable, for the frozen audit
+  estimand. The complete census and matched negative-control tables were
+  materialized from provenance-verified February inputs. Within the limited
+  exact-match common-support subset, the full-set clearing proportions differ,
+  but the firm distributions overlap substantially. The placebo and hand-labelled
+  validation remain unresolved, so this is still an uncoded follow-on proxy rather
+  than proof of statutory Phase III.
+  *Deps: ER, ID, NAICS/PSC · Spec: [../specs/phase-iii-census/](../specs/phase-iii-census/) · Audits: [February 2026 data-cut materialization](../studies/phase-iii-census/materialization-2026-02-06.md), [matched negative-control outcomes](../studies/phase-iii-census/negative-control-outcomes-2026-08-03.md)*
 
 - **Research-to-procurement transitions**
   Which SBIR-funded companies transitioned research into federal procurements?
@@ -545,12 +545,13 @@ statutory goal is Phase III commercialization.*
   Corroborated by GAO [L14] and NASEM [L1], [L3]. The protocol depends on
   award-grade identity and record granularity (issue #447 / PR #449); production
   source lifecycle belongs to issue #442.
-  **Status:** Partially computable. The complete deterministic census tables and
-  one-factor sensitivity diagnostic were materialized from provenance-verified
-  February inputs. Before the proxy can be called an undercount, it still needs
-  matched negative controls, the placebo test, and a hand-labelled sample to
-  check the result against.
-  *Deps: ID · Refs: [L14], [L1], [L3] · Audit: [February 2026 data-cut census materialization](../studies/phase-iii-census/materialization-2026-02-06.md) · Spec: [../specs/phase3-match-benchmark/](../specs/phase3-match-benchmark/) (protocol and current evidence limits), [../specs/phase-3-solicitation-alerts/](../specs/phase-3-solicitation-alerts/) (solicitation monitoring)*
+  **Status:** Partially computable. The deterministic census, sensitivity
+  diagnostic, and matched negative-control comparison are materialized. The
+  controls show some separation on full-set clearing within a narrow common-
+  support subset, alongside substantial distribution overlap. Before the proxy
+  can be called an undercount, it still needs the placebo test and a hand-labelled
+  sample.
+  *Deps: ID · Refs: [L14], [L1], [L3] · Audits: [February 2026 data-cut census materialization](../studies/phase-iii-census/materialization-2026-02-06.md), [matched negative-control outcomes](../studies/phase-iii-census/negative-control-outcomes-2026-08-03.md) · Spec: [../specs/phase3-match-benchmark/](../specs/phase3-match-benchmark/) (protocol and current evidence limits), [../specs/phase-3-solicitation-alerts/](../specs/phase-3-solicitation-alerts/) (solicitation monitoring)*
 
 - **Categorization vs. transition likelihood**
   Are product firms, service firms, or mixed-mode firms (as categorized in
@@ -724,7 +725,12 @@ Foundational — most questions in A–D depend on work here.*
   Which federal awards are SBIR/STTR versus non-SBIR, and with what confidence?
   A three-tier classifier: FPDS research field (1.0) → ALN (0.8–1.0) →
   description parsing (0.5–0.7).
-  *Deps: none · Refs: [L15], [L14] · Spec: [sbir-identification-methodology.md](sbir-identification-methodology.md), [../specs/archive/completed-features/sbir-identification/](../specs/archive/completed-features/sbir-identification/)*
+  **Status:** Partially computable. The negative-control study now provides a
+  conservative entity-level screened-negative table using exact identifiers and
+  fail-closed collision quarantine across the available award history. Confirmed
+  and indeterminate possible SBIR entities are excluded; it does not supply the
+  requested award-level confidence classifier or make every candidate screenable.
+  *Deps: none · Refs: [L15], [L14] · Audit: [identity and eligibility](../studies/phase-iii-census/identity-eligibility-audit-2026-08-03.md) · Spec: [sbir-identification-methodology.md](sbir-identification-methodology.md), [../specs/archive/completed-features/sbir-identification/](../specs/archive/completed-features/sbir-identification/)*
 
 - **Shared-ALN false positives**
   What are the false-positive rates for shared-ALN grant identification (e.g.

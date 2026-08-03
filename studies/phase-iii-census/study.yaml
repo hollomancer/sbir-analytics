@@ -12,17 +12,19 @@ estimand: >-
   proxies under every preregistered time-window and agency-continuity cell.
 frozen_artifacts:
   - path: specs/phase-iii-census/design.md
-    sha256: e493ac80dfc2959548ec19459352f9df0d20367a89b5f35aed37c9c48f5f25be
+    sha256: ef5da718f76a8904f5c61da3494af46a7e05428618bcdf96bb1201c489384841
   - path: specs/phase-iii-census/amendments.md
-    sha256: 27e5763ccecec82e890a421eef42a33fdbc36f3e06d543e7bf67cc80829eebc7
+    sha256: 02fb5593c4621af227b8ae62ff23cbcaf61d009f4822a6af7bcacd8d540664e6
 implementation:
   - path: packages/sbir-analytics/sbir_analytics/assets/phase_iii_census/assets.py
     symbol: phase_iii_census
   - path: scripts/data/build_phase_iii_control_matches.py
     symbol: run
+  - path: scripts/data/build_phase_iii_control_outcomes.py
+    symbol: run
 identity_policy:
   strategy: exact normalized UEI only; no name or DUNS fallback
-  version: phase-0-r13
+  version: phase-0-r14
   negative_evidence_allowed: false
 materialization:
   allowed: true
@@ -31,10 +33,11 @@ permitted_claims:
   - The estimand, criteria, and implementation are frozen and fixture-verified.
   - The complete February cumulative ladder and all six sensitivity cells were
     materialized from provenance-verified inputs, and the blocking one-factor check passed.
+  - Within the exact-match common-support subset, the frozen criteria produce different
+    full-set clearing proportions but substantially overlapping firm distributions.
 limitations:
-  - Negative-control outcome, placebo, and labeled-validation evidence is unresolved; no
-    headline cell, discrimination claim, undercount claim, or statutory Phase III
-    interpretation is authorized.
+  - Placebo and labeled-validation evidence is unresolved; no headline census cell,
+    undercount claim, or statutory Phase III interpretation is authorized.
   - Negative-control inference is restricted to the frozen exact-match common-support
     subset and does not generalize to unmatched Phase II firms.
   - Exact UEI matching misses acquisitions, successors, and UEI changes.
