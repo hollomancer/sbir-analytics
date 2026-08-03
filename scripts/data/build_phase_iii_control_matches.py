@@ -244,7 +244,16 @@ def run(
     summary = {
         "schema_version": "phase-iii-control-matching-v1",
         "pre_outcome_only": True,
-        "outcome_fields_read": [],
+        "census_filter_invoked": False,
+        "contract_fields_read": {
+            "eligibility_only": ["vendor_uei", "research"],
+            "matching_covariates_only": [
+                "vendor_uei",
+                "action_date",
+                "product_or_service_code",
+                "metadata.business_categories",
+            ],
+        },
         "stochastic": False,
         "freeze": freeze,
         "inputs": {
