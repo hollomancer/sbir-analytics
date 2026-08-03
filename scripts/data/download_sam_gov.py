@@ -5,8 +5,8 @@ A short paginated fallback is written under a separate name so it never
 overwrites a full dataset.
 
 Download strategy (in order):
-  1. Bulk extract API (/data-services/v1/extracts) — single ZIP download of
-     the full monthly entity file.  One API call, no polling.
+  1. Public Data Services catalog — keyless download of the latest full
+     monthly Public V2 entity ZIP.
   2. Entity API extract mode (format=csv) — async bulk download, up to 1M records.
   3. Paginated API fallback — 10 records/page, capped at 10k records.
 
@@ -17,7 +17,7 @@ Exit codes:
        exit code 2 as "rotate the key" rather than a transient failure.
     3  Daily rate limit exceeded — retry after midnight UTC.
 
-API key lifecycle:
+API key lifecycle (only needed for strategies 2 and 3):
     SAM.gov keys expire every ~60 days. Rotating the key:
       1. Log in at https://sam.gov → Account → API Keys
       2. Generate a new key
@@ -29,11 +29,12 @@ Usage:
     python scripts/data/download_sam_gov.py --dry-run
 
 Environment:
-    SAM_GOV_API_KEY  SAM.gov API key (required)
+    SAM_GOV_API_KEY  Optional SAM.gov API key for strategies 2 and 3
     SAM_GOV_RAW_DIR  Local output directory (overridden by --dest)
 """
 
 import argparse
+import hashlib
 import io
 import json
 import os
@@ -44,8 +45,11 @@ import zipfile
 from datetime import UTC, datetime
 from functools import partial
 from pathlib import Path
+from tempfile import TemporaryFile
+from urllib.parse import quote
 
 import pandas as pd
+
 # Standalone script — uses requests (installed ad-hoc in CI) rather than httpx
 import requests
 
@@ -56,7 +60,10 @@ print = partial(print, flush=True)  # noqa: A001
 # Constants
 # ---------------------------------------------------------------------------
 
-EXTRACTS_URL = "https://api.sam.gov/data-services/v1/extracts"
+PUBLIC_FILE_CATALOG_URL = "https://sam.gov/api/prod/fileextractservices/v1/api/listfiles"
+PUBLIC_FILE_DOWNLOAD_BASE = "https://sam.gov/api/prod/fileextractservices/v1/api/download"
+PUBLIC_FILE_DOMAIN = "Entity Registration/Public V2"
+PUBLIC_FILE_PATTERN = re.compile(r"^SAM_PUBLIC_UTF-8_MONTHLY_V2_(\d{8})\.ZIP$")
 ENTITY_API_URL = "https://api.sam.gov/entity-information/v3/entities"
 MIN_CANONICAL_ROW_COUNT = 50_000
 
@@ -78,6 +85,7 @@ MAX_PAGINATED_RECORDS = 10_000
 # Columns the downstream pipeline reads (SAMGovExtractor.ENRICHMENT_COLUMNS).
 REQUIRED_COLUMNS = [
     "unique_entity_id",
+    "registration_status",
     "legal_business_name",
     "dba_name",
     "physical_address_line_1",
@@ -96,9 +104,12 @@ REQUIRED_COLUMNS = [
 CSV_COLUMN_MAP = {
     # Bulk extract .dat headers
     "UNIQUE_ENTITY_ID": "unique_entity_id",
+    "UNIQUE ENTITY ID": "unique_entity_id",
     "UEI": "unique_entity_id",
     "UEI SAM": "unique_entity_id",
     "ENTITY UEI": "unique_entity_id",
+    "SAM EXTRACT CODE": "registration_status",
+    "REGISTRATION STATUS": "registration_status",
     "LEGAL_BUSINESS_NAME": "legal_business_name",
     "LEGAL BUSINESS NAME": "legal_business_name",
     "DBA_NAME": "dba_name",
@@ -117,6 +128,7 @@ CSV_COLUMN_MAP = {
     "SAM ADDRESS STATE": "physical_address_state",
     "PHYSICAL_ADDRESS_ZIP_POSTAL_CODE": "physical_address_zip_postal_code",
     "PHYSICAL ADDRESS ZIP POSTAL CODE": "physical_address_zip_postal_code",
+    "PHYSICAL ADDRESS ZIP/POSTAL CODE": "physical_address_zip_postal_code",
     "PHYSICAL ADDRESS ZIP CODE": "physical_address_zip_postal_code",
     "ZIP CODE": "physical_address_zip_postal_code",
     "CAGE_CODE": "cage_code",
@@ -129,6 +141,7 @@ CSV_COLUMN_MAP = {
     "DUNS": "duns_number",
     # JSON API field names (camelCase) — used by strategy 2 & 3
     "ueiSAM": "unique_entity_id",
+    "registrationStatus": "registration_status",
     "legalBusinessName": "legal_business_name",
     "dbaName": "dba_name",
     "cageCode": "cage_code",
@@ -140,6 +153,7 @@ CSV_COLUMN_MAP = {
 # ---------------------------------------------------------------------------
 # API key diagnostics
 # ---------------------------------------------------------------------------
+
 
 class APIKeyError(Exception):
     """Raised when the API key is missing, expired, or invalid."""
@@ -192,75 +206,122 @@ def _check_api_key_response(resp: requests.Response, context: str) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Strategy 1: Bulk extract download (fast — single ZIP, one API call)
+# Strategy 1: keyless public bulk extract
 # ---------------------------------------------------------------------------
 
-def _download_bulk_extract(api_key: str) -> pd.DataFrame | None:
-    """Download the latest monthly public entity extract ZIP from SAM.gov.
 
-    Uses /data-services/v1/extracts — a single GET returns the full ZIP file.
-    This is the most efficient path: one API call, no polling.
-    """
+def _latest_public_extract(items: list[dict]) -> dict:
+    """Select the newest UTF-8 monthly Public V2 record from the official catalog."""
+
+    candidates = [
+        (match.group(1), item)
+        for item in items
+        if isinstance(item, dict)
+        and (match := PUBLIC_FILE_PATTERN.fullmatch(str(item.get("displayKey", ""))))
+    ]
+    if not candidates:
+        raise ValueError("SAM.gov public catalog has no UTF-8 monthly Public V2 extract")
+    return max(candidates, key=lambda candidate: candidate[0])[1]
+
+
+def _public_extract_download_url(item: dict) -> str:
+    """Build the keyless SAM.gov download URL after validating the catalog record."""
+
+    display_key = str(item.get("displayKey", ""))
+    if not PUBLIC_FILE_PATTERN.fullmatch(display_key):
+        raise ValueError("SAM.gov public catalog record has an invalid extract filename")
+    expected_key = f"{PUBLIC_FILE_DOMAIN}/{display_key}"
+    if item.get("key") != expected_key:
+        raise ValueError("SAM.gov public catalog record has an unexpected object key")
+    encoded_key = quote(expected_key, safe="/")
+    return f"{PUBLIC_FILE_DOWNLOAD_BASE}/{encoded_key}?privacy=Public"
+
+
+def _download_bulk_extract() -> pd.DataFrame | None:
+    """Download the latest monthly public entity ZIP without an API key."""
+
     print("\n📦 Strategy 1: Bulk extract download...")
-    print("   Requesting latest monthly public entity extract...")
+    print("   Reading the public SAM.gov Data Services catalog...")
 
-    resp = requests.get(
-        EXTRACTS_URL,
+    catalog_response = requests.get(
+        PUBLIC_FILE_CATALOG_URL,
         params={
-            "api_key": api_key,
-            "fileType": "ENTITY",
-            "sensitivity": "PUBLIC",
-            "frequency": "MONTHLY",
+            "domain": PUBLIC_FILE_DOMAIN,
+            "privacy": "Public",
         },
-        timeout=DOWNLOAD_TIMEOUT,
-        stream=True,
+        timeout=REQUEST_TIMEOUT,
     )
-    _check_api_key_response(resp, "data-services/v1/extracts (bulk download)")
+    if not catalog_response.ok:
+        print(f"⚠️  Public catalog request failed: HTTP {catalog_response.status_code}")
+        return None
 
+    try:
+        items = catalog_response.json()["_embedded"]["customS3ObjectSummaryList"]
+        item = _latest_public_extract(items)
+        download_url = _public_extract_download_url(item)
+    except (KeyError, TypeError, ValueError) as exc:
+        print(f"⚠️  Public catalog response is unusable: {exc}")
+        return None
+
+    print(f"   Selected: {item['displayKey']}")
+    resp = requests.get(download_url, timeout=DOWNLOAD_TIMEOUT, stream=True)
     if not resp.ok:
-        print(f"⚠️  Bulk extract request failed: HTTP {resp.status_code}")
-        print(f"   Body preview: {resp.text[:300]}")
+        print(f"⚠️  Public bulk download failed: HTTP {resp.status_code}")
         return None
 
     content_type = resp.headers.get("content-type", "").lower()
     content_length = int(resp.headers.get("content-length", 0))
+    print(
+        (
+            f"   Downloading... (content-type: {content_type}, "
+            f"size: {content_length / 1024 / 1024:.0f} MB)"
+        )
+        if content_length
+        else f"   Downloading... (content-type: {content_type}, size: unknown)"
+    )
 
-    # If we got JSON back instead of a file, this endpoint might not support
-    # direct downloads — fall through to strategy 2.
-    if "json" in content_type and content_length < 100_000:
-        print(f"⚠️  Got JSON instead of file (content-type: {content_type})")
-        try:
-            data = resp.json()
-            print(f"   Response keys: {list(data.keys())[:10]}")
-            print(f"   Preview: {str(data)[:300]}")
-        except Exception:
-            print(f"   Preview: {resp.text[:300]}")
-        return None
-
-    # Stream the file to memory
-    print(f"   Downloading... (content-type: {content_type}, "
-          f"size: {content_length / 1024 / 1024:.0f} MB)" if content_length
-          else f"   Downloading... (content-type: {content_type}, size: unknown)")
-
-    buf = io.BytesIO()
-    downloaded = 0
-    for chunk in resp.iter_content(chunk_size=4 * 1024 * 1024):
-        buf.write(chunk)
-        downloaded += len(chunk)
-        if content_length:
-            print(f"   {downloaded / 1024 / 1024:.0f} / "
-                  f"{content_length / 1024 / 1024:.0f} MB", end="\r")
-        elif downloaded % (20 * 1024 * 1024) == 0:
-            print(f"   {downloaded / 1024 / 1024:.0f} MB...", end="\r")
-    print(f"\n   Downloaded {downloaded / 1024 / 1024:.1f} MB total")
-
-    buf.seek(0)
-    return _parse_downloaded_file(buf)
+    # A seekable temporary file avoids holding both the compressed ZIP and the
+    # parsed entity frame in memory at the same time.
+    with TemporaryFile() as buffer:
+        downloaded = 0
+        digest = hashlib.sha256()
+        for chunk in resp.iter_content(chunk_size=4 * 1024 * 1024):
+            buffer.write(chunk)
+            digest.update(chunk)
+            downloaded += len(chunk)
+            if content_length:
+                print(
+                    f"   {downloaded / 1024 / 1024:.0f} / {content_length / 1024 / 1024:.0f} MB",
+                    end="\r",
+                )
+            elif downloaded % (20 * 1024 * 1024) == 0:
+                print(f"   {downloaded / 1024 / 1024:.0f} MB...", end="\r")
+        print(f"\n   Downloaded {downloaded / 1024 / 1024:.1f} MB total")
+        if content_length and downloaded != content_length:
+            print("⚠️  Public bulk download length does not match Content-Length")
+            return None
+        buffer.seek(0)
+        if buffer.read(2) != b"PK":
+            print("⚠️  Public bulk download is not a ZIP archive")
+            return None
+        buffer.seek(0)
+        frame = _parse_downloaded_file(buffer)
+        if frame is not None:
+            frame.attrs.update(
+                {
+                    "sam_source_file": item["displayKey"],
+                    "sam_source_date": item.get("dateModified"),
+                    "sam_source_sha256": digest.hexdigest(),
+                    "sam_source_url": download_url,
+                }
+            )
+        return frame
 
 
 # ---------------------------------------------------------------------------
 # Strategy 2: Entity API extract mode (format=csv)
 # ---------------------------------------------------------------------------
+
 
 def _download_entity_extract(api_key: str) -> pd.DataFrame | None:
     """Request a CSV extract via the entity API and poll for completion."""
@@ -296,8 +357,12 @@ def _download_entity_extract(api_key: str) -> pd.DataFrame | None:
                     download_url = v.replace("REPLACE_WITH_API_KEY", api_key)
                     break
             if not download_url:
-                download_url = (data.get("downloadUrl") or data.get("downloadLink")
-                                or data.get("fileUrl") or data.get("url"))
+                download_url = (
+                    data.get("downloadUrl")
+                    or data.get("downloadLink")
+                    or data.get("fileUrl")
+                    or data.get("url")
+                )
         except Exception:
             pass
 
@@ -357,6 +422,7 @@ def _download_entity_extract(api_key: str) -> pd.DataFrame | None:
 # Strategy 3: Paginated API fallback
 # ---------------------------------------------------------------------------
 
+
 def _download_paginated(api_key: str) -> pd.DataFrame:
     """Page through active entities. 10/page, capped at 10k records."""
     max_pages = MAX_PAGINATED_RECORDS // PAGE_SIZE
@@ -387,8 +453,10 @@ def _download_paginated(api_key: str) -> pd.DataFrame:
             if isinstance(total_records, int):
                 print(f"   Total active entities: {total_records:,}")
                 if total_records > MAX_PAGINATED_RECORDS:
-                    print(f"   ⚠️  Can only fetch {MAX_PAGINATED_RECORDS:,} of "
-                          f"{total_records:,} via pagination")
+                    print(
+                        f"   ⚠️  Can only fetch {MAX_PAGINATED_RECORDS:,} of "
+                        f"{total_records:,} via pagination"
+                    )
 
         entities = data.get("entityData", [])
         if not entities:
@@ -399,22 +467,27 @@ def _download_paginated(api_key: str) -> pd.DataFrame:
             core = entity.get("coreData", {})
             addr = core.get("physicalAddress", {})
             general = core.get("generalInformation", {})
-            naics_list = [n.get("naicsCode", "") for n in
-                          core.get("naicsInformation", {}).get("naicsList", [])]
-            rows.append({
-                "unique_entity_id": reg.get("ueiSAM", ""),
-                "legal_business_name": reg.get("legalBusinessName", ""),
-                "dba_name": reg.get("dbaName", ""),
-                "physical_address_line_1": addr.get("addressLine1", ""),
-                "physical_address_line_2": addr.get("addressLine2", ""),
-                "physical_address_city": addr.get("city", ""),
-                "physical_address_state": addr.get("stateOrProvinceCode", ""),
-                "physical_address_zip_postal_code": addr.get("zipCode", ""),
-                "cage_code": reg.get("cageCode", ""),
-                "primary_naics": general.get("primaryNaics", ""),
-                "naics_code_string": ", ".join(filter(None, naics_list)),
-                "duns_number": reg.get("dunsNumber", ""),
-            })
+            naics_list = [
+                n.get("naicsCode", "")
+                for n in core.get("naicsInformation", {}).get("naicsList", [])
+            ]
+            rows.append(
+                {
+                    "unique_entity_id": reg.get("ueiSAM", ""),
+                    "registration_status": reg.get("registrationStatus", ""),
+                    "legal_business_name": reg.get("legalBusinessName", ""),
+                    "dba_name": reg.get("dbaName", ""),
+                    "physical_address_line_1": addr.get("addressLine1", ""),
+                    "physical_address_line_2": addr.get("addressLine2", ""),
+                    "physical_address_city": addr.get("city", ""),
+                    "physical_address_state": addr.get("stateOrProvinceCode", ""),
+                    "physical_address_zip_postal_code": addr.get("zipCode", ""),
+                    "cage_code": reg.get("cageCode", ""),
+                    "primary_naics": general.get("primaryNaics", ""),
+                    "naics_code_string": ", ".join(filter(None, naics_list)),
+                    "duns_number": reg.get("dunsNumber", ""),
+                }
+            )
 
         page += 1
         if page % 50 == 0:
@@ -427,6 +500,7 @@ def _download_paginated(api_key: str) -> pd.DataFrame:
 # ---------------------------------------------------------------------------
 # File parsing
 # ---------------------------------------------------------------------------
+
 
 def _parse_downloaded_file(buf: io.BytesIO) -> pd.DataFrame | None:
     """Parse a downloaded file (ZIP or CSV/DAT) into a DataFrame."""
@@ -455,8 +529,7 @@ def _parse_zip(buf: io.BytesIO) -> pd.DataFrame | None:
 
             target = data_files[0]
             info = zf.getinfo(target)
-            print(f"   Parsing {target} "
-                  f"({info.file_size / 1024 / 1024:.0f} MB uncompressed)")
+            print(f"   Parsing {target} ({info.file_size / 1024 / 1024:.0f} MB uncompressed)")
             with zf.open(target) as fh:
                 return _parse_csv(fh)
 
@@ -490,8 +563,7 @@ def _parse_csv(fh) -> pd.DataFrame:
 
         # Log available columns on first chunk for debugging
         if i == 0:
-            print(f"   Source columns ({len(chunk.columns)}): "
-                  f"{list(chunk.columns)[:15]}...")
+            print(f"   Source columns ({len(chunk.columns)}): {list(chunk.columns)[:15]}...")
             mapped = [c for c in normalised.columns if (normalised[c] != "").any()]
             print(f"   Mapped non-empty: {mapped}")
 
@@ -507,17 +579,23 @@ def _parse_csv(fh) -> pd.DataFrame:
 
 def _normalise_chunk(chunk: pd.DataFrame) -> pd.DataFrame:
     """Rename columns and keep only REQUIRED_COLUMNS."""
-    chunk = chunk.rename(columns={k: v for k, v in CSV_COLUMN_MAP.items()
-                                  if k in chunk.columns})
+    chunk = chunk.rename(columns={k: v for k, v in CSV_COLUMN_MAP.items() if k in chunk.columns})
     for col in REQUIRED_COLUMNS:
         if col not in chunk.columns:
             chunk[col] = ""
     return chunk[REQUIRED_COLUMNS].fillna("")
 
 
+def _is_partial_result(strategy: int | None, row_count: int) -> bool:
+    """Only the official monthly bulk file can become the canonical snapshot."""
+
+    return strategy != 1 or row_count < MIN_CANONICAL_ROW_COUNT
+
+
 # ---------------------------------------------------------------------------
 # Output
 # ---------------------------------------------------------------------------
+
 
 def _write_local(df: pd.DataFrame, dest: Path, *, name: str = PARQUET_NAME) -> Path:
     """Write DataFrame to parquet under ``dest``, with a metadata sidecar."""
@@ -527,7 +605,11 @@ def _write_local(df: pd.DataFrame, dest: Path, *, name: str = PARQUET_NAME) -> P
     df.to_parquet(path, index=False, engine="pyarrow")
 
     metadata = {
-        "source": "api.sam.gov",
+        "source": "sam.gov public data services",
+        "source_file": df.attrs.get("sam_source_file"),
+        "source_date": df.attrs.get("sam_source_date"),
+        "source_sha256": df.attrs.get("sam_source_sha256"),
+        "source_url": df.attrs.get("sam_source_url"),
         "row_count": len(df),
         "downloaded_at": datetime.now(UTC).isoformat(),
         "partial": name == PARQUET_NAME_PARTIAL,
@@ -544,45 +626,58 @@ def _write_local(df: pd.DataFrame, dest: Path, *, name: str = PARQUET_NAME) -> P
 # Entry point
 # ---------------------------------------------------------------------------
 
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Download SAM.gov entities to a local directory")
-    parser.add_argument("--dest",
-                        default=os.environ.get("SAM_GOV_RAW_DIR", DEFAULT_DEST),
-                        help=f"Directory to write the parquet into (default: {DEFAULT_DEST})")
-    parser.add_argument("--dry-run", action="store_true",
-                        help="Download and parse only — skip writing output")
-    parser.add_argument("--strategy", type=int, choices=[1, 2, 3], default=None,
-                        help="Force a specific download strategy (1=bulk, 2=extract, 3=paginated)")
+    parser.add_argument(
+        "--dest",
+        default=os.environ.get("SAM_GOV_RAW_DIR", DEFAULT_DEST),
+        help=f"Directory to write the parquet into (default: {DEFAULT_DEST})",
+    )
+    parser.add_argument(
+        "--dry-run", action="store_true", help="Download and parse only — skip writing output"
+    )
+    parser.add_argument(
+        "--strategy",
+        type=int,
+        choices=[1, 2, 3],
+        default=None,
+        help="Force a specific download strategy (1=bulk, 2=extract, 3=paginated)",
+    )
     args = parser.parse_args()
 
     api_key = os.environ.get("SAM_GOV_API_KEY", "")
-    if not api_key:
-        print("❌ SAM_GOV_API_KEY not set.\n"
-              "   Obtain a key from https://sam.gov → Account → API Keys.",
-              file=sys.stderr)
+    if args.strategy in (2, 3) and not api_key:
+        print(
+            f"❌ Strategy {args.strategy} requires SAM_GOV_API_KEY.",
+            file=sys.stderr,
+        )
         sys.exit(2)
-
-    if not api_key.startswith("SAM-"):
-        print(f"⚠️  Key '{api_key[:12]}...' doesn't look like a SAM.gov key.",
-              file=sys.stderr)
+    if api_key and not api_key.startswith("SAM-"):
+        print("⚠️  SAM_GOV_API_KEY doesn't look like a SAM.gov key.", file=sys.stderr)
 
     try:
         df = None
+        completed_strategy: int | None = None
 
-        strategies = (
-            [args.strategy] if args.strategy
-            else [1, 2, 3]
-        )
+        strategies = [args.strategy] if args.strategy else [1, 2, 3]
 
         for strat in strategies:
             if strat == 1:
-                df = _download_bulk_extract(api_key)
+                df = _download_bulk_extract()
             elif strat == 2:
+                if not api_key:
+                    print("   Strategy 2 requires SAM_GOV_API_KEY; skipping")
+                    continue
                 df = _download_entity_extract(api_key)
             elif strat == 3:
+                if not api_key:
+                    print("   Strategy 3 requires SAM_GOV_API_KEY; skipping")
+                    continue
                 df = _download_paginated(api_key)
 
             if df is not None and not df.empty:
+                completed_strategy = strat
                 break
             print(f"   Strategy {strat} did not produce data, trying next...")
 
@@ -597,14 +692,21 @@ def main() -> None:
         if args.dry_run:
             print("\n🔵 Dry run — skipping output")
         else:
-            # If row count is below the minimum threshold, this is likely a
-            # partial result from paginated fallback. Write to a separate name
-            # so we don't overwrite the canonical full dataset.
-            partial_result = len(df) < MIN_CANONICAL_ROW_COUNT
+            # Authenticated extract and paginated fallbacks are partial by
+            # contract, regardless of row count. Only strategy 1 can produce
+            # the canonical monthly snapshot.
+            partial_result = _is_partial_result(completed_strategy, len(df))
             if partial_result:
-                print(f"\n⚠️  Only {len(df):,} rows — below {MIN_CANONICAL_ROW_COUNT:,} "
-                      f"threshold. Writing as partial dataset to avoid overwriting "
-                      f"canonical data.")
+                if completed_strategy != 1:
+                    print(
+                        f"\n⚠️  Strategy {completed_strategy} is a capped fallback. "
+                        "Writing as a partial dataset regardless of row count."
+                    )
+                else:
+                    print(
+                        f"\n⚠️  Only {len(df):,} rows — below {MIN_CANONICAL_ROW_COUNT:,} "
+                        "rows. Writing as a partial dataset to avoid overwriting canonical data."
+                    )
 
             _write_local(
                 df,
@@ -612,13 +714,12 @@ def main() -> None:
                 name=PARQUET_NAME_PARTIAL if partial_result else PARQUET_NAME,
             )
 
-
     except APIKeyError as exc:
-        print(f"\n{'='*60}", file=sys.stderr)
+        print(f"\n{'=' * 60}", file=sys.stderr)
         print("❌ SAM.GOV API KEY PROBLEM", file=sys.stderr)
-        print(f"{'='*60}", file=sys.stderr)
+        print(f"{'=' * 60}", file=sys.stderr)
         print(str(exc), file=sys.stderr)
-        print(f"{'='*60}", file=sys.stderr)
+        print(f"{'=' * 60}", file=sys.stderr)
         # Distinguish rate limits (exit 3) from expired/invalid keys (exit 2)
         if "RATE LIMIT" in str(exc):
             sys.exit(3)
@@ -627,6 +728,7 @@ def main() -> None:
     except Exception as exc:
         print(f"\n❌ Error: {exc}", file=sys.stderr)
         import traceback
+
         traceback.print_exc()
         sys.exit(1)
 

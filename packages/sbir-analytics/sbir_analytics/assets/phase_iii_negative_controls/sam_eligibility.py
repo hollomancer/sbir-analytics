@@ -124,10 +124,15 @@ class _DisjointSet:
         self.parent.setdefault(token, token)
 
     def find(self, token: str) -> str:
-        parent = self.parent[token]
-        if parent != token:
-            self.parent[token] = self.find(parent)
-        return self.parent[token]
+        root = token
+        while self.parent[root] != root:
+            root = self.parent[root]
+
+        while self.parent[token] != token:
+            parent = self.parent[token]
+            self.parent[token] = root
+            token = parent
+        return root
 
     def union_all(self, tokens: Iterable[str]) -> None:
         values = tuple(tokens)

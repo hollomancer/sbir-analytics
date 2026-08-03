@@ -77,8 +77,9 @@ def test_run_writes_all_three_statuses_and_provenance(tmp_path) -> None:
     ]
     assert statuses["candidate_firms"].tolist() == [1, 0, 0]
     persisted = json.loads((output_dir / "phase_iii_sam_eligibility.json").read_text())
-    assert persisted["matching_rows_read"] == 0
-    assert persisted["outcome_rows_read"] == 0
+    assert persisted["pre_matching_gate"] is True
+    assert "matching_rows_read" not in persisted
+    assert "outcome_rows_read" not in persisted
 
 
 def test_run_writes_audit_artifacts_before_failing_reliability_gate(tmp_path) -> None:

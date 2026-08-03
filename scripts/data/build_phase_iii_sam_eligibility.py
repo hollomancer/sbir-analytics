@@ -110,8 +110,6 @@ def run(
         },
         "gate": gate,
         "pre_matching_gate": True,
-        "matching_rows_read": 0,
-        "outcome_rows_read": 0,
     }
     summary_path = output_dir / "phase_iii_sam_eligibility.json"
     summary_path.write_text(

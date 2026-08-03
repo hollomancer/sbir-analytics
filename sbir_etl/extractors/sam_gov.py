@@ -32,6 +32,7 @@ class SAMGovExtractor:
     # Loading only these instead of all columns cuts memory 50-80%.
     ENRICHMENT_COLUMNS: list[str] = [
         "unique_entity_id",
+        "registration_status",
         "legal_business_name",
         "dba_name",
         "physical_address_line_1",

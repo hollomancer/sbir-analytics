@@ -3,6 +3,7 @@
 import pandas as pd
 import pytest
 
+from sbir_analytics.assets.phase_iii_negative_controls.sam_eligibility import _DisjointSet
 from sbir_analytics.assets.phase_iii_negative_controls import (
     IdentityRecoveryError,
     build_sam_eligibility_table,
@@ -111,6 +112,15 @@ def test_exact_uei_and_duns_intersections_confirm_sbir() -> None:
     by_uei = {row.candidate_ueis[0]: row for row in result.itertuples(index=False)}
     assert by_uei["DIRECTUEI001"].matched_sbir_ueis == ("DIRECTUEI001",)
     assert by_uei["CANDIDATE002"].matched_sbir_duns == ("222222222",)
+
+
+def test_disjoint_set_find_handles_a_deep_component_iteratively() -> None:
+    identifiers = _DisjointSet()
+    for value in range(2_500, 0, -1):
+        identifiers.union_all((f"TOKEN:{value:05d}", f"TOKEN:{value - 1:05d}"))
+
+    assert identifiers.find("TOKEN:02500") == "TOKEN:00000"
+    assert identifiers.parent["TOKEN:02500"] == "TOKEN:00000"
 
 
 def test_exact_cage_cooccurrence_can_extend_an_identifier_envelope() -> None:
