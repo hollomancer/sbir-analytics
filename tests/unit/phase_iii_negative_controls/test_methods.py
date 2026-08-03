@@ -13,10 +13,11 @@ from sbir_analytics.assets.phase_iii_negative_controls.methods import (
     EXACT_DUNS_EXCLUSION_REASON,
     EXACT_UEI_EXCLUSION_REASON,
     PLACEBO_SEED,
+    UNSCREENABLE_STATUS_LABEL,
     NegativeControlInputError,
     audit_exact_identifier_eligibility,
     build_placebo_census_tables,
-    flag_identifier_free_name_stress_set,
+    flag_identifier_unreachable_name_stress_set,
     permute_prior_end_dates,
 )
 
@@ -97,6 +98,12 @@ def candidate_entities() -> pd.DataFrame:
                 "duns": "12",
                 "entity_name": "Identifier Backed LLC",
             },
+            {
+                "entity_id": "ENTITY-CLEAN",
+                "uei": "UEI000000009",
+                "duns": None,
+                "entity_name": "Clean Candidate LLC",
+            },
         ]
     )
 
@@ -157,14 +164,41 @@ def test_exact_identifier_audit_labels_retained_rows_and_records_every_reason(
     )
     assert not bool(by_id.loc["ENTITY-BOTH", "passes_exact_identifier_screen"])
 
-    for entity_id in ("ENTITY-NAME-STRESS", "ENTITY-ID-BACKED-NAME"):
+    for entity_id in ("ENTITY-NAME-STRESS", "ENTITY-ID-BACKED-NAME", "ENTITY-CLEAN"):
         assert bool(by_id.loc[entity_id, "passes_exact_identifier_screen"])
-        assert by_id.loc[entity_id, "control_status_label"] == CONTROL_STATUS_LABEL
         assert pd.isna(by_id.loc[entity_id, "exclusion_reason"])
 
+    assert by_id.loc["ENTITY-CLEAN", "control_status_label"] == CONTROL_STATUS_LABEL
     assert pd.isna(by_id.loc["ENTITY-UEI", "control_status_label"])
     assert pd.isna(by_id.loc["ENTITY-ID-BACKED-NAME", "normalized_uei"])
     assert pd.isna(by_id.loc["ENTITY-ID-BACKED-NAME", "normalized_duns"])
+
+
+def test_exact_identifier_audit_separates_screened_clean_from_unscreenable(
+    candidate_entities: pd.DataFrame,
+    complete_award_history: pd.DataFrame,
+) -> None:
+    """Passing the screen is three-valued, and the output must say which value.
+
+    `ENTITY-CLEAN` carries a usable UEI absent from history: screened, matched
+    nothing. `ENTITY-NAME-STRESS` has no identifiers and `ENTITY-ID-BACKED-NAME`
+    has malformed ones: neither was screened against anything. All three pass, so a
+    consumer selecting on `passes_exact_identifier_screen` alone would take an
+    unscreenable firm for a screened-clean one.
+    """
+
+    audit = audit_exact_identifier_eligibility(candidate_entities, complete_award_history)
+    by_id = audit.set_index("entity_id")
+
+    assert bool(by_id.loc["ENTITY-CLEAN", "has_usable_identifier"])
+    assert by_id.loc["ENTITY-CLEAN", "control_status_label"] == CONTROL_STATUS_LABEL
+
+    for entity_id in ("ENTITY-NAME-STRESS", "ENTITY-ID-BACKED-NAME"):
+        assert bool(by_id.loc[entity_id, "passes_exact_identifier_screen"])
+        assert not bool(by_id.loc[entity_id, "has_usable_identifier"])
+        assert by_id.loc[entity_id, "control_status_label"] == UNSCREENABLE_STATUS_LABEL
+
+    assert UNSCREENABLE_STATUS_LABEL != CONTROL_STATUS_LABEL
 
 
 def test_exact_identifier_audit_fails_closed_on_empty_history(
@@ -187,23 +221,48 @@ def test_exact_identifier_audit_requires_unique_nonblank_entity_keys(
         audit_exact_identifier_eligibility(invalid, complete_award_history)
 
 
-def test_identifier_free_name_match_is_only_a_reporting_flag(
+def test_identifier_unreachable_name_match_is_only_a_reporting_flag(
     candidate_entities: pd.DataFrame,
     complete_award_history: pd.DataFrame,
 ) -> None:
     audit = audit_exact_identifier_eligibility(candidate_entities, complete_award_history)
     original_screen = audit["passes_exact_identifier_screen"].copy()
 
-    flagged = flag_identifier_free_name_stress_set(audit, complete_award_history)
+    flagged = flag_identifier_unreachable_name_stress_set(audit, complete_award_history)
     by_id = flagged.set_index("entity_id")
 
-    assert bool(by_id.loc["ENTITY-NAME-STRESS", "identifier_free_award_exact_name_match"])
-    assert not bool(by_id.loc["ENTITY-ID-BACKED-NAME", "identifier_free_award_exact_name_match"])
+    assert bool(by_id.loc["ENTITY-NAME-STRESS", "identifier_unreachable_award_exact_name_match"])
+    assert not bool(by_id.loc["ENTITY-CLEAN", "identifier_unreachable_award_exact_name_match"])
     assert by_id.loc["ENTITY-NAME-STRESS", "normalized_entity_name"] == "acme inc"
     pd.testing.assert_series_equal(
         flagged["passes_exact_identifier_screen"],
         original_screen,
     )
+
+
+def test_unscreenable_candidate_is_stressed_against_the_whole_history(
+    candidate_entities: pd.DataFrame,
+    complete_award_history: pd.DataFrame,
+) -> None:
+    """The worst case is an unscreenable candidate named like an *identified* awardee.
+
+    `ENTITY-ID-BACKED-NAME` has malformed identifiers and normalizes to the same
+    name as `AWARD-NAME-WITH-ID`, which carries a UEI. No identifier join could ever
+    have reached that award row on this candidate's behalf, so it belongs in the
+    stress set. Restricting the reference names to identifier-free award rows for
+    every candidate dropped exactly this row from both outputs.
+
+    A candidate that *was* screenable keeps the narrow reference set: `ENTITY-UEI`
+    shares a name with the identifier-carrying `AWARD-UEI`, and the identifier
+    screen already adjudicated it, so a name flag there would be noise.
+    """
+
+    audit = audit_exact_identifier_eligibility(candidate_entities, complete_award_history)
+    flagged = flag_identifier_unreachable_name_stress_set(audit, complete_award_history)
+    by_id = flagged.set_index("entity_id")
+
+    assert bool(by_id.loc["ENTITY-ID-BACKED-NAME", "identifier_unreachable_award_exact_name_match"])
+    assert not bool(by_id.loc["ENTITY-UEI", "identifier_unreachable_award_exact_name_match"])
 
 
 def test_placebo_is_fixed_at_unique_prior_award_grain_and_preserves_fanout(

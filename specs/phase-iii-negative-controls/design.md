@@ -15,12 +15,14 @@ materialization can be approved.
 The following decisions were approved on **2026-08-02 with no result visibility**:
 
 1. Retained controls are labeled **“no observed exact-identifier SBIR/STTR match,”** not
-   certified SBIR-negative.
+   certified SBIR-negative. A candidate with no usable identifier was not screened at
+   all and carries the distinct label **“no usable identifier; not screenable”** —
+   see the correction below.
 2. The core eligibility exclusion is exact strict-normalized UEI/DUNS against the
    complete available SBIR/STTR history.
-3. An exact normalized-name match to an identifier-free award recipient is only a
-   worst-case stress-set/reporting flag. It is neither an upper bound nor an
-   inclusion/exclusion rule, and exact names do not bound aliases.
+3. An exact normalized-name match to an award recipient the identifier screen could not
+   reach is only a worst-case stress-set/reporting flag. It is neither an upper bound
+   nor an inclusion/exclusion rule, and exact names do not bound aliases.
 4. Employee count is omitted, without a proxy or new bands. The limitation must be
    prominent in eventual methods and results.
 5. The single placebo uses seed `20260801`. It shuffles
@@ -29,6 +31,33 @@ The following decisions were approved on **2026-08-02 with no result visibility*
 6. Every remaining methodological choice is an explicit question to resolve before the
    corresponding implementation or materialization. No result may answer a design
    question retrospectively.
+
+### Correction (2026-08-03): unscreenable candidates, pending sign-off
+
+Decisions 1 and 3 as first written left the same missingness unhandled on both sides of
+the screen, and the two helpers composed into a hole rather than a bound.
+
+A candidate whose UEI and DUNS are absent or malformed cannot match anything, so it
+passed the eligibility screen and received the retained-control label without having been
+compared to a single award row. The same candidate was then compared, in the stress flag,
+only against *identifier-free* award rows — so a candidate with no identifiers whose
+normalized name equals that of an identifier-carrying awardee was reported clean by the
+audit and absent from the stress set. That is the single most likely undetected recipient
+in the frame, and it fell through both outputs.
+
+Two changes, both strictly conservative — they can only move rows *into* the
+unscreenable or stressed populations, never out:
+
+- the audit emits `has_usable_identifier` and labels unscreenable passing rows
+  `“no usable identifier; not screenable”`, so screened-clean and not-screenable are
+  distinguishable in the output rather than only in prose;
+- the stress reference set is chosen per candidate: identifier-free award rows for a
+  screenable candidate, the **entire** history for an unscreenable one, since no identifier
+  join could have reached any award row on its behalf.
+
+This changes approved wording and is recorded here **pending repository-owner sign-off**.
+No result exists or has been viewed, so nothing here is a retrospective answer to a design
+question.
 
 ## Bounded architecture
 
@@ -39,7 +68,7 @@ canonical candidate rows + complete available SBIR/STTR history
                     |
                     +--> exact UEI/DUNS audit --> retained-label + exclusion reasons
                     |
-                    +--> identifier-free exact-name reporting flag
+                    +--> identifier-unreachable exact-name reporting flag
 
 existing exact-UEI pair frame
                     |
@@ -63,8 +92,11 @@ and appends:
 - exact UEI and DUNS match booleans;
 - a deterministic semicolon-separated exclusion reason containing every applicable
   match reason;
-- `passes_exact_identifier_screen`; and
-- the approved control label only for rows that pass.
+- `passes_exact_identifier_screen`;
+- `has_usable_identifier`, false when both strict normalizers reject the candidate's
+  identifiers; and
+- a status label for rows that pass: the approved control label when the row was
+  screenable, `“no usable identifier; not screenable”` when it was not.
 
 Candidate `entity_id` is an interface key, not a decision about which registered-entity
 population supplies candidates. It must be unique and nonblank so every exclusion is
@@ -72,11 +104,13 @@ auditable. A nonempty candidate frame with an empty history fails closed. The he
 not assert that the caller supplied complete history; provenance verification belongs to
 the future materialization.
 
-`flag_identifier_free_name_stress_set(audit, complete_award_history)` expects an
-`entity_name` in the audit and a `company_name` in history. Award rows enter the reference
-set only when both strict identifier normalizers return no usable identifier. The helper
-uses the existing `normalize_company_name` function and exact nonblank equality. It
-appends a reporting flag and does not change the eligibility fields.
+`flag_identifier_unreachable_name_stress_set(audit, complete_award_history)` expects an
+`entity_name` and `has_usable_identifier` in the audit and a `company_name` in history.
+The reference set is per candidate: for a screenable candidate, award rows enter it only
+when both strict identifier normalizers return no usable identifier; for an unscreenable
+candidate, every award row enters it, because the identifier screen reached none of them.
+The helper uses the existing `normalize_company_name` function and exact nonblank
+equality. It appends a reporting flag and does not change the eligibility fields.
 
 `permute_prior_end_dates(pairs)` has no seed argument: exposing one would invite repeated
 runs and favorable selection. It validates the prior-award/date relationship, sorts the
@@ -100,7 +134,8 @@ Future control construction must likewise call the existing
   normalization.
 - DUNS values are exact only after the repository's strict nine-digit normalization.
 - A missing or malformed identifier is unusable exact-linkage evidence. It does not
-  become evidence of nonparticipation.
+  become evidence of nonparticipation, and the audit says so in a column rather than
+  leaving it to be inferred from two null identifier fields.
 - Both exact reasons are retained when both identifiers match, even if they point to
   different history rows.
 - Company names use the repository's existing punctuation, whitespace, Unicode, and

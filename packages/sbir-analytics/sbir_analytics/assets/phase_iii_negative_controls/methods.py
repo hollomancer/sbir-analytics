@@ -22,6 +22,7 @@ from ..phase_iii_census.criteria import build_dropoff_ladder, build_sensitivity_
 
 PLACEBO_SEED = 20260801
 CONTROL_STATUS_LABEL = "no observed exact-identifier SBIR/STTR match"
+UNSCREENABLE_STATUS_LABEL = "no usable identifier; not screenable"
 
 EXACT_UEI_EXCLUSION_REASON = "observed_exact_uei_sbir_sttr_match"
 EXACT_DUNS_EXCLUSION_REASON = "observed_exact_duns_sbir_sttr_match"
@@ -30,6 +31,7 @@ _CANDIDATE_IDENTIFIER_COLUMNS = frozenset({"entity_id", "uei", "duns"})
 _HISTORY_IDENTIFIER_COLUMNS = frozenset({"uei", "duns"})
 _ELIGIBILITY_AUDIT_COLUMNS = frozenset(
     {
+        "has_usable_identifier",
         "passes_exact_identifier_screen",
         "control_status_label",
     }
@@ -92,6 +94,12 @@ def _validate_history(
         )
 
 
+def _control_status_label(passed: bool, screenable: bool) -> str | None:
+    if not passed:
+        return None
+    return CONTROL_STATUS_LABEL if screenable else UNSCREENABLE_STATUS_LABEL
+
+
 def audit_exact_identifier_eligibility(
     candidate_entities: pd.DataFrame,
     complete_award_history: pd.DataFrame,
@@ -101,6 +109,14 @@ def audit_exact_identifier_eligibility(
     Passing this screen means only that no exact usable identifier was observed in
     the supplied history. It does not certify that an entity never received an
     SBIR/STTR award.
+
+    Passing is three-valued in substance and the output says so rather than leaving
+    it to be reconstructed from the normalized identifier columns. An entity that
+    was screened and matched nothing carries `has_usable_identifier` true and the
+    approved control label; an entity whose identifiers are absent or malformed
+    carries `has_usable_identifier` false and `UNSCREENABLE_STATUS_LABEL`, because
+    nothing about it was screened at all. Selecting on
+    `passes_exact_identifier_screen` alone silently mixes the two.
     """
 
     _require_columns(
@@ -127,6 +143,7 @@ def audit_exact_identifier_eligibility(
     normalized_duns = output["duns"].map(normalize_duns)
     exact_uei_match = normalized_uei.isin(history_ueis)
     exact_duns_match = normalized_duns.isin(history_duns)
+    has_usable_identifier = normalized_uei.notna() | normalized_duns.notna()
     passes = ~(exact_uei_match | exact_duns_match)
 
     reasons = [
@@ -148,20 +165,37 @@ def audit_exact_identifier_eligibility(
     output["exclusion_reason"] = pd.Series(reasons, index=output.index, dtype="string").mask(
         lambda series: series.eq("")
     )
+    output["has_usable_identifier"] = has_usable_identifier.astype(bool)
     output["passes_exact_identifier_screen"] = passes.astype(bool)
     output["control_status_label"] = pd.Series(
-        [CONTROL_STATUS_LABEL if passed else pd.NA for passed in passes],
+        [
+            _control_status_label(bool(passed), bool(screenable))
+            for passed, screenable in zip(passes, has_usable_identifier, strict=True)
+        ],
         index=output.index,
         dtype="string",
     )
     return output
 
 
-def flag_identifier_free_name_stress_set(
+def flag_identifier_unreachable_name_stress_set(
     eligibility_audit: pd.DataFrame,
     complete_award_history: pd.DataFrame,
 ) -> pd.DataFrame:
-    """Flag exact normalized names found on identifier-free award rows.
+    """Flag exact normalized names on award rows the identifier screen could not reach.
+
+    Which award rows are unreachable is a property of the *candidate*, not of the
+    history alone. A candidate with a usable identifier was compared against every
+    identifier-carrying award row, so only identifier-free award rows remain
+    unreachable for it. A candidate with no usable identifier was compared against
+    nothing, so the whole history remains unreachable for it — including award rows
+    that do carry identifiers.
+
+    Restricting the reference set to identifier-free award rows for every candidate
+    drops exactly the worst case this flag exists to surface: an unscreenable
+    candidate whose normalized name equals that of an identifier-carrying awardee.
+    That case would be reported as clean by the eligibility audit and absent here,
+    and it understates stress in the direction that flatters the control arm.
 
     The flag is for worst-case stress reporting only. It is not an eligibility
     rule, contamination estimate, upper bound, fuzzy match, or alias screen.
@@ -183,11 +217,12 @@ def flag_identifier_free_name_stress_set(
     history_duns = complete_award_history["duns"].map(normalize_duns)
     history_names = complete_award_history["company_name"].map(_normalized_company_name)
     identifier_free = history_uei.isna() & history_duns.isna()
-    reference_names = {
+    identifier_free_names = {
         normalized
         for normalized in history_names.loc[identifier_free]
         if isinstance(normalized, str)
     }
+    every_award_name = {normalized for normalized in history_names if isinstance(normalized, str)}
 
     output = eligibility_audit.copy()
     normalized_entity_name = output["entity_name"].map(_normalized_company_name)
@@ -196,8 +231,13 @@ def flag_identifier_free_name_stress_set(
         index=output.index,
         dtype="string",
     )
-    output["identifier_free_award_exact_name_match"] = (
-        normalized_entity_name.notna() & normalized_entity_name.isin(reference_names)
+    screenable = output["has_usable_identifier"].astype(bool)
+    unreachable_name_match = normalized_entity_name.isin(identifier_free_names).where(
+        screenable,
+        normalized_entity_name.isin(every_award_name),
+    )
+    output["identifier_unreachable_award_exact_name_match"] = (
+        normalized_entity_name.notna() & unreachable_name_match
     ).astype(bool)
     return output
 
