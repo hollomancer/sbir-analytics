@@ -22,6 +22,8 @@ implementation:
     symbol: run
   - path: scripts/data/build_phase_iii_control_outcomes.py
     symbol: run
+  - path: scripts/data/build_phase_iii_placebo.py
+    symbol: run
 identity_policy:
   strategy: exact normalized UEI only; no name or DUNS fallback
   version: phase-0-r15

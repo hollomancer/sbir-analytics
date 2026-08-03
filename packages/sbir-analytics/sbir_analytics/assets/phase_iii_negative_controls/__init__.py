@@ -29,9 +29,14 @@ from .outcomes import (
     evaluate_firm_outcomes,
 )
 from .placebo import (
+    ASSIGNMENT_AUDIT_COLUMNS,
     PLACEBO_SEED,
+    PlaceboAssignment,
+    PlaceboCensusTables,
     PlaceboInputError,
+    build_placebo_assignment,
     build_placebo_census_tables,
+    build_placebo_study_tables,
     permute_prior_end_dates_across_firms,
 )
 from .quarantine import (
@@ -78,7 +83,10 @@ __all__ = [
     "FREQUENCY_COLUMNS",
     "FirmOutcomeComparison",
     "FirmOutcomeTables",
+    "ASSIGNMENT_AUDIT_COLUMNS",
     "PLACEBO_SEED",
+    "PlaceboAssignment",
+    "PlaceboCensusTables",
     "PlaceboInputError",
     "QuarantineKeyCoverage",
     "build_nih_official_keys",
@@ -98,7 +106,9 @@ __all__ = [
     "exact_match_controls",
     "compare_firm_outcomes",
     "evaluate_firm_outcomes",
+    "build_placebo_assignment",
     "build_placebo_census_tables",
+    "build_placebo_study_tables",
     "quarantine_key_gate",
     "reconcile_award_identity_attempts",
     "require_complete_unresolved_quarantine_keys",
