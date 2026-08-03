@@ -742,20 +742,19 @@ folk history suggests:
   inputs, `tools/phase0/resolve_entities`, the vendor crosswalk and resolver,
   and the phase3 groundtruth scripts.
 - `scripts/ci/check_identity_boundaries.py` walks the AST for direct
-  `rapidfuzz` scorer imports outside an explicit reviewed-file allowlist.
+  `rapidfuzz` scorer imports outside an explicit reviewed-file allowlist. The
+  quality job runs the checker, so direct scorer drift fails the normal PR
+  check as well as its unit test.
 
-Two gaps remain, and they are narrower than "consolidate the primitive":
+One gap remains, and it is narrower than "consolidate the primitive":
 
-1. **The profiles preserve divergent recall by design.** They are
-   compatibility policies — the module's own docstring is explicit that this
-   is not a claim that all name-matching should behave identically. So the
-   question "which normalization decides a firm never received an SBIR award,
-   for the census control frame?" now has an answer: a named, versioned
-   profile. That answer is not written down anywhere a reader of the census
-   would find it. It belongs in the census spec, next to the estimand.
-2. **The boundary checker is wired into CI.** The quality job runs
-   `scripts/ci/check_identity_boundaries.py`, so direct scorer drift fails the
-   normal PR check as well as its unit test.
+**The profiles preserve divergent recall by design.** They are compatibility
+policies — the module's own docstring is explicit that this is not a claim that
+all name-matching should behave identically. So the question "which
+normalization decides a firm never received an SBIR award, for the census
+control frame?" now has an answer: a named, versioned profile. That answer is
+not written down anywhere a reader of the census would find it. It belongs in
+the census spec, next to the estimand.
 
 Configuration has a narrower remaining problem: nine direct `yaml.safe_load`
 call sites remain outside `sbir_etl/config/loader.py` and the shared strict
