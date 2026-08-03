@@ -40,12 +40,6 @@ repos:
             pydantic,
           ]
 
-  # Markdown lint (formatting check, mirrors weekly.yml markdown-lint job)
-  - repo: https://github.com/DavidAnson/markdownlint-cli2
-    rev: v0.18.1
-    hooks:
-      - id: markdownlint-cli2
-
   # Source-layout regression guard (matches CI)
   - repo: local
     hooks:
