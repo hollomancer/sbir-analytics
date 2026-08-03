@@ -34,6 +34,7 @@ Environment:
 """
 
 import argparse
+import csv
 import hashlib
 import io
 import json
@@ -65,8 +66,6 @@ PUBLIC_FILE_DOWNLOAD_BASE = "https://sam.gov/api/prod/fileextractservices/v1/api
 PUBLIC_FILE_DOMAIN = "Entity Registration/Public V2"
 PUBLIC_FILE_PATTERN = re.compile(r"^SAM_PUBLIC_UTF-8_MONTHLY_V2_(\d{8})\.ZIP$")
 ENTITY_API_URL = "https://api.sam.gov/entity-information/v3/entities"
-MIN_CANONICAL_ROW_COUNT = 50_000
-
 DEFAULT_DEST = "data/raw/sam_gov"
 PARQUET_NAME = "sam_entity_records.parquet"
 PARQUET_NAME_PARTIAL = "sam_entity_records_partial.parquet"
@@ -98,6 +97,38 @@ REQUIRED_COLUMNS = [
     "naics_code_string",
     "duns_number",
 ]
+
+# GSA's Public V2 layout is positional and contains 142 pipe-delimited fields.
+# The monthly file has BOF/EOF control records rather than a header row. These
+# zero-based positions are pinned to the official Public V2 extract layout:
+# https://open.gsa.gov/api/sam-entity-extracts-api/v1/
+# SAM_Entity_Management_Public_V2_Extract_Layout.pdf
+PUBLIC_V2_FIELD_COUNT = 142
+PUBLIC_V2_POSITION_MAP = {
+    0: "unique_entity_id",
+    1: "duns_number",
+    3: "cage_code",
+    5: "registration_status",
+    11: "legal_business_name",
+    12: "dba_name",
+    15: "physical_address_line_1",
+    16: "physical_address_line_2",
+    17: "physical_address_city",
+    18: "physical_address_state",
+    19: "physical_address_zip_postal_code",
+    32: "primary_naics",
+    34: "naics_code_string",
+    141: "end_of_record",
+}
+PUBLIC_V2_COLUMNS = tuple(
+    PUBLIC_V2_POSITION_MAP.get(position, f"public_v2_field_{position + 1}")
+    for position in range(PUBLIC_V2_FIELD_COUNT)
+)
+PUBLIC_V2_CONTROL_PATTERN = re.compile(
+    r"^(?P<marker>BOF|EOF) PUBLIC(?: V2)? "
+    r"(?P<first_date>\d{8}) (?P<file_date>\d{8}) "
+    r"(?P<row_count>\d{7}) (?P<sequence>\d{7})$"
+)
 
 # SAM.gov CSV/DAT field names → our column names.
 # The bulk extract .dat files use UPPER SNAKE or space-separated headers.
@@ -543,6 +574,9 @@ def _parse_csv(fh) -> pd.DataFrame:
     # SAM.gov .dat files use pipe (|) delimiter; CSV uses comma
     sample = fh.read(2048)
     fh.seek(0)
+    if sample.startswith(b"BOF PUBLIC"):
+        return _parse_public_v2(fh)
+
     delimiter = "|" if sample.count(b"|") > sample.count(b",") else ","
     print(f"   Detected delimiter: {'pipe' if delimiter == '|' else 'comma'}")
 
@@ -577,6 +611,75 @@ def _parse_csv(fh) -> pd.DataFrame:
     return df
 
 
+def _parse_public_v2(fh) -> pd.DataFrame:
+    """Parse and validate a headerless SAM Public V2 monthly extract."""
+
+    header = fh.readline().decode("utf-8-sig").rstrip("\r\n")
+    header_match = PUBLIC_V2_CONTROL_PATTERN.fullmatch(header)
+    if header_match is None or header_match.group("marker") != "BOF":
+        raise ValueError("SAM Public V2 extract has an invalid BOF control record")
+
+    expected_rows = int(header_match.group("row_count"))
+    expected_trailer = f"EOF{header[3:]}"
+    chunks = []
+    trailer_records: list[str] = []
+
+    print("   Detected headerless SAM Public V2 positional layout")
+    reader = pd.read_csv(
+        fh,
+        dtype=str,
+        delimiter="|",
+        header=None,
+        names=PUBLIC_V2_COLUMNS,
+        usecols=sorted(PUBLIC_V2_POSITION_MAP),
+        chunksize=100_000,
+        quoting=csv.QUOTE_NONE,
+        on_bad_lines="error",
+        encoding_errors="strict",
+    )
+    try:
+        for i, chunk in enumerate(reader):
+            trailer_mask = chunk["unique_entity_id"].str.startswith("EOF PUBLIC", na=False)
+            trailer_records.extend(chunk.loc[trailer_mask, "unique_entity_id"].tolist())
+            data = chunk.loc[~trailer_mask]
+            if not data["end_of_record"].eq("!end").all():
+                raise ValueError("SAM Public V2 extract contains a malformed positional record")
+            chunks.append(data.drop(columns="end_of_record")[REQUIRED_COLUMNS].fillna(""))
+            if (i + 1) % 5 == 0:
+                print(f"   Parsed {(i + 1) * 100_000:,} rows...", end="\r")
+    except pd.errors.ParserError as exc:
+        raise ValueError("SAM Public V2 extract contains a malformed positional record") from exc
+
+    if trailer_records != [expected_trailer]:
+        raise ValueError("SAM Public V2 extract has a missing or mismatched EOF control record")
+    if not chunks:
+        raise ValueError("SAM Public V2 extract contains no entity records")
+
+    frame = pd.concat(chunks, ignore_index=True)
+    if len(frame) != expected_rows:
+        raise ValueError(
+            "SAM Public V2 entity count does not match its BOF/EOF control records: "
+            f"expected {expected_rows:,}, parsed {len(frame):,}"
+        )
+    _validate_public_v2_identity_fields(frame)
+    frame.attrs["sam_expected_row_count"] = expected_rows
+    print(f"\n   {len(frame):,} validated Public V2 entity rows loaded")
+    return frame
+
+
+def _validate_public_v2_identity_fields(frame: pd.DataFrame) -> None:
+    """Fail closed when positional drift would corrupt the census identity fields."""
+
+    if list(frame.columns) != REQUIRED_COLUMNS:
+        raise ValueError("SAM Public V2 parser did not produce the pinned census field set")
+    if not frame["unique_entity_id"].str.fullmatch(r"[A-Z0-9]{12}").all():
+        raise ValueError("SAM Public V2 extract contains a missing or malformed UEI")
+    if not frame["registration_status"].isin({"A", "E"}).all():
+        raise ValueError("SAM Public V2 extract contains an invalid registration status")
+    if frame["legal_business_name"].eq("").any():
+        raise ValueError("SAM Public V2 extract contains a missing legal business name")
+
+
 def _normalise_chunk(chunk: pd.DataFrame) -> pd.DataFrame:
     """Rename columns and keep only REQUIRED_COLUMNS."""
     chunk = chunk.rename(columns={k: v for k, v in CSV_COLUMN_MAP.items() if k in chunk.columns})
@@ -586,10 +689,10 @@ def _normalise_chunk(chunk: pd.DataFrame) -> pd.DataFrame:
     return chunk[REQUIRED_COLUMNS].fillna("")
 
 
-def _is_partial_result(strategy: int | None, row_count: int) -> bool:
-    """Only the official monthly bulk file can become the canonical snapshot."""
+def _is_partial_result(strategy: int | None) -> bool:
+    """Only a structurally validated official monthly bulk file is canonical."""
 
-    return strategy != 1 or row_count < MIN_CANONICAL_ROW_COUNT
+    return strategy != 1
 
 
 # ---------------------------------------------------------------------------
@@ -610,6 +713,7 @@ def _write_local(df: pd.DataFrame, dest: Path, *, name: str = PARQUET_NAME) -> P
         "source_date": df.attrs.get("sam_source_date"),
         "source_sha256": df.attrs.get("sam_source_sha256"),
         "source_url": df.attrs.get("sam_source_url"),
+        "expected_row_count": df.attrs.get("sam_expected_row_count"),
         "row_count": len(df),
         "downloaded_at": datetime.now(UTC).isoformat(),
         "partial": name == PARQUET_NAME_PARTIAL,
@@ -695,18 +799,12 @@ def main() -> None:
             # Authenticated extract and paginated fallbacks are partial by
             # contract, regardless of row count. Only strategy 1 can produce
             # the canonical monthly snapshot.
-            partial_result = _is_partial_result(completed_strategy, len(df))
+            partial_result = _is_partial_result(completed_strategy)
             if partial_result:
-                if completed_strategy != 1:
-                    print(
-                        f"\n⚠️  Strategy {completed_strategy} is a capped fallback. "
-                        "Writing as a partial dataset regardless of row count."
-                    )
-                else:
-                    print(
-                        f"\n⚠️  Only {len(df):,} rows — below {MIN_CANONICAL_ROW_COUNT:,} "
-                        "rows. Writing as a partial dataset to avoid overwriting canonical data."
-                    )
+                print(
+                    f"\n⚠️  Strategy {completed_strategy} is a capped fallback. "
+                    "Writing as a partial dataset regardless of row count."
+                )
 
             _write_local(
                 df,

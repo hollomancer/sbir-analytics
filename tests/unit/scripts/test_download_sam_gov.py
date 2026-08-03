@@ -15,9 +15,9 @@ import pytest
 from scripts.data import download_sam_gov as download_module
 from scripts.data.download_sam_gov import (
     META_NAME,
-    MIN_CANONICAL_ROW_COUNT,
     PARQUET_NAME,
     PARQUET_NAME_PARTIAL,
+    PUBLIC_V2_FIELD_COUNT,
     REQUIRED_COLUMNS,
     _download_bulk_extract,
     _is_partial_result,
@@ -81,28 +81,16 @@ class TestWriteLocal:
         assert len(pd.read_parquet(path)) == 1234
 
 
-class TestPartialThreshold:
-    @pytest.mark.parametrize(
-        ("rows", "expect_partial"),
-        [
-            (MIN_CANONICAL_ROW_COUNT - 1, True),
-            (MIN_CANONICAL_ROW_COUNT, False),
-            (MIN_CANONICAL_ROW_COUNT + 1, False),
-        ],
-    )
-    def test_threshold_boundary(self, rows, expect_partial):
-        # Mirrors the branch in main(); guards the boundary against drift.
-        assert (rows < MIN_CANONICAL_ROW_COUNT) is expect_partial
-
+class TestPartialStrategy:
     def test_names_are_distinct(self):
         assert PARQUET_NAME != PARQUET_NAME_PARTIAL
 
     @pytest.mark.parametrize("strategy", [2, 3])
     def test_nonbulk_strategies_are_always_partial(self, strategy):
-        assert _is_partial_result(strategy, MIN_CANONICAL_ROW_COUNT * 100)
+        assert _is_partial_result(strategy)
 
-    def test_full_bulk_result_is_canonical(self):
-        assert not _is_partial_result(1, MIN_CANONICAL_ROW_COUNT)
+    def test_structurally_validated_bulk_result_is_canonical(self):
+        assert not _is_partial_result(1)
 
 
 class TestPartialSidecarIsolation:
@@ -195,15 +183,38 @@ def test_public_extract_download_url_rejects_catalog_key_mismatch() -> None:
         _public_extract_download_url(item)
 
 
+def _public_v2_record(
+    *,
+    uei: str = "CANDIDATE001",
+    status: str = "A",
+    legal_name: str = "Example LLC",
+) -> str:
+    fields = [""] * PUBLIC_V2_FIELD_COUNT
+    fields[0] = uei
+    fields[3] = "A1B2C"
+    fields[5] = status
+    fields[11] = legal_name
+    fields[15] = "10 Exact Road"
+    fields[18] = "VA"
+    fields[19] = "22030"
+    fields[32] = "541715"
+    fields[34] = "541715Y"
+    fields[141] = "!end"
+    return "|".join(fields)
+
+
+def _public_v2_file(*records: str, declared_rows: int | None = None) -> str:
+    row_count = len(records) if declared_rows is None else declared_rows
+    control_suffix = f" PUBLIC V2 00000000 20260802 {row_count:07d} 0008305"
+    return "\n".join([f"BOF{control_suffix}", *records, f"EOF{control_suffix}"])
+
+
 def test_bulk_extract_download_is_keyless_and_records_provenance(monkeypatch) -> None:
     archive = io.BytesIO()
     with zipfile.ZipFile(archive, "w") as bundle:
         bundle.writestr(
             "SAM_PUBLIC_UTF-8_MONTHLY_V2_20260802.dat",
-            "UNIQUE ENTITY ID|SAM EXTRACT CODE|LEGAL BUSINESS NAME|"
-            "PHYSICAL ADDRESS LINE 1|PHYSICAL ADDRESS PROVINCE OR STATE|"
-            "PHYSICAL ADDRESS ZIP/POSTAL CODE|CAGE CODE|PRIMARY NAICS\n"
-            "CANDIDATE001|A|Example LLC|10 Exact Road|VA|22030|A1B2C|541715\n",
+            _public_v2_file(_public_v2_record(legal_name='"Example LLC')),
         )
     archive_bytes = archive.getvalue()
     item = {
@@ -242,7 +253,36 @@ def test_bulk_extract_download_is_keyless_and_records_provenance(monkeypatch) ->
 
     assert len(result) == 1
     assert result.loc[0, "unique_entity_id"] == "CANDIDATE001"
+    assert result.loc[0, "legal_business_name"] == '"Example LLC'
     assert result.loc[0, "physical_address_zip_postal_code"] == "22030"
     assert result.attrs["sam_source_file"] == item["displayKey"]
     assert result.attrs["sam_source_sha256"] == hashlib.sha256(archive_bytes).hexdigest()
+    assert result.attrs["sam_expected_row_count"] == 1
     assert all("api_key" not in kwargs.get("params", {}) for _, kwargs in calls)
+
+
+def test_public_v2_parser_fails_closed_on_control_record_count_mismatch() -> None:
+    archive = io.BytesIO()
+    with zipfile.ZipFile(archive, "w") as bundle:
+        bundle.writestr(
+            "SAM_PUBLIC_UTF-8_MONTHLY_V2_20260802.dat",
+            _public_v2_file(_public_v2_record(), declared_rows=2),
+        )
+    archive.seek(0)
+
+    with pytest.raises(ValueError, match="entity count does not match"):
+        download_module._parse_zip(archive)
+
+
+def test_public_v2_parser_fails_closed_on_positional_drift() -> None:
+    malformed = _public_v2_record().rsplit("|", 1)[0]
+    archive = io.BytesIO()
+    with zipfile.ZipFile(archive, "w") as bundle:
+        bundle.writestr(
+            "SAM_PUBLIC_UTF-8_MONTHLY_V2_20260802.dat",
+            _public_v2_file(malformed),
+        )
+    archive.seek(0)
+
+    with pytest.raises(ValueError, match="malformed positional record"):
+        download_module._parse_zip(archive)

@@ -25,7 +25,7 @@ information. The supported bulk path is local parquet storage; the AWS/S3 handof
 
 The downloader tries these routes in order:
 
-1. SAM.gov bulk extract API.
+1. SAM.gov Public Data Services catalog and latest UTF-8 monthly Public V2 bulk file (keyless).
 2. Entity API asynchronous CSV extract.
 3. A bounded paginated API fallback.
 
@@ -37,13 +37,16 @@ A full result is written as:
 └── sam_entity_records.meta.json
 ```
 
-If the result has fewer than the canonical minimum row count, it is written as
-`sam_entity_records_partial.parquet` so a small fallback cannot overwrite the full dataset.
+The Public V2 `.dat` has no header row. The downloader applies GSA's pinned 142-field positional
+layout, requires matching BOF/EOF control records and record count, and validates the census identity
+fields before writing the canonical parquet. Strategies 2 and 3 are always written as
+`sam_entity_records_partial.parquet`, so a capped fallback cannot overwrite the full dataset.
 
 ## Prerequisites
 
-Set `SAM_GOV_API_KEY` in the process environment. SAM.gov keys expire periodically, commonly around
-60 days, so authentication failures should prompt key rotation rather than blind retries.
+No API key is needed for the supported Public Data Services bulk route. Set `SAM_GOV_API_KEY` only if
+you intend to use strategy 2 or 3. SAM.gov keys expire periodically, commonly around 60 days, so
+authentication failures on those fallbacks should prompt key rotation rather than blind retries.
 
 The live key belongs in `.env.server`, never committed YAML. Before running the live download, read
 the [Mac mini runbook](../deployment/mac-mini-server.md#source-data-downloads).
@@ -64,7 +67,7 @@ Confirm a manual run on the deployment host before enabling the schedule.
 Development checkout, explicit destination:
 
 ```bash
-SAM_GOV_API_KEY=... uv run python scripts/data/download_sam_gov.py \
+uv run python scripts/data/download_sam_gov.py --strategy 1 \
   --dest data/raw/sam_gov
 ```
 
@@ -90,8 +93,10 @@ The downloader normalizes source headers into the columns downstream enrichment 
 - `naics_code_string`
 - `duns_number`
 
-Matching should prefer stable identifiers such as UEI and DUNS. Name-based matching uses the
-shared company identity primitives under `sbir_etl/identity/`.
+The post-April 2022 public extract preserves the DUNS position but does not populate DUNS values.
+Matching therefore prefers UEI and CAGE, with DUNS supplied only by separately audited official
+identity-link records. Name/address keys can quarantine an uncertain candidate but do not establish
+an identifier match.
 
 ## Failure modes
 
@@ -99,7 +104,8 @@ shared company identity primitives under `sbir_etl/identity/`.
 | --- | --- | --- |
 | Exit code 2 | API key missing, invalid, or expired | Rotate the key and update the host secret |
 | Exit code 3 | Daily request quota exhausted | Retry after the reported reset time |
-| Partial parquet produced | Bulk routes failed or returned too few rows | Preserve the canonical parquet; inspect logs and retry later |
+| Public V2 control/schema error | Source format, record count, or identity fields failed validation | Preserve the prior canonical parquet; inspect the catalog file and parser contract |
+| Partial parquet produced | Only an authenticated capped fallback succeeded | Preserve the canonical parquet; inspect logs and retry strategy 1 later |
 | Empty entity asset | File missing or schema mismatch | Check the configured local path and normalized columns |
 
 Never replace `sam_entity_records.parquet` manually with a partial download. Review the job metadata
