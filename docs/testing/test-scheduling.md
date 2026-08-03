@@ -30,6 +30,19 @@ materially drift:
 uv run pytest tests/unit/ -m "not slow" --store-durations -n0
 ```
 
+To reproduce one CI group locally, use the same `pytest-split` arguments. Groups are numbered
+1 through 4:
+
+```bash
+uv run pytest tests/unit/ -m "not slow" \
+  --splits 4 --group 1 \
+  --splitting-algorithm least_duration \
+  --durations-path .test_durations
+```
+
+`pytest-split` assigns tests using recorded duration; xdist may still parallelize within a group.
+Do not use the retired `pytest-shard`, `--shard-id`, or zero-based shard numbering.
+
 ## Pushes to `main` and manual runs
 
 Pushes to `main` and `workflow_dispatch` run the full `tests/` tree with a Neo4j service and

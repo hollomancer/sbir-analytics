@@ -51,6 +51,18 @@ export SBIR_ETL__NEO4J__BOLT_URL=bolt://localhost:7687
 uv run python scripts/run_e2e_tests.py --scenario minimal --timeout 120
 ```
 
+For host-based development, start the repository's `dev` Neo4j service first:
+
+```bash
+make neo4j-up
+make neo4j-check
+```
+
+This instance uses the credentials in `.env` and persists its development volume. The Compose
+`ci` profile used by the Docker E2E targets is isolated and disposable. GitHub Actions starts its
+own authenticated Neo4j service for the full post-merge suite; pull-request unit shards do not
+start Neo4j. None of these test environments use the live Mac mini graph.
+
 Supported scenarios are:
 
 | Scenario | Pytest selection |

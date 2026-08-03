@@ -85,4 +85,4 @@ that need Neo4j, credentials, external data, or a real API must state and enforc
 - [Categorization Testing](categorization-testing.md)
 - [Company Categorization Validation](validation-testing.md)
 - [End-to-End Testing](e2e-testing.md)
-- [Quality Assurance](../guides/quality-assurance.md)
+- [Data quality contract](../steering/data-quality.md)

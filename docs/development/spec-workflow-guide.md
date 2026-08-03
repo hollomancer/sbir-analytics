@@ -1,220 +1,126 @@
-# Specification Workflow Guide
+---
+Type: Development Guide
+Owner: engineering@project
+Last-Reviewed: 2026-08-03
+Status: active
+---
 
-This guide explains how to use specifications for feature development in the SBIR ETL pipeline project.
+# Specification Workflow
 
-## Overview
+Specifications connect research intent to bounded implementation work. They live in `specs/`, but
+the presence of a directory does not make a spec active: check [the status registry](../../specs/status.md)
+before starting work.
 
-This project uses specification-driven development with structured requirements, design documents, and task lists to guide implementation. All specifications are stored in `specs/` with a consistent structure.
+## Scope gate
 
-## Spec Structure
+Every new or revived spec must state:
 
-Each specification consists of:
+1. The research-question ID it serves, or the concrete operational obligation it addresses.
+2. The target [epistemic tier](../steering/epistemic-tiers.md): `primitives`, `pipelines`,
+   `evidence`, or `exploratory`.
+3. What is explicitly out of scope.
+4. The verification that will prove the work complete.
+
+If no current question or obligation needs the capability, do not create an implementation spec.
+Capture a short research note instead.
+
+## Required files
 
 ```text
-specs/[feature-name]/
-├── requirements.md    # EARS-formatted requirements with user stories
-├── design.md         # Technical design and architecture (optional)
-└── tasks.md          # Implementation task list
+specs/<feature>/
+├── requirements.md    required behavior, scope, tier, and acceptance criteria
+├── design.md          component boundaries and decisions when design is non-trivial
+└── tasks.md           ordered, verifiable implementation work
 ```
 
-## Creating a New Spec
+### Requirements
 
-### 1. Requirements Document (`requirements.md`)
-
-The requirements document follows this structure:
+Begin `requirements.md` with a compact context block:
 
 ```markdown
+# <Feature> Requirements
 
-## Requirements Document
-
-## Introduction
-
-[Brief description of the feature/system]
-
-## Glossary
-
-- **Term**: Definition
-- **System_Name**: System component definition
-
-## Requirements
-
-### Requirement 1
-
-**User Story:** As a [role], I want [feature], so that [benefit]
-
-#### Acceptance Criteria
-
-1. THE [System_Name] SHALL [requirement using EARS pattern]
-2. WHEN [condition], THE [System_Name] SHALL [response]
-3. WHILE [state], THE [System_Name] SHALL [behavior]
+- Research question: B3
+- Target epistemic tier: pipelines
+- Status: active
+- Out of scope: causal claims; new external services
 ```
 
-#### EARS Patterns
+Write measurable acceptance criteria. EARS phrasing is useful when it makes behavior clearer:
 
-Use these EARS (Easy Approach to Requirements Syntax) patterns:
+- `THE <system> SHALL <behavior>`
+- `WHEN <event>, THE <system> SHALL <response>`
+- `IF <failure>, THEN THE <system> SHALL <safe behavior>`
 
-- **Ubiquitous**: `THE <system> SHALL <response>`
-- **Event-driven**: `WHEN <trigger>, THE <system> SHALL <response>`
-- **State-driven**: `WHILE <condition>, THE <system> SHALL <response>`
-- **Unwanted event**: `IF <condition>, THEN THE <system> SHALL <response>`
-- **Optional feature**: `WHERE <option>, THE <system> SHALL <response>`
+Do not use formal phrasing to hide an unmeasurable requirement.
 
-### 2. Design Document (`design.md`)
+### Design
 
-Include these sections as needed:
+Add `design.md` when work changes package boundaries, data contracts, identity behavior,
+orchestration, persistence, security, or deployment. Cover only what the implementation needs:
+
+- current and proposed data flow;
+- components and interfaces;
+- configuration and failure behavior;
+- data provenance and identity assumptions;
+- testing and migration strategy;
+- consequences for evidence or citability.
+
+Follow the [architecture overview](../architecture/detailed-overview.md) and steering contracts.
+Record difficult-to-reverse technology choices as an [ADR](../decisions/README.md), not only in a
+feature spec.
+
+### Tasks
+
+Tasks should be small, ordered, and independently verifiable:
 
 ```markdown
+- [ ] 1. Add the parser
+  - Verify: focused unit tests pass
+  - Requirements: 1.1, 1.2
 
-## Design Document
-
-## Overview
-
-[High-level description]
-
-## Architecture
-
-[System architecture and components]
-
-## Components and Interfaces
-
-[Detailed component descriptions]
-
-## Data Models
-
-[Data structures and schemas]
-
-## Error Handling
-
-[Error scenarios and responses]
-
-## Testing Strategy
-
-[Testing approach and coverage]
+- [ ] 2. Expose the Dagster asset
+  - Verify: definitions load and the asset test passes
+  - Requirements: 2.1
 ```
 
-### 3. Task List (`tasks.md`)
+Optional work must be marked and must not be required by the definition of done.
 
-Structure tasks hierarchically:
+## Lifecycle
 
-```markdown
+1. **Orient:** check `specs/status.md`, the research questions, current code, and archived decisions.
+2. **Challenge scope:** confirm the smallest change that answers the stated need.
+3. **Implement:** work through tasks in dependency order and keep requirements traceable.
+4. **Verify:** run the narrowest relevant tests plus repository guards.
+5. **Reconcile:** update tasks, status registry, architecture/runbooks, and user-facing docs.
+6. **Archive:** move completed or superseded specs under `specs/archive/` when the status registry
+   identifies them as archive candidates.
 
-## Implementation Plan
+Do not silently treat a deferred, gated, or archive-candidate spec as current architecture.
 
-- [ ] 1. Major task category
-- [ ] 1.1 Specific implementation task
-  - Detailed description of what to implement
-  - Technical requirements and constraints
-  - _Requirements: 1.1, 2.3_ (reference to requirements)
+## Evidence promotion
 
-- [ ] 1.2 Another specific task
-  - Implementation details
-  - _Requirements: 1.2_
+Code completion can establish a primitive or pipeline; it does not automatically establish
+validated evidence. Work targeting the `evidence` tier also needs a versioned
+`studies/<study-id>/study.yaml` contract with frozen inputs, parameters, implementation references,
+permitted claims, and validation status. Follow [Study contracts](../../studies/README.md).
 
-- [ ]* 1.3 Optional task (marked with *)
-  - Optional tasks can be skipped
-  - Usually testing or documentation tasks
-  - _Requirements: 1.1_
-```
+Question statuses should distinguish:
 
-## Executing Tasks
+- **computable:** the repository can produce a bounded result;
+- **validated:** a study contract and checks support the interpretation;
+- **citable:** the manifest explicitly permits external claims.
 
-### Using Specs in the IDE
+## Historical OpenSpec content
 
-1. Open the task file (`specs/[feature]/tasks.md`)
-2. Click "Start task" next to a task item
-3. The AI assistant will implement the task based on:
-   - Requirements from `requirements.md`
-   - Design guidance from `design.md`
-   - Task-specific instructions
+The OpenSpec migration is complete. Its records remain under
+`specs/archive/completed-migrations/openspec-to-kiro-migration/` for provenance only. Do not use
+that material as active requirements.
 
-### Task Execution Guidelines
+## Related references
 
-- **Sequential execution**: Complete tasks in order when dependencies exist
-- **Incremental progress**: Each task builds on previous work
-- **Requirement traceability**: Tasks reference specific requirements
-- **Optional tasks**: Tasks marked with `*` can be skipped for MVP
-
-## Best Practices
-
-### Requirements Writing
-
-1. **Use active voice**: "The system SHALL process data" not "Data will be processed"
-2. **Be specific**: Avoid vague terms like "quickly" or "efficiently"
-3. **One requirement per statement**: Don't combine multiple requirements
-4. **Measurable criteria**: Include specific thresholds and limits
-5. **Consistent terminology**: Use glossary terms consistently
-
-### Task Planning
-
-1. **Atomic tasks**: Each task should be completable in one session
-2. **Clear objectives**: Task descriptions should be unambiguous
-3. **Proper sequencing**: Order tasks to build incrementally
-4. **Requirement links**: Always reference which requirements the task addresses
-
-### Design Documentation
-
-1. **Architecture first**: Start with high-level architecture
-2. **Component interfaces**: Define clear boundaries and contracts
-3. **Data flow**: Show how data moves through the system
-4. **Error scenarios**: Plan for failure cases
-5. **Testing strategy**: Include testability in design
-
-## Common Patterns
-
-### Feature Implementation
-
-1. **Analysis**: Understand the problem and requirements
-2. **Design**: Create technical design and architecture
-3. **Planning**: Break down into implementable tasks
-4. **Implementation**: Execute tasks incrementally
-5. **Validation**: Verify requirements are met
-
-### Requirement Categories
-
-- **Functional**: What the system must do
-- **Performance**: Speed, throughput, resource usage
-- **Security**: Authentication, authorization, data protection
-- **Reliability**: Error handling, recovery, availability
-- **Usability**: User interface and experience requirements
-
-## Integration with Existing Code
-
-### Codebase Alignment
-
-- Follow existing patterns in the multi-package directory structure
-- Use established configuration patterns in `config/`
-- Integrate with Dagster assets and jobs
-- Maintain compatibility with Docker deployment
-
-### Testing Integration
-
-- Unit tests in `tests/unit/`
-- Integration tests in `tests/integration/`
-- Follow existing test patterns and fixtures
-- Maintain ≥85% test coverage
-
-## Troubleshooting
-
-### Common Issues
-
-1. **Requirements too vague**: Add specific acceptance criteria
-2. **Tasks too large**: Break down into smaller, atomic tasks
-3. **Missing dependencies**: Ensure task ordering reflects dependencies
-4. **Unclear design**: Add more detail to architecture and components
-
-### Getting Help
-
-- Review existing specs in `specs/` for examples
-- Consult `CLAUDE.md` for AI assistant guidance
-
-## Examples
-
-See these existing specs for reference:
-
-- **Simple feature**: `specs/iterative_api_enrichment/`
-- **Complex system**: `specs/data_pipeline_consolidated/`
-- **Migration example**: `specs/archive/completed-migrations/openspec-to-kiro-migration/`
-
-## Migration from OpenSpec
-
-If you encounter references to OpenSpec, use specs in `specs/` instead. The migration is complete.
+- [Specification status registry](../../specs/status.md)
+- [Research questions](../research-questions.md)
+- [Epistemic tiers](../steering/epistemic-tiers.md)
+- [Architecture overview](../architecture/detailed-overview.md)
+- [Testing index](../testing/index.md)

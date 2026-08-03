@@ -1,4 +1,8 @@
-# Research Plan Alignment
+# Research Plan Alignment (Historical Snapshot)
+
+> This point-in-time milestone map is archived. Use the canonical
+> [research-question inventory](../../research-questions.md) for scope and
+> [`specs/status.md`](../../../specs/status.md) for implementation lifecycle.
 
 Maps the [SBIR Analytics Research Plan](# "Obsidian: SBIR Analytics Research Plan — Summary") milestones to codebase components, specs, and remaining work.
 

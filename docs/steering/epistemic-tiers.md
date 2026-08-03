@@ -10,7 +10,7 @@ number it produces can be quoted to a program officer. Two artifacts with
 identical technical roles can differ completely in how much they can be trusted,
 and the repository has to make that difference visible.
 
-See [architecture/detailed-overview.md §10](../architecture/detailed-overview.md)
+See the [architecture evidence boundary](../architecture/detailed-overview.md#evidence-boundary)
 for how this relates to the current directory layout.
 
 ## Why this exists

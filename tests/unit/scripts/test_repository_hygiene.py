@@ -45,6 +45,32 @@ def test_live_doc_link_audit_resolves_relative_links(tmp_path: Path):
     assert violations[0].path == "docs/development/example.md"
 
 
+def test_live_doc_link_audit_validates_file_and_same_page_anchors(tmp_path: Path):
+    source = _write(
+        tmp_path,
+        "docs/development/example.md",
+        "# Local Heading\n"
+        "[same](#local-heading)\n"
+        "[other](../target.md#repeated-heading-1)\n"
+        "[explicit](../target.md#stable-id)\n"
+        "[missing](../target.md#old-heading)\n",
+    )
+    target = _write(
+        tmp_path,
+        "docs/target.md",
+        "# Repeated heading\n"
+        "# Repeated heading\n"
+        "# Research & development\n"
+        '<a id="stable-id"></a>\n',
+    )
+
+    violations = hygiene.scan_missing_live_doc_links([source, target], root=tmp_path)
+
+    assert len(violations) == 1
+    assert violations[0].message == "missing Markdown anchor #old-heading in ../target.md"
+    assert hygiene._github_heading_slug("Research & development") == "research--development"
+
+
 def test_archive_guard_ignores_archive_scripts_and_flags_live_references(tmp_path: Path):
     live_code = _write(
         tmp_path,

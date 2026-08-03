@@ -1,4 +1,8 @@
-# GitHub Actions Migration Plan
+# GitHub Actions Migration Plan (Completed)
+
+> Historical record. Scheduled operational workloads now run on the Mac mini;
+> GitHub Actions is CI only. Use the current
+> [deployment documentation](../../deployment/README.md) for operations.
 
 Move the five scheduled workloads that used to run in GitHub Actions onto the
 Mac mini, as Dagster schedules or host cron. GitHub Actions is now tests only:

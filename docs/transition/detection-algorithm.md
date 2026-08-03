@@ -1,5 +1,8 @@
 # Transition Detection Algorithm
 
+> **Scope:** This guide describes the `sbir_ml.transition` library design. The current Dagster
+> scoring asset uses a smaller rule-based path; see the [current overview](overview.md).
+
 ## Overview
 
 The Transition Detection Algorithm is a multi-signal scoring system that identifies likely commercialization pathways from SBIR awards to federal contracts. It combines evidence from six independent signals to produce a composite likelihood score and confidence classification.

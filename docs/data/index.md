@@ -77,6 +77,24 @@ periodically; treat authentication failures as rotation prompts. See
 patent dataset and uses browser automation for assignment archives because the portal no longer
 serves them to a plain HTTP client. See [USPTO Data Refresh](uspto-data-refresh.md).
 
+## Research and pilot sources
+
+These sources support newer capital-formation, ownership, and procurement questions but are not
+all scheduled operational pipelines. Their coverage is bounded and should not be generalized
+beyond the documented study or pilot.
+
+| Source | Current use | Maturity |
+| --- | --- | --- |
+| SEC EDGAR and Form D | Public-company ownership, disclosed fundraising, and transaction signals | Research workflows; public-filer lower bound |
+| State UCC filings | Secured-debt and financing-pathway pilots | State-specific exploratory pilots |
+| Public M&A and capital-event evidence | Unified firm event timeline | Local Parquet research output; see [Capital events](capital-events.md) |
+| FFATA/FSRS subawards | Prime-to-awardee attribution | Specified recovery work; not a general scheduled source |
+| Other Transaction and consortium records | Procurement-pathway classification | Bounded methodology work; coverage varies by source |
+
+Relevant methods and data cuts live under [`docs/research/`](../research/) and `studies/`. A row in
+this table means the repository has a documented use, not that the source is complete, loaded into
+Neo4j, or externally citable.
+
 ## Quality controls
 
 Shared thresholds live in `config/base.yaml`, including SBIR completeness/uniqueness gates and
@@ -85,7 +103,7 @@ vintages, and failure reasons rather than relying on static numbers in documenta
 
 Related references:
 
-- [Quality Assurance](../guides/quality-assurance.md)
+- [Data quality contract](../steering/data-quality.md)
 - [Configuration](../configuration.md)
 - [SBIR awards columns](sbir_awards_columns.json)
 - [USPTO Patents Schema](../schemas/uspto-patents.md)

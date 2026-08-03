@@ -268,4 +268,4 @@ def enrichment_success_rate_check(enriched_sbir_awards: pd.DataFrame) -> AssetCh
 - **[enrichment-patterns.md](enrichment-patterns.md)** - Enrichment performance monitoring patterns
 - **[neo4j-patterns.md](neo4j-patterns.md)** - Graph database loading patterns
 - **[structure.md](structure.md)** - Code organization and asset structure
-- **[quick-reference.md](quick-reference.md)** - Asset check templates and configuration snippets
+- **[Configuration reference](../configuration.md)** - Current settings and environment overrides

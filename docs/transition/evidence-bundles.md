@@ -1,5 +1,9 @@
 # Evidence Bundle Structure & Interpretation Guide
 
+> **Scope:** This is the library evidence model, not proof that every field is populated by the
+> current Dagster path. Confirm materialized fields against the
+> [transition dictionary](../data/dictionaries/transition-fields-dictionary.md).
+
 ## Overview
 
 An **evidence bundle** is a comprehensive audit trail that documents how and why a particular award-contract pair was identified as a transition. It contains:

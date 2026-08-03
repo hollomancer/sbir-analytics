@@ -13,7 +13,8 @@ Quick setup guide for the SBIR ETL pipeline.
 
 ## Local Development
 
-The project uses Python 3.11 and `uv` for dependency management. The recommended local flow mirrors the repository README:
+The project supports Python 3.11 or 3.12 and uses `uv` for dependency management. The recommended
+local flow mirrors the repository README:
 
 ```bash
 # Clone and install
@@ -61,6 +62,9 @@ docker compose --profile dev up neo4j -d
 # Access at http://localhost:7474 (neo4j/password)
 ```
 
+The equivalent Make target is `make neo4j-up`. Container profiles and lifecycle commands belong in
+the [Docker guide](../development/docker.md).
+
 ## First Steps
 
 1. **Materialize assets** - In Dagster UI, materialize `raw_sbir_awards`
@@ -70,22 +74,16 @@ docker compose --profile dev up neo4j -d
 ## Development Workflow
 
 ```bash
-# Run tests
-uv run pytest
-
-# Code quality
-uv run ruff check .
-uv run mypy sbir_etl/
-
-# Format code
-uv run ruff format .
+make test-unit
+make check
 ```
 
 ## Common Issues
 
 - **Neo4j connection failed**: Check `.env` credentials
 - **Import errors**: Run `make install` (or `uv sync --extra stack-dev`) to update the full stack
-- **Memory issues**: Reduce `SBIR_ETL__PIPELINE__CHUNK_SIZE`
+- **Memory issues**: Reduce `SBIR_ETL__ENRICHMENT__PERFORMANCE__CHUNK_SIZE`; confirm the setting in
+  the [configuration reference](../configuration.md) before adding another override
 
 ## Next Steps
 

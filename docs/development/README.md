@@ -7,30 +7,27 @@ Status: active
 
 # Development Documentation
 
-This directory contains guides and documentation for developers working on the SBIR ETL pipeline.
+Use this page as a router; commands and rules have one canonical owner.
 
-## Docker Development
+## Start here
 
-**Getting started with Docker:**
+- [Getting started](../getting-started/README.md) - Installation and first local run
+- [Docker development](docker.md) - Compose profiles, data, and troubleshooting
+- [Testing index](../testing/index.md) - Local, Docker, E2E, and CI verification
+- [Configuration reference](../configuration.md) - Load order and environment overrides
 
-- **[Docker Guide](docker.md)** - Complete Docker setup and usage guide
-
-**Related:**
-
-- [Docker Development Guide](docker.md) - Advanced Docker usage
-- [Testing in Docker](../testing/index.md#2-docker--compose-workflows) - Running tests
-
-## Code Quality
+## Engineering conventions
 
 - [Exception Handling](exception-handling.md) - Custom exception hierarchy and patterns
 - [Logging Standards](logging-standards.md) - When to use logger vs console.print
-- [Cleanup Inventory](cleanup-inventory.md) - Current simplification, stale-content, and CI/test drift inventory
 
-## Workflow
+## Planning and architecture
 
 - [Spec Workflow Guide](spec-workflow-guide.md) - Using specifications
+- [Architecture overview](../architecture/detailed-overview.md) - Package and deployment boundaries
+- [Steering documents](../steering/) - Durable identity, evidence, orchestration, and quality rules
 
 ---
 
 For deployment guides, see [Deployment Documentation](../deployment/README.md).
-For testing guides, see [Testing Documentation](../testing/README.md).
+For testing guides, see the [Testing Index](../testing/index.md).

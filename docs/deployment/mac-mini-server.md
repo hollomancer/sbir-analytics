@@ -377,18 +377,13 @@ bearer token) succeed, while Neo4j remains unreachable over the tailnet.
 - **Local, always-on:** API, Neo4j, Dagster, snapshots, DuckDB, core analytics.
 - **Local, on-demand:** public USAspending Contracts_Full download and bounded
   SBIR-vendor filtering into Parquet.
-- **Local, on-demand (PR 2):** CET/scikit-learn and bounded USPTO NLP.
-- **Managed batch:** complete USAspending database extraction, fiscal analysis,
-  and unfiltered transition jobs via S3 + AWS Batch/Fargate
-  ([docs](https://docs.aws.amazon.com/batch/latest/userguide/fargate.html)).
-- **Managed inference / vector search:** Hugging Face Inference Providers plus
-  Qdrant Cloud, replacing exhaustive award-by-patent similarity in later PRs.
-  Qdrant's free cluster is evaluation-only and requires S3 exports as the
-  durable rebuild source
-  ([docs](https://qdrant.tech/documentation/cloud/create-cluster/)).
+- **Local, on-demand and capacity-gated:** CET/scikit-learn, bounded USPTO NLP,
+  fiscal analysis, and transition jobs. Run one at a time and measure memory
+  before scheduling; see [Heavy assets](#heavy-assets).
+- **Not currently operated:** complete USAspending database extraction,
+  unbounded similarity searches, managed batch, and managed vector search.
+  Proposed external services are not part of the current architecture until
+  code, credentials, durable rebuild inputs, and an owning runbook exist.
 
-## Follow-up PRs
-
-1. Isolated local analysis runner; correct `Dockerfile.full` dependency drift.
-2. Reconcile AWS Batch, CDK, and GitHub workflow handoffs.
-3. Vector-store interface, Qdrant integration, chunked indexing, top-k retrieval.
+The Mac mini is the only data plane. Do not route work through retired AWS
+Batch, Fargate, Lambda, Step Functions, or S3 components.
