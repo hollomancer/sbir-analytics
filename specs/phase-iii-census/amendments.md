@@ -175,3 +175,30 @@ files before materialization.
   each had its pre-specified six rows. No metric value was printed, inspected, quoted, or
   selected, and no census parquet existed when this revision was recorded. No
   negative-control or placebo result existed.
+
+## Revision 9 — First-contract business-size matching covariate
+
+- **Approved:** 2026-08-03.
+- **Git-history anchor:** The commit that first adds Revision 9 to this file is the
+  approval-record anchor; its identifier is intentionally not embedded in the content it
+  hashes.
+- **Reason:** Public SAM entity data does not provide the proposed employee-count measure,
+  while FPDS/USAspending records the contracting officer's NAICS-specific small-business
+  determination on federal contracts. The repository owner approved using that public,
+  government-defined classification at the firm's first federal contract instead of
+  inventing employee-band cutoffs or treating procurement volume as firm size.
+- **Matching-rule impact:** Replace `employee-count band` with the binary
+  `first-contract business-size class`. Both arms use the complete February contract
+  history and the same normalized-UEI, earliest-action-date, `business_categories`
+  derivation. Missing or conflicting classifications are reported exclusions and are
+  never imputed. Primary NAICS, state, first federal contract year, PSC family, the 1–3
+  control ratio, balance reporting, and the common filter path are unchanged.
+- **Criteria impact:** None. No census universe, inclusion clause, clause order,
+  sensitivity cell, window endpoint, agency predicate, estimand, output metric, score,
+  model, or cutoff changes. Phase 1 artifacts are not rerun or reinterpreted by this
+  matching-only amendment.
+- **Visibility at approval:** The complete Phase 1 cumulative ladder and six-cell
+  sensitivity artifacts had been materialized with verified provenance, and the
+  one-factor sensitivity asset check had passed. No control candidate frame, eligibility
+  result, matched set, balance statistic, negative-control criteria distribution,
+  overlap coefficient, full-criteria ratio, or placebo result had been computed or seen.

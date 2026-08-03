@@ -4,12 +4,13 @@
 Phase II award-grain, SBIR.gov source-row-grain, and exact-key multi-supplemental
 reconciliation amendments below were approved before any result was materialized. The
 source layer and prior-grain implementation now live in a separate prerequisite change.
-The Phase 1 census is implemented and fixture-verified;
-on 2026-08-02, the repository owner superseded only the prior sequencing pause and
-authorized attempting production materialization subject to the existing post-write
-one-factor sensitivity check. Unresolved negative-control and placebo questions remain
-deferred; this change does not authorize a headline cell or interpretation as validated
-Phase III.
+The Phase 1 census is implemented and its February artifacts were provenance-verified and
+materialized. On 2026-08-03, after Phase 1 materialization but before any control frame,
+balance table, negative-control result, or placebo result existed, the repository owner
+approved replacing the unavailable employee-count band with the government-defined
+first-contract business-size class specified below. Unresolved control-eligibility and
+placebo questions remain deferred; this change does not authorize a headline cell or
+interpretation as validated Phase III.
 **Design date:** 2026-07-31.
 **Approval date:** 2026-08-01.
 **Provenance-amendment approval date:** 2026-08-01.
@@ -307,9 +308,10 @@ control discrimination; not validated true Phase III status.”
   below.
 - Control eligibility is evaluated against the complete available SBIR/STTR award
   history. Unreliable SBIR-negative status is a stop, not an assumption.
-- Matching is 1–3 controls on primary NAICS, employee-count band, state, first federal
-  contract year, and PSC family. Any new band boundary is a later stop-and-ask decision;
-  none is introduced here.
+- Matching is 1–3 controls on primary NAICS, first-contract business-size class, state,
+  first federal contract year, and PSC family. The business-size class is the binary,
+  government-defined field specified below; it introduces no employee band or numeric
+  boundary.
 - Balance reports every matched covariate's standardized mean difference and flags
   absolute SMD above the pre-authorized `0.1` value. Unresolved key-covariate imbalance
   stops the study.
@@ -321,6 +323,50 @@ control discrimination; not validated true Phase III status.”
 
 Detailed matching, balance, and placebo interfaces belong in the post-approval
 requirements/design update. They cannot alter the criteria frozen here.
+
+### Approved first-contract business-size matching covariate
+
+Public SAM entity data does not supply the employee-count measure needed for the originally
+proposed bands. The repository owner therefore approved replacing that matching covariate
+with the contracting officer's determination of whether the recipient was a small business
+for its first federal contract. The
+[FPDS data dictionary](https://www.fpds.gov/downloads/Version_1.4.5_specs/FPDSNG_DataDictionary_V1.4.5.pdf)
+defines this determination relative to the SBA size standard for the NAICS code applicable
+to that procurement; [SBA size standards](https://www.sba.gov/federal-contracting/contracting-guide/size-standards)
+are industry-specific and generally use employees or annual receipts. This delegates the
+size boundary to the government's recorded determination instead of inventing a study
+cutoff.
+
+The exact implementation contract is:
+
+1. Use the complete February USAspending/FPDS prime-contract history for both arms and
+   group rows by normalized, nonblank recipient UEI. Do not use SAM employee counts,
+   impute a size, or branch on study arm.
+2. Define the first-contract date as the minimum nonnull contract `action_date` for that
+   UEI. The already-required first-federal-contract-year covariate is the calendar year of
+   this same date.
+3. On every contract row at that minimum date, read the USAspending
+   `business_categories` field preserved from the FPDS recipient record. A present parsed
+   category set containing the normalized token `small_business` maps to
+   `small_business`; a present parsed category set without that token maps to
+   `other_than_small_business`. Null, unparseable, or absent category data maps to
+   `missing`, not to `other_than_small_business`.
+4. If multiple contract rows share the minimum date, their nonmissing classes must be
+   unanimous. Conflicting classes map the firm to `conflict`; no award-ID or row-order
+   tie-break selects a preferred observation.
+5. `small_business` matches only `small_business`, and `other_than_small_business`
+   matches only `other_than_small_business`. A firm classified `missing` or `conflict` is
+   not match-eligible. Exclusion counts are reported separately by arm and reason.
+6. Before control matching begins, a source-coverage audit must report each class by arm
+   and stop for review if the February mirror cannot supply a usable classification. No
+   control outcome or criteria-met distribution may be computed to decide whether this
+   covariate is retained.
+
+This is a coarser size control than an employee-count band: it cannot distinguish two
+firms that both qualify as small. It is nevertheless an award-time, NAICS-aware federal
+size determination available from the same contract source on both arms. Pre-index
+obligations and contract counts remain procurement-experience measures, not substitutes
+for firm size, and are not added as matching covariates by this amendment.
 
 ## Non-goals and prohibited drift
 
