@@ -8,8 +8,10 @@ The Phase 1 census is implemented and its February artifacts were provenance-ver
 materialized. On 2026-08-03, after Phase 1 materialization but before any control frame,
 balance table, negative-control result, or placebo result existed, the repository owner
 approved replacing the unavailable employee-count band with the government-defined
-first-contract business-size class specified below. Unresolved control-eligibility and
-placebo questions remain deferred; this change does not authorize a headline cell or
+first-contract business-size class specified below. The owner subsequently ruled out the
+SBA Company Registry and approved the exact award-key recovery and fail-closed eligibility
+protocol below before any control frame or outcome existed. Unresolved source coverage and
+placebo questions remain gated; this change does not authorize a headline cell or
 interpretation as validated Phase III.
 **Design date:** 2026-07-31.
 **Approval date:** 2026-08-01.
@@ -307,7 +309,9 @@ control discrimination; not validated true Phase III status.”
   **pseudo-index**, not a claim that the control completed Phase II. It requires approval
   below.
 - Control eligibility is evaluated against the complete available SBIR/STTR award
-  history. Unreliable SBIR-negative status is a stop, not an assumption.
+  history using the exact award-key recovery and identity-envelope protocol below. A
+  confirmed awardee and an indeterminate possible awardee are both excluded. Unreliable
+  negative status is a stop, not an assumption.
 - Matching is 1–3 controls on primary NAICS, first-contract business-size class, state,
   first federal contract year, and PSC family. The business-size class is the binary,
   government-defined field specified below; it introduces no employee band or numeric
@@ -367,6 +371,61 @@ firms that both qualify as small. It is nevertheless an award-time, NAICS-aware 
 size determination available from the same contract source on both arms. Pre-index
 obligations and contract counts remain procurement-experience measures, not substitutes
 for firm size, and are not added as matching covariates by this amendment.
+
+### Approved exact award-key recovery and control-eligibility protocol
+
+The SBA Company Registry is not an available source for this study. A read-only source
+audit found that every SBIR.gov row without a valid UEI or DUNS retains at least one agency
+award key: `contract` or `agency_tracking_number`. Missing awardee identifiers are therefore
+recovered from the official award record rather than inferred from company-name similarity.
+USAspending exposes recipient UEI and legacy DUNS on both prime-contract and
+financial-assistance records, and NIH RePORTER exposes organization UEI and DUNS on project
+records. Agency award systems may be added only as documented exact-key adapters.
+
+The frozen recovery contract is:
+
+1. Preserve every retained SBIR.gov source row and its source-row fingerprint. Recovery
+   enriches the row; it never drops, combines, or rewrites the source award grain.
+2. Each source adapter declares a fixed mapping from an SBIR.gov key to an official award
+   key. Initial mappings are USAspending `PIID`, `FAIN`, or `URI` for contract and
+   assistance records, and NIH RePORTER `project_num` or `core_project_num` plus fiscal
+   year for HHS records. Agency identity and, where the official key is not globally
+   unique, award year are mandatory join components.
+3. Canonicalization is adapter-specific, documented, and tested against the official key
+   format. There is no generic fuzzy normalization, substring search, edit distance,
+   similarity score, or best-candidate ranking. Company name, address, website, email,
+   award title, and abstract never create an award-to-recipient identity link.
+4. A source row is `resolved_authoritative` only when all official records matching its
+   exact adapter key identify one recipient identity after valid UEI/DUNS normalization.
+   Zero matches are `unresolved_no_match`; multiple recipient identities are
+   `unresolved_conflict`. A source with no valid recipient identifier is
+   `unresolved_missing_identifier`.
+5. Every recovered identifier carries the SBIR source-row fingerprint, adapter name,
+   official award key, official source record identifier, retrieval or snapshot date,
+   and source digest. Conflicting evidence is retained in the audit artifact rather than
+   resolved by source priority.
+6. Build candidate identity envelopes only from exact co-occurrence of UEI, DUNS, and
+   CAGE on official federal entity or award records. Names and addresses attached to an
+   already identified envelope are retained as historical aliases, but they do not join
+   two identifier components.
+7. A SAM candidate is `confirmed_sbir` when any exact UEI or DUNS in its identity envelope
+   intersects a resolved SBIR awardee. It is `indeterminate_possible_sbir` when it is not
+   confirmed but an exact legal/DBA/historical-name-plus-state key or exact
+   address-plus-five-digit-ZIP key collides with an unresolved SBIR row. Both statuses are
+   excluded. Only a candidate with neither intersection is `eligible_screened_negative`.
+8. Name keys use Unicode NFKC, uppercase, punctuation-to-space, and whitespace collapse;
+   legal suffixes are retained. Address keys use Unicode NFKC, uppercase, punctuation-to-
+   space, and whitespace collapse without street-suffix substitution. Blank components
+   never match. These comparisons quarantine candidates; they never certify identity.
+9. Before matching or any arm outcome is computed, materialize a coverage audit containing
+   source-row counts by recovery status and adapter, identifier conflicts, unresolved rows
+   by agency and year, candidate counts in all three eligibility statuses, and exclusion
+   reasons. If the remaining negative determination is unreliable, the study stops for
+   review. Outcome data cannot be used to choose an adapter or relax an eligibility rule.
+
+This recovery layer is not a second Phase II-to-target-contract join. It does not alter the
+shared exact-UEI pair builder or any census criterion. It is a prerequisite identity audit
+whose only downstream operation is exclusion from the candidate control pool.
 
 ## Non-goals and prohibited drift
 

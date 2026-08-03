@@ -202,3 +202,30 @@ files before materialization.
   one-factor sensitivity asset check had passed. No control candidate frame, eligibility
   result, matched set, balance statistic, negative-control criteria distribution,
   overlap coefficient, full-criteria ratio, or placebo result had been computed or seen.
+
+## Revision 10 — Exact award-key recovery without the SBA Company Registry
+
+- **Approved:** 2026-08-03.
+- **Git-history anchor:** The commit that first adds Revision 10 to this file is the
+  approval-record anchor; its identifier is intentionally not embedded in the content it
+  hashes.
+- **Reason:** The SBA Company Registry is unavailable. A read-only feasibility audit found
+  that every SBIR.gov row lacking a valid UEI or DUNS retains `contract` or
+  `agency_tracking_number`, permitting recovery from exact official award records. The
+  repository owner approved revising the plan to use exact award-key adapters and to
+  proceed under a fail-closed eligibility protocol.
+- **Eligibility-rule impact:** Missing awardee identifiers may be enriched only from an
+  exact, source-specific official award-key match whose records agree on one recipient
+  identity. Names never create an identity link. Confirmed SBIR firms and candidates that
+  collide with unresolved award rows are excluded; only candidates with no resolved
+  identifier intersection and no unresolved exact name/address collision are eligible as
+  `eligible_screened_negative`. A coverage audit remains a pre-outcome stop gate.
+- **Criteria and matching impact:** None. No census pair universe, inclusion clause,
+  clause order, sensitivity cell, window endpoint, agency predicate, estimand, output
+  metric, matching covariate, score, model, or numeric cutoff changes. The protocol does
+  not create a second Phase II-to-contract pair join.
+- **Visibility at approval:** Phase 1 audit tables and their passed one-factor check were
+  visible. Source-only feasibility counts for missing identifiers and available award-key
+  fields were visible. No SAM control frame, eligibility classification, recovered
+  identifier table, matched set, balance statistic, negative-control distribution,
+  overlap coefficient, full-criteria ratio, or placebo result had been computed or seen.
