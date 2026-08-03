@@ -175,3 +175,92 @@ files before materialization.
   each had its pre-specified six rows. No metric value was printed, inspected, quoted, or
   selected, and no census parquet existed when this revision was recorded. No
   negative-control or placebo result existed.
+
+## Revision 9 — First-contract business-size matching covariate
+
+- **Approved:** 2026-08-03.
+- **Git-history anchor:** The commit that first adds Revision 9 to this file is the
+  approval-record anchor; its identifier is intentionally not embedded in the content it
+  hashes.
+- **Reason:** Public SAM entity data does not provide the proposed employee-count measure,
+  while FPDS/USAspending records the contracting officer's NAICS-specific small-business
+  determination on federal contracts. The repository owner approved using that public,
+  government-defined classification at the firm's first federal contract instead of
+  inventing employee-band cutoffs or treating procurement volume as firm size.
+- **Matching-rule impact:** Replace `employee-count band` with the binary
+  `first-contract business-size class`. Both arms use the complete February contract
+  history and the same normalized-UEI, earliest-action-date, `business_categories`
+  derivation. Missing or conflicting classifications are reported exclusions and are
+  never imputed. Primary NAICS, state, first federal contract year, PSC family, the 1–3
+  control ratio, balance reporting, and the common filter path are unchanged.
+- **Criteria impact:** None. No census universe, inclusion clause, clause order,
+  sensitivity cell, window endpoint, agency predicate, estimand, output metric, score,
+  model, or cutoff changes. Phase 1 artifacts are not rerun or reinterpreted by this
+  matching-only amendment.
+- **Visibility at approval:** The complete Phase 1 cumulative ladder and six-cell
+  sensitivity artifacts had been materialized with verified provenance, and the
+  one-factor sensitivity asset check had passed. No control candidate frame, eligibility
+  result, matched set, balance statistic, negative-control criteria distribution,
+  overlap coefficient, full-criteria ratio, or placebo result had been computed or seen.
+
+## Revision 10 — Exact award-key recovery without the SBA Company Registry
+
+- **Approved:** 2026-08-03.
+- **Git-history anchor:** The commit that first adds Revision 10 to this file is the
+  approval-record anchor; its identifier is intentionally not embedded in the content it
+  hashes.
+- **Reason:** The SBA Company Registry is unavailable. A read-only feasibility audit found
+  that every SBIR.gov row lacking a valid UEI or DUNS retains `contract` or
+  `agency_tracking_number`, permitting recovery from exact official award records. The
+  repository owner approved revising the plan to use exact award-key adapters and to
+  proceed under a fail-closed eligibility protocol.
+- **Eligibility-rule impact:** Missing awardee identifiers may be enriched only from an
+  exact, source-specific official award-key match whose records agree on one recipient
+  identity. Names never create an identity link. Confirmed SBIR firms and candidates that
+  collide with unresolved award rows are excluded; only candidates with no resolved
+  identifier intersection and no unresolved exact name/address collision are eligible as
+  `eligible_screened_negative`. A coverage audit remains a pre-outcome stop gate.
+- **Criteria and matching impact:** None. No census pair universe, inclusion clause,
+  clause order, sensitivity cell, window endpoint, agency predicate, estimand, output
+  metric, matching covariate, score, model, or numeric cutoff changes. The protocol does
+  not create a second Phase II-to-contract pair join.
+- **Visibility at approval:** Phase 1 audit tables and their passed one-factor check were
+  visible. Source-only feasibility counts for missing identifiers and available award-key
+  fields were visible. No SAM control frame, eligibility classification, recovered
+  identifier table, matched set, balance statistic, negative-control distribution,
+  overlap coefficient, full-criteria ratio, or placebo result had been computed or seen.
+
+## Revision 11 — Complete unresolved-award quarantine-key gate
+
+- **Approved:** 2026-08-03.
+- **Git-history anchor:** The commit that first adds Revision 11 to this file is the
+  approval-record anchor; its identifier is intentionally not embedded in the content it
+  hashes.
+- **Reason:** Exact authoritative award-key recovery need not resolve every identifier-poor
+  SBIR/STTR award if every remaining unresolved source row can still conservatively
+  quarantine candidate controls through at least one already-approved exact collision key.
+  The repository owner approved measuring that completeness directly instead of requiring
+  an unsupported percentage-resolution target.
+- **Pre-outcome gate:** For every source row whose final recovery status is not
+  `resolved_authoritative`, the audit must report whether it has a complete normalized
+  company-name-plus-state key, a complete normalized address-plus-five-digit-ZIP key, both,
+  or neither. A row has a usable name key only when both the company name and state are
+  nonblank after the frozen normalization. A row has a usable address key only when at
+  least one address line and a valid five-digit ZIP are nonblank after the frozen
+  normalization. The address component concatenates nonblank `address1` and `address2` in
+  source order with one space after component normalization. A ZIP value is valid only as
+  five digits or five digits followed by an optional hyphen or space and four digits; the
+  key retains the first five digits. Any unresolved row in the `neither` category stops
+  the study before a control candidate is classified, matched, or evaluated. There is no
+  allowable missing share and no percentage threshold.
+- **Eligibility and recovery impact:** None. Names and addresses remain quarantine-only
+  comparisons and never resolve an award to an entity. Exact authoritative award-key
+  adapters may reduce the unresolved set, but cannot compensate statistically for a row
+  that lacks both quarantine key families.
+- **Criteria and matching impact:** None. No census pair universe, inclusion clause,
+  sensitivity cell, matching covariate, score, model, or numeric cutoff changes.
+- **Visibility at approval:** The exact-identifier recovery coverage from USAspending,
+  NIH RePORTER, and the NSF Awards API was visible. Quarantine-key availability for the
+  unresolved source rows, the SAM control frame, all eligibility classifications, the
+  matched set, balance statistics, negative-control outcomes, and placebo results had not
+  been computed or seen.

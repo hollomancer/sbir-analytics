@@ -4,12 +4,15 @@
 Phase II award-grain, SBIR.gov source-row-grain, and exact-key multi-supplemental
 reconciliation amendments below were approved before any result was materialized. The
 source layer and prior-grain implementation now live in a separate prerequisite change.
-The Phase 1 census is implemented and fixture-verified;
-on 2026-08-02, the repository owner superseded only the prior sequencing pause and
-authorized attempting production materialization subject to the existing post-write
-one-factor sensitivity check. Unresolved negative-control and placebo questions remain
-deferred; this change does not authorize a headline cell or interpretation as validated
-Phase III.
+The Phase 1 census is implemented and its February artifacts were provenance-verified and
+materialized. On 2026-08-03, after Phase 1 materialization but before any control frame,
+balance table, negative-control result, or placebo result existed, the repository owner
+approved replacing the unavailable employee-count band with the government-defined
+first-contract business-size class specified below. The owner subsequently ruled out the
+SBA Company Registry and approved the exact award-key recovery and fail-closed eligibility
+protocol below before any control frame or outcome existed. Unresolved source coverage and
+placebo questions remain gated; this change does not authorize a headline cell or
+interpretation as validated Phase III.
 **Design date:** 2026-07-31.
 **Approval date:** 2026-08-01.
 **Provenance-amendment approval date:** 2026-08-01.
@@ -306,10 +309,13 @@ control discrimination; not validated true Phase III status.”
   **pseudo-index**, not a claim that the control completed Phase II. It requires approval
   below.
 - Control eligibility is evaluated against the complete available SBIR/STTR award
-  history. Unreliable SBIR-negative status is a stop, not an assumption.
-- Matching is 1–3 controls on primary NAICS, employee-count band, state, first federal
-  contract year, and PSC family. Any new band boundary is a later stop-and-ask decision;
-  none is introduced here.
+  history using the exact award-key recovery and identity-envelope protocol below. A
+  confirmed awardee and an indeterminate possible awardee are both excluded. Unreliable
+  negative status is a stop, not an assumption.
+- Matching is 1–3 controls on primary NAICS, first-contract business-size class, state,
+  first federal contract year, and PSC family. The business-size class is the binary,
+  government-defined field specified below; it introduces no employee band or numeric
+  boundary.
 - Balance reports every matched covariate's standardized mean difference and flags
   absolute SMD above the pre-authorized `0.1` value. Unresolved key-covariate imbalance
   stops the study.
@@ -321,6 +327,105 @@ control discrimination; not validated true Phase III status.”
 
 Detailed matching, balance, and placebo interfaces belong in the post-approval
 requirements/design update. They cannot alter the criteria frozen here.
+
+### Approved first-contract business-size matching covariate
+
+Public SAM entity data does not supply the employee-count measure needed for the originally
+proposed bands. The repository owner therefore approved replacing that matching covariate
+with the contracting officer's determination of whether the recipient was a small business
+for its first federal contract. The
+[FPDS data dictionary](https://www.fpds.gov/downloads/Version_1.4.5_specs/FPDSNG_DataDictionary_V1.4.5.pdf)
+defines this determination relative to the SBA size standard for the NAICS code applicable
+to that procurement; [SBA size standards](https://www.sba.gov/federal-contracting/contracting-guide/size-standards)
+are industry-specific and generally use employees or annual receipts. This delegates the
+size boundary to the government's recorded determination instead of inventing a study
+cutoff.
+
+The exact implementation contract is:
+
+1. Use the complete February USAspending/FPDS prime-contract history for both arms and
+   group rows by normalized, nonblank recipient UEI. Do not use SAM employee counts,
+   impute a size, or branch on study arm.
+2. Define the first-contract date as the minimum nonnull contract `action_date` for that
+   UEI. The already-required first-federal-contract-year covariate is the calendar year of
+   this same date.
+3. On every contract row at that minimum date, read the USAspending
+   `business_categories` field preserved from the FPDS recipient record. A present parsed
+   category set containing the normalized token `small_business` maps to
+   `small_business`; a present parsed category set without that token maps to
+   `other_than_small_business`. Null, unparseable, or absent category data maps to
+   `missing`, not to `other_than_small_business`.
+4. If multiple contract rows share the minimum date, their nonmissing classes must be
+   unanimous. Conflicting classes map the firm to `conflict`; no award-ID or row-order
+   tie-break selects a preferred observation.
+5. `small_business` matches only `small_business`, and `other_than_small_business`
+   matches only `other_than_small_business`. A firm classified `missing` or `conflict` is
+   not match-eligible. Exclusion counts are reported separately by arm and reason.
+6. Before control matching begins, a source-coverage audit must report each class by arm
+   and stop for review if the February mirror cannot supply a usable classification. No
+   control outcome or criteria-met distribution may be computed to decide whether this
+   covariate is retained.
+
+This is a coarser size control than an employee-count band: it cannot distinguish two
+firms that both qualify as small. It is nevertheless an award-time, NAICS-aware federal
+size determination available from the same contract source on both arms. Pre-index
+obligations and contract counts remain procurement-experience measures, not substitutes
+for firm size, and are not added as matching covariates by this amendment.
+
+### Approved exact award-key recovery and control-eligibility protocol
+
+The SBA Company Registry is not an available source for this study. A read-only source
+audit found that every SBIR.gov row without a valid UEI or DUNS retains at least one agency
+award key: `contract` or `agency_tracking_number`. Missing awardee identifiers are therefore
+recovered from the official award record rather than inferred from company-name similarity.
+USAspending exposes recipient UEI and legacy DUNS on both prime-contract and
+financial-assistance records, and NIH RePORTER exposes organization UEI and DUNS on project
+records. Agency award systems may be added only as documented exact-key adapters.
+
+The frozen recovery contract is:
+
+1. Preserve every retained SBIR.gov source row and its source-row fingerprint. Recovery
+   enriches the row; it never drops, combines, or rewrites the source award grain.
+2. Each source adapter declares a fixed mapping from an SBIR.gov key to an official award
+   key. Initial mappings are USAspending `PIID`, `FAIN`, or `URI` for contract and
+   assistance records, and NIH RePORTER `project_num` or `core_project_num` plus fiscal
+   year for HHS records. Agency identity and, where the official key is not globally
+   unique, award year are mandatory join components.
+3. Canonicalization is adapter-specific, documented, and tested against the official key
+   format. There is no generic fuzzy normalization, substring search, edit distance,
+   similarity score, or best-candidate ranking. Company name, address, website, email,
+   award title, and abstract never create an award-to-recipient identity link.
+4. A source row is `resolved_authoritative` only when all official records matching its
+   exact adapter key identify one recipient identity after valid UEI/DUNS normalization.
+   Zero matches are `unresolved_no_match`; multiple recipient identities are
+   `unresolved_conflict`. A source with no valid recipient identifier is
+   `unresolved_missing_identifier`.
+5. Every recovered identifier carries the SBIR source-row fingerprint, adapter name,
+   official award key, official source record identifier, retrieval or snapshot date,
+   and source digest. Conflicting evidence is retained in the audit artifact rather than
+   resolved by source priority.
+6. Build candidate identity envelopes only from exact co-occurrence of UEI, DUNS, and
+   CAGE on official federal entity or award records. Names and addresses attached to an
+   already identified envelope are retained as historical aliases, but they do not join
+   two identifier components.
+7. A SAM candidate is `confirmed_sbir` when any exact UEI or DUNS in its identity envelope
+   intersects a resolved SBIR awardee. It is `indeterminate_possible_sbir` when it is not
+   confirmed but an exact legal/DBA/historical-name-plus-state key or exact
+   address-plus-five-digit-ZIP key collides with an unresolved SBIR row. Both statuses are
+   excluded. Only a candidate with neither intersection is `eligible_screened_negative`.
+8. Name keys use Unicode NFKC, uppercase, punctuation-to-space, and whitespace collapse;
+   legal suffixes are retained. Address keys use Unicode NFKC, uppercase, punctuation-to-
+   space, and whitespace collapse without street-suffix substitution. Blank components
+   never match. These comparisons quarantine candidates; they never certify identity.
+9. Before matching or any arm outcome is computed, materialize a coverage audit containing
+   source-row counts by recovery status and adapter, identifier conflicts, unresolved rows
+   by agency and year, candidate counts in all three eligibility statuses, and exclusion
+   reasons. If the remaining negative determination is unreliable, the study stops for
+   review. Outcome data cannot be used to choose an adapter or relax an eligibility rule.
+
+This recovery layer is not a second Phase II-to-target-contract join. It does not alter the
+shared exact-UEI pair builder or any census criterion. It is a prerequisite identity audit
+whose only downstream operation is exclusion from the candidate control pool.
 
 ## Non-goals and prohibited drift
 
