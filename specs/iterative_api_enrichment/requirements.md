@@ -1,5 +1,7 @@
 # Requirements — Iterative API Enrichment Refresh
 
+**Target epistemic tier:** `pipelines`
+
 > **Status:** Partially implemented — USAspending iterative enrichment is live (`packages/sbir-analytics/sbir_analytics/assets/usaspending_iterative_enrichment.py`); other sources (SAM.gov, NIH RePORTER, PatentsView) pending.
 > Supports inventory question **E3** (enrichment freshness infrastructure) in [docs/research-questions.md](../../docs/research-questions.md).
 

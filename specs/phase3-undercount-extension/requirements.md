@@ -1,5 +1,7 @@
 # Phase III Undercount Extension — Requirements
 
+**Target epistemic tier:** `evidence`
+
 > **Status:** Draft spec. Builds on existing undercount work (M0a + 3-source
 > capture-recapture) and the coverage-expansion sources (#485). Answers the north-star
 > question **B3**: *"How much undercount exists in Phase III coding?"* — the transition

@@ -64,6 +64,7 @@ jobs:
       - name: Run architecture, documentation, and repository hygiene guards
         run: |
           uv run python scripts/ci/check_architecture_boundaries.py
+          uv run python scripts/ci/check_epistemic_tiers.py
           uv run python scripts/ci/check_removed_src_references.py
           uv run python scripts/ci/validate_study_manifests.py
           # Guards the company-identity primitive: a direct RapidFuzz scorer

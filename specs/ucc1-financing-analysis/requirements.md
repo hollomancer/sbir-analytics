@@ -1,5 +1,7 @@
 # UCC-1 Financing Analysis — Requirements
 
+**Target epistemic tier:** `evidence`
+
 > **Status:** Pilot complete — PRs #303 / #305 merged. CA-only pilot found
 > equipment-finance and community-bank lender patterns and an absence of venture-debt
 > lenders in the CA-organized channel. See
