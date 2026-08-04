@@ -387,6 +387,37 @@ def test_tailscale_up_rejects_invalid_neo4j_port_without_mutation(tmp_path, port
     assert not any(call[:1] == ["serve"] for call in calls)
 
 
+def test_tailscale_up_removes_retired_api_route(tmp_path):
+    result, state, calls = _run_tailscale(
+        tmp_path,
+        "up",
+        _serve_state("8443", "http://127.0.0.1:8010"),
+        neo4j_enabled=False,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "8443" not in state["TCP"]
+    assert "node.test.ts.net:8443" not in state.get("Web", {})
+    assert any("--https=8443" in call and "off" in call for call in calls)
+    assert "Removed the retired analytics API route" in result.stdout
+
+
+def test_tailscale_up_preserves_reassigned_8443_route(tmp_path):
+    result, state, calls = _run_tailscale(
+        tmp_path,
+        "up",
+        _serve_state("8443", "http://127.0.0.1:9000"),
+        neo4j_enabled=False,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert state["Web"]["node.test.ts.net:8443"]["Handlers"]["/"]["Proxy"] == (
+        "http://127.0.0.1:9000"
+    )
+    assert not any("--https=8443" in call and "off" in call for call in calls)
+    assert "port 8443 has another target; leaving it untouched" in result.stdout
+
+
 def test_tailscale_disabled_consent_times_out_without_mutation(tmp_path):
     result, state, _calls = _run_tailscale(tmp_path, "up", {}, hang_443=True)
 

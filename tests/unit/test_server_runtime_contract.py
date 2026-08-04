@@ -54,9 +54,9 @@ def test_dagster_daemon_waits_on_webserver_container():
 def test_dagster_uses_shared_internal_code_server():
     compose = SERVER_COMPOSE.read_text()
     workspace = SERVER_WORKSPACE.read_text()
-    code_server = compose.split("  dagster-code-server:", 1)[1].split(
-        "\n  dagster-webserver:", 1
-    )[0]
+    code_server = compose.split("  dagster-code-server:", 1)[1].split("\n  dagster-webserver:", 1)[
+        0
+    ]
 
     assert "host: dagster-code-server" in workspace
     assert "port: 4000" in workspace
@@ -68,9 +68,9 @@ def test_dagster_uses_shared_internal_code_server():
 
 def test_dagster_execution_memory_belongs_to_code_server():
     compose = SERVER_COMPOSE.read_text()
-    code_server = compose.split("  dagster-code-server:", 1)[1].split(
-        "\n  dagster-webserver:", 1
-    )[0]
+    code_server = compose.split("  dagster-code-server:", 1)[1].split("\n  dagster-webserver:", 1)[
+        0
+    ]
     daemon = compose.split("  dagster-daemon:", 1)[1].split("\nvolumes:", 1)[0]
 
     assert "memory: 3G" in code_server

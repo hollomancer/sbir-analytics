@@ -135,10 +135,10 @@ make server-tailscale-up               # expose via Tailscale Serve
 make server-status
 ```
 
-When upgrading an existing deployment that ran the retired analytics API, first inspect
-`tailscale serve status`. If HTTPS port `8443` still targets `http://127.0.0.1:8010`, remove that
-specific legacy route with `tailscale serve --yes --https=8443 off`. Do not remove a route that has
-since been assigned to another service.
+When upgrading an existing deployment that ran the retired analytics API,
+`make server-tailscale-up` removes HTTPS port `8443` only when it still targets
+`http://127.0.0.1:8010`. If another service now owns that port, the helper warns
+and leaves it untouched.
 
 `make server-up` builds the native Python base image from
 `Dockerfile.python-base` before starting the stack. The first build takes

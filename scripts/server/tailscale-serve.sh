@@ -17,6 +17,7 @@ NEO4J_BOLT_PORT="${NEO4J_BOLT_PORT:-7687}"
 NEO4J_TAILNET_BOLT_ENABLED="${NEO4J_TAILNET_BOLT_ENABLED:-false}"
 NEO4J_TAILNET_BOLT_PORT="${NEO4J_TAILNET_BOLT_PORT:-17687}"
 DAGSTER_TARGET="http://127.0.0.1:${DAGSTER_PORT}"
+LEGACY_API_TARGET="http://127.0.0.1:8010"
 NEO4J_TARGET="127.0.0.1:${NEO4J_BOLT_PORT}"
 STATE_HELPER="$SCRIPT_DIR/tailscale-route-state.py"
 MUTATION_OUTPUT=""
@@ -283,6 +284,7 @@ cmd_up() {
     exit 1
   fi
   state_443=$(route_state 443 "$DAGSTER_TARGET") || exit 1
+  state_legacy_8443=$(route_state 8443 "$LEGACY_API_TARGET") || exit 1
   state_neo4j=$(
     route_state "$NEO4J_TAILNET_BOLT_PORT" "$NEO4J_TARGET" "$NEO4J_TLS_HOST"
   ) || exit 1
@@ -296,6 +298,15 @@ cmd_up() {
     error "Inspect with: tailscale serve status"
     exit 1
   fi
+  case "$state_legacy_8443" in
+    owned)
+      remove_owned_route 8443 "$LEGACY_API_TARGET"
+      success "Removed the retired analytics API route on HTTPS 8443."
+      ;;
+    occupied)
+      warn "Serve port 8443 has another target; leaving it untouched."
+      ;;
+  esac
   if [ "$state_neo4j" = "occupied" ]; then
     error "Serve port $NEO4J_TAILNET_BOLT_PORT has a different owner or target."
     error "Inspect with: tailscale serve status"
