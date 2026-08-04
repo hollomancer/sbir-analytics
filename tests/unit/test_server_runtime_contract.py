@@ -101,7 +101,9 @@ def test_nsf_defense_lineage_environment_reaches_container():
         "GRAPH_OUTPUT": "/app/artifacts/sbir-dib-network-explorer/data/network.json",
     }
     direct_reads = set(re.findall(r"\{_ENV_PREFIX\}([A-Z][A-Z0-9_]*)", asset))
-    helper_reads = set(re.findall(r'_(?:paths|bool)_env\("([A-Z][A-Z0-9_]*)"\)', asset))
+    helper_reads = set(
+        re.findall(r"""_(?:paths|bool)_env\(\s*["']([A-Z][A-Z0-9_]*)["']\s*\)""", asset)
+    )
 
     assert direct_reads | helper_reads == set(expected_lineage_defaults)
     for suffix, default in expected_lineage_defaults.items():
