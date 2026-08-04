@@ -1,0 +1,38 @@
+[
+  {
+    "solicitation_title": "Documentation-derived solicitation fixture",
+    "solicitation_number": "TEST-2026-001",
+    "program": "SBIR",
+    "phase": "I",
+    "agency": "NSF",
+    "branch": "TIP",
+    "solicitation_year": 2026,
+    "release_date": "2026-01-02",
+    "open_date": "2026-01-09",
+    "close_date": "2026-03-31",
+    "application_due_date": [
+      "2026-02-27",
+      "2026-03-31"
+    ],
+    "occurrence_number": 1,
+    "solicitation_agency_url": "https://www.nsf.gov/example-solicitation",
+    "current_status": "Open",
+    "solicitation_topics": [
+      {
+        "topic_title": "Advanced manufacturing systems",
+        "branch": "TIP",
+        "topic_number": "TEST-2026-001-T01",
+        "topic_description": "Full, untruncated topic description for fixture validation.",
+        "sbir_topic_link": "https://www.sbir.gov/example-topic",
+        "subtopics": [
+          {
+            "subtopic_title": "In-process metrology",
+            "branch": "TIP",
+            "subtopic_number": "TEST-2026-001-T01-S01",
+            "subtopic_description": "Metrology requirements retained at subtopic grain."
+          }
+        ]
+      }
+    ]
+  }
+]
