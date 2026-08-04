@@ -72,5 +72,8 @@ explain how firms were selected and what the results cannot show.
 
 - [Literature map and citation audit](literature-map/README.md) — research published
   from 2019–2026 and missing coverage across question areas A–F.
+- [Solicitation document and requirement evidence plan](solicitation_document_evidence_plan.md) —
+  bounded acquisition, linkage, attachment parsing, and classifier gates for A1 and E5; a plan,
+  not research evidence.
 - [Government-policy demo plan](../guides/government-policy-demo-plan.md) —
   what to show each audience and in what order; not an evidence source.

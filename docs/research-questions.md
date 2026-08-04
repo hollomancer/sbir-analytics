@@ -164,8 +164,11 @@ perspective, see [F. Capital formation & entrepreneurial finance](#f-capital-for
   Which CET subfields does DoD appear to want work in, but few SBIR awards
   cover?
   Found by semantic search over award and solicitation text.
-  **Status:** Computable as an exploratory analysis; not yet validated or citable.
-  *Deps: CET*
+  **Status:** Partially computable as an exploratory analysis. Current coverage
+  includes award text and selected solicitation descriptions, but not the full
+  SBIR.gov topic hierarchy or source-linked solicitation attachments; results
+  remain source-coverage bounded and are not yet validated or citable.
+  *Deps: CET · Plan: [solicitation document evidence](research/solicitation_document_evidence_plan.md)*
 
 - **Capital formation / firm health per CET area** (cap)
   How healthy are awardees financially in each technology area, proxied by Form D
@@ -835,6 +838,16 @@ the questions remain useful, but there is no active umbrella spec.
   Does the SAM.gov Opportunities API replace agency-page scraping for
   solicitation ceilings and periods of performance?
   *Deps: E3 · Spec: [../specs/phase-3-solicitation-alerts/](../specs/phase-3-solicitation-alerts/)*
+
+- **Solicitation and attachment coverage**
+  Which official sources expose solicitation topics, subtopics, requirement
+  text, revisions, and attachments; how much can be retrieved and linked at
+  award grain; and does that evidence improve coverage-gap review beyond award
+  abstracts and short opportunity descriptions?
+  Candidate program/timing or text links must remain separate from exact source
+  identifiers, and solicitation similarity does not establish award use or a
+  supply-chain dependency.
+  *Deps: E3, CET · Plan: [solicitation document evidence](research/solicitation_document_evidence_plan.md)*
 
 - **FSCPSC NAICS prediction**
   Does FSCPSC NAICS prediction beat our abstract-nearest-neighbor baseline?
