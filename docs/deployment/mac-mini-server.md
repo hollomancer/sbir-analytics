@@ -38,14 +38,13 @@ host.
 
 ## What runs here
 
-The `server` Compose profile (`docker-compose.server.yml`) runs exactly five
+The `server` Compose profile (`docker-compose.server.yml`) runs exactly four
 services:
 
 | Service | Purpose | Host bind | Tailnet ingress |
 |---------|---------|-----------|-----------------|
 | `neo4j` | Graph store | `127.0.0.1:7474` / `7687` | TLS Bolt `17687` (opt-in) |
 | `dagster-code-server` | Shared Dagster code location | none | none |
-| `analytics-api` | Read-only API (bearer token) | `127.0.0.1:8010` | HTTPS `8443` |
 | `dagster-webserver` | Orchestration UI (prod mode) | `127.0.0.1:3000` | HTTPS `443` |
 | `dagster-daemon` | Schedules + sensors | — | none |
 
@@ -64,15 +63,14 @@ caveat and [Workload placement](#workload-placement).
   and terminates TLS automatically
   ([docs](https://tailscale.com/docs/features/tailscale-serve)):
   - `https://<host>/` → Dagster (`127.0.0.1:3000`)
-  - `https://<host>:8443/` → analytics API (`127.0.0.1:8010`)
   - `bolt+s://<host>:17687` → Neo4j Bolt (`127.0.0.1:7687`, opt-in)
 - **Neo4j remains loopback-only at the host boundary.** Tailscale Serve is the
   sole proxy to Bolt, and a separate least-privilege grant restricts that route
   to trusted operators. Neo4j Browser's HTTP port `7474` is never served.
 - **Tailscale Funnel is prohibited.** The helper never enables Funnel; the
   services must never be reachable from the public internet.
-- **Defense in depth.** The API keeps its bearer-token auth even behind
-  Tailscale. Dagster relies on Tailscale identity plus a least-privilege grant.
+- **Defense in depth.** Dagster relies on Tailscale identity plus a
+  least-privilege grant.
 
 ## One-time device setup
 
@@ -115,15 +113,14 @@ make server-tailscale-status
 ```
 
 `--bg` keeps the routes active after Tailscale or the device restarts. Setup
-**refuses to replace** an existing route on port 443, 8443, or an enabled
-17687 route. Neo4j tailnet access defaults to disabled.
+**refuses to replace** an existing route on port 443 or an enabled 17687 route.
+Neo4j tailnet access defaults to disabled.
 
 ### 4. MagicDNS URLs
 
 With MagicDNS enabled the services are reachable at your node's DNS name:
 
 - Dagster: `https://<node>.<tailnet>.ts.net/`
-- API: `https://<node>.<tailnet>.ts.net:8443/` (send `Authorization: Bearer <token>`)
 - Neo4j: `bolt+s://<node>.<tailnet>.ts.net:17687` (trusted operators only)
 
 `make server-tailscale-up` prints the exact URLs for this node.
@@ -131,14 +128,17 @@ With MagicDNS enabled the services are reachable at your node's DNS name:
 ## Bring-up
 
 ```bash
-cp .env.server.example .env.server     # fill in NEO4J_PASSWORD + API token
+cp .env.server.example .env.server     # fill in NEO4J_PASSWORD
 make server-check                      # docker, storage, ports, tailscale, bindings
 make server-up                         # repeats preflight, then starts localhost-only stack
 make server-tailscale-up               # expose via Tailscale Serve
 make server-status
 ```
 
-Generate the API token with `openssl rand -hex 32`.
+When upgrading an existing deployment that ran the retired analytics API,
+`make server-tailscale-up` removes HTTPS port `8443` only when it still targets
+`http://127.0.0.1:8010`. If another service now owns that port, the helper warns
+and leaves it untouched.
 
 `make server-up` builds the native Python base image from
 `Dockerfile.python-base` before starting the stack. The first build takes
@@ -165,7 +165,7 @@ prefer a quiet window.
 ## Tailscale grant (least privilege)
 
 Restrict who can reach the server. Tag the Mac mini `tag:sbir-server`, grant
-analysts access to the web services, and grant Neo4j separately to trusted
+analysts access to the Dagster UI, and grant Neo4j separately to trusted
 operators. Grants are the recommended current policy mechanism
 ([docs](https://tailscale.com/docs/reference/syntax/grants)). Apply this from
 the admin console manually:
@@ -176,7 +176,7 @@ the admin console manually:
     {
       "src": ["group:sbir-analysts"],
       "dst": ["tag:sbir-server"],
-      "ip":  ["tcp:443", "tcp:8443"]
+      "ip":  ["tcp:443"]
     },
     {
       "src": ["group:sbir-neo4j-operators"],
@@ -242,14 +242,13 @@ enable Funnel.
 
 `make server-down` stops containers but **preserves** the `dagster_home` volume
 and all bind-mounted data. `make server-tailscale-down` removes **only** the
-443/8443/17687 routes and never runs the destructive global
+443/17687 routes and never runs the destructive global
 `tailscale serve reset`.
 
 Neo4j Community Edition cannot create an online `neo4j-admin` dump. The backup
 helper therefore stops Neo4j briefly, writes the dump, and always attempts to
-restart it—even if the dump fails or the command is interrupted. API requests
-can fail during that short window. A completed dump is retained if restart
-fails so recovery work cannot erase the backup.
+restart it—even if the dump fails or the command is interrupted. A completed dump is retained if
+restart fails so recovery work cannot erase the backup.
 
 ### Schedules
 
@@ -526,16 +525,15 @@ unreachable (connection refused/timeout):
 
 ```bash
 curl -m 5 http://<mac-lan-ip>:3000/        # fails
-curl -m 5 http://<mac-lan-ip>:8010/health  # fails
 ```
 
-From a Tailscale analyst device, Dagster (443) and the API (8443, with a bearer
-token) succeed while Neo4j remains unreachable. From a trusted operator device,
-TLS Bolt succeeds on 17687; direct connections to 7474/7687 remain unreachable.
+From a Tailscale analyst device, Dagster succeeds on 443 while Neo4j remains
+unreachable. From a trusted operator device, TLS Bolt succeeds on 17687; direct
+connections to 7474/7687 remain unreachable.
 
 ## Workload placement
 
-- **Local, always-on:** API, Neo4j, Dagster, snapshots, DuckDB, core analytics.
+- **Local, always-on:** Neo4j, Dagster, DuckDB, and core analytics.
 - **Local, on-demand:** public USAspending Contracts_Full download and bounded
   SBIR-vendor filtering into Parquet.
 - **Local, on-demand and capacity-gated:** CET/scikit-learn, bounded USPTO NLP,

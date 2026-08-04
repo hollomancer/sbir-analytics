@@ -1,10 +1,9 @@
 # Tailscale-Only Mac mini Server Compose Configuration
 #
 # An ARM64-native, private server profile for a single always-on Mac mini.
-# It runs only the services needed to serve the graph and analytics:
+# It runs only the services needed to serve the graph and orchestration UI:
 #   - neo4j              (private graph store; host port bound to loopback only)
 #   - dagster-code-server (shared internal Dagster code location)
-#   - analytics-api      (authenticated read-only API)
 #   - dagster-webserver  (orchestration UI, production mode)
 #   - dagster-daemon     (schedules/sensors)
 #
@@ -13,7 +12,6 @@
 #     no service is reachable over the LAN.
 #   * Tailscale Serve is the ONLY ingress (tailnet-only HTTPS/TLS):
 #       443  -> Dagster (127.0.0.1:3000)
-#       8443 -> analytics API (127.0.0.1:8010)
 #       17687 -> Neo4j Bolt (127.0.0.1:7687; trusted operators only)
 #   * Tailscale Funnel is prohibited (see docs/deployment/mac-mini-server.md).
 #
@@ -199,54 +197,6 @@ services:
           memory: 3G
         reservations:
           memory: 1G
-
-  # ===========================================================================
-  # Read-only analytics API (bearer-token auth, defense in depth)
-  # ===========================================================================
-  analytics-api:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      target: runtime
-    image: ${IMAGE_NAME:-sbir-analytics}:${IMAGE_TAG:-local}
-    container_name: ${ANALYTICS_API_CONTAINER_NAME:-sbir-server-api}
-    profiles:
-      - server
-    environment:
-      <<: *server-environment
-      NEO4J_READ_USER: ${NEO4J_READ_USER:-${NEO4J_USER:-neo4j}}
-      NEO4J_READ_PASSWORD: ${NEO4J_READ_PASSWORD:-${NEO4J_PASSWORD}}
-      # The API refuses to serve (503) until a non-empty token is provided.
-      SBIR_ANALYTICS_API_TOKEN: ${SBIR_ANALYTICS_API_TOKEN:?SBIR_ANALYTICS_API_TOKEN is required for the server profile}
-      SBIR_ANALYTICS_API_HOST: "0.0.0.0"
-      SBIR_ANALYTICS_API_PORT: ${SBIR_ANALYTICS_API_PORT:-8010}
-      SBIR_ANALYTICS_SNAPSHOT_DIR: /app/reports/analytics_snapshots
-    command: ["python", "-m", "sbir_analytics.api"]
-    volumes:
-      - ${SERVER_REPORTS_DIR:-./reports}:/app/reports:ro
-    ports:
-      # Loopback-only; Tailscale Serve maps HTTPS 8443 -> 127.0.0.1:8010.
-      - "127.0.0.1:${SBIR_ANALYTICS_API_PORT:-8010}:${SBIR_ANALYTICS_API_PORT:-8010}"
-    depends_on:
-      neo4j:
-        condition: service_healthy
-    healthcheck:
-      test:
-        - "CMD-SHELL"
-        - "curl -fsS --max-time 3 http://localhost:${SBIR_ANALYTICS_API_PORT:-8010}/health/ready >/dev/null 2>&1 || exit 1"
-      interval: 15s
-      timeout: 5s
-      retries: 5
-      start_period: 15s
-    networks:
-      - sbir-server-network
-    restart: ${SERVER_RESTART_POLICY:-unless-stopped}
-    deploy:
-      resources:
-        limits:
-          memory: 512M
-        reservations:
-          memory: 256M
 
   # ===========================================================================
   # Dagster webserver (production mode via the existing entrypoint)

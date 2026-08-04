@@ -3,8 +3,8 @@
 Full SBIR analytics pipeline including Dagster orchestration, ML, and Neo4j.
 
 Installs [`sbir-etl`](../../) with all extras plus the `sbir_analytics` Python
-package containing Dagster orchestration, the analytics API, and application
-tools that don't belong in the reusable ETL library.
+package containing Dagster orchestration and application tools that don't
+belong in the reusable ETL library.
 
 ## Installation
 
@@ -33,4 +33,4 @@ make install-core  # reusable sbir-etl library only; uv sync
 | `sbir-etl[cloud,uspto,monitoring]` | ETL integrations used by the pipeline |
 | `sbir-ml[nlp]` | ML/NLP models and enrichment |
 | `sbir-graph` | Neo4j loaders, queries, and packaged migrations |
-| **`sbir-analytics`** | **All of the above** + orchestration, API, and analysis tools |
+| **`sbir-analytics`** | **All of the above** + orchestration and analysis tools |

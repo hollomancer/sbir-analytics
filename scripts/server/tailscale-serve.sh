@@ -8,18 +8,16 @@ SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 # shellcheck source=scripts/server/env-file.sh
 . "$SCRIPT_DIR/env-file.sh"
 load_env_key DAGSTER_PORT
-load_env_key SBIR_ANALYTICS_API_PORT
 load_env_key NEO4J_BOLT_PORT
 load_env_key NEO4J_TAILNET_BOLT_ENABLED
 load_env_key NEO4J_TAILNET_BOLT_PORT
 
 DAGSTER_PORT="${DAGSTER_PORT:-3000}"
-API_PORT="${SBIR_ANALYTICS_API_PORT:-8010}"
 NEO4J_BOLT_PORT="${NEO4J_BOLT_PORT:-7687}"
 NEO4J_TAILNET_BOLT_ENABLED="${NEO4J_TAILNET_BOLT_ENABLED:-false}"
 NEO4J_TAILNET_BOLT_PORT="${NEO4J_TAILNET_BOLT_PORT:-17687}"
 DAGSTER_TARGET="http://127.0.0.1:${DAGSTER_PORT}"
-API_TARGET="http://127.0.0.1:${API_PORT}"
+LEGACY_API_TARGET="http://127.0.0.1:8010"
 NEO4J_TARGET="127.0.0.1:${NEO4J_BOLT_PORT}"
 STATE_HELPER="$SCRIPT_DIR/tailscale-route-state.py"
 MUTATION_OUTPUT=""
@@ -28,7 +26,6 @@ PENDING_PORT=""
 PENDING_TARGET=""
 PENDING_TLS_HOST=""
 CREATED_443=0
-CREATED_8443=0
 CREATED_NEO4J=0
 ROLLBACK_ON_EXIT=0
 
@@ -95,8 +92,8 @@ validate_neo4j_tailnet_port() {
     error "NEO4J_TAILNET_BOLT_PORT must be an integer between 1 and 65535."
     exit 2
   fi
-  if [ "$NEO4J_TAILNET_BOLT_PORT" -eq 443 ] || [ "$NEO4J_TAILNET_BOLT_PORT" -eq 8443 ]; then
-    error "NEO4J_TAILNET_BOLT_PORT must not conflict with managed Serve ports 443 or 8443."
+  if [ "$NEO4J_TAILNET_BOLT_PORT" -eq 443 ]; then
+    error "NEO4J_TAILNET_BOLT_PORT must not conflict with managed Serve port 443."
     exit 2
   fi
 }
@@ -190,10 +187,7 @@ configure_route() {
     error "Tailscale did not install the expected HTTPS $port route."
     return 1
   fi
-  case "$port" in
-    443) CREATED_443=1 ;;
-    8443) CREATED_8443=1 ;;
-  esac
+  CREATED_443=1
   PENDING_PORT=""
   PENDING_TARGET=""
 }
@@ -275,10 +269,6 @@ rollback_transaction() {
     rollback_expected_route "$NEO4J_TAILNET_BOLT_PORT" "$NEO4J_TARGET" "$NEO4J_TLS_HOST" || true
     CREATED_NEO4J=0
   fi
-  if [ "$CREATED_8443" -eq 1 ]; then
-    rollback_expected_route 8443 "$API_TARGET" || true
-    CREATED_8443=0
-  fi
   if [ "$CREATED_443" -eq 1 ]; then
     rollback_expected_route 443 "$DAGSTER_TARGET" || true
     CREATED_443=0
@@ -294,7 +284,7 @@ cmd_up() {
     exit 1
   fi
   state_443=$(route_state 443 "$DAGSTER_TARGET") || exit 1
-  state_8443=$(route_state 8443 "$API_TARGET") || exit 1
+  state_legacy_8443=$(route_state 8443 "$LEGACY_API_TARGET") || exit 1
   state_neo4j=$(
     route_state "$NEO4J_TAILNET_BOLT_PORT" "$NEO4J_TARGET" "$NEO4J_TLS_HOST"
   ) || exit 1
@@ -303,15 +293,20 @@ cmd_up() {
     enable_neo4j=1
   fi
 
-  for pair in "443:$state_443" "8443:$state_8443"; do
-    port=${pair%%:*}
-    state=${pair#*:}
-    if [ "$state" = "occupied" ]; then
-      error "Serve port $port has a different owner or target; refusing to overwrite it."
-      error "Inspect with: tailscale serve status"
-      exit 1
-    fi
-  done
+  if [ "$state_443" = "occupied" ]; then
+    error "Serve port 443 has a different owner or target; refusing to overwrite it."
+    error "Inspect with: tailscale serve status"
+    exit 1
+  fi
+  case "$state_legacy_8443" in
+    owned)
+      remove_owned_route 8443 "$LEGACY_API_TARGET"
+      success "Removed the retired analytics API route on HTTPS 8443."
+      ;;
+    occupied)
+      warn "Serve port 8443 has another target; leaving it untouched."
+      ;;
+  esac
   if [ "$state_neo4j" = "occupied" ]; then
     error "Serve port $NEO4J_TAILNET_BOLT_PORT has a different owner or target."
     error "Inspect with: tailscale serve status"
@@ -333,13 +328,6 @@ cmd_up() {
     success "HTTPS 443 already has the expected Dagster route."
   fi
 
-  if [ "$state_8443" = "free" ]; then
-    info "Configuring HTTPS 8443 -> $API_TARGET..."
-    configure_route 8443 "$API_TARGET" || exit 1
-  else
-    success "HTTPS 8443 already has the expected API route."
-  fi
-
   if [ "$state_neo4j" = "disabled" ]; then
     info "Neo4j tailnet access is disabled in $ENV_FILE."
   elif [ "$state_neo4j" = "free" ]; then
@@ -351,7 +339,6 @@ cmd_up() {
   fi
 
   info "Dagster: https://${NEO4J_TLS_HOST}/"
-  info "API:     https://${NEO4J_TLS_HOST}:8443/"
   if [ "$state_neo4j" != "disabled" ]; then
     info "Neo4j:  bolt+s://${NEO4J_TLS_HOST}:${NEO4J_TAILNET_BOLT_PORT}"
   fi
@@ -374,10 +361,9 @@ cmd_down() {
     exit 1
   fi
   state_443=$(route_state 443 "$DAGSTER_TARGET") || exit 1
-  state_8443=$(route_state 8443 "$API_TARGET") || exit 1
   state_neo4j=$(route_state "$NEO4J_TAILNET_BOLT_PORT" "$NEO4J_TARGET" "$NEO4J_TLS_HOST") || exit 1
 
-  if [ "$state_443" = "occupied" ] || [ "$state_8443" = "occupied" ] || [ "$state_neo4j" = "occupied" ]; then
+  if [ "$state_443" = "occupied" ] || [ "$state_neo4j" = "occupied" ]; then
     error "A requested port has a different Serve owner or target; nothing was removed."
     error "Inspect with: tailscale serve status"
     exit 1
@@ -394,12 +380,6 @@ cmd_down() {
     success "Removed the SBIR HTTPS 443 route."
   else
     warn "No SBIR HTTPS 443 route to remove."
-  fi
-  if [ "$state_8443" = "owned" ]; then
-    remove_owned_route 8443 "$API_TARGET"
-    success "Removed the SBIR HTTPS 8443 route."
-  else
-    warn "No SBIR HTTPS 8443 route to remove."
   fi
   info "All other Tailscale configuration was left untouched."
 }

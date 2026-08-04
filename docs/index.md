@@ -51,7 +51,6 @@ Use these before quoting a result or starting a feature from an old spec.
 - [Data sources](data/index.md)
 - [Dagster pipelines](architecture/dagster-pipelines.md)
 - [Asset naming](architecture/asset-naming-standards.md)
-- [Private analytics API](architecture/private-analytics-api.md)
 - [DuckDB CET analysis](architecture/duckdb-cet-analysis.md)
 - [Transition detection](transition/README.md)
 - [Machine learning](ml/README.md)

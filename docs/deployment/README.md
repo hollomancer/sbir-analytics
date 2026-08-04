@@ -27,7 +27,7 @@ implying a production-grade service.
 
 Everything runs on one always-on Mac mini; GitHub Actions is CI only.
 
-1. **Mac mini (Dagster)** — source downloads, ETL pipelines, Neo4j, the read-only API
+1. **Mac mini (Dagster)** — source downloads, ETL pipelines, and Neo4j
 2. **GitHub Actions** — lint, typecheck, tests. No data plane, no scheduled work, no image publishing.
 3. **Docker (development)** — local development and testing
 
@@ -50,9 +50,9 @@ moved off GitHub Actions. The remaining account-level teardown checklist is trac
 │  │  downloads   │─▶│  pipelines   │─▶│    Neo4j     │       │
 │  │ (schedules)  │  │  (sensors)   │  │              │       │
 │  └──────────────┘  └──────────────┘  └──────┬───────┘       │
-│         │                                    ▼              │
-│         ▼                            ┌──────────────┐       │
-│  /Volumes/SSDmini/sbir-analytics     │ analytics API│       │
+│         │                                                   │
+│         ▼                                                   │
+│  /Volumes/SSDmini/sbir-analytics                            │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -73,7 +73,6 @@ Server credentials live in `.env.server` on the mini (see
 | Variable | Description |
 |----------|-------------|
 | `NEO4J_PASSWORD` | Neo4j password for the server profile |
-| `SBIR_ANALYTICS_API_TOKEN` | Bearer token for the read-only API |
 | `SAM_GOV_API_KEY` | SAM.gov API key (expires roughly every 60 days) |
 | `USPTO_ODP_API_KEY` | USPTO ODP key, required for PatentsView downloads |
 

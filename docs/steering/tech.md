@@ -17,7 +17,6 @@ testing, configuration, or deployment commands; use the linked operational refer
 - Pydantic plus YAML for typed configuration.
 - Dagster for assets, jobs, schedules, sensors, and run metadata.
 - Neo4j 5 for the linked analytical graph.
-- FastAPI for authenticated read-only graph access.
 - scikit-learn and, only where justified, PyTorch/Transformers for ML.
 - Docker Compose for local development, tests, and the Mac mini data plane.
 - pytest, Ruff, and MyPy for verification.

@@ -18,7 +18,6 @@ pytestmark = [pytest.mark.fast, pytest.mark.unit]
 GOOD_ENV = """
 SERVER_LOOPBACK=127.0.0.1
 NEO4J_PASSWORD=a-real-password
-SBIR_ANALYTICS_API_TOKEN=deadbeefcafe1234
 """.lstrip()
 
 
@@ -55,13 +54,6 @@ def test_rejects_placeholder_neo4j_password(tmp_path):
     env_file.write_text(
         GOOD_ENV.replace("NEO4J_PASSWORD=a-real-password", "NEO4J_PASSWORD=change_me")
     )
-    result = _run(env_file)
-    assert result.returncode == 1
-
-
-def test_rejects_missing_api_token(tmp_path):
-    env_file = tmp_path / ".env.server"
-    env_file.write_text("SERVER_LOOPBACK=127.0.0.1\nNEO4J_PASSWORD=a-real-password\n")
     result = _run(env_file)
     assert result.returncode == 1
 
