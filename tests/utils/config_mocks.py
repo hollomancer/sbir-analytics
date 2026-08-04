@@ -23,6 +23,7 @@ try:
 except ImportError:
     pytest = None  # pytest only needed for fixtures, not factory functions
 
+from sbir_etl import __version__
 from sbir_etl.config.schemas import PipelineConfig
 
 
@@ -52,7 +53,7 @@ def create_mock_pipeline_config(**overrides: Any) -> PipelineConfig:
     config_dict: dict[str, Any] = {
         "pipeline": {
             "name": "sbir-analytics",
-            "version": "0.1.0",
+            "version": __version__,
             "environment": "test",
         },
         "paths": {

@@ -22,6 +22,7 @@ from typing import Any
 
 import pandas as pd
 from loguru import logger
+from sbir_etl import __version__
 
 
 @dataclass
@@ -168,7 +169,7 @@ class BaseTool(ABC):
     """
 
     name: str = "base_tool"
-    version: str = "0.1.0"
+    version: str = __version__
 
     def __init__(self, **kwargs: Any):
         self._config = kwargs

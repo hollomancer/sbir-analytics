@@ -16,6 +16,12 @@ version:
 `uv.lock` must record the same version for all four local packages. Independent package versions
 are intentionally out of scope until the packages have separate release cadences or consumers.
 
+Runtime release metadata must match that synchronized version as well. The authoritative Python
+runtime marker is `sbir_etl.__version__`; pipeline defaults, HTTP User-Agents, and package-level
+compatibility aliases derive from it. The `pipeline.version` value in `config/base.yaml` is also
+release metadata because deployed configuration can override the Python default. The versioning
+checker validates both static sources against the package metadata.
+
 ## Compatibility surface
 
 Version decisions cover behavior on which a user, downstream script, or deployment can reasonably
@@ -61,8 +67,10 @@ Do not rename, move, or delete those published tags. All subsequent release tags
 ## Release checklist
 
 1. Review user-visible changes since the latest release and choose the required increment.
-2. Update all four `pyproject.toml` versions to the same `MAJOR.MINOR.PATCH` value.
-3. Run `uv lock` to update the four local-package entries in `uv.lock`.
+2. Update all four `pyproject.toml` versions, `sbir_etl.__version__`, and
+   `config/base.yaml`'s `pipeline.version` to the same `MAJOR.MINOR.PATCH` value.
+3. Run `uv lock` to update the four local-package entries in `uv.lock`; runtime defaults and
+   User-Agents derive from `sbir_etl.__version__` and do not need separate edits.
 4. Run `uv run python scripts/ci/check_versioning.py --tag vMAJOR.MINOR.PATCH`.
 5. Confirm the relevant test and quality checks are green.
 6. Commit the release preparation before creating an annotated tag:

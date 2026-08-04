@@ -2,6 +2,7 @@
 """Validate synchronized SemVer metadata and an optional Git release tag."""
 
 import argparse
+import ast
 import re
 import sys
 import tomllib
@@ -16,12 +17,47 @@ PROJECTS = {
     "sbir-ml": ROOT / "packages/sbir-ml/pyproject.toml",
 }
 LOCK_FILE = ROOT / "uv.lock"
+RUNTIME_VERSION_FILE = ROOT / "sbir_etl/__init__.py"
+BASE_CONFIG_FILE = ROOT / "config/base.yaml"
 SEMVER = re.compile(r"^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$")
 
 
 def load_toml(path: Path) -> dict:
     with path.open("rb") as handle:
         return tomllib.load(handle)
+
+
+def load_python_string(path: Path, variable: str) -> str:
+    """Read a module-level string assignment without importing project code."""
+    module = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+    for node in module.body:
+        if not isinstance(node, ast.Assign):
+            continue
+        if any(isinstance(target, ast.Name) and target.id == variable for target in node.targets):
+            if isinstance(node.value, ast.Constant) and isinstance(node.value.value, str):
+                return node.value.value
+            break
+    raise ValueError(f"{path} does not define {variable} as a string literal")
+
+
+def load_base_pipeline_version(path: Path) -> str:
+    """Read ``pipeline.version`` from the simple top-level YAML mapping."""
+    in_pipeline = False
+    for raw_line in path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.split("#", 1)[0].rstrip()
+        if not line.strip():
+            continue
+        if not line[0].isspace():
+            if in_pipeline:
+                break
+            in_pipeline = line == "pipeline:"
+            continue
+        if in_pipeline and line.lstrip().startswith("version:"):
+            value = line.split(":", 1)[1].strip().strip("\"'")
+            if value:
+                return value
+            break
+    raise ValueError(f"{path} does not define pipeline.version")
 
 
 def validate(tag: str | None = None) -> list[str]:
@@ -48,6 +84,20 @@ def validate(tag: str | None = None) -> list[str]:
         locked = lock_packages.get(name)
         if locked != version:
             errors.append(f"uv.lock has {name}={locked!r}; expected {version!r}")
+
+    if len(versions) == 1:
+        expected_version = next(iter(versions))
+        try:
+            runtime_versions = {
+                "sbir_etl.__version__": load_python_string(RUNTIME_VERSION_FILE, "__version__"),
+                "config/base.yaml pipeline.version": load_base_pipeline_version(BASE_CONFIG_FILE),
+            }
+        except (OSError, SyntaxError, ValueError) as exc:
+            errors.append(f"could not read runtime version metadata: {exc}")
+        else:
+            for source, runtime_version in runtime_versions.items():
+                if runtime_version != expected_version:
+                    errors.append(f"{source} is {runtime_version!r}; expected {expected_version!r}")
 
     if tag and len(versions) == 1:
         expected_tag = f"v{next(iter(versions))}"

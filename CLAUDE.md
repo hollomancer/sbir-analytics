@@ -125,7 +125,8 @@ Transition scoring changes must maintain ≥85% precision benchmark.
   [docs/steering/versioning.md](docs/steering/versioning.md).
 - Treat the root project and all packages under `packages/` as one synchronized release.
 - Release tags must be annotated and named `vMAJOR.MINOR.PATCH`; the version stored in every
-  `pyproject.toml` and in `uv.lock` must match the tag without the `v` prefix.
+  `pyproject.toml`, `uv.lock`, `sbir_etl.__version__`, and `config/base.yaml`'s pipeline metadata
+  must match the tag without the `v` prefix.
 - Do not move, replace, or reuse a published tag or version. Release corrections require a new
   version.
 - Before proposing or preparing a release, classify user-visible changes since the latest release,

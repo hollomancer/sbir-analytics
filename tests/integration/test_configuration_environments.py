@@ -9,6 +9,8 @@ from pathlib import Path
 
 import pytest
 
+from sbir_etl import __version__
+
 
 pytestmark = pytest.mark.integration
 
@@ -85,7 +87,7 @@ class TestConfigurationEnvironments:
         # Prod environment should have specific settings
         assert config.neo4j.uri.startswith("bolt://")
         assert config.pipeline.environment == "production"
-        assert config.pipeline.version == "0.1.0"
+        assert config.pipeline.version == __version__
         assert config.duckdb.memory_limit_gb == 8
 
     def test_load_production_alias(self, config_dir, monkeypatch):
@@ -98,7 +100,7 @@ class TestConfigurationEnvironments:
         )
 
         assert config.pipeline.environment == "production"
-        assert config.pipeline.version == "0.1.0"
+        assert config.pipeline.version == __version__
         assert config.duckdb.memory_limit_gb == 8
         assert config.neo4j.database == "analytics"
 
