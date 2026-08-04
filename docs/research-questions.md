@@ -164,10 +164,11 @@ perspective, see [F. Capital formation & entrepreneurial finance](#f-capital-for
   Which CET subfields does DoD appear to want work in, but few SBIR awards
   cover?
   Found by semantic search over award and solicitation text.
-  **Status:** Partially computable as an exploratory analysis. Current coverage
-  includes award text and selected solicitation descriptions, but not the full
-  SBIR.gov topic hierarchy or source-linked solicitation attachments; results
-  remain source-coverage bounded and are not yet validated or citable.
+  **Status:** Partially computable as an exploratory analysis. The implementation
+  can retain the full documented SBIR.gov topic hierarchy, but the live-source
+  coverage gate has not passed and source-linked solicitation attachments are
+  not yet available; results remain source-coverage bounded and are not yet
+  validated or citable.
   *Deps: CET · Plan: [solicitation document evidence](research/solicitation_document_evidence_plan.md)*
 
 - **Capital formation / firm health per CET area** (cap)

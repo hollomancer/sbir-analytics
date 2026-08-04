@@ -1,10 +1,32 @@
 # Solicitation Document and Requirement Evidence Plan
 
-**Status:** Proposed implementation plan
+**Status:** In progress — Phase 1 implemented; Phase 0 live-source gate remains open
 
 **Last reviewed:** 2026-08-04
 
 **Research anchors:** A1 coverage gaps; E5 external-source evaluation
+
+## Implementation progress
+
+The first implementation increment adds the Phase 1 SBIR.gov substrate and the SBIR.gov portion of
+the Phase 0 audit contract:
+
+- `SolicitationExtractor.extract_solicitation_tables()` now returns one lossless
+  solicitation-version table and one topic/subtopic table with deterministic identifiers,
+  canonical source JSON, hashes, retrieval provenance, all documented fields, and explicit parent
+  topic links.
+- The existing six-column `extract_topics()` and keyword-search interfaces remain compatible with
+  weekly reporting. Report-layer excerpt limits remain outside the source tables.
+- `scripts/data/audit_sbir_solicitation_source_coverage.py` manifests the input hash, documented
+  field presence and retention, duplicate records, hierarchy counts, schema drift, source-link
+  yield, ID uniqueness, and a fail-closed go/no-go decision.
+- A documentation-derived full-shape fixture exercises all 25 documented solicitation, topic, and
+  subtopic fields. It is explicitly not live research evidence.
+
+As of 2026-08-04, the official SBIR.gov page says the APIs are under maintenance and a bounded live
+endpoint probe returned HTTP 403. The live 50-record minimum sample therefore has not been captured,
+and the SBIR.gov adapter remains `no_go` for research materialization. NSF, SAM.gov, and Grants.gov
+source spikes also remain pending; see the [Phase 0 status](solicitation_source_coverage_status.md).
 
 ## Purpose
 
@@ -32,8 +54,8 @@ crawler or a second opportunity-ingestion stack.
 
 The repository already has useful seams:
 
-- `sbir_etl/extractors/solicitation.py` retrieves SBIR.gov solicitation topics but retains only a
-  subset of the documented source fields.
+- Before this increment, `sbir_etl/extractors/solicitation.py` retrieved SBIR.gov solicitation
+  topics but retained only a subset of the documented source fields.
 - `sbir_etl/extractors/sam_gov_opportunities.py` retains SAM.gov description, additional-information,
   and attachment URLs.
 - `scripts/data/hydrate_candidate_opportunity_descriptions.py` hydrates selected SAM.gov description
@@ -52,7 +74,7 @@ The repository already has useful seams:
 | --- | --- | --- | --- |
 | Direct NSF Award Search and annual award JSON | Award, program, organization, dates, and funding metadata | Award validation and classification inputs where a direct NSF adapter is present | No solicitation body or attachment is carried by the award record |
 | NSF funding-opportunity pages and PDFs | Full solicitation sections, responsiveness criteria, award limits, proposal rules, and agency updates | Not ingested | Snapshot and parse the authoritative NSF publication linked to an award or opportunity |
-| SBIR.gov Solicitation API | Solicitation title, phase, year, release/open/close/due dates, status, agency URL, topics, topic links, and subtopics | Topic code, title, description, agency, program, and solicitation number; used primarily by weekly reporting | Preserve the full source record and nested topic/subtopic hierarchy; make it reusable by research releases |
+| SBIR.gov Solicitation API | Solicitation title, phase, year, release/open/close/due dates, status, agency URL, topics, topic links, and subtopics | Lossless normalized substrate implemented; legacy topic view remains in weekly reporting | Capture and manifest a live sample after maintenance, then materialize bounded research releases |
 | SAM.gov Opportunities API | Notice metadata, synopsis endpoint, additional-information URL, and direct attachment URLs | Metadata retained; selected synopsis descriptions hydrated | Fetch, version, parse, and classify selected attachments without losing inline descriptions |
 | GSA Contract Opportunities archive | Historical notice metadata and frequently rich inline descriptions | Used by the Phase III notice-corpus research path | Reuse inline text and provenance; do not re-fetch attachments when the archive text is sufficient |
 | Grants.gov opportunity detail | Synopsis, Assistance Listings, eligibility, funding envelope, attachments, related URLs, changes, and version history | No adapter; context only | Add a bounded opportunity/document adapter, never an award or payment ledger |
@@ -330,3 +352,6 @@ No success criterion depends on producing a critical-supplier or specific-award-
 Implement Phase 0 and Phase 1 together. They are the lowest-cost way to establish actual coverage
 and recover solicitation fields already returned by SBIR.gov. Use that evidence to choose a bounded
 NSF, SAM.gov, and Grants.gov attachment cohort before building the document classifier.
+
+**Progress:** Phase 1 and the SBIR.gov audit harness are implemented. Phase 0 is not complete and no
+adapter has passed its live-source coverage gate.
