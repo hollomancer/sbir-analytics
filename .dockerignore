@@ -8,7 +8,6 @@ __pycache__/
 dist/
 build/
 *.egg
-*.pyc
 *.pyo
 *.pyd
 
@@ -33,7 +32,6 @@ data/*
 !data/reference/**
 reports/
 *.csv
-!data/reference/**
 *.parquet
 *.db
 *.duckdb
@@ -94,8 +92,8 @@ specs/phase-iii-census/*
 !specs/phase3-notice-corpus-fusion/
 !specs/phase3-notice-corpus-fusion/**
 
-# Archive (not needed in container)
-archive/
+# Archived scripts are not runtime entrypoints
+scripts/archive/
 
 # CI/CD
 .github/
@@ -111,7 +109,6 @@ Thumbs.db
 
 # Build artifacts
 *.whl
-*.tar.gz
 wheels/
 
 # Scripts not needed in runtime
