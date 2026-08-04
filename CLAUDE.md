@@ -119,6 +119,20 @@ make docs-check                        # Links, stale commands, and repository h
 
 Transition scoring changes must maintain ≥85% precision benchmark.
 
+## Releases and versioning
+
+- Follow [Semantic Versioning 2.0.0](https://semver.org/) and the repository policy in
+  [docs/steering/versioning.md](docs/steering/versioning.md).
+- Treat the root project and all packages under `packages/` as one synchronized release.
+- Release tags must be annotated and named `vMAJOR.MINOR.PATCH`; the version stored in every
+  `pyproject.toml`, `uv.lock`, `sbir_etl.__version__`, and `config/base.yaml`'s pipeline metadata
+  must match the tag without the `v` prefix.
+- Do not move, replace, or reuse a published tag or version. Release corrections require a new
+  version.
+- Before proposing or preparing a release, classify user-visible changes since the latest release,
+  select the required version increment, update all version metadata, run `uv lock`, and run
+  `uv run python scripts/ci/check_versioning.py --tag vMAJOR.MINOR.PATCH`.
+
 ## Code Standards
 
 - Line length: 100

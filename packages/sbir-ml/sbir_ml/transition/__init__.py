@@ -16,10 +16,9 @@ from __future__ import annotations
 import dataclasses
 from typing import Any
 
+from sbir_etl import __version__
+
 from .evaluation.evaluator import ConfusionMatrix, EvaluationResult, TransitionEvaluator
-
-
-__version__ = "0.1.0"
 
 # Default scoring weights / thresholds for transition detection. These are
 # conservative; operational teams should override via the detector pipeline's

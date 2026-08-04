@@ -3,6 +3,8 @@
 from pathlib import Path
 
 import pytest
+
+from sbir_etl import __version__
 from pydantic import ValidationError
 
 from sbir_etl.config.schemas import (
@@ -773,7 +775,7 @@ class TestPipelineConfig:
         config = PipelineConfig()
         assert isinstance(config.pipeline, PipelineMetadata)
         assert config.pipeline["name"] == "sbir-analytics"
-        assert config.pipeline["version"] == "0.1.0"
+        assert config.pipeline["version"] == __version__
         assert config.pipeline["environment"] == "development"
         assert isinstance(config.paths, PathsConfig)
         assert isinstance(config.data_quality, DataQualityConfig)

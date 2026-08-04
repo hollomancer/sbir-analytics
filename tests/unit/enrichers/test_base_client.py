@@ -19,6 +19,8 @@ from unittest.mock import AsyncMock, Mock, patch
 import httpx
 import pytest
 
+from sbir_etl import __version__
+
 from sbir_etl.enrichers.base_client import BaseAsyncAPIClient
 from sbir_etl.exceptions import APIError, ConfigurationError, RateLimitError
 
@@ -163,7 +165,7 @@ class TestDefaultHeaders:
     def test_build_headers_contains_defaults(self, client: _StubAPIClient) -> None:
         headers = client._build_headers()
         assert headers["Accept"] == "application/json"
-        assert headers["User-Agent"] == "SBIR-Analytics/0.1.0"
+        assert headers["User-Agent"] == f"SBIR-Analytics/{__version__}"
 
     def test_build_headers_is_override_point(self) -> None:
         """Subclasses can extend ``_build_headers`` to inject auth."""
@@ -277,7 +279,7 @@ class TestMakeRequestSuccess:
         call_headers = mock_http_client.get.call_args[1]["headers"]
         assert call_headers["X-Custom"] == "hello"
         assert call_headers["Accept"] == "application/json"
-        assert call_headers["User-Agent"] == "SBIR-Analytics/0.1.0"
+        assert call_headers["User-Agent"] == f"SBIR-Analytics/{__version__}"
 
     async def test_custom_headers_can_override_defaults(
         self, client: _StubAPIClient, mock_http_client: AsyncMock
