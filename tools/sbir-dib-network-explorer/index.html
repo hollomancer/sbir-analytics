@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Explore direct NSF SBIR awards, legal entities, and observed DoD funding lineage."
+    />
+    <title>SBIR → DIB Network Explorer</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="app-header">
+      <div>
+        <p class="eyebrow">Evidence-gated funding lineage</p>
+        <h1>NSF SBIR <span aria-hidden="true">→</span><span class="sr-only">to</span> DIB Explorer</h1>
+      </div>
+      <div class="scope-badges" aria-label="Network scope">
+        <span>Direct NSF awards</span>
+        <span>Signed DoD transactions</span>
+        <span>Evidence gated</span>
+      </div>
+    </header>
+
+    <main>
+      <section class="toolbar" aria-label="Graph controls">
+        <form id="search-form" class="search-control" role="search">
+          <label for="node-search">Find an entity, award, agency, or technology</label>
+          <div class="search-row">
+            <input
+              id="node-search"
+              name="node-search"
+              type="search"
+              list="node-options"
+              autocomplete="off"
+              placeholder="Type a name, award ID, or technology"
+            />
+            <datalist id="node-options"></datalist>
+            <button type="submit">Find</button>
+          </div>
+        </form>
+
+        <label class="select-control" for="minimum-years">
+          Minimum persistence
+          <select id="minimum-years">
+            <option value="1" selected>1 fiscal year</option>
+            <option value="2">2 fiscal years</option>
+            <option value="3">3 fiscal years</option>
+            <option value="4">4 fiscal years</option>
+            <option value="5">5 fiscal years</option>
+          </select>
+        </label>
+
+        <label class="select-control" for="graph-density">
+          Display
+          <select id="graph-density">
+            <option value="overview" selected>Overview</option>
+            <option value="expanded">Expanded</option>
+            <option value="all">All filtered edges</option>
+          </select>
+        </label>
+
+        <label class="select-control" for="nsf-status">
+          NSF awardee status
+          <select id="nsf-status">
+            <option value="all" selected>Current and former</option>
+            <option value="current">Current</option>
+            <option value="former">Former</option>
+            <option value="upcoming_only">Upcoming only</option>
+            <option value="indeterminate">Indeterminate</option>
+          </select>
+        </label>
+
+        <fieldset class="funding-filter-group">
+          <legend>Funding instruments</legend>
+          <label><input class="funding-filter" type="checkbox" value="prime_procurement" checked />Prime contracts</label>
+          <label><input class="funding-filter" type="checkbox" value="prime_assistance" checked />Prime assistance</label>
+          <label><input class="funding-filter" type="checkbox" value="prime_other_transaction" checked />Other transactions</label>
+          <label><input class="funding-filter" type="checkbox" value="contract_subaward" checked />Contract subawards</label>
+          <label><input class="funding-filter" type="checkbox" value="assistance_subaward" checked />Assistance subawards</label>
+        </fieldset>
+
+        <div class="checkbox-group" aria-label="Evidence filters">
+          <label class="checkbox-control" for="verified-only">
+            <input id="verified-only" type="checkbox" checked />
+            Verified relationships only
+          </label>
+          <label class="checkbox-control" for="critical-only">
+            <input id="critical-only" type="checkbox" />
+            CET review candidates only
+          </label>
+        </div>
+
+        <button id="reset-view" class="secondary-button" type="button">Reset view</button>
+      </section>
+
+      <section class="network-summary" aria-live="polite">
+        <p id="visible-summary">Loading network…</p>
+        <div class="legend" aria-label="Graph legend">
+          <span><i class="legend-node entity-node"></i>Legal entity</span>
+          <span><i class="legend-node nsf-award-node"></i>NSF award</span>
+          <span><i class="legend-node dod-award-node"></i>DoD award</span>
+          <span><i class="legend-node agency-node"></i>Agency</span>
+          <span><i class="legend-node technology-node"></i>CET area</span>
+          <span><i class="legend-line"></i>Verified source relationship</span>
+          <span><i class="legend-line candidate-line"></i>Candidate association</span>
+        </div>
+      </section>
+
+      <nav id="download-links" class="download-links" aria-label="Download evidence tables"></nav>
+
+      <section class="workspace">
+        <div id="graph-shell" class="graph-shell">
+          <canvas
+            id="network-canvas"
+            role="img"
+            aria-label="Interactive graph of NSF awards, legal entities, and DoD funding"
+          ></canvas>
+          <div id="graph-tooltip" class="graph-tooltip" hidden></div>
+          <div id="graph-message" class="graph-message" hidden></div>
+          <p class="graph-help">Scroll to zoom · drag the background to pan · select a node for details</p>
+        </div>
+
+        <aside id="detail-panel" class="detail-panel" aria-live="polite">
+          <div id="empty-detail" class="empty-detail">
+            <p class="eyebrow">Relationship review</p>
+            <h2>Select an organization</h2>
+            <p>
+              Choose a node to inspect source identifiers, signed amounts, match confidence,
+              evidence limits, and neighboring records.
+            </p>
+          </div>
+          <div id="selected-detail" hidden>
+            <div class="detail-heading">
+              <div>
+                <p id="detail-tier" class="eyebrow"></p>
+                <h2 id="detail-name"></h2>
+              </div>
+              <button id="focus-node" class="secondary-button" type="button">Focus neighborhood</button>
+            </div>
+            <p id="detail-id" class="organization-id"></p>
+            <dl id="detail-metrics" class="detail-metrics"></dl>
+            <div id="screening-block" class="screening-block" hidden>
+              <h3>Evidence and interpretation</h3>
+              <p id="screening-status"></p>
+            </div>
+            <h3>Observed relationships</h3>
+            <div id="relationship-list" class="relationship-list"></div>
+          </div>
+        </aside>
+      </section>
+
+      <section class="guardrail" aria-label="Interpretation guardrail">
+        <strong>Interpretation boundary:</strong>
+        <span id="guardrail-text">
+          Observed DoD funding is not proof that a specific NSF-funded capability was used.
+        </span>
+      </section>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>

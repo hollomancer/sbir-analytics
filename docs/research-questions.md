@@ -192,6 +192,24 @@ perspective, see [F. Capital formation & entrepreneurial finance](#f-capital-for
   Do firms show higher transition rates within the same awarding agency?
   *Deps: ER, ID*
 
+- **Observed SBIR-to-prime supply network** (cap/vuln)
+  Which current and former NSF SBIR/STTR awardees receive DoD funding as prime
+  recipients or reported first-tier subcontractors, by instrument and fiscal
+  year; which DoD award relationships persist; and which directly sourced NSF
+  award texts merit CET-based critical-supply-chain review? Direct NSF records
+  supply authoritative performance dates. USAspending FPDS/FABS transactions
+  supply signed prime procurement, assistance, and other-transaction flows;
+  SAM.gov/FSRS supplies reported subawards. UEI/DUNS edges enter verified totals
+  and name-only matches remain candidates. The graph keeps NSF awards, legal
+  entities, DoD awards, agencies, and CET areas distinct. It does not infer that
+  NSF-funded work was used on a DoD award or that a supplier is critical or
+  irreplaceable. DoD-14/NDIS-8 policy mapping remains deferred, and FOCI is not
+  in this analysis.
+  **Status:** Computable as a manifest-pinned public-data lower bound with
+  signed prime/subaward ledgers, evidence tables, quality gates, and an analyst
+  graph; not a BoM or dependency claim.
+  *Deps: ER, direct NSF awards, USAspending FPDS/FABS, USAspending subawards, CET · Spec: [nsf_sbir_defense_funding_plan.md](research/nsf_sbir_defense_funding_plan.md)*
+
 - **DIB integration** (cap)
   What is the Phase II→III transition rate per CET area via FPDS, and how do
   SAM.gov subaward links connect awardees to prime contractors?
@@ -395,17 +413,18 @@ NASEM calls this quantity the *leverage ratio*.
 
 ### Out of scope — physical & sub-tier supply chain
 
-*These choke-point questions are **not answerable** with award-type data and are
-**not research targets** for this pipeline. Each needs bill-of-materials,
-customs, contractual country-of-origin, or sub-tier supplier data the pipeline
-does not ingest. They are listed for visibility, stated explicitly rather than
-graded as metrics. GAO-25-107283 [L30] documents exactly this
-sub-tier-visibility gap.*
+*Reported first-tier subcontract relationships are now an A2 research target.
+The questions below remain outside that boundary: they require bill-of-materials,
+customs, contractual country-of-origin, production, or supplier-to-supplier data
+that federal first-tier subaward records do not expose. They are listed for
+visibility, stated explicitly rather than graded as metrics. GAO-25-107283 [L30]
+documents this deeper visibility gap.*
 
 - **Physical input chokepoints** — dependence on contested physical inputs (rare
   earths, castings, advanced chips, APIs); sole-source inputs, foreign-content
   percentages, and surge capacity.
-- **Tiered BoM / supplier-tier maps** — sub-tier (Tier 2/3/N) supplier-dependency
+- **Tiered BoM / deeper supplier-tier maps** — Tier 3/N relationships below a
+  reported first-tier subcontractor, and Tier 2/3/N bill-of-material dependency
   mapping for a CET capability.
 - **Critical-mineral dependency** — exposure of a CET area to contested minerals
   and materials (rare earths, gallium, etc.).
@@ -437,10 +456,11 @@ areas with several DoD critical-technology areas (Hypersonics, Directed Energy,
 Advanced Gas Turbine Engine Technologies, Integrated Network
 Systems-of-Systems).
 
-*Crosswalk note:* for DoD-facing outputs, each CET area should also carry a
-**DoD-14** tag and an **NDIS-8** (National Defense Industrial Strategy
-supply-chain-priority) tag where a mapping exists, so results speak to both NSTC
-and DoD audiences.
+*Crosswalk note:* DoD-facing outputs would benefit from **DoD-14** and NDIS
+supply-chain-priority tags, but no authoritative mapping is materialized in the
+repository. Those tags and associated policy prose remain deferred; current
+outputs expose the source CET classification and the deferred-mapping status
+rather than inventing an **NDIS-8** framework.
 
 Two other, divergent CET taxonomies exist in code — a 10-area transition-system
 set and a 19-area reporting-analyzer set — and are not yet reconciled to the

@@ -1,5 +1,6 @@
 """Regression tests for the server container runtime contract."""
 
+import re
 import subprocess
 from pathlib import Path
 
@@ -10,11 +11,20 @@ pytestmark = [pytest.mark.fast, pytest.mark.unit]
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SERVER_COMPOSE = REPO_ROOT / "docker-compose.server.yml"
+SERVER_ENV_EXAMPLE = REPO_ROOT / ".env.server.example"
 DOCKERFILE = REPO_ROOT / "Dockerfile"
 SERVER_WORKSPACE = REPO_ROOT / "workspace.server.yaml"
 DAGSTER_HEALTHCHECK = REPO_ROOT / "scripts" / "docker" / "healthcheck" / "dagster.sh"
 DAEMON_HEALTHCHECK = REPO_ROOT / "scripts" / "docker" / "healthcheck" / "daemon.sh"
 ENTRYPOINT = REPO_ROOT / "scripts" / "docker" / "entrypoint.sh"
+NSF_DEFENSE_LINEAGE_ASSET = (
+    REPO_ROOT
+    / "packages"
+    / "sbir-analytics"
+    / "sbir_analytics"
+    / "assets"
+    / "nsf_defense_lineage.py"
+)
 
 
 def test_server_ports_are_unconditionally_loopback_only():
@@ -69,6 +79,45 @@ def test_weekly_awards_report_schedule_gate_reaches_container():
     variable = "SBIR_ETL__DAGSTER__SCHEDULES__WEEKLY_AWARDS_REPORT_ENABLED"
 
     assert f"{variable}: ${{{variable}:-false}}" in compose
+
+
+def test_nsf_defense_lineage_environment_reaches_container():
+    compose = SERVER_COMPOSE.read_text()
+    env_example = SERVER_ENV_EXAMPLE.read_text()
+    asset = NSF_DEFENSE_LINEAGE_ASSET.read_text()
+    expected_lineage_defaults = {
+        "ANALYSIS_DATE": "",
+        "OUTPUT_DIR": "/app/data/processed/nsf_sbir_defense_lineage",
+        "SBIR_AWARDS_PATH": "/app/data/raw/sbir/award_data.csv",
+        "DIRECT_NSF_SOURCES": "",
+        "NSF_MAX_WORKERS": "8",
+        "PRIME_API_SNAPSHOTS": "",
+        "PRIME_API_PARQUETS": "",
+        "FETCH_PRIME_API": "false",
+        "PRIME_CONTRACT_ARCHIVES": "",
+        "PRIME_ARCHIVE_PARQUETS": "",
+        "SUBAWARD_SOURCES": "",
+        "MAX_RELEASE_AGE_DAYS": "45",
+        "GRAPH_OUTPUT": "/app/artifacts/sbir-dib-network-explorer/data/network.json",
+    }
+    direct_reads = set(re.findall(r"\{_ENV_PREFIX\}([A-Z][A-Z0-9_]*)", asset))
+    helper_reads = set(
+        re.findall(r"""_(?:paths|bool)_env\(\s*["']([A-Z][A-Z0-9_]*)["']\s*\)""", asset)
+    )
+
+    assert direct_reads | helper_reads == set(expected_lineage_defaults)
+    for suffix, default in expected_lineage_defaults.items():
+        variable = f"SBIR_ETL__NSF_DEFENSE_LINEAGE__{suffix}"
+        assert f"{variable}: ${{{variable}:-{default}}}" in compose
+        assert f"\n{variable}={default}\n" in env_example
+
+    schedule_defaults = {
+        "SBIR_ETL__DAGSTER__SCHEDULES__MONTHLY_NSF_DEFENSE_LINEAGE_REFRESH_ENABLED": "false",
+        "SBIR_ETL__DAGSTER__SCHEDULES__MONTHLY_NSF_DEFENSE_LINEAGE_REFRESH_CRON": "0 5 8 * *",
+    }
+    for variable, default in schedule_defaults.items():
+        assert f"{variable}: ${{{variable}:-{default}}}" in compose
+        assert f"\n{variable}={default}\n" in env_example
 
 
 def test_server_validate_config_does_not_expand_failure_path(tmp_path):

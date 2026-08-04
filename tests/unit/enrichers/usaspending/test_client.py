@@ -872,6 +872,49 @@ class TestSearchAwards:
         assert payload["order"] == "desc"
 
 
+class TestAwardTransactions:
+    """Tests for source-grain award transaction pagination."""
+
+    @pytest.mark.asyncio
+    async def test_get_award_transactions_uses_generated_award_id(self, client, mock_http_client):
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"results": [{"id": "CONT_TX_1"}]}
+        mock_response.raise_for_status = Mock()
+        mock_http_client.post.return_value = mock_response
+
+        result = await client.get_award_transactions("CONT_AWD_1", page=2, limit=250)
+
+        assert result["results"][0]["id"] == "CONT_TX_1"
+        call = mock_http_client.post.call_args
+        payload = call.kwargs.get("json") or call[1].get("json")
+        assert call.args[0].endswith("/transactions/")
+        assert payload == {
+            "award_id": "CONT_AWD_1",
+            "page": 2,
+            "limit": 250,
+            "sort": "action_date",
+            "order": "asc",
+        }
+
+
+class TestTopTierAgencies:
+    """Tests for authoritative agency-reference lookup."""
+
+    @pytest.mark.asyncio
+    async def test_get_toptier_agencies_uses_reference_endpoint(self, client, mock_http_client):
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"results": [{"agency_id": 1173, "toptier_code": "097"}]}
+        mock_response.raise_for_status = Mock()
+        mock_http_client.get.return_value = mock_response
+
+        result = await client.get_toptier_agencies()
+
+        assert result["results"][0]["agency_id"] == 1173
+        assert mock_http_client.get.call_args.args[0].endswith("/references/toptier_agencies/")
+
+
 class TestSearchRecipients:
     """Tests for the search_recipients() method."""
 

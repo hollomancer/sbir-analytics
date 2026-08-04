@@ -258,6 +258,96 @@ fails so recovery work cannot erase the backup.
 - A `weekly_core_refresh` schedule exists but stays **STOPPED** until you flip
   `SBIR_ETL__DAGSTER__SCHEDULES__WEEKLY_CORE_REFRESH_ENABLED=true` — do this
   only after a manual run of `core_refresh_job` succeeds.
+- `monthly_nsf_defense_lineage_refresh` (8th of the month, 05:00 UTC) also
+  stays **STOPPED** by default. Leave
+  `SBIR_ETL__DAGSTER__SCHEDULES__MONTHLY_NSF_DEFENSE_LINEAGE_REFRESH_ENABLED=false`
+  until the dated manual canary below passes every validation gate.
+
+### Manual NSF defense-lineage canary
+
+The `nsf_defense_lineage_refresh_job` writes a research release and static
+graph files only. It does **not** select a Neo4j loader or mutate Neo4j. Do not
+pair this canary with `core_refresh_job`, a graph load, or any other
+materialization.
+
+All configured paths are paths inside the Linux container. A host file below
+`SERVER_DATA_DIR` is visible below `/app/data`; a host file below
+`SERVER_ARTIFACTS_DIR` is visible below `/app/artifacts`. The following six
+variables are lists and use the container's colon (`:`) path separator:
+
+- `DIRECT_NSF_SOURCES`
+- `PRIME_API_SNAPSHOTS`
+- `PRIME_API_PARQUETS`
+- `PRIME_CONTRACT_ARCHIVES`
+- `PRIME_ARCHIVE_PARQUETS`
+- `SUBAWARD_SOURCES`
+
+Use the full `SBIR_ETL__NSF_DEFENSE_LINEAGE__` prefix for each name. Do not use
+commas, macOS `/Volumes/...` paths, or paths outside a mounted container
+directory. For example, two subaward inputs are configured as:
+
+```dotenv
+SBIR_ETL__NSF_DEFENSE_LINEAGE__SUBAWARD_SOURCES=/app/data/raw/usaspending/fy2025.zip:/app/data/raw/usaspending/fy2026.zip
+```
+
+The template's production destinations are persistent:
+`/app/data/processed/nsf_sbir_defense_lineage` for the release and
+`/app/artifacts/sbir-dib-network-explorer/data/network.json` for the graph and
+its sibling CSV downloads. The server profile does not serve
+`SERVER_ARTIFACTS_DIR`; these are persistent inspection artifacts, not a
+published endpoint. Do not use those destinations for the first run. In the
+live `.env.server`, pin one analysis date and redirect both outputs to dated
+staging/canary directories, replacing `2026-08-04` consistently with the date
+being tested:
+
+```dotenv
+SBIR_ETL__NSF_DEFENSE_LINEAGE__ANALYSIS_DATE=2026-08-04
+SBIR_ETL__NSF_DEFENSE_LINEAGE__OUTPUT_DIR=/app/data/processed/nsf_sbir_defense_lineage_canary/2026-08-04
+SBIR_ETL__NSF_DEFENSE_LINEAGE__GRAPH_OUTPUT=/app/artifacts/sbir-dib-network-explorer/2026-08-04/data/network.json
+SBIR_ETL__NSF_DEFENSE_LINEAGE__DIRECT_NSF_SOURCES=/app/data/raw/nsf/award_api/<saved-snapshot>
+SBIR_ETL__NSF_DEFENSE_LINEAGE__PRIME_API_SNAPSHOTS=/app/data/raw/usaspending/nsf_awardee_prime/<saved-snapshot>
+SBIR_ETL__NSF_DEFENSE_LINEAGE__PRIME_API_PARQUETS=
+SBIR_ETL__NSF_DEFENSE_LINEAGE__PRIME_CONTRACT_ARCHIVES=
+SBIR_ETL__NSF_DEFENSE_LINEAGE__PRIME_ARCHIVE_PARQUETS=
+SBIR_ETL__NSF_DEFENSE_LINEAGE__SUBAWARD_SOURCES=/app/data/raw/usaspending/<saved-subaward.zip>
+SBIR_ETL__NSF_DEFENSE_LINEAGE__FETCH_PRIME_API=false
+SBIR_ETL__DAGSTER__SCHEDULES__MONTHLY_NSF_DEFENSE_LINEAGE_REFRESH_ENABLED=false
+```
+
+Replace the three angle-bracketed paths with existing pinned inputs and confirm
+`SBIR_AWARDS_PATH` exists inside the container. This first canary uses saved
+NSF and prime-API snapshots plus a saved reported-subaward file; do not combine
+it with live fetching. Run `make server-up` after changing `.env.server` so the
+code-server container receives the values, then execute exactly this job from
+the live deployment checkout:
+
+```bash
+docker exec sbir-server-dagster-code dagster job execute -m sbir_analytics.definitions -j nsf_defense_lineage_refresh_job
+```
+
+The canary passes only when the Dagster run succeeds and the dated
+`nsf_defense_lineage_validation.json` reports `quality_gates_passed: true`.
+That aggregate result requires all of these gates:
+
+- the manifest and upstream quality report are present and passed;
+- the pinned analysis date matches, is not future-dated, and is within
+  `MAX_RELEASE_AGE_DAYS`;
+- product schemas and analysis dates are consistent, source-grain IDs are
+  unique, and manifest row counts and checksums match;
+- specific-award and critical-supply-chain conclusions remain evidence-gated,
+  DoD-14/NDIS-8 mapping remains deferred, FOCI remains excluded, and
+  Grants.gov remains solicitation context rather than a ledger.
+
+Also confirm that the dated `network.json` and its sibling CSV downloads exist
+under `SERVER_ARTIFACTS_DIR`. Record the Dagster run ID, analysis date, input
+vintages and checksums, output paths, row counts, and gate result in
+`mac-mini-status.local.md`. If any gate or output check fails, retain the dated
+canary files for diagnosis and keep the monthly schedule stopped. Only after a
+clean canary should an operator restore the persistent production destinations,
+recreate the containers, and run the job manually once more. Keep the monthly
+schedule stopped: enabling it requires a separate operating decision and a
+documented process that advances the analysis date and every source vintage.
+Pinned canary inputs must never become a recurring schedule configuration.
 
 ### Rollout verification gates
 

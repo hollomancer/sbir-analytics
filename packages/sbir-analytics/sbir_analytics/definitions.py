@@ -222,8 +222,36 @@ for _job_name, _schedule_name, _default_cron, _label in _HOST_SCHEDULES:
         )
     )
 
+# The lineage refresh produces a derived research release rather than downloading
+# a source dataset, so keep it outside the source-download schedule contract.
+research_release_schedules = []
+_lineage_job = _get_job("nsf_defense_lineage_refresh_job")
+if _lineage_job is None:
+    LOG.warning("Job nsf_defense_lineage_refresh_job not discovered; skipping schedule")
+else:
+    research_release_schedules.append(
+        ScheduleDefinition(
+            job=_lineage_job,
+            cron_schedule=os.getenv(
+                "SBIR_ETL__DAGSTER__SCHEDULES__MONTHLY_NSF_DEFENSE_LINEAGE_REFRESH_CRON",
+                "0 5 8 * *",
+            ),
+            name="monthly_nsf_defense_lineage_refresh",
+            description="Scheduled NSF SBIR to DoD funding-lineage research release",
+            default_status=_schedule_status(
+                "SBIR_ETL__DAGSTER__SCHEDULES__MONTHLY_NSF_DEFENSE_LINEAGE_REFRESH_ENABLED",
+                default_running=False,
+            ),
+        )
+    )
+
 # Create schedules only for available jobs
-schedules = [daily_schedule, weekly_core_refresh_schedule, *source_download_schedules]
+schedules = [
+    daily_schedule,
+    weekly_core_refresh_schedule,
+    *source_download_schedules,
+    *research_release_schedules,
+]
 
 if cet_full_pipeline_job is not None:
     cet_full_pipeline_schedule = ScheduleDefinition(
