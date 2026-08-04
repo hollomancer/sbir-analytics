@@ -33,7 +33,6 @@ def _run_script(
     for key in (
         "SERVER_BACKUP_DIR",
         "DAGSTER_PORT",
-        "SBIR_ANALYTICS_API_PORT",
         "NEO4J_DATABASE",
         "NEO4J_BOLT_PORT",
         "NEO4J_TAILNET_BOLT_ENABLED",
@@ -240,9 +239,6 @@ def _install_fake_tailscale(bin_dir: Path) -> None:
         if port == "443" and os.environ.get("HANG_443") == "1" and "off" not in args:
             print("Serve is not enabled on your tailnet: https://example.test/consent", flush=True)
             time.sleep(60)
-        if port == "8443" and os.environ.get("FAIL_8443") == "1" and "off" not in args:
-            print("forced failure", file=sys.stderr)
-            raise SystemExit(8)
         state = json.loads(state_path.read_text())
         host_key = f"node.test.ts.net:{port}"
         if "off" in args:
@@ -262,13 +258,6 @@ def _install_fake_tailscale(bin_dir: Path) -> None:
                     "Handlers": {"/": {"Proxy": target}}
                 }
         state_path.write_text(json.dumps(state))
-        if (
-            port == "8443"
-            and os.environ.get("APPLY_THEN_FAIL_8443") == "1"
-            and "off" not in args
-        ):
-            print("forced late failure", file=sys.stderr)
-            raise SystemExit(8)
         if (
             port == "17687"
             and os.environ.get("APPLY_THEN_FAIL_NEO4J") == "1"
@@ -304,8 +293,6 @@ def _run_tailscale(
     command: str,
     state: dict[str, object],
     *,
-    fail_8443: bool = False,
-    apply_then_fail_8443: bool = False,
     apply_then_fail_neo4j: bool = False,
     neo4j_enabled: bool = True,
     neo4j_tailnet_port: str = "17687",
@@ -320,16 +307,11 @@ def _run_tailscale(
     env_file = tmp_path / ".env.server"
     env_file.write_text(
         "DAGSTER_PORT=3000\n"
-        "SBIR_ANALYTICS_API_PORT=8010\n"
         "NEO4J_BOLT_PORT=7687\n"
         f"NEO4J_TAILNET_BOLT_ENABLED={'true' if neo4j_enabled else 'false'}\n"
         f"NEO4J_TAILNET_BOLT_PORT={neo4j_tailnet_port}\n"
     )
     extra = {"CALL_LOG": str(call_log), "STATE_FILE": str(state_file)}
-    if fail_8443:
-        extra["FAIL_8443"] = "1"
-    if apply_then_fail_8443:
-        extra["APPLY_THEN_FAIL_8443"] = "1"
     if apply_then_fail_neo4j:
         extra["APPLY_THEN_FAIL_NEO4J"] = "1"
     if hang_443:
@@ -388,7 +370,7 @@ def test_tailscale_down_refuses_funnel_enabled_neo4j_route(tmp_path):
     assert not any("off" in call for call in calls)
 
 
-@pytest.mark.parametrize("port", ["not-a-port", "0", "65536", "443", "8443"])
+@pytest.mark.parametrize("port", ["not-a-port", "0", "65536", "443"])
 def test_tailscale_up_rejects_invalid_neo4j_port_without_mutation(tmp_path, port):
     original = _serve_state("443", "http://127.0.0.1:3000")
 
@@ -405,39 +387,12 @@ def test_tailscale_up_rejects_invalid_neo4j_port_without_mutation(tmp_path, port
     assert not any(call[:1] == ["serve"] for call in calls)
 
 
-def test_tailscale_up_rolls_back_new_route_if_second_fails(tmp_path):
-    result, state, calls = _run_tailscale(tmp_path, "up", {}, fail_8443=True)
-
-    assert result.returncode != 0
-    assert state.get("TCP", {}) == {}
-    configure_443 = _call_index(calls, "serve", "--yes", "--https=443")
-    configure_8443 = _call_index(calls, "serve", "--yes", "--https=8443")
-    remove_443 = next(
-        index for index, call in enumerate(calls) if "--https=443" in call and "off" in call
-    )
-    assert configure_443 < configure_8443 < remove_443
-
-
 def test_tailscale_disabled_consent_times_out_without_mutation(tmp_path):
     result, state, _calls = _run_tailscale(tmp_path, "up", {}, hang_443=True)
 
     assert result.returncode != 0
     assert state == {}
     assert "consent" in (result.stdout + result.stderr).lower()
-
-
-def test_tailscale_up_rolls_back_route_applied_before_cli_failure(tmp_path):
-    result, state, calls = _run_tailscale(
-        tmp_path,
-        "up",
-        {},
-        apply_then_fail_8443=True,
-    )
-
-    assert result.returncode != 0
-    assert state.get("TCP", {}) == {}
-    assert any("--https=8443" in call and "off" in call for call in calls)
-    assert any("--https=443" in call and "off" in call for call in calls)
 
 
 def test_tailscale_up_configures_tls_neo4j_route(tmp_path):
@@ -510,7 +465,6 @@ def test_tailscale_up_rolls_back_all_routes_after_late_neo4j_failure(tmp_path):
     assert result.returncode != 0
     assert state.get("TCP", {}) == {}
     assert any("--tls-terminated-tcp=17687" in call and "off" in call for call in calls)
-    assert any("--https=8443" in call and "off" in call for call in calls)
     assert any("--https=443" in call and "off" in call for call in calls)
 
 

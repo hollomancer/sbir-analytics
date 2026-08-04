@@ -8,9 +8,9 @@
 #   * host bindings are loopback-only (127.0.0.1 / ::1 / localhost)
 #   * Docker daemon reachable and has enough memory for the stack
 #   * storage directories (external SSD) exist and are writable
-#   * host ports for Neo4j / Dagster / API are free
+#   * host ports for Neo4j / Dagster are free
 #   * Tailscale is up and logged in
-#   * Tailscale Serve does not already map ports 443 or 8443 (no clobber)
+#   * Tailscale Serve does not already map managed ports (no clobber)
 #
 # Modes:
 #   (default)          run every check
@@ -56,11 +56,10 @@ SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 if [ -f "$ENV_FILE" ]; then
   info "Loading environment from $ENV_FILE"
   for key in \
-    SERVER_LOOPBACK NEO4J_PASSWORD SBIR_ANALYTICS_API_TOKEN \
+    SERVER_LOOPBACK NEO4J_PASSWORD \
     SERVER_DATA_DIR SERVER_REPORTS_DIR SERVER_LOGS_DIR \
     SERVER_ARTIFACTS_DIR SERVER_NEO4J_DIR SERVER_BACKUP_DIR \
-    NEO4J_HTTP_PORT NEO4J_BOLT_PORT DAGSTER_PORT \
-    SBIR_ANALYTICS_API_PORT; do
+    NEO4J_HTTP_PORT NEO4J_BOLT_PORT DAGSTER_PORT; do
     load_env_key "$key"
   done
 elif [ "$MODE" = "all" ]; then
@@ -96,15 +95,6 @@ check_required_secrets() {
   else
     success "NEO4J_PASSWORD is set."
   fi
-
-  # API token
-  if [ -z "${SBIR_ANALYTICS_API_TOKEN:-}" ]; then
-    error "SBIR_ANALYTICS_API_TOKEN is not set (API would refuse to serve)."
-  elif printf '%s' "${SBIR_ANALYTICS_API_TOKEN}" | grep -qi 'change_me'; then
-    error "SBIR_ANALYTICS_API_TOKEN is still a placeholder. Generate: openssl rand -hex 32"
-  else
-    success "SBIR_ANALYTICS_API_TOKEN is set."
-  fi
 }
 
 # ---------------------------------------------------------------------------
@@ -121,8 +111,8 @@ check_docker() {
   fi
   success "Docker daemon is reachable."
 
-  # Total memory available to the Docker VM (bytes). Stack has ~7 GiB of
-  # limits across Neo4j, Dagster, and the API; warn under 8 GiB.
+  # Total memory available to the Docker VM (bytes). Stack has several GiB of
+  # limits across Neo4j and Dagster; warn under 8 GiB.
   total_mem=$(docker info --format '{{.MemTotal}}' 2>/dev/null || echo 0)
   if [ "${total_mem:-0}" -gt 0 ]; then
     min_bytes=$((8 * 1024 * 1024 * 1024))
@@ -204,8 +194,7 @@ check_ports() {
   for pair in \
     "Neo4j HTTP|neo4j|7474|${NEO4J_HTTP_PORT:-7474}" \
     "Neo4j Bolt|neo4j|7687|${NEO4J_BOLT_PORT:-7687}" \
-    "Dagster|dagster-webserver|3000|${DAGSTER_PORT:-3000}" \
-    "API|analytics-api|${SBIR_ANALYTICS_API_PORT:-8010}|${SBIR_ANALYTICS_API_PORT:-8010}"; do
+    "Dagster|dagster-webserver|3000|${DAGSTER_PORT:-3000}"; do
     label=${pair%%|*}; rest=${pair#*|}
     service=${rest%%|*}; rest=${rest#*|}
     container_port=${rest%%|*}; p=${rest#*|}
@@ -251,8 +240,7 @@ check_tailscale() {
     return
   fi
   for pair in \
-    "443:http://127.0.0.1:${DAGSTER_PORT:-3000}" \
-    "8443:http://127.0.0.1:${SBIR_ANALYTICS_API_PORT:-8010}"; do
+    "443:http://127.0.0.1:${DAGSTER_PORT:-3000}"; do
     port=${pair%%:*}
     target=${pair#*:}
     if ! state=$(printf '%s' "$serve_json" | \

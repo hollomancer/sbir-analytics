@@ -17,8 +17,6 @@ RUN pip install \
     "jellyfish>=1.0.0,<2.0.0" \
     "httpx>=0.27.0,<1.0.0" \
     "tenacity>=8.2.3,<10.0.0" \
-    "fastapi>=0.115.0,<1.0.0" \
-    "uvicorn>=0.30.0,<1.0.0" \
     "playwright>=1.47.0,<2.0.0"
 
 # USPTO patent assignments are only reachable through browser automation since

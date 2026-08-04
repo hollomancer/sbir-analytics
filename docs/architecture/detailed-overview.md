@@ -17,7 +17,7 @@ question-driven: new components must serve a question in the
 ```text
 sbir_etl/                         shared ETL, identity, models, configuration,
                                   validation, quality, and monitoring primitives
-packages/sbir-analytics/          Dagster assets, jobs, schedules, sensors, and API
+packages/sbir-analytics/          Dagster assets, jobs, schedules, sensors, and tools
 packages/sbir-graph/              Neo4j loaders, queries, and migrations
 packages/sbir-ml/                 CET, transition, and model-specific code
 studies/                           frozen analytical contracts and study outputs
@@ -37,7 +37,6 @@ another. `scripts/ci/check_architecture_boundaries.py` enforces these rules.
 | Configuration | Pydantic and YAML | `sbir_etl/config/`, `config/` |
 | Orchestration | Dagster | `packages/sbir-analytics/` |
 | Graph | Neo4j 5 | `packages/sbir-graph/` |
-| Read-only analytics API | FastAPI | `packages/sbir-analytics/sbir_analytics/api/` |
 | Machine learning | scikit-learn; PyTorch/Transformers where required | `packages/sbir-ml/` |
 | Containers | Docker Compose | root Compose files |
 | Quality and tests | Ruff, MyPy, pytest | root configuration and `tests/` |
@@ -56,9 +55,8 @@ extract and snapshot ──▶ validate and normalize ──▶ enrich and class
                             ┌─────────────────────────────┴─────────────┐
                             ▼                                           ▼
                        Neo4j graph                              study datasets
-                            │                                           │
-                            ▼                                           ▼
-                    read-only API                         manifests, reports, evidence
+                                                                        ▼
+                                                          manifests, reports, evidence
 ```
 
 Operational source pipelines currently cover SBIR.gov, USAspending, SAM.gov, and USPTO data.
@@ -79,7 +77,6 @@ must be reused by source-specific enrichers, graph loading, and studies. See the
 - **Scripts:** bounded operator commands and transitional bridges. Scripts should call reusable
   modules instead of becoming a second implementation.
 - **Studies:** frozen inputs, parameters, code references, and evidence status under `studies/`.
-- **API:** authenticated, read-only graph access. It never owns mutation or migration behavior.
 
 ## Storage and graph boundary
 
@@ -103,9 +100,9 @@ compute it.
 ## Deployment boundary
 
 The only live data plane is the Mac mini checkout at
-`/Users/conradhollomon/projects/sbir-analytics-server`. Docker Compose runs Dagster, Neo4j, and the
-private API; persistent data lives under `/Volumes/SSDmini/sbir-analytics`; ingress is Tailscale
-Serve only. GitHub Actions performs CI and never materializes live data.
+`/Users/conradhollomon/projects/sbir-analytics-server`. Docker Compose runs Dagster and Neo4j;
+persistent data lives under `/Volumes/SSDmini/sbir-analytics`; ingress is Tailscale Serve only.
+GitHub Actions performs CI and never materializes live data.
 
 Before any live operation, read the
 [Mac mini runbook](../deployment/mac-mini-server.md#live-instance-on-this-mac-mini). AWS Batch,

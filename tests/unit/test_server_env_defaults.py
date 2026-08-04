@@ -1,7 +1,7 @@
 """Tests for the Tailscale-only server environment template (.env.server.example).
 
 These guard the security-relevant defaults of the server profile: loopback-only
-bindings, the analytics API port, heavy-asset opt-out, and schedule gating.
+bindings, heavy-asset opt-out, and schedule gating.
 """
 
 import os
@@ -37,11 +37,6 @@ def test_env_example_exists():
 def test_bindings_are_loopback():
     env = _parse_env(ENV_EXAMPLE)
     assert env["SERVER_LOOPBACK"] == "127.0.0.1"
-
-
-def test_api_port_is_8010():
-    env = _parse_env(ENV_EXAMPLE)
-    assert env["SBIR_ANALYTICS_API_PORT"] == "8010"
 
 
 def test_heavy_assets_loaded_but_not_scheduled():
@@ -85,7 +80,6 @@ def test_secret_placeholders_are_not_real_values():
     env = _parse_env(ENV_EXAMPLE)
     # The template must ship placeholders, never real credentials.
     assert env["NEO4J_PASSWORD"] == "change_me"
-    assert "change_me" in env["SBIR_ANALYTICS_API_TOKEN"]
 
 
 def test_neo4j_healthcheck_receives_credentials_and_valid_plugin_json():
