@@ -76,7 +76,7 @@ records the partial coverage, and continues with explicit missing-text labels.
 
 Pass the preceding public award snapshot with `--previous-awards` to distinguish
 new and changed records. No GitHub Actions workflow schedules this pipeline; an
-operator or future Mac mini Dagster job must preserve and supply that snapshot
+operator or future self-hosted server Dagster job must preserve and supply that snapshot
 explicitly. Record any retention policy with the job that owns the materialization.
 When `OPENAI_API_KEY` is absent, `--ai` degrades to deterministic packet text.
 AI receives only retrieved public fields, is invoked only when both technical

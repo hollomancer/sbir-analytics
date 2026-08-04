@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-# Offline-consistent Neo4j backup for the Mac mini server profile.
+# Offline-consistent Neo4j backup for the self-hosted server profile.
 
 set -eu
 

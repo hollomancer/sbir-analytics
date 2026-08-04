@@ -48,7 +48,7 @@ uv run python -c 'from sbir_etl.config import get_config; print(get_config().pip
 Use double underscores to mirror a YAML path:
 
 ```bash
-export SBIR_ETL__PATHS__DATA_ROOT=/Volumes/SSDmini/sbir-analytics
+export SBIR_ETL__PATHS__DATA_ROOT=/path/to/persistent-storage/sbir-analytics
 export SBIR_ETL__LOGGING__LEVEL=DEBUG
 export SBIR_ETL__ENRICHMENT__PERFORMANCE__CHUNK_SIZE=10000
 ```
@@ -71,7 +71,7 @@ export NEO4J_DATABASE=neo4j
 ```
 
 Keep secrets out of committed YAML. The live server uses `.env.server`; preserve that file and
-follow the [Mac mini runbook](deployment/mac-mini-server.md) before any live operation.
+follow the [self-hosted server runbook](deployment/self-hosted-server.md) before any live operation.
 
 ## Using configuration in Python
 
@@ -108,7 +108,7 @@ output = config.paths.resolve_path("scripts_output", create_parent=True)
 
 `resolve_path()` expands shell environment variables and `~`, accepts absolute paths, and can
 create the resolved path's parent directory. Pipeline storage is local filesystem storage; the
-live deployment mounts `/Volumes/SSDmini/sbir-analytics` into the containers.
+live deployment mounts the host paths configured by `SERVER_*_DIR` into the containers.
 
 ## Main sections
 
@@ -152,7 +152,7 @@ make docker-down
 ```
 
 See [Docker development](development/docker.md) for local workflows and the
-[Mac mini runbook](deployment/mac-mini-server.md) for the live instance.
+[self-hosted server runbook](deployment/self-hosted-server.md) for the live instance.
 
 ## Adding a setting
 

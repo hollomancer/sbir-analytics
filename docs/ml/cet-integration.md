@@ -50,8 +50,8 @@ Run the complete job only after installing the full stack and providing its loca
 make cet-run
 ```
 
-Heavy CET assets are not scheduled by default on the Mac mini. Follow the
-[capacity guidance](../deployment/mac-mini-server.md#heavy-assets) before a live run.
+Heavy CET assets are not scheduled by default on the self-hosted server. Follow the
+[capacity guidance](../deployment/self-hosted-server.md#heavy-assets) before a live run.
 
 ## Model and rule boundary
 

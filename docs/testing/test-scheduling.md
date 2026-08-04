@@ -72,10 +72,10 @@ For E2E scenario selection, use the commands in [End-to-End Testing](e2e-testing
 
 ## Scheduled operational work
 
-Production extraction, enrichment, reporting, and materialization are scheduled on the Mac mini
+Production extraction, enrichment, reporting, and materialization are scheduled on the self-hosted server
 through Dagster or cron. They are operational data-plane work, not GitHub Actions tests. Before
 inspecting or running them, read the
-[Mac mini runbook](../deployment/mac-mini-server.md#live-instance-on-this-mac-mini).
+[self-hosted server runbook](../deployment/self-hosted-server.md#live-instance-on-the-server-host).
 
 If a periodic regression suite is added later, document its trigger and prerequisites here only
 after the workflow or server schedule exists. Do not describe proposed schedules as current CI.

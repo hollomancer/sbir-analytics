@@ -1,25 +1,25 @@
 # GitHub Actions Migration Plan (Completed)
 
-> Historical record. Scheduled operational workloads now run on the Mac mini;
+> Historical record. Scheduled operational workloads now run on the self-hosted server;
 > GitHub Actions is CI only. Use the current
 > [deployment documentation](../../deployment/README.md) for operations.
 
 Move the five scheduled workloads that used to run in GitHub Actions onto the
-Mac mini, as Dagster schedules or host cron. GitHub Actions is now tests only:
+self-hosted server, as Dagster schedules or host cron. GitHub Actions is now tests only:
 fast unit tests on PRs, the full suite on `main`.
 
 **Depends on** [#501](https://github.com/hollomancer/sbir-analytics/pull/501),
 which deletes the workflows described here. Until that merges, the workflows
 still exist (though `weekly.yml` has been in an invalid state and not running).
 
-See [the Mac mini runbook](../../deployment/mac-mini-server.md) for the target host, and
+See [the self-hosted server runbook](../../deployment/self-hosted-server.md) for the target host, and
 [the AWS decommission plan](../../deployment/aws-decommission-plan.md) for the earlier phase that
 moved ingestion off Actions. This plan finishes that job.
 
 ## What is already done
 
 The hard part — ingestion — landed in the AWS decommission. Four source-download
-jobs and three chaining sensors run on the mini, and `monthly_phase_transition`
+jobs and three chaining sensors run on the server, and `monthly_phase_transition`
 already carries the phase-transition half of `monthly-analysis.yml`. This plan
 covers what was left behind.
 
@@ -49,7 +49,7 @@ archive already solves this by writing dated directories under
 `<data_root>/processed/phase_transition/history/<date>/`. Each migration needs
 an equivalent or its output series is lost.
 
-**Document each schedule** in a runbook table in `mac-mini-server.md`, matching
+**Document each schedule** in a runbook table in `self-hosted-server.md`, matching
 the existing "Source-data downloads" and "Monthly analysis" sections.
 
 ## Cross-cutting work
@@ -70,7 +70,7 @@ secrets in GitHub settings — `NEO4J_USER`, `NEO4J_PASSWORD`, `S3_BUCKET`, and
 `AWS_ROLE_ARN` have no remaining consumer.
 
 **Keep crons in UTC.** Every workflow cron below is UTC and Dagster's
-`ScheduleDefinition` is UTC here too, so times port unchanged. The mini is on
+`ScheduleDefinition` is UTC here too, so times port unchanged. The server is on
 local time; do not convert.
 
 ## The five workloads
@@ -180,7 +180,7 @@ Establish what the successful runs actually produced — pull a recent
 then port the behaviour you want rather than the behaviour you have.
 
 The `actions/cache` of `usaspending_api_cache.json` becomes a plain file on the
-SSD, which is strictly better: no cache-key churn, no eviction.
+persistent storage, which is strictly better: no cache-key churn, no eviction.
 
 Note the phase-transition half of this workflow is already migrated
 (`monthly_phase_transition`); only the benchmark job remains.
@@ -205,11 +205,11 @@ Reproduce on the host before writing any Dagster code.
 
 Two simplifications the move makes available:
 
-- The step curls `data.www.sbir.gov/…/award_data.csv` directly. On the mini,
+- The step curls `data.www.sbir.gov/…/award_data.csv` directly. On the server,
   `sbir_awards_download_job` already fetches that CSV weekly. Consume that
   vintage instead of re-downloading, and the failing step disappears.
 - The month-over-month diff uses `actions/cache` to carry
-  `latest_awards.csv` forward as `previous_awards.csv`. On the SSD that is just
+  `latest_awards.csv` forward as `previous_awards.csv`. On persistent storage that is just
   two paths and a copy — no cache key, no chance of a silent restore-key miss
   producing a diff against the wrong month.
 
@@ -222,24 +222,24 @@ it as new work with a reference implementation rather than as a port.
 |---|---|
 | Was | `build-images.yml` (Sunday 04:00 + push paths) and `ci.yml`'s container-build-test |
 | Built | `python-base` (amd64 + arm64), `etl`, `full` → GHCR; plus a compose smoke test |
-| Target | **split**: a path-filtered CI job for validation, the mini for the images it runs |
+| Target | **split**: a path-filtered CI job for validation, the server for the images it runs |
 
 These two concerns got deleted together, and they should not be restored
 together, because they were never the same thing.
 
 **Publishing is genuinely optional.** `make server-up` falls back to building
-`Dockerfile.python-base` locally when GHCR has no manifest for the Mac's
-architecture (see [Bring-up](../../deployment/mac-mini-server.md#bring-up)), and the server compose profile builds
+`Dockerfile.python-base` locally when GHCR has no manifest for the host's
+architecture (see [Bring-up](../../deployment/self-hosted-server.md#bring-up)), and the server compose profile builds
 its app images locally with a `:local` tag rather than pulling. Nothing is
 broken today; a first build just takes several minutes. The amd64 half of the
 multi-arch manifest existed to serve CI, which no longer builds images — so if
-the weekly refresh comes back at all, an arm64-only local build on the mini is
+the weekly refresh comes back at all, a native-architecture local build on the server is
 enough.
 
 **Validation is not optional, and is currently missing.** With no image build
 anywhere, nothing checks that `Dockerfile`, `Dockerfile.python-base`,
 `Dockerfile.full`, or the compose files still work. A broken Dockerfile is now
-discovered at deploy time on the mini, which is the worst place to find it.
+discovered at deploy time on the server, which is the worst place to find it.
 `tests/` cannot cover this: the ETL image is what the tests would run *inside*.
 
 **Implemented in this PR:** a **path-filtered `docker` job in `ci.yml`**, gated on
@@ -258,9 +258,9 @@ That is roughly a 5–10 minute job that runs on a handful of PRs a month. It
 keeps the "GitHub Actions is tests only" line honest — it is a test, of the
 build — without restoring a 20-minute job on every merge.
 
-The alternative, building on the mini via cron, catches the same breakage but
-only after it lands on `main`, and only on arm64. Worth doing *as well* if you
-want the arm64 path covered, but it is not a substitute for a pre-merge gate.
+The alternative, building on the server via cron, catches the same breakage but
+only after it lands on `main`, and only on the host's architecture. Worth doing
+*as well* if you want that path covered, but it is not a substitute for a pre-merge gate.
 
 ## Deliberately not migrated
 
@@ -269,7 +269,7 @@ Recorded so these are not resurrected by accident.
 | Dropped | Why |
 |---|---|
 | Performance regression check | PR-scoped, gated on a baseline cached against a git ref. Meaningless outside CI, and it was `continue-on-error` so it blocked nothing. |
-| Transition MVP gate | Already `workflow_dispatch`-only because runners cannot reach the bulk data. If the gate is wanted, the data is local on the mini and it becomes a Dagster job — but it was gating nothing in practice. |
+| Transition MVP gate | Already `workflow_dispatch`-only because runners cannot reach the bulk data. If the gate is wanted, the data is local on the server and it becomes a Dagster job — but it was gating nothing in practice. |
 | Container build + smoke, E2E docker job | Covered by `test-full` on `main`, which runs the whole suite against a real Neo4j. |
 | PR test-summary comment, CI summary job | GitHub's own checks UI shows which job failed. |
 | Weekly auto-repair chain | Never fired once in nine months — no `ci:triage` issue and no `bot/ci-fix/*` branch ever existed. `ruff --fix` is a pre-commit concern. |
