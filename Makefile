@@ -522,12 +522,11 @@ ps: ## Show running containers
 	$(call run,$(COMPOSE) ps)
 
 .PHONY: clean-all
-clean-all: ## Clean all artifacts, containers, and volumes
-	@$(call info,Cleaning all Docker artifacts)
+clean-all: ## Remove this project's containers and Compose volumes
+	@$(call info,Cleaning project Docker resources)
 	@set -euo pipefail; \
 	 $(call run,$(COMPOSE) down --remove-orphans --volumes); \
-	 $(call run,docker system prune -f --volumes || true); \
-	 $(call success,All artifacts cleaned)
+	 $(call success,Project containers and Compose volumes cleaned)
 
 .PHONY: shell
 shell: env-check ## Drop into a shell in the app container
