@@ -17,8 +17,9 @@ decision. Those remain an architectural north star and require a demonstrated co
 The three-PR milestone must prove only that:
 
 1. candidate assertions are deterministic, with one claim per prior-source/contract-award pair and
-   one frozen action-anchor rule;
-2. they retain every qualifying action reference plus source and method provenance;
+   one shared, typed contract-award key resolution rule;
+2. they retain every supporting action reference, the earliest award action, and the earliest
+   positive-obligation action when one exists;
 3. each confidence dimension distinguishes measured values from typed absence or failure;
 4. Neo4j cannot strengthen their meaning; and
 5. DuckDB and study tooling can consume the same content-addressed snapshot without querying
@@ -64,6 +65,8 @@ content-addressed candidate contract, and the legacy writers should stop in PR 2
 | Concern | Exact paths | Current finding |
 | --- | --- | --- |
 | Candidate model and scorer | `sbir_etl/models/phase_iii_candidate.py`; `packages/sbir-analytics/sbir_analytics/assets/phase_iii_candidates/assets.py`; `packages/sbir-analytics/sbir_analytics/assets/phase_iii_candidates/pairing.py` | Candidate IDs are deterministic and scores are decomposed. `build_uei_pairs()` preserves the target-transaction grain shared with the census, while the legacy S1 adapter deliberately selects one latest action per contract award and its output loses the stable transaction key. The assertion adapter must start from the preserved action-pair universe, not silently inherit that legacy row selection. |
+| Contract and action identity | `sbir_etl/utils/award_identity.py`; `sbir_etl/extractors/usaspending_award_archive.py`; `tests/unit/utils/test_award_identity.py`; `tests/unit/phase_iii_candidates/test_pairing.py` | `target_transaction_id` is already distinct from `target_contract_key`, and bare `contract_id` is excluded from `award_key_series()`. However, the resolver returns an untyped, unprefixed string, treats frame-complete generated aliases as peers rather than making `generated_unique_award_id` canonical, and fails a partially populated generated-key column instead of applying an explicit row-level fallback. The Award Data Archive extractor maps raw `contract_award_unique_key` into the generated-ID field, but direct callers can still supply the raw alias. Separately, `_prepare_contract_transactions()` populates ambiguous `target_id` through a column-presence `contract_id`, PIID, generated-ID pick. The legacy composite and generated key therefore have no auditable method marker or collision-proof namespace. |
+| Other shared-pair consumers | `scripts/phase3_benchmark/build_pairs_and_score.py`; `scripts/data/build_phase_iii_control_outcomes.py`; `scripts/data/build_phase_iii_placebo.py`; `tests/unit/scripts/test_phase3_pairing.py`; `tests/unit/scripts/test_build_phase_iii_control_outcomes.py`; `tests/unit/scripts/test_build_phase_iii_placebo.py` | The benchmark calls `award_key_series()` directly, while the control and placebo paths call `build_uei_pairs(..., columns=CENSUS_PAIR_COLUMNS)` directly. A namespaced resolver or census compatibility projection must migrate these consumers in PR 1 rather than changing their schemas accidentally. |
 | Legacy transition producer | `packages/sbir-analytics/sbir_analytics/assets/transition/scoring.py`; `detections.py`; `evidence.py`; `utils.py`; `loading.py` | Ranking, evidence, adaptation, and graph publication are separate contracts. Evidence checks do not form a blocking publication gate. |
 | Dagster selection | `packages/sbir-analytics/sbir_analytics/assets/jobs/transition_job.py`; `packages/sbir-analytics/sbir_analytics/definitions.py` | Legacy graph assets are discoverable beyond the named job. Removing keys from one job is insufficient because broad asset selections can still execute decorated assets. |
 | Neo4j transition loader | `packages/sbir-graph/sbir_graph/loaders/neo4j/transitions.py` | Writes `TRANSITIONED_TO` and causal `RESULTED_IN`, and creates identifier-only contract `FinancialTransaction` nodes. It stores serialized evidence only if a caller supplies it; the active adapter does not. |
@@ -86,8 +89,9 @@ Important test gaps are:
 - `tests/integration/test_phase_iii_retrospective_asset.py` uses engineered fixtures. It is an
   integration test, not an external precision benchmark.
 - `tests/unit/phase_iii_candidates/test_pairing.py` proves that `build_uei_pairs()` retains every
-  target transaction and prefers the USAspending-generated contract key; assertion projection
-  tests do not yet exist.
+  target transaction and carries an award-level key separately. It does not yet prove typed
+  generated-ID precedence, prefixed legacy fallback, PIID-collision safety, or fallback counts;
+  assertion projection tests do not yet exist.
 - `tests/unit/phase_iii_census/test_criteria.py` enforces stable action and contract identifiers,
   unique prior-award/action pairs, action-date predicates, distinct-contract reporting, and
   transaction-deduplicated signed obligations. Those invariants are census non-regression tests,
@@ -127,6 +131,10 @@ The migration should correct only documentation touched by the new candidate pat
   `docs/data/dictionaries/transition-fields-dictionary.md` overstate a composite ranking as a
   probability.
 - `docs/schemas/neo4j.md` overstates graph idempotency while random and timestamp-based IDs remain.
+- `docs/steering/data-quality.md` prefers raw `contract_award_unique_key` without explaining that
+  the Award Data Archive extractor normalizes that source field as a generated-USAspending-key
+  alias, that direct callers may still supply the raw alias, or how typed legacy fallback is
+  surfaced.
 - `docs/queries/transition-queries.md` uses effectiveness, success, enablement, and top-performer
   language unsupported by candidate-only topology.
 - `packages/sbir-analytics/sbir_analytics/api/models.py` defaults provenance `as_of` to response
@@ -145,7 +153,8 @@ replaces semantics currently exposed by pathway queries and the private API.
 A2, B1, E1, E3, and E6 are downstream beneficiaries, not questions this migration answers. B2 and
 B3 use the contract-award assertion as their durable outcome concept, but the supporting action
 remains the temporal observation. Any later candidate-coverage or latency quantity must name the
-assertion definition, action-anchor rule, and denominator. It is not a “graph transition rate.”
+assertion definition, award or funding anchor, and denominator. It is not a “graph transition
+rate.”
 
 The existing census serves a different but compatible purpose. Its observational unit is prior
 award source row × target contract action so frozen predicates, modification-level dates, signed
@@ -182,6 +191,26 @@ The assertion output is a deterministic action-to-contract projection for B2 can
 and candidate-defined B3 latency. It is not the census estimand and does not establish that an
 anchor action is legally Phase III. Other B3 causal, survival, and effectiveness estimands remain
 outside this migration.
+
+PR 1 also owns the canonical federal contract-award identity rule:
+
+```text
+generated_unique_award_id
+    -> documented agency + parent-IDV + PIID legacy composite
+    -> unresolved: count and fail strict publication
+```
+
+Resolved values are namespaced as `USAID:<generated_unique_award_id>` or
+`LEGACY:<agency>|<parent_idv>|<piid>` and carry `ContractKeyMethod`. Bare PIID is retained only as a
+search, display, and audit field; it never precedes either award-level key or enters
+`assertion_id`. The Award Data Archive extractor normalizes raw `contract_award_unique_key` into
+the canonical generated-ID field; the resolver also recognizes that raw source alias for direct
+callers. Conflicting generated-ID aliases block rather than selecting one.
+
+The assertion producer and census share the normalized UEI-only pair boundary, canonical federal
+contract-award key resolver, and transaction-record identity. They apply their own downstream
+gates: the assertion producer imports no census inclusion predicate, and PR 1 changes no frozen
+census estimand.
 
 Directed and follow-on SAM opportunity candidates do not have contract endpoints and remain
 exploratory outputs. Legacy transition rows without recoverable source and method provenance are
@@ -246,13 +275,13 @@ No `SUPPORTED_DERIVATION` edge exists in version one because there is no accepte
 existing SBIR award input + existing USAspending contract input
                               │
                               ▼
-       census-compatible award × contract-action pairs
+ shared normalized UEI-only action pairs + typed key resolution
                               │
                               ▼
                retrospective candidate predicates
                               │
                               ▼
- deterministic group by prior row + contract; select anchor
+ group by prior row + contract; select award/funding anchors
                               │
                               ▼
           content-addressed AssertionSnapshot (Parquet + manifest)
@@ -273,8 +302,8 @@ not infer them. Graph and ML packages do not import each other.
 USAspending contract inputs. The relevant observations have three distinct grains:
 
 - the prior Phase II source row is the assertion subject;
-- the federal prime contract award, identified by the USAspending-generated unique award key, is
-  the assertion object; and
+- the federal prime contract award, identified by a namespaced generated key or explicitly typed
+  legacy fallback, is the assertion object; and
 - the USAspending contract actions are first-class supporting observations carrying dates, codes,
   descriptions, and signed obligations.
 
@@ -286,10 +315,12 @@ normalized source contracts should preserve `source_system`, `source_record_id`,
 is outside this milestone.
 
 **Assertions.** A candidate assertion refers to one prior-award source-row key, one contract-award
-key, every qualifying supporting action key, one deterministically selected anchor action, any
-contradicting source-record keys, and the hashes of the exact input files in its manifest. It does
-not replace or aggregate away those observations. Multiple modifications under one contract award
-produce one logical claim, not multiple outcomes.
+key and key-resolution method, every supporting action key, the earliest dated award action, the
+earliest dated positive-obligation action when present, any contradicting source-record keys, and
+the hashes of the exact input files in its manifest. It does not replace or aggregate away those
+observations. Multiple modifications under one contract award produce one logical claim, not
+multiple outcomes. Zero- and negative-obligation actions can establish and support an award even
+though they cannot be the positive-obligation anchor.
 
 **Research findings.** A finding binds to a content-addressed assertion snapshot and states an
 estimand. It never treats mutable Neo4j topology as the final analytical input.
@@ -314,12 +345,12 @@ sbir_etl/assertions/
 
 Responsibilities are:
 
-- `enums.py`: claim status, support class, permitted use, assertion type, dimension status, and the
-  minimal version-one dimension reasons;
+- `enums.py`: claim status, support class, permitted use, assertion type, `ContractKeyMethod`,
+  dimension status, and the minimal version-one dimension reasons;
 - `models.py`: frozen `DimensionAssessment`, assertion record, and snapshot manifest contracts;
 - `identifiers.py`: canonical record-key normalization and semantic hashes;
 - `validation.py`: candidate-only, status/score/reason, action-to-contract membership, and
-  deterministic anchor invariants; and
+  deterministic award/funding-anchor invariants; and
 - `snapshots.py`: canonical row ordering, logical hashing, physical SHA binding, no-overwrite
   behavior, and collision detection.
 
@@ -336,6 +367,16 @@ packages/sbir-graph/sbir_graph/loaders/neo4j/
 
 No loader-directory reorganization is justified in the first milestone.
 
+The existing `sbir_etl/utils/award_identity.py` remains the shared home for federal contract-award
+resolution logic. PR 1 adds one typed resolver there; it imports the lightweight canonical
+`ContractKeyMethod` from `sbir_etl.assertions.enums`, which is re-exported by
+`sbir_etl.assertions`. This keeps graph-facing contract modules free of the resolver's pandas
+dependency. `sbir_etl/assertions/identifiers.py` hashes the resolver's namespaced output and never
+implements a competing award-key convention. `award_key_series()` becomes a thin namespaced key-
+only view over the typed resolver rather than a second pick order. PR 1 migrates its benchmark
+consumer and fixtures to that canonical output; it does not retain an unnamespaced resolver
+contract in parallel.
+
 ### 3.4 Dagster asset graph
 
 The first producer should be manual and unscheduled while parity is established:
@@ -347,15 +388,15 @@ existing award input fingerprint
 existing contract input fingerprint
                     │
                     ▼
-shared census-compatible action pairs
-  [prior source row × target transaction; census remains unchanged]
+shared normalized UEI-only action pairs
+  [prior source row × target transaction; shared key resolver]
                     │
                     ▼
 retrospective candidate predicates
                     │
                     ▼
 transition_candidate_assertions
-  [group by prior_source_record_key + target_contract_key]
+  [group by prior_source_record_key + target_contract_key; select two anchors]
                     │
                     ▼
 transition_assertion_checks  [blocking]
@@ -372,30 +413,66 @@ only the current candidate Parquet/NDJSON or `_legacy_s1_target_transactions()`,
 latest action and drops its stable key. It preserves the existing retrospective detector's logical
 FPDS-contract candidate selection, rejoins those prior-award/contract pairs to the shared action
 boundary, and groups by `prior_source_record_key` and `target_contract_key`. This is a narrow
-adapter projection; `phase_iii_census` itself is not an upstream asset. The contract key uses the
-existing generated-unique-award-ID precedence and never falls back to bare PIID.
+adapter projection; `phase_iii_census` itself is not an upstream asset. Both consumers receive
+`target_contract_key`, `target_contract_key_method`, and `target_transaction_id` from the same
+resolver-backed pair builder, then apply independent gates. The assertion producer imports no
+census inclusion predicate.
 
-For version one, a qualifying supporting action is a shared exact-UEI pair row that (a) matches an
-emitted retrospective FPDS-contract logical pair, (b) has a nonblank stable transaction ID and
-generated contract key, and (c) has a valid target action date after the detector's declared
-temporal boundary for the prior award. These rules are frozen in the method contract before
-materialization; census-only predicates are not imported into them.
+PR 1 replaces the ambiguous column-presence pick
+`target_id = contract_id | piid | generated_unique_award_id` with explicit fields. Shared pairs
+carry resolver-produced `target_contract_key` and `target_contract_key_method`, stable
+`target_transaction_id`, and a separate `target_piid` audit value. Any retained `target_id` is a
+declared compatibility/display field populated at the consumer boundary and is prohibited from
+assertion hashing, grouping, or graph endpoint identity. The candidate path retains its exact
+pre-PR1 `target_id` and derived `candidate_id` as explicitly legacy compatibility fields and adds
+the resolved contract key and method beside them. One reusable
+`phase_iii_census/pairing.py::build_census_uei_pairs()` projection calls the shared builder and maps
+`target_piid` to the census's existing audit-facing `target_id` field. The census asset, control-
+outcome script, and placebo script must all use that projection so PIID remains visible without
+becoming identity or duplicating a mapping. The Phase III benchmark migrates its
+`phase_iii_award_key` and pair-ID expectations to the namespaced output of
+`award_key_series()`; those benchmark IDs are not the detector compatibility IDs.
 
-For each group, the adapter retains all qualifying `supporting_action_record_keys` and chooses the
-anchor as the earliest qualifying target action after the applicable prior-award temporal boundary,
-breaking date ties by stable target transaction ID. B3 latency is computed from that action under
-the frozen rule. It does not aggregate action obligations into the assertion; action-grained amounts
-remain available to DuckDB and the census. It does not merge directed or follow-on opportunity
-candidates. If a logical candidate has no qualifying dated action, the adapter emits no assertion
-and records the deterministic exclusion in its check metadata; it never chooses a pre-boundary,
-undated, or input-order fallback anchor.
+The detector still scores the legacy latest selected transaction. PR 1 recovers and stores that
+transaction as `detector_action_record_key`; it does not rescore or imply that the detector action
+is the earliest award action. The latest-action selection gains a normalized transaction-ID
+tie-break so equivalent input order cannot change the selected row. This preserves score
+provenance without rescoring across actions; because a same-date tie can change the selected
+attributes, any resulting detector-output change remains subject to the repository's >=85%
+precision gate and must be reported separately from identity parity.
+
+For version one, a supporting action is a shared exact-UEI pair row that (a) matches an emitted
+retrospective FPDS-contract logical pair, (b) has a nonblank stable transaction ID, and (c) resolves
+to the asserted namespaced contract key. The adapter retains every such action key regardless of
+whether the action precedes Phase II completion or has a positive, zero, or negative signed
+obligation.
+
+For each group, the adapter sorts actions by parsed action date and normalized transaction ID. It
+sets `anchor_action_record_key` to the earliest dated action establishing the award and separately
+sets `first_positive_obligation_action_record_key` to the earliest dated action whose signed
+obligation is greater than zero. The funding anchor is nullable when no observed action qualifies;
+the award anchor is not replaced by it. If no action has a valid date, strict V1 materialization
+fails and reports the affected source keys rather than inventing an order. When the bound Phase II
+end date is observable, B3 default latency is its signed difference from the award anchor date and
+negative latency is retained. A missing Phase II end date does not suppress the assertion or its
+anchor: the temporal assessment is `NOT_MEASURABLE` with `SOURCE_FIELD_UNAVAILABLE`, and no
+latency is derived. Post-completion and follow-up-window restrictions belong only to downstream
+estimands.
+
+The assertion stores no obligation aggregate. All action-grained amounts remain available to
+DuckDB and the census. The adapter does not merge directed or follow-on opportunity candidates.
 
 The adapter copies no timestamp or Dagster run ID into semantic assertion identity. The snapshot
 asset reuses an existing file when the logical hash and bound physical hash match; it never
 overwrites that path. PR 1 assigns the new assets to an explicitly manual-only group and changes
 the broad selections in `packages/sbir-analytics/sbir_analytics/definitions.py` to exclude that
 group, with a definition test. No new source-snapshot asset family is introduced, and no existing
-census asset, predicate, count, or output schema changes.
+census predicate, grain, estimand, count, or obligation total changes. Existing frozen census
+artifacts are never rewritten. Future census materialization uses the same generated-first,
+typed-fallback resolver and records the resolution method; this versions the shared identity
+representation without changing the census predicates or quantities. The selected normalized
+census source continues to satisfy its existing requirement for generated award IDs, so PR 1 adds
+no new census fallback-inclusion policy and does not edit the hash-frozen census design.
 
 Human review is not in this graph. A later review asset must be a separate input and must create a
 new revision or status record rather than mutating detector output.
@@ -416,14 +493,20 @@ The minimum graph is:
 (award)-[:POSSIBLE_DERIVATION]->(contract)
 ```
 
+The PR 2 contract observation loader keys the contract endpoint from the same namespaced
+`object_contract_key` used in PR 1 and retains PIID only as a searchable/display property. It does
+not derive the graph primary key from `contract_id`. Generated-key-distinct IDV children therefore
+remain distinct, and fallback endpoints visibly retain their key method.
+
 `Assertion` is keyed by `assertion_revision_id`. It exposes the logical `assertion_id`, candidate
-status/support/use, structured dimension assessments, method metadata, supporting action keys,
-anchor action key/date, contradicting source-record keys, and assertion snapshot hash. Nested Parquet
-dimension structs are flattened in Neo4j into explicit `*_status`, `*_score`, `*_reason`, and
-`*_error_category` properties; missing properties never imply a status. `MethodRun` uses the
-originating detector run ID from the snapshot manifest. Republishing the graph reuses that node;
-the graph-load run is not a new claim-generating method run. Operational run identity is not part
-of the assertion revision hash.
+status/support/use, namespaced contract key and resolution method, structured dimension
+assessments, method metadata, supporting and detector action keys, award anchor key/date, optional
+positive-obligation anchor key/date, contradicting source-record keys, and assertion snapshot hash.
+Nested Parquet dimension structs are flattened in Neo4j into explicit `*_status`, `*_score`,
+`*_reason`, and `*_error_category` properties; missing properties never imply a status.
+`MethodRun` uses the originating detector run ID from the snapshot manifest. Republishing the graph
+reuses that node; the graph-load run is not a new claim-generating method run. Operational run
+identity is not part of the assertion revision hash.
 
 `POSSIBLE_DERIVATION` is optional for semantic correctness but included because PocketGraph and
 Cypher users need a compact investigative view. It is never an independent record. Its projection
@@ -436,6 +519,11 @@ rule is exactly: one edge per assertion revision in the supplied snapshot whose 
 - `claim_status`
 - `support_class`
 - `permitted_use`
+- `object_contract_key_method`
+- `anchor_action_record_key`
+- `anchor_action_date`
+- `first_positive_obligation_action_record_key`
+- `first_positive_obligation_action_date`
 - `identity_status`
 - `identity_score`
 - `identity_reason`
@@ -484,16 +572,22 @@ The minimum claim-aware API is:
 
 Responses expose the logical and revision IDs, claim status, support class, permitted use,
 the full typed identity/technology/temporal assessments, ranking-score definition, method
-ID/version/fingerprint, supporting action keys, anchor action key/date, contradicting record keys,
-and assertion/source snapshot hashes.
+ID/version/fingerprint, namespaced contract key and resolution method, supporting and detector
+action keys, award anchor key/date, optional positive-obligation anchor key/date, contradicting
+record keys, and assertion/source snapshot hashes. When the Phase II end date is present, a
+derived latency response uses the signed award-anchor date minus that end date and never clips
+negative values. When it is absent, latency is null and the response exposes the temporal
+assessment as `NOT_MEASURABLE`/`SOURCE_FIELD_UNAVAILABLE`; null alone is not the epistemic state.
 
 The API embeds source references rather than presenting them as if they were retrieved evidence.
 Candidate-constant status/support/use filters are deferred. PocketGraph and direct Cypher users can
 expand or contract the graph using the properties already present on assertion nodes and projected
 edges, especially each dimension's status and independently measured score. A
 `NOT_MEASURABLE` technology dimension can therefore be shown separately from a measured low score
-instead of disappearing under a threshold. Add API filters only when a real client needs them. No
-client may advertise `ranking_score` as a truth probability.
+instead of disappearing under a threshold. Investigators can also isolate typed legacy-key
+fallbacks through `object_contract_key_method` without treating that method as claim strength. Add
+API filters only when a real client needs them. No client may advertise `ranking_score` as a truth
+probability.
 
 Do not silently reimplement `/v1/analytics/transitions` with a new denominator. If no external
 consumer exists, retire it with an explicit response and replacement link. If an owner identifies
@@ -518,6 +612,13 @@ and amounts remain available for DuckDB analysis even though the graph object is
 Pair counts and transaction-deduplicated signed dollars remain census quantities; assertion counts
 are distinct prior-source-row/contract-award claims and the assertion stores no aggregated
 obligation.
+
+Object construction applies no post-completion or positive-dollar filter. Studies may select
+post-completion assertions, a follow-up window, or a positive funding anchor only through declared
+inclusion rules. When the prior award end date is observable, the default B3 candidate latency is
+signed award-anchor date minus Phase II end. When it is missing, the assertion remains available
+but the latency is not measurable. The funding anchor supports separately named funding-latency
+analyses. Dollar analyses continue to use signed action rows, not assertion properties.
 
 A version-one candidate snapshot may support an exploratory, explicitly candidate-defined
 quantity, for example:
@@ -573,6 +674,18 @@ change.
 ## 5. Schema proposal
 
 ### 5.1 Enumerations
+
+The lightweight canonical contract in `sbir_etl/assertions/enums.py` defines, and the shared
+identity utility consumes:
+
+```python
+class ContractKeyMethod(StrEnum):
+    GENERATED_UNIQUE_AWARD_ID = "GENERATED_UNIQUE_AWARD_ID"
+    LEGACY_AWARD_COMPOSITE = "LEGACY_AWARD_COMPOSITE"
+```
+
+There is no `PIID` method and no `UNRESOLVED` assertion value. A row that cannot resolve by either
+award-level method does not enter an assertion snapshot.
 
 Use `StrEnum` for:
 
@@ -642,6 +755,7 @@ assertion_revision_id
 assertion_type = AWARD_CONTRACT_DERIVATION
 subject_record_key
 object_contract_key
+object_contract_key_method: ContractKeyMethod
 claim_status = CANDIDATE
 support_class = C
 permitted_use = INVESTIGATIVE_ONLY
@@ -653,10 +767,13 @@ ranking_score_definition
 method_id
 method_version
 method_fingerprint
-supporting_action_record_keys
-anchor_action_record_key
-anchor_action_date
-contradicting_source_record_keys
+supporting_action_record_keys: tuple[str, ...]
+detector_action_record_key: str
+anchor_action_record_key: str
+anchor_action_date: date
+first_positive_obligation_action_record_key: str | None
+first_positive_obligation_action_date: date | None
+contradicting_source_record_keys: tuple[str, ...]
 ```
 
 The dimensions remain separate. An exact UEI match can support identity without proving technical
@@ -694,13 +811,44 @@ derive it from the canonical unique `prior_award_id`; do not assume `prior_award
 PR 1 may introduce a different key only if it proves the key is stable, unique, and available on
 every validated Phase II row and documents the migration.
 
-`object_contract_key` is the namespaced USAspending generated unique award identifier selected by
-the existing `award_key_series()` precedence, never bare PIID. The adapter groups qualifying action
-pairs by those two keys, sorts and preserves every `supporting_action_record_key`, and selects
-`anchor_action_record_key` by the frozen earliest-qualifying-date/stable-transaction-ID rule.
-`anchor_action_date` is copied from that action; no derived obligation total belongs in the
-assertion. PR 1 fails closed when any required canonical subject, contract, action, or anchor key is
-missing and never falls back to a random ID.
+`object_contract_key` is produced only by the PR 1 shared resolver. It is
+`USAID:<normalized-generated-id>` when a documented generated-ID alias is available, otherwise
+`LEGACY:<agency-code>|<parent-idv>|<piid>` when every exact composite component is present. The
+resolver does not substitute agency names, generic `award_id`, `contract_id`, or bare PIID. It
+returns `object_contract_key_method` with the key. Conflicting generated aliases, incomplete legacy
+components, or an exact complete normalized legacy composite whose source actions resolve to more
+than one namespaced key or method fail strict materialization; they are not reconciled
+heuristically.
+
+The active normalized USAspending producer already requires generated award and transaction IDs,
+so production inputs should normally resolve as `USAID:`. The fallback exists for explicitly
+identified legacy inputs that retain exact agency-code, parent-IDV, and PIID components; it does not
+weaken normalized-source requirements.
+
+The resolver reports generated, fallback, and unresolved row counts in check metadata. Any
+unresolved row needed by a candidate blocks publication with sampled source identifiers; PR 1 does
+not build a quarantine service. Both the census and assertion path retain the resolver method and
+apply their independent downstream predicates; neither invents a PIID identity or a second pick
+order. Legacy fallback assertions remain class C and investigative-only, and consumers can filter
+them through the method field without treating fallback method as claim strength.
+
+The adapter groups action pairs by `subject_record_key` and the resolved namespaced contract key,
+then sorts and preserves every `supporting_action_record_key`. In V1 this list means observations
+associated with the candidate contract; an action that predates Phase II completion does not by
+itself support a post-completion temporal claim. `detector_action_record_key` identifies the legacy
+latest transaction whose attributes produced the retained ranking and dimension assessments;
+same-date detector ties use normalized transaction ID and enter the method fingerprint.
+
+`anchor_action_record_key` and `anchor_action_date` identify the earliest dated associated action,
+with same-date ties broken by normalized transaction ID. The optional positive-obligation key/date
+pair identifies the earliest dated action with a numeric signed obligation greater than zero under
+the same tie-break. Both optional fields are present together or absent together. Zero and negative
+actions remain supporting observations; there is no assertion-level obligation aggregation or
+post-completion construction filter. A missing Phase II end date leaves the assertion and award
+anchor intact but requires `temporal = NOT_MEASURABLE` with reason
+`SOURCE_FIELD_UNAVAILABLE`; it does not produce latency. PR 1 fails closed when a required
+canonical subject, contract, action, detector-action, or award-anchor key is missing and never
+falls back to a random ID.
 
 ### 5.3 Snapshot manifest
 
@@ -718,6 +866,11 @@ producer_epistemic_tier = exploratory
 method_id
 method_version
 method_fingerprint
+contract_key_resolver_version
+contract_key_resolution_counts:
+    generated_unique_award_id
+    legacy_award_composite
+    unresolved
 method_run_id
 generated_at
 source_snapshots[]:
@@ -731,6 +884,10 @@ For version one, `source_snapshot_id` may identify the exact existing input file
 require a new locator, retrieval event, or normalized `SourceRecord` store merely to populate the
 manifest. The bindings must include both the validated prior-award input and the exact
 transaction-grain contract-action input from which supporting and anchor action keys were resolved.
+`contract_key_resolution_counts` reports unique normalized source contract-action records before
+UEI pair fan-out and award grouping, so fallback prevalence and unresolved failures are auditable
+rather than multiplied by the Phase II cohort or hidden by deduplication. Candidate-relevant
+unresolved counts are reported separately at the attempted assertion boundary.
 
 Parquet is not intrinsically immutable. The enforced contract is a **content-addressed assertion
 snapshot**:
@@ -744,11 +901,11 @@ snapshot**:
 6. block if an existing logical path has different canonical content or a mismatched bound file
    hash.
 
-The logical hash includes canonical endpoints, the complete typed dimension assessments,
-normalized and sorted supporting action/evidence references, the anchor action key/date, source
-bindings, method fingerprint, and schema version. It excludes row order, input evidence-list order,
-materialization and method-run timestamps, output paths, Parquet writer metadata, and other
-operational fields.
+The logical hash includes canonical endpoints and key methods, the complete typed dimension
+assessments, normalized and sorted supporting action/evidence references, detector-action key, both
+anchor selections, source bindings, detector fingerprint, key-resolver version, and schema
+version. It excludes row order, input evidence-list order, materialization and method-run
+timestamps, output paths, Parquet writer metadata, and other operational fields.
 
 An identical rerun validates and reuses the existing snapshot. Changed source hashes produce a new
 logical snapshot even if the resulting assertion rows happen to match. Operational timestamps and
@@ -769,11 +926,13 @@ assertion_id = hash(
 assertion_revision_id = hash(
     assertion_id,
     substantive claim fields,
+    object_contract_key_method,
     typed dimension assessments,
     ranking definition,
     method fingerprint,
     supporting action and contradicting record keys,
-    anchor action key and date,
+    detector action key,
+    award and positive-obligation anchor keys and dates,
 )
 ```
 
@@ -789,6 +948,11 @@ independent detector outputs are introduced later, publication must first define
 selection or aggregation/fusion contract; it must not change the logical ID to encode the detector.
 Until that decision is made, duplicate logical IDs in one snapshot are blocking.
 
+A later source snapshot that resolves a prior `LEGACY:` object to `USAID:` produces a different
+logical `assertion_id`. V1 records a new content-addressed claim rather than rewriting or silently
+coalescing the older one. A cross-namespace identity map or migration is deferred until a consumer
+demonstrates the need.
+
 Supersession and review decisions are deferred. When a consumer requires them, add a sidecar status
 record or a new revision linked to its predecessor; do not mutate the historical candidate row.
 
@@ -796,7 +960,7 @@ record or a new revision linked to its predecessor; do not mutate the historical
 
 | PR | Runtime boundary | Data migration | Rollback point |
 | --- | --- | --- | --- |
-| 1 — fix and freeze contract | Add the ADR, canonical candidate model with typed dimension absence, deterministic action-to-contract grouping, stable IDs, content-addressed snapshot, blocking checks, and one manual retrospective FPDS adapter. Change no graph/API or census behavior. | None; do not translate legacy graph rows. | Unregister the manual group and revert additive contracts. Keep snapshots for diagnosis. |
+| 1 — fix and freeze contract | Add the ADR, shared typed contract-key resolver, canonical candidate model with typed dimension absence, deterministic action-to-contract grouping and dual anchors, stable IDs, content-addressed snapshot, blocking checks, and one manual retrospective FPDS adapter. Change no graph/API behavior or census predicate/estimand. | None; do not translate legacy graph rows or overwrite frozen census artifacts. | Unregister the manual group and revert additive contracts. Keep snapshots for diagnosis. |
 | 2 — replace topology | Load complete contracts, assertions, method runs, explicit relationships, and `POSSIBLE_DERIVATION`; switch graph reads; isolate old API semantics; stop writers; delete legacy causal edges after backup. | Reproduce from the PR 1 snapshot; do not fabricate provenance for legacy rows. | Restore the named pre-cutover backup. |
 | 3 — migrate consumers and retire legacy | Add two claim API reads and a DuckDB reader test; remove orphaned transition/profile state, `ACHIEVED`, and `FOLLOWS`. | Use a migration receipt; delete only nodes proven to be legacy artifacts. Leave ambiguous contracts for a later rebuild. | Before node cleanup, preserve the PR 2 graph backup; after cleanup, restore it if required. |
 
@@ -835,13 +999,16 @@ topology for compatibility. There are never two live producers.
 
 | Required invariant | MVP enforcement | Level |
 | --- | --- | --- |
-| Every assertion resolves its subject and contract object | Validate stable prior source-row and generated contract-award keys before snapshot; `MATCH` complete graph endpoints before publication | Blocking |
+| Every assertion resolves its subject and contract object | Require `USAID:` or complete `LEGACY:` key plus matching `ContractKeyMethod`; bare PIID and unresolved keys never publish; `MATCH` complete graph endpoints before graph publication | Blocking |
+| Generated identity has precedence | Resolve documented generated-ID aliases before the exact legacy composite, reject conflicts or award-splitting mixed methods, and count every method outcome | Blocking |
 | Every assertion records method and version | Require method ID, version, fingerprint, and ranking definition | Blocking |
 | Every action/evidence reference resolves to a source snapshot | Resolve every namespaced action or source key to a bound snapshot manifest entry | Blocking |
-| Every assertion has action evidence | Require at least one unique `supporting_action_record_key`; candidates without a valid dated action are deterministically excluded, never given a fallback | Blocking assertion invariant |
-| Supporting actions belong to the asserted contract | Recompute the generated contract key for each action and require it to equal `object_contract_key` | Blocking |
-| The anchor action is deterministic | Require the anchor to be a supporting action and equal the earliest qualifying date after the temporal boundary, with transaction-ID tie-break | Blocking |
-| Assertion collapse preserves the declared grains | Require assertion count to equal distinct prior-source-row/contract-key pairs in the qualifying action set, repeated modifications to produce no duplicate assertion, and action-pair census row counts to remain unchanged | Blocking |
+| Every assertion has action and detector provenance | Require at least one unique supporting action and require `detector_action_record_key` to resolve to one of them | Blocking |
+| Supporting actions belong to the asserted contract | Re-run the shared resolver for each action and require its namespaced key and method to equal the assertion object | Blocking |
+| The award anchor is deterministic | Require the anchor to be a supporting action and equal the earliest valid action date, with normalized transaction-ID tie-break and no Phase II temporal filter | Blocking |
+| The funding anchor is deterministic | When any supporting action has signed obligation > 0, require the earliest dated such action under the same tie-break; otherwise require both optional funding-anchor fields to be null | Blocking |
+| Signed latency or typed absence is preserved | When Phase II end is observable, compute award-anchor date minus that end without clipping or excluding negative values; when it is absent, retain the assertion and require `temporal = NOT_MEASURABLE`/`SOURCE_FIELD_UNAVAILABLE` with no derived latency | Blocking |
+| Assertion collapse preserves the declared grains | Require assertion count to equal distinct prior-source-row/resolved-contract-key pairs, repeated modifications to produce no duplicate assertion, and action-pair census counts/dollars to remain unchanged | Blocking |
 | Accepted assertions satisfy acceptance rules | No accepted producer exists; reject any non-`CANDIDATE` row in the MVP path | Blocking |
 | Rejected assertions cannot make positive edges | Projection allowlist contains only the exact MVP tuple; fixture rows with `REJECTED` must be refused | Blocking |
 | Superseded assertions are absent from current study snapshots | Supersession is absent in MVP; adding it later requires this gate before schema activation | Deferred migration gate |
@@ -853,20 +1020,27 @@ topology for compatibility. There are never two live producers.
 
 The MVP adds no detector-drift or graph-cardinality monitoring framework and no warning-level
 publication gate. A required record key, source hash, endpoint, method field, or internally invalid
-assessment is blocking. Deterministic no-anchor exclusions are materialization metadata, not
-warnings or fallback claims; optional metadata remains visibly absent.
+assessment is blocking. Unresolved identities and missing award anchors fail strict materialization
+with counts and sampled source keys; they do not create a quarantine workflow or fallback claim.
+Optional funding anchors remain visibly absent when no positive action exists.
 
 ### 7.2 Test layers
 
 **Unit tests** prove enum restrictions, frozen Pydantic behavior, typed-absence validation,
-canonical key normalization, generated-contract-key precedence, stable hashing, timestamp
-exclusion, row-order and evidence-order independence, no-overwrite behavior, collision failure,
-source-reference resolution, and score semantics. Grouping fixtures prove that multiple actions
-under one prior-award/contract pair create one assertion, preserve all action keys, and choose the
-same anchor across input permutations and process restarts. Dimension fixtures distinguish missing
-source text from a measured zero, reject a nullable score without status, and require stable error
-categories for evaluation failures. A no-valid-anchor fixture produces a declared exclusion, never
-a fallback claim.
+canonical key normalization and namespaces, generated-ID precedence, explicit legacy fallback,
+PIID-collision safety, fallback/unresolved counts, stable hashing, timestamp exclusion, row-order
+and evidence-order independence, no-overwrite behavior, collision failure, source-reference
+resolution, and score semantics. Grouping fixtures prove that multiple actions under one generated
+award ID create one assertion, distinct IDV children remain separate, and neither bare PIID nor
+legacy detector `target_id` enters assertion identity.
+
+Anchor fixtures preserve every associated action, select earliest dated award and positive-
+obligation actions with stable transaction-ID ties, allow the detector-selected action to differ
+from the award anchor, retain negative latency, leave the funding anchor null for zero/negative-
+only awards, and retain an assertion with typed temporal absence when Phase II end is unavailable.
+Dimension fixtures distinguish missing source text from measured zero, reject a nullable score
+without status, and require stable error categories for evaluation failures. A no-valid-award-
+anchor fixture blocks strict materialization rather than creating a fallback claim.
 
 **Dagster tests** prove that only retrospective FPDS-contract rows enter, checks are genuinely
 blocking, graph assets cannot run after a failed check, the new manual path is excluded from broad
@@ -886,12 +1060,19 @@ fabricated zeros.
 reject graph locations as snapshot inputs, preserve candidate-only metadata, and prove that action
 amounts remain accessible without an assertion-level aggregation. Existing census tests must
 produce byte-equivalent or explicitly normalized-equal action survivors, drop-off counts, distinct
-contract counts, and transaction-deduplicated obligation totals. Shared study-manifest tests wait
-for a named study consumer.
+contract counts, and transaction-deduplicated obligation totals for its generated-key normalized
+source. Resolver and assertion tests separately exercise typed legacy fallback. Together they
+prove method retention changes neither census predicates nor quantities. Shared study-manifest
+tests wait for a named study consumer. A direct census-pairing test proves the wrapper preserves
+the normalized source validation, maps `target_piid` only to audit-facing `target_id`, passes the
+canonical key/method/transaction ID through unchanged, and is used by the census asset plus both
+control scripts.
 
-The existing >=85% transition precision benchmark applies to changes in detector scoring. This
-milestone changes representation and publication; it must show parity to the declared retrospective
-candidate input and must not claim that representation tests validate factual precision.
+The existing >=85% transition precision benchmark applies to changes in detector scoring. Because
+the deterministic same-date detector tie-break can change the selected source action, PR 1 runs
+the real precision backtest when its corpus is available and must retain at least 85%. The
+representation tests separately prove parity to the declared retrospective candidate input and do
+not claim to validate factual precision.
 
 ## 8. Risks and unresolved decisions
 
@@ -905,7 +1086,9 @@ candidate input and must not claim that representation tests validate factual pr
 | Study reproducibility | Logical + physical hashes and explicit assertion filters | An accepted-assertion estimand and citable study promotion |
 | Human acceptance criteria | Not required for candidate-only publication | Who may accept a claim and what support is sufficient |
 | Legacy consumers | Return 410 for the live metric and offer only a versioned frozen response when required | Owner identifies any external client and the frozen response expiry |
-| Census/assertion grain confusion | Name the census action-pair, assertion award-contract, and action-evidence units; keep census outputs unchanged | Any future estimand must declare which grain and anchor rule it uses |
+| Census/assertion grain confusion | Name the census action-pair, assertion award-contract, and action-evidence units; preserve frozen artifacts and census quantities while versioning the shared key representation | Any future estimand must declare which grain and anchor rule it uses |
+| Legacy fallback identity risk | Prefix and method-tag fallback keys, count their use, and never coalesce them silently with `USAID:` keys | Add an explicit cross-namespace identity map only when a consumer needs reconciliation |
+| Anchor ambiguity | Keep detector action, earliest award action, and earliest positive-obligation action distinct; preserve signed latency | Study-specific temporal and funding restrictions remain downstream inclusion rules |
 | Multiple detectors | Keep method out of logical ID and permit one current revision per logical claim in V1 | Define selection or fusion before publishing multiple detector outputs |
 
 Anything beyond candidate award-contract derivation remains exploratory. In particular, do not add
@@ -919,7 +1102,10 @@ unification, or a general case-management API without a named consumer.
 Likely files:
 
 - `docs/decisions/ADR-004-transition-candidates-as-assertions.md`
+- `docs/steering/data-quality.md`
 - `docs/steering/epistemic-tiers.md`
+- `sbir_etl/utils/award_identity.py`
+- `sbir_etl/models/phase_iii_candidate.py`
 - `sbir_etl/assertions/__init__.py`
 - `sbir_etl/assertions/enums.py`
 - `sbir_etl/assertions/models.py`
@@ -928,44 +1114,103 @@ Likely files:
 - `sbir_etl/assertions/snapshots.py`
 - `packages/sbir-analytics/sbir_analytics/assets/phase_iii_candidates/assets.py`
 - `packages/sbir-analytics/sbir_analytics/assets/phase_iii_candidates/pairing.py`
+- `packages/sbir-analytics/sbir_analytics/assets/phase_iii_census/assets.py`
+- `packages/sbir-analytics/sbir_analytics/assets/phase_iii_census/criteria.py`
+- `packages/sbir-analytics/sbir_analytics/assets/phase_iii_census/pairing.py`
 - `packages/sbir-analytics/sbir_analytics/assets/transition_assertions/__init__.py`
 - `packages/sbir-analytics/sbir_analytics/assets/transition_assertions/assets.py`
 - `packages/sbir-analytics/sbir_analytics/assets/transition_assertions/checks.py`
 - `packages/sbir-analytics/sbir_analytics/definitions.py`
+- `scripts/phase3_benchmark/build_pairs_and_score.py`
+- `scripts/data/build_phase_iii_control_outcomes.py`
+- `scripts/data/build_phase_iii_placebo.py`
 - `tests/unit/assertions/`
 - `tests/unit/assets/test_transition_assertion_assets.py`
 - `tests/unit/assets/test_dagster_definitions.py`
+- `tests/unit/phase_iii_candidates/test_award_key_grain.py`
 - `tests/unit/phase_iii_candidates/test_candidate_outputs.py`
 - `tests/unit/phase_iii_candidates/test_pairing.py`
+- `tests/unit/phase_iii_census/test_asset.py`
+- `tests/unit/phase_iii_census/test_arm_blindness.py`
 - `tests/unit/phase_iii_census/test_criteria.py`
+- `tests/unit/phase_iii_census/test_pairing.py`
+- `tests/unit/scripts/test_phase3_pairing.py`
+- `tests/unit/scripts/test_phase_iii_precision_backtest.py`
+- `tests/unit/scripts/test_build_phase_iii_control_outcomes.py`
+- `tests/unit/scripts/test_build_phase_iii_placebo.py`
+- `tests/unit/utils/test_award_identity.py`
+- `tests/integration/test_phase_iii_retrospective_asset.py`
 - `tests/integration/test_transition_assertion_snapshot.py`
 
 Verification:
 
 ```bash
 uv run pytest tests/unit/assertions tests/unit/phase_iii_candidates \
-  tests/unit/phase_iii_census/test_criteria.py \
+  tests/unit/phase_iii_census/test_asset.py tests/unit/phase_iii_census/test_criteria.py \
+  tests/unit/phase_iii_census/test_arm_blindness.py \
+  tests/unit/phase_iii_census/test_pairing.py \
+  tests/unit/scripts/test_phase3_pairing.py \
+  tests/unit/scripts/test_build_phase_iii_control_outcomes.py \
+  tests/unit/scripts/test_build_phase_iii_placebo.py \
+  tests/unit/scripts/test_phase_iii_precision_backtest.py \
+  tests/unit/utils/test_award_identity.py \
   tests/unit/assets/test_transition_assertion_assets.py \
   tests/unit/assets/test_dagster_definitions.py -q
 uv run pytest tests/integration/test_phase_iii_retrospective_asset.py \
   tests/integration/test_transition_assertion_snapshot.py -q
-uv run ruff check sbir_etl/assertions \
+uv run ruff check sbir_etl/assertions sbir_etl/utils/award_identity.py \
+  sbir_etl/models/phase_iii_candidate.py \
+  packages/sbir-analytics/sbir_analytics/assets/phase_iii_candidates \
+  packages/sbir-analytics/sbir_analytics/assets/phase_iii_census \
   packages/sbir-analytics/sbir_analytics/assets/transition_assertions \
-  tests/unit/assertions tests/unit/assets/test_transition_assertion_assets.py
-uv run mypy sbir_etl/assertions
+  scripts/phase3_benchmark/build_pairs_and_score.py \
+  scripts/phase_iii_precision_backtest.py \
+  scripts/data/build_phase_iii_control_outcomes.py scripts/data/build_phase_iii_placebo.py \
+  tests/unit/assertions tests/unit/phase_iii_candidates tests/unit/phase_iii_census \
+  tests/unit/utils/test_award_identity.py tests/unit/scripts/test_phase3_pairing.py \
+  tests/unit/scripts/test_phase_iii_precision_backtest.py \
+  tests/unit/scripts/test_build_phase_iii_control_outcomes.py \
+  tests/unit/scripts/test_build_phase_iii_placebo.py \
+  tests/unit/assets/test_transition_assertion_assets.py \
+  tests/integration/test_phase_iii_retrospective_asset.py \
+  tests/integration/test_transition_assertion_snapshot.py
+uv run mypy sbir_etl/assertions sbir_etl/utils/award_identity.py
 make lint-boundaries
 make docs-check
 ```
 
-Acceptance: identical semantic inputs produce identical canonical assertion rows, assertion IDs,
-revision IDs, anchor actions, and logical snapshot hashes across shuffled row order, changed
-execution time, repeated runs, equivalent evidence-reference ordering, and a clean process restart.
-Each optional dimension has a validated explicit status. Distinct assertion count equals distinct
-prior-source-row/contract-key count in the qualifying action set, every supporting action resolves
-to that contract, same-date ties select the stable transaction ID, no-anchor exclusions are
-reported, repeated modifications do not duplicate claims, and existing census action counts and
-obligation totals are unchanged. The manifest binds the actual Parquet SHA; a collision or
-unresolved record key blocks materialization.
+Data-backed merge gate where the corpus is staged at the script's declared default paths; missing
+data fails rather than producing a sentinel:
+
+```bash
+uv run python scripts/phase_iii_precision_backtest.py --strict --threshold 0.85
+```
+
+PR 1 cannot merge unless its acceptance suite proves all ten owner-approved cases:
+
+1. Generated award IDs outrank both the exact legacy composite and bare PIID.
+2. All actions sharing a generated award ID resolve to one contract object.
+3. Distinct IDV children remain distinct where generated IDs distinguish them.
+4. Bare-PIID collisions do not collapse different awards.
+5. Legacy fallback use is prefixed, method-tagged, explicit, and counted.
+6. Row ordering does not change resolved keys.
+7. Assertion IDs remain stable across repeated runs.
+8. Award-anchor selection preserves negative latency when the Phase II end date is observable.
+9. A measured zero score remains `MEASURED`, not absent.
+10. Unmeasurable dimensions contain typed reasons.
+
+The broader deterministic contract also requires identical canonical rows, revision IDs, action
+selections, and logical snapshot hashes across shuffled row order, changed execution time,
+repeated runs, equivalent evidence-reference ordering, and a clean process restart. No assertion
+ID hashes the legacy detector `target_id`. Repeated modifications create one assertion; detector-
+action provenance is retained; the funding anchor is the earliest positive-obligation action or
+null; same-date ties use stable transaction ID; and a missing Phase II end retains the assertion
+with typed temporal absence. Existing frozen census artifacts remain untouched, while generated-
+key census fixtures retain the same pair counts, distinct-contract counts, and signed obligation
+totals; resolver and assertion fixtures separately prove typed fallback behavior. The manifest
+binds the actual Parquet SHA; a collision, missing required anchor, or unresolved record key blocks
+materialization. If the detector tie-break changes a selected source action, the available
+precision corpus must still score at least 85% before merge.
 
 ### PR 2 — Neo4j assertion projection and legacy-writer stop
 
@@ -1018,11 +1263,13 @@ make lint-boundaries
 make docs-check
 ```
 
-Acceptance: the loader consumes canonical model objects, every endpoint already exists with complete
-observation properties, an identical rerun is idempotent, and every convenience edge resolves one
-assertion revision in the supplied snapshot. No discovered Dagster asset can write legacy causal
-edges; the live metric returns 410 rather than a fabricated zero; and the migration receipt proves
-zero remaining `TRANSITIONED_TO` or `RESULTED_IN` relationships.
+Acceptance: the loader consumes canonical model objects, every endpoint already exists with
+complete observation properties, contract endpoints use the same namespaced object key and retain
+PIID only for audit, an identical rerun is idempotent, and every convenience edge resolves one
+assertion revision in the supplied snapshot. Generated-distinct IDV children do not collapse. No
+discovered Dagster asset can write legacy causal edges; the live metric returns 410 rather than a
+fabricated zero; and the migration receipt proves zero remaining `TRANSITIONED_TO` or
+`RESULTED_IN` relationships.
 
 ### PR 3 — Consumer/study binding and legacy retirement
 
@@ -1056,20 +1303,21 @@ make validate
 ```
 
 Acceptance: claim endpoints expose status/support/use/method/snapshot fields, nested dimension
-assessments, and supporting/anchor action references; the old rate cannot be mistaken for a new
-estimand; DuckDB reads the bound assertion snapshot without Neo4j; no active writer emits
-`ACHIEVED` or `FOLLOWS`; and isolated legacy transition/profile state is removed only after a named
-backup and migration receipt.
+assessments, contract-key method, detector action, supporting actions, and both anchor selections;
+derived latency remains signed; the old rate cannot be mistaken for a new estimand; DuckDB reads
+the bound assertion snapshot without Neo4j; no active writer emits `ACHIEVED` or `FOLLOWS`; and
+isolated legacy transition/profile state is removed only after a named backup and migration receipt.
 
 ## Required conclusion
 
 ### 1. Recommended first pull request
 
 Open **“Define deterministic transition-candidate assertions and content-addressed snapshots.”** It
-contains the ADR, one canonical contract with typed dimension absence, deterministic action-to-
-contract grouping and anchor selection, stable logical/revision IDs, the retrospective
-FPDS-contract adapter, manifest enforcement, and blocking tests. It changes no Neo4j or census
-behavior.
+contains the ADR, one shared generated-first contract-key resolver, one canonical assertion
+contract with typed dimension absence, deterministic action-to-contract grouping, detector-action
+provenance, separate award/funding anchors, stable logical/revision IDs, manifest enforcement, and
+blocking tests. It changes no Neo4j behavior or census predicate/estimand and never overwrites a
+frozen census artifact.
 
 ### 2. Recommended ADR title and outline
 
@@ -1077,28 +1325,37 @@ behavior.
 
 1. Context: incompatible publication contracts and causal overstatement.
 2. Decision boundary: one candidate award-contract assertion family.
-3. Claim grain: Phase II source row × contract award, supported and temporally anchored by
+3. Contract identity: `USAID:` generated award key, typed `LEGACY:` fallback, bare PIID forbidden,
+   unresolved identity blocks publication.
+4. Shared boundary: assertion and census reuse the UEI-only pair builder, contract-key resolver,
+   and action identity, then apply independent downstream gates.
+5. Claim grain: Phase II source row × contract award, supported and temporally anchored by
    contract-action observations; explicitly not the census row grain.
-4. Typed absence: dimension statuses distinguish unmeasurable, unevaluated, failed, and measured
+6. Action roles: associated/supporting actions, detector-selected action, earliest award action,
+   and optional earliest positive-obligation action remain distinct.
+7. Temporal semantics: signed award-anchor latency is preserved; object construction has no
+   post-completion or positive-dollar filter.
+8. Typed absence: dimension statuses distinguish unmeasurable, unevaluated, failed, and measured
    low signals.
-5. Durable authority: content-addressed Parquet snapshot; Neo4j is a read projection.
-6. Package decision: narrowly allow `sbir_graph -> sbir_etl.assertions`.
-7. Candidate-only semantics: CANDIDATE/C/INVESTIGATIVE_ONLY.
-8. V1 cardinality: one current revision per logical assertion; detector fusion is deferred.
-9. Graph projection: Assertion/MethodRun plus deterministic `POSSIBLE_DERIVATION`.
-10. Study boundary: DuckDB/Parquet input, never mutable graph state; census unchanged.
-11. Consequences, immediate legacy-edge deletion, frozen compatibility responses, rollback, and
+9. Durable authority: content-addressed Parquet snapshot; Neo4j is a read projection.
+10. Package decision: narrowly allow `sbir_graph -> sbir_etl.assertions`.
+11. Candidate-only semantics: CANDIDATE/C/INVESTIGATIVE_ONLY.
+12. V1 cardinality: one current revision per logical assertion; detector fusion is deferred.
+13. Graph projection: Assertion/MethodRun plus deterministic `POSSIBLE_DERIVATION`.
+14. Study boundary: DuckDB/Parquet input, never mutable graph state; census estimand unchanged.
+15. Consequences, immediate legacy-edge deletion, frozen compatibility responses, rollback, and
    explicitly deferred work.
 
 ### 3. Minimum viable schema change
 
-One frozen `AssertionRecord`, one validated `DimensionAssessment`, one
-`AssertionSnapshotManifest`, one `Assertion` node label, one `MethodRun` label,
+One shared `ContractKeyMethod`/resolver, one frozen `AssertionRecord`, one validated
+`DimensionAssessment`, one `AssertionSnapshotManifest`, one `Assertion` node label, one `MethodRun` label,
 `SUBJECT_OF`/`TARGETS`/`GENERATED_BY`, and one deterministic `POSSIBLE_DERIVATION` convenience
-edge. The record targets a generated contract-award key, preserves all qualifying action keys, and
-declares one deterministic anchor action/date. Use `assertion_id` for logical identity and
-`assertion_revision_id` for immutable payload identity. Store source references as keys; create no
-`SourceRecord` or `ReviewDecision` nodes.
+edge. The record carries the namespaced contract key and method, all associated action keys, the
+detector-selected action, earliest award action/date, and optional earliest positive-obligation
+action/date. Use `assertion_id` for logical identity and `assertion_revision_id` for immutable
+payload identity. Store source references as keys; create no `SourceRecord`, `ContractAction`, or
+`ReviewDecision` nodes.
 
 ### 4. Decisions requiring owner input before implementation
 
@@ -1106,6 +1363,12 @@ The claim-grain decision is resolved: the logical B2/B3 assertion is Phase II so
 federal prime contract award. Contract actions remain first-class evidence and provide dates,
 codes, descriptions, and obligations. This is a deterministic projection from the
 census-compatible action universe, not an exact match to the census estimand's row grain.
+
+The identity decision is also resolved: PR 1 establishes `generated_unique_award_id` as the
+canonical federal prime-contract award key. The exact agency/parent-IDV/PIID legacy composite is a
+typed, namespaced fallback only when the generated key is genuinely unavailable; bare PIID is
+never preferred. The shared pair builder, census, and assertion producer use the same resolver and
+retain transaction identifiers separately as action-grain evidence.
 
 Only one owner decision still blocks the three-PR milestone: identify any external API client that
 needs a versioned frozen legacy response and choose its expiry. PocketGraph/direct-Cypher users
