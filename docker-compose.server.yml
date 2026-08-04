@@ -1,6 +1,7 @@
-# Tailscale-Only Mac mini Server Compose Configuration
+# Tailscale-Only Self-Hosted Server Compose Configuration
 #
-# An ARM64-native, private server profile for a single always-on Mac mini.
+# A private server profile for a single always-on host. Images are built for the
+# container runtime's native architecture.
 # It runs only the services needed to serve the graph and orchestration UI:
 #   - neo4j              (private graph store; host port bound to loopback only)
 #   - dagster-code-server (shared internal Dagster code location)
@@ -13,7 +14,7 @@
 #   * Tailscale Serve is the ONLY ingress (tailnet-only HTTPS/TLS):
 #       443  -> Dagster (127.0.0.1:3000)
 #       17687 -> Neo4j Bolt (127.0.0.1:7687; trusted operators only)
-#   * Tailscale Funnel is prohibited (see docs/deployment/mac-mini-server.md).
+#   * Tailscale Funnel is prohibited (see docs/deployment/self-hosted-server.md).
 #
 # Usage:
 #   cp .env.server.example .env.server
@@ -68,10 +69,10 @@ x-server-environment: &server-environment
   # actionable message rather than a Compose interpolation error.
   SAM_GOV_API_KEY: ${SAM_GOV_API_KEY:-}
   USPTO_ODP_API_KEY: ${USPTO_ODP_API_KEY:-}
-  # Data root for downloads; the server profile points this at the SSD.
+  # Data root for downloads; the server profile points this at persistent storage.
   SBIR_ETL__PATHS__DATA_ROOT: ${SBIR_ETL__PATHS__DATA_ROOT:-/app/data}
   # NSF defense-lineage release inputs and file-only outputs. Path lists use
-  # the container's colon separator; see the Mac mini runbook before editing.
+  # the container's colon separator; see the self-hosted server runbook before editing.
   SBIR_ETL__NSF_DEFENSE_LINEAGE__ANALYSIS_DATE: ${SBIR_ETL__NSF_DEFENSE_LINEAGE__ANALYSIS_DATE:-}
   SBIR_ETL__NSF_DEFENSE_LINEAGE__OUTPUT_DIR: ${SBIR_ETL__NSF_DEFENSE_LINEAGE__OUTPUT_DIR:-/app/data/processed/nsf_sbir_defense_lineage}
   SBIR_ETL__NSF_DEFENSE_LINEAGE__SBIR_AWARDS_PATH: ${SBIR_ETL__NSF_DEFENSE_LINEAGE__SBIR_AWARDS_PATH:-/app/data/raw/sbir/award_data.csv}

@@ -4,7 +4,7 @@
 **Status:** Superseded / Not Recommended
 
 > Historical evaluation. The S3/AWS data plane described below was retired;
-> the current architecture uses local storage on the Mac mini. This document
+> the current architecture uses local storage on the self-hosted server. This document
 > preserves the decision context and is not an operational reference.
 
 ## What Is S3 Files?

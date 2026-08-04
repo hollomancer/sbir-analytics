@@ -47,7 +47,7 @@ uv run dagster job execute -m sbir_analytics.definitions -j transition_mvp_job
 ```
 
 Use `transition_full_job` only when Neo4j and the downstream assets are configured. These heavy
-jobs are not scheduled on the live Mac mini by default.
+jobs are not scheduled on the live self-hosted server by default.
 
 ## Library path
 

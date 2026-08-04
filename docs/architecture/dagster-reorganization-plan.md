@@ -360,7 +360,7 @@ Goal: remove ambiguity only after the new path is routine.
 
 - run two successful approved cadences through the new jobs;
 - remove superseded jobs, schedules, sensors, dynamic discovery, and compatibility wrappers;
-- update the Mac mini runbook with the final job names and rollback procedures.
+- update the self-hosted server runbook with the final job names and rollback procedures.
 
 Exit gate: no production schedule, sensor, or runbook command references a legacy definition.
 
@@ -389,16 +389,16 @@ changes persisted data semantics.
 - Blocking semantic checks gate sensors and publishing jobs.
 - Neo4j can be rebuilt from canonical assets and restored without data loss.
 - Product and graph parity are demonstrated against the Phase 0 baseline.
-- The Mac mini runbook describes only the new definitions and their rollback path.
+- The self-hosted server runbook describes only the new definitions and their rollback path.
 
 ## Non-goals
 
 This effort does not:
 
 - rewrite working extractors or research algorithms merely to move files;
-- enable heavy or experimental analyses on the Mac mini;
+- enable heavy or experimental analyses on the self-hosted server;
 - change the research methodology or the canonical research-question inventory;
-- move canonical data away from the current Mac mini storage architecture;
+- move canonical data away from the current self-hosted server storage architecture;
 - require a multi-process Dagster deployment before logical boundaries are proven;
 - combine the full migration into one pull request.
 
@@ -410,4 +410,4 @@ This effort does not:
 - [Company Identity Contract](../steering/company-identity.md)
 - [Epistemic Tiers](../steering/epistemic-tiers.md)
 - [Neo4j Graph Database Patterns](../steering/neo4j-patterns.md)
-- [Mac mini server runbook](../deployment/mac-mini-server.md)
+- [Self-hosted server runbook](../deployment/self-hosted-server.md)

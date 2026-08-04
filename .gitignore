@@ -196,8 +196,8 @@ dagster_home/
 docker/*.local.*
 docker-compose.override.yml
 
-# Host-specific Mac mini deployment state (procedures stay in the runbook)
-/docs/deployment/mac-mini-status.local.md
+# Host-specific server deployment state (procedures stay in the runbook)
+/docs/deployment/*-status.local.md
 
 # Poetry backups
 poetry.lock.bak

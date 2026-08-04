@@ -121,4 +121,4 @@ and [data documentation](../data/index.md) before running larger materialization
 - [Development guides](../development/README.md) — code standards and workflows
 - [Testing index](../testing/index.md) — local and CI validation
 - [Configuration reference](../configuration.md) — YAML and environment overrides
-- [Deployment guide](../deployment/README.md) — Mac mini and local deployment
+- [Deployment guide](../deployment/README.md) — self-hosted server and local deployment

@@ -18,7 +18,7 @@ testing, configuration, or deployment commands; use the linked operational refer
 - Dagster for assets, jobs, schedules, sensors, and run metadata.
 - Neo4j 5 for the linked analytical graph.
 - scikit-learn and, only where justified, PyTorch/Transformers for ML.
-- Docker Compose for local development, tests, and the Mac mini data plane.
+- Docker Compose for local development, tests, and the self-hosted server data plane.
 - pytest, Ruff, and MyPy for verification.
 
 The [architecture overview](../architecture/detailed-overview.md) owns component placement and
@@ -45,4 +45,4 @@ can be described as architecture.
 - Configuration: [Configuration reference](../configuration.md)
 - Local containers: [Docker development](../development/docker.md)
 - Testing and CI: [Testing index](../testing/index.md)
-- Live deployment: [Mac mini runbook](../deployment/mac-mini-server.md)
+- Live deployment: [self-hosted server runbook](../deployment/self-hosted-server.md)

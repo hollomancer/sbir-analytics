@@ -96,7 +96,7 @@ scripts/               One-off analysis and operational scripts
 studies/                Reproducible analytical studies and evidence artifacts
 ```
 
-The live deployment is running Docker Compose behind Tailscale. 
+The live deployment runs Docker Compose behind Tailscale.
 See the [deployment overview](docs/deployment/README.md) for the current model.
 
 ## Suggested reading path

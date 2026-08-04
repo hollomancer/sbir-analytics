@@ -1,8 +1,8 @@
 name: CI
 
 # GitHub Actions runs the test suite and nothing else. Data-plane work
-# (extraction, enrichment, reporting, image publishing) runs on the Mac mini
-# as Dagster schedules or cron — see docs/deployment/mac-mini-server.md.
+# (extraction, enrichment, reporting, image publishing) runs on the self-hosted server
+# as Dagster schedules or cron — see docs/deployment/self-hosted-server.md.
 
 permissions:
   contents: read
@@ -199,7 +199,7 @@ jobs:
       # tests/mocks, and tests/utils ran nowhere at all.
       #
       # USE_REAL_SBIR_DATA is deliberately unset — the real_data fixtures fall
-      # back to sample data, and the bulk corpora live on the server's SSD
+      # back to sample data, and the bulk corpora live on persistent server storage
       # where no runner can reach them.
       #
       # Two exclusions, both for tests that no CI job has ever executed and
@@ -353,8 +353,8 @@ jobs:
 
       # amd64 only, on the runner's native architecture. The question this job
       # answers is "does the image still build and start", and arm64 emulation
-      # roughly triples the time without changing the answer. The mini builds
-      # its own arm64 images; see docs/deployment/mac-mini-server.md.
+      # roughly triples the time without changing the answer. The server builds
+      # images for its native architecture; see docs/deployment/self-hosted-server.md.
       - name: Build the ETL image
         uses: docker/build-push-action@v7
         with:
