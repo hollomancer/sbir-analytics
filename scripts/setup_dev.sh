@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Development Environment Setup Script
-# Run this to set up or verify your development environment
+# CI compatibility setup script. New developers should use `make install` and
+# the canonical walkthrough in docs/getting-started/README.md.
 
 set -e  # Exit on error
 
@@ -77,7 +77,7 @@ echo -e "${GREEN}✓ uv is available${NC}"
 echo ""
 echo "5️⃣  Installing dependencies..."
 echo "   This may take a minute..."
-uv sync --extra dev
+uv sync --extra stack-dev
 
 # Verify installation
 echo ""

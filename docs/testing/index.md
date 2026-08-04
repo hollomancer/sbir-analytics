@@ -16,16 +16,21 @@ Use Python 3.11 or 3.12 and install the full workspace:
 
 ```bash
 make install
+make doctor
 ```
+
+`make test-smoke` is the fastest data-free check of a new environment.
 
 ## Common commands
 
 ```bash
+make test-smoke
 make test-unit
 make test-integration
 make test-functional
 make test
-make check
+make lint
+make docs-check
 ```
 
 Use pytest directly for focused work:
