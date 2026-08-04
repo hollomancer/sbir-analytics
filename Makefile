@@ -159,6 +159,19 @@ install-core: ## Install only the reusable sbir-etl library dependencies
 	@$(call info,Installing core sbir-etl dependencies)
 	$(call run,uv sync)
 
+.PHONY: doctor
+doctor: ## Verify the local Python development environment
+	@$(call info,Checking local development environment)
+	@command -v uv >/dev/null 2>&1 || { \
+	  printf "$(RED)✖$(RESET) uv is not installed\n"; \
+	  exit 1; \
+	}
+	$(call run,uv run --no-sync python -c 'import sys; assert sys.version_info.major == 3 and 11 <= sys.version_info.minor < 13')
+	$(call run,uv run --no-sync python -c 'import dagster; import pytest; import sbir_analytics; import sbir_etl; import sbir_graph; import sbir_ml')
+	$(call run,uv run --no-sync ruff --version)
+	$(call run,uv run --no-sync mypy --version)
+	@$(call success,Development environment is ready)
+
 .PHONY: test
 test: ## Run all tests
 	@$(call info,Running tests)
@@ -168,6 +181,11 @@ test: ## Run all tests
 test-unit: ## Run unit tests only
 	@$(call info,Running unit tests)
 	$(call run,uv run pytest tests/unit/ -v)
+
+.PHONY: test-smoke
+test-smoke: ## Run a fast, data-free onboarding smoke test
+	@$(call info,Running onboarding smoke tests)
+	$(call run,uv run pytest -n 0 tests/unit/test_models.py tests/unit/assets/test_asset_discovery.py -v)
 
 .PHONY: test-integration
 test-integration: ## Run integration tests only

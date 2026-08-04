@@ -1,7 +1,7 @@
 ---
 Type: Overview
 Owner: devops@project
-Last-Reviewed: 2026-08-03
+Last-Reviewed: 2026-08-04
 Status: active
 ---
 
@@ -12,6 +12,7 @@ be explained in one place so the instructions do not drift apart.
 
 ## Start here
 
+- [Contributing](../../CONTRIBUTING.md) - Scope, setup, verification, and pull requests
 - [Getting started](../getting-started/README.md) - Installation and first local run
 - [Docker development](docker.md) - Compose profiles, data, and troubleshooting
 - [Testing index](../testing/index.md) - Local, Docker, E2E, and CI verification

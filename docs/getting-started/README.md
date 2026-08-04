@@ -1,93 +1,124 @@
 # Getting Started
 
-> **Operational data caveat.** No SBIR/STTR award data is committed to this repository. The setup commands below install dependencies and start local development services; they do not recreate the full research dataset by themselves. Full dataset reproduction requires downloading source/bulk data, adding your own API credentials to `.env`, and running supporting services such as Neo4j, so reproducing the analyses end-to-end is non-trivial.
+This guide gets a new developer from a fresh clone to a tested local environment
+and a successful Dagster materialization using generated sample data.
 
-
-Quick setup guide for the SBIR ETL pipeline.
+> **Data caveat:** No operational SBIR/STTR award data is committed to this
+> repository. The sample-data path below is intentionally small and synthetic.
+> Reproducing the research analyses requires source downloads, API credentials,
+> and additional local services.
 
 ## Prerequisites
 
 - Python 3.11 or 3.12
-- [`uv`](https://github.com/astral-sh/uv) for dependency management
-- Docker (optional, for local Neo4j)
+- [`uv`](https://docs.astral.sh/uv/getting-started/installation/)
+- `make`
+- Docker with Compose V2 if you want Neo4j or the containerized stack
 
-## Local Development
+## Local Python Quick Start
 
-The project supports Python 3.11 or 3.12 and uses `uv` for dependency management. The recommended
-local flow mirrors the repository README:
+From a fresh clone:
 
 ```bash
-# Clone and install
-git clone https://github.com/hollomancer/sbir-analytics
+git clone https://github.com/hollomancer/sbir-analytics.git
 cd sbir-analytics
-make install  # full stack: sbir_etl + Dagster + ML + graph packages
 
-# Copy environment template
+# Install the ETL library, Dagster application, graph and ML packages, and dev tools.
+make install
+
+# Create and verify local configuration.
 cp .env.example .env
+make setup-local
 
-# Start Dagster UI
+# Verify imports and run a small, data-free test selection.
+make doctor
+make test-smoke
+
+# Create ten synthetic awards plus small SAM.gov, USPTO, and USAspending inputs.
+make sample-data
+
+# Start Dagster and open http://localhost:3000.
 make dev
-# Open http://localhost:3000
 ```
 
-If you prefer to run the underlying commands directly, `make install` is
-equivalent to `uv sync --extra stack-dev`, and `make dev` runs:
+In the Dagster UI, materialize `raw_sbir_awards`. A successful sample run reads
+10 awards from `data/raw/sbir/award_data.csv` and reports them in the asset
+materialization metadata. This asset does not require Neo4j.
+
+`make install` is equivalent to `uv sync --extra stack-dev`. Consumers who only
+need the reusable `sbir_etl` library can use `make install-core` instead.
+
+## Neo4j
+
+Start only Neo4j while running Dagster locally on the host:
 
 ```bash
-uv run dagster dev -m sbir_analytics.definitions
+make neo4j-up
 ```
 
-## Environment Setup
+- Browser: <http://localhost:7474>
+- Bolt: `bolt://localhost:7687`
+- Default local credentials: `neo4j` / `test`
 
-Create `.env` from template:
+The checked-in `.env.example` uses host-local addresses. Docker Compose
+overrides those addresses inside containers so services connect to the `neo4j`
+service hostname.
+
+To run the complete development stack in containers instead:
 
 ```bash
-cp .env.example .env
+make docker-check-prerequisites
+make docker-up-dev
+make docker-verify
 ```
 
-Required variables:
+See the [Docker guide](../development/docker.md) for service profiles, logs, and
+troubleshooting.
+
+## Everyday Development
 
 ```bash
-NEO4J_URI=bolt://localhost:7687
-NEO4J_USER=neo4j
-NEO4J_PASSWORD=password
+make help          # list supported commands
+make test-smoke    # fast local confidence check
+make test-unit     # complete unit suite
+make lint          # Ruff and MyPy
+make docs-check    # repository documentation hygiene
+make format        # apply Ruff formatting and safe lint fixes
 ```
 
-## Neo4j Setup
+The complete testing strategy, markers, and Docker workflows are documented in
+the [testing index](../testing/index.md). Contribution expectations are in
+[CONTRIBUTING.md](../../CONTRIBUTING.md).
 
-Start Neo4j locally with Docker:
+## Optional Credentials and Real Data
 
-```bash
-docker compose --profile dev up neo4j -d
-# Access at http://localhost:7474 (neo4j/password)
-```
+The sample workflow needs no external API credentials. Add credentials to `.env`
+only for the data sources you intend to use. `.env.example` documents the
+supported variables and must remain safe to commit; never commit `.env`.
 
-The equivalent Make target is `make neo4j-up`. Container profiles and lifecycle commands belong in
-the [Docker guide](../development/docker.md).
+For real SBIR award ingestion, place the source CSV at the configured path or
+override `extraction.sbir.csv_path`. See the [configuration reference](../configuration.md)
+and [data documentation](../data/index.md) before running larger materializations.
 
-## First Steps
+## Common Problems
 
-1. **Materialize assets** - In Dagster UI, materialize `raw_sbir_awards`
-2. **View data** - Check Neo4j Browser at <http://localhost:7474>
-3. **Run tests** - `uv run pytest tests/unit/ -v`
+- **`dagster`, `pytest`, or a first-party package is missing:** run `make install`,
+  not `make install-core`, then run `make doctor`.
+- **Unsupported Python version:** use Python 3.11 or 3.12; the project currently
+  excludes Python 3.13.
+- **`raw_sbir_awards` cannot find its CSV:** run `make sample-data` and confirm
+  `data/raw/sbir/award_data.csv` exists.
+- **Neo4j connection fails from host Python:** use `bolt://localhost:7687`.
+- **Neo4j connection fails in Compose:** inspect `make docker-logs SERVICE=neo4j`;
+  containers use `bolt://neo4j:7687` automatically.
+- **Memory pressure:** reduce `SBIR_ETL__ENRICHMENT__PERFORMANCE__CHUNK_SIZE` and
+  confirm the setting in the [configuration reference](../configuration.md).
 
-## Development Workflow
+## Where to Go Next
 
-```bash
-make test-unit
-make check
-```
-
-## Common Issues
-
-- **Neo4j connection failed**: Check `.env` credentials
-- **Import errors**: Run `make install` (or `uv sync --extra stack-dev`) to update the full stack
-- **Memory issues**: Reduce `SBIR_ETL__ENRICHMENT__PERFORMANCE__CHUNK_SIZE`; confirm the setting in
-  the [configuration reference](../configuration.md) before adding another override
-
-## Next Steps
-
-- [Docker Setup](../development/docker.md) - Container-based development
-- [Deployment Guide](../deployment/README.md) - Mac mini and local deployment
-- [Testing Guide](../testing/index.md) - Running tests
-- [Configuration](../configuration.md) - YAML configuration
+- [Research questions](../research-questions.md) — why the repository exists
+- [Architecture overview](../architecture/detailed-overview.md) — package and data flow
+- [Development guides](../development/README.md) — code standards and workflows
+- [Testing index](../testing/index.md) — local and CI validation
+- [Configuration reference](../configuration.md) — YAML and environment overrides
+- [Deployment guide](../deployment/README.md) — Mac mini and local deployment

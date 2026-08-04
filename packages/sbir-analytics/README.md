@@ -8,12 +8,21 @@ tools that don't belong in the reusable ETL library.
 
 ## Installation
 
+From a package index:
+
 ```bash
 # Full pipeline (Dagster + ML + Neo4j)
 pip install sbir-analytics
 
 # ETL library only (no Dagster, ML, or Neo4j)
 pip install sbir-etl
+```
+
+From a repository checkout with development tools:
+
+```bash
+make install       # full workspace; uv sync --extra stack-dev
+make install-core  # reusable sbir-etl library only; uv sync
 ```
 
 ## What's Included
