@@ -553,7 +553,7 @@ def normalize_prime_archive_transactions(
 
 
 def combine_prime_transactions(*frames: pd.DataFrame) -> pd.DataFrame:
-    """Combine non-overlapping prime sources while refusing possible double counts."""
+    """Combine pre-partitioned prime sources and reject duplicate source transaction IDs."""
 
     usable = [frame.copy() for frame in frames if frame is not None and not frame.empty]
     if not usable:
@@ -566,7 +566,7 @@ def combine_prime_transactions(*frames: pd.DataFrame) -> pd.DataFrame:
             combined["prime_transaction_id"].duplicated(keep=False), "prime_transaction_id"
         ].iloc[0]
         raise ValueError(
-            "prime sources overlap at source transaction grain; choose API or archive coverage "
+            "prime sources overlap on a duplicate source transaction ID; check repeated inputs "
             f"for transaction {duplicate}"
         )
     return combined.sort_values(["fiscal_year", "prime_transaction_id"]).reset_index(drop=True)

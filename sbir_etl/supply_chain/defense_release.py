@@ -308,7 +308,6 @@ def build_release(
     prime_contract_archives: list[Path] | None = None,
     prime_archive_parquets: list[Path] | None = None,
     archive_extract_dir: Path = DEFAULT_ARCHIVE_EXTRACT_DIR,
-    archive_all_contracts: bool = False,
     subaward_sources: list[Path] | None = None,
     allow_missing_prime: bool = False,
     allow_missing_subawards: bool = False,
@@ -352,7 +351,7 @@ def build_release(
 
     archive_frames: list[pd.DataFrame] = []
     archive_inputs: list[dict[str, str]] = []
-    ot_only = bool(api_frames) and not archive_all_contracts
+    ot_only = bool(api_frames)
     for archive in prime_contract_archives or []:
         extracted = _extract_contract_archive(archive, registry, archive_extract_dir)
         archive_frames.append(

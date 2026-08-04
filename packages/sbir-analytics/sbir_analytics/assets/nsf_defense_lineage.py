@@ -123,7 +123,6 @@ def nsf_defense_funding_release(
         archive_extract_dir=(
             get_data_root() / "interim" / "nsf_defense_lineage" / "contract_archives"
         ),
-        archive_all_contracts=_bool_env("ARCHIVE_ALL_CONTRACTS"),
         subaward_sources=_paths_env("SUBAWARD_SOURCES"),
         allow_missing_prime=False,
         allow_missing_subawards=False,

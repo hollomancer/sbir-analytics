@@ -238,3 +238,64 @@ def test_build_release_writes_prime_subaward_summary_evidence_and_partitions(tmp
     assert payload["scope"]["verified_funding_edge_count"] == 2
     assert graph_path.is_file()
     assert (graph_path.parent / "nsf_award_defense_evidence.csv").is_file()
+
+
+def test_build_release_partitions_archive_when_api_sources_are_configured(tmp_path) -> None:
+    lineage_dir = tmp_path / "lineage"
+    lineage_dir.mkdir()
+    _phase_one_products(lineage_dir)
+    prime_api = tmp_path / "prime-api.parquet"
+    pd.DataFrame(
+        [
+            {
+                "prime_transaction_id": "123456",
+                "dod_award_generated_id": "CONT_AWD_P1_9700",
+                "nsf_organization_id": "uei:ABCDEFGHIJKL",
+                "recipient_match_method": "exact_uei",
+                "recipient_match_confidence": "verified_identifier",
+                "instrument_group": "prime_procurement",
+                "signed_obligation_amount": 100.0,
+                "action_date": "2024-09-30",
+            }
+        ]
+    ).to_parquet(prime_api, index=False)
+    prime_archive = tmp_path / "prime-archive.parquet"
+    pd.DataFrame(
+        [
+            {
+                "transaction_unique_id": "CONT_TX_1",
+                "generated_unique_award_id": "CONT_AWD_P1_9700",
+                "vendor_name": "Example Materials Inc",
+                "vendor_uei": "ABCDEFGHIJKL",
+                "vendor_duns": None,
+                "action_date": "2024-09-30",
+                "obligation_amount": 100.0,
+                "contract_award_type": "A",
+                "agency": "Department of Defense",
+            },
+            {
+                "transaction_unique_id": "CONT_TX_OT_1",
+                "generated_unique_award_id": "CONT_AWD_OT1_9700",
+                "vendor_name": "Example Materials Inc",
+                "vendor_uei": "ABCDEFGHIJKL",
+                "vendor_duns": None,
+                "action_date": "2024-10-01",
+                "obligation_amount": -20.0,
+                "contract_award_type": "R",
+                "agency": "Department of Defense",
+            },
+        ]
+    ).to_parquet(prime_archive, index=False)
+
+    manifest = build_release(
+        lineage_dir=lineage_dir,
+        analysis_date=date(2026, 8, 3),
+        prime_api_parquets=[prime_api],
+        prime_archive_parquets=[prime_archive],
+        allow_missing_subawards=True,
+    )
+    prime = pd.read_parquet(lineage_dir / "nsf_awardee_dod_prime_transactions.parquet")
+
+    assert manifest["products"]["prime_transactions"]["row_count"] == 2
+    assert set(prime["prime_transaction_id"]) == {"123456", "CONT_TX_OT_1"}
+    assert prime["signed_obligation_amount"].sum() == 80.0

@@ -27,11 +27,6 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--prime-contract-archive", type=Path, action="append")
     parser.add_argument("--prime-archive-parquet", type=Path, action="append")
     parser.add_argument("--archive-extract-dir", type=Path, default=DEFAULT_ARCHIVE_EXTRACT_DIR)
-    parser.add_argument(
-        "--archive-all-contracts",
-        action="store_true",
-        help="Include archive procurement even when API transactions are supplied; overlap fails closed.",
-    )
     parser.add_argument("--subaward", type=Path, action="append")
     parser.add_argument("--allow-missing-prime", action="store_true")
     parser.add_argument("--allow-missing-subawards", action="store_true")
@@ -50,7 +45,6 @@ def main() -> int:
         prime_contract_archives=args.prime_contract_archive,
         prime_archive_parquets=args.prime_archive_parquet,
         archive_extract_dir=args.archive_extract_dir,
-        archive_all_contracts=args.archive_all_contracts,
         subaward_sources=args.subaward,
         allow_missing_prime=args.allow_missing_prime,
         allow_missing_subawards=args.allow_missing_subawards,

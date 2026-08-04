@@ -286,6 +286,11 @@ uv run python scripts/data/build_nsf_defense_funding.py \
   --subaward data/raw/usaspending/dod_contract_subawards_fy2026.zip
 ```
 
+Mixed API-plus-archive runs always restrict archive input to O/R other
+transactions. Archive-only runs include complete archive procurement by
+default. There is no configuration that overlays complete archive procurement
+on API transactions, whose transaction identifiers use a different namespace.
+
 The release in `data/processed/nsf_sbir_defense_lineage/` contains:
 
 - `nsf_sbir_awards_direct.parquet` and award reconciliation/status tables;
