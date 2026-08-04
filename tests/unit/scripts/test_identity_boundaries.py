@@ -62,5 +62,34 @@ def test_process_submodule_import_is_allowed(tmp_path: Path) -> None:
     assert boundaries.scan_file(path, repository_root=tmp_path) == []
 
 
+def test_duplicate_jurisdiction_map_is_rejected(tmp_path: Path) -> None:
+    path = _write(
+        tmp_path,
+        "sbir_etl/example.py",
+        "STATES = {\n"
+        "    'Alabama': 'AL',\n"
+        "    'California': 'CA',\n"
+        "    'Massachusetts': 'MA',\n"
+        "    'New York': 'NY',\n"
+        "    'Texas': 'TX',\n"
+        "}\n",
+    )
+
+    violations = boundaries.scan_file(path, repository_root=tmp_path)
+
+    assert len(violations) == 1
+    assert "jurisdiction map" in violations[0].message
+
+
+def test_small_state_fixture_is_not_mistaken_for_an_implementation(tmp_path: Path) -> None:
+    path = _write(
+        tmp_path,
+        "tests/unit/example.py",
+        "SAMPLE = {'Alabama': 'AL', 'California': 'CA'}\n",
+    )
+
+    assert boundaries.scan_file(path, repository_root=tmp_path) == []
+
+
 def test_current_repository_obeys_identity_boundaries() -> None:
     assert boundaries.scan_repository() == []

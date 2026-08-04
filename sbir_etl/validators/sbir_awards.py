@@ -10,68 +10,12 @@ from typing import Any
 import pandas as pd
 from loguru import logger
 
+from ..identity.geography import VALID_US_JURISDICTION_CODES_V1
 from ..models.quality import QualityIssue, QualitySeverity
 
 
-# US State codes for validation
-VALID_US_STATES = {
-    "AL",
-    "AK",
-    "AZ",
-    "AR",
-    "CA",
-    "CO",
-    "CT",
-    "DE",
-    "FL",
-    "GA",
-    "HI",
-    "ID",
-    "IL",
-    "IN",
-    "IA",
-    "KS",
-    "KY",
-    "LA",
-    "ME",
-    "MD",
-    "MA",
-    "MI",
-    "MN",
-    "MS",
-    "MO",
-    "MT",
-    "NE",
-    "NV",
-    "NH",
-    "NJ",
-    "NM",
-    "NY",
-    "NC",
-    "ND",
-    "OH",
-    "OK",
-    "OR",
-    "PA",
-    "RI",
-    "SC",
-    "SD",
-    "TN",
-    "TX",
-    "UT",
-    "VT",
-    "VA",
-    "WA",
-    "WV",
-    "WI",
-    "WY",
-    "DC",
-    "PR",
-    "VI",
-    "GU",
-    "AS",
-    "MP",  # Territories
-}
+# Compatibility alias for callers that import the validation set directly.
+VALID_US_STATES = VALID_US_JURISDICTION_CODES_V1
 
 # Email validation regex
 EMAIL_REGEX = re.compile(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$")
