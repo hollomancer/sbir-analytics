@@ -257,19 +257,88 @@ def fetch_nsf_award_snapshots(
     directory = Path(snapshot_dir)
     directory.mkdir(parents=True, exist_ok=True)
     manifest_path = directory / "manifest.json"
+    partial_manifest_path = directory / "manifest.partial.json"
+    partial_manifest: dict[str, Any] | None = None
     if manifest_path.exists():
         existing_manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
         if existing_manifest.get("requested_award_ids") != identifiers:
             raise FileExistsError("NSF snapshot manifest exists for a different identifier set")
         return existing_manifest
+    if partial_manifest_path.exists():
+        partial_manifest = json.loads(partial_manifest_path.read_text(encoding="utf-8"))
+        if partial_manifest.get("schema_version") != NSF_DIRECT_SCHEMA_VERSION:
+            raise ValueError("NSF partial snapshot schema version is incompatible")
+        if partial_manifest.get("requested_award_ids") != identifiers:
+            raise FileExistsError("NSF snapshot manifest exists for a different identifier set")
 
-    active_client = client or NSFAwardAPIClient()
-    owned_client = client is None
+    raw_partial_entries = (partial_manifest or {}).get("entries", [])
+    partial_entry_ids = [str(item["requested_award_id"]) for item in raw_partial_entries]
+    if len(partial_entry_ids) != len(set(partial_entry_ids)):
+        raise ValueError("NSF partial snapshot contains duplicate manifest entries")
+    partial_entries = dict(zip(partial_entry_ids, raw_partial_entries, strict=True))
+    if partial_manifest is not None:
+        unexpected_entry_ids = sorted(set(partial_entries) - set(identifiers))
+        if unexpected_entry_ids:
+            raise ValueError(
+                "NSF partial snapshot contains entries outside the requested identifier set: "
+                f"{unexpected_entry_ids[:5]}"
+            )
+        partial_failures = partial_manifest.get("failures", {})
+        if not isinstance(partial_failures, dict):
+            raise ValueError("NSF partial snapshot failures must be an object")
+        failure_ids = {str(award_id) for award_id in partial_failures}
+        if set(partial_entries) & failure_ids:
+            raise ValueError(
+                "NSF partial snapshot records identifiers as both entries and failures"
+            )
+        if set(partial_entries) | failure_ids != set(identifiers):
+            raise ValueError("NSF partial snapshot does not attest every requested identifier")
+        expected_files = {str(item.get("relative_path")) for item in raw_partial_entries}
+        actual_files = {
+            path.name for path in directory.glob("*.json") if not path.name.startswith("manifest")
+        }
+        unexpected_files = sorted(actual_files - expected_files)
+        if unexpected_files:
+            raise ValueError(
+                f"NSF partial snapshot contains files outside its manifest: {unexpected_files[:5]}"
+            )
+    else:
+        allowed_files = {f"{award_id}.json" for award_id in identifiers}
+        actual_files = {
+            path.name for path in directory.glob("*.json") if not path.name.startswith("manifest")
+        }
+        unexpected_files = sorted(actual_files - allowed_files)
+        if unexpected_files:
+            raise ValueError(
+                "NSF snapshot contains files outside the requested identifier set: "
+                f"{unexpected_files[:5]}"
+            )
+
     entries: dict[str, dict[str, object]] = {}
     failures: dict[str, str] = {}
     missing: list[str] = []
     for award_id in identifiers:
         path = directory / f"{award_id}.json"
+        if partial_manifest is not None:
+            recorded_entry = partial_entries.get(award_id)
+            if recorded_entry is not None:
+                if recorded_entry.get("relative_path") != path.name:
+                    raise ValueError(f"NSF partial snapshot path mismatch for {award_id}")
+                if not path.is_file():
+                    raise ValueError(f"NSF partial snapshot missing recorded file for {award_id}")
+                content = path.read_bytes()
+                if _sha256(content) != recorded_entry.get("sha256"):
+                    raise ValueError(f"NSF partial snapshot checksum mismatch for {award_id}")
+                if len(content) != recorded_entry.get("bytes"):
+                    raise ValueError(f"NSF partial snapshot byte-count mismatch for {award_id}")
+                entries[award_id] = {**recorded_entry, "reused": True}
+                continue
+            if path.exists():
+                raise ValueError(
+                    f"NSF partial snapshot has no manifest entry for existing file {award_id}"
+                )
+            missing.append(award_id)
+            continue
         if not path.exists():
             missing.append(award_id)
             continue
@@ -286,6 +355,9 @@ def fetch_nsf_award_snapshots(
             "found": bool(records),
             "reused": True,
         }
+
+    active_client = client or NSFAwardAPIClient()
+    owned_client = client is None
 
     def fetch_one(award_id: str) -> dict[str, object]:
         fetched = active_client.fetch_award(award_id)
@@ -343,7 +415,7 @@ def fetch_nsf_award_snapshots(
         "entries": [entries[key] for key in sorted(entries)],
         "failures": failures,
     }
-    _write_json_atomic(directory / "manifest.partial.json", manifest)
+    _write_json_atomic(partial_manifest_path, manifest)
     if failures and not allow_partial:
         raise APIError(
             f"NSF snapshot has {len(failures)} failed lookups; "

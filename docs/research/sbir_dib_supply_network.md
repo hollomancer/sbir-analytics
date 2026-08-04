@@ -49,8 +49,10 @@ NAICS, source URL, and source last-modified timestamp. Repeated facts aggregate
 to a legal-entity prime edge while retaining a parent-family rollup.
 SAM report IDs can represent repeated versions of the same economic record.
 Facts are therefore de-versioned on parent award, subaward number, action date,
-amount, and recipient, while retaining the latest report ID and the number of
-source versions observed.
+and resolved recipient. Reported amount is versioned content: the row with the
+latest source last-modified timestamp is retained, with stable report-ID and row
+hash tie-breakers, while preserving the selected report ID and number of source
+versions observed. Distinct action dates remain distinct economic facts.
 
 The expanded NSF screen adds three distinct evidence layers:
 
@@ -121,6 +123,11 @@ downloads for FY2021–FY2025 and the local public SBIR.gov awardee registry:
   the verified network.
 - 1,739 verified edges observed in at least three fiscal years; 364 observed
   in all five years.
+
+These are pre-fix diagnostic figures from the initial materialization, whose
+de-version key included reported amount. They are not parity targets for the
+current amount-independent correction semantics and must be regenerated before
+being cited as current results.
 
 These amounts describe reported subawards involving firms that have an SBIR
 history. They do not prove that the subcontract uses the firm's SBIR-funded

@@ -33,13 +33,26 @@ class EvidenceGrade(StrEnum):
 
 
 _NON_ALNUM = re.compile(r"[^A-Z0-9]")
+_NULL_IDENTIFIERS = {
+    "NA",
+    "NAN",
+    "NAT",
+    "NONE",
+    "NOTAPPLICABLE",
+    "NOTAVAILABLE",
+    "NULL",
+    "UNAVAILABLE",
+    "UNKNOWN",
+}
 
 
 def _clean_identifier(value: object) -> str | None:
     if value is None or pd.isna(cast(Any, value)):
         return None
     cleaned = _NON_ALNUM.sub("", str(value).upper())
-    return cleaned or None
+    if not cleaned or cleaned in _NULL_IDENTIFIERS or not cleaned.strip("0"):
+        return None
+    return cleaned
 
 
 def _clean_name(value: object) -> str | None:
@@ -403,15 +416,49 @@ def build_subaward_facts(
         projected["uei_match"].fillna(projected["duns_match"]).fillna(projected["name_match"])
     )
     projected = projected.dropna(subset=["sbir_organization_id"]).copy()
-    projected["subaward_fact_id"] = pd.util.hash_pandas_object(
+
+    # The prime award, prime-assigned subaward number, action date, and recipient
+    # identify one economic fact. Amount and SAM report metadata can change when
+    # that same fact is corrected or re-reported.
+    projected["_logical_prime_award_id"] = (
+        projected["prime_award_unique_key"]
+        .map(_clean_category)
+        .fillna(projected["prime_award_piid"].map(_clean_category))
+    )
+    projected["_logical_subaward_number"] = projected["subaward_number"].map(_clean_category)
+    projected["_logical_subaward_action_date"] = projected["subaward_action_date"].dt.normalize()
+    logical_key_available = (
+        projected[
+            [
+                "_logical_prime_award_id",
+                "_logical_subaward_number",
+                "_logical_subaward_action_date",
+            ]
+        ]
+        .notna()
+        .all(axis=1)
+    )
+    fallback_fact_id = pd.util.hash_pandas_object(
         projected[
             [
                 "prime_award_unique_key",
                 "subaward_number",
-                "subaward_action_date",
-                "subaward_amount",
+                "_logical_subaward_action_date",
                 "subawardee_uei",
                 "subawardee_name",
+            ]
+        ],
+        index=False,
+    ).map(lambda value: f"{value:016x}")
+    projected["_logical_row_fallback"] = fallback_fact_id.where(~logical_key_available)
+    projected["subaward_fact_id"] = pd.util.hash_pandas_object(
+        projected[
+            [
+                "_logical_prime_award_id",
+                "_logical_subaward_number",
+                "_logical_subaward_action_date",
+                "sbir_organization_id",
+                "_logical_row_fallback",
             ]
         ],
         index=False,
@@ -455,6 +502,8 @@ def build_subaward_facts(
     facts["source_report_version_count"] = facts.groupby(
         ["sbir_organization_id", "subaward_fact_id"], dropna=False
     )["subaward_fact_id"].transform("size")
+    facts["_report_version_sort"] = facts["subaward_sam_report_id"].map(_clean_category).fillna("")
+    facts["_version_tiebreaker"] = pd.util.hash_pandas_object(facts, index=False)
 
     output_columns = [
         "sbir_organization_id",
@@ -502,10 +551,18 @@ def build_subaward_facts(
         "source_system",
         "absence_is_negative_evidence",
     ]
+    latest_facts = facts.sort_values(
+        [
+            "sbir_organization_id",
+            "subaward_fact_id",
+            "source_last_modified",
+            "_report_version_sort",
+            "_version_tiebreaker",
+        ],
+        na_position="first",
+    ).drop_duplicates(["sbir_organization_id", "subaward_fact_id"], keep="last")
     return (
-        facts[output_columns]
-        .sort_values("source_last_modified", na_position="first")
-        .drop_duplicates(["sbir_organization_id", "subaward_fact_id"], keep="last")
+        latest_facts[output_columns]
         .sort_values(["sbir_organization_id", "subaward_action_date", "prime_name"])
         .reset_index(drop=True)
     )

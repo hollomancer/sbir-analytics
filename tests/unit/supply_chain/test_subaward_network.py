@@ -198,19 +198,161 @@ def test_duns_is_verified_when_uei_is_unavailable() -> None:
     assert facts.iloc[0]["evidence_grade"] == "verified_identifier"
 
 
-def test_report_versions_collapse_to_latest_economic_fact() -> None:
+def test_placeholder_identifiers_cannot_create_verified_edges() -> None:
+    awards = pd.DataFrame(
+        [
+            {
+                "company_name": "Placeholder Identifier Labs LLC",
+                "company_uei": "N/A",
+                "company_duns": "NONE",
+                "agency": "NSF",
+                "program": "SBIR",
+            },
+            {
+                "company_name": "Zero Identifier Systems Inc",
+                "company_uei": "UNAVAILABLE",
+                "company_duns": "000000000",
+                "agency": "NSF",
+                "program": "SBIR",
+            },
+        ]
+    )
+    subawards = pd.DataFrame(
+        [
+            {
+                "prime_award_unique_key": "PRIME-PLACEHOLDER",
+                "prime_award_piid": "W-PLACEHOLDER",
+                "prime_awardee_name": "Major Prime Corp",
+                "subaward_number": "SUB-PLACEHOLDER",
+                "subaward_amount": 10_000,
+                "subaward_action_date": "2025-01-15",
+                "subawardee_uei": "N/A",
+                "subawardee_duns": "NONE",
+                "subawardee_name": "Placeholder Identifier Labs",
+            },
+            {
+                "prime_award_unique_key": "PRIME-ZERO",
+                "prime_award_piid": "W-ZERO",
+                "prime_awardee_name": "Major Prime Corp",
+                "subaward_number": "SUB-ZERO",
+                "subaward_amount": 20_000,
+                "subaward_action_date": "2025-01-16",
+                "subawardee_uei": "UNAVAILABLE",
+                "subawardee_duns": "000000000",
+                "subawardee_name": "Zero Identifier Systems",
+            },
+        ]
+    )
+
+    registry = build_sbir_awardee_registry(awards)
+    candidate_facts = build_subaward_facts(registry, subawards)
+    verified_facts = build_subaward_facts(
+        registry,
+        subawards,
+        include_name_candidates=False,
+    )
+
+    assert registry["sbir_uei"].isna().all()
+    assert registry["sbir_duns"].isna().all()
+    assert candidate_facts["subawardee_uei"].isna().all()
+    assert candidate_facts["subawardee_duns"].isna().all()
+    assert candidate_facts["match_method"].eq("exact_normalized_name").all()
+    assert candidate_facts["evidence_grade"].eq("candidate_name").all()
+    assert verified_facts.empty
+
+
+def test_identical_source_rows_collapse_before_edge_amount_sum() -> None:
+    registry = build_sbir_awardee_registry(_awards())
+    source_row = _subawards().iloc[[0]].copy()
+
+    facts = build_subaward_facts(
+        registry,
+        pd.concat([source_row, source_row], ignore_index=True),
+    )
+    edges = aggregate_supplier_prime_edges(facts)
+
+    assert len(facts) == 1
+    assert facts.iloc[0]["source_report_version_count"] == 2
+    assert edges.iloc[0]["reported_subaward_amount"] == 100_000
+
+
+def test_corrected_report_replaces_superseded_amount() -> None:
     registry = build_sbir_awardee_registry(_awards())
     first = _subawards().iloc[[0]].copy()
     first["subaward_sam_report_last_modified_date"] = "2025-02-01"
     revised = first.copy()
     revised["subaward_sam_report_id"] = "REPORT-1-REVISION"
+    revised["subaward_amount"] = 125_000
     revised["subaward_sam_report_last_modified_date"] = "2025-03-01"
 
-    facts = build_subaward_facts(registry, pd.concat([first, revised], ignore_index=True))
+    facts = build_subaward_facts(registry, pd.concat([revised, first], ignore_index=True))
+    edges = aggregate_supplier_prime_edges(facts)
 
     assert len(facts) == 1
     assert facts.iloc[0]["subaward_sam_report_id"] == "REPORT-1-REVISION"
+    assert facts.iloc[0]["subaward_amount"] == 125_000
+    assert facts.iloc[0]["subaward_action_date"] == pd.Timestamp("2025-01-15")
     assert facts.iloc[0]["source_report_version_count"] == 2
+    assert edges.iloc[0]["reported_subaward_amount"] == 125_000
+
+
+def test_equal_report_timestamps_use_report_id_tiebreaker() -> None:
+    registry = build_sbir_awardee_registry(_awards())
+    first = _subawards().iloc[[0]].copy()
+    first["subaward_action_date"] = "2025-01-15T18:00:00"
+    first["subaward_sam_report_last_modified_date"] = "2025-02-01"
+    revised = first.copy()
+    revised["subaward_sam_report_id"] = "REPORT-2"
+    revised["subaward_amount"] = 125_000
+    revised["subaward_action_date"] = "2025-01-15T08:00:00"
+
+    facts = build_subaward_facts(registry, pd.concat([revised, first], ignore_index=True))
+
+    assert len(facts) == 1
+    assert facts.iloc[0]["subaward_sam_report_id"] == "REPORT-2"
+    assert facts.iloc[0]["subaward_amount"] == 125_000
+    assert facts.iloc[0]["subaward_action_date"] == pd.Timestamp("2025-01-15T08:00:00")
+    assert facts.iloc[0]["source_report_version_count"] == 2
+
+
+def test_equal_report_metadata_uses_order_independent_row_hash_tiebreaker() -> None:
+    registry = build_sbir_awardee_registry(_awards())
+    first = _subawards().iloc[[0]].copy()
+    first["subaward_sam_report_last_modified_date"] = "2025-02-01"
+    corrected = first.copy()
+    corrected["subaward_amount"] = 125_000
+    corrected["subaward_description"] = "Corrected report content"
+
+    first_order = build_subaward_facts(
+        registry,
+        pd.concat([first, corrected], ignore_index=True),
+    )
+    reversed_order = build_subaward_facts(
+        registry,
+        pd.concat([corrected, first], ignore_index=True),
+    )
+
+    pd.testing.assert_frame_equal(first_order, reversed_order)
+    assert first_order.iloc[0]["source_report_version_count"] == 2
+
+
+def test_distinct_action_dates_remain_separate_economic_facts() -> None:
+    registry = build_sbir_awardee_registry(_awards())
+    first = _subawards().iloc[[0]].copy()
+    later_action = first.copy()
+    later_action["subaward_sam_report_id"] = "REPORT-1-LATER-ACTION"
+    later_action["subaward_amount"] = 25_000
+    later_action["subaward_action_date"] = "2025-01-20"
+
+    facts = build_subaward_facts(
+        registry,
+        pd.concat([first, later_action], ignore_index=True),
+    )
+    edges = aggregate_supplier_prime_edges(facts)
+
+    assert len(facts) == 2
+    assert facts["source_report_version_count"].eq(1).all()
+    assert edges.iloc[0]["reported_subaward_amount"] == 125_000
 
 
 def test_aggregate_edges_preserves_amount_and_dependency_guardrail() -> None:

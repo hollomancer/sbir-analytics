@@ -112,6 +112,132 @@ def test_snapshot_restart_index_and_checksum_verification(tmp_path) -> None:
         load_nsf_snapshot_index(snapshot)
 
 
+def test_snapshot_resumes_matching_partial_manifest_and_rejects_id_change(tmp_path) -> None:
+    calls: list[str] = []
+    fail_second_award = True
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        award_id = request.url.path.rsplit("/", 1)[-1].removesuffix(".json")
+        calls.append(award_id)
+        if award_id == "1234567" and fail_second_award:
+            return httpx.Response(404)
+        return httpx.Response(200, json=_payload(award_id))
+
+    snapshot = tmp_path / "snapshot"
+    client = NSFAwardAPIClient(http_client=httpx.Client(transport=httpx.MockTransport(handler)))
+    partial = fetch_nsf_award_snapshots(
+        ["620588", "1234567"],
+        snapshot,
+        client=client,
+        max_workers=2,
+        allow_partial=True,
+    )
+    assert partial["retrieval_complete"] is False
+    assert not (snapshot / "manifest.json").exists()
+
+    with pytest.raises(FileExistsError, match="different identifier set"):
+        fetch_nsf_award_snapshots(["620588"], snapshot, client=client)
+
+    fail_second_award = False
+    complete = fetch_nsf_award_snapshots(
+        ["1234567", "0620588"], snapshot, client=client, max_workers=2
+    )
+    assert complete["retrieval_complete"] is True
+    assert calls.count("0620588") == 1
+    assert calls.count("1234567") == 2
+    assert {entry["requested_award_id"]: entry["reused"] for entry in complete["entries"]} == {
+        "0620588": True,
+        "1234567": False,
+    }
+
+
+@pytest.mark.parametrize(
+    ("damage", "expected_error"),
+    [
+        ("truncate", "partial snapshot checksum mismatch for 0620588"),
+        ("remove", "partial snapshot missing recorded file for 0620588"),
+    ],
+)
+def test_snapshot_partial_resume_rejects_damaged_reused_file(
+    tmp_path, damage: str, expected_error: str
+) -> None:
+    calls: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        award_id = request.url.path.rsplit("/", 1)[-1].removesuffix(".json")
+        calls.append(award_id)
+        if award_id == "1234567":
+            return httpx.Response(404)
+        return httpx.Response(200, json=_payload(award_id))
+
+    snapshot = tmp_path / "snapshot"
+    client = NSFAwardAPIClient(http_client=httpx.Client(transport=httpx.MockTransport(handler)))
+    fetch_nsf_award_snapshots(
+        ["620588", "1234567"],
+        snapshot,
+        client=client,
+        max_workers=2,
+        allow_partial=True,
+    )
+    source_path = snapshot / "0620588.json"
+    if damage == "truncate":
+        source_path.write_bytes(source_path.read_bytes()[:-1])
+    else:
+        source_path.unlink()
+    calls.clear()
+
+    with pytest.raises(ValueError, match=expected_error):
+        fetch_nsf_award_snapshots(["1234567", "0620588"], snapshot, client=client, max_workers=2)
+    assert calls == []
+
+
+def test_snapshot_partial_resume_rejects_unattested_json_file(tmp_path) -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        award_id = request.url.path.rsplit("/", 1)[-1].removesuffix(".json")
+        if award_id == "1234567":
+            return httpx.Response(404)
+        return httpx.Response(200, json=_payload(award_id))
+
+    snapshot = tmp_path / "snapshot"
+    client = NSFAwardAPIClient(http_client=httpx.Client(transport=httpx.MockTransport(handler)))
+    fetch_nsf_award_snapshots(
+        ["620588", "1234567"],
+        snapshot,
+        client=client,
+        max_workers=2,
+        allow_partial=True,
+    )
+    (snapshot / "7654321.json").write_text(json.dumps(_payload("7654321")), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="files outside its manifest.*7654321.json"):
+        fetch_nsf_award_snapshots(["1234567", "0620588"], snapshot, client=client, max_workers=2)
+
+
+def test_snapshot_partial_resume_rejects_duplicate_manifest_entries(tmp_path) -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        award_id = request.url.path.rsplit("/", 1)[-1].removesuffix(".json")
+        if award_id == "1234567":
+            return httpx.Response(404)
+        return httpx.Response(200, json=_payload(award_id))
+
+    snapshot = tmp_path / "snapshot"
+    client = NSFAwardAPIClient(http_client=httpx.Client(transport=httpx.MockTransport(handler)))
+    fetch_nsf_award_snapshots(
+        ["620588", "1234567"],
+        snapshot,
+        client=client,
+        max_workers=2,
+        allow_partial=True,
+    )
+    partial_path = snapshot / "manifest.partial.json"
+    partial = json.loads(partial_path.read_text(encoding="utf-8"))
+    partial["entries"].append(partial["entries"][0])
+    partial_path.write_text(json.dumps(partial), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="duplicate manifest entries"):
+        fetch_nsf_award_snapshots(["1234567", "0620588"], snapshot, client=client, max_workers=2)
+
+
 def test_normalize_api_and_annual_records() -> None:
     retrieved = datetime(2026, 8, 3, tzinfo=UTC)
     api_record = _payload()["response"]["award"][0]  # type: ignore[index]
