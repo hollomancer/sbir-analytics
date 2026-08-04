@@ -26,6 +26,10 @@ class CensusAward(TypedDict, total=False):
     title: str
     abstract: str
     company: str
+    city: str
+    state: str
+    uei: str
+    duns: str
     agency: str
     program: str
     phase: str
@@ -34,6 +38,88 @@ class CensusAward(TypedDict, total=False):
     agency_tracking_number: str
     contract: str
     source_row: int
+
+
+_US_STATE_NAMES = {
+    "ALABAMA": "AL",
+    "ALASKA": "AK",
+    "ARIZONA": "AZ",
+    "ARKANSAS": "AR",
+    "CALIFORNIA": "CA",
+    "COLORADO": "CO",
+    "CONNECTICUT": "CT",
+    "DELAWARE": "DE",
+    "DISTRICT OF COLUMBIA": "DC",
+    "FLORIDA": "FL",
+    "GEORGIA": "GA",
+    "HAWAII": "HI",
+    "IDAHO": "ID",
+    "ILLINOIS": "IL",
+    "INDIANA": "IN",
+    "IOWA": "IA",
+    "KANSAS": "KS",
+    "KENTUCKY": "KY",
+    "LOUISIANA": "LA",
+    "MAINE": "ME",
+    "MARYLAND": "MD",
+    "MASSACHUSETTS": "MA",
+    "MICHIGAN": "MI",
+    "MINNESOTA": "MN",
+    "MISSISSIPPI": "MS",
+    "MISSOURI": "MO",
+    "MONTANA": "MT",
+    "NEBRASKA": "NE",
+    "NEVADA": "NV",
+    "NEW HAMPSHIRE": "NH",
+    "NEW JERSEY": "NJ",
+    "NEW MEXICO": "NM",
+    "NEW YORK": "NY",
+    "NORTH CAROLINA": "NC",
+    "NORTH DAKOTA": "ND",
+    "OHIO": "OH",
+    "OKLAHOMA": "OK",
+    "OREGON": "OR",
+    "PENNSYLVANIA": "PA",
+    "RHODE ISLAND": "RI",
+    "SOUTH CAROLINA": "SC",
+    "SOUTH DAKOTA": "SD",
+    "TENNESSEE": "TN",
+    "TEXAS": "TX",
+    "UTAH": "UT",
+    "VERMONT": "VT",
+    "VIRGINIA": "VA",
+    "WASHINGTON": "WA",
+    "WEST VIRGINIA": "WV",
+    "WISCONSIN": "WI",
+    "WYOMING": "WY",
+    "AMERICAN SAMOA": "AS",
+    "GUAM": "GU",
+    "NORTHERN MARIANA ISLANDS": "MP",
+    "PUERTO RICO": "PR",
+    "VIRGIN ISLANDS": "VI",
+}
+_US_STATE_CODES = frozenset(_US_STATE_NAMES.values())
+
+
+def normalize_state_code(value: Any) -> str:
+    """Normalize a USPS state/territory code or full name for report filtering."""
+
+    normalized = re.sub(r"\s+", " ", str(value or "").strip().upper())
+    if normalized in _US_STATE_CODES:
+        return normalized
+    return _US_STATE_NAMES.get(normalized, "")
+
+
+def normalize_state_codes(values: Iterable[str]) -> tuple[str, ...]:
+    """Return unique normalized codes, rejecting unknown filter values."""
+
+    codes = []
+    for value in values:
+        code = normalize_state_code(value)
+        if not code:
+            raise ValueError(f"unknown US state or territory: {value!r}")
+        codes.append(code)
+    return tuple(sorted(set(codes)))
 
 
 def load_census_config(area_id: str, config_dir: Path | None = None) -> dict[str, Any]:
@@ -336,6 +422,10 @@ def _audit_identity(award: CensusAward) -> dict[str, Any]:
     return {
         "title": award.get("title", ""),
         "company": award.get("company", ""),
+        "city": award.get("city", ""),
+        "state": award.get("state", ""),
+        "uei": award.get("uei", ""),
+        "duns": award.get("duns", ""),
         "program": award.get("program", ""),
         "agency_tracking_number": award.get("agency_tracking_number", ""),
         "contract": award.get("contract", ""),
@@ -545,6 +635,10 @@ def load_award_data_csv(path: Path) -> list[CensusAward]:
                     "title": row.get("Award Title", "") or "",
                     "abstract": row.get("Abstract", "") or "",
                     "company": row.get("Company", "") or "",
+                    "city": row.get("City", "") or "",
+                    "state": row.get("State", "") or "",
+                    "uei": row.get("UEI", "") or "",
+                    "duns": row.get("Duns", "") or "",
                     "agency": row.get("Agency", "") or "",
                     "program": row.get("Program", "") or "",
                     "phase": row.get("Phase", "") or "",

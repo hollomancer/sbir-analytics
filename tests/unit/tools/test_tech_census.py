@@ -9,6 +9,10 @@ def _award(
     title="",
     abstract="",
     company="Acme",
+    city="Boston",
+    state="MA",
+    uei="UEI-1",
+    duns="DUNS-1",
     agency="Department of Defense",
     program="SBIR",
     phase="Phase II",
@@ -19,6 +23,10 @@ def _award(
         "title": title,
         "abstract": abstract,
         "company": company,
+        "city": city,
+        "state": state,
+        "uei": uei,
+        "duns": duns,
         "agency": agency,
         "program": program,
         "phase": phase,
@@ -129,12 +137,45 @@ class TestComputeTechCensusTool:
         }
         assert result.metadata.data_sources[0].version == "2026-07-14"
 
+    def test_state_filter_accepts_name_and_reports_normalized_scope(self):
+        tool = ComputeTechCensusTool()
+        df = pd.DataFrame(
+            [
+                _award(title="Drone airframe", state="Massachusetts", amount=100_000),
+                _award(title="Drone airframe", state="CA", amount=200_000),
+            ]
+        )
+        result = tool.run(
+            awards_df=df,
+            area_id="drone_manufacturing",
+            states=["Massachusetts"],
+        )
+        assert result.data["award_count"] == 1
+        assert result.data["award_dollars"] == 100_000.0
+        assert result.data["summary"]["reporting_window"]["states"] == ["MA"]
+        assert result.data["summary"]["provenance"]["reporting_row_count"] == 1
+
+    def test_invalid_state_filter_warns_without_running(self):
+        result = ComputeTechCensusTool().run(
+            awards_df=pd.DataFrame([_award(title="Drone airframe")]),
+            area_id="drone_manufacturing",
+            states=["Atlantis"],
+        )
+        assert result.data["award_count"] == 0
+        assert any(
+            "unknown US state or territory" in warning for warning in result.metadata.warnings
+        )
+
     def test_result_rows_include_audit_columns(self):
         result = ComputeTechCensusTool().run(
             awards_df=pd.DataFrame([_award(title="Drone avionics")]),
             area_id="drone_manufacturing",
         )
         assert set(result.data["results"].columns) >= {
+            "city",
+            "state",
+            "uei",
+            "duns",
             "program",
             "agency_tracking_number",
             "contract",
@@ -144,6 +185,11 @@ class TestComputeTechCensusTool:
             "scope_class",
             "classification_source",
         }
+        row = result.data["results"].iloc[0]
+        assert row["city"] == "Boston"
+        assert row["state"] == "MA"
+        assert row["uei"] == "UEI-1"
+        assert row["duns"] == "DUNS-1"
 
     def test_nullable_and_string_years_are_normalized_before_aggregation(self):
         tool = ComputeTechCensusTool()
