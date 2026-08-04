@@ -8,6 +8,7 @@ identifiers to audit every included award.
 
 from __future__ import annotations
 
+import math
 import re
 from collections import defaultdict
 from collections.abc import Iterable
@@ -15,6 +16,8 @@ from pathlib import Path
 from typing import Any, TypedDict
 
 import yaml
+
+from sbir_etl.extractors.sbir_public_awards import load_sbir_awards_csv
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 CONFIG_DIR = REPO_ROOT / "config" / "tech_census"
@@ -33,6 +36,8 @@ class CensusAward(TypedDict, total=False):
     award_amount: float
     agency_tracking_number: str
     contract: str
+    award_key: str
+    award_key_version: str
     source_row: int
 
 
@@ -516,43 +521,38 @@ def run_census(
     }
 
 
-def _safe_amount(value: str) -> float:
-    cleaned = (value or "").replace("$", "").replace(",", "").strip()
-    try:
-        return float(cleaned) if cleaned else 0.0
-    except ValueError:
-        return 0.0
-
-
-def _safe_year(value: str) -> int | None:
-    try:
-        return int(float(value)) if value else None
-    except ValueError:
-        return None
-
-
 def load_award_data_csv(path: Path) -> list[CensusAward]:
-    """Load and normalize SBIR.gov's ``award_data.csv`` export."""
+    """Adapt the canonical SBIR award materialization to the census shape."""
 
-    import csv
-
-    csv.field_size_limit(2**31 - 1)
     awards: list[CensusAward] = []
-    with path.open(newline="", encoding="utf-8-sig") as handle:
-        for source_row, row in enumerate(csv.DictReader(handle), start=2):
-            awards.append(
-                {
-                    "title": row.get("Award Title", "") or "",
-                    "abstract": row.get("Abstract", "") or "",
-                    "company": row.get("Company", "") or "",
-                    "agency": row.get("Agency", "") or "",
-                    "program": row.get("Program", "") or "",
-                    "phase": row.get("Phase", "") or "",
-                    "award_year": _safe_year(row.get("Award Year", "")),
-                    "award_amount": _safe_amount(row.get("Award Amount", "")),
-                    "agency_tracking_number": row.get("Agency Tracking Number", "") or "",
-                    "contract": row.get("Contract", "") or "",
-                    "source_row": source_row,
-                }
-            )
+    for row in load_sbir_awards_csv(path).to_dict(orient="records"):
+        amount_value = row.get("amount")
+        try:
+            amount = float(amount_value) if amount_value is not None else 0.0
+        except (TypeError, ValueError):
+            amount = 0.0
+        if not math.isfinite(amount):
+            amount = 0.0
+        year_value = row.get("award_year")
+        try:
+            award_year = int(year_value) if year_value is not None else None
+        except (TypeError, ValueError):
+            award_year = None
+        awards.append(
+            {
+                "title": str(row.get("title") or ""),
+                "abstract": str(row.get("abstract") or ""),
+                "company": str(row.get("company") or ""),
+                "agency": str(row.get("agency") or ""),
+                "program": str(row.get("program") or ""),
+                "phase": str(row.get("phase") or ""),
+                "award_year": award_year,
+                "award_amount": amount,
+                "agency_tracking_number": str(row.get("agency_tracking_number") or ""),
+                "contract": str(row.get("contract_number") or ""),
+                "award_key": str(row["award_key"]),
+                "award_key_version": str(row["award_key_version"]),
+                "source_row": int(row["source_row"]),
+            }
+        )
     return awards

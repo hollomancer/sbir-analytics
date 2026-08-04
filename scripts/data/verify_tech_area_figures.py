@@ -25,7 +25,7 @@ award_amount), not bare award_id: SBIR.gov reuses award_id across genuinely
 different awards (DOE continuations, successor-company changes), and a bare-ID
 dedup silently drops real awards. Verified against real data: QIS has 1 true
 duplicate among 138 rows (137 unique awards); hypersonics has 0 true duplicates
-among 813 rows (813 unique awards unchanged). See `dedupe_by_award_id` in
+among 813 rows (813 unique awards unchanged). See `dedupe_by_award_key` in
 `build_tech_area_cohort.py` and `specs/tech-area-transition-report/validation.md`.
 """
 

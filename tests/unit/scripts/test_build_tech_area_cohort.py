@@ -40,6 +40,7 @@ TAXONOMY = {
 def _award(award_id, title, abstract):
     return {
         "award_id": award_id,
+        "award_key": f"KEY-{award_id}",
         "title": title,
         "abstract": abstract,
         "company": f"Co-{award_id}",
@@ -278,13 +279,14 @@ def test_negation_spotcheck_ignores_plain_positive():
 
 
 # --------------------------------------------------------------------------- #
-# dedupe_by_award_id + aggregate_composition (the composition emitter)
+# dedupe_by_award_key + aggregate_composition (the composition emitter)
 # --------------------------------------------------------------------------- #
 
 
-def _comp_row(award_id, agency, company, uei, year, amount, program):
+def _comp_row(award_id, agency, company, uei, year, amount, program, *, award_key=None):
     return {
         "award_id": award_id,
+        "award_key": award_key or f"KEY-{award_id}",
         "agency": agency,
         "company": company,
         "uei": uei,
@@ -307,14 +309,16 @@ def _fixture_cohort():
     ]
 
 
-def test_dedupe_drops_duplicate_award_id():
-    out = mod.dedupe_by_award_id(_fixture_cohort())
+def test_dedupe_drops_duplicate_award_key():
+    out = mod.dedupe_by_award_key(_fixture_cohort())
     assert [r["award_id"] for r in out] == ["1", "2", "3", "4", "5"]
 
 
-def test_dedupe_keeps_rows_without_award_id():
-    rows = [_comp_row("", "NASA", "X", "", 2019, 1, "SBIR")] * 2
-    assert len(mod.dedupe_by_award_id(rows)) == 2  # empty id is not deduped
+def test_dedupe_rejects_rows_without_award_key():
+    row = _comp_row("", "NASA", "X", "", 2019, 1, "SBIR")
+    row["award_key"] = ""
+    with pytest.raises(ValueError, match="missing canonical award_key"):
+        mod.dedupe_by_award_key([row])
 
 
 def test_dedupe_keeps_same_award_id_different_award():
@@ -322,19 +326,48 @@ def test_dedupe_keeps_same_award_id_different_award():
     # year) and across a successor-company change (different company) —
     # both are real, distinct awards and must not be dropped as duplicates.
     rows = [
-        _comp_row("DE-1", "Department of Energy", "Acme Inc", "U1", 2019, 1_000_000, "SBIR"),
-        _comp_row("DE-1", "Department of Energy", "Acme Inc", "U1", 2021, 1_100_000, "SBIR"),
-        _comp_row("DE-2", "Department of Energy", "Acme Inc", "U1", 2020, 900_000, "SBIR"),
-        _comp_row("DE-2", "Department of Energy", "Successor Inc", "U9", 2020, 900_000, "SBIR"),
+        _comp_row(
+            "DE-1",
+            "Department of Energy",
+            "Acme Inc",
+            "U1",
+            2019,
+            1_000_000,
+            "SBIR",
+            award_key="K1",
+        ),
+        _comp_row(
+            "DE-1",
+            "Department of Energy",
+            "Acme Inc",
+            "U1",
+            2021,
+            1_100_000,
+            "SBIR",
+            award_key="K2",
+        ),
+        _comp_row(
+            "DE-2", "Department of Energy", "Acme Inc", "U1", 2020, 900_000, "SBIR", award_key="K3"
+        ),
+        _comp_row(
+            "DE-2",
+            "Department of Energy",
+            "Successor Inc",
+            "U9",
+            2020,
+            900_000,
+            "SBIR",
+            award_key="K4",
+        ),
     ]
-    out = mod.dedupe_by_award_id(rows)
+    out = mod.dedupe_by_award_key(rows)
     assert len(out) == 4
 
 
 def test_aggregate_composition_full():
     comp = mod.aggregate_composition(_fixture_cohort())
     assert comp["n_unique_awards"] == 5
-    assert comp["duplicate_award_id_rows"] == 1
+    assert comp["duplicate_award_key_rows"] == 1
 
     dod = comp["by_agency"]["Department of Defense"]
     assert dod["awards"] == 3

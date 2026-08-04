@@ -1,4 +1,20 @@
-# Federal Contracts Extractor
+# Source Extractors
+
+## Public SBIR/STTR awards
+
+`sbir_public_awards.py` is the canonical pipeline for SBIR.gov's
+`award_data.csv`. It reads identifiers as text in bounded chunks, materializes
+the versioned `sbir-source-v2` award key from `sbir_etl.identity.sbir_awards`,
+and collapses revised source editions only after all chunks are normalized.
+Technology censuses, technology-area cohorts, and the procurement-transition
+packet consume this same materialization rather than defining their own award
+grain.
+
+The public `award_id` remains a readable lineage field. Joins, counts,
+deduplication, and snapshot comparisons use `award_key`; tracking or contract
+number alone is not award-grain.
+
+## Federal contracts
 
 `ContractExtractor` streams federal procurement transactions from a USAspending
 PostgreSQL directory archive and retains rows matching the configured SBIR vendor frame.
