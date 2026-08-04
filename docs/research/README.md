@@ -76,6 +76,6 @@ explain how firms were selected and what the results cannot show.
   bounded acquisition, linkage, attachment parsing, and classifier gates for A1 and E5; Phase 1 is
   implemented, but this remains a plan rather than research evidence.
 - [Solicitation source coverage spike status](solicitation_source_coverage_status.md) — current
-  fail-closed Phase 0 adapter decisions and the live-sample evidence still required.
+  Phase 0 adapter decisions and the pinned SBIR.gov bulk award linkage baseline.
 - [Government-policy demo plan](../guides/government-policy-demo-plan.md) —
   what to show each audience and in what order; not an evidence source.

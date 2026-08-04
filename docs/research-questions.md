@@ -164,12 +164,12 @@ perspective, see [F. Capital formation & entrepreneurial finance](#f-capital-for
   Which CET subfields does DoD appear to want work in, but few SBIR awards
   cover?
   Found by semantic search over award and solicitation text.
-  **Status:** Partially computable as an exploratory analysis. The implementation
-  can retain the full documented SBIR.gov topic hierarchy, but the live-source
-  coverage gate has not passed and source-linked solicitation attachments are
-  not yet available; results remain source-coverage bounded and are not yet
-  validated or citable.
-  *Deps: CET · Plan: [solicitation document evidence](research/solicitation_document_evidence_plan.md)*
+  **Status:** Partially computable as an exploratory analysis. The SBIR.gov bulk
+  award snapshot supplies exact solicitation/topic identifiers for 49.1% of all
+  award rows and 99.9% of NSF award rows from 2022 onward, but it does not supply
+  solicitation or attachment text. Results remain source-coverage bounded and
+  are not yet validated as requirement evidence.
+  *Deps: CET · Plan: [solicitation document evidence](research/solicitation_document_evidence_plan.md) · Evidence: [bulk linkage coverage](research/solicitation_source_coverage_status.md)*
 
 - **Capital formation / firm health per CET area** (cap)
   How healthy are awardees financially in each technology area, proxied by Form D
@@ -848,7 +848,10 @@ the questions remain useful, but there is no active umbrella spec.
   Candidate program/timing or text links must remain separate from exact source
   identifiers, and solicitation similarity does not establish award use or a
   supply-chain dependency.
-  *Deps: E3, CET · Plan: [solicitation document evidence](research/solicitation_document_evidence_plan.md)*
+  **Status:** Initial award-linkage coverage is measured from the full SBIR.gov
+  bulk award snapshot. Source-native solicitation text, revisions, and attachment
+  coverage remain open.
+  *Deps: E3, CET · Plan: [solicitation document evidence](research/solicitation_document_evidence_plan.md) · Evidence: [bulk linkage coverage](research/solicitation_source_coverage_status.md)*
 
 - **FSCPSC NAICS prediction**
   Does FSCPSC NAICS prediction beat our abstract-nearest-neighbor baseline?

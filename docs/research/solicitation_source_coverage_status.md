@@ -2,60 +2,92 @@
 
 **Analysis date:** 2026-08-04
 
-**Evidence status:** Implementation and source-availability status; not a research dataset
+**Evidence status:** Reproducible initial award-linkage analysis; not solicitation-text evidence
 
 ## Adapter decisions
 
-| Adapter | Decision | Evidence available in this increment | Blocking evidence |
+| Adapter | Decision | Authorized evidence | Remaining boundary |
 | --- | --- | --- | --- |
-| SBIR.gov solicitations | `no_go` | Official 25-field contract; documentation-derived round-trip fixture; manifested audit command | Official API reports maintenance; a bounded endpoint probe returned HTTP 403; no manifested live sample of at least 50 records |
-| NSF funding opportunities | `no_go` | Source contract and intended exact-identifier role documented in the plan | No manifested page/document sample or award-link yield measurement |
+| SBIR.gov bulk award linkage | `go` | Exact award-to-solicitation number and, when co-present, topic-code assertions | Award text is not solicitation text; historical identifier coverage is uneven |
+| SBIR.gov solicitation records | `no_go` | None beyond the documentation-derived schema fixture | Endpoint unavailable; no source-native topic descriptions, nested subtopics, status, or agency URLs captured |
+| NSF funding opportunities | `no_go` | Source contract and exact solicitation numbers from bulk awards can seed retrieval | No manifested page/document sample or attachment yield measurement |
 | SAM.gov opportunities/documents | `no_go` | Existing metadata, description, and URL retention paths identified | No manifested attachment cohort measuring added text, MIME type, duplicates, or failures |
 | Grants.gov opportunity detail | `no_go` | Source contract and context-only evidence boundary documented | No bounded adapter or manifested opportunity/version/attachment sample |
 
-No adapter is approved for scheduled research materialization from this status report. These are
-coverage-gate decisions, not judgments about source authority or eventual value.
+The bulk adapter's `go` decision applies only to exact identifier linkage. It does not authorize
+solicitation-version, document, requirement, contract-use, or dependency claims.
 
-The SBIR.gov availability probe requested one JSON record from the documented endpoint on the
-analysis date. It received `403 application/json` with `{"message":"Forbidden"}`. The response is
-an availability result only; it is not a source-shape sample and is not attributed to a particular
-cause beyond the separate maintenance notice on the official documentation page.
+## Pinned bulk award result
 
-## SBIR.gov audit contract now available
+The full SBIR.gov bulk award snapshot was downloaded on 2026-08-03 and analyzed on 2026-08-04.
 
-The new audit command consumes an immutable captured JSON response and writes a machine-checkable
-manifest outside version control:
+| Source property | Value |
+| --- | --- |
+| Source | `award_data.csv` with abstracts |
+| Source URL | `https://data.www.sbir.gov/mod_awarddatapublic/award_data.csv` |
+| SHA-256 | `efdf7ca5a398703002ebb33345275b0f68e50af3c5db361d48a2456266a23628` |
+| Bytes | 394,398,849 |
+| Source rows | 219,503 |
+| Reviewed columns | 42/42 matched |
+| Exact link assertions | 115,147 unique rows |
+| Assertion artifact SHA-256 | `85465dc541ba34f058be3c53aa2bc1beddc7e1622d739751ee7dad0527706d72` |
+
+One duplicate source assertion was removed deterministically; all materialized assertion IDs are
+unique. Generated Parquet and manifests remain outside version control.
+
+## Award identifier coverage
+
+| Cohort | Awards | Distinct company names | Solicitation ID | Topic code | Both | Funding |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| All agencies | 219,503 | 34,464 | 115,148 (52.5%) | 126,045 (57.4%) | 107,848 (49.1%) | $82.159B |
+| NSF, all years | 15,544 | 7,535 | 4,144 (26.7%) | 8,922 (57.4%) | 4,143 (26.7%) | $3.822B |
+| NSF, award years 2022–2025 | 1,614 | 1,401 | 1,613 (99.9%) | 1,614 (100.0%) | 1,613 (99.9%) | $824.1M |
+
+The all-years NSF rate is not representative of current data. Coverage changes sharply across
+source vintages:
+
+| NSF award-year band | Awards | Solicitation ID | Topic code | Both |
+| --- | ---: | ---: | ---: | ---: |
+| 2022–2025 | 1,614 | 1,613 (99.9%) | 1,614 (100.0%) | 1,613 (99.9%) |
+| 2011–2021 | 4,787 | 16 (0.3%) | 4,787 (100.0%) | 16 (0.3%) |
+| 2004–2010 | 3,140 | 2,512 (80.0%) | 2,515 (80.1%) | 2,511 (80.0%) |
+| 1983–2003 | 6,003 | 3 (0.0%) | 6 (0.1%) | 3 (0.0%) |
+
+Therefore, an initial current-NSF analysis can use exact solicitation/topic identifiers with nearly
+complete observed coverage for award years 2022–2025. Historical NSF analyses must either remain
+topic-only where appropriate or retrieve authoritative NSF records; topic-only rows are not emitted
+as exact award-to-solicitation assertions. Company counts are distinct source labels, not resolved
+legal-entity counts.
+
+## Reproduction
 
 ```bash
-python scripts/data/audit_sbir_solicitation_source_coverage.py \
-  --input /path/to/captured-solicitations.json \
-  --output /path/to/sbir-solicitation-coverage.json \
-  --source-url 'https://api.www.sbir.gov/public/api/solicitations?rows=50' \
+python scripts/data/build_sbir_bulk_solicitation_links.py \
+  --source data/raw/sbir/award_data.csv \
+  --source-metadata data/raw/sbir/award_data.meta.json \
+  --schema docs/data/sbir_awards_columns.json \
   --analysis-date 2026-08-04
 ```
 
-The adapter can return `go` only when the capture:
+The command validates the source header and metadata hash, writes
+`award_solicitation_link_assertions.parquet`, a JSON manifest, and a bounded Markdown summary under
+`data/processed/solicitation_evidence/` by default. A missing or mismatched metadata sidecar closes
+the gate.
 
-- contains at least 50 records;
-- exercises every documented solicitation, topic, and subtopic field;
-- retains all 25 documented fields through normalized columns or hierarchy links;
-- contains no unmapped source fields or malformed nested values; and
-- produces unique solicitation-version and topic/subtopic identifiers.
+## Interpretation boundary
 
-The report also records duplicate source records and the yield of agency/topic source links. The
-documentation-derived fixture intentionally returns `no_go` because one synthetic record cannot
-satisfy the live-sample gate.
+- The bulk row's solicitation number supports an exact identifier link for that award.
+- A topic is linked to the solicitation only when both fields occur in the same award row.
+- `Award Title` and `Abstract` remain award text; they are not topic descriptions or requirement
+  evidence.
+- The bulk export contains no nested solicitation subtopics or attachment bodies.
+- Exact identifiers do not establish technology use on a later contract or a physical supply-chain
+  dependency.
 
 ## Next evidence collection
 
-1. Re-run the SBIR.gov capture after the maintenance notice is removed, retain the raw response and
-   exact request URL outside version control, and publish the generated manifest with the research
-   release.
-2. Build equivalent bounded manifests for official NSF publication pages, existing SAM.gov
-   opportunity URLs, and selected Grants.gov opportunity details.
-3. Reconcile SAM.gov attachment-added text with the existing GSA archive corpus before authorizing
-   attachment downloads.
-
-Candidate program/timing or text-similarity joins remain excluded from exact award-to-solicitation
-counts. This status does not support critical-supplier, specific-award-use, or physical-dependency
-claims.
+1. Use the 16 exact NSF solicitation numbers observed for award years 2022–2025 to retrieve and
+   version the corresponding official NSF funding-opportunity publications.
+2. Measure what authoritative NSF documents add beyond the 1,614 award titles and abstracts.
+3. Build bounded SAM.gov and Grants.gov attachment manifests and reconcile them with existing GSA
+   archive text before authorizing a requirement classifier.

@@ -1,6 +1,6 @@
 # Solicitation Document and Requirement Evidence Plan
 
-**Status:** In progress — Phase 1 implemented; Phase 0 live-source gate remains open
+**Status:** In progress — bulk award linkage gate passed; solicitation documents remain open
 
 **Last reviewed:** 2026-08-04
 
@@ -8,8 +8,17 @@
 
 ## Implementation progress
 
-The first implementation increment adds the Phase 1 SBIR.gov substrate and the SBIR.gov portion of
-the Phase 0 audit contract:
+The first implementation increments add the Phase 1 source schema and make the SBIR.gov bulk award
+export, rather than the unavailable solicitation endpoint, the initial award-linkage source:
+
+- `scripts/data/build_sbir_bulk_solicitation_links.py` consumes the existing versioned
+  `award_data.csv`, validates its schema and metadata sidecar, and materializes exact
+  award-to-solicitation/topic assertions plus agency/year-stratified coverage.
+- The 2026-08-03 snapshot passes the linkage adapter gate: 115,147 unique assertions from 219,503
+  award rows. It contains both solicitation and topic identifiers for 49.1% of all award rows and
+  99.9% of NSF award rows from 2022 onward.
+- Award titles and abstracts remain explicitly typed as award text. They are not promoted to
+  solicitation titles, topic descriptions, attachments, or government requirements.
 
 - `SolicitationExtractor.extract_solicitation_tables()` now returns one lossless
   solicitation-version table and one topic/subtopic table with deterministic identifiers,
@@ -17,16 +26,15 @@ the Phase 0 audit contract:
   topic links.
 - The existing six-column `extract_topics()` and keyword-search interfaces remain compatible with
   weekly reporting. Report-layer excerpt limits remain outside the source tables.
-- `scripts/data/audit_sbir_solicitation_source_coverage.py` manifests the input hash, documented
-  field presence and retention, duplicate records, hierarchy counts, schema drift, source-link
-  yield, ID uniqueness, and a fail-closed go/no-go decision.
+- `scripts/data/audit_sbir_solicitation_source_coverage.py` and its documentation-derived fixture
+  still validate the full solicitation/topic/subtopic shape for a future source-native capture.
 - A documentation-derived full-shape fixture exercises all 25 documented solicitation, topic, and
   subtopic fields. It is explicitly not live research evidence.
 
-As of 2026-08-04, the official SBIR.gov page says the APIs are under maintenance and a bounded live
-endpoint probe returned HTTP 403. The live 50-record minimum sample therefore has not been captured,
-and the SBIR.gov adapter remains `no_go` for research materialization. NSF, SAM.gov, and Grants.gov
-source spikes also remain pending; see the [Phase 0 status](solicitation_source_coverage_status.md).
+The solicitation API remains unavailable as of 2026-08-04, but it no longer blocks award-linkage
+analysis. It still blocks source-native solicitation descriptions, nested subtopics, status, and
+agency URLs. NSF publication, SAM.gov attachment, and Grants.gov source spikes remain pending; see
+the [Phase 0 status](solicitation_source_coverage_status.md).
 
 ## Purpose
 
@@ -54,6 +62,8 @@ crawler or a second opportunity-ingestion stack.
 
 The repository already has useful seams:
 
+- `scripts/data/download_sbir.py` already maintains the official bulk award CSV, a SHA-256 sidecar,
+  and dated vintages; `docs/data/sbir_awards_columns.json` defines the reviewed source schema.
 - Before this increment, `sbir_etl/extractors/solicitation.py` retrieved SBIR.gov solicitation
   topics but retained only a subset of the documented source fields.
 - `sbir_etl/extractors/sam_gov_opportunities.py` retains SAM.gov description, additional-information,
@@ -74,7 +84,8 @@ The repository already has useful seams:
 | --- | --- | --- | --- |
 | Direct NSF Award Search and annual award JSON | Award, program, organization, dates, and funding metadata | Award validation and classification inputs where a direct NSF adapter is present | No solicitation body or attachment is carried by the award record |
 | NSF funding-opportunity pages and PDFs | Full solicitation sections, responsiveness criteria, award limits, proposal rules, and agency updates | Not ingested | Snapshot and parse the authoritative NSF publication linked to an award or opportunity |
-| SBIR.gov Solicitation API | Solicitation title, phase, year, release/open/close/due dates, status, agency URL, topics, topic links, and subtopics | Lossless normalized substrate implemented; legacy topic view remains in weekly reporting | Capture and manifest a live sample after maintenance, then materialize bounded research releases |
+| SBIR.gov bulk awards | Award title/abstract, firm, funding, solicitation number/year/close date, and topic code | Versioned download already supports award and supply-chain research; exact link product now implemented | Use full-snapshot identifiers to seed exact award-to-solicitation/topic assertions; never treat award text as solicitation text |
+| SBIR.gov Solicitation API | Solicitation title, phase, year, release/open/close/due dates, status, agency URL, topics, topic links, and subtopics | Lossless normalized substrate implemented; endpoint currently unavailable | Retain as a future source-native solicitation-text path, not the initial linkage dependency |
 | SAM.gov Opportunities API | Notice metadata, synopsis endpoint, additional-information URL, and direct attachment URLs | Metadata retained; selected synopsis descriptions hydrated | Fetch, version, parse, and classify selected attachments without losing inline descriptions |
 | GSA Contract Opportunities archive | Historical notice metadata and frequently rich inline descriptions | Used by the Phase III notice-corpus research path | Reuse inline text and provenance; do not re-fetch attachments when the archive text is sufficient |
 | Grants.gov opportunity detail | Synopsis, Assistance Listings, eligibility, funding envelope, attachments, related URLs, changes, and version history | No adapter; context only | Add a bounded opportunity/document adapter, never an award or payment ledger |
@@ -82,6 +93,7 @@ The repository already has useful seams:
 
 Official source contracts:
 
+- [SBIR.gov downloadable award data](https://www.sbir.gov/data-resources)
 - [SBIR.gov Solicitation API](https://www.sbir.gov/api/solicitation)
 - [NSF funding opportunities](https://www.nsf.gov/funding/opportunities)
 - [SAM.gov Opportunities API](https://open.gsa.gov/api/get-opportunities-public-api/)
@@ -91,6 +103,7 @@ Official source contracts:
 
 ### In scope
 
+- Versioned SBIR.gov bulk award records as exact award-to-solicitation/topic identifier evidence.
 - Public federal SBIR/STTR solicitations and topics from SBIR.gov.
 - Official NSF solicitation pages and linked documents for NSF SBIR/STTR records.
 - SAM.gov solicitation, presolicitation, sources-sought, special-notice, and justification records
@@ -227,15 +240,20 @@ must still be reported; an aggregate pass cannot hide a failing high-impact labe
 
 ### Phase 0 — Source and linkage coverage spike
 
-- Capture current source-shape fixtures from SBIR.gov, NSF, SAM.gov, and Grants.gov.
+- Use the full SBIR.gov bulk award snapshot and its existing metadata sidecar as the first linkage
+  census; capture bounded source-shape fixtures from NSF, SAM.gov, and Grants.gov separately.
 - Measure documented-versus-retained field coverage in existing extractors.
-- Sample at least 50 records per available source, including records with and without attachments.
+- Sample at least 50 records per remaining available source, including records with and without
+  attachments.
 - Measure exact award-to-solicitation identifiers, topic availability, attachment yield, MIME types,
   duplicate URLs/content, inaccessible links, and version history.
 - Reconcile results with the existing Phase III notice-corpus and transition-coverage findings.
 
 **Verify:** publish a manifested coverage report and a go/no-go decision for each adapter. Do not
 promote sparse program/timing joins to exact links.
+
+**Progress:** the bulk award linkage adapter is `go` for exact identifier assertions. The
+source-native solicitation/document adapters remain separate and have not passed.
 
 ### Phase 1 — Complete the SBIR.gov solicitation substrate
 
@@ -262,7 +280,8 @@ identical hashes and extracted sections; unsupported or unsafe files fail closed
 
 ### Phase 3 — NSF and Grants.gov solicitation context
 
-- Join NSF awards to SBIR.gov solicitation identifiers where the award baseline supplies them.
+- Join NSF awards to the solicitation and topic identifiers carried in the versioned SBIR.gov bulk
+  award baseline.
 - Snapshot the official NSF publication/page and linked documents for exact NSF solicitation
   numbers.
 - Add a bounded Grants.gov opportunity-detail adapter for selected opportunity numbers and
@@ -349,9 +368,11 @@ No success criterion depends on producing a critical-supplier or specific-award-
 
 ## Recommended first increment
 
-Implement Phase 0 and Phase 1 together. They are the lowest-cost way to establish actual coverage
-and recover solicitation fields already returned by SBIR.gov. Use that evidence to choose a bounded
-NSF, SAM.gov, and Grants.gov attachment cohort before building the document classifier.
+Use the SBIR.gov bulk award export for Phase 0 exact-link coverage and keep Phase 1's normalized
+solicitation schema ready for future source-native records. This avoids blocking initial NSF linkage
+analysis on the unavailable endpoint while preserving the distinction between award text and
+government-authored solicitation text. Use the measured identifier coverage to select bounded NSF,
+SAM.gov, and Grants.gov document cohorts before building the requirement classifier.
 
-**Progress:** Phase 1 and the SBIR.gov audit harness are implemented. Phase 0 is not complete and no
-adapter has passed its live-source coverage gate.
+**Progress:** Phase 1 and both audit paths are implemented. The bulk award linkage adapter has
+passed; Phase 0 document-source coverage is not complete.
