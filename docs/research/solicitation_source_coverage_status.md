@@ -72,7 +72,9 @@ python scripts/data/build_sbir_bulk_solicitation_links.py \
 The command validates the source header and metadata hash, writes
 `award_solicitation_link_assertions.parquet`, a JSON manifest, and a bounded Markdown summary under
 `data/processed/solicitation_evidence/` by default. A missing or mismatched metadata sidecar closes
-the gate.
+the gate. The analysis date is required because it is part of every assertion row and therefore the
+artifact hash. If a later run closes the gate, any prior Parquet at the requested output path is
+moved to a hash-labeled `.superseded` path recorded in the new manifest.
 
 ## Interpretation boundary
 

@@ -3,6 +3,7 @@ import hashlib
 import json
 from pathlib import Path
 import shutil
+import sys
 
 import pandas as pd
 import pytest
@@ -116,6 +117,38 @@ def test_metadata_hash_mismatch_fails_closed(tmp_path):
     assert "metadata sidecar" in manifest["adapter_decision"]["blockers"][0]
     assert manifest["link_assertions"]["materialized"] is False
     assert not (tmp_path / "links.parquet").exists()
+
+
+def test_no_go_supersedes_prior_materialization(tmp_path):
+    source = _source_with_metadata(tmp_path)
+    first_manifest = _build(tmp_path, source)
+    links = tmp_path / "links.parquet"
+    first_hash = first_manifest["link_assertions"]["sha256"]
+
+    metadata_path = source.with_suffix(".meta.json")
+    metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+    metadata["sha256"] = "0" * 64
+    metadata_path.write_text(json.dumps(metadata), encoding="utf-8")
+
+    manifest = _build(tmp_path, source)
+
+    superseded = manifest["link_assertions"]["superseded_artifact"]
+    superseded_path = Path(superseded["path"])
+    assert manifest["adapter_decision"]["status"] == "no_go"
+    assert manifest["link_assertions"]["materialized"] is False
+    assert not links.exists()
+    assert superseded_path.is_file()
+    assert superseded_path.name.endswith(".superseded")
+    assert superseded["sha256"] == first_hash
+
+
+def test_cli_requires_analysis_date(monkeypatch):
+    monkeypatch.setattr(sys, "argv", [str(SCRIPT)])
+
+    with pytest.raises(SystemExit) as exc_info:
+        MODULE.parse_args()
+
+    assert exc_info.value.code == 2
 
 
 def test_missing_required_source_column_raises_before_materialization(tmp_path):

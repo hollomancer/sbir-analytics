@@ -434,6 +434,28 @@ def _materialize_links(
     }
 
 
+def _supersede_existing_links(output: Path) -> dict[str, Any] | None:
+    """Move a stale link artifact aside without overwriting an earlier quarantine."""
+    if not output.is_file():
+        return None
+
+    artifact_hash = _sha256(output)
+    artifact_bytes = output.stat().st_size
+    hash_prefix = artifact_hash[:12]
+    superseded = output.with_name(f"{output.name}.{hash_prefix}.superseded")
+    duplicate_index = 2
+    while superseded.exists():
+        superseded = output.with_name(f"{output.name}.{hash_prefix}.{duplicate_index}.superseded")
+        duplicate_index += 1
+
+    output.replace(superseded)
+    return {
+        "path": str(superseded),
+        "sha256": artifact_hash,
+        "bytes": artifact_bytes,
+    }
+
+
 def render_summary(manifest: dict[str, Any]) -> str:
     overall = manifest["coverage"]["overall"]
     nsf = manifest["coverage"]["nsf"]
@@ -607,7 +629,11 @@ def build_bulk_linkage_artifacts(
             "rows": link_rows,
             "materialized": False,
         }
-        if not blockers:
+        if blockers:
+            superseded_artifact = _supersede_existing_links(links_output)
+            if superseded_artifact is not None:
+                links_artifact["superseded_artifact"] = superseded_artifact
+        else:
             links_artifact = {"materialized": True, **_materialize_links(connection, links_output)}
     finally:
         connection.close()
@@ -667,7 +693,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--links-output", type=Path, default=DEFAULT_LINKS_OUTPUT)
     parser.add_argument("--manifest-output", type=Path, default=DEFAULT_MANIFEST_OUTPUT)
     parser.add_argument("--summary-output", type=Path, default=DEFAULT_SUMMARY_OUTPUT)
-    parser.add_argument("--analysis-date", type=date.fromisoformat, default=date.today())
+    parser.add_argument("--analysis-date", type=date.fromisoformat, required=True)
     parser.add_argument("--minimum-rows", type=int, default=MINIMUM_SOURCE_ROWS)
     parser.add_argument("--allow-missing-metadata", action="store_true")
     return parser.parse_args()
