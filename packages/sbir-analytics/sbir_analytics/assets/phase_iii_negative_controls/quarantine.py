@@ -7,7 +7,7 @@ from typing import Any
 
 import pandas as pd
 
-from .identity import IdentityRecoveryError, RecoveryStatus
+from sbir_etl.identity.exact_awards import IdentityRecoveryError, RecoveryStatus
 
 
 class QuarantineKeyCoverage(StrEnum):

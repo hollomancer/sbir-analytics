@@ -90,6 +90,10 @@ U.S. state, district, and territory normalization belongs in
 `sbir_etl.identity.geography`. Callers use the strict profile unless they explicitly need
 the named permissive compatibility behavior; no caller carries its own jurisdiction map.
 
+Exact official award-key resolution and fail-closed recipient-identifier reconciliation
+belong in `sbir_etl.identity.exact_awards`. USAspending and NIH adapters prepare canonical
+source keys, but they share the same versioned resolver and recovery-status contract.
+
 ### Study Evidence Contracts
 
 Externally citable studies declare a versioned contract in `studies/<study-id>/study.yaml`.
